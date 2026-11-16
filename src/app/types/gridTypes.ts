@@ -29,11 +29,18 @@ export interface GridState {
    * new scenes are written with a copy of the collection's distance, which then goes stale.
    */
   unitDistanceOverride?: number;
+  /**
+   * The unit this scene's distances are shown in, in place of its collection's (a galaxy map
+   * measured in "ly" in a collection of feet). Unset follows the collection. Read with `sceneUnitName`.
+   */
+  unitNameOverride?: string;
   lineType?: 'solid' | 'dashed' | 'dotted'; // Grid line style
   lineWidth?: number; // Grid line width in pixels
   measurementType?: 'units' | 'abstract'; // Measurement system to use
   /** Set on new scenes: align the grid to the map image on the first load, then cleared. */
   autoDetect?: boolean;
+  /** TrueScale: lock this scene's player zoom to the real-world cell size. Unset counts as on. */
+  tableTvTrueScale?: boolean;
   /**
    * How the map image is drawn stretched so that this regular grid fits the cells printed on it
    * (hexes a few percent too tall, squares that are rectangles). Part of the alignment: size and

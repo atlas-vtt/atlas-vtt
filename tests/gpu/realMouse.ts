@@ -13,20 +13,36 @@ export const SHIFT_KEY = 8;
 
 type MouseType = 'mouseMoved' | 'mousePressed' | 'mouseReleased';
 
+function inRunnerPage(x: number, y: number): { x: number; y: number } {
+  const host = window.frameElement?.getBoundingClientRect() ?? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+  return {
+    x: host.left + x * host.width / window.innerWidth,
+    y: host.top + y * host.height / window.innerHeight,
+  };
+}
+
 /**
  * The real mouse: points are in this frame's client coordinates, which the
  * test runner shows scaled inside its own page, where the input lands.
  */
 export const mouse = {
   async send(type: MouseType, x: number, y: number, pressed: boolean, modifiers = 0, button: 'left' | 'right' = 'left'): Promise<void> {
-    const host = window.frameElement?.getBoundingClientRect() ?? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
     await cdp().send('Input.dispatchMouseEvent', {
       type,
-      x: host.left + x * host.width / window.innerWidth,
-      y: host.top + y * host.height / window.innerHeight,
+      ...inRunnerPage(x, y),
       button: type === 'mouseMoved' && !pressed ? 'none' : button,
       buttons: pressed ? (button === 'left' ? 1 : 2) : 0,
       clickCount: type === 'mouseMoved' ? 0 : 1,
+      modifiers,
+    });
+  },
+  /** The wheel, one notch being about 100 px of `deltaY`. */
+  async wheel(x: number, y: number, deltaY: number, modifiers = 0): Promise<void> {
+    await cdp().send('Input.dispatchMouseEvent', {
+      type: 'mouseWheel',
+      ...inRunnerPage(x, y),
+      deltaX: 0,
+      deltaY,
       modifiers,
     });
   },

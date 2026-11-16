@@ -83,7 +83,7 @@ describe('taking a roll context', () => {
 });
 
 describe('an origin that does not match the presented scene', () => {
-  const wolf: ShownRollToken = { name: 'Wolf', imagePath: undefined, showRing: true, ringColor: undefined };
+  const wolf: ShownRollToken = { name: 'Wolf', imagePath: undefined, showRing: true, ringColor: undefined, mapShowsNameplates: true };
   const scene = new PlayerRollScene();
   scene.present({ viewId: 'view-1', mapPath: MAP_A, shownTokens: (ids) => new Map(ids?.includes('wolf') !== false ? [['wolf', wolf]] : []) });
   const result: DiceRollResult = { id: 'r', timestamp: 0, formula: '1d20', rolls: [{ die: 'd20', value: 7, max: 20 }], modifiers: 0, total: 7, source: SOURCE };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PALETTE_MIN_WIDTH, placePalette } from '../../src/app/react/components/command-palette/palettePlacement';
+import { PALETTE_MAX_WIDTH, PALETTE_MIN_WIDTH, placePalette } from '../../src/app/react/components/command-palette/palettePlacement';
 
 const frame = (width: number) => ({ left: 100, top: 0, width, bottom: 700 });
 const toolbar = (left: number, width: number) => ({ left, top: 620, width, bottom: 678 });
@@ -7,6 +7,12 @@ const toolbar = (left: number, width: number) => ({ left, top: 620, width, botto
 describe('placePalette', () => {
   it('takes the width of a wide toolbar and sits above it', () => {
     expect(placePalette(toolbar(300, 700), frame(1200))).toEqual({ width: 700, left: 200, bottom: 88 });
+  });
+
+  it('stays at most PALETTE_MAX_WIDTH wide above a long toolbar, centred on it', () => {
+    const position = placePalette(toolbar(150, 1100), frame(1400));
+    expect(position.width).toBe(PALETTE_MAX_WIDTH);
+    expect(position.left).toBe(150 - 100 + (1100 - PALETTE_MAX_WIDTH) / 2);
   });
 
   it('stays at least PALETTE_MIN_WIDTH wide above a narrow toolbar, centred on it', () => {

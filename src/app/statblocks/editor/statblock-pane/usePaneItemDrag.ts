@@ -13,6 +13,7 @@ import { keyedEntryItems } from '../../values/entryKeys';
 import { entryName } from '../../values/entryValues';
 import { singular } from '../../values/entryNoun';
 import type { PaneEditController } from './paneEditContext';
+import { t } from '../../../i18n';
 
 /** The ability a handle names, with its list's field; null where the note no longer holds it. */
 function findEntry(template: StatblockTemplate, pane: PaneEditController, blockId: string, itemKey: string): { field: TemplateField; name: string } | null {
@@ -57,7 +58,7 @@ export function usePaneItemDrag({ pane, template, hint }: PaneItemDragInput): (t
       items,
       itemKey: target.itemKey,
       scroller: scrollerOf(frame),
-      onStart: () => current.announce(`Picked up ${found.name}, ${from() + 1} of ${keys().length} in ${list}.`),
+      onStart: () => current.announce(t('statblockEditor.pickedUpIn', { name: found.name, n: from() + 1, count: keys().length, list })),
       onGap: (gap, count) => {
         if (gap !== null) current.announce(`${found.name}, ${droppedIndex(from(), gap) + 1} of ${count}.`);
       },
@@ -76,10 +77,10 @@ export function usePaneItemDrag({ pane, template, hint }: PaneItemDragInput): (t
         const toIndex = stored.indexOf(drawn[toAt] ?? '');
         if (fromIndex < 0 || toIndex < 0) return;
         latest.current.pane.moveEntry(found.field, fromIndex, toIndex);
-        latest.current.pane.announce(`Dropped ${found.name} at ${toAt + 1} of ${drawn.length}.`);
+        latest.current.pane.announce(t('statblockEditor.droppedAt', { name: found.name, n: toAt + 1, count: drawn.length }));
       },
       onCancel: (started) => {
-        if (started) latest.current.pane.announce('Not moved.');
+        if (started) latest.current.pane.announce(t('statblockEditor.notMoved'));
       },
     }, handle, event);
   }, [drag]);

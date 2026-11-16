@@ -91,4 +91,22 @@ describe('explored memory through saves and restores', () => {
     for (let x = 204; x <= 308; x += 4) for (const y of [303, 385]) expect([x, y, at(now, x, y)]).toEqual([x, y, 255]);
     expect(at(original, 250, 340)).toBe(255);
   });
+
+  it('adds a saved memory to what it holds, texel by texel the larger of the two (a player\'s page taking the GM\'s)', async () => {
+    const { renderer, explored, texels } = await large();
+    const elsewhere = new ExploredTexture(renderer, { width: MAP, height: MAP });
+    cleanup.push(() => elsewhere.destroy());
+    elsewhere.add(stamp(rect(1500, 1500, 1600, 1600)));
+    elsewhere.add(stamp(rect(200, 300, 260, 388)));
+    const theirs = saveExploredMask(elsewhere.toCanvas());
+    const before = texels().slice();
+    explored.drawOver(await explored.decode(theirs));
+    const now = texels();
+    const other = renderer.extract.pixels({ target: elsewhere.texture }).pixels;
+    let differ = 0;
+    for (let i = 0; i < now.length; i += 4) if (now[i] !== Math.max(before[i]!, other[i]!)) differ++;
+    expect(differ).toBe(0);
+    expect(now[(1550 * MAP + 1550) * 4]).toBe(255);
+    expect(now[(340 * MAP + 300) * 4]).toBe(255);
+  });
 });

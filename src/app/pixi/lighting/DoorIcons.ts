@@ -11,6 +11,7 @@ import type { LayerVisibility } from '../playerSafeFrame';
 import { destroyTree } from '../utils/destroyTree';
 import { createGlyphTexture } from '../utils/pinIconTexture';
 import { ValueTransition } from '../utils/ValueTransition';
+import { levelObjects } from '../../levels/levelObjects';
 
 /** Above the lighting layer and token UI, so the GM finds doors in the dark. */
 export const DOOR_ICONS_Z_INDEX = 1150;
@@ -95,8 +96,8 @@ export class DoorIcons {
       view.addChild(graphics);
     }
     this.unsubscribe = store.subscribe((state, previous) => {
-      if (state.objects.walls !== previous.objects.walls || state.grid !== previous.grid) this.draw(state);
-      else if (state.lighting !== previous.lighting || state.objects.fog !== previous.objects.fog || state.mapPath !== previous.mapPath) this.refreshPlayers();
+      if (levelObjects(state).walls !== levelObjects(previous).walls || state.grid !== previous.grid) this.draw(state);
+      else if (state.lighting !== previous.lighting || levelObjects(state).fog !== levelObjects(previous).fog || state.mapPath !== previous.mapPath) this.refreshPlayers();
     });
     this.draw(store.getState());
   }
@@ -128,7 +129,7 @@ export class DoorIcons {
   private badgeAt(x: number, y: number, shown: (wall: WallSegment) => boolean): string | null {
     const state = this.store.getState();
     const radius = this.radius(state);
-    for (const wall of wallList(state.objects.walls)) {
+    for (const wall of wallList(levelObjects(state).walls)) {
       if (!shown(wall)) continue;
       const centre = doorMiddle(wall);
       if (Math.hypot(x - centre.x, y - centre.y) <= radius) return wall.id;
@@ -139,7 +140,7 @@ export class DoorIcons {
   /** Opens or closes the door; a locked one stays shut and its badge says no. */
   toggle(wallId: string): void {
     const state = this.store.getState();
-    if (!readWall(state.objects.walls[wallId])?.locked) {
+    if (!readWall(levelObjects(state).walls[wallId])?.locked) {
       state.toggleDoor(wallId);
       return;
     }
@@ -177,7 +178,7 @@ export class DoorIcons {
     const r = this.radius(state);
     const withGlyph = new Set<string>();
     const refusal = this.refusal();
-    for (const wall of wallList(state.objects.walls)) {
+    for (const wall of wallList(levelObjects(state).walls)) {
       if (forPlayers ? !this.seen.has(wall.id) : !isDoor(wall)) continue;
       const refusing = refusal?.doorId === wall.id ? refusal : null;
       const centre = doorMiddle(wall);

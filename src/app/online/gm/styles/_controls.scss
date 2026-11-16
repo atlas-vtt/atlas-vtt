@@ -69,7 +69,6 @@
   .atlas-online-button {
     font-size: $font-ui-small;
     border-radius: $radius-m;
-    @include atlas-corner-shape;
 
     &:disabled {
       opacity: 0.5;
@@ -96,7 +95,6 @@
     padding: 0;
     border-radius: $radius-m;
     cursor: pointer;
-    @include atlas-corner-shape;
     @include online-ghost;
 
     svg {
@@ -210,7 +208,6 @@
     padding: $spacing-s;
     resize: vertical;
     line-height: var(--line-height-normal);
-    @include atlas-corner-shape;
   }
 
   .atlas-online-feedback__toggle {

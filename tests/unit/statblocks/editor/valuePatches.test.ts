@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
 import {
-  addItemPatches, fieldPatches, removeItemPatches, valueForText, valuePlaceholder, valueProblem,
+  addItemPatches, fieldPatches, listItems, removeItemPatches, textOfValue, valueForText, valuePlaceholder, valueProblem,
 } from '../../../../src/app/statblocks/editor/statblock-pane/valuePatches';
 import { readField } from '../../../../src/app/statblocks/values/fieldValues';
 
@@ -76,5 +76,17 @@ describe('valuePlaceholder', () => {
     expect(valueForText(stats, '19\t8\t16')).toEqual([19, 8, 16]);
     expect(valuePlaceholder({ ...stats, prompt: 'Six scores' })).toBe('Six scores');
     expect(valuePlaceholder(hp)).toBe('Hit Points');
+  });
+
+  it('starts a typed list or pairs value with its commas escaped, so that committing it unchanged gives it back', () => {
+    const pairs: TemplateField = { key: 'res', label: 'Resist', type: 'pairs' };
+    const stored = [{ 'Fire, cold': 3 }, { Dex: 2 }];
+    expect(textOfValue(pairs, stored)).toBe('Fire\\, cold 3, Dex 2');
+    expect(valueForText(pairs, textOfValue(pairs, stored))).toEqual(stored);
+    expect(textOfValue({ type: 'text' }, 'Fire, cold')).toBe('Fire, cold');
+  });
+
+  it('reads the chips of a line stored as text like the card does', () => {
+    expect(listItems('Fire\\, cold, Ice (a, b)')).toEqual(['Fire, cold', 'Ice (a, b)']);
   });
 });

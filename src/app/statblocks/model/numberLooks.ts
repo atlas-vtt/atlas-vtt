@@ -16,14 +16,15 @@ import { insertBlock, updateBlock } from './treeOps';
 import { turnInto } from './turnInto';
 import { boundField, collectBlockIds, findBlock } from './treeQueries';
 import type { FieldKey, FieldTracking, StatblockTemplate, TemplateBlock, TrackBlock } from './templateTypes';
+import { t } from '../../i18n';
 
 export type TrackLook = TrackBlock['look'];
 export type NumberLook = 'number' | TrackLook;
 
 export const NUMBER_LOOKS: ReadonlyArray<{ value: NumberLook; label: string }> = [
-  { value: 'number', label: 'Number' },
-  { value: 'boxes', label: 'Boxes' },
-  { value: 'gauge', label: 'Gauge' },
+  { value: 'number', label: t('templateEditor.look.number') },
+  { value: 'boxes', label: t('templateEditor.look.boxes') },
+  { value: 'gauge', label: t('templateEditor.look.gauge') },
 ];
 
 /** How a Value shows its number; null for a block that shows none this way. */

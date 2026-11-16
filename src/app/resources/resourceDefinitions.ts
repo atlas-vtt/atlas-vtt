@@ -72,9 +72,16 @@ export function withFinalKeys(resources: readonly ResourceDefinition[]): Resourc
   });
 }
 
-/** Resources as they are stored: names and fields trimmed, and resources added in a dialog keyed by their name. */
+/** A definition without the defeat a static value cannot have; the dialog keeps it while the GM steps through the directions. */
+function withoutStaticDefeat(resource: ResourceDefinition): ResourceDefinition {
+  if (resource.direction !== 'static' || resource.defeatedWhenSpent === undefined) return resource;
+  const { defeatedWhenSpent: _defeats, ...rest } = resource;
+  return rest;
+}
+
+/** Resources as they are stored: names and fields trimmed, a static value defeating nothing, and resources added in a dialog keyed by their name. */
 export function savedResources(resources: readonly ResourceDefinition[]): ResourceDefinition[] {
-  return withFinalKeys(resources.map((resource) => ({ ...resource, name: resource.name.trim(), field: resource.field.trim() })));
+  return withFinalKeys(resources.map((resource) => withoutStaticDefeat({ ...resource, name: resource.name.trim(), field: resource.field.trim() })));
 }
 
 /** A stored or imported definition, or null when a required part is missing or invalid. */

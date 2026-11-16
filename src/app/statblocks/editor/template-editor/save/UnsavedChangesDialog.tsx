@@ -3,6 +3,7 @@ import { Button } from '../../../../packages/components/primitives/button';
 import { EditorDialog } from '../inspector/EditorDialog';
 import type { NameTaken, SaveRequest, SaveSubject } from './saveChoice';
 import { SaveTemplateDialog } from './SaveTemplateDialog';
+import { t } from '../../../../i18n';
 
 export interface UnsavedChangesDialogProps {
   anchor: HTMLElement;
@@ -33,17 +34,17 @@ export function UnsavedChangesDialog(props: UnsavedChangesDialogProps): React.JS
   return (
     <EditorDialog
       anchor={anchor}
-      title={`Save changes to ${subject.name}?`}
+      title={t('templateEditor.save.unsavedTitle', { name: subject.name })}
       onClose={props.onKeepEditing}
       footer={(
         <>
-          <Button type="button" variant="outline" size="sm" onClick={props.onDone}>Don&apos;t save</Button>
-          <Button type="button" variant="outline" size="sm" onClick={props.onKeepEditing}>Keep editing</Button>
-          <Button type="button" variant="default" size="sm" onClick={() => setSaving(true)}>Save</Button>
+          <Button type="button" variant="outline" size="sm" onClick={props.onDone}>{t('templateEditor.save.dontSave')}</Button>
+          <Button type="button" variant="outline" size="sm" onClick={props.onKeepEditing}>{t('templateEditor.save.keepEditing')}</Button>
+          <Button type="button" variant="default" size="sm" onClick={() => setSaving(true)}>{t('templateEditor.save.save')}</Button>
         </>
       )}
     >
-      <p className="atlas-te-dialog__text">The template editor closed before your changes were saved.</p>
+      <p className="atlas-te-dialog__text">{t('templateEditor.save.closedUnsaved')}</p>
     </EditorDialog>
   );
 }

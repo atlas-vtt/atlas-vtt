@@ -52,7 +52,6 @@ $rt-row-height: $button-height-m;
 // ── A table: no fill at rest, the hover's fill on hover ────────────────────
 .atlas-rt-row {
   border-radius: $radius-m;
-  @include atlas-corner-shape;
   transition: background-color $transition-fast $transition-ease;
 
   &:hover,

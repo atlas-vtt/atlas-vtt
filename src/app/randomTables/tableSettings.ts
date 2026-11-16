@@ -12,12 +12,14 @@ import { TABLE_LIMITS } from './tableModel';
 
 type TableSettings = Pick<CollectionSettings, 'randomTables'>;
 
-const KINDS: readonly RandomTableKind[] = ['text', 'items'];
+const KINDS: readonly RandomTableKind[] = ['text', 'items', 'generator'];
 /** Fields this Atlas reads; any other field of an entry belongs to a newer one and is kept. */
-const KNOWN_FIELDS = new Set(['path', 'table', 'index', 'kind', 'label', 'hiddenColumns', 'noRepeats']);
+const KNOWN_FIELDS = new Set(['path', 'table', 'index', 'kind', 'label', 'hiddenColumns', 'noRepeats', 'saveFolder']);
 /** Longest name the GM may give a table, as long as a heading is read. */
 export const MAX_TABLE_LABEL = 200;
 const MAX_HIDDEN_COLUMNS = TABLE_LIMITS.columns;
+/** Longest save folder read: a vault path, not a text. */
+const MAX_FOLDER_LENGTH = 500;
 
 function isKind(value: unknown): value is RandomTableKind {
   return KINDS.some((kind) => kind === value);
@@ -25,7 +27,7 @@ function isKind(value: unknown): value is RandomTableKind {
 
 function readSource(value: unknown): RandomTableSource | null {
   if (!isRecord(value)) return null;
-  const { path, table, index, kind, label, hiddenColumns, noRepeats } = value;
+  const { path, table, index, kind, label, hiddenColumns, noRepeats, saveFolder } = value;
   if (typeof path !== 'string' || !path.trim() || !isKind(kind)) return null;
   if (typeof index !== 'number' || !Number.isInteger(index) || index < 0 || index >= TABLE_LIMITS.tables) return null;
   const hidden = Array.isArray(hiddenColumns)
@@ -39,6 +41,7 @@ function readSource(value: unknown): RandomTableSource | null {
     ...(typeof label === 'string' && label.trim() && { label: label.trim().slice(0, MAX_TABLE_LABEL) }),
     ...(hidden.length > 0 && { hiddenColumns: hidden }),
     ...(noRepeats === true && { noRepeats: true }),
+    ...(typeof saveFolder === 'string' && saveFolder.trim() && saveFolder.length <= MAX_FOLDER_LENGTH && { saveFolder: saveFolder.trim() }),
   };
 }
 
@@ -132,4 +135,28 @@ export function withMovedTableNotes(settings: TableSettings, moved: (path: strin
     return { ...entry, path: to };
   });
   return changed ? next as RandomTableSource[] : null;
+}
+
+/** The notes the collection's tables are read from, each once. */
+export function tableNotePaths(settings: TableSettings): string[] {
+  return [...new Set(readRandomTables(settings).map((source) => source.path))];
+}
+
+/**
+ * The stored list as a bundle carries or an import stores it: each entry's note at the path
+ * `pathOf` gives it, its save folder at the folder `folderOf` gives it. An entry whose note
+ * has no path there is left out, a save folder without one is removed (generated notes then go
+ * where Obsidian puts new notes). Every other field of an entry stays.
+ */
+export function withPlacedTableNotes(
+  settings: TableSettings, pathOf: (path: string) => string | undefined, folderOf: (folder: string) => string | undefined,
+): RandomTableSource[] {
+  return storedEntries(settings).flatMap((entry): RandomTableSource[] => {
+    if (!isRecord(entry) || typeof entry.path !== 'string') return [];
+    const path = pathOf(entry.path);
+    if (path === undefined) return [];
+    const { saveFolder, ...rest } = entry;
+    const folder = typeof saveFolder === 'string' ? folderOf(saveFolder) : undefined;
+    return [{ ...rest, path, ...(folder !== undefined && { saveFolder: folder }) } as RandomTableSource];
+  });
 }

@@ -9,8 +9,9 @@ import type { TokenEntity } from '../../types';
 import type { Point } from '../../types/visionTypes';
 import type { WallSegment } from '../../types/wallTypes';
 import type { TokenPerception } from '../../vision/tokenPerception';
+import { MapController } from '../../MapController';
 import { field } from './atlasLighting.ts';
-import { call } from './atlasView.ts';
+import { call, type SceneState } from './atlasView.ts';
 import { roundPlace } from './scenePicture.ts';
 
 /** Atlas's default token diameter, which the players' outlines take for a sprite that names none. */
@@ -27,6 +28,12 @@ export interface MapLayerSource {
   doorsSeen(walls: Readonly<Record<string, WallSegment>>, fog: FogCoverage | null): ReadonlySet<string> | null;
   /** Which of `points` the players' picture of a lit scene shows now (the doors' rule, with the committed fog); null as for the doors. */
   pointsSeen(points: readonly Point[], fog: FogCoverage | null): boolean[] | null;
+  /**
+   * What the players' sight is worked out from now (its sight, its ambient light, its lights'
+   * reaches), each the same object while it is the same: while all are, `pointsSeen` answers as it
+   * did. Null while the lighting cannot be read; without it, whoever asks cannot tell.
+   */
+  sightParts?(): readonly unknown[] | null;
   /** The tokens the players only sense now, where their frame outlines them; null as for the doors. */
   sensed(tokens: Readonly<Record<string, TokenEntity>>): SensedMark[] | null;
   /** Where the map's rules are looked up (Atlas's asset service and the played campaign), or null. */
@@ -72,6 +79,10 @@ export function mapLayerSourceOf(renderer: unknown, view: unknown): MapLayerSour
       const lighting = controllerOf(renderer);
       return lighting === null ? null : playerPointSight(lighting.view, points, fog);
     },
+    sightParts: () => {
+      const lighting = controllerOf(renderer);
+      return lighting === null ? null : [lighting.view.currentSight(), lighting.view.ambientLight(), lighting.view.lightReaches()];
+    },
     sensed: (tokens) => {
       const lighting = controllerOf(renderer);
       const tokenRenderer = call(renderer, 'getTokenRenderer');
@@ -104,4 +115,17 @@ export function rulesLookupOf(view: unknown): RulesLookup | null {
     getCollectionSettings: (collectionId) => collections.getCollectionSettings(collectionId),
     playedSystem: () => (typeof app === 'object' && app !== null ? PlayedRules.forApp(app)?.played() ?? null : null),
   };
+}
+
+/**
+ * Whether the renderer's picture is of the level its view shows now: that level's map image has
+ * loaded and its lighting's sight is the scene's (`sightIsCurrent`). After the GM switches levels both
+ * take a moment; until then the players' picture of that level is worked out without the renderer.
+ */
+export function showsViewedLevel(renderer: unknown, state: SceneState): boolean {
+  const lighting = field(field(renderer, 'lighting'), 'renderer');
+  const current = field(lighting, 'sightIsCurrent');
+  if (typeof current === 'function' && (current as () => boolean).call(lighting) !== true) return false;
+  const mapImage = call(renderer, 'getMapImage');
+  return MapController.showsViewedLevel((mapImage ?? null) as Parameters<typeof MapController.showsViewedLevel>[0], state);
 }

@@ -59,7 +59,11 @@ const jpeg: Reader = (bytes) => {
   if (bytes.byteLength < 4 || bytes.getUint16(0) !== 0xffd8) return null;
   let offset = 2;
   while (offset + 9 <= bytes.byteLength) {
-    if (bytes.getUint8(offset) !== 0xff) return null;
+    // Stray bytes between segments are skipped, as libjpeg skips them.
+    if (bytes.getUint8(offset) !== 0xff) {
+      offset += 1;
+      continue;
+    }
     const marker = bytes.getUint8(offset + 1);
     if (marker === 0xff) {
       offset += 1;
@@ -81,8 +85,16 @@ const READERS: ReadonlyArray<readonly [ImageFormat, Reader]> = [['png', png], ['
  * decoding it, or null for formats it does not know (SVG, AVIF) or a truncated header.
  */
 export async function imageHeader(blob: Blob): Promise<ImageHeader | null> {
-  return headerOf(new DataView(await blob.slice(0, HEADER_BYTES).arrayBuffer()));
+  for (let length = HEADER_BYTES; ; length *= 16) {
+    const bytes = new DataView(await blob.slice(0, length).arrayBuffer());
+    const header = headerOf(bytes);
+    // A JPEG's frame header may lie past the metadata a camera or Photoshop writes first: read further until it is found,
+    // or until a slice comes back short, which is the file's end whatever `size` says.
+    if (header || bytes.byteLength < length || length >= blob.size || !isJpegStart(bytes)) return header;
+  }
 }
+
+const isJpegStart = (bytes: DataView): boolean => bytes.byteLength >= 2 && bytes.getUint16(0) === 0xffd8;
 
 /** `imageHeader` of bytes already read, which begin with the image's header. */
 export function headerOf(bytes: DataView): ImageHeader | null {

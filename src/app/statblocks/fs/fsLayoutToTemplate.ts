@@ -16,6 +16,7 @@ import { withFsHeader } from './fsHeader';
 import { FsFieldRegistry, FsLookupTables, FsReportTally, sequentialBlockIds, type ImportContext } from './fsImportState';
 import type { FsImportOptions, FsImportResult, FsLayout } from './fsLayoutTypes';
 import { textOf } from './fsBlockParts';
+import { t } from '../../i18n';
 
 export { suggestedTrackReplacement, type TrackReplacement } from './fsScripts';
 
@@ -38,7 +39,7 @@ export function isFsLayout(value: unknown): value is FsLayout {
 function maxColumnsOf(value: unknown, tally: FsReportTally): TemplateLayout['maxColumns'] {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 2;
   const columns = Math.round(value);
-  if (columns > 3) tally.note(`The layout has ${columns} columns; Atlas shows at most 3.`);
+  if (columns > 3) tally.note(t('statblockEditor.fs.columns', { count: columns }));
   if (columns <= 1) return 1;
   return columns === 2 ? 2 : 3;
 }

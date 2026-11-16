@@ -1,12 +1,12 @@
 import '../setup/obsidianDom';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { TileDecoderClient } from '../../src/app/pixi/mapImage/TileDecoderClient';
-import { tileDatabaseName } from '../../src/app/pixi/mapImage/indexedDbTileBackend';
+import { TesseraDecoderClient } from '../../src/app/pixi/mosaicCanvas/TesseraDecoderClient';
+import { tesseraDatabaseName } from '../../src/app/pixi/mosaicCanvas/indexedDbTesseraBackend';
 import { MAP_PICTURE_SIDE, mapPictureUrl, releaseMapPictures } from '../../src/app/react/components/dashboard/mapPicture';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 /**
- * The dashboard's sharp picture of a map, made by the real tile worker from the map's pyramid: the
+ * The dashboard's sharp picture of a map, made by the real tessera worker from the map's pyramid: the
  * whole map at `MAP_PICTURE_SIDE`, never the image at its own size.
  */
 
@@ -37,8 +37,8 @@ const { app } = createInMemoryApp({ files: { [MAP]: '' } });
 
 afterAll(async () => {
   releaseMapPictures(app);
-  TileDecoderClient.release(app);
-  await deleteDatabase(tileDatabaseName(app.appId));
+  TesseraDecoderClient.release(app);
+  await deleteDatabase(tesseraDatabaseName(app.appId));
 });
 
 function loaded(url: string): Promise<HTMLImageElement> {

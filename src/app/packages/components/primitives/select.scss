@@ -43,6 +43,20 @@
   @include atlas-flex-col($gap: 2px);
   padding: $spacing-xs;
   overflow-y: auto;
+  // As wide as its longest option, never narrower than the trigger, so no option is cut short.
+  right: auto;
+  min-width: 100%;
+  width: max-content;
+  max-width: min(360px, 90vw);
+}
+
+// Wider than the room after the trigger's start: it starts from the trigger's end instead.
+.atlas-select-content--end {
+  left: auto;
+  right: 0;
+  transform-origin: top right;
+
+  &.atlas-select-content--up { transform-origin: bottom right; }
 }
 
 // Above the trigger, where the view leaves no room below (`fitList`).
@@ -59,6 +73,21 @@
 
 .atlas-select-option {
   @include atlas-select-option;
+  // A list taller than its room scrolls; its rows keep their height instead of shrinking to fit.
+  flex-shrink: 0;
+}
+
+// A run of options under a heading; the space above it sets it apart from the run before.
+.atlas-select-group {
+  @include atlas-flex-col($gap: 2px);
+  flex-shrink: 0;
+
+  &:not(:first-child) { margin-top: $spacing-s; }
+}
+
+.atlas-select-group-label {
+  @include atlas-section-label;
+  padding: $spacing-xs $spacing-s;
 }
 
 .atlas-select-option-text {

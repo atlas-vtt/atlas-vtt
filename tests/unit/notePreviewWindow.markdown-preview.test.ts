@@ -148,6 +148,29 @@ describe('NotePreviewWindow markdown previews', () => {
     document.removeEventListener('keyup', listen);
   });
 
+  it('titles a heading as the note writes it, a # at its end included', async () => {
+    const harness = createHarness(null);
+    harness.app.metadataCache.getFileCache.mockReturnValue({
+      headings: [{ heading: 'C#', level: 2, position: { start: { line: 1 } } }],
+    });
+    const preview = openPreview(harness, 'atlas-vtt/notes/Languages.md#C#');
+    await waitFor(() => {
+      expect(preview.element?.querySelector('.atlas-note-preview-title')?.textContent).toBe('Languages > C#');
+    });
+  });
+
+  it('titles a repeated heading with the section that tells it apart', async () => {
+    const harness = createHarness(null);
+    const heading = (name: string, level: number, line: number): object => ({ heading: name, level, position: { start: { line } } });
+    harness.app.metadataCache.getFileCache.mockReturnValue({
+      headings: [heading('Silver Stag', 1, 1), heading('Overview', 2, 2), heading('Black Ivory', 1, 3), heading('Overview', 2, 4)],
+    });
+    const preview = openPreview(harness, 'atlas-vtt/notes/Chapter.md#Silver Stag#Overview');
+    await waitFor(() => {
+      expect(preview.element?.querySelector('.atlas-note-preview-title')?.textContent).toBe('Chapter > Silver Stag > Overview');
+    });
+  });
+
   /** A note view on Tavern.md whose cache lists "Cellar" on line 3 and "Room #3" on line 12. */
   function tavernPreview(): { view: MarkdownView; harness: PreviewHarness } {
     const previewLeaf = new WorkspaceLeaf();

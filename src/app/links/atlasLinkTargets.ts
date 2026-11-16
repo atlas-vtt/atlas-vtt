@@ -38,3 +38,13 @@ const ENCOUNTER_FILE = new RegExp(`^${COLLECTIONS_DIR}/[^/]+/${JSON_FOLDERS.enco
 export function isEncounterPath(path: string): boolean {
   return ENCOUNTER_FILE.test(path);
 }
+
+const ENCOUNTER_FOLDER = new RegExp(`^${COLLECTIONS_DIR}/[^/#]+/${JSON_FOLDERS.encounter}(?:/[^#]*)?$`);
+
+/**
+ * Whether a pin's link names a folder of encounters (a collection's encounters folder or one below
+ * it), which the pin rolls from, rather than a note or a scene.
+ */
+export function isEncounterFolderLink(link: string): boolean {
+  return ENCOUNTER_FOLDER.test(link) && !link.toLowerCase().endsWith('.json');
+}

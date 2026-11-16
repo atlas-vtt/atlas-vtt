@@ -3,8 +3,8 @@ import { Application, Container, Rectangle, type Texture } from 'pixi.js';
 import { mapThumbnailPath } from '../utils/dataFileMigration';
 import { contextLost } from '../pixi/lighting/engine/gpu';
 import { requestRender } from '../pixi/RenderScheduler';
-import { pictureView } from '../pixi/mapImage/levelOfDetail';
-import type { PixelRect } from '../pixi/mapImage/pyramid';
+import { pictureView } from '../pixi/mosaicCanvas/levelOfDetail';
+import type { PixelRect } from '../pixi/mosaicCanvas/pyramid';
 import type { SceneFrameCapture } from '../pixi/sceneFrameCapture';
 import { trashHiddenPath } from '../utils/hiddenVaultFiles';
 
@@ -75,7 +75,7 @@ export class MapThumbnailService {
     if (!framed) return null;
     const { rect: contentBounds, resolution: renderResolution } = framed;
 
-    const frame = { x: contentBounds.x, y: contentBounds.y, resolution: renderResolution };
+    const frame = { x: contentBounds.x, y: contentBounds.y, resolution: renderResolution, width: contentBounds.width, height: contentBounds.height };
     let renderTexture: Texture;
     try {
       renderTexture = capture(frame, () => pixiApp.renderer.generateTexture({

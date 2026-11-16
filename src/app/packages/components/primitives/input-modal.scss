@@ -20,7 +20,7 @@
   }
 
   .atlas-input-error {
-    color: var(--text-error);
+    @include atlas-error-text;
     font-size: $font-ui-smaller;
   }
 }

@@ -2,10 +2,10 @@
 import { Ticker } from 'pixi.js';
 import { TFile } from 'obsidian';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MapImage } from '../../src/app/pixi/mapImage/MapImage';
-import type { MapImageOpener } from '../../src/app/pixi/mapImage/mapImageTypes';
-import type { TileView } from '../../src/app/pixi/mapImage/levelOfDetail';
-import { pyramidOf, tileKey, tileSourceRect, type TileRef } from '../../src/app/pixi/mapImage/pyramid';
+import { MosaicCanvas } from '../../src/app/pixi/mosaicCanvas/MosaicCanvas';
+import type { MosaicCanvasOpener } from '../../src/app/pixi/mosaicCanvas/mosaicCanvasTypes';
+import type { TesseraView } from '../../src/app/pixi/mosaicCanvas/levelOfDetail';
+import { pyramidOf, tesseraKey, tesseraSourceRect, type TesseraRef } from '../../src/app/pixi/mosaicCanvas/pyramid';
 import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
 import { frameView } from '../../src/app/services/playerFrameDemand';
 import { MIRRORED, SETTINGS, setupMirror, type MirrorHarness } from '../mocks/mirrorHarness';
@@ -17,40 +17,40 @@ class Bitmap {
 }
 
 interface Pending {
-  ref: TileRef;
+  ref: TesseraRef;
   signal: AbortSignal;
   resolve: (bitmap: ImageBitmap) => void;
 }
 
-// 6000 × 4000: level 0 is 12 × 8 tiles of 510 px. The GM looks at its top left corner, 800 × 600 at 100 %.
+// 6000 × 4000: level 0 is 12 × 8 tesserae of 510 px. The GM looks at its top left corner, 800 × 600 at 100 %.
 const pyramid = pyramidOf(6000, 4000);
 /** Players frozen on the bottom right corner, 400 × 300 of the world: four device pixels per world pixel in the window. */
 const FROZEN = { centerX: 5000, centerY: 3500, scale: 2, width: 400, height: 300 };
-/** The level 0 tiles the frozen frame shows (world 4800 to 5200 by 3350 to 3650). */
+/** The level 0 tesserae the frozen frame shows (world 4800 to 5200 by 3350 to 3650). */
 const FROZEN_TILES = ['0/9/6', '0/10/6', '0/9/7', '0/10/7'];
 
-const images: MapImage[] = [];
+const images: MosaicCanvas[] = [];
 
 afterEach(() => {
   for (const image of images.splice(0)) image.destroy();
   vi.restoreAllMocks();
 });
 
-/** A mirror whose presented view draws a real map image, its tiles served by hand. */
+/** A mirror whose presented view draws a real map image, its tesserae served by hand. */
 async function setup(): Promise<MirrorHarness & {
   pending: Pending[];
   requested: string[];
-  regions: Array<{ view: TileView; release: ReturnType<typeof vi.fn> }>;
-  /** Frames of the map image's ticker, serving every open request whose tile `accept`s, until none is left. */
-  serve: (accept?: (ref: TileRef) => boolean) => Promise<void>;
+  regions: Array<{ view: TesseraView; release: ReturnType<typeof vi.fn> }>;
+  /** Frames of the map image's ticker, serving every open request whose tessera `accept`s, until none is left. */
+  serve: (accept?: (ref: TesseraRef) => boolean) => Promise<void>;
 }> {
   const harness = setupMirror();
   const pending: Pending[] = [];
   const requested: string[] = [];
   const service = {
     open: vi.fn(async () => ({ handle: 1, hash: 'world', pyramid })),
-    tile: vi.fn((_handle: number, ref: TileRef, signal: AbortSignal) => new Promise<ImageBitmap>((resolve, reject) => {
-      requested.push(tileKey(ref));
+    tessera: vi.fn((_handle: number, ref: TesseraRef, signal: AbortSignal) => new Promise<ImageBitmap>((resolve, reject) => {
+      requested.push(tesseraKey(ref));
       signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
       pending.push({ ref, signal, resolve });
     })),
@@ -61,8 +61,8 @@ async function setup(): Promise<MirrorHarness & {
   };
   const ticker = new Ticker();
   const viewport = { left: 0, top: 0, worldScreenWidth: 800, worldScreenHeight: 600, scale: { x: 1 }, worldWidth: 0, worldHeight: 0 };
-  const mapImage = new MapImage({
-    service: service as unknown as MapImageOpener,
+  const mapImage = new MosaicCanvas({
+    service: service as unknown as MosaicCanvasOpener,
     viewport,
     ticker,
     renderer: null,
@@ -72,21 +72,21 @@ async function setup(): Promise<MirrorHarness & {
   images.push(mapImage);
   await mapImage.load({ kind: 'file', file: Object.assign(new TFile('maps/world.webp'), { stat: { ctime: 0, mtime: 1, size: 2 } }) });
 
-  const regions: Array<{ view: TileView; release: ReturnType<typeof vi.fn> }> = [];
+  const regions: Array<{ view: TesseraView; release: ReturnType<typeof vi.fn> }> = [];
   harness.dm.source.addDemandRegion = (view) => {
     const release = vi.fn(mapImage.addDemandRegion(view));
     regions.push({ view, release });
     return release;
   };
   let time = 0;
-  const serve = async (accept: (ref: TileRef) => boolean = () => true): Promise<void> => {
+  const serve = async (accept: (ref: TesseraRef) => boolean = () => true): Promise<void> => {
     for (let round = 0; round < 60; round++) {
       ticker.update((time += 16));
       const due = pending.filter(p => !p.signal.aborted && accept(p.ref));
       if (due.length === 0) return;
       pending.splice(0, pending.length, ...pending.filter(p => !due.includes(p)));
       for (const { ref, resolve } of due) {
-        const rect = tileSourceRect(pyramid, ref);
+        const rect = tesseraSourceRect(pyramid, ref);
         resolve(new Bitmap(rect.width, rect.height) as unknown as ImageBitmap);
       }
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -96,7 +96,7 @@ async function setup(): Promise<MirrorHarness & {
 }
 
 describe('PlayerFrameMirror and the map image', () => {
-  it('has the tiles of a frozen camera on a part the GM does not look at loaded, at the window\'s detail', async () => {
+  it('has the tesserae of a frozen camera on a part the GM does not look at loaded, at the window\'s detail', async () => {
     const { frame, state, serve, requested, regions } = await setup();
     state.frozen = FROZEN;
     await serve();
@@ -126,7 +126,7 @@ describe('PlayerFrameMirror and the map image', () => {
     expect(regions[1]!.view.rect).toEqual({ x: 800, y: 3350, width: 400, height: 300 });
 
     await serve(() => false);
-    const open = pending.filter(p => !p.signal.aborted).map(p => tileKey(p.ref));
+    const open = pending.filter(p => !p.signal.aborted).map(p => tesseraKey(p.ref));
     expect(open.filter(key => FROZEN_TILES.includes(key))).toEqual([]);
   });
 
@@ -154,18 +154,18 @@ describe('PlayerFrameMirror and the map image', () => {
     expect(regions[2]!.release).toHaveBeenCalledOnce();
   });
 
-  it('shows players a new frame once a tile only their frame shows arrives', async () => {
+  it('shows players a new frame once a tessera only their frame shows arrives', async () => {
     const { frame, dm, state, events, serve } = await setup();
     state.frozen = FROZEN;
     frame(0);
     dm.tick(1);
-    await serve(ref => !FROZEN_TILES.includes(tileKey(ref)));
+    await serve(ref => !FROZEN_TILES.includes(tesseraKey(ref)));
     frame(500);
     dm.tick(501);
     events.length = 0;
 
     frame(600);
-    await serve(ref => tileKey(ref) === '0/9/6');
+    await serve(ref => tesseraKey(ref) === '0/9/6');
     dm.tick(601);
 
     expect(events).toEqual(MIRRORED);
@@ -175,7 +175,7 @@ describe('PlayerFrameMirror and the map image', () => {
 describe('a players\' frame of a map view', () => {
   /** The orchestrator with only what a players' frame reads; its map image notes what it draws for. */
   function view(events: string[]): { renderer: PixiRendererOrchestrator; drawFor: ReturnType<typeof vi.fn> } {
-    const drawFor = vi.fn((_view: TileView) => {
+    const drawFor = vi.fn((_view: TesseraView) => {
       events.push('draw:players');
       return (): void => { events.push('draw:dm'); };
     });

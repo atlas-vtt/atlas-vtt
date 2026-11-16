@@ -1,5 +1,6 @@
 import type { TokenAsset, AnyAsset, EncounterAsset } from '../types';
 import { placeFormation, type FormationSlot } from '../../../../encounters/encounterFormation';
+import { refQuantity, rolledRefs } from '../../../../encounters/encounterQuantity';
 import type { TokenInput } from '../../../../types/viewState';
 import { tokenFromFile } from '../../../../resources/resourceFileFormat';
 import { addOffMapCombatants, joinInitiative } from '../../../../initiative/offMapCombatants';
@@ -19,11 +20,16 @@ export type { SpawnContext } from './spawnTarget';
  */
 export type SpawnPlacement = 'map' | 'fight' | 'beside';
 
-/** Formation slots for an encounter, or null if any token lacks captured layout data. */
+/**
+ * Formation slots for an encounter, or null if any token lacks captured layout data or its number is
+ * rolled: rolled copies have no places of their own, so they are laid out in the grid instead.
+ */
 function encounterSlots(encounter: EncounterAsset): FormationSlot[] | null {
   if (!encounter.formation) return null;
+  const refs = encounter.tokens ?? [];
+  if (refs.some((ref) => typeof refQuantity(ref) === 'string')) return null;
   const slots: FormationSlot[] = [];
-  for (const token of encounter.tokens ?? []) {
+  for (const token of refs) {
     if (!token.cell || !token.offset) return null;
     slots.push({ cell: token.cell, offset: token.offset });
   }
@@ -119,7 +125,8 @@ export async function spawnEncounterTokens(
   const { viewport, grid, pitch } = target;
   const gridSystem = grid ? target.gridSystem : null;
   const center = getViewportCenter(viewport);
-  const tokensToSpawn = encounter.tokens || [];
+  // Dice quantities roll anew on every spawn.
+  const tokensToSpawn = rolledRefs(encounter.tokens || []);
 
   const slots = encounterSlots(encounter);
   const formationPositions = slots && encounter.formation
@@ -137,7 +144,7 @@ export async function spawnEncounterTokens(
     const formationPos = formationPositions?.[i];
     if (formationPos) {
       pos = formationPos;
-    } else if (token.x !== undefined && token.y !== undefined) {
+    } else if (token.x !== undefined && token.y !== undefined && token.quantity === undefined) {
       let x = center.x + token.x;
       let y = center.y + token.y;
       if (gridSystem) {
@@ -205,8 +212,9 @@ export async function spawnSelectedTokens(
 }
 
 /**
- * Runs `spawn` and calls `onClose` once: as soon as the tokens are in the GM's hand to be placed,
- * or once they were added, so the asset manager gets out of the way of the map.
+ * Runs `spawn` and calls `onClose` once: as soon as the scene the tokens go to is known, so the
+ * asset manager fades out while they are built and put in the GM's hand, or else once they were
+ * added. Nothing closes it when no scene can take them (the GM is told why).
  */
 export async function spawnAndClose(ctx: SpawnContext, onClose: () => void, spawn: (ctx: SpawnContext) => Promise<string[]>): Promise<string[]> {
   let closed = false;
@@ -215,7 +223,7 @@ export async function spawnAndClose(ctx: SpawnContext, onClose: () => void, spaw
     closed = true;
     onClose();
   };
-  const ids = await spawn({ ...ctx, onPlacing: close });
+  const ids = await spawn({ ...ctx, onTarget: close, onPlacing: close });
   if (ids.length > 0) close();
   return ids;
 }

@@ -152,7 +152,8 @@ describe('a player\'s edit of a value of their own statblock', () => {
     expect(checkFieldEdit(rows.inputs, field('stats', 1, [[10, 12]], [0, 2]))).toBeNull();
     expect(checkFieldEdit(rows.inputs, field('stats', 1, [[10, 12]], [1, 0]))).toBeNull();
     const map = noteOf(NOTE.replace('stats:\n  - [10, 12]', 'stats: { str: 10 }'));
-    expect(checkFieldEdit(map.inputs, field('stats', 1, { str: 10 }, [0, 0]))).toBeNull();
+    // A row the note writes by name keeps its names.
+    expect(propertiesOf(written(map, checkFieldEdit(map.inputs, field('stats', 1, { str: 10 }, [0, 0]))))?.stats).toEqual({ str: 1 });
     expect(checkFieldEdit(rows.inputs, field('speed', 1, '30 ft.', [0, 0]))).toBeNull();
   });
 

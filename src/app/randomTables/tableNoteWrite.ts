@@ -8,12 +8,12 @@ import type { PastedTable } from './pastedTable';
 import { tableNoteText } from './tableMarkdown';
 import { tablesFolder } from './tablePaths';
 
-/** File systems limit bytes, not characters. The full name remains in the note's heading. */
-function tableFileStem(name: string): string {
+/** A file name for `name` (`fallback` for none): file systems limit bytes, not characters, so the full name stays in the note. */
+export function noteFileStem(name: string, fallback = 'Table'): string {
   const encoder = new TextEncoder();
   let stem = '';
   let bytes = 0;
-  for (const char of nameStem(name, 'Table')) {
+  for (const char of nameStem(name, fallback)) {
     const size = encoder.encode(char).length;
     if (bytes + size > 200) break;
     stem += char;
@@ -30,7 +30,7 @@ export async function writeTableNote(
   app: App, collectionId: string, name: string, table: PastedTable, kind: RandomTableKind,
 ): Promise<RandomTableSource> {
   const folder = await ensureFolder(app, tablesFolder(collectionId));
-  const path = freeNamedPath(folder.path, tableFileStem(name), '.md', (candidate) => isPathTaken(app, candidate));
+  const path = freeNamedPath(folder.path, noteFileStem(name), '.md', (candidate) => isPathTaken(app, candidate));
   const text = tableNoteText(name, table);
   await app.vault.create(path, text);
   const written = tablesOfNote(text, noteName(path)).tables[0];

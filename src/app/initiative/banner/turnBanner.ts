@@ -2,11 +2,12 @@
  * What the turn banner says when the turn of a running fight moves on: whose turn it is (the
  * combatant's portrait and name, or by sides the side's name) and, when a round begins, the round.
  * The players' banner follows their list: no banner where the list marks no turn (a hidden turn
- * holder), and no name where the list shows none.
+ * holder), no name where the list shows none, and a placeholder for a combatant the GM's map leaves unnamed.
  */
 
 import { formatList } from '../../i18n';
 import { tokenDisplayName } from '../../pixi/token-renderer/tokenDisplayName';
+import { nameShownToPlayers } from '../../pixi/token-renderer/nameplateVisibility';
 import type { TokenEntity } from '../../types';
 import type { InitiativeState } from '../../types/initiativeTypes';
 import { currentTurn, turnKey } from '../turnHolders';
@@ -29,8 +30,12 @@ export interface TurnBanner {
   readonly portrait: TurnBannerPortrait | null;
 }
 
-/** Who the banner is for: the GM sees every turn by the names the map shows; players see what their list shows. */
-export type BannerViewer = { readonly kind: 'gm' } | { readonly kind: 'players'; readonly showNames: boolean };
+/**
+ * Who the banner is for: the GM sees every turn by the names the map shows; players see what their list
+ * shows: with `showNames`, the name where the GM's map shows the token's nameplate (`mapShowsNameplates`
+ * or the token's own), else a placeholder.
+ */
+export type BannerViewer = { readonly kind: 'gm' } | { readonly kind: 'players'; readonly showNames: boolean; readonly mapShowsNameplates: boolean };
 
 /** The turn a banner was last worked out for. */
 export interface TurnSeen {
@@ -63,7 +68,7 @@ export function turnBannerOf(
   const { entry } = turn;
   const token = tokens[entry.tokenId];
   if (viewer.kind === 'players' && (!token || token.isHidden)) return null;
-  const title = viewer.kind === 'gm' ? (token ? tokenDisplayName(token) : null) ?? entry.name : viewer.showNames ? entry.name : null;
+  const title = viewer.kind === 'gm' ? (token ? tokenDisplayName(token) : null) ?? entry.name : nameShownToPlayers(entry.name, token ?? {}, viewer.mapShowsNameplates, viewer.showNames);
   const portrait = entry.imagePath ? { imagePath: entry.imagePath, showRing: token?.showRing !== false, ringColor: token?.ringColor } : null;
   return { key, round, title: title || null, portrait };
 }

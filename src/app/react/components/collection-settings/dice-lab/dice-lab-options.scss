@@ -10,12 +10,9 @@
 // ── Sidebar: the open set's options ────────────────────────────────────────
 .atlas-dice-lab__options {
   @include atlas-flex-col($spacing-m);
-  @include atlas-scrollbar;
-  @include atlas-scroll-padding($spacing-l);
-  grid-area: options;
+  padding: $spacing-l;
   min-height: 0;
   overflow-y: auto;
-  border-top: $border-width-s solid var(--divider-color);
 }
 
 .atlas-dice-lab__name {

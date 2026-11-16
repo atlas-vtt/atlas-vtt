@@ -15,6 +15,10 @@ describe('online play\'s settings data', () => {
     expect(readSettings({ reportErrors: true })).toEqual({ reportErrors: true });
   });
 
+  it('reads nothing of the switch that once deleted the players\' copies on sign-out', () => {
+    expect(readSettings({ deleteCopiesOnSignOut: true, reportErrors: true })).toEqual({ reportErrors: true });
+  });
+
   it('keeps nothing of a key that made tables without an account', () => {
     const read = readSettings({ createKey: 'owner-key', reportErrors: false });
     expect(read).toEqual(DEFAULT_SETTINGS);
@@ -91,4 +95,5 @@ describe('online play\'s settings', () => {
     expect(buttonsOf(row)).toEqual(['Sign out', 'Open account page']);
     expect(of.requests.map((request) => request.url)).toEqual(['https://play.atlas-vtt.dev/api/me']);
   });
+
 });

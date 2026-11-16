@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Container, Graphics, Text } from 'pixi.js';
+import { Container, Graphics, Text, Texture } from 'pixi.js';
 import { createStore } from 'zustand/vanilla';
-import { DrawingLayer } from '../../src/app/pixi/drawingLayer';
+import { readDrawing, readText } from '../../src/app/annotations/annotationList';
+import type { DrawingAnnotation } from '../../src/app/annotations/annotationTypes';
+import { createStampSprite, paintDrawing, placeStamp, StampTextures } from '../../src/app/pixi/drawingLayer';
 import { DoorIcons, type DoorIconsState } from '../../src/app/pixi/lighting/DoorIcons';
 import { createTextElementView, TEXT_CONTENT_LABEL, updateTextElementView } from '../../src/app/pixi/textElementView';
 import { entryTokenOf, listedForPlayers, playerInitiativeList, renderPlayerInitiative, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
@@ -24,26 +26,68 @@ afterEach(() => {
   cleanup = null;
 });
 
-function stroke(id: string, x: number): DrawingStroke {
-  return { id, kind: 'drawing', timestamp: 1, type: 'pen', points: [{ x, y: 0 }, { x: x + 10, y: 10 }], color: '#ff0000', width: 4, opacity: 1 };
-}
+const read = (drawing: Partial<DrawingStroke>): DrawingAnnotation => {
+  const annotation = readDrawing('d', { id: 'd', kind: 'drawing', timestamp: 1, type: 'pen', points: [{ x: 0, y: 0 }, { x: 10, y: 10 }], color: '#ff0000', width: 4, opacity: 1, ...drawing });
+  if (!annotation) throw new Error('Expected a drawing');
+  return annotation;
+};
 
-describe('the drawing layer', () => {
-  it('keeps one node per drawing, reuses it while the record is unchanged and removes what is gone', () => {
-    const container = new Container();
-    const layer = new DrawingLayer(container);
-    const a = stroke('a', 0);
-    layer.sync({ a, b: stroke('b', 50) });
-    expect(container.children).toHaveLength(2);
-    const first = container.children[0];
-    layer.sync({ a });
-    expect(container.children).toEqual([first]);
-    layer.sync({ a: { ...a, color: '#00ff00' } });
-    expect(container.children).toEqual([first]);
-    layer.sync({ a, icon: { ...stroke('icon', 20), type: 'icon', icon: 'skull', points: [{ x: 20, y: 30 }], width: 40 } });
-    expect(container.children).toHaveLength(2);
-    expect(container.children[1]?.position).toMatchObject({ x: 20, y: 30 });
-    layer.destroy();
+describe('a drawing as it is drawn', () => {
+  it('draws a line, a fill and a dot into one graphics, in place of what it held', () => {
+    cleanup = stubJsdomGraphics();
+    const graphics = new Graphics();
+    paintDrawing(graphics, read({}), 0.2);
+    const line = graphics.context.instructions.map(({ action }) => action);
+    expect(line).toEqual(['stroke']);
+    const room = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }, { x: 0, y: 0 }];
+    paintDrawing(graphics, read({ type: 'rectangle', points: room, fill: 'soft' }), 0.2);
+    expect(graphics.context.instructions.map(({ action }) => action)).toEqual(['fill', 'stroke']);
+    paintDrawing(graphics, read({ points: [{ x: 5, y: 5 }] }), 0.2);
+    expect(graphics.context.instructions.map(({ action }) => action)).toEqual(['fill']);
+    graphics.destroy();
+  });
+
+  it('shows a stamp at its place, as wide as its footprint, turned, and tells when its symbol comes in', async () => {
+    const textures = new StampTextures();
+    const sprite = createStampSprite();
+    const changed = vi.fn();
+    const stamp = read({ type: 'icon', icon: 'skull', points: [{ x: 20, y: 30 }], width: 40, opacity: 0.5, rotation: 90 });
+    placeStamp(sprite, stamp, textures, changed);
+    expect(sprite.position).toMatchObject({ x: 20, y: 30 });
+    expect(sprite.alpha).toBe(0.5);
+    expect(sprite.rotation).toBeCloseTo(Math.PI / 2);
+    await vi.waitFor(() => expect(changed).toHaveBeenCalledOnce());
+    expect([sprite.width, sprite.height]).toEqual([40, 40]);
+    // A stamp that only moved or grew keeps its symbol: nothing comes in again.
+    placeStamp(sprite, read({ type: 'icon', icon: 'skull', points: [{ x: 60, y: 30 }], width: 80, opacity: 0.5 }), textures, changed);
+    expect(sprite.position.x).toBe(60);
+    expect(sprite.width).toBe(80);
+    expect(changed).toHaveBeenCalledOnce();
+    sprite.destroy();
+    textures.destroy();
+  });
+
+  it('tints a stamp with its colour, so stamps of one symbol share its white picture whatever their colours', async () => {
+    const textures = new StampTextures();
+    const [red, blue] = [createStampSprite(), createStampSprite()];
+    const changed = vi.fn();
+    placeStamp(red, read({ type: 'icon', icon: 'skull', points: [{ x: 0, y: 0 }], width: 70, color: '#e93147' }), textures, changed);
+    await vi.waitFor(() => expect(changed).toHaveBeenCalledOnce());
+    placeStamp(blue, read({ type: 'icon', icon: 'skull', points: [{ x: 0, y: 0 }], width: 70, color: '#086ddd' }), textures, changed);
+    // The symbol was there already: nothing comes in late.
+    expect(blue.texture).toBe(red.texture);
+    expect([red.tint, blue.tint]).toEqual([0xe93147, 0x086ddd]);
+    // Another colour is another tint of the same picture.
+    placeStamp(red, read({ type: 'icon', icon: 'skull', points: [{ x: 0, y: 0 }], width: 70, color: '#ffffff' }), textures, changed);
+    expect(red.tint).toBe(0xffffff);
+    expect(red.texture).toBe(blue.texture);
+    expect(changed).toHaveBeenCalledOnce();
+    // A symbol this Atlas does not know shows nothing.
+    placeStamp(red, read({ type: 'icon', icon: 'dragon', points: [{ x: 0, y: 0 }], width: 70 }), textures, changed);
+    expect(red.texture).toBe(Texture.EMPTY);
+    red.destroy();
+    blue.destroy();
+    textures.destroy();
   });
 });
 
@@ -52,12 +96,12 @@ describe('a text view', () => {
 
   it('draws a text at its place, turned and scaled, and follows its edits', () => {
     cleanup = stubJsdomGraphics();
-    const view = createTextElementView(element);
+    const view = createTextElementView(readText('t', element)!);
     expect(view.label).toBe('t');
     expect(view.position).toMatchObject({ x: 100, y: 50 });
     expect(view.rotation).toBeCloseTo(Math.PI / 2);
     expect(view.scale.x).toBe(2);
-    updateTextElementView(view, { ...element, text: 'Door', x: 10, rotation: undefined, scale: undefined });
+    updateTextElementView(view, readText('t', { ...element, text: 'Door', x: 10, rotation: undefined, scale: undefined })!);
     expect((view.getChildByLabel(TEXT_CONTENT_LABEL) as Text).text).toBe('Door');
     expect(view.position.x).toBe(10);
     expect(view.rotation).toBe(0);
@@ -116,15 +160,27 @@ describe("the players' initiative list", () => {
   it('draws the turn, the round and names only where they are shown', () => {
     const container = createDiv();
     const list = playerInitiativeList({ entries, isActive: true, round: 2 }, tokenOf, TURN_ORDER, true);
-    renderPlayerInitiative(container, list, { showNames: false, portraitSrc: () => null });
+    renderPlayerInitiative(container, list, { showNames: false, mapShowsNameplates: true, portraitSrc: () => null });
     expect(container.querySelectorAll('.atlas-player-initiative__card')).toHaveLength(2);
     expect(container.querySelector('.atlas-player-initiative__card--active')?.textContent).toContain('18');
     expect(container.querySelector('.atlas-player-initiative__name')).toBeNull();
     expect(container.querySelector('.atlas-player-initiative__round')?.textContent).toContain('2');
     expect(container.querySelector('progress')?.getAttribute('value')).toBe('4');
     const empty = createDiv();
-    renderPlayerInitiative(empty, { ...list, combatants: [] }, { showNames: true, portraitSrc: () => null });
+    renderPlayerInitiative(empty, { ...list, combatants: [] }, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null });
     expect(empty.childElementCount).toBe(0);
+  });
+
+  it('names only the combatants whose nameplate the GM\'s map shows, a placeholder standing for the rest', () => {
+    const own = { ...tokens, ogre: { ...tokens.ogre!, showNameplate: true } };
+    const ownOf = (listed: PlayerInitiativeEntry): ReturnType<typeof entryTokenOf> | null =>
+      (listedForPlayers(own[listed.tokenId]) ? entryTokenOf(own[listed.tokenId], []) : null);
+    const list = playerInitiativeList({ entries, isActive: true, round: 1 }, ownOf, TURN_ORDER, false);
+    const container = createDiv();
+    renderPlayerInitiative(container, list, { showNames: true, mapShowsNameplates: false, portraitSrc: () => 'art.png' });
+    const names = [...container.querySelectorAll('.atlas-player-initiative__name')].map((name) => name.textContent);
+    expect(names).toEqual(['Unknown Creature', 'ogre']);
+    expect(container.textContent).not.toContain('hero');
   });
 
   it('marks defeated combatants and keeps delayed ones below the order, listing both', () => {
@@ -136,7 +192,7 @@ describe("the players' initiative list", () => {
     expect(list.combatants.map(({ token }) => token.defeated)).toEqual([false, true]);
 
     const container = createDiv();
-    renderPlayerInitiative(container, list, { showNames: true, portraitSrc: () => 'art.png' });
+    renderPlayerInitiative(container, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => 'art.png' });
     const cards = [...container.querySelectorAll('.atlas-player-initiative__card')];
     expect(cards.map((card) => card.textContent)).toEqual(['12ogre', '18hero']);
     expect(cards[0]!.classList.contains('atlas-player-initiative__card--defeated')).toBe(true);

@@ -4,8 +4,10 @@ import { useStore } from 'zustand';
 import { cn } from '../../../utils/cn';
 import { useSceneTabStore } from '../hooks/useSceneTabStore';
 import { useTabStripOverflow } from '../hooks/useTabStripOverflow';
+import { useTabReorderDrag } from '../hooks/useTabReorderDrag';
 import type { SceneTab } from '../../types/sceneTabTypes';
 import { LabelTooltip, TooltipProvider } from '../../packages/components/primitives/tooltip';
+import { SceneTabProcessing } from './SceneTabProcessing';
 import './scene-tab-bar.scss';
 import { t } from '../../i18n';
 
@@ -14,6 +16,8 @@ interface SceneTabBarProps {
   onCloseTab: (tabId: string) => void;
   onAddTab: () => void;
   onPresentTab: (tabId: string) => void;
+  /** Moves a tab to another place in the bar, by drag. */
+  onMoveTab: (tabId: string, toIndex: number) => void;
   /** The tab players are shown, whether or not the player window is open; null while none is. */
   presentedTabId?: string | null;
   /** Lists every open map; offered while the tabs do not fit the bar. */
@@ -23,23 +27,26 @@ interface SceneTabBarProps {
 interface TabActionButtonProps {
   icon: React.ComponentType<{ size?: number }>;
   label: string;
+  /** The end of the tab the button stands at. */
+  end: 'start' | 'end';
   /** When defined the button is a toggle and stays visible while active. */
   isActive?: boolean;
   onClick: () => void;
 }
 
 /** Icon button inside a tab; keeps its events from activating or closing the tab. */
-function TabActionButton({ icon: Icon, label, isActive, onClick }: TabActionButtonProps): React.ReactElement {
+function TabActionButton({ icon: Icon, label, end, isActive, onClick }: TabActionButtonProps): React.ReactElement {
   return (
     <LabelTooltip side="bottom" label={label}>
       <button
         type="button"
-        className={cn('atlas-scene-tab__action', isActive && 'atlas-scene-tab__action--active')}
+        className={cn('atlas-scene-tab__action', `atlas-scene-tab__action--${end}`, isActive && 'atlas-scene-tab__action--active')}
         onClick={(e) => {
           e.stopPropagation();
           onClick();
         }}
         onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
         aria-pressed={isActive}
       >
@@ -49,13 +56,15 @@ function TabActionButton({ icon: Icon, label, isActive, onClick }: TabActionButt
   );
 }
 
-export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, presentedTabId = null, onShowAllTabs }: SceneTabBarProps): React.ReactElement | null {
+export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, onMoveTab, presentedTabId = null, onShowAllTabs }: SceneTabBarProps): React.ReactElement | null {
   const store = useSceneTabStore();
 
   const tabs = useStore(store, (s) => s.tabs);
   const activeTabId = useStore(store, (s) => s.activeTabId);
   const [strip, setStrip] = useState<HTMLDivElement | null>(null);
   const { overflows, hiddenBefore, hiddenAfter } = useTabStripOverflow(strip, activeTabId);
+
+  const startDrag = useTabReorderDrag(strip, tabs.map((tab) => tab.id).join('\n'), onMoveTab);
 
   if (tabs.length === 0) return null;
 
@@ -84,10 +93,12 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, p
             return (
               <div
                 key={tab.id}
+                data-tab-id={tab.id}
                 role="tab"
                 aria-selected={isActive}
                 tabIndex={0}
-                className={`atlas-scene-tab ${stateClass}`}
+                className={cn('atlas-scene-tab', stateClass, isPresented && 'atlas-scene-tab--presented')}
+                onPointerDown={(e) => startDrag(e, tab.id)}
                 onClick={() => onSwitchTab(tab.id)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -106,14 +117,18 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, p
                 <TabActionButton
                   icon={Eye}
                   label={t(isPresented ? 'tabs.shown' : 'tabs.show', { name: tab.displayName })}
+                  end="start"
                   isActive={isPresented}
                   onClick={() => onPresentTab(tab.id)}
                 />
-                <LabelTooltip side="bottom" label={tab.filePath}>
-                  <span className="atlas-scene-tab__name">{tab.displayName}</span>
-                </LabelTooltip>
-                {tab.isDirty && <span className="atlas-scene-tab__dirty" />}
-                <TabActionButton icon={X} label={t('tabs.close', { name: tab.displayName })} onClick={() => onCloseTab(tab.id)} />
+                <span className="atlas-scene-tab__label">
+                  <LabelTooltip side="bottom" label={tab.filePath}>
+                    <span className="atlas-scene-tab__name">{tab.displayName}</span>
+                  </LabelTooltip>
+                  <SceneTabProcessing scenePath={tab.filePath} />
+                  {tab.isDirty && <span className="atlas-scene-tab__dirty" />}
+                </span>
+                <TabActionButton icon={X} label={t('tabs.close')} end="end" onClick={() => onCloseTab(tab.id)} />
               </div>
             );
           })}

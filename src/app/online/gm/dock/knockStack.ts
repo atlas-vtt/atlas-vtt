@@ -6,6 +6,7 @@ import { textButton } from './controls.ts';
 import { DockTooltip } from './dockTooltip.ts';
 import { BAR_GAP, roomAbove, rowOf } from './dockDom.ts';
 import type { RestActions } from './panelModel.ts';
+import { t } from '../../../i18n';
 
 /** The cards' width; never wider than the row the control hangs from. */
 const KNOCK_WIDTH = 300;
@@ -29,6 +30,8 @@ export interface StackCard {
   readonly key: string;
   /** What the card says, for screen readers. */
   readonly label: string;
+  /** The card's words before the name and after it. */
+  readonly before: string;
   readonly name: string;
   readonly text: string;
   readonly about?: string;
@@ -37,18 +40,27 @@ export interface StackCard {
   readonly actions: readonly StackAction[];
 }
 
+/** Stands for the name in a card's sentence, so the sentence can be cut where a language puts the name. */
+const NAME_MARK = '\u0000';
+
+/** The words of a card's sentence before and after the name, which the card draws apart from them. */
+function aroundName(sentence: (name: string) => string): { before: string; text: string } {
+  const [before = '', text = ''] = sentence(NAME_MARK).split(NAME_MARK);
+  return { before, text };
+}
+
 /** A card per newcomer who waits: Decline and Admit, or for a moment that the table was full. */
 export function knockCards(waiting: readonly WaitingPlayer[], actions: Pick<GateActions, 'admit' | 'decline'>): StackCard[] {
   return waiting.map((player) => ({
     key: knockKey(player.id),
-    label: `${player.name} wants to join`,
+    label: t('online.knock.join', { name: player.name }),
     name: player.name,
-    text: player.full ? ': table full' : ' wants to join',
+    ...aroundName((name) => t(player.full ? 'online.knock.full' : 'online.knock.join', { name })),
     armed: player.armed,
     answered: player.answered,
     actions: player.full ? [] : [
-      { text: 'Decline', kind: 'ghost', run: () => actions.decline(player.id) },
-      { text: 'Admit', kind: 'cta', run: () => actions.admit(player.id) },
+      { text: t('online.decline'), kind: 'ghost', run: () => actions.decline(player.id) },
+      { text: t('online.admit'), kind: 'cta', run: () => actions.admit(player.id) },
     ],
   }));
 }
@@ -56,22 +68,22 @@ export function knockCards(waiting: readonly WaitingPlayer[], actions: Pick<Gate
 /** What a rest request's card says behind its line: the actions picked, then what the rest will do. */
 function restAbout(rest: RestCard): string {
   const picks = rest.picks.length === 0 ? [] : [rest.picks.join(', ')];
-  return picks.length === 0 && rest.rules.length === 0 ? 'Nothing to restore' : [...picks, ...rest.rules].join(' · ');
+  return picks.length === 0 && rest.rules.length === 0 ? t('online.knock.nothingToRestore') : [...picks, ...rest.rules].join(' · ');
 }
 
 /** A card per rest a player asks for: Decline and Approve, and behind its line the actions picked and what the rest will do. */
 export function restCards(rests: readonly RestCard[], actions: RestActions): StackCard[] {
   return rests.map((rest) => ({
     key: rest.key,
-    label: `${rest.character} asks for a ${rest.button}`,
+    label: t('online.knock.rest', { name: rest.character, rest: rest.button }),
     name: rest.character,
-    text: ` asks for a ${rest.button}`,
+    ...aroundName((name) => t('online.knock.rest', { name, rest: rest.button })),
     about: restAbout(rest),
     armed: rest.armed,
     answered: rest.answered,
     actions: [
-      { text: 'Decline', kind: 'ghost', run: () => actions.decline(rest.key) },
-      { text: 'Approve', kind: 'cta', run: () => actions.approve(rest.key) },
+      { text: t('online.decline'), kind: 'ghost', run: () => actions.decline(rest.key) },
+      { text: t('online.approve'), kind: 'cta', run: () => actions.approve(rest.key) },
     ],
   }));
 }
@@ -98,7 +110,7 @@ function answerButton(row: HTMLElement, card: StackCard, index: number, action: 
 }
 
 /**
- * The cards, one line each: the name, the words after it, the answers. The name is someone's own
+ * The cards, one line each: the name with the words around it, the answers. The name is someone's own
  * text: one line in a box of its own, cut with an ellipsis, its direction kept to itself, so it can
  * neither reorder the card's words nor move its buttons. A card with more behind its line makes the
  * line a focusable part of its own that shows it as a tooltip (`about`). Returns the tooltips made.
@@ -108,6 +120,7 @@ export function renderCards(parent: HTMLElement, cards: readonly StackCard[], to
   for (const card of cards) {
     const row = parent.createDiv({ cls: 'atlas-online-knock', attr: { role: 'group', 'aria-label': card.label } });
     const text = row.createSpan({ cls: 'atlas-online-knock__text' });
+    if (card.before !== '') text.createSpan({ cls: 'atlas-online-knock__rest', text: card.before });
     text.createEl('bdi', { cls: 'atlas-online-knock__name', text: card.name });
     text.createSpan({ cls: 'atlas-online-knock__rest', text: card.text });
     if (card.about !== undefined) {
@@ -155,7 +168,7 @@ export class KnockStack {
     this.root = root;
     this.container = container;
     this.fallback = fallback;
-    this.el = root.createDiv({ cls: 'atlas-online-knocks', attr: { role: 'region', 'aria-label': 'Players asking the GM', 'aria-live': 'polite' } });
+    this.el = root.createDiv({ cls: 'atlas-online-knocks', attr: { role: 'region', 'aria-label': t('online.knock.region'), 'aria-live': 'polite' } });
     this.el.hidden = true;
     // The cards hang from the control's top edge: when it changes its size, they moved.
     this.resizes = new ResizeObserver(() => this.reflow());

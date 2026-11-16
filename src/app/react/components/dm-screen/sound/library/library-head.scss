@@ -1,0 +1,151 @@
+@use '../../../../../../../styles/tokens' as *;
+@use '../../../../../../../styles/mixins' as *;
+@use '../sound-look' as *;
+
+// ---- Head ----
+
+.atlas-sound-lib__main {
+  container: atlas-sound-lib-main / inline-size;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.atlas-sound-lib__head {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  padding: 0 $spacing-s;
+}
+
+.atlas-sound-lib__head .atlas-sound-lib__more.atlas-sound-lib__head-more {
+  display: none;
+  flex-shrink: 0;
+  margin-left: 0;
+  opacity: 1;
+}
+
+.atlas-sound-lib__search {
+  margin-right: auto;
+  flex: 1 1 96px;
+  max-width: 320px;
+  min-width: 96px;
+  height: $button-height-m;
+  border-radius: $radius-m;
+  background: var(--atlas-sound-lib-well);
+  // Its edge is what tells a field from the pane (WCAG 1.4.11, 3:1): drawn as the page's controls are, not a hairline.
+  box-shadow: inset 0 0 0 1px $control-line;
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  padding: 0 $spacing-s;
+  color: var(--atlas-sound-muted);
+
+  .atlas-sound-lib__glyph {
+    width: 16px;
+    height: 16px;
+  }
+
+  input[type='search'] {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--text-normal);
+    font-size: inherit;
+    text-overflow: ellipsis;
+
+    &::placeholder {
+      color: var(--atlas-sound-muted);
+    }
+
+    &::-webkit-search-cancel-button {
+      display: none;
+    }
+
+    &:focus {
+      box-shadow: none;
+    }
+  }
+
+  &:focus-within {
+    box-shadow: inset 0 0 0 1px var(--background-modifier-border-focus);
+  }
+
+  // What is typed goes with one press.
+  .atlas-sound-lib__clear {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    margin-inline-end: -$spacing-xs;
+    border-radius: $radius-s;
+    color: var(--atlas-sound-muted);
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    &:hover {
+      background: var(--atlas-sound-lib-hairline);
+      color: var(--text-normal);
+    }
+  }
+
+  // The key that comes here, shown while nothing is typed; once something is found, ↵ (it plays the first) stands there.
+  &:focus-within .atlas-sound-lib__slash,
+  input:not(:placeholder-shown) + .atlas-sound-lib__slash {
+    display: none;
+  }
+}
+
+.atlas-sound-lib .atlas-sound-lib__btn {
+  height: $button-height-m;
+  padding: 0 $spacing-m;
+  flex-shrink: 0;
+  border-radius: $radius-m;
+  background: var(--background-secondary);
+  box-shadow: inset 0 0 0 1px var(--atlas-sound-lib-hairline);
+  color: var(--text-normal);
+  font-weight: $font-weight-medium;
+  white-space: nowrap;
+  transition: background-color 150ms var(--atlas-sound-lib-press), transform 120ms var(--atlas-sound-lib-press);
+
+  &:hover:not(:disabled) {
+    background: var(--background-modifier-hover);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+.atlas-sound-lib .atlas-sound-lib__btn--solid {
+  @include solid-accent;
+  box-shadow: none;
+}
+
+.atlas-sound-lib .atlas-sound-lib__btn--quiet {
+  background: none;
+  box-shadow: none;
+  color: var(--atlas-sound-muted);
+
+  &:hover:not(:disabled) {
+    background: var(--atlas-sound-lib-hairline);
+    color: var(--text-normal);
+  }
+}
+

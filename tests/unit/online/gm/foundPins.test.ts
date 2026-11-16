@@ -4,11 +4,13 @@ import { parseGmMessage, type GmMessage, type SharedPin } from '../../../../src/
 import { MAP_LAYER_INTERVAL_MS } from '../../../../src/app/online/gm/MapLayerShare.ts';
 import { TableLog } from '../../../../src/app/online/gm/log/TableLog.ts';
 import { FoundShare } from '../../../../src/app/online/gm/pins/FoundShare.ts';
+import { roomPins } from '../../../../src/app/dungeons/scene/toNote';
 import type { NotePin } from '../../../../src/app/types';
 import type { WallSegment } from '../../../../src/app/types/wallTypes';
 import { questVault } from '../../../mocks/questVault';
 import { fakeLayers } from './fakeAtlasTab.ts';
 import { GENERIC_SOURCE } from './gmLighting.ts';
+import { fakeStoring } from './fakeStoring.ts';
 import { sceneState, shareHarness, token, type Sent } from './shareHarness.ts';
 import { settled } from './settled.ts';
 
@@ -82,9 +84,10 @@ function setUp(pins: Record<string, NotePin>, lit: boolean): Table {
   log.welcome([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
   const found = new FoundShare(log, {
     app: vault.app, send: (body, to) => void sent.push({ body, to }), now: () => 0, nameOf: (player) => NAMES[player] ?? null,
-    readImage: () => Promise.resolve(null), layers: () => harness.share.layers,
+    stored: fakeStoring(), layers: () => harness.share.layers,
   });
   harness.foundPin = (mapPath, pinId) => found.entryOf(mapPath, pinId);
+  harness.pinsChanged = (mapPath, pins) => found.followPins(mapPath, pins);
   found.start();
   const scene = (): string => ofKind(harness.sent, 'scene').at(-1)?.scene?.id ?? '';
   const shown = (): readonly SharedPin[] => ofKind(harness.sent, 'pins').at(-1)?.pins ?? [];
@@ -100,7 +103,7 @@ describe('readable pins players are sent', () => {
   it('send only readable pins of notes that committed fog does not cover, by alias and with nothing of the note', async () => {
     const { shown } = await table({
       open: pin('open', 300), fogged: pin('fogged', 1200), plain: pin('plain', 500, { readable: undefined }),
-      gm: pin('gm', 600, { gmOnly: true }), scene: pin('scene', 650, { notePath: 'Scenes/Crypt.atlasmap' }),
+      gm: pin('gm', 600, { gmOnly: true, readable: undefined }), scene: pin('scene', 650, { notePath: 'Scenes/Crypt.atlasmap' }),
     });
     expect(shown()).toHaveLength(1);
     const [listed] = shown();
@@ -121,6 +124,13 @@ describe('readable pins players are sent', () => {
   it('in a lit scene send only the pins where the players see the map now, as door badges', async () => {
     const { shown } = await table({ near: pin('near', 500), behind: pin('behind', 900) }, true);
     expect(shown().map((listed) => listed.x)).toEqual([500]);
+  });
+
+  it('send a generated dungeon\'s room pin once the GM makes it readable, though the generator marked it the GM\'s own', async () => {
+    const generated = roomPins([{ key: 'A5', heading: 'A5', facts: 'Dust.', pin: { x: 500, y: 400 } }], NOTE).pin_dungeon_A5!;
+    expect(generated.gmOnly).toBe(true);
+    const { shown } = await table({ [generated.id]: { ...generated, readable: true } }, true);
+    expect(shown()).toEqual([expect.objectContaining({ x: 500, y: 400, icon: 'number', label: 'A5' })]);
   });
 });
 
@@ -175,6 +185,49 @@ describe('finding a readable pin', () => {
     expect(shown()[0]?.found).toBeNull();
     await open(BEN, alias);
     expect(log.entries().find((logged) => logged.kind === 'found')).toMatchObject({ who: BEN });
+  });
+});
+
+describe('a found pin the GM points at another note', () => {
+  /** The GM points the pin `id` at `notePath`, as the pin's editor writes it. */
+  async function relink(made: Table, id: string, notePath: string): Promise<void> {
+    const state = made.harness.state();
+    const pins = state.objects.pins;
+    await made.harness.set({ ...state, objects: { ...state.objects, pins: { ...pins, [id]: { ...pins[id]!, notePath } } } });
+    await made.harness.advance(MAP_LAYER_INTERVAL_MS);
+    await settled();
+  }
+  const foundEntries = (log: TableLog): ReturnType<TableLog['entries']> => log.entries().filter((entry) => entry.kind === 'found');
+
+  it('hands players the heading or note it links now, in the same entry, and follows that note from then on', async () => {
+    const made = await table({ keep: pin('keep', 300) });
+    const { log, shown, open, vault, sent } = made;
+    const alias = shown()[0]?.id ?? '';
+    await open(ANA, alias);
+    const id = foundEntries(log)[0]?.id;
+    await relink(made, 'keep', `${NOTE}#Tower`);
+    expect(foundEntries(log)).toEqual([expect.objectContaining({ id, title: 'Tower', body: expect.stringContaining('Wind howls') })]);
+    expect(foundEntries(log)[0]).toMatchObject({ pin: { link: `${NOTE}#Tower` } });
+    expect(sent.some(({ body }) => body.t === 'log-entry' && body.entry.id === id && body.entry.kind === 'found' && body.entry.title === 'Tower')).toBe(true);
+    vault.write('Places/Inn.md', 'A warm fire.');
+    await relink(made, 'keep', 'Places/Inn.md');
+    expect(foundEntries(log)).toEqual([expect.objectContaining({ id, title: 'Inn', body: expect.stringContaining('A warm fire.') })]);
+    vault.write('Places/Inn.md', 'A cold hearth.');
+    vault.write(NOTE, KEEP.replace('Wind howls', 'Rain falls'));
+    await settled();
+    expect(foundEntries(log)[0]).toMatchObject({ body: expect.stringContaining('A cold hearth.') });
+    await open(BEN, alias);
+    expect(foundEntries(log)).toHaveLength(1);
+  });
+
+  it('gives players nothing of a note they may not read, and stops following the old one', async () => {
+    const made = await table({ keep: pin('keep', 300) });
+    const { log, shown, open, vault } = made;
+    await open(ANA, shown()[0]?.id ?? '');
+    await relink(made, 'keep', 'Scenes/Crypt.atlasmap');
+    vault.write(NOTE, KEEP.replace('on a hill', 'on a cliff'));
+    await settled();
+    expect(foundEntries(log)).toEqual([expect.objectContaining({ title: 'Keep', body: expect.stringContaining('on a hill'), pin: expect.objectContaining({ link: 'Scenes/Crypt.atlasmap' }) })]);
   });
 });
 

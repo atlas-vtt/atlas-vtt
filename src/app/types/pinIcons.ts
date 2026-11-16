@@ -11,7 +11,7 @@ export interface PinTone {
 }
 
 /** Heraldic palette shared by every pin, so a map full of pins reads as one set. */
-const TONES = {
+export const PIN_TONES = {
   gules: { light: '#b3261e', dark: '#e5534b' },
   tenne: { light: '#c2410c', dark: '#f0883e' },
   or: { light: '#a16207', dark: '#e3b341' },
@@ -25,6 +25,10 @@ const TONES = {
   earth: { light: '#8a5a2b', dark: '#c99562' },
   stone: { light: '#57606a', dark: '#a3abb5' },
 } as const satisfies Record<string, PinTone>;
+
+export type PinToneName = keyof typeof PIN_TONES;
+
+const TONES = PIN_TONES;
 
 export interface PinIconDefinition {
   id: PinIconId;
@@ -158,6 +162,15 @@ export const PIN_PALETTE: PinPaletteSlot[] = [
   // Enumerated pins: the store assigns the next free label of the sequence on placement
   { kind: 'label', id: 'number', name: t('pin.label.number'), sample: '1' },
   { kind: 'label', id: 'letter', name: t('pin.label.letter'), sample: 'A' },
+];
+
+/**
+ * Every pin icon in groups, the palette's own marks first and then the places: what a picker
+ * offers that has no palette row beside it (the Draw tool's stamps).
+ */
+export const PIN_ICON_GROUPS: PinPlaceGroup[] = [
+  { name: t('pin.group.marks'), places: PIN_PALETTE.flatMap((slot) => (slot.kind === 'icon' ? [slot.icon] : [])) },
+  ...PIN_PLACE_GROUPS,
 ];
 
 export const DEFAULT_PIN_ICON: PinIconId = 'pin';

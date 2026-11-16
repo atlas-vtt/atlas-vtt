@@ -8,6 +8,8 @@ import { createTable } from './createTable.ts';
 import { RELAY_ORIGIN } from './servers.ts';
 import { endStrayTable } from './strayTable.ts';
 import type { TableCampaigns } from './tableCampaigns.ts';
+import { t } from '../../i18n';
+import type { TableAssets } from './assets/tableAssets.ts';
 
 /** The GM's account as starting a table needs it. */
 export interface HostAccount {
@@ -17,6 +19,8 @@ export interface HostAccount {
   signedOutByServer(): void;
   /** Asks the relay again what the account may host. */
   refresh(force: boolean): Promise<void>;
+  /** What a table needs to keep assets in the store for players; without it players are handed none. */
+  readonly assets?: Pick<TableAssets, 'salt' | 'settled'>;
 }
 
 export const NO_ACCOUNT: HostAccount = { token: () => null, signedOutByServer: () => undefined, refresh: () => Promise.resolve() };
@@ -29,9 +33,9 @@ export function refused(text: string): null {
 
 /** Why no table can start from the Atlas tab `leaf` for the campaign `campaignId` (null: none is played), or null where one can. */
 export function startBlock(leaf: WorkspaceLeaf | null, campaignId: string | null, account: HostAccount): string | null {
-  if (leaf === null || sceneStoreOf(leaf) === null) return 'Open an Atlas map tab first.';
+  if (leaf === null || sceneStoreOf(leaf) === null) return t('online.start.openMap');
   if (campaignId === null) return NO_CAMPAIGN_TEXT;
-  return account.token() === null ? 'Sign in to host first.' : null;
+  return account.token() === null ? t('online.start.signIn') : null;
 }
 
 /** A table the relay made on a campaign's link, with that campaign's players. */
@@ -41,7 +45,7 @@ export interface CampaignTable {
 }
 
 /** What the GM reads where the relay opened a table on another link than the campaign's (a relay from before lasting links). */
-export const OTHER_LINK_TEXT = 'The server could not open this campaign\'s link. Try again later.';
+export const OTHER_LINK_TEXT = t('online.start.otherLink');
 
 /**
  * Asks the relay for a table on the lasting link of the campaign `campaignId` once its players file

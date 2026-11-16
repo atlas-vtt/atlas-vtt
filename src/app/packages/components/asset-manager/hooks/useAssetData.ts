@@ -1,12 +1,12 @@
 import type * as React from 'react';
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { TFolder, App as ObsidianApp } from 'obsidian';
+import { startTransition, useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import type { App as ObsidianApp } from 'obsidian';
 import type { AnyAsset, CollectionOption, Folder, Tag, Tab } from '../types';
 import { tabs } from '../types';
 import { AssetService } from '../../../../services/AssetService';
 import { AssetThumbnailService, type ThumbnailAsset, type ThumbnailState } from '../../../../services/AssetThumbnailService';
 import { tagGroupOfTab, type TagsByGroup } from '../utils/assetTags';
-import { folderIdOf, tabFolderPath } from '../utils/assetFolders';
+import { readTabFolders, tabFolderPath } from '../utils/assetFolders';
 import type { TagGroup } from '../../../../services/tagGroups';
 import { assetFolderId, formatServiceAsset, partitionByTab, tokenPreviewSources, withThumbnails, type TabServiceAsset } from '../utils/assetFormatters';
 import { tabHasFolders } from '../utils/tabKinds';
@@ -15,6 +15,7 @@ import { reconcileAssets } from '../utils/assetReconcile';
 import { useAtlasUI } from '../../../../react/root/AtlasUIContext';
 import { useOptionalAtlasStore } from '../../../../react/ViewStoreContext';
 import { runInBackground } from '../../../../utils/backgroundTask';
+import { PANEL_ENTER_MS } from '../../../../utils/motion';
 import type { AtlasView } from '../../../../atlas-view';
 
 export interface AssetData {
@@ -29,6 +30,11 @@ export interface AssetData {
    * hold what was loaded before.
    */
   assetsLoading: boolean;
+  /**
+   * Whether the selected collection could not be loaded. `assets`, the counts and
+   * the tags then hold nothing, never what an earlier selection loaded.
+   */
+  assetsFailed: boolean;
   /** Tags of the active tab's tag group. */
   availableTags: Tag[];
   tagsByGroup: TagsByGroup;
@@ -48,6 +54,8 @@ export interface AssetData {
   loadAssetsForActiveTab: () => Promise<void>;
   reloadGlobalTags: () => Promise<void>;
   reloadCollections: () => Promise<void>;
+  /** Loads the selected collection again after it failed. */
+  retryLoad: () => void;
   // Store-provided
   app: ObsidianApp;
   view: AtlasView | null;
@@ -60,9 +68,12 @@ interface LoadedPlace {
   collection: string;
 }
 
-function samePlace(a: LoadedPlace, b: LoadedPlace): boolean {
-  return a.tab === b.tab && a.collection === b.collection;
+function samePlace(a: LoadedPlace | null, b: LoadedPlace): boolean {
+  return a !== null && a.tab === b.tab && a.collection === b.collection;
 }
+
+const NO_ASSETS: AnyAsset[] = [];
+const NO_TAGS: TagsByGroup = { tokens: [], maps: [] };
 
 export function useAssetData(
   activeTab: Tab,
@@ -77,7 +88,10 @@ export function useAssetData(
   // The selection `assets` and the counts were loaded for, and the one the tags were loaded for.
   const [loadedPlace, setLoadedPlace] = useState<LoadedPlace | null>(null);
   const [tagsSelection, setTagsSelection] = useState<string | null>(null);
+  // The selection whose assets failed to load.
+  const [failedPlace, setFailedPlace] = useState<LoadedPlace | null>(null);
   const [isUnavailable, setIsUnavailable] = useState(false);
+  const [initAttempt, setInitAttempt] = useState(0);
   const latestLoad = useRef(0);
   const latestTagsLoad = useRef(0);
   const [tagsByGroup, setTagsByGroup] = useState<TagsByGroup>({ tokens: [], maps: [] });
@@ -96,35 +110,8 @@ export function useAssetData(
   // ── Load folders ──────────────────────────────────────────────
   const loadFoldersForActiveTab = useCallback(async (): Promise<void> => {
     if (!app) return;
-    if (!tabHasFolders(activeTab)) {
-      setFolders([]);
-      return;
-    }
     try {
-      const basePath = tabFolderPath(selectedCollection, activeTab);
-      const baseFolder = app.vault.getAbstractFileByPath(basePath);
-      if (baseFolder instanceof TFolder) {
-        const loaded: Folder[] = [];
-        const recurse = (folder: TFolder, parentId: string | null = null): void => {
-          folder.children.forEach((child) => {
-            if (child instanceof TFolder) {
-              const obj: Folder = {
-                id: folderIdOf(child.path),
-                name: child.name,
-                type: activeTab,
-                path: child.path.substring(basePath.length + 1),
-                parentId,
-              };
-              loaded.push(obj);
-              recurse(child, obj.id);
-            }
-          });
-        };
-        recurse(baseFolder);
-        setFolders(loaded);
-      } else {
-        setFolders([]);
-      }
+      setFolders(readTabFolders(app, selectedCollection, activeTab));
     } catch (error) {
       console.error('[useAssetData] Error loading folders:', error);
       setFolders([]);
@@ -149,9 +136,7 @@ export function useAssetData(
       const thumbnailOf = thumbnails ? (asset: ThumbnailAsset): ThumbnailState => thumbnails.stateOf(asset) : undefined;
       const folderBase = tabHasFolders(activeTab) ? tabBase : null;
       const formatted = tabAssets.map((a) => formatServiceAsset(a, folderBase, app, previewSources, thumbnailOf));
-      setAssets((previous) => reconcileAssets(previous, formatted));
       const partyFolders = activeTab === 'tokens' ? byTab.party.flatMap((pc) => assetFolderId(pc, tabBase) ?? []) : [];
-      setPartyFolderKey([...new Set(partyFolders)].sort().join('\n'));
       // Counts cover every tab so the tab bar never reflows when switching
       const loaded: Record<Tab, number> = {
         scenes: byTab.scenes.length,
@@ -160,10 +145,24 @@ export function useAssetData(
         tokens: byTab.tokens.length,
         party: byTab.party.length,
       };
-      setCounts((previous) => (previous && tabs.every((tab) => previous[tab] === loaded[tab]) ? previous : loaded));
+      // The cards a load brings are rendered as a transition, in slices between frames: rendered at once, a
+      // collection's cards took one task of 50 to 60 ms and the window dropped the frames of its crossfade.
+      startTransition(() => {
+        setAssets((previous) => reconcileAssets(previous, formatted));
+        setPartyFolderKey([...new Set(partyFolders)].sort().join('\n'));
+        setCounts((previous) => (previous && tabs.every((tab) => previous[tab] === loaded[tab]) ? previous : loaded));
+        setFailedPlace(null);
+        setLoadedPlace((previous) => (previous && samePlace(previous, place) ? previous : place));
+      });
+      return;
     } catch (error) {
       console.error('[useAssetData] Error loading assets:', error);
       if (load !== latestLoad.current) return;
+      // What is held belongs to another selection: show nothing of it under this one's name.
+      setAssets(NO_ASSETS);
+      setPartyFolderKey('');
+      setCounts(null);
+      setFailedPlace(place);
     }
     setLoadedPlace((previous) => (previous && samePlace(previous, place) ? previous : place));
   }, [assetService, app, activeTab, selectedCollection, thumbnails]);
@@ -196,6 +195,8 @@ export function useAssetData(
     } catch (error) {
       console.error('[useAssetData] Error reloading tags:', error);
       if (request !== latestTagsLoad.current) return;
+      // The tags of the collection shown before must not stand under this one.
+      setTagsByGroup(NO_TAGS);
     }
     setTagsSelection(selectedCollection);
   }, [assetService, selectedCollection]);
@@ -216,14 +217,14 @@ export function useAssetData(
       try {
         await svc.initialize();
       } catch (error) {
-        // Nothing will ever load: show the empty library instead of its placeholders.
+        // Nothing loads until a retry: show the failure instead of placeholders.
         setIsUnavailable(true);
         throw error;
       }
       setAssetService(svc);
     };
     runInBackground(initialize(), 'Initializing asset service');
-  }, [app]);
+  }, [app, initAttempt]);
 
   useEffect(() => {
     runInBackground(reloadCollections(), 'Loading collections');
@@ -251,8 +252,12 @@ export function useAssetData(
     await latestShowLoaded.current();
   }, [assetService]);
 
+  // Once the window has opened: run in the commit that mounts it, reading the library held its first frame up by 10
+  // to 15 ms, and what it changes renders the window again while it animates in.
   useEffect(() => {
-    if (isOpen) runInBackground(refreshFromDisk(), 'Refreshing asset metadata');
+    if (!isOpen) return undefined;
+    const timer = window.setTimeout(() => runInBackground(refreshFromDisk(), 'Refreshing asset metadata'), PANEL_ENTER_MS);
+    return () => window.clearTimeout(timer);
   }, [isOpen, refreshFromDisk]);
 
   useEffect(() => {
@@ -268,7 +273,9 @@ export function useAssetData(
     void loadAssetsForActiveTab();
   }, [assetService, activeTab, app, selectedCollection, loadAssetsForActiveTab, loadFoldersForActiveTab]);
 
-  const assetsLoading = !isUnavailable && !(loadedPlace && samePlace(loadedPlace, { tab: activeTab, collection: selectedCollection }));
+  const place: LoadedPlace = { tab: activeTab, collection: selectedCollection };
+  const assetsLoading = !isUnavailable && !samePlace(loadedPlace, place);
+  const assetsFailed = isUnavailable || (!assetsLoading && samePlace(failedPlace, place));
   // Counts are loaded with the assets and cover every tab, so a tab switch keeps them.
   const assetCounts = loadedPlace?.collection === selectedCollection ? counts : null;
   const tagsLoading = !isUnavailable && tagsSelection !== selectedCollection;
@@ -281,10 +288,24 @@ export function useAssetData(
     [folders, shownFolders],
   );
 
+  const retryLoad = useCallback((): void => {
+    setFailedPlace(null);
+    setLoadedPlace(null);
+    setTagsSelection(null);
+    if (isUnavailable) {
+      setIsUnavailable(false);
+      setInitAttempt((attempt) => attempt + 1);
+      return;
+    }
+    void loadFoldersForActiveTab();
+    void loadAssetsForActiveTab();
+    void reloadGlobalTags();
+  }, [isUnavailable, loadFoldersForActiveTab, loadAssetsForActiveTab, reloadGlobalTags]);
+
   return {
-    folders: shownFolders, shownFolderOf, assets, assetsLoading, availableTags, tagsByGroup, tagsCollection, tagsLoading, collections, assetCounts, assetService,
+    folders: shownFolders, shownFolderOf, assets, assetsLoading, assetsFailed, availableTags, tagsByGroup, tagsCollection, tagsLoading, collections, assetCounts, assetService,
     setFolders, setAssets,
-    loadFoldersForActiveTab, loadAssetsForActiveTab, reloadGlobalTags, reloadCollections,
+    loadFoldersForActiveTab, loadAssetsForActiveTab, reloadGlobalTags, reloadCollections, retryLoad,
     app, view, mapPath,
   };
 }

@@ -8,8 +8,10 @@ import { linkedStatblockPaths } from '../../../../creatures/creatureFacts';
 import { PaneDiceRolls } from '../../../../statblocks/editor/statblock-pane/PaneDiceRolls';
 import { isShortcutScopeActive } from '../../../../utils/activeLeafGuard';
 import { dialogOverlayMotion, useDialogWindowVariants } from '../../primitives/dialogMotion';
+import { useFocusTrap } from '../../primitives/useFocusTrap';
 import { ActiveFilterBar } from '../components/search/ActiveFilterBar';
 import { t } from '../../../../i18n';
+import type { Quantity } from '../../../../encounters/encounterQuantity';
 import type { EncounterAsset, TokenAsset } from '../types';
 import { EncounterTray } from './EncounterTray';
 import { RosterFeed } from './RosterFeed';
@@ -43,6 +45,7 @@ export function EncounterBuilder({ app, assetService, collectionId, editEncounte
   const draft = useEncounterDraft(app, assetService, collectionId, editEncounter, roster);
   const { picks, setPicks, saving } = draft;
   const windowRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(windowRef);
   const titleId = useId();
   const windowVariants = useDialogWindowVariants();
 
@@ -54,10 +57,10 @@ export function EncounterBuilder({ app, assetService, collectionId, editEncounte
   const creatures = useCreatureIndex(app, pickedPaths);
   const metrics = useMemo(() => encounterMetrics(picks, creatures.get, resources), [picks, creatures, resources]);
 
-  const changeCount = useCallback((token: TokenAsset, count: number): void => {
+  const changeCount = useCallback((token: TokenAsset, count: Quantity): void => {
     setPicks((current) => withCount(current, token, count));
   }, []);
-  const countOfToken = useCallback((tokenId: string): number => countOf(picks, tokenId), [picks]);
+  const countOfToken = useCallback((tokenId: string): Quantity => countOf(picks, tokenId), [picks]);
 
   // A creature of the tray shows its statblock; filters that hide it are cleared for it first.
   const [reveal, setReveal] = useState<{ id: string; nonce: number } | null>(null);
@@ -137,7 +140,7 @@ export function EncounterBuilder({ app, assetService, collectionId, editEncounte
         aria-labelledby={titleId}
         onClick={(event) => event.stopPropagation()}
       >
-        <PaneDiceRolls app={app} collectionId={collectionId} coversMaps>
+        <PaneDiceRolls app={app} collectionId={collectionId}>
           <EncounterSidebar
             app={app}
             titleId={titleId}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_ASSET_BYTES, parseGmMessage } from '../../../../src/app/online/protocol/index.ts';
+import { MAX_STORED_BYTES, parseGmMessage } from '../../../../src/app/online/protocol/index.ts';
 
-const image = { hash: 'a'.repeat(64), size: 1234, mime: 'image/png' };
+const image = { hash: 'a'.repeat(64), size: 1234, mime: 'image/png', id: 'e'.repeat(64) };
 const shown = { id: '0123456789abcdef01234567', image, width: 1600, height: 900 };
 const message = (value: unknown): unknown => ({ t: 'shown-image', shown: value });
 
@@ -23,7 +23,7 @@ describe('shown-image messages', () => {
       { ...shown, width: 0 }, { ...shown, width: -4 }, { ...shown, width: 1.5 }, { ...shown, width: '1600' }, { ...shown, height: undefined }, { ...shown, height: Number.NaN }, { ...shown, height: (1 << 20) + 1 },
       { ...shown, image: null }, { ...shown, image: undefined }, { ...shown, image: 'a'.repeat(64) },
       { ...shown, image: { ...image, hash: 'A'.repeat(64) } }, { ...shown, image: { ...image, hash: 'abc' } },
-      { ...shown, image: { ...image, size: -1 } }, { ...shown, image: { ...image, size: MAX_ASSET_BYTES + 1 } },
+      { ...shown, image: { ...image, size: -1 } }, { ...shown, image: { ...image, size: MAX_STORED_BYTES + 1 } },
     ]) expect(parseGmMessage(message(value)), JSON.stringify(value)).toBeNull();
   });
 

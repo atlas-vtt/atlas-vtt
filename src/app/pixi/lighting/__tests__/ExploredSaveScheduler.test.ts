@@ -45,3 +45,31 @@ describe('ExploredSaveScheduler', () => {
     expect(save).not.toHaveBeenCalled();
   });
 });
+
+describe('ExploredSaveScheduler while the memory keeps changing', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('waits until the memory has rested, and never longer than its longest wait', () => {
+    const save = vi.fn();
+    let now = 0;
+    const scheduler = new ExploredSaveScheduler(() => 'a.atlasmap', save, 2000, 10_000, () => now);
+    // A drag: a change every 100 ms for 6 s saves nothing until it rests.
+    for (let t = 0; t < 6000; t += 100) {
+      now = t;
+      scheduler.schedule();
+      vi.advanceTimersByTime(100);
+    }
+    expect(save).not.toHaveBeenCalled();
+    now = 8100;
+    vi.advanceTimersByTime(2000);
+    expect(save).toHaveBeenCalledTimes(1);
+    // A drag longer than the longest wait saves once it has waited that long.
+    for (let t = 9000; t < 20_000; t += 100) {
+      now = t;
+      scheduler.schedule();
+      vi.advanceTimersByTime(100);
+    }
+    expect(save).toHaveBeenCalledTimes(2);
+  });
+});

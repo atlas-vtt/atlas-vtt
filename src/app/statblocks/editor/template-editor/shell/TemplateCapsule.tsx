@@ -5,6 +5,7 @@ import { LabelTooltip } from '../../../../packages/components/primitives/tooltip
 import { ActionsMenuButton } from '../../../../packages/components/shared/ActionsMenuButton';
 import type { SessionSnapshot } from '../sessionTypes';
 import { capsuleMenuEntries, type CapsuleMenuInput } from './capsuleMenu';
+import { t } from '../../../../i18n';
 
 export interface TemplateCapsuleProps {
   snapshot: SessionSnapshot;
@@ -19,9 +20,9 @@ export function canSave(snapshot: SessionSnapshot): boolean {
 }
 
 /** Save covers the card; the note on the left is a note of its own. */
-export const SAVE_HINT = 'Saves the statblock on the right. The text on the left saves as you type.';
+export const SAVE_HINT = t('templateEditor.saveHint');
 /** A template without a file has no note yet: Save writes the text on the left into it. */
-export const DRAFT_SAVE_HINT = 'Saves the statblock on the right and the text on the left.';
+export const DRAFT_SAVE_HINT = t('templateEditor.draftSaveHint');
 
 /**
  * The template editor's header capsule (§2.3): the template's name, Save and
@@ -32,7 +33,7 @@ export const DRAFT_SAVE_HINT = 'Saves the statblock on the right and the text on
  */
 export function TemplateCapsule({ snapshot, onSave, menu }: TemplateCapsuleProps): React.JSX.Element {
   return (
-    <div className="atlas-sb-pane-header atlas-te-capsule" role="toolbar" aria-label="Template" data-te-region="header">
+    <div className="atlas-sb-pane-header atlas-te-capsule" role="toolbar" aria-label={t('templateEditor.template')} data-te-region="header">
       <span className="atlas-te-capsule__name">
         {snapshot.readOnly && <Lock aria-hidden="true" className="atlas-sb-pane-template__lock" />}
         <span className="atlas-te-name">{snapshot.name}</span>
@@ -46,10 +47,10 @@ export function TemplateCapsule({ snapshot, onSave, menu }: TemplateCapsuleProps
             aria-disabled={canSave(snapshot) ? undefined : true}
             onClick={canSave(snapshot) ? onSave : undefined}
           >
-            Save
+            {t('templateEditor.save.save')}
           </Button>
         </LabelTooltip>
-        <ActionsMenuButton label="More template actions" entries={capsuleMenuEntries(menu)} className="atlas-sb-pane-header__more" />
+        <ActionsMenuButton label={t('templateEditor.moreActions')} entries={capsuleMenuEntries(menu)} className="atlas-sb-pane-header__more" />
       </span>
     </div>
   );

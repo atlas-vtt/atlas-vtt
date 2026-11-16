@@ -64,6 +64,15 @@ describe('Atlas view opens scene files only', () => {
     expect(context.tabMetaStore.getState().tabs.map((tab) => tab.filePath)).toEqual([SCENE]);
   });
 
+  it('keeps the level an opening asks for until the scene loads', async () => {
+    const { context } = viewContext();
+
+    await AtlasView.prototype.setState.call(context as unknown as AtlasView, { file: SCENE, level: 'level_a' }, { history: false });
+
+    expect(context.onLoadFile).toHaveBeenCalledWith(new TFile(SCENE));
+    expect((context as unknown as { openingLevel: string | null }).openingLevel).toBe('level_a');
+  });
+
   it('drops restored tabs that point at other files', async () => {
     const { context } = viewContext();
     const state = {

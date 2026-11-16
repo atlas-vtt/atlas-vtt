@@ -183,7 +183,7 @@ describe('the live lane of a drag', () => {
         await table.advance(5 + random() * 40);
         // Every place sent now is of a token in the players' last list that their picture shows, where the GM has it;
         // an end is where a token let go of that they see stands, else the last place sent of that token.
-        const listed = (table.share as unknown as { tokens: { listedToken(alias: string): string | undefined } }).tokens;
+        const listed = (table.share as unknown as { floors: Map<string, { tokens: { listedToken(alias: string): string | undefined } }> }).floors.get('')!.tokens;
         const inList = new Set(tokenLists(table.sent).at(-1)?.tokens.map((entry: SharedToken) => entry.id));
         for (const message of table.sent.slice(before).flatMap(({ body }) => (body.t === 'live' ? [body] : []))) {
           for (const place of message.tokens) {

@@ -1,10 +1,10 @@
 import { Container } from 'pixi.js';
-import type { MapImageChange } from '../../src/app/pixi/mapImage/mapImageTypes';
-import type { MapImageView } from '../../src/app/pixi/mapImage/mapImageView';
-import type { PixelRect } from '../../src/app/pixi/mapImage/pyramid';
+import type { MosaicCanvasChange } from '../../src/app/pixi/mosaicCanvas/mosaicCanvasTypes';
+import type { MosaicCanvasView } from '../../src/app/pixi/mosaicCanvas/mosaicCanvasView';
+import type { PixelRect } from '../../src/app/pixi/mosaicCanvas/pyramid';
 
-/** A map image for grid tests: `show` swaps the image (or takes it off) and tells the listeners, as `MapImage.load` does. */
-export interface FakeMapImageView extends MapImageView {
+/** A map image for grid tests: `show` swaps the image (or takes it off) and tells the listeners, as `MosaicCanvas.load` does. */
+export interface FakeMapImageView extends MosaicCanvasView {
   show(rect: PixelRect | null): void;
 }
 
@@ -17,7 +17,7 @@ export interface FakeMapImageOptions {
 
 /** A map image showing a `width` × `height` image at the origin. */
 export function fakeMapImageView(width: number, height: number, options: FakeMapImageOptions = {}): FakeMapImageView {
-  const listeners = new Set<(change: MapImageChange) => void>();
+  const listeners = new Set<(change: MosaicCanvasChange) => void>();
   let worldRect: PixelRect | null = { x: 0, y: 0, width, height };
   return {
     layer: options.layer ?? new Container({ label: 'map-image' }),

@@ -3,6 +3,7 @@ import { KEEPALIVE_PING } from '../../../../src/app/online/protocol/index.ts';
 import type { App, WorkspaceLeaf } from 'obsidian';
 import type { SceneState, SceneStore } from '../../../../src/app/online/gm/atlasView.ts';
 import type { Presented, TabSource } from '../../../../src/app/online/gm/presentedScene.ts';
+import type { HostAccount } from '../../../../src/app/online/gm/tableStart.ts';
 import { fakeTokenSource } from './fakeTokenSource.ts';
 
 /*
@@ -222,3 +223,14 @@ export const app = {
   },
   plugins: { plugins: { 'atlas-vtt': { presentedScene: atlasPresented } } },
 } as unknown as App;
+
+/** A signed-in account whose tables keep assets in the store: the salt is known, so every reference carries its id (`storedRef`). */
+export function storedAccount(): HostAccount {
+  const salt = Uint8Array.from({ length: 32 }, (_, n) => n);
+  return {
+    token: () => 'account-token',
+    signedOutByServer: () => undefined,
+    refresh: () => Promise.resolve(),
+    assets: { salt: { soon: () => Promise.resolve(salt), ensure: () => Promise.resolve(salt) }, settled: () => undefined },
+  };
+}

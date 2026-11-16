@@ -6,6 +6,7 @@ import { hitPointsAttribute, namesHitPoints } from './hitPoints';
 import { InlineText } from './InlineText';
 import { StatblockMarkdown } from './StatblockMarkdown';
 import type { StatblockEditPath } from './statblockEditContext';
+import { t } from '../../../i18n';
 
 export interface EntryLineProps {
   name: string | undefined;
@@ -45,6 +46,7 @@ export function EntryLine({
 }: EntryLineProps): React.JSX.Element | null {
   if (!name && !text) return null;
   const editable = editPaths !== undefined;
+  const runIn = nameStyle === 'run-in';
 
   return (
     <div
@@ -55,14 +57,16 @@ export function EntryLine({
     >
       {name && (
         <span className="atlas-sb-trait-name">
-          <EditableField path={editPaths?.name ?? []} value={name} editable={editable} label="trait name">
-            <InlineText text={nameStyle === 'run-in' ? name.trim() : name} app={app} sourcePath={sourcePath} markdown={markdown} dice={false} />
+          <EditableField path={editPaths?.name ?? []} value={name} editable={editable} label={t('statblockEditor.traitName')}>
+            <InlineText text={runIn ? name.trim() : name} app={app} sourcePath={sourcePath} markdown={markdown} dice={false} />
           </EditableField>
         </span>
       )}
+      {/* A word space of the text's own font, which copy and screen readers read too. */}
+      {name && runIn && ' '}
       {children}
-      <EditableField path={editPaths?.text ?? []} value={text} editable={editable} label="trait description" multiline>
-        <StatblockMarkdown text={text} app={app} sourcePath={sourcePath} markdown={markdown} />
+      <EditableField path={editPaths?.text ?? []} value={text} editable={editable} label={t('statblockEditor.traitText')} multiline>
+        <StatblockMarkdown text={runIn ? text.trimStart() : text} app={app} sourcePath={sourcePath} markdown={markdown} />
       </EditableField>
     </div>
   );

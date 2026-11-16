@@ -47,13 +47,17 @@
     font-size: $font-ui-small;
     line-height: var(--line-height-normal);
 
-    > * + * {
+    // Not `> * + *`: a sibling combinator after a bare `*` restyles the whole window whenever an element is put
+    // at the start of <body> (a menu's focus guard). `:where()` keeps the specificity of `* + *`.
+    > :where(:not(:first-child)) {
       margin-top: $spacing-s;
     }
   }
 
+  // Run in after a real space (`EntryLine`), never a margin: a margin of a fixed share of the type reads as no
+  // gap in some fonts (a monospace word space is twice as wide), and copy and screen readers read no space.
   .atlas-sb-trait--run-in .atlas-sb-trait-name {
-    margin-right: 0.3em;
+    margin-right: 0;
     font-style: italic;
     font-weight: $font-weight-semibold;
   }
@@ -62,10 +66,6 @@
     display: block;
     margin: 0 0 2px;
     font-weight: $font-weight-semibold;
-  }
-
-  .atlas-sb-entry-extras {
-    margin-right: 0.3em;
   }
 
   .atlas-sb-entry-extra + .atlas-sb-entry-extra {
@@ -81,7 +81,7 @@
   .atlas-sb-spells-block {
     font-size: $font-ui-small;
 
-    > * + * {
+    > :where(:not(:first-child)) {
       margin-top: $spacing-s;
     }
   }

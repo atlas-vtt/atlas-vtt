@@ -38,3 +38,33 @@ describe('the codes the roster makes', () => {
     expect(table.codes).toEqual([[ANA, { t: 'your-code', code: '000007', first: false }]]);
   });
 });
+
+describe('the names of a campaign\'s players', () => {
+  it('turn away a newcomer who goes by a name the campaign holds, in any case, and change nothing', () => {
+    const table = roster();
+    expect(table.roster.joined({ id: 'n'.repeat(20), name: 'ANA' })).toBe(false);
+    expect(table.kicked).toEqual(['n'.repeat(20)]);
+    expect(table.seats.players().map((player) => player.name)).toEqual(['Ana']);
+  });
+
+  it('let the GM add no second player of a name', () => {
+    const table = roster();
+    expect(table.roster.add(' ana ')).toBeNull();
+    expect(table.seats.players()).toHaveLength(1);
+    expect(table.roster.add('Noor')?.name).toBe('Noor');
+  });
+
+  it('let the GM rename a player to no other player\'s name, and to their own in another case', () => {
+    const table = roster();
+    const noor = table.roster.add('Noor');
+    table.roster.rename(noor?.id ?? '', 'ana');
+    expect(table.seats.players().find((player) => player.id === noor?.id)?.name).toBe('Noor');
+    table.roster.rename(noor?.id ?? '', 'NOOR');
+    expect(table.seats.players().find((player) => player.id === noor?.id)?.name).toBe('NOOR');
+  });
+
+  it('keep players a file already holds under one name: nobody loses a seat, and their codes stay', () => {
+    const { seats } = fakeCampaigns([{ id: ANA, name: 'Ana' }, { id: 'b'.repeat(20), name: 'Ana' }]);
+    expect(seats.players().map((player) => player.name)).toEqual(['Ana', 'Ana']);
+  });
+});

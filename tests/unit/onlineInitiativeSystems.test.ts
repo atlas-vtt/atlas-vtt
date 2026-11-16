@@ -21,7 +21,7 @@ const entry = (tokenId: string, order: number, extra: Partial<InitiativeEntry> =
 
 function share(initiative: InitiativeState, tokens: Record<string, TokenEntity>) {
   return sharedInitiative({
-    state: { initiativeTrackerOpen: true, mapPath: 'map.atlasmap', initiative, objects: { tokens } },
+    state: { initiativeTrackerOpen: true, mapPath: 'map.atlasmap', tokenSettings: { showNameplates: true, hiddenResources: [], showInstanceBadges: false, tokenRingSize: 1 }, initiative, objects: { tokens } },
     shown: true,
     showNames: true,
     rules: {} as RulesLookup,

@@ -34,6 +34,18 @@ describe('editing a saved encounter', () => {
     expect(more.at(-1)).toEqual(saved[2]);
   });
 
+  it('reads rolled numbers back, and keeps the first reference of a creature that turns to dice', () => {
+    const rolled = [ref('goblin', { quantity: '2d4' }), ref('statue', { quantity: 'many' })];
+    const picks = picksFromEncounter(rolled, new Map([['goblin', goblin]]), (r) => token(r.id));
+    expect(picks.map((pick) => pick.count)).toEqual(['2d4', 1]);
+    const edited = picksFromEncounter(saved, new Map([['goblin', goblin]]), (r) => token(r.id));
+    expect(encounterDrafts(withCount(edited, goblin, '1d6'), saved).filter((draft) => draft.id === 'goblin'))
+      .toEqual([{ ...saved[0], quantity: '1d6' }]);
+    // Back to a number, the dice leave the reference.
+    expect(encounterDrafts(withCount(picks, goblin, 2), rolled).filter((draft) => draft.id === 'goblin'))
+      .toEqual([ref('goblin'), { id: 'goblin', name: 'goblin', imagePath: 'goblin.png', size: 1, statblockPath: 'goblin.md' }]);
+  });
+
   it('saves the new name and tokens in place, keeping the rest of the encounter', async () => {
     const current: EncounterAsset = {
       id: 'e1', name: 'Old', type: 'encounter', collection: 'c', tags: ['cave'], createdAt: 1, modifiedAt: 1,

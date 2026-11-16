@@ -6,13 +6,16 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // The button rests on the artwork's bottom-left corner and appears with the
 // card's hover. The menu reuses the Atlas context menu surface and rows.
+// Hidden, it is not drawn at all (`display: none`), as the ⋯ button (`_asset-card-actions.scss`): a fling passes rows
+// of cards under the pointer, and buttons kept at opacity 0 each ran their transitions and held a blurred backdrop on
+// the compositor. It fades in when shown and leaves at once.
 
 .atlas-asset-card-tags {
   position: absolute;
   left: $spacing-s;
   bottom: $spacing-s;
   z-index: 2;
-  display: inline-flex;
+  display: none;
   align-items: center;
   gap: $spacing-xs;
   height: auto;
@@ -24,13 +27,6 @@
   box-shadow: $shadow-sm;
   color: var(--text-muted);
   cursor: pointer;
-  opacity: 0;
-  transform: scale(0.92);
-  transition:
-    opacity $transition-fast $transition-ease,
-    transform $transition-press $transition-ease-out,
-    background-color $transition-fast $transition-ease,
-    color $transition-fast $transition-ease;
 
   svg {
     width: 14px;
@@ -57,11 +53,21 @@
   }
 
   .atlas-asset-card:hover &,
+  .atlas-asset-card:has(+ .atlas-asset-card-actions:hover) &,
   .atlas-asset-card:focus-visible &,
   &:focus-visible,
   &[aria-expanded='true'] {
-    opacity: 1;
-    transform: none;
+    display: inline-flex;
+    transition:
+      opacity $transition-fast $transition-ease,
+      transform $transition-press $transition-ease-out,
+      background-color $transition-fast $transition-ease,
+      color $transition-fast $transition-ease;
+
+    @starting-style {
+      opacity: 0;
+      transform: scale(0.92);
+    }
   }
 
   .atlas-asset-card:hover &:active {
@@ -74,6 +80,10 @@
   font-weight: $font-weight-semibold;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+
+  &::before {
+    content: attr(data-count);
+  }
 }
 
 // ── Menu ────────────────────────────────────────────────────────────────────
@@ -123,7 +133,6 @@
   max-height: 240px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  @include atlas-scrollbar;
 }
 
 .atlas-asset-tag-menu__option {
@@ -171,7 +180,7 @@
 
 .atlas-asset-tag-menu__empty {
   padding: $spacing-s;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: $font-ui-smaller;
   text-align: center;
 }

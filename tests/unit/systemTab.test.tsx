@@ -66,7 +66,7 @@ describe('SystemTab', () => {
     const service = new SystemPresetService(memoryPresets());
     render(<Harness service={service} initial={structuredClone(daggerheart!.rules)} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Save as Preset/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Save as preset/ }));
     const input = screen.getByPlaceholderText('Preset name');
     fireEvent.change(input, { target: { value: 'Daggerheart' } });
     fireEvent.keyDown(input, { key: 'Enter' });

@@ -8,6 +8,7 @@ import { dialogOverlayMotion, useDialogWindowVariants } from '../../../../packag
 import type { DiceSets } from '../../../hooks/useDiceSets';
 import { t } from '../../../../i18n';
 import { DiceLab } from './DiceLab';
+import { portalHost } from '../../../../host/portalHost';
 
 interface DiceLabDialogProps {
   /** An element of what opened the lab: the dialog opens in its window, over it. */
@@ -91,6 +92,6 @@ export function DiceLabDialog({ anchor, diceSets, initialId, onClose }: DiceLabD
         </div>
       </motion.div>
     </motion.div>,
-    anchor.doc.body,
+    portalHost(anchor.doc),
   );
 }

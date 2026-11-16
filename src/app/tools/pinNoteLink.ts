@@ -1,4 +1,6 @@
+import { TFile, type App } from 'obsidian';
 import type { NotePin } from '../types';
+import { isEncounterFolderLink } from '../links/atlasLinkTargets';
 
 /** A pin's link as written: the note's path, and the heading after `#` (null for the whole note). */
 export interface PinNoteLink {
@@ -14,8 +16,14 @@ export function pinNoteLink(notePath: string): PinNoteLink {
   return { linkpath, heading: heading === '' ? null : heading };
 }
 
-/** Whether a pin links to a note players could read: anything but a scene. */
+/** The note a pin's link names, from the map it is on: a path as written, else as Obsidian resolves the link; only Markdown. */
+export function noteFile(app: App, linkpath: string, mapPath: string): TFile | null {
+  const file = app.vault.getAbstractFileByPath(linkpath) ?? app.metadataCache.getFirstLinkpathDest(linkpath, mapPath);
+  return file instanceof TFile && file.extension === 'md' ? file : null;
+}
+
+/** Whether a pin links to a note players could read: anything but a scene or a folder of encounters. */
 export function linksReadableNote(pin: Pick<NotePin, 'notePath'>): boolean {
   const { linkpath } = pinNoteLink(pin.notePath);
-  return linkpath !== '' && !linkpath.toLowerCase().endsWith('.atlasmap');
+  return linkpath !== '' && !linkpath.toLowerCase().endsWith('.atlasmap') && !isEncounterFolderLink(linkpath);
 }

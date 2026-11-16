@@ -1,4 +1,5 @@
 import type { DiceRollOrigin, TokenRollContext } from '../types/diceRollOrigin';
+import { levelObjects } from '../levels/levelObjects';
 
 /** What of a view's store tells which scene it holds, and the tokens in it. */
 interface SceneState {
@@ -15,7 +16,7 @@ interface SceneState {
  */
 export function captureRollContext(viewId: string | undefined, state: SceneState, tokenIds: readonly string[]): TokenRollContext | undefined {
   if (!viewId || !state.mapPath || !state.mapLoaded || state.isMapLoading) return undefined;
-  const present = [...new Set(tokenIds)].filter((id) => Boolean(state.objects.tokens[id]));
+  const present = [...new Set(tokenIds)].filter((id) => Boolean(levelObjects(state).tokens[id]));
   if (!present.length) return undefined;
   return Object.freeze({ viewId, mapPath: state.mapPath, tokenIds: Object.freeze(present) });
 }

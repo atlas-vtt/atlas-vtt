@@ -1,0 +1,32 @@
+import type { Translation } from '../../types';
+
+export const uvttFloors: Translation = {
+  'uvttFloors.fileProblem': '{file}: {problem}',
+  'uvttFloors.failed': 'Не удалось импортировать файлы.',
+  'uvttFloors.tooMany': 'В одной сцене может быть не больше {count} этажей.',
+  'uvttFloors.tooLarge': 'Вместе файлы занимают больше {size} МБ.',
+  'uvttFloors.tooManyWalls': 'Вместе в файлах больше {count} отрезков стен.',
+  'uvttFloors.tooManyLights': 'Вместе в файлах больше {count} источников света.',
+  'uvttFloors.otherGrid': 'Клетки {file} шириной {size} пикселей, а у {other} — {otherSize} пикселей, поэтому общей сетки у них нет.',
+  'uvttFloors.mapName': '{scene}, {level}',
+  'uvttFloors.reading': 'Читаем {files}…',
+  'uvttFloors.importing': 'Импорт «{name}», уровней: {count}…',
+  'uvttFloors.couldNot': 'Не удалось импортировать «{name}». {problem}',
+  'uvttFloors.imported': {
+    one: 'Импортирована сцена «{name}», {count} уровень: {contents}.',
+    few: 'Импортирована сцена «{name}», {count} уровня: {contents}.',
+    many: 'Импортирована сцена «{name}», {count} уровней: {contents}.',
+    other: 'Импортирована сцена «{name}», {count} уровня: {contents}.',
+  },
+  'uvttFloors.walls': { one: '{count} стена', few: '{count} стены', many: '{count} стен', other: '{count} стены' },
+  'uvttFloors.doors': { one: '{count} дверь', few: '{count} двери', many: '{count} дверей', other: '{count} двери' },
+  'uvttFloors.lights': { one: '{count} источник света', few: '{count} источника света', many: '{count} источников света', other: '{count} источника света' },
+  'uvttFloors.lightsOff': 'Источники, свечение которых уже нарисовано на изображении, выключены.',
+  'uvttFloors.scaledDown': 'Изображения {files} уменьшены до наибольшего размера, который хранит карта.',
+  'uvttFloors.title': 'Импорт карт: {count}',
+  'uvttFloors.sceneName': 'Название сцены',
+  'uvttFloors.levels': 'Уровни, сверху вниз',
+  'uvttFloors.asScenes': 'Импортировать как отдельные сцены ({count})',
+  'uvttFloors.asLevels': 'Импортировать одной сценой',
+  'uvttFloors.separately': 'Каждый файл стал отдельной сценой. {reason}',
+};

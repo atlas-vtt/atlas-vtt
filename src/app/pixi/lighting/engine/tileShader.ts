@@ -42,6 +42,7 @@ in vec2 vUv;
 uniform vec4 uTileRect;
 uniform vec2 uLight;
 uniform float uFlame;
+uniform float uReach;
 uniform float uRays;
 uniform float uOffsets[${TILE_RAYS}];
 out vec4 finalColor;
@@ -69,7 +70,8 @@ bool coneClear(vec2 p) {
 void main() {
   vec2 p = uTileRect.xy + vUv * uTileRect.zw;
   float vis = 0.0;
-  if (clearance(p) > 0.0) {
+  // The tile is a square around the light's reach: its corners beyond it get no light anyway.
+  if (distance(p, uLight) <= uReach && clearance(p) > 0.0) {
     if (coneClear(p)) vis = 1.0;
     else {
       vec2 dir = normalize(uLight - p + vec2(1e-6));

@@ -9,6 +9,7 @@ import {
 } from '../../model/tableEdits';
 import { MAX_TABLE_COLUMNS, MAX_TABLE_ROWS, type TableGrid } from '../../model/tableGrid';
 import type { TableAlign } from '../../model/templateTypes';
+import { t } from '../../../i18n';
 
 export type TableCommand =
   | { kind: 'insert-row'; at: number }
@@ -30,35 +31,34 @@ export interface CommandOutcome {
   refused?: string | undefined;
 }
 
-const ALIGN_WORDS: Readonly<Record<TableAlign, string>> = { start: 'left', center: 'center', end: 'right' };
 
 /** "column Str" or "column 3" where it has no name. */
 function columnWords(grid: TableGrid, col: number): string {
   const name = grid.columns[col]?.name.trim();
-  return name ? `column ${name}` : `column ${col + 1}`;
+  return name ? t('statblockEditor.table.columnWordsNamed', { name }) : t('statblockEditor.table.columnWordsN', { n: col + 1 });
 }
 
 /** The table after `command`, and what to say; the very grid where the command changes nothing. */
 export function runTableCommand(grid: TableGrid, command: TableCommand): CommandOutcome {
   switch (command.kind) {
     case 'insert-row': {
-      if (!canAddRow(grid)) return { grid, said: '', refused: `A table holds at most ${MAX_TABLE_ROWS} rows.` };
-      return { grid: insertRow(grid, command.at), said: `Added row ${command.at + 1}.` };
+      if (!canAddRow(grid)) return { grid, said: '', refused: t('statblockEditor.table.rowsFull', { count: MAX_TABLE_ROWS }) };
+      return { grid: insertRow(grid, command.at), said: t('statblockEditor.table.addedRow', { n: command.at + 1 }) };
     }
-    case 'duplicate-row': return { grid: duplicateRow(grid, command.row), said: `Duplicated row ${command.row + 1}.` };
-    case 'delete-row': return { grid: deleteRow(grid, command.row), said: `Deleted row ${command.row + 1}.` };
-    case 'move-row': return { grid: moveRow(grid, command.from, command.to), said: `Moved row ${command.from + 1} to row ${command.to + 1}.` };
+    case 'duplicate-row': return { grid: duplicateRow(grid, command.row), said: t('statblockEditor.table.duplicatedRow', { n: command.row + 1 }) };
+    case 'delete-row': return { grid: deleteRow(grid, command.row), said: t('statblockEditor.table.deletedRow', { n: command.row + 1 }) };
+    case 'move-row': return { grid: moveRow(grid, command.from, command.to), said: t('statblockEditor.table.movedRow', { from: command.from + 1, to: command.to + 1 }) };
     case 'insert-column': {
-      if (!canAddColumn(grid)) return { grid, said: '', refused: `A table holds at most ${MAX_TABLE_COLUMNS} columns.` };
-      return { grid: insertColumn(grid, command.at, command.align), said: `Added column ${command.at + 1}.` };
+      if (!canAddColumn(grid)) return { grid, said: '', refused: t('statblockEditor.table.columnsFull', { count: MAX_TABLE_COLUMNS }) };
+      return { grid: insertColumn(grid, command.at, command.align), said: t('statblockEditor.table.addedColumn', { n: command.at + 1 }) };
     }
-    case 'duplicate-column': return { grid: duplicateColumn(grid, command.col), said: `Duplicated ${columnWords(grid, command.col)}.` };
-    case 'delete-column': return { grid: deleteColumn(grid, command.col), said: `Deleted ${columnWords(grid, command.col)}.` };
-    case 'move-column': return { grid: moveColumn(grid, command.from, command.to), said: `Moved ${columnWords(grid, command.from)}.` };
-    case 'align': return { grid: alignColumns(grid, [command.col], command.align), said: `Aligned ${columnWords(grid, command.col)} ${ALIGN_WORDS[command.align]}.` };
+    case 'duplicate-column': return { grid: duplicateColumn(grid, command.col), said: t('statblockEditor.table.duplicated', { column: columnWords(grid, command.col) }) };
+    case 'delete-column': return { grid: deleteColumn(grid, command.col), said: t('statblockEditor.table.deleted', { column: columnWords(grid, command.col) }) };
+    case 'move-column': return { grid: moveColumn(grid, command.from, command.to), said: t('statblockEditor.table.moved', { column: columnWords(grid, command.from) }) };
+    case 'align': return { grid: alignColumns(grid, [command.col], command.align), said: (command.align === 'start' ? t('statblockEditor.table.alignedLeft', { column: columnWords(grid, command.col) }) : command.align === 'end' ? t('statblockEditor.table.alignedRight', { column: columnWords(grid, command.col) }) : t('statblockEditor.table.alignedCenter', { column: columnWords(grid, command.col) })) };
     case 'sort': {
       const sorted = sortRows(grid, command.col, command.direction);
-      return { grid: sorted, said: `Sorted by ${columnWords(grid, command.col)}, ${command.direction > 0 ? 'A to Z' : 'Z to A'}.` };
+      return { grid: sorted, said: command.direction > 0 ? t('statblockEditor.table.sortedAZ', { column: columnWords(grid, command.col) }) : t('statblockEditor.table.sortedZA', { column: columnWords(grid, command.col) }) };
     }
   }
 }

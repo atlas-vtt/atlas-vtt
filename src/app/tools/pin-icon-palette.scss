@@ -1,14 +1,43 @@
 @use '../../../styles/tokens' as *;
 @use '../../../styles/mixins' as *;
 
-// Pin icon palette of the note pin dropdown, and the place flyout of its location slot.
+// Pin icon palette of the note pin dropdown, and the place flyout of its location slot. The Draw
+// tool's Stamp mode opens the same flyout from its Symbol button, in a host of its own
+// (`.atlas-stamp-symbols`, `StampSymbolTool.tsx`), with every icon, a search and no tones.
 // Radii come from the dropdown (`--pin-btn-radius`, `--pin-inset-radius`, styles/main.scss).
 
 $flyout-gap: $spacing-s; // matches ANCHOR_GAP_PX in pinPlaceFlyout.ts
-$flyout-columns: 8; // matches COLUMNS in pinPlaceFlyout.ts
+$flyout-columns: 8; // matches COLUMNS in pinPlaceRows.ts
 $flyout-enter: 160ms;
 
-.atlas-note-pin-dropdown {
+// Where the Symbol button's flyout hangs: nothing itself, over the map's bars.
+.atlas-stamp-symbols {
+  --pin-btn-radius: #{$radius-m};
+  --pin-inset-radius: calc(var(--pin-btn-radius) + #{$spacing-xs} + #{$border-width-s});
+
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: $z-atlas-dropdown;
+  color: var(--text-normal);
+  font-family: var(--font-interface);
+  font-size: $font-ui-small;
+
+  // Seventy-six icons are taller than many windows: the groups scroll, the name and the search stay.
+  .pin-place-flyout {
+    box-sizing: border-box;
+    max-height: min(560px, calc(100vh - 150px));
+    border-radius: calc(var(--pin-inset-radius) + #{$spacing-m} + #{$border-width-m});
+  }
+
+  // As wide as its rows of icons whatever a search leaves of them, so the panel keeps its width.
+  .pin-place-groups {
+    min-width: calc(#{$flyout-columns} * #{$button-height-m} + #{$flyout-columns - 1} * #{$spacing-xs});
+  }
+}
+
+.atlas-note-pin-dropdown,
+.atlas-stamp-symbols {
   .pin-icon-row {
     @include atlas-inset-surface;
     @include atlas-flex-row($gap: $spacing-xs);
@@ -68,6 +97,11 @@ $flyout-enter: 160ms;
 
     &:active {
       transform: scale(0.96);
+    }
+
+    // What a search leaves out.
+    &[hidden] {
+      display: none;
     }
 
     &.is-selected {
@@ -175,8 +209,36 @@ $flyout-enter: 160ms;
     }
   }
 
+  // The search of a flyout that has one, between the name and the icons.
+  .pin-place-search {
+    @include atlas-text-input;
+    box-sizing: border-box;
+    width: 100%;
+    border-radius: var(--pin-inset-radius);
+  }
+
+  .pin-place-groups {
+    @include atlas-flex-col($gap: $spacing-m);
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .pin-place-empty {
+    padding: $spacing-xs;
+    color: var(--text-muted);
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
   .pin-place-group {
     @include atlas-flex-col($gap: $spacing-xs);
+    flex: none;
+
+    &[hidden] {
+      display: none;
+    }
   }
 
   .pin-place-group-name {
@@ -197,7 +259,8 @@ $flyout-enter: 160ms;
   }
 }
 
-.theme-dark .atlas-note-pin-dropdown {
+.theme-dark .atlas-note-pin-dropdown,
+.theme-dark .atlas-stamp-symbols {
   .pin-icon-btn,
   .pin-place-caption {
     --pin-color: var(--pin-color-dark, var(--text-normal));

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { create } from 'zustand';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
 
@@ -17,7 +17,9 @@ vi.mock('../../src/app/utils/activeLeafGuard', () => ({ isShortcutScopeActive: (
 vi.mock('../../src/app/react/components/command-palette/GridSettingsPanel', () => ({ GridSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/TokenSettingsPanel', () => ({ TokenSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/WidgetSettingsPanel', () => ({ WidgetSettingsPanel: () => null }));
-vi.mock('../../src/app/react/components/command-palette/LocalPlayerViewSettingsPanel', () => ({ LocalPlayerViewSettingsPanel: () => null }));
+vi.mock('../../src/app/react/components/command-palette/PlayerViewSettingsPanel', () => ({ PlayerViewSettingsPanel: () => null }));
+vi.mock('../../src/app/react/components/command-palette/LightingSettingsPanel', () => ({ LightingSettingsPanel: () => <div data-testid="lighting-page" /> }));
+vi.mock('../../src/app/react/components/command-palette/GraphicsPanel', () => ({ GraphicsPanel: () => <div data-testid="graphics-page" /> }));
 
 import { CommandPalette } from '../../src/app/react/components/CommandPalette';
 
@@ -41,7 +43,7 @@ describe('Atlas search actions', () => {
     const onClose = vi.fn();
     const palette = (open: boolean): React.ReactElement => <ViewStoreProvider store={store}><CommandPalette isOpen={open} onClose={onClose} /></ViewStoreProvider>;
     const view = render(palette(true));
-    const input = screen.getByPlaceholderText('Search commands...');
+    const input = screen.getByPlaceholderText('Search commands…');
     const focus = vi.spyOn(input, 'focus');
     view.rerender(palette(false));
     act(() => vi.advanceTimersByTime(100));
@@ -62,13 +64,71 @@ describe('Atlas search actions', () => {
     }
   });
 
+  it('opens on the Lighting page the lighting menu asked for, which leads on to the Graphics page', () => {
+    const store = create(() => ({ commandPalettePage: 'lighting-settings' }));
+    render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={vi.fn()} /></ViewStoreProvider>);
+    expect(screen.getByRole('heading', { name: 'Lighting settings' })).toBeTruthy();
+    expect(screen.getByTestId('lighting-page')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Graphics settings' }));
+    expect(screen.getByRole('heading', { name: 'Graphics Settings' })).toBeTruthy();
+    expect(screen.getByTestId('graphics-page')).toBeTruthy();
+  });
+
+  it('finds the Lighting page by what it holds', () => {
+    const store = create(() => ({}));
+    render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={vi.fn()} /></ViewStoreProvider>);
+    fireEvent.change(screen.getByPlaceholderText('Search commands…'), { target: { value: 'darkvision' } });
+    fireEvent.click(screen.getByText('Lighting settings'));
+    expect(screen.getByTestId('lighting-page')).toBeTruthy();
+  });
+
+  describe('outside presses', () => {
+    function renderWithToolbar(onClose: () => void): void {
+      const toolbar = document.createElement('div');
+      document.body.appendChild(toolbar);
+      onTestFinished(() => toolbar.remove());
+      const toolbarRef = { current: toolbar };
+      render(<ViewStoreProvider store={create(() => ({}))}><CommandPalette isOpen onClose={onClose} toolbarRef={toolbarRef} /></ViewStoreProvider>);
+    }
+
+    beforeEach(() => vi.useFakeTimers());
+
+    it('stays open when a quick click on an entry replaces the list before the close check runs', () => {
+      const onClose = vi.fn();
+      renderWithToolbar(onClose);
+      const entry = screen.getByRole('button', { name: 'Widget settings' });
+      fireEvent.mouseDown(entry);
+      fireEvent.mouseUp(entry);
+      fireEvent.click(entry);
+      act(() => vi.advanceTimersByTime(20));
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('closes on a press outside the palette and the toolbar', () => {
+      const onClose = vi.fn();
+      renderWithToolbar(onClose);
+      fireEvent.mouseDown(document.body);
+      act(() => vi.advanceTimersByTime(20));
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not close after unmounting when the press came just before', () => {
+      const onClose = vi.fn();
+      renderWithToolbar(onClose);
+      fireEvent.mouseDown(document.body);
+      cleanup();
+      act(() => vi.advanceTimersByTime(20));
+      expect(onClose).not.toHaveBeenCalled();
+    });
+  });
+
   it.each([
     { shiftKey: false, labels: ['Tools', 'Mode', 'Settings', 'All'] },
     { shiftKey: true, labels: ['Settings', 'Mode', 'Tools', 'All'] },
   ])('cycles palette tabs with wraparound (shift: $shiftKey)', ({ shiftKey, labels }) => {
     const store = create(() => ({}));
     render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={vi.fn()} /></ViewStoreProvider>);
-    const input = screen.getByPlaceholderText('Search commands...');
+    const input = screen.getByPlaceholderText('Search commands…');
     fireEvent.change(input, { target: { value: 'no matching command' } });
 
     for (const label of labels) {
@@ -96,12 +156,12 @@ describe('Atlas search actions', () => {
     const onClose = vi.fn();
     const store = create(() => ({}));
     render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={onClose} /></ViewStoreProvider>);
-    const input = screen.getByPlaceholderText('Search commands...');
+    const input = screen.getByPlaceholderText('Search commands…');
     fireEvent.keyDown(input, { key: 'Tab' });
     fireEvent.keyDown(input, { key: 'Tab' });
     expect(screen.getByRole('button', { name: /^Enter Player Mode/ }).classList.contains('atlas-focused')).toBe(true);
     fireEvent.keyDown(input, { key: 'ArrowDown' });
-    expect(screen.getByRole('button', { name: /^Freeze Player Camera/ }).classList.contains('atlas-focused')).toBe(true);
+    expect(screen.getByRole('button', { name: /^Pause Player View/ }).classList.contains('atlas-focused')).toBe(true);
     fireEvent.keyDown(input, { key: 'ArrowUp' });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(onClose).toHaveBeenCalledOnce();
@@ -112,14 +172,14 @@ describe('Atlas search actions', () => {
     const store = create(() => ({}));
     render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={onClose} /></ViewStoreProvider>);
 
-    fireEvent.change(screen.getByPlaceholderText('Search commands...'), { target: { value: 'player window' } });
+    fireEvent.change(screen.getByPlaceholderText('Search commands…'), { target: { value: 'player window' } });
     fireEvent.click(screen.getByRole('button', { name: /^Open Player Window/ }));
 
     expect(openPlayerWindow).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it.each(['Grid settings', 'Token settings', 'Widget settings', 'Local player view settings'])('preserves native Tab navigation inside %s', (label) => {
+  it.each(['Grid settings', 'Token settings', 'Widget settings', 'Player view settings'])('preserves native Tab navigation inside %s', (label) => {
     const store = create(() => ({}));
     render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={vi.fn()} /></ViewStoreProvider>);
     fireEvent.click(screen.getByRole('button', { name: label }));
@@ -134,7 +194,7 @@ describe('Atlas search actions', () => {
     const store = create(() => ({ setActiveTool }));
     render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={onClose} /></ViewStoreProvider>);
 
-    fireEvent.change(screen.getByPlaceholderText('Search commands...'), { target: { value: query } });
+    fireEvent.change(screen.getByPlaceholderText('Search commands…'), { target: { value: query } });
     fireEvent.click(screen.getByRole('button', { name: 'Open scene browser' }));
 
     expect(openSceneBrowser).toHaveBeenCalledOnce();
@@ -154,7 +214,7 @@ describe('Atlas search actions', () => {
     render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={onClose} /></ViewStoreProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: /Tools/ }));
-    const input = screen.getByPlaceholderText('Search commands...');
+    const input = screen.getByPlaceholderText('Search commands…');
     fireEvent.change(input, { target: { value: 'dice log' } });
     const action = screen.getByRole('button', { name: /Open dice log/ });
     expect(action.querySelector('.atlas-command-item-toggle')).toBeNull();

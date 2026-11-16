@@ -22,6 +22,7 @@ export function describeMapObjects(content: MapObjectContent): string {
   ];
   const drawings = content.drawings.length;
   if (drawings > 0) lines.push(drawings === 1 ? '1 drawing' : `${drawings} drawings`);
+  if (content.levelLinks.length > 0) lines.push(t('levels.copiedStairs', { count: content.levelLinks.length }));
   return lines.join('\n');
 }
 

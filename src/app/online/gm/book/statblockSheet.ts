@@ -16,6 +16,7 @@ import type { SheetBuild } from './sheetFields.ts';
 import { fittedNodes, sheetNodes, type SheetWalk } from './sheetNodes.ts';
 import { sheetHead } from './sheetSigils.ts';
 import { SheetTexts, type SheetTextAsset } from './sheetTexts.ts';
+import type { AssetStoring } from '../assets/assetUses.ts';
 
 /** What a player's own character's statblock is drawn from. */
 export interface StatblockSheetInput {
@@ -26,6 +27,8 @@ export interface StatblockSheetInput {
   readonly resources: Readonly<Record<string, ResourceValue>> | undefined;
   /** The width of the GM's statblock panel, which the card is laid out at (`paneCardWidth`); unset, a default. */
   readonly panelWidth?: number;
+  /** The text a link in an ability's name names (`abilityLink`), from the note; null where there is none. Unset, links are not followed. */
+  readonly readLink?: (link: string) => Promise<string | null>;
 }
 
 /** The template's column width where it sets none (`StatblockSheet`). */
@@ -45,7 +48,7 @@ function sheetCard(template: StatblockTemplate, panelWidth: number | undefined, 
   };
 }
 
-/** A drawn statblock, and the whole texts it names by hash, for the player it is drawn for to fetch. */
+/** A drawn statblock, and the whole texts it names by their stored ids, for the player it is drawn for to fetch. */
 export interface DrawnStatblock {
   readonly statblock: BookStatblock | null;
   readonly texts: readonly SheetTextAsset[];
@@ -124,13 +127,27 @@ export function statblockSheet(input: StatblockSheetInput, texts: SheetTexts = n
   };
 }
 
-/** The statblock drawn with every whole text it names by hash (drawn twice: hashing takes a promise), and those texts to serve. */
-export async function drawnStatblock(input: StatblockSheetInput): Promise<DrawnStatblock> {
-  const first = new SheetTexts();
+/** The texts the abilities' names link, read once a drawing named them (a drawing more: reading takes a promise). */
+async function linkedTexts(input: StatblockSheetInput): Promise<ReadonlyMap<string, string>> {
+  const { readLink } = input;
+  const asking = new SheetTexts();
+  if (readLink === undefined || statblockSheet(input, asking) === null || asking.links.size === 0) return new Map();
+  const links = [...asking.links];
+  const texts = await Promise.all(links.map((link) => readLink(link).catch((): null => null)));
+  return new Map(links.flatMap((link, index): [string, string][] => {
+    const text = texts[index]?.trim();
+    return text ? [[link, text]] : [];
+  }));
+}
+
+/** The statblock drawn with the texts its abilities link and every whole text it names by hash (drawn twice: hashing takes a promise), and those texts to store. */
+export async function drawnStatblock(input: StatblockSheetInput, stored?: AssetStoring): Promise<DrawnStatblock> {
+  const linked = await linkedTexts(input);
+  const first = new SheetTexts(new Map(), linked);
   const statblock = statblockSheet(input, first);
   if (statblock === null || first.wanted.size === 0) return { statblock, texts: [] };
-  const assets = await first.hashed();
-  const drawn = statblockSheet(input, new SheetTexts(new Map([...assets].map(([text, asset]) => [text, asset.ref]))));
+  const assets = await first.hashed(stored);
+  const drawn = statblockSheet(input, new SheetTexts(new Map([...assets].map(([text, asset]) => [text, asset.ref])), linked));
   const named = new Set(namedTexts(drawn));
   return { statblock: drawn, texts: [...assets.values()].filter((asset) => named.has(asset.ref.hash)) };
 }

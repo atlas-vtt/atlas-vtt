@@ -56,11 +56,12 @@ describe('how much a light lights that the rules do not count', () => {
     const allAround = await uncounted({});
     const beam = await uncounted({ rotation: 90, angle: 53 });
     console.info(`uncounted lit area, share of the counted: all around ${(allAround * 100).toFixed(1)} %, bullseye beam ${(beam * 100).toFixed(1)} %`);
-    expect(allAround).toBeLessThan(0.12);
+    // Since lights fade within their dim range and beams within their cone (2026-10-23): none.
+    expect(allAround).toBeLessThan(0.01);
     expect(beam).toBeLessThanOrEqual(allAround);
   });
 
-  it('stays under 12 % for every beam the slider makes of every built-in light, the narrowest and shortest too', { timeout: 600_000 }, async () => {
+  it('stays under 1 % for every beam the slider makes of every built-in light, the narrowest and shortest too', { timeout: 600_000 }, async () => {
     const shares: { angle: number; bright: number; dim: number; share: number }[] = [];
     for (const [bright, dim] of PRESET_RADII) {
       for (const angle of ANGLES) shares.push({ angle, bright, dim, share: await uncounted({ bright, dim, angle, rotation: 35 }) });
@@ -69,6 +70,6 @@ describe('how much a light lights that the rules do not count', () => {
     const named = (list: typeof shares): string => list.map(({ angle, bright, dim, share }) => `${angle}° ${bright}/${dim} ft ${(share * 100).toFixed(1)} %`).join(', ');
     console.info(`uncounted lit area of beams, worst: ${named(worst)}`);
     console.info(`uncounted lit area of beams, the review's cases: ${named(shares.filter(({ angle, dim }) => [15, 30, 53].includes(angle) && [20, 40, 120].includes(dim)))}`);
-    expect(worst[0]!.share).toBeLessThan(0.12);
+    expect(worst[0]!.share).toBeLessThan(0.01);
   });
 });

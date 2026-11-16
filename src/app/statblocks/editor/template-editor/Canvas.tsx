@@ -15,6 +15,7 @@ import { primaryOf, withSibling, type BlockSelection } from './selection';
 import { tabAt, withoutClosedTab } from './tabClicks';
 import { labelPartAt, type LabelPart } from './labelTargets';
 import { LIVE_TABLE_ATTRIBUTE } from '../table/EditableTable';
+import { t } from '../../../i18n';
 
 /** Marks the elements whose focus the block keys act on: the canvas. */
 export const BLOCK_KEYS_SELECTOR = '[data-te-blocks]';
@@ -157,7 +158,7 @@ export function Canvas(props: CanvasProps): React.JSX.Element {
       data-te-region="canvas"
       tabIndex={primary ? -1 : 0}
       role="group"
-      aria-label="Template canvas"
+      aria-label={t('templateEditor.canvas')}
       onClickCapture={onClickCapture}
       onDoubleClickCapture={onDoubleClickCapture}
       onFocus={onFocus}

@@ -1,4 +1,5 @@
 import { format, isDeepStrictEqual } from 'node:util';
+import { lightsAsBefore } from './sceneModelLights';
 import { tokenVisionOn } from '../../src/app/lighting/sceneLightingOptions';
 import { withZones } from '../../src/app/lighting/lightZones';
 import { SightTokens, heldForSight } from '../../src/app/lighting/sightOnDrop';
@@ -79,7 +80,7 @@ export function hiddenSightMismatches(scene: SightScene, reference: HiddenRefere
   const earlier = new EarlierBuilder().update(state, bounds, measurement, rulesOf).model;
   differ('GM sight', gmSight, earlier.sight);
   differ('GM footprints', gmSpots, new EarlierSpots().update(earlier, state, measurement, rulesOf));
-  for (const field of ['walls', 'lights', 'reaches', 'zones', 'ambient'] as const) differ(`scene ${field}`, model[field], earlier[field]);
+  for (const field of ['walls', 'lights', 'reaches', 'zones', 'ambient'] as const) differ(`scene ${field}`, field === 'lights' ? lightsAsBefore(model.lights, model.reaches, earlier.lights) : model[field], earlier[field]);
 
   const expected = playersReference(scene, earlier, reference);
   for (const part of Object.keys(expected) as (keyof PlayersPicture)[]) differ(`player view: ${part}`, today[part], expected[part]);

@@ -17,6 +17,7 @@ import { FileTableImport } from './FileTableImport';
 import type { ImportedTableNote, ImportSaveJournal } from '../../../randomTables/import/saveImportedTables';
 import { IMPORT_LIMITS, validateImportTable } from '../../../randomTables/import/importModel';
 import { t } from '../../../i18n';
+import { portalHost } from '../../../host/portalHost';
 
 const KINDS = [
   { value: 'text', label: t('tables.kind.text') },
@@ -168,6 +169,6 @@ export function PasteTableDialog({ folder, onSave, onImport, onClose }: PasteTab
         </>}
       </motion.div>
     </motion.div>,
-    doc.body,
+    portalHost(doc),
   );
 }

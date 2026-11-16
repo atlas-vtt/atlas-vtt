@@ -6,9 +6,8 @@ import { createSceneLighting, type SceneLightingDeps } from '../../src/app/pixi/
 import type { ViewAtlasStore } from '../../src/app/storeFactory';
 import { GENERIC_SIGHT_RULES } from '../../src/app/vision/sightRules';
 
-const built = vi.hoisted(() => ({ engine: [] as unknown[], fallback: [] as unknown[], canvas: false }));
+const built = vi.hoisted(() => ({ engine: [] as unknown[], fallback: [] as unknown[] }));
 
-vi.mock('../../src/app/pixi/utils/rendererType', () => ({ usesCanvasRenderer: () => built.canvas }));
 vi.mock('../../src/app/pixi/lighting/LightingRenderer', () => ({
   LightingRenderer: class {
     modeLayer = { visible: false };
@@ -40,16 +39,8 @@ describe('createSceneLighting', () => {
   });
 
   it('gives the engine view the map\'s sight rules and its report of new sight', () => {
-    built.canvas = false;
     createSceneLighting(deps()).destroy();
     expect(built.engine).toHaveLength(1);
     expect(built.engine[0]).toMatchObject({ rules, onSightChange });
-  });
-
-  it('gives the line-of-sight fallback the same', () => {
-    built.canvas = true;
-    createSceneLighting(deps()).destroy();
-    expect(built.fallback).toHaveLength(1);
-    expect(built.fallback[0]).toMatchObject({ rules, onSightChange });
   });
 });

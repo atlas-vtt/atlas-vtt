@@ -33,10 +33,6 @@ export const TOOLBAR_CONTROLS = [
     description: t('toolbarEdit.draw.description'),
   },
   {
-    id: 'text', label: t('toolbarEdit.text.label'), hotkey: 'text', dmOnly: true, hideable: true,
-    description: t('toolbarEdit.text.description'),
-  },
-  {
     id: 'measure', label: t('toolbarEdit.measure.label'), hotkey: 'measure', dmOnly: false, hideable: true,
     description: t('toolbarEdit.measure.description'),
   },

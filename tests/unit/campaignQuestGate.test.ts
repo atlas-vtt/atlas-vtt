@@ -3,7 +3,10 @@ import type { App } from 'obsidian';
 import { CampaignPlay } from '../../src/app/campaigns/campaignPlay';
 import { QuestIndex } from '../../src/app/campaigns/quests/QuestIndex';
 import { QUEST_ID } from '../../src/app/campaigns/quests/questProperties';
-import { MAX_BOOK_QUESTS, MAX_MAP_TITLE, MAX_QUEST_BODY, parsePlayerBook, type BookQuest } from '../../src/app/online/protocol/index.ts';
+import { MAX_BOOK_QUESTS, MAX_MAP_TITLE, MAX_QUEST_BODY, parsePlayerBook } from '../../src/app/online/protocol/index.ts';
+import type { HandedQuest } from '../../src/app/online/gm/book/questGate';
+import { StoredQuests } from '../../src/app/online/gm/book/storedQuests';
+import { fakeStoring } from './online/gm/fakeStoring';
 import { campaignQuestGate } from '../../src/app/plugin/campaignQuestGate';
 import { memoryCampaigns } from '../mocks/memoryCampaigns';
 import { questVault, type QuestVault } from '../mocks/questVault';
@@ -14,7 +17,7 @@ const note = (properties: string, body = ''): string => `---\natlas-type: quest\
 const opened: App[] = [];
 
 /** A vault with these notes, its quest index, two campaigns, and the gate players' books ask. */
-function setUp(files: Record<string, string>, created: Record<string, number> = {}): { vault: QuestVault; play: CampaignPlay; quests: () => Promise<readonly BookQuest[]>; gate: ReturnType<typeof campaignQuestGate> } {
+function setUp(files: Record<string, string>, created: Record<string, number> = {}): { vault: QuestVault; play: CampaignPlay; quests: () => Promise<readonly HandedQuest[]>; gate: ReturnType<typeof campaignQuestGate> } {
   const vault = questVault(files, created);
   opened.push(vault.app);
   const index = QuestIndex.open(vault.app);
@@ -53,7 +56,7 @@ describe('the quests players are sent', () => {
     }, { 'Q/Crown.md': 1, 'Q/Crown copy.md': 5, 'Q/Eggs.md': 2 });
     play.play('c-1');
     const first = await quests();
-    const idOf = (title: string, list: readonly BookQuest[]): string | undefined => list.find((quest) => quest.title === title)?.id;
+    const idOf = (title: string, list: readonly HandedQuest[]): string | undefined => list.find((quest) => quest.title === title)?.id;
     expect(idOf('Crown', first)).toBe(KEPT);
     expect(idOf('Crown copy', first)).toMatch(QUEST_ID);
     expect(idOf('Crown copy', first)).not.toBe(KEPT);
@@ -74,7 +77,7 @@ describe('the quests players are sent', () => {
       [`Q/${'A very long title '.repeat(10)}.md`]: note('campaign: Blood Olms'),
     };
     for (let n = 0; n < MAX_BOOK_QUESTS + 5; n++) files[`Q/Many ${String(n).padStart(3, '0')}.md`] = note('campaign: Blood Olms\nkind: side\nstatus: done');
-    const { play, quests } = setUp(files);
+    const { play, quests, gate } = setUp(files);
     play.play('c-1');
     const sent = await quests();
     expect(sent).toHaveLength(MAX_BOOK_QUESTS);
@@ -86,7 +89,8 @@ describe('the quests players are sent', () => {
     expect(long?.rewards).toHaveLength(2);
     expect([...(long?.rewards[0] ?? '')].length).toBeLessThanOrEqual(MAX_MAP_TITLE);
     expect(sent.some((quest) => quest.title.startsWith('A very long title') && [...quest.title].length <= MAX_MAP_TITLE)).toBe(true);
-    expect(parsePlayerBook({ character: null, worldMap: null, items: [], notes: [], pins: [], quests: sent, purse: [] })?.quests).toHaveLength(MAX_BOOK_QUESTS);
+    const stored = await new StoredQuests(fakeStoring(), (hash) => gate.asset(hash)).of(sent);
+    expect(parsePlayerBook({ character: null, worldMap: null, items: [], notes: [], pins: [], quests: stored, purse: [] })?.quests).toHaveLength(MAX_BOOK_QUESTS);
   });
 
   it('may be others once a quest note changes or another campaign is played', async () => {

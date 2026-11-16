@@ -24,7 +24,7 @@ export interface StatblockEntries {
 export function useStatblockEntries(app: App): StatblockEntries {
   const revision = useBestiaryRevision(app, BESTIARY_SETTLE_MS);
   // `revision` is not read here; it re-reads the bestiary whenever it changes.
-  const bestiary = useMemo(() => bestiaryLookup(), [revision]);
+  const bestiary = useMemo(() => bestiaryLookup(app), [app, revision]);
   // The previous read stays listed while the vault is read again.
   const [notes, setNotes] = useState<NoteEntry[] | null>(null);
 

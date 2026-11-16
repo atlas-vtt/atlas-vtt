@@ -4,7 +4,7 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';
 import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/app/types/initiativeTypes';
-import type { PlayerBadgeNumbers } from '../../src/app/pixi/token-renderer/PlayerInstanceBadges';
+import type { PlayerBadgeNumbers } from '../../src/app/pixi/token-renderer/PlayerBadgeNumbers';
 import { PlayerWindowService } from '../../src/app/services/PlayerWindowService';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { createInMemoryApp } from '../mocks/inMemoryVault';

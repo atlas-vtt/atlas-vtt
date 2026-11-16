@@ -6,6 +6,7 @@ import { blockGlyph } from '../editorGlyphs';
 import { insertItems, itemKey, type InsertItem } from '../insertItems';
 import { UNDOES_PLACEMENT } from '../naming/NamePopover';
 import { shortcutText } from '../shortcutText';
+import { t } from '../../../../i18n';
 import './dock.scss';
 
 export interface EditorDockProps {
@@ -22,7 +23,7 @@ function AddButton({ item, onAdd }: { item: InsertItem; onAdd: EditorDockProps['
   const drag = useKindDrag(item, !onAdd);
   return (
     <span ref={drag.ref} className="atlas-te-dock__add" data-item={itemKey(item)} onPointerDown={drag.onPointerDown}>
-      <ToolButton icon={blockGlyph(item.type)} label={`Add ${item.label.toLowerCase()}`} subtitle={item.example} isActive={false} disabled={!onAdd} tooltipSide="left"
+      <ToolButton icon={blockGlyph(item.type)} label={t('templateEditor.addKind', { kind: item.label.toLowerCase() })} subtitle={item.example} isActive={false} disabled={!onAdd} tooltipSide="left"
         onClick={() => onAdd?.(item)} />
     </span>
   );
@@ -37,13 +38,13 @@ function AddButton({ item, onAdd }: { item: InsertItem; onAdd: EditorDockProps['
  */
 export function EditorDock({ onAdd, canUndo, canRedo, onUndo, onRedo }: EditorDockProps): React.JSX.Element {
   return (
-    <div className="atlas-te-dock" role="toolbar" aria-orientation="vertical" aria-label="Add to the template" data-te-region="dock">
+    <div className="atlas-te-dock" role="toolbar" aria-orientation="vertical" aria-label={t('templateEditor.dock')} data-te-region="dock">
       {insertItems().map((item) => <AddButton key={itemKey(item)} item={item} onAdd={onAdd} />)}
       <span className="atlas-te-dock__divider" aria-hidden="true" />
       <span className="atlas-te-dock__history" {...{ [UNDOES_PLACEMENT]: '' }}>
-        <ToolButton icon={Undo2} label="Undo" shortcut={shortcutText(['Mod'], 'Z')} isActive={false} disabled={!canUndo} onClick={onUndo} tooltipSide="left" />
+        <ToolButton icon={Undo2} label={t('templateEditor.undo')} shortcut={shortcutText(['Mod'], 'Z')} isActive={false} disabled={!canUndo} onClick={onUndo} tooltipSide="left" />
       </span>
-      <ToolButton icon={Redo2} label="Redo" shortcut={shortcutText(['Mod', 'Shift'], 'Z')} isActive={false} disabled={!canRedo} onClick={onRedo} tooltipSide="left" />
+      <ToolButton icon={Redo2} label={t('templateEditor.redo')} shortcut={shortcutText(['Mod', 'Shift'], 'Z')} isActive={false} disabled={!canRedo} onClick={onRedo} tooltipSide="left" />
     </div>
   );
 }

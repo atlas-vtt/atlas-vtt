@@ -5,10 +5,9 @@ import type { ViewState } from '../types/viewState';
 import { LASER_FADE_TIME, type LaserPointerSettings } from '../tools/laserPointerSettings';
 import { setCanvasCursor } from './utils/canvasCursor';
 import { destroyTree } from './utils/destroyTree';
+import { isPrimaryPress } from './utils/pointerButtons';
 import { MAX_TRAIL_SAMPLES, type BeamPoint } from './laser/laserBeamGeometry';
 import { LaserBeam, beamWidth, type LaserBeamView } from './laser/LaserBeam';
-import { CanvasLaserBeam } from './laser/CanvasLaserBeam';
-import { usesCanvasRenderer } from './utils/rendererType';
 
 interface TrailPoint {
   x: number;
@@ -80,7 +79,7 @@ export class LaserPointerRenderer {
     this.container.interactive = false;
     this.container.interactiveChildren = false;
 
-    this.beam = usesCanvasRenderer(pixiApp.renderer) ? new CanvasLaserBeam() : new LaserBeam();
+    this.beam = new LaserBeam();
     this.container.addChild(this.beam.view);
 
     this.readSettings = readSettings;
@@ -142,10 +141,9 @@ export class LaserPointerRenderer {
   }
 
   private handlePointerDown(e: FederatedPointerEvent): void {
-    const button: number = e.button;
     // Middle-click → quick mode regardless of active tool; left-click when the laser tool is active
-    const quick = button === 1;
-    if (!quick && !(button === 0 && this.isToolActive)) return;
+    const quick = e.button === 1;
+    if (!quick && !(isPrimaryPress(e) && this.isToolActive)) return;
     const world = this.getWorldFromPointerEvent(e);
     if (!world) {
       return;

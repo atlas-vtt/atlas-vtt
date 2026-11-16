@@ -9,7 +9,7 @@ import {
 import { entryItemKeys } from '../../../../src/app/statblocks/values/entryKeys';
 import type { FieldValue } from '../../../../src/app/statblocks/model/templateTypes';
 
-const TEXT_REF = { hash: 'b'.repeat(64), size: 9000, mime: 'text/markdown' };
+const TEXT_REF = { hash: 'b'.repeat(64), size: 9000, mime: 'text/markdown', id: 'e'.repeat(64) };
 const BASE = sheetBase('30 ft.');
 const plain = (opening: string, extra: Partial<SheetValue> = {}): SheetValue => ({ label: null, look: 'plain', text: { opening }, field: null, prompt: null, ...extra });
 const value = (shown: SheetValue): SheetNode => ({ k: 'value', value: shown });
@@ -82,7 +82,7 @@ describe('a statblock for a player', () => {
     const broken: unknown[] = [
       { k: 'picture' }, { k: 'heading', text: 'x' }, { k: 'heading', text: '', minor: false },
       value({ ...plain('x'), look: 'html' as SheetValue['look'] }),
-      value({ ...plain('x'), text: { opening: 'x', whole: { hash: 'z', size: 1, mime: 'text/markdown' } } }),
+      value({ ...plain('x'), text: { opening: 'x', whole: { hash: 'z', size: 1, mime: 'text/markdown', id: 'e'.repeat(64) } } }),
       value({ ...plain('x'), text: { opening: 'x', whole: { ...TEXT_REF, mime: 'image/png' } } }),
       value({ ...plain('x'), resource: '' }),
       value({ ...plain('x'), pairs: [{ label: 'DEX' }] as never }),

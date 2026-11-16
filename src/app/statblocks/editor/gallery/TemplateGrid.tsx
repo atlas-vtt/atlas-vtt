@@ -3,6 +3,7 @@ import type { App } from 'obsidian';
 import type { LibraryTemplate } from '../../model/resolvedTypes';
 import type { TemplateId } from '../../model/templateTypes';
 import { GalleryCard, type CardLook } from './GalleryCard';
+import { t } from '../../../i18n';
 
 /** A card of the grid: a template of the library, or the blank template. */
 export interface GridItem {
@@ -17,7 +18,7 @@ export function templateItem(entry: LibraryTemplate): GridItem {
   return { id: entry.template.id, name: entry.name, look: { kind: 'template', template: entry.template } };
 }
 
-export const BLANK_ITEM: GridItem = { id: 'blank', name: 'Blank', look: { kind: 'blank' } };
+export const BLANK_ITEM: GridItem = { id: 'blank', name: t('statblockEditor.blank'), look: { kind: 'blank' } };
 
 const STEPS: Readonly<Record<string, 1 | -1>> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
 

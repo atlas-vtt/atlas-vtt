@@ -1,4 +1,4 @@
-import React, { FC } from "react"
+import React, { FC, useId } from "react"
 import { Check, X } from "lucide-react"
 import { cn } from "../../../../utils/cn"
 import { Tooltip, TooltipTrigger, TooltipContent } from "./tooltip"
@@ -100,3 +100,20 @@ export const Toggle: FC<ToggleProps> = ({ tooltipOn, tooltipOff, ...toggle }) =>
     </TooltipContent>
   </Tooltip>
 )
+
+export interface ToggleLabelProps extends Pick<ToggleSwitchProps, "value" | "onChange" | "disabled" | "aria-describedby"> {
+  /** The text after the switch, which names it and toggles it too. */
+  label: React.ReactNode
+  className?: string
+}
+
+/** A small switch followed by its text: an option inside a dialog's flow of text, where a row would be too much. */
+export const ToggleLabel: FC<ToggleLabelProps> = ({ label, value, onChange, disabled = false, className, ...rest }) => {
+  const id = useId()
+  return (
+    <div className={cn("atlas-toggle-label", disabled && "atlas-toggle-label--disabled", className)}>
+      <ToggleSwitch {...rest} size="s" labelledBy={id} value={value} disabled={disabled} onChange={onChange} />
+      <span id={id} className="atlas-toggle-label__text" onClick={() => { if (!disabled) onChange() }}>{label}</span>
+    </div>
+  )
+}

@@ -56,6 +56,38 @@ describe('explored stamps', () => {
     return partial;
   }
 
+  it('records only the texels a mask allows (what openings above showed), and every one of them it covers', async () => {
+    // Allowed: a ring of texels with a hole in it, so both edges and the inside are held.
+    const allowed = new Uint8Array(20 * 20);
+    for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) allowed[y * 20 + x] = x >= 6 && x < 14 && y >= 6 && y < 14 ? 0 : 1;
+    const within = { x: 10, y: 12, columns: 20, rows: 20, allowed };
+    const at = await stamped([{ polygons: [EVERYTHING], clip: null, within }]);
+    let outside = 0;
+    let missing = 0;
+    for (let y = 0; y < SIZE; y++) {
+      for (let x = 0; x < SIZE; x++) {
+        const [mx, my] = [x - within.x, y - within.y];
+        const ok = mx >= 0 && my >= 0 && mx < 20 && my < 20 && allowed[my * 20 + mx] === 1;
+        if (!ok && at(x, y) > 0) outside++;
+        if (ok && at(x, y) < 255) missing++;
+      }
+    }
+    expect({ outside, missing }).toEqual({ outside: 0, missing: 0 });
+  });
+
+  it.each([[2048, 602, 1301], [9000, 274, 208]])('keeps within a mask far from the origin of a memory of a %i px map', async (side, x, y) => {
+    const renderer = await createTestRenderer(SIZE);
+    cleanup.push(() => renderer.destroy());
+    const explored = new ExploredTexture(renderer, { width: side, height: side });
+    cleanup.push(() => explored.destroy());
+    const allowed = new Uint8Array(22 * 13).fill(1);
+    explored.add({ polygons: [rect(0, 0, side, side)], clip: null, within: { x, y, columns: 22, rows: 13, allowed } });
+    const { pixels } = renderer.extract.pixels({ target: explored.texture });
+    let recorded = 0;
+    for (let i = 0; i < pixels.length; i += 4) if (pixels[i]! > 0) recorded++;
+    expect(recorded).toBe(22 * 13);
+  });
+
   it('draws a diagonal edge anti-aliased', async () => {
     const at = await stamped([stamp(TRIANGLE)]);
     expect(at(5, 5)).toBe(255);

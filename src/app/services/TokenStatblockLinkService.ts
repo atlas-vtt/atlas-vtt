@@ -394,7 +394,7 @@ export class TokenStatblockLinkService extends EventEmitter {
   /** The fields of a statblock note with its template's meanings, as resources read them; null when the note is no statblock. */
   async readStatblockRecord(statblockPath: string): Promise<StatblockFields | null> {
     const data = await this.extractStatblockData(statblockPath);
-    return data && { fields: data.record, meanings: data.meanings };
+    return data && { fields: data.record, meanings: data.meanings, ...(data.emptyFields.length > 0 && { emptyFields: data.emptyFields }) };
   }
 
   /**
@@ -409,10 +409,12 @@ export class TokenStatblockLinkService extends EventEmitter {
     record: Record<string, unknown>;
     /** What the fields of the statblock's template mean (hit points, rating under other keys). */
     meanings: FieldMeanings;
+    /** The template fields a native statblock's note leaves empty (`StatblockRecord.emptyFields`). */
+    emptyFields: readonly string[];
   } | null> {
     const read = await readStatblockRecord(this.app, statblockPath, wholeOnly);
     if (!read) return null;
-    const { record, meanings } = read;
+    const { record, meanings, emptyFields } = read;
     const displayKey = meanings['display-name'];
     const difficulty = difficultyLabel(record, meanings);
     return {
@@ -421,6 +423,7 @@ export class TokenStatblockLinkService extends EventEmitter {
       ...(difficulty !== undefined && { difficulty }),
       record,
       meanings,
+      emptyFields,
     };
   }
   

@@ -5,6 +5,7 @@ import { SightCache } from '../../src/app/vision/sight';
 import { computeVisibility } from '../../src/app/vision/visibility';
 import { current } from './sceneModelCurrent';
 import { frozen, type Model, type Subject } from './sceneModelFrozen';
+import { areaPlacesAsBefore, lightsAsBefore } from './sceneModelLights';
 import { sceneSequence, type SceneSequence, type SceneStep } from './sceneModelSteps';
 
 /** One output of one update where the scene model under test differs from the frozen one. */
@@ -132,8 +133,14 @@ export function runDifferences(sequence: SceneSequence, now: readonly StepRecord
     differ('sweeps', ours.sweeps, theirs.sweeps);
     if (!ours.model || !theirs.model) return;
     differ('model fields', Object.keys(ours.model).sort(), Object.keys(theirs.model).sort());
-    for (const field of Object.keys(theirs.model) as (keyof Model)[]) differ(`model ${field}`, ours.model[field], theirs.model[field]);
-    for (const name of Object.keys(theirs.identities!)) differ(`identity of ${name}`, ours.identities![name], theirs.identities![name]);
+    for (const field of Object.keys(theirs.model) as (keyof Model)[]) {
+      differ(`model ${field}`, field === 'lights' ? lightsAsBefore(ours.model.lights, ours.model.reaches, theirs.model.lights) : ours.model[field], theirs.model[field]);
+    }
+    const areas = 'each light\'s area among the reach polygons';
+    for (const name of Object.keys(theirs.identities!)) {
+      const mine = ours.identities![name];
+      differ(`identity of ${name}`, name === areas && Array.isArray(mine) ? areaPlacesAsBefore(mine, theirs.identities![name] as number[]) : mine, theirs.identities![name]);
+    }
     differ('footprints', [ours.footprints!.players, ours.footprints!.gm], [theirs.footprints!.players, theirs.footprints!.gm]);
     differ('footprint sweeps', ours.footprints!.sweeps, theirs.footprints!.sweeps);
     for (const name of Object.keys(theirs.footprints!.identities)) differ(`identity of ${name}`, ours.footprints!.identities[name], theirs.footprints!.identities[name]);

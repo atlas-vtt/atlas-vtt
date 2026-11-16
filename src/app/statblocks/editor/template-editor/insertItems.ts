@@ -8,6 +8,7 @@
 import { createBlock, type AuthorableBlockType } from '../../model/blockCatalogue';
 import type { BlockIdSource } from '../../model/templateIds';
 import { TEMPLATE_FORMAT, TEMPLATE_VERSION, type StatblockTemplate } from '../../model/templateTypes';
+import { t } from '../../../i18n';
 
 export interface InsertItem {
   /** The block type it puts in. */
@@ -20,13 +21,13 @@ export interface InsertItem {
 }
 
 const ITEMS: readonly InsertItem[] = [
-  { type: 'stat', label: 'Value', example: 'A label and its value: Speed 30', keywords: ['stat', 'number', 'property', 'words', 'tags', 'choice'] },
-  { type: 'metric', label: 'Metric', example: 'Key numbers in a box: Major 8 | Severe 15', keywords: ['numbers', 'thresholds', 'attributes', 'boxed', 'strip', 'stat'] },
-  { type: 'entries', label: 'Abilities', example: 'Names with text: actions, traits, spells', keywords: ['actions', 'traits', 'features', 'list', 'spells'] },
-  { type: 'scores', label: 'Table', example: 'Rows and columns, as a note\'s table', keywords: ['ability scores', 'scores', 'attributes', 'stats', 'columns', 'rows', 'grid'] },
-  { type: 'counters', label: 'Counters', example: 'Limited uses as pips: spell slots, ki', keywords: ['spell slots', 'slots', 'uses', 'charges', 'ki', 'points', 'rest', 'pips', 'resources'] },
-  { type: 'text', label: 'Text', example: 'A paragraph', keywords: ['description', 'notes', 'paragraph'] },
-  { type: 'divider', label: 'Divider', example: 'A line across', keywords: ['rule', 'separator'] },
+  { type: 'stat', label: t('templateEditor.primitive.value'), example: t('templateEditor.example.stat'), keywords: ['stat', 'number', 'property', 'words', 'tags', 'choice'] },
+  { type: 'metric', label: t('templateEditor.primitive.metric'), example: t('templateEditor.example.metric'), keywords: ['numbers', 'thresholds', 'attributes', 'boxed', 'strip', 'stat'] },
+  { type: 'entries', label: t('templateEditor.abilities'), example: t('templateEditor.example.entries'), keywords: ['actions', 'traits', 'features', 'list', 'spells'] },
+  { type: 'scores', label: t('templateEditor.primitive.table'), example: t('templateEditor.example.scores'), keywords: ['ability scores', 'scores', 'attributes', 'stats', 'columns', 'rows', 'grid'] },
+  { type: 'counters', label: t('templateEditor.primitive.counters'), example: t('templateEditor.example.counters'), keywords: ['spell slots', 'slots', 'uses', 'charges', 'ki', 'points', 'rest', 'pips', 'resources'] },
+  { type: 'text', label: t('templateEditor.primitive.text'), example: t('templateEditor.example.text'), keywords: ['description', 'notes', 'paragraph'] },
+  { type: 'divider', label: t('templateEditor.primitive.divider'), example: t('templateEditor.example.divider'), keywords: ['rule', 'separator'] },
 ];
 
 /** The item that puts a block of `type` in; a type the grid offers no kind for is offered as a Value. */

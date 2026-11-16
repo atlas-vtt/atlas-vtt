@@ -11,7 +11,7 @@ import type { SettingsService } from './SettingsService';
  * The turn banner in the player window: the players' version of the GM's, shown when the turn of
  * the presented scene's fight moves on. It follows their initiative list: none while the list is
  * not shown (the player view's switch, the GM's tracker closed), none where the list marks no
- * turn (a hidden turn holder), names only where the list shows names, and none once the GM
+ * turn (a hidden turn holder), names as the list shows them, and none once the GM
  * switched the banner off. A scene bound anew, or one that loads, starts without a banner.
  */
 export class PlayerTurnBanner implements PlayerOverlay {
@@ -53,7 +53,7 @@ export class PlayerTurnBanner implements PlayerOverlay {
 
   private look(state: ViewAtlasState): void {
     const localPlayerView = this.settings.getLocalPlayerViewSettings();
-    const banner = this.watch.next(state, { kind: 'players', showNames: localPlayerView.showTokenNameplates });
+    const banner = this.watch.next(state, { kind: 'players', showNames: localPlayerView.showTokenNameplates, mapShowsNameplates: state.tokenSettings?.showNameplates ?? false });
     if (!state.initiative?.isActive) {
       if (this.display?.showing) this.display.hide();
       return;

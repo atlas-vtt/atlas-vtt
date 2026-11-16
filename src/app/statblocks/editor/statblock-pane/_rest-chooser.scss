@@ -30,7 +30,7 @@ $rest-inset: $spacing-m;
 
   .atlas-sb-rest-panel {
     @include atlas-elevated-surface;
-    @include atlas-panel-radius($radius-2xl);
+    @include atlas-panel-radius($surface-radius);
     display: flex;
     flex-direction: column;
     max-height: min(640px, var(--atlas-keep-in-view-max-height, 640px));
@@ -65,7 +65,6 @@ $rest-inset: $spacing-m;
     min-height: 0;
     padding: calc(#{$rest-inset} - #{$close-button-gap}) $rest-inset 0;
     overflow-y: auto;
-    @include atlas-scrollbar;
   }
 
   .atlas-sb-rest-panel__footer {
@@ -127,8 +126,7 @@ $rest-inset: $spacing-m;
   // An action is a tile; picked, it takes a quiet fill and holds whom it is for and what it spends.
   .atlas-sb-rest-action {
     padding: $spacing-s;
-    border-radius: $radius-l;
-    @include atlas-corner-shape;
+    border-radius: $radius-m;
     transition: background-color $transition-fast $transition-ease;
 
     &[data-picked] {

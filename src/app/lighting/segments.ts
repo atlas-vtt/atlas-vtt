@@ -31,20 +31,26 @@ export function concerns(wall: WallSegment, channel: WallChannel): boolean {
   return wall.blocks === undefined || wall.blocks === channel;
 }
 
-/** What the parts of a wall that is cut up keep of it (a door placed in it, and what is left on either side): its chain, its direction, what it blocks, limited or not. */
-export function keptByParts(wall: WallSegment): Pick<WallSegment, 'chainId' | 'direction' | 'blocks' | 'limited'> {
+/** What the parts of a wall that is cut up keep of it (a door placed in it, and what is left on either side): its chain, its direction, what it blocks, limited or not, and the side a room's floor lies on. */
+export function keptByParts(wall: WallSegment): Pick<WallSegment, 'chainId' | 'direction' | 'blocks' | 'limited' | 'floor'> {
   return {
     ...(wall.chainId !== undefined && { chainId: wall.chainId }),
     ...(wall.direction !== undefined && { direction: wall.direction }),
     ...(wall.blocks !== undefined && { blocks: wall.blocks }),
     ...(wall.limited === true && { limited: true }),
+    ...(wall.floor !== undefined && { floor: wall.floor }),
   };
 }
 
-/** Open doors and walls shrunk to a point block nothing. */
-export function blocksNothing(wall: WallSegment): boolean {
+/** Open doors and walls shrunk to a point stop nothing, not even a token. */
+export function stopsNothing(wall: WallSegment): boolean {
   const openDoor = (wall.type === 'door' || wall.type === 'secret-door') && !(wall.closed ?? true);
   return openDoor || (wall.p1.x === wall.p2.x && wall.p1.y === wall.p2.y);
+}
+
+/** Walls that block neither sight nor light: open doors, walls shrunk to a point, and windows (`blocks: 'movement'`), which stop a token alone. */
+export function blocksNothing(wall: WallSegment): boolean {
+  return wall.blocks === 'movement' || stopsNothing(wall);
 }
 
 export interface BlockingWalls {

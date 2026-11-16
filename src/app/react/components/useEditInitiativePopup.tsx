@@ -4,6 +4,7 @@ import type { InitiativeEntry } from '../../types/initiativeTypes';
 import { initiativeEdit, modifierText } from '../../initiative/initiativeEdit';
 import { hasInitiative } from '../../initiative/awaitingInitiative';
 import { EditInitiativePopup } from './EditInitiativePopup';
+import { portalHost } from '../../host/portalHost';
 
 interface OpenPopup {
   entry: InitiativeEntry;
@@ -44,7 +45,7 @@ export function useEditInitiativePopup(update: (id: string, changes: Partial<Ini
       onCancel={() => setShown(null)}
       side={side}
     />,
-    document.body,
+    portalHost(),
   );
 
   return { open, popup };

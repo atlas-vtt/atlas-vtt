@@ -1,2 +1,3 @@
 ## Fixed
-- Token creator: zoom and position changes are now saved for tokens without a ring.
+
+- The token creator saves zoom and position for tokens without a ring. Contributed by aecorn

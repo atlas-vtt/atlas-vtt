@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canonicalJson, fnv1a32, hashJson, hashText, sha256 } from '../../src/app/utils/hashing';
+import { canonicalJson, fnv1a32, hashJson, hashText, Sha256, sha256 } from '../../src/app/utils/hashing';
 
 const bytes = (text: string): Uint8Array => new TextEncoder().encode(text);
 
@@ -21,6 +21,20 @@ describe('sha256', () => {
   it('hashes only the bytes a view shows', async () => {
     const data = bytes('abcdef');
     expect(await sha256(data.subarray(1, 4))).toBe(await sha256(bytes('bcd')));
+  });
+});
+
+describe('Sha256', () => {
+  it('gives what sha256 gives, whatever the length and however the bytes are cut', async () => {
+    // Lengths around the block (64) and the padding's edge (56), and pieces that straddle blocks.
+    for (const length of [0, 1, 55, 56, 63, 64, 65, 119, 120, 128, 1000, 70_001]) {
+      const data = Uint8Array.from({ length }, (_, i) => (i * 167 + length) & 255);
+      const whole = await sha256(data);
+      expect(new Sha256().update(data).hex(), `${length} bytes whole`).toBe(whole);
+      const pieces = new Sha256();
+      for (let at = 0, size = 1; at < length; at += size, size = (size * 7) % 97 + 1) pieces.update(data.subarray(at, at + size));
+      expect(pieces.hex(), `${length} bytes in pieces`).toBe(whole);
+    }
   });
 });
 

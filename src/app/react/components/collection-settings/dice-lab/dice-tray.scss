@@ -13,7 +13,6 @@ $tray-padding: 64px;
 // ── Stage ──────────────────────────────────────────────────────────────────
 .atlas-dice-lab__stage {
   @include atlas-flex-col($spacing-m);
-  grid-area: stage;
   min-width: 0;
   min-height: 0;
   padding: $spacing-l;
@@ -94,7 +93,6 @@ $tray-padding: 64px;
 // A felt tray: the secondary background, a light pooling in its middle and a soft
 // inner shadow along its rim, in the theme's own colours.
 .atlas-dice-lab__field {
-  @include atlas-scrollbar;
   position: relative;
   display: flex;
   flex: 1;
@@ -106,7 +104,7 @@ $tray-padding: 64px;
   min-height: 0;
   padding: $tray-padding;
   overflow: auto;
-  border-radius: $radius-xl;
+  border-radius: $radius-m;
   background:
     radial-gradient(90% 75% at 50% 42%, color-mix(in oklch, var(--background-primary) 55%, transparent), transparent 72%),
     var(--background-secondary);
@@ -147,8 +145,6 @@ $tray-padding: 64px;
   margin: 0;
   border: none;
   border-radius: $radius-full;
-  // Circles: Obsidian shapes every button as a squircle on macOS
-  corner-shape: round;
   background: none;
   box-shadow: none;
   color: inherit;
@@ -254,8 +250,7 @@ span.atlas-dice-lab__die {
 .atlas-dice-lab__cell--edge {
   gap: $spacing-s;
   padding: $spacing-s;
-  border-radius: $radius-xl;
-  @include atlas-corner-shape;
+  border-radius: $radius-m;
   background: color-mix(in oklch, var(--interactive-accent) 8%, var(--background-modifier-hover));
   transition: background-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
 

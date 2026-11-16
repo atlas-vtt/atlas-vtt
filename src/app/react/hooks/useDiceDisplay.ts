@@ -16,3 +16,17 @@ export function useDiceDisplay(app: App | undefined): DiceDisplay {
 
   return display;
 }
+
+/** How loud dice sound, 0 (silent) to 1, kept current as the setting changes. */
+export function useDiceVolume(app: App | undefined): number {
+  const settings = SettingsService.forApp(app);
+  const [volume, setVolume] = useState(() => settings?.getDiceVolume() ?? 1);
+
+  useEffect(() => {
+    if (!settings) return;
+    setVolume(settings.getDiceVolume());
+    return settings.onChange(() => setVolume(settings.getDiceVolume()));
+  }, [settings]);
+
+  return volume;
+}

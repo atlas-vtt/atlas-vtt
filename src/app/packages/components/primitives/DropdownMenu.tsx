@@ -79,14 +79,16 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
       }
     };
 
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('touchstart', handlePointerDown);
-    document.addEventListener('keydown', handleEscape);
+    // The document the menu is in: a menu in a popout hears its presses there, never in the main one.
+    const doc = containerRef.current?.ownerDocument ?? document;
+    doc.addEventListener('mousedown', handlePointerDown);
+    doc.addEventListener('touchstart', handlePointerDown);
+    doc.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('touchstart', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
+      doc.removeEventListener('mousedown', handlePointerDown);
+      doc.removeEventListener('touchstart', handlePointerDown);
+      doc.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, onToggle]);
 
@@ -99,7 +101,9 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
     >
       {showTrigger && (
         triggerButton ? (
-          <span onClick={onToggle} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onToggle(); }}>
+          // The trigger is a control of its own (a button): its click reaches this wrapper, which
+          // takes no focus and no keys, so no control nests in another and Enter toggles once.
+          <span onClick={onToggle}>
             {triggerButton}
           </span>
         ) : (

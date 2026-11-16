@@ -1,5 +1,5 @@
 import {
-  DEFAULT_BOOK_SLOTS, isRecord, MAX_BOOK_ITEMS, MAX_BOOK_NOTES, MAX_BOOK_PINS, mayEquip, parseBookItem, parseBookNoteDraft, parseBookPin, parseBookSlots, parseEquipped, parsePurse, settledEquipped, withEquipped,
+  DEFAULT_BOOK_SLOTS, isRecord, MAX_BOOK_ITEMS, MAX_BOOK_NOTES, MAX_BOOK_PINS, mayEquip, parseBookItem, parseBookNoteDraft, parseBookPin, parseBookSlots, parseEquipped, parsePurse, settledEquipped, withEquipped, withoutItem,
   type BookAbilityMessage, type BookFieldMessage, type BookItem, type BookListMessage, type BookNote, type BookPin, type BookRefillMessage, type BookResourceMessage, type BookSlots, type Equipped, type PlayerBookMessage, type PurseRow,
 } from '../../protocol/index.ts';
 
@@ -61,13 +61,15 @@ export type ShelfMessage = Exclude<PlayerBookMessage, BookResourceMessage | Book
 /**
  * A book after what its player wrote, as the protocol's parser cleaned it: a note or pin is put in
  * place of the one of its id or added (a note on a quest only on a quest in `quests`, the ids of
- * those the book is sent), a deletion
- * takes one away (none is no error), the purse is replaced whole. A note is stamped with `now`, the GM's clock. An item goes into a slot only where
+ * those the book is sent), a deletion of a note or pin takes one away (none is no error), an item is
+ * taken out only where the book holds it (and leaves its slot), the purse is replaced whole. A note is stamped with `now`, the GM's clock. An item goes into a slot only where
  * the book holds it and shows the slot; slots are replaced whole, and an item whose slot went is back
  * in the bag. Null when the book takes no more, or not this, and for any message it does not know.
  */
 export function applyBookMessage(book: StoredBook, message: ShelfMessage, now: number, quests: ReadonlySet<string>): StoredBook | null {
   switch (message.t) {
+    case 'book-item-delete':
+      return withoutItem(book, message.id);
     case 'book-note': {
       if (!mayNameQuest(book, quests, message.note)) return null;
       const notes = put(book.notes, { ...message.note, at: now }, MAX_BOOK_NOTES);

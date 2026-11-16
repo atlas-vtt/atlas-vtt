@@ -11,7 +11,7 @@ vi.mock('../../src/app/services/PlayerWindowService', () => ({ PlayerWindowServi
 vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentActiveTab: vi.fn() }));
 vi.mock('../../src/app/react/components/command-palette/GridSettingsPanel', () => ({ GridSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/TokenSettingsPanel', () => ({ TokenSettingsPanel: () => null }));
-vi.mock('../../src/app/react/components/command-palette/LocalPlayerViewSettingsPanel', () => ({ LocalPlayerViewSettingsPanel: () => null }));
+vi.mock('../../src/app/react/components/command-palette/PlayerViewSettingsPanel', () => ({ PlayerViewSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/SceneSnapshotsPanel', () => ({
   SceneSnapshotsPanel: ({ onRestore }: { onRestore: () => void }) => <button onClick={onRestore}>Restore snapshot</button>,
 }));
@@ -66,7 +66,7 @@ describe('Space command menu panel toggles', () => {
     const store = createPanelStore();
     const onClose = vi.fn();
     render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={onClose} /></ViewStoreProvider>);
-    const input = screen.getByPlaceholderText('Search commands...');
+    const input = screen.getByPlaceholderText('Search commands…');
     fireEvent.change(input, { target: { value: 'dice log' } });
     const command = screen.getByRole('button', { name: /Open dice log/ });
 
@@ -88,7 +88,7 @@ describe('Space command menu panel toggles', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Scene snapshots/ }));
     expect(screen.getByRole('heading', { name: 'Scene Snapshots' })).toBeTruthy();
-    expect(screen.queryByPlaceholderText('Search commands...')).toBeNull();
+    expect(screen.queryByPlaceholderText('Search commands…')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Restore snapshot' }));
     expect(onClose).toHaveBeenCalledTimes(1);

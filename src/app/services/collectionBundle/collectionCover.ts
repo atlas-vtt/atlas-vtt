@@ -1,11 +1,12 @@
 import { TFile, type App } from 'obsidian';
 import { COLLECTIONS_DIR, type Asset, type CollectionMetadata } from '../AssetService';
-import { isPersistedMapEnvelope } from '../MapPersistence';
+import { sceneBackground } from '../sceneBackground';
 import { readVaultBinary } from '../../utils/hiddenVaultFiles';
 import { optimizeImage } from '../../imageProcessing/imageProcessing';
 import { baseName } from '../../utils/pathUtils';
 import { sceneThumbnailPath } from './collectionReferences';
 import { asNamedWebp } from './webpNamedFiles';
+import { isVideoMapPath } from '../../pixi/mosaicCanvas/video/videoMapFiles';
 
 /** Artwork of a map or scene that the collection's cover can be made from. */
 export interface CoverCandidate {
@@ -55,16 +56,9 @@ export function currentCover(app: App, collection: CollectionMetadata): CurrentC
   return url && collection.coverPath ? { path: collection.coverPath, url } : undefined;
 }
 
-/** The background image a scene's map file shows, if it can be read. */
-async function sceneBackground(app: App, mapPath: string): Promise<string | undefined> {
-  const file = app.vault.getAbstractFileByPath(mapPath);
-  if (!(file instanceof TFile)) return undefined;
-  try {
-    const envelope: unknown = JSON.parse(await app.vault.cachedRead(file));
-    return isPersistedMapEnvelope(envelope) ? envelope.state?.background ?? undefined : undefined;
-  } catch {
-    return undefined;
-  }
+/** `path` where it is an image a cover can be made of; an animated map's video is none, its thumbnail stands in. */
+function stillImage(path: string | undefined): string | undefined {
+  return path && !isVideoMapPath(path) ? path : undefined;
 }
 
 /** The artwork of maps and then scenes that can become the cover, each image once. */
@@ -76,13 +70,13 @@ export async function coverCandidates(app: App, assets: readonly Asset[]): Promi
     candidates.set(sourcePath, { key, name, sourcePath, imageUrl: imageUrlOf, previewUrl: imageUrl(app, previewPath) ?? imageUrlOf });
   };
   for (const asset of assets) {
-    if (asset.type === 'map') add(asset.id, asset.name, asset.mapFilePath, asset.thumbnailPath);
+    if (asset.type === 'map') add(asset.id, asset.name, stillImage(asset.mapFilePath) ?? asset.thumbnailPath, asset.thumbnailPath);
   }
   for (const asset of assets) {
     const mapPath = asset.type === 'scene' ? asset.data?.mapPath : undefined;
     if (!mapPath) continue;
     const thumbnail = sceneThumbnailPath(mapPath);
-    add(asset.id, asset.name, await sceneBackground(app, mapPath) ?? thumbnail, thumbnail);
+    add(asset.id, asset.name, stillImage(await sceneBackground(app, mapPath)) ?? thumbnail, thumbnail);
   }
   return [...candidates.values()];
 }

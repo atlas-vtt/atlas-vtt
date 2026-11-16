@@ -37,7 +37,7 @@
 
   .atlas-sb-token-panel {
     @include atlas-elevated-surface;
-    @include atlas-panel-radius($radius-2xl);
+    @include atlas-panel-radius($surface-radius);
     display: flex;
     flex-direction: column;
     max-height: min(880px, var(--atlas-keep-in-view-max-height, 880px));
@@ -66,7 +66,6 @@
     min-height: 0;
     padding: calc(#{$panel-inset} - #{$close-button-gap}) $panel-inset $panel-inset;
     overflow-y: auto;
-    @include atlas-scrollbar;
   }
 
   // The search fills the row; the Ring switch stands at its end, its label beside it.
@@ -98,7 +97,6 @@
     padding: 2px;
     margin: -2px;
     overflow-y: auto;
-    @include atlas-scrollbar;
   }
 
   .atlas-sb-token-panel__make {

@@ -40,6 +40,7 @@ import { useSessionSnapshot } from './useEditorSession';
 import { useEditorState } from './useEditorState';
 import { removePart } from './tileParts';
 import { useTemplateKeyboard, type KeyboardTarget, type KeyHandler } from './useTemplateKeyboard';
+import { t } from '../../../i18n';
 import './template-editor.scss';
 
 /** What the editor asks of the view that hosts it. */
@@ -199,7 +200,7 @@ export function TemplateEditor(props: TemplateEditorProps): React.JSX.Element {
                   rests: snapshot.readOnly ? undefined : { open: rests, toggle: toggleRests },
                   deleteTemplate: app && snapshot.path !== null && !snapshot.readOnly ? () => setDeleting(templateUsage(app, snapshot.id)) : undefined,
                   add: room.editorWidth === 'stacked' && !snapshot.readOnly
-                    ? insertItems().map((item) => ({ label: `Add ${item.label.toLowerCase()}`, icon: 'plus', onClick: () => context.insert(item) }))
+                    ? insertItems().map((item) => ({ label: t('templateEditor.addKind', { kind: item.label.toLowerCase() }), icon: 'plus', onClick: () => context.insert(item) }))
                     : undefined,
                 }}
               />

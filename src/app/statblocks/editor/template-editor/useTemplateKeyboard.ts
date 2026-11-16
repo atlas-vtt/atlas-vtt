@@ -22,6 +22,7 @@ import { tabStopBeside, typesText } from './regions';
 import { primaryOf, stepInReadingOrder, type BlockSelection } from './selection';
 import { refusalMessage, type EditOutcome } from './sessionEdit';
 import type { EditorSession } from './sessionTypes';
+import { t } from '../../../i18n';
 
 export interface KeyboardTarget {
   /** The editor's root element; keys count only while focus is inside it. */
@@ -98,7 +99,7 @@ export function runBlockCommand(target: KeyboardTarget, command: KeyCommand): bo
       const clip = copyBlocks(snapshot.template, selection);
       if (clip) rememberClip(target.clipOwner, clip);
       if (!clip) target.settle({ announce: refusalMessage('header') ?? undefined });
-      else target.settle({ announce: clip.blocks.length > 1 ? `Copied ${clip.blocks.length} blocks.` : 'Copied.' });
+      else target.settle({ announce: clip.blocks.length > 1 ? t('templateEditor.copiedBlocks', { count: clip.blocks.length }) : t('templateEditor.copied') });
       return true;
     }
     case 'open-menu': target.openMenu(); return true;
@@ -112,7 +113,7 @@ function history(target: KeyboardTarget, command: 'undo' | 'redo'): true {
   const possible = command === 'undo' ? snapshot.canUndo : snapshot.canRedo;
   if (command === 'undo') session.undo();
   else session.redo();
-  target.settle({ announce: possible ? (command === 'undo' ? 'Undid.' : 'Redid.') : `Nothing to ${command}.` });
+  target.settle({ announce: possible ? (command === 'undo' ? t('templateEditor.undid') : t('templateEditor.redid')) : (command === 'undo' ? t('templateEditor.nothingToUndo') : t('templateEditor.nothingToRedo')) });
   return true;
 }
 

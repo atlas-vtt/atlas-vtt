@@ -56,4 +56,5 @@ export const loot = {
   'loot.openPlayerView': 'Open the player view to show loot to your players.',
   'loot.query.note': 'Atlas reads this view for its loot roller. Open the loot roller on a map to roll on it.',
   'loot.query.name': 'Atlas loot',
+  'loot.unreadable': 'Could not be read',
 } as const satisfies Record<string, Message>;

@@ -1,19 +1,28 @@
-import { MAX_BOOK_MAPS, MAX_MAP_ENTRANCES, MAX_MAP_TITLE, type BookNestedMap, type BookWorldMap, type MapEntrance, type MapPlace } from '../../protocol/index.ts';
+import { MAX_BOOK_MAPS, MAX_MAP_ENTRANCES, MAX_MAP_SIGNS, MAX_MAP_TITLE, type BookNestedMap, type BookWorldMap, type MapEntrance, type MapPlace } from '../../protocol/index.ts';
 import { worldToImage } from '../../../grid/mapStretch';
 import { clippedLine } from './bookTexts.ts';
 import type { MapImage } from './mapImages.ts';
-import type { WorldMapLevel, WorldMapTree } from './worldMapGate.ts';
+import type { WorldMapLevel, WorldMapSign, WorldMapTree } from './worldMapGate.ts';
 
 /** What a map is called where its name has nothing to show. */
 const UNNAMED_MAP = 'Map';
 
+/** A readable pin as it lies on a map players are sent: that map's id (none for the world map itself), its place as shares, and the GM's pin. */
+export interface PlacedSign extends MapPlace {
+  readonly on?: string;
+  readonly sign: WorldMapSign;
+}
+
 /** A world map as players are sent it, and the files its images are: the paths are the GM's and never sent. */
 export interface WorldMapFile {
+  /** The maps without their signs, which `WorldMapSigns` names. */
   readonly map: BookWorldMap;
   /** The vault path of each image it shows, by hash. */
   readonly paths: ReadonlyMap<string, string>;
   /** Where the GM's pins place quests on the world map, by quest id: the first pin of each that lies on the image. Never sent as such. */
   readonly questPlaces: ReadonlyMap<string, MapPlace>;
+  /** The readable pins on its maps, `MAX_MAP_SIGNS` a map at most. Never sent as such. */
+  readonly signs: readonly PlacedSign[];
 }
 
 /** The levels players reach from the world map, nearest first: only through maps that have an image, `MAX_BOOK_MAPS` of them besides the world map. */
@@ -55,6 +64,14 @@ function questPlacesOf(level: WorldMapLevel, image: MapImage): Map<string, MapPl
   return places;
 }
 
+/** A level's readable pins that lie on its image, as shares of it, on the map players know as `on`. */
+function signsOf(level: WorldMapLevel, image: MapImage, on?: string): PlacedSign[] {
+  return (level.signs ?? []).flatMap((sign) => {
+    const place = shareOf(sign, level, image);
+    return place === null ? [] : [{ ...place, ...(on !== undefined && { on }), sign }];
+  }).slice(0, MAX_MAP_SIGNS);
+}
+
 /** A level's entrances as shares of its image, to maps players reach, each once on its place and never to itself. */
 function entrancesOf(level: WorldMapLevel, image: MapImage, shown: ReadonlyMap<string, { readonly id: string; readonly title: string }>): MapEntrance[] {
   const entrances: MapEntrance[] = [];
@@ -75,7 +92,7 @@ function entrancesOf(level: WorldMapLevel, image: MapImage, shown: ReadonlyMap<s
  * The world map players are sent, with every map its GM's pins lead into: each map once, by the id
  * `ids` names for its asset, however many entrances lead to it, so a pin back to a map the path
  * already holds leads back. A map without an image is left out with every entrance into it; null
- * when the world map itself has none.
+ * when the world map itself has none. Its readable pins come beside it, for `WorldMapSigns`.
  */
 export function worldMapOf(tree: WorldMapTree, ids: ReadonlyMap<string, string>, images: ReadonlyMap<string, MapImage | null>): WorldMapFile | null {
   const levels = reachable(tree, images);
@@ -89,14 +106,16 @@ export function worldMapOf(tree: WorldMapTree, ids: ReadonlyMap<string, string>,
   if (root === undefined || rootImage === null || rootId === undefined) return null;
   const paths = new Map([[rootImage.image.hash, root.image]]);
   const maps: BookNestedMap[] = [];
+  const signs = signsOf(root, rootImage);
   for (const level of nested) {
     const image = images.get(level.image) ?? null;
     const named = shown.get(level.key);
     if (image === null || named === undefined) continue;
     paths.set(image.image.hash, level.image);
     maps.push({ id: named.id, title: named.title, image: image.image, width: image.width, height: image.height, entrances: entrancesOf(level, image, shown) });
+    signs.push(...signsOf(level, image, named.id));
   }
   const entrances = entrancesOf(root, rootImage, shown);
   const map: BookWorldMap = { image: rootImage.image, width: rootImage.width, height: rootImage.height, ...(maps.length > 0 && { id: rootId, entrances, maps }) };
-  return { map, paths, questPlaces: questPlacesOf(root, rootImage) };
+  return { map, paths, questPlaces: questPlacesOf(root, rootImage), signs };
 }

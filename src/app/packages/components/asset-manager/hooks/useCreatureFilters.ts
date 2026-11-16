@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import type { App } from 'obsidian';
 import { factsOf, linkedStatblockPaths, type CreatureRating } from '../../../../creatures/creatureFacts';
-import { evaluateCreatureFilters, type CreatureFilterResult } from '../../../../creatures/creatureFilterEngine';
+import { evaluateCreatureFilters, type CreatureFacets, type CreatureFilterResult } from '../../../../creatures/creatureFilterEngine';
 import { activeFilterCount, pruneSelection } from '../../../../creatures/creatureSelection';
 import { useCreatureIndex } from '../../../../creatures/useCreatureIndex';
 import {
@@ -9,9 +9,9 @@ import {
   type CreatureFilterDefinition,
   type CreatureFilterSelection,
 } from '../../../../types/creatureFilterTypes';
-import type { AnyAsset, Folder, TokenAsset } from '../types';
+import type { AnyAsset, TokenAsset } from '../types';
 import { isCharacterTab } from '../utils/tabKinds';
-import { filterAssets, type AssetFilter } from '../utils/assetFilter';
+import { filterAssets, matchingAssets, type AssetFilter } from '../utils/assetFilter';
 
 /** The creature filters of the Characters tab, as the filter panel and the search show and edit them. */
 export interface CreatureFilterPanel {
@@ -19,6 +19,11 @@ export interface CreatureFilterPanel {
   selection: CreatureFilterSelection;
   setSelection: (update: (selection: CreatureFilterSelection) => CreatureFilterSelection) => void;
   result: CreatureFilterResult;
+  /**
+   * The options and counts of the characters the filters search without the plain words of the search: what a word
+   * typed there finds as a filter value ("beast" as `type:beast`), which the name search it also is may hide.
+   */
+  wordFacets: CreatureFacets;
   /** Filters that narrow the list. */
   activeCount: number;
   /** Whether linked statblocks are still being read, so counts may still change. */
@@ -28,6 +33,11 @@ export interface CreatureFilterPanel {
 export interface CreatureFiltering {
   /** The assets the content area shows, before sorting. */
   assets: AnyAsset[];
+  /**
+   * The assets of the tab, in every folder, that the search, tags and creature filters leave: what the list shows
+   * while any of them narrows it, and what the sidebar counts tags in, so a tag's count is what picking it shows.
+   */
+  matching: AnyAsset[];
   /** The asset filter with creature filters taken into account (they widen the folder scope like a search). */
   filter: AssetFilter;
   /** Set on the Characters tab only. */
@@ -47,7 +57,6 @@ interface CreatureFilteringOptions {
   definitions: readonly CreatureFilterDefinition[];
   isOpen: boolean;
   assets: readonly AnyAsset[];
-  folders: readonly Folder[];
   filter: AssetFilter;
 }
 
@@ -55,43 +64,62 @@ const NO_PATHS: string[] = [];
 
 /**
  * Applies the collection's creature filters on top of the asset filter. The
- * options and counts come from the open folder and all folders below it, which
- * is what an active filter searches. Picks reset when the manager opens or the
- * tab changes, like tags; picks for filters the collection does not define are
- * dropped.
+ * options and counts come from every folder of the tab, which is what an active
+ * filter searches. Picks reset when the manager opens or the tab changes, like
+ * tags; picks for filters the collection does not define are dropped.
  */
-export function useCreatureFilters({ app, definitions, isOpen, assets, folders, filter }: CreatureFilteringOptions): CreatureFiltering {
+export function useCreatureFilters({ app, definitions, isOpen, assets, filter }: CreatureFilteringOptions): CreatureFiltering {
   const enabled = isCharacterTab(filter.tab);
   const [storedSelection, setStoredSelection] = useState<CreatureFilterSelection>(emptyCreatureSelection);
   const selection = useMemo(() => pruneSelection(storedSelection, definitions), [storedSelection, definitions]);
+  // The panel shows a pick at once; the cards it leaves follow in a render of their own, which React does in slices
+  // between frames (a pick re-rendered the grid in one task of 40 to 50 ms).
+  const listed = useDeferredValue(selection);
 
   useEffect(() => {
     if (isOpen) setStoredSelection(emptyCreatureSelection());
   }, [isOpen, filter.tab]);
 
-  const totalCount = enabled ? activeFilterCount(selection, definitions) : 0;
+  const totalCount = enabled ? activeFilterCount(listed, definitions) : 0;
   const scopeFilter = useMemo((): AssetFilter => ({ ...filter, narrowed: totalCount > 0 }), [filter, totalCount]);
-  const scoped = useMemo(() => filterAssets(assets, folders, scopeFilter), [assets, folders, scopeFilter]);
-  // The filters offer what they would search: the open folder with every folder below it, so a
-  // folder that only holds folders (often the root) offers the statblocks of its subfolders.
-  const tokens = useMemo(() => {
+  const scoped = useMemo(() => filterAssets(assets, scopeFilter), [assets, scopeFilter]);
+  const tagged = useMemo(() => matchingAssets(assets, filter), [assets, filter]);
+  // The filters offer what they would search: every folder of the tab, so a folder that only
+  // holds folders (often the root) offers the statblocks of its subfolders.
+  // Without the name search too, for the words of the search that name a filter value (`wordFacets`).
+  const unsearched = useMemo((): TokenAsset[] => {
     if (!enabled) return [];
-    const searched = filterAssets(assets, folders, { ...filter, narrowed: true });
-    return searched.filter((asset): asset is TokenAsset => asset.type === 'tokens');
-  }, [enabled, assets, folders, filter]);
+    const inScope = matchingAssets(assets, { ...filter, search: '' });
+    return inScope.filter((asset): asset is TokenAsset => asset.type === 'tokens');
+  }, [enabled, assets, filter]);
+  const tokens = useMemo(() => {
+    const words = filter.search.toLowerCase();
+    return words ? unsearched.filter((token) => token.name.toLowerCase().includes(words)) : unsearched;
+  }, [unsearched, filter.search]);
 
-  const pathsKey = linkedStatblockPaths(tokens).join('\n');
+  const pathsKey = linkedStatblockPaths(unsearched).join('\n');
   const paths = useMemo(() => (pathsKey ? pathsKey.split('\n') : NO_PATHS), [pathsKey]);
   const lookup = useCreatureIndex(enabled ? app : null, paths);
 
-  const facts = useMemo(() => tokens.map((token) => factsOf(token, lookup.get, definitions)), [tokens, lookup, definitions]);
-  const result = useMemo(() => evaluateCreatureFilters(facts, definitions, selection), [facts, definitions, selection]);
+  const unsearchedFacts = useMemo(() => unsearched.map((token) => factsOf(token, lookup.get, definitions)), [unsearched, lookup, definitions]);
+  const facts = useMemo(() => {
+    if (tokens === unsearched) return unsearchedFacts;
+    const byId = new Map(unsearched.map((token, index) => [token.id, unsearchedFacts[index]!]));
+    return tokens.map((token) => byId.get(token.id)!);
+  }, [tokens, unsearched, unsearchedFacts]);
+  const result = useMemo(() => evaluateCreatureFilters(facts, definitions, listed), [facts, definitions, listed]);
+  const unsearchedResult = useMemo(
+    () => (facts === unsearchedFacts ? result : evaluateCreatureFilters(unsearchedFacts, definitions, listed)),
+    [facts, unsearchedFacts, result, definitions, listed],
+  );
 
-  const shown = useMemo(() => {
-    if (totalCount === 0) return scoped;
+  const passes = useMemo((): ((asset: AnyAsset) => boolean) | null => {
+    if (totalCount === 0) return null;
     const passing = new Set(tokens.filter((_, index) => result.passes[index]).map((token) => token.id));
-    return scoped.filter((asset) => passing.has(asset.id));
-  }, [totalCount, scoped, tokens, result]);
+    return (asset) => passing.has(asset.id);
+  }, [totalCount, tokens, result]);
+  const shown = useMemo(() => (passes ? scoped.filter(passes) : scoped), [passes, scoped]);
+  const matching = useMemo(() => (passes ? tagged.filter(passes) : tagged), [passes, tagged]);
 
   const ratingOf = useMemo(() => {
     const ratings = new Map(tokens.map((token, index) => [token.id, facts[index]?.rating ?? null]));
@@ -103,17 +131,19 @@ export function useCreatureFilters({ app, definitions, isOpen, assets, folders, 
     selection,
     setSelection: (update) => setStoredSelection((current) => update(pruneSelection(current, definitions))),
     result,
+    wordFacets: unsearchedResult.facets,
     activeCount: totalCount,
     pending: lookup.pending,
-  } : null), [enabled, definitions, selection, result, totalCount, lookup.pending]);
+  } : null), [enabled, definitions, selection, result, unsearchedResult, totalCount, lookup.pending]);
 
   return {
     assets: shown,
+    matching,
     filter: scopeFilter,
     panel,
     ratingOf,
     isActive: totalCount > 0,
-    refinementKey: totalCount > 0 ? JSON.stringify(selection) : '',
+    refinementKey: totalCount > 0 ? JSON.stringify(listed) : '',
     clear: () => setStoredSelection(emptyCreatureSelection()),
   };
 }

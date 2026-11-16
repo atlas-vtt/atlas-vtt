@@ -43,6 +43,23 @@ describe('the metrics of a card', () => {
     expect(sheetMetrics(template, RESOURCES).metrics.find((metric) => metric.blockId === 'track001')?.target).toEqual({ kind: 'resource', field: 'stress' });
   });
 
+  it('offers a tracked number whose key a collection resource holds, though that resource reads another field (#614)', () => {
+    const template: StatblockTemplate = {
+      ...ADVENTURER,
+      fields: [
+        ...ADVENTURER.fields.map((field) => (field.key === 'hp' || field.key === 'stress' ? { ...field, tracks: { counts: field.key === 'hp' ? 'down' as const : 'up' as const } } : field)),
+        { key: 'hp_max', label: 'Max HP', type: 'number' },
+      ],
+      layout: { ...ADVENTURER.layout, blocks: [{ id: 'metric01', type: 'metric', fields: ['hp', 'stress'] }] },
+    };
+    const resources = [{ ...RESOURCES[0]!, field: 'hp_max' }, { ...RESOURCES[1]!, field: '' }];
+    const { bySpot, refused } = sheetMetrics(template, resources);
+    expect([...refused]).not.toContain(numberSpotId('metric01', 'hp'));
+    expect([...refused]).not.toContain(numberSpotId('metric01', 'stress'));
+    expect(bySpot.get(numberSpotId('metric01', 'hp'))?.target).toEqual({ kind: 'resource', field: 'hp' });
+    expect(bySpot.get(numberSpotId('metric01', 'stress'))?.target).toEqual({ kind: 'resource', field: 'stress' });
+  });
+
   it('offers a Track bound to a resource by the path that resource reads, where its own field is no resource', () => {
     const bound: StatblockTemplate = { ...ADVENTURER, layout: { ...ADVENTURER.layout, blocks: [{ id: 'track002', type: 'track', field: 'speed', resource: 'hp', look: 'boxes', counts: 'down' }] } };
     expect(sheetMetrics(bound, RESOURCES).metrics.find((metric) => metric.blockId === 'track002')?.target).toEqual({ kind: 'resource', field: 'hp' });

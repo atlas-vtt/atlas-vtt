@@ -4,6 +4,7 @@ import { createStore } from 'zustand/vanilla';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import type { BeforeRenderCapture, PlayerFrameSource } from '../../src/app/services/PlayerFrameMirror';
 import { PlayerWindowService } from '../../src/app/services/PlayerWindowService';
+import { SCENE_DIP_MS } from '../../src/app/services/playerSceneFade';
 import { frameSource, framePiece, sizePlayerWindow } from '../mocks/playerFrameSource';
 
 
@@ -111,7 +112,10 @@ describe('player window mirroring', () => {
     const source = (service as any).streamSource;
     source.store = createStore(() => ({}));
 
+    expect(service.awaitsSource()).toBe(false);
     service.releaseSource(source.store);
+    // Until a view shows players the presented scene again
+    expect(service.awaitsSource()).toBe(true);
     // At once: a hidden window has no next frame, and the closing view must not stay referenced
     expect(renders.stopListening).toHaveBeenCalledTimes(1);
     nextFrame();
@@ -120,21 +124,29 @@ describe('player window mirroring', () => {
     expect((service as any).streamSource.store).toBeUndefined();
     expect(service.isWindowOpen()).toBe(true);
     expect(renders.capture).toHaveBeenCalledTimes(1);
+    service.releaseHeldFrame(frameSource({ withPlayerSafeFrame: vi.fn() }));
+    expect(service.awaitsSource()).toBe(false);
   });
 
   it.each(['presentCanvas', 'releaseHeldFrame'] as const)('lets go of the previous canvas at once on %s', (swap) => {
     const previous = scheduledRenders();
     const next = scheduledRenders();
-    const { service } = mirror(previous);
+    const { service, nextFrame } = mirror(previous);
     previous.render();
     const source = frameSource({ withPlayerSafeFrame: vi.fn(), beforeRender: next.beforeRender });
 
-    vi.spyOn(performance, 'now').mockReturnValue(performance.now() + 100);
+    const swapped = performance.now() + 100;
+    vi.spyOn(performance, 'now').mockReturnValue(swapped);
     // No frame of the player window in between: it may be hidden
     if (swap === 'presentCanvas') service.presentCanvas(source, 'scene-b');
     else service.releaseHeldFrame(source);
 
     expect(previous.stopListening).toHaveBeenCalledTimes(1);
+    // Another scene's frame waits for the sheet to be down
+    if (swap === 'presentCanvas') {
+      vi.mocked(performance.now).mockReturnValue(swapped + SCENE_DIP_MS);
+      nextFrame();
+    }
     next.render();
     expect(next.capture).toHaveBeenCalledTimes(1);
   });

@@ -20,6 +20,8 @@ if (require('fs').existsSync(path.join(root, 'eslint-suppressions.json'))) {
 const eslint = path.join(root, 'node_modules', '.bin', process.platform === 'win32' ? 'eslint.cmd' : 'eslint');
 const result = spawnSync(eslint, ['--no-config-lookup', '--config', 'eslint.scanner.mjs', '--format', 'json', '.'], {
   cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, shell: process.platform === 'win32',
+  // Type-aware linting of the whole repository outgrew Node's default 4 GB heap (about 6 GB at 5,500 files).
+  env: { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --max-old-space-size=8192`.trim() },
 });
 if (result.error || !result.stdout.trim().startsWith('[')) {
   console.error(result.stderr || result.error?.message || 'ESLint produced no report');

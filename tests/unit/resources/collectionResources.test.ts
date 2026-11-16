@@ -19,7 +19,7 @@ describe('legacyCollectionResources', () => {
     expect(legacyCollectionResources({}, []).map((d) => d.key)).toEqual(['hp']);
   });
 
-  it('keeps hit points where the old HP bar was switched off: Edit Token and the DM screen still showed them', () => {
+  it('keeps hit points where the old HP bar was switched off: Edit token and the DM screen still showed them', () => {
     expect(legacyCollectionResources({ defaultWidgets: { hpBar: false, stressBar: true } }, []).map((d) => d.key)).toEqual(['hp', 'stress']);
     expect(legacyCollectionResources({ systemPresetId: 'builtin:dnd5e', defaultWidgets: { hpBar: false } }, BUILT_IN_SYSTEM_PRESETS).map((d) => d.key)).toEqual(['hp']);
   });

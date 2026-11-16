@@ -56,8 +56,8 @@ describe('a lit players\' frame of another size than the DM\'s pane', () => {
   const cleanup: (() => void)[] = [];
   afterEach(() => { while (cleanup.length) cleanup.pop()!(); });
 
-  async function open(pane: { width: number; height: number }, preference: 'webgl' | 'canvas' = 'webgl'): Promise<LitView> {
-    const view = await openLitView({ preference, pane, map: MAP, grid: 32 });
+  async function open(pane: { width: number; height: number }): Promise<LitView> {
+    const view = await openLitView({ pane, map: MAP, grid: 32 });
     cleanup.push(() => view.dispose());
     build(view);
     return view;
@@ -165,19 +165,5 @@ describe('a lit players\' frame of another size than the DM\'s pane', () => {
     mirrored(narrow);
     expect(firstDifference(own(), before, app.canvas.width)).toBeNull();
     expect((app.renderer as WebGLRenderer).backBuffer.useBackBuffer).toBe(true);
-  });
-
-  it('shows, behind the line-of-sight fallback on PIXI\'s Canvas renderer, the mask of a DM screen of the window\'s size', async () => {
-    const narrow = await open(NARROW, 'canvas');
-    const wide = await open(WINDOW, 'canvas');
-    expect(narrow.app.renderer.name).toBe('canvas');
-    const players = mirrored(narrow);
-    const expected = onScreen(wide, false);
-    expect(firstDifference(players.pixels, expected, WINDOW.width)).toBeNull();
-    // Black outside what the party sees, on both sides of the pane, and the map where a token looks
-    expect(at(players.pixels, 250, 20)).toEqual([0, 0, 0]);
-    expect(at(players.pixels, 8, 250)).toEqual([0, 0, 0]);
-    expect(luma(at(players.pixels, 50, 60))).toBeGreaterThan(60);
-    expect(luma(at(players.pixels, 215, 205))).toBeGreaterThan(60);
   });
 });

@@ -1,4 +1,5 @@
 import { textButton } from './controls.ts';
+import { t } from '../../../i18n';
 
 export interface ImageRowActions {
   /** Takes the shown image away from every player. */
@@ -13,6 +14,6 @@ export interface ImageRowActions {
 export function renderImageRow(layer: HTMLElement, shown: boolean, actions: ImageRowActions): void {
   if (!shown) return;
   const row = layer.createDiv({ cls: 'atlas-online-image-row', attr: { role: 'status' } });
-  row.createSpan({ cls: 'atlas-online-image-row__text', text: 'Image shown' });
-  textButton(row, 'Hide', () => actions.hideImage()).dataset.focusKey = 'hide-image';
+  row.createSpan({ cls: 'atlas-online-image-row__text', text: t('online.imageShown') });
+  textButton(row, t('online.hide'), () => actions.hideImage()).dataset.focusKey = 'hide-image';
 }

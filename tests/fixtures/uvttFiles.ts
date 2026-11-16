@@ -62,3 +62,11 @@ export function cryptSetting(path: string, value: unknown): Json {
     else holder[last] = value;
   });
 }
+
+/** A stand-in for a bitmap the dungeon worker hands over, where tests run without a canvas: only its size. */
+export function fakeBitmap(width: number, height: number): ImageBitmap {
+  return { width, height, close: () => {} } as ImageBitmap;
+}
+
+/** What a stand-in converter makes of a bitmap: a PNG header of its size. */
+export const pngOfBitmap = (bitmap: ImageBitmap): Blob => new Blob([pngHeader(bitmap.width, bitmap.height)], { type: 'image/png' });

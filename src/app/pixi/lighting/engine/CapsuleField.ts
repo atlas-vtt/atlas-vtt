@@ -10,7 +10,7 @@ import { createQuad, createShader, createTarget, destroyQuad, quadGeometry, rend
  * Shaders read it through `fieldGlsl(name)` with this field's `resources()`.
  */
 export class CapsuleField {
-  readonly texture: RenderTexture;
+  private target: RenderTexture;
   readonly uniforms: UniformGroup;
   private readonly quad: Quad = createQuad();
   private readonly buildUniforms = new UniformGroup({
@@ -27,18 +27,48 @@ export class CapsuleField {
   private readonly aliases = new Map<string, UniformGroup>();
 
   constructor(private readonly renderer: Renderer, rect: Rect, readonly texel: number, wallRadius: number, readonly name = 'uField') {
-    this.texture = createTarget(rect[2] / texel, rect[3] / texel, 'r16float');
-    const covered = [rect[0], rect[1], this.texture.source.pixelWidth * texel, this.texture.source.pixelHeight * texel];
-    this.buildUniforms.uniforms.uBuildRect.set(covered);
+    this.target = createTarget(rect[2] / texel, rect[3] / texel, 'r16float');
     this.uniforms = new UniformGroup({
-      [`${name}Rect`]: { value: new Float32Array(covered), type: 'vec4<f32>' },
+      [`${name}Rect`]: { value: new Float32Array(4), type: 'vec4<f32>' },
       [`${name}Params`]: { value: new Float32Array([fieldMargin(texel), wallRadius]), type: 'vec2<f32>' },
     });
+    this.place(rect);
     this.shader = createShader(ENGINE_SHADERS.capsuleField, { fieldBuild: this.buildUniforms });
     this.initialGeometry = quadGeometry(this.quad);
     this.mesh = new Mesh({ geometry: this.initialGeometry, shader: this.shader });
     this.mesh.blendMode = 'min';
     this.scene.addChild(this.mesh);
+  }
+
+  get texture(): RenderTexture {
+    return this.target;
+  }
+
+  /**
+   * The field over `rect` from now on, which `build` then draws: the texture is kept where it is
+   * large enough (it then covers more than `rect`), so a field moved along with a light allocates
+   * nothing. Bind its `resources()` anew after a move.
+   */
+  cover(rect: Rect): void {
+    const { texel } = this;
+    const [width, height] = [Math.ceil(rect[2] / texel), Math.ceil(rect[3] / texel)];
+    const source = this.target.source;
+    if (source.pixelWidth < width || source.pixelHeight < height) {
+      this.target.destroy(true);
+      this.target = createTarget(Math.max(width, source.pixelWidth), Math.max(height, source.pixelHeight), 'r16float');
+    }
+    this.place(rect);
+  }
+
+  private place(rect: Rect): void {
+    const covered = [rect[0], rect[1], this.target.source.pixelWidth * this.texel, this.target.source.pixelHeight * this.texel];
+    this.buildUniforms.uniforms.uBuildRect.set(covered);
+    (this.uniforms.uniforms as Record<string, Float32Array>)[`${this.name}Rect`]!.set(covered);
+    this.uniforms.update();
+    for (const [name, alias] of this.aliases) {
+      (alias.uniforms as Record<string, Float32Array>)[`${name}Rect`]!.set(covered);
+      alias.update();
+    }
   }
 
   build(segments: readonly Seg[]): void {
@@ -47,19 +77,11 @@ export class CapsuleField {
       renderInto(this.renderer, this.empty, this.texture, clear);
       return;
     }
-    const buffer = new Buffer({ data: new Float32Array(segments.flat()), usage: BufferUsage.VERTEX });
-    const geometry = new Geometry({
-      attributes: {
-        aPosition: { buffer: this.quad.vertices, format: 'float32x2' },
-        aSegment: { buffer, format: 'float32x4', instance: true },
-      },
-      indexBuffer: this.quad.indices,
-      instanceCount: segments.length,
-    });
-    this.mesh.geometry = geometry;
+    const built = segmentGeometry(this.quad, segments);
+    this.mesh.geometry = built.geometry;
     renderInto(this.renderer, this.scene, this.texture, clear);
     this.releaseBuilt();
-    this.built = { geometry, segments: buffer };
+    this.built = built;
   }
 
   /** The quad buffers are shared with every geometry, so only the segment buffer goes with its geometry. */
@@ -95,6 +117,24 @@ export class CapsuleField {
     this.initialGeometry.destroy();
     destroyQuad(this.quad);
     this.shader.destroy();
-    this.texture.destroy(true);
+    this.target.destroy(true);
   }
+}
+
+/**
+ * One instance of `quad` per segment (`aSegment`: its two ends), for a shader that places the quad
+ * around it (`capsuleFieldVertex`). The quad's buffers stay the caller's; destroy the geometry and
+ * `segments` together.
+ */
+export function segmentGeometry(quad: Quad, segments: readonly Seg[]): { geometry: Geometry; segments: Buffer } {
+  const buffer = new Buffer({ data: new Float32Array(segments.flat()), usage: BufferUsage.VERTEX });
+  const geometry = new Geometry({
+    attributes: {
+      aPosition: { buffer: quad.vertices, format: 'float32x2' },
+      aSegment: { buffer, format: 'float32x4', instance: true },
+    },
+    indexBuffer: quad.indices,
+    instanceCount: segments.length,
+  });
+  return { geometry, segments: buffer };
 }

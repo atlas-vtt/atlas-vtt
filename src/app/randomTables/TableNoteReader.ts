@@ -31,7 +31,8 @@ const noteNameOf = (path: string): string => path.slice(path.lastIndexOf('/') + 
  * changes, moves or goes, and reports every table with how it was found. Items tables read
  * the notes their rows link to through the metadata cache and follow those too. Also finds
  * what a link in a result names (`resolver`): a table in any note, or a Base view, whose
- * Base it then follows, for rolling linked tables in place (master tables).
+ * Base it then follows, for rolling linked tables in place (master tables); a listed
+ * generator is said to be one, so a link rolls it whole.
  */
 export class TableNoteReader {
   private sources: readonly RandomTableSource[] = [];
@@ -176,15 +177,16 @@ export class TableNoteReader {
     const state = known?.kind === 'read' ? known : await this.readNote(file.path);
     const table = state.kind === 'read' ? linkedTable(state.tables, parts.heading) : null;
     if (!table) return null;
-    // A table the collection rolls as Items gives the item of the row that comes up.
-    const listed = this.sources.find((source) => source.path === file.path && source.kind === 'items'
+    // A table the collection rolls as Items gives the item of the row that comes up; a generator rolls whole.
+    const listed = this.sources.find((source) => source.path === file.path && source.kind !== 'text'
       && findNoteTables([source], state)[0]?.table === table);
     return {
       kind: 'table',
       key: tableSourceId({ path: file.path, index: table.index }),
       table,
       notePath: file.path,
-      ...(listed && { items: this.itemsOf(table, listed) }),
+      ...(listed?.kind === 'items' && { items: this.itemsOf(table, listed) }),
+      ...(listed?.kind === 'generator' && { generator: { name: listed.label ?? table.name, noteName: file.basename } }),
     };
   }
 }

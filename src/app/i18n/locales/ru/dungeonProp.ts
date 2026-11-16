@@ -1,0 +1,33 @@
+import type { Translation } from '../../types';
+
+export const dungeonProp: Translation = {
+  'dungeonProp.name.dais': 'Возвышение',
+  'dungeonProp.name.statue': 'Статуя',
+  'dungeonProp.name.fountain': 'Фонтан',
+  'dungeonProp.name.well': 'Колодец',
+  'dungeonProp.name.hearth': 'Камин',
+  'dungeonProp.name.bust': 'Бюст',
+  'dungeonProp.name.stalagmites': 'Сталагмиты',
+  'dungeonProp.name.columnFormation': 'Каменная колонна',
+  'dungeonProp.name.flowstone': 'Натёчный камень',
+  'dungeonProp.name.curtain': 'Каменный занавес',
+  'dungeonProp.name.crystals': 'Кристаллы',
+  'dungeonProp.name.mushrooms': 'Грибы',
+  'dungeonProp.name.boulder': 'Валун',
+  'dungeonProp.name.campfire': 'Кострище',
+
+  'dungeonProp.count.dais': { one: '{count} возвышение', few: '{count} возвышения', many: '{count} возвышений', other: '{count} возвышения' },
+  'dungeonProp.count.statue': { one: '{count} статуя', few: '{count} статуи', many: '{count} статуй', other: '{count} статуи' },
+  'dungeonProp.count.fountain': { one: '{count} фонтан', few: '{count} фонтана', many: '{count} фонтанов', other: '{count} фонтана' },
+  'dungeonProp.count.well': { one: '{count} колодец', few: '{count} колодца', many: '{count} колодцев', other: '{count} колодца' },
+  'dungeonProp.count.hearth': { one: '{count} камин', few: '{count} камина', many: '{count} каминов', other: '{count} камина' },
+  'dungeonProp.count.bust': { one: '{count} бюст', few: '{count} бюста', many: '{count} бюстов', other: '{count} бюста' },
+  'dungeonProp.count.stalagmites': { one: '{count} группа сталагмитов', few: '{count} группы сталагмитов', many: '{count} групп сталагмитов', other: '{count} группы сталагмитов' },
+  'dungeonProp.count.columnFormation': { one: '{count} каменная колонна', few: '{count} каменные колонны', many: '{count} каменных колонн', other: '{count} каменной колонны' },
+  'dungeonProp.count.flowstone': { one: '{count} натёчный камень', few: '{count} натёчных камня', many: '{count} натёчных камней', other: '{count} натёчного камня' },
+  'dungeonProp.count.curtain': { one: '{count} каменный занавес', few: '{count} каменных занавеса', many: '{count} каменных занавесов', other: '{count} каменного занавеса' },
+  'dungeonProp.count.crystals': { one: '{count} друза кристаллов', few: '{count} друзы кристаллов', many: '{count} друз кристаллов', other: '{count} друзы кристаллов' },
+  'dungeonProp.count.mushrooms': { one: '{count} поросль грибов', few: '{count} поросли грибов', many: '{count} порослей грибов', other: '{count} поросли грибов' },
+  'dungeonProp.count.boulder': { one: '{count} валун', few: '{count} валуна', many: '{count} валунов', other: '{count} валуна' },
+  'dungeonProp.count.campfire': { one: '{count} кострище', few: '{count} кострища', many: '{count} кострищ', other: '{count} кострища' },
+};

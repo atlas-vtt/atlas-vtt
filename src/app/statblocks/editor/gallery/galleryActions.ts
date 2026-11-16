@@ -25,6 +25,7 @@ import { freeName, nameTakenIn } from '../template-editor/save/saveChoice';
 import { blankTemplate, firstBlockId } from './gallerySources';
 import { noteName } from '../../../utils/pathUtils';
 import { noteBodyAt, statblockTemplate } from './statblockNotes';
+import { t } from '../../../i18n';
 
 /** What the user picked in the gallery. */
 export type GalleryPick =
@@ -41,7 +42,7 @@ export interface CreatedTemplate {
   fsImport?: { layout: LayoutIdentity; imported: FsLayoutImport } | undefined;
 }
 
-const BLANK_NAME = 'New template';
+const BLANK_NAME = t('statblockEditor.newTemplate');
 
 /** Writes the picked template into the library as a template of its own. */
 export async function createFromPick(app: App, pick: GalleryPick): Promise<CreatedTemplate> {
@@ -116,7 +117,7 @@ export async function openPick(app: App, pick: GalleryPick, collectionId: string
 export async function saveStatblockAsTemplate(app: App, notePath: string, values: FrontmatterRecord, collectionId: string | null): Promise<void> {
   const shaped = statblockTemplate(values);
   if (!shaped) {
-    showNotice('This statblock has no values to build a template from.');
+    showNotice(t('statblockEditor.noValuesNotice'));
     return;
   }
   const { name } = draftOf(app, { kind: 'statblock', path: notePath, template: shaped });

@@ -1,28 +1,56 @@
 import { EditorView } from '@codemirror/view';
-import { resolveSubpath, type App, type CachedMetadata, type HeadingCache, type TFile } from 'obsidian';
+import { resolveSubpath, type App, type CachedMetadata, type TFile } from 'obsidian';
+import { noteFile, pinNoteLink } from '../tools/pinNoteLink';
+import { headingNamed } from './headingLinks';
 
 /** Heading lines of the editor, in source mode and live preview. */
 const EDITOR_HEADING_SELECTOR = '.cm-line.HyperMD-header';
 /** Headings of reading view and rendered markdown. */
 const RENDERED_HEADING_SELECTOR = '[data-heading]';
 
-/**
- * The line `heading` starts on in `file`; null when the note lacks it. Pins
- * store the heading as the metadata cache does, so it is looked up exactly:
- * `resolveSubpath` reads every `#` as a nested heading and would miss
- * "Room #3". It still resolves links written by hand, such as `Keep#Cellar`.
- */
-export function headingLine(app: App, file: TFile, heading: string): number | null {
-  const cache = app.metadataCache.getFileCache(file);
-  return cache ? headingIndex(cache, heading)?.position.start.line ?? null : null;
+/** The heading a pin's link names in its note: its text, its line, and which of the headings of that text it is. */
+export interface LinkedHeading {
+  readonly text: string;
+  readonly line: number;
+  readonly occurrence: number;
+  readonly count: number;
 }
 
-/** The cached heading a pin's `heading` names: exactly as the cache stores it, else as `resolveSubpath` reads a link. */
-function headingIndex(cache: CachedMetadata, heading: string): HeadingCache | undefined {
-  const headings = cache.headings ?? [];
-  const exact = headings.find((cached) => cached.heading === heading);
-  const line = exact?.position.start.line ?? resolveSubpath(cache, `#${heading}`)?.start.line;
-  return headings.find((cached) => cached.position.start.line === line);
+/** What `link` (a pin's heading part, see `headingNamed`) names in `file`; null when the note lacks it. */
+export function linkedHeading(app: App, file: TFile, link: string): LinkedHeading | null {
+  const cache = app.metadataCache.getFileCache(file);
+  if (!cache) return null;
+  const found = headingNamed(cache, link);
+  if (!found) return null;
+  const same = (cache.headings ?? []).filter((heading) => heading.heading === found.heading);
+  return { text: found.heading, line: found.position.start.line, occurrence: same.indexOf(found), count: same.length };
+}
+
+/**
+ * Opens a pin's note in a tab of the workspace, from the map at `sourcePath` where
+ * the link is not a whole path. Obsidian finds the heading of the link itself, save
+ * where its reading goes elsewhere than the pin's (a count, a repeat that differs
+ * in case or marks, a `#` within the heading): that one opens at its line, and a
+ * link whose heading is gone opens the note rather than the section Obsidian walks on to.
+ */
+export async function openPinNote(app: App, notePath: string, newLeaf: boolean, sourcePath = ''): Promise<void> {
+  const { linkpath, heading } = pinNoteLink(notePath);
+  const file = heading === null ? null : noteFile(app, linkpath, sourcePath);
+  const cache = file && app.metadataCache.getFileCache(file);
+  if (!file || !cache || heading === null) {
+    await app.workspace.openLinkText(notePath, sourcePath, newLeaf);
+    return;
+  }
+
+  const named = headingNamed(cache, heading);
+  const obsidianReads = resolveSubpath(cache, `#${heading}`);
+  if (named && obsidianReads?.start.line !== named.position.start.line) {
+    await app.workspace.openLinkText(file.path, sourcePath, newLeaf, { eState: { line: named.position.start.line } });
+  } else if (!named && obsidianReads?.type === 'heading') {
+    await app.workspace.openLinkText(file.path, sourcePath, newLeaf);
+  } else {
+    await app.workspace.openLinkText(notePath, sourcePath, newLeaf);
+  }
 }
 
 /** A heading's section as offsets into its note: from the end of the heading's line to the next heading of its level or higher (null: the note's end). */
@@ -34,7 +62,7 @@ export interface HeadingSection {
 
 /** The section `heading` opens in a note, as Obsidian resolves a link to it; null when the note lacks it. */
 export function headingSection(cache: CachedMetadata, heading: string): HeadingSection | null {
-  const found = headingIndex(cache, heading);
+  const found = headingNamed(cache, heading);
   if (found === undefined) return null;
   const headings = cache.headings ?? [];
   const next = headings.slice(headings.indexOf(found) + 1).find((cached) => cached.level <= found.level);
@@ -53,17 +81,32 @@ export function findEditorHeading(container: HTMLElement, line: number): HTMLEle
 }
 
 /**
- * The rendered heading called `heading` nearest the top of `container`: a note
- * may repeat a heading, and the one scrolled to is the one at the top.
- * `data-heading` holds the heading's source text, exactly as the metadata cache
- * stores it. Null while it is not drawn.
+ * The drawn heading a link names. `data-heading` holds the heading's source text,
+ * exactly as the metadata cache stores it, and a note may repeat it: the view knows
+ * which line an element is on (`lineOf`), else with all of them drawn their order
+ * tells. A view that knows no lines and draws only those near the screen has been
+ * scrolled to the heading, so the last resort is the one nearest the top. Null while
+ * it is not drawn, also where the view knows the ones drawn lie on other lines.
  */
-export function findRenderedHeading(container: HTMLElement, heading: string): HTMLElement | null {
+export function findRenderedHeading(
+  container: HTMLElement,
+  heading: LinkedHeading,
+  lineOf?: (element: HTMLElement) => number | null,
+): HTMLElement | null {
+  const drawn = Array.from(container.querySelectorAll<HTMLElement>(RENDERED_HEADING_SELECTOR))
+    .filter((element) => element.dataset.heading === heading.text);
+  const lines = lineOf ? drawn.map(lineOf) : [];
+  const onItsLine = drawn[lines.indexOf(heading.line)];
+  if (onItsLine) return onItsLine;
+  // Where the view knows the lines, the order can only be trusted for a unique heading: an embed draws headings of its own.
+  const linesKnown = lines.some((line) => line !== null);
+  if (drawn.length === heading.count && (heading.count === 1 || !linesKnown)) return drawn[heading.occurrence] ?? null;
+  if (linesKnown) return null;
+
   const top = container.getBoundingClientRect().top;
   let nearest: HTMLElement | null = null;
   let nearestDistance = Infinity;
-  for (const element of Array.from(container.querySelectorAll<HTMLElement>(RENDERED_HEADING_SELECTOR))) {
-    if (element.dataset.heading !== heading) continue;
+  for (const element of drawn) {
     const distance = Math.abs(element.getBoundingClientRect().top - top);
     if (distance < nearestDistance) {
       nearest = element;

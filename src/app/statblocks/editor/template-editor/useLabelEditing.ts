@@ -9,6 +9,7 @@ import type { BlockSelection } from './selection';
 import { applyEdit, readOnlyMessage } from './sessionEdit';
 import type { EditorSession, SessionSnapshot } from './sessionTypes';
 import type { CollectionFieldKeys } from './useCollectionFieldKeys';
+import { t } from '../../../i18n';
 
 export interface LabelEditingInput {
   session: EditorSession;
@@ -62,9 +63,9 @@ function labelledNeighbour(template: StatblockTemplate, open: LabelStop, step: 1
 function boundMessage(bound: { key: string; created: boolean; fromCollection: boolean }, keys: CollectionFieldKeys): string {
   if (bound.fromCollection) {
     const count = keys.get(bound.key) ?? 0;
-    return `Shows the property ${count} ${count === 1 ? 'statblock' : 'statblocks'} of this collection hold.`;
+    return t('templateEditor.bound.collection', { count });
   }
-  return bound.created ? 'Made a new property for it.' : 'Shows a property this template has.';
+  return bound.created ? t('templateEditor.bound.created') : t('templateEditor.bound.own');
 }
 
 /**

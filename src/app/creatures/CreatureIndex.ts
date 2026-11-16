@@ -189,7 +189,7 @@ export class CreatureIndex {
       while (this.queue.size > 0 && !this.destroyed) {
         const paths = [...this.queue];
         this.queue.clear();
-        const bestiary = this.bestiary ??= bestiaryLookup();
+        const bestiary = this.bestiary ??= bestiaryLookup(this.app);
         const resolved = await this.resolveAll(paths, bestiary);
         if (this.destroyed) return;
         for (const [path, creature] of resolved) this.entries.set(path, creature);

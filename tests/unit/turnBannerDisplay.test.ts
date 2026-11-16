@@ -50,7 +50,7 @@ describe('the turn banner in the player window', () => {
     const settings = new SettingsService(app);
     const store = createStore(() => ({
       initiative: fight('hero'), initiativeTrackerOpen: trackerOpen, mapPath: 'a.atlasmap', isMapLoading: false,
-      objects: { tokens: { hero: token('hero'), ogre: token('ogre'), ghost: token('ghost', { isHidden: true }) } },
+      objects: { tokens: { hero: token('hero', { showNameplate: true }), ogre: token('ogre'), ghost: token('ghost', { isHidden: true }) } },
     })) as unknown as StoreApi<ViewAtlasState>;
     const overlay = new PlayerTurnBanner(app, settings);
     overlay.mount(document.body);
@@ -69,6 +69,9 @@ describe('the turn banner in the player window', () => {
     settings.setLocalPlayerViewSettings({ showTokenNameplates: true });
     turnTo('hero', 2);
     expect(shown()).toBe('Round 2hero card');
+    // A combatant whose nameplate the GM's map does not show goes unnamed
+    turnTo('ogre', 2);
+    expect(shown()).toBe('TurnUnknown Creature');
   });
 
   it('shows none for a hidden turn holder, while the list is not shown, or when the GM switched it off', () => {

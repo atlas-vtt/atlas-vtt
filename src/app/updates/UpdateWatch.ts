@@ -1,6 +1,6 @@
 import { isNewerRelease } from '../changelog/version';
 
-/** Device-local: the newest version this device has already been told of. */
+/** Device-local: the newest version the GM acted on in its notice (Update, What's new, or closed it). */
 export const UPDATE_STORAGE_KEY = 'atlas-vtt:update-announced';
 
 export interface UpdateWatchDeps {
@@ -10,18 +10,24 @@ export interface UpdateWatchDeps {
   /** The GM's switch, Settings → Updates. */
   enabled: () => boolean;
   online: () => boolean;
+  /** The newest version the GM acted on in a notice; one at or above a release silences it. */
   announced: { get(): string | null; set(version: string): void };
-  announce: (version: string) => void;
+  /** Shows the notice; `acted` is called once the GM uses it (Update, What's new, close). */
+  announce: (version: string, acted: () => void) => void;
 }
 
 /**
- * Knows whether a newer Atlas is out and says so once per version. It only looks: Obsidian's own
- * updater installs, so Atlas never downloads or replaces its files.
+ * Knows whether a newer Atlas is out and says so until the GM acts on the notice: once per start of
+ * Atlas, so a notice shown while nobody looked (a window behind others, a vault closed at once)
+ * comes back the next time. It only looks: Obsidian's own updater installs, so Atlas never
+ * downloads or replaces its files.
  */
 export class UpdateWatch {
   private newest: string | null = null;
   private running: Promise<void> | null = null;
   private readonly listeners = new Set<() => void>();
+  /** The release this run of Atlas has shown its notice for: the hourly look never shows a second one. */
+  private shown: string | null = null;
 
   constructor(private readonly deps: UpdateWatchDeps) {}
 
@@ -57,10 +63,11 @@ export class UpdateWatch {
     // A failed look keeps what an earlier one found; the next one tries again.
     if (published === null) return;
     this.newest = isNewerRelease(published, this.deps.installed) ? published : null;
+    const newest = this.newest;
     const announced = this.deps.announced.get();
-    if (this.newest && (announced === null || isNewerRelease(this.newest, announced))) {
-      this.deps.announced.set(this.newest);
-      this.deps.announce(this.newest);
+    if (newest && newest !== this.shown && (announced === null || isNewerRelease(newest, announced))) {
+      this.shown = newest;
+      this.deps.announce(newest, () => this.deps.announced.set(newest));
     }
   }
 

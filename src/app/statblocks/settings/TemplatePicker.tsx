@@ -3,6 +3,7 @@ import { Select, type SelectOption } from '../../packages/components/primitives/
 import { allBuiltInTemplates, builtInTemplate } from '../library/builtInTemplates';
 import type { TemplateLibrarySnapshot } from '../library/TemplateLibrary';
 import { isBuiltInTemplateId, type TemplateId } from '../model/templateTypes';
+import { t } from '../../i18n';
 
 /** Whether a role's template is there to start from: found, missing, or not known yet while the library reads the vault. */
 export type TemplateState = 'found' | 'missing' | 'reading';
@@ -29,9 +30,9 @@ export function templateOptions(
   const builtIns = allBuiltInTemplates();
   const ofSystem = new Set(systemTemplateIds);
   const ordered = [...builtIns.filter((builtIn) => ofSystem.has(builtIn.id)), ...builtIns.filter((builtIn) => !ofSystem.has(builtIn.id))]
-    .map((builtIn): SelectOption<TemplateId> => ({ value: builtIn.id, label: builtIn.name, detail: 'Built-in' }));
+    .map((builtIn): SelectOption<TemplateId> => ({ value: builtIn.id, label: builtIn.name, detail: t('statblockEditor.builtInDetail') }));
   const state = templateState(value, library);
-  const own: SelectOption<TemplateId>[] = state === 'found' ? [] : [{ value, label: state === 'reading' ? 'Reading templates…' : 'Missing template' }];
+  const own: SelectOption<TemplateId>[] = state === 'found' ? [] : [{ value, label: state === 'reading' ? t('statblockEditor.readingTemplates') : t('statblockEditor.missingTemplate') }];
   return [...own, ...vault, ...ordered];
 }
 

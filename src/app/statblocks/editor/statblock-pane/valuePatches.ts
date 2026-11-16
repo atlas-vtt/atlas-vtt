@@ -10,6 +10,7 @@ import { deepEqual } from '../../notes/listIdentity';
 import type { NotePatch } from '../../notes/patchTypes';
 import { coerce } from '../../values/valueCoercion';
 import type { FieldRead } from '../../values/fieldValues';
+import { splitEscapedList, typedListText } from '../../values/listText';
 import { textProblem } from '../../values/valueFit';
 import { valueText } from '../../values/valueText';
 
@@ -29,9 +30,9 @@ export function valueProblem(field: TemplateField, value: FieldValue | undefined
   return typeof value === 'string' ? textProblem(field, value) : null;
 }
 
-/** A value as the pane's text input starts with it. */
-export function textOfValue(value: FieldValue | undefined): string {
-  return valueText(value);
+/** A value as the pane's text input starts with it; in a field whose text parts at commas, those of an item escaped. */
+export function textOfValue(field: Pick<TemplateField, 'type'>, value: FieldValue | undefined): string {
+  return field.type === 'pairs' || field.type === 'list' ? typedListText(value) : valueText(value);
 }
 
 /**
@@ -50,7 +51,7 @@ export function fieldPatches(key: FieldKey, read: FieldRead, next: FieldValue | 
 export function listItems(value: FieldValue | undefined): FieldValue[] {
   if (value === undefined || value === null) return [];
   if (Array.isArray(value)) return value;
-  return valueText(value).split(',').map((item) => item.trim()).filter((item) => item !== '');
+  return splitEscapedList(valueText(value));
 }
 
 /** Adds a chip: inserted after the last item of a stored list; a value that is no list is written as one. */

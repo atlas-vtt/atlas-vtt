@@ -40,3 +40,11 @@ export interface FramePiece extends Size {
   left: number;
   top: number;
 }
+
+/** A frame on the map: its centre and size in world units. */
+export interface WorldFrame {
+  centerX: number;
+  centerY: number;
+  width: number;
+  height: number;
+}

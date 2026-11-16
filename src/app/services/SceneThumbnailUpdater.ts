@@ -4,6 +4,8 @@ import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
 export interface SceneThumbnailPorts {
   /** Renders the scene the view shows now; null when there is nothing to frame. */
   render: () => ArrayBuffer | null;
+  /** Whether the image of the level the view shows has loaded: after a switch of level it takes a moment. */
+  levelShown: () => boolean;
   save: (mapPath: string, bytes: ArrayBuffer) => Promise<void>;
   hasThumbnail: (mapPath: string) => Promise<boolean>;
 }
@@ -16,7 +18,7 @@ const AFTER_OPEN_MS = 1000;
 /** Walls, lights and tokens with vision or a light are `objects`; the scene's own lighting counts where the GM's picture shows it. */
 function contentChanged(state: ViewAtlasState, previous: ViewAtlasState): boolean {
   return state.background !== previous.background || state.grid !== previous.grid || state.objects !== previous.objects
-    || gmPictureDiffers(state.lighting, previous.lighting);
+    || state.viewedLevel !== previous.viewedLevel || gmPictureDiffers(state.lighting, previous.lighting);
 }
 
 /**
@@ -88,15 +90,16 @@ export class SceneThumbnailUpdater {
    * its thumbnail. Nor does a store that is out of use (`mapLoaded` false: the scene's file is
    * being rewritten, or its load failed) show the scene: the thumbnail it has stays. While the
    * grid is being aligned the canvas shows the alignment's preview and its marks, and the thumbnail
-   * waits for the scene itself where it `canWait`; a view that moves on or closes meanwhile leaves
-   * the thumbnail the scene has.
+   * waits for the scene itself where it `canWait`, as it does for the image of a level just shown;
+   * a view that moves on or closes meanwhile leaves the thumbnail the scene has. The thumbnail shows
+   * the level the view shows, which is the one the scene opens on again.
    */
   private write(canWait: boolean): void {
     const mapPath = this.stalePath;
     this.stalePath = null;
     const state = this.store.getState();
     if (!mapPath || state.mapPath !== mapPath || state.isMapLoading || !state.mapLoaded) return;
-    if (state.isGridAlignmentOpen) {
+    if (state.isGridAlignmentOpen || !this.ports.levelShown()) {
       if (canWait) this.markStale(mapPath, AFTER_EDIT_MS);
       return;
     }

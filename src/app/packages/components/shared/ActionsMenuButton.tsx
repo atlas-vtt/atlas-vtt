@@ -5,6 +5,7 @@ import { renderEntries, type ContextMenuEntry } from '../../../react/components/
 import { Button } from '../primitives/button';
 import { LabelTooltip } from '../primitives/tooltip';
 import { useExclusiveDropdown } from '../primitives/useExclusiveDropdown';
+import { portalHost } from '../../../host/portalHost';
 
 interface ActionsMenuButtonProps {
   /** Tooltip and accessible name of the trigger. */
@@ -29,7 +30,7 @@ export function ActionsMenuButton({ label, entries, className, icon: Icon = More
           </Button>
         </DropdownMenu.Trigger>
       </LabelTooltip>
-      <DropdownMenu.Portal container={trigger?.closest<HTMLElement>('[role="dialog"], .modal') ?? trigger?.ownerDocument.body}>
+      <DropdownMenu.Portal container={trigger?.closest<HTMLElement>('[role="dialog"], .modal') ?? portalHost(trigger?.ownerDocument)}>
         <DropdownMenu.Content
           className="atlas-ctx-menu atlas-ctx-menu--dropdown"
           side="bottom"

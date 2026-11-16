@@ -7,9 +7,11 @@ import type { PlayerFrame, Screen, Size, WorldView } from '../types/playerFrame'
  * Most pixels a players' frame is rendered with: a frame at the player window's own size costs
  * what its pixels cost, on the GM's graphics card, and a 3840 × 2160 frame took four to eight
  * times the capture of a pane. A larger window gets a frame of its shape with this many pixels,
- * which the browser scales up. A later device setting can read another budget here.
+ * which the browser scales up. A device may allow `PLAYER_FRAME_4K_PIXEL_BUDGET` instead
+ * (the player view settings), so a 4K TV or an ultrawide gets a pixel of its own everywhere.
  */
 export const PLAYER_FRAME_PIXEL_BUDGET = 2560 * 1440;
+export const PLAYER_FRAME_4K_PIXEL_BUDGET = 3840 * 2160;
 
 /** A number a size or a zoom can be: positive, finite, and not so small that dividing by it gives none. */
 function isPositive(value: number): boolean {
@@ -96,11 +98,11 @@ function withinPieces(size: Size, canvas: Size): Size {
  * Null where there is nothing to render: a window or a view without a size, or one so small
  * that the frame's scale would be no number.
  */
-export function playerFrame(window: Screen, view: WorldView, pane?: Screen): PlayerFrame | null {
+export function playerFrame(window: Screen, view: WorldView, pane?: Screen, pixelBudget = PLAYER_FRAME_PIXEL_BUDGET): PlayerFrame | null {
   const full = pixelsOf(window);
   if (!full || !isWorldView(view)) return null;
   const panePixels = pane ? pixelsOf(pane) : null;
-  const budget = Math.max(PLAYER_FRAME_PIXEL_BUDGET, panePixels ? panePixels.width * panePixels.height : 0);
+  const budget = Math.max(pixelBudget, panePixels ? panePixels.width * panePixels.height : 0);
   const pixels = full.width * full.height;
   const shrink = pixels > budget ? Math.sqrt(budget / pixels) : 1;
   const budgeted = { width: Math.max(1, Math.round(full.width * shrink)), height: Math.max(1, Math.round(full.height * shrink)) };

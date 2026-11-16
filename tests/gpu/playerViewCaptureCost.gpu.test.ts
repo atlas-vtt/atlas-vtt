@@ -3,7 +3,7 @@ import { fogRectangle } from '../helpers/fogOperations';
 import { playerFrameLayers } from '../helpers/playerMeasureWiring';
 import { CELL, playerViewScenes, type PlayerViewScene } from '../helpers/playerViewScene';
 import { DEFAULT_SETTINGS } from '../../src/app/services/atlasSettings';
-import type { PlayerInstanceBadges } from '../../src/app/pixi/token-renderer/PlayerInstanceBadges';
+import type { ShownBadgeNumbers } from '../../src/app/pixi/token-renderer/PlayerBadgeNumbers';
 
 const STRICT = import.meta.env.VITE_PERF_STRICT === '1';
 const WARMUPS = 20;
@@ -64,7 +64,7 @@ async function crowd(): Promise<PlayerViewScene> {
     paint: fogRectangle({ x: 15 * CELL, y: 0, width: 4 * CELL, height: 4 * CELL }),
     edge: fogRectangle({ id: 'edge', timestamp: 2, x: 19 * CELL, y: 0, width: CELL, height: 4 * CELL }),
   });
-  s.events.emit('measure-persistence-changed', true);
+  s.store.getState().setMeasureTool({ keep: true });
   for (const k of [0, 2, 4, 6, 8, 40, 42, 44, 46, 48, 180, 182, 184, 186, 188, 15, 16, 17, 18, 19]) {
     const [x, y] = [centre(k % COLUMNS), centre(Math.floor(k / COLUMNS))];
     s.measureFrom(x, y, x + 2 * CELL, y + CELL);
@@ -77,19 +77,18 @@ describe('what the players\' frame of the measurements costs', () => {
   it('per capture, the work the badges and measurements add', async (ctx) => {
     const s = await crowd();
     const lighting = s.lighting.perception;
-    const badges = (s.tokens as unknown as { playerBadges: PlayerInstanceBadges }).playerBadges;
+    const badges = (s.tokens as unknown as { playerBadges: ShownBadgeNumbers }).playerBadges;
     const added = time(() => {
       const seen = s.tokens.playersSeeInFrame(lighting);
       badges.pass(seen);
-      badges.layers();
       s.measure.getPlayerViewLayers(seen);
     }, 100);
     const badgesOnly = time(() => {
       badges.pass(s.tokens.playersSeeInFrame(lighting));
-      badges.layers();
     }, 100);
-    // The players number fewer look-alikes than the GM: the badges' pass has work to do.
-    expect(badges.layers().length).toBeGreaterThan(0);
+    // Some look-alikes are hidden from the players: the pass leaves their numbers out.
+    expect(badges.numberOf('t180')).toBeNull();
+    expect(badges.numberOf('t100')).not.toBeNull();
     const figures = { hardware: hardware(), addedMs: added, badgesMs: badgesOnly };
     await ctx.annotate(JSON.stringify(figures), 'performance');
     console.info(`player view capture, added work: ${JSON.stringify(figures)}`);

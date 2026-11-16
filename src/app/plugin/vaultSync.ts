@@ -4,11 +4,15 @@ import { FileReferenceService } from '../services/FileReferenceService';
 import { MapThumbnailService } from '../services/MapThumbnailService';
 import type { PathMove } from '../services/renamedPaths';
 import { stemOf } from '../services/vault-sync/recoveredIds';
+import { LibraryFolderMoves } from '../services/vault-sync/libraryFolderMoves';
 import { followLegacySnapshots, followSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
+import { adoptOrphanedSnapshots } from '../snapshots/orphanedSnapshots';
 import { runInBackground } from '../utils/backgroundTask';
 import { isLibraryFile } from '../services/library/libraryPaths';
 import { EXTENSION_ATLASMAP, isScenePath } from '../utils/sceneFiles';
 import { closeMapTab, getLoadedAtlasView } from './atlasLeaves';
+import { showNotice } from '../ui/notice';
+import { t } from '../i18n';
 
 /**
  * How long the vault has to stay quiet before Atlas checks its index against
@@ -45,6 +49,13 @@ export function registerVaultSync(plugin: Plugin): void {
     pendingMoves = [];
     runInBackground(propagateMoves(moves), 'Updating references to moved files');
   };
+  /** Folders renamed in this task, nested ones included: maps are read once for all of them. */
+  let pendingFolderMoves: PathMove[] = [];
+  const flushFolderMoves = (): void => {
+    const moves = pendingFolderMoves;
+    pendingFolderMoves = [];
+    runInBackground(fileReferences.followMovedFolders(moves), 'Updating references to moved folders');
+  };
 
   // Files deleted since the last check; a deleted map's thumbnail waits for it, since the map may have only moved.
   // Snapshots are never trashed here: a deletion may be another device's rename arriving in halves,
@@ -68,21 +79,49 @@ export function registerVaultSync(plugin: Plugin): void {
   plugin.register(() => scheduleCheck.cancel());
   plugin.register(() => assets.cancelScheduledChecks());
 
+  /**
+   * Snapshot folders follow their scenes: into the collection a scene moved to, and back to a scene
+   * whose id changed. One pass at a time, since the start and a check may both ask; a failed pass is
+   * reported by its caller and does not stop the next.
+   */
+  let following = Promise.resolve();
+  const followScenesSnapshots = (): Promise<void> => {
+    const pass = async (): Promise<void> => {
+      const scenes = await assets.getAssets(undefined, 'scene');
+      await followSceneSnapshots(app, scenes);
+      await adoptOrphanedSnapshots(app, scenes);
+    };
+    following = following.then(pass, pass);
+    return following;
+  };
+
   /** Moves the check found reach the open map and every stored reference, like renames Obsidian reports. */
   const followReconciliation = async (result: VaultReconciliation): Promise<void> => {
     const moves = [...result.fileMoves, ...filesOfMovedFolders(app, result.folderMoves)];
     const view = getLoadedAtlasView(app);
     for (const { from, to } of moves) view?.handleFileRenamed(from, to, stemOf(to));
+    for (const { from, to } of result.folderMoves) view?.handleFolderRenamed(from, to);
     if (moves.length > 0) await propagateMoves(moves);
-    await followSceneSnapshots(app, await assets.getAssets(undefined, 'scene'));
+    await fileReferences.followMovedFolders(result.folderMoves);
+    await followScenesSnapshots();
     app.workspace.trigger('atlas-vtt:refresh-assets');
   };
   plugin.register(assets.onReconciled((result) => runInBackground(followReconciliation(result), 'Following files moved outside Atlas')));
 
+  const libraryFolder = new LibraryFolderMoves();
   plugin.registerEvent(
     app.vault.on('rename', (file, oldPath) => {
-      if (file instanceof TFolder) {
+      if (libraryFolder.isLeaving(oldPath, file.path)) {
+        // Atlas reads its library at its own place alone. Nothing follows a library that left, and nothing in it
+        // is rewritten, so it is whole when the folder is back, also when Atlas does not see it come back.
+        if (oldPath === ATLAS_VTT_DIR) showNotice(t('index.folderMoved', { folder: ATLAS_VTT_DIR, path: file.path }), 0);
+        if (isScenePath(oldPath)) closeMapTab(app, oldPath);
+      } else if (file instanceof TFolder) {
+        // The open map first, so its next autosave cannot write the old folder back.
+        getLoadedAtlasView(app)?.handleFolderRenamed(oldPath, file.path);
         runInBackground(fileReferences.handleFolderRenamed(oldPath, file.path), 'Following a renamed folder');
+        if (pendingFolderMoves.length === 0) queueMicrotask(flushFolderMoves);
+        pendingFolderMoves.push({ from: oldPath, to: file.path });
       } else if (file instanceof TFile) {
         // The open map first, so its next autosave cannot write the old paths back.
         getLoadedAtlasView(app)?.handleFileRenamed(oldPath, file.path, file.basename);
@@ -116,7 +155,8 @@ export function registerVaultSync(plugin: Plugin): void {
   // Obsidian reports every existing file as created while it loads the vault; only later creations are new.
   app.workspace.onLayoutReady(() => {
     // The first load checks the index against the vault, also when no map or asset manager opens.
-    runInBackground(assets.initialize(), 'Checking Atlas files against the vault');
+    // A rebuilt scene takes its orphaned snapshots only once it has stood a while, which a later start finds.
+    runInBackground(assets.initialize().then(followScenesSnapshots), 'Checking Atlas files against the vault');
     plugin.registerEvent(
       app.vault.on('create', (file) => {
         if (file.path.startsWith(`${ATLAS_VTT_DIR}/`) || isScenePath(file.path)) scheduleCheck();

@@ -1,5 +1,7 @@
 import type { ImageJob, ImageJobResult, ImageLayout, ThumbnailSpec } from './imageJob';
-import { WEBP_MAX_SIDE } from './decodeLimits';
+import { bandDecoderFor } from './band/bandDecoders';
+import { reducedSize } from './band/bandTypes';
+import { decodable, WEBP_MAX_SIDE } from './decodeLimits';
 import { fitSize, frameImageRect, frameSize, scaleDown, type Size } from './imageLayout';
 import { imageHeader, type ImageFormat } from './imageDimensions';
 
@@ -12,6 +14,7 @@ const KEPT_FORMATS: ReadonlySet<ImageFormat> = new Set(['png', 'jpeg', 'webp']);
  */
 
 const WEBP = 'image/webp';
+const PNG = 'image/png';
 
 /** Raised when the worker cannot read the source format, so the main thread can decode it instead. */
 export class SourceDecodeError extends Error {}
@@ -40,6 +43,8 @@ async function decodeScaledJpeg(source: Blob, size: Size): Promise<ImageBitmap |
 async function decode(job: ImageJob): Promise<ImageBitmap> {
   const { source, scaledDecode } = job;
   if (source instanceof ImageBitmap) return source;
+  // The main thread refuses such a source before it gets here; a decoder asked anyway would end the process.
+  if (scaledDecode && !decodable(scaledDecode.source)) throw new Error('The image is too large to decode.');
   try {
     return (scaledDecode && await decodeScaledJpeg(source, scaledDecode.decoded)) ?? await createImageBitmap(source);
   } catch (error) {
@@ -61,13 +66,15 @@ function context(canvas: OffscreenCanvas): OffscreenCanvasRenderingContext2D {
   return ctx;
 }
 
+/**
+ * `canvas` as WebP at `quality`. A picture wider or taller than a WebP can be (`convertToBlob` would
+ * crop it without a word) is written as PNG, lossless as the lossless WebP it stands in for; only
+ * maps scaled down to a long side ever are.
+ */
 async function encode(canvas: OffscreenCanvas, quality: number): Promise<Blob> {
-  // Larger sides would be cropped without an error; every layout keeps within it, this makes sure.
-  if (canvas.width > WEBP_MAX_SIDE || canvas.height > WEBP_MAX_SIDE) {
-    throw new Error(`A WebP image can be at most ${WEBP_MAX_SIDE} pixels a side, not ${canvas.width} × ${canvas.height}.`);
-  }
-  const blob = await canvas.convertToBlob({ type: WEBP, quality });
-  if (blob.type !== WEBP) throw new Error('This system cannot encode WebP images.');
+  const type = canvas.width > WEBP_MAX_SIDE || canvas.height > WEBP_MAX_SIDE ? PNG : WEBP;
+  const blob = await canvas.convertToBlob(type === WEBP ? { type, quality } : { type });
+  if (blob.type !== type) throw new Error(`This system cannot encode ${type === WEBP ? 'WebP' : 'PNG'} images.`);
   return blob;
 }
 
@@ -140,10 +147,7 @@ async function renderCopies(output: Drawable, job: ImageJob): Promise<Pick<Image
  * and so is everything but a WebP where the job's result must be one.
  */
 async function keepsSource(job: ImageJob, source: Blob, bitmap: ImageBitmap): Promise<boolean> {
-  const { layout } = job;
-  if (layout.kind !== 'fit') return false;
-  const fitted = fitSize(bitmap, layout);
-  if (fitted.width !== bitmap.width || fitted.height !== bitmap.height) return false;
+  if (!fitsAsItIs(bitmap, job.layout)) return false;
   const format = (await imageHeader(source))?.format;
   return job.webpOnly ? format === 'webp' : format !== undefined && KEPT_FORMATS.has(format);
 }
@@ -167,9 +171,60 @@ function render(bitmap: ImageBitmap, source: Size, layout: ImageLayout): Offscre
   return layout.kind === 'fit' ? renderFit(bitmap, fitSize(source, layout)) : renderFrame(bitmap, layout);
 }
 
+/**
+ * A bitmap that needs no scaling (a generated map), encoded as it is: handed to a canvas instead of
+ * drawn onto one, so its pixels are neither copied nor held twice.
+ */
+async function encodeAsItIs(bitmap: ImageBitmap, job: ImageJob): Promise<ImageJobResult> {
+  const sourcePreview = await renderCopy(bitmap, job.sourcePreview);
+  const copies = await renderCopies(bitmap, job);
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const renderer = canvas.getContext('bitmaprenderer');
+  if (!renderer) throw new Error('Could not create a drawing surface for the image.');
+  renderer.transferFromImageBitmap(bitmap);
+  return { image: await encode(canvas, job.quality), sourcePreview, ...copies };
+}
+
+function fitsAsItIs(bitmap: ImageBitmap, layout: ImageLayout): boolean {
+  if (layout.kind !== 'fit') return false;
+  const fitted = fitSize(bitmap, layout);
+  return fitted.width === bitmap.width && fitted.height === bitmap.height;
+}
+
+/**
+ * A source the browser cannot decode, read in bands at an eighth of its size. A map it fits as it
+ * is (the layout is a map's) is kept, its thumbnail and preview made from the eighth; anything
+ * smaller (a thumbnail of a vault image, a cover, token art) is fit from the eighth, which holds
+ * every pixel such a fit needs, and encoded like any scaled picture.
+ */
+async function renderBandJob(job: ImageJob, band: { format: string }): Promise<ImageJobResult> {
+  if (!(job.source instanceof Blob) || job.layout.kind !== 'fit') throw new Error('A band job needs the image bytes and a fit.');
+  const decoder = bandDecoderFor(band.format);
+  if (!decoder) throw new Error(`No band decoder reads ${band.format}.`);
+  const bytes = new Uint8Array(await job.source.arrayBuffer());
+  const natural = decoder.inspect(bytes);
+  const { width, height } = reducedSize(natural, 8);
+  const pixels = new Uint8ClampedArray(width * height * 4);
+  await decoder.decode(bytes, { reduce: 8, onBand: (rows) => { pixels.set(rows.data.subarray(0, rows.rows * width * 4), rows.y * width * 4); } });
+  const reduced = await createImageBitmap(new ImageData(pixels, width, height));
+  try {
+    const sourcePreview = await renderCopy(reduced, job.sourcePreview);
+    const target = fitSize(natural, job.layout);
+    const kept = target.width === natural.width && target.height === natural.height;
+    if (kept && !job.webpOnly) return { image: job.source, sourcePreview, ...await renderCopies(reduced, job) };
+    if (target.width > width || target.height > height) throw new Error(`A fit of ${target.width} × ${target.height} needs more than an eighth of the image.`);
+    const canvas = renderFit(reduced, target);
+    return { image: await encode(canvas, job.quality), sourcePreview, ...await renderCopies(canvas, job), scaledDown: scaleDown(job.layout, natural, canvas) };
+  } finally {
+    reduced.close();
+  }
+}
+
 export async function renderImageJob(job: ImageJob): Promise<ImageJobResult> {
+  if (job.band) return renderBandJob(job, job.band);
   const bitmap = await decode(job);
   try {
+    if (job.source instanceof ImageBitmap && fitsAsItIs(bitmap, job.layout)) return await encodeAsItIs(bitmap, job);
     const source = shownSource(bitmap, job.scaledDecode);
     const sourcePreview = await renderCopy(bitmap, job.sourcePreview);
     if (job.source instanceof Blob && !job.scaledDecode && await keepsSource(job, job.source, bitmap)) {

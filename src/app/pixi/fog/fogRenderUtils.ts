@@ -1,14 +1,32 @@
 /**
- * Shared rendering functions for fog operations on Canvas 2D.
- *
- * Used by both FogCanvasCompositor (full-canvas preview) and
- * FogOperationCanvas (per-operation sprite rendering).
+ * Rendering functions for fog operations on Canvas 2D: what `FogCanvasCompositor` draws a
+ * stroke under way with, and the bounds of an operation.
  */
 import type { FogBounds, FogOperation, FogBrushStroke, FogLassoFill, FogRectangleFill } from '../../types/fogTypes';
 
 import { Q_SCALE } from '../../types/shapeTypes';
 
 export const FOG_COLOR = 'rgba(0, 0, 0, 1)';
+
+/**
+ * Draws `area` of `source` onto `ctx`, whose canvas is `source` grown by `pad` on every side, in its
+ * place there, with the area's outermost pixels repeated out to `ctx`'s edges.
+ */
+export function drawWithSpreadEdges(ctx: CanvasRenderingContext2D, source: HTMLCanvasElement, area: FogBounds, pad: number): void {
+  const { x, y, width, height } = area;
+  const { width: fullWidth, height: fullHeight } = ctx.canvas;
+  const left = x + pad;
+  const top = y + pad;
+  const right = left + width;
+  const bottom = top + height;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(source, x, y, width, height, left, top, width, height);
+  ctx.drawImage(source, x, y, 1, height, 0, top, left, height);
+  ctx.drawImage(source, x + width - 1, y, 1, height, right, top, fullWidth - right, height);
+  // The rows above and below repeat what is drawn so far, the corners with them
+  ctx.drawImage(ctx.canvas, 0, top, fullWidth, 1, 0, 0, fullWidth, top);
+  ctx.drawImage(ctx.canvas, 0, bottom - 1, fullWidth, 1, 0, bottom, fullWidth, fullHeight - bottom);
+}
 
 /**
  * Render a brush stroke as one stroked path with round caps and joins: the area
@@ -119,6 +137,41 @@ export function renderOperation(
     }
   } finally {
     ctx.restore();
+  }
+}
+
+/**
+ * Draws the shapes of one stroke (the cells of a drag). Its lassos and rectangles are one path,
+ * filled once: filled one by one, Canvas anti-aliases every shape's edge by itself, and shapes
+ * that meet show a seam between them. All hide or all reveal, as the first does.
+ */
+export function renderOperations(ctx: CanvasRenderingContext2D, ops: readonly FogOperation[], bounds: FogBounds, scale: number): void {
+  const [first] = ops;
+  if (!first) return;
+  ctx.save();
+  try {
+    ctx.globalCompositeOperation = first.isErasing ? 'destination-out' : 'source-over';
+    ctx.fillStyle = FOG_COLOR;
+    ctx.beginPath();
+    for (const op of ops) {
+      const left = (op.offsetX ?? 0) - bounds.x;
+      const top = (op.offsetY ?? 0) - bounds.y;
+      if (op.type === 'rectangle') {
+        ctx.rect((op.x + left) * scale, (op.y + top) * scale, op.width * scale, op.height * scale);
+      } else if (op.type === 'lasso' && op.points.length >= 3) {
+        op.points.forEach((point, index) => {
+          if (index === 0) ctx.moveTo((point.x + left) * scale, (point.y + top) * scale);
+          else ctx.lineTo((point.x + left) * scale, (point.y + top) * scale);
+        });
+        ctx.closePath();
+      }
+    }
+    ctx.fill('nonzero');
+  } finally {
+    ctx.restore();
+  }
+  for (const op of ops) {
+    if (op.type === 'brush') renderOperation(ctx, op, bounds, scale, op.offsetX ?? 0, op.offsetY ?? 0);
   }
 }
 

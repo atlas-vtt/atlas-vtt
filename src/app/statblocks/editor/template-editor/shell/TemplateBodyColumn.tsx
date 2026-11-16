@@ -11,6 +11,7 @@ import { DraftBodyEditor } from './DraftBodyEditor';
 import { readableLineOn } from './obsidianConfig';
 import { chooseNoteToStartFrom } from './startFromNote';
 import { useHostedNote, useTemplateBodyFile } from './useTemplateBodyNote';
+import { t } from '../../../../i18n';
 import './template-body.scss';
 
 export { BODY_PLACEHOLDER } from './bodyTexts';
@@ -51,7 +52,7 @@ export function TemplateBodyColumn({ app, previewRef, cover, focusText = false }
   const start = (): void => {
     if (!app || templatePath === null) return;
     focusOnShow.current = true;
-    runInBackground(startTemplateBody(app, templatePath), 'Starting the template\'s note', 'Couldn\'t create the template\'s note.');
+    runInBackground(startTemplateBody(app, templatePath), 'Starting the template\'s note', t('templateEditor.noteFailed'));
   };
 
   const content = (): React.ReactNode => {

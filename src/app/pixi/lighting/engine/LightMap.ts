@@ -1,31 +1,36 @@
 import { Container, Mesh, UniformGroup, type Geometry, type Renderer, type RenderTexture, type Shader } from 'pixi.js';
-import { HALO, LIGHT_LEVELS, LIGHT_REACH } from '../../../lighting/lightingConstants';
+import { HALO, LIGHT_LEVELS, REFLECTION, softEdge } from '../../../lighting/lightingConstants';
+import type { Rect } from '../../../lighting/segments';
 import type { VisionCone } from '../../../vision/visionCone';
 import type { MapBounds } from '../../../vision/visibility';
 import { destroyTree } from '../../utils/destroyTree';
 import { ENGINE_SHADERS } from './engineShaders';
 import { createDarknessMesh, destroyDarknessMesh, setDarknessMesh, type DarknessMesh, type DrawnDarkness } from './DarknessMap';
-import { createPlaceholder, createQuad, createShader, createTarget, destroyQuad, quadGeometry, renderInto, type Quad } from './gpu';
+import { addKeepMaxBlend, createPlaceholder, createQuad, createShader, createTarget, destroyQuad, quadGeometry, renderInto, type Quad } from './gpu';
 import type { Tile } from './TileCache';
+import type { ReflectionTile } from './ReflectionTiles';
 
 /** One light's contribution this frame (bright radius and intensity already flickered). */
 export interface DrawnLight {
   tile: Tile;
   bright: number;
   dim: number;
-  reach: number;
   color: readonly [number, number, number];
   intensity: number;
   /** A light that shines one way; unset shines all around. */
   cone?: VisionCone | undefined;
-  /** Width of the soft edge past a beam's sides, in world pixels; unset, the fade past the dim radius. */
+  /** Width of the soft edge inside a beam's sides, in world pixels; unset, `softEdge` of its dim radius. */
   edge?: number | undefined;
+  /** The light its lit floor gives back (`ReflectionTiles`). */
+  reflection?: ReflectionTile | undefined;
 }
 
 interface Slot {
   mesh: Mesh<Geometry, Shader>;
   uniforms: UniformGroup;
   rect: Float32Array;
+  tileOrigin: Float32Array;
+  reflectOrigin: Float32Array;
   light: Float32Array;
   color: Float32Array;
   cone: Float32Array;
@@ -40,7 +45,8 @@ const ALL_AROUND = [1, 0, 2 * Math.PI, 0] as const;
 
 /**
  * Every light's direct light over the map in world space (`rgba16float`, HDR): independent of
- * any camera, so the GM view and the player window read the same texture. Lights add up; a
+ * any camera, so the GM view and the player window read the same texture. Lights add up, and
+ * alpha keeps the brightest light's (`addKeepMaxBlend`), so the composite tells one from several; a
  * darkness source erases what was drawn before it within its area, so the order of `draw`'s
  * list is the order of priority: a light listed after a darkness shines in it.
  */
@@ -68,23 +74,33 @@ export class LightMap {
     const dark = lights.filter(isDarkness);
     while (this.slots.length < shining.length) this.slots.push(this.createSlot());
     while (this.darkSlots.length < dark.length) this.darkSlots.push(this.createDarkSlot());
+    // The renderer's table of blends is built anew with every context: the light's blend is added again if it went.
+    const blend = addKeepMaxBlend(this.renderer);
     this.slots.forEach((slot, i) => {
       const light = shining[i];
       slot.mesh.visible = !!light;
+      slot.mesh.blendMode = blend;
       if (!light) return;
       const u = slot.uniforms.uniforms;
-      slot.rect.set(light.tile.rect);
+      const { reflection } = light;
+      slot.rect.set(drawnRect(light));
+      slot.tileOrigin.set([light.tile.rect[0], light.tile.rect[1]]);
+      u.uHasReflection = reflection ? 1 : 0;
+      if (reflection) slot.reflectOrigin.set([reflection.rect[0], reflection.rect[1]]);
+      slot.mesh.shader!.resources.uReflection = (reflection?.texture ?? this.placeholder).source;
       slot.light[0] = light.tile.x;
       slot.light[1] = light.tile.y;
       u.uBright = light.bright;
       u.uDim = light.dim;
-      u.uReach = light.reach;
       u.uIntensity = light.intensity;
       slot.color.set(light.color);
       const { cone } = light;
       slot.cone.set(cone ? [Math.cos(cone.facing), Math.sin(cone.facing), cone.angle / 2, cone.apex ?? 0] : ALL_AROUND);
-      u.uEdge = light.edge ?? (LIGHT_REACH - 1) * light.dim;
+      u.uEdge = light.edge ?? softEdge(light.dim);
       slot.mesh.shader!.resources.uTile = light.tile.texture.source;
+      // An area light counts its distances from its outline (`Tile.distance`).
+      u.uIsArea = light.tile.distance ? 1 : 0;
+      slot.mesh.shader!.resources.uDistance = (light.tile.distance ?? this.placeholder).source;
     });
     this.darkSlots.forEach((slot, i) => {
       const darkness = dark[i];
@@ -94,7 +110,11 @@ export class LightMap {
     // Without a darkness the meshes stay in the order they were made: lights only add up.
     if (dark.length > 0 || this.ordered) this.order(lights, shining, dark);
     renderInto(this.renderer, this.scene, this.texture, [0, 0, 0, 0]);
-    for (const slot of this.slots) slot.mesh.shader!.resources.uTile = this.placeholder.source;
+    for (const slot of this.slots) {
+      slot.mesh.shader!.resources.uTile = this.placeholder.source;
+      slot.mesh.shader!.resources.uDistance = this.placeholder.source;
+      slot.mesh.shader!.resources.uReflection = this.placeholder.source;
+    }
   }
 
   /** Puts the meshes in the order of `lights`, so each darkness erases exactly the lights listed before it. */
@@ -115,6 +135,8 @@ export class LightMap {
 
   private createSlot(): Slot {
     const rect = new Float32Array(4);
+    const tileOrigin = new Float32Array(2);
+    const reflectOrigin = new Float32Array(2);
     const light = new Float32Array(2);
     const color = new Float32Array(3);
     const cone = new Float32Array(ALL_AROUND);
@@ -124,7 +146,6 @@ export class LightMap {
       uLight: { value: light, type: 'vec2<f32>' },
       uBright: { value: 0, type: 'f32' },
       uDim: { value: 0, type: 'f32' },
-      uReach: { value: 1, type: 'f32' },
       uIntensity: { value: 1, type: 'f32' },
       uLightColor: { value: color, type: 'vec3<f32>' },
       uBrightLevel: { value: LIGHT_LEVELS.bright, type: 'f32' },
@@ -134,12 +155,18 @@ export class LightMap {
       uTexel: { value: this.texel, type: 'f32' },
       uCone: { value: cone, type: 'vec4<f32>' },
       uEdge: { value: 1, type: 'f32' },
+      uIsArea: { value: 0, type: 'f32' },
+      uTileOrigin: { value: tileOrigin, type: 'vec2<f32>' },
+      uHasReflection: { value: 0, type: 'f32' },
+      uReflectOrigin: { value: reflectOrigin, type: 'vec2<f32>' },
+      uReflectLevel: { value: REFLECTION.level, type: 'f32' },
+      uReflectLift: { value: LIGHT_LEVELS.bright / LIGHT_LEVELS.dim, type: 'f32' },
     });
-    const shader = createShader(ENGINE_SHADERS.lightMap, { lightUniforms: uniforms, uTile: this.placeholder.source });
+    const shader = createShader(ENGINE_SHADERS.lightMap, { lightUniforms: uniforms, uTile: this.placeholder.source, uDistance: this.placeholder.source, uReflection: this.placeholder.source });
     const mesh = new Mesh({ geometry: this.geometry, shader });
-    mesh.blendMode = 'add';
+    mesh.blendMode = addKeepMaxBlend(this.renderer);
     this.scene.addChild(mesh);
-    return { mesh, uniforms, rect, light, color, cone };
+    return { mesh, uniforms, rect, tileOrigin, reflectOrigin, light, color, cone };
   }
 
   destroy(): void {
@@ -154,4 +181,15 @@ export class LightMap {
     this.placeholder.destroy(true);
     this.texture.destroy(true);
   }
+}
+
+/** The smallest rectangle around both. */
+/** Where a light draws into the light map: over its tile and its reflection. */
+export function drawnRect(light: DrawnLight): Rect {
+  return light.reflection ? union(light.tile.rect, light.reflection.rect) : light.tile.rect;
+}
+
+export function union([ax, ay, aw, ah]: Rect, [bx, by, bw, bh]: Rect): Rect {
+  const x = Math.min(ax, bx), y = Math.min(ay, by);
+  return [x, y, Math.max(ax + aw, bx + bw) - x, Math.max(ay + ah, by + bh) - y];
 }

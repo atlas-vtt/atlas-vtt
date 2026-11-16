@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo, forwardRef } from "react"
 import { useAtlasStore, useViewStoreHook } from "src/app/react/ViewStoreContext"
 import { AnimatePresence, MotionConfig } from "framer-motion"
+import { createPortal } from "react-dom"
 import { useStore } from "zustand"
 import { Eye, EyeOff } from "lucide-react"
 
@@ -27,6 +28,7 @@ import type { Tool } from "./toolbar/toolFaces"
 import type { ToolbarContext, ToolMenu } from "./toolbar/toolbarContext"
 import type { ResponsiveToolbarItem } from "./toolbar/toolbarTypes"
 import { t } from '../../i18n';
+import { portalHost } from '../../host/portalHost';
 
 interface MainToolbarProps {
   viewId?: string;
@@ -35,6 +37,8 @@ interface MainToolbarProps {
 export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewId }, ref) => {
   const activeTool = useAtlasStore(state => state.activeTool)
   const setActiveTool = useAtlasStore(state => state.setActiveTool)
+  const measureMode = useAtlasStore(state => state.measureTool.mode)
+  const drawMode = useAtlasStore(state => state.drawTool.mode)
   const store = useViewStoreHook()
   const { view } = useAtlasUI()
   const isGMView = useAtlasStore(state => state.isGMView)
@@ -135,6 +139,8 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
 
   const ctx: ToolbarContext = {
     activeTool,
+    measureMode,
+    drawMode,
     selectTool: handleToolClick,
     hotkeyLabel,
     openMenu,
@@ -209,11 +215,20 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
         toolbarRef={toolbarRef}
         {...(dm && { onCustomizeToolbar: startEditing })}
       />
-      <AssetManager
-        isOpen={isAssetManagerOpen}
-        onClose={handleCloseAssetManager}
-        {...(assetManagerInitialTab && { initialTab: assetManagerInitialTab })}
-      />
+      {/* On the main window's body (the map lives there only), as the command palette opens it:
+          inside the map's leaf the overlay is composited with the map's WebGL canvas, which on
+          some Macs drew the manager without its backgrounds and cards. The element around it is
+          the scope the stylesheet's rules look for above the overlay, which alone is not fixed. */}
+      {createPortal(
+        <div className="atlas-vtt-plugin">
+          <AssetManager
+            isOpen={isAssetManagerOpen}
+            onClose={handleCloseAssetManager}
+            {...(assetManagerInitialTab && { initialTab: assetManagerInitialTab })}
+          />
+        </div>,
+        portalHost(),
+      )}
       {isDiceTrayOpen && !diceTool && (
         <div style={{
           position: 'fixed',
@@ -223,7 +238,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
           background: 'var(--background-primary)',
           padding: 'var(--atlas-spacing-xl)',
           border: '1px solid var(--background-modifier-border)',
-          borderRadius: 'var(--atlas-radius-l)',
+          borderRadius: 'var(--atlas-radius-m)',
           zIndex: 1000
         }}>
           <p>{t('toolbar.diceFailed')}</p>

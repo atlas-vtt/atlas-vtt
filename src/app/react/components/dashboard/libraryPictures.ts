@@ -2,6 +2,10 @@ import { TFile, type App } from 'obsidian';
 import { useEffect, useState } from 'react';
 import { AssetService } from '../../../services/AssetService';
 import { worldMapArtwork } from '../../../services/worldMap';
+import { parseSceneFile } from '../../../services/MapPersistence';
+import { levelBackground } from '../../../levels/levelEdits';
+import { firstLevelId, resolveLevel } from '../../../levels/sceneLevels';
+import type { Asset } from '../../../services/AssetService';
 import { mapThumbnailPath } from '../../../utils/dataFileMigration';
 
 /** A scene's thumbnail as a vault resource URL, or null when it has none yet. */
@@ -69,22 +73,40 @@ export function useWorldMaps(app: App): WorldMapChoices {
   return read;
 }
 
-/** The map image a scene shows (its background), by the scene's asset id; null for none, undefined while it is read. */
-export function useSceneArtwork(app: App, sceneId: string | null): string | null | undefined {
+/** The image of the upper level a scene file was last shown on, or null: on its first level, or for a file that cannot be read. */
+export async function lastShownLevelArtwork(app: App, asset: Asset): Promise<string | null> {
+  const file = asset.type === 'scene' && asset.data?.mapPath ? app.vault.getAbstractFileByPath(asset.data.mapPath) : null;
+  if (!(file instanceof TFile)) return null;
+  try {
+    const { levels, background, viewedLevel } = parseSceneFile(await app.vault.read(file)).state;
+    const level = resolveLevel(levels, viewedLevel);
+    if (level === firstLevelId(levels)) return null;
+    const image = levelBackground({ levels, background: background ?? null }, level);
+    return image && app.vault.getAbstractFileByPath(image) ? image : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The map image a scene opens on, by the scene's asset id; null for none, undefined while it is
+ * read. `thumbnail` changes when the scene is saved with another picture, which may be another level.
+ */
+export function useSceneArtwork(app: App, sceneId: string | null, thumbnail: string | null = null): string | null | undefined {
   const [read, setRead] = useState<{ sceneId: string; path: string | null } | null>(null);
 
   useEffect(() => {
     if (sceneId === null) return undefined;
     let current = true;
     AssetService.getInstance(app).getAssetById(sceneId)
-      .then((asset) => (asset ? worldMapArtwork(app, asset) : null))
+      .then(async (asset) => (asset ? await lastShownLevelArtwork(app, asset) ?? await worldMapArtwork(app, asset) : null))
       .then((path) => { if (current) setRead({ sceneId, path }); })
       .catch((error: unknown) => {
         console.error('[Dashboard] Reading the scene\'s map failed:', error);
         if (current) setRead({ sceneId, path: null });
       });
     return () => { current = false; };
-  }, [app, sceneId]);
+  }, [app, sceneId, thumbnail]);
 
   if (sceneId === null) return null;
   return read?.sceneId === sceneId ? read.path : undefined;

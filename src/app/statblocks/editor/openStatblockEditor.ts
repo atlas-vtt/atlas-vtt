@@ -8,6 +8,7 @@ import { TFile, type App, type WorkspaceLeaf } from 'obsidian';
 import { showNotice } from '../../ui/notice';
 import { experimentalFeatureOn } from '../../experimental/experimentalFeatures';
 import { NoteStatblockPanels } from './note-panel/noteStatblockPanels';
+import { t } from '../../i18n';
 
 /** Where a statblock is opened from; the map's open beside the map, never over it. */
 export type StatblockEditorEntry = 'map' | 'asset-manager' | 'command' | 'note' | 'link-dialog';
@@ -70,7 +71,7 @@ export async function openStatblockEditor(app: App, options: OpenStatblockEditor
   if (!experimentalFeatureOn(app, 'statblockEditor')) return;
   const file = app.vault.getAbstractFileByPath(options.notePath);
   if (!(file instanceof TFile)) {
-    showNotice(`Couldn't find ${options.notePath}.`);
+    showNotice(t('statblockEditor.notFound', { path: options.notePath }));
     return;
   }
   const leaf = noteLeafFor(app, file.path, options.from);

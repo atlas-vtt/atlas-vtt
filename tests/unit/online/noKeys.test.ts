@@ -41,19 +41,23 @@ describe('online play\'s source', () => {
 
   const naming = (pattern: RegExp): string[] => files.filter((file) => pattern.test(readFileSync(file, 'utf8'))).map((file) => path.relative(ROOT, file)).sort();
 
-  it('reads the account token in one place, and sends it from two', () => {
-    // The secret itself is read by the token store alone, and the store by the account control alone.
-    expect(naming(/getSecret\(/)).toEqual(['gm/account/tokenStore.ts']);
+  it('reads the account token in one place, and sends it from three', () => {
+    // The secrets themselves are read by the token store and the salt store alone, and the token store by the account control alone.
+    expect(naming(/getSecret\(/)).toEqual(['gm/account/saltStore.ts', 'gm/account/tokenStore.ts']);
     expect(naming(/tokens\.get\(/)).toEqual(['gm/account/AccountControl.ts']);
-    // A bearer is written by the table request and by the account's own calls (what it may host, sign-out).
-    expect(naming(/Bearer \$\{/)).toEqual(['gm/account/relayAccount.ts', 'gm/createTable.ts']);
+    // A bearer is written by the table request, the account's own calls (what it may host, sign-out) and the asset store's client.
+    expect(naming(/Bearer \$\{/)).toEqual(['gm/account/relayAccount.ts', 'gm/assets/storeClient.ts', 'gm/createTable.ts']);
     // The diagnostics make requests of their own, and never with it.
-    expect(naming(/requestUrl\(/)).toEqual(['gm/account/obsidianHttp.ts', 'gm/companionDiagnostics.ts']);
+    expect(naming(/requestUrl\(/)).toEqual(['gm/account/obsidianHttp.ts', 'gm/assets/storeClient.ts', 'gm/companionDiagnostics.ts']);
     expect(readFileSync(path.join(ROOT, 'gm/companionDiagnostics.ts'), 'utf8')).not.toMatch(/Authorization|Bearer|token\(|secretStorage/);
   });
 
   it('imports no Node built-in: every request goes through Obsidian or the browser', () => {
     expect(naming(/from\s+['"](?:node:|(?:http|https|net|tls|fs|path|url|crypto|child_process|os|stream|zlib|dns|events|buffer|util)['"/])|require\(|import\(\s*['"](?:node:|https?['"])/)).toEqual([]);
+  });
+
+  it('names the asset store\'s routes in one place', () => {
+    expect(naming(/\/api\/assets/)).toEqual(['gm/assets/assetRoutes.ts']);
   });
 
   it('asks the relay only for tables and for the account', () => {

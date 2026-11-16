@@ -4,9 +4,9 @@ import { openContextMenuGlobal } from '../../../react/root/ContextMenuContext';
 import { useExperimentalFeature } from '../../../react/hooks/useExperimentalFeature';
 import { useMapCollectionId } from '../../../react/hooks/useMapCollectionId';
 import { SettingsService } from '../../../services/SettingsService';
-import { runInBackground } from '../../../utils/backgroundTask';
-import { editInStatblockPane } from './entryPoints';
+import { openStatblockNote } from './entryPoints';
 import { ImageDisplayService } from '../../../services/ImageDisplayService';
+import { t } from '../../../i18n';
 import './create-statblock.scss';
 
 interface StatblockFeedMenuProps {
@@ -30,16 +30,14 @@ export function StatblockFeedMenu({ app, path, onOpened, children }: StatblockFe
   if (!editorOn) return <>{children}</>;
 
   const edit = (): void => {
-    if (!editInStatblockPane(app, path, { collectionId, from: 'map' })) {
-      runInBackground(app.workspace.openLinkText('', path, true), `Opening ${path}`, "Couldn't open the note");
-    }
+    openStatblockNote(app, path, { collectionId, from: 'map' });
     onOpened();
   };
   const onContextMenu = (event: React.MouseEvent): void => {
     // A link inside the statblock keeps its own menu, and so does a vault picture, which can be shown to players.
     if (event.defaultPrevented || ImageDisplayService.getInstance()?.statblockImageFileAt(event.target as Element)) return;
     event.preventDefault();
-    openContextMenuGlobal([{ type: 'item', label: 'Edit statblock', icon: 'pencil', onClick: edit }], { x: event.clientX, y: event.clientY });
+    openContextMenuGlobal([{ type: 'item', label: t('statblockEditor.editStatblock'), icon: 'pencil', onClick: edit }], { x: event.clientX, y: event.clientY });
   };
   return <div className="atlas-dm-statblock-menu" onContextMenu={onContextMenu}>{children}</div>;
 }

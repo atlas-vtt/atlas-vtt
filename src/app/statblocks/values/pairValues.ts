@@ -8,6 +8,7 @@
 
 import type { FieldValue } from '../model/templateTypes';
 import { DEFAULT_ENTRY_TEXT_KEY, entryName } from './entryValues';
+import { unescapeCommas } from './listText';
 import { formatSigned, numericValue, parseNumberText } from './numberText';
 import { valueText } from './valueText';
 
@@ -48,9 +49,10 @@ function describedPair(item: { [key: string]: FieldValue }): Pair {
   return { key: name.startsWith('_') ? '' : name, value: item[DEFAULT_ENTRY_TEXT_KEY] ?? null };
 }
 
-/** Every pair of a pairs value in written order; values that hold no pairs give none. */
+/** Every pair of a pairs value in written order; values that hold no pairs give none. A line kept as typed shows its escaped commas as commas. */
 export function normalisePairs(value: FieldValue | undefined): Pair[] {
-  return Array.isArray(value) ? value.flatMap(itemPairs) : itemPairs(value);
+  if (Array.isArray(value)) return value.flatMap(itemPairs);
+  return itemPairs(typeof value === 'string' ? unescapeCommas(value) : value);
 }
 
 function findPair(pairs: readonly Pair[], name: string | undefined): Pair | undefined {

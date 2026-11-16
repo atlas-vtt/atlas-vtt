@@ -1,4 +1,4 @@
-import { WEBP_MAX_SIDE } from './decodeLimits';
+import { DECODED_MAX_PIXELS, WEBP_MAX_SIDE } from './decodeLimits';
 import type { FramePlacement, ImageLayout, ScaleDown, Size } from './imageJob';
 
 export type { Size } from './imageJob';
@@ -38,9 +38,9 @@ export function fitWithin(size: Size, maxWidth: number, maxHeight: number, maxPi
   return { width: Math.max(1, Math.floor(size.width * scale)), height: Math.max(1, Math.floor(size.height * scale)) };
 }
 
-/** What a fit layout makes of `size`, never wider or taller than a WebP can be encoded. */
+/** What a fit layout makes of `size`; a side longer than a WebP can have is written as PNG (`imageRenderer.ts`). */
 export function fitSize(size: Size, layout: FitLayout): Size {
-  return fitWithin(size, Math.min(layout.maxWidth, WEBP_MAX_SIDE), Math.min(layout.maxHeight, WEBP_MAX_SIDE), layout.maxPixels);
+  return fitWithin(size, layout.maxWidth, layout.maxHeight, layout.maxPixels);
 }
 
 /** What a fit took from `source`, or undefined when `output` keeps every pixel. */
@@ -56,7 +56,8 @@ export function scaleDown(layout: ImageLayout, source: Size, output: Size): Scal
 export function vectorRasterSize(natural: Size, layout: ImageLayout): Size {
   if (layout.kind === 'fit') {
     const fill = Math.min(layout.maxWidth / natural.width, layout.maxHeight / natural.height);
-    return fitSize(scaled(natural, fill), layout);
+    // Drawn on a canvas and held as one bitmap, so never as many pixels as the browser dies on, whatever a map may hold.
+    return fitSize(scaled(natural, fill), { ...layout, maxPixels: Math.min(layout.maxPixels ?? Infinity, DECODED_MAX_PIXELS - 1) });
   }
   return scaled(natural, VECTOR_FRAME_SOURCE / Math.max(natural.width, natural.height));
 }

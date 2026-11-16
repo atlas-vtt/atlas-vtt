@@ -2,12 +2,21 @@ import { describe, expect, it, vi } from 'vitest';
 
 const pixi = vi.hoisted(() => ({ panToToken: vi.fn(), addTokenHighlight: vi.fn() }));
 vi.mock('../../src/app/pixi/tokenFocus', () => ({ panToToken: pixi.panToToken }));
-vi.mock('../../src/app/pixi/utils/tokenHighlight', () => ({ addTokenHighlight: pixi.addTokenHighlight }));
+vi.mock('../../src/app/pixi/utils/tokenHighlight', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/app/pixi/utils/tokenHighlight')>()),
+  addTokenHighlight: pixi.addTokenHighlight,
+}));
 
 import { cardClickSelection, focusCombatant } from '../../src/app/initiative/focusCombatant';
 import { cardInstanceNumber } from '../../src/app/initiative/cardInstanceNumber';
 import type { TokenEntity } from '../../src/app/types';
 import type { AtlasView } from '../../src/app/atlas-view';
+import type { SceneLevel } from '../../src/app/types/sceneLevelTypes';
+
+const LEVELS: SceneLevel[] = [
+  { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 } },
+  { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 } },
+] as SceneLevel[];
 
 const token = (id: string, imagePath: string, instanceNumber?: number): TokenEntity =>
   ({ id, kind: 'token', x: 10, y: 20, imagePath, ...(instanceNumber !== undefined ? { instanceNumber } : {}) }) as TokenEntity;
@@ -51,6 +60,20 @@ describe('focusCombatant', () => {
     expect(pixi.panToToken).toHaveBeenCalledOnce();
   });
 
+  it('shows the floor its token stands on, and selects it there from none', () => {
+    const setSelection = vi.fn();
+    const setViewedLevel = vi.fn();
+    const goblin = { ...token('goblin', 'g.png'), level: 'upper' } as TokenEntity;
+    // No ticker: the token's sprite is taken as drawn at once
+    const view = { renderer: { getViewportInstance: () => ({}), canvasShowsToken: () => true, getAppInstance: () => undefined } } as unknown as AtlasView;
+
+    focusCombatant(view, { objects: { tokens: { goblin } }, levels: LEVELS, viewedLevel: 'ground', selectedIds: ['rat'], setSelection, setViewedLevel, grid: { size: 70 } } as never, 'goblin', true);
+
+    expect(setViewedLevel).toHaveBeenCalledWith('upper');
+    expect(setSelection).toHaveBeenCalledWith(['goblin']);
+    expect(pixi.addTokenHighlight).toHaveBeenLastCalledWith(view, 'goblin');
+  });
+
   it('does nothing for a combatant whose token is gone', () => {
     const setSelection = vi.fn();
     focusCombatant(viewOf(() => true), { objects: { tokens: {} }, selectedIds: ['a'], setSelection, grid: { size: 70 } } as never, 'gone', false);
@@ -63,6 +86,12 @@ describe("the number on a GM's card", () => {
     const tokens = { a: token('a', 'goblin.png'), b: token('b', 'goblin.png', 2), c: token('c', 'orc.png', 1) };
     expect(cardInstanceNumber(tokens, 'a', true)).toBe(1);
     expect(cardInstanceNumber(tokens, 'b', true)).toBe(2);
+  });
+
+  it("counts the look-alikes on its token's own floor, as the map does", () => {
+    const tokens = { a: { ...token('a', 'goblin.png', 1), level: 'ground' }, b: { ...token('b', 'goblin.png', 2), level: 'upper' }, c: { ...token('c', 'goblin.png', 3), level: 'upper' } } as Record<string, TokenEntity>;
+    expect(cardInstanceNumber(tokens, 'a', true, LEVELS)).toBeNull();
+    expect(cardInstanceNumber(tokens, 'b', true, LEVELS)).toBe(2);
   });
 
   it('is none for a token without look-alikes, or while badges are off', () => {

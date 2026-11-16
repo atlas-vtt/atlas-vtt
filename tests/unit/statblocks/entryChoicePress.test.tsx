@@ -41,13 +41,13 @@ describe('a choice part of an ability being written', () => {
     expect(event.defaultPrevented).toBe(true);
     const input = host.querySelector<HTMLInputElement>('.atlas-sb-pane-choice input')!;
     expect(document.activeElement).toBe(input);
-    expect(host.querySelector('[role="listbox"]')).not.toBeNull();
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull();
   });
 
   it('leaves a press on the input itself to the input', () => {
     const host = mount();
     const event = press(host.querySelector('.atlas-sb-pane-choice input')!);
     expect(event.defaultPrevented).toBe(false);
-    expect(host.querySelector('[role="listbox"]')).not.toBeNull();
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull();
   });
 });

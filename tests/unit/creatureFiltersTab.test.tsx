@@ -44,8 +44,8 @@ it('lists Atlas’ own filters with how many statblocks have each field', () => 
 
 it('switches Atlas’ own filters off and on', () => {
   render(<Harness />);
-  const source = screen.getByRole('checkbox', { name: 'Filter by source' });
-  expect((source as HTMLInputElement).checked).toBe(true);
+  const source = screen.getByRole('switch', { name: 'Filter by source' });
+  expect(source.getAttribute('aria-checked')).toBe('true');
   fireEvent.click(source);
   expect(latest.hidden).toEqual(['source']);
   fireEvent.click(source);

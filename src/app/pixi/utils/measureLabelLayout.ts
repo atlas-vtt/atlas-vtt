@@ -35,12 +35,14 @@ export interface Circle {
 }
 
 /**
- * Where a label goes: beside a path (clear of its line and dots, and of `avoid`, in world units), or
- * centred over a point (inside a measured area, where no line runs).
+ * Where a label goes: beside a path (clear of its line and dots, and of `avoid`, in world units),
+ * centred over a point (inside a measured area, where no line runs), or beyond a path's end, on the
+ * line its last segment (`from`, `to`) runs along, where no part of the path lies.
  */
 export type LabelTarget =
   | { readonly beside: readonly Point[]; readonly avoid?: Circle | null }
-  | { readonly over: Point };
+  | { readonly over: Point }
+  | { readonly beyond: { readonly from: Point; readonly to: Point } };
 
 /**
  * World units per UI unit of the label: a selected token's UI (`selectedTokenUIScale`), so it rests at
@@ -124,10 +126,22 @@ export function placeLabel(path: readonly Point[], size: Size, gap: number, avoi
   return at(distance);
 }
 
+/**
+ * Where a label of `size` stands beyond the end of the segment from `from` to `to` (screen pixels):
+ * on its line, `gap` clear of the end's dot. A segment without length takes the label above its point.
+ */
+export function placeBeyond(from: Point, to: Point, size: Size, gap: number): Point {
+  const length = Math.hypot(to.x - from.x, to.y - from.y);
+  const along = length > 0 ? { x: (to.x - from.x) / length, y: (to.y - from.y) / length } : { x: 0, y: -1 };
+  const distance = reach(size, along) + MEASURE_DOT + CANVAS_INK.keyline + gap;
+  return { x: to.x + along.x * distance, y: to.y + along.y * distance };
+}
+
 /** Where a label of `size` (screen pixels) stands for `target`, in screen pixels at `zoom`, `gap` (screen pixels) from what it keeps clear of. */
 export function labelCenter(target: LabelTarget, size: Size, zoom: number, gap: number): Point | null {
   const screen = ({ x, y }: Point): Point => ({ x: x * zoom, y: y * zoom });
   if ('over' in target) return screen(target.over);
+  if ('beyond' in target) return placeBeyond(screen(target.beyond.from), screen(target.beyond.to), size, gap);
   const avoid = target.avoid ? { ...screen(target.avoid), radius: target.avoid.radius * zoom } : null;
   return placeLabel(target.beside.map(screen), size, gap, avoid);
 }

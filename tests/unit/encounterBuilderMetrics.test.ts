@@ -28,6 +28,19 @@ describe('encounter picks', () => {
     expect(withCount(picks, goblin, 0).map((pick) => pick.token.id)).toEqual(['ogre']);
   });
 
+  it('takes dice that are a quantity and leaves the picks as they were for any other text', () => {
+    const picks = withCount([], goblin, ' 2d4 ');
+    expect(picks.map((pick) => pick.count)).toEqual(['2d4']);
+    expect(withCount(picks, goblin, '4d6kh3')).toEqual(picks);
+    expect(withCount(picks, goblin, 'lots')).toEqual(picks);
+  });
+
+  it('saves one reference carrying the dice for a creature whose number is rolled', () => {
+    expect(encounterDrafts(withCount([], goblin, '1d4+1'))).toEqual([
+      { id: 'goblin', name: 'goblin', imagePath: 'goblin.png', size: 1, statblockPath: 'goblin.md', quantity: '1d4+1' },
+    ]);
+  });
+
   it('saves one token reference per copy', () => {
     const drafts = encounterDrafts(withCount([], goblin, 3));
     expect(drafts).toHaveLength(3);
@@ -46,10 +59,16 @@ describe('encounter metrics', () => {
 
   it('spans ratings on their one scale and sums what defeats a creature', () => {
     const metrics = encounterMetrics(picks, lookup, [HP, STRESS]);
-    expect(metrics.count).toBe(4);
+    expect(metrics.count).toEqual({ min: 4, max: 4 });
     expect(metrics.rating).toMatchObject({ min: 0.25, max: 2 });
     // Stress fills and defeats no one, so it is not summed.
-    expect(metrics.totals).toEqual([{ key: 'hp', name: 'HP', value: 3 * 7 + 59 }]);
+    expect(metrics.totals).toEqual([{ key: 'hp', name: 'HP', min: 3 * 7 + 59, max: 3 * 7 + 59 }]);
+  });
+
+  it('spans counts and totals from the fewest to the most creatures their dice bring', () => {
+    const metrics = encounterMetrics(withCount(picks, goblin, '2d4'), lookup, [HP]);
+    expect(metrics.count).toEqual({ min: 3, max: 9 });
+    expect(metrics.totals).toEqual([{ key: 'hp', name: 'HP', min: 2 * 7 + 59, max: 8 * 7 + 59 }]);
   });
 
   it('says nothing it cannot say of every creature', () => {

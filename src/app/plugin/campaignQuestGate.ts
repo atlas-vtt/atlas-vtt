@@ -5,13 +5,12 @@ import { CampaignService } from '../campaigns/CampaignService';
 import { onPlayedCampaignChange } from '../campaigns/playedCampaign';
 import { QuestIds } from '../campaigns/quests/questIds';
 import { QuestIndex } from '../campaigns/quests/QuestIndex';
-import type { BookQuest } from '../online/protocol/index.ts';
 import { bookQuestOrder } from '../online/gm/book/bookQuests.ts';
-import type { QuestGate } from '../online/gm/book/questGate.ts';
+import type { HandedQuest, QuestGate } from '../online/gm/book/questGate.ts';
 import { isImagePath } from './questImages';
 import { QuestHandouts } from './questHandouts';
 
-const sameList = (a: readonly BookQuest[], b: readonly BookQuest[]): boolean => a.length === b.length && a.every((quest, n) => quest === b[n]);
+const sameList = (a: readonly HandedQuest[], b: readonly HandedQuest[]): boolean => a.length === b.length && a.every((quest, n) => quest === b[n]);
 
 /** Calls `listener` whenever a vault image is written, made, moved or deleted; returns what stops it. */
 function onImageChange(app: App, listener: () => void): () => void {
@@ -46,9 +45,9 @@ export function campaignQuestGate(
 ): QuestGate {
   const ids = new QuestIds(app);
   const handouts = new QuestHandouts(app);
-  let last: readonly BookQuest[] = [];
+  let last: readonly HandedQuest[] = [];
 
-  const read = async (): Promise<readonly BookQuest[]> => {
+  const read = async (): Promise<readonly HandedQuest[]> => {
     const campaigns = storage();
     const quests = index();
     const playing = play().playing();
@@ -66,13 +65,13 @@ export function campaignQuestGate(
     }));
     handouts.retain(new Set(shown.map((quest) => quest.path)));
     // Each id once: a book with an id twice would not be read.
-    const kept = new Map<string, BookQuest>();
+    const kept = new Map<string, HandedQuest>();
     for (const book of books) if (book !== null && !kept.has(book.id)) kept.set(book.id, book);
     return [...kept.values()];
   };
 
   return {
-    quests: async (): Promise<readonly BookQuest[]> => {
+    quests: async (): Promise<readonly HandedQuest[]> => {
       const next = await read();
       if (!sameList(next, last)) last = next;
       return last;

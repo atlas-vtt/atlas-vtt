@@ -257,6 +257,8 @@ export class GridScanLayer {
     this.choreography = null;
     this.setInk(null);
     this.setHits(null);
+    // The map's picture is the map image's, which another scene or level destroys
+    this.shader.setPicture(null);
     // Last: whoever hears this may destroy the scan (a new scene's detection does).
     this.sayQuiet();
     const still = this.onStill;
@@ -314,15 +316,18 @@ export class GridScanLayer {
     requestRender(app);
   };
 
+  // A texture leaves the shader before it is destroyed: one destroyed while bound is a PIXI warning.
   private setInk(texture: Texture | null): void {
-    this.ink?.destroy(true);
+    const old = this.ink;
     this.ink = texture;
     this.shader.setInk(texture?.source ?? null);
+    old?.destroy(true);
   }
 
   private setHits(texture: Texture | null): void {
-    this.hits?.destroy(true);
+    const old = this.hits;
     this.hits = texture;
     this.shader.setHits(texture?.source ?? null);
+    old?.destroy(true);
   }
 }

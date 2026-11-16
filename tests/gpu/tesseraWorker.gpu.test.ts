@@ -1,0 +1,159 @@
+import { afterAll, describe, expect, it } from 'vitest';
+import { tesseraDatabaseName } from '../../src/app/pixi/mosaicCanvas/indexedDbTesseraBackend';
+import { pyramidOf, tesseraContentFrame, tesseraSourceRect, type TesseraRef } from '../../src/app/pixi/mosaicCanvas/pyramid';
+import { TesseraDecoderClient } from '../../src/app/pixi/mosaicCanvas/TesseraDecoderClient';
+import { workerPort } from '../../src/app/pixi/mosaicCanvas/tesseraPorts';
+import TileWorker from '../../src/app/pixi/mosaicCanvas/tesseraWorker?worker&inline';
+
+/**
+ * The real tessera worker end to end: a 6000 × 4000 PNG is opened, its pyramid
+ * built into IndexedDB, and opened again from the cache without its bytes.
+ */
+
+const WIDTH = 6000;
+const HEIGHT = 4000;
+const APP_ID = `tessera-worker-test-${Date.now()}`;
+const identity = { path: 'maps/generated.png', size: 1, mtime: 2 };
+
+/**
+ * Grey 16 px blocks of unrelated lightness over a grey gradient: an offset of one
+ * pixel shows on every block edge. Grey, since WebP halves the resolution of
+ * colour and saturated edges would blur past what alignment shows.
+ */
+function drawSource(): OffscreenCanvas {
+  const canvas = new OffscreenCanvas(WIDTH, HEIGHT);
+  const ctx = canvas.getContext('2d')!;
+  const gradient = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
+  gradient.addColorStop(0, '#202020');
+  gradient.addColorStop(1, '#e0e0e0');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  for (let y = 0; y < HEIGHT; y += 16) {
+    for (let x = (y / 16) % 2 === 0 ? 0 : 16; x < WIDTH; x += 32) {
+      const lightness = ((x * 37 + y * 91) / 16) % 100;
+      ctx.fillStyle = `hsl(0 0% ${lightness}%)`;
+      ctx.fillRect(x, y, 16, 16);
+    }
+  }
+  return canvas;
+}
+
+function pixels(source: CanvasImageSource, x: number, y: number, width: number, height: number): Uint8ClampedArray {
+  const canvas = new OffscreenCanvas(width, height);
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(source, x, y, width, height, 0, 0, width, height);
+  return ctx.getImageData(0, 0, width, height).data;
+}
+
+function meanDifference(a: Uint8ClampedArray, b: Uint8ClampedArray): number {
+  expect(a.length).toBe(b.length);
+  let sum = 0;
+  for (let i = 0; i < a.length; i++) sum += Math.abs(a[i]! - b[i]!);
+  return sum / a.length;
+}
+
+function deleteDatabase(name: string): Promise<void> {
+  return new Promise((resolve) => {
+    const request = indexedDB.deleteDatabase(name);
+    request.onsuccess = (): void => resolve();
+    request.onerror = (): void => resolve();
+    request.onblocked = (): void => resolve();
+  });
+}
+
+describe('tessera worker', () => {
+  const source = drawSource();
+  const client = new TesseraDecoderClient({
+    appId: APP_ID,
+    worker: workerPort(() => new TileWorker({ name: 'tessera worker test' })),
+    inThread: () => {
+      throw new Error('The worker should have started.');
+    },
+  });
+
+  afterAll(async () => {
+    client.dispose();
+    await deleteDatabase(tesseraDatabaseName(APP_ID));
+  });
+
+  it('builds and caches a pyramid, then serves it without reading the file again', async () => {
+    const png = await (await source.convertToBlob({ type: 'image/png' })).arrayBuffer();
+    let reads = 0;
+    const read = (): Promise<ArrayBuffer> => {
+      reads += 1;
+      return Promise.resolve(png.slice(0));
+    };
+    let completed = '';
+    const complete = new Promise<void>((resolve) => client.onPyramidComplete((hash) => {
+      completed = hash;
+      resolve();
+    }));
+
+    const first = await client.open(read, identity);
+    expect(reads).toBe(1);
+    expect(first.pyramid).toEqual(pyramidOf(WIDTH, HEIGHT));
+
+    // While the build runs, tesserae are crops of the decoded source: exact.
+    const early: TesseraRef = { level: 0, col: 3, row: 2 };
+    const crop = await client.tessera(first.handle, early);
+    const rect = tesseraSourceRect(first.pyramid, early);
+    expect([crop.width, crop.height]).toEqual([rect.width, rect.height]);
+    expect(meanDifference(pixels(crop, 0, 0, rect.width, rect.height), pixels(source, rect.x, rect.y, rect.width, rect.height))).toBeLessThan(0.5);
+    crop.close();
+
+    await complete;
+    expect(completed).toBe(first.hash);
+    expect(await client.cacheSize()).toBeGreaterThan(0);
+    client.close(first.handle);
+
+    const second = await client.open(read, identity);
+    expect(reads).toBe(1);
+    expect(second.hash).toBe(first.hash);
+
+    // From the cache: WebP at quality 0.9, close to the source and aligned to the pixel.
+    const ref: TesseraRef = { level: 0, col: 7, row: 5 };
+    const tessera = await client.tessera(second.handle, ref);
+    const tileRect = tesseraSourceRect(second.pyramid, ref);
+    expect([tessera.width, tessera.height]).toEqual([tileRect.width, tileRect.height]);
+    const frame = tesseraContentFrame(second.pyramid, ref);
+    const cached = pixels(tessera, frame.x, frame.y, frame.width, frame.height);
+    const expected = pixels(source, tileRect.x + frame.x, tileRect.y + frame.y, frame.width, frame.height);
+    expect(meanDifference(cached, expected)).toBeLessThan(4);
+    const shifted = pixels(source, tileRect.x + frame.x + 1, tileRect.y + frame.y, frame.width, frame.height);
+    expect(meanDifference(cached, shifted)).toBeGreaterThan(meanDifference(cached, expected) * 2);
+    tessera.close();
+
+    const overview = await client.overview(second.handle, 1024);
+    expect([overview.width, overview.height]).toEqual([1024, 683]);
+    overview.close();
+    client.close(second.handle);
+  });
+
+  it('reads which pixels of a map hold art, from its overview, as one byte each', async () => {
+    // Opaque but for a transparent square, whose left half is faint (below the threshold) and right half is not.
+    const canvas = new OffscreenCanvas(1200, 800);
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#808080';
+    ctx.fillRect(0, 0, 1200, 800);
+    ctx.clearRect(200, 200, 400, 300);
+    ctx.fillStyle = 'rgba(128, 128, 128, 0.01)';
+    ctx.fillRect(200, 200, 200, 300);
+    ctx.fillStyle = 'rgba(128, 128, 128, 0.2)';
+    ctx.fillRect(400, 200, 200, 300);
+    const png = await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer();
+    const map = await client.open(() => Promise.resolve(png.slice(0)), { path: 'maps/transparent.png', size: 2, mtime: 3 });
+    try {
+      const raster = await client.alphaRaster(map.handle, 600, 8);
+      expect([raster.width, raster.height]).toEqual([600, 400]);
+      const at = (x: number, y: number): number => raster.opaque[y * 600 + x]!;
+      expect([at(10, 10), at(150, 175), at(250, 175), at(590, 390)]).toEqual([1, 0, 1, 1]);
+      // Only the square's own pixels, less its anti-aliased rim, are transparent.
+      let clear = 0;
+      for (const value of raster.opaque) clear += value === 0 ? 1 : 0;
+      expect(clear).toBeGreaterThan(98 * 148);
+      expect(clear).toBeLessThanOrEqual(100 * 150);
+    } finally {
+      client.close(map.handle);
+    }
+  });
+});

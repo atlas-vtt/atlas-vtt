@@ -84,6 +84,20 @@ export function previewReach(controls: ViewFrame, grabArea: ViewFrame | null): V
 }
 
 /**
+ * The part of `frame` that lies inside every one of `clips`, or null where nothing does: what
+ * shows of an element inside the boxes that hold it, such as a header scrolled out of its card.
+ */
+export function visiblePart(frame: ViewFrame, clips: readonly ViewFrame[]): ViewFrame | null {
+  const part = clips.reduce<ViewFrame>((shown, clip) => ({
+    left: Math.max(shown.left, clip.left),
+    top: Math.max(shown.top, clip.top),
+    right: Math.min(shown.right, clip.right),
+    bottom: Math.min(shown.bottom, clip.bottom),
+  }), frame);
+  return part.right > part.left && part.bottom > part.top ? part : null;
+}
+
+/**
  * The least shift that brings `reach` inside `frame`, both in the same
  * coordinates. Where the reach does not fit, its top right corner wins: the
  * pin and close buttons of both kinds of preview sit there. An unknown frame

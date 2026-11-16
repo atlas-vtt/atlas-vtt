@@ -9,6 +9,7 @@ import { findBlock } from '../../model/treeQueries';
 import type { StatblockTemplate, TemplateBlock } from '../../model/templateTypes';
 import type { InsertItem } from '../template-editor/insertItems';
 import type { DragSubject } from './dropTargets';
+import { t } from '../../../i18n';
 
 export type DragSource =
   | { kind: 'block'; id: string }
@@ -49,5 +50,5 @@ export function subjectOf(template: StatblockTemplate, source: DragSource): Drag
 export function sourceName(template: StatblockTemplate, source: DragSource, nameOf: (block: TemplateBlock) => string): string {
   if (source.kind === 'item') return source.item.label;
   const found = findBlock(template.layout.blocks, source.id);
-  return found ? nameOf(found.block) : 'the block';
+  return found ? nameOf(found.block) : t('statblockEditor.theBlock');
 }

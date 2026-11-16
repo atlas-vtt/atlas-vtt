@@ -60,7 +60,7 @@ export class UIOverlay {
     
     // Pass the obtained PixiApp instance, renderer, and store to mountUI
     mountUI(this.app, this.reactRootEl, view, pixiApp, this.store);
-    
+
     this.eventBus.emit('ui-mounted', this.uiContainer);
   }
 

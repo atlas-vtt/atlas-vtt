@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Grid, Hexagon } from 'lucide-react';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
+import { ToggleLabel } from '../../packages/components/primitives/Toggle';
 import type { AtlasView } from '../../atlas-view';
 import { t } from '../../i18n';
 
@@ -212,14 +213,7 @@ export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalPr
           
           {/* Grid Visibility Toggle */}
           <div className="atlas-grid-settings-section">
-            <label className="atlas-grid-visibility-toggle">
-              <input
-                type="checkbox"
-                checked={gridVisible}
-                onChange={(e) => setLocalGridVisible(e.target.checked)}
-              />
-              <span>{t('gridModal.show')}</span>
-            </label>
+            <ToggleLabel label={t('gridModal.show')} value={gridVisible} onChange={() => setLocalGridVisible(!gridVisible)} />
           </div>
         </div>
         

@@ -1,13 +1,10 @@
 /// <reference types="vite/client" />
 import { Container, Matrix, RenderTexture, Sprite, Texture, type TextureSource, type WebGLRenderer } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import { LIGHTING_QUALITY, LIGHTING_QUALITY_LEVELS, type LightingQualityLevel } from '../../../../lighting/lightingQuality';
-import type { WallSegment } from '../../../../types/wallTypes';
-import { SEES_ALL } from '../../../../vision/sight';
+import { LIGHTING_QUALITY, LIGHTING_QUALITY_LEVELS, type LightingQuality, type LightingQualityLevel } from '../../../../lighting/lightingQuality';
 import type { MapBounds } from '../../../../vision/visibility';
 import { LightingEngine } from '../LightingEngine';
-import type { EngineLight, EngineScene } from '../types';
-import { rng } from './fuzzRooms';
+import { costScene } from './costScene';
 import { createTestRenderer } from './gpuTestUtils';
 
 const STRICT = import.meta.env.VITE_PERF_STRICT === '1';
@@ -47,27 +44,29 @@ async function gpuMs(gl: WebGL2RenderingContext, ext: TimerExt | null, fn: () =>
   return gl.getParameter(ext.GPU_DISJOINT_EXT) ? null : ns / 1e6;
 }
 
+/** Waits until the graphics device has done everything asked of it: a pixel read back. */
+function settleGpu(gl: WebGL2RenderingContext): void {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+}
+
+/** Median over five runs of the wall-clock ms one of 30 back-to-back calls of `frame` takes until the device is done. */
+async function throughputMs(gl: WebGL2RenderingContext, frame: () => void): Promise<number> {
+  const runs: number[] = [];
+  for (let run = 0; run < 5; run++) {
+    settleGpu(gl);
+    const started = performance.now();
+    for (let i = 0; i < 30; i++) frame();
+    settleGpu(gl);
+    runs.push((performance.now() - started) / 30);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  return median(runs)!;
+}
+
 function median(values: (number | null)[]): number | null {
   const kept = values.filter((value): value is number => value !== null).sort((a, b) => a - b);
   return kept.length > 0 ? Math.round(kept[Math.floor(kept.length / 2)]! * 100) / 100 : null;
-}
-
-/** 1,000 walls in chains and 40 lights over `bounds`, ten of them torches. */
-function scene(bounds: MapBounds, seed: number): EngineScene {
-  const rand = rng(seed);
-  const walls: WallSegment[] = [];
-  while (walls.length < 1000) {
-    let x = rand() * bounds.width, y = rand() * bounds.height;
-    for (let z = 0; z < 8; z++) {
-      const a = rand() * Math.PI * 2, l = 40 + rand() * 150;
-      walls.push({ id: `w${walls.length}`, kind: 'wall', type: 'solid', p1: { x, y }, p2: { x: x + Math.cos(a) * l, y: y + Math.sin(a) * l } });
-      x += Math.cos(a) * l;
-      y += Math.sin(a) * l;
-    }
-  }
-  const px = 73.89 / 5;
-  const lights: EngineLight[] = Array.from({ length: 40 }, (_, i) => ({ key: `l${i}`, x: rand() * bounds.width, y: rand() * bounds.height, bright: 20 * px, dim: 40 * px, flame: 40 * px * 0.12, color: [1, 0.6, 0.3], intensity: 1, animation: i < 10 ? 'torch' : 'none' }));
-  return { bounds, albedo: null, walls, lights, sight: SEES_ALL, sightRadius: 37, ambient: 0.1 };
 }
 
 interface Cost {
@@ -83,6 +82,14 @@ interface Cost {
   frameFit: number | null;
   frameClose: number | null;
   flicker: number | null;
+  /**
+   * Wall-clock ms a frame takes on a Retina-sized target (the screen at resolution 2, 2880 × 1800
+   * pixels) close up, the map filling the screen: 30 renders back to back, then a pixel read back.
+   * Timer queries do not hold on ANGLE's Metal backend once renders queue up.
+   */
+  retinaClose: number;
+  /** The same with the composite on every pixel, measured in turn with `retinaClose` (the levels that work on fewer). */
+  retinaCloseEveryPixel: number | null;
 }
 
 /** A white map lit by `engine`; each call renders one frame through a camera at `scale` centred on the map. */
@@ -105,7 +112,8 @@ async function measure(renderer: WebGLRenderer, ext: TimerExt | null, level: Lig
   const before = heldTextures(renderer);
   const engine = new LightingEngine(renderer, LIGHTING_QUALITY[level]);
   const target = RenderTexture.create(SCREEN);
-  const lit = scene(bounds, 3);
+  const retina = RenderTexture.create({ ...SCREEN, resolution: 2 });
+  const lit = costScene(bounds, 3);
   try {
     engine.setEnabled(true);
     engine.setMode('player');
@@ -123,15 +131,30 @@ async function measure(renderer: WebGLRenderer, ext: TimerExt | null, level: Lig
       closes.push(await gpuMs(renderer.gl, ext, close));
       flickers.push(await gpuMs(renderer.gl, ext, () => engine.animate(10_000 + i * 1000)));
     }
+    const retinaFrame = framer(renderer, engine, retina, bounds)(1);
+    const quality = LIGHTING_QUALITY[level];
+    const reduced: number[] = [];
+    const every: number[] = [];
+    const everyPixel: LightingQuality = { ...quality };
+    delete everyPixel.compositePixelRatio;
+    for (let round = 0; round < (quality.compositePixelRatio ? 3 : 1); round++) {
+      reduced.push(await throughputMs(renderer.gl, retinaFrame));
+      if (!quality.compositePixelRatio) continue;
+      engine.setQuality(everyPixel);
+      every.push(await throughputMs(renderer.gl, retinaFrame));
+      engine.setQuality(quality);
+    }
     const bytes = heldBytes(renderer, before);
     const texel = Math.max(2, Math.max(bounds.width, bounds.height) / LIGHTING_QUALITY[level].maxTexels);
     return {
       level, map: `${bounds.width}x${bounds.height}`, texel: Math.round(texel * 100) / 100, worldMb: Math.round(worldBytes / 1e5) / 10, memoryMb: Math.round(bytes / 1e5) / 10,
-      build: median([build]), bounce: median([bounce]), frameFit: median(fits), frameClose: median(closes), flicker: LIGHTING_QUALITY[level].flickerMs === null ? 0 : median(flickers),
+      build: median([build]), bounce: median([bounce]), frameFit: median(fits), frameClose: median(closes), flicker: quality.picture === 'polygons' ? 0 : median(flickers),
+      retinaClose: median(reduced)!, retinaCloseEveryPixel: median(every),
     };
   } finally {
     engine.destroy();
     target.destroy(true);
+    retina.destroy(true);
   }
 }
 

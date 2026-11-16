@@ -7,7 +7,7 @@ import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { getDataFilePath } from '../../src/app/utils/dataFileMigration';
 import { TokenUIRenderer } from '../../src/app/pixi/TokenUIRenderer';
 import { TokenStatblockLinkService } from '../../src/app/services/TokenStatblockLinkService';
-import { isNameplateVisible } from '../../src/app/pixi/token-renderer/nameplateVisibility';
+import { isNameplateVisible, nameShownToPlayers } from '../../src/app/pixi/token-renderer/nameplateVisibility';
 import { buildStatblockLinkUpdates, STATBLOCK_UNLINK_UPDATES } from '../../src/app/pixi/token-renderer/statblockFrontmatter';
 import { HP_RESOURCE } from '../../src/app/resources/resourceDefinitions';
 
@@ -96,5 +96,14 @@ describe('per-token nameplate preference', () => {
     } finally {
       ui.destroy();
     }
+  });
+});
+
+describe('the name players read for a token', () => {
+  it('is none without names, the name where the GM\'s map shows the nameplate, else a placeholder', () => {
+    expect(nameShownToPlayers('Grum', {}, true, false)).toBeNull();
+    expect(nameShownToPlayers('Grum', {}, true, true)).toBe('Grum');
+    expect(nameShownToPlayers('Grum', { showNameplate: true }, false, true)).toBe('Grum');
+    expect(nameShownToPlayers('Grum', {}, false, true)).toBe('Unknown Creature');
   });
 });

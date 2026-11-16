@@ -9,6 +9,7 @@ import { isExpressionError, syntaxError, type ExpressionError } from './errors';
 import { parseFilter } from './filters';
 import { parseFormula } from './parse';
 import type { PatternAst, PatternFilter, PatternNode } from './patternTypes';
+import { t } from '../../i18n';
 
 const ESCAPABLE: ReadonlySet<string> = new Set(['{', '}', '[', ']', '\\', ',', '|']);
 const ESCAPABLE_CHARACTERS = /[{}[\]\\,|]/g;
@@ -63,7 +64,7 @@ class PatternParser {
         nodes.push(this.value());
       } else if (char === '[') {
         flush();
-        if (depth >= MAX_OPTIONAL_DEPTH) fail('Optional parts are nested too deeply.', this.index);
+        if (depth >= MAX_OPTIONAL_DEPTH) fail(t('statblockEditor.expr.optionalDeep'), this.index);
         const at = this.index;
         this.index += 1;
         nodes.push({ kind: 'optional', nodes: this.sequence(at, depth + 1) });
@@ -158,7 +159,7 @@ class PatternParser {
 
 /** The pattern's syntax tree, or a syntax error with the offset it is at. Never throws. */
 export function parsePattern(source: string): PatternAst | ExpressionError {
-  if (source.length > MAX_LENGTH) return syntaxError('The pattern is too long.', 0);
+  if (source.length > MAX_LENGTH) return syntaxError(t('statblockEditor.expr.patternLong'), 0);
   try {
     return new PatternParser(source).parse();
   } catch (failure) {

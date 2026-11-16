@@ -1,6 +1,8 @@
 import { MAX_FEEDBACK_TEXT, feedbackNote, type FeedbackResult } from '../../protocol/index.ts';
 import { COMPANION_REPORTS_NOTE, type CompanionFeedback } from '../companionReports.ts';
 import { textButton } from './controls.ts';
+import { createToggleSwitch } from '../../../ui/toggleSwitchElement';
+import { t } from '../../../i18n';
 
 export type FeedbackState = 'idle' | 'sending' | FeedbackResult;
 
@@ -26,9 +28,9 @@ export interface FeedbackActions {
 const STATE_TEXT: Readonly<Record<FeedbackState, string>> = {
   idle: '',
   sending: 'Sending…',
-  sent: 'Thank you. Your feedback was sent.',
-  busy: 'Too much feedback right now. Try again in a minute.',
-  failed: 'It could not be sent. Check the server in the settings.',
+  sent: t('online.feedback.sent'),
+  busy: t('online.feedback.busy'),
+  failed: t('online.feedback.failed'),
 };
 
 /**
@@ -38,10 +40,10 @@ const STATE_TEXT: Readonly<Record<FeedbackState, string>> = {
  */
 export function renderFeedback(parent: HTMLElement, view: FeedbackView, actions: FeedbackActions): void {
   const form = parent.createDiv({ cls: 'atlas-online-feedback', attr: { role: 'group', 'aria-labelledby': `${parent.id}-feedback` } });
-  form.createDiv({ cls: 'atlas-online-group-label', text: 'Send feedback', attr: { id: `${parent.id}-feedback` } });
+  form.createDiv({ cls: 'atlas-online-group-label', text: t('online.feedback.send'), attr: { id: `${parent.id}-feedback` } });
   const field = form.createEl('textarea', {
     cls: 'atlas-online-feedback__text',
-    attr: { rows: '4', maxlength: String(MAX_FEEDBACK_TEXT), placeholder: 'What went wrong, or what would help?', 'aria-label': 'Feedback', 'data-focus-key': 'feedback-text' },
+    attr: { rows: '4', maxlength: String(MAX_FEEDBACK_TEXT), placeholder: t('online.feedback.placeholder'), 'aria-label': t('online.feedback.label'), 'data-focus-key': 'feedback-text' },
   });
   field.value = actions.feedbackText();
   const send = (): void => {
@@ -51,24 +53,23 @@ export function renderFeedback(parent: HTMLElement, view: FeedbackView, actions:
   field.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) send();
   });
-  checkbox(form, 'Include diagnostics', 'feedback-diagnostics', view.diagnostics, (on) => actions.setFeedbackDiagnostics(on));
+  switchRow(form, 'Include diagnostics', 'feedback-diagnostics', view.diagnostics, (on) => actions.setFeedbackDiagnostics(on));
   form.createDiv({ cls: 'atlas-online-help atlas-online-feedback__note', text: feedbackNote(view.diagnostics) });
   const row = form.createDiv({ cls: 'atlas-online-feedback__actions' });
   row.createSpan({ cls: 'atlas-online-help atlas-online-feedback__status', text: STATE_TEXT[view.state], attr: { role: 'status' } });
-  const button = textButton(row, 'Send', send, 'cta');
+  const button = textButton(row, t('online.feedback.submit'), send, 'cta');
   button.dataset.focusKey = 'feedback-send';
   button.disabled = view.state === 'sending';
-  checkbox(form, 'Send error reports automatically', 'error-reports', view.errorReports, (on) => actions.setErrorReports(on));
+  switchRow(form, 'Send error reports automatically', 'error-reports', view.errorReports, (on) => actions.setErrorReports(on));
   form.createDiv({ cls: 'atlas-online-help atlas-online-feedback__note', text: COMPANION_REPORTS_NOTE });
 }
 
-/** A labelled checkbox, focus kept across redraws by its key. */
-function checkbox(parent: HTMLElement, text: string, key: string, checked: boolean, change: (on: boolean) => void): void {
-  const toggle = parent.createEl('label', { cls: 'atlas-online-feedback__toggle' });
-  const box = toggle.createEl('input', { attr: { type: 'checkbox', 'data-focus-key': key } });
-  box.checked = checked;
-  box.addEventListener('change', () => change(box.checked));
-  toggle.appendText(text);
+/** Atlas' switch with its text after it, which toggles it too; focus kept across redraws by its key. */
+function switchRow(parent: HTMLElement, text: string, key: string, checked: boolean, change: (on: boolean) => void): void {
+  const row = parent.createDiv({ cls: 'atlas-toggle-label atlas-online-feedback__toggle' });
+  const labelId = `atlas-online-${key}`;
+  createToggleSwitch(row, { value: checked, labelledBy: labelId, onChange: change }).dataset.focusKey = key;
+  row.createSpan({ cls: 'atlas-toggle-label__text', text, attr: { id: labelId } }).addEventListener('click', () => change(!checked));
 }
 
 /** The form's state, kept by the control: open, the draft, the diagnostics switch and how sending went. */

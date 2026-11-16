@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { imageExtension, writeAssetImage } from '../../src/app/services/assetImageFiles';
+import { assetNameFromFileName, imageExtension, writeAssetImage } from '../../src/app/services/assetImageFiles';
 import { overwriteStoredImage } from '../../src/app/packages/components/asset-manager/token-creator/storedTokenImage';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
@@ -26,6 +26,15 @@ describe('stored image files', () => {
     expect(await writeAssetImage(app, 'Region map', png)).toMatch(/^atlas-vtt\/assets\/Region_map_\d+_[a-z0-9]+\.png$/);
     expect(await writeAssetImage(app, 'Battle map', jpeg)).toMatch(/\.jpg$/);
     expect(await writeAssetImage(app, 'Goblin', webp)).toMatch(/\.webp$/);
+  });
+
+  it('give back the name an image was stored under, without the suffix that made it unique', async () => {
+    const { app } = createInMemoryApp();
+    const stored = await writeAssetImage(app, 'Old Mill', png);
+    expect(assetNameFromFileName(stored.split('/').pop()!)).toBe('Old Mill');
+    expect(assetNameFromFileName('old_Old_Millmill_1790813323186_13r14n.webp')).toBe('old Old Millmill');
+    expect(assetNameFromFileName('goblin-archer_2.png')).toBe('goblin archer 2');
+    expect(assetNameFromFileName('Map 1790813323186.jpg')).toBe('Map 1790813323186');
   });
 
   it('rename a stored image to the format of the image written over it', async () => {

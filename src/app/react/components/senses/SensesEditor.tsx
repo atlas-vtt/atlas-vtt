@@ -10,6 +10,7 @@ import { useExclusiveDropdown } from '../../../packages/components/primitives/us
 import type { SenseDefinition, TokenSense } from '../../../types/senseTypes';
 import { numberText } from '../../../utils/numberInput';
 import { InheritedSenseRow, SenseRowFields } from './SenseRows';
+import { portalHost } from '../../../host/portalHost';
 
 interface SensesEditorProps {
   /** The senses being edited; null while the token has none of its own. */
@@ -128,7 +129,7 @@ export function SensesEditor({ senses, onChange, definitions, unit, emptyText, i
                 </Button>
               </DropdownMenu.Trigger>
               {/* Inside the dialog that holds the list: the menu stacks above it, and Escape in it stays in it. */}
-              <DropdownMenu.Portal container={addButton?.closest<HTMLElement>('.atlas-modal') ?? addButton?.ownerDocument.body}>
+              <DropdownMenu.Portal container={addButton?.closest<HTMLElement>('.atlas-modal') ?? portalHost(addButton?.ownerDocument)}>
                 <DropdownMenu.Content
                   className="atlas-ctx-menu atlas-ctx-menu--dropdown atlas-senses-menu"
                   side="top"

@@ -3,8 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { giveLoot, lootRecipients } from '../../../../src/app/loot/lootRecipients';
 import type { LootDraw } from '../../../../src/app/loot/lootRoller';
 import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
+import { ownBookOf } from '../../../../src/app/online/gm/book/playerWritings.ts';
 import { FakeSocket, workspace } from './fakeTable.ts';
-import { ANA, BEN, BRANNOCH, BRANNOCH_BOOK, BRANNOCH_ART, CAL, cave, delivered, DOOM, keptBooks, MAP, MIRA_BOOK, MIRA_ART, MIRA_DOOM, ofType, openTable, traffic, WORLD_MAP, type Delivered } from './bookTableHarness.ts';
+import { ANA, ANA_OWN, BEN, BEN_OWN, BRANNOCH, BRANNOCH_BOOK, BRANNOCH_ART, CAL, cave, delivered, DOOM, keptBooks, MAP, MIRA_BOOK, MIRA_ART, MIRA_DOOM, ofType, openTable, traffic, WORLD_MAP, type Delivered } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {} }));
@@ -17,6 +18,7 @@ vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
     showPlayers(): void {}
     showPlayerDrags(): void {}
     showPlayerCursors(): void {}
+    showPlayerStrokes(): void {}
     dispose(): void {}
   },
 }));
@@ -95,8 +97,10 @@ describe('the players\' books at a running table', () => {
     const item = parseGmMessage(JSON.parse(JSON.stringify(items[0]?.body)));
     expect(item).toMatchObject({ t: 'book-item', item: { name: 'Moon Blade', tone: 'rare', price: '500 thorns', properties: [{ label: 'Damage', value: '1d8' }] } });
     expect([...((item as { item: BookItem }).item.description ?? '')]).toHaveLength(MAX_ITEM_TEXT);
-    expect(shelf.of(BRANNOCH_BOOK)).toMatchObject({ notes: [{ id: NOTE, body: SECRET_NOTE, at: Date.now() - 1_000 }], pins: [{ kind: 'treasure' }], purse: [{ name: 'Thorns', amount: 40 }], items: [{ name: 'Moon Blade' }] });
-    expect(shelf.of(MIRA_BOOK).notes).toEqual([]);
+    expect(shelf.of(ANA_OWN)).toMatchObject({ notes: [{ id: NOTE, body: SECRET_NOTE, at: Date.now() - 1_000 }], pins: [{ kind: 'treasure' }] });
+    expect(shelf.of(BRANNOCH_BOOK)).toMatchObject({ notes: [], pins: [], purse: [{ name: 'Thorns', amount: 40 }], items: [{ name: 'Moon Blade' }] });
+    expect(shelf.of(BEN_OWN).notes).toEqual([]);
+    expect(shelf.of(MIRA_BOOK).items).toEqual([]);
 
     // Ana leaves and comes back: her book holds what she wrote and was given.
     socket.relay({ t: 'player-left', id: ANA });
@@ -137,24 +141,24 @@ describe('the players\' books at a running table', () => {
     const sheets = ofType(delivered(socket).slice(since), 'book', 'book-sheet', 'book-item');
     expect(sheets).toMatchObject([{ to: ANA, body: { t: 'book-sheet', character: { name: 'Brannoch', resources: [{ current: 2, max: 12 }, { key: 'doom' }] } } }]);
 
-    // Hidden by the GM, the character stays Ana's as it last was; nothing is read of the hidden token.
+    // Hidden by the GM, the character stays Ana's and her sheet follows it: the map hides the token from the others, not her character from her.
     since = delivered(socket).length;
     tab.store.set(cave({ brannoch: { isHidden: true, name: 'Brannoch the Betrayer', resources: { hp: { current: 1, max: 12 } } } }));
     await advance(1_000);
-    expect(ofType(delivered(socket).slice(since), 'book', 'book-sheet')).toEqual([]);
-    expect(traffic(delivered(socket))).not.toContain('Betrayer');
-    expect(lootRecipients()[0]).toEqual({ id: ANA, name: 'Ana', character: 'Brannoch' });
+    expect(ofType(delivered(socket).slice(since), 'book', 'book-sheet')).toMatchObject([{ to: ANA, body: { t: 'book-sheet', character: { name: 'Brannoch the Betrayer', resources: [{ current: 1, max: 12 }] } } }]);
+    expect(traffic(delivered(socket).filter(({ to }) => to !== ANA))).not.toContain('Betrayer');
+    expect(lootRecipients()[0]).toEqual({ id: ANA, name: 'Ana', character: 'Brannoch the Betrayer' });
 
-    // The GM gives Brannoch to Ben: Ana's book is empty at once, and she can write nothing.
+    // The GM gives Brannoch to Ben: Ana keeps what she wrote and has no sheet, and nothing goes into a character's book from her.
     tab.store.set(cave());
     await advance(1_000);
     since = delivered(socket).length;
     ownership.give([BRANNOCH], {}, BEN);
     await advance(0);
-    expect(books(delivered(socket).slice(since), ANA)).toMatchObject([{ character: null, notes: [], items: [], pins: [], purse: [] }]);
+    expect(books(delivered(socket).slice(since), ANA)).toMatchObject([{ character: null, notes: [{ body: SECRET_NOTE }], items: [], pins: [], purse: [] }]);
     expect(books(delivered(socket).slice(since), ANA)[0]?.worldMap).not.toBeNull();
-    // Brannoch is the first token Ben has now, so its book is his: a book is its character's.
-    expect(books(delivered(socket).slice(since), BEN)).toMatchObject([{ character: { name: 'Brannoch' }, notes: [{ body: SECRET_NOTE }] }]);
+    // Brannoch is the first token Ben has now: its book is his, and what Ana wrote herself stays hers.
+    expect(books(delivered(socket).slice(since), BEN)).toMatchObject([{ character: { name: 'Brannoch' }, notes: [] }]);
     from(ANA, { t: 'book-purse', purse: [{ name: 'Stolen', amount: 9 }] });
     await advance(3_000);
     expect(source.dump()).not.toContain('Stolen');
@@ -177,7 +181,9 @@ describe('the players\' books at a running table', () => {
     expect(books(delivered(second.socket), CAL).at(-1)).toMatchObject({ character: null, notes: [], items: [] });
     second.ownership.give([BRANNOCH], {}, CAL);
     await advance(100);
-    expect(books(delivered(second.socket), CAL).at(-1)).toMatchObject({ character: { name: 'Brannoch' }, notes: [{ id: NOTE, title: 'Kept', body: SECRET_NOTE }], items: [{ name: 'Moon Blade' }] });
+    // What is the character's goes with it; what Ana wrote is hers.
+    expect(books(delivered(second.socket), CAL).at(-1)).toMatchObject({ character: { name: 'Brannoch' }, notes: [], items: [{ name: 'Moon Blade' }] });
+    expect(kept.of(ownBookOf(ANA)).notes).toMatchObject([{ id: NOTE, title: 'Kept', body: SECRET_NOTE }]);
     second.online.stop();
   });
 });

@@ -8,7 +8,7 @@ export const WELCOME_TIMEOUT_MS = 8_000;
 /**
  * How long after a keep-alive the GM's socket may stay without any sign of life before it counts
  * as dead. The answer comes from the relay's edge, one round trip away, but the ping may stand
- * behind an asset chunk on a slow uplink, and replacing the socket sends every player the scene
+ * behind a large message on a slow uplink, and replacing the socket sends every player the scene
  * anew: so the time is generous, and a socket whose buffer still drains is not judged at all.
  */
 export const PULSE_DEADLINE_MS = 20_000;

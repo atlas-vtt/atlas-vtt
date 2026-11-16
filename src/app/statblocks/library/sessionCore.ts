@@ -17,6 +17,7 @@ import { SessionFile, type ConflictChoice } from './sessionFile';
 import type { ReadOnlyReason, SaveResult } from './sessionFileSync';
 import type { SessionConflict } from './templateConflict';
 import { TemplateLibrary } from './TemplateLibrary';
+import { t } from '../../i18n';
 
 export type SaveState = 'saved' | 'dirty' | 'saving' | 'error' | 'conflict';
 
@@ -180,7 +181,7 @@ export class SessionCore {
 
   /** Writes the draft over the template's file ("Update"). */
   save(): Promise<SaveResult> {
-    return this.disposed ? Promise.resolve({ ok: false, problem: 'The template is closed.' }) : this.file.save();
+    return this.disposed ? Promise.resolve({ ok: false, problem: t('statblockEditor.templateClosed') }) : this.file.save();
   }
 
   /**

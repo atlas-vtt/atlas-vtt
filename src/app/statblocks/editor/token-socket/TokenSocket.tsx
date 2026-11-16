@@ -13,7 +13,9 @@ import { TokenSocketFace } from './TokenSocketFace';
 import { shownArt } from './tokenSocketActions';
 import { useSocketDismiss } from './useSocketDismiss';
 import { useSocketPlacement } from './useSocketPlacement';
+import { t } from '../../../i18n';
 import './token-socket.scss';
+import { portalHost } from '../../../host/portalHost';
 
 export interface TokenSocketProps {
   block: ImageBlock;
@@ -65,12 +67,12 @@ export function TokenSocket({ block, art }: TokenSocketProps): React.JSX.Element
 
   return (
     <>
-      <LabelTooltip label="Link token art">
+      <LabelTooltip label={t('statblockEditor.token.link')}>
         <TokenSocketFace
           ref={setSocket}
           shape={block.shape}
           art={src ? shown : null}
-          prompt={named ? 'Art not found' : 'Add token art'}
+          prompt={named ? t('statblockEditor.token.artMissing') : t('statblockEditor.token.addArt')}
           aria-haspopup="dialog"
           aria-expanded={open}
           onClick={() => setOpen((was) => !was)}
@@ -92,7 +94,7 @@ export function TokenSocket({ block, art }: TokenSocketProps): React.JSX.Element
             </div>
           )}
         </AnimatePresence>,
-        socket.doc.body,
+        portalHost(socket.doc),
       )}
     </>
   );

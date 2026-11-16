@@ -27,6 +27,14 @@ export const UVTT_LIMITS = {
    * pixel (`MEMORY_BUDGET_BYTES`, 1 GiB). As many as a square of 16,384 pixels, in any shape.
    */
   imagePixels: 268_435_456,
+  /** Files imported together as the floors of one scene. */
+  floors: 32,
+  /**
+   * All files of one scene together: their images are held as the files hold them until each is
+   * converted. Wall segments, doors and lights count against the limits above for all floors
+   * together too, since the scene holds every floor's.
+   */
+  floorsBytes: 400 * 1024 * 1024,
 } as const;
 
 export interface UvttPoint {

@@ -56,7 +56,7 @@ describe('doorsInSight', () => {
 
   it('shows every ordinary door on lit floor without a vision token or with token vision off', () => {
     expect(seen(computeSight([], WALLS))).toEqual(['behind', 'locked', 'near']);
-    expect(seen(sceneSight({ tokenVision: false }, [HERO], WALLS))).toEqual(['behind', 'locked', 'near']);
+    expect(seen(sceneSight({ tokenVision: false }, [HERO], WALLS, undefined, { sceneHasVision: true }))).toEqual(['behind', 'locked', 'near']);
     expect(seen(SEES_ALL, NIGHT)).toEqual([]);
     expect(seen(SEES_ALL, NIGHT, [lightReach({ x: 320, y: 100 }, 40, WALLS)])).toEqual(['behind']);
   });

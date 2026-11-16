@@ -61,14 +61,12 @@ describe('pictures drawn from the culled sweep', { timeout: 600_000 }, () => {
   });
 
   it.each(pictureScenes().map((scene) => [scene.name, scene] as const))('draws the same line-of-sight fallback on %s', async (_, scene) => {
-    for (const preference of ['webgl', 'canvas'] as const) {
-      const mine = await through(false, () => fallbackPictures(scene, preference));
-      const theirs = await through(true, () => fallbackPictures(scene, preference));
-      if (mine === null || theirs === null) {
-        console.info(`line-of-sight fallback on ${scene.name}: PIXI's ${preference} renderer could not start here`);
-        continue;
-      }
-      expect(mine.map((frame, i) => differingBytes(frame, theirs[i]!))).toEqual(mine.map(() => 0));
+    const mine = await through(false, () => fallbackPictures(scene));
+    const theirs = await through(true, () => fallbackPictures(scene));
+    if (mine === null || theirs === null) {
+      console.info(`line-of-sight fallback on ${scene.name}: the renderer could not start here`);
+      return;
     }
+    expect(mine.map((frame, i) => differingBytes(frame, theirs[i]!))).toEqual(mine.map(() => 0));
   });
 });

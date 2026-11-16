@@ -12,6 +12,7 @@ const handlers: AssetCardHandlers = {
   onSelect: () => {},
   onContextMenu: () => {},
   onOpen: () => {},
+  onDelete: () => {},
   onDragStart: () => {},
   onDragEnd: () => {},
   onSpawnCountChange: () => {},
@@ -45,6 +46,7 @@ describe('AssetCard encounter previews', () => {
     expect(screen.getByAltText('Forest Ambush token 2')).toBeTruthy();
     expect(screen.getByAltText('Forest Ambush token 3')).toBeTruthy();
     expect(screen.queryByAltText('Forest Ambush token 4')).toBeNull();
-    expect(screen.getByText('+1')).toBeTruthy();
+    expect(document.querySelector('.atlas-encounter-preview-overflow')?.getAttribute('data-count')).toBe('+1');
+    expect(screen.getByRole('option', { name: 'Forest Ambush', description: '4 tokens' })).toBeTruthy();
   });
 });

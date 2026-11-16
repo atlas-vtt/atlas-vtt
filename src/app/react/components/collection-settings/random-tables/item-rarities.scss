@@ -26,7 +26,6 @@
   @include atlas-flex-row($spacing-s);
   padding: $spacing-xs;
   border-radius: $radius-m;
-  @include atlas-corner-shape;
   transition: background-color $transition-fast $transition-ease;
 
   &:hover {

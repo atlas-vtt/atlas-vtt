@@ -92,6 +92,12 @@ export class RemoteCursors {
     }
   }
 
+  /** How far `who`'s cursor is drawn behind its messages at `now` (`PointerTrack.lag`), or null once it has nothing left to draw. */
+  lagOf(who: string, now: number): number | null {
+    const cursor = this.cursors.get(who);
+    return cursor === undefined || (!cursor.present && !cursor.track.busy(now)) ? null : cursor.track.lag(now);
+  }
+
   /** How many cursors are drawn or fading. */
   get size(): number {
     return this.cursors.size;

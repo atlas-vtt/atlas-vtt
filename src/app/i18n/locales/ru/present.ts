@@ -7,4 +7,6 @@ export const present: Translation = {
   'present.shownElsewhere': 'Игроки видят «{name}»; окно игроков на этом компьютере закрыто',
   'present.reconnect': 'Откройте показываемую сцену и снова отправьте её игрокам.',
   'present.loadFailed': 'Показываемую сцену не удалось загрузить. Отправьте сцену заново.',
+  'present.chosen': 'Игроки увидят {name}, когда вы откроете окно игроков',
+  'present.sceneLevel': '{scene}: {level}',
 };

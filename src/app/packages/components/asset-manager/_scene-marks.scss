@@ -1,0 +1,56 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// ── Scene marks ─────────────────────────────────────────────────────────────
+// A scene card's status line under its name (`SceneMarkers`, decisions #44, #51), as the scene tabs show them: "Open"
+// on the scene the map view shows and the eye on the one players see. The art carries no text, so the word meets
+// contrast on every map. "Open" is status, not a control: a dot and the word in the caption's muted text, with no
+// capsule, border or fill a button would have, and the default cursor. The eye is its glyph in the accent, as the
+// scene tab's is while it is shown. The line has one height whether it holds marks or not, so every scene card is as
+// tall as the others.
+
+.atlas-asset-scene-marks {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: $spacing-xs;
+  height: 16px;
+  min-width: 0;
+  padding: 0 $spacing-xs;
+  font-size: $font-ui-smaller;
+  line-height: 1;
+  cursor: default;
+}
+
+.atlas-asset-scene-marks__eye {
+  display: inline-flex;
+  color: var(--text-accent);
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+}
+
+// The word is drawn from the attribute (`SceneMarkers`).
+.atlas-asset-scene-marks__open {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-medium;
+  line-height: 1;
+
+  &::before {
+    width: 6px;
+    height: 6px;
+    border-radius: $radius-full;
+    background: var(--color-green);
+    content: '';
+  }
+
+  &::after {
+    content: attr(data-label);
+  }
+}

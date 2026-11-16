@@ -11,6 +11,7 @@ import type { LibraryTemplate } from '../../../model/resolvedTypes';
 import type { TemplateId } from '../../../model/templateTypes';
 import { TEMPLATE_FOLDER, templateNameProblem, templateNameTakenAt, templatePathIn } from '../../../library/templatePaths';
 import type { SessionSnapshot } from '../sessionTypes';
+import { t } from '../../../../i18n';
 
 export type SaveKind = 'update' | 'new';
 
@@ -23,7 +24,7 @@ export interface SaveRequest {
 export interface SaveChoice {
   kind: SaveKind;
   /** The primary button's label. */
-  label: 'Update' | 'Save as new' | 'Save';
+  label: string;
   /** Why the name cannot be saved under; null while it can. */
   problem: string | null;
   /** The line under the name: what saving does. */
@@ -40,14 +41,14 @@ const sameName = (a: string, b: string): boolean => a.trim().toLowerCase() === b
 
 export function saveChoice(subject: SaveSubject, typed: string, taken: NameTaken): SaveChoice {
   const name = typed.trim();
-  const problem = templateNameProblem(name) ?? (taken(name) ? `There is already a template named “${name}”.` : null);
-  if (subject.unsaved) return { kind: 'new', label: 'Save', problem, hint: null };
+  const problem = templateNameProblem(name) ?? (taken(name) ? t('templateEditor.save.taken', { name }) : null);
+  if (subject.unsaved) return { kind: 'new', label: t('templateEditor.save.save'), problem, hint: null };
   if (subject.builtIn) {
-    const own = sameName(name, subject.name) ? 'Built-in templates can\'t be changed. Give yours a name of its own.' : null;
-    return { kind: 'new', label: 'Save as new', problem: own ?? problem, hint: `${subject.name} is built in and stays as it is. Your changes are saved as a new template.` };
+    const own = sameName(name, subject.name) ? t('templateEditor.save.builtInName') : null;
+    return { kind: 'new', label: t('templateEditor.save.asNew'), problem: own ?? problem, hint: t('templateEditor.save.builtInHint', { name: subject.name }) };
   }
-  if (sameName(name, subject.name)) return { kind: 'update', label: 'Update', problem: null, hint: 'Statblocks that use this template show the change.' };
-  return { kind: 'new', label: 'Save as new', problem, hint: `${subject.name} stays as it is.` };
+  if (sameName(name, subject.name)) return { kind: 'update', label: t('templateEditor.save.update'), problem: null, hint: t('templateEditor.save.updateHint') };
+  return { kind: 'new', label: t('templateEditor.save.asNew'), problem, hint: t('templateEditor.save.staysHint', { name: subject.name }) };
 }
 
 /** `base`, else `base 2`, `base 3`, … : the first name no template goes by. */

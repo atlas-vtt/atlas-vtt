@@ -32,7 +32,7 @@ $collapse-height: 24px;
 
   // Panel background — matches toolbar
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
 
   overflow: hidden;
 
@@ -64,7 +64,7 @@ $collapse-height: 24px;
   height: $collapse-height;
   padding: 0;
   flex-shrink: 0;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   @include atlas-panel-inset-radius($spacing-s, top-left, top-right);
   color: var(--text-muted);
   font-size: 11px;
@@ -109,7 +109,7 @@ $collapse-height: 24px;
   flex: 1;
   height: 36px;
   padding: 0;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   transition: all 0.15s ease;
 
   &:disabled {
@@ -143,16 +143,12 @@ $collapse-height: 24px;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: none;
+  @include atlas-scrollbar-none;
   // The list glides to the turn it follows
   scroll-behavior: smooth;
 
   @media (prefers-reduced-motion: reduce) {
     scroll-behavior: auto;
-  }
-
-  &::-webkit-scrollbar {
-    display: none;
   }
 }
 
@@ -244,7 +240,7 @@ $collapse-height: 24px;
   flex-shrink: 0;
   background: var(--background-modifier-hover);
   border: 1.5px solid color-mix(in oklch, var(--mono-100) 6%, transparent);
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   cursor: grab;
   transition: all 0.2s ease;
   position: relative;
@@ -307,7 +303,7 @@ $collapse-height: 24px;
     right: 8px;
     height: 2px;
     background: var(--interactive-accent);
-    border-radius: 1px;
+    border-radius: $radius-s;
     box-shadow: 0 0 8px var(--interactive-accent);
   }
 
@@ -353,7 +349,7 @@ $collapse-height: 24px;
   left: -4px;
   min-width: 18px;
   height: 18px;
-  border-radius: 9px;
+  border-radius: $radius-full;
   background: #000;
   border: 1.5px solid #555;
   color: #fff;
@@ -547,7 +543,7 @@ $collapse-height: 24px;
   height: 10px;
   padding: 0;
   border: none;
-  border-radius: 2px;
+  border-radius: $radius-s;
   background: transparent;
   box-shadow: none;
   cursor: pointer;
@@ -564,14 +560,14 @@ $collapse-height: 24px;
   width: 100%;
   height: 4px;
   background: color-mix(in oklch, var(--mono-100) 10%, transparent);
-  border-radius: 2px;
+  border-radius: $radius-s;
   overflow: hidden;
 }
 
 .atlas-initiative-card__hp-fill {
   display: block;
   height: 100%;
-  border-radius: 2px;
+  border-radius: $radius-s;
   // The resource's own colour, set per bar
   background: var(--atlas-resource-color, var(--color-green));
   transition: width 0.3s ease;
@@ -618,7 +614,7 @@ $collapse-height: 24px;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 2px solid var(--interactive-accent);
-    border-radius: 12px;
+    border-radius: $radius-m;
     padding: 10px;
     font-size: 20px;
     font-weight: 700;
@@ -662,7 +658,7 @@ $collapse-height: 24px;
     color: var(--text-muted);
     background: color-mix(in srgb, var(--background-primary) 80%, transparent);
     padding: 4px;
-    border-radius: 4px;
+    border-radius: $radius-s;
   }
 
   // The GM's own modifier: the same field, quieter until it is focused
@@ -689,7 +685,7 @@ $collapse-height: 24px;
     color: var(--text-muted);
     background: color-mix(in srgb, var(--background-primary) 80%, transparent);
     padding: 4px;
-    border-radius: 4px;
+    border-radius: $radius-s;
     white-space: nowrap;
   }
 }

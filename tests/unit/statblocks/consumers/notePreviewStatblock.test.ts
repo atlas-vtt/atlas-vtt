@@ -121,11 +121,19 @@ describe('a frontmatter statblock while Fantasy Statblocks is loaded', () => {
     } });
   }
 
-  it('shows the note, as before, while the plugin has not parsed it', async () => {
+  it('shows the statblock while the plugin has not parsed it, as the asset manager and the DM screen do (#611)', async () => {
     loadFantasyStatblocks();
     hoverToken(GOBLIN);
     await settle();
-    expect(opened).toEqual([{ kind: 'note', notePath: GOBLIN }]);
+    expect(opened).toEqual([{ kind: 'statblock', notePath: GOBLIN }]);
+  });
+
+  it('shows the statblock while the plugin still parses the vault', async () => {
+    loadFantasyStatblocks();
+    Object.assign((window as unknown as { FantasyStatblocks: object }).FantasyStatblocks, { isResolved: () => false });
+    hoverToken(GOBLIN);
+    await settle();
+    expect(opened).toEqual([{ kind: 'statblock', notePath: GOBLIN }]);
   });
 
   it('shows the statblock once the plugin knows the note, and a native note in any case', async () => {

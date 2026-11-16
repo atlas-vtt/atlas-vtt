@@ -61,7 +61,7 @@ interface Setup {
   onSightChange: ReturnType<typeof vi.fn>;
 }
 
-function setup(options: { canvasRenderer?: boolean; givesUpAtStart?: LightingUnavailable } = {}): Setup {
+function setup(options: { givesUpAtStart?: LightingUnavailable } = {}): Setup {
   const engines: FakeView[] = [];
   const fallbacks: FakeView[] = [];
   const reports: ((reason: LightingUnavailable) => void)[] = [];
@@ -83,7 +83,6 @@ function setup(options: { canvasRenderer?: boolean; givesUpAtStart?: LightingUna
   let startsBroken = options.givesUpAtStart;
   const host = new LightingViewHost({
     store,
-    canvasRenderer: options.canvasRenderer ?? false,
     createEngineView: (onUnavailable) => {
       const view = fakeView();
       engines.push(view);
@@ -128,14 +127,6 @@ describe('LightingViewHost', () => {
     expect(engines).toHaveLength(1);
     expect(fallbacks).toHaveLength(0);
     expect(host.currentSight()).toBe(SEES_ALL);
-    expect(notify).not.toHaveBeenCalled();
-  });
-
-  it('uses the fallback on the canvas renderer, which has its own notice', () => {
-    const { host, engines, fallbacks, notify } = setup({ canvasRenderer: true });
-    expect(engines).toHaveLength(0);
-    expect(fallbacks).toHaveLength(1);
-    expect(host.currentSight()).toBe(FALLBACK_SIGHT);
     expect(notify).not.toHaveBeenCalled();
   });
 

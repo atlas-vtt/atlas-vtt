@@ -8,6 +8,17 @@ export interface PlayerWindowState {
    * players are shown is the presented scene (`presentedScene.ts`), which needs no window.
    */
   shownTabId: string | null;
+  /** Whether the open player window is in full screen (`playerWindowDisplay.ts`); false while it is closed. */
+  fullScreen: boolean;
+  /** Whether a display other than the main Obsidian window's exists, for the TV; read while the player window is open, false while it is closed. */
+  secondDisplay: boolean;
+  /**
+   * Whether the curtain is down: the player window shows black (`PlayerWindowService.setCurtain`).
+   * A fact of the window for now; online play could read it to black out its players too.
+   */
+  curtain: boolean;
+  /** Whether the player window shows an image handed out to players (`ImageDisplayService`). */
+  imageShown: boolean;
 }
 
 export type PlayerWindowStore = StoreApi<PlayerWindowState>;
@@ -16,6 +27,10 @@ const INITIAL_STATE: PlayerWindowState = {
   isOpen: false,
   isFrozen: false,
   shownTabId: null,
+  fullScreen: false,
+  secondDisplay: false,
+  curtain: false,
+  imageShown: false,
 };
 
 /**

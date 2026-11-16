@@ -2,11 +2,12 @@
 
 ## Cut a release
 
-Stable releases come from `main` only. Beta work is promoted first as described in [development.md](development.md#promoting-a-beta-to-a-stable-release).
+Beta work is promoted first as described in [development.md](development.md#promoting-a-beta-to-a-stable-release). **A release is published before it is merged.** Obsidian offers the version in the `manifest.json` on `main` at once and downloads it from the release of that name, so the other order makes every install fail with "Failed to install plugin" until the release is out. The **Release Gate** check holds the release pull request until then.
 
 1. On the promotion branch, `npm version <x.y.z>`. This bumps `package.json`, `manifest.json` and `versions.json` together and creates a git tag. `.npmrc` sets an empty tag prefix, so the tag equals the manifest version exactly (`0.1.1`, not `v0.1.1`), which Obsidian requires.
-2. Merge into `main` and wait for Plugin CI on that push to pass. Then run **Prepare Plugin Release** on `main` with that version. The workflow refuses beta versions and commits that are not on `main`, finds the successful Plugin CI push run on `main` for the exact commit and takes its build (it never tests or builds again, and stops when no such run exists), attests build provenance and creates a draft release with `main.js`, `manifest.json` and `styles.css` as individual assets and the notes `release:prepare` wrote in that run.
-3. Review the draft and publish it.
+2. Push `release/<x.y.z>` and open its pull request against `main`. Wait for Plugin CI on that push to pass. Then run **Prepare Plugin Release** on `release/<x.y.z>` with that version: `gh workflow run plugin-release.yml --ref release/<x.y.z> -f version=<x.y.z>`. The workflow refuses beta versions, any other branch and a branch without `main` in its history, finds the successful Plugin CI push run on that branch for the exact commit and takes its build (it never tests or builds again, and stops when no such run exists), attests build provenance and creates a draft release with `main.js`, `manifest.json` and `styles.css` as individual assets and the notes `release:prepare` wrote in that run.
+3. Review the draft and publish it. Publishing runs **Release Gate** again; if it stays red, re-run its failed run on the pull request.
+4. Merge the pull request right away with a merge commit, never a squash: `gh pr merge <n> --merge`. The release's tag stays in the history of `main`, and `main` holds exactly what was released. A new commit on the branch after publishing fails the gate, since it would not be what was released; such a fix is the next version.
 
 Obsidian installs exactly those three files. Anything the plugin needs at runtime (sounds, images) must be inlined into `main.js` or `styles.css`.
 

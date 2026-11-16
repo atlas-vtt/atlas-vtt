@@ -74,7 +74,6 @@
       font-weight: $font-weight-medium;
       text-align: left;
       cursor: pointer;
-      @include atlas-corner-shape;
     }
 
     & {
@@ -124,7 +123,6 @@
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
-    @include atlas-scrollbar;
   }
 
   // A player and their tokens, or those not assigned yet: rows close together, groups $spacing-s apart.
@@ -152,7 +150,6 @@
     box-sizing: border-box;
     height: $online-row;
     border-radius: $online-row-radius;
-    @include atlas-corner-shape;
   }
 
   .atlas-online-player {
@@ -351,7 +348,6 @@
     font-weight: $font-weight-medium;
     cursor: pointer;
     transition: background-color $transition-fast $transition-ease, opacity $transition-fast $transition-ease, transform $transition-press $transition-ease-out;
-    @include atlas-corner-shape;
 
     &:hover {
       background: var(--interactive-hover);

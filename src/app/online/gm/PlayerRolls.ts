@@ -106,7 +106,8 @@ export function checkRoll(from: string, message: PlayerRoll, context: RollContex
 }
 
 export interface PlayerRollsPorts {
-  context(): RollContext;
+  /** What a roll of player `from` is checked against: their floor's list where the scene has several. */
+  context(from: string): RollContext;
   /** The shared tab's dice, or null when it has none. */
   dice(): DiceSource | null;
   /** Runs a roll as `who`'s, so the roll's announcement goes to players as theirs (`RollShare.rollAs`). */
@@ -149,7 +150,7 @@ export class PlayerRolls {
     const request = asked === undefined ? undefined : this.ports.request(from, asked);
     if (request === null) return this.refuse('formula', from);
     const message: PlayerRoll = request === undefined ? sent : { ...sent, formula: request.formula, mode: buttonMode(request) };
-    const context = this.ports.context();
+    const context = this.ports.context(from);
     const verdict = checkRoll(from, message, context);
     if (!verdict.ok) return this.refuse(verdict.reason, from);
     const { tokenId } = verdict;

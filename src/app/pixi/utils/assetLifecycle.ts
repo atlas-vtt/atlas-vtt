@@ -1,4 +1,4 @@
-import { Assets, type UnresolvedAsset } from 'pixi.js';
+import { Assets, WorkerManager, type UnresolvedAsset } from 'pixi.js';
 
 /**
  * Unloads still in flight, by URL. `Assets.unload` destroys the texture only after
@@ -25,4 +25,12 @@ export function unloadAsset(url: string): Promise<void> {
     });
   pendingUnloads.set(url, unload);
   return unload;
+}
+
+/**
+ * Stops the workers PIXI decodes images in. It keeps them for the page's life, and their message
+ * listeners would keep this copy of Atlas in memory after it unloads.
+ */
+export function releaseAssetWorkers(): void {
+  WorkerManager.reset();
 }

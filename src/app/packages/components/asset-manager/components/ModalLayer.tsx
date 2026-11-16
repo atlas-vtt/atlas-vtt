@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { TokenCreator } from '../TokenCreator';
 import { EncounterBuilder } from '../encounter-builder/EncounterBuilder';
@@ -10,6 +10,7 @@ import { CollectionTransferLayer } from '../collection-transfer/CollectionTransf
 import { CollectionSettingsModal } from '../../../../react/components/CollectionSettingsModal';
 import { CreateCollectionModal } from '../CreateCollectionModal';
 import { MoveModal } from './MoveModal';
+import { CollectionPickerDialog } from './CollectionPickerDialog';
 import { CreateFolderModal } from './CreateFolderModal';
 import type { Tab, TokenAsset } from '../types';
 import type { AssetData } from '../hooks/useAssetData';
@@ -18,10 +19,22 @@ import type { AssetCrudActions } from '../hooks/useAssetCrud';
 import type { TagsAndCollectionsState } from '../hooks/useTagsAndCollections';
 import type { StatblockLinkState } from '../hooks/useStatblockLink';
 import { useUvttImport } from '../hooks/useUvttImport';
+import { useFloorsChoice } from '../hooks/useFloorsChoice';
+import { UvttFloorsDialog } from './UvttFloorsDialog';
 import { tagGroupOfTab } from '../utils/assetTags';
 import { newStatblockOption } from '../../../../statblocks/editor/create/entryPoints';
 import { openTemplateEditor } from '../../../../statblocks/editor/openTemplateEditor';
 import { isCharacterTab } from '../utils/tabKinds';
+import { creatorForDroppedFiles } from '../utils/droppedFiles';
+import { sharedFolderOf } from '../utils/sharedFolder';
+import { movedWhat, selectionWhat } from '../utils/moveNotice';
+import type { CreatorMode } from '../token-creator/types';
+
+/** Files dropped on the window, which the creator they opened takes as it mounts. */
+interface DroppedFiles {
+  creator: CreatorMode;
+  files: File[];
+}
 
 export interface ModalLayerProps {
   isOpen: boolean;
@@ -38,17 +51,31 @@ export interface ModalLayerProps {
 export function ModalLayer({
   isOpen, activeTab, selectedCollection, onClose, data, sel, crud, tags, statblock,
 }: ModalLayerProps): React.JSX.Element {
+  const floors = useFloorsChoice(isOpen);
+  const [dropped, setDropped] = useState<DroppedFiles | null>(null);
+  const droppedFor = (creator: CreatorMode): { initialFiles?: File[] } => (dropped?.creator === creator ? { initialFiles: dropped.files } : {});
+  const closeMapCreator = (): void => {
+    crud.setIsMapCreatorOpen(false);
+    setDropped(null);
+  };
   const importMaps = useUvttImport({
     app: data.app,
     assetService: data.assetService,
     isOpen,
     isMapCreatorOpen: crud.isMapCreatorOpen,
     // Every dialog of this layer but the map creator, which says for itself whether it stays
-    isBusy: crud.isTokenCreatorOpen || crud.isEncounterBuilderOpen || crud.isCreateSceneModalOpen || crud.isMoveModalOpen || crud.isCreateFolderModalOpen
+    isBusy: crud.isTokenCreatorOpen || crud.isEncounterBuilderOpen || crud.isCreateSceneModalOpen || crud.isMoveModalOpen || crud.collectionPick !== null || crud.isCreateFolderModalOpen
       || crud.inputModalState.isOpen || crud.isCreateCollectionModalOpen || crud.settingsModalCollectionId !== null
       || crud.transfer !== null || tags.isTagManagerOpen || statblock.linkingStatblockAsset !== null,
     collectionId: selectedCollection,
-    onSceneOpened: () => { crud.setIsMapCreatorOpen(false); onClose(); },
+    onCreatorFiles: (files) => {
+      const creator = creatorForDroppedFiles(files, activeTab);
+      setDropped({ creator, files });
+      if (creator === 'map') crud.setIsMapCreatorOpen(true);
+      else crud.setIsTokenCreatorOpen(true);
+    },
+    onSceneOpened: () => { closeMapCreator(); onClose(); },
+    chooseFloors: floors.ask,
   });
 
   const closeMoveModal = (): void => {
@@ -58,10 +85,12 @@ export function ModalLayer({
     crud.setMoveFolderListOpen(false);
   };
 
-  const confirmMove = async (): Promise<void> => {
-    await crud.moveAssetsToFolder(sel.selectedAssetIds, crud.moveTargetFolderId);
+  // The dialog closes and the cards leave at once: the move shows itself before its files have moved (#30).
+  const confirmMove = async (target: string | null): Promise<void> => {
+    const ids = sel.selectedAssetIds;
     sel.setSelectedAssetIds([]);
     closeMoveModal();
+    await crud.moveAssetsToFolder(ids, target);
   };
 
   const reloadAfterCreator = async (): Promise<void> => {
@@ -88,9 +117,11 @@ export function ModalLayer({
             isOpen={crud.isTokenCreatorOpen}
             selectedCollection={selectedCollection}
             playerCharacters={activeTab === 'party'}
+            {...droppedFor('token')}
             onClose={() => {
               crud.setIsTokenCreatorOpen(false);
               crud.setEditingToken(null);
+              setDropped(null);
               if (isCharacterTab(activeTab)) void reloadAfterCreator();
             }}
             editToken={crud.editingToken ? {
@@ -113,9 +144,10 @@ export function ModalLayer({
             isOpen={crud.isMapCreatorOpen}
             mode="map"
             onImportMaps={importMaps}
+            {...droppedFor('map')}
             selectedCollection={selectedCollection}
             onClose={() => {
-              crud.setIsMapCreatorOpen(false);
+              closeMapCreator();
               if (activeTab === 'maps') void reloadAfterCreator();
             }}
           />
@@ -142,6 +174,7 @@ export function ModalLayer({
         {crud.isMoveModalOpen && (
           <MoveModal
             selectedAssetIds={sel.selectedAssetIds}
+            movingWhat={selectionWhat(data.assets, sel.selectedAssetIds)}
             folders={data.folders}
             activeTab={activeTab}
             moveTargetFolderId={crud.moveTargetFolderId}
@@ -151,7 +184,29 @@ export function ModalLayer({
             moveFolderListOpen={crud.moveFolderListOpen}
             setMoveFolderListOpen={crud.setMoveFolderListOpen}
             onClose={closeMoveModal}
-            onConfirm={() => { void confirmMove(); }}
+            onConfirm={(target) => { void confirmMove(target); }}
+            currentFolderId={sharedFolderOf(data.assets, sel.selectedAssetIds)}
+            isFolderNameTaken={crud.isFolderNameTaken}
+            onCreateFolder={crud.createFolderInVault}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Move or Copy to collection… */}
+      <AnimatePresence>
+        {crud.collectionPick && (
+          <CollectionPickerDialog
+            mode={crud.collectionPick.mode}
+            movingWhat={movedWhat(crud.collectionPick.assets)}
+            assetIds={crud.collectionPick.assets.map((asset) => asset.id)}
+            collections={data.collections}
+            currentCollectionId={selectedCollection}
+            onClose={() => crud.setCollectionPick(null)}
+            onConfirm={(target) => {
+              const pick = crud.collectionPick;
+              crud.setCollectionPick(null);
+              pick?.transfer(target);
+            }}
           />
         )}
       </AnimatePresence>
@@ -166,6 +221,7 @@ export function ModalLayer({
             setTargetFolderName={crud.setTargetFolderName}
             onClose={() => { crud.setIsCreateFolderModalOpen(false); crud.setTargetFolderName(''); }}
             onConfirm={() => { void crud.createFolderInVault(crud.targetFolderName.trim()); }}
+            isNameTaken={crud.isFolderNameTaken}
           />
         )}
       </AnimatePresence>
@@ -259,6 +315,11 @@ export function ModalLayer({
             }}
           />
         )}
+      </AnimatePresence>
+
+      {/* Map files as the floors of one scene: last, so it opens over the map creator that may hold them */}
+      <AnimatePresence>
+        {isOpen && floors.request && <UvttFloorsDialog request={floors.request} onChoose={floors.answer} />}
       </AnimatePresence>
     </>
   );

@@ -20,7 +20,7 @@ const IN_FLIGHT = 3;
  * every batch still running halves it, never below one band (`TILE_BAND_TEXELS`). A fast device
  * is held back by nothing; integrated graphics get as much as they run instead of seconds of
  * work at once, which made Windows reset the device. Without a WebGL2 context (tests that build
- * at once, PIXI's Canvas renderer) everything passes.
+ * at once) everything passes.
  */
 export class GpuPacer {
   private readonly fences: WebGLSync[] = [];

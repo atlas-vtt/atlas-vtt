@@ -29,6 +29,22 @@ describe('a Counters block on the card', () => {
     expect(first?.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('1st level: 3 of 4 left');
   });
 
+  it('draws every row the template defines where the note stored only some of them', () => {
+    const insight = templateOf([{ ...SLOTS, counterRows: [{ name: 'XP', max: 6 }, { name: 'Device', max: 4 }, { name: 'Doctor', max: 4 }] }], [BLOCK]);
+    const { container } = renderSheet(insight, { slots: [{ name: 'XP', max: 6, used: 6 }] });
+    expect(cells(container).map((cell) => cell.querySelector('.atlas-sb-counter__name')?.textContent)).toEqual(['XP', 'Device', 'Doctor']);
+    expect(cells(container).map((cell) => cell.querySelectorAll('.atlas-sb-counter__pip.is-left').length)).toEqual([0, 4, 4]);
+  });
+
+  it('draws a row that took its maximum from the template with the template\'s as it is now, and a maximum of the note\'s own as written', () => {
+    const ki = templateOf([{ ...SLOTS, counterRows: [{ name: 'Ki', max: 5 }, { name: 'Rage', max: 5 }, { name: 'Luck', max: 1 }] }], [BLOCK]);
+    const { container } = renderSheet(ki, {
+      slots: [{ name: 'Ki', max: 3, used: 1, templateMax: 3 }, { name: 'Rage', max: 3, used: 1 }, { name: 'Luck', max: 3, used: 3, templateMax: 3 }],
+    });
+    expect(cells(container).map((cell) => cell.querySelector('[role="img"]')?.getAttribute('aria-label')))
+      .toEqual(['Ki: 4 of 5 left', 'Rage: 2 of 3 left', 'Luck: 0 of 1 left']);
+  });
+
   it('shows a count above six uses, and no buttons, on a card that is only read', () => {
     const { container } = renderSheet(TEMPLATE, { slots: [{ name: 'Sorcery points', max: 10, used: 7, reset: 'long' }] });
     expect(cells(container)[0]?.querySelector('.atlas-sb-counter__count')?.textContent).toBe('3 / 10');

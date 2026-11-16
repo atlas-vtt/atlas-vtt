@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { lightFade } from '../../../../lighting/lightingConstants';
 import { lightLevelAt } from '../../../../vision/lightLevels';
 import { SEES_ALL, lightReach } from '../../../../vision/sight';
 import type { VisionCone } from '../../../../vision/visionCone';
@@ -64,15 +65,18 @@ describe('a directional light in the picture', () => {
     const all = (await setup({ lights: [allAround] })).at();
     const at = (await setup()).at();
     for (const distance of [80, 200, 290]) {
-      at(polar(distance, 0)).forEach((channel, i) => expect(Math.abs(channel - all(polar(distance, 0))[i]!)).toBeLessThanOrEqual(3));
-      at(polar(distance, 0.5)).forEach((channel, i) => expect(Math.abs(channel - all(polar(distance, 0.5))[i]!)).toBeLessThanOrEqual(3));
+      // Near the end of its fade the floor's bounce, which the cone leaves less of, shows: only well inside it is the picture the same.
+      if (distance < 250) {
+        at(polar(distance, 0)).forEach((channel, i) => expect(Math.abs(channel - all(polar(distance, 0))[i]!)).toBeLessThanOrEqual(3));
+        at(polar(distance, 0.5)).forEach((channel, i) => expect(Math.abs(channel - all(polar(distance, 0.5))[i]!)).toBeLessThanOrEqual(3));
+      }
       expect(luminance(at(polar(distance, Math.PI)))).toBeLessThan(DARK);
       expect(luminance(at(polar(distance, Math.PI / 2)))).toBeLessThan(DARK);
-      expect(luminance(all(polar(distance, Math.PI)))).toBeGreaterThan(25);
+      if (distance < 250) expect(luminance(all(polar(distance, Math.PI)))).toBeGreaterThan(25);
     }
   });
 
-  it('agrees with the rule: lit inside the cone, dark outside it past the soft edge', async () => {
+  it('agrees with the rule: lit inside the cone short of its soft sides, dark outside it', async () => {
     const at = (await setup()).at();
     const rule = [lightReach(CENTRE, lantern.dim, [], lantern.bright, { cone })];
     let lit = 0;
@@ -80,9 +84,11 @@ describe('a directional light in the picture', () => {
     // From 120 px: closer to the lantern its bounce off the floor shows behind it.
     for (const distance of [120, 200, 280]) {
       for (let angle = -Math.PI; angle < Math.PI; angle += Math.PI / 48) {
-        const outside = Math.abs(angle) - cone.angle / 2;
-        // The soft edge lies outside the cone, within its width (and a map texel and a screen pixel of filtering).
-        if (outside > 0 && outside < Math.PI / 2 && distance * Math.sin(outside) < EDGE + 8) continue;
+        const inside = cone.angle / 2 - Math.abs(angle);
+        // The soft sides lie inside the cone, within the edge's width (and a map texel and a screen pixel of filtering beside it),
+        // and the fade within the dim range leaves next to nothing near its end.
+        if (Math.abs(inside) < Math.PI / 2 && distance * Math.sin(Math.abs(inside)) < EDGE + 8) continue;
+        if (lightFade(lantern.bright, lantern.dim, distance) < 0.2) continue;
         const point = polar(distance, angle);
         const shown = luminance(at(point));
         const level = lightLevelAt(point, { ambient: 0 }, rule);
@@ -95,20 +101,21 @@ describe('a directional light in the picture', () => {
         }
       }
     }
-    expect(lit).toBeGreaterThan(60);
-    expect(dark).toBeGreaterThan(150);
+    expect(lit).toBeGreaterThan(30);
+    expect(dark).toBeGreaterThan(100);
   });
 
-  it('has soft sides: past the edge of the cone the light falls off steadily, steeply at first, and is gone within the edge\'s width', async () => {
+  it('has soft sides: inside the edge of the cone the light fades steadily to nothing on it, and nothing lies past it', async () => {
     const at = (await setup()).at();
     const edge = cone.angle / 2;
-    // At 220 px from the lantern, 0 to 30 px across its edge: the edge is 24 px wide wherever it is measured.
-    const steps = [0, 0.25, 0.5, 0.75, 1.25].map((share) => luminance(at(polar(220, edge + Math.asin((share * EDGE) / 220)))));
+    // At 200 px from the lantern, from 30 px inside its side to 6 px past it: the edge is 24 px wide wherever it is measured.
+    const steps = [1.25, 0.75, 0.5, 0.25, 0, -0.25].map((share) => luminance(at(polar(200, edge - Math.asin((share * EDGE) / 200)))));
     for (let i = 1; i < steps.length; i++) expect(steps[i]!).toBeLessThanOrEqual(steps[i - 1]! + 1);
     expect(steps[0]!).toBeGreaterThan(25);
     expect(steps[2]!).toBeGreaterThan(4);
     expect(steps[2]!).toBeLessThan(steps[0]! - 4);
     expect(steps[4]!).toBeLessThan(DARK);
+    expect(steps[5]!).toBeLessThan(DARK);
   });
 
   it('lights its own space all around', async () => {

@@ -114,3 +114,37 @@ describe('the odds of a die', () => {
     expect([...big.values()].reduce((a, b) => a + b, 0)).toBeCloseTo(1);
   });
 });
+
+describe('rows out of the table', () => {
+  it('never draws an excluded row, and the others keep their odds among themselves', () => {
+    const table = markdown('| d4 | Armor |', ['| 1 | Leather |', '| 2 | Chainmail |', '| 3 | Plate |', '| 4 | Mithral + reroll |']);
+    const counts = new Map<string, number>();
+    const random = seededRandom(11);
+    const exclude = new Set([table.rows[3]!]);
+    for (let i = 0; i < ROLLS; i++) {
+      const [draw] = rollTable(table, { count: 1, exclude, random });
+      const key = draw?.row?.cells[0] ?? '(none)';
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    expect(counts.has('Mithral + reroll')).toBe(false);
+    expectShares(counts, { Leather: 1 / 3, Chainmail: 1 / 3, Plate: 1 / 3 });
+  });
+
+  it('keeps the bell curve of the numbers that are left', () => {
+    const table = markdown('| 2d6 | Type |', ['| 2-5 | Leather |', '| 6-7 | Chainmail |', '| 8-11 | Plate |', '| 12 | Mithral |']);
+    const counts = new Map<string, number>();
+    const random = seededRandom(5);
+    for (let i = 0; i < ROLLS; i++) {
+      const [draw] = rollTable(table, { count: 1, exclude: new Set([table.rows[3]!]), random });
+      const key = draw?.row?.cells[0] ?? '(none)';
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const left = 35 / 36;
+    expectShares(counts, { Leather: 10 / 36 / left, Chainmail: 11 / 36 / left, Plate: 14 / 36 / left });
+  });
+
+  it('gives nothing when every row is excluded', () => {
+    const table = markdown('| d2 | Result |', ['| 1 | a |', '| 2 | b |']);
+    expect(rollTable(table, { count: 1, exclude: new Set(table.rows) })).toEqual([]);
+  });
+});

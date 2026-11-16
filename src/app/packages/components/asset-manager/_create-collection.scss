@@ -33,11 +33,10 @@
   flex: 1;
 }
 
-// Fields keep the spacing they have in Collection Settings; a divider groups them.
+// Fields keep the spacing they have in Collection Settings; the space above a section groups it.
 .atlas-create-collection__section {
   @include atlas-flex-col($spacing-l);
   padding-top: $spacing-l;
-  border-top: $border-width-s solid var(--background-modifier-border);
 }
 
 .atlas-create-collection__heading {

@@ -22,6 +22,7 @@ import { noteName } from '../../../../utils/pathUtils';
 import { assignRoleTemplate } from '../../gallery/galleryActions';
 import type { SessionSnapshot } from '../sessionTypes';
 import { nameTakenIn, saveChoice, type SaveRequest } from './saveChoice';
+import { t } from '../../../../i18n';
 
 /** A template saved as new: what opens it. */
 export interface SavedTemplate {
@@ -68,6 +69,6 @@ export async function saveTemplate(app: App, session: TemplateSession, request: 
     return result.ok ? { ok: true, made: null } : result;
   } catch (error) {
     console.error('[Atlas] Saving the template failed:', error);
-    return { ok: false, problem: `Couldn't save: ${problemOf(error)}` };
+    return { ok: false, problem: t('templateEditor.save.failedWhy', { problem: problemOf(error) }) };
   }
 }

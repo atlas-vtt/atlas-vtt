@@ -8,6 +8,7 @@ import { closingOf, groupsOf, seatsNoteOf, selectionBarOf, statusOf, type Online
 import { renderPlayerList, type ListActions } from './playerList.ts';
 import { addPlayerRow, confirmPrompt, forgetGonePlayerPrompt, linkEntries, namePrompt, openPrompt, renderPlayerPrompt, type AddPlayerActions, type LinkActions } from './prompts.ts';
 import { renderSelectionBar, type SelectionActions } from './selectionBar.ts';
+import { t } from '../../../i18n';
 
 /** The panel's width; it never grows wider than the row it hangs from. */
 export const PANEL_WIDTH = 340;
@@ -37,7 +38,7 @@ export interface PanelView {
 }
 
 /** What the panel shows of a snapshot, the map views, the feedback form and whether the QR card is open. */
-export function panelView(snapshot: OnlineSnapshot, scene: SceneFacts, feedback: FeedbackView, qr = false, title = 'Online table'): PanelView {
+export function panelView(snapshot: OnlineSnapshot, scene: SceneFacts, feedback: FeedbackView, qr = false, title = t('online.table')): PanelView {
   const groups = groupsOf(snapshot, scene);
   const players = groups.flatMap((group) => (group.player === null ? [] : [group.player]));
   return { title, status: statusOf(snapshot), seatsNote: seatsNoteOf(snapshot), link: snapshot.link, qr, gate: gateRowsOf(snapshot.gate), imageShown: snapshot.imageShown === true, closing: closingOf(snapshot), updateAfter: snapshot.updateAfter === true, groups, players, bar: selectionBarOf(snapshot, scene), feedback };
@@ -84,11 +85,11 @@ function statusInWords(view: PanelView): string | null {
 function listActions(layer: HTMLElement, actions: PanelActions, redraw: () => void): ListActions {
   return {
     ...actions,
-    askRename: (player) => openPrompt(layer, namePrompt('rename', `Rename ${player.name}`, 'Rename', player.name, (name) => {
+    askRename: (player) => openPrompt(layer, namePrompt('rename', t('online.renameNamed', { name: player.name }), t('online.rename'), player.name, (name) => {
       actions.renamePlayer(player.id, name);
       return true;
     }, player.id), redraw),
-    askRemoveFromCampaign: (player) => openPrompt(layer, confirmPrompt('remove-player', `Remove ${player.name} from the campaign`, 'Remove {name} from the campaign?', 'Remove', () => actions.removeFromCampaign(player.id), { player, warning: true }), redraw),
+    askRemoveFromCampaign: (player) => openPrompt(layer, confirmPrompt('remove-player', t('online.removeTitle', { name: player.name }), t('online.removeAsk', { name: '{name}' }), t('online.remove'), () => actions.removeFromCampaign(player.id), { player, warning: true }), redraw),
     playerPrompt: (parent, playerId) => renderPlayerPrompt(parent, layer, playerId, redraw),
   };
 }
@@ -109,10 +110,10 @@ export function renderPanel(layer: HTMLElement, view: PanelView, actions: PanelA
   layer.addClass('atlas-online-panel');
   forgetGonePlayerPrompt(layer, view.players.map((player) => player.id));
   const entries: MenuEntry[] = [
-    { title: view.feedback.open ? 'Close feedback' : 'Send feedback', icon: 'message-square', run: () => actions.toggleFeedback() },
+    { title: view.feedback.open ? t('online.feedback.close') : t('online.feedback.send'), icon: 'message-square', run: () => actions.toggleFeedback() },
     ...gateEntries(view.gate, actions),
   ];
-  const stop = (): void => openPrompt(layer, confirmPrompt('stop', 'Stop the table', 'Stop for everyone?', 'Stop table', () => actions.stop(), { warning: true }), redraw);
+  const stop = (): void => openPrompt(layer, confirmPrompt('stop', t('online.stopTitle'), t('online.stopAsk'), t('online.stop'), () => actions.stop(), { warning: true }), redraw);
   surfaceHeader(layer, view.title, view.status, statusInWords(view), entries, stop, () => actions.close());
   renderClosingRow(layer, view.closing, actions);
   renderUpdateRow(layer, view.updateAfter, actions);

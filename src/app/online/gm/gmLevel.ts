@@ -1,6 +1,7 @@
 import type { App } from 'obsidian';
 import { GM_LEVEL, isRecord, readLevel } from '../protocol/index.ts';
 import { RELAY_ORIGIN } from './servers.ts';
+import { t } from '../../i18n';
 
 /** Device-local: the least GM level the relay last asked for, which relay said so, and when. */
 const MIN_LEVEL_KEY = 'atlas-vtt:online-min-level';
@@ -11,8 +12,8 @@ const MIN_LEVEL_KEY = 'atlas-vtt:online-min-level';
  */
 const REMEMBER_MS = 60 * 60 * 1000;
 
-export const OUTDATED_TEXT = 'Online play needs a newer Atlas.';
-export const UPDATE_AFTER_TEXT = 'Update Atlas after this session';
+export const OUTDATED_TEXT = t('online.outdated');
+export const UPDATE_AFTER_TEXT = t('online.updateAfter');
 
 /** Keeps what the relay last said it needs, from a welcome, a refused table or a refused hello. */
 export function rememberMinLevel(app: App, level: number): void {

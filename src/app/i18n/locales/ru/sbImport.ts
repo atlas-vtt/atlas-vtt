@@ -25,4 +25,5 @@ export const sbImport: Translation = {
   'sbImport.addN': 'Добавить в импорт: {count}',
   'sbImport.scanningNotes': 'Сканирование заметок',
   'sbImport.loadingImagesStatus': 'Загрузка изображений',
+  'sbImport.noneFoundInVault': 'В хранилище не найдено заметок со статблоками.',
 };

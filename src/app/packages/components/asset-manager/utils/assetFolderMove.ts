@@ -2,9 +2,12 @@ import { normalizePath, type App } from 'obsidian';
 import type { AssetService, AssetUpdates } from '../../../../services/AssetService';
 import { ensureFolder } from '../../../../plugin/vaultFolders';
 import { saveOpenScene } from '../../../../services/sceneRename';
+import { moveSceneThumbnail } from '../../../../services/sceneThumbnailFile';
 import { primaryPathUpdate } from '../../../../services/vault-sync/assetFiles';
 import { assetFolderId, isTabAsset, placingFilePath, type TabServiceAsset } from './assetFormatters';
 import { vaultPathOfFolder } from './assetFolders';
+import { describeError } from '../../../../utils/errors';
+import { formatList, t } from '../../../../i18n';
 
 /** What moving assets into a folder did. */
 export interface FolderMoveResult {
@@ -12,12 +15,18 @@ export interface FolderMoveResult {
   moved: string[];
   /** Names of the assets left in place because the folder already holds a file of the same name. */
   nameClashes: string[];
-  /** Names of the assets whose file could not be moved. */
-  failed: string[];
+  /** The assets whose file could not be moved, and why. */
+  failed: FailedMove[];
+}
+
+/** An asset whose file could not be moved, by name, and the reason the vault gave. */
+export interface FailedMove {
+  name: string;
+  reason: string;
 }
 
 /** Points an asset at the new place of the file that places it in a folder. */
-function placingFileUpdate(asset: TabServiceAsset, path: string): AssetUpdates {
+export function placingFileUpdate(asset: TabServiceAsset, path: string): AssetUpdates {
   return asset.type === 'map' ? { filePath: path } : primaryPathUpdate(asset, path);
 }
 
@@ -53,22 +62,27 @@ export async function moveAssetsIntoFolder(
       try {
         if (asset.type === 'scene') await saveOpenScene(app, file.path);
         await ensureFolder(app, targetDir);
+        // A scene's thumbnail goes first: the rename event's pass takes it only later, and until
+        // then the folder the scene left still holds it, so it could not be deleted.
+        if (asset.type === 'scene') await moveSceneThumbnail(app, file.path, newPath);
         await app.fileManager.renameFile(file, newPath);
         await assetService.updateAsset(id, placingFileUpdate(asset, newPath));
         result.moved.push(id);
       } catch (error) {
         console.error(`[assetFolderMove] Failed to move ${file.path} to ${newPath}:`, error);
-        result.failed.push(asset.name);
+        // The map stayed, so its thumbnail comes back to it.
+        if (asset.type === 'scene' && !app.vault.getFileByPath(newPath)) await moveSceneThumbnail(app, newPath, file.path);
+        result.failed.push({ name: asset.name, reason: describeError(error) });
       }
     }
   });
   return result;
 }
 
-/** What to tell the user about assets a move left in place, or null when every asset moved. */
-export function folderMoveProblem({ nameClashes, failed }: FolderMoveResult): string | null {
+/** What to tell the user about assets a move left in place, with the reason, or null when every asset moved. */
+export function folderMoveProblem({ nameClashes, failed }: Pick<FolderMoveResult, 'nameClashes' | 'failed'>): string | null {
   const problems: string[] = [];
-  if (nameClashes.length > 0) problems.push(`${nameClashes.join(', ')} stayed: the folder already holds a file of the same name.`);
-  if (failed.length > 0) problems.push(`Could not move ${failed.join(', ')}.`);
+  if (nameClashes.length > 0) problems.push(t('am.move.nameClash', { names: formatList(nameClashes) }));
+  for (const { name, reason } of failed) problems.push(t('am.move.failed', { name, reason }));
   return problems.length > 0 ? problems.join(' ') : null;
 }

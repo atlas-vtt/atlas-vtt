@@ -5,6 +5,7 @@
  */
 
 import { normalizePath, type App, type TFile, type TFolder } from 'obsidian';
+import { freeNotePath, isRootPath } from '../../utils/notePaths';
 import { ensureFolder } from '../../plugin/vaultFolders';
 import { TokenStatblockLinkService } from '../../services/TokenStatblockLinkService';
 import { INVALID_NAME_CHARACTERS } from '../../services/assetPaths';
@@ -15,6 +16,7 @@ import { libraryLoaded } from '../resolve/readStatblock';
 import { applyFrontmatterPatches } from './frontmatterPatch';
 import type { NotePatch } from './patchTypes';
 import { TEMPLATE_KEY } from './statblockSource';
+import { t } from '../../i18n';
 
 export interface NewStatblockNote {
   name: string;
@@ -31,22 +33,28 @@ export interface NewStatblockNote {
 
 export interface CreatedStatblockNote {
   file: TFile;
-  /** Whether the token was linked; false without a token. */
+  /** Whether the token was linked; false without a token, and when linking failed (the note stays). */
   linked: boolean;
 }
 
-const FALLBACK_NAME = 'New statblock';
+const FALLBACK_NAME = t('statblockEditor.newStatblock');
 
-/** Creates the note and links the token to it. Throws when the note cannot be created. */
+/**
+ * Creates the note and links the token to it. Throws only when the note cannot be created:
+ * once it is written, a failed link is logged, reported as `linked: false` and the note kept.
+ */
 export async function createStatblockNote(app: App, note: NewStatblockNote): Promise<CreatedStatblockNote> {
   const folder = await targetFolder(app, note.folder);
   const path = freeNotePath(app, folder, noteFileName(note.name));
   const body = note.body ?? await savedTemplateBody(app, note.templateId);
   const file = await app.vault.create(path, statblockNoteText({ ...note, name: shownName(note.name, path), body }));
-  const linked = note.tokenImagePath === undefined
-    ? false
-    : await TokenStatblockLinkService.getInstance(app).linkTokenToStatblock(note.tokenImagePath, file.path);
-  return { file, linked };
+  if (note.tokenImagePath === undefined) return { file, linked: false };
+  try {
+    return { file, linked: await TokenStatblockLinkService.getInstance(app).linkTokenToStatblock(note.tokenImagePath, file.path) };
+  } catch (error) {
+    console.error(`[Atlas] Linking ${note.tokenImagePath} to the new statblock ${file.path} failed:`, error);
+    return { file, linked: false };
+  }
 }
 
 /**
@@ -98,20 +106,4 @@ export function statblockNoteText(note: Pick<NewStatblockNote, 'name' | 'templat
 export function noteFileName(name: string): string {
   const cleaned = name.trim().replace(new RegExp(INVALID_NAME_CHARACTERS.source, 'g'), '-').replace(/^\.+/, '').trim();
   return cleaned || FALLBACK_NAME;
-}
-
-/**
- * `<name>.md` in the folder, else `<name> 2.md`, `<name> 3.md`… Taken counts any letter case,
- * since the file systems of macOS and Windows do not tell names apart by it.
- */
-export function freeNotePath(app: App, folder: TFolder, stem: string): string {
-  const taken = new Set(folder.children.map((child) => child.name.toLowerCase()));
-  const pathOf = (name: string): string => normalizePath(isRootPath(folder.path) ? name : `${folder.path}/${name}`);
-  let name = `${stem}.md`;
-  for (let n = 2; taken.has(name.toLowerCase()) || app.vault.getAbstractFileByPath(pathOf(name)); n++) name = `${stem} ${n}.md`;
-  return pathOf(name);
-}
-
-function isRootPath(path: string): boolean {
-  return path === '/' || path === '';
 }

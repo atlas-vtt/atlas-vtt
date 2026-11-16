@@ -2,6 +2,7 @@ import { setIcon } from 'obsidian';
 import { t } from '../i18n';
 import type { ViewFrame } from '../packages/components/primitives/popoverFit';
 import { shiftIntoFrame } from './previewWindowLayout';
+import { swallowNextClick } from '../utils/swallowClick';
 
 /**
  * The pin button of a floating preview window (note and statblock previews):
@@ -99,22 +100,10 @@ export function startPreviewWindowDrag(
   const end = (): void => {
     stop();
     if (!dragging) return;
-    if (threshold > 0 && moved) swallowNextClick(element);
+    if (threshold > 0 && moved) swallowNextClick(element.win);
     onEnd();
   };
   doc.addEventListener('mousemove', move);
   doc.addEventListener('mouseup', end);
   return stop;
-}
-
-/** Keeps the click that follows a move from reaching what the press began on (a dice roll in a statblock's name). */
-function swallowNextClick(element: HTMLElement): void {
-  const doc = element.ownerDocument;
-  const swallow = (e: MouseEvent): void => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-  doc.addEventListener('click', swallow, { capture: true, once: true });
-  // Where the release sends no click, the next click must not be lost.
-  element.win.setTimeout(() => doc.removeEventListener('click', swallow, { capture: true }), 0);
 }

@@ -1,6 +1,6 @@
 import { isEmptyValue } from '../../../../src/app/statblocks/values/emptyValue';
 import { isPlainRecord, toFieldValue } from '../../../../src/app/statblocks/values/fieldValueOf';
-import { splitListText } from '../../../../src/app/statblocks/values/listText';
+import { escapeListCommas, listItems, splitEscapedList, splitListText, typedListText, unescapeCommas } from '../../../../src/app/statblocks/values/listText';
 import {
   formatNumber, formatSigned, isWholeNumberText, numericValue, parseNumberText, parseRatingText, roundForDisplay,
 } from '../../../../src/app/statblocks/values/numberText';
@@ -90,6 +90,40 @@ describe('valueText', () => {
     expect(valueText(['Common', '', null, 'Elvish'])).toBe('Common, Elvish');
     expect(valueText({ dex: 5, con: null })).toBe('dex 5, con');
     expect(valueText([{ dex: 5 }, { wis: 2 }])).toBe('dex 5, wis 2');
+  });
+});
+
+describe('commas escaped in a typed list', () => {
+  it('splits at commas that are not escaped, and takes the backslash off the others', () => {
+    expect(splitEscapedList('Fire\\, cold, Ice')).toEqual(['Fire, cold', 'Ice']);
+    expect(splitEscapedList('Common (a, b), Elvish\nDeep')).toEqual(['Common (a, b)', 'Elvish', 'Deep']);
+    expect(splitEscapedList('C:\\temp, x')).toEqual(['C:\\temp', 'x']);
+    expect(unescapeCommas('Fire\\, cold')).toBe('Fire, cold');
+  });
+
+  it('leaves the plain split alone, for what writes its text back as a line', () => {
+    expect(splitListText('Fire\\, cold')).toEqual(['Fire\\', 'cold']);
+  });
+
+  it('escapes only the commas that would split', () => {
+    expect(escapeListCommas('Fire, cold')).toBe('Fire\\, cold');
+    expect(escapeListCommas('Common (a, b)')).toBe('Common (a, b)');
+    expect(escapeListCommas('Fire')).toBe('Fire');
+  });
+
+  it('writes a stored list or map so that it reads back the same, and a stored line as it is', () => {
+    expect(typedListText(['Fire, cold', 'Ice'])).toBe('Fire\\, cold, Ice');
+    expect(splitEscapedList(typedListText(['Fire, cold', 'a\\,b', 'x (y, z)']))).toEqual(['Fire, cold', 'a\\,b', 'x (y, z)']);
+    expect(typedListText([{ 'Fire, cold': 3 }, { Dex: 2 }])).toBe('Fire\\, cold 3, Dex 2');
+    expect(typedListText({ 'Fire, cold': 3, Dex: 2 })).toBe('Fire\\, cold 3, Dex 2');
+    expect(typedListText({ 'Fire, cold': null })).toBe('Fire\\, cold');
+    expect(typedListText('Fire\\, cold, Ice')).toBe('Fire\\, cold, Ice');
+    expect(typedListText(undefined)).toBe('');
+  });
+
+  it('reads a line stored as text at its unescaped commas, and a stored list item by item', () => {
+    expect(listItems('Fire\\, cold, Ice')).toEqual(['Fire, cold', 'Ice']);
+    expect(listItems(['Fire\\, cold'])).toEqual(['Fire\\, cold']);
   });
 });
 

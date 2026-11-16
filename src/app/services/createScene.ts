@@ -54,3 +54,23 @@ export async function createScene(app: App, assetService: AssetService, draft: S
     return { file, asset };
   });
 }
+
+/** A map a scene is made on: the name the scene takes and the image it starts on. */
+export interface SceneMap {
+  readonly name: string;
+  readonly mapFilePath: string;
+}
+
+/**
+ * Makes one scene on each map, named like its map ("Cave 2" where the collection has a "Cave"),
+ * one after the other, so no two take the same name. Returns the scenes made.
+ */
+export async function createScenesFromMaps(app: App, assetService: AssetService, collectionId: string, maps: readonly SceneMap[]): Promise<Asset[]> {
+  const scenes: Asset[] = [];
+  for (const map of maps) {
+    const name = freeSceneName(app, collectionId, map.name);
+    const { asset } = await createScene(app, assetService, { name, collectionId, background: map.mapFilePath });
+    scenes.push(asset);
+  }
+  return scenes;
+}

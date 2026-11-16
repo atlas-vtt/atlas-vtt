@@ -54,9 +54,13 @@ describe('context menu items', () => {
     const stepper = { value: '2', label: 'Frightened', canDecrement: true, onIncrement: vi.fn(), onDecrement: vi.fn() };
     renderMenu([{ type: 'item', label: 'Frightened', checked: true, keepOpen: true, stepper, onClick: toggle }], onClose);
 
-    const item = screen.getByRole('menuitemcheckbox', { name: /Frightened/ });
-    fireEvent.click(screen.getByRole('button', { name: 'Raise Frightened' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Lower Frightened' }));
+    // The item is named with its value; the buttons are the pointer's, hidden from a screen reader, which steps with + and -.
+    const item = screen.getByRole('menuitemcheckbox', { name: 'Frightened 2' });
+    expect(item.getAttribute('aria-keyshortcuts')).toBe('+ -');
+    const [lower, raise] = [...item.querySelectorAll<HTMLButtonElement>('.atlas-ctx-stepper__button')];
+    expect(raise?.getAttribute('aria-hidden')).toBe('true');
+    fireEvent.click(raise!);
+    fireEvent.click(lower!);
     fireEvent.keyDown(item, { key: '+' });
     fireEvent.keyDown(item, { key: '-' });
 

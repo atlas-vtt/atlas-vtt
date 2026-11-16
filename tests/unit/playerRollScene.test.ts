@@ -10,7 +10,7 @@ const C = 'maps/c.atlasmap';
 /** A view whose store holds the scene `holds`, showing the players `shown` there. */
 interface FakeView { viewId: string; holds: string | null; shown: Record<string, ShownRollToken> }
 
-const look = (name: string): ShownRollToken => ({ name, imagePath: `tokens/${name}.webp`, showRing: true, ringColor: undefined });
+const look = (name: string): ShownRollToken => ({ name, imagePath: `tokens/${name}.webp`, showRing: true, ringColor: undefined, mapShowsNameplates: true });
 
 /**
  * A view's renderer answering for the scene `mapPath`: what its store holds now decides,

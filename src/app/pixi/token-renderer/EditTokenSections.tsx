@@ -2,6 +2,7 @@ import React, { useId } from 'react';
 import { ToggleSwitch } from '../../packages/components/primitives/Toggle';
 import type { ResourceDefinition, ResourceValue } from '../../resources/resourceTypes';
 import { NumberOverrideField } from './NumberOverrideField';
+import { TokenSpeedField, type TokenSpeedContext } from './TokenSpeedField';
 import { t } from '../../i18n';
 
 interface EditTokenSectionProps {
@@ -43,6 +44,11 @@ export function SwitchRow({ label, hint, value, onChange }: SwitchRowProps): Rea
   );
 }
 
+/** What an empty field says: the value the linked statblock gives, if any. */
+function defaultPlaceholder(value: number | undefined): string {
+  return value === undefined ? t('editToken.none') : t('editToken.statblockDefault', { value });
+}
+
 interface TokenIdentitySectionProps {
   name: string;
   onNameChange: (name: string) => void;
@@ -50,9 +56,18 @@ interface TokenIdentitySectionProps {
   onShowNameplateChange: (show: boolean) => void;
   /** The name field, which takes the focus when the dialog opens. */
   nameRef: React.Ref<HTMLInputElement>;
+  /** The token's own speed, as typed; empty follows its statblock, else the map's movement rules. */
+  speed: string;
+  onSpeedChange: (speed: string) => void;
+  /** What a speed is typed and shown in on the token's map. */
+  speedContext: TokenSpeedContext;
+  /** The speed the linked statblock states, if any. */
+  statblockSpeed: number | undefined;
 }
 
-export function TokenIdentitySection({ name, onNameChange, showNameplate, onShowNameplateChange, nameRef }: TokenIdentitySectionProps): React.ReactElement {
+export function TokenIdentitySection({
+  name, onNameChange, showNameplate, onShowNameplateChange, nameRef, speed, onSpeedChange, speedContext, statblockSpeed,
+}: TokenIdentitySectionProps): React.ReactElement {
   const nameId = useId();
   return (
     <EditTokenSection title={t('editToken.token')}>
@@ -69,13 +84,9 @@ export function TokenIdentitySection({ name, onNameChange, showNameplate, onShow
         />
       </div>
       <SwitchRow label={t('editToken.showNameplate')} value={showNameplate} onChange={onShowNameplateChange} />
+      <TokenSpeedField value={speed} onChange={onSpeedChange} context={speedContext} statblockSpeed={statblockSpeed} />
     </EditTokenSection>
   );
-}
-
-/** What an empty field says: the maximum the linked statblock gives the resource, if any. */
-function defaultPlaceholder(max: number | undefined): string {
-  return max === undefined ? t('editToken.none') : t('editToken.statblockDefault', { value: max });
 }
 
 interface TokenResourcesSectionProps {

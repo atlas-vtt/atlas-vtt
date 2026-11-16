@@ -19,6 +19,11 @@ export function hslToRgb(h: number, s: number, l: number): [number, number, numb
   return [R, G, B];
 }
 
+/** A colour number as '#rrggbb'. */
+export function hexColorOf(color: number): string {
+  return `#${(color & 0xffffff).toString(16).padStart(6, '0')}`;
+}
+
 export function cssColorToHexNumber(color: string): number {
   const FALLBACK = 0x00ffff; // bright cyan
   if (!color) return FALLBACK;
@@ -59,29 +64,44 @@ export function resolveCssColor(cssColor: string): string {
   return resolved || '#00ffff'; // Fallback if resolution fails
 }
 
-/** The accent as last resolved, with the value of `--interactive-accent` it was resolved from. */
-let resolvedAccent: { raw: string; color: string } | null = null;
+/** Theme colours as last resolved, by their variable, each with the value it was resolved from. */
+const resolvedThemeColors = new Map<string, { raw: string; color: string }>();
 
-/** Makes the next `getObsidianAccentColor` resolve the accent anew (`registerAccentColorSync`). */
+/** Makes the next `getObsidianAccentColor` and `getObsidianErrorColor` resolve their colour anew (`registerAccentColorSync`). */
 export function forgetObsidianAccentColor(): void {
-  resolvedAccent = null;
+  resolvedThemeColors.clear();
 }
 
 /**
- * Obsidian's accent colour. Drags and measurements ask for it on every pointer move, so it is
- * resolved once per value of `--interactive-accent`: resolving puts an element into the body,
- * and an insertion there can make Chromium restyle the whole document.
+ * The colour the theme's `variable` names, `fallback` where it names none. Resolved once per value
+ * of the variable: resolving puts an element into the body, and an insertion there can make
+ * Chromium restyle the whole document.
  */
+function themeColor(variable: string, fallback: string): string {
+  const raw = (getComputedStyle(document.body).getPropertyValue(variable) || '').trim();
+  if (!raw) return fallback;
+  const known = resolvedThemeColors.get(variable);
+  if (known?.raw === raw) return known.color;
+  const color = resolveCssColor(raw);
+  resolvedThemeColors.set(variable, { raw, color });
+  return color;
+}
+
+/** Obsidian's accent colour. Drags and measurements ask for it on every pointer move (`themeColor`). */
 export function getObsidianAccentColor(): string {
   if (typeof window === 'undefined') return '#00ffff';
   try {
-    const style = getComputedStyle(document.body);
-    const raw = (style.getPropertyValue('--interactive-accent') || '').trim();
-    if (!raw) return '#00ffff';
-    if (resolvedAccent?.raw !== raw) resolvedAccent = { raw, color: resolveCssColor(raw) };
-    return resolvedAccent.color;
+    return themeColor('--interactive-accent', '#00ffff');
   } catch (error) {
     console.warn("[ColorUtils] Error getting Obsidian accent color:", error);
     return '#00ffff';
   }
-} 
+}
+
+/** Obsidian's red where the theme names none. */
+const FALLBACK_ERROR = '#e93147';
+
+/** The theme's warning red (`--text-error`): what a drag past a token's speed is drawn in, asked for on every pointer move of it. */
+export function getObsidianErrorColor(): string {
+  return typeof window === 'undefined' ? FALLBACK_ERROR : themeColor('--text-error', FALLBACK_ERROR);
+}

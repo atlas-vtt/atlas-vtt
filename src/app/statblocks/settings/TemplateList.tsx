@@ -17,6 +17,7 @@ import type { StatblockRole } from '../model/roleTypes';
 import type { TemplateId } from '../model/templateTypes';
 import { rowDetail, templateRows, usageText, type TemplateRow } from './templateRows';
 import { useTemplateNoteCounts } from './useTemplateNoteCounts';
+import { t } from '../../i18n';
 import './template-list.scss';
 
 export interface TemplateListProps {
@@ -59,17 +60,17 @@ export function TemplateList(props: TemplateListProps): React.JSX.Element {
   const duplicate = (entry: LibraryTemplate): void => {
     copyTemplate(app, entry.template.id).catch((error: unknown) => {
       console.error('[Atlas] Copying a template failed:', error);
-      showNotice("Couldn't copy the template.");
+      showNotice(t('statblockEditor.templateCopyFailed'));
     });
   };
 
   const entriesOf = ({ entry }: TemplateRow): ContextMenuEntry[] => [
     ...(onEditTemplate
-      ? [{ type: 'item' as const, label: 'Open', icon: 'pencil', disabled: editBlocked !== null, onClick: () => onEditTemplate(entry.template.id) }]
+      ? [{ type: 'item' as const, label: t('statblockEditor.open'), icon: 'pencil', disabled: editBlocked !== null, onClick: () => onEditTemplate(entry.template.id) }]
       : []),
-    { type: 'item', label: 'Duplicate', icon: 'copy', onClick: () => duplicate(entry) },
+    { type: 'item', label: t('statblockEditor.duplicate'), icon: 'copy', onClick: () => duplicate(entry) },
     {
-      type: 'item', label: 'Delete…', icon: 'trash-2', destructive: true, disabled: entry.builtIn,
+      type: 'item', label: t('statblockEditor.deleteMenu'), icon: 'trash-2', destructive: true, disabled: entry.builtIn,
       onClick: () => setDeleting({ entry, usage: templateUsage(app, entry.template.id) }),
     },
   ];
@@ -83,31 +84,31 @@ export function TemplateList(props: TemplateListProps): React.JSX.Element {
       setDeleting(null);
     } catch (error) {
       console.error('[Atlas] Deleting a template failed:', error);
-      showNotice("Couldn't delete the template.");
+      showNotice(t('statblockEditor.templateDeleteFailed'));
     }
   };
 
   return (
     <div ref={setRoot} className="atlas-csm-field atlas-sb-templates">
       <div className="atlas-sb-roles__head">
-        <span className="atlas-csm-label">Templates</span>
+        <span className="atlas-csm-label">{t('statblockEditor.templates')}</span>
         <Button variant="ghost" className="atlas-csm-add-btn atlas-sb-roles__revert" onClick={() => setGalleryOpen(true)}>
           <Plus />
-          New template
+          {t('statblockEditor.newTemplate')}
         </Button>
       </div>
-      <p className="atlas-csm-hint">Every collection in this vault shares these templates.</p>
-      <ul className="atlas-sb-templates__list" aria-label="Templates">
+      <p className="atlas-csm-hint">{t('statblockEditor.sharedTemplates')}</p>
+      <ul className="atlas-sb-templates__list" aria-label={t('statblockEditor.templates')}>
         {rows.map((row) => (
           <li key={row.entry.template.id} className="atlas-sb-templates__row">
             <span className="atlas-sb-templates__name">{row.entry.name}</span>
             {rowDetail(row) && <span className="atlas-sb-templates__detail">{rowDetail(row)}</span>}
             <span className="atlas-sb-templates__usage">{usageText(row.count)}</span>
-            <ActionsMenuButton label={`Actions for ${row.entry.name}`} entries={entriesOf(row)} className="atlas-sb-templates__more" />
+            <ActionsMenuButton label={t('statblockEditor.actionsFor', { name: row.entry.name })} entries={entriesOf(row)} className="atlas-sb-templates__more" />
           </li>
         ))}
       </ul>
-      {!ownTemplates && library && !library.loading && <p className="atlas-sb-templates__empty">No statblock templates yet</p>}
+      {!ownTemplates && library && !library.loading && <p className="atlas-sb-templates__empty">{t('statblockEditor.noTemplates')}</p>}
       <AnimatePresence>
         {galleryOpen && root && (
           <TemplateGallery

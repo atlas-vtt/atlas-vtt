@@ -17,13 +17,13 @@ it('lists collections by name and selects them by id', () => {
   const onSelectCollection = vi.fn();
   render(
     <Sidebar
-      selectedTagIds={[]} onSelectTag={() => {}} onClearTags={() => {}} tags={[]} assets={[]}
+      selectedTagIds={[]} onSelectTag={() => {}} onClearTags={() => {}} tags={[]} countedAssets={[]}
       collections={collections} selectedCollection="default" onSelectCollection={onSelectCollection}
       onManageTags={() => {}}
     />,
   );
   fireEvent.click(screen.getByRole('button', { name: 'Default' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Winter Camp' }));
+  fireEvent.click(screen.getByRole('option', { name: 'Winter Camp' }));
   expect(onSelectCollection).toHaveBeenCalledWith('winter-camp');
 });
 
@@ -44,14 +44,14 @@ it('follows the selected collection to its new id and falls back to the default 
 it('shows a renamed default collection under its new name and offers only real collections', () => {
   render(
     <Sidebar
-      selectedTagIds={[]} onSelectTag={() => {}} onClearTags={() => {}} tags={[]} assets={[]}
+      selectedTagIds={[]} onSelectTag={() => {}} onClearTags={() => {}} tags={[]} countedAssets={[]}
       collections={[{ id: 'default', uid: 'u-default', name: '5e', isDefault: true }, collections[1]!]}
       selectedCollection="default" onSelectCollection={() => {}}
       onManageTags={() => {}}
     />,
   );
   fireEvent.click(screen.getByRole('button', { name: '5e' }));
-  const options = within(screen.getByRole('listbox')).getAllByRole('button').map((option) => option.textContent);
+  const options = within(screen.getByRole('listbox', { name: 'Collections' })).getAllByRole('option').map((option) => option.textContent);
   expect(options).toEqual(['5e', 'Winter Camp']);
 });
 

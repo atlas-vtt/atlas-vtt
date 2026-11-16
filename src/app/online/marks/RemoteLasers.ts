@@ -1,10 +1,8 @@
 import type { LaserState } from '../protocol/index.ts';
 import { Container, type Renderer } from 'pixi.js';
-import { CanvasLaserBeam } from '../../pixi/laser/CanvasLaserBeam';
 import { beamWidth, LaserBeam, type LaserBeamView } from '../../pixi/laser/LaserBeam';
 import { MAX_TRAIL_SAMPLES, type BeamPoint } from '../../pixi/laser/laserBeamGeometry';
 import { destroyTree } from '../../pixi/utils/destroyTree';
-import { usesCanvasRenderer } from '../../pixi/utils/rendererType';
 import { LASER_FADE_TIME } from '../../tools/laserPointerSettings';
 import { PointerTrack, type TrackPoint } from './PointerTrack.ts';
 
@@ -122,7 +120,7 @@ export class RemoteLasers {
   }
 
   private addBeam(laser: RemoteLaser): Beam {
-    const view = usesCanvasRenderer(this.renderer) ? new CanvasLaserBeam() : new LaserBeam();
+    const view = new LaserBeam();
     this.container.addChild(view.view);
     const beam: Beam = { view, track: new PointerTrack({ interval: this.interval, keep: LASER_FADE_TIME }), state: laser, look: laser, newest: null };
     this.beams.set(laser.who, beam);

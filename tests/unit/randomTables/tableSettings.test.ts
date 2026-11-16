@@ -162,3 +162,37 @@ describe('item rarities', () => {
     expect(vanillaSystemSettings()).toHaveProperty('itemRarities', undefined);
   });
 });
+
+describe('a generator in the settings', () => {
+  const WEAPONS: RandomTableSource = { path: 'Generators/Weapons.md', table: 'Magic Weapon', index: 0, kind: 'generator', saveFolder: 'Loot/Weapons' };
+
+  it('reads kind generator and its save folder, trimmed, and none that is blank, no text or no path', () => {
+    const settings = stored([
+      { ...WEAPONS, saveFolder: ' Loot/Weapons ' },
+      { path: 'Blank.md', index: 0, kind: 'generator', saveFolder: '  ' },
+      { path: 'Odd.md', index: 0, kind: 'generator', saveFolder: 3 },
+      { path: 'Long.md', index: 0, kind: 'generator', saveFolder: 'x'.repeat(600) },
+    ]);
+    expect(readRandomTables(settings)).toEqual([
+      WEAPONS,
+      { path: 'Blank.md', index: 0, kind: 'generator' },
+      { path: 'Odd.md', index: 0, kind: 'generator' },
+      { path: 'Long.md', index: 0, kind: 'generator' },
+    ]);
+  });
+
+  it('writes the save folder, and takes it away with an entry that has none', () => {
+    const settings = stored([WEAPONS]);
+    const { saveFolder: _folder, ...without } = WEAPONS;
+    expect(withRandomTable(settings, without)).toEqual([without]);
+    expect(withRandomTable(stored([without]), { ...without, saveFolder: 'Elsewhere' })).toEqual([{ ...without, saveFolder: 'Elsewhere' }]);
+  });
+
+  it('stays in the file as written where a kind is not known: an older Atlas leaves the entry out and keeps it', () => {
+    // An older Atlas reads `generator` as this one reads a kind of a newer one: not at all.
+    const newer = { path: 'Odd.md', index: 0, kind: 'npcs', saveFolder: 'NPCs' };
+    const settings = stored([newer, RUMOURS]);
+    expect(readRandomTables(settings)).toEqual([RUMOURS]);
+    expect(withRandomTable(settings, { ...RUMOURS, noRepeats: true })).toEqual([newer, { ...RUMOURS, noRepeats: true }]);
+  });
+});

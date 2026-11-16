@@ -29,10 +29,10 @@ export interface FieldDraft {
 export function useFieldDraft(field: TemplateField, inputRef: RefObject<TextField | null>, autoFocus: boolean): FieldDraft {
   const pane = usePaneEdit();
   const [started] = useState(() => pane.read(field));
-  const [draft, setDraft] = useState(() => textOfValue(started.value));
+  const [draft, setDraft] = useState(() => textOfValue(field, started.value));
   const draftRef = useRef(draft);
   draftRef.current = draft;
-  const written = useRef<{ text: string; read: FieldRead }>({ text: textOfValue(started.value), read: started });
+  const written = useRef<{ text: string; read: FieldRead }>({ text: textOfValue(field, started.value), read: started });
 
   useLayoutEffect(() => {
     if (!autoFocus) return;

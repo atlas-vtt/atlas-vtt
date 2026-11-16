@@ -10,6 +10,7 @@ import { freeGate, newGate } from './joinGate.ts';
 import { LogKeeper, type LogStore } from './log/logStore.ts';
 import { OnlineTable } from './OnlineTable.ts';
 import type { KnownPlayer, Ownership } from './ownership.ts';
+import { clearDrawnBy, drawnBy } from './playerDrawingsClear.ts';
 import { giveTokens, markTokens, playerTokenRows, type PlayerTokenRow } from './playerTokenRows.ts';
 import { presentOnPlayerView, presentedSceneSource, showPresentedElsewhere, type ShownElsewhere } from './presentedScene.ts';
 import type { SavedTable } from './savedTable.ts';
@@ -18,6 +19,8 @@ import type { TableCampaigns } from './tableCampaigns.ts';
 import { createCampaignTable, NO_ACCOUNT, refused, startBlock, type HostAccount } from './tableStart.ts';
 import type { TableStatus } from './TableConnection.ts';
 import type { LostTable } from './tableEnd.ts';
+import { t } from '../../i18n';
+import type { TableAssets } from './assets/tableAssets.ts';
 
 /**
  * The GM's side of online play, free of any panel: start and stop a table of a campaign, which this
@@ -132,6 +135,7 @@ export class OnlineControl {
     const closings = this.closings;
     const seats = await this.campaigns.open(saved.campaignId).catch(() => null).finally(() => (this.starting = false));
     if (closings !== this.closings || this.current !== null) return this.current;
+    void this.account.assets?.salt.ensure();
     if (seats === null) {
       this.campaigns.stop();
       return null;
@@ -157,7 +161,7 @@ export class OnlineControl {
 
   /** Shows the active scene of this Atlas tab on Atlas's player view, which players online see too. */
   share(leaf: WorkspaceLeaf): void {
-    if (!presentOnPlayerView(this.app, leaf)) showNotice('Atlas cannot show this map on the player view.');
+    if (!presentOnPlayerView(this.app, leaf)) showNotice(t('online.cannotPresent'));
   }
 
   /** Every player of the running table's campaign: those online first, then by name. */
@@ -168,6 +172,18 @@ export class OnlineControl {
   /** Takes a player off the running table: their key for it stops working; they come back with their own code. */
   kick(playerId: string): void {
     this.current?.kick(playerId);
+  }
+
+  /** How many drawings and texts a player has on the level the shared scene shows; none while no scene is shared. */
+  playerDrawings(playerId: string): number {
+    const store = this.current?.sharedStore ?? null;
+    return store === null ? 0 : drawnBy(store.getState(), playerId).length;
+  }
+
+  /** Removes a player's drawings and texts from the level the shared scene shows, in one undo step. */
+  clearPlayerDrawings(playerId: string): void {
+    const store = this.current?.sharedStore ?? null;
+    if (store !== null) clearDrawnBy(store, playerId);
   }
 
   /** A player's own code in the running table's campaign, else in the played one; null for anyone it does not know. */
@@ -273,6 +289,8 @@ export class OnlineControl {
     this.starting = true;
     this.changed();
     const closings = this.closings;
+    // The salt is asked for beside the table, so the first references already carry their ids.
+    void this.account.assets?.salt.ensure();
     const made = await createCampaignTable(this.campaigns, campaignId, token, this.account, (level) => rememberMinLevel(this.app, level)).finally(() => (this.starting = false));
     this.changed();
     if (made === null || closings !== this.closings) return null;
@@ -318,7 +336,7 @@ export class OnlineControl {
         // The account page says why; the dock shows what the relay says of the account now.
         if (end === 'no-access') void this.account.refresh(true);
       },
-    }, this.shelf, savedLog);
+    }, this.shelf, savedLog, this.tableAssets());
     // The table's campaign is the one played while it runs: its rules, quests and world map are what players get.
     this.campaigns.play(saved.campaignId);
     // A campaign deleted while its table runs is played no longer (`recordCampaignPlay`, the campaign page), and takes its table with it.
@@ -329,6 +347,13 @@ export class OnlineControl {
     table.start();
     this.changed();
     return table;
+  }
+
+  /** What a table needs to keep assets in the store, while the account offers it. */
+  private tableAssets(): TableAssets | undefined {
+    const assets = this.account.assets;
+    if (assets === undefined) return undefined;
+    return { token: () => this.account.token(), signedOutByServer: () => this.account.signedOutByServer(), salt: assets.salt, settled: () => assets.settled() };
   }
 
   /** Ends the running table on the server and forgets the saved one; what is played stays as it is. */

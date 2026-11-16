@@ -18,6 +18,7 @@ import { callbackPattern, entryTextKey, modifierFormula, returnsItemUnchanged, t
 import { diceCallbackKey } from './fsDiceCallbacks';
 import { lookupCallback } from './fsLookupCallbacks';
 import { cleanLabel, FsFieldRegistry, type ImportContext } from './fsImportState';
+import { t } from '../../i18n';
 
 const SPELLCASTING = 'Spellcasting';
 
@@ -88,7 +89,7 @@ const property: Leaf = (record, ctx, at) => {
   if (callback !== undefined && (!formatted || !formatted.refs.every((ref) => ctx.fields.mention(ref)))) return asScript(record, ctx, at);
   const keys = keysOf(record);
   const key = keys[0] ?? formatted?.refs[0];
-  if (key === undefined) return { blocks: [], outcome: 'dropped', sentence: 'A property line without a key was left out.' };
+  if (key === undefined) return { blocks: [], outcome: 'dropped', sentence: t('statblockEditor.fs.noKey') };
   const signed = formatted?.pattern === `{${escapePatternText(key)}|signed}`;
   if (!ctx.fields.use(key, signed ? 'number' : 'text', { label: textOf(record, 'display') })) return refused(key);
   for (const more of keys.slice(1)) ctx.fields.use(more, 'text');
@@ -133,7 +134,7 @@ const table: Leaf = (record, ctx, at) => {
     ...(formula ? { columns: [{ formula, display: 'signed' }] } : {}), ...flags(record, read, at),
   };
   if (calculates && formula === null) {
-    return { blocks: [scores], outcome: 'partial', shows: key, sentence: `${ctx.fields.labelOf(key)}: the modifiers are worked out by JavaScript, so Atlas shows the scores without them.` };
+    return { blocks: [scores], outcome: 'partial', shows: key, sentence: t('statblockEditor.fs.jsModifiers', { name: ctx.fields.labelOf(key) ?? key }) };
   }
   return full([scores], key);
 };
@@ -153,7 +154,7 @@ const traits: Leaf = (record, ctx, at) => {
   };
   const block = underHeadingField(entries, head, ctx);
   if (textOf(record, 'subheadingText')?.trim()) {
-    return { blocks: [block], outcome: 'partial', shows: key, sentence: `${ctx.fields.labelOf(key)}: the line under its heading is kept for export only.` };
+    return { blocks: [block], outcome: 'partial', shows: key, sentence: t('statblockEditor.fs.subheading', { name: ctx.fields.labelOf(key) ?? key }) };
   }
   return full([block], key);
 };

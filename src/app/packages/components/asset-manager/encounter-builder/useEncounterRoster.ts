@@ -73,7 +73,7 @@ export function useEncounterRoster(app: App, assetService: AssetService | null, 
     tags: tagIds.map((id) => tags.find((tag) => tag.id === id) ?? { id, name: id }),
   }), [keywords.nameQuery, tagIds, tags]);
 
-  const creature = useCreatureFilters({ app, definitions, isOpen, assets: tokens, folders: [], filter });
+  const creature = useCreatureFilters({ app, definitions, isOpen, assets: tokens, filter });
   const query = useFilterSearch({ keywords, setSearch, panel: creature.panel, tags, tagIds, setTagIds });
 
   const shown = useMemo(

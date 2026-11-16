@@ -12,6 +12,7 @@ import { useAtlasUI } from '../root/AtlasUIContext';
 import { AssetService } from '../../services/AssetService';
 import type { SystemPreset } from '../../types/systemPresetTypes';
 import { deleteSystemPreset } from '../../services/systemPresetDeletion';
+import { showBarsOnCollectionScenes } from '../../services/collectionBarVisibility';
 import { syncCollectionSystem } from '../../services/collectionSystemSync';
 import { useSystemPresets } from '../hooks/useSystemPresets';
 import { useDiceSets } from '../hooks/useDiceSets';
@@ -25,6 +26,7 @@ import { RandomTablesTab } from './collection-settings/RandomTablesTab';
 import { CreatureFiltersTab } from './collection-settings/CreatureFiltersTab';
 import { useCollectionCreatures } from './collection-settings/useCollectionCreatures';
 import { useRoleTemplates } from './collection-settings/useRoleTemplates';
+import { useUnsavedChanges } from './collection-settings/useUnsavedChanges';
 import { isCompleteCreatureFilter } from '../../creatures/creatureFilterDefinitions';
 import type { TemplateId } from '../../statblocks/model/templateTypes';
 import { collectionStatblockRoles } from '../../statblocks/roles/collectionStatblockRoles';
@@ -86,6 +88,7 @@ export function CollectionSettingsModal({
 
   // Local draft of settings — only persisted on Save
   const draft = useCollectionSettingsDraft(assetService, collectionId, isOpen);
+  const hasChanges = useUnsavedChanges(draft, isOpen && assetService ? collectionId : null);
   const collectionIds = useMemo(() => [collectionId], [collectionId]);
   const offersFields = isOpen && (activeTab === 'creatureFilters' || activeTab === 'resources' || activeTab === 'widgets');
   const collectionCreatures = useCollectionCreatures(app ?? null, assetService, collectionIds, offersFields);
@@ -120,9 +123,11 @@ export function CollectionSettingsModal({
     if (!app || !assetService || !canSave) return false;
 
     try {
+      const bars = draft.barsToShowOnScenes();
       await assetService.updateCollectionSettings(collectionId, draft.toSettings());
       // Widgets and token conditions follow the saved game system in every scene.
       await syncCollectionSystem(app, collectionId, systemPresets.presets);
+      await showBarsOnCollectionScenes(app, collectionId, bars);
       onClose();
       return true;
     } catch (err) {
@@ -217,6 +222,7 @@ export function CollectionSettingsModal({
       subtitle={releaseLine}
       closeLabel={t('csm.close')}
       canSave={canSave}
+      hasChanges={hasChanges}
       onSave={() => { void save(); }}
       onClose={onClose}
       size="fullscreen"

@@ -4,6 +4,7 @@ import { copyRow, textButton } from './controls.ts';
 import type { MenuEntry } from './dockMenu.ts';
 import { copyText } from './dockDom.ts';
 import type { OnlineApi } from './panelModel.ts';
+import { t } from '../../../i18n';
 
 /**
  * What the menu and the panel show of a table's gates: the code, the two switches and a pause. Who
@@ -41,9 +42,9 @@ export function gateRowActions(api: OnlineApi, root: HTMLElement): GateRowAction
 export function gateEntries(gate: GateRows | null, actions: GateRowActions): MenuEntry[] {
   if (gate === null) return [];
   return [
-    { title: 'New code', icon: 'refresh-cw', apart: true, disabled: !gate.requireCode, run: () => actions.newCode() },
-    { title: 'Require code', icon: 'key-round', checked: gate.requireCode, run: () => actions.setRequireCode(!gate.requireCode) },
-    { title: 'Ask before players join', icon: 'user-check', checked: gate.askToJoin, run: () => actions.setAskToJoin(!gate.askToJoin) },
+    { title: t('online.newCode'), icon: 'refresh-cw', apart: true, disabled: !gate.requireCode, run: () => actions.newCode() },
+    { title: t('online.requireCode'), icon: 'key-round', checked: gate.requireCode, run: () => actions.setRequireCode(!gate.requireCode) },
+    { title: t('online.askToJoin'), icon: 'user-check', checked: gate.askToJoin, run: () => actions.setAskToJoin(!gate.askToJoin) },
   ];
 }
 
@@ -56,7 +57,7 @@ export function renderPausedRow(layer: HTMLElement, gate: GateRows | null, actio
   if (gate === null || !gate.paused) return;
   const row = layer.createDiv({ cls: 'atlas-online-paused', attr: { role: 'status' } });
   row.createSpan({ cls: 'atlas-online-paused__text', text: PAUSED_TEXT });
-  const button = textButton(row, 'New code', () => gate.pauseArmed && actions.newCode());
+  const button = textButton(row, t('online.newCode'), () => gate.pauseArmed && actions.newCode());
   button.dataset.focusKey = 'new-code';
   if (!gate.pauseArmed) button.setAttribute('aria-disabled', 'true');
 }
@@ -64,5 +65,5 @@ export function renderPausedRow(layer: HTMLElement, gate: GateRows | null, actio
 /** `Code 483 912` as a row that copies it, while the table asks for a code. */
 export function renderCodeRow(layer: HTMLElement, gate: GateRows | null, actions: GateRowActions): void {
   if (gate === null || gate.code === null) return;
-  copyRow(layer, { icon: 'key-round', text: `Code ${shownJoinCode(gate.code)}`, copied: 'Code copied', focusKey: 'code' }, () => actions.copyCode()).addClass('atlas-online-code-row');
+  copyRow(layer, { icon: 'key-round', text: t('online.codeShown', { code: shownJoinCode(gate.code) }), copied: t('online.codeCopied'), focusKey: 'code' }, () => actions.copyCode()).addClass('atlas-online-code-row');
 }

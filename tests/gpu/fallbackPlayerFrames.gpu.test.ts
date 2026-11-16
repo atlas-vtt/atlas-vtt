@@ -8,6 +8,7 @@ import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFa
 import type { TokenEntity } from '../../src/app/types';
 import { showsMap } from '../../src/app/gameSystems/senseRules';
 import { LightingController } from '../../src/app/pixi/lighting/LightingController';
+import { LIGHTING_ATTEMPTS_KEY } from '../../src/app/pixi/lighting/lightingAttempts';
 import { RenderScheduler } from '../../src/app/pixi/RenderScheduler';
 import { playerFrameSource, playerWindow, viewOf } from '../helpers/playerFrameView';
 import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
@@ -35,9 +36,10 @@ interface Shown {
 }
 
 /**
- * The line-of-sight fallback as a map view runs it without WebGL: the real lighting controller
- * on PIXI's Canvas renderer, which renders only on change, and a player window that captures
- * its frames right before those renders. The GM's canvas stays in GM view throughout.
+ * The line-of-sight fallback as a map view runs it when the engine may not start: the real
+ * lighting controller on a map whose last attempt never finished (the crash marker), which
+ * renders only on change, and a player window that captures its frames right before those
+ * renders. The GM's canvas stays in GM view throughout.
  */
 describe('the player window behind the line-of-sight fallback, in GM view', () => {
   const cleanup: (() => void)[] = [];
@@ -48,8 +50,7 @@ describe('the player window behind the line-of-sight fallback, in GM view', () =
 
   async function open(lighting: Record<string, unknown>): Promise<{ store: ViewAtlasStore; frames: Uint8ClampedArray[]; displayFrames: (count: number) => void; shown: (frame: Uint8ClampedArray) => Shown }> {
     const app = new Application();
-    await app.init({ width: PANE_WIDTH, height: SIZE, preference: 'canvas', antialias: false, autoStart: false, backgroundColor: FLOOR });
-    expect(app.renderer.name).toBe('canvas');
+    await app.init({ width: PANE_WIDTH, height: SIZE, preference: 'webgl', antialias: false, autoStart: false, backgroundColor: FLOOR });
     const scheduler = new RenderScheduler(app);
     const viewport = new Viewport({ screenWidth: PANE_WIDTH, screenHeight: SIZE, worldWidth: SIZE, worldHeight: SIZE, events: app.renderer.events });
     viewport.sortableChildren = true;
@@ -60,6 +61,8 @@ describe('the player window behind the line-of-sight fallback, in GM view', () =
     const store = createViewAtlasStore(obsApp, `fallback-frames-${Math.random()}`);
     store.getState().setPersistenceEnabled(false);
     store.getState().setMapPath('maps/frames.atlasmap');
+    // An attempt on this map that never finished: the controller goes to the fallback and tells the GM.
+    obsApp.saveLocalStorage(LIGHTING_ATTEMPTS_KEY, ['maps/frames.atlasmap']);
     // Party tokens and one the party sees, no doors, nothing selected, no token renderer: nothing but the lighting has a reason to draw.
     store.setState((state) => ({ objects: { ...state.objects, tokens: { ada: token('ada', 60, 70, 5), bo: token('bo', 180, 110, 5), cat: { ...token('cat', 70, 90, 5), vision: { enabled: false } } } } }));
     store.getState().addWall({ type: 'solid', p1: { x: 110, y: 20 }, p2: { x: 110, y: 160 } });
@@ -69,7 +72,7 @@ describe('the player window behind the line-of-sight fallback, in GM view', () =
     controller.wire({
       setLightHandlers: ignore, setWallPointerDownHandler: ignore, setWallContextMenuHandler: ignore, setWallPointerMoveHandler: ignore,
       setWallPointerUpHandler: ignore, setWallDoubleClickHandler: ignore, setWallCursorProvider: ignore, setDoorMenuHandlers: ignore,
-      setDoorClickHandler: ignore, setPlayerSightProvider: ignore, setGlideWay: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
+      setDoorClickHandler: ignore, setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
     } as unknown as TokenRenderer);
     // As the player window is shown a view that renders on change: a frame of the window's own size, right before the view's renders.
     const { source, frames: frameTexture } = playerFrameSource({
@@ -162,6 +165,27 @@ describe('the player window behind the line-of-sight fallback, in GM view', () =
     displayFrames(60);
     frames.length = 0;
     store.getState().setSceneLighting({ enabled: false });
+    displayFrames(60);
+    expect(frames).toHaveLength(1);
+    expect(shown(frames[0]!).black).toBe(0);
+  });
+
+  it('captures a black frame of a floor the party is not on, and opens it once no token on any floor has vision', async () => {
+    const { store, frames, displayFrames, shown } = await open({});
+    const floor = (id: string, bottom: number): NonNullable<ReturnType<ViewAtlasStore['getState']>['levels']>[number] => ({ id, name: id, elevation: { bottom, top: bottom + 10 }, background: null });
+    // The party stands on the ground floor, which every object without a level is on.
+    store.setState({ levels: [floor('ground', 0), floor('upper', 10)] });
+    displayFrames(5);
+    frames.length = 0;
+
+    store.getState().setViewedLevel('upper');
+    displayFrames(60);
+    expect(frames).toHaveLength(1);
+    const sampled = ((SIZE - 8) / 2) ** 2;
+    expect(shown(frames[0]!)).toEqual({ outsideSight: 0, hiddenInSight: 0, black: sampled });
+
+    frames.length = 0;
+    for (const id of ['ada', 'bo']) store.getState().updateToken(id, { vision: { enabled: false } });
     displayFrames(60);
     expect(frames).toHaveLength(1);
     expect(shown(frames[0]!).black).toBe(0);

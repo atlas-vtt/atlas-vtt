@@ -31,7 +31,7 @@ function draw(active: number, hidden: number[] = []): { list: HTMLElement; cards
     { mode: 'turn-order', roll: '1d20', firstSide: 'players' },
     false,
   );
-  renderPlayerInitiative(host, list, { showNames: true, portraitSrc: (src) => src });
+  renderPlayerInitiative(host, list, { showNames: true, mapShowsNameplates: true, portraitSrc: (src) => src });
   return {
     list: host.querySelector<HTMLElement>('.atlas-player-initiative__list')!,
     cards: [...host.querySelectorAll<HTMLElement>('.atlas-player-initiative__card')],

@@ -16,7 +16,8 @@ interface CollectionHeroProps {
 /** Key-art banner: the collection as people who install it see it, its name over its cover; just the name without one. */
 export function CollectionHero({ eyebrow, imageUrl, name, version, details, description }: CollectionHeroProps): React.JSX.Element {
   return (
-    <header className="atlas-transfer-hero" data-empty={!imageUrl || undefined}>
+    // Not a <header>: inside the dialog it would be a second banner beside the asset manager's.
+    <div className="atlas-transfer-hero" data-empty={!imageUrl || undefined}>
       {imageUrl && (
         <div className="atlas-transfer-hero__art">
           <img key={imageUrl} src={imageUrl} alt="" draggable={false} decoding="async" />
@@ -31,6 +32,6 @@ export function CollectionHero({ eyebrow, imageUrl, name, version, details, desc
         </div>
         {description && <p className="atlas-transfer-hero__description">{description}</p>}
       </div>
-    </header>
+    </div>
   );
 }

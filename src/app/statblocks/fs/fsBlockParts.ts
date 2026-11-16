@@ -10,6 +10,7 @@ import { describeValue, jsonRecordCopy, own } from '../format/jsonValues';
 import type { BlockBase, FieldKey, FieldType, TemplateBlock } from '../model/templateTypes';
 import { cleanLabel, type ImportContext, type Outcome } from './fsImportState';
 import { scriptBlock } from './fsScripts';
+import { t } from '../../i18n';
 
 export type FsRecord = Readonly<Record<string, unknown>>;
 
@@ -58,7 +59,7 @@ export function hasCallback(record: FsRecord): string | undefined {
 export const full = (blocks: TemplateBlock[], shows?: FieldKey): Converted => ({ blocks, outcome: 'full', shows });
 
 export function refused(key: string): Converted {
-  return { blocks: [], outcome: 'dropped', sentence: `The key ${describeValue(key)} is reserved in Atlas, so the block that shows it was left out.` };
+  return { blocks: [], outcome: 'dropped', sentence: t('statblockEditor.fs.reservedKey', { key: describeValue(key) }) };
 }
 
 /** The flags every block shares: `conditioned`, `fallback`, `cls`, and the keys no other part read, kept for export. */
@@ -118,6 +119,6 @@ export function asScript(record: FsRecord, ctx: ImportContext, at: Place): Conve
   const key = keysOf(record)[0];
   const label = cleanLabel(blockLabel(record)) ?? (key ? ctx.fields.labelOf(key) : undefined);
   const block = scriptBlock(record, label, at.parent !== 'row', ctx);
-  if (!block) return { blocks: [], outcome: 'dropped', sentence: 'A block that could not be copied was left out.' };
+  if (!block) return { blocks: [], outcome: 'dropped', sentence: t('statblockEditor.fs.notCopied') };
   return { blocks: [block], outcome: 'script' };
 }

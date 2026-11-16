@@ -3,12 +3,11 @@ import type { PlacedTokenSource } from '../../../characters/playerCharacters';
 import type { ResolvedStatblock } from '../../../statblocks/model/resolvedTypes';
 import type { NotePatch } from '../../../statblocks/notes/patchTypes';
 import type { ArmedCards } from '../armedCards.ts';
-import type { ScaleImage } from '../assetVariants.ts';
+import type { AssetStoring } from '../assets/assetUses.ts';
 import type { Timers } from '../companionTimers.ts';
 import type { KnownPlayer, OwnedToken } from '../ownership.ts';
 import type { VaultImage } from '../TokenShare.ts';
 import type { BookScene } from './bookScene.ts';
-import type { QuestAsset } from './questGate.ts';
 import type { ResourceEdit } from './resourceEdit.ts';
 import type { ResourceAnswer } from './resourceWrites.ts';
 import type { RestGate } from './restGate.ts';
@@ -28,17 +27,21 @@ export interface BookSharePorts extends Timers {
   players(): readonly KnownPlayer[];
   /** The owner of a token of the shared scene (`Ownership.ownerOf`). */
   ownerOf(tokenId: string, token: OwnedToken | undefined): string | undefined;
+  /** The characters (library token ids) the campaign gives a player (`Ownership.charactersOf`). */
+  charactersOf(player: string): readonly string[];
   readImage(path: string): Promise<VaultImage | null>;
+  /** How players are handed assets the store keeps for them; without it they are handed none. */
+  stored?: AssetStoring | undefined;
   /** The file at a vault path as it is now, or null when there is none. */
   stat(path: string): FileStat | null;
   /** The world map players may be shown now with the maps it leads into, or null for none. */
   worldMap(): Promise<WorldMapTree | null>;
+  /** The log entries that tell who found readable pins, by `foundPinKey`: the world map's signs show them found. */
+  foundPins?(): ReadonlyMap<string, string>;
   /** Tells the GM something they need to act on (a world map whose image cannot be sent). */
   notice(text: string): void;
   /** The quests of the campaign being played, as players read them: the same for every character. */
   quests(): Promise<readonly BookQuest[]>;
-  /** What a quest's whole text or image is served from, by hash, while the quests last answered name it. */
-  questAsset(hash: string): QuestAsset | undefined;
   /** Writes a checked edit of a player's own resource into Atlas, and answers what the resource holds then (null when it was not taken), at once or later. */
   editResource(edit: ResourceEdit, answer: ResourceAnswer): void;
   /** The statblock note the library token a placed token came from links, or null for none. */
@@ -47,6 +50,8 @@ export interface BookSharePorts extends Timers {
   readStatblock(path: string): Promise<ResolvedStatblock | null>;
   /** Writes a checked edit of a player's own statblock into its note, through Atlas's note writer. */
   writeStatblock(path: string, patches: readonly NotePatch[]): Promise<StatblockWriteOutcome>;
+  /** The text a link in an ability's name of a statblock note names (a heading of the note, another note), or null where there is none. */
+  readStatblockLink?(path: string, link: string): Promise<string | null>;
   /** The width of the statblock panel beside a note on this device, which the players' cards are laid out at; unset, a default. */
   statblockPanelWidth?(): number | undefined;
   /** Atlas's recovery buttons of the characters players play: what each offers, a request checked, a rest taken. */
@@ -55,6 +60,4 @@ export interface BookSharePorts extends Timers {
   readonly cards: ArmedCards;
   /** The rest requests' cards changed: the control draws them anew. */
   cardsChanged(): void;
-  /** Scales an image for a player who asks for a longest side; without it players get originals only. */
-  scaleImage?: ScaleImage | undefined;
 }

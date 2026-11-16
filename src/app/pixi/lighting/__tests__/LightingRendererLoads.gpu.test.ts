@@ -1,5 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SAVE_DELAY, createHarness, maskCoverageAt, resetContext, tokens, visionToken, type Harness } from './rendererHarness';
+import type { WebGLRenderer } from 'pixi.js';
+import { ExploredTexture } from '../ExploredTexture';
+import { saveExploredMask } from '../exploredMaskSaving';
+import { SIZE, SAVE_DELAY, createHarness, maskCoverageAt, resetContext, tokens, visionToken, type Harness } from './rendererHarness';
+
+/** A memory saved elsewhere that has seen a small square around a point of the map. */
+function maskSeeing(renderer: WebGLRenderer, x: number, y: number): string {
+  const elsewhere = new ExploredTexture(renderer, { width: SIZE, height: SIZE });
+  const corner = (dx: number, dy: number): { x: number; y: number } => ({ x: x + dx, y: y + dy });
+  elsewhere.add({ polygons: [[corner(-10, -10), corner(10, -10), corner(10, 10), corner(-10, 10)]], clip: null });
+  const mask = saveExploredMask(elsewhere.toCanvas());
+  elsewhere.destroy();
+  return mask;
+}
 
 describe('LightingRenderer explored memory loads', () => {
   let harness: Harness | null = null;
@@ -57,6 +70,24 @@ describe('LightingRenderer explored memory loads', () => {
     change({ objects: { ...state.objects, tokens: { t: visionToken(120) } } });
     vi.advanceTimersByTime(SAVE_DELAY);
     expect(setExploredMask).toHaveBeenCalledTimes(1);
+  });
+
+  it('says it took nothing in while the context is lost, and adds to what it holds once it is back', async () => {
+    harness = await createHarness({ patch: { exploredMask: null, ...tokens(visionToken(60, 128, 5)) } });
+    const { renderer, lighting, redAt, settle, tick } = harness;
+    await settle();
+    expect(redAt(60, 128)).toBe(255);
+    expect(redAt(200, 128)).toBe(0);
+    const seenElsewhere = maskSeeing(renderer, 200, 128);
+
+    await resetContext(renderer, () => expect(lighting.takeExplored(seenElsewhere, false)).toBe(false));
+    tick();
+    await settle();
+    expect(redAt(200, 128)).toBe(0);
+
+    expect(lighting.takeExplored(seenElsewhere, false)).toBe(true);
+    await settle();
+    expect(redAt(200, 128)).toBe(255);
   });
 
   it('holds saves from the moment the context is lost, until the reload is done', async () => {

@@ -75,7 +75,7 @@
   width: 8px;
   height: 8px;
   border: $border-width-l solid var(--atlas-loot-tone);
-  border-radius: 2px;
+  border-radius: $radius-s;
   transform: rotate(45deg);
   transition: background-color $transition-fast $transition-ease;
 }

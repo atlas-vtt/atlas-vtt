@@ -4,6 +4,9 @@ import { getDomHost } from '../host/dom';
 /** `$transition-ease-out` as control points, for Motion's `ease` and `cubicBezier`. */
 export const EASE_OUT_CONTROL_POINTS = [0.23, 1, 0.32, 1] as const;
 
+/** `$transition-ease` as control points, for Motion's `ease`: a change of colour or opacity, gentle at both ends. */
+export const EASE_CONTROL_POINTS = [0.4, 0, 0.2, 1] as const;
+
 /** `$transition-ease-out`: entering and leaving elements. */
 export const MOTION_EASE_OUT = `cubic-bezier(${EASE_OUT_CONTROL_POINTS.join(', ')})`;
 /** `$transition-fast` */

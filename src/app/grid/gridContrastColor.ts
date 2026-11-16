@@ -1,6 +1,6 @@
 import { grayFromCanvasSource } from '../pixi/spectralEngine/grayImage';
 import type { GrayImage } from '../pixi/spectralEngine/grayImage';
-import type { MapPixels } from '../pixi/mapImage/mapImageView';
+import type { MapPixels } from '../pixi/mosaicCanvas/mosaicCanvasView';
 
 const BLACK = 0x000000;
 const WHITE = 0xffffff;

@@ -92,6 +92,31 @@ describe('holdHeadingInView', () => {
     expect(onSettled).toHaveBeenCalledWith(null);
   });
 
+  it('leaves the heading to the view once it was never drawn in time', () => {
+    const note = fakeNote();
+    const scrollOnceDrawn = vi.fn();
+    holdHeadingInView({ container: note.container, findHeading: note.find, scrollToLine: vi.fn(), scrollOnceDrawn }, vi.fn());
+
+    vi.advanceTimersByTime(FRAME_MS * 70);
+    expect(scrollOnceDrawn).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves a drawn heading and a reader who took over the scroll alone', () => {
+    const drawn = fakeNote();
+    drawn.draw(5000);
+    const whenDrawn = vi.fn();
+    holdHeadingInView({ container: drawn.container, findHeading: drawn.find, scrollToLine: vi.fn(), scrollOnceDrawn: whenDrawn }, vi.fn());
+    vi.advanceTimersByTime(FRAME_MS * 70);
+    expect(whenDrawn).not.toHaveBeenCalled();
+
+    const reading = fakeNote();
+    const whenReading = vi.fn();
+    holdHeadingInView({ container: reading.container, findHeading: reading.find, scrollToLine: vi.fn(), scrollOnceDrawn: whenReading }, vi.fn());
+    reading.scroller.dispatchEvent(new WheelEvent('wheel', { bubbles: true }));
+    vi.advanceTimersByTime(FRAME_MS * 70);
+    expect(whenReading).not.toHaveBeenCalled();
+  });
+
   it('leaves the scroll to the reader once they scroll', () => {
     const note = fakeNote();
     note.draw(5000);

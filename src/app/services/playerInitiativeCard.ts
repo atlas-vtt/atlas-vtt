@@ -2,6 +2,7 @@ import { setIcon } from 'obsidian';
 import { createTokenPortrait } from '../packages/components/shared/tokenPortraitElement';
 import { createConditionBadge } from '../packages/components/shared/conditionBadgeElement';
 import { hasInitiative } from '../initiative/awaitingInitiative';
+import { nameShownToPlayers } from '../pixi/token-renderer/nameplateVisibility';
 import type { ActiveCondition } from '../utils/activeConditions';
 import type { Combatant, PlayerInitiativeLook } from './playerInitiativeList';
 import { t } from '../i18n';
@@ -14,7 +15,8 @@ const CONDITION_SIZE = 18;
 
 /**
  * One combatant of the players' list: its portrait as the map draws its token, the number its
- * badge shows players, its initiative (a dash while it has none), name, hit points and conditions.
+ * badge shows players, its initiative (a dash while it has none), name (a placeholder where the GM's map
+ * shows none), hit points and conditions.
  * `combatActive` marks the combatant whose turn it is; `value` is its number, the card it was
  * dealt in a fight by cards (a dash before one is), or none by sides.
  */
@@ -27,8 +29,10 @@ export function renderPlayerCard(parent: HTMLElement, { entry, token }: Combatan
   if (entry.sitsOut) card.addClass('atlas-player-initiative__card--sitting-out');
   if (entry.delayed) card.addClass('atlas-player-initiative__card--delayed');
   const src = entry.imagePath ? look.portraitSrc(entry.imagePath) : null;
+  // A combatant the GM's map leaves unnamed shows a placeholder for its name
+  const name = nameShownToPlayers(entry.name, token, look.mapShowsNameplates, look.showNames);
   const portrait = src
-    ? createTokenPortrait(card, { src, alt: look.showNames ? entry.name : '', cls: 'atlas-player-initiative__avatar', showRing: token.showRing, ringColor: token.ringColor })
+    ? createTokenPortrait(card, { src, alt: name === entry.name ? name : '', cls: 'atlas-player-initiative__avatar', showRing: token.showRing, ringColor: token.ringColor })
     : null;
   const badge = look.badgeNumber?.(entry.tokenId) ?? null;
   if (badge !== null) (portrait ?? card).createSpan({ cls: 'atlas-player-initiative__badge', text: String(badge) });
@@ -36,9 +40,7 @@ export function renderPlayerCard(parent: HTMLElement, { entry, token }: Combatan
   // A combatant without a number yet shows a dash, not a 0 nobody rolled
   if (value === 'number') card.createSpan({ cls: 'atlas-player-initiative__value', text: hasInitiative(entry) ? String(entry.initiative) : '–' });
   if (value === 'card') card.createSpan({ cls: 'atlas-player-initiative__value atlas-player-initiative__card-dealt', text: entry.card === undefined ? '–' : String(entry.card) });
-  if (look.showNames) {
-    card.createSpan({ cls: 'atlas-player-initiative__name', text: entry.name });
-  }
+  if (name !== null) card.createSpan({ cls: 'atlas-player-initiative__name', text: name });
   const { hp } = token;
   if (hp && hp.max > 0) {
     card.createEl('progress', {

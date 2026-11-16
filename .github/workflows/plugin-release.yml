@@ -1,8 +1,10 @@
 name: Prepare Plugin Release
 
 # Builds nothing: the draft carries the build that Plugin CI tested on the push
-# of this exact commit to `main`. Without a successful run for the commit the
-# workflow stops; it never tests or builds again.
+# of this exact commit to `release/x.y.z`. Without a successful run for the commit
+# the workflow stops; it never tests or builds again. The release comes before the
+# merge, since Obsidian offers what the manifest on `main` names at once and the
+# download must be there by then (see Release Gate).
 
 on:
   workflow_dispatch:
@@ -44,11 +46,13 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      - name: Verify stable version from main
+      - name: Verify stable version from its release branch
         run: |
           node scripts/release-channel.js --expect stable
           test "$RELEASE_VERSION" = "$(node -p "require('./manifest.json').version")" || { echo "::error::Input version $RELEASE_VERSION does not match manifest.json"; exit 1; }
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::Stable releases are only prepared from commits on main. Promote beta first."; exit 1; }
+          test "$GITHUB_REF" = "refs/heads/release/$RELEASE_VERSION" || { echo "::error::Run this on the branch release/$RELEASE_VERSION, not on $GITHUB_REF."; exit 1; }
+          # With main in its history, merging the branch puts on main exactly what is released
+          git merge-base --is-ancestor origin/main "$GITHUB_SHA" || { echo "::error::Merge main into release/$RELEASE_VERSION first."; exit 1; }
 
       - name: Refuse published releases or drafts from another commit
         run: |
@@ -60,21 +64,21 @@ jobs:
             test "$(git rev-list -n 1 "$RELEASE_VERSION")" = "$GITHUB_SHA"
           fi
 
-      # Only a push run of this repository on `main` qualifies: pull request
-      # runs, forks included, build a merge commit nobody released.
-      - name: Find the Plugin CI run that tested this commit on main
+      # Only a push run of this repository on the release branch qualifies: pull
+      # request runs, forks included, build a merge commit nobody released.
+      - name: Find the Plugin CI run that tested this commit on its release branch
         id: ci
         run: |
           gh api -X GET "repos/$GH_REPO/actions/workflows/plugin-ci.yml/runs" \
-            -f head_sha="$GITHUB_SHA" -f event=push -f branch=main -f per_page=20 > ci-runs.json
-          run_id="$(jq -r --arg sha "$GITHUB_SHA" --arg repo "$GH_REPO" '
+            -f head_sha="$GITHUB_SHA" -f event=push -f branch="$GITHUB_REF_NAME" -f per_page=20 > ci-runs.json
+          run_id="$(jq -r --arg sha "$GITHUB_SHA" --arg branch "$GITHUB_REF_NAME" --arg repo "$GH_REPO" '
             [.workflow_runs[]
-              | select(.head_sha == $sha and .event == "push" and .head_branch == "main"
+              | select(.head_sha == $sha and .event == "push" and .head_branch == $branch
                        and .head_repository.full_name == $repo and .conclusion == "success")]
             | first | .id // empty' ci-runs.json)"
           if [ -z "$run_id" ]; then
             jq -r '.workflow_runs[] | "  run \(.id): \(.status) \(.conclusion // "")"' ci-runs.json
-            echo "::error::No successful Plugin CI run on main for $GITHUB_SHA. Wait for the push run to finish (or re-run it if it failed), then run this workflow again."
+            echo "::error::No successful Plugin CI run on $GITHUB_REF_NAME for $GITHUB_SHA. Wait for the push run to finish (or re-run it if it failed), then run this workflow again."
             exit 1
           fi
           echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
@@ -113,4 +117,4 @@ jobs:
           gh release upload "$RELEASE_VERSION" release/main.js release/manifest.json release/styles.css --clobber
           gh release view "$RELEASE_VERSION" --json assets --jq '[.assets[].name] | sort' > attached-assets.json
           jq -e '. == ["main.js", "manifest.json", "styles.css"]' attached-assets.json
-          echo "Draft $RELEASE_VERSION is ready for review and manual publication." >> "$GITHUB_STEP_SUMMARY"
+          echo "Draft $RELEASE_VERSION is ready for review and manual publication. Merge the release pull request right after publishing." >> "$GITHUB_STEP_SUMMARY"

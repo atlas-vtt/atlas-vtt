@@ -1,11 +1,12 @@
+import { t } from '../../i18n';
 /** Online play's commands. Each is offered only while online play is switched on and has something to do. */
 export const ONLINE_COMMANDS = [
-  { id: 'start-online-table', name: 'Start online table' },
-  { id: 'toggle-online-panel', name: 'Toggle online panel' },
-  { id: 'copy-online-table-link', name: 'Copy online table link' },
-  { id: 'make-selected-player-tokens', name: 'Make selected tokens player tokens' },
-  { id: 'make-selected-gm-tokens', name: 'Make selected tokens GM tokens' },
-  { id: 'stop-online-table', name: 'Stop online table' },
+  { id: 'start-online-table', name: t('online.command.startTable') },
+  { id: 'toggle-online-panel', name: t('online.command.togglePanel') },
+  { id: 'copy-online-table-link', name: t('online.command.copyLink') },
+  { id: 'make-selected-player-tokens', name: t('online.command.makePlayer') },
+  { id: 'make-selected-gm-tokens', name: t('online.command.makeGm') },
+  { id: 'stop-online-table', name: t('online.command.stopTable') },
 ] as const;
 
 export type OnlineCommandId = (typeof ONLINE_COMMANDS)[number]['id'];

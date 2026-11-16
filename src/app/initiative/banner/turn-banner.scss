@@ -70,7 +70,7 @@ $turn-banner-title-width: 240px;
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(100% + #{$spacing-s});
+  bottom: calc(100% + #{$spacing-s} + var(--atlas-toolbar-lift, 0px));
   display: flex;
   justify-content: center;
   pointer-events: none;

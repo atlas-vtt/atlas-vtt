@@ -16,7 +16,7 @@ import {
   FlaskConical,
   Grid,
   Settings,
-  Snowflake,
+  Pause,
   MonitorUp,
   MonitorPlay,
   AppWindow,
@@ -25,7 +25,11 @@ import {
   Palette,
   UserCheck,
   History,
-} from 'lucide-react';
+  Layers,
+  Replace, Gauge, SunMoon } from 'lucide-react';
+import { runInBackground } from '../../utils/backgroundTask';
+import { viewedLevelId } from '../../levels/sceneLevels';
+import { collectionIdOfPath } from '../../services/assetPaths';
 import { CoinIcon } from './CoinIcon';
 
 import { useStore } from 'zustand';
@@ -40,16 +44,21 @@ import { isShortcutScopeActive } from '../../utils/activeLeafGuard';
 import { EASE_OUT_CONTROL_POINTS as EASE_OUT } from '../../utils/motion';
 import { Button } from '../../packages/components/primitives/button';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
-import { OverlayScroll } from '../../packages/components/primitives/OverlayScroll';
 import { CommandItem } from './command-palette/CommandItem';
 import { SettingsPanelHeader } from './command-palette/SettingsPanelHeader';
 import { GridSettingsPanel } from './command-palette/GridSettingsPanel';
 import { TokenSettingsPanel } from './command-palette/TokenSettingsPanel';
 import { WidgetSettingsPanel } from './command-palette/WidgetSettingsPanel';
-import { LocalPlayerViewSettingsPanel } from './command-palette/LocalPlayerViewSettingsPanel';
+import { PlayerViewSettingsPanel } from './command-palette/PlayerViewSettingsPanel';
+import { searchOptions } from './command-palette/paletteSearch';
 import { DiceSettingsPanel } from './command-palette/DiceSettingsPanel';
 import { ExperimentalFeaturesPanel } from './command-palette/ExperimentalFeaturesPanel';
+import { GraphicsPanel } from './command-palette/GraphicsPanel';
+import { LightingSettingsPanel } from './command-palette/LightingSettingsPanel';
 import { SceneSnapshotsPanel } from './command-palette/SceneSnapshotsPanel';
+import { SceneLevelsPanel } from './command-palette/SceneLevelsPanel';
+import { replaceMapImage } from './levels/replaceMapImage';
+import { pickMapImage } from './levels/MapImagePickerModal';
 import { placePalette, type PalettePosition } from './command-palette/palettePlacement';
 import { customizeToolbarCommand } from './command-palette/customizeToolbarCommand';
 import { isSettingsPanelId, type CommandOption, type SettingsPanelId } from './command-palette/types';
@@ -82,12 +91,15 @@ const paletteVariants = {
 
 const SETTINGS_PANEL_META: Record<SettingsPanelId, { title: string; icon: React.ReactNode }> = {
   'scene-snapshots': { title: t('palette.panel.snapshots'), icon: <History /> },
+  'scene-levels': { title: t('palette.panel.levels'), icon: <Layers /> },
   'grid-settings': { title: t('palette.panel.grid'), icon: <Grid /> },
   'token-settings': { title: t('palette.panel.tokens'), icon: <Users /> },
   'widget-settings': { title: t('palette.panel.widgets'), icon: <Palette /> },
-  'local-player-view-settings': { title: t('palette.panel.localPlayerView'), icon: <MonitorUp /> },
+  'local-player-view-settings': { title: t('palette.panel.playerView'), icon: <MonitorUp /> },
   'dice-settings': { title: t('diceSettings.title'), icon: <Dices /> },
   'experimental-features': { title: 'Experimental Features', icon: <FlaskConical /> },
+  'graphics-settings': { title: t('graphics.title'), icon: <Gauge /> },
+  'lighting-settings': { title: t('sceneLight.settings'), icon: <SunMoon /> },
 };
 
 export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar }: CommandPaletteProps): React.ReactElement | null {
@@ -264,6 +276,30 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       submenu: [],
     },
     {
+      id: "scene-levels",
+      icon: <Layers />,
+      label: t('palette.sceneLevels'),
+      keywords: ["floors", "storeys", "stories", "upstairs", "basement", "elevation"],
+      section: "tools",
+      hasSubmenu: true,
+      submenu: [],
+    },
+    {
+      id: "replace-map-image",
+      icon: <Replace />,
+      label: t('palette.replaceMapImage'),
+      keywords: ["swap", "gridless", "gridded", "video", "animated", "background"],
+      section: "tools",
+      action: () => {
+        onClose();
+        const state = store.getState();
+        const levelId = viewedLevelId(state);
+        runInBackground(pickMapImage(app, collectionIdOfPath(state.mapPath), (path) => {
+          if (path) runInBackground(replaceMapImage(app, store, levelId, path), 'Replacing the map image');
+        }), 'Picking a map image');
+      },
+    },
+    {
       id: "open-dice-log",
       icon: <Dices />,
       label: t('palette.openDiceLog'),
@@ -302,7 +338,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     },
     {
       id: "freeze-player-camera",
-      icon: <Snowflake />,
+      icon: <Pause />,
       label: t('palette.freezePlayerCamera'),
       section: "mode",
       action: () => {
@@ -391,8 +427,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "local-player-view-settings",
       icon: <UserCheck />,
-      label: t('palette.localPlayerViewSettings'),
+      label: t('palette.playerViewSettings'),
       section: "settings",
+      keywords: ["players", "player window", "online", "cursors", "draw", "4k", "tv", "nameplates", "resources", "widgets", "initiative", "dice"],
       hasSubmenu: true,
       submenu: [
         {
@@ -422,6 +459,40 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       ],
     },
     {
+      id: "lighting-settings",
+      icon: <SunMoon />,
+      label: t('sceneLight.settings'),
+      keywords: ["lighting", "light", "vision", "sight", "explored", "memory", "fog of war", "darkvision", "dark", "tint"],
+      section: "settings",
+      hasSubmenu: true,
+      submenu: [
+        {
+          id: "lighting-all-settings",
+          icon: null,
+          label: t('sceneLight.settingsHint'),
+          section: "lighting",
+          hasSubmenu: false,
+        },
+      ],
+    },
+    {
+      id: "graphics-settings",
+      icon: <Gauge />,
+      label: t('graphics.command'),
+      keywords: ["graphics", "quality", "performance", "lighting", "gpu", "battery", "fps", "bounce", "flicker", "saver", "balanced"],
+      section: "settings",
+      hasSubmenu: true,
+      submenu: [
+        {
+          id: "graphics-all-settings",
+          icon: null,
+          label: t('graphics.commandHint'),
+          section: "graphics",
+          hasSubmenu: false,
+        },
+      ],
+    },
+    {
       id: "experimental-features",
       icon: <FlaskConical />,
       label: "Experimental features",
@@ -443,9 +514,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
 
   // Derive rows from current state so open-menu toggles stay in sync.
   const showingSubmenu = !!activeSubmenu && submenuOptions.length > 0;
-  const filteredOptions = (showingSubmenu ? submenuOptions : commandOptions).filter((option) =>
-    [option.label, ...(option.keywords ?? [])].some(text => text.toLowerCase().includes(searchQuery.toLowerCase())) &&
-    (showingSubmenu || activeTab === "all" || option.section === activeTab)
+  const filteredOptions = searchOptions(
+    (showingSubmenu ? submenuOptions : commandOptions).filter((option) => showingSubmenu || activeTab === "all" || option.section === activeTab),
+    searchQuery,
   );
 
   // Tab order for forward and backward keyboard cycling
@@ -496,7 +567,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     if (!isOpen) return;
     setSearchQuery("");
     setActiveTab("all");
-    setActiveSubmenu(null);
+    // A page asked for with the opening (a menu's "Graphics settings…" row) is opened in place of the list.
+    const page = store.getState().commandPalettePage;
+    setActiveSubmenu(isSettingsPanelId(page) ? page : null);
     setSubmenuOptions([]);
     setIsTemporarilyHidden(false);
     if (filteredOptions.length > 0) {
@@ -684,54 +757,53 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
 
   // Close on click outside
   useEffect(() => {
-    const handleMouseDown = (e: MouseEvent): void => {
-      // Don't handle outside clicks when temporarily hidden
-      if (isTemporarilyHidden) {
-        return;
+    if (!isOpen || isTemporarilyHidden) return;
+
+    const isOutsidePress = (target: Element | null): boolean => {
+      if (target?.closest?.('.atlas-onboarding-overlay')) return false;
+      // Dialogs opened from a page (naming or deleting a snapshot) sit outside the palette.
+      if (target?.closest?.('.atlas-text-dialog-backdrop')) return false;
+
+      // Don't close if clicking on Obsidian menu elements
+      if (target?.closest?.('.menu') ||
+          target?.closest?.('.obsidian-menu') ||
+          target?.closest?.('[class*="menu"]') ||
+          target?.classList?.contains('menu-item') ||
+          target?.classList?.contains('clickable-icon') ||
+          // Check if target is within any dropdown that might be open
+          target?.closest?.('.atlas-obsidian-menu-dropdown')) {
+        return false;
       }
 
-      // Add a small delay to allow dropdown menus to properly handle their events first
-      window.setTimeout(() => {
-        const target = e.target as Element;
-        if (target?.closest?.('.atlas-onboarding-overlay')) return;
-        // Dialogs opened from a page (naming or deleting a snapshot) sit outside the palette.
-        if (target?.closest?.('.atlas-text-dialog-backdrop')) return;
+      // Allow interaction with grid settings without closing
+      if (activeSubmenu === 'grid-settings' &&
+          (target?.closest?.('.atlas-command-palette-grid-settings') ||
+           target?.closest?.('[role="slider"]') ||
+           target?.closest?.('.atlas-command-palette-custom-content'))) {
+        return false;
+      }
 
-        // Don't close if clicking on Obsidian menu elements
-        if (target?.closest?.('.menu') ||
-            target?.closest?.('.obsidian-menu') ||
-            target?.closest?.('[class*="menu"]') ||
-            target?.classList?.contains('menu-item') ||
-            target?.classList?.contains('clickable-icon') ||
-            // Check if target is within any dropdown that might be open
-            target?.closest?.('.atlas-obsidian-menu-dropdown')) {
-          return;
-        }
-
-        // Also don't close if we're in grid settings and clicking on grid setting controls
-        if (activeSubmenu === 'grid-settings') {
-          // Allow interaction with grid settings without closing
-          if (target?.closest?.('.atlas-command-palette-grid-settings') ||
-              target?.closest?.('[role="slider"]') ||
-              target?.closest?.('.atlas-command-palette-custom-content')) {
-            return;
-          }
-        }
-
-        if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-          if (toolbarRef?.current && !toolbarRef.current.contains(e.target as Node)) {
-            onClose();
-          }
-        }
-      }, 10); // Small delay to allow menu events to complete
+      return !!containerRef.current && !containerRef.current.contains(target) &&
+        !!toolbarRef?.current && !toolbarRef.current.contains(target);
     };
 
-    if (isOpen && !isTemporarilyHidden) {
-      document.addEventListener("mousedown", handleMouseDown);
-    }
+    const timers = new Set<number>();
+    const handleMouseDown = (e: MouseEvent): void => {
+      // Decided at the press: by the time the close runs, the click may already have
+      // replaced the pressed entry (one that opens a page), which then lies in no container.
+      if (!isOutsidePress(e.target as Element | null)) return;
+      // A small delay lets dropdown menus handle their events first.
+      const timer = window.setTimeout(() => {
+        timers.delete(timer);
+        onClose();
+      }, 10);
+      timers.add(timer);
+    };
 
+    document.addEventListener("mousedown", handleMouseDown);
     return () => {
       document.removeEventListener("mousedown", handleMouseDown);
+      timers.forEach(timer => window.clearTimeout(timer));
     };
   }, [isOpen, isTemporarilyHidden, onClose, toolbarRef, activeSubmenu]);
 
@@ -775,7 +847,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   ].map((section) => ({
     ...section,
     options: filteredOptions.filter((option) => option.section === section.id),
-  }));
+  }))
+    // In the order the results hold them: the section of the best match first
+    .sort((a, b) => filteredOptions.indexOf(a.options[0]!) - filteredOptions.indexOf(b.options[0]!));
 
   // Render command item wrapper that handles submenu clicks
   const renderCommandItem = (option: CommandOption): React.ReactElement => {
@@ -799,6 +873,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     switch (panel) {
       case 'scene-snapshots':
         return <SceneSnapshotsPanel onRestore={onClose} />;
+      case 'scene-levels':
+        return <SceneLevelsPanel />;
       case 'grid-settings':
         return (
           <GridSettingsPanel
@@ -833,11 +909,15 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
           />
         );
       case 'local-player-view-settings':
-        return <LocalPlayerViewSettingsPanel />;
+        return <PlayerViewSettingsPanel />;
       case 'dice-settings':
         return <DiceSettingsPanel />;
       case 'experimental-features':
         return <ExperimentalFeaturesPanel />;
+      case 'graphics-settings':
+        return <GraphicsPanel />;
+      case 'lighting-settings':
+        return <LightingSettingsPanel />;
     }
   };
 
@@ -898,6 +978,12 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
                             <Move />
                             {t('palette.enterAlignment')}
                           </Button>
+                        ) : activePanel === 'lighting-settings' ? (
+                          // How much the picture may cost this device is the Graphics page's.
+                          <Button variant="ghost" size="sm" onClick={() => setActiveSubmenu('graphics-settings')}>
+                            <Gauge />
+                            {t('graphics.command')}
+                          </Button>
                         ) : undefined
                       }
                     />
@@ -943,9 +1029,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
                     </>
                   )}
 
-                  <OverlayScroll
+                  <div
                     ref={optionsContainerRef}
-                    frameClassName="atlas-command-palette-options-frame"
                     className="atlas-command-palette-options"
                     onMouseMove={handleMouseMove}
                   >
@@ -970,7 +1055,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
                         )}
                       </div>
                     )}
-                  </OverlayScroll>
+                  </div>
 
                   {!activePanel && (
                     <div className="atlas-command-palette-footer">

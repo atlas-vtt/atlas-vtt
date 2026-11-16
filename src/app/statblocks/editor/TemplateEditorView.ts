@@ -18,6 +18,7 @@ import type { KeyHandler } from './template-editor/useTemplateKeyboard';
 import {
   TEMPLATE_EDITOR_VIEW_TYPE, readTemplateEditorEphemeral, readTemplateEditorState, type TemplateEditorEphemeral,
 } from './templateEditorState';
+import { t } from '../../i18n';
 
 /**
  * Keys Obsidian or the browser would take before any listener of the editor
@@ -79,7 +80,7 @@ export class TemplateEditorView extends FileView {
 
   getDisplayText(): string {
     const id = this.builtInId;
-    return this.session?.getSnapshot().name ?? this.file?.basename ?? (id ? TemplateLibrary.forApp(this.app).get(id)?.name : null) ?? 'Statblock template';
+    return this.session?.getSnapshot().name ?? this.file?.basename ?? (id ? TemplateLibrary.forApp(this.app).get(id)?.name : null) ?? t('statblockEditor.templateTitle');
   }
 
   getIcon(): string {
@@ -189,7 +190,7 @@ export class TemplateEditorView extends FileView {
    */
   private async save(request: SaveRequest): Promise<string | null> {
     const session = this.session;
-    if (!session) return 'The template is closed.';
+    if (!session) return t('statblockEditor.templateClosed');
     const outcome = await saveTemplate(this.app, session, request, this.fromNote);
     if (!outcome.ok) return outcome.problem;
     if (outcome.made) {

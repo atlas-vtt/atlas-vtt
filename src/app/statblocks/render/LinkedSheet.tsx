@@ -12,9 +12,11 @@ import { AUTO_TEMPLATE_ID } from '../model/autoTemplate';
 import type { ResolvedStatblock } from '../model/resolvedTypes';
 import type { StatblockTemplate } from '../model/templateTypes';
 import { withoutFormerKeys } from '../resolve/fieldMeanings';
+import { PressableCounters } from './shared/noteCounters';
 import { useTokenPortrait } from './shared/tokenPortrait';
 import type { SheetVariant, StatblockTokenContext } from './sheetTypes';
 import { StatblockSheet } from './StatblockSheet';
+import { t } from '../../i18n';
 import './linked-statblock.scss';
 
 /** A resolved statblock that Atlas draws itself: it has a template. */
@@ -34,6 +36,8 @@ export interface LinkedSheetProps {
   tokenActions?: StatblockTokenActions | undefined;
   /** Offered where the note's template is missing; not offered without it. */
   onChooseTemplate?: ((path: string) => void) | undefined;
+  /** A press on a Counters pip writes the note (a vault note's hover preview, the DM screen); native statblocks only. */
+  pressableCounters?: boolean | undefined;
   className?: string | undefined;
 }
 
@@ -47,14 +51,14 @@ function monsterOf({ fields, template }: DrawnStatblock): StatblockMonster {
 function TemplateNotice({ statblock, onChooseTemplate }: Pick<LinkedSheetProps, 'statblock' | 'onChooseTemplate'>): React.JSX.Element | null {
   switch (statblock.templateStatus) {
     case 'auto':
-      return <p className="atlas-linked-statblock__caption">Shown with Atlas&apos; field layout</p>;
+      return <p className="atlas-linked-statblock__caption">{t('statblockEditor.autoLayout')}</p>;
     case 'missing':
       return (
         <div className="atlas-linked-statblock__bar">
-          <span className="atlas-linked-statblock__bar-text">Template not found</span>
+          <span className="atlas-linked-statblock__bar-text">{t('statblockEditor.templateMissing')}</span>
           {onChooseTemplate && (
             <Button type="button" variant="ghost" size="sm" onClick={() => onChooseTemplate(statblock.path)}>
-              Choose a template
+              {t('statblockEditor.chooseTemplate')}
             </Button>
           )}
         </div>
@@ -62,7 +66,7 @@ function TemplateNotice({ statblock, onChooseTemplate }: Pick<LinkedSheetProps, 
     case 'newer':
       return (
         <div className="atlas-linked-statblock__bar">
-          <span className="atlas-linked-statblock__bar-text">Made with a newer Atlas</span>
+          <span className="atlas-linked-statblock__bar-text">{t('statblockEditor.newerAtlas')}</span>
         </div>
       );
     default:
@@ -88,7 +92,9 @@ function useTokenContext(app: App, tokens: TokenVitals[], definitions: readonly 
 }
 
 /** A statblock drawn with its template (or the auto template) through `StatblockSheet`. */
-export function LinkedSheet({ app, statblock, variant, tokens, viewId, originContext, tokenActions, onChooseTemplate, className }: LinkedSheetProps): React.JSX.Element {
+export function LinkedSheet({
+  app, statblock, variant, tokens, viewId, originContext, tokenActions, onChooseTemplate, pressableCounters, className,
+}: LinkedSheetProps): React.JSX.Element {
   const token = useTokenContext(app, tokens, tokenActions?.definitions);
   // The DM screen draws as boxes and names what the template's Track blocks and Scores slots do.
   const look = useMemo(() => templateQuantityLook(statblock.template), [statblock.template]);
@@ -96,22 +102,25 @@ export function LinkedSheet({ app, statblock, variant, tokens, viewId, originCon
     ? <StatblockTokenResources monster={monsterOf(statblock)} look={look} tokens={tokens} {...tokenActions} />
     : undefined;
 
+  const sheet = (
+    <StatblockSheet
+      template={statblock.template}
+      name={statblock.lookName ?? AUTO_TEMPLATE_ID}
+      fields={statblock.fields}
+      variant={variant}
+      token={token}
+      rollTokens={tokens}
+      viewId={viewId}
+      originContext={originContext}
+      app={app}
+      sourcePath={statblock.path}
+      header={<TemplateNotice statblock={statblock} onChooseTemplate={onChooseTemplate} />}
+      footer={footer}
+    />
+  );
   return (
     <div className={cn('atlas-fantasy-statblock', 'atlas-linked-statblock', className)} data-template-status={statblock.templateStatus ?? undefined}>
-      <StatblockSheet
-        template={statblock.template}
-        name={statblock.lookName ?? AUTO_TEMPLATE_ID}
-        fields={statblock.fields}
-        variant={variant}
-        token={token}
-        rollTokens={tokens}
-        viewId={viewId}
-        originContext={originContext}
-        app={app}
-        sourcePath={statblock.path}
-        header={<TemplateNotice statblock={statblock} onChooseTemplate={onChooseTemplate} />}
-        footer={footer}
-      />
+      {pressableCounters ? <PressableCounters app={app} statblock={statblock}>{sheet}</PressableCounters> : sheet}
     </div>
   );
 }

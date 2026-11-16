@@ -3,7 +3,8 @@ import type { App, TFile } from 'obsidian';
 import { CampaignPlay } from '../../src/app/campaigns/campaignPlay';
 import { QuestIndex } from '../../src/app/campaigns/quests/QuestIndex';
 import { sha256Hex } from '../../src/app/online/gm/assetServe';
-import { MAX_ASSET_BYTES, MAX_QUEST_BODY, parsePlayerBook, readQuestText, TEXT_MIME_TYPE, type BookQuest } from '../../src/app/online/protocol/index.ts';
+import { ASSET_CAPS, MAX_QUEST_BODY, readQuestText, TEXT_MIME_TYPE } from '../../src/app/online/protocol/index.ts';
+import type { HandedQuest } from '../../src/app/online/gm/book/questGate';
 import { campaignQuestGate } from '../../src/app/plugin/campaignQuestGate';
 import { memoryCampaigns } from '../mocks/memoryCampaigns';
 import { questVault, type QuestVault } from '../mocks/questVault';
@@ -48,10 +49,10 @@ function setUp(files: Record<string, string>, images: Record<string, Uint8Array<
   return { vault, images: binaries, gate: campaignQuestGate(vault.app, () => play, () => storage, () => index) };
 }
 
-const byTitle = (quests: readonly BookQuest[], title: string): BookQuest | undefined => quests.find((quest) => quest.title === title);
+const byTitle = (quests: readonly HandedQuest[], title: string): HandedQuest | undefined => quests.find((quest) => quest.title === title);
 
 describe('a quest\'s whole text', () => {
-  it('reaches the book whole by hash, however long, in any script, while its opening stays within the book\'s limit and ends at a word', async () => {
+  it('is handed on whole by hash, however long, in any script, while its opening stays within the book\'s limit and ends at a word', async () => {
     const long = `Read this. %%The GM's secret.%%\n\n${'word '.repeat(10_000)}\n\nThe end.`;
     const script = `${'Über dem Fluss: Frösche 🐸 und Kröten. '.repeat(1_300)}Ende.`;
     const { gate } = setUp({ 'Q/Long.md': note('Blood Olms', long), 'Q/Script.md': note('Blood Olms', script), 'Q/Short.md': note('Blood Olms', 'Go down.') });
@@ -73,7 +74,8 @@ describe('a quest\'s whole text', () => {
     // A short text is its own opening: nothing more to fetch.
     expect(byTitle(quests, 'Short')).toEqual(expect.objectContaining({ body: 'Go down.' }));
     expect(byTitle(quests, 'Short')).not.toHaveProperty('text');
-    expect(parsePlayerBook({ character: null, worldMap: null, items: [], notes: [], pins: [], quests, purse: [] })?.quests).toEqual(quests);
+    // Handed on by hash: the table's books store the text and name it by its id.
+    expect(byTitle(quests, 'Long')?.text).not.toHaveProperty('id');
   });
 
   it('is hashed again only when the note\'s text changes, and is sent as its opening alone past the largest asset', async () => {
@@ -87,14 +89,14 @@ describe('a quest\'s whole text', () => {
     expect(digest).not.toHaveBeenCalled();
     digest.mockRestore();
 
-    vault.write('Q/Long.md', note('Blood Olms', 'é'.repeat(MAX_ASSET_BYTES / 2 + 1)));
+    vault.write('Q/Long.md', note('Blood Olms', 'é'.repeat(ASSET_CAPS.text / 2 + 1)));
     const huge = (await gate.quests())[0];
     expect(huge).not.toHaveProperty('text');
     expect([...(huge?.body ?? '')].length).toBe(MAX_QUEST_BODY);
   });
 });
 
-const expectLength = (quest: BookQuest | undefined): number => quest?.text?.size ?? 0;
+const expectLength = (quest: HandedQuest | undefined): number => quest?.text?.size ?? 0;
 
 describe('the images a quest\'s text embeds', () => {
   it('are the vault images its embeds name, by hash, with their size; never a remote image, another note or a file that is no image', async () => {

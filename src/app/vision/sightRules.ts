@@ -17,6 +17,12 @@ export interface SightRules {
    * statblock (`tokenSensesResolver`).
    */
   visionOf?: (token: TokenEntity) => TokenSight;
+  /**
+   * Whether a token is defeated (a resource that defeats it is spent): it gives no sight and is not always shown
+   * (`sightPolicyFor`). Unset, no token is. Compared by identity, so the same test is kept while the resources that
+   * defeat stay the same.
+   */
+  defeated?: (token: TokenEntity) => boolean;
 }
 
 /** How one token perceives, as sight reads it. */
@@ -36,11 +42,12 @@ function effectsKey(conditions: readonly ConditionDefinition[]): string {
   }).sort().join('\n');
 }
 
-/** Whether sight works out the same by two sets of rules: the same senses, the same conditions that change sight, the same way of asking how a token perceives. */
+/** Whether sight works out the same by two sets of rules: the same senses, the same conditions that change sight, the same way of asking how a token perceives and whether it is defeated. */
 export function sameSightRules(a: SightRules, b: SightRules): boolean {
   return (a.definitions === b.definitions || sameSenses(a.definitions, b.definitions))
     && effectsKey(a.conditions) === effectsKey(b.conditions)
-    && a.visionOf === b.visionOf;
+    && a.visionOf === b.visionOf
+    && a.defeated === b.defeated;
 }
 
 /** A scene without a collection: the generic senses, no conditions. */

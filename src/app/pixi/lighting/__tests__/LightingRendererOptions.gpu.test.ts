@@ -4,7 +4,7 @@ import type { LightingEngine } from '../engine/LightingEngine';
 import { renderThroughEngine, type PixelReader } from '../engine/__tests__/gpuTestUtils';
 import { SAVE_DELAY, SIZE, createHarness, tokens, until, visionToken, type Harness } from './rendererHarness';
 import { LIGHTING_QUALITY, type LightingQuality } from '../../../lighting/lightingQuality';
-import type { LightingWorld } from '../engine/LightingWorld';
+import type { EngineWorld } from '../engine/engineWorld';
 
 /** A token at (100, 128) that sees 5 ft (70 px): the rest of the map is out of its sight. */
 const nearSighted = tokens(visionToken(100, 128, 5));
@@ -147,13 +147,15 @@ describe('LightingRenderer scene options', () => {
     });
     await harness.settle();
     const { lighting, redAt } = harness;
-    const world = (): LightingWorld => (lighting as unknown as { engine: { world: LightingWorld } }).engine.world;
+    const world = (): EngineWorld => (lighting as unknown as { engine: { world: EngineWorld } }).engine.world;
     const sight = lighting.currentSight();
     const remembered = redAt(200, 200);
-    expect(world().cascades).not.toBeNull();
+    const before = world();
+    expect(before.picture === 'traced' ? before.cascades : null).not.toBeNull();
     current = LIGHTING_QUALITY.saver;
     for (const listener of listeners) listener();
-    expect(world().cascades).toBeNull();
+    // Saver draws the rule's polygons: a world of its own, with no bounce.
+    expect(world().picture).toBe('polygons');
     expect(lighting.currentSight()).toBe(sight);
     expect(redAt(200, 200)).toBe(remembered);
     // The players' view is lit as before: the token's surroundings show.

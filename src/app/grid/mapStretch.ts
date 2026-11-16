@@ -13,6 +13,12 @@ export interface MapStretch {
   y: number;
   /** Degrees the image lies turned, clockwise on screen, which drawing it turns back; unset is level. */
   rotation?: number;
+  /**
+   * Where the stretched image's box begins in the world, never left of or above its origin; unset is
+   * the origin. Only a level's own alignment sets it (`levels/levelAlignment.ts`): the scene's grid
+   * alignment never moves its image.
+   */
+  offset?: Point | undefined;
 }
 
 export const NO_STRETCH: MapStretch = { x: 1, y: 1 };
@@ -49,7 +55,8 @@ export function readMapStretch(value: unknown): MapStretch {
 }
 
 export function sameStretch(a: MapStretch, b: MapStretch): boolean {
-  return a.x === b.x && a.y === b.y && (a.rotation ?? 0) === (b.rotation ?? 0);
+  return a.x === b.x && a.y === b.y && (a.rotation ?? 0) === (b.rotation ?? 0)
+    && (a.offset?.x ?? 0) === (b.offset?.x ?? 0) && (a.offset?.y ?? 0) === (b.offset?.y ?? 0);
 }
 
 /**
@@ -65,9 +72,19 @@ export function turnedBox(width: number, height: number, stretch: MapStretch): {
   return { cos, sin, box, corner: { x: (width - box.width) / 2, y: (height - box.height) / 2 } };
 }
 
-interface ImageSize {
+export interface ImageSize {
   width: number;
   height: number;
+}
+
+/**
+ * The world an image of `size` drawn with `stretch` fills: from the world's origin, which an image
+ * placed further in (`offset`) leaves a margin before, to the far corner of its stretched box.
+ */
+export function imageWorldRect(size: ImageSize, stretch: MapStretch): { width: number; height: number } {
+  const { box } = turnedBox(size.width, size.height, stretch);
+  const { x: left = 0, y: top = 0 } = stretch.offset ?? {};
+  return { width: left + box.width * stretch.x, height: top + box.height * stretch.y };
 }
 
 /** How points of the world move when the map under them is drawn another way (`movedWithMap`). */
@@ -79,16 +96,16 @@ export function imageToWorld(point: Point, size: ImageSize, stretch: MapStretch)
   const dx = point.x - size.width / 2;
   const dy = point.y - size.height / 2;
   return {
-    x: (size.width / 2 - corner.x + cos * dx + sin * dy) * stretch.x,
-    y: (size.height / 2 - corner.y - sin * dx + cos * dy) * stretch.y,
+    x: (size.width / 2 - corner.x + cos * dx + sin * dy) * stretch.x + (stretch.offset?.x ?? 0),
+    y: (size.height / 2 - corner.y - sin * dx + cos * dy) * stretch.y + (stretch.offset?.y ?? 0),
   };
 }
 
 /** The pixel of an image of `size`, drawn with `stretch`, that lies at a point of the world. */
 export function worldToImage(point: Point, size: ImageSize, stretch: MapStretch): Point {
   const { cos, sin, corner } = turnedBox(size.width, size.height, stretch);
-  const dx = point.x / stretch.x + corner.x - size.width / 2;
-  const dy = point.y / stretch.y + corner.y - size.height / 2;
+  const dx = (point.x - (stretch.offset?.x ?? 0)) / stretch.x + corner.x - size.width / 2;
+  const dy = (point.y - (stretch.offset?.y ?? 0)) / stretch.y + corner.y - size.height / 2;
   return { x: size.width / 2 + cos * dx - sin * dy, y: size.height / 2 + sin * dx + cos * dy };
 }
 

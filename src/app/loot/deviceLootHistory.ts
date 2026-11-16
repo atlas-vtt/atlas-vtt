@@ -48,6 +48,19 @@ export function mergeLootHistories(histories: readonly DeviceLootHistory[]): Loo
 export const withRoll = (own: DeviceLootHistory, roll: LootRoll): DeviceLootHistory =>
   ({ ...own, rolls: [roll, ...own.rolls.filter((entry) => entry.id !== roll.id)].slice(0, LOOT_HISTORY_LIMIT) });
 
+/**
+ * `own` with `roll` in place of the roll of its id, where it stands; a roll of another device
+ * becomes this device's (the merge takes this device's first). A roll no device holds any more
+ * (removed meanwhile) stays gone.
+ */
+export function withReplacedRoll(own: DeviceLootHistory, others: readonly DeviceLootHistory[], roll: LootRoll): DeviceLootHistory {
+  if (own.rolls.some((entry) => entry.id === roll.id)) {
+    return { ...own, rolls: own.rolls.map((entry) => (entry.id === roll.id ? roll : entry)) };
+  }
+  const elsewhere = others.some((history) => history.rolls.some((entry) => entry.id === roll.id));
+  return elsewhere && !own.removed.includes(roll.id) ? withRoll(own, roll) : own;
+}
+
 /** `own` after removing the roll `rollId`: from its own rolls, or marked removed when another device made it. */
 export function withoutRoll(own: DeviceLootHistory, others: readonly DeviceLootHistory[], rollId: string): DeviceLootHistory {
   const elsewhere = others.some((history) => history.rolls.some((roll) => roll.id === rollId));

@@ -263,3 +263,43 @@ describe('resource value popover editing', () => {
     } finally { controls.destroy(); viewport.destroy(); }
   });
 });
+
+describe('what lies at a point of the screen', () => {
+  const context = (): CanvasRenderingContext2D => ({ createLinearGradient: () => ({ addColorStop: vi.fn() }), fillRect: vi.fn(), fillStyle: '' } as unknown as CanvasRenderingContext2D);
+
+  it('names the resource of the bar under it, and none beside the bars', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context());
+    const ui = tokenUI();
+    try {
+      ui.update(hero, 70);
+      ui.getContainer().position.set(300, 200);
+      const slots = ui.getResourceSlots();
+      for (const slot of slots) {
+        const point = belowToken(ui).toGlobal(new Point(slot.left + slot.width / 2, slot.top + slot.height / 2));
+        expect(ui.resourceAt(point)).toBe(slot.key);
+      }
+      const last = slots.at(-1)!;
+      expect(ui.resourceAt(belowToken(ui).toGlobal(new Point(last.left - 40, last.top)))).toBeNull();
+    } finally { ui.destroy(); }
+  });
+
+  it('lights the resource it is told to, on the bar itself, and takes the light away', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context());
+    const ui = tokenUI();
+    try {
+      ui.update(hero, 70);
+      ui.markResource('stress', false);
+      const mark = belowToken(ui).children.find((child) => child instanceof ResourceBarHitArea)!;
+      expect(mark.visible).toBe(true);
+      expect(mark.eventMode).toBe('none');
+
+      ui.markResource('hp', true);
+      const moved = belowToken(ui).children.filter((child) => child instanceof ResourceBarHitArea);
+      expect(moved).toHaveLength(1);
+      expect(moved[0]!.visible).toBe(true);
+
+      ui.markResource(null, false);
+      expect(moved[0]!.visible).toBe(false);
+    } finally { ui.destroy(); }
+  });
+});

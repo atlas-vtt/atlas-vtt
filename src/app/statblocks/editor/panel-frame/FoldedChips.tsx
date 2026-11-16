@@ -2,6 +2,7 @@ import React from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import type { FoldedBlock } from '../../render/foldRule';
+import { t } from '../../../i18n';
 import './folded-chips.scss';
 
 export interface FoldedChipsProps {
@@ -21,7 +22,7 @@ export interface FoldedChipsProps {
 export function FoldedChips({ folded, onUnfold }: FoldedChipsProps): React.JSX.Element | null {
   if (folded.length === 0) return null;
   return (
-    <div className="atlas-sb-folded" role="group" aria-label="Sections this statblock has nothing in">
+    <div className="atlas-sb-folded" role="group" aria-label={t('statblockEditor.emptySections')}>
       {folded.map((block) => (
         <Button
           key={block.blockId}

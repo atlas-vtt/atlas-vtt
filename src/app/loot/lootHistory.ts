@@ -8,6 +8,19 @@ export interface TableResultField {
   value: string;
   /** A column only the GM sees (a rumour's "True?"). */
   hidden?: true;
+  /** A generator's part: its row in the generator, which a reroll rolls again. */
+  row?: number;
+  /** Ids of the roll's draws this part gave (items of Base views it links), which leave with it on a reroll. */
+  items?: string[];
+}
+
+/** The generator a result was rolled from, for rerolling its parts. */
+export interface GeneratorOrigin {
+  path: string;
+  /** Which table of the note, from 0. */
+  index: number;
+  /** The Name part as it rolled, its `{Part}`s not filled yet, to name the result again after a reroll. */
+  name?: string;
 }
 
 /** A number rolled inside a result's text: its dice, its total and where the total stands in the text. */
@@ -31,8 +44,12 @@ export interface TableResult {
   text: string;
   /** The numbers dice in the text rolled, to mark them; absent where none were rolled. */
   rolls?: TableResultRoll[];
-  /** The other columns; `hidden` ones are the GM's. */
+  /** The other columns; `hidden` ones are the GM's. A generator's parts, in row order. */
   fields: TableResultField[];
+  /** Rolled from a generator; an older reader shows it as a Text result. */
+  generator?: GeneratorOrigin;
+  /** Id of the roll's draw that is this result as an item (a generator with a Type part), given from its card. */
+  item?: string;
 }
 
 /**
@@ -82,6 +99,19 @@ function isResultField(value: unknown): value is TableResultField {
     && (value.hidden === undefined || value.hidden === true);
 }
 
+const isIndex = (value: unknown): value is number => isFiniteNumber(value) && Number.isInteger(value) && value >= 0;
+
+/** A saved field with its generator row and item ids kept only where they can be read. */
+function checkedField(field: TableResultField): TableResultField {
+  const { row, items, ...rest } = field;
+  return { ...rest, ...(isIndex(row) && { row }), ...(isStringArray(items) && items.length > 0 && { items }) };
+}
+
+function readGeneratorOrigin(value: unknown): GeneratorOrigin | null {
+  if (!isRecord(value) || typeof value.path !== 'string' || !isIndex(value.index)) return null;
+  return { path: value.path, index: value.index, ...(typeof value.name === 'string' && { name: value.name }) };
+}
+
 function isResultRoll(value: unknown, text: string): value is TableResultRoll {
   if (!isRecord(value) || typeof value.formula !== 'string' || !isFiniteNumber(value.total) || !isFiniteNumber(value.at)) return false;
   return Number.isInteger(value.at) && value.at >= 0 && text.startsWith(String(value.total), value.at);
@@ -89,9 +119,16 @@ function isResultRoll(value: unknown, text: string): value is TableResultRoll {
 
 /** A saved result with its marks of rolled numbers checked: a mark that does not stand on its number is dropped. */
 function checkedResult(result: TableResult): TableResult {
-  const { rolls, ...rest } = result;
+  const { rolls, generator, item, fields, ...rest } = result;
   const valid = Array.isArray(rolls) ? rolls.filter((roll) => isResultRoll(roll, result.text)) : [];
-  return { ...rest, ...(valid.length > 0 && { rolls: valid }) };
+  const origin = readGeneratorOrigin(generator);
+  return {
+    ...rest,
+    ...(valid.length > 0 && { rolls: valid }),
+    fields: fields.map(checkedField),
+    ...(origin && { generator: origin }),
+    ...(typeof item === 'string' && { item }),
+  };
 }
 
 function isTableResult(value: unknown): value is TableResult {

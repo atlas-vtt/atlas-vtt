@@ -2,9 +2,8 @@ import type { App } from 'obsidian';
 import { readQuestBody } from '../campaigns/quests/questText';
 import type { Quest } from '../campaigns/quests/questTypes';
 import { bookQuestOf } from '../online/gm/book/bookQuests.ts';
-import type { QuestAsset } from '../online/gm/book/questGate.ts';
+import type { HandedImage, HandedQuest, QuestAsset } from '../online/gm/book/questGate.ts';
 import { questTextParts, type QuestTextParts } from '../online/gm/book/questTexts.ts';
-import type { BookQuest, QuestImage } from '../online/protocol/index.ts';
 import { QuestImages, stampOf, type ResolvedEmbed } from './questImages';
 
 /** A quest as it was last handed on: kept while its note's reading (the same object), its id and the images it embeds stay. */
@@ -18,7 +17,7 @@ interface Handout {
   readonly stamps: string;
   /** Its images' vault paths, by hash. */
   readonly images: ReadonlyMap<string, string>;
-  readonly book: BookQuest | null;
+  readonly book: HandedQuest | null;
 }
 
 const stampsOf = (resolved: readonly ResolvedEmbed[]): string => resolved.map((embed) => stampOf(embed.file)).join('\n\n');
@@ -39,7 +38,7 @@ export class QuestHandouts {
   }
 
   /** The quest as players read it under `id`; null for a note that is gone or a quest whose title shows nothing. */
-  async of(quest: Quest, id: string): Promise<BookQuest | null> {
+  async of(quest: Quest, id: string): Promise<HandedQuest | null> {
     const known = this.handed.get(quest.path);
     const same = known !== undefined && known.quest === quest && known.id === id;
     const body = same ? known.body : await readQuestBody(this.app, quest.path).catch(() => null);
@@ -49,7 +48,7 @@ export class QuestHandouts {
     const stamps = stampsOf(resolved);
     if (same && known.stamps === stamps) return known.book;
     const refs = await Promise.all(resolved.map((embed) => this.images.refOf(embed.file)));
-    const images: QuestImage[] = [];
+    const images: HandedImage[] = [];
     const paths = new Map<string, string>();
     resolved.forEach(({ target, width, height, file }, n) => {
       const image = refs[n];
@@ -70,7 +69,7 @@ export class QuestHandouts {
     this.images.retain(new Set([...this.handed.values()].flatMap((handout) => [...handout.images.values()])));
   }
 
-  /** What the asset `hash` of a quest handed on is served from: a whole text's bytes, or an image's vault path. */
+  /** What the asset `hash` of a quest handed on is read from for the store: a whole text's bytes, or an image's vault path. */
   asset(hash: string): QuestAsset | undefined {
     for (const handout of this.handed.values()) {
       if (handout.text.whole?.ref.hash === hash) return { bytes: handout.text.whole.bytes };

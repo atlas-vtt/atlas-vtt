@@ -5,7 +5,7 @@ const { voices } = vi.hoisted(() => ({ voices: [] as Array<{ stop: ReturnType<ty
 vi.mock('../../../src/app/dice3d/audio/diceSamples', () => {
   const gain = { cancelScheduledValues: vi.fn(), setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() };
   return {
-    MASTER: 1,
+    masterLevel: () => 1,
     POOLS: { soft: [], glass: [] },
     audio: () => ({ currentTime: 0 }),
     masterGain: () => ({ gain }),

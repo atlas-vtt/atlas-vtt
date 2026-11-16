@@ -15,7 +15,7 @@
 @use 'log-composer';
 @use 'log-composer-tools';
 
-// For screen readers only; also used by the unread tab, outside the panel.
+// For screen readers only; also used by the log's tab, outside the panel.
 .atlas-online-log__sr {
   @include atlas-visually-hidden;
 }
@@ -29,6 +29,19 @@
   to {
     opacity: 1;
     transform: translateY(-50%) translateX(0);
+  }
+}
+
+// The log's tab comes in from the scene tabs above it.
+@keyframes atlas-online-log-tab-in {
+  from {
+    opacity: 0;
+    transform: translateY(-#{$spacing-s});
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 

@@ -8,7 +8,7 @@ import { MEMORY_BUDGET_BYTES, type ProcessedImage } from '../../src/app/imagePro
 import { sealTolerance } from '../../src/app/lighting/lightingConstants';
 import { readSceneLighting } from '../../src/app/lighting/sceneLightingOptions';
 import { sealWalls } from '../../src/app/lighting/sealWalls';
-import { prebuildMapImageAt } from '../../src/app/pixi/mapImage/prebuildMapImage';
+import { prebuildMosaicCanvasAt } from '../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas';
 import { AssetService, type Asset } from '../../src/app/services/AssetService';
 import { AssetThumbnailService } from '../../src/app/services/AssetThumbnailService';
 import { createAtlasStorage, migrateMapFile, parseSceneFile } from '../../src/app/services/MapPersistence';
@@ -25,7 +25,7 @@ import { createInMemoryApp, interceptWrites, type InMemoryApp } from '../mocks/i
 // crowded wall ends, which they guard against, took minutes. A machine under load stays below it.
 const SLOW = 15_000;
 
-vi.mock('../../src/app/pixi/mapImage/prebuildMapImage', () => ({ prebuildMapImageAt: vi.fn() }));
+vi.mock('../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas', () => ({ prebuildMosaicCanvasAt: vi.fn() }));
 
 const COLLECTION = 'Dungeons';
 const SCENES = `atlas-vtt/collections/${COLLECTION}/scenes`;
@@ -78,7 +78,7 @@ const recordsOf = async ({ assets }: Bench): Promise<Asset[]> => assets.getAsset
 
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
-  vi.mocked(prebuildMapImageAt).mockClear();
+  vi.mocked(prebuildMosaicCanvasAt).mockClear();
 });
 afterEach(() => { vi.restoreAllMocks(); AssetService.resetInstance(); });
 
@@ -99,7 +99,7 @@ describe('importing a Universal VTT file', () => {
 
     expect(map.mapFilePath).toMatch(/^atlas-vtt\/assets\/Crypt_.+\.png$/);
     expect(b.vault.files.has(map.mapFilePath)).toBe(true);
-    expect(prebuildMapImageAt).toHaveBeenCalledWith(b.vault.app, map.mapFilePath);
+    expect(prebuildMosaicCanvasAt).toHaveBeenCalledWith(b.vault.app, map.mapFilePath);
     expect(b.vault.files.get(map.thumbnailPath!)).toBe('THUMB');
     expect(JSON.parse(b.vault.files.get(map.filePath!)!)).toMatchObject({ id: map.id, name: 'Crypt', mapFilePath: map.mapFilePath });
     expect(JSON.parse(b.vault.files.get(scene.filePath!)!)).toEqual({
@@ -388,7 +388,7 @@ describe('a Universal VTT file that is refused', () => {
 
     expect(filesOf(b)).toEqual(before);
     expect(await recordsOf(b)).toEqual([]);
-    expect(prebuildMapImageAt).not.toHaveBeenCalled();
+    expect(prebuildMosaicCanvasAt).not.toHaveBeenCalled();
   });
 
   it('when the decoded image is not the size its header stated, changes nothing', async () => {

@@ -3,13 +3,13 @@ import { noteName } from '../../../utils/pathUtils';
 import { BY_PATH } from '../../fs/fsLayoutNotes';
 import { statblockCount, type LayoutStatblocks } from '../../fs/fsLayoutStatblocks';
 import type { FsImportReport } from '../../fs/fsLayoutTypes';
-import { plural } from '../../../utils/plural';
 import { BatchProgress, Disclosure, LeftNoteRows, NoteRow } from '../batchParts';
 import {
-  detailSentences, detailsLine, detailsToggleLabel, fsOnlyLine, leftoversLabel, moveExplanation, movedLine, placeLabel, readyLine,
+  detailSentences, detailsLine, detailsToggleLabel, fsOnlyLine, leftoversLabel, moveExplanation, movedLine, otherValuesLine, placeLabel, readyLine,
 } from './importReportText';
-import type { StatblockMoveResult } from './statblockMove';
+import { notesWithOtherValues, type StatblockMoveResult } from './statblockMove';
 import type { AdoptionPhase } from './useLayoutAdoption';
+import { t } from '../../../i18n';
 
 /** What Atlas can do now, and what of the look it shows only through Fantasy Statblocks or not in full, each part folded away. */
 export function ImportSummary({ layoutName, fsOnlyParts, report }: {
@@ -50,25 +50,30 @@ function StatblockRows({ statblocks }: { statblocks: LayoutStatblocks }): React.
   return <>{rows.map(({ path, kind }) => <NoteRow key={`${kind}:${path}`} name={noteName(path)} detail={placeLabel(kind)} />)}</>;
 }
 
-/** The batch that moves the statblocks (§6.4): what moving does and the statblocks folded away, then its progress, then what it did. */
+/**
+ * The batch that moves the statblocks (§6.4): what moving does and the statblocks folded away, then its progress, then
+ * what it did, with the notes it left for holding other values than their statblocks, which the footer offers to settle.
+ */
 export function AdoptionSection({ statblocks, phase }: { statblocks: LayoutStatblocks; phase: AdoptionPhase }): React.JSX.Element {
   const total = statblockCount(statblocks);
+  const otherValues = phase.kind === 'finished' && phase.result ? otherValuesLine(notesWithOtherValues(phase.result)) : null;
   return (
     <div className="atlas-fs-import__section">
       {phase.kind === 'ready' && (
         <>
           <p className="atlas-te-dialog__text">{moveExplanation(statblocks)}</p>
-          <Disclosure label={`Show the ${plural(total, 'statblock')}`}>
+          <Disclosure label={t('statblockEditor.fs.showStatblocks', { count: total })}>
             <StatblockRows statblocks={statblocks} />
           </Disclosure>
         </>
       )}
       {phase.kind === 'running' && (
-        <BatchProgress done={phase.done} total={phase.total} label="Moving statblocks" text={`Moving statblocks: ${phase.done} of ${phase.total}`} />
+        <BatchProgress done={phase.done} total={phase.total} label={t('statblockEditor.fs.moving')} text={t('statblockEditor.fs.movingProgress', { done: phase.done, total: phase.total })} />
       )}
       {phase.kind === 'finished' && phase.result && (
         <>
           <p className="atlas-te-dialog__text" role="status">{movedLine(phase.result.moved.length, total)}</p>
+          {otherValues !== null && <p className="atlas-te-dialog__text">{otherValues}</p>}
           <Leftovers result={phase.result} />
         </>
       )}

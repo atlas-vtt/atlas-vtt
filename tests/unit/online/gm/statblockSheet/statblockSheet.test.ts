@@ -81,6 +81,12 @@ describe('a player\'s own statblock', () => {
     expect(statblockSheet(input({ resources: {} }))!.sigils.hp?.resource).toBeUndefined();
   });
 
+  it('ties hit points the template keeps under another key to the character\'s hit points', () => {
+    const pv = templateOf(FIELDS.map((field) => (field.key === 'hp' ? { ...field, key: 'pv' } : field)), BLOCKS);
+    const { hp: _, ...rest } = NOTE;
+    expect(statblockSheet(input({}, pv, { ...rest, pv: 12 }))!.sigils.hp).toMatchObject({ text: { opening: '12' }, resource: 'hp' });
+  });
+
   it('offers each value the player may change with its stored value and its base, and an empty one with its prompt', () => {
     const statblock = statblockSheet(input())!;
     const [, speed, size] = statblock.blocks as Extract<SheetNode, { k: 'value' }>[];

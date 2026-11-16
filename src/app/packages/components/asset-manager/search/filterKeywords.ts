@@ -47,8 +47,24 @@ export function rangeValue(value: string): NumericRange | null {
 
 const PREFIX_PATTERN = /^[a-z][a-z0-9_-]*$/;
 
+/** A label as a keyword: "Initiative score" is `initiative-score`. */
+function labelPrefix(label: string): string {
+  return label.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+/**
+ * The prefix of a filter: Atlas' own short one, else, for a field of a statblock template, its label
+ * (the name the GM gave it, not the key the notes store, like `initiative_score`), else its id.
+ */
+function prefixOf(definition: CreatureFilterDefinition): { prefix: string; aliases: string[] } {
+  const catalog = CATALOG_PREFIXES[definition.id];
+  if (catalog) return catalog;
+  const fromLabel = definition.origin === 'template' ? labelPrefix(definition.label) : '';
+  return { prefix: PREFIX_PATTERN.test(fromLabel) ? fromLabel : definition.id, aliases: [] };
+}
+
 function creatureKeyword(definition: CreatureFilterDefinition, taken: Set<string>): FilterKeyword | null {
-  const names = CATALOG_PREFIXES[definition.id] ?? { prefix: definition.id, aliases: [] };
+  const names = prefixOf(definition);
   if (!PREFIX_PATTERN.test(names.prefix) || taken.has(names.prefix)) return null;
   const aliases = names.aliases.filter((alias) => !taken.has(alias));
   for (const name of [names.prefix, ...aliases]) taken.add(name);

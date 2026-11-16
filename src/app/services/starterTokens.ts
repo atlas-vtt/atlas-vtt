@@ -40,7 +40,11 @@ export const STARTER_TOKENS: readonly StarterToken[] = [
 const STARTER_TAG = 'Class';
 
 /** The same id on every device, so two devices adding the starter tokens before they sync add one set. */
-const starterTokenId = (name: string): string => `token-starter-${name.toLowerCase()}`;
+const STARTER_ID_PREFIX = 'token-starter-';
+const starterTokenId = (name: string): string => `${STARTER_ID_PREFIX}${name.toLowerCase()}`;
+
+/** Whether a record is one of the starter tokens every vault gets. */
+export const isStarterTokenId = (id: string): boolean => id.startsWith(STARTER_ID_PREFIX);
 
 /**
  * Adds the starter tokens to the default collection, once per vault. The flag

@@ -6,11 +6,10 @@
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-// The second part of the tab, set off from what new tokens start with.
+// The second part of the tab, set off from what new tokens start with by the space above it.
 .atlas-csm-senses {
   @include atlas-flex-col($spacing-s);
   padding-top: $spacing-l;
-  border-top: $border-width-s solid var(--background-modifier-border);
 }
 
 .atlas-csm-senses__title {

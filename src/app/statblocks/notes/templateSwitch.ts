@@ -11,6 +11,7 @@ import { NoteFieldWriter, type WriteOutcome } from './NoteFieldWriter';
 import { eachNote, type NoteBatchOptions } from './noteBatch';
 import type { NotePatch } from './patchTypes';
 import { TEMPLATE_KEY } from './statblockSource';
+import { t } from '../../i18n';
 
 export interface TemplateSwitchNote {
   path: string;
@@ -69,5 +70,5 @@ async function switchNote(writer: NoteFieldWriter, note: TemplateSwitchNote, to:
 }
 
 function skipReason(outcome: WriteOutcome): string {
-  return outcome.problem ?? 'Its template was changed meanwhile.';
+  return outcome.problem ?? t('statblockEditor.templateChangedMeanwhile');
 }

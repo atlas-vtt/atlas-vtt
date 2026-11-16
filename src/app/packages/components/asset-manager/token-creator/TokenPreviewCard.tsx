@@ -78,7 +78,7 @@ function ConversionBadge({ preview, mode }: Pick<TokenPreviewCardProps, 'preview
   }
   if (compressionRatio === undefined || compressionRatio <= 0) return null;
   return (
-    <LabelTooltip label={t('creator.reduction')}>
+    <LabelTooltip label={t('creator.reduction', { percent: compressionRatio })}>
       <div className="atlas-token-card__badge">−{compressionRatio}%</div>
     </LabelTooltip>
   );
@@ -185,6 +185,7 @@ export const TokenPreviewCard = React.memo(function TokenPreviewCard({ preview, 
       />
       {/* The card never shows the upload itself: its place is held until the converted image is there. */}
       {preview.isOptimizing && <Skeleton className="atlas-token-card__pending" live />}
+      {preview.refused !== undefined && <p className="atlas-token-card__refused" role="alert">{preview.refused}</p>}
       {framed && <><div className="atlas-token-card__mask" /><img className="atlas-token-card__ring" src={tokenRingImageUrl} alt="" /></>}
 
       <LabelTooltip label={t('creator.select', { name: preview.name })}>

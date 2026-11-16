@@ -10,6 +10,7 @@ import { numericValue } from '../values/numberText';
 import { quoted } from '../values/valueText';
 import { nameOf, refError, type ExpressionError, type LabelResolver } from './errors';
 import { SLOT_WORD, type FormulaFunction, type FormulaNode } from './formulaTypes';
+import { t } from '../../i18n';
 
 export interface FormulaContext {
   /** The score of the current Scores slot, which the word `value` reads. */
@@ -97,6 +98,6 @@ function evaluateNode(node: FormulaNode, reader: ValueReader, context: FormulaCo
 export function evaluateFormula(node: FormulaNode, reader: ValueReader, context: FormulaContext = {}): FormulaResult {
   const result = evaluateNode(node, reader, context);
   if (failed(result)) return { ok: false, error: result };
-  if (!Number.isFinite(result)) return { ok: false, error: notANumber('The result is too large to show.') };
+  if (!Number.isFinite(result)) return { ok: false, error: notANumber(t('statblockEditor.expr.tooLarge')) };
   return { ok: true, value: result === 0 ? 0 : result };
 }

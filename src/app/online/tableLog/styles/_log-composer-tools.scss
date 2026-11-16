@@ -97,7 +97,7 @@ $composer-control: 28px;
     margin-bottom: $spacing-s;
     overflow-y: auto;
     overscroll-behavior: contain;
-    scrollbar-width: none;
+    @include atlas-scrollbar-none;
   }
 
   .atlas-online-log__suggestion {
@@ -184,7 +184,7 @@ $composer-control: 28px;
     background: var(--background-secondary);
     overflow-y: auto;
     overscroll-behavior: contain;
-    scrollbar-width: none;
+    @include atlas-scrollbar-none;
     @include atlas-panel-inset-radius($spacing-s);
   }
 

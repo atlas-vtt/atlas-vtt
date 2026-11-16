@@ -2,19 +2,19 @@ import React, { useEffect, useRef, useState } from 'react';
 import { FolderInput, Plus, Search } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
-import { lootBaseItemCount, needsBases, type LootBase } from '../../../loot/LootBaseReader';
+import { isLootBaseUnreadable, lootBaseItemCount, needsBases, type LootBase } from '../../../loot/LootBaseReader';
 import type { CollectionTable } from '../../../randomTables/TableNoteReader';
 import { LootViewChecks } from '../loot/LootSourceTree';
 import type { ContextMenuEntry } from '../../root/ContextMenuContext';
 import { SourceRow } from './SourceRow';
-import { matchesSearch } from './tableSelection';
-import { ownTableName, problemLines, rollFact, statusLine, tableName } from './tableFacts';
-import type { RandomTablesLibrary } from './useRandomTables';
+import { matchesSearch, type ListedLibrary } from './tableSelection';
+import { ownTableName, problemLines, statusLine, tableFact, tableName } from './tableFacts';
 import { t } from '../../../i18n';
 
 function baseProblems(base: LootBase): string[] {
   if (base.missing) return [t('csm.loot.notFound')];
   if (needsBases(base)) return [t('csm.loot.basesOff')];
+  if (isLootBaseUnreadable(base)) return [t('loot.unreadable')];
   if (base.views.length === 0) return [t('csm.loot.noViews')];
   return [];
 }
@@ -25,7 +25,7 @@ function tableProblems(found: CollectionTable): string[] {
 }
 
 interface TablesSidebarProps {
-  library: Pick<RandomTablesLibrary, 'items' | 'text'>;
+  library: ListedLibrary;
   /** Id of the source rolled on. */
   selectedId: string | null;
   onSelect: (id: string) => void;
@@ -45,8 +45,9 @@ interface TablesSidebarProps {
 }
 
 /**
- * The collection's tables to pick one to roll on, grouped by what they give: Items (the loot
- * bases, the selected one with its views to tick, then the Items tables of notes) and Text.
+ * The collection's tables to pick one to roll on, grouped by what they give: Generators first (a
+ * collection has few, and they roll whole results), then Items (the loot bases, the selected one
+ * with its views to tick, then the Items tables of notes) and Text.
  */
 export function TablesSidebar(props: TablesSidebarProps): React.ReactElement {
   const { library, selectedId, onSelect, disabledViews, onDisabledViewsChange, onNewTable, onUseNote, onRename, onRemove, onOpen } = props;
@@ -76,7 +77,10 @@ export function TablesSidebar(props: TablesSidebarProps): React.ReactElement {
     || base.views.some((view) => matchesSearch(view.name, search)));
   useEffect(() => {
     if (removing.current === null) return;
-    const listed = [...library.items.bases.map((base) => base.path), ...library.items.tables.map((table) => table.id), ...library.text.map((table) => table.id)];
+    const listed = [
+      ...library.items.bases.map((base) => base.path),
+      ...[...library.items.tables, ...library.text, ...library.generators].map((table) => table.id),
+    ];
     if (listed.includes(removing.current)) return;
     removing.current = null;
     const field = searchRef.current;
@@ -88,12 +92,13 @@ export function TablesSidebar(props: TablesSidebarProps): React.ReactElement {
   const tableMatches = (table: CollectionTable): boolean => matchesSearch(tableName(table), search) || matchesSearch(ownTableName(table), search);
   const itemTables = library.items.tables.filter(tableMatches);
   const textTables = library.text.filter(tableMatches);
+  const generators = library.generators.filter(tableMatches);
 
   const tableRow = (table: CollectionTable): React.ReactElement => (
     <li key={table.id}>
       <SourceRow
         name={tableName(table)}
-        fact={table.table ? rollFact(table.table) : ''}
+        fact={tableFact(table)}
         problems={tableProblems(table)}
         selected={table.id === selectedId}
         onSelect={() => onSelect(table.id)}
@@ -133,6 +138,13 @@ export function TablesSidebar(props: TablesSidebarProps): React.ReactElement {
         </LabelTooltip>
       </div>
 
+      {generators.length > 0 && (
+        <section className="atlas-tables-group" aria-label={t('tables.group.generators')}>
+          <h3 className="atlas-loot-section-label">{t('tables.group.generators')}</h3>
+          <ul>{generators.map(tableRow)}</ul>
+        </section>
+      )}
+
       {(bases.length > 0 || itemTables.length > 0) && (
         <section className="atlas-tables-group" aria-label={t('tables.group.items')}>
           <h3 className="atlas-loot-section-label">{t('tables.group.items')}</h3>
@@ -164,7 +176,7 @@ export function TablesSidebar(props: TablesSidebarProps): React.ReactElement {
         </section>
       )}
 
-      {bases.length + itemTables.length + textTables.length === 0 && (
+      {bases.length + itemTables.length + textTables.length + generators.length === 0 && (
         <p className="atlas-tables-sidebar__none">{t('tables.noMatch')}</p>
       )}
     </div>

@@ -18,7 +18,7 @@ const entry = (name: string, order: number, extra: Partial<PlayerInitiativeEntry
 function draw(entries: PlayerInitiativeEntry[], look: { fromTurn?: boolean; dock?: 'left' | 'right' } = {}, hidden: string[] = []): { panel: HTMLElement; words: string[] } {
   document.body.empty();
   const list = playerInitiativeList({ entries, isActive: true, round: 4 }, (listed) => (hidden.includes(listed.tokenId) ? null : VISIBLE), TURN_ORDER, false);
-  renderPlayerInitiative(document.body, list, { showNames: true, portraitSrc: () => null, ...look });
+  renderPlayerInitiative(document.body, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null, ...look });
   const panel = document.querySelector<HTMLElement>('.atlas-player-initiative')!;
   const words = [...panel.querySelectorAll('.atlas-player-initiative__name, .atlas-player-initiative__next-round')].map((element) =>
     element.classList.contains('atlas-player-initiative__next-round') ? `|${element.getAttribute('aria-label') ?? ''}|` : element.textContent ?? '');
@@ -68,7 +68,7 @@ describe('conditions in the players\' list', () => {
     document.body.empty();
     const token = entryTokenOf(creature(), [], definitions);
     const list = playerInitiativeList({ entries: [entry('a', 0)], isActive: false, round: 0 }, () => token, TURN_ORDER, false);
-    renderPlayerInitiative(document.body, list, { showNames: false, portraitSrc: () => null });
+    renderPlayerInitiative(document.body, list, { showNames: false, mapShowsNameplates: true, portraitSrc: () => null });
     const badges = [...document.querySelectorAll('.atlas-player-initiative__condition')];
     expect(badges.map((badge) => badge.getAttribute('aria-label'))).toEqual(['Frightened 2', 'Prone']);
     expect(badges[0]!.querySelector('svg path')).not.toBeNull();

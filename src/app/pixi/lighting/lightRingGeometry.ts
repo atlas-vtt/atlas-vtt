@@ -16,6 +16,8 @@ export interface RingGeometry {
   radius: Record<RangeField, number>;
   /** The beam of a light that shines one way: its rings are arcs. */
   cone?: VisionCone;
+  /** The area of a light that glows from one: its rings are its outline grown by each range (`grownOutline`). */
+  area?: readonly Point[];
 }
 
 /** Where a ring's handle sits when the light shines all around: the bright ring's above the light, the dim ring's below, so they never meet. */
@@ -31,10 +33,30 @@ function edgeAngle(cone: VisionCone, field: RangeField): number {
   return cone.facing + (HANDLE_DIRECTION[field] * cone.angle) / 2;
 }
 
+/**
+ * Where an area's ring of `field` is anchored: the area's corner farthest out the way its handle
+ * sits (up for the bright ring, down for the dim one). Grown by a range, the area reaches farthest
+ * that way right there, so the handle sits on its ring.
+ */
+function areaAnchor(area: readonly Point[], field: RangeField): Point {
+  const way = HANDLE_DIRECTION[field];
+  return area.reduce((best, corner) => (corner.y * way > best.y * way ? corner : best));
+}
+
 /** The world point of a ring's handle. */
-export function ringHandlePoint({ center, radius, cone }: RingGeometry, field: RangeField): Point {
+export function ringHandlePoint({ center, radius, cone, area }: RingGeometry, field: RangeField): Point {
   if (cone) return at(center, edgeAngle(cone, field), radius[field]);
-  return { x: center.x, y: center.y + HANDLE_DIRECTION[field] * radius[field] };
+  const from = area ? areaAnchor(area, field) : center;
+  return { x: from.x, y: from.y + HANDLE_DIRECTION[field] * radius[field] };
+}
+
+/**
+ * The range a ring's handle dragged to `point` gives, in world pixels: its distance from the light,
+ * or, for an area light, how far beyond the area's anchor it lies the way the handle moves.
+ */
+export function ringRadiusAt({ center, area }: RingGeometry, field: RangeField, point: Point): number {
+  if (!area) return Math.hypot(point.x - center.x, point.y - center.y);
+  return (point.y - areaAnchor(area, field).y) * HANDLE_DIRECTION[field];
 }
 
 /**

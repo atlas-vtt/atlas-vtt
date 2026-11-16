@@ -65,6 +65,29 @@ describe('moving assets into asset manager folders', () => {
     expect(await folderOf(assets, sceneId, SCENES)).toBe(folder);
   });
 
+  it('takes a scene\'s thumbnail along with its map, so nothing of the scene is left where it lay', async () => {
+    const { vault, assets, sceneId } = await seededVault();
+    await vault.app.vault.create(`${SCENES}/Forest.thumb.jpg`, 'JPG');
+
+    await moveAssetsIntoFolder(vault.app, assets, [sceneId], SCENES, folderIdOf(`${SCENES}/Act 1`));
+
+    expect(vault.files.get(`${SCENES}/Act 1/Forest.thumb.jpg`)).toBe('JPG');
+    expect(vault.files.has(`${SCENES}/Forest.thumb.jpg`)).toBe(false);
+  });
+
+  it('leaves a scene\'s thumbnail beside its map when the map could not move', async () => {
+    const { vault, assets, sceneId } = await seededVault();
+    await vault.app.vault.create(`${SCENES}/Forest.thumb.jpg`, 'JPG');
+    vi.mocked(vault.app.fileManager.renameFile).mockRejectedValueOnce(new Error('The file is in use'));
+
+    const result = await moveAssetsIntoFolder(vault.app, assets, [sceneId], SCENES, folderIdOf(`${SCENES}/Act 1`));
+
+    expect(result).toEqual({ moved: [], nameClashes: [], failed: [{ name: 'Forest', reason: 'The file is in use' }] });
+    expect(vault.files.has(SCENE_FILE)).toBe(true);
+    expect(vault.files.get(`${SCENES}/Forest.thumb.jpg`)).toBe('JPG');
+    expect(vault.files.has(`${SCENES}/Act 1/Forest.thumb.jpg`)).toBe(false);
+  });
+
   it('moves an asset out of a folder to the top level of its tab', async () => {
     const { vault, assets, mapId } = await seededVault();
     await moveAssetsIntoFolder(vault.app, assets, [mapId], MAPS, folderIdOf(`${MAPS}/Wilderness`));

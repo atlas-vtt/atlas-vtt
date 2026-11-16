@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MAX_ASSET_BYTES, MAX_EMBED_TARGET, MAX_QUEST_IMAGES, parseAsset, parseBookQuest, parseTextAsset, questEmbeds, readQuestText, TEXT_MIME_TYPE, type BookQuest,
+  MAX_STORED_BYTES, MAX_EMBED_TARGET, MAX_QUEST_IMAGES, parseAsset, parseBookQuest, parseTextAsset, questEmbeds, readQuestText, TEXT_MIME_TYPE, type BookQuest,
 } from '../../../../src/app/online/protocol/index.ts';
 
 const HASH = 'b'.repeat(64);
-const TEXT = { hash: HASH, size: 50_000, mime: TEXT_MIME_TYPE };
-const IMAGE = { target: 'Maps/cellar.png', width: 300, height: null, image: { hash: 'c'.repeat(64), size: 900, mime: 'image/png' } };
+const TEXT = { hash: HASH, size: 50_000, mime: TEXT_MIME_TYPE, id: 'e'.repeat(64) };
+const IMAGE = { target: 'Maps/cellar.png', width: 300, height: null, image: { hash: 'c'.repeat(64), size: 900, mime: 'image/png', id: 'e'.repeat(64) } };
 const QUEST: BookQuest = { id: 'fedcba9876543210fedcba98', kind: 'side', state: 'open', title: 'The cellar', body: 'Go down.', place: null, xp: 0, rewards: [] };
 
 describe('a quest\'s whole text and images as the page reads them', () => {
@@ -14,7 +14,7 @@ describe('a quest\'s whole text and images as the page reads them', () => {
     expect(parseAsset(TEXT)).toBeNull();
     for (const bad of [
       { ...TEXT, mime: 'image/png' }, { ...TEXT, mime: 'text/html' }, { ...TEXT, mime: 'text/plain' }, { ...TEXT, hash: 'B'.repeat(64) }, { ...TEXT, hash: 'b'.repeat(63) },
-      { ...TEXT, size: -1 }, { ...TEXT, size: 1.5 }, { ...TEXT, size: MAX_ASSET_BYTES + 1 }, { hash: HASH, size: 1 }, null, 'text', [TEXT],
+      { ...TEXT, size: -1 }, { ...TEXT, size: 1.5 }, { ...TEXT, size: MAX_STORED_BYTES + 1 }, { hash: HASH, size: 1 }, null, 'text', [TEXT],
     ]) expect(parseTextAsset(bad), JSON.stringify(bad)).toBeNull();
   });
 

@@ -39,7 +39,7 @@ describe('openEditTokenModal', () => {
   it('opens with its vision switch through its own React root, outside every tooltip provider', () => {
     open({ vision: { enabled: true } });
     expect(vision().getAttribute('aria-checked')).toBe('true');
-    expect(screen.getByText('Edit Token')).toBeTruthy();
+    expect(screen.getByText('Edit token')).toBeTruthy();
     act(() => screen.getByRole('button', { name: 'Cancel' }).click());
     expect(document.body.querySelector('.atlas-vtt-root')).toBeNull();
   });
@@ -64,6 +64,21 @@ describe('openEditTokenModal', () => {
     for (const [index, stop] of stops.slice(1).entries()) {
       expect(stops[index]!.compareDocumentPosition(stop) & Node.DOCUMENT_POSITION_FOLLOWING, `${stop.textContent || stop.getAttribute('aria-label') || stop.id} comes after the stop before it`).toBeTruthy();
     }
+  });
+
+  it("opens in the document of the token's map, a popout's, and closes on Escape there", () => {
+    const frame = document.body.createEl('iframe');
+    const win = frame.contentWindow!;
+    const { app } = createInMemoryApp();
+    const store = createViewAtlasStore(app, `edit-token-popout-${Math.random()}`);
+    const token: TokenEntity = { id: 't', kind: 'token', imagePath: 't.png', x: 0, y: 0 };
+    store.setState({ persistenceEnabled: false, objects: { ...store.getState().objects, tokens: { t: token } } });
+    act(() => openEditTokenModal(token, store, app, [], win.document));
+    expect(win.document.querySelector('.atlas-edit-token-modal')).not.toBeNull();
+    expect(document.querySelector('.atlas-edit-token-modal')).toBeNull();
+    act(() => { win.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape' })); });
+    expect(win.document.querySelector('.atlas-edit-token-modal')).toBeNull();
+    frame.remove();
   });
 
   it('says in one line what the vision switch means', () => {
@@ -121,10 +136,10 @@ describe('openEditTokenModal', () => {
     open({ vision: { enabled: true } });
     fireEvent.keyDown(screen.getByRole('button', { name: 'Add sense' }), { key: 'ArrowDown' });
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
-    expect(screen.getByText('Edit Token')).toBeTruthy();
+    expect(screen.getByText('Edit token')).toBeTruthy();
     expect(screen.queryByRole('menu')).toBeNull();
     fireEvent.keyDown(document.body, { key: 'Escape' });
-    expect(screen.queryByText('Edit Token')).toBeNull();
+    expect(screen.queryByText('Edit token')).toBeNull();
   });
 });
 
@@ -201,10 +216,10 @@ describe('openEditTokenModal: the carried light', () => {
     const tooltip = render(<TooltipProvider><Tooltip open><TooltipTrigger>Hovered</TooltipTrigger><TooltipContent>Tip</TooltipContent></Tooltip></TooltipProvider>);
     fireEvent.keyDown(screen.getByRole('option', { name: 'Pulse' }), { key: 'Escape' });
     expect(screen.queryByRole('listbox')).toBeNull();
-    expect(screen.getByText('Edit Token')).toBeTruthy();
+    expect(screen.getByText('Edit token')).toBeTruthy();
     tooltip.unmount();
     fireEvent.keyDown(document.body, { key: 'Escape' });
-    expect(screen.queryByText('Edit Token')).toBeNull();
+    expect(screen.queryByText('Edit token')).toBeNull();
   });
 
   it('commits a typed range with Enter without saving the token', () => {
@@ -212,7 +227,7 @@ describe('openEditTokenModal: the carried light', () => {
     const dim = screen.getByLabelText('Dim') as HTMLInputElement;
     fireEvent.change(dim, { target: { value: '50' } });
     fireEvent.keyDown(dim, { key: 'Enter' });
-    expect(screen.getByText('Edit Token')).toBeTruthy();
+    expect(screen.getByText('Edit token')).toBeTruthy();
     expect(saved().light).toEqual(emissionOf(torch));
     save();
     expect(saved().light).toMatchObject({ bright: 20, dim: 50 });
@@ -222,7 +237,7 @@ describe('openEditTokenModal: the carried light', () => {
     const { saved } = open({ light: emissionOf(torch) });
     fireEvent.click(screen.getByRole('button', { name: 'Arcane blue' }));
     fireEvent.keyDown(screen.getByLabelText('Custom colour'), { key: 'Enter' });
-    expect(screen.getByText('Edit Token')).toBeTruthy();
+    expect(screen.getByText('Edit token')).toBeTruthy();
     expect(saved().light).toEqual(emissionOf(torch));
   });
 

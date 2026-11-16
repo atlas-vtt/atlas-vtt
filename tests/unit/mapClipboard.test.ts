@@ -76,6 +76,22 @@ describe('map copy, paste and duplicate', () => {
     expect([tokenAt(store, first!).x, tokenAt(store, second!).x]).toEqual([75, 125]);
   });
 
+  it('lands a duplicate on the level shown, stepping aside only from what stands there', () => {
+    const { store } = createStore();
+    store.setState({ levels: [
+      { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: null },
+      { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: null },
+    ], viewedLevel: 'upper' });
+    const a = addGoblin(store, 25, 25);
+    store.getState().setViewedLevel('ground');
+    addGoblin(store, 75, 75);
+    store.getState().setViewedLevel('upper');
+
+    const [copy] = store.getState().duplicateMapObjects([a]);
+
+    expect(tokenAt(store, copy!)).toMatchObject({ x: 75, y: 75, level: 'upper' });
+  });
+
   it('steps along the hex lattice so duplicates stay on hex centres', () => {
     const { store } = createStore(HEX);
     const a = addGoblin(store, 30, 60 / Math.sqrt(3));
@@ -129,6 +145,23 @@ describe('map copy, paste and duplicate', () => {
     const links = (store: typeof source, ids: string[]): string[] => ids.map((id) => store.getState().objects.pins[id]!.notePath);
     expect(links(sameCollection, await pasteClipboard(sameCollection, { x: 100, y: 100 }))).toEqual(['Notes/Tavern.md', 'atlas-vtt/collections/Realm/scenes/Keep.atlasmap']);
     expect(links(otherCollection, await pasteClipboard(otherCollection, { x: 100, y: 100 }))).toEqual(['Notes/Tavern.md']);
+  });
+
+  it('leaves a locked drawing where a cut finds it, and pastes its copy unlocked', async () => {
+    const { store } = createStore();
+    const kept = store.getState().addDrawing({ type: 'line', points: [{ x: 0, y: 0 }, { x: 50, y: 0 }], color: '#fff', width: 2, opacity: 1, locked: true });
+    const cut = store.getState().addDrawing({ type: 'line', points: [{ x: 0, y: 50 }, { x: 50, y: 50 }], color: '#fff', width: 2, opacity: 1 });
+    store.getState().setSelection([kept, cut]);
+
+    expect(await cutSelection(store)).toBe(true);
+    expect(Object.keys(store.getState().objects.drawings)).toEqual([kept]);
+    expect(store.getState().objects.drawings[kept]).toMatchObject({ locked: true });
+    expect(store.getState().selectedIds).toEqual([kept]);
+
+    const pasted = await pasteClipboard(store, { x: 25, y: 25 });
+    expect(pasted).toHaveLength(2);
+    for (const id of pasted) expect(store.getState().objects.drawings[id]).not.toHaveProperty('locked');
+    expect(store.getState().objects.drawings[kept]).toMatchObject({ locked: true });
   });
 
   it('cuts in one undo step and pastes the cut objects back', async () => {

@@ -1,6 +1,7 @@
 import { normalizePath, TFile, type App } from 'obsidian';
 import { imageMimeOfBytes, imageMimeType, sha256Hex } from '../online/gm/assetServe.ts';
-import { MAX_ASSET_BYTES, MAX_QUEST_IMAGES, type AssetRef, type QuestEmbed } from '../online/protocol/index.ts';
+import { ASSET_CAPS, MAX_QUEST_IMAGES, type QuestEmbed } from '../online/protocol/index.ts';
+import type { HashedRef } from '../online/gm/assets/assetUses.ts';
 
 /** An image embed of a quest's text and the vault image it names. */
 export interface ResolvedEmbed extends QuestEmbed {
@@ -39,7 +40,7 @@ const decoded = (target: string): string => {
  * reference is worked out once per version of the file (path, time and size).
  */
 export class QuestImages {
-  private readonly refs = new Map<string, { readonly stamp: string; readonly ref: Promise<AssetRef | null> }>();
+  private readonly refs = new Map<string, { readonly stamp: string; readonly ref: Promise<HashedRef | null> }>();
 
   constructor(private readonly app: App) {}
 
@@ -58,7 +59,7 @@ export class QuestImages {
   }
 
   /** The reference of an image read from its bytes; null for one whose bytes are no image players may be sent, or too large. */
-  refOf(file: TFile): Promise<AssetRef | null> {
+  refOf(file: TFile): Promise<HashedRef | null> {
     const stamp = stampOf(file);
     const known = this.refs.get(file.path);
     if (known?.stamp === stamp) return known.ref;
@@ -72,10 +73,10 @@ export class QuestImages {
     for (const path of [...this.refs.keys()]) if (!paths.has(path)) this.refs.delete(path);
   }
 
-  private async read(file: TFile): Promise<AssetRef | null> {
+  private async read(file: TFile): Promise<HashedRef | null> {
     try {
       const bytes = new Uint8Array(await this.app.vault.readBinary(file));
-      const mime = bytes.length > MAX_ASSET_BYTES ? null : imageMimeOfBytes(bytes);
+      const mime = bytes.length > ASSET_CAPS.image ? null : imageMimeOfBytes(bytes);
       return mime === null ? null : { hash: await sha256Hex(bytes), size: bytes.length, mime };
     } catch (error) {
       console.error(`[Atlas] Could not read the image ${file.path} of a quest:`, error);
@@ -89,7 +90,7 @@ export class QuestImages {
     if (linkpath === '') return null;
     for (const written of new Set([linkpath, decoded(linkpath)])) {
       const file = this.lookUp(notePath, written);
-      if (file !== null) return isImagePath(file.path) && file.stat.size <= MAX_ASSET_BYTES ? file : null;
+      if (file !== null) return isImagePath(file.path) && file.stat.size <= ASSET_CAPS.image ? file : null;
     }
     return null;
   }

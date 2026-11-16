@@ -16,6 +16,7 @@ import { sameCell, type TableHost } from './tableHost';
 import { cellMenu, columnHandleMenu, rowEntries } from './tableMenu';
 import { useTableDrag } from './useTableDrag';
 import { useTableKeys } from './useTableKeys';
+import { t } from '../../../i18n';
 import './table-editing.scss';
 
 /** Marks the frame of a table typed in place: the surfaces leave its clicks, keys and menus to it. */
@@ -86,7 +87,7 @@ export function withText(grid: TableGrid, at: CellAt, text: string): TableGrid {
 
 /** What a cell's field is called for screen readers: its column's name and, where there are several, its row. */
 function cellLabel(grid: TableGrid, name: string, at: CellAt): string {
-  if (at.row === HEADER_ROW) return `Column ${at.col + 1} name`;
+  if (at.row === HEADER_ROW) return t('statblockEditor.table.columnName', { n: at.col + 1 });
   const column = grid.columns[at.col]?.name.trim() || (grid.columns.length === 1 ? name : `${name} ${unnamedColumn(at.col).toLowerCase()}`);
   return grid.rows.length > 1 ? `${column}, row ${at.row + 1}` : column;
 }

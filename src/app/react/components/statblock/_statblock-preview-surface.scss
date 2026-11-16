@@ -49,7 +49,6 @@
     min-height: 0;
     overflow-y: auto;
     @include atlas-statblock-scroll-shadows;
-    @include atlas-statblock-inset-scrollbar;
   }
 }
 
@@ -70,29 +69,6 @@
   background-color: $cover;
   background-repeat: no-repeat;
   background-attachment: local, local, scroll, scroll;
-}
-
-/// Thin thumb inset from the card edge, so it never touches the border or
-/// the content. Transparent borders on the thumb create the breathing room.
-@mixin atlas-statblock-inset-scrollbar {
-  &::-webkit-scrollbar {
-    width: 14px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb-bg);
-    background-clip: padding-box;
-    border: 5px solid transparent;
-    border-radius: $radius-full;
-
-    &:hover {
-      background-color: var(--scrollbar-active-thumb-bg);
-    }
-  }
 }
 
 /// Exit animation; its duration matches the 150ms teardown delay in JS.

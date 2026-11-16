@@ -2,8 +2,11 @@
 
 import type { RarityTone } from '../loot/lootRarity';
 
-/** What a table's results are: text to read out, or items to hand out. */
-export type RandomTableKind = 'text' | 'items';
+/**
+ * What a table's results are: text to read out, items to hand out, or one result rolled from
+ * every row (a generator, whose rows are its parts: `| Part | Result |`).
+ */
+export type RandomTableKind = 'text' | 'items' | 'generator';
 
 /** A table in a Markdown note that the collection rolls on. Bases stay in `lootBases`. */
 export interface RandomTableSource {
@@ -20,6 +23,8 @@ export interface RandomTableSource {
   hiddenColumns?: string[];
   /** Several rolled at once never repeat a row. */
   noRepeats?: boolean;
+  /** A generator's results are saved as notes in this vault folder; without it they are not saved. */
+  saveFolder?: string;
 }
 
 /** A word items of a collection name their rarity with, painted in one tone of the ladder or none. */

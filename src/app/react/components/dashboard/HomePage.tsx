@@ -41,7 +41,7 @@ export interface HomePageProps {
 export function HomePage(props: HomePageProps): React.JSX.Element {
   const { app, scenes, scenesLoading, onOpenScene, onCreateMap, onOpenAssetManager } = props;
   const last = scenes[0] ?? null;
-  const artwork = useSceneArtwork(app, last?.id ?? null);
+  const artwork = useSceneArtwork(app, last?.id ?? null, last?.thumbnailUrl ?? null);
 
   return (
     <>

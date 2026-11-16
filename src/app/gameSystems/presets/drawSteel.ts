@@ -18,7 +18,16 @@ export const DRAW_STEEL: SystemPreset = {
       unitDistance: 1,
       measurementMode: 'metric',
       diagonalRule: 'equidistant',
+      // Each square of difficult terrain costs 1 more square of movement
+      difficultTerrain: 'double',
       abstractRangeBands: [],
+    },
+    // A creature moves up to its Speed in squares on its turn, and as far again where it gives its
+    // main action for a second move. One that states no speed moves 5 squares.
+    movement: {
+      steps: [{ name: 'Move', multiple: 1, color: '#22c55e' }, { name: 'Second move', multiple: 2, color: '#f59e0b' }],
+      countPerTurn: true,
+      speed: 5,
     },
     // A power roll is 2d10; a 19 or 20 on the two dice together, before any bonus, is a critical hit.
     dice: { defaultRoll: '2d10', crit: 'high-total' },

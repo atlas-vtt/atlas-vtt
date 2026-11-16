@@ -66,7 +66,7 @@ describe('LightingEngine on a graphics device that cannot run it', () => {
 
   it('names a shader that does not compile, with the driver\'s log', async () => {
     const { renderer } = await setup();
-    const broken = { ...ENGINE_SHADERS.lightMap, name: 'broken', fragment: ENGINE_SHADERS.lightMap.fragment.replace('float d = distance', 'float d = nonsense') };
+    const broken = { ...ENGINE_SHADERS.lightMap, name: 'broken', fragment: ENGINE_SHADERS.lightMap.fragment.replace('float dim = max', 'float dim = nonsense') };
     const failures = failedEngineShaders(renderer.gl, [ENGINE_SHADERS.capsuleField, broken]);
     expect(failures.map((failure) => failure.name)).toEqual(['broken']);
     expect(failures[0]!.log).toContain('nonsense');

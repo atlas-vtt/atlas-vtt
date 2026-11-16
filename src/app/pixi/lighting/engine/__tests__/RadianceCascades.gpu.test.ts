@@ -4,13 +4,14 @@ import { CapsuleField } from '../CapsuleField';
 import { LightMap } from '../LightMap';
 import { TileCache } from '../TileCache';
 import { RadianceCascades } from '../RadianceCascades';
+import { union } from '../LightMap';
 import { BOUNCE, wallRadius } from '../../../../lighting/lightingConstants';
 import { splitBlocking } from '../../../../lighting/segments';
 import { createTestRenderer, readFloats } from './gpuTestUtils';
 import type { WallSegment } from '../../../../types/wallTypes';
 import type { MapBounds } from '../../../../vision/visibility';
-import { MapAlbedo } from '../../../mapImage/mapAlbedo';
-import type { MapTiles } from '../../../mapImage/mapImageTiles';
+import { MapAlbedo } from '../../../mosaicCanvas/mapAlbedo';
+import type { MapTesserae } from '../../../mosaicCanvas/mosaicCanvasTesserae';
 
 const wall = (id: string, x1: number, y1: number, x2: number, y2: number): WallSegment => ({ id, kind: 'wall', type: 'solid', p1: { x: x1, y: y1 }, p2: { x: x2, y: y2 } });
 
@@ -75,13 +76,13 @@ function painted(world: MapBounds, colour: (x: number, y: number) => [number, nu
 /** The lighting's albedo texture of a map image whose overview is `overview`, and its owner (`MapAlbedo`). */
 async function albedoOf(overview: Painted): Promise<{ texture: Texture; albedo: MapAlbedo }> {
   const bitmap = await createImageBitmap(new ImageData(overview.pixels, overview.width, overview.height));
-  const tiles = { overview: () => Promise.resolve(bitmap) } as unknown as MapTiles;
+  const tesserae = { overview: () => Promise.resolve(bitmap) } as unknown as MapTesserae;
   let made = (): void => undefined;
   const ready = new Promise<void>((resolve) => { made = resolve; });
   const albedo = new MapAlbedo(() => made());
-  albedo.textureOf(tiles);
+  albedo.textureOf(tesserae);
   await ready;
-  return { texture: albedo.textureOf(tiles)!, albedo };
+  return { texture: albedo.textureOf(tesserae)!, albedo };
 }
 
 describe('RadianceCascades', () => {
@@ -95,25 +96,67 @@ describe('RadianceCascades', () => {
     const renderer: WebGLRenderer = await createTestRenderer(64);
     cleanup.push(() => renderer.destroy());
     const field = new CapsuleField(renderer, [0, 0, world.width, world.height], 2, wallRadius(2));
-    const tiles = new TileCache(renderer, field, world);
+    const tesserae = new TileCache(renderer, field, world);
     const map = new LightMap(renderer, world, 2);
     const cascades = new RadianceCascades(renderer, world, field);
     cleanup.push(() => {
       cascades.destroy();
       map.destroy();
-      tiles.destroy();
+      tesserae.destroy();
       field.destroy();
     });
     field.build(splitBlocking(walls).twoWay);
-    tiles.sync([{ key: 'l', x: 200, y: 256, bright: 120, dim: 240, flame: 20, color: [1, 1, 1], intensity: 1, animation: 'none' }], walls, 'all');
-    const tile = tiles.tiles().get('l')!;
-    map.draw([{ tile, bright: 120, dim: 240, reach: 240 * 1.12, color: [1, 1, 1], intensity: 1 }]);
+    tesserae.sync([{ key: 'l', x: 200, y: 256, bright: 120, dim: 240, flame: 20, color: [1, 1, 1], intensity: 1, animation: 'none' }], walls, 'all');
+    const tile = tesserae.tiles().get('l')!;
+    map.draw([{ tile, bright: 120, dim: 240, color: [1, 1, 1], intensity: 1 }]);
     cascades.build(map, albedo, field);
     const probes = readFloats(renderer, cascades.fluence);
     const width = cascades.fluence.source.pixelWidth;
     const probe = (x: number, y: number): number => probes[(Math.floor(y / BOUNCE.probe) * width + Math.floor(x / BOUNCE.probe)) * 4]!;
     return { probes, probe };
   }
+
+  it.each([1, 2.5])('builds anew in bands over the part a moved light can reach, as a whole build would (scale %s)', async (scale) => {
+    const world = { width: 6144, height: 1024 };
+    const renderer: WebGLRenderer = await createTestRenderer(64);
+    const field = new CapsuleField(renderer, [0, 0, world.width, world.height], 2, wallRadius(2));
+    const tesserae = new TileCache(renderer, field, world);
+    const map = new LightMap(renderer, world, 2);
+    const banded = new RadianceCascades(renderer, world, field, scale);
+    const whole = new RadianceCascades(renderer, world, field, scale);
+    cleanup.push(() => {
+      for (const done of [banded, whole, map, tesserae, field]) done.destroy();
+      renderer.destroy();
+    });
+    // Open floor beside the rooms, with a long wall to give light back from afar.
+    const hall = [...walls, wall('long', 1100, 900, 5800, 900)];
+    field.build(splitBlocking(hall).twoWay);
+    const light = { key: 'l', x: 1600, y: 600, bright: 120, dim: 240, flame: 20, color: [1, 1, 1] as const, intensity: 1, animation: 'none' as const };
+    // A lamp far off, whose bounce the moved light's build must leave as it is.
+    const lamp = { ...light, key: 'far', x: 4600, y: 600 };
+    const lightUp = (moved: typeof light): void => {
+      tesserae.sync([moved, lamp], hall, 'all');
+      map.draw([moved, lamp].map((l) => ({ tile: tesserae.tiles().get(l.key)!, bright: l.bright, dim: l.dim, color: l.color, intensity: 1 })));
+    };
+    lightUp(light);
+    banded.build(map, null, field);
+    const before = tesserae.tiles().get('l')!.rect;
+    lightUp({ ...light, x: 1800, y: 640 });
+    banded.begin(map, null, union(before, tesserae.tiles().get('l')!.rect));
+    let steps = 1;
+    while (!banded.step(field, 4096)) steps++;
+    expect(steps).toBeGreaterThan(BOUNCE.cascades + 1);
+    whole.build(map, null, field);
+    const got = readFloats(renderer, banded.fluence);
+    const want = readFloats(renderer, whole.fluence);
+    let largest = 0;
+    for (const v of want) largest = Math.max(largest, v);
+    expect(largest).toBeGreaterThan(0);
+    for (let i = 0; i < want.length; i++) {
+      // Half floats keep 11 significant bits.
+      expect(Math.abs(got[i]! - want[i]!)).toBeLessThanOrEqual(Math.abs(want[i]!) * 2 ** -10 + 1e-6);
+    }
+  });
 
   it('bounces light into a lit room and none into the closed room beside it', async () => {
     const { probe } = await bounce(null);

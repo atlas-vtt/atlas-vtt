@@ -4,6 +4,7 @@ import { renderEntries, type ContextMenuEntry } from '../../../react/components/
 import { Button } from '../primitives/button';
 import { useExclusiveDropdown } from '../primitives/useExclusiveDropdown';
 import { t } from '../../../i18n';
+import { portalHost } from '../../../host/portalHost';
 
 interface ObsidianMenuDropdownProps {
   id?: string;
@@ -79,7 +80,7 @@ export const ObsidianMenuDropdown: React.FC<ObsidianMenuDropdownProps> = ({
           </span>
         </Button>
       </DropdownMenu.Trigger>
-      <DropdownMenu.Portal container={trigger?.closest<HTMLElement>('[role="dialog"], .modal') ?? trigger?.ownerDocument.body}>
+      <DropdownMenu.Portal container={trigger?.closest<HTMLElement>('[role="dialog"], .modal') ?? portalHost(trigger?.ownerDocument)}>
         <DropdownMenu.Content
           className="atlas-ctx-menu atlas-ctx-menu--dropdown"
           side="bottom"

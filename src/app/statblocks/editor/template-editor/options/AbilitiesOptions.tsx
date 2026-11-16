@@ -16,6 +16,7 @@ import { Setting, SettingNote } from '../inspector/InspectorControls';
 import { useGestureText } from '../inspector/useGestureText';
 import { applyEdit } from '../sessionEdit';
 import type { EditorSession } from '../sessionTypes';
+import { t } from '../../../../i18n';
 
 interface AbilitiesOptionsProps {
   block: TemplateBlock;
@@ -40,8 +41,8 @@ function TabName({ tab, session, readOnly, onRemove }: { tab: SectionBlock; sess
   });
   return (
     <div className="atlas-te-setting__inline">
-      <input {...text} type="text" className="atlas-te-input" aria-label="Tab name" disabled={readOnly} spellCheck={false} />
-      <ToolButton icon={X} label={`Remove ${tab.heading?.trim() || 'tab'}`} isActive={false} disabled={readOnly} onClick={onRemove} />
+      <input {...text} type="text" className="atlas-te-input" aria-label={t('templateEditor.tabName')} disabled={readOnly} spellCheck={false} />
+      <ToolButton icon={X} label={tab.heading?.trim() ? t('templateEditor.removeNamed', { name: tab.heading.trim() }) : t('templateEditor.removeTab')} isActive={false} disabled={readOnly} onClick={onRemove} />
     </div>
   );
 }
@@ -74,22 +75,22 @@ export function AbilitiesOptions({ block, session, readOnly }: AbilitiesOptionsP
     <>
       {field
         ? <EntryParts fields={fields} session={session} readOnly={readOnly} />
-        : <SettingNote>Name the list first: click its heading on the card.</SettingNote>}
+        : <SettingNote>{t('templateEditor.nameListFirst')}</SettingNote>}
       {block.type === 'entries' && (
-        <Setting label="Tabs" wide>
+        <Setting label={t('templateEditor.primitive.tabs')} wide>
           {() => (
             <div className="atlas-te-setting__list">
               <Button type="button" variant="outline" size="sm" disabled={readOnly || !mayTab || !field}
                 onClick={() => editTabs((current) => splitAbilities(current, block.id))}>
-                Split into tabs
+                {t('templateEditor.splitTabs')}
               </Button>
-              {!mayTab && <span className="atlas-te-setting__hint">A list side by side with others has no tabs. Give it a row of its own first.</span>}
+              {!mayTab && <span className="atlas-te-setting__hint">{t('templateEditor.noTabsSideBySide')}</span>}
             </div>
           )}
         </Setting>
       )}
       {block.type === 'tabs' && (
-        <Setting label="Tabs" wide>
+        <Setting label={t('templateEditor.primitive.tabs')} wide>
           {() => (
             <div className="atlas-te-setting__list">
               {tabs.map((tab) => (
@@ -99,7 +100,7 @@ export function AbilitiesOptions({ block, session, readOnly }: AbilitiesOptionsP
               <Button type="button" variant="ghost" size="sm" disabled={readOnly}
                 onClick={() => editTabs((current) => addAbilityTab(current, block.id))}>
                 <Plus aria-hidden="true" />
-                Add tab
+                {t('templateEditor.addTab')}
               </Button>
             </div>
           )}

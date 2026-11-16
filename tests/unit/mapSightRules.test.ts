@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { App } from 'obsidian';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';
 import { GENERIC_SENSES } from '../../src/app/gameSystems/senses';
+import { HP_RESOURCE, STRESS_RESOURCE } from '../../src/app/resources/resourceDefinitions';
+import { defeatTest } from '../../src/app/resources/resourceValues';
 import { AssetService } from '../../src/app/services/AssetService';
 import { mapSenseRules } from '../../src/app/services/mapSenseRules';
 import { mapSightRules } from '../../src/app/services/mapSightRules';
@@ -28,7 +30,7 @@ const rulesFor = (settings: CollectionSettings | null, mapPath: string | null = 
 
 describe('mapSightRules', () => {
   it('are the generic senses and no conditions for a map without a collection', () => {
-    expect(rulesFor(null)).toEqual({ definitions: GENERIC_SENSES, conditions: [] });
+    expect(rulesFor(null)).toEqual({ definitions: GENERIC_SENSES, conditions: [], defeated: defeatTest([{ ...HP_RESOURCE }]) });
     expect(rulesFor({ conditions: [] }, null).definitions).toBe(GENERIC_SENSES);
   });
 
@@ -57,5 +59,10 @@ describe('mapSightRules', () => {
     const visionOf = (): { senses: never[] } => ({ senses: [] });
     expect(withCollection(null, () => mapSightRules({} as App, { mapPath: null, grid: null }, visionOf)).visionOf).toBe(visionOf);
     expect(rulesFor(null)).not.toHaveProperty('visionOf');
+  });
+
+  it('ask the map\'s resources whether a token is defeated, and nothing where none defeats', () => {
+    expect(rulesFor({ conditions: [], resources: [{ ...HP_RESOURCE }] }).defeated).toBe(defeatTest([{ ...HP_RESOURCE }]));
+    expect(rulesFor({ conditions: [], resources: [{ ...STRESS_RESOURCE }] })).not.toHaveProperty('defeated');
   });
 });

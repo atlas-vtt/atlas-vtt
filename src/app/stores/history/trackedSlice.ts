@@ -1,7 +1,7 @@
 /** Maximum number of undo steps kept per map. */
 export const HISTORY_LIMIT = 50;
 
-/** The tracked state: `objects`, `grid`, `background`, `widgetValues`, `exploredEdits`, `partyValues` (references). */
+/** The tracked state: `objects`, `grid`, `background`, `widgetValues`, `exploredEdits`, `partyValues`, `levelAlignments`, `turnMoves` (references). */
 export type HistorySnapshot = {
   objects: unknown;
   grid: unknown;
@@ -11,6 +11,10 @@ export type HistorySnapshot = {
   exploredEdits?: unknown;
   /** The played campaign's values of its player characters (`ViewAtlasState.partyValues`); stores without them leave it out. */
   partyValues?: unknown;
+  /** How each level's image is fitted to the scene's grid (`ViewAtlasState.levelAlignments`); scenes without them leave it out. */
+  levelAlignments?: unknown;
+  /** What each token has moved in its turn (`ViewAtlasState.turnMoves`); stores without it leave it out. */
+  turnMoves?: unknown;
 };
 
 /**
@@ -24,12 +28,12 @@ export interface HistoryStep {
 
 export type TrackedBranch = keyof HistorySnapshot;
 
-export const TRACKED_BRANCHES: readonly TrackedBranch[] = ['objects', 'grid', 'background', 'widgetValues', 'exploredEdits', 'partyValues'];
+export const TRACKED_BRANCHES: readonly TrackedBranch[] = ['objects', 'grid', 'background', 'widgetValues', 'exploredEdits', 'partyValues', 'levelAlignments', 'turnMoves'];
 
 /**
  * How deep undo looks into each branch for the entities a step changed: `objects` holds
  * collections of entities, `widgetValues` one value per widget, `partyValues` one value per
- * character's resource, the rest are written whole.
+ * character's resource, `turnMoves` one distance per token, the rest are written whole.
  */
 export const BRANCH_DEPTH: Readonly<Record<TrackedBranch, number>> = {
   objects: 2,
@@ -38,6 +42,8 @@ export const BRANCH_DEPTH: Readonly<Record<TrackedBranch, number>> = {
   widgetValues: 1,
   exploredEdits: 0,
   partyValues: 1,
+  levelAlignments: 1,
+  turnMoves: 1,
 };
 
 /** The tracked branches of a state, by reference. */
@@ -49,6 +55,8 @@ export function trackedSliceOf(state: HistorySnapshot): HistorySnapshot {
     widgetValues: state.widgetValues,
     exploredEdits: state.exploredEdits,
     partyValues: state.partyValues,
+    levelAlignments: state.levelAlignments,
+    turnMoves: state.turnMoves,
   };
 }
 
@@ -63,6 +71,8 @@ export function sameTrackedSlice(a: HistorySnapshot, b: HistorySnapshot): boolea
     a.background === b.background &&
     a.widgetValues === b.widgetValues &&
     a.exploredEdits === b.exploredEdits &&
-    a.partyValues === b.partyValues
+    a.partyValues === b.partyValues &&
+    a.levelAlignments === b.levelAlignments &&
+    a.turnMoves === b.turnMoves
   );
 }

@@ -27,6 +27,14 @@ export const DAGGERHEART: SystemPreset = {
         { name: 'Very Far', maxSquares: 13 },
       ],
     },
+    // With an action a character moves within Close range, and up to Far with an Agility roll. The
+    // speed is Close's reach, 6 squares of 5 feet, and Far ends at twice that. Nothing adds up:
+    // the game has no turns that a move could be counted over.
+    movement: {
+      steps: [{ name: 'Move', multiple: 1, color: '#22c55e' }, { name: 'Agility roll', multiple: 2, color: '#f59e0b' }],
+      countPerTurn: false,
+      speed: 30,
+    },
     // Adversary statblocks roll a d20; player characters' duality dice come with character sheets.
     dice: { defaultRoll: '1d20', crit: 'natural' },
     diceSetId: D20_DICE_SET_ID,

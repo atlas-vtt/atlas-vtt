@@ -1,13 +1,18 @@
 import { PIN_ICON_PATHS } from '../types/pinIconPaths';
-import type { LightKind } from '../types/lightingTypes';
+import type { LightKind, LightSource } from '../types/lightingTypes';
+import { lightKindOf } from './lightPresets';
+
+/** What a light's marker shows: its kind, or the glowing surface of an area light. */
+export type LightGlyph = LightKind | 'surface';
 
 /**
  * Glyphs of the light kinds, for their map markers and the light popover: silhouettes from
  * game-icons.net (CC BY 3.0, see THIRD_PARTY_NOTICES.md) on the pins' 512×512 canvas. They are
  * not pin icons and are not offered in the pin palette; the torch is the one the pins have. The
- * crescent of magical darkness is Atlas' own: a disc with a disc cut out of it.
+ * crescent of magical darkness is Atlas' own: a disc with a disc cut out of it. An area light
+ * shows bubbles over a molten surface.
  */
-export const LIGHT_GLYPH_PATHS: Record<LightKind, string> = {
+export const LIGHT_GLYPH_PATHS: Record<LightGlyph, string> = {
   // candle-light by Lorc
   candle:
     'M258.75 23.563c-27.913 0-93.875 87.237-93.875 158.593 0 59.35 29.018 79.715 68.625 94.875-15.47-15.607-26.03-43.75-26.03-76.186 0-49.232 31.292-89.188 53.25-89.188 21.132 0 53.25 39.955 53.25 89.188 0 30.39-9.41 56.833-23.283 72.937 36.097-18.016 61.938-35.72 61.938-91.624 0-71.356-66.786-158.594-93.875-158.594zm6.72 175.906-18.5 2.686c5.764 39.366 6.665 69.034 4.25 97.875-24.957-.97-49.677-5.972-73.69-14.75v95.47c-3.295 25.668-22.434 30.526-22.093 53.47.29 19.547 14.998 26.003 22.094 17.624v36.28h164.69v-88.343c8.615 10.89 27.17 3.06 27.53-21.31.432-29.117-24.597-34.605-27.53-68.814V285.28c-23.916 8.88-48.17 13.702-72.314 14.72 2.337-29.752 1.383-60.792-4.437-100.53z',
@@ -18,6 +23,8 @@ export const LIGHT_GLYPH_PATHS: Record<LightKind, string> = {
   // fairy-wand by Lorc
   magical:
     'M250.53 22.03c-57.055 45.157-80.673 37.81-100.31.22 16.598 61.517 10.408 66.415-44.72 116.594 67.324-35.666 96.206-34.238 130.97 7.187-34.906-53.112-30.954-75.35 14.06-124zm18.407.126 11.688 114.938-99.875 58.094 97.75 21.093c-9.58 8.352-20.214 19.028-31.28 30.095l-.032.03L18.563 472.438v19.438h32.156L273.343 272.5c10.26-10.263 18.902-19.538 25.78-27.75l18.938 87.75 58.094-99.875 114.938 11.688-77.03-86.094 46.655-105.69-105.69 46.657-86.092-77.03zM26.875 55.938c33.765 27.66 35.21 42.767 30.75 87.78 18.975-53.73 27.964-67.297 64.5-82C82.972 71.094 66.21 73 26.875 55.94zm54.75 102.406c24.955 27.012 26.97 43.684 24.25 72.062 14.775-34.45 22.072-45.66 55.625-64.312-34.56 11.183-45.5 10.22-79.875-7.75zm325.594 95c9.27 51.694-4.61 73.708-32.845 106.687 43.3-37.043 57.852-44.284 96.844-38.75-38.597-11.457-47.426-20.624-64-67.936zm-55.658 72.812c-18.705 68.79-45.304 83.944-107.625 70.125 54.126 20.1 56.34 21.07 53.532 85.25 24.757-55.42 46.49-52.217 95.06-37.217-41.775-31.838-45.71-48.97-40.967-118.157zm109.344 55.97c-15.32 17.994-22.932 17.49-43.812 9.343 22.828 18.444 17.596 34.024 10.844 59.405 16.05-19.12 23.516-25.237 50.312-12.688-22.86-21.342-27.13-29.857-17.344-56.062z',
+  // lava by sbed
+  surface: 'M257.188 45.875A44.867 44.867 0 0 0 211.28 91 44.867 44.867 0 1 0 301 91a44.867 44.867 0 0 0-43.813-45.125zM91.905 90.625A44.867 44.867 0 0 0 46 135.72a44.867 44.867 0 1 0 89.72 0 44.867 44.867 0 0 0-43.814-45.095zm330.281 0a44.867 44.867 0 0 0-45.906 45.094 44.867 44.867 0 1 0 89.72 0 44.867 44.867 0 0 0-43.813-45.095zM256.845 210.97A29.866 29.866 0 0 0 226.28 241a29.866 29.866 0 1 0 59.72 0 29.866 29.866 0 0 0-29.156-30.03zm-135 30A29.866 29.866 0 0 0 91.28 271a29.866 29.866 0 1 0 59.72 0 29.866 29.866 0 0 0-29.156-30.03zm270 0A29.866 29.866 0 0 0 361.28 271a29.866 29.866 0 1 0 59.72 0 29.866 29.866 0 0 0-29.156-30.03zm-135.5 89.81A15 15 0 0 0 241 345.876a15 15 0 1 0 30 0 15 15 0 0 0-14.656-15.094zm-120 15A15 15 0 0 0 121 360.876a15 15 0 1 0 30 0 15 15 0 0 0-14.656-15.094zm240 0A15 15 0 0 0 361 360.876a15 15 0 1 0 30 0 15 15 0 0 0-14.656-15.094zM76 375.876c-15 0-30 30-30 30-30 0-30 0-30 30v30h480v-30c0-30 0-30-30-30 0 0-15-30-30-30-30 0-30 45-60 45s-30-45-60-45-30 45-60 45-30-45-60-45-30 45-60 45-30-45-60-45z',
   darkness: 'M205.2 61.7A210 210 0 1 0 431.2 336.6A178 178 0 0 1 205.2 61.7z',
   // light-bulb by Lorc
   custom:
@@ -26,3 +33,8 @@ export const LIGHT_GLYPH_PATHS: Record<LightKind, string> = {
 
 /** The canvas the glyph paths are drawn on. */
 export const LIGHT_GLYPH_VIEW_BOX = '0 0 512 512';
+
+/** The glyph of a light's marker: the surface of an area light (`LightSource.area`), else its kind (`lightKindOf`). */
+export function lightGlyphOf(light: Pick<LightSource, 'emission' | 'area'>): LightGlyph {
+  return light.area && !light.emission.darkness ? 'surface' : lightKindOf(light.emission);
+}

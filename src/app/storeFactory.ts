@@ -8,8 +8,7 @@ import type { StorageValue } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import type { App, Plugin } from 'obsidian';
 import type AtlasVTTPlugin from '../../main';
-import type { TokenEntity, Character, NotePin, TextElement, DrawingStroke } from './types';
-import type { FogOperation, FogOperationInput } from './types/fogTypes';
+import type { TokenEntity, Character, NotePin } from './types';
 import type { WallSegment, WallInput } from './types/wallTypes';
 import { DEFAULT_SCENE_LIGHTING, type LightChanges, type LightInput, type LightZoneChanges, type LightZoneInput, type SceneLightingChanges, type SceneLightingOption } from './types/lightingTypes';
 import type { AudioSource, AudioInput } from './types/audioTypes';
@@ -23,6 +22,7 @@ import { normalizeImagePath } from './utils/pathUtils';
 import { createInitiativeActions } from './stores/initiativeSlice';
 import type { InitiativeTurnActions } from './stores/initiativeTurnActions';
 import { createInitialUIState, createUIActions, type UISlice } from './stores/uiSlice';
+import { loadDrawTool, saveDrawTool } from './services/deviceSettings';
 import { createPinnedNotePreviewActions, type PinnedNotePreviewSlice } from './stores/pinnedNotePreviewSlice';
 import { createInitialLootRollerState, createLootRollerActions, readLootRollerState, type LootRollerSlice } from './stores/lootRollerSlice';
 import { isRecord } from './utils/guards';
@@ -37,15 +37,32 @@ import type { MapMove } from './grid/mapStretch';
 import { objectsMovedWithMap } from './grid/mapStretchObjects';
 import { computeNextInstanceNumber } from './stores/tokenInstanceNumbers';
 import { placeTokens, raiseTokens, type TokenPlace } from './stores/tokenStacking';
+import type { ArtFloors } from './levels/levelSurfaces';
 import type { DiceRollResult } from './types/diceTypes';
 import { isAtlasToolAvailable } from './tools/toolAvailability';
 import { readExploredMask } from './lighting/exploredMaskCodec';
 import { clampLitThreshold, readSceneLighting } from './lighting/sceneLightingOptions';
 import { isPinLabelKind, nextPinLabel } from './tools/pinLabels';
-import { movedPathOf, rewriteMapReferences } from './services/renamedPaths';
+import { movedFolderPathOf, movedPathOf, rewriteMapReferences } from './services/renamedPaths';
 import { conditionValue, removeCondition, setConditionValue } from './utils/conditionValues';
 import { HydrationTracker } from './stores/hydrationTracker';
 import { isolateListeners } from './stores/isolatedListeners';
+import { firstLevelId, placedOnViewedLevel, placedOnViewedLevels, viewedLevelId } from './levels/sceneLevels';
+import { createSceneLevelsActions, writeExploredMask, type SceneLevelsSlice } from './stores/sceneLevelsSlice';
+import { createLevelSurfacesActions, type LevelSurfacesSlice } from './stores/levelSurfacesSlice';
+import { createMapFeaturesActions, type MapFeaturesSlice } from './stores/mapFeaturesSlice';
+import { createRoomsSlice, DEFAULT_ROOM_TOOL, type RoomsSlice } from './stores/roomsSlice';
+import { createLiquidsActions, type LiquidsSlice } from './stores/liquidsSlice';
+import { createMeasuresActions, dropTokenAuras, type MeasuresSlice } from './stores/measuresSlice';
+import { createAnnotationsActions, type AnnotationsSlice } from './stores/annotationsSlice';
+import { createFogActions, type FogSlice } from './stores/fogSlice';
+import { createTurnMovesActions, type TurnMovesSlice } from './stores/turnMovesSlice';
+import { createPlayerFramesActions, readPlayerFrames, type PlayerFramesSlice } from './stores/playerFramesSlice';
+import { readSceneSound } from './soundLibrary/sceneSound';
+import type { SceneSound } from './sound/soundTypes';
+import { levelsForFile, readExploredMasks, readSceneLevels } from './levels/levelFile';
+import { levelAlignmentsOf, movesWithFrame, withoutAlignments } from './levels/levelAlignment';
+import { levelsCarriedWithGrid, type CarriedLevels, type GridCarryScene } from './levels/levelGridCarry';
 
 // Individual store state interface (same as AtlasState but isolated)
 export interface ViewAtlasState extends ViewState {
@@ -93,6 +110,8 @@ export interface ViewAtlasState extends ViewState {
   updateTokens: (entries: Array<{ id: string; changes: TokenUpdates }>) => void;
   /** Points tokens and pins that name a vault file at the path it was renamed to. */
   retargetRenamedFile: (oldPath: string, newPath: string) => void;
+  /** Points what the scene names at or below a renamed folder (a pin's folder of encounters) at its new place. */
+  retargetRenamedFolder: (oldPath: string, newPath: string) => void;
   deleteToken: (id: string) => void;
   setTokens: (map: Record<string, TokenEntity>) => void;
   setTokenRing: (id: string, color: string | null) => void;
@@ -116,39 +135,42 @@ export interface ViewAtlasState extends ViewState {
 
   // Note Pin actions
   /** With `hex`, the note is linked to the hex containing (x, y) rather than pinned to the point. */
-  addNotePin: (x: number, y: number, notePath: string, icon?: string, options?: { hex?: boolean }) => string;
+  addNotePin: (x: number, y: number, notePath: string, icon?: string, options?: { hex?: boolean; sceneLevel?: string; showName?: boolean }) => string;
   /** A field given as undefined is removed. */
   updateNotePin: (id: string, updates: { [K in keyof Omit<NotePin, 'id' | 'kind'>]?: NotePin[K] | undefined }) => void;
   moveNotePin: (id: string, x: number, y: number) => void;
   deleteNotePin: (id: string) => void;
 
-  // Text element actions
-  addText: (data: Omit<TextElement, 'id' | 'kind'>) => string;
-  updateText: (id: string, updates: Partial<Omit<TextElement, 'id' | 'kind'>>) => void;
-  moveText: (id: string, x: number, y: number) => void;
-  deleteText: (id: string) => void;
-  setTexts: (texts: Record<string, TextElement>) => void;
+  // Drawings and texts (from annotationsSlice.ts)
+  addText: AnnotationsSlice['addText'];
+  updateText: AnnotationsSlice['updateText'];
+  setTexts: AnnotationsSlice['setTexts'];
+  addDrawing: AnnotationsSlice['addDrawing'];
+  addDrawings: AnnotationsSlice['addDrawings'];
+  setDrawings: AnnotationsSlice['setDrawings'];
+  updateAnnotations: AnnotationsSlice['updateAnnotations'];
+  moveAnnotations: AnnotationsSlice['moveAnnotations'];
+  placeAnnotations: AnnotationsSlice['placeAnnotations'];
+  deleteAnnotations: AnnotationsSlice['deleteAnnotations'];
+  orderAnnotations: AnnotationsSlice['orderAnnotations'];
+  groupAnnotations: AnnotationsSlice['groupAnnotations'];
+  ungroupAnnotations: AnnotationsSlice['ungroupAnnotations'];
+  replaceDrawings: AnnotationsSlice['replaceDrawings'];
+  clearAnnotations: AnnotationsSlice['clearAnnotations'];
 
-  // Drawing actions
-  addDrawing: (data: Omit<DrawingStroke, 'id' | 'kind' | 'timestamp'>) => string;
-  moveDrawings: (ids: string[], dx: number, dy: number) => void;
-  /** Gives each listed drawing these points (a group turned as one); others keep theirs. */
-  placeDrawings: (points: Readonly<Record<string, ReadonlyArray<{ x: number; y: number }>>>) => void;
-  updateDrawings: (ids: string[], updates: Partial<Pick<DrawingStroke, 'color' | 'icon'>>) => void;
-  deleteDrawing: (id: string) => void;
-  clearDrawings: () => void;
-  setDrawings: (drawings: Record<string, DrawingStroke>) => void;
-
-  // Fog actions
-  addFogOperation: (data: FogOperationInput) => string;
-  deleteFogOperation: (id: string) => void;
-  deleteFogOperations: (ids: string[]) => void;
-  duplicateFogOperations: (ids: string[]) => void;
-  setFogOperations: (fog: Record<string, FogOperation>) => void;
-  clearFog: () => void;
+  // Fog actions (from fogSlice.ts)
+  addFogOperation: FogSlice['addFogOperation'];
+  addFogOperations: FogSlice['addFogOperations'];
+  clearFog: FogSlice['clearFog'];
+  coverAllFog: FogSlice['coverAllFog'];
+  revealFogGround: FogSlice['revealFogGround'];
+  hideFogArea: FogSlice['hideFogArea'];
+  forgetFogArea: FogSlice['forgetFogArea'];
+  hideRooms: FogSlice['hideRooms'];
   /** Merges `changes` into the scene's lighting; an option given as undefined is removed. */
   setSceneLighting: (changes: SceneLightingChanges) => void;
-  setExploredMask: (dataUrl: string | null) => void;
+  /** Sets the explored memory of `level` (unset: the level the view shows; null: the first); a level the scene no longer has keeps none. */
+  setExploredMask: (dataUrl: string | null, level?: string | null) => void;
   setExploredEdits: (count: number) => void;
 
   // Wall actions
@@ -156,6 +178,8 @@ export interface ViewAtlasState extends ViewState {
   updateWall: (id: string, changes: Partial<WallSegment>) => void;
   deleteWall: (id: string) => void;
   deleteWalls: (ids: string[]) => void;
+  /** Takes walls away and adds others in one write, so whatever follows the walls works them out once; returns the ids of the added ones. */
+  editWalls: (remove: readonly string[], add: readonly WallInput[]) => string[];
   toggleDoor: (id: string) => void;
   /** Locks a door, closing it, or unlocks it; a locked door does not open (`toggleDoor`). */
   setDoorLocked: (id: string, locked: boolean) => void;
@@ -184,7 +208,8 @@ export interface ViewAtlasState extends ViewState {
    * The pointer lets go of the tokens it dragged: `placeTokens` puts them at `positions`, on top
    * of every other token, and they are no longer held. One write, so sight works the drop out once.
    */
-  dropTokens: (positions: readonly TokenPlace[]) => void;
+  /** Puts dragged tokens down (`placeTokens`); `art` is what the view draws of the levels' maps, through which a token falls. */
+  dropTokens: (positions: readonly TokenPlace[], art?: ArtFloors) => void;
   deleteTokens: (ids: string[]) => void;
   /** Deletes every selected token, drawing, text and pin in one undo step. */
   deleteSelected: () => void;
@@ -202,6 +227,49 @@ export interface ViewAtlasState extends ViewState {
   setGMView: (on: boolean) => void;
   setDMNotePath: (path: string | null) => void;
 
+  // Levels (from sceneLevelsSlice.ts)
+  setViewedLevel: SceneLevelsSlice['setViewedLevel'];
+  setLevels: SceneLevelsSlice['setLevels'];
+  applyLevelScene: SceneLevelsSlice['applyLevelScene'];
+  moveTokensToLevel: SceneLevelsSlice['moveTokensToLevel'];
+  alignLevel: SceneLevelsSlice['alignLevel'];
+  addLevelLink: SceneLevelsSlice['addLevelLink'];
+  updateLevelLink: SceneLevelsSlice['updateLevelLink'];
+  deleteLevelLink: SceneLevelsSlice['deleteLevelLink'];
+
+  // Openings and floor on a level (from levelSurfacesSlice.ts)
+  addLevelSurface: LevelSurfacesSlice['addLevelSurface'];
+  updateLevelSurface: LevelSurfacesSlice['updateLevelSurface'];
+  deleteLevelSurface: LevelSurfacesSlice['deleteLevelSurface'];
+
+  // Named areas of the map for the GM (from mapFeaturesSlice.ts)
+  addMapFeatures: MapFeaturesSlice['addMapFeatures'];
+  updateMapFeature: MapFeaturesSlice['updateMapFeature'];
+  deleteMapFeature: MapFeaturesSlice['deleteMapFeature'];
+
+  // The rooms mode's choices (from roomsSlice.ts)
+  roomTool: RoomsSlice['roomTool'];
+  setRoomTool: RoomsSlice['setRoomTool'];
+  // Water, lava and acid that move on animated maps (from liquidsSlice.ts)
+  addLiquids: LiquidsSlice['addLiquids'];
+  deleteLiquid: LiquidsSlice['deleteLiquid'];
+  // Measurements that stay on the map (from measuresSlice.ts)
+  addMeasure: MeasuresSlice['addMeasure'];
+  updateMeasure: MeasuresSlice['updateMeasure'];
+  deleteMeasure: MeasuresSlice['deleteMeasure'];
+  clearMeasures: MeasuresSlice['clearMeasures'];
+  setTokenAuras: MeasuresSlice['setTokenAuras'];
+
+  // Movement counted per turn (from turnMovesSlice.ts)
+  countTurnMove: TurnMovesSlice['countTurnMove'];
+  /** Links the scene to its moods; nothing to link clears the field. Written with the map, never an undo step. */
+  setSceneSound: (sound: SceneSound | null) => void;
+
+  // Frames saved for the players' TV (from playerFramesSlice.ts)
+  addPlayerFrame: PlayerFramesSlice['addPlayerFrame'];
+  movePlayerFrame: PlayerFramesSlice['movePlayerFrame'];
+  removePlayerFrame: PlayerFramesSlice['removePlayerFrame'];
+
   // Copy, paste and duplicate (from mapObjectsSlice.ts)
   insertMapObjects: MapObjectsSlice['insertMapObjects'];
   duplicateMapObjects: MapObjectsSlice['duplicateMapObjects'];
@@ -209,7 +277,7 @@ export interface ViewAtlasState extends ViewState {
   placeOffMapToken: MapObjectsSlice['placeOffMapToken'];
 
   // Map state management
-  deleteMapObject: (type: 'token' | 'fog' | 'pin' | 'text' | 'drawing' | 'wall' | 'light' | 'audio', id: string) => void;
+  deleteMapObject: (type: 'token' | 'pin' | 'text' | 'drawing' | 'wall' | 'light' | 'audio', id: string) => void;
   clearMapState: () => void;
   plugin?: Plugin;
   setTokenSettings: (settings: ViewAtlasState['tokenSettings']) => void;
@@ -249,12 +317,25 @@ export interface ViewAtlasState extends ViewState {
   closeLightPopover: UISlice['closeLightPopover'];
   openLightZonePopover: UISlice['openLightZonePopover'];
   closeLightZonePopover: UISlice['closeLightZonePopover'];
-  setSceneLightingPanelOpen: UISlice['setSceneLightingPanelOpen'];
+  openLevelLinkPopover: UISlice['openLevelLinkPopover'];
+  closeLevelLinkPopover: UISlice['closeLevelLinkPopover'];
+  openLevelSurfacePopover: UISlice['openLevelSurfacePopover'];
+  closeLevelSurfacePopover: UISlice['closeLevelSurfacePopover'];
+  openMeasurePopover: UISlice['openMeasurePopover'];
+  closeMeasurePopover: UISlice['closeMeasurePopover'];
+  setMeasureTool: UISlice['setMeasureTool'];
+  setDrawTool: UISlice['setDrawTool'];
+  setFogTool: UISlice['setFogTool'];
+  setLightingTool: UISlice['setLightingTool'];
   setHeldTokens: UISlice['setHeldTokens'];
   setExploredBrush: UISlice['setExploredBrush'];
   setToolbarEditing: UISlice['setToolbarEditing'];
+  openDungeonGenerator: UISlice['openDungeonGenerator'];
+  closeDungeonGenerator: UISlice['closeDungeonGenerator'];
+  setRoofsHidden: UISlice['setRoofsHidden'];
   setGridSettingsOpen: UISlice['setGridSettingsOpen'];
   setDMScreenOpen: UISlice['setDMScreenOpen'];
+  setDMScreenPage: UISlice['setDMScreenPage'];
   setGridAlignmentOpen: UISlice['setGridAlignmentOpen'];
   setDiceLogOpen: UISlice['setDiceLogOpen'];
   openAssetManager: UISlice['openAssetManager'];
@@ -285,11 +366,15 @@ export const DEFAULT_TOKEN_SETTINGS: Readonly<ViewAtlasState['tokenSettings']> =
   tokenRingSize: 1,
 };
 
-const createInitialState = (): Pick<ViewAtlasState, 'schema' | 'version' | 'mapPath' | 'background' | 'grid' | 'objects' | 'camera' | 'persistenceEnabled' | 'widgetSettings' | 'widgetValues' | 'dmNotePath' | 'tokenSettings' | 'initiative' | 'diceLog' | 'pinnedNotePreviews' | 'lootRoller' | 'lighting' | 'exploredMask' | 'exploredEdits' | 'partyValues'> => ({
+const createInitialState = (): Pick<ViewAtlasState, 'schema' | 'version' | 'mapPath' | 'background' | 'grid' | 'objects' | 'camera' | 'persistenceEnabled' | 'widgetSettings' | 'widgetValues' | 'dmNotePath' | 'tokenSettings' | 'initiative' | 'diceLog' | 'pinnedNotePreviews' | 'lootRoller' | 'lighting' | 'exploredMask' | 'exploredEdits' | 'partyValues' | 'turnMoves' | 'fightsStarted' | 'playerFrames' | 'sound'> => ({
   lighting: { ...DEFAULT_SCENE_LIGHTING },
+  playerFrames: [],
+  sound: null,
   exploredMask: null,
   exploredEdits: 0,
   partyValues: {},
+  turnMoves: {},
+  fightsStarted: 0,
   schema: ATLAS_SCHEMA,
   version: ATLAS_VERSION,
   mapPath: null,
@@ -351,6 +436,11 @@ export type ViewAtlasStore = Mutate<
    */
   rehydrateFromFile: (isSuperseded?: () => boolean) => Promise<void>;
 };
+
+/** The levels a grid write carries along; none while a load restores the scene, whose file already holds them as they belong. */
+function carriedLevels(state: GridCarryScene & { isMapLoading: boolean }, grid: GridState | null): CarriedLevels | null {
+  return state.isMapLoading ? null : levelsCarriedWithGrid(state, grid);
+}
 
 function applyTokenUpdates(token: TokenEntity | undefined, updates: TokenUpdates): void {
   if (!token) return;
@@ -511,16 +601,28 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.background = bg;
           }),
 
-          // Set grid state
-          setGrid: (grid) => set((draft) => {
-            draft.grid = grid;
-          }),
-
-          alignGrid: (grid, move) => {
-            const objects = move ? objectsMovedWithMap(get().objects, move) : null;
+          // Set grid state; the levels fitted to it follow it in the same write (one undo step)
+          setGrid: (grid) => {
+            const carried = carriedLevels(get(), grid);
             set((draft) => {
               draft.grid = grid;
-              if (objects) draft.objects = objects;
+              if (carried) {
+                draft.levelAlignments = carried.levelAlignments;
+                draft.objects = carried.objects;
+              }
+            });
+          },
+
+          alignGrid: (grid, move) => {
+            // What stands on the frame's levels moves with the frame's map, and every level fitted to the
+            // grid follows the grid to stay on its art
+            const state = get();
+            const objects = move ? objectsMovedWithMap(state.objects, move, movesWithFrame(state)) : state.objects;
+            const carried = carriedLevels({ ...state, objects }, grid);
+            set((draft) => {
+              draft.grid = grid;
+              draft.objects = carried?.objects ?? objects;
+              if (carried) draft.levelAlignments = carried.levelAlignments;
             });
           },
           
@@ -583,7 +685,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
                 // Normalize the image path to prevent app:// URLs
                 const imagePath = normalizeImagePath(data.imagePath);
                 const instanceNumber = computeNextInstanceNumber(draft.objects.tokens, imagePath);
-                draft.objects.tokens[id] = { ...data, id, kind: data.kind ?? 'token', imagePath, instanceNumber } as TokenEntity;
+                draft.objects.tokens[id] = { ...data, id, kind: data.kind ?? 'token', imagePath, instanceNumber, ...placedOnViewedLevel(draft) } as TokenEntity;
                 ids.push(id);
               }
               raiseTokens(draft.objects.tokens, ids);
@@ -612,7 +714,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               ...(data.showRing !== undefined && { showRing: data.showRing }),
             };
             set((draft) => {
-              draft.objects.tokens[id] = token;
+              draft.objects.tokens[id] = { ...token, ...placedOnViewedLevel(draft) };
               raiseTokens(draft.objects.tokens, [id]);
             });
             return id;
@@ -633,6 +735,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
                 instanceNumber,
                 ...(extra.notePath && { notePath: extra.notePath }),
                 ...(data.snapped !== undefined && { snapped: data.snapped }),
+                ...placedOnViewedLevel(draft),
               };
               draft.objects.tokens[id] = char;
               raiseTokens(draft.objects.tokens, [id]);
@@ -662,8 +765,13 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             rewriteMapReferences(draft, movedPathOf([{ from: oldPath, to: newPath }]));
           }),
 
+          retargetRenamedFolder: (oldPath, newPath) => set((draft) => {
+            rewriteMapReferences(draft, movedFolderPathOf([{ from: oldPath, to: newPath }]));
+          }),
+
           deleteToken: (id) => set((draft) => {
             delete draft.objects.tokens[id];
+            dropTokenAuras(draft, [id]);
           }),
 
           setTokens: (map) => set((draft) => {
@@ -808,9 +916,13 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft._audioDirty = true;
           }),
 
-          dropTokens: (positions) => set((draft) => {
-            placeTokens(draft, positions);
+          dropTokens: (positions, art) => set((draft) => {
+            const levelsBefore = new Map(positions.map(({ id }) => [id, draft.objects.tokens[id]?.level]));
+            placeTokens(draft, positions, art);
             if (Object.keys(draft.heldTokens).length > 0) draft.heldTokens = {};
+            // Tokens that went down or up stairs leave the selection, which stays on the level shown.
+            const climbed = new Set(positions.filter(({ id }) => draft.objects.tokens[id]?.level !== levelsBefore.get(id)).map(({ id }) => id));
+            if (climbed.size > 0) draft.selectedIds = draft.selectedIds.filter((id) => !climbed.has(id));
           }),
 
           deleteTokens: (ids) => set((draft) => {
@@ -819,6 +931,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               return;
             }
             ids.forEach(id => delete draft.objects.tokens[id]);
+            dropTokenAuras(draft, ids);
             
             // Remove deleted token IDs from selection
             draft.selectedIds = draft.selectedIds.filter(selectedId => !ids.includes(selectedId));
@@ -830,18 +943,13 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           // --- Copy, paste and duplicate (from mapObjectsSlice.ts) ---
           ...createMapObjectsActions(set, get),
 
-          deleteMapObject: (type: 'token' | 'fog' | 'pin' | 'text' | 'drawing' | 'wall' | 'light' | 'audio', id: string) => set((draft) => {
+          deleteMapObject: (type: 'token' | 'pin' | 'text' | 'drawing' | 'wall' | 'light' | 'audio', id: string) => set((draft) => {
             switch (type) {
               case 'token':
                 if (draft.objects.tokens[id]) {
                   delete draft.objects.tokens[id];
+                  dropTokenAuras(draft, [id]);
                   // Remove from selection if selected
-                  draft.selectedIds = draft.selectedIds.filter(selectedId => selectedId !== id);
-                }
-                break;
-              case 'fog':
-                if (draft.objects.fog[id]) {
-                  delete draft.objects.fog[id];
                   draft.selectedIds = draft.selectedIds.filter(selectedId => selectedId !== id);
                 }
                 break;
@@ -909,13 +1017,20 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
                 kind: 'pin',
                 x, 
                 y, 
-                notePath
+                notePath,
+                ...placedOnViewedLevel(draft),
               };
               if (icon) {
                 newPin.icon = icon;
               }
               if (options?.hex) {
                 newPin.hex = true;
+              }
+              if (options?.sceneLevel) {
+                newPin.sceneLevel = options.sceneLevel;
+              }
+              if (options?.showName) {
+                newPin.showName = true;
               }
               if (isPinLabelKind(icon)) {
                 newPin.label = nextPinLabel(draft.objects.pins, icon);
@@ -959,161 +1074,11 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             }
           }),
 
-          // Text element actions
-          addText: (data) => {
-            const id = `text_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-            set((draft) => {
-              const textElement: TextElement = {
-                id,
-                kind: 'text',
-                ...data
-              };
-              draft.objects.texts[id] = textElement;
-            });
-            return id;
-          },
+          // Drawings and texts (from annotationsSlice.ts)
+          ...createAnnotationsActions(set, get),
 
-          updateText: (id, updates) => set((draft) => {
-            const text = draft.objects.texts[id];
-            if (text) {
-              Object.assign(text, updates);
-            }
-          }),
-
-          moveText: (id, x, y) => set((draft) => {
-            const text = draft.objects.texts[id];
-            if (text) {
-              text.x = x;
-              text.y = y;
-            }
-          }),
-
-          deleteText: (id) => set((draft) => {
-            if (draft.objects.texts[id]) {
-              delete draft.objects.texts[id];
-              draft.selectedIds = draft.selectedIds.filter(selectedId => selectedId !== id);
-            }
-          }),
-
-          setTexts: (texts) => set((draft) => {
-            draft.objects.texts = texts;
-          }),
-
-          // Drawing actions
-          addDrawing: (data) => {
-            const id = `drawing_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-            set((draft) => {
-              const drawingStroke: DrawingStroke = {
-                id,
-                kind: 'drawing',
-                timestamp: Date.now(),
-                ...data,
-                // Create a deep copy of points array to avoid frozen object issues
-                points: data.points.map((p: { x: number; y: number }) => ({ x: p.x, y: p.y }))
-              };
-              draft.objects.drawings[id] = drawingStroke;
-            });
-            return id;
-          },
-
-          moveDrawings: (ids, dx, dy) => set((draft) => {
-            for (const id of ids) {
-              const drawing = draft.objects.drawings[id];
-              if (!drawing) continue;
-              for (const point of drawing.points) {
-                point.x += dx;
-                point.y += dy;
-              }
-            }
-          }),
-
-          placeDrawings: (points) => set((draft) => {
-            for (const [id, placed] of Object.entries(points)) {
-              const drawing = draft.objects.drawings[id];
-              if (drawing) drawing.points = placed.map(({ x, y }) => ({ x, y }));
-            }
-          }),
-
-          updateDrawings: (ids, updates) => set((draft) => {
-            for (const id of ids) {
-              const drawing = draft.objects.drawings[id];
-              if (drawing) Object.assign(drawing, updates);
-            }
-          }),
-
-          deleteDrawing: (id) => set((draft) => {
-            if (draft.objects.drawings[id]) {
-              delete draft.objects.drawings[id];
-              draft.selectedIds = draft.selectedIds.filter(selectedId => selectedId !== id);
-            }
-          }),
-
-          clearDrawings: () => set((draft) => {
-            draft.objects.drawings = {};
-          }),
-
-          setDrawings: (drawings) => set((draft) => {
-            // Create a new object to ensure Immer detects the change
-            draft.objects.drawings = { ...drawings };
-          }),
-
-          // Fog actions
-          addFogOperation: (data) => {
-            const id = `fog_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-            set((draft) => {
-              const op: FogOperation = {
-                id,
-                kind: 'fog',
-                timestamp: Date.now(),
-                ...data,
-              };
-              draft.objects.fog[id] = op;
-            });
-            return id;
-          },
-
-          deleteFogOperation: (id) => set((draft) => {
-            if (draft.objects.fog[id]) {
-              delete draft.objects.fog[id];
-              draft.selectedIds = draft.selectedIds.filter(sid => sid !== id);
-            }
-          }),
-
-          deleteFogOperations: (ids) => set((draft) => {
-            for (const id of ids) {
-              delete draft.objects.fog[id];
-            }
-            draft.selectedIds = draft.selectedIds.filter(sid => !ids.includes(sid));
-          }),
-
-          duplicateFogOperations: (ids) => set((draft) => {
-            if (!ids || !Array.isArray(ids)) return;
-            const newIds: string[] = [];
-            ids.forEach(id => {
-              const original = draft.objects.fog[id];
-              if (original && !original.isErasing) {
-                const newId = `fog_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-                const offset = 40;
-                draft.objects.fog[newId] = {
-                  ...original,
-                  id: newId,
-                  timestamp: Date.now(),
-                  offsetX: (original.offsetX ?? 0) + offset,
-                  offsetY: (original.offsetY ?? 0) + offset,
-                };
-                newIds.push(newId);
-              }
-            });
-            draft.selectedIds = newIds;
-          }),
-
-          setFogOperations: (fog) => set((draft) => {
-            draft.objects.fog = { ...fog };
-          }),
-
-          clearFog: () => set((draft) => {
-            draft.objects.fog = {};
-          }),
+          // Fog actions (from fogSlice.ts)
+          ...createFogActions(set, get),
 
           setSceneLighting: (changes) => set((draft) => {
             Object.assign(draft.lighting, changes);
@@ -1124,8 +1089,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             if (draft.lighting.litThreshold !== undefined) draft.lighting.litThreshold = clampLitThreshold(draft.lighting.litThreshold);
           }),
 
-          setExploredMask: (dataUrl) => set((draft) => {
-            draft.exploredMask = dataUrl;
+          setExploredMask: (dataUrl, level) => set((draft) => {
+            writeExploredMask(draft, dataUrl, level);
           }),
 
           setExploredEdits: (count) => set((draft) => {
@@ -1142,10 +1107,11 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           },
 
           // Wall actions
+          // A wall, light, zone or sound is on the level the view shows, unless it names its levels (a piece of a split wall).
           addWall: (data) => {
             const id = `wall_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
             set((draft) => {
-              draft.objects.walls[id] = { id, kind: 'wall', ...data };
+              draft.objects.walls[id] = { id, kind: 'wall', ...placedOnViewedLevels(draft), ...data };
               draft._audioDirty = true;
             });
             return id;
@@ -1175,6 +1141,25 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft._audioDirty = true;
           }),
 
+          editWalls: (remove, add) => {
+            const stamp = Date.now();
+            const ids = add.map(() => `wall_${stamp}_${Math.random().toString(36).slice(2, 11)}`);
+            if (remove.length === 0 && add.length === 0) return ids;
+            set((draft) => {
+              for (const id of remove) delete draft.objects.walls[id];
+              const levels = placedOnViewedLevels(draft);
+              add.forEach((data, index) => {
+                draft.objects.walls[ids[index]!] = { id: ids[index]!, kind: 'wall', ...levels, ...data };
+              });
+              if (remove.length > 0) {
+                const gone = new Set(remove);
+                draft.selectedIds = draft.selectedIds.filter((id) => !gone.has(id));
+              }
+              draft._audioDirty = true;
+            });
+            return ids;
+          },
+
           toggleDoor: (id) => set((draft) => {
             const wall = draft.objects.walls[id];
             // A locked door stays shut until it is unlocked.
@@ -1202,7 +1187,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           addLight: (data) => {
             const id = `light_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
             set((draft) => {
-              draft.objects.lights[id] = { id, kind: 'light', ...data };
+              draft.objects.lights[id] = { id, kind: 'light', ...placedOnViewedLevels(draft), ...data };
             });
             return id;
           },
@@ -1228,7 +1213,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             set((draft) => {
               // Whatever is in their place that is no record (a store filled by something else than a load) gives way.
               if (!isRecord(draft.objects.lightZones)) draft.objects.lightZones = {};
-              draft.objects.lightZones[id] = { id, kind: 'light-zone', ...data };
+              draft.objects.lightZones[id] = { id, kind: 'light-zone', ...placedOnViewedLevels(draft), ...data };
             });
             return id;
           },
@@ -1251,7 +1236,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           addAudio: (data) => {
             const id = `audio_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
             set((draft) => {
-              draft.objects.audios[id] = { id, kind: 'audio', ...data };
+              draft.objects.audios[id] = { id, kind: 'audio', ...placedOnViewedLevels(draft), ...data };
               draft._audioDirty = true;
             });
             return id;
@@ -1309,8 +1294,15 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.pinnedNotePreviews = {};
             draft.lootRoller = createInitialLootRollerState();
             draft.lighting = { ...DEFAULT_SCENE_LIGHTING };
+            draft.playerFrames = [];
+            draft.sound = null;
             draft.exploredMask = null;
+            draft.exploredMasks = undefined;
             draft.exploredEdits = 0;
+            draft.turnMoves = {};
+            draft.levels = undefined;
+            draft.levelAlignments = undefined;
+            draft.viewedLevel = null;
 
             // Note: We don't clear background here - it will be set by the new map
             // Note: We don't clear mapPath - it must be preserved for storage adapter
@@ -1424,9 +1416,21 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           lootRoller: createInitialLootRollerState(),
           ...createLootRollerActions(set),
 
+          // --- Levels of the scene (from sceneLevelsSlice.ts) ---
+          ...createSceneLevelsActions(set, get),
+          ...createLevelSurfacesActions(set),
+          ...createMapFeaturesActions(set),
+          roomTool: DEFAULT_ROOM_TOOL,
+          ...createRoomsSlice(set),
+          ...createLiquidsActions(set),
+          ...createMeasuresActions(set),
+          ...createTurnMovesActions(set),
+          ...createPlayerFramesActions(set),
+          setSceneSound: (sound) => set((draft) => { draft.sound = readSceneSound(sound); }),
+
           // --- Per-view UI visibility (from uiSlice.ts) ---
-          ...createInitialUIState(),
-          ...createUIActions(set),
+          ...createInitialUIState(loadDrawTool(app)),
+          ...createUIActions(set, (choices) => saveDrawTool(app, choices)),
 
         })),
         {
@@ -1459,6 +1463,9 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               version: state.version,
               mapPath: state.mapPath, // Include mapPath to verify data belongs to correct map
               background: state.background,
+              levels: levelsForFile(state.levels, state.background, state.levelAlignments),
+              // Left out on the first level, so files of scenes that stay there stay as they were
+              ...(viewedLevelId(state) !== firstLevelId(state.levels) && { viewedLevel: state.viewedLevel }),
               grid: state.grid,
               objects: state.objects,
               camera: state.camera,
@@ -1473,22 +1480,38 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               lootRoller: state.lootRoller, // Loot roller window, filters and history
               lighting: state.lighting,
               exploredMask: state.exploredMask,
+              exploredMasks: state.exploredMasks,
+              // Left out until the GM saves one, so files of scenes without stay as they were
+              ...(state.playerFrames.length > 0 && { playerFrames: state.playerFrames }),
+              ...(state.sound && { sound: state.sound }),
             };
           },
           
           // The map file arrives unchecked; fields that need it are checked here, once per load.
           merge: (persisted, current): ViewAtlasState => {
             const saved: Partial<ViewAtlasState> = isRecord(persisted) ? persisted : {};
+            const read = readSceneLevels(saved.levels, saved.background ?? current.background);
+            const levels = withoutAlignments(read);
             return {
               ...current,
               ...saved,
+              levels,
+              // The loader chose it from the file; a later read (another device's save) moves no view
+              viewedLevel: current.viewedLevel,
+              levelAlignments: levelAlignmentsOf(read),
+              exploredMasks: readExploredMasks(saved.exploredMasks, levels),
               lootRoller: readLootRollerState(saved.lootRoller),
               lighting: readSceneLighting(saved.lighting),
+              playerFrames: readPlayerFrames(saved.playerFrames),
+              sound: readSceneSound(saved.sound),
               exploredMask: readExploredMask(saved.exploredMask),
               // Counted per session: a file never brings one.
               exploredEdits: current.exploredEdits,
               // The campaign's, never the scene's.
               partyValues: current.partyValues,
+              // Counted while the scene is open: a file never brings them.
+              turnMoves: current.turnMoves,
+              fightsStarted: current.fightsStarted,
             };
           },
 

@@ -180,7 +180,7 @@ describe('rules by name', () => {
 });
 
 describe('perceive without vision tokens', () => {
-  const everything = sceneSight({}, [], [wall]);
+  const everything = sceneSight({}, [], [wall], undefined, { sceneHasVision: false });
 
   it('sees whatever is lit, wherever it is', () => {
     expect(everything.all).toBe(true);
@@ -193,13 +193,13 @@ describe('perceive without vision tokens', () => {
     expect(perceive(NEAR, everything, 'bright', { invisible: true })).toBe('seen');
     expect(perceive(NEAR, everything, 'dim', { undetected: true, airborne: true })).toBe('seen');
     expect(perceive(NEAR, everything, 'dark', { invisible: true })).toBe('unseen');
-    const off = sceneSight({ tokenVision: false }, sightSources({ viewer: viewerWith(null) }, scale, bounds, rules), [wall]);
+    const off = sceneSight({ tokenVision: false }, sightSources({ viewer: viewerWith(null) }, scale, bounds, rules), [wall], undefined, { sceneHasVision: true });
     expect(perceive(BEHIND, off, 'bright', { invisible: true, undetected: true })).toBe('seen');
   });
 
   it('is what a scene with token vision off gets, whatever its tokens sense', () => {
     const sources = sightSources({ viewer: viewerWith('dnd5e-tremorsense') }, scale, bounds, rules);
-    expect(sceneSight({ tokenVision: false }, sources, [wall]).all).toBe(true);
+    expect(sceneSight({ tokenVision: false }, sources, [wall], undefined, { sceneHasVision: true }).all).toBe(true);
   });
 });
 
@@ -302,8 +302,8 @@ describe('seenSpots', () => {
     expect(creatureSpots('tremorsense')).toEqual([]);
     expect(creatureSpots('darkvision')).toEqual([]);
     expect(creatureSpots(null)).toEqual([]);
-    expect(seenSpots(sceneSight({}, [], [wall]), dark, [], others(), scale.cellSize, [wall], { conditions })).toEqual([]);
-    expect(seenSpots(sceneSight({ tokenVision: false }, sightSources({ viewer: viewerWith(null) }, scale, bounds, rules), [wall]), dark, [], { viewer: viewerWith(null) }, scale.cellSize, [wall])).toEqual([]);
+    expect(seenSpots(sceneSight({}, [], [wall], undefined, { sceneHasVision: false }), dark, [], others(), scale.cellSize, [wall], { conditions })).toEqual([]);
+    expect(seenSpots(sceneSight({ tokenVision: false }, sightSources({ viewer: viewerWith(null) }, scale, bounds, rules), [wall], undefined, { sceneHasVision: true }), dark, [], { viewer: viewerWith(null) }, scale.cellSize, [wall])).toEqual([]);
   });
 });
 

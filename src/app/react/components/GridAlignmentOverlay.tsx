@@ -22,6 +22,7 @@ import { FreehandTab } from './FreehandTab';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
 import { t } from '../../i18n';
 import { showNotice } from '../../ui/notice';
+import { acceptsLevelDetection, applyLevelAlignment, levelBeingFitted } from './levels/levelImageAlignment';
 
 type AlignmentTab = 'intersections' | 'freehand';
 /** What the choice of a manual way holds while none is chosen. */
@@ -110,6 +111,14 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
     };
   }, [initController, view]);
 
+  // On a level that is not aligned with the scene's grid, the panel fits that level's image: drawn on its own while it lasts.
+  useEffect(() => {
+    const renderer = view?.renderer;
+    if (!store || !renderer || !levelBeingFitted(store)) return;
+    renderer.setLevelImageAlignment?.(true);
+    return () => renderer.setLevelImageAlignment?.(false);
+  }, [view, store]);
+
   // -----------------------------------------------------------------------
   // Callbacks
   // -----------------------------------------------------------------------
@@ -156,10 +165,24 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
       // The way on from a map without a grid to find is to show Atlas one cell of it.
       setActiveTab((tab) => tab ?? 'intersections');
     },
+    // On a level, only a grid the map's lines settle moves the level's image
+    accepts: (grid) => {
+      const level = store ? levelBeingFitted(store) : null;
+      return !store || !level || acceptsLevelDetection(store, level, grid, view?.renderer?.getMapImage?.()?.imageSize);
+    },
   });
 
   const handleApply = useCallback((): void => {
     if (!store || !result) return;
+    const level = levelBeingFitted(store);
+    if (level) {
+      // The scene's grid stays; the level's image is fitted to it, and what stands on that level follows
+      if (!applyLevelAlignment(store, level, result, view?.renderer?.getMapImage?.()?.imageSize)) return;
+      controllerRef.current?.destroy();
+      controllerRef.current = null;
+      onClose();
+      return;
+    }
 
     const currentGrid = store.getState().grid;
     if (!currentGrid) return;

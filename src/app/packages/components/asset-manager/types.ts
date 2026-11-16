@@ -61,10 +61,14 @@ export interface MapAsset extends Asset {
   imageUrl: string;
   /** Vault path of the map image. */
   mapFilePath: string;
+  /** An animated map: its video plays over its first frame, which its card shows. */
+  animated?: true;
 }
 
 export interface SceneAsset extends Asset {
   type: 'scenes';
+  /** Vault path of the scene's .atlasmap file. */
+  scenePath?: string;
 }
 
 export interface EncounterTokenPreview {

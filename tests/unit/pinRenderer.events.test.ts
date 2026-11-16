@@ -80,7 +80,7 @@ describe('PinRenderer events', () => {
 
     expect(actionSpy).toHaveBeenCalledTimes(1);
     const event = actionSpy.mock.calls[0]?.[0] as CustomEvent;
-    expect(event.detail).toEqual({ action: 'open', pin: store.getState().objects.pins[pinId] });
+    expect(event.detail).toEqual({ action: 'open', pin: store.getState().objects.pins[pinId], store });
   });
 
   it('drags the pin instead of opening it once the pointer moves past the drag threshold', () => {

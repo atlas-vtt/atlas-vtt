@@ -2,16 +2,17 @@
 
 ## Assets
 
-- Widget icons, map pin icons, the dashboard's icons, the token icon, the end-combat icon and the loot coin icon come from [game-icons.net](https://game-icons.net) by Lorc, Delapouite, Skoll, sbed, Carl Olsen and Caro Asercion, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The black background was removed and the glyphs recoloured.
-- The light markers' glyphs are the game-icons.net icons candle-light, lantern-flame, fairy-wand and light-bulb by Lorc, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The black background was removed and the glyphs recoloured.
+- Widget icons, map pin icons, the sound moods' crests, the dashboard's icons, the token icon, the end-combat icon and the loot coin icon come from [game-icons.net](https://game-icons.net) by Lorc, Delapouite, Skoll, sbed, Carl Olsen and Caro Asercion, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The black background was removed and the glyphs recoloured.
+- The light markers' glyphs are the game-icons.net icons candle-light, lantern-flame, fairy-wand and light-bulb by Lorc and lava by sbed, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The black background was removed and the glyphs recoloured.
 - The door badges' glyphs are the game-icons.net icons closed-doors and open-gate by Delapouite, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The black background was removed and the glyphs recoloured.
 - The dice tray's dice are the game-icons.net icons d4, d10 and d12 by Skoll and dice-six-faces-six, dice-eight-faces-eight and dice-twenty-faces-twenty by Delapouite, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), redrawn as pencil sketches.
 - The starter class tokens (Cleric, Fighter, Paladin, Ranger, Rogue, Warlock, Wizard, and Knight, Assassin and Occultist from the Guard, Bandit and Cultist icons) are icons by [Sketch Studio](https://www.fiverr.com/sketchstudioart), commissioned by Maatlock of [maatlockstavern.com](https://maatlockstavern.com), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). They were redrawn as pencil sketches and placed on a parchment background.
-- The toolbar editor's screenshots show a map generated with watabou's [One Page Dungeon](https://watabou.itch.io/one-page-dungeon) and creature tokens cropped from Oozejar's Illustrated Bestiary (Gourdin Konbo Club), licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+- The toolbar editor's screenshots show creature tokens cropped from Oozejar's Illustrated Bestiary (Gourdin Konbo Club), licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
 - Dice result sounds are built from the "Impact Sounds" and "Casino Audio" packs by [Kenney](https://kenney.nl), released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) and converted from OGG to MP3.
 - The dice toast knotwork corners are cropped from "Celtic knot border" by pitr on [ClipSafari](https://www.clipsafari.com/clips/o213700-celtic-knot-border), released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
-- The numerals of the 3D dice panel are set in Fantaisie Artistique by George Williams, released under the SIL Open Font License by its author ([FontForge font archive](https://fontforge.org/archive/sfds/toyfonts.html)). The licence text is in [`src/app/assets/fonts/fantaisie-artistique-OFL.txt`](src/app/assets/fonts/fantaisie-artistique-OFL.txt). The font is bundled unmodified in `styles.css`.
-- The sci-fi dice numerals are set in [Oxanium](https://github.com/sevmeyer/oxanium) by Severin Meyer, Copyright 2019 The Oxanium Project Authors, licensed under the [SIL Open Font License 1.1](https://openfontlicense.org). The licence text is in [`src/app/assets/fonts/oxanium-OFL.txt`](src/app/assets/fonts/oxanium-OFL.txt). The font is bundled unmodified in `styles.css`.
+- The numerals of the 3D dice panel and the Draw tool's medieval text are set in Fantaisie Artistique by George Williams, released under the SIL Open Font License by its author ([FontForge font archive](https://fontforge.org/archive/sfds/toyfonts.html)). The licence text is in [`src/app/assets/fonts/fantaisie-artistique-OFL.txt`](src/app/assets/fonts/fantaisie-artistique-OFL.txt). The font is bundled unmodified in `styles.css`.
+- The sci-fi dice numerals and the Draw tool's sci-fi text are set in [Oxanium](https://github.com/sevmeyer/oxanium) by Severin Meyer, Copyright 2019 The Oxanium Project Authors, licensed under the [SIL Open Font License 1.1](https://openfontlicense.org). The licence text is in [`src/app/assets/fonts/oxanium-OFL.txt`](src/app/assets/fonts/oxanium-OFL.txt). The font is bundled unmodified in `styles.css`.
+- The Draw tool's monospace text is set in [Courier Prime](https://github.com/quoteunquoteapps/CourierPrime) by Alan Dague-Greene for Quote-Unquote Apps, Copyright 2015 The Courier Prime Project Authors, licensed under the [SIL Open Font License 1.1](https://openfontlicense.org). The licence text is in [`src/app/assets/fonts/courier-prime-OFL.txt`](src/app/assets/fonts/courier-prime-OFL.txt). The font is bundled unmodified in `styles.css`.
 - The 3D dice face artwork (numeral sheet and card stock) is an original work by the Atlas VTT author and is covered by this repository's [GNU Affero General Public License v3.0](LICENSE).
 - Interface icons are [Lucide](https://lucide.dev) (ISC), provided by Obsidian and the bundled lucide-react package.
 - The token ring and the timer sound are original works by the Atlas VTT author and are covered by this repository's [GNU Affero General Public License v3.0](LICENSE).
@@ -828,7 +829,7 @@ SOFTWARE.
 
 Licence: MIT
 
-### @tanstack/react-virtual@3.14.21
+### @tanstack/react-virtual@3.14.24
 
 Licence: MIT
 
@@ -856,7 +857,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### @tanstack/virtual-core@3.19.6
+### @tanstack/virtual-core@3.19.9
 
 Licence: MIT (same text as @tanstack/react-virtual)
 
@@ -1226,7 +1227,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### immer@11.1.21
+### immer@11.2.9
 
 Licence: MIT
 
@@ -2547,7 +2548,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### three@0.186.1
+### three@0.187.0
 
 Licence: MIT
 

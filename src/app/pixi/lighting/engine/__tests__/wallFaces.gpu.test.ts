@@ -23,6 +23,20 @@ const stepped = [
   wall('e', 700, 150, 700, 600), wall('s', 700, 600, 100, 600), wall('w', 100, 600, 100, 100),
 ];
 const room = [wall('n', 100, 100, 500, 100), wall('e', 500, 100, 500, 500), wall('s', 500, 500, 100, 500), wall('w', 100, 500, 100, 100)];
+/**
+ * A square object's outline as the dungeon generator draws a column's: each face stops light
+ * alone, and only from inside, so a lamp outside lights the top through the near faces and the
+ * far ones cast its shadow.
+ */
+function objectOutline(x0: number, y0: number, x1: number, y1: number): WallSegment[] {
+  const corners = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]] as const;
+  const [cx, cy] = [(x0 + x1) / 2, (y0 + y1) / 2];
+  return corners.map(([ax, ay], k) => {
+    const [bx, by] = corners[(k + 1) % corners.length]!;
+    const direction = -(by - ay) * (cx - ax) + (bx - ax) * (cy - ay) > 0 ? 'left' : 'right';
+    return { ...wall(`object${k}`, ax, ay, bx, by), blocks: 'light', direction };
+  });
+}
 const light: EngineLight = { key: 'l', x: 300, y: 450, bright: 400, dim: 800, flame: 10, color: [1, 1, 1], intensity: 0.8, animation: 'none' };
 
 function scene(overrides: Partial<EngineScene>): EngineScene {
@@ -88,6 +102,28 @@ describe('wall faces', () => {
     for (const x of [250, 300, 350]) {
       expect(at(x, CENTRE.y + 2 * TEXEL)).toBeGreaterThan(200);
       for (let d = 1.5 / SCALE + 0.01 + 1 / SCALE; d < 12; d += 1 / SCALE) expect(at(x, CENTRE.y - d)).toBe(0);
+    }
+  });
+
+  it('lights the top of an object up to its shadow, without a dark line where the far face stops the light', async () => {
+    const { renderer, engine } = await setup();
+    // The lamp stands south of the object; its north face, y = 260, stops the light.
+    engine.update(scene({ walls: [...room, ...objectOutline(260, 260, 340, 340)], ambient: 0.3 }));
+    engine.flush();
+    const at = render(engine, renderer, { x: 300, y: 260 });
+    const linear = (x: number, y: number): number => srgbToLinear(at(x, y) / 255) + 0.04;
+    const pixel = 1 / SCALE;
+    for (const x of [280, 300, 320]) {
+      const top = linear(x, 272);
+      let shade = Infinity;
+      for (let y = 244; y <= 252; y += pixel) shade = Math.min(shade, linear(x, y));
+      expect(top).toBeGreaterThan(1.5 * shade);
+      // Across the face's core no pixel is darker than its shadow: the top meets it without a line.
+      for (let y = 256; y <= 266; y += pixel) expect(linear(x, y), `(${x}, ${y})`).toBeGreaterThanOrEqual(0.95 * shade);
+      // And no light of the lamp past the face's centre line beyond filtering.
+      let shadeMax = 0;
+      for (let y = 244; y <= 252; y += pixel) shadeMax = Math.max(shadeMax, linear(x, y));
+      for (let y = 260 - 1.5 * pixel - 0.01 - pixel; y > 252; y -= pixel) expect(linear(x, y), `(${x}, ${y})`).toBeLessThanOrEqual(shadeMax + 0.02);
     }
   });
 

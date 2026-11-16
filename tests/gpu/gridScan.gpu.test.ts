@@ -1,6 +1,6 @@
 import { Application, Container } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GridType } from '../../src/app/grid/GridSystem';
 import { NO_STRETCH } from '../../src/app/grid/mapStretch';
 import { GridScanLayer } from '../../src/app/pixi/gridAlignment/GridScanLayer';
@@ -253,6 +253,26 @@ describe('grid scan', () => {
     await wait(100);
     view.app.ticker.remove(count);
     expect(ticks).toBeGreaterThan(0);
+  });
+
+  it('lets go of its textures before destroying them, through a scan begun again and to its end', async () => {
+    const view = await stage(1, 0, 0, new SteadyPace());
+    const warned = vi.spyOn(console, 'warn');
+    const ink = { width: 4, height: 4, data: new Uint8Array(16).fill(200) };
+    const hits = new Float32Array([0, 0, 90, 0, 90, 0, 90, 90]);
+    for (let round = 0; round < 2; round++) {
+      view.scan.start();
+      view.scan.show({ type: 'ink', ink });
+      await wait(60);
+      await new Promise<void>((resolve) => view.scan.lock(grids[0] as AlignmentResult, hits, resolve));
+    }
+    const still = new Promise<void>((resolve) => view.scan.whenStill(resolve));
+    view.scan.cancel();
+    await still;
+    view.scan.destroy();
+
+    expect(warned.mock.calls.flat().filter((part) => String(part).includes('[BindGroup]'))).toEqual([]);
+    warned.mockRestore();
   });
 
   it('goes quietly when its view is closed under a running scan: the app is destroyed first', async () => {

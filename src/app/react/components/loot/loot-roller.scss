@@ -18,7 +18,7 @@ $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
 
 .atlas-loot-roller {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   position: absolute;
   z-index: 45;
   display: flex;
@@ -48,17 +48,17 @@ $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
   touch-action: none;
 
   &--right {
-    top: $radius-2xl;
+    top: $surface-radius;
     right: 0;
-    bottom: $radius-2xl;
+    bottom: $surface-radius;
     width: $loot-resize-hit;
     cursor: ew-resize;
   }
 
   &--bottom {
-    right: $radius-2xl;
+    right: $surface-radius;
     bottom: 0;
-    left: $radius-2xl;
+    left: $surface-radius;
     height: $loot-resize-hit;
     cursor: ns-resize;
   }
@@ -66,8 +66,8 @@ $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
   &--corner {
     right: 0;
     bottom: 0;
-    width: $radius-2xl;
-    height: $radius-2xl;
+    width: $surface-radius;
+    height: $surface-radius;
     cursor: nwse-resize;
 
     // A grip mark along the window's own corner, inset from the border.
@@ -80,7 +80,7 @@ $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
       height: 14px;
       border-right: $border-width-l solid var(--text-faint);
       border-bottom: $border-width-l solid var(--text-faint);
-      border-bottom-right-radius: atlas-panel-inset-radius-value(4px);
+      border-bottom-right-radius: atlas-panel-inset-radius-value($surface-inset);
       opacity: 0.45;
       transition: opacity $transition-fast $transition-ease;
     }
@@ -127,7 +127,6 @@ $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
   height: $button-height-s;
   flex-shrink: 0;
   border-radius: $radius-m;
-  @include atlas-corner-shape;
   // The gold coin, the loot roller's mark.
   color: var(--color-yellow);
   background: color-mix(in oklch, var(--color-yellow) 16%, transparent);
@@ -155,7 +154,6 @@ $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
 }
 
 .atlas-loot-roller__sidebar {
-  @include atlas-scrollbar;
   min-height: 0;
   padding: $loot-padding;
   overflow-y: auto;

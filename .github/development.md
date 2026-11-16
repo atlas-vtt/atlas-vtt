@@ -33,6 +33,13 @@ and every one of them blocks the merge, lint included.
 
 ### Tests
 
+The suite is two projects. `unit` runs in CI on every push and pull request, in four
+shards. `slow` holds the files that take a CI runner ten seconds or more each (the dungeon
+generator's invariants, the Spectral Engine on drawn maps, visibility sweeps, wall sealing,
+property and fuzz tests; the list is `SLOW_TEST_FILES` in `vitest.config.mts`) and never
+runs in CI: run `npm run test:slow` locally when the code those files cover changes, or
+one file of it with `npx vitest run --project slow <path>`.
+
 Unit tests run in Node. A test that needs a DOM (React, `document`, canvas
 elements) starts with `// @vitest-environment jsdom`; without it, it fails with
 `document is not defined`. Keep that line off tests that do not need it: jsdom
@@ -84,8 +91,8 @@ Plugin CI tests and builds every commit once. Its checks run as parallel jobs
 `build-plugin`, the required check, fails when any of them failed and otherwise
 builds the plugin. Successful runs attach an `atlas-vtt-<commit>` artifact
 containing `main.js`, `manifest.json`, `styles.css` and the release notes,
-retained for 14 days for pull requests and 90 days for pushes to `beta` and
-`main`, whose builds are the ones released. For pull requests, `<commit>` is the
+retained for 14 days for pull requests and 90 days for pushes to `beta`,
+`release/*` and `main`; those of `beta` and `release/*` are the ones released. For pull requests, `<commit>` is the
 PR head commit, but the build itself is that commit merged into the current base
 branch, so it may include base changes that are not in the branch. Install these files in an isolated test vault's
 `.obsidian/plugins/atlas-vtt/` directory and reload the plugin. Include practical
@@ -122,9 +129,11 @@ install and update through BRAT as described in [beta-testing.md](beta-testing.m
 2. Move the pending notes from `changelog/Unreleased.md` into
    `changelog/0.2.0.md`, run `npm run changelog:generate` and commit.
 3. `npm version 0.2.0` (this also updates `versions.json`) and push the branch.
-4. Open a pull request against `main`. CI verifies the stable version.
-5. After merging, wait for Plugin CI on the `main` push to pass, then run
-   **Prepare Plugin Release** on `main`, review the draft and publish it. See
+4. Open a pull request against `main`. CI verifies the stable version, and
+   **Release Gate** fails until the release is published.
+5. Wait for Plugin CI on the push of the branch to pass, then run **Prepare
+   Plugin Release** on `release/0.2.0`, review the draft and publish it. Merge
+   the pull request right after that, with a merge commit. See
    [releasing-obsidian-plugin.md](releasing-obsidian-plugin.md).
 6. Merge `main` back into `beta` and start the next beta cycle with
    `npm version preminor --preid beta`.
@@ -132,12 +141,10 @@ install and update through BRAT as described in [beta-testing.md](beta-testing.m
 ## Review and merge
 
 Pull requests require a green `build-plugin` check and an up-to-date branch;
-`main` additionally requires the `atlas/pr-review` check. Automated review is
-provided by a private maintainer-managed service. Drafts are not automatically
-reviewed; external contributions require manual maintainer review. If the review
-status reports an error, contact the maintainer rather than bypassing or
-weakening CI.
+`main` additionally requires the `release-published` check, and these hold for
+administrators too. External contributions require manual maintainer review.
 
 The maintainer decides which fixes to implement, when to merge, and when to
 publish a release. Stable releases continue through the Prepare Plugin Release
-workflow, which refuses beta versions and commits that are not on `main`.
+workflow, which refuses beta versions and anything but the version's release
+branch.

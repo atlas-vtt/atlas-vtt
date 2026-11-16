@@ -73,7 +73,7 @@ export function engineLight(light: ActiveLight, scale: UnitScale): EngineLight {
     // Darkness does not flicker: its edge is where the rules end it.
     animation: emission.darkness ? 'none' : emission.animation,
     ...kindOf({ ...(emission.darkness && { darkness: true }), ...(emission.priority !== undefined && { priority: emission.priority }), ...(cone && { cone }) }),
-    ...(cone && { edge: softEdge(dim, scale.cellSize) }),
+    ...(cone && { edge: softEdge(dim) }),
   };
 }
 

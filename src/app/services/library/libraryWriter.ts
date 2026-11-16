@@ -15,7 +15,7 @@ const stampOf = (file: TFile, key: string, hash: string): FileStamp => ({ key, h
  * - a file that vanished since it was last seen is left to the vault check, which
  *   decides whether it was deleted or moved elsewhere; it is never written back;
  * - a record whose file moved (its collection changed) is renamed, so sync tools see a move;
- * - files of records that left the index are trashed.
+ * - files of records that left the index are trashed, the copies a sync tool left of them too.
  * A file that fails is tried again on the next save; the others are still
  * written, and the failure is reported once all were tried.
  */
@@ -49,6 +49,12 @@ export class LibraryWriter {
         if (await this.isUnchanged(path, stamp)) await this.remove(path);
         continue;
       }
+      // A duplicate goes with its record once the record left the index, or it would come back on every device that reads it.
+      const duplicated = idOfKey(stamp.key, 'duplicate');
+      if (duplicated !== null && !desiredKeys.has(assetKey(duplicated))) {
+        if (await this.isUnchanged(path, stamp) && !(await this.remove(path))) failures.push(path);
+        continue;
+      }
       const removable = idOfKey(stamp.key, 'asset') !== null || idOfKey(stamp.key, 'collection') !== null;
       if (!removable) continue;
       if (desiredKeys.has(stamp.key)) {
@@ -74,7 +80,7 @@ export class LibraryWriter {
   }
 
   private async writeOne(desired: DesiredFile, previousPath: string | undefined): Promise<void> {
-    const hash = hashText(desired.content);
+    const { hash } = desired;
     if (this.state.derived[desired.identity] === hash) return;
     delete this.state.derived[desired.identity];
 
@@ -88,10 +94,10 @@ export class LibraryWriter {
     if (desired.payloadUnread && file) return;
 
     if (file) {
-      if (hashText(await this.app.vault.read(file)) !== hash) await this.app.vault.process(file, () => desired.content);
+      if (hashText(await this.app.vault.read(file)) !== hash) await this.app.vault.process(file, () => desired.content());
     } else {
       await ensureFolder(this.app, parentPath(desired.path));
-      file = await this.app.vault.create(desired.path, desired.content);
+      file = await this.app.vault.create(desired.path, desired.content());
     }
     this.state.files[desired.path] = stampOf(file, desired.key, hash);
   }

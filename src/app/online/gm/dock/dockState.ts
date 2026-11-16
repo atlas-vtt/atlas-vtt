@@ -1,6 +1,6 @@
 /**
  * What the GM's control on the map shows, as pure rules: closed (the button alone), the short-lived
- * connection menu, or the online panel, a working surface that stays open while the GM plays.
+ * connection menu, or the online panel, the working surface while players are at the table.
  */
 
 export type Surface = 'closed' | 'menu' | 'panel';
@@ -80,10 +80,11 @@ export function escapeCloses(surface: Surface, key: EscapeFacts): boolean {
 
 /**
  * Whether a press outside closes the open surface: a left press outside the control, its surface and
- * the menus it opened closes the menu. The panel stays, since the GM selects tokens on the map with it open.
+ * the menus it opened. The press still reaches what it landed on, and tokens it selects show in the
+ * panel's selection bar once the panel is opened again.
  */
 export function outsidePressCloses(surface: Surface, press: { readonly button: number; readonly inside: boolean }): boolean {
-  return surface === 'menu' && press.button === 0 && !press.inside;
+  return surface !== 'closed' && press.button === 0 && !press.inside;
 }
 
 /**

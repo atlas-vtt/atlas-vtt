@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, onTestFinished, vi } from 'vitest';
 import {
   Container,
   Point,
@@ -15,11 +15,12 @@ import { Viewport } from 'pixi-viewport';
 import { EventEmitter } from 'events';
 import { TokenRenderer } from '../../../src/app/pixi/token-renderer';
 import { captureSceneFrame } from '../../../src/app/pixi/sceneFrameCapture';
-import { DrawingRenderer } from '../../../src/app/pixi/DrawingRenderer';
-import { MeasureRenderer } from '../../../src/app/pixi/MeasureRenderer';
+import { AnnotationsRenderer } from '../../../src/app/pixi/annotations/AnnotationsRenderer';
+import { auraBadgePoint } from '../../../src/app/measure/auraArea';
+import { MeasureRenderer } from '../../../src/app/pixi/measure/MeasureRenderer';
 import { PinRenderer } from '../../../src/app/pixi/PinRenderer';
+import { isHandled } from '../../../src/app/pixi/utils/handledEvents';
 import { FogOfWarRenderer } from '../../../src/app/pixi/fog/FogOfWarRenderer';
-import { TextTool } from '../../../src/app/tools/TextTool';
 import { TokenStatblockLinkService } from '../../../src/app/services/TokenStatblockLinkService';
 import { AssetService } from '../../../src/app/services/AssetService';
 import { createViewAtlasStore } from '../../../src/app/storeFactory';
@@ -30,9 +31,10 @@ import { createInMemoryApp } from '../../mocks/inMemoryVault';
 import { DEFAULT_SETTINGS } from '../../../src/app/services/atlasSettings';
 import { fogCoverage } from '../../../src/app/fog/fogCoverage';
 import { fogRectangle } from '../../helpers/fogOperations';
+import { isHandled } from '../../../src/app/pixi/utils/handledEvents';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
 import { wirePlayerMeasurements } from '../../helpers/playerMeasureWiring';
-import { captureWithLayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
+import { captureWithLayerVisibility, type LayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
 import type { TokenEntity } from '../../../src/app/types';
 
 const openContextMenuGlobal = vi.hoisted(() => vi.fn());
@@ -41,8 +43,6 @@ vi.mock('../../../src/app/react/root/ContextMenuContext', () => ({
   closeContextMenuGlobal: vi.fn(),
 }));
 
-const promptForText = vi.hoisted(() => vi.fn(async () => null));
-vi.mock('../../../src/app/ui/textInputDialog', () => ({ promptForText }));
 
 // jsdom has no 2D canvas, so SVG icons cannot be rasterised here.
 vi.mock('../../../src/app/pixi/utils/lucideIconTexture', () => ({
@@ -390,6 +390,33 @@ describe('TokenRenderer Integration Tests', () => {
     });
   });
 
+  describe('Selection of a token that comes into view', () => {
+    it('draws the frame and handles of a token selected before its sprite existed, as one that took stairs to the level the view follows it to', async () => {
+      const levels = [
+        { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: null },
+        { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: null },
+      ];
+      store.setState({ levels, viewedLevel: 'ground' });
+      store.getState().addToken(token({ id: 'here' }));
+      await waitForTokens('here');
+      // A token that just took the stairs up: on the level above, not shown yet
+      const climber = { ...token({ id: 'climber', x: 300 }), kind: 'character' as const, name: 'Climber', level: 'upper' };
+      store.setState((state) => ({ objects: { ...state.objects, tokens: { ...state.objects.tokens, climber } } }));
+      const framedWithSprite: boolean[] = [];
+      selectionOverlayUpdater.mockImplementation(() => framedWithSprite.push(tokenRenderer.getTokenSprites().climber instanceof Container));
+      const handles = (): Container[] => (tokenRenderer as unknown as { uiManager: { getResizeUI(): { getHandles(): Container[] } | undefined } })
+        .uiManager.getResizeUI()?.getHandles() ?? [];
+
+      // As the drop does: the view follows the token, which stays selected
+      store.getState().setViewedLevel('upper');
+      store.getState().setSelection(['climber']);
+      await waitForTokens('climber');
+
+      await vi.waitFor(() => expect(framedWithSprite.at(-1)).toBe(true));
+      expect(handles().some((handle) => handle.parent === tokenGroup('climber'))).toBe(true);
+    });
+  });
+
   describe('Ring Color Update', () => {
     it('should update ring color when token ringColor changes', async () => {
       store.getState().addToken(token({ id: 'token-1', ringColor: '#ff0000' }));
@@ -670,7 +697,7 @@ describe('TokenRenderer Integration Tests', () => {
       store.getState().addToken(token({ id: 'token-2', x: 315, y: 105 }));
       await waitForTokens('token-1', 'token-2');
       const drawingDrag = vi.fn();
-      tokenRenderer.setDrawingDragStartHandler(drawingDrag);
+      tokenRenderer.setAnnotationHandlers({ gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: drawingDrag, cursorAt: () => null, leave: () => undefined });
 
       viewport.emit('pointerdown', pointerEvent(315, 105));
       expect(store.getState().selectedIds).toEqual([]);
@@ -684,10 +711,101 @@ describe('TokenRenderer Integration Tests', () => {
       expect(store.getState().selectedIds).toEqual(['token-2']);
       expect(drawingDrag).not.toHaveBeenCalled();
 
-      // A selected token's press still takes the selected drawings along
+      // A selected token's press still takes the selected drawings and texts along
       viewport.emit('pointerdown', pointerEvent(315, 105));
       expect(drawingDrag).toHaveBeenCalledTimes(1);
       viewport.emit('pointerup', pointerEvent(315, 105));
+    });
+  });
+
+  describe('Drawings and texts in the dispatch', () => {
+    /** What the dispatch asked of the drawings and texts for one press, in order. */
+    const asked: string[] = [];
+    const answers = { grip: false, press: true, menu: true };
+    const press = (x: number, y: number, button = 0): string[] => {
+      asked.length = 0;
+      viewport.emit('pointerdown', { ...pointerEvent(x, y), button } as FederatedPointerEvent);
+      viewport.emit('pointerup', pointerEvent(x, y));
+      return [...asked];
+    };
+
+    beforeEach(async () => {
+      Object.assign(answers, { grip: false, press: true, menu: true });
+      tokenRenderer.setAnnotationHandlers({
+        gripDown: () => { asked.push('grip'); return answers.grip; },
+        pointerDown: () => { asked.push('press'); return answers.press; },
+        menuAt: () => { asked.push('menu?'); return answers.menu; },
+        openMenu: () => { asked.push('menu'); return true; },
+        dragAlong: () => undefined, cursorAt: () => null, leave: () => undefined,
+      });
+      store.getState().addToken(token({ id: 'token-1', x: 105, y: 105 }));
+      await waitForTokens('token-1');
+    });
+
+    it('asks for their handles before a token, and for themselves only after it', () => {
+      store.getState().setActiveTool('move');
+      // On the token: no handle there, so the token takes the press and no drawing is asked.
+      expect(press(105, 105)).toEqual(['grip']);
+      expect(press(600, 600)).toEqual(['grip', 'press']);
+      // A handle that stands over the token takes the press from it.
+      answers.grip = true;
+      store.getState().clearSelection();
+      expect(press(105, 105)).toEqual(['grip']);
+      expect(store.getState().selectedIds).toEqual([]);
+    });
+
+    it('lets the Draw tool give them every press, over a token too, and no other tool any', () => {
+      store.getState().setActiveTool('draw');
+      expect(press(105, 105)).toEqual(['grip', 'press']);
+      expect(store.getState().selectedIds).toEqual([]);
+      for (const tool of ['measure', 'fog', 'note-pin'] as const) {
+        store.getState().setActiveTool(tool);
+        expect(press(600, 600), tool).toEqual(['grip']);
+      }
+    });
+
+    it('opens their menu when a right press is released in place, but not over a token, whose menu it is', () => {
+      store.getState().setActiveTool('move');
+      expect(press(600, 600, 2)).toEqual(['menu?', 'menu']);
+      expect(press(105, 105, 2)).toEqual([]);
+      store.getState().setActiveTool('draw');
+      expect(press(105, 105, 2)).toEqual(['menu?', 'menu']);
+      // Nothing of theirs there: nothing is opened, and whatever lies under them is asked next.
+      answers.menu = false;
+      expect(press(600, 600, 2)).toEqual(['menu?']);
+    });
+
+    it('asks them for the cursor of every move with the Draw tool, with Alt as it is held, and shows what they answer', () => {
+      const asked: boolean[] = [];
+      let answer: string | null = 'none';
+      tokenRenderer.setAnnotationHandlers({
+        gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: () => undefined, leave: () => undefined,
+        cursorAt: (_x, _y, _covered, free) => { asked.push(free === true); return answer; },
+      });
+      store.getState().setActiveTool('draw');
+      // What a press will place is the cursor: the system's is hidden, over a token too.
+      viewport.emit('pointermove', pointerEvent(105, 105));
+      expect(viewport.cursor).toBe('none');
+      viewport.emit('pointermove', { ...pointerEvent(600, 600), altKey: true } as FederatedPointerEvent);
+      expect(asked).toEqual([false, true]);
+      // Nothing to place, nothing to take: the system's cursor is back.
+      answer = null;
+      viewport.emit('pointermove', pointerEvent(600, 600));
+      expect(viewport.cursor).toBe('default');
+    });
+
+    it('leaves a right press on them unhandled, so a right-drag that starts on a fill pans and opens nothing', () => {
+      store.getState().setActiveTool('move');
+      asked.length = 0;
+      const down = { ...pointerEvent(600, 600), button: 2 } as FederatedPointerEvent;
+      viewport.emit('pointerdown', down);
+      expect(isHandled(down)).toBe(false);
+      expect(asked).toEqual(['menu?']);
+      // Past the viewport's own threshold the press is a pan.
+      viewport.emit('pointermove', { ...pointerEvent(600 + viewport.threshold + 20, 600), button: 2 } as FederatedPointerEvent);
+      viewport.emit('pointerup', { ...pointerEvent(600 + viewport.threshold + 20, 600), button: 2 } as FederatedPointerEvent);
+      expect(asked).toEqual(['menu?']);
+      expect(store.getState().selectedIds).toEqual([]);
     });
   });
 
@@ -767,7 +885,6 @@ describe('TokenRenderer Integration Tests', () => {
       tokenRenderer.setPinClickHandler(vi.fn());
       tokenRenderer.setDoorClickHandler((x) => x > 500 && x < 560);
       tokenRenderer.setLightHandlers({ pointerDown: (x) => x > 290 && x < 310, cursorAt: () => null, leave: () => undefined });
-      promptForText.mockClear();
     });
 
     const click = (x: number): void => {
@@ -777,10 +894,11 @@ describe('TokenRenderer Integration Tests', () => {
     };
 
     it.each(MARKERS)('draws no stroke and stamps no icon on %s', (_marker, x) => {
-      const drawing = new DrawingRenderer(viewport, eventBus, store);
+      const drawing = new AnnotationsRenderer({ viewport, store, grid: () => null });
       try {
-        for (const tool of ['draw-pen', 'draw-icon'] as const) {
-          store.getState().setActiveTool(tool);
+        store.getState().setActiveTool('draw');
+        for (const mode of ['pen', 'stamp'] as const) {
+          store.getState().setDrawTool({ mode });
           click(x);
         }
         expect(store.getState().objects.drawings).toEqual({});
@@ -792,8 +910,8 @@ describe('TokenRenderer Integration Tests', () => {
     });
 
     it.each(MARKERS)('starts no measurement on %s', (_marker, x) => {
-      const measure = new MeasureRenderer(viewport, eventBus, store, gridSystem);
-      const started = (): boolean => (measure as unknown as { isDrawing: boolean }).isDrawing;
+      const measure = new MeasureRenderer(viewport, store, gridSystem);
+      const started = (): boolean => measure.measurements.get().live !== null;
       try {
         store.getState().setActiveTool('measure');
         viewport.emit('pointerdown', pointerEvent(x, 200));
@@ -821,17 +939,21 @@ describe('TokenRenderer Integration Tests', () => {
       }
     });
 
-    it.each(MARKERS)('opens no text box on %s', (_marker, x) => {
-      const text = new TextTool(viewport, store, gridSystem, eventBus);
+    it.each(MARKERS)('starts no text on %s', (_marker, x) => {
+      // The field a text is typed in lies over the canvas, in what holds it.
+      const host = document.body.appendChild(document.createElement('div'));
+      host.append(viewport.options.events.domElement);
+      const drawing = new AnnotationsRenderer({ viewport, store, grid: () => null });
       try {
-        store.getState().setActiveTool('text');
-        text.activate();
+        store.getState().setDrawTool({ mode: 'text' });
+        store.getState().setActiveTool('draw');
         click(x);
-        expect(promptForText).not.toHaveBeenCalled();
+        expect(host.querySelector('textarea')).toBeNull();
         click(OFF_MARKERS);
-        expect(promptForText).toHaveBeenCalledTimes(1);
+        expect(host.querySelector('textarea')).not.toBeNull();
       } finally {
-        text.deactivate();
+        drawing.destroy();
+        host.remove();
       }
     });
 
@@ -851,41 +973,78 @@ describe('TokenRenderer Integration Tests', () => {
     });
   });
 
+  // Fog is changed with the fog tool only: with any other tool a press goes to what lies under it.
+  describe('Fog under the select and move tools', () => {
+    let fog: FogOfWarRenderer;
+
+    beforeEach(() => {
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(new Proxy({}, { get: () => (): void => undefined }) as never);
+      fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null);
+      viewport.addChild(fog.getContainer());
+      fog.reorderViewportListeners();
+      store.setState((state) => ({ objects: { ...state.objects, fog: { paint: fogRectangle({ x: 0, y: 0, width: 2000, height: 2000 }) } } }));
+      openContextMenuGlobal.mockClear();
+    });
+
+    afterEach(() => {
+      fog.destroy();
+      vi.restoreAllMocks();
+    });
+
+    it.each(['select', 'move'] as const)('gives a press on fog to the token under it with the %s tool', async (tool) => {
+      store.getState().setActiveTool(tool);
+      store.getState().addToken(token({ id: 'token-1', x: 105, y: 105 }));
+      await waitForTokens('token-1');
+      expect(fog.getCommittedCoverage()?.covers({ x: 105, y: 105 })).toBe(true);
+      const fogBefore = store.getState().objects.fog;
+
+      viewport.emit('pointerdown', pointerEvent(105, 105));
+      viewport.emit('pointerup', pointerEvent(105, 105));
+      expect(store.getState().selectedIds).toEqual(['token-1']);
+
+      viewport.emit('pointerdown', pointerEvent(105, 105));
+      viewport.emit('pointermove', pointerEvent(180, 105));
+      viewport.emit('pointerup', pointerEvent(180, 105));
+      expect(store.getState().objects.tokens['token-1']).toMatchObject({ x: 175, y: 105 });
+      expect(store.getState().selectedIds).toEqual(['token-1']);
+      expect(store.getState().objects.fog).toBe(fogBefore);
+    });
+
+    it.each(['select', 'move'] as const)('leaves a press on fog over the empty map to the marquee and the pan with the %s tool: no fog is selected, moved or deleted', (tool) => {
+      store.getState().setActiveTool(tool);
+      const fogBefore = store.getState().objects.fog;
+
+      const press = pointerEvent(900, 900);
+      viewport.emit('pointerdown', press);
+      expect(isHandled(press)).toBe(false);
+      viewport.emit('pointermove', pointerEvent(960, 940));
+      viewport.emit('pointerup', pointerEvent(960, 940));
+      expect(store.getState().selectedIds).toEqual([]);
+
+      const rightPress = { ...pointerEvent(900, 900), button: 2 } as unknown as FederatedPointerEvent;
+      viewport.emit('pointerdown', rightPress);
+      viewport.emit('pointerup', rightPress);
+      expect(openContextMenuGlobal).not.toHaveBeenCalled();
+      expect(store.getState().objects.fog).toBe(fogBefore);
+    });
+  });
+
   describe('Right-click', () => {
     const rightClick = (x: number, y: number): FederatedPointerEvent =>
       ({ ...pointerEvent(x, y), button: 2, clientX: x + 300, clientY: y + 40 }) as unknown as FederatedPointerEvent;
 
-    it('opens the token menu at the pointer for a token inside fog, and the fog menu beside it', async () => {
-      const fogClickHandler = vi.fn();
-      tokenRenderer.setFogHitTestProvider(() => 'fog-1');
-      tokenRenderer.setFogClickHandler(fogClickHandler);
+    it('opens the token menu at the pointer for a token inside fog, and no menu on the fog beside it', async () => {
+      store.setState((state) => ({ objects: { ...state.objects, fog: { paint: fogRectangle({ x: 0, y: 0, width: 2000, height: 2000 }) } } }));
       store.getState().addToken(token({ id: 'token-1', x: 105, y: 105 }));
       await waitForTokens('token-1');
+      openContextMenuGlobal.mockClear();
 
       viewport.emit('pointerdown', rightClick(105, 105));
-      expect(fogClickHandler).not.toHaveBeenCalled();
-      expect(openContextMenuGlobal).toHaveBeenCalledWith(expect.any(Array), { x: 405, y: 145 });
+      expect(openContextMenuGlobal).toHaveBeenCalledExactlyOnceWith(expect.any(Array), { x: 405, y: 145 });
 
       viewport.emit('pointerdown', rightClick(900, 900));
       viewport.emit('pointerup', rightClick(900, 900));
-      expect(fogClickHandler).toHaveBeenCalledWith('fog-1', expect.anything());
-    });
-
-    it('leaves a right press on fog to the pan and opens the fog menu only when it is released in place', () => {
-      const fogClickHandler = vi.fn();
-      tokenRenderer.setFogHitTestProvider(() => 'fog-1');
-      tokenRenderer.setFogClickHandler(fogClickHandler);
-
-      viewport.emit('pointerdown', rightClick(900, 900));
-      expect(fogClickHandler).not.toHaveBeenCalled();
-      viewport.emit('pointermove', rightClick(960, 900));
-      viewport.emit('pointerup', rightClick(960, 900));
-      expect(fogClickHandler).not.toHaveBeenCalled();
-
-      viewport.emit('pointerdown', rightClick(900, 900));
-      viewport.emit('pointermove', rightClick(902, 900));
-      viewport.emit('pointerup', rightClick(902, 900));
-      expect(fogClickHandler).toHaveBeenCalledExactlyOnceWith('fog-1', expect.objectContaining({ clientX: 1202 }));
+      expect(openContextMenuGlobal).toHaveBeenCalledTimes(1);
     });
 
     it('leaves a right press with the wall tool to the pan and opens the wall menu only when it is released in place', () => {
@@ -919,6 +1078,55 @@ describe('TokenRenderer Integration Tests', () => {
 
       canvas.dispatchEvent(new Event('pointerleave'));
       expect(left).toHaveBeenCalledWith({ pin: expect.objectContaining({ id: 'token-1' }) });
+    });
+
+    it.each(['measure', 'fog', 'eraser', 'draw', 'wall', 'audio', 'stairs', 'asset', 'note-pin', 'laser-pointer'] as const)('should offer the statblock hover with the %s tool, whose own pointer takes the move', async (tool) => {
+      store.getState().addToken(token({ id: 'token-1', x: 105, y: 105, kind: 'character', statblockPath: 'Goblin.md' }));
+      await waitForTokens('token-1');
+      store.setState({ activeTool: tool });
+      // Each tool takes the move with a cursor of its own, as it does on the map
+      tokenRenderer.setWallPointerMoveHandler(() => undefined);
+      tokenRenderer.setWallCursorProvider(() => 'crosshair');
+      tokenRenderer.setAudioPointerMoveHandler(() => undefined);
+      tokenRenderer.setStairsTool({ pointerDown: () => true, pointerMove: () => undefined, pointerUp: () => undefined, doubleClick: () => undefined, cursorAt: () => 'crosshair' });
+      tokenRenderer.setAnnotationHandlers({ gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: () => undefined, cursorAt: () => (tool === 'draw' ? 'crosshair' : null), leave: () => undefined });
+      // The fog tool's own brush, ring and guide listen to the same moves
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(new Proxy({}, { get: () => (): void => undefined }) as never);
+      const fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null);
+      onTestFinished(() => {
+        fog.destroy();
+        vi.restoreAllMocks();
+      });
+      const hovered = vi.fn();
+      const left = vi.fn();
+      eventBus.on('pin-hover-preview', hovered);
+      eventBus.on('pin-hide-preview', left);
+
+      viewport.emit('pointermove', { ...pointerEvent(105, 105), clientX: 105, clientY: 105 });
+      expect(hovered).toHaveBeenCalledWith(expect.objectContaining({ pin: expect.objectContaining({ id: 'token-1', notePath: 'Goblin.md' }) }));
+
+      viewport.emit('pointermove', { ...pointerEvent(600, 600), clientX: 600, clientY: 600 });
+      expect(left).toHaveBeenCalledWith({ pin: expect.objectContaining({ id: 'token-1' }) });
+    });
+
+    it('should drop the statblock hover of a token that went to another level', async () => {
+      store.setState({
+        levels: [
+          { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: null },
+          { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: null },
+        ],
+        viewedLevel: 'ground',
+      });
+      store.getState().addToken(token({ id: 'token-1', x: 105, y: 105, kind: 'character', statblockPath: 'Goblin.md' }));
+      await waitForTokens('token-1');
+      const left = vi.fn();
+      eventBus.on('pin-hide-preview', left);
+
+      viewport.emit('pointermove', { ...pointerEvent(105, 105), clientX: 105, clientY: 105 });
+      store.getState().moveTokensToLevel(['token-1'], 'upper');
+      viewport.emit('pointermove', { ...pointerEvent(600, 600), clientX: 600, clientY: 600 });
+
+      expect(left).toHaveBeenCalledWith({ pin: expect.objectContaining({ id: 'token-1', notePath: 'Goblin.md' }) });
     });
   });
 
@@ -1363,7 +1571,7 @@ describe('TokenRenderer Integration Tests', () => {
       const active = (): boolean => peeking || !store.getState().isGMView;
       tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined), active);
       tokenRenderer.setFogCoverageProvider(() => fogCoverage(store.getState().objects.fog));
-      measure = new MeasureRenderer(viewport, eventBus, store, gridSystem);
+      measure = new MeasureRenderer(viewport, store, gridSystem);
       unwire = wirePlayerMeasurements({ measure, tokens: tokenRenderer, store, grid: gridSystem, lighting: () => perception });
     });
 
@@ -1372,12 +1580,14 @@ describe('TokenRenderer Integration Tests', () => {
       measure.destroy();
     });
 
+    /** The measurements' own parts among `layers`: the handles' layer, the areas' unlit outlines and the range marks are the GM's own. */
+    const parts = (layers: LayerVisibility[]): LayerVisibility[] => layers.filter(({ layer }) => !measure.gmLayers.some((own) => own === layer));
     /** The measurement parts' `visible` on the canvas, the live ruler first. */
-    const onCanvas = (): boolean[] => measure.getGmViewLayers().map(({ layer }) => layer.visible);
+    const onCanvas = (): boolean[] => parts(measure.getGmViewLayers()).map(({ layer }) => layer.visible);
     /** What a players' frame shows of them. */
-    const inFrame = (): boolean[] => measure.getPlayerViewLayers(tokenRenderer.playersSeeInFrame(perception)).map(({ visible }) => visible);
+    const inFrame = (): boolean[] => parts(measure.getPlayerViewLayers(tokenRenderer.playersSeeInFrame(perception))).map(({ visible }) => visible);
     const keepRuler = (x: number): void => {
-      eventBus.emit('measure-persistence-changed', true);
+      store.getState().setMeasureTool({ keep: true });
       store.getState().setActiveTool('measure');
       viewport.emit('pointerdown', pointerEvent(x, 105));
       viewport.emit('pointermove', pointerEvent(x, 400));
@@ -1435,6 +1645,40 @@ describe('TokenRenderer Integration Tests', () => {
       store.getState().setGMView(true);
       expect(onCanvas()).toEqual([true, false, true, true, true, true]);
     });
+
+    it('puts the handle of a kept ruler that starts on a token on the token\'s rim: a press there is the handle\'s with any tool, the token\'s middle is the token\'s, and so is all of it in the players\' view', async () => {
+      store.getState().addToken(token({ id: 'goblin', x: 105, y: 105 }));
+      await waitForTokens('goblin');
+      keepRuler(105);
+      const [id] = Object.keys(store.getState().objects.measures ?? {});
+      const click = (x: number, y: number): void => {
+        viewport.emit('pointerdown', pointerEvent(x, y));
+        viewport.emit('pointerup', pointerEvent(x, y));
+      };
+      // The badge stands on the rim of the goblin's space; pressed a little within it, the press is on the token and on the badge.
+      const rim = auraBadgePoint({ x: 105, y: 105 }, { size: gridSize });
+      const onBadge = { x: rim.x + (105 - rim.x) * 0.15, y: rim.y + (105 - rim.y) * 0.15 };
+      // With the measure tool the handle's press measures nothing.
+      click(onBadge.x, onBadge.y);
+      expect(measure.measurements.get().live).toBeNull();
+      expect(store.getState().measurePopover).toBe(id);
+      store.getState().closeMeasurePopover();
+      store.getState().setActiveTool('select');
+      click(onBadge.x, onBadge.y);
+      expect(store.getState().measurePopover).toBe(id);
+      expect(store.getState().selectedIds).toEqual([]);
+      // The token's middle, where the ruler starts, is the token's.
+      store.getState().closeMeasurePopover();
+      click(105, 105);
+      expect(store.getState().measurePopover).toBeNull();
+      expect(store.getState().selectedIds).toEqual(['goblin']);
+      store.getState().clearSelection();
+      // The players' view has no handles: the press on the badge's place is the token's.
+      store.getState().setGMView(false);
+      click(onBadge.x, onBadge.y);
+      expect(store.getState().measurePopover).toBeNull();
+      expect(store.getState().selectedIds).toEqual(['goblin']);
+    });
   });
 
   describe('Instance badges in the players\' picture', () => {
@@ -1447,19 +1691,13 @@ describe('TokenRenderer Integration Tests', () => {
       tokenRenderer.setFogCoverageProvider(() => fogCoverage(store.getState().objects.fog));
     });
 
-    /** What a token's badge shows on the canvas now: nothing, the GM's number or the players'. */
+    /** What a token's badge shows on the canvas now: nothing, or the GM's number. */
     const badgeLook = (id: string): string => {
       const group = tokenRenderer.getTokenSprites()[id];
       const badge = group?.getChildByLabel('instanceBadge');
-      const disc = badge?.getChildByLabel('badgeBg');
-      const gm = badge?.getChildByLabel('badgeText');
-      const players = badge?.getChildByLabel('playerBadgeText');
-      if (!group?.visible || !badge?.visible || !disc?.visible) return 'none';
-      const gmShown = gm instanceof Text && gm.visible;
-      const playersShown = players instanceof Text && players.visible;
-      if (gmShown && !playersShown) return `gm ${gm.text}`;
-      if (playersShown && !gmShown) return `players ${players.text}`;
-      return gmShown ? 'both texts' : 'disc without text';
+      const text = badge?.getChildByLabel('badgeText');
+      if (!group?.visible || !badge?.visible || !(text instanceof Text)) return 'none';
+      return `gm ${text.text}`;
     };
     const looks = (...ids: string[]): string[] => ids.map(badgeLook);
     /** The same in a players' frame, composed as the player window's capture composes it. */
@@ -1476,346 +1714,106 @@ describe('TokenRenderer Integration Tests', () => {
       await waitForTokens(...tokens.map(({ id }) => id));
     };
     const hide = (id: string, isHidden: boolean): void => store.getState().updateToken(id, { isHidden });
-    /** A goblin as a loaded map file holds it. */
-    const saved = (id: string, x: number, instanceNumber: number): TokenEntity => ({ ...token({ id, x }), id, kind: 'token', instanceNumber });
+    /** The numbers the players' initiative list takes from their last frame. */
+    const listNumbers = (...ids: string[]): (number | null)[] => ids.map((id) => tokenRenderer.playerBadgeNumbers().numberOf(id));
     /** Checks the canvas once the change reached it, and then the players' frame. */
     const expectLooks = async (ids: string[], expected: string[]): Promise<void> => {
       await vi.waitFor(() => expect(looks(...ids)).toEqual(expected));
       expect(frameLooks(...ids)).toEqual(expected);
     };
 
-    it('takes the badges off a token whose look-alike is hidden in session view, and gives both back once it is revealed', async () => {
+    it('shows the players the GM\'s number on a token whose look-alike is hidden, and none on the hidden one', async () => {
       await goblins({ id: 'A' }, { id: 'B' });
       store.getState().setGMView(false);
       await expectLooks(['A', 'B'], ['gm 1', 'gm 2']);
       hide('B', true);
-      await expectLooks(['A', 'B'], ['none', 'none']);
+      await expectLooks(['A', 'B'], ['gm 1', 'none']);
+      expect(listNumbers('A', 'B')).toEqual([1, null]);
       hide('B', false);
       await expectLooks(['A', 'B'], ['gm 1', 'gm 2']);
       store.getState().setGMView(true);
       expect(looks('A', 'B')).toEqual(['gm 1', 'gm 2']);
     });
 
-    it('numbers a revealed token by the tokens the players see, with its disc, and keeps the GM\'s pictures as they were', async () => {
+    it('keeps the GM\'s numbers with their gaps on every screen, in one badge text', async () => {
       await goblins({ id: 'A' }, { id: 'B' }, { id: 'C' });
       store.getState().setGMView(false);
       hide('A', true);
       hide('B', true);
-      await expectLooks(['A', 'B', 'C'], ['none', 'none', 'none']);
+      await expectLooks(['A', 'B', 'C'], ['none', 'none', 'gm 3']);
       hide('B', false);
-      await expectLooks(['A', 'B', 'C'], ['none', 'players 1', 'gm 3']);
+      await expectLooks(['A', 'B', 'C'], ['none', 'gm 2', 'gm 3']);
       // A picture of the scene taken in session view is the GM's.
       expect(pictureLooks('A', 'B', 'C')).toEqual(['gm 1', 'gm 2', 'gm 3']);
-      expect(looks('A', 'B', 'C')).toEqual(['none', 'players 1', 'gm 3']);
       store.getState().setGMView(true);
       expect(looks('A', 'B', 'C')).toEqual(['gm 1', 'gm 2', 'gm 3']);
-      // The player window, while the GM view shows the GM's numbers.
-      expect(frameLooks('A', 'B', 'C')).toEqual(['none', 'players 1', 'gm 3']);
-      expect(looks('A', 'B', 'C')).toEqual(['gm 1', 'gm 2', 'gm 3']);
+      // The player window, while the GM view shows every token.
+      expect(frameLooks('A', 'B', 'C')).toEqual(['none', 'gm 2', 'gm 3']);
+      expect(listNumbers('A', 'B', 'C')).toEqual([null, 2, 3]);
+      const badge = tokenRenderer.getTokenSprites().C?.getChildByLabel('instanceBadge');
+      expect(badge?.children.map((child) => child.label)).toEqual(['badgeBg', 'badgeText']);
     });
 
-    it('lets a token that showed the players\' number go back to the GM\'s once the numbers agree again', async () => {
-      await goblins({ id: 'A' }, { id: 'B', isHidden: true }, { id: 'C' });
-      store.getState().setGMView(false);
-      await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'players 2']);
-      hide('C', true);
-      await expectLooks(['A', 'B', 'C'], ['none', 'none', 'none']);
-      hide('B', false);
-      await expectLooks(['A', 'B', 'C'], ['gm 1', 'gm 2', 'none']);
-      hide('C', false);
-      await expectLooks(['A', 'B', 'C'], ['gm 1', 'gm 2', 'gm 3']);
-    });
-
-    it('gives a token added in session view the players\' number as soon as its sprite has loaded', async () => {
-      await goblins({ id: 'A' }, { id: 'B', isHidden: true });
-      store.getState().setGMView(false);
-      await expectLooks(['A', 'B'], ['none', 'none']);
-      // The sync that adds C passes over the badges before C's sprite exists.
-      store.getState().addToken(token({ id: 'C', x: 385, y: 105 }));
-      await waitForTokens('C');
-      expect(looks('A', 'B', 'C')).toEqual(['gm 1', 'none', 'players 2']);
-      expect(frameLooks('A', 'B', 'C')).toEqual(['gm 1', 'none', 'players 2']);
-    });
-
-    it('leaves a token without a badge while its look-alike is only sensed, or under fog', async () => {
+    it('shows no badge on a token the players only sense, or that fog covers', async () => {
       await goblins({ id: 'A' }, { id: 'B' });
       store.getState().setGMView(false);
       perception = (id) => (id === 'B' ? 'sensed' : 'seen');
       tokenRenderer.refreshPlayerSight();
-      await expectLooks(['A', 'B'], ['none', 'none']);
+      await expectLooks(['A', 'B'], ['gm 1', 'none']);
       perception = undefined;
       tokenRenderer.refreshPlayerSight();
       await expectLooks(['A', 'B'], ['gm 1', 'gm 2']);
       store.setState((state) => ({ objects: { ...state.objects, fog: { paint: fogRectangle({ x: 200, y: 50, width: 100, height: 100 }) } } }));
-      await expectLooks(['A', 'B'], ['none', 'none']);
+      await expectLooks(['A', 'B'], ['gm 1', 'none']);
+      expect(listNumbers('A', 'B')).toEqual([1, null]);
     });
 
-    it('puts a token whose art changed last among the players\' tokens of its new art', async () => {
+    it('shows the players the number the GM\'s map gives a token whose art changed', async () => {
       await goblins({ id: 'g1' }, { id: 'g2' }, { id: 'o1', imagePath: ORC_IMAGE }, { id: 'o2', imagePath: ORC_IMAGE });
       store.getState().setGMView(false);
       await expectLooks(['g1', 'g2', 'o1', 'o2'], ['gm 1', 'gm 2', 'gm 1', 'gm 2']);
       store.getState().updateToken('g2', { imagePath: ORC_IMAGE });
-      await expectLooks(['g1', 'g2', 'o1', 'o2'], ['none', 'players 3', 'gm 1', 'gm 2']);
+      await expectLooks(['g1', 'g2', 'o1', 'o2'], ['none', 'gm 2', 'gm 1', 'gm 2']);
       store.getState().setGMView(true);
       expect(looks('g1', 'g2', 'o1', 'o2')).toEqual(['none', 'gm 2', 'gm 1', 'gm 2']);
     });
 
-    it('frames a change the canvas has not drawn yet with the badges it brings, also where the canvas holds one off', async () => {
-      await goblins({ id: 'A' }, { id: 'B', isHidden: true }, { id: 'O', imagePath: ORC_IMAGE });
-      store.getState().setGMView(false);
-      await expectLooks(['A', 'B', 'O'], ['none', 'none', 'none']);
-      // The orc takes the goblin art; the canvas passes over the badges once that art has loaded.
-      store.getState().updateToken('O', { imagePath: GOBLIN_IMAGE });
-      expect(tokenSprite('O').texture.label).toBe(ORC_IMAGE);
-      expect(looks('A')).toEqual(['none']);
-      expect(frameLooks('A', 'O')).toEqual(['gm 1', 'none']);
-      expect(looks('A')).toEqual(['none']);
-      await expectLooks(['A', 'O'], ['gm 1', 'players 2']);
-    });
-
-    it('numbers the player window by its own sight while the command palette\'s player mode leaves the lighting off the canvas', async () => {
+    it('frames the player window by its own sight while the command palette\'s player mode leaves the lighting off the canvas', async () => {
       await goblins({ id: 'A' }, { id: 'B' }, { id: 'C' });
       // B stands in the dark: the players' sight leaves it out, but the palette's player mode applies no lighting on the canvas.
       perception = (id) => (id === 'B' ? 'unseen' : 'seen');
       eventBus.emit('player-mode-changed', true);
       expect(looks('A', 'B', 'C')).toEqual(['gm 1', 'gm 2', 'gm 3']);
-      expect(frameLooks('A', 'B', 'C')).toEqual(['gm 1', 'none', 'players 2']);
+      expect(frameLooks('A', 'B', 'C')).toEqual(['gm 1', 'none', 'gm 3']);
       expect(looks('A', 'B', 'C')).toEqual(['gm 1', 'gm 2', 'gm 3']);
-      // Session view brings the players' lighting to the canvas, and with it the window's numbers.
-      store.getState().setGMView(false);
-      await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'players 2']);
-      store.getState().setGMView(true);
-      expect(looks('A', 'B', 'C')).toEqual(['gm 1', 'gm 2', 'gm 3']);
-      expect(frameLooks('A', 'B', 'C')).toEqual(['gm 1', 'none', 'players 2']);
-    });
-
-    it('holds the window\'s numbers on the canvas in the command palette\'s player mode where no lighting is wired', async () => {
-      tokenRenderer.setPlayerSightProvider(() => undefined);
-      tokenRenderer.refreshPlayerSight();
-      await goblins({ id: 'A' }, { id: 'B', isHidden: true }, { id: 'C' });
-      eventBus.emit('player-mode-changed', true);
-      await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'players 2']);
       eventBus.emit('player-mode-changed', false);
-      expect(looks('A', 'B', 'C')).toEqual(['gm 1', 'gm 2', 'gm 3']);
     });
 
-    it('numbers a loaded scene by its own sight, not by the sight the lighting keeps from the scene before while it loads', async () => {
-      await goblins({ id: 'A' }, { id: 'B' }, { id: 'C' });
-      store.getState().setGMView(false);
-      await expectLooks(['A', 'B', 'C'], ['gm 1', 'gm 2', 'gm 3']);
-      // Another scene loads in this view. Until the load ends the lighting answers with the sight of the
-      // scene before, which saw all three places.
-      store.getState().setMapLoading(true);
-      store.setState((state) => ({ mapPath: 'maps/other.atlasmap', objects: { ...state.objects, tokens: {
-        A: saved('A', 105, 1),
-        B: saved('B', 245, 2),
-        C: saved('C', 385, 3),
-      } } }));
-      eventBus.emit('map-loaded');
-      await waitForTokens('A', 'B', 'C');
-      // The load ends: the loaded scene's sight leaves B in the dark.
-      perception = (id) => (id === 'B' ? 'unseen' : 'seen');
-      store.getState().setMapLoading(false);
-      await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'players 2']);
-    });
-
-    it('keeps the players\' badges on the canvas when a load starts, for the still frame that covers the switch', async () => {
-      await goblins({ id: 'A' }, { id: 'B', isHidden: true }, { id: 'C' });
-      store.getState().setGMView(false);
-      await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'players 2']);
-      store.getState().setMapLoading(true);
-      expect(looks('A', 'B', 'C')).toEqual(['gm 1', 'none', 'players 2']);
-    });
-
-    let stopLighting: (() => void) | null = null;
-    afterEach(() => {
-      stopLighting?.();
-      stopLighting = null;
-    });
-
-    /**
-     * A lighting that keeps sight of its own, as the view's lighting does: worked out by a store listener that
-     * comes after the token renderer's (an order the canvas must survive as well as the other), from the party's token P,
-     * which sees every token within 150 px. A load keeps the sight of the scene before until it ends; while
-     * `blocked` (a lost graphics context) nothing is built, and the sight it keeps is no longer the scene's from
-     * the first change it cannot take in. New sight is reported as `onSightChange` reports it.
-     */
-    const keptSight = (): { blocked: boolean; rebuild: () => void } => {
-      let eye: number | null = null;
-      let built = false;
-      const lighting = {
-        blocked: false,
-        rebuild: (): void => {
-          const state = store.getState();
-          if (state.isMapLoading || lighting.blocked) {
-            built = false;
-            return;
-          }
-          const party = state.objects.tokens.P?.x ?? null;
-          if (built && party === eye) return;
-          eye = party;
-          built = true;
-          tokenRenderer.refreshPlayerSight();
-        },
-      };
-      lighting.rebuild();
-      stopLighting = store.subscribe(() => lighting.rebuild());
-      perception = (id) => {
-        const x = store.getState().objects.tokens[id]?.x;
-        return x !== undefined && eye !== null && Math.abs(x - eye) <= 150 ? 'seen' : 'unseen';
-      };
-      const active = (): boolean => !store.getState().isGMView;
-      tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined), active, () => built);
-      return lighting;
-    };
-    /** The party P with goblins A, B and C, which P sees from x 245; on the loaded scene P stands at C and leaves B in the dark. */
-    const partyScene = async (): Promise<void> => {
-      await goblins({ id: 'P', imagePath: ORC_IMAGE, x: 245 }, { id: 'A', x: 315 }, { id: 'B', x: 105 }, { id: 'C', x: 385 });
-    };
-    /** Another scene loads into this view, as `MapService` loads it: the party moved to C. */
-    const loadPartyScene = async (): Promise<void> => {
-      store.getState().setMapLoading(true);
-      store.setState((state) => ({ mapPath: 'maps/other.atlasmap', objects: { ...state.objects, tokens: {
-        P: { ...saved('P', 385, 1), imagePath: ORC_IMAGE },
-        A: saved('A', 315, 1),
-        B: saved('B', 105, 2),
-        C: saved('C', 385, 3),
-      } } }));
-      eventBus.emit('map-loaded');
-      await waitForTokens('P', 'A', 'B', 'C');
-      store.getState().setMapLoading(false);
-    };
-
-    it('numbers a loaded scene by its sight once the lighting has built it, also where the lighting hears of the load\'s end last', async () => {
-      await partyScene();
-      keptSight();
-      store.getState().setGMView(false);
-      await expectLooks(['A', 'B', 'C'], ['gm 1', 'gm 2', 'gm 3']);
-      await loadPartyScene();
-      await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'players 2']);
-    });
-
-    it('shows the players no badges while the lighting has no sight for the loaded scene, and numbers from the first it has', async () => {
-      await partyScene();
-      const lighting = keptSight();
-      store.getState().setGMView(false);
-      await expectLooks(['A', 'B', 'C'], ['gm 1', 'gm 2', 'gm 3']);
-      lighting.blocked = true;
-      await loadPartyScene();
-      await expectLooks(['A', 'B', 'C'], ['none', 'none', 'none']);
-      // The context is back: the lighting builds the loaded scene.
-      lighting.blocked = false;
-      lighting.rebuild();
-      await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'players 2']);
-    });
-
-    it('shows the players no badges while a lost graphics context keeps the lighting from the scene\'s changes, and numbers anew once it is back', async () => {
-      await goblins({ id: 'P', imagePath: ORC_IMAGE, x: 105 }, { id: 'A', x: 175 }, { id: 'C', x: 525 });
-      const lighting = keptSight();
-      store.getState().setGMView(false);
-      await expectLooks(['A', 'C'], ['none', 'none']);
-      // The context is lost. The party walks on, a goblin is put where it stood and another is brought along. By
-      // the sight from before the loss B would take 2 and C 3, and C would keep its 3 beside A once B is out of sight.
-      lighting.blocked = true;
-      store.getState().moveToken('P', 245, 105);
-      store.getState().addToken(token({ id: 'B', x: 35, y: 105 }));
-      await waitForTokens('B');
-      store.getState().moveToken('C', 210, 105);
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      await expectLooks(['A', 'B', 'C'], ['none', 'none', 'none']);
-      lighting.blocked = false;
-      lighting.rebuild();
-      await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'gm 2']);
-    });
-
-    it('numbers by the lighting\'s sight once it has taken in a drop that moves the party and a look-alike together', async () => {
-      await goblins({ id: 'P', imagePath: ORC_IMAGE, x: 105 }, { id: 'A', x: 175 }, { id: 'B', x: 35 }, { id: 'C', x: 525 });
-      keptSight();
-      store.getState().setGMView(false);
-      await expectLooks(['A', 'B', 'C'], ['gm 1', 'gm 2', 'none']);
-      // One drop takes the party away from B and brings C along; the token renderer hears of it before the lighting.
-      store.getState().dropTokens([{ id: 'P', x: 245, y: 105 }, { id: 'C', x: 210, y: 105 }]);
-      await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'players 2']);
-    });
-
-    it('numbers anew when the same map loads again with other tokens', async () => {
+    it('gives the players\' list no number while the lighting has no sight for the scene', async () => {
       await goblins({ id: 'A' }, { id: 'B' });
-      store.getState().setGMView(false);
-      await expectLooks(['A', 'B'], ['gm 1', 'gm 2']);
-      // B held 2 before the load; on the loaded map it is the first of its art.
-      store.setState((state) => ({ objects: { ...state.objects, tokens: {
-        B: saved('B', 245, 1),
-        C: saved('C', 385, 2),
-      } } }));
-      eventBus.emit('map-loaded');
-      await waitForTokens('B', 'C');
-      await expectLooks(['B', 'C'], ['gm 1', 'gm 2']);
+      let current = true;
+      const active = (): boolean => !store.getState().isGMView;
+      tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined), active, () => current);
+      frameLooks('A', 'B');
+      expect(listNumbers('A', 'B')).toEqual([1, 2]);
+      current = false;
+      frameLooks('A', 'B');
+      expect(listNumbers('A', 'B')).toEqual([null, null]);
     });
-
-    it('numbers each map on its own when the view goes to another map and back', async () => {
-      await goblins({ id: 'x' }, { id: 'y' });
-      store.getState().setGMView(false);
-      hide('x', true);
-      await expectLooks(['y'], ['none']);
-      const load = async (mapPath: string, tokens: Record<string, TokenEntity>): Promise<void> => {
-        store.setState((state) => ({ mapPath, objects: { ...state.objects, tokens } }));
-        eventBus.emit('map-loaded');
-        await waitForTokens(...Object.keys(tokens));
-      };
-      await load('maps/other.atlasmap', {
-        y: saved('y', 105, 1),
-        z: saved('z', 245, 2),
-      });
-      await expectLooks(['y', 'z'], ['gm 1', 'gm 2']);
-      await load('maps/test.atlasmap', {
-        x: saved('x', 105, 1),
-        y: saved('y', 245, 2),
-      });
-      await expectLooks(['x', 'y'], ['gm 1', 'gm 2']);
-    });
-
-    type BadgePasses = { pass(seen: (id: string) => boolean): void; syncCanvas(seen: ((id: string) => boolean) | null): void };
-    const playerBadges = (): BadgePasses => (tokenRenderer as unknown as { playerBadges: BadgePasses }).playerBadges;
 
     it('does no players\' work in the GM view until a frame is captured', async () => {
-      const pass = vi.spyOn(playerBadges(), 'pass');
-      const sync = vi.spyOn(playerBadges(), 'syncCanvas');
+      const shown = (tokenRenderer as unknown as { playerBadges: { pass(seen: (id: string) => boolean): void } }).playerBadges;
+      const pass = vi.spyOn(shown, 'pass');
       await goblins({ id: 'A' }, { id: 'B' });
       hide('B', true);
       store.getState().moveToken('A', 175, 105);
       const settings = store.getState().tokenSettings;
       store.getState().setTokenSettings({ ...settings, showInstanceBadges: false });
       store.getState().setTokenSettings({ ...settings, showInstanceBadges: true });
-      viewport.emit('pointerdown', pointerEvent(175, 105));
-      viewport.emit('pointermove', pointerEvent(300, 105));
-      viewport.emit('pointerup', pointerEvent(300, 105));
       await vi.waitFor(() => expect(looks('A', 'B')).toEqual(['gm 1', 'gm 2']));
       expect(pass).not.toHaveBeenCalled();
-      expect(sync).not.toHaveBeenCalled();
-      expect(frameLooks('A', 'B')).toEqual(['none', 'none']);
+      expect(frameLooks('A', 'B')).toEqual(['gm 1', 'none']);
       expect(pass).toHaveBeenCalledOnce();
-    });
-
-    it('in session view, follows a drag only when the dragged token enters or leaves the players\' sight', async () => {
-      store.setState((state) => ({ objects: { ...state.objects, fog: { paint: fogRectangle({ x: 150, y: 0, width: 100, height: 400 }) } } }));
-      store.getState().setGMView(false);
-      await goblins({ id: 'moving' }, { id: 'twin', x: 105, y: 245 });
-      await expectLooks(['moving', 'twin'], ['gm 1', 'gm 2']);
-      const sync = vi.spyOn(playerBadges(), 'syncCanvas');
-      viewport.emit('pointerdown', pointerEvent(105, 105));
-      viewport.emit('pointermove', pointerEvent(120, 105));
-      const calls: number[] = [];
-      const shown: string[][] = [];
-      for (const x of [130, 140, 180, 200, 220, 320, 330]) {
-        sync.mockClear();
-        viewport.emit('pointermove', pointerEvent(x, 105));
-        calls.push(sync.mock.calls.length);
-        shown.push(looks('twin'));
-      }
-      // Every move writes the store, which is one pass; entering or leaving the players' sight syncs once more.
-      expect(calls).toEqual([1, 1, 2, 1, 1, 2, 1]);
-      expect(shown.flat()).toEqual(['gm 2', 'gm 2', 'none', 'none', 'none', 'gm 2', 'gm 2']);
-      viewport.emit('pointerup', pointerEvent(330, 105));
     });
   });
 

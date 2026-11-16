@@ -26,6 +26,7 @@ describe('release channels', () => {
   });
   it('maps release branches to channels and leaves other branches unchecked', () => {
     expect(channelForBranch('main')).toBe('stable');
+    expect(channelForBranch('release/0.2.0')).toBe('stable');
     expect(channelForBranch('beta')).toBe('beta');
     expect(channelForBranch('feature/fog')).toBeNull();
   });

@@ -12,6 +12,7 @@ import { SEPARATOR, type SurfaceAction } from '../../interaction/surfaceActions'
 import { CHOICES_FOCUS_KEY } from '../inspector/ChoiceSettings';
 import { VALUE_KINDS, valueKindOf, withValueKind } from '../options/valueKinds';
 import type { EditorSession } from '../sessionTypes';
+import { t } from '../../../../i18n';
 
 export interface ValueKindContext {
   session: EditorSession;
@@ -37,9 +38,9 @@ export function valueKindMenu({ session, block, field, editable, openOptions }: 
   return [
     ...kinds,
     SEPARATOR,
-    item('pick-several', 'Pick several', () => edit({ several: field.several ? undefined : true }), { checked: field.several === true, disabled: !editable }),
-    item('each-with-number', 'Each with a number', () => edit({ numbered: field.numbered ? undefined : true }), { checked: field.numbered === true, disabled: !editable }),
+    item('pick-several', t('templateEditor.pickSeveral'), () => edit({ several: field.several ? undefined : true }), { checked: field.several === true, disabled: !editable }),
+    item('each-with-number', t('templateEditor.eachWithNumber'), () => edit({ numbered: field.numbered ? undefined : true }), { checked: field.numbered === true, disabled: !editable }),
     SEPARATOR,
-    item('edit-choices', 'Choices…', () => openOptions(CHOICES_FOCUS_KEY), { icon: 'list' }),
+    item('edit-choices', t('templateEditor.choicesMenu'), () => openOptions(CHOICES_FOCUS_KEY), { icon: 'list' }),
   ];
 }

@@ -13,6 +13,7 @@ import { LinkedSheet, type DrawnStatblock } from './LinkedSheet';
 import type { SheetVariant } from './sheetTypes';
 import { useLinkedStatblock, useNativeTemplateId, type LinkedStatblockResult } from './useLinkedStatblock';
 import type { TokenRollContext } from '../../types/diceRollOrigin';
+import { t } from '../../i18n';
 
 export interface LinkedStatblockProps {
   app: App;
@@ -34,6 +35,8 @@ export interface LinkedStatblockProps {
   tokenActions?: StatblockTokenActions | undefined;
   /** Offered beside "Template not found"; without it the notice offers nothing. */
   onChooseTemplate?: ((path: string) => void) | undefined;
+  /** A press on a Counters pip of a native vault note writes the note (a map's hover preview, the DM screen). */
+  pressableCounters?: boolean | undefined;
   className?: string | undefined;
 }
 
@@ -81,15 +84,16 @@ function ResolvedView(props: LinkedStatblockProps & { templateId: TemplateId | n
         originContext={props.originContext}
         tokenActions={props.tokenActions}
         onChooseTemplate={props.onChooseTemplate}
+        pressableCounters={props.pressableCounters === true && noteText === undefined}
         className={className}
       />
     );
   }
   // The note stopped being native while Fantasy Statblocks is loaded: the plugin draws it.
   if (result.kind === 'statblock') return <FantasyView {...props} />;
-  if (result.kind === 'unreadable') return <Hint>This statblock could not be read.</Hint>;
-  if (result.fence) return <Hint>Install and enable the Fantasy Statblocks plugin to preview statblocks.</Hint>;
-  return <Hint>This note has no statblock.</Hint>;
+  if (result.kind === 'unreadable') return <Hint>{t('statblockEditor.unreadable')}</Hint>;
+  if (result.fence) return <Hint>{t('statblockEditor.needFs')}</Hint>;
+  return <Hint>{t('statblockEditor.noStatblock')}</Hint>;
 }
 
 /**

@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { observeResize } from '../../../utils/observeResize';
 import { labelElement, type LabelKind, type LabelPart } from './labelTargets';
+import { t } from '../../../i18n';
 
 /** Marks the label the input stands over, which hides while it is edited. */
 export const LABEL_EDITING_ATTRIBUTE = 'data-te-label-editing';
@@ -119,7 +120,7 @@ export function LabelEditor({ stage, frame, kind, part, text, onCommit, onCancel
       value={value}
       spellCheck={false}
       autoComplete="off"
-      aria-label="Label"
+      aria-label={t('templateEditor.label')}
       onChange={(event) => setValue(event.target.value)}
       onKeyDown={onKeyDown}
       onBlur={() => finish(() => onCommit(value, false))}

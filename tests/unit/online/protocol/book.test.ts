@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  bookLine, bookText, fitsPlayerFrame, isQuestDone, MAX_BOOK_NOTES, MAX_RESOURCE_KEY, MAX_TOKEN_VALUE, MAX_BOOK_QUESTS, MAX_NOTE_BODY, MAX_QUEST_REWARDS, parseGmMessage, parsePlayerMessage, type BookItem, type BookQuest, type PlayerBook,
+  bookLine, bookText, fitsPlayerFrame, isQuestDone, MAX_BOOK_NOTES, MAX_RESOURCE_KEY, MAX_TOKEN_VALUE, MAX_BOOK_QUESTS, MAX_NOTE_BODY, MAX_QUEST_REWARDS, parseGmMessage, parsePlayerMessage, withoutItem, type BookItem, type BookQuest, type PlayerBook,
 } from '../../../../src/app/online/protocol/index.ts';
 
 const HASH = 'a'.repeat(64);
 const ID = '0123456789abcdef01234567';
-const ART = { hash: HASH, size: 10, mime: 'image/webp' };
+const ART = { hash: HASH, size: 10, mime: 'image/webp', id: 'e'.repeat(64) };
 const ITEM: BookItem = { id: ID, name: 'Rope', type: 'Gear', rarity: 'Common', tone: 'common', price: '1 gold', description: 'Fifty feet.\nHemp.', properties: [{ label: 'Weight', value: '5' }], at: 12 };
 const QUEST_ID = 'fedcba9876543210fedcba98';
 const QUEST: BookQuest = { id: QUEST_ID, kind: 'main', state: 'active', title: 'The crown under the root', body: 'The Horned King wants it back.', place: { x: 0.25, y: 0.5 }, xp: 1200, rewards: ['Favour of the King'] };
@@ -109,7 +109,7 @@ describe('book messages to a player', () => {
       { ...BOOK, items: [ITEM, ITEM] },
       { ...BOOK, items: [{ ...ITEM, tone: 'shiny' }] },
       { ...BOOK, character: { ...BOOK.character, ring: 'red' } },
-      { ...BOOK, character: { ...BOOK.character, art: { hash: HASH, size: 1, mime: 'text/html' } } },
+      { ...BOOK, character: { ...BOOK.character, art: { hash: HASH, size: 1, mime: 'text/html', id: 'e'.repeat(64) } } },
       { ...BOOK, character: { ...BOOK.character, resources: [{ name: 'HP', colour: '#aa0000', direction: 'drains', current: 1, max: 0 }] } },
       { ...BOOK, worldMap: { image: ART, width: 0, height: 10 } },
       { ...BOOK, pins: [{ ...BOOK.pins[0], x: 1.2 }] },
@@ -158,6 +158,19 @@ describe('what a player writes into their book', () => {
       expect(parsePlayerMessage({ t: 'book-token', ...broken }), JSON.stringify(broken)).toBeNull();
     }
     expect(parseGmMessage({ t: 'book-token', scene: 'scene-1', token: ID })).toBeNull();
+  });
+
+  it('reads an item taken out of the book by its id alone, and refuses any other id, or the message from the GM', () => {
+    expect(parsePlayerMessage({ t: 'book-item-delete', id: ID, item: ITEM })).toEqual({ t: 'book-item-delete', id: ID });
+    for (const id of ['../x', ID.toUpperCase(), `${ID}0`, '', 12, null, undefined]) expect(parsePlayerMessage({ t: 'book-item-delete', id }), String(id)).toBeNull();
+    expect(parseGmMessage({ t: 'book-item-delete', id: ID })).toBeNull();
+  });
+
+  it('takes an item out of a book only where the book holds it, and out of its slot with it', () => {
+    const other = { ...ITEM, id: 'fedcba9876543210fedcba98', name: 'Lamp' };
+    const book = { ...BOOK, items: [ITEM, other], equipped: [{ slot: 'head', item: ID }, { slot: 'neck', item: other.id }] };
+    expect(withoutItem(book, ID)).toEqual({ ...book, items: [other], equipped: [{ slot: 'neck', item: other.id }] });
+    expect(withoutItem(book, '0'.repeat(24))).toBeNull();
   });
 
   it('refuses what is malformed or too long, and never takes a GM kind from a player', () => {

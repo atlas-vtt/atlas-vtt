@@ -12,6 +12,7 @@ import { codeFieldRefs } from '../model/scriptReads';
 import type { BlockIdSource } from '../model/templateIds';
 import type { FieldKey, ScriptBlock, TemplateField, TrackBlock } from '../model/templateTypes';
 import { FsFieldRegistry, type ImportContext } from './fsImportState';
+import { t } from '../../i18n';
 
 /** Quantities that count what is used up, as the DM screen counts them (`resources/statblockQuantities.ts`). */
 const COUNTING_UP: ReadonlySet<string> = new Set(['stress', 'strain', 'wounds']);
@@ -47,7 +48,7 @@ function stringAt(record: Readonly<Record<string, unknown>>, key = 'code'): stri
 
 /** "level, role, size and more": the first keys code reads. */
 function keyList(keys: readonly string[]): string {
-  return keys.length > MAX_NAMED_KEYS ? `${keys.slice(0, MAX_NAMED_KEYS).join(', ')} and more` : words(keys);
+  return keys.length > MAX_NAMED_KEYS ? t('statblockEditor.fs.andMore', { keys: keys.slice(0, MAX_NAMED_KEYS).join(', ') }) : words(keys);
 }
 
 function drawnTracks(record: Readonly<Record<string, unknown>>): string[] {
@@ -59,23 +60,23 @@ export function scriptSummary(record: Readonly<Record<string, unknown>>, label: 
   switch (own(record, 'type')) {
     case 'javascript': {
       const tracks = drawnTracks(record);
-      if (tracks.length > 0) return `${words(tracks.map(labelFromKey))} tracks drawn with JavaScript`;
+      if (tracks.length > 0) return t('statblockEditor.fs.jsTracks', { names: words(tracks.map(labelFromKey)) });
       const keys = codeFieldRefs(stringAt(record));
-      return keys.length === 0 ? 'JavaScript' : `JavaScript reading ${keyList(keys)}`;
+      return keys.length === 0 ? 'JavaScript' : t('statblockEditor.fs.jsReading', { keys: keyList(keys) });
     }
     case 'action':
-      if (stringAt(record, 'callback').trim()) return 'A button that runs JavaScript';
-      return stringAt(record, 'action').trim() ? 'A button that runs an Obsidian command' : 'A button';
+      if (stringAt(record, 'callback').trim()) return t('statblockEditor.fs.jsButton');
+      return stringAt(record, 'action').trim() ? t('statblockEditor.fs.commandButton') : t('statblockEditor.fs.button');
     case 'ifelse': {
       const conditions = own(record, 'conditions');
       const branches = Array.isArray(conditions) ? conditions.length : 0;
-      return branches > 1 ? `One of ${branches} parts, chosen by JavaScript` : 'A part shown when JavaScript allows it';
+      return branches > 1 ? t('statblockEditor.fs.jsBranches', { count: branches }) : t('statblockEditor.fs.jsShown');
     }
     default: {
-      if (label) return `${label} formatted by JavaScript`;
+      if (label) return t('statblockEditor.fs.jsFormatted', { name: label });
       // A line of its own making: name what it reads
       const keys = keyList(codeFieldRefs(stringAt(record, 'callback')));
-      return keys ? `${keys.charAt(0).toUpperCase()}${keys.slice(1)} formatted by JavaScript` : 'A block formatted by JavaScript';
+      return keys ? t('statblockEditor.fs.jsFormatted', { name: `${keys.charAt(0).toUpperCase()}${keys.slice(1)}` }) : t('statblockEditor.fs.jsBlock');
     }
   }
 }

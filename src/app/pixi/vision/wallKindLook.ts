@@ -3,7 +3,8 @@ import type { WallSegment } from '../../types/wallTypes';
 
 /**
  * How the wall editor draws a wall that is not a plain wall. A wall for both is a plain line;
- * one for sight only is long dashes, one for light only dashes and dots in turn; a limited wall
+ * one for sight only is long dashes, one for light only dashes and dots in turn, a window (for a
+ * token only) short dashes; a limited wall
  * is a row of dots, in the groups of its dashes where it blocks one thing only (threes for
  * sight, a pair and a single dot for light). The lengths are screen pixels, so the look reads
  * the same at any zoom, and each stroke lies on a dark casing, so it shows on a pale map as on
@@ -13,7 +14,7 @@ import type { WallSegment } from '../../types/wallTypes';
  */
 
 /** Strokes and gaps in turn, in screen pixels. */
-const PATTERNS = { sight: [12, 7], light: [10, 4, 2, 4] } as const;
+const PATTERNS = { sight: [12, 7], light: [10, 4, 2, 4], movement: [3, 5] } as const;
 /** Width of the line on screen, and how far its casing shows on either side. */
 const WIDTH = 3;
 const CASING = 1.25;

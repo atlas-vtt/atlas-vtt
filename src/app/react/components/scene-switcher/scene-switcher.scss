@@ -63,7 +63,7 @@
   gap: 6px;
   flex-shrink: 0;
   padding: 6px;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   cursor: text;
   transition: background $transition-fast;
 
@@ -115,7 +115,6 @@
   min-height: 0;
   overflow-y: auto;
 
-  @include atlas-scrollbar;
 }
 
 .atlas-scene-switcher__item {
@@ -124,7 +123,7 @@
   gap: 6px;
   flex-shrink: 0;
   padding: 6px;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   color: var(--text-muted);
   font-size: $font-ui-small;
   cursor: pointer;

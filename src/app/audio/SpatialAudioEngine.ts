@@ -4,6 +4,7 @@ import type { AudioSource } from '../types/audioTypes';
 import type { AudioBufferCache } from './AudioBufferCache';
 import { countWallsBetween, computeWallDampening, computeDistanceGain } from './audioOcclusion';
 import { runInBackground } from '../utils/backgroundTask';
+import { levelObjects } from '../levels/levelObjects';
 import { mapTokens } from '../tokens/offMap';
 
 const UPDATE_THROTTLE_MS = 100; // ~10fps during drag
@@ -67,10 +68,10 @@ export class SpatialAudioEngine {
     this.unsubscribers.push(unsub1);
 
     // Mark dirty on any objects change (catches hydration, bulk loads, undo/redo)
-    let prevObjects = this.store.getState().objects;
+    let prevObjects = levelObjects(this.store.getState());
     const unsubObjects = this.store.subscribe((state) => {
-      if (state.objects !== prevObjects) {
-        prevObjects = state.objects;
+      if (levelObjects(state) !== prevObjects) {
+        prevObjects = levelObjects(state);
         state.markAudioDirty();
       }
     });
@@ -115,8 +116,8 @@ export class SpatialAudioEngine {
 
     const listenerX = selectedToken.x;
     const listenerY = selectedToken.y;
-    const audioSources = state.objects.audios;
-    const walls = state.objects.walls;
+    const audioSources = levelObjects(state).audios;
+    const walls = levelObjects(state).walls;
 
     const inRangeSources = new Set<string>();
     for (const source of Object.values(audioSources)) {
@@ -167,7 +168,7 @@ export class SpatialAudioEngine {
     if (state.selectedIds.length === 0) return null;
 
     for (const id of state.selectedIds) {
-      const token = mapTokens(state.objects)[id];
+      const token = mapTokens(levelObjects(state))[id];
       if (token) return { x: token.x, y: token.y };
     }
 

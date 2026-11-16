@@ -21,8 +21,9 @@ When preparing a stable release:
 2. Run `npm version <x.y.z>`; its hook updates `manifest.json` and `versions.json` (beta versions never enter `versions.json`).
 3. Run `npm run changelog:generate` and commit both generated files: `CHANGELOG.md` and `src/app/changelog/releases.json`. `npm run changelog:check` detects stale output. Do not edit generated files directly.
 4. Run typecheck, tests, `npm run build:ci`, `npm run preflight`, and `npm run release:prepare`. Preparation refuses assets from a stale build and writes `release/release-notes.md` from the same content used in the plugin.
-5. Merge the prepared commit into `main` and wait for Plugin CI on that push to pass. Run **Prepare Plugin Release** in GitHub Actions on `main` and enter the matching version; the workflow refuses beta versions and commits outside `main`. The workflow takes the build Plugin CI tested for the selected commit and creates a draft containing the notes and three Obsidian assets. It never publishes automatically. Re-running the same commit refreshes its draft; published releases and drafts from different commits are refused.
+5. Push `release/<x.y.z>` and open its pull request against `main`. Once Plugin CI on that push has passed, run **Prepare Plugin Release** in GitHub Actions on that branch and enter the matching version; the workflow refuses beta versions and any other branch. It takes the build Plugin CI tested for the selected commit and creates a draft containing the notes and three Obsidian assets. It never publishes automatically. Re-running the same commit refreshes its draft; published releases and drafts from different commits are refused.
 6. Inspect the draft and attached assets, then publish it. The tag is the version without a `v` prefix. Do not publish an empty release first.
+7. Merge the pull request right after publishing, with a merge commit. **Release Gate** holds it until then: Obsidian offers what the manifest on `main` names at once, so it must be installable by then.
 
 ```markdown
 ---

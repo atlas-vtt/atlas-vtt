@@ -1,11 +1,13 @@
 import React, { useEffect, useId, useState } from 'react';
 import { DropdownSwatchGrid } from '../../packages/components/primitives/DropdownSwatchGrid';
+import { Select } from '../../packages/components/primitives/Select';
 import { Slider } from '../../packages/components/primitives/slider';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { editEmission, withEmissionValue } from '../../lighting/lightEmissionForm';
 import { formatRange, rangeSliderScale, type RangeField } from '../../lighting/lightRanges';
-import type { LightEmission } from '../../types/lightingTypes';
+import type { LightAnimation, LightEmission } from '../../types/lightingTypes';
 import { useColourPick, type ColourPick } from './useGestureTransactions';
+import { t } from '../../i18n';
 
 interface EmissionFieldProps {
   emission: LightEmission;
@@ -14,13 +16,13 @@ interface EmissionFieldProps {
 
 /** Colours lights commonly have: the kinds' own, and a few for magic. */
 const LIGHT_COLOR_SWATCHES = [
-  { value: '#ffb347', label: 'Candle amber' },
-  { value: '#ff9a3c', label: 'Torch orange' },
-  { value: '#ffd28a', label: 'Lantern gold' },
-  { value: '#fff1d6', label: 'Warm white' },
-  { value: '#8fb8ff', label: 'Arcane blue' },
-  { value: '#7ee0a8', label: 'Fey green' },
-  { value: '#ff6b5e', label: 'Ember red' },
+  { value: '#ffb347', label: t('light.colour.candle') },
+  { value: '#ff9a3c', label: t('light.colour.torch') },
+  { value: '#ffd28a', label: t('light.colour.lantern') },
+  { value: '#fff1d6', label: t('light.colour.warm') },
+  { value: '#8fb8ff', label: t('light.colour.arcane') },
+  { value: '#7ee0a8', label: t('light.colour.fey') },
+  { value: '#ff6b5e', label: t('light.colour.ember') },
 ] as const;
 
 /** The light's colour: common ones as swatches, any other from the system picker in the last cell. */
@@ -28,13 +30,33 @@ export function ColorSwatches({ color, ...pick }: ColourPick & { color: string }
   const input = useColourPick(pick);
   const custom = !LIGHT_COLOR_SWATCHES.some((swatch) => swatch.value === color.toLowerCase());
   return (
-    <DropdownSwatchGrid label="Colour" swatches={LIGHT_COLOR_SWATCHES} value={color} onChange={pick.onChange}>
+    <DropdownSwatchGrid label={t('light.colourLabel')} swatches={LIGHT_COLOR_SWATCHES} value={color} onChange={pick.onChange}>
       <span className={`atlas-swatch atlas-swatch--custom${custom ? ' atlas-swatch--active' : ''}`} style={custom ? { background: color } : undefined}>
-        <LabelTooltip label="Custom colour">
+        <LabelTooltip label={t('light.customColour')}>
           <input ref={input.ref} type="color" value={/^#[0-9a-f]{6}$/i.test(color) ? color : '#ffffff'} onChange={input.onChange} />
         </LabelTooltip>
       </span>
     </DropdownSwatchGrid>
+  );
+}
+
+const FLICKERS: { value: LightAnimation; label: string }[] = [
+  { value: 'none', label: t('light.flicker.steady') },
+  { value: 'torch', label: t('light.flicker.torch') },
+  { value: 'candle', label: t('light.flicker.candle') },
+  { value: 'pulse', label: t('light.flicker.pulse') },
+  { value: 'magic', label: t('light.flicker.shimmer') },
+  { value: 'smoulder', label: t('light.flicker.smoulder') },
+];
+
+/** How the light moves: steady, or one of the flickers. */
+export function FlickerField({ emission, onChange }: EmissionFieldProps): React.ReactElement {
+  const id = useId();
+  return (
+    <div className="atlas-light-popover__flicker">
+      <span id={id}>{t('light.flicker')}</span>
+      <Select value={emission.animation} options={FLICKERS} labelledBy={id} onChange={(animation) => onChange({ ...emission, animation })} />
+    </div>
   );
 }
 
@@ -59,7 +81,7 @@ export function RangeFields({ emission, unit, unitDistance, maxRange, onChange, 
     return (
       <div className="atlas-light-popover__field">
         <div className="atlas-light-popover__ranges">
-          <RangeInput label="Radius" field="dim" emission={emission} maxRange={maxRange} onChange={onChange} />
+          <RangeInput label={t('light.radius')} field="dim" emission={emission} maxRange={maxRange} onChange={onChange} />
           {unit && <span className="atlas-light-popover__unit">{unit}</span>}
         </div>
         <Slider
@@ -67,7 +89,7 @@ export function RangeFields({ emission, unit, unitDistance, maxRange, onChange, 
           min={0}
           max={Math.min(max, maxRange)}
           step={step}
-          thumbLabels={['Darkness radius']}
+          thumbLabels={[t('light.darknessRadius')]}
           getValueText={(value) => `${formatRange(value)} ${unit}`.trim()}
           onPointerDown={onSliderPointerDown}
           onValueChange={([dim]) => {
@@ -80,8 +102,8 @@ export function RangeFields({ emission, unit, unitDistance, maxRange, onChange, 
   return (
     <div className="atlas-light-popover__field">
       <div className="atlas-light-popover__ranges">
-        <RangeInput label="Bright" field="bright" emission={emission} maxRange={maxRange} onChange={onChange} />
-        <RangeInput label="Dim" field="dim" emission={emission} maxRange={maxRange} onChange={onChange} />
+        <RangeInput label={t('light.bright')} field="bright" emission={emission} maxRange={maxRange} onChange={onChange} />
+        <RangeInput label={t('light.dim')} field="dim" emission={emission} maxRange={maxRange} onChange={onChange} />
         {unit && <span className="atlas-light-popover__unit">{unit}</span>}
       </div>
       <Slider
@@ -89,7 +111,7 @@ export function RangeFields({ emission, unit, unitDistance, maxRange, onChange, 
         min={0}
         max={Math.min(max, maxRange)}
         step={step}
-        thumbLabels={['Bright range', 'Dim range']}
+        thumbLabels={[t('light.brightRange'), t('light.dimRange')]}
         getValueText={(value) => `${formatRange(value)} ${unit}`.trim()}
         onPointerDown={onSliderPointerDown}
         onValueChange={([bright, dim]) => {

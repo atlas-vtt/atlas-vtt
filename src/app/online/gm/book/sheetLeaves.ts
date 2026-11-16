@@ -1,6 +1,6 @@
 import {
   bookLine, isResourceKey, MAX_BOOK_TITLE, MAX_COUNTER, MAX_COUNTERS, MAX_FORMULA, MAX_SHEET_LIST, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS,
-  type SheetCounter, type SheetField, type SheetNode, type SheetPair, type SheetValue,
+  type SheetCounter, type SheetField, type SheetNode, type SheetPair, type SheetRaw, type SheetValue,
 } from '../../protocol/index.ts';
 import { valuePrompt, type BlockDisplay } from '../../../statblocks/render/blockDisplay';
 import { MAX_TRACK_BOXES } from '../../../statblocks/render/values/trackBoxes';
@@ -155,18 +155,18 @@ function trackNode(build: SheetBuild, block: TrackBlock, display: BlockDisplay, 
   if (held && held.max > 0) {
     // A tracked number counts the way its field says, which its value follows
     const counts = block.resource === undefined ? build.shown.tracked.get(block.field)?.counts ?? block.counts : block.counts;
-    return track(block, label, held.current, held.max, resource ?? null, null, counts);
+    return track(block, label, held.current, held.max, resource ?? null, counts);
   }
-  // The note holds a tracked number's maximum, which its boxes must never write
-  const writes = build.shown.tracked.has(block.field) ? null : field;
-  if (max !== null && max > 0) return track(block, label, block.counts === 'down' ? Math.floor(max) : 0, Math.floor(max), null, writes);
+  // A Track's field is its maximum, which its boxes must never write: it shows where it starts (#522)
+  if (max !== null && max > 0) return track(block, label, block.counts === 'down' ? Math.floor(max) : 0, Math.floor(max), null);
   const text = misfitText(build, block.field);
   return text === null ? null : { k: 'value', value: sheetValue(build, label, text, 'plain', field, null) };
 }
 
-function track(block: TrackBlock, label: string | null, current: number, max: number, resource: string | null, field: SheetField | null, counts = block.counts): SheetNode {
+/** A track as the page draws it: it sets its resource where it shows one, and never its field, which holds its maximum. */
+function track(block: TrackBlock, label: string | null, current: number, max: number, resource: string | null, counts = block.counts): SheetNode {
   const look = block.look === 'boxes' && max <= MAX_TRACK_BOXES ? 'boxes' : 'gauge';
-  return { k: 'track', label, look, counts, current: Math.max(0, Math.min(current, max)), max, resource, field };
+  return { k: 'track', label, look, counts, current: Math.max(0, Math.min(current, max)), max, resource, field: null };
 }
 
 /** Whether the protocol carries a line exactly as it is written. */
@@ -176,6 +176,23 @@ export const carriedLine = (text: string, max: number = MAX_BOOK_TITLE): boolean
 function sheetCounter(row: CounterRow): SheetCounter | null {
   if (!carriedLine(row.name) || (row.reset !== null && !carriedLine(row.reset)) || (row.regain !== null && !carriedLine(row.regain, MAX_FORMULA)) || row.max > MAX_COUNTER) return null;
   return { name: row.name, max: row.max, used: row.used, reset: row.reset, regain: row.regain };
+}
+
+const isStoredRow = (value: SheetRaw | undefined): value is { readonly [key: string]: SheetRaw } => typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * The field with each stored row at the maximum and uses the card shows, where they are not the
+ * row's own (a row that takes its template's maximum, changed since): a page builds its edit from
+ * these rows, and one sent with the stored maximum would read as the player setting it.
+ */
+function fieldAsShown(field: SheetField, rows: readonly CounterRow[]): SheetField {
+  if (!Array.isArray(field.value)) return field;
+  const stored: readonly SheetRaw[] = field.value;
+  const value = stored.map((each, index) => {
+    const row = rows[index];
+    return row && isStoredRow(each) && each.max !== row.max ? { ...each, max: row.max, used: row.used } : each;
+  });
+  return { ...field, value };
 }
 
 /**
@@ -193,7 +210,7 @@ function countersNode(build: SheetBuild, block: CountersBlock, display: BlockDis
   const rows = known ? shownCounterRows(known, value) : null;
   const counters = rows && rows.length <= MAX_COUNTERS ? rows.map(sheetCounter) : null;
   if (!counters?.every((row): row is SheetCounter => row !== null)) return { k: 'value', value: sheetValue(build, label, valueText(value), 'plain', null, null) };
-  return { k: 'counters', label, counters, field };
+  return { k: 'counters', label, counters, field: field && rows ? fieldAsShown(field, rows) : field };
 }
 
 /** What a player may change of the field a block shows: nothing where its fallback stands in for the field's value. */
