@@ -186,6 +186,27 @@ describe('the glass chip', () => {
     expect(screen.getByRole('group', { name: 'Players · following you' })).toBeTruthy();
   });
 
+  it('goes with the GM\'s camera while players follow, between the frames they are shown, and stays put once pinned', () => {
+    const view = fakeView();
+    render(<GlassChip view={view} />);
+    const outline = fakes.outlines[0]!;
+    const renderer = view.serviceManager!.getRendererService()!;
+    const viewport = renderer.getViewport()! as unknown as { x: number };
+    const tick = vi.mocked(renderer.getApp()!.ticker.add).mock.calls[0]![0] as () => void;
+    // The GM pans: players will be framed there, and no frame of theirs has told the glass yet
+    const moved = { centerX: 300, centerY: 100, width: 200, height: 100 };
+    service.glassOf = (tabId: string) => (playerWindowStore.getState().shownTabId === tabId ? moved : null);
+    viewport.x = -200;
+    act(() => tick());
+    expect(outline.setGlass).toHaveBeenLastCalledWith(moved, 'live');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pin the players here' }));
+    outline.setGlass.mockClear();
+    viewport.x = -400;
+    act(() => tick());
+    expect(outline.setGlass).not.toHaveBeenCalled();
+  });
+
   it('stages a frame where it is dragged, its top-left corner on the nearest grid intersection, while players stay where they are', () => {
     render(<GlassChip view={fakeView()} />);
     const outline = fakes.outlines[0]!;

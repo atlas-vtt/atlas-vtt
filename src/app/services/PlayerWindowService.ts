@@ -259,14 +259,26 @@ export class PlayerWindowService {
   /** The camera players see the scene of `tabId` through, where they see it live. */
   private framingCamera(tabId: string): PlayerCameraState | null {
     if (!this.isWindowOpen() || this.heldFrame || playerWindowStore.getState().shownTabId !== tabId) return null;
-    return this.frozenCamera ?? this.cameraPlayersSee();
+    return this.outlinedCamera();
+  }
+
+  /**
+   * The camera the glass on the GM's map is placed through: pinned, the frozen one; following,
+   * the view's own, which the outline is drawn through and the next frame is rendered through
+   * (the last frame's would trail the GM's pans by a frame); else what players were shown last.
+   */
+  private outlinedCamera(): PlayerCameraState | null {
+    if (this.frozenCamera) return this.frozenCamera;
+    const source = this.streamSource;
+    const live = source && !this.heldFrame && !cannotRender(source) ? source.getCamera?.() : undefined;
+    return live ?? this.cameraPlayersSee();
   }
 
   /** The frame the mirror would render of `source` through the camera players are on: the same function, so the outline is what players get. */
   private playerFrameOf(source: PlayerFrameSource | null): PlayerFrame | null {
     const canvas = this.playerWindow?.document.getElementById('atlas-player-canvas');
     const window = canvas?.instanceOf(HTMLCanvasElement) ? this.windowScreen(canvas) : null;
-    const camera = this.isWindowOpen() ? this.frozenCamera ?? this.cameraPlayersSee() : null;
+    const camera = this.isWindowOpen() ? this.outlinedCamera() : null;
     if (!source || !window || !camera) return null;
     return tableTvPlayerFrame(window, camera, source.getScreen?.(), this.tableTv(), source.getGridSize?.(), this.pixelBudget());
   }
