@@ -6,6 +6,7 @@ import { pauseOnShiftedClock, withPauseStillMeant } from './musicPause';
 import type { SoundOutput } from './soundOutput';
 import type { SoundShelf } from './soundShelf';
 import { applyDueListChange } from './trackEnd';
+import { applyDueLoopSeams } from './loopSeam';
 import { isPlaying, OFFLINE_LEAD_MS, onShiftedClock } from './tableSound';
 import type { TableClock } from './tableClock';
 
@@ -136,7 +137,10 @@ export class SoundTable {
   private pulse(): void {
     this.output.tick();
     const { leadMs } = this.tableClock;
-    this.commit(applyDueListChange(this.current, this.now(), Math.max(LIST_CHANGE_AHEAD_MS, leadMs * 2), { leadMs, crossfadeMs: this.host.crossfadeMs() }));
+    const now = this.now();
+    const aheadMs = Math.max(LIST_CHANGE_AHEAD_MS, leadMs * 2);
+    const options = { leadMs, crossfadeMs: this.host.crossfadeMs() };
+    this.commit(applyDueLoopSeams(applyDueListChange(this.current, now, aheadMs, options), now, aheadMs, options));
     this.noteSounding();
     this.pulses++;
     if (this.pulses % WATCH_EVERY_PULSES !== 0) return;

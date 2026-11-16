@@ -2,6 +2,9 @@
 @use '../../../../../../styles/mixins' as *;
 @use './sound-look' as *;
 
+// The icon inside the track's own crossfade dropdown.
+$pick-icon: 14px;
+
 // The music card: what plays, what comes next, the waveform, and a fader of its own.
 // It takes the room the strips leave, so Master never stands far from them.
 .atlas-sound-music {
@@ -70,10 +73,66 @@
   }
 }
 
+// The loop the GM set on the track: a band between its in and out, edged where the seam lies.
+.atlas-sound-music__loop {
+  position: absolute;
+  inset-block: 0;
+  border-inline: $border-width-m solid currentColor;
+  border-radius: $radius-s;
+  background: color-mix(in oklch, currentColor 14%, transparent);
+  pointer-events: none;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+// Its edges are grips: drag one along the wave to move the loop's in or out.
+.atlas-sound-music__loop-edge {
+  position: absolute;
+  inset-block: 0;
+  width: 12px;
+  border-radius: $radius-s;
+  cursor: ew-resize;
+  pointer-events: auto;
+  touch-action: none;
+
+  &--in {
+    left: -7px;
+  }
+
+  &--out {
+    right: -7px;
+  }
+
+  &:hover,
+  &:active {
+    background: color-mix(in oklch, currentColor 35%, transparent);
+  }
+}
+
 // A card this narrow has room for its controls and the time, not the length as well.
 @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
   .atlas-sound-music__total {
     display: none;
+  }
+
+  // The crossfade keeps its icon alone (the list it opens names each choice).
+  .atlas-sound-music__pick {
+    .atlas-sound-music__pick-icon {
+      inset-inline-start: calc((28px - #{$pick-icon}) / 2);
+    }
+
+    .atlas-sound-music__pick-chevron {
+      display: none;
+    }
+
+    select,
+    select:hover:not(:disabled) {
+      width: 28px;
+      padding: 0;
+      color: transparent;
+    }
   }
 
   .atlas-sound-music__actions {
@@ -124,7 +183,7 @@
 }
 
 // How the list goes on is the card's secondary row: a step narrower than the transport.
-.atlas-sound-music__actions .atlas-sound-music__quiet {
+.atlas-sound-music__actions .atlas-sound-music__quiet:not(.atlas-sound-music__pick) {
   width: 28px;
 }
 
@@ -171,12 +230,88 @@ $transport-pad: $spacing-xs;
   }
 }
 
+// The track's own crossfade: a dropdown drawn as the row's quiet buttons, 32 px tall, named by its icon inside it,
+// which takes the accent while the track has a crossfade of its own.
+.atlas-sound-music__pick {
+  position: relative;
+  display: flex;
+  color: var(--atlas-sound-muted);
+
+  .atlas-sound-music__pick-icon {
+    position: absolute;
+    inset-inline-start: $spacing-s;
+    top: 50%;
+    width: $pick-icon;
+    height: $pick-icon;
+    transform: translateY(-50%);
+    pointer-events: none;
+    transition: color $transition-normal $press-ease;
+  }
+
+  &[data-set] .atlas-sound-music__pick-icon {
+    color: var(--interactive-accent);
+  }
+
+  .atlas-sound-music__pick-chevron {
+    position: absolute;
+    inset-inline-end: $spacing-s;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  select {
+    // As wide as the choice it shows, so its chevron sits by it whatever the longest choice is.
+    field-sizing: content;
+    width: auto;
+    height: 32px;
+    margin: 0;
+    padding-block: 0;
+    padding-inline: ($spacing-s + $pick-icon + $spacing-xs) ($spacing-s + 12px + $spacing-xs);
+    appearance: none;
+    border: none;
+    border-radius: $control-radius;
+    background: transparent;
+    box-shadow: none;
+    color: inherit;
+    font-size: $font-ui-smaller;
+    font-variant-numeric: tabular-nums;
+    transition: color $transition-normal $press-ease, background-color $transition-normal $press-ease;
+
+    &:hover:not(:disabled) {
+      background: $hairline;
+      color: var(--text-normal);
+    }
+
+    option {
+      background: var(--background-primary);
+      color: var(--text-normal);
+    }
+  }
+
+  &:hover:not([data-disabled]) :is(.atlas-sound-music__pick-icon, .atlas-sound-music__pick-chevron) {
+    color: var(--text-normal);
+  }
+
+  &[data-set]:hover .atlas-sound-music__pick-icon {
+    color: var(--interactive-accent);
+  }
+
+  // On the children: the pick's own opacity is the quiet row's.
+  &[data-disabled] > * {
+    opacity: 0.5;
+  }
+}
+
 // What says how the list goes on stays out of sight until it is wanted, as a strip's remove does, unless it is on.
 .atlas-sound-music__quiet {
   opacity: 0;
   transition: opacity $transition-fast $press-ease, color $transition-normal $press-ease, background-color $transition-normal $press-ease;
 
-  &[aria-pressed='true'] {
+  &[aria-pressed='true'],
+  &[data-set] {
     opacity: 1;
   }
 }

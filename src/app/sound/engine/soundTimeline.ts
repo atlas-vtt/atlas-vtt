@@ -33,6 +33,16 @@ export function loopRangeOf(sound: SoundInfo): LoopRange {
   return { startFrame: 0, endFrame: sound.frames };
 }
 
+/**
+ * Where a play that goes round in one sound begins in it: its `fromFrame`, where that lies inside the sound; without
+ * one, its loop in where the GM said so (`startAtLoopIn`), else its start.
+ */
+export function heldStart(play: { fromFrame?: number }, sound: SoundInfo): number {
+  const from = play.fromFrame;
+  if (from !== undefined) return Number.isInteger(from) && from > 0 && from < sound.frames ? from : 0;
+  return sound.startAtLoopIn ? loopRangeOf(sound).startFrame : 0;
+}
+
 /** The sound's own frame that a span holds at `playFrame`. */
 export function frameInSpan(span: TimelineSpan, playFrame: number): number {
   const elapsed = playFrame - span.startPlayFrame;
@@ -132,7 +142,8 @@ export function musicSpanAt(play: MusicPlay, playFrame: number): TimelineSpan | 
   if (!firstPass) return null;
   if (play.repeat === 'one' || (firstPass.tracks.length === 1 && play.repeat !== 'off')) {
     const held = spanInPass(firstPass, taken, taken)?.sound ?? firstPass.tracks[0];
-    return held ? { sound: held, startPlayFrame: 0, endPlayFrame: null, loop: loopRangeOf(held) } : null;
+    // A play that begins inside the sound has the span begin that much before it.
+    return held ? { sound: held, startPlayFrame: -heldStart(play, held), endPlayFrame: null, loop: loopRangeOf(held) } : null;
   }
   const frame = listFrameAt(play, playFrame);
   if (play.repeat === 'off') return frame < firstPass.startFrame + firstPass.frames ? spanInPass(firstPass, frame, taken) : null;
@@ -143,5 +154,5 @@ export function musicSpanAt(play: MusicPlay, playFrame: number): TimelineSpan | 
 export function layerSpan(play: LayerPlay): TimelineSpan | null {
   const sound = play.sound;
   if (sound.frames <= 0) return null;
-  return { sound, startPlayFrame: 0, endPlayFrame: null, loop: loopRangeOf(sound) };
+  return { sound, startPlayFrame: -heldStart(play, sound), endPlayFrame: null, loop: loopRangeOf(sound) };
 }
