@@ -56,6 +56,10 @@ const SIDE_LABELS: Record<AdvantageSide, () => string> = {
   disadvantage: () => t('dice.rollWithDisadvantage'),
 };
 
+export function rollChoiceLabel(side: AdvantageSide | null): string {
+  return side ? SIDE_LABELS[side]() : t('dice.roll');
+}
+
 /** Nearest heading-ish label above the roll, used to title the dice toast. */
 function abilityNameFor(node: Node): string | undefined {
   // A table cell holds no label of its own: its column names the roll
@@ -186,8 +190,8 @@ export function attachDiceRolling(
     const rules = statblockRollingDice(app, getSource(), offMap?.());
     const sides = rules ? advantageSidesFor(formula, rules) : [];
     const choices: RollChoice[] = [
-      { label: t('dice.roll'), side: null, roll: () => roll(link, null) },
-      ...sides.map((side): RollChoice => ({ label: SIDE_LABELS[side](), side, roll: () => roll(link, side) })),
+      { label: rollChoiceLabel(null), side: null, roll: () => roll(link, null) },
+      ...sides.map((side): RollChoice => ({ label: rollChoiceLabel(side), side, roll: () => roll(link, side) })),
     ];
     // A menu key or Shift+F10 is no right button: the menu hangs from the link.
     const box = link.getBoundingClientRect();

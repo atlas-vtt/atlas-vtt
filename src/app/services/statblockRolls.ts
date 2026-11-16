@@ -70,6 +70,7 @@ interface MapDice {
   /** Whether the map's view is on screen, where its rolls are seen. */
   onScreen: boolean;
   viewId: string | undefined;
+  document: Document | undefined;
 }
 
 interface MapViewLike {
@@ -79,7 +80,7 @@ interface MapViewLike {
 }
 
 /** The dice tool of an open map view (only `viewId`'s where one is named), one on screen first; null while none is open. */
-function mapDice(app: App, viewId: string | undefined): MapDice | null {
+export function mapDice(app: App, viewId: string | undefined): MapDice | null {
   let hidden: MapDice | null = null;
   for (const leaf of app.workspace.getLeavesOfType(ATLAS_VIEW_TYPE)) {
     const view = leaf.view as unknown as MapViewLike;
@@ -89,7 +90,7 @@ function mapDice(app: App, viewId: string | undefined): MapDice | null {
     const element = view.containerEl;
     // An element without Obsidian's `isShown` (a bare test double) counts as shown.
     const onScreen = typeof element?.isShown === 'function' ? element.isShown() : true;
-    const found = { tool, onScreen, viewId: view.viewId };
+    const found = { tool, onScreen, viewId: view.viewId, document: element?.ownerDocument };
     if (onScreen) return found;
     hidden ??= found;
   }

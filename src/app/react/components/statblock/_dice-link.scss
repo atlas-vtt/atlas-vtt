@@ -1,0 +1,32 @@
+@use '../../../../../styles/tokens' as *;
+
+@mixin dice-link {
+  cursor: pointer;
+  border-radius: $radius-s;
+  padding: 0 2px;
+  margin: 0 -2px;
+  color: var(--text-accent);
+  font-weight: $font-weight-semibold;
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in oklch, var(--text-accent) 40%, transparent);
+  text-underline-offset: 3px;
+  transition: background-color $transition-fast $transition-ease,
+              text-decoration-color $transition-fast $transition-ease;
+
+  &:hover,
+  &:focus-visible {
+    background: color-mix(in oklch, var(--text-accent) 14%, transparent);
+    text-decoration-color: transparent;
+    outline: none;
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px var(--interactive-accent);
+  }
+
+  &:active {
+    background: color-mix(in oklch, var(--text-accent) 24%, transparent);
+  }
+}

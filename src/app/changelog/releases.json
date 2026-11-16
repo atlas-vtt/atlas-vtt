@@ -2,6 +2,11 @@
   "version": "0.16.1-beta.0",
   "releases": [
     {
+      "version": "0.16.1-beta.0",
+      "title": "Coming in 0.16.1",
+      "markdown": "## New\n\n- Roll Atlas dice from anywhere. When viewing a note in Reading Mode, Atlas now detects any dice formula (2d4+3, +3, 1d20+5, etc.)\nallowing you to instantly roll with the Atlas dice roller. Fantasy Statblock dice roller format is also supported, allowing you to instantly roll from any Fantasy Statblock."
+    },
+    {
       "version": "0.16.0",
       "date": "2026-11-14",
       "title": "Draw, Text and Fog tools",
