@@ -21,6 +21,12 @@ export class CopyKeys {
     this.holders.set(key, [...held, entry]);
   }
 
+  /** How the sound a key names goes over its length, as any copy of it said: the waveform is the copy's, read by the key the copy plays by. */
+  peaksOf(key: string): Uint8Array<ArrayBuffer> | null {
+    const held = [this.last.get(key), ...(this.holders.get(key) ?? []).toReversed()];
+    return held.find((entry) => entry?.key === key && entry.peaks)?.peaks ?? null;
+  }
+
   /** Every record that holds a key, newest first. */
   recordIdsOf(key: string): string[] {
     const held = (this.holders.get(key) ?? []).filter((entry) => entry.key === key).map((entry) => entry.recordId);
