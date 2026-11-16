@@ -15,6 +15,7 @@ export const quest: Translation = {
   'quest.status.active': 'В процессе',
   'quest.status.done': 'Выполнен',
   'quest.status.failed': 'Провален',
+  'quest.status.hidden': 'Скрытый',
   'quest.statusOf': 'Статус квеста «{title}»',
   'quest.experience': '{count} ед. опыта',
   'quest.createFailed': 'Не удалось создать заметку квеста.',

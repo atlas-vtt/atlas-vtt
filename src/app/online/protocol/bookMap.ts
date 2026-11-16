@@ -25,8 +25,8 @@ const OLDER_PIN_KINDS: Readonly<Record<string, PinKind>> = { place: 'dungeon' };
 /** A main quest leads, a side quest waits beside it. */
 export const QUEST_KINDS = ['main', 'side'] as const;
 export type QuestKind = (typeof QUEST_KINDS)[number];
-/** How far a quest has got: told, taken up, done, or failed. The last two are behind the party. */
-export const QUEST_STATES = ['open', 'active', 'done', 'failed'] as const;
+/** How far a quest has got: hidden, told, taken up, done, or failed. The last two are behind the party. */
+export const QUEST_STATES = ['open', 'active', 'done', 'failed', 'hidden'] as const;
 export type QuestState = (typeof QUEST_STATES)[number];
 
 /** A place on the world map: shares of the image's width and height. */
