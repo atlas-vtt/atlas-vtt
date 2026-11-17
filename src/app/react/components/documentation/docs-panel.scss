@@ -7,9 +7,10 @@
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-// Default size; the user resizes from the right and bottom edges.
-$docs-width: 520px;
-$docs-height: 720px;
+// Default size; the user resizes from the right and bottom edges. The frame needs the site's `lg` breakpoint
+// (1024 px) to show its desktop layout: the guide list and search beside the text, not the phone menu.
+$docs-width: 1080px;
+$docs-height: 820px;
 $docs-resize-hit: 8px;
 
 .atlas-docs-panel {
