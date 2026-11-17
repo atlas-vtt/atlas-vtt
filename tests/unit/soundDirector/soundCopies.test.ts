@@ -120,7 +120,7 @@ describe('copies in the folder', () => {
     folder.copies.set(SONG.filePath, { facts: factsOf(keyOf('b'), Uint8Array.of(9, 8, 7)), blob: new Blob(['x']) });
     copies.stateOf(SONG);
     await settle();
-    expect(copies.peaksFor(SONG)).toEqual(Uint8Array.of(9, 8, 7));
+    expect(copies.peaksOfKey(keyOf('b'))).toEqual(Uint8Array.of(9, 8, 7));
   });
 
   it('nothing converts without the GM\'s choice, and the choice coming starts it', async () => {
@@ -146,7 +146,7 @@ describe('copies in the folder', () => {
     await settle();
     expect(folder.stores).toMatchObject([{ choice: 'keep', sourceStat: { size: 7, mtime: 42 } }]);
     expect(copies.stateOf(SONG)).toEqual({ state: 'ready' });
-    expect(copies.peaksFor(SONG)).toEqual(Uint8Array.of(1, 2, 3));
+    expect(copies.peaksOfKey(keyOf('a'))).toEqual(Uint8Array.of(1, 2, 3));
     const blob = vi.spyOn(folder, 'blob');
     const bytes = await copies.bytes(keyOf('a'));
     expect(new TextDecoder().decode(await bytes.read(0, bytes.byteLength))).toBe('copy of song.ogg');

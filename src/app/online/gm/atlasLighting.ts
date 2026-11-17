@@ -1,4 +1,5 @@
 import type { App } from 'obsidian';
+import { readFogEdge, type FogEdge } from '../../fog/fogEdge';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import type { AreaMap } from '../../measure/areaOnMap';
 import { resolveLaserPointerSettings, type LaserPointerSettings } from '../../tools/laserPointerSettings';
@@ -40,6 +41,8 @@ export interface AtlasPlayerSettings {
   readonly movesOnTurn?: boolean;
   /** Whether players may draw on the map (the player view's setting); off when it cannot be read. */
   readonly playersDraw?: boolean;
+  /** How the fog's edge looks (the Maps setting), for players as for the GM; unset when it cannot be read, which players see as a hard edge. */
+  readonly fogEdge?: FogEdge;
 }
 
 /** A field of an object by name, unchecked; undefined for anything that has none. */
@@ -71,6 +74,8 @@ export function atlasPlayerSettings(app: App): AtlasPlayerSettings {
   const layout: unknown = typeof readLayout === 'function' ? (readLayout as () => unknown).call(settings) : undefined;
   const readTurn = field(settings, 'initiativeTurnOptions');
   const turn: unknown = typeof readTurn === 'function' ? (readTurn as () => unknown).call(settings) : undefined;
+  const readEdge = field(settings, 'getFogEdge');
+  const fogEdge = typeof readEdge === 'function' ? readFogEdge((readEdge as () => unknown).call(settings)) : undefined;
   return {
     showNames: field(view, 'showTokenNameplates') === true,
     showDiceRolls: field(view, 'showDiceRolls') === true,
@@ -82,6 +87,7 @@ export function atlasPlayerSettings(app: App): AtlasPlayerSettings {
     turnBanner: field(turn, 'banner') !== false,
     movesOnTurn: field(turn, 'movesOnTurn') === true,
     playersDraw: field(view, 'playersDraw') === true,
+    ...(fogEdge !== undefined && { fogEdge }),
   };
 }
 

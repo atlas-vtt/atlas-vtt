@@ -8,18 +8,26 @@
 @use '../../../../../styles/mixins' as *;
 
 // ── Roll bar ───────────────────────────────────────────────────────────────
+// One line: what the roll draws from on the left, how many and Roll on the right.
+// A narrow window wraps the actions under the filter, still at the right.
 .atlas-loot-rollbar {
-  @include atlas-flex-col($spacing-s);
+  @include atlas-flex-row($spacing-s);
+  flex-wrap: wrap;
   flex-shrink: 0;
+
+  // A table's summary takes the line; the rarity tray only as much as its chips.
+  > .atlas-tables-summary {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
 }
 
-// Rarity toggles: one per step of the ladder, in its colour. Switched-off
-// rarities are never rolled.
+// Rarity filter: one tray like the Latest / History switch, a rarity that is
+// rolled stands raised in it, one switched off lies flat and fades. The
+// rarity's colour is only in its gem.
 .atlas-loot-rarities {
-  display: grid;
-  // As many words as the collection names, each at least wide enough for a short word and its count.
-  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
-  gap: $spacing-xs;
+  @include atlas-tab-switcher;
+  flex-wrap: wrap;
 }
 
 .atlas-loot-rarity {
@@ -29,18 +37,20 @@
   align-items: center;
   gap: $spacing-s;
   min-width: 0;
-  height: $button-height-m;
+  height: max(#{$button-height-s}, calc(var(--input-height) - 2 * #{$spacing-xs}));
   padding: 0 $spacing-s;
-  border: $border-width-s solid var(--background-modifier-border);
-  border-radius: $radius-m;
+  border: none;
+  border-radius: calc(#{$radius-m} - #{$spacing-xs});
+  outline: none;
   box-shadow: none;
   background: transparent;
   color: var(--text-faint);
   font-size: $font-ui-smaller;
   font-weight: $font-weight-medium;
+  white-space: nowrap;
   cursor: pointer;
   transition: background-color $transition-fast $transition-ease,
-              border-color $transition-fast $transition-ease,
+              box-shadow $transition-fast $transition-ease,
               color $transition-fast $transition-ease,
               transform $transition-press $transition-ease-out;
 
@@ -50,21 +60,24 @@
   &[data-rarity='legendary'] { --atlas-loot-tone: var(--color-orange); }
 
   &:hover {
-    color: var(--text-normal);
-    background: var(--background-modifier-hover);
+    background: transparent;
+    color: var(--text-muted);
   }
 
   &:active {
-    transform: scale(0.97);
+    transform: scale(0.96);
   }
 
+  // Atlas shows no focus rings: a click must leave the chip as it looks.
+  &:focus,
   &:focus-visible {
-    @include atlas-focus-ring;
+    outline: none;
+    box-shadow: none;
   }
 
   &.is-on {
-    border-color: color-mix(in oklch, var(--atlas-loot-tone) 50%, var(--background-modifier-border));
-    background: color-mix(in oklch, var(--atlas-loot-tone) 12%, transparent);
+    background: var(--background-primary);
+    box-shadow: $shadow-sm;
     color: var(--text-normal);
   }
 }
@@ -72,10 +85,11 @@
 // A small gem in the rarity's colour: filled when on, an outline when off.
 .atlas-loot-rarity__gem {
   flex-shrink: 0;
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border: $border-width-l solid var(--atlas-loot-tone);
-  border-radius: 2px;
+  // Barely softened tips: a quarter of the mark radius, for a 7 px diamond.
+  border-radius: calc(#{$radius-s} / 4);
   transform: rotate(45deg);
   transition: background-color $transition-fast $transition-ease;
 }
@@ -86,8 +100,6 @@
 
 .atlas-loot-rarity__label {
   @include atlas-truncate;
-  flex: 1;
-  text-align: left;
 }
 
 .atlas-loot-rarity__count {
@@ -99,19 +111,25 @@
 
 .atlas-loot-rollbar__actions {
   @include atlas-flex-row($spacing-s);
+  flex-shrink: 0;
+  margin-left: auto;
 }
+
+// Its buttons stand this far inside its ends, concentric with its corners.
+$loot-stepper-inset: 2px;
 
 .atlas-loot-stepper {
   @include atlas-flex-row(0);
   flex-shrink: 0;
   height: $button-height-m;
-  padding: 2px;
+  padding: $loot-stepper-inset;
   border-radius: $radius-m;
   background: var(--background-secondary);
 
   .atlas-loot-stepper__button {
-    width: $button-height-m - 4px;
-    height: $button-height-m - 4px;
+    width: $button-height-m - 2 * $loot-stepper-inset;
+    height: $button-height-m - 2 * $loot-stepper-inset;
+    border-radius: calc(#{$radius-m} - #{$loot-stepper-inset});
     color: var(--text-muted);
 
     svg {
@@ -139,7 +157,6 @@
 
 .atlas-loot-roll-trigger {
   display: flex;
-  flex: 1;
 }
 
 // A disabled button takes no pointer events; its trigger gets them instead.
@@ -148,22 +165,17 @@
 }
 
 .atlas-loot-roll-button {
-  flex: 1;
   gap: $spacing-s;
+  min-width: 112px;
   height: $button-height-m;
   font-weight: $font-weight-semibold;
 
   svg {
     width: $icon-s;
     height: $icon-s;
-    transition: transform $transition-slow $transition-ease-out;
-  }
-
-  &:hover:not(:disabled) svg {
-    transform: rotate(-18deg) scale(1.08);
   }
 
   &:active:not(:disabled) {
-    transform: scale(0.98);
+    transform: scale(0.96);
   }
 }

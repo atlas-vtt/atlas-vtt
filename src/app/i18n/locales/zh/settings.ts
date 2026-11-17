@@ -1,6 +1,7 @@
 import type { Translation } from '../../types';
 
 export const settings: Translation = {
+  'settings.experimental.heading': '实验性功能',
   'settings.hotkeys.assignFailed': '无法指定快捷键',
   'settings.hotkeys.clear': '清除快捷键',
   'settings.hotkeys.defaultSuffix': '{group} · 默认：{key}',

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { AlignmentPoint } from '../../pixi/GridAlignmentController';
-import { alignmentCandidates, isPointInQuadrant } from '../../pixi/gridAlignmentMath';
+import { alignmentCandidates, isPointOnMap } from '../../pixi/gridAlignmentMath';
 import type { GridType } from '../../grid/GridSystem';
 import { isHexGridType } from '../../grid/hexGeometry';
 import { NO_STRETCH, sameStretch, type MapStretch } from '../../grid/mapStretch';
@@ -75,7 +75,7 @@ export function IntersectionsTab({ controller, view, setResult, gridType, fit }:
   // Instruction text
   // -----------------------------------------------------------------------
 
-  /** One short line: which corner to click now. The lit quarter of the map says where. */
+  /** One short line: which corner to click now. The lit quarter of the map suggests where; any part of the map will do. */
   function getInstructionText(): string {
     if (!isPlacingA) return t(hints.second);
     // The first measurement is usually all it takes: more are asked for only where the lines did not answer.
@@ -111,7 +111,7 @@ export function IntersectionsTab({ controller, view, setResult, gridType, fit }:
 
     if (isPlacingA) {
       const mapBounds = controller.getMapBounds();
-      if (mapBounds && !isPointInQuadrant(world, quadrantIndex, mapBounds)) return;
+      if (mapBounds && !isPointOnMap(world, mapBounds)) return;
 
       if (step === 0) setMeasuredStretch(controller.getMapStretch());
       controller.showMeasurementCrosshair(step, world);

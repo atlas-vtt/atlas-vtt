@@ -29,7 +29,7 @@ $control-height: $input-height-s;
 // stays inside.
 .atlas-rc-card {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   overflow: hidden;
   color: var(--text-normal);
 }
@@ -100,12 +100,8 @@ $control-height: $input-height-s;
 
 // ── Kinds: one segmented row, each kind an icon and a word ─────────────────
 .atlas-rc-card .atlas-segmented {
+  --atlas-segmented-radius: #{atlas-panel-inset-radius-value($gap)};
   width: 100%;
-  @include atlas-panel-inset-radius($gap);
-}
-
-.atlas-rc-card .atlas-segmented__option {
-  @include atlas-panel-inset-radius($gap + $spacing-xs);
 }
 
 .atlas-rc-card__kinds .atlas-segmented__option {
@@ -183,10 +179,11 @@ $control-height: $input-height-s;
   font-weight: $font-weight-medium;
 }
 
-.atlas-rc-card__change.atlas-rc-card__change {
+// Above Atlas' small button (`.atlas-vtt-plugin .btn--sm`), whose height and padding it changes.
+.atlas-rc-card .atlas-rc-card__change.btn {
   height: $control-height;
   padding: 0 $spacing-s;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   font-size: $font-ui-smaller;
 }
 

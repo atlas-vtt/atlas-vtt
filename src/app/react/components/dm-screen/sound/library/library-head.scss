@@ -87,7 +87,7 @@
     display: grid;
     place-items: center;
     margin-inline-end: -$spacing-xs;
-    border-radius: $radius-s;
+    border-radius: $control-inset-radius;
     color: var(--atlas-sound-muted);
 
     svg {

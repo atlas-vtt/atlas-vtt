@@ -43,8 +43,7 @@ $dashboard-press-scale: 0.985;
 @mixin dashboard-card-surface {
   background: var(--background-secondary);
   border: $border-width-s solid var(--background-modifier-border);
-  border-radius: $radius-xl;
-  @include atlas-corner-shape;
+  border-radius: $surface-radius;
   transition: transform $transition-press $transition-ease-out,
               border-color $transition-fast $transition-ease;
 

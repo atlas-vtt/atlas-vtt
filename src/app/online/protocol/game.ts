@@ -4,7 +4,7 @@ import { parseSignFound, type PlayerSignFound } from './bookLevels.ts';
 import { parseBookRestMessage, type BookRestMessage } from './bookRest.ts';
 import { isDeltaOf, parseDelta, parseSeq, type DeltaMessage, type DeltaOf } from './delta.ts';
 import { parseFloor, type SharedFloor } from './floor.ts';
-import type { SharedFog } from './fog.ts';
+import type { SharedFog, SharedFogEdge } from './fog.ts';
 import { parseImageMessage, type ImageMessage } from './image.ts';
 import type { SharedInitiative } from './initiative.ts';
 import type { SharedLightingScene, SharedSight } from './lighting.ts';
@@ -73,8 +73,11 @@ export type GmMessage =
   | { readonly t: 'mine'; readonly scene: string; readonly tokens: readonly string[]; readonly dice?: Readonly<Record<string, SharedRollDice>> }
   /** How far the GM's uploads to the asset store have come. */
   | AssetProgress
-  /** The committed fog of the scene `scene`; `seq` numbers it for the deltas that follow. */
-  | { readonly t: 'fog'; readonly scene: string; readonly seq?: number; readonly fog: SharedFog }
+  /**
+   * The committed fog of the scene `scene`; `seq` numbers it for the deltas that follow. `edge` is
+   * how the GM's fog edge looks; added later: without it the fog's edge is hard.
+   */
+  | { readonly t: 'fog'; readonly scene: string; readonly seq?: number; readonly fog: SharedFog; readonly edge?: SharedFogEdge }
   | ({ readonly t: 'lighting'; readonly scene: string } & SharedLightingScene)
   | ({ readonly t: 'sight'; readonly scene: string; readonly seq?: number } & SharedSight)
   /** The change from the last `tokens`, `sight` or `fog` message to the next. */

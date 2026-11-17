@@ -2,7 +2,7 @@
 
 // A Metric: a stat block's key numbers in one box (thresholds, an ability strip). The group's name over
 // them, then equal columns with a thin rule between two, each number's name small over a large value.
-// The box is an element inside the card: $radius-l, and its padding equals its gap.
+// The box is an element inside the card: $radius-m, and its padding equals its gap.
 
 .atlas-sb-sheet {
   .atlas-sb-metric {
@@ -14,7 +14,7 @@
     height: 100%;
     padding: $spacing-s;
     border: $border-width-s solid var(--background-modifier-border);
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     text-align: center;
   }
 

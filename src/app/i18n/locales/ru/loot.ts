@@ -37,7 +37,6 @@ export const loot: Translation = {
   'loot.tabs.latest': 'Последний бросок',
   'loot.tabs.latestHint': 'Последний бросок на этой карте.',
   'loot.tabs.list': 'Список добычи',
-  'loot.title': 'Случайные таблицы',
   'loot.tree.all': 'Все',
   'loot.tree.none': 'Ничего',
   'loot.tree.tickAll': 'Отметить все представления всех баз.',

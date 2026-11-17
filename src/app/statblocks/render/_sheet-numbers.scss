@@ -90,7 +90,7 @@ $track-boxes-per-line: 12;
     height: $track-box;
     box-sizing: border-box;
     border: $border-width-s solid var(--text-muted);
-    border-radius: $radius-xs;
+    border-radius: $radius-s;
 
     &.is-marked {
       border-color: var(--text-accent);

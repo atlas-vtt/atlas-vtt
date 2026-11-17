@@ -15,8 +15,9 @@
 @use 'pane-recovery';
 @use 'rest-chooser';
 
-// The header's end controls are capsules: the bar is shorter than 48 px.
-$header-control-radius: atlas-panel-inset-radius-value($spacing-s, calc(var(--input-height) / 2));
+// The header's end controls stand $surface-inset inside it and run concentric with its corners, never
+// rounder than half their height.
+$header-control-radius: atlas-panel-inset-radius-value($surface-inset, calc(var(--input-height) / 2));
 
 .atlas-vtt-plugin {
   // Padding equals the gap between the header, the hint, the card and the tray.
@@ -31,11 +32,11 @@ $header-control-radius: atlas-panel-inset-radius-value($spacing-s, calc(var(--in
     @include atlas-flex-col($spacing-l);
   }
 
-  // ── Header: a capsule bar ───────────────────────────────────────────────
+  // ── Header ──────────────────────────────────────────────────────────────
   .atlas-sb-pane-header {
-    @include atlas-flex-row($spacing-s);
-    @include atlas-panel-radius($radius-2xl, $border-width-s);
-    padding: $spacing-s;
+    @include atlas-flex-row($surface-inset);
+    @include atlas-panel-radius($surface-radius, $border-width-s);
+    padding: $surface-inset;
     background: var(--background-secondary);
     border: $border-width-s solid var(--background-modifier-border);
 
@@ -51,20 +52,20 @@ $header-control-radius: atlas-panel-inset-radius-value($spacing-s, calc(var(--in
     }
   }
 
-  .atlas-sb-pane-header__end {
+  // Its controls keep the header's one gap among themselves too (the template editor's capsule as well).
+  .atlas-sb-pane-header > .atlas-sb-pane-header__end {
     display: flex;
+    gap: $surface-inset;
     margin-inline-start: auto;
   }
 
   .atlas-sb-pane-header__more.btn--icon {
     width: var(--input-height);
     height: var(--input-height);
-    @include atlas-corner-shape;
   }
 
   .atlas-sb-pane-menu-button {
     @include atlas-flex-row($spacing-xs);
-    @include atlas-corner-shape;
     min-width: 0;
     max-width: 100%;
 
@@ -111,7 +112,7 @@ $header-control-radius: atlas-panel-inset-radius-value($spacing-s, calc(var(--in
     justify-content: space-between;
     margin: 0;
     padding: $spacing-s;
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     background: var(--background-secondary);
     color: var(--text-muted);
     font-size: $font-ui-smaller;
@@ -183,7 +184,6 @@ $header-control-radius: atlas-panel-inset-radius-value($spacing-s, calc(var(--in
   }
 
   .atlas-sb-card-menu__button.btn {
-    @include atlas-corner-shape;
     width: $input-height-s;
     height: $input-height-s;
     padding: 0;

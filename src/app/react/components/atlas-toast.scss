@@ -1,4 +1,4 @@
-// The control inside a toast: its height, so its radius can follow the toast's capsule (`atlas-panel-inset-radius-value`).
+// The control inside a toast: its height, so its radius can follow the toast's corner (`atlas-panel-inset-radius-value`).
 $toast-action-height: 24px;
 
 // Toasts stand at the bottom of the asset manager's window while it is open, $spacing-l above its edge, and at the
@@ -25,11 +25,10 @@ $toast-action-height: 24px;
   pointer-events: none;
 }
 
-// A floating surface like every panel: the elevated surface's border and shadow and the panels' corner, which a
-// one-line toast, shorter than that corner is wide, shows as a capsule.
+// A floating surface like every panel: the elevated surface's border and shadow and the surface corner.
 .atlas-toast {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
 
   max-width: 100%;
   padding: $spacing-s $spacing-l;
@@ -54,7 +53,7 @@ $toast-action-height: 24px;
 }
 
 // A toast with something to do about it: the message, then its action as a ghost button inside the toast's end,
-// $spacing-xs from the border, its corners concentric with the capsule's.
+// $spacing-xs from the border, its corners concentric with the toast's.
 .atlas-toast--action {
   display: flex;
   align-items: center;
@@ -70,7 +69,6 @@ $toast-action-height: 24px;
 
 .atlas-toast__action {
   @include atlas-ghost-button;
-  @include atlas-corner-shape;
   // The accent at AA (4.5:1 light, APCA Lc 60 dark), as Atlas' other accent text: the theme's own accent read 3.9:1.
   @include atlas-accent-text;
 

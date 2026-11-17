@@ -6,6 +6,7 @@ import { FLASH, TURN_LOOK, rimRadius } from '../../src/app/pixi/token-renderer/t
 import { LIGHTING_Z_INDEX } from '../../src/app/pixi/lighting/LightingRenderer';
 import { TOKEN_UI_Z_INDEX } from '../../src/app/pixi/TokenControlsUI';
 import { getTokenRingOuterDiameter } from '../../src/app/pixi/token-renderer/tokenRingMetrics';
+import { syncTokenArtwork } from '../../src/app/pixi/token-renderer/tokenArtwork';
 import { computeTokenPixelSize, computeTokenStrokeWidth } from '../../src/app/pixi/token-renderer/tokenSizing';
 import { copiedPixel } from '../../src/app/pixi/lighting/engine/__tests__/gpuTestUtils';
 import type { TokenGroupContainer } from '../../src/app/pixi/token-renderer/types';
@@ -61,15 +62,15 @@ describe('the turn spotlight on a lit map', () => {
     world.addChild(new Graphics({ zIndex: 0 }).rect(0, 0, 160, 160).fill(0x8a5a3c));
     const size = computeTokenPixelSize(GRID, 1);
     const token = { id: 'ogre', kind: 'character', x: 80, y: 80, imagePath: '', showRing: framed } as TokenEntity;
-    const group = Object.assign(new Container({ zIndex: 0 }), { tokenId: 'ogre', tokenData: token, tokenSize: size, artPath: '', strokeWidth: 2 }) as TokenGroupContainer;
+    const group = Object.assign(new Container({ zIndex: 0 }), { tokenId: 'ogre', tokenData: token, tokenSize: size, artPath: '', strokeWidth: computeTokenStrokeWidth(GRID) }) as TokenGroupContainer;
     group.position.set(80, 80);
     const art = new Sprite({ texture: figureArt(), anchor: 0.5, label: 'tokenSprite' });
-    art.width = size;
-    art.height = size;
     group.addChild(art);
+    // Sized as the map sizes it: unframed art reaches out to where a ring would end
+    syncTokenArtwork(group, size);
     world.addChild(group);
     world.addChild(new Graphics({ zIndex: LIGHTING_Z_INDEX }).rect(0, 0, 160, 160).fill({ color: 0x000000, alpha: 0.8 }));
-    const outer = framed ? getTokenRingOuterDiameter(size, computeTokenStrokeWidth(GRID)) / 2 : size / 2;
+    const outer = framed ? getTokenRingOuterDiameter(size, computeTokenStrokeWidth(GRID)) / 2 : art.width / 2;
     world.addChild(new Graphics({ zIndex: TOKEN_UI_Z_INDEX }).rect(70, 80 + outer + 6, 20, 4).fill(0xffffff));
     let state: TurnMarkerState = { initiative: fight('hero'), objects: { tokens: { ogre: token, hero: { ...token, id: 'hero', x: 400 } } }, grid: { size: GRID } };
     const listeners = new Set<(next: TurnMarkerState) => void>();
@@ -106,13 +107,14 @@ describe('the turn spotlight on a lit map', () => {
   const golden = (colour: number[], before: number[]): boolean => colour[0]! - before[0]! >= 8 && colour[0]! - before[0]! > colour[2]! - before[2]! + 5;
 
   it('lights the floor beside the figure and outside it in gold, over the dark, and leaves the art untouched', async () => {
-    const { app, markers, begin, at, centre, size } = await scene(false);
+    const { app, markers, begin, at, centre, outer } = await scene(false);
     // A fight met running flashes nothing
     expect(markers.tokenIds).toEqual([]);
-    const art = { x: centre + ((24 - 32) / 64) * size * ZOOM, y: centre + ((24 - 32) / 64) * size * ZOOM };
-    const empty = { x: centre + (14 / 64) * size * ZOOM, y: centre + (14 / 64) * size * ZOOM };
-    const beyond = { x: centre - (size / 2 + 2) * ZOOM, y: centre };
-    const rim = { x: centre + rimRadius(size / 2, ZOOM) + 0.5, y: centre };
+    const drawn = 2 * outer;
+    const art = { x: centre + ((24 - 32) / 64) * drawn * ZOOM, y: centre + ((24 - 32) / 64) * drawn * ZOOM };
+    const empty = { x: centre + (14 / 64) * drawn * ZOOM, y: centre + (14 / 64) * drawn * ZOOM };
+    const beyond = { x: centre - (outer + 2) * ZOOM, y: centre };
+    const rim = { x: centre + rimRadius(outer, ZOOM) + 0.5, y: centre };
     const before = [art, empty, beyond, rim].map(({ x, y }) => pixel(app, x, y));
 
     begin();
@@ -123,7 +125,7 @@ describe('the turn spotlight on a lit map', () => {
     expect(golden(onFloor!, before[2]!), `outside the token ${onFloor}`).toBe(true);
     expect(golden(onRim!, before[3]!), `rim ${onRim}`).toBe(true);
     // Below the token the bar stands over the flash
-    expect(pixel(app, centre, centre + (size / 2 + 8) * ZOOM)).toEqual([255, 255, 255]);
+    expect(pixel(app, centre, centre + (outer + 8) * ZOOM)).toEqual([255, 255, 255]);
     await page.screenshot({ path: `${SHOTS}/unframed.png`, element: app.canvas });
 
     // Players who do not see the token see no flash

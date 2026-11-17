@@ -53,7 +53,7 @@
 
 .atlas-command-palette-container {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -102,7 +102,8 @@
   &.btn--icon {
     width: 22px;
     height: 22px;
-    border-radius: $radius-s;
+    // Inside the field's end: concentric with its corner.
+    border-radius: $control-inset-radius;
   }
 
   svg {

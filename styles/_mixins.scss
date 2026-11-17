@@ -19,7 +19,7 @@
   } @else {
     background: var(--background-primary);
     border: $border-width-m solid color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
-    border-radius: $radius-xl;
+    border-radius: $surface-radius;
     box-shadow: $shadow-elevated;
   }
 }
@@ -71,7 +71,7 @@
 @mixin atlas-inset-surface {
   background: var(--background-secondary);
   border: $border-width-s solid var(--background-modifier-border);
-  border-radius: $radius-l;
+  border-radius: $radius-m;
 }
 
 /// Interactive surface that responds to hover/focus.
@@ -120,7 +120,7 @@
   @if $size == 's' {
     width: $button-height-s;
     height: $button-height-s;
-    border-radius: $radius-s;
+    border-radius: $radius-m;
 
     svg {
       width: $icon-s;
@@ -129,7 +129,7 @@
   } @else if $size == 'l' {
     width: $button-height-l;
     height: $button-height-l;
-    border-radius: $radius-l;
+    border-radius: $radius-m;
 
     svg {
       width: $icon-l;
@@ -205,7 +205,7 @@
   height: var(--input-height);
   padding: 0 $spacing-s;
   background: var(--background-modifier-form-field);
-  border: $border-width-s solid var(--background-modifier-border);
+  border: $border-width-s solid $field-edge;
   border-radius: $radius-m;
   color: var(--text-normal);
   font-size: $font-ui-small;
@@ -219,10 +219,20 @@
   }
 
   &:hover:not(:focus) {
-    border-color: var(--background-modifier-border-hover);
+    border-color: $field-edge-hover;
   }
 
   @include atlas-input-focus;
+}
+
+/// Text box of several lines: the text input's frame and states, its height set by its rows.
+@mixin atlas-text-area {
+  @include atlas-text-input;
+  height: auto;
+  min-height: var(--input-height);
+  padding: $spacing-s;
+  line-height: var(--line-height-normal);
+  resize: vertical;
 }
 
 /// Search field without a frame, for a search row that sits flush in a menu or
@@ -353,7 +363,7 @@
   overflow: hidden;
   background: var(--menu-background);
   border: var(--menu-border-width, #{$border-width-s}) solid var(--menu-border-color);
-  border-radius: $radius-xl;
+  border-radius: $surface-radius;
   box-shadow: var(--menu-shadow, #{$shadow-md});
 
   transform-origin: top left;
@@ -457,9 +467,9 @@
 @mixin atlas-input-focus {
   &:focus {
     outline: none;
-    // The accent softened into the border, with a faint ring: the field in use is told at once, without a hard line.
-    border-color: color-mix(in srgb, var(--interactive-accent) 70%, var(--background-modifier-border));
-    box-shadow: 0 0 0 2px color-mix(in oklch, var(--interactive-accent) 14%, transparent);
+    // The accent, softened, with a faint ring: the field in use is told at once, without a stark line.
+    border-color: $field-edge-focus;
+    box-shadow: $field-focus-ring;
   }
 }
 
@@ -488,10 +498,8 @@
 // ── Panel close button ──────────────────────────────────────────────────────
 // Every panel closes with the same "×": the same size, $close-button-gap from
 // the panel's border above and beside it, and a corner concentric with the
-// panel's own (outer radius = inner radius + gap). Floating surfaces (panels,
-// dialogs, bars, widgets) use $radius-2xl, Obsidian's modal radius: a smaller
-// corner leaves inset controls almost no curve, and one radius everywhere keeps
-// every control in a corner alike. Bars shorter than twice that render as capsules.
+// panel's own (outer radius = inner radius + gap). Every floating surface has
+// $surface-radius (see the corner tokens), so every control in a corner is alike.
 
 /// Radius of a panel that holds a close button. Also publishes the radius
 /// inside its border, which the close button's corner runs concentric with.
@@ -500,28 +508,22 @@
 @mixin atlas-panel-radius($radius, $border-width: $border-width-m) {
   --atlas-panel-inner-radius: calc(#{$radius} - #{$border-width});
   border-radius: $radius;
-  @include atlas-corner-shape;
-}
-
-/// Obsidian's corner shape (a superellipse on macOS, round elsewhere), which it
-/// gives buttons, inputs, menus and modals. A panel and everything inset in its
-/// corners must share one shape: a squircle never runs parallel to a circle.
-@mixin atlas-corner-shape {
-  corner-shape: var(--corner-shape, round);
 }
 
 /// Radius of an element $inset inside the border of a panel set up with
 /// `atlas-panel-radius`: concentric with the panel's corner (outer radius =
-/// inner radius + inset).
+/// inner radius + inset). A control at $surface-inset comes out at the control
+/// radius; content deeper inside keeps it too, since the curve left there would
+/// be smaller than the element's other corners.
 /// @param {Length} $inset - distance from the panel's border to the element
-/// @param {Length} $max   - half the element's height in a capsule-shaped bar,
-///                          where the browser rounds the bar to half its height
+/// @param {Length} $max   - half the element's height, so a small element never
+///                          rounds past a capsule
 @function atlas-panel-inset-radius-value($inset, $max: null) {
-  $radius: calc(var(--atlas-panel-inner-radius, #{$radius-xl}) - #{$inset});
+  $radius: calc(var(--atlas-panel-inner-radius, #{$surface-radius}) - #{$inset});
   @if $max {
     @return clamp(0px, #{$radius}, #{$max});
   }
-  @return max(0px, #{$radius});
+  @return max(#{$radius-m}, #{$radius});
 }
 
 /// Rounds an element concentric with the corner of the panel it sits in (see
@@ -532,7 +534,6 @@
 /// @param {List}   $corners - top-left | top-right | bottom-left | bottom-right
 @mixin atlas-panel-inset-radius($inset, $corners...) {
   $radius: atlas-panel-inset-radius-value($inset);
-  @include atlas-corner-shape;
 
   @if length($corners) == 0 {
     border-radius: $radius;
@@ -624,21 +625,11 @@
   z-index: 1;
 }
 
-/// Distance from a modal window's outer edge to its footer's corner button:
-/// the elevated-surface border plus the footer padding.
-$modal-corner-inset: calc(#{$border-width-m} + #{$spacing-l});
-
-/// Primary action in a modal window's bottom-right corner: its outer corner
-/// runs concentric with the window's $radius-2xl frame.
-@mixin atlas-modal-corner-control($corner) {
-  @include atlas-concentric-corner($corner, $radius-2xl, $modal-corner-inset, $radius-s);
-}
-
-/// Modal window: elevated surface at Obsidian's modal radius, column layout,
+/// Modal window: elevated surface at the surface radius, column layout,
 /// never taller than the viewport. Put header / body / footer inside.
 @mixin atlas-modal-window {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   display: flex;
   flex-direction: column;
   max-height: 100%;
@@ -684,20 +675,13 @@ $modal-corner-inset: calc(#{$border-width-m} + #{$spacing-l});
   @include atlas-scroll-shadow;
 }
 
-/// Standard modal footer — right-aligned actions. No divider line: its padding sets it apart from the body.
-/// @param {String} $corner - the window's corner its last button stands in (null where it stands in none, as beside
-///   a sidebar on the window's end)
-@mixin atlas-modal-footer($corner: bottom-right) {
+/// Standard modal footer — right-aligned actions. No divider line: its padding sets it apart from the body. Its
+/// buttons stand $spacing-l inside the window, too deep to follow its corner, and keep the control radius.
+@mixin atlas-modal-footer {
   @include atlas-flex-row($gap: $spacing-s);
   justify-content: flex-end;
   padding: $spacing-l;
   flex-shrink: 0;
-
-  @if $corner {
-    > .btn:last-child {
-      @include atlas-modal-corner-control($corner);
-    }
-  }
 }
 
 /// Obsidian's own `Modal` (padded by $spacing-l): its native close control
@@ -723,12 +707,6 @@ $modal-corner-inset: calc(#{$border-width-m} + #{$spacing-l});
       min-width: 0;
     }
   }
-}
-
-/// Action button flush with the bottom-right corner of an Obsidian `Modal`
-/// with $spacing-l padding: concentric with --modal-radius.
-@mixin atlas-native-modal-corner-button {
-  border-radius: max(0px, calc(var(--modal-radius) - #{$spacing-l} - var(--modal-border-width, 1px)));
 }
 
 /// Field label above an input.
@@ -794,11 +772,11 @@ $modal-corner-inset: calc(#{$border-width-m} + #{$spacing-l});
 
 // ── Tab Switcher ────────────────────────────────────────────────────────────
 
-/// Segmented-control container for tab buttons (matches the asset manager header). Its tabs sit $spacing-xs inside
+/// Segmented-control container for tab buttons (matches the asset manager header). Its tabs sit $surface-inset inside
 /// the track and apart, concentric with its corner (`atlas-tab-button`).
 @mixin atlas-tab-switcher {
-  @include atlas-flex-row($gap: $spacing-xs);
-  padding: $spacing-xs;
+  @include atlas-flex-row($gap: $surface-inset);
+  padding: $surface-inset;
   background-color: var(--background-secondary);
   border-radius: $radius-m;
 }
@@ -814,9 +792,9 @@ $modal-corner-inset: calc(#{$border-width-m} + #{$spacing-l});
   align-items: center;
   gap: $spacing-xs;
   // Never under the 24 px WCAG 2.2 asks of a target (2.5.8): at Obsidian's 30 px control height the track grows to 32.
-  height: max(#{$button-height-s}, calc(var(--input-height) - 2 * #{$spacing-xs}));
+  height: max(#{$button-height-s}, calc(var(--input-height) - 2 * #{$surface-inset}));
   padding: 0 $spacing-m;
-  border-radius: calc(#{$radius-m} - #{$spacing-xs});
+  border-radius: $control-inset-radius;
   color: var(--text-muted);
   font-size: $font-ui-small;
   font-weight: $font-weight-medium;

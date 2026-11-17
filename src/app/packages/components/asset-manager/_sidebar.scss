@@ -31,7 +31,7 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
     @include atlas-elevated-surface;
     background-color: var(--background-secondary);
     // Concentric with the window frame: same centre, radius reduced by the inset.
-    border-radius: max(#{$radius-xl}, calc(#{$window-radius} - #{$float-edge-inset}));
+    border-radius: max(#{$radius-m}, calc(#{$window-radius} - #{$float-edge-inset}));
     // Slides in and out on springs (sidebarMotion.ts).
     will-change: transform;
 
@@ -190,9 +190,8 @@ $offer-dismiss-size: 24px;
     width: $offer-dismiss-size;
     height: $offer-dismiss-size;
     margin-block: auto;
-    // $spacing-xs inside the offer's $radius-m corner: concentric at $radius-s.
-    border-radius: $radius-s;
-    @include atlas-corner-shape;
+    // $spacing-xs inside the offer's $radius-m corner: concentric with it.
+    border-radius: $control-inset-radius;
     color: var(--text-faint);
     opacity: 0;
     transition: opacity $transition-fast $transition-ease-out, color $transition-fast $transition-ease-out;

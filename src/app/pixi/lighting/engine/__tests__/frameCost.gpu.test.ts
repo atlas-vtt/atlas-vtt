@@ -2,7 +2,9 @@
 import { Container, Matrix, RenderTexture, Sprite, Texture, WebGLRenderer } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { LIGHTING_QUALITY, LIGHTING_QUALITY_LEVELS, type LightingQualityLevel } from '../../../../lighting/lightingQuality';
-import { computeSight, lightReach } from '../../../../vision/sight';
+import { REFLECTION, wallRadius, worldTexel } from '../../../../lighting/lightingConstants';
+import { LightReaches } from '../../../../vision/lightReaches';
+import { computeSight } from '../../../../vision/sight';
 import { LightingEngine } from '../LightingEngine';
 import type { EngineScene } from '../types';
 import { costScene } from './costScene';
@@ -13,8 +15,8 @@ import { readRgba } from './gpuTestUtils';
  * the map filling the screen, in the players' view with three tokens' sight: 1,000 walls and 40
  * lights on a 4,096 px map. Printed, wall clock until a pixel is read back, one render at a time
  * (what a frame waits for; timer queries do not hold on ANGLE): the world's first build, a frame
- * at rest, and a step of a drag that moves a light (its reach worked out beforehand, as the scene
- * model works it out for the rules whatever the picture). `VITE_QUALITY` picks a level (a software
+ * at rest, and a step of a drag that moves a light (its reach and reflected light worked out
+ * beforehand, as the scene model works them out for the rules whatever the picture). `VITE_QUALITY` picks a level (a software
  * renderer takes minutes for `high`); `VITE_PERF_STRICT` holds the polygon picture under the
  * traced ones.
  */
@@ -22,6 +24,8 @@ import { readRgba } from './gpuTestUtils';
 const SCREEN = { width: 1440, height: 900 };
 const BOUNDS = { width: 4096, height: 4096 };
 const SAMPLES = 7;
+/** The grid cell of the cost scene's lights (a 20/40 ft torch on 5 ft cells). */
+const CELL = 73.89;
 const STRICT = import.meta.env.VITE_PERF_STRICT === '1';
 const levels = (import.meta.env.VITE_QUALITY ? [import.meta.env.VITE_QUALITY] : [...LIGHTING_QUALITY_LEVELS]) as LightingQualityLevel[];
 
@@ -72,10 +76,13 @@ async function measure(renderer: WebGLRenderer, level: LightingQualityLevel): Pr
   // The rule's reaches, worked out before any timing as the scene model works them out for every
   // quality: a drag step pays for its light's polygon whatever the picture.
   const sight = import.meta.env.VITE_ABLATE === 'sight' ? base.sight : computeSight(tokens, base.walls);
-  const lightsAt = (step: number): EngineScene['lights'] => base.lights.map((light, i) => {
-    const placed = i === 0 ? { ...light, x: 2000 + step * 7, y: 1800, moving: true as const } : { ...light, animation: 'none' as const };
-    return { ...placed, area: lightReach({ x: placed.x, y: placed.y }, placed.dim, base.walls, placed.bright).polygon };
-  });
+  const sampling = { spacing: CELL / 4, clearance: wallRadius(worldTexel(BOUNDS)) };
+  const reaches = new LightReaches();
+  const lightsAt = (step: number): EngineScene['lights'] => {
+    const placed = base.lights.map((light, i) => (i === 0 ? { ...light, x: 2000 + step * 7, y: 1800, moving: true as const } : { ...light, animation: 'none' as const }));
+    const traced = reaches.sync(placed, base.walls, sampling, { ...sampling, reach: REFLECTION.cells * CELL });
+    return placed.map((light, i) => ({ ...light, area: traced[i]!.polygon, ...(traced[i]!.reflection?.length && { reflection: traced[i]!.reflection }) }));
+  };
   const scenes = Array.from({ length: SAMPLES + 1 }, (_, step): EngineScene => ({ ...base, lights: lightsAt(step), sight }));
   try {
     engine.setEnabled(true);

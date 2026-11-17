@@ -150,7 +150,7 @@
       width: $face;
       height: $face;
       flex-shrink: 0;
-      border-radius: $radius-s;
+      border-radius: $search-field-button-radius;
 
       &::before {
         position: absolute;

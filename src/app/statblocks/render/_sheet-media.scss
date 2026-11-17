@@ -19,8 +19,8 @@ $portrait-size: 72px;
     display: block;
     width: 100%;
     height: auto;
-    // Inner radius steps down one level from the card's $radius-xl.
-    border-radius: $radius-l;
+    // Inside the card's $surface-radius, the control radius.
+    border-radius: $radius-m;
     // Inset so the outline never changes the image's layout size.
     outline: $border-width-s solid color-mix(in oklch, var(--mono-100) 10%, transparent);
     outline-offset: -1px;

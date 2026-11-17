@@ -287,7 +287,6 @@
   border-radius: $cap-radius;
   background: var(--background-primary-alt);
   color: var(--text-normal);
-  @include atlas-corner-shape;
 
   &[data-players='nowhere'] svg {
     color: var(--text-warning);

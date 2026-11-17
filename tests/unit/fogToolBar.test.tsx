@@ -364,7 +364,7 @@ describe('FogToolBar', () => {
 
   it('sets how opaque fog is in the GM\'s view from More, kept on this device', () => {
     const { settings } = renderBar();
-    const slider = (): HTMLElement | null => screen.queryByRole('slider', { name: 'Fog opacity in GM View' });
+    const slider = (): HTMLElement | null => screen.queryByRole('slider', { name: 'Fog opacity in GM view' });
     expect(slider()).toBeNull();
     fireEvent.click(button('More'));
     expect(slider()!.getAttribute('aria-valuenow')).toBe('50');

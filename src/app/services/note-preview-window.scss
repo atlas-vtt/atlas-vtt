@@ -28,7 +28,7 @@
   gap: $spacing-s;
 
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
 
   animation: note-preview-slide-in $transition-normal $transition-ease-out;
 }
