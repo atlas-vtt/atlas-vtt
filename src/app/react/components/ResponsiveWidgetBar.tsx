@@ -230,6 +230,8 @@ export function ResponsiveWidgetBar({ isPlayerView = false, store, viewId, widge
       }
       const num = ([1, 2, 3, 4, 5] as const).find(n => matchesMapHotkey(e, `widget${n}`, settings));
       if (!num) return;
+      // While the dice tray is open the number keys add its dice (by their place in its row), not hold a widget.
+      if (/^[1-9]$/.test(e.key) && store.getState().isDiceTrayOpen) return;
       e.preventDefault();
       heldKeys.current.add(String(num));
       heldCodes.current.set(e.code || e.key, num);

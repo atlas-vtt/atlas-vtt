@@ -3,7 +3,7 @@ import { diceSceneToShow } from '../../../src/app/dice3d/rollPresentation';
 import { isDiceDisplay, throwStyle } from '../../../src/app/dice3d/diceDisplay';
 import { sceneFromRolls } from '../../../src/app/dice3d/diceScene';
 import { closeAllRolls, closeRoll, dismissRoll, largeRollIndex, pushRoll, type StackedRoll } from '../../../src/app/react/components/dice3d/rollStackState';
-import { rollBreakdown, rollLabel } from '../../../src/app/react/components/dice3d/diceRollText';
+import { rollBreakdown, rollLabel, shownFormula } from '../../../src/app/react/components/dice3d/diceRollText';
 import type { DiceRollResult } from '../../../src/app/types/diceTypes';
 
 function result(id: string, rolls: DiceRollResult['rolls'], modifiers = 0, source?: DiceRollResult['source']): DiceRollResult {
@@ -64,6 +64,11 @@ describe('panel text', () => {
     expect(rollLabel(result('a', [d20(3)]))).toBe('Roll');
   });
 
+  it('titles a roll without an action by its formula, with a true minus', () => {
+    expect(rollLabel({ ...result('a', [d20(3)], -2), formula: '1d20 - 2' })).toBe('1d20 \u2212 2');
+    expect(shownFormula('2d6[fire-bolt]-1')).toBe('2d6[fire-bolt]\u22121');
+  });
+
   it('writes out a chain of exploded dice, and a die that subtracts', () => {
     const d6 = (value: number, more: object = {}): DiceRollResult['rolls'][number] => ({ die: 'd6', value, max: 6, ...more });
     const aces = result('a', [d6(6), d6(6, { exploded: true }), d6(2, { exploded: true }), d6(3)], 2);
@@ -81,6 +86,8 @@ describe('panel text', () => {
     expect(rollBreakdown(single, sceneFromRolls(single.rolls)!)).toBeNull();
     const percentile = result('c', [{ die: 'd100', value: 37, max: 100 }], -2);
     expect(rollBreakdown(percentile, sceneFromRolls(percentile.rolls)!)).toBe('Tens 30, units 7 − 2');
+    const hundred = result('c2', [{ die: 'd100', value: 100, max: 100 }]);
+    expect(rollBreakdown(hundred, sceneFromRolls(hundred.rolls)!)).toBe('Tens 00, units 0');
     const coin = result('d', [{ die: 'd2', value: 2, max: 2 }]);
     expect(rollBreakdown(coin, sceneFromRolls(coin.rolls)!)).toBe('6 on the d6 counts 2');
     const handful = result('e', Array.from({ length: 8 }, () => ({ die: 'd6', value: 3, max: 6 })));
