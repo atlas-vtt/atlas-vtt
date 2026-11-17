@@ -1,3 +1,7 @@
+## New
+
+- The documentation opens inside Atlas: choose Documentation in the command palette to read the guides beside the map
+
 ## Improved
 
 - The command palette opens the DM screen and the Sound page, and Escape closes the DM screen. Contributed by young-george

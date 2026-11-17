@@ -33,6 +33,8 @@ export interface ViewUIState {
   isDiceLogOpen: boolean;
   /** The keyboard shortcuts cheat sheet: opened by its hotkey, the map's help button and the palette. Never saved. */
   isHotkeyHelpOpen: boolean;
+  /** The documentation panel, the live atlas-vtt.dev docs in a frame. Never saved. */
+  isDocsOpen: boolean;
   isAssetManagerOpen: boolean;
   assetManagerInitialTab?: 'scenes' | 'maps' | 'encounters' | 'tokens' | 'party' | undefined;
   isCommandPaletteOpen: boolean;

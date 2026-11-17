@@ -339,6 +339,7 @@ export interface ViewAtlasState extends ViewState {
   setGridAlignmentOpen: UISlice['setGridAlignmentOpen'];
   setDiceLogOpen: UISlice['setDiceLogOpen'];
   setHotkeyHelpOpen: UISlice['setHotkeyHelpOpen'];
+  setDocsOpen: UISlice['setDocsOpen'];
   openAssetManager: UISlice['openAssetManager'];
   closeAssetManager: UISlice['closeAssetManager'];
   setCommandPaletteOpen: UISlice['setCommandPaletteOpen'];
