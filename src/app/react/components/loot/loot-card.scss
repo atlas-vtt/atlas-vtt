@@ -21,18 +21,13 @@ $loot-inset-radius: atlas-panel-inset-radius-value($loot-card-inset);
   background: var(--background-secondary);
 
   &--fresh {
-    animation: atlas-loot-fresh 1.6s $transition-ease-out;
+    animation: atlas-loot-fresh $transition-normal $transition-ease-out backwards;
   }
 
   &[data-rarity='uncommon'] { --atlas-loot-tone: var(--color-green); }
   &[data-rarity='rare'] { --atlas-loot-tone: var(--color-blue); }
   &[data-rarity='epic'] { --atlas-loot-tone: var(--color-purple); }
   &[data-rarity='legendary'] { --atlas-loot-tone: var(--color-orange); }
-
-  &[data-rarity]:not([data-rarity='common']) {
-    border-color: color-mix(in oklch, var(--atlas-loot-tone) 45%, var(--background-modifier-border));
-    background: color-mix(in oklch, var(--atlas-loot-tone) 7%, var(--background-secondary));
-  }
 }
 
 .atlas-loot-card__title {
@@ -56,10 +51,11 @@ $loot-inset-radius: atlas-panel-inset-radius-value($loot-card-inset);
   font-weight: $font-weight-semibold;
 }
 
+// A card just rolled settles into place; the rarity's colour in its name says the rest.
 @keyframes atlas-loot-fresh {
   from {
-    border-color: var(--interactive-accent);
-    box-shadow: 0 0 0 3px color-mix(in oklch, var(--interactive-accent) 28%, transparent);
+    opacity: 0;
+    transform: translateY(4px);
   }
 }
 

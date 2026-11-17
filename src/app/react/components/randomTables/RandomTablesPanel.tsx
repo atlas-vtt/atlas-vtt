@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { GripHorizontal } from 'lucide-react';
-import { CoinIcon } from '../CoinIcon';
 import { CloseButton } from '../../../packages/components/primitives/CloseButton';
 import { useDialogWindowVariants } from '../../../packages/components/primitives/dialogMotion';
 import { useAtlasUI } from '../../root/AtlasUIContext';
@@ -163,8 +161,6 @@ function RandomTablesPanel(): React.ReactElement {
       aria-label={t('loot.panel')}
     >
       <header className="atlas-loot-roller__header" onPointerDown={startDrag}>
-        <GripHorizontal className="atlas-loot-roller__grip" />
-        <span className="atlas-loot-roller__icon"><CoinIcon /></span>
         <h2 className="atlas-loot-roller__title">{t('loot.title')}</h2>
         <CloseButton onClick={() => setOpen(false)} aria-label={t('loot.close')} />
       </header>

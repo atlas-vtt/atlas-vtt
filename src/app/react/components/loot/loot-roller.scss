@@ -112,31 +112,6 @@ $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
   cursor: grabbing;
 }
 
-.atlas-loot-roller__grip {
-  width: $icon-xs;
-  height: $icon-xs;
-  color: var(--text-faint);
-  flex-shrink: 0;
-}
-
-.atlas-loot-roller__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: $button-height-s;
-  height: $button-height-s;
-  flex-shrink: 0;
-  border-radius: $radius-m;
-  // The gold coin, the loot roller's mark.
-  color: var(--color-yellow);
-  background: color-mix(in oklch, var(--color-yellow) 16%, transparent);
-
-  svg {
-    width: $icon-s;
-    height: $icon-s;
-  }
-}
-
 .atlas-loot-roller__title {
   flex: 1;
   margin: 0;
@@ -170,6 +145,8 @@ $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
 
 // ── Shared bits ────────────────────────────────────────────────────────────
 .atlas-loot-section-label {
+  // A label of the interface, never a heading: themes that set a face for headings leave it alone.
+  font-family: var(--font-interface);
   font-size: $font-ui-smaller;
   font-weight: $font-weight-semibold;
   letter-spacing: 0.04em;

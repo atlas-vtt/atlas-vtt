@@ -8,18 +8,24 @@
 @use '../../../../../styles/mixins' as *;
 
 // ── Roll bar ───────────────────────────────────────────────────────────────
+// One line: what the roll draws from on the left, how many and Roll on the right.
+// A narrow window wraps the actions under the filter, still at the right.
 .atlas-loot-rollbar {
-  @include atlas-flex-col($spacing-s);
+  @include atlas-flex-row($spacing-s);
+  flex-wrap: wrap;
   flex-shrink: 0;
+
+  > :first-child:not(.atlas-loot-rollbar__actions) {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
 }
 
-// Rarity toggles: one per step of the ladder, in its colour. Switched-off
-// rarities are never rolled.
+// Rarity filter: quiet chips, the rarity's colour only in its gem. Switched-off
+// rarities are never rolled and fade back.
 .atlas-loot-rarities {
-  display: grid;
-  // As many words as the collection names, each at least wide enough for a short word and its count.
-  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
-  gap: $spacing-xs;
+  @include atlas-flex-row($spacing-xs);
+  flex-wrap: wrap;
 }
 
 .atlas-loot-rarity {
@@ -29,18 +35,18 @@
   align-items: center;
   gap: $spacing-s;
   min-width: 0;
-  height: $button-height-m;
+  height: $button-height-s + $spacing-xs;
   padding: 0 $spacing-s;
-  border: $border-width-s solid var(--background-modifier-border);
-  border-radius: $radius-m;
+  border: none;
+  border-radius: $radius-full;
   box-shadow: none;
   background: transparent;
   color: var(--text-faint);
   font-size: $font-ui-smaller;
   font-weight: $font-weight-medium;
+  white-space: nowrap;
   cursor: pointer;
   transition: background-color $transition-fast $transition-ease,
-              border-color $transition-fast $transition-ease,
               color $transition-fast $transition-ease,
               transform $transition-press $transition-ease-out;
 
@@ -50,12 +56,12 @@
   &[data-rarity='legendary'] { --atlas-loot-tone: var(--color-orange); }
 
   &:hover {
-    color: var(--text-normal);
+    color: var(--text-muted);
     background: var(--background-modifier-hover);
   }
 
   &:active {
-    transform: scale(0.97);
+    transform: scale(0.96);
   }
 
   &:focus-visible {
@@ -63,19 +69,22 @@
   }
 
   &.is-on {
-    border-color: color-mix(in oklch, var(--atlas-loot-tone) 50%, var(--background-modifier-border));
-    background: color-mix(in oklch, var(--atlas-loot-tone) 12%, transparent);
+    background: var(--background-modifier-hover);
     color: var(--text-normal);
+  }
+
+  &.is-on:hover {
+    background: var(--background-modifier-active-hover);
   }
 }
 
 // A small gem in the rarity's colour: filled when on, an outline when off.
 .atlas-loot-rarity__gem {
   flex-shrink: 0;
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border: $border-width-l solid var(--atlas-loot-tone);
-  border-radius: $radius-s;
+  border-radius: 1px;
   transform: rotate(45deg);
   transition: background-color $transition-fast $transition-ease;
 }
@@ -86,8 +95,6 @@
 
 .atlas-loot-rarity__label {
   @include atlas-truncate;
-  flex: 1;
-  text-align: left;
 }
 
 .atlas-loot-rarity__count {
@@ -99,6 +106,8 @@
 
 .atlas-loot-rollbar__actions {
   @include atlas-flex-row($spacing-s);
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .atlas-loot-stepper {
@@ -139,7 +148,6 @@
 
 .atlas-loot-roll-trigger {
   display: flex;
-  flex: 1;
 }
 
 // A disabled button takes no pointer events; its trigger gets them instead.
@@ -148,22 +156,17 @@
 }
 
 .atlas-loot-roll-button {
-  flex: 1;
   gap: $spacing-s;
+  min-width: 112px;
   height: $button-height-m;
   font-weight: $font-weight-semibold;
 
   svg {
     width: $icon-s;
     height: $icon-s;
-    transition: transform $transition-slow $transition-ease-out;
-  }
-
-  &:hover:not(:disabled) svg {
-    transform: rotate(-18deg) scale(1.08);
   }
 
   &:active:not(:disabled) {
-    transform: scale(0.98);
+    transform: scale(0.96);
   }
 }
