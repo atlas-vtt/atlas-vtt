@@ -1,10 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AppWindow } from 'lucide-react';
 import { t } from '../../i18n';
 import { matchesMapHotkey } from '../../keyboard/mapHotkeys';
+import { Button } from '../../packages/components/primitives/button';
 import { SegmentedControl, type SegmentedOption } from '../../packages/components/primitives/SegmentedControl';
+import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { SettingsService } from '../../services/SettingsService';
 import type { DMScreenPage } from '../../types/viewUIState';
 import { isShortcutScopeActive } from '../../utils/activeLeafGuard';
+import { runInBackground } from '../../utils/backgroundTask';
 import { useExperimentalFeature } from '../hooks/useExperimentalFeature';
 import { useAtlasUI } from '../root/AtlasUIContext';
 import { useAtlasStore } from '../ViewStoreContext';
@@ -20,6 +24,9 @@ import { sideOf, usePageTurn } from './dm-screen/usePageTurn';
 interface DMScreenProps {
   isOpen: boolean;
   onClose: () => void;
+  inTab?: boolean;
+  tabVisible?: boolean;
+  onLocate?: () => void;
 }
 
 const PAGES: readonly SegmentedOption<DMScreenPage>[] = [
@@ -50,7 +57,7 @@ export function DMScreenFromStore(): React.JSX.Element | null {
   return <DMScreen isOpen={isOpen} onClose={close} />;
 }
 
-export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.Element | null {
+export default function DMScreen({ isOpen, onClose, inTab = false, tabVisible = true, onLocate }: DMScreenProps): React.JSX.Element | null {
   const tokens = useAtlasStore((state) => state.objects?.tokens || {});
   const mapPath = useAtlasStore((state) => state.mapPath);
   const mapLoaded = useAtlasStore((state) => state.mapLoaded);
@@ -104,11 +111,13 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
 
   useEffect(() => {
     if (!isOpen) return undefined;
+    const doc = screenRef.current?.ownerDocument ?? document;
+    const eventWindow = doc.defaultView ?? window;
     const handleKeyDown = (e: KeyboardEvent): void => {
       // A focused note keeps its keys (they stop at the note's own section).
-      if (isNoteFocused) return;
+      if (inTab || isNoteFocused) return;
       if (e.defaultPrevented || !isShortcutScopeActive(screenRef.current, view?.viewId)) return;
-      if (document.querySelector('.atlas-onboarding-overlay, .atlas-hotkey-help, .modal-container')) return;
+      if (doc.querySelector('.atlas-onboarding-overlay, .atlas-hotkey-help, .modal-container')) return;
       const target = e.target as Element | null;
       if (target?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
       if (matchesMapHotkey(e, 'dashboard', SettingsService.forApp(app))) {
@@ -116,15 +125,16 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
         handleClose();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, handleClose, isNoteFocused, app, view]);
+    eventWindow.addEventListener('keydown', handleKeyDown);
+    return () => eventWindow.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, handleClose, isNoteFocused, app, view, inTab]);
 
   // Left and right change pages, as a game's shoulder buttons do; the keycaps beside the page control say so.
   // On the Sound page they always do, since nothing there takes the arrows for focus (owner, 2026-11-03);
   // on the statblocks page a control in focus keeps them (tab strips, selects), and a note's editor always.
   useEffect(() => {
     if (!isOpen || !soundOn) return undefined;
+    const eventWindow = screenRef.current?.ownerDocument.defaultView ?? window;
     const handleArrow = (e: KeyboardEvent): void => {
       const direction = arrowDirection(e.key);
       if ((direction !== 'left' && direction !== 'right') || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
@@ -139,17 +149,35 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
       setPage(next);
       if (onPages) screenRef.current?.querySelector<HTMLElement>(`.atlas-dm-screen-pages .atlas-segmented__option:nth-of-type(${next === 'statblocks' ? 1 : 2})`)?.focus();
     };
-    window.addEventListener('keydown', handleArrow, true);
-    return () => window.removeEventListener('keydown', handleArrow, true);
+    eventWindow.addEventListener('keydown', handleArrow, true);
+    return () => eventWindow.removeEventListener('keydown', handleArrow, true);
   }, [isOpen, soundOn, page, setPage, isNoteFocused, view]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="atlas-dm-screen-wrapper" ref={screenRef} tabIndex={-1}>
-      <div className={`atlas-dm-screen-backdrop ${closing ? 'is-closing' : ''}`} onClick={handleClose} />
+    <div className={`atlas-dm-screen-wrapper${inTab ? ' atlas-dm-screen-wrapper--tab' : ''}`} ref={screenRef} tabIndex={-1}>
+      {!inTab && <div className={`atlas-dm-screen-backdrop ${closing ? 'is-closing' : ''}`} onClick={handleClose} />}
 
       <div className={`atlas-dm-screen ${soundOn ? 'atlas-dm-screen--pages' : ''} ${closing ? 'is-closing' : contentReady ? 'is-visible' : ''}`}>
+        {!inTab && (
+          <div className="atlas-dm-screen-tab-action">
+            <LabelTooltip label={t('palette.openDMScreenTab')} side="bottom">
+              <Button type="button" variant="ghost" size="icon" onClick={() => {
+                runInBackground(
+                  import('../../dm-screen-view').then(({ showDMScreenView }) => {
+                    showDMScreenView(app);
+                    handleClose();
+                  }),
+                  'Opening the DM screen tab',
+                  t('palette.dmScreenTabFailed'),
+                );
+              }}>
+                <AppWindow />
+              </Button>
+            </LabelTooltip>
+          </div>
+        )}
         {soundOn && (
           <div className="atlas-dm-screen-header">
             <kbd className="atlas-dm-screen-key" aria-hidden="true">←</kbd>
@@ -160,12 +188,12 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
         <div className="atlas-dm-screen-stage" data-turning={leaving !== null || undefined}>
           {/* Stays mounted while hidden: the note's editor needs its own cleanup, and statblocks are not loaded twice. */}
           <div className="atlas-dm-screen-content atlas-dm-page" {...pageProps('statblocks')}>
-            <DMStatblocksPane app={app} shown={shown} scopeSwitch={scopeSwitch} loading={loading} onClose={handleClose} />
+            <DMStatblocksPane app={app} shown={shown} scopeSwitch={scopeSwitch} loading={loading} onClose={inTab ? () => {} : handleClose} onLocate={onLocate} />
             <DMNotePane app={app} shown={statblocksOpened} onNoteFocus={() => setIsNoteFocused(true)} />
           </div>
           {soundOn && soundOpened && (
             <div className="atlas-dm-sound-page atlas-dm-page" {...pageProps('sound')}>
-              <SoundPane active={page === 'sound'} />
+              <SoundPane active={page === 'sound' && tabVisible} />
             </div>
           )}
         </div>

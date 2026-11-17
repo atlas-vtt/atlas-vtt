@@ -3,12 +3,13 @@ import { ATLAS_VIEW_TYPE } from '../atlasViewType';
 import { DASHBOARD_VIEW_TYPE } from '../dashboard-view';
 import { DUNGEON_GENERATOR_VIEW_TYPE } from '../dungeon-generator-view';
 import { SOUND_VIEW_TYPE } from '../sound-view';
+import { DM_SCREEN_VIEW_TYPE } from '../dm-screen-view';
 import { TEMPLATE_EDITOR_VIEW_TYPE } from '../statblocks/editor/templateEditorState';
 import { STATBLOCK_NOTE_CLASS } from '../statblocks/notes/openEditors';
 
 const HIDE_STATUS_BAR_CLASS = 'atlas-hide-status-bar';
 const HIDE_WINDOW_CONTROLS_CLASS = 'atlas-hide-window-controls';
-const STATUS_BAR_VIEW_TYPES = [ATLAS_VIEW_TYPE, DASHBOARD_VIEW_TYPE, TEMPLATE_EDITOR_VIEW_TYPE];
+const STATUS_BAR_VIEW_TYPES = [ATLAS_VIEW_TYPE, DASHBOARD_VIEW_TYPE, TEMPLATE_EDITOR_VIEW_TYPE, DM_SCREEN_VIEW_TYPE];
 const WINDOW_CONTROLS_VIEW_TYPES = [...STATUS_BAR_VIEW_TYPES, SOUND_VIEW_TYPE, DUNGEON_GENERATOR_VIEW_TYPE];
 
 /** Whether a view's bottom-right corner holds Atlas UI: a map, a template editor, a note with its statblock beside it. */

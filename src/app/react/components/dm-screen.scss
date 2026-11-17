@@ -26,6 +26,27 @@ $page-shift: clamp(24px, 3cqi, 56px);
   }
 }
 
+.atlas-dm-screen-wrapper--tab {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: 100%;
+
+  .atlas-dm-screen {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+  }
+
+  .atlas-dm-screen-content {
+    padding: $spacing-l;
+  }
+
+  .atlas-dm-screen-header ~ .atlas-dm-screen-stage > .atlas-dm-screen-content {
+    padding: $spacing-l;
+  }
+}
+
 .atlas-dm-screen-backdrop {
   position: absolute;
   inset: 0;
@@ -105,6 +126,33 @@ $page-shift: clamp(24px, 3cqi, 56px);
   width: 100%;
   height: 100%;
   max-height: none;
+}
+
+.atlas-dm-screen-tab-action {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($surface-radius);
+  position: absolute;
+  top: $spacing-l;
+  right: $spacing-l;
+  z-index: 1;
+  display: flex;
+  padding: $surface-inset;
+
+  .btn {
+    @include atlas-control-icon-button;
+    @include atlas-panel-inset-radius($surface-inset);
+  }
+}
+
+.atlas-dm-screen:not(.atlas-dm-screen--pages) .atlas-dm-screen-tab-action {
+  top: 0;
+  right: 0;
+}
+
+@container atlas-dm-screen (max-width: 500px) {
+  .atlas-dm-screen--pages:has(.atlas-dm-screen-tab-action) .atlas-dm-screen-header {
+    padding-top: calc(#{$spacing-l * 2 + $surface-inset * 2 + $border-width-m * 2} + var(--input-height));
+  }
 }
 
 @keyframes atlas-dm-screen-enter {

@@ -8,6 +8,7 @@ import { LocalPlayerView, LOCAL_PLAYER_VIEW_TYPE } from './src/app/local-player-
 import { DashboardView, DASHBOARD_VIEW_TYPE } from './src/app/dashboard-view';
 import { DungeonGeneratorView, DUNGEON_GENERATOR_VIEW_TYPE } from './src/app/dungeon-generator-view';
 import { SoundView, SOUND_VIEW_TYPE } from './src/app/sound-view';
+import { DMScreenView, DM_SCREEN_VIEW_TYPE } from './src/app/dm-screen-view';
 import { initializeAtlasStorage } from './src/app/atlasStorageInit';
 import { t } from './src/app/i18n';
 import { CreatureIndex } from './src/app/creatures/CreatureIndex';
@@ -343,6 +344,7 @@ export default class AtlasVTTPlugin extends Plugin {
     this.registerView(DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this));
     this.registerView(DUNGEON_GENERATOR_VIEW_TYPE, (leaf) => new DungeonGeneratorView(leaf));
     this.registerView(SOUND_VIEW_TYPE, (leaf) => new SoundView(leaf));
+    this.registerView(DM_SCREEN_VIEW_TYPE, (leaf) => new DMScreenView(leaf));
     registerLootQueryView(this);
     registerBaseGiveButtons(this);
     this.registerView(TEMPLATE_EDITOR_VIEW_TYPE, (leaf) => new TemplateEditorView(leaf));

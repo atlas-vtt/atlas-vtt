@@ -950,6 +950,11 @@ body.theme-light {
   overflow: hidden;
 }
 
+.view-content.atlas-dm-screen-view {
+  padding: 0;
+  overflow: hidden;
+}
+
 // The Sound page in a tab of its own. The page's rules measure the DM screen by name; here the tab is what it fills.
 .view-content.atlas-sound-view {
   @include atlas-dm-screen-inset;

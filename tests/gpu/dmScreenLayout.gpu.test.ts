@@ -9,6 +9,7 @@ const DM_SCREEN = `
       <div class="atlas-dm-screen-wrapper">
         <div class="atlas-dm-screen-backdrop"></div>
         <div class="atlas-dm-screen">
+          <div class="atlas-dm-screen-tab-action"><button class="btn btn--ghost btn--icon"></button></div>
           <div class="atlas-dm-screen-stage">
             <div class="atlas-dm-screen-content atlas-dm-page" data-page="current">
               <div class="atlas-dm-statblocks-section"><div class="atlas-dm-statblocks-grid"></div></div>
@@ -41,7 +42,7 @@ describe('the DM screen beside open sidebars', () => {
 
   async function openIn(window: { width: number; height: number }, pane: { left: number; width: number }): Promise<void> {
     await page.viewport(window.width, window.height);
-    leaf.style.cssText = `position: absolute; top: 40px; left: ${pane.left}px; width: ${pane.width}px; height: ${window.height - 80}px; contain: strict`;
+    leaf.style.cssText = `position: absolute; top: 40px; left: ${pane.left}px; width: ${pane.width}px; height: ${window.height - 80}px; contain: strict; --input-height: 32px`;
   }
 
   beforeEach(() => {
@@ -110,6 +111,52 @@ describe('the DM screen beside open sidebars', () => {
     const scale = (selector: string): number => parseFloat(getComputedStyle(document.querySelector(selector)!).fontSize);
 
     expect(scale('.atlas-dm-screen')).toBe(scale('.atlas-ui'));
+  });
+
+  it('fills its standalone view without the overlay inset, with and without the page control', async () => {
+    await openIn({ width: 1600, height: 1000 }, { left: 300, width: 1000 });
+    const wrapper = leaf.querySelector<HTMLElement>('.atlas-dm-screen-wrapper')!;
+    const screen = leaf.querySelector<HTMLElement>('.atlas-dm-screen')!;
+    wrapper.classList.add('atlas-dm-screen-wrapper--tab');
+    leaf.querySelector('.atlas-dm-screen-backdrop')!.remove();
+    leaf.querySelector('.atlas-dm-screen-tab-action')!.remove();
+    const bounds = leaf.getBoundingClientRect();
+    for (const withPages of [false, true]) {
+      screen.classList.toggle('atlas-dm-screen--pages', withPages);
+      if (withPages) {
+        const header = document.createElement('div');
+        header.className = 'atlas-dm-screen-header';
+        header.innerHTML = '<div class="atlas-segmented" style="height: 38px; width: 200px"></div>';
+        screen.prepend(header);
+      }
+      const box = screen.getBoundingClientRect();
+      expect(box.left).toBeCloseTo(bounds.left, 1);
+      expect(box.top).toBeCloseTo(bounds.top, 1);
+      expect(box.width).toBeCloseTo(bounds.width, 1);
+      expect(box.height).toBeCloseTo(bounds.height, 1);
+      expectInside(boxOf('.atlas-dm-statblocks-section'), box);
+      expectInside(boxOf('.atlas-dm-notes-section'), box);
+    }
+  });
+
+  it('keeps the open-in-window button at the top right and clear of the page control and panes', async () => {
+    for (const width of [400, 1000, 2400]) {
+      await openIn({ width: 2400, height: 1000 }, { left: 0, width });
+      const screen = leaf.querySelector<HTMLElement>('.atlas-dm-screen')!;
+      screen.classList.add('atlas-dm-screen--pages');
+      const header = document.createElement('div');
+      header.className = 'atlas-dm-screen-header';
+      header.innerHTML = '<div class="atlas-segmented" style="height: 38px; width: 260px"></div>';
+      screen.prepend(header);
+      const button = boxOf('.atlas-dm-screen-tab-action');
+      const control = boxOf('.atlas-segmented');
+      const notes = boxOf('.atlas-dm-notes-section');
+      expectInside(button, screen.getBoundingClientRect());
+      expect(button.right).toBeGreaterThan(control.right);
+      expect(button.left >= control.right || button.bottom <= control.top).toBe(true);
+      expect(button.bottom).toBeLessThanOrEqual(notes.top);
+      header.remove();
+    }
   });
 
   it('rests without a transform, so its text is not composited on half pixels', async () => {

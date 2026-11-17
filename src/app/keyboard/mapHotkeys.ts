@@ -112,7 +112,7 @@ export function canRunMapHotkeys(event: KeyboardEvent, viewId?: string): boolean
   if (handledByAnotherControl(event) || event.isComposing || !isActiveAtlasLeaf(viewId)) return false;
   if (isTextEntryTarget(event.target)) return false;
   // Modals and overlays open in the focused window
-  if (activeDocument.querySelector('.modal-container, .prompt, .suggestion-container, .menu, .atlas-asset-manager-modal, .atlas-command-palette-overlay, .atlas-onboarding-overlay, .atlas-hotkey-help, .atlas-text-dialog-backdrop, .atlas-dm-screen-wrapper, .atlas-grid-alignment-panel, [aria-modal="true"]')) return false;
+  if (activeDocument.querySelector('.modal-container, .prompt, .suggestion-container, .menu, .atlas-asset-manager-modal, .atlas-command-palette-overlay, .atlas-onboarding-overlay, .atlas-hotkey-help, .atlas-text-dialog-backdrop, .atlas-dm-screen-wrapper:not(.atlas-dm-screen-wrapper--tab), .atlas-grid-alignment-panel, [aria-modal="true"]')) return false;
   // The note pin's picker takes a name: a key pressed while it is open, on one of its buttons too, is no shortcut of the map
   if (activeDocument.querySelector(NOTE_PIN_PICKER)) return false;
   // Nor while the Stamp mode's symbols are open: a name typed there searches them

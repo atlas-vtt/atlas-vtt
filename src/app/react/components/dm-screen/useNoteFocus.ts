@@ -14,7 +14,7 @@ export function useNoteFocus(isOpen: boolean, screenRef: RefObject<HTMLDivElemen
   useEffect(() => {
     if (!isOpen || !isNoteFocused) return;
 
-    const notesSection = document.querySelector('.atlas-dm-notes-section');
+    const notesSection = screenRef.current?.querySelector('.atlas-dm-notes-section');
     if (!notesSection) return;
 
     const stopKeyPropagation = (e: KeyboardEvent): void => {
@@ -45,14 +45,17 @@ export function useNoteFocus(isOpen: boolean, screenRef: RefObject<HTMLDivElemen
   useEffect(() => {
     if (!isOpen) return;
 
+    const screen = screenRef.current;
+    if (!screen) return;
+    const doc = screen.ownerDocument;
     const handleClick = (e: MouseEvent): void => {
       const target = e.target as HTMLElement;
 
       // Clicks on statblocks leave the focus as it is, and render nothing
       if (target.closest('.compact-statblock')) return;
 
-      const notesSection = document.querySelector('.atlas-dm-notes-section');
-      const noteContent = document.querySelector('.atlas-dm-note-content');
+      const notesSection = screen.querySelector('.atlas-dm-notes-section');
+      const noteContent = screen.querySelector('.atlas-dm-note-content');
 
       if (notesSection?.contains(target) || noteContent?.contains(target)) {
         setIsNoteFocused(true);
@@ -62,8 +65,8 @@ export function useNoteFocus(isOpen: boolean, screenRef: RefObject<HTMLDivElemen
     };
 
     // Capture, so this runs before other handlers
-    document.addEventListener('click', handleClick, true);
-    return () => document.removeEventListener('click', handleClick, true);
+    doc.addEventListener('click', handleClick, true);
+    return () => doc.removeEventListener('click', handleClick, true);
   }, [isOpen, screenRef]);
 
   return [isNoteFocused, setIsNoteFocused];

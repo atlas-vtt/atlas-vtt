@@ -86,6 +86,12 @@ describe('map hotkeys', () => {
     const modal = document.createElement('div'); modal.className = 'atlas-asset-manager-modal'; document.body.append(modal);
     expect(canRunMapHotkeys(new KeyboardEvent('keydown'), 'map-one')).toBe(false);
   });
+  it('does not let a DM screen tab block shortcuts on the map beside it', () => {
+    document.body.innerHTML = '<div class="workspace-leaf mod-active"><div data-view-id="map-one"></div></div><div class="atlas-dm-screen-wrapper atlas-dm-screen-wrapper--tab"></div>';
+    expect(canRunMapHotkeys(new KeyboardEvent('keydown', { key: 'v' }), 'map-one')).toBe(true);
+    document.querySelector('.atlas-dm-screen-wrapper')!.classList.remove('atlas-dm-screen-wrapper--tab');
+    expect(canRunMapHotkeys(new KeyboardEvent('keydown', { key: 'v' }), 'map-one')).toBe(false);
+  });
   it('runs for an Escape a tooltip took to close itself, and not for one a control used', () => {
     document.body.innerHTML = '<div class="workspace-leaf mod-active"><div data-view-id="map-one"></div></div>';
     const escape = (): KeyboardEvent => new KeyboardEvent('keydown', { key: 'Escape', cancelable: true });
