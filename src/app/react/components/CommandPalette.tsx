@@ -1,6 +1,5 @@
 import { Tutorial } from '../../onboarding/Tutorial';
 import { useHotkeyLabels } from '../../keyboard/useMapHotkeys';
-import { useExperimentalFeature } from '../hooks/useExperimentalFeature';
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import {
@@ -111,7 +110,6 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   const isPlayerWindowFrozen = useStore(playerWindowStore, (s) => s.isFrozen);
   const isPlayerMode = view?.isInPlayerMode?.() ?? false;
   const setPlayerMode = (mode: boolean): void => view?.setPlayerMode?.(mode);
-  const soundOn = useExperimentalFeature('sound');
 
   const widgetSettings = useAtlasStore(state => state.widgetSettings);
   const setWidgetSettings = useAtlasStore(state => state.setWidgetSettings);
@@ -281,18 +279,18 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         store.getState().setDMScreenOpen(true);
       },
     },
-    ...(soundOn ? [{
-        id: "open-sound-page",
-        icon: <BoomBox />,
-        label: t('palette.openSoundPage'),
-        keywords: ["sound", "audio", "music", "ambience"],
-        section: "tools",
-        action: () => {
-          onClose();
-          store.getState().setDMScreenPage("sound");
-          store.getState().setDMScreenOpen(true);
-        },
-      }] : []),
+    {
+      id: "open-sound-page",
+      icon: <BoomBox />,
+      label: t('palette.openSoundPage'),
+      keywords: ["sound", "audio", "music", "ambience"],
+      section: "tools",
+      action: () => {
+        onClose();
+        store.getState().setDMScreenPage("sound");
+        store.getState().setDMScreenOpen(true);
+      },
+    },
     {
       id: "scene-snapshots",
       icon: <History />,

@@ -133,7 +133,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
         return;
       }
 
-      if (!isPlayerView && settings?.isExperimentalOn('sound')) {
+      if (!isPlayerView) {
         if (matchesMapHotkey(e, 'nextMood', settings)) {
           e.preventDefault();
           SoundDirector.forApp(app).pressNext();

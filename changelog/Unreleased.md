@@ -3,6 +3,7 @@
 - The command palette opens the DM screen and the Sound page, and Escape closes the DM screen. Contributed by young-george
 - TrueScale: drag the frame players see by its new grip to move them with you at once, as before 0.13.1. Alt moves it off the grid, Escape puts the players back. Contributed by aryistia
 - TrueScale: Show players here keeps the staged frame in place while the players' frame glides to it. Contributed by aryistia
+- Sound is no longer an experimental feature: the Sound page, its commands and its shortcuts are there without switching anything on
 - Experimental features can now be switched on and off in Atlas's settings tab, not only in the command palette
 - The Saver lighting now shows light reflected into shadows, like the other quality levels
 

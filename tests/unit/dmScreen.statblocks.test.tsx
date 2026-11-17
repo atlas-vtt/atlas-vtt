@@ -72,6 +72,8 @@ const app = {
 };
 const state = {
   objects: { tokens: {} as Record<string, { id: string; name: string; statblockPath: string }> },
+  dmScreenPage: 'statblocks',
+  setDMScreenPage: vi.fn(),
   initiative: { entries: [] as Array<{ id: string; tokenId: string; order: number }>, isActive: false, round: 0 },
   dmNotePath: null,
   setDMNotePath: vi.fn(),
