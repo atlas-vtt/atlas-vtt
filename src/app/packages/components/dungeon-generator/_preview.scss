@@ -116,11 +116,13 @@
 }
 
 // ── On the map ──────────────────────────────────────────────────────────────
-// Export and New layout in the map's top right corner, concentric with it.
+// Export and New layout in the map's top right corner: a floating bar of its own, with the surface's
+// corner, its buttons $surface-inset inside it and concentric with it. Concentric with the map's
+// corner it cannot be: $spacing-m inside it that would leave less than a control's radius.
 
 .atlas-dungeon-wizard-preview__tools {
   @include atlas-elevated-surface;
-  @include atlas-panel-inset-radius($spacing-m);
+  @include atlas-panel-radius($surface-radius);
   position: absolute;
   top: $spacing-m;
   right: $spacing-m;
@@ -132,7 +134,7 @@
 
 .atlas-dungeon-wizard-preview__tool.btn {
   @include atlas-icon-button('m');
-  @include atlas-panel-inset-radius(calc(#{$spacing-m} + #{$border-width-m} + #{$spacing-xs}));
+  @include atlas-panel-inset-radius($surface-inset);
   background: transparent;
   box-shadow: none;
   color: var(--text-muted);

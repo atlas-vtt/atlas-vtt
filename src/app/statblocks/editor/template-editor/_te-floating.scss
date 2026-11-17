@@ -50,6 +50,7 @@ $menu-inset: $surface-inset;
 
   // The search is one more row of the menu.
   input.atlas-te-insert__search {
+    @include atlas-text-input;
     @include atlas-panel-inset-radius($menu-inset);
     height: $row-height;
     padding: 0 $spacing-s;

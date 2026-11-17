@@ -53,9 +53,9 @@ describe('the toolbar editor in a real layout', () => {
     expect(Math.abs(bar.left + bar.width / 2 - (tray.left + tray.width / 2))).toBeLessThanOrEqual(0.5);
     expect(tray.height).toBeLessThan(48);
     expect(getComputedStyle(query('.atlas-toolbar-tray')).borderTopLeftRadius).toBe(getComputedStyle(query('.atlas-main-toolbar')).borderTopLeftRadius);
-    // the surface's 13.5 px less the border (1.5) and the inset (4)
-    expect(getComputedStyle(query('.atlas-toolbar-tray [data-tray-item="loot"] .btn')).borderTopLeftRadius).toBe('8px');
-    expect(getComputedStyle(query('.atlas-toolbar-tray__done')).borderTopRightRadius).toBe('8px');
+    // the surface's 15.5 px less the border (1.5) and the inset (4)
+    expect(getComputedStyle(query('.atlas-toolbar-tray [data-tray-item="loot"] .btn')).borderTopLeftRadius).toBe('10px');
+    expect(getComputedStyle(query('.atlas-toolbar-tray__done')).borderTopRightRadius).toBe('10px');
   });
 
   it('keeps every control\'s corners concentric with the bar\'s, on every side, in and out of edit mode', async () => {
@@ -70,10 +70,10 @@ describe('the toolbar editor in a real layout', () => {
       ...[...document.querySelectorAll('.atlas-main-toolbar .atlas-tool-button > span > .btn')].flatMap(allCorners),
       ...allCorners(toggle),
     ];
-    expect(new Set(corners())).toEqual(new Set(['8px']));
-    // The switch's thumb stands 4 px inside it, its corner concentric with the switch's: 8 - 4
+    expect(new Set(corners())).toEqual(new Set(['10px']));
+    // The switch's thumb stands the bar's 4 px inset inside it, its corner concentric with the switch's: 10 - 4
     const thumb = toggle.querySelector<HTMLElement>('.atlas-toggle__thumb')!;
-    expect(getComputedStyle(thumb).borderTopLeftRadius).toBe('4px');
+    expect(getComputedStyle(thumb).borderTopLeftRadius).toBe('6px');
     const switchBox = toggle.querySelector('.atlas-toggle__switch')!.getBoundingClientRect();
     const thumbBox = thumb.getBoundingClientRect();
     expect(thumbBox.top - switchBox.top).toBeCloseTo(4, 1);
@@ -81,8 +81,8 @@ describe('the toolbar editor in a real layout', () => {
     // At either end, as far from that edge as from the top
     expect(Math.abs(switchBox.right - thumbBox.right - 4) < 0.5 || Math.abs(thumbBox.left - switchBox.left - 4) < 0.5).toBe(true);
     await startEditing();
-    expect(new Set(corners())).toEqual(new Set(['8px']));
-    expect(getComputedStyle(handle('move', 'bar')).borderTopLeftRadius).toBe('8px');
+    expect(new Set(corners())).toEqual(new Set(['10px']));
+    expect(getComputedStyle(handle('move', 'bar')).borderTopLeftRadius).toBe('10px');
   });
 
   it('leaves the bar and the undo bar where they are as editing starts', async () => {

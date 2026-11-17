@@ -220,9 +220,9 @@ body.theme-light {
   }
 
   .atlas-token-value-editor__input {
+    @include atlas-text-input;
     width: 56px;
     text-align: center;
-    border-radius: $radius-m;
     font-variant-numeric: tabular-nums;
 
     &[aria-invalid] {
@@ -236,7 +236,9 @@ body.theme-light {
     color: var(--text-muted);
   }
 
+  // The fields stand in the popover's corners; a label before them starts on the menus' text edge, $spacing-m inside its padding.
   .atlas-token-value-editor__label {
+    padding-inline-start: $spacing-m;
     white-space: nowrap;
   }
 
@@ -509,7 +511,7 @@ body.theme-light {
 
     // Every control sits $surface-inset inside the border, so all its corners run concentric with
     // the bar's: rounded alike on every side, never one radius towards the bar's edge and another
-    // inside it. Tool buttons, tool groups, their chevrons and the toggle read this; a bar with
+    // inside it. Tool buttons, tool groups and their chevrons read this (the switch keeps its own); a bar with
     // another inset sets it anew.
     --atlas-bar-control-radius: #{atlas-panel-inset-radius-value($surface-inset)};
 
@@ -520,30 +522,6 @@ body.theme-light {
 
     .atlas-tool-button > span > .btn {
       border-radius: var(--atlas-bar-control-radius, #{$radius-m});
-    }
-
-    // The switch takes the controls' corner, and its thumb stands $surface-inset inside it (its
-    // padding and border), as every control stands inside the bar, so the thumb's corner is
-    // concentric with the switch's and still round: 6 px inside left it 2 px, almost square.
-    .atlas-toolbar-end > .atlas-toggle {
-      $thumb: 40px - 2 * $surface-inset;
-
-      border-radius: var(--atlas-bar-control-radius, #{$radius-m});
-
-      .atlas-toggle__switch {
-        padding: $surface-inset - $border-width-s;
-      }
-
-      .atlas-toggle__thumb {
-        width: $thumb;
-        height: $thumb;
-        border-radius: calc(var(--atlas-bar-control-radius, #{$radius-m}) - #{$surface-inset});
-      }
-
-      // Across the switch's 60 px, less its padding and border on both sides and the thumb
-      .atlas-toggle__thumb--on {
-        transform: translateX(60px - 2 * $surface-inset - $thumb);
-      }
     }
   }
 
@@ -661,7 +639,7 @@ body.theme-light {
     box-shadow: none;
 
     &.atlas-active {
-      box-shadow: $shadow-sm;
+      box-shadow: $segmented-chosen-shadow;
     }
   }
 
@@ -821,6 +799,8 @@ body.theme-light {
     }
   }
 
+  // No surface of its own: words on the panel until the pointer comes, then a soft fill; a firmer one while it is
+  // pressed; disabled, only its words fade.
   .btn--ghost {
     background: transparent;
     color: inherit;
@@ -830,6 +810,14 @@ body.theme-light {
     &:hover {
       background: var(--background-modifier-hover);
       color: var(--text-normal);
+    }
+
+    &:active:not(:disabled) {
+      background: var(--background-modifier-active-hover, color-mix(in oklch, var(--background-modifier-hover), var(--text-normal) 10%));
+    }
+
+    &:disabled {
+      background: transparent;
     }
   }
 
@@ -889,33 +877,6 @@ body.theme-light {
     gap: $spacing-s;
     justify-content: flex-end;
     margin-top: $spacing-xl;
-
-    button {
-      padding: $spacing-s $spacing-l;
-      border: none;
-      border-radius: $radius-s;
-      cursor: pointer;
-      font-family: inherit;
-      font-size: 0.9rem;
-      
-      &.mod-cta {
-        @include atlas-accent-fill;
-      }
-
-      &.mod-warning {
-        @include atlas-danger-fill;
-      }
-
-      &:not(.mod-cta) {
-        background: var(--background-secondary);
-        color: var(--text-normal);
-        border: 1px solid var(--background-modifier-border);
-        
-        &:hover {
-          background: var(--background-modifier-hover);
-        }
-      }
-    }
   }
 }
 
@@ -1013,23 +974,23 @@ body.theme-light {
 // Popover: icon palette (src/app/tools/pin-icon-palette.scss), search, results and a hint footer. Uniform
 // padding/gap so every section sits on the same rhythm.
 //
-// Corners are concentric and built outwards from the icon button: each surface's
-// radius is the radius of the surface inside it plus the inset between them
-// (padding + border). The shared $surface-radius cannot hold two nested
-// levels at this padding, so the panel radius is derived instead.
+// Corners are concentric: the icon row spans the top, $surface-inset inside the surface with a
+// control's corner (`--pin-inset-radius`), and the row's buttons $surface-inset inside the row with
+// `$control-inset-radius` (`--pin-btn-radius`, set on the row). The results light up as rows at
+// $surface-inset too; the name switch and the search stand on the menus' text edge, $spacing-m inside the padding.
 
 .atlas-note-pin-dropdown {
   --pin-btn-radius: #{$radius-m};
-  --pin-inset-radius: calc(var(--pin-btn-radius) + #{$spacing-xs} + #{$border-width-s});
+  --pin-inset-radius: #{$radius-m};
 
   @include atlas-elevated-surface;
-  border-radius: calc(var(--pin-inset-radius) + #{$spacing-m} + #{$border-width-m});
-  @include atlas-flex-col($gap: $spacing-m);
+  @include atlas-panel-radius($surface-radius);
+  @include atlas-flex-col($gap: $surface-inset);
   position: fixed;
   z-index: $z-atlas-dropdown;
   width: fit-content;
   min-width: 300px;
-  padding: $spacing-m;
+  padding: $surface-inset;
   overflow: hidden;
   color: var(--text-normal);
   font-family: var(--font-interface);
@@ -1040,10 +1001,10 @@ body.theme-light {
     visibility: hidden;
   }
 
-  // ── Show name: Atlas' switch and its text, on the icon row's inner edge ──
+  // ── Show name: Atlas' switch and its text, on the menus' text edge ($spacing-m inside the padding) ──
   .pin-name-row {
     @include atlas-flex-row($gap: $spacing-s);
-    padding: 0 $spacing-xs;
+    padding: 0 $spacing-m;
   }
 
   .pin-name-row__text {
@@ -1052,9 +1013,11 @@ body.theme-light {
   }
 
   // ── Search ─────────────────────────────────────────────────────
+  // Between the icon row and the results, on the text edge like the switch above it.
   .pin-search-wrapper {
     position: relative;
     flex-shrink: 0;
+    margin-inline: $spacing-m;
 
     .pin-search-icon {
       position: absolute;
@@ -1076,8 +1039,7 @@ body.theme-light {
   .pin-search-input {
     @include atlas-text-input;
     padding-left: calc(#{$spacing-s} + #{$icon-s} + #{$spacing-s});
-    // Same inset from the panel edge as the icon row, so the same radius
-    border-radius: var(--pin-inset-radius);
+    border-radius: $radius-m;
   }
 
   // ── Results ────────────────────────────────────────────────────
@@ -1220,7 +1182,8 @@ body.theme-light {
     @include atlas-flex-row($gap: $spacing-l);
     justify-content: center;
     flex-shrink: 0;
-    padding-top: $spacing-m;
+    // Words, not controls: they keep room around them inside the surface's inset.
+    padding: $spacing-s;
     border-top: var(--divider-width) solid var(--divider-color);
 
     .pin-footer-hint {

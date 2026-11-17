@@ -160,9 +160,8 @@
   flex: 1;
 }
 
-// Native Obsidian input styling applies; only sizing lives here
-.atlas-setting-input {
-  width: 100%;
+input.atlas-setting-input {
+  @include atlas-text-input;
 
   &--sm {
     width: 80px;

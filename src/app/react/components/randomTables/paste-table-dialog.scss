@@ -57,15 +57,12 @@ $paste-padding: $spacing-l;
 
   .atlas-segmented {
     flex-shrink: 0;
-    gap: 2px;
-    padding: 2px;
-    border-radius: $radius-m;
   }
 
+  // As tall as the field beside it.
   .atlas-segmented__option {
-    height: calc(var(--input-height) - 4px);
+    height: calc(var(--input-height) - #{2 * $surface-inset});
     padding: 0 $spacing-m;
-    border-radius: calc(#{$radius-m} - 2px);
   }
 }
 

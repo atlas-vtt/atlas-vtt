@@ -101,17 +101,21 @@
   @include atlas-flex-row($spacing-s);
 }
 
+// Its buttons stand this far inside its ends, concentric with its corners.
+$loot-stepper-inset: 2px;
+
 .atlas-loot-stepper {
   @include atlas-flex-row(0);
   flex-shrink: 0;
   height: $button-height-m;
-  padding: 2px;
+  padding: $loot-stepper-inset;
   border-radius: $radius-m;
   background: var(--background-secondary);
 
   .atlas-loot-stepper__button {
-    width: $button-height-m - 4px;
-    height: $button-height-m - 4px;
+    width: $button-height-m - 2 * $loot-stepper-inset;
+    height: $button-height-m - 2 * $loot-stepper-inset;
+    border-radius: calc(#{$radius-m} - #{$loot-stepper-inset});
     color: var(--text-muted);
 
     svg {

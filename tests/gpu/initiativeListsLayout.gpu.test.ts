@@ -151,10 +151,11 @@ describe('the GM\'s initiative tracker', () => {
     for (const names of [false, true]) {
       const tracker = await showTracker({ names });
       expect(box(tracker).width).toBe(names ? 168 : 96);
-      expectUniform(tracker, 8);
+      // $surface-inset: its corner controls run concentric with the panel's
+      expectUniform(tracker, 4);
       expectNoOverflow(tracker.querySelector('.atlas-initiative-tracker__content')!, '.atlas-initiative-card');
 
-      const radius = insetRadius(tracker, 8);
+      const radius = insetRadius(tracker, 4);
       const toggle = tracker.querySelector('.atlas-initiative-tracker__collapse')!;
       expect(parseFloat(getComputedStyle(toggle).borderTopLeftRadius)).toBeCloseTo(radius, 1);
       expect(parseFloat(getComputedStyle(toggle).borderTopRightRadius)).toBeCloseTo(radius, 1);
@@ -195,7 +196,7 @@ describe('the GM\'s initiative tracker', () => {
   it('collapses to the turn and the next two, and docks at the left edge', async () => {
     const collapsed = await showTracker({ layout: { collapsed: true } });
     expect(collapsed.querySelectorAll('.atlas-initiative-card')).toHaveLength(3);
-    expectUniform(collapsed, 8);
+    expectUniform(collapsed, 4);
     await page.screenshot({ path: `${SHOTS}/gm-collapsed.png`, element: collapsed });
 
     const left = await showTracker({ layout: { dock: 'left' } });
@@ -208,7 +209,7 @@ describe('the GM\'s initiative tracker', () => {
 
   it('goes by sides as groups, the side whose turn it is on top', async () => {
     const tracker = await showTracker({ sides: true });
-    expectUniform(tracker, 8);
+    expectUniform(tracker, 4);
     expectNoOverflow(tracker.querySelector('.atlas-initiative-tracker__content')!, '.atlas-initiative-card');
     await page.screenshot({ path: `${SHOTS}/gm-sides.png`, element: tracker });
   });

@@ -1,3 +1,4 @@
+@use 'sass:math';
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 @use 'variables' as *;
@@ -48,15 +49,25 @@
 // The window as it is placed and animated. It does not clip, so a theme can draw around the
 // window with this element's pseudo-elements (`::before` below the container with a negative
 // `z-index`, `::after` above it) and have that move and fade with the window.
+// Its height stops where its widest shape would turn less wide than $window-aspect: on a large
+// screen at a low or fractional scale (a 4K screen at 1.5, 1440p at 1) the window would
+// otherwise reach its width first and grow tall, nearly square.
+$window-max-width: 1440px;
+$window-aspect: 1.4;
+
 .atlas-asset-manager-window {
   position: relative;
   width: 100%;
   height: 100%;
-  max-width: 1440px;
-  max-height: 100%;
+  max-width: $window-max-width;
+  max-height: min(100%, #{math.div($window-max-width, $window-aspect)});
   margin: auto;
   z-index: $z-sticky + 1;
   pointer-events: auto;
+
+  @media (max-width: $breakpoint-m) {
+    max-height: 100%;
+  }
 }
 
 .atlas-asset-manager-container {

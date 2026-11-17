@@ -90,6 +90,8 @@
   // As tall as the row's fields, as every control of a row is
   width: var(--input-height);
   height: var(--input-height);
+  // $surface-inset inside the row (a level's or a roof's): concentric with its corner at the row's end.
+  border-radius: $control-inset-radius;
   box-shadow: none;
 
   &:disabled {

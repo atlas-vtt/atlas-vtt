@@ -15,8 +15,9 @@
 @use 'pane-recovery';
 @use 'rest-chooser';
 
-// The header's end controls run concentric with its corners, never rounder than half their height.
-$header-control-radius: atlas-panel-inset-radius-value($spacing-s, calc(var(--input-height) / 2));
+// The header's end controls stand $surface-inset inside it and run concentric with its corners, never
+// rounder than half their height.
+$header-control-radius: atlas-panel-inset-radius-value($surface-inset, calc(var(--input-height) / 2));
 
 .atlas-vtt-plugin {
   // Padding equals the gap between the header, the hint, the card and the tray.
@@ -33,9 +34,9 @@ $header-control-radius: atlas-panel-inset-radius-value($spacing-s, calc(var(--in
 
   // ── Header ──────────────────────────────────────────────────────────────
   .atlas-sb-pane-header {
-    @include atlas-flex-row($spacing-s);
+    @include atlas-flex-row($surface-inset);
     @include atlas-panel-radius($surface-radius, $border-width-s);
-    padding: $spacing-s;
+    padding: $surface-inset;
     background: var(--background-secondary);
     border: $border-width-s solid var(--background-modifier-border);
 
@@ -51,8 +52,10 @@ $header-control-radius: atlas-panel-inset-radius-value($spacing-s, calc(var(--in
     }
   }
 
-  .atlas-sb-pane-header__end {
+  // Its controls keep the header's one gap among themselves too (the template editor's capsule as well).
+  .atlas-sb-pane-header > .atlas-sb-pane-header__end {
     display: flex;
+    gap: $surface-inset;
     margin-inline-start: auto;
   }
 

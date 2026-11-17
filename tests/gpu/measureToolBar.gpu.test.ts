@@ -181,6 +181,11 @@ describe('the measure tool\'s bars above the toolbar', () => {
     expect(effects).toHaveLength(7);
     expect(new Set(effects.map((chip) => Math.round(chip.top))).size).toBe(1);
     expect(effects[0]!.top).toBeGreaterThan(rects(`${CHOICES} .atlas-swatch`)[0]!.bottom);
+    // The colours keep the grid's gap between them: a swatch wider than its column once spilled over it.
+    const colourCells = rects(`${CHOICES} .atlas-swatch`);
+    for (let i = 1; i < colourCells.length; i++) {
+      if (Math.round(colourCells[i]!.top) === Math.round(colourCells[i - 1]!.top)) expect(colourCells[i]!.left - colourCells[i - 1]!.right).toBeCloseTo(4, 1);
+    }
     for (const chip of effects) {
       expect(chip.left).toBeGreaterThanOrEqual(menu.left + 8);
       expect(chip.right).toBeLessThanOrEqual(menu.right - 8);
@@ -221,12 +226,19 @@ describe('the measure tool\'s bars above the toolbar', () => {
     expect(options.map((option) => option.textContent)).toEqual(['Always', 'In combat', 'Never']);
     expect(new Set(options.map((option) => Math.round(option.getBoundingClientRect().top))).size).toBe(1);
     for (const option of options) expect(option.scrollWidth).toBeLessThanOrEqual(option.clientWidth);
-    const inner = menu.getBoundingClientRect();
-    expect(track.getBoundingClientRect().left).toBeGreaterThanOrEqual(inner.left + 8);
-    expect(track.getBoundingClientRect().right).toBeLessThanOrEqual(inner.right - 8);
     expect(menu.scrollWidth).toBeLessThanOrEqual(menu.clientWidth);
-    // Its label starts on the menu's text edge, where the rules row's text does not start left of it.
-    const label = menu.querySelector<HTMLElement>('.atlas-dropdown-label')!;
-    expect(parseFloat(getComputedStyle(label).paddingLeft)).toBe(12);
+    // The control is the menu's first thing: it stands in the top corners, as far out as the rows, and
+    // its options run concentric inside it. What it is about is said under it, on the text edge.
+    const row = menu.querySelector<HTMLElement>('.atlas-dropdown-menu-item')!.getBoundingClientRect();
+    const box = track.getBoundingClientRect();
+    expect(box.left).toBeCloseTo(row.left, 1);
+    expect(box.right).toBeCloseTo(row.right, 1);
+    expect(box.top - menu.getBoundingClientRect().top).toBeCloseTo(box.left - menu.getBoundingClientRect().left, 1);
+    expect(parseFloat(getComputedStyle(options[0]!).borderTopLeftRadius)).toBe(parseFloat(getComputedStyle(track).borderTopLeftRadius) - 4);
+    const caption = menu.querySelector<HTMLElement>('.atlas-dropdown-hint')!;
+    expect(caption.textContent).toBe('Distance while moving tokens');
+    expect(caption.getBoundingClientRect().top).toBeGreaterThanOrEqual(box.bottom);
+    expect(parseFloat(getComputedStyle(caption).paddingLeft)).toBe(12);
+    expect(getComputedStyle(track).borderTopLeftRadius).toBe('10px');
   });
 });

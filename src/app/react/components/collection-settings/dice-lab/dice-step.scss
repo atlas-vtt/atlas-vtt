@@ -116,8 +116,10 @@ button.atlas-dice-lab__side {
     box-shadow: inset 0 0 0 $border-width-m color-mix(in oklch, var(--interactive-accent) 70%, transparent);
   }
 
+  // At the row's end, $surface-inset inside it: concentric with the row's corner.
   .atlas-csm-input.atlas-dice-lab__number {
     height: $input-height-s;
+    border-radius: $control-inset-radius;
   }
 }
 

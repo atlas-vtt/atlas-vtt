@@ -2,7 +2,7 @@
 @use '../../../styles/mixins' as *;
 
 // ── Encounter folder card ─────────────────────────────────────────────────
-// The hover card of a pin that rolls encounters. One inset ($spacing-s) for its
+// The hover card of a pin that rolls encounters. One inset ($surface-inset) for its
 // padding and every gap; what sits in its corners runs concentric with them.
 
 $row-height: 40px;
@@ -11,15 +11,17 @@ $face-size: 26px;
 .atlas-encounter-folder-preview {
   @include atlas-elevated-surface;
   @include atlas-panel-radius($surface-radius);
-  @include atlas-flex-col($spacing-s);
+  @include atlas-flex-col($surface-inset);
   position: fixed;
   z-index: $z-popover;
   width: 300px;
-  padding: $spacing-s;
+  padding: $surface-inset;
 }
 
+// The icon stands in the top-left corner; the titles end on the menus' text edge, $spacing-m inside the card's padding.
 .atlas-encounter-folder-preview__header {
   @include atlas-flex-row($spacing-s);
+  padding-inline-end: $spacing-m;
 }
 
 .atlas-encounter-folder-preview__icon {
@@ -29,8 +31,7 @@ $face-size: 26px;
   justify-content: center;
   width: $row-height;
   height: $row-height;
-  border-radius: $radius-m;
-  @include atlas-panel-inset-radius($spacing-s, top-left);
+  @include atlas-panel-inset-radius($surface-inset);
   color: var(--color-orange);
   background: color-mix(in oklch, var(--color-orange) 14%, transparent);
 
@@ -137,15 +138,14 @@ $face-size: 26px;
   text-align: center;
 }
 
+// Atlas's main button (`createButton`), its size set above `.atlas-vtt-plugin .btn`.
 .atlas-encounter-folder-preview button.atlas-encounter-folder-preview__roll {
-  @include atlas-confirm-btn;
   flex-shrink: 0;
   gap: $spacing-s;
   width: 100%;
   height: $row-height;
-  border-radius: $radius-m;
   font-weight: $font-weight-semibold;
-  @include atlas-panel-inset-radius($spacing-s, bottom-left, bottom-right);
+  @include atlas-panel-inset-radius($surface-inset);
 }
 
 .atlas-encounter-folder-preview__roll-icon {

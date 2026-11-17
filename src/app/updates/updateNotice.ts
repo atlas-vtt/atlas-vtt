@@ -1,7 +1,7 @@
-import { setIcon } from 'obsidian';
 import { ATLAS_GITHUB_URL } from '../support/communityLinks';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
+import { createButton } from '../ui/buttonElement';
 import atlasIconUrl from '../assets/brand/atlas-icon.webp';
 
 /** Obsidian's page of Atlas, which reads the published manifest afresh and offers Update at once. */
@@ -25,10 +25,9 @@ export function announceUpdate(version: string, acted: () => void = () => undefi
   body.createDiv({ cls: 'atlas-update-notice__title', text: t('settings.updates.noticeTitle') });
   body.createDiv({ cls: 'atlas-update-notice__text', text: t('settings.updates.notice', { version }) });
   const actions = body.createDiv({ cls: 'atlas-update-notice__actions' });
-  const update = actions.createEl('button', { cls: 'mod-cta', text: t('settings.updates.update') });
-  const notes = actions.createEl('button', { text: t('settings.updates.whatsNew') });
-  const close = card.createEl('button', { cls: 'btn btn--ghost btn--icon atlas-close-btn atlas-update-notice__close', attr: { 'aria-label': t('common.close') } });
-  setIcon(close, 'x');
+  const update = createButton(actions, { text: t('settings.updates.update'), size: 'sm' });
+  const notes = createButton(actions, { text: t('settings.updates.whatsNew'), variant: 'outline', size: 'sm' });
+  const close = createButton(card, { variant: 'ghost', size: 'icon', icon: 'x', cls: ['atlas-close-btn', 'atlas-update-notice__close'], attr: { 'aria-label': t('common.close') } });
   const notice = showNotice(message, 0);
   close.addEventListener('click', () => {
     acted();

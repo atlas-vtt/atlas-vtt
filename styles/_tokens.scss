@@ -22,6 +22,14 @@ $border-width-l: 2px;
 $border-opacity-subtle: 10%;
 $border-opacity-default: 18%;
 $border-opacity-strong: 30%;
+// The edge of a text field: the same quiet tint as every Atlas border, a step stronger under the pointer. Strokes
+// separate and give depth; they are never stark (owner, 2026-11-17: an edge at 3:1 "looks too stark", reversing O4).
+// The field's own fill tells it from the surface; the edge only finishes it.
+$field-edge: color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
+$field-edge-hover: color-mix(in oklch, var(--mono-100) $border-opacity-strong, transparent);
+// A field in use: the accent, softened, with a faint ring.
+$field-edge-focus: color-mix(in oklch, var(--interactive-accent) 60%, transparent);
+$field-focus-ring: 0 0 0 2px color-mix(in oklch, var(--interactive-accent) 12%, transparent);
 
 // ── Corners ──────────────────────────────────────────────────────────────────
 // Atlas' own corners, the same on every platform and under every theme (Obsidian's --radius-*
@@ -34,16 +42,23 @@ $border-opacity-strong: 30%;
 //   inset its corner controls stand at plus the border, so a control in a surface's corner is
 //   concentric with it, and every surface has the same corner because they all share the inset.
 // Content further inside a surface than the inset is not concentric with it and keeps $radius-m.
+// The same holds one level down: what stands $surface-inset inside a control (a switch's thumb, a
+// segmented control's options, a button in a row's end) takes $control-inset-radius, so it runs
+// concentric with the control's corner.
 $radius-s: 4px;
-$radius-m: 8px;
+$radius-m: 10px;
 $radius-full: 9999px;
 // How far a surface's corner controls stand inside its border, and the gap between them.
 $surface-inset: $spacing-xs;
 $surface-radius: $radius-m + $surface-inset + $border-width-m;
+$control-inset-radius: $radius-m - $surface-inset;
 
 // ── Shadows ──────────────────────────────────────────────────────────────────
 // Subtle shadow for cards and containers
 $shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+// A segmented control's chosen option: lifted from the track by its fill and a soft shadow, with a hairline in the
+// quiet border tint (owner, 2026-11-17: a 3:1 edge looked too stark).
+$segmented-chosen-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent), $shadow-sm;
 
 // Medium shadow for dropdowns and popovers (Obsidian's menu shadow)
 $shadow-md: var(--shadow-s);
@@ -203,8 +218,10 @@ $dm-screen-inset: clamp(#{$spacing-l}, 3cqi, 64px);
   // Atlas' controls are flat; Obsidian bevels buttons and inputs everywhere but on macOS.
   --input-shadow: none;
   --input-shadow-hover: none;
-  --clickable-icon-radius: var(--radius-s);
-  --input-radius: 5px;
+  // Except the corners of controls: inside Atlas whatever Obsidian draws as a control (an input, a
+  // button, an icon button) takes Atlas' control radius, never Obsidian's 5 px or 4 px.
+  --clickable-icon-radius: var(--radius-m);
+  --input-radius: var(--radius-m);
   --input-icon-inset: var(--size-4-1);
   --modal-radius: var(--radius-l);
   --search-input-radius: var(--input-radius);

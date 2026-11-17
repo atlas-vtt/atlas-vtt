@@ -22,8 +22,7 @@
   color: var(--text-normal);
   background: var(--background-primary);
   border: $border-width-s solid var(--background-modifier-border);
-  // Align the panel's outer curve with the inset buttons, including its border.
-  border-radius: calc(var(--atlas-onboarding-control-radius) + var(--atlas-onboarding-padding) + #{$border-width-s});
+  @include atlas-panel-radius($surface-radius, $border-width-s);
   box-shadow: $shadow-elevated;
   padding: var(--atlas-onboarding-padding);
   h2, h3 { margin: 0 0 $spacing-m; font-size: $font-ui-medium; font-weight: $font-weight-semibold; }
@@ -33,7 +32,8 @@
   border-radius: var(--atlas-onboarding-control-radius);
 }
 .atlas-onboarding-card {
-  --atlas-onboarding-padding: #{$spacing-s};
+  // Its picture stands in its top corners: $surface-inset inside, concentric with them.
+  --atlas-onboarding-padding: #{$surface-inset};
 
   position: fixed;
   max-height: calc(100vh - 32px);
@@ -44,7 +44,7 @@
   width: 100%;
   height: auto;
   // Flush with the card's padding, so its corners run concentric with the card's.
-  border-radius: var(--atlas-onboarding-control-radius);
+  @include atlas-panel-inset-radius($surface-inset);
   border: $border-width-s solid var(--background-modifier-border);
   box-sizing: border-box;
 }
@@ -63,7 +63,6 @@
   max-height: calc(100dvh - #{$spacing-2xl});
   display: flex;
   flex-direction: column;
-  @include atlas-panel-radius($surface-radius, $border-width-s);
 }
 // Reaches past the card's padding to its top-right corner, where the close button belongs.
 .atlas-hotkey-help-header {

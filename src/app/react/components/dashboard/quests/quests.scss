@@ -120,7 +120,8 @@ $quest-status-width: 112px;
   min-height: var(--input-height);
   padding: 0 $spacing-xs;
   border: none;
-  border-radius: $radius-m;
+  // At the row's end, $surface-inset inside it: concentric with its corner.
+  border-radius: $control-inset-radius;
   background: transparent;
   box-shadow: none;
   text-align: left;

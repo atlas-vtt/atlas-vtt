@@ -69,6 +69,8 @@
   // As tall as the floor's name field beside it
   width: var(--input-height);
   height: var(--input-height);
+  // $spacing-xs inside the floor's row: concentric with its corner.
+  border-radius: $control-inset-radius;
   box-shadow: none;
 
   &:disabled {
