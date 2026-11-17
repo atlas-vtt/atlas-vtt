@@ -61,6 +61,7 @@ import { replaceMapImage } from './levels/replaceMapImage';
 import { pickMapImage } from './levels/MapImagePickerModal';
 import { placePalette, type PalettePosition } from './command-palette/palettePlacement';
 import { customizeToolbarCommand } from './command-palette/customizeToolbarCommand';
+import { hotkeyHelpCommand } from './command-palette/hotkeyHelpCommand';
 import { isSettingsPanelId, type CommandOption, type SettingsPanelId } from './command-palette/types';
 import { t } from '../../i18n';
 import { showNotice } from '../../ui/notice';
@@ -122,6 +123,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   const setInitiativeTrackerOpen = useAtlasStore(state => state.setInitiativeTrackerOpen);
   const setDiceLogOpen = useAtlasStore(state => state.setDiceLogOpen);
   const setLootRollerOpen = useAtlasStore(state => state.setLootRollerOpen);
+  const setHotkeyHelpOpen = useAtlasStore(state => state.setHotkeyHelpOpen);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [focusedOptionIndex, setFocusedOptionIndex] = useState<number>(-1);
@@ -348,6 +350,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         onClose();
       },
     },
+    hotkeyHelpCommand(() => setHotkeyHelpOpen(true), onClose, hotkeyLabel('help')),
     // Mode commands
     {
       id: "toggle-player-mode",

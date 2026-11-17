@@ -31,6 +31,8 @@ export interface ViewUIState {
   dmScreenPage: DMScreenPage;
   isGridAlignmentOpen: boolean;
   isDiceLogOpen: boolean;
+  /** The keyboard shortcuts cheat sheet: opened by its hotkey, the map's help button and the palette. Never saved. */
+  isHotkeyHelpOpen: boolean;
   isAssetManagerOpen: boolean;
   assetManagerInitialTab?: 'scenes' | 'maps' | 'encounters' | 'tokens' | 'party' | undefined;
   isCommandPaletteOpen: boolean;
