@@ -162,15 +162,15 @@ export default function DMScreen({ isOpen, onClose, inTab = false, tabVisible = 
       <div className={`atlas-dm-screen ${soundOn ? 'atlas-dm-screen--pages' : ''} ${closing ? 'is-closing' : contentReady ? 'is-visible' : ''}`}>
         {!inTab && (
           <div className="atlas-dm-screen-tab-action">
-            <LabelTooltip label={t('palette.openDMScreenTab')} side="bottom">
+            <LabelTooltip label={t('palette.openDMScreenWindow')} side="bottom">
               <Button type="button" variant="ghost" size="icon" onClick={() => {
                 runInBackground(
                   import('../../dm-screen-view').then(({ showDMScreenView }) => {
                     showDMScreenView(app);
                     handleClose();
                   }),
-                  'Opening the DM screen tab',
-                  t('palette.dmScreenTabFailed'),
+                  'Opening the DM screen window',
+                  t('palette.dmScreenWindowFailed'),
                 );
               }}>
                 <AppWindow />

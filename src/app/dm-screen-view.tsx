@@ -49,7 +49,7 @@ export class DMScreenView extends ItemView {
     this.root = createRoot(this.contentEl);
     this.registerEvent(this.app.workspace.on('layout-change', () => this.followMap()));
     this.app.workspace.onLayoutReady(() => {
-      runInBackground(this.startFollowing(), 'Opening the DM screen tab', t('palette.dmScreenTabFailed'));
+      runInBackground(this.startFollowing(), 'Opening the DM screen tab', t('palette.dmScreenWindowFailed'));
     });
   }
 

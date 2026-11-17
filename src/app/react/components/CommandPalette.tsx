@@ -283,12 +283,12 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "open-dm-screen-window",
       icon: <AppWindow />,
-      label: t('palette.openDMScreenTab'),
+      label: t('palette.openDMScreenWindow'),
       keywords: ["dm", "screen", "window"],
       section: "tools",
       action: () => {
         onClose();
-        runInBackground(showDMScreenView(app), 'Opening the DM screen tab', t('palette.dmScreenTabFailed'));
+        runInBackground(showDMScreenView(app), 'Opening the DM screen tab', t('palette.dmScreenWindowFailed'));
       },
     },
     ...(soundOn ? [{
