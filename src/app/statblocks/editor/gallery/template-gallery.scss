@@ -206,6 +206,7 @@ $frame-height: 250px;
   }
 
   input.atlas-te-gallery__search {
+    @include atlas-text-input;
     height: $input-height-s;
     font-size: $font-ui-small;
   }

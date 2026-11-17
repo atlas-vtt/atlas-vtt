@@ -120,7 +120,7 @@
   @if $size == 's' {
     width: $button-height-s;
     height: $button-height-s;
-    border-radius: $radius-s;
+    border-radius: $radius-m;
 
     svg {
       width: $icon-s;
@@ -205,7 +205,7 @@
   height: var(--input-height);
   padding: 0 $spacing-s;
   background: var(--background-modifier-form-field);
-  border: $border-width-s solid var(--background-modifier-border);
+  border: $border-width-s solid $field-edge;
   border-radius: $radius-m;
   color: var(--text-normal);
   font-size: $font-ui-small;
@@ -219,10 +219,20 @@
   }
 
   &:hover:not(:focus) {
-    border-color: var(--background-modifier-border-hover);
+    border-color: $field-edge-hover;
   }
 
   @include atlas-input-focus;
+}
+
+/// Text box of several lines: the text input's frame and states, its height set by its rows.
+@mixin atlas-text-area {
+  @include atlas-text-input;
+  height: auto;
+  min-height: var(--input-height);
+  padding: $spacing-s;
+  line-height: var(--line-height-normal);
+  resize: vertical;
 }
 
 /// Search field without a frame, for a search row that sits flush in a menu or
@@ -457,9 +467,9 @@
 @mixin atlas-input-focus {
   &:focus {
     outline: none;
-    // The accent softened into the border, with a faint ring: the field in use is told at once, without a hard line.
-    border-color: color-mix(in srgb, var(--interactive-accent) 70%, var(--background-modifier-border));
-    box-shadow: 0 0 0 2px color-mix(in oklch, var(--interactive-accent) 14%, transparent);
+    // The accent, softened, with a faint ring: the field in use is told at once, without a stark line.
+    border-color: $field-edge-focus;
+    box-shadow: $field-focus-ring;
   }
 }
 
@@ -762,11 +772,11 @@
 
 // ── Tab Switcher ────────────────────────────────────────────────────────────
 
-/// Segmented-control container for tab buttons (matches the asset manager header). Its tabs sit $spacing-xs inside
+/// Segmented-control container for tab buttons (matches the asset manager header). Its tabs sit $surface-inset inside
 /// the track and apart, concentric with its corner (`atlas-tab-button`).
 @mixin atlas-tab-switcher {
-  @include atlas-flex-row($gap: $spacing-xs);
-  padding: $spacing-xs;
+  @include atlas-flex-row($gap: $surface-inset);
+  padding: $surface-inset;
   background-color: var(--background-secondary);
   border-radius: $radius-m;
 }
@@ -782,9 +792,9 @@
   align-items: center;
   gap: $spacing-xs;
   // Never under the 24 px WCAG 2.2 asks of a target (2.5.8): at Obsidian's 30 px control height the track grows to 32.
-  height: max(#{$button-height-s}, calc(var(--input-height) - 2 * #{$spacing-xs}));
+  height: max(#{$button-height-s}, calc(var(--input-height) - 2 * #{$surface-inset}));
   padding: 0 $spacing-m;
-  border-radius: calc(#{$radius-m} - #{$spacing-xs});
+  border-radius: $control-inset-radius;
   color: var(--text-muted);
   font-size: $font-ui-small;
   font-weight: $font-weight-medium;

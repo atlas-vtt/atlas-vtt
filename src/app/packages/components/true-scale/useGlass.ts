@@ -154,6 +154,14 @@ export function useGlass(
       setShown((now) => (now?.look === next?.look && now?.pinned === next?.pinned && now?.saved === next?.saved && now?.staged === next?.staged ? now : next));
       place();
     };
+    const read = (): void => {
+      glass = readGlass(service, tabId(), {
+        // Sized on this map, which players do not see: its grid decides true scale
+        size: () => service.playerViewWorldSize(frameSourceOf(view)),
+        centre: () => ghostAt ?? viewport.center,
+      }, stagedAt);
+      show();
+    };
     /** Reads the glass anew: after anything but the GM's camera moving. */
     const refresh = (): void => {
       saved.refresh();
@@ -169,22 +177,22 @@ export function useGlass(
         if (arrival === 'arrived') stagedAt = null;
         if (arrival !== 'waiting') arriving = null;
       }
-      glass = readGlass(service, tabId(), {
-        // Sized on this map, which players do not see: its grid decides true scale
-        size: () => service.playerViewWorldSize(frameSourceOf(view)),
-        centre: () => ghostAt ?? viewport.center,
-      }, stagedAt);
-      show();
+      read();
     };
     /**
      * The GM's camera or the ghost moved: a ghost not placed by hand stays in the middle of the
-     * view. `redraw` false where the outline redrew itself, on the viewport's own events.
+     * view, and players who follow the GM on the map they see are framed through this camera,
+     * not the one of the last frame they were shown. `redraw` false where the outline redrew
+     * itself, on the viewport's own events.
      */
     const follow = (redraw: boolean): void => {
       if (glass?.look === 'ghost' && !glass.players) {
         const { x, y } = ghostAt ?? viewport.center;
         glass = { look: 'ghost', frame: { ...glass.frame, centerX: x, centerY: y } };
         outline.setGlass(glass.frame, 'ghost');
+      } else if (glass && !service.isFrozen()) {
+        read();
+        return;
       } else if (redraw) {
         outline.redraw();
       }

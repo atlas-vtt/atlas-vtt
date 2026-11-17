@@ -1,6 +1,6 @@
 import { isCount, parseAsset } from './asset.ts';
 import { parseSeq } from './delta.ts';
-import { parseFog } from './fog.ts';
+import { parseFog, parseFogEdge } from './fog.ts';
 import type { GmMessage } from './game.ts';
 import { parseInitiative } from './initiative.ts';
 import { parseLightingScene, parseSight } from './lighting.ts';
@@ -27,7 +27,9 @@ export function parseSceneInput(value: Record<string, unknown>, scene: string): 
     case 'fog': {
       const fog = parseFog(value.fog);
       const seq = parseSeq(value.seq);
-      return fog === undefined || seq === null ? null : { t: 'fog', scene, ...(seq !== undefined && { seq }), fog };
+      // An edge that cannot be read is left out: the fog still shows, with a hard edge.
+      const edge = value.edge === undefined ? null : parseFogEdge(value.edge);
+      return fog === undefined || seq === null ? null : { t: 'fog', scene, ...(seq !== undefined && { seq }), fog, ...(edge !== null && { edge }) };
     }
     case 'lighting': {
       const lighting = parseLightingScene(value);

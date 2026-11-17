@@ -21,7 +21,7 @@ export interface DialogShellOptions {
 
 let shellCount = 0;
 
-/** Marks Atlas' host while it holds a dialog, so `tooltip.css` hides the tooltips behind it. */
+/** Marks Atlas' host while it holds a dialog, so `tooltip.scss` hides the tooltips behind it. */
 const HOLDS_DIALOG = 'atlas-portal-host--dialog';
 
 /** Marks `host` until `root` and every other dialog in it are gone: callers close a dialog by removing its root. */

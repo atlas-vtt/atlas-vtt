@@ -174,8 +174,10 @@ function whenQuiet(doc: Document, run: () => void): void {
 function warmUp(renderer: DiceRenderer, win: Window): void {
   const rem = parseFloat(win.getComputedStyle(win.document.documentElement).fontSize) || 16;
   renderer.setSize(Math.ceil(WARM_REM[0] * rem), Math.ceil(WARM_REM[1] * rem), stagePixelRatio(win));
-  renderer.setPlan(DIE_BODIES.map((sides) => ({ sides })));
-  renderer.render(DIE_BODIES.map((sides) => ({ sides, anim: { ...makeDie(Math.random), w: [...WARM_SPIN] } })), 0);
+  // The percentile roll's tens die too: its faces read in tens, an atlas of their own.
+  const bodies = [...DIE_BODIES.map((sides) => ({ sides })), { sides: 10 as const, role: 'tens' as const }];
+  renderer.setPlan(bodies);
+  renderer.render(bodies.map(({ sides }) => ({ sides, anim: { ...makeDie(Math.random), w: [...WARM_SPIN] } })), 0);
   renderer.reset();
 }
 

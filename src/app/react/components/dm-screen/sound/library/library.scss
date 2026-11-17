@@ -77,6 +77,8 @@
   }
 }
 
+$root-more-inset: (40px - 28px) * 0.5;
+
 .atlas-sound-lib__root {
   position: relative;
   display: flex;
@@ -94,10 +96,16 @@
     transition: opacity 120ms var(--atlas-sound-lib-press);
   }
 
+  // As far inside the root's end as from its top and bottom, concentric with its corner (the
+  // button's own corner, `library-rows.scss`, comes later: hence `button` for this one).
   .atlas-sound-lib__more {
     position: absolute;
-    right: 4px;
+    right: $root-more-inset;
     opacity: 0;
+  }
+
+  button.atlas-sound-lib__more {
+    border-radius: $radius-m - $root-more-inset;
   }
 
   &:hover .atlas-sound-lib__more,

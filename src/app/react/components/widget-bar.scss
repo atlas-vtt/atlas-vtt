@@ -102,9 +102,12 @@ $widget-bar-offset: $spacing-s;
   }
 }
 
+// The icon fills the card's left corners; the value and label end on the menus' text edge, $spacing-m
+// inside the card's padding.
 .atlas-widget-content {
   @include atlas-flex-col($spacing-xs);
   align-items: center;
+  padding-inline-end: $spacing-m;
 }
 
 .atlas-widget-value-row {

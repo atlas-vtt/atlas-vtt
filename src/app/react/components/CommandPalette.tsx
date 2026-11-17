@@ -534,7 +534,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "experimental-features",
       icon: <FlaskConical />,
-      label: "Experimental features",
+      label: t('settings.experimental.heading'),
       keywords: ["beta", "feature", "dynamic lighting", "walls", "lights", "vision"],
       section: "settings",
       hasSubmenu: true,

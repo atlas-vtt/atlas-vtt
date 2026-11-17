@@ -99,8 +99,9 @@
   z-index: $z-atlas-dropdown;
   display: flex;
   flex-direction: column;
-  gap: $spacing-s;
-  padding: $spacing-s;
+  // Its search and its rows stand $surface-inset inside the border, concentric with its corners.
+  gap: $surface-inset;
+  padding: $surface-inset;
   border: $border-width-m solid color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
   border-radius: $surface-radius;
   background: var(--background-primary);

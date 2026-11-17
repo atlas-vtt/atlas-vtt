@@ -1,4 +1,5 @@
 import { createDialogShell } from './dialogShell';
+import { createButton } from './buttonElement';
 import { t } from '../i18n';
 
 export interface TextInputDialogOptions {
@@ -26,8 +27,8 @@ export function promptForText(options: TextInputDialogOptions): Promise<string |
     textarea.value = options.initialValue ?? '';
     if (options.placeholder) textarea.placeholder = options.placeholder;
 
-    const cancelButton = footer.createEl('button', { text: t('common.cancel') });
-    const confirmButton = footer.createEl('button', { cls: 'mod-cta', text: options.confirmLabel });
+    const cancelButton = createButton(footer, { text: t('common.cancel'), variant: 'outline', size: 'sm' });
+    const confirmButton = createButton(footer, { text: options.confirmLabel, size: 'sm' });
     const confirm = (): void => {
       const text = textarea.value.trim();
       close(text !== '' || options.allowEmpty === true ? text : null);

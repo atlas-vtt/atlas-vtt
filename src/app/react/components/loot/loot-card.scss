@@ -1,15 +1,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Loot card — one item, in the DM's loot roller and the players' loot window
 // ═══════════════════════════════════════════════════════════════════════════
-// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss. Both
-// windows keep their cards $loot-card-inset inside their border, so a card's
-// corner runs concentric with the window's.
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss. A card is
+// content of a list deep inside its window, not one of its corner controls, so
+// it keeps a control's corner.
 
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
-
-$loot-card-inset: calc(#{$spacing-m} + #{$border-width-m});
-$loot-inset-radius: atlas-panel-inset-radius-value($loot-card-inset);
 
 .atlas-loot-card {
   // The rarity's colour: the classic ladder in the theme's own hues.
@@ -17,7 +14,7 @@ $loot-inset-radius: atlas-panel-inset-radius-value($loot-card-inset);
   @include atlas-flex-col($spacing-s);
   padding: $spacing-m;
   border: $border-width-s solid var(--background-modifier-border);
-  border-radius: $loot-inset-radius;
+  border-radius: $radius-m;
   background: var(--background-secondary);
 
   &--fresh {

@@ -1,4 +1,6 @@
 import { createDialogShell } from './dialogShell';
+import { createButton } from './buttonElement';
+import type { ButtonVariant } from '../packages/components/primitives/buttonClasses';
 import { t } from '../i18n';
 
 export interface ConfirmDialogOptions {
@@ -20,6 +22,13 @@ export interface DialogChoice<T> {
   /** `cta` marks the recommended choice, `warning` one that deletes or overwrites. */
   style?: 'cta' | 'warning';
 }
+
+/** The button each choice style takes; a choice without one looks like Cancel. */
+export const CHOICE_VARIANTS: Readonly<Record<NonNullable<DialogChoice<unknown>['style']> | 'plain', ButtonVariant>> = {
+  cta: 'default',
+  warning: 'destructive',
+  plain: 'outline',
+};
 
 export interface ChoiceDialogOptions<T> {
   title: string;
@@ -57,14 +66,9 @@ export function chooseAction<T>(options: ChoiceDialogOptions<T>): Promise<T | nu
       }
     });
 
-    const cancel = footer.createEl('button', { text: t('common.cancel') });
-    cancel.addEventListener('click', () => close(null));
-    const buttons = options.choices.map((choice) => {
-      const button = footer.createEl('button', { text: choice.label });
-      if (choice.style) button.addClass(`mod-${choice.style}`);
-      button.addEventListener('click', () => close(choice.value));
-      return button;
-    });
+    const cancel = createButton(footer, { text: t('common.cancel'), variant: 'outline', size: 'sm', onClick: () => close(null) });
+    const buttons = options.choices.map((choice) =>
+      createButton(footer, { text: choice.label, variant: CHOICE_VARIANTS[choice.style ?? 'plain'], size: 'sm', onClick: () => close(choice.value) }));
 
     root.addEventListener('click', (event) => {
       if (event.target === root) close(null);

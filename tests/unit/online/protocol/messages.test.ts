@@ -260,6 +260,8 @@ describe('fog and lighting', () => {
     const fog = { t: 'fog', scene: 's', fog: [{ type: 'brush', erase: false, points: [1, 2, 3, 4], radius: 5 }, { type: 'rectangle', erase: true, x: 0, y: 0, width: 5, height: 5 }] };
     expect(parseGmMessage(fog)).toEqual(fog);
     expect(parseGmMessage({ t: 'fog', scene: 's', fog: null })).toEqual({ t: 'fog', scene: 's', fog: null });
+    expect(parseGmMessage({ ...fog, edge: { style: 'crackle', width: 15 } })).toEqual({ ...fog, edge: { style: 'crackle', width: 15 } });
+    expect(parseGmMessage({ ...fog, edge: { style: 'soft', width: 0 } })).toEqual({ ...fog, edge: { style: 'soft', width: 0 } });
     expect(parseGmMessage(lighting)).toEqual(lighting);
     expect(parseGmMessage(sight)).toEqual(sight);
     expect(parseGmMessage({ ...sight, blind: true })).toEqual({ ...sight, blind: true });
@@ -270,6 +272,10 @@ describe('fog and lighting', () => {
   it('refuse a malformed operation, wall, vision or effect, explored memory that is no PNG and a part past its count', () => {
     expect(parseGmMessage({ t: 'fog', scene: 's', fog: [{ type: 'brush', erase: false, points: [1, 2, 3], radius: 5 }] })).toBeNull();
     expect(parseGmMessage({ t: 'fog', scene: 's', fog: [{ type: 'lasso', erase: 'no', points: [] }] })).toBeNull();
+    // An edge that cannot be read leaves the fog as it is, with a hard edge
+    for (const edge of [{ style: 'blur', width: 15 }, { style: 'soft', width: -1 }, { style: 'soft', width: 301 }, { style: 'soft', width: Number.NaN }, 'soft']) {
+      expect(parseGmMessage({ t: 'fog', scene: 's', fog: [], edge })).toEqual({ t: 'fog', scene: 's', fog: [] });
+    }
     expect(parseGmMessage({ ...lighting, walls: [{ p: [0, 0, 10] }] })).toBeNull();
     expect(parseGmMessage({ ...lighting, walls: [{ p: [0, 0, 10, 10], door: 'locked' }] })).toBeNull();
     expect(parseGmMessage({ ...sight, tokens: [{ ...sight.tokens[0], id: 'gm-token' }] })).toBeNull();

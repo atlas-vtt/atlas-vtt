@@ -5,7 +5,8 @@
 // (AtlasLinkEmbed.ts), in the look of a note pin's map preview
 // (map-link-preview.scss): the art edge to edge and its name over a shade
 // along the bottom. They render inside Obsidian's `.internal-embed`, outside
-// .atlas-vtt-plugin, hence the top-level classes.
+// .atlas-vtt-plugin, hence the top-level classes; the card itself carries
+// .atlas-vtt-plugin, so its buttons are Atlas' own (`createButton`).
 
 $embed-token-size: 56px;
 // Room the caption takes over the art: its padding and two lines of text
@@ -104,14 +105,14 @@ $embed-caption-height: calc(2 * #{$spacing-m} + 2.6em);
   font-size: $font-ui-smaller;
 }
 
-// Shown while the pointer is over the card, or the button has keyboard focus
-.atlas-link-embed__action {
+// Shown while the pointer is over the card, or the button has keyboard focus. Above Atlas'
+// button rules (`.atlas-vtt-plugin .btn`), whose transition and gap it changes.
+.atlas-link-embed__caption > .atlas-link-embed__action.btn {
   flex: none;
-  display: inline-flex;
-  align-items: center;
   gap: $spacing-xs;
   opacity: 0;
-  transition: opacity $transition-normal $transition-ease-out;
+  transition: opacity $transition-normal $transition-ease-out,
+              background-color $transition-normal $transition-ease;
 
   .atlas-link-embed__card:hover &,
   &:focus-visible {
@@ -125,8 +126,9 @@ $embed-caption-height: calc(2 * #{$spacing-m} + 2.6em);
 }
 
 // A menu of the other ways to hand the file to Atlas: the button's own height, square
-.atlas-link-embed__more {
-  justify-content: center;
+.atlas-link-embed__caption > .atlas-link-embed__more.btn {
+  width: var(--input-height);
+  padding: 0;
 }
 
 .atlas-link-embed__action-icon {

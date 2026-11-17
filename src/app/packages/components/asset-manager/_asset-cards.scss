@@ -84,7 +84,8 @@
   position: relative;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: $radius-m;
+  // $spacing-xs inside the card: concentric with its corner.
+  border-radius: $control-inset-radius;
   background: var(--background-secondary);
   overflow: hidden;
   transition: transform $transition-press $transition-ease-out;

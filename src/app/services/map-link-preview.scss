@@ -10,6 +10,7 @@
   overflow: hidden;
 
   @include atlas-elevated-surface;
+  @include atlas-panel-radius($surface-radius);
 
   animation: note-preview-slide-in $transition-normal $transition-ease-out;
 }
@@ -24,7 +25,8 @@
   display: block;
   width: 100%;
   height: auto;
-  border-radius: $radius-m;
+  // Flush with the card's border: its corner is the card's inner one.
+  border-radius: var(--atlas-panel-inner-radius);
 }
 
 // ── Button overlay ───────────────────────────────────────────────────────
@@ -40,7 +42,7 @@
   // Gradient scrim so the button is readable on any thumbnail
   background: linear-gradient(to top, rgba(0, 0, 0, 0.65) 0%, transparent 100%);
   pointer-events: none;
-  border-radius: 0 0 $radius-m $radius-m;
+  border-radius: 0 0 var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius);
 }
 
 .atlas-map-link-preview__button {

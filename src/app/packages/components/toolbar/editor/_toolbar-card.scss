@@ -31,7 +31,8 @@ $card-content-width: 280px;
   }
 }
 
-// 16:10, stored at twice its size; its corners that face the card's run concentric with them.
+// 16:10, stored at twice its size. A card of content, not controls: the picture stands $spacing-s
+// inside, deeper than a surface's corner controls, so it keeps a control's corner.
 .atlas-toolbar-card__image {
   display: block;
   width: 100%;
@@ -40,7 +41,6 @@ $card-content-width: 280px;
   object-fit: cover;
   background: var(--background-secondary);
   border-radius: $radius-m;
-  @include atlas-panel-inset-radius($spacing-s, top-left, top-right);
 }
 
 // The heading and its sentence read as one block of text.

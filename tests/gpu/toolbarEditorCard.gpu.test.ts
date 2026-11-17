@@ -70,8 +70,8 @@ describe('the toolbar editor\'s card in a real layout', () => {
     await image.decode();
     expect(image.naturalWidth).toBe(560);
     // 8 px inside the card, deeper than a surface's corner controls: the control radius.
-    expect(getComputedStyle(image).borderTopLeftRadius).toBe('8px');
-    expect(getComputedStyle(image).borderBottomLeftRadius).toBe('8px');
+    expect(getComputedStyle(image).borderTopLeftRadius).toBe('10px');
+    expect(getComputedStyle(image).borderBottomLeftRadius).toBe('10px');
 
     // Above the tray, centred over its tool.
     const box = rectOf(card());

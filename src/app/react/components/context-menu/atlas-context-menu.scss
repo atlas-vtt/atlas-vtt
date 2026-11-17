@@ -1,7 +1,8 @@
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-// Rows stand $surface-inset inside the menu's border, concentric with its corner.
+// Rows stand $surface-inset inside the menu's border, concentric with its corner, and their text
+// $spacing-m further in: the text edge of every Atlas menu.
 $ctx-row-height: 28px;
 $ctx-inset: $surface-inset;
 
@@ -71,7 +72,7 @@ $ctx-inset: $surface-inset;
   justify-content: space-between;
   gap: $spacing-xs;
   min-height: $ctx-row-height;
-  padding: 0 $spacing-s;
+  padding: 0 $spacing-m;
   @include atlas-panel-inset-radius($ctx-inset);
   background: transparent;
   color: var(--text-normal);
@@ -191,7 +192,8 @@ $ctx-inset: $surface-inset;
   height: $button-height-s;
   padding: 0;
   border: none;
-  border-radius: $radius-s;
+  // As far inside its row from top and bottom as the row's corner allows: its curve runs with the row's.
+  border-radius: calc(#{$radius-m} - (#{$ctx-row-height} - #{$button-height-s}) / 2);
   background: transparent;
   box-shadow: none;
   color: var(--text-muted);
@@ -258,7 +260,7 @@ $ctx-inset: $surface-inset;
   align-items: center;
   gap: $spacing-s;
   min-height: $ctx-row-height;
-  padding: 0 $spacing-s;
+  padding: 0 $spacing-m;
   border: none;
   @include atlas-panel-inset-radius($ctx-inset);
   background: transparent;

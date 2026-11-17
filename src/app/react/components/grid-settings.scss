@@ -127,45 +127,6 @@
   gap: 1rem;
 }
 
-.atlas-grid-slider {
-  flex: 1;
-  -webkit-appearance: none;
-  appearance: none;
-  height: 4px;
-  background: var(--background-modifier-border);
-  outline: none;
-  border-radius: $radius-s;
-  
-  &::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    background: var(--interactive-accent);
-    cursor: pointer;
-    border-radius: 50%;
-    transition: transform 0.2s ease;
-    
-    &:hover {
-      transform: scale(1.2);
-    }
-  }
-  
-  &::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    background: var(--interactive-accent);
-    cursor: pointer;
-    border-radius: 50%;
-    border: none;
-    transition: transform 0.2s ease;
-    
-    &:hover {
-      transform: scale(1.2);
-    }
-  }
-}
-
 .atlas-grid-size-value,
 .atlas-grid-opacity-value {
   min-width: 4rem;
@@ -181,32 +142,9 @@
 }
 
 .atlas-grid-units-input {
+  @include atlas-text-input;
   width: 4rem;
-  padding: 0.5rem;
-  background-color: var(--background-modifier-form-field);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: $radius-s;
-  color: var(--text-normal);
   text-align: center;
-  
-  &:focus {
-    outline: none;
-    border-color: var(--interactive-accent);
-  }
-}
-
-.atlas-grid-units-select {
-  padding: 0.5rem 0.75rem;
-  background-color: var(--background-modifier-form-field);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: $radius-s;
-  color: var(--text-normal);
-  cursor: pointer;
-  
-  &:focus {
-    outline: none;
-    border-color: var(--interactive-accent);
-  }
 }
 
 .atlas-grid-units-label {
@@ -344,37 +282,6 @@
   gap: 0.75rem;
   padding: 1.5rem;
   border-top: 1px solid var(--background-modifier-border);
-}
-
-.atlas-grid-settings-cancel,
-.atlas-grid-settings-apply {
-  padding: 0.5rem 1.5rem;
-  border-radius: $radius-s;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.atlas-grid-settings-cancel {
-  background-color: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  color: var(--text-normal);
-  
-  &:hover {
-    background-color: var(--background-modifier-hover);
-  }
-}
-
-.atlas-grid-settings-apply {
-  background-color: var(--interactive-accent);
-  border: none;
-  color: var(--text-on-accent);
-  pointer-events: auto;
-  cursor: pointer;
-  
-  &:hover {
-    background-color: var(--interactive-accent-hover);
-  }
 }
 
 // Ensure all interactive elements have proper pointer events

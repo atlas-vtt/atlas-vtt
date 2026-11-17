@@ -14,7 +14,6 @@ $loot-height: 760px;
 $loot-resize-hit: 8px;
 $loot-sidebar-width: 272px;
 $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
-// Keep equal to $loot-card-inset in loot-card.scss: cards run concentric with the window.
 
 .atlas-loot-roller {
   @include atlas-elevated-surface;
@@ -74,8 +73,8 @@ $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
     &::after {
       content: '';
       position: absolute;
-      right: 4px;
-      bottom: 4px;
+      right: $surface-inset;
+      bottom: $surface-inset;
       width: 14px;
       height: 14px;
       border-right: $border-width-l solid var(--text-faint);
