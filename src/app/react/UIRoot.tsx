@@ -14,6 +14,7 @@ import { GridAlignmentOverlay } from './components/GridAlignmentOverlay';
 import { ResponsiveWidgetBar } from './components/ResponsiveWidgetBar';
 import { useViewStoreHook, useAtlasStore } from './ViewStoreContext';
 import { ViewActionsMenu } from './components/ViewActionsMenu';
+import { HotkeyHelpButton } from './components/HotkeyHelpButton';
 import { UndoRedoControls } from './components/UndoRedoControls';
 import { BottomToolbarRow } from './components/BottomToolbarRow';
 import { DrawToolBar } from '../packages/components/toolbar/DrawToolBar';
@@ -62,7 +63,6 @@ interface UIRootProps {
  */
 export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   const settings = SettingsService.forApp(app);
-  const [hotkeyHelpOpen, setHotkeyHelpOpen] = useState(false);
   const [isSceneSwitcherOpen, setSceneSwitcherOpen] = useState(false);
 
   // Get the store directly from context
@@ -75,6 +75,8 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   const setGridAlignmentOpen = useAtlasStore(s => s.setGridAlignmentOpen);
   const isDiceLogOpen = useAtlasStore(s => s.isDiceLogOpen);
   const setDiceLogOpen = useAtlasStore(s => s.setDiceLogOpen);
+  const isHotkeyHelpOpen = useAtlasStore(s => s.isHotkeyHelpOpen);
+  const setHotkeyHelpOpen = useAtlasStore(s => s.setHotkeyHelpOpen);
 
   useMapNavigationHotkeys(view, store, settings);
 
@@ -116,7 +118,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!canRunMapHotkeys(e, view?.viewId)) return;
       if (matchesMapHotkey(e, 'help', settings)) {
-        e.preventDefault(); setHotkeyHelpOpen(true); return;
+        e.preventDefault(); store.getState().setHotkeyHelpOpen(true); return;
       }
 
       // Enter: Toggle Dice Roll Log (both DM and player views)
@@ -170,7 +172,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   return (
     <AtlasUIContext.Provider value={contextValue}>
       <ContextMenuProvider>
-        {hotkeyHelpOpen && (
+        {isHotkeyHelpOpen && (
           <PanelBoundary name="the hotkey help">
             <HotkeyHelp settings={settings} isPlayerView={isPlayerView} onClose={() => setHotkeyHelpOpen(false)} />
           </PanelBoundary>
@@ -208,10 +210,15 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
             </div>
           </div>
 
-          {/* Bottom row — undo/redo docked left of the main toolbar, view actions (DM only) at the right edge */}
+          {/* Bottom row — undo/redo docked left of the main toolbar; view actions and the shortcuts button (DM only) at the right edge */}
           <BottomToolbarRow
             start={!isPlayerView && <PanelBoundary name="undo and redo"><UndoRedoControls viewId={view?.viewId} /></PanelBoundary>}
-            end={!isPlayerView && <PanelBoundary name="the view actions"><ViewActionsMenu app={app} filePath={view?.file?.path} /></PanelBoundary>}
+            end={!isPlayerView && (
+              <>
+                <PanelBoundary name="the view actions"><ViewActionsMenu app={app} filePath={view?.file?.path} /></PanelBoundary>
+                <PanelBoundary name="the keyboard shortcuts button"><HotkeyHelpButton /></PanelBoundary>
+              </>
+            )}
             above={!isPlayerView && (
               <>
                 <PanelBoundary name="the turn banner"><TurnAnnouncer /></PanelBoundary>

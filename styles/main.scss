@@ -497,8 +497,11 @@ body.theme-light {
     grid-column: 1;
   }
 
+  // The view actions and the keyboard shortcuts bar, which keeps the bottom right corner.
   .atlas-bottom-toolbar-row__end {
     grid-column: 3;
+    align-items: center;
+    gap: $spacing-s;
   }
 
   // Main toolbar and undo/redo bar - uses elevated surface pattern
