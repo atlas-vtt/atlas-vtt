@@ -174,9 +174,9 @@ export default function DMScreen({ isOpen, onClose, inTab = false, tabVisible = 
             <LabelTooltip label={t('palette.openDMScreenWindow')} side="bottom">
               <Button type="button" variant="ghost" size="icon" onClick={() => {
                 runInBackground(
-                  import('../../dm-screen-view').then(({ showDMScreenView }) => {
-                    showDMScreenView(app);
+                  import('../../dm-screen-view').then(async ({ showDMScreenView }) => {
                     handleClose();
+                    await showDMScreenView(app);
                   }),
                   'Opening the DM screen window',
                   t('palette.dmScreenWindowFailed'),
