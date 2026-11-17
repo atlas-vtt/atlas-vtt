@@ -15,16 +15,18 @@
   flex-wrap: wrap;
   flex-shrink: 0;
 
-  > :first-child:not(.atlas-loot-rollbar__actions) {
+  // A table's summary takes the line; the rarity tray only as much as its chips.
+  > .atlas-tables-summary {
     flex: 1 1 auto;
     min-width: 0;
   }
 }
 
-// Rarity filter: quiet chips, the rarity's colour only in its gem. Switched-off
-// rarities are never rolled and fade back.
+// Rarity filter: one tray like the Latest / History switch, a rarity that is
+// rolled stands raised in it, one switched off lies flat and fades. The
+// rarity's colour is only in its gem.
 .atlas-loot-rarities {
-  @include atlas-flex-row($spacing-xs);
+  @include atlas-tab-switcher;
   flex-wrap: wrap;
 }
 
@@ -35,10 +37,11 @@
   align-items: center;
   gap: $spacing-s;
   min-width: 0;
-  height: $button-height-s + $spacing-xs;
+  height: max(#{$button-height-s}, calc(var(--input-height) - 2 * #{$spacing-xs}));
   padding: 0 $spacing-s;
   border: none;
-  border-radius: $radius-full;
+  border-radius: calc(#{$radius-m} - #{$spacing-xs});
+  outline: none;
   box-shadow: none;
   background: transparent;
   color: var(--text-faint);
@@ -47,6 +50,7 @@
   white-space: nowrap;
   cursor: pointer;
   transition: background-color $transition-fast $transition-ease,
+              box-shadow $transition-fast $transition-ease,
               color $transition-fast $transition-ease,
               transform $transition-press $transition-ease-out;
 
@@ -56,25 +60,25 @@
   &[data-rarity='legendary'] { --atlas-loot-tone: var(--color-orange); }
 
   &:hover {
+    background: transparent;
     color: var(--text-muted);
-    background: var(--background-modifier-hover);
   }
 
   &:active {
     transform: scale(0.96);
   }
 
+  // Atlas shows no focus rings: a click must leave the chip as it looks.
+  &:focus,
   &:focus-visible {
-    @include atlas-focus-ring;
+    outline: none;
+    box-shadow: none;
   }
 
   &.is-on {
-    background: var(--background-modifier-hover);
+    background: var(--background-primary);
+    box-shadow: $shadow-sm;
     color: var(--text-normal);
-  }
-
-  &.is-on:hover {
-    background: var(--background-modifier-active-hover);
   }
 }
 
