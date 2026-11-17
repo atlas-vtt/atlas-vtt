@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ExternalLink } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
@@ -35,7 +35,9 @@ function DocsPanel(): React.ReactElement {
   const windowVariants = useDialogWindowVariants();
   const { position, panelRef, startDrag, isDragging } = useDraggablePosition(rightEdge, { margin: MARGIN });
   const [size, setSize] = useState<PanelArea | null>(null);
-  const startResize = usePanelResize(panelRef, { min: MIN_SIZE, margin: MARGIN, onResizeEnd: setSize });
+  // The site lays out and repaints its whole page at every size it is given, so it is sized once, on release.
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const startResize = usePanelResize(panelRef, { min: MIN_SIZE, margin: MARGIN, onResizeEnd: setSize, held: frameRef });
 
   /** Closes the panel; focus in it (on the frame too) goes back to the map, so no key is typed into a closing page. */
   const close = useStableCallback((): void => {
@@ -92,7 +94,7 @@ function DocsPanel(): React.ReactElement {
         <CloseButton onClick={close} aria-label={t('docs.close')} />
       </header>
 
-      <DocsFrame />
+      <DocsFrame frameRef={frameRef} />
 
       <div className="atlas-docs-panel__resize atlas-docs-panel__resize--right" onPointerDown={startResize('right')} />
       <div className="atlas-docs-panel__resize atlas-docs-panel__resize--bottom" onPointerDown={startResize('bottom')} />

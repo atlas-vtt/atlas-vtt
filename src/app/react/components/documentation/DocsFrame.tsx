@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, type RefObject } from 'react';
 import { WifiOff } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { Skeleton, SkeletonGroup, skeletonTextWidth } from '../../../packages/components/primitives/Skeleton';
@@ -38,12 +38,18 @@ function DocsOffline({ onRetry }: { onRetry: () => void }): React.ReactElement {
   );
 }
 
+interface DocsFrameProps {
+  /** The frame element, for the panel to hold at its size while it is resized. */
+  frameRef: RefObject<HTMLIFrameElement | null>;
+}
+
 /** The site in a frame; its own state, so every mount starts with the skeleton. */
-function LiveFrame(): React.ReactElement {
+function LiveFrame({ frameRef }: DocsFrameProps): React.ReactElement {
   const [loaded, setLoaded] = useState(false);
   return (
     <div className="atlas-docs-panel__frame-area">
       <iframe
+        ref={frameRef}
         className={`atlas-docs-panel__frame${loaded ? ' is-loaded' : ''}`}
         src={ATLAS_DOCS_URL}
         aria-label={t('docs.panel')}
@@ -63,10 +69,10 @@ function LiveFrame(): React.ReactElement {
  * The live documentation site, with a skeleton until its first page has loaded. Offline it
  * shows why instead of an empty frame, and loads again once the connection is back.
  */
-export function DocsFrame(): React.ReactElement {
+export function DocsFrame({ frameRef }: DocsFrameProps): React.ReactElement {
   const online = useOnlineStatus();
   // A retry renders again, which reads the connection anew, and gives the frame a fresh load.
   const [attempt, setAttempt] = useState(0);
   const retry = (): void => setAttempt((n) => n + 1);
-  return online ? <LiveFrame key={attempt} /> : <DocsOffline onRetry={retry} />;
+  return online ? <LiveFrame key={attempt} frameRef={frameRef} /> : <DocsOffline onRetry={retry} />;
 }

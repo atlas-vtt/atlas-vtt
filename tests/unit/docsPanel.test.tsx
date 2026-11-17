@@ -30,6 +30,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
   Reflect.deleteProperty(window.navigator, 'onLine');
 });
@@ -73,6 +74,24 @@ describe('the documentation panel', () => {
     act(() => { window.dispatchEvent(new Event('online')); });
     expect(screen.queryByText('You are offline')).toBeNull();
     expect(screen.getByLabelText('Atlas documentation', { selector: 'iframe' })).toBeTruthy();
+  });
+
+  it('holds the page at its size while the window is resized, and sizes it once on release', () => {
+    const { container } = render(<ViewStoreProvider store={createDocsStore(true)}><DocsWindow /></ViewStoreProvider>);
+    const frame = screen.getByLabelText('Atlas documentation', { selector: 'iframe' }) as HTMLIFrameElement;
+    Object.defineProperty(frame, 'offsetWidth', { configurable: true, value: 1080 });
+    Object.defineProperty(frame, 'offsetHeight', { configurable: true, value: 760 });
+    const corner = container.querySelector('.atlas-docs-panel__resize--corner')!;
+    vi.stubGlobal('PointerEvent', MouseEvent); // jsdom has none, and a plain Event carries no button
+
+    fireEvent.pointerDown(corner, { button: 0, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(window, { clientX: 40, clientY: 60 });
+    expect(frame.style.width).toBe('1080px');
+    expect(frame.style.height).toBe('760px');
+
+    fireEvent.pointerUp(window);
+    expect(frame.style.width).toBe('');
+    expect(frame.style.height).toBe('');
   });
 
   it('closes on Escape while it holds focus', () => {
