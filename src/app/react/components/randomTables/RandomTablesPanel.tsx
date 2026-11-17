@@ -146,6 +146,11 @@ function RandomTablesPanel(): React.ReactElement {
     },
   }), [app, shownIds]);
 
+  /** The strip the window is dragged by, over the main column; Close lies in the window's corner above it. */
+  const header = (content?: React.ReactNode): React.ReactElement => (
+    <header className="atlas-loot-roller__header" onPointerDown={startDrag}>{content}</header>
+  );
+
   const hasSources = librarySources(library).length > 0;
   const basesOff = !library.basesAvailable && library.items.tables.length === 0 && library.text.length === 0;
 
@@ -160,20 +165,18 @@ function RandomTablesPanel(): React.ReactElement {
       exit="exit"
       aria-label={t('loot.panel')}
     >
-      <header className="atlas-loot-roller__header" onPointerDown={startDrag}>
-        <h2 className="atlas-loot-roller__title">{t('loot.title')}</h2>
-        <CloseButton onClick={() => setOpen(false)} aria-label={t('loot.close')} />
-      </header>
-
       {collectionId && !ready ? (
-        <TablesSkeleton />
+        <TablesSkeleton header={header()} />
       ) : !collectionId || !hasSources || basesOff ? (
-        <LootEmptyState
-          inCollection={collectionId !== null}
-          basesOff={basesOff && hasSources}
-          onNewTable={openImporter}
-          onUseNote={openNoteTables}
-        />
+        <>
+          {header()}
+          <LootEmptyState
+            inCollection={collectionId !== null}
+            basesOff={basesOff && hasSources}
+            onNewTable={openImporter}
+            onUseNote={openNoteTables}
+          />
+        </>
       ) : (
         <div className="atlas-loot-roller__body">
           <LootRollerTutorials hasRarities={sourceRoll.rarityCounts.size > 0} rolled={freshRollId !== null} />
@@ -198,6 +201,14 @@ function RandomTablesPanel(): React.ReactElement {
             />
           </aside>
           <div className="atlas-loot-roller__main">
+            {header(
+              <LootPaneTabs
+                pane={state.pane}
+                historyCount={history.length}
+                onSelect={(pane) => update({ pane })}
+                onClearHistory={() => LootHistoryStore.forApp(app).clear(collectionId)}
+              />,
+            )}
             <div className="atlas-loot-rollbar">
               {source?.kind === 'table' ? (
                 <TableSummary
@@ -224,12 +235,6 @@ function RandomTablesPanel(): React.ReactElement {
                 onRoll={roll}
               />
             </div>
-            <LootPaneTabs
-              pane={state.pane}
-              historyCount={history.length}
-              onSelect={(pane) => update({ pane })}
-              onClearHistory={() => LootHistoryStore.forApp(app).clear(collectionId)}
-            />
             <div className="atlas-loot-list">
               {state.pane === 'results' ? (
                 <LootResults roll={state.lastRoll} fresh={state.lastRoll?.id === freshRollId} {...cardHandlers} generator={generatorCards.latest} />
@@ -245,6 +250,8 @@ function RandomTablesPanel(): React.ReactElement {
           </div>
         </div>
       )}
+
+      <CloseButton className="atlas-loot-roller__close" onClick={() => setOpen(false)} aria-label={t('loot.close')} />
 
       <AnimatePresence>
         {importCollection && (

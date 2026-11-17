@@ -37,7 +37,6 @@ export const loot: Translation = {
   'loot.tabs.latest': '最近一次',
   'loot.tabs.latestHint': '这张地图上的最后一次抽取。',
   'loot.tabs.list': '抽取记录',
-  'loot.title': '随机表',
   'loot.tree.all': '全部',
   'loot.tree.none': '无',
   'loot.tree.tickAll': '勾选此 Base 的每个视图。',
