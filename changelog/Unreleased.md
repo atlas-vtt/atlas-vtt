@@ -21,6 +21,7 @@
 - Hovering a scene tab shows only the scene name, not the file path
 - Grid alignment by measuring now accepts corners anywhere on the map, so levels padded with black can be aligned
 - The player window keeps following the map when it sits on another virtual desktop
+- On Windows and Linux, with the tab bar hidden (Atlas Sidebar), the widgets slide out from under the window's minimise, maximise and close buttons while you use them
 
 ## Atlas Online
 
