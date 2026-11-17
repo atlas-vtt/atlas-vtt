@@ -96,4 +96,22 @@ describe('the keyboard shortcuts cheat sheet', () => {
     expect(store.getState().isHotkeyHelpOpen).toBe(true);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('opens from the palette by Enter, which no button of the sheet then receives', () => {
+    const { app } = createInMemoryApp();
+    const store = mapStore('hotkey-help-palette-enter');
+    const ui = { app, view: null, pixiApp: null, renderer: null } as unknown as AtlasUIContextValue;
+    render(
+      <AtlasUIContext.Provider value={ui}>
+        <ViewStoreProvider store={store}><CommandPalette isOpen onClose={vi.fn()} /></ViewStoreProvider>
+      </AtlasUIContext.Provider>,
+    );
+
+    const input = screen.getByPlaceholderText('Search commands…');
+    fireEvent.change(input, { target: { value: 'keyboard' } });
+    const notPrevented = fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(store.getState().isHotkeyHelpOpen).toBe(true);
+    expect(notPrevented).toBe(false);
+  });
 });

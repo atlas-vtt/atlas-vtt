@@ -751,6 +751,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         case "Enter":
           if (focusedOptionIndex >= 0 && focusedOptionIndex < filteredOptions.length) {
             const option = filteredOptions[focusedOptionIndex]!;
+            // A dialog the action opens takes focus before the key's default runs,
+            // which would then press the dialog's first button (its Close).
+            e.preventDefault();
             if (option.hasSubmenu) {
               enterSubmenu(option);
             } else if (option.action) {
