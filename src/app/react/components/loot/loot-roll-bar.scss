@@ -8,17 +8,41 @@
 @use '../../../../../styles/mixins' as *;
 
 // ── Roll bar ───────────────────────────────────────────────────────────────
-// One line: what the roll draws from on the left, how many and Roll on the right.
-// A narrow window wraps the actions under the filter, still at the right.
+// One line: what the roll draws from, then how many and Roll at the end. It
+// keeps that line as the asset manager's toolbar does (`useHeaderCompaction`,
+// `data-compact`): the rarity toggles fold into a menu first, and only when even
+// that does not fit do the actions wrap under it.
 .atlas-loot-rollbar {
-  @include atlas-flex-row($spacing-s);
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(max-content, 1fr) auto;
+  align-items: center;
+  column-gap: $spacing-s;
   flex-shrink: 0;
 
-  // A table's summary takes the line; the rarity tray only as much as its chips.
-  > .atlas-tables-summary {
-    flex: 1 1 auto;
-    min-width: 0;
+  > .atlas-loot-rarities,
+  > .atlas-loot-rarity-menu {
+    justify-self: start;
+  }
+
+  &[data-compact~='tabs'] {
+    > .atlas-loot-rarities {
+      display: none;
+    }
+
+    > .atlas-loot-rarity-menu {
+      display: block;
+    }
+  }
+
+  &[data-compact~='wrap'] {
+    @include atlas-flex-row($spacing-s);
+    flex-wrap: wrap;
+
+    // A table's summary takes the line; the rarity filter only as much as it needs.
+    > .atlas-tables-summary {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
   }
 }
 
@@ -54,11 +78,6 @@
               color $transition-fast $transition-ease,
               transform $transition-press $transition-ease-out;
 
-  &[data-rarity='uncommon'] { --atlas-loot-tone: var(--color-green); }
-  &[data-rarity='rare'] { --atlas-loot-tone: var(--color-blue); }
-  &[data-rarity='epic'] { --atlas-loot-tone: var(--color-purple); }
-  &[data-rarity='legendary'] { --atlas-loot-tone: var(--color-orange); }
-
   &:hover {
     background: transparent;
     color: var(--text-muted);
@@ -82,20 +101,39 @@
   }
 }
 
+// The rarity's tone, on a toggle (its gem inherits it) or on a gem of its own (the folded menu).
+.atlas-loot-rarity,
+.atlas-loot-rarity__gem {
+  &[data-rarity='uncommon'] { --atlas-loot-tone: var(--color-green); }
+  &[data-rarity='rare'] { --atlas-loot-tone: var(--color-blue); }
+  &[data-rarity='epic'] { --atlas-loot-tone: var(--color-purple); }
+  &[data-rarity='legendary'] { --atlas-loot-tone: var(--color-orange); }
+}
+
 // A small gem in the rarity's colour: filled when on, an outline when off.
 .atlas-loot-rarity__gem {
   flex-shrink: 0;
   width: 7px;
   height: 7px;
-  border: $border-width-l solid var(--atlas-loot-tone);
+  border: $border-width-l solid var(--atlas-loot-tone, var(--text-muted));
   // Barely softened tips: a quarter of the mark radius, for a 7 px diamond.
   border-radius: calc(#{$radius-s} / 4);
   transform: rotate(45deg);
   transition: background-color $transition-fast $transition-ease;
 }
 
-.atlas-loot-rarity.is-on .atlas-loot-rarity__gem {
-  background: var(--atlas-loot-tone);
+.atlas-loot-rarity__gem.is-on {
+  background: var(--atlas-loot-tone, var(--text-muted));
+}
+
+// The folded filter: a menu button showing every rarity's gem and how many are rolled.
+.atlas-loot-rarity-menu {
+  display: none;
+}
+
+.atlas-loot-rarity-menu__gems {
+  @include atlas-flex-row($spacing-xs);
+  margin-right: $spacing-xs;
 }
 
 .atlas-loot-rarity__label {
@@ -111,6 +149,7 @@
 
 .atlas-loot-rollbar__actions {
   @include atlas-flex-row($spacing-s);
+  grid-column: 2;
   flex-shrink: 0;
   margin-left: auto;
 }

@@ -7,6 +7,7 @@ import { useAtlasStore } from '../../ViewStoreContext';
 import { useMapCollectionId } from '../../hooks/useMapCollectionId';
 import { useDraggablePosition, type PanelArea, type PanelPosition } from '../../hooks/useDraggablePosition';
 import { usePanelResize } from '../../hooks/usePanelResize';
+import { useHeaderCompaction } from '../../../packages/components/asset-manager/hooks/useHeaderCompaction';
 import type { LootDraw } from '../../../loot/lootRoller';
 import type { TableResult } from '../../../loot/lootHistory';
 import { LootHistoryStore } from '../../../loot/LootHistoryStore';
@@ -83,6 +84,8 @@ function RandomTablesPanel(): React.ReactElement {
     margin: MARGIN,
     onDragEnd: (settled) => update({ position: settled }),
   });
+  const rollbarRef = useRef<HTMLDivElement>(null);
+  useHeaderCompaction(rollbarRef);
   const startResize = usePanelResize(panelRef, { min: MIN_SIZE, margin: MARGIN, onResizeEnd: (size) => update({ size }) });
 
   const library = useRandomTables(app, collectionId);
@@ -209,7 +212,7 @@ function RandomTablesPanel(): React.ReactElement {
                 onClearHistory={() => LootHistoryStore.forApp(app).clear(collectionId)}
               />,
             )}
-            <div className="atlas-loot-rollbar">
+            <div ref={rollbarRef} className="atlas-loot-rollbar">
               {source?.kind === 'table' ? (
                 <TableSummary
                   found={source.table}
