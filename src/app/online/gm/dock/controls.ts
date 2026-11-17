@@ -2,23 +2,23 @@ import { setIcon } from 'obsidian';
 import { openMenuBelow, type MenuEntry } from './dockMenu.ts';
 import type { Tone } from './panelModel.ts';
 import { t } from '../../../i18n';
+import { createAtlasButton } from '../../../ui/atlasButton';
+import type { ButtonVariant } from '../../../packages/components/primitives/buttonClasses';
 
 /** How long a control says that it copied. */
 export const COPIED_MS = 1200;
 
 export type ButtonKind = 'plain' | 'cta' | 'warning' | 'ghost';
 
-const KIND_CLASSES: Readonly<Record<ButtonKind, readonly string[]>> = { plain: [], cta: ['mod-cta'], warning: ['mod-warning'], ghost: ['atlas-online-button--ghost'] };
+const KIND_VARIANTS: Readonly<Record<ButtonKind, ButtonVariant>> = { plain: 'outline', cta: 'default', warning: 'destructive', ghost: 'ghost' };
 
 /**
- * A text button in Obsidian's look: `cta` for the main action, `warning` for one that ends something,
+ * Atlas' text button: `cta` for the main action, `warning` for one that ends something,
  * `ghost` for a secondary one that shows a fill only under the pointer or a press.
  */
 export function textButton(parent: HTMLElement, text: string, onClick: (event: MouseEvent) => void, kind: ButtonKind = 'plain'): HTMLButtonElement {
-  const cls = ['atlas-online-button', ...KIND_CLASSES[kind]];
-  const button = parent.createEl('button', { cls, text, attr: { type: 'button' } });
-  button.addEventListener('click', onClick);
-  return button;
+  const cls = kind === 'ghost' ? ['atlas-online-button', 'atlas-online-button--ghost'] : ['atlas-online-button'];
+  return createAtlasButton(parent, { text, variant: KIND_VARIANTS[kind], size: 'sm', cls, onClick });
 }
 
 /** A dot in a status colour and the status in words. */

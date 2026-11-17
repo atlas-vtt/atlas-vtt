@@ -10,6 +10,7 @@ import { formatReportMarkdown, issueForm, type IssueForm, type IssueReport } fro
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../ui/nativeModal';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
+import { addSettingButton } from '../ui/atlasButton';
 
 export interface IssueReportPreset {
   type?: IssueType;
@@ -173,14 +174,9 @@ export class IssueReportModal extends Modal {
     this.statusEl = this.contentEl.createEl('p', { cls: 'atlas-issue-report-status' });
     this.statusEl.setAttribute('role', 'alert');
     const actions = this.contentEl.createDiv({ cls: 'atlas-issue-report-actions' });
-    new Setting(actions)
-      .addButton(button => button.setButtonText(t('issue.copy'))
-        .onClick(() => runInBackground(this.copyReport(), 'Copying the issue report', t('issue.clipboardFailed'))))
-      .addButton(button => {
-        this.submitButton = button.buttonEl;
-        button.setButtonText(t('issue.submit')).setCta()
-          .onClick(() => { void this.submit(); });
-      });
+    const row = new Setting(actions);
+    addSettingButton(row, { text: t('issue.copy'), onClick: () => runInBackground(this.copyReport(), 'Copying the issue report', t('issue.clipboardFailed')) });
+    this.submitButton = addSettingButton(row, { text: t('issue.submit'), variant: 'default', onClick: () => { void this.submit(); } });
   }
 
   private applyWording(): void {
@@ -239,10 +235,9 @@ export class IssueReportModal extends Modal {
       this.clearContent();
       this.setTitle(t('issue.submitted'));
       this.contentEl.createEl('p', { text: t('issue.submittedAs', { number: String(receipt.number) }) });
-      new Setting(this.contentEl)
-        .addButton(button => button.setButtonText(t('issue.view'))
-          .onClick(() => this.options.openExternal(receipt.url)))
-        .addButton(button => button.setButtonText(t('common.close')).setCta().onClick(() => this.close()));
+      const row = new Setting(this.contentEl);
+      addSettingButton(row, { text: t('issue.view'), onClick: () => this.options.openExternal(receipt.url) });
+      addSettingButton(row, { text: t('common.close'), variant: 'default', onClick: () => this.close() });
     } catch (error) {
       const message = error instanceof Error ? error.message : t('issue.sendFailed');
       this.statusEl?.setText(t('issue.stillHere', { message }));

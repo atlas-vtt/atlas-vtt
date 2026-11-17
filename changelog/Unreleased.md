@@ -7,6 +7,7 @@
 - Experimental features can now be switched on and off in Atlas's settings tab, not only in the command palette
 - The Saver lighting now shows light reflected into shadows, like the other quality levels
 - Random tables has a calmer look: Roll sits beside the item count instead of across the window, rarity filters and rolled cards drop their coloured frames, and base views tick in a neutral colour
+- Every button shows when it is clicked, and a button that opens a menu or list stays highlighted while it is open. Settings, dialogs and messages use Atlas's own buttons throughout
 
 ## Fixed
 

@@ -43,15 +43,6 @@
     &:empty {
       display: none;
     }
-
-    // The confirm button is Atlas' own filled button, whose text reads on any accent.
-    button.mod-cta {
-      @include atlas-accent-fill;
-    }
-
-    button.mod-warning {
-      @include atlas-danger-fill;
-    }
   }
 
   &__message {
@@ -84,13 +75,5 @@
     flex-wrap: wrap;
     gap: $spacing-s;
     justify-content: flex-end;
-
-    button.mod-cta {
-      @include atlas-accent-fill;
-    }
-
-    button.mod-warning {
-      @include atlas-danger-fill;
-    }
   }
 }

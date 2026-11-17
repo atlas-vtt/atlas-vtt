@@ -6,6 +6,7 @@ import { useStore } from "zustand"
 import { Eye, EyeOff } from "lucide-react"
 
 import { TooltipProvider } from "./primitives/tooltip"
+import { Button } from "./primitives/button"
 import { useHotkeyLabels } from "../../keyboard/useMapHotkeys"
 import { useMapClipboardHotkeys } from "../../clipboard/useMapClipboardHotkeys"
 import { CommandPalette } from "../../react/components/CommandPalette"
@@ -242,7 +243,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
           zIndex: 1000
         }}>
           <p>{t('toolbar.diceFailed')}</p>
-          <button onClick={() => setDiceTrayOpen(false)}>{t('common.close')}</button>
+          <Button variant="outline" size="sm" onClick={() => setDiceTrayOpen(false)}>{t('common.close')}</Button>
         </div>
       )}
     </TooltipProvider>

@@ -16,6 +16,7 @@
 @use '../src/app/online/tableLog/styles/table-log';
 @use './native-tooltips';
 @use './native-checkboxes';
+@use './button-press';
 @use './notices';
 // At the root, outside the plugin's namespace: its scope includes the floating layer under <body>.
 @use '../src/app/packages/components/asset-manager/open-window';
@@ -760,6 +761,12 @@ body.theme-light {
      Button component (using design tokens)
      ------------------------------------------------- */
 
+  // The host of Atlas' buttons in Obsidian's settings rows (`addSettingButton`): it lends them Atlas'
+  // scope and leaves the row's layout to them.
+  &.atlas-setting-control {
+    display: contents;
+  }
+
   // Base
   .btn {
     display: inline-flex;
@@ -890,33 +897,6 @@ body.theme-light {
     gap: $spacing-s;
     justify-content: flex-end;
     margin-top: $spacing-xl;
-
-    button {
-      padding: $spacing-s $spacing-l;
-      border: none;
-      border-radius: $radius-s;
-      cursor: pointer;
-      font-family: inherit;
-      font-size: 0.9rem;
-      
-      &.mod-cta {
-        @include atlas-accent-fill;
-      }
-
-      &.mod-warning {
-        @include atlas-danger-fill;
-      }
-
-      &:not(.mod-cta) {
-        background: var(--background-secondary);
-        color: var(--text-normal);
-        border: 1px solid var(--background-modifier-border);
-        
-        &:hover {
-          background: var(--background-modifier-hover);
-        }
-      }
-    }
   }
 }
 

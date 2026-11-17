@@ -56,6 +56,9 @@ $collapse-height: 24px;
 // Collapses the tracker to the turn and the next combatants; a ghost control the width of the panel,
 // in the panel's top corners
 .atlas-initiative-tracker .atlas-initiative-tracker__collapse {
+  @include atlas-ghost-button;
+  border: none;
+  box-shadow: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -105,7 +108,11 @@ $collapse-height: 24px;
   &:last-of-type { @include atlas-panel-inset-radius($spacing-s, bottom-right); }
 }
 
-.atlas-initiative-tracker__btn {
+// Atlas' ghost buttons; nested in the tracker so they outrank Obsidian's `button:not(.clickable-icon)`.
+.atlas-initiative-tracker .atlas-initiative-tracker__btn {
+  @include atlas-ghost-button;
+  border: none;
+  box-shadow: none;
   flex: 1;
   height: 36px;
   padding: 0;
@@ -117,12 +124,12 @@ $collapse-height: 24px;
     pointer-events: none;
   }
 
-  &--end {
+  &.atlas-initiative-tracker__btn--end {
     color: var(--color-red);
   }
 
   // Pressed state for hotkey visual feedback
-  &--pressed {
+  &.atlas-initiative-tracker__btn--pressed {
     transform: scale(0.9);
     background: var(--interactive-accent);
     color: var(--text-on-accent);

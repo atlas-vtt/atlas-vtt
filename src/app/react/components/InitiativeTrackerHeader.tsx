@@ -34,7 +34,7 @@ export function InitiativeTrackerHeader(props: InitiativeTrackerHeaderProps): Re
     <>
       <LabelTooltip label={toggleLabel} side={tooltipSide}>
         <button
-          className="clickable-icon atlas-initiative-tracker__collapse"
+          className="atlas-initiative-tracker__collapse"
           onClick={props.onToggleCollapsed}
           aria-expanded={!collapsed}
         >
@@ -46,7 +46,7 @@ export function InitiativeTrackerHeader(props: InitiativeTrackerHeaderProps): Re
       <div className="atlas-initiative-tracker__controls">
         {rolls && (
           <LabelTooltip label={t('initiative.rollAll')}>
-            <button className="clickable-icon atlas-initiative-tracker__btn" onClick={props.onRoll} disabled={empty || rolling}>
+            <button className="atlas-initiative-tracker__btn" onClick={props.onRoll} disabled={empty || rolling}>
               <Dices />
             </button>
           </LabelTooltip>
@@ -54,20 +54,20 @@ export function InitiativeTrackerHeader(props: InitiativeTrackerHeaderProps): Re
 
         {!fightRuns ? (
           <LabelTooltip label={t('initiative.startCombat')}>
-            <button className="clickable-icon atlas-initiative-tracker__btn" onClick={props.onStart} disabled={empty}>
+            <button className="atlas-initiative-tracker__btn" onClick={props.onStart} disabled={empty}>
               <Swords />
             </button>
           </LabelTooltip>
         ) : (
           <LabelTooltip label={t('initiative.endCombat')}>
-            <button className="clickable-icon atlas-initiative-tracker__btn atlas-initiative-tracker__btn--end" onClick={props.onEnd}>
+            <button className="atlas-initiative-tracker__btn atlas-initiative-tracker__btn--end" onClick={props.onEnd}>
               <EndCombatIcon />
             </button>
           </LabelTooltip>
         )}
 
         <LabelTooltip label={t('initiative.options')}>
-          <button className="clickable-icon atlas-initiative-tracker__btn" onClick={props.onOptions} aria-haspopup="menu">
+          <button className="atlas-initiative-tracker__btn" onClick={props.onOptions} aria-haspopup="menu">
             <Ellipsis />
           </button>
         </LabelTooltip>

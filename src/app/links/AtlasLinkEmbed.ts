@@ -64,7 +64,7 @@ export abstract class AtlasLinkEmbed extends Component implements FileEmbed {
   }
 
   private renderAction(action: EmbedCardAction): void {
-    const button = this.captionEl.createEl('button', { cls: 'atlas-link-embed__action mod-cta' });
+    const button = this.captionEl.createEl('button', { cls: 'atlas-link-embed__action atlas-link-embed__primary' });
     setIcon(button.createSpan({ cls: 'atlas-link-embed__action-icon' }), action.icon);
     button.createSpan({ text: action.label });
     this.onPress(button, () => this.run(action));

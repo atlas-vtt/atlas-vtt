@@ -34,7 +34,7 @@ export function InitiativeTurnControls({ fightRuns, round, tooltipSide, onPrevio
   const button = (which: 'prev' | 'next'): React.ReactElement => (
     <LabelTooltip label={which === 'prev' ? t('initiative.previousTurn') : t('initiative.nextTurn')} side={tooltipSide}>
       <button
-        className={`clickable-icon atlas-initiative-tracker__btn${pressed === which ? ' atlas-initiative-tracker__btn--pressed' : ''}`}
+        className={`atlas-initiative-tracker__btn${pressed === which ? ' atlas-initiative-tracker__btn--pressed' : ''}`}
         onClick={which === 'prev' ? onPrevious : onNext}
         disabled={!fightRuns}
       >

@@ -124,6 +124,23 @@ $embed-caption-height: calc(2 * #{$spacing-m} + 2.6em);
   }
 }
 
+// Atlas' own fills, never Obsidian's button look: the action filled like Atlas' main button, the menu
+// beside it like its secondary one. Two classes outrank Obsidian's `button:not(.clickable-icon)`.
+.atlas-link-embed__caption .atlas-link-embed__primary {
+  @include atlas-accent-fill;
+  box-shadow: none;
+}
+
+.atlas-link-embed__caption .atlas-link-embed__more {
+  background: var(--interactive-normal);
+  color: var(--text-normal);
+  box-shadow: none;
+
+  &:hover {
+    background: var(--interactive-hover);
+  }
+}
+
 // A menu of the other ways to hand the file to Atlas: the button's own height, square
 .atlas-link-embed__more {
   justify-content: center;

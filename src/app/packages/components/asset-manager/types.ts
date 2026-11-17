@@ -3,6 +3,7 @@ import type { KeyboardEvent, MouseEvent } from 'react';
 import type { CollectionMetadata, EncounterAsset as StoredEncounterAsset } from '../../../services/AssetService';
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../../../ui/nativeModal';
 import { t } from '../../../i18n';
+import { createAtlasButton } from '../../../ui/atlasButton';
 
 // ─── Tab / View Constants ───────────────────────────────────────────
 
@@ -160,21 +161,20 @@ export async function showConfirmationModal(
 
         const buttonContainer = contentEl.createDiv('modal-button-container');
 
-        const confirmBtn = buttonContainer.createEl('button', {
+        createAtlasButton(buttonContainer, {
           text: t('common.continue'),
-          cls: 'mod-cta',
+          onClick: () => {
+            resolve(true);
+            this.close();
+          },
         });
-        confirmBtn.addEventListener('click', () => {
-          resolve(true);
-          this.close();
-        });
-
-        const cancelBtn = buttonContainer.createEl('button', {
+        createAtlasButton(buttonContainer, {
           text: t('common.cancel'),
-        });
-        cancelBtn.addEventListener('click', () => {
-          resolve(false);
-          this.close();
+          variant: 'outline',
+          onClick: () => {
+            resolve(false);
+            this.close();
+          },
         });
       }
 
