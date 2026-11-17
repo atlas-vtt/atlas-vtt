@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo, forwardRef } from "react"
+import React, { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo, forwardRef, useId } from "react"
 import { useAtlasStore, useViewStoreHook } from "src/app/react/ViewStoreContext"
 import { AnimatePresence, MotionConfig } from "framer-motion"
 import { createPortal } from "react-dom"
@@ -6,6 +6,7 @@ import { useStore } from "zustand"
 import { Eye, EyeOff } from "lucide-react"
 
 import { TooltipProvider } from "./primitives/tooltip"
+import { Button } from "./primitives/button"
 import { useHotkeyLabels } from "../../keyboard/useMapHotkeys"
 import { useMapClipboardHotkeys } from "../../clipboard/useMapClipboardHotkeys"
 import { CommandPalette } from "../../react/components/CommandPalette"
@@ -44,6 +45,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   const isGMView = useAtlasStore(state => state.isGMView)
   const setGMView = useAtlasStore(state => state.setGMView)
   const hotkeyLabel = useHotkeyLabels()
+  const gmViewName = useId()
   const liveLayout = useToolbarLayout()
   // During a drag the bar keeps the layout it began with; changes made elsewhere wait for the drop.
   // The bottom row shares the drag state with the undo/redo bar, which the editor arranges too.
@@ -182,15 +184,20 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
               editing={editing}
               {...(dm && { hiddenIds, motion: editor.motion })}
               // The GM view switch keeps the bar's last place, after "More tools".
+              // Named "GM view" whatever its state: being on says the rest.
               end={dm && (
-                <Toggle
-                  value={isGMView}
-                  onChange={toggleGMView}
-                  iconOn={Eye}
-                  iconOff={EyeOff}
-                  tooltipOn={t('toolbar.gmView', { key: hotkeyLabel('gmView') })}
-                  tooltipOff={t('toolbar.sessionView', { key: hotkeyLabel('gmView') })}
-                />
+                <>
+                  <span id={gmViewName} hidden>{t('toolbar.gmView', { key: hotkeyLabel('gmView') })}</span>
+                  <Toggle
+                    value={isGMView}
+                    onChange={toggleGMView}
+                    iconOn={Eye}
+                    iconOff={EyeOff}
+                    labelledBy={gmViewName}
+                    tooltipOn={t('toolbar.gmView', { key: hotkeyLabel('gmView') })}
+                    tooltipOff={t('toolbar.sessionView', { key: hotkeyLabel('gmView') })}
+                  />
+                </>
               )}
             />
             <AnimatePresence>
@@ -242,7 +249,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
           zIndex: 1000
         }}>
           <p>{t('toolbar.diceFailed')}</p>
-          <button onClick={() => setDiceTrayOpen(false)}>{t('common.close')}</button>
+          <Button variant="outline" size="sm" onClick={() => setDiceTrayOpen(false)}>{t('common.close')}</Button>
         </div>
       )}
     </TooltipProvider>

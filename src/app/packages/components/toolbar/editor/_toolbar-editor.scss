@@ -139,8 +139,8 @@ $tray-end-radius: atlas-panel-inset-radius-value($tray-inset, $tray-control * 0.
 .atlas-toolbar-face__undo-bar {
   display: flex;
   align-items: center;
-  gap: $spacing-s;
-  padding: $spacing-s;
+  gap: $surface-inset;
+  padding: $surface-inset;
   border: $border-width-m solid transparent;
 }
 

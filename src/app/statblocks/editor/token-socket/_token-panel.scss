@@ -154,6 +154,7 @@
 
   // As tall as the switch beside it.
   input.atlas-sb-token-panel__search {
+    @include atlas-text-input;
     flex: 1;
     align-self: stretch;
     min-width: 0;

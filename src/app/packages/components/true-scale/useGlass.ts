@@ -3,6 +3,7 @@ import type React from 'react';
 import type { AtlasView } from '../../../atlas-view';
 import { GlassOutline, type GlassLook } from '../../../pixi/glassOutline';
 import type { PlayerCameraState } from '../../../types/playerCamera';
+import type { WorldFrame } from '../../../types/playerFrame';
 import { frameSourceOf, presentTab } from '../../../services/PlayerWindowPresenter';
 import { PlayerWindowService } from '../../../services/PlayerWindowService';
 import { SettingsService } from '../../../services/SettingsService';
@@ -11,6 +12,8 @@ import { observeResize } from '../../../utils/observeResize';
 import { showNotice } from '../../../ui/notice';
 import { t } from '../../../i18n';
 import { trackGlassDrag } from './glassDrag';
+import { arrivalOf } from './glassArrival';
+import { trackLiveDrag } from './glassLiveDrag';
 import { glassDragSteps } from './glassSession';
 import { chipPlace, measureChipRoom, readGlass, type Glass } from './glassState';
 import { savedFrames, type SavedFrames } from './savedFrames';
@@ -47,6 +50,10 @@ export interface GlassControls {
   discard: () => void;
   /** A press on the chip, which may become a drag of the glass. */
   pointerDown: (event: React.PointerEvent<HTMLElement>) => void;
+  /** A press on the chip's live grip, which may become a drag that moves players with it. */
+  liveDown: (event: React.PointerEvent<HTMLElement>) => void;
+  /** The same on the chip of the dashed frame, where players are while a frame is staged. */
+  playersDown: (event: React.PointerEvent<HTMLElement>) => void;
   saved: SavedFrameControls;
 }
 
@@ -56,6 +63,8 @@ interface Actions {
   bring(): void;
   discard(): void;
   pointerDown(event: PointerEvent): void;
+  liveDown(event: PointerEvent): void;
+  playersDown(event: PointerEvent): void;
   saved: SavedFrames;
 }
 
@@ -66,7 +75,12 @@ interface Actions {
  * `translate` on the map's own frame clock, so they follow pan and zoom in the frame the canvas
  * shows them (pixi-viewport's `moveCenter` and `setZoom` announce nothing).
  */
-export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement | null>, savedRef: React.RefObject<HTMLElement | null>): GlassControls {
+export function useGlass(
+  view: AtlasView,
+  chipRef: React.RefObject<HTMLElement | null>,
+  savedRef: React.RefObject<HTMLElement | null>,
+  playersRef: React.RefObject<HTMLElement | null>,
+): GlassControls {
   const [shown, setShown] = useState<GlassShown | null>(null);
   const [savedShown, setSavedShown] = useState<number | null>(null);
   const actions = useRef<Actions | null>(null);
@@ -75,6 +89,7 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
   useLayoutEffect(() => {
     const chip = chipRef.current;
     const savedChip = savedRef.current;
+    const playersChip = playersRef.current;
     const renderer = view.serviceManager?.getRendererService?.();
     const app = renderer?.getApp();
     const viewport = renderer?.getViewport();
@@ -82,7 +97,7 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
     const service = PlayerWindowService.getInstance();
     const canvas = app?.canvas;
     const pane = chip?.offsetParent ?? chip?.parentElement;
-    if (!chip || !savedChip || !app || !viewport || !orchestrator || !service || !canvas || !pane) return undefined;
+    if (!chip || !savedChip || !playersChip || !app || !viewport || !orchestrator || !service || !canvas || !pane) return undefined;
 
     const outline = new GlassOutline(app, viewport, (overlay) => orchestrator.addDmScreenOverlay(overlay));
     const tabId = (): string | null => view.tabMetaStore.getState().activeTabId;
@@ -90,6 +105,8 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
     let ghostAt: { x: number; y: number } | null = null;
     /** Where the GM staged the glass on the map players see, until it is shown to them, discarded or they see another map. */
     let stagedAt: { x: number; y: number } | null = null;
+    /** Where players glide to from the staged frame, which stays where it is until they arrive. */
+    let arriving: { x: number; y: number } | null = null;
     let glass: Glass | null = null;
     let dragging: (() => void) | null = null;
 
@@ -122,6 +139,11 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
       const pinned = (glass.look === 'live' || !!glass.players) && service.isFrozen();
       const at = chipPlace(outline.screenRect(glass.frame), { width: chip.offsetWidth, height: chip.offsetHeight }, room, !pinned);
       chip.style.translate = `${at.x}px ${at.y}px`;
+      if (!glass.players) return;
+      // The dashed frame, where players are: its chip follows it like the glass's own
+      const size = { width: playersChip.offsetWidth, height: playersChip.offsetHeight };
+      const atPlayers = chipPlace(outline.screenRect(glass.players), size, room, !pinned);
+      playersChip.style.translate = `${atPlayers.x}px ${atPlayers.y}px`;
     };
     const show = (): void => {
       outline.setGlass(glass?.frame ?? null, glass?.look);
@@ -132,12 +154,7 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
       setShown((now) => (now?.look === next?.look && now?.pinned === next?.pinned && now?.saved === next?.saved && now?.staged === next?.staged ? now : next));
       place();
     };
-    /** Reads the glass anew: after anything but the GM's camera moving. */
-    const refresh = (): void => {
-      saved.refresh();
-      const onShownMap = playerWindowStore.getState().shownTabId === tabId();
-      if (onShownMap) ghostAt = null;
-      else stagedAt = null;
+    const read = (): void => {
       glass = readGlass(service, tabId(), {
         // Sized on this map, which players do not see: its grid decides true scale
         size: () => service.playerViewWorldSize(frameSourceOf(view)),
@@ -145,15 +162,37 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
       }, stagedAt);
       show();
     };
+    /** Reads the glass anew: after anything but the GM's camera moving. */
+    const refresh = (): void => {
+      saved.refresh();
+      const onShownMap = playerWindowStore.getState().shownTabId === tabId();
+      if (onShownMap) ghostAt = null;
+      else {
+        stagedAt = null;
+        arriving = null;
+      }
+      if (arriving) {
+        const id = tabId();
+        const arrival = arrivalOf(id ? service.glassOf(id) : null, arriving, service.isFrozen());
+        if (arrival === 'arrived') stagedAt = null;
+        if (arrival !== 'waiting') arriving = null;
+      }
+      read();
+    };
     /**
      * The GM's camera or the ghost moved: a ghost not placed by hand stays in the middle of the
-     * view. `redraw` false where the outline redrew itself, on the viewport's own events.
+     * view, and players who follow the GM on the map they see are framed through this camera,
+     * not the one of the last frame they were shown. `redraw` false where the outline redrew
+     * itself, on the viewport's own events.
      */
     const follow = (redraw: boolean): void => {
       if (glass?.look === 'ghost' && !glass.players) {
         const { x, y } = ghostAt ?? viewport.center;
         glass = { look: 'ghost', frame: { ...glass.frame, centerX: x, centerY: y } };
         outline.setGlass(glass.frame, 'ghost');
+      } else if (glass && !service.isFrozen()) {
+        read();
+        return;
       } else if (redraw) {
         outline.redraw();
       }
@@ -172,6 +211,19 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
     /** A ghost placed by hand keeps its place on the map through the GM's pans and zooms; the next tick follows them. */
     const onViewportMoved = (): void => {
       heardKey = keyOf();
+    };
+
+    /** The frame players see now: the glass where nothing is staged, else the dashed frame. */
+    const playersFrame = (): WorldFrame | null => glass?.players ?? (glass?.look === 'live' ? glass.frame : null);
+    /** Moves players with the pointer; a frame staged elsewhere stays where it is. */
+    const dragPlayers = (element: HTMLElement, event: PointerEvent): void => {
+      const id = tabId();
+      if (event.button !== 0 || !id || !playersFrame()) return;
+      dragging?.();
+      // Players moved by hand no longer glide to the staged frame
+      arriving = null;
+      const deps = { service, tabId: id, frame: playersFrame, grid: () => view.atlasStore.getState().grid, toWorld };
+      dragging = trackLiveDrag(element, event, deps, () => { dragging = null; });
     };
 
     actions.current = {
@@ -201,9 +253,12 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
         if (!id || glass?.look !== 'ghost') return;
         const { centerX, centerY } = glass.frame;
         if (glass.players) {
-          stagedAt = null;
+          // The staged frame stays where it is while players glide to it; `refresh` forgets it on arrival
+          arriving = { x: centerX, y: centerY };
           // Glides players there and keeps the frame they return to
-          if (!service.framePlayersOn(id, centerX, centerY)) refresh();
+          if (!service.framePlayersOn(id, centerX, centerY)) arriving = null;
+          // Where players jump there, or cannot go, nothing glides: the frame is forgotten or kept at once
+          refresh();
           return;
         }
         const camera = service.playerCameraAt(centerX, centerY);
@@ -211,12 +266,14 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
       },
       discard: () => {
         stagedAt = null;
+        arriving = null;
         refresh();
       },
       pointerDown: (event) => {
         const id = tabId();
         if (event.button !== 0 || !id || !glass) return;
         dragging?.();
+        arriving = null;
         // On the map players see the glass is staged; elsewhere it is the ghost
         const staging = glass.look === 'live' || !!glass.players;
         const steps = glassDragSteps({
@@ -241,6 +298,8 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
         });
         dragging = stop;
       },
+      liveDown: (event) => dragPlayers(chip, event),
+      playersDown: (event) => dragPlayers(playersChip, event),
       saved,
     };
     placeAgain.current = place;
@@ -260,7 +319,7 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
         if (state.mapPath !== previous.mapPath || state.grid !== previous.grid || state.mapLoaded !== previous.mapLoaded || state.playerFrames !== previous.playerFrames) refresh();
       }),
       settings?.onChange(refresh) ?? ((): void => undefined),
-      observeResize([pane, canvas, chip, savedChip], () => { room = measureChipRoom(pane, canvas); saved.measure(); place(); }),
+      observeResize([pane, canvas, chip, savedChip, playersChip], () => { room = measureChipRoom(pane, canvas); saved.measure(); place(); }),
     ];
     viewport.on('moved', onViewportMoved);
     viewport.on('zoomed', onViewportMoved);
@@ -281,7 +340,7 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
       actions.current = null;
       placeAgain.current = null;
     };
-  }, [view, chipRef, savedRef]);
+  }, [view, chipRef, savedRef, playersRef]);
 
   // The chips change size with what they show, after their place was worked out
   useLayoutEffect(() => placeAgain.current?.(), [shown, savedShown]);
@@ -293,6 +352,12 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
     bring: () => actions.current?.bring(),
     discard: () => actions.current?.discard(),
     pointerDown: (event) => actions.current?.pointerDown(event.nativeEvent),
+    liveDown: (event) => {
+      // The grip is part of the chip, whose own press would stage a frame instead
+      event.stopPropagation();
+      actions.current?.liveDown(event.nativeEvent);
+    },
+    playersDown: (event) => actions.current?.playersDown(event.nativeEvent),
     saved: {
       shown: savedShown,
       show: () => actions.current?.saved.show(),

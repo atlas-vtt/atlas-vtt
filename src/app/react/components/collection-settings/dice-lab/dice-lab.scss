@@ -216,6 +216,11 @@ button.atlas-dice-lab__set {
   opacity: 0;
   pointer-events: none;
   transition: opacity $transition-fast $transition-ease;
+
+  // $spacing-xs inside the row's end and edges: concentric with its corner.
+  .atlas-dice-lab__icon-btn.btn {
+    border-radius: $control-inset-radius;
+  }
 }
 
 .atlas-dice-lab__set-row:hover,

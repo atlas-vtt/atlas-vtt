@@ -3,10 +3,10 @@ import { availableHotkeys, DEFAULT_MAP_HOTKEYS, formatHotkey, hotkeyAction, hotk
 import type { HotkeyOrigin } from '../keyboard/hotkeyOverrides';
 import type { SettingsService } from '../services/SettingsService';
 import type { AtlasSettingRow, AtlasSettingSection } from './settingSections';
-import type { ButtonComponent } from 'obsidian';
 import { TUTORIAL_IDS } from '../services/SettingsService';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
+import { addSettingButton } from '../ui/atlasButton';
 
 type HotkeyAction = ReturnType<typeof availableHotkeys>[number];
 
@@ -57,15 +57,14 @@ export function hotkeySettingsSection(settings: SettingsService): AtlasSettingSe
           catch (error) { notifyFailure(error, t('settings.hotkeys.assignFailed')); }
         });
       });
-      setting.addExtraButton(button => button.setIcon('x').setTooltip(t('settings.hotkeys.clear')).onClick(() => {
-        settings.setHotkey(action.id, '');
-      }));
-      setting.addExtraButton(button => {
-        restoreEl = button.extraSettingsEl;
-        button.setIcon('reset').setTooltip(t('settings.hotkeys.restore')).onClick(() => {
+      addSettingButton(setting, { icon: 'x', label: t('settings.hotkeys.clear'), onClick: () => settings.setHotkey(action.id, '') });
+      restoreEl = addSettingButton(setting, {
+        icon: 'reset',
+        label: t('settings.hotkeys.restore'),
+        onClick: () => {
           try { settings.setHotkey(action.id, DEFAULT_MAP_HOTKEYS[action.id]); }
           catch (error) { notifyFailure(error, t('settings.hotkeys.restoreFailed')); }
-        });
+        },
       });
 
       sync();
@@ -81,10 +80,10 @@ export function hotkeySettingsSection(settings: SettingsService): AtlasSettingSe
         desc: t('settings.hotkeys.introDesc'),
         aliases: ['hotkey', 'shortcut', 'reset'],
         render: (setting) => {
-          setting.addButton(button => button.setButtonText(t('settings.hotkeys.resetAll')).onClick(() => settings.resetHotkeys()));
+          addSettingButton(setting, { text: t('settings.hotkeys.resetAll'), onClick: () => settings.resetHotkeys() });
         },
       },
-      ...availableHotkeys(false, (feature) => settings.isExperimentalOn(feature)).map(hotkeyRow),
+      ...availableHotkeys(false).map(hotkeyRow),
     ],
   };
 }
@@ -124,18 +123,17 @@ export function onboardingSettingsSection(settings: SettingsService): AtlasSetti
         desc: t('settings.tutorials.resetDesc'),
         aliases: ['onboarding', 'walkthrough', 'tour', 'replay'],
         render: (setting) => {
-          let button: ButtonComponent | undefined;
-          setting.addButton(component => {
-            button = component;
-            component.setButtonText(t('settings.tutorials.reset')).onClick(() => {
+          const button = addSettingButton(setting, {
+            text: t('settings.tutorials.reset'),
+            onClick: () => {
               settings.resetTutorials();
               tutorialToggle?.setValue(true);
               showNotice(t('settings.tutorials.resetDone'));
-            });
+            },
           });
           const sync = (): void => {
             setting.setDesc(tutorialProgress(settings));
-            button?.setDisabled(settings.finishedTutorialCount() === 0);
+            button.disabled = settings.finishedTutorialCount() === 0;
           };
           sync();
           return settings.onChange(sync);

@@ -17,6 +17,7 @@ $tab-name-max: 28ch;
 $tab-name-fade: 12px;
 // Fades the strip's edges where tabs are cut off.
 $tab-fade: 24px;
+$tab-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
 
 .atlas-scene-tab-bar {
   flex: 0 1 auto;
@@ -78,7 +79,7 @@ $tab-fade: 24px;
   height: $tab-height;
   padding: $tab-inset;
   // Concentric with the bar's corner on every side, the end tabs and the add button alike.
-  border-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
+  border-radius: $tab-radius;
   border: none;
   cursor: pointer;
   background: transparent;
@@ -166,7 +167,8 @@ $tab-fade: 24px;
     height: $tab-action;
     padding: 0;
     border: none;
-    border-radius: $radius-s;
+    // $tab-inset inside the tab, concentric with its corner.
+    border-radius: calc(#{$tab-radius} - #{$tab-inset});
     background: transparent;
     cursor: pointer;
     color: var(--text-muted);

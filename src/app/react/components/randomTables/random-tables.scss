@@ -145,7 +145,7 @@
   height: $button-height-s;
   padding: 0;
   border: none;
-  border-radius: $radius-s;
+  border-radius: $control-inset-radius;
   box-shadow: none;
   background: transparent;
   color: var(--text-muted);
@@ -220,9 +220,11 @@
   padding: 0;
 }
 
+// All / None stands under the ticks, its text on their edge.
 .atlas-loot-tree__all.atlas-loot-text-button {
   align-self: flex-start;
-  padding: $spacing-xs $spacing-s;
+  padding: $spacing-xs;
+  color: var(--text-faint);
 }
 
 // ── The selected table: how it rolls, its problems, No repeats, Open note ──

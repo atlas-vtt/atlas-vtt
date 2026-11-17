@@ -30,7 +30,7 @@ export function previewFromEdit(token: EditTokenInput): TokenPreview {
     file: null,
     previewUrl: token.imageUrl,
     name: token.name,
-    ...cropReset({ file: null }),
+    ...cropReset({ file: null, showRing: token.showRing ?? true }),
     isSelected: true,
     isOptimizing: false,
   };

@@ -190,8 +190,8 @@ $offer-dismiss-size: 24px;
     width: $offer-dismiss-size;
     height: $offer-dismiss-size;
     margin-block: auto;
-    // $spacing-xs inside the offer's $radius-m corner: concentric at $radius-s.
-    border-radius: $radius-s;
+    // $spacing-xs inside the offer's $radius-m corner: concentric with it.
+    border-radius: $control-inset-radius;
     color: var(--text-faint);
     opacity: 0;
     transition: opacity $transition-fast $transition-ease-out, color $transition-fast $transition-ease-out;

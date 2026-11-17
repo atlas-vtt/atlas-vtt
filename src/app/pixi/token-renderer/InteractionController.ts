@@ -429,7 +429,7 @@ export class InteractionController implements ITokenInteractionController {
       if (selectedId) {
         const sprite = this.getTokenSprite?.(selectedId);
         if (sprite) {
-          const tokenSize = sprite.getChildByLabel('tokenSprite')?.width || 70;
+          const tokenSize = sprite.tokenSize || 70;
           this.updateControlsPosition?.(sprite.position.x, sprite.position.y, tokenSize);
         }
       }

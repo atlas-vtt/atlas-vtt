@@ -14,6 +14,8 @@ $widget-bar-offset: $spacing-s;
   max-width: calc(100vw - 2 * #{$widget-bar-offset});
   z-index: 50; // below the asset manager (100)
   pointer-events: none;
+  // Slides clear of the window's buttons while in use (useClearOfWindowControls).
+  transition: translate $transition-normal $transition-ease-out;
 }
 
 // Lays the cards out without a panel of its own; only the cards catch the pointer,
@@ -102,9 +104,12 @@ $widget-bar-offset: $spacing-s;
   }
 }
 
+// The icon fills the card's left corners; the value and label end on the menus' text edge, $spacing-m
+// inside the card's padding.
 .atlas-widget-content {
   @include atlas-flex-col($spacing-xs);
   align-items: center;
+  padding-inline-end: $spacing-m;
 }
 
 .atlas-widget-value-row {

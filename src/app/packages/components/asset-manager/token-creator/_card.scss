@@ -7,11 +7,14 @@
 // Artwork first. Tokens dim everything outside the circular crop instead of
 // hiding it, so the user always sees what a drag or zoom will bring into view.
 
+// A card in the creator's grid, not a floating surface: its art, fields and zoom buttons stand
+// $surface-inset inside it with a control's corner, and its own corner is theirs plus that inset
+// (no border), so they run concentric with it.
 .atlas-token-card {
   position: relative;
-  @include atlas-flex-col($gap: $spacing-s);
-  padding: $spacing-s;
-  border-radius: $surface-radius;
+  @include atlas-flex-col($gap: $surface-inset);
+  padding: $surface-inset;
+  border-radius: calc(#{$radius-m} + #{$surface-inset});
   background: var(--background-secondary);
   animation: atlas-token-card-enter 240ms $transition-ease-out both;
   animation-delay: calc(var(--atlas-enter-index, 0) * 30ms);
@@ -75,7 +78,7 @@
   }
 }
 
-.atlas-token-card--unframed .atlas-token-card__image {
+.atlas-token-card--map .atlas-token-card__image {
   cursor: default;
 }
 
@@ -302,7 +305,7 @@
   &.btn--icon {
     width: 24px;
     height: 24px;
-    border-radius: $radius-s;
+    border-radius: $radius-m;
     color: var(--text-faint);
     flex-shrink: 0;
   }

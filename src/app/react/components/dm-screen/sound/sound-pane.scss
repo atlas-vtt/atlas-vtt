@@ -206,6 +206,18 @@
     gap: $spacing-xs;
   }
 
+  // Atlas' ghost button, the size of the status bar's own icons. Nested, so it outranks Obsidian's
+  // `button:not(.clickable-icon)`.
+  .atlas-sound-status .atlas-sound-status__stop-all {
+    @include atlas-ghost-button;
+    display: flex;
+    height: auto;
+    padding: $spacing-xs;
+    border: none;
+    border-radius: $radius-s;
+    box-shadow: none;
+  }
+
   .atlas-sound-status__stop-all svg {
     width: $icon-xs;
     height: $icon-xs;

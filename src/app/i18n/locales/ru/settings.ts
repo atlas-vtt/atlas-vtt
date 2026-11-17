@@ -1,6 +1,7 @@
 import type { Translation } from '../../types';
 
 export const settings: Translation = {
+  'settings.experimental.heading': 'Экспериментальные функции',
   'settings.hotkeys.assignFailed': 'Не удалось назначить сочетание',
   'settings.hotkeys.clear': 'Очистить сочетание',
   'settings.hotkeys.defaultSuffix': '{group} · По умолчанию: {key}',

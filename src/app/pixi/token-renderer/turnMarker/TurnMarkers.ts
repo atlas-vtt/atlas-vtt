@@ -10,7 +10,7 @@ import type { LevelView } from '../../../levels/sceneLevels';
 import { MAP_LAYER_Z } from '../../mapLayerOrder';
 import type { LayerVisibility } from '../../playerSafeFrame';
 import { destroyTree } from '../../utils/destroyTree';
-import { getTokenRingOuterDiameter } from '../tokenRingMetrics';
+import { getTokenRingOuterDiameter, unframedArtDiameter } from '../tokenRingMetrics';
 import { computeTokenStrokeWidth, restingTokenUIScale } from '../tokenSizing';
 import type { TokenGroupContainer } from '../types';
 import { TurnMarker } from './TurnMarker';
@@ -168,9 +168,10 @@ export class TurnMarkers {
     const size = sprite?.tokenSize ?? 0;
     if (sprite && token && size > 0) {
       // The ring as drawn, which the scene's ring size may have scaled: the selection reads it so too
+      const strokeWidth = computeTokenStrokeWidth(gridSize);
       const outer = token.showRing === false
-        ? size
-        : (sprite.getChildByLabel('tokenRing')?.width || getTokenRingOuterDiameter(size, computeTokenStrokeWidth(gridSize)));
+        ? unframedArtDiameter(size, strokeWidth)
+        : (sprite.getChildByLabel('tokenRing')?.width || getTokenRingOuterDiameter(size, strokeWidth));
       marker.draw(outer / 2, restingTokenUIScale(gridSize), this.deps.parent.scale.x || 1);
     }
     marker.follow(sprite);

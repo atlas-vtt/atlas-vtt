@@ -8,7 +8,7 @@
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-// Keep equal to the loot roller's padding: cards run concentric with the window.
+// The loot roller's padding: the cards stand as far inside the window as there.
 $player-loot-padding: $spacing-m;
 // Below the player view's top row: the "Camera paused" badge and the widgets.
 $player-loot-top: 2 * $spacing-2xl;

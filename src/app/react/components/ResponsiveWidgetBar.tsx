@@ -11,6 +11,7 @@ import { ClockWidgetDisplay } from './ClockWidgetDisplay';
 import { isSteppedWidget, stepCounter } from '../../utils/counterWidget';
 import { isWidgetOn } from '../../utils/widgetActivation';
 import { useWidgetStack } from './useWidgetStack';
+import { useClearOfWindowControls } from './useClearOfWindowControls';
 import { t } from '../../i18n';
 
 interface ResponsiveWidgetBarProps {
@@ -48,6 +49,8 @@ export function ResponsiveWidgetBar({ isPlayerView = false, store, viewId, widge
   visibleWidgetsRef.current = visibleWidgets;
 
   const stack = useWidgetStack(visibleWidgets.map((widget) => widget.id), storedWidgetSettings);
+  const awake = isActive || stack.state === 'open';
+  const windowControls = useClearOfWindowControls(awake);
 
   // Reset timer for active state
   const resetActiveTimer = useCallback(() => {
@@ -230,6 +233,8 @@ export function ResponsiveWidgetBar({ isPlayerView = false, store, viewId, widge
       }
       const num = ([1, 2, 3, 4, 5] as const).find(n => matchesMapHotkey(e, `widget${n}`, settings));
       if (!num) return;
+      // While the dice tray is open the number keys add its dice (by their place in its row), not hold a widget.
+      if (/^[1-9]$/.test(e.key) && store.getState().isDiceTrayOpen) return;
       e.preventDefault();
       heldKeys.current.add(String(num));
       heldCodes.current.set(e.code || e.key, num);
@@ -311,11 +316,14 @@ export function ResponsiveWidgetBar({ isPlayerView = false, store, viewId, widge
 
   return (
     <div
-      onMouseEnter={() => handleInteraction()}
+      onMouseEnter={(event) => {
+        handleInteraction();
+        windowControls.clear(event.currentTarget);
+      }}
       onMouseLeave={resetActiveTimer}
       ref={stack.barRef}
-      style={stack.barStyle}
-      className={`atlas-widget-bar ${isActive || stack.state === 'open' ? 'active' : 'passive'}`}
+      style={{ ...stack.barStyle, ...windowControls.style }}
+      className={`atlas-widget-bar ${awake ? 'active' : 'passive'}`}
       data-stack={stack.state}
     >
       <div ref={stack.rowsRef} className="atlas-widget-container" tabIndex={-1} inert={stack.state === 'closed'} onClick={stack.raiseClicked}>

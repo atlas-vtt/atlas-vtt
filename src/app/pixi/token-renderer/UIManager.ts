@@ -174,9 +174,8 @@ export class UIManager implements ITokenUIManager {
       return;
     }
     
-    // Get sprite dimensions
-    const sprite = tokenSprite.getChildByLabel('tokenSprite');
-    ui.update(token, sprite?.width || 70);
+    // The token's diameter, not its art's: unframed art has its own shape and reaches past it
+    ui.update(token, tokenSprite.tokenSize || 70);
   }
 
   updateSelectionUI(selectedTokenIds: string[]): void {
@@ -188,8 +187,7 @@ export class UIManager implements ITokenUIManager {
         if (tokenId) {
           const tokenSprite = this.getTokenSprite(tokenId);
           if (tokenSprite) {
-            const sprite = tokenSprite.getChildByLabel('tokenSprite');
-            const tokenSize = sprite?.width || 70;
+            const tokenSize = tokenSprite.tokenSize || 70;
             this.tokenControlsUI.show(
               tokenId,
               tokenSprite.position.x,
@@ -211,8 +209,7 @@ export class UIManager implements ITokenUIManager {
         if (tokenId) {
           const tokenSprite = this.getTokenSprite(tokenId);
           if (tokenSprite) {
-            const sprite = tokenSprite.getChildByLabel('tokenSprite');
-            const tokenSize = sprite?.width || 70;
+            const tokenSize = tokenSprite.tokenSize || 70;
             this.tokenRotationUI.show(tokenId, tokenSize);
           }
         }
@@ -228,8 +225,7 @@ export class UIManager implements ITokenUIManager {
         if (tokenId) {
           const tokenSprite = this.getTokenSprite(tokenId);
           if (tokenSprite) {
-            const sprite = tokenSprite.getChildByLabel('tokenSprite');
-            const tokenSize = sprite?.width || 70;
+            const tokenSize = tokenSprite.tokenSize || 70;
             this.tokenResizeUI.show(tokenId, tokenSize);
           }
         }

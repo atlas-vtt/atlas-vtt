@@ -172,7 +172,8 @@
       height: auto;
       padding: 0;
       border: none;
-      border-radius: $online-row-radius;
+      // $online-inset inside its row: concentric with the row's corner.
+      border-radius: $online-row-control-radius;
       background: transparent;
       box-shadow: none;
       color: inherit;
@@ -250,6 +251,8 @@
 
   .atlas-online-player__more {
     margin-left: auto;
+    // $online-inset inside its row, in its end: concentric with the row's corner.
+    border-radius: $online-row-control-radius;
     @include online-on-row-hover;
   }
 
@@ -340,7 +343,8 @@
     margin-right: $online-inset;
     padding: 0 $spacing-xs 0 $spacing-s;
     border: none;
-    border-radius: $radius-m;
+    // $online-inset inside its row, in its end: concentric with the row's corner.
+    border-radius: $online-row-control-radius;
     background: var(--interactive-normal);
     box-shadow: var(--input-shadow);
     color: var(--text-normal);

@@ -1,0 +1,78 @@
+// ──────────────────────────────────────────────
+// Dice Toast motion: the result card's keyframes, and the fades that stand in
+// for them under reduced motion. Imported by dice-toast.scss.
+// ──────────────────────────────────────────────
+@use '../../../../../styles/tokens' as *;
+
+// ── Keyframes ────────────────────────────────
+
+// Cards slide in from the right edge, where the DM's rolls show.
+@keyframes atlas-dice-toast-enter {
+  from {
+    opacity: 0;
+    transform: translateX(48px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes atlas-dice-toast-exit {
+  to {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+@keyframes atlas-dice-toast-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// The total drops in a little oversized, overshoots, then settles: opacity and transform only.
+@keyframes atlas-dice-toast-land {
+  from {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// Reduced motion: the card fades in and out where it stands; nothing slides, pops or scales.
+@keyframes atlas-dice-toast-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-dice-toast {
+    &--entering {
+      animation: atlas-dice-toast-fade 0.15s $transition-ease-out both;
+    }
+
+    &--exiting {
+      animation: atlas-dice-toast-fade 0.15s $transition-ease-out reverse both;
+    }
+  }
+
+  .atlas-dice-toast__avatar,
+  .atlas-dice-toast__content,
+  .atlas-dice-toast__total {
+    animation: none;
+  }
+}

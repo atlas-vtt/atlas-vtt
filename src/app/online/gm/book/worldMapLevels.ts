@@ -13,14 +13,19 @@ export interface PlacedSign extends MapPlace {
   readonly sign: WorldMapSign;
 }
 
+/** Where a GM's pin places a quest: shares of its map's image, on the map players know as `on` (none for the world map itself). */
+export interface PlacedQuest extends MapPlace {
+  readonly on?: string;
+}
+
 /** A world map as players are sent it, and the files its images are: the paths are the GM's and never sent. */
 export interface WorldMapFile {
   /** The maps without their signs, which `WorldMapSigns` names. */
   readonly map: BookWorldMap;
   /** The vault path of each image it shows, by hash. */
   readonly paths: ReadonlyMap<string, string>;
-  /** Where the GM's pins place quests on the world map, by quest id: the first pin of each that lies on the image. Never sent as such. */
-  readonly questPlaces: ReadonlyMap<string, MapPlace>;
+  /** Where the GM's pins place quests on its maps, by quest id: the first pin of each that lies on its map's image, the world map's first. Never sent as such. */
+  readonly questPlaces: ReadonlyMap<string, PlacedQuest>;
   /** The readable pins on its maps, `MAX_MAP_SIGNS` a map at most. Never sent as such. */
   readonly signs: readonly PlacedSign[];
 }
@@ -53,15 +58,13 @@ function shareOf(point: { readonly x: number; readonly y: number }, level: World
   return x >= 0 && x <= 1 && y >= 0 && y <= 1 ? { x, y } : null;
 }
 
-/** Where a level's pins place quests, as shares of its image, by quest id: each quest at its first pin on the image. */
-function questPlacesOf(level: WorldMapLevel, image: MapImage): Map<string, MapPlace> {
-  const places = new Map<string, MapPlace>();
+/** Adds where a level's pins place quests, as shares of its image, on the map players know as `on`: each quest not placed yet at its first pin on the image. */
+function placeQuests(places: Map<string, PlacedQuest>, level: WorldMapLevel, image: MapImage, on?: string): void {
   for (const quest of level.quests ?? []) {
     if (places.has(quest.id)) continue;
     const place = shareOf(quest, level, image);
-    if (place !== null) places.set(quest.id, place);
+    if (place !== null) places.set(quest.id, { ...place, ...(on !== undefined && { on }) });
   }
-  return places;
 }
 
 /** A level's readable pins that lie on its image, as shares of it, on the map players know as `on`. */
@@ -92,7 +95,8 @@ function entrancesOf(level: WorldMapLevel, image: MapImage, shown: ReadonlyMap<s
  * The world map players are sent, with every map its GM's pins lead into: each map once, by the id
  * `ids` names for its asset, however many entrances lead to it, so a pin back to a map the path
  * already holds leads back. A map without an image is left out with every entrance into it; null
- * when the world map itself has none. Its readable pins come beside it, for `WorldMapSigns`.
+ * when the world map itself has none. Its readable pins come beside it, for `WorldMapSigns`, and
+ * the places its quest pins give, for `QuestPlaces`.
  */
 export function worldMapOf(tree: WorldMapTree, ids: ReadonlyMap<string, string>, images: ReadonlyMap<string, MapImage | null>): WorldMapFile | null {
   const levels = reachable(tree, images);
@@ -107,6 +111,8 @@ export function worldMapOf(tree: WorldMapTree, ids: ReadonlyMap<string, string>,
   const paths = new Map([[rootImage.image.hash, root.image]]);
   const maps: BookNestedMap[] = [];
   const signs = signsOf(root, rootImage);
+  const questPlaces = new Map<string, PlacedQuest>();
+  placeQuests(questPlaces, root, rootImage);
   for (const level of nested) {
     const image = images.get(level.image) ?? null;
     const named = shown.get(level.key);
@@ -114,8 +120,9 @@ export function worldMapOf(tree: WorldMapTree, ids: ReadonlyMap<string, string>,
     paths.set(image.image.hash, level.image);
     maps.push({ id: named.id, title: named.title, image: image.image, width: image.width, height: image.height, entrances: entrancesOf(level, image, shown) });
     signs.push(...signsOf(level, image, named.id));
+    placeQuests(questPlaces, level, image, named.id);
   }
   const entrances = entrancesOf(root, rootImage, shown);
   const map: BookWorldMap = { image: rootImage.image, width: rootImage.width, height: rootImage.height, ...(maps.length > 0 && { id: rootId, entrances, maps }) };
-  return { map, paths, questPlaces: questPlacesOf(root, rootImage), signs };
+  return { map, paths, questPlaces, signs };
 }

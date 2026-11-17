@@ -80,9 +80,12 @@ export class SoundCopies {
     return entry.growing ? growingInfo(entry.key, entry.growing, entry.toldGainDb, trim) : null;
   }
 
-  /** How a music sound goes over its length, as its file says; null for ambience and until it is known. */
-  peaksFor(record: SoundRecord): Uint8Array<ArrayBuffer> | null {
-    return this.entryOf(record)?.peaks ?? null;
+  /**
+   * How the music a key names goes over its length, as its copy says; null for ambience and until it is known. Read
+   * by the key, as the copy is played, never through a record and the file it names now, which may be read again.
+   */
+  peaksOfKey(key: string): Uint8Array<ArrayBuffer> | null {
+    return this.keys.peaksOf(key);
   }
 
   /** The record a copy was last made or found for. */

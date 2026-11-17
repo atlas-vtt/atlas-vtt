@@ -178,7 +178,7 @@ export class SettingsService {
 
   setHotkey(id: MapHotkeyId, key: string): void {
     const bindings = this.getHotkeys();
-    const conflict = key && availableHotkeys(false, (feature) => this.isExperimentalOn(feature)).find(action => action.id !== id && bindings[action.id] === key && !canShareHotkey(action.id, id));
+    const conflict = key && availableHotkeys(false).find(action => action.id !== id && bindings[action.id] === key && !canShareHotkey(action.id, id));
     if (conflict) throw new Error(`Already assigned to ${conflict.label}. Clear that shortcut first.`);
     this.settings.hotkeys = withHotkey(this.settings.hotkeys, id, key);
     this.commit();

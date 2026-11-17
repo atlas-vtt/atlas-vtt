@@ -26,7 +26,7 @@ import {
   UserCheck,
   History,
   Layers,
-  Replace, Gauge, SunMoon } from 'lucide-react';
+  Replace, Gauge, SunMoon, LayoutDashboard, BoomBox } from 'lucide-react';
 import { runInBackground } from '../../utils/backgroundTask';
 import { viewedLevelId } from '../../levels/sceneLevels';
 import { collectionIdOfPath } from '../../services/assetPaths';
@@ -267,6 +267,31 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       },
     },
     {
+      id: "open-dm-screen",
+      icon: <LayoutDashboard />,
+      label: t('palette.openDMScreen'),
+      keywords: ["dm", "screen"],
+      shortcut: hotkeyLabel('dashboard'),
+      section: "tools",
+      action: () => {
+        onClose();
+        store.getState().setDMScreenPage("statblocks");
+        store.getState().setDMScreenOpen(true);
+      },
+    },
+    {
+      id: "open-sound-page",
+      icon: <BoomBox />,
+      label: t('palette.openSoundPage'),
+      keywords: ["sound", "audio", "music", "ambience"],
+      section: "tools",
+      action: () => {
+        onClose();
+        store.getState().setDMScreenPage("sound");
+        store.getState().setDMScreenOpen(true);
+      },
+    },
+    {
       id: "scene-snapshots",
       icon: <History />,
       label: t('palette.sceneSnapshots'),
@@ -495,7 +520,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "experimental-features",
       icon: <FlaskConical />,
-      label: "Experimental features",
+      label: t('settings.experimental.heading'),
       keywords: ["beta", "feature", "dynamic lighting", "walls", "lights", "vision"],
       section: "settings",
       hasSubmenu: true,

@@ -112,7 +112,7 @@ function registerSoundStatusBar(plugin: Plugin, director: SoundDirector): () => 
   item.addClass('atlas-sound-status');
   item.hide();
   const label = item.createSpan({ cls: 'atlas-sound-status__name' });
-  const stopAll = item.createEl('button', { cls: 'atlas-sound-status__stop-all clickable-icon' });
+  const stopAll = item.createEl('button', { cls: 'atlas-sound-status__stop-all' });
   stopAll.addEventListener('click', () => director.desk.toggleSilence());
   let shownStopped: boolean | null = null;
   const render = (): void => {

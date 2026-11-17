@@ -28,8 +28,9 @@ $part-remove-size: 16px;
 
   // ── Block chrome on the card ────────────────────────────────────────────
   .atlas-te-stage .atlas-sb-item[data-block-id] {
-    // Only the outline follows this corner; the block paints no background.
-    border-radius: $radius-m;
+    // Only the outline follows this corner; the block paints no background. The outline stands
+    // $chrome-offset outside it, so its own corner, and the wash's, is a control's.
+    border-radius: calc(#{$radius-m} - #{$chrome-offset});
     outline: 0 solid transparent;
     outline-offset: $chrome-offset;
     cursor: default;

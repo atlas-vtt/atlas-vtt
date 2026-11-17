@@ -40,7 +40,6 @@ $chrome-offset: 4px;
     max-width: calc(100% - 2 * #{$spacing-l});
     translate: -50% 0;
     padding: $spacing-s;
-    border-radius: $radius-m;
     box-shadow: $shadow-md;
     color: var(--text-muted);
     font-size: $font-ui-smaller;
@@ -117,7 +116,8 @@ $chrome-offset: 4px;
   // An ability the pointer is over: a wash on its whole line, reaching past it by a shadow. Its handle turns
   // the same shape accent, so nothing jumps between the two. One being typed has its fields instead.
   .atlas-sb-pane .atlas-statblock [data-item-key]:not(.atlas-sb-pane-entry-editor) {
-    border-radius: $radius-s;
+    // The wash's corner is a control's; the line, $chrome-offset inside it, runs concentric.
+    border-radius: calc(#{$radius-m} - #{$chrome-offset});
     outline: $border-width-s solid transparent;
     outline-offset: $chrome-offset;
     transition-property: background-color, box-shadow, outline-color;

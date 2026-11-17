@@ -11,6 +11,7 @@ export const quest: Translation = {
   'quest.sideQuests': 'Побочные квесты',
   'quest.over': 'Выполненные и проваленные',
   'quest.none': 'Квестов пока нет.',
+  'quest.placeHint': 'Свяжите пин на карте мира с заметкой квеста: игроки видят этот пин, пока квест «В процессе».',
   'quest.status.open': 'Доступен',
   'quest.status.active': 'В процессе',
   'quest.status.done': 'Выполнен',

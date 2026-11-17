@@ -14,7 +14,6 @@ $loot-height: 760px;
 $loot-resize-hit: 8px;
 $loot-sidebar-width: 272px;
 $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
-// Keep equal to $loot-card-inset in loot-card.scss: cards run concentric with the window.
 
 .atlas-loot-roller {
   @include atlas-elevated-surface;
@@ -74,8 +73,8 @@ $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
     &::after {
       content: '';
       position: absolute;
-      right: 4px;
-      bottom: 4px;
+      right: $surface-inset;
+      bottom: $surface-inset;
       width: 14px;
       height: 14px;
       border-right: $border-width-l solid var(--text-faint);
@@ -96,14 +95,27 @@ $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
 }
 
 // ── Header ─────────────────────────────────────────────────────────────────
+// No title and no divider: a strip over the main column (over the whole window
+// while it shows no tables) that drags the window and holds Close in its corner.
 .atlas-loot-roller__header {
   @include atlas-flex-row($spacing-s);
-  @include atlas-close-header($spacing-m);
   flex-shrink: 0;
-  border-bottom: $border-width-s solid var(--divider-color);
+  min-height: calc(#{$close-button-size} + 2 * #{$close-button-gap});
+  // Its top on the sidebar's, so the tabs line up with the search; the end keeps
+  // clear of Close, and the main column's gap stands below it.
+  padding: $loot-padding calc(#{$close-button-size} + #{$close-button-gap} + #{$spacing-s}) 0 $loot-padding;
   cursor: grab;
   user-select: none;
   touch-action: none;
+
+  .atlas-loot-pane-tabs {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.atlas-loot-roller__close {
+  @include atlas-close-corner;
 }
 
 // Nested `.parent &` would put the `.atlas-vtt-plugin` scope between the two,
@@ -112,40 +124,8 @@ $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
   cursor: grabbing;
 }
 
-.atlas-loot-roller__grip {
-  width: $icon-xs;
-  height: $icon-xs;
-  color: var(--text-faint);
-  flex-shrink: 0;
-}
-
-.atlas-loot-roller__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: $button-height-s;
-  height: $button-height-s;
-  flex-shrink: 0;
-  border-radius: $radius-m;
-  // The gold coin, the loot roller's mark.
-  color: var(--color-yellow);
-  background: color-mix(in oklch, var(--color-yellow) 16%, transparent);
-
-  svg {
-    width: $icon-s;
-    height: $icon-s;
-  }
-}
-
-.atlas-loot-roller__title {
-  flex: 1;
-  margin: 0;
-  font-size: $font-ui-medium;
-  font-weight: $font-weight-semibold;
-  line-height: 1.2;
-}
-
 // ── Body: sidebar + main ───────────────────────────────────────────────────
+// The sidebar runs the window's full height, as in the asset manager.
 .atlas-loot-roller__body {
   display: grid;
   grid-template-columns: $loot-sidebar-width minmax(0, 1fr);
@@ -165,11 +145,17 @@ $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
   @include atlas-flex-col($loot-padding);
   min-width: 0;
   min-height: 0;
-  padding: $loot-padding $loot-padding 0;
+  padding: 0 $loot-padding;
+
+  > .atlas-loot-roller__header {
+    margin: 0 (-$loot-padding);
+  }
 }
 
 // ── Shared bits ────────────────────────────────────────────────────────────
 .atlas-loot-section-label {
+  // A label of the interface, never a heading: themes that set a face for headings leave it alone.
+  font-family: var(--font-interface);
   font-size: $font-ui-smaller;
   font-weight: $font-weight-semibold;
   letter-spacing: 0.04em;

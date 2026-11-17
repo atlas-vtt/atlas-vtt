@@ -243,6 +243,11 @@
   }
 }
 
+// At a row's end, the row's padding inside it: concentric with the row's corner.
+.atlas-sound-lib .atlas-sound-lib__row .atlas-sound-lib__more {
+  border-radius: $control-inset-radius;
+}
+
 .atlas-sound-lib__row:hover .atlas-sound-lib__more,
 .atlas-sound-lib__row[aria-selected='true'] .atlas-sound-lib__more,
 .atlas-sound-lib__rows:focus-visible .atlas-sound-lib__row[data-active] .atlas-sound-lib__more {
@@ -250,6 +255,7 @@
 }
 
 .atlas-sound-lib .atlas-sound-lib__rename {
+  @include atlas-text-input;
   flex: 1;
   min-width: 0;
   height: 28px;
