@@ -1,8 +1,9 @@
 import { App, Modal } from 'obsidian';
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../ui/nativeModal';
-import { createButton } from '../ui/buttonElement';
 import { CHOICE_VARIANTS } from '../ui/confirmDialog';
 import { t } from '../i18n';
+import { createAtlasButton } from '../ui/atlasButton';
+import { choiceVariant } from '../ui/confirmDialog';
 
 export interface ChoiceModalButton<T> {
   text: string;
@@ -52,7 +53,7 @@ export class ChoiceModal<T> extends Modal {
 
     const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
     for (const button of options.buttons) {
-      createButton(buttonContainer, {
+      createAtlasButton(buttonContainer, {
         text: button.text,
         variant: CHOICE_VARIANTS[button.variant ?? 'plain'],
         size: 'sm',
@@ -62,7 +63,7 @@ export class ChoiceModal<T> extends Modal {
         },
       });
     }
-    createButton(buttonContainer, { text: t('common.cancel'), variant: 'outline', size: 'sm', onClick: () => this.close() });
+    createAtlasButton(buttonContainer, { text: t('common.cancel'), variant: 'outline', size: 'sm', onClick: () => this.close() });
   }
 
   onClose(): void {

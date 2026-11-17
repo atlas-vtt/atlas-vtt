@@ -2,6 +2,7 @@ import type { AtlasSettingSection } from '../../../settings/settingSections';
 import type { AccountControl } from './AccountControl.ts';
 import { accessText, accountText, planText, UNREACHABLE_TEXT, type AccountView } from './accountView.ts';
 import { t } from '../../../i18n';
+import { addSettingButton } from '../../../ui/atlasButton';
 
 /** What the account row says. */
 function accountDesc(view: AccountView): string {
@@ -33,12 +34,13 @@ export function accountSections(account: AccountControl): AtlasSettingSection[] 
           const view = account.view();
           setting.setDesc(accountDesc(view));
           setting.clear();
-          if (signedIn(view)) setting.addButton((button) => button.setButtonText(t('online.signOut')).onClick(() => void account.signOut()));
-          else if (view.kind === 'signed-out') setting.addButton((button) => button.setButtonText(t('online.signIn')).setCta().onClick(() => void account.signIn()));
-          else if (view.kind === 'waiting') setting.addButton((button) => button.setButtonText(t('online.cancel')).onClick(() => account.cancelSignIn()));
-          setting.addButton((button) => {
-            button.setButtonText(t('online.account.open')).onClick(() => account.openAccountPage());
-            if (view.kind === 'no-access') button.setCta();
+          if (signedIn(view)) addSettingButton(setting, { text: t('online.signOut'), onClick: () => void account.signOut() });
+          else if (view.kind === 'signed-out') addSettingButton(setting, { text: t('online.signIn'), variant: 'default', onClick: () => void account.signIn() });
+          else if (view.kind === 'waiting') addSettingButton(setting, { text: t('online.cancel'), onClick: () => account.cancelSignIn() });
+          addSettingButton(setting, {
+            text: t('online.account.open'),
+            variant: view.kind === 'no-access' ? 'default' : 'outline',
+            onClick: () => account.openAccountPage(),
           });
         };
         draw();

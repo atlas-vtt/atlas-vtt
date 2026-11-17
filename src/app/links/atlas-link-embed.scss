@@ -6,7 +6,7 @@
 // (map-link-preview.scss): the art edge to edge and its name over a shade
 // along the bottom. They render inside Obsidian's `.internal-embed`, outside
 // .atlas-vtt-plugin, hence the top-level classes; the card itself carries
-// .atlas-vtt-plugin, so its buttons are Atlas' own (`createButton`).
+// .atlas-vtt-plugin, so its buttons are Atlas' own (`createAtlasButton`).
 
 $embed-token-size: 56px;
 // Room the caption takes over the art: its padding and two lines of text
@@ -122,6 +122,23 @@ $embed-caption-height: calc(2 * #{$spacing-m} + 2.6em);
   // Touch has no hover: the button always shows
   @media (hover: none) {
     opacity: 1;
+  }
+}
+
+// Atlas' own fills, never Obsidian's button look: the action filled like Atlas' main button, the menu
+// beside it like its secondary one. Two classes outrank Obsidian's `button:not(.clickable-icon)`.
+.atlas-link-embed__caption .atlas-link-embed__primary {
+  @include atlas-accent-fill;
+  box-shadow: none;
+}
+
+.atlas-link-embed__caption .atlas-link-embed__more {
+  background: var(--interactive-normal);
+  color: var(--text-normal);
+  box-shadow: none;
+
+  &:hover {
+    background: var(--interactive-hover);
   }
 }
 

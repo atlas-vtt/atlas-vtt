@@ -1,9 +1,9 @@
 import { Modal, type App } from 'obsidian';
 import { t } from '../i18n';
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../ui/nativeModal';
-import { createButton } from '../ui/buttonElement';
 import type { ButtonVariant } from '../packages/components/primitives/buttonClasses';
 import type { OriginalsChoice } from './SoundRoots';
+import { createAtlasButton } from '../ui/atlasButton';
 
 export interface ConversionConsentOptions {
   folderName: string;
@@ -30,7 +30,7 @@ export class ConversionConsentModal extends Modal {
       this.setTitle(folder);
       contentEl.createEl('p', { text: t('audio.consent.noWrite', { folder }) });
       const row = contentEl.createDiv({ cls: 'modal-button-container' });
-      createButton(row, { text: t('audio.consent.ok'), size: 'sm', onClick: () => this.close() });
+      createAtlasButton(row, { text: t('audio.consent.ok'), size: 'sm', onClick: () => this.close() });
       return;
     }
     this.setTitle(t('audio.consent.title', { folder }));
@@ -39,7 +39,7 @@ export class ConversionConsentModal extends Modal {
     const row = contentEl.createDiv({ cls: 'modal-button-container' });
     if (options.canTrash) this.choice(row, t('audio.consent.trash'), 'trash', 'default');
     this.choice(row, t('audio.consent.keep'), 'keep', options.canTrash ? 'outline' : 'default');
-    createButton(row, { text: t('common.cancel'), variant: 'outline', size: 'sm', onClick: () => this.close() });
+    createAtlasButton(row, { text: t('common.cancel'), variant: 'outline', size: 'sm', onClick: () => this.close() });
   }
 
   onClose(): void {
@@ -48,7 +48,7 @@ export class ConversionConsentModal extends Modal {
   }
 
   private choice(row: HTMLElement, text: string, value: OriginalsChoice, variant: ButtonVariant): void {
-    createButton(row, {
+    createAtlasButton(row, {
       text,
       variant,
       size: 'sm',

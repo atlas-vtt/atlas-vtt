@@ -2,7 +2,7 @@ import { Component, Menu, setIcon, type EmbedContext, type FileEmbed, type TFile
 import { skeletonPhase } from '../packages/components/primitives/skeletonPhase';
 import { runInBackground } from '../utils/backgroundTask';
 import { t } from '../i18n';
-import { createButton } from '../ui/buttonElement';
+import { createAtlasButton } from '../ui/atlasButton';
 import './atlas-link-embed.scss';
 
 /** What an embed card shows once its file is read. */
@@ -66,14 +66,14 @@ export abstract class AtlasLinkEmbed extends Component implements FileEmbed {
   }
 
   private renderAction(action: EmbedCardAction): void {
-    const button = createButton(this.captionEl, { size: 'sm', cls: 'atlas-link-embed__action' });
+    const button = createAtlasButton(this.captionEl, { size: 'sm', cls: 'atlas-link-embed__action' });
     setIcon(button.createSpan({ cls: 'atlas-link-embed__action-icon' }), action.icon);
     button.createSpan({ text: action.label });
     this.onPress(button, () => this.run(action));
   }
 
   private renderMore(actions: readonly EmbedCardAction[]): void {
-    const button = createButton(this.captionEl, {
+    const button = createAtlasButton(this.captionEl, {
       variant: 'secondary',
       size: 'sm',
       cls: ['atlas-link-embed__action', 'atlas-link-embed__more'],

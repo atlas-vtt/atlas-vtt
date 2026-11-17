@@ -48,7 +48,6 @@ export const loot = {
   'loot.tabs.latest': 'Latest roll',
   'loot.tabs.latestHint': 'The last roll on this map.',
   'loot.tabs.list': 'Rolls',
-  'loot.title': 'Random tables',
   'loot.tree.all': 'All',
   'loot.tree.none': 'None',
   'loot.tree.tickAll': 'Tick every view of this base.',

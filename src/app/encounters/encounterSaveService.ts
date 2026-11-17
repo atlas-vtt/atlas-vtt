@@ -7,11 +7,11 @@ import { runInBackground } from '../utils/backgroundTask';
 import { getLocale, t } from '../i18n';
 import { showNotice } from '../ui/notice';
 import { createDialogShell } from '../ui/dialogShell';
-import { createButton } from '../ui/buttonElement';
 import { trashVaultItem } from '../utils/trashVaultItem';
 import { ENCOUNTER_THUMBNAIL_DIR, encounterThumbnailFile } from './encounterThumbnailFile';
 import { refsRange } from './encounterQuantity';
 import { formatRange } from '../creatures/creatureValues';
+import { createAtlasButton } from '../ui/atlasButton';
 
 /** One token as it will be stored inside an encounter. */
 export type EncounterTokenDraft = EncounterAsset['tokens'][number];
@@ -63,8 +63,8 @@ function promptForEncounterName(app: ObsidianApp, tokens: EncounterTokenDraft[])
     };
 
     const actions = dialog.createDiv({ cls: 'atlas-text-dialog__actions' });
-    createButton(actions, { text: t('common.cancel'), variant: 'outline', size: 'sm', onClick: () => close(null) });
-    createButton(actions, { text: t('encounter.save'), size: 'sm', onClick: submit });
+    createAtlasButton(actions, { text: t('common.cancel'), variant: 'outline', size: 'sm', onClick: () => close(null) });
+    createAtlasButton(actions, { text: t('encounter.save'), size: 'sm', onClick: submit });
     root.addEventListener('click', (event) => {
       if (event.target === root) close(null);
     });
