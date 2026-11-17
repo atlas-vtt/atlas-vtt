@@ -27,14 +27,12 @@ export function promptForText(options: TextInputDialogOptions): Promise<string |
     textarea.value = options.initialValue ?? '';
     if (options.placeholder) textarea.placeholder = options.placeholder;
 
-    const cancelButton = createAtlasButton(footer, { text: t('common.cancel'), variant: 'outline', size: 'sm' });
-    const confirmButton = createAtlasButton(footer, { text: options.confirmLabel, size: 'sm' });
     const confirm = (): void => {
       const text = textarea.value.trim();
       close(text !== '' || options.allowEmpty === true ? text : null);
     };
-    createAtlasButton(footer, { text: t('common.cancel'), variant: 'outline', onClick: () => close(null) });
-    createAtlasButton(footer, { text: options.confirmLabel, onClick: confirm });
+    createAtlasButton(footer, { text: t('common.cancel'), variant: 'outline', size: 'sm', onClick: () => close(null) });
+    createAtlasButton(footer, { text: options.confirmLabel, size: 'sm', onClick: confirm });
 
     root.addEventListener('click', (event) => {
       if (event.target === root) close(null);
