@@ -607,6 +607,58 @@
   }
 }
 
+/// Resize handles of a floating window moved with `usePanelResize`: put on the
+/// handle's base class, with `--right`, `--bottom` and `--corner` modifiers. The
+/// corner carries a grip mark along the window's own corner.
+/// @param {Length} $hit - thickness of the edge handles
+@mixin atlas-floating-resize-handle($hit: 8px) {
+  position: absolute;
+  z-index: 2;
+  touch-action: none;
+
+  &--right {
+    top: $surface-radius;
+    right: 0;
+    bottom: $surface-radius;
+    width: $hit;
+    cursor: ew-resize;
+  }
+
+  &--bottom {
+    right: $surface-radius;
+    bottom: 0;
+    left: $surface-radius;
+    height: $hit;
+    cursor: ns-resize;
+  }
+
+  &--corner {
+    right: 0;
+    bottom: 0;
+    width: $surface-radius;
+    height: $surface-radius;
+    cursor: nwse-resize;
+
+    &::after {
+      content: '';
+      position: absolute;
+      right: $surface-inset;
+      bottom: $surface-inset;
+      width: 14px;
+      height: 14px;
+      border-right: $border-width-l solid var(--text-faint);
+      border-bottom: $border-width-l solid var(--text-faint);
+      border-bottom-right-radius: atlas-panel-inset-radius-value($surface-inset);
+      opacity: 0.45;
+      transition: opacity $transition-fast $transition-ease;
+    }
+
+    &:hover::after {
+      opacity: 1;
+    }
+  }
+}
+
 /// Header along the top edge of a panel, ending in the close button: the
 /// button sits $close-button-gap from the panel's border, and the rest of the
 /// header centres on it.

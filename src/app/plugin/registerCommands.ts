@@ -182,6 +182,17 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
   });
 
   plugin.addCommand({
+    id: 'open-docs',
+    name: t('docs.command'),
+    checkCallback: (checking) => {
+      const view = app.workspace.getActiveViewOfType(AtlasView);
+      if (!view) return false;
+      if (!checking) view.getStore().getState().setDocsOpen(true);
+      return true;
+    },
+  });
+
+  plugin.addCommand({
     id: 'clean-up-missing-assets',
     name: t('command.cleanUpMissingAssets'),
     checkCallback: (checking) => {

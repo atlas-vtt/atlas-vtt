@@ -23,6 +23,7 @@ export interface UISlice extends ViewUIState {
   setDMScreenPage: (page: DMScreenPage) => void;
   setGridAlignmentOpen: (open: boolean) => void;
   setDiceLogOpen: (open: boolean) => void;
+  setDocsOpen: (open: boolean) => void;
   openAssetManager: (tab?: UISlice['assetManagerInitialTab']) => void;
   closeAssetManager: () => void;
   /** Opens or closes the palette; `page` names the page it opens on. */
@@ -63,6 +64,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
   | 'dmScreenPage'
   | 'isGridAlignmentOpen'
   | 'isDiceLogOpen'
+  | 'isDocsOpen'
   | 'isAssetManagerOpen'
   | 'assetManagerInitialTab'
   | 'isCommandPaletteOpen'
@@ -89,6 +91,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
     dmScreenPage: 'statblocks',
     isGridAlignmentOpen: false,
     isDiceLogOpen: false,
+    isDocsOpen: false,
     isAssetManagerOpen: false,
     assetManagerInitialTab: undefined,
     isCommandPaletteOpen: false,
@@ -125,6 +128,7 @@ export function createUIActions(
   | 'setDMScreenPage'
   | 'setGridAlignmentOpen'
   | 'setDiceLogOpen'
+  | 'setDocsOpen'
   | 'openAssetManager'
   | 'closeAssetManager'
   | 'setCommandPaletteOpen'
@@ -156,6 +160,7 @@ export function createUIActions(
     setDMScreenPage: (page) => set((draft) => { draft.dmScreenPage = page; }),
     setGridAlignmentOpen: (open) => set((draft) => { draft.isGridAlignmentOpen = open; }),
     setDiceLogOpen: (open) => set((draft) => { draft.isDiceLogOpen = open; }),
+    setDocsOpen: (open) => set((draft) => { draft.isDocsOpen = open; }),
     // The palette, the dice tray and the asset manager open where the toolbar editor's tray sits, or over the map: each ends edit mode.
     openAssetManager: (tab) => set((draft) => {
       draft.isAssetManagerOpen = true;

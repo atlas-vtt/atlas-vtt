@@ -31,6 +31,8 @@ export interface ViewUIState {
   dmScreenPage: DMScreenPage;
   isGridAlignmentOpen: boolean;
   isDiceLogOpen: boolean;
+  /** The documentation panel, the live atlas-vtt.dev docs in a frame. Never saved. */
+  isDocsOpen: boolean;
   isAssetManagerOpen: boolean;
   assetManagerInitialTab?: 'scenes' | 'maps' | 'encounters' | 'tokens' | 'party' | undefined;
   isCommandPaletteOpen: boolean;

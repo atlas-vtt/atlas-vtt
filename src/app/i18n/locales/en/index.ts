@@ -19,6 +19,7 @@ import { campaign } from './campaign';
 import { quest } from './quest';
 import { dashboard } from './dashboard';
 import { dice } from './dice';
+import { docs } from './docs';
 import { diceLab } from './diceLab';
 import { diceRoll } from './diceRoll';
 import { diceSettings } from './diceSettings';
@@ -134,6 +135,7 @@ export const en = {
   ...quest,
   ...dashboard,
   ...dice,
+  ...docs,
   ...diceLab,
   ...diceRoll,
   ...diceSettings,
