@@ -5,7 +5,12 @@ import { t } from '../../../i18n';
 const ROWS = 5;
 
 /** The window's body while the collection's tables are read for the first time: its sidebar, bar and cards. */
-export function TablesSkeleton(): React.ReactElement {
+interface TablesSkeletonProps {
+  /** The window's header, over the main column as in the loaded window. */
+  header: React.ReactNode;
+}
+
+export function TablesSkeleton({ header }: TablesSkeletonProps): React.ReactElement {
   return (
     <SkeletonGroup label={t('tables.loading')} className="atlas-loot-roller__body atlas-tables-skeleton">
       <div className="atlas-loot-roller__sidebar">
@@ -22,6 +27,7 @@ export function TablesSkeleton(): React.ReactElement {
         </div>
       </div>
       <div className="atlas-loot-roller__main">
+        {header}
         <Skeleton className="atlas-tables-skeleton__bar" />
         <Skeleton className="atlas-tables-skeleton__bar" />
         <div className="atlas-loot-list__cards">

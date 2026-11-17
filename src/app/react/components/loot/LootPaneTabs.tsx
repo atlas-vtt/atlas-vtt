@@ -1,5 +1,4 @@
 import React from 'react';
-import { History, Sparkles } from 'lucide-react';
 import type { LootPane } from '../../../stores/lootRollerSlice';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { t } from '../../../i18n';
@@ -24,7 +23,6 @@ export function LootPaneTabs({ pane, historyCount, onSelect, onClearHistory }: L
             className={`atlas-loot-pane-tab${pane === 'results' ? ' atlas-active' : ''}`}
             onClick={() => onSelect('results')}
           >
-            <Sparkles />
             {t('loot.tabs.latest')}
           </button>
         </LabelTooltip>
@@ -36,7 +34,6 @@ export function LootPaneTabs({ pane, historyCount, onSelect, onClearHistory }: L
             className={`atlas-loot-pane-tab${pane === 'history' ? ' atlas-active' : ''}`}
             onClick={() => onSelect('history')}
           >
-            <History />
             {t('loot.tabs.history')}
             <span className="atlas-tab-count">{historyCount}</span>
           </button>

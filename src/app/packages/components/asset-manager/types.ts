@@ -2,8 +2,8 @@ import { App as ObsidianApp, Modal } from 'obsidian';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import type { CollectionMetadata, EncounterAsset as StoredEncounterAsset } from '../../../services/AssetService';
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../../../ui/nativeModal';
-import { createButton } from '../../../ui/buttonElement';
 import { t } from '../../../i18n';
+import { createAtlasButton } from '../../../ui/atlasButton';
 
 // ─── Tab / View Constants ───────────────────────────────────────────
 
@@ -161,7 +161,7 @@ export async function showConfirmationModal(
 
         const buttonContainer = contentEl.createDiv('modal-button-container');
 
-        createButton(buttonContainer, {
+        createAtlasButton(buttonContainer, {
           text: t('common.continue'),
           size: 'sm',
           onClick: () => {
@@ -169,7 +169,7 @@ export async function showConfirmationModal(
             this.close();
           },
         });
-        createButton(buttonContainer, {
+        createAtlasButton(buttonContainer, {
           text: t('common.cancel'),
           variant: 'outline',
           size: 'sm',

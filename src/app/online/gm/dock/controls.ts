@@ -2,7 +2,7 @@ import { setIcon } from 'obsidian';
 import { openMenuBelow, type MenuEntry } from './dockMenu.ts';
 import type { Tone } from './panelModel.ts';
 import { t } from '../../../i18n';
-import { createButton } from '../../../ui/buttonElement';
+import { createAtlasButton } from '../../../ui/atlasButton';
 import type { ButtonVariant } from '../../../packages/components/primitives/buttonClasses';
 
 /** How long a control says that it copied. */
@@ -19,7 +19,7 @@ const KIND_VARIANTS: Readonly<Record<ButtonKind, ButtonVariant>> = { plain: 'sec
  */
 export function textButton(parent: HTMLElement, text: string, onClick: (event: MouseEvent) => void, kind: ButtonKind = 'plain'): HTMLButtonElement {
   const cls = kind === 'ghost' ? ['atlas-online-button', 'atlas-online-button--ghost'] : ['atlas-online-button'];
-  return createButton(parent, { text, variant: KIND_VARIANTS[kind], size: 'sm', cls, onClick });
+  return createAtlasButton(parent, { text, variant: KIND_VARIANTS[kind], size: 'sm', cls, onClick });
 }
 
 /** A dot in a status colour and the status in words. */

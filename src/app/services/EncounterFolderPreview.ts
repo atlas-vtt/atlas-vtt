@@ -10,7 +10,7 @@ import { scrollOnCtrlWheel } from './previewWheel';
 import { t } from '../i18n';
 import './encounter-folder-preview.scss';
 import { portalHost } from '../host/portalHost';
-import { createButton } from '../ui/buttonElement';
+import { createAtlasButton } from '../ui/atlasButton';
 
 /** Token portraits a row shows of its encounter, overlapping. */
 const ROW_PORTRAITS = 3;
@@ -104,7 +104,7 @@ export class EncounterFolderPreview implements IPreviewWindow {
       for (const encounter of encounters) this.addRow(list, encounter);
     }
 
-    const roll = createButton(card, { cls: 'atlas-encounter-folder-preview__roll' });
+    const roll = createAtlasButton(card, { cls: 'atlas-encounter-folder-preview__roll' });
     setIcon(roll.createSpan({ cls: 'atlas-encounter-folder-preview__roll-icon' }), 'dices');
     roll.createSpan({ text: t('pinMenu.rollEncounter') });
     roll.disabled = encounters.length === 0;

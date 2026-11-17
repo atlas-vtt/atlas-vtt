@@ -16,6 +16,7 @@
 @use '../src/app/online/tableLog/styles/table-log';
 @use './native-tooltips';
 @use './native-checkboxes';
+@use './button-press';
 @use './notices';
 // At the root, outside the plugin's namespace: its scope includes the floating layer under <body>.
 @use '../src/app/packages/components/asset-manager/open-window';
@@ -332,8 +333,9 @@ body.theme-light {
       // is room for the cards' shadows, taken back by the margin, so the cards
       // stand where they would without it. A scroller clips its shadows at the
       // padding, and `--shadow-l` reaches 120px down and 90px aside (Obsidian's
-      // `0 30px 90px`), so below and left get all of it; above and right the
-      // view's edge is closer than that anyway. The rows scroll by wheel and
+      // `0 30px 90px`), so below and to either side get all of it (the right
+      // too, since the bar slides away from the edge to clear the window's
+      // buttons); above, the view's edge is closer than that anyway. The rows scroll by wheel and
       // touch without a scrollbar, not even the overlay one: it would stand at
       // the edge of the shadows' room, far from the cards.
       > .atlas-widget-bar > .atlas-widget-container {
@@ -343,8 +345,8 @@ body.theme-light {
         overflow: hidden auto;
         overscroll-behavior: contain;
         @include atlas-scrollbar-none;
-        padding: $spacing-xl $spacing-xl $shadow-room $shadow-room;
-        margin: (-$spacing-xl) (-$spacing-xl) (-$shadow-room) (-$shadow-room);
+        padding: $spacing-xl $shadow-room $shadow-room;
+        margin: (-$spacing-xl) (-$shadow-room) (-$shadow-room);
       }
 
       // A copy of the bar, in one row, that useWidgetStack measures.
@@ -736,6 +738,12 @@ body.theme-light {
   /* -------------------------------------------------
      Button component (using design tokens)
      ------------------------------------------------- */
+
+  // The host of Atlas' buttons in Obsidian's settings rows (`addSettingButton`): it lends them Atlas'
+  // scope and leaves the row's layout to them.
+  &.atlas-setting-control {
+    display: contents;
+  }
 
   // Base
   .btn {

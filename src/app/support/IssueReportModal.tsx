@@ -10,7 +10,7 @@ import { formatReportMarkdown, issueForm, type IssueForm, type IssueReport } fro
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../ui/nativeModal';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
-import { createButton } from '../ui/buttonElement';
+import { createAtlasButton } from '../ui/atlasButton';
 import { createToggleSwitch } from '../ui/toggleSwitchElement';
 
 export interface IssueReportPreset {
@@ -200,13 +200,13 @@ export class IssueReportModal extends Modal {
     this.statusEl = this.contentEl.createEl('p', { cls: 'atlas-issue-report-status' });
     this.statusEl.setAttribute('role', 'alert');
     const actions = this.contentEl.createDiv({ cls: 'atlas-issue-report-actions' });
-    createButton(actions, {
+    createAtlasButton(actions, {
       text: t('issue.copy'),
       variant: 'outline',
       size: 'sm',
       onClick: () => runInBackground(this.copyReport(), 'Copying the issue report', t('issue.clipboardFailed')),
     });
-    this.submitButton = createButton(actions, { text: t('issue.submit'), size: 'sm', onClick: () => { void this.submit(); } });
+    this.submitButton = createAtlasButton(actions, { text: t('issue.submit'), size: 'sm', onClick: () => { void this.submit(); } });
   }
 
   private applyWording(): void {
@@ -266,8 +266,8 @@ export class IssueReportModal extends Modal {
       this.setTitle(t('issue.submitted'));
       this.contentEl.createEl('p', { text: t('issue.submittedAs', { number: String(receipt.number) }) });
       const actions = this.contentEl.createDiv({ cls: 'atlas-issue-report-actions' });
-      createButton(actions, { text: t('issue.view'), variant: 'outline', size: 'sm', onClick: () => this.options.openExternal(receipt.url) });
-      createButton(actions, { text: t('common.close'), size: 'sm', onClick: () => this.close() });
+      createAtlasButton(actions, { text: t('issue.view'), variant: 'outline', size: 'sm', onClick: () => this.options.openExternal(receipt.url) });
+      createAtlasButton(actions, { text: t('common.close'), size: 'sm', onClick: () => this.close() });
     } catch (error) {
       const message = error instanceof Error ? error.message : t('issue.sendFailed');
       this.statusEl?.setText(t('issue.stillHere', { message }));

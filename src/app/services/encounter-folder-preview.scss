@@ -138,7 +138,7 @@ $face-size: 26px;
   text-align: center;
 }
 
-// Atlas's main button (`createButton`), its size set above `.atlas-vtt-plugin .btn`.
+// Atlas's main button (`createAtlasButton`), its size set above `.atlas-vtt-plugin .btn`.
 .atlas-encounter-folder-preview button.atlas-encounter-folder-preview__roll {
   flex-shrink: 0;
   gap: $spacing-s;

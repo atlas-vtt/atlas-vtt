@@ -1,5 +1,5 @@
 import { createDialogShell } from './dialogShell';
-import { createButton } from './buttonElement';
+import { createAtlasButton } from './atlasButton';
 import type { ButtonVariant } from '../packages/components/primitives/buttonClasses';
 import { t } from '../i18n';
 
@@ -66,9 +66,9 @@ export function chooseAction<T>(options: ChoiceDialogOptions<T>): Promise<T | nu
       }
     });
 
-    const cancel = createButton(footer, { text: t('common.cancel'), variant: 'outline', size: 'sm', onClick: () => close(null) });
+    const cancel = createAtlasButton(footer, { text: t('common.cancel'), variant: 'outline', size: 'sm', onClick: () => close(null) });
     const buttons = options.choices.map((choice) =>
-      createButton(footer, { text: choice.label, variant: CHOICE_VARIANTS[choice.style ?? 'plain'], size: 'sm', onClick: () => close(choice.value) }));
+      createAtlasButton(footer, { text: choice.label, variant: CHOICE_VARIANTS[choice.style ?? 'plain'], size: 'sm', onClick: () => close(choice.value) }));
 
     root.addEventListener('click', (event) => {
       if (event.target === root) close(null);
@@ -98,4 +98,10 @@ export async function confirmAction(options: ConfirmDialogOptions): Promise<bool
     choices: [{ label: options.confirmLabel, value: true, style: options.destructive ? 'warning' : 'cta' }],
   });
   return confirmed === true;
+}
+
+/** Atlas' button for a choice's style: filled for the recommended one, red for one that deletes or overwrites. */
+export function choiceVariant(style: 'cta' | 'warning' | undefined): ButtonVariant {
+  if (style === 'cta') return 'default';
+  return style === 'warning' ? 'destructive' : 'outline';
 }

@@ -1,0 +1,33 @@
+// Every Atlas button shows that it is pressed, and all in one way: from press to release a tint in
+// Obsidian's mono colour (darker on a light theme, lighter on a dark one) lies over whatever fill the
+// button has, its hover and its chosen state included. A button that opens a menu, list or popover
+// keeps the tint while that is open: an open menu makes the page inert under it, so the trigger would
+// otherwise lose its press and its hover the moment it was clicked. The tint is `background-image`,
+// which paints over the button's `background-color` and under its content, so no button needs to
+// know of it.
+//
+// The rule lives in a cascade layer: an `!important` declaration in a layer wins over every unlayered
+// one, whatever its specificity, so it holds over the component rules that set `background` with
+// `!important` (the toolbars and their menus) and over themes, without naming any of them.
+//
+// Atlas buttons are buttons with an `atlas-` class, and buttons inside an element with one, except in
+// Obsidian's own content Atlas shows (a note rendered in a preview, an embedded editor), which keeps
+// Obsidian's look. Colour swatches keep their fill, since it is the colour being chosen (they press
+// by scale), and a text link has no surface to tint.
+@layer atlas-press {
+  :is(
+      button:where([class^='atlas-'], [class*=' atlas-']),
+      :not(html, body):where([class^='atlas-'], [class*=' atlas-'])
+        button:not(:where(.atlas-embedded-leaf-view, .markdown-rendered, .markdown-source-view) *)
+    ):is(:active, [aria-haspopup]:not([aria-haspopup='false'])[aria-expanded='true']):not(
+      :disabled,
+      [aria-disabled='true'],
+      .btn--link,
+      .atlas-command-palette-swatch,
+      .atlas-csm-color-swatch,
+      .atlas-ring-swatch,
+      .atlas-swatch
+    ) {
+    background-image: linear-gradient(rgba(var(--mono-rgb-100), 0.12), rgba(var(--mono-rgb-100), 0.12)) !important;
+  }
+}

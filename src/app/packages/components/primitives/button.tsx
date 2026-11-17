@@ -22,7 +22,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const Comp = asChild ? Slot : "button";
-    const composedClassName = cn(buttonClasses(variant, size), className);
+    const composedClassName = cn(...buttonClasses(variant, size), className);
 
     return <Comp className={composedClassName} ref={ref} {...props} />;
   }
