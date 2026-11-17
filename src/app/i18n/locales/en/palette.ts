@@ -28,8 +28,6 @@ export const palette = {
   'palette.openDMScreenWindow': 'Open DM screen in a new window',
   'palette.dmScreenWindowFailed': 'Could not open the DM screen window',
   'palette.openSoundPage': 'Open Sound page',
-  'palette.openDMScreen': 'Open DM screen',
-  'palette.openSoundPage': 'Open Sound page',
   'palette.panel.grid': 'Grid Settings',
   'palette.panel.playerView': 'Player View Settings',
   'palette.panel.snapshots': 'Scene Snapshots',
