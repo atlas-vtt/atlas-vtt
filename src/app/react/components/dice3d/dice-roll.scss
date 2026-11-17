@@ -82,7 +82,7 @@ $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%,
   display: flex;
   flex-direction: column;
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
 }
 
 .atlas-dice-roll__engraving {
@@ -297,8 +297,8 @@ $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%,
   }
 }
 
-// A capsule under the panel, like every bar shorter than 48px, aligned with the
-// column: right for the DM, centred in the player window.
+// A capsule under the panel, aligned with the column: right for the DM, centred
+// in the player window.
 // The modifiers' chips under the panel, right-aligned, one per step the counter clicks in.
 .atlas-dice-roll__chips {
   align-self: flex-end;
@@ -316,7 +316,6 @@ $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%,
   padding: $spacing-s $spacing-m;
   @include atlas-elevated-surface;
   border-radius: $radius-full;
-  @include atlas-corner-shape;
 }
 
 .atlas-dice-roll__chip-label {

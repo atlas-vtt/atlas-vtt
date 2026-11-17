@@ -15,7 +15,7 @@
   @include atlas-ghost-button;
   justify-content: center;
   height: var(--input-height);
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   box-shadow: none;
   font-size: $font-ui-small;
   cursor: pointer;
@@ -39,7 +39,7 @@
 .atlas-scene-level {
   @include atlas-flex-row($spacing-xs);
   padding: $spacing-xs;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   cursor: pointer;
 
   &:hover {
@@ -116,7 +116,7 @@
   @include atlas-flex-col($spacing-xs);
   padding: $spacing-xs;
   margin-left: $spacing-l;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: var(--background-secondary);
 }
 

@@ -33,14 +33,14 @@
   z-index: $z-dropdown;
   pointer-events: auto;
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   animation: atlas-online-log-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 // In a sheet, which has the surface, the title and the close button. Its cards and the message
 // field take the radius of a panel's inner elements.
 .atlas-online-log--embedded {
-  --atlas-panel-inner-radius: calc(#{$radius-xl} + #{$spacing-s});
+  --atlas-panel-inner-radius: calc(#{$surface-radius} - #{$border-width-m});
   height: 100%;
 }
 

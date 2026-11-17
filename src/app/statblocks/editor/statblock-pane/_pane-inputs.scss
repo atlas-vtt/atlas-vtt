@@ -14,7 +14,7 @@
 
     // A Metric keeps its own box's corners, and the wash fills that box and reaches no further.
     &[data-block='metric'] {
-      border-radius: $radius-l;
+      border-radius: $radius-m;
     }
 
     // A list that holds abilities washes the one pointed at (interaction.scss); a Table, as Obsidian's, washes nothing.
@@ -161,7 +161,7 @@
     outline-offset: $spacing-xs;
 
     &[data-block='metric'] {
-      border-radius: $radius-l;
+      border-radius: $radius-m;
     }
   }
 
@@ -232,7 +232,7 @@
     overflow-y: auto;
     background: var(--menu-background);
     border: var(--menu-border-width, #{$border-width-s}) solid var(--menu-border-color);
-    border-radius: $radius-xl;
+    border-radius: $surface-radius;
     box-shadow: var(--menu-shadow, #{$shadow-md});
     font-style: normal;
     font-weight: $font-weight-normal;

@@ -170,7 +170,6 @@
   box-shadow: 0 1px 3px color-mix(in oklch, black 65%, transparent), inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) 13%, transparent);
   cursor: grab;
   pointer-events: auto;
-  @include atlas-corner-shape;
 
   &::after {
     content: '';

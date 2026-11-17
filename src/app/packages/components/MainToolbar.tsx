@@ -238,7 +238,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
           background: 'var(--background-primary)',
           padding: 'var(--atlas-spacing-xl)',
           border: '1px solid var(--background-modifier-border)',
-          borderRadius: 'var(--atlas-radius-l)',
+          borderRadius: 'var(--atlas-radius-m)',
           zIndex: 1000
         }}>
           <p>{t('toolbar.diceFailed')}</p>

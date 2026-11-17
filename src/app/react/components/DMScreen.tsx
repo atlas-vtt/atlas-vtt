@@ -19,6 +19,7 @@ import { SoundPane } from './dm-screen/sound/SoundPane';
 import { useDMScreenStatblocks } from './dm-screen/useDMScreenStatblocks';
 import { useFightStatblocks } from './dm-screen/useFightStatblocks';
 import { useNoteFocus } from './dm-screen/useNoteFocus';
+import { handledByAnotherControl } from '../../keyboard/tooltipEscape';
 import { sideOf, usePageTurn } from './dm-screen/usePageTurn';
 
 interface DMScreenProps {
@@ -116,10 +117,18 @@ export default function DMScreen({ isOpen, onClose, inTab = false, tabVisible = 
     const handleKeyDown = (e: KeyboardEvent): void => {
       // A focused note keeps its keys (they stop at the note's own section).
       if (inTab || isNoteFocused) return;
-      if (e.defaultPrevented || !isShortcutScopeActive(screenRef.current, view?.viewId)) return;
+      if (!isShortcutScopeActive(screenRef.current, view?.viewId)) return;
       if (doc.querySelector('.atlas-onboarding-overlay, .atlas-hotkey-help, .modal-container')) return;
       const target = e.target as Element | null;
       if (target?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+      // Escape a tooltip closed still closes the screen; one a menu or select inside it used does not.
+      if (e.key === 'Escape') {
+        if (handledByAnotherControl(e)) return;
+        e.preventDefault();
+        handleClose();
+        return;
+      }
+      if (e.defaultPrevented) return;
       if (matchesMapHotkey(e, 'dashboard', SettingsService.forApp(app))) {
         e.preventDefault();
         handleClose();

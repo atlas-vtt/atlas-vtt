@@ -8,7 +8,7 @@
   max-width: 90vw;
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
-  @include atlas-panel-radius($radius-2xl, 1px);
+  @include atlas-panel-radius($surface-radius, 1px);
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.35),
     0 2px 8px rgba(0, 0, 0, 0.2);
@@ -67,7 +67,7 @@
 .atlas-audio-config__select {
   flex: 1;
   padding: 6px 8px;
-  border-radius: 8px;
+  border-radius: $radius-m;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-modifier-form-field);
   color: var(--text-normal);
@@ -86,7 +86,7 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: $radius-m;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
   color: var(--text-muted);
@@ -128,7 +128,7 @@
   -webkit-appearance: none;
   appearance: none;
   background: var(--background-modifier-border);
-  border-radius: 2px;
+  border-radius: $radius-s;
   outline: none;
   cursor: pointer;
 
@@ -169,7 +169,7 @@
 .atlas-audio-config__delete-btn {
   width: 100%;
   padding: 8px;
-  border-radius: 8px;
+  border-radius: $radius-m;
   border: 1px solid var(--background-modifier-border);
   background: transparent;
   color: var(--text-error);

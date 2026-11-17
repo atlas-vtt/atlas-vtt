@@ -76,6 +76,7 @@ body.theme-light {
 .atlas-vtt-plugin {
   // Export design tokens as CSS custom properties
   @include atlas-css-tokens;
+  @include atlas-host-layout;
 
   // Ensure proper CSS variable inheritance
   color: var(--text-normal);
@@ -201,7 +202,7 @@ body.theme-light {
 
   // UI container styles
   .atlas-vtt-ui {
-    border-radius: $radius-l;
+    border-radius: $radius-m;
   }
 
   // Popover under a selected token's HP/stress bar; mounted in Atlas' host under document.body
@@ -221,7 +222,7 @@ body.theme-light {
   .atlas-token-value-editor__input {
     width: 56px;
     text-align: center;
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     font-variant-numeric: tabular-nums;
 
     &[aria-invalid] {
@@ -500,17 +501,17 @@ body.theme-light {
   .atlas-vtt-toolbar {
     display: flex;
     align-items: center;
-    gap: $toolbar-inset;
-    padding: $toolbar-inset;
+    gap: $surface-inset;
+    padding: $surface-inset;
     pointer-events: auto;
     @include atlas-elevated-surface;
-    @include atlas-panel-radius($toolbar-radius);
+    @include atlas-panel-radius($surface-radius);
 
-    // Every control sits $toolbar-inset inside the border, so all its corners run concentric with
+    // Every control sits $surface-inset inside the border, so all its corners run concentric with
     // the bar's: rounded alike on every side, never one radius towards the bar's edge and another
     // inside it. Tool buttons, tool groups, their chevrons and the toggle read this; a bar with
     // another inset sets it anew.
-    --atlas-bar-control-radius: #{atlas-panel-inset-radius-value($toolbar-inset)};
+    --atlas-bar-control-radius: #{atlas-panel-inset-radius-value($surface-inset)};
 
     // Menus opened from a control are not part of the bar's outline.
     .atlas-dropdown-content {
@@ -518,30 +519,30 @@ body.theme-light {
     }
 
     .atlas-tool-button > span > .btn {
-      border-radius: var(--atlas-bar-control-radius, #{$radius-l});
+      border-radius: var(--atlas-bar-control-radius, #{$radius-m});
     }
 
-    // The switch takes the controls' corner, and its thumb stands $toolbar-inset inside it (its
+    // The switch takes the controls' corner, and its thumb stands $surface-inset inside it (its
     // padding and border), as every control stands inside the bar, so the thumb's corner is
-    // concentric with the switch's and still round: 6 px inside left it 3.5 px, a square.
+    // concentric with the switch's and still round: 6 px inside left it 2 px, almost square.
     .atlas-toolbar-end > .atlas-toggle {
-      $thumb: 40px - 2 * $toolbar-inset;
+      $thumb: 40px - 2 * $surface-inset;
 
-      border-radius: var(--atlas-bar-control-radius, #{$radius-xl});
+      border-radius: var(--atlas-bar-control-radius, #{$radius-m});
 
       .atlas-toggle__switch {
-        padding: $toolbar-inset - $border-width-s;
+        padding: $surface-inset - $border-width-s;
       }
 
       .atlas-toggle__thumb {
         width: $thumb;
         height: $thumb;
-        border-radius: calc(var(--atlas-bar-control-radius, #{$radius-xl}) - #{$toolbar-inset});
+        border-radius: calc(var(--atlas-bar-control-radius, #{$radius-m}) - #{$surface-inset});
       }
 
       // Across the switch's 60 px, less its padding and border on both sides and the thumb
       .atlas-toggle__thumb--on {
-        transform: translateX(60px - 2 * $toolbar-inset - $thumb);
+        transform: translateX(60px - 2 * $surface-inset - $thumb);
       }
     }
   }
@@ -599,7 +600,7 @@ body.theme-light {
 .atlas-vtt-plugin {
   /* Ensure dropdown menu has the same radius as its content */
   .atlas-dropdown-menu {
-    border-radius: $radius-xl !important;
+    border-radius: $surface-radius !important;
   }
 
   /* Note pin dropdown styles moved to top-level .atlas-note-pin-dropdown block */
@@ -617,7 +618,7 @@ body.theme-light {
   .atlas-map-picker-item {
     padding: 0.5rem 1rem;
     margin: 0.25rem 0;
-    border-radius: 4px;
+    border-radius: $radius-s;
     cursor: pointer;
     
     &:hover {
@@ -717,8 +718,7 @@ body.theme-light {
     align-items: center;
     gap: $spacing-xs;
     padding: 0;
-    @include atlas-corner-shape;
-    border-radius: var(--atlas-bar-control-radius, #{$radius-l});
+    border-radius: var(--atlas-bar-control-radius, #{$radius-m});
 
   }
 
@@ -728,8 +728,7 @@ body.theme-light {
     height: $button-height-l;
     padding: 0;
     color: var(--text-muted);
-    @include atlas-corner-shape;
-    border-radius: var(--atlas-bar-control-radius, #{$radius-l}) !important;
+    border-radius: var(--atlas-bar-control-radius, #{$radius-m}) !important;
 
     &:hover,
     &.atlas-is-active {
@@ -769,7 +768,7 @@ body.theme-light {
     white-space: nowrap;
     height: $button-height-l;
     padding: $spacing-s $spacing-l;
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     font-size: $font-ui-small;
     font-weight: $font-weight-medium;
     transition: color $transition-normal $transition-ease,
@@ -998,7 +997,7 @@ body.theme-light {
     font-weight: 600;
     background: var(--background-modifier-border);
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: $radius-s;
     min-width: 25px;
     text-align: center;
   }
@@ -1021,7 +1020,7 @@ body.theme-light {
 //
 // Corners are concentric and built outwards from the icon button: each surface's
 // radius is the radius of the surface inside it plus the inset between them
-// (padding + border). The shared 12px popover radius cannot hold two nested
+// (padding + border). The shared $surface-radius cannot hold two nested
 // levels at this padding, so the panel radius is derived instead.
 
 .atlas-note-pin-dropdown {

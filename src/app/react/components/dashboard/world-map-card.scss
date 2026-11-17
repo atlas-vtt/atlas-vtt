@@ -23,7 +23,7 @@ $world-map-inset: $spacing-s;
   align-items: stretch;
   background: var(--background-secondary);
   border: $border-width-s solid var(--background-modifier-border);
-  @include atlas-panel-radius($radius-2xl, $border-width-s);
+  @include atlas-panel-radius($surface-radius, $border-width-s);
 }
 
 .world-map-card__art {
@@ -37,7 +37,6 @@ $world-map-inset: $spacing-s;
 
   border-start-start-radius: var(--atlas-panel-inner-radius);
   border-start-end-radius: var(--atlas-panel-inner-radius);
-  @include atlas-corner-shape;
 }
 
 .world-map-card__emblem {
@@ -63,7 +62,6 @@ $world-map-inset: $spacing-s;
   display: block;
   border-start-start-radius: var(--atlas-panel-inner-radius);
   border-start-end-radius: var(--atlas-panel-inner-radius);
-  @include atlas-corner-shape;
   transition: transform $transition-press $transition-ease-out;
 
   // The accent ring over the picture: a hairline on hover, firm on press and on keyboard focus.
@@ -111,7 +109,6 @@ $world-map-inset: $spacing-s;
   box-sizing: border-box;
   padding: 0 $spacing-m 0 $spacing-s;
   border-radius: $radius-m;
-  @include atlas-corner-shape;
   font-size: $font-ui-small;
   font-weight: $font-weight-medium;
   color: var(--text-normal);
@@ -195,7 +192,7 @@ $world-map-inset: $spacing-s;
 .world-map-card__choose {
   @include dashboard-button-reset;
   @include dashboard-card-surface;
-  @include atlas-panel-radius($radius-2xl, $border-width-s);
+  @include atlas-panel-radius($surface-radius, $border-width-s);
   overflow: hidden;
   width: 100%;
 

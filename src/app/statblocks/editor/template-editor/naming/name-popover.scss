@@ -28,7 +28,7 @@ $name-inset: $spacing-s;
 
   .atlas-te-naming__panel {
     @include atlas-elevated-surface;
-    @include atlas-panel-radius($radius-2xl);
+    @include atlas-panel-radius($surface-radius);
     display: flex;
     box-sizing: border-box;
     width: $name-width;

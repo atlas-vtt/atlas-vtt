@@ -88,7 +88,7 @@ $toast-reveal-delay: 300ms;
   padding: $spacing-l;
   min-width: 280px;
   max-width: 360px;
-  border-radius: $radius-xl;
+  border-radius: $surface-radius;
   border: $border-width-m solid color-mix(in oklch, var(--atlas-dice-accent) 35%, color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent));
   background:
     radial-gradient(120% 90% at 100% 50%, color-mix(in oklch, var(--atlas-dice-accent) 14%, transparent), transparent 60%),
