@@ -17,6 +17,7 @@
 - Map photos taken in portrait on a phone no longer show parts of the map in the wrong places or squeezed when zoomed out
 - The TrueScale frame on the map no longer lags behind, flickers or shakes while you pan with the player window open
 - Tokens without a ring are now as large as tokens with a ring and fill their square
+- Hovering a scene tab shows only the scene name, not the file path
 - Grid alignment by measuring now accepts corners anywhere on the map, so levels padded with black can be aligned
 - The player window keeps following the map when it sits on another virtual desktop
 
