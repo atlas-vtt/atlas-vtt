@@ -1003,6 +1003,12 @@
 /// strip of tabs or cards whose edges fade or whose shadows reach past its box, where a thumb would stand apart.
 @mixin atlas-scrollbar-none {
   --atlas-scrollbar: none;
+  // Its own, too, where the overlay cannot be drawn and Atlas' areas keep theirs (`_overlay-scrollbars.scss`).
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /// Scroll shadow of a scroll area, where a divider line used to set it apart from a header or footer: a narrow dark
