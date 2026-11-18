@@ -272,7 +272,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
         </div>
       </AssetManagerWindow>
 
-      <AssetManagerTours isOpen={isOpen} settings={settings} crud={crud} tags={tags} statblock={statblock} />
+      <AssetManagerTours isOpen={isOpen} settings={settings} crud={crud} tags={tags} statblock={statblock} onShowMaps={() => changeTab('maps')} />
 
       <ModalLayer
         isOpen={isOpen}

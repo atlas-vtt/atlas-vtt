@@ -4,7 +4,10 @@ import { useEffect, type RefObject } from 'react';
 export function useDialogFocus(ref: RefObject<HTMLElement | null>, onClose: () => void): void {
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    const focus = (): void => { ref.current?.querySelector<HTMLElement>('button, input')?.focus(); };
+    const focus = (): void => {
+      const card = ref.current;
+      (card?.querySelector<HTMLElement>('[data-autofocus]') ?? card?.querySelector<HTMLElement>('button, input'))?.focus();
+    };
     focus();
     const frame = window.requestAnimationFrame(focus);
     const keydown = (event: KeyboardEvent): void => {

@@ -1,5 +1,7 @@
 import React, { useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { Compass } from 'lucide-react';
+import { Button } from '../packages/components/primitives/button';
 import { CloseButton } from '../packages/components/primitives/CloseButton';
 import type { SettingsService } from '../services/SettingsService';
 import { useAtlasSettings } from './useMapHotkeys';
@@ -8,7 +10,15 @@ import { useDialogFocus } from '../onboarding/useDialogFocus';
 import { t } from '../i18n';
 import { portalHost } from '../host/portalHost';
 
-export function HotkeyHelp({ settings: explicit, onClose, isPlayerView = false }: { settings?: SettingsService | undefined; onClose: () => void; isPlayerView?: boolean }): React.JSX.Element {
+interface HotkeyHelpProps {
+  settings?: SettingsService | undefined;
+  onClose: () => void;
+  isPlayerView?: boolean;
+  /** Starts the map tour again; the sheet offers it only where it is given. */
+  onTour?: (() => void) | undefined;
+}
+
+export function HotkeyHelp({ settings: explicit, onClose, isPlayerView = false, onTour }: HotkeyHelpProps): React.JSX.Element {
   const settings = useAtlasSettings(explicit);
   const bindings = settings?.getHotkeys() ?? DEFAULT_MAP_HOTKEYS;
   const ref = useRef<HTMLDivElement>(null);
@@ -19,7 +29,10 @@ export function HotkeyHelp({ settings: explicit, onClose, isPlayerView = false }
     <div ref={ref} className="atlas-hotkey-help-card" role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={e => e.stopPropagation()}>
       <div className="atlas-hotkey-help-header">
         <h2 id={titleId}>{t('hotkey.title')}</h2>
-        <CloseButton onClick={onClose} aria-label={t('hotkey.close')} />
+        <div className="atlas-hotkey-help-header__end">
+          {onTour && <Button variant="ghost" size="sm" onClick={onTour}><Compass aria-hidden="true" />{t('tour.replay')}</Button>}
+          <CloseButton data-autofocus onClick={onClose} aria-label={t('hotkey.close')} />
+        </div>
       </div>
       <p>{t('hotkey.intro')}</p>
       <div className="atlas-hotkey-help-list">

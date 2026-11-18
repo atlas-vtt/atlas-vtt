@@ -62,6 +62,8 @@ import { pickMapImage } from './levels/MapImagePickerModal';
 import { placePalette, type PalettePosition } from './command-palette/palettePlacement';
 import { customizeToolbarCommand } from './command-palette/customizeToolbarCommand';
 import { hotkeyHelpCommand } from './command-palette/hotkeyHelpCommand';
+import { mapTourCommand } from './command-palette/mapTourCommand';
+import { SettingsService } from '../../services/SettingsService';
 import { docsCommand } from './command-palette/docsCommand';
 import { armariumCommand } from './command-palette/armariumCommand';
 import { isSettingsPanelId, type CommandOption, type SettingsPanelId } from './command-palette/types';
@@ -263,7 +265,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       id: "open-scene-browser",
       icon: <FolderOpen />,
       label: t('palette.openSceneBrowser'),
-      keywords: ["asset manager", "maps", "toggle"],
+      keywords: ["scenes", "scene browser", "maps", "tokens", "library", "toggle"],
       section: "tools",
       action: () => {
         onClose();
@@ -353,6 +355,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       },
     },
     hotkeyHelpCommand(() => setHotkeyHelpOpen(true), onClose, hotkeyLabel('help')),
+    mapTourCommand(() => SettingsService.forApp(app)?.replayTutorial('map'), onClose),
     // Mode commands
     {
       id: "toggle-player-mode",
