@@ -207,7 +207,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
             onDrop={(e) => { if (draggedItems && sel.selectedFolderId === null) { e.preventDefault(); crud.handleDrop(null); } }}
           >
             {armarium.shown ? (
-              <ArmariumPane key={armarium.frameKey} app={data.app} url={armarium.page} />
+              <ArmariumPane key={armarium.frameKey} app={data.app} url={armarium.page} onShare={() => { void crud.handleShareCollection(); }} />
             ) : (
               <>
                 <ActiveFilterBar groups={filterSearch.chips} onReset={filterSearch.reset} />
