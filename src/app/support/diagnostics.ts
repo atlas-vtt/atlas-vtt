@@ -1,4 +1,5 @@
 import { apiVersion, Platform, type App, type PluginManifest } from 'obsidian';
+import { isRecord } from '../utils/guards';
 
 export interface InstalledPlugin {
   id: string;
@@ -26,8 +27,10 @@ function operatingSystem(): string {
   return 'Unknown OS';
 }
 
+/** Node's `process`, which only the desktop app has; one that some script put on the window says nothing of Node. */
 function nodeProcess(): NodeJS.Process | undefined {
-  return typeof process === 'undefined' ? undefined : process;
+  const candidate: unknown = typeof process === 'undefined' ? undefined : process;
+  return isRecord(candidate) && isRecord(candidate.versions) && typeof candidate.arch === 'string' ? process : undefined;
 }
 
 function enabledPlugins(app: App, ownId: string): InstalledPlugin[] {
