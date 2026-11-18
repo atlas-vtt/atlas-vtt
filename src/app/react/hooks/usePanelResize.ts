@@ -12,6 +12,11 @@ interface PanelResizeOptions {
   onResizeEnd: (size: PanelArea) => void;
   /** Least distance kept between the panel and the edges of its area. */
   margin?: number;
+  /**
+   * Content held at its size while the pointer moves and sized once on release: the panel clips it
+   * as it shrinks. For content whose relayout costs more than a frame, such as a page in a frame.
+   */
+  held?: RefObject<HTMLElement | null>;
 }
 
 /**
@@ -22,7 +27,7 @@ interface PanelResizeOptions {
  */
 export function usePanelResize(
   panelRef: RefObject<HTMLElement | null>,
-  { min, onResizeEnd, margin = 8 }: PanelResizeOptions,
+  { min, onResizeEnd, margin = 8, held }: PanelResizeOptions,
 ): (edge: ResizeEdge) => (event: ReactPointerEvent) => void {
   const notifyResizeEnd = useStableCallback(onResizeEnd);
 
@@ -41,6 +46,11 @@ export function usePanelResize(
     const start = { x: event.clientX, y: event.clientY, width: panel.offsetWidth, height: panel.offsetHeight };
     let size = { width: start.width, height: start.height };
     panel.classList.add('is-resizing');
+    const content = held?.current;
+    if (content) {
+      content.style.width = `${content.offsetWidth}px`;
+      content.style.height = `${content.offsetHeight}px`;
+    }
 
     const onMove = (move: PointerEvent): void => {
       size = {
@@ -55,10 +65,12 @@ export function usePanelResize(
       win.removeEventListener('pointerup', onUp);
       win.removeEventListener('pointercancel', onUp);
       panel.classList.remove('is-resizing');
+      content?.style.removeProperty('width');
+      content?.style.removeProperty('height');
       if (size.width !== start.width || size.height !== start.height) notifyResizeEnd(size);
     };
     win.addEventListener('pointermove', onMove);
     win.addEventListener('pointerup', onUp);
     win.addEventListener('pointercancel', onUp);
-  }, [panelRef, min.width, min.height, margin, notifyResizeEnd]);
+  }, [panelRef, min.width, min.height, margin, held, notifyResizeEnd]);
 }

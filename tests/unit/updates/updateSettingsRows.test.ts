@@ -16,23 +16,17 @@ function fakeWatch(): { watch: UpdateWatch; set(version: string | null): void; l
   return { watch, set: (next) => { version = next; listeners.forEach(listener => listener()); }, listeners, check };
 }
 
-function renderStatus(watch: UpdateWatch): { name: () => string; text: () => string; click: () => void; cleanup: () => void } {
+function renderStatus(watch: UpdateWatch): { name: () => string; text: () => string; isFilled: () => boolean; click: () => void; cleanup: () => void } {
   let name = '';
-  let text = '';
-  let onClick: () => void = () => undefined;
-  const button = {
-    buttonEl: { toggleClass: () => undefined },
-    setButtonText(next: string) { text = next; return button; },
-    setDisabled() { return button; },
-    onClick(callback: () => void) { onClick = callback; return button; },
-  };
+  const controlEl = document.createElement('div');
   const setting = {
+    controlEl,
     setName(next: string) { name = next; return setting; },
-    addButton(callback: (value: typeof button) => void) { callback(button); return setting; },
   };
   const row = updateSettingsRows({} as never, watch)[0]!;
   const cleanup = row.render(setting as never) as () => void;
-  return { name: () => name, text: () => text, click: () => onClick(), cleanup };
+  const button = (): HTMLButtonElement => controlEl.querySelector('button')!;
+  return { name: () => name, text: () => button().textContent ?? '', isFilled: () => button().classList.contains('btn--default'), click: () => button().click(), cleanup };
 }
 
 describe('updates status row', () => {
@@ -41,6 +35,7 @@ describe('updates status row', () => {
     const row = renderStatus(watch);
     expect(row.name()).toBe('Atlas is up to date');
     expect(row.text()).toBe('Check now');
+    expect(row.isFilled()).toBe(false);
     row.click();
     expect(check).toHaveBeenCalledWith({ force: true });
 
@@ -48,6 +43,7 @@ describe('updates status row', () => {
     set('0.9.0');
     expect(row.name()).toBe('Atlas 0.9.0 is available');
     expect(row.text()).toBe('Update');
+    expect(row.isFilled()).toBe(true);
     row.click();
     expect(open).toHaveBeenCalledWith('obsidian://show-plugin?id=atlas-vtt');
     open.mockRestore();

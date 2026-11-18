@@ -101,8 +101,7 @@
   max-width: 100%;
   background: var(--background-secondary);
   border: $border-width-s solid var(--background-modifier-border);
-  border-radius: $radius-l;
-  @include atlas-corner-shape;
+  border-radius: $radius-m;
   touch-action: none;
 }
 
@@ -131,8 +130,7 @@
   min-height: 0;
   height: auto;
   padding: $spacing-xs;
-  border-radius: $radius-l;
-  @include atlas-corner-shape;
+  border-radius: $radius-m;
   box-shadow: $shadow-sm;
   font-size: $font-ui-smaller;
   color: var(--text-muted);

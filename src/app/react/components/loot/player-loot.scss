@@ -8,7 +8,7 @@
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-// Keep equal to the loot roller's padding: cards run concentric with the window.
+// The loot roller's padding: the cards stand as far inside the window as there.
 $player-loot-padding: $spacing-m;
 // Below the player view's top row: the "Camera paused" badge and the widgets.
 $player-loot-top: 2 * $spacing-2xl;
@@ -35,7 +35,7 @@ $player-loot-top: 2 * $spacing-2xl;
 
 .atlas-player-loot__window {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   position: absolute;
   top: $player-loot-top;
   left: 50%;
@@ -65,7 +65,6 @@ $player-loot-top: 2 * $spacing-2xl;
   width: $button-height-m;
   height: $button-height-m;
   border-radius: $radius-m;
-  @include atlas-corner-shape;
   color: var(--color-yellow);
   background: color-mix(in oklch, var(--color-yellow) 16%, transparent);
 

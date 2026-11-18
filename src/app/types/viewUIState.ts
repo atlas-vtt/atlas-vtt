@@ -31,8 +31,14 @@ export interface ViewUIState {
   dmScreenPage: DMScreenPage;
   isGridAlignmentOpen: boolean;
   isDiceLogOpen: boolean;
+  /** The keyboard shortcuts cheat sheet: opened by its hotkey, the map's help button and the palette. Never saved. */
+  isHotkeyHelpOpen: boolean;
+  /** The documentation panel, the live atlas-vtt.dev docs in a frame. Never saved. */
+  isDocsOpen: boolean;
   isAssetManagerOpen: boolean;
   assetManagerInitialTab?: 'scenes' | 'maps' | 'encounters' | 'tokens' | 'party' | undefined;
+  /** Raised by every request for the Armarium (the command palette); 0 while the asset manager opens on the library. Never saved. */
+  assetManagerArmarium: number;
   isCommandPaletteOpen: boolean;
   /** The page the palette opens on when it opens next (a menu's "Graphics settings…" row); taken when it opens. */
   commandPalettePage: string | null;

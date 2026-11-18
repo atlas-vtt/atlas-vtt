@@ -49,7 +49,6 @@ $frame-height: 250px;
   }
 
   .atlas-te-gallery__source {
-    @include atlas-corner-shape;
     height: auto;
     padding: $spacing-s;
     justify-content: flex-start;
@@ -100,11 +99,10 @@ $frame-height: 250px;
 
   // Fades out at its foot, so a long statblock reads as continuing.
   .atlas-te-gallery-card__frame {
-    @include atlas-corner-shape;
     position: relative;
     height: $frame-height;
     overflow: hidden;
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     background: var(--background-secondary);
     mask-image: linear-gradient(to bottom, #000 80%, transparent);
   }
@@ -136,7 +134,7 @@ $frame-height: 250px;
     height: 48px;
     padding: 0 $spacing-l;
     border: $border-width-m solid transparent;
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     background: var(--background-modifier-hover);
     color: var(--text-faint);
     font-size: $font-ui-medium;
@@ -208,6 +206,7 @@ $frame-height: 250px;
   }
 
   input.atlas-te-gallery__search {
+    @include atlas-text-input;
     height: $input-height-s;
     font-size: $font-ui-small;
   }

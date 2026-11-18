@@ -40,7 +40,7 @@ $lab-stack-below: 720px;
 }
 
 .atlas-dice-lab-dialog__footer {
-  @include atlas-sidebar-dialog-footer(start, $lab-stack-below, atlas-dice-lab);
+  @include atlas-sidebar-dialog-footer($lab-stack-below, atlas-dice-lab);
 }
 
 // ── Layout ─────────────────────────────────────────────────────────────────
@@ -149,7 +149,7 @@ $lab-stack-below: 720px;
   position: relative;
   flex: none;
   margin: 0;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   transition: background-color $transition-fast $transition-ease;
 
   &.atlas-selected {
@@ -169,7 +169,7 @@ button.atlas-dice-lab__set {
   padding: 0 $spacing-s;
   margin: 0;
   border: none;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: none;
   box-shadow: none;
   color: var(--text-normal);
@@ -216,6 +216,11 @@ button.atlas-dice-lab__set {
   opacity: 0;
   pointer-events: none;
   transition: opacity $transition-fast $transition-ease;
+
+  // $spacing-xs inside the row's end and edges: concentric with its corner.
+  .atlas-dice-lab__icon-btn.btn {
+    border-radius: $control-inset-radius;
+  }
 }
 
 .atlas-dice-lab__set-row:hover,

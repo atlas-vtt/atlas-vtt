@@ -19,7 +19,8 @@ const MIRROR_INTERVAL_MS = 1000 / PLAYER_MIRROR_FPS;
 const FRAME_TIME_SLACK_MS = 1;
 /**
  * A player window without display frames is mirrored nothing (one covered by other windows or
- * minimised keeps its frames: `keepPlayerWindowAwake`); for a hidden DM window, whose requested
+ * minimised keeps its frames: `keepPlayerWindowAwake`, and one on another virtual desktop gets
+ * `frame` from the main window's clock: `PlayerMirrorFallback`); for a hidden DM window, whose requested
  * renders do not come, the mirror renders the frame itself, and its clocks run on the player
  * window's frames (`keepTime`).
  */

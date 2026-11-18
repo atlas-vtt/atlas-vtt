@@ -15,10 +15,13 @@ $one-column: 720px;
 $clear-button: $button-height-s;
 
 // Two columns of fields. As tall as its content up to most of the window; then the body
-// scrolls between the header and the footer.
+// scrolls between the header and the footer. It opens centred by its auto margins and then keeps
+// that top (`useAnchoredTop`), so switching a section on or off grows or shrinks it downward and
+// moves nothing above the change.
 .atlas-edit-token-modal {
   width: min(880px, 100%);
-  max-height: min(85vh, 100%);
+  max-height: min(85vh, calc(100% - var(--atlas-anchored-top, 0px)));
+  margin-block: var(--atlas-anchored-top, auto) auto;
   container-type: inline-size;
 }
 

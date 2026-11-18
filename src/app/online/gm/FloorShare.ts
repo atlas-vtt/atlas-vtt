@@ -96,6 +96,7 @@ export class FloorShare {
       ...ports,
       shownTokens: () => this.tokens.shownIds(),
       tokenAlias: (id) => this.tokens.alias(id),
+      fogEdge: () => ports.atlasSettings().fogEdge,
     });
     const playersDraw = (): boolean => ports.atlasSettings().playersDraw === true;
     // The players of this floor: each sees the floor their own token stands on.

@@ -32,21 +32,23 @@ it('leaves the ring image to the stylesheet and sets only the tint inline', () =
 });
 
 it('keeps unframed art proportional and unmasked when resized or reframed', () => {
-  const container = Object.assign(new Container(), { tokenData: { showRing: false } }) as TokenGroupContainer;
+  const container = Object.assign(new Container(), { tokenData: { showRing: false }, strokeWidth: 4 }) as TokenGroupContainer;
   const sprite = new Sprite(new Texture({ source: new TextureSource({ width: 200, height: 100 }) }));
   sprite.label = 'tokenSprite';
   const mask = new Graphics(); mask.label = 'tokenArtMask';
   const glass = new Sprite(Texture.EMPTY); glass.label = 'glassOverlay';
   container.addChild(sprite, mask, glass);
   syncTokenArtwork(container, 100);
-  expect(sprite.width).toBe(100);
-  expect(sprite.height).toBe(50);
+  // Out to where a ring's outer edge would be
+  expect(sprite.width).toBe(108);
+  expect(sprite.height).toBe(54);
   expect(sprite.mask).toBeFalsy();
   expect(glass.visible).toBe(false);
   syncTokenArtwork(container, 200);
-  expect(sprite.height).toBe(100);
+  expect(sprite.height).toBe(104);
   container.tokenData.showRing = true;
   syncTokenArtwork(container, 100);
+  expect([sprite.width, sprite.height]).toEqual([100, 100]);
   expect(sprite.mask).toBe(mask);
   expect(glass.visible).toBe(true);
 });
@@ -69,4 +71,33 @@ it('initializes ring controls from the asset being edited', () => {
   act(() => result.current.reset({ id: 'existing', name: 'Goblin', imageUrl: 'goblin.webp', tags: [], showRing: false }));
   expect(result.current.defaultRing).toBe(false);
   expect(result.current.previews[0]?.showRing).toBe(false);
+  expect(result.current.previews[0]?.imageScale).toBe(1);
+});
+
+it('starts at whole-image fit when turning the ring off and keeps later zoom edits', () => {
+  const { result } = renderHook(() => useTokenPreviews('token'));
+  act(() => result.current.reset({ id: 'existing', name: 'Goblin', imageUrl: 'goblin.webp', tags: [], showRing: true }));
+  act(() => result.current.update('existing', { imageScale: 2, imagePosition: { x: 0.2, y: -0.1 } }));
+  act(() => result.current.update('existing', { showRing: false }));
+  expect(result.current.previews[0]).toMatchObject({ showRing: false, imageScale: 1, imagePosition: { x: 0, y: 0 } });
+  act(() => result.current.updateSelected({ imageScale: 1.8 }));
+  act(() => result.current.setAllRings(false));
+  expect(result.current.previews[0]?.imageScale).toBe(1.8);
+  act(() => result.current.setAllRings(true));
+  expect(result.current.previews[0]).toMatchObject({ showRing: true, imageScale: 0.8, imagePosition: { x: 0, y: 0 } });
+  act(() => result.current.update('existing', { showRing: false }));
+  expect(result.current.previews[0]).toMatchObject({ showRing: false, imageScale: 1, imagePosition: { x: 0, y: 0 } });
+  act(() => result.current.updateSelected({ showRing: true }));
+  expect(result.current.previews[0]).toMatchObject({ showRing: true, imageScale: 0.8, imagePosition: { x: 0, y: 0 } });
+});
+
+it('retains the original stored ringed crop when switching off and back on', () => {
+  const { result } = renderHook(() => useTokenPreviews('token'));
+  act(() => result.current.reset({ id: 'existing', name: 'Goblin', imageUrl: 'goblin.webp', tags: [], showRing: true }));
+  const original = result.current.previews[0]!;
+  expect(original.imageScale).toBe(0.8);
+  act(() => result.current.update('existing', { showRing: false }));
+  expect(result.current.previews[0]?.imageScale).toBe(1);
+  act(() => result.current.update('existing', { showRing: true }));
+  expect(result.current.previews[0]).toMatchObject({ imageScale: original.imageScale, imagePosition: original.imagePosition });
 });

@@ -178,7 +178,7 @@ export class SettingsService {
 
   setHotkey(id: MapHotkeyId, key: string): void {
     const bindings = this.getHotkeys();
-    const conflict = key && availableHotkeys(false, (feature) => this.isExperimentalOn(feature)).find(action => action.id !== id && bindings[action.id] === key && !canShareHotkey(action.id, id));
+    const conflict = key && availableHotkeys(false).find(action => action.id !== id && bindings[action.id] === key && !canShareHotkey(action.id, id));
     if (conflict) throw new Error(`Already assigned to ${conflict.label}. Clear that shortcut first.`);
     this.settings.hotkeys = withHotkey(this.settings.hotkeys, id, key);
     this.commit();
@@ -195,6 +195,14 @@ export class SettingsService {
 
   completeTutorial(id: TutorialId): void {
     this.settings.onboarding = { ...this.settings.onboarding, completed: { ...this.settings.onboarding.completed, [id]: true } };
+    this.commit();
+  }
+
+  /** Shows one tutorial again from its first step, also while the others are switched off. */
+  replayTutorial(id: TutorialId): void {
+    const completed = { ...this.settings.onboarding.completed };
+    delete completed[id];
+    this.settings.onboarding = { ...this.settings.onboarding, enabled: true, completed };
     this.commit();
   }
 

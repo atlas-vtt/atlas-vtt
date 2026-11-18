@@ -23,7 +23,11 @@ export interface UISlice extends ViewUIState {
   setDMScreenPage: (page: DMScreenPage) => void;
   setGridAlignmentOpen: (open: boolean) => void;
   setDiceLogOpen: (open: boolean) => void;
+  setHotkeyHelpOpen: (open: boolean) => void;
+  setDocsOpen: (open: boolean) => void;
   openAssetManager: (tab?: UISlice['assetManagerInitialTab']) => void;
+  /** Opens the asset manager on the Armarium, or shows the Armarium in it while it is open. */
+  openArmarium: () => void;
   closeAssetManager: () => void;
   /** Opens or closes the palette; `page` names the page it opens on. */
   setCommandPaletteOpen: (open: boolean, page?: string) => void;
@@ -63,8 +67,11 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
   | 'dmScreenPage'
   | 'isGridAlignmentOpen'
   | 'isDiceLogOpen'
+  | 'isHotkeyHelpOpen'
+  | 'isDocsOpen'
   | 'isAssetManagerOpen'
   | 'assetManagerInitialTab'
+  | 'assetManagerArmarium'
   | 'isCommandPaletteOpen'
   | 'commandPalettePage'
   | 'isDiceTrayOpen'
@@ -89,8 +96,11 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
     dmScreenPage: 'statblocks',
     isGridAlignmentOpen: false,
     isDiceLogOpen: false,
+    isHotkeyHelpOpen: false,
+    isDocsOpen: false,
     isAssetManagerOpen: false,
     assetManagerInitialTab: undefined,
+    assetManagerArmarium: 0,
     isCommandPaletteOpen: false,
     commandPalettePage: null,
     isDiceTrayOpen: false,
@@ -125,7 +135,10 @@ export function createUIActions(
   | 'setDMScreenPage'
   | 'setGridAlignmentOpen'
   | 'setDiceLogOpen'
+  | 'setHotkeyHelpOpen'
+  | 'setDocsOpen'
   | 'openAssetManager'
+  | 'openArmarium'
   | 'closeAssetManager'
   | 'setCommandPaletteOpen'
   | 'setDiceTrayOpen'
@@ -156,15 +169,23 @@ export function createUIActions(
     setDMScreenPage: (page) => set((draft) => { draft.dmScreenPage = page; }),
     setGridAlignmentOpen: (open) => set((draft) => { draft.isGridAlignmentOpen = open; }),
     setDiceLogOpen: (open) => set((draft) => { draft.isDiceLogOpen = open; }),
+    setHotkeyHelpOpen: (open) => set((draft) => { draft.isHotkeyHelpOpen = open; }),
+    setDocsOpen: (open) => set((draft) => { draft.isDocsOpen = open; }),
     // The palette, the dice tray and the asset manager open where the toolbar editor's tray sits, or over the map: each ends edit mode.
     openAssetManager: (tab) => set((draft) => {
       draft.isAssetManagerOpen = true;
       draft.assetManagerInitialTab = tab;
       draft.isToolbarEditing = false;
     }),
+    openArmarium: () => set((draft) => {
+      draft.isAssetManagerOpen = true;
+      draft.assetManagerArmarium += 1;
+      draft.isToolbarEditing = false;
+    }),
     closeAssetManager: () => set((draft) => {
       draft.isAssetManagerOpen = false;
       draft.assetManagerInitialTab = undefined;
+      draft.assetManagerArmarium = 0;
     }),
     setCommandPaletteOpen: (open, page) => set((draft) => {
       draft.isCommandPaletteOpen = open;

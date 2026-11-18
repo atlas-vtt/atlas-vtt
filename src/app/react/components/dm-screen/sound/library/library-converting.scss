@@ -15,9 +15,9 @@
   // their ⋯ does; its height is a row's.
   padding: 0 $spacing-s;
   color: var(--atlas-sound-muted);
-  background: var(--background-primary);
+  background: var(--background-secondary);
   // The rail's inset below it too, so the tags scrolling under it never show there.
-  box-shadow: 0 $spacing-s 0 var(--background-primary);
+  box-shadow: 0 $spacing-s 0 var(--background-secondary);
   font-variant-numeric: tabular-nums;
 
   span {

@@ -2,7 +2,7 @@ import { Container, Graphics, Sprite, Texture } from 'pixi.js';
 import type { TokenEntity } from '../../../types';
 import type { TokenPerception } from '../../../vision/tokenPerception';
 import { HIDDEN_TOKEN_ALPHA } from '../../playerSafeFrame';
-import { getTokenRingOuterDiameter } from '../../token-renderer/tokenRingMetrics';
+import { getTokenRingOuterDiameter, tokenArtBox } from '../../token-renderer/tokenRingMetrics';
 import { loadedTokenRingTexture, loadTokenRingTexture } from '../../token-renderer/tokenRingTexture';
 import { computeTokenPixelSize, computeTokenStrokeWidth } from '../../token-renderer/tokenSizing';
 import { destroyTree } from '../../utils/destroyTree';
@@ -38,7 +38,7 @@ export function tokenLook(perception: TokenPerception | null): (token: TokenEnti
 
 /**
  * The tokens of a level below the view, as its picture through the view's openings draws them:
- * their art in its circle with its ring, at its size, turn and place in the order, and nothing else
+ * their art in its circle with its ring (unframed art whole), at its size, turn and place in the order, and nothing else
  * (no name, bars or controls), never hit-tested. Which of them show is the picture's (`show`).
  */
 export class BelowTokens {
@@ -116,13 +116,24 @@ export class BelowTokens {
     const size = computeTokenPixelSize(this.cellSize, token.size || 1);
     shown.group.position.set(token.x, token.y);
     shown.group.zIndex = token.layer ?? 0;
-    shown.art.width = size;
-    shown.art.height = size;
     shown.art.rotation = ((token.rotation ?? 0) * Math.PI) / 180;
     shown.mask.clear().circle(0, 0, size / 2).fill({ color: 0xffffff });
+    this.fitArt(shown);
     this.drawRing(shown);
     const path = token.imagePath ?? '';
     if (path !== shown.path || shown.load === 0) this.load(shown, path);
+  }
+
+  /** The art as the map draws it (`syncTokenArtwork`): in its circle when framed, whole and proportional to the ring's outer edge when not. */
+  private fitArt(shown: Shown): void {
+    const { art, mask, token } = shown;
+    const framed = token.showRing !== false;
+    const size = computeTokenPixelSize(this.cellSize, token.size || 1);
+    const box = tokenArtBox(size, computeTokenStrokeWidth(this.cellSize), framed, art.texture.width, art.texture.height);
+    art.width = box.width;
+    art.height = box.height;
+    art.mask = framed ? mask : null;
+    mask.visible = framed;
   }
 
   /** The ring the map draws around the token (`SpriteFactory.createTokenRing`): its texture, tinted, white without a colour. */
@@ -156,9 +167,7 @@ export class BelowTokens {
       if (shown.load !== load || shown.art.destroyed) return;
       shown.art.texture = texture;
       // The texture changed the art's size: the token's size again.
-      const size = computeTokenPixelSize(this.cellSize, shown.token.size || 1);
-      shown.art.width = size;
-      shown.art.height = size;
+      this.fitArt(shown);
       this.onArt();
     }).catch((error: unknown) => {
       console.warn('[BelowTokens] A token\'s art could not be loaded:', error);

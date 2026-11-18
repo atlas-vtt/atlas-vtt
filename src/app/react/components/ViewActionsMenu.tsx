@@ -92,7 +92,7 @@ export const ViewActionsMenu: React.FC<ViewActionsMenuProps> = ({ app, filePath 
     >
       <LabelTooltip label={t('view.more')}>
         <button
-          className={`atlas-view-actions-btn clickable-icon view-action ${isVisible ? 'visible' : ''}`}
+          className={`atlas-view-actions-btn ${isVisible ? 'visible' : ''}`}
           onClick={showMenu}
         >
           <MoreVertical size={16} />

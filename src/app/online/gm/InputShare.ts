@@ -1,4 +1,4 @@
-import { EXPLORED_INLINE_BYTES, type AssetRef, type DeltaOf, type GmMessage, type SharedLightingScene } from '../protocol/index.ts';
+import { EXPLORED_INLINE_BYTES, type AssetRef, type DeltaOf, type GmMessage, type SharedFog, type SharedFogEdge, type SharedLightingScene } from '../protocol/index.ts';
 import type { LightingSource } from './atlasLighting.ts';
 import type { SceneState, SceneStore } from './atlasView.ts';
 import { toBase64 } from './assetServe.ts';
@@ -26,6 +26,8 @@ export interface InputSharePorts extends PacerClock {
   stored?: AssetStoring | undefined;
   /** Tells the GM something in words. */
   notice?(text: string): void;
+  /** How the GM's fog edge looks; unset or undefined, players draw it hard. */
+  fogEdge?(): SharedFogEdge | undefined;
 }
 
 /** The shortest time between two sends of the scene's inputs, as for the token list. */
@@ -65,6 +67,9 @@ export class InputShare {
   private scene: { readonly id: string; readonly lit: boolean } | null = null;
   private readonly last = new Map<GmMessage['t'], Sent>();
   private fogOf: unknown = undefined;
+  /** The fog and its edge as players were sent them last, so that a change of the edge alone sends the same fog again. */
+  private sharedFog: SharedFog = [];
+  private fogEdge: SharedFogEdge | undefined = undefined;
   private readonly fogLog = new SharedFogLog();
   /** The scene's fog is more than players can be sent, and the GM was told. */
   private fogTooMuch = false;
@@ -102,6 +107,8 @@ export class InputShare {
     this.fog.reset();
     this.sight.reset();
     this.fogOf = undefined;
+    this.sharedFog = [];
+    this.fogEdge = undefined;
     this.fogLog.reset();
     this.fogTooMuch = false;
     this.fogAliases.clear();
@@ -159,10 +166,17 @@ export class InputShare {
     const scene = this.scene;
     const state = this.store.getState();
     if (scene === null || !state.mapLoaded || state.isMapLoading) return;
-    if (levelObjects(state).fog !== this.fogOf) {
-      this.fogOf = levelObjects(state).fog;
-      this.fog.publish(scene.id, { fog: this.fogLog.shared(levelObjects(state).fog, (key) => this.fogAlias(key)) });
-      this.tellFogTooMuch(this.fogLog.tooMuch);
+    const fog = levelObjects(state).fog;
+    const edge = this.ports.fogEdge?.();
+    const edgeChanged = edge?.style !== this.fogEdge?.style || edge?.width !== this.fogEdge?.width;
+    if (fog !== this.fogOf || edgeChanged) {
+      if (fog !== this.fogOf) {
+        this.fogOf = fog;
+        this.sharedFog = this.fogLog.shared(fog, (key) => this.fogAlias(key));
+        this.tellFogTooMuch(this.fogLog.tooMuch);
+      }
+      this.fogEdge = edge;
+      this.fog.publish(scene.id, { fog: this.sharedFog, ...(edge !== undefined && { edge: { style: edge.style, width: edge.width } }) });
     }
     if (!scene.lit) return;
     const source = this.ports.lightingSource();

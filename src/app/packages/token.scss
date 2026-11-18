@@ -27,7 +27,7 @@ $accent-hsl: var(--accent-h) var(--accent-s) var(--accent-l);
 
   /* ---------- Shapes ----------------------------------------------------- */
   &--hex    { clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
-  &--square { border-radius: .5rem; }
+  &--square { border-radius: $radius-m; }
 
   /* ---------- States ----------------------------------------------------- */
   &--selected {
@@ -104,7 +104,7 @@ $accent-hsl: var(--accent-h) var(--accent-s) var(--accent-l);
   translate: -50%;
   width: 80%;
   height: 26px;
-  border-radius: 999px;
+  border-radius: $radius-full;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -144,7 +144,7 @@ $accent-hsl: var(--accent-h) var(--accent-s) var(--accent-l);
   width: 88px;
   height: 10px;
   margin: .75rem auto 0;
-  border-radius: 4px;
+  border-radius: $radius-s;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
 

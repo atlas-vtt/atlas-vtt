@@ -63,7 +63,7 @@
 .atlas-transfer-notes-view {
   margin: 0;
   padding: $spacing-l;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: color-mix(in oklch, var(--background-secondary) 80%, transparent);
   line-height: var(--line-height-normal);
   white-space: pre-wrap;
@@ -311,7 +311,7 @@
   @include atlas-flex-row($gap: $spacing-m);
   justify-content: space-between;
   padding: $spacing-m;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: var(--background-secondary);
 
   &__label {

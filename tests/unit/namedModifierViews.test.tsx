@@ -37,7 +37,7 @@ describe('a roll with a labelled modifier', () => {
   it('shows it after the dice a roll with advantage lists', () => {
     const advantaged = { ...stealthy, advantage: 'advantage' as const, rolls: [d20(4, { dropped: true }), d20(14)] };
     const { container } = render(<DiceToast result={advantaged} phase="visible" onDismiss={() => undefined} useAvatar={() => null} />);
-    expect(text(container.querySelector('.atlas-rolled-dice'))).toBe('4 (dropped) · 14 + 3 + 2 Stealth');
+    expect(text(container.querySelector('.atlas-rolled-dice'))).toBe('(4) (dropped) · 14 + 3 + 2 Stealth');
   });
 
   it('shows it in the dice log', () => {

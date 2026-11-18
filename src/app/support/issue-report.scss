@@ -24,11 +24,12 @@
       justify-content: flex-start;
     }
 
-    input,
-    textarea,
-    select {
-      width: 100%;
-      resize: vertical;
+    input.atlas-issue-report-input {
+      @include atlas-text-input;
+    }
+
+    textarea.atlas-issue-report-input {
+      @include atlas-text-area;
     }
   }
 
@@ -77,17 +78,10 @@
     &:empty { display: none; }
   }
 
-  .atlas-issue-report-actions .setting-item {
-    border: 0;
-    padding: $spacing-l 0 0;
-
-    .setting-item-control {
-      gap: $spacing-s;
-    }
-
-    // The last action sits in the dialog's corner and runs concentric with it.
-    button:last-child {
-      @include atlas-native-modal-corner-button;
-    }
+  .atlas-issue-report-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-s;
+    padding-top: $spacing-l;
   }
 }
