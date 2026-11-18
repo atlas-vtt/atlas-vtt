@@ -4,15 +4,33 @@ import { decodeStatblockLinks, statblockLinksAsText } from '../../../services/st
 import { clippedLine } from './bookTexts.ts';
 
 /** Words in emphasis (`**x**`, `__x__`, `*x*`, `_x_`), not where the marks stand inside a word or number. */
-const EMPHASIS = /(?<![\p{L}\p{N}\\])(\*\*|__|\*|_)(?=\S)(.+?)(?<=\S)\1(?![\p{L}\p{N}])/gu;
+const EMPHASIS = /(\*\*|__|\*|_)(\S(?:.*?\S)??)\1(?![\p{L}\p{N}])/gu;
+/** What an opening mark may not follow: the end of a word or number, or an escape. */
+const WORD_BEFORE = /[\p{L}\p{N}\\]$/u;
 /** A name that is one wikilink and nothing else: `[[Note#Heading|Alias]]`. */
 const WHOLE_WIKI_LINK = /^\[\[([^\]|]+)(?:\|[^\]]*)?\]\]$/;
 /** A destination outside the vault (`https:`, `obsidian:`). */
 const EXTERNAL = /^[a-z][a-z0-9+.-]*:/i;
 
+/** `text` with each emphasis given way to its words, read once from the left: a mark inside a word opens nothing, and the search goes on right after it. */
+function withoutEmphasisOnce(text: string): string {
+  let plain = '';
+  let from = 0;
+  EMPHASIS.lastIndex = 0;
+  for (let match = EMPHASIS.exec(text); match; match = EMPHASIS.exec(text)) {
+    if (WORD_BEFORE.test(text.slice(Math.max(0, match.index - 2), match.index))) {
+      EMPHASIS.lastIndex = match.index + 1;
+      continue;
+    }
+    plain += text.slice(from, match.index) + (match[2] ?? '');
+    from = EMPHASIS.lastIndex;
+  }
+  return plain + text.slice(from);
+}
+
 function withoutEmphasis(text: string): string {
   let plain = text;
-  for (let previous = ''; previous !== plain;) [previous, plain] = [plain, plain.replace(EMPHASIS, '$2')];
+  for (let previous = ''; previous !== plain;) [previous, plain] = [plain, withoutEmphasisOnce(plain)];
   return plain;
 }
 

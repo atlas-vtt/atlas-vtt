@@ -138,7 +138,7 @@ export const noteName = (path: string): string => baseName(path).replace(/\.md$/
 export const parentPath = (path: string): string => path.slice(0, Math.max(0, path.lastIndexOf('/')));
 
 /** How the heading part of a pin's link reads: `Stag#Overview#` is "Stag > Overview", and a heading's own `#` stays ("Room #3"). */
-export const headingTitle = (heading: string): string => heading.replace(/#+$/, '').replace(/(?<=\S)#(?=\S)/g, ' > ');
+export const headingTitle = (heading: string): string => heading.replace(/#+$/, '').replace(/#(?=\S)/g, (mark, at: number, whole: string) => (at > 0 && /\S/.test(whole.charAt(at - 1)) ? ' > ' : mark));
 
 /** How a note link reads to people: "Keep" for `Places/Keep.md`, "Keep > Dungeon" for `Places/Keep#Dungeon`. */
 export function noteLinkTitle(notePath: string): string {

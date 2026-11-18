@@ -67,7 +67,8 @@ export class TableSurface {
     const ring = chip.createSvg('svg', { cls: 'atlas-table-chip__ring', attr: { viewBox: `0 0 ${RING_BOX} ${RING_BOX}`, 'aria-hidden': 'true' } });
     const circle = { cx: RING_BOX / 2, cy: RING_BOX / 2, r: RING_RADIUS, pathLength: 1 };
     ring.createSvg('circle', { cls: 'atlas-table-chip__track', attr: circle });
-    ring.createSvg('circle', { cls: 'atlas-table-chip__progress', attr: circle });
+    // The ring closes as one dash of the circle's whole length
+    ring.createSvg('circle', { cls: 'atlas-table-chip__progress', attr: { ...circle, 'stroke-dasharray': 1 } });
     chip.createSpan({ cls: 'atlas-table-chip__label', text: t('table.gm') });
     // Says how the chip is used as Table mode begins, then goes
     this.el.createSpan({ cls: 'atlas-table-hint', text: t('table.hold') });

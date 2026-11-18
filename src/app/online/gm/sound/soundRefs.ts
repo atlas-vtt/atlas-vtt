@@ -24,7 +24,7 @@ export interface SoundRefsPorts {
  */
 export const WHOLE_COPY_BYTES = 4 * 1024 * 1024;
 
-const whole = async (bytes: SoundBytes): Promise<Uint8Array<ArrayBuffer>> => (await bytes.read(0, bytes.byteLength)) as Uint8Array<ArrayBuffer>;
+const whole = (bytes: SoundBytes): Promise<Uint8Array<ArrayBuffer>> => bytes.read(0, bytes.byteLength);
 
 /**
  * The references of a device's sounds: each copy hashed once while the table runs, one at a time, for
