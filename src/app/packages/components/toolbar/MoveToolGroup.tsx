@@ -66,7 +66,7 @@ export function MoveToolGroup({ activeTool, selectTool, menuOpen, toggleMenu }: 
       <div className="atlas-dropdown-section">
         <DropdownMenuItem
           icon={SquareDashedMousePointer}
-          label={t('selection.selectAll')}
+          label={t('hotkey.selectAll')}
           shortcut={hotkeyLabel('selectAll')}
           onClick={() => selectAllTokens(store, renderer?.getTokenRenderer())}
         />

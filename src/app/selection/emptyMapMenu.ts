@@ -19,7 +19,7 @@ export function emptyMapActions(store: StoreApi<ViewAtlasState>, shown: { visibl
       kind: 'run', id: 'paste', enabled: holdsMapClipboard(), label: t('selection.pasteHere'), icon: 'clipboard-paste',
       run: () => runInBackground(pasteClipboard(store, world), 'Pasting map objects', 'Could not paste'),
     },
-    { kind: 'run', id: 'select-all', enabled: true, label: t('selection.selectAll'), icon: 'box-select', run: () => selectAllTokens(store, shown) },
+    { kind: 'run', id: 'select-all', enabled: true, label: t('hotkey.selectAll'), icon: 'box-select', run: () => selectAllTokens(store, shown) },
   ];
 }
 

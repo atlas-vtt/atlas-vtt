@@ -7,5 +7,4 @@ export const selection = {
   'selection.more': 'More',
   'selection.paste': 'Paste',
   'selection.pasteHere': 'Paste here',
-  'selection.selectAll': 'Select all',
 } as const satisfies Record<string, Message>;

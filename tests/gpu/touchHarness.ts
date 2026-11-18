@@ -4,7 +4,8 @@
  * touch and mouse input (`Input.dispatchTouchEvent`), never by synthetic pointer events.
  */
 import '../setup/obsidianDom';
-import { Container, Sprite, Texture } from 'pixi.js';
+import type { App } from 'obsidian';
+import { Container, Sprite, Texture, type Application } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { cdp, page } from 'vitest/browser';
 import { afterEach, expect } from "vitest";
@@ -33,6 +34,11 @@ export interface TouchMap {
   store: ViewAtlasStore;
   viewport: Viewport;
   tokens: TokenRenderer;
+  selection: SelectionManager;
+  /** The PIXI application, whose ticker is the map's frame clock. */
+  app: Application;
+  /** The vault the view's store was made for. */
+  obsidian: App;
   canvas: HTMLCanvasElement;
   /** What fingers do in a drawing tool; the test's to change. */
   fingers: { use: FingerUse; penSeen: boolean };
@@ -73,7 +79,7 @@ export const touch = {
 export const frame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()));
 export const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
-export function touchMaps(): { map: () => Promise<TouchMap> } {
+export function touchMaps(): { map: (view?: { width: number; height: number }) => Promise<TouchMap> } {
   const cleanups: Array<() => void> = [];
   afterEach(async () => {
     // No finger of one test is down in the next
@@ -81,12 +87,12 @@ export function touchMaps(): { map: () => Promise<TouchMap> } {
     while (cleanups.length) cleanups.pop()!();
   });
 
-  async function map(): Promise<TouchMap> {
-    await page.viewport(VIEW.width + 100, VIEW.height + 100);
+  async function map(view: { width: number; height: number } = VIEW): Promise<TouchMap> {
+    await page.viewport(view.width + 100, view.height + 100);
     const host = document.body.appendChild(document.createElement('div'));
-    Object.assign(host.style, { position: 'fixed', left: '0', top: '0', width: `${VIEW.width}px`, height: `${VIEW.height}px` });
+    Object.assign(host.style, { position: 'fixed', left: '0', top: '0', width: `${view.width}px`, height: `${view.height}px` });
     document.body.style.margin = '0';
-    const manager = new PixiAppManager(VIEW.width, VIEW.height);
+    const manager = new PixiAppManager(view.width, view.height);
     await manager.init(host);
     const viewport = manager.getViewport()!;
     const app = manager.getApp();
@@ -94,7 +100,7 @@ export function touchMaps(): { map: () => Promise<TouchMap> } {
 
     const floor = new Sprite(Texture.WHITE);
     floor.tint = 0x303030;
-    floor.setSize(VIEW.width, VIEW.height);
+    floor.setSize(view.width, view.height);
     viewport.addChild(floor);
 
     const obsidian = createInMemoryApp().app;
@@ -134,7 +140,8 @@ export function touchMaps(): { map: () => Promise<TouchMap> } {
     });
 
     return {
-      store, viewport, tokens, fingers,
+      store, viewport, tokens, fingers, app, obsidian,
+      selection: selection.manager,
       canvas: manager.getCanvasElement(),
       tokenAt: () => {
         const { x, y } = store.getState().objects.tokens['token']!;
