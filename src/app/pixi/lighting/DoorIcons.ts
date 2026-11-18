@@ -12,7 +12,7 @@ import { destroyTree } from '../utils/destroyTree';
 import { createGlyphTexture } from '../utils/pinIconTexture';
 import { ValueTransition } from '../utils/ValueTransition';
 import { levelObjects } from '../../levels/levelObjects';
-import { FINGER_TARGET_RADIUS, fingerReaches } from '../utils/pointerReach';
+import { FINGER_TARGET_RADIUS, fingerReaches, ReachPick } from '../utils/pointerReach';
 
 /** Above the lighting layer and token UI, so the GM finds doors in the dark. */
 export const DOOR_ICONS_Z_INDEX = 1150;
@@ -71,6 +71,7 @@ export function badgeLook(wall: Pick<WallSegment, 'type' | 'locked'>, forPlayers
  * no drawing.
  */
 export class DoorIcons {
+  private readonly reached = new ReachPick<string>();
   /** The GM's badges: one of the `GmOverlays`. */
   readonly view = new Container({ label: 'door-icons' });
   /** The players' badges: shown by `playerLightingLayers`, hidden in GM view. */
@@ -130,20 +131,15 @@ export class DoorIcons {
   private badgeAt(x: number, y: number, shown: (wall: WallSegment) => boolean): string | null {
     const state = this.store.getState();
     // A badge grows and shrinks with the map; under a finger it is never a smaller target than a finger needs
-    const finger = fingerReaches();
     const zoom = this.view.parent?.scale.x ?? 1;
-    let best = finger ? Math.max(this.radius(state), FINGER_TARGET_RADIUS / (zoom > 0 ? zoom : 1)) : this.radius(state);
-    let nearest: string | null = null;
+    const reach = fingerReaches() ? Math.max(this.radius(state), FINGER_TARGET_RADIUS / (zoom > 0 ? zoom : 1)) : this.radius(state);
+    const pick = this.reached.begin(reach);
     for (const wall of wallList(levelObjects(state).walls)) {
       if (!shown(wall)) continue;
       const centre = doorMiddle(wall);
-      const distance = Math.hypot(x - centre.x, y - centre.y);
-      if (distance > best) continue;
-      nearest = wall.id;
-      if (!finger) break;
-      best = distance;
+      if (pick.offer(wall.id, Math.hypot(x - centre.x, y - centre.y)) && pick.over) break;
     }
-    return nearest;
+    return pick.taken;
   }
 
   /** Opens or closes the door; a locked one stays shut and its badge says no. */

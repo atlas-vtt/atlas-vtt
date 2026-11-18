@@ -55,6 +55,50 @@ export function pointerReach(px: number, pointer?: PointerKindSource | null): nu
   return fingerReaches(pointer) ? px * FINGER_REACH_SCALE : px;
 }
 
+/**
+ * Which of the things within a pointer's reach a press takes: a mouse the first in the order they
+ * are offered, as it always did; a finger, whose wider reach takes in neighbours, the nearest of
+ * them. Kept by whoever hit-tests and begun anew for every test, so a test allocates nothing.
+ */
+export class ReachPick<T> {
+  private best = 0;
+  private within = true;
+  private nearest = false;
+  private picked: T | null = null;
+  private done = false;
+
+  /**
+   * Starts a search within `reach`, in the measure the distances are offered in (a squared reach
+   * for squared distances). What lies exactly `reach` away is in it, unless `within` is false.
+   */
+  begin(reach: number, within = true): this {
+    this.best = reach;
+    this.within = within;
+    this.nearest = fingerReaches();
+    this.picked = null;
+    this.done = false;
+    return this;
+  }
+
+  /** Offers what lies `distance` from the point; returns whether it is taken. */
+  offer(candidate: T, distance: number): boolean {
+    if (this.within ? distance > this.best : distance >= this.best) return false;
+    this.picked = candidate;
+    if (this.nearest) this.best = distance;
+    else this.done = true;
+    return true;
+  }
+
+  /** Nothing offered from here on is taken: a mouse has the first thing it reached. */
+  get over(): boolean {
+    return this.done;
+  }
+
+  get taken(): T | null {
+    return this.picked;
+  }
+}
+
 /** How far a press moves before it is a drag: `px` screen pixels for a mouse or a pen, never less than a finger's slop for a finger. */
 export function dragThreshold(px: number, pointer?: PointerKindSource | null): number {
   return isFinger(pointer) ? Math.max(px, FINGER_SLOP_PX) : px;

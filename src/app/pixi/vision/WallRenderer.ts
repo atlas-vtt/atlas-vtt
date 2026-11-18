@@ -12,7 +12,7 @@ import { KindWallLayer, type KindWall } from './KindWallLayer';
 import { drawDashedLine, hasKindLook } from './wallKindLook';
 import { VERTEX_HANDLE_RADIUS, WallPreview } from './WallPreview';
 import { levelObjects } from '../../levels/levelObjects';
-import { fingerReaches, pointerReach } from '../utils/pointerReach';
+import { pointerReach, ReachPick } from '../utils/pointerReach';
 
 /** Screen pixels: how close to a wall or a wall's end a press lands on it, never less than what is drawn. */
 const HIT_TOLERANCE = 6;
@@ -32,6 +32,7 @@ export class WallRenderer {
   /** The chain being drawn, a freehand stroke, a door being placed. */
   readonly preview: WallPreview;
   private store: StoreApi<ViewAtlasState>;
+  private readonly reached = new ReachPick<string>();
   private selectedWallIds: Set<string> = new Set();
   private accentColor = 0x7f6df2;
   private _unsubscribe?: () => void;
@@ -223,40 +224,27 @@ export class WallRenderer {
 
   /** Hit-test walls at a world coordinate. Returns wall id or null. */
   hitTestWalls(worldX: number, worldY: number): string | null {
-    const finger = fingerReaches();
-    let best = this.reach(HIT_TOLERANCE);
-    let nearest: string | null = null;
+    const pick = this.reached.begin(this.reach(HIT_TOLERANCE), false);
     for (const wall of wallList(levelObjects(this.store.getState()).walls)) {
       const distance = this.pointToSegmentDist(worldX, worldY, wall.p1.x, wall.p1.y, wall.p2.x, wall.p2.y);
-      if (distance >= best) continue;
-      nearest = wall.id;
-      // A finger's wider reach takes in neighbours: of those, the wall nearest the point
-      if (!finger) break;
-      best = distance;
+      if (pick.offer(wall.id, distance) && pick.over) break;
     }
-    return nearest;
+    return pick.taken;
   }
 
   /** Hit-test wall vertex handles. Returns { wallId, vertex } or null. */
   hitTestVertices(worldX: number, worldY: number): { wallId: string; vertex: 'p1' | 'p2' } | null {
     const walls = levelObjects(this.store.getState()).walls;
-    const finger = fingerReaches();
     const threshold = this.reach(VERTEX_HIT);
-    let best = threshold * threshold;
-    let wallId: string | null = null;
+    const pick = this.reached.begin(threshold * threshold, false);
     let vertex: 'p1' | 'p2' = 'p1';
 
     for (const wall of wallList(walls)) {
-      const d1 = (worldX - wall.p1.x) ** 2 + (worldY - wall.p1.y) ** 2;
-      const d2 = (worldX - wall.p2.x) ** 2 + (worldY - wall.p2.y) ** 2;
-      const first = finger ? d1 <= d2 : d1 < best;
-      const distance = first ? d1 : d2;
-      if (distance >= best) continue;
-      wallId = wall.id;
-      vertex = first ? 'p1' : 'p2';
-      if (!finger) break;
-      best = distance;
+      if (pick.offer(wall.id, (worldX - wall.p1.x) ** 2 + (worldY - wall.p1.y) ** 2)) vertex = 'p1';
+      if (!pick.over && pick.offer(wall.id, (worldX - wall.p2.x) ** 2 + (worldY - wall.p2.y) ** 2)) vertex = 'p2';
+      if (pick.over) break;
     }
+    const wallId = pick.taken;
     return wallId === null ? null : { wallId, vertex };
   }
 

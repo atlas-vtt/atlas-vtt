@@ -9,7 +9,7 @@ import { closesDraft } from '../../../src/app/pixi/areas/areaGeometry';
 import { HANDLE_HIT_RADIUS, ringHandleAt, ringHandlePoint, type RingGeometry } from '../../../src/app/pixi/lighting/lightRingGeometry';
 import { wallEndNear } from '../../../src/app/pixi/lighting/wallEnds';
 import {
-  doubleClickSlack, dragThreshold, fingerReaches, FINGER_REACH_SCALE, isFinger, pointerReach, tokenDragDistance, withFineReach,
+  doubleClickSlack, dragThreshold, fingerReaches, FINGER_REACH_SCALE, isFinger, pointerReach, ReachPick, tokenDragDistance, withFineReach,
 } from '../../../src/app/pixi/utils/pointerReach';
 import { COARSE_POINTER_SCALE } from '../../../src/app/platform/deviceProfile';
 import { createViewAtlasStore } from '../../../src/app/storeFactory';
@@ -219,5 +219,48 @@ describe('what a finger joins and closes', () => {
     expect(closesDraft(draft, { x: 100, y: 50 }, 1)).toBe(false);
     // Two corners are no area yet
     expect(closesDraft(draft.slice(0, 2), { x: 100, y: 0 }, 1)).toBe(false);
+  });
+});
+
+describe('which of the things in reach a press takes', () => {
+  /** Offers things at their distances in turn, as a hit test's loop does; returns what was taken and how many were looked at. */
+  function search(pick: ReachPick<string>, reach: number, things: Array<[string, number]>, within = true): { taken: string | null; offered: number } {
+    pick.begin(reach, within);
+    let offered = 0;
+    for (const [name, distance] of things) {
+      offered++;
+      if (pick.offer(name, distance) && pick.over) break;
+    }
+    return { taken: pick.taken, offered };
+  }
+  const things: Array<[string, number]> = [['far', 9], ['near', 2], ['nearest', 1], ['beyond', 30]];
+
+  it('is the first in order for a mouse, which looks no further', () => {
+    expect(search(new ReachPick<string>(), 10, things)).toEqual({ taken: 'far', offered: 1 });
+  });
+
+  it('is the nearest for a finger, whose reach takes in neighbours', () => {
+    use('touch');
+    expect(search(new ReachPick<string>(), 10, things)).toEqual({ taken: 'nearest', offered: 4 });
+  });
+
+  it('is the first in order for a finger whose press lies on something else (`withFineReach`)', () => {
+    use('touch');
+    expect(withFineReach(() => search(new ReachPick<string>(), 10, things))).toEqual({ taken: 'far', offered: 1 });
+  });
+
+  it('is nothing where nothing is in reach, and what lies exactly at its end is in it unless said otherwise', () => {
+    const pick = new ReachPick<string>();
+    expect(search(pick, 10, [['beyond', 30]]).taken).toBeNull();
+    expect(search(pick, 10, [['edge', 10]]).taken).toBe('edge');
+    expect(search(pick, 10, [['edge', 10]], false).taken).toBeNull();
+  });
+
+  it('starts anew with every search: one pick serves every hit test of its owner', () => {
+    use('touch');
+    const pick = new ReachPick<string>();
+    expect(search(pick, 10, things).taken).toBe('nearest');
+    expect(search(pick, 10, [['other', 8]]).taken).toBe('other');
+    expect(search(pick, 10, []).taken).toBeNull();
   });
 });
