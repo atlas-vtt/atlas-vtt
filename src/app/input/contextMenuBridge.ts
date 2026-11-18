@@ -1,4 +1,4 @@
-import { LongPress, type PressClock } from './longPress';
+import { feelLongPress, LongPress, type PressClock } from './longPress';
 import { onPressBecameDrag } from './pressBecameDrag';
 import { noteTouchMenu } from './touchMenuPoint';
 
@@ -9,8 +9,6 @@ const ATLAS_ELEMENT = '.atlas-vtt-plugin, :not(body):not(html)[class*="atlas-"]'
  * its own gestures (`TouchGestures`).
  */
 const NOT_BRIDGED = 'input, textarea, select, [contenteditable], .cm-editor, .markdown-source-view, .markdown-reading-view, .markdown-preview-view, canvas';
-
-const HAPTIC_MS = 10;
 
 /** Whether a long press on `target` is turned into a secondary click. */
 export function bridgesLongPress(target: EventTarget | null): target is Element {
@@ -32,6 +30,10 @@ function isElement(target: EventTarget | null): target is Element {
  * release is swallowed too, text under the finger is not selected, and a list that scrolls
  * under the finger ends the press. So does a drag the resting finger began before the long press
  * was due (`pressBecameDrag`): what is being dragged opens no menu.
+ *
+ * Which finger is the only one down is the browser's to say (`isPrimary`), and the end of a press
+ * is heard on the window, from the first listener there: a drag that keeps the release to itself
+ * (the toolbar editor, the glass) cannot leave a finger behind that was never lifted.
  */
 export class ContextMenuBridge {
   private readonly win: Window;
@@ -41,8 +43,8 @@ export class ContextMenuBridge {
   private pointerId: number | null = null;
   /** The long press fired: the release that follows is no click. */
   private fired = false;
-  /** The fingers down in the document, on Atlas' elements or not. */
-  private readonly touches = new Set<number>();
+  /** The first finger of a touch, while it is down, on Atlas' elements or not: the one a web view's own `contextmenu` is for. */
+  private held: number | null = null;
   private readonly stopHearingDrags: () => void;
 
   constructor(private readonly doc: Document, clock?: PressClock) {
@@ -54,8 +56,8 @@ export class ContextMenuBridge {
     this.longPress = new LongPress(timers, (at) => this.fire(at.x, at.y));
     doc.addEventListener('pointerdown', this.onPointerDown, true);
     doc.addEventListener('pointermove', this.onPointerMove, true);
-    doc.addEventListener('pointerup', this.onPointerEnd, true);
-    doc.addEventListener('pointercancel', this.onPointerEnd, true);
+    this.win.addEventListener('pointerup', this.onPointerEnd, true);
+    this.win.addEventListener('pointercancel', this.onPointerEnd, true);
     doc.addEventListener('scroll', this.drop, true);
     doc.addEventListener('contextmenu', this.onContextMenu, true);
     doc.addEventListener('click', this.onClick, true);
@@ -70,8 +72,8 @@ export class ContextMenuBridge {
     const { doc } = this;
     doc.removeEventListener('pointerdown', this.onPointerDown, true);
     doc.removeEventListener('pointermove', this.onPointerMove, true);
-    doc.removeEventListener('pointerup', this.onPointerEnd, true);
-    doc.removeEventListener('pointercancel', this.onPointerEnd, true);
+    this.win.removeEventListener('pointerup', this.onPointerEnd, true);
+    this.win.removeEventListener('pointercancel', this.onPointerEnd, true);
     doc.removeEventListener('scroll', this.drop, true);
     doc.removeEventListener('contextmenu', this.onContextMenu, true);
     doc.removeEventListener('click', this.onClick, true);
@@ -80,16 +82,15 @@ export class ContextMenuBridge {
   }
 
   private readonly onPointerDown = (event: PointerEvent): void => {
+    this.fired = false;
     if (event.pointerType !== 'touch') {
       // A finger whose release never arrived must not make a mouse's right-click a touch's
-      this.touches.clear();
-      this.fired = false;
+      this.held = null;
       return;
     }
-    this.touches.add(event.pointerId);
-    this.fired = false;
+    if (event.isPrimary) this.held = event.pointerId;
     // A second finger is a gesture of two, never a press
-    if (this.touches.size > 1 || !bridgesLongPress(event.target)) {
+    if (!event.isPrimary || !bridgesLongPress(event.target)) {
       this.drop();
       return;
     }
@@ -105,7 +106,7 @@ export class ContextMenuBridge {
 
   private readonly onPointerEnd = (event: PointerEvent): void => {
     if (event.pointerType !== 'touch') return;
-    this.touches.delete(event.pointerId);
+    if (event.pointerId === this.held) this.held = null;
     if (event.pointerId !== this.pointerId) return;
     this.drop();
     // A press the browser took away is followed by no click
@@ -121,7 +122,7 @@ export class ContextMenuBridge {
 
   private readonly onBlur = (): void => {
     this.drop();
-    this.touches.clear();
+    this.held = null;
     this.fired = false;
   };
 
@@ -131,7 +132,7 @@ export class ContextMenuBridge {
     if (!target?.isConnected) return;
     this.fired = true;
     noteTouchMenu(x, y);
-    if ('vibrate' in this.win.navigator) this.win.navigator.vibrate(HAPTIC_MS);
+    feelLongPress(this.win);
     // The window's own constructor: a popout's document gets a popout's event
     const view = this.doc.defaultView ?? window;
     const event = new view.MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y, button: 2, buttons: 2 });
@@ -139,10 +140,15 @@ export class ContextMenuBridge {
     target.dispatchEvent(event);
   }
 
-  /** The web view's own `contextmenu` for a finger on an Atlas element: Atlas has sent its own, or will. */
+  /**
+   * The web view's own `contextmenu` for a finger on an Atlas element: Atlas has sent its own, or
+   * will. One that no finger made (the menu key, a mouse) is left as it is: the event says what
+   * made it where the browser tells, and elsewhere a finger must be down.
+   */
   private readonly onContextMenu = (event: MouseEvent): void => {
     if (this.own.has(event) || !bridgesLongPress(event.target)) return;
-    const byTouch = this.touches.size > 0 || ('pointerType' in event && event.pointerType === 'touch');
+    const madeBy = 'pointerType' in event && typeof event.pointerType === 'string' ? event.pointerType : '';
+    const byTouch = madeBy === 'touch' || (madeBy === '' && this.held !== null);
     if (!byTouch) return;
     event.preventDefault();
     event.stopPropagation();
