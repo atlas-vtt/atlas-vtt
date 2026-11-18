@@ -86,6 +86,7 @@ export const initiative = {
   'initiative.startCombat': 'Start combat',
   'initiative.endCombat': 'End combat',
   'initiative.empty': 'Right-click a token to add it',
+  'initiative.empty.touch': 'Touch and hold a token to add it',
   'initiative.roundShort': 'R{round}',
   'initiative.hiddenFromPlayers': 'Hidden from players',
   'initiative.side.players': 'Players',

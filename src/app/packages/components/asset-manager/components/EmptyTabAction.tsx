@@ -4,7 +4,7 @@ import type { Tab } from '../types';
 import type { AssetService } from '../../../../services/AssetService';
 import { Button } from '../../primitives/button';
 import { BestiaryTokensOffer } from './BestiaryTokensOffer';
-import { t } from '../../../../i18n';
+import { t, tPointer } from '../../../../i18n';
 
 /**
  * The tabs a GM fills from the asset manager itself. Player characters are made from tokens, and scenes from maps (a
@@ -36,11 +36,11 @@ const CREATE_LABEL: Record<CreatableTab, () => string> = {
  * the Scenes tab where scenes come from (a map), with the way there.
  */
 export function EmptyTabAction({ tab, app, assetService, collection, onCreate, onShowMaps }: EmptyTabActionProps): React.JSX.Element {
-  if (tab === 'party') return <p>{t('am.empty.partyHint')}</p>;
+  if (tab === 'party') return <p>{tPointer('am.empty.partyHint')}</p>;
   if (tab === 'scenes') {
     return (
       <>
-        <p>{t('am.empty.scenesHint')}</p>
+        <p>{tPointer('am.empty.scenesHint')}</p>
         <Button variant="default" className="atlas-empty-action" onClick={onShowMaps}>{t('am.empty.goToMaps')}</Button>
       </>
     );

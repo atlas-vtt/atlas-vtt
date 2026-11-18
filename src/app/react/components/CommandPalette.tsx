@@ -70,7 +70,7 @@ import { SettingsService } from '../../services/SettingsService';
 import { docsCommand } from './command-palette/docsCommand';
 import { armariumCommand } from './command-palette/armariumCommand';
 import { isSettingsPanelId, type CommandOption, type SettingsPanelId } from './command-palette/types';
-import { t } from '../../i18n';
+import { t, tPointer } from '../../i18n';
 import { showNotice } from '../../ui/notice';
 
 interface CommandPaletteProps {
@@ -985,7 +985,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
           >
             {!isTemporarilyHidden && position && <Tutorial id="palette" steps={[
               { title: t('palette.tour.findTitle'), body: t('palette.tour.findBody'), selector: '.atlas-command-palette-search' },
-              { title: t('palette.tour.ownTitle'), body: t('palette.tour.ownBody', { key: hotkeyLabel('help') }), selector: '.atlas-command-palette-tabs' },
+              { title: t('palette.tour.ownTitle'), body: tPointer('palette.tour.ownBody', { key: hotkeyLabel('help') }), selector: '.atlas-command-palette-tabs' },
             ]} />}
             <div className="atlas-command-palette-backdrop" onClick={onClose} />
 

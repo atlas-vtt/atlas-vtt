@@ -97,6 +97,7 @@ export const diceLab = {
   'diceLab.edgeAddNumberHint': 'Adds a number to the roll, such as +2.',
   'diceLab.edgeSubtractNumberHint': 'Takes a number off the roll, such as −2.',
   'diceLab.edgeOnlySetDice': 'Only rolls of the set\'s dice change: a damage roll rolls as it is. Shift-click a roll for advantage, Alt-click (Option-click) for disadvantage.',
+  'diceLab.edgeOnlySetDice.touch': 'Only rolls of the set\'s dice change: a damage roll rolls as it is. Touch and hold a roll for advantage or disadvantage.',
   'diceLab.edgeTensOnly': 'Extra tens die only',
   'diceLab.edgeTensOnlyHint': 'The extra die rolls only its tens and shares the units die, so a bonus die can only change the tens. Off, a whole second d100 is rolled.',
   'diceLab.edgeNumber': 'Number',

@@ -4,7 +4,7 @@ import type { SettingsService } from '../../../../services/SettingsService';
 import type { AssetCrudActions } from '../hooks/useAssetCrud';
 import type { TagsAndCollectionsState } from '../hooks/useTagsAndCollections';
 import type { StatblockLinkState } from '../hooks/useStatblockLink';
-import { t } from '../../../../i18n';
+import { t, tPointer } from '../../../../i18n';
 
 interface AssetManagerToursProps {
   isOpen: boolean;
@@ -23,8 +23,8 @@ export function AssetManagerTours({ isOpen, settings, crud, tags, statblock, onS
   if (settings?.shouldShowTutorial('assets')) {
     return (
       <Tutorial settings={settings} id="assets" steps={[
-        { title: t('am.tour.libraryTitle'), body: t('am.tour.libraryBody'), selector: '.atlas-am-toolbar-center' },
-        { title: t('am.tour.sceneTitle'), body: t('am.tour.sceneBody'), selector: '.atlas-asset-manager-tabs, .atlas-am-tab-menu' },
+        { title: t('am.tour.libraryTitle'), body: tPointer('am.tour.libraryBody'), selector: '.atlas-am-toolbar-center' },
+        { title: t('am.tour.sceneTitle'), body: tPointer('am.tour.sceneBody'), selector: '.atlas-asset-manager-tabs, .atlas-am-tab-menu' },
         { title: t('am.tour.collectionTitle'), body: t('am.tour.collectionBody'), selector: '.atlas-collections' },
       ]} action={{ label: t('am.tour.showMaps'), onClick: onShowMaps }} />
     );
@@ -32,7 +32,7 @@ export function AssetManagerTours({ isOpen, settings, crud, tags, statblock, onS
   if (settings?.getSetting('onboarding').tokenImported) {
     return (
       <Tutorial settings={settings} id="tokenStatblocks" steps={[
-        { title: t('am.tour.statblockTitle'), body: t('am.tour.statblockBody'), selector: '.atlas-asset-manager-main' },
+        { title: t('am.tour.statblockTitle'), body: tPointer('am.tour.statblockBody'), selector: '.atlas-asset-manager-main' },
       ]} />
     );
   }

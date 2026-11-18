@@ -19,6 +19,7 @@ export const csm = {
   'csm.conditions.icon': 'Condition icon',
   'csm.conditions.initial': 'Initial',
   'csm.conditions.intro': 'Define conditions that can be toggled on tokens. Each one shows as a badge on the token\'s edge, and hovering the token lists them by name. Click a badge to give it an icon, and turn on # for conditions that carry a number, like Frightened 2.',
+  'csm.conditions.intro.touch': 'Define conditions that can be toggled on tokens. Each one shows as a badge on the token\'s edge. Tap a badge to give it an icon, and turn on # for conditions that carry a number, like Frightened 2.',
   'csm.conditions.makeValued': 'Give it a number, like Frightened 2',
   'csm.conditions.name': 'Condition name',
   'csm.conditions.pickColour': 'Pick condition colour',
