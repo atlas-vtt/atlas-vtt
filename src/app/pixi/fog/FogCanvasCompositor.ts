@@ -8,6 +8,16 @@ import { drawFogCoverage } from './drawFogCoverage';
 import { drawWithSpreadEdges, FOG_COLOR, renderOperation, renderOperations } from './fogRenderUtils';
 import { fogEdgeBlur } from '../../fog/fogEdge';
 
+/**
+ * The fog canvas' texels per world pixel: `wanted`, or fewer where the canvas would be longer than
+ * `maxSide`. A web view on a tablet draws nothing on a canvas above a size of its own and says nothing
+ * (`canvasLimit.ts`), which would show the players the whole map.
+ */
+export function fogCanvasScale(bounds: Pick<FogBounds, 'width' | 'height'>, wanted: number, maxSide: number): number {
+  const longest = Math.max(bounds.width, bounds.height);
+  return longest * wanted > maxSide ? maxSide / longest : wanted;
+}
+
 export class FogCanvasCompositor {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -21,15 +31,17 @@ export class FogCanvasCompositor {
   private spread: HTMLCanvasElement | null = null;
   constructor(
     bounds: FogBounds,
-    scale = 0.5,
+    private readonly wantedScale = 0.5,
     private readonly coverageCache = new FogCoverageCache(),
     private readonly mapKey: () => string | null = () => null,
+    /** The canvas' longest side on this device (`DeviceBudgets.fogCanvasSide`). */
+    private readonly maxSide = Infinity,
   ) {
     this.bounds = bounds;
-    this.scale = scale;
+    this.scale = fogCanvasScale(bounds, wantedScale, maxSide);
     this.canvas = getDomHost().createCanvas(undefined, {
-      width: Math.max(1, Math.round(bounds.width * scale)),
-      height: Math.max(1, Math.round(bounds.height * scale)),
+      width: Math.max(1, Math.round(bounds.width * this.scale)),
+      height: Math.max(1, Math.round(bounds.height * this.scale)),
     });
 
     const ctx = this.canvas.getContext('2d', { willReadFrequently: false, alpha: true });
@@ -140,6 +152,7 @@ export class FogCanvasCompositor {
   /** Recreate canvas when map/bounds change. */
   updateBounds(bounds: FogBounds): void {
     this.bounds = bounds;
+    this.scale = fogCanvasScale(bounds, this.wantedScale, this.maxSide);
     this.canvas.width = Math.max(1, Math.round(bounds.width * this.scale));
     this.canvas.height = Math.max(1, Math.round(bounds.height * this.scale));
   }
@@ -151,6 +164,11 @@ export class FogCanvasCompositor {
 
   getBounds(): FogBounds {
     return this.bounds;
+  }
+
+  /** The canvas' texels per world pixel, for the bounds it has now. */
+  getScale(): number {
+    return this.scale;
   }
 
   destroy(): void {

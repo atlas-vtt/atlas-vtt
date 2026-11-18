@@ -45,6 +45,8 @@ export interface DeviceBudgets {
   readonly generatedMapSide: number;
   /** Bytes of the largest video an import takes as an animated map: the whole file is held to be played. */
   readonly videoMapBytes: number;
+  /** The longest side of the canvas the fog is composed on; a larger map's fog is drawn coarser (`fogCanvasScale`). */
+  readonly fogCanvasSide: number;
 }
 
 const MIB = 1024 ** 2;
@@ -73,6 +75,8 @@ export const DESKTOP_BUDGETS: DeviceBudgets = {
   generatedMapPixels: Infinity,
   generatedMapSide: Infinity,
   videoMapBytes: 500 * MIB,
+  // Half the map's own pixels, whatever its size.
+  fogCanvasSide: Infinity,
 };
 
 /**
@@ -97,6 +101,8 @@ export const MOBILE_BUDGETS: DeviceBudgets = {
   generatedMapPixels: 4096 * 4096,
   generatedMapSide: 8192,
   videoMapBytes: 128 * MIB,
+  // With the room its blurred copy takes around it, within the canvas every iPadOS draws on (4096 × 4096).
+  fogCanvasSide: 3072,
 };
 
 export function budgetsFor(memoryClass: MemoryClass): DeviceBudgets {
