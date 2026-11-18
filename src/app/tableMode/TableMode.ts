@@ -14,6 +14,20 @@ export const TABLE_VIEW_CLASS = 'atlas-table-mode';
 /** On the window's `body` meanwhile: Obsidian's chrome and Atlas' floating UI are hidden, so the map fills the window. */
 export const TABLE_BODY_CLASS = 'atlas-table-mode-on';
 
+/** On the panes and tab groups that hold the view, up to the workspace's root: every other pane is hidden meanwhile. */
+export const TABLE_PATH_CLASS = 'atlas-table-mode-path';
+
+/** Marks the panes and tab groups `root` stands in, so the stylesheet can leave them and hide their siblings. Returns what takes the marks off. */
+function markPanesOf(root: HTMLElement): () => void {
+  const marked: HTMLElement[] = [];
+  for (let pane = root.parentElement; pane && !pane.hasClass('mod-root'); pane = pane.parentElement) {
+    if (!pane.hasClass('workspace-tabs') && !pane.hasClass('workspace-split')) continue;
+    pane.addClass(TABLE_PATH_CLASS);
+    marked.push(pane);
+  }
+  return () => marked.forEach((pane) => pane.removeClass(TABLE_PATH_CLASS));
+}
+
 /** What Table mode needs of the view it runs in. */
 export interface TableModeParts {
   app: App;
@@ -87,6 +101,7 @@ export class TableMode {
     root.addClass(TABLE_VIEW_CLASS);
     body.addClass(TABLE_BODY_CLASS);
     const stops = [
+      markPanesOf(root),
       keepScreenAwake(root.win),
       blockTableKeys(root.win),
       // Obsidian's chrome is hidden: a tab that comes to the front must not be left without it

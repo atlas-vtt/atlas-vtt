@@ -29,7 +29,7 @@ body.atlas-table-mode-on {
   .mobile-navbar,
   .mobile-toolbar,
   .notice-container,
-  .mod-root :is(.workspace-tabs, .workspace-split):not(:has(.atlas-table-mode)),
+  .mod-root :is(.workspace-tabs, .workspace-split):not(.atlas-table-mode-path),
   > .atlas-portal-host {
     display: none !important;
   }

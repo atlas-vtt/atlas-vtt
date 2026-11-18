@@ -4,7 +4,7 @@ import type { Viewport } from 'pixi-viewport';
 import { canRunMapHotkeys } from '../../../src/app/keyboard/mapHotkeys';
 import { SettingsService } from '../../../src/app/services/SettingsService';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../../src/app/storeFactory';
-import { TABLE_BODY_CLASS, TABLE_VIEW_CLASS, TableMode } from '../../../src/app/tableMode/TableMode';
+import { TABLE_BODY_CLASS, TABLE_PATH_CLASS, TABLE_VIEW_CLASS, TableMode } from '../../../src/app/tableMode/TableMode';
 import { CHIP_HOLD_MS } from '../../../src/app/tableMode/holdToLeave';
 import { createInMemoryApp } from '../../mocks/inMemoryVault';
 
@@ -80,6 +80,20 @@ describe('a map view in Table mode', () => {
     for (const overlay of ['#atlas-player-widgets', '.atlas-player-initiative-container', '.atlas-player-dice-rolls', '.atlas-player-turn-banner']) {
       expect(surface?.querySelector(overlay), overlay).not.toBeNull();
     }
+  });
+
+  it('marks the panes that hold the view, so only the others are hidden, and takes the marks off again', () => {
+    const { store, root } = scene();
+    const workspace = document.body.createDiv({ cls: 'workspace-split mod-root' });
+    const split = workspace.createDiv({ cls: 'workspace-split mod-vertical' });
+    const tabs = split.createDiv({ cls: 'workspace-tabs' });
+    const other = split.createDiv({ cls: 'workspace-tabs' });
+    tabs.createDiv({ cls: 'workspace-leaf' }).appendChild(root);
+
+    store.getState().enterTableMode();
+    expect([workspace, split, tabs, other].map((pane) => pane.hasClass(TABLE_PATH_CLASS))).toEqual([false, true, true, false]);
+    store.getState().leaveTableMode();
+    expect(document.querySelector(`.${TABLE_PATH_CLASS}`)).toBeNull();
   });
 
   it('gives the GM\'s view back whole when it ends: marks and surface gone, the camera where it was', () => {
