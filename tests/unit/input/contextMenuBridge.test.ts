@@ -5,13 +5,15 @@ import { LONG_PRESS_MS } from '../../../src/app/input/longPress';
 import { pressBecameDrag } from '../../../src/app/input/pressBecameDrag';
 import { FakeClock } from './fakeGestureClock';
 
-type PointerInit = { pointerId?: number; pointerType?: string; clientX?: number; clientY?: number };
+type PointerInit = { pointerId?: number; pointerType?: string; clientX?: number; clientY?: number; isPrimary?: boolean };
 
 /** jsdom has no PointerEvent: a mouse event that carries what a pointer event adds. */
 function pointer(target: Element, type: string, init: PointerInit = {}): void {
   const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: init.clientX ?? 50, clientY: init.clientY ?? 60 });
   Object.defineProperty(event, 'pointerId', { value: init.pointerId ?? 1 });
   Object.defineProperty(event, 'pointerType', { value: init.pointerType ?? 'touch' });
+  // The first finger of a touch, as the browser says of every finger that lands while no other is down
+  Object.defineProperty(event, 'isPrimary', { value: init.isPrimary ?? true });
   target.dispatchEvent(event);
 }
 
@@ -86,7 +88,7 @@ describe('a finger resting on something Atlas draws', () => {
   it('ends when a second finger comes down', () => {
     const { clock, card, menus } = page();
     pointer(card, 'pointerdown', { pointerId: 1 });
-    pointer(card, 'pointerdown', { pointerId: 2 });
+    pointer(card, 'pointerdown', { pointerId: 2, isPrimary: false });
     clock.advance(LONG_PRESS_MS);
     expect(menus).toHaveLength(0);
   });
@@ -221,5 +223,81 @@ describe('a finger that rests on something it then drags', () => {
     expect(menus).toHaveLength(1);
     bridge.destroy();
     expect(() => pressBecameDrag()).not.toThrow();
+  });
+});
+
+describe('a drag that keeps the release of its finger to itself', () => {
+  /** What the toolbar editor and the glass do while they drag: the release is theirs, taken on the window before the page hears it. */
+  function keepReleases(): void {
+    const keep = (event: Event): void => event.stopPropagation();
+    window.addEventListener('pointerup', keep, true);
+    window.addEventListener('pointercancel', keep, true);
+    cleanups.push(() => {
+      window.removeEventListener('pointerup', keep, true);
+      window.removeEventListener('pointercancel', keep, true);
+    });
+  }
+
+  it('leaves no finger behind: the next finger that rests still opens its menu', () => {
+    const { clock, card, menus } = page();
+    keepReleases();
+    pointer(card, 'pointerdown', { pointerId: 1 });
+    clock.advance(100);
+    pointer(card, 'pointerup', { pointerId: 1 });
+    pointer(card, 'pointerdown', { pointerId: 2 });
+    clock.advance(LONG_PRESS_MS);
+    expect(menus).toHaveLength(1);
+  });
+
+  it('ends the press with the release all the same: a tap there opens nothing later', () => {
+    const { clock, card, menus } = page();
+    keepReleases();
+    pointer(card, 'pointerdown');
+    clock.advance(100);
+    pointer(card, 'pointerup');
+    clock.advance(LONG_PRESS_MS);
+    expect(menus).toHaveLength(0);
+  });
+
+  it('leaves the menu key and the mouse their contextmenu afterwards', () => {
+    const { card, menus } = page();
+    keepReleases();
+    pointer(card, 'pointerdown');
+    pointer(card, 'pointerup');
+    const byKey = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    card.dispatchEvent(byKey);
+    expect(byKey.defaultPrevented).toBe(false);
+    expect(menus).toHaveLength(1);
+  });
+});
+
+describe('a contextmenu no finger made', () => {
+  it('passes while a finger is down, where the browser says a mouse made it', () => {
+    const { card, menus } = page();
+    pointer(card, 'pointerdown');
+    const byMouse = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    Object.defineProperty(byMouse, 'pointerType', { value: 'mouse' });
+    card.dispatchEvent(byMouse);
+    expect(byMouse.defaultPrevented).toBe(false);
+    expect(menus).toHaveLength(1);
+  });
+
+  it('passes once the finger has lifted', () => {
+    const { card, menus } = page();
+    pointer(card, 'pointerdown');
+    pointer(card, 'pointerup');
+    const byKey = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    card.dispatchEvent(byKey);
+    expect(byKey.defaultPrevented).toBe(false);
+    expect(menus).toHaveLength(1);
+  });
+
+  it('is still swallowed where the browser says a finger made it, down or not', () => {
+    const { card, menus } = page();
+    const byTouch = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    Object.defineProperty(byTouch, 'pointerType', { value: 'touch' });
+    card.dispatchEvent(byTouch);
+    expect(byTouch.defaultPrevented).toBe(true);
+    expect(menus).toHaveLength(0);
   });
 });

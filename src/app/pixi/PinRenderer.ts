@@ -24,7 +24,7 @@ import { pinMenuEntries } from './pinMenu';
 import { openPinMenu, type PinnedSceneLevels } from './pinSceneLevelMenu';
 import { levelObjects } from '../levels/levelObjects';
 import { pinNameBoxes } from './pinNameLayout';
-import { dragThreshold, fingerReaches, pointerReach } from './utils/pointerReach';
+import { dragThreshold, pointerReach, ReachPick } from './utils/pointerReach';
 
 /** True when anything other than the position changed, which means the pin's graphics must be rebuilt. */
 function differsBeyondPosition(pin: NotePin, prev: NotePin | undefined): boolean {
@@ -82,6 +82,7 @@ export class PinRenderer {
   /** The map's size changed (a map loaded, a stretch applied): the pins it carries are sized again. */
   private readonly mapImageUpdated = (): void => this.updatePinScales();
   private _unsubscribeFromStore?: () => void;
+  private readonly reached = new ReachPick<string>();
   private _notePinToolViewportListener: ((e: FederatedPointerEvent) => void) | null = null;
   private _viewportPinClickListener: ((e: FederatedPointerEvent) => void) | null = null;
   private isPlayerView: boolean;
@@ -380,25 +381,18 @@ export class PinRenderer {
     const layout = hexLayoutOfGrid(this.store.getState().grid);
     // A pin shrunk to a dot keeps a hit area a pointer can find, a finger a larger one
     const zoom = this.viewport.scale.x > 0 ? this.viewport.scale.x : 1;
-    const finger = fingerReaches();
     const hitRadius = Math.max(pinSize.badgeRadius * this.getPinScale(), pointerReach(MIN_HIT_RADIUS) / zoom);
 
-    let nearest: string | null = null;
-    let best = hitRadius * hitRadius;
+    const pick = this.reached.begin(hitRadius * hitRadius);
     for (const id in pins) {
       const pin = pins[id];
       // A linked pin is part of its hex, which handles the pointer
       if (!pin || isShownAsHex(pin, layout)) continue;
       const dx = worldX - pin.x;
       const dy = worldY - pin.y;
-      const distance = dx * dx + dy * dy;
-      if (distance > best) continue;
-      nearest = id;
-      // A finger's wider reach takes in neighbours: of those, the pin nearest the point
-      if (!finger) break;
-      best = distance;
+      if (pick.offer(id, dx * dx + dy * dy) && pick.over) break;
     }
-    return nearest;
+    return pick.taken;
   }
 
   /** Handles a viewport-routed click on a pin (drag or context menu). */

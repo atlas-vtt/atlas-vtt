@@ -57,6 +57,8 @@ interface DragState {
   clickToken?: TokenEntity;
   /** The press grabbed a token outside the selection: it is selected on release if it never moved, and a drag leaves the selection as it was. */
   selectsOnRelease?: boolean;
+  /** Select more is on and the press grabbed a token of the selection: it leaves the selection on release if it never moved, and a drag moves the selection. */
+  deselectsOnRelease?: boolean;
   /** Alt/Option was held at pointer down: the drag moves copies and leaves the originals. */
   copyOnDrag?: boolean;
   /** The token the pointer grabbed; the drag ruler measures its path. */
@@ -245,8 +247,10 @@ export class InteractionController implements ITokenInteractionController {
     // Shift, or Select more: the press adds the token to the selection or takes it out
     const more = picksMore(state, e);
 
-    // Such a press toggles membership; removing never starts a drag.
-    if (more && isTokenSelected) {
+    // Such a press toggles membership. With Shift a selected token leaves at once, and nothing is dragged;
+    // with the switch it leaves when the press is released in place, since the switch stays on while the selection is dragged.
+    const leaves = more && isTokenSelected;
+    if (leaves && e.shiftKey) {
       setSelection(selectedIds.filter((id) => id !== token.id));
       return;
     }
@@ -265,9 +269,12 @@ export class InteractionController implements ITokenInteractionController {
     this.dragState.hasMoved = false;
     this.dragState.copyOnDrag = e.altKey;
     this.dragState.selectsOnRelease = false;
+    this.dragState.deselectsOnRelease = leaves;
     
     // Determine which tokens to potentially drag
-    if (more) {
+    if (leaves) {
+      this.dragState.dragIds = [...selectedIds];
+    } else if (more) {
       this.dragState.dragIds = [...selectedIds, token.id];
       setSelection(this.dragState.dragIds);
     } else if (isTokenSelected && selectedIds.length > 1) {
@@ -362,6 +369,7 @@ export class InteractionController implements ITokenInteractionController {
     this.dragState.hasMoved = false;
     delete this.dragState.clickToken;
     this.dragState.selectsOnRelease = false;
+    this.dragState.deselectsOnRelease = false;
     this.reportHeld([]);
   }
 
@@ -504,7 +512,9 @@ export class InteractionController implements ITokenInteractionController {
       // Check if this was a click (no significant movement)
       if (!this.dragState.hasMoved && this.dragState.clickToken) {
         // A click selects a token the press found outside the selection
-        if (this.dragState.selectsOnRelease) this.store.getState().setSelection([this.dragState.clickToken.id]);
+        const { id } = this.dragState.clickToken;
+        if (this.dragState.selectsOnRelease) this.store.getState().setSelection([id]);
+        else if (this.dragState.deselectsOnRelease) this.store.getState().setSelection(this.store.getState().selectedIds.filter((selected) => selected !== id));
         this.cleanupDragListeners();
         this.viewport.plugins.resume('drag');
         delete this.dragState.clickToken;
@@ -589,6 +599,7 @@ export class InteractionController implements ITokenInteractionController {
       this.dragState.hasMoved = false;
       delete this.dragState.clickToken;
       this.dragState.selectsOnRelease = false;
+      this.dragState.deselectsOnRelease = false;
       this.reportHeld([]);
     }
   }

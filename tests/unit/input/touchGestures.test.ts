@@ -534,7 +534,7 @@ describe('a tool that places by taps', () => {
 });
 
 describe('what a tap places, tool by tool', () => {
-  const fog = (shape: 'brush' | 'polygon', activeTool = 'fog'): Parameters<typeof tapPlacingOf>[0] => ({ activeTool, fogTool: { shape, brushSize: 50 } });
+  const fog = (shape: 'brush' | 'polygon', activeTool = 'fog'): Parameters<typeof tapPlacingOf>[0] => ({ activeTool, fogTool: { shape, brushSize: 50 }, drawTool: { mode: 'pen' } });
 
   it('is a corner of the fog tool\'s polygon, with either fog tool, and nothing of its other shapes', () => {
     expect(tapPlacingOf(fog('polygon'))).toBe('taps');

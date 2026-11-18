@@ -20,6 +20,7 @@ import { resourceUpdate, withCurrent } from '../resources/resourceValues';
 import { visibleResources } from '../resources/visibleResources';
 import { levelObjects } from '../levels/levelObjects';
 import { mapTokens } from '../tokens/offMap';
+import { actsOnPress } from './input/pressTargets';
 
 type ControlIconType = 'plus' | 'minus';
 
@@ -163,7 +164,8 @@ export class TokenControlsUI {
 
   private createButton(iconType: ControlIconType, iconColor: number): ControlButton {
     const bg = new Graphics();
-    const button: ControlButton = Object.assign(new Container(), { bg, iconType, iconColor, size: BAR_BUTTON_SIZE });
+    // Its press changes the value at once: a finger's is a tap's, so one that is the first of a pinch changes nothing
+    const button: ControlButton = actsOnPress(Object.assign(new Container(), { bg, iconType, iconColor, size: BAR_BUTTON_SIZE }));
     // A finger takes the button as far out as a finger needs, however small the map draws it
     button.hitArea = new HandleHitArea(button, BAR_BUTTON_SIZE / 2);
     button.eventMode = 'static';
@@ -406,7 +408,7 @@ export class TokenControlsUI {
     let control = this.resourceControls.get(definition.key);
     if (!control) {
       control = {
-        hit: new ResourceBarHitArea(color),
+        hit: actsOnPress(new ResourceBarHitArea(color)),
         minus: this.createButton('minus', this.DANGER_COLOR),
         plus: this.createButton('plus', color),
       };

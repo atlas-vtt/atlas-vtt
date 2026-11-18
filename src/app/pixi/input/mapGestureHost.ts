@@ -2,7 +2,7 @@ import type { Viewport } from 'pixi-viewport';
 import { isFogTool } from '../../fog/fogToolChoices';
 import type { TapPlacing } from '../../types/tapPlacing';
 import type { FingerUse } from '../../services/deviceSettings';
-import { getHistoryStore } from '../../stores/history';
+import { getHistoryStore, isHistoryTransactionOpen } from '../../stores/history';
 import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
 import type { FingerMode } from './gestureTypes';
 import type { MapGestureHost } from './installTouchGestures';
@@ -25,10 +25,20 @@ export function fingerModeOf(activeTool: string, placing: boolean, fingers: Fing
   return taps === 'press' ? 'place' : 'tool';
 }
 
-/** What a tap places with the tool in hand: the fog tool's polygon is placed tap by tap, and the lighting tool says for itself. */
-export function tapPlacingOf(state: Pick<ViewAtlasState, 'activeTool' | 'fogTool'>, lighting?: () => TapPlacing | null): TapPlacing | null {
-  if (isFogTool(state.activeTool)) return state.fogTool.shape === 'polygon' ? 'taps' : null;
-  return state.activeTool === 'wall' ? lighting?.() ?? null : null;
+/** What of a view's state says what a tap places. */
+export type TapPlacingState = Pick<ViewAtlasState, 'activeTool' | 'fogTool'> & { drawTool: Pick<ViewAtlasState['drawTool'], 'mode'> };
+
+/**
+ * What a tap places with the tool in hand: the fog tool's polygon is placed tap by tap, and the
+ * lighting tool says for itself. A press of the note pin tool or of the Draw tool's stamps places
+ * at once, where pins and stamps that are there are dragged; the sound tool's does too, and drags nothing.
+ */
+export function tapPlacingOf(state: TapPlacingState, lighting?: () => TapPlacing | null): TapPlacing | null {
+  const { activeTool } = state;
+  if (isFogTool(activeTool)) return state.fogTool.shape === 'polygon' ? 'taps' : null;
+  if (activeTool === 'wall') return lighting?.() ?? null;
+  if (activeTool === 'audio') return 'taps';
+  return activeTool === 'note-pin' || (activeTool === 'draw' && state.drawTool.mode === 'stamp') ? 'press' : null;
 }
 
 /** The parts of a view the gestures ask; its renderers come and go with the map. */
@@ -43,6 +53,11 @@ export interface MapGestureParts {
   menuAt: (worldX: number, worldY: number) => boolean;
   /** Whether a tap at a world point acts on something whose press the map's tools leave to the empty map (a linked hex). */
   tapActsAt: (worldX: number, worldY: number) => boolean;
+  /**
+   * Whether a press acts at once and for good: `onCanvas` on what the canvas draws at a point of
+   * its own pixels (a bar's button), `onMap` on what the map's tools find at a world point (a door's badge).
+   */
+  pressActs?: { onCanvas: (x: number, y: number) => boolean; onMap: (worldX: number, worldY: number) => boolean };
   fingers: { readonly use: FingerUse; notePen: () => void };
   /** What a tap places with the lighting tool; unset or null, a press is the tool's as a mouse's is. */
   lightingTapPlacing?: () => TapPlacing | null;
@@ -50,11 +65,12 @@ export interface MapGestureParts {
   emptyMapMenu?: (world: { x: number; y: number }, at: { x: number; y: number }) => void;
 }
 
-export function mapGestureHost({ store, viewport, placing, marqueePending, menuAt, tapActsAt, fingers, lightingTapPlacing, emptyMapMenu }: MapGestureParts): MapGestureHost {
-  // Undo and redo are the GM's, as their keys are: not the table's
+export function mapGestureHost({ store, viewport, placing, marqueePending, menuAt, tapActsAt, pressActs, fingers, lightingTapPlacing, emptyMapMenu }: MapGestureParts): MapGestureHost {
+  // Undo and redo are the GM's, as their keys are: not the table's. A tap never reaches into a
+  // step that is still being written (a mouse's drag, a pen's stroke): it would take half of it back
   const travel = (direction: 'undo' | 'redo'): void => {
     const { isPlayerView, tableMode } = store.getState();
-    if (!isPlayerView && !tableMode) getHistoryStore(store)?.getState()[direction]();
+    if (!isPlayerView && !tableMode && !isHistoryTransactionOpen(store)) getHistoryStore(store)?.getState()[direction]();
   };
   return {
     fingerMode: () => {
@@ -70,6 +86,12 @@ export function mapGestureHost({ store, viewport, placing, marqueePending, menuA
     tapActsAt: (x, y) => {
       const world = viewport.toWorld(x, y);
       return tapActsAt(world.x, world.y);
+    },
+    pressActsAt: (x, y) => {
+      if (!pressActs) return false;
+      if (pressActs.onCanvas(x, y)) return true;
+      const world = viewport.toWorld(x, y);
+      return pressActs.onMap(world.x, world.y);
     },
     undo: () => travel('undo'),
     redo: () => travel('redo'),

@@ -297,4 +297,24 @@ describe('a selected token\'s +/- buttons', () => {
       device.coarse = false;
     }
   });
+
+  it('change nothing under the first finger of a pinch that the second joins late', async () => {
+    const m = await selected(true, 1);
+    try {
+      const plus = buttons(m).find((button) => (button as Container & { iconType: string }).iconType === 'plus')!;
+      const box = boxOf(plus);
+      const on: Point = { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 };
+      const second: Point = { x: on.x + 200, y: on.y };
+      const before = JSON.stringify(m.store.getState().objects.tokens['token']!.resources);
+      await touch.down(on);
+      await wait(120);
+      await touch.down(on, second);
+      await touch.glide([on, second], [{ x: on.x - 40, y: on.y }, { x: second.x + 40, y: second.y }]);
+      await touch.up();
+      await wait(60);
+      expect(JSON.stringify(m.store.getState().objects.tokens['token']!.resources)).toBe(before);
+    } finally {
+      device.coarse = false;
+    }
+  });
 });

@@ -128,7 +128,8 @@ describe('a map view in Table mode', () => {
     chip.dispatchEvent(Object.assign(new Event('pointerdown', { bubbles: true, cancelable: true }), { button: 0, pointerId: 1, clientX: 30, clientY: 700 }));
     vi.advanceTimersByTime(CHIP_HOLD_MS - 1);
     expect(store.getState().tableMode).not.toBeNull();
-    vi.advanceTimersByTime(1);
+    // Its time is up; the hold is asked once more a turn later, so that a release that waited is heard first (`LongPress`)
+    vi.advanceTimersByTime(2);
     expect(store.getState().tableMode).toBeNull();
     expect(root.querySelector('.atlas-table-surface')).toBeNull();
   });

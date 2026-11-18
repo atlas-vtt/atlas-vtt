@@ -1,6 +1,7 @@
 import { FingerSettings } from './input/fingerUse';
 import { openEmptyMapMenu } from './selection/emptyMapMenu';
 import { SelectionBarSource } from './pixi/selection/selectionBarSource';
+import { pressActsOnCanvas } from './pixi/input/pressTargets';
 import { mapGestureHost } from './pixi/input/mapGestureHost';
 import type { FogCoverage } from './fog/fogCoverage';
 import { HARD_FOG_EDGE, sameFogEdge } from './fog/fogEdge';
@@ -338,6 +339,10 @@ export class PixiRendererOrchestrator { // Renamed class
           marqueePending: () => this.selectionManager?.marqueePending ?? false,
           menuAt: (x, y) => this.tokenRenderer?.menuAt(x, y) ?? false,
           tapActsAt: (x, y) => this.tokenRenderer?.tapActsAt(x, y) ?? false,
+          pressActs: {
+            onCanvas: (x, y) => pressActsOnCanvas(this.pixiAppManager.getApp().renderer.events, x, y),
+            onMap: (x, y) => this.tokenRenderer?.pressActsAt(x, y) ?? false,
+          },
           fingers: FingerSettings.forApp(this.obsApp),
           lightingTapPlacing: () => this.lighting?.tapPlacing() ?? null,
           emptyMapMenu: (world, at) => openEmptyMapMenu(this.store, this.tokenRenderer, world, at),

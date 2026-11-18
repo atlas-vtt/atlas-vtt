@@ -175,6 +175,7 @@ export class TokenRenderer {
   /** Whether the GM holds spawned tokens to place (`TokenPlacer`): the pointer is theirs then. */
   private placementActive: () => boolean = () => false;
   private doorClickHandler?: (worldX: number, worldY: number) => boolean;
+  private doorPressAt: ((worldX: number, worldY: number, lightingTool: boolean) => boolean) | undefined;
   /** A right-click on a door's badge, with any tool but the lighting tool, whose own menu has the door's entries. */
   private doorMenuHandlers?: DoorMenuHandlers;
   /** The tokens as the players' sight shows them: which are left out, and the outlines of sensed ones. */
@@ -1675,8 +1676,10 @@ export class TokenRenderer {
     this.fogMenuHandlers = handlers;
   }
 
-  public setDoorClickHandler(handler: (worldX: number, worldY: number) => boolean): void {
+  /** `pressAt` says whether a primary press at a world point opens or closes a door, with the lighting tool in hand or another. */
+  public setDoorClickHandler(handler: (worldX: number, worldY: number) => boolean, pressAt?: (worldX: number, worldY: number, lightingTool: boolean) => boolean): void {
     this.doorClickHandler = handler;
+    this.doorPressAt = pressAt;
   }
 
   public setDoorMenuHandlers(handlers: DoorMenuHandlers): void {
@@ -1899,6 +1902,24 @@ export class TokenRenderer {
     if (this.placementActive()) return false;
     const { activeTool } = this.store.getState();
     return (activeTool === 'select' || activeTool === 'move') && (this.hexLinkHandlers?.hitTest(x, y) ?? null) !== null;
+  }
+
+  /**
+   * Whether a primary press at a world point does something at once that a lost pointer does not
+   * take back: a door opens or closes from its badge, the bars of a selection open their value. A
+   * finger's press there waits for its tap. Asked as the dispatch asks: a pin lies above a badge
+   * and is dragged, and a finger on a token reaches the marks beside it only as a mouse does.
+   */
+  public pressActsAt(x: number, y: number): boolean {
+    if (this.placementActive()) return false;
+    const { activeTool } = this.store.getState();
+    const tokenTools = activeTool === 'select' || activeTool === 'move';
+    const acts = (): boolean => {
+      if (this.pinClickHandler && this.pinHitTestProvider?.(x, y)) return false;
+      if (this.doorPressAt?.(x, y, activeTool === 'wall')) return true;
+      return tokenTools && this.selectionBarAt(this.viewport.toScreen(x, y)) !== null;
+    };
+    return tokenTools && this.hitTestTokens(x, y) !== null ? withFineReach(acts) : acts();
   }
 
   private onViewportPointerDown = (e: FederatedPointerEvent): void => {
@@ -2201,21 +2222,21 @@ export class TokenRenderer {
     this.hexLinkHandlers?.hover(hexLinkId, e);
     this.hoverMapFeatures(worldPos, tokenId !== null || hexLinkId !== null, e);
 
-    const selectionBar = this.selectionBarAt(e);
+    const selectionBar = this.selectionBarAt(e.global);
     this.uiManager.hoverSelectionBar(selectionBar);
     this.applyCursor(tokenId || hexLinkId || selectionBar ? 'pointer' : 'default');
   };
 
-  /** The key of the resource a token of a selection of two or more draws under the pointer, or null. */
-  private selectionBarAt(e: FederatedPointerEvent): string | null {
+  /** The key of the resource a token of a selection of two or more draws at a point of the canvas, or null. */
+  private selectionBarAt(global: { x: number; y: number }): string | null {
     const { selectedIds, activeTool } = this.store.getState();
     if (selectedIds.length < 2 || (activeTool !== 'select' && activeTool !== 'move')) return null;
-    const key = this.uiManager.resourceAt(selectedIds, e.global);
+    const key = this.uiManager.resourceAt(selectedIds, global);
     return key && this.interactionController.offersSelectionResource(key) ? key : null;
   }
 
   private pressSelectionBar(e: FederatedPointerEvent): boolean {
-    const key = this.selectionBarAt(e);
+    const key = this.selectionBarAt(e.global);
     if (!key) return false;
     const opened = this.interactionController.pressSelectionResource(
       key, { x: e.clientX, y: e.clientY }, () => this.uiManager.setSelectionBarActive(null),

@@ -15,6 +15,7 @@ import { PixiAppManager } from '../../src/app/pixi/PixiAppManager';
 import { SelectionManager } from '../../src/app/pixi/SelectionManager';
 import { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import { mapGestureHost } from '../../src/app/pixi/input/mapGestureHost';
+import { pressActsOnCanvas } from '../../src/app/pixi/input/pressTargets';
 import { applyNavigationMode } from '../../src/app/pixi/viewportNavigation';
 import { openEmptyMapMenu } from '../../src/app/selection/emptyMapMenu';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
@@ -131,6 +132,7 @@ export function touchMaps(): { map: (view?: { width: number; height: number }) =
       marqueePending: () => selection.manager?.marqueePending ?? false,
       menuAt: (x, y) => tokens.menuAt(x, y),
       tapActsAt: (x, y) => tokens.tapActsAt(x, y),
+      pressActs: { onCanvas: (x, y) => pressActsOnCanvas(app.renderer.events, x, y), onMap: (x, y) => tokens.pressActsAt(x, y) },
       emptyMapMenu: (world, at) => openEmptyMapMenu(store, tokens, world, at),
     }));
     // What the plugin does for every window: hit areas and drags go by the pointer in use

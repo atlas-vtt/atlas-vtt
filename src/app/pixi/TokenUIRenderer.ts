@@ -28,6 +28,7 @@ import { getTokenRingCenterRadius } from './token-renderer/tokenRingMetrics';
 import { ValueTransition } from './utils/ValueTransition';
 import { MOTION_SLOW_MS, prefersReducedMotion } from '../utils/motion';
 import { t } from '../i18n';
+import { actsOnPress } from './input/pressTargets';
 
 /** Above the bars, whose views stand at 10. */
 const RESOURCE_MARK_Z_INDEX = 11;
@@ -186,7 +187,7 @@ export class TokenUIRenderer {
     this.nameText.zIndex = 2; // Name text above name badge background
     
     // Add click handler to name badge
-    this.nameBadge.on('pointerdown', (e) => {
+    actsOnPress(this.nameBadge).on('pointerdown', (e) => {
       e.stopPropagation(); // Prevent token dragging
       this.startNameEdit();
     });
