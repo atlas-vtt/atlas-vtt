@@ -10,6 +10,9 @@ const SETTLE_DOUBLINGS = 1e-4;
 /** Most zoom (in doublings) one wheel event may add, so accelerated wheel flicks stay controllable. */
 const MAX_EVENT_DOUBLINGS = 1;
 
+/** What a notch of a mouse wheel reports as its `deltaY`, in pixels (Chromium on Windows and Linux). */
+const WHEEL_NOTCH_PX = 100;
+
 type WheelZoomOptions = Pick<Required<IWheelOptions>, 'percent' | 'reverse' | 'lineHeight'>;
 
 /**
@@ -60,9 +63,14 @@ export class SmoothWheelZoom extends Wheel {
     return !this.parent.options.passiveWheel;
   }
 
+  /** How far one notch of a mouse wheel zooms, in doublings: the step of the zoom buttons. */
+  get notchDoublings(): number {
+    return Math.abs(wheelZoomDoublings({ deltaY: WHEEL_NOTCH_PX, deltaMode: 0 }, this.options));
+  }
+
   /**
    * Zooms by `doublings` about `anchor`, a point of the screen, with the wheel's glide and within
-   * its limits: what a notch of the wheel does, for input that is no wheel (a double tap).
+   * its limits: what a notch of the wheel does, for input that is no wheel (a double tap, a zoom button).
    */
   zoomBy(doublings: number, anchor: Point): void {
     const { min, max } = this.scaleLimits();

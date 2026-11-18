@@ -114,6 +114,7 @@ import { isDesktopApp } from './src/app/platform/desktopOnly';
 import { registerPointerAttribute } from './src/app/platform/pointerAttribute';
 import { registerTouchContextMenus } from './src/app/plugin/touchContextMenus';
 import { FingerSettings } from './src/app/input/fingerUse';
+import { zoomButtonsRow } from './src/app/input/zoomButtons';
 import { registerLastInput } from './src/app/platform/lastInput';
 import { registerKeyboardViewport } from './src/app/platform/keyboardViewport';
 import { registerAudioUnlock } from './src/app/plugin/audioUnlock';
@@ -269,7 +270,7 @@ export default class AtlasVTTPlugin extends Plugin {
     const onlinePlay = registerOnlinePlay(this, this.settingsService, account);
     this.onlinePlay = onlinePlay;
     this.addSettingTab(new AtlasSettingTab(this.app, this, () => [
-      navigationSettingsSection(this.settingsService, FingerSettings.forApp(this.app)),
+      navigationSettingsSection(this.settingsService, FingerSettings.forApp(this.app), zoomButtonsRow(this.app)),
       diceSettingsSection(this.settingsService),
       soundSettingsSection(this.settingsService, soundDirector),
       mapsSettingsSection(this.settingsService),

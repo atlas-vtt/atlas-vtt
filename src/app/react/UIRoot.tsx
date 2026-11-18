@@ -34,6 +34,7 @@ import { DocsWindow } from './components/documentation/DocsPanel';
 import { MapLoadingOverlay } from './components/MapLoadingOverlay';
 import { SceneTabBar } from './components/SceneTabBar';
 import { LevelSwitcher } from './components/levels/LevelSwitcher';
+import { ZoomCluster } from './components/ZoomCluster';
 import { LevelLinkPopoverHost } from './components/levels/LevelLinkPopover';
 import { SceneSwitcher } from './components/scene-switcher/SceneSwitcher';
 import { presentTab as presentSceneTab } from '../services/PlayerWindowPresenter';
@@ -258,6 +259,8 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           {!isPlayerView && !isMapLoading && (
             <PanelBoundary name="the level switcher"><LevelSwitcher /><LevelLinkPopoverHost /></PanelBoundary>
           )}
+
+          {!isPlayerView && !isMapLoading && <PanelBoundary name="the zoom buttons"><ZoomCluster /></PanelBoundary>}
 
           {!isPlayerView && !isMapLoading && (
             <PanelBoundary name="the scene switcher">

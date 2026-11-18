@@ -55,6 +55,16 @@ $collapse-height: 24px;
   }
 }
 
+// The zoom buttons stand at the right edge at the tracker's height: while the tracker is docked
+// there they stand beside it, as the tracker itself moves beside the dice log.
+.atlas-ui:has(.atlas-initiative-tracker:not(.atlas-initiative-tracker--left)) .atlas-zoom-cluster {
+  right: calc(#{$spacing-m} + #{$tracker-width} + #{$spacing-s});
+}
+
+.atlas-ui:has(.atlas-initiative-tracker--named:not(.atlas-initiative-tracker--left)) .atlas-zoom-cluster {
+  right: calc(#{$spacing-m} + #{$tracker-width-named} + #{$spacing-s});
+}
+
 // Collapses the tracker to the turn and the next combatants; a ghost control the width of the panel,
 // in the panel's top corners. Above Atlas's button rules (`.atlas-vtt-plugin .btn`), whose size it changes.
 .atlas-initiative-tracker .btn.atlas-initiative-tracker__collapse {

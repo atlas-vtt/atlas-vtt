@@ -27,6 +27,8 @@ export const settings = {
   'settings.navigation.mouseHint': 'Scroll wheel zooms in and out. Right-click and drag to pan around the map.',
   'settings.navigation.trackpad': 'Trackpad',
   'settings.navigation.trackpadHint': 'Two-finger scroll pans around the map. Pinch to zoom in and out. Right-click and drag also pans.',
+  'settings.navigation.zoomButtons': 'Show zoom buttons',
+  'settings.navigation.zoomButtonsHint': 'Buttons at the right edge of the map zoom in, zoom out and fit the whole map.',
   'settings.navigation.fingers': 'Fingers',
   'settings.navigation.fingersPan': 'Pan the map',
   'settings.navigation.fingersPanHint': 'The pen draws, paints and measures. One finger pans the map, and a tap still places what the tool places.',
