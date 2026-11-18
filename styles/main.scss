@@ -922,6 +922,18 @@ body:not(.is-mobile) .workspace-leaf-content[data-type="atlas-vtt"] {
   }
 }
 
+// What a tablet's on-screen keyboard covers of the window (`_viewport.scss`). Obsidian keeps its own
+// measure of it where it does not resize the web view, which stands until `keyboardViewport.ts`
+// has measured the visual viewport. Obsidian shrinks its workspace by that much, so a leaf already
+// ends above the keyboard: what stands inside a leaf gives it no room of its own.
+body {
+  --atlas-keyboard-inset: var(--keyboard-height, 0px);
+}
+
+.workspace-leaf {
+  --atlas-keyboard-inset: 0px;
+}
+
 // The leaf content elements our views take over as their root
 .workspace-leaf-content.atlas-vtt-view {
   padding: 0;

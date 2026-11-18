@@ -6,6 +6,7 @@
 
 @forward 'viewport';
 @use 'tokens' as *;
+@use 'viewport' as *;
 
 // ── Surfaces ─────────────────────────────────────────────────────────────────
 
@@ -476,11 +477,13 @@
 
 // ── Modals ──────────────────────────────────────────────────────────────────
 
-/// Full-screen modal overlay with blurred backdrop.
+/// Full-screen modal overlay with blurred backdrop. It ends above a tablet's on-screen keyboard
+/// (`atlas-above-keyboard`), so its dialog, never taller than the overlay, is seen whole and scrolls inside.
 /// @param {Number} $z - z-index layer for the overlay
 @mixin atlas-modal-overlay($z: $z-atlas-dropdown) {
   position: fixed;
   inset: 0;
+  @include atlas-above-keyboard;
   z-index: $z;
   display: flex;
   align-items: center;

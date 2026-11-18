@@ -5,8 +5,8 @@
 // keyboard), so nothing is sized in `vh` or `vw`. The map view keeps its own size in
 // `--atlas-view-width` / `--atlas-view-height` (`AtlasView`), which everything inside it inherits;
 // what stands outside a map view (dialogs, menus and lists portaled to `body`, other tabs) falls
-// back to the window, less what a keyboard covers of it (`--atlas-keyboard-inset`, set on `body`
-// by `keyboardViewport.ts` on mobile). No `vh` declaration stands before a use as a fallback: one
+// back to the window, less what a keyboard covers of it (`--atlas-keyboard-inset`: on `body`,
+// Obsidian's own `--keyboard-height` until `keyboardViewport.ts` measures it on mobile). No `vh` declaration stands before a use as a fallback: one
 // that holds `var()` is never dropped for an earlier one, and every engine Atlas runs on has `dvh`.
 
 @use 'sass:math';
@@ -28,4 +28,11 @@
     @return $whole;
   }
   @return calc(#{$whole} * #{math.div($percent, 100)});
+}
+
+/// For a layer that fills the window (`position: fixed; inset: 0`): its lower edge stands on the
+/// on-screen keyboard's top edge instead of under it. Inside a leaf the inset is none, since
+/// Obsidian shrinks its workspace for the keyboard (`main.scss`).
+@mixin atlas-above-keyboard {
+  bottom: var(--atlas-keyboard-inset, 0px);
 }
