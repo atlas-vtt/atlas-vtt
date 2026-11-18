@@ -54,7 +54,8 @@ import { mapsSettingsSection } from './src/app/settings/mapsSettingsSection';
 import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSettingsSection';
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
 import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
-import { registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
+import { applyDiceBudgets, registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
+import { registerForegroundWork } from './src/app/plugin/foregroundWork';
 import { registerOverlayScrollbars } from './src/app/plugin/overlayScrollbars';
 import { registerPageListenerRelease } from './src/app/plugin/pageListenerRelease';
 import { releasePortalHosts } from './src/app/host/portalHost';
@@ -222,6 +223,8 @@ export default class AtlasVTTPlugin extends Plugin {
     registerVaultSync(this);
     registerObsidianSyncNotice(this);
     registerDiceStageRelease(this);
+    applyDiceBudgets();
+    registerForegroundWork(this);
     registerOverlayScrollbars(this);
     registerMapProcessingStatus(this);
     registerAccentColorSync(this);

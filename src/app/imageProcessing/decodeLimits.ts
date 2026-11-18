@@ -39,6 +39,20 @@ export function decodable(size: Size): boolean {
   return size.width <= DECODER_MAX_SIDE && size.height <= DECODER_MAX_SIDE && size.width * size.height < DECODED_MAX_PIXELS;
 }
 
+/** Pixels of the largest image whose decoded bytes (four a pixel) fit `sourceBytes`. */
+export function sourcePixelsWithin(sourceBytes: number): number {
+  return Math.floor(sourceBytes / 4);
+}
+
+/**
+ * Whether a device that may hold `sourceBytes` of one decoded image holds one of `decoded` pixels
+ * whole. Nothing decodes a part of an image (but a JPEG where `ImageDecoder` scales it), so a
+ * larger one is refused before it is tried: a web view that runs out of memory ends without a word.
+ */
+export function holdsDecoded(decoded: Size, sourceBytes: number): boolean {
+  return decoded.width * decoded.height <= sourcePixelsWithin(sourceBytes);
+}
+
 /** Formats the band decoders read. */
 export const BAND_FORMATS: ReadonlySet<string> = new Set(['jpeg', 'png']);
 

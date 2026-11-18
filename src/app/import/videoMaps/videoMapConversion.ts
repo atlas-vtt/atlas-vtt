@@ -3,6 +3,7 @@ import { imageMimeType } from '../../imageProcessing/imageDimensions';
 import { renderThumbnail, type ProcessedImage, type ThumbnailSpec } from '../../imageProcessing/imageProcessing';
 import { MAX_VIDEO_MAP_BYTES, videoMimeType } from '../../pixi/mosaicCanvas/video/videoMapFiles';
 import { videoPosterBlob } from '../../pixi/mosaicCanvas/video/videoPoster';
+import { deviceProfile } from '../../platform/deviceProfile';
 import { formatByteSize } from '../../utils/fileSize';
 
 /** Why a video cannot become an animated map, in words for the player: its card shows them. */
@@ -19,7 +20,9 @@ function oneAtATime<T>(run: () => Promise<T>): Promise<T> {
 
 async function posterOf(file: File, signal?: AbortSignal): Promise<Blob> {
   signal?.throwIfAborted();
-  if (file.size > MAX_VIDEO_MAP_BYTES) throw new VideoMapRefusedError(t('videoMap.tooLarge', { size: formatByteSize(MAX_VIDEO_MAP_BYTES, getLocale()) }));
+  // A tablet holds less of a video than a map may be.
+  const limit = Math.min(MAX_VIDEO_MAP_BYTES, deviceProfile().budgets.videoMapBytes);
+  if (file.size > limit) throw new VideoMapRefusedError(t('videoMap.tooLarge', { size: formatByteSize(limit, getLocale()) }));
   try {
     return await videoPosterBlob(file, videoMimeType(file.name));
   } catch (error) {

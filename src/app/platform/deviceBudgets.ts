@@ -28,6 +28,23 @@ export interface DeviceBudgets {
   readonly lightingQualityDefault: LightingQualityLevel;
   /** Dice stages a document builds ahead of the first roll. */
   readonly diceWarmStages: number;
+  /** Texels along a side of the dice's shadow map; its blur's reach and taps follow it (`stageShadow.ts`). */
+  readonly diceShadowMap: number;
+  /**
+   * Decoded bytes (four a pixel) of the largest image an import decodes whole. A larger source is
+   * refused: the job would run alone and past every budget, since nothing decodes a part of it.
+   */
+  readonly imageSourceBytes: number;
+  /** Bytes of the largest Universal VTT file read: its text, its JSON and its image are held together. */
+  readonly uvttFileBytes: number;
+  /** Bytes of all Universal VTT files read together as the floors of one scene. */
+  readonly uvttFloorsBytes: number;
+  /** Pixels of the largest map the dungeon generator draws, on one canvas of its worker. */
+  readonly generatedMapPixels: number;
+  /** The longest side of a map the dungeon generator draws. */
+  readonly generatedMapSide: number;
+  /** Bytes of the largest video an import takes as an animated map: the whole file is held to be played. */
+  readonly videoMapBytes: number;
 }
 
 const MIB = 1024 ** 2;
@@ -46,6 +63,16 @@ export const DESKTOP_BUDGETS: DeviceBudgets = {
   lightingQualityDefault: 'high',
   // As many as rolls stand at once and one for the roll that fades out as the next arrives.
   diceWarmStages: 4,
+  diceShadowMap: 1024,
+  // Whatever the browser decodes (`decodeLimits.ts`).
+  imageSourceBytes: Infinity,
+  // Exports with a large JPEG reach 30 MB; the same map as PNG is several times that.
+  uvttFileBytes: 150 * MIB,
+  uvttFloorsBytes: 400 * MIB,
+  // The generator's own limits (`layoutSize.ts`).
+  generatedMapPixels: Infinity,
+  generatedMapSide: Infinity,
+  videoMapBytes: 500 * MIB,
 };
 
 /**
@@ -61,6 +88,15 @@ export const MOBILE_BUDGETS: DeviceBudgets = {
   tileTextureBudget: 96 * MIB,
   lightingQualityDefault: 'balanced',
   diceWarmStages: 1,
+  diceShadowMap: 512,
+  // What the image workers may hold: a map of 8192 × 8192 pixels, the largest canvas of iPadOS 18.
+  imageSourceBytes: 256 * MIB,
+  uvttFileBytes: 64 * MIB,
+  uvttFloorsBytes: 128 * MIB,
+  // One canvas every iPadOS draws on (4096 × 4096), in any shape its web view takes.
+  generatedMapPixels: 4096 * 4096,
+  generatedMapSide: 8192,
+  videoMapBytes: 128 * MIB,
 };
 
 export function budgetsFor(memoryClass: MemoryClass): DeviceBudgets {
