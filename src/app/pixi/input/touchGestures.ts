@@ -52,6 +52,7 @@ export class TouchGestures {
   /** The pair has moved far enough to be a pinch or a pan, not a tap. */
   private pairMoves = false;
   private settleTimer: number | null = null;
+  private ringShown = false;
   private penDown = false;
   /** From the first finger down to the last one up: the most fingers at once, when it began and whether any moved. */
   private mostFingers = 0;
@@ -107,7 +108,7 @@ export class TouchGestures {
     finger.x = x;
     finger.y = y;
     if (!this.anyMoved && movedPast(finger.start, finger)) this.anyMoved = true;
-    if (finger === this.single && this.longPress.pending && !this.longPress.move(finger)) this.effects.hideRing();
+    if (finger === this.single && this.longPress.pending && !this.longPress.move(finger)) this.hideRing();
 
     if (finger.role === 'settling' && movedPast(finger.start, finger, SETTLE_SLOP_PX)) this.settle(finger);
     switch (finger.role) {
@@ -196,13 +197,13 @@ export class TouchGestures {
     else if (finger.onEmptyMap) finger.longPress = 'marquee';
 
     if (!finger.longPress) this.longPress.cancel();
-    else if (this.longPress.pending) this.effects.showRing(finger.start.x, finger.start.y, LONG_PRESS_MS - (this.clock.now() - this.beganAt));
+    else if (this.longPress.pending) this.showRing(finger);
   }
 
   private longPressed(): void {
     const finger = this.single;
     if (!finger) return;
-    this.effects.hideRing();
+    this.hideRing();
     this.taps.forgetTap();
     if (finger.longPress === 'marquee') {
       finger.role = 'tool';
@@ -297,9 +298,20 @@ export class TouchGestures {
 
   private endSingle(): void {
     this.clearSettle();
-    if (this.longPress.pending) this.effects.hideRing();
+    this.hideRing();
     this.longPress.cancel();
     this.single = null;
+  }
+
+  private showRing(finger: Finger): void {
+    this.ringShown = true;
+    this.effects.showRing(finger.start.x, finger.start.y, LONG_PRESS_MS - (this.clock.now() - this.beganAt));
+  }
+
+  private hideRing(): void {
+    if (!this.ringShown) return;
+    this.ringShown = false;
+    this.effects.hideRing();
   }
 
   private spend(finger: Finger): void {

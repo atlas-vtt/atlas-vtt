@@ -112,6 +112,8 @@ import { showNotice } from './src/app/ui/notice';
 import { deviceSupport } from './src/app/platform/deviceSupport';
 import { isDesktopApp } from './src/app/platform/desktopOnly';
 import { registerPointerAttribute } from './src/app/platform/pointerAttribute';
+import { registerTouchContextMenus } from './src/app/plugin/touchContextMenus';
+import { FingerSettings } from './src/app/input/fingerUse';
 import { registerAudioUnlock } from './src/app/plugin/audioUnlock';
 import { registerUnsupportedDevice } from './src/app/plugin/unsupportedDevice';
 
@@ -160,6 +162,7 @@ export default class AtlasVTTPlugin extends Plugin {
     registerPageListenerRelease(this);
     // How large Atlas' controls are follows the pointer, in every window; sound starts with the first tap or key.
     registerPointerAttribute(this);
+    registerTouchContextMenus(this);
     registerAudioUnlock(this);
     // Record errors from the very start so startup problems can be reported too.
     const errorLog = new AtlasErrorLog();
@@ -261,7 +264,7 @@ export default class AtlasVTTPlugin extends Plugin {
     const onlinePlay = registerOnlinePlay(this, this.settingsService, account);
     this.onlinePlay = onlinePlay;
     this.addSettingTab(new AtlasSettingTab(this.app, this, () => [
-      navigationSettingsSection(this.settingsService),
+      navigationSettingsSection(this.settingsService, FingerSettings.forApp(this.app)),
       diceSettingsSection(this.settingsService),
       soundSettingsSection(this.settingsService, soundDirector),
       mapsSettingsSection(this.settingsService),

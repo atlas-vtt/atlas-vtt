@@ -20,7 +20,7 @@ function startRenderer(app: Application, options: Partial<ApplicationOptions>): 
       name: 'webgl',
       canvas: options.canvas,
       screen: new Rectangle(0, 0, options.width, options.height),
-      events: { domElement: options.canvas },
+      events: { domElement: options.canvas, rootBoundary: { mapEvent: vi.fn() }, mapPositionToPoint: vi.fn() },
       runners: { contextChange: { add: vi.fn(), remove: vi.fn() } },
       render: vi.fn(),
       resize,
