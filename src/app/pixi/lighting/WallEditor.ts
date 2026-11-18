@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../utils/typedEmitter';
 import type { Container } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { chosenLightPreset, emissionOf } from '../../lighting/lightPresetChoice';

@@ -13,7 +13,7 @@ import { parseGridColor } from "./grid/gridContrastColor";
 import { cellNumberStyleOfGrid } from "./grid/cellNumbering";
 import type { App } from 'obsidian';
 import type { ViewAtlasState, ViewAtlasStore } from './storeFactory';
-import { EventEmitter } from 'events';
+import { EventEmitter } from './utils/typedEmitter';
 import { PixiAppManager } from "./pixi/PixiAppManager"; // Import the new manager
 import { TokenRenderer } from "./pixi/token-renderer"; // Import TokenRenderer
 // Import color utils

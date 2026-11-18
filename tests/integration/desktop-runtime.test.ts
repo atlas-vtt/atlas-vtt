@@ -1,7 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { build } from 'vite';
 import { runInNewContext } from 'node:vm';
-import { createRequire } from 'node:module';
 import { JSDOM } from 'jsdom';
 import type * as Runtime from '../fixtures/desktop-runtime';
 
@@ -11,6 +10,11 @@ const dom = new JSDOM('<!doctype html><html><head></head><body></body></html>');
 const { window } = dom;
 const { document, navigator } = window;
 afterAll(() => window.close());
+
+/** Obsidian's mobile apps have no Node: the bundle may ask its host for nothing. */
+function hostRequire(name: string): never {
+  throw new Error(`The runtime bundle asked its host for "${name}"`);
+}
 
 beforeAll(async () => {
   const output = await build({
@@ -31,9 +35,9 @@ beforeAll(async () => {
   code = chunk.code;
   const exports = {};
   runInNewContext(code, {
-    exports, module: { exports }, require: createRequire(import.meta.url), window, document, navigator, console,
+    exports, module: { exports }, require: hostRequire, window, document, navigator, console,
     setTimeout, clearTimeout, queueMicrotask, performance, Promise,
-    Uint8Array, ArrayBuffer, Blob,
+    Uint8Array, ArrayBuffer, Blob, MessageChannel,
   });
   runtime = exports as typeof Runtime;
 }, 30_000);
@@ -42,6 +46,10 @@ describe('desktop dependency bundle', () => {
   it('omits script-element creation and legacy code-generating ZIP fallbacks', () => {
     expect(/createElement\(\s*["']script["']/.test(code)).toBe(false);
     expect(/new Function\s*\(/.test(code)).toBe(false);
+  });
+
+  it('names no module for its host to load', () => {
+    expect(code.match(/\brequire\(\s*["'`][^"'`]*["'`]\s*\)/g) ?? []).toEqual([]);
   });
 
   it('renders interactive React content', () => {
@@ -81,7 +89,7 @@ describe('desktop dependency bundle', () => {
     }
   });
 
-  it('round-trips compressed ZIP metadata and binary assets using native desktop APIs', async () => {
+  it('round-trips compressed ZIP metadata and binary assets without Node', async () => {
     const zip = new runtime.JSZip();
     zip.file('metadata.json', JSON.stringify({ name: 'My campaign', version: 1 }));
     zip.file('assets/token.bin', new Uint8Array([0, 1, 127, 255]));
@@ -89,5 +97,29 @@ describe('desktop dependency bundle', () => {
     const restored = await runtime.JSZip.loadAsync(data);
     expect(JSON.parse(await restored.file('metadata.json')!.async('string'))).toEqual({ name: 'My campaign', version: 1 });
     expect(Array.from(await restored.file('assets/token.bin')!.async('uint8array'))).toEqual([0, 1, 127, 255]);
+  });
+
+  it('writes a streamed blob with progress and reads it back, as bundle export and import do', async () => {
+    const zip = new runtime.JSZip();
+    zip.file('collection.json', JSON.stringify({ name: 'Cairn' }));
+    zip.file('assets/map.bin', new Uint8Array([9, 8, 7]));
+    const progress: number[] = [];
+    const blob = await zip.generateAsync({ type: 'blob', streamFiles: true }, ({ percent }) => progress.push(percent));
+    expect(progress.at(-1)).toBe(100);
+    const restored = await runtime.JSZip.loadAsync(await blob.arrayBuffer());
+    expect(await restored.file('collection.json')!.async('string')).toBe('{"name":"Cairn"}');
+    expect(Array.from(new Uint8Array(await restored.file('assets/map.bin')!.async('arraybuffer')))).toEqual([9, 8, 7]);
+    expect(Array.from(new Uint8Array(await (await restored.file('assets/map.bin')!.async('blob')).arrayBuffer()))).toEqual([9, 8, 7]);
+  });
+
+  it('keeps the many chunks of a large archive in order', async () => {
+    const zip = new runtime.JSZip();
+    const large = Uint8Array.from({ length: 600_000 }, (_, index) => (index * 31) % 251);
+    zip.file('map.bin', large);
+    zip.file('second.bin', large.subarray(0, 100_000));
+    const data = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
+    const restored = await runtime.JSZip.loadAsync(data);
+    expect(await restored.file('map.bin')!.async('uint8array')).toEqual(large);
+    expect(await restored.file('second.bin')!.async('uint8array')).toEqual(large.subarray(0, 100_000));
   });
 });

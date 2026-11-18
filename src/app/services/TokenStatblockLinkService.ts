@@ -1,6 +1,6 @@
 import { StatblockTokenImportService } from './StatblockTokenImportService';
 import { App, TFile } from 'obsidian';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import { AssetService, type TokenAsset } from './AssetService';
 import { difficultyLabel } from '../creatures/statblockRating';
 import { mapResources } from '../resources/collectionResources';

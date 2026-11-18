@@ -1,5 +1,5 @@
 import type { FogCoverage } from '../../fog/fogCoverage';
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../utils/typedEmitter';
 import type { App } from 'obsidian';
 import type { Application, Texture } from 'pixi.js';
 import type { BelowLevelsHost } from './levels/LevelsBelow';

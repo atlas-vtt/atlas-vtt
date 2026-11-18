@@ -22,7 +22,7 @@ import { isHexGridType } from "../grid/hexGeometry";
 import type { TokenGestureEventDetail } from '../types/atlasWindowEvents';
 import type { GridSystem } from "../grid/GridSystem";
 import type { ViewAtlasStore } from '../storeFactory';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import { AssetValidationService } from '../services/AssetValidationService';
 import { TokenStatblockLinkService } from '../services/TokenStatblockLinkService';
 import { SpriteFactory } from './token-renderer/SpriteFactory';

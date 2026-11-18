@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { rollPieces, writtenRoll } from '../../src/app/tools/textRolls';
 import { DiceTool, type DiceRollInputs } from '../../src/app/tools/DiceTool';
 import type { DiceRules } from '../../src/app/types/diceRulesTypes';

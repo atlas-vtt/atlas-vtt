@@ -1,5 +1,5 @@
 import '../setup/obsidianDom';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { Application, Sprite, Texture } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { GridSystem } from '../../src/app/grid/GridSystem';

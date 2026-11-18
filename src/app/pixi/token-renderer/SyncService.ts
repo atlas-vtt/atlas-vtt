@@ -10,7 +10,7 @@ import type { ITokenSyncService, TokenGroupContainer } from './types';
 import type { TokenEntity } from '../../types';
 import type { SceneSource } from '../../host/sceneSource';
 import type { TokenSyncState } from './tokenSyncState';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../utils/typedEmitter';
 
 
 export class SyncService implements ITokenSyncService {

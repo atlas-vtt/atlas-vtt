@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { Container, Sprite, Texture, type Rectangle } from 'pixi.js';
 import { createStore } from 'zustand/vanilla';
 import { subscribeWithSelector } from 'zustand/middleware';

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { Platform, WorkspaceLeaf } from 'obsidian';
 import { createInMemoryApp } from '../mocks/inMemoryVault';

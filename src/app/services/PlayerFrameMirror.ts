@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../utils/typedEmitter';
 import type { StoreApi } from 'zustand';
 import type { PlayerCameraState } from '../local-player-view';
 import type { ViewAtlasState } from '../storeFactory';

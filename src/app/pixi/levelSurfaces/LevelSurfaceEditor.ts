@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../utils/typedEmitter';
 import type { Viewport } from 'pixi-viewport';
 import { levelObjects } from '../../levels/levelObjects';
 import { levelSurfaceList, MAX_LEVEL_SURFACES, MAX_SURFACE_CORNERS } from '../../levels/levelSurfaces';

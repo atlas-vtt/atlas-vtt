@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { vi } from 'vitest';
 import { TFile, TFolder } from 'obsidian';
 import { AtlasView } from '../../src/app/atlas-view';
