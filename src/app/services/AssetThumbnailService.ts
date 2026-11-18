@@ -3,6 +3,7 @@ import { AssetService, type MapAsset, type TokenAsset } from './AssetService';
 import { ensureFolder } from '../plugin/vaultFolders';
 import { renderThumbnail, type ThumbnailSpec } from '../imageProcessing/imageProcessing';
 import { fnv1a32 } from '../utils/hashing';
+import { imageExtension } from './assetImageFiles';
 import { isVideoMapPath, videoMimeType } from '../pixi/mosaicCanvas/video/videoMapFiles';
 import { videoPosterBlob } from '../pixi/mosaicCanvas/video/videoPoster';
 
@@ -37,6 +38,20 @@ function sourceImagePath(asset: ThumbnailAsset): string {
   return asset.type === 'token' ? asset.imagePath : asset.mapFilePath;
 }
 
+/**
+ * The extensions a thumbnail is stored under: WebP, or PNG from a device that cannot encode WebP
+ * (`imageEncoder.ts`). One library is shared by devices of both kinds.
+ */
+const THUMBNAIL_EXTENSIONS = ['webp', 'png'] as const;
+type ThumbnailExtension = (typeof THUMBNAIL_EXTENSIONS)[number];
+
+/** `path` under each of the other thumbnail extensions. */
+function siblingPaths(path: string): string[] {
+  const dot = path.lastIndexOf('.');
+  const extension = path.slice(dot + 1).toLowerCase();
+  return THUMBNAIL_EXTENSIONS.filter((other) => other !== extension).map((other) => `${path.slice(0, dot)}.${other}`);
+}
+
 /** Short stable digest so thumbnails of same-named images in different folders do not collide. */
 function pathDigest(path: string): string {
   return fnv1a32(path).toString(16).padStart(8, '0');
@@ -49,7 +64,10 @@ function pathDigest(path: string): string {
  * that lack one (older assets, imported collections) get theirs generated in
  * the background, a few at a time. Lists hear of a thumbnail soon after it was
  * written (`onUpdated`, `stateOf`); it is recorded on its asset in batches,
- * since each record saves the whole index.
+ * since each record saves the whole index. A thumbnail's file is named by its
+ * bytes (`THUMBNAIL_EXTENSIONS`), so the path recorded on the asset is what
+ * names it; where that file has not arrived yet and the other device's is
+ * there, that one is shown and nothing is made or recorded anew.
  */
 export class AssetThumbnailService {
   private static readonly instances = new WeakMap<App, AssetThumbnailService>();
@@ -80,16 +98,25 @@ export class AssetThumbnailService {
     private readonly render: ThumbnailRenderer = (source, size) => renderThumbnail(source, { ...THUMBNAIL_SPEC, size }),
   ) {}
 
-  /** Vault path of the thumbnail that belongs to `imagePath`, whether or not it exists yet. */
-  thumbnailPathFor(imagePath: string): string {
+  /** Vault path of the thumbnail that belongs to `imagePath` in the format of `extension`, whether or not it exists yet. */
+  thumbnailPathFor(imagePath: string, extension: ThumbnailExtension = 'webp'): string {
     const fileName = imagePath.slice(imagePath.lastIndexOf('/') + 1).replace(/\.[^.]+$/, '');
     const safeName = fileName.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || 'token';
-    return `${THUMBNAIL_DIR}/${safeName}-${pathDigest(imagePath)}.webp`;
+    return `${THUMBNAIL_DIR}/${safeName}-${pathDigest(imagePath)}.${extension}`;
   }
 
   hasThumbnail(asset: ThumbnailAsset): boolean {
-    return asset.thumbnailPath !== undefined
-      && this.app.vault.getAbstractFileByPath(asset.thumbnailPath) instanceof TFile;
+    return this.storedThumbnail(asset) !== undefined;
+  }
+
+  /** The thumbnail file of `asset` the vault holds: the recorded one, else the same thumbnail in the other format. */
+  private storedThumbnail(asset: ThumbnailAsset): string | undefined {
+    if (asset.thumbnailPath === undefined) return undefined;
+    return [asset.thumbnailPath, ...siblingPaths(asset.thumbnailPath)].find((path) => this.isFile(path));
+  }
+
+  private isFile(path: string): boolean {
+    return this.app.vault.getAbstractFileByPath(path) instanceof TFile;
   }
 
   /** Renders and writes the thumbnail of the image at `imagePath` (of an animated map: of its poster), returning the thumbnail's path. */
@@ -101,9 +128,9 @@ export class AssetThumbnailService {
     return this.storeForImage(imagePath, await this.render(source, THUMBNAIL_SIZE));
   }
 
-  /** Writes the thumbnail of the image at `imagePath`, returning the thumbnail's path. */
+  /** Writes the thumbnail of the image at `imagePath` under the extension of its format, returning the thumbnail's path. */
   private async storeForImage(imagePath: string, thumbnail: ArrayBuffer): Promise<string> {
-    const thumbnailPath = this.thumbnailPathFor(imagePath);
+    const thumbnailPath = this.thumbnailPathFor(imagePath, imageExtension(thumbnail) === 'png' ? 'png' : 'webp');
     await this.writeThumbnail(thumbnailPath, thumbnail);
     return thumbnailPath;
   }
@@ -150,9 +177,11 @@ export class AssetThumbnailService {
    * falls back to the image itself.
    */
   stateOf(asset: ThumbnailAsset): ThumbnailState {
-    if (this.hasThumbnail(asset) && asset.thumbnailPath) return { path: asset.thumbnailPath, pending: false };
-    const made = this.thumbnailPathFor(sourceImagePath(asset));
-    if (this.made.has(made) && this.app.vault.getAbstractFileByPath(made) instanceof TFile) return { path: made, pending: false };
+    const stored = this.storedThumbnail(asset);
+    if (stored) return { path: stored, pending: false };
+    const imagePath = sourceImagePath(asset);
+    const made = THUMBNAIL_EXTENSIONS.map((extension) => this.thumbnailPathFor(imagePath, extension)).find((path) => this.made.has(path) && this.isFile(path));
+    if (made) return { path: made, pending: false };
     return { pending: this.queued.has(asset.id) };
   }
 

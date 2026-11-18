@@ -2,7 +2,10 @@ import { TFile, type App } from 'obsidian';
 import { headerOf } from '../imageProcessing/imageDimensions';
 import { GLOBAL_ASSETS_DIR } from './assetPaths';
 
-/** The file extension for an image Atlas stores, read from its bytes: what imports keep (PNG, JPEG) or write (WebP). */
+/**
+ * The file extension for an image Atlas stores, read from its bytes: what imports keep (PNG, JPEG)
+ * or write (WebP, or PNG where the platform cannot encode WebP). Bytes it does not know read as WebP.
+ */
 export function imageExtension(data: ArrayBuffer): 'png' | 'jpg' | 'webp' {
   const format = headerOf(new DataView(data))?.format;
   if (format === 'png') return 'png';
