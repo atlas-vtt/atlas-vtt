@@ -169,8 +169,8 @@ it('stays open for a press on an Atlas notice and closes for a press on the map 
   setup();
   fireEvent.keyDown(document.body, { key: 'a' });
   const notice = document.body.createDiv({ cls: 'atlas-toast-container' }).createEl('button', { text: 'Open folder' });
-  fireEvent.mouseDown(notice);
+  fireEvent.pointerDown(notice);
   expect(screen.queryByTestId('manager')).not.toBeNull();
-  fireEvent.mouseDown(document.body.createDiv({ cls: 'atlas-map' }));
+  fireEvent.pointerDown(document.body.createDiv({ cls: 'atlas-map' }));
   expect(screen.queryByTestId('manager')).toBeNull();
 });

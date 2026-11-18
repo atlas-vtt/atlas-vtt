@@ -77,7 +77,7 @@ describe('NotePinTool editing a pin', () => {
     cleanup = null;
     await new Promise((resolve) => setTimeout(resolve, 150));
 
-    expect(listen.mock.calls.filter(([type]) => type === 'mousedown')).toHaveLength(0);
+    expect(listen.mock.calls.filter(([type]) => type === 'pointerdown')).toHaveLength(0);
     listen.mockRestore();
   });
 });

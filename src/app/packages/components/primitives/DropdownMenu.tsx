@@ -66,7 +66,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    const handlePointerDown = (event: MouseEvent | TouchEvent): void => {
+    const handlePointerDown = (event: PointerEvent): void => {
       const target = event.target as Node | null;
       if (!target) return;
       if (containerRef.current?.contains(target)) return;
@@ -81,13 +81,11 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
 
     // The document the menu is in: a menu in a popout hears its presses there, never in the main one.
     const doc = containerRef.current?.ownerDocument ?? document;
-    doc.addEventListener('mousedown', handlePointerDown);
-    doc.addEventListener('touchstart', handlePointerDown);
+    doc.addEventListener('pointerdown', handlePointerDown);
     doc.addEventListener('keydown', handleEscape);
 
     return () => {
-      doc.removeEventListener('mousedown', handlePointerDown);
-      doc.removeEventListener('touchstart', handlePointerDown);
+      doc.removeEventListener('pointerdown', handlePointerDown);
       doc.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, onToggle]);
