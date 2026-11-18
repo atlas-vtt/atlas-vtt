@@ -26,4 +26,8 @@ export const token = {
   'token.reset': 'Reset',
   'token.placeHint': 'Click to place · Esc to cancel',
   'token.placeHintMany': 'Click to place all · Shift-click to place one at a time · Esc to cancel',
+  'token.placing': 'Placing tokens',
+  'token.placeOneByOne': 'One by one',
+  'token.placePrevious': 'Previous token',
+  'token.placeNext': 'Next token',
 } as const satisfies Record<string, Message>;
