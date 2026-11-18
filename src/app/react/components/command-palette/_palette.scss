@@ -34,6 +34,22 @@
     visibility: hidden;
   }
 
+  // Opened by a finger it hangs from the view's top, clear of the keyboard that rises from below
+  // (`placePaletteAtTop`), and its settings pages end above the keyboard too and scroll inside.
+  &--top {
+    .atlas-command-palette-window {
+      transform-origin: top center;
+    }
+
+    .atlas-command-palette-container--expanded {
+      max-height: min(650px, calc(100cqh - var(--atlas-palette-bottom, 0px) - #{$spacing-l}));
+    }
+
+    .atlas-command-palette-container--expanded.atlas-command-palette-container--scene-snapshots {
+      max-height: calc(100cqh - var(--atlas-palette-bottom, 0px) - #{$spacing-l});
+    }
+  }
+
   // Position is measured after mount; skip the transition until it is known.
   &.atlas-no-transition,
   &.atlas-no-transition .atlas-command-palette-container {
@@ -59,7 +75,8 @@
   flex-direction: column;
   width: 600px;
   height: 450px;
-  // A small view shrinks the palette instead of cutting it off.
+  // A small view shrinks the palette instead of cutting it off. `--atlas-palette-bottom` is what its
+  // height leaves free of the view's: the room under it, or above it and under the keyboard.
   max-width: calc(100cqw - #{2 * $spacing-l});
   max-height: calc(100cqh - var(--atlas-palette-bottom, 0px) - #{$spacing-l});
   overflow: hidden;
