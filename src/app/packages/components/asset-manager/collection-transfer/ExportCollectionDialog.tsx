@@ -2,7 +2,7 @@ import React, { useId, useMemo, useState } from 'react';
 import { groupContents, selectContent, selectedKeys } from '../../../../services/collectionBundle/bundleContents';
 import type { CoverChoice } from '../../../../services/collectionBundle/collectionCover';
 import type { ExportChoice, ExportPreview } from '../../../../services/collectionBundle/collectionExport';
-import { formatFileSize } from '../../../../utils/fileSize';
+import { formatByteSize, formatFileSize } from '../../../../utils/fileSize';
 import { baseName } from '../../../../utils/pathUtils';
 import { Button } from '../../primitives/button';
 import { LabelTooltip } from '../../primitives/tooltip';
@@ -12,7 +12,7 @@ import { ContentsList } from './ContentsList';
 import { CoverPicker } from './CoverPicker';
 import { TransferDialog } from './TransferDialog';
 import { useObjectUrl } from './useObjectUrl';
-import { t } from '../../../../i18n';
+import { getLocale, t } from '../../../../i18n';
 
 interface ExportCollectionDialogProps {
   preview: ExportPreview;
@@ -22,6 +22,8 @@ interface ExportCollectionDialogProps {
   onCancel: () => void;
   /** `file` (default) saves a zip; `armarium` packs it in memory and uploads it to the Armarium. */
   purpose?: 'file' | 'armarium';
+  /** The most the selection may weigh (the Armarium's largest upload); a larger one is refused before anything is packed. */
+  maxBytes?: number | undefined;
 }
 
 const MISSING_SHOWN = 5;
@@ -46,7 +48,7 @@ export function coverUrl(choice: CoverChoice, preview: ExportPreview, uploadUrl:
  * new name. The user picks a cover and what to include, and sees it the way
  * people who import it will.
  */
-export function ExportCollectionDialog({ preview, media, onExport, onCancel, purpose = 'file' }: ExportCollectionDialogProps): React.JSX.Element {
+export function ExportCollectionDialog({ preview, media, onExport, onCancel, purpose = 'file', maxBytes }: ExportCollectionDialogProps): React.JSX.Element {
   const { collection } = preview;
   const toArmarium = purpose === 'armarium';
   const isFork = preview.publisher === 'other';
@@ -71,6 +73,7 @@ export function ExportCollectionDialog({ preview, media, onExport, onCancel, pur
 
   const choice = (): ExportChoice | string => {
     if (selected.assets.length === 0) return t('exportDialog.includeOne');
+    if (maxBytes !== undefined && bytes > maxBytes) return t('exportDialog.tooLargeToShare', { size: formatByteSize(bytes, getLocale()), limit: formatByteSize(maxBytes, getLocale()) });
     const content = { excluded, cover, author, notes };
     if (isFork) return forkName.trim() ? { kind: 'fork', name: forkName, ...content } : t('exportDialog.enterName');
     if (!isWholeVersion || versionNumber < preview.minimumVersion) {

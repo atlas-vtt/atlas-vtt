@@ -5,11 +5,12 @@
  */
 
 const MIB = 1024 ** 2;
+const GIB = 1024 ** 3;
 
 export const UPLOAD_LIMITS = {
   /** Every part but the last is exactly this long; the ticket names the size that counts. */
   partBytes: 16 * MIB,
-  maxBytes: 250 * MIB,
+  maxBytes: GIB,
   /** Submissions uploading, uploaded, checking or checked at once, per account. */
   openSubmissions: 3,
   /** Parts on their way at a time. */

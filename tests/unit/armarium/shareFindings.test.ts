@@ -66,7 +66,7 @@ describe('finding sentences', () => {
   });
 
   it('fills the limits it names', () => {
-    expect(findingMessage(error('zip-too-large'))).toContain('250 MB');
+    expect(findingMessage(error('zip-too-large'))).toContain('1 GB');
     expect(findingMessage(error('image-too-large'))).toContain('8,192 pixels');
     expect(findingMessage(error('file-type', 'a.exe', 'exe'))).toContain('.exe files');
   });

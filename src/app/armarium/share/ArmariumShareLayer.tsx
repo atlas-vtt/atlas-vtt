@@ -4,6 +4,7 @@ import type { ContentMedia } from '../../packages/components/asset-manager/colle
 import { ExportCollectionDialog } from '../../packages/components/asset-manager/collection-transfer/ExportCollectionDialog';
 import { useAtlasUI } from '../../react/root/AtlasUIContext';
 import type { ShareSession } from '../upload/ShareSession';
+import { UPLOAD_LIMITS } from '../upload/uploadContract';
 import { ShareDialog } from './ShareDialog';
 import { useShareClose, useShareSnapshot } from './useShare';
 
@@ -24,7 +25,7 @@ export function ArmariumShareLayer({ session, media, onClose }: ArmariumShareLay
   const account = AtlasAccount.forApp(app);
   if (account === null) return null;
   if (snapshot.step === 'bundle') {
-    return <ExportCollectionDialog purpose="armarium" preview={snapshot.preview} media={media} onExport={(choice) => session.confirmBundle(choice)} onCancel={close} />;
+    return <ExportCollectionDialog purpose="armarium" maxBytes={UPLOAD_LIMITS.maxBytes} preview={snapshot.preview} media={media} onExport={(choice) => session.confirmBundle(choice)} onCancel={close} />;
   }
   return <ShareDialog session={session} snapshot={snapshot} account={account} onClose={close} />;
 }
