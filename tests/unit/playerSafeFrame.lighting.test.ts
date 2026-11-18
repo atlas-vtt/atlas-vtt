@@ -23,7 +23,7 @@ function harness(lighting: boolean): Harness {
   const getPlayerViewLayers = vi.fn((): LayerVisibility[] => []);
   const render = vi.fn();
   const renderer = Object.assign(Object.create(PixiRendererOrchestrator.prototype) as PixiRendererOrchestrator, {
-    pixiAppManager: { getApp: () => ({ renderer: { render }, stage: {} }), getViewport: fakeViewport },
+    pixiAppManager: { getApp: () => ({ renderer: { render }, stage: {} }), getViewport: fakeViewport, getGestures: () => null },
     playerFrames: fakePlayerFrames(render),
     tokenRenderer: { getPlayerViewLayers },
     dmScreenOverlays: new Set(),
@@ -61,7 +61,7 @@ describe('withPlayerSafeFrame and the lighting', () => {
     viewport.scale.set(2, 2);
     const during: number[] = [];
     Object.assign(renderer, {
-      pixiAppManager: { getApp: () => ({ renderer: { render: vi.fn() }, stage: {} }), getViewport: () => viewport },
+      pixiAppManager: { getApp: () => ({ renderer: { render: vi.fn() }, stage: {} }), getViewport: () => viewport, getGestures: () => null },
       playerFrames: fakePlayerFrames(() => during.push(viewport.position.x, viewport.position.y, viewport.scale.x)),
     });
     renderer.withPlayerSafeFrame(() => undefined, SETTINGS, { ...FRAME, width: 2560, height: 1440, resolution: 2, centerX: 100, centerY: 50, scale: 0.5 });
