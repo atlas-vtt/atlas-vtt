@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../utils/typedEmitter';
 import type { App } from 'obsidian';
 import { bindHoldHotkey } from '../../keyboard/holdHotkey';
 import { DEFAULT_MAP_HOTKEYS } from '../../keyboard/mapHotkeys';

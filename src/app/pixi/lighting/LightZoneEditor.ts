@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../utils/typedEmitter';
 import type { Viewport } from 'pixi-viewport';
 import { MAX_LIGHT_ZONES, MAX_ZONE_CORNERS, lightZoneList } from '../../lighting/lightZones';
 import { levelObjects } from '../../levels/levelObjects';

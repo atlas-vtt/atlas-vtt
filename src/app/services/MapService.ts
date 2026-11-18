@@ -1,6 +1,6 @@
 import { App, TFile } from 'obsidian';
 import { MapController } from '../MapController';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import { RendererService } from './RendererService';
 import type { ViewAtlasStore } from '../storeFactory';
 import type { MapFile } from './MapPersistence';

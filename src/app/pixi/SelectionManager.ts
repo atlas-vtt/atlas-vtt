@@ -5,7 +5,7 @@ import { getObsidianAccentColor, cssColorToHexNumber } from "./utils/colorUtils"
 import { isHandled } from "./utils/handledEvents";
 import { isPrimaryPress } from "./utils/pointerButtons";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import { annotationList } from '../annotations/annotationList';
 import { pressScope, type PressScope } from '../annotations/annotationPress';
 import type { Annotation } from '../annotations/annotationTypes';

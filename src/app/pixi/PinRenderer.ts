@@ -1,6 +1,6 @@
 import { Container, FederatedPointerEvent, Circle, Texture } from "pixi.js";
 import { Viewport } from "pixi-viewport";
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import type { NotePin } from "../types";
 import { createPinIconTexture } from "./utils/pinIconTexture";
 import { drawPinFace, type DrawnPin } from './pinFace';

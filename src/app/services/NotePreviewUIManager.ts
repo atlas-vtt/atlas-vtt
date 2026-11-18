@@ -1,5 +1,5 @@
 import { App, WorkspaceLeaf, TFile, EventRef } from 'obsidian';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import type { FederatedPointerEvent } from 'pixi.js';
 import type { NotePin } from '../types';
 import { toTokenVitals, type TokenVitals } from './statblockVitalsSync';

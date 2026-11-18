@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import type { WallType } from '../types/wallTypes';
 import { simplifyStroke } from '../pixi/lighting/wallEdits';
 

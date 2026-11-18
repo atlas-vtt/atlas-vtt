@@ -23,7 +23,7 @@ import type { GridSystem } from '../../grid/GridSystem';
 import { resizedTokenCenter } from '../../grid/gridPlacement';
 import { beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
 import { initiativeEntryForToken } from '../../stores/initiativeEntries';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../utils/typedEmitter';
 import { StatblockDialogService } from '../../services/StatblockDialogService';
 import { AssetService } from '../../services/AssetService';
 import { createStatblockEntry, newStatblockOption, type EntryContext, type TokenCreationContext } from '../../statblocks/editor/create/entryPoints';

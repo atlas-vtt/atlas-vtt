@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import type { NotePin } from '../types';
 import type { ViewAtlasState } from '../storeFactory';
 import { App, type WorkspaceLeaf } from 'obsidian';

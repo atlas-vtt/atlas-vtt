@@ -3,7 +3,7 @@ import { App } from 'obsidian';
 import { watchLevelsToRefit } from '../react/components/levels/levelRefitNotice';
 import { followHistoryAcrossLevels } from '../react/components/levels/levelHistoryFollow';
 import type AtlasVTTPlugin from '../../../main';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import { RendererService } from './RendererService';
 import { LayerGraph } from './LayerGraph';
 import { UIOverlay } from './UIOverlay';
@@ -53,7 +53,6 @@ export class ServiceManager {
   constructor(private app: App, private store: ViewAtlasStore, private plugin?: AtlasVTTPlugin, viewId?: string) {
     // Create event bus for inter-service communication
     this.eventBus = new EventEmitter();
-    this.eventBus.setMaxListeners(30); // Increase max listeners
 
     // Store viewId
     this.viewId = viewId || `view-${Date.now()}`;

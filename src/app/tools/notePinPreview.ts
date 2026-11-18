@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../utils/typedEmitter';
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
 import { nearestHexCenter, type HexLayout, type Point } from '../grid/hexGeometry';

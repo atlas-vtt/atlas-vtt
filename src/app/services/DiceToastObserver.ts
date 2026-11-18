@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../utils/typedEmitter';
 import type { SoundEffectService } from './SoundEffectService';
 import type { SettingsService } from './SettingsService';
 import { diceSceneToShow } from '../dice3d/rollPresentation';

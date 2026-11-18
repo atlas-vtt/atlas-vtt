@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../utils/typedEmitter';
 import type { Viewport } from 'pixi-viewport';
 import { strokePolygons } from '../../lighting/exploredEdits';
 import { roomDoor } from '../../lighting/roomDoor';

@@ -1,6 +1,6 @@
 import type { DiceRollResult } from '../types/diceTypes';
 import type { DiceRollOrigin } from '../types/diceRollOrigin';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import type { DiceRules } from '../types/diceRulesTypes';
 import type { AdvantageSide, DiceSet, RolledWithSet, RollingDice } from '../types/diceSetTypes';
 import { rollingRules } from '../gameSystems/diceSets';
