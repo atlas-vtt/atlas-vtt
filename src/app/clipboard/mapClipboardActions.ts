@@ -2,6 +2,8 @@ import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
 import { mayLinkFromScene } from '../services/sceneLinks';
 import { readMapClipboard, writeMapClipboard } from './mapClipboard';
+
+export { holdsMapClipboard } from './mapClipboard';
 import { collectMapObjects, countMapObjects, type MapObjectContent, type Point } from './mapObjectContent';
 import { pasteOffset, placeMapObjects } from './mapObjectPlacement';
 import { levelObjects } from '../levels/levelObjects';
@@ -80,6 +82,12 @@ export async function pasteClipboard(store: ClipboardStore, target: Point): Prom
   tellStairsLeftOut(state, placed);
   tellCopiesLeftOut(levelObjects(state), placed);
   return state.insertMapObjects(placed);
+}
+
+/** The world point in the middle of what the view shows: where a paste lands that no pointer placed. */
+export function viewCentre(viewport: { screenWidth: number; screenHeight: number; toWorld(x: number, y: number): Point }): Point {
+  const { x, y } = viewport.toWorld(viewport.screenWidth / 2, viewport.screenHeight / 2);
+  return { x, y };
 }
 
 /** Duplicates the selection one grid cell away and returns the ids of the copies. */

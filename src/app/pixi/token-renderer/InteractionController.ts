@@ -6,58 +6,40 @@
  */
 
 import type { ResourceDefsProvider } from '../../resources/resourceTypes';
-import { isKillable } from '../../resources/resourceValues';
-import { visibleResources } from '../../resources/visibleResources';
-import React from 'react';
 import { Container, FederatedPointerEvent } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { App } from 'obsidian';
 import { openEditTokenModal } from './EditTokenModal';
-import { openContextMenuGlobal, closeContextMenuGlobal, type ContextMenuEntry } from '../../react/root/ContextMenuContext';
-import { DestructiveActionRow } from './DestructiveActionRow';
+import { openContextMenuGlobal, closeContextMenuGlobal } from '../../react/root/ContextMenuContext';
 import type { ITokenInteractionController, TokenGroupContainer } from './types';
-import type { Character, TokenEntity } from '../../types';
+import type { TokenEntity } from '../../types';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { StoreApi } from 'zustand';
 import type { GridSystem } from '../../grid/GridSystem';
-import { resizedTokenCenter } from '../../grid/gridPlacement';
 import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
-import { initiativeEntryForToken } from '../../stores/initiativeEntries';
 import { EventEmitter } from '../../utils/typedEmitter';
-import { StatblockDialogService } from '../../services/StatblockDialogService';
-import { AssetService } from '../../services/AssetService';
-import { createStatblockEntry, newStatblockOption, type EntryContext, type TokenCreationContext } from '../../statblocks/editor/create/entryPoints';
-import { TokenStatblockLinkService } from '../../services/TokenStatblockLinkService';
 import type { ConditionDefinition } from '../../types/collectionSettingsTypes';
-import { saveMapTokensAsEncounter } from '../../encounters/saveMapTokensAsEncounter';
-import { copyMapObjects } from '../../clipboard/mapClipboardActions';
+import { pasteClipboard, viewCentre } from '../../clipboard/mapClipboardActions';
 import { copyDragSelection } from './dragCopy';
 import type { DragRuler } from './DragRuler';
 import type { TokenMovement } from './tokenMovement';
 import { runInBackground } from '../../utils/backgroundTask';
 import { isPrimaryPress, isSecondaryPress } from '../utils/pointerButtons';
-import { tokenSizeSubmenu } from '../../react/components/context-menu/tokenSizeMenu';
-import { tokenMovementSubmenu } from '../../react/components/context-menu/tokenMovementMenu';
-import { tokenLevelSubmenu } from '../../react/components/context-menu/tokenLevelMenu';
-import { tokenHeightSubmenu } from '../../react/components/context-menu/tokenHeightMenu';
-import { tokenAuraSubmenu } from '../../react/components/context-menu/tokenAuraMenu';
-import { mapMeasurementSettings } from '../../services/mapMeasurementSettings';
-import { rulesLookup } from '../../services/mapRules';
-import { tokenLightingEntries } from '../../react/components/context-menu/tokenLightingMenu';
-import { mapLightPresets } from '../../services/mapCollectionRules';
-import { conditionsSubmenu } from '../../react/components/context-menu/conditionsMenu';
-import { applySelectionResourceChange, selectionResourceEntry } from '../../react/components/context-menu/selectionResourceMenu';
+import { applySelectionResourceChange } from '../../react/components/context-menu/selectionResourceMenu';
 import { selectionResources, type SelectionResource } from '../../resources/selectionResourceChange';
 import { SelectionResourceEditing } from '../selectionResourceEditor';
 import { holdTokens } from '../../lighting/sightOnDrop';
 import { dropTokensOnStairs, type StairsMenuPlace } from './stairsDrop';
 import type { TokenPreviewAnchor } from '../../services/NotePreviewUIManager';
 import type { ArtFloors } from '../../levels/levelSurfaces';
-import { t } from '../../i18n';
 import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
 import type { MapSize } from '../../online/gm/moveCheck';
 import { sessionDragWalls, type SessionDragWalls } from './sessionDragWalls';
+import { deviceProfile } from '../../platform/deviceProfile';
+import type { SelectionAction } from '../../selection/selectionActions';
+import { selectionMenu } from '../../selection/selectionMenu';
+import { tokenActions, type TokenActionHost } from '../../selection/tokenActions';
 
 interface DragState {
   isDragging: boolean;
@@ -623,215 +605,35 @@ export class InteractionController implements ITokenInteractionController {
     this.onTokensHeldChange?.(tokenIds);
   }
 
-  private getConditionDefs(): ConditionDefinition[] {
-    return this.conditionDefsProvider?.() ?? [];
+  /** What this view gives the actions of a token (`tokenActions`). */
+  private actionHost(): TokenActionHost {
+    return {
+      store: this.store,
+      app: this.obsApp,
+      grid: this.gridSystem,
+      isPlayerView: this.isPlayerView,
+      movement: this.movement,
+      touch: deviceProfile().pointer === 'coarse',
+      conditions: () => this.conditionDefsProvider?.() ?? [],
+      resources: () => this.resourceDefsProvider(),
+      editToken: (token) => this.showEditTokenModal(token),
+      changeResource: (at, resourceName, count, apply) => this.openSelectionEditor(at, resourceName, count, apply),
+      paste: () => runInBackground(pasteClipboard(this.store, viewCentre(this.viewport)), 'Pasting map objects', 'Could not paste'),
+    };
   }
 
-  /** The selected tokens when the right-clicked token is one of them, otherwise that token alone. */
-  private contextMenuTargets(tokenId: string): string[] {
-    const state = this.store.getState();
-    const objects = levelObjects(state);
-    if (!state.selectedIds.includes(tokenId)) return [tokenId];
-    return state.selectedIds.filter((id) => mapTokens(objects)[id] !== undefined);
+  /**
+   * What can be done with the token and the selection it belongs to: the rows of its context menu
+   * and the buttons of the bar above a selection. `at` is where the menu opens, in the window.
+   */
+  public tokenActions(tokenId: string, at: { x: number; y: number }): SelectionAction[] {
+    const token = mapTokens(levelObjects(this.store.getState()))[tokenId];
+    return token && !this.isPlayerView ? tokenActions(this.actionHost(), token, at) : [];
   }
 
   private showContextMenu(token: TokenEntity, e: FederatedPointerEvent): void {
-    const character = token.kind === 'character' ? token : undefined;
-    const entries: ContextMenuEntry[] = [];
-
-    const conditionDefs = this.getConditionDefs();
-    if (conditionDefs.length > 0) {
-      entries.push(conditionsSubmenu(this.store, conditionDefs, this.contextMenuTargets(token.id)));
-    }
-
-    // Size of the selection in one undo step; the clicked token's is ticked
-    const sizeTargets = this.contextMenuTargets(token.id);
-    entries.push(tokenSizeSubmenu(token.size, size => {
-      const state = this.store.getState();
-      const tokens = mapTokens(levelObjects(state));
-      state.updateTokens(sizeTargets.flatMap((id) => {
-        const current = tokens[id];
-        if (!current) return [];
-        const center = resizedTokenCenter(current, current.size || 1, size, state.grid);
-        return [{ id, changes: { size, x: center.x, y: center.y } }];
-      }));
-    }));
-
-    // The speed the selection moves by, where their statblocks state several
-    const movementMenu = this.movement ? tokenMovementSubmenu(this.store, token.id, this.contextMenuTargets(token.id), this.movement) : null;
-    if (movementMenu) entries.push(movementMenu);
-
-    // Move to another level of the scene, the selection in one undo step
-    const levelMenu = tokenLevelSubmenu(this.store, this.contextMenuTargets(token.id));
-    if (levelMenu) entries.push(levelMenu);
-
-    // How far off the floor the selection stands, where the map measures distances; the GM's to say
-    const heightMenu = this.isPlayerView ? null : tokenHeightSubmenu(this.store, this.contextMenuTargets(token.id),
-      () => mapMeasurementSettings(rulesLookup(this.obsApp), this.store.getState()));
-    if (heightMenu) entries.push(heightMenu);
-
-    // An area around each token of the selection that goes where the token goes; the GM's to give
-    const auraMenu = this.isPlayerView ? null : tokenAuraSubmenu(this.store, this.contextMenuTargets(token.id),
-      () => mapMeasurementSettings(rulesLookup(this.obsApp), this.store.getState()));
-    if (auraMenu) entries.push(auraMenu);
-
-    // Hide/Show the selection in one undo step; the clicked token decides which way
-    const currentToken = mapTokens(levelObjects(this.store.getState()))[token.id];
-    const isHidden = currentToken?.isHidden || false;
-    const hideTargets = this.contextMenuTargets(token.id);
-    entries.push({
-      type: 'item',
-      label: isHidden ? t('token.show') : t('token.hide'),
-      icon: isHidden ? 'eye' : 'eye-off',
-      onClick: () => this.store.getState().updateTokens(
-        hideTargets.map((id) => ({ id, changes: { isHidden: !isHidden } })),
-      ),
-    });
-
-    // Vision and carried light, for the selection the token belongs to
-    if (!this.isPlayerView) {
-      const lightPresets = mapLightPresets(this.obsApp, this.store.getState());
-      entries.push(...tokenLightingEntries(this.store, token.id, this.contextMenuTargets(token.id), lightPresets));
-    }
-
-
-    // Save the selection (or this token alone) as an encounter — DM only
-    if (!this.isPlayerView) {
-      const selectedIds = this.store.getState().selectedIds;
-      const groupIds = selectedIds.includes(token.id) ? selectedIds : [token.id];
-      entries.push({
-        type: 'item',
-        label: t('common.duplicate'),
-        icon: 'files',
-        onClick: () => this.store.getState().duplicateMapObjects(groupIds),
-      });
-      entries.push({
-        type: 'item',
-        label: t('common.copy'),
-        icon: 'copy',
-        onClick: () => copyMapObjects(this.store, groupIds),
-      });
-      entries.push({
-        type: 'item',
-        label: t('token.saveEncounter'),
-        icon: 'swords',
-        onClick: () => {
-          void saveMapTokensAsEncounter(this.obsApp, this.store, this.gridSystem, groupIds);
-        },
-      });
-    }
-
-    // Edit Token
-    entries.push({
-      type: 'item',
-      label: t('editToken.title'),
-      icon: 'edit',
-      onClick: () => this.showEditTokenModal(token),
-    });
-
-    // Initiative, for the selection the token belongs to; the clicked token decides which way
-    const initiativeEntries = this.store.getState().initiative?.entries || [];
-    const isInInitiative = initiativeEntries.some((entry) => entry.tokenId === token.id);
-    const initiativeTargets = this.contextMenuTargets(token.id);
-    entries.push({
-      type: 'item',
-      label: isInInitiative ? t('initiative.remove') : t('token.addInitiative'),
-      icon: 'swords',
-      onClick: () => this.handleInitiativeToggle(initiativeTargets, isInInitiative),
-    });
-
-
-    // A token without a statblock can be given one here. Editing and unlinking one are the asset manager's.
-    const obsApp = this.obsApp;
-    if (!character?.statblockPath) {
-      entries.push({
-        type: 'item',
-        label: t('am.menu.linkStatblock'),
-        icon: 'link',
-        onClick: () => {
-          if (obsApp && token.imagePath) {
-            const dialogService = new StatblockDialogService(obsApp);
-            const linkService = TokenStatblockLinkService.getInstance(obsApp);
-            dialogService.showStatblockDialog(
-              null,
-              (statblockPath: string | null) => {
-                if (!statblockPath) return;
-                runInBackground(
-                  linkService.linkTokenToStatblock(token.imagePath, statblockPath).then(() => {
-                    this.store.getState().updateToken(token.id, { statblockPath });
-                  }),
-                  `Linking statblock ${statblockPath}`,
-                  t('token.linkFailed'),
-                );
-              },
-              character?.name || t('initiative.token'),
-              { imagePath: token.imagePath, showRing: token.showRing },
-              newStatblockOption(obsApp, this.tokenCreationContext(token, character?.name || 'Token')),
-            );
-          }
-        },
-      });
-      const create = token.imagePath ? createStatblockEntry(obsApp, this.tokenCreationContext(token, character?.name || 'Token')) : null;
-      if (create) entries.push(create);
-    }
-
-    // Ring colour of the selection in one undo step; the clicked token's colour is ticked
-    const currentRingColor = token.ringColor;
-    const ringTargets = this.contextMenuTargets(token.id);
-    const ringColors = [
-      { name: t('color.default'), value: null },
-      { name: t('color.blue'), value: '#086ddd' },
-      { name: t('color.orange'), value: '#ec7500' },
-      { name: t('color.red'), value: '#e93147' },
-      { name: t('color.yellow'), value: '#e0ac00' },
-      { name: t('color.brown'), value: '#a97142' },
-      { name: t('color.purple'), value: '#7852ee' },
-      { name: t('color.green'), value: '#08b94e' },
-      { name: t('color.pink'), value: '#d53984' },
-      { name: t('color.cyan'), value: '#00bfbc' },
-      { name: t('color.gray'), value: '#ababab' },
-      { name: t('color.white'), value: '#ffffff' },
-    ];
-    entries.push({
-      type: 'submenu',
-      label: t('token.ringColor'),
-      icon: 'circle',
-      children: ringColors.map(color => ({
-        type: 'item' as const,
-        label: color.name,
-        checked: color.value === currentRingColor || (color.value === null && !currentRingColor),
-        onClick: () => this.store.getState().updateTokens(
-          ringTargets.map((id) => ({ id, changes: { ringColor: color.value ?? undefined } })),
-        ),
-      })),
-    });
-
-    // One change of a resource for every selected token that holds it (an area's damage), DM only
-    const selectionChange = this.isPlayerView ? null : selectionResourceEntry(
-      this.store, this.contextMenuTargets(token.id), this.resourceDefsProvider(),
-      (definition, count, apply) => this.openSelectionEditor({ x: e.clientX, y: e.clientY }, definition.name, count, apply),
-    );
-    if (selectionChange) entries.push(selectionChange);
-
-    // Reset the selection (only if one of its tokens tracks resources)
-    const shownTargets = this.contextMenuTargets(token.id);
-    if (this.anyTracksResources(shownTargets)) {
-      entries.push({
-        type: 'item',
-        label: t('token.reset'),
-        icon: 'rotate-ccw',
-        onClick: () => this.store.getState().resetTokens(shownTargets, this.resourceDefsProvider()),
-      });
-    }
-
-
-    // Destructive actions row (Kill + Delete side by side)
-    entries.push({
-      type: 'custom',
-      render: () => this.renderDestructiveRow(shownTargets),
-    });
-
-    openContextMenuGlobal(entries, { x: e.clientX, y: e.clientY });
+    const at = { x: e.clientX, y: e.clientY };
+    openContextMenuGlobal(selectionMenu(tokenActions(this.actionHost(), token, at), closeContextMenuGlobal), at);
   }
 
   handleDrag(
@@ -902,21 +704,6 @@ export class InteractionController implements ITokenInteractionController {
     this.dragRuler = ruler;
   }
 
-  /** The statblock editor opens from the map for the map's collection. */
-  private statblockEntryContext(): EntryContext {
-    const mapPath = this.store.getState().mapPath;
-    return { collectionId: mapPath ? AssetService.getInstance(this.obsApp).getCollectionForMap(mapPath) : null, from: 'map' };
-  }
-
-  /** A statblock made for the token: named after it, linked to it on this map too. */
-  private tokenCreationContext(token: TokenEntity, name: string): TokenCreationContext {
-    return {
-      ...this.statblockEntryContext(),
-      token: { imagePath: token.imagePath, name },
-      onLinked: (statblockPath) => this.store.getState().updateToken(token.id, { statblockPath }),
-    };
-  }
-
   /** What a press on the bar of resource `key` changes: the selected tokens, two or more, and that resource. */
   private selectionOffer(key: string): SelectionResource & { targets: string[] } | null {
     if (this.isPlayerView) return null;
@@ -951,44 +738,6 @@ export class InteractionController implements ITokenInteractionController {
   ): void {
     this.selectionEditing ??= new SelectionResourceEditing(this.viewport.options.events.domElement);
     this.selectionEditing.open({ at, resourceName, count, onCommit, ...(onClose && { onClose }) });
-  }
-
-  /** The characters among the tokens `ids`, as the store holds them now. */
-  private charactersOf(ids: string[]): Character[] {
-    const tokens = mapTokens(levelObjects(this.store.getState()));
-    return ids.flatMap((id) => {
-      const shown = tokens[id];
-      return shown?.kind === 'character' ? [shown] : [];
-    });
-  }
-
-  private anyTracksResources(ids: string[]): boolean {
-    return this.charactersOf(ids).some((character) => visibleResources(character, this.resourceDefsProvider(), 'dm').length > 0);
-  }
-
-  private renderDestructiveRow(tokenIds: string[]): React.ReactNode {
-    return React.createElement(DestructiveActionRow, {
-      tokenIds,
-      store: this.store,
-      canKill: this.charactersOf(tokenIds).some((character) => isKillable(character, this.resourceDefsProvider())),
-      definitions: this.resourceDefsProvider(),
-      onClose: () => closeContextMenuGlobal(),
-    });
-  }
-
-  private handleInitiativeToggle(tokenIds: string[], remove: boolean): void {
-    if (!this.store.getState().initiativeTrackerOpen) {
-      this.store.getState().setInitiativeTrackerOpen(true);
-    }
-
-    for (const tokenId of tokenIds) {
-      const state = this.store.getState();
-      const { initiative, addToInitiative, removeFromInitiative } = state;
-      const entry = initiative.entries.find((e) => e.tokenId === tokenId);
-      const token = mapTokens(levelObjects(state))[tokenId];
-      if (remove && entry) removeFromInitiative(entry.id);
-      else if (!remove && !entry && token) addToInitiative(initiativeEntryForToken(token));
-    }
   }
 
   private handleHoverStart(tokenId: string): void {
