@@ -7,7 +7,7 @@ type ClipboardWindow = Pick<Window, 'navigator'> & { readonly ClipboardItem?: ty
  * Whether `win` copies pictures (and anything else that is no plain text): its clipboard takes
  * items. Where it does not, the action that would copy one is not offered.
  */
-export function canCopyItems(win: ClipboardWindow = globalThis): boolean {
+export function canCopyItems(win: ClipboardWindow = activeWindow): boolean {
   return typeof win.ClipboardItem === 'function' && typeof win.navigator.clipboard?.write === 'function';
 }
 
@@ -18,7 +18,7 @@ export function canCopyItems(win: ClipboardWindow = globalThis): boolean {
  * the text when it is there. The desktop app, and a web view without items, write the text once
  * it is there, as before. Rejects where the clipboard refused or `text` did.
  */
-export async function copyTextWhenReady(text: Promise<string>, win: ClipboardWindow = globalThis, desktop: boolean = isDesktopApp()): Promise<void> {
+export async function copyTextWhenReady(text: Promise<string>, win: ClipboardWindow = activeWindow, desktop: boolean = isDesktopApp()): Promise<void> {
   if (desktop || !canCopyItems(win) || !win.ClipboardItem) {
     await win.navigator.clipboard.writeText(await text);
     return;

@@ -102,6 +102,7 @@ import { ChangelogService } from './src/app/changelog/ChangelogService';
 import { registerUpdateWatch } from './src/app/updates/registerUpdateWatch';
 import { AtlasErrorLog } from './src/app/support/errorLog';
 import { IssueReporter } from './src/app/support/IssueReporter';
+import { TabletDiagnosticsModal } from './src/app/support/tablet/TabletDiagnosticsModal';
 import { runInBackground } from './src/app/utils/backgroundTask';
 import { TesseraDecoderClient } from './src/app/pixi/mosaicCanvas/TesseraDecoderClient';
 import { MapProcessing } from './src/app/pixi/mosaicCanvas/mapProcessing';
@@ -176,6 +177,8 @@ export default class AtlasVTTPlugin extends Plugin {
     this.register(errorLog.attach());
     const issueReporter = new IssueReporter(this.app, this.manifest, errorLog);
     this.addCommand({ id: 'report-issue', name: t('command.reportIssue'), callback: () => issueReporter.open() });
+    // What only a device can tell about itself, for a tester to send; on the desktop too, for the bench.
+    this.addCommand({ id: 'tablet-diagnostics', name: t('tabletDiag.command'), callback: () => new TabletDiagnosticsModal(this.app, this.manifest).open() });
 
     // Capture this before migrations/services can create Atlas's storage folder.
     const existingInstallation = this.app.vault.adapter.exists('atlas-vtt');
