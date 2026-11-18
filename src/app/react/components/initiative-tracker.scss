@@ -10,6 +10,11 @@ $tracker-width-named: 168px;
 $dice-log-width: 360px;
 // The collapse toggle: as tall as a card's number slot
 $collapse-height: 24px;
+// What the tracker keeps of itself in a pane too short for its clearance: its controls (the toggle and
+// two rows of buttons, with the panel's border, padding and gaps) and one card, which is taller with a name.
+$tracker-chrome-height: 118px;
+$tracker-min-height: $tracker-chrome-height + 116px;
+$tracker-min-height-named: $tracker-chrome-height + 140px;
 
 .atlas-initiative-tracker {
   position: fixed;
@@ -18,8 +23,9 @@ $collapse-height: 24px;
   transform: translateY(-50%);
   width: $tracker-width;
   // Centred panel: symmetric clearance keeps its top below the top bar row
-  // (Obsidian tab header + row offset + expanded widget bar + gap).
-  max-height: calc(#{atlas-view-height()} - 2 * 160px);
+  // (Obsidian tab header + row offset + expanded widget bar + gap). The view is the map's pane, which
+  // may be shorter than the clearance alone: the tracker then keeps a card and its controls.
+  max-height: max(#{$tracker-min-height}, calc(#{atlas-view-height()} - 2 * 160px));
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -41,6 +47,7 @@ $collapse-height: 24px;
   // The GM's cards show names (the tracker's Show names)
   &--named {
     width: $tracker-width-named;
+    max-height: max(#{$tracker-min-height-named}, calc(#{atlas-view-height()} - 2 * 160px));
   }
 
   // Docked at the left edge (the tracker's Dock on the left)
