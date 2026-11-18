@@ -20,7 +20,7 @@ import { useSelectionActionsShown } from "./useSelectionActionsShown"
 import { useSelectionBarPlace, type BarPlaceOptions } from "./useSelectionBarPlace"
 
 /** The class of the bar above a selection. */
-export const SELECTION_ACTIONS_BAR = "atlas-selection-actions"
+const SELECTION_ACTIONS_BAR = "atlas-selection-actions"
 /** The bar's last part, which Select more adds: it hangs to the right, so the buttons before it stay under the finger. */
 const TAIL = "atlas-selection-actions__tail"
 
