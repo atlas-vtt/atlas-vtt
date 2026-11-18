@@ -5,6 +5,11 @@ export type ToCanvasPoint = (out: { x: number; y: number }, clientX: number, cli
 
 const POINTER_EVENTS = ['pointerdown', 'pointermove', 'pointerup', 'pointercancel'] as const;
 
+/** Whether the event says its pointer is gone: lifted, or taken away. */
+function isLift(type: string): boolean {
+  return type === 'pointerup' || type === 'pointercancel';
+}
+
 /**
  * Hears the fingers and pens on the map's canvas from the window, before anything on the way to
  * the canvas can take them, and tells the gestures. For every event it answers whether the map's
@@ -19,13 +24,16 @@ export class TouchSource {
   private lastEvent: object | null = null;
   private lastAnswer = true;
   private penId: number | null = null;
+  /** Fingers forgotten while they were down (the window lost focus): nothing of them is anyone's until they lift. */
+  private readonly lost = new Set<number>();
 
+  /** `onLifted` hears of every finger that is gone, and whether the tools get its release. */
   constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly toCanvas: ToCanvasPoint,
     private readonly gestures: TouchGestures,
     private readonly onPen: () => void,
-    private readonly onLifted: (id: number) => void,
+    private readonly onLifted: (id: number, released: boolean) => void,
   ) {
     this.win = canvas.ownerDocument.defaultView ?? window;
     for (const type of POINTER_EVENTS) this.win.addEventListener(type, this.hear, true);
@@ -61,7 +69,19 @@ export class TouchSource {
     this.admits(event);
   };
 
-  private readonly onBlur = (): void => this.gestures.reset();
+  /**
+   * The window lost focus, and what follows may never be heard: the tools are told that every
+   * finger is lost, the fingers and their presses are forgotten, and so is the pen. A finger that
+   * is still down does nothing more.
+   */
+  private readonly onBlur = (): void => {
+    for (const id of this.gestures.reset()) {
+      this.lost.add(id);
+      this.onLifted(id, false);
+    }
+    this.penId = null;
+    this.gestures.setPenDown(false);
+  };
 
   private answer(event: object): boolean {
     if (!isPointerEvent(event) || this.own.has(event)) return true;
@@ -71,19 +91,29 @@ export class TouchSource {
     }
     if (event.pointerType !== 'touch') return true;
     const id = event.pointerId;
-    if (event.type === 'pointerdown') {
+    const { type } = event;
+    if (type === 'pointerdown') {
+      // The first finger of a touch: every finger before it has lifted, heard or not
+      if (event.isPrimary) this.lost.clear();
+      else this.lost.delete(id);
       if (event.target !== this.canvas) return true;
       this.toCanvas(this.point, event.clientX, event.clientY);
-      this.gestures.down(id, this.point.x, this.point.y);
+      this.gestures.down(id, this.point.x, this.point.y, event.timeStamp);
+      return false;
+    }
+    // What says where the pointer is over (`pointerover`, `pointerout`, `pointerleave`) is neither a move nor a lift
+    if (type !== 'pointermove' && !isLift(type)) return true;
+    if (this.lost.has(id)) {
+      if (isLift(type)) this.lost.delete(id);
       return false;
     }
     if (!this.gestures.tracks(id)) return true;
     this.toCanvas(this.point, event.clientX, event.clientY);
-    if (event.type === 'pointermove') return this.gestures.move(id, this.point.x, this.point.y);
-    const forwarded = event.type === 'pointerup' && this.gestures.up(id, this.point.x, this.point.y);
-    if (event.type === 'pointercancel') this.gestures.cancel(id);
-    this.onLifted(id);
-    return forwarded || event.type === 'pointercancel';
+    if (type === 'pointermove') return this.gestures.move(id, this.point.x, this.point.y);
+    const released = type === 'pointerup' && this.gestures.up(id, this.point.x, this.point.y, event.timeStamp);
+    if (type === 'pointercancel') this.gestures.cancel(id);
+    this.onLifted(id, released);
+    return released || type === 'pointercancel';
   }
 
   /** A pen on the canvas is the tool; the gestures only need to know while it is down. */

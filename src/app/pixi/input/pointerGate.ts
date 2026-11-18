@@ -71,8 +71,13 @@ export class PointerGate {
     this.cancelTarget.emit('pointercancel', press);
   }
 
-  /** The finger is lifted: its press is kept no longer. */
-  forget(id: number): void {
+  /**
+   * The finger is gone: its press is kept no longer. Unless the tools get its release (`released`),
+   * which PIXI then maps itself, PIXI is told to forget what the finger pressed: a press that was
+   * taken back never has a release, and PIXI would keep its targets for good.
+   */
+  forget(id: number, released = false): void {
+    if (!released) this.releaseTargets(id);
     const press = this.presses.get(id);
     if (!press) return;
     this.presses.delete(id);
@@ -99,7 +104,20 @@ export class PointerGate {
       else this.keep(event);
       return;
     }
-    if (this.admits(event.nativeEvent)) this.mapEvent(event);
+    if (!this.admits(event.nativeEvent)) return;
+    this.mapEvent(event);
+    // Every finger has an id of its own: what PIXI keeps of a press until the next one of its pointer would stay for good
+    if (event.type === 'pointerup' || event.type === 'pointerupoutside') this.releaseTargets(event.pointerId);
+  }
+
+  /**
+   * Drops the display objects PIXI remembers as pressed by the pointer (`EventBoundary.trackingData`,
+   * read by its next release alone). PIXI offers nothing that forgets them without telling them of
+   * a release outside, which a press that was taken back must not be followed by.
+   */
+  private releaseTargets(id: number): void {
+    const pressed = this.boundary['trackingData'](id).pressTargetsByButton;
+    for (const button in pressed) delete pressed[button];
   }
 
   private keep(event: FederatedPointerEvent): void {

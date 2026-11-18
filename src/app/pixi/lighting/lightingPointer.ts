@@ -76,5 +76,6 @@ export function wireLightingPointer(tokens: TokenRenderer, { lights, editor, mod
     return modes.cursorAt({ x, y });
   });
   tokens.setDoorMenuHandlers({ hitTest: (x, y) => doors.gmHitTest(x, y), open: doorMenu });
-  tokens.setDoorClickHandler(doorClick);
+  // With the lighting tool a badge is pressed only where the walls' editor leaves it the press: in rooms mode, and in the players' view.
+  tokens.setDoorClickHandler(doorClick, (x, y, lightingTool) => (!lightingTool || !editor.shown || modes.rooms.active) && doors.hitTest(x, y) !== null);
 }

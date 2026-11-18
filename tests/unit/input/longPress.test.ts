@@ -9,6 +9,28 @@ function press(): { clock: FakeClock; fire: ReturnType<typeof vi.fn>; longPress:
   return { clock, fire, longPress: new LongPress(clock, fire) };
 }
 
+describe('a long press whose time passes while the thread is held up', () => {
+  it('is a tap when the release waited behind the frame: nothing fires', () => {
+    const { clock, fire, longPress } = press();
+    longPress.begin({ x: 10, y: 20 });
+    clock.advance(40);
+    // The finger lifted here, and a frame of half a second keeps the release from being heard until after the time
+    clock.holdUp(500);
+    longPress.cancel();
+    clock.advance(LONG_PRESS_MS);
+    expect(fire).not.toHaveBeenCalled();
+  });
+
+  it('still fires when no release waited', () => {
+    const { clock, fire, longPress } = press();
+    longPress.begin({ x: 10, y: 20 });
+    clock.holdUp(500);
+    expect(longPress.pending).toBe(true);
+    clock.advance(1);
+    expect(fire).toHaveBeenCalledExactlyOnceWith({ x: 10, y: 20 });
+  });
+});
+
 describe('a long press', () => {
   it('fires once the finger has rested for its time, where it came down', () => {
     const { clock, fire, longPress } = press();

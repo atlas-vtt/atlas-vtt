@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LONG_PRESS_MS } from '../../src/app/input/longPress';
 import { SETTLE_MS } from '../../src/app/pixi/input/touchGestures';
+import { DoorIcons } from '../../src/app/pixi/lighting/DoorIcons';
+import { getHistoryStore } from '../../src/app/stores/history';
 import { mouse } from './realMouse';
 import { frame, touch, touchMaps, TOKEN, wait, type Point, type TouchMap } from './touchHarness';
 
@@ -217,6 +219,68 @@ describe('a long press', () => {
     expect(openContextMenuGlobal).not.toHaveBeenCalled();
     expect(m.ring().visible).toBe(false);
     expect(m.store.getState().selectedIds).toEqual(['token']);
+  });
+});
+
+describe('a door\'s badge, which opens its door as it is pressed', () => {
+  /** A closed door on open floor, away from the token: its badge is in the middle of it. */
+  const BADGE: Point = { x: 500, y: 350 };
+
+  async function withDoor(): Promise<{ m: TouchMap; closed: () => boolean }> {
+    const m = await map();
+    const door = m.store.getState().addWall({ type: 'door', p1: { x: BADGE.x - 40, y: BADGE.y }, p2: { x: BADGE.x + 40, y: BADGE.y }, closed: true });
+    const doors = new DoorIcons(m.store, m.canvas);
+    m.viewport.addChild(doors.view);
+    // As the lighting wires it: the press opens or closes, and the gestures are told where it would
+    m.tokens.setDoorClickHandler((x, y) => {
+      const doorId = doors.hitTest(x, y);
+      if (doorId) doors.toggle(doorId);
+      return doorId !== null;
+    }, (x, y) => doors.hitTest(x, y) !== null);
+    getHistoryStore(m.store)?.getState().clear();
+    await frame();
+    return { m, closed: () => m.store.getState().objects.walls[door]!.closed === true };
+  }
+
+  it('stays shut under the first finger of a pinch, however late the second lands', async () => {
+    const { m, closed } = await withDoor();
+    const second: Point = { x: BADGE.x + 160, y: BADGE.y };
+    await touch.down(BADGE);
+    await wait(120);
+    expect(closed()).toBe(true);
+    await touch.down(BADGE, second);
+    await touch.glide([BADGE, second], [{ x: BADGE.x - 60, y: BADGE.y }, { x: second.x + 60, y: second.y }]);
+    await touch.up();
+    await rest(m);
+    expect(m.viewport.scale.x).toBeGreaterThan(1.3);
+    expect(closed()).toBe(true);
+    expect(m.steps()).toBe(0);
+  });
+
+  it('opens under a finger\'s tap, and under a mouse\'s press as ever', async () => {
+    const { m, closed } = await withDoor();
+    await touch.down(BADGE);
+    await touch.up();
+    await wait(120);
+    expect(closed()).toBe(false);
+    expect(m.steps()).toBe(1);
+
+    await mouse.hover(BADGE.x, BADGE.y);
+    await mouse.down(BADGE.x, BADGE.y);
+    expect(closed()).toBe(true);
+    await mouse.up(BADGE.x, BADGE.y);
+  });
+
+  it('lets a finger that starts on it pan the map, and stays shut', async () => {
+    const { m, closed } = await withDoor();
+    const before = camera(m);
+    await touch.down(BADGE);
+    await wait(SETTLED);
+    await touch.glide([BADGE], [{ x: BADGE.x + 100, y: BADGE.y }]);
+    await touch.up();
+    await rest(m);
+    expect(camera(m).x).toBeGreaterThan(before.x + 80);
+    expect(closed()).toBe(true);
   });
 });
 

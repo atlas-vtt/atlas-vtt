@@ -31,4 +31,18 @@ export class FakeClock implements GestureClock {
     }
     this.time = until;
   }
+
+  /**
+   * The thread is held up for `ms`: the timers that fell due meanwhile run when it is free again,
+   * and what they set, like anything else that waited, has its turn after them.
+   */
+  holdUp(ms: number): void {
+    this.time += ms;
+    const due = this.timers.filter((timer) => timer.at <= this.time).sort((a, b) => a.at - b.at);
+    for (const timer of due) {
+      if (!this.timers.includes(timer)) continue;
+      this.timers = this.timers.filter((other) => other !== timer);
+      timer.run();
+    }
+  }
 }

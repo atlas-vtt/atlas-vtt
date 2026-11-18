@@ -1,5 +1,6 @@
 import type { Application } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
+import { feelLongPress } from '../../input/longPress';
 import { noteTouchMenu } from '../../input/touchMenuPoint';
 import { prefersReducedMotion } from '../../utils/motion';
 import type { LayerVisibility } from '../playerSafeFrame';
@@ -34,9 +35,6 @@ export interface MapGestures {
 
 const NO_MAP_HOST: MapGestureHost = { ...NO_HOST, undo: () => undefined, redo: () => undefined, penTouched: () => undefined };
 
-/** How long a long press is felt, where the device can (Android; iOS has no vibration for the web). */
-const HAPTIC_MS = 10;
-
 /**
  * Puts the gesture layer between the browser and the map's tools. Nothing here runs per frame,
  * and nothing runs for a mouse: the layer hears pointer events only, and looks at fingers and pens.
@@ -67,7 +65,7 @@ export function installTouchGestures(app: Application, viewport: Viewport, canva
       const press = gate.pressOf(id);
       if (!press) return;
       noteTouchMenu(press.clientX, press.clientY);
-      if ('vibrate' in win.navigator) win.navigator.vibrate(HAPTIC_MS);
+      feelLongPress(win);
       gate.secondaryClick(id);
     },
     heldEmptyMap: (id) => {
@@ -82,7 +80,7 @@ export function installTouchGestures(app: Application, viewport: Viewport, canva
     endNavigation: (glide) => navigation.end(glide),
     zoomStep: (x, y, direction) => navigation.zoomStep(x, y, direction),
     pairHeld: () => {
-      if ('vibrate' in win.navigator) win.navigator.vibrate(HAPTIC_MS);
+      feelLongPress(win);
       host.endLooking?.();
     },
     undo: () => host.undo(),
@@ -97,7 +95,7 @@ export function installTouchGestures(app: Application, viewport: Viewport, canva
     (out, clientX, clientY) => events.mapPositionToPoint(out, clientX, clientY),
     gestures,
     () => host.penTouched(),
-    (id) => gate.forget(id),
+    (id, released) => gate.forget(id, released),
   );
   const lookOnly = new LookOnlyPointer(navigation);
   const gate = new PointerGate(events, viewport, source.admits, {

@@ -10,13 +10,16 @@ export const DOUBLE_TAP_PX = FINGER_DOUBLE_TAP_PX;
 /**
  * The taps that are gestures of their own: a double tap on the empty map zooms in, a tap of two
  * fingers takes the last step back, twice in a row it zooms out, and a tap of three fingers
- * takes the step forward again. A two-finger tap waits for its second before it is an undo.
+ * takes the step forward again. A two-finger tap waits for its second before it is an undo, and
+ * a press that comes before that drops it: an undo never runs into what a pointer has begun.
  */
 export class TouchTaps {
   private lastTapAt = -Infinity;
   private lastTapX = 0;
   private lastTapY = 0;
   private undoTimer: number | null = null;
+  /** The press now down came while an undo waited: its tap may be the second of two. */
+  private afterPairTap = false;
 
   constructor(private readonly clock: GestureClock, private readonly effects: Pick<GestureEffects, 'zoomStep' | 'undo' | 'redo'>) {}
 
@@ -39,13 +42,19 @@ export class TouchTaps {
     this.lastTapAt = -Infinity;
   }
 
+  /** A finger or a pen came down with none down before it: an undo that waited is dropped. */
+  pressed(): void {
+    this.afterPairTap = this.cancelUndo();
+  }
+
   /** `fingers` came down and lifted together without moving, about a point. */
   multiTap(fingers: number, x: number, y: number): void {
+    const second = this.afterPairTap;
+    this.afterPairTap = false;
     if (fingers === 3) {
-      this.cancelUndo();
       this.effects.redo();
     } else if (fingers === 2) {
-      if (this.cancelUndo()) this.effects.zoomStep(x, y, -1);
+      if (second) this.effects.zoomStep(x, y, -1);
       else this.undoTimer = this.clock.setTimeout(() => {
         this.undoTimer = null;
         this.effects.undo();

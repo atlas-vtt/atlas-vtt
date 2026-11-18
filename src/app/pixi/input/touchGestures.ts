@@ -18,7 +18,7 @@ export const PAIR_HOLD_MS = 600;
  * - `settling`: just down, its press held back;
  * - `tool`: the tools have its press, and its moves and release are theirs;
  * - `waiting`: on the empty map, where it becomes a pan, a tap or a long press, or its press held
- *   back until it lifts or moves (`'place'`);
+ *   back until it lifts or moves (`'place'`, and on what acts as it is pressed);
  * - `pan`: it pans the map alone;
  * - `navigate`: one of the two fingers that pan and zoom;
  * - `spent`: nothing until it is lifted.
@@ -28,6 +28,8 @@ type Role = 'settling' | 'tool' | 'waiting' | 'pan' | 'navigate' | 'spent';
 interface Finger {
   readonly id: number;
   readonly start: PressPoint;
+  /** When it came down, by its event's own time. */
+  readonly downAt: number;
   x: number;
   y: number;
   role: Role;
@@ -68,10 +70,11 @@ export class TouchGestures {
   private settleTimer: number | null = null;
   private ringShown = false;
   private penDown = false;
-  /** From the first finger down to the last one up: the most fingers at once, when it began and whether any moved. */
+  /** From the first finger down to the last one up: the most fingers at once and when it began. */
   private mostFingers = 0;
   private beganAt = 0;
-  private anyMoved = false;
+  /** Those fingers are no tap of several: one moved or was taken away, they rested, or a pen was down beside them. */
+  private noTap = false;
   private tapX = 0;
   private tapY = 0;
 
@@ -94,18 +97,27 @@ export class TouchGestures {
   /** A pen is the tool while it is down, and a hand resting beside it is no gesture. */
   setPenDown(down: boolean): void {
     this.penDown = down;
+    if (!down) return;
+    // The hand that holds the pen taps nothing, and a tap that waited is not what the pen's press is for
+    this.noTap = true;
+    this.taps.pressed();
     const finger = this.single;
-    if (down && finger?.role === 'settling') this.spend(finger);
+    if (finger?.role === 'settling') this.spend(finger);
   }
 
-  down(id: number, x: number, y: number): void {
+  /** `at` is the event's own time (as `up`'s): how long a finger was down is read from the two, not from when they were heard. */
+  down(id: number, x: number, y: number, at?: number): void {
     if (this.fingers.has(id)) return;
-    const finger: Finger = { id, start: { x, y }, x, y, role: 'spent', pressed: false, longPress: null, onEmptyMap: false, heldForMarquee: false, dragsTool: false, looks: false };
+    const finger: Finger = {
+      id, start: { x, y }, downAt: this.stamp(at), x, y, role: 'spent', pressed: false,
+      longPress: null, onEmptyMap: false, heldForMarquee: false, dragsTool: false, looks: false,
+    };
     this.fingers.set(id, finger);
     if (this.fingers.size === 1) {
       this.mostFingers = 1;
       this.beganAt = this.clock.now();
-      this.anyMoved = false;
+      this.noTap = this.penDown;
+      this.taps.pressed();
     } else {
       this.mostFingers = Math.max(this.mostFingers, this.fingers.size);
       this.endPairHold();
@@ -123,7 +135,7 @@ export class TouchGestures {
     const fromY = finger.y;
     finger.x = x;
     finger.y = y;
-    if (!this.anyMoved && movedPast(finger.start, finger)) this.anyMoved = true;
+    if (!this.noTap && movedPast(finger.start, finger)) this.noTap = true;
     if (finger === this.single && this.longPress.pending && !this.longPress.move(finger)) this.hideRing();
 
     if (finger.role === 'settling' && movedPast(finger.start, finger, SETTLE_SLOP_PX)) this.settle(finger);
@@ -147,36 +159,41 @@ export class TouchGestures {
   }
 
   /** Returns whether the tools get the release. */
-  up(id: number, x: number, y: number): boolean {
+  up(id: number, x: number, y: number, at?: number): boolean {
     const finger = this.fingers.get(id);
     if (!finger) return true;
     finger.x = x;
     finger.y = y;
     if (finger.role === 'settling') this.settle(finger);
-    const forwarded = this.lift(finger);
+    const forwarded = this.lift(finger, this.stamp(at) - finger.downAt);
     this.fingers.delete(id);
     if (this.fingers.size === 0) this.allLifted();
     return forwarded;
   }
 
-  /** The browser took the finger away (a system gesture, a palm): nothing it began stays. */
-  cancel(id: number): void {
+  /** The finger is taken away (a system gesture, a palm): nothing it began stays. `byBrowser` unless the browser never said so. */
+  cancel(id: number, byBrowser = true): void {
     const finger = this.fingers.get(id);
     if (!finger) return;
-    this.anyMoved = true;
+    this.noTap = true;
     this.fingers.delete(id);
     if (finger === this.single) {
       this.endSingle();
-      if (finger.pressed) this.effects.cancelPress(id, true);
+      if (finger.pressed) this.effects.cancelPress(id, byBrowser);
       if (finger.role === 'pan') this.effects.endNavigation(false);
     } else if (finger.role === 'navigate') {
       this.endPair(false);
     }
   }
 
-  /** Every finger is gone without a release (the window lost focus). */
-  reset(): void {
-    for (const id of Array.from(this.fingers.keys())) this.cancel(id);
+  /**
+   * Every finger is gone without a word from the browser (the window lost focus): the tools are
+   * told that what they were handed is lost. Returns the fingers forgotten, which may still be down.
+   */
+  reset(): number[] {
+    const ids = Array.from(this.fingers.keys());
+    for (const id of ids) this.cancel(id, false);
+    return ids;
   }
 
   destroy(): void {
@@ -210,9 +227,11 @@ export class TouchGestures {
       this.longPress.cancel();
       return;
     }
-    if (mode === 'navigate' || mode === 'place') {
+    // What acts as it is pressed is pressed by a tap alone, as where a tap places: a finger that leaves it pans
+    const acts = this.host.pressActsAt?.(finger.start.x, finger.start.y) === true;
+    if (mode === 'navigate' || mode === 'place' || acts) {
       finger.role = 'waiting';
-      finger.dragsTool = mode === 'place';
+      finger.dragsTool = mode === 'place' && !acts;
     } else {
       this.effects.press(finger.id);
       finger.pressed = true;
@@ -280,7 +299,7 @@ export class TouchGestures {
   /** The two fingers rested: the looking ends, and they do nothing more until they are lifted. */
   private pairHeld(): void {
     this.hideRing();
-    this.anyMoved = true;
+    this.noTap = true;
     this.endPair(false);
     this.effects.pairHeld?.();
   }
@@ -315,15 +334,19 @@ export class TouchGestures {
     this.effects.endNavigation(glide && this.pairMoves);
   }
 
-  /** What a lifted finger ends; returns whether the tools get its release. */
-  private lift(finger: Finger): boolean {
+  /** What a finger that was down for `heldMs` ends as it lifts; returns whether the tools get its release. */
+  private lift(finger: Finger, heldMs: number): boolean {
     const role = finger.role;
     if (finger === this.single) this.endSingle();
     switch (role) {
       case 'tool':
         finger.pressed = false;
-        // Held and lifted in place: no marquee, but the empty map's own menu
-        if (finger.heldForMarquee && !movedPast(finger.start, finger)) this.effects.heldEmptyMap?.(finger.id);
+        if (finger.heldForMarquee && !movedPast(finger.start, finger)) {
+          // Held and lifted in place: no marquee, but the empty map's own menu. A finger that was down
+          // for less tapped, whatever a timer said that woke behind a thread held up
+          if (heldMs >= LONG_PRESS_MS) this.effects.heldEmptyMap?.(finger.id);
+          else this.tappedEmptyMap(finger);
+        }
         return true;
       case 'waiting':
         if (finger.looks) {
@@ -333,9 +356,7 @@ export class TouchGestures {
         // A tap: the tools get the press they were not handed yet, and the release.
         if (!finger.pressed) this.effects.press(finger.id);
         finger.pressed = false;
-        if (!finger.onEmptyMap) return true;
-        if (this.host.tapActsAt?.(finger.start.x, finger.start.y)) this.taps.forgetTap();
-        else this.taps.emptyMapTap(finger.x, finger.y);
+        if (finger.onEmptyMap) this.tappedEmptyMap(finger);
         return true;
       case 'pan':
         this.effects.endNavigation(true);
@@ -348,8 +369,14 @@ export class TouchGestures {
     }
   }
 
+  /** A tap on the empty map is half of a double tap, unless it acts on what lies there. */
+  private tappedEmptyMap(finger: Finger): void {
+    if (this.host.tapActsAt?.(finger.start.x, finger.start.y)) this.taps.forgetTap();
+    else this.taps.emptyMapTap(finger.x, finger.y);
+  }
+
   private allLifted(): void {
-    const tapped = !this.anyMoved && this.mostFingers > 1 && this.clock.now() - this.beganAt <= MULTI_TAP_MS;
+    const tapped = !this.noTap && this.mostFingers > 1 && this.clock.now() - this.beganAt <= MULTI_TAP_MS;
     if (tapped) this.taps.multiTap(this.mostFingers, this.tapX, this.tapY);
   }
 
@@ -382,6 +409,11 @@ export class TouchGestures {
     this.endSingle();
     finger.pressed = false;
     finger.role = 'spent';
+  }
+
+  /** An event's own time where it has one, else the time it is heard. */
+  private stamp(at: number | undefined): number {
+    return at !== undefined && at > 0 ? at : this.clock.now();
   }
 
   private clearSettle(): void {

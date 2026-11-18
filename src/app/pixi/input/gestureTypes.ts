@@ -14,6 +14,9 @@ import type { PressClock } from '../../input/longPress';
  *   nothing is held back or sent again;
  * - `'look'` (Table mode): the map is only looked at. It pans, a double tap zooms, and no press,
  *   tap or long press reaches the tools; two fingers held still end the looking (`pairHeld`).
+ *
+ * In every mode but the last two, a finger on what acts as it is pressed (`pressActsAt`) presses it
+ * only by a tap, and pans when it moves away.
  */
 export type FingerMode = 'objects' | 'tool' | 'navigate' | 'place' | 'direct' | 'look';
 
@@ -30,6 +33,13 @@ export interface GestureHost {
    * such taps and no double tap. A host without it has nothing of the kind.
    */
   tapActsAt?(x: number, y: number): boolean;
+  /**
+   * Whether a press at the point of the canvas does something at once that no lost pointer takes
+   * back (a door opens, a bar's button changes its value): a finger's press there is handed on with
+   * its release, when it lifts in place, so a second finger that lands meanwhile finds nothing done.
+   * A host without it has nothing of the kind.
+   */
+  pressActsAt?(x: number, y: number): boolean;
 }
 
 /** What the gestures do; every point is in the canvas' own pixels. */
