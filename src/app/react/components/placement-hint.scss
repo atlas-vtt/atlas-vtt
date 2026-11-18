@@ -45,15 +45,18 @@
   font-variant-numeric: tabular-nums;
 }
 
-// A strip's buttons that are words: Done, and what stands beside it (`OpenShapeStrip`'s Undo point).
-.atlas-placement-strip .atlas-placement-strip__done,
-.atlas-placement-strip .atlas-placement-strip__text {
+// A strip's buttons that are words: Done, and what stands beside it (`OpenShapeStrip`'s Undo point). They are as
+// wide as their words: the toolbar's own button is a chevron's width (`.btn--toolbar`, which the plugin's root
+// scopes, so these rules name the root too).
+.atlas-vtt-plugin .atlas-placement-strip .atlas-placement-strip__done,
+.atlas-vtt-plugin .atlas-placement-strip .atlas-placement-strip__text {
+  width: auto;
   height: $button-height-l;
   padding-inline: $spacing-m;
   border-radius: var(--atlas-bar-control-radius, #{$radius-m});
   white-space: nowrap;
 }
 
-.atlas-placement-strip .atlas-placement-strip__done {
+.atlas-vtt-plugin .atlas-placement-strip .atlas-placement-strip__done {
   font-weight: 600;
 }
