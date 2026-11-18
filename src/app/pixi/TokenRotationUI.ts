@@ -283,7 +283,18 @@ export class TokenRotationUI {
     this.viewport.on('pointermove', this.onRotationMove);
     this.viewport.on('pointerup', this.onRotationEnd);
     this.viewport.on('pointerupoutside', this.onRotationEnd);
+    this.viewport.on('pointercancel', this.onRotationCancel);
   }
+
+  /** The press on the handle is lost (a second finger, a touch the system took): the tokens face as they did. */
+  private onRotationCancel = (e: FederatedPointerEvent): void => {
+    if (!this.isRotating) return;
+    const tokenIds = [...this.rotatingTokenIds];
+    this.hasRotated = false;
+    this.onRotationEnd(e);
+    // Drawn again without the turn the drag showed
+    window.dispatchEvent(new CustomEvent('atlas-tokens-rotation-update', { detail: { tokenIds } }));
+  };
   
   /**
    * Handle rotation movement
@@ -426,6 +437,7 @@ export class TokenRotationUI {
     this.viewport.off('pointermove', this.onRotationMove);
     this.viewport.off('pointerup', this.onRotationEnd);
     this.viewport.off('pointerupoutside', this.onRotationEnd);
+    this.viewport.off('pointercancel', this.onRotationCancel);
   };
   
   /**

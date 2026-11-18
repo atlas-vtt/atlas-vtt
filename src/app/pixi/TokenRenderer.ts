@@ -78,6 +78,15 @@ export interface DoorMenuHandlers {
   open: (doorId: string, screenX: number, screenY: number) => void;
 }
 
+/**
+ * What takes a secondary click before the tokens do. Most open their menu when the click is
+ * released in place, since a right-drag pans; a pin takes the press itself. `menu` says whether a
+ * menu opens at all (the wall tool's has nothing to offer beside the walls without a selection).
+ */
+type SecondaryTarget =
+  | { on: 'release'; menu: boolean; open: (up: FederatedPointerEvent) => void }
+  | { on: 'press'; menu: boolean; press: (e: FederatedPointerEvent) => void };
+
 export class TokenRenderer {
   private obsApp: ObsidianApp;
   private viewport: Viewport;
@@ -185,6 +194,8 @@ export class TokenRenderer {
   private wallPointerUpHandler?: () => void;
   private wallDoubleClickHandler?: () => void;
   private wallContextMenuHandler?: (worldX: number, worldY: number, screenX: number, screenY: number) => void;
+  private wallMenuAt: ((worldX: number, worldY: number) => boolean) | undefined;
+  private wallPointerCancelHandler: (() => void) | undefined;
   private wallCursorProvider?: (worldX: number, worldY: number) => string;
 
   /** The stairs tool's editor, which takes the pointer while that tool is active. */
@@ -1312,6 +1323,7 @@ export class TokenRenderer {
     this.viewport.off('pointermove', this.onViewportPointerMove);
     this.viewport.off('pointerup', this.onViewportPointerUp, this);
     this.viewport.off('pointerupoutside', this.onViewportPointerUp, this);
+    this.viewport.off('pointercancel', this.onViewportPointerCancel);
     this.setCanvasListeners(false);
     
     // Destroy all UI elements through UIManager
@@ -1642,16 +1654,23 @@ export class TokenRenderer {
     this.wallPointerMoveHandler = fn;
   }
 
-  public setWallPointerUpHandler(fn: () => void): void {
+  /** `cancel` runs when a press the wall tool was handed is lost (a second finger, a touch the system took): what it drew goes. */
+  public setWallPointerUpHandler(fn: () => void, cancel?: () => void): void {
     this.wallPointerUpHandler = fn;
+    this.wallPointerCancelHandler = cancel;
   }
 
   public setWallDoubleClickHandler(fn: () => void): void {
     this.wallDoubleClickHandler = fn;
   }
 
-  public setWallContextMenuHandler(fn: (worldX: number, worldY: number, screenX: number, screenY: number) => void): void {
+  /** `menuAt` says whether the menu has something to open at a world point; unset, it is taken to. */
+  public setWallContextMenuHandler(
+    fn: (worldX: number, worldY: number, screenX: number, screenY: number) => void,
+    menuAt?: (worldX: number, worldY: number) => boolean,
+  ): void {
     this.wallContextMenuHandler = fn;
+    this.wallMenuAt = menuAt;
   }
 
   public setWallCursorProvider(fn: (worldX: number, worldY: number) => string): void {
@@ -1757,6 +1776,7 @@ export class TokenRenderer {
     this.viewport.on('pointermove', this.onViewportPointerMove);
     this.viewport.on('pointerup', this.onViewportPointerUp, this);
     this.viewport.on('pointerupoutside', this.onViewportPointerUp, this);
+    this.viewport.on('pointercancel', this.onViewportPointerCancel);
   }
 
   /** DOM listeners on the canvas, which only exists once the PIXI app is set. */
@@ -1782,6 +1802,61 @@ export class TokenRenderer {
     this.stopMenuPress = watchClick(this.viewport, down, open);
   }
 
+  /**
+   * What a secondary click at a point of the map is for, before the tokens: one list for the press
+   * itself and for whoever asks what a press there would do (`menuAt`), so the two cannot differ.
+   */
+  private secondaryTargetAt(x: number, y: number, activeTool: string): SecondaryTarget | null {
+    // Wall context menu (when wall tool is active). It also opens beside the walls, for the selection,
+    // so like the area menus below it waits for a release in place and a right-drag pans.
+    if (activeTool === 'wall' && this.wallContextMenuHandler) {
+      return { on: 'release', menu: this.wallMenuAt?.(x, y) ?? true, open: (up) => this.wallContextMenuHandler?.(x, y, up.clientX, up.clientY) };
+    }
+
+    // A door's badge lies above pins and tokens: its menu opens on a release in place.
+    const doorId = this.doorMenuHandlers?.hitTest(x, y);
+    if (doorId) return { on: 'release', menu: true, open: (up) => this.doorMenuHandlers?.open(doorId, up.clientX, up.clientY) };
+
+    // Check pins first (smaller hit targets, higher priority for right-click)
+    const pinId = this.pinClickHandler ? this.pinHitTestProvider?.(x, y) : null;
+    if (pinId) return { on: 'press', menu: true, press: (e) => this.pinClickHandler?.(pinId, e) };
+
+    // A token takes the right-click from a linked hex or fog beneath it, as it takes the left-click
+    const tokenTools = activeTool === 'select' || activeTool === 'move';
+    const onToken = tokenTools && this.hitTestTokens(x, y) !== null;
+    // A drawing or text lies above linked hexes and features. A fill and a selection's frame cover whole
+    // stretches of the map too: like theirs, its press stays unhandled and its menu opens on a release in place
+    if (!onToken && this.annotationHandlers?.menuAt(x, y)) {
+      return { on: 'release', menu: true, open: (up) => this.annotationHandlers?.openMenu(x, y, up) };
+    }
+    // Linked hexes cover whole stretches of the map: their press stays unhandled, so a
+    // right-drag still pans, and the menu opens when the button is released in place
+    if (tokenTools && !onToken && this.hexLinkHandlers) {
+      const hexLinkId = this.hexLinkHandlers.hitTest(x, y);
+      if (hexLinkId) return { on: 'release', menu: true, open: (up) => this.hexLinkHandlers?.openContextMenu(hexLinkId, up) };
+    }
+    // A map feature's menu is the GM's, like the feature itself
+    if (tokenTools && !onToken && this.mapFeatureHandlers && this.showsGmView()) {
+      const featureId = this.mapFeatureHandlers.hitTest(x, y);
+      if (featureId) return { on: 'release', menu: true, open: (up) => this.mapFeatureHandlers?.openContextMenu(featureId, up.clientX, up.clientY) };
+    }
+    // Fog covers whole stretches of the map too. Its menu is the GM's, with the tools that take tokens and with the fog tool
+    if (!onToken && (tokenTools || isFogTool(activeTool)) && this.showsGmView() && this.fogMenuHandlers?.menuAt(x, y)) {
+      return { on: 'release', menu: true, open: (up) => this.fogMenuHandlers?.openMenu(x, y, up.clientX, up.clientY) };
+    }
+    return null;
+  }
+
+  /** Whether a secondary click at a world point opens a menu: what a finger's long press there is for. */
+  public menuAt(x: number, y: number): boolean {
+    if (this.placementActive()) return false;
+    const { activeTool } = this.store.getState();
+    const target = this.secondaryTargetAt(x, y, activeTool);
+    if (target) return target.menu;
+    const tokenTools = activeTool === 'select' || activeTool === 'move';
+    return tokenTools && !this.interactionController.isPlayerView && this.hitTestTokens(x, y) !== null;
+  }
+
   private onViewportPointerDown = (e: FederatedPointerEvent): void => {
     // PIXI v8 reuses FederatedPointerEvent objects — clear custom flags from previous events
     resetHandled(e);
@@ -1794,60 +1869,16 @@ export class TokenRenderer {
     const worldPos = this.viewport.toWorld(e.global);
     const primary = isPrimaryPress(e);
 
-    // ── Right-click: check walls, door badges and pins ──────────────────
+    // ── Right-click: walls, door badges, pins and what covers stretches of the map (`secondaryTargetAt`) ──
     if (isSecondaryPress(e)) {
-      // Wall context menu (when wall tool is active). It also opens beside the walls, for the selection,
-      // so like the area menus below it waits for a release in place and a right-drag pans.
-      if (activeTool === 'wall' && this.wallContextMenuHandler) {
-        this.openMenuOnRelease(e, (up) => this.wallContextMenuHandler?.(worldPos.x, worldPos.y, up.clientX, up.clientY));
+      const target = this.secondaryTargetAt(worldPos.x, worldPos.y, activeTool);
+      if (target?.on === 'press') {
+        markHandled(e);
+        target.press(e);
         return;
       }
-
-      // A door's badge lies above pins and tokens: its menu opens on a release in place.
-      const doorId = this.doorMenuHandlers?.hitTest(worldPos.x, worldPos.y);
-      if (doorId) {
-        this.openMenuOnRelease(e, (up) => this.doorMenuHandlers?.open(doorId, up.clientX, up.clientY));
-        return;
-      }
-
-      // Check pins first (smaller hit targets, higher priority for right-click)
-      if (this.pinHitTestProvider && this.pinClickHandler) {
-        const pinId = this.pinHitTestProvider(worldPos.x, worldPos.y);
-        if (pinId) {
-          markHandled(e);
-          this.pinClickHandler(pinId, e);
-          return;
-        }
-      }
-      // A token takes the right-click from a linked hex or fog beneath it, as it takes the left-click
-      const tokenTools = activeTool === 'select' || activeTool === 'move';
-      const onToken = tokenTools && this.hitTestTokens(worldPos.x, worldPos.y) !== null;
-      // A drawing or text lies above linked hexes and features. A fill and a selection's frame cover whole
-      // stretches of the map too: like theirs, its press stays unhandled and its menu opens on a release in place
-      if (!onToken && this.annotationHandlers?.menuAt(worldPos.x, worldPos.y)) {
-        this.openMenuOnRelease(e, (up) => this.annotationHandlers?.openMenu(worldPos.x, worldPos.y, up));
-        return;
-      }
-      // Linked hexes cover whole stretches of the map: their press stays unhandled, so a
-      // right-drag still pans, and the menu opens when the button is released in place
-      if (tokenTools && !onToken && this.hexLinkHandlers) {
-        const hexLinkId = this.hexLinkHandlers.hitTest(worldPos.x, worldPos.y);
-        if (hexLinkId) {
-          this.openMenuOnRelease(e, (up) => this.hexLinkHandlers?.openContextMenu(hexLinkId, up));
-          return;
-        }
-      }
-      // A map feature's menu is the GM's, like the feature itself
-      if (tokenTools && !onToken && this.mapFeatureHandlers && this.showsGmView()) {
-        const featureId = this.mapFeatureHandlers.hitTest(worldPos.x, worldPos.y);
-        if (featureId) {
-          this.openMenuOnRelease(e, (up) => this.mapFeatureHandlers?.openContextMenu(featureId, up.clientX, up.clientY));
-          return;
-        }
-      }
-      // Fog covers whole stretches of the map too. Its menu is the GM's, with the tools that take tokens and with the fog tool
-      if (!onToken && (tokenTools || isFogTool(activeTool)) && this.showsGmView() && this.fogMenuHandlers?.menuAt(worldPos.x, worldPos.y)) {
-        this.openMenuOnRelease(e, (up) => this.fogMenuHandlers?.openMenu(worldPos.x, worldPos.y, up.clientX, up.clientY));
+      if (target) {
+        this.openMenuOnRelease(e, target.open);
         return;
       }
     }
@@ -1954,8 +1985,9 @@ export class TokenRenderer {
       this.hexLinkHandlers?.press(hexLinkId, e);
     }
 
-    // 5. Nothing hit — clear selection for move tool on empty-space left-click (shift keeps it)
-    if (primary && activeTool === 'move' && !e.shiftKey) {
+    // 5. Nothing hit — clear selection for move tool on empty-space left-click (shift keeps it).
+    // A finger there may be about to pan, which keeps the selection: its tap clears it, as the empty marquee it ends
+    if (primary && activeTool === 'move' && !e.shiftKey && e.pointerType !== 'touch') {
       const selectedIds = this.store.getState().selectedIds;
       if (selectedIds.length > 0) {
         this.store.getState().clearSelection();
@@ -2166,6 +2198,12 @@ export class TokenRenderer {
     } else if (activeTool === 'stairs') {
       this.stairsTool?.pointerUp();
     }
+  };
+
+  /** The gesture layer took the pointer away (`PointerGate.cancel`): PIXI itself maps no cancel. */
+  private onViewportPointerCancel = (): void => {
+    this.stopMenuPress?.();
+    if (this.store.getState().activeTool === 'wall') this.wallPointerCancelHandler?.();
   };
 
   private onCanvasDoubleClick = (): void => {

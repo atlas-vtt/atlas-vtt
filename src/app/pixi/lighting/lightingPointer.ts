@@ -12,6 +12,8 @@ export interface LightingPointerTargets {
   doors: DoorIcons;
   /** Opens the wall menu at a world point, given also as a screen point. */
   wallMenu: (x: number, y: number, screenX: number, screenY: number) => void;
+  /** Whether the wall menu has something to open at a world point. */
+  wallMenuAt: (x: number, y: number) => boolean;
   /** Opens a door's menu at a screen point. */
   doorMenu: (doorId: string, screenX: number, screenY: number) => void;
 }
@@ -25,7 +27,7 @@ export interface LightingPointerTargets {
  * in reach as in the walls mode (a press, a drag of a wall's end, the wall menu), except while a
  * room's shape is under way or with Shift, which snaps the room's corners to the grid.
  */
-export function wireLightingPointer(tokens: TokenRenderer, { lights, editor, modes, doors, wallMenu, doorMenu }: LightingPointerTargets): void {
+export function wireLightingPointer(tokens: TokenRenderer, { lights, editor, modes, doors, wallMenu, wallMenuAt, doorMenu }: LightingPointerTargets): void {
   tokens.setLightHandlers({
     // With the lighting tool, a wall handle is grabbed before the marker beneath it, and Shift draws past lights.
     pointerDown: (x, y, e) => {
@@ -63,11 +65,12 @@ export function wireLightingPointer(tokens: TokenRenderer, { lights, editor, mod
   tokens.setWallPointerUpHandler(() => {
     modes.pointerUp();
     editor.pointerUp();
-  });
+  }, () => editor.pointerCancel());
   tokens.setWallDoubleClickHandler(() => (modes.active ? modes.doubleClick() : editor.doubleClick()));
+  const menuShown = (): boolean => editor.shown && (!modes.active || roomsAtRest());
   tokens.setWallContextMenuHandler((x, y, screenX, screenY) => {
-    if (editor.shown && (!modes.active || roomsAtRest())) wallMenu(x, y, screenX, screenY);
-  });
+    if (menuShown()) wallMenu(x, y, screenX, screenY);
+  }, (x, y) => menuShown() && wallMenuAt(x, y));
   tokens.setWallCursorProvider((x, y) => {
     if (!modes.active || editor.busy || wallsInRooms({ x, y })) return editor.cursorAt({ x, y });
     return modes.cursorAt({ x, y });

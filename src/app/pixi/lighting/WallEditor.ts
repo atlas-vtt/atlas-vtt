@@ -143,6 +143,14 @@ export class WallEditor {
     this.finishStroke();
   }
 
+  /** The press is lost (a second finger, a touch the system took): a stroke drawn freehand goes and a held joint goes back; a chain placed corner by corner stays. */
+  pointerCancel(): void {
+    this.walls.cancelDrag();
+    if (!this.tool.isCurrentlyDrawing() || this.tool.getSettings().mode !== 'freeform') return;
+    this.tool.cancelDrawing();
+    this.renderer.preview.clearStroke();
+  }
+
   /** A double click ends the chain being drawn. */
   doubleClick(): void {
     if (this.shown) this.tool.finishChain();

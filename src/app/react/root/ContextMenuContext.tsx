@@ -1,3 +1,4 @@
+import { touchMenuPosition } from '../../input/touchMenuPoint';
 import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
@@ -222,14 +223,16 @@ export const ContextMenuProvider: React.FC<ContextMenuProviderProps> = ({ childr
     if (returnFocus.current?.isConnected) returnFocus.current.focus({ preventScroll: true });
   }, [isOpen]);
 
-  const open = useCallback((entries: ContextMenuEntry[], position: { x: number; y: number }, options?: ContextMenuOptions): void => {
+  const open = useCallback((entries: ContextMenuEntry[], at: { x: number; y: number }, options?: ContextMenuOptions): void => {
     told();
     closing.current = options?.onClose;
     const doc = bodyRef.current?.ownerDocument;
     // Global callers may be served by a provider in another leaf: use the clicked view.
     const collisionBoundary = options?.returnFocus?.closest('.workspace-leaf')
-      ?? doc?.elementFromPoint?.(position.x, position.y)?.closest('.workspace-leaf')
-      ?? leafHolding(anchorElement.current, position);
+      ?? doc?.elementFromPoint?.(at.x, at.y)?.closest('.workspace-leaf')
+      ?? leafHolding(anchorElement.current, at);
+    // A finger covers what lies below it: the menu its long press asked for stands a row higher
+    const position = touchMenuPosition(at);
     setMenuState({ entries, position, returnFocus: options?.returnFocus ?? null, collisionBoundary, label: options?.label });
     setIsOpen(true);
   }, [told]);

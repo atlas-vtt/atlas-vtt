@@ -1,0 +1,65 @@
+/**
+ * The long press of a finger: the secondary click of a device without a right button. One timing
+ * and one tolerance for the map and for everything else Atlas draws.
+ */
+
+/** How long a finger rests before its press is a long press, between the defaults of iPadOS and Android. */
+export const LONG_PRESS_MS = 400;
+/** How far a finger may wander and still rest (px); past it the press is a drag. */
+export const TOUCH_SLOP_PX = 8;
+
+export interface PressPoint {
+  x: number;
+  y: number;
+}
+
+/** The timers a long press runs on; a test hands in its own. */
+export interface PressClock {
+  setTimeout(run: () => void, ms: number): number;
+  clearTimeout(id: number): void;
+}
+
+export function movedPast(from: PressPoint, to: PressPoint, slop: number = TOUCH_SLOP_PX): boolean {
+  return Math.hypot(to.x - from.x, to.y - from.y) >= slop;
+}
+
+/**
+ * Watches one press: `fire` runs once the finger has rested `LONG_PRESS_MS` within `TOUCH_SLOP_PX`
+ * of where it came down. A move past that, a release, a second finger or anything else that ends
+ * the press (`cancel`) leaves it a tap or a drag, and `fire` never runs.
+ */
+export class LongPress {
+  private timer: number | null = null;
+  private origin: PressPoint | null = null;
+
+  constructor(private readonly clock: PressClock, private readonly fire: (at: PressPoint) => void) {}
+
+  /** The press is still one that may become a long press. */
+  get pending(): boolean {
+    return this.timer !== null;
+  }
+
+  begin(at: PressPoint): void {
+    this.cancel();
+    const origin = { x: at.x, y: at.y };
+    this.origin = origin;
+    this.timer = this.clock.setTimeout(() => {
+      this.timer = null;
+      this.origin = null;
+      this.fire(origin);
+    }, LONG_PRESS_MS);
+  }
+
+  /** The finger is at `at`; returns whether the press still rests. */
+  move(at: PressPoint): boolean {
+    if (!this.origin) return false;
+    if (movedPast(this.origin, at)) this.cancel();
+    return this.pending;
+  }
+
+  cancel(): void {
+    if (this.timer !== null) this.clock.clearTimeout(this.timer);
+    this.timer = null;
+    this.origin = null;
+  }
+}

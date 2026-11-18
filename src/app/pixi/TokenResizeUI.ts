@@ -342,7 +342,18 @@ export class TokenResizeUI {
     this.viewport.on('pointermove', this.onResizeMove);
     this.viewport.on('pointerup', this.onResizeEnd);
     this.viewport.on('pointerupoutside', this.onResizeEnd);
+    this.viewport.on('pointercancel', this.onResizeCancel);
   }
+
+  /** The press on the handle is lost (a second finger, a touch the system took): the tokens keep the size they had. */
+  private onResizeCancel = (e: FederatedPointerEvent): void => {
+    if (!this.isResizing) return;
+    const tokenIds = [...this.resizingTokenIds];
+    this.hasResized = false;
+    this.onResizeEnd(e);
+    // Drawn again without the size the drag showed
+    window.dispatchEvent(new CustomEvent('atlas-tokens-resize-update', { detail: { tokenIds } }));
+  };
   
   /**
    * Handle resize movement
@@ -486,6 +497,7 @@ export class TokenResizeUI {
     this.viewport.off('pointermove', this.onResizeMove);
     this.viewport.off('pointerup', this.onResizeEnd);
     this.viewport.off('pointerupoutside', this.onResizeEnd);
+    this.viewport.off('pointercancel', this.onResizeCancel);
   };
   
   /**

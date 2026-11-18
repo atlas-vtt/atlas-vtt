@@ -25,6 +25,8 @@ export class FogGesture {
   private readonly onPointerMove = (event: PIXI.FederatedPointerEvent): void => this.pointerMove(event);
   private readonly onPointerUp = (): void => this.pointerUp();
   private readonly onPointerLeave = (): void => this.pointerLeave();
+  /** The press is lost (a second finger, a touch the system took): the drag under way goes, a polygon keeps its corners. */
+  private readonly onPointerCancel = (): void => this.stroke.dropDrag();
   private readonly onZoomed = (): void => this.stroke.rescale();
 
   constructor(private readonly deps: FogGestureDeps) {
@@ -39,6 +41,7 @@ export class FogGesture {
     viewport.on('pointermove', this.onPointerMove);
     viewport.on('pointerup', this.onPointerUp);
     viewport.on('pointerupoutside', this.onPointerUp);
+    viewport.on('pointercancel', this.onPointerCancel);
     viewport.on('zoomed', this.onZoomed);
     // The ring goes when the pointer leaves the canvas.
     deps.canvas().addEventListener('pointerleave', this.onPointerLeave);
@@ -115,6 +118,7 @@ export class FogGesture {
     viewport.off('pointermove', this.onPointerMove);
     viewport.off('pointerup', this.onPointerUp);
     viewport.off('pointerupoutside', this.onPointerUp);
+    viewport.off('pointercancel', this.onPointerCancel);
     viewport.off('zoomed', this.onZoomed);
     canvas().removeEventListener('pointerleave', this.onPointerLeave);
     this.stroke.destroy();

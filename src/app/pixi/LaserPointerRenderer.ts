@@ -97,6 +97,8 @@ export class LaserPointerRenderer {
     viewport.on('pointermove', this.onPointerMove);
     viewport.on('pointerup', this.onPointerUp);
     viewport.on('pointerupoutside', this.onPointerUpOutside);
+    // A press the gesture layer takes back ends the beam as a release off the map does
+    viewport.on('pointercancel', this.onPointerUpOutside);
     // Scroll-pan, pinch and decelerate move the world under a stationary pointer
     viewport.on('moved', this.onViewportMoved);
 
@@ -306,6 +308,7 @@ export class LaserPointerRenderer {
     this.viewport.off('pointermove', this.onPointerMove);
     this.viewport.off('pointerup', this.onPointerUp);
     this.viewport.off('pointerupoutside', this.onPointerUpOutside);
+    this.viewport.off('pointercancel', this.onPointerUpOutside);
     this.viewport.off('moved', this.onViewportMoved);
     this.canvasEl.removeEventListener('mouseleave', this.onCanvasLeave);
 

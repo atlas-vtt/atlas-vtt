@@ -1,6 +1,6 @@
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../../storeFactory';
-import { beginHistoryTransaction, endHistoryTransaction, runHistoryTransaction } from '../../stores/history';
+import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction, runHistoryTransaction } from '../../stores/history';
 import type { WallRenderer } from './WallRenderer';
 import type { Point } from '../../types/visionTypes';
 import type { WallSegment, WallType } from '../../types/wallTypes';
@@ -99,6 +99,16 @@ export class WallInteraction {
     const drag = this.drag;
     this.endDrag();
     return drag && !drag.moved && drag.plain ? drag.joint : null;
+  }
+
+  /** The press that holds a joint is lost: the joint goes back where it was taken from, and no undo step is left. */
+  cancelDrag(): void {
+    const drag = this.drag;
+    this.drag = null;
+    if (!drag?.moved) return;
+    const state = this.store.getState();
+    for (const end of drag.ends) state.updateWall(end.wallId, { [end.end]: drag.joint });
+    abandonHistoryTransaction(this.store);
   }
 
   private endDrag(): void {

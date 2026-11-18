@@ -185,6 +185,17 @@ export class FogStroke {
     this.rooms.forget();
   }
 
+  /** The press of a drag is lost: the drag goes without a trace and the fog shows as the store holds it. A polygon between its clicks stays. */
+  dropDrag(): void {
+    this.rooms.forget();
+    if (!this.drag.active) return;
+    this.drag.cancel();
+    this.outcome.end();
+    this.keys.release();
+    this.snapping.clear();
+    this.deps.host.showCommitted();
+  }
+
   /** Ends what is under way without committing it; the picture is the caller's to draw. */
   cancel(): void {
     this.drag.cancel();

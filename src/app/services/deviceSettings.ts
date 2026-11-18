@@ -210,3 +210,47 @@ export function saveGmFogOpacity(storage: DeviceStorage, opacity: number): void 
     console.error('[Atlas] Could not save the fog opacity of this device', error);
   }
 }
+
+/** A pen has touched a map on this device: `seen`, never a falsy value Obsidian would drop. */
+export const PEN_SEEN_STORAGE_KEY = 'atlas-vtt:pen-seen';
+/** What a finger does in a drawing tool on a device with a pen: `tool` or `pan`. */
+export const FINGER_USE_STORAGE_KEY = 'atlas-vtt:finger-use';
+
+/** Whether a finger in a drawing tool is the tool, as the pen is, or pans the map and leaves drawing to the pen. */
+export type FingerUse = 'tool' | 'pan';
+
+export function loadPenSeen(storage: DeviceStorage): boolean {
+  try {
+    return storage.loadLocalStorage(PEN_SEEN_STORAGE_KEY) === 'seen';
+  } catch (error) {
+    console.error('[Atlas] Could not read whether this device has a pen', error);
+    return false;
+  }
+}
+
+export function savePenSeen(storage: DeviceStorage): void {
+  try {
+    storage.saveLocalStorage(PEN_SEEN_STORAGE_KEY, 'seen');
+  } catch (error) {
+    console.error('[Atlas] Could not save that this device has a pen', error);
+  }
+}
+
+/** What fingers do on this device, or null when it was never chosen. */
+export function loadFingerUse(storage: DeviceStorage): FingerUse | null {
+  try {
+    const stored: unknown = storage.loadLocalStorage(FINGER_USE_STORAGE_KEY);
+    return stored === 'tool' || stored === 'pan' ? stored : null;
+  } catch (error) {
+    console.error('[Atlas] Could not read what fingers do on this device', error);
+    return null;
+  }
+}
+
+export function saveFingerUse(storage: DeviceStorage, use: FingerUse): void {
+  try {
+    storage.saveLocalStorage(FINGER_USE_STORAGE_KEY, use);
+  } catch (error) {
+    console.error('[Atlas] Could not save what fingers do on this device', error);
+  }
+}

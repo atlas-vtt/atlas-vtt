@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { getHistoryStore } from '../../src/app/stores/history';
 import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { EventSystem } from 'pixi.js';
@@ -56,6 +57,38 @@ describe('WallEditor', () => {
     expect(editor.pointerDown({ x: 100, y: 100 }, false, false)).toBe(true);
     editor.pointerMove({ x: 140, y: 160 });
     expect(store.getState().objects.walls[wall]?.p1).toEqual({ x: 140, y: 160 });
+  });
+
+  it('puts a dragged wall end back when its press is lost, and leaves no undo step', () => {
+    const { editor, store, wall } = setup();
+    const steps = (): number => getHistoryStore(store)?.getState().pastStates.length ?? 0;
+    const before = steps();
+    editor.pointerDown({ x: 100, y: 100 }, false, false);
+    editor.pointerMove({ x: 140, y: 160 });
+    editor.pointerCancel();
+    expect(store.getState().objects.walls[wall]?.p1).toEqual({ x: 100, y: 100 });
+    expect(steps()).toBe(before);
+    // The end is let go of: a move after it drags nothing
+    editor.pointerMove({ x: 200, y: 200 });
+    expect(store.getState().objects.walls[wall]?.p1).toEqual({ x: 100, y: 100 });
+  });
+
+  it('drops a wall drawn freehand when its press is lost, and keeps a chain placed corner by corner', () => {
+    const { editor, store, bus } = setup();
+    const walls = (): number => Object.keys(store.getState().objects.walls).length;
+    bus.emit('wall-mode-changed', 'freeform');
+    editor.pointerDown({ x: 400, y: 400 }, false, false);
+    editor.pointerMove({ x: 440, y: 420 });
+    editor.pointerMove({ x: 480, y: 460 });
+    editor.pointerCancel();
+    editor.pointerUp();
+    expect(walls()).toBe(1);
+    // The same stroke, released: its walls are there
+    editor.pointerDown({ x: 400, y: 400 }, false, false);
+    editor.pointerMove({ x: 440, y: 420 });
+    editor.pointerMove({ x: 480, y: 460 });
+    editor.pointerUp();
+    expect(walls()).toBeGreaterThan(1);
   });
 
   // Whoever hides the layer ends what was under way (`afterVisibilityChange`); the editor itself
