@@ -1,4 +1,5 @@
 import { App, WorkspaceLeaf, TFile, ItemView, Keymap, MarkdownRenderer, MarkdownView, Component, setIcon } from 'obsidian';
+import { visibleViewport } from '../host/visibleViewport';
 import { createPinButton, showPinState, startPreviewWindowDrag, type PreviewWindowReach } from './previewWindowControls';
 import { getActiveWorkspaceLeaf, suppressActiveLeaf } from '../utils/embeddedLeafFocus';
 import { runInBackground } from '../utils/backgroundTask';
@@ -526,10 +527,10 @@ export class NotePreviewWindow {
     // Get min/max dimensions
     const computedStyle = getComputedStyle(this.element);
     const minWidth = parseInt(computedStyle.minWidth, 10) || 150;
-    const maxWidth = parseInt(computedStyle.maxWidth, 10) || window.innerWidth;
+    const maxWidth = parseInt(computedStyle.maxWidth, 10) || visibleViewport(window).right;
     // Use a reasonable minHeight, could also be from CSS if defined for the element directly
     const minHeight = parseInt(computedStyle.minHeight, 10) || 100; 
-    const maxHeight = parseInt(computedStyle.maxHeight, 10) || window.innerHeight;
+    const maxHeight = parseInt(computedStyle.maxHeight, 10) || visibleViewport(window).bottom;
 
     // Store pre-clamp dimensions to check if clamping occurred
     const originalNewWidth = newWidth;

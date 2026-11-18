@@ -20,7 +20,7 @@ $clear-button: $button-height-s;
 // moves nothing above the change.
 .atlas-edit-token-modal {
   width: min(880px, 100%);
-  max-height: min(85vh, calc(100% - var(--atlas-anchored-top, 0px)));
+  max-height: min(#{atlas-view-height(85)}, calc(100% - var(--atlas-anchored-top, 0px)));
   margin-block: var(--atlas-anchored-top, auto) auto;
   container-type: inline-size;
 }

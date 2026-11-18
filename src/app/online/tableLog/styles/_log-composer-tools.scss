@@ -179,7 +179,7 @@ $composer-control: 28px;
     display: flex;
     flex-direction: column;
     gap: $spacing-s;
-    max-height: 45vh;
+    max-height: #{atlas-view-height(45)};
     padding: $spacing-s;
     border: $border-width-s solid $log-hairline;
     background: var(--background-secondary);

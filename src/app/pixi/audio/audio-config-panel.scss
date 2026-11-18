@@ -5,7 +5,7 @@
   position: fixed;
   z-index: 10000;
   width: 320px;
-  max-width: 90vw;
+  max-width: #{atlas-view-width(90)};
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
   @include atlas-panel-radius($surface-radius, 1px);

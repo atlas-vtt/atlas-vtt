@@ -29,8 +29,8 @@
   left: $log-edge;
   top: 50%;
   transform: translateY(-50%);
-  width: min(#{$log-width}, calc(100vw - 2 * #{$log-edge}));
-  height: 80vh;
+  width: min(#{$log-width}, calc(#{atlas-view-width()} - 2 * #{$log-edge}));
+  height: #{atlas-view-height(80)};
   gap: $surface-inset;
   padding: $surface-inset;
   z-index: $z-dropdown;

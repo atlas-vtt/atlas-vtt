@@ -11,7 +11,7 @@ $widget-bar-offset: $spacing-s;
   position: fixed;
   top: $widget-bar-offset;
   right: $widget-bar-offset;
-  max-width: calc(100vw - 2 * #{$widget-bar-offset});
+  max-width: calc(#{atlas-view-width()} - 2 * #{$widget-bar-offset});
   z-index: 50; // below the asset manager (100)
   pointer-events: none;
   // Slides clear of the window's buttons while in use (useClearOfWindowControls).

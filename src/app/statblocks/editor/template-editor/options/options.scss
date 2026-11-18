@@ -31,7 +31,7 @@ $options-width: 320px;
     @include atlas-panel-radius($surface-radius);
     box-sizing: border-box;
     width: $options-width;
-    max-width: calc(100vw - #{2 * $spacing-l});
+    max-width: calc(#{atlas-view-width()} - #{2 * $spacing-l});
     box-shadow: $shadow-md;
     // It grows out of the side its tile is on.
     transform-origin: top right;

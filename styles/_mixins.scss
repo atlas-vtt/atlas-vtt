@@ -4,6 +4,7 @@
 // Reusable style patterns built on design tokens.
 // Import _tokens.scss before this file.
 
+@forward 'viewport';
 @use 'tokens' as *;
 
 // ── Surfaces ─────────────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo, useLayoutEffect } from 'react';
+import { visibleViewport } from '../../host/visibleViewport';
 import { createPortal, flushSync } from 'react-dom';
 import { TFile, App } from 'obsidian';
 import { LinkedStatblock } from '../../statblocks/render/LinkedStatblock';
@@ -67,8 +68,7 @@ function calculatePreviewPosition(
   preferredSide: 'left' | 'right' = 'left',
   gaps: PreviewEdgeGaps = { block: VIEWPORT_PADDING, inline: VIEWPORT_PADDING },
 ): React.CSSProperties {
-  const viewportHeight = window.innerHeight;
-  const viewportWidth = window.innerWidth;
+  const { right: viewportWidth, bottom: viewportHeight } = visibleViewport(window);
 
   // The window alone limits the height. A limit taken from the room under the preview's own top,
   // which follows its measured height, held a preview placed against the lower edge at the height

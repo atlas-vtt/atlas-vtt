@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
+import { visibleViewport } from '../../host/visibleViewport';
 import { useStableCallback } from './useStableCallback';
 
 export interface PanelPosition {
@@ -34,7 +35,8 @@ export interface DraggablePosition {
 export function areaOf(panel: HTMLElement): PanelArea {
   const parent = panel.offsetParent;
   if (parent instanceof HTMLElement) return { width: parent.clientWidth, height: parent.clientHeight };
-  return { width: panel.win.innerWidth, height: panel.win.innerHeight };
+  const seen = visibleViewport(panel.win);
+  return { width: seen.right, height: seen.bottom };
 }
 
 function clampToArea(panel: HTMLElement, position: PanelPosition, margin: number): PanelPosition {

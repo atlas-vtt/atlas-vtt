@@ -819,13 +819,21 @@ export class AtlasView extends FileView {
     return this._serviceManager.getRendererService().getRenderer();
   }
 
-  /** Sizes the PIXI canvas to the pane whenever the pane changes size. */
+  /**
+   * Sizes the PIXI canvas to the pane whenever the pane changes size, and tells the pane's own size
+   * to everything inside it (`atlas-view-height()` / `atlas-view-width()` in `_viewport.scss`), which
+   * is sized by the view and never by the window. A covered pane measures nothing and keeps its size.
+   */
   private setupWindowResizeDetection(): void {
     this.stopResizeObserver?.();
     this.stopResizeObserver = observeResize([this.containerEl], () => {
       const currentWidth = this.containerEl.clientWidth;
       const currentHeight = this.containerEl.clientHeight;
       if (currentWidth === this.lastContainerWidth && currentHeight === this.lastContainerHeight) return;
+      if (currentWidth > 0 && currentHeight > 0) {
+        this.containerEl.style.setProperty('--atlas-view-width', `${currentWidth}px`);
+        this.containerEl.style.setProperty('--atlas-view-height', `${currentHeight}px`);
+      }
       this.lastContainerWidth = currentWidth;
       this.lastContainerHeight = currentHeight;
       this._serviceManager.getRendererService().resize(currentWidth, currentHeight);

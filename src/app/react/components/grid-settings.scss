@@ -24,8 +24,8 @@
 .atlas-grid-settings-modal {
   position: relative;
   width: 600px;
-  max-width: 90vw;
-  max-height: 90vh;
+  max-width: #{atlas-view-width(90)};
+  max-height: #{atlas-view-height(90)};
   background-color: var(--background-primary);
   @include atlas-panel-radius($surface-radius, 0px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -310,8 +310,8 @@
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
+  width: #{atlas-view-width()};
+  height: #{atlas-view-height()};
   background-color: var(--background-primary);
   z-index: 9999;
   overflow: hidden;

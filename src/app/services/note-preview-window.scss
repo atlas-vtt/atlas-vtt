@@ -19,11 +19,11 @@
   flex-direction: column;
   overflow: hidden;
   width: 400px;
-  height: 50vh;
+  height: #{atlas-view-height(50)};
   min-width: 150px;
-  max-width: 90vw;
+  max-width: #{atlas-view-width(90)};
   min-height: 75px;
-  max-height: 90vh;
+  max-height: #{atlas-view-height(90)};
   padding: $spacing-s;
   gap: $spacing-s;
 

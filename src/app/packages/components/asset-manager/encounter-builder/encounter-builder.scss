@@ -478,7 +478,7 @@ input.atlas-encounter-tray__name-input {
 }
 
 .atlas-encounter-tray__overflow-menu {
-  max-height: min(50vh, 420px);
+  max-height: min(#{atlas-view-height(50)}, 420px);
   padding: $spacing-xs;
   overflow-y: auto;
 }

@@ -23,7 +23,7 @@ $tone-size: 22px;
   align-items: stretch;
   box-sizing: border-box;
   width: 344px;
-  max-width: calc(100vw - #{$spacing-l});
+  max-width: calc(#{atlas-view-width()} - #{$spacing-l});
   padding: $spacing-m;
   pointer-events: auto;
   transform-origin: var(--atlas-sound-caret) 0;

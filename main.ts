@@ -112,6 +112,7 @@ import { showNotice } from './src/app/ui/notice';
 import { deviceSupport } from './src/app/platform/deviceSupport';
 import { isDesktopApp } from './src/app/platform/desktopOnly';
 import { registerPointerAttribute } from './src/app/platform/pointerAttribute';
+import { registerKeyboardViewport } from './src/app/platform/keyboardViewport';
 import { registerAudioUnlock } from './src/app/plugin/audioUnlock';
 import { registerUnsupportedDevice } from './src/app/plugin/unsupportedDevice';
 
@@ -161,6 +162,8 @@ export default class AtlasVTTPlugin extends Plugin {
     // How large Atlas' controls are follows the pointer, in every window; sound starts with the first tap or key.
     registerPointerAttribute(this);
     registerAudioUnlock(this);
+    // A tablet's keyboard rises over the window: what is placed and typed into stays in the part still seen.
+    registerKeyboardViewport(this);
     // Record errors from the very start so startup problems can be reported too.
     const errorLog = new AtlasErrorLog();
     this.register(errorLog.attach());

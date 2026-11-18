@@ -346,7 +346,7 @@ body.theme-light {
       > .atlas-widget-bar > .atlas-widget-container {
         $shadow-room: 120px;
 
-        max-height: 50vh;
+        max-height: #{atlas-view-height(50)};
         overflow: hidden auto;
         overscroll-behavior: contain;
         @include atlas-scrollbar-none;

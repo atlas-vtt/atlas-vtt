@@ -25,7 +25,7 @@ $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%,
   top: 0;
   right: 0;
   width: $dice-roll-width;
-  max-width: calc(100vw - 2 * #{$spacing-s});
+  max-width: calc(#{atlas-view-width()} - 2 * #{$spacing-s});
   z-index: $z-atlas-dice-rolls;
   pointer-events: none;
   @include atlas-flex-col($spacing-s);

@@ -1,4 +1,5 @@
 import React from 'react';
+import { visibleViewport } from '../host/visibleViewport';
 import { createRoot, type Root } from 'react-dom/client';
 import { App as ObsidianApp, setIcon } from 'obsidian';
 import { LinkedStatblock, type LinkedStatblockProps } from '../statblocks/render/LinkedStatblock';
@@ -211,8 +212,7 @@ export class StatblockPreviewWindow {
   setPosition(x: number, y: number) {
     if (!this.element) return;
 
-    const winWidth = this.element.win.innerWidth;
-    const winHeight = this.element.win.innerHeight;
+    const { right: winWidth, bottom: winHeight } = visibleViewport(this.element.win);
     // A theme that draws around the preview asks for more room than this.
     const gaps = previewEdgeGaps(this.element.ownerDocument, 20);
     // The controls hang above the window, so they need room above it too.

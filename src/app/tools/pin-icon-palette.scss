@@ -29,7 +29,7 @@ $flyout-enter: 160ms;
   // Seventy-six icons are taller than many windows: the groups scroll, the name and the search stay.
   .pin-place-flyout {
     box-sizing: border-box;
-    max-height: min(560px, calc(100vh - 150px));
+    max-height: min(560px, calc(#{atlas-view-height()} - 150px));
   }
 
   // As wide as its rows of icons whatever a search leaves of them, so the panel keeps its width.

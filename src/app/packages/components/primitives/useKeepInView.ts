@@ -1,4 +1,5 @@
 import { getDomHost } from '../../../host/dom';
+import { visiblePartOf, visibleViewport } from '../../../host/visibleViewport';
 import type React from 'react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { observeResize } from '../../../utils/observeResize'
@@ -13,13 +14,13 @@ export interface KeepInView {
 
 /**
  * The view a popover must stay inside: Obsidian clips a leaf's content
- * (`contain: strict` on `.workspace-leaf`), so the closest leaf, else the window.
+ * (`contain: strict` on `.workspace-leaf`), so the closest leaf, else the window;
+ * of either, the part an on-screen keyboard leaves in sight.
  */
 export function viewFrame(element: HTMLElement): ViewFrame {
-  const leaf = element.closest('.workspace-leaf')
-  if (leaf) return leaf.getBoundingClientRect()
   const win = getDomHost().ownerWindow(element)
-  return { left: 0, top: 0, right: win.innerWidth, bottom: win.innerHeight }
+  const leaf = element.closest('.workspace-leaf')
+  return leaf ? visiblePartOf(leaf.getBoundingClientRect(), win) : visibleViewport(win)
 }
 
 /** Whether an `overflow` value cuts what lies outside the box (an unset one does not). */
