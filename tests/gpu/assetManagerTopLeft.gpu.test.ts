@@ -116,7 +116,10 @@ describe('the asset manager\'s top left', () => {
       await show(theme, true);
       const tabs = Array.from(document.querySelectorAll<HTMLElement>('.atlas-asset-manager-tabs .atlas-tab-button'));
       const armarium = tabs.at(-1)!;
-      expect(armarium.textContent).toBe('Armarium');
+      expect(armarium.textContent).toBe('');
+      expect(armarium.getAttribute('aria-label')).toBe('Armarium');
+      const square = armarium.getBoundingClientRect();
+      expect(Math.abs(square.width - square.height)).toBeLessThanOrEqual(0.5);
       expect(armarium.getAttribute('aria-current')).toBe('page');
       expect(document.querySelectorAll('.atlas-tab-button.atlas-active')).toHaveLength(1);
       for (const tab of tabs) {
