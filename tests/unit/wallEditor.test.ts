@@ -7,7 +7,7 @@ import { Viewport } from 'pixi-viewport';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';
 import { GENERIC_LIGHT_PRESETS } from '../../src/app/gameSystems/lightPresets/generic';
 import { lightPresetsOnMap } from '../../src/app/lighting/lightPresetChoice';
-import { openShapeOf } from '../../src/app/input/openShape';
+import { openShapeOf } from '../../src/app/pixi/utils/openShape';
 import { watchInput } from '../../src/app/packages/components/primitives/lastInput';
 import { WallEditor } from '../../src/app/pixi/lighting/WallEditor';
 import { showWallMenu } from '../../src/app/pixi/lighting/lightingMenus';

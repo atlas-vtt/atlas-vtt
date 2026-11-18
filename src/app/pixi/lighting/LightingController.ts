@@ -44,7 +44,7 @@ import { WallEditor } from './WallEditor';
 import type { LightingQualitySource } from '../../lighting/lightingQuality';
 import { levelObjects } from '../../levels/levelObjects';
 import { lightingTapPlacing } from '../../lighting/lightingTool';
-import type { TapPlacing } from '../../input/tapPlacing';
+import type { TapPlacing } from '../../types/tapPlacing';
 import { glideWayIsClear } from '../../lighting/glideWay';
 import type { ShownPlaces } from '../../lighting/shownPlaces';
 import { followShownPlaces } from '../../lighting/shownTokens';

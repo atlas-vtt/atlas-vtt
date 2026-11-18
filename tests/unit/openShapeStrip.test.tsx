@@ -2,7 +2,7 @@
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { OPEN_SHAPE_CONTROL, OpenShape, isOpenShapeControl, openShapeOf } from '../../src/app/input/openShape';
+import { OPEN_SHAPE_CONTROL, OpenShape, isOpenShapeControl, openShapeOf } from '../../src/app/pixi/utils/openShape';
 import { PlacementHand } from '../../src/app/pixi/tokenPlacement/placementHand';
 import type { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
 import { OpenShapeStrip } from '../../src/app/react/components/OpenShapeStrip';

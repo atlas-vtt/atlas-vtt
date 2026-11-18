@@ -1,6 +1,6 @@
 import type { Viewport } from 'pixi-viewport';
 import { isFogTool } from '../../fog/fogToolChoices';
-import type { TapPlacing } from '../../input/tapPlacing';
+import type { TapPlacing } from '../../types/tapPlacing';
 import type { FingerUse } from '../../services/deviceSettings';
 import { getHistoryStore } from '../../stores/history';
 import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';

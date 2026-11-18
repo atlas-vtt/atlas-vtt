@@ -1,4 +1,4 @@
-import { openShapeOf } from '../../input/openShape';
+import { openShapeOf } from '../utils/openShape';
 import { Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand';

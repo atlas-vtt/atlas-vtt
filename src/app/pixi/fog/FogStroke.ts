@@ -15,7 +15,7 @@ import type { ViewAtlasState } from '../../storeFactory';
 import type { MapRect } from '../../grid/cellNumbering';
 import type { Point } from '../../types/visionTypes';
 import type { FogShape } from '../../fog/fogToolChoices';
-import { openShapeOf, type OpenShape, type OpenShapeControls } from '../../input/openShape';
+import { openShapeOf, type OpenShape, type OpenShapeControls } from '../utils/openShape';
 import { DEFAULT_MAP_HOTKEYS, matchesHotkey } from '../../keyboard/mapHotkeys';
 import { STROKE_COLORS, type StrokeShape } from '../../tools/shapeStroke';
 import type { LayerVisibility } from '../playerSafeFrame';

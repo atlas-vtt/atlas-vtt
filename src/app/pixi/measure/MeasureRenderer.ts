@@ -1,4 +1,4 @@
-import { openShapeOf } from '../../input/openShape';
+import { openShapeOf } from '../utils/openShape';
 import type { Container } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand/vanilla';

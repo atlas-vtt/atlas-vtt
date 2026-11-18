@@ -5,7 +5,7 @@ import type { Point } from '../../types/visionTypes';
 import { isHandled } from '../utils/handledEvents';
 import { MEASURE_DRAG_THRESHOLD, MeasureGesture, type GestureResult } from './measureGesture';
 import { doubleClickSlack, dragThreshold } from '../utils/pointerReach';
-import { isOpenShapeControl, type OpenShape, type OpenShapeControls } from '../../input/openShape';
+import { isOpenShapeControl, type OpenShape, type OpenShapeControls } from '../utils/openShape';
 
 /** A press this soon after the click that ended a measurement, in the same place, is that click's second (a double click) and measures nothing. */
 const DOUBLE_CLICK_MS = 500;

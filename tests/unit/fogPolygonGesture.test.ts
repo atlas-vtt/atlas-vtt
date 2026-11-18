@@ -3,7 +3,7 @@ import { Container, Point, type FederatedPointerEvent, type Graphics, type Point
 import type { Viewport } from 'pixi-viewport';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fogCoverage } from '../../src/app/fog/fogCoverage';
-import { openShapeOf } from '../../src/app/input/openShape';
+import { openShapeOf } from '../../src/app/pixi/utils/openShape';
 import { FogGesture } from '../../src/app/pixi/fog/FogGesture';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';

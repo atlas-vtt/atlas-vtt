@@ -6,7 +6,7 @@ import { hearPressesLast, isHandled } from '../utils/handledEvents';
 import { isPrimaryPress } from '../utils/pointerButtons';
 import { DRAW_DRAG_THRESHOLD, DrawGesture, sweeps, type DrawGestureResult, type DrawPointer, type GestureMode } from './drawGesture';
 import { doubleClickSlack, dragThreshold } from '../utils/pointerReach';
-import { isOpenShapeControl, type OpenShape, type OpenShapeControls } from '../../input/openShape';
+import { isOpenShapeControl, type OpenShape, type OpenShapeControls } from '../utils/openShape';
 
 /** A press this soon after the click that ended a shape, in the same place, is that click's second (a double click) and draws nothing. */
 const DOUBLE_CLICK_MS = 500;

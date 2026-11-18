@@ -1,6 +1,6 @@
 import React, { useSyncExternalStore } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { OPEN_SHAPE_CONTROL, openShapeOf } from '../../input/openShape';
+import { OPEN_SHAPE_CONTROL, openShapeOf } from '../../pixi/utils/openShape';
 import { Button } from '../../packages/components/primitives/button';
 import { useCoarsePointer } from '../../platform/useCoarsePointer';
 import { MOTION_FAST_MS, PANEL_ENTER_MS, easeOut } from '../../utils/motion';

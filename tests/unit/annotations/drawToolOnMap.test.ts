@@ -4,7 +4,7 @@ import { MAX_DRAWINGS, MAX_HOLES, MAX_TEXTS } from '../../../src/app/annotations
 import { eraserRadius, stampSize, strokeWidth, textHeight } from '../../../src/app/annotations/drawSizes';
 import { inFill } from '../../../src/app/annotations/lineMath';
 import { FONT_FAMILIES, TEXT_PLATE } from '../../../src/app/annotations/madeText';
-import { openShapeOf } from '../../../src/app/input/openShape';
+import { openShapeOf } from '../../../src/app/pixi/utils/openShape';
 import { markHandled, resetHandled } from '../../../src/app/pixi/utils/handledEvents';
 import { getHistoryStore } from '../../../src/app/stores/history';
 import type { DrawingStroke, TextElement } from '../../../src/app/types';

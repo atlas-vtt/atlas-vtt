@@ -21,7 +21,7 @@ import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFa
 import { getHistoryStore } from '../../src/app/stores/history';
 import type { Character } from '../../src/app/types';
 import { EventEmitter } from '../../src/app/utils/typedEmitter';
-import type { TapPlacing } from '../../src/app/input/tapPlacing';
+import type { TapPlacing } from '../../src/app/types/tapPlacing';
 import type { FingerUse } from '../../src/app/services/deviceSettings';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { mapImageViewOf } from './../helpers/fakeMapImageView';

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Container } from 'pixi.js';
-import { openShapeOf } from '../../src/app/input/openShape';
+import { openShapeOf } from '../../src/app/pixi/utils/openShape';
 import { SETTLE_MS } from '../../src/app/pixi/input/touchGestures';
 import { FogGesture } from '../../src/app/pixi/fog/FogGesture';
 import { LightingController } from '../../src/app/pixi/lighting/LightingController';

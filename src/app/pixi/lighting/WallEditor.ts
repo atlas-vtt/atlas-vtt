@@ -17,7 +17,7 @@ import { splitWall } from './wallEdits';
 import { chainEndingAt, wallEndNear, wallEndReach } from './wallEnds';
 import { fingerReaches } from '../utils/pointerReach';
 import { levelObjects } from '../../levels/levelObjects';
-import { openShapeOf, type OpenShape, type OpenShapeControls } from '../../input/openShape';
+import { openShapeOf, type OpenShape, type OpenShapeControls } from '../utils/openShape';
 
 interface SegmentEvent { p1: Point; p2: Point; type: WallType; chainId: string }
 

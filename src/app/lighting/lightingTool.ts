@@ -1,4 +1,4 @@
-import type { TapPlacing } from '../input/tapPlacing';
+import type { TapPlacing } from '../types/tapPlacing';
 
 /** How the lighting tool draws walls: corner by corner, or as a stroke. */
 export type WallToolMode = 'point-to-point' | 'freeform';
