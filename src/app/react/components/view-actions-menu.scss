@@ -27,6 +27,12 @@
     opacity: 1;
     transform: scale(1);
   }
+
+  // The pointer's arrival shows it (`ViewActionsMenu`); a touch screen has no arrival to wait for.
+  @include atlas-hover-reveal {
+    opacity: 1;
+    transform: scale(1);
+  }
   
   &:hover {
     background: rgba(0, 0, 0, 0.9);

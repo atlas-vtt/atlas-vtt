@@ -120,7 +120,7 @@ $embed-caption-height: calc(2 * #{$spacing-m} + 2.6em);
   }
 
   // Touch has no hover: the button always shows
-  @media (hover: none) {
+  @include atlas-hover-reveal {
     opacity: 1;
   }
 }

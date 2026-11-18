@@ -97,3 +97,9 @@ $level-padding: 6px;
 .atlas-level-switcher__level:focus-within .atlas-level-switcher__eye {
   visibility: visible;
 }
+
+@include atlas-hover-reveal {
+  .atlas-level-switcher__level .atlas-level-switcher__eye {
+    visibility: visible;
+  }
+}

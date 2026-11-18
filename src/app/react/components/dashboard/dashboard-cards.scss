@@ -121,6 +121,12 @@
   opacity: 1;
 }
 
+@include atlas-hover-reveal {
+  .scene-card .scene-card__play {
+    opacity: 1;
+  }
+}
+
 // A loading card is shapes alone: the group's sheen passes over the page, not over a card surface.
 .atlas-skeleton-group .dashboard-card {
   background: transparent;

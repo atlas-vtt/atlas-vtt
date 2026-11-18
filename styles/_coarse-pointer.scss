@@ -18,6 +18,7 @@
 //   --atlas-input-height-m         36 px   44 px    $input-height-m
 //   --atlas-close-button-size      30 px   44 px    $close-button-size: the × of every panel
 //   --atlas-ctx-row-height         28 px   44 px    context menu rows (atlas-context-menu.scss)
+//   --atlas-tool-chevron-width     20 px   32 px    the chevron beside a tool that has options
 //   --atlas-scene-tab-height       28 px   40 px    scene tabs (scene-tab-bar.scss)
 //   --atlas-scene-tab-action       16 px   28 px    a scene tab's eye and ×
 //   --atlas-resize-edge            6–8 px  16 px    the edges that resize a panel (corners twice that)
@@ -35,6 +36,7 @@ body[data-atlas-pointer='coarse'] {
   --atlas-input-height-m: #{$touch-target};
   --atlas-close-button-size: #{$touch-target};
   --atlas-ctx-row-height: #{$touch-target};
+  --atlas-tool-chevron-width: 32px;
   --atlas-scene-tab-height: 40px;
   --atlas-scene-tab-action: 28px;
   --atlas-resize-edge: 16px;

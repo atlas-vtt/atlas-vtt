@@ -845,6 +845,31 @@
   }
 }
 
+/// What shows only under the pointer (a card's menu, a row's ×, a tab's controls) has no pointer to wait for on a
+/// touch screen. The content is the shown state: it holds where nothing can hover and under a coarse pointer.
+/// Inside a rule the content is that rule's declarations; at the root of a file, or to name another element, whole
+/// rules, written as the rule that shows on hover is, less its `:hover`, so they outweigh the hidden state as it does.
+@mixin atlas-hover-reveal {
+  @media (hover: none) {
+    @content;
+  }
+
+  @include atlas-coarse-pointer {
+    @content;
+  }
+}
+
+/// Hover styles, only where the pointer can hover: a touch screen leaves `:hover` on what was tapped last, so a tint
+/// meant for the pointer would stay on it. A device that hovers gets the same rule as without the mixin.
+/// @param {String} $selector - the hovered state, `&` being the rule the mixin is in
+@mixin atlas-hover($selector: '&:hover') {
+  @media (hover: hover) {
+    #{$selector} {
+      @content;
+    }
+  }
+}
+
 // ── Checkbox hit area ───────────────────────────────────────────────────────
 
 /// Under a coarse pointer the native checkboxes inside take a 44 px hit area (WCAG 2.5.5): a `::before` around Obsidian's

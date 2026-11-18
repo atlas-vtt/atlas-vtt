@@ -198,6 +198,11 @@
 .atlas-token-card__remove {
   right: $spacing-s;
 
+  // A touch screen has no hover to show it with.
+  @include atlas-hover-reveal {
+    opacity: 1;
+  }
+
   &.btn,
   &.btn--icon {
     width: 22px;

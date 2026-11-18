@@ -726,7 +726,8 @@ body.theme-light {
 
   // Muted until hovered; filled while its menu is open. Never takes the tool's accent.
   #{$toolbars} .atlas-tool-group button.btn.atlas-tool-group__chevron {
-    width: $icon-m;
+    // Wider under a finger (`_coarse-pointer.scss`).
+    width: var(--atlas-tool-chevron-width, #{$icon-m});
     height: $button-height-l;
     padding: 0;
     color: var(--text-muted);

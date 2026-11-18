@@ -288,7 +288,7 @@
 }
 
 // Where no pointer hovers (Obsidian on a tablet), what hover shows stays shown; right-click is no road there.
-@media (hover: none) {
+@include atlas-hover-reveal {
   .atlas-sound-pane {
     .atlas-sound-music__quiet,
     .atlas-sound-track__grip,

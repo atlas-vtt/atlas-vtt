@@ -73,6 +73,11 @@
   .atlas-asset-card:hover &:active {
     transform: scale(0.94);
   }
+
+  // A touch screen has no hover: the button stands on every card.
+  @include atlas-hover-reveal {
+    display: inline-flex;
+  }
 }
 
 .atlas-asset-card-tags__count {
