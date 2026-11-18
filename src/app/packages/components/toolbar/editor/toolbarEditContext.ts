@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { ContextMenuEntry } from '../../../../react/root/ContextMenuContext'
-import type { ToolbarControlId, ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
+import type { SideBarId, ToolbarControlId, ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
 import type { ToolbarEditPlace } from './toolbarEditMenus'
 import type { ToolbarMove } from './toolbarMoves'
 import type { ToolbarDragControls } from './useToolbarDrag'
@@ -19,8 +19,10 @@ export type ToolbarFocusTarget = { group: ToolbarHandleGroup; id: string } | 'do
 export interface ToolbarEditApi extends ToolbarDragControls {
   /** The bar's controls in order: shown and in "More tools", not hidden. Positions count these. */
   barIds: readonly ToolbarControlId[]
-  /** What the tray holds: the undo/redo bar first while it is hidden, then the hidden controls this view offers in their remembered order. */
+  /** What the tray holds: the hidden bars beside the toolbar first, then the hidden controls this view offers in their remembered order. */
   trayIds: readonly ToolbarUnitId[]
+  /** The bars beside the toolbar this view has, left to right; each has a slot in the tray. */
+  sideBars: readonly SideBarId[]
   /** The handle of each group that last had focus; it keeps the group's Tab stop. */
   current: Readonly<Record<ToolbarHandleGroup, string | null>>
   setCurrent: (group: ToolbarHandleGroup, id: string) => void

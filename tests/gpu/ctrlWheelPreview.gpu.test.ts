@@ -65,7 +65,7 @@ describe('the bottom row and Obsidian\'s font size', () => {
   it('keeps its size when Obsidian sets another root font size, as its Ctrl+wheel font action does', async () => {
     await mountToolbar();
     const measured = (): Record<string, Pick<Rect, 'width' | 'height'>> => Object.fromEntries(
-      ['.atlas-main-toolbar', '.atlas-undo-bar'].map((selector) => {
+      ['.atlas-main-toolbar', '.atlas-side-bar[data-side-bar="undo"]'].map((selector) => {
         const { width, height } = rectOf(query(selector));
         return [selector, { width, height }];
       }),

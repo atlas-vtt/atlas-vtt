@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { ROW_CLASS, START_CLASS } from '../../../../src/app/online/gm/dock/dockDom.ts';
+import { PLACE_CLASS, ROW_CLASS, START_CLASS } from '../../../../src/app/online/gm/dock/dockDom.ts';
 
 const VENDOR = path.resolve(fileURLToPath(new URL('../../../../', import.meta.url)));
 const read = (file: string): string => fs.readFileSync(path.join(VENDOR, file), 'utf8');
@@ -18,6 +18,10 @@ describe("Atlas's markup the control relies on", () => {
     expect(row).toContain(`className="${START_CLASS}"`);
     // The row measures the start slot, so the spacer's width reaches the toolbar's room.
     expect(row).toMatch(/observeResize\(\[row, startSlot, endSlot[,\]]/);
+  });
+
+  it('has its own place for the control, which the toolbar editor hides and shows', () => {
+    expect(read('src/app/react/components/OnlinePlaySlot.tsx')).toContain(`contentClassName="${PLACE_CLASS}"`);
   });
 
   it('has the token portrait the panel draws, and the bars the collapsed control stands level with', () => {

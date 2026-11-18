@@ -5,7 +5,7 @@ import { accountActions, MENU_WIDTH, renderMenu, type MenuActions } from './Conn
 import { campaignPick, type CampaignPick } from './campaignPicker.ts';
 import { DockButton } from './dockButton.ts';
 import type { DockDeps } from './dockDeps.ts';
-import { copyText, detached, isInsideControl, isPlaced, place, roomAbove, rowOf, BAR_GAP } from './dockDom.ts';
+import { copyText, detached, inOwnPlace, isInsideControl, isPlaced, place, roomAbove, rowOf, BAR_GAP } from './dockDom.ts';
 import { qrTableOf, tableFactsOf, viewFactsOf, type ViewStoreState } from './dockFacts.ts';
 import { CLOSED, close, closesDiceLog, escapeCloses, escapeClosesQr, keyStaysInControl, makesWay, open, outsidePressCloses, pressClosesQr, tableChanged, toggle, type DockState, type Surface, type TableFacts, type ViewFacts } from './dockState.ts';
 import { DockTooltip } from './dockTooltip.ts';
@@ -145,7 +145,7 @@ export class Dock {
   /** Puts the two nodes back into the row whenever Atlas rebuilt it; nothing while the view has no row. */
   private mount(): void {
     // Called on every change of the view's DOM: nothing to look up while both nodes stand.
-    if (this.root.isConnected && this.spacer.isConnected) return;
+    if (this.root.isConnected && (this.spacer.isConnected || inOwnPlace(this.root))) return;
     const row = rowOf(this.container);
     if (row === null || isPlaced(row, this.root, this.spacer)) return;
     place(row, this.root, this.spacer);

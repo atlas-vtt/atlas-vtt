@@ -116,7 +116,7 @@ export function expectSameBox(actual: Rect, expected: Rect): void {
 
 /** A control's handle on the bar (the undo/redo bar's own for it), or in the tray. */
 export const handle = (id: string, where: 'bar' | 'tray'): HTMLElement => {
-  const scope = where === 'tray' ? '.atlas-toolbar-tray' : id === 'undo' ? '.atlas-undo-bar' : '.atlas-main-toolbar';
+  const scope = where === 'tray' ? '.atlas-toolbar-tray' : id === 'undo' ? '.atlas-side-bar[data-side-bar="undo"]' : '.atlas-main-toolbar';
   return query(`${scope} .atlas-toolbar-handle[data-control="${id}"]`);
 };
 

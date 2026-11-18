@@ -2,7 +2,7 @@ import React, { useRef } from "react"
 import { motion } from "framer-motion"
 import { useStore } from "zustand"
 import { cn } from "src/utils/cn"
-import { UNDO_BAR_ID } from "../../../toolbar/toolbarCatalog"
+import type { SideBarId } from "../../../toolbar/toolbarCatalog"
 import { ToolbarEditContext, useToolbarEdit } from "./editor/toolbarEditContext"
 import { ToolbarEditStoreContext, useToolbarEditState } from "./editor/toolbarEditStore"
 import { ToolbarItemHandle } from "./editor/ToolbarItemHandle"
@@ -11,15 +11,17 @@ import { stopMapShortcuts } from "./editor/useToolbarKeyboard"
 import { useToolbarLayout } from "./useToolbarLayout"
 import { useChangedSinceCommit, useSlotPresence } from "./useSlotPresence"
 
-// An undo/redo bar outside a bottom row (tests) is never edited.
+// A side bar outside a bottom row (tests) is never edited.
 const LONE_BRIDGE = createToolbarRowBridge()
 
-interface UndoBarSlotProps {
-  /** The undo and redo buttons. */
+interface SideBarSlotProps {
+  id: SideBarId
+  /** The classes of the bar's own element, which holds its buttons. */
+  contentClassName: string
   children: React.ReactNode
 }
 
-function UndoBar({ children }: UndoBarSlotProps): React.ReactElement {
+function SideBar({ id, contentClassName, children }: SideBarSlotProps): React.ReactElement {
   const slotRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const edit = useToolbarEdit()
@@ -32,31 +34,32 @@ function UndoBar({ children }: UndoBarSlotProps): React.ReactElement {
   const pressed = useToolbarEditState(state => state.pressed)
   const layout = frozenLayout ?? liveLayout
   const flight = edit?.flight ?? null
-  const flying = flight?.id === UNDO_BAR_ID
-  const animate = useChangedSinceCommit(layout) || flying || drag?.id === UNDO_BAR_ID || settle?.id === UNDO_BAR_ID
-  const presence = useSlotPresence(slotRef, contentRef, !layout.hidden.has(UNDO_BAR_ID), { animate, delayMs: 0 })
-  const landing = settle?.id === UNDO_BAR_ID && settle.to === "bar"
+  const flying = flight?.id === id
+  const animate = useChangedSinceCommit(layout) || flying || drag?.id === id || settle?.id === id
+  const presence = useSlotPresence(slotRef, contentRef, !layout.hidden.has(id), { animate, delayMs: 0 })
+  const landing = settle?.id === id && settle.to === "bar"
 
   return (
     <motion.div
       ref={slotRef}
-      className="atlas-undo-bar"
+      className="atlas-side-bar"
+      data-side-bar={id}
       hidden={!presence.open}
       {...presence.attributes}
       {...(((landing && settle.travel) || (flying && flight.travel)) && { "data-settling": "" })}
-      {...(drag?.id === UNDO_BAR_ID && { "data-lifted": "" })}
-      {...(pressed === UNDO_BAR_ID && drag === null && { "data-pressed": "" })}
+      {...(drag?.id === id && { "data-lifted": "" })}
+      {...(pressed === id && drag === null && { "data-pressed": "" })}
       {...(landing && !settle.travel && { "data-revealing": "" })}
       {...(editing && { onKeyDown: stopMapShortcuts })}
       style={presence.style}
     >
       {editing && presence.open && (
-        <ToolbarItemHandle id={UNDO_BAR_ID} group="bar" tabIndex={edit.current.bar === UNDO_BAR_ID ? 0 : -1} />
+        <ToolbarItemHandle id={id} group="bar" tabIndex={edit.current.bar === id ? 0 : -1} />
       )}
-      {/* Always this element, so the buttons are never remounted when edit mode starts or ends. */}
+      {/* Always this element, so the bar's content is never remounted when edit mode starts or ends. */}
       <motion.div
         ref={contentRef}
-        className={cn("atlas-vtt-toolbar atlas-undo-redo-controls pointer-events-auto", editing && "is-editing")}
+        className={cn("atlas-side-bar__content pointer-events-auto", contentClassName, editing && "is-editing")}
         inert={editing}
         style={presence.contentStyle}
       >
@@ -67,22 +70,23 @@ function UndoBar({ children }: UndoBarSlotProps): React.ReactElement {
 }
 
 /**
- * The undo/redo bar's place left of the main toolbar. The toolbar editor
- * hides and shows the bar as one unit (`UNDO_BAR_ID` in the stored layout's
- * hidden list): while it is hidden it stays mounted, so its hotkeys keep
- * working, and its place takes no room, which the main toolbar's fit gets.
- * While the editor is open the bar is inert under a handle, as the toolbar's
- * tools are: it can be hidden from its menu or with Delete, or dragged into
- * the tray. It works through the editor MainToolbar publishes on the bottom
- * row (`ToolbarRowBridge`); it never joins the main toolbar's order.
+ * The place of a bar beside the main toolbar (the undo/redo bar, the keyboard
+ * shortcuts button, online play's button). The toolbar editor hides and shows
+ * each as one unit (its id in the stored layout's hidden list): while hidden it
+ * stays mounted, so its hotkeys keep working, and its place takes no room,
+ * which the main toolbar's fit gets. While the editor is open the bar is inert
+ * under a handle, as the toolbar's tools are: it can be hidden from its menu or
+ * with Delete, or dragged into the tray. It works through the editor MainToolbar
+ * publishes on the bottom row (`ToolbarRowBridge`); it never joins the main
+ * toolbar's order.
  */
-export function UndoBarSlot({ children }: UndoBarSlotProps): React.ReactElement {
+export function SideBarSlot(props: SideBarSlotProps): React.ReactElement {
   const bridge = useToolbarRowBridge() ?? LONE_BRIDGE
   const edit = useStore(bridge.edit, state => state.api)
   return (
     <ToolbarEditContext.Provider value={edit}>
       <ToolbarEditStoreContext.Provider value={bridge.editStore}>
-        <UndoBar>{children}</UndoBar>
+        <SideBar {...props} />
       </ToolbarEditStoreContext.Provider>
     </ToolbarEditContext.Provider>
   )

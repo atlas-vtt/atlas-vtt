@@ -16,6 +16,7 @@
 **General**
 - The documentation opens inside Atlas: choose Documentation in the command palette to read the guides beside the map
 - An Atlas VTT button in Obsidian's ribbon opens the start page, and "Open scene browser" is now called "Open asset manager"
+- Customize toolbar also hides the keyboard shortcuts button and the online play button: drag them into the tray like any tool, and ? keeps opening the shortcuts
 
 ## Improved
 

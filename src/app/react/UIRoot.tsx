@@ -16,6 +16,7 @@ import { useViewStoreHook, useAtlasStore } from './ViewStoreContext';
 import { ViewActionsMenu } from './components/ViewActionsMenu';
 import { HotkeyHelpButton } from './components/HotkeyHelpButton';
 import { UndoRedoControls } from './components/UndoRedoControls';
+import { OnlinePlayRoom, OnlinePlaySlot } from './components/OnlinePlaySlot';
 import { BottomToolbarRow } from './components/BottomToolbarRow';
 import { DrawToolBar } from '../packages/components/toolbar/DrawToolBar';
 import { LightingToolBar } from '../packages/components/toolbar/LightingToolBar';
@@ -220,7 +221,13 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
 
           {/* Bottom row — undo/redo docked left of the main toolbar; view actions and the shortcuts button (DM only) at the right edge */}
           <BottomToolbarRow
-            start={!isPlayerView && <PanelBoundary name="undo and redo"><UndoRedoControls viewId={view?.viewId} /></PanelBoundary>}
+            lead={!isPlayerView && <PanelBoundary name="online play's place"><OnlinePlaySlot /></PanelBoundary>}
+            start={!isPlayerView && (
+              <>
+                <OnlinePlayRoom />
+                <PanelBoundary name="undo and redo"><UndoRedoControls viewId={view?.viewId} /></PanelBoundary>
+              </>
+            )}
             end={!isPlayerView && (
               <>
                 <PanelBoundary name="the view actions"><ViewActionsMenu app={app} filePath={view?.file?.path} /></PanelBoundary>

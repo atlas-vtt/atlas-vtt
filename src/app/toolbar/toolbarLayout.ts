@@ -1,12 +1,12 @@
 import { isRecord } from '../utils/guards';
 import {
-  DEFAULT_TOOLBAR_ORDER, isHideableToolbarControl, isToolbarControlId, isToolbarUnitId, UNDO_BAR_ID, type ToolbarControlId, type ToolbarUnitId,
+  DEFAULT_TOOLBAR_ORDER, isHideableToolbarControl, isSideBarId, isToolbarControlId, isToolbarUnitId, SIDE_BAR_IDS, type ToolbarControlId, type ToolbarUnitId,
 } from './toolbarCatalog';
 
 /**
  * What `AtlasSettings.toolbar` holds: only what differs from the default. Ids
  * this version does not know (a newer Atlas on another device) are kept. A
- * hidden undo/redo bar is `UNDO_BAR_ID` in `hidden`; it is never in `order`.
+ * hidden bar beside the toolbar (`SIDE_BARS`) is its id in `hidden`; it is never in `order`.
  */
 export interface StoredToolbarLayout {
   readonly order?: readonly string[];
@@ -16,8 +16,8 @@ export interface StoredToolbarLayout {
 /**
  * The layout this version works with: every catalog id once, in order. A
  * hidden control keeps its slot in the order, which is where it returns to.
- * `hidden` also holds `UNDO_BAR_ID` while the undo/redo bar is hidden; that
- * bar has its own place left of the main one, so it has none in the order.
+ * `hidden` also holds the id of each hidden bar beside the toolbar (`SIDE_BARS`);
+ * those have places of their own, so none in the order.
  */
 export interface ToolbarLayout {
   readonly order: readonly ToolbarControlId[];
@@ -38,10 +38,10 @@ function readIds(value: unknown, keep: (id: string) => boolean): string[] {
   return [...ids];
 }
 
-/** Reads a stored layout defensively; the Command palette can never be hidden, and the undo/redo bar has no place in the order. */
+/** Reads a stored layout defensively; the Command palette can never be hidden, and the bars beside the toolbar have no place in the order. */
 export function readToolbarLayout(stored: unknown): StoredToolbarLayout {
   if (!isRecord(stored)) return {};
-  const order = readIds(stored.order, id => id !== UNDO_BAR_ID);
+  const order = readIds(stored.order, id => !isSideBarId(id));
   const hidden = readIds(stored.hidden, id => !isToolbarUnitId(id) || isHideableToolbarControl(id));
   return { ...(order.length > 0 && { order }), ...(hidden.length > 0 && { hidden }) };
 }
@@ -121,7 +121,7 @@ export function storedToolbarLayout(previous: StoredToolbarLayout, next: Toolbar
   const order = withUnknownIds(next.order, previous.order ?? []);
   const shownAgain = formerIdsShown(previous.hidden ?? [], next.hidden);
   const unknownHidden = (previous.hidden ?? []).filter(id => !isToolbarUnitId(id) && !shownAgain.has(id));
-  const hidden = hiddenWithFormerIds([...(next.hidden.has(UNDO_BAR_ID) ? [UNDO_BAR_ID] : []), ...next.order.filter(id => next.hidden.has(id)), ...unknownHidden]);
+  const hidden = hiddenWithFormerIds([...SIDE_BAR_IDS.filter(id => next.hidden.has(id)), ...next.order.filter(id => next.hidden.has(id)), ...unknownHidden]);
   return {
     ...(!sameIds(order, DEFAULT_TOOLBAR_ORDER) && { order }),
     ...(hidden.length > 0 && { hidden }),
@@ -143,13 +143,13 @@ export function withControlAfter(layout: ToolbarLayout, id: ToolbarControlId, af
   return { order: [...rest.slice(0, index), id, ...rest.slice(index)], hidden: withoutHidden(layout.hidden, id) };
 }
 
-/** Hides a control or the undo/redo bar; a control's slot in the order stays, so showing it puts it back there. */
+/** Hides a control or a bar beside the toolbar; a control's slot in the order stays, so showing it puts it back there. */
 export function withControlHidden(layout: ToolbarLayout, id: ToolbarUnitId): ToolbarLayout {
   if (layout.hidden.has(id) || !isHideableToolbarControl(id)) return layout;
   return { order: layout.order, hidden: new Set([...layout.hidden, id]) };
 }
 
-/** Shows a control at its remembered slot, or the undo/redo bar at its own place. */
+/** Shows a control at its remembered slot, or a bar beside the toolbar at its own place. */
 export function withControlShown(layout: ToolbarLayout, id: ToolbarUnitId): ToolbarLayout {
   return { order: layout.order, hidden: withoutHidden(layout.hidden, id) };
 }
