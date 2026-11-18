@@ -24,12 +24,12 @@ export interface MapGestureParts {
   store: ViewAtlasStore;
   viewport: Viewport;
   /** Tokens are being placed by hand. */
-  placing(): boolean;
+  placing: () => boolean;
   /** A press on the empty map waits to be dragged into a marquee. */
-  marqueePending(): boolean;
+  marqueePending: () => boolean;
   /** Whether a secondary click at a world point opens a menu. */
-  menuAt(worldX: number, worldY: number): boolean;
-  fingers: { readonly use: FingerUse; notePen(): void };
+  menuAt: (worldX: number, worldY: number) => boolean;
+  fingers: { readonly use: FingerUse; notePen: () => void };
 }
 
 export function mapGestureHost({ store, viewport, placing, marqueePending, menuAt, fingers }: MapGestureParts): MapGestureHost {

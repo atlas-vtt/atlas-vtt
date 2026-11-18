@@ -122,8 +122,9 @@ export class ContextMenuBridge {
     this.fired = true;
     noteTouchMenu(x, y);
     if ('vibrate' in this.win.navigator) this.win.navigator.vibrate(HAPTIC_MS);
-    const MouseEventOf = (this.win as Window & typeof globalThis).MouseEvent;
-    const event = new MouseEventOf('contextmenu', { bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y, button: 2, buttons: 2 });
+    // The window's own constructor: a popout's document gets a popout's event
+    const view = this.doc.defaultView ?? window;
+    const event = new view.MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y, button: 2, buttons: 2 });
     this.own.add(event);
     target.dispatchEvent(event);
   }

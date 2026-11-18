@@ -1,4 +1,4 @@
-import { FederatedPointerEvent, type Container, type EventBoundary, type EventSystem, type FederatedEvent } from 'pixi.js';
+import { EventBoundary, FederatedPointerEvent, type Container, type EventSystem, type FederatedEvent } from 'pixi.js';
 
 /**
  * Stands where every pointer event enters PIXI (`EventBoundary.mapEvent`, before the hit test and
@@ -13,15 +13,17 @@ import { FederatedPointerEvent, type Container, type EventBoundary, type EventSy
  */
 export class PointerGate {
   private readonly boundary: EventBoundary;
-  private readonly mapEvent: EventBoundary['mapEvent'];
+  /** PIXI's own mapping, which the gate stands in front of. */
+  private readonly mapEvent: (event: FederatedEvent) => void;
   private readonly presses = new Map<number, FederatedPointerEvent>();
   private readonly spare: FederatedPointerEvent[] = [];
   private passing = false;
 
   constructor(events: EventSystem, private readonly cancelTarget: Container, private readonly admits: (native: object) => boolean) {
-    this.boundary = events.rootBoundary;
-    this.mapEvent = this.boundary.mapEvent;
-    this.boundary.mapEvent = (event: FederatedEvent): void => this.receive(event);
+    const boundary = events.rootBoundary;
+    this.boundary = boundary;
+    this.mapEvent = (event) => EventBoundary.prototype.mapEvent.call(boundary, event);
+    boundary.mapEvent = (event: FederatedEvent): void => this.receive(event);
   }
 
   /** The press of the finger as the tools would get it; null where PIXI never saw it. */
@@ -70,15 +72,15 @@ export class PointerGate {
 
   private receive(event: FederatedEvent): void {
     if (this.passing || !(event instanceof FederatedPointerEvent) || event.pointerType !== 'touch') {
-      this.mapEvent.call(this.boundary, event);
+      this.mapEvent(event);
       return;
     }
     if (event.type === 'pointerdown') {
-      if (this.admits(event.nativeEvent)) this.mapEvent.call(this.boundary, event);
+      if (this.admits(event.nativeEvent)) this.mapEvent(event);
       else this.keep(event);
       return;
     }
-    if (this.admits(event.nativeEvent)) this.mapEvent.call(this.boundary, event);
+    if (this.admits(event.nativeEvent)) this.mapEvent(event);
   }
 
   private keep(event: FederatedPointerEvent): void {
@@ -93,7 +95,7 @@ export class PointerGate {
     press.buttons = buttons;
     this.passing = true;
     try {
-      this.mapEvent.call(this.boundary, press);
+      this.mapEvent(press);
     } finally {
       this.passing = false;
     }
@@ -114,7 +116,6 @@ function copyPointer(from: FederatedPointerEvent, to: FederatedPointerEvent): vo
   to.tiltY = from.tiltY;
   to.twist = from.twist;
   to.isTrusted = from.isTrusted;
-  to.srcElement = from.srcElement;
   to.timeStamp = from.timeStamp;
   to.type = from.type;
   to.altKey = from.altKey;

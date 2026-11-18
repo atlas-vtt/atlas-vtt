@@ -42,10 +42,10 @@ export class TouchSource {
 
   /** Tells the canvas' own listeners that the finger is lost, as the browser does for a touch it takes away. */
   cancelPointer(id: number, canvasX: number, canvasY: number): void {
-    const PointerEventOf = (this.win as Window & typeof globalThis).PointerEvent;
-    if (typeof PointerEventOf !== 'function') return;
+    const view = this.canvas.ownerDocument.defaultView ?? window;
+    if (typeof view.PointerEvent !== 'function') return;
     const rect = this.canvas.getBoundingClientRect();
-    const event = new PointerEventOf('pointercancel', {
+    const event = new view.PointerEvent('pointercancel', {
       pointerId: id, pointerType: 'touch', bubbles: true, clientX: rect.left + canvasX, clientY: rect.top + canvasY,
     });
     this.own.add(event);
