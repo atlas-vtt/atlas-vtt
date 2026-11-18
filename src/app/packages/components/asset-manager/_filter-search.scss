@@ -53,8 +53,8 @@
   // As wide as the descriptions need, within the window; long ones wrap rather than being cut.
   width: max-content;
   // Never wider than the window allows: a min-width above the max-width would win and push it off the edge.
-  min-width: min(max(100%, 320px), calc(100vw - 2 * #{$spacing-l}));
-  max-width: min(600px, calc(100vw - 2 * #{$spacing-l}));
+  min-width: min(max(100%, 320px), calc(#{atlas-view-width()} - 2 * #{$spacing-l}));
+  max-width: min(600px, calc(#{atlas-view-width()} - 2 * #{$spacing-l}));
   padding: $spacing-xs;
   background: var(--menu-background);
   border: var(--menu-border-width, #{$border-width-s}) solid var(--menu-border-color);
@@ -158,7 +158,7 @@
   flex-direction: column;
   width: 380px;
   max-width: calc(100% - 2 * #{$spacing-m});
-  max-height: min(560px, 70vh);
+  max-height: min(560px, #{atlas-view-height(70)});
   overflow: hidden;
   transform-origin: top right;
 }

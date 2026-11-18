@@ -1,10 +1,10 @@
 import { useSyncExternalStore } from 'react';
-import { deviceProfile, type DeviceProfile } from './deviceProfile';
+import { deviceProfile } from './deviceProfile';
 
-/** Whether the pointer is coarse (a finger) now; follows a mouse being attached or taken away. */
-export function useCoarsePointer(profile: DeviceProfile = deviceProfile()): boolean {
-  return useSyncExternalStore(
-    (onChange) => profile.onPointerChange(onChange),
-    () => profile.pointer === 'coarse',
-  );
+const subscribe = (onChange: () => void): (() => void) => deviceProfile().onPointerChange(onChange);
+const isCoarse = (): boolean => deviceProfile().pointer === 'coarse';
+
+/** Whether the pointer is a finger now; follows a mouse being attached or taken away. */
+export function useCoarsePointer(): boolean {
+  return useSyncExternalStore(subscribe, isCoarse);
 }

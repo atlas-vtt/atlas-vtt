@@ -60,7 +60,9 @@ import { SceneSnapshotsPanel } from './command-palette/SceneSnapshotsPanel';
 import { SceneLevelsPanel } from './command-palette/SceneLevelsPanel';
 import { replaceMapImage } from './levels/replaceMapImage';
 import { pickMapImage } from './levels/MapImagePickerModal';
-import { placePalette, type PalettePosition } from './command-palette/palettePlacement';
+import { placePalette, placePaletteAtTop, type PalettePosition } from './command-palette/palettePlacement';
+import { useCoarsePointer } from '../../platform/useCoarsePointer';
+import { visibleViewport } from '../../host/visibleViewport';
 import { customizeToolbarCommand } from './command-palette/customizeToolbarCommand';
 import { hotkeyHelpCommand } from './command-palette/hotkeyHelpCommand';
 import { mapTourCommand } from './command-palette/mapTourCommand';
@@ -206,6 +208,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
 
   // Position starts as null so the first paint already sits at the measured spot
   const [position, setPosition] = useState<PalettePosition | null>(null);
+  // A finger opens the palette at the top of the view and types only once it taps the field.
+  const atTop = useCoarsePointer();
   const [hasCalculatedInitialPosition, setHasCalculatedInitialPosition] = useState(false);
 
   // Get sorted widgets for individual widget controls - memoized to prevent unnecessary re-renders
@@ -572,18 +576,11 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     if (!overlay) return;
     const frame = overlay.getBoundingClientRect();
     const toolbar = toolbarRef?.current;
-
-    if (toolbar) {
-      setPosition(placePalette(toolbar.getBoundingClientRect(), frame));
-    } else {
-      setPosition({
-        width: DEFAULT_PALETTE_WIDTH,
-        left: (frame.width - DEFAULT_PALETTE_WIDTH) / 2,
-        bottom: 100,
-      });
-    }
-
-  }, [toolbarRef]);
+    const aboveToolbar: PalettePosition = toolbar
+      ? placePalette(toolbar.getBoundingClientRect(), frame)
+      : { width: DEFAULT_PALETTE_WIDTH, left: (frame.width - DEFAULT_PALETTE_WIDTH) / 2, bottom: 100, reserved: 100 };
+    setPosition(atTop ? placePaletteAtTop(aboveToolbar, frame, visibleViewport(overlay.win).bottom) : aboveToolbar);
+  }, [toolbarRef, atTop]);
 
   // Measure before the first paint so the palette never flashes at a stale spot
   // The position is kept after closing so the palette leaves from where it was.
@@ -641,7 +638,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   useEffect(() => {
     const input = inputRef.current;
     const win = input?.ownerDocument.defaultView;
-    if (!isOpen || isTemporarilyHidden || !input || !win) return;
+    if (!isOpen || isTemporarilyHidden || atTop || !input || !win) return;
     const timers: number[] = [];
     const focusInput = (): void => {
       input.focus();
@@ -656,7 +653,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       win.cancelAnimationFrame(frame);
       timers.forEach(timer => win.clearTimeout(timer));
     };
-  }, [isOpen, isTemporarilyHidden]);
+  }, [isOpen, isTemporarilyHidden, atTop]);
 
   const clearSearch = (): void => {
     setSearchQuery("");
@@ -963,11 +960,14 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
 
   // The anchor places the palette and slides between list and panel; the
   // window inside carries the open / close animation, and the container sizes it.
-  const anchorStyle: React.CSSProperties = !position
-    ? {}
-    : activePanel
-      ? { left: '50%', transform: 'translateX(-50%)', bottom: `${position.bottom}px`, '--atlas-palette-bottom': `${position.bottom}px` } as React.CSSProperties
-      : { left: `${position.left}px`, transform: 'none', bottom: `${position.bottom}px`, '--atlas-palette-bottom': `${position.bottom}px` } as React.CSSProperties;
+  const anchorStyle: Record<string, string> = {};
+  if (position) {
+    anchorStyle.left = activePanel ? '50%' : `${position.left}px`;
+    anchorStyle.transform = activePanel ? 'translateX(-50%)' : 'none';
+    if (position.top === undefined) anchorStyle.bottom = `${position.bottom}px`;
+    else anchorStyle.top = `${position.top}px`;
+    anchorStyle['--atlas-palette-bottom'] = `${position.reserved}px`;
+  }
   const containerStyle = position && !activePanel ? { width: `${position.width}px` } : {};
 
   return (
@@ -993,6 +993,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
               className={cn(
                 'atlas-command-palette-anchor',
                 !hasCalculatedInitialPosition && 'atlas-no-transition',
+                position?.top !== undefined && 'atlas-command-palette-anchor--top',
                 (isTemporarilyHidden || !position) && 'atlas-command-palette-anchor--hidden',
               )}
               style={anchorStyle}
@@ -1039,7 +1040,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
                             className="atlas-command-palette-input"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            autoFocus
+                            autoFocus={!atTop}
                             tabIndex={0}
                             autoComplete="off"
                             spellCheck={false}

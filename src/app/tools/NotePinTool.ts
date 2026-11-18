@@ -1,4 +1,5 @@
 import { EventEmitter } from '../utils/typedEmitter';
+import { visibleViewport } from '../host/visibleViewport';
 import type { NotePin } from '../types';
 import type { ViewAtlasState } from '../storeFactory';
 import { App, type WorkspaceLeaf } from 'obsidian';
@@ -246,7 +247,8 @@ export class NotePinTool {
             const rect = dropdown.getBoundingClientRect();
             const gap = 12;
             const margin = 8;
-            const spaceRight = window.innerWidth - clientX;
+            const seen = visibleViewport(window);
+            const spaceRight = seen.right - clientX;
             const spaceLeft = clientX;
 
             // Open to whichever side has more room
@@ -258,13 +260,13 @@ export class NotePinTool {
             } else {
               // Fallback: whichever side has more space
               left = spaceRight > spaceLeft
-                ? Math.min(clientX + gap, window.innerWidth - rect.width - margin)
+                ? Math.min(clientX + gap, seen.right - rect.width - margin)
                 : Math.max(margin, clientX - rect.width - gap);
             }
 
             // Vertically center on click point, clamped to viewport
             let top = clientY - rect.height / 2;
-            top = Math.max(margin, Math.min(top, window.innerHeight - rect.height - margin));
+            top = Math.max(margin, Math.min(top, seen.bottom - rect.height - margin));
 
             dropdown.style.left = `${left}px`;
             dropdown.style.top = `${top}px`;

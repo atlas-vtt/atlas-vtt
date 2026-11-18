@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TFile, WorkspaceLeaf } from 'obsidian';
 
@@ -10,6 +10,8 @@ vi.mock('../../src/app/react/root/AtlasUIContext', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/app/react/root/AtlasUIContext')>(),
   useAtlasUI: () => ({ app, view: {} }),
 }));
+const pointer = vi.hoisted(() => ({ coarse: false }));
+vi.mock('../../src/app/platform/useCoarsePointer', () => ({ useCoarsePointer: () => pointer.coarse }));
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (value: typeof state) => unknown) => selector(state),
 }));
@@ -30,7 +32,10 @@ const app = {
       activated.push(leaf);
     },
   },
-  vault: { getAbstractFileByPath: (path: string) => (path === NOTE ? new TFile(path) : null) },
+  vault: {
+    getAbstractFileByPath: (path: string) => (path === NOTE ? new TFile(path) : null),
+    read: (): Promise<string> => Promise.resolve('The road to Greywater'),
+  },
 };
 const state = {
   objects: { tokens: {} },
@@ -45,6 +50,7 @@ const state = {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  pointer.coarse = false;
 });
 
 describe('DM screen note', () => {
@@ -58,5 +64,29 @@ describe('DM screen note', () => {
     app.workspace.setActiveLeaf(leaf);
 
     expect(activated).toEqual([leaf]);
+  });
+
+  it('shows the note rendered when the workspace gives it no leaf, so the pane is never empty', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { container } = render(<DMScreen isOpen onClose={vi.fn()} />);
+    await waitFor(() => expect(container.querySelector('.atlas-dm-note-rendered')?.textContent).toBe('The road to Greywater'));
+  });
+
+  it('has a close button under a finger, which has no Escape and no backdrop to press', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    pointer.coarse = true;
+    const onClose = vi.fn();
+    render(<DMScreen isOpen onClose={onClose} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Close DM screen' }));
+    vi.advanceTimersByTime(250);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it('has no close button under a mouse, as ever', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(<DMScreen isOpen onClose={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: 'Close DM screen' })).toBeNull();
   });
 });

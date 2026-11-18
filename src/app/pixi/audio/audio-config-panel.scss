@@ -5,7 +5,7 @@
   position: fixed;
   z-index: 10000;
   width: 320px;
-  max-width: 90vw;
+  max-width: #{atlas-view-width(90)};
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
   @include atlas-panel-radius($surface-radius, 1px);
@@ -20,6 +20,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  // The panel is moved by it, by a finger too
+  touch-action: none;
   @include atlas-close-header(10px);
   background: var(--background-secondary);
   border-bottom: 1px solid var(--background-modifier-border);

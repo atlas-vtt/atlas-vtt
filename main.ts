@@ -115,6 +115,7 @@ import { registerPointerAttribute } from './src/app/platform/pointerAttribute';
 import { registerTouchContextMenus } from './src/app/plugin/touchContextMenus';
 import { FingerSettings } from './src/app/input/fingerUse';
 import { registerLastInput } from './src/app/platform/lastInput';
+import { registerKeyboardViewport } from './src/app/platform/keyboardViewport';
 import { registerAudioUnlock } from './src/app/plugin/audioUnlock';
 import { registerUnsupportedDevice } from './src/app/plugin/unsupportedDevice';
 
@@ -166,6 +167,8 @@ export default class AtlasVTTPlugin extends Plugin {
     registerTouchContextMenus(this);
     registerLastInput(this);
     registerAudioUnlock(this);
+    // A tablet's keyboard rises over the window: what is placed and typed into stays in the part still seen.
+    registerKeyboardViewport(this);
     // Record errors from the very start so startup problems can be reported too.
     const errorLog = new AtlasErrorLog();
     this.register(errorLog.attach());

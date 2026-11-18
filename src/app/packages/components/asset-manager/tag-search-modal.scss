@@ -5,8 +5,8 @@
 
 .atlas-tag-search-modal {
   width: 420px;
-  max-width: 90vw;
-  max-height: 70vh;
+  max-width: #{atlas-view-width(90)};
+  max-height: #{atlas-view-height(70)};
 }
 
 // ── Subtitle below title ────────────────────────────────────────────────────

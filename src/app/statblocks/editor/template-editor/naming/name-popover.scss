@@ -32,7 +32,7 @@ $name-inset: $spacing-s;
     display: flex;
     box-sizing: border-box;
     width: $name-width;
-    max-width: calc(100vw - #{2 * $spacing-l});
+    max-width: calc(#{atlas-view-width()} - #{2 * $spacing-l});
     padding: $name-inset;
     box-shadow: $shadow-md;
     // It grows out of its tile's edge.

@@ -13,7 +13,7 @@ $snapshot-ease: $transition-ease-out;
 // divider under the header: the grid sits one gap below the title.
 .atlas-command-palette-container--expanded.atlas-command-palette-container--scene-snapshots {
   height: 760px;
-  max-height: calc(100vh - 160px);
+  max-height: calc(#{atlas-view-height()} - 160px);
 
   .atlas-command-palette-panel-header {
     border-bottom: none;

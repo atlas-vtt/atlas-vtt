@@ -8,6 +8,7 @@
  */
 
 import { Menu, type App, type TFile } from 'obsidian';
+import { visibleViewport } from '../../../host/visibleViewport';
 import { showNotice } from '../../../ui/notice';
 import { isFantasyStatblocksAvailable } from '../../../services/FantasyStatblocksService';
 import { runInBackground } from '../../../utils/backgroundTask';
@@ -66,7 +67,8 @@ export function mayHoldStatblockFence(app: App, file: TFile): boolean {
 export function menuPlace(event?: MouseEvent | KeyboardEvent): MenuPlace {
   const doc = event?.view?.document ?? activeDocument;
   if (event && 'clientX' in event && (event.clientX !== 0 || event.clientY !== 0)) return { doc, x: event.clientX, y: event.clientY };
-  return { doc, x: Math.round(doc.win.innerWidth / 2), y: Math.round(doc.win.innerHeight * 0.15) };
+  const seen = visibleViewport(doc.win);
+  return { doc, x: Math.round(seen.right / 2), y: Math.round(seen.bottom * 0.15) };
 }
 
 function roleRows(app: App, collectionId: string | null, choose: (roleId: string) => Promise<unknown>): StatblockChoice[] {

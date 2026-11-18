@@ -2,7 +2,12 @@
 export interface PalettePosition {
   width: number;
   left: number;
+  /** From the view's lower edge to the palette's: it stands above the toolbar. */
   bottom: number;
+  /** Set where the palette hangs from the view's top instead (`placePaletteAtTop`). */
+  top?: number;
+  /** What the palette's height leaves free of the view's: the room under it, or its top and what a keyboard covers. */
+  reserved: number;
 }
 
 interface Box {
@@ -32,5 +37,17 @@ export function placePalette(toolbar: Box, frame: Box): PalettePosition {
   const width = Math.min(room, Math.min(Math.max(toolbar.width, PALETTE_MIN_WIDTH), PALETTE_MAX_WIDTH));
   const centred = toolbar.left - frame.left + (toolbar.width - width) / 2;
   const left = Math.min(Math.max(centred, PALETTE_VIEW_MARGIN), frame.width - PALETTE_VIEW_MARGIN - width);
-  return { width, left, bottom: frame.bottom - toolbar.top + PALETTE_TOOLBAR_GAP };
+  const bottom = frame.bottom - toolbar.top + PALETTE_TOOLBAR_GAP;
+  return { width, left, bottom, reserved: bottom };
+}
+
+/**
+ * Where a finger opens the palette: at the top of the view, since the keyboard rises from the
+ * bottom. Sideways it stands where `position` put it. Its height ends above what the keyboard
+ * covers of the view: `seenBottom` is the lower edge of what the window shows, in the frame's
+ * coordinates.
+ */
+export function placePaletteAtTop(position: PalettePosition, frame: Pick<Box, 'top' | 'bottom'>, seenBottom: number): PalettePosition {
+  const covered = Math.max(0, frame.bottom - Math.max(frame.top, seenBottom));
+  return { ...position, top: PALETTE_VIEW_MARGIN, reserved: PALETTE_VIEW_MARGIN + covered };
 }

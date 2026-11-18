@@ -5,6 +5,7 @@ import { Skeleton } from '../../../../packages/components/primitives/Skeleton';
 import { EASE_OUT_CONTROL_POINTS } from '../../../../utils/motion';
 import type { AdvantageSide } from '../../../../types/diceSetTypes';
 import { t } from '../../../../i18n';
+import { releaseImplicitCapture } from '../../../../utils/pointerDrag';
 import { dieTitle, notation, spokenDie } from './dieNames';
 import { PlainDie } from './DieStill';
 import type { LabDie } from './labDice';
@@ -93,7 +94,11 @@ export function TrayDie(props: TrayDieProps): React.ReactElement {
           aria-keyshortcuts={edge ? undefined : 'Alt+ArrowLeft Alt+ArrowRight'}
           onClick={(event) => onActivate(event.detail === 0)}
           // The primary button only; a right or middle press drags nothing
-          onPointerDown={(event) => { if (!edge && !(event.button > 0)) onPress(); }}
+          onPointerDown={(event) => {
+            if (edge || event.button > 0) return;
+            releaseImplicitCapture(event);
+            onPress();
+          }}
           onPointerEnter={onEnter}
           onKeyDown={(event) => {
             if (edge || !event.altKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;

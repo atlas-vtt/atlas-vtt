@@ -1,3 +1,5 @@
+import { visibleViewport } from '../host/visibleViewport';
+
 const MARGIN = 10;
 const OFFSET = 12;
 
@@ -5,10 +7,11 @@ const OFFSET = 12;
 export function placeHoverCard(card: HTMLElement, x: number, y: number): void {
   const width = card.offsetWidth;
   const height = card.offsetHeight;
+  const seen = visibleViewport(card.win);
   let left = x + OFFSET;
   let top = y + OFFSET;
-  if (left + width > card.win.innerWidth - MARGIN) left = x - width - OFFSET;
-  if (top + height > card.win.innerHeight - MARGIN) top = y - height - OFFSET;
+  if (left + width > seen.right - MARGIN) left = x - width - OFFSET;
+  if (top + height > seen.bottom - MARGIN) top = y - height - OFFSET;
   card.style.left = `${Math.max(MARGIN, left)}px`;
   card.style.top = `${Math.max(MARGIN, top)}px`;
 }

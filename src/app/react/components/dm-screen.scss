@@ -162,12 +162,22 @@ $page-shift: clamp(24px, 3cqi, 56px);
 
 // The page control stands centred near the top, closer to it than the panes are to the sides (owner, 2026-11-03).
 .atlas-dm-screen-header {
+  position: relative;
   flex-shrink: 0;
   display: flex;
   justify-content: center;
   align-items: center;
   gap: $spacing-s;
   padding: $spacing-l var(--atlas-dm-screen-inset) 0;
+
+  // Under a finger the screen closes by a button at the row's end, in line with the panes' edge;
+  // it takes no room in the row, so the page control stays centred.
+  .atlas-dm-screen-close {
+    position: absolute;
+    inset-block: $spacing-l 0;
+    inset-inline-end: var(--atlas-dm-screen-inset);
+    margin-block: auto;
+  }
 
   .atlas-segmented {
     flex-shrink: 0;

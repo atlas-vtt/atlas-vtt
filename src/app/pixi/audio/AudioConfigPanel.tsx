@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useId } from 'react';
+import { visibleViewport } from '../../host/visibleViewport';
 import { GripHorizontal, Volume2, Play } from 'lucide-react';
 import { createRoot } from 'react-dom/client';
 import type { StoreApi } from 'zustand';
@@ -252,8 +253,8 @@ export function openAudioConfigPanel(
       audio={audio}
       store={store}
       registry={registry}
-      screenX={screenX ?? window.innerWidth / 2}
-      screenY={screenY ?? window.innerHeight / 2}
+      screenX={screenX ?? visibleViewport(window).right / 2}
+      screenY={screenY ?? visibleViewport(window).bottom / 2}
       onClose={cleanup}
       onPreview={onPreview}
     />,
