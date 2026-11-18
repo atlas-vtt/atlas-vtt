@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { t } from '../../i18n';
 import { matchesMapHotkey } from '../../keyboard/mapHotkeys';
+import { CloseButton } from '../../packages/components/primitives/CloseButton';
 import { SegmentedControl, type SegmentedOption } from '../../packages/components/primitives/SegmentedControl';
+import { useCoarsePointer } from '../../platform/useCoarsePointer';
 import { SettingsService } from '../../services/SettingsService';
 import type { DMScreenPage } from '../../types/viewUIState';
 import { isShortcutScopeActive } from '../../utils/activeLeafGuard';
@@ -58,6 +60,7 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
   const page = useAtlasStore((state) => state.dmScreenPage);
   const setPage = useAtlasStore((state) => state.setDMScreenPage);
   const { app, view } = useAtlasUI();
+  const coarse = useCoarsePointer();
   const { statblocks, loading } = useDMScreenStatblocks(isOpen, app, { viewId: view?.viewId, mapPath, mapLoaded, isMapLoading, tokens });
   const { shown, scopeSwitch } = useFightStatblocks(statblocks, tokens);
   const [contentReady, setContentReady] = useState(false);
@@ -160,6 +163,8 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
           <kbd className="atlas-dm-screen-key" aria-hidden="true">←</kbd>
           <SegmentedControl className="atlas-dm-screen-pages" value={page} options={PAGES} onChange={setPage} ariaLabel={t('audio.screen.pages')} roving />
           <kbd className="atlas-dm-screen-key" aria-hidden="true">→</kbd>
+          {/* A finger has no Escape and no backdrop to press: the screen fills the view */}
+          {coarse && <CloseButton className="atlas-dm-screen-close" onClick={handleClose} aria-label={t('dashboard.closeScreen')} />}
         </div>
         <div className="atlas-dm-screen-stage" data-turning={leaving !== null || undefined}>
           {/* Stays mounted while hidden: the note's editor needs its own cleanup, and statblocks are not loaded twice. */}

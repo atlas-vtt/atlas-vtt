@@ -5,6 +5,7 @@ export const dashboard = {
   'dashboard.inThisFight': 'In this fight ({count})',
   'dashboard.statblockScope': 'Statblocks shown',
   'dashboard.linkNote': 'Link a note to this map',
+  'dashboard.closeScreen': 'Close DM screen',
   'dashboard.linkOther': 'Link a different note',
   'dashboard.loading': 'Loading statblocks…',
   'dashboard.openNote': 'Open note in new tab',

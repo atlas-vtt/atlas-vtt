@@ -33,6 +33,24 @@
   animation: note-preview-slide-in $transition-normal $transition-ease-out;
 }
 
+// On mobile the preview is a sheet over the map (`NotePreviewWindow.sheet`): as tall as the view, at
+// its end edge, opened and closed with the panels' motion. The place and size in its inline styles
+// are a desktop window's, saved with the map: they stay as they are for the desktop to use again.
+.atlas-note-preview-window--sheet {
+  inset: $spacing-s $spacing-s $spacing-s auto !important;
+  width: min(480px, calc(100% - #{2 * $spacing-s})) !important;
+  height: auto !important;
+  max-width: none;
+  max-height: none;
+  animation: none;
+  transform-origin: center right;
+
+  .atlas-note-preview-header {
+    cursor: default;
+    touch-action: auto;
+  }
+}
+
 .atlas-note-preview-window.is-dragging,
 .atlas-note-preview-window.is-dragging .atlas-note-preview-header {
   cursor: grabbing;
