@@ -3,7 +3,7 @@ import type { Transform } from '../../annotations/annotationTransform';
 import type { OffMapFlag } from '../../tokens/offMap';
 import type { DrawingStroke, TextElement } from '../../types';
 import type { ViewState } from '../../types/viewState';
-import type { ToolSwitchState } from '../../tools/toolSwitches';
+import type { ToolSwitchState } from '../../types/toolSwitches';
 
 /** What tells whether the Draw tool is in hand, and in which mode. */
 export type DrawToolState = Pick<ViewState, 'activeTool' | 'drawTool'>;

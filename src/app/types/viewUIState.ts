@@ -1,6 +1,6 @@
 import type { ExploredBrushOptions } from '../lighting/exploredEdits';
 import type { LightingToolOptions } from '../lighting/lightingTool';
-import type { ToolSwitches } from '../tools/toolSwitches';
+import type { ToolSwitches } from './toolSwitches';
 import type { DrawToolChoices } from '../annotations/annotationTypes';
 import type { FogToolChoices } from '../fog/fogToolChoices';
 import type { MeasureToolOptions } from '../measure/measureTypes';

@@ -58,7 +58,7 @@ import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
 import type { MapSize } from '../../online/gm/moveCheck';
 import { sessionDragWalls, type SessionDragWalls } from './sessionDragWalls';
-import { toolSwitch } from '../../tools/toolSwitches';
+import { toolSwitch } from '../../types/toolSwitches';
 import { OPEN_PREVIEW_EVENT, previewEntry } from '../../services/previewByHand';
 
 interface DragState {

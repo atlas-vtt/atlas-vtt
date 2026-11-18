@@ -1,6 +1,6 @@
 import React from "react"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
-import { toolSwitch, type ToolSwitchId } from "../../../tools/toolSwitches"
+import { toolSwitch, type ToolSwitchId } from "../../../types/toolSwitches"
 import { DropdownToggleRow } from "../primitives/DropdownToggleRow"
 
 interface ToolSwitchRowProps {

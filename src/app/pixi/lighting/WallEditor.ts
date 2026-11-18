@@ -5,7 +5,7 @@ import { chosenLightPreset, emissionOf } from '../../lighting/lightPresetChoice'
 import type { LightPresetDefinition } from '../../types/lightPresetTypes';
 import type { ViewAtlasStore } from '../../storeFactory';
 import { runHistoryTransaction } from '../../stores/history';
-import { placesFreely } from '../../tools/toolSwitches';
+import { placesFreely } from '../../types/toolSwitches';
 import { WallTool, type WallToolMode, type WallToolSubMode } from '../../tools/WallTool';
 import type { Point } from '../../types/visionTypes';
 import type { WallType } from '../../types/wallTypes';

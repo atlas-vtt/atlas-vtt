@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_TOOL_SWITCHES, placesFreely, snapOverride, switchApplies, toolSwitch, type ToolSwitchId } from '../../src/app/tools/toolSwitches';
+import { DEFAULT_TOOL_SWITCHES, placesFreely, snapOverride, switchApplies, toolSwitch, type ToolSwitchId } from '../../src/app/types/toolSwitches';
 import { placeKeysOf, placeKeysWith } from '../../src/app/pixi/fog/FogSnapping';
 import { snapTurn } from '../../src/app/pixi/selection/groupTurn';
 import { createInitialUIState, createUIActions, type UISlice } from '../../src/app/stores/uiSlice';

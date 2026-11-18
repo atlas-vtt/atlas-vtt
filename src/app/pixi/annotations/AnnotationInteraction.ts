@@ -16,7 +16,7 @@ import type { AnnotationPointerHandlers } from './annotationPointer';
 import { readSelection, type SelectionRead } from './annotationSelection';
 import { DoubleClick } from './DoubleClick';
 import type { SelectingStore } from './drawToolState';
-import { switchApplies } from '../../tools/toolSwitches';
+import { switchApplies } from '../../types/toolSwitches';
 import { gripCursor } from './gripCursor';
 import { outlineOf, selectionPicture } from './selectionPicture';
 

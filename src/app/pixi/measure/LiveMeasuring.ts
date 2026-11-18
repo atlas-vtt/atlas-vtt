@@ -2,7 +2,7 @@ import type { GridSystem } from '../../grid/GridSystem';
 import { unitScaleOf } from '../../lighting/lightingUnits';
 import { toolLook } from '../../measure/measureLights';
 import { snapAreaEnd, snapAreaOrigin } from '../../measure/measureSnap';
-import { placesFreely, type ToolSwitchState } from '../../tools/toolSwitches';
+import { placesFreely, type ToolSwitchState } from '../../types/toolSwitches';
 import type { MeasureInput, Measurement, MeasureShapeKind, MeasureToolOptions } from '../../measure/measureTypes';
 import type { GridState } from '../../types/gridTypes';
 import type { SceneLighting } from '../../types/lightingTypes';

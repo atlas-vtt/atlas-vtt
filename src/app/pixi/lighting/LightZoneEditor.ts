@@ -9,7 +9,7 @@ import { areaHandlePoint } from '../../vision/polygonArea';
 import { PolygonAreaEditor } from '../areas/PolygonAreaEditor';
 import { lightZoneOverlay } from './LightZoneOverlay';
 import { snapToWallEnd } from './wallEnds';
-import { placesFreely } from '../../tools/toolSwitches';
+import { placesFreely } from '../../types/toolSwitches';
 
 export interface LightZoneEditorDeps {
   viewport: Viewport;

@@ -15,7 +15,7 @@ import { MeasureHandles } from './MeasureHandles';
 import { closeStaleMeasurePopover, keptMeasure, mayEditMeasure, type MeasureEditState } from './measurePopoverGuard';
 import { trackPointer } from './pointerTrack';
 import { PopoverPressWatch } from './PopoverPressWatch';
-import { placesFreely, type ToolSwitchState } from '../../tools/toolSwitches';
+import { placesFreely, type ToolSwitchState } from '../../types/toolSwitches';
 
 /** The popover of a kept measurement, which a press may land in. */
 const POPOVER = '.atlas-measure-popover';

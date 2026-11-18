@@ -7,7 +7,7 @@ import { worldToGameUnits } from '../../lighting/lightingUnits';
 import { dragRange, maxLightRange, type RangeField } from '../../lighting/lightRanges';
 import type { ViewAtlasStore } from '../../storeFactory';
 import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
-import { placesFreely } from '../../tools/toolSwitches';
+import { placesFreely } from '../../types/toolSwitches';
 import type { Point } from '../../types/visionTypes';
 import type { LightMarkers } from './LightMarkers';
 import type { LightRangeRings } from './LightRangeRings';

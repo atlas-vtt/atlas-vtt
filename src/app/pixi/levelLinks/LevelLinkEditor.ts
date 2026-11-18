@@ -8,7 +8,7 @@ import type { LevelLink } from '../../types/sceneLevelTypes';
 import { areaHandlePoint } from '../../vision/polygonArea';
 import { PolygonAreaEditor } from '../areas/PolygonAreaEditor';
 import { snapToWallEnd } from '../lighting/wallEnds';
-import { placesFreely } from '../../tools/toolSwitches';
+import { placesFreely } from '../../types/toolSwitches';
 import { levelLinkOverlay } from './levelLinkOverlay';
 
 export interface LevelLinkEditorDeps {

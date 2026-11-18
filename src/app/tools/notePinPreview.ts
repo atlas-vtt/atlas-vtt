@@ -4,7 +4,7 @@ import type { ViewAtlasState } from '../storeFactory';
 import { nearestHexCenter, type HexLayout, type Point } from '../grid/hexGeometry';
 import { hexLayoutOfGrid } from '../grid/hexLinks';
 import { squareCellCentre, squareGridOf } from '../grid/squareLattice';
-import { switchApplies } from './toolSwitches';
+import { switchApplies } from '../types/toolSwitches';
 
 /**
  * The note pin tool's preview under the pointer: a pin, or, while the tool's cell

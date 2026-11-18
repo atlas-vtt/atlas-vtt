@@ -12,7 +12,7 @@ import { DEFAULT_FOG_TOOL, settledFogTool, type FogToolChoices } from '../fog/fo
 import { DEFAULT_EXPLORED_BRUSH, type ExploredBrushOptions } from '../lighting/exploredEdits';
 import { DEFAULT_LIGHTING_TOOL, type LightingToolOptions } from '../lighting/lightingTool';
 import { DEFAULT_MEASURE_TOOL, type MeasureToolOptions } from '../measure/measureTypes';
-import { DEFAULT_TOOL_SWITCHES, type ToolSwitchId } from '../tools/toolSwitches';
+import { DEFAULT_TOOL_SWITCHES, type ToolSwitchId } from '../types/toolSwitches';
 import type { DMScreenPage, DungeonGeneratorRequest, HeldTokens, ViewUIState } from '../types/viewUIState';
 
 /** State fields added to ViewAtlasState */

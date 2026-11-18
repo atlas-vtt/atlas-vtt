@@ -15,7 +15,7 @@ import { wallList } from '../../vision/wallList';
 import { closesDraft } from '../areas/areaGeometry';
 import { RoomOverlay } from './RoomOverlay';
 import { wallEndReach } from './wallEnds';
-import { switchApplies } from '../../tools/toolSwitches';
+import { switchApplies } from '../../types/toolSwitches';
 
 export interface RoomEditorDeps {
   viewport: Viewport;

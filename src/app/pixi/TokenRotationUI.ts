@@ -12,7 +12,7 @@ import type { TokenResizeUI } from './TokenResizeUI';
 import { destroyTree } from './utils/destroyTree';
 import { levelObjects } from '../levels/levelObjects';
 import { mapTokens } from '../tokens/offMap';
-import { toolSwitch } from '../tools/toolSwitches';
+import { toolSwitch } from '../types/toolSwitches';
 
 export class TokenRotationUI {
   private viewport: Viewport;

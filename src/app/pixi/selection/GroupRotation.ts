@@ -13,7 +13,7 @@ import { tokenDiameterInCells } from '../token-renderer/tokenSizing';
 import { GroupRotateButton } from './GroupRotateButton';
 import { formationMiddle, pointerTurn, snapTurn, turnTokens, type Footprint, type Point, type TokenAtStart } from './groupTurn';
 import type { Box } from './selectionGeometry';
-import { toolSwitch } from '../../tools/toolSwitches';
+import { toolSwitch } from '../../types/toolSwitches';
 
 /** What the tokens' renderer does for a group being turned. */
 export interface GroupTurnHost {

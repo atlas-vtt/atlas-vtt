@@ -31,7 +31,7 @@ import { mapFeatureList } from '../../mapFeatures/mapFeatures';
 import { mapTokens } from '../../tokens/offMap';
 import type { TokenEntity } from '../../types';
 import type { TokenMovement } from './tokenMovement';
-import { toolSwitch } from '../../tools/toolSwitches';
+import { toolSwitch } from '../../types/toolSwitches';
 
 /** What a drag ruler measures: the token and the points it runs through (its start, each waypoint, its landing). */
 export interface DragRulerPath {

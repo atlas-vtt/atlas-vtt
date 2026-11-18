@@ -14,7 +14,7 @@ import { PlacementSession, type HeldToken } from './PlacementSession';
 import { bindPlacementInput, type PlacementInputDeps } from './placementInput';
 import { placementGridOf } from './placementGrid';
 import type { PlacementHand } from './placementHand';
-import { placesFreely, toolSwitch } from '../../tools/toolSwitches';
+import { placesFreely, toolSwitch } from '../../types/toolSwitches';
 
 /** Tokens to put in the GM's hand, laid out as they should land, and how the scene takes them. */
 export interface PlacementRequest {

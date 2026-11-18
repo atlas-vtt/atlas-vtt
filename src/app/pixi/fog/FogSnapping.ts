@@ -8,7 +8,7 @@ import type { ViewAtlasState } from '../../storeFactory';
 import { NO_SNAP, snapHeldPoint, snapPoint, type FogSnap, type FogSnapCandidates } from '../../fog/fogSnap';
 import type { GridGeometry } from '../../grid/gridDistance';
 import { levelObjects } from '../../levels/levelObjects';
-import { placesFreely, switchApplies, type ToolSwitchState } from '../../tools/toolSwitches';
+import { placesFreely, switchApplies, type ToolSwitchState } from '../../types/toolSwitches';
 import type { Point } from '../../types/visionTypes';
 import { wallList } from '../../vision/wallList';
 

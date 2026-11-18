@@ -32,7 +32,7 @@ import type { AnnotationPointerHandlers } from './annotationPointer';
 import { BarMenuPress } from './BarMenuPress';
 import { ClickPlacing } from './ClickPlacing';
 import { DrawInput } from './DrawInput';
-import { placesFreely, switchApplies } from '../../tools/toolSwitches';
+import { placesFreely, switchApplies } from '../../types/toolSwitches';
 import { DrawPlacing } from './DrawPlacing';
 import { DrawToolHost, type FullOf } from './DrawToolHost';
 import { activeDrawMode } from './drawToolState';
