@@ -103,10 +103,14 @@ export class FakeTesseraGraphics implements TesseraGraphics {
     return Promise.resolve(new Blob([JSON.stringify({ width: rect.width, height: rect.height })], { type: 'image/webp' }));
   }
 
-  compose(width: number, height: number, parts: readonly ComposedPart[]): ImageBitmap {
+  tesseraFormat(): Promise<'webp'> {
+    return Promise.resolve('webp');
+  }
+
+  compose(width: number, height: number, parts: readonly ComposedPart[]): Promise<ImageBitmap> {
     for (const part of parts) asFake(part.source);
     this.composes.push({ width, height, parts: parts.length });
-    return this.make(width, height, 'composed');
+    return Promise.resolve(this.make(width, height, 'composed'));
   }
 
   /** Pixels without colour: the fake holds art in its left half. */

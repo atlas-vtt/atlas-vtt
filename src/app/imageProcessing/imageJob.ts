@@ -58,8 +58,9 @@ export interface ImageJob {
    */
   scaledDecode?: { source: Size; decoded: Size } | undefined;
   /**
-   * The result is stored under a WebP name, so a PNG or JPEG that needs no
-   * scaling is encoded too instead of kept. A WebP source is still kept.
+   * The result is a derived file (a thumbnail, a cover), which is a WebP wherever
+   * one can be encoded: a PNG or JPEG that needs no scaling is encoded too instead
+   * of kept. A WebP source is still kept.
    */
   webpOnly?: boolean | undefined;
   /**
@@ -77,14 +78,15 @@ export interface ScaleDown {
 
 export interface ImageJobResult {
   /**
-   * WebP bytes (PNG for a picture wider or taller than a WebP can be), or the source itself where a
-   * PNG, JPEG or WebP needed no scaling (`webpOnly`: only a WebP).
+   * WebP bytes (PNG for a picture wider or taller than a WebP can be, and for every picture where
+   * the platform cannot encode WebP), or the source itself where a PNG, JPEG or WebP needed no
+   * scaling (`webpOnly`: only a WebP). Its type and its bytes say which.
    */
   image: Blob;
   thumbnail: Blob | null;
   preview: Blob | null;
   sourcePreview: Blob | null;
-  /** Set when the source had more pixels than its bounds allow and lost them. */
+  /** Set when the source had more pixels than its bounds, or a canvas of this device, allow and lost them. */
   scaledDown?: ScaleDown | undefined;
 }
 

@@ -1,3 +1,5 @@
+import { learnCanvasLimit } from '../../imageProcessing/canvasLimit';
+import { realmImageEncoder } from '../../imageProcessing/imageEncoder';
 import { sha256 } from '../../utils/hashing';
 import { indexedDbTesseraBackend } from './indexedDbTesseraBackend';
 import { MemoryTesseraBackend } from './memoryTesseraBackend';
@@ -39,14 +41,17 @@ async function openBackend(appId: string | null): Promise<TesseraStoreBackend> {
 
 /** A core over this global scope's IndexedDB, image decoding and canvases. */
 export const browserTesseraCore: CoreFactory = async (appId, emit, budgets) => {
+  await learnCanvasLimit();
+  const graphics = createTesseraGraphics(browserGraphicsPrimitives(), realmImageEncoder);
   const store = new TesseraStore({
     backend: await openBackend(appId),
     estimateQuota: quota,
+    format: () => graphics.tesseraFormat(),
     ...(budgets && { cacheLimits: { maxBytes: budgets.cacheMax, quotaShare: budgets.cacheQuotaShare } }),
   });
   return new TesseraDecoderCore({
     store,
-    graphics: createTesseraGraphics(browserGraphicsPrimitives()),
+    graphics,
     sha256,
     yieldToMessages: nextTask,
     emit,
