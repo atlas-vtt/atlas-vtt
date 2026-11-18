@@ -39,6 +39,7 @@ import { showDungeonGenerator } from '../dungeon-generator/openDungeonGenerator'
 import { runInBackground } from '../../../utils/backgroundTask';
 import { useArmariumPlace } from './hooks/useArmariumPlace';
 import { ArmariumPane } from '../../../armarium/ArmariumPane';
+import { useStoreTagFilter, useStoreTags } from '../../../armarium/storeTagFilter';
 
 export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, onExitComplete, pendingImport, armariumRequest = 0 }: AssetManagerProps): React.JSX.Element {
   const isOpen = useOpenedAfterPress(isOpenProp);
@@ -57,6 +58,8 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
   useFollowSelectedCollection(data.collections, selectedCollection, setSelectedCollection);
   const settings = useAtlasSettings(SettingsService.forApp(data.app));
   const armarium = useArmariumPlace(data.app, isOpen, armariumRequest, pendingImport);
+  const storeTagFilter = useStoreTagFilter();
+  const storeTagsState = useStoreTags(storeTagFilter);
 
   const visibleIds = useRef<VisibleIds>({ assets: [], folders: [] });
   const sel = useSelectionHandlers(visibleIds, data.folders, activeTab, isOpen);
@@ -159,8 +162,8 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
         >
           <Sidebar
             selectedTagIds={sel.selectedTagIds}
-            onSelectTag={(tagId) => { armarium.leave(); sel.handleTagSelect(tagId); }}
-            onClearTags={() => { armarium.leave(); sel.setSelectedTagIds([]); }}
+            onSelectTag={sel.handleTagSelect}
+            onClearTags={() => sel.setSelectedTagIds([])}
             tags={data.availableTags}
             tagsLoading={showTagSkeleton}
             tagsFailed={data.assetsFailed}
@@ -175,6 +178,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
             onImportCollection={crud.handleImportCollection}
             footer={!armarium.shown && activeTab === 'tokens' && data.assetService && data.assets.length > 0 ? <BestiaryTokensOffer app={data.app} assets={data.assetService} collection={selectedCollection} variant="sidebar" dismissed={starterOffer.dismissed} {...(starterOffer.dismiss && { onDismiss: starterOffer.dismiss })} /> : null}
             layout={sidebar}
+            storeTags={armarium.shown ? { state: storeTagsState, onToggle: (id) => storeTagFilter.toggle(id), onClear: () => storeTagFilter.clear() } : undefined}
           />
           <Header
             app={data.app}
@@ -207,7 +211,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
             onDrop={(e) => { if (draggedItems && sel.selectedFolderId === null) { e.preventDefault(); crud.handleDrop(null); } }}
           >
             {armarium.shown ? (
-              <ArmariumPane key={armarium.frameKey} app={data.app} url={armarium.page} onShare={() => { void crud.handleShareCollection(); }} />
+              <ArmariumPane key={armarium.frameKey} app={data.app} url={armarium.page} onShare={() => { void crud.handleShareCollection(); }} tagFilter={storeTagFilter} />
             ) : (
               <>
                 <ActiveFilterBar groups={filterSearch.chips} onReset={filterSearch.reset} />

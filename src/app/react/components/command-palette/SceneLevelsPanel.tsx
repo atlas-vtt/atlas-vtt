@@ -6,7 +6,7 @@ import { viewedLevelId } from '../../../levels/sceneLevels';
 import { levelBackground, levelsOrFirst } from '../../../levels/levelEdits';
 import { collectionIdOfPath } from '../../../services/assetPaths';
 import { runInBackground } from '../../../utils/backgroundTask';
-import { addLevel, changeLevel, changeLevelBackground, deleteLevel, levelLabel, moveLevel, setLevelOpenArt, setLevelRoof, setLevelSees } from '../levels/levelEditing';
+import { addLevel, changeLevel, startFloorPositioning, changeLevelBackground, deleteLevel, levelLabel, moveLevel, setLevelOpenArt, setLevelRoof, setLevelSees } from '../levels/levelEditing';
 import { pickMapImage } from '../levels/MapImagePickerModal';
 import { replaceMapImage } from '../levels/replaceMapImage';
 import { SceneLevelRow } from './SceneLevelRow';
@@ -64,6 +64,7 @@ export function SceneLevelsPanel(): React.ReactElement {
                 canMoveDown: index > 0,
                 onShow: () => store.getState().setViewedLevel(level.id),
                 onMove: (direction) => moveLevel(store, level.id, direction),
+                onPosition: () => startFloorPositioning(store, level.id),
                 onDelete: () => runInBackground(deleteLevel(store, level.id).then((target) => {
                   if (target && view) presentLevelInsteadOf(view, level.id, target);
                 }), 'Deleting a level'),

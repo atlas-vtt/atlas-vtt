@@ -24,6 +24,7 @@ import { DrawToolBar } from '../packages/components/toolbar/DrawToolBar';
 import { LightingToolBar } from '../packages/components/toolbar/LightingToolBar';
 import { MeasureToolBar } from '../packages/components/toolbar/MeasureToolBar';
 import { FogToolBar } from '../packages/components/toolbar/FogToolBar';
+import { FloorPositionBar } from './components/levels/FloorPositionBar';
 import { DMScreenFromStore } from './components/DMScreen';
 import { DungeonGeneratorOverlay } from '../packages/components/dungeon-generator/DungeonGeneratorOverlay';
 import { InitiativeTracker } from './components/InitiativeTracker';
@@ -253,6 +254,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
                 {!isPlayerView && <PanelBoundary name="the lighting tools"><LightingToolBar /></PanelBoundary>}
                 <PanelBoundary name="the measure tools"><MeasureToolBar playerView={isPlayerView} /></PanelBoundary>
                 {!isPlayerView && <PanelBoundary name="the draw tools"><DrawToolBar /></PanelBoundary>}
+                {!isPlayerView && <PanelBoundary name="the floor positioning"><FloorPositionBar /></PanelBoundary>}
               </>
             )}
           >

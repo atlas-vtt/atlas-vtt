@@ -344,6 +344,7 @@ export interface ViewAtlasState extends ViewState {
   setDMScreenOpen: UISlice['setDMScreenOpen'];
   setDMScreenPage: UISlice['setDMScreenPage'];
   setGridAlignmentOpen: UISlice['setGridAlignmentOpen'];
+  setFloorPositioning: UISlice['setFloorPositioning'];
   setDiceLogOpen: UISlice['setDiceLogOpen'];
   setHotkeyHelpOpen: UISlice['setHotkeyHelpOpen'];
   setDocsOpen: UISlice['setDocsOpen'];

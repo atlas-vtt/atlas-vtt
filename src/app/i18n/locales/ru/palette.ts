@@ -47,5 +47,6 @@ export const palette: Translation = {
   'palette.openPlayerWindow': 'Открыть окно игроков',
   'palette.panel.levels': 'Уровни сцены',
   'palette.sceneLevels': 'Уровни сцены',
+  'palette.positionFloor': 'Расположить этаж',
   'palette.replaceMapImage': 'Заменить изображение карты',
 };

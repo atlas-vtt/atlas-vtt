@@ -12,6 +12,11 @@ export const MAP_LAYER_Z = {
   /** Water, lava and acid moving on the map image, beneath the grid and all the lighting lights after the map. */
   liquids: -1,
   /**
+   * Another floor's map, see-through, while the GM places the floor shown over it (Position floor):
+   * above the floor's own map and liquids, below its drawings, grid and tokens.
+   */
+  floorGhost: -0.75,
+  /**
    * Drawings and texts put on the map: above the map image and its liquids, under the grid, the
    * measured areas and the tokens, so a filled room keeps its grid lines and the lighting lights
    * it like the floor.

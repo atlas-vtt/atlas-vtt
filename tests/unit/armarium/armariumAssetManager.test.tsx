@@ -50,8 +50,10 @@ vi.mock('../../../src/app/packages/components/asset-manager/components/ModalLaye
   ModalLayer: ({ crud }: { crud: { transfer: { step: string } | null } }) => (crud.transfer ? <div role="dialog" aria-label="Import review" /> : null),
 }));
 vi.mock('../../../src/app/packages/components/asset-manager/components/Sidebar', () => ({
-  Sidebar: ({ onSelectTag }: { onSelectTag: (id: string) => void }) => (
-    <button type="button" onClick={() => onSelectTag('forest')}>forest</button>
+  Sidebar: ({ onSelectTag, storeTags }: { onSelectTag: (id: string) => void; storeTags?: { onToggle: (id: string) => void } }) => (
+    storeTags
+      ? <button type="button" onClick={() => storeTags.onToggle('forest')}>store forest</button>
+      : <button type="button" onClick={() => onSelectTag('forest')}>forest</button>
   ),
 }));
 vi.mock('../../../src/app/packages/components/asset-manager/components/Header', () => ({
@@ -107,15 +109,27 @@ describe('the Armarium in the asset manager', () => {
     expect(screen.getByRole('button', { name: 'Armarium' }).getAttribute('aria-current')).toBe('page');
   });
 
-  it('is a place of the sidebar, left for the library by a tab, a tag or Back', () => {
+  it('is a place of the sidebar, left for the library by a tab or Back', () => {
     render(<AssetManager isOpen onClose={vi.fn()} />);
-    for (const leave of ['Maps', 'forest', 'Back to the library']) {
+    for (const leave of ['Maps', 'Back to the library']) {
       fireEvent.click(screen.getByRole('button', { name: 'Armarium' }));
       expect(storeFrame()).not.toBeNull();
       fireEvent.click(screen.getByRole('button', { name: leave }));
       expect(storeFrame()).toBeNull();
       expect(screen.getByText('Library')).toBeTruthy();
     }
+  });
+
+  it('gives the sidebar the store\'s tags while it is shown: a tag press goes to the page and the store stays', () => {
+    render(<AssetManager isOpen onClose={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'forest' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Armarium' }));
+    const post = vi.spyOn(storeFrame()!.contentWindow!, 'postMessage').mockImplementation(() => undefined);
+    fireEvent.click(screen.getByRole('button', { name: 'store forest' }));
+    expect(post).toHaveBeenCalledWith({ type: 'atlas-armarium:toggle-tag', format: 1, tag: 'forest' }, 'https://atlas-vtt.dev');
+    expect(storeFrame()).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the library' }));
+    expect(screen.getByRole('button', { name: 'forest' })).toBeTruthy();
   });
 
   it('shows the store again when asked while open', () => {

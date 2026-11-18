@@ -60,6 +60,7 @@ import { LightingSettingsPanel } from './command-palette/LightingSettingsPanel';
 import { SceneSnapshotsPanel } from './command-palette/SceneSnapshotsPanel';
 import { SceneLevelsPanel } from './command-palette/SceneLevelsPanel';
 import { replaceMapImage } from './levels/replaceMapImage';
+import { startFloorPositioning } from './levels/levelEditing';
 import { pickMapImage } from './levels/MapImagePickerModal';
 import { placePalette, placePaletteAtTop, type PalettePosition } from './command-palette/palettePlacement';
 import { useCoarsePointer } from '../../platform/useCoarsePointer';
@@ -321,6 +322,18 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       hasSubmenu: true,
       submenu: [],
     },
+    ...((store.getState().levels?.length ?? 0) > 1 ? [{
+      id: "position-floor",
+      icon: <Move />,
+      label: t('palette.positionFloor'),
+      keywords: ["align", "offset", "line up", "basement", "stairs", "move", "level", "floor"],
+      section: "tools" as const,
+      action: () => {
+        onClose();
+        const levelId = viewedLevelId(store.getState());
+        if (levelId) startFloorPositioning(store, levelId);
+      },
+    }] : []),
     {
       id: "replace-map-image",
       icon: <Replace />,
