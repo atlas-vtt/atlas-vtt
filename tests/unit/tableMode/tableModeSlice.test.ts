@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../../src/app/storeFactory';
 import { getHistoryStore } from '../../../src/app/stores/history';
+import type { Viewport } from 'pixi-viewport';
+import { mapGestureHost } from '../../../src/app/pixi/input/mapGestureHost';
 import { createInMemoryApp } from '../../mocks/inMemoryVault';
 
 function store(): ViewAtlasStore {
@@ -82,5 +84,41 @@ describe('Table mode in the view store', () => {
     view.getState().enterTableMode();
     view.getState().leaveTableMode();
     expect(getHistoryStore(view)?.getState().pastStates ?? []).toEqual([]);
+  });
+});
+
+describe('fingers on a map in Table mode', () => {
+  const host = (view: ViewAtlasStore): ReturnType<typeof mapGestureHost> => mapGestureHost({
+    store: view,
+    viewport: { toWorld: (x: number, y: number) => ({ x, y }) } as unknown as Viewport,
+    placing: () => false,
+    marqueePending: () => true,
+    menuAt: () => true,
+    tapActsAt: () => true,
+    fingers: { use: 'tool', notePen: () => undefined },
+  });
+
+  it('only look at it, whatever tool the GM left, and get the GM\'s tool back afterwards', () => {
+    const view = store();
+    view.getState().setActiveTool('fog');
+    const gestures = host(view);
+    expect(gestures.fingerMode()).toBe('tool');
+    view.getState().enterTableMode();
+    expect(gestures.fingerMode()).toBe('look');
+    gestures.endLooking?.();
+    expect(view.getState().tableMode).toBeNull();
+    expect(gestures.fingerMode()).toBe('tool');
+  });
+
+  it('take no step back or forward: a tap of two or three fingers is the GM\'s undo and redo', () => {
+    const view = store();
+    view.getState().addWall({ type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 100, y: 0 } });
+    const gestures = host(view);
+    view.getState().enterTableMode();
+    gestures.undo();
+    expect(Object.keys(view.getState().objects.walls)).toHaveLength(1);
+    view.getState().leaveTableMode();
+    gestures.undo();
+    expect(Object.keys(view.getState().objects.walls)).toHaveLength(0);
   });
 });
