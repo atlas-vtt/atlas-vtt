@@ -1,12 +1,20 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Armarium — the store of atlas-vtt.dev in a tab of its own
+// Armarium — the store of atlas-vtt.dev in the asset manager's content area
 // ═══════════════════════════════════════════════════════════════════════════
-// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss; the tab's own box
-// (`.view-content.atlas-armarium-view`) is set in main.scss beside the other views.
-// The frame is `SiteFrame` (`site-frame.scss`); here only the store's skeleton.
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss.
+// The frame is `SiteFrame` (`site-frame.scss`); here the pane it fills and the store's skeleton.
 
 @use '../../../styles/tokens' as *;
 @use '../../../styles/mixins' as *;
+
+// Takes the body's whole height, under the header, to the window's edges.
+.atlas-armarium-pane {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
 
 .atlas-armarium-skeleton__bar {
   height: 40px;
@@ -26,7 +34,7 @@
   border-radius: $radius-m;
 }
 
-// The listing cards: a cover and two lines each, as many to a row as the tab is wide.
+// The listing cards: a cover and two lines each, as many to a row as the pane is wide.
 .atlas-armarium-skeleton__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));

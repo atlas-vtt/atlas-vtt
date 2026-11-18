@@ -145,6 +145,8 @@ export interface AssetManagerProps {
   onExitComplete?: () => void;
   /** A bundle handed over from outside (an Armarium install), reviewed once the window is open. */
   pendingImport?: ExternalImport;
+  /** Raised by every request to show the Armarium; above 0, the window opens on it and shows it again when raised. */
+  armariumRequest?: number;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────

@@ -202,7 +202,7 @@ export default class AtlasVTTPlugin extends Plugin {
     // before the slower startup path finishes.
     try {
       this.registerAtlasViews();
-      // The Armarium's tab, command, installer and install link; the installer reaches the asset manager once it exists.
+      // The Armarium's command, installer and install link; they reach the asset manager once it exists.
       registerArmarium(this, () => this.globalAssetManager);
     } catch (error) {
       // An earlier Atlas that failed to unload still holds them; only a restart frees them.

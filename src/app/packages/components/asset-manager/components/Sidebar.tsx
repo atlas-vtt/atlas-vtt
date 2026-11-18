@@ -34,8 +34,10 @@ export interface SidebarProps {
   onEditCollectionSettings?: (collectionId: string) => void;
   onExportCollection?: () => void;
   onImportCollection?: () => void;
-  /** Opens the Armarium, where free collections install with a click. */
-  onBrowseArmarium?: () => void;
+  /** Shows the Armarium, where free collections install with a click, in place of the library. */
+  onShowArmarium?: () => void;
+  /** The Armarium is shown: its row is the current place. */
+  armariumShown?: boolean;
   /** Stands above the Manage button: what the open tab offers to add (the bestiary tokens). */
   footer?: React.ReactNode;
   /** Floating behaviour from `useSidebarLayout`; omitted, the sidebar is docked. */
@@ -57,7 +59,8 @@ export function Sidebar({
   onEditCollectionSettings,
   onExportCollection,
   onImportCollection,
-  onBrowseArmarium,
+  onShowArmarium,
+  armariumShown = false,
   footer,
   layout,
 }: SidebarProps): React.JSX.Element {
@@ -119,13 +122,6 @@ export function Sidebar({
                   <LabelTooltip label={t('am.sidebar.import')}>
                     <Button variant="ghost" size="icon" className="atlas-collection-header-btn" onClick={onImportCollection} aria-label={t('am.sidebar.import')}>
                       <Download />
-                    </Button>
-                  </LabelTooltip>
-                )}
-                {onBrowseArmarium && (
-                  <LabelTooltip label={t('armarium.browse')}>
-                    <Button variant="ghost" size="icon" className="atlas-collection-header-btn" onClick={onBrowseArmarium} aria-label={t('armarium.browse')}>
-                      <Store />
                     </Button>
                   </LabelTooltip>
                 )}
@@ -226,14 +222,27 @@ export function Sidebar({
 
           {footer}
 
-          <Button
-            variant="ghost"
-            className="atlas-asset-manager-manage-btn"
-            onClick={(e) => { e.stopPropagation(); onManageTags(); }}
-          >
-            <Settings />
-            <span>{t('am.sidebar.manage')}</span>
-          </Button>
+          <div className="atlas-sidebar-actions">
+            {onShowArmarium && (
+              <Button
+                variant="ghost"
+                className={`atlas-sidebar-armarium-btn ${armariumShown ? 'atlas-active' : ''}`}
+                onClick={(e) => { e.stopPropagation(); onShowArmarium(); }}
+                aria-current={armariumShown ? 'page' : undefined}
+              >
+                <Store />
+                <span>{t('armarium.title')}</span>
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              className="atlas-asset-manager-manage-btn"
+              onClick={(e) => { e.stopPropagation(); onManageTags(); }}
+            >
+              <Settings />
+              <span>{t('am.sidebar.manage')}</span>
+            </Button>
+          </div>
         </motion.div>
       </motion.aside>
     </MotionConfig>

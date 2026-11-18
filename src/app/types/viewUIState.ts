@@ -37,6 +37,8 @@ export interface ViewUIState {
   isDocsOpen: boolean;
   isAssetManagerOpen: boolean;
   assetManagerInitialTab?: 'scenes' | 'maps' | 'encounters' | 'tokens' | 'party' | undefined;
+  /** Raised by every request for the Armarium (the command palette); 0 while the asset manager opens on the library. Never saved. */
+  assetManagerArmarium: number;
   isCommandPaletteOpen: boolean;
   /** The page the palette opens on when it opens next (a menu's "Graphics settings…" row); taken when it opens. */
   commandPalettePage: string | null;

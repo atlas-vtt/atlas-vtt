@@ -5,11 +5,17 @@ import { acceptFrameMessage, installedMessage, postToFrame, statusMessage } from
 /**
  * Connects the Armarium page in `frameRef` with the installer: its install requests start an install, its hello is
  * answered with what the vault holds, and it hears where every install stands. Messages count only from the
- * Armarium's origin and from this frame (`acceptFrameMessage`); `win` is the window the frame lives in.
+ * Armarium's origin and from this frame (`acceptFrameMessage`). They are heard on the window `hostRef` lives in, which
+ * a frame's page posts to.
  */
-export function useArmariumBridge(installer: ArmariumInstaller | null, frameRef: RefObject<HTMLIFrameElement | null>, win: Window): void {
+export function useArmariumBridge(
+  installer: ArmariumInstaller | null,
+  frameRef: RefObject<HTMLIFrameElement | null>,
+  hostRef: RefObject<HTMLElement | null>,
+): void {
   useEffect(() => {
-    if (!installer) return undefined;
+    const win = hostRef.current?.win;
+    if (!installer || !win) return undefined;
     const frameWindow = (): Window | null => frameRef.current?.contentWindow ?? null;
     const sendInstalled = (): void => {
       void installer.installedItems().then((items) => postToFrame(frameWindow(), installedMessage(items)));
@@ -28,5 +34,5 @@ export function useArmariumBridge(installer: ArmariumInstaller | null, frameRef:
       win.removeEventListener('message', onMessage);
       stopStatus();
     };
-  }, [installer, frameRef, win]);
+  }, [installer, frameRef, hostRef]);
 }

@@ -15,6 +15,8 @@ export class GlobalAssetManagerService {
   private isOpen: boolean = false;
   private initialTab: Tab | undefined;
   private pendingImport: ExternalImport | undefined;
+  /** Raised by every request for the Armarium while open; 0 opens the library. */
+  private armariumRequest = 0;
 
   constructor(app: App) {
     this.app = app;
@@ -41,14 +43,20 @@ export class GlobalAssetManagerService {
     this.render(this.root, true);
   }
 
+  /** Shows the Armarium in the open window, which stays mounted, or in one opened for it. */
+  openArmarium(): void {
+    if (!this.isOpen || !this.root) this.open();
+    this.armariumRequest += 1;
+    if (this.root) this.render(this.root, true);
+  }
+
   /**
-   * Shows the import review of a bundle that came from outside (an Armarium install): in the open window, or in
-   * one opened for it. Nothing is imported unless the GM confirms the review.
+   * Shows the import review of an Armarium install over the Armarium: in the open window, or in one opened for it.
+   * Only for a bundle no open asset manager took (`ArmariumHosts`). Nothing is imported unless the GM confirms.
    */
   importBundle(pending: ExternalImport): void {
-    if (!this.isOpen || !this.root) this.open();
     this.pendingImport = pending;
-    if (this.root) this.render(this.root, true);
+    this.openArmarium();
   }
 
   /** No ViewStoreProvider: there is no map view here, the asset manager reads the store optionally. */
@@ -70,7 +78,8 @@ export class GlobalAssetManagerService {
             onClose: () => this.close(),
             ...(onExitComplete ? { onExitComplete } : {}),
             ...(this.initialTab ? { initialTab: this.initialTab } : {}),
-            ...(this.pendingImport ? { pendingImport: this.pendingImport } : {})
+            ...(this.pendingImport ? { pendingImport: this.pendingImport } : {}),
+            ...(this.armariumRequest > 0 ? { armariumRequest: this.armariumRequest } : {})
           })
         })
       })
@@ -86,6 +95,7 @@ export class GlobalAssetManagerService {
     this.isOpen = false;
     this.initialTab = undefined;
     this.pendingImport = undefined;
+    this.armariumRequest = 0;
     if (!root) {
       container?.remove();
       return;
