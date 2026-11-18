@@ -378,10 +378,7 @@
   border-radius: $radius-s;
   border: $border-width-s solid color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent);
   cursor: pointer;
-  // The choice's ring is drawn inside the swatch, so the chosen one keeps its size and every gap in
-  // the grid stays the same (a ring outside took half the gap to its neighbours).
-  box-shadow: inset 0 0 0 0 var(--text-normal), inset 0 0 0 0 var(--background-primary);
-  transition-property: box-shadow, scale;
+  transition-property: border-color, scale;
   transition-duration: $transition-normal;
   transition-timing-function: $transition-ease;
 
@@ -393,11 +390,9 @@
     scale: 0.96;
   }
 
-  // A ring in the text colour at the edge contrasts with the menu around it, and a line of the menu's
-  // colour inside it parts it from the swatch, so it shows on every colour, white too; the tick
-  // marks the choice without relying on colour at all.
+  // The tick marks the choice; its own border only firms up a little.
   &--active {
-    box-shadow: inset 0 0 0 $border-width-l var(--text-normal), inset 0 0 0 calc(2 * #{$border-width-l}) var(--background-primary);
+    border-color: color-mix(in oklch, var(--text-normal) 50%, transparent);
   }
 
   &:disabled {
