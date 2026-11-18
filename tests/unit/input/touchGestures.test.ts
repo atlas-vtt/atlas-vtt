@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { LONG_PRESS_MS } from '../../../src/app/input/longPress';
 import type { FingerMode, GestureEffects, GestureHost } from '../../../src/app/pixi/input/gestureTypes';
 import { fingerModeOf } from '../../../src/app/pixi/input/mapGestureHost';
-import { SETTLE_MS, TouchGestures } from '../../../src/app/pixi/input/touchGestures';
+import { PAIR_HOLD_MS, SETTLE_MS, TouchGestures } from '../../../src/app/pixi/input/touchGestures';
 import { DOUBLE_TAP_MS } from '../../../src/app/pixi/input/touchTaps';
 import { FakeClock } from './fakeGestureClock';
 
@@ -454,5 +454,119 @@ describe('what one finger does, tool by tool', () => {
 
   it('is the placement while tokens are placed by hand', () => {
     expect(fingerModeOf('move', true, 'pan')).toBe('direct');
+  });
+});
+
+describe('a map that is only looked at (Table mode)', () => {
+  /** A scene whose effects also tell when two fingers were held. */
+  function looking(): Scene {
+    const s = scene('look', true, true);
+    const held = (): void => { s.log.push('pairHeld'); };
+    const { clock, log } = s;
+    const say = (name: string) => (...args: unknown[]): void => { log.push(args.length ? `${name} ${args.join(' ')}` : name); };
+    const effects: GestureEffects = {
+      press: say('press'), cancelPress: say('cancelPress'), secondaryClick: say('secondaryClick'),
+      beginNavigation: say('beginNavigation'), pan: say('pan'), pinch: say('pinch'), endNavigation: say('endNavigation'),
+      zoomStep: say('zoomStep'), undo: say('undo'), redo: say('redo'), showRing: say('showRing'), hideRing: say('hideRing'),
+      pairHeld: held,
+    };
+    const host: GestureHost = { fingerMode: () => s.host.mode, pressedEmptyMap: () => s.host.empty, menuAt: () => s.host.menu };
+    return { ...s, gestures: new TouchGestures(host, effects, clock) };
+  }
+
+  it('one finger pans wherever it lands, and the tools hear nothing of it', () => {
+    const s = looking();
+    land(s);
+    expect(s.gestures.move(1, 130, 104)).toBe(false);
+    expect(s.gestures.move(1, 150, 104)).toBe(false);
+    expect(s.gestures.up(1, 150, 104)).toBe(false);
+    expect(s.log).toEqual(['beginNavigation', 'pan 20 0', 'endNavigation true']);
+  });
+
+  it('a tap is no click and a rest no long press: nothing is pressed, no menu opens, no ring shows', () => {
+    const s = looking();
+    land(s);
+    expect(s.gestures.up(1, 100, 100)).toBe(false);
+    land(s, 2, 300, 300);
+    s.clock.advance(LONG_PRESS_MS * 3);
+    expect(s.gestures.up(2, 300, 300)).toBe(false);
+    expect(s.log).toEqual([]);
+  });
+
+  it('a double tap still zooms in', () => {
+    const s = looking();
+    land(s);
+    s.gestures.up(1, 100, 100);
+    s.clock.advance(120);
+    land(s, 2, 104, 98);
+    s.gestures.up(2, 104, 98);
+    expect(s.log).toEqual(['zoomStep 104 98 1']);
+  });
+
+  it('two fingers pinch as ever, and a pinch never ends the looking', () => {
+    const s = looking();
+    s.gestures.down(1, 100, 100);
+    s.gestures.down(2, 200, 100);
+    s.gestures.move(2, 230, 100);
+    s.gestures.move(2, 260, 100);
+    s.clock.advance(PAIR_HOLD_MS * 2);
+    s.gestures.up(1, 100, 100);
+    s.gestures.up(2, 260, 100);
+    expect(s.log).toContain('pinch 165 100 130 180 100 160');
+    expect(s.log).not.toContain('pairHeld');
+  });
+
+  it('two fingers held still end the looking, once, with the ring closing around them', () => {
+    const s = looking();
+    s.gestures.down(1, 100, 100);
+    s.gestures.down(2, 200, 120);
+    expect(s.log).toEqual(['beginNavigation', `showRing 150 110 ${PAIR_HOLD_MS}`]);
+    s.clock.advance(PAIR_HOLD_MS - 1);
+    expect(s.log).not.toContain('pairHeld');
+    s.clock.advance(1);
+    expect(s.log).toEqual(['beginNavigation', `showRing 150 110 ${PAIR_HOLD_MS}`, 'hideRing', 'endNavigation false', 'pairHeld']);
+    // The fingers that held do nothing more, lifted or moved; no undo follows as after a tap of two
+    s.gestures.move(1, 160, 100);
+    s.gestures.up(1, 160, 100);
+    s.gestures.up(2, 200, 120);
+    s.clock.advance(DOUBLE_TAP_MS * 2);
+    expect(s.log.filter((entry) => entry === 'pairHeld')).toHaveLength(1);
+    expect(s.log).not.toContain('undo');
+  });
+
+  it('fingers lifted early, a third finger or a finger that moves away leave the looking as it is', () => {
+    const lifted = looking();
+    lifted.gestures.down(1, 100, 100);
+    lifted.gestures.down(2, 200, 100);
+    lifted.clock.advance(PAIR_HOLD_MS - 50);
+    lifted.gestures.up(2, 200, 100);
+    lifted.clock.advance(PAIR_HOLD_MS);
+    expect(lifted.log).not.toContain('pairHeld');
+
+    const third = looking();
+    third.gestures.down(1, 100, 100);
+    third.gestures.down(2, 200, 100);
+    third.gestures.down(3, 300, 100);
+    third.clock.advance(PAIR_HOLD_MS * 2);
+    expect(third.log).not.toContain('pairHeld');
+
+    const moved = looking();
+    moved.gestures.down(1, 100, 100);
+    moved.gestures.down(2, 200, 100);
+    moved.clock.advance(PAIR_HOLD_MS / 2);
+    moved.gestures.move(2, 215, 100);
+    moved.clock.advance(PAIR_HOLD_MS);
+    expect(moved.log).not.toContain('pairHeld');
+    expect(moved.log).toContain('hideRing');
+  });
+
+  it('is asked for only while the view is in Table mode, and outside it two resting fingers do nothing', () => {
+    expect(fingerModeOf('move', false, 'tool', true)).toBe('look');
+    expect(fingerModeOf('fog', true, 'pan', true)).toBe('look');
+    const s = scene('objects', true);
+    s.gestures.down(1, 100, 100);
+    s.gestures.down(2, 200, 100);
+    s.clock.advance(PAIR_HOLD_MS * 2);
+    expect(s.log).toEqual(['beginNavigation']);
   });
 });
