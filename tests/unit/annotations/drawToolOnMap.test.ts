@@ -4,6 +4,7 @@ import { MAX_DRAWINGS, MAX_HOLES, MAX_TEXTS } from '../../../src/app/annotations
 import { eraserRadius, stampSize, strokeWidth, textHeight } from '../../../src/app/annotations/drawSizes';
 import { inFill } from '../../../src/app/annotations/lineMath';
 import { FONT_FAMILIES, TEXT_PLATE } from '../../../src/app/annotations/madeText';
+import { openShapeOf } from '../../../src/app/input/openShape';
 import { markHandled, resetHandled } from '../../../src/app/pixi/utils/handledEvents';
 import { getHistoryStore } from '../../../src/app/stores/history';
 import type { DrawingStroke, TextElement } from '../../../src/app/types';
@@ -138,6 +139,60 @@ describe('the Draw tool on the map: shapes', () => {
     expect(path).toMatchObject({ type: 'line', anchors: [pt(0, 0), pt(140, 0), pt(140, 140)] });
     expect(path?.points.length).toBeGreaterThan(3);
     expect(steps(s)).toBe(1);
+  });
+
+  it('keeps a line placed click by click through a press that is lost to a second finger: the press places no corner', () => {
+    const s = scene();
+    const open = openShapeOf(s.store);
+    s.tool({ mode: 'line' });
+    s.click(0, 0);
+    expect(open.state).toEqual({ canFinish: true, canGoBack: false });
+    s.click(140, 0);
+    expect(open.state).toEqual({ canFinish: true, canGoBack: true });
+    // Two fingers move the map: the first one's press reached the tool before the second came down.
+    s.pointer('pointerdown', 420, 280);
+    s.pointer('pointercancel', 420, 280);
+    expect(open.state).not.toBeNull();
+    s.click(140, 140);
+    // What Enter does, from the strip's button.
+    open.finish();
+    expect(open.state).toBeNull();
+    const [path, ...more] = s.drawings();
+    expect(more).toEqual([]);
+    expect(path?.points).toEqual([pt(0, 0), pt(140, 0), pt(140, 140)]);
+    expect(steps(s)).toBe(1);
+  });
+
+  it('takes a line\'s last corner back from the strip\'s button, as Backspace does, and never its first', () => {
+    const s = scene();
+    const open = openShapeOf(s.store);
+    s.tool({ mode: 'line' });
+    s.click(0, 0);
+    s.click(140, 0);
+    s.click(140, 140);
+    open.back();
+    open.back();
+    expect(open.state).toEqual({ canFinish: true, canGoBack: false });
+    open.back();
+    s.click(0, 140);
+    s.click(0, 140);
+    expect(s.drawings()[0]?.points).toEqual([pt(0, 0), pt(0, 140)]);
+  });
+
+  it('drops a stroke whose press is lost, and writes no cells of a lost sweep', () => {
+    const s = scene();
+    s.tool({ mode: 'pen' });
+    s.pointer('pointerdown', 10, 10);
+    s.pointer('pointermove', 90, 40);
+    s.pointer('pointercancel', 90, 40);
+    s.pointer('pointerup', 90, 40);
+    s.tool({ mode: 'cells' });
+    s.pointer('pointerdown', 10, 10);
+    s.pointer('pointermove', 200, 40);
+    s.pointer('pointercancel', 200, 40);
+    s.pointer('pointerup', 200, 40);
+    expect(s.drawings()).toEqual([]);
+    expect(steps(s)).toBe(0);
   });
 
   it('closes a line that ends on its first corner and fills it', () => {
@@ -284,6 +339,33 @@ describe('the Draw tool on the map: the eraser', () => {
     // A later edit is a step of its own.
     s.store.getState().addDrawing({ type: 'pen', points: [pt(1, 1)], color: '#ffffff', width: 4, opacity: 1 });
     expect(steps(s)).toBe(2);
+  });
+
+  it('puts back what it erased when its press is lost to a second finger, and leaves no undo step', () => {
+    const s = scene();
+    holding(s, { a: {}, b: { points: [pt(0, 200), pt(400, 200)] } }, { label: {} });
+    history(s).getState().clear();
+    const before = s.store.getState().objects;
+    s.tool({ mode: 'eraser', size: 'xl' });
+    s.pointer('pointerdown', 200, 60);
+    s.pointer('pointermove', 200, 120);
+    s.pointer('pointermove', 200, 320);
+    expect(s.drawings().length).toBeGreaterThan(2);
+    expect(s.texts()).toEqual([]);
+    s.pointer('pointercancel', 200, 320);
+    const after = s.store.getState().objects;
+    expect(Object.keys(after.drawings)).toEqual(['a', 'b']);
+    expect(after.drawings['a']).toBe(before.drawings['a']);
+    expect(after.drawings['b']).toBe(before.drawings['b']);
+    expect(after.texts['label']).toBe(before.texts['label']);
+    expect(steps(s)).toBe(0);
+    // The release that never came does nothing, and the next sweep is a step of its own.
+    s.pointer('pointerup', 200, 320);
+    expect(steps(s)).toBe(0);
+    s.drag([[200, 60], [200, 120]]);
+    expect(steps(s)).toBe(1);
+    history(s).getState().undo();
+    expect(Object.keys(s.store.getState().objects.drawings)).toEqual(['a', 'b']);
   });
 
   it('leaves a fill that can take no further cut as it is, says so once a sweep, and still erases it whole', () => {

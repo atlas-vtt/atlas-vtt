@@ -135,6 +135,28 @@ export class MeasureGesture {
     return CANCEL;
   }
 
+  /**
+   * The press is lost without a release (a second finger came down, the system took the touch). A
+   * measurement placed click by click waits between its clicks: it keeps its points and waits on,
+   * as if the press had never come. One a press holds (a drag) is dropped.
+   */
+  lose(): GestureResult {
+    if (!this.placing) return this.cancel();
+    this.pressedAt = null;
+    this.dragged = false;
+    return NONE;
+  }
+
+  /** Whether a ruler placed click by click is under way: Enter ends it, and Backspace takes a corner back. */
+  get placingRuler(): boolean {
+    return this.active && this.placing && this.shape === 'ruler';
+  }
+
+  /** How many points the measurement under way has placed: the first stays, the others can be taken back. */
+  get corners(): number {
+    return this.fixed.length;
+  }
+
   /** A click while placing: on the last point it finishes; else it ends an area, or is a ruler's next corner. */
   private place(point: Point): GestureResult {
     const last = this.fixed[this.fixed.length - 1]!;

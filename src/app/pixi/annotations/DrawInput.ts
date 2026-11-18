@@ -6,6 +6,7 @@ import { hearPressesLast, isHandled } from '../utils/handledEvents';
 import { isPrimaryPress } from '../utils/pointerButtons';
 import { DRAW_DRAG_THRESHOLD, DrawGesture, sweeps, type DrawGestureResult, type DrawPointer, type GestureMode } from './drawGesture';
 import { doubleClickSlack, dragThreshold } from '../utils/pointerReach';
+import { isOpenShapeControl, type OpenShape, type OpenShapeControls } from '../../input/openShape';
 
 /** A press this soon after the click that ended a shape, in the same place, is that click's second (a double click) and draws nothing. */
 const DOUBLE_CLICK_MS = 500;
@@ -38,6 +39,8 @@ export interface DrawInputHost {
   finished(made: MadeShape | null): void;
   /** The gesture was dropped: nothing of it stays. */
   cancelled(): void;
+  /** The press of a sweep was lost (a second finger came down): what the sweep changed so far is put back, before it is told `cancelled`. */
+  sweepLost?(): void;
   /** The pointer is over the map at `world`, a gesture under way or not. */
   hovered(world: Point): void;
 }
@@ -64,6 +67,11 @@ export interface DrawKeys {
  * tab, or a key is pressed that is not the map's (`DrawKeys.areMaps`). An eraser's sweep ends
  * there and keeps what it erased. All of it is heard in the canvas's own window and document, so
  * a map in a popout is followed there.
+ *
+ * A press that is lost without a release (a second finger came down to move the map) takes with
+ * it only what it held: a stroke, a dragged shape, and a sweep with all it changed. A line placed
+ * click by click waits on with its corners. While one waits, `open` knows of it, for the buttons
+ * that end it and take a corner back under a finger.
  */
 export class DrawInput {
   private readonly gesture = new DrawGesture();
@@ -83,7 +91,14 @@ export class DrawInput {
     private readonly host: DrawInputHost,
     private readonly keys: DrawKeys,
     private readonly now: () => number = () => performance.now(),
+    private readonly open: OpenShape | null = null,
   ) {}
+
+  /** What the buttons of a line under way do: what Enter and Backspace do. */
+  private readonly controls: OpenShapeControls = {
+    finish: () => this.apply(this.gesture.finish(), false),
+    back: () => this.apply(this.gesture.back(), false),
+  };
 
   /** A gesture is under way: a press belongs to it, wherever it lands. */
   get drawing(): boolean {
@@ -179,15 +194,21 @@ export class DrawInput {
     this.apply(result, altHeld(e));
   };
 
-  /** The browser took the pointer away (a touch that became a system gesture). */
-  private readonly onPointerCancel = (): void => this.stop();
+  /** The press is lost: the browser took the pointer away, or a second finger came down and the two move the map. */
+  private readonly onPointerCancel = (): void => {
+    const sweeping = sweeps(this.gesture.mode);
+    const result = this.gesture.lose();
+    this.pressedAt = null;
+    if (sweeping && result.kind === 'cancel') this.host.sweepLost?.();
+    this.apply(result, false);
+  };
 
   /** The window lost focus, or the GM turned to something else. */
   private readonly drop = (): void => this.stop();
 
   /** A press anywhere but on the canvas (a toolbar, a panel, another tab) is not the shape's. */
   private readonly onPressInDocument = (event: PointerEvent): void => {
-    if (event.target !== this.canvas) this.stop();
+    if (event.target !== this.canvas && !isOpenShapeControl(event.target)) this.stop();
   };
 
   /** Focus went to something outside the map's tab: a dialog opened over it, by a key or by itself. */
@@ -281,6 +302,7 @@ export class DrawInput {
     if (result.kind === 'none') return;
     if (this.gesture.active) this.hold();
     else this.release();
+    this.tellOpen();
     switch (result.kind) {
       case 'live': {
         const shape = this.gesture.shape;
@@ -300,6 +322,13 @@ export class DrawInput {
         this.pressedAt = null;
         this.host.cancelled();
     }
+  }
+
+  /** A line that waits for its next corner is known to the buttons that end it; any other gesture is none of theirs. */
+  private tellOpen(): void {
+    if (!this.open) return;
+    if (this.gesture.placingLine) this.open.show(this, this.controls, { canFinish: true, canGoBack: this.gesture.corners > 1 });
+    else this.open.end(this);
   }
 
   /** The canvas the viewport takes its pointer from. */

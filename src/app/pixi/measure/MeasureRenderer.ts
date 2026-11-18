@@ -1,3 +1,4 @@
+import { openShapeOf } from '../../input/openShape';
 import type { Container } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand/vanilla';
@@ -134,7 +135,7 @@ export class MeasureRenderer {
     this.input = new MeasureInput(viewport, this.live, {
       typed: (event) => isTextEntryTarget(event.target),
       areMaps: (event) => this.keysBelongToMap?.(event) ?? true,
-    });
+    }, undefined, openShapeOf(this.store));
 
     // Shapes and labels keep their size on screen, so a new zoom draws them again; a pan changes nothing.
     const onZoom = (): void => {

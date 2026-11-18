@@ -15,7 +15,7 @@ import type { MapRect } from '../../grid/cellNumbering';
 import type { GridGeometry } from '../../grid/gridDistance';
 import { levelObjects } from '../../levels/levelObjects';
 import type { ViewAtlasState } from '../../storeFactory';
-import { beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
+import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
 import type { Point } from '../../types/visionTypes';
 import { FogCursorPreview } from '../fog/FogCursorPreview';
 import { CellsPainting } from './CellsPainting';
@@ -68,8 +68,9 @@ const GESTURES: readonly DrawMode[] = ['pen', 'line', 'rectangle', 'ellipse', 'c
  * corner of the last, where a handle would take the press. A stamp is selected, so it can be
  * nudged or turned at once. The
  * eraser cuts what its sweep passes (`sweepChange`), every step of it written at once and the
- * whole sweep one undo step; its ring follows the pointer. A drawing that can take no further cut
- * stays as it is, which the GM is told once a sweep. The Cells mode fills or clears the
+ * whole sweep one undo step; its ring follows the pointer. A sweep whose press is lost (a second
+ * finger came down to move the map) puts back what it cut and leaves no step. A drawing that can
+ * take no further cut stays as it is, which the GM is told once a sweep. The Cells mode fills or clears the
  * cells its sweep passes (`CellsPainting`), written when the button comes up. A level that is full
  * takes nothing more, and says so.
  */
@@ -86,6 +87,8 @@ export class DrawToolHost {
   private painting = false;
   /** An eraser's sweep is under way: its undo step is open. */
   private sweeping = false;
+  /** The drawings and texts of the scene as the sweep under way found them. */
+  private beforeSweep: Pick<ViewAtlasState['objects'], 'drawings' | 'texts'> | null = null;
   /** The sweep under way was already told that the level is full. */
   private toldFull = false;
 
@@ -110,6 +113,7 @@ export class DrawToolHost {
       swept: (path, alt) => this.swept(path, alt),
       finished: (made) => this.finished(made),
       cancelled: () => this.dropped(),
+      sweepLost: () => this.putBackSweep(),
       hovered: (world) => this.hovered(world),
     };
     this.clicks = {
@@ -167,6 +171,8 @@ export class DrawToolHost {
     if (mode !== 'eraser' || this.sweeping) return;
     this.sweeping = true;
     this.toldFull = false;
+    const { drawings, texts } = this.deps.store.getState().objects;
+    this.beforeSweep = { drawings, texts };
     // One sweep cuts many drawings, a step at a time: all of it is one undo step.
     beginHistoryTransaction(this.deps.store);
   }
@@ -283,6 +289,19 @@ export class DrawToolHost {
   private endSweep(): void {
     if (!this.sweeping) return;
     this.sweeping = false;
+    this.beforeSweep = null;
     endHistoryTransaction(this.deps.store);
+  }
+
+  /** The eraser's press was lost: the drawings and texts are again what the sweep found, and its undo step is never recorded. */
+  private putBackSweep(): void {
+    const before = this.beforeSweep;
+    if (!this.sweeping || !before) return;
+    this.sweeping = false;
+    this.beforeSweep = null;
+    const state = this.deps.store.getState();
+    if (state.objects.drawings !== before.drawings) state.setDrawings(before.drawings);
+    if (state.objects.texts !== before.texts) state.setTexts(before.texts);
+    abandonHistoryTransaction(this.deps.store);
   }
 }

@@ -1,3 +1,4 @@
+import { openShapeOf } from '../../input/openShape';
 import { Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand';
@@ -237,7 +238,7 @@ export class AnnotationsRenderer {
       typed: (event) => isTextEntryTarget(event.target),
       areMaps: (event) => options.keysBelongToMap?.(event) ?? true,
       constrains: (held) => switchApplies(store.getState(), 'drawConstrain', held),
-    });
+    }, undefined, openShapeOf(store));
     this.clicks = new ClickPlacing(viewport, this.host.clicks);
 
     const state = store.getState();
