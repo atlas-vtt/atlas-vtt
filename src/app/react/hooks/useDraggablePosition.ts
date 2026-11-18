@@ -103,14 +103,18 @@ export function useDraggablePosition(initial: InitialPanelPosition, { onDragEnd,
 
     const win = panel.win;
     const start = { x: event.clientX, y: event.clientY, panel: positionRef.current };
+    // The pointer that pressed moves the panel; a second finger laid down meanwhile does not
+    const { pointerId } = event;
     let latest = start.panel;
     setIsDragging(true);
 
     const onMove = (move: PointerEvent): void => {
+      if (move.pointerId !== pointerId) return;
       latest = { x: start.panel.x + move.clientX - start.x, y: start.panel.y + move.clientY - start.y };
       place(panel, latest);
     };
-    const onUp = (): void => {
+    const onUp = (up: PointerEvent): void => {
+      if (up.pointerId !== pointerId) return;
       win.removeEventListener('pointermove', onMove);
       win.removeEventListener('pointerup', onUp);
       win.removeEventListener('pointercancel', onUp);

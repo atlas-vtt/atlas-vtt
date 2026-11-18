@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
+  DndContext, DragOverlay, useSensor, useSensors,
   type DragEndEvent, type DragStartEvent, type DropAnimationFunction, type Modifier,
 } from '@dnd-kit/core';
 import type { App } from 'obsidian';
@@ -15,7 +15,8 @@ import type { EditorSession } from '../template-editor/sessionTypes';
 import { cancelledText, DRAG_INSTRUCTIONS, pickedUpText, targetText } from './announcements';
 import { CanvasDrag } from './canvasDrag';
 import { noCollisions } from './collision';
-import { DRAGGING_ATTRIBUTE, POINTER_ACTIVATION, SILENT_ANNOUNCEMENTS } from './dndConfig';
+import { DRAGGING_ATTRIBUTE, SILENT_ANNOUNCEMENTS } from './dndConfig';
+import { PressPointerSensor } from './pointerSensor';
 import { sourceName, sourceOf, subjectOf, type DragSource } from './dragSources';
 import { applyDrop } from './dropEdits';
 import type { DropView } from './dropView';
@@ -83,7 +84,7 @@ export function TemplateDragAndDrop(props: TemplateDragAndDropProps): React.JSX.
   latest.current = props;
   const stepper = useRef<KeyboardStepper | null>(null);
   const keyboardOptions = useMemo<ViewKeyboardOptions>(() => ({ stepper }), []);
-  const sensors = useSensors(useSensor(PointerSensor, POINTER_ACTIVATION), useSensor(ViewKeyboardSensor, keyboardOptions));
+  const sensors = useSensors(useSensor(PressPointerSensor), useSensor(ViewKeyboardSensor, keyboardOptions));
   const live = useRef<Live | null>(null);
   const landing = useRef<{ id: string | null; fade: boolean }>({ id: null, fade: false });
   const [source, setSource] = useState<DragSource | null>(null);

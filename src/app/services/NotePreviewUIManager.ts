@@ -394,7 +394,7 @@ export class NotePreviewUIManager {
           const previewKey = `${pin.notePath}::${pin.id}`;
           this.activePreviews.set(previewKey, statblockPreview);
           this.raiseZIndex(statblockPreview);
-          statblockPreview.element.addEventListener('mousedown', () => this.raiseZIndex(statblockPreview));
+          statblockPreview.element.addEventListener('pointerdown', () => this.raiseZIndex(statblockPreview));
         } else {
           console.warn('[NotePreviewUIManager] Statblock preview element is null');
         }
@@ -441,7 +441,7 @@ export class NotePreviewUIManager {
     // Keyed by note path and pin ID so several pins of one note can each have a preview
     this.activePreviews.set(`${anchor.notePath}::${anchor.id}`, preview);
     this.raiseZIndex(preview);
-    preview.element.addEventListener('mousedown', () => this.raiseZIndex(preview));
+    preview.element.addEventListener('pointerdown', () => this.raiseZIndex(preview));
   }
 
   /**

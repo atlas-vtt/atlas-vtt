@@ -48,6 +48,8 @@
   margin: calc(-1 * #{$spacing-s}) calc(-1 * #{$spacing-s}) 0 0;
   cursor: grab;
   user-select: none;
+  // A finger moves the window by it; the note below it scrolls
+  touch-action: none;
   flex-shrink: 0;
 }
 
@@ -139,6 +141,7 @@
   position: absolute;
   background: transparent;
   z-index: 20;
+  touch-action: none;
 }
 
 // Edge handles — full-length strips

@@ -19,6 +19,8 @@ $shown-image-share: 0.9;
   align-items: center;
   justify-content: center;
   cursor: grab;
+  // A finger pans the image; the window behind it never scrolls
+  touch-action: none;
   -webkit-user-select: none;
   user-select: none;
 

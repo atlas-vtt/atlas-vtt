@@ -179,13 +179,14 @@ export class StatblockPreviewWindow {
 
     // Pinning is the pin button's alone: rolling a die or dragging the window never pins it. A window
     // the user moves stays where they put it rather than following the pointer it opened at.
-    controls.addEventListener('mousedown', (e) => {
+    controls.addEventListener('pointerdown', (e) => {
       this.initialPos = undefined;
       this.stopDrag = startPreviewWindowDrag(element, e, reach, dragEnded);
     });
-    element.addEventListener('mousedown', (e) => {
+    element.addEventListener('pointerdown', (e) => {
       const target = e.target as HTMLElement | null;
-      if (e.button === 0 && target?.closest(CARD_HEADER)) {
+      // A finger on the card's header scrolls the statblock; it moves the window by the controls above
+      if (e.button === 0 && e.pointerType !== 'touch' && target?.closest(CARD_HEADER)) {
         this.initialPos = undefined;
         this.stopDrag = startPreviewWindowDrag(element, e, reach, dragEnded, HEADER_DRAG_THRESHOLD);
       }

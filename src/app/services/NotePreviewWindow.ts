@@ -1,5 +1,6 @@
 import { App, WorkspaceLeaf, TFile, ItemView, Keymap, MarkdownRenderer, MarkdownView, Component, setIcon } from 'obsidian';
 import { visibleViewport } from '../host/visibleViewport';
+import { followPointer, type PointerFollow } from '../utils/pointerDrag';
 import { createPinButton, showPinState, startPreviewWindowDrag, type PreviewWindowReach } from './previewWindowControls';
 import { getActiveWorkspaceLeaf, suppressActiveLeaf } from '../utils/embeddedLeafFocus';
 import { runInBackground } from '../utils/backgroundTask';
@@ -60,6 +61,7 @@ export class NotePreviewWindow {
   private resizeStartLeft: number = 0;
   private resizeStartTop: number = 0;
   private currentResizeHandle: string | null = null;
+  private resizePointer: PointerFollow | null = null;
 
   constructor(
     app: App,
@@ -136,7 +138,7 @@ export class NotePreviewWindow {
       reach: () => previewReach(controlsDiv.getBoundingClientRect(), header.getBoundingClientRect()),
       frame: () => viewFrame(element),
     };
-    header.addEventListener('mousedown', (e) => this.onDragStart(e, reach));
+    header.addEventListener('pointerdown', (e) => this.onDragStart(e, reach));
     this.pinButton = createPinButton(controlsDiv, 'atlas-note-preview-pin-btn', () => this.togglePin());
     
     // Open File Button
@@ -237,7 +239,7 @@ export class NotePreviewWindow {
     const handleTypes = ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se'];
     handleTypes.forEach(type => {
       const handle = this.element!.createDiv({ cls: `atlas-note-preview-resize-handle atlas-note-preview-resize-handle-${type}` });
-      handle.addEventListener('mousedown', (e) => this.onResizeStart(e, type));
+      handle.addEventListener('pointerdown', (e) => this.onResizeStart(e, handle, type));
     });
   }
 
@@ -465,7 +467,7 @@ export class NotePreviewWindow {
     this.placement?.placeNearPointer(x, y);
   }
 
-  private onDragStart(e: MouseEvent, reach: PreviewWindowReach): void {
+  private onDragStart(e: PointerEvent, reach: PreviewWindowReach): void {
     if (!this.element) return;
     this.stopDrag = startPreviewWindowDrag(this.element, e, reach, () => {
       this.stopDrag = null;
@@ -474,10 +476,10 @@ export class NotePreviewWindow {
     });
   }
 
-  // Placeholder for resize methods
-  private onResizeStart(e: MouseEvent, handleType: string) {
+  /** Resizes from a press on one of the eight handles, by a mouse, a finger or a pen, until the pointer is let go or lost. */
+  private onResizeStart(e: PointerEvent, handle: HTMLElement, handleType: string) {
     e.stopPropagation(); // Prevent triggering drag-to-move
-    if (!this.element) return;
+    if (!this.element || this.isResizing) return;
 
     this.isResizing = true;
     this.currentResizeHandle = handleType;
@@ -492,12 +494,11 @@ export class NotePreviewWindow {
     document.body.classList.add('atlas-no-select');
     // Cursor is set by individual handle's CSS
 
-    document.addEventListener('mousemove', this.onResizeMove);
-    document.addEventListener('mouseup', this.onResizeEnd);
+    this.resizePointer = followPointer(handle, e, { move: this.onResizeMove, end: this.onResizeEnd });
+    this.resizePointer.capture();
   }
 
-  private onResizeMove = (e: MouseEvent) => {
-    // To be implemented
+  private onResizeMove = (e: PointerEvent) => {
     if (!this.isResizing || !this.element || !this.currentResizeHandle) return;
 
     const dx = e.clientX - this.resizeStartX;
@@ -559,14 +560,13 @@ export class NotePreviewWindow {
   }
 
   private onResizeEnd = () => {
-    // To be implemented
     if (!this.isResizing) return;
     this.isResizing = false;
+    this.resizePointer?.stop();
+    this.resizePointer = null;
 
     document.body.classList.remove('atlas-no-select');
 
-    document.removeEventListener('mousemove', this.onResizeMove);
-    document.removeEventListener('mouseup', this.onResizeEnd);
     this.placement?.recordCurrent();
     this.saveStateNow();
   }
@@ -639,9 +639,13 @@ export class NotePreviewWindow {
     if (this.element) {
       this.stopDrag?.();
       this.stopDrag = null;
-      // Remove resize listeners if any
-      document.removeEventListener('mousemove', this.onResizeMove);
-      document.removeEventListener('mouseup', this.onResizeEnd);
+      // A resize still under way ends with its window
+      if (this.isResizing) {
+        this.isResizing = false;
+        this.resizePointer?.stop();
+        this.resizePointer = null;
+        document.body.classList.remove('atlas-no-select');
+      }
       // Remove the wrapper (which contains the element) from the DOM
       if (this.wrapperEl) {
         this.wrapperEl.remove();
