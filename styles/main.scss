@@ -909,8 +909,9 @@ body.theme-light {
   }
 }
 
-// Hide Obsidian's native view header (forward/back nav) in Atlas views
-.workspace-leaf-content[data-type="atlas-vtt"] {
+// Hide Obsidian's native view header (forward/back nav) in Atlas views. On mobile it stays: it holds
+// the navigation and the sidebar toggles, which have no other place there.
+body:not(.is-mobile) .workspace-leaf-content[data-type="atlas-vtt"] {
   .view-header {
     display: none !important;
   }
