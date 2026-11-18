@@ -69,22 +69,19 @@ export type DrawToolId =
   | 'color' | 'size' | 'players' | 'layer'
   | 'seeThrough' | 'dash' | 'ends' | 'curved' | 'fill'
   | 'font' | 'look'
-  | 'icon' | 'cellsLayer' | 'cellsFill' | 'cellsUnfill' | 'eraseWhole' | 'front' | 'back' | 'lock' | 'group' | 'ungroup' | 'clear' | 'delete' | 'placing'
+  | 'icon' | 'cellsLayer' | 'cellsFill' | 'cellsUnfill' | 'eraseWhole' | 'front' | 'back' | 'lock' | 'group' | 'ungroup' | 'clear' | 'delete'
 
 /** What every drawing has: first in the bar of every mode that makes or changes drawings, in this order, so they never move between modes. */
 export const COMMON_DRAW_TOOLS: readonly DrawToolId[] = ['color', 'size', 'players', 'layer']
 
-/** How a point lands (Snap) and whether a shape keeps even sides (Constrain): last in the bar of every mode that places points on the grid. */
-const PLACING: readonly DrawToolId[] = ['placing']
-
 /** The tools of each mode, in groups: the common four, then what only the mode has. */
 const MODE_TOOLS: Readonly<Record<GmDrawMode, readonly (readonly DrawToolId[])[]>> = {
   pen: [COMMON_DRAW_TOOLS, ['seeThrough']],
-  line: [COMMON_DRAW_TOOLS, ['dash', 'ends', 'curved', 'fill', 'seeThrough'], PLACING],
-  rectangle: [COMMON_DRAW_TOOLS, ['dash', 'fill'], PLACING],
-  ellipse: [COMMON_DRAW_TOOLS, ['dash', 'fill'], PLACING],
-  text: [COMMON_DRAW_TOOLS, ['font', 'look'], PLACING],
-  stamp: [COMMON_DRAW_TOOLS, ['icon'], PLACING],
+  line: [COMMON_DRAW_TOOLS, ['dash', 'ends', 'curved', 'fill', 'seeThrough']],
+  rectangle: [COMMON_DRAW_TOOLS, ['dash', 'fill']],
+  ellipse: [COMMON_DRAW_TOOLS, ['dash', 'fill']],
+  text: [COMMON_DRAW_TOOLS, ['font', 'look']],
+  stamp: [COMMON_DRAW_TOOLS, ['icon']],
   // A cell has no size but the grid's, and the mode keeps a layer of its own (`cellsLayer`).
   cells: [['color', 'players', 'cellsLayer'], ['cellsFill', 'cellsUnfill']],
   eraser: [['size'], ['eraseWhole'], ['clear']],

@@ -9,7 +9,7 @@ import { ToolButton } from "../primitives/ToolButton"
 import { fillIsAll, shownLock } from "./drawStyle"
 import { CELLS_CHOICES, DASH_CHOICES, ENDS_CHOICES, FILL_CHOICES, FONT_CHOICES, LOOK_CHOICES, SIZE_CHOICES, type DrawToolId } from "./drawToolChoices"
 import type { DrawIcon } from "./drawToolIcons"
-import { ChoiceMenu, ClearMenu, ColourMenu, PlacingMenu } from "./DrawToolMenus"
+import { ChoiceMenu, ClearMenu, ColourMenu } from "./DrawToolMenus"
 import { StampSymbolTool } from "./StampSymbolTool"
 import { TOOL_BAR_CHOICE_CLASS } from "./ToolOptionsBar"
 import type { DrawStyleAccess } from "./useDrawStyle"
@@ -132,7 +132,6 @@ export function DrawModeTool({ id, access, locked: viewLocked, selectionOnly = f
       return <Action icon={Group} label={t('draw.group')} locked={viewLocked ?? (groupable(selected) ? null : t('draw.groupNeedsTwo'))} onClick={() => groupAnnotations(ids())} />
     case 'ungroup':
       return <Action icon={Ungroup} label={t('draw.ungroup')} locked={viewLocked ?? (ungroupable(selected) ? null : t('draw.ungroupNeedsGroup'))} onClick={() => ungroupAnnotations(ids())} />
-    case 'placing': return <PlacingMenu locked={viewLocked} />
     case 'clear': {
       const has = (scope: ClearScope): boolean => {
         if (scope === 'above') return annotations.some((annotation) => annotation.layer === 'above')

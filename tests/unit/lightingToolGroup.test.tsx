@@ -103,9 +103,24 @@ describe('LightingToolGroup', () => {
     const toggle = screen.getByRole('switch', { name: 'Dynamic lighting' });
     fireEvent.keyDown(toggle, { key: ' ' });
     expect(store.getState().lighting.enabled).toBe(true);
-    expect(screen.getAllByRole('switch')).toHaveLength(1);
+    // Beside it only Snap, which Alt turns around for a press.
+    expect(screen.getAllByRole('switch').map((each) => each.getAttribute('aria-labelledby')).length).toBe(2);
+    expect(screen.getByRole('switch', { name: 'Snap' })).toBeTruthy();
     expect(screen.queryByText('Preview player view')).toBeNull();
     expect(events.some(([event]) => event === 'lighting-preview')).toBe(false);
+  });
+
+  it('has a Snap switch for wall ends, zone corners and a light\'s handles, and one of its own for a room\'s corners', () => {
+    const { store } = renderGroup('wall');
+    const snap = (): HTMLElement => screen.getByRole('switch', { name: 'Snap' });
+    mode(store, 'draw');
+    expect(snap().getAttribute('aria-checked')).toBe('true');
+    fireEvent.keyDown(snap(), { key: ' ' });
+    expect(store.getState().toolSwitches.lightingSnap).toBe(false);
+    // Rooms snap to the grid's squares only when asked, as Shift does: the row is the room's own switch there.
+    mode(store, 'rooms');
+    expect(snap().getAttribute('aria-checked')).toBe('false');
+    expect(store.getState().toolSwitches.roomSnap).toBe(false);
   });
 
   it('keeps forgetting explored areas and the graphics settings out of the menu, behind the palette\'s Lighting page', () => {

@@ -580,6 +580,11 @@ body.theme-light {
     }
   }
 
+  // What stands before the GM view switch (a finger's peek button) keeps the bar's gap from it.
+  .atlas-toolbar-end {
+    gap: $surface-inset;
+  }
+
   // Keeps its own width while its slot opens or closes around it.
   .atlas-toolbar-item__content {
     flex-shrink: 0;
