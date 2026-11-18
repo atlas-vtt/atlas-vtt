@@ -10,7 +10,7 @@ import type { GridGeometry } from '../../grid/gridDistance';
 import { isTextEntryTarget } from '../../keyboard/textEntry';
 import { levelObjects } from '../../levels/levelObjects';
 import type { ViewAtlasState } from '../../storeFactory';
-import { closeContextMenuGlobal, openContextMenuGlobal } from '../../react/root/ContextMenuContext';
+import { openContextMenuGlobal } from '../../react/root/ContextMenuContext';
 import { MAP_LAYER_Z } from '../mapLayerOrder';
 import type { TesseraView } from '../mosaicCanvas/levelOfDetail';
 import type { LayerVisibility } from '../playerSafeFrame';
@@ -19,7 +19,6 @@ import type { Annotation } from '../../annotations/annotationTypes';
 import { deviceProfile } from '../../platform/deviceProfile';
 import { annotationActions } from '../../selection/annotationActionList';
 import type { SelectionAction } from '../../selection/selectionActions';
-import { selectionMenu } from '../../selection/selectionMenu';
 import { annotationExtras } from '../../selection/wholeSelection';
 import { selectionMenuStyles } from '../../packages/components/toolbar/selectionMenuStyles';
 import { textFontReady } from '../textFonts';
@@ -31,6 +30,7 @@ import { copyAnnotationsMoved } from './annotationActions';
 import { AnnotationHandles } from './AnnotationHandles';
 import { AnnotationInteraction } from './AnnotationInteraction';
 import { AnnotationLayer } from './AnnotationLayer';
+import { annotationMenu } from './annotationMenu';
 import { showAnnotationsFullNotice } from './annotationNotices';
 import { AnnotationPlayersView } from './annotationPlayersView';
 import type { AnnotationPointerHandlers } from './annotationPointer';
@@ -210,7 +210,7 @@ export class AnnotationsRenderer {
       copyMoved: (ids, dx, dy) => copyAnnotationsMoved(store, ids, dx, dy, full),
       dragTokens: (event) => options.dragTokens?.(event),
       menu: (selected, clicked, at) => {
-        const entries = selectionMenu(this.actionsOf(selected, clicked), closeContextMenuGlobal);
+        const entries = annotationMenu(...this.actionsOf(selected, clicked));
         if (entries.length > 0) openContextMenuGlobal(entries, at);
         return entries.length > 0;
       },
@@ -242,10 +242,10 @@ export class AnnotationsRenderer {
     this.tellLeftOut(state);
   }
 
-  /** What can be done with the selected drawings and texts, `clicked` the one a menu was opened on (`annotationActions`). */
-  private actionsOf(selected: readonly Annotation[], clicked: Annotation | null): SelectionAction[] {
+  /** What the actions of the selected drawings and texts are made of (`annotationActions`), `clicked` the one a menu was opened on. */
+  private actionsOf(selected: readonly Annotation[], clicked: Annotation | null): Parameters<typeof annotationActions> {
     const extras = annotationExtras(this.store, this.viewport, selected.map(({ id }) => id), deviceProfile().pointer === 'coarse');
-    return annotationActions(selected, clicked, this.store.getState(), (text) => this.texts.edit(text), selectionMenuStyles(selected, this.store), extras);
+    return [selected, clicked, this.store.getState(), (text) => this.texts.edit(text), selectionMenuStyles(selected, this.store), extras];
   }
 
   /**
@@ -254,7 +254,7 @@ export class AnnotationsRenderer {
    */
   selectionActions(): SelectionAction[] {
     const selected = this.selecting.selected();
-    return this.actionsOf(selected, selected.length === 1 ? selected[0] ?? null : null);
+    return annotationActions(...this.actionsOf(selected, selected.length === 1 ? selected[0] ?? null : null));
   }
 
   /** A selected drawing or text is being dragged, resized or turned. */

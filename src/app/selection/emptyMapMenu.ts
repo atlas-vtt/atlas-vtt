@@ -1,7 +1,7 @@
 import type { StoreApi } from 'zustand';
 import { holdsMapClipboard, pasteClipboard } from '../clipboard/mapClipboardActions';
 import { t } from '../i18n';
-import { closeContextMenuGlobal, openContextMenuGlobal } from '../react/root/ContextMenuContext';
+import { openContextMenuGlobal } from '../react/root/ContextMenuContext';
 import type { ViewAtlasState } from '../storeFactory';
 import { runInBackground } from '../utils/backgroundTask';
 import type { SelectionAction } from './selectionActions';
@@ -27,5 +27,5 @@ export function emptyMapActions(store: StoreApi<ViewAtlasState>, shown: { visibl
 export function openEmptyMapMenu(store: StoreApi<ViewAtlasState>, shown: { visibleTokenIds(): string[] } | null | undefined, world: { x: number; y: number }, at: { x: number; y: number }): void {
   const state = store.getState();
   if (state.isPlayerView || !state.isGMView || state.isMapLoading) return;
-  openContextMenuGlobal(selectionMenu(emptyMapActions(store, shown, world), closeContextMenuGlobal), at);
+  openContextMenuGlobal(selectionMenu(emptyMapActions(store, shown, world)), at);
 }

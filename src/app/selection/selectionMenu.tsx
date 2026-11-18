@@ -18,9 +18,10 @@ function item(action: RunAction): ContextMenuEntry {
 /**
  * The context menu of `actions`, row by row in their order: an action is an item, choices are a
  * submenu, and actions that stand side by side share one row. `close` closes the menu after a
- * press in such a row, which the menu itself does for its own rows.
+ * press in such a row, which the menu itself does for its own rows; a list without such a row
+ * needs none.
  */
-export function selectionMenu(actions: readonly SelectionAction[], close: () => void): ContextMenuEntry[] {
+export function selectionMenu(actions: readonly SelectionAction[], close: () => void = () => undefined): ContextMenuEntry[] {
   const entries: ContextMenuEntry[] = [];
   let beside: RunAction[] | null = null;
   for (const action of actions) {

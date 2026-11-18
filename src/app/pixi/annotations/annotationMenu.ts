@@ -1,6 +1,5 @@
 import type { Annotation, TextAnnotation } from '../../annotations/annotationTypes';
 import type { ContextMenuEntry } from '../../react/components/context-menu/AtlasContextMenu';
-import { closeContextMenuGlobal } from '../../react/root/ContextMenuContext';
 import { annotationActions, type AnnotationActionExtras, type AnnotationActionStore } from '../../selection/annotationActionList';
 import { selectionMenu } from '../../selection/selectionMenu';
 
@@ -15,5 +14,5 @@ export function annotationMenu(
   selected: readonly Annotation[], clicked: Annotation | null, store: AnnotationMenuStore, edit: (text: TextAnnotation) => void,
   styles: readonly ContextMenuEntry[] = [], extras: AnnotationActionExtras = {},
 ): ContextMenuEntry[] {
-  return selectionMenu(annotationActions(selected, clicked, store, edit, styles, extras), closeContextMenuGlobal);
+  return selectionMenu(annotationActions(selected, clicked, store, edit, styles, extras));
 }
