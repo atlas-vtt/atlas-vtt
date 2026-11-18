@@ -132,6 +132,9 @@ export function hostTesseraCore(createCore: CoreFactory, post: PostMessage): Tes
       case 'close':
         ready.close(request.handle);
         return;
+      case 'builds':
+        ready.holdBuilds(request.held);
+        return;
       case 'cache-size':
         reply({ type: 'cache-size', id: request.id, bytes: await ready.cacheSize() });
         return;

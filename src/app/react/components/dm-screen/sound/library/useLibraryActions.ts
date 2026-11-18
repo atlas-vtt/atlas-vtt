@@ -18,6 +18,7 @@ import { defaultSoundKind, type SoundChanges, type StoredSound } from '../../../
 import { SoundRecordStore } from '../../../../../soundLibrary/SoundRecordStore';
 import { addTag, cleanTag, removeTag, renameTag, tagsOfFiles, toggleTag, tracksHolding, type TrackTags } from '../../../../../soundLibrary/soundTags';
 import { confirmAction } from '../../../../../ui/confirmDialog';
+import { fileInputAttrs } from '../../../../../platform/fileInputAccept';
 import { mayRelink, relinkSound, type MissingSound } from './relinkSound';
 import { stemOf } from '../../../../../soundLibrary/soundPaths';
 import { baseName } from '../../../../../utils/pathUtils';
@@ -70,7 +71,7 @@ export interface LibraryActions {
 }
 
 function pickFiles(doc: Document, then: (files: File[]) => void): void {
-  const input = doc.body.createEl('input', { type: 'file', cls: 'atlas-hidden-file-input', attr: { accept: AUDIO_ACCEPT, multiple: true } });
+  const input = doc.body.createEl('input', { type: 'file', cls: 'atlas-hidden-file-input', attr: { ...fileInputAttrs(AUDIO_ACCEPT), multiple: true } });
   input.addEventListener('change', () => {
     const files = Array.from(input.files ?? []);
     input.remove();

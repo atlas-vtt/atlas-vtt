@@ -1,6 +1,6 @@
 import { t } from '../i18n';
 import { fittingCanvas, learnCanvasLimit } from './canvasLimit';
-import { BAND_FORMATS, BAND_MAX_PIXELS, bandDecodable, DECODED_MAX_PIXELS, DECODER_MAX_SIDE, decodable, scaledJpegDecodeSize } from './decodeLimits';
+import { BAND_FORMATS, BAND_MAX_PIXELS, bandDecodable, DECODED_MAX_PIXELS, DECODER_MAX_SIDE, decodable, holdsDecoded, scaledJpegDecodeSize, sourcePixelsWithin } from './decodeLimits';
 import type { BandUnsupportedReason } from './band/bandTypes';
 import { unsupportedMessage } from './band/unsupportedMessage';
 import type { FramePlacement, ImageJob, ImageJobResult, ImageLayout, ScaleDown, ThumbnailSpec } from './imageJob';
@@ -149,16 +149,21 @@ function decodedSize(header: ImageHeader | null, scaledDecode: ImageJob['scaledD
   return scaledDecode && typeof ImageDecoder !== 'undefined' ? scaledDecode.decoded : header;
 }
 
-/** Raised for a source larger than Atlas can read, with a message to show: the band decoders' cap for their formats, the browser's for the rest. */
+/**
+ * Raised for a source larger than Atlas can read, with a message to show: the band decoders' cap for
+ * their formats, the browser's for the rest, or with `devicePixels` what this device holds decoded.
+ */
 export class ImageTooLargeError extends Error {
-  constructor(readonly size: Size, format?: string) {
+  constructor(readonly size: Size, format?: string, devicePixels?: number) {
     const banded = format !== undefined && BAND_FORMATS.has(format);
-    super(t('image.tooLarge', {
-      width: size.width,
-      height: size.height,
-      megapixels: Math.floor((banded ? BAND_MAX_PIXELS : DECODED_MAX_PIXELS) / 1e6),
-      side: banded ? MAP_MAX_SIDE : DECODER_MAX_SIDE,
-    }));
+    super(devicePixels !== undefined
+      ? t('image.tooLargeForDevice', { width: size.width, height: size.height, megapixels: Math.floor(devicePixels / 1e6) })
+      : t('image.tooLarge', {
+        width: size.width,
+        height: size.height,
+        megapixels: Math.floor((banded ? BAND_MAX_PIXELS : DECODED_MAX_PIXELS) / 1e6),
+        side: banded ? MAP_MAX_SIDE : DECODER_MAX_SIDE,
+      }));
   }
 }
 
@@ -194,8 +199,12 @@ async function process(source: Blob, job: Omit<ImageJob, 'source'>, options: Pro
   const band = bandJobOf(header, job.layout);
   if (header && !decodable(header) && !band) throw new ImageTooLargeError(header, header.format);
   const scaledDecode = band ? undefined : scaledDecodeOf(header, job.layout);
+  // A tablet holds less than the browser decodes: what would be decoded whole past that is refused here.
+  const { imageSourceBytes } = deviceProfile().budgets;
+  const decoded = decodedSize(header, scaledDecode);
+  if (header && decoded && !holdsDecoded(decoded, imageSourceBytes)) throw new ImageTooLargeError(header, header.format, sourcePixelsWithin(imageSourceBytes));
   // A band decode holds the file's bytes, an eighth of the image and the decoder's rows: far less than a decode.
-  const cost = band ? source.size + (jobCost({ width: Math.ceil(header!.width / 8), height: Math.ceil(header!.height / 8) }) ?? 0) : jobCost(decodedSize(header, scaledDecode));
+  const cost = band ? source.size + (jobCost({ width: Math.ceil(header!.width / 8), height: Math.ceil(header!.height / 8) }) ?? 0) : jobCost(decoded);
   const run: ImageJobOptions = { signal: options.signal, background: options.background ?? false, cost };
   const withCopies = { ...job, thumbnail: options.thumbnail, preview: options.preview, sourcePreview: options.sourcePreview, webpOnly: options.webpOnly, band };
   // One pool for both attempts: after unload it refuses the fallback and frees its bitmap

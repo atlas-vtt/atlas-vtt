@@ -1,5 +1,5 @@
 import React from 'react';
-import { t } from '../../../../i18n';
+import { t, tPointer } from '../../../../i18n';
 import { SOUND_KEYS } from './useSoundKeys';
 
 /** The keycaps that press the moods there are: 1 to 9, then 0 for the tenth. */
@@ -19,8 +19,8 @@ function KeyHint({ keys, label }: { keys: string; label: string }): React.JSX.El
 
 /** What the desk holds while nothing plays: where a sound comes from, as the place a track is dropped on. */
 function idleText(moodCount: number, hasLibrary: boolean): string {
-  if (moodCount > 0) return t('audio.desk.idle');
-  return hasLibrary ? t('audio.desk.idleNoMoods') : t('audio.desk.idleNoLibrary');
+  if (moodCount > 0) return tPointer('audio.desk.idle');
+  return hasLibrary ? tPointer('audio.desk.idleNoMoods') : tPointer('audio.desk.idleNoLibrary');
 }
 
 /** `hasLibrary`: a root is linked, so there is something to search and play. */

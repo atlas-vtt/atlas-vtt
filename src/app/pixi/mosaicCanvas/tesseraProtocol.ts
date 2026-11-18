@@ -64,6 +64,8 @@ export type TesseraRequest =
   | { type: 'cancel'; id: number }
   /** Ends an open; its pending requests are answered with an `error`. */
   | { type: 'close'; handle: number }
+  /** Holds the builds before their next tessera (`held`), or lets them go on; nothing is answered. */
+  | { type: 'builds'; held: boolean }
   | { type: 'cache-size'; id: number }
   | { type: 'clear-cache'; id: number }
   /** The stored WebP bytes of a cached pyramid's tesserae, by its hash, never decoded. */

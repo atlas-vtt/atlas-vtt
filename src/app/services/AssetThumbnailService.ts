@@ -77,6 +77,8 @@ export class AssetThumbnailService {
   private unannounced: ThumbnailUpdate[] = [];
   private queue: ThumbnailAsset[] = [];
   private running = 0;
+  /** No queued thumbnail is begun while set (`hold`); the ones under way end. */
+  private held = false;
   private announceTimer: number | null = null;
   private recordTimer: number | null = null;
 
@@ -206,8 +208,18 @@ export class AssetThumbnailService {
     this.queue = [...first, ...this.queue.filter((asset) => !wanted.has(asset.id))];
   }
 
+  /**
+   * Begins no queued thumbnail while `held`, and goes on with the queue after: a tablet makes them
+   * only while its window is seen. Thumbnails someone asks for by name are made all the same.
+   */
+  hold(held: boolean): void {
+    if (held === this.held) return;
+    this.held = held;
+    if (!held) this.pump();
+  }
+
   private pump(): void {
-    while (this.running < MAX_CONCURRENT && this.queue.length > 0) {
+    while (!this.held && this.running < MAX_CONCURRENT && this.queue.length > 0) {
       const asset = this.queue.shift()!;
       this.running += 1;
       void this.generate(asset).finally(() => {

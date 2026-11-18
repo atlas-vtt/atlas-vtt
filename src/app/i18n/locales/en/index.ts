@@ -117,12 +117,16 @@ import { vision } from './vision';
 import { videoMap } from './videoMap';
 import { uvttFloors } from './uvttFloors';
 import { uvtt } from './uvtt';
+import { deviceFiles } from './deviceFiles';
+import { tabletDiag } from './tabletDiag';
 import { fog } from './fog';
 import { selection } from './selection';
 
 /** English, the source language: every key exists here, and other languages translate a subset of it. */
 export const en = {
   ...align,
+  ...deviceFiles,
+  ...tabletDiag,
   ...atlasLinks,
   ...am,
   ...assetGrid,

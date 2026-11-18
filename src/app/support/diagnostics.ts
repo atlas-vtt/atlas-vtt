@@ -20,7 +20,10 @@ export interface IssueDiagnostics {
 
 const collator = new Intl.Collator('en');
 
+/** Obsidian's mobile apps first: an iPad also says it is a Mac (`Platform.isMacOS`), and Android says nothing else. */
 function operatingSystem(): string {
+  if (Platform.isIosApp) return Platform.isPhone ? 'iOS' : 'iPadOS';
+  if (Platform.isAndroidApp) return 'Android';
   if (Platform.isMacOS) return 'macOS';
   if (Platform.isWin) return 'Windows';
   if (Platform.isLinux) return 'Linux';
