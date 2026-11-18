@@ -50,11 +50,6 @@ export function fingerReaches(pointer?: PointerKindSource | null): boolean {
   return fineOnly === 0 && isFinger(pointer);
 }
 
-/** What a reach in screen pixels is multiplied by for the pointer in use. */
-export function reachScale(pointer?: PointerKindSource | null): number {
-  return fingerReaches(pointer) ? FINGER_REACH_SCALE : 1;
-}
-
 /** A reach of `px` screen pixels for a mouse, as the pointer in use has it. */
 export function pointerReach(px: number, pointer?: PointerKindSource | null): number {
   return fingerReaches(pointer) ? px * FINGER_REACH_SCALE : px;

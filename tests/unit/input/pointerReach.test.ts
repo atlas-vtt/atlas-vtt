@@ -9,7 +9,7 @@ import { closesDraft } from '../../../src/app/pixi/areas/areaGeometry';
 import { HANDLE_HIT_RADIUS, ringHandleAt, ringHandlePoint, type RingGeometry } from '../../../src/app/pixi/lighting/lightRingGeometry';
 import { wallEndNear } from '../../../src/app/pixi/lighting/wallEnds';
 import {
-  doubleClickSlack, dragThreshold, fingerReaches, FINGER_REACH_SCALE, isFinger, pointerReach, reachScale, tokenDragDistance, withFineReach,
+  doubleClickSlack, dragThreshold, fingerReaches, FINGER_REACH_SCALE, isFinger, pointerReach, tokenDragDistance, withFineReach,
 } from '../../../src/app/pixi/utils/pointerReach';
 import { COARSE_POINTER_SCALE } from '../../../src/app/platform/deviceProfile';
 import { createViewAtlasStore } from '../../../src/app/storeFactory';
@@ -42,11 +42,11 @@ afterEach(() => {
 
 describe('the reach of the pointer in use', () => {
   it('is a mouse\'s until a finger is used, and a mouse\'s again once the mouse moves', () => {
-    expect(reachScale()).toBe(1);
+    expect(pointerReach(1)).toBe(1);
     expect(pointerReach(11)).toBe(11);
     use('touch');
     expect(isFinger()).toBe(true);
-    expect(reachScale()).toBe(FINGER_REACH_SCALE);
+    expect(pointerReach(1)).toBe(FINGER_REACH_SCALE);
     expect(pointerReach(11)).toBe(22);
     use('mouse');
     expect(pointerReach(11)).toBe(11);

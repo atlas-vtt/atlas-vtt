@@ -1,6 +1,7 @@
 import { setIcon } from 'obsidian';
 import { t } from '../i18n';
 import type { ViewFrame } from '../packages/components/primitives/popoverFit';
+import { dragThreshold } from '../pixi/utils/pointerReach';
 import { shiftIntoFrame } from './previewWindowLayout';
 import { swallowNextClick } from '../utils/swallowClick';
 import { followPointer } from '../utils/pointerDrag';
@@ -69,6 +70,8 @@ export function startPreviewWindowDrag(
   const startTop = element.offsetTop;
   const startReach = reach.reach();
   const frame = reach.frame();
+  // A handle that waits for a move before it drags waits a little longer for a finger, which wanders
+  const moveThreshold = threshold > 0 ? dragThreshold(threshold, event) : 0;
   let dragging = false;
   let moved = false;
 
@@ -77,7 +80,7 @@ export function startPreviewWindowDrag(
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
       if (!dragging) {
-        if (Math.hypot(dx, dy) < threshold) return;
+        if (Math.hypot(dx, dy) < moveThreshold) return;
         begin();
         // A press on text began a selection, which the move must not extend.
         doc.getSelection()?.removeAllRanges();
