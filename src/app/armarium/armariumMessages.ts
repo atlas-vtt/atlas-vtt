@@ -8,11 +8,16 @@ export type InstallState = 'downloading' | 'reviewing' | 'installed' | 'cancelle
 /** What the Armarium page may ask of Atlas. */
 export type FrameMessage =
   | { type: 'atlas-armarium:hello' }
-  | ({ type: 'atlas-armarium:install' } & ArmariumRequest);
+  | ({ type: 'atlas-armarium:install' } & ArmariumRequest)
+  /** Share a collection of the vault in the Armarium: the page's Share a collection, in Atlas. */
+  | { type: 'atlas-armarium:share' };
+
+/** What Atlas does for the page beyond installing, named in its `installed` message so the page offers only that. */
+export type ArmariumFeature = 'share';
 
 /** What Atlas tells the Armarium page. */
 export type AtlasMessage =
-  | { type: 'atlas-armarium:installed'; format: typeof ARMARIUM_FORMAT; items: ArmariumRequest[] }
+  | { type: 'atlas-armarium:installed'; format: typeof ARMARIUM_FORMAT; items: ArmariumRequest[]; features: ArmariumFeature[] }
   | ({ type: 'atlas-armarium:status'; format: typeof ARMARIUM_FORMAT; state: InstallState } & ArmariumRequest);
 
 /**
@@ -22,6 +27,7 @@ export type AtlasMessage =
 export function readFrameMessage(data: unknown): FrameMessage | null {
   if (!isRecord(data) || data.format !== ARMARIUM_FORMAT) return null;
   if (data.type === 'atlas-armarium:hello') return { type: 'atlas-armarium:hello' };
+  if (data.type === 'atlas-armarium:share') return { type: 'atlas-armarium:share' };
   if (data.type !== 'atlas-armarium:install' || !isListingUid(data.uid) || !isReleaseVersion(data.version)) return null;
   return { type: 'atlas-armarium:install', uid: data.uid, version: data.version };
 }
@@ -42,8 +48,8 @@ export function acceptFrameMessage(event: ReceivedMessage, frameWindow: Window |
   return readFrameMessage(event.data);
 }
 
-export function installedMessage(items: readonly ArmariumRequest[]): AtlasMessage {
-  return { type: 'atlas-armarium:installed', format: ARMARIUM_FORMAT, items: items.map(({ uid, version }) => ({ uid, version })) };
+export function installedMessage(items: readonly ArmariumRequest[], features: readonly ArmariumFeature[] = []): AtlasMessage {
+  return { type: 'atlas-armarium:installed', format: ARMARIUM_FORMAT, items: items.map(({ uid, version }) => ({ uid, version })), features: [...features] };
 }
 
 export function statusMessage({ uid, version }: ArmariumRequest, state: InstallState): AtlasMessage {
