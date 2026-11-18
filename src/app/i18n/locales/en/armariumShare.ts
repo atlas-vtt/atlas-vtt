@@ -2,7 +2,7 @@ import type { Message } from '../../types';
 
 /** "Share in the Armarium": the dialog that uploads a collection and publishes it, all in Atlas. */
 export const armariumShare = {
-  'armariumShare.shareCollection': 'Share in the Armarium',
+  'armariumShare.shareCollection': 'Share in the Armarium…',
   'armariumShare.shareSelected': 'Share the selected collection in the Armarium',
   'armariumShare.dialogLabel': 'Share {name} in the Armarium',
   'armariumShare.notReady': 'Atlas is still starting. Try again in a moment.',

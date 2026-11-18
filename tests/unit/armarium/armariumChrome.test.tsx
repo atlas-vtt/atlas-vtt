@@ -15,7 +15,7 @@ const sel = {
   handleNavigateForward: vi.fn(),
 } as unknown as React.ComponentProps<typeof Header>['sel'];
 
-function renderHeader(armarium?: React.ComponentProps<typeof Header>['armarium']): void {
+function renderHeader(armarium?: React.ComponentProps<typeof Header>['armarium'], onShowArmarium?: () => void): void {
   render(
     <TooltipProvider>
       <Header
@@ -31,6 +31,7 @@ function renderHeader(armarium?: React.ComponentProps<typeof Header>['armarium']
         onToggleSidebar={vi.fn()}
         sel={sel}
         armarium={armarium}
+        onShowArmarium={onShowArmarium}
       />
     </TooltipProvider>,
   );
@@ -62,35 +63,60 @@ describe('the header over the Armarium', () => {
   });
 });
 
-describe('the sidebar', () => {
-  it('offers the Armarium as a place, current while it is shown', () => {
+describe('the Armarium tab', () => {
+  it('stands last in the tab strip, current while the store is shown and leading there otherwise', () => {
     const onShowArmarium = vi.fn();
-    const props = {
-      selectedTagIds: [], onSelectTag: vi.fn(), onClearTags: vi.fn(), tags: [], countedAssets: [], collections: [],
-      selectedCollection: 'default', onSelectCollection: vi.fn(), onManageTags: vi.fn(), onShowArmarium,
-    };
-    const { rerender } = render(<TooltipProvider><Sidebar {...props} /></TooltipProvider>);
+    renderHeader(undefined, onShowArmarium);
     const place = screen.getByRole('button', { name: 'Armarium' });
     expect(place.getAttribute('aria-current')).toBeNull();
+    expect(document.querySelector('.atlas-asset-manager-tabs .atlas-tab-button:last-of-type')).toBe(place);
     fireEvent.click(place);
     expect(onShowArmarium).toHaveBeenCalledTimes(1);
+    cleanup();
 
-    rerender(<TooltipProvider><Sidebar {...props} armariumShown /></TooltipProvider>);
+    renderHeader({ onBack: vi.fn(), onReload: vi.fn(), onShare: vi.fn(), page: 'https://atlas-vtt.dev/armarium' }, onShowArmarium);
     expect(screen.getByRole('button', { name: 'Armarium' }).getAttribute('aria-current')).toBe('page');
+    expect(document.querySelectorAll('.atlas-asset-manager-tabs .atlas-active')).toHaveLength(1);
   });
+});
 
-  it('shares the selected collection in the Armarium from beside Export and Import', () => {
+describe('the sidebar\'s collection menu', () => {
+  const props = {
+    selectedTagIds: [], onSelectTag: vi.fn(), onClearTags: vi.fn(), tags: [], countedAssets: [], collections: [],
+    selectedCollection: 'default', onSelectCollection: vi.fn(), onManageTags: vi.fn(),
+  };
+
+  it('offers the selected collection\'s settings, export, import and sharing, and gives focus back on Escape', () => {
+    const onEdit = vi.fn();
     const onShareCollection = vi.fn();
     render(
       <TooltipProvider>
-        <Sidebar
-          selectedTagIds={[]} onSelectTag={vi.fn()} onClearTags={vi.fn()} tags={[]} countedAssets={[]} collections={[]}
-          selectedCollection="default" onSelectCollection={vi.fn()} onManageTags={vi.fn()}
-          onExportCollection={vi.fn()} onImportCollection={vi.fn()} onShareCollection={onShareCollection}
-        />
+        <Sidebar {...props} onEditCollectionSettings={onEdit} onExportCollection={vi.fn()} onImportCollection={vi.fn()} onShareCollection={onShareCollection} />
       </TooltipProvider>,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Share in the Armarium' }));
+    const more = screen.getByRole('button', { name: 'Collection' });
+    fireEvent.click(more);
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Collection settings…', 'Export collection…', 'Import collection…', 'Share in the Armarium…',
+    ]);
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Collection settings…' }));
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(document.activeElement).toBe(more);
+
+    fireEvent.click(more);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Collection settings…' }));
+    expect(onEdit).toHaveBeenCalledWith('default');
+    fireEvent.click(more);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Share in the Armarium…' }));
     expect(onShareCollection).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers only what the manager handles, and no button when it handles nothing', () => {
+    const { rerender } = render(<TooltipProvider><Sidebar {...props} onExportCollection={vi.fn()} /></TooltipProvider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Collection' }));
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Export collection…']);
+    rerender(<TooltipProvider><Sidebar {...props} /></TooltipProvider>);
+    expect(screen.queryByRole('button', { name: 'Collection' })).toBeNull();
   });
 });

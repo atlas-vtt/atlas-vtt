@@ -1,5 +1,5 @@
 import React, { useId } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Store } from 'lucide-react';
 import type { Tab } from '../types';
 import { tabs, getTabDisplayName } from '../types';
 import { HeaderMenu } from './HeaderMenu';
@@ -16,6 +16,8 @@ export interface TabSwitcherProps {
   assetCounts: Record<Tab, number> | null;
   /** The collection could not be loaded: no count is coming, so none is shown or awaited. */
   countsFailed?: boolean;
+  /** Shows the Armarium, the strip's last place, set apart from the library's tabs; without it the strip has none. */
+  onShowArmarium?: (() => void) | undefined;
 }
 
 /**
@@ -29,12 +31,13 @@ function TabCount({ count, failed }: { count: number | undefined; failed: boolea
 }
 
 /**
- * The asset type tabs. Wide headers show them side by side; narrow ones show
- * the current type as a menu button instead (the toolbar's `data-compact`
- * steps pick one), so the toolbar stays a single row.
+ * The asset type tabs, and after them the Armarium, a place beside the library. Wide headers show them side by side;
+ * narrow ones show the current place as a menu button instead (the toolbar's `data-compact` steps pick one), so the
+ * toolbar stays a single row.
  */
-export function TabSwitcher({ activeTab, onTabChange, assetCounts, countsFailed = false }: TabSwitcherProps): React.JSX.Element {
+export function TabSwitcher({ activeTab, onTabChange, assetCounts, countsFailed = false, onShowArmarium }: TabSwitcherProps): React.JSX.Element {
   const labelId = useId();
+  const armariumShown = activeTab === null;
   const activeName = activeTab ? getTabDisplayName(activeTab) : t('armarium.title');
 
   return (
@@ -55,6 +58,22 @@ export function TabSwitcher({ activeTab, onTabChange, assetCounts, countsFailed 
             </button>
           </LabelTooltip>
         ))}
+        {onShowArmarium && (
+          <>
+            <span className="atlas-tab-divider" aria-hidden />
+            <LabelTooltip label={t('armarium.page')} describe>
+              <button
+                type="button"
+                className={`atlas-tab-button ${armariumShown ? 'atlas-active' : ''}`}
+                onClick={onShowArmarium}
+                aria-current={armariumShown ? 'page' : undefined}
+              >
+                <Store />
+                <span className="atlas-tab-label">{t('armarium.title')}</span>
+              </button>
+            </LabelTooltip>
+          </>
+        )}
       </nav>
 
       <HeaderMenu
@@ -69,13 +88,16 @@ export function TabSwitcher({ activeTab, onTabChange, assetCounts, countsFailed 
             <ChevronDown className="atlas-am-tab-menu-chevron" />
           </>
         }
-        items={tabs.map((tab) => ({
-          key: tab,
-          label: getTabDisplayName(tab),
-          ...(assetCounts ? { detail: assetCounts[tab] } : {}),
-          checked: tab === activeTab,
-          onSelect: () => onTabChange(tab),
-        }))}
+        items={[
+          ...tabs.map((tab) => ({
+            key: tab,
+            label: getTabDisplayName(tab),
+            ...(assetCounts ? { detail: assetCounts[tab] } : {}),
+            checked: tab === activeTab,
+            onSelect: () => onTabChange(tab),
+          })),
+          ...(onShowArmarium ? [{ key: 'armarium', label: t('armarium.title'), separated: true, checked: armariumShown, onSelect: onShowArmarium }] : []),
+        ]}
       />
     </>
   );

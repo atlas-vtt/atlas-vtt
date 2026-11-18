@@ -51,10 +51,12 @@ export interface HeaderProps {
    * where the search and Create do, which belong to the library.
    */
   armarium?: { onBack: () => void; onReload: () => void; page: string; onShare: () => void } | undefined;
+  /** Shows the Armarium: the last place of the tab strip, current while `armarium` is set. */
+  onShowArmarium?: (() => void) | undefined;
 }
 
 /**
- * One-row toolbar: navigation on the left, asset type in the
+ * One-row toolbar: navigation on the left, asset type (and the Armarium) in the
  * centre, search and create on the right. When its controls do not fit, the
  * tabs and the search fold into a menu and a button (`useHeaderCompaction`),
  * so they never overlap.
@@ -79,6 +81,7 @@ export function Header({
   onToggleSidebar,
   sel,
   armarium,
+  onShowArmarium,
 }: HeaderProps): React.JSX.Element {
   const backLabel = armarium ? t('armarium.backToLibrary') : t('common.back');
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -124,7 +127,7 @@ export function Header({
         </div>
 
         <div className="atlas-am-toolbar-center">
-          <TabSwitcher activeTab={armarium ? null : activeTab} onTabChange={onTabChange} assetCounts={assetCounts} countsFailed={countsFailed} />
+          <TabSwitcher activeTab={armarium ? null : activeTab} onTabChange={onTabChange} assetCounts={assetCounts} countsFailed={countsFailed} onShowArmarium={onShowArmarium} />
         </div>
 
         {armarium ? (

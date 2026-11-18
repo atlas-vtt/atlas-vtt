@@ -38,6 +38,7 @@ function headerProps(tokens: number): HeaderProps {
       handleNavigateBack: noop,
       handleNavigateForward: noop,
     },
+    onShowArmarium: noop,
   };
 }
 
@@ -132,7 +133,7 @@ describe('the asset manager header', () => {
     expect(tops.size).toBe(1);
   });
 
-  it.each([1500, 1200, 1000, 900])('puts the tabs right after the navigation and the search at its end at %ipx', async (width) => {
+  it.each([1500, 1200, 1000, 950])('puts the tabs right after the navigation and the search at its end at %ipx', async (width) => {
     const header = await show(width);
     const toolbar = header.querySelector<HTMLElement>('.atlas-am-toolbar');
     const navigation = header.querySelector<HTMLElement>('.atlas-am-toolbar-left')?.getBoundingClientRect();
