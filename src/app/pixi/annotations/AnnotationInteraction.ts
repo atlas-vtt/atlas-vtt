@@ -17,6 +17,7 @@ import { readSelection, type SelectionRead } from './annotationSelection';
 import { DoubleClick } from './DoubleClick';
 import type { SelectingStore } from './drawToolState';
 import { gripCursor } from './gripCursor';
+import { picksMore } from '../../annotations/selectMore';
 import { outlineOf, selectionPicture } from './selectionPicture';
 import { pointerReach } from '../utils/pointerReach';
 
@@ -205,6 +206,11 @@ export class AnnotationInteraction {
     return read.handles !== null && read.free.length === read.framed.length ? read.handles.frame : selectionFrame(read.framed, this.deps.measure);
   }
 
+  /** The drawings and texts selected now, as their menu would change them; none where they take no pointer. */
+  selected(): readonly Annotation[] {
+    return this.works() ? this.read().selected : [];
+  }
+
   /** The ids of the annotations the handles frame now: the selection's highlights leave them out. */
   get framedIds(): ReadonlySet<string> {
     return this.read().framedIds;
@@ -301,7 +307,8 @@ export class AnnotationInteraction {
     // A group is selected as one, also from the mode that takes only one kind of it.
     const group = withGroups([at.id], read.list, own ? 'all' : read.scope);
     const selected = state.selectedIds.includes(at.id);
-    if (event.shiftKey) {
+    // Shift, or Select more: the press adds it to the selection or takes it out
+    if (picksMore(state, event)) {
       state.setSelection(selected ? this.without(group) : [...this.without(group), ...group]);
       if (selected) return true;
     } else if (!selected) {

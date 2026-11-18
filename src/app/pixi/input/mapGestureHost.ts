@@ -32,9 +32,11 @@ export interface MapGestureParts {
   /** Whether a tap at a world point acts on something whose press the map's tools leave to the empty map (a linked hex). */
   tapActsAt: (worldX: number, worldY: number) => boolean;
   fingers: { readonly use: FingerUse; notePen: () => void };
+  /** Opens the menu of the empty map at a world point, for a finger held there; `at` is the point of the window. */
+  emptyMapMenu?: (world: { x: number; y: number }, at: { x: number; y: number }) => void;
 }
 
-export function mapGestureHost({ store, viewport, placing, marqueePending, menuAt, tapActsAt, fingers }: MapGestureParts): MapGestureHost {
+export function mapGestureHost({ store, viewport, placing, marqueePending, menuAt, tapActsAt, fingers, emptyMapMenu }: MapGestureParts): MapGestureHost {
   // Undo and redo are the GM's, as their keys are
   const travel = (direction: 'undo' | 'redo'): void => {
     if (!store.getState().isPlayerView) getHistoryStore(store)?.getState()[direction]();
@@ -53,5 +55,9 @@ export function mapGestureHost({ store, viewport, placing, marqueePending, menuA
     undo: () => travel('undo'),
     redo: () => travel('redo'),
     penTouched: () => fingers.notePen(),
+    emptyMapMenu: (x, y, at) => {
+      const world = viewport.toWorld(x, y);
+      emptyMapMenu?.({ x: world.x, y: world.y }, at);
+    },
   };
 }

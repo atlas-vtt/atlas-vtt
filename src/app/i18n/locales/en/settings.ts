@@ -21,6 +21,8 @@ export const settings = {
   'settings.maps.fogEdgeHint': 'Soft fades the edge of the fog out; crackled breaks it into a gritty, cracked edge. The slider sets how far it reaches to either side of the fog\'s outline, in pixels of the map, for you and your players, so the map shows that far inside the fog. 0 keeps it hard.',
   'settings.maps.fogEdgeSoft': 'Soft',
   'settings.maps.heading': 'Maps',
+  'settings.maps.selectionBar': 'Show selection bar',
+  'settings.maps.selectionBarHint': 'Edit, Duplicate and Delete above what is selected on the map. A touch screen always shows it.',
   'settings.navigation.heading': 'Navigation',
   'settings.navigation.inputDevice': 'Input device',
   'settings.navigation.mouse': 'Mouse',

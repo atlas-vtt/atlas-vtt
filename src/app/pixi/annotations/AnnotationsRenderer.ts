@@ -15,6 +15,11 @@ import { MAP_LAYER_Z } from '../mapLayerOrder';
 import type { TesseraView } from '../mosaicCanvas/levelOfDetail';
 import type { LayerVisibility } from '../playerSafeFrame';
 import type { Frame } from '../../annotations/annotationFrame';
+import type { Annotation } from '../../annotations/annotationTypes';
+import { deviceProfile } from '../../platform/deviceProfile';
+import { annotationActions } from '../../selection/annotationActionList';
+import type { SelectionAction } from '../../selection/selectionActions';
+import { annotationExtras } from '../../selection/wholeSelection';
 import { selectionMenuStyles } from '../../packages/components/toolbar/selectionMenuStyles';
 import { textFontReady } from '../textFonts';
 import { measureTextView, textBreaks, textLayout } from '../textLayout';
@@ -205,7 +210,7 @@ export class AnnotationsRenderer {
       copyMoved: (ids, dx, dy) => copyAnnotationsMoved(store, ids, dx, dy, full),
       dragTokens: (event) => options.dragTokens?.(event),
       menu: (selected, clicked, at) => {
-        const entries = annotationMenu(selected, clicked, store.getState(), (text) => this.texts.edit(text), selectionMenuStyles(selected, store));
+        const entries = annotationMenu(...this.actionsOf(selected, clicked));
         if (entries.length > 0) openContextMenuGlobal(entries, at);
         return entries.length > 0;
       },
@@ -235,6 +240,26 @@ export class AnnotationsRenderer {
     this.toolChanged(state);
     this.refreshVisibility();
     this.tellLeftOut(state);
+  }
+
+  /** What the actions of the selected drawings and texts are made of (`annotationActions`), `clicked` the one a menu was opened on. */
+  private actionsOf(selected: readonly Annotation[], clicked: Annotation | null): Parameters<typeof annotationActions> {
+    const extras = annotationExtras(this.store, this.viewport, selected.map(({ id }) => id), deviceProfile().pointer === 'coarse');
+    return [selected, clicked, this.store.getState(), (text) => this.texts.edit(text), selectionMenuStyles(selected, this.store), extras];
+  }
+
+  /**
+   * What can be done with the drawings and texts selected now: the rows of their menu and the
+   * buttons of the bar above a selection. A text selected alone can be opened for typing.
+   */
+  selectionActions(): SelectionAction[] {
+    const selected = this.selecting.selected();
+    return annotationActions(...this.actionsOf(selected, selected.length === 1 ? selected[0] ?? null : null));
+  }
+
+  /** A selected drawing or text is being dragged, resized or turned. */
+  get reshaping(): boolean {
+    return this.selecting.dragging;
   }
 
   /** A gesture of the Draw tool is under way: a press belongs to it, wherever it lands. */

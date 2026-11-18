@@ -16,16 +16,12 @@ import { hearPressesLast, isHandled } from "./utils/handledEvents";
 import { isPrimaryPress, isSecondaryPress } from "./utils/pointerButtons";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
 import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../stores/history';
-import type { ContextMenuEntry } from '../react/root/ContextMenuContext';
 import { isPinLabelKind, nextPinLabel } from '../tools/pinLabels';
 import { dispatchPinAction } from './utils/pinActions';
-import { pinOpenLook } from './pinOpenLook';
 import { hexLayoutOfGrid, isShownAsHex, pinDisplayPoint } from '../grid/hexLinks';
 import { MAP_LAYER_Z } from './mapLayerOrder';
-import { readablePinEntry } from './pinReadableMenu';
-import { pinNameEntries } from './pinNameMenu';
+import { pinMenuEntries } from './pinMenu';
 import { openPinMenu, type PinnedSceneLevels } from './pinSceneLevelMenu';
-import { t } from '../i18n';
 import { levelObjects } from '../levels/levelObjects';
 import { pinNameBoxes } from './pinNameLayout';
 import { dragThreshold, fingerReaches, pointerReach } from './utils/pointerReach';
@@ -521,15 +517,7 @@ export class PinRenderer {
   }
 
   private showPinContextMenu(pin: NotePin, pos: { x: number; y: number }): void {
-    const entries: ContextMenuEntry[] = [
-      { type: 'item', ...pinOpenLook(pin), onClick: () => dispatchPinAction('open', pin, this.store) },
-      { type: 'item', label: t('pinMenu.edit'), icon: 'edit', onClick: () => dispatchPinAction('edit', pin, this.store) },
-      ...[readablePinEntry(this.store, pin)].filter((entry) => entry !== null),
-      ...pinNameEntries(this.store, pin),
-      { type: 'item', label: t('common.duplicate'), icon: 'files', onClick: () => this.store.getState().duplicateMapObjects([pin.id]) },
-      { type: 'item', label: t('common.delete'), icon: 'trash', destructive: true, onClick: () => this.store.getState().deleteMapObject('pin', pin.id) },
-    ];
-    openPinMenu(this.store, pin, entries, pos, this.pinnedSceneLevels);
+    openPinMenu(this.store, pin, pinMenuEntries(this.store, pin), pos, this.pinnedSceneLevels);
   }
 
   private syncPins = (

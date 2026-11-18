@@ -1,4 +1,5 @@
 import type { FogCoverage } from '../fog/fogCoverage';
+import type { SelectionAction } from '../selection/selectionActions';
 import { StatblockTokenSync } from '../plugin/StatblockTokenSync';
 import { TokenCollectionSync } from '../plugin/TokenCollectionSync';
 import type { ResourceDefsProvider } from '../resources/resourceTypes';
@@ -1531,6 +1532,16 @@ export class TokenRenderer {
   /** How far a selected token's bars stand out from it, in world units. */
   public bars(tokenId: string): BarsSpan {
     return this.uiManager.bars(tokenId);
+  }
+
+  /** A token is being resized or turned by its handles. */
+  public transforming(): boolean {
+    return this.uiManager.transforming();
+  }
+
+  /** What can be done with the token and the selection it belongs to (`tokenActions`), for a menu at `at` in the window. */
+  public tokenActions(tokenId: string, at: { x: number; y: number }): SelectionAction[] {
+    return this.interactionController.tokenActions(tokenId, at);
   }
 
   /** What the ruler of the drag under way measures, or null while it shows none. */

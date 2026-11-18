@@ -23,7 +23,8 @@ import {
 } from './atlasSettings';
 import {
   loadAnimateMaps, loadGmFogOpacity, loadGraphicsChoice, loadInitiativeCollapsed, loadInputMode, loadLightingQuality, loadPickedLightingQuality, loadPlayerView4k,
-  saveAnimateMaps, saveGmFogOpacity, saveGraphicsChoice, saveInitiativeCollapsed, saveInputMode, savePickedLightingQuality, savePlayerView4k,
+  loadSelectionBarShown,
+  saveAnimateMaps, saveGmFogOpacity, saveGraphicsChoice, saveInitiativeCollapsed, saveInputMode, savePickedLightingQuality, savePlayerView4k, saveSelectionBarShown,
 } from './deviceSettings';
 import { readGpuFacts } from './gpuFacts';
 import { pickLightingQuality } from '../lighting/deviceTier';
@@ -292,6 +293,18 @@ export class SettingsService {
     const level = pickLightingQuality(facts, finest);
     savePickedLightingQuality(this.app, level);
     return level;
+  }
+
+  /** Whether the bar above a selection shows on this device under a mouse too; under a finger it always does. */
+  isSelectionBarShown(): boolean {
+    return loadSelectionBarShown(this.app);
+  }
+
+  /** Stores the choice on this device and tells the open maps. */
+  setSelectionBarShown(shown: boolean): void {
+    if (this.isSelectionBarShown() === shown) return;
+    saveSelectionBarShown(this.app, shown);
+    this.notify();
   }
 
   /** Whether animated maps play on this device as chosen, or null when never chosen (`animateMapsOn` decides then). */

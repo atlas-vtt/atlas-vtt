@@ -494,6 +494,11 @@ export class UIManager implements ITokenUIManager {
     this.updateAllTokenSettings();
   }
 
+  /** A token is being resized or turned by its handles. */
+  public transforming(): boolean {
+    return this.tokenResizeUI?.isCurrentlyResizing === true || this.tokenRotationUI?.isCurrentlyRotating === true;
+  }
+
   /** How far a selected token's bars stand out from it, in world units. */
   public bars(tokenId: string): BarsSpan {
     const ui = this.tokenUIs[tokenId];

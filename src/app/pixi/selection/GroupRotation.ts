@@ -87,6 +87,16 @@ export class GroupRotation {
     });
   }
 
+  /** A group is being turned. */
+  get turning(): boolean {
+    return this.turn !== null;
+  }
+
+  /** The button shows above the group's frame. */
+  get offered(): boolean {
+    return this.button.layer.visible;
+  }
+
   /** The button's layer, which neither players nor thumbnails show. */
   get layer(): GroupRotateButton['layer'] {
     return this.button.layer;

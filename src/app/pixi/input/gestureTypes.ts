@@ -34,6 +34,8 @@ export interface GestureEffects {
   cancelPress(id: number, byBrowser: boolean): void;
   /** A press and release of the secondary button where the finger came down. */
   secondaryClick(id: number): void;
+  /** The finger was held on the empty map until its long press and lifted where it came down: no marquee was drawn. */
+  heldEmptyMap?(id: number): void;
   beginNavigation(): void;
   pan(dx: number, dy: number): void;
   /** Two fingers went from a middle and a span to another. */

@@ -1,4 +1,6 @@
 import { FingerSettings } from './input/fingerUse';
+import { openEmptyMapMenu } from './selection/emptyMapMenu';
+import { SelectionBarSource } from './pixi/selection/selectionBarSource';
 import { mapGestureHost } from './pixi/input/mapGestureHost';
 import type { FogCoverage } from './fog/fogCoverage';
 import { HARD_FOG_EDGE, sameFogEdge } from './fog/fogEdge';
@@ -111,6 +113,7 @@ export class PixiRendererOrchestrator { // Renamed class
   /** How the map's animated parts play now (`watchMapVideo`): a measure renderer made later starts with it. */
   private mapVideoMode: MapVideoMode = 'pause';
   private selectionManager?: SelectionManager; // Add SelectionManager instance
+  private selectionBar?: SelectionBarSource;
   private fogRenderer?: FogOfWarRenderer; // Add FogRenderer instance
   private measureRenderer?: MeasureRenderer; // Add MeasureRenderer instance
   /** Ends the measurements' watch on what the players see of the tokens. */
@@ -336,6 +339,7 @@ export class PixiRendererOrchestrator { // Renamed class
           menuAt: (x, y) => this.tokenRenderer?.menuAt(x, y) ?? false,
           tapActsAt: (x, y) => this.tokenRenderer?.tapActsAt(x, y) ?? false,
           fingers: FingerSettings.forApp(this.obsApp),
+          emptyMapMenu: (world, at) => openEmptyMapMenu(this.store, this.tokenRenderer, world, at),
         }));
       }
       // initPinContainer is now effectively handled by PinRenderer's constructor
@@ -1064,6 +1068,20 @@ export class PixiRendererOrchestrator { // Renamed class
   getGridSystem(): GridSystem | null { return this.gridSystem || null; }
   getTokenRenderer(): TokenRenderer | null { return this.tokenRenderer || null; }
 
+  /** What the bar above a selection reads of this view (`SelectionBarSource`); null until the map's tokens can be drawn. */
+  getSelectionBar(): SelectionBarSource | null {
+    const viewport = this.pixiAppManager.getViewport();
+    if (this._isDestroyed || !viewport) return null;
+    this.selectionBar ??= new SelectionBarSource({
+      store: this.store,
+      viewport,
+      tokens: () => this.tokenRenderer,
+      selection: () => this.selectionManager,
+      annotations: () => this.annotations,
+    });
+    return this.selectionBar;
+  }
+
   /** Places spawned tokens by hand on this view's map; null until the map's tokens can be drawn. */
   getTokenPlacer(): TokenPlacer | null {
     if (this._isDestroyed) return null;
@@ -1115,6 +1133,12 @@ export class PixiRendererOrchestrator { // Renamed class
         }
         // The toolbar editor ends on this Escape (its own listener); the selection stays.
         if (this.store.getState().isToolbarEditing) return;
+        // Select more ends first; what it gathered stays selected
+        if (this.store.getState().selectMore) {
+          e.preventDefault();
+          this.store.getState().setSelectMore(false);
+          return;
+        }
         // Clear token selection
         const selectedIds = this.store.getState().selectedIds;
         if (selectedIds.length > 0) {

@@ -8,9 +8,8 @@ import { stepDrawSize } from "./drawStyleStore"
 import { eraserOrBack, nextDrawMode } from "./drawToolChoices"
 import { nextMeasureMode } from "./measureToolChoices"
 import type { Tool } from "./toolFaces"
-import { levelObjects } from '../../../levels/levelObjects';
 import { mapOffersRanges } from "../../../services/mapRanges"
-import { mapTokens } from "../../../tokens/offMap"
+import { selectAllTokens } from "../../../selection/wholeSelection"
 import { isFogTool, steppedBrushSize } from "../../../fog/fogToolChoices"
 import type { ViewAtlasState } from "../../../storeFactory"
 
@@ -106,11 +105,7 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
     drawSmaller: stepSize(-1),
     drawLarger: stepSize(1),
     gmView: dmOnly(toggleGMView),
-    selectAll: dmOnly(() => {
-      // Only what the canvas shows: session view hides tokens, which must not be selected unseen.
-      const tokenIds = renderer?.getTokenRenderer()?.visibleTokenIds() ?? Object.keys(mapTokens(levelObjects(store.getState())))
-      if (tokenIds.length > 0) store.getState().setSelection(tokenIds)
-    }),
+    selectAll: dmOnly(() => selectAllTokens(store, renderer?.getTokenRenderer())),
     assets: dmOnly(toggleAssetManager),
     pin: dmOnly(() => selectTool("note-pin")),
     wall: dmOnly(() => selectTool("wall")),
