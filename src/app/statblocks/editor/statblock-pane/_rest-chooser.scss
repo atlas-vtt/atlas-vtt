@@ -169,6 +169,7 @@ $rest-inset: $spacing-m;
     background: transparent;
     box-shadow: none;
     color: var(--text-muted);
+    @include atlas-coarse-hit;
 
     &:hover:not(:disabled) {
       background: var(--background-modifier-hover);

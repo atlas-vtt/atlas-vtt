@@ -199,6 +199,8 @@ $ctx-inset: $surface-inset;
   box-shadow: none;
   color: var(--text-muted);
   cursor: pointer;
+  // Under a finger the button stays inside its row and takes a target's hit area around it.
+  @include atlas-coarse-hit;
 
   @media (hover: hover) {
     &:hover:not(:disabled) {

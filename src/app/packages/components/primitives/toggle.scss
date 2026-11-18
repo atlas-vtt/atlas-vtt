@@ -35,13 +35,7 @@ $toggle-gap: $surface-inset;
   @include atlas-toggle-size(var(--atlas-toggle-m-width, 60px), var(--atlas-toggle-m-height, 40px));
 
   // Under a finger a switch smaller than a target takes one around it; its look stays its own.
-  @include atlas-coarse-pointer {
-    &::before {
-      position: absolute;
-      inset: min(0px, calc((100% - #{$touch-target}) / 2));
-      content: '';
-    }
-  }
+  @include atlas-coarse-hit($positioned: true);
 }
 
 // Kept in place and focusable (a tooltip says why), dimmed and inert.

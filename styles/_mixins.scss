@@ -897,6 +897,25 @@
   }
 }
 
+/// Under a coarse pointer the element takes a hit area of at least $size around its middle, drawn by nothing: its
+/// look and the layout around it stay as they are. For a control that must stay small where it stands (a stepper in
+/// a row, a switch in a line of text). The element must not clip its overflow.
+/// @param {Length} $size - the least width and height of the hit area
+/// @param {Boolean} $positioned - the element is positioned already (absolute, fixed, relative) and keeps that
+@mixin atlas-coarse-hit($size: $touch-target, $positioned: false) {
+  @include atlas-coarse-pointer {
+    @if not $positioned {
+      position: relative;
+    }
+
+    &::before {
+      position: absolute;
+      inset: min(0px, calc((100% - #{$size}) / 2));
+      content: '';
+    }
+  }
+}
+
 // ── Checkbox hit area ───────────────────────────────────────────────────────
 
 /// Under a coarse pointer the native checkboxes inside take a 44 px hit area (WCAG 2.5.5): a `::before` around Obsidian's

@@ -170,6 +170,7 @@ $loot-stepper-inset: 2px;
     height: calc(#{$button-height-m} - #{2 * $loot-stepper-inset});
     border-radius: calc(#{$radius-m} - #{$loot-stepper-inset});
     color: var(--text-muted);
+    @include atlas-coarse-hit;
 
     svg {
       width: $icon-xs;
