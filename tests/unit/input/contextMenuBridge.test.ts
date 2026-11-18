@@ -121,6 +121,16 @@ describe('what the bridge leaves alone', () => {
     expect(rightClick.defaultPrevented).toBe(false);
   });
 
+  it('a mouse after a finger whose release was lost: its right-click is still its own', () => {
+    const { card, menus } = page();
+    pointer(card, 'pointerdown', { pointerId: 9 });
+    pointer(card, 'pointerdown', { pointerType: 'mouse', pointerId: 1 });
+    const rightClick = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    card.dispatchEvent(rightClick);
+    expect(rightClick.defaultPrevented).toBe(false);
+    expect(menus).toHaveLength(1);
+  });
+
   it.each(['input', 'textarea'])('a finger on an %s, where a long press selects text', (tag) => {
     const { clock, card, menus } = page();
     const field = card.appendChild(document.createElement(tag));

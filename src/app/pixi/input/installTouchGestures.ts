@@ -22,8 +22,6 @@ export interface MapGestureHost extends GestureHost {
 /** The fingers on a map's canvas, turned into what its tools understand (`TouchGestures`). */
 export interface MapGestures {
   setHost(host: MapGestureHost): void;
-  /** Whether the event, heard before PIXI could, is one the map's tools get; false for a finger's press that is held back. */
-  admits(event: Event): boolean;
   /** What a picture of the scene and the players' picture leave out. */
   hiddenLayers(): LayerVisibility[];
   destroy(): void;
@@ -93,7 +91,6 @@ export function installTouchGestures(app: Application, viewport: Viewport, canva
       host = next;
       gestures.setHost(next);
     },
-    admits: source.admits,
     hiddenLayers: () => [{ layer: ring.layer, visible: false }],
     destroy: () => {
       gestures.destroy();
