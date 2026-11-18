@@ -65,6 +65,7 @@ import { registerColorSwatchIcons } from './src/app/plugin/colorSwatchIcons';
 import { HeaderAutocompleteSuggest } from './src/app/plugin/HeaderAutocompleteSuggest';
 import { registerAtlasLinks } from './src/app/links/registerAtlasLinks';
 import { registerCommands } from './src/app/plugin/registerCommands';
+import { registerArmarium } from './src/app/plugin/armarium';
 import { CampaignFiles } from './src/app/campaigns/CampaignFiles';
 import { CampaignBooks } from './src/app/campaigns/players/CampaignBooks';
 import { CampaignPlayers } from './src/app/campaigns/players/CampaignPlayers';
@@ -201,6 +202,8 @@ export default class AtlasVTTPlugin extends Plugin {
     // before the slower startup path finishes.
     try {
       this.registerAtlasViews();
+      // The Armarium's tab, command, installer and install link; the installer reaches the asset manager once it exists.
+      registerArmarium(this, () => this.globalAssetManager);
     } catch (error) {
       // An earlier Atlas that failed to unload still holds them; only a restart frees them.
       showNotice(t('notice.restartForAtlas'));

@@ -18,6 +18,7 @@ import { AssetManagerTours } from './components/AssetManagerTours';
 import { useAssetData } from './hooks/useAssetData';
 import { useSelectionHandlers, type VisibleIds } from './hooks/useSelectionHandlers';
 import { useAssetCrud } from './hooks/useAssetCrud';
+import { useExternalImport } from './hooks/useExternalImport';
 import { useTagsAndCollections } from './hooks/useTagsAndCollections';
 import { AssetTagMenuContext, type AssetTagMenuActions } from './components/assetTagMenuContext';
 import { tagGroupOfTab } from './utils/assetTags';
@@ -36,8 +37,9 @@ import { useRevealMoved } from './hooks/useRevealMoved';
 import { ActiveFilterBar } from './components/search/ActiveFilterBar';
 import { showDungeonGenerator } from '../dungeon-generator/openDungeonGenerator';
 import { runInBackground } from '../../../utils/backgroundTask';
+import { showArmarium } from '../../../armarium/showArmarium';
 
-export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, onExitComplete }: AssetManagerProps): React.JSX.Element {
+export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, onExitComplete, pendingImport }: AssetManagerProps): React.JSX.Element {
   const isOpen = useOpenedAfterPress(isOpenProp);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('tokens');
@@ -101,6 +103,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
     data.loadFoldersForActiveTab, data.loadAssetsForActiveTab,
     draggedItems, setDraggedItems, setDropTarget, data.setAssets, reveal.inFolder, sel,
   );
+  useExternalImport(pendingImport, isOpen, crud);
 
   const tags = useTagsAndCollections(
     data.assetService, selectedCollection, data.tagsByGroup,
@@ -160,6 +163,10 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
             onEditCollectionSettings={crud.setSettingsModalCollectionId}
             onExportCollection={() => { void crud.handleExportCollection(); }}
             onImportCollection={crud.handleImportCollection}
+            onBrowseArmarium={() => {
+              runInBackground(showArmarium(data.app), 'Opening the Armarium');
+              onClose();
+            }}
             footer={activeTab === 'tokens' && data.assetService && data.assets.length > 0 ? <BestiaryTokensOffer app={data.app} assets={data.assetService} collection={selectedCollection} variant="sidebar" dismissed={starterOffer.dismissed} {...(starterOffer.dismiss && { onDismiss: starterOffer.dismiss })} /> : null}
             layout={sidebar}
           />

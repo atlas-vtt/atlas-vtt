@@ -20,6 +20,8 @@ import { quest } from './quest';
 import { dashboard } from './dashboard';
 import { dice } from './dice';
 import { docs } from './docs';
+import { siteFrame } from './siteFrame';
+import { armarium } from './armarium';
 import { diceLab } from './diceLab';
 import { diceRoll } from './diceRoll';
 import { diceSettings } from './diceSettings';
@@ -136,6 +138,8 @@ export const en = {
   ...dashboard,
   ...dice,
   ...docs,
+  ...siteFrame,
+  ...armarium,
   ...diceLab,
   ...diceRoll,
   ...diceSettings,

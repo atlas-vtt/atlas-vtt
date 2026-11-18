@@ -6,6 +6,7 @@ import { AtlasUIContext } from '../react/root/AtlasUIContext';
 import { ContextMenuProvider } from '../react/root/ContextMenuContext';
 import type { Tab } from '../packages/components/asset-manager/types';
 import { portalHost } from '../host/portalHost';
+import type { ExternalImport } from './collectionBundle/externalImport';
 
 export class GlobalAssetManagerService {
   private app: App;
@@ -13,6 +14,7 @@ export class GlobalAssetManagerService {
   private container: HTMLDivElement | null = null;
   private isOpen: boolean = false;
   private initialTab: Tab | undefined;
+  private pendingImport: ExternalImport | undefined;
 
   constructor(app: App) {
     this.app = app;
@@ -39,6 +41,16 @@ export class GlobalAssetManagerService {
     this.render(this.root, true);
   }
 
+  /**
+   * Shows the import review of a bundle that came from outside (an Armarium install): in the open window, or in
+   * one opened for it. Nothing is imported unless the GM confirms the review.
+   */
+  importBundle(pending: ExternalImport): void {
+    if (!this.isOpen || !this.root) this.open();
+    this.pendingImport = pending;
+    if (this.root) this.render(this.root, true);
+  }
+
   /** No ViewStoreProvider: there is no map view here, the asset manager reads the store optionally. */
   private render(root: Root, isOpen: boolean, onExitComplete?: () => void): void {
     const contextValue = {
@@ -57,7 +69,8 @@ export class GlobalAssetManagerService {
             isOpen,
             onClose: () => this.close(),
             ...(onExitComplete ? { onExitComplete } : {}),
-            ...(this.initialTab ? { initialTab: this.initialTab } : {})
+            ...(this.initialTab ? { initialTab: this.initialTab } : {}),
+            ...(this.pendingImport ? { pendingImport: this.pendingImport } : {})
           })
         })
       })
@@ -72,6 +85,7 @@ export class GlobalAssetManagerService {
     this.container = null;
     this.isOpen = false;
     this.initialTab = undefined;
+    this.pendingImport = undefined;
     if (!root) {
       container?.remove();
       return;
