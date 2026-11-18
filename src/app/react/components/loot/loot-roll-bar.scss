@@ -203,7 +203,9 @@ $loot-stepper-inset: 2px;
   pointer-events: none;
 }
 
-.atlas-loot-roll-button {
+// `.btn` (styles/main.scss, imported after this file) sets 40 px; the roll button
+// keeps the 32 px of the stepper and the rarity tray beside it.
+.atlas-loot-roll-button.btn {
   gap: $spacing-s;
   min-width: 112px;
   height: $button-height-m;
