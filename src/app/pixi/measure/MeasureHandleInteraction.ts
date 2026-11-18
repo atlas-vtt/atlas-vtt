@@ -8,6 +8,7 @@ import type { MeasuresSlice } from '../../stores/measuresSlice';
 import type { UISlice } from '../../stores/uiSlice';
 import type { Point } from '../../types/visionTypes';
 import { elementOf, LIGHT_DRAG_THRESHOLD } from '../lighting/LightInteraction';
+import { dragThreshold } from '../utils/pointerReach';
 import { settleDragStep } from './dragStep';
 import type { MeasureHandlePlacer, MeasureHandleRef, MeasurePointerHandlers } from './measureHandle';
 import { handleDrag, sameDragChanges, type AuraDragSetting } from './measureHandleDrag';
@@ -231,7 +232,7 @@ export class MeasureHandleInteraction {
 
     const onMove = (move: FederatedPointerEvent): void => {
       if (!moved) {
-        if (Math.hypot(move.global.x - start.x, move.global.y - start.y) <= LIGHT_DRAG_THRESHOLD) return;
+        if (Math.hypot(move.global.x - start.x, move.global.y - start.y) <= dragThreshold(LIGHT_DRAG_THRESHOLD, move)) return;
         moved = true;
         if (!drag) return;
         dragging = true;

@@ -12,6 +12,7 @@ import type { LightMarkers } from './LightMarkers';
 import type { LightRangeRings } from './LightRangeRings';
 import { ringHandleCursor, ringRadiusAt } from './lightRingGeometry';
 import { levelObjects } from '../../levels/levelObjects';
+import { dragThreshold } from '../utils/pointerReach';
 
 /** Screen pixels the pointer may move before a press on a marker is a drag, not a click. */
 export const LIGHT_DRAG_THRESHOLD = 5;
@@ -147,7 +148,7 @@ export class LightInteraction {
 
     const onMove = (move: FederatedPointerEvent): void => {
       if (!dragging) {
-        if (Math.hypot(move.global.x - start.x, move.global.y - start.y) <= LIGHT_DRAG_THRESHOLD) return;
+        if (Math.hypot(move.global.x - start.x, move.global.y - start.y) <= dragThreshold(LIGHT_DRAG_THRESHOLD, move)) return;
         moved = true;
         if (!canMove) return;
         dragging = true;

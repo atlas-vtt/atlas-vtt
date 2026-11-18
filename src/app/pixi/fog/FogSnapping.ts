@@ -10,6 +10,7 @@ import type { GridGeometry } from '../../grid/gridDistance';
 import { levelObjects } from '../../levels/levelObjects';
 import type { Point } from '../../types/visionTypes';
 import { wallList } from '../../vision/wallList';
+import { pointerReach } from '../utils/pointerReach';
 
 /** Screen pixels: how near the pointer must be to a corner, a wall's end or an edge to land on it. */
 const SNAP_REACH = 10;
@@ -71,7 +72,7 @@ export class FogSnapping {
 
   private reach(): number {
     const zoom = this.deps.zoom();
-    return SNAP_REACH / (Number.isFinite(zoom) && zoom > 0 ? zoom : 1);
+    return pointerReach(SNAP_REACH) / (Number.isFinite(zoom) && zoom > 0 ? zoom : 1);
   }
 
   /** The grid points snap to: none while its Snap switch is off. */

@@ -5,6 +5,7 @@ import type { Point } from '../../types/visionTypes';
 import { hearPressesLast, isHandled } from '../utils/handledEvents';
 import { isPrimaryPress } from '../utils/pointerButtons';
 import { DRAW_DRAG_THRESHOLD, DrawGesture, sweeps, type DrawGestureResult, type DrawPointer, type GestureMode } from './drawGesture';
+import { dragThreshold } from '../utils/pointerReach';
 
 /** A press this soon after the click that ended a shape, in the same place, is that click's second (a double click) and draws nothing. */
 const DOUBLE_CLICK_MS = 500;
@@ -327,7 +328,7 @@ export class DrawInput {
 
 /** Whether two screen points are near enough to be one click. */
 function withinClick(a: Point, b: Point): boolean {
-  return Math.hypot(a.x - b.x, a.y - b.y) <= DRAW_DRAG_THRESHOLD;
+  return Math.hypot(a.x - b.x, a.y - b.y) <= dragThreshold(DRAW_DRAG_THRESHOLD);
 }
 
 function same(a: Point, b: Point): boolean {

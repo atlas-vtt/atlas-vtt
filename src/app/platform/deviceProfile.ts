@@ -1,4 +1,5 @@
 import { Platform } from 'obsidian';
+import { FINGER_REACH_SCALE } from '../pixi/utils/pointerReach';
 import { budgetsFor, type DeviceBudgets, type MemoryClass } from './deviceBudgets';
 
 export type PointerKind = 'fine' | 'coarse';
@@ -39,7 +40,7 @@ export interface DeviceProfile {
  * A finger needs a target 44 points across (Apple's guidelines), where Atlas' handles on the map
  * are about 22 px for a mouse (resize handles 20, a light ring's handle 2 × 11).
  */
-export const COARSE_POINTER_SCALE = 2;
+export const COARSE_POINTER_SCALE = FINGER_REACH_SCALE;
 
 /**
  * A coarse primary pointer is a finger. On a mobile device a fine one counts only where it hovers

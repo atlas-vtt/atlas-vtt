@@ -7,6 +7,7 @@ import type { WallSegment, WallType } from '../../types/wallTypes';
 import { connectedChain, endsAt, snapToWallEnd, type WallEnd } from '../lighting/wallEnds';
 import type { WallEdit } from '../lighting/wallJoints';
 import { levelObjects } from '../../levels/levelObjects';
+import { dragThreshold } from '../utils/pointerReach';
 
 /** Screen pixels a pressed wall end must travel before it follows the pointer: less is a click. */
 const DRAG_THRESHOLD = 3;
@@ -81,7 +82,7 @@ export class WallInteraction {
     const drag = this.drag;
     if (!drag) return;
     const zoom = this.wallRenderer.zoom;
-    if (!drag.moved && Math.hypot(worldX - drag.pressedAt.x, worldY - drag.pressedAt.y) < DRAG_THRESHOLD / zoom) return;
+    if (!drag.moved && Math.hypot(worldX - drag.pressedAt.x, worldY - drag.pressedAt.y) < dragThreshold(DRAG_THRESHOLD) / zoom) return;
     if (!drag.moved) {
       // Live drag writes hit the store on every move; the transaction folds them into one undo step.
       drag.moved = true;

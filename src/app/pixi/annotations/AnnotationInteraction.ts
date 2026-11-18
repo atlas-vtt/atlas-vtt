@@ -18,6 +18,7 @@ import { DoubleClick } from './DoubleClick';
 import type { SelectingStore } from './drawToolState';
 import { gripCursor } from './gripCursor';
 import { outlineOf, selectionPicture } from './selectionPicture';
+import { pointerReach } from '../utils/pointerReach';
 
 /** Screen pixels of slack around ink, so a thin line stays easy to take at any zoom. */
 const HIT_TOLERANCE = HANDLE_LOOK.edge;
@@ -241,7 +242,7 @@ export class AnnotationInteraction {
   /** The topmost annotation at `point` that the tool in hand takes: by its scope, or as one of the kind `own`. */
   private taken(point: Point, read: SelectionRead, own: OwnKind | null = null): Annotation | null {
     if (read.scope !== 'all' && read.scope !== 'move' && own === null) return null;
-    return annotationsAt(point, HIT_TOLERANCE / this.zoom, read.list, this.deps.measure)
+    return annotationsAt(point, pointerReach(HIT_TOLERANCE) / this.zoom, read.list, this.deps.measure)
       .find((annotation) => takesPress(read.scope, annotation) || takesOwn(own, annotation)) ?? null;
   }
 

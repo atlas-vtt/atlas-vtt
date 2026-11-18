@@ -1,3 +1,5 @@
+import { FINGER_SLOP_PX } from '../pixi/utils/pointerReach';
+
 /**
  * The long press of a finger: the secondary click of a device without a right button. One timing
  * and one tolerance for the map and for everything else Atlas draws.
@@ -5,8 +7,8 @@
 
 /** How long a finger rests before its press is a long press, between the defaults of iPadOS and Android. */
 export const LONG_PRESS_MS = 400;
-/** How far a finger may wander and still rest (px); past it the press is a drag. */
-export const TOUCH_SLOP_PX = 8;
+/** How far a finger may wander and still rest (px); past it the press is a drag: the threshold every drag on the map has for a finger. */
+export const TOUCH_SLOP_PX = FINGER_SLOP_PX;
 
 export interface PressPoint {
   x: number;

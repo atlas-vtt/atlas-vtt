@@ -9,17 +9,11 @@ import { withPointAdded, withPointMoved } from '../../annotations/linePoints';
 import { draggedWidth, placeBesideSide } from '../../annotations/textWidth';
 import type { Point } from '../../types/visionTypes';
 import { trackPointer } from '../measure/pointerTrack';
+import { dragThreshold, tokenDragDistance } from '../utils/pointerReach';
 import { AnnotationEdit, type EditLayer, type PlaceWriter } from './AnnotationEdit';
 
 /** Screen pixels the pointer travels before a press becomes a drag. */
 export const ANNOTATION_DRAG_THRESHOLD = 4;
-/**
- * World pixels the pointer travels before tokens are dragged (`InteractionController`). A move
- * that goes with tokens begins with theirs, on the same pointer move: their drag copies what is
- * selected before anything has moved.
- */
-const TOKEN_DRAG_DISTANCE = 5;
-
 /** A handle that stands on the frame or the line: what a drag of it reshapes. */
 export type GripRef = Exclude<HandleRef, { kind: 'body' | 'edge' }>;
 
@@ -260,7 +254,7 @@ export class AnnotationGestures {
       const at = this.world(move);
       const drag = { x: at.x - grabbed.x, y: at.y - grabbed.y };
       if (!running.dragging) {
-        const far = live ? Math.hypot(drag.x, drag.y) > TOKEN_DRAG_DISTANCE : Math.hypot(move.global.x - pressed.x, move.global.y - pressed.y) > ANNOTATION_DRAG_THRESHOLD;
+        const far = live ? Math.hypot(drag.x, drag.y) > tokenDragDistance(viewport.scale.x, move) : Math.hypot(move.global.x - pressed.x, move.global.y - pressed.y) > dragThreshold(ANNOTATION_DRAG_THRESHOLD, move);
         if (!far) return;
         running.dragging = true;
         viewport.plugins.pause('drag');
