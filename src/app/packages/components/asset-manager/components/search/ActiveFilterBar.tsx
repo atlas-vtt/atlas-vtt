@@ -53,7 +53,7 @@ function GroupedChip({ group }: { group: FilterChipGroup }): React.JSX.Element {
     if (!open || !group) return undefined;
     const doc = group.ownerDocument;
     const onPress = (event: PointerEvent): void => {
-      if (event.pointerType !== 'mouse' && !group.contains(event.target as Node | null)) setOpen(false);
+      if (event.pointerType === 'touch' && !group.contains(event.target as Node | null)) setOpen(false);
     };
     doc.addEventListener('pointerdown', onPress, true);
     return () => doc.removeEventListener('pointerdown', onPress, true);
@@ -63,9 +63,9 @@ function GroupedChip({ group }: { group: FilterChipGroup }): React.JSX.Element {
     <div
       ref={groupRef}
       className={`atlas-active-filter-group${open ? ' atlas-open' : ''}`}
-      // A finger's tap brings a hover and a focus of its own before its click, which then closed what they had opened: only a mouse hovers, only a key's focus opens.
-      onPointerEnter={(event) => { if (event.pointerType === 'mouse') show(); }}
-      onPointerLeave={(event) => { if (event.pointerType === 'mouse') hide(); }}
+      // A finger's tap brings a hover and a focus of its own before its click, which then closed what they had opened: a finger never hovers, and only a key's focus opens.
+      onPointerEnter={(event) => { if (event.pointerType !== 'touch') show(); }}
+      onPointerLeave={(event) => { if (event.pointerType !== 'touch') hide(); }}
       onFocus={() => { if (!lastInputWasTouch()) show(); }}
       onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) hide(); }}
     >
