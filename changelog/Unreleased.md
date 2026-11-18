@@ -1,5 +1,11 @@
 ## New
 
+**New Feature: Armarium in Atlas**
+- Browse the Armarium in a tab of its own, from the command palette or the asset manager
+- Install a free collection with one click: you see what it brings in the import review before anything is added
+- Open in Atlas on a collection's page in your browser does the same
+
+**General**
 - The documentation opens inside Atlas: choose Documentation in the command palette to read the guides beside the map
 
 ## Improved

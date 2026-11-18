@@ -158,6 +158,8 @@ body.theme-light {
   @import '../src/app/react/components/dice-log/dice-roll-log.scss';
   @import '../src/app/react/components/dice/rolled-dice.scss';
   @import '../src/app/react/components/loot/loot-roller.scss';
+  @import '../src/app/react/components/siteFrame/site-frame.scss';
+  @import '../src/app/armarium/armarium-view.scss';
   @import '../src/app/react/components/documentation/docs-panel.scss';
   @import '../src/app/pixi/lighting/light-panel.scss';
   @import '../src/app/pixi/lighting/light-popover.scss';
@@ -934,6 +936,14 @@ body.theme-light {
   .atlas-sound-pane {
     margin: var(--atlas-dm-screen-inset);
   }
+}
+
+// The Armarium in a tab of its own: the store's frame fills it to the edges.
+.view-content.atlas-armarium-view {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
 }
 
 // Atlas VTT view styles - scoped to our plugin views only

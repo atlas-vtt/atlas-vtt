@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { MotionConfig, motion, useReducedMotion } from 'framer-motion';
-import { Search, X, Settings, Tag, Download, Upload } from 'lucide-react';
+import { Search, X, Settings, Tag, Download, Upload, Store } from 'lucide-react';
 import { Button } from '../../primitives/button';
 import { LabelTooltip } from '../../primitives/tooltip';
 import type { AnyAsset, CollectionOption, Tag as TagType } from '../types';
@@ -34,6 +34,8 @@ export interface SidebarProps {
   onEditCollectionSettings?: (collectionId: string) => void;
   onExportCollection?: () => void;
   onImportCollection?: () => void;
+  /** Opens the Armarium, where free collections install with a click. */
+  onBrowseArmarium?: () => void;
   /** Stands above the Manage button: what the open tab offers to add (the bestiary tokens). */
   footer?: React.ReactNode;
   /** Floating behaviour from `useSidebarLayout`; omitted, the sidebar is docked. */
@@ -55,6 +57,7 @@ export function Sidebar({
   onEditCollectionSettings,
   onExportCollection,
   onImportCollection,
+  onBrowseArmarium,
   footer,
   layout,
 }: SidebarProps): React.JSX.Element {
@@ -116,6 +119,13 @@ export function Sidebar({
                   <LabelTooltip label={t('am.sidebar.import')}>
                     <Button variant="ghost" size="icon" className="atlas-collection-header-btn" onClick={onImportCollection} aria-label={t('am.sidebar.import')}>
                       <Download />
+                    </Button>
+                  </LabelTooltip>
+                )}
+                {onBrowseArmarium && (
+                  <LabelTooltip label={t('armarium.browse')}>
+                    <Button variant="ghost" size="icon" className="atlas-collection-header-btn" onClick={onBrowseArmarium} aria-label={t('armarium.browse')}>
+                      <Store />
                     </Button>
                   </LabelTooltip>
                 )}

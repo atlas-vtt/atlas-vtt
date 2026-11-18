@@ -63,6 +63,8 @@ import { placePalette, type PalettePosition } from './command-palette/palettePla
 import { customizeToolbarCommand } from './command-palette/customizeToolbarCommand';
 import { hotkeyHelpCommand } from './command-palette/hotkeyHelpCommand';
 import { docsCommand } from './command-palette/docsCommand';
+import { armariumCommand } from './command-palette/armariumCommand';
+import { showArmarium } from '../../armarium/showArmarium';
 import { isSettingsPanelId, type CommandOption, type SettingsPanelId } from './command-palette/types';
 import { t } from '../../i18n';
 import { showNotice } from '../../ui/notice';
@@ -540,6 +542,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     },
     ...(onCustomizeToolbar ? [customizeToolbarCommand(() => onCustomizeToolbar(choosingByKeyboard.current), onClose)] : []),
     docsCommand(() => store.getState().setDocsOpen(true), onClose),
+    armariumCommand(() => runInBackground(showArmarium(app), 'Opening the Armarium'), onClose),
   ];
 
   // Derive rows from current state so open-menu toggles stay in sync.
