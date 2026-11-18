@@ -15,6 +15,7 @@ import { SelectionManager } from '../../src/app/pixi/SelectionManager';
 import { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import { mapGestureHost } from '../../src/app/pixi/input/mapGestureHost';
 import { applyNavigationMode } from '../../src/app/pixi/viewportNavigation';
+import { openEmptyMapMenu } from '../../src/app/selection/emptyMapMenu';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';
 import type { Character } from '../../src/app/types';
@@ -123,6 +124,7 @@ export function touchMaps(): { map: (view?: { width: number; height: number }) =
       placing: () => false,
       marqueePending: () => selection.manager?.marqueePending ?? false,
       menuAt: (x, y) => tokens.menuAt(x, y),
+      emptyMapMenu: (world, at) => openEmptyMapMenu(store, tokens, world, at),
     }));
 
     const token: Character = { id: 'token', x: TOKEN.x, y: TOKEN.y, size: 1, imagePath: '', kind: 'character', name: 'Token' };

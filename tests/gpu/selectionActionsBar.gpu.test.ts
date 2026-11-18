@@ -4,11 +4,12 @@ import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { cdp } from 'vitest/browser';
 import css from '../../styles/main.scss?inline';
 import coarseCss from '../../styles/_coarse-pointer.scss?inline';
+import { LONG_PRESS_MS } from '../../src/app/input/longPress';
 import { SelectionActionsBarHost } from '../../src/app/packages/components/toolbar/SelectionActionsBar';
 import { BAR_GAP } from '../../src/app/packages/components/toolbar/selectionBarPlacement';
 import { SelectionBarSource } from '../../src/app/pixi/selection/selectionBarSource';
 import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
-import { ContextMenuProvider } from '../../src/app/react/root/ContextMenuContext';
+import { closeContextMenuGlobal, ContextMenuProvider } from '../../src/app/react/root/ContextMenuContext';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { getHistoryStore } from '../../src/app/stores/history';
@@ -194,6 +195,34 @@ describe('the bar above a selection, under a finger', () => {
     expect(rows).toEqual(expect.arrayContaining(['Size', 'Hide', 'Duplicate', 'Copy', 'Paste', 'Edit token', 'Add to Initiative', 'Delete']));
     expect(bar()).not.toBeNull();
     expect(button('More').getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('makes way for the menu a long press opens on the token, and comes back when that closes', async () => {
+    await scene();
+    await tap(TOKEN);
+    await settled();
+    await touch.down(TOKEN);
+    await wait(LONG_PRESS_MS + 150);
+    await touch.up();
+    await vi.waitFor(() => expect(document.querySelector('.atlas-ctx-menu')).not.toBeNull());
+    await gone();
+    act(() => closeContextMenuGlobal());
+    await settled();
+  });
+
+  it('a finger held on the empty map and lifted there opens Paste here and Select all', async () => {
+    const m = await scene();
+    await touch.down(EMPTY);
+    await wait(LONG_PRESS_MS + 150);
+    await touch.up();
+    await vi.waitFor(() => expect(document.querySelector('.atlas-ctx-menu')).not.toBeNull());
+    const rows = [...document.querySelectorAll<HTMLElement>('.atlas-ctx-menu .atlas-ctx-item')];
+    expect(rows.map((row) => row.textContent?.trim())).toEqual(['Paste here', 'Select all']);
+    // Nothing was copied yet
+    expect(rows[0]!.getAttribute('aria-disabled')).toBe('true');
+    await tap(middle(rows[1]!));
+    await vi.waitFor(() => expect(m.store.getState().selectedIds).toEqual(['token']));
+    await settled();
   });
 
   it('with Select more on, taps gather tokens, Delete removes them all in one undo step, and Done ends it', async () => {
