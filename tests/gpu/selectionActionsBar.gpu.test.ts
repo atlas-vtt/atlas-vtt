@@ -69,6 +69,11 @@ async function scene(prepare?: (m: TouchMap) => void): Promise<TouchMap> {
   const ui = { app: m.obsidian, view: null, pixiApp: m.app, renderer } as unknown as AtlasUIContextValue;
   render(h('div', { className: 'atlas-vtt-plugin ui-area' },
     h(AtlasUIContext.Provider, { value: ui }, h(ViewStoreProvider, { store: m.store, children: h(ContextMenuProvider, null, h(SelectionActionsBarHost)) }))));
+  // The page is laid out with the plugin's whole stylesheet before a finger comes down: that work between a
+  // finger's down and up would make a tap a long press.
+  void document.body.offsetHeight;
+  await frame();
+  await frame();
   return m;
 }
 
