@@ -1,9 +1,9 @@
 import { requireApiVersion, type App } from 'obsidian';
 
-/** The secret's id: neutral, so the public plugin may later share the same sign-in. */
+/** The secret's id: one sign-in for everything the Atlas account is used for (online play, the Armarium). */
 export const ACCOUNT_SECRET_ID = 'atlas-account';
 
-/** The first Obsidian with secret storage, which online play keeps the account token in. */
+/** The first Obsidian with secret storage, which the account token is kept in: older ones cannot sign in. */
 export const SECRET_STORAGE_VERSION = '1.11.4';
 
 /** Where the account token is kept: per vault and per device, never in the plugin's data or any synced file. */

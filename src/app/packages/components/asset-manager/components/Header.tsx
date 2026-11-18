@@ -50,7 +50,7 @@ export interface HeaderProps {
    * Set while the Armarium is shown: no tab is current, Back leads to the library, and the store's actions stand
    * where the search and Create do, which belong to the library.
    */
-  armarium?: { onBack: () => void; onReload: () => void } | undefined;
+  armarium?: { onBack: () => void; onReload: () => void; page: string; onShare: () => void } | undefined;
 }
 
 /**
@@ -129,7 +129,7 @@ export function Header({
 
         {armarium ? (
           <div className="atlas-am-toolbar-right atlas-am-toolbar-right--armarium">
-            <ArmariumActions onReload={armarium.onReload} />
+            <ArmariumActions onReload={armarium.onReload} page={armarium.page} onShare={armarium.onShare} />
           </div>
         ) : (
           <div className="atlas-am-toolbar-right">

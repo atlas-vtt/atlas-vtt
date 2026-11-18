@@ -20,6 +20,8 @@ interface ExportCollectionDialogProps {
   /** Resolves with a message to show when the choice cannot be exported. */
   onExport: (choice: ExportChoice) => Promise<string | null>;
   onCancel: () => void;
+  /** `file` (default) saves a zip; `armarium` packs it in memory and uploads it to the Armarium. */
+  purpose?: 'file' | 'armarium';
 }
 
 const MISSING_SHOWN = 5;
@@ -29,7 +31,7 @@ function initialCover({ cover, coverCandidates }: ExportPreview): CoverChoice {
   return coverCandidates[0] ? { kind: 'artwork', path: coverCandidates[0].sourcePath } : { kind: 'none' };
 }
 
-function coverUrl(choice: CoverChoice, preview: ExportPreview, uploadUrl: string | undefined): string | undefined {
+export function coverUrl(choice: CoverChoice, preview: ExportPreview, uploadUrl: string | undefined): string | undefined {
   switch (choice.kind) {
     case 'current': return preview.cover?.url;
     case 'artwork': return preview.coverCandidates.find((candidate) => candidate.sourcePath === choice.path)?.imageUrl;
@@ -44,8 +46,9 @@ function coverUrl(choice: CoverChoice, preview: ExportPreview, uploadUrl: string
  * new name. The user picks a cover and what to include, and sees it the way
  * people who import it will.
  */
-export function ExportCollectionDialog({ preview, media, onExport, onCancel }: ExportCollectionDialogProps): React.JSX.Element {
+export function ExportCollectionDialog({ preview, media, onExport, onCancel, purpose = 'file' }: ExportCollectionDialogProps): React.JSX.Element {
   const { collection } = preview;
+  const toArmarium = purpose === 'armarium';
   const isFork = preview.publisher === 'other';
   const [version, setVersion] = useState(String(preview.suggestedVersion));
   // A published copy is the user's own work, not its original author's.
@@ -82,7 +85,11 @@ export function ExportCollectionDialog({ preview, media, onExport, onCancel }: E
   };
 
   const sameVersion = versionNumber === collection.version && collection.releasedAt !== undefined;
-  const confirmLabel = isFork ? t('exportDialog.publish') : t('exportDialog.exportVersion', { version: isWholeVersion ? String(versionNumber) : '…' });
+  const shownVersion = isWholeVersion ? String(versionNumber) : '…';
+  const confirmLabel = toArmarium
+    ? t('exportDialog.uploadVersion', { version: shownVersion })
+    : isFork ? t('exportDialog.publish') : t('exportDialog.exportVersion', { version: shownVersion });
+  const eyebrow = toArmarium ? t('exportDialog.shareInArmarium') : isFork ? t('exportDialog.publishOwn') : t('exportDialog.exportCollection');
 
   const heroUrl = coverUrl(cover, preview, uploadUrl);
   // The tint is blurred beyond recognition, so the small preview gives the same colours at a fraction of the cost.
@@ -93,12 +100,12 @@ export function ExportCollectionDialog({ preview, media, onExport, onCancel }: E
 
   return (
     <TransferDialog
-      label={t(isFork ? 'exportDialog.publishNamed' : 'exportDialog.exportNamed', { name: collection.name })}
+      label={toArmarium ? t('armariumShare.dialogLabel', { name: collection.name }) : t(isFork ? 'exportDialog.publishNamed' : 'exportDialog.exportNamed', { name: collection.name })}
       onClose={onCancel}
       ambientUrl={ambientUrl}
       hero={(
         <CollectionHero
-          eyebrow={isFork ? t('exportDialog.publishOwn') : t('exportDialog.exportCollection')}
+          eyebrow={eyebrow}
           imageUrl={heroUrl}
           name={isFork
             ? (
@@ -129,10 +136,10 @@ export function ExportCollectionDialog({ preview, media, onExport, onCancel }: E
       summary={`${t('count.items', { count: itemCount })} · ${t('count.files', { count: selected.files.length + (cover.kind === 'none' ? 0 : 1) })} · ${formatFileSize(bytes)}`}
       actions={(
         <>
-          <LabelTooltip label={t('exportDialog.closeHint')} describe>
+          <LabelTooltip label={toArmarium ? t('exportDialog.closeShareHint') : t('exportDialog.closeHint')} describe>
             <Button variant="outline" onClick={onCancel}>{t('common.cancel')}</Button>
           </LabelTooltip>
-          <LabelTooltip label={selected.assets.length === 0 ? t('exportDialog.includeHint') : t('exportDialog.zipHint')} describe>
+          <LabelTooltip label={selected.assets.length === 0 ? t('exportDialog.includeHint') : toArmarium ? t('exportDialog.uploadHint') : t('exportDialog.zipHint')} describe>
             <Button variant="default" className="atlas-transfer-confirm" disabled={selected.assets.length === 0} onClick={() => { void submit(); }}>{confirmLabel}</Button>
           </LabelTooltip>
         </>
@@ -155,7 +162,10 @@ export function ExportCollectionDialog({ preview, media, onExport, onCancel }: E
           <input className="atlas-input" value={author} placeholder={t('exportDialog.authorPlaceholder')} onChange={(event) => setAuthor(event.target.value)} />
         </label>
       </div>
-      {sameVersion && !isFork && (
+      {toArmarium && (
+        <p className="atlas-transfer-text atlas-transfer-text--muted">{t('exportDialog.shareIntro')}</p>
+      )}
+      {sameVersion && !isFork && !toArmarium && (
         <p className="atlas-transfer-hint">{t('exportDialog.sameVersion', { version: String(collection.version) })}</p>
       )}
       <label className="atlas-transfer-field">

@@ -22,5 +22,10 @@ export const exportDialog = {
   'exportDialog.sameVersion': 'Same as your last release. People who installed v{version} will see a changed copy of it.',
   'exportDialog.version': 'Version',
   'exportDialog.versionInvalid': 'The version must be a whole number of at least {min}.',
+  'exportDialog.shareInArmarium': 'Share in the Armarium',
+  'exportDialog.shareIntro': 'Choose what the Armarium shares. Atlas packs the collection and uploads it; nothing is saved as a file, and the release is recorded here only once it is published.',
+  'exportDialog.uploadVersion': 'Upload v{version}',
+  'exportDialog.uploadHint': 'Pack the collection and upload it to the Armarium',
+  'exportDialog.closeShareHint': 'Close without sharing',
   'exportDialog.zipHint': 'Save the collection as a .zip file you can give to others',
 } as const satisfies Record<string, Message>;

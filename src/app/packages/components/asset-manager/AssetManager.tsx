@@ -171,8 +171,9 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
             onManageTags={() => tags.setIsTagManagerOpen(true)}
             onEditCollectionSettings={crud.setSettingsModalCollectionId}
             onExportCollection={() => { void crud.handleExportCollection(); }}
+            onShareCollection={() => { void crud.handleShareCollection(); }}
             onImportCollection={crud.handleImportCollection}
-            onShowArmarium={armarium.show}
+            onShowArmarium={() => armarium.show()}
             armariumShown={armarium.shown}
             footer={!armarium.shown && activeTab === 'tokens' && data.assetService && data.assets.length > 0 ? <BestiaryTokensOffer app={data.app} assets={data.assetService} collection={selectedCollection} variant="sidebar" dismissed={starterOffer.dismissed} {...(starterOffer.dismiss && { onDismiss: starterOffer.dismiss })} /> : null}
             layout={sidebar}
@@ -199,7 +200,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
             sidebarToggleLabel={sidebar.toggleLabel}
             onToggleSidebar={sidebar.toggle}
             sel={sel}
-            armarium={armarium.shown ? { onBack: armarium.leave, onReload: armarium.reload } : undefined}
+            armarium={armarium.shown ? { onBack: armarium.leave, onReload: armarium.reload, page: armarium.page, onShare: () => { void crud.handleShareCollection(); } } : undefined}
           />
           <div
             className="atlas-asset-manager-body"
@@ -207,7 +208,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
             onDrop={(e) => { if (draggedItems && sel.selectedFolderId === null) { e.preventDefault(); crud.handleDrop(null); } }}
           >
             {armarium.shown ? (
-              <ArmariumPane key={armarium.frameKey} app={data.app} />
+              <ArmariumPane key={armarium.frameKey} app={data.app} url={armarium.page} />
             ) : (
               <>
                 <ActiveFilterBar groups={filterSearch.chips} onReset={filterSearch.reset} />

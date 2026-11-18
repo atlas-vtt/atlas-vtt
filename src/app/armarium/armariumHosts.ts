@@ -3,8 +3,8 @@ import type { ExternalImport } from '../services/collectionBundle/externalImport
 
 /** An open asset manager, which can show the Armarium and the import review of an install from it. */
 export interface ArmariumHost {
-  /** Shows the Armarium in place of the library. */
-  show(): void;
+  /** Shows the Armarium in place of the library: its front, or one of its pages (`armariumListingUrl`). */
+  show(page?: string): void;
   /** Shows the import review of a verified download over the window. */
   review(pending: ExternalImport): void;
 }

@@ -1,0 +1,433 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Share in the Armarium — the steps of a share in the export dialog's frame
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss. The frame, hero, rail column and footer are the
+// transfer dialog's (`_transfer-dialog.scss`); here the rail of steps and the content of each step.
+
+@use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
+
+$mark-size: 24px;
+
+// The steps beside the open one: a mark (number, or a tick once done) and the name, with what the step settled.
+.atlas-share-rail {
+  @include atlas-flex-col($gap: $spacing-s);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &__step {
+    @include atlas-flex-row($gap: $spacing-s);
+    align-items: flex-start;
+    padding: $spacing-s;
+    border-radius: $radius-m;
+    color: var(--text-muted);
+
+    &[data-status='current'] {
+      background: var(--background-modifier-hover);
+      color: var(--text-normal);
+    }
+
+    &[data-status='done'] {
+      color: var(--text-normal);
+    }
+  }
+
+  &__mark {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: $mark-size;
+    height: $mark-size;
+    border: $border-width-s solid var(--background-modifier-border);
+    border-radius: $radius-full;
+    font-size: $font-ui-smaller;
+    font-variant-numeric: tabular-nums;
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+
+  &__step[data-status='current'] &__mark {
+    border-color: var(--interactive-accent);
+    color: var(--interactive-accent);
+  }
+
+  &__step[data-status='done'] &__mark {
+    border-color: var(--interactive-accent);
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+  }
+
+  &__text {
+    @include atlas-flex-col($gap: 0);
+    min-width: 0;
+    // The mark's middle and the name's first line share a line.
+    padding-top: ($mark-size - 18px) * 0.5;
+  }
+
+  &__name {
+    font-weight: $font-weight-medium;
+  }
+
+  &__detail {
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+// The open step: its heading, then its content in one column.
+.atlas-share-step {
+  @include atlas-flex-col($gap: $spacing-l);
+
+  &__title {
+    margin: 0;
+    font-size: $font-ui-medium;
+    font-weight: $font-weight-semibold;
+    outline: none;
+  }
+}
+
+.atlas-share-text {
+  margin: 0;
+  line-height: 1.5;
+
+  &--muted {
+    color: var(--text-muted);
+  }
+}
+
+.atlas-share-visually-hidden {
+  @include atlas-visually-hidden;
+}
+
+.atlas-share-inline-link.btn {
+  height: auto;
+  padding: 0;
+  font-size: inherit;
+}
+
+.atlas-share-notice {
+  @include atlas-flex-row($gap: $spacing-s);
+  @include atlas-inset-surface;
+  align-items: flex-start;
+  padding: $spacing-m;
+  line-height: 1.5;
+
+  &__icon {
+    flex-shrink: 0;
+    width: $icon-s;
+    height: $icon-s;
+    margin-top: 2px;
+  }
+
+  &__body {
+    @include atlas-flex-col($gap: $spacing-s);
+    min-width: 0;
+  }
+
+  &__actions {
+    @include atlas-flex-row($gap: $spacing-m);
+  }
+
+  &[data-tone='error'] {
+    border-color: var(--text-error);
+
+    .atlas-share-notice__icon {
+      color: var(--text-error);
+    }
+  }
+
+  &[data-tone='success'] .atlas-share-notice__icon {
+    color: var(--text-success);
+  }
+
+  &[data-tone='info'] .atlas-share-notice__icon {
+    color: var(--interactive-accent);
+  }
+}
+
+// The device code the GM compares with the approve page.
+.atlas-share-code {
+  @include atlas-flex-col($gap: $spacing-s);
+
+  &__label {
+    @include atlas-field-label;
+    color: var(--text-muted);
+  }
+
+  &__value {
+    font-family: var(--font-monospace);
+    font-size: $font-ui-large;
+    font-weight: $font-weight-semibold;
+    letter-spacing: 0.2em;
+    user-select: all;
+  }
+}
+
+.atlas-share-checking {
+  @include atlas-flex-col($gap: $spacing-s);
+}
+
+.atlas-share-progress {
+  @include atlas-flex-col($gap: $spacing-s);
+
+  &__line {
+    @include atlas-flex-row($gap: $spacing-s);
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+// The parts of the upload, and the stages of the checks: one row each, a mark and its name.
+.atlas-share-parts,
+.atlas-share-stages {
+  @include atlas-flex-col($gap: $spacing-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atlas-share-part,
+.atlas-share-stage {
+  @include atlas-flex-row($gap: $spacing-s);
+  min-height: $icon-l;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+
+  &[data-status='sent'],
+  &[data-status='done'],
+  &[data-status='running'],
+  &[data-status='sending'] {
+    color: var(--text-normal);
+  }
+
+  &[data-status='failed'] {
+    color: var(--text-error);
+  }
+}
+
+.atlas-share-part {
+  &__icon {
+    flex-shrink: 0;
+    width: $icon-s;
+    height: $icon-s;
+  }
+
+  &__dot {
+    width: $icon-s;
+    height: $icon-s;
+    border: $border-width-s solid var(--background-modifier-border);
+    border-radius: $radius-full;
+  }
+
+  &__status {
+    margin-left: auto;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+}
+
+.atlas-share-stage {
+  &__mark {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: $icon-s;
+    height: $icon-s;
+    border: $border-width-s solid var(--background-modifier-border);
+    border-radius: $radius-full;
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+
+  &[data-status='done'] &__mark {
+    border-color: var(--interactive-accent);
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+  }
+
+  &[data-status='running'] &__mark {
+    border-color: var(--interactive-accent);
+  }
+
+  &__bar {
+    width: 96px;
+    margin-left: auto;
+  }
+}
+
+.atlas-share-report {
+  @include atlas-flex-col($gap: $spacing-l);
+}
+
+.atlas-share-findings {
+  @include atlas-flex-col($gap: $spacing-s);
+
+  &__label {
+    @include atlas-field-label;
+  }
+
+  &[data-level='error'] &__label {
+    color: var(--text-error);
+  }
+
+  &__list {
+    @include atlas-flex-col($gap: $spacing-s);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__more.btn {
+    align-self: flex-start;
+  }
+}
+
+.atlas-share-finding {
+  @include atlas-flex-col($gap: $spacing-xs);
+  @include atlas-inset-surface;
+  padding: $spacing-s;
+
+  &__where {
+    overflow-wrap: anywhere;
+    font-family: var(--font-monospace);
+    font-size: $font-ui-smaller;
+    color: var(--text-muted);
+  }
+
+  &__times {
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+}
+
+// The listing and the rights: fields in one column, two side by side where the dialog has the room.
+.atlas-share-form {
+  @include atlas-flex-col($gap: $spacing-l);
+}
+
+.atlas-share-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: $spacing-l;
+}
+
+.atlas-share-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: $spacing-s;
+  margin: 0;
+
+  dt {
+    color: var(--text-muted);
+  }
+
+  dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.atlas-share-field {
+  @include atlas-flex-col($gap: $spacing-s);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  &__label {
+    @include atlas-field-label;
+    padding: 0;
+  }
+
+  &__hint {
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    line-height: 1.5;
+  }
+
+  &__text.atlas-input {
+    @include atlas-text-input;
+    min-height: 0;
+    resize: vertical;
+    font-family: inherit;
+    line-height: 1.5;
+  }
+
+  &__count {
+    align-self: flex-end;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    font-variant-numeric: tabular-nums;
+
+    &[data-over] {
+      color: var(--text-error);
+    }
+  }
+
+  &__problem {
+    @include atlas-error-text;
+    margin: 0;
+    font-size: $font-ui-smaller;
+  }
+}
+
+.atlas-share-tags {
+  &__group {
+    @include atlas-flex-col($gap: $spacing-xs);
+  }
+
+  &__group-label {
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+
+  &__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+  }
+}
+
+// A tag to tick: a capsule, filled with the accent while chosen. Its text needs room only at the round ends.
+.atlas-share-tag {
+  height: 24px;
+  padding: 0 $spacing-s;
+  border: $border-width-s solid var(--background-modifier-border);
+  border-radius: $radius-full;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-normal);
+  font-size: $font-ui-smaller;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--background-modifier-hover);
+  }
+
+  &[aria-pressed='true'] {
+    border-color: var(--interactive-accent);
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.atlas-share-declaration {
+  @include atlas-flex-col($gap: $spacing-s);
+  @include atlas-inset-surface;
+  padding: $spacing-m;
+}

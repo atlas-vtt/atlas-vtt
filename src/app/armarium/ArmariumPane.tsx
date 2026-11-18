@@ -33,16 +33,16 @@ function ArmariumSkeleton(): React.ReactElement {
 /**
  * The Armarium, atlas-vtt.dev's library of collections, filling the asset manager's content area. Its Install buttons
  * ask Atlas to install a free collection (`useArmariumBridge`), whose import review opens over the same window. Each
- * mount loads the page anew from the store's front.
+ * mount loads the page anew: the store's front, or the page `url` names (a listing a share just published).
  */
-export function ArmariumPane({ app }: { app: App }): React.ReactElement {
+export function ArmariumPane({ app, url = ARMARIUM_PAGE_URL }: { app: App; url?: string }): React.ReactElement {
   const paneRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
   useArmariumBridge(ArmariumInstaller.forApp(app), frameRef, paneRef);
   return (
     <div ref={paneRef} className="atlas-armarium-pane">
       <SiteFrame
-        url={ARMARIUM_PAGE_URL}
+        url={url}
         label={t('armarium.page')}
         skeleton={<ArmariumSkeleton />}
         offlineBody={t('armarium.offlineBody')}

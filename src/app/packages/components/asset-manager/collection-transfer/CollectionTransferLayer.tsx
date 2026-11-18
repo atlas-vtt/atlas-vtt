@@ -5,6 +5,7 @@ import type { CollectionTransferActions } from '../hooks/useCollectionTransfer';
 import { bundleMedia, vaultMedia } from './contentMedia';
 import { ExportCollectionDialog } from './ExportCollectionDialog';
 import { ImportReviewDialog } from './ImportReviewDialog';
+import { ArmariumShareLayer } from '../../../../armarium/share/ArmariumShareLayer';
 import { t } from '../../../../i18n';
 
 type CollectionTransferLayerProps = Pick<CollectionTransferActions, 'transfer' | 'confirmExport' | 'confirmImport' | 'closeTransfer'>;
@@ -22,6 +23,8 @@ export function CollectionTransferLayer({ transfer, confirmExport, confirmImport
       return <ProgressModal title={transfer.title} message={transfer.progress.message} fraction={transfer.progress.fraction} />;
     case 'export-options':
       return <ExportCollectionDialog preview={transfer.preview} media={media} onExport={confirmExport} onCancel={closeTransfer} />;
+    case 'share':
+      return <ArmariumShareLayer session={transfer.session} media={media} onClose={closeTransfer} />;
     case 'import-review':
       return <ImportReviewDialog review={transfer.review} media={media} onConfirm={(decision) => { void confirmImport(decision); }} onCancel={closeTransfer} />;
     case 'done':
