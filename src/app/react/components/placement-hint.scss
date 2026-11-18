@@ -45,10 +45,15 @@
   font-variant-numeric: tabular-nums;
 }
 
-.atlas-placement-strip .atlas-placement-strip__done {
+// A strip's buttons that are words: Done, and what stands beside it (`OpenShapeStrip`'s Undo point).
+.atlas-placement-strip .atlas-placement-strip__done,
+.atlas-placement-strip .atlas-placement-strip__text {
   height: $button-height-l;
   padding-inline: $spacing-m;
   border-radius: var(--atlas-bar-control-radius, #{$radius-m});
-  font-weight: 600;
   white-space: nowrap;
+}
+
+.atlas-placement-strip .atlas-placement-strip__done {
+  font-weight: 600;
 }

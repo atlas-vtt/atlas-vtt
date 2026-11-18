@@ -13,6 +13,8 @@ export const toolbar = {
   'toolbar.lassoSelection': 'Lasso Selection',
   'toolbar.peek': 'Hold to see what the players see',
   'toolbar.snap': 'Snap',
+  'toolbar.openShape': 'Shape under way',
+  'toolbar.undoPoint': 'Undo point',
   'toolbar.snapNeedsGrid': 'This map has no grid to snap to.',
   'toolbar.snapNeedsSquares': 'A room snaps to a square grid.',
   'toolbar.linkToHex': 'Link to hex',
