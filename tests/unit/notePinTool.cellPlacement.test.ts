@@ -81,6 +81,31 @@ describe('NotePinTool placing a pin on a cell with Shift', () => {
     expect(pins(store)).toEqual([expect.objectContaining({ x: 100, y: 100 })]);
   });
 
+  it('links the hex on a plain tap while the tool\'s cell switch is on, and Shift then pins where pressed', async () => {
+    const { store, eventBus } = tool({ type: 'hex-vertical', size: 70, offsetX: 0, offsetY: 0 });
+    store.getState().setToolSwitch('pinCell', true);
+    await placeAt(eventBus, 40, 45, false);
+    const [linked] = pins(store) as { x: number; hex?: boolean }[];
+    expect(linked?.hex).toBe(true);
+    expect(linked?.x).toBeCloseTo(35);
+    // The key turns the switch around for the press.
+    await placeAt(eventBus, 200, 200, true);
+    const free = (pins(store) as { x: number; y: number; hex?: boolean }[]).find((pin) => pin.x === 200);
+    expect(free).toMatchObject({ x: 200, y: 200 });
+    expect(free).not.toHaveProperty('hex');
+  });
+
+  it('previews the cell without Shift while the switch is on', () => {
+    const { store, eventBus } = tool({ type: 'square', size: 70, offsetX: 0, offsetY: 0 });
+    store.getState().setToolSwitch('pinCell', true);
+    const pin = vi.fn();
+    eventBus.on('pin-preview-update', pin);
+    eventBus.emit('viewport-pointer-move', { worldX: 100, worldY: 30, shiftKey: false });
+    expect(pin).toHaveBeenLastCalledWith(expect.objectContaining({ x: 105, y: 35 }));
+    eventBus.emit('viewport-pointer-move', { worldX: 100, worldY: 30, shiftKey: true });
+    expect(pin).toHaveBeenLastCalledWith(expect.objectContaining({ x: 100, y: 30 }));
+  });
+
   it('previews the pin in the centre of the highlighted square while Shift is held', () => {
     const { eventBus } = tool({ type: 'square', size: 70, offsetX: 0, offsetY: 0 });
     const cell = vi.fn();

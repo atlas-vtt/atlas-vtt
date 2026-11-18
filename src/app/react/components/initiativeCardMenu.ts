@@ -9,7 +9,7 @@ import { isOffMap } from '../../tokens/offMap';
 import { t } from '../../i18n';
 import { previewEntry } from '../../services/previewByHand';
 
-interface CardMenuActions {
+export interface CardMenuActions {
   roll: () => void;
   moveToFront: () => void;
   moveToBack: () => void;

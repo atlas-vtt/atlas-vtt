@@ -4,7 +4,8 @@
  * touch and mouse input (`Input.dispatchTouchEvent`), never by synthetic pointer events.
  */
 import '../setup/obsidianDom';
-import { Container, Sprite, Texture } from 'pixi.js';
+import { Container, Sprite, Texture, type Application } from 'pixi.js';
+import type { App } from 'obsidian';
 import type { Viewport } from 'pixi-viewport';
 import { cdp, page } from 'vitest/browser';
 import { afterEach, expect } from "vitest";
@@ -31,6 +32,9 @@ export interface Point { x: number; y: number }
 
 export interface TouchMap {
   store: ViewAtlasStore;
+  /** The PIXI application and the vault the map was made with, for a test that adds its own tool or renderer. */
+  app: Application;
+  obsidian: App;
   viewport: Viewport;
   tokens: TokenRenderer;
   canvas: HTMLCanvasElement;
@@ -134,7 +138,7 @@ export function touchMaps(): { map: () => Promise<TouchMap> } {
     });
 
     return {
-      store, viewport, tokens, fingers,
+      store, viewport, tokens, fingers, app, obsidian,
       canvas: manager.getCanvasElement(),
       tokenAt: () => {
         const { x, y } = store.getState().objects.tokens['token']!;
