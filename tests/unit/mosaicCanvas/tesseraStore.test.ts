@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MemoryTesseraBackend } from '../../../src/app/pixi/mosaicCanvas/memoryTesseraBackend';
 import { TESSERA_SPEC, type TesseraRef } from '../../../src/app/pixi/mosaicCanvas/pyramid';
+import { TESSERA_BUILD } from '../../../src/app/pixi/mosaicCanvas/tesseraStore';
 import {
   TESSERA_CACHE_MAX_BYTES,
   TesseraStore,
@@ -59,10 +60,20 @@ describe('TesseraStore', () => {
     expect((await backend.hasTesserae('old')).size).toBe(0);
   });
 
+  it('treats a manifest of another build, or one from before builds were recorded, as absent and deletes its pyramid', async () => {
+    const { store, backend } = harness();
+    for (const build of [undefined, TESSERA_BUILD + 1]) {
+      await backend.putManifest({ ...source('old'), spec: TESSERA_SPEC, build, complete: true, bytes: 4, lastUsed: 0 });
+      await backend.writeTesserae('old', [tessera(0, 0, 0, 4)], (stored) => stored);
+      expect(await store.readManifest('old')).toBeNull();
+      expect((await backend.hasTesserae('old')).size).toBe(0);
+    }
+  });
+
   it('starts an empty incomplete pyramid and accumulates the bytes of each batch', async () => {
     const { store, clock } = harness();
     const begun = await store.beginPyramid(source('h'));
-    expect(begun).toMatchObject({ hash: 'h', spec: TESSERA_SPEC, complete: false, bytes: 0, lastUsed: 1000 });
+    expect(begun).toMatchObject({ hash: 'h', spec: TESSERA_SPEC, build: TESSERA_BUILD, complete: false, bytes: 0, lastUsed: 1000 });
     clock.time = 2000;
     expect(await store.writeTesserae('h', [tessera(1, 0, 0, 10), tessera(1, 1, 0, 20)])).toBe(true);
     expect(await store.writeTesserae('h', [tessera(0, 0, 0, 5)])).toBe(true);

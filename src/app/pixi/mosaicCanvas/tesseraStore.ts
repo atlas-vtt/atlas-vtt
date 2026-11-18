@@ -2,6 +2,14 @@ import { TESSERA_SPEC, type TesseraRef } from './pyramid';
 import type { FileIdentity } from './tesseraProtocol';
 
 /**
+ * How this device builds tesserae, beside `TESSERA_SPEC` (their geometry, which the players' page
+ * checks too, so raising that breaks online play across versions). Raising this rebuilds every
+ * cached pyramid on this device alone. 1: photos turned by EXIF are decoded without their quarter
+ * turn (the coarse levels cached of them before were squeezed).
+ */
+export const TESSERA_BUILD = 1;
+
+/**
  * The device's cache of map tessera pyramids (decision 6 of the tiled map images
  * plan): manifests, tesserae, the path identities that spare hashing an unchanged
  * file, and LRU eviction of whole pyramids within a budget. Storage is a
@@ -12,6 +20,8 @@ import type { FileIdentity } from './tesseraProtocol';
 export interface PyramidManifest {
   hash: string;
   spec: number;
+  /** `TESSERA_BUILD` when it was built; absent in manifests written before it existed. */
+  build?: number;
   width: number;
   height: number;
   decodedScale: number;
@@ -107,7 +117,7 @@ export class TesseraStore {
     return this.backend.putIdentity({ path, size, mtime, hash });
   }
 
-  /** The pyramid's manifest; one written under another `TESSERA_SPEC` is deleted and reads as absent. */
+  /** The pyramid's manifest; one written under another `TESSERA_SPEC` or `TESSERA_BUILD` is deleted and reads as absent. */
   readManifest(hash: string): Promise<PyramidManifest | null> {
     return this.serial(() => this.currentManifest(hash));
   }
@@ -125,7 +135,7 @@ export class TesseraStore {
         return touched;
       }
       if (stored) await this.backend.deletePyramid(spec.hash);
-      const fresh: PyramidManifest = { ...spec, spec: TESSERA_SPEC, complete: false, bytes: 0, lastUsed: this.now() };
+      const fresh: PyramidManifest = { ...spec, spec: TESSERA_SPEC, build: TESSERA_BUILD, complete: false, bytes: 0, lastUsed: this.now() };
       await this.backend.putManifest(fresh);
       return fresh;
     });
@@ -147,7 +157,7 @@ export class TesseraStore {
   writeTesserae(hash: string, tesserae: readonly StoredTessera[]): Promise<boolean> {
     const bytes = tesserae.reduce((sum, tessera) => sum + tessera.bytes.size, 0);
     return this.serial(() => this.backend.writeTesserae(hash, tesserae, (manifest) => (
-      manifest && manifest.spec === TESSERA_SPEC ? { ...manifest, bytes: manifest.bytes + bytes, lastUsed: this.now() } : null
+      manifest && isCurrent(manifest) ? { ...manifest, bytes: manifest.bytes + bytes, lastUsed: this.now() } : null
     )));
   }
 
@@ -158,7 +168,7 @@ export class TesseraStore {
   async markComplete(hash: string): Promise<boolean> {
     const marked = await this.serial(async () => {
       const manifest = await this.backend.getManifest(hash);
-      if (!manifest || manifest.spec !== TESSERA_SPEC) return false;
+      if (!manifest || !isCurrent(manifest)) return false;
       await this.backend.putManifest({ ...manifest, complete: true, lastUsed: this.now() });
       return true;
     });
@@ -265,7 +275,7 @@ export class TesseraStore {
   private async currentManifest(hash: string): Promise<PyramidManifest | null> {
     const manifest = await this.backend.getManifest(hash);
     if (!manifest) return null;
-    if (manifest.spec === TESSERA_SPEC) return manifest;
+    if (isCurrent(manifest)) return manifest;
     await this.backend.deletePyramid(hash);
     return null;
   }
@@ -275,6 +285,10 @@ export class TesseraStore {
     this.queue = run.catch(() => undefined);
     return run;
   }
+}
+
+function isCurrent(manifest: PyramidManifest): boolean {
+  return manifest.spec === TESSERA_SPEC && manifest.build === TESSERA_BUILD;
 }
 
 function sameSource(manifest: PyramidManifest, spec: PyramidSpec): boolean {

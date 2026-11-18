@@ -50,6 +50,7 @@ function isManifest(value: unknown): value is PyramidManifest {
   return (
     typeof m.hash === 'string' &&
     typeof m.spec === 'number' &&
+    (m.build === undefined || typeof m.build === 'number') &&
     typeof m.width === 'number' &&
     typeof m.height === 'number' &&
     typeof m.decodedScale === 'number' &&
