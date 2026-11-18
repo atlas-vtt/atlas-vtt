@@ -126,7 +126,6 @@ describe('the zoom buttons', () => {
     const buttons = Array.from(document.querySelectorAll('.atlas-zoom-cluster button')).map((button) => button.getBoundingClientRect());
     const tap = async (rect: DOMRect): Promise<void> => {
       await touch.down({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-      await wait(30);
       await touch.up();
       await wait(120);
     };

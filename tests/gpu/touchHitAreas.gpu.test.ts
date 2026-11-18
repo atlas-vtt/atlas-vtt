@@ -44,11 +44,11 @@ async function rest(m: TouchMap): Promise<void> {
     before = now;
   }
 }
+/** A tap as short as the browser's input takes: under load a finger that lingers becomes a long press. */
 async function tap(at: Point): Promise<void> {
   await touch.down(at);
-  await wait(30);
   await touch.up();
-  await wait(90);
+  await wait(120);
 }
 
 describe('a pin under a finger and under a mouse', () => {
