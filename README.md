@@ -14,7 +14,7 @@ TTRPG worlds in my opinion are something very personal and players and DMs get a
 
 Ease of use matters just as much to me. Atlas aims for a minimal, streamlined interface that feels native to Obsidian, with clear controls and simple workflows that keep your attention on the game.
 
-AtlasVTT is desktop only for now
+Atlas runs in Obsidian on Windows, macOS and Linux, and on iPads and Android tablets. Phones are not supported.
 
 Documentation at: [atlas-vtt.dev](https://atlas-vtt.dev/)
 
@@ -49,7 +49,9 @@ Keep scenes, maps, encounters, and characters together in collections. Use folde
 
 ## Install
 
-Requires **Obsidian 1.8.7 or newer on desktop**. Atlas VTT is available through Obsidian's community plugins.
+Requires **Obsidian 1.8.7 or newer** on a desktop computer, an iPad (iPadOS 16.4 or newer) or an Android tablet. Atlas VTT is available through Obsidian's community plugins.
+
+On a tablet, two fingers move and zoom the map, one finger uses the tool, and touching and holding opens the menu a right-click opens. The separate player window needs a desktop; on a tablet, Table mode turns the map into the players' picture, and players can join through Atlas Online.
 
 1. Open **Settings → Community plugins** and turn off **Restricted mode** if it is enabled.
 2. Select **Browse** and search for **Atlas VTT**.
