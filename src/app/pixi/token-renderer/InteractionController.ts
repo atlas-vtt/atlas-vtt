@@ -22,7 +22,6 @@ import type { ConditionDefinition } from '../../types/collectionSettingsTypes';
 import { copyDragSelection } from './dragCopy';
 import type { DragRuler } from './DragRuler';
 import type { TokenMovement } from './tokenMovement';
-import { runInBackground } from '../../utils/backgroundTask';
 import { isPrimaryPress, isSecondaryPress } from '../utils/pointerButtons';
 import { applySelectionResourceChange } from '../../react/components/context-menu/selectionResourceMenu';
 import { selectionResources, type SelectionResource } from '../../resources/selectionResourceChange';

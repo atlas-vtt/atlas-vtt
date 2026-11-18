@@ -1,7 +1,8 @@
 import type { StoreApi } from 'zustand';
 import { copyMapObjects, holdsMapClipboard, pasteClipboard, viewCentre } from '../clipboard/mapClipboardActions';
 import type { ViewAtlasState } from '../storeFactory';
-import { withoutOffMap } from '../tokens/offMap';
+import { levelObjects } from '../levels/levelObjects';
+import { mapTokens, withoutOffMap } from '../tokens/offMap';
 import { runInBackground } from '../utils/backgroundTask';
 import type { AnnotationActionExtras } from './annotationActionList';
 
@@ -54,4 +55,13 @@ export function annotationExtras(store: StoreApi<ViewAtlasState>, viewport: Para
       canPaste: holdsMapClipboard(),
     } : undefined,
   };
+}
+
+/**
+ * Selects every token the canvas shows (`shown`: the session view hides tokens, which must not be
+ * selected unseen); every token of the level shown where the canvas cannot be asked.
+ */
+export function selectAllTokens(store: StoreApi<ViewAtlasState>, shown: { visibleTokenIds(): string[] } | null | undefined): void {
+  const ids = shown?.visibleTokenIds() ?? Object.keys(mapTokens(levelObjects(store.getState())));
+  if (ids.length > 0) store.getState().setSelection(ids);
 }

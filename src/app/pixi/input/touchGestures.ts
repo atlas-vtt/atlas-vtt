@@ -31,6 +31,8 @@ interface Finger {
   longPress: 'menu' | 'marquee' | null;
   /** It waits on the empty map of a tool whose finger takes objects: its tap may be half of a double tap. */
   onEmptyMap: boolean;
+  /** Its long press began a marquee, which it has not drawn yet. */
+  heldForMarquee: boolean;
 }
 
 /**
@@ -85,7 +87,7 @@ export class TouchGestures {
 
   down(id: number, x: number, y: number): void {
     if (this.fingers.has(id)) return;
-    const finger: Finger = { id, start: { x, y }, x, y, role: 'spent', pressed: false, longPress: null, onEmptyMap: false };
+    const finger: Finger = { id, start: { x, y }, x, y, role: 'spent', pressed: false, longPress: null, onEmptyMap: false, heldForMarquee: false };
     this.fingers.set(id, finger);
     if (this.fingers.size === 1) {
       this.mostFingers = 1;
@@ -207,6 +209,7 @@ export class TouchGestures {
     this.taps.forgetTap();
     if (finger.longPress === 'marquee') {
       finger.role = 'tool';
+      finger.heldForMarquee = true;
       return;
     }
     if (finger.pressed) this.effects.cancelPress(finger.id, false);
@@ -266,6 +269,8 @@ export class TouchGestures {
     switch (role) {
       case 'tool':
         finger.pressed = false;
+        // Held and lifted in place: no marquee, but the empty map's own menu
+        if (finger.heldForMarquee && !movedPast(finger.start, finger)) this.effects.heldEmptyMap?.(finger.id);
         return true;
       case 'waiting':
         // A tap: the tools get the press they were not handed yet, and the release.

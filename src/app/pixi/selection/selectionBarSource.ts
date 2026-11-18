@@ -1,16 +1,11 @@
 import type { Viewport } from 'pixi-viewport';
-import { frameCorners, framePoint, type Frame } from '../../annotations/annotationFrame';
-import { HANDLE_LOOK } from '../../annotations/annotationHandles';
+import type { Frame } from '../../annotations/annotationFrame';
 import { levelObjects } from '../../levels/levelObjects';
 import type { SelectionAction } from '../../selection/selectionActions';
 import type { ViewAtlasStore } from '../../storeFactory';
 import { mapTokens } from '../../tokens/offMap';
+import { frameOnCanvas } from '../annotations/frameOnCanvas';
 import type { Box } from './selectionGeometry';
-
-/** From an annotation frame's line to the outer edge of its corner handles, screen pixels. */
-const HANDLE_REACH = HANDLE_LOOK.gap + HANDLE_LOOK.grip;
-/** From the frame's line to the far edge of its turn handle, screen pixels. */
-const TURN_REACH = HANDLE_LOOK.gap + HANDLE_LOOK.stem + HANDLE_LOOK.turnRadius;
 
 /** A box in the canvas' pixels. */
 export interface ScreenBox {
@@ -70,6 +65,11 @@ export class SelectionBarSource {
     return this.parts.annotations()?.selectionActions() ?? [];
   }
 
+  /** Whether something selected shows on the canvas. */
+  shows(): boolean {
+    return (this.parts.selection()?.shownBox() ?? null) !== null || (this.parts.annotations()?.barFrame() ?? null) !== null;
+  }
+
   /** The selection is dragged, resized or turned, or a marquee is being drawn. */
   busy(): boolean {
     const { parts } = this;
@@ -91,23 +91,17 @@ export class SelectionBarSource {
     if (!box && !frame) return false;
     out.left = out.top = Infinity;
     out.right = out.bottom = -Infinity;
-    const take = (x: number, y: number): void => {
-      const at = viewport.toScreen(x, y);
-      out.left = Math.min(out.left, at.x);
-      out.right = Math.max(out.right, at.x);
-      out.top = Math.min(out.top, at.y);
-      out.bottom = Math.max(out.bottom, at.y);
+    const take = ({ x, y }: { x: number; y: number }): void => {
+      out.left = Math.min(out.left, x);
+      out.right = Math.max(out.right, x);
+      out.top = Math.min(out.top, y);
+      out.bottom = Math.max(out.bottom, y);
     };
     if (box) {
-      take(box.x, box.y);
-      take(box.x + box.width, box.y + box.height);
+      take(viewport.toScreen(box.x, box.y));
+      take(viewport.toScreen(box.x + box.width, box.y + box.height));
     }
-    if (frame) {
-      const zoom = Math.abs(viewport.scale.x) || 1;
-      for (const corner of frameCorners(frame, HANDLE_REACH / zoom)) take(corner.x, corner.y);
-      const turn = framePoint(frame, { x: 0, y: -1 }, TURN_REACH / zoom);
-      take(turn.x, turn.y);
-    }
+    if (frame) frameOnCanvas(frame, viewport).forEach(take);
     return true;
   }
 }

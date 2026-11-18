@@ -17,6 +17,8 @@ export interface MapGestureHost extends GestureHost {
   redo(): void;
   /** A pen touched the map: the device has one. */
   penTouched(): void;
+  /** A finger was held on the empty map and lifted in place: `x`, `y` in the canvas' pixels, `at` in the window's. */
+  emptyMapMenu?(x: number, y: number, at: { x: number; y: number }): void;
 }
 
 /** The fingers on a map's canvas, turned into what its tools understand (`TouchGestures`). */
@@ -64,6 +66,12 @@ export function installTouchGestures(app: Application, viewport: Viewport, canva
       noteTouchMenu(press.clientX, press.clientY);
       if ('vibrate' in win.navigator) win.navigator.vibrate(HAPTIC_MS);
       gate.secondaryClick(id);
+    },
+    heldEmptyMap: (id) => {
+      const press = gate.pressOf(id);
+      if (!press) return;
+      noteTouchMenu(press.clientX, press.clientY);
+      host.emptyMapMenu?.(press.global.x, press.global.y, { x: press.clientX, y: press.clientY });
     },
     beginNavigation: () => navigation.begin(),
     pan: (dx, dy) => navigation.pan(dx, dy),

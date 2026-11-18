@@ -1,4 +1,5 @@
 import { FingerSettings } from './input/fingerUse';
+import { openEmptyMapMenu } from './selection/emptyMapMenu';
 import { SelectionBarSource } from './pixi/selection/selectionBarSource';
 import { mapGestureHost } from './pixi/input/mapGestureHost';
 import type { FogCoverage } from './fog/fogCoverage';
@@ -337,6 +338,7 @@ export class PixiRendererOrchestrator { // Renamed class
           marqueePending: () => this.selectionManager?.marqueePending ?? false,
           menuAt: (x, y) => this.tokenRenderer?.menuAt(x, y) ?? false,
           fingers: FingerSettings.forApp(this.obsApp),
+          emptyMapMenu: (world, at) => openEmptyMapMenu(this.store, this.tokenRenderer, world, at),
         }));
       }
       // initPinContainer is now effectively handled by PinRenderer's constructor
