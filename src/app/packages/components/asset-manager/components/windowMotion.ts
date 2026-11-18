@@ -7,6 +7,13 @@ export function passThroughOnExit(variants: Variants): Variants {
   return { ...variants, exit: { ...exit, pointerEvents: 'none' } };
 }
 
+/** `variants` whose exit only fades, on the exit's own timing: the window closes in place. */
+export function fadeOnlyOnExit(variants: Variants): Variants {
+  const exit = variants.exit;
+  if (!exit || typeof exit === 'function') return variants;
+  return { ...variants, exit: { opacity: exit.opacity ?? 0, ...(exit.transition && { transition: exit.transition }) } };
+}
+
 /** The values Motion animates on the compositor, whose end it writes to the element only once the animation is gone. */
 const COMPOSITED = ['opacity', 'transform'] as const;
 

@@ -1,7 +1,7 @@
 import React, { useDeferredValue, useLayoutEffect, useMemo, useRef, type Ref } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DIALOG_EXIT_DURATION, dialogOverlayMotion, useDialogWindowVariants } from '../../primitives/dialogMotion';
-import { holdShownStyle, passThroughOnExit } from './windowMotion';
+import { fadeOnlyOnExit, holdShownStyle, passThroughOnExit } from './windowMotion';
 
 const wrapperVariants = {
   hidden: { opacity: 1 },
@@ -14,6 +14,11 @@ interface AssetManagerWindowProps {
   onClose: () => void;
   onExitComplete?: (() => void) | undefined;
   overlayRef: Ref<HTMLDivElement>;
+  /**
+   * The window closes without moving, only fading: it shows the Armarium. Scaling a page of another site (an
+   * out-of-process frame) has its process draw the page anew on every frame (a close dropped from 46 frames to 14).
+   */
+  fadeOnly?: boolean;
   children: React.ReactNode;
 }
 
@@ -29,12 +34,12 @@ export function useOpenedAfterPress(isOpen: boolean): boolean {
 }
 
 /** The asset manager's overlay, backdrop and window, and how they open and close. `isOpen` from `useOpenedAfterPress`. */
-export function AssetManagerWindow({ isOpen, onClose, onExitComplete, overlayRef, children }: AssetManagerWindowProps): React.JSX.Element {
+export function AssetManagerWindow({ isOpen, onClose, onExitComplete, overlayRef, fadeOnly = false, children }: AssetManagerWindowProps): React.JSX.Element {
   // A closing window lets the pointer through at once: a token handed to the map is placed while it fades.
-  const dialogWindowVariants = useDialogWindowVariants();
-  const windowVariants = useMemo(() => passThroughOnExit(dialogWindowVariants), [dialogWindowVariants]);
+  const variants = useDialogWindowVariants();
+  const windowVariants = useMemo(() => passThroughOnExit(fadeOnly ? fadeOnlyOnExit(variants) : variants), [variants, fadeOnly]);
   const windowRef = useRef<HTMLDivElement>(null);
-  const holdWindowStyle = useMemo(() => holdShownStyle(() => windowRef.current, windowVariants, 'visible'), [windowVariants]);
+  const holdWindowStyle = useMemo(() => holdShownStyle(() => windowRef.current, variants, 'visible'), [variants]);
   // After Motion's own render, which a commit of the window queues as a microtask from its layout effect.
   useLayoutEffect(() => { queueMicrotask(holdWindowStyle.reapply); });
 
