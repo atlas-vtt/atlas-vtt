@@ -39,6 +39,12 @@ export class WallEditor {
   private free = false;
   /** The press that is down began the chain under way: lost, it takes the chain's first corner with it. */
   private pressBeganChain = false;
+  /**
+   * The chain under way goes on because a finger placed its corners, with no Shift held: a finger has no Escape to
+   * drop it by either, so what ends it without a word (another mode, another tool) keeps its walls, as it keeps a
+   * mouse's wall of two clicks.
+   */
+  private fingerChain = false;
   private readonly open: OpenShape;
   /** What the buttons of a chain under way do: end it where it is, and take its last corner back. */
   private readonly openControls: OpenShapeControls = {
@@ -251,6 +257,7 @@ export class WallEditor {
       return;
     }
     if (same(last)) return;
+    if (!shift && fingerReaches()) this.fingerChain = true;
     this.tool.addVertex(at.x, at.y, (shift || fingerReaches()) && !same(chain[0]));
   }
 
@@ -282,6 +289,7 @@ export class WallEditor {
       this.finishStroke();
       this.tool.finishChain();
     } else {
+      this.leaveChain();
       this.tool.cancelDrawing();
     }
     this.renderer.preview.clear();
@@ -318,11 +326,18 @@ export class WallEditor {
       eventBus.on(event, handler);
       this.cleanups.push(() => eventBus.off(event, handler));
     };
-    on('wall-submode-changed', (subMode: WallToolSubMode) => this.tool.setSubMode(subMode));
+    on('wall-submode-changed', (subMode: WallToolSubMode) => {
+      this.leaveChain();
+      this.tool.setSubMode(subMode);
+    });
     on('wall-type-changed', (type: WallType) => this.tool.setWallType(type));
-    on('wall-mode-changed', (mode: WallToolMode) => this.tool.setMode(mode));
+    on('wall-mode-changed', (mode: WallToolMode) => {
+      this.leaveChain();
+      this.tool.setMode(mode);
+    });
     on('lighting-preset-changed', (preset: string) => this.tool.setLightPreset(preset));
     on('wall-chain-start', (point: Point) => {
+      this.fingerChain = false;
       this.drawing.start();
       this.renderer.preview.setAnchor(point);
       this.tellOpen();
@@ -348,6 +363,11 @@ export class WallEditor {
       this.renderer.preview.clearStroke();
       this.tellOpen();
     });
+  }
+
+  /** The tool or its mode is left with a chain under way: a finger's chain ends there and keeps its walls; a keyboard's is dropped by what follows. */
+  private leaveChain(): void {
+    if (this.fingerChain && this.drawingChain) this.tool.finishChain();
   }
 
   /** A chain that waits for its next corner is known to the buttons that end it and take a corner back. */

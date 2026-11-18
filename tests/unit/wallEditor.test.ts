@@ -180,8 +180,11 @@ describe('a chain of walls without Shift', () => {
     document.body.dispatchEvent(event);
   }
   /** Three corners placed with no key held, each press released. */
+  const buses = new WeakMap<WallEditor, EventEmitter>();
+  const busOf = (editor: WallEditor): EventEmitter => buses.get(editor)!;
   function threeTaps(kind: 'mouse' | 'touch'): { walls: WallSegment[]; store: ViewAtlasStore; editor: WallEditor } {
-    const { editor, store, wall } = setup();
+    const { editor, store, wall, bus } = setup();
+    buses.set(editor, bus);
     const stopWatching = watchInput(document);
     use(kind);
     try {
@@ -206,6 +209,28 @@ describe('a chain of walls without Shift', () => {
     openShapeOf(store).finish();
     expect(editor.drawingChain).toBe(false);
     expect(steps()).toBe(before + 1);
+  });
+
+  it('keeps a finger\'s walls when the tool\'s mode or the tool is left with the chain under way, where a keyboard\'s chain is dropped', () => {
+    const touched = threeTaps('touch');
+    touched.store.getState().setLightingTool({ mode: 'place-light' });
+    // The controller hands the store's choice on as this event.
+    touched.editor.layer.visible = true;
+    const steps = (store: ViewAtlasStore): number => getHistoryStore(store)?.getState().pastStates.length ?? 0;
+    const before = steps(touched.store);
+    busOf(touched.editor).emit('wall-submode-changed', 'place-light');
+    expect(touched.editor.drawingChain).toBe(false);
+    expect(Object.keys(touched.store.getState().objects.walls)).toHaveLength(3);
+    expect(steps(touched.store)).toBe(before + 1);
+
+    // With Shift, by a mouse: Escape's kind of chain, which leaving the mode drops as before.
+    const { editor, store, wall, bus } = setup();
+    editor.pointerDown({ x: 500, y: 400 }, true, false);
+    editor.pointerDown({ x: 600, y: 400 }, true, false);
+    editor.pointerDown({ x: 600, y: 500 }, true, false);
+    expect(others(store, wall)).toHaveLength(2);
+    bus.emit('wall-submode-changed', 'place-light');
+    expect(others(store, wall)).toEqual([]);
   });
 
   it('ends with its second corner for a mouse, and the third click begins another', () => {
