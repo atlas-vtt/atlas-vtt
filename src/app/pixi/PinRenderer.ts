@@ -20,6 +20,7 @@ import type { ContextMenuEntry } from '../react/root/ContextMenuContext';
 import { isPinLabelKind, nextPinLabel } from '../tools/pinLabels';
 import { dispatchPinAction } from './utils/pinActions';
 import { pinOpenLook } from './pinOpenLook';
+import { previewEntry } from '../services/previewByHand';
 import { hexLayoutOfGrid, isShownAsHex, pinDisplayPoint } from '../grid/hexLinks';
 import { MAP_LAYER_Z } from './mapLayerOrder';
 import { readablePinEntry } from './pinReadableMenu';
@@ -514,6 +515,7 @@ export class PinRenderer {
     const entries: ContextMenuEntry[] = [
       { type: 'item', ...pinOpenLook(pin), onClick: () => dispatchPinAction('open', pin, this.store) },
       { type: 'item', label: t('pinMenu.edit'), icon: 'edit', onClick: () => dispatchPinAction('edit', pin, this.store) },
+      previewEntry(() => dispatchPinAction('preview', pin, this.store, pos)),
       ...[readablePinEntry(this.store, pin)].filter((entry) => entry !== null),
       ...pinNameEntries(this.store, pin),
       { type: 'item', label: t('common.duplicate'), icon: 'files', onClick: () => this.store.getState().duplicateMapObjects([pin.id]) },

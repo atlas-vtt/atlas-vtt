@@ -30,6 +30,7 @@ import { portalHost } from '../host/portalHost';
 import { isTextEntryTarget } from '../keyboard/textEntry';
 import { DEFAULT_MAP_HOTKEYS, formatHotkey } from '../keyboard/mapHotkeys';
 import { SettingsService } from '../services/SettingsService';
+import { OPEN_PREVIEW_EVENT } from '../services/previewByHand';
 
 interface NotePinDropdownResult {
   accepted: boolean;
@@ -133,6 +134,10 @@ export class NotePinTool {
         // The note's hover preview makes way for the note itself; NotePreviewUIManager keeps a pinned one
         this.eventBus.emit('close-active-preview', pin.notePath);
         this.openLinkedNote(pin);
+      } else if (action === 'preview') {
+        // The preview a held Mod opens over the pin, from its menu
+        const at = e.detail.at ?? { x: activeWindow.innerWidth / 2, y: activeWindow.innerHeight / 2 };
+        this.eventBus.emit(OPEN_PREVIEW_EVENT, { pin, screenX: at.x, screenY: at.y });
       } else if (action === 'edit') {
         // Show the note selection dropdown at the pin's position
         runInBackground(this.showNotePinDropdownForExistingPin(pin), 'Opening the note pin editor');

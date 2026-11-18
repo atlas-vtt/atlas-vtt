@@ -13,6 +13,8 @@ import { CommandPalette } from "../../react/components/CommandPalette"
 import AssetManager from "./asset-manager/AssetManager"
 import { useAtlasUI } from "src/app/react/root/AtlasUIContext"
 import { Toggle } from "./primitives/Toggle"
+import { PeekButton } from "./toolbar/PeekButton"
+import { useCoarsePointer } from "../../platform/useCoarsePointer"
 import { isAtlasToolAvailable } from "../../tools/toolAvailability"
 import { availableToolbarControls, DEFAULT_TOOLBAR_ORDER, ONLINE_BAR, SIDE_BAR_IDS, type SideBarId } from "../../toolbar/toolbarCatalog"
 import { useOnlinePlayOn } from "../../react/hooks/useOnlinePlayOn"
@@ -44,6 +46,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   const store = useViewStoreHook()
   const { view } = useAtlasUI()
   const isGMView = useAtlasStore(state => state.isGMView)
+  const coarse = useCoarsePointer()
   const setGMView = useAtlasStore(state => state.setGMView)
   const hotkeyLabel = useHotkeyLabels()
   const gmViewName = useId()
@@ -193,6 +196,8 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
               end={dm && (
                 <>
                   <span id={gmViewName} hidden>{t('toolbar.gmView', { key: hotkeyLabel('gmView') })}</span>
+                  {/* A finger holds no key: the peek at the players' lighting is a button to hold, before the switch that keeps the bar's corner. */}
+                  {coarse && <PeekButton />}
                   <Toggle
                     value={isGMView}
                     onChange={toggleGMView}

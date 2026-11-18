@@ -59,6 +59,7 @@ import { mapTokens } from '../../tokens/offMap';
 import type { MapSize } from '../../online/gm/moveCheck';
 import { sessionDragWalls, type SessionDragWalls } from './sessionDragWalls';
 import { toolSwitch } from '../../tools/toolSwitches';
+import { OPEN_PREVIEW_EVENT, previewEntry } from '../../services/previewByHand';
 
 interface DragState {
   isDragging: boolean;
@@ -234,19 +235,7 @@ export class InteractionController implements ITokenInteractionController {
       // A token under the pointer may be dragged next: its speed is asked for ahead of the drag.
       if (token) this.movement?.prepare([token]);
       if (token?.kind === 'character' && e && token.statblockPath?.trim()) {
-        this.hoverPreview = {
-          id: token.id,
-          notePath: token.statblockPath,
-          x: token.x,
-          y: token.y,
-          type: 'token',
-          // Vitals travel with the pin so the preview can mirror them.
-          name: token.name,
-          resources: token.resources,
-          imagePath: token.imagePath,
-          ringColor: token.ringColor,
-          showRing: token.showRing,
-        };
+        this.hoverPreview = tokenPreviewAnchor(token, token.statblockPath);
         this.eventBus.emit('pin-hover-preview', {
           pin: this.hoverPreview,
           screenX: e.clientX,
@@ -744,6 +733,11 @@ export class InteractionController implements ITokenInteractionController {
 
     // A token without a statblock can be given one here. Editing and unlinking one are the asset manager's.
     const obsApp = this.obsApp;
+    if (character?.statblockPath?.trim()) {
+      // The statblock a held Mod shows over the token, for a hand that holds no key
+      const anchor = tokenPreviewAnchor(character, character.statblockPath);
+      entries.push(previewEntry(() => this.eventBus.emit(OPEN_PREVIEW_EVENT, { pin: anchor, screenX: e.clientX, screenY: e.clientY })));
+    }
     if (!character?.statblockPath) {
       entries.push({
         type: 'item',
@@ -1035,4 +1029,20 @@ export class InteractionController implements ITokenInteractionController {
       hasMoved: false
     };
   }
+}
+
+/** What a token's statblock preview is anchored to: the token, with the vitals the preview mirrors. */
+function tokenPreviewAnchor(token: Extract<TokenEntity, { kind: 'character' }>, notePath: string): TokenPreviewAnchor {
+  return {
+    id: token.id,
+    notePath,
+    x: token.x,
+    y: token.y,
+    type: 'token',
+    name: token.name,
+    resources: token.resources,
+    imagePath: token.imagePath,
+    ringColor: token.ringColor,
+    showRing: token.showRing,
+  };
 }
