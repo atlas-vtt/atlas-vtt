@@ -29,10 +29,12 @@ export interface MapGestureParts {
   marqueePending: () => boolean;
   /** Whether a secondary click at a world point opens a menu. */
   menuAt: (worldX: number, worldY: number) => boolean;
+  /** Whether a tap at a world point acts on something whose press the map's tools leave to the empty map (a linked hex). */
+  tapActsAt: (worldX: number, worldY: number) => boolean;
   fingers: { readonly use: FingerUse; notePen: () => void };
 }
 
-export function mapGestureHost({ store, viewport, placing, marqueePending, menuAt, fingers }: MapGestureParts): MapGestureHost {
+export function mapGestureHost({ store, viewport, placing, marqueePending, menuAt, tapActsAt, fingers }: MapGestureParts): MapGestureHost {
   // Undo and redo are the GM's, as their keys are
   const travel = (direction: 'undo' | 'redo'): void => {
     if (!store.getState().isPlayerView) getHistoryStore(store)?.getState()[direction]();
@@ -43,6 +45,10 @@ export function mapGestureHost({ store, viewport, placing, marqueePending, menuA
     menuAt: (x, y) => {
       const world = viewport.toWorld(x, y);
       return menuAt(world.x, world.y);
+    },
+    tapActsAt: (x, y) => {
+      const world = viewport.toWorld(x, y);
+      return tapActsAt(world.x, world.y);
     },
     undo: () => travel('undo'),
     redo: () => travel('redo'),

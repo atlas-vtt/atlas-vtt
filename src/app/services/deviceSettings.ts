@@ -254,3 +254,23 @@ export function saveFingerUse(storage: DeviceStorage, use: FingerUse): void {
     console.error('[Atlas] Could not save what fingers do on this device', error);
   }
 }
+
+/** Whether the map shows its zoom buttons on this device while a mouse points: `shown`, never a falsy value Obsidian would drop. */
+export const ZOOM_BUTTONS_STORAGE_KEY = 'atlas-vtt:zoom-buttons';
+
+export function loadZoomButtons(storage: DeviceStorage): boolean {
+  try {
+    return storage.loadLocalStorage(ZOOM_BUTTONS_STORAGE_KEY) === 'shown';
+  } catch (error) {
+    console.error('[Atlas] Could not read whether this device shows the zoom buttons', error);
+    return false;
+  }
+}
+
+export function saveZoomButtons(storage: DeviceStorage, shown: boolean): void {
+  try {
+    storage.saveLocalStorage(ZOOM_BUTTONS_STORAGE_KEY, shown ? 'shown' : null);
+  } catch (error) {
+    console.error('[Atlas] Could not save whether this device shows the zoom buttons', error);
+  }
+}

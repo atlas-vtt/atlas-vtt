@@ -4,6 +4,7 @@ import { NAMEPLATE_TEXT } from '../token-renderer/tokenSizing';
 import { destroyTree } from '../utils/destroyTree';
 import { createLucideIconTexture } from '../utils/lucideIconTexture';
 import { drawLabelPill, labelColors, type MeasureLabel } from '../utils/measureLabel';
+import { FINGER_TARGET_RADIUS, fingerReaches } from '../utils/pointerReach';
 
 /** Inner markup of Lucide's `pin` icon. */
 const PIN_SVG = [
@@ -33,7 +34,7 @@ export class MeasurePin {
   private glyph: Sprite | null = null;
   private texture: Promise<Texture> | null = null;
   /** Where the pin takes a press, in world units; null until it is placed. */
-  private area: { readonly x: number; readonly y: number; readonly radius: number } | null = null;
+  private area: { readonly x: number; readonly y: number; readonly radius: number; readonly fingerRadius: number } | null = null;
 
   constructor() {
     this.view.addChild(this.disc);
@@ -48,15 +49,17 @@ export class MeasurePin {
     this.view.scale.set(scale);
     this.view.position.set(x, y);
     const colors = labelColors();
-    drawLabelPill(this.disc, { width: height, height, radius: height / 2 }, colors, scale * (Number.isFinite(zoom) && zoom > 0 ? zoom : 1));
-    this.area = { x, y, radius: (height / 2 + PIN_LOOK.reach) * scale };
+    const viewZoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+    drawLabelPill(this.disc, { width: height, height, radius: height / 2 }, colors, scale * viewZoom);
+    const radius = (height / 2 + PIN_LOOK.reach) * scale;
+    this.area = { x, y, radius, fingerRadius: Math.max(radius, FINGER_TARGET_RADIUS / viewZoom) };
     this.showGlyph(colors.text);
   }
 
   /** Whether a press at the world point `point` is on the pin. */
   contains(point: Point): boolean {
     const area = this.area;
-    return area !== null && this.view.visible && Math.hypot(point.x - area.x, point.y - area.y) <= area.radius;
+    return area !== null && this.view.visible && Math.hypot(point.x - area.x, point.y - area.y) <= (fingerReaches() ? area.fingerRadius : area.radius);
   }
 
   destroy(): void {

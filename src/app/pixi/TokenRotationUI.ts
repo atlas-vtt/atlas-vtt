@@ -1,4 +1,4 @@
-import { Container, FederatedPointerEvent, Graphics, Sprite, Texture, Circle } from 'pixi.js';
+import { Container, FederatedPointerEvent, Graphics, Sprite, Texture } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
@@ -10,6 +10,7 @@ import type { TokenHandleContainer } from './token-renderer/types';
 import { findTokenGroup } from './token-renderer/findTokenGroup';
 import type { TokenResizeUI } from './TokenResizeUI';
 import { destroyTree } from './utils/destroyTree';
+import { HandleHitArea } from './utils/handleHitArea';
 import { levelObjects } from '../levels/levelObjects';
 import { mapTokens } from '../tokens/offMap';
 
@@ -197,8 +198,8 @@ export class TokenRotationUI {
     handle.interactive = true;
     handle.cursor = 'grab';
     const radius = this.HANDLE_SIZE / 2;
-    // Set a circular hit area for the handle - this should be precise to avoid blocking token
-    handle.hitArea = new Circle(0, 0, radius);
+    // Precise for a mouse, so the handle never blocks its token; a finger reaches further where the token is not nearer
+    handle.hitArea = new HandleHitArea(handle, radius, TOKEN_HANDLE_LABEL);
 
     paintRotateHandle(bg, radius, false);
     handle.addChild(bg);

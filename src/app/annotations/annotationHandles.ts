@@ -12,6 +12,7 @@ import { frameCorners, framePoint, inFrame, selectionFrame, type Frame, type Fra
 import { mapFrame, mapPoint, type Transform } from './annotationTransform';
 import type { Annotation, DrawingAnnotation, TextAnnotation } from './annotationTypes';
 import { edgeNear, linePointsOf } from './linePoints';
+import { pointerReach } from '../pixi/utils/pointerReach';
 
 /** The handles' look and reach, in screen pixels. */
 export const HANDLE_LOOK = {
@@ -23,7 +24,7 @@ export const HANDLE_LOOK = {
   turnRadius: 10,
   /** From the frame's top side to the turn handle's middle. */
   stem: 26,
-  /** How far from its middle a handle still takes a press: 24 pixels across. */
+  /** How far from its middle a handle still takes a mouse's press: 24 pixels across; a finger reaches twice as far (`pointerReach`). */
   reach: 12,
   /** How far from a line a press still lands on its edge. */
   edge: 6,
@@ -141,7 +142,7 @@ export function handleSpots(handles: HandleSet, zoom: number): HandleSpot[] {
  * point before any other; else the line's edge under it; else the frame's inside. Null outside all of it.
  */
 export function handleAt(handles: HandleSet, point: Point, zoom: number): HandleRef | null {
-  const reach = HANDLE_LOOK.reach / zoom;
+  const reach = pointerReach(HANDLE_LOOK.reach) / zoom;
   const nearest = (spots: readonly HandleSpot[]): HandleRef | null => {
     let found: HandleRef | null = null;
     let best = reach;
@@ -157,7 +158,7 @@ export function handleAt(handles: HandleSet, point: Point, zoom: number): Handle
   const grip = nearest(spots.filter(({ ref }) => ref.kind === 'point')) ?? nearest(spots.filter(({ ref }) => ref.kind !== 'point'));
   if (grip) return grip;
   if (handles.line) {
-    const edge = edgeNear(handles.line, point, handles.ink + HANDLE_LOOK.edge / zoom);
+    const edge = edgeNear(handles.line, point, handles.ink + pointerReach(HANDLE_LOOK.edge) / zoom);
     if (edge) return { kind: 'edge', ...edge };
   }
   return inFrame(handles.frame, point, frameGrow(handles, zoom)) ? { kind: 'body' } : null;

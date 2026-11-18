@@ -9,6 +9,7 @@ import type { Viewport } from 'pixi-viewport';
 import { cdp, page } from 'vitest/browser';
 import { afterEach, expect } from "vitest";
 import { GridSystem } from '../../src/app/grid/GridSystem';
+import { watchInput } from '../../src/app/packages/components/primitives/lastInput';
 import { PixiAppManager } from '../../src/app/pixi/PixiAppManager';
 import { SelectionManager } from '../../src/app/pixi/SelectionManager';
 import { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
@@ -117,7 +118,10 @@ export function touchMaps(): { map: () => Promise<TouchMap> } {
       placing: () => false,
       marqueePending: () => selection.manager?.marqueePending ?? false,
       menuAt: (x, y) => tokens.menuAt(x, y),
+      tapActsAt: (x, y) => tokens.tapActsAt(x, y),
     }));
+    // What the plugin does for every window: hit areas and drags go by the pointer in use
+    const stopWatchingInput = watchInput(document);
 
     const token: Character = { id: 'token', x: TOKEN.x, y: TOKEN.y, size: 1, imagePath: '', kind: 'character', name: 'Token' };
     store.getState().addToken(token);
@@ -126,6 +130,7 @@ export function touchMaps(): { map: () => Promise<TouchMap> } {
     await frame();
 
     cleanups.push(() => {
+      stopWatchingInput();
       selection.manager?.destroy();
       tokens.destroy();
       grid.destroy();

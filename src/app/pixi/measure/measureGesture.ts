@@ -11,8 +11,9 @@
 
 import { MAX_RULER_POINTS, type Measurement, type MeasureShapeKind } from '../../measure/measureTypes';
 import type { Point } from '../../types/visionTypes';
+import { dragThreshold } from '../utils/pointerReach';
 
-/** How far a press may move, in screen pixels, and still be a click: the light markers' threshold (`LIGHT_DRAG_THRESHOLD`). */
+/** How far a mouse's press may move, in screen pixels, and still be a click: the light markers' threshold (`LIGHT_DRAG_THRESHOLD`). */
 export const MEASURE_DRAG_THRESHOLD = 5;
 
 export type GestureResult =
@@ -87,7 +88,7 @@ export class MeasureGesture {
   move(point: Point, screen: Point): GestureResult {
     const end = this.end;
     if (!end) return NONE;
-    if (this.pressedAt && Math.hypot(screen.x - this.pressedAt.x, screen.y - this.pressedAt.y) > MEASURE_DRAG_THRESHOLD) this.dragged = true;
+    if (this.pressedAt && Math.hypot(screen.x - this.pressedAt.x, screen.y - this.pressedAt.y) > dragThreshold(MEASURE_DRAG_THRESHOLD)) this.dragged = true;
     if (end.x === point.x && end.y === point.y) return NONE;
     this.end = point;
     return LIVE;

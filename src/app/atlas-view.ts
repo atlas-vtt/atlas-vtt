@@ -16,6 +16,8 @@ import type { ViewCamera } from './pixi/viewCamera';
 import { showNotice } from './ui/notice';
 import { observeResize } from './utils/observeResize';
 import { inMainWindow } from './plugin/atlasMainWindow';
+import { deviceProfile } from './platform/deviceProfile';
+import { emptyViewRoot } from './platform/viewRoot';
 
 import { ATLAS_VIEW_TYPE } from './atlasViewType';
 import { followPresentedScene } from './services/PlayerWindowPresenter';
@@ -232,7 +234,7 @@ export class AtlasView extends FileView {
   async onOpen(): Promise<void> {
     this.isViewClosing = false;
     const { containerEl } = this;
-    containerEl.empty();
+    emptyViewRoot(containerEl, deviceProfile().isMobileApp);
     containerEl.addClass('atlas-vtt-plugin');
     containerEl.addClass('atlas-vtt-view');
     containerEl.tabIndex = -1;

@@ -5,6 +5,7 @@ import { trackPointer } from '../measure/pointerTrack';
 import { hearPressesLast, isHandled } from '../utils/handledEvents';
 import { isPrimaryPress } from '../utils/pointerButtons';
 import { DRAW_DRAG_THRESHOLD } from './drawGesture';
+import { dragThreshold } from '../utils/pointerReach';
 import { endedTyping } from './typingEnds';
 
 /** What a press of the Draw tool's Text mode asks of, and tells, whoever types the text. */
@@ -76,7 +77,7 @@ export class TextPlacing {
     };
     this.stop = trackPointer(this.viewport, this.viewport.options.events.domElement, {
       onMove: (move) => {
-        if (to === null && Math.hypot(move.global.x - pressed.x, move.global.y - pressed.y) <= DRAW_DRAG_THRESHOLD) return;
+        if (to === null && Math.hypot(move.global.x - pressed.x, move.global.y - pressed.y) <= dragThreshold(DRAW_DRAG_THRESHOLD, move)) return;
         to = this.world(move);
         this.draw(from, to);
       },

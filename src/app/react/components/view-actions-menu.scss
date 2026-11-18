@@ -33,6 +33,12 @@
     opacity: 1;
     transform: scale(1);
   }
+
+  // Under a finger it is as large as the buttons of the bar it stands beside, with their corner
+  @include atlas-coarse-pointer {
+    width: $button-height-l;
+    height: $button-height-l;
+  }
   
   @media (hover: hover) {
     &:hover {

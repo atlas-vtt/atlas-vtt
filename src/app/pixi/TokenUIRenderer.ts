@@ -55,6 +55,8 @@ export class TokenUIRenderer {
    * controls show them, easing to 0 with the shrinking UI once they go.
    */
   private barButtonRoom: ValueTransition;
+  /** How far the +/- buttons stand out beyond the bars' ends, in UI units (`barButtonSpan`); a mouse's while unset. */
+  private barButtonSpan: number | undefined;
   /** The resources of the bar slots, one view per resource. */
   private resources: ResourceStack;
   /** Anchor of the right wheels' column (`wheelAnchor`), scaled like `belowToken`; holds the wheels of the right side. */
@@ -637,6 +639,7 @@ export class TokenUIRenderer {
       uiScale: scale,
       barsBottom: this.barsBottom(),
       barButtons: this.barButtonRoom.value,
+      barButtonSpan: this.barButtonSpan,
       nameplateHalfWidth: this.nameplateHalfWidth,
     });
     this.besideToken.position.set(anchor.x, anchor.y);
@@ -700,7 +703,9 @@ export class TokenUIRenderer {
    * Whether this token's controls show the bars' +/- buttons. The wheels make room at once, so
    * they never cover a button, and give it back as the UI shrinks.
    */
-  public setBarButtonsShown(shown: boolean): void {
+  public setBarButtonsShown(shown: boolean, span?: number): void {
+    // The span is kept while the room is given back, so the wheels close in from where they stood
+    if (shown) this.barButtonSpan = span;
     if (shown || prefersReducedMotion(document.body)) this.barButtonRoom.jumpTo(shown ? 1 : 0);
     else this.barButtonRoom.animateTo(0);
   }

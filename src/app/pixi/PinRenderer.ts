@@ -28,6 +28,7 @@ import { openPinMenu, type PinnedSceneLevels } from './pinSceneLevelMenu';
 import { t } from '../i18n';
 import { levelObjects } from '../levels/levelObjects';
 import { pinNameBoxes } from './pinNameLayout';
+import { dragThreshold, fingerReaches, pointerReach } from './utils/pointerReach';
 
 /** True when anything other than the position changed, which means the pin's graphics must be rebuilt. */
 function differsBeyondPosition(pin: NotePin, prev: NotePin | undefined): boolean {
@@ -41,6 +42,8 @@ function differsBeyondPosition(pin: NotePin, prev: NotePin | undefined): boolean
 
 /** The least radius on screen a pin answers the pointer within, also as a dot. */
 const MIN_HIT_RADIUS = 10;
+/** Screen pixels a press on a pin moves before it drags the pin. */
+const PIN_DRAG_THRESHOLD = 5;
 
 /** The pins that carry a name, with the groups their names are placed by. */
 function namedPins(faces: ReadonlyMap<string, DrawnPin>, groups: Readonly<Record<string, Container>>): Map<string, NamedPin> {
@@ -379,20 +382,27 @@ export class PinRenderer {
 
     const pins = levelObjects(this.store.getState()).pins;
     const layout = hexLayoutOfGrid(this.store.getState().grid);
-    // A pin shrunk to a dot keeps a hit area a pointer can find
+    // A pin shrunk to a dot keeps a hit area a pointer can find, a finger a larger one
     const zoom = this.viewport.scale.x > 0 ? this.viewport.scale.x : 1;
-    const hitRadius = Math.max(pinSize.badgeRadius * this.getPinScale(), MIN_HIT_RADIUS / zoom);
+    const finger = fingerReaches();
+    const hitRadius = Math.max(pinSize.badgeRadius * this.getPinScale(), pointerReach(MIN_HIT_RADIUS) / zoom);
 
-    for (const [id, pin] of Object.entries(pins)) {
+    let nearest: string | null = null;
+    let best = hitRadius * hitRadius;
+    for (const id in pins) {
+      const pin = pins[id];
       // A linked pin is part of its hex, which handles the pointer
       if (!pin || isShownAsHex(pin, layout)) continue;
       const dx = worldX - pin.x;
       const dy = worldY - pin.y;
-      if (dx * dx + dy * dy <= hitRadius * hitRadius) {
-        return id;
-      }
+      const distance = dx * dx + dy * dy;
+      if (distance > best) continue;
+      nearest = id;
+      // A finger's wider reach takes in neighbours: of those, the pin nearest the point
+      if (!finger) break;
+      best = distance;
     }
-    return null;
+    return nearest;
   }
 
   /** Handles a viewport-routed click on a pin (drag or context menu). */
@@ -409,7 +419,7 @@ export class PinRenderer {
       // Left-click: start drag (same logic as inline handler)
       let isDragging = false;
       let hasMoved = false;
-      const dragThreshold = 5;
+      const moveThreshold = dragThreshold(PIN_DRAG_THRESHOLD, e);
       const startPos = { x: e.global.x, y: e.global.y };
       const worldStartPos = this.viewport.toWorld(e.global);
       const initialPinPos = { x: pin.x, y: pin.y };
@@ -419,7 +429,7 @@ export class PinRenderer {
         const dy = moveEvent.global.y - startPos.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (!isDragging && distance > dragThreshold) {
+        if (!isDragging && distance > moveThreshold) {
           isDragging = true;
           hasMoved = true;
           this.viewport.plugins.pause('drag');

@@ -146,6 +146,17 @@ export class PlacementSession {
     }
   }
 
+  /**
+   * A finger moved to `screen` with the tokens pressed: they go with it and are put down where it
+   * lifts. A finger cannot bring the tokens to a place before it presses, as a mouse does, so its
+   * press carries them and turns nothing.
+   */
+  carry(screen: Point): void {
+    if (this.ended || !this.press) return;
+    this.pointer = screen;
+    this.arrange();
+  }
+
   /** The button came up: the pressed tokens are put down where they are held, facing as they were turned. */
   release(): void {
     const press = this.press;

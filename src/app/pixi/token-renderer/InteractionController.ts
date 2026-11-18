@@ -58,6 +58,7 @@ import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
 import type { MapSize } from '../../online/gm/moveCheck';
 import { sessionDragWalls, type SessionDragWalls } from './sessionDragWalls';
+import { tokenDragDistance } from '../utils/pointerReach';
 
 interface DragState {
   isDragging: boolean;
@@ -397,9 +398,9 @@ export class InteractionController implements ITokenInteractionController {
     const dx = worldPos.x - this.dragState.dragStartPointer.x;
     const dy = worldPos.y - this.dragState.dragStartPointer.y;
     
-    // Check if we've moved enough to consider it a drag (5 pixel threshold)
+    // A move this far is a drag; a finger wanders further than a mouse before it means one
     const moveDistance = Math.sqrt(dx * dx + dy * dy);
-    if (!this.dragState.hasMoved && moveDistance > 5) {
+    if (!this.dragState.hasMoved && moveDistance > tokenDragDistance(this.viewport.scale.x, e)) {
       this.dragState.hasMoved = true;
       this.store.getState().setIsDragging(true);
       // The whole drag becomes one undo step; closed in onPointerUp.

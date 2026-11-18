@@ -4,6 +4,7 @@ import type { Measurement, MeasureShapeKind } from '../../measure/measureTypes';
 import type { Point } from '../../types/visionTypes';
 import { isHandled } from '../utils/handledEvents';
 import { MEASURE_DRAG_THRESHOLD, MeasureGesture, type GestureResult } from './measureGesture';
+import { doubleClickSlack, dragThreshold } from '../utils/pointerReach';
 
 /** A press this soon after the click that ended a measurement, in the same place, is that click's second (a double click) and measures nothing. */
 const DOUBLE_CLICK_MS = 500;
@@ -148,7 +149,7 @@ export class MeasureInput {
     const pressed = this.pressedAt;
     this.pressedAt = null;
     // A measurement ended by a click may be followed by the second click of a double click.
-    const clicked = result.kind !== 'live' && pressed !== null && Math.hypot(e.global.x - pressed.x, e.global.y - pressed.y) <= MEASURE_DRAG_THRESHOLD;
+    const clicked = result.kind !== 'live' && pressed !== null && Math.hypot(e.global.x - pressed.x, e.global.y - pressed.y) <= dragThreshold(MEASURE_DRAG_THRESHOLD, e);
     this.lastClick = clicked ? { at: pressed, time: this.now() } : null;
     this.apply(result, shiftHeld(e));
   };
@@ -219,7 +220,7 @@ export class MeasureInput {
   private followsLastClick(screen: Point): boolean {
     const last = this.lastClick;
     this.lastClick = null;
-    return last !== null && this.now() - last.time <= DOUBLE_CLICK_MS && Math.hypot(screen.x - last.at.x, screen.y - last.at.y) <= MEASURE_DRAG_THRESHOLD;
+    return last !== null && this.now() - last.time <= DOUBLE_CLICK_MS && Math.hypot(screen.x - last.at.x, screen.y - last.at.y) <= doubleClickSlack(MEASURE_DRAG_THRESHOLD);
   }
 
   private apply(result: GestureResult, shift: boolean): void {

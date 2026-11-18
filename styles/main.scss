@@ -132,6 +132,7 @@ body.theme-light {
   @import '../src/app/react/components/character-select-mode.scss';
   @import '../src/app/packages/token.scss';
     @import '../src/app/react/components/view-actions-menu.scss';
+    @import '../src/app/react/components/zoom-cluster.scss';
   @import '../src/app/react/components/undo-redo-controls.scss';
   @import '../src/app/react/components/dm-screen.scss';
   @import '../src/app/react/components/linked-note-panel.scss';
@@ -949,6 +950,12 @@ body:not(.is-mobile) .workspace-leaf-content[data-type="atlas-vtt"] {
   .view-content {
     height: 100% !important;
   }
+}
+
+// On mobile the header stays above the map (`emptyViewRoot`). Atlas' root is the whole leaf, so the map
+// fills it behind the header, and the row of the scene tabs and widgets begins below the header.
+body.is-mobile .workspace-leaf-content[data-type="atlas-vtt"] .atlas-top-bar-row {
+  top: calc(#{$spacing-s} + var(--view-header-height, 0px));
 }
 
 // What a tablet's on-screen keyboard covers of the window (`_viewport.scss`). Obsidian keeps its own

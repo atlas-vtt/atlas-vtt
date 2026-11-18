@@ -1,10 +1,11 @@
+import { FINGER_DOUBLE_TAP_PX } from '../utils/pointerReach';
 import type { GestureClock, GestureEffects } from './gestureTypes';
 
 /** The longest a tap of several fingers lasts, from the first finger down to the last one up. */
 export const MULTI_TAP_MS = 300;
 /** How soon and how close a second tap follows the first to be a double tap. */
 export const DOUBLE_TAP_MS = 300;
-export const DOUBLE_TAP_PX = 40;
+export const DOUBLE_TAP_PX = FINGER_DOUBLE_TAP_PX;
 
 /**
  * The taps that are gestures of their own: a double tap on the empty map zooms in, a tap of two

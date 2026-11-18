@@ -14,6 +14,7 @@ import type { Point } from '../../types/visionTypes';
 import { showNotice } from '../../ui/notice';
 import { wallList } from '../../vision/wallList';
 import { canvasBadgeTheme } from '../utils/canvasBadgeColors';
+import { dragThreshold } from '../utils/pointerReach';
 import { drawFogOutlines } from './fogOutlines';
 
 /** Screen pixels the pointer may move from where it was pressed before the press is no click. */
@@ -59,7 +60,7 @@ export class FogRoomClick {
 
   /** The pointer is at `world` (`screen` on the canvas): the room there is outlined, anew only for another room. A press that left its place is no click. */
   hover(world: Point, screen: Point): void {
-    if (this.pressed && Math.hypot(screen.x - this.pressed.x, screen.y - this.pressed.y) >= CLICK_SLOP) this.pressed = null;
+    if (this.pressed && Math.hypot(screen.x - this.pressed.x, screen.y - this.pressed.y) >= dragThreshold(CLICK_SLOP)) this.pressed = null;
     this.show(this.at(world));
   }
 

@@ -13,7 +13,8 @@ import { WallInteraction } from '../vision/WallInteraction';
 import { WallRenderer } from '../vision/WallRenderer';
 import { WallDrawingSession } from './WallDrawingSession';
 import { splitWall } from './wallEdits';
-import { chainEndingAt, wallEndNear } from './wallEnds';
+import { chainEndingAt, wallEndNear, wallEndReach } from './wallEnds';
+import { fingerReaches } from '../utils/pointerReach';
 import { levelObjects } from '../../levels/levelObjects';
 
 interface SegmentEvent { p1: Point; p2: Point; type: WallType; chainId: string }
@@ -209,12 +210,21 @@ export class WallEditor {
     return this.drawsChains && this.tool.isCurrentlyDrawing();
   }
 
-  /** The chain's next corner, on the wall end close by unless `free`. A click on its last corner adds nothing, and one that closes the chain on its first ends it. */
+  /**
+   * The chain's next corner, on the wall end close by unless `free`. A click on its last corner adds nothing, and one
+   * that closes the chain on its first ends it. A finger's tap on the last corner ends the chain: the second tap of a
+   * double tap, which a touch screen need not report as the double click that ends a chain for a mouse.
+   */
   private placeCorner(point: Point, shift: boolean, free: boolean): void {
     const at = free ? point : this.wallEndNear(point) ?? point;
     const chain = this.tool.getCurrentChain();
     const same = (other: Point | undefined): boolean => !!other && other.x === at.x && other.y === at.y;
-    if (same(chain[chain.length - 1])) return;
+    const last = chain[chain.length - 1];
+    if (fingerReaches() && last && Math.hypot(point.x - last.x, point.y - last.y) <= wallEndReach(this.renderer.zoom)) {
+      this.tool.finishChain();
+      return;
+    }
+    if (same(last)) return;
     this.tool.addVertex(at.x, at.y, shift && !same(chain[0]));
   }
 

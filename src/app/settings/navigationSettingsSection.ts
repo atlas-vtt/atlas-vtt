@@ -50,11 +50,29 @@ function fingerRow(fingers: FingerChoice): AtlasSettingRow {
   };
 }
 
+/** Whether the map shows its zoom buttons while a mouse points; under a finger they always show, so the row is left out there. */
+export interface ZoomButtonsRow {
+  readonly offered: boolean;
+  readonly shown: boolean;
+  setShown(shown: boolean): void;
+}
+
+function zoomButtonsRow(zoomButtons: ZoomButtonsRow): AtlasSettingRow {
+  return {
+    name: t('settings.navigation.zoomButtons'),
+    desc: t('settings.navigation.zoomButtonsHint'),
+    aliases: ['zoom', 'fit', 'buttons'],
+    render: (setting) => {
+      setting.addToggle((toggle) => toggle.setValue(zoomButtons.shown).onChange((shown) => zoomButtons.setShown(shown)));
+    },
+  };
+}
+
 /** Map navigation options. */
-export function navigationSettingsSection(settingsService: SettingsService, fingers?: FingerChoice): AtlasSettingSection {
+export function navigationSettingsSection(settingsService: SettingsService, fingers?: FingerChoice, zoomButtons?: ZoomButtonsRow): AtlasSettingSection {
   return {
     heading: t('settings.navigation.heading'),
-    rows: [...(fingers?.penSeen ? [fingerRow(fingers)] : []), {
+    rows: [...(fingers?.penSeen ? [fingerRow(fingers)] : []), ...(zoomButtons?.offered ? [zoomButtonsRow(zoomButtons)] : []), {
       name: t('settings.navigation.inputDevice'),
       desc: MODE_HINTS[settingsService.getNavigationSettings().inputMode],
       aliases: ['mouse', 'trackpad', 'zoom', 'pan'],

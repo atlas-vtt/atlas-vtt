@@ -5,6 +5,7 @@ import type { ViewAtlasState } from '../../storeFactory';
 import type { AudioSource } from '../../types/audioTypes';
 import { destroyTree } from '../utils/destroyTree';
 import { levelObjects } from '../../levels/levelObjects';
+import { FINGER_TARGET_RADIUS, fingerReaches } from '../utils/pointerReach';
 
 const ICON_RADIUS = 10;
 const HIT_TOLERANCE = 12;
@@ -147,17 +148,26 @@ export class AudioRenderer {
   /** Hit-test world coordinates against all audio source icons. */
   hitTestAudioSources(worldX: number, worldY: number): string | null {
     const audios = levelObjects(this.store.getState()).audios;
-    const tolSq = HIT_TOLERANCE * HIT_TOLERANCE;
+    // The icons are the map's size; under a finger one is never a smaller target than a finger needs
+    const finger = fingerReaches();
+    const zoom = this.viewport.scale.x > 0 ? this.viewport.scale.x : 1;
+    const tolerance = finger ? Math.max(HIT_TOLERANCE, FINGER_TARGET_RADIUS / zoom) : HIT_TOLERANCE;
+    let best = tolerance * tolerance;
+    let nearest: string | null = null;
 
-    for (const source of Object.values(audios)) {
+    for (const id in audios) {
+      const source = audios[id];
+      if (!source) continue;
       const dx = worldX - source.x;
       const dy = worldY - source.y;
-      if (dx * dx + dy * dy <= tolSq) {
-        return source.id;
-      }
+      const distance = dx * dx + dy * dy;
+      if (distance > best) continue;
+      nearest = source.id;
+      if (!finger) break;
+      best = distance;
     }
 
-    return null;
+    return nearest;
   }
 
   setSelectedAudio(id: string | null): void {

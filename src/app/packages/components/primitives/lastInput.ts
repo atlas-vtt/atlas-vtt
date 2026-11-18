@@ -2,13 +2,19 @@
 export type InputKind = 'mouse' | 'pen' | 'touch' | 'key';
 
 let last: InputKind = 'mouse';
+let lastPointer: Exclude<InputKind, 'key'> = 'mouse';
 
 /** Whether the last thing the user did was done with a finger. Never, where no document is watched (`watchInput`). */
 export function lastInputWasTouch(): boolean {
   return last === 'touch';
 }
 
-function pointerKind(event: PointerEvent): InputKind {
+/** Whether the pointer last used was a finger, whatever was typed since. Never, where no document is watched (`watchInput`). */
+export function lastPointerWasTouch(): boolean {
+  return lastPointer === 'touch';
+}
+
+function pointerKind(event: PointerEvent): Exclude<InputKind, 'key'> {
   return event.pointerType === 'touch' || event.pointerType === 'pen' ? event.pointerType : 'mouse';
 }
 
@@ -19,7 +25,8 @@ function pointerKind(event: PointerEvent): InputKind {
  */
 export function watchInput(doc: Document): () => void {
   const onPointer = (event: PointerEvent): void => {
-    last = pointerKind(event);
+    lastPointer = pointerKind(event);
+    last = lastPointer;
   };
   const onKey = (): void => {
     last = 'key';
