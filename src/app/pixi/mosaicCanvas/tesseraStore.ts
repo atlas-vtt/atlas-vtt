@@ -1,14 +1,9 @@
 import type { DerivedFormat } from '../../imageProcessing/imageEncoder';
-import { TESSERA_SPEC, type TesseraRef } from './pyramid';
+import type { TesseraRef } from './pyramid';
+import { freshManifest, isCurrentManifest, type PyramidManifest } from './pyramidManifest';
 import type { FileIdentity } from './tesseraProtocol';
 
-/**
- * How this device builds tesserae, beside `TESSERA_SPEC` (their geometry, which the players' page
- * checks too, so raising that breaks online play across versions). Raising this rebuilds every
- * cached pyramid on this device alone. 1: photos turned by EXIF are decoded without their quarter
- * turn (the coarse levels cached of them before were squeezed).
- */
-export const TESSERA_BUILD = 1;
+export { TESSERA_BUILD, type PyramidManifest } from './pyramidManifest';
 
 /**
  * The device's cache of map tessera pyramids (decision 6 of the tiled map images
@@ -17,24 +12,6 @@ export const TESSERA_BUILD = 1;
  * `TesseraStoreBackend` (IndexedDB in the worker, memory where that is missing),
  * so this logic runs anywhere and is tested without a browser.
  */
-
-export interface PyramidManifest {
-  hash: string;
-  spec: number;
-  /** `TESSERA_BUILD` when it was built; absent in manifests written before it existed. */
-  build?: number;
-  /**
-   * The format of its tesserae where that is not WebP: `png` on a platform that cannot encode WebP.
-   * Absent for WebP, so the manifests of every device that encodes it stay as they were.
-   */
-  encoding?: 'png';
-  width: number;
-  height: number;
-  decodedScale: number;
-  complete: boolean;
-  bytes: number;
-  lastUsed: number;
-}
 
 /** The hash of a file's content as it was when last read: one per path, the latest. */
 export interface IdentityRecord extends FileIdentity {
@@ -88,11 +65,6 @@ export interface TesseraStoreOptions {
   /** The format this device encodes tesserae in (`TesseraGraphics.tesseraFormat`); WebP where unset. */
   format?: () => Promise<DerivedFormat>;
   now?: () => number;
-}
-
-/** What a manifest records for tesserae of `format`: nothing for WebP. */
-export function manifestEncoding(format: DerivedFormat): Pick<PyramidManifest, 'encoding'> {
-  return format === 'webp' ? {} : { encoding: format };
 }
 
 /** The cache never grows past this, whatever the quota: room for a few gigapixel maps' lossless tesserae (about 1.3 GB each). */
@@ -163,9 +135,7 @@ export class TesseraStore {
         return touched;
       }
       if (stored) await this.backend.deletePyramid(spec.hash);
-      const fresh: PyramidManifest = {
-        ...spec, spec: TESSERA_SPEC, build: TESSERA_BUILD, ...manifestEncoding(await this.format()), complete: false, bytes: 0, lastUsed: this.now(),
-      };
+      const fresh = freshManifest(spec, await this.format(), this.now());
       await this.backend.putManifest(fresh);
       return fresh;
     });
@@ -189,7 +159,7 @@ export class TesseraStore {
     return this.serial(async () => {
       const format = await this.format();
       return this.backend.writeTesserae(hash, tesserae, (manifest) => (
-        manifest && isCurrent(manifest, format) ? { ...manifest, bytes: manifest.bytes + bytes, lastUsed: this.now() } : null
+        manifest && isCurrentManifest(manifest, format) ? { ...manifest, bytes: manifest.bytes + bytes, lastUsed: this.now() } : null
       ));
     });
   }
@@ -201,7 +171,7 @@ export class TesseraStore {
   async markComplete(hash: string): Promise<boolean> {
     const marked = await this.serial(async () => {
       const manifest = await this.backend.getManifest(hash);
-      if (!manifest || !isCurrent(manifest, await this.format())) return false;
+      if (!manifest || !isCurrentManifest(manifest, await this.format())) return false;
       await this.backend.putManifest({ ...manifest, complete: true, lastUsed: this.now() });
       return true;
     });
@@ -308,7 +278,7 @@ export class TesseraStore {
   private async currentManifest(hash: string): Promise<PyramidManifest | null> {
     const manifest = await this.backend.getManifest(hash);
     if (!manifest) return null;
-    if (isCurrent(manifest, await this.format())) return manifest;
+    if (isCurrentManifest(manifest, await this.format())) return manifest;
     await this.backend.deletePyramid(hash);
     return null;
   }
@@ -318,10 +288,6 @@ export class TesseraStore {
     this.queue = run.catch(() => undefined);
     return run;
   }
-}
-
-function isCurrent(manifest: PyramidManifest, format: DerivedFormat): boolean {
-  return manifest.spec === TESSERA_SPEC && manifest.build === TESSERA_BUILD && (manifest.encoding ?? 'webp') === format;
 }
 
 function sameSource(manifest: PyramidManifest, spec: PyramidSpec): boolean {

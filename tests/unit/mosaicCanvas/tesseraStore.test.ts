@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { MemoryTesseraBackend } from '../../../src/app/pixi/mosaicCanvas/memoryTesseraBackend';
 import { TESSERA_SPEC, type TesseraRef } from '../../../src/app/pixi/mosaicCanvas/pyramid';
 import { TESSERA_BUILD } from '../../../src/app/pixi/mosaicCanvas/tesseraStore';
+import { manifestEncoding, tesseraRecipe } from '../../../src/app/pixi/mosaicCanvas/pyramidManifest';
 import {
-  manifestEncoding,
   TESSERA_CACHE_MAX_BYTES,
   TesseraStore,
   tesseraCacheBudget,
@@ -78,6 +78,7 @@ describe('TesseraStore', () => {
       expect(recipe).toEqual({ hash: 'h', width: 2000, height: 1000, decodedScale: 1, spec: 2, build: 1, complete: false, bytes: 0 });
       expect(manifestEncoding('webp')).toEqual({});
     }
+    expect(tesseraRecipe('webp')).toBe('2.1');
   });
 
   it('records the encoding of a pyramid of PNG tesserae, made where WebP cannot be encoded', async () => {
@@ -85,6 +86,7 @@ describe('TesseraStore', () => {
     await store.beginPyramid(source('h'));
     expect(await backend.getManifest('h')).toMatchObject({ spec: 2, build: 1, encoding: 'png' });
     expect(manifestEncoding('png')).toEqual({ encoding: 'png' });
+    expect(tesseraRecipe('png')).toBe('2.1.png');
     expect(await store.writeTesserae('h', [tessera(0, 0, 0, 8)])).toBe(true);
     expect(await store.markComplete('h')).toBe(true);
     expect(await store.readManifest('h')).toMatchObject({ complete: true, bytes: 8, encoding: 'png' });
