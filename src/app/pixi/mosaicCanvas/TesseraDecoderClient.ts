@@ -11,11 +11,13 @@ import {
   isTesseraEvent,
   type FileIdentity,
   type OpenedPyramid,
+  type TesseraBudgets,
   type TesseraEvent,
   type TesseraReply,
   type TesseraRequest,
 } from './tesseraProtocol';
 import TesseraWorker from './tesseraWorker?worker&inline';
+import { deviceProfile } from '../../platform/deviceProfile';
 
 /**
  * The main thread's side of the map tessera worker: one worker per app, shared
@@ -34,6 +36,8 @@ export type OpenedMap = OpenedPyramid;
 export interface TesseraDecoderClientOptions {
   /** Names the vault's tessera cache; null keeps it in memory. */
   appId: string | null;
+  /** What the device lets the worker hold; the desktop's budgets when unset. */
+  budgets?: TesseraBudgets;
   worker: PortFactory;
   /** Used when the worker cannot start. */
   inThread?: PortFactory;
@@ -58,8 +62,10 @@ export class TesseraDecoderClient {
   static forApp(app: App): TesseraDecoderClient {
     let client = TesseraDecoderClient.instances.get(app);
     if (!client) {
+      const { budgets } = deviceProfile();
       client = new TesseraDecoderClient({
         appId: app.appId,
+        budgets: { decodedLevels: budgets.decodedLevelsBudget, cacheMax: budgets.tileCacheMax, cacheQuotaShare: budgets.tileCacheQuotaShare },
         worker: workerPort(() => new TesseraWorker({ name: 'Atlas map tesserae' })),
       });
       TesseraDecoderClient.instances.set(app, client);

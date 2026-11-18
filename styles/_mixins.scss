@@ -829,6 +829,22 @@
   }
 }
 
+// ── Coarse pointer ───────────────────────────────────────────────────────────
+
+/// Styles for a coarse pointer (a finger), which Atlas marks on every window's `body` (`data-atlas-pointer`, `pointerAttribute.ts`).
+/// Inside a rule the content is that rule's declarations (`.row { @include atlas-coarse-pointer { height: 44px; } }`); at the root of a file it is whole rules.
+@mixin atlas-coarse-pointer {
+  @if & {
+    @at-root body[data-atlas-pointer='coarse'] & {
+      @content;
+    }
+  } @else {
+    body[data-atlas-pointer='coarse'] {
+      @content;
+    }
+  }
+}
+
 // ── Checkbox hit area ───────────────────────────────────────────────────────
 
 /// Under a coarse pointer the native checkboxes inside take a 44 px hit area (WCAG 2.5.5): a `::before` around Obsidian's

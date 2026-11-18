@@ -129,6 +129,15 @@ describe('TesseraStore', () => {
     expect(tesseraCacheBudget(10_000)).toBe(1000);
   });
 
+  it('budgets within the limits of its device where it is told them, a tablet\'s 512 MiB and a twentieth of the quota', async () => {
+    const limits = { maxBytes: 512 * 1024 ** 2, quotaShare: 0.05 };
+    expect(tesseraCacheBudget(null, limits)).toBe(512 * 1024 ** 2);
+    expect(tesseraCacheBudget(100 * GIB, limits)).toBe(512 * 1024 ** 2);
+    expect(tesseraCacheBudget(10_000, limits)).toBe(500);
+    const store = new TesseraStore({ backend: new MemoryTesseraBackend(), estimateQuota: () => Promise.resolve(2 * GIB), cacheLimits: limits });
+    expect(await store.budget()).toBe(Math.floor(2 * GIB * 0.05));
+  });
+
   it('reads the budget as 4 GiB when the quota cannot be estimated', async () => {
     const store = new TesseraStore({ backend: new MemoryTesseraBackend(), estimateQuota: () => Promise.reject(new Error('no')) });
     expect(await store.budget()).toBe(TESSERA_CACHE_MAX_BYTES);

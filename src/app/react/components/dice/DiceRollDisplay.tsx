@@ -10,6 +10,7 @@ import { diceSceneToShow } from '../../../dice3d/rollPresentation';
 import { setDiceVolume, warmDiceSounds } from '../../../dice3d/audio/diceSamples';
 import { playDiceReveal } from '../../../audio/diceRevealSound';
 import { canShowDice, warmStages } from '../../../dice3d/stagePool';
+import { deviceProfile } from '../../../platform/deviceProfile';
 import type { DiceRollResult } from '../../../types/diceTypes';
 import type { DiceRollOrigin } from '../../../types/diceRollOrigin';
 import type { PreparedDiceRoll } from './diceSourcePresentation';
@@ -119,7 +120,7 @@ export function DiceRollDisplay({ container, prepare, muted: windowMuted = false
 
   // Dice stages are built while nothing rolls, so that the first roll does not wait for one.
   useEffect(() => {
-    if (display !== 'card') warmStages(stageDoc);
+    if (display !== 'card') warmStages(stageDoc, undefined, deviceProfile().budgets.diceWarmStages);
   }, [display, stageDoc]);
 
   // Escape dismisses every roll on screen, unless something in front of the map

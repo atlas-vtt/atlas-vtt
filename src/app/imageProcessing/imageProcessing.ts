@@ -8,6 +8,8 @@ import { withDecodedImage } from './imageElement';
 import { fitSize, vectorRasterSize, type Size } from './imageLayout';
 import { BandRefusedError, ImageDecodeError, ImageWorkerPool, type ImageJobOptions } from './ImageWorkerPool';
 import ImageWorker from './imageWorker?worker&inline';
+import { DESKTOP_BUDGETS, imageWorkerCount } from '../platform/deviceBudgets';
+import { deviceProfile } from '../platform/deviceProfile';
 
 export type { FramePlacement, ThumbnailSpec, ImageJobResult as ProcessedImage } from './imageJob';
 
@@ -60,14 +62,12 @@ export interface ProcessOptions {
   webpOnly?: boolean;
 }
 
-/** Workers beyond this add little for batches of token art and cost memory. */
-const MAX_WORKERS = 6;
 /**
- * Decoded pixels all running jobs may hold together. Token art runs in
+ * Decoded pixels all running jobs may hold together on a desktop. Token art runs in
  * parallel; a huge map (150 megapixels hold 1.2 GB while converting, the
- * largest 2.1 GB) runs alone.
+ * largest 2.1 GB) runs alone. A tablet's pool gets less (`deviceBudgets.ts`).
  */
-export const MEMORY_BUDGET_BYTES = 1024 ** 3;
+export const MEMORY_BUDGET_BYTES = DESKTOP_BUDGETS.imageWorkerBudget;
 /** Side assumed for an image that reports no size of its own, such as an SVG without dimensions. */
 const UNSIZED_IMAGE_SIDE = 2048;
 const SVG = 'image/svg+xml';
@@ -91,17 +91,14 @@ let disposed = false;
 
 function workerPool(): ImageWorkerPool {
   if (disposed) throw new Error('Image processing has stopped.');
-  pool ??= new ImageWorkerPool(() => new ImageWorker({ name: 'Atlas image processing' }), {
-    maxWorkers: workerCount(),
-    memoryBudget: MEMORY_BUDGET_BYTES,
-  });
+  if (!pool) {
+    const { budgets } = deviceProfile();
+    pool = new ImageWorkerPool(() => new ImageWorker({ name: 'Atlas image processing' }), {
+      maxWorkers: imageWorkerCount(budgets, navigator.hardwareConcurrency || 2),
+      memoryBudget: budgets.imageWorkerBudget,
+    });
+  }
   return pool;
-}
-
-/** One core stays free for Obsidian itself. */
-function workerCount(): number {
-  const cores = navigator.hardwareConcurrency || 2;
-  return Math.min(MAX_WORKERS, Math.max(1, cores - 1));
 }
 
 /** Stops the workers; called when the plugin unloads. */

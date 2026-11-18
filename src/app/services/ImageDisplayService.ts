@@ -1,4 +1,4 @@
-import { App, FileSystemAdapter, Menu, TFile, type EventRef } from 'obsidian';
+import { App, Menu, TFile, type EventRef } from 'obsidian';
 import { openContextMenuGlobal, type ContextMenuEntry } from '../react/root/ContextMenuContext';
 import { PlayerWindowService } from './PlayerWindowService';
 import { playImageEnter, playImageExit } from './imageDisplayMotion';
@@ -12,6 +12,9 @@ import { imageHeader } from '../imageProcessing/imageDimensions';
 import { showNotice } from '../ui/notice';
 import { statblockImageAt } from './statblockImageTarget';
 import { playerWindowStore } from '../stores/playerWindowStore';
+import { isResourceUrl, resourceUrlToFilePath, resourceUrlToVaultPath } from '../utils/pathUtils';
+import { desktopOnly, isDesktopApp } from '../platform/desktopOnly';
+import { vaultBasePath } from '../platform/vaultBasePath';
 
 /** An image overlay in the player window. */
 interface ImageDisplay {
@@ -92,6 +95,7 @@ export class ImageDisplayService {
       menu.addItem((item) => {
         item.setTitle(t('image.copy')).setIcon('copy').onClick(() => this.copyImageToClipboard(result.imgElement));
       });
+      if (!isDesktopApp()) return;
       menu.addItem((item) => {
         item.setTitle(t('image.openDefault')).setIcon('external-link').onClick(() => this.app.openWithDefaultApp(result.file.path));
       });
@@ -219,9 +223,9 @@ export class ImageDisplayService {
     event.stopPropagation();
 
     const entries: ContextMenuEntry[] = [
-      { type: 'item', label: t('image.display'), icon: 'monitor', onClick: () => this.displayImageOnPlayerView(file) },
+      ...desktopOnly<ContextMenuEntry>({ type: 'item', label: t('image.display'), icon: 'monitor', onClick: () => this.displayImageOnPlayerView(file) }),
       { type: 'item', label: t('image.copy'), icon: 'copy', onClick: () => this.copyImageToClipboard(imgElement) },
-      { type: 'item', label: t('image.openDefaultMenu'), icon: 'external-link', onClick: () => this.app.openWithDefaultApp(file.path) },
+      ...desktopOnly<ContextMenuEntry>({ type: 'item', label: t('image.openDefaultMenu'), icon: 'external-link', onClick: () => this.app.openWithDefaultApp(file.path) }),
     ];
 
     openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });
@@ -264,9 +268,10 @@ export class ImageDisplayService {
   }
 
   /**
-   * Add menu item to display image on player view
+   * Add menu item to display image on player view; none where there is no player window (mobile).
    */
   private addImageDisplayMenuItem(menu: Menu, file: TFile): void {
+    if (!isDesktopApp()) return;
     menu.addItem((item) => {
       item
         .setTitle(t('image.display'))
@@ -376,43 +381,11 @@ export class ImageDisplayService {
    */
   private extractFilePathFromSrc(src: string): string | null {
     try {
-      // Handle app://local URLs
-      if (src.startsWith('app://')) {
-        // Remove query parameters first
-        const cleanSrc = src.split('?')[0] ?? src;
-        
-        // Extract everything after app://[hash]/
-        const appMatch = cleanSrc.match(/app:\/\/[^/]+\/(.+)/);
-        if (appMatch?.[1]) {
-          let fullPath = decodeURIComponent(appMatch[1]);
-          
-          // Get the vault path
-          const adapter = this.app.vault.adapter;
-          const vaultPath = adapter instanceof FileSystemAdapter ? adapter.getBasePath() : '';
-          
-          // Normalize paths by ensuring they start with /
-          const normalizedFullPath = fullPath.startsWith('/') ? fullPath : '/' + fullPath;
-          const normalizedVaultPath = vaultPath.startsWith('/') ? vaultPath : '/' + vaultPath;
-          
-          // If the full path includes the vault path, extract the relative part
-          if (normalizedFullPath.includes(normalizedVaultPath)) {
-            const startIndex = normalizedFullPath.indexOf(normalizedVaultPath);
-            if (startIndex !== -1) {
-              // Get everything after the vault path
-              let relativePath = normalizedFullPath.substring(startIndex + normalizedVaultPath.length);
-              // Remove leading slash if present
-              if (relativePath.startsWith('/')) {
-                relativePath = relativePath.substring(1);
-              }
-              return relativePath;
-            }
-          }
-          
-          // If we couldn't extract relative path, return the full path
-          return fullPath;
-        }
+      // A resource URL: the file's place in the vault, else its path on disk
+      if (isResourceUrl(src)) {
+        return resourceUrlToVaultPath(src, vaultBasePath(this.app.vault.adapter)) ?? resourceUrlToFilePath(src);
       }
-      
+
       // Handle vault:// URLs
       const vaultMatch = src.match(/vault:\/\/(.+)/);
       if (vaultMatch?.[1]) {

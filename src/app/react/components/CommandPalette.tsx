@@ -37,6 +37,7 @@ import { useAtlasStore, useViewStoreHook } from '../ViewStoreContext';
 import { useAtlasUI } from '../root/AtlasUIContext';
 import { PlayerWindowService } from '../../services/PlayerWindowService';
 import { openPlayerWindow, presentActiveTab } from '../../services/PlayerWindowPresenter';
+import { desktopOnly } from '../../platform/desktopOnly';
 import { playerWindowStore } from '../../stores/playerWindowStore';
 import { debounce } from '../../../utils/debounce';
 import { cn } from '../../../utils/cn';
@@ -369,7 +370,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       isToggle: true,
       isActive: isPlayerMode,
     },
-    {
+    // The player window needs a second window: desktop only
+    ...desktopOnly<CommandOption>({
       id: "freeze-player-camera",
       icon: <Pause />,
       label: t('palette.freezePlayerCamera'),
@@ -414,7 +416,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         void presentActiveTab(app, { openWindow: true });
         onClose();
       },
-    },
+    }),
     // Settings
     {
       id: "grid-settings",

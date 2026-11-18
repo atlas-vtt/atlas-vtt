@@ -1,5 +1,5 @@
 import './src/app/plugin/host/initializeHost';
-import { Plugin, type Component } from 'obsidian';
+import { Platform, Plugin, type Component } from 'obsidian';
 // Tailwind first, so the custom SCSS can override it.
 import './styles/index.css';
 import './styles/main.scss';
@@ -109,6 +109,11 @@ import { DungeonWorkerClient } from './src/app/dungeons/worker/DungeonWorkerClie
 import { MosaicCanvasService } from './src/app/pixi/mosaicCanvas/MosaicCanvasService';
 import { guardChildUnload, guardedCleanup } from './src/app/plugin/guardedTeardown';
 import { showNotice } from './src/app/ui/notice';
+import { deviceSupport } from './src/app/platform/deviceSupport';
+import { isDesktopApp } from './src/app/platform/desktopOnly';
+import { registerPointerAttribute } from './src/app/platform/pointerAttribute';
+import { registerAudioUnlock } from './src/app/plugin/audioUnlock';
+import { registerUnsupportedDevice } from './src/app/plugin/unsupportedDevice';
 
 declare const __ATLAS_RELEASE_BUILD__: boolean;
 
@@ -141,10 +146,21 @@ export default class AtlasVTTPlugin extends Plugin {
    * it stops there once this is set.
    */
   private unloaded = false;
+  /** A phone, or a tablet whose system is too old for Atlas: nothing of Atlas was started, so nothing is released. */
+  private unsupported = false;
 
   async onload(): Promise<void> {
+    const support = deviceSupport({ isPhone: Platform.isPhone, hasOffscreenCanvas: typeof OffscreenCanvas !== 'undefined' });
+    if (support !== 'supported') {
+      this.unsupported = true;
+      registerUnsupportedDevice(this, support);
+      return;
+    }
     // Before anything of Atlas renders: what React and framer-motion put on the page goes with Atlas.
     registerPageListenerRelease(this);
+    // How large Atlas' controls are follows the pointer, in every window; sound starts with the first tap or key.
+    registerPointerAttribute(this);
+    registerAudioUnlock(this);
     // Record errors from the very start so startup problems can be reported too.
     const errorLog = new AtlasErrorLog();
     this.register(errorLog.attach());
@@ -314,6 +330,7 @@ export default class AtlasVTTPlugin extends Plugin {
 
   onunload(): void {
     this.unloaded = true;
+    if (this.unsupported) return;
     this.changelogService?.destroy();
     void this.settingsService?.saveSettingsNow();
     SystemPresetFiles.release(this.app);
@@ -368,7 +385,8 @@ export default class AtlasVTTPlugin extends Plugin {
   private registerAtlasViews(): void {
     this.registerExtensions([EXTENSION_ATLASMAP], ATLAS_VIEW_TYPE);
     this.registerView(ATLAS_VIEW_TYPE, (leaf) => new AtlasView(leaf, this));
-    this.registerView(LOCAL_PLAYER_VIEW_TYPE, (leaf) => new LocalPlayerView(leaf));
+    // The player window is a second window, which only the desktop app has
+    if (isDesktopApp()) this.registerView(LOCAL_PLAYER_VIEW_TYPE, (leaf) => new LocalPlayerView(leaf));
     this.registerView(DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this));
     this.registerView(DUNGEON_GENERATOR_VIEW_TYPE, (leaf) => new DungeonGeneratorView(leaf));
     this.registerView(SOUND_VIEW_TYPE, (leaf) => new SoundView(leaf));

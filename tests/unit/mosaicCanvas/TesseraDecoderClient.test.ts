@@ -68,6 +68,25 @@ function whenComplete(client: TesseraDecoderClient, hash: string): Promise<void>
 describe('TesseraDecoderClient', () => {
   useReadableBlobs();
 
+  it('tells the core the budgets of its device at its start, and none where it has none to tell', async () => {
+    const told: unknown[] = [];
+    const { createCore } = cores();
+    const recording: CoreFactory = (appId, emit, budgets) => {
+      told.push(budgets);
+      return createCore(appId, emit);
+    };
+    const budgets = { decodedLevels: 256 * 1024 ** 2, cacheMax: 512 * 1024 ** 2, cacheQuotaShare: 0.05 };
+    const tablet = new TesseraDecoderClient({ appId: 'vault-1', budgets, worker: noWorker, inThread: inThreadPort(recording) });
+    const desktop = new TesseraDecoderClient({ appId: 'vault-1', worker: noWorker, inThread: inThreadPort(recording) });
+
+    await tablet.cacheSize();
+    await desktop.cacheSize();
+
+    expect(told).toEqual([budgets, undefined]);
+    tablet.dispose();
+    desktop.dispose();
+  });
+
   it('runs the core in-thread when no worker starts', async () => {
     const { client, appIds } = setup();
     const map = await client.open(fakePng(3000, 2000), identity);

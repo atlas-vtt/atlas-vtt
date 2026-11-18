@@ -35,4 +35,14 @@ describe('the lighting quality a device starts on', () => {
   it('never raises a level another fact lowered', () => {
     expect(pickLightingQuality({ ...strong, renderer: 'llvmpipe', cores: 32 })).toBe('saver');
   });
+
+  it('is never finer than the finest level the device\'s memory allows, a tablet\'s Balanced', () => {
+    const appleTablet = { ...strong, renderer: 'Apple GPU' };
+    expect(pickLightingQuality(appleTablet)).toBe('high');
+    expect(pickLightingQuality(appleTablet, 'high')).toBe('high');
+    expect(pickLightingQuality(appleTablet, 'balanced')).toBe('balanced');
+    expect(pickLightingQuality({ ...strong, renderer: 'Mali-G78' }, 'balanced')).toBe('balanced');
+    expect(pickLightingQuality({ ...strong, maxTextureSize: 4096 }, 'balanced')).toBe('saver');
+    expect(pickLightingQuality(appleTablet, 'saver')).toBe('saver');
+  });
 });

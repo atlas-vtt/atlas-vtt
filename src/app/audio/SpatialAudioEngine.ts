@@ -4,6 +4,7 @@ import type { AudioSource } from '../types/audioTypes';
 import type { AudioBufferCache } from './AudioBufferCache';
 import { countWallsBetween, computeWallDampening, computeDistanceGain } from './audioOcclusion';
 import { runInBackground } from '../utils/backgroundTask';
+import { resumeOnGesture } from '../sound/engine/audioUnlock';
 import { levelObjects } from '../levels/levelObjects';
 import { mapTokens } from '../tokens/offMap';
 
@@ -41,6 +42,7 @@ export class SpatialAudioEngine {
   private ensureContext(): AudioContext {
     if (!this.audioContext) {
       this.audioContext = new AudioContext();
+      resumeOnGesture(this.audioContext);
       this.compressor = this.audioContext.createDynamicsCompressor();
       this.compressor.threshold.value = -24;
       this.compressor.knee.value = 30;

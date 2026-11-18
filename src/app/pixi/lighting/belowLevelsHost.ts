@@ -18,6 +18,7 @@ import type { BelowLevelsHost, BelowLiquids } from './levels/LevelsBelow';
 import { LiquidLayer, type LiquidLayerDeps } from '../liquids/LiquidLayer';
 import type { RoofHost, RoofImageRead } from './levels/Roof';
 import type { Point } from '../../types/visionTypes';
+import { deviceProfile } from '../../platform/deviceProfile';
 
 type LiquidStore = LiquidLayerDeps['store'];
 type LiquidsState = ReturnType<LiquidStore['getState']>;
@@ -100,6 +101,7 @@ function createViewMapImage(obsApp: App, app: Application, viewport: Viewport, c
     ticker: Ticker.shared,
     renderer: app.renderer,
     requestRender: () => requestRender(app),
+    textureBudget: deviceProfile().budgets.tileTextureBudget,
     ...(camera && { drawAtOnce: () => true }),
   }));
 }

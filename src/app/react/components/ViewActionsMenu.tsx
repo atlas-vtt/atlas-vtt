@@ -6,6 +6,7 @@ import { openContextMenuGlobal, type ContextMenuEntry } from '../root/ContextMen
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { t } from '../../i18n';
 import { showNotice } from '../../ui/notice';
+import { desktopOnly } from '../../platform/desktopOnly';
 
 interface ViewActionsMenuProps {
   app: App;
@@ -40,13 +41,14 @@ export const ViewActionsMenu: React.FC<ViewActionsMenuProps> = ({ app, filePath 
 
     if (filePath) {
       entries.push(
-        {
+        // The system's file manager: desktop only
+        ...desktopOnly<ContextMenuEntry>({
           type: 'item', label: t('view.reveal'), icon: 'folder-open',
           onClick: async () => {
             const file = app.vault.getAbstractFileByPath(filePath);
             if (file) app.showInFolder(file.path);
           },
-        },
+        }),
         {
           type: 'item', label: t('view.copyPath'), icon: 'copy',
           onClick: () => {

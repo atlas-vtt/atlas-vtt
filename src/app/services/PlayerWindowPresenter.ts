@@ -20,6 +20,7 @@ import { levelLabel } from '../react/components/levels/levelEditing';
 import { showsPresentedLevel } from './presentedLevel';
 import { MapController } from '../MapController';
 import { runInBackground } from '../utils/backgroundTask';
+import { isDesktopApp } from '../platform/desktopOnly';
 
 /** Unsubscribes the tab watcher of the view whose tab is currently presented. */
 let stopWatchingPresentedTab: (() => void) | null = null;
@@ -82,7 +83,9 @@ export async function presentTab(app: App, view: AtlasView, tabId: string, { ope
     // Players who see the scene nowhere get the player window, and so does a GM who asks for it
     else if (openWindow || !presented.isShownElsewhere()) await openPlayerWindow(app);
   }
-  showNotice(t(presentedNotice(presented), { name: presentedName(view, tab) }));
+  const notice = presentedNotice(presented);
+  // Mobile has no player window to open later, so a scene nobody is shown yet is not announced
+  if (notice !== 'present.chosen' || isDesktopApp()) showNotice(t(notice, { name: presentedName(view, tab) }));
 }
 
 /** What players were shown, as a notice names it: the scene, and the level of a scene with several. */
@@ -103,6 +106,8 @@ function presentedNotice(presented: PresentedSceneStore): 'present.shows' | 'pre
  * presented first, so the window never opens on nothing when there is a map to show.
  */
 export async function openPlayerWindow(app: App): Promise<void> {
+  // Mobile has no second window: the scene stays presented, for whoever shows it elsewhere
+  if (!isDesktopApp()) return;
   if (PlayerWindowService.getInstance()?.isWindowOpen()) {
     showNotice(t('lpv.alreadyOpen'));
     return;
@@ -124,7 +129,7 @@ const attaching = new WeakSet<LocalPlayerView>();
  * presented scene was kept on its own brings its scene along.
  */
 export async function restorePlayerWindow(app: App, player: LocalPlayerView): Promise<void> {
-  if (player.isClosed || attaching.has(player) || PlayerWindowService.getInstance()?.ownsView(player)) return;
+  if (!isDesktopApp() || player.isClosed || attaching.has(player) || PlayerWindowService.getInstance()?.ownsView(player)) return;
   attaching.add(player);
   try {
     await attachPlayerWindow(app, player);

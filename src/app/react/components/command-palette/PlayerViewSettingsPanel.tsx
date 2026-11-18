@@ -7,6 +7,7 @@ import type { SettingsService } from '../../../services/SettingsService';
 import { SettingRow, SettingToggleRow } from './SettingRows';
 import { usePlayerViewSwitches, type PlayerViewSwitch } from './playerViewSwitches';
 import { t } from '../../../i18n';
+import { isDesktopApp } from '../../../platform/desktopOnly';
 
 const renderSwitch = ({ id, label, hint, value, onToggle }: PlayerViewSwitch): React.ReactElement => (
   <SettingToggleRow key={id} label={label} hint={hint} value={value} onToggle={onToggle} />
@@ -16,6 +17,8 @@ export function PlayerViewSettingsPanel(): React.ReactElement {
   const { app, view } = useAtlasUI();
   const settingsService: SettingsService | undefined = view?.serviceManager?.getSettingsService();
   const switches = usePlayerViewSwitches(settingsService);
+  // The player window is the desktop's: mobile has no second window to open
+  const hasPlayerWindow = isDesktopApp();
 
   return (
     <div className="atlas-command-palette-panel">
@@ -26,27 +29,33 @@ export function PlayerViewSettingsPanel(): React.ReactElement {
         {switches.tokens.map(renderSwitch)}
       </div>
 
-      <div className="atlas-command-palette-panel-column">
-        <h3 className="atlas-command-palette-panel-heading">{t('lpv.playerWindow')}</h3>
-        <SettingToggleRow
-          label={switches.view4k.label}
-          hint={t('lpv.view4kHint')}
-          value={switches.view4k.value}
-          onToggle={switches.view4k.onToggle}
-        />
-        <SettingRow label={t('lpv.notePreviews')} hint={t('lpv.notePreviewsHint')}>{null}</SettingRow>
-        <Button variant="default" size="sm" className="atlas-command-palette-cta" onClick={() => void openPlayerWindow(app)}>
-          <MonitorUp />
-          {t('lpv.openWindow')}
-        </Button>
+      {(hasPlayerWindow || switches.online.length > 0) && (
+        <div className="atlas-command-palette-panel-column">
+          {hasPlayerWindow && (
+            <>
+              <h3 className="atlas-command-palette-panel-heading">{t('lpv.playerWindow')}</h3>
+              <SettingToggleRow
+                label={switches.view4k.label}
+                hint={t('lpv.view4kHint')}
+                value={switches.view4k.value}
+                onToggle={switches.view4k.onToggle}
+              />
+              <SettingRow label={t('lpv.notePreviews')} hint={t('lpv.notePreviewsHint')}>{null}</SettingRow>
+              <Button variant="default" size="sm" className="atlas-command-palette-cta" onClick={() => void openPlayerWindow(app)}>
+                <MonitorUp />
+                {t('lpv.openWindow')}
+              </Button>
+            </>
+          )}
 
-        {switches.online.length > 0 && (
-          <>
-            <h3 className="atlas-command-palette-panel-heading">{t('lpv.online')}</h3>
-            {switches.online.map(renderSwitch)}
-          </>
-        )}
-      </div>
+          {switches.online.length > 0 && (
+            <>
+              <h3 className="atlas-command-palette-panel-heading">{t('lpv.online')}</h3>
+              {switches.online.map(renderSwitch)}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
