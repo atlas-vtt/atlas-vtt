@@ -31,8 +31,10 @@
   background: color-mix(in oklch, var(--interactive-accent) 82%, black);
   color: var(--text-on-accent);
 
-  &:hover:not(:disabled) {
-    background: color-mix(in oklch, var(--interactive-accent) 88%, black);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background: color-mix(in oklch, var(--interactive-accent) 88%, black);
+    }
   }
 }
 
@@ -43,8 +45,10 @@
   background: color-mix(in srgb, var(--background-modifier-error) 80%, black);
   color: white;
 
-  &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--background-modifier-error) 86%, black);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--background-modifier-error) 86%, black);
+    }
   }
 }
 
@@ -80,8 +84,10 @@
   background: var(--background-secondary);
   border-radius: $radius-m;
 
-  &:hover {
-    background: var(--background-modifier-hover);
+  @media (hover: hover) {
+    &:hover {
+      background: var(--background-modifier-hover);
+    }
   }
 
   &:active {
@@ -169,8 +175,10 @@
 
   transition: transform $transition-press $transition-ease-out;
 
-  &:hover:not(:disabled) {
-    color: var(--text-normal);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      color: var(--text-normal);
+    }
   }
 
   &:active:not(:disabled) {
@@ -189,9 +197,11 @@
   background: transparent;
   color: var(--text-muted);
 
-  &:hover {
-    background: var(--background-modifier-hover);
-    color: var(--text-normal);
+  @media (hover: hover) {
+    &:hover {
+      background: var(--background-modifier-hover);
+      color: var(--text-normal);
+    }
   }
 
   &:active {
@@ -218,8 +228,10 @@
     color: var(--text-faint);
   }
 
-  &:hover:not(:focus) {
-    border-color: $field-edge-hover;
+  @media (hover: hover) {
+    &:hover:not(:focus) {
+      border-color: $field-edge-hover;
+    }
   }
 
   @include atlas-input-focus;
@@ -299,9 +311,11 @@
   border: $border-width-s solid var(--background-modifier-border);
   color: var(--text-normal);
 
-  &:hover:not(:disabled) {
-    background-color: var(--interactive-hover);
-    border-color: var(--background-modifier-border-hover);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background-color: var(--interactive-hover);
+      border-color: var(--background-modifier-border-hover);
+    }
   }
 }
 
@@ -312,8 +326,10 @@
   border: none;
   color: var(--text-on-accent);
 
-  &:hover:not(:disabled) {
-    background-color: var(--interactive-accent-hover);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background-color: var(--interactive-accent-hover);
+    }
   }
 }
 
@@ -341,8 +357,10 @@
   cursor: pointer;
   text-align: left;
 
-  &:hover {
-    border-color: var(--background-modifier-border-hover) !important;
+  @media (hover: hover) {
+    &:hover {
+      border-color: var(--background-modifier-border-hover) !important;
+    }
   }
 
   &.atlas-open {
@@ -397,9 +415,14 @@
   cursor: pointer;
   text-align: left;
 
-  &:hover,
   &:focus-visible {
     background-color: var(--background-modifier-hover) !important;
+  }
+
+  @media (hover: hover) {
+    &:hover {
+      background-color: var(--background-modifier-hover) !important;
+    }
   }
 
   &:active {
@@ -591,9 +614,11 @@
     stroke-width: 2;
   }
 
-  &:hover {
-    background: var(--background-modifier-hover);
-    color: var(--text-normal);
+  @media (hover: hover) {
+    &:hover {
+      background: var(--background-modifier-hover);
+      color: var(--text-normal);
+    }
   }
 
   &:active {
@@ -653,8 +678,10 @@
       transition: opacity $transition-fast $transition-ease;
     }
 
-    &:hover::after {
-      opacity: 1;
+    @media (hover: hover) {
+      &:hover::after {
+        opacity: 1;
+      }
     }
   }
 }
@@ -923,8 +950,10 @@
     height: $icon-xs;
   }
 
-  &:hover {
-    color: var(--text-normal);
+  @media (hover: hover) {
+    &:hover {
+      color: var(--text-normal);
+    }
   }
 
   &:active {

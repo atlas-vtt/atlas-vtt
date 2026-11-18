@@ -56,9 +56,11 @@ $bar-end-radius: atlas-panel-inset-radius-value($bar-inset, calc(#{$bar-control}
   background: var(--background-modifier-active-hover) !important;
   color: var(--text-accent) !important;
 
-  &:hover {
-    background: var(--background-modifier-active-hover) !important;
-    color: var(--text-accent-hover) !important;
+  @media (hover: hover) {
+    &:hover {
+      background: var(--background-modifier-active-hover) !important;
+      color: var(--text-accent-hover) !important;
+    }
   }
 }
 

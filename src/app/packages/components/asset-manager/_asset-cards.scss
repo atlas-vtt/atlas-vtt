@@ -23,16 +23,18 @@
   // Hover and selection change at once: a shadow transition repaints every card that changes, for 100 ms each.
 
   // The ⋯ button beside the card (`CardMoreButton`) lies over its art: the pointer on it is on the card.
-  &:hover,
-  &:has(+ .atlas-asset-card-actions:hover) {
-    background: var(--background-modifier-hover);
+  @media (hover: hover) {
+    &:hover,
+    &:has(+ .atlas-asset-card-actions:hover) {
+      background: var(--background-modifier-hover);
 
-    .atlas-asset-card-checkbox {
-      opacity: 1;
-    }
+      .atlas-asset-card-checkbox {
+        opacity: 1;
+      }
 
-    .atlas-asset-card-name {
-      color: var(--text-normal);
+      .atlas-asset-card-name {
+        color: var(--text-normal);
+      }
     }
   }
 
@@ -252,9 +254,11 @@
   // As tall as the spawn badge that takes its place.
   @include atlas-statblock-badge(22px);
 
-  &:hover {
-    color: var(--text-normal);
-    transform: scale(1.1);
+  @media (hover: hover) {
+    &:hover {
+      color: var(--text-normal);
+      transform: scale(1.1);
+    }
   }
 
   &:active {
@@ -366,8 +370,10 @@
     cursor: pointer;
     transition: transform $transition-press $transition-ease-out;
 
-    &:hover {
-      background: color-mix(in oklch, var(--text-on-accent) 18%, transparent);
+    @media (hover: hover) {
+      &:hover {
+        background: color-mix(in oklch, var(--text-on-accent) 18%, transparent);
+      }
     }
 
     &:active {

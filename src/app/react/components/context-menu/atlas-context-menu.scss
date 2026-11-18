@@ -200,9 +200,11 @@ $ctx-inset: $surface-inset;
   color: var(--text-muted);
   cursor: pointer;
 
-  &:hover:not(:disabled) {
-    background: var(--background-modifier-hover);
-    color: var(--text-normal);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background: var(--background-modifier-hover);
+      color: var(--text-normal);
+    }
   }
 
   &:disabled {
@@ -275,8 +277,10 @@ $ctx-inset: $surface-inset;
     color: var(--text-error);
   }
 
-  &:hover {
-    background: color-mix(in oklch, var(--color-red) 15%, transparent);
+  @media (hover: hover) {
+    &:hover {
+      background: color-mix(in oklch, var(--color-red) 15%, transparent);
+    }
   }
 
   &:active {

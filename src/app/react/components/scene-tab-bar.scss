@@ -95,8 +95,10 @@ $tab-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
   // How much of the name's start a control covers while the controls show: none where the eye has its own place.
   --atlas-tab-covered-start: #{$tab-action};
 
-  &:hover {
-    background: var(--background-modifier-hover);
+  @media (hover: hover) {
+    &:hover {
+      background: var(--background-modifier-hover);
+    }
   }
 
   &:focus-visible {
@@ -177,9 +179,11 @@ $tab-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
     align-items: center;
     justify-content: center;
 
-    &:hover {
-      background: var(--background-modifier-hover);
-      color: var(--text-normal);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover);
+        color: var(--text-normal);
+      }
     }
 
     &--start {

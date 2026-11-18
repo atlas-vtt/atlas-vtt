@@ -44,9 +44,11 @@ $widget-bar-offset: $spacing-s;
   cursor: pointer;
   pointer-events: auto;
 
-  &:hover {
-    background: transparent;
-    box-shadow: none;
+  @media (hover: hover) {
+    &:hover {
+      background: transparent;
+      box-shadow: none;
+    }
   }
 }
 
@@ -141,8 +143,10 @@ $widget-bar-offset: $spacing-s;
   &.editable {
     cursor: text;
 
-    &:hover {
-      background: var(--background-modifier-hover);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover);
+      }
     }
   }
 }
@@ -193,12 +197,16 @@ $widget-bar-offset: $spacing-s;
 .atlas-widget-clock:has(.atlas-widget-btn) .atlas-clock-wedge {
   cursor: pointer;
 
-  &:hover {
-    fill: color-mix(in oklch, var(--widget-color) 40%, transparent);
+  @media (hover: hover) {
+    &:hover {
+      fill: color-mix(in oklch, var(--widget-color) 40%, transparent);
+    }
   }
 
-  &.is-filled:hover {
-    fill: color-mix(in oklch, var(--widget-color) 80%, var(--background-primary));
+  @media (hover: hover) {
+    &.is-filled:hover {
+      fill: color-mix(in oklch, var(--widget-color) 80%, var(--background-primary));
+    }
   }
 }
 

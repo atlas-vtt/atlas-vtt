@@ -71,13 +71,15 @@ $toggle-gap: $surface-inset;
 }
 
 // Under the pointer the track deepens a step, on and off alike, as Atlas' other controls light up.
-.atlas-toggle:not(.atlas-toggle--disabled):hover {
-  .atlas-toggle__switch--off {
-    background-color: color-mix(in oklch, var(--background-secondary-alt), var(--text-normal) 12%);
-  }
+@media (hover: hover) {
+  .atlas-toggle:not(.atlas-toggle--disabled):hover {
+    .atlas-toggle__switch--off {
+      background-color: color-mix(in oklch, var(--background-secondary-alt), var(--text-normal) 12%);
+    }
 
-  .atlas-toggle__switch--on {
-    background-color: color-mix(in oklch, var(--interactive-accent) 86%, black);
+    .atlas-toggle__switch--on {
+      background-color: color-mix(in oklch, var(--interactive-accent) 86%, black);
+    }
   }
 }
 
