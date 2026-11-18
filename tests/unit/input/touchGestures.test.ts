@@ -556,6 +556,9 @@ describe('what a tap places, tool by tool', () => {
     expect(lightingTapPlacing(tool('draw', 'freeform'), false)).toBeNull();
     expect(lightingTapPlacing(tool('rooms'), false)).toBeNull();
     expect(lightingTapPlacing(tool('explored-memory'), false)).toBeNull();
+  });
+});
+
 describe('a map that is only looked at (Table mode)', () => {
   /** A scene whose effects also tell when two fingers were held. */
   function looking(): Scene {
