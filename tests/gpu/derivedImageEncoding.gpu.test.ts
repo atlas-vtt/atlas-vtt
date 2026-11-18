@@ -40,6 +40,13 @@ async function pixels(image: Blob | ImageBitmap | OffscreenCanvas): Promise<Uint
   return ctx.getImageData(0, 0, source.width, source.height).data;
 }
 
+/** Where two pictures first differ, or -1: a loop, since a deep comparison of millions of bytes takes a minute. */
+function firstDifference(a: Uint8ClampedArray, b: Uint8ClampedArray): number {
+  if (a.length !== b.length) return Math.min(a.length, b.length);
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return i;
+  return -1;
+}
+
 afterAll(() => disposeImageProcessing());
 
 describe(`derived pictures on ${WEBKIT ? 'WebKit' : 'Chromium'}`, () => {
@@ -73,7 +80,7 @@ describe(`derived pictures on ${WEBKIT ? 'WebKit' : 'Chromium'}`, () => {
     const map = drawing(600, 400);
     const blob = await encodeImage(map, IMAGE_PRESETS.map.quality);
     expect(blob.type).toBe(TYPE);
-    expect(await pixels(blob)).toEqual(await pixels(map));
+    expect(firstDifference(await pixels(blob), await pixels(map))).toBe(-1);
   });
 
   it('write a thumbnail file under the extension of its format, recorded on its asset', async () => {
@@ -135,6 +142,19 @@ describe(`large canvases on ${WEBKIT ? 'WebKit' : 'Chromium'}`, () => {
     expect(holdsPixels(canvas)).toBe(true);
     const corner = canvas.getContext('2d')!.getImageData(4999, 299, 1, 1).data;
     expect([...corner]).toEqual([0, 0, 0, 0]);
+  });
+
+  it('are not needed for a whole picture: drawn in pieces, it has the pixels one canvas gives it', async () => {
+    const level = await createImageBitmap(drawing(2500, 2100));
+    const parts = [
+      { source: level, from: { x: 0, y: 0, width: 2500, height: 2100 }, to: { x: 0, y: 0, width: 2500, height: 2100 } },
+      { source: level, from: { x: 3, y: 0, width: 300, height: 200 }, to: { x: 1900, y: 1950, width: 300, height: 200 } },
+    ];
+    const onOne = await createTesseraGraphics(browserGraphicsPrimitives()).compose(2600, 2200, parts);
+    const inPieces = await createTesseraGraphics({ ...browserGraphicsPrimitives(), createPictureCanvas: () => null }).compose(2600, 2200, parts);
+
+    expect([inPieces.width, inPieces.height]).toEqual([2600, 2200]);
+    expect(firstDifference(await pixels(inPieces), await pixels(onOne))).toBe(-1);
   });
 
   it('are handed out for a picture: asked first only where the engine cannot encode WebP', async () => {
