@@ -13,8 +13,8 @@ const app = { workspace: {} } as unknown as App;
 let installer: ArmariumInstaller;
 let statusListener: StatusListener | null;
 
-function renderPane(): { frame: HTMLIFrameElement; unmount: () => void } {
-  const { unmount } = render(<ArmariumPane app={app} />);
+function renderPane(onShare?: () => void): { frame: HTMLIFrameElement; unmount: () => void } {
+  const { unmount } = render(<ArmariumPane app={app} onShare={onShare} />);
   return { frame: screen.getByLabelText('The Armarium, Atlas\' library of collections', { selector: 'iframe' }) as HTMLIFrameElement, unmount };
 }
 
@@ -75,15 +75,30 @@ describe('the Armarium pane', () => {
     const post = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => undefined);
 
     fromPage({ type: 'atlas-armarium:hello', format: 1 }, frame.contentWindow);
-    await vi.waitFor(() => expect(post).toHaveBeenCalledWith({ type: 'atlas-armarium:installed', format: 1, items: [{ uid: UID, version: 4 }] }, 'https://atlas-vtt.dev'));
+    await vi.waitFor(() => expect(post).toHaveBeenCalledWith({ type: 'atlas-armarium:installed', format: 1, items: [{ uid: UID, version: 4 }], features: [] }, 'https://atlas-vtt.dev'));
 
     post.mockClear();
     act(() => statusListener!({ uid: UID, version: 5 }, 'installed'));
     await vi.waitFor(() => expect(post).toHaveBeenCalledTimes(2));
     expect(post.mock.calls).toEqual([
       [{ type: 'atlas-armarium:status', format: 1, uid: UID, version: 5, state: 'installed' }, 'https://atlas-vtt.dev'],
-      [{ type: 'atlas-armarium:installed', format: 1, items: [{ uid: UID, version: 4 }] }, 'https://atlas-vtt.dev'],
+      [{ type: 'atlas-armarium:installed', format: 1, items: [{ uid: UID, version: 4 }], features: [] }, 'https://atlas-vtt.dev'],
     ]);
+  });
+
+  it('says it shares from the vault and opens its own share when its page asks, and only then', async () => {
+    const onShare = vi.fn();
+    const { frame } = renderPane(onShare);
+    const post = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => undefined);
+    fromPage({ type: 'atlas-armarium:hello', format: 1 }, frame.contentWindow);
+    await vi.waitFor(() => expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: 'atlas-armarium:installed', features: ['share'] }), 'https://atlas-vtt.dev'));
+
+    fromPage({ type: 'atlas-armarium:share', format: 1 }, window);
+    fromPage({ type: 'atlas-armarium:share', format: 1 }, frame.contentWindow, 'https://evil.example');
+    expect(onShare).not.toHaveBeenCalled();
+    fromPage({ type: 'atlas-armarium:share', format: 1 }, frame.contentWindow);
+    expect(onShare).toHaveBeenCalledTimes(1);
+    expect(installer.install).not.toHaveBeenCalled();
   });
 
   it('stops listening once unmounted', () => {

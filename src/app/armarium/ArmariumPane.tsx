@@ -32,13 +32,14 @@ function ArmariumSkeleton(): React.ReactElement {
 
 /**
  * The Armarium, atlas-vtt.dev's library of collections, filling the asset manager's content area. Its Install buttons
- * ask Atlas to install a free collection (`useArmariumBridge`), whose import review opens over the same window. Each
- * mount loads the page anew: the store's front, or the page `url` names (a listing a share just published).
+ * ask Atlas to install a free collection (`useArmariumBridge`), whose import review opens over the same window, and its
+ * Share a collection opens `onShare`, Atlas' own share. Each mount loads the page anew: the store's front, or the page
+ * `url` names (a listing a share just published).
  */
-export function ArmariumPane({ app, url = ARMARIUM_PAGE_URL }: { app: App; url?: string }): React.ReactElement {
+export function ArmariumPane({ app, url = ARMARIUM_PAGE_URL, onShare }: { app: App; url?: string; onShare?: () => void }): React.ReactElement {
   const paneRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
-  useArmariumBridge(ArmariumInstaller.forApp(app), frameRef, paneRef);
+  useArmariumBridge(ArmariumInstaller.forApp(app), frameRef, paneRef, onShare);
   return (
     <div ref={paneRef} className="atlas-armarium-pane">
       <SiteFrame

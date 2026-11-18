@@ -4,7 +4,7 @@
 - Browse the Armarium right inside the asset manager: choose the shop icon after Players, or Armarium in the command palette
 - Install a free collection with one click: you see what it brings in the import review before anything is added
 - Open in Atlas on a collection's page in your browser does the same
-- Share your own collections in the Armarium without leaving Atlas: Share in the Armarium, in the ⋯ menu beside the collection picker, signs you in, uploads the collection, shows what the Armarium's checks found, and publishes it with its description, tags and licence
+- Share your own collections in the Armarium without leaving Atlas: Share in the Armarium, in the ⋯ menu beside the collection picker, or Share a collection on the Armarium's page signs you in, uploads the collection, shows what the Armarium's checks found, and publishes it with its description, tags and licence
 - Sign in to your Atlas account in Atlas's settings. The account is optional, and the same one hosts online tables
 
 **New Feature: Getting started**
@@ -27,6 +27,7 @@
 - Experimental features can now be switched on and off in Atlas's settings tab, not only in the command palette
 - The Saver lighting now shows light reflected into shadows, like the other quality levels
 - Random tables has a calmer look: the sidebar runs the window's full height, Roll sits beside the item count on the rarity filter's line, the rarity filter folds into a menu when the window is narrow, rolled cards drop their coloured frames, and base views tick in a neutral colour
+- In session view tokens stop at walls and closed doors on a lit scene, as they do for players. In GM view you still move them anywhere
 - Every button shows when it is clicked, and a button that opens a menu or list stays highlighted while it is open. Settings, dialogs and messages use Atlas's own buttons throughout
 - The keyboard shortcuts are easier to find: a question mark button in the map's bottom right corner and a Keyboard shortcuts entry in the command palette open the list, as ? does
 
