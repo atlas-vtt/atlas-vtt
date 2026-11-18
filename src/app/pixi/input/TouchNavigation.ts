@@ -19,17 +19,34 @@ export class TouchNavigation {
   private readonly world = new Point();
   private readonly drifted = new Point();
   private zoomedAt = -Infinity;
+  /** The fingers have moved the map since they took it. */
+  private moving = false;
 
   constructor(private readonly viewport: Viewport) {}
 
-  /** Fingers take the map: what it was doing by itself ends. */
+  /** Fingers take the map: its coast ends. */
   begin(): void {
     this.decelerate()?.halt();
     this.zoomedAt = -Infinity;
+    this.moving = false;
+  }
+
+  /**
+   * The fingers move the map: a step of zoom that still glides and a camera on its way somewhere
+   * (Fit, a token brought into view) end where they are, or they would pull against the fingers.
+   * Not before: the fingers of a tap leave the zoom of the tap before them to finish.
+   */
+  private take(): void {
+    if (this.moving) return;
+    this.moving = true;
+    const wheel = this.viewport.plugins.get('wheel', true);
+    if (wheel instanceof SmoothWheelZoom) wheel.halt();
+    this.viewport.plugins.remove('animate');
   }
 
   pan(dx: number, dy: number): void {
     const { viewport } = this;
+    this.take();
     viewport.x += dx;
     viewport.y += dy;
     this.decelerate()?.track();
@@ -39,6 +56,7 @@ export class TouchNavigation {
   /** The point between two fingers went from one place of the screen to another while they came `toSpan / fromSpan` times as far apart. */
   pinch(fromX: number, fromY: number, fromSpan: number, toX: number, toY: number, toSpan: number): void {
     const { viewport } = this;
+    this.take();
     // The world point under the fingers stays under them.
     viewport.toLocal(this.anchor.set(fromX, fromY), undefined, this.world);
     const before = viewport.scale.x;

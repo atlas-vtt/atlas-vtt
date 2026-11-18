@@ -107,6 +107,11 @@ export class SmoothWheelZoom extends Wheel {
     super.pause();
   }
 
+  /** Ends the glide where it is: something else has the camera (fingers, whose press the plugin never hears). */
+  halt(): void {
+    this.stop();
+  }
+
   private stop(): void {
     this.targetScale = null;
     this.anchor = null;
