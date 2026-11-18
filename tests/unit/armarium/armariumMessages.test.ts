@@ -47,7 +47,10 @@ describe('messages from the Armarium page', () => {
     const post = vi.fn();
     postToFrame({ postMessage: post } as unknown as Window, statusMessage({ uid: UID, version: 5 }, 'reviewing'));
     expect(post).toHaveBeenCalledWith({ type: 'atlas-armarium:status', format: 1, uid: UID, version: 5, state: 'reviewing' }, 'https://atlas-vtt.dev');
-    expect(installedMessage([{ uid: UID, version: 5 }])).toEqual({ type: 'atlas-armarium:installed', format: 1, items: [{ uid: UID, version: 5 }] });
+    expect(installedMessage([{ uid: UID, version: 5 }])).toEqual({ type: 'atlas-armarium:installed', format: 1, items: [{ uid: UID, version: 5 }], features: [] });
+    expect(installedMessage([], ['share'])).toMatchObject({ features: ['share'] });
+    expect(readFrameMessage({ type: 'atlas-armarium:share', format: 1, extra: 1 })).toEqual({ type: 'atlas-armarium:share' });
+    expect(readFrameMessage({ type: 'atlas-armarium:share', format: 2 })).toBeNull();
     expect(() => postToFrame(null, installedMessage([]))).not.toThrow();
   });
 });
