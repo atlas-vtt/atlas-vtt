@@ -413,8 +413,8 @@
 .atlas-swatch--picker {
   appearance: none;
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
+  width: $button-height-s;
+  height: $button-height-s;
   background: none;
   overflow: hidden;
 
