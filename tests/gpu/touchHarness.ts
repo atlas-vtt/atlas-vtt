@@ -21,6 +21,7 @@ import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFa
 import { getHistoryStore } from '../../src/app/stores/history';
 import type { Character } from '../../src/app/types';
 import { EventEmitter } from '../../src/app/utils/typedEmitter';
+import type { TapPlacing } from '../../src/app/types/tapPlacing';
 import type { FingerUse } from '../../src/app/services/deviceSettings';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { mapImageViewOf } from './../helpers/fakeMapImageView';
@@ -44,6 +45,8 @@ export interface TouchMap {
   canvas: HTMLCanvasElement;
   /** What fingers do in a drawing tool; the test's to change. */
   fingers: { use: FingerUse; penSeen: boolean };
+  /** What a tap places with the lighting tool, for a test that has one; null until it says. */
+  taps: { lighting: (() => TapPlacing | null) | null };
   /** Where the token stands in the store. */
   tokenAt(): Point;
   /** The undo steps the scene holds. */
@@ -120,8 +123,10 @@ export function touchMaps(): { map: (view?: { width: number; height: number }) =
     selection.manager.reorderViewportListeners();
 
     const fingers = { use: 'tool' as FingerUse, penSeen: false, notePen: (): void => { fingers.penSeen = true; } };
+    const taps: TouchMap['taps'] = { lighting: null };
     manager.getGestures()!.setHost(mapGestureHost({
       store, viewport, fingers,
+      lightingTapPlacing: () => taps.lighting?.() ?? null,
       placing: () => false,
       marqueePending: () => selection.manager?.marqueePending ?? false,
       menuAt: (x, y) => tokens.menuAt(x, y),
@@ -147,7 +152,7 @@ export function touchMaps(): { map: (view?: { width: number; height: number }) =
     });
 
     return {
-      store, viewport, tokens, fingers, app, obsidian,
+      store, viewport, tokens, fingers, taps, app, obsidian,
       selection: selection.manager,
       canvas: manager.getCanvasElement(),
       tokenAt: () => {

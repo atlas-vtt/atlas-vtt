@@ -71,7 +71,8 @@
   background: var(--background-primary-alt);
   text-align: start;
   white-space: normal;
-  touch-action: none;
+  // A finger scrolls the moods by their tiles; one that rests lifts the tile (`useListDrag`'s `restBeforeDrag`).
+  touch-action: pan-y;
   transition: background-color $transition-normal $press-ease, transform $press-ms $press-ease;
   @include pressable(0.985);
 

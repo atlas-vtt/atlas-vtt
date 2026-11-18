@@ -339,6 +339,7 @@ export class PixiRendererOrchestrator { // Renamed class
           menuAt: (x, y) => this.tokenRenderer?.menuAt(x, y) ?? false,
           tapActsAt: (x, y) => this.tokenRenderer?.tapActsAt(x, y) ?? false,
           fingers: FingerSettings.forApp(this.obsApp),
+          lightingTapPlacing: () => this.lighting?.tapPlacing() ?? null,
           emptyMapMenu: (world, at) => openEmptyMapMenu(this.store, this.tokenRenderer, world, at),
         }));
       }

@@ -5,11 +5,15 @@ import type { PressClock } from '../../input/longPress';
  * - `'objects'` (the move and select tools): on a token, pin, drawing or handle it is the tool;
  *   on the empty map it pans, a tap stays a tap, and a long press draws the marquee;
  * - `'tool'`: it is the tool wherever it lands, as the left button is;
- * - `'navigate'` (a drawing tool on a device whose pen draws): it pans, and a tap is the tool's click;
+ * - `'navigate'` (a drawing tool on a device whose pen draws; a shape placed tap by tap, where
+ *   nothing is dragged): it pans, and a tap is the tool's click;
+ * - `'place'` (a tool whose press places something at once: a light, a wall's first corner): the
+ *   press is the tool's only once the finger lifts in place or has left its place, so a second
+ *   finger that lands while the first rests finds nothing placed;
  * - `'direct'`: something took the press before the map's tools could (tokens being placed), so
  *   nothing is held back or sent again.
  */
-export type FingerMode = 'objects' | 'tool' | 'navigate' | 'direct';
+export type FingerMode = 'objects' | 'tool' | 'navigate' | 'place' | 'direct';
 
 /** What the gestures ask of the view's tools. */
 export interface GestureHost {

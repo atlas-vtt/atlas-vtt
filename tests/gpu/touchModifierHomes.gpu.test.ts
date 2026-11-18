@@ -47,6 +47,7 @@ describe('the lighting tool\'s Snap switch under a finger', () => {
       bounds: () => ({ x: 0, y: 0, width: VIEW.width, height: VIEW.height }), albedo: () => null,
     });
     controller.wire(m.tokens);
+    m.taps.lighting = () => controller.tapPlacing();
     const end = worldAt(m, WALL_END);
     m.store.getState().addWall({ type: 'solid', p1: end, p2: { x: end.x + 200, y: end.y } });
     m.store.getState().setActiveTool('wall');

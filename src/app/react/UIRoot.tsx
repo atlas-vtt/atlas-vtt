@@ -40,6 +40,7 @@ import { LevelLinkPopoverHost } from './components/levels/LevelLinkPopover';
 import { SceneSwitcher } from './components/scene-switcher/SceneSwitcher';
 import { presentTab as presentSceneTab } from '../services/PlayerWindowPresenter';
 import { usePresentedScene } from './hooks/usePresentedScene';
+import { OpenShapeStrip } from './components/OpenShapeStrip';
 import { PlacementHint } from './components/PlacementHint';
 import { canRunMapHotkeys, matchesMapHotkey } from '../keyboard/mapHotkeys';
 import { SettingsService } from '../services/SettingsService';
@@ -243,6 +244,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
               <>
                 <PanelBoundary name="the turn banner"><TurnAnnouncer /></PanelBoundary>
                 <PanelBoundary name="the placing hint"><PlacementHint /></PanelBoundary>
+                <PanelBoundary name="the open shape's buttons"><OpenShapeStrip /></PanelBoundary>
               </>
             )}
             options={(

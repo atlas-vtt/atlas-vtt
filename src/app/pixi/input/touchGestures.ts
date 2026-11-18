@@ -12,7 +12,8 @@ const SETTLE_SLOP_PX = 3;
 /**
  * - `settling`: just down, its press held back;
  * - `tool`: the tools have its press, and its moves and release are theirs;
- * - `waiting`: on the empty map, where it becomes a pan, a tap or a long press;
+ * - `waiting`: on the empty map, where it becomes a pan, a tap or a long press, or its press held
+ *   back until it lifts or moves (`'place'`);
  * - `pan`: it pans the map alone;
  * - `navigate`: one of the two fingers that pan and zoom;
  * - `spent`: nothing until it is lifted.
@@ -33,6 +34,8 @@ interface Finger {
   onEmptyMap: boolean;
   /** Its long press began a marquee, which it has not drawn yet. */
   heldForMarquee: boolean;
+  /** It waits with its press held back, and once it leaves its place the press is the tools': a drag of theirs, no pan. */
+  dragsTool: boolean;
 }
 
 /**
@@ -87,7 +90,7 @@ export class TouchGestures {
 
   down(id: number, x: number, y: number): void {
     if (this.fingers.has(id)) return;
-    const finger: Finger = { id, start: { x, y }, x, y, role: 'spent', pressed: false, longPress: null, onEmptyMap: false, heldForMarquee: false };
+    const finger: Finger = { id, start: { x, y }, x, y, role: 'spent', pressed: false, longPress: null, onEmptyMap: false, heldForMarquee: false, dragsTool: false };
     this.fingers.set(id, finger);
     if (this.fingers.size === 1) {
       this.mostFingers = 1;
@@ -117,7 +120,9 @@ export class TouchGestures {
       case 'tool':
         return true;
       case 'waiting':
-        if (movedPast(finger.start, finger)) this.beginPan(finger);
+        if (!movedPast(finger.start, finger)) return false;
+        if (finger.dragsTool) return this.beginDrag(finger);
+        this.beginPan(finger);
         return false;
       case 'pan':
         this.effects.pan(x - fromX, y - fromY);
@@ -187,8 +192,9 @@ export class TouchGestures {
   private settle(finger: Finger): void {
     this.clearSettle();
     const mode = this.host.fingerMode();
-    if (mode === 'navigate') {
+    if (mode === 'navigate' || mode === 'place') {
       finger.role = 'waiting';
+      finger.dragsTool = mode === 'place';
     } else {
       this.effects.press(finger.id);
       finger.pressed = true;
@@ -215,6 +221,14 @@ export class TouchGestures {
     if (finger.pressed) this.effects.cancelPress(finger.id, false);
     this.effects.secondaryClick(finger.id);
     this.spend(finger);
+  }
+
+  /** The finger whose press was held back left its place: the tools get the press where it came down, and its moves from here on. */
+  private beginDrag(finger: Finger): boolean {
+    this.effects.press(finger.id);
+    finger.pressed = true;
+    finger.role = 'tool';
+    return true;
   }
 
   private beginPan(finger: Finger): void {

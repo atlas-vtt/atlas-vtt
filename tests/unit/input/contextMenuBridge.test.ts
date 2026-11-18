@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ContextMenuBridge } from '../../../src/app/input/contextMenuBridge';
 import { LONG_PRESS_MS } from '../../../src/app/input/longPress';
+import { pressBecameDrag } from '../../../src/app/input/pressBecameDrag';
 import { FakeClock } from './fakeGestureClock';
 
 type PointerInit = { pointerId?: number; pointerType?: string; clientX?: number; clientY?: number };
@@ -186,5 +187,39 @@ describe('what the bridge leaves alone', () => {
     pointer(menu, 'pointerdown');
     clock.advance(LONG_PRESS_MS);
     expect(heard).toHaveBeenCalledOnce();
+  });
+});
+
+describe('a finger that rests on something it then drags', () => {
+  it('opens no menu once the press has become a drag, though it rests on past the long press', () => {
+    const { clock, card, menus, clicks } = page();
+    pointer(card, 'pointerdown');
+    // The tile lifts after a quarter of a second; the long press is due at 400 ms.
+    clock.advance(250);
+    pressBecameDrag();
+    clock.advance(LONG_PRESS_MS);
+    expect(menus).toHaveLength(0);
+    // Nothing fired, so the click after the release is not swallowed either.
+    pointer(card, 'pointerup');
+    card.click();
+    expect(clicks).toHaveLength(1);
+  });
+
+  it('is a long press again with the next press, and hears no drag once it is gone', () => {
+    const clock = new FakeClock();
+    const bridge = new ContextMenuBridge(document, clock);
+    const root = document.body.appendChild(document.createElement('div'));
+    root.className = 'atlas-vtt-plugin';
+    cleanups.push(() => root.remove());
+    const menus: MouseEvent[] = [];
+    root.addEventListener('contextmenu', (event) => menus.push(event));
+    pointer(root, 'pointerdown');
+    pressBecameDrag();
+    pointer(root, 'pointerup');
+    pointer(root, 'pointerdown', { pointerId: 2 });
+    clock.advance(LONG_PRESS_MS);
+    expect(menus).toHaveLength(1);
+    bridge.destroy();
+    expect(() => pressBecameDrag()).not.toThrow();
   });
 });

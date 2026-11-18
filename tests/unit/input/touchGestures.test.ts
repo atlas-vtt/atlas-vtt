@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { LONG_PRESS_MS } from '../../../src/app/input/longPress';
 import type { FingerMode, GestureEffects, GestureHost } from '../../../src/app/pixi/input/gestureTypes';
-import { fingerModeOf } from '../../../src/app/pixi/input/mapGestureHost';
+import { lightingTapPlacing, type LightingToolOptions } from '../../../src/app/lighting/lightingTool';
+import { fingerModeOf, tapPlacingOf } from '../../../src/app/pixi/input/mapGestureHost';
 import { SETTLE_MS, TouchGestures } from '../../../src/app/pixi/input/touchGestures';
 import { DOUBLE_TAP_MS } from '../../../src/app/pixi/input/touchTaps';
 import { FakeClock } from './fakeGestureClock';
@@ -454,5 +455,106 @@ describe('what one finger does, tool by tool', () => {
 
   it('is the placement while tokens are placed by hand', () => {
     expect(fingerModeOf('move', true, 'pan')).toBe('direct');
+  });
+});
+
+describe('one finger in a tool whose press places something', () => {
+  it('holds the press back while the finger rests: a second finger finds nothing placed, and nothing to take back', () => {
+    const s = scene('place');
+    land(s);
+    s.clock.advance(200);
+    expect(s.log).toEqual([]);
+    s.gestures.down(2, 300, 100);
+    expect(s.log).toEqual(['beginNavigation']);
+    s.gestures.move(2, 340, 100);
+    s.gestures.up(1, 100, 100);
+    s.gestures.up(2, 340, 100);
+    expect(s.log.some((entry) => entry.startsWith('press') || entry.startsWith('cancelPress'))).toBe(false);
+  });
+
+  it('is a tap when lifted in place: the tools get the press and the release together', () => {
+    const s = scene('place');
+    land(s);
+    s.clock.advance(120);
+    expect(s.gestures.up(1, 102, 101)).toBe(true);
+    expect(s.log).toEqual(['press 1']);
+  });
+
+  it('is the tools\' drag once it has gone 8 px, from where it came down, and never a pan', () => {
+    const s = scene('place');
+    land(s);
+    expect(s.gestures.move(1, 105, 100)).toBe(false);
+    expect(s.log).toEqual([]);
+    expect(s.gestures.move(1, 110, 100)).toBe(true);
+    expect(s.log).toEqual(['press 1']);
+    expect(s.gestures.move(1, 160, 100)).toBe(true);
+    expect(s.gestures.up(1, 160, 100)).toBe(true);
+    expect(s.log).toEqual(['press 1']);
+  });
+
+  it('opens the menu of what it rests on, with a ring, and no press was ever handed on', () => {
+    const s = scene('place', false, true);
+    land(s);
+    s.clock.advance(LONG_PRESS_MS);
+    expect(s.log).toEqual(['showRing 100 100 350', 'hideRing', 'secondaryClick 1']);
+    expect(s.gestures.up(1, 100, 100)).toBe(false);
+  });
+});
+
+describe('a tool that places by taps', () => {
+  it('pans under a finger where a shape is placed tap by tap, and holds the press back where a press places at once', () => {
+    expect(fingerModeOf('fog', false, 'tool', 'taps')).toBe('navigate');
+    expect(fingerModeOf('wall', false, 'tool', 'press')).toBe('place');
+    expect(fingerModeOf('wall', false, 'pan', 'press')).toBe('navigate');
+    expect(fingerModeOf('wall', false, 'tool', null)).toBe('tool');
+  });
+
+  it('never stands before the tokens of the move tool or a placement by hand', () => {
+    expect(fingerModeOf('move', false, 'tool', 'taps')).toBe('objects');
+    expect(fingerModeOf('wall', true, 'tool', 'taps')).toBe('direct');
+  });
+
+  it('between two taps of a shape, two fingers pan and the tools hear of neither', () => {
+    const s = scene('navigate');
+    land(s);
+    expect(s.gestures.up(1, 100, 100)).toBe(true);
+    s.clock.advance(300);
+    land(s, 2, 200, 200);
+    s.clock.advance(100);
+    s.gestures.down(3, 320, 200);
+    s.gestures.move(2, 240, 200);
+    s.gestures.move(3, 360, 200);
+    expect(s.gestures.up(2, 240, 200)).toBe(false);
+    expect(s.gestures.up(3, 360, 200)).toBe(false);
+    s.clock.advance(300);
+    land(s, 4, 400, 300);
+    expect(s.gestures.up(4, 400, 300)).toBe(true);
+    expect(s.log.filter((entry) => entry.startsWith('press') || entry.startsWith('cancelPress'))).toEqual(['press 1', 'press 4']);
+  });
+});
+
+describe('what a tap places, tool by tool', () => {
+  const fog = (shape: 'brush' | 'polygon', activeTool = 'fog'): Parameters<typeof tapPlacingOf>[0] => ({ activeTool, fogTool: { shape, brushSize: 50 } });
+
+  it('is a corner of the fog tool\'s polygon, with either fog tool, and nothing of its other shapes', () => {
+    expect(tapPlacingOf(fog('polygon'))).toBe('taps');
+    expect(tapPlacingOf(fog('polygon', 'eraser'))).toBe('taps');
+    expect(tapPlacingOf(fog('brush'))).toBeNull();
+  });
+
+  it('is the lighting tool\'s to say with that tool, and no other tool is asked', () => {
+    expect(tapPlacingOf(fog('polygon', 'wall'), () => 'press')).toBe('press');
+    expect(tapPlacingOf(fog('polygon', 'wall'))).toBeNull();
+    expect(tapPlacingOf(fog('polygon', 'draw'), () => 'taps')).toBeNull();
+  });
+
+  it('with the lighting tool is a corner while a chain, a zone or an opening is under way, else held back, and nothing where a press begins a stroke', () => {
+    const tool = (mode: LightingToolOptions['mode'], drawMode: LightingToolOptions['drawMode'] = 'point-to-point'): LightingToolOptions => ({ mode, drawMode, lightPreset: null });
+    expect(lightingTapPlacing(tool('draw'), true)).toBe('taps');
+    expect(lightingTapPlacing(tool('light-zone'), true)).toBe('taps');
+    for (const mode of ['draw', 'place-light', 'light-zone', 'level-surface'] as const) expect(lightingTapPlacing(tool(mode), false)).toBe('press');
+    expect(lightingTapPlacing(tool('draw', 'freeform'), false)).toBeNull();
+    expect(lightingTapPlacing(tool('rooms'), false)).toBeNull();
+    expect(lightingTapPlacing(tool('explored-memory'), false)).toBeNull();
   });
 });

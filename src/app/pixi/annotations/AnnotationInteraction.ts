@@ -53,7 +53,7 @@ export interface AnnotationInteractionDeps {
    * Opens the menu of the selected annotations at the screen point `at`, `clicked` being the one
    * under the pointer; false where there is nothing to offer. Unset: a secondary press opens none.
    */
-  menu?(selected: readonly Annotation[], clicked: Annotation | null, at: { x: number; y: number }): boolean;
+  menu?(selected: readonly Annotation[], clicked: Annotation | null, at: { x: number; y: number }, point?: { remove(): void } | null): boolean;
   /**
    * Whether the primary press now handled only closes a menu of the tool's bars: it is taken, and
    * selects, moves and lets go of nothing, so nothing is drawn by it either. Unset: no press does.
@@ -373,7 +373,7 @@ export class AnnotationInteraction {
       read = this.read();
     }
     this.gestures.cancel();
-    return this.deps.menu?.(read.selected, at, { x: event.clientX, y: event.clientY }) ?? false;
+    return this.deps.menu?.(read.selected, at, { x: event.clientX, y: event.clientY }, this.sparePointAt(point, read)) ?? false;
   }
 
   private cursorAt(point: Point, covered: () => boolean, free = false): string | null {
@@ -423,6 +423,15 @@ export class AnnotationInteraction {
   }
 
   /** Removes the point `index` of the one line whose points show, where it has one to spare; whether it went. */
+  /** The point of the selected line that lies at `point`, where the line can spare it: what a menu opened there offers to remove. */
+  private sparePointAt(point: Point, read: SelectionRead): { remove(): void } | null {
+    const grip = this.gripAt(point, read);
+    const line = read.handles?.line;
+    if (grip?.kind !== 'point' || !line || !withPointRemoved(line, grip.index)) return null;
+    const { index } = grip;
+    return { remove: () => { this.removePoint(index); } };
+  }
+
   private removePoint(index: number): boolean {
     const line = this.read().handles?.line;
     const place: AnnotationPlace | null = line ? withPointRemoved(line, index) : null;

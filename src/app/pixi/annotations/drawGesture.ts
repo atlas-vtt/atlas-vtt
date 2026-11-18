@@ -194,6 +194,28 @@ export class DrawGesture {
     return CANCEL;
   }
 
+  /**
+   * The press is lost without a release (a second finger came down, the system took the touch). A
+   * shape placed click by click waits between its clicks: it keeps its points and waits on, as if
+   * the press had never come. Whatever a press holds (a stroke, a dragged shape, a sweep) is dropped.
+   */
+  lose(): DrawGestureResult {
+    if (!this.placing) return this.cancel();
+    this.pressedAt = null;
+    this.dragged = false;
+    return NONE;
+  }
+
+  /** Whether a line placed click by click is under way: Enter ends it, and Backspace takes a corner back. */
+  get placingLine(): boolean {
+    return this.current === 'line' && this.placing;
+  }
+
+  /** How many corners the line under way has placed: the first stays, the others can be taken back. */
+  get corners(): number {
+    return this.fixed.length;
+  }
+
   /** The tool's work ends by something else than its own keys: a shape under way is dropped, a sweep ends where it is. */
   stop(): DrawGestureResult {
     return sweeps(this.current) ? this.over(null) : this.cancel();

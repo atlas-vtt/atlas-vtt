@@ -1,4 +1,5 @@
 import { LongPress, type PressClock } from './longPress';
+import { onPressBecameDrag } from './pressBecameDrag';
 import { noteTouchMenu } from './touchMenuPoint';
 
 /** What is Atlas' own in a document: its views and cards, and what it portals to the body (menus, dialogs, panels). */
@@ -29,7 +30,8 @@ function isElement(target: EventTarget | null): target is Element {
  * One timing on every device: iOS never sends `contextmenu` for a touch, and Android's web view
  * sends its own about 100 ms later, which is swallowed here. The tap that would follow the
  * release is swallowed too, text under the finger is not selected, and a list that scrolls
- * under the finger ends the press.
+ * under the finger ends the press. So does a drag the resting finger began before the long press
+ * was due (`pressBecameDrag`): what is being dragged opens no menu.
  */
 export class ContextMenuBridge {
   private readonly win: Window;
@@ -41,6 +43,7 @@ export class ContextMenuBridge {
   private fired = false;
   /** The fingers down in the document, on Atlas' elements or not. */
   private readonly touches = new Set<number>();
+  private readonly stopHearingDrags: () => void;
 
   constructor(private readonly doc: Document, clock?: PressClock) {
     this.win = doc.defaultView ?? window;
@@ -58,10 +61,12 @@ export class ContextMenuBridge {
     doc.addEventListener('click', this.onClick, true);
     doc.addEventListener('selectstart', this.onSelectStart, true);
     this.win.addEventListener('blur', this.onBlur);
+    this.stopHearingDrags = onPressBecameDrag(this.drop);
   }
 
   destroy(): void {
     this.drop();
+    this.stopHearingDrags();
     const { doc } = this;
     doc.removeEventListener('pointerdown', this.onPointerDown, true);
     doc.removeEventListener('pointermove', this.onPointerMove, true);

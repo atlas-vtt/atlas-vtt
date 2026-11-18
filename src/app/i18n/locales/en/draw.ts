@@ -70,6 +70,7 @@ export const draw = {
   'draw.unlockFirst': 'Unlock it first',
   'draw.menu.drawnBy': 'Drawn by {name}',
   'draw.menu.edit': 'Edit',
+  'draw.menu.removePoint': 'Remove point',
   'draw.menu.show': 'Show to players',
   'draw.menu.hide': 'Hide from players',
   'draw.menu.above': 'Above the tokens',
