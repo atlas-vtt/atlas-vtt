@@ -87,8 +87,9 @@
   }
 
   // A switch row in a corner keeps its label on the text edge and puts its switch in the corner,
-  // $surface-inset from the border, its corner concentric with the menu's.
-  #{menu-corner('.atlas-dropdown-toggle-row')} {
+  // $surface-inset from the border, its corner concentric with the menu's. Every other switch of
+  // that menu stands there too, so its switches stay one column.
+  &:has(#{menu-corner('.atlas-dropdown-toggle-row')}) .atlas-dropdown-toggle-row {
     padding-inline-end: 0;
   }
 }
