@@ -198,6 +198,14 @@ export class SettingsService {
     this.commit();
   }
 
+  /** Shows one tutorial again from its first step, also while the others are switched off. */
+  replayTutorial(id: TutorialId): void {
+    const completed = { ...this.settings.onboarding.completed };
+    delete completed[id];
+    this.settings.onboarding = { ...this.settings.onboarding, enabled: true, completed };
+    this.commit();
+  }
+
   markTokenImported(): void {
     if (this.settings.onboarding.tokenImported) return;
     this.settings.onboarding = { ...this.settings.onboarding, tokenImported: true };

@@ -152,7 +152,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
 
   return (
     <>
-      <AssetManagerWindow isOpen={isOpen} onClose={onClose} onExitComplete={onExitComplete} overlayRef={overlayRef}>
+      <AssetManagerWindow isOpen={isOpen} onClose={onClose} onExitComplete={onExitComplete} overlayRef={overlayRef} fadeOnly={armarium.shown}>
         <div
           className={`atlas-asset-manager-container ${sidebar.isFloating ? 'atlas-sidebar-floating' : ''}`}
           ref={containerRef}
@@ -272,7 +272,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
         </div>
       </AssetManagerWindow>
 
-      <AssetManagerTours isOpen={isOpen} settings={settings} crud={crud} tags={tags} statblock={statblock} />
+      <AssetManagerTours isOpen={isOpen} settings={settings} crud={crud} tags={tags} statblock={statblock} onShowMaps={() => changeTab('maps')} />
 
       <ModalLayer
         isOpen={isOpen}

@@ -30,7 +30,8 @@ function isImageFile(file: TFile): boolean {
   return IMAGE_EXTENSIONS.includes(file.extension.toLowerCase());
 }
 
-async function openDashboard(plugin: Plugin): Promise<void> {
+/** Opens Atlas' start page in a new tab and brings it to the front. */
+export async function openDashboard(plugin: Plugin): Promise<void> {
   try {
     const leaf = plugin.app.workspace.getLeaf(true);
     await leaf.setViewState({ type: DASHBOARD_VIEW_TYPE, state: {} });
@@ -126,6 +127,8 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
     name: t('command.openDashboard'),
     callback: () => void openDashboard(plugin),
   });
+  // Atlas' one door in the ribbon: the start page leads to everything else.
+  plugin.addRibbonIcon('map', t('command.openAtlas'), () => void openDashboard(plugin));
 
   plugin.addCommand({
     id: 'generate-dungeon',

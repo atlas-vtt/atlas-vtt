@@ -1,8 +1,9 @@
 import React, { useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { Keyboard, Search } from 'lucide-react';
+import { Compass, Keyboard, Search } from 'lucide-react';
 import { Platform } from 'obsidian';
+import { Button } from '../packages/components/primitives/button';
 import { CloseButton } from '../packages/components/primitives/CloseButton';
 import { dialogOverlayMotion, useDialogWindowVariants } from '../packages/components/primitives/dialogMotion';
 import type { SettingsService } from '../services/SettingsService';
@@ -29,8 +30,16 @@ function RowKeys({ row }: { row: CheatSheetRow }): React.ReactElement {
   );
 }
 
+interface HotkeyHelpProps {
+  settings?: SettingsService | undefined;
+  onClose: () => void;
+  isPlayerView?: boolean;
+  /** Starts the map tour again; the sheet offers it only where it is given. */
+  onTour?: (() => void) | undefined;
+}
+
 /** The cheat sheet: every shortcut of the map with the GM's own keys, as caps of the GM's platform, and a search. */
-export function HotkeyHelp({ settings: explicit, onClose, isPlayerView = false }: { settings?: SettingsService | undefined; onClose: () => void; isPlayerView?: boolean }): React.JSX.Element {
+export function HotkeyHelp({ settings: explicit, onClose, isPlayerView = false, onTour }: HotkeyHelpProps): React.JSX.Element {
   const settings = useAtlasSettings(explicit);
   const bindings = settings?.getHotkeys() ?? DEFAULT_MAP_HOTKEYS;
   const ref = useRef<HTMLDivElement>(null);
@@ -58,6 +67,11 @@ export function HotkeyHelp({ settings: explicit, onClose, isPlayerView = false }
             <Search aria-hidden="true" />
             <input type="text" value={query} placeholder={t('hotkey.search')} aria-label={t('hotkey.search')} spellCheck={false} onChange={(event) => setQuery(event.target.value)} />
           </label>
+          {onTour && (
+            <Button variant="ghost" size="sm" className="atlas-cheat-sheet__tour" onClick={onTour}>
+              <Compass aria-hidden="true" />{t('tour.replay')}
+            </Button>
+          )}
           <CloseButton onClick={onClose} aria-label={t('hotkey.close')} />
         </header>
         <div className="atlas-cheat-sheet__body">

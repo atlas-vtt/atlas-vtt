@@ -41,6 +41,7 @@ import { PlacementHint } from './components/PlacementHint';
 import { canRunMapHotkeys, matchesMapHotkey } from '../keyboard/mapHotkeys';
 import { SettingsService } from '../services/SettingsService';
 import { HotkeyHelp } from '../keyboard/HotkeyHelp';
+import { MapTours } from '../onboarding/MapTours';
 import { defeatedOnMap } from '../initiative/defeatedOnMap';
 
 
@@ -177,10 +178,16 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
         <AnimatePresence>
           {isHotkeyHelpOpen && (
             <PanelBoundary key="cheat-sheet" name="the cheat sheet">
-              <HotkeyHelp settings={settings} isPlayerView={isPlayerView} onClose={() => setHotkeyHelpOpen(false)} />
+              <HotkeyHelp
+                settings={settings}
+                isPlayerView={isPlayerView}
+                onClose={() => setHotkeyHelpOpen(false)}
+                onTour={isPlayerView ? undefined : () => { setHotkeyHelpOpen(false); settings?.replayTutorial('map'); }}
+              />
             </PanelBoundary>
           )}
         </AnimatePresence>
+        {!isPlayerView && <PanelBoundary name="the tours"><MapTours root={view?.containerEl ?? null} settings={settings} /></PanelBoundary>}
         <div className="atlas-ui" style={{ position: 'relative', width: '100%', height: '100%' }}>
           {/* Every surface has its own boundary: one that fails must not take the others with it */}
           {/* Map chrome stays mounted while a scene loads; the loading overlay blocks input meanwhile */}

@@ -64,7 +64,7 @@ import { EXTENSION_ATLASMAP } from './src/app/utils/sceneFiles';
 import { registerColorSwatchIcons } from './src/app/plugin/colorSwatchIcons';
 import { HeaderAutocompleteSuggest } from './src/app/plugin/HeaderAutocompleteSuggest';
 import { registerAtlasLinks } from './src/app/links/registerAtlasLinks';
-import { registerCommands } from './src/app/plugin/registerCommands';
+import { openDashboard, registerCommands } from './src/app/plugin/registerCommands';
 import { registerArmarium } from './src/app/plugin/armarium';
 import { CampaignFiles } from './src/app/campaigns/CampaignFiles';
 import { CampaignBooks } from './src/app/campaigns/players/CampaignBooks';
@@ -276,6 +276,8 @@ export default class AtlasVTTPlugin extends Plugin {
       this.imageDisplayService.registerContextMenu();
       registerChromeVisibility(this);
       this.changelogService?.showUpdates();
+      // A vault Atlas has never run in opens on the start page, whose tour takes it from there.
+      runInBackground(existingInstallation.then(async (existing) => { if (!existing && !this.unloaded) await openDashboard(this); }), 'Opening the start page');
       runInBackground(addStarterTokens(this.app, AssetService.getInstance(this.app), this.settingsService), 'Adding the starter tokens');
       runInBackground(this.carryOverTokenBars(), 'Carrying over the token bar settings');
       runInBackground(migrateLegacySnapshots(this.app, AssetService.getInstance(this.app)), 'Moving scene snapshots into their collections');

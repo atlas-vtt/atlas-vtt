@@ -7,8 +7,15 @@
 - Share your own collections in the Armarium without leaving Atlas: Share in the Armarium, in the ⋯ menu beside the collection picker, or Share a collection on the Armarium's page signs you in, uploads the collection, shows what the Armarium's checks found, and publishes it with its description, tags and licence
 - Sign in to your Atlas account in Atlas's settings. The account is optional, and the same one hosts online tables
 
+**New Feature: Getting started**
+- Atlas opens on its start page the first time it runs, and a short tour shows what each part of it is for
+- Your first scene gets a tour of the map: scene tabs, the tools, what your players see, the asset manager, the command palette and DM screen, and the shortcuts
+- Online play's dock and the table log explain themselves the first time they appear
+- Take the tour again from the cheat sheet or the command palette
+
 **General**
 - The documentation opens inside Atlas: choose Documentation in the command palette to read the guides beside the map
+- An Atlas VTT button in Obsidian's ribbon opens the start page, and "Open scene browser" is now called "Open asset manager"
 
 ## Improved
 
