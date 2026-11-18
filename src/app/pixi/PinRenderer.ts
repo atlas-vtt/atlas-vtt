@@ -15,7 +15,7 @@ import { destroyTree } from "./utils/destroyTree";
 import { hearPressesLast, isHandled } from "./utils/handledEvents";
 import { isPrimaryPress, isSecondaryPress } from "./utils/pointerButtons";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
-import { beginHistoryTransaction, endHistoryTransaction } from '../stores/history';
+import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../stores/history';
 import type { ContextMenuEntry } from '../react/root/ContextMenuContext';
 import { isPinLabelKind, nextPinLabel } from '../tools/pinLabels';
 import { dispatchPinAction } from './utils/pinActions';
@@ -439,10 +439,25 @@ export class PinRenderer {
         }
       };
 
-      const onPointerUp = (): void => {
+      const stopListening = (): void => {
         this.viewport.off('pointermove', onPointerMove);
         this.viewport.off('pointerup', onPointerUp);
         this.viewport.off('pointerupoutside', onPointerUp);
+        this.viewport.off('pointercancel', onPointerCancel);
+      };
+
+      // The press is lost (a second finger, a touch the system took): the pin goes back, unopened, and no undo step is left
+      const onPointerCancel = (): void => {
+        stopListening();
+        if (!isDragging) return;
+        this.store.getState().updateNotePin(pinId, initialPinPos);
+        this.store.getState().setPersistenceEnabled(true);
+        abandonHistoryTransaction(this.store);
+        this.viewport.plugins.resume('drag');
+      };
+
+      const onPointerUp = (): void => {
+        stopListening();
 
         if (isDragging) {
           this.store.getState().setPersistenceEnabled(true);
@@ -460,6 +475,7 @@ export class PinRenderer {
       this.viewport.on('pointermove', onPointerMove);
       this.viewport.on('pointerup', onPointerUp);
       this.viewport.on('pointerupoutside', onPointerUp);
+      this.viewport.on('pointercancel', onPointerCancel);
     }
   }
   
