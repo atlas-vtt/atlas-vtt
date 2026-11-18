@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { installPointerEvents, pointerEvent } from '../helpers/pointerEvents';
 import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -58,6 +59,7 @@ describe('pinning a statblock preview of a token on the map', () => {
   const mapLeaf = { view: { viewId: VIEW_ID, getViewType: (): string => 'atlas-vtt', containerEl: { isShown: (): boolean => mapShown } } };
 
   beforeEach(() => {
+    installPointerEvents();
     vi.useFakeTimers();
     vi.stubGlobal('ResizeObserver', class { observe(): void {} disconnect(): void {} });
     Platform.isMacOS = true;
@@ -109,7 +111,7 @@ describe('pinning a statblock preview of a token on the map', () => {
   it('pins only with its pin button: a press into the window leaves it unpinned', () => {
     hoverToken(eventBus);
     const [preview] = windows();
-    preview!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    preview!.dispatchEvent(pointerEvent('pointerdown', { bubbles: true }));
     expect(preview!.classList.contains('is-pinned')).toBe(false);
     releaseMod();
     expect(windows()).toHaveLength(0);
@@ -119,9 +121,9 @@ describe('pinning a statblock preview of a token on the map', () => {
     hoverToken(eventBus);
     const [preview] = windows();
     const controls = preview!.querySelector<HTMLElement>('.atlas-statblock-preview-window__controls')!;
-    controls.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 10 }));
-    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 60, clientY: 40 }));
-    document.dispatchEvent(new MouseEvent('mouseup'));
+    controls.dispatchEvent(pointerEvent('pointerdown', { bubbles: true, clientX: 10, clientY: 10 }));
+    document.dispatchEvent(pointerEvent('pointermove', { clientX: 60, clientY: 40 }));
+    document.dispatchEvent(pointerEvent('pointerup'));
 
     expect(preview!.style.left).toBe('50px');
     expect(preview!.style.top).toBe('30px');
@@ -149,9 +151,9 @@ describe('pinning a statblock preview of a token on the map', () => {
       manager.setViewElement(viewEl);
       const preview = openLaidOut();
 
-      capsuleOf(preview).dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 920, clientY: 110 }));
-      document.dispatchEvent(new MouseEvent('mousemove', { clientX: 920 + 2000, clientY: 110 - 500 }));
-      document.dispatchEvent(new MouseEvent('mouseup'));
+      capsuleOf(preview).dispatchEvent(pointerEvent('pointerdown', { bubbles: true, clientX: 920, clientY: 110 }));
+      document.dispatchEvent(pointerEvent('pointermove', { clientX: 920 + 2000, clientY: 110 - 500 }));
+      document.dispatchEvent(pointerEvent('pointerup'));
 
       // The capsule's right edge on the view's right edge, its top on the view's top.
       expect([preview.style.left, preview.style.top]).toEqual(['320px', '-60px']);
@@ -163,19 +165,19 @@ describe('pinning a statblock preview of a token on the map', () => {
       const rolled = vi.fn();
       preview.addEventListener('click', rolled);
 
-      roll.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 700, clientY: 160 }));
-      document.dispatchEvent(new MouseEvent('mouseup'));
+      roll.dispatchEvent(pointerEvent('pointerdown', { bubbles: true, clientX: 700, clientY: 160 }));
+      document.dispatchEvent(pointerEvent('pointerup'));
       roll.click();
       expect(rolled).toHaveBeenCalledTimes(1);
       // Rolling a die never pins the window
       expect(preview.classList.contains('is-pinned')).toBe(false);
 
       const placed = preview.style.left;
-      roll.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 700, clientY: 160 }));
-      document.dispatchEvent(new MouseEvent('mousemove', { clientX: 702, clientY: 161 }));
+      roll.dispatchEvent(pointerEvent('pointerdown', { bubbles: true, clientX: 700, clientY: 160 }));
+      document.dispatchEvent(pointerEvent('pointermove', { clientX: 702, clientY: 161 }));
       expect(preview.style.left).toBe(placed);
-      document.dispatchEvent(new MouseEvent('mousemove', { clientX: 650, clientY: 200 }));
-      document.dispatchEvent(new MouseEvent('mouseup'));
+      document.dispatchEvent(pointerEvent('pointermove', { clientX: 650, clientY: 200 }));
+      document.dispatchEvent(pointerEvent('pointerup'));
       roll.click();
       expect([preview.style.left, preview.style.top]).toEqual(['-50px', '40px']);
       expect(rolled).toHaveBeenCalledTimes(1);
