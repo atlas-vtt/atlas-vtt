@@ -105,6 +105,13 @@ export class WallTool {
     }
   }
 
+  /** Takes the chain's last corner back, with the wall that led to it. Its first corner stays. */
+  removeLastVertex(): void {
+    if (!this.isDrawing || this.chain.length < 2) return;
+    this.chain.pop();
+    this.eventBus.emit('wall-segment-removed', this.chain[this.chain.length - 1]);
+  }
+
   /**
    * Continue drawing from an existing wall endpoint.
    * Starts a chain whose first vertex is the given position: the chain `chainId` when given, else a new one.

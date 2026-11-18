@@ -7,6 +7,7 @@ import { Viewport } from 'pixi-viewport';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';
 import { GENERIC_LIGHT_PRESETS } from '../../src/app/gameSystems/lightPresets/generic';
 import { lightPresetsOnMap } from '../../src/app/lighting/lightPresetChoice';
+import { openShapeOf } from '../../src/app/input/openShape';
 import { watchInput } from '../../src/app/packages/components/primitives/lastInput';
 import { WallEditor } from '../../src/app/pixi/lighting/WallEditor';
 import { showWallMenu } from '../../src/app/pixi/lighting/lightingMenus';
@@ -169,6 +170,106 @@ describe('a chain of walls under a finger', () => {
 
   it('goes on from its last corner for a mouse, whose double click ends it', () => {
     expect(chainThenTap('mouse')).toMatchObject([{ p1: { x: 500, y: 400 }, p2: { x: 600, y: 400 } }, { p1: { x: 600, y: 400 }, p2: { x: 700, y: 500 } }]);
+  });
+});
+
+describe('a chain of walls without Shift', () => {
+  function use(kind: 'mouse' | 'touch'): void {
+    const event = new Event('pointerdown', { bubbles: true });
+    Object.defineProperty(event, 'pointerType', { value: kind });
+    document.body.dispatchEvent(event);
+  }
+  /** Three corners placed with no key held, each press released. */
+  function threeTaps(kind: 'mouse' | 'touch'): { walls: WallSegment[]; store: ViewAtlasStore; editor: WallEditor } {
+    const { editor, store, wall } = setup();
+    const stopWatching = watchInput(document);
+    use(kind);
+    try {
+      for (const corner of [{ x: 500, y: 400 }, { x: 600, y: 400 }, { x: 600, y: 500 }]) {
+        editor.pointerDown(corner, false, false);
+        editor.pointerUp();
+      }
+      return { walls: others(store, wall), store, editor };
+    } finally {
+      use('mouse');
+      stopWatching();
+    }
+  }
+
+  it('goes on from corner to corner under a finger, which can hold no Shift, as one undo step once it ends', () => {
+    const { walls, store, editor } = threeTaps('touch');
+    expect(walls).toMatchObject([{ p1: { x: 500, y: 400 }, p2: { x: 600, y: 400 } }, { p1: { x: 600, y: 400 }, p2: { x: 600, y: 500 } }]);
+    expect(new Set(walls.map((wall) => wall.chainId)).size).toBe(1);
+    expect(editor.drawingChain).toBe(true);
+    const steps = (): number => getHistoryStore(store)?.getState().pastStates.length ?? 0;
+    const before = steps();
+    openShapeOf(store).finish();
+    expect(editor.drawingChain).toBe(false);
+    expect(steps()).toBe(before + 1);
+  });
+
+  it('ends with its second corner for a mouse, and the third click begins another', () => {
+    const { walls, editor } = threeTaps('mouse');
+    expect(walls).toMatchObject([{ p1: { x: 500, y: 400 }, p2: { x: 600, y: 400 } }]);
+    expect(editor.drawingChain).toBe(true);
+  });
+});
+
+describe('a chain of walls and the buttons of the shape under way', () => {
+  const steps = (store: ViewAtlasStore): number => getHistoryStore(store)?.getState().pastStates.length ?? 0;
+
+  it('tells of the chain while it waits for a corner, and takes its last corner back with the wall that led to it', () => {
+    const { editor, store, wall } = setup();
+    const open = openShapeOf(store);
+    expect(open.state).toBeNull();
+    editor.pointerDown({ x: 500, y: 400 }, true, false);
+    editor.pointerUp();
+    expect(open.state).toEqual({ canFinish: true, canGoBack: false });
+    editor.pointerDown({ x: 600, y: 400 }, true, false);
+    editor.pointerDown({ x: 600, y: 500 }, true, false);
+    expect(open.state).toEqual({ canFinish: true, canGoBack: true });
+    expect(others(store, wall)).toHaveLength(2);
+    open.back();
+    expect(others(store, wall)).toMatchObject([{ p1: { x: 500, y: 400 }, p2: { x: 600, y: 400 } }]);
+    // The chain goes on from the corner before.
+    editor.pointerDown({ x: 700, y: 400 }, true, false);
+    expect(others(store, wall).map((segment) => segment.p1)).toEqual([{ x: 500, y: 400 }, { x: 600, y: 400 }]);
+    open.finish();
+    expect(open.state).toBeNull();
+  });
+
+  it('leaves no undo step for a chain whose corners were all taken back', () => {
+    const { editor, store, wall } = setup();
+    const open = openShapeOf(store);
+    const before = steps(store);
+    editor.pointerDown({ x: 500, y: 400 }, true, false);
+    editor.pointerDown({ x: 600, y: 400 }, true, false);
+    open.back();
+    expect(open.state).toEqual({ canFinish: true, canGoBack: false });
+    expect(others(store, wall)).toEqual([]);
+    open.finish();
+    expect(steps(store)).toBe(before);
+    // The next chain is a step of its own.
+    editor.pointerDown({ x: 500, y: 400 }, false, false);
+    editor.pointerDown({ x: 600, y: 400 }, false, false);
+    expect(steps(store)).toBe(before + 1);
+  });
+
+  it('drops a chain whose first corner came from a press that is lost, and keeps one whose press was released', () => {
+    const { editor, store, wall } = setup();
+    const open = openShapeOf(store);
+    // The first finger of two that move the map: its press reached the editor, its release never does.
+    editor.pointerDown({ x: 500, y: 400 }, false, false);
+    expect(editor.drawingChain).toBe(true);
+    editor.pointerCancel();
+    expect(editor.drawingChain).toBe(false);
+    expect(open.state).toBeNull();
+    editor.pointerDown({ x: 500, y: 400 }, false, false);
+    editor.pointerUp();
+    editor.pointerCancel();
+    expect(editor.drawingChain).toBe(true);
+    editor.pointerDown({ x: 600, y: 400 }, false, false);
+    expect(others(store, wall)).toHaveLength(1);
   });
 });
 

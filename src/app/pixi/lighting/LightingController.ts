@@ -43,6 +43,8 @@ import { SightRulesWatch } from './SightRulesWatch';
 import { WallEditor } from './WallEditor';
 import type { LightingQualitySource } from '../../lighting/lightingQuality';
 import { levelObjects } from '../../levels/levelObjects';
+import { lightingTapPlacing } from '../../lighting/lightingTool';
+import type { TapPlacing } from '../../input/tapPlacing';
 import { glideWayIsClear } from '../../lighting/glideWay';
 import type { ShownPlaces } from '../../lighting/shownPlaces';
 import { followShownPlaces } from '../../lighting/shownTokens';
@@ -189,6 +191,13 @@ export class LightingController {
     });
     // The token renderer brings the outlines of sensed tokens, which the view now shows or hides.
     this.session.sync();
+  }
+
+  /** What a finger's tap places with the lighting tool now; null where a press is a stroke's start, or the editor does not show. */
+  tapPlacing(): TapPlacing | null {
+    if (!this.editor.shown) return null;
+    const underWay = this.editor.drawingChain || this.modes.zones.drawing || this.modes.surfaces.drawing;
+    return lightingTapPlacing(this.deps.store.getState().lightingTool, underWay);
   }
 
   gmOverlays(): GmOverlays {

@@ -1,6 +1,6 @@
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../../storeFactory';
-import { beginHistoryTransaction, discardHistoryTransaction, endHistoryTransaction } from '../../stores/history';
+import { abandonHistoryTransaction, beginHistoryTransaction, discardHistoryTransaction, endHistoryTransaction } from '../../stores/history';
 import type { WallInput } from '../../types/wallTypes';
 
 /**
@@ -30,6 +30,14 @@ export class WallDrawingSession {
     const id = this.store.getState().addWall(wall);
     if (this.drawing) this.wallIds.push(id);
     return id;
+  }
+
+  /** Takes back the wall placed last; the chain goes on. With its last wall gone the chain has written nothing, and its undo step is not begun. */
+  removeLast(): void {
+    const id = this.wallIds.pop();
+    if (id === undefined) return;
+    this.store.getState().deleteWalls([id]);
+    if (this.wallIds.length === 0) abandonHistoryTransaction(this.store);
   }
 
   finish(): void {

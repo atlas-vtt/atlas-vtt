@@ -17,6 +17,7 @@ import { splitWall } from './wallEdits';
 import { chainEndingAt, wallEndNear, wallEndReach } from './wallEnds';
 import { fingerReaches } from '../utils/pointerReach';
 import { levelObjects } from '../../levels/levelObjects';
+import { openShapeOf, type OpenShape, type OpenShapeControls } from '../../input/openShape';
 
 interface SegmentEvent { p1: Point; p2: Point; type: WallType; chainId: string }
 
@@ -36,6 +37,14 @@ export class WallEditor {
   private readonly cleanups: Array<() => void> = [];
   /** Alt was held at the last pointer move: what is drawn lands where the pointer is, not on a wall end close by. */
   private free = false;
+  /** The press that is down began the chain under way: lost, it takes the chain's first corner with it. */
+  private pressBeganChain = false;
+  private readonly open: OpenShape;
+  /** What the buttons of a chain under way do: end it where it is, and take its last corner back. */
+  private readonly openControls: OpenShapeControls = {
+    finish: () => this.tool.finishChain(),
+    back: () => this.tool.removeLastVertex(),
+  };
 
   /** `onLightSelection` shows the selected lights on their markers; `lightPresets` are the lights of the map's collection. */
   constructor(
@@ -50,6 +59,7 @@ export class WallEditor {
     this.doors = new DoorPlacement(store, this.renderer, this.walls);
     this.tool = new WallTool(eventBus);
     this.drawing = new WallDrawingSession(store);
+    this.open = openShapeOf(store);
     this.listen(eventBus);
   }
 
@@ -107,6 +117,7 @@ export class WallEditor {
     }
     if (settings.mode === 'point-to-point') {
       this.tool.addVertex(point.x, point.y, shift);
+      this.pressBeganChain = true;
       return true;
     }
     const start = this.vertexAt(point) ?? point;
@@ -139,6 +150,7 @@ export class WallEditor {
 
   /** A wall end clicked in place starts a chain there, joined to it; pressed and dragged, it moved. */
   pointerUp(): void {
+    this.pressBeganChain = false;
     const clicked = this.walls.handlePointerUp();
     if (clicked && this.drawsChains && !this.tool.isCurrentlyDrawing()) {
       this.walls.clearSelection();
@@ -147,10 +159,19 @@ export class WallEditor {
     this.finishStroke();
   }
 
-  /** The press is lost (a second finger, a touch the system took): a stroke drawn freehand goes and a held joint goes back; a chain placed corner by corner stays. */
+  /**
+   * The press is lost (a second finger, a touch the system took): a stroke drawn freehand goes and a held joint goes
+   * back. A chain placed corner by corner stays, but for one this very press began: its first corner goes with it.
+   */
   pointerCancel(): void {
     this.walls.cancelDrag();
-    if (!this.tool.isCurrentlyDrawing() || this.tool.getSettings().mode !== 'freeform') return;
+    const began = this.pressBeganChain;
+    this.pressBeganChain = false;
+    if (!this.tool.isCurrentlyDrawing()) return;
+    if (this.tool.getSettings().mode !== 'freeform') {
+      if (began && this.tool.getCurrentChain().length === 1) this.tool.cancelDrawing();
+      return;
+    }
     this.tool.cancelDrawing();
     this.renderer.preview.clearStroke();
   }
@@ -209,14 +230,16 @@ export class WallEditor {
     return mode === 'point-to-point' && subMode === 'draw';
   }
 
-  private get drawingChain(): boolean {
+  /** A chain waits for its next corner: every press places one, and nothing is dragged meanwhile. */
+  get drawingChain(): boolean {
     return this.drawsChains && this.tool.isCurrentlyDrawing();
   }
 
   /**
    * The chain's next corner, on the wall end close by unless `free`. A click on its last corner adds nothing, and one
    * that closes the chain on its first ends it. A finger's tap on the last corner ends the chain: the second tap of a
-   * double tap, which a touch screen need not report as the double click that ends a chain for a mouse.
+   * double tap, which a touch screen need not report as the double click that ends a chain for a mouse. Under a finger
+   * the chain goes on from corner to corner as it does with Shift, which a finger cannot hold.
    */
   private placeCorner(point: Point, shift: boolean, free: boolean): void {
     const at = free ? point : this.wallEndNear(point) ?? point;
@@ -228,7 +251,7 @@ export class WallEditor {
       return;
     }
     if (same(last)) return;
-    this.tool.addVertex(at.x, at.y, shift && !same(chain[0]));
+    this.tool.addVertex(at.x, at.y, (shift || fingerReaches()) && !same(chain[0]));
   }
 
   /** Starts a chain at a wall end; it continues the chain of the one wall ending there. */
@@ -302,23 +325,39 @@ export class WallEditor {
     on('wall-chain-start', (point: Point) => {
       this.drawing.start();
       this.renderer.preview.setAnchor(point);
+      this.tellOpen();
     });
     on('wall-segment-created', ({ p1, p2, type, chainId }: SegmentEvent) => {
       this.drawing.add({ type, p1, p2, chainId, closed: true });
       if (this.tool.isCurrentlyDrawing()) this.renderer.preview.setAnchor(p2);
+      this.tellOpen();
+    });
+    on('wall-segment-removed', (anchor: Point) => {
+      this.drawing.removeLast();
+      this.renderer.preview.setAnchor(anchor);
+      this.tellOpen();
     });
     on('wall-chain-finish', () => {
       this.drawing.finish();
       this.renderer.preview.clear();
+      this.tellOpen();
     });
     on('wall-drawing-cancelled', () => {
       this.drawing.cancel();
       this.renderer.preview.clear();
       this.renderer.preview.clearStroke();
+      this.tellOpen();
     });
   }
 
+  /** A chain that waits for its next corner is known to the buttons that end it and take a corner back. */
+  private tellOpen(): void {
+    if (this.drawingChain) this.open.show(this, this.openControls, { canFinish: true, canGoBack: this.tool.getCurrentChain().length > 1 });
+    else this.open.end(this);
+  }
+
   destroy(): void {
+    this.open.end(this);
     this.drawing.finish();
     for (const cleanup of this.cleanups) cleanup();
     this.renderer.destroy();
