@@ -7,6 +7,7 @@ import { Viewport } from 'pixi-viewport';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';
 import { GENERIC_LIGHT_PRESETS } from '../../src/app/gameSystems/lightPresets/generic';
 import { lightPresetsOnMap } from '../../src/app/lighting/lightPresetChoice';
+import { watchInput } from '../../src/app/packages/components/primitives/lastInput';
 import { WallEditor } from '../../src/app/pixi/lighting/WallEditor';
 import { showWallMenu } from '../../src/app/pixi/lighting/lightingMenus';
 import type { ContextMenuEntry } from '../../src/app/react/root/ContextMenuContext';
@@ -137,6 +138,39 @@ function drag(editor: WallEditor, from: { x: number; y: number }, to: { x: numbe
 function others(store: ViewAtlasStore, id: string): WallSegment[] {
   return Object.values(store.getState().objects.walls).filter((wall) => wall.id !== id);
 }
+
+describe('a chain of walls under a finger', () => {
+  /** A pointer event as a device of `kind` sends it: what the map's reach goes by. */
+  function use(kind: 'mouse' | 'touch'): void {
+    const event = new Event('pointerdown', { bubbles: true });
+    Object.defineProperty(event, 'pointerType', { value: kind });
+    document.body.dispatchEvent(event);
+  }
+  /** Three corners placed with Shift, which keeps the chain going, the third on the second; then one more elsewhere. */
+  function chainThenTap(kind: 'mouse' | 'touch'): WallSegment[] {
+    const { editor, store, wall } = setup();
+    const stopWatching = watchInput(document);
+    use(kind);
+    try {
+      editor.pointerDown({ x: 500, y: 400 }, true, false);
+      editor.pointerDown({ x: 600, y: 400 }, true, false);
+      editor.pointerDown({ x: 606, y: 404 }, true, false);
+      editor.pointerDown({ x: 700, y: 500 }, true, false);
+      return others(store, wall);
+    } finally {
+      use('mouse');
+      stopWatching();
+    }
+  }
+
+  it('ends on a tap on its last corner, the second tap of a double tap: the next tap begins another', () => {
+    expect(chainThenTap('touch')).toMatchObject([{ p1: { x: 500, y: 400 }, p2: { x: 600, y: 400 } }]);
+  });
+
+  it('goes on from its last corner for a mouse, whose double click ends it', () => {
+    expect(chainThenTap('mouse')).toMatchObject([{ p1: { x: 500, y: 400 }, p2: { x: 600, y: 400 } }, { p1: { x: 600, y: 400 }, p2: { x: 700, y: 500 } }]);
+  });
+});
 
 describe('WallEditor joining walls', () => {
   it('starts a wall on a wall end clicked in place, joined to it, and leaves that end where it was', () => {
