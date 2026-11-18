@@ -59,7 +59,7 @@ function setup(contextLost = false) {
   const pixiRenderer = { name: 'webgl', gl: { isContextLost: () => contextLost }, generateTexture, extract: { canvas: () => source } };
 
   const store = createStore(subscribeWithSelector(() => ({ activeTool: 'move' })));
-  const manager = { getApp: () => ({ renderer: pixiRenderer }), getViewport: () => viewport };
+  const manager = { getApp: () => ({ renderer: pixiRenderer }), getViewport: () => viewport, getGestures: () => null };
   const orchestrator = new PixiRendererOrchestrator({} as any, manager as any, new EventEmitter(), store as any, 'test');
   const frames: SceneFrame[] = [];
   const drawn = deferred();
