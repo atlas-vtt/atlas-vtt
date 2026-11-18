@@ -3,7 +3,7 @@ import '../setup/obsidianDom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HIDE_AFTER_MS } from '../../src/app/ui/overlayScrollbars/OverlayScrollbar';
 import { OverlayScrollbars } from '../../src/app/ui/overlayScrollbars/OverlayScrollbars';
-import { atlasScrollHost, containsItsPositioned } from '../../src/app/ui/overlayScrollbars/scrollAreas';
+import { atlasScrollHost, canDrawOverlayScrollbars, containsItsPositioned } from '../../src/app/ui/overlayScrollbars/scrollAreas';
 import { thumbGeometry } from '../../src/app/ui/overlayScrollbars/thumbGeometry';
 
 describe('thumbGeometry', () => {
@@ -41,6 +41,22 @@ describe('atlasScrollHost', () => {
     element.style.position = 'relative';
     expect(containsItsPositioned(getComputedStyle(element))).toBe(true);
     element.remove();
+  });
+});
+
+describe('canDrawOverlayScrollbars', () => {
+  const windowWith = (supports?: (condition: string) => boolean): Window => ({ ...(supports && { CSS: { supports } }) }) as unknown as Window;
+
+  it('draws them where the web view places by an anchor and moves by a scroll timeline', () => {
+    const asked: string[] = [];
+    expect(canDrawOverlayScrollbars(windowWith((condition) => { asked.push(condition); return true; }))).toBe(true);
+    expect(asked).toEqual(['(anchor-name: --a) and (animation-timeline: --a)']);
+  });
+
+  it('draws none where it does not (before iPadOS 26), or cannot be asked', () => {
+    expect(canDrawOverlayScrollbars(windowWith(() => false))).toBe(false);
+    expect(canDrawOverlayScrollbars(windowWith())).toBe(false);
+    expect(canDrawOverlayScrollbars(null)).toBe(false);
   });
 });
 
