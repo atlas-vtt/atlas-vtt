@@ -4,6 +4,7 @@ import type { StoreApi } from 'zustand';
 import type { TextMeasure } from '../../annotations/annotationBounds';
 import { annotationIndex } from '../../annotations/annotationHit';
 import { annotationList, annotationRoom } from '../../annotations/annotationList';
+import { annotationsNow, putAnnotationsBack, type AnnotationsBefore } from '../../annotations/annotationsBefore';
 import { cleanFillsWritten } from '../../annotations/cleanFills';
 import type { DrawLayer, DrawMode } from '../../annotations/annotationTypes';
 import { drawCell, eraserRadius, stampSize } from '../../annotations/drawSizes';
@@ -88,7 +89,7 @@ export class DrawToolHost {
   /** An eraser's sweep is under way: its undo step is open. */
   private sweeping = false;
   /** The drawings and texts of the scene as the sweep under way found them. */
-  private beforeSweep: Pick<ViewAtlasState['objects'], 'drawings' | 'texts'> | null = null;
+  private beforeSweep: AnnotationsBefore | null = null;
   /** The sweep under way was already told that the level is full. */
   private toldFull = false;
 
@@ -171,8 +172,7 @@ export class DrawToolHost {
     if (mode !== 'eraser' || this.sweeping) return;
     this.sweeping = true;
     this.toldFull = false;
-    const { drawings, texts } = this.deps.store.getState().objects;
-    this.beforeSweep = { drawings, texts };
+    this.beforeSweep = annotationsNow(this.deps.store.getState());
     // One sweep cuts many drawings, a step at a time: all of it is one undo step.
     beginHistoryTransaction(this.deps.store);
   }
@@ -299,9 +299,7 @@ export class DrawToolHost {
     if (!this.sweeping || !before) return;
     this.sweeping = false;
     this.beforeSweep = null;
-    const state = this.deps.store.getState();
-    if (state.objects.drawings !== before.drawings) state.setDrawings(before.drawings);
-    if (state.objects.texts !== before.texts) state.setTexts(before.texts);
+    putAnnotationsBack(this.deps.store.getState(), before);
     abandonHistoryTransaction(this.deps.store);
   }
 }
