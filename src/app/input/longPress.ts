@@ -26,7 +26,7 @@ export function movedPast(from: PressPoint, to: PressPoint, slop: number = TOUCH
 }
 
 /**
- * Watches one press: `fire` runs once the finger has rested `LONG_PRESS_MS` within `TOUCH_SLOP_PX`
+ * Watches one press: `fire` runs once the finger has rested `ms` (`LONG_PRESS_MS`) within `TOUCH_SLOP_PX`
  * of where it came down. A move past that, a release, a second finger or anything else that ends
  * the press (`cancel`) leaves it a tap or a drag, and `fire` never runs.
  */
@@ -34,7 +34,7 @@ export class LongPress {
   private timer: number | null = null;
   private origin: PressPoint | null = null;
 
-  constructor(private readonly clock: PressClock, private readonly fire: (at: PressPoint) => void) {}
+  constructor(private readonly clock: PressClock, private readonly fire: (at: PressPoint) => void, private readonly ms: number = LONG_PRESS_MS) {}
 
   /** The press is still one that may become a long press. */
   get pending(): boolean {
@@ -49,7 +49,7 @@ export class LongPress {
       this.timer = null;
       this.origin = null;
       this.fire(origin);
-    }, LONG_PRESS_MS);
+    }, this.ms);
   }
 
   /** The finger is at `at`; returns whether the press still rests. */

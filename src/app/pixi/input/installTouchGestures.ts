@@ -6,6 +6,7 @@ import type { LayerVisibility } from '../playerSafeFrame';
 import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils';
 import { NO_HOST, type GestureClock, type GestureEffects, type GestureHost } from './gestureTypes';
 import { LongPressRing } from './LongPressRing';
+import { LookOnlyPointer } from './lookOnlyPointer';
 import { PointerGate } from './pointerGate';
 import { TouchGestures } from './touchGestures';
 import { TouchNavigation } from './TouchNavigation';
@@ -19,6 +20,8 @@ export interface MapGestureHost extends GestureHost {
   penTouched(): void;
   /** A finger was held on the empty map and lifted in place: `x`, `y` in the canvas' pixels, `at` in the window's. */
   emptyMapMenu?(x: number, y: number, at: { x: number; y: number }): void;
+  /** Two fingers rested on a map that is only looked at: the looking ends. */
+  endLooking?(): void;
 }
 
 /** The fingers on a map's canvas, turned into what its tools understand (`TouchGestures`). */
@@ -78,6 +81,10 @@ export function installTouchGestures(app: Application, viewport: Viewport, canva
     pinch: (fromX, fromY, fromSpan, toX, toY, toSpan) => navigation.pinch(fromX, fromY, fromSpan, toX, toY, toSpan),
     endNavigation: (glide) => navigation.end(glide),
     zoomStep: (x, y, direction) => navigation.zoomStep(x, y, direction),
+    pairHeld: () => {
+      if ('vibrate' in win.navigator) win.navigator.vibrate(HAPTIC_MS);
+      host.endLooking?.();
+    },
     undo: () => host.undo(),
     redo: () => host.redo(),
     showRing: (x, y, ms) => ring.show(x, y, ms),
@@ -92,7 +99,11 @@ export function installTouchGestures(app: Application, viewport: Viewport, canva
     () => host.penTouched(),
     (id) => gate.forget(id),
   );
-  const gate = new PointerGate(events, viewport, source.admits);
+  const lookOnly = new LookOnlyPointer(navigation);
+  const gate = new PointerGate(events, viewport, source.admits, {
+    active: () => host.fingerMode() === 'look',
+    hear: (event) => lookOnly.hear(event),
+  });
 
   return {
     setHost: (next) => {
