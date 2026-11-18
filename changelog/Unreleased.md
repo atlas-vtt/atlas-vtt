@@ -25,6 +25,8 @@
 - TrueScale: drag the frame players see by its new grip to move them with you at once, as before 0.13.1. Alt moves it off the grid, Escape puts the players back. Contributed by aryistia
 - TrueScale: Show players here keeps the staged frame in place while the players' frame glides to it. Contributed by aryistia
 - Sound is no longer an experimental feature: the Sound page, its commands and its shortcuts are there without switching anything on
+- The Sound page is calmer: its library sidebar runs the page's full height in its own tint as in the asset manager, no line parts the library from the moods, the search takes the asset manager's quiet edge, and the playing track loses its accent bar
+- Room, System output and the players' button on the Sound page have room around their words and stay lit while their menu is open
 - Experimental features can now be switched on and off in Atlas's settings tab, not only in the command palette
 - The Saver lighting now shows light reflected into shadows, like the other quality levels
 - Random tables has a calmer look: the sidebar runs the window's full height, Roll sits beside the item count on the rarity filter's line, the rarity filter folds into a menu when the window is narrow, rolled cards drop their coloured frames, and base views tick in a neutral colour
