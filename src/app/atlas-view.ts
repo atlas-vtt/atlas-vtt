@@ -21,6 +21,8 @@ import { emptyViewRoot } from './platform/viewRoot';
 
 import { ATLAS_VIEW_TYPE } from './atlasViewType';
 import { followPresentedScene } from './services/PlayerWindowPresenter';
+import type { TableMode } from './tableMode/TableMode';
+import { viewTableMode } from './tableMode/viewTableMode';
 
 export { ATLAS_VIEW_TYPE };
 
@@ -83,6 +85,8 @@ export class AtlasView extends FileView {
   private stopResizeObserver: (() => void) | null = null;
   /** Stops showing players the presented scene from this view once it loads it (`followPresentedScene`). */
   private stopFollowingPresentedScene: (() => void) | null = null;
+  /** The view as the players' picture, while its store says so (`tableModeSlice.ts`). */
+  private tableMode: TableMode | null = null;
   private lastContainerWidth: number = 0;
   private lastContainerHeight: number = 0;
   private isViewClosing = false;
@@ -271,6 +275,8 @@ export class AtlasView extends FileView {
       // Mount UI overlay once the renderer is initialized
       const uiOverlay = this._serviceManager.getUIOverlay();
       uiOverlay.mount(containerEl, this, pixiApp);
+      this.tableMode?.destroy();
+      this.tableMode = viewTableMode(this);
 
       // If state already has a map, trigger load now (file property provided by FileView)
       if (this.file instanceof TFile) {
@@ -322,6 +328,8 @@ export class AtlasView extends FileView {
 
     this.stopFollowingPresentedScene?.();
     this.stopFollowingPresentedScene = null;
+    this.tableMode?.destroy();
+    this.tableMode = null;
 
     // Clean up all services
     this._serviceManager.destroy();

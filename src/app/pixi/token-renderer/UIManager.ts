@@ -51,6 +51,8 @@ export class UIManager implements ITokenUIManager {
   public resourceDefsProvider: ResourceDefsProvider = () => [];
   /** What the map measures in, for the tokens' height chips. */
   public measurementProvider: (() => MeasurementSettings) | null = null;
+  /** Whether players see names while the canvas is the table's picture (`TokenUIRenderer.tableNameplates`). */
+  public tableNameplates: (() => boolean | undefined) | null = null;
   /** Called once the handles and controls of a new selection stand: the selection highlight passes behind them. */
   public onSelectionUIChange: (() => void) | null = null;
 
@@ -146,6 +148,7 @@ export class UIManager implements ITokenUIManager {
     ui.conditionDefsProvider = this.conditionDefsProvider;
     ui.resourceDefsProvider = () => this.resourceDefsProvider();
     ui.measurementProvider = this.measurementProvider;
+    ui.tableNameplates = this.tableNameplates;
     ui.zoomProvider = () => this.viewport.scale.x;
     ui.onScaleChange = (scale) => this.tokenControlsUI?.setScaleFor(tokenId, scale);
     ui.setPlayersView(this.playersView);

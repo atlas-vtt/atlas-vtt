@@ -7,7 +7,7 @@ import { ATLAS_VIEW_TYPE, isAtlasView } from '../atlasViewType';
 import type { ViewAtlasState } from '../storeFactory';
 import { playerWindowStore } from '../stores/playerWindowStore';
 import type { SceneTab } from '../types/sceneTabTypes';
-import { t } from '../i18n';
+import { t, tPlatform } from '../i18n';
 import type { PlayerFrameSource } from './PlayerFrameMirror';
 import { viewportCamera } from './playerFrame';
 import { PlayerWindowService } from './PlayerWindowService';
@@ -21,6 +21,7 @@ import { showsPresentedLevel } from './presentedLevel';
 import { MapController } from '../MapController';
 import { runInBackground } from '../utils/backgroundTask';
 import { isDesktopApp } from '../platform/desktopOnly';
+import { playerOverlaySources } from './playerOverlaySources';
 
 /** Unsubscribes the tab watcher of the view whose tab is currently presented. */
 let stopWatchingPresentedTab: (() => void) | null = null;
@@ -81,11 +82,21 @@ export async function presentTab(app: App, view: AtlasView, tabId: string, { ope
     const waiting = PlayerWindowService.openPlayerView(app);
     if (waiting) await restorePlayerWindow(app, waiting);
     // Players who see the scene nowhere get the player window, and so does a GM who asks for it
-    else if (openWindow || !presented.isShownElsewhere()) await openPlayerWindow(app);
+    else if (openWindow || !presented.isShownElsewhere()) await showOnThisDevice(app, view);
   }
   const notice = presentedNotice(presented);
-  // Mobile has no player window to open later, so a scene nobody is shown yet is not announced
-  if (notice !== 'present.chosen' || isDesktopApp()) showNotice(t(notice, { name: presentedName(view, tab) }));
+  // On mobile a scene nobody is shown elsewhere is shown on the device itself, in Table mode: there is nothing to announce
+  if (notice === 'present.shownElsewhere') showNotice(tPlatform(notice, { name: presentedName(view, tab) }));
+  else if (isDesktopApp()) showNotice(t(notice, { name: presentedName(view, tab) }));
+}
+
+/**
+ * Shows players the presented scene on this device: in the player window, which only the desktop
+ * app has; on mobile the view that holds the scene becomes their picture itself (Table mode).
+ */
+async function showOnThisDevice(app: App, view: AtlasView): Promise<void> {
+  if (isDesktopApp()) await openPlayerWindow(app);
+  else view.atlasStore.getState().enterTableMode();
 }
 
 /** What players were shown, as a notice names it: the scene, and the level of a scene with several. */
@@ -351,21 +362,14 @@ export function frameSourceOf(view: AtlasView): PlayerFrameSource | null {
   const app = renderer?.getAppInstance();
   const canvas = app?.canvas;
   if (!renderer || !app || !canvas?.instanceOf(HTMLCanvasElement)) return null;
-  // The scene rendered now: rolls are named by what its players' frame shows, never by a later scene
-  const mapPath = view.atlasStore.getState().mapPath;
-  const badgeNumbers = renderer.playerBadgeNumbers();
   // The view's own ticker and the shared one its map image loads tesserae on
   const clocks = new TickerRelay([app.ticker, Ticker.shared]);
   return {
     store: view.atlasStore,
-    diceEvents: view.serviceManager.getEventBus(),
-    ...(mapPath ? {
-      rollSources: { viewId: view.viewId, mapPath, shownTokens: (tokenIds) => renderer.playerRollTokens(mapPath, tokenIds) },
-    } : {}),
+    ...playerOverlaySources(view, renderer),
     withPlayerSafeFrame: (copy, settings, frame) => renderer.withPlayerSafeFrame(copy, settings, frame),
     // Hex sizes are flat-to-flat, so true scale sizes a hex across its flats
     getGridSize: () => (view.atlasStore.getState().grid?.tableTvTrueScale === false ? undefined : renderer.getGridOptions()?.size),
-    ...(badgeNumbers ? { badgeNumbers } : {}),
     ...(rendersOnChange(app) ? {
       beforeRender: {
         listen: (listener) => setBeforeRender(app, listener),

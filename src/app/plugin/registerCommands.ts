@@ -19,6 +19,7 @@ import { experimentalFeatureOn } from '../experimental/experimentalFeatures';
 import { runInBackground } from '../utils/backgroundTask';
 import { showNotice } from '../ui/notice';
 import { isDesktopApp } from '../platform/desktopOnly';
+import { toggleTableMode } from '../tableMode/viewTableMode';
 
 export interface CommandDependencies {
   imageDisplay: ImageDisplayService;
@@ -65,12 +66,6 @@ function registerPlayerViewCommands(plugin: Plugin, imageDisplay: ImageDisplaySe
       if (!checking) imageDisplay.closeImageDisplay();
       return true;
     },
-  });
-
-  plugin.addCommand({
-    id: 'send-map-to-player-view',
-    name: t('command.sendMapToPlayerView'),
-    callback: () => void presentActiveTab(plugin.app),
   });
 
   plugin.addCommand({
@@ -130,6 +125,24 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
   });
   // Atlas' one door in the ribbon: the start page leads to everything else.
   plugin.addRibbonIcon('map', t('command.openAtlas'), () => void openDashboard(plugin));
+
+  // Presents the active map: in the player window on desktop, in Table mode or at the online table on mobile
+  plugin.addCommand({
+    id: 'send-map-to-player-view',
+    name: t('command.sendMapToPlayerView'),
+    callback: () => void presentActiveTab(plugin.app),
+  });
+
+  plugin.addCommand({
+    id: 'toggle-table-mode',
+    name: t('table.mode'),
+    checkCallback: (checking) => {
+      const view = app.workspace.getActiveViewOfType(AtlasView);
+      if (!view) return false;
+      if (!checking) toggleTableMode(view);
+      return true;
+    },
+  });
 
   plugin.addCommand({
     id: 'generate-dungeon',

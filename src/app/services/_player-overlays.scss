@@ -1,0 +1,26 @@
+// What the players' picture shows over the map, wherever it stands: the player window's popout
+// (`player-window.scss`) and a map view in Table mode (`tableMode/table-mode.scss`).
+
+/// The DM's rolls as players read them: at the top centre, where the whole table can.
+@mixin player-dice-rolls {
+  .atlas-dice-rolls {
+    position: fixed;
+    top: 1rem;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    align-items: center;
+  }
+
+  .atlas-dice-roll__chip {
+    align-self: center;
+  }
+
+  .atlas-dice-toast--entering {
+    animation-name: atlas-player-dice-toast-enter;
+  }
+
+  .atlas-dice-toast--exiting {
+    animation-name: atlas-player-dice-toast-exit;
+  }
+}
