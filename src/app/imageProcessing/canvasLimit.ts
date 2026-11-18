@@ -82,7 +82,8 @@ let asked = false;
  * canvas back from the graphics card for the one pixel. Call it once before `drawingCanvas`.
  */
 export async function learnCanvasLimit(): Promise<void> {
-  asked = (await derivedImageFormat((width, height) => new OffscreenCanvas(width, height))) === 'png';
+  // A realm that cannot say is left as every realm was before canvases were asked.
+  asked = (await derivedImageFormat((width, height) => new OffscreenCanvas(width, height)).catch(() => 'webp')) === 'png';
 }
 
 /** A canvas of `size`, or null where this realm draws nothing on one that large. */
