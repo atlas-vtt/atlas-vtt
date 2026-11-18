@@ -101,6 +101,7 @@ export const am = {
   'am.sidebar.searchTagsPlaceholder': 'Search tags…',
   'am.sidebar.noMatchingTags': 'No matching tags',
   'am.sidebar.noTags': 'No tags yet',
+  'am.sidebar.noStoreTags': 'The Armarium shows no tags here',
   'am.sidebar.manage': 'Manage',
   'am.bestiary.get': 'Get starter tokens',
   'am.bestiary.offer': { one: 'Get {count} free token', other: 'Get {count} free tokens' },

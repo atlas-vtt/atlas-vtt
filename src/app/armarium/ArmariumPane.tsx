@@ -7,6 +7,7 @@ import { t } from '../i18n';
 import { ARMARIUM_PAGE_URL } from './armariumUrls';
 import { ArmariumInstaller } from './ArmariumInstaller';
 import { useArmariumBridge } from './useArmariumBridge';
+import type { StoreTagFilter } from './storeTagFilter';
 
 /** Cards of the store's grid in outline. */
 const SKELETON_CARDS = 6;
@@ -36,13 +37,19 @@ function ArmariumSkeleton(): React.ReactElement {
  * ask Atlas to install a free collection (`useArmariumBridge`), whose import review opens over the same window, and its
  * Share a collection opens `onShare`, Atlas' own share. Each mount loads the page anew: the store's front, or the page
  * `url` names (a listing a share just published). The page leaves as soon as the window starts to close: it runs in a
- * process of its own, and the window's closing motion over it dropped most of the frames.
+ * process of its own, and the window's closing motion over it dropped most of the frames. With `tagFilter`, the
+ * page's tags reach the asset manager's sidebar and its presses reach the page.
  */
-export function ArmariumPane({ app, url = ARMARIUM_PAGE_URL, onShare }: { app: App; url?: string; onShare?: () => void }): React.ReactElement {
+export function ArmariumPane({ app, url = ARMARIUM_PAGE_URL, onShare, tagFilter }: {
+  app: App;
+  url?: string;
+  onShare?: () => void;
+  tagFilter?: StoreTagFilter;
+}): React.ReactElement {
   const paneRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const present = useIsPresent();
-  useArmariumBridge(ArmariumInstaller.forApp(app), frameRef, paneRef, onShare);
+  useArmariumBridge(ArmariumInstaller.forApp(app), frameRef, paneRef, onShare, tagFilter);
   return (
     <div ref={paneRef} className="atlas-armarium-pane">
       {present && <SiteFrame
