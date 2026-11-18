@@ -62,7 +62,7 @@ function LiveFrame({ url, label, skeleton, frameRef }: LiveFrameProps): React.Re
 /**
  * A page of atlas-vtt.dev in a sandboxed frame, with a skeleton until its first page has loaded.
  * Offline it shows why instead of an empty frame, and loads again once the connection is back.
- * The documentation window and the Armarium tab both show the site through it.
+ * The documentation window and the asset manager's Armarium both show the site through it.
  */
 export function SiteFrame({ url, label, skeleton, offlineBody, frameRef, className }: SiteFrameProps): React.ReactElement {
   const online = useOnlineStatus();

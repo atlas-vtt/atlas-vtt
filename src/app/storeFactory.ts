@@ -341,6 +341,7 @@ export interface ViewAtlasState extends ViewState {
   setHotkeyHelpOpen: UISlice['setHotkeyHelpOpen'];
   setDocsOpen: UISlice['setDocsOpen'];
   openAssetManager: UISlice['openAssetManager'];
+  openArmarium: UISlice['openArmarium'];
   closeAssetManager: UISlice['closeAssetManager'];
   setCommandPaletteOpen: UISlice['setCommandPaletteOpen'];
   setDiceTrayOpen: UISlice['setDiceTrayOpen'];

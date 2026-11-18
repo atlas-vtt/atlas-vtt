@@ -1,13 +1,13 @@
 import type { Message } from '../../types';
 
-/** The Armarium in a tab of its own, and installing its free collections with a click. */
+/** The Armarium in the asset manager, and installing its free collections with a click. */
 export const armarium = {
   'armarium.title': 'Armarium',
   'armarium.page': 'The Armarium, Atlas\' library of collections',
   'armarium.loading': 'Loading the Armarium',
   'armarium.offlineBody': 'The Armarium is on atlas-vtt.dev and needs an internet connection.',
   'armarium.command': 'Open the Armarium',
-  'armarium.browse': 'Browse the Armarium',
+  'armarium.backToLibrary': 'Back to the library',
   'armarium.openInBrowser': 'Open in browser',
   'armarium.reload': 'Reload',
   'armarium.busy': 'Another collection is being installed. Finish its review first.',

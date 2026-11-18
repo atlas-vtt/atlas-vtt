@@ -118,8 +118,15 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
   }
 }
 
-// ── Manage button (bottom) ──────────────────────────────────────────────────
+// ── Armarium and Manage (bottom) ────────────────────────────────────────────
+// The Armarium is a place beside the library: its row is lit while the store fills the content area.
 
+.atlas-sidebar-actions {
+  @include atlas-flex-col($spacing-xs);
+  flex-shrink: 0;
+}
+
+.atlas-sidebar-armarium-btn,
 .atlas-asset-manager-manage-btn {
   &.btn {
     width: 100%;
@@ -131,7 +138,6 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
     font-weight: $font-weight-medium;
     color: var(--text-muted);
     border-radius: $radius-m;
-    @include atlas-concentric-corner(bottom-left, $window-radius, $window-corner-inset);
     flex-shrink: 0;
   }
 
@@ -139,6 +145,15 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
     width: $icon-xs;
     height: $icon-xs;
   }
+}
+
+.atlas-asset-manager-manage-btn.btn {
+  @include atlas-concentric-corner(bottom-left, $window-radius, $window-corner-inset);
+}
+
+.atlas-sidebar-armarium-btn.btn.atlas-active {
+  background-color: color-mix(in oklch, var(--interactive-accent) 14%, transparent);
+  @include atlas-accent-text;
 }
 
 // ── Bestiary tokens offer, above Manage ──

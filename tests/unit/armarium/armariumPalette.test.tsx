@@ -10,10 +10,8 @@ vi.mock('../../../src/app/react/root/AtlasUIContext', async (importOriginal) => 
   ...await importOriginal<typeof import('../../../src/app/react/root/AtlasUIContext')>(), useAtlasUI: () => ({ app, view: { viewId: 'armarium-test' } }) }));
 vi.mock('../../../src/app/services/PlayerWindowService', () => ({ PlayerWindowService: {} }));
 vi.mock('../../../src/app/services/PlayerWindowPresenter', () => ({ presentActiveTab: vi.fn() }));
-vi.mock('../../../src/app/armarium/showArmarium', () => ({ showArmarium: vi.fn(async () => undefined) }));
 
 import { CommandPalette } from '../../../src/app/react/components/CommandPalette';
-import { showArmarium } from '../../../src/app/armarium/showArmarium';
 
 beforeEach(() => {
   Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: vi.fn() });
@@ -24,15 +22,16 @@ afterEach(() => {
 });
 
 describe('the command palette', () => {
-  it('opens the Armarium, then closes', () => {
-    const store = create(() => ({ isDocsOpen: false, setDocsOpen: vi.fn() }));
+  it('opens the asset manager on the Armarium, then closes', () => {
+    const openArmarium = vi.fn();
+    const store = create(() => ({ isDocsOpen: false, setDocsOpen: vi.fn(), openArmarium }));
     const onClose = vi.fn();
     render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={onClose} /></ViewStoreProvider>);
     fireEvent.change(screen.getByPlaceholderText('Search commands…'), { target: { value: 'store' } });
 
     fireEvent.click(screen.getByRole('button', { name: /Armarium/ }));
 
-    expect(showArmarium).toHaveBeenCalledWith(app);
+    expect(openArmarium).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

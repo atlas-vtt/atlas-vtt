@@ -3,9 +3,9 @@
  * (`docs/plans/2026-11-18-armarium-in-atlas.md`, format 1).
  */
 
-/** The site's origin: the only one whose messages the Armarium tab hears, and the only one it answers. */
+/** The site's origin: the only one whose messages Atlas hears from the Armarium's frame, and the only one it answers. */
 export const ARMARIUM_ORIGIN = 'https://atlas-vtt.dev';
-/** The store's page, framed in the Armarium tab. */
+/** The store's page, framed in the asset manager. */
 export const ARMARIUM_PAGE_URL = `${ARMARIUM_ORIGIN}/armarium`;
 /** The installable list: every free listing the site shows at its newest version, with its file's size and SHA-256. */
 export const ARMARIUM_LIST_URL = `${ARMARIUM_ORIGIN}/api/armarium/v1`;

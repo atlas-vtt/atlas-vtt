@@ -237,3 +237,39 @@
     transform: rotate(45deg);
   }
 }
+
+// ── Armarium ────────────────────────────────────────────────────────────────
+// While the store is shown its Reload and Open in browser stand where the search and Create do, ghost buttons of
+// Create's size; the last one takes the window's corner as Create does.
+
+.atlas-am-toolbar-right--armarium {
+  grid-template-columns: none;
+}
+
+.atlas-am-armarium-actions {
+  @include atlas-flex-row($gap: $spacing-xs);
+}
+
+.atlas-am-header-action {
+  &.btn,
+  &.btn--icon {
+    width: $header-control-height;
+    height: $header-control-height;
+    flex-shrink: 0;
+    border-radius: $radius-m;
+    color: var(--text-muted);
+  }
+
+  // Each button is followed by its tooltip's hidden label.
+  &:last-of-type {
+    &.btn,
+    &.btn--icon {
+      @include atlas-concentric-corner(top-right, $window-radius, $window-corner-inset);
+    }
+  }
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}

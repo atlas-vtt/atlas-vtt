@@ -9,7 +9,8 @@ import { Skeleton } from '../../primitives/Skeleton';
 import { t } from '../../../../i18n';
 
 export interface TabSwitcherProps {
-  activeTab: Tab;
+  /** Null while the Armarium is shown: no tab is current, and a tab leads back to the library. */
+  activeTab: Tab | null;
   onTabChange: (tab: Tab) => void;
   /** How many assets each tab holds; null while they are being counted. */
   assetCounts: Record<Tab, number> | null;
@@ -34,7 +35,7 @@ function TabCount({ count, failed }: { count: number | undefined; failed: boolea
  */
 export function TabSwitcher({ activeTab, onTabChange, assetCounts, countsFailed = false }: TabSwitcherProps): React.JSX.Element {
   const labelId = useId();
-  const activeName = getTabDisplayName(activeTab);
+  const activeName = activeTab ? getTabDisplayName(activeTab) : t('armarium.title');
 
   return (
     <>
@@ -64,7 +65,7 @@ export function TabSwitcher({ activeTab, onTabChange, assetCounts, countsFailed 
         triggerContent={
           <>
             <span className="atlas-tab-label">{activeName}</span>
-            <TabCount count={assetCounts?.[activeTab]} failed={countsFailed} />
+            {activeTab && <TabCount count={assetCounts?.[activeTab]} failed={countsFailed} />}
             <ChevronDown className="atlas-am-tab-menu-chevron" />
           </>
         }

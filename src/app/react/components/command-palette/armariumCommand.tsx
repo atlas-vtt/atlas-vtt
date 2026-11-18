@@ -3,7 +3,7 @@ import { Store } from 'lucide-react';
 import { t } from '../../../i18n';
 import type { CommandOption } from './types';
 
-/** The palette's way to the Armarium: it opens the store's tab and closes the palette. */
+/** The palette's way to the Armarium: it opens the asset manager on the store and closes the palette. */
 export function armariumCommand(open: () => void, close: () => void): CommandOption {
   return {
     id: 'open-armarium',
