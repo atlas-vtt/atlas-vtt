@@ -152,7 +152,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
 
   return (
     <>
-      <AssetManagerWindow isOpen={isOpen} onClose={onClose} onExitComplete={onExitComplete} overlayRef={overlayRef} fadeOnly={armarium.shown}>
+      <AssetManagerWindow isOpen={isOpen} onClose={onClose} onExitComplete={onExitComplete} overlayRef={overlayRef}>
         <div
           className={`atlas-asset-manager-container ${sidebar.isFloating ? 'atlas-sidebar-floating' : ''}`}
           ref={containerRef}

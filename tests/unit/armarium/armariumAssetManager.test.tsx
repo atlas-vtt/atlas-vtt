@@ -166,6 +166,14 @@ describe('the Armarium in the asset manager', () => {
     expect(reviews).toEqual([]);
   });
 
+  it('takes the store out as the window starts to close, while the window is still leaving', () => {
+    const { rerender } = render(<AssetManager isOpen onClose={vi.fn()} armariumRequest={1} />);
+    expect(storeFrame()).not.toBeNull();
+    rerender(<AssetManager isOpen={false} onClose={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Back to the library' })).toBeTruthy();
+    expect(storeFrame()).toBeNull();
+  });
+
   it('loads the page anew from Reload', () => {
     render(<AssetManager isOpen onClose={vi.fn()} armariumRequest={1} />);
     const frame = storeFrame();

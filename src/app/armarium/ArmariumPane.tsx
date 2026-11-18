@@ -1,5 +1,6 @@
 import type { App } from 'obsidian';
 import React, { useRef } from 'react';
+import { useIsPresent } from 'framer-motion';
 import { Skeleton, SkeletonGroup } from '../packages/components/primitives/Skeleton';
 import { SiteFrame } from '../react/components/siteFrame/SiteFrame';
 import { t } from '../i18n';
@@ -34,21 +35,23 @@ function ArmariumSkeleton(): React.ReactElement {
  * The Armarium, atlas-vtt.dev's library of collections, filling the asset manager's content area. Its Install buttons
  * ask Atlas to install a free collection (`useArmariumBridge`), whose import review opens over the same window, and its
  * Share a collection opens `onShare`, Atlas' own share. Each mount loads the page anew: the store's front, or the page
- * `url` names (a listing a share just published).
+ * `url` names (a listing a share just published). The page leaves as soon as the window starts to close: it runs in a
+ * process of its own, and the window's closing motion over it dropped most of the frames.
  */
 export function ArmariumPane({ app, url = ARMARIUM_PAGE_URL, onShare }: { app: App; url?: string; onShare?: () => void }): React.ReactElement {
   const paneRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
+  const present = useIsPresent();
   useArmariumBridge(ArmariumInstaller.forApp(app), frameRef, paneRef, onShare);
   return (
     <div ref={paneRef} className="atlas-armarium-pane">
-      <SiteFrame
+      {present && <SiteFrame
         url={url}
         label={t('armarium.page')}
         skeleton={<ArmariumSkeleton />}
         offlineBody={t('armarium.offlineBody')}
         frameRef={frameRef}
-      />
+      />}
     </div>
   );
 }
