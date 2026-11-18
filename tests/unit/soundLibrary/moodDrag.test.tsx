@@ -2,6 +2,8 @@
 import { act, cleanup, fireEvent, render, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PointerEvent as ReactPointerEvent } from 'react';
+import { onPressBecameDrag } from '../../../src/app/input/pressBecameDrag';
+import { TOUCH_REST_MS } from '../../../src/app/react/components/dm-screen/sound/useListDrag';
 import { useMoodDrag } from '../../../src/app/react/components/dm-screen/sound/useMoodDrag';
 import { VerticalFader } from '../../../src/app/react/components/dm-screen/sound/VerticalFader';
 import type { Mood } from '../../../src/app/sound/soundTypes';
@@ -76,6 +78,88 @@ describe('a mood held under the pointer', () => {
     act(() => pointer('pointermove', 90, 50));
     act(() => pointer('pointerup', 90, 50));
     expect(onDrop).not.toHaveBeenCalled();
+  });
+});
+
+describe('a mood under a finger, in a grid the finger scrolls by its tiles', () => {
+  function touched(onDrop: (moved: Mood, index: number) => void): { shown: () => readonly Mood[]; dragging: () => string | null; consumeClick: () => boolean } {
+    const { result } = renderHook(() => useMoodDrag({ current: grid }, MOODS, () => true, onDrop));
+    act(() => result.current.start(MOODS[2]!, { button: 0, clientX: 490, clientY: 50, pointerId: 1, pointerType: 'touch' } as ReactPointerEvent<HTMLElement>));
+    return { shown: () => result.current.shown, dragging: () => result.current.draggingId, consumeClick: () => result.current.consumeClick() };
+  }
+  /** A move of the finger as the browser asks whether it may scroll: whether the grid refused it. */
+  function scrollRefused(): boolean {
+    const move = new Event('touchmove', { bubbles: true, cancelable: true });
+    grid.firstElementChild!.dispatchEvent(move);
+    return move.defaultPrevented;
+  }
+
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('scrolls when the finger moves before it has rested: nothing is dragged, and the browser is left to pan', () => {
+    const onDrop = vi.fn();
+    const { dragging } = touched(onDrop);
+    act(() => { vi.advanceTimersByTime(TOUCH_REST_MS - 50); });
+    expect(scrollRefused()).toBe(false);
+    act(() => pointer('pointermove', 490, 80));
+    act(() => { vi.advanceTimersByTime(400); });
+    act(() => pointer('pointermove', 290, 90));
+    act(() => pointer('pointerup', 290, 90));
+    expect(dragging()).toBeNull();
+    expect(onDrop).not.toHaveBeenCalled();
+    expect(scrollRefused()).toBe(false);
+  });
+
+  it('lifts the tile once the finger has rested, holds the grid still under it, and lands where it is let go', () => {
+    const onDrop = vi.fn();
+    const { dragging, consumeClick } = touched(onDrop);
+    // Within the slop a resting finger keeps.
+    act(() => pointer('pointermove', 492, 52));
+    expect(dragging()).toBeNull();
+    act(() => { vi.advanceTimersByTime(TOUCH_REST_MS); });
+    expect(dragging()).toBe('c');
+    expect(scrollRefused()).toBe(true);
+    act(() => pointer('pointermove', 290, 50));
+    act(() => pointer('pointerup', 290, 50));
+    expect(onDrop).toHaveBeenCalledWith(MOODS[2], 1);
+    // The release is no press of the mood, and the grid scrolls again.
+    expect(consumeClick()).toBe(true);
+    expect(scrollRefused()).toBe(false);
+  });
+
+  it('is a press of the mood when lifted before it rested', () => {
+    const onDrop = vi.fn();
+    const { consumeClick, dragging } = touched(onDrop);
+    act(() => { vi.advanceTimersByTime(120); });
+    act(() => pointer('pointerup', 490, 50));
+    expect(consumeClick()).toBe(false);
+    act(() => { vi.advanceTimersByTime(TOUCH_REST_MS); });
+    expect(dragging()).toBeNull();
+    expect(onDrop).not.toHaveBeenCalled();
+  });
+
+  it('tells a long press under way that the press is a drag, when the tile lifts and not before', () => {
+    const heard = vi.fn();
+    const stop = onPressBecameDrag(heard);
+    touched(vi.fn());
+    act(() => { vi.advanceTimersByTime(TOUCH_REST_MS - 1); });
+    expect(heard).not.toHaveBeenCalled();
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(heard).toHaveBeenCalledTimes(1);
+    act(() => pointer('pointerup', 490, 50));
+    stop();
+  });
+
+  it('drags at once under a mouse, as ever', () => {
+    const onDrop = vi.fn();
+    const { result } = renderHook(() => useMoodDrag({ current: grid }, MOODS, () => true, onDrop));
+    act(() => result.current.start(MOODS[2]!, { button: 0, clientX: 490, clientY: 50, pointerId: 1, pointerType: 'mouse' } as ReactPointerEvent<HTMLElement>));
+    act(() => pointer('pointermove', 290, 50));
+    expect(result.current.draggingId).toBe('c');
+    expect(scrollRefused()).toBe(false);
+    act(() => pointer('pointerup', 290, 50));
+    expect(onDrop).toHaveBeenCalledWith(MOODS[2], 1);
   });
 });
 

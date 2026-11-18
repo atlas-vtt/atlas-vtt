@@ -9,6 +9,7 @@
  */
 
 import { scrollNearEdge } from './autoScroll';
+import { pressBecameDrag } from '../../../input/pressBecameDrag';
 import { TOUCH_DELAY_MS, TOUCH_TOLERANCE } from './dndConfig';
 import type { Box, Point } from './dropGeometry';
 import { ListDragView } from './listDragView';
@@ -126,6 +127,8 @@ export class ListDrag {
       return;
     }
     this.active = true;
+    // A finger that rests on: its long press, due a little later, opens no menu on what it drags.
+    pressBecameDrag();
     try {
       this.handle.setPointerCapture(this.pointerId);
     } catch {

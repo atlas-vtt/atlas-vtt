@@ -5,6 +5,7 @@ import {
   type DragEndEvent, type DragStartEvent, type DropAnimationFunction, type Modifier,
 } from '@dnd-kit/core';
 import type { App } from 'obsidian';
+import { pressBecameDrag } from '../../../input/pressBecameDrag';
 import { MOTION_EASE_OUT, prefersReducedMotion } from '../../../utils/motion';
 import type { FieldRecord } from '../../values/fieldValues';
 import { blockName } from '../template-editor/blockNames';
@@ -95,6 +96,8 @@ export function TemplateDragAndDrop(props: TemplateDragAndDropProps): React.JSX.
   const [tileWidth, setTileWidth] = useState<number | null>(null);
 
   const onDragStart = useCallback(({ active, activatorEvent }: DragStartEvent): void => {
+    // A finger rests before it drags, and may rest on: its long press, due a little later, opens no menu on what it holds.
+    pressBecameDrag();
     const { session, readOnly, announce } = latest.current;
     const stage = stageRef.current;
     const picked = sourceOf(active.data.current);
