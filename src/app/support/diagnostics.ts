@@ -32,7 +32,7 @@ function operatingSystem(): string {
 
 /** Node's `process`, which only the desktop app has; one that some script put on the window says nothing of Node. */
 function nodeProcess(): { versions: Record<string, unknown>; arch: string } | undefined {
-  const candidate: unknown = Reflect.get(globalThis, 'process');
+  const candidate: unknown = typeof window === 'undefined' ? undefined : Reflect.get(window, 'process');
   return isRecord(candidate) && isRecord(candidate.versions) && typeof candidate.arch === 'string' ? { versions: candidate.versions, arch: candidate.arch } : undefined;
 }
 
