@@ -28,7 +28,7 @@ import { openPinMenu, type PinnedSceneLevels } from './pinSceneLevelMenu';
 import { t } from '../i18n';
 import { levelObjects } from '../levels/levelObjects';
 import { pinNameBoxes } from './pinNameLayout';
-import { dragThreshold, isFinger, pointerReach } from './utils/pointerReach';
+import { dragThreshold, fingerReaches, pointerReach } from './utils/pointerReach';
 
 /** True when anything other than the position changed, which means the pin's graphics must be rebuilt. */
 function differsBeyondPosition(pin: NotePin, prev: NotePin | undefined): boolean {
@@ -384,7 +384,7 @@ export class PinRenderer {
     const layout = hexLayoutOfGrid(this.store.getState().grid);
     // A pin shrunk to a dot keeps a hit area a pointer can find, a finger a larger one
     const zoom = this.viewport.scale.x > 0 ? this.viewport.scale.x : 1;
-    const finger = isFinger();
+    const finger = fingerReaches();
     const hitRadius = Math.max(pinSize.badgeRadius * this.getPinScale(), pointerReach(MIN_HIT_RADIUS) / zoom);
 
     let nearest: string | null = null;

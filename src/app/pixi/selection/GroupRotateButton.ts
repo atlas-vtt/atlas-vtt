@@ -1,8 +1,9 @@
-import { Circle, Container, Graphics, Sprite, Texture, type FederatedPointerEvent } from 'pixi.js';
+import { Container, Graphics, Sprite, Texture, type FederatedPointerEvent } from 'pixi.js';
 import { MOTION_NORMAL_MS } from '../../utils/motion';
 import { MAP_LAYER_Z } from '../mapLayerOrder';
 import { paintRotateHandle, rotateIconTexture, ROTATE_ICON_SHARE } from '../rotateHandleLook';
 import { destroyTree } from '../utils/destroyTree';
+import { HandleHitArea } from '../utils/handleHitArea';
 import { isDarkTheme } from '../utils/canvasBadgeColors';
 import { MeasureLabel } from '../utils/measureLabel';
 import { isPrimaryPress } from '../utils/pointerButtons';
@@ -65,7 +66,7 @@ export class GroupRotateButton {
   private destroyed = false;
 
   constructor(private readonly deps: GroupRotateButtonDeps) {
-    this.handle.hitArea = new Circle(0, 0, LOOK.radius + LOOK.reach);
+    this.handle.hitArea = new HandleHitArea(this.handle, LOOK.radius + LOOK.reach);
     this.glyph.anchor.set(0.5);
     this.handle.addChild(this.disc, this.glyph);
     this.mount.addChild(this.stem, this.handle);

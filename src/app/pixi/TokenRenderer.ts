@@ -57,6 +57,7 @@ import { setCanvasCursor } from './utils/canvasCursor';
 import { markHandled, resetHandled } from './utils/handledEvents';
 import { watchClick } from './utils/clickRelease';
 import { isCtrlClick, isPrimaryPress, isSecondaryPress } from './utils/pointerButtons';
+import { isFinger, withFineReach } from './utils/pointerReach';
 import type { HexLinkPointerHandlers } from './hexLinks/HexLinkInteraction';
 import type { MapFeaturePointerHandlers } from './mapFeatures/MapFeatureInteraction';
 import type { LightPointerHandlers } from './lighting/LightInteraction';
@@ -1858,6 +1859,24 @@ export class TokenRenderer {
   }
 
   private onViewportPointerDown = (e: FederatedPointerEvent): void => {
+    if (this.fingerOnToken(e)) withFineReach(() => this.dispatchPress(e));
+    else this.dispatchPress(e);
+  };
+
+  /**
+   * A finger reaches the marks on the map from further than a mouse does (`pointerReach`). One
+   * that lies on a token the tool takes is that token's all the same: the pins, doors, lights and
+   * handles beside it then take only the press a mouse would give them.
+   */
+  private fingerOnToken(e: FederatedPointerEvent): boolean {
+    if (!isFinger(e) || !isPrimaryPress(e) || this.placementActive()) return false;
+    const { activeTool } = this.store.getState();
+    if (activeTool !== 'select' && activeTool !== 'move') return false;
+    const world = this.viewport.toWorld(e.global);
+    return this.hitTestTokens(world.x, world.y) !== null;
+  }
+
+  private dispatchPress(e: FederatedPointerEvent): void {
     // PIXI v8 reuses FederatedPointerEvent objects — clear custom flags from previous events
     resetHandled(e);
     // A Ctrl+click on macOS is a secondary click whichever of Ctrl and the button is let go first: no tool takes its press or its tap
@@ -1995,7 +2014,7 @@ export class TokenRenderer {
     }
 
     // Let the event propagate for viewport panning and marquee selection
-  };
+  }
 
   /**
    * PIXI listens for pointermove on the whole document, so moves over DOM

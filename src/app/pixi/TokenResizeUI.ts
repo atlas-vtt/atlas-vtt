@@ -1,4 +1,4 @@
-import { Container, FederatedPointerEvent, Graphics, Sprite, Texture, Circle } from 'pixi.js';
+import { Container, FederatedPointerEvent, Graphics, Sprite, Texture } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
@@ -8,6 +8,7 @@ import { toError } from '../utils/errors';
 import type { TokenHandleContainer } from './token-renderer/types';
 import { findTokenGroup } from './token-renderer/findTokenGroup';
 import { destroyTree } from './utils/destroyTree';
+import { HandleHitArea } from './utils/handleHitArea';
 import { resizedTokenCenter } from '../grid/gridPlacement';
 import { levelObjects } from '../levels/levelObjects';
 import { mapTokens } from '../tokens/offMap';
@@ -245,8 +246,8 @@ export class TokenResizeUI {
     handle.eventMode = 'static';
     handle.interactive = true;
     handle.cursor = 'ew-resize';
-    // Set a circular hit area for the handle - this should be precise to avoid blocking token
-    handle.hitArea = new Circle(0, 0, this.HANDLE_SIZE / 2);
+    // Precise for a mouse, so the handle never blocks its token; a finger reaches further where the token is not nearer
+    handle.hitArea = new HandleHitArea(handle, this.HANDLE_SIZE / 2, TOKEN_HANDLE_LABEL);
     
     const bgColor = isDarkMode ? 0x2a2a2a : 0xe3e3e3;
     const strokeColor = isDarkMode ? 0xffffff : 0x000000;

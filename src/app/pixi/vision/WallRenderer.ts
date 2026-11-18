@@ -12,7 +12,7 @@ import { KindWallLayer, type KindWall } from './KindWallLayer';
 import { drawDashedLine, hasKindLook } from './wallKindLook';
 import { VERTEX_HANDLE_RADIUS, WallPreview } from './WallPreview';
 import { levelObjects } from '../../levels/levelObjects';
-import { isFinger, pointerReach } from '../utils/pointerReach';
+import { fingerReaches, pointerReach } from '../utils/pointerReach';
 
 /** Screen pixels: how close to a wall or a wall's end a press lands on it, never less than what is drawn. */
 const HIT_TOLERANCE = 6;
@@ -223,7 +223,7 @@ export class WallRenderer {
 
   /** Hit-test walls at a world coordinate. Returns wall id or null. */
   hitTestWalls(worldX: number, worldY: number): string | null {
-    const finger = isFinger();
+    const finger = fingerReaches();
     let best = this.reach(HIT_TOLERANCE);
     let nearest: string | null = null;
     for (const wall of wallList(levelObjects(this.store.getState()).walls)) {
@@ -240,7 +240,7 @@ export class WallRenderer {
   /** Hit-test wall vertex handles. Returns { wallId, vertex } or null. */
   hitTestVertices(worldX: number, worldY: number): { wallId: string; vertex: 'p1' | 'p2' } | null {
     const walls = levelObjects(this.store.getState()).walls;
-    const finger = isFinger();
+    const finger = fingerReaches();
     const threshold = this.reach(VERTEX_HIT);
     let best = threshold * threshold;
     let wallId: string | null = null;

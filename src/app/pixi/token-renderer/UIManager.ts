@@ -41,6 +41,7 @@ export class UIManager implements ITokenUIManager {
   private readonly selectionBar: { hovered: string | null; active: string | null } = { hovered: null, active: null };
   /** The token whose bars show their +/- buttons, whose wheels make room for them. */
   private barButtonsTokenId: string | null = null;
+  private barButtonsSpan: number | undefined;
   private tokenRotationUI?: TokenRotationUI;
   private tokenResizeUI?: TokenResizeUI;
   
@@ -92,7 +93,7 @@ export class UIManager implements ITokenUIManager {
       this.tokenControlsUI.resourceDefsProvider = () => this.resourceDefsProvider();
       this.tokenControlsUI.slotsProvider = (tokenId) => this.tokenUIs[tokenId]?.getResourceSlots() ?? [];
       this.tokenControlsUI.wheelAnchorProvider = (tokenId) => this.tokenUIs[tokenId]?.getWheelAnchor() ?? null;
-      this.tokenControlsUI.onBarButtonsChange = (tokenId) => this.setBarButtonsToken(tokenId);
+      this.tokenControlsUI.onBarButtonsChange = (tokenId, span) => this.setBarButtonsToken(tokenId, span);
       this.tokenRotationUI = new TokenRotationUI(this.viewport, this.store);
       this.tokenResizeUI = new TokenResizeUI(this.viewport, this.store);
       
@@ -376,11 +377,12 @@ export class UIManager implements ITokenUIManager {
   }
 
   /** Scale of `tokenId`'s bars, which its +/- controls match. */
-  private setBarButtonsToken(tokenId: string | null): void {
-    if (tokenId === this.barButtonsTokenId) return;
-    if (this.barButtonsTokenId) this.tokenUIs[this.barButtonsTokenId]?.setBarButtonsShown(false);
+  private setBarButtonsToken(tokenId: string | null, span?: number): void {
+    if (tokenId === this.barButtonsTokenId && span === this.barButtonsSpan) return;
+    if (tokenId !== this.barButtonsTokenId && this.barButtonsTokenId) this.tokenUIs[this.barButtonsTokenId]?.setBarButtonsShown(false);
     this.barButtonsTokenId = tokenId;
-    if (tokenId) this.tokenUIs[tokenId]?.setBarButtonsShown(true);
+    this.barButtonsSpan = span;
+    if (tokenId) this.tokenUIs[tokenId]?.setBarButtonsShown(true, span);
   }
 
   private barScale(tokenId: string): number {

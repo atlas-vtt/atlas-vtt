@@ -5,7 +5,7 @@ import type { ViewAtlasState } from '../../storeFactory';
 import type { AudioSource } from '../../types/audioTypes';
 import { destroyTree } from '../utils/destroyTree';
 import { levelObjects } from '../../levels/levelObjects';
-import { FINGER_TARGET_RADIUS, isFinger } from '../utils/pointerReach';
+import { FINGER_TARGET_RADIUS, fingerReaches } from '../utils/pointerReach';
 
 const ICON_RADIUS = 10;
 const HIT_TOLERANCE = 12;
@@ -149,7 +149,7 @@ export class AudioRenderer {
   hitTestAudioSources(worldX: number, worldY: number): string | null {
     const audios = levelObjects(this.store.getState()).audios;
     // The icons are the map's size; under a finger one is never a smaller target than a finger needs
-    const finger = isFinger();
+    const finger = fingerReaches();
     const zoom = this.viewport.scale.x > 0 ? this.viewport.scale.x : 1;
     const tolerance = finger ? Math.max(HIT_TOLERANCE, FINGER_TARGET_RADIUS / zoom) : HIT_TOLERANCE;
     let best = tolerance * tolerance;

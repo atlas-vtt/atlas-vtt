@@ -27,14 +27,34 @@ export function isFinger(pointer?: PointerKindSource | null): boolean {
   return type ? type === 'touch' : lastPointerWasTouch();
 }
 
+let fineOnly = 0;
+
+/**
+ * Runs `run` with a mouse's reach whatever points: for a finger's press that lies on something
+ * (a token) which a wider reach of the marks beside it would take the press from.
+ */
+export function withFineReach<T>(run: () => T): T {
+  fineOnly++;
+  try {
+    return run();
+  } finally {
+    fineOnly--;
+  }
+}
+
+/** Whether what is pressed is reached as a finger reaches it: further than a mouse, and of several things in reach the nearest. */
+export function fingerReaches(pointer?: PointerKindSource | null): boolean {
+  return fineOnly === 0 && isFinger(pointer);
+}
+
 /** What a reach in screen pixels is multiplied by for the pointer in use. */
 export function reachScale(pointer?: PointerKindSource | null): number {
-  return isFinger(pointer) ? FINGER_REACH_SCALE : 1;
+  return fingerReaches(pointer) ? FINGER_REACH_SCALE : 1;
 }
 
 /** A reach of `px` screen pixels for a mouse, as the pointer in use has it. */
 export function pointerReach(px: number, pointer?: PointerKindSource | null): number {
-  return isFinger(pointer) ? px * FINGER_REACH_SCALE : px;
+  return fingerReaches(pointer) ? px * FINGER_REACH_SCALE : px;
 }
 
 /** How far a press moves before it is a drag: `px` screen pixels for a mouse or a pen, never less than a finger's slop for a finger. */
