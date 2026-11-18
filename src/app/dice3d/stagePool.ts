@@ -143,7 +143,7 @@ export function releaseStagePools(): void {
  * document gets its stages while nothing rolls: as many as rolls stand at once
  * (`rollStackState`) and one for the roll that fades out as the next arrives.
  */
-const WARM_STAGES = 4;
+export const WARM_STAGES = 4;
 /** The pause before a stage is built, and between two: the map opening has the frames first. */
 const WARM_PAUSE_MS = 500;
 /** How long a build waits for an idle moment before it takes one. */
@@ -181,17 +181,17 @@ function warmUp(renderer: DiceRenderer, win: Window): void {
   renderer.reset();
 }
 
-function warmNext(doc: Document, dice: DocumentDice): void {
+function warmNext(doc: Document, dice: DocumentDice, count: number): void {
   // The pool was given back meanwhile: nothing is built for it any more.
   if (documents.get(doc) !== dice) return;
-  if (dice.idle.length + dice.lent >= WARM_STAGES) return;
+  if (dice.idle.length + dice.lent >= count) return;
   // Dice are on a stage: building now would be the freeze this is here to avoid.
   if (dice.lent === 0) {
     const stage = buildStage(doc, dice);
     if (stage.renderer && doc.defaultView) warmUp(stage.renderer, doc.defaultView);
     dice.idle.push(stage);
   }
-  whenQuiet(doc, () => warmNext(doc, dice));
+  whenQuiet(doc, () => warmNext(doc, dice, count));
 }
 
 /**
@@ -199,9 +199,9 @@ function warmNext(doc: Document, dice: DocumentDice): void {
  * are rolling. `artwork` is what the warm-up frame draws: without the numerals
  * and the card it would put blank faces on the graphics card.
  */
-export function warmStages(doc: Document, artwork: Promise<void> = loadDiceArtwork()): void {
+export function warmStages(doc: Document, artwork: Promise<void> = loadDiceArtwork(), count: number = WARM_STAGES): void {
   const dice = diceOf(doc);
   if (dice.warming) return;
   dice.warming = true;
-  void artwork.then(() => whenQuiet(doc, () => warmNext(doc, dice)));
+  void artwork.then(() => whenQuiet(doc, () => warmNext(doc, dice, count)));
 }

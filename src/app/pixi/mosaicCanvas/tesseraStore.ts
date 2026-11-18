@@ -1,5 +1,6 @@
 import { TESSERA_SPEC, type TesseraRef } from './pyramid';
 import type { FileIdentity } from './tesseraProtocol';
+import { DESKTOP_BUDGETS } from '../../platform/deviceBudgets';
 
 /**
  * The device's cache of map tessera pyramids (decision 6 of the tiled map images
@@ -69,22 +70,31 @@ export interface TesseraStoreOptions {
   backend: TesseraStoreBackend;
   /** The origin's storage quota in bytes, or null where it cannot be read. */
   estimateQuota: () => Promise<number | null>;
+  /** The device's limits for the cache; the desktop's when unset. */
+  cacheLimits?: TesseraCacheLimits | undefined;
   now?: () => number;
 }
 
-/** The cache never grows past this, whatever the quota: room for a few gigapixel maps' lossless tesserae (about 1.3 GB each). */
-export const TESSERA_CACHE_MAX_BYTES = 4 * 1024 ** 3;
-/** Share of the origin's quota the cache may take. */
-export const TESSERA_CACHE_QUOTA_SHARE = 0.1;
+/** The cache never grows past this, whatever the quota, where the store is told no limit of its device: room for a few gigapixel maps' lossless tesserae (about 1.3 GB each). */
+export const TESSERA_CACHE_MAX_BYTES = DESKTOP_BUDGETS.tileCacheMax;
+/** Share of the origin's quota the cache may take, where the store is told none. */
+export const TESSERA_CACHE_QUOTA_SHARE = DESKTOP_BUDGETS.tileCacheQuotaShare;
 
-export function tesseraCacheBudget(quota: number | null): number {
-  if (quota === null || !Number.isFinite(quota) || quota <= 0) return TESSERA_CACHE_MAX_BYTES;
-  return Math.min(TESSERA_CACHE_MAX_BYTES, Math.floor(quota * TESSERA_CACHE_QUOTA_SHARE));
+/** How large the cache may grow on a device. */
+export interface TesseraCacheLimits {
+  maxBytes: number;
+  quotaShare: number;
+}
+
+export function tesseraCacheBudget(quota: number | null, limits: TesseraCacheLimits = { maxBytes: TESSERA_CACHE_MAX_BYTES, quotaShare: TESSERA_CACHE_QUOTA_SHARE }): number {
+  if (quota === null || !Number.isFinite(quota) || quota <= 0) return limits.maxBytes;
+  return Math.min(limits.maxBytes, Math.floor(quota * limits.quotaShare));
 }
 
 export class TesseraStore {
   private readonly backend: TesseraStoreBackend;
   private readonly estimateQuota: () => Promise<number | null>;
+  private readonly cacheLimits: TesseraCacheLimits | undefined;
   private readonly now: () => number;
   private readonly pins = new Map<string, number>();
   /** Manifest updates run one after another, so concurrent writes never lose bytes. */
@@ -93,6 +103,7 @@ export class TesseraStore {
   constructor(options: TesseraStoreOptions) {
     this.backend = options.backend;
     this.estimateQuota = options.estimateQuota;
+    this.cacheLimits = options.cacheLimits;
     this.now = options.now ?? Date.now;
   }
 
@@ -196,7 +207,7 @@ export class TesseraStore {
     } catch {
       quota = null;
     }
-    return tesseraCacheBudget(quota);
+    return tesseraCacheBudget(quota, this.cacheLimits);
   }
 
   /**

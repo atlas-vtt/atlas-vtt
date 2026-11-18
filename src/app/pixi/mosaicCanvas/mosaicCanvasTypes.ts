@@ -48,4 +48,6 @@ export interface MosaicCanvasDeps {
   picture?: { width: number; height: number };
   /** Plays animated maps; without it a video map shows its first frame. */
   video?: MapVideoDeps;
+  /** Graphics memory the tessera textures may take, in bytes, as the device allows; the desktop's when unset. */
+  textureBudget?: number;
 }

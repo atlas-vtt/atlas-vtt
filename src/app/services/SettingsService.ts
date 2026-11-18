@@ -27,6 +27,7 @@ import {
 } from './deviceSettings';
 import { readGpuFacts } from './gpuFacts';
 import { pickLightingQuality } from '../lighting/deviceTier';
+import { deviceProfile } from '../platform/deviceProfile';
 import { readDock, type InitiativeLayout } from '../initiative/initiativeLayout';
 import type { InitiativeTurnOptions } from '../initiative/turnOptions';
 import type { LightingQuality, LightingQualityLevel } from '../lighting/lightingQuality';
@@ -279,15 +280,16 @@ export class SettingsService {
 
   /**
    * The level picked for this device's graphics (`pickLightingQuality`) the first time it is
-   * asked, then stored, so it never changes by itself. `high` where the graphics cannot be read,
-   * which is asked again next time.
+   * asked, then stored, so it never changes by itself. The finest level the device's profile
+   * allows (`high` on a desktop) where the graphics cannot be read, which is asked again next time.
    */
   private pickedLightingQuality(): LightingQualityLevel {
     const stored = loadPickedLightingQuality(this.app);
     if (stored) return stored;
+    const finest = deviceProfile().budgets.lightingQualityDefault;
     const facts = readGpuFacts();
-    if (!facts) return 'high';
-    const level = pickLightingQuality(facts);
+    if (!facts) return finest;
+    const level = pickLightingQuality(facts, finest);
     savePickedLightingQuality(this.app, level);
     return level;
   }

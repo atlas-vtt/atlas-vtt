@@ -31,9 +31,19 @@ export interface OpenedPyramid {
   pyramid: Pyramid;
 }
 
+/** What the device lets the tessera core hold, told at its start: a worker cannot ask the device itself. */
+export interface TesseraBudgets {
+  /** Bytes of decoded levels all builds may hold together. */
+  decodedLevels: number;
+  /** The cache never grows past this many bytes, whatever the quota. */
+  cacheMax: number;
+  /** Share of the origin's quota the cache may take. */
+  cacheQuotaShare: number;
+}
+
 export type TesseraRequest =
-  /** First message to a worker: which vault's cache to open; null keeps the cache in memory. */
-  | { type: 'init'; appId: string | null }
+  /** First message to a worker: which vault's cache to open (null keeps the cache in memory), and the device's budgets (the desktop's when left out). */
+  | { type: 'init'; appId: string | null; budgets?: TesseraBudgets | undefined }
   /**
    * Opens a map for serving (`prebuild`: builds its pyramid without serving).
    * Sent first without bytes; the worker answers `need-bytes` when the cache
