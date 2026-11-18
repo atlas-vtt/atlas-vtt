@@ -9,6 +9,7 @@
 @use './tokens' as *;
 @use './mixins' as *;
 @use '../src/app/onboarding/onboarding';
+@use '../src/app/keyboard/cheat-sheet';
 @use '../src/app/changelog/changelog';
 @use '../src/app/support/issue-report';
 @use '../src/app/online/gm/styles/dock';

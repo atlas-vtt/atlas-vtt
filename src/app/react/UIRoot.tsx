@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { LightPopoverHost } from '../pixi/lighting/LightPopover';
 import { LightZonePopoverHost } from '../pixi/lighting/LightZonePopover';
 import { SelectionBarHost } from '../packages/components/toolbar/SelectionBar';
@@ -173,11 +174,13 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   return (
     <AtlasUIContext.Provider value={contextValue}>
       <ContextMenuProvider>
-        {isHotkeyHelpOpen && (
-          <PanelBoundary name="the hotkey help">
-            <HotkeyHelp settings={settings} isPlayerView={isPlayerView} onClose={() => setHotkeyHelpOpen(false)} />
-          </PanelBoundary>
-        )}
+        <AnimatePresence>
+          {isHotkeyHelpOpen && (
+            <PanelBoundary key="cheat-sheet" name="the cheat sheet">
+              <HotkeyHelp settings={settings} isPlayerView={isPlayerView} onClose={() => setHotkeyHelpOpen(false)} />
+            </PanelBoundary>
+          )}
+        </AnimatePresence>
         <div className="atlas-ui" style={{ position: 'relative', width: '100%', height: '100%' }}>
           {/* Every surface has its own boundary: one that fails must not take the others with it */}
           {/* Map chrome stays mounted while a scene loads; the loading overlay blocks input meanwhile */}

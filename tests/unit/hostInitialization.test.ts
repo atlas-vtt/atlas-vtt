@@ -22,6 +22,6 @@ describe('plugin host initialization', () => {
     const { MAP_HOTKEYS } = await import('../../src/app/keyboard/mapHotkeys');
     expect(getLocale()).toBe(value === 'ru' ? 'ru' : 'en');
     expect(MAP_HOTKEYS.find(action => action.id === 'help')?.label).toBe(t('hotkey.help'));
-    expect(MAP_HOTKEYS.find(action => action.id === 'help')?.label).toBe(value === 'ru' ? 'Сочетания клавиш' : 'Keyboard shortcuts');
+    expect(MAP_HOTKEYS.find(action => action.id === 'help')?.label).toBe(value === 'ru' ? 'Шпаргалка' : 'Cheat sheet');
   });
 });
