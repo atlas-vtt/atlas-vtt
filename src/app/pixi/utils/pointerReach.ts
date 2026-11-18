@@ -14,6 +14,9 @@ export const FINGER_REACH_SCALE = 2;
 /** How far a finger may wander and still rest (px); past it the press is a drag. A mouse and a pen hold still within less. */
 export const FINGER_SLOP_PX = 8;
 
+/** How far apart the two taps of a finger's double tap may land (px). */
+export const FINGER_DOUBLE_TAP_PX = 40;
+
 /** Half of what a finger needs on screen (px): the least a round target reaches from its middle under one. */
 export const FINGER_TARGET_RADIUS = 22;
 
@@ -69,4 +72,9 @@ const TOKEN_DRAG_DISTANCE = 5;
 export function tokenDragDistance(zoom: number, pointer?: PointerKindSource | null): number {
   if (!isFinger(pointer)) return TOKEN_DRAG_DISTANCE;
   return Math.max(TOKEN_DRAG_DISTANCE, FINGER_SLOP_PX / (zoom > 0 ? zoom : 1));
+}
+
+/** How far apart the two presses of a double click may land: `px` screen pixels for a mouse or a pen; a finger's two taps lie further apart. */
+export function doubleClickSlack(px: number, pointer?: PointerKindSource | null): number {
+  return isFinger(pointer) ? Math.max(px, FINGER_DOUBLE_TAP_PX) : px;
 }

@@ -334,6 +334,7 @@ export class PixiRendererOrchestrator { // Renamed class
           placing: () => this.tokenPlacer?.active ?? false,
           marqueePending: () => this.selectionManager?.marqueePending ?? false,
           menuAt: (x, y) => this.tokenRenderer?.menuAt(x, y) ?? false,
+          tapActsAt: (x, y) => this.tokenRenderer?.tapActsAt(x, y) ?? false,
           fingers: FingerSettings.forApp(this.obsApp),
         }));
       }

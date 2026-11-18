@@ -1858,6 +1858,13 @@ export class TokenRenderer {
     return tokenTools && !this.interactionController.isPlayerView && this.hitTestTokens(x, y) !== null;
   }
 
+  /** Whether a tap at a world point acts on something whose press stays the empty map's: a linked hex, which opens its note. */
+  public tapActsAt(x: number, y: number): boolean {
+    if (this.placementActive()) return false;
+    const { activeTool } = this.store.getState();
+    return (activeTool === 'select' || activeTool === 'move') && (this.hexLinkHandlers?.hitTest(x, y) ?? null) !== null;
+  }
+
   private onViewportPointerDown = (e: FederatedPointerEvent): void => {
     if (this.fingerOnToken(e)) withFineReach(() => this.dispatchPress(e));
     else this.dispatchPress(e);

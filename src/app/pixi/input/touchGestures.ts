@@ -271,7 +271,9 @@ export class TouchGestures {
         // A tap: the tools get the press they were not handed yet, and the release.
         if (!finger.pressed) this.effects.press(finger.id);
         finger.pressed = false;
-        if (finger.onEmptyMap) this.taps.emptyMapTap(finger.x, finger.y);
+        if (!finger.onEmptyMap) return true;
+        if (this.host.tapActsAt?.(finger.start.x, finger.start.y)) this.taps.forgetTap();
+        else this.taps.emptyMapTap(finger.x, finger.y);
         return true;
       case 'pan':
         this.effects.endNavigation(true);

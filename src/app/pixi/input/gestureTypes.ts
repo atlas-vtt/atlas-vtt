@@ -18,6 +18,12 @@ export interface GestureHost {
   pressedEmptyMap(): boolean;
   /** Whether a secondary click at the point of the canvas opens a menu. */
   menuAt(x: number, y: number): boolean;
+  /**
+   * Whether a tap at the point of the canvas does something although its press counts as one on the
+   * empty map (a linked hex opens its note, and a drag from it still pans): two taps there are two
+   * such taps and no double tap. A host without it has nothing of the kind.
+   */
+  tapActsAt?(x: number, y: number): boolean;
 }
 
 /** What the gestures do; every point is in the canvas' own pixels. */
