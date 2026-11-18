@@ -8,13 +8,12 @@ import { useUnavailableModes } from "./LightingToolBar"
 import { SceneLightingSection } from "./SceneLightingSection"
 import { ToolGroup, type ToolGroupControls } from "./ToolGroup"
 import { lightingToolFace } from "./toolFaces"
-import { ToolSwitchRow } from "./ToolSwitchRow"
 import { useEmitViewEvent } from "./useEmitViewEvent"
 
 /**
  * Walls, lights and the scene's lighting. DM only. The modes and what a click does are the bar
- * above the toolbar (`LightingToolBar`), the light to place among them; the menu holds whether
- * points snap, a brush's size and the scene's lighting.
+ * above the toolbar (`LightingToolBar`), the light to place among them; the menu holds a brush's
+ * size and the scene's lighting.
  */
 export function LightingToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, closeMenu }: ToolGroupControls): React.ReactElement {
   const hotkeyLabel = useHotkeyLabels()
@@ -29,7 +28,6 @@ export function LightingToolGroup({ activeTool, selectTool, menuOpen, toggleMenu
   const roomTool = useAtlasStore((state) => state.roomTool)
   const setRoomTool = useAtlasStore((state) => state.setRoomTool)
   const face = lightingToolFace(activeTool)
-  const squares = useAtlasStore((state) => state.grid?.type === 'square' && state.grid.size > 0)
   // A mode that can no longer be chosen (the scene stopped remembering, its last level went) is left for the tool's first.
   const unavailable = useUnavailableModes()
   const modeUnavailable = unavailable(mode) !== null
@@ -46,13 +44,6 @@ export function LightingToolGroup({ activeTool, selectTool, menuOpen, toggleMenu
       onSelect={() => selectTool(face.tool)}
       onMenuToggle={toggleMenu}
     >
-      {/* What Alt is to a keyboard: wall ends, zone corners and a light's handles snap. A room's corners snap to the grid's squares, which Shift does. */}
-      <div className="atlas-dropdown-section">
-        {mode === 'rooms'
-          ? <ToolSwitchRow id="roomSnap" label={t('toolbar.snap')} unavailable={squares ? null : t('toolbar.snapNeedsSquares')} />
-          : <ToolSwitchRow id="lightingSnap" label={t('toolbar.snap')} />}
-      </div>
-
       {mode === 'rooms' && roomTool.shape === 'brush' && (
         <div className="atlas-dropdown-section">
           <DropdownSliderRow label={t('rooms.brushSize')} value={roomTool.brushSize} min={10} max={300} disabled={roomTool.action === 'door'}
