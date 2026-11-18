@@ -49,7 +49,6 @@ function LiveFrame({ url, label, skeleton, frameRef }: LiveFrameProps): React.Re
         aria-label={label}
         sandbox={SANDBOX}
         allow={ALLOW}
-        allowFullScreen
         referrerPolicy="strict-origin-when-cross-origin"
         loading="eager"
         onLoad={() => setLoaded(true)}

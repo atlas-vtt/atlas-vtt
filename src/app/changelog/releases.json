@@ -2,6 +2,11 @@
   "version": "0.17.1-beta.0",
   "releases": [
     {
+      "version": "0.17.1-beta.0",
+      "title": "Coming in 0.17.1",
+      "markdown": "## Fixed\n\n- On Windows, converting music or ambience in a linked folder now moves the originals to the trash when you chose that, instead of keeping them"
+    },
+    {
       "version": "0.17.0",
       "date": "2026-11-18",
       "title": "Armarium, documentation and the dice tray",
