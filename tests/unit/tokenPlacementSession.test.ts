@@ -184,6 +184,31 @@ describe('placing held tokens', () => {
     expect(ghosts[1]!.facing).toBe(0);
   });
 
+  it('goes with a finger that presses and moves, and is put down where it lifts, turned nowhere', () => {
+    const { session, committed, ghosts } = hand(1);
+    // The tokens wait where the pointer last was; the finger comes down elsewhere and brings them to it
+    session.pressAt({ x: 100, y: 100 }, false);
+    expect(ghosts[0]!.poses.at(-1)?.at).toEqual({ x: 105, y: 105 });
+    session.carry({ x: 300, y: 240 });
+    expect(ghosts[0]!.poses.at(-1)?.at).toEqual({ x: 315, y: 245 });
+    expect(ghosts[0]!.facing).toBe(0);
+    session.release();
+    expect(committed[0]).toEqual([expect.objectContaining({ imagePath: 't0.png', x: 315, y: 245 })]);
+    expect(committed[0]?.[0]).not.toHaveProperty('rotation');
+  });
+
+  it('carries nothing without a press, and a press a second finger took back places nothing', () => {
+    const { session, committed, ghosts } = hand(1);
+    const before = ghosts[0]!.poses.length;
+    session.carry({ x: 300, y: 240 });
+    expect(ghosts[0]!.poses).toHaveLength(before);
+    session.pressAt({ x: 100, y: 100 }, false);
+    session.carry({ x: 300, y: 240 });
+    session.cancelPress();
+    expect(committed).toEqual([]);
+    expect(session.active).toBe(true);
+  });
+
   it('lets go of a press without putting anything down, facing as before', () => {
     const { session, committed, ghosts } = hand(1);
     session.pressAt({ x: 100, y: 100 }, false);

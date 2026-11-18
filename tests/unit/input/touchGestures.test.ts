@@ -130,6 +130,30 @@ describe('one finger with the move tool', () => {
     expect(s.log.some((entry) => entry.startsWith('zoomStep'))).toBe(false);
   });
 
+  it('two taps on what a tap acts on, though its press is the empty map\'s, are two taps and no zoom', () => {
+    const s = scene('objects', true);
+    // A linked hex: its tap opens its note, and a drag from it still pans
+    s.gestures.setHost({ fingerMode: () => 'objects', pressedEmptyMap: () => true, menuAt: () => false, tapActsAt: (x) => x < 200 });
+    land(s);
+    s.gestures.up(1, 100, 100);
+    s.clock.advance(100);
+    land(s, 2);
+    s.gestures.up(2, 100, 100);
+    expect(s.log.filter((entry) => entry.startsWith('press') || entry.startsWith('zoomStep'))).toEqual(['press 1', 'press 2']);
+    // Beside it the map is empty: a double tap zooms, and a tap on the hex is no half of it
+    s.clock.advance(100);
+    land(s, 3, 300, 100);
+    s.gestures.up(3, 300, 100);
+    s.clock.advance(100);
+    land(s, 4, 302, 100);
+    s.gestures.up(4, 302, 100);
+    expect(s.log.filter((entry) => entry.startsWith('zoomStep'))).toEqual(['zoomStep 302 100 1']);
+    // A finger that moves from the hex still pans
+    land(s, 5);
+    s.gestures.move(5, 130, 100);
+    expect(s.log).toContain('beginNavigation');
+  });
+
   it('a tap on a token is no half of a double tap', () => {
     const s = scene('objects', false);
     land(s);
