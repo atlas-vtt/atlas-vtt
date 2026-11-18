@@ -23,6 +23,7 @@ import { isRecord } from '../utils/guards';
 import { groupLegacyTags, hasAssetTag, tagGroupOf, tagKey, type TagGroup } from './tagGroups';
 import { t } from '../i18n';
 import { trashVaultItem } from '../utils/trashVaultItem';
+import { thumbnailFiles } from './thumbnailFiles';
 import { encounterThumbnailFile } from '../encounters/encounterThumbnailFile';
 import { LibrarySync } from './library/LibrarySync';
 import type { LibraryMergeResult } from './library/mergeLibraryChanges';
@@ -1202,7 +1203,7 @@ export class AssetService {
     const emptiedGroups = asset.type === 'token' ? await this.getGroupsUsingTokens([asset.id]) : [];
     if (asset.type === 'token') {
       this.removeTokenReferencesFromGroups(asset.id);
-      await this.trashFileIfPresent(asset.thumbnailPath);
+      for (const path of thumbnailFiles(asset.thumbnailPath)) await this.trashFileIfPresent(path);
     }
     if (asset.type === 'encounter') await this.trashEncounterThumbnail(asset);
     if (asset.type === 'map') {

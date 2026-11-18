@@ -2,6 +2,7 @@ import type { App } from 'obsidian';
 import type { Asset, AssetService, MapAsset } from './AssetService';
 import { ATLAS_VTT_DIR } from './assetPaths';
 import { CollectionReferenceCollector } from './collectionBundle/collectionReferences';
+import { thumbnailFiles } from './thumbnailFiles';
 
 /**
  * The files of a deleted map that nothing else uses, so they can go with it: its image and
@@ -20,7 +21,7 @@ export async function unusedMapFiles(app: App, assetService: AssetService, map: 
     }
     const used = new Set(files.map((file) => file.vaultPath));
     const linked = (path: string): boolean => Object.values(app.metadataCache.resolvedLinks).some((links) => path in links);
-    return [map.mapFilePath, map.thumbnailPath].filter((path): path is string =>
+    return [map.mapFilePath, ...thumbnailFiles(map.thumbnailPath)].filter((path): path is string =>
       !!path && path.startsWith(`${ATLAS_VTT_DIR}/`) && !used.has(path) && !linked(path));
   } catch (error) {
     console.error('[AssetService] Could not tell whether a deleted map\'s image is still used; keeping it:', error);

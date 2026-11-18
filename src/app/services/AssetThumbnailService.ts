@@ -5,6 +5,7 @@ import { DERIVED_FORMATS, type DerivedFormat } from '../imageProcessing/imageEnc
 import { renderThumbnail, type ThumbnailSpec } from '../imageProcessing/imageProcessing';
 import { fnv1a32 } from '../utils/hashing';
 import { derivedImageExtension } from './assetImageFiles';
+import { thumbnailFiles } from './thumbnailFiles';
 import { isVideoMapPath, videoMimeType } from '../pixi/mosaicCanvas/video/videoMapFiles';
 import { videoPosterBlob } from '../pixi/mosaicCanvas/video/videoPoster';
 
@@ -37,16 +38,6 @@ export type ThumbnailAsset = TokenAsset | MapAsset;
 
 function sourceImagePath(asset: ThumbnailAsset): string {
   return asset.type === 'token' ? asset.imagePath : asset.mapFilePath;
-}
-
-/**
- * `path` under each of the other extensions a thumbnail is stored under (`DERIVED_FORMATS`: WebP, or
- * PNG from a device that cannot encode WebP). One library is shared by devices of both kinds.
- */
-function siblingPaths(path: string): string[] {
-  const dot = path.lastIndexOf('.');
-  const extension = path.slice(dot + 1).toLowerCase();
-  return DERIVED_FORMATS.filter((other) => other !== extension).map((other) => `${path.slice(0, dot)}.${other}`);
 }
 
 /** Short stable digest so thumbnails of same-named images in different folders do not collide. */
@@ -111,7 +102,7 @@ export class AssetThumbnailService {
   /** The thumbnail file of `asset` the vault holds: the recorded one, else the same thumbnail in the other format. */
   private storedThumbnail(asset: ThumbnailAsset): string | undefined {
     if (asset.thumbnailPath === undefined) return undefined;
-    return [asset.thumbnailPath, ...siblingPaths(asset.thumbnailPath)].find((path) => this.isFile(path));
+    return thumbnailFiles(asset.thumbnailPath).find((path) => this.isFile(path));
   }
 
   private isFile(path: string): boolean {
