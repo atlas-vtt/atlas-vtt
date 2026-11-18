@@ -3,6 +3,7 @@ import { BundleUpload, UploadCancelled } from '../../../src/app/armarium/upload/
 import { failurePlan, partRanges } from '../../../src/app/armarium/upload/uploadParts';
 import { sha256 } from '../../../src/app/utils/hashing';
 import { FakeArmarium, noSleep } from './shareFakes';
+import { UPLOAD_LIMITS } from '../../../src/app/armarium/upload/uploadContract';
 
 const BYTES = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 const blob = (): Blob => new Blob([BYTES]);
@@ -88,7 +89,7 @@ describe('a bundle upload', () => {
 
   it('refuses a bundle larger than the Armarium takes before asking for a ticket', async () => {
     const api = new FakeArmarium();
-    const huge = { size: 251 * 1024 ** 2, slice: () => blob() } as unknown as Blob;
+    const huge = { size: UPLOAD_LIMITS.maxBytes + 1, slice: () => blob() } as unknown as Blob;
     const run = new BundleUpload(huge, 'big.zip', { api, sha256: (bytes) => sha256(bytes), sleep: noSleep });
     await expect(run.start()).rejects.toMatchObject({ code: 'too-large' });
     expect(api.calls).toEqual([]);

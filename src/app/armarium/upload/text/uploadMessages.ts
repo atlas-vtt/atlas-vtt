@@ -12,6 +12,7 @@ import {
   type UploadRefusal,
 } from '../uploadContract';
 import { tagLabel } from './listingVocabulary';
+import { formatByteSize } from '../../../utils/fileSize';
 
 /**
  * What Atlas says when it shares a collection, ported from the Armarium's share page: one sentence for every
@@ -24,7 +25,6 @@ export type UploadContext = 'share' | 'publish';
 type Until = string | null;
 type Sentence = (until: Until, context: UploadContext) => string;
 
-const MIB = 1024 ** 2;
 
 function dateOf(iso: string): Date | null {
   const date = new Date(iso);
@@ -67,7 +67,7 @@ const REFUSALS: Readonly<Record<UploadRefusal, Sentence>> = {
   'staff-sign-in-method': () => t('armariumUpload.refusal.staff-sign-in-method'),
   deleting: () => t('armariumUpload.refusal.deleting'),
   'uploads-closed': () => t('armariumUpload.refusal.uploads-closed'),
-  'too-large': () => t('armariumUpload.refusal.too-large', { megabytes: UPLOAD_LIMITS.maxBytes / MIB }),
+  'too-large': () => t('armariumUpload.refusal.too-large', { size: formatByteSize(UPLOAD_LIMITS.maxBytes, getLocale()) }),
   'too-many-open': () => t('armariumUpload.refusal.too-many-open', { count: UPLOAD_LIMITS.openSubmissions }),
   'too-many-today': (until) => {
     const date = until === null ? null : dateOf(until);

@@ -27,7 +27,7 @@ export const armariumFindings = {
   'armariumFindings.code.manifest-own-file': 'This is a file Atlas keeps for itself, which a bundle may not bring. Export the collection again.',
   'armariumFindings.code.manifest-statblock-image': 'This statblock note names a picture at a path the Armarium cannot take. Move or rename the picture.',
   'armariumFindings.code.zip-not-a-zip': 'This file is not a zip. Upload the zip that Atlas exported.',
-  'armariumFindings.code.zip-too-large': 'The zip is larger than {megabytes} MB. Share a larger collection as two.',
+  'armariumFindings.code.zip-too-large': 'The zip is larger than {size}. Share a larger collection as two.',
   'armariumFindings.code.zip-too-many-entries': 'The zip holds more files than the Armarium takes in one collection. Split the collection in two.',
   'armariumFindings.code.zip-entry-too-large': 'This file is too large once unpacked. Make it smaller, or take it out of the collection.',
   'armariumFindings.code.zip-total-too-large': 'The bundle is too large once unpacked. Split the collection in two.',

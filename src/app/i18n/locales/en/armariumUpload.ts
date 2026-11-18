@@ -16,7 +16,7 @@ export const armariumUpload = {
   'armariumUpload.refusal.staff-sign-in-method': 'This does not open for this way of signing in. Sign in again the way staff sign in.',
   'armariumUpload.refusal.deleting': 'This account is being deleted.',
   'armariumUpload.refusal.uploads-closed': 'The Armarium takes no new uploads for now.',
-  'armariumUpload.refusal.too-large': 'A bundle can be up to {megabytes} MB. Share a larger collection as two.',
+  'armariumUpload.refusal.too-large': 'A bundle can be up to {size}. Share a larger collection as two.',
   'armariumUpload.refusal.too-many-open': 'You have {count} uploads that are not published yet. Publish or discard one first.',
   'armariumUpload.refusal.too-many-today': 'You sent a lot today. Try again tomorrow.',
   'armariumUpload.refusal.tooManyTodayUntil': 'You sent a lot today. You can upload again at {time}.',

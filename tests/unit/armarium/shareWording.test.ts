@@ -56,7 +56,7 @@ describe('upload sentences', () => {
   });
 
   it('fills the limits a refusal names', () => {
-    expect(uploadMessageFor('too-large')).toContain('250 MB');
+    expect(uploadMessageFor('too-large')).toContain('1 GB');
     expect(uploadMessageFor('too-many-open')).toContain('You have 3 uploads');
   });
 

@@ -12,6 +12,7 @@ export const exportDialog = {
   'exportDialog.fromAuthor': ' from {author}',
   'exportDialog.includeHint': 'Include at least one item to export',
   'exportDialog.includeOne': 'Include at least one item.',
+  'exportDialog.tooLargeToShare': 'This selection is {size}; the Armarium takes up to {limit}. Leave some items out, or share the collection as two.',
   'exportDialog.missing': { one: '{count} referenced file is missing and will not be included:', other: '{count} referenced files are missing and will not be included:' },
   'exportDialog.name': 'Name',
   'exportDialog.notes': 'Release notes',

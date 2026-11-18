@@ -1,4 +1,5 @@
-import { t } from '../../../i18n';
+import { getLocale, t } from '../../../i18n';
+import { formatByteSize } from '../../../utils/fileSize';
 import { CHECKER_CODES, RULE_CODES, UPLOAD_LIMITS, type CheckFinding, type FindingCode } from '../uploadContract';
 
 /**
@@ -8,7 +9,6 @@ import { CHECKER_CODES, RULE_CODES, UPLOAD_LIMITS, type CheckFinding, type Findi
  * nothing.
  */
 
-const MIB = 1024 ** 2;
 const MAX_PICTURE_SIDE = 8192;
 const KNOWN_CODES: ReadonlySet<string> = new Set([...RULE_CODES, ...CHECKER_CODES]);
 const FORMAT_NAMES: Readonly<Record<string, string>> = { png: 'PNG', jpeg: 'JPEG', webp: 'WebP' };
@@ -76,7 +76,7 @@ export function findingMessage(finding: CheckFinding): string {
   if (!isKnown(code)) return t('armariumFindings.unknown');
   const variant = VARIANTS[code]?.(finding.detail ?? '', finding.level);
   if (variant !== null && variant !== undefined) return variant;
-  return t(`armariumFindings.code.${code}`, { megabytes: UPLOAD_LIMITS.maxBytes / MIB, pixels: MAX_PICTURE_SIDE });
+  return t(`armariumFindings.code.${code}`, { size: formatByteSize(UPLOAD_LIMITS.maxBytes, getLocale()), pixels: MAX_PICTURE_SIDE });
 }
 
 /** The line of a note a finding is about, where its detail names one (`3: dataviewjs`). */
