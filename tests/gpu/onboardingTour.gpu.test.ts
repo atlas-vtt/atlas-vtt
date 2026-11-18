@@ -116,10 +116,10 @@ describe('the map tour', () => {
     document.body.className = 'theme-dark';
     act(() => root.render(React.createElement(HotkeyHelp, { settings: settings(), onClose: () => {}, onTour: () => {} })));
     await settle();
-    await page.screenshot({ path: `${SHOT_DIR}/shortcuts-sheet.png`, element: document.querySelector('.atlas-hotkey-help-card') as HTMLElement });
-    const header = box('.atlas-hotkey-help-header');
-    const tour = box('.atlas-hotkey-help-header__end .btn');
-    const close = box('.atlas-hotkey-help-header__end .atlas-close-btn');
+    await page.screenshot({ path: `${SHOT_DIR}/shortcuts-sheet.png`, element: document.querySelector('.atlas-cheat-sheet') as HTMLElement });
+    const header = box('.atlas-cheat-sheet__header');
+    const tour = box('.atlas-cheat-sheet__tour');
+    const close = box('.atlas-cheat-sheet__header .atlas-close-btn');
     expect(Math.abs(tour.top + tour.height / 2 - (close.top + close.height / 2))).toBeLessThanOrEqual(1);
     expect(tour.right).toBeLessThanOrEqual(close.left);
     expect(header.height).toBeLessThan(64);

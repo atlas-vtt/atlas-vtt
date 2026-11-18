@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MotionGlobalConfig } from 'framer-motion';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 /** Stands in for a map surface the cheat sheet has nothing to do with. */
@@ -47,7 +48,11 @@ function renderMap(store: ViewAtlasStore, viewType = 'atlas-vtt'): void {
   render(<ViewStoreProvider store={store}><UIRoot app={app} view={view} pixiApp={null} /></ViewStoreProvider>);
 }
 
-const sheet = (): HTMLElement | null => screen.queryByRole('dialog', { name: 'Map keyboard shortcuts' });
+const sheet = (): HTMLElement | null => screen.queryByRole('dialog', { name: 'Cheat sheet' });
+
+// jsdom never finishes a transform animation, so a closing sheet would stay mounted there; a browser test closes it for real.
+beforeAll(() => { MotionGlobalConfig.skipAnimations = true; });
+afterAll(() => { MotionGlobalConfig.skipAnimations = false; });
 
 beforeEach(() => {
   Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, value: vi.fn() });
@@ -60,23 +65,23 @@ afterEach(() => {
 });
 
 describe('the keyboard shortcuts cheat sheet', () => {
-  it('opens from the button at the map\'s bottom right and closes again', () => {
+  it('opens from the button at the map\'s bottom right and closes again', async () => {
     const store = mapStore('hotkey-help-button');
     renderMap(store);
     expect(sheet()).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Keyboard shortcuts' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cheat sheet' }));
     expect(store.getState().isHotkeyHelpOpen).toBe(true);
     expect(sheet()).not.toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close keyboard shortcuts' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close cheat sheet' }));
     expect(store.getState().isHotkeyHelpOpen).toBe(false);
-    expect(sheet()).toBeNull();
+    await waitFor(() => expect(sheet()).toBeNull());
   });
 
   it('has no button in the player view, which players see on the table', () => {
     renderMap(mapStore('hotkey-help-player'), 'atlas-vtt-player');
-    expect(screen.queryByRole('button', { name: 'Keyboard shortcuts' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cheat sheet' })).toBeNull();
   });
 
   it('opens from the command palette, which closes', () => {
@@ -91,7 +96,7 @@ describe('the keyboard shortcuts cheat sheet', () => {
     );
 
     fireEvent.change(screen.getByPlaceholderText('Search commands…'), { target: { value: 'cheat sheet' } });
-    fireEvent.click(screen.getByText('Keyboard shortcuts'));
+    fireEvent.click(screen.getByText('Cheat sheet'));
 
     expect(store.getState().isHotkeyHelpOpen).toBe(true);
     expect(onClose).toHaveBeenCalledTimes(1);

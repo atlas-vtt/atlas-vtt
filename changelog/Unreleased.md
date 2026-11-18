@@ -11,7 +11,7 @@
 - Atlas opens on its start page the first time it runs, and a short tour shows what each part of it is for
 - Your first scene gets a tour of the map: scene tabs, the tools, what your players see, the asset manager, the command palette and DM screen, and the shortcuts
 - Online play's dock and the table log explain themselves the first time they appear
-- Take the tour again from the keyboard shortcuts sheet or the command palette
+- Take the tour again from the cheat sheet or the command palette
 
 **General**
 - The documentation opens inside Atlas: choose Documentation in the command palette to read the guides beside the map
@@ -29,7 +29,8 @@
 - Random tables has a calmer look: the sidebar runs the window's full height, Roll sits beside the item count on the rarity filter's line, the rarity filter folds into a menu when the window is narrow, rolled cards drop their coloured frames, and base views tick in a neutral colour
 - In session view tokens stop at walls and closed doors on a lit scene, as they do for players. In GM view you still move them anywhere
 - Every button shows when it is clicked, and a button that opens a menu or list stays highlighted while it is open. Settings, dialogs and messages use Atlas's own buttons throughout
-- The keyboard shortcuts are easier to find: a question mark button in the map's bottom right corner and a Keyboard shortcuts entry in the command palette open the list, as ? does
+- The keyboard shortcuts are easier to find: a question mark button in the map's bottom right corner and a Cheat sheet entry in the command palette open the list, as ? does
+- The cheat sheet is redrawn: every key is a keycap as your keyboard prints it (⌘ and ⇧ on a Mac), and a search finds a shortcut by its name or its keys
 
 ## Fixed
 
