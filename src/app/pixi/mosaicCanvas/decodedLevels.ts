@@ -105,7 +105,8 @@ export async function decodeSource(blob: Blob, graphics: TesseraGraphics): Promi
  * `bitmap` drawn once onto a canvas when its decoder turned it a quarter by the source's EXIF
  * orientation (its sides are the header's swapped), else `bitmap` itself. Chromium crops a bitmap
  * turned so (orientations 6 and 8) at the wrong place, so every tessera cut from it showed another
- * part of the map; a canvas's pixels carry no orientation. The picture is held twice meanwhile.
+ * part of the map; a canvas's pixels carry no orientation. The picture is held twice meanwhile
+ * (three times where no canvas of the device holds it and it is redrawn in pieces).
  */
 async function withoutQuarterTurn(blob: Blob, bitmap: ImageBitmap, graphics: TesseraGraphics): Promise<ImageBitmap> {
   const header = await imageHeader(blob).catch(() => null);
@@ -113,7 +114,7 @@ async function withoutQuarterTurn(blob: Blob, bitmap: ImageBitmap, graphics: Tes
   if (!turned) return bitmap;
   const whole = { x: 0, y: 0, width: bitmap.width, height: bitmap.height };
   try {
-    return graphics.compose(bitmap.width, bitmap.height, [{ source: bitmap, from: whole, to: whole }]);
+    return await graphics.compose(bitmap.width, bitmap.height, [{ source: bitmap, from: whole, to: whole }]);
   } finally {
     bitmap.close();
   }
