@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Container, Graphics, Point, Sprite, Texture, type Application, type EventSystem, type FederatedPointerEvent } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../../src/app/utils/typedEmitter';
 import { TokenRenderer } from '../../../src/app/pixi/token-renderer';
 import { FogOfWarRenderer } from '../../../src/app/pixi/fog/FogOfWarRenderer';
 import { captureWithLayerVisibility } from '../../../src/app/pixi/playerSafeFrame';

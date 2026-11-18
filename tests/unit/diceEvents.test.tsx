@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { act, cleanup, render, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DiceTool } from '../../src/app/tools/DiceTool';

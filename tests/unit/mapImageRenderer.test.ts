@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { Container, Ticker } from 'pixi.js';
 import { TFile } from 'obsidian';
 import { createInMemoryApp } from '../mocks/inMemoryVault';

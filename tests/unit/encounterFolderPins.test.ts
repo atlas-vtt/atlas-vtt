@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { isEncounterFolderLink } from '../../src/app/links/atlasLinkTargets';
 import { encounterFoldersOf, encounterFolderTrail, linkedEncounterFolder } from '../../src/app/encounters/encounterFolders';
 import { pickEncounter, rollEncounterFolder } from '../../src/app/encounters/encounterFolderRoll';

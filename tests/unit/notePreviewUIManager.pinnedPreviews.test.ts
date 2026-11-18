@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { MarkdownView, Platform, WorkspaceLeaf, type OpenViewState } from 'obsidian';

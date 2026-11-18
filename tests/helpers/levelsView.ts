@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { Application, CanvasSource, Container, Matrix, RenderTexture, Sprite, Texture, type WebGLRenderer } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { imageWorldRect, NO_STRETCH, sameStretch, turnedBox, type MapStretch } from '../../src/app/grid/mapStretch';

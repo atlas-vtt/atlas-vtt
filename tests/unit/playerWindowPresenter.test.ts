@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import type { App } from 'obsidian';
 import type { LocalPlayerView } from '../../src/app/local-player-view';
 import { describe, expect, test, vi, beforeEach } from 'vitest';

@@ -2,17 +2,27 @@ import { EventEmitter as NodeEmitter } from 'events';
 import { describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from '../../src/app/utils/typedEmitter';
 
-type AnyEmitter = EventEmitter | NodeEmitter;
+/** What the scenarios ask of an emitter; Atlas' own and Node's both answer it. */
+interface Emitter {
+  on<Args extends unknown[]>(event: string, listener: (...args: Args) => void): unknown;
+  once<Args extends unknown[]>(event: string, listener: (...args: Args) => void): unknown;
+  off<Args extends unknown[]>(event: string, listener: (...args: Args) => void): unknown;
+  emit(event: string, ...args: unknown[]): boolean;
+  removeAllListeners(): unknown;
+  listenerCount(event: string): number;
+}
+
+type Scenario = (emitter: Emitter, log: (entry: string) => void) => void;
 
 /** What listeners saw, in the order they were called, for a scenario run on either emitter. */
-function calls(make: () => AnyEmitter, scenario: (emitter: AnyEmitter, log: (entry: string) => void) => void): string[] {
+function calls(emitter: Emitter, scenario: Scenario): string[] {
   const seen: string[] = [];
-  scenario(make(), entry => seen.push(entry));
+  scenario(emitter, entry => seen.push(entry));
   return seen;
 }
 
 /** Scenarios whose outcome callers rely on; each must end as it does on Node's emitter. */
-const SCENARIOS: Record<string, (emitter: AnyEmitter, log: (entry: string) => void) => void> = {
+const SCENARIOS: Record<string, Scenario> = {
   'calls listeners in the order they were added, with the arguments': (emitter, log) => {
     emitter.on('move', (x: number, y: number) => log(`a ${x},${y}`));
     emitter.on('move', (x: number) => log(`b ${x}`));
@@ -99,13 +109,13 @@ const SCENARIOS: Record<string, (emitter: AnyEmitter, log: (entry: string) => vo
 describe('EventEmitter', () => {
   it.each(Object.keys(SCENARIOS))('%s, as Node does', (name) => {
     const scenario = SCENARIOS[name]!;
-    const own = calls(() => new EventEmitter(), scenario);
+    const own = calls(new EventEmitter(), scenario);
     expect(own.length).toBeGreaterThan(0);
-    expect(own).toEqual(calls(() => new NodeEmitter(), scenario));
+    expect(own).toEqual(calls(new NodeEmitter(), scenario));
   });
 
   it('calls listeners in the order they were added, with the arguments', () => {
-    expect(calls(() => new EventEmitter(), SCENARIOS['calls listeners in the order they were added, with the arguments']!))
+    expect(calls(new EventEmitter(), SCENARIOS['calls listeners in the order they were added, with the arguments']!))
       .toEqual(['a 1,2', 'b 1', 'true', 'false']);
   });
 

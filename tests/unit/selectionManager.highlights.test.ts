@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { describe, expect, it } from 'vitest';
 import { Container, Sprite, type Graphics } from 'pixi.js';
 import { createStore } from 'zustand/vanilla';

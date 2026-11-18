@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { BUILT_IN_DICE_SETS } from '../../src/app/gameSystems/builtInDiceSets';
