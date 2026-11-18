@@ -38,6 +38,8 @@ export interface GestureDeps {
    * cell where the grid snaps, unless `free`. Unset: where it is dropped.
    */
   readonly snapStamp?: (at: Point, footprint: number, free: boolean) => Point;
+  /** Whether a resize keeps the shape's proportions: the tool's Constrain switch, turned around while Shift is `held`. Unset: as Shift says. */
+  readonly constrains?: (held: boolean) => boolean;
   /** A drag of annotations alone ended, whatever ended it: the pointer rests where it was let go, still with the drag's cursor. */
   readonly settled?: () => void;
 }
@@ -173,7 +175,7 @@ export class AnnotationGestures {
           this.deps.showHandles(shown ? handlesOf([shown], this.deps.measure) : handles, grip);
           return;
         }
-        const transform = this.transformOf(handles, grip, grabbed, drag, move.shiftKey === true);
+        const transform = this.transformOf(handles, grip, grabbed, drag, this.deps.constrains?.(move.shiftKey === true) ?? move.shiftKey === true);
         edit.show(transform);
         this.deps.showHandles(mapHandles(handles, transform), grip);
       },

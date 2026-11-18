@@ -28,6 +28,7 @@ afterEach(() => {
 
 interface Mounted {
   settings: SettingsService;
+  store: ReturnType<typeof createViewAtlasStore>;
   closeMenu: ReturnType<typeof vi.fn>;
   selectTool: ReturnType<typeof vi.fn>;
 }
@@ -50,7 +51,7 @@ function mount(options: { playerView?: boolean; mode?: 'ruler' | 'cone' } = {}):
       </ViewStoreProvider>
     </AtlasUIContext.Provider>,
   );
-  return { settings, closeMenu, selectTool };
+  return { settings, store, closeMenu, selectTool };
 }
 
 const option = (name: string): HTMLElement => screen.getByRole('radio', { name });
@@ -64,7 +65,7 @@ describe('the measure tool\'s menu', () => {
     expect(selectTool).toHaveBeenCalledWith('measure');
   });
 
-  it('holds when a dragged token shows its distance, as Atlas\' own setting, and no shapes or switches', () => {
+  it('holds when a dragged token shows its distance, as Atlas\' own setting, and no shapes', () => {
     const { settings } = mount();
     expect(screen.getByRole('radiogroup', { name: 'Distance while moving tokens' })).toBeTruthy();
     expect(chosen('Always')).toBe(true);
@@ -73,8 +74,16 @@ describe('the measure tool\'s menu', () => {
     expect(chosen('In combat')).toBe(true);
     fireEvent.click(option('Never'));
     expect(settings.getDragDistance()).toBe('never');
-    expect(screen.queryByRole('switch')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Circle' })).toBeNull();
+  });
+
+  it('has one switch, Snap, which is what Alt turns around while measuring', () => {
+    const { store } = mount();
+    const switches = screen.getAllByRole('switch');
+    expect(switches).toHaveLength(1);
+    expect(screen.getByRole('switch', { name: 'Snap' }).getAttribute('aria-checked')).toBe('true');
+    fireEvent.keyDown(switches[0]!, { key: ' ' });
+    expect(store.getState().toolSwitches.measureSnap).toBe(false);
   });
 
   it('opens the rules of the map\'s collection on its grid and measurement tab, and closes the menu', () => {

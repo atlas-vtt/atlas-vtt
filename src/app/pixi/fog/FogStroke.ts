@@ -23,7 +23,7 @@ import { FogPolygon } from './FogPolygon';
 import { FogRevealWash } from './FogRevealWash';
 import { FogRoomClick } from './FogRoomClick';
 import { FogSnapGuide } from './FogSnapGuide';
-import { FogSnapping, type PlaceKeys } from './FogSnapping';
+import { FogSnapping, placeKeysWith, type PlaceKeys } from './FogSnapping';
 import { FogStrokeKeys } from './FogStrokeKeys';
 import { FogStrokeOutcome, type FogStrokeHost } from './fogStrokeOutcome';
 import { showsGmView } from './fogVisibilityPolicy';
@@ -103,7 +103,7 @@ export class FogStroke {
       edited: (key, repeat) => this.edit(key, repeat),
       // A key held down repeats, and is still the map's undo.
       undoes: (event) => deps.isUndoKey?.(event) ?? matchesHotkey(event, DEFAULT_MAP_HOTKEYS.undo, true),
-      rekeyed: (keys) => this.rekey(keys),
+      rekeyed: (keys) => this.rekey(placeKeysWith(store.getState(), keys)),
       // A drag holds the pointer; a polygon waits between its clicks, and must not take a dialog's keys.
       areMaps: (event) => !this.polygon.active || (deps.keysBelongToMap?.(event) ?? true),
     });

@@ -43,6 +43,8 @@ export interface DrawToolDeps {
   readonly chrome: Container;
   /** The grid points snap to; null without a grid or while its Snap is off. */
   snapGrid(): GridGeometry | null;
+  /** Whether a point lies where the pointer is: the tool's Snap switch, turned around while Alt is `held`. */
+  frees(held: boolean): boolean;
   /** The grid whose cells the Cells mode fills; null where the map has none, or it is switched off. */
   cellGrid(): GridGeometry | null;
   /** The map, at whose edge a filled cell ends; null without one. */
@@ -102,7 +104,7 @@ export class DrawToolHost {
     });
     this.gestures = {
       mode: () => this.gestureMode(),
-      point: (world, free) => snapDrawPoint(deps.snapGrid(), world, free),
+      point: (world, held) => snapDrawPoint(deps.snapGrid(), world, deps.frees(held)),
       started: (mode) => this.started(mode),
       changed: (shape) => this.changed(shape),
       swept: (path, alt) => this.swept(path, alt),
@@ -250,11 +252,11 @@ export class DrawToolHost {
     if (this.ring.shown) this.ring.updatePosition(world.x, world.y);
   }
 
-  private stamp(world: Point, free: boolean): void {
+  private stamp(world: Point, held: boolean): void {
     if (!this.hasRoom('drawings')) return;
     const state = this.deps.store.getState();
     const cell = drawCell(state.grid);
-    const at = snapStampPoint(this.deps.snapGrid(), world, free, stampSize(state.drawTool.size, cell));
+    const at = snapStampPoint(this.deps.snapGrid(), world, this.deps.frees(held), stampSize(state.drawTool.size, cell));
     this.select(state.addDrawing(madeStamp(at, state.drawTool, cell)));
   }
 

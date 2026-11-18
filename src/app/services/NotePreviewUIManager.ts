@@ -19,6 +19,7 @@ import { t } from '../i18n';
 import { findAtlasLeafByViewId } from '../utils/atlasLeafLookup';
 import { readPinnedNotePreviews } from '../stores/pinnedNotePreviewSlice';
 import { isModHeld } from '../keyboard/modKey';
+import { OPEN_PREVIEW_EVENT, watchPressOutside } from './previewByHand';
 import type { ViewAtlasStore } from '../storeFactory';
 import type { TokenRollContext } from '../types/diceRollOrigin';
 import { captureRollContext } from '../tools/diceRollOrigins';
@@ -96,6 +97,9 @@ export class NotePreviewUIManager {
   private viewEl: HTMLElement | null = null;
   private activeLeafChangeRef: EventRef | null = null;
   private layoutChangeRef: EventRef | null = null;
+  /** The pin or token whose preview a menu's row opened, while it waits for a press outside it. */
+  private openedByHand: string | null = null;
+  private stopWatchingOutside: (() => void) | null = null;
   private zIndexCounter = 5; // stay below asset manager (50) and Obsidian overlays (~1000)
 
   constructor(app: App, eventBus: EventEmitter, store: ViewAtlasStore, viewId: string) {
@@ -139,6 +143,11 @@ export class NotePreviewUIManager {
       }
     });
 
+    // A menu's Preview row: the preview a held Mod would open, kept until a press outside it.
+    this.eventBus.on(OPEN_PREVIEW_EVENT, (data: { pin: PreviewAnchor; screenX: number; screenY: number; sourceLeaf?: WorkspaceLeaf | null }) => {
+      this.openByHand(data);
+    });
+
     this.eventBus.on('pin-hide-preview', (data: { pin: PreviewAnchor }) => {
       if (this.lastHoveredPinId === data.pin.id) {
           this.lastHoveredPinId = null; // Clear last hovered if mouse moves off it
@@ -148,7 +157,7 @@ export class NotePreviewUIManager {
       }
       // Only hide if not pinned and modifier is not down.
       // If modifier is still down, a new 'pin-hover-preview' will trigger for the new element.
-      if (!this.isModifierKeyDown) {
+      if (!this.isModifierKeyDown && this.openedByHand !== data.pin.id) {
         this.hidePreview(data.pin.id, false); // false = don't force if pinned
       }
     });
@@ -275,6 +284,28 @@ export class NotePreviewUIManager {
   /** The user closed the preview, so it must not reopen with the map. */
   public handlePreviewDismissed(preview: NotePreviewWindow): void {
     if (preview.originatingPin) this.store.getState().removePinnedNotePreview(preview.originatingPin.id);
+  }
+
+  /**
+   * Opens a preview no key is held for (a menu's Preview row). It stays while the pointer leaves
+   * its pin or token, until a press lands outside every preview window, or Escape; pinned, it
+   * stays as any pinned preview does.
+   */
+  private openByHand(data: { pin: PreviewAnchor; screenX: number; screenY: number; sourceLeaf?: WorkspaceLeaf | null }): void {
+    this.stopWatchingOutside?.();
+    this.openedByHand = data.pin.id;
+    this.showPreviewFor({
+      pin: data.pin, screenX: data.screenX, screenY: data.screenY, sourceLeaf: data.sourceLeaf ?? null,
+      originContext: 'type' in data.pin && data.pin.type === 'token'
+        ? captureRollContext(this.viewId, this.store.getState(), [data.pin.id])
+        : undefined,
+    });
+    const inside = (target: Node): boolean => [...this.activePreviews.values()].some((preview) => preview.element?.contains(target) === true);
+    this.stopWatchingOutside = watchPressOutside(this.previewDocument(data.sourceLeaf), inside, () => {
+      this.stopWatchingOutside = null;
+      this.openedByHand = null;
+      this.hideAllUnpinnedPreviews();
+    });
   }
 
   private showPreviewFor(hover: NonNullable<typeof this.currentHover>): void {
@@ -524,6 +555,8 @@ export class NotePreviewUIManager {
   }
 
   public destroy(): void {
+    this.stopWatchingOutside?.();
+    this.stopWatchingOutside = null;
     document.removeEventListener('keydown', this.boundHandleKeyDown);
     document.removeEventListener('keyup', this.boundHandleKeyUp);
     window.removeEventListener('blur', this.boundHideAllUnpinnedPreviewsOnBlur);

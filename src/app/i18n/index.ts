@@ -61,6 +61,28 @@ export function t(key: MessageKey, values?: MessageValues): string {
   return formatMessage(own, pluralRules, values);
 }
 
+/**
+ * The keys whose text names what a mouse or a keyboard does ("Right-click a token to add it") and that
+ * have a second text for a finger under `<key>.touch` ("Touch and hold a token to add it").
+ */
+export type PointerKey = { [Key in MessageKey]: `${Key}.touch` extends MessageKey ? Key : never }[MessageKey];
+
+let fingerInUse: () => boolean = () => false;
+
+/** Tells the texts how to learn whether the pointer is a finger now. The plugin sets it during bootstrap; without it every text is the mouse's. */
+export function setPointerSource(isFinger: () => boolean): void {
+  fingerInUse = isFinger;
+}
+
+/**
+ * The text for `key` as the pointer in use needs it: its `.touch` text while that is a finger, else
+ * the text itself. Each of the two is a whole sentence of its own, never one built from the other.
+ * A language that lacks the `.touch` text shows the English one, as for any missing key.
+ */
+export function tPointer(key: PointerKey, values?: MessageValues): string {
+  return t(fingerInUse() ? `${key}.touch` : key, values);
+}
+
 /** Joins `items` as the active language does: "a, b and c". */
 export function formatList(items: readonly string[]): string {
   return new Intl.ListFormat(locale, { type: 'conjunction' }).format(items);

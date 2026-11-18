@@ -12,6 +12,7 @@ import { DEFAULT_FOG_TOOL, settledFogTool, type FogToolChoices } from '../fog/fo
 import { DEFAULT_EXPLORED_BRUSH, type ExploredBrushOptions } from '../lighting/exploredEdits';
 import { DEFAULT_LIGHTING_TOOL, type LightingToolOptions } from '../lighting/lightingTool';
 import { DEFAULT_MEASURE_TOOL, type MeasureToolOptions } from '../measure/measureTypes';
+import { DEFAULT_TOOL_SWITCHES, type ToolSwitchId } from '../types/toolSwitches';
 import type { DMScreenPage, DungeonGeneratorRequest, HeldTokens, ViewUIState } from '../types/viewUIState';
 
 /** State fields added to ViewAtlasState */
@@ -48,6 +49,8 @@ export interface UISlice extends ViewUIState {
   /** Changes the fog tool's choices; a brush size is kept within its limits (`settledFogTool`). */
   setFogTool: (changes: Partial<FogToolChoices>) => void;
   setLightingTool: (changes: Partial<LightingToolOptions>) => void;
+  /** Sets one of the tools' switches that stand for a held key. */
+  setToolSwitch: (id: ToolSwitchId, on: boolean) => void;
   setHeldTokens: (held: HeldTokens) => void;
   setExploredBrush: (changes: Partial<ExploredBrushOptions>) => void;
   /** Starting the toolbar editor closes the dice tray, which hangs where the tray goes. */
@@ -85,6 +88,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
   | 'drawTool'
   | 'fogTool'
   | 'lightingTool'
+  | 'toolSwitches'
   | 'heldTokens'
   | 'exploredBrush'
   | 'isToolbarEditing'
@@ -115,6 +119,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
     drawTool,
     fogTool: DEFAULT_FOG_TOOL,
     lightingTool: DEFAULT_LIGHTING_TOOL,
+    toolSwitches: DEFAULT_TOOL_SWITCHES,
     heldTokens: {},
     exploredBrush: DEFAULT_EXPLORED_BRUSH,
     isToolbarEditing: false,
@@ -159,6 +164,7 @@ export function createUIActions(
   | 'setDrawTool'
   | 'setFogTool'
   | 'setLightingTool'
+  | 'setToolSwitch'
   | 'setHeldTokens'
   | 'setExploredBrush'
   | 'setToolbarEditing'
@@ -236,6 +242,7 @@ export function createUIActions(
       draft.fogTool = settledFogTool({ ...draft.fogTool, ...changes });
     }),
     setLightingTool: (changes) => set((draft) => { draft.lightingTool = { ...draft.lightingTool, ...changes }; }),
+    setToolSwitch: (id, on) => set((draft) => { draft.toolSwitches = { ...draft.toolSwitches, [id]: on }; }),
     setHeldTokens: (held) => set((draft) => { draft.heldTokens = held; }),
     setExploredBrush: (changes) => set((draft) => { draft.exploredBrush = { ...draft.exploredBrush, ...changes }; }),
     setToolbarEditing: (on) => set((draft) => {

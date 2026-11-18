@@ -15,7 +15,7 @@ import { clampZoom, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from './types';
 import type { CollectionMetadata } from '../../../../services/AssetService';
 import type { CreatorMode, CreatorSource } from './types';
 import type { TokenPreviewsApi } from './useTokenPreviews';
-import { t } from '../../../../i18n';
+import { t, tPointer } from '../../../../i18n';
 
 interface TokenCreatorRailProps {
   mode: CreatorMode;
@@ -92,8 +92,8 @@ export function TokenCreatorRail(props: TokenCreatorRailProps): React.JSX.Elemen
         </>}
         {sourceHint ? <p className="atlas-token-creator__empty-note">{sourceHint}</p> : (
           <UploadDropzone
-            title={isEditing ? t('creator.chooseNew') : t('creator.dropAnywhere')}
-            hint={isEditing ? t('creator.willReplace') : t(`creator.${mode}.browse`)}
+            title={isEditing ? t('creator.chooseNew') : tPointer('creator.dropAnywhere')}
+            hint={isEditing ? t('creator.willReplace') : tPointer(`creator.${mode}.browse`)}
             multiple={!isEditing}
             acceptsMapFiles={props.acceptsMapFiles && !isEditing}
             isDragging={isDragging}

@@ -29,7 +29,7 @@ import { useStatblockHoverPreview } from './StatblockHoverPreview';
 import { InitiativeStatblockPreview, type PreviewedEntry } from './InitiativeStatblockPreview';
 import { captureRollContext } from '../../tools/diceRollOrigins';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
-import { t } from '../../i18n';
+import { tPointer } from '../../i18n';
 import './initiative-tracker.scss';
 
 /**
@@ -135,7 +135,15 @@ export const InitiativeTracker: React.FC = () => {
     setDragOverIndex(null);
   }, [dragFromIndex, dragOverIndex, reorderInitiative]);
 
-  const handleContextMenu = useInitiativeCardMenu({ tokens, bySides, sides, cards: initiative.cards !== undefined, fightRuns: initiative.isActive, roll, defeated, edit: openEditPopup });
+  // The card menu's Preview row: the statblock Mod shows over the card, kept until a press outside it.
+  const { holdPreview } = previewActions;
+  const previewFromMenu = useCallback((entry: InitiativeEntry, cardElement: HTMLElement): void => {
+    if (!entry.statblockPath) return;
+    const originContext = captureRollContext(view?.viewId, { mapPath, mapLoaded, isMapLoading, objects: { tokens } }, [entry.tokenId]);
+    holdPreview({ entry, originContext }, entry.statblockPath, cardElement);
+  }, [holdPreview, view, mapPath, mapLoaded, isMapLoading, tokens]);
+
+  const handleContextMenu = useInitiativeCardMenu({ tokens, bySides, sides, cards: initiative.cards !== undefined, fightRuns: initiative.isActive, roll, defeated, edit: openEditPopup, preview: previewFromMenu });
 
   const openOptions = (event: React.MouseEvent<HTMLButtonElement>): void => {
     const button = event.currentTarget;
@@ -227,7 +235,7 @@ export const InitiativeTracker: React.FC = () => {
       {/* The combatants, in the order the list shows them */}
       <div ref={contentRef} className="atlas-initiative-tracker__content">
         {sortedEntries.length === 0 && (
-          <p className="atlas-initiative-tracker__empty">{t('initiative.empty')}</p>
+          <p className="atlas-initiative-tracker__empty">{tPointer('initiative.empty')}</p>
         )}
         {sortedEntries.length > 0 && <InitiativeTrackerList segments={segments} card={card} />}
       </div>

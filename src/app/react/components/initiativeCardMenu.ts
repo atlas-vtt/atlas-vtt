@@ -7,8 +7,9 @@ import type { SideId } from '../../types/initiativeRulesTypes';
 import { playerVision } from '../../characters/playerVision';
 import { isOffMap } from '../../tokens/offMap';
 import { t } from '../../i18n';
+import { previewEntry } from '../../services/previewByHand';
 
-interface CardMenuActions {
+export interface CardMenuActions {
   roll: () => void;
   moveToFront: () => void;
   moveToBack: () => void;
@@ -21,6 +22,8 @@ interface CardMenuActions {
   actNow: () => void;
   /** Puts a combatant kept beside the map on it. */
   placeOnMap: () => void;
+  /** Shows the combatant's statblock beside its card, as Mod held over the card does; unset where it has none. */
+  preview?: (() => void) | undefined;
   /** Takes the combatant out of the tracker; one kept beside the map goes with its token. */
   remove: () => void;
 }
@@ -102,6 +105,7 @@ export function initiativeCardMenu(
     ...(numbered ? [item(t('initiative.edit'), 'pencil', actions.edit)] : []),
     ...(mode.cards && entry.card !== undefined && mode.swapTargets.length > 0 ? [swapCard] : []),
     ...(mode.fightRuns ? [sitOut, ...(numbered ? [delay] : [])] : []),
+    ...(actions.preview ? [previewEntry(actions.preview)] : []),
     ...(isOffMap(token) ? [item(t('initiative.placeOnMap'), 'map-pin', actions.placeOnMap)] : []),
     item(hidden ? t('initiative.showToPlayers') : t('initiative.hideFromPlayers'), hidden ? 'eye' : 'eye-off', () => actions.updateToken({ isHidden: !hidden })),
     { type: 'item', label: t('initiative.remove'), icon: 'trash-2', destructive: true, onClick: actions.remove },

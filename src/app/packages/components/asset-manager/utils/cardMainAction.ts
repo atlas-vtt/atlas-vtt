@@ -1,5 +1,5 @@
 import type { AnyAsset } from '../types';
-import { t } from '../../../../i18n';
+import { t, tPointer } from '../../../../i18n';
 
 type AssetType = AnyAsset['type'];
 
@@ -13,10 +13,10 @@ const HOVER_HINT: Readonly<Record<AssetType, () => string>> = {
 
 /** The same action told in the selection chip while one card is selected, with the key that runs it. */
 const SELECTED_HINT: Readonly<Record<AssetType, () => string>> = {
-  tokens: () => t('am.selection.spawn'),
-  encounters: () => t('am.selection.spawn'),
-  scenes: () => t('am.selection.openScene'),
-  maps: () => t('am.selection.openMapScene'),
+  tokens: () => tPointer('am.selection.spawn'),
+  encounters: () => tPointer('am.selection.spawn'),
+  scenes: () => tPointer('am.selection.openScene'),
+  maps: () => tPointer('am.selection.openMapScene'),
 };
 
 /** What double-clicking a card of `type` does, for its hover card. */

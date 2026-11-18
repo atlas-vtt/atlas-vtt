@@ -51,6 +51,8 @@ export interface TokenActionHost {
   changeResource(at: { x: number; y: number }, resourceName: string, count: number, apply: (amount: number) => void): void;
   /** Pastes what was copied in the middle of what the view shows. */
   paste(): void;
+  /** Opens the token's statblock preview at a point of the window, as a held Mod over the token does. */
+  preview(character: Character, at: { x: number; y: number }): void;
 }
 
 const RING_COLORS = (): { name: string; value: string | null }[] => [
@@ -230,6 +232,11 @@ export function tokenActions(host: TokenActionHost, token: TokenEntity, at: { x:
     icon: 'swords',
     run: () => toggleInitiative(store, targets, isInInitiative),
   });
+
+  // The statblock a held Mod shows over the token, for a hand that holds no key
+  if (character?.statblockPath?.trim()) {
+    add({ kind: 'run', id: 'preview', enabled: true, label: t('preview.show'), icon: 'eye', run: () => host.preview(character, at) });
+  }
 
   // A token without a statblock can be given one here. Editing and unlinking one are the asset manager's.
   if (!character?.statblockPath) {

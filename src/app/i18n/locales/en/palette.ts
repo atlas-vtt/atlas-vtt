@@ -48,6 +48,7 @@ export const palette = {
   'palette.tour.findBody': 'Search for a tool or setting here. Use the tabs to narrow the list, then arrow keys and Enter to choose.',
   'palette.tour.findTitle': 'Find a command',
   'palette.tour.ownBody': 'Adjust your grid, tokens, and widgets from Settings. Back on the map, press {key} to see shortcuts. Change them in Obsidian Settings → Atlas VTT → Map hotkeys.',
+  'palette.tour.ownBody.touch': 'Adjust your grid, tokens, and widgets from Settings.',
   'palette.tour.ownTitle': 'Make the map your own',
   'palette.widgetSettings': 'Widget settings',
 } as const satisfies Record<string, Message>;

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { PlacementSession, type HeldToken } from '../../src/app/pixi/tokenPlacement/PlacementSession';
+import { PlacementSession, type HeldToken, type PlacementSessionDeps } from '../../src/app/pixi/tokenPlacement/PlacementSession';
 import { cycled, facingTowards, footprintCells, formationAt, queueSlot, type PlacementGrid, type Point } from '../../src/app/pixi/tokenPlacement/placementLayout';
 import { WheelSteps } from '../../src/app/pixi/tokenPlacement/wheelSteps';
 import { Spring } from '../../src/app/pixi/tokenPlacement/placementSpring';
@@ -116,7 +116,7 @@ function fakeGhost() {
   });
 }
 
-function hand(count: number) {
+function hand(count: number, extra: Partial<PlacementSessionDeps> = {}) {
   const ghosts = Array.from({ length: count }, fakeGhost);
   const held: HeldToken[] = ghosts.map((ghost, i) => ({
     input: { imagePath: `t${i}.png`, x: 35 + 70 * i, y: 35 } as TokenInput,
@@ -137,6 +137,7 @@ function hand(count: number) {
     commit: (tokens) => { committed.push(tokens); return tokens.map((token) => token.imagePath); },
     release: () => undefined,
     end,
+    ...extra,
   }, held, { x: 400, y: 300 });
   return { session, ghosts, committed, end, marks };
 }
@@ -233,6 +234,33 @@ describe('placing held tokens', () => {
     session.cycle(-1);
     put(session, { x: 100, y: 100 }, true);
     expect(committed[0]?.[0]?.imagePath).toBe('t2.png');
+  });
+
+  it('keeps the queue without Shift once told to, as the strip does for a finger', () => {
+    const { session, committed, ghosts, end } = hand(3);
+    session.keepQueue(true);
+    // A finger's events hold no Shift: the queue stays.
+    session.moveTo({ x: 100, y: 100 }, false);
+    expect(ghosts[0]!.poses.at(-1)?.part).toBe('head');
+    expect(session.cycling).toBe(true);
+    session.cycle(1);
+    expect(ghosts[1]!.poses.at(-1)?.part).toBe('head');
+    put(session, { x: 100, y: 100 }, false);
+    expect(committed).toEqual([[expect.objectContaining({ imagePath: 't1.png' })]]);
+    session.keepQueue(false);
+    expect(ghosts[2]!.poses.at(-1)?.part).toBe('formation');
+    put(session, { x: 300, y: 300 }, false);
+    expect(committed[1]).toHaveLength(2);
+    expect(end).toHaveBeenCalledTimes(1);
+  });
+
+  it('turns freely or in steps as its host reads the held key', () => {
+    const { session, ghosts } = hand(1, { turnsFreely: (held) => !held });
+    session.pressAt({ x: 100, y: 100 }, false);
+    session.turn({ x: 200, y: 110 }, false);
+    expect(ghosts[0]!.facing % 15).not.toBe(0);
+    session.turn({ x: 200, y: 110 }, true);
+    expect(ghosts[0]!.facing % 15).toBe(0);
   });
 
   it('puts the tokens still held away and reports those already placed', () => {

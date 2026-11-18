@@ -517,7 +517,7 @@ export class PinRenderer {
   }
 
   private showPinContextMenu(pin: NotePin, pos: { x: number; y: number }): void {
-    openPinMenu(this.store, pin, pinMenuEntries(this.store, pin), pos, this.pinnedSceneLevels);
+    openPinMenu(this.store, pin, pinMenuEntries(this.store, pin, pos), pos, this.pinnedSceneLevels);
   }
 
   private syncPins = (

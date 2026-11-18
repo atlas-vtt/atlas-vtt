@@ -7,6 +7,7 @@ import { worldToGameUnits } from '../../lighting/lightingUnits';
 import { dragRange, maxLightRange, type RangeField } from '../../lighting/lightRanges';
 import type { ViewAtlasStore } from '../../storeFactory';
 import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
+import { placesFreely } from '../../types/toolSwitches';
 import type { Point } from '../../types/visionTypes';
 import type { LightMarkers } from './LightMarkers';
 import type { LightRangeRings } from './LightRangeRings';
@@ -190,7 +191,7 @@ export class LightInteraction {
       const at = viewport.toWorld(move.global.x, move.global.y);
       const radius = Math.max(0, ringRadiusAt(rings.geometry() ?? geometry, field, at) - offset);
       const scale = rings.unitScale();
-      const next = dragRange(light.emission, field, worldToGameUnits(radius, scale), move.altKey, maxLightRange(scale));
+      const next = dragRange(light.emission, field, worldToGameUnits(radius, scale), this.free(move), maxLightRange(scale));
       if (next !== light.emission) store.getState().updateLight(lightId, { emission: next });
     };
     this.track({
@@ -220,7 +221,7 @@ export class LightInteraction {
     const onMove = (move: FederatedPointerEvent): void => {
       const light = readLight(levelObjects(store.getState()).lights[lightId]);
       if (!light) return;
-      const next = snapDirection(directionTo(light, viewport.toWorld(move.global.x, move.global.y)) + offset, move.altKey);
+      const next = snapDirection(directionTo(light, viewport.toWorld(move.global.x, move.global.y)) + offset, this.free(move));
       if (next !== (light.rotation ?? 0)) store.getState().updateLight(lightId, { rotation: next });
     };
     this.track({
@@ -235,6 +236,11 @@ export class LightInteraction {
   }
 
   /** Closes a drag's undo step: recorded on a commit; on a cancel `restore` puts the light back and no step is left. */
+  /** Whether a ring or the beam moves in fine steps: the tool's Snap switch is off, or Alt turns it around. */
+  private free(move: { altKey?: boolean }): boolean {
+    return placesFreely(this.deps.store.getState(), 'lightingSnap', move.altKey);
+  }
+
   private settle(commit: boolean, restore: () => void, lightId: string): void {
     const { store } = this.deps;
     if (commit) {

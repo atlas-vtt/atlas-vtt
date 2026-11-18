@@ -8,6 +8,7 @@ import type { LevelSurface } from '../../types/sceneLevelTypes';
 import { areaHandlePoint } from '../../vision/polygonArea';
 import { PolygonAreaEditor } from '../areas/PolygonAreaEditor';
 import { snapToWallEnd } from '../lighting/wallEnds';
+import { placesFreely } from '../../types/toolSwitches';
 import { levelSurfaceOverlay } from './levelSurfaceOverlay';
 
 export interface LevelSurfaceEditorDeps {
@@ -60,7 +61,7 @@ export class LevelSurfaceEditor extends PolygonAreaEditor<LevelSurface> {
           return false;
         },
         maxCorners: MAX_SURFACE_CORNERS,
-        snap: (point, { altKey }) => (altKey ? point : snapToWallEnd(point, levelObjects(store.getState()).walls, viewport.scale.x)),
+        snap: (point, { altKey }) => (placesFreely(store.getState(), 'lightingSnap', altKey) ? point : snapToWallEnd(point, levelObjects(store.getState()).walls, viewport.scale.x)),
       },
     });
     surfaceDeps.eventBus.on('wall-submode-changed', this.onSubMode);

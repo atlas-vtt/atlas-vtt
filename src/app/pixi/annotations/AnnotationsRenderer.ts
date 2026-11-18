@@ -37,6 +37,7 @@ import type { AnnotationPointerHandlers } from './annotationPointer';
 import { BarMenuPress } from './BarMenuPress';
 import { ClickPlacing } from './ClickPlacing';
 import { DrawInput } from './DrawInput';
+import { placesFreely, switchApplies } from '../../types/toolSwitches';
 import { DrawPlacing } from './DrawPlacing';
 import { DrawToolHost, type FullOf } from './DrawToolHost';
 import { activeDrawMode } from './drawToolState';
@@ -159,12 +160,15 @@ export class AnnotationsRenderer {
     this.views = new PictureViews(viewport, (views, whole) => this.layer.setViews(views, whole));
     this.unsubscribe = store.subscribe((state, previous) => this.follow(state, previous));
     const snapGrid = (): GridGeometry | null => ((store.getState().grid?.snapToGrid ?? true) ? options.grid() : null);
+    /** Whether a point lies where the pointer is: the Snap switch of the tool in hand (Draw, else Select, which moves drawings too) is off, or Alt (`held`) turns it around. */
+    const frees = (held: boolean): boolean => placesFreely(store.getState(), store.getState().activeTool === 'draw' ? 'drawSnap' : 'selectSnap', held);
     /** What the tool's gestures and what it shows under the pointer both read of the view. */
     const tool = {
       viewport,
       store,
       chrome: this.chrome,
       snapGrid,
+      frees,
       cellGrid: () => (fillsCells(store.getState().grid) ? options.grid() : null),
       mapRect: () => options.mapRect?.() ?? null,
       gmView: () => !this.showsPlayers(),
@@ -200,8 +204,8 @@ export class AnnotationsRenderer {
       measure: this.layer.measure,
       gmView: () => !this.showsPlayers(),
       touched: () => this.sharpening.touch(),
-      snap: (world, free) => snapDrawPoint(snapGrid(), world, free),
-      snapStamp: (at, footprint, free) => snapStampPoint(snapGrid(), at, free, footprint),
+      snap: (world, held) => snapDrawPoint(snapGrid(), world, frees(held)),
+      snapStamp: (at, footprint, held) => snapStampPoint(snapGrid(), at, frees(held), footprint),
       editText: (text) => this.texts.edit(text),
       typing: () => this.texts.typing.active,
       // A text whose face is still loading is never measured: its side handle changes its width alone until the face is there.
@@ -232,6 +236,7 @@ export class AnnotationsRenderer {
     this.input = new DrawInput(viewport, this.placing.around(this.host.gestures), {
       typed: (event) => isTextEntryTarget(event.target),
       areMaps: (event) => options.keysBelongToMap?.(event) ?? true,
+      constrains: (held) => switchApplies(store.getState(), 'drawConstrain', held),
     });
     this.clicks = new ClickPlacing(viewport, this.host.clicks);
 

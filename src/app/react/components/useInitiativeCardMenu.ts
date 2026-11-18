@@ -24,6 +24,8 @@ interface CardMenuInputs {
   defeated: () => ReadonlySet<string>;
   /** Opens the edit popup of `entry` beside its card. */
   edit: (entry: InitiativeEntry, cardElement: HTMLElement) => void;
+  /** Shows the statblock of `entry` beside its card until a press outside it. */
+  preview?: (entry: InitiativeEntry, cardElement: HTMLElement) => void;
 }
 
 /** The other combatants holding a card a combatant may swap its own with: one per card, in the order they act. */
@@ -38,7 +40,7 @@ function swapTargets(entries: readonly InitiativeEntry[], entry: InitiativeEntry
 
 /** Opens the menu of a combatant's card (`initiativeCardMenu`) with the store's actions. */
 export function useInitiativeCardMenu(inputs: CardMenuInputs): (event: React.MouseEvent, entry: InitiativeEntry, cardElement: HTMLElement) => void {
-  const { tokens, bySides, sides, cards, fightRuns, roll, defeated, edit } = inputs;
+  const { tokens, bySides, sides, cards, fightRuns, roll, defeated, edit, preview } = inputs;
   const { view } = useAtlasUI();
   const store = useViewStoreHook();
   const swapInitiativeCards = useAtlasStore((s) => s.swapInitiativeCards);
@@ -62,8 +64,9 @@ export function useInitiativeCardMenu(inputs: CardMenuInputs): (event: React.Mou
       delay: () => delayInitiativeTurn(entry.id, defeated()),
       actNow: () => actNowInInitiative(entry.id),
       placeOnMap: () => { if (view) placeCombatantOnMap(view, entry.tokenId); },
+      ...(entry.statblockPath && preview && { preview: () => preview(entry, cardElement) }),
       remove: () => removeCombatant(store, entry, defeated()),
     });
     openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });
-  }, [store, view, tokens, bySides, sides, cards, fightRuns, roll, defeated, edit, swapInitiativeCards, moveToFront, moveToBack, updateTokens, setInitiativeSitsOut, delayInitiativeTurn, actNowInInitiative]);
+  }, [store, view, tokens, bySides, sides, cards, fightRuns, roll, defeated, edit, preview, swapInitiativeCards, moveToFront, moveToBack, updateTokens, setInitiativeSitsOut, delayInitiativeTurn, actNowInInitiative]);
 }

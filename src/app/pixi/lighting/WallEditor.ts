@@ -5,6 +5,7 @@ import { chosenLightPreset, emissionOf } from '../../lighting/lightPresetChoice'
 import type { LightPresetDefinition } from '../../types/lightPresetTypes';
 import type { ViewAtlasStore } from '../../storeFactory';
 import { runHistoryTransaction } from '../../stores/history';
+import { placesFreely } from '../../types/toolSwitches';
 import { WallTool, type WallToolMode, type WallToolSubMode } from '../../tools/WallTool';
 import type { Point } from '../../types/visionTypes';
 import type { WallType } from '../../types/wallTypes';
@@ -67,9 +68,10 @@ export class WallEditor {
     else this.stop();
   }
 
-  /** Alt places a wall's corner freely, where it would otherwise land on a wall's end close by. */
-  pointerDown(point: Point, shift: boolean, ctrl: boolean, alt: boolean = false): boolean {
+  /** A wall's corner lands on a wall's end close by while the tool's Snap is on; Alt turns that around for the press. */
+  pointerDown(point: Point, shift: boolean, ctrl: boolean, altHeld: boolean = false): boolean {
     if (!this.shown) return false;
+    const alt = this.placesFreely(altHeld);
     if (this.doors.active) {
       this.doors.confirm();
       return true;
@@ -113,8 +115,9 @@ export class WallEditor {
     return true;
   }
 
-  pointerMove(point: Point, alt: boolean = false): void {
+  pointerMove(point: Point, altHeld: boolean = false): void {
     if (!this.shown) return;
+    const alt = this.placesFreely(altHeld);
     this.free = alt;
     if (this.doors.active) {
       this.doors.move(point);
@@ -260,6 +263,11 @@ export class WallEditor {
     }
     this.renderer.preview.clear();
     this.renderer.preview.clearStroke();
+  }
+
+  /** Whether a press lands where it is: the tool's Snap switch is off, or Alt turns it around. */
+  private placesFreely(altHeld: boolean): boolean {
+    return placesFreely(this.store.getState(), 'lightingSnap', altHeld);
   }
 
   private wallEndNear(point: Point, also: readonly Point[] = []): Point | null {

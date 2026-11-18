@@ -13,6 +13,8 @@ export const draw = {
   'draw.mode.stamp': 'Stamp',
   'draw.mode.cells': 'Cells',
   'draw.mode.cellsTip': 'Drag to colour the grid\'s cells',
+  'draw.placing': 'Snapping',
+  'draw.constrainNeedsShape': 'Lines, rectangles and ellipses can be constrained.',
   'draw.cellsNeedGrid': 'Show the grid or snap to it to colour cells',
   'draw.mode.eraser': 'Eraser',
   'draw.needsGmView': 'Switch to GM view ({key}) to draw',

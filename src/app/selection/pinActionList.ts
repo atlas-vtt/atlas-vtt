@@ -12,7 +12,7 @@ import { actionOf, PRIMARY_ORDER, WHOLE_SELECTION, type SelectionAction } from '
  * its actions are its own: open what it links, edit it, who may read it, its name, a copy, and
  * its removal.
  */
-export function pinActions(store: ViewAtlasStore, pin: NotePin): SelectionAction[] {
+export function pinActions(store: ViewAtlasStore, pin: NotePin, at?: { x: number; y: number }): SelectionAction[] {
   const readable = readablePinEntry(store, pin);
   return [
     { kind: 'run', id: 'open', enabled: true, ...pinOpenLook(pin), run: () => dispatchPinAction('open', pin, store) },
@@ -21,6 +21,8 @@ export function pinActions(store: ViewAtlasStore, pin: NotePin): SelectionAction
       primary: { order: PRIMARY_ORDER.edit, label: t('common.edit') },
       run: () => dispatchPinAction('edit', pin, store),
     },
+    // The note a held Mod shows over the pin, for a hand that holds no key
+    { kind: 'run', id: 'preview', enabled: true, label: t('preview.show'), icon: 'eye', run: () => dispatchPinAction('preview', pin, store, at) },
     ...(readable ? [actionOf('readable', readable)] : []),
     ...pinNameEntries(store, pin).map((entry, index) => actionOf(index === 0 ? 'show-name' : 'rename', entry)),
     {

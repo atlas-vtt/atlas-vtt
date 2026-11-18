@@ -247,6 +247,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
                       onFolderDoubleClick={sel.handleFolderDoubleClick}
                       onContentContextMenu={handleContentContextMenu}
                       onClearSelection={sel.handleClearSelection}
+                      onSelectAll={sel.handleSelectAll}
                       onClose={onClose}
                       collapsedSections={collapsedSections}
                       setCollapsedSections={setCollapsedSections}

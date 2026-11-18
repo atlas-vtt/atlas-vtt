@@ -281,6 +281,17 @@
     text-overflow: ellipsis;
   }
 
+  // Select all, which a coarse pointer has in Mod+A's place: text in the chip's own colour, a control's height.
+  .atlas-select-all-btn.btn {
+    flex-shrink: 0;
+    height: var(--atlas-control-height, 30px);
+    padding-inline: $spacing-s;
+    border-radius: $radius-s;
+    color: var(--text-accent);
+    font-size: $font-ui-small;
+    font-weight: $font-weight-medium;
+  }
+
   .atlas-clear-selection-btn {
     flex-shrink: 0;
 

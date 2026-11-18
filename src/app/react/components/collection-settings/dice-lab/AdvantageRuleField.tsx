@@ -10,7 +10,7 @@ import { ObsidianMenuDropdown } from '../../ObsidianMenuDropdown';
 import { groupNotation } from '../../../../gameSystems/diceSets';
 import { MAX_ADVANTAGE_NUMBER } from '../../../../gameSystems/diceSetValidation';
 import type { AdvantageKind, AdvantageRule, AdvantageSide, DiceSetDie } from '../../../../types/diceSetTypes';
-import { t } from '../../../../i18n';
+import { t, tPointer } from '../../../../i18n';
 import { InfoMark } from '../InfoMark';
 import { SwitchRow } from '../SwitchRow';
 
@@ -71,7 +71,7 @@ export function AdvantageRuleField({ side, rule, dice, disabled, onChange }: Adv
       <div className="atlas-dice-lab__option">
         <span className="atlas-dice-lab__option-label">
           <span id={labelId}>{side === 'advantage' ? t('diceLab.advantage') : t('diceLab.disadvantage')}</span>
-          <InfoMark label={`${texts[choice]} ${t('diceLab.edgeOnlySetDice')}`} />
+          <InfoMark label={`${texts[choice]} ${tPointer('diceLab.edgeOnlySetDice')}`} />
         </span>
         <ObsidianMenuDropdown
           className="atlas-setting-dropdown atlas-dice-lab__select atlas-dice-lab__select--wide"

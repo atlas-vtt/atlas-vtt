@@ -51,6 +51,8 @@ const button = (name: string): HTMLElement => screen.getByRole('button', { name 
 const pressed = (name: string): boolean => button(name).getAttribute('aria-pressed') === 'true';
 const inert = (name: string): boolean => button(name).getAttribute('aria-disabled') === 'true';
 const MODES = ['Draw rooms', 'Draw walls', 'Place lights', 'Light zones', 'Openings', 'Explored memory'];
+/** The modes bar: the modes, and at their end the Snap switch. */
+const MODES_BAR = [...MODES, 'Snap'];
 
 describe('LightingToolBar', () => {
   it('shows while the lighting tool is chosen, and not while the toolbar is arranged or in the players\' view', async () => {
@@ -70,7 +72,7 @@ describe('LightingToolBar', () => {
   it('stays in the session view, where no button takes a choice', () => {
     const store = renderBar();
     act(() => store.setState({ isGMView: false }));
-    expect(names(modesBar())).toEqual(MODES);
+    expect(names(modesBar())).toEqual(MODES_BAR);
     expect([...MODES, 'Carve', 'Fill in', 'Rectangle'].every(inert)).toBe(true);
     // The chosen mode and tool still show as chosen.
     expect(pressed('Draw rooms')).toBe(true);
@@ -84,19 +86,39 @@ describe('LightingToolBar', () => {
     expect(store.getState().roomTool.action).toBe('fill');
   });
 
+  it('has a Snap switch for wall ends, zone corners and a light\'s handles, and the rooms\' own for the grid', () => {
+    const store = renderBar();
+    // Rooms snap to the grid's squares only when asked, as Shift does.
+    expect(pressed('Snap')).toBe(false);
+    fireEvent.click(button('Snap'));
+    expect(store.getState().toolSwitches).toMatchObject({ roomSnap: true, lightingSnap: true });
+    expect(pressed('Snap')).toBe(true);
+    // Walls, zones and lights snap until asked not to, which Alt does for a press.
+    fireEvent.click(button('Draw walls'));
+    expect(pressed('Snap')).toBe(true);
+    fireEvent.click(button('Snap'));
+    expect(store.getState().toolSwitches).toMatchObject({ roomSnap: true, lightingSnap: false });
+    expect(pressed('Snap')).toBe(false);
+    // A room has only a square grid to snap to: on another the switch stays, disabled.
+    act(() => store.getState().setGrid({ ...store.getState().grid, type: 'hex-vertical' }));
+    fireEvent.click(button('Draw rooms'));
+    expect(inert('Snap')).toBe(true);
+    expect(pressed('Snap')).toBe(false);
+  });
+
   it('keeps the modes in a bar of their own, the same in every mode, and the tools in another', async () => {
     const store = renderBar();
     act(() => store.getState().setSceneLighting({ enabled: true }));
-    expect(names(modesBar())).toEqual(MODES);
+    expect(names(modesBar())).toEqual(MODES_BAR);
     // The tool opens on rooms, the first of its modes; single walls come second.
     expect(store.getState().lightingTool.mode).toBe('rooms');
     expect(names(toolsBar('Draw rooms'))).toEqual(['Carve', 'Fill in', 'Door', 'Rectangle', 'Points', 'Lasso', 'Brush']);
     fireEvent.click(button('Draw walls'));
     expect(names(await toolsOf('Draw walls'))).toEqual(['Point to point', 'Freehand']);
-    expect(names(modesBar())).toEqual(MODES);
+    expect(names(modesBar())).toEqual(MODES_BAR);
     fireEvent.click(button('Explored memory'));
     expect(names(await toolsOf('Explored memory'))).toEqual(['Reveal', 'Forget', 'Brush', 'Lasso', 'Rectangle']);
-    expect(names(modesBar())).toEqual(MODES);
+    expect(names(modesBar())).toEqual(MODES_BAR);
   });
 
   it('chooses how walls are drawn and keeps it in the store, tinted where a mode is filled', async () => {

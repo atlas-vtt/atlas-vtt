@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react"
-import { CircleDashed, Trash2 } from "lucide-react"
+import { CircleDashed, Magnet, Trash2 } from "lucide-react"
 import type { ClearScope } from "../../../annotations/annotationTypes"
 import { t } from "../../../i18n"
 import { DropdownMenu } from "../primitives/DropdownMenu"
@@ -12,6 +12,8 @@ import { CLEAR_SCOPES, DRAW_COLOR_SWATCHES, type DrawMenuChoice } from "./drawTo
 import type { DrawIcon } from "./drawToolIcons"
 import { TOOL_BAR_CHOICE_CLASS } from "./ToolOptionsBar"
 import { useBarSide } from "./barSide"
+import { ToolSwitchRow } from "./ToolSwitchRow"
+import { useAtlasStore } from "../../../react/ViewStoreContext"
 
 interface BarMenuProps {
   /** The tool's name. */
@@ -160,6 +162,24 @@ export function ClearMenu({ levelled, has, onClear, locked }: ClearMenuProps): R
               }}
             />
           ))}
+        </div>
+      )}
+    </BarMenu>
+  )
+}
+
+/** The modes whose shapes Constrain keeps even: a line's eighths of a turn, a square, a circle. */
+const CONSTRAINED_MODES: ReadonlySet<string> = new Set(['line', 'rectangle', 'ellipse'])
+
+/** How a point lands, as a menu of two switches: what Alt and Shift are to a keyboard. Constrain stays, disabled, in a mode with no shape to keep even. */
+export function PlacingMenu({ locked }: { locked: string | null }): React.ReactElement {
+  const shaped = useAtlasStore((state) => CONSTRAINED_MODES.has(state.drawTool.mode))
+  return (
+    <BarMenu label={t('draw.placing')} {...(locked !== null && { subtitle: locked })} icon={Magnet} locked={locked}>
+      {() => (
+        <div className="atlas-dropdown-section">
+          <ToolSwitchRow id="drawSnap" label={t('toolbar.snap')} />
+          <ToolSwitchRow id="drawConstrain" label={t('toolbar.constrain')} unavailable={shaped ? null : t('draw.constrainNeedsShape')} />
         </div>
       )}
     </BarMenu>

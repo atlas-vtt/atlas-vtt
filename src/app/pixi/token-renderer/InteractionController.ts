@@ -41,6 +41,8 @@ import { selectionMenu } from '../../selection/selectionMenu';
 import { tokenActions, type TokenActionHost } from '../../selection/tokenActionList';
 import { picksMore } from '../../annotations/selectMore';
 import { pasteAtViewCentre } from '../../selection/wholeSelection';
+import { toolSwitch } from '../../types/toolSwitches';
+import { OPEN_PREVIEW_EVENT } from '../../services/previewByHand';
 
 interface DragState {
   isDragging: boolean;
@@ -216,19 +218,7 @@ export class InteractionController implements ITokenInteractionController {
       // A token under the pointer may be dragged next: its speed is asked for ahead of the drag.
       if (token) this.movement?.prepare([token]);
       if (token?.kind === 'character' && e && token.statblockPath?.trim()) {
-        this.hoverPreview = {
-          id: token.id,
-          notePath: token.statblockPath,
-          x: token.x,
-          y: token.y,
-          type: 'token',
-          // Vitals travel with the pin so the preview can mirror them.
-          name: token.name,
-          resources: token.resources,
-          imagePath: token.imagePath,
-          ringColor: token.ringColor,
-          showRing: token.showRing,
-        };
+        this.hoverPreview = tokenPreviewAnchor(token, token.statblockPath);
         this.eventBus.emit('pin-hover-preview', {
           pin: this.hoverPreview,
           screenX: e.clientX,
@@ -540,7 +530,7 @@ export class InteractionController implements ITokenInteractionController {
       
       const tokenUpdates: Array<{id: string, x: number, y: number}> = [];
       const state = this.store.getState();
-      const snapToGrid = state.grid?.snapToGrid ?? true;
+      const snapToGrid = (state.grid?.snapToGrid ?? true) && toolSwitch(state, 'selectSnap');
       const tokens = mapTokens(levelObjects(state));
       const { walls, current = {} } = this.dragState;
       
@@ -623,6 +613,11 @@ export class InteractionController implements ITokenInteractionController {
       editToken: (token) => this.showEditTokenModal(token),
       changeResource: (at, resourceName, count, apply) => this.openSelectionEditor(at, resourceName, count, apply),
       paste: () => pasteAtViewCentre(this.store, this.viewport),
+      preview: (character, at) => this.eventBus.emit(OPEN_PREVIEW_EVENT, {
+        pin: tokenPreviewAnchor(character, character.statblockPath ?? ''),
+        screenX: at.x,
+        screenY: at.y,
+      }),
     };
   }
 
@@ -787,4 +782,20 @@ export class InteractionController implements ITokenInteractionController {
       hasMoved: false
     };
   }
+}
+
+/** What a token's statblock preview is anchored to: the token, with the vitals the preview mirrors. */
+function tokenPreviewAnchor(token: Extract<TokenEntity, { kind: 'character' }>, notePath: string): TokenPreviewAnchor {
+  return {
+    id: token.id,
+    notePath,
+    x: token.x,
+    y: token.y,
+    type: 'token',
+    name: token.name,
+    resources: token.resources,
+    imagePath: token.imagePath,
+    ringColor: token.ringColor,
+    showRing: token.showRing,
+  };
 }

@@ -9,7 +9,7 @@ import { isFogTool, type FogShape, type FogToolChoices } from '../../fog/fogTool
 import type { LayerVisibility } from '../playerSafeFrame';
 import { hearPressesLast, isHandled } from '../utils/handledEvents';
 import { isPrimaryPress } from '../utils/pointerButtons';
-import { placeKeysOf } from './FogSnapping';
+import { placeKeysOf, placeKeysWith } from './FogSnapping';
 import { FogStroke, type FogStrokeDeps } from './FogStroke';
 
 export type FogGestureDeps = FogStrokeDeps;
@@ -149,7 +149,7 @@ export class FogGesture {
     this.stroke.setFlipped(event.altKey === true);
     const screen = { x: event.global.x, y: event.global.y };
     const world = this.worldOf(screen);
-    const keys = placeKeysOf(event);
+    const keys = placeKeysWith(this.deps.store.getState(), placeKeysOf(event));
     this.over = screen;
     this.stroke.pointer = world;
     // A room is no shape until the press is released in place.
@@ -163,7 +163,7 @@ export class FogGesture {
     if (fogTool) this.stroke.setFlipped(event.altKey === true);
     const screen = { x: event.global.x, y: event.global.y };
     const world = this.worldOf(screen);
-    const keys = placeKeysOf(event);
+    const keys = placeKeysWith(this.deps.store.getState(), placeKeysOf(event));
     this.over = screen;
 
     if (this.shape === 'brush' && fogTool) this.stroke.moveRing(world);
