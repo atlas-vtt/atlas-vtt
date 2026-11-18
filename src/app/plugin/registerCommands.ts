@@ -18,6 +18,7 @@ import { openTemplateGallery } from '../statblocks/editor/gallery/openTemplateGa
 import { experimentalFeatureOn } from '../experimental/experimentalFeatures';
 import { runInBackground } from '../utils/backgroundTask';
 import { showNotice } from '../ui/notice';
+import { isDesktopApp } from '../platform/desktopOnly';
 
 export interface CommandDependencies {
   imageDisplay: ImageDisplayService;
@@ -243,7 +244,8 @@ function registerStatblockCommands(plugin: Plugin): void {
 }
 
 export function registerCommands(plugin: Plugin, deps: CommandDependencies): void {
-  registerPlayerViewCommands(plugin, deps.imageDisplay);
+  // The player window, and showing an image in it, need a second window: desktop only
+  if (isDesktopApp()) registerPlayerViewCommands(plugin, deps.imageDisplay);
   registerMapCommands(plugin, deps);
   registerStatblockCommands(plugin);
 }

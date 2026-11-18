@@ -1,4 +1,4 @@
-import { Platform } from 'obsidian';
+import { isDesktopApp } from '../platform/desktopOnly';
 import { isRecord } from '../utils/guards';
 
 /**
@@ -65,7 +65,7 @@ function hasMethods(value: unknown, names: readonly string[]): value is object {
  * missing, or where it does not have what Atlas uses.
  */
 export function electronWindowOf(win: Window): ElectronWindowHandle | null {
-  if (!Platform.isDesktopApp) return null;
+  if (!isDesktopApp()) return null;
   try {
     const load: unknown = Reflect.get(win, 'require');
     if (typeof load !== 'function') return null;
@@ -96,7 +96,7 @@ export function webContentsOf(window: ElectronBrowserWindow): ElectronWebContent
 
 /** The window's system dialog for picking a folder; null where this Obsidian has none, or none Atlas can reach. */
 export function nativeFolderPicker(win: Window): ((title: string) => Promise<string | null>) | null {
-  if (!Platform.isDesktopApp) return null;
+  if (!isDesktopApp()) return null;
   try {
     const load: unknown = Reflect.get(win, 'require');
     if (typeof load !== 'function') return null;
@@ -123,7 +123,7 @@ export function nativeFolderPicker(win: Window): ((title: string) => Promise<str
  * instance", since the trash is a COM object the renderer cannot create. The window's is used only where `remote` is missing.
  */
 export function systemTrash(win: Window): ((absolute: string) => Promise<void>) | null {
-  if (!Platform.isDesktopApp) return null;
+  if (!isDesktopApp()) return null;
   try {
     const load: unknown = Reflect.get(win, 'require');
     if (typeof load !== 'function') return null;
