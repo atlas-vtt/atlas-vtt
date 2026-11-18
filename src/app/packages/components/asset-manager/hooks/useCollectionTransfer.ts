@@ -13,6 +13,8 @@ import type { ShareSession } from '../../../../armarium/upload/ShareSession';
 import { leaveShare } from '../../../../armarium/share/leaveShare';
 import { t } from '../../../../i18n';
 import { showNotice } from '../../../../ui/notice';
+import { fileInputAttrs } from '../../../../platform/fileInputAccept';
+import { saveForUser } from '../../../../platform/saveForUser';
 
 /** Where an export or import stands; the asset manager blocks while one is set. */
 export type CollectionTransfer =
@@ -55,14 +57,6 @@ function describeImport(result: CollectionImportResult): string {
   if (result.keptLocal > 0) parts.push(t('bundle.keptLocal', { count: result.keptLocal }));
   const backup = result.backupCount > 0 ? t('bundle.backedUp', { folder: result.backupFolder }) : '';
   return `${t('bundle.updated', { name, parts: parts.join(', '), backup })}${switched}`;
-}
-
-function downloadBlob(blob: Blob, fileName: string): void {
-  const url = URL.createObjectURL(blob);
-  const link = document.body.createEl('a', { href: url, attr: { download: fileName } });
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
 }
 
 /**
@@ -152,8 +146,10 @@ export function useCollectionTransfer({ app, assetService, selectedCollection, o
     setTransfer({ step: 'working', title: EXPORTING, progress: { message: t('bundle.preparing'), fraction: 0 } });
     try {
       const bundle = await exportCollectionBundle(app, assetService, preview, choice, working(EXPORTING));
-      downloadBlob(bundle.blob, bundle.fileName);
-      const packed = t('bundle.packed', { name: bundle.collectionName, version: bundle.version, assets: t('count.assets', { count: bundle.assetCount }), files: t('count.files', { count: bundle.fileCount }), file: bundle.fileName });
+      // A tablet has no downloads: there the bundle is a file of the vault, named with its place.
+      const saved = await saveForUser(app, bundle.fileName, bundle.blob, 'application/zip');
+      const file = saved.kind === 'vault' ? saved.path : bundle.fileName;
+      const packed = t('bundle.packed', { name: bundle.collectionName, version: bundle.version, assets: t('count.assets', { count: bundle.assetCount }), files: t('count.files', { count: bundle.fileCount }), file });
       try {
         await bundle.commit();
       } catch (error) {
@@ -224,7 +220,7 @@ export function useCollectionTransfer({ app, assetService, selectedCollection, o
     const input = document.body.createEl('input', {
       type: 'file',
       cls: 'atlas-hidden-file-input',
-      attr: { accept: '.zip' },
+      attr: fileInputAttrs('.zip'),
     });
     input.addEventListener('change', () => {
       const file = input.files?.[0];

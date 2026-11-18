@@ -13,6 +13,7 @@ import { showNotice } from '../ui/notice';
 import { statblockImageAt } from './statblockImageTarget';
 import { playerWindowStore } from '../stores/playerWindowStore';
 import { isResourceUrl, resourceUrlToFilePath, resourceUrlToVaultPath } from '../utils/pathUtils';
+import { canCopyItems } from '../platform/clipboardWrites';
 import { desktopOnly, isDesktopApp } from '../platform/desktopOnly';
 import { vaultBasePath } from '../platform/vaultBasePath';
 
@@ -92,9 +93,11 @@ export class ImageDisplayService {
       if (!result) return;
 
       this.addImageDisplayMenuItem(menu, result.file);
-      menu.addItem((item) => {
-        item.setTitle(t('image.copy')).setIcon('copy').onClick(() => this.copyImageToClipboard(result.imgElement));
-      });
+      if (canCopyItems()) {
+        menu.addItem((item) => {
+          item.setTitle(t('image.copy')).setIcon('copy').onClick(() => this.copyImageToClipboard(result.imgElement));
+        });
+      }
       if (!isDesktopApp()) return;
       menu.addItem((item) => {
         item.setTitle(t('image.openDefault')).setIcon('external-link').onClick(() => this.app.openWithDefaultApp(result.file.path));
@@ -224,7 +227,7 @@ export class ImageDisplayService {
 
     const entries: ContextMenuEntry[] = [
       ...desktopOnly<ContextMenuEntry>({ type: 'item', label: t('image.display'), icon: 'monitor', onClick: () => this.displayImageOnPlayerView(file) }),
-      { type: 'item', label: t('image.copy'), icon: 'copy', onClick: () => this.copyImageToClipboard(imgElement) },
+      ...(canCopyItems() ? [{ type: 'item' as const, label: t('image.copy'), icon: 'copy', onClick: () => this.copyImageToClipboard(imgElement) }] : []),
       ...desktopOnly<ContextMenuEntry>({ type: 'item', label: t('image.openDefaultMenu'), icon: 'external-link', onClick: () => this.app.openWithDefaultApp(file.path) }),
     ];
 
@@ -236,8 +239,8 @@ export class ImageDisplayService {
    */
   private async copyImageToClipboard(imgElement: HTMLImageElement): Promise<void> {
     try {
-      const blob = await this.renderImageAsPng(imgElement.src);
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      // The clipboard is asked within the press, as WebKit demands, and takes the picture once it is drawn.
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': this.renderImageAsPng(imgElement.src) })]);
       showNotice(t('image.copied'));
     } catch (error) {
       console.error('Failed to copy image:', error);

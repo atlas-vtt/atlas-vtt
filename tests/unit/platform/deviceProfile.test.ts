@@ -40,6 +40,13 @@ describe('the budgets of a desktop', () => {
       tileTextureBudget: 160 * MIB,
       lightingQualityDefault: 'high',
       diceWarmStages: 4,
+      diceShadowMap: 1024,
+      imageSourceBytes: Infinity,
+      uvttFileBytes: 150 * MIB,
+      uvttFloorsBytes: 400 * MIB,
+      generatedMapPixels: Infinity,
+      generatedMapSide: Infinity,
+      videoMapBytes: 500 * MIB,
     });
   });
 
@@ -64,6 +71,13 @@ describe('the budgets of a tablet', () => {
       tileTextureBudget: 96 * MIB,
       lightingQualityDefault: 'balanced',
       diceWarmStages: 1,
+      diceShadowMap: 512,
+      imageSourceBytes: 256 * MIB,
+      uvttFileBytes: 64 * MIB,
+      uvttFloorsBytes: 128 * MIB,
+      generatedMapPixels: 4096 * 4096,
+      generatedMapSide: 8192,
+      videoMapBytes: 128 * MIB,
     });
   });
 
