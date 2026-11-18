@@ -237,6 +237,21 @@ button.atlas-dice-lab__set {
   }
 }
 
+// A touch screen has no hover: the selected set's actions show, as a tap selects it.
+@include atlas-hover-reveal {
+  .atlas-dice-lab__set-row.atlas-selected {
+    .atlas-dice-lab__set-actions {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .atlas-dice-lab__set-detail,
+    .atlas-dice-lab__lock {
+      opacity: 0;
+    }
+  }
+}
+
 @media (hover: hover) and (pointer: fine) {
   .atlas-dice-lab__set-row:not(.atlas-selected):hover {
     background: var(--background-modifier-hover);

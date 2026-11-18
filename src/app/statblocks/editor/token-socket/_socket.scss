@@ -153,4 +153,11 @@
     opacity: 1;
     transform: none;
   }
+
+  @include atlas-hover-reveal {
+    .atlas-sb-token-socket .atlas-sb-token-socket__badge {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }

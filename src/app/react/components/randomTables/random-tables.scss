@@ -100,7 +100,7 @@
   }
 
   // Without hover (a touch screen) a row cannot be pointed at first: the ⋯ stands beside it.
-  @media (hover: none) {
+  @include atlas-hover-reveal {
     display: flex;
     align-items: center;
 

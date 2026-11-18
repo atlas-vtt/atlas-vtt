@@ -51,6 +51,7 @@ export function SettingsDialog({ title, subtitle, closeLabel, canSave, hasChange
   return createPortal(
     <motion.div {...dialogOverlayMotion} className="atlas-vtt-plugin atlas-vtt-root atlas-collection-settings-overlay"
       onMouseDown={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
     >
       <div className="atlas-collection-settings-backdrop" onClick={hasChanges ? undefined : onClose} />
 

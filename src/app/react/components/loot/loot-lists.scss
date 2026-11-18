@@ -121,6 +121,12 @@ $loot-padding: $spacing-m;
   opacity: 1;
 }
 
+@include atlas-hover-reveal {
+  .atlas-loot-history__roll .atlas-loot-history__remove.btn--icon {
+    opacity: 1;
+  }
+}
+
 // ── Empty states ───────────────────────────────────────────────────────────
 .atlas-loot-empty {
   @include atlas-flex-col($spacing-s);

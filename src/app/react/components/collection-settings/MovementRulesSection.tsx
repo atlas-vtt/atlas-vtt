@@ -70,8 +70,8 @@ function StepColour({ label, color, onChange }: StepColourProps): React.ReactEle
     const handlePointerDown = (event: MouseEvent): void => {
       if (!rootRef.current?.contains(event.target as Node | null)) setIsOpen(false);
     };
-    doc.addEventListener('mousedown', handlePointerDown);
-    return () => doc.removeEventListener('mousedown', handlePointerDown);
+    doc.addEventListener('pointerdown', handlePointerDown);
+    return () => doc.removeEventListener('pointerdown', handlePointerDown);
   }, [isOpen]);
 
   // Escape closes the colours and stops there: the dialog leaves a key a control used alone.

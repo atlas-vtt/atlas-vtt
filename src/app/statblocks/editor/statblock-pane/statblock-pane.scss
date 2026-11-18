@@ -174,7 +174,7 @@ $header-control-radius: atlas-panel-inset-radius-value($surface-inset, calc(var(
   pointer-events: none;
   transition: opacity $transition-fast $transition-ease;
 
-  @media (hover: none) {
+  @include atlas-hover-reveal {
     opacity: 1;
     pointer-events: auto;
   }

@@ -85,7 +85,7 @@ $gap: $spacing-s;
 // stretch across a wide column (Edit Token).
 .atlas-light-kind {
   flex: 1;
-  max-width: $button-height-l * 1.5;
+  max-width: calc(#{$button-height-l} * 1.5);
   display: flex;
   align-items: center;
   justify-content: center;

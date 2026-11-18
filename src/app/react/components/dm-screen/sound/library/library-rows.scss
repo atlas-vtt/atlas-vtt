@@ -269,7 +269,7 @@
 }
 
 // Where no pointer hovers (Obsidian on a tablet), a row's actions stay shown.
-@media (hover: none) {
+@include atlas-hover-reveal {
   .atlas-sound-lib .atlas-sound-lib__act,
   .atlas-sound-lib .atlas-sound-lib__more {
     opacity: 1;

@@ -19,6 +19,7 @@
 @use './native-checkboxes';
 @use './button-press';
 @use './notices';
+@use './coarse-pointer';
 // At the root, outside the plugin's namespace: its scope includes the floating layer under <body>.
 @use '../src/app/packages/components/asset-manager/open-window';
 @use './scroll-lock';
@@ -412,13 +413,15 @@ body.theme-light {
         }
       }
 
-      > .atlas-widget-bar[data-stack='closed']:has(.atlas-widget-stack-opener:hover) > .atlas-widget-container > .atlas-widget {
-        &[data-stack-depth='1'] {
-          transform: translateY(2 * $stack-step) rotate(-3.5deg);
-        }
+      @media (hover: hover) {
+        > .atlas-widget-bar[data-stack='closed']:has(.atlas-widget-stack-opener:hover) > .atlas-widget-container > .atlas-widget {
+          &[data-stack-depth='1'] {
+            transform: translateY(2 * $stack-step) rotate(-3.5deg);
+          }
 
-        &[data-stack-depth='2'] {
-          transform: translateY(4 * $stack-step) rotate(2.6deg);
+          &[data-stack-depth='2'] {
+            transform: translateY(4 * $stack-step) rotate(2.6deg);
+          }
         }
       }
 
@@ -623,8 +626,10 @@ body.theme-light {
     border-radius: $radius-s;
     cursor: pointer;
     
-    &:hover {
-      background-color: var(--background-modifier-hover);
+    @media (hover: hover) {
+      &:hover {
+        background-color: var(--background-modifier-hover);
+      }
     }
   }
 
@@ -667,10 +672,12 @@ body.theme-light {
     }
   }
 
-  #{$toolbars} button.btn:hover:not(#{$own-look}),
-  #{$toolbars} button.btn--toolbar:hover {
-    background: var(--background-modifier-hover) !important;
-    color: var(--text-normal) !important;
+  @media (hover: hover) {
+    #{$toolbars} button.btn:hover:not(#{$own-look}),
+    #{$toolbars} button.btn--toolbar:hover {
+      background: var(--background-modifier-hover) !important;
+      color: var(--text-normal) !important;
+    }
   }
 
   // .btn.is-active outranks the tool group's transparent reset below
@@ -678,9 +685,11 @@ body.theme-light {
     background: var(--interactive-accent) !important;
     color: var(--text-on-accent) !important;
 
-    &:hover {
-      background: var(--interactive-accent-hover) !important;
-      color: var(--text-on-accent) !important;
+    @media (hover: hover) {
+      &:hover {
+        background: var(--interactive-accent-hover) !important;
+        color: var(--text-on-accent) !important;
+      }
     }
   }
 
@@ -726,16 +735,23 @@ body.theme-light {
 
   // Muted until hovered; filled while its menu is open. Never takes the tool's accent.
   #{$toolbars} .atlas-tool-group button.btn.atlas-tool-group__chevron {
-    width: $icon-m;
+    // Wider under a finger (`_coarse-pointer.scss`).
+    width: var(--atlas-tool-chevron-width, #{$icon-m});
     height: $button-height-l;
     padding: 0;
     color: var(--text-muted);
     border-radius: var(--atlas-bar-control-radius, #{$radius-m}) !important;
 
-    &:hover,
     &.atlas-is-active {
       background: var(--background-modifier-hover) !important;
       color: var(--text-normal) !important;
+    }
+
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover) !important;
+        color: var(--text-normal) !important;
+      }
     }
   }
 
@@ -751,8 +767,10 @@ body.theme-light {
     &.atlas-dropdown-btn--destructive {
       color: var(--text-error) !important;
 
-      &:hover {
-        background: color-mix(in oklch, var(--background-modifier-error) 15%, transparent) !important;
+      @media (hover: hover) {
+        &:hover {
+          background: color-mix(in oklch, var(--background-modifier-error) 15%, transparent) !important;
+        }
       }
     }
   }
@@ -814,9 +832,11 @@ body.theme-light {
     background: var(--background-primary);
     color: var(--text-normal);
 
-    &:hover {
-      background: var(--interactive-hover);
-      color: var(--text-normal);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--interactive-hover);
+        color: var(--text-normal);
+      }
     }
   }
 
@@ -824,8 +844,10 @@ body.theme-light {
     background: var(--interactive-normal);
     color: var(--text-normal);
 
-    &:hover {
-      background: var(--interactive-hover);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--interactive-hover);
+      }
     }
   }
 
@@ -837,9 +859,11 @@ body.theme-light {
     border: none;
     box-shadow: none;
 
-    &:hover {
-      background: var(--background-modifier-hover);
-      color: var(--text-normal);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover);
+        color: var(--text-normal);
+      }
     }
 
     &:active:not(:disabled) {
@@ -861,9 +885,11 @@ body.theme-light {
     border: none;
     outline: none;
 
-    &:hover {
-      background: var(--background-modifier-hover) !important;
-      color: var(--text-normal);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover) !important;
+        color: var(--text-normal);
+      }
     }
 
     &.is-active {
@@ -877,9 +903,11 @@ body.theme-light {
     text-decoration: underline;
     text-underline-offset: 4px;
 
-    &:hover {
-      color: var(--text-accent-hover);
-      text-decoration: none;
+    @media (hover: hover) {
+      &:hover {
+        color: var(--text-accent-hover);
+        text-decoration: none;
+      }
     }
   }
 

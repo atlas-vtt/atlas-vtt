@@ -13,6 +13,7 @@ import { isWidgetOn } from '../../utils/widgetActivation';
 import { useWidgetStack } from './useWidgetStack';
 import { useClearOfWindowControls } from './useClearOfWindowControls';
 import { t } from '../../i18n';
+import { useCoarsePointer } from '../../platform/useCoarsePointer';
 
 interface ResponsiveWidgetBarProps {
   isPlayerView?: boolean;
@@ -49,7 +50,8 @@ export function ResponsiveWidgetBar({ isPlayerView = false, store, viewId, widge
   visibleWidgetsRef.current = visibleWidgets;
 
   const stack = useWidgetStack(visibleWidgets.map((widget) => widget.id), storedWidgetSettings);
-  const awake = isActive || stack.state === 'open';
+  // A finger has no arrival to wake the bar with, and a bar that woke under a tap would move what was tapped.
+  const awake = useCoarsePointer() || isActive || stack.state === 'open';
   const windowControls = useClearOfWindowControls(awake);
 
   // Reset timer for active state

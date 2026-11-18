@@ -265,7 +265,7 @@ $reset-shift: calc((16px + #{$spacing-xs}) / 2);
   }
 }
 
-@media (hover: none) {
+@include atlas-hover-reveal {
   .atlas-sound-fader__foot {
     .atlas-sound-fader__value,
     .atlas-sound-fader__reset {

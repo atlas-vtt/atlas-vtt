@@ -330,7 +330,7 @@ $tray-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
 
   // As tall as every other control: the options $surface-inset inside the track.
   .atlas-segmented__option {
-    height: $tray-control - 2 * $surface-inset;
+    height: calc(#{$tray-control} - #{2 * $surface-inset});
     padding-block: 0;
   }
 }
@@ -394,7 +394,7 @@ $tray-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
   }
 }
 
-$tray-step: $tray-control - 2 * $surface-inset;
+$tray-step: calc(#{$tray-control} - #{2 * $surface-inset});
 
 .atlas-dice-tray__stepper {
   display: flex;

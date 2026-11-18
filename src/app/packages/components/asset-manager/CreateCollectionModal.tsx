@@ -114,6 +114,7 @@ export function CreateCollectionModal({ existingNames, onClose, onCreated }: Cre
       {...dialogOverlayMotion}
       className="atlas-vtt-root atlas-create-collection-overlay"
       onMouseDown={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation();
         if (e.target === e.currentTarget) onClose();

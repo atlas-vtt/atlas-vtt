@@ -97,7 +97,7 @@ describe('Atlas search actions', () => {
       const onClose = vi.fn();
       renderWithToolbar(onClose);
       const entry = screen.getByRole('button', { name: 'Widget settings' });
-      fireEvent.mouseDown(entry);
+      fireEvent.pointerDown(entry);
       fireEvent.mouseUp(entry);
       fireEvent.click(entry);
       act(() => vi.advanceTimersByTime(20));
@@ -107,7 +107,7 @@ describe('Atlas search actions', () => {
     it('closes on a press outside the palette and the toolbar', () => {
       const onClose = vi.fn();
       renderWithToolbar(onClose);
-      fireEvent.mouseDown(document.body);
+      fireEvent.pointerDown(document.body);
       act(() => vi.advanceTimersByTime(20));
       expect(onClose).toHaveBeenCalledTimes(1);
     });
@@ -115,7 +115,7 @@ describe('Atlas search actions', () => {
     it('does not close after unmounting when the press came just before', () => {
       const onClose = vi.fn();
       renderWithToolbar(onClose);
-      fireEvent.mouseDown(document.body);
+      fireEvent.pointerDown(document.body);
       cleanup();
       act(() => vi.advanceTimersByTime(20));
       expect(onClose).not.toHaveBeenCalled();

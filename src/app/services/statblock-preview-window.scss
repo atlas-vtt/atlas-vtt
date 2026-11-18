@@ -61,7 +61,7 @@ $controls-end-radius: atlas-panel-inset-radius-value($controls-inset, $control *
   pointer-events: none;
   transition: opacity $transition-fast $transition-ease;
 
-  @media (hover: none) {
+  @include atlas-hover-reveal {
     opacity: 1;
     pointer-events: auto;
   }

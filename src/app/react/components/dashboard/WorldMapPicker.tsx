@@ -64,8 +64,8 @@ export function WorldMapPicker({ choices, value, onChange, labelledBy, disabled,
     const onPointerDown = (event: MouseEvent): void => {
       if (!rootRef.current?.contains(event.target as Node)) setIsOpen(false);
     };
-    document.addEventListener('mousedown', onPointerDown);
-    return () => document.removeEventListener('mousedown', onPointerDown);
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [isOpen]);
 
   const close = (): void => {

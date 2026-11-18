@@ -39,14 +39,14 @@ async function openInPopout(onToggle: () => void): Promise<Document> {
 it('closes on a press outside it in its own window', async () => {
   const onToggle = vi.fn();
   const popout = await openInPopout(onToggle);
-  fireEvent.mouseDown(popout.body);
+  fireEvent.pointerDown(popout.body);
   expect(onToggle).toHaveBeenCalledTimes(1);
 });
 
 it('stays open for a press inside it or in another window', async () => {
   const onToggle = vi.fn();
   const popout = await openInPopout(onToggle);
-  fireEvent.mouseDown(popout.querySelector('.atlas-dice-tray') as HTMLElement);
-  fireEvent.mouseDown(document.body);
+  fireEvent.pointerDown(popout.querySelector('.atlas-dice-tray') as HTMLElement);
+  fireEvent.pointerDown(document.body);
   expect(onToggle).not.toHaveBeenCalled();
 });

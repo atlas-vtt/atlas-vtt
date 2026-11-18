@@ -2,7 +2,7 @@
 
 // The give button stands at the end of a loot base's name cell; the name makes room for it.
 .atlas-base-give-cell .bases-table-cell {
-  padding-inline-end: $button-height-s + $spacing-xs;
+  padding-inline-end: calc(#{$button-height-s} + #{$spacing-xs});
 }
 
 .atlas-base-give {

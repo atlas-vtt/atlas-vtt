@@ -50,7 +50,7 @@ $portrait-size: 64px;
     opacity: 1;
   }
 
-  @media (hover: none) {
+  @include atlas-hover-reveal {
     &__check {
       opacity: 1;
     }

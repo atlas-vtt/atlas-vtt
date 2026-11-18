@@ -58,12 +58,12 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
     const doc = trayRef.current?.ownerDocument ?? document;
     const win = doc.defaultView ?? window;
     const timer = win.setTimeout(() => {
-      doc.addEventListener('mousedown', handleClickOutside);
+      doc.addEventListener('pointerdown', handleClickOutside);
     }, 0);
 
     return () => {
       win.clearTimeout(timer);
-      doc.removeEventListener('mousedown', handleClickOutside);
+      doc.removeEventListener('pointerdown', handleClickOutside);
     };
   }, [isOpen, onToggle, triggerRef]);
 

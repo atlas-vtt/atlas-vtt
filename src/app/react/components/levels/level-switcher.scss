@@ -41,8 +41,10 @@ $level-padding: 6px;
   white-space: nowrap;
   transition: background $transition-fast;
 
-  &:hover {
-    background: var(--background-modifier-hover);
+  @media (hover: hover) {
+    &:hover {
+      background: var(--background-modifier-hover);
+    }
   }
 
   &:focus-visible {
@@ -82,9 +84,11 @@ $level-padding: 6px;
   color: var(--text-muted);
   cursor: pointer;
 
-  &:hover {
-    background: var(--background-modifier-hover);
-    color: var(--text-normal);
+  @media (hover: hover) {
+    &:hover {
+      background: var(--background-modifier-hover);
+      color: var(--text-normal);
+    }
   }
 
   &--active {
@@ -96,4 +100,10 @@ $level-padding: 6px;
 .atlas-level-switcher__level:hover .atlas-level-switcher__eye,
 .atlas-level-switcher__level:focus-within .atlas-level-switcher__eye {
   visibility: visible;
+}
+
+@include atlas-hover-reveal {
+  .atlas-level-switcher__level .atlas-level-switcher__eye {
+    visibility: visible;
+  }
 }

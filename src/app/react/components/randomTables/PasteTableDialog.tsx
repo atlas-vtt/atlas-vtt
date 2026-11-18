@@ -111,7 +111,7 @@ export function PasteTableDialog({ folder, onSave, onImport, onClose }: PasteTab
   };
 
   return createPortal(
-    <motion.div {...dialogOverlayMotion} className="atlas-vtt-plugin atlas-vtt-root atlas-paste-table-overlay" onMouseDown={(e) => e.stopPropagation()}>
+    <motion.div {...dialogOverlayMotion} className="atlas-vtt-plugin atlas-vtt-root atlas-paste-table-overlay" onMouseDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
       <div className="atlas-paste-table__backdrop" onClick={() => { if (!saving) onClose(); }} />
       <motion.div ref={dialogRef} className="atlas-paste-table" variants={windowVariants} role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <header className="atlas-paste-table__header">

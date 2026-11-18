@@ -141,44 +141,49 @@
   z-index: 20;
 }
 
+// Half inside the window and half outside it; a coarse pointer gets wider strips (`--atlas-resize-edge`).
+$resize-edge: max(#{$spacing-s}, var(--atlas-resize-edge, 0px));
+$resize-corner: max(#{$spacing-m}, 1.5 * var(--atlas-resize-edge, 0px));
+$resize-out: calc(#{$resize-edge} / -2);
+
 // Edge handles — full-length strips
 .atlas-note-preview-resize-handle-n {
-  top: -$spacing-xs;
+  top: $resize-out;
   left: 0;
   right: 0;
-  height: $spacing-s;
+  height: $resize-edge;
   cursor: ns-resize;
 }
 
 .atlas-note-preview-resize-handle-s {
-  bottom: -$spacing-xs;
+  bottom: $resize-out;
   left: 0;
   right: 0;
-  height: $spacing-s;
+  height: $resize-edge;
   cursor: ns-resize;
 }
 
 .atlas-note-preview-resize-handle-e {
-  right: -$spacing-xs;
+  right: $resize-out;
   top: 0;
   bottom: 0;
-  width: $spacing-s;
+  width: $resize-edge;
   cursor: ew-resize;
 }
 
 .atlas-note-preview-resize-handle-w {
-  left: -$spacing-xs;
+  left: $resize-out;
   top: 0;
   bottom: 0;
-  width: $spacing-s;
+  width: $resize-edge;
   cursor: ew-resize;
 }
 
 // Corner handles — small squares
-.atlas-note-preview-resize-handle-nw { top: -$spacing-xs; left: -$spacing-xs; width: $spacing-m; height: $spacing-m; cursor: nwse-resize; }
-.atlas-note-preview-resize-handle-ne { top: -$spacing-xs; right: -$spacing-xs; width: $spacing-m; height: $spacing-m; cursor: nesw-resize; }
-.atlas-note-preview-resize-handle-sw { bottom: -$spacing-xs; left: -$spacing-xs; width: $spacing-m; height: $spacing-m; cursor: nesw-resize; }
-.atlas-note-preview-resize-handle-se { bottom: -$spacing-xs; right: -$spacing-xs; width: $spacing-m; height: $spacing-m; cursor: nwse-resize; }
+.atlas-note-preview-resize-handle-nw { top: $resize-out; left: $resize-out; width: $resize-corner; height: $resize-corner; cursor: nwse-resize; }
+.atlas-note-preview-resize-handle-ne { top: $resize-out; right: $resize-out; width: $resize-corner; height: $resize-corner; cursor: nesw-resize; }
+.atlas-note-preview-resize-handle-sw { bottom: $resize-out; left: $resize-out; width: $resize-corner; height: $resize-corner; cursor: nesw-resize; }
+.atlas-note-preview-resize-handle-se { bottom: $resize-out; right: $resize-out; width: $resize-corner; height: $resize-corner; cursor: nwse-resize; }
 
 // ── Highlighted Header ──────────────────────────────────────────────────
 

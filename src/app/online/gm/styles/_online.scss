@@ -2,6 +2,7 @@
 // player, a token, the link field) is that control with $spacing-xs around it. Text, portraits and
 // avatars share one left edge, $spacing-xs inside the rows.
 @use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
 
 $online-control: var(--input-height);
 $online-inset: $spacing-xs;
@@ -23,7 +24,7 @@ $online-focus-ring: inset 0 0 0 2px var(--background-modifier-border-focus);
     opacity: 1;
   }
 
-  @media (hover: none) {
+  @include atlas-hover-reveal {
     opacity: 1;
   }
 }
