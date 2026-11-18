@@ -13,7 +13,8 @@
 $panel-min-width: 360px;
 $panel-default-width: 50%;
 $note-min-width: 360px;
-$handle-width: 6px;
+// A coarse pointer gets a wider edge (`_coarse-pointer.scss`).
+$handle-width: var(--atlas-resize-edge, 6px);
 
 // While the panel's edge is dragged, the pointer crosses the note: it keeps
 // the resize cursor and selects no text.

@@ -610,7 +610,7 @@
 /// Resize handles of a floating window moved with `usePanelResize`: put on the
 /// handle's base class, with `--right`, `--bottom` and `--corner` modifiers. The
 /// corner carries a grip mark along the window's own corner.
-/// @param {Length} $hit - thickness of the edge handles
+/// @param {Length} $hit - thickness of the edge handles; a coarse pointer gets wider ones (`--atlas-resize-edge`)
 @mixin atlas-floating-resize-handle($hit: 8px) {
   position: absolute;
   z-index: 2;
@@ -620,7 +620,7 @@
     top: $surface-radius;
     right: 0;
     bottom: $surface-radius;
-    width: $hit;
+    width: max(#{$hit}, var(--atlas-resize-edge, 0px));
     cursor: ew-resize;
   }
 
@@ -628,15 +628,15 @@
     right: $surface-radius;
     bottom: 0;
     left: $surface-radius;
-    height: $hit;
+    height: max(#{$hit}, var(--atlas-resize-edge, 0px));
     cursor: ns-resize;
   }
 
   &--corner {
     right: 0;
     bottom: 0;
-    width: $surface-radius;
-    height: $surface-radius;
+    width: max(#{$surface-radius}, 2 * var(--atlas-resize-edge, 0px));
+    height: max(#{$surface-radius}, 2 * var(--atlas-resize-edge, 0px));
     cursor: nwse-resize;
 
     &::after {
@@ -882,7 +882,7 @@
   align-items: center;
   gap: $spacing-xs;
   // Never under the 24 px WCAG 2.2 asks of a target (2.5.8): at Obsidian's 30 px control height the track grows to 32.
-  height: max(#{$button-height-s}, calc(var(--input-height) - 2 * #{$surface-inset}));
+  height: max(#{$target-min}, calc(var(--input-height) - 2 * #{$surface-inset}));
   padding: 0 $spacing-m;
   border-radius: $control-inset-radius;
   color: var(--text-muted);

@@ -133,25 +133,32 @@ $icon-l:  24px;
 $icon-xl: 32px;
 
 // ── Component Sizes ──────────────────────────────────────────────────────────
+// The sizes of what is pressed are custom properties with the fine pointer's size as their fallback: a coarse
+// pointer (a finger) sets them on <body> (`_coarse-pointer.scss`), so one switch resizes every rule that reads
+// them, and without it every rule computes to what it always did. Being `var()`s they take no Sass arithmetic:
+// write `calc(#{$button-height-m} - 2px)`.
+
 // Button heights
-$button-height-s: 24px;
-$button-height-m: 32px;
-$button-height-l: 40px;
+$button-height-s: var(--atlas-button-height-s, 24px);
+$button-height-m: var(--atlas-button-height-m, 32px);
+$button-height-l: var(--atlas-button-height-l, 40px);
 
 // A count pill or badge: a 12 px label on a line of its own height, so the pill needs no vertical padding.
 $count-pill-height: 20px;
 
 // Input heights
-$input-height-s: 28px;
-$input-height-m: 36px;
+$input-height-s: var(--atlas-input-height-s, 28px);
+$input-height-m: var(--atlas-input-height-m, 36px);
 $input-height-l: 44px;
 
 // The smallest target a coarse pointer (a finger) gets: WCAG 2.5.5, Apple HIG.
 $touch-target: 44px;
+// The smallest target of any pointer: WCAG 2.2, 2.5.8.
+$target-min: 24px;
 
 // Close button: the "×" of every panel. One size, and one gap to the panel's
 // border above and beside it, whatever the panel's size or radius.
-$close-button-size: var(--input-height);
+$close-button-size: var(--atlas-close-button-size, var(--input-height));
 $close-button-gap: $surface-inset;
 
 // ── Statblock surfaces ───────────────────────────────────────────────────────
@@ -210,7 +217,8 @@ $dm-screen-inset: clamp(#{$spacing-l}, 3cqi, 64px);
   --icon-m: 16px;
   --icon-l: 18px;
   --icon-xl: 32px;
-  --input-height: 30px;
+  // Atlas' control height: fields, small buttons, menu and select rows, tabs. A coarse pointer raises it.
+  --input-height: var(--atlas-control-height, 30px);
 
   // The shapes and sizes `body.mod-macos` changes, at Obsidian's default for every other platform.
   // Its colours are left alone: a theme sets those, and its own values win on macOS too.

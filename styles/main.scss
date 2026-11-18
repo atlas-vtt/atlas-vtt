@@ -19,6 +19,7 @@
 @use './native-checkboxes';
 @use './button-press';
 @use './notices';
+@use './coarse-pointer';
 // At the root, outside the plugin's namespace: its scope includes the floating layer under <body>.
 @use '../src/app/packages/components/asset-manager/open-window';
 @use './scroll-lock';

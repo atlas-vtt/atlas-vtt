@@ -3,7 +3,8 @@
 
 // Rows stand $surface-inset inside the menu's border, concentric with its corner, and their text
 // $spacing-m further in: the text edge of every Atlas menu.
-$ctx-row-height: 28px;
+// The height is a custom property a coarse pointer raises (`_coarse-pointer.scss`); the corners stay the rows' own.
+$ctx-row-height: var(--atlas-ctx-row-height, 28px);
 $ctx-inset: $surface-inset;
 
 // ── Menu container ──────────────────────────────────────────────────────────
