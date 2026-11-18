@@ -202,6 +202,10 @@ exports[`the desktop menus of what is selected > a pin 1`] = `
     "item": "Edit Pin",
   },
   {
+    "icon": "eye",
+    "item": "Preview",
+  },
+  {
     "checked": false,
     "icon": "book-open",
     "item": "Show to players",
@@ -236,6 +240,10 @@ exports[`the desktop menus of what is selected > a pin 2`] = `
   {
     "icon": "edit",
     "item": "Edit Pin",
+  },
+  {
+    "icon": "eye",
+    "item": "Preview",
   },
   {
     "checked": true,
@@ -980,6 +988,10 @@ exports[`the desktop menus of what is selected > a token of a selection of token
   {
     "icon": "swords",
     "item": "Add to Initiative",
+  },
+  {
+    "icon": "eye",
+    "item": "Preview",
   },
   {
     "follows": false,
@@ -1808,6 +1820,10 @@ exports[`the desktop menus of what is selected > a token without values of its o
   {
     "icon": "swords",
     "item": "Add to Initiative",
+  },
+  {
+    "icon": "eye",
+    "item": "Preview",
   },
   {
     "follows": false,

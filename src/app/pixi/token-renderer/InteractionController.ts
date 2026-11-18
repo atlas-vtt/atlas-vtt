@@ -375,7 +375,7 @@ export class InteractionController implements ITokenInteractionController {
     
     // A move this far is a drag; a finger wanders further than a mouse before it means one
     const moveDistance = Math.sqrt(dx * dx + dy * dy);
-    if (!this.dragState.hasMoved && moveDistance > tokenDragDistance(this.viewport.scale.x, e)) {
+    if (!this.dragState.hasMoved && moveDistance > tokenDragDistance(this.viewport, e)) {
       this.dragState.hasMoved = true;
       this.store.getState().setIsDragging(true);
       // The whole drag becomes one undo step; closed in onPointerUp.

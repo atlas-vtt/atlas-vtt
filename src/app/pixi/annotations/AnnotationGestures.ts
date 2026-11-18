@@ -256,7 +256,7 @@ export class AnnotationGestures {
       const at = this.world(move);
       const drag = { x: at.x - grabbed.x, y: at.y - grabbed.y };
       if (!running.dragging) {
-        const far = live ? Math.hypot(drag.x, drag.y) > tokenDragDistance(viewport.scale.x, move) : Math.hypot(move.global.x - pressed.x, move.global.y - pressed.y) > dragThreshold(ANNOTATION_DRAG_THRESHOLD, move);
+        const far = live ? Math.hypot(drag.x, drag.y) > tokenDragDistance(viewport, move) : Math.hypot(move.global.x - pressed.x, move.global.y - pressed.y) > dragThreshold(ANNOTATION_DRAG_THRESHOLD, move);
         if (!far) return;
         running.dragging = true;
         viewport.plugins.pause('drag');

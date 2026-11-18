@@ -212,7 +212,7 @@ describe('what can be done with a pin', () => {
     const { store } = scene();
     const id = store.getState().addNotePin(120, 80, 'Notes/Tavern.md');
     const actions = pinActions(store, store.getState().objects.pins[id]!);
-    expect(ids(actions)).toEqual(['open', 'edit', 'readable', 'show-name', 'rename', 'duplicate', 'delete']);
+    expect(ids(actions)).toEqual(['open', 'edit', 'preview', 'readable', 'show-name', 'rename', 'duplicate', 'delete']);
     expect(bar(actions)).toEqual(['edit:Edit', 'duplicate:Duplicate', 'delete:Delete']);
     named(actions, 'delete').run();
     expect(store.getState().objects.pins[id]).toBeUndefined();

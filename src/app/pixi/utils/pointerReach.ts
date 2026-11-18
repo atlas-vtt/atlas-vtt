@@ -63,9 +63,10 @@ export function dragThreshold(px: number, pointer?: PointerKindSource | null): n
 /** World pixels a mouse travels before the tokens it holds are dragged. */
 const TOKEN_DRAG_DISTANCE = 5;
 
-/** World pixels a press travels at viewport `zoom` before the tokens it holds are dragged: under a finger never less than its slop on screen. */
-export function tokenDragDistance(zoom: number, pointer?: PointerKindSource | null): number {
+/** World pixels a press travels in `view` before the tokens it holds are dragged: under a finger never less than its slop on screen. The view's zoom is read for a finger alone. */
+export function tokenDragDistance(view: { readonly scale: { readonly x: number } }, pointer?: PointerKindSource | null): number {
   if (!isFinger(pointer)) return TOKEN_DRAG_DISTANCE;
+  const zoom = view.scale.x;
   return Math.max(TOKEN_DRAG_DISTANCE, FINGER_SLOP_PX / (zoom > 0 ? zoom : 1));
 }
 

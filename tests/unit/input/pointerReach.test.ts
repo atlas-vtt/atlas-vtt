@@ -101,13 +101,13 @@ describe('drag thresholds', () => {
   });
 
   it('start a token\'s drag after 5 world px for a mouse and 8 screen px for a finger, at any zoom', () => {
-    expect(tokenDragDistance(0.5)).toBe(5);
-    expect(tokenDragDistance(2)).toBe(5);
+    expect(tokenDragDistance({ scale: { x: 0.5 } })).toBe(5);
+    expect(tokenDragDistance({ scale: { x: 2 } })).toBe(5);
     const finger = { pointerType: 'touch' };
-    expect(tokenDragDistance(0.5, finger)).toBe(16);
-    expect(tokenDragDistance(1, finger)).toBe(8);
+    expect(tokenDragDistance({ scale: { x: 0.5 } }, finger)).toBe(16);
+    expect(tokenDragDistance({ scale: { x: 1 } }, finger)).toBe(8);
     // Zoomed in, 5 world px are already more than a finger wanders
-    expect(tokenDragDistance(2, finger)).toBe(5);
+    expect(tokenDragDistance({ scale: { x: 2 } }, finger)).toBe(5);
   });
 
   it('give the two taps of a finger\'s double tap 40 px, a mouse\'s double click its own slack', () => {
