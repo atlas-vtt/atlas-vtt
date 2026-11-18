@@ -45,7 +45,7 @@ describe('atlasScrollHost', () => {
 });
 
 describe('canDrawOverlayScrollbars', () => {
-  const windowWith = (supports?: (condition: string) => boolean): Window => ({ ...(supports && { CSS: { supports } }) }) as unknown as Window;
+  const windowWith = (supports?: (condition: string) => boolean): { CSS?: { supports(condition: string): boolean } } => ({ ...(supports && { CSS: { supports } }) });
 
   it('draws them where the web view places by an anchor and moves by a scroll timeline', () => {
     const asked: string[] = [];
