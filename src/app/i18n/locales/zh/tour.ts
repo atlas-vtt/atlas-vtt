@@ -56,7 +56,7 @@ export const tour: Translation = {
   'tour.map.assetsBody': '从这里放置棋子和遭遇，或打开另一个场景。',
   'tour.map.paletteTitle': '命令面板和 DM 屏',
   'tour.map.paletteBody': '命令面板能找到 Atlas 在这张地图上能做的一切。Tab 打开 DM 屏，把你的笔记和数据块显示在地图上方。',
-  'tour.map.helpTitle': '键盘快捷键',
+  'tour.map.helpTitle': '速查表',
   'tour.map.helpBody': '所有按键都在一张表上。可以在 Atlas 设置里修改，也可以随时从这张表重新开始这个导览。',
   'tour.online.label': '在线游戏',
   'tour.online.dockTitle': '在线游戏',

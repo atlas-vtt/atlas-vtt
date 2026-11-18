@@ -56,7 +56,7 @@ export const tour = {
   'tour.map.assetsBody': 'Place tokens and encounters from here, or open another scene.',
   'tour.map.paletteTitle': 'Command palette and DM screen',
   'tour.map.paletteBody': 'The palette finds anything Atlas can do on this map. Tab opens the DM screen, with your notes and statblocks over the map.',
-  'tour.map.helpTitle': 'Keyboard shortcuts',
+  'tour.map.helpTitle': 'Cheat sheet',
   'tour.map.helpBody': 'Every key in one sheet. Change them in Atlas’ settings, and start this tour again from the sheet whenever you like.',
   'tour.online.label': 'Online play',
   'tour.online.dockTitle': 'Play online',

@@ -56,7 +56,7 @@ export const tour: Translation = {
   'tour.map.assetsBody': 'Отсюда ставятся токены и стычки и открываются другие сцены.',
   'tour.map.paletteTitle': 'Палитра команд и экран мастера',
   'tour.map.paletteBody': 'Палитра находит всё, что Atlas умеет на этой карте. Tab открывает экран мастера с заметками и статблоками поверх карты.',
-  'tour.map.helpTitle': 'Сочетания клавиш',
+  'tour.map.helpTitle': 'Шпаргалка',
   'tour.map.helpBody': 'Все клавиши на одном листе. Их можно изменить в настройках Atlas, а этот обзор — запустить снова прямо с листа.',
   'tour.online.label': 'Игра онлайн',
   'tour.online.dockTitle': 'Играть онлайн',

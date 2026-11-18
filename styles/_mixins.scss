@@ -677,6 +677,28 @@
   z-index: 1;
 }
 
+/// A key as a keyboard prints it: one cap per key, for the cheat sheet and the tours' steps.
+@mixin atlas-keycap($size: 22px) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: $size;
+  height: $size;
+  padding: 0 $spacing-xs + 2px;
+  border: $border-width-s solid $field-edge;
+  border-radius: $radius-s;
+  background: color-mix(in oklch, var(--mono-100) 4%, var(--background-primary));
+  box-shadow: inset 0 -1px 0 color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent);
+  color: var(--text-normal);
+  font-family: var(--font-interface);
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-medium;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 /// Modal window: elevated surface at the surface radius, column layout,
 /// never taller than the viewport. Put header / body / footer inside.
 @mixin atlas-modal-window {
