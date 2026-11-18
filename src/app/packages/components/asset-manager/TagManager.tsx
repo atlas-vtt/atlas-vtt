@@ -196,7 +196,6 @@ const TagManager: React.FC<TagManagerProps> = ({
           onMouseDown={(e) => {
             e.stopPropagation();
           }}
-          onPointerDown={(e) => e.stopPropagation()}
         >
           <motion.div
             ref={modalRef}

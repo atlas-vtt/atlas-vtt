@@ -146,7 +146,6 @@ export default function CreateSceneModal({
         // Also stop propagation on mousedown
         e.stopPropagation();
       }}
-      onPointerDown={(e) => e.stopPropagation()}
       onKeyDown={(e) => {
         // Stop propagation of keyboard events
         e.stopPropagation();
