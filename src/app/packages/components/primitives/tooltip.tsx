@@ -6,7 +6,7 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 import { cn } from "../../../../utils/cn"
 import { noteTooltipDismissal } from "../../../keyboard/tooltipEscape"
 import { portalHost } from "../../../host/portalHost"
-import { lastInputWasTouch } from "../../../platform/lastInput"
+import { lastInputWasTouch } from "./lastInput"
 import { placeTooltip, type TooltipPlacement } from "./tooltipPlacement"
 import "./tooltip.scss"
 

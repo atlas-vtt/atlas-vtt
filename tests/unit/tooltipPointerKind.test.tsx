@@ -3,7 +3,7 @@ import React from 'react';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LabelTooltip, TooltipProvider } from '../../src/app/packages/components/primitives/tooltip';
-import { watchInput } from '../../src/app/platform/lastInput';
+import { watchInput } from '../../src/app/packages/components/primitives/lastInput';
 
 /** A pointer event as a device of `kind` sends it; jsdom's own events carry no pointer type. */
 function pointer(type: 'pointerdown' | 'pointermove', kind: 'mouse' | 'pen' | 'touch', target: EventTarget): void {
