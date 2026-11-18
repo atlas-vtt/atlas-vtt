@@ -214,8 +214,8 @@ export class AnnotationsRenderer {
       breaksAt: (text, width) => (textFontReady(text.fontFamily) ? textBreaks(text, width) : null),
       copyMoved: (ids, dx, dy) => copyAnnotationsMoved(store, ids, dx, dy, full),
       dragTokens: (event) => options.dragTokens?.(event),
-      menu: (selected, clicked, at) => {
-        const entries = annotationMenu(...this.actionsOf(selected, clicked));
+      menu: (selected, clicked, at, point) => {
+        const entries = annotationMenu(...this.actionsOf(selected, clicked, point));
         if (entries.length > 0) openContextMenuGlobal(entries, at);
         return entries.length > 0;
       },
@@ -249,9 +249,12 @@ export class AnnotationsRenderer {
   }
 
   /** What the actions of the selected drawings and texts are made of (`annotationActions`), `clicked` the one a menu was opened on. */
-  private actionsOf(selected: readonly Annotation[], clicked: Annotation | null): Parameters<typeof annotationActions> {
-    const extras = annotationExtras(this.store, this.viewport, selected.map(({ id }) => id), deviceProfile().pointer === 'coarse');
-    return [selected, clicked, this.store.getState(), (text) => this.texts.edit(text), selectionMenuStyles(selected, this.store), extras];
+  private actionsOf(selected: readonly Annotation[], clicked: Annotation | null, point: { remove(): void } | null = null): Parameters<typeof annotationActions> {
+    const coarse = deviceProfile().pointer === 'coarse';
+    const extras = annotationExtras(this.store, this.viewport, selected.map(({ id }) => id), coarse);
+    // A finger has neither Delete nor a double click a touch screen reports: the point under it goes by a row of its menu.
+    const withPoint = coarse && point ? { ...extras, point } : extras;
+    return [selected, clicked, this.store.getState(), (text) => this.texts.edit(text), selectionMenuStyles(selected, this.store), withPoint];
   }
 
   /**

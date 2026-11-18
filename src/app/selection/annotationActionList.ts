@@ -19,6 +19,11 @@ export interface AnnotationActionExtras {
   readonly whole?: { readonly ids: readonly string[]; remove(): void } | undefined;
   /** Under a finger: what a keyboard does elsewhere. */
   readonly touch?: { copy(): void; paste(): void; readonly canPaste: boolean } | undefined;
+  /**
+   * Under a finger: the point of a line the menu was opened on, where the line can spare it. A
+   * keyboard removes it with Delete and a mouse with a double click; a finger has this row.
+   */
+  readonly point?: { remove(): void } | undefined;
 }
 
 const separator = (id: string): SelectionAction => ({ kind: 'row', id, row: MENU_SEPARATOR });
@@ -52,6 +57,10 @@ export function annotationActions(
   const author = annotationAuthor(clicked?.by ?? null);
   if (author !== null) {
     actions.push({ kind: 'run', id: 'author', enabled: false, label: t('draw.menu.drawnBy', { name: author }), icon: 'user', run: () => undefined }, separator('after-author'));
+  }
+  if (extras.point) {
+    const { point } = extras;
+    actions.push({ kind: 'run', id: 'remove-point', enabled: true, label: t('draw.menu.removePoint'), icon: 'circle-minus', run: () => point.remove() }, separator('after-point'));
   }
   if (clicked?.kind === 'text') {
     actions.push({
