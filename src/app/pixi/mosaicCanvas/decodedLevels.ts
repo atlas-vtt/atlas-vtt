@@ -1,4 +1,4 @@
-import { DECODED_MAX_PIXELS, DECODER_MAX_SIDE, decodable } from '../../imageProcessing/decodeLimits';
+import { DECODED_MAX_PIXELS, DECODER_MAX_SIDE, decodable, sourcePixelsWithin } from '../../imageProcessing/decodeLimits';
 import { imageHeader } from '../../imageProcessing/imageDimensions';
 import { pyramidOf, type Pyramid } from './pyramid';
 import type { TesseraGraphics } from './tesseraGraphics';
@@ -40,15 +40,27 @@ export const MAX_DECODED_LEVELS_BYTES = 2 * 1024 ** 3;
 /** The most pixels a source may have: below the decoders' wall, and a level 0 whose levels fit `MAX_DECODED_LEVELS_BYTES`. */
 export const MAX_SOURCE_PIXELS = Math.min(DECODED_MAX_PIXELS - 1, Math.floor((MAX_DECODED_LEVELS_BYTES * 3) / 4 / BYTES_PER_PIXEL));
 
-/** Refuses a source of `size` when no browser decoder takes it or its levels would not fit `MAX_DECODED_LEVELS_BYTES`. */
-export function checkDecodable(size: { width: number; height: number }): void {
-  if (decodable(size) && size.width * size.height <= MAX_SOURCE_PIXELS) return;
+/**
+ * The most pixels a source may have on a device that holds `sourceBytes` of one decoded image
+ * (`DeviceBudgets.imageSourceBytes`): what an import decodes whole there, and never more than
+ * `MAX_SOURCE_PIXELS`. A tablet's web view ends without a word over a level 0 it cannot hold.
+ */
+export function maxSourcePixelsFor(sourceBytes: number): number {
+  return Math.min(MAX_SOURCE_PIXELS, sourcePixelsWithin(sourceBytes));
+}
+
+/**
+ * Refuses a source of `size` when no browser decoder takes it, its levels would not fit
+ * `MAX_DECODED_LEVELS_BYTES`, or it has more than the `maxPixels` the device decodes whole.
+ */
+export function checkDecodable(size: { width: number; height: number }, maxPixels = MAX_SOURCE_PIXELS): void {
+  if (decodable(size) && size.width * size.height <= maxPixels) return;
   throw new OpenError({
     kind: 'too-large',
     width: size.width,
     height: size.height,
     maxSide: DECODER_MAX_SIDE,
-    maxPixels: MAX_SOURCE_PIXELS,
+    maxPixels,
   });
 }
 
@@ -58,12 +70,12 @@ export function checkDecodable(size: { width: number; height: number }): void {
  * (SVG, AVIF) are Infinity. Refuses a source no browser decoder takes
  * (`DECODED_MAX_PIXELS` or more, or a side over `DECODER_MAX_SIDE`; WebCodecs
  * ends the process for such a JPEG even at an eighth of its size) and one
- * larger than `MAX_DECODED_LEVELS_BYTES`.
+ * larger than `MAX_DECODED_LEVELS_BYTES` or than `maxPixels`.
  */
-export async function decodedLevelsCost(blob: Blob): Promise<number> {
+export async function decodedLevelsCost(blob: Blob, maxPixels = MAX_SOURCE_PIXELS): Promise<number> {
   const header = await imageHeader(blob);
   if (!header) return Infinity;
-  checkDecodable(header);
+  checkDecodable(header, maxPixels);
   return decodedSizeCost(header.width, header.height);
 }
 
@@ -83,7 +95,7 @@ export interface DecodedSource {
  * pyramid takes the decoded bitmap's size, not the header's: decoding applies
  * the EXIF orientation, which can swap the sides.
  */
-export async function decodeSource(blob: Blob, graphics: TesseraGraphics): Promise<DecodedSource> {
+export async function decodeSource(blob: Blob, graphics: TesseraGraphics, maxPixels = MAX_SOURCE_PIXELS): Promise<DecodedSource> {
   let bitmap: ImageBitmap;
   try {
     bitmap = await graphics.decode(blob);
@@ -92,7 +104,7 @@ export async function decodeSource(blob: Blob, graphics: TesseraGraphics): Promi
   }
   try {
     // Sources whose header gave no size (SVG, AVIF) are measured here.
-    checkDecodable(bitmap);
+    checkDecodable(bitmap, maxPixels);
   } catch (error) {
     bitmap.close();
     throw error;

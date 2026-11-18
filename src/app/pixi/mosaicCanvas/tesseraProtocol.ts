@@ -39,6 +39,8 @@ export interface TesseraBudgets {
   cacheMax: number;
   /** Share of the origin's quota the cache may take. */
   cacheQuotaShare: number;
+  /** The most pixels of a source decoded whole (`maxSourcePixelsFor`); the desktop's when left out. */
+  sourcePixels?: number | undefined;
 }
 
 export type TesseraRequest =

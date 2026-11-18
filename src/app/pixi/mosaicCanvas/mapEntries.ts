@@ -50,6 +50,8 @@ export interface MapEntriesDeps {
   yieldToRequests: () => Promise<void>;
   /** Bytes of decoded levels all builds may hold together. */
   decodedBudget?: number | undefined;
+  /** The most pixels of a source decoded whole; `MAX_SOURCE_PIXELS` when unset. A complete pyramid opens whatever its size. */
+  maxSourcePixels?: number | undefined;
   /** The decoder that reads a source the browser cannot decode in bands, or null; `bandDecodable` when unset. */
   bandDecoderOf?: ((blob: Blob) => Promise<BandDecoder | null>) | undefined;
 }
@@ -169,8 +171,8 @@ export class MapEntries {
       }
     }
     try {
-      if (decoded) checkDecodable(decoded);
-      const cost = decoded ? decodedSizeCost(decoded.width, decoded.height) : await decodedLevelsCost(blob);
+      if (decoded) checkDecodable(decoded, this.deps.maxSourcePixels);
+      const cost = decoded ? decodedSizeCost(decoded.width, decoded.height) : await decodedLevelsCost(blob, this.deps.maxSourcePixels);
       // Held from here, so an open waiting for memory knows this decode gives way when nobody shows it.
       entry.releaseBudget = await this.budget.acquire({ bytes: cost, urgent: () => this.shown(entry) });
     } catch (error) {
@@ -178,7 +180,7 @@ export class MapEntries {
       throw error;
     }
     try {
-      const source = decoded ? { pyramid: pyramidOf(decoded.width, decoded.height), bitmap: decoded } : await decodeSource(blob, this.deps.graphics);
+      const source = decoded ? { pyramid: pyramidOf(decoded.width, decoded.height), bitmap: decoded } : await decodeSource(blob, this.deps.graphics, this.deps.maxSourcePixels);
       entry.pyramid = source.pyramid;
       entry.levels = new DecodedLevels(source.pyramid, source.bitmap, this.deps.graphics);
     } catch (error) {
