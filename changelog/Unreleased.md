@@ -1,7 +1,7 @@
 ## New
 
 **New Feature: Armarium in Atlas**
-- Browse the Armarium right inside the asset manager: choose the Armarium tab beside Players, or Armarium in the command palette
+- Browse the Armarium right inside the asset manager: choose the shop icon after Players, or Armarium in the command palette
 - Install a free collection with one click: you see what it brings in the import review before anything is added
 - Open in Atlas on a collection's page in your browser does the same
 - Share your own collections in the Armarium without leaving Atlas: Share in the Armarium, in the ⋯ menu beside the collection picker, signs you in, uploads the collection, shows what the Armarium's checks found, and publishes it with its description, tags and licence

@@ -16,6 +16,19 @@
   .atlas-tab-button {
     @include atlas-tab-button;
 
+    // The Armarium's tab is its icon alone: square, as tall as the tabs beside it.
+    &.atlas-tab-button--icon {
+      justify-content: center;
+      aspect-ratio: 1;
+      padding: 0;
+
+      // Alone, the icon takes the size of the header's other icons.
+      svg {
+        width: $icon-s;
+        height: $icon-s;
+      }
+    }
+
     // A count is information, so it reads at AA (the shared tab mixin's is faint).
     .atlas-tab-count {
       min-width: 2ch;

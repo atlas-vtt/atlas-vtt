@@ -31,7 +31,7 @@ function TabCount({ count, failed }: { count: number | undefined; failed: boolea
 }
 
 /**
- * The asset type tabs, and after them the Armarium, a place beside the library. Wide headers show them side by side;
+ * The asset type tabs, and after them the Armarium, a place beside the library, as its icon alone (the folded menu names it). Wide headers show them side by side;
  * narrow ones show the current place as a menu button instead (the toolbar's `data-compact` steps pick one), so the
  * toolbar stays a single row.
  */
@@ -64,12 +64,12 @@ export function TabSwitcher({ activeTab, onTabChange, assetCounts, countsFailed 
             <LabelTooltip label={t('armarium.page')} describe>
               <button
                 type="button"
-                className={`atlas-tab-button ${armariumShown ? 'atlas-active' : ''}`}
+                className={`atlas-tab-button atlas-tab-button--icon ${armariumShown ? 'atlas-active' : ''}`}
                 onClick={onShowArmarium}
+                aria-label={t('armarium.title')}
                 aria-current={armariumShown ? 'page' : undefined}
               >
                 <Store />
-                <span className="atlas-tab-label">{t('armarium.title')}</span>
               </button>
             </LabelTooltip>
           </>
