@@ -55,7 +55,7 @@ The template is in `src/app/statblocks/presets/fate.ts` (`AGPL-3.0-only AND CC-B
 
 Atlas VTT bundles the following open-source packages in `main.js`.
 
-The build disables script-element creation in React DOM and replaces JSZip's legacy fallbacks with native Promise support and Node timers. These adaptations are maintained in `vite/desktop-dependencies.mts`; the original licenses below still apply.
+The build disables script-element creation in React DOM and replaces JSZip's legacy fallbacks with native Promise support and the browser's message tasks, and leaves out JSZip's Node streams and framer-motion's optional `@emotion/is-prop-valid` lookup. These adaptations are maintained in `vite/desktop-dependencies.mts`; the original licenses below still apply.
 
 ### @dnd-kit/accessibility@3.1.1
 
