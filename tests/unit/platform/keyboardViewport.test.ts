@@ -32,6 +32,7 @@ function scrollingField(top: number, offset: number): { body: HTMLElement; input
   body.style.overflowY = 'auto';
   Object.defineProperty(body, 'clientHeight', { value: 300 });
   Object.defineProperty(body, 'scrollHeight', { value: 900 });
+  body.getBoundingClientRect = () => ({ left: 0, right: 400, top, bottom: top + 300, width: 400, height: 300, x: 0, y: top, toJSON: () => ({}) });
   const input = body.createEl('input', { type: 'text' });
   input.getBoundingClientRect = () => {
     const y = top + offset - body.scrollTop;
@@ -120,6 +121,14 @@ describe('revealInput', () => {
     revealInput(input, { top: 0, bottom: 380 }, 12);
     expect(body.scrollTop).toBe(112);
     expect(input.getBoundingClientRect().bottom).toBe(368);
+  });
+
+  it('brings a field out from under its scroller\'s own edge, though the keyboard leaves it in the window', () => {
+    // The body shows 100..400 of the window; the field stands at 420..450, clipped below it
+    const { body, input } = scrollingField(100, 320);
+    revealInput(input, { top: 0, bottom: 600 }, 12);
+    expect(body.scrollTop).toBe(62);
+    expect(input.getBoundingClientRect().bottom).toBe(388);
   });
 });
 

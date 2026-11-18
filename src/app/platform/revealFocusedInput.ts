@@ -33,16 +33,18 @@ export function focusedAtlasInput(doc: Document): HTMLElement | null {
 const scrolls = (overflow: string): boolean => overflow === 'auto' || overflow === 'scroll';
 
 /**
- * Scrolls the scrollers around `input`, innermost first, until it stands inside `seen` or none can
- * scroll further. `scrollIntoView` does not do this: it brings an element into its scroller, and a
- * scroller whose lower half lies under the keyboard counts as showing all of itself.
+ * Scrolls the scrollers around `input`, innermost first, until it stands in what is seen: inside
+ * `seen` and inside each scroller's own box, which clips it. `scrollIntoView` does not do this: it
+ * brings an element into its scroller, and a scroller whose lower half lies under the keyboard
+ * counts as showing all of itself.
  */
 export function revealInput(input: HTMLElement, seen: Span, margin = REVEAL_MARGIN): void {
   const win = input.win;
   for (let scroller = input.parentElement; scroller; scroller = scroller.parentElement) {
-    const distance = revealDistance(input.getBoundingClientRect(), seen, margin);
-    if (Math.abs(distance) < 1) return;
     if (scroller.scrollHeight <= scroller.clientHeight || !scrolls(win.getComputedStyle(scroller).overflowY)) continue;
-    scroller.scrollTop += distance;
+    const frame = scroller.getBoundingClientRect();
+    const shown = { top: Math.max(seen.top, frame.top), bottom: Math.min(seen.bottom, frame.bottom) };
+    const distance = revealDistance(input.getBoundingClientRect(), shown, margin);
+    if (Math.abs(distance) >= 1) scroller.scrollTop += distance;
   }
 }
