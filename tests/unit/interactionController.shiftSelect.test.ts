@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { InteractionController } from '../../src/app/pixi/token-renderer/InteractionController';
 
-function makeController(selectedIds: string[]): { controller: InteractionController; setSelection: ReturnType<typeof vi.fn>; setTokenPositions: ReturnType<typeof vi.fn>; viewport: any } {
+function makeController(selectedIds: string[], selectMore = false): { controller: InteractionController; setSelection: ReturnType<typeof vi.fn>; setTokenPositions: ReturnType<typeof vi.fn>; viewport: any } {
   const setSelection = vi.fn();
   const setTokenPositions = vi.fn();
   const viewport = {
@@ -15,6 +15,7 @@ function makeController(selectedIds: string[]): { controller: InteractionControl
     getState: () => ({
       activeTool: 'select',
       selectedIds,
+      selectMore,
       setSelection,
       setIsDragging: vi.fn(),
       setTokenPositions,
@@ -69,6 +70,54 @@ describe('InteractionController shift-click selection', () => {
     onMove({ global: { x: 105, y: 35 } });
     onUp({ global: { x: 105, y: 35 } });
     expect(setSelection).not.toHaveBeenCalled();
+  });
+});
+
+describe('InteractionController with Select more on', () => {
+  it('keeps a selected token in the selection while it is pressed, so the press can drag the selection', () => {
+    const { controller, setSelection, viewport } = makeController(['a', 'b'], true);
+    controller.handleViewportTokenPointerDown('b', plainClick);
+    expect(setSelection).not.toHaveBeenCalled();
+    expect(viewport.plugins.pause).toHaveBeenCalledWith('drag');
+    expect(controller.isDraggingTokens()).toBe(true);
+  });
+
+  it('takes the token out of the selection when the press is released in place', () => {
+    const { controller, setSelection, viewport } = makeController(['a', 'b'], true);
+    controller.handleViewportTokenPointerDown('b', plainClick);
+    const onUp = viewport.on.mock.calls.find(([name]: [string]) => name === 'pointerup')[1];
+    onUp({ global: { x: 0, y: 0 } });
+    expect(setSelection).toHaveBeenCalledExactlyOnceWith(['a']);
+  });
+
+  it('moves the whole selection by a drag of one of its tokens, and leaves it selected', () => {
+    const { controller, setSelection, setTokenPositions, viewport } = makeController(['a', 'b'], true);
+    const sprites: Record<string, { position: { x: number; y: number; set: ReturnType<typeof vi.fn> } }> = {
+      a: { position: { x: 35, y: 35, set: vi.fn() } },
+      b: { position: { x: 105, y: 35, set: vi.fn() } },
+    };
+    controller.setTokenSpriteProvider((id) => (sprites[id] ?? null) as any);
+    (viewport.toWorld as ReturnType<typeof vi.fn>).mockImplementation((point: { x: number; y: number }) => point);
+    controller.handleViewportTokenPointerDown('b', { ...plainClick, global: { x: 105, y: 35 } });
+    const onMove = viewport.on.mock.calls.find(([name]: [string]) => name === 'pointermove')[1];
+    const onUp = viewport.on.mock.calls.find(([name]: [string]) => name === 'pointerup')[1];
+    onMove({ global: { x: 175, y: 35 } });
+    expect(setTokenPositions).toHaveBeenLastCalledWith([{ id: 'a', x: 105, y: 35 }, { id: 'b', x: 175, y: 35 }]);
+    onUp({ global: { x: 175, y: 35 } });
+    expect(setSelection).not.toHaveBeenCalled();
+  });
+
+  it('adds an unselected token at the press, as before', () => {
+    const { controller, setSelection } = makeController(['a'], true);
+    controller.handleViewportTokenPointerDown('b', plainClick);
+    expect(setSelection).toHaveBeenCalledWith(['a', 'b']);
+  });
+
+  it('leaves Shift as it was: a selected token goes at the press, and nothing is dragged', () => {
+    const { controller, setSelection } = makeController(['a', 'b'], true);
+    controller.handleViewportTokenPointerDown('b', shiftClick);
+    expect(setSelection).toHaveBeenCalledWith(['a']);
+    expect(controller.isDraggingTokens()).toBe(false);
   });
 });
 

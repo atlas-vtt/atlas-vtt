@@ -50,18 +50,24 @@ describe('Select more', () => {
 describe('a press on a token while Select more is on', () => {
   const token = (id: string): Token => ({ id, kind: 'token', imagePath: `${id}.png`, x: 0, y: 0 });
 
-  function setup(selectedIds: string[]): { store: ViewAtlasStore; press: (id: string) => void } {
+  function setup(selectedIds: string[]): { store: ViewAtlasStore; press: (id: string) => void; release: () => void } {
     const { app } = createInMemoryApp();
     const store = createViewAtlasStore(app, `select-more-${Math.random()}`);
     const tokens = Object.fromEntries(['a', 'b', 'c'].map((id) => [id, token(id)]));
     store.setState({ persistenceEnabled: false, activeTool: 'move', selectedIds, selectMore: true, objects: { ...store.getState().objects, tokens } });
-    const viewport = { on: vi.fn(), off: vi.fn(), toWorld: () => ({ x: 0, y: 0 }), plugins: { pause: vi.fn(), resume: vi.fn() } } as unknown as Viewport;
+    const on = vi.fn();
+    const viewport = { on, off: vi.fn(), toWorld: () => ({ x: 0, y: 0 }), plugins: { pause: vi.fn(), resume: vi.fn() } } as unknown as Viewport;
     const controller = new InteractionController(viewport, store, {} as GridSystem, {} as EventEmitter, app as unknown as App);
     controller.setTokenSpriteProvider(() => null);
     const press = (id: string): void => controller.handleViewportTokenPointerDown(
       id, { button: 0, shiftKey: false, global: { x: 0, y: 0 }, stopPropagation: () => {} } as unknown as FederatedPointerEvent,
     );
-    return { store, press };
+    /** Lifts the pointer where it came down. */
+    const release = (): void => {
+      const heard = on.mock.calls.filter(([name]) => name === 'pointerup').pop();
+      (heard?.[1] as ((event: { global: { x: number; y: number } }) => void) | undefined)?.({ global: { x: 0, y: 0 } });
+    };
+    return { store, press, release };
   }
 
   it('adds the token to the selection without Shift', () => {
@@ -70,9 +76,11 @@ describe('a press on a token while Select more is on', () => {
     expect(store.getState().selectedIds).toEqual(['a', 'b']);
   });
 
-  it('takes a selected token out again', () => {
-    const { store, press } = setup(['a', 'b']);
+  it('takes a selected token out again once the press is released in place: until then it may drag the selection', () => {
+    const { store, press, release } = setup(['a', 'b']);
     press('a');
+    expect(store.getState().selectedIds).toEqual(['a', 'b']);
+    release();
     expect(store.getState().selectedIds).toEqual(['b']);
   });
 });
