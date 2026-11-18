@@ -4,6 +4,8 @@
 - Browse the Armarium right inside the asset manager: choose Armarium in its sidebar or in the command palette
 - Install a free collection with one click: you see what it brings in the import review before anything is added
 - Open in Atlas on a collection's page in your browser does the same
+- Share your own collections in the Armarium without leaving Atlas: Share in the Armarium in the asset manager signs you in, uploads the collection, shows what the Armarium's checks found, and publishes it with its description, tags and licence
+- Sign in to your Atlas account in Atlas's settings. The account is optional, and the same one hosts online tables
 
 **General**
 - The documentation opens inside Atlas: choose Documentation in the command palette to read the guides beside the map
