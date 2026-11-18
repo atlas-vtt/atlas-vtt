@@ -109,7 +109,19 @@ export function Sidebar({
         <motion.div className="atlas-asset-manager-sidebar-content" variants={still ? stillSidebarContentVariants : sidebarContentVariants}>
           <div className="atlas-collections">
             <div className="atlas-collections-heading-row">
-              <div className="atlas-section-title">{t('am.sidebar.collection')}</div>
+              {onShowArmarium ? (
+                <Button
+                  variant="ghost"
+                  className={`atlas-sidebar-armarium-btn ${armariumShown ? 'atlas-active' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); onShowArmarium(); }}
+                  aria-current={armariumShown ? 'page' : undefined}
+                >
+                  <Store />
+                  <span>{t('armarium.title')}</span>
+                </Button>
+              ) : (
+                <div className="atlas-section-title">{t('am.sidebar.collection')}</div>
+              )}
               <div className="atlas-collections-heading-actions">
                 {onExportCollection && (
                   <LabelTooltip label={t('am.sidebar.export')}>
@@ -223,17 +235,6 @@ export function Sidebar({
           {footer}
 
           <div className="atlas-sidebar-actions">
-            {onShowArmarium && (
-              <Button
-                variant="ghost"
-                className={`atlas-sidebar-armarium-btn ${armariumShown ? 'atlas-active' : ''}`}
-                onClick={(e) => { e.stopPropagation(); onShowArmarium(); }}
-                aria-current={armariumShown ? 'page' : undefined}
-              >
-                <Store />
-                <span>{t('armarium.title')}</span>
-              </Button>
-            )}
             <Button
               variant="ghost"
               className="atlas-asset-manager-manage-btn"
