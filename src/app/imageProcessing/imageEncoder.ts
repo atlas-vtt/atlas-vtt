@@ -12,8 +12,9 @@ import { WEBP_MAX_SIDE } from './decodeLimits';
 export const WEBP = 'image/webp';
 export const PNG = 'image/png';
 
-/** The format a derived picture is stored in. */
-export type DerivedFormat = 'webp' | 'png';
+/** The formats a derived picture is stored in, which are also the extensions of its file. */
+export const DERIVED_FORMATS = ['webp', 'png'] as const;
+export type DerivedFormat = (typeof DERIVED_FORMATS)[number];
 
 export interface EncodableCanvas {
   readonly width: number;
@@ -32,9 +33,9 @@ export interface ImageEncoder {
    * encode WebP or the picture is wider or taller than a WebP can be (`convertToBlob` would crop it
    * without a word). The blob's type says which it is.
    */
-  encode(canvas: EncodableCanvas, quality: number): Promise<Blob>;
+  encode: (canvas: EncodableCanvas, quality: number) => Promise<Blob>;
   /** The format `encode` gives a picture a WebP can hold, asked of a canvas of one pixel where nothing was encoded yet. */
-  format(createCanvas: (width: number, height: number) => ProbeCanvas): Promise<DerivedFormat>;
+  format: (createCanvas: (width: number, height: number) => ProbeCanvas) => Promise<DerivedFormat>;
 }
 
 async function encodePng(canvas: EncodableCanvas): Promise<Blob> {
@@ -57,7 +58,7 @@ export function createImageEncoder(): ImageEncoder {
 
   return {
     encode,
-    async format(createCanvas) {
+    format: async (createCanvas) => {
       if (encodesWebp === undefined) {
         const canvas = createCanvas(1, 1);
         canvas.getContext('2d');

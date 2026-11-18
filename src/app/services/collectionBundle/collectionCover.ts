@@ -5,7 +5,8 @@ import { readVaultBinary } from '../../utils/hiddenVaultFiles';
 import { optimizeImage } from '../../imageProcessing/imageProcessing';
 import { baseName } from '../../utils/pathUtils';
 import { sceneThumbnailPath } from './collectionReferences';
-import { imageExtension } from '../assetImageFiles';
+import { derivedImageExtension } from '../assetImageFiles';
+import type { DerivedFormat } from '../../imageProcessing/imageEncoder';
 import { asNamedWebp } from './webpNamedFiles';
 import { isVideoMapPath } from '../../pixi/mosaicCanvas/video/videoMapFiles';
 
@@ -42,11 +43,11 @@ export interface CoverFile {
 }
 
 /** Where a collection's cover of `extension` lies: `cover.webp`, or `cover.png` from a device that cannot encode WebP. */
-export const collectionCoverPath = (collectionId: string, extension: 'webp' | 'png' = 'webp'): string => `${COLLECTIONS_DIR}/${collectionId}/cover.${extension}`;
+export const collectionCoverPath = (collectionId: string, extension: DerivedFormat = 'webp'): string => `${COLLECTIONS_DIR}/${collectionId}/cover.${extension}`;
 
 /** A cover just made of `data`, at the path that names its format. */
 function newCover(collectionId: string, data: ArrayBuffer): CoverFile {
-  return { path: collectionCoverPath(collectionId, imageExtension(data) === 'png' ? 'png' : 'webp'), data, isNew: true };
+  return { path: collectionCoverPath(collectionId, derivedImageExtension(data)), data, isNew: true };
 }
 
 /** Covers fill the dialog's banner; this keeps them sharp on high-density screens without bloating the bundle. */

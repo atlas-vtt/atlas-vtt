@@ -1,9 +1,10 @@
 import { TFile, type App } from 'obsidian';
 import { AssetService, type MapAsset, type TokenAsset } from './AssetService';
 import { ensureFolder } from '../plugin/vaultFolders';
+import { DERIVED_FORMATS, type DerivedFormat } from '../imageProcessing/imageEncoder';
 import { renderThumbnail, type ThumbnailSpec } from '../imageProcessing/imageProcessing';
 import { fnv1a32 } from '../utils/hashing';
-import { imageExtension } from './assetImageFiles';
+import { derivedImageExtension } from './assetImageFiles';
 import { isVideoMapPath, videoMimeType } from '../pixi/mosaicCanvas/video/videoMapFiles';
 import { videoPosterBlob } from '../pixi/mosaicCanvas/video/videoPoster';
 
@@ -39,17 +40,13 @@ function sourceImagePath(asset: ThumbnailAsset): string {
 }
 
 /**
- * The extensions a thumbnail is stored under: WebP, or PNG from a device that cannot encode WebP
- * (`imageEncoder.ts`). One library is shared by devices of both kinds.
+ * `path` under each of the other extensions a thumbnail is stored under (`DERIVED_FORMATS`: WebP, or
+ * PNG from a device that cannot encode WebP). One library is shared by devices of both kinds.
  */
-const THUMBNAIL_EXTENSIONS = ['webp', 'png'] as const;
-type ThumbnailExtension = (typeof THUMBNAIL_EXTENSIONS)[number];
-
-/** `path` under each of the other thumbnail extensions. */
 function siblingPaths(path: string): string[] {
   const dot = path.lastIndexOf('.');
   const extension = path.slice(dot + 1).toLowerCase();
-  return THUMBNAIL_EXTENSIONS.filter((other) => other !== extension).map((other) => `${path.slice(0, dot)}.${other}`);
+  return DERIVED_FORMATS.filter((other) => other !== extension).map((other) => `${path.slice(0, dot)}.${other}`);
 }
 
 /** Short stable digest so thumbnails of same-named images in different folders do not collide. */
@@ -65,7 +62,7 @@ function pathDigest(path: string): string {
  * the background, a few at a time. Lists hear of a thumbnail soon after it was
  * written (`onUpdated`, `stateOf`); it is recorded on its asset in batches,
  * since each record saves the whole index. A thumbnail's file is named by its
- * bytes (`THUMBNAIL_EXTENSIONS`), so the path recorded on the asset is what
+ * bytes (`DERIVED_FORMATS`), so the path recorded on the asset is what
  * names it; where that file has not arrived yet and the other device's is
  * there, that one is shown and nothing is made or recorded anew.
  */
@@ -99,7 +96,7 @@ export class AssetThumbnailService {
   ) {}
 
   /** Vault path of the thumbnail that belongs to `imagePath` in the format of `extension`, whether or not it exists yet. */
-  thumbnailPathFor(imagePath: string, extension: ThumbnailExtension = 'webp'): string {
+  thumbnailPathFor(imagePath: string, extension: DerivedFormat = 'webp'): string {
     const fileName = imagePath.slice(imagePath.lastIndexOf('/') + 1).replace(/\.[^.]+$/, '');
     const safeName = fileName.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || 'token';
     return `${THUMBNAIL_DIR}/${safeName}-${pathDigest(imagePath)}.${extension}`;
@@ -130,7 +127,7 @@ export class AssetThumbnailService {
 
   /** Writes the thumbnail of the image at `imagePath` under the extension of its format, returning the thumbnail's path. */
   private async storeForImage(imagePath: string, thumbnail: ArrayBuffer): Promise<string> {
-    const thumbnailPath = this.thumbnailPathFor(imagePath, imageExtension(thumbnail) === 'png' ? 'png' : 'webp');
+    const thumbnailPath = this.thumbnailPathFor(imagePath, derivedImageExtension(thumbnail));
     await this.writeThumbnail(thumbnailPath, thumbnail);
     return thumbnailPath;
   }
@@ -180,7 +177,7 @@ export class AssetThumbnailService {
     const stored = this.storedThumbnail(asset);
     if (stored) return { path: stored, pending: false };
     const imagePath = sourceImagePath(asset);
-    const made = THUMBNAIL_EXTENSIONS.map((extension) => this.thumbnailPathFor(imagePath, extension)).find((path) => this.made.has(path) && this.isFile(path));
+    const made = DERIVED_FORMATS.map((extension) => this.thumbnailPathFor(imagePath, extension)).find((path) => this.made.has(path) && this.isFile(path));
     if (made) return { path: made, pending: false };
     return { pending: this.queued.has(asset.id) };
   }
