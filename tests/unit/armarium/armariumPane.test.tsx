@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { App } from 'obsidian';
 import { ArmariumInstaller, type StatusListener } from '../../../src/app/armarium/ArmariumInstaller';
 import { ArmariumPane } from '../../../src/app/armarium/ArmariumPane';
+import { StoreTagFilter } from '../../../src/app/armarium/storeTagFilter';
 
 vi.mock('../../../src/app/ui/notice', () => ({ showNotice: vi.fn(() => ({ hide: vi.fn() })) }));
 
@@ -109,5 +110,49 @@ describe('the Armarium pane', () => {
     fromPage({ type: 'atlas-armarium:install', format: 1, uid: UID, version: 5 }, contentWindow);
     expect(installer.install).not.toHaveBeenCalled();
     expect(document.querySelector('iframe')).toBeNull();
+  });
+
+  it('with a tag filter, says it shows tags, hands the page\'s tags to the sidebar and the sidebar\'s presses to the page', async () => {
+    const filter = new StoreTagFilter();
+    const { unmount } = render(<ArmariumPane app={app} tagFilter={filter} />);
+    const frame = screen.getByLabelText('The Armarium, Atlas\' library of collections', { selector: 'iframe' }) as HTMLIFrameElement;
+    const post = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => undefined);
+    expect(filter.snapshot()).toEqual({ status: 'waiting' });
+
+    fromPage({ type: 'atlas-armarium:hello', format: 1 }, frame.contentWindow);
+    await vi.waitFor(() => expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: 'atlas-armarium:installed', features: ['tags'] }), 'https://atlas-vtt.dev'));
+
+    const tags = { groups: [{ id: 'place', label: 'Place', tags: [{ id: 'forest', label: 'Forest', count: 2 }] }], picked: [] };
+    fromPage({ type: 'atlas-armarium:tags', format: 1, ...tags }, window);
+    expect(filter.snapshot()).toEqual({ status: 'waiting' });
+    fromPage({ type: 'atlas-armarium:tags', format: 1, ...tags }, frame.contentWindow);
+    expect(filter.snapshot()).toEqual({ status: 'ready', tags });
+
+    post.mockClear();
+    filter.toggle('forest');
+    filter.clear();
+    expect(post.mock.calls).toEqual([
+      [{ type: 'atlas-armarium:toggle-tag', format: 1, tag: 'forest' }, 'https://atlas-vtt.dev'],
+      [{ type: 'atlas-armarium:clear-tags', format: 1 }, 'https://atlas-vtt.dev'],
+    ]);
+
+    unmount();
+    expect(filter.snapshot()).toEqual({ status: 'waiting' });
+    filter.toggle('forest');
+    expect(post).toHaveBeenCalledTimes(2);
+  });
+
+  it('with a tag filter, says there are no tags once the page has not named them in time', () => {
+    vi.useFakeTimers();
+    try {
+      const filter = new StoreTagFilter();
+      render(<ArmariumPane app={app} tagFilter={filter} />);
+      act(() => { vi.advanceTimersByTime(14_000); });
+      expect(filter.snapshot()).toEqual({ status: 'waiting' });
+      act(() => { vi.advanceTimersByTime(1_000); });
+      expect(filter.snapshot()).toEqual({ status: 'none' });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
