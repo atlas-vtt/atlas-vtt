@@ -362,7 +362,7 @@ export function useStatblockHoverPreview<TEntry>(
     if (!hoveredEntry) return undefined;
     // A held preview has no key to let go of: a press outside it, or Escape, closes it.
     if (held) {
-      return watchPressOutside(activeDocument, (target) => target instanceof Element && target.closest('.statblock-hover-preview') !== null, () => {
+      return watchPressOutside(activeDocument, (target) => typeof target.instanceOf === 'function' && target.instanceOf(Element) && target.closest('.statblock-hover-preview') !== null, () => {
         letGo();
         dismiss();
       });

@@ -29,7 +29,7 @@ import { useStatblockHoverPreview } from './StatblockHoverPreview';
 import { InitiativeStatblockPreview, type PreviewedEntry } from './InitiativeStatblockPreview';
 import { captureRollContext } from '../../tools/diceRollOrigins';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
-import { t, tPointer } from '../../i18n';
+import { tPointer } from '../../i18n';
 import './initiative-tracker.scss';
 
 /**
