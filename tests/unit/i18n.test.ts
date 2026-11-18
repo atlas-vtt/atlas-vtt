@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { formatMessage, getLocale, resolveLocale, setLocale, setPointerSource, t, tPointer } from '../../src/app/i18n';
+import { formatMessage, getLocale, resolveLocale, setLocale, setPlatformSource, setPointerSource, t, tPlatform, tPointer } from '../../src/app/i18n';
 import { TRANSLATIONS } from '../../src/app/i18n/languages';
 import { en } from '../../src/app/i18n/locales/en';
 import type { Message, MessageKey } from '../../src/app/i18n/types';
@@ -14,6 +14,7 @@ describe('i18n', () => {
   afterEach(() => {
     setLocale('en', TRANSLATIONS);
     setPointerSource(() => false);
+    setPlatformSource(() => false);
   });
 
   it('resolves Obsidian language codes to a supported language', () => {
@@ -77,6 +78,27 @@ describe('i18n', () => {
       const text = JSON.stringify(en[key]);
       expect(text, key).not.toMatch(/right-click|shift|\balt\b|ctrl|cmd|hover|double-click|scroll|\bdrop\b|press \{/i);
       // A wording never asks for a value its mouse's text is not given.
+      expect(placeholders(en[key]).filter((name) => !placeholders(en[base as MessageKey]).includes(name)), key).toEqual([]);
+    }
+  });
+
+  it('words a text for the app it runs in: Obsidian mobile, which has no player window, gets its own sentence', () => {
+    expect(tPlatform('loot.openPlayerView')).toBe(t('loot.openPlayerView'));
+    setPlatformSource(() => true);
+    expect(tPlatform('loot.openPlayerView')).toBe('Start an online table to show loot to your players.');
+    expect(tPlatform('present.shownElsewhere', { name: 'Tavern' })).toBe('Players see Tavern');
+    // A language without the mobile wording shows the English one
+    setLocale('ru', TRANSLATIONS);
+    expect(tPlatform('dice.showRollsToPlayersHint')).toBe('Your rolls appear in Table mode too.');
+  });
+
+  it('gives a mobile wording only to texts that have a desktop one, and names no window in it', () => {
+    const mobile = (Object.keys(en) as MessageKey[]).filter((key) => key.endsWith('.mobile'));
+    expect(mobile.length).toBeGreaterThan(0);
+    for (const key of mobile) {
+      const base = key.slice(0, -'.mobile'.length);
+      expect(base in en, key).toBe(true);
+      expect(JSON.stringify(en[key]), key).not.toMatch(/window|second screen|popout/i);
       expect(placeholders(en[key]).filter((name) => !placeholders(en[base as MessageKey]).includes(name)), key).toEqual([]);
     }
   });

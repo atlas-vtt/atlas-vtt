@@ -112,6 +112,8 @@ export function canRunMapHotkeys(event: KeyboardEvent, viewId?: string): boolean
   if (isTextEntryTarget(event.target)) return false;
   // Modals and overlays open in the focused window
   if (activeDocument.querySelector('.modal-container, .prompt, .suggestion-container, .menu, .atlas-asset-manager-modal, .atlas-command-palette-overlay, .atlas-onboarding-overlay, .atlas-hotkey-help, .atlas-text-dialog-backdrop, .atlas-dm-screen-wrapper, .atlas-grid-alignment-panel, [aria-modal="true"]')) return false;
+  // A map in Table mode is the players' picture: none of the GM's shortcuts runs on it
+  if (activeDocument.querySelector('.atlas-table-surface')) return false;
   // The note pin's picker takes a name: a key pressed while it is open, on one of its buttons too, is no shortcut of the map
   if (activeDocument.querySelector(NOTE_PIN_PICKER)) return false;
   // Nor while the Stamp mode's symbols are open: a name typed there searches them

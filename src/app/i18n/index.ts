@@ -83,6 +83,28 @@ export function tPointer(key: PointerKey, values?: MessageValues): string {
   return t(fingerInUse() ? `${key}.touch` : key, values);
 }
 
+/**
+ * The keys whose text names what only the desktop app has (the player window, a second screen) and
+ * that have a second text for Obsidian mobile under `<key>.mobile` (Table mode, an online table).
+ */
+export type PlatformKey = { [Key in MessageKey]: `${Key}.mobile` extends MessageKey ? Key : never }[MessageKey];
+
+let onMobile: () => boolean = () => false;
+
+/** Tells the texts how to learn whether Atlas runs in Obsidian mobile. The plugin sets it during bootstrap; without it every text is the desktop's. */
+export function setPlatformSource(isMobile: () => boolean): void {
+  onMobile = isMobile;
+}
+
+/**
+ * The text for `key` as the app it runs in needs it: its `.mobile` text in Obsidian mobile, else
+ * the text itself. Each is a whole sentence of its own, and a language that lacks the `.mobile`
+ * text shows the English one, as `tPointer` does.
+ */
+export function tPlatform(key: PlatformKey, values?: MessageValues): string {
+  return t(onMobile() ? `${key}.mobile` : key, values);
+}
+
 /** Joins `items` as the active language does: "a, b and c". */
 export function formatList(items: readonly string[]): string {
   return new Intl.ListFormat(locale, { type: 'conjunction' }).format(items);

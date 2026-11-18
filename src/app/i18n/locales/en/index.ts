@@ -70,6 +70,7 @@ import { search } from './search';
 import { senses } from './senses';
 import { sort } from './sort';
 import { tableTv } from './tableTv';
+import { table } from './table';
 import { glass } from './glass';
 import { toolbar } from './toolbar';
 import { toolbarEdit } from './toolbarEdit';
@@ -193,6 +194,7 @@ export const en = {
   ...senses,
   ...sort,
   ...tableTv,
+  ...table,
   ...glass,
   ...toolbar,
   ...toolbarEdit,

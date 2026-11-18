@@ -312,6 +312,10 @@ export class TokenRenderer {
     this.interactionController.resourceDefsProvider = this.resourceDefsProvider;
     this.uiManager.resourceDefsProvider = this.resourceDefsProvider;
     this.uiManager.measurementProvider = this.collectionSync.measurement;
+    // Table mode is the players' picture for good: names follow the player view's Show nameplates, as in their window
+    this.uiManager.tableNameplates = () => (this.store.getState().tableMode
+      ? SettingsService.forApp(obsApp)?.getLocalPlayerViewSettings().showTokenNameplates ?? false
+      : undefined);
     this.statblockSync = new StatblockTokenSync(obsApp, store, tokenStatblockLinkService, this.resourceDefsProvider);
 
     // Initialize sync service
@@ -400,6 +404,7 @@ export class TokenRenderer {
       if (state.isGMView !== previous.isGMView || state.isPlayerView !== previous.isPlayerView ||
           levelObjects(state).fog !== levelObjects(previous).fog || state.mapPath !== previous.mapPath ||
           state.isMapLoading !== previous.isMapLoading) this.refreshPlayerSight();
+      if (state.tableMode !== previous.tableMode) this.followTableMode();
     });
     const origUnsubGM = this._unsubscribeFromStore;
     this._unsubscribeFromStore = () => {
@@ -846,6 +851,23 @@ export class TokenRenderer {
     this.notifyPlayersView();
   }
 
+  /** Table mode began or ended: the names follow it, and nothing stays hovered under a pointer the tools no longer hear. */
+  private followTableMode(): void {
+    this.uiManager.setHoverState(null);
+    this.uiManager.refreshResources();
+    this.passTableBadges();
+  }
+
+  /**
+   * In Table mode no players' frame is rendered, which is what hands their initiative list its badge
+   * numbers (`getPlayerViewLayers`): the canvas hands them on whenever what the players see changes.
+   */
+  private passTableBadges(): void {
+    if (!this.store.getState().tableMode) return;
+    const seen = this.playerSight.sightIsCurrent() ? this.playersSeeOnCanvas() : null;
+    this.playerBadges.pass(seen ?? NOTHING_SEEN);
+  }
+
   /**
    * The turn flashes on the canvas: while it shows the players' view (session view, the peek, the
    * palette's player mode) only where the players are shown their initiative list, as their frame.
@@ -858,7 +880,10 @@ export class TokenRenderer {
 
   /** Keeps the canvas's turn flashes in step with the players' view, the player view's settings and the tracker. */
   private watchCanvasTurn(): void {
-    const stopView = this.playersView.listen(() => this.syncCanvasTurn());
+    const stopView = this.playersView.listen(() => {
+      this.syncCanvasTurn();
+      this.passTableBadges();
+    });
     const stopSettings = SettingsService.forApp(this.obsApp)?.onChange(() => this.syncCanvasTurn());
     const stopStore = this.store.subscribe((state, previous) => {
       if (state.initiativeTrackerOpen !== previous.initiativeTrackerOpen) this.syncCanvasTurn();

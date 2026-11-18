@@ -14,9 +14,11 @@ import type { MapGestureHost } from './installTouchGestures';
  *   pins, stairs, sounds): it is the tool, as the left button is. On a device with a pen it pans
  *   there too while fingers are set to pan, and its tap is still the tool's click;
  * - a tool that places by taps (`TapPlacing`): a second finger must never find a point placed;
- * - while tokens are being placed, the placement has every press, whatever the tool.
+ * - while tokens are being placed, the placement has every press, whatever the tool;
+ * - in Table mode (`looking`) the map is only looked at, whatever else holds.
  */
-export function fingerModeOf(activeTool: string, placing: boolean, fingers: FingerUse, taps: TapPlacing | null = null): FingerMode {
+export function fingerModeOf(activeTool: string, placing: boolean, fingers: FingerUse, taps: TapPlacing | null = null, looking = false): FingerMode {
+  if (looking) return 'look';
   if (placing) return 'direct';
   if (activeTool === 'move' || activeTool === 'select') return 'objects';
   if (fingers === 'pan' || taps === 'taps') return 'navigate';
@@ -49,12 +51,17 @@ export interface MapGestureParts {
 }
 
 export function mapGestureHost({ store, viewport, placing, marqueePending, menuAt, tapActsAt, fingers, lightingTapPlacing, emptyMapMenu }: MapGestureParts): MapGestureHost {
-  // Undo and redo are the GM's, as their keys are
+  // Undo and redo are the GM's, as their keys are: not the table's
   const travel = (direction: 'undo' | 'redo'): void => {
-    if (!store.getState().isPlayerView) getHistoryStore(store)?.getState()[direction]();
+    const { isPlayerView, tableMode } = store.getState();
+    if (!isPlayerView && !tableMode) getHistoryStore(store)?.getState()[direction]();
   };
   return {
-    fingerMode: () => fingerModeOf(store.getState().activeTool, placing(), fingers.use, tapPlacingOf(store.getState(), lightingTapPlacing)),
+    fingerMode: () => {
+      const state = store.getState();
+      return fingerModeOf(state.activeTool, placing(), fingers.use, tapPlacingOf(state, lightingTapPlacing), state.tableMode !== null);
+    },
+    endLooking: () => store.getState().leaveTableMode(),
     pressedEmptyMap: marqueePending,
     menuAt: (x, y) => {
       const world = viewport.toWorld(x, y);

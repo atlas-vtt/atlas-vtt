@@ -11,9 +11,11 @@ import type { PressClock } from '../../input/longPress';
  *   press is the tool's only once the finger lifts in place or has left its place, so a second
  *   finger that lands while the first rests finds nothing placed;
  * - `'direct'`: something took the press before the map's tools could (tokens being placed), so
- *   nothing is held back or sent again.
+ *   nothing is held back or sent again;
+ * - `'look'` (Table mode): the map is only looked at. It pans, a double tap zooms, and no press,
+ *   tap or long press reaches the tools; two fingers held still end the looking (`pairHeld`).
  */
-export type FingerMode = 'objects' | 'tool' | 'navigate' | 'place' | 'direct';
+export type FingerMode = 'objects' | 'tool' | 'navigate' | 'place' | 'direct' | 'look';
 
 /** What the gestures ask of the view's tools. */
 export interface GestureHost {
@@ -49,6 +51,8 @@ export interface GestureEffects {
   zoomStep(x: number, y: number, direction: 1 | -1): void;
   undo(): void;
   redo(): void;
+  /** Two fingers rested on a map that is only looked at (`'look'`) for `PAIR_HOLD_MS`. */
+  pairHeld?(): void;
   /** A ring closes around the finger within `ms`, when its long press fires. */
   showRing(x: number, y: number, ms: number): void;
   hideRing(): void;

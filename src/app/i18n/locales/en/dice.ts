@@ -35,6 +35,7 @@ export const dice = {
   'dice.rollFormula': 'Roll {formula}',
   'dice.showRollsToPlayers': 'Show my rolls to players',
   'dice.showRollsToPlayersHint': 'Your rolls appear in the player window too.',
+  'dice.showRollsToPlayersHint.mobile': 'Your rolls appear in Table mode too.',
   'dice.volume': 'Dice volume',
   'dice.volumeHint': 'How loud dice sound when they roll and land. All the way down turns them off.',
   'dice.volumeOff': 'Off',

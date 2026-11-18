@@ -8,9 +8,19 @@ import { EventBoundary, FederatedPointerEvent, type Container, type EventSystem,
  * gestures know it is the tools' (`TouchGestures`). Its moves and release pass or not as
  * `admits` says. Mouse and pen events pass untouched.
  *
+ * While the map is only looked at (`look`, Table mode) nothing passes at all: a finger is the
+ * gestures', and a mouse or pen is handed to `look`, which pans.
+ *
  * What the tools are handed later is the press PIXI itself made of the browser's event, sent
  * through PIXI's own mapping again, so hit tests, press tracking and taps are PIXI's.
  */
+/** What the gate asks while the map may only be looked at. */
+export interface LookGate {
+  active(): boolean;
+  /** A mouse's or a pen's event, which the tools do not get. */
+  hear(event: FederatedPointerEvent): void;
+}
+
 export class PointerGate {
   private readonly boundary: EventBoundary;
   /** PIXI's own mapping, which the gate stands in front of. */
@@ -19,7 +29,12 @@ export class PointerGate {
   private readonly spare: FederatedPointerEvent[] = [];
   private passing = false;
 
-  constructor(events: EventSystem, private readonly cancelTarget: Container, private readonly admits: (native: object) => boolean) {
+  constructor(
+    events: EventSystem,
+    private readonly cancelTarget: Container,
+    private readonly admits: (native: object) => boolean,
+    private readonly look?: LookGate,
+  ) {
     const boundary = events.rootBoundary;
     this.boundary = boundary;
     this.mapEvent = (event) => EventBoundary.prototype.mapEvent.call(boundary, event);
@@ -71,6 +86,10 @@ export class PointerGate {
   }
 
   private receive(event: FederatedEvent): void {
+    if (!this.passing && this.look?.active()) {
+      if (event instanceof FederatedPointerEvent && event.pointerType !== 'touch') this.look.hear(event);
+      return;
+    }
     if (this.passing || !(event instanceof FederatedPointerEvent) || event.pointerType !== 'touch') {
       this.mapEvent(event);
       return;

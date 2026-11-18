@@ -52,6 +52,7 @@ import { createSceneLevelsActions, writeExploredMask, type SceneLevelsSlice } fr
 import { createLevelSurfacesActions, type LevelSurfacesSlice } from './stores/levelSurfacesSlice';
 import { createMapFeaturesActions, type MapFeaturesSlice } from './stores/mapFeaturesSlice';
 import { createRoomsSlice, DEFAULT_ROOM_TOOL, type RoomsSlice } from './stores/roomsSlice';
+import { createTableModeActions, type TableModeSlice } from './stores/tableModeSlice';
 import { createLiquidsActions, type LiquidsSlice } from './stores/liquidsSlice';
 import { createMeasuresActions, dropTokenAuras, type MeasuresSlice } from './stores/measuresSlice';
 import { createAnnotationsActions, type AnnotationsSlice } from './stores/annotationsSlice';
@@ -250,6 +251,10 @@ export interface ViewAtlasState extends ViewState {
   // The rooms mode's choices (from roomsSlice.ts)
   roomTool: RoomsSlice['roomTool'];
   setRoomTool: RoomsSlice['setRoomTool'];
+  // The view as the players' picture on a tablet on the table (from tableModeSlice.ts)
+  tableMode: TableModeSlice['tableMode'];
+  enterTableMode: TableModeSlice['enterTableMode'];
+  leaveTableMode: TableModeSlice['leaveTableMode'];
   // Water, lava and acid that move on animated maps (from liquidsSlice.ts)
   addLiquids: LiquidsSlice['addLiquids'];
   deleteLiquid: LiquidsSlice['deleteLiquid'];
@@ -1427,6 +1432,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           ...createMapFeaturesActions(set),
           roomTool: DEFAULT_ROOM_TOOL,
           ...createRoomsSlice(set),
+          tableMode: null,
+          ...createTableModeActions(set),
           ...createLiquidsActions(set),
           ...createMeasuresActions(set),
           ...createTurnMovesActions(set),

@@ -67,6 +67,11 @@ export class TokenUIRenderer {
   private wheels = new ResourceWheels();
   /** The GM's canvas shows the players' view (session view, the peek): resources as players see them. */
   private playersView = false;
+  /**
+   * Whether players see names while this canvas is their picture for good (Table mode): the player
+   * view's Show nameplates. Undefined in session view and a peek, where the GM looks at their view.
+   */
+  public tableNameplates: (() => boolean | undefined) | null = null;
   /** The wheels stand at rest instead of answering hover and selection: the players' view has neither. */
   private wheelsAtRest = false;
   /** Half the width of the nameplate shown, in UI units; 0 without one. The wheels stand clear of it. */
@@ -345,7 +350,9 @@ export class TokenUIRenderer {
     const resourcesKey = shown.map(({ definition, value, slot }) =>
       `${definition.key}:${slot}:${definition.name}:${definition.color}:${value.current}/${value.max}`).join('|');
     const mapShowsNameplates = tokenSettings?.showNameplates ?? false;
-    const showNameplate = playerSettings ? nameplateShownToPlayers(token, mapShowsNameplates, playerSettings.showTokenNameplates) : isNameplateVisible(token, mapShowsNameplates);
+    // The player window's copy, and the canvas as the table's picture, name tokens as the player view's settings say
+    const playersSeeNames = playerSettings?.showTokenNameplates ?? (this.playersView ? this.tableNameplates?.() : undefined);
+    const showNameplate = playersSeeNames === undefined ? isNameplateVisible(token, mapShowsNameplates) : nameplateShownToPlayers(token, mapShowsNameplates, playersSeeNames);
     const conditionsKey = `${token.conditions?.join(',') ?? ''}${JSON.stringify(token.conditionValues ?? {})}`;
     // The map's rules are asked only for a token that stands off the floor
     const heightText = tokenHeight(token) !== 0 && this.measurementProvider ? heightChipText(token, this.measurementProvider()) : '';

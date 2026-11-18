@@ -342,6 +342,9 @@ export class PixiRendererOrchestrator { // Renamed class
           lightingTapPlacing: () => this.lighting?.tapPlacing() ?? null,
           emptyMapMenu: (world, at) => openEmptyMapMenu(this.store, this.tokenRenderer, world, at),
         }));
+        this.eventBusUnsubscribers.push(this.store.subscribe((state, previous) => {
+          if (state.tableMode !== previous.tableMode) this.followTableMode(state.tableMode !== null);
+        }));
       }
       // initPinContainer is now effectively handled by PinRenderer's constructor
 
@@ -857,10 +860,20 @@ export class PixiRendererOrchestrator { // Renamed class
     });
   }
 
+  /**
+   * Table mode makes the canvas the players' picture: tokens being placed are put away, and the
+   * GM's screen overlays are not drawn until it ends, as a players' frame leaves them out.
+   */
+  private followTableMode(on: boolean): void {
+    if (on) this.tokenPlacer?.cancel();
+    for (const overlay of this.dmScreenOverlays) overlay.renderable = !on;
+  }
+
   /** Shows `overlay` above the map in screen space and never in the player view. Returns the function that removes it again. */
   public addDmScreenOverlay(overlay: Container): () => void {
     this.app.stage.addChild(overlay);
     this.dmScreenOverlays.add(overlay);
+    if (this.store.getState().tableMode) overlay.renderable = false;
     return () => {
       this.dmScreenOverlays.delete(overlay);
       overlay.parent?.removeChild(overlay);

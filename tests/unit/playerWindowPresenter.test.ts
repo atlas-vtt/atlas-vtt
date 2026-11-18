@@ -17,6 +17,13 @@ import { FRAME } from '../mocks/playerFrameSource';
 
 vi.mock('obsidian', async (importOriginal) => ({ ...await importOriginal<typeof import('obsidian')>(), Notice: vi.fn() }));
 
+/** Whether Atlas runs in the desktop app; a test of Obsidian mobile switches it off. */
+const platform = vi.hoisted(() => ({ desktop: true }));
+vi.mock('../../src/app/platform/desktopOnly', () => ({
+  isDesktopApp: () => platform.desktop,
+  desktopOnly: <T,>(...items: T[]): T[] => (platform.desktop ? items : []),
+}));
+
 const serviceMock = vi.hoisted(() => ({
   isWindowOpen: vi.fn(() => false),
   openLeaf: vi.fn(async (): Promise<unknown> => null),
@@ -57,6 +64,7 @@ vi.mock('../../src/app/services/PlayerWindowService', async () => {
 });
 
 import { followPresentedScene, openPlayerWindow, restorePlayerWindow, presentTab } from '../../src/app/services/PlayerWindowPresenter';
+import { setPlatformSource } from '../../src/app/i18n';
 import { presentedSceneOf, PRESENTED_SCENE_KEY } from '../../src/app/services/presentedScene';
 
 import { AtlasView } from '../../src/app/atlas-view';
@@ -823,5 +831,81 @@ describe('a map view reopening the presented scene', () => {
     await flush();
 
     expect(serviceMock.releaseHeldFrame).not.toHaveBeenCalled();
+  });
+});
+
+describe('presenting a scene on Obsidian mobile, which has no player window', () => {
+  const TAVERN = 'maps/tavern.md';
+  let app: ReturnType<typeof deviceApp>;
+
+  /** A view whose store tells when it was asked to become the players' picture. */
+  function tabletView(): { view: FakeView['view']; tavern: string; enterTableMode: ReturnType<typeof vi.fn> } {
+    const { view, atlasStore } = createFakeView();
+    const enterTableMode = vi.fn();
+    atlasStore.setState({ enterTableMode } as unknown as Partial<SceneState>);
+    return { view, tavern: view.tabMetaStore.getState().addTab(TAVERN, 'Tavern'), enterTableMode };
+  }
+
+  beforeEach(() => {
+    app = deviceApp();
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => setTimeout(() => cb(0), 0));
+    resetPlayerWindowStore();
+    Object.values(serviceMock).forEach((fn) => fn.mockClear());
+    serviceMock.isWindowOpen.mockReturnValue(false);
+    vi.mocked(Notice).mockClear();
+    platform.desktop = false;
+    setPlatformSource(() => !platform.desktop);
+    return () => {
+      platform.desktop = true;
+      setPlatformSource(() => false);
+    };
+  });
+
+  test('the view becomes the players\' picture (Table mode), and the scene is the presented one as on desktop', async () => {
+    const { view, tavern, enterTableMode } = tabletView();
+    const changes = vi.fn();
+    presentedSceneOf(app).onChange(changes);
+
+    await presentTab(app, view, tavern);
+
+    expect(enterTableMode).toHaveBeenCalledOnce();
+    expect(presentedSceneOf(app).get()).toEqual({ tabId: tavern, filePath: TAVERN });
+    expect(changes).toHaveBeenCalledWith({ tabId: tavern, filePath: TAVERN });
+    expect(app.stored.get(PRESENTED_SCENE_KEY)).toEqual({ tabId: tavern, filePath: TAVERN });
+    // No window is opened, and nothing is announced over the players' picture
+    expect(serviceMock.openLeaf).not.toHaveBeenCalled();
+    expect(vi.mocked(Notice)).not.toHaveBeenCalled();
+  });
+
+  test('stays the GM\'s view while players see the scene elsewhere (an online table), and says so without a window', async () => {
+    const { view, tavern, enterTableMode } = tabletView();
+    presentedSceneOf(app).showElsewhere();
+
+    await presentTab(app, view, tavern);
+
+    expect(enterTableMode).not.toHaveBeenCalled();
+    expect(presentedSceneOf(app).get()).toEqual({ tabId: tavern, filePath: TAVERN });
+    expect(vi.mocked(Notice)).toHaveBeenLastCalledWith('Players see Tavern');
+  });
+
+  test('a scene that failed to load is neither presented nor shown to the table', async () => {
+    const { view, tavern, enterTableMode } = tabletView();
+    view.atlasStore.setState({ mapLoaded: false });
+
+    await presentTab(app, view, tavern);
+
+    expect(enterTableMode).not.toHaveBeenCalled();
+    expect(presentedSceneOf(app).get()).toBeNull();
+  });
+
+  test('on desktop the same press opens the player window and never Table mode', async () => {
+    platform.desktop = true;
+    const { view, tavern, enterTableMode } = tabletView();
+    app = deviceApp([{ view }]);
+
+    await presentTab(app, view, tavern);
+
+    expect(serviceMock.openLeaf).toHaveBeenCalledWith(app, { tabId: tavern, filePath: TAVERN });
+    expect(enterTableMode).not.toHaveBeenCalled();
   });
 });

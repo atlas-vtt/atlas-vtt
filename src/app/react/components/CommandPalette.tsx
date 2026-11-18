@@ -26,7 +26,7 @@ import {
   UserCheck,
   History,
   Layers,
-  Replace, Gauge, SunMoon, LayoutDashboard, BoomBox } from 'lucide-react';
+  Replace, Gauge, SunMoon, LayoutDashboard, BoomBox, Tablet } from 'lucide-react';
 import { runInBackground } from '../../utils/backgroundTask';
 import { viewedLevelId } from '../../levels/sceneLevels';
 import { collectionIdOfPath } from '../../services/assetPaths';
@@ -37,7 +37,8 @@ import { useAtlasStore, useViewStoreHook } from '../ViewStoreContext';
 import { useAtlasUI } from '../root/AtlasUIContext';
 import { PlayerWindowService } from '../../services/PlayerWindowService';
 import { openPlayerWindow, presentActiveTab } from '../../services/PlayerWindowPresenter';
-import { desktopOnly } from '../../platform/desktopOnly';
+import { desktopOnly, isDesktopApp } from '../../platform/desktopOnly';
+import { toggleTableMode } from '../../tableMode/viewTableMode';
 import { playerWindowStore } from '../../stores/playerWindowStore';
 import { debounce } from '../../../utils/debounce';
 import { cn } from '../../../utils/cn';
@@ -402,16 +403,6 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       },
     },
     {
-      id: "transfer-player-view",
-      icon: <MonitorUp />,
-      label: t('palette.sendMapToPlayerView'),
-      section: "mode",
-      action: () => {
-        void presentActiveTab(app);
-        onClose();
-      },
-    },
-    {
       id: "show-map-in-player-window",
       icon: <MonitorPlay />,
       label: t('palette.showMapInPlayerWindow'),
@@ -421,6 +412,28 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         onClose();
       },
     }),
+    // Presents the map: in the player window on desktop, on this device (Table mode) or at the online table on mobile
+    {
+      id: "transfer-player-view",
+      icon: <MonitorUp />,
+      label: t('palette.sendMapToPlayerView'),
+      section: "mode",
+      action: () => {
+        void presentActiveTab(app);
+        onClose();
+      },
+    },
+    // This view as the players' picture, under a finger: a desktop with a mouse has the player window, and Obsidian's command for Table mode
+    ...(view && (atTop || !isDesktopApp()) ? [{
+      id: "table-mode",
+      icon: <Tablet />,
+      label: t('table.mode'),
+      section: "mode",
+      action: () => {
+        onClose();
+        toggleTableMode(view);
+      },
+    } satisfies CommandOption] : []),
     // Settings
     {
       id: "grid-settings",

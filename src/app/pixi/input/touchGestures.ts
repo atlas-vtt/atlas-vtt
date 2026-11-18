@@ -8,6 +8,11 @@ import { MULTI_TAP_MS, TouchTaps } from './touchTaps';
  */
 export const SETTLE_MS = 50;
 const SETTLE_SLOP_PX = 3;
+/**
+ * How long two fingers rest on a map that is only looked at before they end the looking: longer
+ * than a long press, since hands lie on a tablet on the table, and never the start of a pinch.
+ */
+export const PAIR_HOLD_MS = 600;
 
 /**
  * - `settling`: just down, its press held back;
@@ -36,6 +41,8 @@ interface Finger {
   heldForMarquee: boolean;
   /** It waits with its press held back, and once it leaves its place the press is the tools': a drag of theirs, no pan. */
   dragsTool: boolean;
+  /** It came down on a map that is only looked at: the tools never hear of it. */
+  looks: boolean;
 }
 
 /**
@@ -50,6 +57,8 @@ export class TouchGestures {
   private host: GestureHost;
   private readonly fingers = new Map<number, Finger>();
   private readonly longPress: LongPress;
+  /** Two fingers resting on a map that is only looked at. */
+  private readonly pairHold: LongPress;
   private readonly taps: TouchTaps;
   /** The finger of a one-finger gesture. */
   private single: Finger | null = null;
@@ -69,6 +78,7 @@ export class TouchGestures {
   constructor(host: GestureHost, private readonly effects: GestureEffects, private readonly clock: GestureClock) {
     this.host = host;
     this.longPress = new LongPress(clock, () => this.longPressed());
+    this.pairHold = new LongPress(clock, () => this.pairHeld(), PAIR_HOLD_MS);
     this.taps = new TouchTaps(clock, effects);
   }
 
@@ -90,7 +100,7 @@ export class TouchGestures {
 
   down(id: number, x: number, y: number): void {
     if (this.fingers.has(id)) return;
-    const finger: Finger = { id, start: { x, y }, x, y, role: 'spent', pressed: false, longPress: null, onEmptyMap: false, heldForMarquee: false, dragsTool: false };
+    const finger: Finger = { id, start: { x, y }, x, y, role: 'spent', pressed: false, longPress: null, onEmptyMap: false, heldForMarquee: false, dragsTool: false, looks: false };
     this.fingers.set(id, finger);
     if (this.fingers.size === 1) {
       this.mostFingers = 1;
@@ -98,6 +108,7 @@ export class TouchGestures {
       this.anyMoved = false;
     } else {
       this.mostFingers = Math.max(this.mostFingers, this.fingers.size);
+      this.endPairHold();
     }
     if (this.penDown) return;
     if (this.fingers.size === 1) this.beginSingle(finger);
@@ -192,6 +203,13 @@ export class TouchGestures {
   private settle(finger: Finger): void {
     this.clearSettle();
     const mode = this.host.fingerMode();
+    if (mode === 'look') {
+      finger.role = 'waiting';
+      finger.onEmptyMap = true;
+      finger.looks = true;
+      this.longPress.cancel();
+      return;
+    }
     if (mode === 'navigate' || mode === 'place') {
       finger.role = 'waiting';
       finger.dragsTool = mode === 'place';
@@ -252,6 +270,25 @@ export class TouchGestures {
     this.tapY = (first.start.y + second.start.y) / 2;
     this.taps.forgetTap();
     if (!panning) this.effects.beginNavigation();
+    if (!panning && this.host.fingerMode() === 'look') {
+      this.pairHold.begin({ x: this.tapX, y: this.tapY });
+      this.ringShown = true;
+      this.effects.showRing(this.tapX, this.tapY, PAIR_HOLD_MS);
+    }
+  }
+
+  /** The two fingers rested: the looking ends, and they do nothing more until they are lifted. */
+  private pairHeld(): void {
+    this.hideRing();
+    this.anyMoved = true;
+    this.endPair(false);
+    this.effects.pairHeld?.();
+  }
+
+  private endPairHold(): void {
+    if (!this.pairHold.pending) return;
+    this.pairHold.cancel();
+    this.hideRing();
   }
 
   private movePair(finger: Finger, fromX: number, fromY: number): void {
@@ -260,6 +297,7 @@ export class TouchGestures {
     if (!this.pairMoves) {
       // The fingers of a tap never move the map; a pinch starts from where they are now, without a jump.
       this.pairMoves = movedPast(finger.start, finger) || movedPast(other.start, other);
+      if (this.pairMoves) this.endPairHold();
       return;
     }
     this.effects.pinch(
@@ -271,6 +309,7 @@ export class TouchGestures {
   /** Ends the pair's navigation; the finger that stays does nothing until it is lifted. */
   private endPair(glide: boolean): void {
     if (!this.pair) return;
+    this.endPairHold();
     for (const finger of this.pair) finger.role = 'spent';
     this.pair = null;
     this.effects.endNavigation(glide && this.pairMoves);
@@ -287,6 +326,10 @@ export class TouchGestures {
         if (finger.heldForMarquee && !movedPast(finger.start, finger)) this.effects.heldEmptyMap?.(finger.id);
         return true;
       case 'waiting':
+        if (finger.looks) {
+          this.taps.emptyMapTap(finger.x, finger.y);
+          return false;
+        }
         // A tap: the tools get the press they were not handed yet, and the release.
         if (!finger.pressed) this.effects.press(finger.id);
         finger.pressed = false;
