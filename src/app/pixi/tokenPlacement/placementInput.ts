@@ -50,6 +50,8 @@ export function bindPlacementInput(deps: PlacementInputDeps, session: PlacementS
   };
   const onPress = (event: PointerEvent): void => {
     if (event.target !== canvas || !isPrimaryPress(event)) return;
+    // A second finger is the start of a pinch, never a second press
+    if (event.pointerType === 'touch' && !event.isPrimary) return;
     event.stopPropagation();
     event.preventDefault();
     session.pressAt(screenOf(event), event.shiftKey);

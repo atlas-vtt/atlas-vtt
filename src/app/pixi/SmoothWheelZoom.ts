@@ -54,18 +54,26 @@ export class SmoothWheelZoom extends Wheel {
       return super.wheel(event);
     }
 
+    this.zoomBy(wheelZoomDoublings(event, this.options), this.parent.input.getPointerPosition(event));
+
+    this.parent.emit('wheel-start', { event, viewport: this.parent });
+    return !this.parent.options.passiveWheel;
+  }
+
+  /**
+   * Zooms by `doublings` about `anchor`, a point of the screen, with the wheel's glide and within
+   * its limits: what a notch of the wheel does, for input that is no wheel (a double tap).
+   */
+  zoomBy(doublings: number, anchor: Point): void {
     const { min, max } = this.scaleLimits();
     const from = this.targetScale ?? this.parent.scale.x;
-    this.targetScale = Math.max(min, Math.min(max, from * 2 ** wheelZoomDoublings(event, this.options)));
-    this.anchor = this.parent.input.getPointerPosition(event);
+    this.targetScale = Math.max(min, Math.min(max, from * 2 ** doublings));
+    this.anchor = anchor;
     this.appliedScale = this.parent.scale.x;
     if (prefersReducedMotion(this.parent.options.events.domElement)) {
       this.zoomAround(this.targetScale, this.anchor);
       this.stop();
     }
-
-    this.parent.emit('wheel-start', { event, viewport: this.parent });
-    return !this.parent.options.passiveWheel;
   }
 
   /** pixi-viewport passes the frame's elapsed milliseconds, though `Wheel` declares no parameter. */

@@ -186,15 +186,18 @@ export class SelectionManager {
           this.viewport.off('pointermove', this.marqueeMoveHandler);
           this.viewport.off('pointerup', this.marqueeUpHandler);
           this.viewport.off('pointerupoutside', this.marqueeUpHandler);
+          this.viewport.off('pointercancel', this.dropMarquee);
           this.viewport.on('pointerdown', this.marqueeDownHandler);
           this.viewport.on('pointermove', this.marqueeMoveHandler);
           this.viewport.on('pointerup', this.marqueeUpHandler);
           this.viewport.on('pointerupoutside', this.marqueeUpHandler);
+          this.viewport.on('pointercancel', this.dropMarquee);
         } else {
           this.viewport.off('pointerdown', this.marqueeDownHandler);
           this.viewport.off('pointermove', this.marqueeMoveHandler);
           this.viewport.off('pointerup', this.marqueeUpHandler);
           this.viewport.off('pointerupoutside', this.marqueeUpHandler);
+          this.viewport.off('pointercancel', this.dropMarquee);
           if (this.marqueeGraphics && !this.marqueeGraphics.destroyed) {
             this.marqueeGraphics.clear();
           }
@@ -243,6 +246,20 @@ export class SelectionManager {
     }
     this.updateSelectionOverlay();
   }
+
+  /** A press on the empty map waits to be dragged into a marquee: nothing on the map took it. */
+  get marqueePending(): boolean {
+    return this.selectionStart !== null;
+  }
+
+  /** The press that began a marquee is lost (a second finger, a pan, a touch the system took): it selects nothing and the selection stays. */
+  private readonly dropMarquee = (): void => {
+    if (!this.selectionStart) return;
+    this.selectionStart = null;
+    this.lassoPoints = [];
+    if (!this.marqueeGraphics.destroyed) this.marqueeGraphics.clear();
+    this.updateSelectionOverlay();
+  };
 
   private handleMarqueeMove(e: FederatedPointerEvent): void {
     if (!this.selectionStart || !drawsMarquee(marqueeScope(this.store.getState()))) return;
@@ -393,10 +410,12 @@ export class SelectionManager {
       this.viewport.off('pointermove', this.marqueeMoveHandler);
       this.viewport.off('pointerup', this.marqueeUpHandler);
       this.viewport.off('pointerupoutside', this.marqueeUpHandler);
+      this.viewport.off('pointercancel', this.dropMarquee);
       this.viewport.on('pointerdown', this.marqueeDownHandler);
       this.viewport.on('pointermove', this.marqueeMoveHandler);
       this.viewport.on('pointerup', this.marqueeUpHandler);
       this.viewport.on('pointerupoutside', this.marqueeUpHandler);
+      this.viewport.on('pointercancel', this.dropMarquee);
     }
   }
 
@@ -412,6 +431,7 @@ export class SelectionManager {
     this.viewport.off('pointermove', this.marqueeMoveHandler);
     this.viewport.off('pointerup', this.marqueeUpHandler);
     this.viewport.off('pointerupoutside', this.marqueeUpHandler);
+    this.viewport.off('pointercancel', this.dropMarquee);
     
     if (this.mapLoadedHandler) {
       this.eventBus.off('map-loaded', this.mapLoadedHandler);

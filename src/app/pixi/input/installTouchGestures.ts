@@ -1,0 +1,105 @@
+import type { Application } from 'pixi.js';
+import type { Viewport } from 'pixi-viewport';
+import { noteTouchMenu } from '../../input/touchMenuPoint';
+import { prefersReducedMotion } from '../../utils/motion';
+import type { LayerVisibility } from '../playerSafeFrame';
+import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils';
+import { NO_HOST, type GestureClock, type GestureEffects, type GestureHost } from './gestureTypes';
+import { LongPressRing } from './LongPressRing';
+import { PointerGate } from './pointerGate';
+import { TouchGestures } from './touchGestures';
+import { TouchNavigation } from './TouchNavigation';
+import { TouchSource } from './touchSource';
+
+/** What the view tells the gestures once its tools exist, besides what a finger does there. */
+export interface MapGestureHost extends GestureHost {
+  undo(): void;
+  redo(): void;
+  /** A pen touched the map: the device has one. */
+  penTouched(): void;
+}
+
+/** The fingers on a map's canvas, turned into what its tools understand (`TouchGestures`). */
+export interface MapGestures {
+  setHost(host: MapGestureHost): void;
+  /** Whether the event, heard before PIXI could, is one the map's tools get; false for a finger's press that is held back. */
+  admits(event: Event): boolean;
+  /** What a picture of the scene and the players' picture leave out. */
+  hiddenLayers(): LayerVisibility[];
+  destroy(): void;
+}
+
+const NO_MAP_HOST: MapGestureHost = { ...NO_HOST, undo: () => undefined, redo: () => undefined, penTouched: () => undefined };
+
+/** How long a long press is felt, where the device can (Android; iOS has no vibration for the web). */
+const HAPTIC_MS = 10;
+
+/**
+ * Puts the gesture layer between the browser and the map's tools. Nothing here runs per frame,
+ * and nothing runs for a mouse: the layer hears pointer events only, and looks at fingers and pens.
+ */
+export function installTouchGestures(app: Application, viewport: Viewport, canvas: HTMLCanvasElement): MapGestures {
+  let host: MapGestureHost = NO_MAP_HOST;
+  const win = canvas.ownerDocument.defaultView ?? window;
+  const events = app.renderer.events;
+  const navigation = new TouchNavigation(viewport);
+  const ring = new LongPressRing(viewport, app.ticker, {
+    accent: () => cssColorToHexNumber(getObsidianAccentColor()),
+    reducedMotion: () => prefersReducedMotion(canvas),
+  });
+  const clock: GestureClock = {
+    now: () => performance.now(),
+    setTimeout: (run, ms) => win.setTimeout(run, ms),
+    clearTimeout: (id) => win.clearTimeout(id),
+  };
+
+  const effects: GestureEffects = {
+    press: (id) => gate.press(id),
+    cancelPress: (id, byBrowser) => {
+      const press = gate.pressOf(id);
+      if (!byBrowser) source.cancelPointer(id, press?.global.x ?? 0, press?.global.y ?? 0);
+      gate.cancel(id);
+    },
+    secondaryClick: (id) => {
+      const press = gate.pressOf(id);
+      if (!press) return;
+      noteTouchMenu(press.clientX, press.clientY);
+      if ('vibrate' in win.navigator) win.navigator.vibrate(HAPTIC_MS);
+      gate.secondaryClick(id);
+    },
+    beginNavigation: () => navigation.begin(),
+    pan: (dx, dy) => navigation.pan(dx, dy),
+    pinch: (fromX, fromY, fromSpan, toX, toY, toSpan) => navigation.pinch(fromX, fromY, fromSpan, toX, toY, toSpan),
+    endNavigation: (glide) => navigation.end(glide),
+    zoomStep: (x, y, direction) => navigation.zoomStep(x, y, direction),
+    undo: () => host.undo(),
+    redo: () => host.redo(),
+    showRing: (x, y, ms) => ring.show(x, y, ms),
+    hideRing: () => ring.hide(),
+  };
+
+  const gestures = new TouchGestures(host, effects, clock);
+  const source = new TouchSource(
+    canvas,
+    (out, clientX, clientY) => events.mapPositionToPoint(out, clientX, clientY),
+    gestures,
+    () => host.penTouched(),
+    (id) => gate.forget(id),
+  );
+  const gate = new PointerGate(events, viewport, source.admits);
+
+  return {
+    setHost: (next) => {
+      host = next;
+      gestures.setHost(next);
+    },
+    admits: source.admits,
+    hiddenLayers: () => [{ layer: ring.layer, visible: false }],
+    destroy: () => {
+      gestures.destroy();
+      source.destroy();
+      gate.destroy();
+      ring.destroy();
+    },
+  };
+}

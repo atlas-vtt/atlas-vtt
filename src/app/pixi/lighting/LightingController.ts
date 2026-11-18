@@ -25,7 +25,7 @@ import type { TokenRenderer } from '../TokenRenderer';
 import { createSceneLighting } from './createSceneLighting';
 import { GmSightAids } from './GmSightAids';
 import { DoorIcons } from './DoorIcons';
-import { showDoorMenu, showWallMenu, type LightingMenuContext } from './lightingMenus';
+import { showDoorMenu, showWallMenu, wallMenuAt, type LightingMenuContext } from './lightingMenus';
 import { wireLightingPointer } from './lightingPointer';
 import { listenToLightingSceneEvents } from './lightingSceneEvents';
 import { LightInteraction } from './LightInteraction';
@@ -184,6 +184,7 @@ export class LightingController {
     wireLightingPointer(tokens, {
       lights: this.lights, editor: this.editor, modes: this.modes, doors: this.doors,
       wallMenu: (x, y, screenX, screenY) => showWallMenu(this.menuContext(), x, y, screenX, screenY),
+      wallMenuAt: (x, y) => wallMenuAt(this.menuContext(), x, y),
       doorMenu: (doorId, screenX, screenY) => showDoorMenu(this.deps.store, doorId, screenX, screenY),
     });
     // The token renderer brings the outlines of sensed tokens, which the view now shows or hides.

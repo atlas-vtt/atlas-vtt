@@ -21,7 +21,7 @@ import type { ViewAtlasState } from '../../storeFactory';
 import type { StoreApi } from 'zustand';
 import type { GridSystem } from '../../grid/GridSystem';
 import { resizedTokenCenter } from '../../grid/gridPlacement';
-import { beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
+import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
 import { initiativeEntryForToken } from '../../stores/initiativeEntries';
 import { EventEmitter } from '../../utils/typedEmitter';
 import { StatblockDialogService } from '../../services/StatblockDialogService';
@@ -328,15 +328,16 @@ export class InteractionController implements ITokenInteractionController {
   }
 
   /**
-   * No release follows a pointer the browser cancels (a touch taken over by a system gesture)
-   * or a press that outlasts the window's focus, and PIXI reports neither: the drag then ends
-   * where the token is, as a drop.
+   * No release follows a pointer the browser cancels or a press that outlasts the window's focus,
+   * and PIXI reports neither. A press that outlasts the focus ends where the token is, as a drop.
+   * A finger that is taken away (a second finger starts a pinch, a system gesture takes the touch)
+   * was never let go: its tokens go back where they were taken from.
    */
   private watchLostPointer(): void {
     const canvas = this.viewport.options?.events?.domElement;
     if (!canvas) return;
     const win = canvas.ownerDocument.defaultView;
-    canvas.addEventListener('pointercancel', this.dropWhereItIs);
+    canvas.addEventListener('pointercancel', this.onPointerCancel);
     win?.addEventListener('blur', this.dropWhereItIs);
     this.lostPointerTargets = { canvas, win };
   }
@@ -344,6 +345,49 @@ export class InteractionController implements ITokenInteractionController {
   private readonly dropWhereItIs = (): void => {
     this.endDrag(this.dragState.lastPointer ?? this.dragState.dragStartPointer);
   };
+
+  private readonly onPointerCancel = (event: PointerEvent): void => {
+    // Copies made by an Alt-drag are in the scene already: a drop keeps the drag one step
+    if (event.pointerType === 'touch' && !this.dragState.copyOnDrag) this.putBack();
+    else this.dropWhereItIs();
+  };
+
+  /** Ends the press or drag as if it had never begun: the tokens stand where they were taken from, and no undo step is left. */
+  private putBack(): void {
+    if (!this.dragState.isDragging) return;
+    const wasDrag = this.dragState.hasMoved;
+    this.dragState.isDragging = false;
+    this.cleanupDragListeners();
+    if (this.dragState.animationFrameId) {
+      window.cancelAnimationFrame(this.dragState.animationFrameId);
+      delete this.dragState.animationFrameId;
+    }
+    if (wasDrag) {
+      const back = this.dragState.dragIds.flatMap((id) => {
+        const from = this.dragState.initialPositions[id];
+        return from ? [{ id, x: from.x, y: from.y }] : [];
+      });
+      for (const { id, x, y } of back) {
+        this.getTokenSprite?.(id)?.position.set(x, y);
+        this.updateUIPosition?.(id, x, y);
+      }
+      this.store.getState().setIsDragging(false);
+      if (back.length > 0) this.store.getState().setTokenPositions(back);
+      abandonHistoryTransaction(this.store);
+      this.onSelectionUpdate?.();
+      this.updateHandlePositions?.();
+    }
+    this.dragRuler?.end();
+    delete this.dragState.rulerTokenId;
+    delete this.dragState.walls;
+    delete this.dragState.current;
+    this.viewport.plugins.resume('drag');
+    this.dragState.pendingUpdate = false;
+    this.dragState.hasMoved = false;
+    delete this.dragState.clickToken;
+    this.dragState.selectsOnRelease = false;
+    this.reportHeld([]);
+  }
 
   private onPointerMove = (e: FederatedPointerEvent) => {
     if (!this.dragState.isDragging) return;
@@ -459,7 +503,7 @@ export class InteractionController implements ITokenInteractionController {
     this.viewport.off('pointermove', this.onPointerMove, this);
     this.viewport.off('pointerup', this.onPointerUp, this);
     this.viewport.off('pointerupoutside', this.onPointerUp, this);
-    this.lostPointerTargets?.canvas.removeEventListener('pointercancel', this.dropWhereItIs);
+    this.lostPointerTargets?.canvas.removeEventListener('pointercancel', this.onPointerCancel);
     this.lostPointerTargets?.win?.removeEventListener('blur', this.dropWhereItIs);
     this.lostPointerTargets = null;
   }

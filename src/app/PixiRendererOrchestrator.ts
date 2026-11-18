@@ -1,3 +1,5 @@
+import { FingerSettings } from './input/fingerUse';
+import { mapGestureHost } from './pixi/input/mapGestureHost';
 import type { FogCoverage } from './fog/fogCoverage';
 import { HARD_FOG_EDGE, sameFogEdge } from './fog/fogEdge';
 import { createSceneSource } from './plugin/host/sceneSource';
@@ -326,6 +328,14 @@ export class PixiRendererOrchestrator { // Renamed class
       
       if (currentViewport) {
         this.setupRenderersAndManagers(currentViewport);
+        this.pixiAppManager.getGestures()?.setHost(mapGestureHost({
+          store: this.store,
+          viewport: currentViewport,
+          placing: () => this.tokenPlacer?.active ?? false,
+          marqueePending: () => this.selectionManager?.marqueePending ?? false,
+          menuAt: (x, y) => this.tokenRenderer?.menuAt(x, y) ?? false,
+          fingers: FingerSettings.forApp(this.obsApp),
+        }));
       }
       // initPinContainer is now effectively handled by PinRenderer's constructor
 
@@ -1006,6 +1016,7 @@ export class PixiRendererOrchestrator { // Renamed class
     if (this.levelLinks) layers.push({ layer: this.levelLinks.view, visible: false });
     for (const layer of this.tokenPlacer?.layers ?? []) layers.push({ layer, visible: false });
     layers.push(...(this.selectionManager?.getPlayerViewLayers() ?? []));
+    layers.push(...(this.pixiAppManager.getGestures()?.hiddenLayers() ?? []));
     // A picture of the scene leaves out what the GM keeps from the players, as their frame does
     if (!players) layers.push(...(this.annotations?.getPictureLayers() ?? []));
     return layers;

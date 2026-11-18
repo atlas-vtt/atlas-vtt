@@ -57,4 +57,6 @@ export const MAP_LAYER_Z = {
   pinNames: 1010,
   /** Tokens being placed by hand (GM only): above everything on the map but the laser. */
   placement: 1100,
+  /** The ring that closes around a finger whose press becomes a long press (never in the players' picture). */
+  longPressRing: 1150,
 } as const;
