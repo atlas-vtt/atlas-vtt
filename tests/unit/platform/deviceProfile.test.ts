@@ -47,6 +47,7 @@ describe('the budgets of a desktop', () => {
       generatedMapPixels: Infinity,
       generatedMapSide: Infinity,
       videoMapBytes: 500 * MIB,
+      fogCanvasSide: Infinity,
     });
   });
 
@@ -78,6 +79,7 @@ describe('the budgets of a tablet', () => {
       generatedMapPixels: 4096 * 4096,
       generatedMapSide: 8192,
       videoMapBytes: 128 * MIB,
+      fogCanvasSide: 3072,
     });
   });
 

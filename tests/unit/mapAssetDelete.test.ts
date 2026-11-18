@@ -38,6 +38,21 @@ it('trashes a map\'s image and thumbnail with it', async () => {
   expect(vault.files.has(THUMB)).toBe(false);
 });
 
+it('trashes the thumbnail a device of the other kind made beside the recorded one, once no copy shows it', async () => {
+  const png = THUMB.replace(/\.webp$/, '.png');
+  await vault.app.vault.create(png, 'THUMB PNG');
+  const map = await addMap(THUMB);
+  const copy = await addMap(THUMB);
+
+  await assets.deleteAsset(map.id);
+  expect(vault.files.has(THUMB)).toBe(true);
+  expect(vault.files.has(png)).toBe(true);
+
+  await assets.deleteAsset(copy.id);
+  expect(vault.files.has(THUMB)).toBe(false);
+  expect(vault.files.has(png)).toBe(false);
+});
+
 it('keeps the image and thumbnail a copy of the map still shows', async () => {
   const map = await addMap(THUMB);
   const copy = await addMap(THUMB);

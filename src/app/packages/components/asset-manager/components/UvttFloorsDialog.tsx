@@ -69,7 +69,6 @@ export function UvttFloorsDialog({ request, onChoose }: UvttFloorsDialogProps): 
       {...dialogOverlayMotion}
       className="atlas-vtt-root atlas-uvtt-floors-overlay"
       onMouseDown={(event) => event.stopPropagation()}
-      onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => { event.stopPropagation(); if (event.target === event.currentTarget) cancel(); }}
     >
       <motion.div

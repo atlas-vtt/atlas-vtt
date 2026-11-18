@@ -28,6 +28,8 @@ export interface TesseraCoreDeps {
   emit: (event: TesseraEvent) => void;
   /** Bytes of decoded levels all builds may hold together. */
   decodedBudget?: number;
+  /** The most pixels of a source decoded whole on this device; the desktop's when unset. */
+  maxSourcePixels?: number;
   /** The decoder that reads a source the browser cannot decode in bands, or null; the real lookup when unset. */
   bandDecoderOf?: (blob: Blob) => Promise<BandDecoder | null>;
 }
@@ -69,6 +71,7 @@ export class TesseraDecoderCore {
       },
       yieldToRequests: () => this.yieldToRequests(),
       decodedBudget: deps.decodedBudget,
+      maxSourcePixels: deps.maxSourcePixels,
       bandDecoderOf: deps.bandDecoderOf,
     });
   }

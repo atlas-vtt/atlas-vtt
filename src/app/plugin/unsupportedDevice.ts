@@ -1,4 +1,4 @@
-import { Platform, type Plugin } from 'obsidian';
+import type { Plugin } from 'obsidian';
 import { t } from '../i18n';
 import type { DeviceSupport } from '../platform/deviceSupport';
 import { AtlasSettingTab } from '../settings/AtlasSettingTab';
@@ -7,12 +7,8 @@ import { showNotice } from '../ui/notice';
 /** Set once this device was told why Atlas does not run on it: a notice at every start would only be in the way. */
 const TOLD_STORAGE_KEY = 'atlas-vtt:unsupported-device-told';
 
-/** The first iPadOS whose web view has what Atlas' workers draw on. */
-const MIN_IPADOS = '16.4';
-
 function reasonText(support: Exclude<DeviceSupport, 'supported'>): string {
-  if (support === 'phone') return t('notice.needsTablet');
-  return Platform.isIosApp ? t('notice.needsNewerIpadOs', { version: MIN_IPADOS }) : t('notice.needsNewerWebView');
+  return support === 'phone' ? t('notice.needsTablet') : t('notice.systemTooOld');
 }
 
 /**

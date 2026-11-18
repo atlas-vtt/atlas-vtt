@@ -169,6 +169,25 @@ describe('the GM\'s initiative tracker', () => {
     }
   });
 
+  it('keeps a card and its controls in a pane shorter than its clearance, and its old height in a tall one', async () => {
+    for (const names of [false, true]) {
+      const tracker = await showTracker({ names });
+      // 900 px of view less the clearance above and below
+      expect(box(tracker).height).toBe(580);
+
+      for (const height of [420, 330, 200]) {
+        await page.viewport(1200, height);
+        const content = box(tracker.querySelector('.atlas-initiative-tracker__content')!);
+        const cards = [...tracker.querySelectorAll('.atlas-initiative-card')].map(box);
+        const whole = cards.filter((card) => card.top >= content.top - 0.5 && card.bottom <= content.bottom + 0.5);
+        expect(whole.length, `${height} px, names ${names}`).toBeGreaterThanOrEqual(1);
+        for (const control of tracker.querySelectorAll('.atlas-initiative-tracker__collapse, .atlas-initiative-tracker__controls button, .atlas-initiative-tracker__turn-controls button')) {
+          expect(box(control).height, `${height} px, names ${names}`).toBeGreaterThanOrEqual(24);
+        }
+      }
+    }
+  });
+
   it('starts at the turn with the next round below a divider that fits the column', async () => {
     const tracker = await showTracker();
     const divider = tracker.querySelector('.atlas-initiative-round')!;

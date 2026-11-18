@@ -18,6 +18,7 @@ import {
 } from './tesseraProtocol';
 import TesseraWorker from './tesseraWorker?worker&inline';
 import { deviceProfile } from '../../platform/deviceProfile';
+import { maxSourcePixelsFor } from './decodedLevels';
 
 /**
  * The main thread's side of the map tessera worker: one worker per app, shared
@@ -65,7 +66,12 @@ export class TesseraDecoderClient {
       const { budgets } = deviceProfile();
       client = new TesseraDecoderClient({
         appId: app.appId,
-        budgets: { decodedLevels: budgets.decodedLevelsBudget, cacheMax: budgets.tileCacheMax, cacheQuotaShare: budgets.tileCacheQuotaShare },
+        budgets: {
+          decodedLevels: budgets.decodedLevelsBudget,
+          cacheMax: budgets.tileCacheMax,
+          cacheQuotaShare: budgets.tileCacheQuotaShare,
+          sourcePixels: maxSourcePixelsFor(budgets.imageSourceBytes),
+        },
         worker: workerPort(() => new TesseraWorker({ name: 'Atlas map tesserae' })),
       });
       TesseraDecoderClient.instances.set(app, client);

@@ -149,5 +149,6 @@ export function createBelowLevelsHost({ obsApp, app, viewport, store, viewedFog,
     viewedFog,
     viewedRoof,
     placeEraser,
+    fogCanvasSide: deviceProfile().budgets.fogCanvasSide,
   };
 }

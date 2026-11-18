@@ -56,6 +56,7 @@ export const browserTesseraCore: CoreFactory = async (appId, emit, budgets) => {
     yieldToMessages: nextTask,
     emit,
     ...(budgets && { decodedBudget: budgets.decodedLevels }),
+    ...(budgets?.sourcePixels !== undefined && { maxSourcePixels: budgets.sourcePixels }),
   });
 };
 

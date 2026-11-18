@@ -149,6 +149,8 @@ export function nextTask(): Promise<void> {
 
 export interface CoreHarnessOptions {
   decodedBudget?: number;
+  /** The most pixels of a source the core decodes whole; the desktop's by default. */
+  maxSourcePixels?: number;
   backend?: MemoryTesseraBackend;
   /** Also receives every event the core emits. */
   forward?: (event: TesseraEvent) => void;
@@ -174,6 +176,7 @@ export function coreHarness(options: CoreHarnessOptions = {}): CoreHarness {
       for (const waiter of waiters.filter((w) => w.hash === event.hash)) waiter.resolve();
     },
     ...(options.decodedBudget === undefined ? {} : { decodedBudget: options.decodedBudget }),
+    ...(options.maxSourcePixels === undefined ? {} : { maxSourcePixels: options.maxSourcePixels }),
     ...(options.bandDecoderOf === undefined ? {} : { bandDecoderOf: options.bandDecoderOf }),
   });
   const completed = (hash: string): Promise<void> => new Promise((resolve) => {

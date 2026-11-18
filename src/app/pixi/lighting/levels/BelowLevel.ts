@@ -102,7 +102,7 @@ export class BelowLevel {
     this.image = deps.image(this.camera);
     this.liquids = deps.liquids?.(this.changed) ?? null;
     this.tokens = new BelowTokens(deps.art, this.changed);
-    this.fog = new BelowFog(this.changed);
+    this.fog = new BelowFog(this.changed, deps.fogCanvasSide);
     this.memory = new ExploredMemory({
       renderer: deps.renderer,
       store: deps.store,

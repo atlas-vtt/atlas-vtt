@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Platform, type Plugin } from 'obsidian';
+import type { Plugin } from 'obsidian';
 
 import type { AtlasSettingSection } from '../../../src/app/settings/settingSections';
 
@@ -43,7 +43,6 @@ function fakePlugin(storage = new Map<string, unknown>()): { plugin: Plugin; tab
 
 beforeEach(() => {
   showNotice.mockClear();
-  Platform.isIosApp = false;
 });
 
 describe('Atlas on a device it does not run on', () => {
@@ -58,19 +57,12 @@ describe('Atlas on a device it does not run on', () => {
     expect(registered).toEqual([]);
   });
 
-  it('tells an old iPad which system it needs', () => {
-    Platform.isIosApp = true;
-    const { plugin, ready } = fakePlugin();
+  it('tells a tablet whose system is too old just that, whatever its make', () => {
+    const { plugin, tabs, ready } = fakePlugin();
     registerUnsupportedDevice(plugin, 'old-os');
     ready();
-    expect(showNotice).toHaveBeenCalledExactlyOnceWith('Atlas needs iPadOS 16.4 or later.');
-  });
-
-  it('tells an old Android tablet what to update', () => {
-    const { plugin, ready } = fakePlugin();
-    registerUnsupportedDevice(plugin, 'old-os');
-    ready();
-    expect(showNotice).toHaveBeenCalledExactlyOnceWith('Atlas needs a newer Android System WebView.');
+    expect(showNotice).toHaveBeenCalledExactlyOnceWith('This device\'s system is too old for Atlas.');
+    expect(tabs[0]!.sections()).toMatchObject([{ rows: [{ name: 'This device\'s system is too old for Atlas.' }] }]);
   });
 
   it('says it once per device, not at every start', () => {

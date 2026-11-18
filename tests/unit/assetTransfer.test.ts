@@ -269,6 +269,32 @@ describe('copying assets to another collection', () => {
     expect(vault.vault.files.get(TOKEN_IMAGE)).toBe('IMG');
   });
 
+  it('copies a token\'s thumbnail in both formats under one name, and deleting either token takes both of its files', async () => {
+    const vault = await seededVault();
+    // A device that cannot encode WebP made the thumbnail too, as a PNG beside the recorded one.
+    const pngThumb = TOKEN_THUMB.replace(/\.webp$/, '.png');
+    await vault.vault.app.vault.create(pngThumb, 'THUMB PNG');
+    const token = await only(vault.assets, 'source', 'token');
+
+    await copy(vault, [token.id]);
+
+    const copied = await only(vault.assets, 'target', 'token');
+    const copiedPng = copied.thumbnailPath!.replace(/\.webp$/, '.png');
+    expect(copied.thumbnailPath).not.toBe(TOKEN_THUMB);
+    expect(vault.vault.files.get(copied.thumbnailPath!)).toBe('THUMB');
+    expect(vault.vault.files.get(copiedPng)).toBe('THUMB PNG');
+
+    await vault.assets.deleteAsset(copied.id);
+    expect(vault.vault.files.has(copied.thumbnailPath!)).toBe(false);
+    expect(vault.vault.files.has(copiedPng)).toBe(false);
+    expect(vault.vault.files.get(TOKEN_THUMB)).toBe('THUMB');
+    expect(vault.vault.files.get(pngThumb)).toBe('THUMB PNG');
+
+    await vault.assets.deleteAsset(token.id);
+    expect(vault.vault.files.has(TOKEN_THUMB)).toBe(false);
+    expect(vault.vault.files.has(pngThumb)).toBe(false);
+  });
+
   it('copies a scene with everything it needs from the source folder', async () => {
     const vault = await seededVault();
     const scene = await only(vault.assets, 'source', 'scene');

@@ -1,4 +1,5 @@
 import React, { useId, useLayoutEffect, useMemo, useState, type CSSProperties } from 'react';
+import { isElementShown } from '../../../platform/elementShown';
 import { observeResize } from '../../../utils/observeResize';
 
 /** Where a map's rolls stand, and the mark in the map's top bar that places them. */
@@ -26,7 +27,7 @@ export function useMapRollLayer(): MapRollLayer {
 
   useLayoutEffect(() => {
     if (!mark) return;
-    const check = (): void => setShown(mark.checkVisibility());
+    const check = (): void => setShown(isElementShown(mark));
     check();
     return observeResize([mark], check);
   }, [mark]);

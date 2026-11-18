@@ -31,7 +31,6 @@ export function PickerDialog({ windowRef, title, className, confirmLabel, canCon
       className={className ? `atlas-asset-manager-move-modal ${className}` : 'atlas-asset-manager-move-modal'}
       onClick={(e) => { e.stopPropagation(); if (e.target === e.currentTarget) onClose(); }}
       onMouseDown={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
     >
       <motion.div ref={windowRef} className="atlas-asset-manager-move-container" variants={windowVariants} onClick={(e) => e.stopPropagation()}>
         <div className="atlas-asset-manager-move-header">

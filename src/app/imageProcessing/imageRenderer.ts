@@ -168,7 +168,9 @@ function render(bitmap: ImageBitmap, source: Size, layout: ImageLayout): Promise
 
 /**
  * A bitmap that needs no scaling (a generated map), encoded as it is: handed to a canvas instead of
- * drawn onto one, so its pixels are neither copied nor held twice.
+ * drawn onto one, so its pixels are neither copied nor held twice. Its size is one this device draws
+ * on: every bitmap a job brings came off a canvas that was asked (`rasterize`, the dungeon worker's
+ * `mapCanvas`), and a canvas that is handed its picture has nothing to be asked for.
  */
 async function encodeAsItIs(bitmap: ImageBitmap, job: ImageJob): Promise<ImageJobResult> {
   const sourcePreview = await renderCopy(bitmap, job.sourcePreview);
