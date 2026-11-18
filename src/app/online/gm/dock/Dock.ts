@@ -14,7 +14,6 @@ import { gateRowActions } from './gateRows.ts';
 import { InviteQr } from './inviteQr.ts';
 import { KNOCK_ROOM, knockCards, KnockStack, restCards, stackCards } from './knockStack.ts';
 import { DockSurface } from './dockSurface.ts';
-import { playerCodeCopier } from './playerCodes.ts';
 import { PANEL_WIDTH, panelView, renderPanel, type PanelActions } from './OnlinePanel.ts';
 import { badgeOf, isRunning, menuModel, tableTitle, tooltipOf, type OnlineSnapshot, type SceneFacts } from './panelModel.ts';
 import { t } from '../../../i18n';
@@ -268,7 +267,7 @@ export class Dock {
   private menuActions(): MenuActions {
     return {
       ...accountActions(this.deps.account),
-      ...gateRowActions(this.deps.api, this.root),
+      ...gateRowActions(this.deps.api),
       start: () => {
         const chosen = this.pick().chosen;
         if (chosen !== null) this.deps.api.start(this.leaf, chosen);
@@ -312,7 +311,7 @@ export class Dock {
       kick: (playerId) => api.kick(playerId),
       drawingsOf: (playerId) => api.playerDrawings(playerId),
       clearDrawings: (playerId) => api.clearPlayerDrawings(playerId),
-      copyPlayerCode: playerCodeCopier(api, this.root),
+      playerCode: (playerId) => api.playerCode(playerId),
       newPlayerCode: (playerId) => api.newPlayerCode(playerId),
       renamePlayer: (playerId, name) => api.renamePlayer(playerId, name),
       removeFromCampaign: (playerId) => api.removeFromCampaign(playerId),
