@@ -19,6 +19,7 @@ import { CardMoreButton } from './CardMoreButton';
 import { SceneMarkers, sceneCardName, useSceneMarks } from './SceneMarkers';
 import { isCut } from '../../../../react/components/dm-screen/sound/CutTooltip';
 import { t } from '../../../../i18n';
+import { useCoarsePointer } from '../../../../platform/useCoarsePointer';
 
 export interface AssetCardProps extends AssetCardHandlers {
   asset: AnyAsset;
@@ -115,6 +116,8 @@ export const AssetCard = memo(function AssetCard({
   const awaitsArt = asset.thumbnailPending === true;
   const sceneMarks = useSceneMarks(asset.type === 'scenes' ? asset.scenePath : undefined);
   const status = cardStatus(asset, spawnCount, statblockMissing);
+  // A finger types no count over a card: the selected token's counter stands ready at one, and its Go spawns.
+  const stepperForFinger = useCoarsePointer() && isSelected && asset.type === 'tokens';
   const markedName = sceneCardName(asset.name, sceneMarks);
   // One tooltip per pointer position: the card's waits while a control's own shows. It tells the main action, and the
   // name above it where the name's line cuts it.
@@ -232,7 +235,7 @@ export const AssetCard = memo(function AssetCard({
                 </LabelTooltip>
               )}
 
-              {spawnCount > 1 && (
+              {(spawnCount > 1 || stepperForFinger) && (
                 <SpawnCountBadge
                   count={spawnCount}
                   onChange={(count) => onSpawnCountChange(asset.id, count)}

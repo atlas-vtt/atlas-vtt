@@ -7,6 +7,7 @@ import { clampSpawnCount } from '../utils/spawnCount';
 import { resolveSortOption, sortOptionsFor } from '../utils/assetSort';
 import { isTextEntryTarget } from '../../../../keyboard/textEntry';
 import { movedFolderPathOf, type PathMove } from '../../../../services/renamedPaths';
+import { useStableCallback } from '../../../../react/hooks/useStableCallback';
 
 /** IDs currently rendered, in display order, so Shift-click can span them. */
 export interface VisibleIds {
@@ -51,6 +52,8 @@ export interface SelectionState {
   leaveDeletedFolder: (folderId: string, parentId: string | null) => void;
   handleTagSelect: (tagId: string) => void;
   handleClearSelection: () => void;
+  /** Selects everything in view, or clears a selection that already holds it all: what Mod+A does. */
+  handleSelectAll: () => void;
   /** Back at the root with nothing selected, as a new tab or collection starts. */
   resetForTab: () => void;
   /** Sets how many copies spawning the asset places; 1 clears the counter. */
@@ -200,20 +203,24 @@ export function useSelectionHandlers(
     return path;
   };
 
+  const handleSelectAll = useStableCallback((): void => {
+    const next = resolveSelectAll({ visible: visibleIds.current, selectedAssetIds, selectedFolderIds });
+    setSelectedAssetIds(next.assets);
+    setSelectedFolderIds(next.folders);
+  });
+
   // ── Select-all shortcut ───────────────────────────────────────
   useEffect(() => {
     if (!isOpen) return;
     const handler = (event: KeyboardEvent): void => {
       if ((event.metaKey || event.ctrlKey) && event.key === 'a' && !isTextEntryTarget(event.target)) {
         event.preventDefault();
-        const next = resolveSelectAll({ visible: visibleIds.current, selectedAssetIds, selectedFolderIds });
-        setSelectedAssetIds(next.assets);
-        setSelectedFolderIds(next.folders);
+        handleSelectAll();
       }
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [isOpen, visibleIds, selectedAssetIds, selectedFolderIds]);
+  }, [isOpen, handleSelectAll]);
 
   const sortBy = resolveSortOption(chosenSortBy, activeTab);
   const sortOptions = sortOptionsFor(activeTab);
@@ -225,7 +232,7 @@ export function useSelectionHandlers(
     setSpawnCounts, setSortBy, setSortOrder,
     handleAssetSelect, handleFolderSelect, handleFolderSelection,
     handleFolderDoubleClick, handleNavigateBack, handleNavigateForward,
-    handleNavigateToFolder, followFolderMoves, leaveDeletedFolder, handleTagSelect, handleClearSelection, resetForTab, handleSpawnCountChange,
+    handleNavigateToFolder, followFolderMoves, leaveDeletedFolder, handleTagSelect, handleClearSelection, handleSelectAll, resetForTab, handleSpawnCountChange,
     getFolderPath,
   };
 }

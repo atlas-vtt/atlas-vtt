@@ -123,6 +123,7 @@ export const am = {
   'am.bestiary.hidden': 'Starter tokens hidden for this collection',
   'am.header.forward': 'Forward',
   'am.header.selected': 'selected',
+  'am.header.selectAll': 'Select all',
   'am.header.newFolder': 'Create folder…',
   'am.header.create': 'Create',
   'am.header.createToken': 'Create tokens…',
