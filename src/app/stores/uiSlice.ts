@@ -57,6 +57,7 @@ export interface UISlice extends ViewUIState {
   /** Closes the generator opening `id`; one opened since stays. */
   closeDungeonGenerator: (id: number) => void;
   setRoofsHidden: (hidden: boolean) => void;
+  setSelectMore: (on: boolean) => void;
 }
 
 /** Default state — all panels closed. `drawTool` is what the Draw tool starts with: its defaults, or what the device remembered. */
@@ -89,6 +90,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
   | 'isToolbarEditing'
   | 'dungeonGenerator'
   | 'roofsHidden'
+  | 'selectMore'
 > {
   return {
     isGridSettingsOpen: false,
@@ -118,6 +120,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
     isToolbarEditing: false,
     dungeonGenerator: null,
     roofsHidden: false,
+    selectMore: false,
   };
 }
 
@@ -162,6 +165,7 @@ export function createUIActions(
   | 'openDungeonGenerator'
   | 'closeDungeonGenerator'
   | 'setRoofsHidden'
+  | 'setSelectMore'
 > {
   return {
     setGridSettingsOpen: (open) => set((draft) => { draft.isGridSettingsOpen = open; }),
@@ -246,5 +250,6 @@ export function createUIActions(
       if (draft.dungeonGenerator?.id === id) draft.dungeonGenerator = null;
     }),
     setRoofsHidden: (hidden) => set((draft) => { draft.roofsHidden = hidden; }),
+    setSelectMore: (on) => set((draft) => { draft.selectMore = on; }),
   };
 }

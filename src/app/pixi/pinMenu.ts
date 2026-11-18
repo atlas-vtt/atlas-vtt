@@ -1,6 +1,6 @@
 import type { ContextMenuEntry } from '../react/components/context-menu/AtlasContextMenu';
 import { closeContextMenuGlobal } from '../react/root/ContextMenuContext';
-import { pinActions } from '../selection/pinActions';
+import { pinActions } from '../selection/pinActionList';
 import { selectionMenu } from '../selection/selectionMenu';
 import type { ViewAtlasStore } from '../storeFactory';
 import type { NotePin } from '../types';

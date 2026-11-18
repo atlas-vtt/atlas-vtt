@@ -19,7 +19,6 @@ import type { GridSystem } from '../../grid/GridSystem';
 import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
 import { EventEmitter } from '../../utils/typedEmitter';
 import type { ConditionDefinition } from '../../types/collectionSettingsTypes';
-import { pasteClipboard, viewCentre } from '../../clipboard/mapClipboardActions';
 import { copyDragSelection } from './dragCopy';
 import type { DragRuler } from './DragRuler';
 import type { TokenMovement } from './tokenMovement';
@@ -39,7 +38,9 @@ import { sessionDragWalls, type SessionDragWalls } from './sessionDragWalls';
 import { deviceProfile } from '../../platform/deviceProfile';
 import type { SelectionAction } from '../../selection/selectionActions';
 import { selectionMenu } from '../../selection/selectionMenu';
-import { tokenActions, type TokenActionHost } from '../../selection/tokenActions';
+import { tokenActions, type TokenActionHost } from '../../selection/tokenActionList';
+import { picksMore } from '../../annotations/selectMore';
+import { pasteAtViewCentre } from '../../selection/wholeSelection';
 
 interface DragState {
   isDragging: boolean;
@@ -248,11 +249,14 @@ export class InteractionController implements ITokenInteractionController {
     // would let go of the held tokens and leave the drag's history transaction open.
     if (this.dragState.isDragging && this.dragState.hasMoved) return;
 
-    const { selectedIds, setSelection } = this.store.getState();
+    const state = this.store.getState();
+    const { selectedIds, setSelection } = state;
     const isTokenSelected = selectedIds.includes(token.id);
+    // Shift, or Select more: the press adds the token to the selection or takes it out
+    const more = picksMore(state, e);
 
-    // Shift-click toggles membership; removing never starts a drag.
-    if (e.shiftKey && isTokenSelected) {
+    // Such a press toggles membership; removing never starts a drag.
+    if (more && isTokenSelected) {
       setSelection(selectedIds.filter((id) => id !== token.id));
       return;
     }
@@ -273,7 +277,7 @@ export class InteractionController implements ITokenInteractionController {
     this.dragState.selectsOnRelease = false;
     
     // Determine which tokens to potentially drag
-    if (e.shiftKey) {
+    if (more) {
       this.dragState.dragIds = [...selectedIds, token.id];
       setSelection(this.dragState.dragIds);
     } else if (isTokenSelected && selectedIds.length > 1) {
@@ -618,7 +622,7 @@ export class InteractionController implements ITokenInteractionController {
       resources: () => this.resourceDefsProvider(),
       editToken: (token) => this.showEditTokenModal(token),
       changeResource: (at, resourceName, count, apply) => this.openSelectionEditor(at, resourceName, count, apply),
-      paste: () => runInBackground(pasteClipboard(this.store, viewCentre(this.viewport)), 'Pasting map objects', 'Could not paste'),
+      paste: () => pasteAtViewCentre(this.store, this.viewport),
     };
   }
 

@@ -23,6 +23,9 @@ const LOOK = {
   labelGap: 6,
 } as const;
 
+/** How far the button stands above the frame's top edge, to its far side, in screen pixels. */
+export const GROUP_ROTATE_REACH = LOOK.stem + 2 * LOOK.radius;
+
 /** A turn under way: `degrees` about `pivot`, in world units. */
 export interface ButtonTurn {
   readonly pivot: { readonly x: number; readonly y: number };

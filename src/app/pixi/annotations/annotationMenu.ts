@@ -1,7 +1,7 @@
 import type { Annotation, TextAnnotation } from '../../annotations/annotationTypes';
 import type { ContextMenuEntry } from '../../react/components/context-menu/AtlasContextMenu';
 import { closeContextMenuGlobal } from '../../react/root/ContextMenuContext';
-import { annotationActions, type AnnotationActionExtras, type AnnotationActionStore } from '../../selection/annotationActions';
+import { annotationActions, type AnnotationActionExtras, type AnnotationActionStore } from '../../selection/annotationActionList';
 import { selectionMenu } from '../../selection/selectionMenu';
 
 /** What the menu's rows do to the scene. */

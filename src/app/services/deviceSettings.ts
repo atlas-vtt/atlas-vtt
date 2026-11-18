@@ -156,6 +156,28 @@ export function savePlayerView4k(storage: DeviceStorage, on: boolean): void {
   }
 }
 
+/** Whether the bar above a selection shows on this device under a mouse too: `shown`, else only under a finger. */
+export const SELECTION_BAR_STORAGE_KEY = 'atlas-vtt:selection-bar';
+
+/** Whether the bar above a selection shows on this device under a mouse too; off until chosen. */
+export function loadSelectionBarShown(storage: DeviceStorage): boolean {
+  try {
+    return storage.loadLocalStorage(SELECTION_BAR_STORAGE_KEY) === 'shown';
+  } catch (error) {
+    console.error('[Atlas] Could not read whether this device shows the selection bar', error);
+    return false;
+  }
+}
+
+export function saveSelectionBarShown(storage: DeviceStorage, shown: boolean): void {
+  try {
+    // Off removes the key: under a finger only again
+    storage.saveLocalStorage(SELECTION_BAR_STORAGE_KEY, shown ? 'shown' : null);
+  } catch (error) {
+    console.error('[Atlas] Could not save whether this device shows the selection bar', error);
+  }
+}
+
 /** Whether the GM collapsed the initiative tracker on this device; expanded until chosen. */
 export function loadInitiativeCollapsed(storage: DeviceStorage): boolean {
   try {

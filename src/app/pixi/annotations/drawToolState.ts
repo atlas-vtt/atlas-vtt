@@ -37,6 +37,8 @@ export type PlaceWriter = (places: Readonly<Record<string, AnnotationPlace>>, by
 export interface SelectingState extends SelectionState {
   /** The view is a players' own: nothing is selected or reshaped there. Unset: it is not. */
   isPlayerView?: boolean;
+  /** A press adds to the selection or takes from it (`selectMore.ts`). Unset: only with Shift. */
+  selectMore?: boolean;
   setSelection(ids: string[]): void;
   placeAnnotations: PlaceWriter;
 }

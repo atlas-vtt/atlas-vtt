@@ -109,6 +109,8 @@ export class SelectionHighlights {
   /** The group frame as drawn, in screen pixels at `frameZoom`; null while there is none. */
   private frame: RoundedBox | null = null;
   private frameZoom = 1;
+  /** The box around every highlight, what a group holds of each thing and the handles on them, in world units; null while nothing shows. */
+  private shown: Box | null = null;
   private targets: readonly SelectionTarget[] = [];
   /** While a group is turned as one, its frame turns with it and holds still otherwise. */
   private turn: FrameTurn | null = null;
@@ -140,6 +142,7 @@ export class SelectionHighlights {
       this.highlights.delete(id);
     }
     const boxes: Box[] = [];
+    const reach: Box[] = [];
     for (const target of targets) {
       let highlight = this.highlights.get(target.id);
       const isNew = highlight === undefined;
@@ -154,8 +157,18 @@ export class SelectionHighlights {
       highlight.draw(path, handles, this.accent);
       if (isNew) highlight.enter(animate());
       boxes.push(this.screenBox(target, path));
+      for (const handle of handles) {
+        reach.push({ x: target.x * this.zoom + handle.x - handle.radius, y: target.y * this.zoom + handle.y - handle.radius, width: 2 * handle.radius, height: 2 * handle.radius });
+      }
     }
+    const around = unionBox([...boxes, ...reach]);
+    this.shown = around && { x: around.x / this.zoom, y: around.y / this.zoom, width: around.width / this.zoom, height: around.height / this.zoom };
     this.showGroup(groupFrame(boxes), animate);
+  }
+
+  /** The box around everything the selection shows (its highlights, a token's bars, the handles on them), in world units; null while it shows nothing. */
+  shownBox(): Box | null {
+    return this.shown;
   }
 
   /** Whether the world point lies inside the group frame as it is drawn; false while none is. */

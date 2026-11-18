@@ -70,6 +70,8 @@ export interface ViewUIState {
    * does not have, is the first. Kept with the tab's camera, never with the scene, and never an undo step.
    */
   viewedLevel?: string | null | undefined;
+  /** Select more is on: a press adds to the selection or takes from it, a marquee adds (`selectMore.ts`). Never saved. */
+  selectMore: boolean;
   /** The toolbar editor is open in this view: tray, hide and show, inert tools. Never saved. */
   isToolbarEditing: boolean;
   /** The dungeon generator, filling the view while it is open. */
