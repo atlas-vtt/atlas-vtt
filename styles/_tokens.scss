@@ -114,6 +114,11 @@ $z-atlas-dice-rolls: 1100;
 // dialogs included: a roll answers the user's own click and must be seen. Only
 // notices and the onboarding stand above them; menus (9999) open below them.
 $z-atlas-dice-rolls-front: $z-atlas-modal + 3;
+// The top of Atlas' layers, in the order they always had: notices (modal + 100, atlas-toast.scss), the onboarding
+// (modal + $z-notification), then a tooltip, which may name a control of any of them, and last the loading screen of
+// a map, which covers what its view shows until the scene stands. Nothing of Atlas stands higher.
+$z-atlas-tooltip: $z-atlas-modal + $z-notification + 100;
+$z-atlas-map-loading: $z-atlas-tooltip + 100;
 
 // ── Transitions ──────────────────────────────────────────────────────────────
 $transition-fast: 100ms;

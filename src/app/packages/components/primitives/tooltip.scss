@@ -12,8 +12,8 @@ $tooltip-out: 100ms $transition-ease-out;
 
 .tooltip-content {
   position: relative;
-  /* Above every Atlas panel and dropdown (highest is 99999); Radix copies this onto its portal wrapper. */
-  z-index: 100000;
+  /* Above every Atlas panel, dropdown and notice; Radix copies this onto its portal wrapper. */
+  z-index: $z-atlas-tooltip;
   overflow: hidden;
   border-radius: $surface-radius;
   border: $border-width-m solid color-mix(in oklch, var(--mono-100) 18%, transparent);
