@@ -71,3 +71,27 @@ export function stepperLayout(slot: ResourceSlot, column: number, finger: boolea
 export function barButtonSpan(bars: number, finger: boolean): number {
   return finger ? Math.max(1, bars) * (gap + FINGER_STEPPER_SIZE) : gap + BAR_BUTTON_SIZE;
 }
+
+/** The band a finger's press on a bar is taken in, from `top` to `bottom`, in the units of the bar's anchor. */
+export interface BarReach {
+  readonly top: number;
+  readonly bottom: number;
+}
+
+/**
+ * Where a finger's press counts as one on the bar in `slot`: a bar is half as tall as a finger
+ * needs, so its band is taller than it is drawn. It reaches up to the token's edge above the
+ * first bar (the nameplate lies beyond) and down to a finger's height below the last, and bars
+ * that lie one under the other share the gap between them, so no band meets another. It is as
+ * wide as its bar, whose +/- buttons stand past its ends: no band meets a button either.
+ * `bars` are the bars pressed for their values, `slot` among them.
+ */
+export function fingerBarReach(slot: ResourceSlot, bars: readonly ResourceSlot[]): BarReach {
+  const stack = bars.filter((bar) => bar.kind === 'bar').sort((a, b) => a.top - b.top);
+  const index = stack.findIndex((bar) => bar.key === slot.key);
+  const above = stack[index - 1];
+  const below = stack[index + 1];
+  const top = above ? (above.top + above.height + slot.top) / 2 : slot.top - gap;
+  const bottom = below ? (slot.top + slot.height + below.top) / 2 : Math.max(slot.top + slot.height, top + FINGER_STEPPER_SIZE);
+  return { top, bottom };
+}

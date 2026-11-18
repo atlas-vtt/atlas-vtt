@@ -11,7 +11,7 @@ import { openResourceEditor, type BarAnchor, type ResourceEditor, type ResourceV
 import { ResourceBarHitArea } from './ResourceBarHitArea';
 import { destroyTree } from './utils/destroyTree';
 import { BAR_BUTTON_SIZE, type ResourceSlot } from './token-renderer/resources/ResourceStack';
-import { barButtonSpan, stepperLayout, type StepperLayout } from './token-renderer/resources/stepperLayout';
+import { barButtonSpan, fingerBarReach, stepperLayout, type BarReach, type StepperLayout } from './token-renderer/resources/stepperLayout';
 import { deviceProfile } from '../platform/deviceProfile';
 import { HandleHitArea } from './utils/handleHitArea';
 import { colorNumber } from './token-renderer/resources/ResourceBarView';
@@ -182,8 +182,8 @@ export class TokenControlsUI {
   }
   
   /** Wires a resource overlay so clicking it opens the popover for `value` under that resource. */
-  private bindEditor(hit: ResourceBarHitArea, slot: ResourceSlot, value: ResourceValue, resourceLabel: string, onCommit: (next: ResourceValue) => void): void {
-    hit.layout(slot);
+  private bindEditor(hit: ResourceBarHitArea, slot: ResourceSlot, reach: BarReach | null, value: ResourceValue, resourceLabel: string, onCommit: (next: ResourceValue) => void): void {
+    hit.layout(slot, reach);
     hit.on('pointerdown', (e) => {
       e.preventDefault(); // Keep the canvas's default focus from stealing the popover's focus.
       e.stopPropagation();
@@ -375,9 +375,10 @@ export class TokenControlsUI {
 
     // Same resources and places as TokenUIRenderer drew them, so each overlay sits on its resource
     const slots = this.slotsProvider(this.currentTokenId);
-    for (const { definition, value } of visibleResources(token, this.resourceDefsProvider(), 'dm')) {
-      // A static value does not change in play: its number is set in Edit Token
-      if (definition.direction === 'static') continue;
+    // A static value does not change in play: its number is set in Edit Token
+    const edited = visibleResources(token, this.resourceDefsProvider(), 'dm').filter(({ definition }) => definition.direction !== 'static');
+    const pressed = edited.flatMap(({ definition }) => slots.filter((candidate) => candidate.key === definition.key));
+    for (const { definition, value } of edited) {
       const slot = slots.find((candidate) => candidate.key === definition.key);
       if (!slot) continue;
       // The token may have changed since the controls were shown (dashboard, Kill, Edit Token), so
@@ -389,7 +390,9 @@ export class TokenControlsUI {
         const next = change(stored);
         this.setTokenValue(resourceUpdate(live, definition.key, next, next.max !== stored.max));
       };
-      this.bindResource(this.controlFor(definition), slot, stepperLayout(slot, barButtons, finger), value, definition.name,
+      // A bar is half as tall as a finger needs: its overlay takes a taller band, clear of the other bars and of the buttons
+      const reach = finger && slot.kind === 'bar' ? fingerBarReach(slot, pressed) : null;
+      this.bindResource(this.controlFor(definition), slot, stepperLayout(slot, barButtons, finger), reach, value, definition.name,
         (delta) => edit((stored) => withCurrent(stored, stored.current + delta)),
         (next) => edit(() => next));
       if (slot.kind === 'bar') barButtons++;
@@ -415,7 +418,7 @@ export class TokenControlsUI {
 
   /** Shows one resource's +/- buttons beside it and its click-to-edit overlay on top of it. */
   private bindResource(
-    { hit, minus, plus }: ResourceControl, slot: ResourceSlot, layout: StepperLayout,
+    { hit, minus, plus }: ResourceControl, slot: ResourceSlot, layout: StepperLayout, reach: BarReach | null,
     value: ResourceValue, resourceLabel: string, onDelta: (delta: number) => void, onCommit: (next: ResourceValue) => void,
   ): void {
     // Reordering the collection's resources can move one between bar and wheel, so the anchor is chosen here
@@ -431,7 +434,7 @@ export class TokenControlsUI {
         onDelta(delta);
       });
     }
-    this.bindEditor(hit, slot, value, resourceLabel, onCommit);
+    this.bindEditor(hit, slot, reach, value, resourceLabel, onCommit);
   }
 
   private hideControl({ hit, minus, plus }: ResourceControl): void {
