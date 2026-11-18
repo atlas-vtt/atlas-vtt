@@ -30,6 +30,8 @@ export interface ViewUIState {
   isDMScreenOpen: boolean;
   dmScreenPage: DMScreenPage;
   isGridAlignmentOpen: boolean;
+  /** Position floor: the GM moves the floor the view shows over another floor's see-through map. Never saved. */
+  isFloorPositioning: boolean;
   isDiceLogOpen: boolean;
   /** The keyboard shortcuts cheat sheet: opened by its hotkey, the map's help button and the palette. Never saved. */
   isHotkeyHelpOpen: boolean;

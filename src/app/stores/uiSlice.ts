@@ -22,6 +22,7 @@ export interface UISlice extends ViewUIState {
   setDMScreenOpen: (open: boolean) => void;
   setDMScreenPage: (page: DMScreenPage) => void;
   setGridAlignmentOpen: (open: boolean) => void;
+  setFloorPositioning: (on: boolean) => void;
   setDiceLogOpen: (open: boolean) => void;
   setHotkeyHelpOpen: (open: boolean) => void;
   setDocsOpen: (open: boolean) => void;
@@ -66,6 +67,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
   | 'isDMScreenOpen'
   | 'dmScreenPage'
   | 'isGridAlignmentOpen'
+  | 'isFloorPositioning'
   | 'isDiceLogOpen'
   | 'isHotkeyHelpOpen'
   | 'isDocsOpen'
@@ -95,6 +97,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
     isDMScreenOpen: false,
     dmScreenPage: 'statblocks',
     isGridAlignmentOpen: false,
+    isFloorPositioning: false,
     isDiceLogOpen: false,
     isHotkeyHelpOpen: false,
     isDocsOpen: false,
@@ -134,6 +137,7 @@ export function createUIActions(
   | 'setDMScreenOpen'
   | 'setDMScreenPage'
   | 'setGridAlignmentOpen'
+  | 'setFloorPositioning'
   | 'setDiceLogOpen'
   | 'setHotkeyHelpOpen'
   | 'setDocsOpen'
@@ -168,6 +172,7 @@ export function createUIActions(
     setDMScreenOpen: (open) => set((draft) => { draft.isDMScreenOpen = open; }),
     setDMScreenPage: (page) => set((draft) => { draft.dmScreenPage = page; }),
     setGridAlignmentOpen: (open) => set((draft) => { draft.isGridAlignmentOpen = open; }),
+    setFloorPositioning: (on) => set((draft) => { draft.isFloorPositioning = on; }),
     setDiceLogOpen: (open) => set((draft) => { draft.isDiceLogOpen = open; }),
     setHotkeyHelpOpen: (open) => set((draft) => { draft.isHotkeyHelpOpen = open; }),
     setDocsOpen: (open) => set((draft) => { draft.isDocsOpen = open; }),

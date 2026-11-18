@@ -46,7 +46,8 @@ import { AnnotationsRenderer } from "./pixi/annotations/AnnotationsRenderer";
 import type { TextSharpnessHost } from "./pixi/TextSharpening";
 import { LightingController } from './pixi/lighting/LightingController';
 import { settingsLightingQuality } from './pixi/lighting/settingsLightingQuality';
-import { createBelowLevelsHost } from './pixi/lighting/belowLevelsHost';
+import { createBelowLevelsHost, createRoofHost } from './pixi/lighting/belowLevelsHost';
+import { FloorGhost } from './pixi/levels/FloorGhost';
 import { ViewRoofs } from './pixi/roofs/ViewRoofs';
 import { ShownPlaces } from './lighting/shownPlaces';
 import type { SceneFrame } from './pixi/lighting/engine/types';
@@ -147,6 +148,8 @@ export class PixiRendererOrchestrator { // Renamed class
   private zoomFittedStretch: MapStretch = NO_STRETCH;
   /** The alignment panel fits the viewed level's image to the grid (`setLevelImageAlignment`). */
   private alignsLevelImage = false;
+  /** Another floor's map, see-through, while the GM places the floor shown (`showFloorGhost`). */
+  private floorGhost: FloorGhost | null = null;
   private obsApp: App;
   private eventBus: EventEmitter;
   private activeHoverLinkAnchorEl: HTMLElement | null = null;
@@ -811,6 +814,28 @@ export class PixiRendererOrchestrator { // Renamed class
   }
 
   /**
+   * Draws level `levelId`'s map see-through over the floor the view shows, at `alpha`, while the GM
+   * places that floor; null takes it away.
+   */
+  public showFloorGhost(levelId: string | null, alpha?: number): void {
+    const viewport = this.viewport;
+    const app = this.pixiAppManager.getApp();
+    if (levelId === null) {
+      this.floorGhost?.show(null);
+      return;
+    }
+    if (!viewport || !app) return;
+    this.floorGhost ??= new FloorGhost({
+      createMapImage: () => createRoofHost(this.obsApp, app, viewport).createMapImage(),
+      viewport,
+      store: this.store,
+      requestRender: () => requestRender(app),
+    });
+    this.floorGhost.show(levelId);
+    if (alpha !== undefined) this.floorGhost.setAlpha(alpha);
+  }
+
+  /**
    * While the alignment panel fits a level's image to the grid, the image is drawn on its own, from
    * its corner (`levelImageOnItsOwn`), and what is measured or found on it is in that frame.
    */
@@ -1004,6 +1029,8 @@ export class PixiRendererOrchestrator { // Renamed class
     if (this.pinRenderer) layers.push(...(players ? this.pinRenderer.playerLayers() : this.pinRenderer.pictureLayers()));
     if (this.hexLinkRenderer) layers.push({ layer: this.hexLinkRenderer.container, visible: false });
     if (this.levelLinks) layers.push({ layer: this.levelLinks.view, visible: false });
+    const ghost = this.floorGhost?.layer;
+    if (ghost) layers.push({ layer: ghost, visible: false });
     for (const layer of this.tokenPlacer?.layers ?? []) layers.push({ layer, visible: false });
     layers.push(...(this.selectionManager?.getPlayerViewLayers() ?? []));
     // A picture of the scene leaves out what the GM keeps from the players, as their frame does
@@ -1370,6 +1397,8 @@ export class PixiRendererOrchestrator { // Renamed class
     this.hexLinkInteraction?.destroy();
     this.hexLinkRenderer?.destroy();
     this.levelLinks?.destroy();
+    this.floorGhost?.destroy();
+    this.floorGhost = null;
     this.mapFeatures?.destroy();
     this.liquids?.destroy();
     this.fogRenderer?.destroy(); // Destroy FogRenderer

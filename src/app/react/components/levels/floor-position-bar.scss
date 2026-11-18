@@ -1,0 +1,40 @@
+// Position floor - its bars above the main toolbar, and the hand the map shows while it lasts
+@use '../../../../../styles/tokens' as *;
+
+.atlas-floor-position-bar {
+  // The floor's name and what to do, at the height of the tools' bar beside it.
+  min-height: $button-height-m;
+}
+
+.atlas-floor-position-bar__title {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-s;
+  padding-inline: $spacing-s;
+  font-size: $font-ui-small;
+  font-weight: var(--font-semibold);
+  color: var(--text-normal);
+  white-space: nowrap;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-accent);
+  }
+}
+
+.atlas-floor-position-bar__hint {
+  padding-inline-end: $spacing-s;
+  font-size: $font-ui-smaller;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+// The floor is taken by a press anywhere on the map: the map shows a hand over every tool's cursor.
+.atlas-floor-positioning canvas {
+  cursor: grab !important;
+}
+
+.atlas-floor-positioning--dragging canvas {
+  cursor: grabbing !important;
+}
