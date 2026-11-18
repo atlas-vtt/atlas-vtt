@@ -9,6 +9,9 @@ import { observeResize } from "../../../utils/observeResize"
 import type { BarSide } from "./barSide"
 import { placeSelectionBar, type BarPlaceInput, type BarPlaceSide, type Point, type Rect } from "./selectionBarPlacement"
 
+/** How far what a bar keeps beside moves on screen (px) before the bar is placed anew. */
+const PLACE_STEP = 0.05
+
 /** The panels at the map's sides a bar may be asked to keep beside. */
 const SIDE_PANELS = ".atlas-level-switcher, .atlas-initiative-tracker"
 
@@ -35,8 +38,9 @@ const standing = new WeakMap<Element, Map<HTMLElement, Rect>>()
 /**
  * Keeps the bar in `ref` beside what its selection shows (`placeSelectionBar`), on the map's own
  * frame clock, so it follows a pan, a zoom and a selection that was dragged, resized or turned in
- * the frame the canvas shows them. It is placed with `translate`, written only when its place
- * changes, and its `transform-origin` is the middle of its edge that faces the selection, which it
+ * the frame the canvas shows them. A frame in which the selection shows where it did reads nothing
+ * of the page: the bar's own size is measured when it changes, not per frame. It is placed with
+ * `translate`, written only when its place changes, and its `transform-origin` is the middle of its edge that faces the selection, which it
  * grows out of. Where another selection takes it, it glides there. While the selection shows
  * nothing (the bar leaving) it stays where it was. The side its menus open to is returned: away
  * from the selection.
@@ -55,7 +59,10 @@ export function useSelectionBarPlace(ref: React.RefObject<HTMLElement | null>, s
     if (!element || !container || !viewport || !canvas) return undefined
     const bars = [...container.querySelectorAll(`${TOP_BARS}, ${BOTTOM_BARS}`)]
     let current: BarPlaceSide | null = null
-    let placedFor = ""
+    // What the bar keeps beside now (x and y in turn), what it was last placed for, and whether its own size or its room changed since.
+    let beside: number[] = []
+    let placedFor: number[] = []
+    let stale = true
     let placed: Point | null = null
     let selection = store.getState().selectedIds
     let glide: Animation | null = null
@@ -80,22 +87,40 @@ export function useSelectionBarPlace(ref: React.RefObject<HTMLElement | null>, s
       }
     }
     let room = measure()
+    /** The bar's own size and the width of its centred part: read when the bar changes size, never per frame. */
+    const measureBar = (): { size: { width: number; height: number }; centred: number } => {
+      const size = { width: element.offsetWidth, height: element.offsetHeight }
+      return { size, centred: options.centred?.(element) ?? size.width }
+    }
+    let bar = measureBar()
+
+    /** Reads what the bar keeps beside into `beside`; returns whether the bar stands placed for it. */
+    const standsPlaced = (onCanvas: Point[]): boolean => {
+      beside.length = 0
+      for (const { x, y } of onCanvas) beside.push(room.x + x, room.y + y)
+      if (options.yields) {
+        // The other bar of the selection stands nearer to it: this one keeps clear of both.
+        for (const [other, rect] of others) {
+          if (other !== element) beside.push(rect.left, rect.top, rect.right, rect.bottom)
+        }
+      }
+      if (stale || beside.length !== placedFor.length) return false
+      for (let i = 0; i < beside.length; i++) {
+        if (Math.abs(beside[i]! - placedFor[i]!) >= PLACE_STEP) return false
+      }
+      return true
+    }
 
     const update = (): void => {
       const onCanvas = shown(viewport)
-      if (!onCanvas) return
-      const points = onCanvas.map(({ x, y }) => ({ x: room.x + x, y: room.y + y }))
-      if (options.yields) {
-        // The other bar of the selection stands nearer to it: this one keeps clear of both.
-        for (const [bar, rect] of others) {
-          if (bar !== element) points.push({ x: rect.left, y: rect.top }, { x: rect.right, y: rect.bottom })
-        }
-      }
-      const size = { width: element.offsetWidth, height: element.offsetHeight }
-      const centred = options.centred?.(element) ?? size.width
-      const key = `${points.map(({ x, y }) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ")} ${size.width}x${size.height} ${centred}`
-      if (key === placedFor) return
-      placedFor = key
+      if (!onCanvas || standsPlaced(onCanvas)) return
+      stale = false
+      const points: Point[] = []
+      for (let i = 0; i < beside.length; i += 2) points.push({ x: beside[i]!, y: beside[i + 1]! })
+      const spare = placedFor
+      placedFor = beside
+      beside = spare
+      const { size, centred } = bar
       // Another selection: the panels beside the map are measured again, and the bar glides from where it stood to its new place.
       const now = store.getState().selectedIds
       const moved = now !== selection
@@ -119,7 +144,8 @@ export function useSelectionBarPlace(ref: React.RefObject<HTMLElement | null>, s
     }
     const remeasure = (): void => {
       room = measure()
-      placedFor = ""
+      bar = measureBar()
+      stale = true
       update()
     }
 
