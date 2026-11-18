@@ -15,13 +15,15 @@ import { MeasureHandles } from './MeasureHandles';
 import { closeStaleMeasurePopover, keptMeasure, mayEditMeasure, type MeasureEditState } from './measurePopoverGuard';
 import { trackPointer } from './pointerTrack';
 import { PopoverPressWatch } from './PopoverPressWatch';
+import { placesFreely, type ToolSwitchState } from '../../tools/toolSwitches';
 
 /** The popover of a kept measurement, which a press may land in. */
 const POPOVER = '.atlas-measure-popover';
 
 type HandleState = MeasureEditState
   & Pick<UISlice, 'measurePopover' | 'openMeasurePopover' | 'closeMeasurePopover'>
-  & Pick<MeasuresSlice, 'updateMeasure' | 'deleteMeasure'>;
+  & Pick<MeasuresSlice, 'updateMeasure' | 'deleteMeasure'>
+  & ToolSwitchState;
 
 /** What the handles read of their view's state, and what they write: a measurement moved or deleted, and whose popover is open. */
 export type MeasureHandleStore = Pick<StoreApi<HandleState>, 'getState'>;
@@ -241,7 +243,7 @@ export class MeasureHandleInteraction {
       if (!drag || !placed) return;
       // The handle keeps its distance to the pointer, so the measurement does not jump when grabbed off-centre.
       const at = viewport.toWorld(move.global.x, move.global.y);
-      const changes = drag.changes({ x: at.x - grabbed.x, y: at.y - grabbed.y }, move.altKey === true);
+      const changes = drag.changes({ x: at.x - grabbed.x, y: at.y - grabbed.y }, placesFreely(this.deps.store.getState(), 'measureSnap', move.altKey === true));
       // Snapped, most moves of the pointer leave it where it is: nothing is written then.
       if (sameDragChanges(changes, placed)) return;
       placed = changes;

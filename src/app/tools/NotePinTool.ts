@@ -110,14 +110,15 @@ export class NotePinTool {
         return;
       }
 
-      // Shift links the note to the clicked hex instead of pinning it to the point
-      const hexLayout = e.shiftKey ? this.preview.hexLayout() : null;
+      // With the tool's cell switch on (Shift turns it around) the note is linked to the clicked hex instead of pinned to the point
+      const toCell = this.preview.toCell(e.shiftKey);
+      const hexLayout = toCell ? this.preview.hexLayout() : null;
       if (hexLayout) {
         runInBackground(this.linkHexAt(e.worldX, e.worldY, hexLayout), 'Linking a note to a hex', 'Could not link the note to the hex');
         return;
       }
-      // On a square grid Shift puts a plain pin in the centre of the square: square grids link no cells
-      const centre = e.shiftKey ? this.preview.cellCentre({ x: e.worldX, y: e.worldY }) : null;
+      // On a square grid the switch puts a plain pin in the centre of the square: square grids link no cells
+      const centre = toCell ? this.preview.cellCentre({ x: e.worldX, y: e.worldY }) : null;
       if (centre) this.preview.showCell(centre);
       runInBackground(this.placePinAt(centre?.x ?? e.worldX, centre?.y ?? e.worldY), 'Placing a note pin', 'Could not place the note pin');
     });

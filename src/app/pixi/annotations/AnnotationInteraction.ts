@@ -16,6 +16,7 @@ import type { AnnotationPointerHandlers } from './annotationPointer';
 import { readSelection, type SelectionRead } from './annotationSelection';
 import { DoubleClick } from './DoubleClick';
 import type { SelectingStore } from './drawToolState';
+import { switchApplies } from '../../tools/toolSwitches';
 import { gripCursor } from './gripCursor';
 import { outlineOf, selectionPicture } from './selectionPicture';
 
@@ -110,6 +111,7 @@ export class AnnotationInteraction {
       touched: () => deps.touched(),
       snap: (world, free) => deps.snap(world, free),
       snapStamp: (at, footprint, free) => deps.snapStamp?.(at, footprint, free) ?? at,
+      constrains: (held) => switchApplies(deps.store.getState(), 'drawConstrain', held),
       wordsBox: (text) => deps.wordsBox(text),
       breaksAt: (text, width) => deps.breaksAt(text, width),
       showHandles: (handles, held) => {

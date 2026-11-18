@@ -58,6 +58,7 @@ import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
 import type { MapSize } from '../../online/gm/moveCheck';
 import { sessionDragWalls, type SessionDragWalls } from './sessionDragWalls';
+import { toolSwitch } from '../../tools/toolSwitches';
 
 interface DragState {
   isDragging: boolean;
@@ -554,7 +555,7 @@ export class InteractionController implements ITokenInteractionController {
       
       const tokenUpdates: Array<{id: string, x: number, y: number}> = [];
       const state = this.store.getState();
-      const snapToGrid = state.grid?.snapToGrid ?? true;
+      const snapToGrid = (state.grid?.snapToGrid ?? true) && toolSwitch(state, 'selectSnap');
       const tokens = mapTokens(levelObjects(state));
       const { walls, current = {} } = this.dragState;
       

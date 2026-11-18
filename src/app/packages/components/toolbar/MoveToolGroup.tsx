@@ -8,8 +8,9 @@ import { DropdownToggleRow } from "../primitives/DropdownToggleRow"
 import { LaserPointerOptions } from "../LaserPointerOptions"
 import { ToolGroup, type ToolGroupControls } from "./ToolGroup"
 import { moveToolFace } from "./toolFaces"
+import { ToolSwitchRow } from "./ToolSwitchRow"
 
-/** Move/Select and the laser pointer, with the selection mode and laser options. */
+/** Move/Select and the laser pointer, with the selection mode, whether dropped and turned tokens snap, and laser options. */
 export function MoveToolGroup({ activeTool, selectTool, menuOpen, toggleMenu }: ToolGroupControls): React.ReactElement {
   const hotkeyLabel = useHotkeyLabels()
   const selectionMode = useAtlasStore(state => state.selectionMode)
@@ -48,6 +49,7 @@ export function MoveToolGroup({ activeTool, selectTool, menuOpen, toggleMenu }: 
           value={selectionMode === 'lasso'}
           onChange={() => setSelectionMode(selectionMode === 'box' ? 'lasso' : 'box')}
         />
+        <ToolSwitchRow id="selectSnap" label={t('toolbar.snap')} />
       </div>
 
       <LaserPointerOptions />

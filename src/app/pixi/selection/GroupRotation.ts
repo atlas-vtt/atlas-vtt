@@ -13,6 +13,7 @@ import { tokenDiameterInCells } from '../token-renderer/tokenSizing';
 import { GroupRotateButton } from './GroupRotateButton';
 import { formationMiddle, pointerTurn, snapTurn, turnTokens, type Footprint, type Point, type TokenAtStart } from './groupTurn';
 import type { Box } from './selectionGeometry';
+import { toolSwitch } from '../../tools/toolSwitches';
 
 /** What the tokens' renderer does for a group being turned. */
 export interface GroupTurnHost {
@@ -194,7 +195,7 @@ export class GroupRotation {
     const turn = this.turn;
     // A scene loading writes the store in steps; the turn waits for it, and `drop` follows
     if (!turn || this.deps.store.getState().isMapLoading) return;
-    const degrees = snapTurn(pointerTurn(turn.centre, turn.from, this.deps.viewport.toWorld(event.global)), event.shiftKey);
+    const degrees = snapTurn(pointerTurn(turn.centre, turn.from, this.deps.viewport.toWorld(event.global)), event.shiftKey, !toolSwitch(this.deps.store.getState(), 'selectSnap'));
     if (degrees === turn.degrees) return;
     if (!turn.started) {
       turn.started = true;

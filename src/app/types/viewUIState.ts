@@ -1,5 +1,6 @@
 import type { ExploredBrushOptions } from '../lighting/exploredEdits';
 import type { LightingToolOptions } from '../lighting/lightingTool';
+import type { ToolSwitches } from '../tools/toolSwitches';
 import type { DrawToolChoices } from '../annotations/annotationTypes';
 import type { FogToolChoices } from '../fog/fogToolChoices';
 import type { MeasureToolOptions } from '../measure/measureTypes';
@@ -61,6 +62,8 @@ export interface ViewUIState {
   fogTool: FogToolChoices;
   /** The lighting tool's mode and choices: the bar above the toolbar sets them, the controller hands them to its editors. */
   lightingTool: LightingToolOptions;
+  /** The tools' switches that stand for a key held during a press (`toolSwitches.ts`): the tools' menus set them, the tools read them. Never saved. */
+  toolSwitches: ToolSwitches;
   /** The tokens the pointer holds (pressed or dragged), each where it stood when taken; set through `holdTokens`. */
   heldTokens: HeldTokens;
   /** What the lighting tool's explored-memory mode does with a stroke: the one place the menu and the tool read it from. */

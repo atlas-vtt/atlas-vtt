@@ -2,6 +2,7 @@ import type { GridSystem } from '../../grid/GridSystem';
 import { unitScaleOf } from '../../lighting/lightingUnits';
 import { toolLook } from '../../measure/measureLights';
 import { snapAreaEnd, snapAreaOrigin } from '../../measure/measureSnap';
+import { placesFreely, type ToolSwitchState } from '../../tools/toolSwitches';
 import type { MeasureInput, Measurement, MeasureShapeKind, MeasureToolOptions } from '../../measure/measureTypes';
 import type { GridState } from '../../types/gridTypes';
 import type { SceneLighting } from '../../types/lightingTypes';
@@ -27,7 +28,7 @@ const OFFERED: readonly MeasureShapeKind[] = ['ruler', 'circle', 'cone', 'square
  * snaps and how large its cells are, the tool's choices, whether the scene is lit, and where a
  * measurement is kept. A view's store is one; so is any object that answers the same.
  */
-export interface LiveMeasuringState {
+export interface LiveMeasuringState extends ToolSwitchState {
   readonly grid: Pick<GridState, 'snapToGrid' | 'size'> | null;
   readonly measureTool: MeasureToolOptions;
   readonly lighting: Pick<SceneLighting, 'enabled'>;
@@ -78,13 +79,13 @@ export class LiveMeasuring implements MeasureInputHost {
   }
 
   /**
-   * The pointer's place in world space. While the grid's snap setting is on and Alt does not free
-   * it, a ruler's point lies on the cell's centre; an area starts on a cell's centre, corner or
+   * The pointer's place in world space. While the grid's snap setting and the tool's Snap switch
+   * are on (Alt, `held`, turns the switch around), a ruler's point lies on the cell's centre; an area starts on a cell's centre, corner or
    * edge middle, and ends a whole number of cells from its start, whichever way the pointer lies.
    */
-  point(world: Point, free: boolean): Point {
+  point(world: Point, held: boolean): Point {
     const { store, grid } = this.deps;
-    if (free || !(store.getState().grid?.snapToGrid ?? true)) return { x: world.x, y: world.y };
+    if (placesFreely(store.getState(), 'measureSnap', held) || !(store.getState().grid?.snapToGrid ?? true)) return { x: world.x, y: world.y };
     const shape = this.shape();
     if (shape === null || shape === 'ruler') return grid.snapToCellCenter(world.x, world.y);
     const start = this.deps.measuring() ? this.start : null;

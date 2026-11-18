@@ -47,6 +47,8 @@ export interface DrawKeys {
   typed(event: KeyboardEvent): boolean;
   /** Whether the key is the map's to take: one that is not drops the shape and is left alone. */
   areMaps(event: KeyboardEvent): boolean;
+  /** Whether shapes keep even sides: the tool's Constrain switch, turned around while Shift is `held`. Unset: as Shift says. */
+  constrains?(held: boolean): boolean;
 }
 
 /**
@@ -232,8 +234,12 @@ export class DrawInput {
     const pointer = this.pointer;
     if (!pointer) return;
     if (key === 'Alt') pointer.free = held;
-    else pointer.constrain = held;
+    else pointer.constrain = this.constrains(held);
     this.apply(this.gesture.move(this.told(pointer)), pointer.free);
+  }
+
+  private constrains(held: boolean): boolean {
+    return this.keys.constrains?.(held) ?? held;
   }
 
   private get zoom(): number {
@@ -243,7 +249,7 @@ export class DrawInput {
   /** The pointer of `e` as the gesture is told of it, remembered for a key that places it again. */
   private read(e: FederatedPointerEvent): DrawPointer {
     const { x, y } = this.viewport.toWorld(e.global);
-    this.pointer = { world: { x, y }, screen: { x: e.global.x, y: e.global.y }, free: altHeld(e), constrain: shiftHeld(e) };
+    this.pointer = { world: { x, y }, screen: { x: e.global.x, y: e.global.y }, free: altHeld(e), constrain: this.constrains(shiftHeld(e)) };
     return this.told(this.pointer);
   }
 

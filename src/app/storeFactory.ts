@@ -327,6 +327,7 @@ export interface ViewAtlasState extends ViewState {
   setDrawTool: UISlice['setDrawTool'];
   setFogTool: UISlice['setFogTool'];
   setLightingTool: UISlice['setLightingTool'];
+  setToolSwitch: UISlice['setToolSwitch'];
   setHeldTokens: UISlice['setHeldTokens'];
   setExploredBrush: UISlice['setExploredBrush'];
   setToolbarEditing: UISlice['setToolbarEditing'];

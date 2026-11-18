@@ -12,6 +12,7 @@ import type { TokenResizeUI } from './TokenResizeUI';
 import { destroyTree } from './utils/destroyTree';
 import { levelObjects } from '../levels/levelObjects';
 import { mapTokens } from '../tokens/offMap';
+import { toolSwitch } from '../tools/toolSwitches';
 
 export class TokenRotationUI {
   private viewport: Viewport;
@@ -328,8 +329,8 @@ export class TokenRotationUI {
     // Calculate rotation delta
     let deltaAngle = (currentAngle - this.rotationStartAngle) * 180 / Math.PI;
     
-    // Always snap to increments
-    const snapIncrement = e.shiftKey ? 45 : 15; // 45 degrees with shift, 15 degrees normally
+    // Steps of 15 degrees, 45 with Shift; whole degrees while the select tool's Snap is off
+    const snapIncrement = e.shiftKey ? 45 : toolSwitch(this.store.getState(), 'selectSnap') ? 15 : 1;
     deltaAngle = Math.round(deltaAngle / snapIncrement) * snapIncrement;
     
     // Update all selected tokens WITHOUT creating undo states
