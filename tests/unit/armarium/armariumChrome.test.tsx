@@ -15,7 +15,7 @@ const sel = {
   handleNavigateForward: vi.fn(),
 } as unknown as React.ComponentProps<typeof Header>['sel'];
 
-function renderHeader(armarium?: { onBack: () => void; onReload: () => void }): void {
+function renderHeader(armarium?: React.ComponentProps<typeof Header>['armarium']): void {
   render(
     <TooltipProvider>
       <Header
@@ -38,7 +38,7 @@ function renderHeader(armarium?: { onBack: () => void; onReload: () => void }): 
 
 describe('the header over the Armarium', () => {
   it('marks no tab, leads Back to the library and puts the store\'s actions where search and Create stand', () => {
-    const armarium = { onBack: vi.fn(), onReload: vi.fn() };
+    const armarium = { onBack: vi.fn(), onReload: vi.fn(), onShare: vi.fn(), page: 'https://atlas-vtt.dev/armarium' };
     const open = vi.spyOn(window, 'open').mockImplementation(() => null);
     renderHeader(armarium);
 
@@ -56,6 +56,8 @@ describe('the header over the Armarium', () => {
     expect(armarium.onReload).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole('button', { name: 'Open in browser' }));
     expect(open).toHaveBeenCalledWith('https://atlas-vtt.dev/armarium');
+    fireEvent.click(screen.getByRole('button', { name: 'Share the selected collection in the Armarium' }));
+    expect(armarium.onShare).toHaveBeenCalledTimes(1);
     open.mockRestore();
   });
 });
@@ -75,5 +77,20 @@ describe('the sidebar', () => {
 
     rerender(<TooltipProvider><Sidebar {...props} armariumShown /></TooltipProvider>);
     expect(screen.getByRole('button', { name: 'Armarium' }).getAttribute('aria-current')).toBe('page');
+  });
+
+  it('shares the selected collection in the Armarium from beside Export and Import', () => {
+    const onShareCollection = vi.fn();
+    render(
+      <TooltipProvider>
+        <Sidebar
+          selectedTagIds={[]} onSelectTag={vi.fn()} onClearTags={vi.fn()} tags={[]} countedAssets={[]} collections={[]}
+          selectedCollection="default" onSelectCollection={vi.fn()} onManageTags={vi.fn()}
+          onExportCollection={vi.fn()} onImportCollection={vi.fn()} onShareCollection={onShareCollection}
+        />
+      </TooltipProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Share in the Armarium' }));
+    expect(onShareCollection).toHaveBeenCalledTimes(1);
   });
 });

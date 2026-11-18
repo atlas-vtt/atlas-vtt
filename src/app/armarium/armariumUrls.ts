@@ -7,6 +7,19 @@
 export const ARMARIUM_ORIGIN = 'https://atlas-vtt.dev';
 /** The store's page, framed in the asset manager. */
 export const ARMARIUM_PAGE_URL = `${ARMARIUM_ORIGIN}/armarium`;
+/** What may be shared in the Armarium, which the publish step points to beside the declaration. */
+export const ARMARIUM_RULES_URL = `${ARMARIUM_PAGE_URL}/rules#sharing`;
+
+/** A listing's page in the Armarium, by its slug. */
+export function armariumListingUrl(slug: string): string {
+  return `${ARMARIUM_PAGE_URL}/${encodeURIComponent(slug)}`;
+}
+
+/** Whether `url` is a page of the Armarium, which its pane may show. */
+export function isArmariumPageUrl(url: string): boolean {
+  return url === ARMARIUM_PAGE_URL || url.startsWith(`${ARMARIUM_PAGE_URL}/`);
+}
+
 /** The installable list: every free listing the site shows at its newest version, with its file's size and SHA-256. */
 export const ARMARIUM_LIST_URL = `${ARMARIUM_ORIGIN}/api/armarium/v1`;
 /** Counts the download, then answers with a redirect to the file. */

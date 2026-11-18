@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { MotionConfig, motion, useReducedMotion } from 'framer-motion';
-import { Search, X, Settings, Tag, Download, Upload, Store } from 'lucide-react';
+import { Search, X, Settings, Tag, Download, Upload, Store, CloudUpload } from 'lucide-react';
 import { Button } from '../../primitives/button';
 import { LabelTooltip } from '../../primitives/tooltip';
 import type { AnyAsset, CollectionOption, Tag as TagType } from '../types';
@@ -34,6 +34,8 @@ export interface SidebarProps {
   onEditCollectionSettings?: (collectionId: string) => void;
   onExportCollection?: () => void;
   onImportCollection?: () => void;
+  /** Shares the selected collection in the Armarium: sign-in, upload, checks and the listing, all in Atlas. */
+  onShareCollection?: () => void;
   /** Shows the Armarium, where free collections install with a click, in place of the library. */
   onShowArmarium?: () => void;
   /** The Armarium is shown: its row is the current place. */
@@ -59,6 +61,7 @@ export function Sidebar({
   onEditCollectionSettings,
   onExportCollection,
   onImportCollection,
+  onShareCollection,
   onShowArmarium,
   armariumShown = false,
   footer,
@@ -127,6 +130,13 @@ export function Sidebar({
                   <LabelTooltip label={t('am.sidebar.export')}>
                     <Button variant="ghost" size="icon" className="atlas-collection-header-btn" onClick={onExportCollection} aria-label={t('am.sidebar.export')}>
                       <Upload />
+                    </Button>
+                  </LabelTooltip>
+                )}
+                {onShareCollection && (
+                  <LabelTooltip label={t('armariumShare.shareCollection')}>
+                    <Button variant="ghost" size="icon" className="atlas-collection-header-btn" onClick={onShareCollection} aria-label={t('armariumShare.shareCollection')}>
+                      <CloudUpload />
                     </Button>
                   </LabelTooltip>
                 )}

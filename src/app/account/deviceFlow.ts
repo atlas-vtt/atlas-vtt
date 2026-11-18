@@ -1,7 +1,7 @@
-import type { Timers } from '../companionTimers.ts';
+import type { Timers } from '../utils/workerTimers';
 import { field, type Http } from './http.ts';
 
-/** The companion's client id at the account service. */
+/** Atlas for Obsidian's client id at the account service. */
 export const CLIENT_ID = 'atlas-obsidian';
 const DEVICE_GRANT = 'urn:ietf:params:oauth:grant-type:device_code';
 /** RFC 8628 §3.5: a `slow_down` answer adds five seconds to the interval. */
@@ -83,7 +83,7 @@ export interface DeviceSignInPorts {
 /**
  * One desktop sign-in: asks for a code, opens the approve page, and polls at the server's interval
  * (slower after `slow_down`) until the GM approves or declines, the code expires, or it is cancelled.
- * Polls run on the companion's timers, so they keep their pace while Obsidian is hidden. A server
+ * Polls run on timers that keep their pace while Obsidian is hidden (`WorkerTimers`). A server
  * that cannot be reached while polling is asked again; the code's expiry ends that too.
  */
 export class DeviceSignIn {
