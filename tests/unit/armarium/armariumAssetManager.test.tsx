@@ -50,17 +50,15 @@ vi.mock('../../../src/app/packages/components/asset-manager/components/ModalLaye
   ModalLayer: ({ crud }: { crud: { transfer: { step: string } | null } }) => (crud.transfer ? <div role="dialog" aria-label="Import review" /> : null),
 }));
 vi.mock('../../../src/app/packages/components/asset-manager/components/Sidebar', () => ({
-  Sidebar: ({ onShowArmarium, armariumShown, onSelectTag }: { onShowArmarium: () => void; armariumShown: boolean; onSelectTag: (id: string) => void }) => (
-    <div>
-      <button type="button" aria-current={armariumShown ? 'page' : undefined} onClick={onShowArmarium}>Armarium</button>
-      <button type="button" onClick={() => onSelectTag('forest')}>forest</button>
-    </div>
+  Sidebar: ({ onSelectTag }: { onSelectTag: (id: string) => void }) => (
+    <button type="button" onClick={() => onSelectTag('forest')}>forest</button>
   ),
 }));
 vi.mock('../../../src/app/packages/components/asset-manager/components/Header', () => ({
-  Header: ({ onTabChange, armarium }: { onTabChange: (tab: string) => void; armarium?: { onBack: () => void; onReload: () => void } }) => (
+  Header: ({ onTabChange, armarium, onShowArmarium }: { onTabChange: (tab: string) => void; armarium?: { onBack: () => void; onReload: () => void }; onShowArmarium: () => void }) => (
     <div>
       <button type="button" onClick={() => onTabChange('maps')}>Maps</button>
+      <button type="button" aria-current={armarium ? 'page' : undefined} onClick={onShowArmarium}>Armarium</button>
       {armarium && <button type="button" onClick={armarium.onBack}>Back to the library</button>}
       {armarium && <button type="button" onClick={armarium.onReload}>Reload</button>}
     </div>

@@ -97,7 +97,7 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
   line-height: 1;
 }
 
-// ── Small header-row action buttons ─────────────────────────────────────────
+// ── Small icon buttons of the tags' header and search ───────────────────────
 
 .atlas-collection-header-btn {
   &.btn,
@@ -115,33 +115,6 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
 
   &:hover {
     color: var(--text-normal);
-  }
-}
-
-// ── Armarium (top left) ─────────────────────────────────────────────────────
-// The Armarium is a place beside the library, reached from the sidebar's first row; it is lit while the store fills
-// the content area. Its icon lines up with the collection picker's edge below it.
-
-.atlas-sidebar-armarium-btn {
-  &.btn {
-    height: 24px;
-    gap: $spacing-xs;
-    margin-left: -$spacing-xs;
-    padding: 0 $spacing-xs;
-    font-size: $font-ui-small;
-    font-weight: $font-weight-medium;
-    color: var(--text-muted);
-    border-radius: $radius-s;
-  }
-
-  svg {
-    width: $icon-xs;
-    height: $icon-xs;
-  }
-
-  &.btn.atlas-active {
-    background-color: color-mix(in oklch, var(--interactive-accent) 14%, transparent);
-    @include atlas-accent-text;
   }
 }
 

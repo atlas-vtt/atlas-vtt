@@ -23,6 +23,15 @@
       color: var(--text-muted);
     }
   }
+
+  // The Armarium is a place beside the library, not an asset type: a hairline sets it apart from the tabs before it.
+  .atlas-tab-divider {
+    flex-shrink: 0;
+    width: $border-width-s;
+    height: $icon-s;
+    margin-inline: $spacing-xs;
+    background-color: var(--background-modifier-border);
+  }
 }
 
 // The current type as a menu button, shaped like the tab switcher it replaces.

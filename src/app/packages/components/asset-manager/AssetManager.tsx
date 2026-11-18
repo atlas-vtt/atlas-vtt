@@ -173,8 +173,6 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
             onExportCollection={() => { void crud.handleExportCollection(); }}
             onShareCollection={() => { void crud.handleShareCollection(); }}
             onImportCollection={crud.handleImportCollection}
-            onShowArmarium={() => armarium.show()}
-            armariumShown={armarium.shown}
             footer={!armarium.shown && activeTab === 'tokens' && data.assetService && data.assets.length > 0 ? <BestiaryTokensOffer app={data.app} assets={data.assetService} collection={selectedCollection} variant="sidebar" dismissed={starterOffer.dismissed} {...(starterOffer.dismiss && { onDismiss: starterOffer.dismiss })} /> : null}
             layout={sidebar}
           />
@@ -200,6 +198,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
             sidebarToggleLabel={sidebar.toggleLabel}
             onToggleSidebar={sidebar.toggle}
             sel={sel}
+            onShowArmarium={() => armarium.show()}
             armarium={armarium.shown ? { onBack: armarium.leave, onReload: armarium.reload, page: armarium.page, onShare: () => { void crud.handleShareCollection(); } } : undefined}
           />
           <div
