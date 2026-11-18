@@ -25,6 +25,7 @@
 @use './portal-host';
 // At the root too: Atlas' scroll areas are found by class, in every window and floating layer.
 @use './overlay-scrollbars';
+@use './touch';
 
 // Atlas' scroll shadow (`atlas-scroll-shadow`): always dark, lighter on the light theme's pale surfaces.
 body.theme-dark {

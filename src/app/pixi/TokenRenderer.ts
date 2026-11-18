@@ -194,8 +194,8 @@ export class TokenRenderer {
   private wallPointerUpHandler?: () => void;
   private wallDoubleClickHandler?: () => void;
   private wallContextMenuHandler?: (worldX: number, worldY: number, screenX: number, screenY: number) => void;
-  private wallMenuAt?: (worldX: number, worldY: number) => boolean;
-  private wallPointerCancelHandler?: () => void;
+  private wallMenuAt: ((worldX: number, worldY: number) => boolean) | undefined;
+  private wallPointerCancelHandler: (() => void) | undefined;
   private wallCursorProvider?: (worldX: number, worldY: number) => string;
 
   /** The stairs tool's editor, which takes the pointer while that tool is active. */
@@ -1654,26 +1654,23 @@ export class TokenRenderer {
     this.wallPointerMoveHandler = fn;
   }
 
-  public setWallPointerUpHandler(fn: () => void): void {
+  /** `cancel` runs when a press the wall tool was handed is lost (a second finger, a touch the system took): what it drew goes. */
+  public setWallPointerUpHandler(fn: () => void, cancel?: () => void): void {
     this.wallPointerUpHandler = fn;
+    this.wallPointerCancelHandler = cancel;
   }
 
   public setWallDoubleClickHandler(fn: () => void): void {
     this.wallDoubleClickHandler = fn;
   }
 
-  /** Whether the wall tool's menu has something to open at a world point; unset, it is taken to. */
-  public setWallMenuProbe(fn: (worldX: number, worldY: number) => boolean): void {
-    this.wallMenuAt = fn;
-  }
-
-  /** A press the wall tool was handed is lost (a second finger, a touch the system took): what it drew goes. */
-  public setWallPointerCancelHandler(fn: () => void): void {
-    this.wallPointerCancelHandler = fn;
-  }
-
-  public setWallContextMenuHandler(fn: (worldX: number, worldY: number, screenX: number, screenY: number) => void): void {
+  /** `menuAt` says whether the menu has something to open at a world point; unset, it is taken to. */
+  public setWallContextMenuHandler(
+    fn: (worldX: number, worldY: number, screenX: number, screenY: number) => void,
+    menuAt?: (worldX: number, worldY: number) => boolean,
+  ): void {
     this.wallContextMenuHandler = fn;
+    this.wallMenuAt = menuAt;
   }
 
   public setWallCursorProvider(fn: (worldX: number, worldY: number) => string): void {

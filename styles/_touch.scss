@@ -1,0 +1,22 @@
+@use './mixins' as *;
+
+// The map under a finger. A finger that rests on it is a long press of Atlas' own
+// (`TouchGestures`): the system shows no callout and no magnifier, selects nothing, and never
+// pans or zooms the page under the canvas. Every handle of the map is drawn on this canvas.
+.atlas-map-canvas {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+// A finger that rests on a card, a tab or a row asks for its menu (`ContextMenuBridge`), so iOS
+// keeps its own callout (save image, open link) for everything else. The property is inherited;
+// text fields keep their selection, which the callout is no part of.
+@include atlas-coarse-pointer {
+  .atlas-vtt-plugin,
+  :not(body)[class*='atlas-'] {
+    -webkit-touch-callout: none;
+  }
+}

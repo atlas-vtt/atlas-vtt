@@ -65,13 +65,12 @@ export function wireLightingPointer(tokens: TokenRenderer, { lights, editor, mod
   tokens.setWallPointerUpHandler(() => {
     modes.pointerUp();
     editor.pointerUp();
-  });
-  tokens.setWallPointerCancelHandler(() => editor.pointerCancel());
-  tokens.setWallMenuProbe((x, y) => editor.shown && (!modes.active || roomsAtRest()) && wallMenuAt(x, y));
+  }, () => editor.pointerCancel());
   tokens.setWallDoubleClickHandler(() => (modes.active ? modes.doubleClick() : editor.doubleClick()));
+  const menuShown = (): boolean => editor.shown && (!modes.active || roomsAtRest());
   tokens.setWallContextMenuHandler((x, y, screenX, screenY) => {
-    if (editor.shown && (!modes.active || roomsAtRest())) wallMenu(x, y, screenX, screenY);
-  });
+    if (menuShown()) wallMenu(x, y, screenX, screenY);
+  }, (x, y) => menuShown() && wallMenuAt(x, y));
   tokens.setWallCursorProvider((x, y) => {
     if (!modes.active || editor.busy || wallsInRooms({ x, y })) return editor.cursorAt({ x, y });
     return modes.cursorAt({ x, y });
