@@ -124,7 +124,7 @@ export class MosaicCanvas {
     if (!this.shown) return;
     this.place(this.shown);
     this.deps.requestRender();
-    this.emit('image');
+    this.emit('placement');
   }
 
   /** Whether an animated map's video plays, holds its frame, or gives way to its poster (`mapVideoMode`). */

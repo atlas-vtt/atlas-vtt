@@ -772,7 +772,7 @@ export class PixiRendererOrchestrator { // Renamed class
 
   private mapImageChanged(change: MosaicCanvasChange): void {
     // The lighting follows a new albedo by itself, without building its scene anew.
-    if (this._isDestroyed || change !== 'image') return;
+    if (this._isDestroyed || change === 'albedo') return;
     // An alignment's preview draws the map another way than the scene has it: only the zoom range
     // follows it, and the fog, the lighting and the explored memory keep the scene's size until the
     // alignment is applied.
@@ -835,6 +835,15 @@ export class PixiRendererOrchestrator { // Renamed class
       this.tokenRenderer.updateAllTokenSizes();
     }
     this.resnapTokensToGrid();
+  }
+
+  /**
+   * Draws the floor the view shows with `placement` while the GM moves it (Position floor), the map
+   * image alone: what covers the map keeps the scene's size until the move is written, as during an
+   * alignment's preview (`isPreviewingStretch`). Null draws it as the scene has it.
+   */
+  public previewViewedPlacement(placement: MapStretch | null): void {
+    this.mapImage?.setStretch(placement ?? viewedImagePlacement(this.store.getState()));
   }
 
   /**

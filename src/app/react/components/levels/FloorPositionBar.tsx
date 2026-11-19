@@ -61,12 +61,13 @@ function FloorPositionBars(): React.ReactElement | null {
   useEffect(() => {
     const canvas = renderer?.getCanvasElement();
     const viewport = renderer?.getViewportInstance();
-    if (!canvas || !viewport || !view) return undefined;
+    if (!renderer || !canvas || !viewport || !view) return undefined;
     const positioning = new FloorPositioning({
       store,
       viewId: view.viewId,
       canvas,
       zoom: () => viewport.scale.x,
+      preview: (placement) => renderer.previewViewedPlacement(placement),
       onStopped: setStopped,
       onDone: () => store.getState().setFloorPositioning(false),
     });
