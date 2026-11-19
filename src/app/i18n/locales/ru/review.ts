@@ -7,7 +7,7 @@ export const review: Translation = {
   'review.kind.statblock': 'Статблок',
   'review.kind.character': 'Персонаж',
   'review.kind.scene': 'Сцена',
-  'review.kind.encounter': 'Стычка',
+  'review.kind.encounter': 'Столкновение',
   'review.kind.player': 'Игрок',
   'review.kind.asset': 'Ресурс',
   'review.kind.collection': 'Коллекция',

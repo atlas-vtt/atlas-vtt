@@ -98,7 +98,7 @@ export const pin = {
   "pin.search.noNotes": "Nessuna nota trovata",
   "pin.places": "Luoghi",
   "pin.group.marks": "Segni",
-  "pin.needsGmView": "Passa alla vista GM ({key}) per posizionare segnaposto",
+  "pin.needsGmView": "Passa alla vista del master ({key}) per posizionare segnaposto",
   "pin.search.placeholder": "Cerca note, mappe e incontri…",
   "pin.search.label": "Cerca note, mappe e incontri",
   "pin.search.encounters": { one: "{count} incontro", other: "{count} incontri" },

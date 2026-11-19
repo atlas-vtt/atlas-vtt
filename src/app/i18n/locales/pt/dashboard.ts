@@ -15,7 +15,7 @@ export const dashboard: Translation = {
   'dashboard.hoursAgo': 'há {count} h',
   'dashboard.daysAgo': 'há {count} d',
   'dashboard.createScene': 'Nova cena',
-  'dashboard.assets': 'Gerenciador de recursos',
+  'dashboard.assets': 'Gerenciador de assets',
   'dashboard.begin': 'Começar',
   'dashboard.continue': 'Continue sua aventura',
   'dashboard.resume': 'Retomar',

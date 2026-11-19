@@ -3,8 +3,8 @@ import type { Translation } from '../../types';
 export const assetGrid: Translation = {
   'assetGrid.selected': { one: '{count} elemento selezionato', other: '{count} elementi selezionati' },
   'assetGrid.menuOf': 'Opzioni di {name}',
-  'assetGrid.statblockMissing': 'Nota del blocco statistiche non trovata',
-  'assetGrid.openStatblock': 'Apri blocco statistiche',
+  'assetGrid.statblockMissing': 'Nota dello statblock non trovata',
+  'assetGrid.openStatblock': 'Apri statblock',
   'assetGrid.collections': 'Collezioni',
   'assetGrid.tokenCount': { one: '{count} token', other: '{count} token' },
   'assetGrid.filtersActive': { one: 'Filtri, {count} attivo', other: 'Filtri, {count} attivi' },

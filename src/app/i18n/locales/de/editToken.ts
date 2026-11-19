@@ -2,7 +2,7 @@ import type { Translation } from '../../types';
 
 export const editToken: Translation = {
   'editToken.none': 'Keine',
-  'editToken.statblockDefault': 'Standard aus Werteblock: {value}',
+  'editToken.statblockDefault': 'Standard aus Statblock: {value}',
   'editToken.title': 'Token bearbeiten',
   'editToken.name': 'Name',
   'editToken.namePlaceholder': 'Token-Name',
@@ -11,5 +11,5 @@ export const editToken: Translation = {
   'editToken.speedDefault': 'Standard: {value}',
   'editToken.resources': 'Ressourcen',
   'editToken.token': 'Token',
-  'editToken.resetStatblock': 'Auf Standard aus Werteblock zurücksetzen',
+  'editToken.resetStatblock': 'Auf Standard aus Statblock zurücksetzen',
 };

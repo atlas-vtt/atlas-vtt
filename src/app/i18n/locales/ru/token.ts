@@ -12,7 +12,7 @@ export const token: Translation = {
   'token.kill': 'Убить',
   'token.show': 'Показать',
   'token.hide': 'Скрыть',
-  'token.saveEncounter': 'Сохранить как стычку',
+  'token.saveEncounter': 'Сохранить как столкновение',
   'token.addInitiative': 'Добавить в инициативу',
   'token.makePlayerCharacter': 'Сделать персонажем игрока',
   'token.noLongerPlayerCharacter': 'Больше не персонаж игрока',

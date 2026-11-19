@@ -1,9 +1,9 @@
 import type { Translation } from '../../types';
 
 export const command = {
-  'command.newStatblockTemplate': 'Nuovo modello di blocco statistiche…',
+  'command.newStatblockTemplate': 'Nuovo modello di statblock…',
   "command.cleanUpMissingAssets": "Rimuovi riferimenti alle risorse mancanti nella mappa attuale",
-  "command.createTokenFromStatblock": "Crea token dall’immagine di un blocco statistiche",
+  "command.createTokenFromStatblock": "Crea token dall’immagine di uno statblock",
   "command.dismissImageFromPlayerView": "Nascondi immagine nella vista giocatori",
   "command.displayImageOnPlayerView": "Mostra immagine nella vista giocatori",
   "command.importStatblockTokens": "Importa token da Fantasy Statblocks",

@@ -13,7 +13,7 @@ export const grid: Translation = {
   'grid.numbers.sequential': 'Secuencial (1, 2, 3)',
   'grid.show': 'Mostrar cuadrícula',
   'grid.snap': 'Ajustar a la cuadrícula',
-  'grid.snapHint': 'Las fichas y las mediciones se colocan en el centro de las casillas',
+  'grid.snapHint': 'Los tokens y las mediciones se colocan en el centro de las casillas',
   'grid.detectOnNewScenes': 'Detectar cuadrícula en escenas nuevas',
   'grid.detectOnNewScenesHint': 'Desactívalo para juegos sin cuadrícula: las escenas nuevas no tienen cuadrícula y nada se ajusta hasta que alineas una',
   'grid.distancePerCell': 'Distancia por casilla',

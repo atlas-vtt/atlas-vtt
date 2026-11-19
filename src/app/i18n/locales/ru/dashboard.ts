@@ -26,5 +26,5 @@ export const dashboard: Translation = {
   'dashboard.statblockScope': 'Какие статблоки показывать',
   'dashboard.begin': 'Начать',
   'dashboard.resume': 'Продолжить',
-  'dashboard.closeScreen': 'Закрыть экран мастера',
+  'dashboard.closeScreen': 'Закрыть ширму мастера',
 };

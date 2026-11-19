@@ -19,7 +19,7 @@ export const issue: Translation = {
   'issue.type.question': 'Frage oder etwas anderes',
   'issue.area.maps': 'Karten, Szenen und Raster',
   'issue.area.tokens': 'Tokens',
-  'issue.area.notes': 'Notizen, Pins und Werteblöcke',
+  'issue.area.notes': 'Notizen, Pins und Statblöcke',
   'issue.area.vision': 'Nebel des Krieges und Beleuchtung',
   'issue.area.combat': 'Initiative und Kampf',
   'issue.area.dice': 'Würfel',

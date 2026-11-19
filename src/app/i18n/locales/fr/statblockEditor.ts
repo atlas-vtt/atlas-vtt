@@ -202,7 +202,7 @@ export const statblockEditor: Translation = {
   'statblockEditor.newTemplate': 'Nouveau modèle',
   'statblockEditor.newerAtlas': 'Créé avec une version plus récente d\'Atlas',
   'statblockEditor.noAtlasStatblock': 'Cette note n\'a pas de fiche Atlas.',
-  'statblockEditor.noFence': 'Cette note ne contient aucun bloc de fiche à copier.',
+  'statblockEditor.noFence': 'Cette note ne contient aucun bloc de code statblock à copier.',
   'statblockEditor.noStatblock': 'Cette note n\'a pas de fiche.',
   'statblockEditor.noStatblockMatches': 'Aucune fiche ne correspond',
   'statblockEditor.noStatblocks': 'Aucune fiche dans ce coffre pour l\'instant',

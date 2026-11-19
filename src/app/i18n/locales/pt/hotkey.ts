@@ -3,7 +3,7 @@ import type { Translation } from '../../types';
 export const hotkey: Translation = {
   'hotkey.help': 'Guia rápido',
   'hotkey.palette': 'Paleta de comandos',
-  'hotkey.assets': 'Gerenciador de recursos',
+  'hotkey.assets': 'Gerenciador de assets',
   'hotkey.dashboard': 'Escudo do Mestre',
   'hotkey.gmView': 'Alternar visão do Mestre',
   'hotkey.sceneSwitcher': 'Alternar entre mapas abertos',

@@ -3,7 +3,7 @@ import type { Translation } from '../../types';
 export const menu: Translation = {
   'menu.clearRing': 'Quitar anillo',
   'menu.conditions': 'Estados',
-  'menu.conditionsFor': { one: 'Estados ({count} ficha)', other: 'Estados ({count} fichas)' },
+  'menu.conditionsFor': { one: 'Estados ({count} token)', other: 'Estados ({count} tokens)' },
   'menu.lower': 'Bajar {label}',
   'menu.raise': 'Subir {label}',
   'menu.ring.blue': 'Azul',

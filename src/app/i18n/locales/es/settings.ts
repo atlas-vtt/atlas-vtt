@@ -58,7 +58,7 @@ export const settings: Translation = {
   'settings.tutorials.resetDesc': 'Mostrar todos los tutoriales de nuevo la próxima vez que abras su función.',
   'settings.tutorials.resetDone': 'Los tutoriales se volverán a mostrar la próxima vez que abras cada función.',
   'settings.tutorials.show': 'Mostrar tutoriales',
-  'settings.tutorials.showDesc': 'Breves visitas guiadas por el gestor de recursos, la paleta de comandos, los bloques de estadísticas de las fichas y el botín, cada una mostrada una vez.',
+  'settings.tutorials.showDesc': 'Breves visitas guiadas por el gestor de recursos, la paleta de comandos, los bloques de estadísticas de los tokens y el botín, cada una mostrada una vez.',
   'settings.updates.available': 'Atlas {version} está disponible',
   'settings.updates.changelog': 'Registro de cambios',
   'settings.updates.changelogDesc': 'Versión instalada {version}. Consulta las nuevas funciones, mejoras y correcciones.',

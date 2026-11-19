@@ -8,7 +8,7 @@ export const mapIcon: Translation = {
   'mapIcon.trap': 'Falle',
   'mapIcon.danger': 'Gefahr',
   'mapIcon.fire': 'Feuer',
-  'mapIcon.loot': 'Beute',
+  'mapIcon.loot': 'Loot',
   'mapIcon.treasure': 'Schatz',
   'mapIcon.combat': 'Kampf',
   'mapIcon.tracks': 'Spuren',

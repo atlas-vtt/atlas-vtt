@@ -18,7 +18,7 @@ export const toolbarEdit: Translation = {
   'toolbarEdit.dice.label': 'Würfel',
   'toolbarEdit.dice.description': 'Würfle jede Mischung von Würfeln und zeige das Ergebnis allen am Tisch.',
   'toolbarEdit.assets.label': 'Asset-Manager',
-  'toolbarEdit.assets.description': 'Finde und platziere deine Karten, Tokens, Szenen und Begegnungen.',
+  'toolbarEdit.assets.description': 'Finde und platziere deine Karten, Tokens, Szenen und Encounter.',
   'toolbarEdit.palette.label': 'Befehlspalette',
   'toolbarEdit.palette.description': 'Finde jeden Befehl und jede Einstellung von Atlas, indem du den Namen tippst.',
   'toolbarEdit.undo.label': 'Rückgängig und Wiederholen',

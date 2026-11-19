@@ -77,7 +77,7 @@ export const creator: Translation = {
   'creator.zoomOutSelected': 'Diminuir zoom dos selecionados',
   'creator.token.saveFailedCount': { one: 'Não foi possível salvar {count} token: {error}', other: 'Não foi possível salvar {count} tokens: {error}' },
   'creator.map.saveFailedCount': { one: 'Não foi possível salvar {count} mapa: {error}', other: 'Não foi possível salvar {count} mapas: {error}' },
-  'creator.indexWriteFailed': 'não foi possível gravar o índice de recursos.',
+  'creator.indexWriteFailed': 'não foi possível gravar o índice de assets.',
   'creator.saving.updateMap': 'Atualizando mapa',
   'creator.saving.updateToken': 'Atualizando token',
   'creator.saving.addMaps': 'Adicionando mapas',

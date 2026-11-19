@@ -15,7 +15,7 @@ export const bundle: Translation = {
   'bundle.group.scenes': 'Escenas',
   'bundle.group.statblocks': 'Bloques de estadísticas',
   'bundle.group.templates': 'Plantillas de bloque de estadísticas',
-  'bundle.group.tokens': 'Fichas',
+  'bundle.group.tokens': 'Tokens',
   'bundle.importFailed': 'Falló la importación',
   'bundle.imported': 'Se importó {name}.',
   'bundle.importedTitle': 'Colección importada',

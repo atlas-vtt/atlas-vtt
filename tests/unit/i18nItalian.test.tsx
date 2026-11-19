@@ -76,13 +76,13 @@ describe('Atlas in Italian', () => {
     registerCommands(plugin, {} as CommandDependencies);
     expect(commands.find((command) => command.id === 'open-dashboard')?.name).toBe('Apri bacheca');
     expect(commands.find((command) => command.id === 'open-scene-browser')?.name).toBe('Apri gestione risorse');
-    expect(commands.find((command) => command.id === 'new-statblock-template')?.name).toBe('Nuovo modello di blocco statistiche…');
+    expect(commands.find((command) => command.id === 'new-statblock-template')?.name).toBe('Nuovo modello di statblock…');
     expect(ribbon).toContain('Mostra immagine nella vista giocatori');
   });
 
   it('renders collection controls in Italian', () => {
     render(<CreatureFieldSuggestions fields={[]} statblockCount={0} pending={false} onAdd={() => undefined} />);
-    expect(screen.getByText('Collega i blocchi statistiche ai personaggi di questa collezione per visualizzarne qui i campi.')).toBeTruthy();
+    expect(screen.getByText('Collega gli statblock ai personaggi di questa collezione per visualizzarne qui i campi.')).toBeTruthy();
   });
 
   it('walks through an in-app guide with Italian controls and remembers completion', () => {
@@ -124,7 +124,7 @@ it('selects Italian before importing module-level toolbar labels and tutorial st
     expect(ONLINE_COMMANDS.find((command) => command.id === 'start-online-table')?.name).toBe('Avvia tavolo online');
     expect(LOOT_SETTINGS_STEPS[0]?.title).toBe('Il bottino è nelle tue note');
     expect(LOOT_SETTINGS_STEPS[0]?.image?.alt).toBe('Una base di note di oggetti con una vista per ogni tipo di oggetto');
-    expect(EXPERIMENTAL_FEATURES.find((feature) => feature.id === 'statblockEditor')?.label).toBe('Editor dei blocchi statistiche');
+    expect(EXPERIMENTAL_FEATURES.find((feature) => feature.id === 'statblockEditor')?.label).toBe('Editor degli statblock');
     expect(EXPERIMENTAL_FEATURES.find((feature) => feature.id === 'onlinePlay')?.label).toBe('Gioco online');
   } finally {
     runtime?.setLocale('en', TRANSLATIONS);

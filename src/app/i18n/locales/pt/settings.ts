@@ -58,7 +58,7 @@ export const settings: Translation = {
   'settings.tutorials.resetDesc': 'Mostrar todos os tutoriais de novo na próxima vez que você abrir o recurso de cada um.',
   'settings.tutorials.resetDone': 'Os tutoriais aparecerão de novo na próxima vez que você abrir cada recurso.',
   'settings.tutorials.show': 'Mostrar tutoriais',
-  'settings.tutorials.showDesc': 'Tours guiados curtos do gerenciador de recursos, da paleta de comandos, das fichas dos tokens e do espólio, cada um mostrado uma vez.',
+  'settings.tutorials.showDesc': 'Tours guiados curtos do gerenciador de assets, da paleta de comandos, das fichas dos tokens e do loot, cada um mostrado uma vez.',
   'settings.updates.available': 'O Atlas {version} está disponível',
   'settings.updates.changelog': 'Novidades',
   'settings.updates.changelogDesc': 'Versão instalada {version}. Veja novos recursos, melhorias e correções.',
