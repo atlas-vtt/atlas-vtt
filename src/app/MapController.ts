@@ -93,7 +93,7 @@ function viewMapImage(app: App, renderer: MapRenderer): MosaicCanvas | null {
   // level's, a changed background, the map drawn with another stretch.
   mapImage.onChange((change) => {
     const rect = mapImage.worldRect;
-    if (change === 'image' && rect) fitZoomRange(viewport, rect);
+    if (change !== 'albedo' && rect) fitZoomRange(viewport, rect);
   });
   renderer.setMapImage(mapImage);
   return mapImage;
