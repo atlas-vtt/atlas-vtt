@@ -9,7 +9,7 @@ export const measure: Translation = {
   'measure.shape.line': 'Línea',
   'measure.stopsAtWalls': 'Se detiene en los muros',
   'measure.followsToken': 'Sigue a la ficha',
-  'measure.noTokenUnder': 'Su centro no está sobre ninguna ficha',
+  'measure.noTokenUnder': 'No empieza sobre ninguna ficha',
   'measure.width': 'Anchura',
   'measure.narrower': 'Más estrecho',
   'measure.wider': 'Más ancho',

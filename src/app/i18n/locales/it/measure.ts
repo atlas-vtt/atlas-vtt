@@ -9,7 +9,7 @@ export const measure = {
   "measure.shape.square": "Quadrato",
   "measure.stopsAtWalls": "Si ferma ai muri",
   "measure.followsToken": "Segue il token",
-  "measure.noTokenUnder": "Il suo centro non è su alcun token",
+  "measure.noTokenUnder": "Non inizia su alcun token",
   "measure.width": "Larghezza",
   "measure.narrower": "Più stretta",
   "measure.wider": "Più larga",

@@ -9,7 +9,7 @@ export const measure: Translation = {
   'measure.shape.line': '线形',
   'measure.stopsAtWalls': '遇墙停止',
   'measure.followsToken': '跟随棋子',
-  'measure.noTokenUnder': '它的中心不在任何棋子上',
+  'measure.noTokenUnder': '它的起点不在任何棋子上',
   'measure.width': '宽度',
   'measure.narrower': '更窄',
   'measure.wider': '更宽',

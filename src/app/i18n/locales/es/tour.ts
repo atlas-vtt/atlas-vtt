@@ -67,4 +67,9 @@ export const tour: Translation = {
   'tour.online.dockBody': 'Abre una mesa aquí y envía a tus jugadores el enlace de invitación. Se unen desde su navegador y ven la escena que les muestras.',
   'tour.online.logTitle': 'Registro de la mesa',
   'tour.online.logBody': 'Chat y tiradas de todos los que están en la mesa. Escribe /help en él para ver los comandos de susurro y de tirada.',
+  'tour.savedRolls.label': 'Tiradas guardadas',
+  'tour.savedRolls.saveTitle': 'Guarda una tirada',
+  'tour.savedRolls.saveBody': 'Ponle nombre a la tirada y pulsa +. Empieza con lo que hay en la bandeja. Haz clic en una tirada guardada para tirarla.',
+  'tour.savedRolls.rowTitle': 'Tu fila de dados',
+  'tour.savedRolls.rowBody': 'La chincheta pone una tirada guardada entre los dados de la parte superior de la bandeja. El lápiz te deja arrastrarlos para ordenarlos, quitar uno con × o añadir un dado como un d3.',
 };

@@ -67,4 +67,9 @@ export const tour = {
   "tour.online.dockBody": "Avvia qui un tavolo e invia ai tuoi giocatori il link di invito. Entrano dal browser e vedono la scena che mostri loro.",
   "tour.online.logTitle": "Registro del tavolo",
   "tour.online.logBody": "Chat e tiri di tutti al tavolo. Scrivi /help per vedere i comandi per sussurrare e tirare.",
+  "tour.savedRolls.label": "Tiri salvati",
+  "tour.savedRolls.saveTitle": "Salva un tiro",
+  "tour.savedRolls.saveBody": "Dai un nome al tiro e premi +. Parte da ciò che c’è nel vassoio. Fai clic su un tiro salvato per tirarlo.",
+  "tour.savedRolls.rowTitle": "La tua fila di dadi",
+  "tour.savedRolls.rowBody": "La puntina mette un tiro salvato tra i dadi in cima al vassoio. La matita ti permette di trascinarli nell’ordine che vuoi, toglierne uno con × o aggiungere un dado come il d3.",
 } satisfies Translation;

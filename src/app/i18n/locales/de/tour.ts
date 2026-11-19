@@ -67,4 +67,9 @@ export const tour: Translation = {
   'tour.online.dockBody': 'Starte hier einen Tisch und schicke deinen Spielern den Einladungslink. Sie treten in ihrem Browser bei und sehen die Szene, die du ihnen zeigst.',
   'tour.online.logTitle': 'Tischprotokoll',
   'tour.online.logBody': 'Chat und Würfe von allen am Tisch. Tippe dort /help, um die Befehle zum Flüstern und Würfeln zu sehen.',
+  'tour.savedRolls.label': 'Gespeicherte Würfe',
+  'tour.savedRolls.saveTitle': 'Einen Wurf speichern',
+  'tour.savedRolls.saveBody': 'Gib dem Wurf einen Namen und drück +. Er beginnt mit dem, was in der Ablage liegt. Klick auf einen gespeicherten Wurf, um ihn zu würfeln.',
+  'tour.savedRolls.rowTitle': 'Deine Würfelreihe',
+  'tour.savedRolls.rowBody': 'Die Nadel legt einen gespeicherten Wurf zu den Würfeln oben in der Ablage. Mit dem Stift ziehst du sie in eine Reihenfolge, nimmst einen mit × heraus oder fügst einen Würfel wie d3 hinzu.',
 };

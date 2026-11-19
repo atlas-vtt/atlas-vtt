@@ -67,4 +67,9 @@ export const tour: Translation = {
   'tour.online.dockBody': 'Lancez une table ici et envoyez le lien d\'invitation à vos joueurs. Ils rejoignent depuis leur navigateur et voient la scène que vous leur montrez.',
   'tour.online.logTitle': 'Journal de la table',
   'tour.online.logBody': 'Le chat et les jets de tous les participants. Tapez /help dedans pour voir les commandes de chuchotement et de jet.',
+  'tour.savedRolls.label': 'Jets enregistrés',
+  'tour.savedRolls.saveTitle': 'Enregistrer un jet',
+  'tour.savedRolls.saveBody': 'Nommez le jet et appuyez sur +. Il reprend ce que contient le plateau. Cliquez sur un jet enregistré pour le lancer.',
+  'tour.savedRolls.rowTitle': 'Votre rangée de dés',
+  'tour.savedRolls.rowBody': 'L\'épingle place un jet enregistré parmi les dés en haut du plateau. Le crayon permet de les faire glisser dans l\'ordre, d\'en retirer un avec × ou d\'ajouter un dé comme un d3.',
 };

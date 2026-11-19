@@ -67,4 +67,9 @@ export const tour: Translation = {
   'tour.online.dockBody': 'Inicie uma mesa aqui e envie o link de convite aos seus jogadores. Eles entram pelo navegador e veem a cena que você mostrar.',
   'tour.online.logTitle': 'Registro da mesa',
   'tour.online.logBody': 'Chat e rolagens de todos na mesa. Digite /help nele para ver os comandos de sussurro e de rolagem.',
+  'tour.savedRolls.label': 'Rolagens salvas',
+  'tour.savedRolls.saveTitle': 'Salve uma rolagem',
+  'tour.savedRolls.saveBody': 'Dê um nome à rolagem e pressione +. Ela começa com o que está na bandeja. Clique em uma rolagem salva para rolá-la.',
+  'tour.savedRolls.rowTitle': 'Sua fileira de dados',
+  'tour.savedRolls.rowBody': 'O alfinete coloca uma rolagem salva entre os dados no topo da bandeja. O lápis permite arrastá-los para ordenar, tirar um com × ou adicionar um dado como d3.',
 };

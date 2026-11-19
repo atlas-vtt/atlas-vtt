@@ -9,7 +9,7 @@ export const measure: Translation = {
   'measure.shape.line': 'Линия',
   'measure.stopsAtWalls': 'Останавливается у стен',
   'measure.followsToken': 'Следует за токеном',
-  'measure.noTokenUnder': 'Его центр не на токене',
+  'measure.noTokenUnder': 'Начинается не на токене',
   'measure.width': 'Ширина',
   'measure.narrower': 'Уже',
   'measure.wider': 'Шире',
