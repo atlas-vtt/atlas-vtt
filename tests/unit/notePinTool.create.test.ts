@@ -79,7 +79,7 @@ describe('NotePinTool creating a note', () => {
     expect(pins).toHaveLength(1);
     expect(pins[0]).toMatchObject({ x: 40, y: 60, notePath: 'Notes/Cellar.md' });
     const note = app.vault.getFileByPath('Notes/Cellar.md')!;
-    expect(await app.vault.read(note)).toBe(`[[${MAP_PATH}#pin=${encodeURIComponent(pins[0]!.id)}|View on map]]\n`);
+    expect(await app.vault.read(note)).toBe(`[[${MAP_PATH}#pin=${encodeURIComponent(pins[0]!.id)}|View on map - Cellar]]\n`);
     expect(document.getElementById('atlas-note-pin-dropdown')).toBeNull();
   });
 
@@ -103,7 +103,29 @@ describe('NotePinTool creating a note', () => {
 
     const note = app.vault.getFileByPath('Notes/Deleted.md')!;
     expect(await app.vault.read(note)).toBe(
-      `Recreated note\n\n[[${MAP_PATH}#pin=${encodeURIComponent(id)}|View on map]]\n`,
+      `Recreated note\n\n[[${MAP_PATH}#pin=${encodeURIComponent(id)}|View on map - Deleted]]\n`,
+    );
+  });
+
+  it('updates the existing backlink when a pin is renamed', async () => {
+    const { app } = vaultWithNotesFolder({ 'Notes/Inn.md': 'An inn', [MAP_PATH]: '{}' });
+    const store = createViewAtlasStore(app, 'pin-rename-view');
+    store.getState().setPersistenceEnabled(false);
+    store.getState().setMapPath(MAP_PATH);
+    const tool = new NotePinTool(new EventEmitter(), app, store);
+    cleanup = () => tool.destroy();
+
+    const id = store.getState().addNotePin(40, 60, 'Notes/Inn.md');
+    const note = app.vault.getFileByPath('Notes/Inn.md')!;
+    expect(await app.vault.read(note)).toBe(
+      `An inn\\n\\n[[${MAP_PATH}#pin=${encodeURIComponent(id)}|View on map - Inn]]\\n`,
+    );
+
+    store.getState().updateNotePin(id, { name: 'The Market' });
+    await settle();
+
+    expect(await app.vault.read(note)).toBe(
+      `An inn\\n\\n[[${MAP_PATH}#pin=${encodeURIComponent(id)}|View on map - The Market]]\\n`,
     );
   });
 
