@@ -1,4 +1,4 @@
-name: Temporary manual test build
+name: Temporary manual test build # verification rerun
 
 on:
   push:
