@@ -54,10 +54,19 @@ describe('Atlas in Italian', () => {
     expect(formatList(['goblin', 'orco', 'troll'])).toBe('goblin, orco e troll');
   });
 
-  it('covers the translated settings, command palette, senses and initiative sections', () => {
-    const groups = ['palette.', 'graphics.', 'levels.', 'experimental.', 'diceSettings.', 'am.bestiary.', 'senses.', 'initiative.', 'settings.', 'audio.settings.', 'audio.output'];
-    const missing = Object.keys(en).filter((key) => groups.some((group) => key.startsWith(group)) && !(key in italian));
-    expect(missing).toEqual([]);
+  it('gives plural messages only the categories Italian has, always with other', () => {
+    const categories = new Set<string>(new Intl.PluralRules('it').resolvedOptions().pluralCategories);
+    for (const [key, message] of Object.entries(italian)) {
+      if (typeof message === 'string') continue;
+      expect(Object.keys(message).filter((category) => !categories.has(category)), key).toEqual([]);
+      expect(message.other, key).toBeTruthy();
+    }
+  });
+
+  it('renders translated settings, command palette and sense texts', () => {
+    expect(t('settings.experimental.heading')).toBe('Funzioni sperimentali');
+    expect(t('palette.experimentalLighting')).toBe('Illuminazione dinamica');
+    expect(t('palette.openDMScreen')).toBe('Apri lo schermo del GM');
   });
 
   it('preserves user paths and names when interpolating messages', () => {
