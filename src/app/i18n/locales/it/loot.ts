@@ -53,7 +53,6 @@ export const loot = {
   "loot.tabs.latest": "Ultimo tiro",
   "loot.tabs.latestHint": "L’ultimo tiro su questa mappa.",
   "loot.tabs.list": "Tiri",
-  "loot.title": "Tabelle casuali",
   "loot.tree.all": "Tutte",
   "loot.tree.none": "Nessuna",
   "loot.tree.tickAll": "Seleziona tutte le viste di questa base.",

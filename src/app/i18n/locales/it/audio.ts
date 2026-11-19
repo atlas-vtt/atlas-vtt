@@ -1,14 +1,12 @@
 import type { Translation } from '../../types';
 
 export const audio = {
-  'audio.experimental.hint': 'Musica e suoni d’ambiente dalle cartelle collegate: atmosfere e libreria nello schermo del GM. Quando la funzione è disattivata, entrambe restano nascoste.',
   "audio.title": "Sorgente sonora",
   "audio.sound": "Suono",
   "audio.preview": "Anteprima del suono",
   "audio.volume": "Volume",
   "audio.range": "Raggio",
   "audio.loop": "Ripeti",
-  "audio.experimental.label": "Suono",
   "audio.state.missing": "File non trovato",
   "audio.screen.statblocks": "Blocchi statistiche",
   "audio.screen.sound": "Suono",

@@ -142,7 +142,6 @@ export const am = {
   "am.tour.libraryBody": "Riunisci token, mappe, scene e incontri. Usa le schede per esplorare i contenuti e importa le tue immagini per iniziare.",
   "am.tour.collectionTitle": "Inizia con una collezione",
   "am.tour.collectionBody": "Crea una collezione per raggruppare le risorse della tua campagna. Puoi cambiare collezione qui in qualsiasi momento.",
-  "am.tour.createCollection": "Crea collezione",
   "am.tour.statblockTitle": "Assegna un blocco statistiche ai tuoi token",
   "am.tour.statblockBody": "Usi Fantasy Statblocks? Fai clic destro su un token in questa libreria e scegli Collega blocco statistiche. Seleziona una nota contenente un blocco statistiche di Fantasy Statblocks per collegarne le statistiche al token.",
   "am.collection.nameTaken": "Esiste già una collezione chiamata \"{name}\"",
