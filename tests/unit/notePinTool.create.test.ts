@@ -118,14 +118,14 @@ describe('NotePinTool creating a note', () => {
     const id = store.getState().addNotePin(40, 60, 'Notes/Inn.md');
     const note = app.vault.getFileByPath('Notes/Inn.md')!;
     expect(await app.vault.read(note)).toBe(
-      `An inn\\n\\n[[${MAP_PATH}#pin=${encodeURIComponent(id)}|View on map - Inn]]\\n`,
+      `An inn\n\n[[${MAP_PATH}#pin=${encodeURIComponent(id)}|View on map - Inn]]\n`,
     );
 
     store.getState().updateNotePin(id, { name: 'The Market' });
     await settle();
 
     expect(await app.vault.read(note)).toBe(
-      `An inn\\n\\n[[${MAP_PATH}#pin=${encodeURIComponent(id)}|View on map - The Market]]\\n`,
+      `An inn\n\n[[${MAP_PATH}#pin=${encodeURIComponent(id)}|View on map - The Market]]\n`,
     );
   });
 
