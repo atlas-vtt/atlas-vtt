@@ -1,4 +1,5 @@
 @use '../../../../../styles/tokens' as *;
+@use './dice-link' as *;
 
 // Interactive parts of a statblock: click-to-edit values and click-to-roll dice.
 
@@ -50,32 +51,5 @@
 // Rollable notation is set in the accent colour with a faint underline: enough
 // to find, quiet enough not to break up a feature description.
 .atlas-dice-link {
-  cursor: pointer;
-  border-radius: $radius-s;
-  padding: 0 2px;
-  margin: 0 -2px;
-  color: var(--text-accent);
-  font-weight: $font-weight-semibold;
-  font-variant-numeric: tabular-nums;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-decoration-color: color-mix(in oklch, var(--text-accent) 40%, transparent);
-  text-underline-offset: 3px;
-  transition: background-color $transition-fast $transition-ease,
-              text-decoration-color $transition-fast $transition-ease;
-
-  &:hover,
-  &:focus-visible {
-    background: color-mix(in oklch, var(--text-accent) 14%, transparent);
-    text-decoration-color: transparent;
-    outline: none;
-  }
-
-  &:focus-visible {
-    box-shadow: 0 0 0 2px var(--interactive-accent);
-  }
-
-  &:active {
-    background: color-mix(in oklch, var(--text-accent) 24%, transparent);
-  }
+  @include dice-link;
 }

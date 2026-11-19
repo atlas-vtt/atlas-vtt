@@ -4,7 +4,7 @@
     {
       "version": "0.17.1-beta.0",
       "title": "Coming in 0.17.1",
-      "markdown": "## Fixed\n\n- On Windows, converting music or ambience in a linked folder now moves the originals to the trash when you chose that, instead of keeping them"
+      "markdown": "## New\n\n- Roll Atlas dice from anywhere. When viewing a note in Reading Mode, Atlas now detects any dice formula (2d4+3, +3, 1d20+5, etc.)\n  allowing you to instantly roll with the Atlas dice roller. Fantasy Statblock dice roller format is also supported, allowing you to instantly roll from any Fantasy Statblock.\n\n## Fixed\n\n- On Windows, converting music or ambience in a linked folder now moves the originals to the trash when you chose that, instead of keeping them"
     },
     {
       "version": "0.17.0",

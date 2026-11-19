@@ -107,6 +107,7 @@ import { MapProcessing } from './src/app/pixi/mosaicCanvas/mapProcessing';
 import { registerMapProcessingStatus } from './src/app/plugin/mapProcessingStatus';
 import { DungeonWorkerClient } from './src/app/dungeons/worker/DungeonWorkerClient';
 import { MosaicCanvasService } from './src/app/pixi/mosaicCanvas/MosaicCanvasService';
+import { registerNoteDiceRolling } from './src/app/noteDice/registerNoteDiceRolling';
 import { guardChildUnload, guardedCleanup } from './src/app/plugin/guardedTeardown';
 import { showNotice } from './src/app/ui/notice';
 
@@ -145,6 +146,7 @@ export default class AtlasVTTPlugin extends Plugin {
   async onload(): Promise<void> {
     // Before anything of Atlas renders: what React and framer-motion put on the page goes with Atlas.
     registerPageListenerRelease(this);
+    registerNoteDiceRolling(this);
     // Record errors from the very start so startup problems can be reported too.
     const errorLog = new AtlasErrorLog();
     this.register(errorLog.attach());
