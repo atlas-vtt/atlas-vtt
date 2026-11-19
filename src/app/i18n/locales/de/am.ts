@@ -181,6 +181,7 @@ export const am: Translation = {
   'am.card.statblockMissing': 'Werteblock-Notiz nicht gefunden – klicke, um eine andere zu verknüpfen',
   'am.card.animated': 'Animierte Karte',
   'am.card.mapKind': 'Karte',
+  'am.pick.choose': 'Wählen',
   'am.card.processing': 'Wird verarbeitet',
   'am.card.processingProgress': 'Wird verarbeitet · {percent} %',
   'am.card.decrease': 'Anzahl verringern',

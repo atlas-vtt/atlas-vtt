@@ -181,6 +181,7 @@ export const am = {
   'am.card.statblockMissing': 'Statblock note not found – click to link another',
   'am.card.animated': 'Animated map',
   'am.card.mapKind': 'Map',
+  'am.pick.choose': 'Choose',
   'am.card.processing': 'Processing',
   'am.card.processingProgress': 'Processing · {percent}%',
   'am.card.decrease': 'Decrease spawn count',

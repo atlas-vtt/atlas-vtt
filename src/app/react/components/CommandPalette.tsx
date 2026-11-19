@@ -29,7 +29,6 @@ import {
   Replace, Gauge, SunMoon, LayoutDashboard, BoomBox, Tablet } from 'lucide-react';
 import { runInBackground } from '../../utils/backgroundTask';
 import { viewedLevelId } from '../../levels/sceneLevels';
-import { collectionIdOfPath } from '../../services/assetPaths';
 import { CoinIcon } from './CoinIcon';
 
 import { useStore } from 'zustand';
@@ -61,7 +60,7 @@ import { SceneSnapshotsPanel } from './command-palette/SceneSnapshotsPanel';
 import { SceneLevelsPanel } from './command-palette/SceneLevelsPanel';
 import { replaceMapImage } from './levels/replaceMapImage';
 import { startFloorPositioning } from './levels/levelEditing';
-import { pickMapImage } from './levels/MapImagePickerModal';
+import { pickMapImage } from './levels/mapImagePicker';
 import { placePalette, placePaletteAtTop, type PalettePosition } from './command-palette/palettePlacement';
 import { useCoarsePointer } from '../../platform/useCoarsePointer';
 import { visibleViewport } from '../../host/visibleViewport';
@@ -116,7 +115,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   const hotkeyLabel = useHotkeyLabels();
   const store = useViewStoreHook();
   const setActiveTool = useAtlasStore(state => state.setActiveTool);
-  const { app, view } = useAtlasUI();
+  const ui = useAtlasUI();
+  const { app, view } = ui;
   const isPlayerWindowFrozen = useStore(playerWindowStore, (s) => s.isFrozen);
   const isPlayerMode = view?.isInPlayerMode?.() ?? false;
   const setPlayerMode = (mode: boolean): void => view?.setPlayerMode?.(mode);
@@ -344,9 +344,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         onClose();
         const state = store.getState();
         const levelId = viewedLevelId(state);
-        runInBackground(pickMapImage(app, collectionIdOfPath(state.mapPath), (path) => {
+        pickMapImage(ui, store, { title: t('levels.pickReplacement') }, (path) => {
           if (path) runInBackground(replaceMapImage(app, store, levelId, path), 'Replacing the map image');
-        }), 'Picking a map image');
+        });
       },
     },
     {
@@ -708,7 +708,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
-      if (!isOpen || document.querySelector('.atlas-onboarding-overlay')) return;
+      // The map picker a page opened over the palette (`pickMapImage`) takes every key, Escape first, while it stands.
+      if (!isOpen || document.querySelector('.atlas-onboarding-overlay, .atlas-map-picker-container')) return;
       // Keys pressed in a dialog or context menu opened from a page belong to it.
       if ((e.target as Element | null)?.closest?.('.atlas-text-dialog-backdrop, .atlas-ctx-menu')) return;
       if (!isShortcutScopeActive(containerRef.current, view?.viewId)) return;
@@ -824,8 +825,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
 
     const isOutsidePress = (target: Element | null): boolean => {
       if (target?.closest?.('.atlas-onboarding-overlay')) return false;
-      // Dialogs opened from a page (naming or deleting a snapshot) sit outside the palette.
-      if (target?.closest?.('.atlas-text-dialog-backdrop')) return false;
+      // Dialogs opened from a page (naming or deleting a snapshot) and the map picker sit outside the palette.
+      if (target?.closest?.('.atlas-text-dialog-backdrop, .atlas-map-picker-container')) return false;
 
       // Don't close if clicking on Obsidian menu elements
       if (target?.closest?.('.menu') ||

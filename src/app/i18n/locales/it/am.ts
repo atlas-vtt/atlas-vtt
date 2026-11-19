@@ -162,6 +162,7 @@ export const am = {
   "am.tab.tokens": "Token",
   "am.tab.party": "Giocatori",
   "am.card.select": "Seleziona {name}",
+  "am.pick.choose": "Scegli",
 
   "am.card.decrease": "Diminuisci quantità da posizionare",
   "am.card.increase": "Aumenta quantità da posizionare",

@@ -178,6 +178,7 @@ export const am: Translation = {
   'am.tab.tokens': 'Tokens',
   'am.tab.party': 'Jogadores',
   'am.card.select': 'Selecionar {name}',
+  'am.pick.choose': 'Escolher',
   'am.card.statblockMissing': 'Nota da ficha não encontrada – clique para vincular outra',
   'am.card.animated': 'Mapa animado',
   'am.card.mapKind': 'Mapa',

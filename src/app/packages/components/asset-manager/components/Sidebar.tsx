@@ -32,7 +32,8 @@ export interface SidebarProps {
   /** Id of the selected collection. */
   selectedCollection: string;
   onSelectCollection: (collectionId: string) => void;
-  onManageTags: () => void;
+  /** Opens the tag manager; left out (a window choosing a map), the Manage button is too. */
+  onManageTags?: () => void;
   onEditCollectionSettings?: (collectionId: string) => void;
   onExportCollection?: () => void;
   onImportCollection?: () => void;
@@ -219,7 +220,7 @@ export function Sidebar({
 
           {footer}
 
-          {!storeTags && (
+          {!storeTags && onManageTags && (
             <div className="atlas-sidebar-actions">
               <Button
                 variant="ghost"

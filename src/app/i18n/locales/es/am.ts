@@ -181,6 +181,7 @@ export const am: Translation = {
   'am.card.statblockMissing': 'No se encontró la nota del bloque de estadísticas: haz clic para vincular otra',
   'am.card.animated': 'Mapa animado',
   'am.card.mapKind': 'Mapa',
+  'am.pick.choose': 'Elegir',
   'am.card.processing': 'Procesando',
   'am.card.processingProgress': 'Procesando · {percent}%',
   'am.card.decrease': 'Reducir cantidad a colocar',
