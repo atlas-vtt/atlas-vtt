@@ -114,9 +114,14 @@ function inOptionOrder(field: ChoiceShape, picks: readonly ChoicePick[]): Choice
     .map(({ pick }) => pick);
 }
 
-/** The line a note stores for the picks; unread parts stay as they were written. Empty when nothing is picked. */
+/** The note's items for the picks; unread parts stay as they were written. Empty when nothing is picked. */
+export function choiceItems(field: ChoiceShape, read: ChoiceRead): string[] {
+  return [...inOptionOrder(field, read.picks).map(pickText), ...read.unread];
+}
+
+/** The line form of the picks for text contexts; unread parts stay as they were written. */
 export function choiceText(field: ChoiceShape, read: ChoiceRead): string {
-  return [...inOptionOrder(field, read.picks).map(pickText), ...read.unread].join(', ');
+  return choiceItems(field, read).join(', ');
 }
 
 /** A new pick of `option`, with the field's unit where it takes a number. */

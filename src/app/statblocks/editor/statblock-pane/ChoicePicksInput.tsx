@@ -2,7 +2,7 @@ import React, { useLayoutEffect, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { handledByAnotherControl } from '../../../keyboard/tooltipEscape';
 import type { FieldValue } from '../../model/templateTypes';
-import { choiceText, newPick, optionsLeft, readChoice, type ChoicePick, type ChoiceRead } from '../../values/choicePicks';
+import { choiceItems, choiceText, newPick, optionsLeft, readChoice, type ChoicePick, type ChoiceRead } from '../../values/choicePicks';
 import { formatNumber, parseNumberText } from '../../values/numberText';
 import { choiceOptions, useOptionList } from './ChoiceOptionList';
 import { ChipRemove, UnreadChip } from './PaneChips';
@@ -64,10 +64,9 @@ function PickNumber({ pick, label, focusOnMount, onNumber, onDone }: PickNumberP
  * A choice that takes several options, or a number with each (§7.6): the
  * picks as chips, each with its number where the field takes one, and a
  * dropdown under the input with the options not picked yet. Every change is
- * written at once, as the one line the note keeps ("darkvision 60 ft.,
- * blindsight 10 ft."); a part of that line that names no option stays as it
- * is written, flagged, until it is removed. A field that takes one option
- * swaps the pick and keeps its number.
+ * written at once; fields that take several are stored as a YAML sequence. A
+ * part that names no option stays as written, flagged, until it is removed.
+ * A field that takes one option swaps the pick and keeps its number.
  */
 export function ChoicePicksInput({ field, autoFocus, placeholder }: ValueInputProps): React.JSX.Element {
   const pane = usePaneEdit();
@@ -82,8 +81,10 @@ export function ChoicePicksInput({ field, autoFocus, placeholder }: ValueInputPr
 
   const save = (next: ChoiceRead): void => {
     const now = pane.read(field);
-    const text = choiceText(field, next);
-    const value: FieldValue | undefined = text === '' ? undefined : text;
+    const items = choiceItems(field, next);
+    const value: FieldValue | undefined = items.length === 0
+      ? undefined
+      : field.several ? items : choiceText(field, next);
     void pane.write(field, fieldPatches(field.key, now, value), { base: now.value, mine: value });
   };
 
