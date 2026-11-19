@@ -42,7 +42,7 @@ $presets-fade: $spacing-l;
 $card-control: $button-height-l;
 $card-control-radius: atlas-panel-inset-radius-value($surface-inset, calc(#{$card-control} * 0.5));
 // A saved roll's card is taller than the save card: its name and its dice read at a glance.
-$item-control: $button-height-l + $spacing-s;
+$item-control: calc(#{$button-height-l} + #{$spacing-s});
 
 .atlas-dice-presets__card {
   @include atlas-elevated-surface;
@@ -129,14 +129,14 @@ $item-control: $button-height-l + $spacing-s;
   }
 }
 
-// A card's ⋯: as tall as the card's inside and concentric with it, like every control of a card. Hidden, it is not
+// A card's ⋯: a square as tall as the card's inside, concentric with it, like every control of a card. Hidden, it is not
 // drawn at all (no control held at opacity 0); shown, it fades in. Under a finger nothing hovers: it stands shown.
 .atlas-dice-presets__item .btn.atlas-dice-presets__more {
   display: none;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: $card-control;
+  width: $item-control;
   height: $item-control;
   padding: 0;
   border-radius: var(--atlas-bar-control-radius);

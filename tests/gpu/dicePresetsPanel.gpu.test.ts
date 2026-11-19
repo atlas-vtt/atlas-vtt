@@ -98,6 +98,12 @@ describe('the saved rolls beside the dice tray', () => {
     const fill = (of: Element): string => getComputedStyle(of).backgroundColor;
     expect(fill(card)).not.toBe(fill(cards[1]!));
     expect(getComputedStyle(card.querySelector('.atlas-dice-presets__roll')!).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+    // The ⋯ is a square as tall as the part that rolls: its fill is the card's control, not a sliver of it.
+    const moreBox = card.querySelector('.atlas-dice-presets__more')!.getBoundingClientRect();
+    const rollBox = card.querySelector('.atlas-dice-presets__roll')!.getBoundingClientRect();
+    expect(moreBox.height).toBeGreaterThanOrEqual(44);
+    expect(Math.abs(moreBox.height - rollBox.height)).toBeLessThan(0.5);
+    expect(Math.abs(moreBox.width - moreBox.height)).toBeLessThan(0.5);
     const button = centreOf(card.querySelector('.atlas-dice-presets__more')!);
     await mouse.click(button.x, button.y);
     await settle();
