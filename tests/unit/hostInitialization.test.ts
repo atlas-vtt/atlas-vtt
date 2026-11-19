@@ -14,7 +14,7 @@ describe('plugin host initialization', () => {
     expect(ts.isStringLiteral(first.moduleSpecifier) && first.moduleSpecifier.text).toBe('./src/app/plugin/host/initializeHost');
   });
 
-  it.each(['ru', 'en', 'fr'])('initializes translated constants from %s', async value => {
+  it.each(['ru', 'en', 'ja'])('initializes translated constants from %s', async value => {
     vi.resetModules();
     language.value = value;
     await import('../../src/app/plugin/host/initializeHost');

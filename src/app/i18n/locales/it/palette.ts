@@ -53,7 +53,7 @@ export const palette = {
   "palette.playerViewSettings": "Impostazioni della vista giocatori",
   "palette.panel.playerView": "Impostazioni della vista giocatori",
   "palette.openSceneBrowser": "Apri Gestione risorse",
-  "palette.openDMScreen": "Apri Schermo del GM",
+  "palette.openDMScreen": "Apri schermo del GM",
   "palette.openSoundPage": "Apri la pagina Suono",
   "palette.positionFloor": "Posiziona piano",
   "palette.tour.ownBody.touch": "Regola griglia, token e widget dalle Impostazioni.",
