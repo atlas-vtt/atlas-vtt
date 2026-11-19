@@ -37,7 +37,7 @@ import { useRevealMoved } from './hooks/useRevealMoved';
 import { ActiveFilterBar } from './components/search/ActiveFilterBar';
 import { showDungeonGenerator } from '../dungeon-generator/openDungeonGenerator';
 import { runInBackground } from '../../../utils/backgroundTask';
-import { useArmariumPlace } from './hooks/useArmariumPlace';
+import { useArmariumPlace, useStoreOnTop } from './hooks/useArmariumPlace';
 import { ArmariumPane } from '../../../armarium/ArmariumPane';
 import { useStoreTagFilter, useStoreTags } from '../../../armarium/storeTagFilter';
 
@@ -66,11 +66,15 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
   useLeaveHiddenFolder(data, sel);
 
   // Another tab or collection renders the whole window again: as a transition, in slices between frames. Either leads
-  // back from the Armarium to the library, as a tag does.
+  // back from the Armarium to the library, as a tag does, in the same render: the library never shows the place it held
+  // before the store.
   const changeTab = useCallback((tab: Tab): void => {
-    armarium.leave();
-    if (tab === activeTab) return;
+    if (tab === activeTab) {
+      armarium.leave();
+      return;
+    }
     startTransition(() => {
+      armarium.leave();
       setActiveTab(tab);
       sel.resetForTab();
     });
@@ -89,9 +93,12 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
 
   // The open folder, the selection and the tags belong to the collection they were chosen in.
   const changeCollection = (collectionId: string): void => {
-    armarium.leave();
-    if (collectionId === selectedCollection) return;
+    if (collectionId === selectedCollection) {
+      armarium.leave();
+      return;
+    }
     startTransition(() => {
+      armarium.leave();
       setSelectedCollection(collectionId);
       sel.resetForTab();
     });
@@ -100,6 +107,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
   const { creature, filterSearch, shown, showSkeleton, showTagSkeleton, isFiltering } = useDisplayedContent({
     isOpen, activeTab, selectedCollection, search, setSearch, data, sel, visibleIds,
   });
+  const storeOnTop = useStoreOnTop(armarium, shown.tab === activeTab && shown.collection === selectedCollection);
 
   // Where a move's notice takes the GM: the cards' new place, with them selected (decision #37).
   const reveal = useRevealMoved({ selectedCollection, changeCollection, assets: data.assets, assetsLoading: data.assetsLoading, sel });
@@ -211,9 +219,10 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
             onDrop={(e) => { if (draggedItems && sel.selectedFolderId === null) { e.preventDefault(); crud.handleDrop(null); } }}
           >
             {/* The library and the store are layers of the body: the store's frame stays, hidden, once shown, and the
-                library stays under the store while the store fades in over it. */}
+                library stays under the store while the store fades in over it, and the store over the library until it
+                shows the place the store was left for. */}
             {armarium.libraryShown && (
-              <div className="atlas-asset-manager-library" inert={armarium.shown}>
+              <div className="atlas-asset-manager-library" inert={storeOnTop}>
                 <ActiveFilterBar groups={filterSearch.chips} onReset={filterSearch.reset} />
                 {/* A filtered list holds the matches of every folder, so the location reads as the tab's root while it shows. */}
                 <LocationBar
@@ -274,7 +283,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
               </div>
             )}
             {armarium.framed && (
-              <ArmariumPane key={armarium.frameKey} app={data.app} url={armarium.page} shown={armarium.shown} onShare={() => { void crud.handleShareCollection(); }} tagFilter={storeTagFilter} />
+              <ArmariumPane key={armarium.frameKey} app={data.app} url={armarium.page} shown={storeOnTop} onShare={() => { void crud.handleShareCollection(); }} tagFilter={storeTagFilter} />
             )}
           </div>
         </div>

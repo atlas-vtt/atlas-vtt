@@ -14,10 +14,13 @@ const reviews = vi.hoisted((): ExternalImport[] => []);
 const busy = vi.hoisted(() => ({ value: false }));
 
 vi.mock('../../../src/app/ui/notice', () => ({ showNotice: vi.fn(() => ({ hide: vi.fn() })) }));
+/** Tabs whose assets are still loading. */
+const loadingTabs = vi.hoisted(() => new Set<string>());
+
 vi.mock('../../../src/app/packages/components/asset-manager/hooks/useAssetData', () => ({
-  useAssetData: () => ({
+  useAssetData: (tab: string) => ({
     shownFolderOf: (folderId: string | null) => folderId,
-    folders: [], collections: [], availableTags: [], assets: [], assetsLoading: false, assetCounts: null, app,
+    folders: [], collections: [], availableTags: [], assets: [], assetsLoading: loadingTabs.has(tab), assetCounts: null, app,
   }),
 }));
 // The transfer as far as the review: an outside bundle starts it, and the review stands until the GM answers.
@@ -45,7 +48,9 @@ vi.mock('../../../src/app/packages/components/asset-manager/hooks/useRememberedP
   useRememberedPlace: () => ({ scrollTopOf: () => 0, setScrollTop: () => {} }),
 }));
 vi.mock('../../../src/app/packages/components/asset-manager/hooks/useAssetManagerEffects', () => ({ useAssetManagerEffects: () => {} }));
-vi.mock('../../../src/app/packages/components/asset-manager/components/Content', () => ({ Content: () => <p>Library</p> }));
+vi.mock('../../../src/app/packages/components/asset-manager/components/Content', () => ({
+  Content: ({ activeTab, loading }: { activeTab: string; loading: boolean }) => <p data-tab={activeTab} data-loading={loading}>Library</p>,
+}));
 vi.mock('../../../src/app/packages/components/asset-manager/components/ModalLayer', () => ({
   ModalLayer: ({ crud }: { crud: { transfer: { step: string } | null } }) => (crud.transfer ? <div role="dialog" aria-label="Import review" /> : null),
 }));
@@ -95,6 +100,7 @@ afterEach(() => {
   cleanup();
   ArmariumInstaller.release(app as unknown as App);
   reviews.length = 0;
+  loadingTabs.clear();
   busy.value = false;
   statusListener = null;
   Reflect.deleteProperty(window.navigator, 'onLine');
@@ -125,6 +131,41 @@ describe('the Armarium in the asset manager', () => {
       expect(screen.getByText('Library')).toBeTruthy();
       fireEvent.click(screen.getByRole('button', { name: 'Armarium' }));
       expect(storeFrame()).toBe(frame);
+    }
+  });
+
+  it('stays over the library until it shows the tab the store was left for, never the tab it held before', () => {
+    const { rerender } = render(<AssetManager isOpen onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Armarium' }));
+    loadingTabs.add('maps');
+    fireEvent.click(screen.getByRole('button', { name: 'Maps' }));
+    expect(storeFrame()!.closest('.atlas-armarium-pane')!.classList.contains('is-hidden')).toBe(false);
+    expect(screen.getByText('Library').closest('.atlas-asset-manager-library')!.hasAttribute('inert')).toBe(true);
+
+    loadingTabs.delete('maps');
+    rerender(<AssetManager isOpen onClose={vi.fn()} />);
+    expect(storeFrame()!.closest('.atlas-armarium-pane')!.classList.contains('is-hidden')).toBe(true);
+    const library = screen.getByText('Library');
+    expect(library.dataset.tab).toBe('maps');
+    expect(library.closest('.atlas-asset-manager-library')!.hasAttribute('inert')).toBe(false);
+  });
+
+  it('leaves for the outline of a tab whose assets take long to load', () => {
+    vi.useFakeTimers();
+    try {
+      render(<AssetManager isOpen onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Armarium' }));
+      act(() => { vi.advanceTimersByTime(200); });
+      loadingTabs.add('maps');
+      fireEvent.click(screen.getByRole('button', { name: 'Maps' }));
+      expect(storeFrame()!.closest('.atlas-armarium-pane')!.classList.contains('is-hidden')).toBe(false);
+      act(() => { vi.advanceTimersByTime(120); });
+      expect(storeFrame()!.closest('.atlas-armarium-pane')!.classList.contains('is-hidden')).toBe(true);
+      const library = screen.getByText('Library');
+      expect(library.dataset.tab).toBe('maps');
+      expect(library.dataset.loading).toBe('true');
+    } finally {
+      vi.useRealTimers();
     }
   });
 
