@@ -2,7 +2,6 @@ import React, { useId, useState } from 'react';
 import { Pin, Plus, Trash2 } from 'lucide-react';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import type { DicePreset } from '../../../types/dicePresetTypes';
-import { DicePresetsRow } from './DicePresetsRow';
 import { MAX_PRESET_NAME, MAX_ROW, sameSlot, withPinToggled, withSavedPreset, withoutPreset, type DiceShelf, type ShelfChange } from './diceShelf';
 import { TRAY_TOOLTIP_GAP } from './diceTrayPool';
 import { parseableFormula } from './diceTrayText';
@@ -54,7 +53,7 @@ function PresetRow({ preset, pinned, rowFull, onRoll, onChange, shelf }: {
 
 /**
  * The saved rolls beside the tray, with no words of its own (the saved rolls' tour explains it): the rolls, a
- * click rolling one; a name, a formula and + to save the tray's roll; the dice row as chips.
+ * click rolling one, its pin putting it in the tray's row; a name, a formula and + to save the tray's roll.
  */
 export function DicePresetsPanel({ shelf, onChange, trayFormula, problemOf, onRoll }: DicePresetsPanelProps): React.ReactElement {
   const messageId = useId();
@@ -120,7 +119,6 @@ export function DicePresetsPanel({ shelf, onChange, trayFormula, problemOf, onRo
         <p id={messageId} className="atlas-dice-presets__message" aria-live="polite">{message}</p>
       </div>
 
-      <DicePresetsRow shelf={shelf} onChange={onChange} />
     </section>
   );
 }

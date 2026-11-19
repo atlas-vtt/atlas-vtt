@@ -129,8 +129,8 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
           onClose={onToggle}
           mapKeys={(event) => canRunMapHotkeys(event, viewId)}
           advantage={advantage}
-          row={shelf.row}
-          presets={shelf.presets}
+          shelf={shelf}
+          onShelfChange={change ?? undefined}
           onFormula={setTrayFormula}
           presetsPanel={change ? { open: presetsOpen, onToggle: togglePresets } : undefined}
           {...(shareRolls && { shareRolls })}

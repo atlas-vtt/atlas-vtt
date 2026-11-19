@@ -37,7 +37,7 @@ function Scene(): React.ReactElement {
         h(DiceTray, {
           memory: { formula: '2d12 + 3', side: 'normal' }, onRemember: () => undefined, check: () => null, onRoll: () => true, history: [],
           onRepeat: () => true, historyOpen: false, onHistoryOpen: () => undefined, onClose: () => undefined,
-          row: shelf.row, presets: shelf.presets, presetsPanel: { open: true, onToggle: () => undefined },
+          shelf, presetsPanel: { open: true, onToggle: () => undefined },
         })))));
 }
 

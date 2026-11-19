@@ -55,8 +55,7 @@ $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal
 
 // Obsidian styles every <button>; the panel's controls start from nothing.
 .atlas-dice-presets__roll,
-.atlas-dice-presets__icon,
-.atlas-dice-presets__chip-remove {
+.atlas-dice-presets__icon {
   margin: 0;
   padding: 0;
   background: transparent;
@@ -168,89 +167,8 @@ $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal
   }
 }
 
-.atlas-dice-presets__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: $surface-inset;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.atlas-dice-presets__chip {
-  display: flex;
-  align-items: center;
-  gap: $spacing-xs;
-  max-width: 100%;
-  height: $button-height-s;
-  padding-inline: $spacing-s $spacing-xs;
-  border: $border-width-s solid $field-edge;
-  border-radius: $radius-full;
-  background: var(--background-secondary);
-  cursor: grab;
-
-  &[data-dragged] {
-    opacity: 0.5;
-  }
-}
-
-// The last chip is a field: a die typed there joins the row.
-.atlas-dice-presets__add-field {
-  width: 64px;
-  height: $button-height-s;
-  padding: 0 $spacing-s;
-  border: $border-width-s dashed $field-edge;
-  border-radius: $radius-full;
-  background: transparent;
-  color: var(--text-normal);
-  font-size: $font-ui-smaller;
-  box-shadow: none;
-
-  &::placeholder {
-    color: var(--text-faint);
-  }
-
-  &:focus {
-    border-style: solid;
-    border-color: var(--interactive-accent);
-    outline: none;
-  }
-
-  &[aria-invalid='true'] {
-    border-color: var(--text-error);
-  }
-}
-
-.atlas-dice-presets__chip-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: $font-ui-smaller;
-}
-
-.atlas-dice-presets__chip-remove {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: $icon-s;
-  height: $icon-s;
-  border-radius: $radius-full;
-  color: $presets-quiet-text;
-
-  svg {
-    width: $icon-xs;
-    height: $icon-xs;
-  }
-
-  @include atlas-hover {
-    background: var(--background-modifier-hover);
-    color: var(--text-normal);
-  }
-}
-
-// The toggle at the tray's foot: an icon beside Clear, the accent while the panel stands open.
-.atlas-dice-tray__actions .atlas-dice-tray__presets-toggle.btn--ghost {
+// The icons at the tray's foot beside Clear (edit the row, saved rolls): the accent while what they open stands open.
+.atlas-dice-tray__actions .atlas-dice-tray__foot-icon.btn--ghost {
   flex-shrink: 0;
   width: $button-height-l;
   padding: 0;
@@ -268,5 +186,129 @@ $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal
   @include atlas-hover('&:hover:not(:disabled)') {
     background: var(--background-modifier-hover);
     color: var(--text-normal);
+  }
+}
+
+// ── The row's edit mode ─────────────────────
+// As a phone's home screen: the places wiggle, each with a × on its corner; the held one lifts and follows the
+// pointer, the others slide aside (`useRowDrag`). Rotation and lift use `rotate` and `scale`, which leave the
+// drag's `translate` and the press's `transform` alone.
+
+@keyframes atlas-dice-wiggle {
+  0%,
+  100% {
+    rotate: -1.6deg;
+  }
+  50% {
+    rotate: 1.6deg;
+  }
+}
+
+.atlas-dice-tray__dice--editing {
+  .atlas-dice-tray__die {
+    position: relative;
+    touch-action: none;
+    user-select: none;
+    cursor: grab;
+    transition: translate $transition-fast $transition-ease-out;
+
+    &[data-held] {
+      z-index: 1;
+      cursor: grabbing;
+      transition: none;
+
+      .atlas-dice-tray__face {
+        animation: none;
+        scale: 1.08;
+        box-shadow: $shadow-elevated;
+      }
+    }
+  }
+
+  .atlas-dice-tray__face {
+    cursor: inherit;
+    animation: atlas-dice-wiggle 280ms ease-in-out infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+
+  // Neighbours out of step, so the row shivers rather than swings.
+  .atlas-dice-tray__die:nth-child(even) .atlas-dice-tray__face {
+    animation-delay: -140ms;
+  }
+
+  .atlas-dice-tray__die:nth-child(3n) .atlas-dice-tray__face {
+    animation-duration: 320ms;
+  }
+}
+
+// After a drop the row takes its new order in place, without sliding back from where the places stood aside.
+.atlas-dice-tray__dice--settling .atlas-dice-tray__die {
+  transition: none;
+}
+
+.atlas-dice-tray__remove {
+  position: absolute;
+  top: -$spacing-xs;
+  left: -$spacing-xs;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: $border-width-m solid var(--background-primary);
+  border-radius: $radius-full;
+  background: var(--background-modifier-border);
+  box-shadow: none;
+  color: var(--text-normal);
+  cursor: pointer;
+
+  svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  @include atlas-hover {
+    background: var(--text-error);
+    color: var(--text-on-accent, #fff);
+  }
+
+  @include atlas-coarse-pointer {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+// The place that adds a die: a dashed outline, then the field the die is typed into.
+.atlas-dice-tray__add.atlas-dice-tray__face {
+  border-style: dashed;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+.atlas-dice-tray__add-field.atlas-dice-tray__face {
+  padding: 0;
+  text-align: center;
+  color: var(--text-normal);
+  font-size: $font-ui-small;
+  outline: none;
+
+  &:focus {
+    border-color: var(--interactive-accent);
+  }
+
+  &[aria-invalid='true'] {
+    border-color: var(--text-error);
   }
 }

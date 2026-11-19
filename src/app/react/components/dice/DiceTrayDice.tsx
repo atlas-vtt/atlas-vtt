@@ -34,7 +34,7 @@ function presetDice(formula: string): { sides: number; pair: boolean } | null {
   return match ? { sides: Number(match[2]), pair: match[1] === '2' } : null;
 }
 
-interface Face {
+export interface Face {
   key: string;
   caption: string;
   name: string;
@@ -44,7 +44,7 @@ interface Face {
   art: React.ReactNode;
 }
 
-function faceOf(slot: DiceRowSlot, presets: readonly DicePreset[], formula: string, counts: TrayPool): Face | null {
+export function faceOf(slot: DiceRowSlot, presets: readonly DicePreset[], formula: string, counts: TrayPool): Face | null {
   if (slot.kind === 'die') {
     const held = counts[slot.sides] ?? 0;
     const name = t('diceRoll.die', { sides: slot.sides });

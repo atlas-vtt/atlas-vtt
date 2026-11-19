@@ -5,6 +5,6 @@ import { t } from '../i18n';
 export function savedRollsSteps(): TutorialStep[] {
   return [
     { title: t('tour.savedRolls.saveTitle'), body: t('tour.savedRolls.saveBody'), selector: '.atlas-dice-presets__form' },
-    { title: t('tour.savedRolls.rowTitle'), body: t('tour.savedRolls.rowBody'), selector: '.atlas-dice-presets__chips' },
+    { title: t('tour.savedRolls.rowTitle'), body: t('tour.savedRolls.rowBody'), selector: '.atlas-dice-tray__dice' },
   ];
 }

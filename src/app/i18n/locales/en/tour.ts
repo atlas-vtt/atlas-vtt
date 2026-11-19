@@ -71,5 +71,5 @@ export const tour = {
   'tour.savedRolls.saveTitle': 'Save a roll',
   'tour.savedRolls.saveBody': 'Name the roll and press +. It starts as what the tray holds. Click a saved roll to roll it.',
   'tour.savedRolls.rowTitle': 'Your dice row',
-  'tour.savedRolls.rowBody': 'The dice at the top of the tray. Pin a saved roll into it, type a die such as d3 to add one, drag to reorder, × to take one out. Number keys follow the row.',
+  'tour.savedRolls.rowBody': 'The pin puts a saved roll among the dice at the top of the tray. The pencil lets you drag them into order, take one out with × or add a die such as d3.',
 } as const satisfies Record<string, Message>;
