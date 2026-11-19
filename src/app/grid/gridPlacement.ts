@@ -2,6 +2,7 @@ import type { GridType } from './GridSystem';
 import { createHexLayout, hexCellExtent, hexCircumradius, hexOrientationForGridType, isHexGridType } from './hexGeometry';
 import type { Point } from './hexGeometry';
 import type { GridOffset } from './gridOffset';
+import { squareCellCentre } from './squareLattice';
 import { tokenDiameterInCells } from '../pixi/token-renderer/tokenSizing';
 
 // Offsets without token sizes live in `gridOffset.ts`, which grid detection's worker can import.
@@ -74,10 +75,7 @@ export function resizedTokenCenter(
   if (fromTiny && toTiny) return center;
   const fromShift = (Math.max(1, tokenDiameterInCells(fromSize)) - 1) * grid.size / 2;
   const anchor = fromTiny
-    ? {
-      x: Math.floor((center.x - (grid.offsetX ?? 0)) / grid.size) * grid.size + (grid.offsetX ?? 0) + grid.size / 2,
-      y: Math.floor((center.y - (grid.offsetY ?? 0)) / grid.size) * grid.size + (grid.offsetY ?? 0) + grid.size / 2,
-    }
+    ? squareCellCentre({ size: grid.size, offsetX: grid.offsetX ?? 0, offsetY: grid.offsetY ?? 0 }, center)
     : { x: center.x - fromShift, y: center.y - fromShift };
   // Small only changes the artwork, not the occupied cell.
   const shift = toTiny ? -grid.size / 4 : (Math.max(1, tokenDiameterInCells(toSize)) - 1) * grid.size / 2;
