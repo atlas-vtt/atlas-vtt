@@ -67,6 +67,15 @@ describe('the sides of a collection', () => {
     expect(sameInitiativeRules(SIDES, { ...SIDES, sideRoll: '1d6' })).toBe(false);
   });
 
+  it('round-trips opening rolls as a different setting from rolling every round', () => {
+    const everyRound = { ...SIDES, sideRoll: '1d6' };
+    const once = { ...everyRound, sideRollOnce: true as const };
+    expect(parseInitiativeRules(savedInitiativeRules(once))).toEqual(once);
+    expect(parseInitiativeRules({ ...once, sideRoll: 'invalid' })).toEqual(SIDES);
+    expect(sameInitiativeRules(once, everyRound)).toBe(false);
+    expect(isSameAsTyped(once, everyRound)).toBe(false);
+  });
+
   it('compares the lists in order and with their names; an unset list is `firstSide` and the other', () => {
     expect(sameInitiativeRules(SIDES, { ...SIDES, sides: [{ id: 'players' }, { id: 'opponents' }] })).toBe(true);
     expect(sameInitiativeRules(SIDES, { ...SIDES, sides: [{ id: 'players' }, ALLIES, { id: 'opponents' }] })).toBe(false);

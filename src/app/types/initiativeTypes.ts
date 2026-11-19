@@ -95,13 +95,13 @@ export interface SidesFight {
   /** The side whose turn it is; where sides act at once (equal rolls), any one of them. */
   active: SideId;
   /**
-   * Every side in the order it acts, copied from the rules as the fight started. Unset, `first`
-   * then the other: set only where the collection names sides of its own or orders them otherwise.
+   * Every side in the fight's order, set from the rules or sorted by the opening roll.
+   * Unset, `first` then the other.
    */
   order?: SideRef[];
   /** The dice each side rolls at the start of every round for the order: the highest first, equal rolls at once. */
   roll?: string;
-  /** The rolls of each round, by round; stepping back into a round shows its rolls again. */
+  /** The rolls by round, or only round one's opening rolls in a fight that rolls once. */
   rolls?: Record<string, Record<SideId, number>>;
 }
 
