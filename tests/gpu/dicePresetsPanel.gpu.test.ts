@@ -94,6 +94,10 @@ describe('the saved rolls beside the dice tray', () => {
     await mouse.hover(hovered.x, hovered.y);
     await settle();
     expect(cards.map(more)).toEqual(['flex', ...cards.slice(1).map(() => 'none')]);
+    // The whole card lights up, its ⋯ included, not only the part that rolls.
+    const fill = (of: Element): string => getComputedStyle(of).backgroundColor;
+    expect(fill(card)).not.toBe(fill(cards[1]!));
+    expect(getComputedStyle(card.querySelector('.atlas-dice-presets__roll')!).backgroundColor).toBe('rgba(0, 0, 0, 0)');
     const button = centreOf(card.querySelector('.atlas-dice-presets__more')!);
     await mouse.click(button.x, button.y);
     await settle();

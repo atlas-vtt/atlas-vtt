@@ -41,6 +41,8 @@ $presets-fade: $spacing-l;
 // border and concentric with its corner on all four sides alike, as in every bar and card of Atlas.
 $card-control: $button-height-l;
 $card-control-radius: atlas-panel-inset-radius-value($surface-inset, calc(#{$card-control} * 0.5));
+// A saved roll's card is taller than the save card: its name and its dice read at a glance.
+$item-control: $button-height-l + $spacing-s;
 
 .atlas-dice-presets__card {
   @include atlas-elevated-surface;
@@ -135,7 +137,7 @@ $card-control-radius: atlas-panel-inset-radius-value($surface-inset, calc(#{$car
   align-items: center;
   justify-content: center;
   width: $card-control;
-  height: $card-control;
+  height: $item-control;
   padding: 0;
   border-radius: var(--atlas-bar-control-radius);
   color: $presets-quiet-text;
@@ -150,13 +152,14 @@ $card-control-radius: atlas-panel-inset-radius-value($surface-inset, calc(#{$car
     height: $icon-s;
   }
 
+  // Its own fill on top of the lit card.
   @include atlas-hover {
-    background: var(--background-modifier-hover);
+    background: color-mix(in oklch, var(--text-normal) 10%, transparent);
     color: var(--text-normal);
   }
 
   &[aria-expanded='true'] {
-    background: var(--background-modifier-hover);
+    background: color-mix(in oklch, var(--text-normal) 10%, transparent);
     color: var(--text-normal);
   }
 
@@ -174,8 +177,9 @@ $card-control-radius: atlas-panel-inset-radius-value($surface-inset, calc(#{$car
   color: var(--text-accent);
 }
 
-// Every control of a card: no look of Obsidian's, the card's control corner on all four corners, the menus' quiet
-// hover fill (the press is Atlas' one press rule, `_button-press.scss`).
+// Every control of a card: no look of Obsidian's, the card's control corner on all four corners (the press is
+// Atlas' one press rule, `_button-press.scss`). The save card's icons take the menus' quiet hover fill; a saved roll's
+// card lights up whole instead (below), its ⋯ with a fill of its own on top.
 .atlas-dice-presets__roll,
 .atlas-dice-presets__icon {
   margin: 0;
@@ -187,9 +191,29 @@ $card-control-radius: atlas-panel-inset-radius-value($surface-inset, calc(#{$car
   box-shadow: none;
   cursor: pointer;
   transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease, opacity $transition-fast $transition-ease;
+}
 
+.atlas-dice-presets__icon {
   @include atlas-hover {
     background: var(--background-modifier-hover);
+  }
+}
+
+// A saved roll lights up whole under the pointer, its ⋯ included, and stays lit while its menu is open.
+.atlas-dice-presets__item {
+  transition: background-color $transition-fast $transition-ease;
+
+  @include atlas-hover {
+    background: color-mix(in oklch, var(--background-primary), var(--text-normal) 7%);
+  }
+
+  &:has(.atlas-dice-presets__more[aria-expanded='true']) {
+    background: color-mix(in oklch, var(--background-primary), var(--text-normal) 7%);
+  }
+
+  .atlas-dice-presets__roll {
+    height: $item-control;
+    padding-inline: $spacing-m $spacing-s;
   }
 }
 
@@ -216,12 +240,13 @@ $card-control-radius: atlas-panel-inset-radius-value($surface-inset, calc(#{$car
 }
 
 .atlas-dice-presets__name {
+  font-size: $font-ui-medium;
   font-weight: $font-weight-medium;
 }
 
 .atlas-dice-presets__formula {
   color: $presets-quiet-text;
-  font-size: $font-ui-smaller;
+  font-size: $font-ui-small;
   font-variant-numeric: tabular-nums lining-nums;
 }
 
