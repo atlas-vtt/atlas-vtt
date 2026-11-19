@@ -1,0 +1,27 @@
+import type { Translation } from '../../types';
+
+export const uvttFloors: Translation = {
+  'uvttFloors.fileProblem': '{file}: {problem}',
+  'uvttFloors.failed': 'Die Dateien konnten nicht importiert werden.',
+  'uvttFloors.tooMany': 'Eine Szene hat höchstens {count} Ebenen.',
+  'uvttFloors.tooLarge': 'Zusammen sind die Dateien größer als {size} MB.',
+  'uvttFloors.tooManyWalls': 'Zusammen haben die Dateien mehr als {count} Wandsegmente.',
+  'uvttFloors.tooManyLights': 'Zusammen haben die Dateien mehr als {count} Lichter.',
+  'uvttFloors.otherGrid': 'Die Felder von {file} sind {size} Pixel breit, die von {other} {otherSize} Pixel, daher teilen sie kein Raster.',
+  'uvttFloors.mapName': '{scene}, {level}',
+  'uvttFloors.reading': 'Wird gelesen: {files}…',
+  'uvttFloors.importing': '„{name}“ wird mit {count} Ebenen importiert…',
+  'uvttFloors.couldNot': '„{name}“ konnte nicht importiert werden. {problem}',
+  'uvttFloors.imported': { one: '„{name}“ mit {count} Ebene importiert: {contents}.', other: '„{name}“ mit {count} Ebenen importiert: {contents}.' },
+  'uvttFloors.walls': { one: '{count} Wand', other: '{count} Wände' },
+  'uvttFloors.doors': { one: '{count} Tür', other: '{count} Türen' },
+  'uvttFloors.lights': { one: '{count} Licht', other: '{count} Lichter' },
+  'uvttFloors.lightsOff': 'Lichter, deren Schein das Bild bereits zeigt, sind ausgeschaltet.',
+  'uvttFloors.scaledDown': 'Die Bilder von {files} wurden auf die größte Größe verkleinert, die eine Karte behält.',
+  'uvttFloors.title': '{count} Karten importieren',
+  'uvttFloors.sceneName': 'Name der Szene',
+  'uvttFloors.levels': 'Ebenen, oberste zuerst',
+  'uvttFloors.asScenes': 'Als {count} Szenen importieren',
+  'uvttFloors.asLevels': 'Als eine Szene importieren',
+  'uvttFloors.separately': 'Jede Datei wurde zu einer eigenen Szene. {reason}',
+};
