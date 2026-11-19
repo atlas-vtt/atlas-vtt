@@ -413,7 +413,7 @@ export class NotePinTool {
       if (content.includes(link)) return content;
       if (content.includes(legacyLink)) return content.replace(legacyLink, link);
       const separator = content.trim() ? '\n\n' : '';
-      return `${content.trimEnd()}${separator}${link}\\n`;
+      return `${content.trimEnd()}${separator}${link}\n`;
     });
   }
 
