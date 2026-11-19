@@ -118,7 +118,7 @@ describe('NotePinTool creating a note', () => {
 
     const id = store.getState().addNotePin(40, 60, 'Notes/Inn.md');
     const note = app.vault.getFileByPath('Notes/Inn.md')!;
-    await app.vault.modify(note, `An inn\n\n[[${MAP_PATH}#pin=${encodeURIComponent(id)}|View on map - Inn]]\n`);
+    await app.vault.process(note, () => `An inn\n\n[[${MAP_PATH}#pin=${encodeURIComponent(id)}|View on map - Inn]]\n`);
 
     store.getState().updateNotePin(id, { name: 'The Market' });
     await settle();
@@ -139,7 +139,7 @@ describe('NotePinTool creating a note', () => {
 
     const id = store.getState().addNotePin(40, 60, 'Notes/Inn.md');
     const note = app.vault.getFileByPath('Notes/Inn.md')!;
-    await app.vault.modify(note,
+    await app.vault.process(note, () =>
       `An inn\n\n[[${MAP_PATH}#pin=${encodeURIComponent(id)}|View on map - Inn]]\n`,
     );
 
@@ -166,7 +166,7 @@ describe('NotePinTool creating a note', () => {
     const firstId = store.getState().addNotePin(40, 60, 'Notes/Inn.md');
     const secondId = store.getState().addNotePin(80, 90, 'Notes/Inn.md');
     const note = app.vault.getFileByPath('Notes/Inn.md')!;
-    await app.vault.modify(note,
+    await app.vault.process(note, () =>
       `An inn\n\n[[${MAP_PATH}#pin=${encodeURIComponent(firstId)}|View on map - Inn]]\n[[${MAP_PATH}#pin=${encodeURIComponent(secondId)}|View on map - Inn]]\n`,
     );
 
