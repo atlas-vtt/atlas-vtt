@@ -75,6 +75,9 @@ export const diceRoll: Translation = {
   'diceRoll.rowRemove': 'Retirer {name} de la rangée',
   'diceRoll.rowAddDie': 'Ajouter un dé',
   'diceRoll.rowAddDieCaption': 'Ajouter',
+  'diceRoll.rowNotADie': 'Saisissez un dé, comme d3',
+  'diceRoll.rowFaces': 'Un dé a de {min} à {max} faces',
+  'diceRoll.rowPresent': 'Le d{sides} est déjà dans la rangée',
   'diceRoll.rowEdit': 'Modifier la rangée de dés',
   'diceRoll.rowDone': 'Terminé',
 };

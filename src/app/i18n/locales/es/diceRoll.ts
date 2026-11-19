@@ -75,6 +75,9 @@ export const diceRoll: Translation = {
   'diceRoll.rowRemove': 'Quitar {name} de la fila',
   'diceRoll.rowAddDie': 'Añadir dado',
   'diceRoll.rowAddDieCaption': 'Añadir',
+  'diceRoll.rowNotADie': 'Escribe un dado, como d3',
+  'diceRoll.rowFaces': 'Un dado tiene de {min} a {max} caras',
+  'diceRoll.rowPresent': 'El d{sides} ya está en la fila',
   'diceRoll.rowEdit': 'Editar la fila de dados',
   'diceRoll.rowDone': 'Listo',
 };

@@ -75,6 +75,9 @@ export const diceRoll: Translation = {
   'diceRoll.rowRemove': '将 {name} 移出骰子栏',
   'diceRoll.rowAddDie': '添加骰子',
   'diceRoll.rowAddDieCaption': '添加',
+  'diceRoll.rowNotADie': '请输入一种骰子，例如 d3',
+  'diceRoll.rowFaces': '骰子的面数为 {min} 到 {max}',
+  'diceRoll.rowPresent': 'd{sides} 已在骰子栏中',
   'diceRoll.rowEdit': '编辑骰子栏',
   'diceRoll.rowDone': '完成',
 };

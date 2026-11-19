@@ -75,6 +75,9 @@ export const diceRoll: Translation = {
   'diceRoll.rowRemove': 'Убрать {name} из ряда',
   'diceRoll.rowAddDie': 'Добавить кубик',
   'diceRoll.rowAddDieCaption': 'Добавить',
+  'diceRoll.rowNotADie': 'Введите кубик, например d3',
+  'diceRoll.rowFaces': 'У кубика от {min} до {max} граней',
+  'diceRoll.rowPresent': 'd{sides} уже есть в ряду',
   'diceRoll.rowEdit': 'Изменить ряд кубиков',
   'diceRoll.rowDone': 'Готово',
 };

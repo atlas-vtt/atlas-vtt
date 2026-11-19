@@ -75,6 +75,9 @@ export const diceRoll: Translation = {
   'diceRoll.rowRemove': '{name} aus der Reihe nehmen',
   'diceRoll.rowAddDie': 'Würfel hinzufügen',
   'diceRoll.rowAddDieCaption': 'Hinzufügen',
+  'diceRoll.rowNotADie': 'Gib einen Würfel ein, etwa d3',
+  'diceRoll.rowFaces': 'Ein Würfel hat {min} bis {max} Seiten',
+  'diceRoll.rowPresent': 'd{sides} ist schon in der Reihe',
   'diceRoll.rowEdit': 'Würfelreihe bearbeiten',
   'diceRoll.rowDone': 'Fertig',
 };
