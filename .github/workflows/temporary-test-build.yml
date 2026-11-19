@@ -1,0 +1,42 @@
+name: Temporary manual test build
+
+on:
+  push:
+    branches:
+      - feature/note-to-pin
+    paths:
+      - .github/workflows/temporary-test-build.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out feature branch
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build plugin
+        run: npm run build
+      - name: Package Obsidian plugin
+        run: |
+          mkdir -p test-build
+          cp dist/main.js test-build/main.js
+          cp dist/styles.css test-build/styles.css
+          cp manifest.json test-build/manifest.json
+          cd test-build
+          zip -r ../atlas-vtt-note-to-pin-test-build.zip .
+      - name: Upload test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-vtt-note-to-pin-test-build
+          path: atlas-vtt-note-to-pin-test-build.zip
+          if-no-files-found: error
+          retention-days: 7
