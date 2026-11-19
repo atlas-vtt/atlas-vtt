@@ -1,0 +1,62 @@
+name: Note to Pin Test Build
+
+on:
+  push:
+    branches:
+      - feature/note-to-pin
+
+permissions:
+  contents: write
+
+concurrency:
+  group: note-to-pin-test-build
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact feature commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build plugin
+        run: npm run build:ci
+
+      - name: Verify and stage Obsidian files
+        run: |
+          mkdir -p test-release
+          for file in main.js styles.css manifest.json; do
+            test -s "$file" || { echo "::error::Build did not produce $file"; exit 1; }
+            cp "$file" test-release/
+          done
+          node -e "const m=require('./manifest.json'); console.log('Building Atlas VTT '+m.version)"
+
+      - name: Publish test pre-release for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_NUMBER: ${{ github.run_number }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          tag="note-to-pin-test-${RUN_NUMBER}"
+          gh release create "$tag" test-release/main.js test-release/styles.css test-release/manifest.json \
+            --repo "$GH_REPO" \
+            --target "$COMMIT_SHA" \
+            --prerelease \
+            --latest=false \
+            --title "Note to Pin test build #${RUN_NUMBER}" \
+            --notes "Test build from feature/note-to-pin. Commit: $COMMIT_SHA. Install main.js, styles.css and manifest.json in the Atlas VTT plugin folder."
+          gh release view "$tag" --repo "$GH_REPO" --json assets,isPrerelease,targetCommitish \
+            --jq '{assets: ([.assets[].name] | sort), isPrerelease, targetCommitish}'
