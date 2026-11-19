@@ -12,6 +12,7 @@ on:
       - main
       - beta
       - 'release/**'
+      - 'feature/note-to-pin'
 
 permissions:
   contents: read
