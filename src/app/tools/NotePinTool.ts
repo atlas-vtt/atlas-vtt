@@ -162,9 +162,17 @@ export class NotePinTool {
     this.pinNamesUnsubscribe = this.store.subscribe(
       (state) => levelObjects(state).pins,
       (pins, previousPins) => {
-        for (const [id, pin] of Object.entries(pins)) {
-          const previousPin = previousPins[id];
-          if (!previousPin || pin.name === previousPin.name || pin.notePath !== previousPin.notePath) continue;
+        for (const [id, previousPin] of Object.entries(previousPins)) {
+          const pin = pins[id];
+          if (!pin) {
+            runInBackground(
+              this.removePinBacklink(previousPin.notePath, id, pinName(previousPin)),
+              `Removing the backlink for pin ${pinName(previousPin)}`,
+              'Could not remove the pin backlink',
+            );
+            continue;
+          }
+          if (pin.name === previousPin.name || pin.notePath !== previousPin.notePath) continue;
           runInBackground(
             this.addPinBacklink(pin.notePath, id, pinName(previousPin)),
             `Updating the backlink for pin ${pinName(pin)}`,
@@ -414,6 +422,31 @@ export class NotePinTool {
       if (content.includes(legacyLink)) return content.replace(legacyLink, link);
       const separator = content.trim() ? '\n\n' : '';
       return `${content.trimEnd()}${separator}${link}\n`;
+    });
+  }
+
+  /** Removes only the return link belonging to a pin that has been deleted. */
+  private async removePinBacklink(notePath: string, pinId: string, name: string): Promise<void> {
+    const mapPath = this.store.getState().mapPath;
+    const { linkpath } = pinNoteLink(notePath);
+    const noteFile = this.obsidianApp.vault.getFileByPath(linkpath)
+      ?? this.obsidianApp.metadataCache.getFirstLinkpathDest(linkpath, mapPath ?? '');
+    const mapFile = mapPath ? this.obsidianApp.vault.getFileByPath(mapPath) : null;
+    if (!noteFile || noteFile.extension !== 'md' || !mapFile) return;
+
+    const subpath = `#pin=${encodeURIComponent(pinId)}`;
+    const links = [
+      this.obsidianApp.fileManager.generateMarkdownLink(mapFile, linkpath, subpath, `View on map - ${name}`),
+      this.obsidianApp.fileManager.generateMarkdownLink(mapFile, linkpath, subpath, 'View on map'),
+    ];
+    await this.obsidianApp.vault.process(noteFile, (content) => {
+      const lines = content.split('\\n');
+      const index = lines.findIndex((line) => links.includes(line.trim()));
+      if (index === -1) return content;
+      lines.splice(index, 1);
+      if (lines[lines.length - 1] === '') lines.pop();
+      const updated = lines.join('\\n');
+      return updated ? `${updated}\\n` : '';
     });
   }
 
