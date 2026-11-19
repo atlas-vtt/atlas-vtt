@@ -32,7 +32,7 @@ const shelf = readDiceShelf({
 function Scene(): React.ReactElement {
   return h(TooltipProvider, null, h('div', { className: 'atlas-vtt-plugin', style: { position: 'relative', height: 760 } },
     h('div', { className: 'atlas-dice-tray', style: { left: '70%', bottom: 20, top: 'auto' } },
-      h(DicePresetsPanel, { shelf, onChange: () => undefined, trayFormula: '2d12 + 3', problemOf: () => null, onRoll: () => undefined, onClose: () => undefined }),
+      h(DicePresetsPanel, { shelf, onChange: () => undefined, trayFormula: '2d12 + 3', problemOf: () => null, onRoll: () => undefined }),
       h('div', { className: 'atlas-dice-panel' },
         h(DiceTray, {
           memory: { formula: '2d12 + 3', side: 'normal' }, onRemember: () => undefined, check: () => null, onRoll: () => true, history: [],

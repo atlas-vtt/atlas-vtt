@@ -15,8 +15,7 @@ $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal
   right: calc(100% + #{$spacing-s});
   bottom: 0;
   width: $presets-width;
-  // The tray's rhythm: its groups stand this far apart.
-  gap: $spacing-l + $spacing-xs;
+  gap: $spacing-m;
   font-size: $font-ui-small;
 
   // Its parts keep their height; the list scrolls inside its own.
@@ -30,20 +29,6 @@ $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal
     right: 0;
     bottom: calc(100% + #{$spacing-s});
   }
-}
-
-.atlas-dice-presets__header {
-  display: flex;
-  justify-content: space-between;
-  // The panel's padding already holds the button $close-button-gap from its border.
-  padding: 0 0 0 var(--atlas-menu-text-inset);
-  align-items: center;
-}
-
-.atlas-dice-presets__title {
-  margin: 0;
-  font-size: $font-ui-small;
-  font-weight: $font-weight-semibold;
 }
 
 .atlas-dice-presets__list {
@@ -71,8 +56,7 @@ $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal
 // Obsidian styles every <button>; the panel's controls start from nothing.
 .atlas-dice-presets__roll,
 .atlas-dice-presets__icon,
-.atlas-dice-presets__chip-remove,
-.atlas-dice-presets__link {
+.atlas-dice-presets__chip-remove {
   margin: 0;
   padding: 0;
   background: transparent;
@@ -149,18 +133,11 @@ $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal
   }
 }
 
-.atlas-dice-presets__note {
-  margin: 0;
-  padding-inline: var(--atlas-menu-text-inset);
-  color: $presets-quiet-text;
-  font-size: $font-ui-smaller;
-  line-height: 1.4;
-}
-
 // Name and formula, then Save; the message under them.
 .atlas-dice-presets__form {
   display: grid;
   grid-template-columns: 1fr 1fr auto;
+  align-items: center;
   gap: $surface-inset;
 }
 
@@ -177,11 +154,6 @@ $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal
   font-variant-numeric: tabular-nums lining-nums;
 }
 
-.atlas-dice-presets__save.btn {
-  height: var(--input-height);
-  border-radius: $radius-m;
-}
-
 .atlas-dice-presets__message {
   grid-column: 1 / -1;
   min-height: 1.4em;
@@ -193,35 +165,6 @@ $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal
 
   &:empty {
     min-height: 0;
-  }
-}
-
-.atlas-dice-presets__row-editor {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-s;
-}
-
-.atlas-dice-presets__label-line {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding-inline: var(--atlas-menu-text-inset);
-}
-
-.atlas-dice-presets__label {
-  color: $presets-quiet-text;
-  font-size: $font-ui-smaller;
-  font-variant-numeric: tabular-nums lining-nums;
-}
-
-.atlas-dice-presets__link {
-  color: var(--text-accent);
-  font-size: $font-ui-smaller;
-
-  &:disabled {
-    color: var(--text-faint);
-    cursor: default;
   }
 }
 
@@ -251,6 +194,33 @@ $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal
   }
 }
 
+// The last chip is a field: a die typed there joins the row.
+.atlas-dice-presets__add-field {
+  width: 64px;
+  height: $button-height-s;
+  padding: 0 $spacing-s;
+  border: $border-width-s dashed $field-edge;
+  border-radius: $radius-full;
+  background: transparent;
+  color: var(--text-normal);
+  font-size: $font-ui-smaller;
+  box-shadow: none;
+
+  &::placeholder {
+    color: var(--text-faint);
+  }
+
+  &:focus {
+    border-style: solid;
+    border-color: var(--interactive-accent);
+    outline: none;
+  }
+
+  &[aria-invalid='true'] {
+    border-color: var(--text-error);
+  }
+}
+
 .atlas-dice-presets__chip-name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -276,16 +246,6 @@ $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal
   @include atlas-hover {
     background: var(--background-modifier-hover);
     color: var(--text-normal);
-  }
-}
-
-.atlas-dice-presets__add {
-  display: flex;
-  align-items: center;
-  gap: $spacing-s;
-
-  .atlas-dice-presets__field {
-    width: 80px;
   }
 }
 

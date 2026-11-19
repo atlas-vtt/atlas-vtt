@@ -67,4 +67,9 @@ export const tour = {
   'tour.online.dockBody': 'Start a table here and send your players the invite link. They join from their browser and see the scene you show them.',
   'tour.online.logTitle': 'Table log',
   'tour.online.logBody': 'Chat and rolls from everyone at the table. Type /help in it to see the whisper and roll commands.',
+  'tour.savedRolls.label': 'Saved rolls',
+  'tour.savedRolls.saveTitle': 'Save a roll',
+  'tour.savedRolls.saveBody': 'Name the roll and press +. It starts as what the tray holds. Click a saved roll to roll it.',
+  'tour.savedRolls.rowTitle': 'Your dice row',
+  'tour.savedRolls.rowBody': 'The dice at the top of the tray. Pin a saved roll into it, type a die such as d3 to add one, drag to reorder, × to take one out. Number keys follow the row.',
 } as const satisfies Record<string, Message>;

@@ -24,6 +24,8 @@ vi.mock('../../src/app/react/ViewStoreContext', () => ({
 vi.mock('../../src/app/react/components/dice/useDiceShelf', () => ({
   useDiceShelf: () => ({ shelf: readDiceShelf(store.settings), change: (change: ShelfChange) => { store.settings = { ...store.settings, ...change }; } }),
 }));
+// The first-run tour has its own tests; here it stays away.
+vi.mock('../../src/app/onboarding/Tutorial', () => ({ Tutorial: (): null => null }));
 vi.mock('../../src/app/keyboard/mapHotkeys', () => ({ canRunMapHotkeys: () => true }));
 vi.mock('../../src/app/packages/components/primitives/tooltip', () => ({
   LabelTooltip: ({ children }: { children: React.ReactNode }): React.ReactNode => children,
@@ -53,7 +55,7 @@ describe('saved rolls through the real tray', () => {
     const panel = screen.getByRole('region', { name: 'Saved rolls' });
     expect(within(panel).getByRole('textbox', { name: 'Formula' })).toHaveProperty('value', '2d12');
     fireEvent.change(within(panel).getByRole('textbox', { name: 'Name' }), { target: { value: 'Duality' } });
-    fireEvent.click(within(panel).getByRole('button', { name: 'Save' }));
+    fireEvent.click(within(panel).getByRole('button', { name: 'Save roll' }));
     draw();
     expect(store.settings.dicePresets?.map(({ name, formula }) => ({ name, formula }))).toEqual([{ name: 'Duality', formula: '2d12' }]);
 
@@ -75,11 +77,11 @@ describe('saved rolls through the real tray', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Saved rolls' }));
     const panel = screen.getByRole('region', { name: 'Saved rolls' });
     fireEvent.change(within(panel).getByRole('textbox', { name: 'Formula' }), { target: { value: '1d6' } });
-    fireEvent.click(within(panel).getByRole('button', { name: 'Save' }));
+    fireEvent.click(within(panel).getByRole('button', { name: 'Save roll' }));
     expect(panel.textContent).toContain('Give the roll a name');
     fireEvent.change(within(panel).getByRole('textbox', { name: 'Name' }), { target: { value: 'Too many' } });
     fireEvent.change(within(panel).getByRole('textbox', { name: 'Formula' }), { target: { value: '1d6 +' } });
-    fireEvent.click(within(panel).getByRole('button', { name: 'Save' }));
+    fireEvent.click(within(panel).getByRole('button', { name: 'Save roll' }));
     expect(store.settings.dicePresets).toBeUndefined();
   });
 

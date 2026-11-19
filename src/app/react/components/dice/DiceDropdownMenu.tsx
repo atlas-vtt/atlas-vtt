@@ -5,6 +5,9 @@ import { DiceTool } from '../../../tools/DiceTool';
 import { DiceTray } from './DiceTray';
 import { DicePresetsPanel } from './DicePresetsPanel';
 import { useDiceShelf } from './useDiceShelf';
+import { Tutorial } from '../../../onboarding/Tutorial';
+import { savedRollsSteps } from '../../../onboarding/savedRollsTour';
+import { t } from '../../../i18n';
 import { statusMessage } from './diceTrayStatus';
 import type { TrayAdvantage } from './diceTrayStatus';
 import { advantageSidesFor, ruledSides } from '../../../tools/diceAdvantage';
@@ -70,7 +73,8 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
     const handleClickOutside = (event: MouseEvent): void => {
       const target = event.target as HTMLElement;
       if (triggerRef?.current?.contains(target)) return;
-      if (target.closest('.atlas-dice-tray')) return;
+      // The tray, and the saved rolls' tour over it, which explains the tray and must not close it.
+      if (target.closest('.atlas-dice-tray, .atlas-onboarding-overlay')) return;
       onToggle();
     };
 
@@ -97,15 +101,17 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
       className={cn('atlas-dice-tray', keepInView.capped && 'atlas-keep-in-view--capped')}
       style={keepInView.style}
     >
-      {presetsOpen && (
-        <DicePresetsPanel
-          shelf={shelf}
-          onChange={change}
-          trayFormula={trayFormula}
-          problemOf={problemOf}
-          onRoll={(preset) => diceTool.rollDice(preset.formula)}
-          onClose={togglePresets}
-        />
+      {presetsOpen && change && (
+        <>
+          <DicePresetsPanel
+            shelf={shelf}
+            onChange={change}
+            trayFormula={trayFormula}
+            problemOf={problemOf}
+            onRoll={(preset) => diceTool.rollDice(preset.formula)}
+          />
+          <Tutorial id="savedRolls" root={trayRef.current} label={t('tour.savedRolls.label')} steps={savedRollsSteps()} />
+        </>
       )}
       <div className="atlas-dice-panel">
         <DiceTray
@@ -126,7 +132,7 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
           row={shelf.row}
           presets={shelf.presets}
           onFormula={setTrayFormula}
-          presetsPanel={{ open: presetsOpen, onToggle: togglePresets }}
+          presetsPanel={change ? { open: presetsOpen, onToggle: togglePresets } : undefined}
           {...(shareRolls && { shareRolls })}
         />
       </div>

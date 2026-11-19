@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { RotateCcw, X } from 'lucide-react';
+import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import type { DiceRowSlot } from '../../../types/dicePresetTypes';
 import { MAX_ROW, STANDARD_ROW_CHANGE, typedDie, withRowDie, withRowSlotMoved, withoutRowSlot, type DiceShelf, type ShelfChange } from './diceShelf';
+import { TRAY_TOOLTIP_GAP } from './diceTrayPool';
 import { t } from '../../../i18n';
 
 interface DicePresetsRowProps {
@@ -16,7 +18,7 @@ function slotName(slot: DiceRowSlot, shelf: DiceShelf): string {
 
 /**
  * The tray's row as chips, in its order: × takes a place out, a drag (or Alt with an arrow key) moves it, a die
- * typed below joins the end. Saved rolls join from their pin. Standard dice puts the seven back.
+ * typed in the last chip joins the end. Saved rolls join from their pin; the arrow puts the seven standard dice back.
  */
 export function DicePresetsRow({ shelf, onChange }: DicePresetsRowProps): React.ReactElement {
   // While a chip is dragged the row is reordered here alone, and written once it is let go.
@@ -41,14 +43,7 @@ export function DicePresetsRow({ shelf, onChange }: DicePresetsRowProps): React.
   };
 
   return (
-    <div className="atlas-dice-presets__row-editor">
-      <div className="atlas-dice-presets__label-line">
-        <span className="atlas-dice-presets__label">{t('diceRoll.rowTitle', { count: shelf.row.length, max: MAX_ROW })}</span>
-        {shelf.ownRow && (
-          <button type="button" className="atlas-dice-presets__link" onClick={() => onChange(STANDARD_ROW_CHANGE)}>{t('diceRoll.rowStandard')}</button>
-        )}
-      </div>
-      <ol className="atlas-dice-presets__chips">
+    <ol className="atlas-dice-presets__chips" aria-label={t('diceRoll.rowTitle')}>
         {row.map((slot, place) => {
           const name = slotName(slot, shelf);
           return (
@@ -93,30 +88,38 @@ export function DicePresetsRow({ shelf, onChange }: DicePresetsRowProps): React.
             </li>
           );
         })}
-      </ol>
-      <div className="atlas-dice-presets__add">
-        <input
-          className="atlas-dice-presets__field"
-          value={die}
-          placeholder="d3"
-          disabled={full}
-          aria-label={t('diceRoll.rowAddDie')}
-          aria-invalid={refused ? true : undefined}
-          spellCheck={false}
-          autoComplete="off"
-          onChange={(event) => {
-            setDie(event.target.value);
-            setRefused(false);
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter') return;
-            event.preventDefault();
-            event.stopPropagation();
-            addDie();
-          }}
-        />
-        <button type="button" className="atlas-dice-presets__link" disabled={full || die.trim() === ''} onClick={addDie}>{t('diceRoll.rowAddDie')}</button>
-      </div>
-    </div>
+      {!full && (
+        <li className="atlas-dice-presets__add">
+          <input
+            className="atlas-dice-presets__add-field"
+            value={die}
+            placeholder={t('diceRoll.rowAddDiePlaceholder')}
+            aria-label={t('diceRoll.rowAddDie')}
+            aria-invalid={refused ? true : undefined}
+            spellCheck={false}
+            autoComplete="off"
+            onChange={(event) => {
+              setDie(event.target.value);
+              setRefused(false);
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter') return;
+              event.preventDefault();
+              event.stopPropagation();
+              addDie();
+            }}
+          />
+        </li>
+      )}
+      {shelf.ownRow && (
+        <li>
+          <LabelTooltip label={t('diceRoll.rowStandard')} sideOffset={TRAY_TOOLTIP_GAP}>
+            <button type="button" className="atlas-dice-presets__icon" aria-label={t('diceRoll.rowStandard')} onClick={() => onChange(STANDARD_ROW_CHANGE)}>
+              <RotateCcw aria-hidden="true" />
+            </button>
+          </LabelTooltip>
+        </li>
+      )}
+    </ol>
   );
 }
