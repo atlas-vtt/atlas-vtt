@@ -139,14 +139,14 @@ describe('NotePinTool creating a note', () => {
     const secondId = store.getState().addNotePin(80, 90, 'Notes/Inn.md');
     const note = app.vault.getFileByPath('Notes/Inn.md')!;
     await app.vault.modify(note,
-      `An inn\\n\\n[[${MAP_PATH}#pin=${encodeURIComponent(firstId)}|View on map - Inn]]\\n[[${MAP_PATH}#pin=${encodeURIComponent(secondId)}|View on map - Inn]]\\n`,
+      `An inn\n\n[[${MAP_PATH}#pin=${encodeURIComponent(firstId)}|View on map - Inn]]\n[[${MAP_PATH}#pin=${encodeURIComponent(secondId)}|View on map - Inn]]\n`,
     );
 
     store.getState().deleteNotePin(firstId);
     await settle();
 
     expect(await app.vault.read(note)).toBe(
-      `An inn\\n\\n[[${MAP_PATH}#pin=${encodeURIComponent(secondId)}|View on map - Inn]]\\n`,
+      `An inn\n\n[[${MAP_PATH}#pin=${encodeURIComponent(secondId)}|View on map - Inn]]\n`,
     );
   });
 
