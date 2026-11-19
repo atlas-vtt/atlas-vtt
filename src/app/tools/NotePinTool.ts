@@ -160,8 +160,21 @@ export class NotePinTool {
 
     this.storeUnsubscribe = this.store.subscribe(syncActiveState);
     this.pinNamesUnsubscribe = this.store.subscribe(
-      (state) => levelObjects(state).pins,
-      (pins, previousPins) => {
+      (state) => state,
+      (state, previousState) => {
+        // A scene switch clears the old objects while the new scene is loading.
+        // That is not a user deleting every pin: only reconcile backlinks between
+        // two fully loaded states of the same map.
+        if (
+          !state.mapLoaded ||
+          state.isMapLoading ||
+          !previousState.mapLoaded ||
+          previousState.isMapLoading ||
+          state.mapPath !== previousState.mapPath
+        ) return;
+
+        const pins = levelObjects(state).pins;
+        const previousPins = levelObjects(previousState).pins;
         for (const [id, previousPin] of Object.entries(previousPins)) {
           const pin = pins[id];
           if (!pin) {
