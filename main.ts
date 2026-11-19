@@ -1,5 +1,5 @@
 import './src/app/plugin/host/initializeHost';
-import { Platform, Plugin, type Component } from 'obsidian';
+import { Plugin, type Component } from 'obsidian';
 // Tailwind first, so the custom SCSS can override it.
 import './styles/index.css';
 import './styles/main.scss';
@@ -111,7 +111,6 @@ import { DungeonWorkerClient } from './src/app/dungeons/worker/DungeonWorkerClie
 import { MosaicCanvasService } from './src/app/pixi/mosaicCanvas/MosaicCanvasService';
 import { guardChildUnload, guardedCleanup } from './src/app/plugin/guardedTeardown';
 import { showNotice } from './src/app/ui/notice';
-import { deviceSupport } from './src/app/platform/deviceSupport';
 import { isDesktopApp } from './src/app/platform/desktopOnly';
 import { registerPointerAttribute } from './src/app/platform/pointerAttribute';
 import { registerTouchContextMenus } from './src/app/plugin/touchContextMenus';
@@ -153,14 +152,15 @@ export default class AtlasVTTPlugin extends Plugin {
    * it stops there once this is set.
    */
   private unloaded = false;
-  /** A phone, or a tablet whose system is too old for Atlas: nothing of Atlas was started, so nothing is released. */
+  /** A device whose system is too old for Atlas: nothing of Atlas was started, so nothing is released. */
   private unsupported = false;
 
   async onload(): Promise<void> {
-    const support = deviceSupport({ isPhone: Platform.isPhone, hasOffscreenCanvas: typeof OffscreenCanvas !== 'undefined' });
-    if (support !== 'supported') {
+    // Atlas' image and map workers draw on an OffscreenCanvas, which iOS and iPadOS have since 16.4:
+    // a capability can be asked, a version would have to be read out of the user agent.
+    if (typeof OffscreenCanvas === 'undefined') {
       this.unsupported = true;
-      registerUnsupportedDevice(this, support);
+      registerUnsupportedDevice(this);
       return;
     }
     // Before anything of Atlas renders: what React and framer-motion put on the page goes with Atlas.

@@ -46,32 +46,24 @@ beforeEach(() => {
 });
 
 describe('Atlas on a device it does not run on', () => {
-  it('tells a phone that it needs a tablet or a desktop, and registers a settings tab that says the same', () => {
+  it('says that the system is too old, and registers a settings tab that says the same and nothing else', () => {
     const { plugin, tabs, registered, ready } = fakePlugin();
-    registerUnsupportedDevice(plugin, 'phone');
+    registerUnsupportedDevice(plugin);
     ready();
 
-    expect(showNotice).toHaveBeenCalledExactlyOnceWith('Atlas needs a tablet or a desktop.');
-    expect(tabs).toHaveLength(1);
-    expect(tabs[0]!.sections()).toMatchObject([{ heading: 'Atlas VTT', rows: [{ name: 'Atlas needs a tablet or a desktop.' }] }]);
-    expect(registered).toEqual([]);
-  });
-
-  it('tells a tablet whose system is too old just that, whatever its make', () => {
-    const { plugin, tabs, ready } = fakePlugin();
-    registerUnsupportedDevice(plugin, 'old-os');
-    ready();
     expect(showNotice).toHaveBeenCalledExactlyOnceWith('This device\'s system is too old for Atlas.');
-    expect(tabs[0]!.sections()).toMatchObject([{ rows: [{ name: 'This device\'s system is too old for Atlas.' }] }]);
+    expect(tabs).toHaveLength(1);
+    expect(tabs[0]!.sections()).toMatchObject([{ heading: 'Atlas VTT', rows: [{ name: 'This device\'s system is too old for Atlas.' }] }]);
+    expect(registered).toEqual([]);
   });
 
   it('says it once per device, not at every start', () => {
     const storage = new Map<string, unknown>();
     const first = fakePlugin(storage);
-    registerUnsupportedDevice(first.plugin, 'phone');
+    registerUnsupportedDevice(first.plugin);
     first.ready();
     const second = fakePlugin(storage);
-    registerUnsupportedDevice(second.plugin, 'phone');
+    registerUnsupportedDevice(second.plugin);
     second.ready();
 
     expect(showNotice).toHaveBeenCalledOnce();
@@ -80,7 +72,7 @@ describe('Atlas on a device it does not run on', () => {
 
   it('shows nothing before the workspace is laid out', () => {
     const { plugin } = fakePlugin();
-    registerUnsupportedDevice(plugin, 'phone');
+    registerUnsupportedDevice(plugin);
     expect(showNotice).not.toHaveBeenCalled();
   });
 });

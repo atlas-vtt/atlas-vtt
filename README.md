@@ -14,7 +14,7 @@ TTRPG worlds in my opinion are something very personal and players and DMs get a
 
 Ease of use matters just as much to me. Atlas aims for a minimal, streamlined interface that feels native to Obsidian, with clear controls and simple workflows that keep your attention on the game.
 
-Atlas runs in Obsidian on Windows, macOS and Linux, and on iPads and Android tablets. Phones are not supported.
+Atlas runs in Obsidian on Windows, macOS and Linux, and on iPads and Android tablets.
 
 Documentation at: [atlas-vtt.dev](https://atlas-vtt.dev/)
 
