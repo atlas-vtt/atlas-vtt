@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",
@@ -8,7 +7,7 @@
     "allowJs": true,
     "noEmit": true,
     "noImplicitAny": true,
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "importHelpers": true,
     "isolatedModules": true,
     "strictNullChecks": true,
@@ -25,7 +24,10 @@
     "forceConsistentCasingInFileNames": true,
     "jsx": "react-jsx",
     "resolveJsonModule": true,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "src/*": ["./src/*"]
+    }
   },
   "include": [
     "src/**/*.ts",

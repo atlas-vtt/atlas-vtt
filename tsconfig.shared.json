@@ -8,6 +8,7 @@
       "ESNext"
     ],
     "paths": {
+      "src/*": ["./src/*"],
       "obsidian": [
         "./scripts/boundaries/no-obsidian.d.ts"
       ]
