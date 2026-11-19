@@ -212,7 +212,7 @@ describe('hit dice', () => {
     const hitPoints: Array<[string, string | undefined]> = [];
     const el = statblock();
     linkDiceIn(el);
-    const dispose = attachDiceRolling(el, fakeApp(rolls), () => ({}), (formula, ability) => hitPoints.push([formula, ability]));
+    const dispose = attachDiceRolling(el, fakeApp(rolls), () => ({}), { onRollHitPoints: (formula, ability) => hitPoints.push([formula, ability]) });
 
     const [hitDice, bite] = el.querySelectorAll<HTMLElement>('.atlas-dice-link');
     hitDice!.click();

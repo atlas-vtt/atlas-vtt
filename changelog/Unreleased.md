@@ -22,6 +22,7 @@
 
 **Dice**
 
+- Dice written in a note roll with Atlas: click 2d6+3, d20, +4 or `dice: 1d20+5` in reading view to roll it into the open map's dice log, Shift-click for advantage and Alt-click for disadvantage. With a contribution by young-george
 - Saved rolls: the bookmark at the foot of the dice tray (or P) opens a panel beside it. Save a roll under a name, then roll it with one click
 - Change the tray's dice row: pin saved rolls into it, add dice of any size (a d3, a d30), take out what you never roll and drag the rest into order, up to ten places. Swap the d100 for Daggerheart's two d12, for example. Number keys 1 to 0 follow the row
 - Saved rolls and the row belong to the collection, so each game keeps its own
