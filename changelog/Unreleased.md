@@ -24,3 +24,5 @@
 
 - On Windows, converting music or ambience in a linked folder now moves the originals to the trash when you chose that, instead of keeping them
 - While the Armarium is open in the asset manager, the sidebar shows the Armarium's tags and filters the store by them, instead of the tags of the collection you were in
+- The table log has room around its messages again; rolls and the message field no longer sit against its edge
+- The table log and the dice log show a roll's result once the dice have landed, not while they are still rolling

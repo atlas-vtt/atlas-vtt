@@ -10,6 +10,7 @@ import { diceSceneToShow } from '../../../dice3d/rollPresentation';
 import { setDiceVolume, warmDiceSounds } from '../../../dice3d/audio/diceSamples';
 import { playDiceReveal } from '../../../audio/diceRevealSound';
 import { canShowDice, warmStages } from '../../../dice3d/stagePool';
+import { holdRoll } from '../../../dice3d/rollsInFlight';
 import { deviceProfile } from '../../../platform/deviceProfile';
 import type { DiceRollResult } from '../../../types/diceTypes';
 import type { DiceRollOrigin } from '../../../types/diceRollOrigin';
@@ -108,7 +109,9 @@ export function DiceRollDisplay({ container, prepare, muted: windowMuted = false
         return;
       }
       if (!muted && !options.muted) warmDiceSounds();
-      setRolls((prev) => pushRoll(prev, { ...prepared, scene, style: throwStyle(display), ...((options.muted || volume === 0) && { muted: true as const }) }));
+      // Held now, in the task that announced the roll, so no log draws its number before the dice land.
+      const release = holdRoll(raw.id);
+      setRolls((prev) => pushRoll(prev, { ...prepared, scene, style: throwStyle(display), release, ...((options.muted || volume === 0) && { muted: true as const }) }));
     };
     return (subscribe ?? busRolls(eventBus))(show);
   }, [subscribe, eventBus, addToast, prepare, display, muted, volume, cardSounds, stageDoc, container, app]);

@@ -20,7 +20,7 @@
     // The space above the row's content, which its tools climb back over to sit on its top edge.
     --atlas-online-log-row-top: #{$spacing-xs};
     position: relative;
-    padding: var(--atlas-online-log-row-top) $spacing-m 2px;
+    padding: var(--atlas-online-log-row-top) $spacing-s 2px;
     border-radius: $radius-m;
     outline: none;
     transition: background-color 600ms ease;
