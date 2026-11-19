@@ -1,35 +1,40 @@
 // ──────────────────────────────────────────────
-// A saved roll's editor: a floating card beside the saved rolls (DicePresetEditor), the Dice Lab's tray inside it
+// A saved roll's editor: a floating card above the saved rolls (DicePresetEditor), the Dice Lab's tray inside it
 // ──────────────────────────────────────────────
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
 $editor-width: 440px;
 $editor-gap: $spacing-s;
-$editor-stage: 340px;
+$editor-stage: 260px;
 $editor-control: $button-height-l;
 
-// Beside the saved rolls on their left, its own card in their look (`__card`). Taller than the tray, it stands on the
-// tray's foot and grows upward (more as its rules unfold), so it never hangs over the toolbar below.
+@keyframes atlas-dice-preset-editor-in {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+// Above the saved rolls, centred on them, its own card in their look (`__card`), so it needs no room beside the tray
+// on a small screen. It grows upward (more as its rules unfold); `useKeepInView` moves it back off a side of the view
+// and caps its height to the room above, where it scrolls. It arrives from its foot, by `scale`, which leaves
+// `translate` to that sideways move.
 .atlas-dice-preset-editor {
   position: absolute;
-  bottom: 0;
-  right: calc(100% + #{$editor-gap});
+  bottom: calc(100% + #{$editor-gap});
+  left: calc(50% - #{$editor-width * 0.5});
   display: flex;
   flex-direction: column;
   gap: $surface-inset;
   width: $editor-width;
   font-size: $font-ui-small;
-  animation: atlas-dice-preset-in 240ms $transition-ease-out both;
+  transform-origin: 50% 100%;
+  animation: atlas-dice-preset-editor-in 220ms $transition-ease-out backwards;
+  @include atlas-keep-in-view;
 
   @media (prefers-reduced-motion: reduce) {
     animation-name: atlas-dice-fade-in;
-  }
-
-  // A window too narrow for it beside them: over the saved rolls, at their right edge.
-  @media (max-width: 1400px) {
-    right: 0;
-    z-index: 1;
   }
 }
 

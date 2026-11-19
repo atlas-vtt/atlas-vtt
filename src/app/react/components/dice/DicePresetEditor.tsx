@@ -1,4 +1,6 @@
-import React, { useId, useState } from 'react';
+import React, { useId, useRef, useState } from 'react';
+import { cn } from '../../../../utils/cn';
+import { useKeepInView } from '../../../packages/components/primitives/useKeepInView';
 import { Check, ChevronDown } from 'lucide-react';
 import { setRoll } from '../../../gameSystems/diceSets';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
@@ -22,7 +24,7 @@ interface DicePresetEditorProps {
 }
 
 /**
- * A saved roll's editor, floating beside the saved rolls in their look: its name and Done on top, then its dice as
+ * A saved roll's editor, floating above the saved rolls in their look: its name and Done on top, then its dice as
  * the Dice Lab lays them out (a click fans out sides, name, colour, copy and remove; + adds a die; a drag moves
  * one), its bonus, and the Dice Lab's rules (critical, exploding, advantage) folded away. A roll written as a
  * formula the dice cannot show (`4d6kh3`) keeps its formula field instead. Escape steps back through a die's fan
@@ -30,6 +32,9 @@ interface DicePresetEditorProps {
  */
 export function DicePresetEditor({ preset, onSave, onClose }: DicePresetEditorProps): React.ReactElement {
   const { draft, edit } = usePresetDraft(preset, onSave);
+  // Above the saved rolls: moved back off a side of the view, its height capped to the room above.
+  const card = useRef<HTMLElement>(null);
+  const keepInView = useKeepInView(card, true, 'top');
   const [rulesOpen, setRulesOpen] = useState(false);
   const rulesId = useId();
   const groups = groupsOfDice(draft.dice);
@@ -43,7 +48,13 @@ export function DicePresetEditor({ preset, onSave, onClose }: DicePresetEditorPr
   };
 
   return (
-    <section className="atlas-dice-presets__card atlas-dice-preset-editor" aria-label={t('diceRoll.presetEdit', { name: preset.name })} onKeyDown={onKeyDown}>
+    <section
+      ref={card}
+      className={cn('atlas-dice-presets__card atlas-dice-preset-editor', keepInView.capped && 'atlas-keep-in-view--capped')}
+      style={keepInView.style}
+      aria-label={t('diceRoll.presetEdit', { name: preset.name })}
+      onKeyDown={onKeyDown}
+    >
       <div className="atlas-dice-preset-editor__head">
         <input
           className="atlas-dice-presets__field atlas-dice-preset-editor__name"

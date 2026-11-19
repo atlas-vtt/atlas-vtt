@@ -71,28 +71,46 @@ describe('a saved roll\'s editor', () => {
     style.remove();
   });
 
-  it('floats left of the saved rolls, foot to foot, with the dice drawn in their colours, and a die\'s fan changes its colour', async () => {
+  it('floats above the saved rolls, centred on them, with the dice drawn in their colours, and a die\'s fan changes its colour', async () => {
     render(h(Scene));
     await settle(1500);
     await Promise.all(document.querySelector('.atlas-dice-preset-editor')!.getAnimations().map((animation) => animation.finished));
     const editor = document.querySelector('.atlas-dice-preset-editor')!.getBoundingClientRect();
     const column = document.querySelector('.atlas-dice-presets')!.getBoundingClientRect();
     const cs = getComputedStyle(document.querySelector('.atlas-dice-preset-editor')!);
-    expect(editor.right).toBeLessThanOrEqual(column.left);
-    // Taller than the tray, it stands on the tray's foot and grows upward, never over the toolbar below.
-    expect(Math.abs(editor.bottom - column.bottom)).toBeLessThan(1);
+    // Above the saved rolls, centred on them: it needs no room beside the tray, and fits above a tray in a window of 800 px.
+    expect(document.querySelector('.atlas-dice-preset-editor')!.classList.contains('atlas-keep-in-view--capped')).toBe(false);
+    expect(editor.bottom).toBeLessThanOrEqual(column.top);
+    expect(Math.abs((editor.left + editor.right) / 2 - (column.left + column.right) / 2)).toBeLessThan(1);
     expect(document.querySelectorAll('.atlas-dice-preset-editor .atlas-dice-lab__die')).toHaveLength(2);
 
     const die = centreOf(document.querySelector('.atlas-dice-preset-editor .atlas-dice-lab__die')!);
     await mouse.click(die.x, die.y);
     await settle();
-    const rules = centreOf(document.querySelector('.atlas-dice-preset-editor__rules-toggle')!);
+    const toggle = document.querySelector('.atlas-dice-preset-editor__rules-toggle')!;
+    toggle.scrollIntoView({ block: 'nearest' });
+    const rules = centreOf(toggle);
     await mouse.click(rules.x, rules.y);
     await settle();
-    const critical = centreOf(document.querySelector('.atlas-dice-preset-editor__rules .atlas-obsidian-menu-dropdown')!);
+    const choice = document.querySelector('.atlas-dice-preset-editor__rules .atlas-obsidian-menu-dropdown')!;
+    choice.scrollIntoView({ block: 'nearest' });
+    await settle(300);
+    const critical = centreOf(choice);
     await mouse.click(critical.x, critical.y);
     await settle(400);
     // The Dice Lab's own choice opens its menu over the editor.
     expect(document.querySelector('.atlas-ctx-menu')).not.toBeNull();
+  });
+
+  it('stays inside a small window: moved back off its side, its height capped to the room above, where it scrolls', async () => {
+    await page.viewport(560, 640);
+    render(h(Scene));
+    await settle(1500);
+    const card = document.querySelector<HTMLElement>('.atlas-dice-preset-editor')!;
+    await Promise.all(card.getAnimations().map((animation) => animation.finished));
+    const editor = card.getBoundingClientRect();
+    expect(editor.left).toBeGreaterThanOrEqual(0);
+    expect(editor.right).toBeLessThanOrEqual(560);
+    expect(editor.top).toBeGreaterThanOrEqual(0);
   });
 });
