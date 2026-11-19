@@ -1,14 +1,15 @@
 import { Container } from 'pixi.js';
 import { areaMapOf, type AreaMap } from '../../measure/areaOnMap';
-import { placeAura } from '../../measure/auraArea';
 import { MAP_LAYER_Z } from '../../pixi/mapLayerOrder';
 import { DrawnMeasure, type MeasureLook, type MeasureSurfaces } from '../../pixi/measure/DrawnMeasure';
+import { MEASURE_MOTION, MeasurePresence } from '../../pixi/measure/measurePresence';
 import { destroyTree } from '../../pixi/utils/destroyTree';
 import { MeasureInkLayer } from '../../pixi/utils/measureInk';
 import { toldMeasures, type ToldMeasure } from './measureWords.ts';
 import { PointerTrack } from './PointerTrack.ts';
 import type { LayBodies, RemoteMeasure, RemoteMeasurePorts } from './remoteMeasurePorts.ts';
-import { colourNumber, colourOf, endOf, fixedOf, followerOf, sameLook, sameMeasurement, samePoint, samePoints, sameTold, type Kept, type Live, type Sender } from './toldMeasures.ts';
+import { RemoteKept } from './RemoteKept.ts';
+import { colourNumber, colourOf, endOf, fixedOf, sameLook, sameMeasurement, samePoint, samePoints, type Live, type Sender } from './toldMeasures.ts';
 
 export type { LayBodies, MeasureRules, RemoteMeasure, RemoteMeasurePorts } from './remoteMeasurePorts.ts';
 
@@ -34,7 +35,13 @@ const NO_TOKENS = {};
  *
  * The end of a measurement being drawn moves through a `PointerTrack`, timed by the span its
  * messages tell, so it glides between two messages, and its label says the distance to the end as
- * drawn; a ruler's corners before its end stand as told, and kept measurements stand as they arrive.
+ * drawn; a ruler's corners before its end stand as told.
+ *
+ * Measurements come and go as Atlas's own do (`MeasurePresence`): a kept one grows in from where it
+ * starts and fades out when its sender deletes it, one being drawn fades in and fades out when it
+ * ends, and one kept from it takes its place as it stands. An edit of a kept measurement (moved,
+ * resized) shows its way there (`MeasureMorph`). Clearing, or bodies laid into another map, take
+ * everything away at once.
  */
 export class RemoteMeasures {
   /** Above the lighting: the rulers, the GM's outlines where they are drawn, and every label above them. */
@@ -50,10 +57,13 @@ export class RemoteMeasures {
   private moving = false;
   /** Whether an aura is among the kept measurements. */
   private auras = false;
+  /** The kept measurements' drawings, and those fading away. */
+  private readonly keptDrawings: RemoteKept;
 
   constructor(private readonly ports: RemoteMeasurePorts) {
     this.outlines = ports.gmOutlines === true ? new MeasureInkLayer('remote-measure-outlines') : null;
     this.container.addChild(this.shapes.view, ...(this.outlines ? [this.outlines.view] : []), this.labels);
+    this.keptDrawings = new RemoteKept({ surfaces: () => this.surfaces(), look: () => this.look(), ...(ports.token && { token: (id: string) => ports.token?.(id) ?? null }) });
   }
 
   /**
@@ -73,21 +83,23 @@ export class RemoteMeasures {
   update(measures: readonly RemoteMeasure[], now: number): void {
     this.mend();
     const present = new Set(measures.map((entry) => entry.who));
-    for (const [who, sender] of this.senders) if (!present.has(who)) this.remove(who, sender);
+    for (const [who, sender] of this.senders) if (!present.has(who)) this.remove(who, sender, true);
     const look = this.look();
     for (const entry of measures) {
       const known = this.senders.get(entry.who);
       const told = toldMeasures(entry);
       if ((told.live === null && told.kept.length === 0) || look === null) {
-        if (known !== undefined) this.remove(entry.who, known);
+        if (known !== undefined) this.remove(entry.who, known, look !== null);
         continue;
       }
       const sender = known ?? this.add(entry.who);
       const colour = colourNumber(entry.color);
       const recoloured = colour !== sender.colour;
       sender.colour = colour;
-      this.drawKept(sender, told.kept, recoloured, look);
-      this.follow(sender, told.live, entry.span, now, recoloured, look);
+      // The measurement being drawn ends, perhaps kept: the kept one takes its drawing's place.
+      const ending = told.live === null ? sender.live?.told ?? null : null;
+      const handed = this.keptDrawings.draw(sender, told.kept, recoloured, look, ending);
+      this.follow(sender, told.live, entry.span, now, recoloured, look, handed);
     }
     const senders = [...this.senders.values()];
     this.moving = senders.some((sender) => sender.live?.track.busy(now) === true);
@@ -105,7 +117,7 @@ export class RemoteMeasures {
     if (look === null) return;
     for (const sender of this.senders.values()) {
       sender.kept.forEach((kept, index) => {
-        if (kept.follower) this.drawOne(sender, kept, index, look, false);
+        if (kept.follower) this.keptDrawings.drawOne(sender, kept, index, look, false);
       });
     }
   }
@@ -142,7 +154,7 @@ export class RemoteMeasures {
     for (const sender of this.senders.values()) {
       sender.kept.forEach((kept, index) => {
         // Another grid or other rules lay an aura anew.
-        if (kept.follower) this.drawOne(sender, kept, index, look, true);
+        if (kept.follower) this.keptDrawings.drawOne(sender, kept, index, look, true);
         else kept.drawn.redraw(look);
       });
       sender.live?.drawn.redraw(look);
@@ -151,6 +163,7 @@ export class RemoteMeasures {
 
   clear(): void {
     for (const [who, sender] of this.senders) this.remove(who, sender);
+    this.keptDrawings.clear();
     this.moving = false;
     this.auras = false;
   }
@@ -200,50 +213,11 @@ export class RemoteMeasures {
     return sender;
   }
 
-  private remove(who: string, sender: Sender): void {
+  /** A sender's drawings go: faded out (`fade`), or at once. */
+  private remove(who: string, sender: Sender, fade = false): void {
     this.senders.delete(who);
-    for (const { drawn } of sender.kept) drawn.destroy();
-    sender.live?.drawn.destroy();
-  }
-
-  /** The kept measurements of a sender, in order: one that is another, or in another colour, is drawn anew, and those there are no more of go. */
-  private drawKept(sender: Sender, told: readonly ToldMeasure[], recoloured: boolean, look: MeasureLook): void {
-    for (const kept of sender.kept.splice(told.length)) kept.drawn.destroy();
-    told.forEach((measure, index) => {
-      const known = sender.kept[index];
-      if (known !== undefined && !recoloured && sameTold(known.told, measure)) return;
-      const kept = known ?? { told: measure, follower: null, placed: null, drawn: new DrawnMeasure(this.surfaces()) };
-      kept.told = measure;
-      kept.follower = followerOf(measure);
-      sender.kept[index] = kept;
-      this.drawOne(sender, kept, index, look, true);
-    });
-  }
-
-  /**
-   * Draws one kept measurement: in its own colour, else its sender's, with its look where it has
-   * one (its pattern told from the sender's others by its place among them). An aura is laid
-   * around its token as the host draws that now, and has no drawing while the host draws none;
-   * unless `anew`, one whose token stands on the same cells is left as it is.
-   */
-  private drawOne(sender: Sender, kept: Kept, index: number, look: MeasureLook, anew: boolean): void {
-    const { told, follower, drawn } = kept;
-    const colour = colourOf(told, sender.colour);
-    const effect = told.effect ? { effect: told.effect, seed: `${sender.who}:${index}` } : null;
-    if (!follower) {
-      // In the place of an aura that had no token, it shows its size again.
-      kept.placed = null;
-      drawn.parts.label.visible = true;
-      drawn.draw(told, colour, look, told.walls !== false, null, effect);
-      return;
-    }
-    const token = this.ports.token?.(follower.follows) ?? null;
-    const placed = token && placeAura(follower, token, { ...look.grid, snapToGrid: look.map.cells }, look.settings, kept.placed);
-    if (!anew && placed === kept.placed) return;
-    kept.placed = placed;
-    drawn.parts.label.visible = placed !== null;
-    if (placed) drawn.draw(told, colour, look, told.walls !== false, placed, effect);
-    else drawn.clear();
+    for (const kept of sender.kept) this.keptDrawings.drop(kept.drawn, kept.presence, fade, kept.morph);
+    if (sender.live) this.keptDrawings.drop(sender.live.drawn, sender.live.presence, fade);
   }
 
   /**
@@ -251,10 +225,11 @@ export class RemoteMeasures {
    * others, or a new one (another start or shape), which stands where it begins and does not glide
    * from the last.
    */
-  private follow(sender: Sender, told: ToldMeasure | null, span: number | undefined, now: number, recoloured: boolean, look: MeasureLook): void {
+  private follow(sender: Sender, told: ToldMeasure | null, span: number | undefined, now: number, recoloured: boolean, look: MeasureLook, handed = false): void {
     const live = sender.live;
     if (told === null) {
-      live?.drawn.destroy();
+      // Ended: it fades out, unless a kept measurement took its place.
+      if (live) this.keptDrawings.drop(live.drawn, live.presence, !handed);
       sender.live = null;
       return;
     }
@@ -262,8 +237,10 @@ export class RemoteMeasures {
     if (live === null || !sameMeasurement(live.told, told)) {
       const track = new PointerTrack({ interval: this.ports.interval });
       track.push([end], undefined, now);
-      sender.live = { told, track, end, drawn: live?.drawn ?? new DrawnMeasure(this.surfaces()) };
+      const drawn = live?.drawn ?? new DrawnMeasure(this.surfaces());
+      sender.live = { told, track, end, drawn, presence: live?.presence ?? new MeasurePresence((presence) => drawn.present(presence)) };
       this.drawLive(sender.live, sender.colour, look);
+      if (live === null) sender.live.presence.enter(MEASURE_MOTION.live.from, MEASURE_MOTION.live.ms);
       return;
     }
     // An end that stands is no new sample, unless its message says that time passed for its sender.

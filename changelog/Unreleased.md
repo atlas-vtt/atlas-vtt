@@ -31,6 +31,8 @@
 ## Improved
 
 - Measurements come and go smoothly: a kept ruler, circle, cone, square or line grows in from where it starts and fades out when deleted or undone, and one you don't keep dissolves instead of vanishing. The pin that keeps it pops in beside its label
+- Undo and redo carry a moved or resized measurement back along its way, with its handles. Auras and measurements grouped with a token glide with the token instead of jumping ahead of it
+- Players' measurements come and go the same way on your map, and one they move glides there
 
 ## Fixed
 

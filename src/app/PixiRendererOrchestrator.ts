@@ -1335,6 +1335,8 @@ export class PixiRendererOrchestrator { // Renamed class
     const rules = rulesLookup(this.obsApp);
     measure.measurementSettingsProvider = () => mapMeasurementSettings(rules, this.store.getState());
     measure.effects.setMode(this.mapVideoMode);
+    // Auras and grouped measurements go with their token as it glides to its place.
+    measure.followShown(this.shownPlaces);
     const grid = this.gridSystem;
     if (grid) measure.playersView = measurePlayersView({ store: this.store, grid, tokens: () => this.tokenRenderer, lighting: () => this.lighting?.playerSight() });
     this.tokenRenderer?.setMeasureHandlers(measure.handles.pointer);
