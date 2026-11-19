@@ -1,0 +1,27 @@
+import type { Translation } from '../../types';
+
+export const align: Translation = {
+  'align.analysing': 'Analyse de la carte…',
+  'align.checking': 'Grille trouvée : {type}. Vérification de la taille des cases…',
+  'align.waitingForTiles': 'En attente des tuiles de la carte · {percent} %',
+  'align.cornerFirst': 'Cliquez sur un coin d\'une case.',
+  'align.cornerNext': 'Puis sur le coin suivant, à droite.',
+  'align.find': 'Détection auto',
+  'align.flat': 'Plat',
+  'align.flatHexes': 'hexagones à sommet plat',
+  'align.freehandHint': 'Zoomez jusqu\'à ce qu\'une case d\'aperçu couvre une case de la carte, puis cliquez.',
+  'align.gridType': 'Type de grille',
+  'align.hexCornerFirst': 'Cliquez sur un coin d\'un hexagone.',
+  'align.hexCornerNext': 'Puis sur un coin voisin du même hexagone.',
+  'align.measureCount': 'Mesure {done} sur {total}',
+  'align.measureMore': 'Les lignes de la carte n\'ont pas suffi. Mesurez une case de plus.',
+  'align.noGrid': 'Aucune grille trouvée dans l\'image de la carte. Alignez-la plutôt à la main.',
+  'align.orByHand': 'Ou alignez-la vous-même',
+  'align.pointy': 'Pointu',
+  'align.pointyHexes': 'hexagones à sommet pointu',
+  'align.square': 'Carré',
+  'align.squares': 'carrés',
+  'align.tab.freehand': 'Main levée',
+  'align.tab.intersections': 'Mesurer',
+  'align.title': 'Alignement de la grille',
+};
