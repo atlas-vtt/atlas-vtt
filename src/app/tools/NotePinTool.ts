@@ -17,6 +17,7 @@ import { hexLinkAt } from '../grid/hexLinks';
 import { linkedSceneFile, mayLinkFromScene } from '../services/sceneLinks';
 import { openPinNote } from '../services/noteHeadings';
 import { pinNoteLink } from './pinNoteLink';
+import { pinName } from './pinNames';
 import { pinSceneLevel } from '../levels/pinSceneLevel';
 import { showPinnedLevel } from '../links/openAtlasLink';
 import { t } from '../i18n';
@@ -57,6 +58,7 @@ export class NotePinTool {
   /** Whether new pins show their name: the last choice, so a map of place names needs it once. */
   private nextShowName = false;
   private storeUnsubscribe: (() => void) | null = null;
+  private pinNamesUnsubscribe: (() => void) | null = null;
   private pinActionHandler: ((e: CustomEvent<PinActionEventDetail>) => void) | null = null;
   private outsideClickHandler: ((e: MouseEvent) => void) | null = null;
   private outsideClickTimer: number | null = null;
@@ -157,6 +159,20 @@ export class NotePinTool {
     };
 
     this.storeUnsubscribe = this.store.subscribe(syncActiveState);
+    this.pinNamesUnsubscribe = this.store.subscribe(
+      (state) => levelObjects(state).pins,
+      (pins, previousPins) => {
+        for (const [id, pin] of Object.entries(pins)) {
+          const previousPin = previousPins[id];
+          if (!previousPin || pin.name === previousPin.name || pin.notePath !== previousPin.notePath) continue;
+          runInBackground(
+            this.addPinBacklink(pin.notePath, id, pinName(previousPin)),
+            `Updating the backlink for pin ${pinName(pin)}`,
+            'Could not update the pin backlink',
+          );
+        }
+      },
+    );
     syncActiveState(this.store.getState());
   }
 
@@ -374,7 +390,7 @@ export class NotePinTool {
    * Adds a return link to the Markdown note a pin points to. The stable pin id
    * makes the link unambiguous even when several pins point to the same note.
    */
-  private async addPinBacklink(notePath: string, pinId: string): Promise<void> {
+  private async addPinBacklink(notePath: string, pinId: string, previousName?: string): Promise<void> {
     const mapPath = this.store.getState().mapPath;
     const { linkpath } = pinNoteLink(notePath);
     const noteFile = this.obsidianApp.vault.getFileByPath(linkpath)
@@ -383,16 +399,21 @@ export class NotePinTool {
     // Pins may point to scenes or encounter folders as well as Markdown notes.
     if (!noteFile || noteFile.extension !== 'md' || !mapFile) return;
 
-    const link = this.obsidianApp.fileManager.generateMarkdownLink(
-      mapFile,
-      linkpath,
-      `#pin=${encodeURIComponent(pinId)}`,
-      'View on map',
-    );
+    const subpath = `#pin=${encodeURIComponent(pinId)}`;
+    const pin = levelObjects(this.store.getState()).pins[pinId];
+    const fallbackName = linkpath.split('/').pop()?.replace(/\\.md$/i, '') ?? '';
+    const label = `View on map - ${pin ? pinName(pin) : fallbackName}`;
+    const link = this.obsidianApp.fileManager.generateMarkdownLink(mapFile, linkpath, subpath, label);
+    const previousLink = previousName === undefined
+      ? null
+      : this.obsidianApp.fileManager.generateMarkdownLink(mapFile, linkpath, subpath, `View on map - ${previousName}`);
+    const legacyLink = this.obsidianApp.fileManager.generateMarkdownLink(mapFile, linkpath, subpath, 'View on map');
     await this.obsidianApp.vault.process(noteFile, (content) => {
+      if (previousLink && content.includes(previousLink)) return content.replace(previousLink, link);
       if (content.includes(link)) return content;
-      const separator = content.trim() ? '\n\n' : '';
-      return `${content.trimEnd()}${separator}${link}\n`;
+      if (content.includes(legacyLink)) return content.replace(legacyLink, link);
+      const separator = content.trim() ? '\\n\\n' : '';
+      return `${content.trimEnd()}${separator}${link}\\n`;
     });
   }
 
@@ -492,6 +513,10 @@ export class NotePinTool {
     if (this.storeUnsubscribe) {
       this.storeUnsubscribe();
       this.storeUnsubscribe = null;
+    }
+    if (this.pinNamesUnsubscribe) {
+      this.pinNamesUnsubscribe();
+      this.pinNamesUnsubscribe = null;
     }
 
     if (this.pinActionHandler) {
