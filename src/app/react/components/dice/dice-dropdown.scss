@@ -184,9 +184,10 @@ $tray-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
 
 .atlas-dice-tray__dice {
   display: grid;
-  // The collection's row: up to ten places, seven standard dice by default.
+  // The collection's row: up to ten places, seven standard dice by default, eight to a line (`ROW_COLUMNS`); more
+  // wrap into a second line, so the tray stays eight dice wide. A line's captions keep a gap above the next line.
   grid-template-columns: repeat(var(--atlas-tray-slots, #{$tray-dice}), $tray-face);
-  gap: $surface-inset;
+  gap: $spacing-s $surface-inset;
 }
 
 // Obsidian styles every <button>; the tray's own controls start from nothing.
@@ -248,7 +249,9 @@ $tray-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
   @include atlas-panel-inset-radius($surface-inset, top-left);
 }
 
-.atlas-dice-tray__die:last-child .atlas-dice-tray__face {
+// The last of the first line, whether the row stops there or wraps (eight places to a line).
+.atlas-dice-tray__die:nth-child(8) .atlas-dice-tray__face,
+.atlas-dice-tray__die:last-child:nth-child(-n + 8) .atlas-dice-tray__face {
   @include atlas-panel-inset-radius($surface-inset, top-right);
 }
 

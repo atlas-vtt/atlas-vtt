@@ -26,6 +26,12 @@ function limitOf(sides: number, counts: TrayPool): string | null {
   return null;
 }
 
+/** Places in one line of the row: more wrap into a second, so the tray stays as wide as eight dice. */
+export const ROW_COLUMNS = 8;
+
+/** The columns of a row of `places`: as many as it has, at most `ROW_COLUMNS`. */
+export const rowColumns = (places: number): number => Math.min(Math.max(places, 1), ROW_COLUMNS);
+
 /** The number key of a place in the row: 1 to 9, then 0. */
 export const placeKey = (place: number): string => String((place + 1) % 10);
 
@@ -71,7 +77,7 @@ export function DiceTrayDice({ row, presets, formula, counts, onAdd, onTakeBack,
   });
   return (
     <TooltipProvider delayDuration={300} skipDelayDuration={600}>
-      <div className="atlas-dice-tray__dice" style={{ '--atlas-tray-slots': Math.max(faces.length, 1) } as React.CSSProperties}>
+      <div className="atlas-dice-tray__dice" style={{ '--atlas-tray-slots': rowColumns(faces.length) } as React.CSSProperties}>
         {faces.map(({ slot, face }, place) => {
           const onClick = (event: React.MouseEvent): void => {
             if (event.altKey) onTakeBack(slot);

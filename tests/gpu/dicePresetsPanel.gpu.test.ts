@@ -60,7 +60,7 @@ describe('the saved rolls beside the dice tray', () => {
     style.remove();
   });
 
-  it('stands left of the tray, its foot on the tray\'s foot, and the row holds nine places in one line', async () => {
+  it('stands left of the tray, top and foot on the tray\'s, and the row holds eight places to a line', async () => {
     render(h(Scene));
     await settle();
     const panel = rect('.atlas-dice-presets');
@@ -69,8 +69,11 @@ describe('the saved rolls beside the dice tray', () => {
     expect(Math.abs(panel.bottom - tray.bottom)).toBeLessThan(1);
     const faces = [...document.querySelectorAll('.atlas-dice-tray__face')].map((face) => face.getBoundingClientRect());
     expect(faces).toHaveLength(9);
-    expect(new Set(faces.map((face) => Math.round(face.top))).size).toBe(1);
-    expect(faces.at(-1)!.right).toBeLessThanOrEqual(tray.right);
+    const lines = [...new Set(faces.map((face) => Math.round(face.top)))];
+    expect(lines).toHaveLength(2);
+    expect(faces.filter((face) => Math.round(face.top) === lines[0])).toHaveLength(8);
+    expect(Math.abs(faces[8]!.left - faces[0]!.left)).toBeLessThan(1);
+    expect(faces[7]!.right).toBeLessThanOrEqual(tray.right);
 
     // Every control of a card is concentric with the card's corner, on all four corners alike.
     const card = document.querySelector<HTMLElement>('.atlas-dice-presets__item')!;

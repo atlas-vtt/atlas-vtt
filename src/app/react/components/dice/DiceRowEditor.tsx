@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
-import { faceOf } from './DiceTrayDice';
+import { faceOf, rowColumns } from './DiceTrayDice';
 import { MAX_ROW, typedRowDie, withRowDie, withRowSlotMoved, withoutRowSlot, type DiceShelf, type RowDieProblem, type ShelfChange } from './diceShelf';
 import { useRowDrag } from './useRowDrag';
 import { t } from '../../../i18n';
@@ -108,7 +108,7 @@ export function DiceRowEditor({ shelf, onChange }: DiceRowEditorProps): React.Re
       <div
         ref={rowRef}
         className={cn('atlas-dice-tray__dice', 'atlas-dice-tray__dice--editing', drag.settling && 'atlas-dice-tray__dice--settling')}
-        style={{ '--atlas-tray-slots': Math.max(places.length + (room ? 1 : 0), 1) } as React.CSSProperties}
+        style={{ '--atlas-tray-slots': rowColumns(places.length + (room ? 1 : 0)) } as React.CSSProperties}
         // The dice are images, which the browser would drag as files and cancel the pointer for.
         onDragStart={(event) => event.preventDefault()}
         role="group"
@@ -119,7 +119,7 @@ export function DiceRowEditor({ shelf, onChange }: DiceRowEditorProps): React.Re
             key={face.key}
             className="atlas-dice-tray__die"
             data-held={drag.held === place ? '' : undefined}
-            style={{ translate: `${drag.offsetOf(place)}px 0` }}
+            style={{ translate: drag.offsetOf(place) }}
             onPointerDown={(event) => drag.onPointerDown(place, event)}
             onPointerMove={drag.onPointerMove}
             onPointerUp={drag.onPointerUp}

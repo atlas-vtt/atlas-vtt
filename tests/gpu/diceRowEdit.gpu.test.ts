@@ -71,4 +71,19 @@ describe('the dice row\'s edit mode', () => {
     expect(places().slice(0, 3)).toEqual(['d100', 'd4', 'd6']);
     expect(stored.diceRow?.[0]).toEqual({ kind: 'die', sides: 100 });
   });
+
+  it('wraps a ninth place into a second line and drags a die from the second line into the first', async () => {
+    stored = { diceRow: [4, 6, 8, 10, 12, 20, 100, 3, 30].map((sides) => ({ kind: 'die' as const, sides })) };
+    render(h(Scene));
+    const edit = centreOf(document.querySelector('[aria-label="Edit dice row"]')!);
+    await mouse.click(edit.x, edit.y);
+    await settle();
+    const dice = [...document.querySelectorAll('.atlas-dice-tray__dice--editing .atlas-dice-tray__die')];
+    expect(new Set(dice.map((die) => Math.round(die.getBoundingClientRect().top))).size).toBe(2);
+    const to = centreOf(dice[1]!);
+    await pressAndMove(centreOf(dice[8]!), to);
+    await mouse.up(to.x, to.y);
+    await settle();
+    expect(places().slice(0, 3)).toEqual(['d4', 'd30', 'd6']);
+  });
 });
