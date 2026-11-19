@@ -113,6 +113,7 @@ import { migration } from './migration';
 import { wall } from './wall';
 import { sceneLight } from './sceneLight';
 import { graphics } from './graphics';
+import { experimental } from './experimental';
 import { vision } from './vision';
 import { videoMap } from './videoMap';
 import { uvttFloors } from './uvttFloors';
@@ -234,6 +235,7 @@ export const en = {
   ...wall,
   ...sceneLight,
   ...graphics,
+  ...experimental,
   ...vision,
   ...videoMap,
   ...uvttFloors,

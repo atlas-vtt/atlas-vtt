@@ -9,7 +9,7 @@ import { cardRounds, dealCards } from '../initiative/cardDeal';
 import { dealGroupOf } from '../initiative/cardGroups';
 import { shuffledDeck } from '../initiative/initiativeDice';
 import type { RoundChanges } from '../initiative/rounds';
-import { enterSideRound, fightSideIds, rollSides } from '../initiative/sideOrder';
+import { enterSideRound, fightSideIds, rollSides, sidesByRoll } from '../initiative/sideOrder';
 import { sideOf } from '../initiative/sides';
 import { firstActingSide, type SideTurnInputs } from '../initiative/turns';
 import type { InitiativeRules, SideId } from '../types/initiativeRulesTypes';
@@ -59,14 +59,17 @@ export function roundChangesOf(draft: FightDraft, deck: readonly number[]): Roun
 }
 
 function startSides(draft: FightDraft, rules: InitiativeRules, draws: FightDraws, defeated: ReadonlySet<string>): void {
-  const order = sidesOfRules(rules);
+  const sides = sidesOfRules(rules);
+  const openingRolls = rules.sideRollOnce ? draws.sideRolls : undefined;
+  const order = openingRolls ? sidesByRoll(sides, openingRolls) : sides;
   const first = firstBuiltInSide(order);
-  // A rolled order moves `first` from round to round, so the fight keeps its own list of sides
+  // A rolled fight keeps its own order. Only a fight that rolls every round keeps the dice formula.
   const fight: SidesFight = {
     first,
     active: first,
     ...((rules.sides || rules.sideRoll) && { order }),
-    ...(rules.sideRoll && { roll: rules.sideRoll }),
+    ...(rules.sideRoll && !rules.sideRollOnce && { roll: rules.sideRoll }),
+    ...(openingRolls && { rolls: { 1: openingRolls } }),
   };
   enterSideRound(fight, 1, draws.sideRolls);
   draft.initiative.sides = fight;
