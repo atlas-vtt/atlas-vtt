@@ -127,6 +127,29 @@ describe('NotePinTool creating a note', () => {
     );
   });
 
+  it('removes only the deleted pin backlink from its note', async () => {
+    const { app } = vaultWithNotesFolder({ 'Notes/Inn.md': 'An inn', [MAP_PATH]: '{}' });
+    const store = createViewAtlasStore(app, 'pin-delete-view');
+    store.getState().setPersistenceEnabled(false);
+    store.getState().setMapPath(MAP_PATH);
+    const tool = new NotePinTool(new EventEmitter(), app, store);
+    cleanup = () => tool.destroy();
+
+    const firstId = store.getState().addNotePin(40, 60, 'Notes/Inn.md');
+    const secondId = store.getState().addNotePin(80, 90, 'Notes/Inn.md');
+    const note = app.vault.getFileByPath('Notes/Inn.md')!;
+    await app.vault.modify(note,
+      `An inn\\n\\n[[${MAP_PATH}#pin=${encodeURIComponent(firstId)}|View on map - Inn]]\\n[[${MAP_PATH}#pin=${encodeURIComponent(secondId)}|View on map - Inn]]\\n`,
+    );
+
+    store.getState().deleteNotePin(firstId);
+    await settle();
+
+    expect(await app.vault.read(note)).toBe(
+      `An inn\\n\\n[[${MAP_PATH}#pin=${encodeURIComponent(secondId)}|View on map - Inn]]\\n`,
+    );
+  });
+
   it('places no pin for a name that cannot be a note', async () => {
     const { store, input } = await openDropdown();
     typeAndPress(input, 'A/B', 'Enter');
