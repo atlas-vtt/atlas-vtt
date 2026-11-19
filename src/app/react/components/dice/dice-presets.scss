@@ -24,6 +24,12 @@ $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal
     flex-shrink: 0;
   }
   animation: atlas-dice-fade-in $transition-normal $transition-ease-out both;
+
+  // A window too narrow for both side by side (a tablet upright): above the tray, at its right edge.
+  @media (max-width: 1000px) {
+    right: 0;
+    bottom: calc(100% + #{$spacing-s});
+  }
 }
 
 .atlas-dice-presets__header {
