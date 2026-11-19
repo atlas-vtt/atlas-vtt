@@ -8,6 +8,7 @@ import { TooltipProvider } from '../../src/app/packages/components/primitives/to
 import { DicePresetsPanel } from '../../src/app/react/components/dice/DicePresetsPanel';
 import { DiceTray } from '../../src/app/react/components/dice/DiceTray';
 import { readDiceShelf, STANDARD_ROW } from '../../src/app/react/components/dice/diceShelf';
+import { centreOf, mouse } from './realMouse';
 
 /** The saved rolls beside the tray, with the real stylesheet: beside it, foot on its foot, and a longer row in one line. */
 const THEME = `
@@ -69,5 +70,20 @@ describe('the saved rolls beside the dice tray', () => {
     expect(faces).toHaveLength(9);
     expect(new Set(faces.map((face) => Math.round(face.top))).size).toBe(1);
     expect(faces.at(-1)!.right).toBeLessThanOrEqual(tray.right);
+
+    // Every control of a card is concentric with the card's corner, on all four corners alike.
+    const card = document.querySelector<HTMLElement>('.atlas-dice-presets__item')!;
+    const px = (value: string): number => Number.parseFloat(value);
+    const cardStyle = getComputedStyle(card);
+    const inset = px(cardStyle.paddingTop) + px(cardStyle.borderTopWidth);
+    for (const control of card.querySelectorAll<HTMLElement>('button')) {
+      const corners = getComputedStyle(control);
+      for (const corner of [corners.borderTopLeftRadius, corners.borderTopRightRadius, corners.borderBottomLeftRadius, corners.borderBottomRightRadius]) {
+        expect(Math.abs(px(corner) + inset - px(cardStyle.borderTopLeftRadius))).toBeLessThan(0.6);
+      }
+    }
+    const hovered = centreOf(card.querySelector('.atlas-dice-presets__roll')!);
+    await mouse.hover(hovered.x, hovered.y);
+    await settle();
   });
 });

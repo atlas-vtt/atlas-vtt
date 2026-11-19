@@ -43,7 +43,7 @@ function PresetRow({ index, preset, pinned, rowFull, onRoll, onChange, shelf }: 
         </button>
       </LabelTooltip>
       <LabelTooltip label={t('diceRoll.presetDelete')} sideOffset={TRAY_TOOLTIP_GAP}>
-        <button type="button" className="atlas-dice-presets__icon" aria-label={t('diceRoll.presetDeleteNamed', { name: preset.name })}
+        <button type="button" className="atlas-dice-presets__icon atlas-dice-presets__icon--destructive" aria-label={t('diceRoll.presetDeleteNamed', { name: preset.name })}
           onClick={() => onChange(withoutPreset(shelf, preset.id))}>
           <Trash2 aria-hidden="true" />
         </button>
@@ -94,6 +94,7 @@ export function DicePresetsPanel({ shelf, onChange, trayFormula, problemOf, onRo
         <input className="atlas-dice-presets__field" value={name} maxLength={MAX_PRESET_NAME} placeholder={t('diceRoll.presetName')}
           aria-label={t('diceRoll.presetName')} aria-describedby={messageId} aria-invalid={tried && missingName ? true : undefined}
           onChange={(event) => setName(event.target.value)} />
+        <span className="atlas-dice-presets__divider" aria-hidden="true" />
         <input className="atlas-dice-presets__field atlas-dice-presets__field--formula" value={formula} placeholder="1d8 + 3"
           aria-label={t('diceRoll.presetFormula')} aria-describedby={messageId} aria-invalid={tried && problem ? true : undefined}
           spellCheck={false} autoComplete="off" onChange={(event) => setTyped(event.target.value)} />
