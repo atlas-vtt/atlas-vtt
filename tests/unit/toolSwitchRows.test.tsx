@@ -76,7 +76,7 @@ describe('the select tool\'s Snap switch', () => {
     expect(toggle('Snap').getAttribute('aria-checked')).toBe('true');
     press('Snap');
     expect(store.getState().toolSwitches.selectSnap).toBe(false);
-    act(() => store.getState().setToolSwitch('selectSnap', true));
+    act(() => { store.getState().setToolSwitch('selectSnap', true); });
     expect(toggle('Snap').getAttribute('aria-checked')).toBe('true');
   });
 });

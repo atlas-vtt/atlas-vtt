@@ -66,4 +66,11 @@ export const hotkey: Translation = {
   'hotkey.search': '搜索快捷键',
   'hotkey.noMatch': '没有与“{query}”匹配的快捷键',
   'hotkey.or': '或',
+  'hotkey.levelUp': '显示上面一层',
+  'hotkey.levelDown': '显示下面一层',
+  'hotkey.drawSmaller': '缩小绘图或迷雾画笔',
+  'hotkey.drawLarger': '放大绘图或迷雾画笔',
+  'hotkey.measureKeep': '保留测量',
+  'hotkey.nextMood': '下一个氛围',
+  'hotkey.silence': '停止所有声音',
 };

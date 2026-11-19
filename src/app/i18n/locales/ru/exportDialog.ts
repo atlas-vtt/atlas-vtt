@@ -23,4 +23,10 @@ export const exportDialog: Translation = {
   'exportDialog.version': 'Версия',
   'exportDialog.versionInvalid': 'Версия должна быть целым числом не меньше {min}.',
   'exportDialog.zipHint': 'Сохранить коллекцию в .zip, чтобы поделиться',
+  'exportDialog.tooLargeToShare': 'Выбрано {size}, а Armarium принимает не больше {limit}. Уберите часть элементов или опубликуйте коллекцию двумя частями.',
+  'exportDialog.shareInArmarium': 'Опубликовать в Armarium',
+  'exportDialog.shareIntro': 'Выберите, чем поделиться в Armarium. Atlas упакует коллекцию и загрузит её; файл не сохраняется, а выпуск записывается здесь только после публикации.',
+  'exportDialog.uploadVersion': 'Загрузить v{version}',
+  'exportDialog.uploadHint': 'Упаковать коллекцию и загрузить её в Armarium',
+  'exportDialog.closeShareHint': 'Закрыть, не публикуя',
 };

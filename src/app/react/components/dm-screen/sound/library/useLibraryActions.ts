@@ -14,7 +14,8 @@ import { pickFolder } from '../../../../../soundLibrary/SoundFolderPicker';
 import type { LibraryFile, SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { SoundPathReservedError, SoundPathTakenError, SoundVaultPathError, TrashUnavailableError } from '../../../../../soundLibrary/soundLocation';
 import type { LinkOutcome } from '../../../../../soundLibrary/SoundRoots';
-import { defaultSoundKind, type SoundChanges, type StoredSound } from '../../../../../soundLibrary/soundRecords';
+import { defaultSoundKind, soundRecordOf, type SoundChanges, type StoredSound } from '../../../../../soundLibrary/soundRecords';
+import { loopText, parseLoopText } from '../../../../../soundLibrary/loopPoints';
 import { SoundRecordStore } from '../../../../../soundLibrary/SoundRecordStore';
 import { addTag, cleanTag, removeTag, renameTag, tagsOfFiles, toggleTag, tracksHolding, type TrackTags } from '../../../../../soundLibrary/soundTags';
 import { confirmAction } from '../../../../../ui/confirmDialog';
@@ -58,6 +59,8 @@ export interface LibraryActions {
   relink: (sound: MissingSound) => void;
   mayRelink: (kind: SoundKind) => boolean;
   edit: (files: readonly LibraryFile[], changes: SoundChanges) => void;
+  /** Asks for a track's loop points as text; its copy must be made, since they are frames of it. */
+  askLoop: (file: LibraryFile, sound: StoredSound | null) => void;
   /** Files' tags as the records stand at this moment, for a menu that stays open through its own changes. */
   tagsOf: (files: readonly LibraryFile[]) => TrackTags[];
   onRecords: (listener: () => void) => () => void;
@@ -156,6 +159,23 @@ export function useLibraryActions(app: App, library: SoundLibrary, director: Sou
         }), 'Forgetting a sound');
       },
       edit: (files, changes) => run(editFiles(records, library, files, changes), 'Changing sounds'),
+      askLoop: (file, sound) => {
+        const frames = sound ? director.shelf.infoOf(soundRecordOf(sound))?.frames : undefined;
+        if (!sound || frames === undefined) {
+          showNotice(t('audio.loopNeedsCopy'));
+          return;
+        }
+        const loop = soundRecordOf(sound).loop;
+        run(promptForText({ title: t('audio.loopPointsTitle', { name: sound.name }), confirmLabel: t('audio.library.save'), initialValue: loop ? loopText(loop) : '', placeholder: t('audio.loopPointsHint') }).then(async (text) => {
+          if (text === null && !loop) return;
+          const parsed = parseLoopText(text ?? '', frames);
+          if (parsed === 'invalid') {
+            showNotice(t('audio.loopInvalid'));
+            return;
+          }
+          await editFiles(records, library, [file], { loop: parsed ?? undefined });
+        }), 'Setting loop points');
+      },
       tagsOf: (files) => tagsOfFiles(records.all(), library, files),
       onRecords: (listener) => records.onChange(listener),
       tag: (files, tag) => run(addTag(records, library, files, tag), 'Tagging sounds'),

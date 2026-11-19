@@ -20,8 +20,8 @@ interface DicePresetsPanelProps {
 }
 
 /** A saved roll: a click rolls it, the pin puts it in the tray's row, the bin deletes it. */
-function PresetRow({ preset, pinned, rowFull, onRoll, onChange, shelf }: {
-  preset: DicePreset; pinned: boolean; rowFull: boolean; shelf: DiceShelf;
+function PresetRow({ index, preset, pinned, rowFull, onRoll, onChange, shelf }: {
+  index: number; preset: DicePreset; pinned: boolean; rowFull: boolean; shelf: DiceShelf;
   onRoll: () => void; onChange: (change: ShelfChange) => void;
 }): React.ReactElement {
   const pinLabel = pinned ? t('diceRoll.presetUnpin') : rowFull ? t('diceRoll.presetRowFull', { max: MAX_ROW }) : t('diceRoll.presetPin');
@@ -30,7 +30,8 @@ function PresetRow({ preset, pinned, rowFull, onRoll, onChange, shelf }: {
     if (change) onChange(change);
   };
   return (
-    <li className="atlas-dice-presets__item">
+    <li className="atlas-dice-presets__card atlas-dice-presets__item" data-pinned={pinned ? '' : undefined}
+      style={{ '--atlas-preset-index': Math.min(index, 8) } as React.CSSProperties}>
       <button type="button" className="atlas-dice-presets__roll" onClick={onRoll} aria-label={t('diceRoll.presetRoll', { name: preset.name, formula: preset.formula })}>
         <span className="atlas-dice-presets__name">{preset.name}</span>
         <span className="atlas-dice-presets__formula">{preset.formula}</span>
@@ -52,8 +53,9 @@ function PresetRow({ preset, pinned, rowFull, onRoll, onChange, shelf }: {
 }
 
 /**
- * The saved rolls beside the tray, with no words of its own (the saved rolls' tour explains it): the rolls, a
- * click rolling one, its pin putting it in the tray's row; a name, a formula and + to save the tray's roll.
+ * The saved rolls beside the tray, as floating cards with no panel behind them and no words of their own (the
+ * saved rolls' tour explains them): first a card that saves the tray's roll under a name, then one card per saved
+ * roll, a click rolling it, its pin putting it in the tray's row. Top to top with the tray, and as tall.
  */
 export function DicePresetsPanel({ shelf, onChange, trayFormula, problemOf, onRoll }: DicePresetsPanelProps): React.ReactElement {
   const messageId = useId();
@@ -87,24 +89,8 @@ export function DicePresetsPanel({ shelf, onChange, trayFormula, problemOf, onRo
   };
 
   return (
-    <section className="atlas-dice-panel atlas-dice-presets" aria-label={t('diceRoll.presetsTitle')}>
-      {shelf.presets.length > 0 && (
-        <ul className="atlas-dice-presets__list">
-          {shelf.presets.map((preset) => (
-            <PresetRow
-              key={preset.id}
-              preset={preset}
-              shelf={shelf}
-              pinned={shelf.row.some((slot) => sameSlot(slot, { kind: 'preset', id: preset.id }))}
-              rowFull={rowFull}
-              onRoll={() => onRoll(preset)}
-              onChange={onChange}
-            />
-          ))}
-        </ul>
-      )}
-
-      <div className="atlas-dice-presets__form" onKeyDown={onEnter}>
+    <section className="atlas-dice-presets" aria-label={t('diceRoll.presetsTitle')}>
+      <div className="atlas-dice-presets__card atlas-dice-presets__form" onKeyDown={onEnter}>
         <input className="atlas-dice-presets__field" value={name} maxLength={MAX_PRESET_NAME} placeholder={t('diceRoll.presetName')}
           aria-label={t('diceRoll.presetName')} aria-describedby={messageId} aria-invalid={tried && missingName ? true : undefined}
           onChange={(event) => setName(event.target.value)} />
@@ -119,6 +105,21 @@ export function DicePresetsPanel({ shelf, onChange, trayFormula, problemOf, onRo
         <p id={messageId} className="atlas-dice-presets__message" aria-live="polite">{message}</p>
       </div>
 
+      {/* Each saved roll floats on its own; the list scrolls within the tray's height. */}
+      <ul className="atlas-dice-presets__list">
+        {shelf.presets.map((preset, index) => (
+          <PresetRow
+            key={preset.id}
+            index={index}
+            preset={preset}
+            shelf={shelf}
+            pinned={shelf.row.some((slot) => sameSlot(slot, { kind: 'preset', id: preset.id }))}
+            rowFull={rowFull}
+            onRoll={() => onRoll(preset)}
+            onChange={onChange}
+          />
+        ))}
+      </ul>
     </section>
   );
 }

@@ -9,4 +9,5 @@ export const cleanup: Translation = {
   'cleanup.nothingMissing': '没有发现缺失的素材',
   'cleanup.title': '清理缺失的素材',
   'cleanup.tokens': { other: '{count} 个棋子' },
+  'cleanup.roofs': { other: '{count} 个屋顶' },
 };

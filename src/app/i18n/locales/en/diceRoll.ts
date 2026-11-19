@@ -75,6 +75,9 @@ export const diceRoll = {
   'diceRoll.rowRemove': 'Take {name} out of the row',
   'diceRoll.rowAddDie': 'Add die',
   'diceRoll.rowAddDieCaption': 'Add',
+  'diceRoll.rowNotADie': 'Type a die, such as d3',
+  'diceRoll.rowFaces': 'A die has {min} to {max} faces',
+  'diceRoll.rowPresent': 'd{sides} is already in the row',
   'diceRoll.rowEdit': 'Edit dice row',
   'diceRoll.rowDone': 'Done',
 } as const satisfies Record<string, Message>;

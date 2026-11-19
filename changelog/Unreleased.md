@@ -28,6 +28,27 @@
 - Saved rolls and the row belong to the collection, so each game keeps its own
 - A label can follow brackets: in `2d6[slashing]+(1d10+12)[necrotic]` the d10 and the 12 are both necrotic
 
+**Sound**
+
+- Loop points for music: set loop in and out from the waveform's right-click menu, or with Loop points… in a library row's menu. Contributed by ThatMattLatt
+- The loop shows as a band you can drag while the track plays, and Hear the loop seam plays across it. Contributed by ThatMattLatt
+- Start at loop in, and a crossfade button for each track in the music card. Contributed by ThatMattLatt
+
+**Tokens**
+
+- Small (75 % of Medium) and Tiny (50 %) sizes in the token creator, the asset library and the map's Size menu, and by shrinking with the resize handles. Contributed by Jackson98Tomphson
+- Tiny tokens snap to any quarter of a square cell; on hex grids both sizes take the hex's centre. Contributed by Jackson98Tomphson
+
+**Initiative, quests and lighting**
+
+- Initiative by sides can roll once at combat start: each side rolls, and that order holds for the whole fight; the order of the sides in the settings breaks ties. Contributed by iviaxpow3r
+- Quests can be set to Hidden: players are not sent them until you change their status. Contributed by young-george
+- Forget explored areas is now a command in the command palette, on a lit scene. Contributed by CatapultTV
+
+**Languages**
+
+- Atlas now speaks German, French, Spanish, Portuguese and Italian, following Obsidian's language, and Russian and Chinese cover every text. Italian contributed by Jackson98Tomphson
+
 ## Improved
 
 - Measurements come and go smoothly: a kept ruler, circle, cone, square or line grows in from where it starts and fades out when deleted or undone, and one you don't keep dissolves instead of vanishing. The pin that keeps it pops in beside its label

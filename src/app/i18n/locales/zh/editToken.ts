@@ -9,4 +9,7 @@ export const editToken: Translation = {
   'editToken.showNameplate': '显示名牌',
   'editToken.resources': '资源',
   'editToken.resetStatblock': '重置为属性块默认值',
+  'editToken.speed': '速度',
+  'editToken.speedDefault': '默认：{value}',
+  'editToken.token': '棋子',
 };

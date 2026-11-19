@@ -103,6 +103,27 @@ import { openings } from './openings';
 import { uvtt } from './uvtt';
 import { uvttFloors } from './uvttFloors';
 import { videoMap } from './videoMap';
+import { account } from './account';
+import { armarium } from './armarium';
+import { armariumFindings } from './armariumFindings';
+import { armariumListing } from './armariumListing';
+import { armariumShare } from './armariumShare';
+import { armariumUpload } from './armariumUpload';
+import { deviceFiles } from './deviceFiles';
+import { docs } from './docs';
+import { draw } from './draw';
+import { experimental } from './experimental';
+import { fog } from './fog';
+import { glass } from './glass';
+import { graphics } from './graphics';
+import { measure } from './measure';
+import { playerBar } from './playerBar';
+import { rooms } from './rooms';
+import { selection } from './selection';
+import { siteFrame } from './siteFrame';
+import { table } from './table';
+import { tableTv } from './tableTv';
+import { tabletDiag } from './tabletDiag';
 
 export const ru: Translation = {
   ...align,
@@ -212,4 +233,25 @@ export const ru: Translation = {
   ...uvtt,
   ...uvttFloors,
   ...videoMap,
+  ...account,
+  ...armarium,
+  ...armariumFindings,
+  ...armariumListing,
+  ...armariumShare,
+  ...armariumUpload,
+  ...deviceFiles,
+  ...docs,
+  ...draw,
+  ...experimental,
+  ...fog,
+  ...glass,
+  ...graphics,
+  ...measure,
+  ...playerBar,
+  ...rooms,
+  ...selection,
+  ...siteFrame,
+  ...table,
+  ...tableTv,
+  ...tabletDiag,
 };

@@ -107,7 +107,7 @@ const SETTINGS_PANEL_META: Record<SettingsPanelId, { title: string; icon: React.
   'widget-settings': { title: t('palette.panel.widgets'), icon: <Palette /> },
   'local-player-view-settings': { title: t('palette.panel.playerView'), icon: <MonitorUp /> },
   'dice-settings': { title: t('diceSettings.title'), icon: <Dices /> },
-  'experimental-features': { title: 'Experimental Features', icon: <FlaskConical /> },
+  'experimental-features': { title: t('palette.panel.experimental'), icon: <FlaskConical /> },
   'graphics-settings': { title: t('graphics.title'), icon: <Gauge /> },
   'lighting-settings': { title: t('sceneLight.settings'), icon: <SunMoon /> },
 };
@@ -568,7 +568,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         {
           id: "experimental-all-features",
           icon: null,
-          label: "Dynamic lighting",
+          label: t('palette.experimentalLighting'),
           section: "experimental",
           hasSubmenu: false,
         },

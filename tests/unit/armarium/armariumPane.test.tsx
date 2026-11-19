@@ -58,6 +58,46 @@ describe('the Armarium pane', () => {
     expect(screen.queryByText('Loading the Armarium')).toBeNull();
   });
 
+  it('shows the page once it says hello, before it has loaded, and only for its own frame', () => {
+    const { frame } = renderPane();
+    fromPage({ type: 'atlas-armarium:hello', format: 1 }, window);
+    fromPage({ type: 'atlas-armarium:hello', format: 1 }, frame.contentWindow, 'https://evil.example');
+    expect(screen.getByText('Loading the Armarium')).toBeTruthy();
+
+    fromPage({ type: 'atlas-armarium:hello', format: 1 }, frame.contentWindow);
+    expect(screen.queryByText('Loading the Armarium')).toBeNull();
+    expect(frame.classList.contains('is-loaded')).toBe(true);
+  });
+
+  it('reads what the vault holds while the page loads, so the hello is answered with that read', async () => {
+    const { frame } = renderPane();
+    expect(installer.installedItems).toHaveBeenCalledTimes(1);
+    const post = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => undefined);
+
+    fromPage({ type: 'atlas-armarium:hello', format: 1 }, frame.contentWindow);
+    await vi.waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+    expect(installer.installedItems).toHaveBeenCalledTimes(1);
+
+    fromPage({ type: 'atlas-armarium:hello', format: 1 }, frame.contentWindow);
+    await vi.waitFor(() => expect(post).toHaveBeenCalledTimes(2));
+    expect(installer.installedItems).toHaveBeenCalledTimes(2);
+  });
+
+  it('hidden, keeps its page, takes no input and still tells the page where installs stand', () => {
+    const { rerender } = render(<ArmariumPane app={app} />);
+    const frame = screen.getByLabelText('The Armarium, Atlas\' library of collections', { selector: 'iframe' }) as HTMLIFrameElement;
+    const post = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => undefined);
+
+    rerender(<ArmariumPane app={app} shown={false} />);
+    const pane = frame.closest('.atlas-armarium-pane')!;
+    expect(pane.classList.contains('is-hidden')).toBe(true);
+    expect(pane.hasAttribute('inert')).toBe(true);
+    expect(screen.getByLabelText('The Armarium, Atlas\' library of collections', { selector: 'iframe' })).toBe(frame);
+
+    act(() => statusListener!({ uid: UID, version: 5 }, 'downloading'));
+    expect(post).toHaveBeenCalledWith({ type: 'atlas-armarium:status', format: 1, uid: UID, version: 5, state: 'downloading' }, 'https://atlas-vtt.dev');
+  });
+
   it('installs what its own page asks for, and nothing another page or frame sends', () => {
     const { frame } = renderPane();
     const install = { type: 'atlas-armarium:install', format: 1, uid: UID, version: 5 };

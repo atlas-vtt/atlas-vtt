@@ -18,4 +18,5 @@ export const command: Translation = {
   'command.viewChangelog': 'Открыть список изменений',
   'command.openPlayerWindow': 'Открыть окно игроков',
   'command.generateDungeon': 'Сгенерировать подземелье',
+  'command.newStatblockTemplate': 'Новый шаблон статблока…',
 };

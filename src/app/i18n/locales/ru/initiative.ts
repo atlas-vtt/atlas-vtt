@@ -127,4 +127,5 @@ export const initiative: Translation = {
   'initiative.fallbackInfo': 'Читается, если в блоке характеристик нет ни поля модификатора, ни поля, которое шаблон отмечает как инициативу.',
   'initiative.fallbackValue': '{field}',
   'initiative.fallbackScoreValue': '{field}, как значение характеристики',
+  'initiative.empty.touch': 'Коснитесь токена и удерживайте, чтобы добавить его',
 };

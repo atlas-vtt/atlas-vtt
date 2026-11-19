@@ -1,59 +1,115 @@
 // ──────────────────────────────────────────────
-// Saved rolls – the panel beside the dice tray: BEM atlas-dice-presets*
+// Saved rolls – floating beside the dice tray: BEM atlas-dice-presets*
 // ──────────────────────────────────────────────
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-$presets-width: 280px;
-$presets-row: $button-height-m;
+$presets-width: 248px;
+$presets-gap: $spacing-s;
 $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
+// Room inside the scroller for the cards' shadows, which a scroller would cut.
+$presets-shadow-room: $spacing-m;
 
-// Beside the tray, its foot on the tray's foot: out of the tray's flow, so the tray keeps its place over its button.
-// On the left: the tray's own tooltips open to its right.
+// No panel: a column of floating cards beside the tray, top to top with it and as tall, out of the tray's flow so the
+// tray keeps its place over its button. On the left: the tray's own tooltips open to its right.
 .atlas-dice-presets {
   position: absolute;
-  right: calc(100% + #{$spacing-s});
+  top: 0;
   bottom: 0;
+  right: calc(100% + #{$presets-gap});
+  display: flex;
+  flex-direction: column;
+  gap: $presets-gap;
   width: $presets-width;
-  gap: $spacing-m;
   font-size: $font-ui-small;
+  pointer-events: none;
 
-  // Its parts keep their height; the list scrolls inside its own.
-  > * {
-    flex-shrink: 0;
-  }
-  animation: atlas-dice-fade-in $transition-normal $transition-ease-out both;
-
-  // A window too narrow for both side by side (a tablet upright): above the tray, at its right edge.
+  // A window too narrow for both side by side (a tablet upright): above the tray, at its right edge, growing upward.
   @media (max-width: 1000px) {
+    top: auto;
+    bottom: calc(100% + #{$presets-gap});
     right: 0;
-    bottom: calc(100% + #{$spacing-s});
+    max-height: 320px;
   }
 }
 
+// One floating surface: the tray's own look, its border, corner and shadow.
+.atlas-dice-presets__card {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($surface-radius);
+  box-shadow: $shadow-elevated;
+  padding: $surface-inset;
+  pointer-events: auto;
+}
+
+// The saved rolls: one card each, in a list that scrolls within the tray's height and fades at its edges.
 .atlas-dice-presets__list {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
-  margin: 0;
-  padding: 0;
-  max-height: calc(6 * #{$presets-row});
+  gap: $presets-gap;
+  min-height: 0;
+  // The scroller reaches past the column on three sides, so the shadows show; above, it starts where the gap does.
+  margin: (-$presets-gap) (-$presets-shadow-room) (-$presets-shadow-room);
+  padding: $presets-gap $presets-shadow-room $presets-shadow-room;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
   list-style: none;
+  pointer-events: auto;
+  mask-image: linear-gradient(to bottom, transparent 0, #000 $presets-gap, #000 calc(100% - #{$presets-shadow-room} * 2), transparent 100%);
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  &:empty {
+    display: none;
+  }
+}
+
+@keyframes atlas-dice-preset-in {
+  from {
+    opacity: 0;
+    translate: 12px 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
 }
 
 .atlas-dice-presets__item {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: $spacing-xs;
-  height: $presets-row;
-  border-radius: $radius-m;
+  height: $button-height-l + 2 * $surface-inset;
+  animation: atlas-dice-preset-in 240ms $transition-ease-out both;
+  animation-delay: calc(var(--atlas-preset-index, 0) * 30ms);
+  transition: translate $transition-fast $transition-ease-out, border-color $transition-fast $transition-ease;
 
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: atlas-dice-fade-in;
+    animation-delay: 0ms;
+  }
+
+  // A card leans towards the tray under the pointer, and shows its pin and bin.
   @include atlas-hover {
-    background: var(--background-modifier-hover);
+    translate: 2px 0;
+    border-color: color-mix(in oklch, var(--mono-100) 22%, transparent);
+
+    .atlas-dice-presets__icon {
+      opacity: 1;
+    }
+  }
+
+  &:focus-within .atlas-dice-presets__icon {
+    opacity: 1;
   }
 }
 
-// Obsidian styles every <button>; the panel's controls start from nothing.
+// Obsidian styles every <button>; the cards' controls start from nothing.
 .atlas-dice-presets__roll,
 .atlas-dice-presets__icon {
   margin: 0;
@@ -67,32 +123,34 @@ $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal
 .atlas-dice-presets__roll {
   display: flex;
   flex: 1 1 auto;
-  align-items: center;
-  gap: $spacing-s;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
   min-width: 0;
   height: 100%;
-  padding-inline: var(--atlas-menu-text-inset) 0;
-  justify-content: flex-start;
+  padding-inline: $spacing-m 0;
   color: var(--text-normal);
   font-size: inherit;
+  line-height: 1.25;
   text-align: start;
 }
 
 .atlas-dice-presets__name,
 .atlas-dice-presets__formula {
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .atlas-dice-presets__name {
-  flex-shrink: 0;
-  max-width: 60%;
+  font-weight: $font-weight-medium;
 }
 
 .atlas-dice-presets__formula {
-  min-width: 0;
   color: $presets-quiet-text;
+  font-size: $font-ui-smaller;
   font-variant-numeric: tabular-nums lining-nums;
 }
 
@@ -105,6 +163,8 @@ $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal
   height: $button-height-s;
   border-radius: $control-inset-radius;
   color: $presets-quiet-text;
+  opacity: 0;
+  transition: opacity $transition-fast $transition-ease, background-color $transition-fast $transition-ease;
 
   svg {
     width: $icon-xs;
@@ -116,33 +176,57 @@ $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal
     color: var(--text-normal);
   }
 
+  // A pinned roll keeps its pin in sight: it is part of the tray's row.
   &[aria-pressed='true'] {
+    opacity: 1;
     color: var(--text-accent);
   }
 
   &[aria-disabled='true'] {
-    opacity: 0.45;
     cursor: default;
   }
 
-  // Under a finger the controls of a row show without a hover, and take a finger's width.
+  &:focus-visible {
+    opacity: 1;
+  }
+
+  // Under a finger nothing hovers: the controls stand shown, a finger wide.
+  @include atlas-hover-reveal {
+    opacity: 1;
+  }
+
   @include atlas-coarse-pointer {
     width: $touch-target;
     height: $touch-target;
   }
 }
 
-// Name and formula, then Save; the message under them.
+// Name, formula and +, in one line; a refusal under them.
 .atlas-dice-presets__form {
   display: grid;
+  flex-shrink: 0;
   grid-template-columns: 1fr 1fr auto;
   align-items: center;
   gap: $surface-inset;
+  animation: atlas-dice-preset-in 240ms $transition-ease-out both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: atlas-dice-fade-in;
+  }
+
+  .atlas-dice-presets__icon {
+    opacity: 1;
+    width: $button-height-m;
+    height: $button-height-m;
+    color: var(--text-normal);
+  }
 }
 
 .atlas-dice-presets__field {
   @include atlas-text-input;
   min-width: 0;
+  border-color: transparent;
+  background: transparent;
 
   &[aria-invalid='true'] {
     border-color: var(--text-error);
@@ -151,19 +235,24 @@ $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal
 
 .atlas-dice-presets__field--formula {
   font-variant-numeric: tabular-nums lining-nums;
+
+  // A hairline between name and formula, as between the tray's formula and modifier.
+  &:not(:focus) {
+    box-shadow: inset $border-width-s 0 0 $field-edge;
+    border-radius: 0;
+  }
 }
 
 .atlas-dice-presets__message {
   grid-column: 1 / -1;
-  min-height: 1.4em;
   margin: 0;
-  padding-inline: var(--atlas-menu-text-inset);
+  padding: 0 $spacing-s $spacing-xs;
   @include atlas-error-text;
   font-size: $font-ui-smaller;
   line-height: 1.4;
 
   &:empty {
-    min-height: 0;
+    display: none;
   }
 }
 
@@ -311,4 +400,103 @@ $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal
   &[aria-invalid='true'] {
     border-color: var(--text-error);
   }
+}
+
+// What a typed die that cannot join the row says: under the row, out of the flow, in the gap above the formula.
+.atlas-dice-tray__row-edit {
+  position: relative;
+}
+
+.atlas-dice-tray__row-note {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding-top: 2px;
+  @include atlas-error-text;
+  font-size: $font-ui-smaller;
+  line-height: $spacing-l;
+  text-align: center;
+
+  &:empty {
+    display: none;
+  }
+}
+
+// A refused die shakes its field; two identical keyframes, taken in turn, so every refusal shakes again.
+@keyframes atlas-dice-shake-a {
+  0%, 100% { translate: 0 0; }
+  20%, 60% { translate: -3px 0; }
+  40%, 80% { translate: 3px 0; }
+}
+
+@keyframes atlas-dice-shake-b {
+  0%, 100% { translate: 0 0; }
+  20%, 60% { translate: -3px 0; }
+  40%, 80% { translate: 3px 0; }
+}
+
+.atlas-dice-tray__add-field {
+  &[data-shake='1'] {
+    animation: atlas-dice-shake-a 260ms $transition-ease-out;
+  }
+
+  &[data-shake='0'] {
+    animation: atlas-dice-shake-b 260ms $transition-ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &[data-shake] {
+      animation: none;
+    }
+  }
+}
+
+// A saved roll's place: its first die's body, and small marks in three corners (the fourth is the tray's count).
+.atlas-preset-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.atlas-preset-face__mark {
+  position: absolute;
+  max-width: calc(100% - 2 * #{$spacing-xs});
+  overflow: hidden;
+  padding: 0 3px;
+  border-radius: $radius-s;
+  background: color-mix(in oklch, var(--background-primary) 82%, transparent);
+  color: var(--text-normal);
+  font-size: 9px;
+  font-weight: $font-weight-semibold;
+  font-variant-numeric: tabular-nums lining-nums;
+  line-height: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.atlas-preset-face__mark--count {
+  top: 2px;
+  left: 2px;
+}
+
+.atlas-preset-face__mark--rule {
+  bottom: 2px;
+  left: 2px;
+  max-width: 55%;
+  color: var(--text-accent);
+}
+
+.atlas-preset-face__mark--rest {
+  right: 2px;
+  bottom: 2px;
+}
+
+// With a rule beside it, the rest keeps to its half of the foot.
+.atlas-preset-face__mark--rule ~ .atlas-preset-face__mark--rest {
+  max-width: 45%;
 }

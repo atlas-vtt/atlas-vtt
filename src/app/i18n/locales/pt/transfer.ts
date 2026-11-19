@@ -1,0 +1,26 @@
+import type { Translation } from '../../types';
+
+export const transfer: Translation = {
+  'transfer.andScenes': { one: '{what} e {count} cena vinculada', other: '{what} e {count} cenas vinculadas' },
+  'transfer.copied': '{what} copiado para {target}',
+  'transfer.copy.withScenes': { one: 'Copiar com {count} cena vinculada', other: 'Copiar com {count} cenas vinculadas' },
+  'transfer.copy.withoutLinks': 'Copiar sem vínculos',
+  'transfer.copyFailed': 'Não foi possível copiar {what}: {error}',
+  'transfer.linked.copy': { one: '{subject} tem link para outra cena desta coleção: {names}.', other: '{subject} tem links para {count} outras cenas desta coleção: {names}.' },
+  'transfer.linked.move': { one: '{subject} está vinculado a outra cena desta coleção: {names}.', other: '{subject} está vinculado a {count} outras cenas desta coleção: {names}.' },
+  'transfer.linked.rule': 'Cenas só têm links para cenas da própria coleção. Leve as cenas vinculadas para {target} para manter os links, ou remova os links.',
+  'transfer.linked.title': 'Cenas vinculadas',
+  'transfer.move.withScenes': { one: 'Mover com {count} cena vinculada', other: 'Mover com {count} cenas vinculadas' },
+  'transfer.move.withoutLinks': 'Mover sem vínculos',
+  'transfer.moveFailed': 'Não foi possível mover {what}: {error}',
+  'transfer.moved': '{what} movido para {target}',
+  'transfer.openCollection': 'Abrir coleção',
+  'transfer.pick.confirm.copy': 'Copiar',
+  'transfer.pick.confirm.move': 'Mover',
+  'transfer.pick.info.copy': 'Copiando {what}',
+  'transfer.pick.info.move': 'Movendo {what}',
+  'transfer.pick.target': 'Coleção de destino',
+  'transfer.pick.title.copy': 'Copiar para a coleção',
+  'transfer.pick.title.move': 'Mover para a coleção',
+  'transfer.selection': 'A seleção',
+};

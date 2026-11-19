@@ -69,6 +69,11 @@ vi.mock('../../../src/app/packages/components/asset-manager/components/Header', 
 
 const FRAME = 'The Armarium, Atlas\' library of collections';
 const storeFrame = (): HTMLIFrameElement | null => screen.queryByLabelText(FRAME, { selector: 'iframe' }) as HTMLIFrameElement | null;
+/** Whether the store is shown: its frame is kept, hidden and inert, once the library is shown again. */
+const storeShown = (): boolean => {
+  const pane = storeFrame()?.closest('.atlas-armarium-pane');
+  return pane !== null && pane !== undefined && !pane.classList.contains('is-hidden') && !pane.hasAttribute('inert');
+};
 let statusListener: StatusListener | null = null;
 
 function pendingImport(): ExternalImport {
@@ -109,14 +114,31 @@ describe('the Armarium in the asset manager', () => {
     expect(screen.getByRole('button', { name: 'Armarium' }).getAttribute('aria-current')).toBe('page');
   });
 
-  it('is a place of the sidebar, left for the library by a tab or Back', () => {
+  it('is a place of the sidebar, left for the library by a tab or Back, which keeps the store\'s page as it was', () => {
     render(<AssetManager isOpen onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Armarium' }));
+    const frame = storeFrame();
     for (const leave of ['Maps', 'Back to the library']) {
-      fireEvent.click(screen.getByRole('button', { name: 'Armarium' }));
-      expect(storeFrame()).not.toBeNull();
+      expect(storeShown()).toBe(true);
       fireEvent.click(screen.getByRole('button', { name: leave }));
-      expect(storeFrame()).toBeNull();
+      expect(storeShown()).toBe(false);
       expect(screen.getByText('Library')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Armarium' }));
+      expect(storeFrame()).toBe(frame);
+    }
+  });
+
+  it('keeps the library under the store while the store fades in over it, and lets it go after', () => {
+    vi.useFakeTimers();
+    try {
+      render(<AssetManager isOpen onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Armarium' }));
+      expect(screen.getByText('Library').closest('.atlas-asset-manager-library')!.hasAttribute('inert')).toBe(true);
+      act(() => { vi.advanceTimersByTime(200); });
+      expect(screen.queryByText('Library')).toBeNull();
+      expect(storeShown()).toBe(true);
+    } finally {
+      vi.useRealTimers();
     }
   });
 
@@ -135,13 +157,13 @@ describe('the Armarium in the asset manager', () => {
   it('shows the store again when asked while open', () => {
     const { rerender } = render(<AssetManager isOpen onClose={vi.fn()} armariumRequest={1} />);
     fireEvent.click(screen.getByRole('button', { name: 'Maps' }));
-    expect(storeFrame()).toBeNull();
+    expect(storeShown()).toBe(false);
     rerender(<AssetManager isOpen onClose={vi.fn()} armariumRequest={2} />);
-    expect(storeFrame()).not.toBeNull();
+    expect(storeShown()).toBe(true);
 
     fireEvent.click(screen.getByRole('button', { name: 'Maps' }));
     act(() => ArmariumHosts.forApp(app as unknown as App).current()!.show());
-    expect(storeFrame()).not.toBeNull();
+    expect(storeShown()).toBe(true);
   });
 
   it('keeps the store\'s page while an install from it is reviewed, and tells it how the install stands', async () => {
