@@ -16,6 +16,7 @@ import { nearestHexCenter, type HexLayout } from '../grid/hexGeometry';
 import { hexLinkAt } from '../grid/hexLinks';
 import { linkedSceneFile, mayLinkFromScene } from '../services/sceneLinks';
 import { openPinNote } from '../services/noteHeadings';
+import { pinNoteLink } from './pinNoteLink';
 import { pinSceneLevel } from '../levels/pinSceneLevel';
 import { showPinnedLevel } from '../links/openAtlasLink';
 import { t } from '../i18n';
@@ -356,7 +357,16 @@ export class NotePinTool {
     } else if (!mayLinkFromScene(mapPath, pin.notePath)) {
       showNotice(t('pin.crossCollection'));
     } else {
-      runInBackground(openPinNote(this.obsidianApp, pin.notePath, true), `Opening ${pin.notePath}`, 'Could not open the linked note');
+      runInBackground(
+        (async () => {
+          await openPinNote(this.obsidianApp, pin.notePath, true, mapPath ?? '');
+          // Obsidian may create a missing note when its pin is opened. Add the
+          // backlink after opening so that newly recreated notes receive it too.
+          await this.addPinBacklink(pin.notePath, pin.id);
+        })(),
+        `Opening ${pin.notePath}`,
+        'Could not open the linked note',
+      );
     }
   }
   
@@ -365,15 +375,17 @@ export class NotePinTool {
    * makes the link unambiguous even when several pins point to the same note.
    */
   private async addPinBacklink(notePath: string, pinId: string): Promise<void> {
-    const noteFile = this.obsidianApp.vault.getFileByPath(notePath);
     const mapPath = this.store.getState().mapPath;
+    const { linkpath } = pinNoteLink(notePath);
+    const noteFile = this.obsidianApp.vault.getFileByPath(linkpath)
+      ?? this.obsidianApp.metadataCache.getFirstLinkpathDest(linkpath, mapPath ?? '');
     const mapFile = mapPath ? this.obsidianApp.vault.getFileByPath(mapPath) : null;
     // Pins may point to scenes or encounter folders as well as Markdown notes.
     if (!noteFile || noteFile.extension !== 'md' || !mapFile) return;
 
     const link = this.obsidianApp.fileManager.generateMarkdownLink(
       mapFile,
-      notePath,
+      linkpath,
       `#pin=${encodeURIComponent(pinId)}`,
       'View on map',
     );
