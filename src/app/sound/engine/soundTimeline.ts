@@ -156,3 +156,12 @@ export function layerSpan(play: LayerPlay): TimelineSpan | null {
   if (sound.frames <= 0) return null;
   return { sound, startPlayFrame: -heldStart(play, sound), endPlayFrame: null, loop: loopRangeOf(sound) };
 }
+
+/**
+ * The sound's frame a music play that goes round in one sound begins at (its `fromFrame`, else the sound's own choice);
+ * null for a play that goes on through a list. What a page is told, since it never hears of `startAtLoopIn`.
+ */
+export function musicHeldStart(play: MusicPlay): number | null {
+  const held = musicSpanAt(play, 0);
+  return held && held.endPlayFrame === null ? -held.startPlayFrame : null;
+}

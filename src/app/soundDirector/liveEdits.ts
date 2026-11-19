@@ -1,6 +1,6 @@
 import type { LayerPlay, MusicPlay, MusicRepeat, RoomId, SoundInfo, TableSound } from '../sound/soundTypes';
 import { DEFAULT_ROOM } from '../sound/soundTypes';
-import { heldStart, musicSpanAt } from '../sound/engine/soundTimeline';
+import { heldStart, musicHeldStart } from '../sound/engine/soundTimeline';
 import { MAX_MOOD_LAYERS } from '../sound/soundTypes';
 import { changed, enteringLayer, enteringMusic, FADER_MS, leaving, OFFLINE_LEAD_MS, rampFade, ROOM_FADE_MS, SILENCE_FADE_MS, withoutFinished, withReverb } from './tableSound';
 
@@ -143,8 +143,8 @@ export function withCurrentInfos(state: TableSound, infoOfKey: (key: string) => 
   const music = <T extends MusicPlay>(play: T): T => {
     const tracks = play.tracks.map(current);
     if (tracks.every((track, index) => track === play.tracks[index])) return play;
-    const held = play.fromFrame === undefined ? musicSpanAt(play, 0) : null;
-    return { ...play, tracks, ...(held && held.endPlayFrame === null && { fromFrame: -held.startPlayFrame }) };
+    const held = play.fromFrame === undefined ? musicHeldStart(play) : null;
+    return { ...play, tracks, ...(held !== null && { fromFrame: held }) };
   };
   const layer = (play: LayerPlay): LayerPlay => {
     const sound = current(play.sound);

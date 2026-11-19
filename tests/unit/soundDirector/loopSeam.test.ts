@@ -80,6 +80,14 @@ describe('loop seams', () => {
     expect(parsed?.music?.fromFrame).toBe(10 * RATE);
   });
 
+  it('tell players where a track that starts at its loop in begins, as they never hear of the choice', () => {
+    const atLoopIn: SoundInfo = { ...LOOPED, startAtLoopIn: true };
+    const wire = (table: typeof EMPTY_TABLE_SOUND): ReturnType<typeof parseSoundState> => parseSoundState(JSON.parse(JSON.stringify(wireState(table, (key) => ({ key: `${key}${'0'.repeat(64)}`.slice(0, 64) })))));
+    expect(wire(music([atLoopIn]).table)?.music?.fromFrame).toBe(10 * RATE);
+    expect(wire(addLayer(EMPTY_TABLE_SOUND, atLoopIn, 0, 0, 0, 0))?.layers[0]?.fromFrame).toBe(10 * RATE);
+    expect(wire(music([LOOPED]).table)?.music?.fromFrame).toBeUndefined();
+  });
+
   it('let a seek reach before the loop in', () => {
     const { table } = pulse(music([LOOPED]), 0, 36_000);
     const sought = seekMusic(table, 2 * RATE, 40_000);
