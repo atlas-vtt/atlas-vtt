@@ -181,6 +181,7 @@ export const am: Translation = {
   'am.card.statblockMissing': 'Note de la fiche introuvable – cliquez pour en lier une autre',
   'am.card.animated': 'Carte animée',
   'am.card.mapKind': 'Carte',
+  'am.pick.choose': 'Choisir',
   'am.card.processing': 'Traitement',
   'am.card.processingProgress': 'Traitement · {percent} %',
   'am.card.decrease': 'Placer moins d\'exemplaires',

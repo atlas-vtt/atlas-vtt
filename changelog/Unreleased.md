@@ -19,6 +19,7 @@
 - The floor moves by whole cells, so its grid stays lined up; hold Alt to place it freely, or use the arrow keys
 - Tokens, walls and lights on that floor move with it; every move is one undo step
 - Open it from a floor's row in Scene levels, the command palette, or the offer after adding a floor
+- Add level opens your Maps library to choose the new floor's map, with thumbnails, folders, tags and search; changing a floor's map or roof uses it too
 
 **Dice**
 

@@ -146,6 +146,7 @@ export const am: Translation = {
   'am.tab.encounters': '遭遇',
   'am.tab.tokens': '棋子',
   'am.card.select': '选择 {name}',
+  'am.pick.choose': '选择',
   'am.card.mapKind': '地图',
   'am.card.statblockMissing': '找不到属性块笔记——点击关联其他笔记',
   'am.card.decrease': '减少放置数量',

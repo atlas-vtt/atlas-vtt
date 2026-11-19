@@ -5,6 +5,7 @@ import type { ExternalImport } from '../../../services/collectionBundle/external
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../../../ui/nativeModal';
 import { t } from '../../../i18n';
 import { createAtlasButton } from '../../../ui/atlasButton';
+import type { MapPick } from './mapPick';
 
 // ─── Tab / View Constants ───────────────────────────────────────────
 
@@ -147,6 +148,8 @@ export interface AssetManagerProps {
   pendingImport?: ExternalImport;
   /** Raised by every request to show the Armarium; above 0, the window opens on it and shows it again when raised. */
   armariumRequest?: number;
+  /** Opens the window to choose one map instead of the library (`MapPick`). */
+  pick?: MapPick;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────

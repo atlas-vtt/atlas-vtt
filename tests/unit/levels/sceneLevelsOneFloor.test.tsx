@@ -15,8 +15,8 @@ const sizes = vi.hoisted(() => new Map<string, { width: number; height: number }
 vi.mock('../../../src/app/pixi/mosaicCanvas/mosaicCanvasSize', () => ({ mosaicCanvasSize: async (_app: unknown, path: string) => sizes.get(path) ?? null }));
 /** The image the GM picks in the map library; the picker answers at once. */
 const picked = vi.hoisted(() => ({ path: null as string | null }));
-vi.mock('../../../src/app/react/components/levels/MapImagePickerModal', () => ({
-  pickMapImage: async (_app: unknown, _collection: unknown, onChoose: (path: string | null) => void) => onChoose(picked.path),
+vi.mock('../../../src/app/react/components/levels/mapImagePicker', () => ({
+  pickMapImage: (_ui: unknown, _store: unknown, _options: unknown, onChoose: (path: string | null) => void) => onChoose(picked.path),
 }));
 
 const GRID = { type: 'square', size: 70, offsetX: 0, offsetY: 0, visible: true, snapToGrid: true } as GridState;

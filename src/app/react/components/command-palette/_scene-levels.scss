@@ -7,22 +7,24 @@
 
 .atlas-scene-levels {
   @include atlas-flex-col($spacing-s);
-  padding: 0 $spacing-l $spacing-l;
+  padding: $spacing-l;
 }
 
 .atlas-scene-levels__add {
-  @include atlas-flex-row($spacing-s);
+  @include atlas-flex-row($spacing-xs);
   @include atlas-ghost-button;
-  justify-content: center;
-  height: var(--input-height);
+  // A small action at the list's head, as wide as its words: the list is the page, not the button.
+  align-self: flex-start;
+  height: $button-height-s;
+  padding: 0 $spacing-s;
   border-radius: $radius-m;
   box-shadow: none;
   font-size: $font-ui-small;
   cursor: pointer;
 
   svg {
-    width: $icon-s;
-    height: $icon-s;
+    width: $icon-xs;
+    height: $icon-xs;
   }
 }
 
