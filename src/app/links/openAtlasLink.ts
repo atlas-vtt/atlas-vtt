@@ -12,6 +12,7 @@ import { showNotice } from '../ui/notice';
 import type { NotePin } from '../types';
 import { pinSceneLevel } from '../levels/pinSceneLevel';
 import { diceRandom } from '../services/offlineDiceInputs';
+import { pinIdOfSubpath } from './atlasLinkTargets';
 import { everyLevelObjects } from '../levels/levelObjects';
 import { hasLevels, resolveLevel } from '../levels/sceneLevels';
 import { allowZoom } from '../pixi/zoomRange';
@@ -109,6 +110,11 @@ export async function focusLinkedPin(app: App, mapPath: string, pinId: string): 
 /** Opens a scene in Atlas and, when the link names one of its snapshots, offers to restore it. */
 export async function openSceneLink(app: App, file: TFile, subpath: string): Promise<void> {
   await openMapInView(app, file);
+  const pinId = pinIdOfSubpath(subpath);
+  if (pinId) {
+    await focusLinkedPin(app, file.path, pinId);
+    return;
+  }
   await restoreLinkedSnapshot(app, file.path, subpath);
 }
 
