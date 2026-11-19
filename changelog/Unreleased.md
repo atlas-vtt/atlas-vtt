@@ -20,6 +20,10 @@
 - Tokens, walls and lights on that floor move with it; every move is one undo step
 - Open it from a floor's row in Scene levels, the command palette, or the offer after adding a floor
 
+**Languages**
+
+- Atlas now speaks German, French, Spanish, Portuguese and Italian, following Obsidian's language, and Russian and Chinese cover every text. Italian contributed by Jackson98Tomphson
+
 ## Fixed
 
 - On Windows, converting music or ambience in a linked folder now moves the originals to the trash when you chose that, instead of keeping them
