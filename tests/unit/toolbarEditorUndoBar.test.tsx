@@ -23,7 +23,7 @@ const trayIds = (container: HTMLElement): string[] =>
 const liveRegion = (container: HTMLElement): string => container.querySelector('[role="status"]')?.textContent ?? '';
 
 const undoSlot = (container: HTMLElement): HTMLElement => {
-  const slot = container.querySelector<HTMLElement>('.atlas-bottom-toolbar-row__start > .atlas-undo-bar');
+  const slot = container.querySelector<HTMLElement>('.atlas-bottom-toolbar-row__start .atlas-side-bar[data-side-bar="undo"]');
   if (!slot) throw new Error('No undo/redo bar');
   return slot;
 };
@@ -79,7 +79,7 @@ describe('the undo/redo bar in the toolbar editor', () => {
     expect(fireEvent.keyDown(face, { key: 'Enter' })).toBe(false);
     expect(harness.settings.getToolbarLayout()).toEqual({});
     expect(undoSlot(harness.container).hidden).toBe(false);
-    expect(liveRegion(harness.container)).toBe('Undo and redo is back, left of the toolbar.');
+    expect(liveRegion(harness.container)).toBe('Undo and redo is back in its place.');
     // The tray emptied, so focus goes to the bar's handle for it.
     expect(document.activeElement).toBe(handle(harness.container, 'undo'));
   });
@@ -114,7 +114,7 @@ describe('the undo/redo bar in the toolbar editor', () => {
     expect(handle(harness.container, 'move').tabIndex).toBe(-1);
     expect(fireEvent.keyDown(undo, { key: 'ArrowRight', altKey: true })).toBe(false);
     expect(harness.settings.getToolbarLayout()).toEqual({});
-    expect(liveRegion(harness.container)).toBe('Undo and redo always stays left of the toolbar.');
+    expect(liveRegion(harness.container)).toBe('Undo and redo always stays in its own place.');
   });
 
   it('keeps the undo and redo hotkeys while it is hidden', () => {
@@ -140,7 +140,7 @@ describe('the undo/redo bar in the toolbar editor', () => {
 
   it('leaves the player view as it was: no undo/redo bar, and a bar that ignores the stored layout', async () => {
     const harness = renderToolbar({ undoBar: true, player: true, stored: { hidden: ['undo', 'move'] } });
-    expect(harness.container.querySelector('.atlas-undo-bar')).toBeNull();
+    expect(harness.container.querySelector('.atlas-side-bar[data-side-bar="undo"]')).toBeNull();
     expect(harness.container.querySelector('[data-toolbar-item="move"]')?.hasAttribute('hidden')).toBe(false);
     act(() => harness.store.getState().setToolbarEditing(true));
     await waitFor(() => expect(harness.container.querySelector('.atlas-toolbar-tray')).toBeNull());

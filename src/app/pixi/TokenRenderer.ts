@@ -1685,6 +1685,11 @@ export class TokenRenderer {
     this.interactionController.setArtFloors(provider);
   }
 
+  /** The map's size in world pixels: in session view it sets how wide walls stop a dragged token. */
+  public setMapSize(read: () => { width: number; height: number } | null): void {
+    this.interactionController.setMapSize(read);
+  }
+
   /** The stairs tool's editor: it takes every left press, move and release while the stairs tool is active. */
   public setStairsTool(tool: AreaToolPointer): void {
     this.stairsTool = tool;

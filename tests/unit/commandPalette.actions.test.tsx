@@ -188,14 +188,14 @@ describe('Atlas search actions', () => {
     expect(fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })).toBe(true);
   });
 
-  it.each(['scene', 'asset manager', 'toggle'])('finds and opens the scene browser for "%s"', (query) => {
+  it.each(['scene', 'asset manager', 'toggle'])('finds and opens the asset manager for "%s"', (query) => {
     const setActiveTool = vi.fn();
     const onClose = vi.fn();
     const store = create(() => ({ setActiveTool }));
     render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={onClose} /></ViewStoreProvider>);
 
     fireEvent.change(screen.getByPlaceholderText('Search commands…'), { target: { value: query } });
-    fireEvent.click(screen.getByRole('button', { name: 'Open scene browser' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open asset manager' }));
 
     expect(openSceneBrowser).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalled();

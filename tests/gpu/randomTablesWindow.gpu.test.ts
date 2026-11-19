@@ -191,6 +191,30 @@ describe('the Random tables window', () => {
     await page.screenshot({ path: '__screenshots__/random-tables-row-menu.png', element: panel() });
   });
 
+  it('folds the rarity toggles into a menu where the roll bar has no room for them, keeping Roll on their line', async () => {
+    await page.viewport(1280, 860);
+    shown = await mountTablesWindow('dark', { width: 760, height: 560 }, RARITY_SETTINGS);
+    await expect.poll(() => panel()?.querySelectorAll('.atlas-loot-rarity').length).toBe(6);
+    const bar = panel().querySelector<HTMLElement>('.atlas-loot-rollbar')!;
+    await expect.poll(() => bar.dataset.compact).toBe('tabs');
+    expect(getComputedStyle(panel().querySelector('.atlas-loot-rarities')!).display).toBe('none');
+    const trigger = panel().querySelector<HTMLElement>('.atlas-loot-rarity-menu__trigger')!;
+    const middle = (box: DOMRect): number => (box.top + box.bottom) / 2;
+    expect(Math.abs(middle(rect(trigger)) - middle(rect(rollButton())))).toBeLessThan(1);
+    expect(trigger.textContent).toContain('All rarities');
+
+    fireEvent.click(trigger);
+    const items = within(panel()).getAllByRole('menuitemcheckbox');
+    expect(items).toHaveLength(6);
+    fireEvent.click(items[0]!);
+    // A switch, not a choice: the menu stays open for the next one.
+    expect(within(panel()).getAllByRole('menuitemcheckbox')).toHaveLength(6);
+    expect(shown.store.getState().lootRoller.excludedRarities).toEqual(['common']);
+    expect(trigger.textContent).toContain('5 of 6 rarities');
+    expect(overflowing()).toEqual([]);
+    await page.screenshot({ path: '__screenshots__/random-tables-dark-rarity-menu.png', element: panel() });
+  });
+
   for (const theme of ['light', 'dark'] as const) {
     it(`paints rarities in the collection's words, its own word too, in ${theme}`, async () => {
       await page.viewport(1280, 860);

@@ -25,6 +25,7 @@ let visibleTokenIds: string[] = [];
 /** Atlas' settings as the toolbar reads them; undefined where they cannot be reached. */
 let settings: {
   getToolbarLayout: () => StoredToolbarLayout;
+  isExperimentalOn: () => boolean;
   getLaserPointerSettings: () => LaserPointerSettings;
   getLightingQuality: () => 'high';
   isLightingQualityPicked: () => boolean;
@@ -35,7 +36,7 @@ let settings: {
 let viewType = 'atlas-vtt';
 
 function settingsWithLayout(layout: StoredToolbarLayout): typeof settings {
-  return { getToolbarLayout: () => layout, getLaserPointerSettings: () => DEFAULT_LASER_POINTER_SETTINGS, getLightingQuality: () => 'high', isLightingQualityPicked: () => false, setLightingQuality: () => undefined, getDragDistance: () => 'always', setDragDistance: () => undefined };
+  return { getToolbarLayout: () => layout, isExperimentalOn: () => false, getLaserPointerSettings: () => DEFAULT_LASER_POINTER_SETTINGS, getLightingQuality: () => 'high', isLightingQualityPicked: () => false, setLightingQuality: () => undefined, getDragDistance: () => 'always', setDragDistance: () => undefined };
 }
 
 const storeState = {
