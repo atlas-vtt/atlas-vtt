@@ -2,7 +2,7 @@ import React from 'react';
 import { Pin } from 'lucide-react';
 import { setRollText } from '../../../gameSystems/diceSets';
 import { ActionsMenuButton } from '../../../packages/components/shared/ActionsMenuButton';
-import type { ContextMenuEntry } from '../context-menu/AtlasContextMenu';
+import { MenuIcon, type ContextMenuEntry } from '../context-menu/AtlasContextMenu';
 import type { DicePreset } from '../../../types/dicePresetTypes';
 import type { DiceSet } from '../../../types/diceSetTypes';
 import { MAX_ROW, withPinToggled, withoutPreset, type DiceShelf, type ShelfChange } from './diceShelf';
@@ -32,11 +32,11 @@ export function PresetCard({ index, preset, pinned, shelf, onRoll, onEdit, editi
   const rowFull = shelf.row.length >= MAX_ROW;
   const text = presetText(preset);
   const entries: ContextMenuEntry[] = [
-    { type: 'item', label: t('diceRoll.presetEditShort'), icon: 'pencil', onClick: onEdit },
+    { type: 'item', label: t('diceRoll.presetEditShort'), leading: <MenuIcon name="pencil" />, onClick: onEdit },
     {
       type: 'item',
       label: pinned ? t('diceRoll.presetUnpin') : t('diceRoll.presetPin'),
-      icon: pinned ? 'pin-off' : 'pin',
+      leading: <MenuIcon name={pinned ? 'pin-off' : 'pin'} />,
       disabled: !pinned && rowFull,
       ...(!pinned && rowFull && { description: t('diceRoll.presetRowFull', { max: MAX_ROW }) }),
       onClick: () => {
@@ -44,7 +44,7 @@ export function PresetCard({ index, preset, pinned, shelf, onRoll, onEdit, editi
         if (change) onChange(change);
       },
     },
-    { type: 'item', label: t('diceRoll.presetDelete'), icon: 'trash-2', destructive: true, onClick: () => onChange(withoutPreset(shelf, preset.id)) },
+    { type: 'item', label: t('diceRoll.presetDelete'), leading: <MenuIcon name="trash-2" />, destructive: true, onClick: () => onChange(withoutPreset(shelf, preset.id)) },
   ];
   return (
     <li className="atlas-dice-presets__card atlas-dice-presets__item" data-pinned={pinned ? '' : undefined} data-editing={editing ? '' : undefined}

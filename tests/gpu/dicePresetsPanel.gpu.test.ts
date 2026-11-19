@@ -107,7 +107,10 @@ describe('the saved rolls beside the dice tray', () => {
     const button = centreOf(card.querySelector('.atlas-dice-presets__more')!);
     await mouse.click(button.x, button.y);
     await settle();
-    expect(document.querySelectorAll('.atlas-ctx-menu [role="menuitem"]')).toHaveLength(3);
+    const items = [...document.querySelectorAll('.atlas-ctx-menu [role="menuitem"]')];
+    expect(items).toHaveLength(3);
+    // Each choice keeps its icon: a pencil, a pin, a bin.
+    expect(items.every((item) => item.querySelector('.atlas-ctx-item__leading .atlas-ctx-icon') !== null)).toBe(true);
     await mouse.click(5, 5);
     await settle();
     // The room around the list for the shadows takes no pointer: the map beside it gets the press.
