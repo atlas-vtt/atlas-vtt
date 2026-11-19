@@ -8,9 +8,12 @@
  * its fractions while the formula is worked out, and only the total is cut to
  * a whole number, towards zero: `7/2` is 3 and `-7/2` is −3. A divisor that
  * comes out 0 makes its quotient 0; a divisor written as 0 is refused.
+ *
+ * A parenthesis may carry a label (`(1d10+12)[necrotic]`), which every term
+ * inside it takes that has none of its own.
  */
 import { checkFormula } from './formulaChecks';
-import { readTerm, type TermDraft } from './formulaTerms';
+import { readLabel, readTerm, type TermDraft } from './formulaTerms';
 import { FORMULA_LIMITS, type FormulaError, type FormulaErrorCode, type FormulaNode, type FormulaOperator, type FormulaTerm,
   type ParsedFormula } from './formulaTypes';
 
@@ -82,8 +85,10 @@ class FormulaReader {
       const inner = this.expression();
       if (this.take(')') === null) throw new FormulaSyntaxError('syntax');
       this.depth -= 1;
+      const label = readLabel(this.text, this.cursor);
+      if (label) this.cursor = label.end;
       this.skipSpace();
-      return inner;
+      return label ? labelled(inner, label.label) : inner;
     }
     const read = readTerm(this.text, this.cursor);
     if (!read) throw new FormulaSyntaxError('syntax');
@@ -104,6 +109,15 @@ class FormulaReader {
     SPACE.lastIndex = this.cursor;
     SPACE.exec(this.text);
     this.cursor = SPACE.lastIndex;
+  }
+}
+
+/** `node` with `label` on every term that has none of its own. */
+function labelled(node: DraftNode, label: string): DraftNode {
+  switch (node.kind) {
+    case 'term': return node.term.label === undefined ? { kind: 'term', term: { ...node.term, label } } : node;
+    case 'negate': return { kind: 'negate', operand: labelled(node.operand, label) };
+    case 'operation': return { ...node, left: labelled(node.left, label), right: labelled(node.right, label) };
   }
 }
 
