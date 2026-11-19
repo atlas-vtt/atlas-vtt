@@ -2,6 +2,8 @@ import type { Translation } from '../../types';
 
 export const palette = {
   'palette.panel.experimental': 'Funzioni sperimentali',
+  'palette.openDMScreen': 'Apri lo schermo del GM',
+  'palette.openSoundPage': 'Apri la pagina Suono',
   'palette.experimentalLighting': 'Illuminazione dinamica',
   'palette.panel.levels': 'Livelli della scena',
   'palette.sceneLevels': 'Livelli della scena',

@@ -1,6 +1,7 @@
 import type { Translation } from '../../types';
 
 export const settings = {
+  'settings.experimental.heading': 'Funzioni sperimentali',
   "settings.hotkeys.assignFailed": "Impossibile assegnare la scorciatoia",
   "settings.hotkeys.clear": "Rimuovi scorciatoia",
   "settings.hotkeys.defaultSuffix": "{group} · Predefinita: {key}",
