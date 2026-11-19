@@ -10,6 +10,11 @@ export interface ArmariumPlace {
   /** The store fills the content area in place of the library. */
   shown: boolean;
   /**
+   * The store was left and its page still lies over the library, until the library shows the place it was left for
+   * (`settle`): the library never shows the place it held before the store.
+   */
+  leaving: boolean;
+  /**
    * The store's frame exists: from the store's first showing until the window closes, hidden while the library is
    * shown, so going back to the store shows its page as it was left instead of loading it anew.
    */
@@ -23,6 +28,8 @@ export interface ArmariumPlace {
   show: (page?: string) => void;
   /** Back to the library, where the GM left it. */
   leave: () => void;
+  /** The library shows the place the store was left for, so the store's page goes. */
+  settle: () => void;
   reload: () => void;
   /** The newest bundle an install handed this window for its import review. */
   pendingImport: ExternalImport | undefined;
@@ -38,6 +45,7 @@ export function useArmariumPlace(app: App, isOpen: boolean, request: number, han
   const [shown, setShown] = useState(false);
   const [framed, setFramed] = useState(false);
   const [libraryLeaving, setLibraryLeaving] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const [frameKey, setFrameKey] = useState(0);
   const [page, setPage] = useState(ARMARIUM_PAGE_URL);
   const [pendingImport, setPendingImport] = useState<ExternalImport | undefined>(handedImport);
@@ -50,6 +58,7 @@ export function useArmariumPlace(app: App, isOpen: boolean, request: number, han
     setShown(request > 0);
     setFramed(request > 0);
     setLibraryLeaving(false);
+    setLeaving(false);
   }, [isOpen, request]);
 
   useEffect(() => {
@@ -61,6 +70,7 @@ export function useArmariumPlace(app: App, isOpen: boolean, request: number, han
   const show = useCallback((target?: string): void => {
     if (!shownRef.current) setLibraryLeaving(true);
     setShown(true);
+    setLeaving(false);
     setFramed(true);
     // A page is opened in a frame of its own; the front is shown as the frame last left it.
     if (typeof target === 'string' && isArmariumPageUrl(target)) {
@@ -69,9 +79,11 @@ export function useArmariumPlace(app: App, isOpen: boolean, request: number, han
     }
   }, []);
   const leave = useCallback((): void => {
+    if (shownRef.current) setLeaving(true);
     setShown(false);
     setLibraryLeaving(false);
   }, []);
+  const settle = useCallback((): void => setLeaving(false), []);
   const reload = useCallback((): void => {
     setPage(ARMARIUM_PAGE_URL);
     setFrameKey((key) => key + 1);
@@ -87,5 +99,18 @@ export function useArmariumPlace(app: App, isOpen: boolean, request: number, han
     return ArmariumHosts.forApp(app).attach({ show, review: setPendingImport });
   }, [app, isOpen, shown, show]);
 
-  return { shown, framed, libraryShown: !shown || libraryLeaving, frameKey, page, show, leave, reload, pendingImport };
+  return { shown, leaving, framed, libraryShown: !shown || libraryLeaving, frameKey, page, show, leave, settle, reload, pendingImport };
+}
+
+/**
+ * Whether the store's page lies over the library: while it is shown, and once left, until the library shows the place
+ * it was left for (`caughtUp`: the tab and collection asked for, loaded or in outline). A tab whose assets are still
+ * loading holds the place shown before, which the store was over; that place never shows on the way out.
+ */
+export function useStoreOnTop(armarium: ArmariumPlace, caughtUp: boolean): boolean {
+  const { leaving, settle } = armarium;
+  useEffect(() => {
+    if (leaving && caughtUp) settle();
+  }, [leaving, caughtUp, settle]);
+  return armarium.shown || (leaving && !caughtUp);
 }
