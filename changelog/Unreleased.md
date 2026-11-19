@@ -36,6 +36,7 @@
 - Loop points for music: set loop in and out from the waveform's right-click menu, or with Loop points… in a library row's menu. Contributed by ThatMattLatt
 - The loop shows as a band you can drag while the track plays, and Hear the loop seam plays across it. Contributed by ThatMattLatt
 - Start at loop in, and a crossfade button for each track in the music card. Contributed by ThatMattLatt
+- Point at the waveform to see the time there: a line follows the pointer with its minutes and seconds beside it, and follows a loop edge while you drag it
 
 **Tokens**
 

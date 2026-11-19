@@ -9,6 +9,7 @@ import { useAtlasUI } from '../../../root/AtlasUIContext';
 import { clock, POSITION_MS, REDUCED_POSITION_MS, writeText } from './musicClock';
 import { MusicWave } from './musicWave';
 import { CutTooltip } from './CutTooltip';
+import { WaveHover } from './waveHover';
 import { shareAt, useWaveSeek } from './useWaveSeek';
 import { useContextMenu } from '../../../root/ContextMenuContext';
 import { SoundRecordStore } from '../../../../soundLibrary/SoundRecordStore';
@@ -42,6 +43,11 @@ export function MusicPosition({ director }: { director: SoundDirector }): React.
   const playedRef = useRef<HTMLCanvasElement>(null);
   const waveRef = useRef<HTMLDivElement>(null);
   const loopRef = useRef<HTMLDivElement>(null);
+  const hoverRef = useRef<HTMLDivElement>(null);
+  const hoverTimeRef = useRef<HTMLSpanElement>(null);
+  // Where a mouse or pen rests over the wave, as a share of it; null while none does.
+  const pointer = useRef<number | null>(null);
+  const placeHover = useRef<() => void>(() => undefined);
   const menu = useContextMenu();
   // A loop edge the GM drags along the wave: what it shows until the record holds it.
   const dragged = useRef<{ loop: LoopPoints; edge: 'in' | 'out' | null; record: SoundRecord; frames: number; until: number } | null>(null);
@@ -53,6 +59,14 @@ export function MusicPosition({ director }: { director: SoundDirector }): React.
     const played = playedRef.current;
     if (!unplayed || !played) return undefined;
     const wave = new MusicWave(unplayed, played);
+    const hover = hoverRef.current && hoverTimeRef.current ? new WaveHover(hoverRef.current, hoverTimeRef.current) : null;
+    let shownFrames = 0;
+    // The line follows a loop edge being dragged, else a press held on the wave, else the pointer.
+    placeHover.current = () => {
+      const drag = dragged.current;
+      if (drag?.edge) hover?.show((drag.edge === 'in' ? drag.loop.startFrame : drag.loop.endFrame) / drag.frames, drag.frames);
+      else hover?.show(held.current ?? pointer.current, shownFrames);
+    };
     const write = (): void => {
       if (!titleRef.current || titleRef.current.offsetParent === null) return;
       const { mix } = director.snapshot();
@@ -84,6 +98,8 @@ export function MusicPosition({ director }: { director: SoundDirector }): React.
         }
       }
       const frame = position ? (held.current === null ? position.frame : Math.round(held.current * frames)) : 0;
+      shownFrames = frames;
+      placeHover.current();
       writeText(timeRef.current, position ? clock(frame) : '');
       writeText(totalRef.current, position ? t('audio.ofLength', { length: clock(frames) }) : '');
       wave.show(position ? director.shelf.peaksOfKey(position.track.key) : null, frame / Math.max(1, frames));
@@ -120,6 +136,15 @@ export function MusicPosition({ director }: { director: SoundDirector }): React.
         aria-label={t('audio.seek')}
         aria-valuemin={0}
         {...handlers}
+        // In the capture phase, so a loop edge that keeps its own moves still moves the line.
+        onPointerMoveCapture={(event) => {
+          pointer.current = event.pointerType === 'touch' ? null : shareAt(event.currentTarget, event.clientX);
+          placeHover.current();
+        }}
+        onPointerLeave={() => {
+          pointer.current = null;
+          placeHover.current();
+        }}
         onContextMenu={(event) => {
           const playing = playingTrack(director);
           if (!playing) return;
@@ -173,6 +198,10 @@ export function MusicPosition({ director }: { director: SoundDirector }): React.
               }}
             />
           ))}
+        </div>
+        {/* Where the pointer is on the track, and the time it stands at. */}
+        <div className="atlas-sound-music__hover" ref={hoverRef} aria-hidden="true">
+          <span className="atlas-sound-music__hover-time" ref={hoverTimeRef} />
         </div>
       </div>
       <div className="atlas-sound-music__clock">
