@@ -78,10 +78,10 @@ describe('the Ranges mode in the measure tool\'s bar', () => {
   it('takes no choice in the session view, and the tool leaves it there for its first mode', async () => {
     const store = renderBar(BANDED, NO_MOVEMENT_RULES);
     fireEvent.click(ranges());
-    act(() => store.setState({ isGMView: false }));
+    act(() => { store.setState({ isGMView: false }); });
     expect(inert()).toBe(true);
     await waitFor(() => expect(store.getState().measureTool.mode).toBe('ruler'));
-    act(() => store.setState({ isGMView: true }));
+    act(() => { store.setState({ isGMView: true }); });
     expect(inert()).toBe(false);
   });
 
@@ -89,7 +89,7 @@ describe('the Ranges mode in the measure tool\'s bar', () => {
     rules.settings = BANDED;
     const store = renderBar(BANDED, NO_MOVEMENT_RULES, true);
     expect(modes()).not.toContain('Ranges');
-    act(() => store.getState().setMeasureTool({ mode: 'ranges' }));
+    act(() => { store.getState().setMeasureTool({ mode: 'ranges' }); });
     await waitFor(() => expect(store.getState().measureTool.mode).toBe('ruler'));
   });
 });

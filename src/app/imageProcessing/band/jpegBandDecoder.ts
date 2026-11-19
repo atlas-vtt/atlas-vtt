@@ -13,7 +13,7 @@ export const jpegBandDecoder: BandDecoder = {
     return { width: header.width, height: header.height, hasAlpha: false };
   },
 
-  async decode(bytes: Uint8Array, { reduce, onBand, signal }: BandDecodeOptions): Promise<void> {
+  async decode(bytes: Uint8Array<ArrayBuffer>, { reduce, onBand, signal }: BandDecodeOptions): Promise<void> {
     const header = readJpegHeader(bytes);
     const decoder = reduce === 8 ? new ReducedDecoder(header, bytes) : new FullResolutionDecoder(header, bytes);
     const { width, bandRows } = decoder;

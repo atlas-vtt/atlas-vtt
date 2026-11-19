@@ -118,7 +118,7 @@ describe('the toolbar editor\'s card', () => {
 
   it('opens at once for keyboard focus, follows the arrow keys, and lets Escape end edit mode', async () => {
     const { container, store } = editing();
-    act(() => handle(container, 'move').focus());
+    act(() => { handle(container, 'move').focus(); });
     await waitFor(() => expect(isShown()).toBe(true));
     expect(card().textContent).toContain('Move and select');
     fireEvent.keyDown(handle(container, 'move'), { key: 'ArrowRight' });
@@ -131,7 +131,7 @@ describe('the toolbar editor\'s card', () => {
 
   it('opens no card for the focus edit mode puts on the bar when started from the keyboard', async () => {
     const { container, store } = renderToolbar();
-    act(() => store.getState().setCommandPaletteOpen(true));
+    act(() => { store.getState().setCommandPaletteOpen(true); });
     const input = screen.getByPlaceholderText('Search commands…');
     fireEvent.change(input, { target: { value: 'Customize toolbar' } });
     fireEvent.keyDown(input, { key: 'Enter' });

@@ -26,9 +26,9 @@ const BrokenOnCave: React.FC = () => {
 
 /** The store side of a scene load: the path is set first, the scene's data arrives later. */
 function loadScene(target: ViewAtlasStore, mapPath: string, dmNotePath: string): void {
-  act(() => target.setState({ isMapLoading: true, mapPath }));
-  act(() => target.setState({ dmNotePath }));
-  act(() => target.setState({ isMapLoading: false }));
+  act(() => { target.setState({ isMapLoading: true, mapPath }); });
+  act(() => { target.setState({ dmNotePath }); });
+  act(() => { target.setState({ isMapLoading: false }); });
 }
 
 const unmounted = vi.fn();
@@ -57,7 +57,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  act(() => root.unmount());
+  act(() => { root.unmount(); });
   container.remove();
   vi.restoreAllMocks();
   vi.useRealTimers();
@@ -77,13 +77,13 @@ function waitOutRetries(): void {
 }
 
 function show(panel: React.ReactNode): void {
-  act(() => root.render(
+  act(() => { root.render(
     <ViewStoreProvider store={store}>
       <MapImage />
       {panel}
       <PanelBoundary name="the toolbar"><p>Toolbar</p></PanelBoundary>
     </ViewStoreProvider>,
-  ));
+  ); });
 }
 
 describe('a map panel that fails to render', () => {
@@ -91,7 +91,7 @@ describe('a map panel that fails to render', () => {
     store.setState({ dmNotePath: 'tower' });
     show(<BrokenOnCave />);
 
-    expect(() => act(() => store.setState({ dmNotePath: 'cave' }))).toThrow("reading 'max'");
+    expect(() => act(() => { store.setState({ dmNotePath: 'cave' }); })).toThrow("reading 'max'");
 
     expect(container.textContent).toBe('');
     expect(unmounted).toHaveBeenCalledTimes(1);
@@ -110,7 +110,7 @@ describe('a map panel that fails to render', () => {
 
     wait(FIRST_RETRY);
     expect(Notice).toHaveBeenCalledTimes(1);
-    act(() => store.getState().setGridVisible(false));
+    act(() => { store.getState().setGridVisible(false); });
     wait(SECOND_RETRY);
     wait(THIRD_RETRY);
 
@@ -138,8 +138,8 @@ describe('a map panel that fails to render', () => {
 
   it('is tried again when the same scene is loaded again', () => {
     show(<PanelBoundary name="the initiative tracker"><BrokenOnCave /></PanelBoundary>);
-    act(() => store.setState({ isMapLoading: true }));
-    act(() => store.setState({ dmNotePath: 'cave, repaired', isMapLoading: false }));
+    act(() => { store.setState({ isMapLoading: true }); });
+    act(() => { store.setState({ dmNotePath: 'cave, repaired', isMapLoading: false }); });
 
     expect(container.textContent).toBe('Map imageInitiativeToolbar');
   });
@@ -165,13 +165,13 @@ describe('a map panel that fails to render', () => {
   it('is not tried by itself while a scene loads, when the store mixes two scenes', () => {
     store.setState({ dmNotePath: 'tower' });
     show(<PanelBoundary name="the initiative tracker"><BrokenOnCave /></PanelBoundary>);
-    act(() => store.setState({ isMapLoading: true, dmNotePath: 'cave' }));
-    act(() => store.setState({ dmNotePath: 'tower' }));
+    act(() => { store.setState({ isMapLoading: true, dmNotePath: 'cave' }); });
+    act(() => { store.setState({ dmNotePath: 'tower' }); });
 
     waitOutRetries();
     expect(container.textContent).toBe('Map imageToolbar');
 
-    act(() => store.setState({ isMapLoading: false }));
+    act(() => { store.setState({ isMapLoading: false }); });
     expect(container.textContent).toBe('Map imageInitiativeToolbar');
   });
 });
@@ -242,7 +242,7 @@ describe('a map panel that fails for no reason of the scene', () => {
     expect(vi.getTimerCount()).toBe(0);
 
     wait(600_000);
-    act(() => store.getState().setGridVisible(false));
+    act(() => { store.getState().setGridVisible(false); });
     expect(tries()).toBe(1 + PANEL_RETRY_DELAYS_MS.length);
     expect(container.textContent).toBe('Map imageToolbar');
     expect(Notice).toHaveBeenCalledTimes(1);
@@ -274,7 +274,7 @@ describe('a map panel that fails for no reason of the scene', () => {
     };
     const breakAgain = (): void => {
       broken = true;
-      act(() => store.getState().setGridVisible(!store.getState().grid.visible));
+      act(() => { store.getState().setGridVisible(!store.getState().grid.visible); });
     };
     /** The tries the surface was given, each of which found it whole again. */
     const recover = (delay: number): void => {
