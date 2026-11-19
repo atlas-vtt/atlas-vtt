@@ -164,4 +164,38 @@ describe('how measurements come and go', () => {
     places.flush();
     expect(shift()).toBe(0);
   });
+
+  it('lifts the pin under the pointer with a pointer cursor, and lets it settle once the pointer leaves', () => {
+    const s = scene();
+    measureFrom(s, 35, 35, 175, 35);
+    vi.advanceTimersByTime(400);
+    const pin = (liveLabels(s).children.find((child) => child.label === 'measure-pin') as Container);
+    const rest = pin.scale.x;
+    expect(s.measure.pointer.cursorAt(pin.position.x, pin.position.y)).toBe('pointer');
+    vi.advanceTimersByTime(300);
+    expect(pin.scale.x).toBeGreaterThan(rest);
+    s.measure.pointer.leave();
+    vi.advanceTimersByTime(300);
+    expect(pin.scale.x).toBeCloseTo(rest);
+    // Away from it, it is no pin's to answer.
+    expect(s.measure.pointer.cursorAt(700, 700)).toBeNull();
+  });
+
+  it('glows once along a measurement kept by its pin, and not along one kept by Keep', () => {
+    const s = scene();
+    measureFrom(s, 35, 35, 175, 35);
+    vi.advanceTimersByTime(400);
+    const pin = (liveLabels(s).children.find((child) => child.label === 'measure-pin') as Container);
+    s.click(pin.position.x, pin.position.y);
+    const glow = (): Container | undefined => keptLabels(s).children.find((child) => child.label === 'measure-glow') as Container | undefined;
+    vi.advanceTimersByTime(150);
+    expect(glow()?.visible).toBe(true);
+    expect(glow()!.alpha).toBeGreaterThan(0.3);
+    vi.advanceTimersByTime(1200);
+    expect(glow()?.visible).toBe(false);
+    s.store.getState().setMeasureTool({ keep: true });
+    measureFrom(s, 35, 175, 175, 175);
+    const second = s.parts()[5] as Container;
+    expect(second.children.some((child) => child.label === 'measure-glow')).toBe(false);
+  });
 });

@@ -25,7 +25,7 @@ import { watchMeasureLabelTheme } from '../utils/measureLabel';
 import type { MeasureLook } from './DrawnMeasure';
 import { AreaEffects } from './effects/AreaEffects';
 import { LiveMeasuring, type MeasureGrid } from './LiveMeasuring';
-import type { MeasureHandlePlace } from './measureHandle';
+import type { MeasureHandlePlace, MeasurePointerHandlers } from './measureHandle';
 import { MeasureHandleInteraction, type MeasureHandleStore } from './MeasureHandleInteraction';
 import { MeasureInput } from './MeasureInput';
 import { MeasureLayer } from './MeasureLayer';
@@ -80,6 +80,24 @@ export class MeasureRenderer {
   private readonly live: LiveMeasuring;
   /** The handles of the kept measurements: the viewport's dispatch hands them the pointer (`pointer`), the map's keys Escape and Delete. */
   public readonly handles: MeasureHandleInteraction;
+  /**
+   * What the token renderer's dispatch hands the pointer: the pin beside a released measurement's
+   * label first (it lifts under the pointer), then the kept measurements' handles.
+   */
+  public readonly pointer: MeasurePointerHandlers = {
+    pointerDown: (x, y, event) => this.handles.pointer.pointerDown(x, y, event),
+    cursorAt: (x, y) => {
+      const onPin = !this.input.measuring && this.layer.pinAt({ x, y });
+      this.layer.hoverPin(onPin);
+      if (!onPin) return this.handles.pointer.cursorAt(x, y);
+      this.handles.pointer.leave();
+      return 'pointer';
+    },
+    leave: () => {
+      this.layer.hoverPin(false);
+      this.handles.pointer.leave();
+    },
+  };
   /** The range check and the rings of the Ranges mode: marks that are no measurements, and the GM's own. */
   public readonly ranges: RangeMarks;
   /** What plays the effects of the kept areas: told the map's playback mode, and asked for stills. */

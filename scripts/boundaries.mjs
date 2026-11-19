@@ -144,6 +144,7 @@ export const BOUNDARIES = {
       "src/app/pixi/measure/KeptDrawing.ts",
       "src/app/pixi/measure/LiveDrawing.ts",
       "src/app/pixi/measure/TokenOffsets.ts",
+      "src/app/pixi/measure/MeasureGlow.ts",
       "src/app/pixi/measure/measureGesture.ts",
       "src/app/pixi/measure/measureHandle.ts",
       "src/app/pixi/measure/measureHandleDrag.ts",

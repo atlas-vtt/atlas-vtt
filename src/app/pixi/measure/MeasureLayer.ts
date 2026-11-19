@@ -13,7 +13,6 @@ import type { DrawnMeasure, MeasureLook, MeasureSurfaces } from './DrawnMeasure'
 import type { AreaEffects } from './effects/AreaEffects';
 import { colorOf, KeptDrawing } from './KeptDrawing';
 import { LiveDrawing } from './LiveDrawing';
-import type { MeasurePresence } from './measurePresence';
 import { TokenOffsets } from './TokenOffsets';
 import type { ShownPlaces } from '../../lighting/shownPlaces';
 
@@ -92,6 +91,8 @@ export class MeasureLayer {
   private readonly leaving = new Set<KeptDrawing>();
   /** How far gliding tokens are drawn from their places: what goes with a token is drawn with it (`followShown`). */
   private readonly offsets = new TokenOffsets();
+  /** The live measurement is being kept by its pin (`keepPinned`). */
+  private pinning = false;
   private list: readonly KeptMeasure[] = [];
   /** Where the auras among them lie; `auras` says whether there is one. */
   readonly places = new AuraPlaces();
@@ -139,6 +140,21 @@ export class MeasureLayer {
   /** Whether a press at the world point `point` is on the live label's pin, while that shows. */
   pinAt(point: Point): boolean {
     return this.live.pinAt(point);
+  }
+
+  /** The pointer is over the live label's pin, or left it: the pin lifts or settles. */
+  hoverPin(hovered: boolean): void {
+    this.live.hoverPin(hovered);
+  }
+
+  /** Keeps the live measurement by its pin (`keep`): the kept one takes its place and glows once, so it is seen to stay. */
+  keepPinned(keep: () => boolean): boolean {
+    this.pinning = true;
+    try {
+      return keep();
+    } finally {
+      this.pinning = false;
+    }
   }
 
   /**
@@ -202,7 +218,7 @@ export class MeasureLayer {
       kept.draw(measure, aura, look, travelled);
       this.kept.set(measure.id, kept);
       this.drawings.kept(kept.drawn.parts, keptAudience(measure));
-      if (!known) this.arrive(measure, kept.presence, animate);
+      if (!known) this.arrive(measure, kept, animate);
       this.shiftOne(kept);
     }
     return moved;
@@ -229,16 +245,17 @@ export class MeasureLayer {
   /**
    * A kept measurement drawn for the first time comes in. The live one just kept is already there:
    * it takes the live one's place as it stands, so keeping it never flickers, and one rescued while
-   * it dissolved comes back from where it had got to.
+   * it dissolved comes back from where it had got to. One kept by its pin glows.
    */
-  private arrive(measure: KeptMeasure, presence: MeasurePresence, animate: boolean): void {
+  private arrive(measure: KeptMeasure, kept: KeptDrawing, animate: boolean): void {
     const live = this.live.showing;
     if (live && sameMeasurement(live.measurement, measure)) {
       const from = live.presence;
-      if (from.alpha < 1 || from.grow !== 1) presence.enter(from);
+      if (from.alpha < 1 || from.grow !== 1) kept.presence.enter(from);
+      if (this.pinning) kept.drawn.glow();
       return;
     }
-    if (animate) presence.enter();
+    if (animate) kept.presence.enter();
   }
 
   /** A kept measurement's drawing goes: at once, or (`animate`) once it has faded out, shown to whoever saw it until then. */

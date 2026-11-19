@@ -20,6 +20,7 @@ import { AreaBody, type BodyLook } from './AreaBody';
 import { AreaTokenRings, markedTokens } from './AreaTokenRings';
 import type { AreaEffects } from './effects/AreaEffects';
 import { legDistances, rulerRise } from './measureDistances';
+import { MeasureGlow } from './MeasureGlow';
 import { PRESENT, type Presence } from './measurePresence';
 import { PlayersLabel } from './PlayersLabel';
 
@@ -117,6 +118,8 @@ export class DrawnMeasure {
   /** How far it is on the map (`present`), and how far from where it lies it is drawn (`shift`). */
   private presence: Presence = PRESENT;
   private offset: Point = NOWHERE;
+  /** The glow it plays once pinned; made the first time. */
+  private glowing: MeasureGlow | null = null;
   /** The area as it is drawn now; null for a ruler and while nothing is drawn. */
   private inked: Inked | null = null;
   private look: MeasureLook | null = null;
@@ -292,10 +295,22 @@ export class DrawnMeasure {
     this.ink.clear();
     this.body.clear();
     this.rings.clear();
+    this.glowing?.stop();
     this.fitLegs(0);
   }
 
+  /** Glows along its outline (a ruler: its path) in its colour once: it was just pinned (`MeasureGlow`). */
+  glow(): void {
+    const { drawn, look } = this;
+    if (!drawn || !look) return;
+    const rings = this.inked?.onMap.area.rings;
+    const paths = rings ? rings.map((points) => ({ points, closed: true })) : [{ points: drawn.measurement.points, closed: false }];
+    const about = drawn.aura?.shaped.origin ?? drawn.measurement.points[0] ?? NOWHERE;
+    (this.glowing ??= new MeasureGlow(this.labels)).play(paths, drawn.color ?? look.accent, look.zoom, about);
+  }
+
   destroy(): void {
+    this.glowing?.destroy();
     this.rings.destroy();
     this.ink.destroy();
     this.body.destroy();

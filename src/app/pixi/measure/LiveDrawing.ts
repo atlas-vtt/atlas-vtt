@@ -67,6 +67,11 @@ export class LiveDrawing {
     this.drawn.clear();
   }
 
+  /** The pointer is over the pin, or left it. */
+  hoverPin(hovered: boolean): void {
+    this.pin.setHovered(hovered);
+  }
+
   /** Whether a press at the world point `point` is on the pin, while that shows. */
   pinAt(point: Point): boolean {
     return this.drawn.labelLayer.visible && this.pin.contains(point);
