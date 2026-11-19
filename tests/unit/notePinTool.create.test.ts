@@ -112,6 +112,7 @@ describe('NotePinTool creating a note', () => {
     const store = createViewAtlasStore(app, 'pin-rename-view');
     store.getState().setPersistenceEnabled(false);
     store.getState().setMapPath(MAP_PATH);
+    store.getState().setMapLoaded(true);
     const tool = new NotePinTool(new EventEmitter(), app, store);
     cleanup = () => tool.destroy();
 
@@ -127,11 +128,38 @@ describe('NotePinTool creating a note', () => {
     );
   });
 
+  it('keeps the backlink when a map reload temporarily clears its pins', async () => {
+    const { app } = vaultWithNotesFolder({ 'Notes/Inn.md': 'An inn', [MAP_PATH]: '{}' });
+    const store = createViewAtlasStore(app, 'pin-reload-view');
+    store.getState().setPersistenceEnabled(false);
+    store.getState().setMapPath(MAP_PATH);
+    store.getState().setMapLoaded(true);
+    const tool = new NotePinTool(new EventEmitter(), app, store);
+    cleanup = () => tool.destroy();
+
+    const id = store.getState().addNotePin(40, 60, 'Notes/Inn.md');
+    const note = app.vault.getFileByPath('Notes/Inn.md')!;
+    await app.vault.modify(note,
+      `An inn\\n\\n[[${MAP_PATH}#pin=${encodeURIComponent(id)}|View on map - Inn]]\\n`,
+    );
+
+    store.getState().setMapLoading(true);
+    store.getState().clearMapState();
+    store.getState().setMapLoading(false);
+    store.getState().setMapLoaded(true);
+    await settle();
+
+    expect(await app.vault.read(note)).toBe(
+      `An inn\\n\\n[[${MAP_PATH}#pin=${encodeURIComponent(id)}|View on map - Inn]]\\n`,
+    );
+  });
+
   it('removes only the deleted pin backlink from its note', async () => {
     const { app } = vaultWithNotesFolder({ 'Notes/Inn.md': 'An inn', [MAP_PATH]: '{}' });
     const store = createViewAtlasStore(app, 'pin-delete-view');
     store.getState().setPersistenceEnabled(false);
     store.getState().setMapPath(MAP_PATH);
+    store.getState().setMapLoaded(true);
     const tool = new NotePinTool(new EventEmitter(), app, store);
     cleanup = () => tool.destroy();
 
