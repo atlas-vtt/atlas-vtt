@@ -8,6 +8,8 @@ $hairline: color-mix(in oklch, var(--mono-100) 9%, transparent);
 $control-line: color-mix(in srgb, var(--mono-100) 50%, var(--background-primary-alt));
 // The corners: the pane's (the surface radius), a card's (one $spacing-s in, deeper than a surface's corner
 // controls, so it keeps the control radius), a control's and a keycap's.
+// The library's rail, in the page's side column.
+$sound-rail-width: clamp(192px, 14cqi, 232px);
 $card-inset: $spacing-s;
 $card-radius: atlas-panel-inset-radius-value($card-inset);
 $control-radius: $radius-m;

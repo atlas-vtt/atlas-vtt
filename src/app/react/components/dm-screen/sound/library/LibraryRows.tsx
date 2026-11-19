@@ -22,7 +22,7 @@ import { useRowKeys } from './useRowKeys';
 import { rowMenu } from './rowMenus';
 import type { LibraryActions } from './useLibraryActions';
 
-const ROW_HEIGHT = 38;
+const ROW_HEIGHT = 36;
 /** Under a coarse pointer a row's controls take 44 px (DECISIONS #24), and so does the row. */
 const TOUCH_ROW_HEIGHT = 44;
 const COARSE = '(pointer: coarse)';

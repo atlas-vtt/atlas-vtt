@@ -53,6 +53,7 @@ export function SoundPane({ active }: SoundPaneProps): React.JSX.Element {
   const rootRef = useRef<HTMLDivElement>(null);
   const [board] = useState(() => new MeterBoard());
   const [namingMood, setNamingMood] = useState(false);
+  const [railSlot, setRailSlot] = useState<HTMLDivElement | null>(null);
   // The library's search narrows the moods too: one field finds tracks on the left and moods on the right.
   const [query, setQuery] = useState('');
   const searching = useDeferredValue(query.trim());
@@ -92,8 +93,9 @@ export function SoundPane({ active }: SoundPaneProps): React.JSX.Element {
         onDragOver={(event) => { if (mayCarryAudio(event.dataTransfer)) event.preventDefault(); }}
         onDrop={drop}
       >
+        <div className="atlas-sound-lib atlas-sound-side" ref={setRailSlot} />
         <div className="atlas-sound-stage">
-          {libraryShown ? <LibraryView query={query} onQuery={setQuery} /> : <div className="atlas-sound-lib" aria-busy="true" />}
+          {libraryShown ? <LibraryView query={query} onQuery={setQuery} railSlot={railSlot} /> : <div className="atlas-sound-lib" aria-busy="true" />}
           <div className="atlas-sound-moods">
             {moods.length > 0 && <MoodGrid app={app} director={director} moods={moods} search={searching} moveMood={moveMood} onNewMood={nameNewMood} />}
             {moods.length === 0 && moodsRead && (

@@ -37,8 +37,8 @@ function renderPopover(): { store: ViewAtlasStore; cave: string; zone: () => Lig
       <ViewStoreProvider store={store}><LightZonePopoverHost /></ViewStoreProvider>
     </AtlasUIContext.Provider>,
   );
-  act(() => store.getState().openLightZonePopover(cave));
-  return { store, cave, zone: () => store.getState().objects.lightZones![cave]!, steps: () => history.getState().pastStates.length, undo: () => act(() => history.getState().undo()) };
+  act(() => { store.getState().openLightZonePopover(cave); });
+  return { store, cave, zone: () => store.getState().objects.lightZones![cave]!, steps: () => history.getState().pastStates.length, undo: () => act(() => { history.getState().undo(); }) };
 }
 
 describe('LightZonePopover', () => {
@@ -52,7 +52,7 @@ describe('LightZonePopover', () => {
     expect(screen.getByLabelText('Ambient colour')).toBeTruthy();
     screen.getByRole('button', { name: 'Delete' });
     expect(popover.querySelector('[title]')).toBeNull();
-    act(() => store.getState().closeLightZonePopover());
+    act(() => { store.getState().closeLightZonePopover(); });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
@@ -69,7 +69,7 @@ describe('LightZonePopover', () => {
   it('sets it finely with the slider: a key is a step, a drag one undo step', () => {
     const { store, cave, zone, steps } = renderPopover();
     const slider = screen.getByRole('slider', { name: 'Ambient light' });
-    act(() => slider.focus());
+    act(() => { slider.focus(); });
     fireEvent.keyDown(slider, { key: 'ArrowRight' });
     expect(zone().ambient).toBe(0.01);
     const before = steps();

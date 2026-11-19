@@ -67,6 +67,7 @@
   display: inline-flex;
   align-items: center;
   height: $button-height-m;
+  padding: 0 $spacing-s;
   border-radius: $control-radius;
   white-space: nowrap;
   cursor: default;
@@ -98,9 +99,12 @@ button.atlas-sound-who,
 .atlas-sound-output {
   color: var(--atlas-sound-muted);
   cursor: pointer;
-  transition: color $transition-normal $press-ease;
+  transition: color $transition-normal $press-ease, background-color $transition-normal $press-ease, transform $press-ms $press-ease;
+  @include pressable;
 
-  &:hover {
+  &:hover,
+  &[aria-expanded='true'] {
+    background: $hairline;
     color: var(--text-normal);
   }
 }

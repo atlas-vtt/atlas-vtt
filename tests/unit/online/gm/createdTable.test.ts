@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createTable } from '../../../../src/app/online/gm/createTable.ts';
 import { readCreated } from '../../../../src/app/online/gm/createdTable.ts';
-import { bodyOf, type HttpRequest } from '../../../../src/app/online/gm/account/http.ts';
+import { bodyOf, type HttpRequest } from '../../../../src/app/account/http.ts';
 import { GM_LEVEL } from '../../../../src/app/online/protocol/index.ts';
 
 const TABLE = { code: 'b'.repeat(26), secret: 'n'.repeat(43), maxPlayers: 12, plan: 'beta' };

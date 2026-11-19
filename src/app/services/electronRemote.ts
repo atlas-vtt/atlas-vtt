@@ -117,7 +117,11 @@ export function nativeFolderPicker(win: Window): ((title: string) => Promise<str
   }
 }
 
-/** Moves a path to the system's trash, Electron's `shell.trashItem`; null where it cannot be reached. Never falls back on deleting. */
+/**
+ * Moves a path to the system's trash, Electron's `shell.trashItem`; null where it cannot be reached. Never falls back on deleting.
+ * The main process's shell comes first: on Windows the window's own rejects every item with "Failed to create FileOperation
+ * instance", since the trash is a COM object the renderer cannot create. The window's is used only where `remote` is missing.
+ */
 export function systemTrash(win: Window): ((absolute: string) => Promise<void>) | null {
   if (!Platform.isDesktopApp) return null;
   try {
@@ -126,8 +130,8 @@ export function systemTrash(win: Window): ((absolute: string) => Promise<void>) 
     const electron: unknown = Reflect.apply(load, win, ['electron']);
     if (!isRecord(electron)) return null;
     const remote = electron.remote;
-    const shell: unknown = hasMethods(electron.shell, ['trashItem']) ? electron.shell
-      : (isRecord(remote) || typeof remote === 'function') ? Reflect.get(remote, 'shell') : null;
+    const remoteShell: unknown = (isRecord(remote) || typeof remote === 'function') ? Reflect.get(remote, 'shell') : null;
+    const shell: unknown = hasMethods(remoteShell, ['trashItem']) ? remoteShell : electron.shell;
     if (!hasMethods(shell, ['trashItem'])) return null;
     return async (absolute) => {
       await Reflect.apply(Reflect.get(shell, 'trashItem') as () => unknown, shell, [absolute]);

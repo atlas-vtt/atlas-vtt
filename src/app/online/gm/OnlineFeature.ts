@@ -3,8 +3,8 @@ import { Component, type App, type Plugin, type TFile } from 'obsidian';
 import { showNotice } from '../../ui/notice';
 import type { AtlasSettingSection } from '../../settings/settingSections';
 import { AccountControl } from './account/AccountControl.ts';
-import { obsidianHttp } from './account/obsidianHttp.ts';
-import { secretTokenStore } from './account/tokenStore.ts';
+import { obsidianHttp } from '../../account/obsidianHttp.ts';
+import type { AtlasAccount } from '../../account/AtlasAccount';
 import { activeAtlasLeaf } from './atlasView.ts';
 import { AssetService } from '../../services/AssetService';
 import { openPinNote } from '../../services/noteHeadings';
@@ -88,7 +88,7 @@ export class OnlineFeature extends Component {
   private ready = false;
   private readonly commands = new Map<OnlineCommandId, (checking: boolean) => boolean>();
 
-  constructor(private readonly plugin: Plugin, private readonly data: OnlineDataFile) {
+  constructor(private readonly plugin: Plugin, private readonly data: OnlineDataFile, private readonly atlasAccount: AtlasAccount) {
     super();
     this.app = plugin.app;
     const campaigns = this.campaigns();
@@ -103,20 +103,7 @@ export class OnlineFeature extends Component {
       now: () => companionTimers().now(),
       sleep: (ms) => new Promise((resolve) => companionTimers().setTimer(resolve, ms)),
     });
-    this.account = new AccountControl({
-      http: obsidianHttp,
-      timers: companionTimers(),
-      tokens: secretTokenStore(this.app),
-      openUrl: (url) => void window.open(url),
-      notify: (text) => showNotice(text),
-      signedIn: () => {
-        void this.salt.ensure(true);
-        this.online.table?.signedIn();
-      },
-      signedOut: () => this.salt.clear(),
-      // The table uploads nothing more once the account's token is gone.
-      beforeSignOut: () => Promise.resolve(this.online.table?.suspendAssets()),
-    });
+    this.account = new AccountControl({ http: obsidianHttp, timers: companionTimers(), account: atlasAccount });
   }
 
   /** The account as tables are started with it, with what keeps assets in the store for players. */
@@ -146,6 +133,14 @@ export class OnlineFeature extends Component {
 
   onload(): void {
     this.live = true;
+    // A sign-in anywhere in Atlas (the dock, the settings, the Armarium) reaches the table and the asset salt.
+    this.register(this.atlasAccount.onSignedIn(() => {
+      void this.salt.ensure(true);
+      this.online.table?.signedIn();
+    }));
+    this.register(this.atlasAccount.onSignedOut(() => this.salt.clear()));
+    // The table uploads nothing more once the account's token is gone.
+    this.register(this.atlasAccount.beforeSignOut(() => Promise.resolve(this.online.table?.suspendAssets())));
     void this.start().catch((error: unknown) => console.error('[Atlas] Online play could not start:', error));
   }
 

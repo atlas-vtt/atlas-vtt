@@ -97,11 +97,6 @@
     font-size: $font-ui-small;
   }
 
-  // The digits stand as wide as each other, so a new code never moves the row's text.
-  .atlas-online-code-row {
-    font-variant-numeric: tabular-nums;
-  }
-
   // The cards over the control: a panel of their own, its left edge on the control's, a bar's gap
   // above it, or above the menu or panel open over it (`--atlas-online-above`, dockSurface.ts). The
   // earliest card is the lowest and a later one goes above it, so a knock moves no card that was

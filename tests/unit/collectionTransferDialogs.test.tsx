@@ -202,6 +202,14 @@ describe('export options', () => {
     }));
   });
 
+  it('refuses a selection larger than the Armarium takes before anything is packed', async () => {
+    const onExport = vi.fn(async () => null);
+    render(<ExportCollectionDialog media={media} purpose="armarium" maxBytes={1024} preview={preview()} onExport={onExport} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Upload v3' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('This selection is 2 kB; the Armarium takes up to 1 kB. Leave some items out, or share the collection as two.');
+    expect(onExport).not.toHaveBeenCalled();
+  });
+
   it('publishes a collection installed from someone else as the user\'s own, without offering to share it', async () => {
     const onExport = vi.fn(async () => null);
     render(<ExportCollectionDialog media={media} preview={preview({ publisher: 'other' })} onExport={onExport} onCancel={vi.fn()} />);

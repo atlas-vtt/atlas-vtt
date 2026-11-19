@@ -826,9 +826,10 @@ $history-close: 180ms;
 // Under a finger every target of the tray reaches $touch-target (Apple HIG, WCAG 2.5.5), as the asset manager's
 // coarse block does (`_open-window.scss`): fields, steppers and the side's options grow; the switch keeps its look
 // and takes a 44 px hit area of its own around it.
+// On the tray's own root, not its dropdown: the online page shows it in a sheet of its own.
 @media (pointer: coarse) {
-  .atlas-dice-tray {
-    // The bar is as tall as a finger; the modifier's steps fill its height and are a finger wide.
+  .atlas-dice-tray__content {
+    // The bar is as tall as a finger; the modifier's steps and its number fill its height and are a finger wide.
     .atlas-dice-tray__entry {
       height: $touch-target;
     }
@@ -837,7 +838,8 @@ $history-close: 180ms;
       padding: 0;
     }
 
-    .atlas-dice-tray__step {
+    .atlas-dice-tray__step,
+    .atlas-dice-tray__modifier-value {
       width: $touch-target;
       height: 100%;
     }

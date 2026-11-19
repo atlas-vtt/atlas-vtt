@@ -12,21 +12,20 @@ function accountDesc(view: AccountView): string {
     case 'unreachable': return UNREACHABLE_TEXT;
     case 'no-access': return t('online.account.signedInNoAccess', { account: accountText(view.account), reason: accessText(view.reason) });
     case 'can-host': return t('online.account.signedInPlan', { account: accountText(view.account), plan: planText(view.access) });
-    default: return t('online.account.signedOut');
+    default: return t('online.account.signInFirst');
   }
 }
 
-const signedIn = (view: AccountView): boolean => view.kind === 'no-access' || view.kind === 'can-host' || view.kind === 'unreachable' || view.kind === 'checking';
-
 /**
- * The settings' Account section: who is signed in, what the account may host or why it may not, and
- * the way to the account page, where invite keys are redeemed and the account's data is exported and deleted.
+ * Online play's account section: what the account may host or why it may not, and the way to the account page, where
+ * invite keys are redeemed and the account's data is exported and deleted. Signing in and out is the plugin's Atlas
+ * account section's (`accountSettingsSection`), which online play shares with the Armarium.
  */
 export function accountSections(account: AccountControl): AtlasSettingSection[] {
   return [{
     heading: t('online.account.heading'),
     rows: [{
-      name: t('online.account.name'),
+      name: t('online.account.hosting'),
       desc: accountDesc(account.view()),
       // The row is drawn from the account as it is now and again whenever it changes, while the settings are open.
       render: (setting) => {
@@ -34,9 +33,6 @@ export function accountSections(account: AccountControl): AtlasSettingSection[] 
           const view = account.view();
           setting.setDesc(accountDesc(view));
           setting.clear();
-          if (signedIn(view)) addSettingButton(setting, { text: t('online.signOut'), onClick: () => void account.signOut() });
-          else if (view.kind === 'signed-out') addSettingButton(setting, { text: t('online.signIn'), variant: 'default', onClick: () => void account.signIn() });
-          else if (view.kind === 'waiting') addSettingButton(setting, { text: t('online.cancel'), onClick: () => account.cancelSignIn() });
           addSettingButton(setting, {
             text: t('online.account.open'),
             variant: view.kind === 'no-access' ? 'default' : 'outline',
@@ -44,6 +40,7 @@ export function accountSections(account: AccountControl): AtlasSettingSection[] 
           });
         };
         draw();
+        void account.refresh();
         return account.onChange(draw);
       },
     }],

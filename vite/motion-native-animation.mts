@@ -1,5 +1,4 @@
 import type { Plugin } from 'vite';
-import fs from 'node:fs';
 
 /** The file of framer-motion that hands an animation to the browser's own engine. */
 const ANIMATOR = /\/framer-motion\/dist\/es\/animation\/animators\/AcceleratedAnimation\.mjs$/;
@@ -53,14 +52,12 @@ export function motionNativeAnimation(): Plugin {
     config() {
       return {
         optimizeDeps: {
-          esbuildOptions: {
+          rolldownOptions: {
             plugins: [{
               name: 'atlas-motion-native-animation',
-              setup(build) {
-                build.onLoad({ filter: /AcceleratedAnimation\.mjs$/ }, async ({ path }) => {
-                  if (!isAnimator(path)) return null;
-                  return { contents: withMissingAnimationGuard(await fs.promises.readFile(path, 'utf8')), loader: 'js' };
-                });
+              transform(code, id) {
+                if (!isAnimator(id)) return null;
+                return { code: withMissingAnimationGuard(code), map: null };
               },
             }],
           },

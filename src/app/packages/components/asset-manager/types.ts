@@ -1,6 +1,7 @@
 import { App as ObsidianApp, Modal } from 'obsidian';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import type { CollectionMetadata, EncounterAsset as StoredEncounterAsset } from '../../../services/AssetService';
+import type { ExternalImport } from '../../../services/collectionBundle/externalImport';
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../../../ui/nativeModal';
 import { t } from '../../../i18n';
 import { createAtlasButton } from '../../../ui/atlasButton';
@@ -142,6 +143,10 @@ export interface AssetManagerProps {
   initialTab?: Tab;
   /** Called once the closing animation has finished. */
   onExitComplete?: () => void;
+  /** A bundle handed over from outside (an Armarium install), reviewed once the window is open. */
+  pendingImport?: ExternalImport;
+  /** Raised by every request to show the Armarium; above 0, the window opens on it and shows it again when raised. */
+  armariumRequest?: number;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { AtlasAccount } from '../../../../src/app/account/AtlasAccount';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TFile, type Plugin } from 'obsidian';
 import { OnlineFeature } from '../../../../src/app/online/gm/OnlineFeature.ts';
@@ -26,6 +27,17 @@ const HEADINGS = [
   { heading: 'Overview', level: 2, position: { start: { line: 5 } } },
 ];
 
+
+/** The plugin's account, signed out, as online play hears it. */
+const ACCOUNT = new AtlasAccount({
+  http: () => Promise.resolve({ status: 401, json: null }),
+  timers: { now: () => 0, setTimer: () => 0, clearTimer: () => undefined },
+  tokens: { get: () => null, set: () => undefined, clear: () => undefined },
+  available: true,
+  openUrl: () => undefined,
+  notify: () => undefined,
+});
+
 describe('the found entry of the table log', () => {
   afterEach(() => {
     log.openNote = null;
@@ -38,7 +50,7 @@ describe('the found entry of the table log', () => {
     const openLinkText = vi.fn(() => Promise.resolve());
     app.workspace.openLinkText = openLinkText;
 
-    const feature = new OnlineFeature({ app, manifest: { version: '0' }, register: vi.fn() } as unknown as Plugin, { read: () => Promise.resolve(undefined), write: () => Promise.resolve() } as never);
+    const feature = new OnlineFeature({ app, manifest: { version: '0' }, register: vi.fn() } as unknown as Plugin, { read: () => Promise.resolve(undefined), write: () => Promise.resolve() } as never, ACCOUNT);
     feature.onload();
     await vi.waitFor(() => expect(log.openNote).not.toBeNull());
     log.openNote!(`${NOTE}#Inn#Overview#`, 'Maps/map.atlasmap');
