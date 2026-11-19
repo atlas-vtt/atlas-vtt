@@ -177,25 +177,24 @@ export class NotePinTool {
 
       const pins = levelObjects(state).pins;
       const previousPins = levelObjects(previousState).pins;
-        for (const [id, previousPin] of Object.entries(previousPins)) {
-          const pin = pins[id];
-          if (!pin) {
-            runInBackground(
-              this.removePinBacklink(previousPin.notePath, id, pinName(previousPin)),
-              `Removing the backlink for pin ${pinName(previousPin)}`,
-              'Could not remove the pin backlink',
-            );
-            continue;
-          }
-          if (pin.name === previousPin.name || pin.notePath !== previousPin.notePath) continue;
+      for (const [id, previousPin] of Object.entries(previousPins)) {
+        const pin = pins[id];
+        if (!pin) {
           runInBackground(
-            this.addPinBacklink(pin.notePath, id, pinName(previousPin)),
-            `Updating the backlink for pin ${pinName(pin)}`,
-            'Could not update the pin backlink',
+            this.removePinBacklink(previousPin.notePath, id, pinName(previousPin)),
+            `Removing the backlink for pin ${pinName(previousPin)}`,
+            'Could not remove the pin backlink',
           );
+          continue;
         }
-      },
-    );
+        if (pin.name === previousPin.name || pin.notePath !== previousPin.notePath) continue;
+        runInBackground(
+          this.addPinBacklink(pin.notePath, id, pinName(previousPin)),
+          `Updating the backlink for pin ${pinName(pin)}`,
+          'Could not update the pin backlink',
+        );
+      }
+    });
     syncActiveState(this.store.getState());
   }
 
