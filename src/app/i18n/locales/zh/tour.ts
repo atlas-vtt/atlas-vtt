@@ -63,4 +63,13 @@ export const tour: Translation = {
   'tour.online.dockBody': '在这里开一张桌子，把邀请链接发给玩家。他们用浏览器加入，看到你展示给他们的场景。',
   'tour.online.logTitle': '桌面记录',
   'tour.online.logBody': '桌上所有人的聊天和掷骰。在里面输入 /help 可以看到悄悄话和掷骰命令。',
+  'tour.savedRolls.label': '已保存的掷骰',
+  'tour.savedRolls.saveTitle': '保存掷骰',
+  'tour.savedRolls.saveBody': '为掷骰命名并按 +。它以骰子盘中的内容为起点。点击已保存的掷骰即可掷出。',
+  'tour.savedRolls.rowTitle': '你的骰子栏',
+  'tour.savedRolls.rowBody': '图钉会把已保存的掷骰放到骰子盘顶部的骰子中。点铅笔后可拖动调整顺序、用 × 移出，或添加 d3 之类的骰子。',
+  'tour.loot.rollBody.touch': '选择要抽几件再抽取；剩下的每件概率相同。在任意地图上，工具栏的「随机表」可以打开或关闭此窗口。每张地图会记住你上次放它的位置。',
+  'tour.map.welcomeMouse.touch': '双指捏合缩放，双指拖动来移动地图。下面简单看看地图周围的控件有什么用。',
+  'tour.map.welcomeTrackpad.touch': '双指捏合缩放，双指拖动来移动地图。下面简单看看地图周围的控件有什么用。',
+  'tour.map.toolsBody.touch': '迷雾、绘制、测量、图钉、骰子等等。工具旁边的箭头会打开它的选项。',
 };

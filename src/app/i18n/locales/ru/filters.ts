@@ -37,4 +37,5 @@ export const filters: Translation = {
   'filters.text': 'Текст',
   'filters.templateFields': 'Из шаблона статблока',
   'filters.noValueMatch': 'Нет совпадений для «{value}»',
+  'filters.hint.touch': 'Касание — обязательно, повторное касание — исключить.',
 };

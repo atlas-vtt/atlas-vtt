@@ -11,4 +11,9 @@ export const lpv: Translation = {
   'lpv.showDiceRolls': '显示骰子投掷',
   'lpv.showInitiative': '显示先攻面板',
   'lpv.showWidgets': '显示小组件',
+  'lpv.playersDraw': '允许玩家绘图',
+  'lpv.playersDrawHint': '在线玩家会获得自己的绘图工具。你可以修改和清除他们画的内容。',
+  'lpv.showCursors': '显示所有人的光标',
+  'lpv.view4k': '最高渲染到 4K',
+  'lpv.view4kHint': '4K 电视或超宽屏的每个屏幕像素都能得到一个渲染像素，而不是放大的 1440p 画面；玩家视图的图形运算最多增加到 2.25 倍。仅限此设备。',
 };

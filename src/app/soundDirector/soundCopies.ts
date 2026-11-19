@@ -76,8 +76,9 @@ export class SoundCopies {
     const entry = this.entryOf(record);
     if (!entry?.key) return null;
     const trim = { ...(record.trimDb !== undefined && { trimDb: record.trimDb }), ...(record.loop && { loop: record.loop }) };
-    if (entry.measure) return soundInfoOf(entry.key, entry.measure, trim);
-    return entry.growing ? growingInfo(entry.key, entry.growing, entry.toldGainDb, trim) : null;
+    const info = entry.measure ? soundInfoOf(entry.key, entry.measure, trim) : entry.growing ? growingInfo(entry.key, entry.growing, entry.toldGainDb, trim) : null;
+    // The track's own crossfade rides along on what the engine plays it by.
+    return info && { ...info, ...(record.crossfadeSeconds !== undefined && { crossfadeMs: record.crossfadeSeconds * 1000 }), ...(record.startAtLoopIn && record.loop && { startAtLoopIn: true as const }) };
   }
 
   /**

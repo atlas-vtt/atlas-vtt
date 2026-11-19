@@ -7,4 +7,7 @@ export const tabs: Translation = {
   'tabs.openScene': '打开场景',
   'tabs.show': '在玩家视图中显示 {name}',
   'tabs.shown': '{name} 正在玩家视图中显示',
+  'tabs.moveLeft': '左移',
+  'tabs.moveRight': '右移',
+  'tabs.processing': '正在处理 · {percent}%',
 };

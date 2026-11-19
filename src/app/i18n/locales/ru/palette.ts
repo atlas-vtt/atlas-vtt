@@ -49,4 +49,9 @@ export const palette: Translation = {
   'palette.sceneLevels': 'Уровни сцены',
   'palette.positionFloor': 'Расположить этаж',
   'palette.replaceMapImage': 'Заменить изображение карты',
+  'palette.panel.experimental': 'Экспериментальные функции',
+  'palette.experimentalLighting': 'Динамическое освещение',
+  'palette.openDMScreen': 'Открыть экран мастера',
+  'palette.openSoundPage': 'Открыть страницу «Звук»',
+  'palette.tour.ownBody.touch': 'Сетку, токены и виджеты настраивают в разделе «Настройки».',
 };

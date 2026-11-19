@@ -73,4 +73,7 @@ export const resource: Translation = {
   'resource.changeAmount': 'Изменение: {label}',
   'resource.changePlaceholder': '−8 или +5',
   'resource.socket.named': '{name}: {where}',
+  'resource.tab.onHover.touch': 'При выборе',
+  'resource.socket.wheelRightHeading.touch': 'Круг справа · виден при выборе',
+  'resource.socket.wheelLeftHeading.touch': 'Круг слева · виден при выборе',
 };

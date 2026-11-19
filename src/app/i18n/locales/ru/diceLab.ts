@@ -123,4 +123,5 @@ export const diceLab: Translation = {
   'diceLab.default': 'По умолчанию',
   'diceLab.collectionDice': 'Кубики коллекции',
   'diceLab.ofCollection': 'Коллекция {name}',
+  'diceLab.edgeOnlySetDice.touch': 'Меняются только броски кубиков набора: бросок урона бросается как есть. Коснитесь броска и удерживайте, чтобы бросить с преимуществом или помехой.',
 };

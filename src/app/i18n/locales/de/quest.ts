@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const quest: Translation = {
+  'quest.quests': 'Quests',
+  'quest.new': 'Neue Quest',
+  'quest.titleLabel': 'Titel der Quest',
+  'quest.kindLabel': 'Art der Quest',
+  'quest.kind.main': 'Hauptquest',
+  'quest.kind.side': 'Nebenquest',
+  'quest.mainQuests': 'Hauptquests',
+  'quest.sideQuests': 'Nebenquests',
+  'quest.over': 'Erledigt und gescheitert',
+  'quest.none': 'Noch keine Quests.',
+  'quest.placeHint': 'Verknüpfe einen Pin auf der Weltkarte mit der Notiz einer Quest: Die Spieler sehen diesen Pin, solange die Quest aktiv ist.',
+  'quest.status.open': 'Offen',
+  'quest.status.active': 'Aktiv',
+  'quest.status.done': 'Erledigt',
+  'quest.status.failed': 'Gescheitert',
+  'quest.status.hidden': 'Verborgen',
+  'quest.statusOf': 'Status von {title}',
+  'quest.experience': '{count} EP',
+  'quest.createFailed': 'Die Notiz der Quest konnte nicht erstellt werden.',
+  'quest.openFailed': 'Die Notiz der Quest konnte nicht geöffnet werden.',
+  'quest.writeFailed': 'Die Notiz der Quest konnte nicht geändert werden.',
+};

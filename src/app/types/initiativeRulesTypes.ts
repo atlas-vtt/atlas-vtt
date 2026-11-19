@@ -2,7 +2,7 @@
  * How a collection runs a fight in the initiative tracker.
  *
  * - `turn-order`: every combatant has a number, rolled or typed, and they act from the highest down (D&D, Pathfinder).
- * - `sides`: the sides act as blocks, in any order within one; their order is fixed or rolled every round (Cairn, B/X).
+ * - `sides`: the sides act as blocks, in any order within one; their order is fixed, rolled once, or rolled every round.
  * - `cards`: every combatant is dealt a card from a numbered deck, and the lowest card acts first.
  */
 export type InitiativeMode = 'turn-order' | 'sides' | 'cards';
@@ -48,8 +48,10 @@ export interface InitiativeRules {
    * other. Set only where the collection names sides of its own or orders them otherwise.
    */
   sides?: SideRef[];
-  /** Sides: the dice each side rolls at the start of every round; the highest acts first, equal rolls at once. */
+  /** Sides: the dice each side rolls for its order. Unset, the configured order is used. */
   sideRoll?: string;
+  /** Sides: roll only at combat start and break ties by the configured side order. Unset, roll every round and let tied sides act together. */
+  sideRollOnce?: true;
   /** Cards: the deck holds the cards 1 to `deck` (unset: 10). */
   deck?: number;
   /** Cards: a new card for everyone at the start of every round; unset, cards are dealt when the fight starts. */

@@ -10,4 +10,5 @@ export const player: Translation = {
   'player.title': 'Atlas: экран игроков',
   'player.setupFailed': 'Не удалось подготовить окно игроков',
   'player.nothingToFreeze': 'Игрокам эта сцена ещё не показана, так что приостанавливать нечего',
+  'player.toggleFullScreen': 'Окно игроков на весь экран',
 };

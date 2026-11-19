@@ -81,4 +81,9 @@ export const creator: Translation = {
   'creator.savePreviewsFailed': '无法保存预览。',
   'creator.savedSome': '已保存 {saved}/{total}。其余的留在这里，可以再试一次。',
   'creator.scaledDown': '已从 {from} 像素缩小到地图允许的最大尺寸',
+  'creator.dropAnywhere.touch': '选择图片',
+  'creator.emptyHint.touch': '从此设备选择图片。创建前可以裁剪、缩放并命名每一张。',
+  'creator.statblockNotes': '选择属性块笔记…',
+  'creator.map.browse.touch': '轻点浏览地图图片',
+  'creator.token.browse.touch': '轻点浏览棋子图片',
 };

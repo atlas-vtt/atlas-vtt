@@ -30,4 +30,5 @@ export const widgets: Translation = {
   'widgets.type.clock': 'Часы',
   'widgets.type.counter': 'Счётчик',
   'widgets.type.timer': 'Таймер',
+  'widgets.spreadStack': 'Показать все виджеты ({count})',
 };

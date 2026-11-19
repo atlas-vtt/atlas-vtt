@@ -8,6 +8,7 @@
       "ES2023"
     ],
     "paths": {
+      "src/*": ["./src/*"],
       "obsidian": [
         "./scripts/boundaries/no-obsidian.d.ts"
       ]

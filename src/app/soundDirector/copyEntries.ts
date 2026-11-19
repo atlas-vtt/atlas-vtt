@@ -95,7 +95,8 @@ export interface CopySource {
 
 /** Converts a source, its pages going to a growing copy as they are written where the sound may play before it is whole. */
 export async function makeCopy(maker: CopyMaker, record: SoundRecord, entry: CopyEntry, { source, hash, from }: CopySource, listener: MakingListener): Promise<SoundImportResult> {
-  const loop = record.kind === 'ambience' || record.loop !== undefined;
+  // Loop points the GM set on music leave the copy alone: one converted as a loop drops its padding, which would move them.
+  const loop = record.kind === 'ambience';
   const job = { source, key: hash, from, kind: record.kind, loop, stream: !loop };
   const sink: StreamSink = {
     start: (start) => {

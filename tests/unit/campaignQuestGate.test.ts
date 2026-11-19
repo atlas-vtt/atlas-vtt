@@ -48,6 +48,17 @@ describe('the quests players are sent', () => {
     expect(parsePlayerBook({ character: null, worldMap: null, items: [], notes: [], pins: [], quests: sent, purse: [] })?.quests).toEqual(sent);
   });
 
+  it('never sends a quest the GM hides, and sends it once its status is changed', async () => {
+    const { vault, play, quests, gate } = setUp({
+      'Q/Crown.md': note(`campaign: Blood Olms\nkind: main\nstatus: hidden\natlas-id: ${KEPT}`, 'Find the crown.'),
+      'Q/Eggs.md': note('campaign: Blood Olms\nkind: side', 'Bring three eggs.'),
+    });
+    play.play('c-1');
+    expect((await quests()).map((quest) => quest.title)).toEqual(['Eggs']);
+    vault.write('Q/Crown.md', note(`campaign: Blood Olms\nkind: main\nstatus: open\natlas-id: ${KEPT}`, 'Find the crown.'));
+    expect((await gate.quests()).map((quest) => [quest.title, quest.state])).toEqual([['Crown', 'open'], ['Eggs', 'open']]);
+  });
+
   it('gives a note without an id one, written into its frontmatter once, and a copy of another note one of its own', async () => {
     const { vault, play, quests } = setUp({
       'Q/Crown.md': note(`campaign: Blood Olms\natlas-id: ${KEPT}`),

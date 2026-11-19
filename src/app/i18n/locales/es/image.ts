@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const image: Translation = {
+  'image.copy': 'Copiar imagen',
+  'image.openDefault': 'Abrir en la aplicación predeterminada',
+  'image.openDefaultMenu': 'Abrir en la aplicación predeterminada',
+  'image.display': 'Mostrar en la vista de jugadores',
+  'image.copied': 'Imagen copiada al portapapeles',
+  'image.copyFailed': 'No se pudo copiar la imagen',
+  'image.windowClosed': 'La ventana de jugadores no está abierta. Ábrela primero.',
+  'image.windowUnavailable': 'La ventana de jugadores no está disponible',
+  'image.displayFailed': 'No se pudo mostrar la imagen en la vista de jugadores',
+  'image.closed': 'Imagen cerrada',
+  'image.tooLarge': 'Esta imagen mide {width} × {height} px, más de lo que Obsidian puede abrir: como máximo {megapixels} megapíxeles y {side} px por lado. Expórtala más pequeña e impórtala de nuevo.',
+  'image.tooLargeForDevice': 'Esta imagen mide {width} × {height} px, más de lo que este dispositivo puede abrir: como máximo {megapixels} megapíxeles. Expórtala más pequeña e impórtala de nuevo.',
+  'image.unsupported': 'Esta imagen mide {width} × {height} px, más de lo que Obsidian abre de una vez, y Atlas solo puede leer una imagen tan grande como JPEG simple o PNG sin entrelazado. {advice}',
+  'image.unsupported.progressive': 'Guárdala como JPEG simple, no progresivo, e impórtala de nuevo.',
+  'image.unsupported.interlaced': 'Guarda el PNG sin entrelazado e impórtalo de nuevo.',
+  'image.unsupported.orientation': 'Expórtala ya derecha, sin el giro guardado en los datos de la cámara, e impórtala de nuevo.',
+  'image.unsupported.scans': 'Guárdala como JPEG simple e impórtala de nuevo.',
+  'image.unsupported.coding': 'Guárdala como JPEG simple de 8 bits e impórtala de nuevo.',
+  'image.unsupported.components': 'Guárdala como JPEG RGB e impórtala de nuevo.',
+  'image.unsupported.corrupt': 'No se pudo leer el archivo; vuelve a exportarlo.',
+  'image.unreadable': 'Esta imagen mide {width} × {height} px, más de lo que Obsidian abre de una vez, y no se pudo leer su archivo. Vuelve a exportarla e impórtala de nuevo.',
+};

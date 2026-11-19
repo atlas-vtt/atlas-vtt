@@ -1,6 +1,7 @@
 import { readRecordText, recordText, type StoredRecord } from '../services/recordFiles/recordLayout';
 import { clampTrim } from '../sound/codec/soundInfo';
 import type { SoundKind, SoundRecord } from '../sound/soundTypes';
+import { MAX_CROSSFADE_SECONDS } from '../services/soundSettings';
 import { isFiniteNumber, isRecord } from '../utils/guards';
 import { isWithin, movedRelative, nameOfRelative, stemOf } from './soundPaths';
 
@@ -54,7 +55,7 @@ export const isNewerSound = (stored: StoredRecord): boolean => isFiniteNumber(st
  * cannot be read here reads as unset; the file keeps what it holds, for the version that wrote it.
  */
 export function soundRecordOf(stored: StoredSound): SoundRecord {
-  const { id, name, audioPath, audioSize, tags, kind, trimDb } = stored;
+  const { id, name, audioPath, audioSize, tags, kind, trimDb, crossfadeSeconds } = stored;
   const loop = readLoop(stored.loop);
   return {
     id,
@@ -65,6 +66,8 @@ export function soundRecordOf(stored: StoredSound): SoundRecord {
     tags: Array.isArray(tags) ? tags.filter((tag) => typeof tag === 'string') : [],
     ...(loop && { loop }),
     ...(isFiniteNumber(trimDb) && { trimDb: clampTrim(trimDb) }),
+    ...(isFiniteNumber(crossfadeSeconds) && { crossfadeSeconds: Math.min(MAX_CROSSFADE_SECONDS, Math.max(0, crossfadeSeconds)) }),
+    ...(stored.startAtLoopIn === true && { startAtLoopIn: true as const }),
   };
 }
 
