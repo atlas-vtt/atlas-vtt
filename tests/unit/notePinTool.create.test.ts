@@ -13,7 +13,7 @@ const MAP_PATH = 'maps/town.atlasmap';
 function vaultWithNotesFolder(files: Record<string, string>): { app: App; getNewFileParent: ReturnType<typeof vi.fn> } {
   const { app } = createInMemoryApp({ files });
   const getNewFileParent = vi.fn(() => app.vault.getFolderByPath('Notes') as TFolder);
-  Object.assign(app.fileManager, { getNewFileParent });
+  Object.assign(app.fileManager, { getNewFileParent, generateMarkdownLink: vi.fn((file: { path: string }, _source: string, subpath?: string, alias?: string) => `[[${file.path}${subpath ?? ''}|${alias ?? ''}]]`) });
   // The dropdown lists the vault's notes and maps
   Object.assign(app.vault, { getAllLoadedFiles: () => [] });
   return { app, getNewFileParent };
@@ -46,8 +46,8 @@ describe('NotePinTool creating a note', () => {
     document.body.empty();
   });
 
-  async function openDropdown(): Promise<{ store: ReturnType<typeof createViewAtlasStore>; input: HTMLInputElement }> {
-    const { app } = vaultWithNotesFolder({ 'Notes/Inn.md': '' });
+  async function openDropdown(): Promise<{ app: App; store: ReturnType<typeof createViewAtlasStore>; input: HTMLInputElement }> {
+    const { app } = vaultWithNotesFolder({ 'Notes/Inn.md': '', [MAP_PATH]: '{}' });
     const store = createViewAtlasStore(app, 'pin-create-view');
     store.getState().setPersistenceEnabled(false);
     store.getState().setMapPath(MAP_PATH);
@@ -58,7 +58,7 @@ describe('NotePinTool creating a note', () => {
     eventBus.emit('canvas-click', { x: 0, y: 0, worldX: 40, worldY: 60, shiftKey: false });
     await Promise.resolve();
     const input = document.querySelector<HTMLInputElement>('#atlas-note-pin-dropdown .pin-search-input')!;
-    return { store, input };
+    return { app, store, input };
   }
 
   const typeAndPress = (input: HTMLInputElement, value: string, key: string): void => {
@@ -69,7 +69,7 @@ describe('NotePinTool creating a note', () => {
   const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
   it('pins the note it created', async () => {
-    const { store, input } = await openDropdown();
+    const { app, store, input } = await openDropdown();
     expect(document.querySelector('.pin-create-item')).toBeNull();
 
     typeAndPress(input, 'Cellar', 'Enter');
@@ -78,6 +78,8 @@ describe('NotePinTool creating a note', () => {
     const pins = Object.values(store.getState().objects.pins);
     expect(pins).toHaveLength(1);
     expect(pins[0]).toMatchObject({ x: 40, y: 60, notePath: 'Notes/Cellar.md' });
+    const note = app.vault.getFileByPath('Notes/Cellar.md')!;
+    expect(await app.vault.read(note)).toBe(`[[${MAP_PATH}#pin=${encodeURIComponent(pins[0]!.id)}|View on map]]\n`);
     expect(document.getElementById('atlas-note-pin-dropdown')).toBeNull();
   });
 

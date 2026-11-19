@@ -57,7 +57,6 @@ export class NotePinTool {
   private nextShowName = false;
   private storeUnsubscribe: (() => void) | null = null;
   private pinActionHandler: ((e: CustomEvent<PinActionEventDetail>) => void) | null = null;
-  private copyPinLinkHandler: ((e: Event) => void) | null = null;
   private outsideClickHandler: ((e: MouseEvent) => void) | null = null;
   private outsideClickTimer: number | null = null;
   private readonly preview: NotePinPreview;
@@ -138,12 +137,6 @@ export class NotePinTool {
       }
     };
     window.addEventListener('atlas-pin-action', this.pinActionHandler);
-    this.copyPinLinkHandler = (event: Event): void => {
-      const detail = (event as CustomEvent<{ pin: NotePin; store: StoreApi<ViewAtlasState> }>).detail;
-      if (detail?.store !== this.store || !detail.pin) return;
-      runInBackground(this.copyPinLink(detail.pin), 'Copying a link to a pin', t('pinMenu.linkCopyFailed'));
-    };
-    window.addEventListener('atlas-copy-pin-link', this.copyPinLinkHandler);
   }
   
   /**
@@ -367,14 +360,28 @@ export class NotePinTool {
     }
   }
   
-  /** Copies a scene link whose subpath identifies this pin by its stable id. */
-  private async copyPinLink(pin: NotePin): Promise<void> {
+  /**
+   * Adds a return link to the Markdown note a pin points to. The stable pin id
+   * makes the link unambiguous even when several pins point to the same note.
+   */
+  private async addPinBacklink(notePath: string, pinId: string): Promise<void> {
+    const noteFile = this.obsidianApp.vault.getFileByPath(notePath);
     const mapPath = this.store.getState().mapPath;
-    const file = mapPath ? this.obsidianApp.vault.getFileByPath(mapPath) : null;
-    if (!file) throw new Error('The pin scene is no longer available');
-    const link = this.obsidianApp.fileManager.generateMarkdownLink(file, '', `#pin=${encodeURIComponent(pin.id)}`);
-    await navigator.clipboard.writeText(link);
-    showNotice(t('pinMenu.linkCopied'));
+    const mapFile = mapPath ? this.obsidianApp.vault.getFileByPath(mapPath) : null;
+    // Pins may point to scenes or encounter folders as well as Markdown notes.
+    if (!noteFile || noteFile.extension !== 'md' || !mapFile) return;
+
+    const link = this.obsidianApp.fileManager.generateMarkdownLink(
+      mapFile,
+      notePath,
+      `#pin=${encodeURIComponent(pinId)}`,
+      'View on map',
+    );
+    await this.obsidianApp.vault.process(noteFile, (content) => {
+      if (content.includes(link)) return content;
+      const separator = content.trim() ? '\n\n' : '';
+      return `${content.trimEnd()}${separator}${link}\n`;
+    });
   }
 
   /** Rolls an encounter of the pin's folder into the GM's hand on this map. */
@@ -397,7 +404,8 @@ export class NotePinTool {
     const result = await this.showNotePinDropdown(worldX, worldY);
 
     if (result.accepted && result.notePath) {
-      this.store.getState().addNotePin(worldX, worldY, result.notePath, result.icon, { showName: result.showName === true, ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
+      const pinId = this.store.getState().addNotePin(worldX, worldY, result.notePath, result.icon, { showName: result.showName === true, ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
+      await this.addPinBacklink(result.notePath, pinId);
     }
     this.releasePreviewAfterDropdown();
   }
@@ -417,7 +425,8 @@ export class NotePinTool {
     } else {
       const result = await this.showNotePinDropdown(center.x, center.y);
       if (result.accepted && result.notePath) {
-        this.store.getState().addNotePin(center.x, center.y, result.notePath, result.icon, { hex: true, showName: result.showName === true, ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
+        const pinId = this.store.getState().addNotePin(center.x, center.y, result.notePath, result.icon, { hex: true, showName: result.showName === true, ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
+        await this.addPinBacklink(result.notePath, pinId);
       }
     }
     this.releasePreviewAfterDropdown();
@@ -461,6 +470,7 @@ export class NotePinTool {
       notePath: result.notePath,
       ...(result.icon !== undefined && { icon: result.icon }),
     });
+    if (result.notePath !== pin.notePath) await this.addPinBacklink(result.notePath, pin.id);
   }
 
   public destroy(): void {
@@ -475,10 +485,6 @@ export class NotePinTool {
     if (this.pinActionHandler) {
       window.removeEventListener('atlas-pin-action', this.pinActionHandler);
       this.pinActionHandler = null;
-    }
-    if (this.copyPinLinkHandler) {
-      window.removeEventListener('atlas-copy-pin-link', this.copyPinLinkHandler);
-      this.copyPinLinkHandler = null;
     }
   }
 }
