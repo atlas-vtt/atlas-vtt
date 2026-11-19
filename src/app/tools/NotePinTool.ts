@@ -440,13 +440,13 @@ export class NotePinTool {
       this.obsidianApp.fileManager.generateMarkdownLink(mapFile, linkpath, subpath, 'View on map'),
     ];
     await this.obsidianApp.vault.process(noteFile, (content) => {
-      const lines = content.split('\\n');
+      const lines = content.split('\n');
       const index = lines.findIndex((line) => links.includes(line.trim()));
       if (index === -1) return content;
       lines.splice(index, 1);
       if (lines[lines.length - 1] === '') lines.pop();
-      const updated = lines.join('\\n');
-      return updated ? `${updated}\\n` : '';
+      const updated = lines.join('\n');
+      return updated ? `${updated}\n` : '';
     });
   }
 
