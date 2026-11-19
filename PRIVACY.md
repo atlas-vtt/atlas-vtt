@@ -4,7 +4,7 @@ Atlas VTT works offline. Maps, tokens, notes, audio and settings stay in your va
 
 - No telemetry, no analytics, no ads.
 - You need no account to use Atlas. An Atlas account is optional: only hosting online play and sharing your own collections in the Armarium need one.
-- No code is downloaded or executed from the internet, and the plugin does not update itself.
+- No code is downloaded from the internet to run in Obsidian, and the plugin does not update itself. The documentation and the Armarium are web pages, shown in a sandboxed frame that keeps them apart from Obsidian and your vault.
 
 ## Network access
 
@@ -40,7 +40,7 @@ Online play lets you host a table that your players join from their web browsers
 
 ## Files outside the vault
 
-Atlas VTT reads files outside your vault only when you choose them for import, or link a folder of music or ambience on the Sound page. Atlas then lists that folder, reads the files you play, and on your command renames, moves or sends them to the system trash; nothing from it leaves your computer unless you share a sound at an online table. The link stays on this device. Random-table imports read selected PDF, XLSX, CSV, TSV, Markdown and text files on your device and create Markdown notes inside your vault. The source files are not changed or uploaded. Atlas does not scan other files on your device.
+Atlas VTT reads files outside your vault only when you choose them for import, or link a folder of music or ambience on the Sound page, so that you can play a sound library you keep elsewhere without copying it into your vault. Atlas then lists that folder and reads the files you play. Only if you agree when you link it, Atlas converts the sounds in it to Opus in the same folder, and does the same for files added later, keeping the originals or sending them to the system trash as you chose. On your command it renames, moves or sends files there to the system trash. Nothing from it leaves your computer unless you share a sound at an online table. The link stays on this device. Random-table imports read selected PDF, XLSX, CSV, TSV, Markdown and text files on your device and create Markdown notes inside your vault. The source files are not changed or uploaded. Atlas does not scan other files on your device.
 
 PDF imports use Obsidian's bundled PDF reader. XLSX imports read XML parts locally; the Open XML namespace identifiers in those parts are format names, not network requests.
 
