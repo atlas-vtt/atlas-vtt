@@ -67,7 +67,7 @@ async function planTemplate(app: App, bundle: OpenedItemBundle, installed: Insta
 export async function planItemImport(app: App, bundle: OpenedItemBundle, mark: string): Promise<ItemImportPlan> {
   const { manifest, files } = bundle;
   const { kind, uid, id } = manifest.item;
-  const installed = await installedItemOf(app, kind, uid);
+  const installed = await installedItemOf(app, kind, uid, id);
   if (kind === 'dice-set') {
     const [record] = await planRecordImport(app, DICE_SET_RECORDS, manifest, files, installedEntry(installed, id), mark);
     if (!record) throw new Error('The bundle holds no dice set.');

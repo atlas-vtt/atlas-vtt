@@ -78,7 +78,7 @@ describe('an item manifest', () => {
 });
 
 describe('provenance', () => {
-  const provenance = { uid: '467922d140933c6d093ea94697a02d82', version: 2, installed: 'a'.repeat(64) };
+  const provenance = { uid: '467922d140933c6d093ea94697a02d82', version: 2, source: 'boons', installed: 'a'.repeat(64) };
 
   it('is added after the other keys and taken off again', () => {
     const file = withProvenance({ id: 'boons', name: 'Boons' }, provenance);

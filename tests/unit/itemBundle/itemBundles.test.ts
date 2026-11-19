@@ -29,7 +29,7 @@ const BODY_PATH = `${LIBRARY}/Marsh creature.md`;
 const BODY = '## Tactics\n\nLurks below the reeds.\n';
 const BOONS = { id: 'boons', name: 'Boons', crit: 'natural', dice: [{ count: 1, sides: 20 }, { count: 1, sides: 6, name: 'Boon' }] };
 const BOONS_PATH = `${DICE_SET_FOLDER}/Boons.json`;
-const PROVENANCE = { uid: 'feedfacefeedfacefeedfacefeedface', version: 7, installed: 'b'.repeat(64) };
+const PROVENANCE = { uid: 'feedfacefeedfacefeedfacefeedface', version: 7, source: 'older-item', installed: 'b'.repeat(64) };
 const TEMPLATE: ItemRef = { kind: 'statblock-template', id: MARSH };
 const dnd = BUILT_IN_SYSTEM_PRESETS.find((preset) => preset.name === 'D&D 5e')!;
 
@@ -154,7 +154,7 @@ describe('installing an item', () => {
 
     const written = json(vault, MARSH_PATH);
     const { armarium, ...content } = written;
-    expect(armarium).toEqual({ uid: UID, version: 1, installed: await templateFingerprint(content, BODY) });
+    expect(armarium).toEqual({ uid: UID, version: 1, source: MARSH, installed: await templateFingerprint(content, BODY) });
     expect(await templateFingerprint(written, BODY)).toBe(await templateFingerprint(content, BODY));
     expect(vault.files.get(BODY_PATH)).toBe(BODY);
     expect(json(vault, BOONS_PATH)).toMatchObject({ id: 'boons', name: 'Boons' });
@@ -185,6 +185,23 @@ describe('installing an item', () => {
 
     const third = await install(vault, await bundleOf(await creatorVault({ description: 'Wettest' }), TEMPLATE, 3));
     expect(third.review).toMatchObject({ outcome: 'update', localName: 'Marsh creature (Mara)', installedVersion: 2 });
+  });
+
+  it('never takes a bundle that names an installed listing with another item id for that listing\'s update', async () => {
+    const vault = await vaultWith();
+    await (await install(vault, await bundleOf(await creatorVault()))).apply();
+    const impostor = await vaultWith({ [MARSH_PATH]: marshText({ id: 'other-thing-a1b2c3', description: 'Not yours' }), [BODY_PATH]: BODY });
+    const session = await install(vault, await bundleOf(impostor, { kind: 'statblock-template', id: 'other-thing-a1b2c3' }, 2));
+    expect(session.review).toMatchObject({ outcome: 'new', installedVersion: null });
+    await session.apply();
+    expect(json(vault, MARSH_PATH)).toMatchObject({ armarium: { version: 1, source: MARSH } });
+    expect(json(vault, MARSH_PATH).description).not.toBe('Not yours');
+  });
+
+  it('drops provenance a bundle carries in its dice set, and writes none for it', async () => {
+    const vault = await vaultWith();
+    await (await install(vault, await bundleOf(await creatorVault()))).apply();
+    expect(json(vault, BOONS_PATH).armarium).toBeUndefined();
   });
 
   it('brings its dice set in as a copy where the vault has another set of that id, and the template rolls the copy', async () => {
@@ -219,7 +236,7 @@ describe('installing an item', () => {
     expect(session.review).toMatchObject({ kind: 'system-preset', name: 'Marsh', outcome: 'new', diceSet: { name: 'Boons', outcome: 'new' } });
     await session.apply();
     const stored = SystemPresetFiles.forApp(vault.app)!.entries().find((entry) => entry.id === 'marsh-preset')!;
-    expect(stored.armarium).toEqual({ uid: UID, version: 1, installed: await recordFingerprint(stored) });
+    expect(stored.armarium).toEqual({ uid: UID, version: 1, source: 'marsh-preset', installed: await recordFingerprint(stored) });
 
     SystemPresetFiles.forApp(creator.app)!.update('marsh-preset', (entry) => ({ ...entry, name: 'Marsh II' }));
     const update = await install(vault, await bundleOf(creator, ref, 2));

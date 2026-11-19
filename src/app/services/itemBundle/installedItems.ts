@@ -49,9 +49,10 @@ export async function installedItems(app: App, kind?: ItemKind): Promise<Install
 /**
  * The vault's item of `kind` installed from the listing `uid`. Where several name it (one the GM
  * changed, and the copy a later version came in as), the newest version's: an update follows the
- * item that took the listing's versions.
+ * item that took the listing's versions. Only items installed from the same bundle item (`source`)
+ * count: a bundle that names a listing's uid with another item id is not that listing's update.
  */
-export async function installedItemOf(app: App, kind: ItemKind, uid: string): Promise<InstalledItem | null> {
-  const named = (await installedItems(app, kind)).filter((item) => item.provenance.uid === uid);
+export async function installedItemOf(app: App, kind: ItemKind, uid: string, source: string): Promise<InstalledItem | null> {
+  const named = (await installedItems(app, kind)).filter((item) => item.provenance.uid === uid && item.provenance.source === source);
   return named.reduce<InstalledItem | null>((newest, item) => (newest && newest.provenance.version >= item.provenance.version ? newest : item), null);
 }

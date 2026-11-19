@@ -63,7 +63,7 @@ async function changedSinceReview(app: App, plan: ItemImportPlan): Promise<boole
 }
 
 const sameProvenance = (a: ArmariumProvenance | undefined, b: ArmariumProvenance): boolean =>
-  a !== undefined && a.uid === b.uid && a.version === b.version && a.installed === b.installed;
+  a !== undefined && a.uid === b.uid && a.version === b.version && a.source === b.source && a.installed === b.installed;
 
 function withProvenanceText(text: string, provenance: ArmariumProvenance): string {
   return `${JSON.stringify(withProvenance(JSON.parse(text) as Record<string, unknown>, provenance), null, 2)}\n`;
@@ -100,13 +100,13 @@ async function writeRecordItem(app: App, journal: ImportJournal, plan: ItemImpor
 }
 
 async function applyItemImport(app: App, bundle: OpenedItemBundle, plan: ItemImportPlan): Promise<ItemImportResult> {
-  const { uid, version } = bundle.manifest.item;
+  const { uid, version, id: source } = bundle.manifest.item;
   const journal = new ImportJournal(app, 'items');
   try {
     if (await changedSinceReview(app, plan)) throw new Error('Your vault changed since the review. Import the file again to see the current changes');
     if (plan.diceSet) await writeRecords(app, DICE_SET_RECORDS, journal, [plan.diceSet]);
-    if (plan.template) await writeTemplateItem(app, journal, plan, { uid, version });
-    else await writeRecordItem(app, journal, plan, { uid, version });
+    if (plan.template) await writeTemplateItem(app, journal, plan, { uid, version, source });
+    else await writeRecordItem(app, journal, plan, { uid, version, source });
   } catch (error) {
     const unrestored = await journal.rollback();
     const reason = (error instanceof Error ? error.message : String(error)).replace(/\.$/, '');

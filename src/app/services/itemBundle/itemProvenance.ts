@@ -15,15 +15,17 @@ export const PROVENANCE_KEY = 'armarium';
 
 const UID = /^[A-Za-z0-9-]{8,64}$/;
 const FINGERPRINT = /^[0-9a-f]{64}$/;
+const MAX_SOURCE = 200;
 
 /** The provenance a stored value holds, when it is a sound one. */
 export function readProvenance(value: unknown): ArmariumProvenance | undefined {
   if (!isRecord(value)) return undefined;
-  const { uid, version, installed } = value;
+  const { uid, version, source, installed } = value;
   if (typeof uid !== 'string' || !UID.test(uid)) return undefined;
   if (typeof version !== 'number' || !Number.isSafeInteger(version) || version < 1) return undefined;
+  if (typeof source !== 'string' || source === '' || source.length > MAX_SOURCE) return undefined;
   if (typeof installed !== 'string' || !FINGERPRINT.test(installed)) return undefined;
-  return { uid, version, installed };
+  return { uid, version, source, installed };
 }
 
 /** The provenance of an item file's top-level object, when it holds a sound one. */
