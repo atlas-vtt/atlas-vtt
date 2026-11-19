@@ -17,7 +17,8 @@ function positionNow(director: SoundDirector): MusicPosition | null {
   return play && musicPosition(play, now);
 }
 
-function shareAt(element: HTMLElement, clientX: number): number {
+/** Where along an element a pointer is, as a share of its width. */
+export function shareAt(element: HTMLElement, clientX: number): number {
   const { left, width } = element.getBoundingClientRect();
   return width === 0 ? 0 : Math.max(0, Math.min(1, (clientX - left) / width));
 }
@@ -45,7 +46,7 @@ export function useWaveSeek(director: SoundDirector, onShown: () => void): WaveS
       onPointerUp: () => {
         const share = held.current;
         const position = positionNow(director);
-        if (share !== null && position) director.desk.seekMusic(share * position.frames);
+        if (share !== null && position) director.desk.seekMusic(share * position.track.frames);
         hold(null);
       },
       onPointerCancel: () => hold(null),

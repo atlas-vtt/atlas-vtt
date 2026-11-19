@@ -70,6 +70,46 @@
   }
 }
 
+// The loop the GM set on the track: a band between its in and out, edged where the seam lies.
+.atlas-sound-music__loop {
+  position: absolute;
+  inset-block: 0;
+  left: var(--atlas-sound-loop-start, 0);
+  width: var(--atlas-sound-loop-width, 0);
+  border-inline: $border-width-m solid currentColor;
+  border-radius: $radius-s;
+  background: color-mix(in oklch, currentColor 14%, transparent);
+  pointer-events: none;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+// Its edges are grips: drag one along the wave to move the loop's in or out.
+.atlas-sound-music__loop-edge {
+  position: absolute;
+  inset-block: 0;
+  width: 12px;
+  border-radius: $radius-s;
+  cursor: ew-resize;
+  pointer-events: auto;
+  touch-action: none;
+
+  &--in {
+    left: -7px;
+  }
+
+  &--out {
+    right: -7px;
+  }
+
+  &:hover,
+  &:active {
+    background: color-mix(in oklch, currentColor 35%, transparent);
+  }
+}
+
 // A card this narrow has room for its controls and the time, not the length as well.
 @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
   .atlas-sound-music__total {
