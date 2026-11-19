@@ -109,6 +109,7 @@ import { MapProcessing } from './src/app/pixi/mosaicCanvas/mapProcessing';
 import { registerMapProcessingStatus } from './src/app/plugin/mapProcessingStatus';
 import { DungeonWorkerClient } from './src/app/dungeons/worker/DungeonWorkerClient';
 import { MosaicCanvasService } from './src/app/pixi/mosaicCanvas/MosaicCanvasService';
+import { registerNoteDiceRolling } from './src/app/noteDice/registerNoteDiceRolling';
 import { guardChildUnload, guardedCleanup } from './src/app/plugin/guardedTeardown';
 import { showNotice } from './src/app/ui/notice';
 import { isDesktopApp } from './src/app/platform/desktopOnly';
@@ -172,6 +173,8 @@ export default class AtlasVTTPlugin extends Plugin {
     registerAudioUnlock(this);
     // A tablet's keyboard rises over the window: what is placed and typed into stays in the part still seen.
     registerKeyboardViewport(this);
+    // Before notes render at startup: the dice in their text roll with Atlas.
+    registerNoteDiceRolling(this);
     // Record errors from the very start so startup problems can be reported too.
     const errorLog = new AtlasErrorLog();
     this.register(errorLog.attach());

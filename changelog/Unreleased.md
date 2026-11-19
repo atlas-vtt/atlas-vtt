@@ -1,5 +1,7 @@
 ## New
 
+- Dice written in a note roll with Atlas: click 2d6+3, d20, +4 or `dice: 1d20+5` in reading view to roll it into the open map's dice log, Shift-click for advantage and Alt-click for disadvantage. With a contribution by young-george
+
 **Atlas on tablets**
 
 - Atlas now runs in Obsidian on iPads (iPadOS 16.4 or newer) and Android tablets
