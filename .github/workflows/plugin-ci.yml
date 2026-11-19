@@ -6,6 +6,7 @@ name: Plugin CI
 # to the draft release, so nothing that is released is ever built twice.
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches:
