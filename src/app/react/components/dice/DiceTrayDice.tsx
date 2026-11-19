@@ -2,6 +2,7 @@ import React from 'react';
 import { LabelTooltip, TooltipProvider } from '../../../packages/components/primitives/tooltip';
 import type { DicePreset, DiceRowSlot } from '../../../types/dicePresetTypes';
 import { DieFace } from './DieFace';
+import { PresetFace } from './PresetFace';
 import { MAX_DICE, MAX_PER_DIE, TRAY_TOOLTIP_GAP, trayDiceCount, type TrayPool } from './diceTrayPool';
 import { presetCount } from './diceTrayText';
 import { t } from '../../../i18n';
@@ -28,12 +29,6 @@ function limitOf(sides: number, counts: TrayPool): string | null {
 /** The number key of a place in the row: 1 to 9, then 0. */
 export const placeKey = (place: number): string => String((place + 1) % 10);
 
-/** A saved roll of one kind of die, two of them (`2d12`): drawn as that pair, else by its name. */
-function presetDice(formula: string): { sides: number; pair: boolean } | null {
-  const match = /^([12])?d(\d+)$/i.exec(formula.trim());
-  return match ? { sides: Number(match[2]), pair: match[1] === '2' } : null;
-}
-
 export interface Face {
   key: string;
   caption: string;
@@ -56,12 +51,11 @@ export function faceOf(slot: DiceRowSlot, presets: readonly DicePreset[], formul
   const preset = presets.find((candidate) => candidate.id === slot.id);
   if (!preset) return null;
   const held = presetCount(formula, preset.formula);
-  const dice = presetDice(preset.formula);
   return {
     key: preset.id, caption: preset.name,
     name: held === 0 ? preset.name : t('diceRoll.presetHeld', { name: preset.name, held }),
     hint: `${preset.formula} · ${t('diceRoll.dieHint')}`, held, limit: null,
-    art: dice ? <DieFace sides={dice.sides} pair={dice.pair} /> : <span className="atlas-die-face atlas-die-face--named" aria-hidden="true">{preset.formula.replace(/\[[^\]]*\]/g, '')}</span>,
+    art: <PresetFace formula={preset.formula} />,
   };
 }
 

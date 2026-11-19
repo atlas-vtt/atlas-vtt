@@ -25,8 +25,9 @@ const shelf = readDiceShelf({
     { id: 'a', name: 'Duality', formula: '2d12' },
     { id: 'b', name: 'Longsword', formula: '1d8+3[slashing]' },
     { id: 'c', name: 'Stat line', formula: '4d6kh3' },
+    { id: 'd', name: 'Smite', formula: '3d8kh1+3' },
   ],
-  diceRow: [...STANDARD_ROW.slice(0, 6), { kind: 'preset', id: 'a' }, { kind: 'die', sides: 3 }, { kind: 'preset', id: 'b' }],
+  diceRow: [...STANDARD_ROW.slice(0, 5), { kind: 'preset', id: 'a' }, { kind: 'die', sides: 3 }, { kind: 'preset', id: 'b' }, { kind: 'preset', id: 'd' }],
 });
 
 function Scene(): React.ReactElement {
