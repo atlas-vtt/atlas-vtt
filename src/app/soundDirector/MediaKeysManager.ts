@@ -14,6 +14,10 @@ export default class MediaKeysManager {
     }
     
     public syncMediaKeys(mix: SoundMix, current: SoundSnapshot) {
+        if (!('mediaSession' in navigator)) {
+            return;
+        }
+        
         if (!this.fakeAudio) {
             this.mountFakeAudioElement();
         }
@@ -40,6 +44,10 @@ export default class MediaKeysManager {
     // We mount the fake audio element only once the mix starts playing, and unmount it when the mix is cleared. This
     // ensures the media controls only control Obsidian/Atlas when there is actually a mix to play.
     private mountFakeAudioElement() {
+        if (!('mediaSession' in navigator)) {
+            return;
+        }
+        
         this.fakeAudio = document.body.createEl('audio');
         this.fakeAudio.setAttr('loop', true);
         this.fakeAudio.setAttr('muted', true);
@@ -49,6 +57,9 @@ export default class MediaKeysManager {
     }
 
     private bindMediaControls(){
+        if (!('mediaSession' in navigator)) {
+            return;
+        }
         navigator.mediaSession.setActionHandler("play", () => {
             this.desk.setSilence(false);
         });
