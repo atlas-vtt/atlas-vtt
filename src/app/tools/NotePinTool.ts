@@ -57,6 +57,7 @@ export class NotePinTool {
   private nextShowName = false;
   private storeUnsubscribe: (() => void) | null = null;
   private pinActionHandler: ((e: CustomEvent<PinActionEventDetail>) => void) | null = null;
+  private copyPinLinkHandler: ((e: Event) => void) | null = null;
   private outsideClickHandler: ((e: MouseEvent) => void) | null = null;
   private outsideClickTimer: number | null = null;
   private readonly preview: NotePinPreview;
@@ -137,6 +138,12 @@ export class NotePinTool {
       }
     };
     window.addEventListener('atlas-pin-action', this.pinActionHandler);
+    this.copyPinLinkHandler = (event: Event): void => {
+      const detail = (event as CustomEvent<{ pin: NotePin; store: StoreApi<ViewAtlasState> }>).detail;
+      if (detail?.store !== this.store || !detail.pin) return;
+      runInBackground(this.copyPinLink(detail.pin), 'Copying a link to a pin', t('pinMenu.linkCopyFailed'));
+    };
+    window.addEventListener('atlas-copy-pin-link', this.copyPinLinkHandler);
   }
   
   /**
@@ -360,6 +367,16 @@ export class NotePinTool {
     }
   }
   
+  /** Copies a scene link whose subpath identifies this pin by its stable id. */
+  private async copyPinLink(pin: NotePin): Promise<void> {
+    const mapPath = this.store.getState().mapPath;
+    const file = mapPath ? this.obsidianApp.vault.getFileByPath(mapPath) : null;
+    if (!file) throw new Error('The pin scene is no longer available');
+    const link = this.obsidianApp.fileManager.generateMarkdownLink(file, '', `#pin=${encodeURIComponent(pin.id)}`);
+    await navigator.clipboard.writeText(link);
+    showNotice(t('pinMenu.linkCopied'));
+  }
+
   /** Rolls an encounter of the pin's folder into the GM's hand on this map. */
   private rollEncounters(link: string): void {
     const folder = linkedEncounterFolder(this.store.getState().mapPath, link);
@@ -458,6 +475,10 @@ export class NotePinTool {
     if (this.pinActionHandler) {
       window.removeEventListener('atlas-pin-action', this.pinActionHandler);
       this.pinActionHandler = null;
+    }
+    if (this.copyPinLinkHandler) {
+      window.removeEventListener('atlas-copy-pin-link', this.copyPinLinkHandler);
+      this.copyPinLinkHandler = null;
     }
   }
 }

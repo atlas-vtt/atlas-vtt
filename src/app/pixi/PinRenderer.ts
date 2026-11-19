@@ -498,6 +498,10 @@ export class PinRenderer {
     const entries: ContextMenuEntry[] = [
       { type: 'item', ...pinOpenLook(pin), onClick: () => dispatchPinAction('open', pin, this.store) },
       { type: 'item', label: t('pinMenu.edit'), icon: 'edit', onClick: () => dispatchPinAction('edit', pin, this.store) },
+      {
+        type: 'item', label: t('pinMenu.copyLink'), icon: 'link',
+        onClick: () => window.dispatchEvent(new CustomEvent('atlas-copy-pin-link', { detail: { pin, store: this.store } })),
+      },
       ...[readablePinEntry(this.store, pin)].filter((entry) => entry !== null),
       ...pinNameEntries(this.store, pin),
       { type: 'item', label: t('common.duplicate'), icon: 'files', onClick: () => this.store.getState().duplicateMapObjects([pin.id]) },
