@@ -34,16 +34,15 @@ jobs:
       - name: Build plugin
         run: npm run build:ci
 
-      - name: Copy plugin files into the installable root
-        run: npm run postbuild
-
       - name: Verify and stage Obsidian files
         run: |
           mkdir -p test-release
-          for file in main.js styles.css manifest.json; do
-            test -s "$file" || { echo "::error::Build did not produce $file"; exit 1; }
-            cp "$file" test-release/
+          for file in main.js styles.css; do
+            test -s "dist/$file" || { echo "::error::Build did not produce dist/$file"; exit 1; }
+            cp "dist/$file" test-release/
           done
+          test -s manifest.json || { echo "::error::Build is missing manifest.json"; exit 1; }
+          cp manifest.json test-release/
           node -e "const m=require('./manifest.json'); console.log('Building Atlas VTT '+m.version)"
 
       - name: Publish test pre-release for this commit
