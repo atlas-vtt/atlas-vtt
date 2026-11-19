@@ -8,8 +8,9 @@
  * coordinates change, so a segment has as many diagonal steps as `pathLengthInCells` counts), on a
  * hex grid the hexes of the line. A step is into difficult terrain where any cell of the footprint
  * it lands in is (the footprint on a hex grid is its cell alone), and it then costs what it costs
- * once more: a diagonal of the alternating rule 1 or 2 as its turn falls, every other step the
- * segment's length shared out over its steps.
+ * once more: a diagonal of the alternating rule 1 or 2 as its turn falls, a diagonal of the
+ * Manhattan rule 2 and its straight steps 1, every other step the segment's length shared out over
+ * its steps.
  */
 
 import type { DiagonalRule, DifficultTerrainRule } from '../types/collectionSettingsTypes';
@@ -93,6 +94,7 @@ function squareExtra(grid: GridGeometry, points: readonly Point[], diagonalRule:
       const diagonal = nextCol !== col && nextRow !== row;
       let cost = share;
       if (diagonalRule === 'alternating') cost = diagonal && diagonals % 2 === 1 ? 2 : 1;
+      else if (diagonalRule === 'manhattan') cost = diagonal ? 2 : 1;
       if (diagonal) diagonals++;
       col = nextCol;
       row = nextRow;

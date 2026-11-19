@@ -274,8 +274,9 @@ export const ContextMenuProvider: React.FC<ContextMenuProviderProps> = ({ childr
           open={isOpen}
           onOpenChange={(open) => { if (!open) dismiss(); }}
         >
-          {/* Virtual trigger: zero-size element at click coordinates */}
-          <DropdownMenu.Trigger asChild>
+          {/* Virtual trigger: zero-size element at click coordinates. A new point remounts it: the menu's placement
+              follows its anchor element, not that element's style, so a menu opened while one is open would stay put. */}
+          <DropdownMenu.Trigger key={`${pos.x},${pos.y}`} asChild>
             <div
               style={{
                 position: 'fixed',

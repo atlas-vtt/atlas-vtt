@@ -15,7 +15,9 @@ import { flatZoneFragment, zoneFragment } from './zoneShader';
 import { areaLightFragment, areaPictureFragment, polygonLightFragment, polygonVertex } from './polygonLightShader';
 import { wallBandFragment } from './wallBandShader';
 import { roofFragment } from './roofShader';
+import { unlitOpeningsFragment } from './unlitOpeningsShader';
 import { reflectionBlurFragment, reflectionFragment, reflectionVertex } from './reflectionShader';
+import { polygonReflectionFragment, reflectionCutFragment } from './polygonReflectionShader';
 
 export interface EngineShaderSource {
   readonly name: string;
@@ -51,8 +53,11 @@ export const ENGINE_SHADERS = {
   polygonLight: { name: 'atlas-polygon-light', vertex: polygonVertex, fragment: polygonLightFragment },
   areaPicture: { name: 'atlas-polygon-area-picture', vertex: polygonVertex, fragment: areaPictureFragment },
   areaLight: { name: 'atlas-polygon-area-light', vertex: lightMapVertex, fragment: areaLightFragment },
+  polygonReflection: { name: 'atlas-polygon-reflected-light', vertex: reflectionVertex, fragment: polygonReflectionFragment },
+  reflectionCut: { name: 'atlas-polygon-reflection-cut', vertex: polygonVertex, fragment: reflectionCutFragment },
   flatZone: { name: 'atlas-flat-zone', vertex: lightMapVertex, fragment: flatZoneFragment },
   compositePolygons: { name: 'atlas-lighting-composite-polygons', vertex: defaultFilterVert, fragment: compositeFragmentFor('polygons') },
   compositeUpscale: { name: 'atlas-lighting-composite-upscale', vertex: defaultFilterVert, fragment: compositeUpscaleFragment },
   roof: { name: 'atlas-roof', vertex: defaultFilterVert, fragment: roofFragment },
+  unlitOpenings: { name: 'atlas-unlit-openings', vertex: sightVertex, fragment: unlitOpeningsFragment },
 } as const satisfies Record<string, EngineShaderSource>;

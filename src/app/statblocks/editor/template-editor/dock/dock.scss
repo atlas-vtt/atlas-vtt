@@ -9,10 +9,11 @@
 @use '../../../../../../styles/mixins' as *;
 
 $dock-button: 32px;
-$dock-inset: $spacing-xs;
-// A capsule: its corner is half its width, the border included, so its end buttons, $dock-inset inside the border, are round.
+$dock-inset: $surface-inset;
+// Narrower than 48 px, so a capsule: its corner is half its width, the border included. Its end
+// buttons stand $dock-inset inside the border, concentric with its ends, and so round off.
 $dock-radius: ($dock-button + 2 * $dock-inset) * 0.5 + $border-width-m;
-$dock-end-radius: atlas-panel-inset-radius-value($dock-inset, $dock-button * 0.5);
+$dock-end-radius: $dock-radius - $border-width-m - $dock-inset;
 
 .atlas-vtt-plugin {
   // Only transform and opacity animate in the dock (§14): the buttons' colour fades change at once, their presses still move.
@@ -23,7 +24,7 @@ $dock-end-radius: atlas-panel-inset-radius-value($dock-inset, $dock-button * 0.5
   // ── The dock ────────────────────────────────────────────────────────────
   .atlas-te-dock {
     @include atlas-elevated-surface;
-    @include atlas-panel-radius($dock-radius);
+    border-radius: $dock-radius;
     @include atlas-flex-col($dock-inset);
     position: absolute;
     // Left of the panel's edge (`--atlas-te-panel-width`, set by TemplateEditor), where the kinds have the shortest way onto the card.
@@ -39,12 +40,11 @@ $dock-end-radius: atlas-panel-inset-radius-value($dock-inset, $dock-button * 0.5
     box-shadow: $shadow-md;
 
     .atlas-tool-button button.btn {
-      @include atlas-corner-shape;
       width: $dock-button;
       height: $dock-button;
       padding: 0;
       border: none;
-      border-radius: $radius-l;
+      border-radius: $radius-m;
       background: transparent;
       box-shadow: none;
       color: var(--text-muted);

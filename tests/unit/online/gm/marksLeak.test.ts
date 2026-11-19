@@ -1,6 +1,6 @@
 import type { MarksMessage, SharedMeasure } from '../../../../src/app/online/protocol/index.ts';
-import type { Measurements } from '../../../../src/app/pixi/MeasureRenderer';
-import type { MeasureRecord } from '../../../../src/app/pixi/utils/measureDrawing';
+import type { KeptMeasure } from '../../../../src/app/measure/measureTypes';
+import type { LiveMeasure, Measurements } from '../../../../src/app/pixi/measure/measurements';
 import type { TokenEntity } from '../../../../src/app/types';
 import { measureOriginOf, measureShownToPlayers, tokenFootprints, type MeasureOrigin } from '../../../../src/app/vision/measureOrigin';
 import { describe, expect, it } from 'vitest';
@@ -23,7 +23,7 @@ const GRID = 70;
 
 interface Truth {
   readonly origin: MeasureOrigin;
-  readonly start: MeasureRecord['start'];
+  readonly start: { readonly x: number; readonly y: number };
 }
 
 const key = (a: readonly number[], b: readonly number[]): string => `${a.join(',')}>${b.join(',')}`;
@@ -32,7 +32,8 @@ const key = (a: readonly number[], b: readonly number[]): string => `${a.join(',
  * The GM's measurements never reach players when Atlas's own rule hides them: one that starts on a
  * hidden token, or on one the players did not see at its start, never shows, and one whose tokens the
  * players stop seeing goes with them. Generated scenes: tokens of every role, measurements begun on
- * tokens and beside them, dragged, kept or let go, while tokens move and the players' sight changes.
+ * tokens and beside them, dragged, kept (with the origin Atlas saves with them) or let go, while
+ * tokens move and the players' sight changes.
  */
 describe('the GM\'s measurements players see', () => {
   /** Measurements players were sent over all trials, so the trials cannot pass by sending none. */
@@ -82,18 +83,22 @@ describe('the GM\'s measurements players see', () => {
         if (roll < 0.25) {
           // A press begins a measurement; its start is snapped near the press.
           const press = point();
-          harness.laser.pressAt(press.x, press.y);
           const start = { x: press.x + int(20) - 10, y: press.y + int(20) - 10 };
-          const live: MeasureRecord = { shape: (['line', 'circle', 'cone'] as const)[int(3)] ?? 'line', start, end: start };
+          const live: LiveMeasure = { shape: (['ruler', 'circle', 'cone'] as const)[int(3)] ?? 'ruler', points: [start, start], pressed: press };
           truths.set(key([start.x, start.y], [start.x, start.y]), { start, origin: measureOriginOf([press, start], harness.footprints, seen) });
           await set({ ...records, live });
         } else if (roll < 0.45 && records.live !== null) {
-          const live = { ...records.live, end: { x: int(1400), y: int(1400) } };
-          const truth = [...truths.values()].find((candidate) => candidate.start === live.start);
-          if (truth !== undefined) truths.set(key([live.start.x, live.start.y], [live.end.x, live.end.y]), truth);
-          await set({ ...records, live });
+          const start = records.live.points[0]!;
+          const end = { x: int(1400), y: int(1400) };
+          const truth = [...truths.values()].find((candidate) => candidate.start === start);
+          if (truth !== undefined) truths.set(key([start.x, start.y], [end.x, end.y]), truth);
+          await set({ ...records, live: { ...records.live, points: [start, end] } });
         } else if (roll < 0.55 && records.live !== null) {
-          await set({ live: records.live, kept: [...records.kept, { ...records.live }] });
+          const { shape, points } = records.live;
+          const truth = [...truths.values()].find((candidate) => candidate.start === points[0]);
+          const origin = truth !== undefined && truth.origin.tokenIds.length > 0 ? { tokenIds: [...truth.origin.tokenIds], unseenAtStart: truth.origin.unseenAtStart } : undefined;
+          const keptOne: KeptMeasure = { id: `m${step}`, kind: 'measure', shape, points: [...points], ...(origin !== undefined && { origin }) };
+          await set({ live: records.live, kept: [...records.kept, keptOne] });
           await set({ ...records, live: null });
         } else if (roll < 0.62) {
           await set({ ...records, live: null });

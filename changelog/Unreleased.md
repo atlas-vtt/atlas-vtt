@@ -1,3 +1,3 @@
-## New
+## Fixed
 
-- In the initiative settings for sides, choose **Roll once at combat start** to roll for each side and keep the resulting order for the fight. The order of the sides in settings breaks ties.
+- On Windows, converting music or ambience in a linked folder now moves the originals to the trash when you chose that, instead of keeping them

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { ArrowLeftRight, BatteryFull, ChevronsDown, Equal, Eraser, Plus, Trash2 } from 'lucide-react';
 import { SegmentedControl, type SegmentedOption } from '../../../packages/components/primitives/SegmentedControl';
+import { Button } from '../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { t, type MessageKey } from '../../../i18n';
 import { withRows } from '../../../recovery/editor/recoveryEdits';
@@ -89,7 +90,7 @@ function RuleFields({ rule, fields, nameOf, onChange, onPickSource }: Pick<RuleC
             <span className="atlas-rc-card__label">{t('recoveryEditor.card.spends')}</span>
             <div className="atlas-rc-card__source">
               <span className="atlas-rc-card__source-name">{nameOf(rule.from)}</span>
-              <button type="button" className="atlas-rc-card__change" onClick={onPickSource}>{t('recoveryEditor.card.changeSource')}</button>
+              <Button type="button" variant="secondary" size="sm" className="atlas-rc-card__change" onClick={onPickSource}>{t('recoveryEditor.card.changeSource')}</Button>
             </div>
           </div>
           <FormulaInput label={t('recoveryEditor.card.each')} value={rule.each} fields={fields}

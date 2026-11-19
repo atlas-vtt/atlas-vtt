@@ -54,7 +54,8 @@ describe('Atlas in Russian', () => {
   it('names commands and ribbon icons in Russian', () => {
     const { commands, ribbon } = registeredNames();
     expect(commands.find((command) => command.id === 'open-dashboard')?.name).toBe('Открыть панель');
-    expect(commands.find((command) => command.id === 'open-scene-browser')?.name).toBe('Открыть список сцен');
+    expect(commands.find((command) => command.id === 'open-scene-browser')?.name).toBe('Открыть менеджер ресурсов');
+    expect(ribbon).toContain('Открыть Atlas VTT');
     expect(ribbon).toContain('Показать изображение игрокам');
   });
 

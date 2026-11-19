@@ -36,6 +36,8 @@ export interface BookSharePorts extends Timers {
   stat(path: string): FileStat | null;
   /** The world map players may be shown now with the maps it leads into, or null for none. */
   worldMap(): Promise<WorldMapTree | null>;
+  /** The log entries that tell who found readable pins, by `foundPinKey`: the world map's signs show them found. */
+  foundPins?(): ReadonlyMap<string, string>;
   /** Tells the GM something they need to act on (a world map whose image cannot be sent). */
   notice(text: string): void;
   /** The quests of the campaign being played, as players read them: the same for every character. */

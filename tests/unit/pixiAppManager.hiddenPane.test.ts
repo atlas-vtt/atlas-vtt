@@ -2,6 +2,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Rectangle, Ticker, type Application, type ApplicationOptions } from 'pixi.js';
 import { PixiAppManager } from '../../src/app/pixi/PixiAppManager';
+import { fitMapRect, fitZoomRange, mapFit } from '../../src/app/pixi/fitMapRect';
+import { MIN_ZOOM } from '../../src/app/pixi/zoomRange';
+import { zoomOutAllTheWay } from '../helpers/zoomLimits';
 
 vi.mock('obsidian', () => ({ Notice: class {} }));
 
@@ -144,5 +147,73 @@ describe('PixiAppManager.resize', () => {
     expect([viewport.screenWidth, viewport.screenHeight]).toEqual([1000, 700]);
     expect(resizeRenderer).toHaveBeenCalledWith(1000, 700);
     expect(manager.getCanvasElement().style.width).toBe('1000px');
+  });
+
+  describe('the zoom range of the map it shows', () => {
+    const huge = { x: 0, y: 0, width: 17000, height: 12746 };
+    /** Fits the 800 × 600 pane within the usual least zoom. */
+    const large = { x: 0, y: 0, width: 5000, height: 5000 };
+
+    it.each([
+      ['a sidebar opens', 500, 600],
+      ['the window is made lower', 800, 350],
+      ['the pane becomes one side of a split', 390, 290],
+    ])('still lets the whole map be zoomed out to when %s', (_name, width, height) => {
+      const viewport = manager.getViewport()!;
+      fitMapRect(viewport, huge);
+
+      manager.resize(width, height);
+
+      const least = zoomOutAllTheWay(viewport);
+      expect(least * huge.width).toBeLessThanOrEqual(width);
+      expect(least * huge.height).toBeLessThanOrEqual(height);
+    });
+
+    it('opens for a map that fitted the pane it was loaded in and no longer fits a smaller one', () => {
+      const viewport = manager.getViewport()!;
+      fitMapRect(viewport, large);
+      expect(zoomOutAllTheWay(viewport)).toBe(MIN_ZOOM);
+
+      manager.resize(800, 400);
+
+      expect(zoomOutAllTheWay(viewport) * large.height).toBeLessThanOrEqual(400);
+    });
+
+    it('follows the pane of a scene shown through a camera of its own, which stays', () => {
+      const viewport = manager.getViewport()!;
+      fitZoomRange(viewport, huge);
+      viewport.setZoom(0.5);
+
+      manager.resize(500, 600);
+
+      expect(viewport.scale.x).toBe(0.5);
+      expect(zoomOutAllTheWay(viewport)).toBeCloseTo(mapFit({ screenWidth: 500, screenHeight: 600 }, huge).scale, 10);
+    });
+
+    it('comes back to the usual least zoom when the pane has room for the map again', () => {
+      const viewport = manager.getViewport()!;
+      fitMapRect(viewport, large);
+
+      manager.resize(800, 400);
+      manager.resize(800, 600);
+
+      expect(zoomOutAllTheWay(viewport)).toBe(MIN_ZOOM);
+    });
+
+    it('keeps the range while the pane is hidden', () => {
+      const viewport = manager.getViewport()!;
+      fitMapRect(viewport, huge);
+      const least = zoomOutAllTheWay(viewport);
+
+      manager.resize(0, 0);
+
+      expect(zoomOutAllTheWay(viewport)).toBe(least);
+    });
+
+    it('leaves the usual range alone while the view shows no map', () => {
+      manager.resize(300, 200);
+
+      expect(zoomOutAllTheWay(manager.getViewport()!)).toBe(MIN_ZOOM);
+    });
   });
 });

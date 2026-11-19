@@ -1,13 +1,23 @@
 // Scene Tab Bar - tab strip for multi-scene navigation, laid out in .atlas-top-bar-row
+@use 'sass:math';
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/mixins' as *;
 
-$tab-bar-inset: 4px;
+$tab-bar-inset: $surface-inset;
 $tab-height: 28px;
-// Tabs shrink down to this width, then the strip scrolls.
+$tab-action: 16px;
+// A tab's one inset: its padding, the gap between its parts, and how far its controls stand inside it on every side.
+$tab-inset: ($tab-height - $tab-action) * 0.5;
+// Tabs are as wide as their names (up to $tab-name-max) while the bar has the room, share it once it has not, and
+// shrink down to this width; then the strip scrolls.
 $tab-min-width: 112px;
+// A name longer than this is cut with an ellipsis, however much room the bar has: one scene never takes the bar.
+$tab-name-max: 28ch;
+// How far a name fades out before a control that lies over its end.
+$tab-name-fade: 12px;
 // Fades the strip's edges where tabs are cut off.
 $tab-fade: 24px;
+$tab-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
 
 .atlas-scene-tab-bar {
   flex: 0 1 auto;
@@ -19,8 +29,7 @@ $tab-fade: 24px;
   pointer-events: auto;
 
   @include atlas-elevated-surface;
-  // Shorter than the radius allows, so the bar renders as a capsule.
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
 }
 
 // Scrolls sideways with a trackpad or a mouse wheel (useTabStripOverflow);
@@ -66,11 +75,11 @@ $tab-fade: 24px;
 .atlas-scene-tab {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: $tab-inset;
   height: $tab-height;
-  padding: 6px;
-  border-radius: $radius-l;
-  @include atlas-corner-shape;
+  padding: $tab-inset;
+  // Concentric with the bar's corner on every side, the end tabs and the add button alike.
+  border-radius: $tab-radius;
   border: none;
   cursor: pointer;
   background: transparent;
@@ -80,10 +89,11 @@ $tab-fade: 24px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 160px;
   position: relative;
   // A press that turns into a drag must not select the tab's name.
   user-select: none;
+  // How much of the name's start a control covers while the controls show: none where the eye has its own place.
+  --atlas-tab-covered-start: #{$tab-action};
 
   &:hover {
     background: var(--background-modifier-hover);
@@ -104,11 +114,21 @@ $tab-fade: 24px;
     opacity: 0.5;
   }
 
-  &__name {
-    // Absorbs the tab's free space so the close button is pushed to its right
-    // end, opposite the show button; min-width: 0 lets the ellipsis apply.
+  // The name and what follows it (the processing ring, the unsaved dot) have the whole tab:
+  // together they stand in its middle, and min-width: 0 lets the name's ellipsis apply.
+  &__label {
     flex: 1 1 auto;
     min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: $tab-inset;
+  }
+
+  &__name {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: $tab-name-max;
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -132,15 +152,23 @@ $tab-fade: 24px;
     }
   }
 
+  // Show and close take no room in the tab: they show while the pointer is on it, over the ends
+  // of its name, which fades out before them. So a name has the whole tab at rest, and a tab
+  // never resizes on hover.
   &__action {
-    // Hidden buttons keep their space so a tab never resizes on hover
+    position: absolute;
+    // Above the label: its fade (mask-image) makes it a stacking context, which would paint over the
+    // controls and take their clicks, as it comes after the eye in the tab.
+    z-index: 1;
+    top: $tab-inset;
     display: flex;
     visibility: hidden;
-    width: 16px;
-    height: 16px;
+    width: $tab-action;
+    height: $tab-action;
     padding: 0;
     border: none;
-    border-radius: $radius-s;
+    // $tab-inset inside the tab, concentric with its corner.
+    border-radius: calc(#{$tab-radius} - #{$tab-inset});
     background: transparent;
     cursor: pointer;
     color: var(--text-muted);
@@ -154,15 +182,47 @@ $tab-fade: 24px;
       color: var(--text-normal);
     }
 
+    &--start {
+      left: $tab-inset;
+    }
+
+    &--end {
+      right: $tab-inset;
+    }
+
+    // The eye of the scene players are shown always shows, so it has its place before the name.
     &--active {
+      position: static;
       visibility: visible;
       color: var(--text-accent);
     }
   }
 
-  &:hover .atlas-scene-tab__action,
-  &:focus-within .atlas-scene-tab__action {
-    visibility: visible;
+  // Keyboard focus shows the controls as the pointer does; the focus a click leaves on a tab
+  // does not, or the tab last clicked would keep its name's ends covered.
+  &:hover,
+  &:focus-visible,
+  &:has(:focus-visible) {
+    .atlas-scene-tab__action {
+      visibility: visible;
+    }
+
+    .atlas-scene-tab__label {
+      $under-controls: linear-gradient(
+        to right,
+        transparent var(--atlas-tab-covered-start),
+        #000 calc(var(--atlas-tab-covered-start) * #{math.div($tab-action + $tab-name-fade, $tab-action)}),
+        #000 calc(100% - #{$tab-action + $tab-name-fade}),
+        transparent calc(100% - #{$tab-action})
+      );
+      // Prefixed too: installers older than Chromium 120 know no other, and the controls would lie on the letters.
+      -webkit-mask-image: $under-controls;
+      mask-image: $under-controls;
+    }
+  }
+
+  &--presented {
+    --atlas-tab-covered-start: 0px;
   }
 }
 
@@ -192,17 +252,6 @@ $tab-fade: 24px;
   }
 }
 
-// The end tabs follow the capsule's ends: concentric means half their height.
-.atlas-scene-tab:first-child {
-  border-top-left-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
-  border-bottom-left-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
-}
-
 .atlas-scene-tab-bar__button {
   flex-shrink: 0;
-}
-
-.atlas-scene-tab-bar__add {
-  border-top-right-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
-  border-bottom-right-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
 }

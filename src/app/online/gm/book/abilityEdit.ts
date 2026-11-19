@@ -7,7 +7,7 @@ import type { NotePatch } from '../../../statblocks/notes/patchTypes';
 import { keyedEntryItems } from '../../../statblocks/values/entryKeys';
 import { entryName, entryNameKey, entryTextKey, entryTextKeyOf } from '../../../statblocks/values/entryValues';
 import type { FieldRead } from '../../../statblocks/values/fieldValues';
-import { abilityLink } from './abilityLinks.ts';
+import { abilityLink, shownAbilityName } from './abilityLinks.ts';
 import { playerAccess } from './playerAccess.ts';
 import {
   amongOptions, clears, editableTemplate, inOptionOrder, isDice, isLine, isPlainList, playerReferences, referencesSafeIn, writtenValue, type CheckedEdit, type EditInputs, type PlayerReferences,
@@ -43,12 +43,22 @@ function newAbility(shape: EntryShape | undefined, entry: AbilityInput, parts: r
   return { [entryNameKey(shape)]: entry.name, ...Object.fromEntries(parts), ...(entry.text !== '' && { [entryTextKey(shape)]: entry.text }) };
 }
 
+/**
+ * Whether an edit leaves an ability's name as the note holds it: the name is a link, and the player
+ * sent the words it shows them (`shownAbilityName`). A link too long for a line reaches their form
+ * as those words alone, so saving the ability must not write them over the link.
+ */
+function keepsLinkedName(item: FieldValue, shape: EntryShape | undefined, sent: string): boolean {
+  const held = entryName(item, shape);
+  return held !== undefined && abilityLink(held) !== null && shownAbilityName(held) === sent;
+}
+
 /** An ability with its name, text and parts replaced in place; keys the template does not show are kept. One written as text alone becomes a new ability. */
 function editedAbility(item: FieldValue, shape: EntryShape | undefined, entry: AbilityInput, parts: readonly [string, FieldValue][]): FieldValue {
   if (!isFieldMap(item)) return newAbility(shape, entry, parts);
-  const nameKey = entryNameKey(shape);
   const textKey = entryTextKeyOf(item, shape);
-  const wanted = new Map<string, FieldValue | undefined>([[nameKey, entry.name], [textKey, entry.text === '' ? undefined : entry.text]]);
+  const name: [string, FieldValue][] = keepsLinkedName(item, shape, entry.name) ? [] : [[entryNameKey(shape), entry.name]];
+  const wanted = new Map<string, FieldValue | undefined>([...name, [textKey, entry.text === '' ? undefined : entry.text]]);
   for (const extra of shape?.extras ?? []) wanted.set(extra.key, undefined);
   for (const [key, value] of parts) wanted.set(key, value);
   const edited: Record<string, FieldValue> = {};

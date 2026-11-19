@@ -10,7 +10,7 @@ vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ openPlayerWindo
 vi.mock('../../src/app/react/components/command-palette/GridSettingsPanel', () => ({ GridSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/TokenSettingsPanel', () => ({ TokenSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/WidgetSettingsPanel', () => ({ WidgetSettingsPanel: () => null }));
-vi.mock('../../src/app/react/components/command-palette/LocalPlayerViewSettingsPanel', () => ({ LocalPlayerViewSettingsPanel: () => null }));
+vi.mock('../../src/app/react/components/command-palette/PlayerViewSettingsPanel', () => ({ PlayerViewSettingsPanel: () => null }));
 vi.mock('../../src/app/packages/components/asset-manager/AssetManager', () => ({ default: () => null }));
 
 /** A preview as they all are: a fixed box with one scrolling body, which a wheel over its padding misses. */
@@ -65,7 +65,7 @@ describe('the bottom row and Obsidian\'s font size', () => {
   it('keeps its size when Obsidian sets another root font size, as its Ctrl+wheel font action does', async () => {
     await mountToolbar();
     const measured = (): Record<string, Pick<Rect, 'width' | 'height'>> => Object.fromEntries(
-      ['.atlas-main-toolbar', '.atlas-undo-bar'].map((selector) => {
+      ['.atlas-main-toolbar', '.atlas-side-bar[data-side-bar="undo"]'].map((selector) => {
         const { width, height } = rectOf(query(selector));
         return [selector, { width, height }];
       }),

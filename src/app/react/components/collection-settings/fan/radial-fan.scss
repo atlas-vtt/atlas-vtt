@@ -36,8 +36,6 @@ $fan-button: 34px;
   margin: 0;
   border: $border-width-s solid var(--background-modifier-border) !important;
   border-radius: $radius-full !important;
-  // Circles: Obsidian shapes every button and input as a squircle on macOS
-  corner-shape: round;
   background-color: var(--background-primary) !important;
   box-shadow: $shadow-md !important;
   color: var(--text-muted);

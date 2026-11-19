@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile, TFolder, type App, type Command, type Menu, type Plugin } from 'obsidian';
+import type { ContextMenuEntry } from '../../../../src/app/react/components/context-menu/AtlasContextMenu';
 import { AssetService } from '../../../../src/app/services/AssetService';
 import { TemplateLibrary } from '../../../../src/app/statblocks/library/TemplateLibrary';
 import { createStatblock, startStatblockCreation } from '../../../../src/app/statblocks/editor/create/createFlow';
@@ -11,7 +12,9 @@ import {
 } from '../../../../src/app/statblocks/editor/create/entryPoints';
 import { registerStatblockEditorCommands, registerStatblockFileMenu } from '../../../../src/app/statblocks/editor/create/statblockCommands';
 import { openStatblockEditor } from '../../../../src/app/statblocks/editor/openStatblockEditor';
+import { libraryLoaded } from '../../../../src/app/statblocks/resolve/readStatblock';
 import { withStatblockEditor } from '../../../mocks/experimentalFeatures';
+import { MARSH_ID, MARSH_PATH, marshText } from '../library/templateTexts';
 import { noteHarness, type NoteHarness } from '../notes/noteHarness';
 
 vi.mock('../../../../src/app/services/TokenStatblockLinkService', () => ({ TokenStatblockLinkService: { getInstance: vi.fn() } }));
@@ -75,8 +78,53 @@ describe('Create statblock for a token', () => {
     withStatblockEditor(app());
     const option = newStatblockOption(app(), { collectionId: null, from: 'asset-manager', token: TOKEN });
     expect(option?.choices.map((choice) => choice.roleId)).toEqual(['creature', 'npc']);
-    option?.onChoose('creature');
+    option?.onChoose(option.choices[0]!);
     expect(createStatblock).toHaveBeenCalledWith(app(), expect.objectContaining({ roleId: 'creature', collectionId: null, from: 'asset-manager' }));
+  });
+
+  describe('in a vault with a template of its own (#656)', () => {
+    const labelsOf = (entries: readonly ContextMenuEntry[]): string[] => entries.map((child) => (child.type === 'item' ? child.label : '|'));
+
+    beforeEach(async () => {
+      harness = noteHarness({ [MARSH_PATH]: marshText() });
+      withStatblockEditor(app());
+      await libraryLoaded(TemplateLibrary.forApp(app()));
+    });
+
+    it('offers the template after the roles, under a line, and creates for the token from it', () => {
+      const onLinked = vi.fn();
+      const entry = createStatblockEntry(app(), { collectionId: 'marsh', from: 'map', token: TOKEN, onLinked });
+      if (entry?.type !== 'submenu' || typeof entry.children === 'function') throw new Error('expected the menu');
+      expect(labelsOf(entry.children)).toEqual(['Creature', 'NPC', '|', 'Marsh creature']);
+      // The built-ins no role starts from stay out of the menu.
+      expect(labelsOf(entry.children)).not.toContain('5E (2014 rules)');
+
+      const marsh = entry.children[3];
+      if (marsh?.type === 'item') void marsh.onClick();
+      expect(createStatblock).toHaveBeenCalledWith(app(), {
+        collectionId: 'marsh', templateId: MARSH_ID, name: 'Marsh Warden', tokenImagePath: 'art/warden.webp', from: 'map', onLinked,
+      });
+      expect(vi.mocked(createStatblock).mock.calls[0]![1].roleId).toBeUndefined();
+    });
+
+    it('gives the link dialog the same choices', () => {
+      const option = newStatblockOption(app(), { collectionId: 'marsh', from: 'asset-manager', token: TOKEN });
+      expect(option?.choices.map((choice) => choice.label)).toEqual(['Creature', 'NPC', 'Marsh creature']);
+      option?.onChoose(option.choices[2]!);
+      expect(createStatblock).toHaveBeenCalledWith(app(), expect.objectContaining({ templateId: MARSH_ID, tokenImagePath: 'art/warden.webp' }));
+    });
+
+    it('lists a template a role starts from once, as that role', () => {
+      vi.spyOn(AssetService, 'getInstance').mockReturnValue({
+        getDefaultCollectionId: () => 'default',
+        getCollectionSettings: () => ({ conditions: [], statblockRoles: [{ id: 'monster', name: 'Monster', templateId: MARSH_ID }] }),
+      } as unknown as AssetService);
+      const entry = createStatblockEntry(app(), { collectionId: 'marsh', from: 'map', token: TOKEN });
+      // One choice: it creates at once, with the role and so in the role's folder.
+      expect(entry).toMatchObject({ type: 'item', label: 'Create statblock' });
+      if (entry?.type === 'item') void entry.onClick();
+      expect(createStatblock).toHaveBeenCalledWith(app(), expect.objectContaining({ roleId: 'monster' }));
+    });
   });
 });
 

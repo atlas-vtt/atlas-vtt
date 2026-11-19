@@ -221,6 +221,7 @@ describe('LightingController in session view', () => {
     expect(doorBadges.visible).toBe(true);
     expect(lightMarkers.visible).toBe(true);
     store.getState().setActiveTool('wall');
+    store.getState().setLightingTool({ mode: 'draw' });
     expect(wallEditor.visible).toBe(true);
   });
 
@@ -261,6 +262,7 @@ describe('LightingController in session view', () => {
     const door = store.getState().addWall({ type: 'door', p1: { x: 0, y: 0 }, p2: { x: 100, y: 0 }, closed: true });
     store.getState().toggleDoor(door);
     store.getState().setActiveTool('wall');
+    store.getState().setLightingTool({ mode: 'draw' });
     for (const { layer, visible } of controller.playerLayers()) expect(layer.visible).toBe(visible);
     store.getState().setSceneLighting({ enabled: false });
     for (const layer of Object.values(controller.gmOverlays())) expect(layer.visible).toBe(false);
@@ -336,6 +338,7 @@ describe('LightingController in session view', () => {
   it('opens a door the players see from its badge with the lighting tool too, whose editor the players\' view hides', () => {
     const { store, click, seen, unseen } = doorsInAndOutOfSight();
     store.getState().setActiveTool('wall');
+    store.getState().setLightingTool({ mode: 'draw' });
     store.getState().setGMView(false);
     expect(click(50, 100)).toBe(true);
     expect(store.getState().objects.walls[seen]?.closed).toBe(false);
@@ -400,6 +403,7 @@ describe('the lighting tool while its editor is hidden', () => {
   it('draws no wall and places no light', () => {
     const { store, eventBus, click } = setup();
     store.getState().setActiveTool('wall');
+    store.getState().setLightingTool({ mode: 'draw' });
     store.getState().setGMView(false);
     expect(click(100, 100)).toBe(false);
     expect(click(300, 100)).toBe(false);
@@ -414,6 +418,7 @@ describe('the lighting tool while its editor is hidden', () => {
     const wall = addWall(store, 100, 300);
     const light = store.getState().addLight({ x: 500, y: 500, emission: genericLight('torch') });
     store.getState().setActiveTool('wall');
+    store.getState().setLightingTool({ mode: 'draw' });
     store.getState().setGMView(false);
     expect(click(100, 100)).toBe(false);
     wired.pointerMove(150, 250, {} as FederatedPointerEvent);
@@ -429,6 +434,7 @@ describe('the lighting tool while its editor is hidden', () => {
     const { store, wired, click } = setup();
     const wall = addWall(store, 100, 300);
     store.getState().setActiveTool('wall');
+    store.getState().setLightingTool({ mode: 'draw' });
     expect(click(100, 100)).toBe(true);
     wired.pointerMove(120, 140, {} as FederatedPointerEvent);
     store.getState().setGMView(false);
@@ -441,6 +447,7 @@ describe('the lighting tool while its editor is hidden', () => {
   it('keeps the walls of a chain being drawn and ends the chain', () => {
     const { store, click } = setup();
     store.getState().setActiveTool('wall');
+    store.getState().setLightingTool({ mode: 'draw' });
     click(100, 100, { shift: true });
     click(300, 100, { shift: true });
     expect(Object.keys(store.getState().objects.walls)).toHaveLength(1);
@@ -457,6 +464,7 @@ describe('the lighting tool while its editor is hidden', () => {
     const wall = addWall(store, 100, 300);
     const light = store.getState().addLight({ x: 500, y: 500, emission: genericLight('torch') });
     store.getState().setActiveTool('wall');
+    store.getState().setLightingTool({ mode: 'draw' });
     expect(wired.cursor(100, 100)).toBe('grab');
     wired.pointerDown(200, 100, { shiftKey: false, ctrlKey: false, metaKey: false } as FederatedPointerEvent);
     wired.pointerUp();
@@ -475,6 +483,7 @@ describe('the lighting tool while its editor is hidden', () => {
   it('works again in GM view', () => {
     const { store, click } = setup();
     store.getState().setActiveTool('wall');
+    store.getState().setLightingTool({ mode: 'draw' });
     store.getState().setGMView(false);
     store.getState().setGMView(true);
     click(100, 100);

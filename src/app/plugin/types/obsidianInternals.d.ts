@@ -78,9 +78,21 @@ declare module 'obsidian' {
     revealInFolder(file: TAbstractFile): void;
   }
 
+  interface MarkdownPostProcessorContext {
+    /** The renderer's sizer, inside the view, embed or hover popover it draws in; a section is post-processed before it is attached there. */
+    containerEl?: HTMLElement;
+  }
+
   interface MarkdownPreviewView {
     /** Knows which lines of the note a drawn element came from. */
     renderer?: { getSectionInfo(element: HTMLElement): { lineStart: number } | null };
+  }
+
+  interface TextFileView {
+    /** Set by a change, until the view's save (two seconds later, or asked for) has started. */
+    dirty?: boolean;
+    /** Whether a save of the view is being written to its file. */
+    readonly saving?: boolean;
   }
 
   interface WorkspaceLeaf {

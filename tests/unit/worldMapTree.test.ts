@@ -178,6 +178,30 @@ describe('the maps a world map leads into', () => {
     stop();
   });
 
+  it('hold the pins the GM made readable as signs, without the quests they place and the pins nobody may read', async () => {
+    const memory = vaultWithEvents();
+    const notes: Record<string, Record<string, unknown>> = { 'Quests/Crown.md': { 'atlas-type': 'quest', campaign: 'one', 'atlas-id': 'a'.repeat(24) } };
+    memory.files.set('Quests/Crown.md', '');
+    vi.mocked(memory.app.metadataCache.getFileCache).mockImplementation((file) => ({ frontmatter: notes[file.path] }));
+    const world = JSON.parse(memory.files.get(path('World'))!) as { state: { objects: { pins: Record<string, Record<string, unknown>> } } };
+    const pins = world.state.objects.pins;
+    pins['pin-2']!.readable = true;
+    // The readable switch wins over the GM's own mark, as at the table.
+    pins['pin-6'] = { id: 'pin-6', kind: 'pin', x: 60, y: 70, notePath: 'Notes/Keep.md#Cellar', readable: true, gmOnly: true, icon: 'number', label: '4' };
+    pins['pin-7'] = { id: 'pin-7', kind: 'pin', x: 80, y: 90, notePath: 'Quests/Crown.md', readable: true };
+    pins['pin-8'] = { id: 'pin-8', kind: 'pin', x: 1, y: 1, notePath: path('Town'), readable: true };
+    pins['pin-9'] = { id: 'pin-9', kind: 'pin', x: 2, y: 2, notePath: 'Notes/Plain.md' };
+    memory.files.set(path('World'), JSON.stringify(world));
+
+    const read = await worldMapTree(memory.app, 'world', 32);
+    expect(read?.tree.levels[0]?.signs).toEqual([
+      { x: 20, y: 20, map: path('World'), pin: 'pin-2', link: 'Notes/Lore.md', icon: 'pin' },
+      { x: 60, y: 70, map: path('World'), pin: 'pin-6', link: 'Notes/Keep.md#Cellar', icon: 'number', label: '4' },
+    ]);
+    expect(read?.tree.levels[0]?.quests).toEqual([{ x: 80, y: 90, id: 'a'.repeat(24) }]);
+    expect(read?.tree.levels[1]).not.toHaveProperty('signs');
+  });
+
   it('stop at the limit, and a plain map is a world map without entrances', async () => {
     const app = vault();
     expect((await worldMapTree(app, 'world', 1))?.tree.levels.map((level) => level.key)).toEqual(['world', 'town']);

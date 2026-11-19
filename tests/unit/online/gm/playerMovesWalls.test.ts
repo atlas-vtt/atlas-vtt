@@ -50,7 +50,7 @@ describe('a player\'s token on a lit scene with walls, on the real Atlas store',
   });
 
   for (const [name, door] of [['closed', { closed: true }], ['locked', { closed: true, locked: true }], ['secret', { type: 'secret-door', closed: true }]] as const) {
-    it(`stays in the room while dragged at a ${name} door, lands before it, and the drag is one undo step`, () => {
+    it(`stays in the room while dragged at a ${name} door, lands on the cell before it, and the drag is one undo step`, () => {
       const t = table(door);
       stream(t, [[150, 110], [300, 110], [400, 170]]);
       expect(place(t).x).toBeLessThanOrEqual(200 - GAP + 0.01);
@@ -58,8 +58,7 @@ describe('a player\'s token on a lit scene with walls, on the real Atlas store',
 
       t.moves.receive(ANA, move(385, 175));
       const landed = place(t);
-      expect(landed.x).toBeLessThanOrEqual(200 - GAP + 0.01);
-      expect(landed.x).toBeGreaterThan(190);
+      expect(landed).toEqual({ x: 175, y: 175 });
       expect(t.sent).toEqual([{ body: { t: 'move-refused', scene: SCENE, id: ALIAS.ogre, x: landed.x, y: landed.y }, to: ANA }]);
       expect(t.store.getState().heldTokens).toEqual({});
       expect(t.history.getState().pastStates).toHaveLength(1);
@@ -90,14 +89,12 @@ describe('a player\'s token on a lit scene with walls, on the real Atlas store',
     t.moves.receive(ANA, move(175, 105));
     expect(place(t)).toEqual({ x: 175, y: 105 });
     t.moves.receive(ANA, move(245, 105));
-    expect(place(t)).toEqual({ x: 200 - GAP, y: 105 });
-    expect(t.history.getState().pastStates).toHaveLength(2);
     t.moves.receive(ANA, move(315, 105));
-    expect(place(t)).toEqual({ x: 200 - GAP, y: 105 });
-    expect(t.history.getState().pastStates).toHaveLength(2);
+    expect(place(t)).toEqual({ x: 175, y: 105 });
+    expect(t.history.getState().pastStates).toHaveLength(1);
     expect(t.sent.map(({ body }) => body)).toEqual([
-      { t: 'move-refused', scene: SCENE, id: ALIAS.ogre, x: 200 - GAP, y: 105 },
-      { t: 'move-refused', scene: SCENE, id: ALIAS.ogre, x: 200 - GAP, y: 105 },
+      { t: 'move-refused', scene: SCENE, id: ALIAS.ogre, x: 175, y: 105 },
+      { t: 'move-refused', scene: SCENE, id: ALIAS.ogre, x: 175, y: 105 },
     ]);
   });
 

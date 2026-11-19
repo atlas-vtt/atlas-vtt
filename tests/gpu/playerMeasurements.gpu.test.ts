@@ -69,7 +69,7 @@ describe('a ruler drawn from a token the players do not see', () => {
 
 describe('a kept ruler', () => {
   const kept = async (tokens: Parameters<typeof build>[0]): Promise<PlayerViewScene> => build(tokens, (s) => {
-    s.events.emit('measure-persistence-changed', true);
+    s.store.getState().setMeasureTool({ keep: true });
     s.measureFrom(60, 60, 60, 220);
     s.store.getState().setActiveTool('select');
   });
@@ -117,7 +117,7 @@ describe('a kept ruler', () => {
 describe('session view, the peek and pictures of the scene', () => {
   it('hides a ruler from a hidden token on the canvas in session view, and the GM view gets it back', async () => {
     const s = await build([{ ...GOBLIN, isHidden: true }, HERO]);
-    s.events.emit('measure-persistence-changed', true);
+    s.store.getState().setMeasureTool({ keep: true });
     s.measureFrom(60, 60, 60, 220);
     const gm = s.canvas();
     const thumbnail = s.thumbnail();
@@ -144,7 +144,7 @@ describe('session view, the peek and pictures of the scene', () => {
   it('hides it during the peek and gives the GM\'s canvas back after', async () => {
     const s = await build([GOBLIN, HERO]);
     s.lighting.perception = perceiving({ goblin: 'unseen' });
-    s.events.emit('measure-persistence-changed', true);
+    s.store.getState().setMeasureTool({ keep: true });
     s.measureFrom(60, 60, 60, 220);
     const gm = s.canvas();
     const reference = await build([GOBLIN, HERO]);
@@ -158,7 +158,7 @@ describe('session view, the peek and pictures of the scene', () => {
 
   it('hides a kept ruler on the canvas when its token is dragged under fog in session view', async () => {
     const s = await build([GOBLIN, HERO]);
-    s.events.emit('measure-persistence-changed', true);
+    s.store.getState().setMeasureTool({ keep: true });
     s.measureFrom(180, 60, 180, 220);
     s.setFog({ paint: fogRectangle({ x: 140, y: 140, width: 80, height: 80 }) });
     s.store.getState().setActiveTool('select');
@@ -184,7 +184,7 @@ describe('session view, the peek and pictures of the scene', () => {
 describe('rendering on change', () => {
   it.each([['the GM view', true], ['session view', false]])('renders nothing on an unchanged scene in %s while every render mirrors a players\' frame', async (_view, gmView) => {
     const s = await build([{ ...GOBLIN, isHidden: true }, HERO]);
-    s.events.emit('measure-persistence-changed', true);
+    s.store.getState().setMeasureTool({ keep: true });
     s.measureFrom(60, 60, 60, 220);
     s.measureFrom(180, 60, 180, 220);
     s.store.getState().setGMView(gmView);

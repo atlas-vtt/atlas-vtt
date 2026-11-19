@@ -106,19 +106,22 @@ export class SceneFileWriter<V> {
     try {
       const data = this.serialize(snapshot);
       const dataPath = getDataFilePath(path);
-      await ensureFolder(this.app, dataPath.substring(0, dataPath.lastIndexOf('/')));
 
       const existingFile = this.app.vault.getAbstractFileByPath(dataPath);
       if (existingFile instanceof TFile) {
         this.seenOnDisk.add(path);
         await this.app.vault.process(existingFile, (current) => (isLatest() ? data : current));
-      } else if (!this.seenOnDisk.has(path) && this.isBoundTo(path) && isLatest()) {
-        await this.app.vault.create(dataPath, data);
-        this.seenOnDisk.add(path);
+      } else if (!this.seenOnDisk.has(path)) {
+        await ensureFolder(this.app, dataPath.substring(0, dataPath.lastIndexOf('/')));
+        if (this.isBoundTo(path) && isLatest()) {
+          await this.app.vault.create(dataPath, data);
+          this.seenOnDisk.add(path);
+        }
       }
       // Otherwise the map was deleted, or renamed while this save waited; the
       // store has already scheduled its state for the new path, so recreating
-      // the old file would bring back a deleted scene or leave a stale copy.
+      // the old file would bring back a deleted scene or leave a stale copy,
+      // and making its folder again would stand in the way of a folder that was only moved.
     } catch (error) {
       console.error(`[AtlasStorage] Error writing map file ${path}:`, error);
     }

@@ -36,6 +36,9 @@ export const loot = {
   'loot.rarity.legendary': 'Legendary',
   'loot.rarity.rare': 'Rare',
   'loot.rarity.uncommon': 'Uncommon',
+  'loot.rarityMenu.all': 'All rarities',
+  'loot.rarityMenu.none': 'No rarity',
+  'loot.rarityMenu.some': '{on} of {total} rarities',
   'loot.rarityOff': { one: '{count} {rarity} item left out of rolls. Click to roll them again.', other: '{count} {rarity} items left out of rolls. Click to roll them again.' },
   'loot.rarityOn': { one: '{count} {rarity} item in the ticked views. Click to leave them out of rolls.', other: '{count} {rarity} items in the ticked views. Click to leave them out of rolls.' },
   'loot.received': 'Loot received',
@@ -48,7 +51,6 @@ export const loot = {
   'loot.tabs.latest': 'Latest roll',
   'loot.tabs.latestHint': 'The last roll on this map.',
   'loot.tabs.list': 'Rolls',
-  'loot.title': 'Random tables',
   'loot.tree.all': 'All',
   'loot.tree.none': 'None',
   'loot.tree.tickAll': 'Tick every view of this base.',
@@ -56,4 +58,5 @@ export const loot = {
   'loot.openPlayerView': 'Open the player view to show loot to your players.',
   'loot.query.note': 'Atlas reads this view for its loot roller. Open the loot roller on a map to roll on it.',
   'loot.query.name': 'Atlas loot',
+  'loot.unreadable': 'Could not be read',
 } as const satisfies Record<string, Message>;

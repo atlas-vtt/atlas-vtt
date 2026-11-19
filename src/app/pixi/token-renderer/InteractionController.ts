@@ -6,14 +6,13 @@
  */
 
 import type { ResourceDefsProvider } from '../../resources/resourceTypes';
-import { isKillable, resetLabel } from '../../resources/resourceValues';
+import { isKillable } from '../../resources/resourceValues';
 import { visibleResources } from '../../resources/visibleResources';
 import React from 'react';
 import { Container, FederatedPointerEvent } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { App } from 'obsidian';
 import { openEditTokenModal } from './EditTokenModal';
-import { STATBLOCK_UNLINK_UPDATES } from './statblockFrontmatter';
 import { openContextMenuGlobal, closeContextMenuGlobal, type ContextMenuEntry } from '../../react/root/ContextMenuContext';
 import { DestructiveActionRow } from './DestructiveActionRow';
 import type { ITokenInteractionController, TokenGroupContainer } from './types';
@@ -27,31 +26,38 @@ import { initiativeEntryForToken } from '../../stores/initiativeEntries';
 import { EventEmitter } from 'events';
 import { StatblockDialogService } from '../../services/StatblockDialogService';
 import { AssetService } from '../../services/AssetService';
-import { createStatblockEntry, newStatblockOption, openStatblockNote, type EntryContext, type TokenCreationContext } from '../../statblocks/editor/create/entryPoints';
+import { createStatblockEntry, newStatblockOption, type EntryContext, type TokenCreationContext } from '../../statblocks/editor/create/entryPoints';
 import { TokenStatblockLinkService } from '../../services/TokenStatblockLinkService';
 import type { ConditionDefinition } from '../../types/collectionSettingsTypes';
 import { saveMapTokensAsEncounter } from '../../encounters/saveMapTokensAsEncounter';
 import { copyMapObjects } from '../../clipboard/mapClipboardActions';
 import { copyDragSelection } from './dragCopy';
 import type { DragRuler } from './DragRuler';
+import type { TokenMovement } from './tokenMovement';
 import { runInBackground } from '../../utils/backgroundTask';
+import { isPrimaryPress, isSecondaryPress } from '../utils/pointerButtons';
 import { tokenSizeSubmenu } from '../../react/components/context-menu/tokenSizeMenu';
+import { tokenMovementSubmenu } from '../../react/components/context-menu/tokenMovementMenu';
 import { tokenLevelSubmenu } from '../../react/components/context-menu/tokenLevelMenu';
+import { tokenHeightSubmenu } from '../../react/components/context-menu/tokenHeightMenu';
+import { tokenAuraSubmenu } from '../../react/components/context-menu/tokenAuraMenu';
+import { mapMeasurementSettings } from '../../services/mapMeasurementSettings';
+import { rulesLookup } from '../../services/mapRules';
 import { tokenLightingEntries } from '../../react/components/context-menu/tokenLightingMenu';
 import { mapLightPresets } from '../../services/mapCollectionRules';
 import { conditionsSubmenu } from '../../react/components/context-menu/conditionsMenu';
 import { applySelectionResourceChange, selectionResourceEntry } from '../../react/components/context-menu/selectionResourceMenu';
 import { selectionResources, type SelectionResource } from '../../resources/selectionResourceChange';
 import { SelectionResourceEditing } from '../selectionResourceEditor';
-import { placedPlayerCharacterEntry } from '../../react/components/context-menu/playerCharacterMenu';
 import { holdTokens } from '../../lighting/sightOnDrop';
 import { dropTokensOnStairs, type StairsMenuPlace } from './stairsDrop';
 import type { TokenPreviewAnchor } from '../../services/NotePreviewUIManager';
 import type { ArtFloors } from '../../levels/levelSurfaces';
 import { t } from '../../i18n';
-import { showNotice } from '../../ui/notice';
 import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
+import type { MapSize } from '../../online/gm/moveCheck';
+import { sessionDragWalls, type SessionDragWalls } from './sessionDragWalls';
 
 interface DragState {
   isDragging: boolean;
@@ -70,6 +76,10 @@ interface DragState {
   copyOnDrag?: boolean;
   /** The token the pointer grabbed; the drag ruler measures its path. */
   rulerTokenId?: string;
+  /** The walls the dragged tokens stop at (session view only), fixed when the drag starts. */
+  walls?: SessionDragWalls | null;
+  /** Where each dragged token stands now: under the pointer, or before the wall that stopped it. */
+  current?: Record<string, { x: number; y: number }>;
 }
 
 export class InteractionController implements ITokenInteractionController {
@@ -109,10 +119,14 @@ export class InteractionController implements ITokenInteractionController {
   private settleToken?: (tokenId: string, x: number, y: number) => void;
   /** What the view draws of the levels' maps, through which a dropped token falls; none without lighting. */
   private artFloors: (() => ArtFloors | undefined) | undefined;
+  /** The map's size in world pixels, which sets how wide walls stop a dragged token. */
+  private mapSize: () => MapSize | null = () => null;
   private updateControlsPosition?: (x: number, y: number, tokenSize: number) => void;
   private onTokensHeldChange?: (tokenIds: string[]) => void;
   private updateHandlePositions?: () => void;
   private dragRuler?: DragRuler;
+  /** The map's movement rules and its tokens' speeds (`tokenMovement`); a view without them moves tokens as ever. */
+  private movement?: TokenMovement;
   /** Where a lost pointer is heard while the pointer is down (`watchLostPointer`). */
   private lostPointerTargets: { canvas: HTMLElement; win: Window | null } | null = null;
   /** The popover of a change for the selection's tokens, made with the first one (`selectionResourceEntry`). */
@@ -155,13 +169,13 @@ export class InteractionController implements ITokenInteractionController {
   /** Called by TokenRenderer when viewport pointerdown hits a token. */
   public handleViewportTokenPointerDown(tokenId: string, e: FederatedPointerEvent): void {
     const activeTool = this.store.getState().activeTool;
-    if (activeTool === 'measure' || activeTool === 'measure-circle' || activeTool === 'measure-cone') {
+    if (activeTool === 'measure') {
       return;
     }
 
     e.stopPropagation();
 
-    if (e.button === 2) {
+    if (isSecondaryPress(e)) {
       const token = mapTokens(levelObjects(this.store.getState()))[tokenId];
       if (token && !this.isPlayerView) {
         this.showContextMenu(token, e);
@@ -180,7 +194,7 @@ export class InteractionController implements ITokenInteractionController {
 
   /** Starts a group drag for the given token IDs (click within selection bounding box). */
   public handleViewportGroupDragStart(tokenIds: string[], e: FederatedPointerEvent): void {
-    if (e.button !== 0) return;
+    if (!isPrimaryPress(e)) return;
 
     const activeTool = this.store.getState().activeTool;
     if (activeTool !== 'select' && activeTool !== 'move') return;
@@ -216,6 +230,8 @@ export class InteractionController implements ITokenInteractionController {
       this.handleHoverStart(tokenId);
       // Emit hover preview for new token
       const token = mapTokens(levelObjects(this.store.getState()))[tokenId];
+      // A token under the pointer may be dragged next: its speed is asked for ahead of the drag.
+      if (token) this.movement?.prepare([token]);
       if (token?.kind === 'character' && e && token.statblockPath?.trim()) {
         this.hoverPreview = {
           id: token.id,
@@ -265,6 +281,9 @@ export class InteractionController implements ITokenInteractionController {
     // This prevents accumulation if previous interaction didn't clean up properly
     this.cleanupDragListeners();
     
+    // A press without a hover before it (touch) asks for the grabbed token's speed here.
+    this.movement?.prepare([token]);
+
     // Store the token for potential click handling
     this.dragState.clickToken = token;
     this.dragState.hasMoved = false;
@@ -346,38 +365,40 @@ export class InteractionController implements ITokenInteractionController {
       // Held are the tokens that move: the copies of an Alt-drag, before anything has moved.
       this.reportHeld(this.dragState.dragIds);
       this.startDragRuler(this.dragState.dragIds[grabbedIndex]);
+      this.dragState.walls = sessionDragWalls(this.store.getState(), this.mapSize());
+      this.dragState.current = {};
     }
     
     // If we haven't moved enough, don't update positions
     if (!this.dragState.hasMoved) return;
-    
-    for (const id of this.dragState.dragIds) {
+
+    // Positions come from the pointer, not the sprites: an Alt-drag copy may still be loading its sprite.
+    // In session view each token follows the pointer only up to the first wall in its way.
+    const { walls, current = {} } = this.dragState;
+    const state = this.store.getState();
+    const updates = this.dragState.dragIds.flatMap((id) => {
+      const initPos = this.dragState.initialPositions[id];
+      if (!initPos) return [];
+      const target = { x: initPos.x + dx, y: initPos.y + dy };
+      const at = walls ? walls.follow(state, id, current[id] ?? initPos, target) : target;
+      current[id] = at;
+      return [{ id, x: at.x, y: at.y }];
+    });
+
+    for (const { id, x, y } of updates) {
       const sprite = this.getTokenSprite?.(id);
       if (!sprite) continue;
-      
-      const initPos = this.dragState.initialPositions[id];
-      if (initPos) {
-        const newX = initPos.x + dx;
-        const newY = initPos.y + dy;
-        
-        // Update sprite position
-        sprite.position.set(newX, newY);
-        this.updateUIPosition?.(id, newX, newY);
-      }
+      sprite.position.set(x, y);
+      this.updateUIPosition?.(id, x, y);
     }
 
-    const rulerStart = this.dragState.rulerTokenId ? this.dragState.initialPositions[this.dragState.rulerTokenId] : undefined;
-    if (rulerStart) this.dragRuler?.update({ x: rulerStart.x + dx, y: rulerStart.y + dy });
+    const rulerAt = this.dragState.rulerTokenId ? current[this.dragState.rulerTokenId] : undefined;
+    if (rulerAt) this.dragRuler?.update(rulerAt);
 
     // The store follows the sprites on every move, so sight and a token's footprint in the dark
     // move with the token in the same frame (as Foundry ties a token's vision to where it is drawn);
     // a throttled store left the footprint trailing the sprite. Chromium sends one pointermove per
     // frame, so this is one write per frame.
-    // Positions come from the pointer, not the sprites: an Alt-drag copy may still be loading its sprite.
-    const updates = this.dragState.dragIds.flatMap((id) => {
-      const initPos = this.dragState.initialPositions[id];
-      return initPos ? [{ id, x: initPos.x + dx, y: initPos.y + dy }] : [];
-    });
     if (updates.length > 0) {
       // Sight waits for the drop when the scene has sight on drop on (`SightTokens`). Persistence
       // is debounced, and the open history transaction keeps these writes out of the undo stack.
@@ -418,7 +439,7 @@ export class InteractionController implements ITokenInteractionController {
       if (selectedId) {
         const sprite = this.getTokenSprite?.(selectedId);
         if (sprite) {
-          const tokenSize = sprite.getChildByLabel('tokenSprite')?.width || 70;
+          const tokenSize = sprite.tokenSize || 70;
           this.updateControlsPosition?.(sprite.position.x, sprite.position.y, tokenSize);
         }
       }
@@ -488,8 +509,10 @@ export class InteractionController implements ITokenInteractionController {
       const dy = worldPos.y - this.dragState.dragStartPointer.y;
       
       const tokenUpdates: Array<{id: string, x: number, y: number}> = [];
-      const snapToGrid = this.store.getState().grid?.snapToGrid ?? true;
-      const tokens = mapTokens(levelObjects(this.store.getState()));
+      const state = this.store.getState();
+      const snapToGrid = state.grid?.snapToGrid ?? true;
+      const tokens = mapTokens(levelObjects(state));
+      const { walls, current = {} } = this.dragState;
       
       for (const id of this.dragState.dragIds) {
         const initPos = this.dragState.initialPositions[id];
@@ -497,11 +520,15 @@ export class InteractionController implements ITokenInteractionController {
         
         const newX = initPos.x + dx;
         const newY = initPos.y + dy;
+        const size = tokens[id]?.size || 1;
         
-        // Snap to grid if enabled
-        const finalPos = snapToGrid 
-          ? this.gridSystem.snapTokenCenter(newX, newY, tokens[id]?.size || 1)
-          : { x: newX, y: newY };
+        // In session view the token comes to rest before walls and snaps only to a place it reaches
+        // (back where it was taken from when it reaches none); otherwise it snaps to the grid if enabled.
+        const finalPos = walls
+          ? walls.drop(state, { id, size, ...(current[id] ?? initPos) }, { x: newX, y: newY }) ?? initPos
+          : snapToGrid
+            ? this.gridSystem.snapTokenCenter(newX, newY, size)
+            : { x: newX, y: newY };
         
         // The token, with its resource bars and nameplate, glides from the pointer to where it snaps
         this.settleToken?.(id, finalPos.x, finalPos.y);
@@ -509,6 +536,11 @@ export class InteractionController implements ITokenInteractionController {
         tokenUpdates.push({id, x: finalPos.x, y: finalPos.y});
       }
       
+      // What each token moved counts for its turn, in the drop's own undo step.
+      this.dragRuler?.countDrop(tokenUpdates.flatMap(({ id, x, y }) => {
+        const from = this.dragState.initialPositions[id];
+        return from ? [{ id, from, to: { x, y } }] : [];
+      }));
       if (tokenUpdates.length > 0) stepHeld = dropTokensOnStairs(this.store, tokenUpdates, menuAt, this.artFloors?.());
       
       // Update UI
@@ -523,6 +555,8 @@ export class InteractionController implements ITokenInteractionController {
       if (wasDrag && !stepHeld) endHistoryTransaction(this.store);
       this.dragRuler?.end();
       delete this.dragState.rulerTokenId;
+      delete this.dragState.walls;
+      delete this.dragState.current;
 
       // Always clean up event listeners to prevent accumulation
       this.cleanupDragListeners();
@@ -579,9 +613,23 @@ export class InteractionController implements ITokenInteractionController {
       }));
     }));
 
+    // The speed the selection moves by, where their statblocks state several
+    const movementMenu = this.movement ? tokenMovementSubmenu(this.store, token.id, this.contextMenuTargets(token.id), this.movement) : null;
+    if (movementMenu) entries.push(movementMenu);
+
     // Move to another level of the scene, the selection in one undo step
     const levelMenu = tokenLevelSubmenu(this.store, this.contextMenuTargets(token.id));
     if (levelMenu) entries.push(levelMenu);
+
+    // How far off the floor the selection stands, where the map measures distances; the GM's to say
+    const heightMenu = this.isPlayerView ? null : tokenHeightSubmenu(this.store, this.contextMenuTargets(token.id),
+      () => mapMeasurementSettings(rulesLookup(this.obsApp), this.store.getState()));
+    if (heightMenu) entries.push(heightMenu);
+
+    // An area around each token of the selection that goes where the token goes; the GM's to give
+    const auraMenu = this.isPlayerView ? null : tokenAuraSubmenu(this.store, this.contextMenuTargets(token.id),
+      () => mapMeasurementSettings(rulesLookup(this.obsApp), this.store.getState()));
+    if (auraMenu) entries.push(auraMenu);
 
     // Hide/Show the selection in one undo step; the clicked token decides which way
     const currentToken = mapTokens(levelObjects(this.store.getState()))[token.id];
@@ -649,33 +697,9 @@ export class InteractionController implements ITokenInteractionController {
     });
 
 
-    // Statblock linking
+    // A token without a statblock can be given one here. Editing and unlinking one are the asset manager's.
     const obsApp = this.obsApp;
-    const statblockPath = character?.statblockPath;
-    if (statblockPath) {
-      entries.push({
-        type: 'item',
-        label: t('token.editStatblock'),
-        icon: 'file-text',
-        onClick: () => {
-          if (obsApp && openStatblockNote(obsApp, statblockPath, this.statblockEntryContext()) === 'missing') {
-            showNotice(t('token.statblockMissing'));
-          }
-        },
-      });
-      entries.push({
-        type: 'item',
-        label: t('am.menu.unlinkStatblock'),
-        icon: 'unlink',
-        onClick: async () => {
-          if (obsApp && token.imagePath) {
-            const linkService = TokenStatblockLinkService.getInstance(obsApp);
-            await linkService.unlinkToken(token.imagePath);
-            this.store.getState().updateToken(token.id, STATBLOCK_UNLINK_UPDATES);
-          }
-        },
-      });
-    } else {
+    if (!character?.statblockPath) {
       entries.push({
         type: 'item',
         label: t('am.menu.linkStatblock'),
@@ -706,11 +730,6 @@ export class InteractionController implements ITokenInteractionController {
       const create = token.imagePath ? createStatblockEntry(obsApp, this.tokenCreationContext(token, character?.name || 'Token')) : null;
       if (create) entries.push(create);
     }
-
-
-    // Player character: the library token it was placed from, for the GM alone
-    const playerCharacter = this.isPlayerView ? null : placedPlayerCharacterEntry(this.obsApp, token, this.store);
-    if (playerCharacter) entries.push(playerCharacter);
 
     // Ring colour of the selection in one undo step; the clicked token's colour is ticked
     const currentRingColor = token.ringColor;
@@ -755,7 +774,7 @@ export class InteractionController implements ITokenInteractionController {
     if (this.anyTracksResources(shownTargets)) {
       entries.push({
         type: 'item',
-        label: resetLabel(this.resourceDefsProvider()),
+        label: t('token.reset'),
         icon: 'rotate-ccw',
         onClick: () => this.store.getState().resetTokens(shownTargets, this.resourceDefsProvider()),
       });
@@ -805,6 +824,11 @@ export class InteractionController implements ITokenInteractionController {
     this.artFloors = provider;
   }
 
+  /** The map's size in world pixels (`sessionDragWalls`). */
+  setMapSize(read: () => MapSize | null): void {
+    this.mapSize = read;
+  }
+
   /** How a dropped token gets from where the pointer left it to its place. */
   setTokenSettler(settler: (tokenId: string, x: number, y: number) => void): void {
     this.settleToken = settler;
@@ -824,6 +848,10 @@ export class InteractionController implements ITokenInteractionController {
    */
   setTokensHeldCallback(callback: (tokenIds: string[]) => void): void {
     this.onTokensHeldChange = callback;
+  }
+
+  setTokenMovement(movement: TokenMovement): void {
+    this.movement = movement;
   }
 
   setDragRuler(ruler: DragRuler): void {

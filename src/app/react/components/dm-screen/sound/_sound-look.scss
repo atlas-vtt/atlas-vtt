@@ -6,8 +6,10 @@ $hairline: color-mix(in oklch, var(--mono-100) 9%, transparent);
 // What a control is drawn with where it must be told from the card it stands on (WCAG 1.4.11, 3:1): a fader's
 // rail, the waveform's unplayed part. Half the text colour into the card: 4.9:1 dark, 3.9:1 light.
 $control-line: color-mix(in srgb, var(--mono-100) 50%, var(--background-primary-alt));
-// Four corners: the pane's (24), the cards' (16: concentric with it, one $spacing-s in, as every Atlas panel's
-// corner controls are), a control's (8) and a keycap's (4).
+// The corners: the pane's (the surface radius), a card's (one $spacing-s in, deeper than a surface's corner
+// controls, so it keeps the control radius), a control's and a keycap's.
+// The library's rail, in the page's side column.
+$sound-rail-width: clamp(192px, 14cqi, 232px);
 $card-inset: $spacing-s;
 $card-radius: atlas-panel-inset-radius-value($card-inset);
 $control-radius: $radius-m;
@@ -34,7 +36,6 @@ $press-ms: 120ms;
   color: inherit;
   font: inherit;
   cursor: pointer;
-  @include atlas-corner-shape;
 }
 
 @mixin pressable($scale: 0.96) {
@@ -59,5 +60,4 @@ $press-ms: 120ms;
 @mixin hairline-tile {
   border-radius: $card-radius;
   box-shadow: inset 0 0 0 $border-width-s $hairline;
-  @include atlas-corner-shape;
 }

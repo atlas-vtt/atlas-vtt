@@ -23,8 +23,10 @@ $collapse-height: 24px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: $spacing-s;
-  padding: $spacing-s;
+  // Its corners hold controls (the collapse toggle, the turn buttons): they stand $surface-inset
+  // inside the border and run concentric with it, and the cards keep the same gap.
+  gap: $surface-inset;
+  padding: $surface-inset;
   z-index: 50;
   font-family: var(--font-interface);
   pointer-events: auto;
@@ -32,7 +34,7 @@ $collapse-height: 24px;
 
   // Panel background — matches toolbar
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
 
   overflow: hidden;
 
@@ -54,8 +56,8 @@ $collapse-height: 24px;
 }
 
 // Collapses the tracker to the turn and the next combatants; a ghost control the width of the panel,
-// in the panel's top corners
-.atlas-initiative-tracker .atlas-initiative-tracker__collapse {
+// in the panel's top corners. Above Atlas's button rules (`.atlas-vtt-plugin .btn`), whose size it changes.
+.atlas-initiative-tracker .btn.atlas-initiative-tracker__collapse {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -64,12 +66,15 @@ $collapse-height: 24px;
   height: $collapse-height;
   padding: 0;
   flex-shrink: 0;
-  border-radius: $radius-l;
-  @include atlas-panel-inset-radius($spacing-s, top-left, top-right);
+  @include atlas-panel-inset-radius($surface-inset);
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+
+  &:hover {
+    color: var(--text-normal);
+  }
 
   svg {
     width: 14px;
@@ -83,7 +88,7 @@ $collapse-height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: $surface-inset;
   width: 100%;
 }
 
@@ -98,31 +103,33 @@ $collapse-height: 24px;
   min-width: 0;
 }
 
-// The last row sits 8px inside the border: its outer buttons' outer corners run concentric with
-// the panel's. Each button is followed by its tooltip's hidden label, hence `of-type`.
-.atlas-initiative-tracker__turn-controls > .atlas-initiative-tracker__btn {
-  &:first-of-type { @include atlas-panel-inset-radius($spacing-s, bottom-left); }
-  &:last-of-type { @include atlas-panel-inset-radius($spacing-s, bottom-right); }
-}
-
-.atlas-initiative-tracker__btn {
+// A ghost icon button (`Button`), above Atlas's button rules (`.atlas-vtt-plugin .btn--icon`), whose size it changes
+.atlas-initiative-tracker .btn.atlas-initiative-tracker__btn {
   flex: 1;
+  width: auto;
   height: 36px;
   padding: 0;
-  border-radius: $radius-l;
+  color: var(--text-muted);
+  // $surface-inset inside the border where it stands in a corner (the last row): concentric with it
+  @include atlas-panel-inset-radius($surface-inset);
   transition: all 0.15s ease;
+
+  &:hover {
+    color: var(--text-normal);
+  }
 
   &:disabled {
     opacity: 0.4;
     pointer-events: none;
   }
 
-  &--end {
+  &--end,
+  &--end:hover {
     color: var(--color-red);
   }
 
   // Pressed state for hotkey visual feedback
-  &--pressed {
+  &.atlas-initiative-tracker__btn--pressed {
     transform: scale(0.9);
     background: var(--interactive-accent);
     color: var(--text-on-accent);
@@ -138,7 +145,7 @@ $collapse-height: 24px;
 .atlas-initiative-tracker__content {
   display: flex;
   flex-direction: column;
-  gap: $spacing-s;
+  gap: $surface-inset;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -165,7 +172,7 @@ $collapse-height: 24px;
 .atlas-initiative-side {
   display: flex;
   flex-direction: column;
-  gap: $spacing-s;
+  gap: $surface-inset;
 }
 
 // Where the list runs on into the next round: the round's name between two hairlines
@@ -240,7 +247,7 @@ $collapse-height: 24px;
   flex-shrink: 0;
   background: var(--background-modifier-hover);
   border: 1.5px solid color-mix(in oklch, var(--mono-100) 6%, transparent);
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   cursor: grab;
   transition: all 0.2s ease;
   position: relative;
@@ -303,7 +310,7 @@ $collapse-height: 24px;
     right: 8px;
     height: 2px;
     background: var(--interactive-accent);
-    border-radius: 1px;
+    border-radius: $radius-s;
     box-shadow: 0 0 8px var(--interactive-accent);
   }
 
@@ -349,7 +356,7 @@ $collapse-height: 24px;
   left: -4px;
   min-width: 18px;
   height: 18px;
-  border-radius: 9px;
+  border-radius: $radius-full;
   background: #000;
   border: 1.5px solid #555;
   color: #fff;
@@ -543,7 +550,7 @@ $collapse-height: 24px;
   height: 10px;
   padding: 0;
   border: none;
-  border-radius: 2px;
+  border-radius: $radius-s;
   background: transparent;
   box-shadow: none;
   cursor: pointer;
@@ -560,14 +567,14 @@ $collapse-height: 24px;
   width: 100%;
   height: 4px;
   background: color-mix(in oklch, var(--mono-100) 10%, transparent);
-  border-radius: 2px;
+  border-radius: $radius-s;
   overflow: hidden;
 }
 
 .atlas-initiative-card__hp-fill {
   display: block;
   height: 100%;
-  border-radius: 2px;
+  border-radius: $radius-s;
   // The resource's own colour, set per bar
   background: var(--atlas-resource-color, var(--color-green));
   transition: width 0.3s ease;
@@ -614,7 +621,7 @@ $collapse-height: 24px;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 2px solid var(--interactive-accent);
-    border-radius: 12px;
+    border-radius: $radius-m;
     padding: 10px;
     font-size: 20px;
     font-weight: 700;
@@ -658,7 +665,7 @@ $collapse-height: 24px;
     color: var(--text-muted);
     background: color-mix(in srgb, var(--background-primary) 80%, transparent);
     padding: 4px;
-    border-radius: 4px;
+    border-radius: $radius-s;
   }
 
   // The GM's own modifier: the same field, quieter until it is focused
@@ -685,7 +692,7 @@ $collapse-height: 24px;
     color: var(--text-muted);
     background: color-mix(in srgb, var(--background-primary) 80%, transparent);
     padding: 4px;
-    border-radius: 4px;
+    border-radius: $radius-s;
     white-space: nowrap;
   }
 }

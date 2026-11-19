@@ -7,7 +7,7 @@ import { useToolbarKeyboard } from './useToolbarKeyboard'
 
 function keyHint(id: ToolbarUnitId, group: ToolbarHandleGroup): string {
   if (group === 'tray') return t('toolbarEdit.hint.tray')
-  // The undo/redo bar keeps its own place.
+  // A bar beside the toolbar keeps its own place.
   if (!isToolbarControlId(id)) return t('toolbarEdit.hint.undoBar')
   return isHideableToolbarControl(id) ? t('toolbarEdit.hint.movable') : t('toolbarEdit.hint.fixed')
 }

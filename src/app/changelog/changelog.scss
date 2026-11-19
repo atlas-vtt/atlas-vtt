@@ -297,7 +297,6 @@ $changelog-scroll-fade: $spacing-xl;
     border-top: $border-width-s solid var(--divider-color);
 
     > .btn {
-      @include atlas-native-modal-corner-button;
       margin-inline-start: auto;
       transition: color $transition-normal $transition-ease,
                   background-color $transition-normal $transition-ease,

@@ -89,14 +89,6 @@
     font-size: $font-ui-small;
     line-height: var(--line-height-normal);
     text-wrap: pretty;
-
-    p {
-      margin: 0;
-    }
-
-    p + p {
-      margin-top: $spacing-s;
-    }
   }
 
   // ── Folding sections ──────────────────────────────────────────────────────

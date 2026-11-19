@@ -6,8 +6,12 @@
  * NOT persisted — the partialize whitelist in storeFactory.ts excludes these.
  */
 
+import { DEFAULT_DRAW_TOOL, type DrawToolChoices } from '../annotations/annotationTypes';
+import { sameRememberedDrawTool } from '../annotations/drawToolMemory';
+import { DEFAULT_FOG_TOOL, settledFogTool, type FogToolChoices } from '../fog/fogToolChoices';
 import { DEFAULT_EXPLORED_BRUSH, type ExploredBrushOptions } from '../lighting/exploredEdits';
 import { DEFAULT_LIGHTING_TOOL, type LightingToolOptions } from '../lighting/lightingTool';
+import { DEFAULT_MEASURE_TOOL, type MeasureToolOptions } from '../measure/measureTypes';
 import type { DMScreenPage, DungeonGeneratorRequest, HeldTokens, ViewUIState } from '../types/viewUIState';
 
 /** State fields added to ViewAtlasState */
@@ -19,7 +23,11 @@ export interface UISlice extends ViewUIState {
   setDMScreenPage: (page: DMScreenPage) => void;
   setGridAlignmentOpen: (open: boolean) => void;
   setDiceLogOpen: (open: boolean) => void;
+  setHotkeyHelpOpen: (open: boolean) => void;
+  setDocsOpen: (open: boolean) => void;
   openAssetManager: (tab?: UISlice['assetManagerInitialTab']) => void;
+  /** Opens the asset manager on the Armarium, or shows the Armarium in it while it is open. */
+  openArmarium: () => void;
   closeAssetManager: () => void;
   /** Opens or closes the palette; `page` names the page it opens on. */
   setCommandPaletteOpen: (open: boolean, page?: string) => void;
@@ -32,6 +40,13 @@ export interface UISlice extends ViewUIState {
   closeLevelLinkPopover: () => void;
   openLevelSurfacePopover: (surfaceId: string) => void;
   closeLevelSurfacePopover: () => void;
+  openMeasurePopover: (measureId: string) => void;
+  closeMeasurePopover: () => void;
+  setMeasureTool: (changes: Partial<MeasureToolOptions>) => void;
+  /** Changes the Draw tool's choices; a change of its style is remembered on the device. */
+  setDrawTool: (changes: Partial<DrawToolChoices>) => void;
+  /** Changes the fog tool's choices; a brush size is kept within its limits (`settledFogTool`). */
+  setFogTool: (changes: Partial<FogToolChoices>) => void;
   setLightingTool: (changes: Partial<LightingToolOptions>) => void;
   setHeldTokens: (held: HeldTokens) => void;
   setExploredBrush: (changes: Partial<ExploredBrushOptions>) => void;
@@ -44,16 +59,19 @@ export interface UISlice extends ViewUIState {
   setRoofsHidden: (hidden: boolean) => void;
 }
 
-/** Default state — all panels closed */
-export function createInitialUIState(): Pick<
+/** Default state — all panels closed. `drawTool` is what the Draw tool starts with: its defaults, or what the device remembered. */
+export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TOOL): Pick<
   UISlice,
   | 'isGridSettingsOpen'
   | 'isDMScreenOpen'
   | 'dmScreenPage'
   | 'isGridAlignmentOpen'
   | 'isDiceLogOpen'
+  | 'isHotkeyHelpOpen'
+  | 'isDocsOpen'
   | 'isAssetManagerOpen'
   | 'assetManagerInitialTab'
+  | 'assetManagerArmarium'
   | 'isCommandPaletteOpen'
   | 'commandPalettePage'
   | 'isDiceTrayOpen'
@@ -61,6 +79,10 @@ export function createInitialUIState(): Pick<
   | 'lightZonePopover'
   | 'levelLinkPopover'
   | 'levelSurfacePopover'
+  | 'measurePopover'
+  | 'measureTool'
+  | 'drawTool'
+  | 'fogTool'
   | 'lightingTool'
   | 'heldTokens'
   | 'exploredBrush'
@@ -74,8 +96,11 @@ export function createInitialUIState(): Pick<
     dmScreenPage: 'statblocks',
     isGridAlignmentOpen: false,
     isDiceLogOpen: false,
+    isHotkeyHelpOpen: false,
+    isDocsOpen: false,
     isAssetManagerOpen: false,
     assetManagerInitialTab: undefined,
+    assetManagerArmarium: 0,
     isCommandPaletteOpen: false,
     commandPalettePage: null,
     isDiceTrayOpen: false,
@@ -83,6 +108,10 @@ export function createInitialUIState(): Pick<
     lightZonePopover: null,
     levelLinkPopover: null,
     levelSurfacePopover: null,
+    measurePopover: null,
+    measureTool: DEFAULT_MEASURE_TOOL,
+    drawTool,
+    fogTool: DEFAULT_FOG_TOOL,
     lightingTool: DEFAULT_LIGHTING_TOOL,
     heldTokens: {},
     exploredBrush: DEFAULT_EXPLORED_BRUSH,
@@ -92,9 +121,13 @@ export function createInitialUIState(): Pick<
   };
 }
 
-/** Action creators — `set` comes from the immer middleware in the store */
+/**
+ * Action creators — `set` comes from the immer middleware in the store. `rememberDrawTool` is
+ * handed the Draw tool's choices whenever their style changed, to keep them for the device.
+ */
 export function createUIActions(
   set: (fn: (draft: UISlice) => void) => void,
+  rememberDrawTool?: (choices: DrawToolChoices) => void,
 ): Pick<
   UISlice,
   | 'setGridSettingsOpen'
@@ -102,7 +135,10 @@ export function createUIActions(
   | 'setDMScreenPage'
   | 'setGridAlignmentOpen'
   | 'setDiceLogOpen'
+  | 'setHotkeyHelpOpen'
+  | 'setDocsOpen'
   | 'openAssetManager'
+  | 'openArmarium'
   | 'closeAssetManager'
   | 'setCommandPaletteOpen'
   | 'setDiceTrayOpen'
@@ -114,6 +150,11 @@ export function createUIActions(
   | 'closeLevelLinkPopover'
   | 'openLevelSurfacePopover'
   | 'closeLevelSurfacePopover'
+  | 'openMeasurePopover'
+  | 'closeMeasurePopover'
+  | 'setMeasureTool'
+  | 'setDrawTool'
+  | 'setFogTool'
   | 'setLightingTool'
   | 'setHeldTokens'
   | 'setExploredBrush'
@@ -128,15 +169,23 @@ export function createUIActions(
     setDMScreenPage: (page) => set((draft) => { draft.dmScreenPage = page; }),
     setGridAlignmentOpen: (open) => set((draft) => { draft.isGridAlignmentOpen = open; }),
     setDiceLogOpen: (open) => set((draft) => { draft.isDiceLogOpen = open; }),
+    setHotkeyHelpOpen: (open) => set((draft) => { draft.isHotkeyHelpOpen = open; }),
+    setDocsOpen: (open) => set((draft) => { draft.isDocsOpen = open; }),
     // The palette, the dice tray and the asset manager open where the toolbar editor's tray sits, or over the map: each ends edit mode.
     openAssetManager: (tab) => set((draft) => {
       draft.isAssetManagerOpen = true;
       draft.assetManagerInitialTab = tab;
       draft.isToolbarEditing = false;
     }),
+    openArmarium: () => set((draft) => {
+      draft.isAssetManagerOpen = true;
+      draft.assetManagerArmarium += 1;
+      draft.isToolbarEditing = false;
+    }),
     closeAssetManager: () => set((draft) => {
       draft.isAssetManagerOpen = false;
       draft.assetManagerInitialTab = undefined;
+      draft.assetManagerArmarium = 0;
     }),
     setCommandPaletteOpen: (open, page) => set((draft) => {
       draft.isCommandPaletteOpen = open;
@@ -150,10 +199,12 @@ export function createUIActions(
     openLightPopover: (lightId) => set((draft) => {
       draft.lightPopover = lightId;
       draft.lightZonePopover = null;
+      draft.measurePopover = null;
     }),
     openLightZonePopover: (zoneId) => set((draft) => {
       draft.lightZonePopover = zoneId;
       draft.lightPopover = null;
+      draft.measurePopover = null;
     }),
     closeLightZonePopover: () => set((draft) => { draft.lightZonePopover = null; }),
     openLevelLinkPopover: (linkId) => set((draft) => { draft.levelLinkPopover = linkId; }),
@@ -161,6 +212,25 @@ export function createUIActions(
     openLevelSurfacePopover: (surfaceId) => set((draft) => { draft.levelSurfacePopover = surfaceId; }),
     closeLevelSurfacePopover: () => set((draft) => { draft.levelSurfacePopover = null; }),
     closeLightPopover: () => set((draft) => { draft.lightPopover = null; }),
+    openMeasurePopover: (measureId) => set((draft) => {
+      draft.measurePopover = measureId;
+      draft.lightPopover = null;
+      draft.lightZonePopover = null;
+    }),
+    closeMeasurePopover: () => set((draft) => { draft.measurePopover = null; }),
+    setMeasureTool: (changes) => set((draft) => { draft.measureTool = { ...draft.measureTool, ...changes }; }),
+    setDrawTool: (changes) => {
+      let styled: DrawToolChoices | null = null;
+      set((draft) => {
+        const next = { ...draft.drawTool, ...changes };
+        if (!sameRememberedDrawTool(draft.drawTool, next)) styled = next;
+        draft.drawTool = next;
+      });
+      if (styled) rememberDrawTool?.(styled);
+    },
+    setFogTool: (changes) => set((draft) => {
+      draft.fogTool = settledFogTool({ ...draft.fogTool, ...changes });
+    }),
     setLightingTool: (changes) => set((draft) => { draft.lightingTool = { ...draft.lightingTool, ...changes }; }),
     setHeldTokens: (held) => set((draft) => { draft.heldTokens = held; }),
     setExploredBrush: (changes) => set((draft) => { draft.exploredBrush = { ...draft.exploredBrush, ...changes }; }),

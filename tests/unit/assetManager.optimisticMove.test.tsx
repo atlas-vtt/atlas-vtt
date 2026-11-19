@@ -44,6 +44,7 @@ function useHarness(loadAssets: () => Promise<void>): { assets: AnyAsset[]; move
   const crud = useAssetCrud(
     {} as App, {} as AssetService, 'tokens', 'camp', null, FOLDERS, [], vi.fn(), () => Promise.resolve(), vi.fn(),
     () => Promise.resolve(), loadAssets, null, vi.fn(), vi.fn(), setAssets, openFolder,
+    { followFolderMoves: vi.fn(), setSelectedFolderIds: vi.fn() },
   );
   return { assets, move: crud.moveAssetsToFolder };
 }

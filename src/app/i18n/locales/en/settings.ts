@@ -1,6 +1,7 @@
 import type { Message } from '../../types';
 
 export const settings = {
+  'settings.experimental.heading': 'Experimental features',
   'settings.hotkeys.assignFailed': 'Could not assign shortcut',
   'settings.hotkeys.clear': 'Clear shortcut',
   'settings.hotkeys.defaultSuffix': '{group} · Default: {key}',

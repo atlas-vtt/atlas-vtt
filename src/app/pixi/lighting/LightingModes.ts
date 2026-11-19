@@ -44,8 +44,8 @@ export class LightingModes {
       { layer: this.zones.view, visible: tool && this.zones.active },
       { layer: this.surfaces.view, visible: tool && this.surfaces.active },
       { layer: this.memory.view, visible: tool && this.memory.active },
-      // The rooms' outlines help with every mode of the tool, e.g. placing a door across an opening.
-      { layer: this.rooms.view, visible: tool },
+      // The shape the rooms mode has under way.
+      { layer: this.rooms.view, visible: tool && this.rooms.active },
     ];
   }
 

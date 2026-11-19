@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_BOOK_MAPS, MAX_MAP_ENTRANCES, parseGmMessage, parsePlayerMessage, type BookWorldMap, type PlayerBook } from '../../../../src/app/online/protocol/index.ts';
+import { MAX_BOOK_MAPS, MAX_MAP_ENTRANCES, MAX_MAP_SIGNS, parseGmMessage, parsePlayerMessage, type BookWorldMap, type PlayerBook } from '../../../../src/app/online/protocol/index.ts';
 
 const ART = { hash: 'a'.repeat(64), size: 10, mime: 'image/webp', id: 'e'.repeat(64) };
 const WORLD = '0'.repeat(24);
@@ -51,5 +51,23 @@ describe('the maps a world map leads into', () => {
     const { map: _onTheWorldMap, ...worldPin } = pin;
     expect(parsePlayerMessage({ t: 'book-pin', pin: worldPin })).toEqual({ t: 'book-pin', pin: worldPin });
     expect(parsePlayerMessage({ t: 'book-pin', pin: { ...pin, map: 'town' } })).toBeNull();
+  });
+
+  it('hold the GM\'s readable pins as signs on each map, which an older page reads as no part of it', () => {
+    const sign = { id: '4'.repeat(24), x: 0.2, y: 0.4, icon: 'number', label: '7', found: null };
+    const found = { id: '5'.repeat(24), x: 0.6, y: 0.1, icon: 'pin', found: '6'.repeat(24) };
+    const signed: BookWorldMap = { ...MAP, signs: [sign], maps: [{ ...MAP.maps![0]!, signs: [found] }, MAP.maps![1]!] };
+    expect(worldMapOf(signed)).toEqual(signed);
+    // A sign that cannot be read is left out, one named twice is kept once; a list longer than a map holds refuses the map.
+    expect(worldMapOf({ ...MAP, signs: [sign, sign, { ...found, x: 2 }, { ...found, id: 'Places/Keep.md' }, { ...found, found: 'entry' }] })).toEqual({ ...MAP, signs: [sign] });
+    expect(worldMapOf({ ...MAP, signs: Array.from({ length: MAX_MAP_SIGNS + 1 }, () => sign) })).toBeUndefined();
+    // Signs say nothing of the note: anything else a sign carries is not read.
+    expect(worldMapOf({ ...MAP, signs: [{ ...sign, note: 'Places/Keep.md' }] })).toEqual({ ...MAP, signs: [sign] });
+  });
+
+  it('are opened by alias, as a readable pin of the table is', () => {
+    expect(parsePlayerMessage({ t: 'sign-found', sign: PIN })).toEqual({ t: 'sign-found', sign: PIN });
+    expect(parsePlayerMessage({ t: 'sign-found', sign: 'Places/Keep.md' })).toBeNull();
+    expect(parsePlayerMessage({ t: 'sign-found' })).toBeNull();
   });
 });

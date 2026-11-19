@@ -12,7 +12,7 @@ const app = {
   vault: { adapter: { exists: async () => true, write: async () => {} } },
   workspace: { on: vi.fn(() => ({})), offref: vi.fn() },
 } as any;
-afterEach(() => { PlayerWindowService.getInstance()?.destroy(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+afterEach(() => { PlayerWindowService.getInstance()?.destroy(); vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
 interface ScheduledRenders {
   requestRender: ReturnType<typeof vi.fn>;
@@ -199,6 +199,30 @@ describe('player window mirroring', () => {
     (service as any).mirror.frame();
     service.destroy();
     expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps following the GM from the main window while the player window gets no display frames, as on another virtual desktop', () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'performance'] });
+    const renders = scheduledRenders();
+    mirror(renders);
+    renders.render();
+    expect(renders.capture).toHaveBeenCalledTimes(1);
+
+    // The GM changes the map after the player window's frames stopped: nothing is mirrored yet
+    vi.advanceTimersByTime(300);
+    renders.render();
+    expect(renders.capture).toHaveBeenCalledTimes(1);
+
+    renders.requestRender.mockClear();
+    vi.advanceTimersByTime(300);
+    expect(renders.requestRender).toHaveBeenCalled();
+    renders.render();
+    expect(renders.capture).toHaveBeenCalledTimes(2);
+
+    // An idle map is not rendered for it
+    renders.requestRender.mockClear();
+    vi.advanceTimersByTime(1000);
+    expect(renders.requestRender).not.toHaveBeenCalled();
   });
 
   it('copies every frame for sources without a render schedule', () => {

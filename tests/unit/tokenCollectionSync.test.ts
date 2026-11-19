@@ -95,6 +95,26 @@ describe('TokenCollectionSync', () => {
     f.sync.destroy();
   });
 
+  it('keeps the movement rules between the steps of a drag, and reads them again once the rules change or the map is another', () => {
+    const f = setup();
+    const steps = (name: string): CollectionSettings['movement'] => ({ steps: [{ name, multiple: 1, color: '#22c55e' }], countPerTurn: false });
+    f.setSettings({ conditions: [], movement: steps('Move') });
+    const first = f.sync.movement();
+    expect(first.steps.map((step) => step.name)).toEqual(['Move']);
+    const reads = vi.mocked(f.assets.getCollectionSettings).mock.calls.length;
+    for (let move = 0; move < 50; move++) expect(f.sync.movement()).toBe(first);
+    expect(f.assets.getCollectionSettings).toHaveBeenCalledTimes(reads);
+
+    f.setSettings({ conditions: [], movement: steps('Stride') });
+    f.changeCollection('a');
+    expect(f.sync.movement().steps.map((step) => step.name)).toEqual(['Stride']);
+
+    f.setSettings({ conditions: [] });
+    f.store.getState().setMapPath('b.atlasmap');
+    expect(f.sync.movement().steps).toEqual([]);
+    f.sync.destroy();
+  });
+
   it('refreshes only changes to the current map collection', () => {
     const f = setup();
     f.changeCollection('b');

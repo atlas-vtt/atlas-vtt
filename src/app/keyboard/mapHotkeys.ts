@@ -3,7 +3,6 @@ import { isActiveAtlasLeaf } from '../utils/activeLeafGuard';
 import { handledByAnotherControl } from './tooltipEscape';
 import { isTextEntryTarget } from './textEntry';
 import type { SettingsService } from '../services/SettingsService';
-import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
 import { t } from '../i18n';
 
 export const MAP_HOTKEYS = [
@@ -19,14 +18,19 @@ export const MAP_HOTKEYS = [
   { id: 'fitToken', label: t('hotkey.fitToken'), group: t('hotkey.group.map'), defaultKey: 'Shift+2' },
   { id: 'levelUp', label: t('hotkey.levelUp'), group: t('hotkey.group.map'), defaultKey: 'PageUp', dmOnly: true },
   { id: 'levelDown', label: t('hotkey.levelDown'), group: t('hotkey.group.map'), defaultKey: 'PageDown', dmOnly: true },
-  { id: 'nextMood', label: t('hotkey.nextMood'), group: t('hotkey.group.map'), defaultKey: 'n', dmOnly: true, experimental: 'sound' },
-  { id: 'silence', label: t('hotkey.silence'), group: t('hotkey.group.map'), defaultKey: 'Shift+s', dmOnly: true, experimental: 'sound' },
+  { id: 'nextMood', label: t('hotkey.nextMood'), group: t('hotkey.group.map'), defaultKey: 'n', dmOnly: true },
+  { id: 'silence', label: t('hotkey.silence'), group: t('hotkey.group.map'), defaultKey: 'Shift+s', dmOnly: true },
   { id: 'move', label: t('hotkey.move'), group: t('hotkey.group.tools'), defaultKey: 'v' },
   { id: 'fog', label: t('hotkey.fog'), group: t('hotkey.group.tools'), defaultKey: 'f', dmOnly: true },
   { id: 'draw', label: t('hotkey.draw'), group: t('hotkey.group.tools'), defaultKey: 'b', dmOnly: true },
   { id: 'erase', label: t('hotkey.erase'), group: t('hotkey.group.tools'), defaultKey: 'e', dmOnly: true },
   { id: 'text', label: t('hotkey.text'), group: t('hotkey.group.tools'), defaultKey: 't', dmOnly: true },
+  // Run only while the Draw tool or the fog tool is in use (`useToolbarHotkeys`): the size of whichever it is.
+  { id: 'drawSmaller', label: t('hotkey.drawSmaller'), group: t('hotkey.group.tools'), defaultKey: ',', dmOnly: true, repeats: true },
+  { id: 'drawLarger', label: t('hotkey.drawLarger'), group: t('hotkey.group.tools'), defaultKey: '.', dmOnly: true, repeats: true },
   { id: 'measure', label: t('hotkey.measure'), group: t('hotkey.group.tools'), defaultKey: 'm' },
+  // Runs only while the measure tool is in use (`useToolbarHotkeys`).
+  { id: 'measureKeep', label: t('hotkey.measureKeep'), group: t('hotkey.group.tools'), defaultKey: 'k', dmOnly: true },
   { id: 'pin', label: t('hotkey.pin'), group: t('hotkey.group.tools'), defaultKey: 'p', dmOnly: true },
   { id: 'wall', label: t('hotkey.wall'), group: t('hotkey.group.tools'), defaultKey: 'w', dmOnly: true },
   { id: 'audio', label: t('hotkey.audio'), group: t('hotkey.group.tools'), defaultKey: 's', dmOnly: true, enabled: AMBIENT_AUDIO_ENABLED },
@@ -60,9 +64,9 @@ export type MapHotkeyId = MapHotkey['id'];
 export type HeldWidgetHotkeyId = Extract<MapHotkey, { whileWidgetHeld: true }>['id'];
 export type MapHotkeys = Record<MapHotkeyId, string>;
 export const DEFAULT_MAP_HOTKEYS = Object.fromEntries(MAP_HOTKEYS.map(h => [h.id, h.defaultKey])) as MapHotkeys;
-/** The shortcuts on offer: those of the build (`enabled`) and of the features switched on (`experimental`), and only the players' in the player view. */
-export const availableHotkeys = (player = false, isOn: (feature: ExperimentalFeatureId) => boolean = () => false) => MAP_HOTKEYS.filter(h =>
-  !('enabled' in h && !h.enabled) && !('experimental' in h && !isOn(h.experimental)) && !(player && 'dmOnly' in h && h.dmOnly));
+/** The shortcuts on offer: those of the build (`enabled`), and only the players' in the player view. */
+export const availableHotkeys = (player = false) => MAP_HOTKEYS.filter(h =>
+  !('enabled' in h && !h.enabled) && !(player && 'dmOnly' in h && h.dmOnly));
 
 export const hotkeyAction = (id: MapHotkeyId): MapHotkey => MAP_HOTKEYS.find(action => action.id === id)!;
 const runsWhileWidgetHeld = (action: MapHotkey): boolean => 'whileWidgetHeld' in action;
@@ -87,8 +91,9 @@ export function hotkeyFromEvent(event: KeyboardEvent): string | null {
 export function matchesHotkey(event: KeyboardEvent, binding: string, allowRepeat = false): boolean {
   return !!binding && (allowRepeat || !event.repeat) && !event.isComposing && hotkeyFromEvent(event) === binding;
 }
+/** Whether `event` is the key of the action `id`. A key that is held counts only for an action that `repeats` (the size keys). */
 export function matchesMapHotkey(event: KeyboardEvent, id: MapHotkeyId, settings?: SettingsService): boolean {
-  return matchesHotkey(event, (settings?.getHotkeys() ?? DEFAULT_MAP_HOTKEYS)[id]);
+  return matchesHotkey(event, (settings?.getHotkeys() ?? DEFAULT_MAP_HOTKEYS)[id], event.repeat && 'repeats' in hotkeyAction(id));
 }
 const UNASSIGNED_HOTKEY = t('hotkey.unassigned');
 export function formatHotkey(binding: string): string {
@@ -98,10 +103,18 @@ export function formatHotkey(binding: string): string {
 export function namesHotkey(label: string): boolean {
   return label !== '' && label !== UNASSIGNED_HOTKEY;
 }
+/** The note pin's picker while it is open: not once it fades out, nor while what it creates works in its place. */
+const NOTE_PIN_PICKER = '.atlas-note-pin-dropdown:not(.atlas-panel-leaving):not(.atlas-away)';
+/** The Draw tool's symbol flyout while it is open (`StampSymbolTool`). */
+const STAMP_SYMBOLS = '.atlas-stamp-symbols .pin-place-flyout.is-open';
 export function canRunMapHotkeys(event: KeyboardEvent, viewId?: string): boolean {
   if (handledByAnotherControl(event) || event.isComposing || !isActiveAtlasLeaf(viewId)) return false;
   if (isTextEntryTarget(event.target)) return false;
   // Modals and overlays open in the focused window
   if (activeDocument.querySelector('.modal-container, .prompt, .suggestion-container, .menu, .atlas-asset-manager-modal, .atlas-command-palette-overlay, .atlas-onboarding-overlay, .atlas-hotkey-help, .atlas-text-dialog-backdrop, .atlas-dm-screen-wrapper, .atlas-grid-alignment-panel, [aria-modal="true"]')) return false;
+  // The note pin's picker takes a name: a key pressed while it is open, on one of its buttons too, is no shortcut of the map
+  if (activeDocument.querySelector(NOTE_PIN_PICKER)) return false;
+  // Nor while the Stamp mode's symbols are open: a name typed there searches them
+  if (activeDocument.querySelector(STAMP_SYMBOLS)) return false;
   return true;
 }

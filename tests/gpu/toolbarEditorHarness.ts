@@ -4,7 +4,7 @@ import { act, render } from '@testing-library/react';
 import { frame } from 'framer-motion';
 import { expect, vi } from 'vitest';
 import css from '../../styles/main.scss?inline';
-import tooltipCss from '../../src/app/packages/components/primitives/tooltip.css?inline';
+import tooltipCss from '../../src/app/packages/components/primitives/tooltip.scss?inline';
 import contextMenuCss from '../../src/app/react/components/context-menu/atlas-context-menu.scss?inline';
 import { MainToolbar } from '../../src/app/packages/components/MainToolbar';
 import { BottomToolbarRow } from '../../src/app/react/components/BottomToolbarRow';
@@ -46,7 +46,7 @@ const UTILITIES = `
 `;
 const h = React.createElement;
 
-export const DEFAULT_BAR = ['move', 'fog', 'draw', 'text', 'measure', 'wall', 'pin', 'dice', 'loot', 'assets', 'palette'];
+export const DEFAULT_BAR = ['move', 'fog', 'draw', 'measure', 'wall', 'pin', 'dice', 'loot', 'assets', 'palette'];
 /** Longer than any of the editor's springs. */
 export const SETTLE_FRAMES = 90;
 
@@ -116,7 +116,7 @@ export function expectSameBox(actual: Rect, expected: Rect): void {
 
 /** A control's handle on the bar (the undo/redo bar's own for it), or in the tray. */
 export const handle = (id: string, where: 'bar' | 'tray'): HTMLElement => {
-  const scope = where === 'tray' ? '.atlas-toolbar-tray' : id === 'undo' ? '.atlas-undo-bar' : '.atlas-main-toolbar';
+  const scope = where === 'tray' ? '.atlas-toolbar-tray' : id === 'undo' ? '.atlas-side-bar[data-side-bar="undo"]' : '.atlas-main-toolbar';
   return query(`${scope} .atlas-toolbar-handle[data-control="${id}"]`);
 };
 
@@ -152,8 +152,6 @@ export async function mountToolbar(stored: StoredToolbarLayout = {}): Promise<To
       getNotePreviewUIManager: () => null,
       getRendererService: () => null,
     },
-    setFogBrushSize: vi.fn(),
-    clearAllFog: vi.fn(),
     openSceneBrowser: vi.fn(),
   };
   const ui = { app, view, pixiApp: null, renderer: { getTokenRenderer: () => ({ visibleTokenIds: () => [] }) } } as unknown as AtlasUIContextValue;

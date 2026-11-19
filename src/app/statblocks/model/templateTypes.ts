@@ -79,13 +79,14 @@ export const FIELD_TYPES: readonly FieldType[] = [
 /**
  * What Atlas uses a field for when its key is not the conventional one. `display-name`: the name the header shows
  * where the statblock has one ("Aranea"), while `name` stays the statblock's identity ("Aranea (Cairn)").
+ * `speed`: how far the creature moves ("30 ft., fly 60 ft."), read with `statblockSpeeds`.
  */
 export type FieldMeaning =
   | 'hit-points' | 'armor' | 'rating' | 'size' | 'creature-type' | 'senses' | 'initiative' | 'traits' | 'description'
-  | 'display-name';
+  | 'display-name' | 'speed';
 
 export const FIELD_MEANINGS: readonly FieldMeaning[] = [
-  'hit-points', 'armor', 'rating', 'size', 'creature-type', 'senses', 'initiative', 'traits', 'description', 'display-name',
+  'hit-points', 'armor', 'rating', 'size', 'creature-type', 'senses', 'initiative', 'traits', 'description', 'display-name', 'speed',
 ];
 
 /**

@@ -32,7 +32,7 @@ $link-stack-below: 720px;
   }
 
   &__footer {
-    @include atlas-sidebar-dialog-footer(end, $link-stack-below);
+    @include atlas-sidebar-dialog-footer($link-stack-below);
     // Longer translations of the actions take a second line rather than leave the column.
     flex-wrap: wrap;
   }
@@ -111,7 +111,7 @@ $link-stack-below: 720px;
     @include atlas-flex-row;
     flex-shrink: 0;
     padding: $spacing-s;
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     cursor: pointer;
     transition: background-color $transition-fast $transition-ease;
     // Rows off screen skip layout and paint, which keeps large bestiaries fast.
@@ -236,10 +236,6 @@ $link-stack-below: 720px;
   &__start {
     @include atlas-flex-row($gap: $spacing-s);
     margin-right: auto;
-  }
-
-  &__new.btn {
-    @include atlas-modal-corner-control(bottom-left);
   }
 
   &__unlink.btn {

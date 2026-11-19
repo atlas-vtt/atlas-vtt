@@ -5,6 +5,9 @@ import type { WallSegment } from '../../types/wallTypes';
 /** Screen pixels: how close to a wall's end a point lands on it. */
 const WALL_END_SNAP = 10;
 
+/** World pixels: how close to a wall's end a point lands on it at viewport `zoom`. */
+export const wallEndReach = (zoom: number): number => WALL_END_SNAP / zoom;
+
 /** World pixels: ends this close are one joint, which moves as one. */
 export const SHARED_END_TOLERANCE = 2;
 
@@ -28,7 +31,7 @@ export interface WallEndSearch {
 export function wallEndNear(point: Point, walls: Record<string, WallSegment>, zoom: number, { skip, avoid = [], also = [] }: WallEndSearch = {}): Point | null {
   const ends = wallList(walls).flatMap((wall) => (skip?.has(wall.id) ? [] : [wall.p1, wall.p2]));
   let found: Point | null = null;
-  let best = WALL_END_SNAP / zoom;
+  let best = wallEndReach(zoom);
   for (const end of [...ends, ...also]) {
     const distance = Math.hypot(point.x - end.x, point.y - end.y);
     if (distance <= best && !avoid.some((place) => sameJoint(place, end))) {
@@ -56,6 +59,41 @@ export function endsAt(point: Point, walls: Record<string, WallSegment>): WallEn
 export function chainEndingAt(point: Point, walls: Record<string, WallSegment>): string | undefined {
   const ends = endsAt(point, walls);
   return ends.length === 1 ? walls[ends[0]!.wallId]?.chainId : undefined;
+}
+
+/**
+ * The walls of `wallId`'s chain that reach it end to end, itself included: what a click on it selects.
+ * A chain id alone is not that. One carve gives every piece of a room's edge the same id, and a wall cut
+ * in two keeps its id on both pieces, so walls far apart can share one.
+ */
+export function connectedChain(wallId: string, walls: Record<string, WallSegment>): string[] {
+  const start = walls[wallId];
+  if (!start) return [];
+  if (!start.chainId) return [wallId];
+  // Ends by cell of the joint tolerance: ends that are one joint lie in the same cell or in neighbouring ones.
+  const cellOf = (value: number): number => Math.floor(value / SHARED_END_TOLERANCE);
+  const byCell = new Map<string, WallSegment[]>();
+  for (const wall of wallList(walls)) {
+    if (wall.chainId !== start.chainId) continue;
+    for (const end of [wall.p1, wall.p2]) {
+      const key = `${cellOf(end.x)},${cellOf(end.y)}`;
+      byCell.set(key, [...(byCell.get(key) ?? []), wall]);
+    }
+  }
+  const found = new Set([wallId]);
+  const open: WallSegment[] = [start];
+  for (let wall = open.pop(); wall; wall = open.pop()) {
+    for (const end of [wall.p1, wall.p2]) {
+      for (const dx of [-1, 0, 1]) for (const dy of [-1, 0, 1]) {
+        for (const other of byCell.get(`${cellOf(end.x) + dx},${cellOf(end.y) + dy}`) ?? []) {
+          if (found.has(other.id) || !(sameJoint(other.p1, end) || sameJoint(other.p2, end))) continue;
+          found.add(other.id);
+          open.push(other);
+        }
+      }
+    }
+  }
+  return [...found];
 }
 
 /** Two points are one joint. */

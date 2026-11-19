@@ -12,6 +12,12 @@ import { NO_STRETCH } from '../../../../src/app/grid/mapStretch';
 import { advanceSettled as advance } from './settled.ts';
 
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {} }));
+// Node has no tile worker: a map's pyramid is still being cut for as long as the test runs, as on a slow device.
+vi.mock('../../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas', async (original) => ({ ...(await original<typeof import('../../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas')>()), buildMapPyramid: () => new Promise(() => undefined) }));
+vi.mock('../../../../src/app/pixi/mosaicCanvas/TesseraDecoderClient', async (original) => ({
+  ...(await original<typeof import('../../../../src/app/pixi/mosaicCanvas/TesseraDecoderClient')>()),
+  TesseraDecoderClient: { forApp: () => ({ levelReady: () => new Promise(() => undefined), tesseraBlobs: () => Promise.resolve([]) }), release: () => undefined },
+}));
 vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
   GmMarks: class {
     source(): null {
@@ -20,6 +26,7 @@ vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
     showPlayers(): void {}
     showPlayerDrags(): void {}
     showPlayerCursors(): void {}
+    showPlayerStrokes(): void {}
     dispose(): void {}
   },
 }));
@@ -112,6 +119,26 @@ describe('quests at a running table', () => {
     table.online.stop();
   });
 
+  it('hands a page that draws the book\'s maps from their tiles the world map as its pyramid, and any other page as one image', async () => {
+    const table = await openTable(new BookShelf(), [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
+    const worldMapOf = (player: string): { readonly id: string; readonly tiles?: true } | undefined => {
+      const sent = delivered(table.socket).filter(({ to, body }) => to === player && (body.t === 'book' || body.t === 'book-map')).at(-1);
+      const read = parseGmMessage(JSON.parse(JSON.stringify(sent?.body)));
+      return read?.t === 'book' ? read.book.worldMap?.image : read?.t === 'book-map' ? read.worldMap?.image : undefined;
+    };
+    expect(worldMapOf(ANA)?.tiles).toBeUndefined();
+    const image = worldMapOf(BEN)?.id;
+
+    table.from(ANA, { t: 'book-parts', tiles: true });
+    await advance(100);
+    expect(worldMapOf(ANA)).toMatchObject({ tiles: true });
+    expect(worldMapOf(ANA)?.id).not.toBe(image);
+    expect(ofType(delivered(table.socket), 'book-map').filter(({ to }) => to === ANA)).toHaveLength(1);
+    expect(worldMapOf(BEN)).toMatchObject({ id: image });
+    expect(worldMapOf(BEN)?.tiles).toBeUndefined();
+    table.online.stop();
+  });
+
   it('sends a page that reads its book in parts a changed quest list or world map alone, and any other page its whole book', async () => {
     quests = [quest(1)];
     const table = await openTable(new BookShelf(), [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
@@ -151,6 +178,35 @@ describe('quests at a running table', () => {
     nameWorldMapTree({ root: 'world', levels: [{ key: 'world', title: 'World', image: WORLD_MAP, stretch: NO_STRETCH, entrances: [], quests: pins }] });
     await advance(200);
     expect(ofType(delivered(table.socket), 'book')).toHaveLength(books);
+    table.online.stop();
+  });
+
+  it('places an active quest on a map the world map leads into, where the GM\'s pin on that map stands', async () => {
+    const town = 'atlas-vtt/collections/Cairn/maps/Lowmoor.png';
+    quests = [quest(1, { state: 'active' }), quest(2), quest(3, { state: 'active' })];
+    const table = await openTable(new BookShelf(), [{ id: ANA, name: 'Ana' }]);
+    workspace.files.set(town, png(400, 200));
+    // Quest 1 has its pin in Lowmoor, quest 2 too but is only told, quest 3 has one on the world map and one in Lowmoor: the world map's places it.
+    nameWorldMapTree({
+      root: 'world',
+      levels: [
+        { key: 'world', title: 'World', image: WORLD_MAP, stretch: NO_STRETCH, entrances: [{ x: 600, y: 400, to: 'town' }], quests: [{ x: 900, y: 200, id: id(3) }] },
+        { key: 'town', title: 'Lowmoor', image: town, stretch: NO_STRETCH, entrances: [], quests: [{ x: 200, y: 50, id: id(1) }, { x: 100, y: 100, id: id(2) }, { x: 300, y: 150, id: id(3) }] },
+      ],
+    });
+    await advance(200);
+    const book = lastBook(table, ANA);
+    const townId = book?.worldMap?.maps?.[0]?.id;
+    expect(townId).toMatch(/^[0-9a-f]{24}$/);
+    expect(book?.quests.map((sent) => [sent.place, sent.nestedPlace])).toEqual([
+      [null, { map: townId, x: 0.5, y: 0.25 }],
+      [null, undefined],
+      [{ x: 0.75, y: 0.25 }, undefined],
+    ]);
+
+    writeQuests([quest(1, { state: 'done' }), quest(2, { state: 'active' }), quest(3, { state: 'active' })]);
+    await advance(200);
+    expect(lastBook(table, ANA)?.quests.map((sent) => sent.nestedPlace)).toEqual([undefined, { map: townId, x: 0.25, y: 0.5 }, undefined]);
     table.online.stop();
   });
 

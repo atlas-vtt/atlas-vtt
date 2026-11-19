@@ -5,7 +5,6 @@ import { SegmentedControl, type SegmentedOption } from '../../packages/component
 import { SettingsService } from '../../services/SettingsService';
 import type { DMScreenPage } from '../../types/viewUIState';
 import { isShortcutScopeActive } from '../../utils/activeLeafGuard';
-import { useExperimentalFeature } from '../hooks/useExperimentalFeature';
 import { useAtlasUI } from '../root/AtlasUIContext';
 import { useAtlasStore } from '../ViewStoreContext';
 import { DMNotePane } from './dm-screen/DMNotePane';
@@ -15,6 +14,7 @@ import { SoundPane } from './dm-screen/sound/SoundPane';
 import { useDMScreenStatblocks } from './dm-screen/useDMScreenStatblocks';
 import { useFightStatblocks } from './dm-screen/useFightStatblocks';
 import { useNoteFocus } from './dm-screen/useNoteFocus';
+import { handledByAnotherControl } from '../../keyboard/tooltipEscape';
 import { sideOf, usePageTurn } from './dm-screen/usePageTurn';
 
 interface DMScreenProps {
@@ -55,11 +55,9 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
   const mapPath = useAtlasStore((state) => state.mapPath);
   const mapLoaded = useAtlasStore((state) => state.mapLoaded);
   const isMapLoading = useAtlasStore((state) => state.isMapLoading);
-  const storedPage = useAtlasStore((state) => state.dmScreenPage);
+  const page = useAtlasStore((state) => state.dmScreenPage);
   const setPage = useAtlasStore((state) => state.setDMScreenPage);
   const { app, view } = useAtlasUI();
-  const soundOn = useExperimentalFeature('sound', SettingsService.forApp(app));
-  const page: DMScreenPage = soundOn ? storedPage : 'statblocks';
   const { statblocks, loading } = useDMScreenStatblocks(isOpen, app, { viewId: view?.viewId, mapPath, mapLoaded, isMapLoading, tokens });
   const { shown, scopeSwitch } = useFightStatblocks(statblocks, tokens);
   const [contentReady, setContentReady] = useState(false);
@@ -107,10 +105,18 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
     const handleKeyDown = (e: KeyboardEvent): void => {
       // A focused note keeps its keys (they stop at the note's own section).
       if (isNoteFocused) return;
-      if (e.defaultPrevented || !isShortcutScopeActive(screenRef.current, view?.viewId)) return;
+      if (!isShortcutScopeActive(screenRef.current, view?.viewId)) return;
       if (document.querySelector('.atlas-onboarding-overlay, .atlas-hotkey-help, .modal-container')) return;
       const target = e.target as Element | null;
       if (target?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+      // Escape a tooltip closed still closes the screen; one a menu or select inside it used does not.
+      if (e.key === 'Escape') {
+        if (handledByAnotherControl(e)) return;
+        e.preventDefault();
+        handleClose();
+        return;
+      }
+      if (e.defaultPrevented) return;
       if (matchesMapHotkey(e, 'dashboard', SettingsService.forApp(app))) {
         e.preventDefault();
         handleClose();
@@ -124,7 +130,7 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
   // On the Sound page they always do, since nothing there takes the arrows for focus (owner, 2026-11-03);
   // on the statblocks page a control in focus keeps them (tab strips, selects), and a note's editor always.
   useEffect(() => {
-    if (!isOpen || !soundOn) return undefined;
+    if (!isOpen) return undefined;
     const handleArrow = (e: KeyboardEvent): void => {
       const direction = arrowDirection(e.key);
       if ((direction !== 'left' && direction !== 'right') || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
@@ -141,7 +147,7 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
     };
     window.addEventListener('keydown', handleArrow, true);
     return () => window.removeEventListener('keydown', handleArrow, true);
-  }, [isOpen, soundOn, page, setPage, isNoteFocused, view]);
+  }, [isOpen, page, setPage, isNoteFocused, view]);
 
   if (!isOpen) return null;
 
@@ -149,21 +155,19 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
     <div className="atlas-dm-screen-wrapper" ref={screenRef} tabIndex={-1}>
       <div className={`atlas-dm-screen-backdrop ${closing ? 'is-closing' : ''}`} onClick={handleClose} />
 
-      <div className={`atlas-dm-screen ${soundOn ? 'atlas-dm-screen--pages' : ''} ${closing ? 'is-closing' : contentReady ? 'is-visible' : ''}`}>
-        {soundOn && (
-          <div className="atlas-dm-screen-header">
-            <kbd className="atlas-dm-screen-key" aria-hidden="true">←</kbd>
-            <SegmentedControl className="atlas-dm-screen-pages" value={page} options={PAGES} onChange={setPage} ariaLabel={t('audio.screen.pages')} roving />
-            <kbd className="atlas-dm-screen-key" aria-hidden="true">→</kbd>
-          </div>
-        )}
+      <div className={`atlas-dm-screen atlas-dm-screen--pages ${closing ? 'is-closing' : contentReady ? 'is-visible' : ''}`}>
+        <div className="atlas-dm-screen-header">
+          <kbd className="atlas-dm-screen-key" aria-hidden="true">←</kbd>
+          <SegmentedControl className="atlas-dm-screen-pages" value={page} options={PAGES} onChange={setPage} ariaLabel={t('audio.screen.pages')} roving />
+          <kbd className="atlas-dm-screen-key" aria-hidden="true">→</kbd>
+        </div>
         <div className="atlas-dm-screen-stage" data-turning={leaving !== null || undefined}>
           {/* Stays mounted while hidden: the note's editor needs its own cleanup, and statblocks are not loaded twice. */}
           <div className="atlas-dm-screen-content atlas-dm-page" {...pageProps('statblocks')}>
             <DMStatblocksPane app={app} shown={shown} scopeSwitch={scopeSwitch} loading={loading} onClose={handleClose} />
             <DMNotePane app={app} shown={statblocksOpened} onNoteFocus={() => setIsNoteFocused(true)} />
           </div>
-          {soundOn && soundOpened && (
+          {soundOpened && (
             <div className="atlas-dm-sound-page atlas-dm-page" {...pageProps('sound')}>
               <SoundPane active={page === 'sound'} />
             </div>

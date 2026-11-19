@@ -20,7 +20,7 @@ $hero-cta-height: 40px;
   width: 100%;
   min-height: clamp(240px, 26cqi, 320px);
   overflow: hidden;
-  border-radius: $radius-2xl;
+  border-radius: $surface-radius;
 
   @container atlas-dashboard (max-width: #{$hero-narrow}) {
     flex-direction: column;
@@ -116,8 +116,7 @@ $hero-cta-height: 40px;
   height: $hero-cta-height;
   margin-top: $spacing-m;
   padding: 0 $spacing-l;
-  border-radius: $radius-l;
-  @include atlas-corner-shape;
+  border-radius: $radius-m;
   font-size: $font-ui-small;
   font-weight: $font-weight-semibold;
   color: var(--text-on-accent);

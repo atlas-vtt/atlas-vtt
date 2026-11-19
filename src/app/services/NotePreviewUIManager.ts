@@ -166,12 +166,8 @@ export class NotePreviewUIManager {
     // Reset modifier key state when window gains focus to avoid stuck state
     window.addEventListener('focus', this.boundHandleFocus);
 
-    // The pin's note opens in the workspace, which replaces its preview
-    this.eventBus.on('close-active-preview', (notePath: string) => {
-      const preview = this.findPreview(notePath);
-      if (preview?.originatingPin) this.store.getState().removePinnedNotePreview(preview.originatingPin.id);
-      preview?.hide(true);
-    });
+    // The pin's note opens in the workspace, which replaces its hover preview; a pinned one stays as it was left
+    this.eventBus.on('close-active-preview', (notePath: string) => this.hidePreview(notePath));
 
     // The map's state is about to be saved and replaced: record how each pinned note was left first
     this.eventBus.on('map-unloading', () => {

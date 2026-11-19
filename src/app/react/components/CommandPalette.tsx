@@ -16,7 +16,7 @@ import {
   FlaskConical,
   Grid,
   Settings,
-  Snowflake,
+  Pause,
   MonitorUp,
   MonitorPlay,
   AppWindow,
@@ -26,7 +26,7 @@ import {
   UserCheck,
   History,
   Layers,
-  Replace, Gauge, SunMoon } from 'lucide-react';
+  Replace, Gauge, SunMoon, LayoutDashboard, BoomBox } from 'lucide-react';
 import { runInBackground } from '../../utils/backgroundTask';
 import { viewedLevelId } from '../../levels/sceneLevels';
 import { collectionIdOfPath } from '../../services/assetPaths';
@@ -49,7 +49,8 @@ import { SettingsPanelHeader } from './command-palette/SettingsPanelHeader';
 import { GridSettingsPanel } from './command-palette/GridSettingsPanel';
 import { TokenSettingsPanel } from './command-palette/TokenSettingsPanel';
 import { WidgetSettingsPanel } from './command-palette/WidgetSettingsPanel';
-import { LocalPlayerViewSettingsPanel } from './command-palette/LocalPlayerViewSettingsPanel';
+import { PlayerViewSettingsPanel } from './command-palette/PlayerViewSettingsPanel';
+import { searchOptions } from './command-palette/paletteSearch';
 import { DiceSettingsPanel } from './command-palette/DiceSettingsPanel';
 import { ExperimentalFeaturesPanel } from './command-palette/ExperimentalFeaturesPanel';
 import { GraphicsPanel } from './command-palette/GraphicsPanel';
@@ -60,6 +61,11 @@ import { replaceMapImage } from './levels/replaceMapImage';
 import { pickMapImage } from './levels/MapImagePickerModal';
 import { placePalette, type PalettePosition } from './command-palette/palettePlacement';
 import { customizeToolbarCommand } from './command-palette/customizeToolbarCommand';
+import { hotkeyHelpCommand } from './command-palette/hotkeyHelpCommand';
+import { mapTourCommand } from './command-palette/mapTourCommand';
+import { SettingsService } from '../../services/SettingsService';
+import { docsCommand } from './command-palette/docsCommand';
+import { armariumCommand } from './command-palette/armariumCommand';
 import { isSettingsPanelId, type CommandOption, type SettingsPanelId } from './command-palette/types';
 import { t } from '../../i18n';
 import { showNotice } from '../../ui/notice';
@@ -94,7 +100,7 @@ const SETTINGS_PANEL_META: Record<SettingsPanelId, { title: string; icon: React.
   'grid-settings': { title: t('palette.panel.grid'), icon: <Grid /> },
   'token-settings': { title: t('palette.panel.tokens'), icon: <Users /> },
   'widget-settings': { title: t('palette.panel.widgets'), icon: <Palette /> },
-  'local-player-view-settings': { title: t('palette.panel.localPlayerView'), icon: <MonitorUp /> },
+  'local-player-view-settings': { title: t('palette.panel.playerView'), icon: <MonitorUp /> },
   'dice-settings': { title: t('diceSettings.title'), icon: <Dices /> },
   'experimental-features': { title: 'Experimental Features', icon: <FlaskConical /> },
   'graphics-settings': { title: t('graphics.title'), icon: <Gauge /> },
@@ -121,6 +127,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   const setInitiativeTrackerOpen = useAtlasStore(state => state.setInitiativeTrackerOpen);
   const setDiceLogOpen = useAtlasStore(state => state.setDiceLogOpen);
   const setLootRollerOpen = useAtlasStore(state => state.setLootRollerOpen);
+  const setHotkeyHelpOpen = useAtlasStore(state => state.setHotkeyHelpOpen);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [focusedOptionIndex, setFocusedOptionIndex] = useState<number>(-1);
@@ -258,11 +265,36 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       id: "open-scene-browser",
       icon: <FolderOpen />,
       label: t('palette.openSceneBrowser'),
-      keywords: ["asset manager", "maps", "toggle"],
+      keywords: ["scenes", "scene browser", "maps", "tokens", "library", "toggle"],
       section: "tools",
       action: () => {
         onClose();
         view?.openSceneBrowser();
+      },
+    },
+    {
+      id: "open-dm-screen",
+      icon: <LayoutDashboard />,
+      label: t('palette.openDMScreen'),
+      keywords: ["dm", "screen"],
+      shortcut: hotkeyLabel('dashboard'),
+      section: "tools",
+      action: () => {
+        onClose();
+        store.getState().setDMScreenPage("statblocks");
+        store.getState().setDMScreenOpen(true);
+      },
+    },
+    {
+      id: "open-sound-page",
+      icon: <BoomBox />,
+      label: t('palette.openSoundPage'),
+      keywords: ["sound", "audio", "music", "ambience"],
+      section: "tools",
+      action: () => {
+        onClose();
+        store.getState().setDMScreenPage("sound");
+        store.getState().setDMScreenOpen(true);
       },
     },
     {
@@ -322,6 +354,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         onClose();
       },
     },
+    hotkeyHelpCommand(() => setHotkeyHelpOpen(true), onClose, hotkeyLabel('help')),
+    mapTourCommand(() => SettingsService.forApp(app)?.replayTutorial('map'), onClose),
     // Mode commands
     {
       id: "toggle-player-mode",
@@ -337,7 +371,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     },
     {
       id: "freeze-player-camera",
-      icon: <Snowflake />,
+      icon: <Pause />,
       label: t('palette.freezePlayerCamera'),
       section: "mode",
       action: () => {
@@ -426,8 +460,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "local-player-view-settings",
       icon: <UserCheck />,
-      label: t('palette.localPlayerViewSettings'),
+      label: t('palette.playerViewSettings'),
       section: "settings",
+      keywords: ["players", "player window", "online", "cursors", "draw", "4k", "tv", "nameplates", "resources", "widgets", "initiative", "dice"],
       hasSubmenu: true,
       submenu: [
         {
@@ -493,7 +528,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "experimental-features",
       icon: <FlaskConical />,
-      label: "Experimental features",
+      label: t('settings.experimental.heading'),
       keywords: ["beta", "feature", "dynamic lighting", "walls", "lights", "vision"],
       section: "settings",
       hasSubmenu: true,
@@ -508,13 +543,15 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       ],
     },
     ...(onCustomizeToolbar ? [customizeToolbarCommand(() => onCustomizeToolbar(choosingByKeyboard.current), onClose)] : []),
+    docsCommand(() => store.getState().setDocsOpen(true), onClose),
+    armariumCommand(() => store.getState().openArmarium(), onClose),
   ];
 
   // Derive rows from current state so open-menu toggles stay in sync.
   const showingSubmenu = !!activeSubmenu && submenuOptions.length > 0;
-  const filteredOptions = (showingSubmenu ? submenuOptions : commandOptions).filter((option) =>
-    [option.label, ...(option.keywords ?? [])].some(text => text.toLowerCase().includes(searchQuery.toLowerCase())) &&
-    (showingSubmenu || activeTab === "all" || option.section === activeTab)
+  const filteredOptions = searchOptions(
+    (showingSubmenu ? submenuOptions : commandOptions).filter((option) => showingSubmenu || activeTab === "all" || option.section === activeTab),
+    searchQuery,
   );
 
   // Tab order for forward and backward keyboard cycling
@@ -719,6 +756,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         case "Enter":
           if (focusedOptionIndex >= 0 && focusedOptionIndex < filteredOptions.length) {
             const option = filteredOptions[focusedOptionIndex]!;
+            // A dialog the action opens takes focus before the key's default runs,
+            // which would then press the dialog's first button (its Close).
+            e.preventDefault();
             if (option.hasSubmenu) {
               enterSubmenu(option);
             } else if (option.action) {
@@ -845,7 +885,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   ].map((section) => ({
     ...section,
     options: filteredOptions.filter((option) => option.section === section.id),
-  }));
+  }))
+    // In the order the results hold them: the section of the best match first
+    .sort((a, b) => filteredOptions.indexOf(a.options[0]!) - filteredOptions.indexOf(b.options[0]!));
 
   // Render command item wrapper that handles submenu clicks
   const renderCommandItem = (option: CommandOption): React.ReactElement => {
@@ -905,7 +947,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
           />
         );
       case 'local-player-view-settings':
-        return <LocalPlayerViewSettingsPanel />;
+        return <PlayerViewSettingsPanel />;
       case 'dice-settings':
         return <DiceSettingsPanel />;
       case 'experimental-features':

@@ -39,7 +39,7 @@
   justify-content: space-between;
   gap: $spacing-m;
   border: $border-width-s solid color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: var(--background-primary);
   color: var(--text-normal);
   cursor: pointer;
@@ -99,10 +99,11 @@
   z-index: $z-atlas-dropdown;
   display: flex;
   flex-direction: column;
-  gap: $spacing-s;
-  padding: $spacing-s;
+  // Its search and its rows stand $surface-inset inside the border, concentric with its corners.
+  gap: $surface-inset;
+  padding: $surface-inset;
   border: $border-width-m solid color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
-  border-radius: $radius-xl;
+  border-radius: $surface-radius;
   background: var(--background-primary);
   box-shadow: $shadow-elevated;
 }
@@ -112,7 +113,7 @@
   align-items: center;
   gap: $spacing-s;
   padding: $spacing-s $spacing-m;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: var(--background-secondary);
   color: var(--text-muted);
 }
@@ -141,7 +142,7 @@
 .atlas-character-select__empty {
   margin: 0;
   padding: $spacing-m;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   text-align: center;
   color: var(--text-muted);
   font-size: 0.82rem;
@@ -156,7 +157,7 @@
   gap: $spacing-xs;
   padding: $spacing-s $spacing-m;
   border: $border-width-s solid transparent;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: transparent;
   color: var(--text-normal);
   cursor: pointer;
@@ -192,7 +193,7 @@
   justify-content: center;
   gap: $spacing-xs;
   border: $border-width-s solid transparent;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: var(--background-modifier-hover);
   color: var(--text-muted);
   cursor: pointer;
@@ -206,7 +207,7 @@
 
 .atlas-character-select__preview {
   padding: $spacing-m;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   border: $border-width-s solid color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
   background: color-mix(in srgb, var(--background-secondary) 84%, var(--interactive-accent) 16%);
 
@@ -225,7 +226,7 @@
 
 .atlas-character-select__status {
   padding: $spacing-s $spacing-m;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   border: $border-width-s solid color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent);
   background: var(--background-secondary);
   color: var(--text-normal);
