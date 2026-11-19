@@ -1,9 +1,10 @@
 import { produce } from 'immer';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createInitiativeActions } from '../../src/app/stores/initiativeSlice';
 import { listedSides } from '../../src/app/initiative/sides';
 import { roundTurns } from '../../src/app/initiative/sideOrder';
-import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/app/types/initiativeTypes';
+import { sceneFromFile, sceneToFile } from '../../src/app/resources/resourceFileFormat';
+import { createDefaultInitiativeState, type InitiativeEntry, type InitiativeState } from '../../src/app/types/initiativeTypes';
 import type { InitiativeRules, SideRef } from '../../src/app/types/initiativeRulesTypes';
 import type { TokenEntity } from '../../src/app/types';
 
@@ -17,10 +18,10 @@ function d6(faces: number[]): () => number {
 }
 
 /** A tracker with a combatant on each of `sides` (by id). */
-function setup(sides: string[], random: () => number) {
+function setup(sides: string[], random: () => number, restored?: InitiativeState) {
   const tokens = Object.fromEntries(sides.map((side) => [side, { id: side, kind: 'token', x: 0, y: 0, imagePath: '', side } as TokenEntity]));
   const entries = sides.map((side, order): InitiativeEntry => ({ id: side, tokenId: side, name: side, initiative: 0, initiativeModifier: 0, imagePath: '', isNPC: true, order, isActive: false }));
-  let state = { initiative: { ...createDefaultInitiativeState(), entries }, initiativeTrackerOpen: true, objects: { tokens } };
+  let state = { initiative: restored ?? { ...createDefaultInitiativeState(), entries }, initiativeTrackerOpen: true, objects: { tokens } };
   const actions = createInitiativeActions((recipe) => { state = produce(state, recipe); }, 'sides', () => state, random);
   return { actions, get: () => state };
 }
@@ -29,6 +30,48 @@ type State = ReturnType<ReturnType<typeof setup>['get']>;
 /** The round and the sides that have the turn. */
 const turn = (state: State, rules: InitiativeRules): [number, string[]] =>
   [state.initiative.round, listedSides(state.initiative, rules).filter((side) => side.active).map((side) => side.id)];
+
+describe('sides that roll once at combat start', () => {
+  const rules: InitiativeRules = { ...SIDES, sideRoll: '1d6', sideRollOnce: true };
+
+  it.each([
+    { faces: [5, 2], first: 'players', second: 'opponents' },
+    { faces: [2, 5], first: 'opponents', second: 'players' },
+    { faces: [4, 4], first: 'players', second: 'opponents' },
+  ])('keeps $first first when the opening rolls are $faces', ({ faces, first, second }) => {
+    const random = vi.fn(d6([...faces]));
+    const { actions, get } = setup(['players', 'opponents'], random);
+    actions.startCombat(rules);
+    expect(turn(get(), rules)).toEqual([1, [first]]);
+    expect(listedSides(get().initiative, rules).map((side) => side.roll)).toEqual([...faces].sort((a, b) => b - a));
+    actions.nextTurn();
+    expect(turn(get(), rules)).toEqual([1, [second]]);
+    actions.nextTurn();
+    expect(turn(get(), rules)).toEqual([2, [first]]);
+    actions.previousTurn();
+    expect(turn(get(), rules)).toEqual([1, [second]]);
+    expect(random).toHaveBeenCalledTimes(2);
+  });
+
+  it('breaks a tie by the configured order and resumes that order from a saved scene', () => {
+    const sideIds = ['opponents', 'side-allies', 'players'];
+    const configured = { ...rules, firstSide: 'opponents' as const, sides: [{ id: 'opponents' }, ALLIES, { id: 'players' }] };
+    const { actions, get } = setup(sideIds, d6([4, 4, 4]));
+    actions.startCombat(configured);
+    expect(turn(get(), configured)).toEqual([1, ['opponents']]);
+    actions.nextTurn();
+    expect(turn(get(), configured)).toEqual([1, ['side-allies']]);
+
+    const saved = JSON.parse(JSON.stringify(sceneToFile(get()))) as State;
+    const random = vi.fn(d6([]));
+    const resumed = setup(sideIds, random, sceneFromFile(saved).initiative);
+    resumed.actions.nextTurn();
+    expect(turn(resumed.get(), configured)).toEqual([1, ['players']]);
+    resumed.actions.nextTurn();
+    expect(turn(resumed.get(), configured)).toEqual([2, ['opponents']]);
+    expect(random).not.toHaveBeenCalled();
+  });
+});
 
 describe('sides that roll for their order every round', () => {
   it('roll as the fight starts, the highest first, and show their rolls', () => {
