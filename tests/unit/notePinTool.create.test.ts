@@ -83,6 +83,30 @@ describe('NotePinTool creating a note', () => {
     expect(document.getElementById('atlas-note-pin-dropdown')).toBeNull();
   });
 
+  it('adds the return link when opening a pin recreates its deleted note', async () => {
+    const { app } = vaultWithNotesFolder({ [MAP_PATH]: '{}' });
+    const store = createViewAtlasStore(app, 'pin-recreated-note-view');
+    store.getState().setPersistenceEnabled(false);
+    store.getState().setMapPath(MAP_PATH);
+    Object.assign(app.workspace, {
+      openLinkText: vi.fn(async () => {
+        await app.vault.create('Notes/Deleted.md', 'Recreated note');
+      }),
+    });
+    const tool = new NotePinTool(new EventEmitter(), app, store);
+    cleanup = () => tool.destroy();
+
+    const id = store.getState().addNotePin(40, 60, 'Notes/Deleted.md');
+    const pin = store.getState().objects.pins[id]!;
+    tool.openLinkedNote(pin);
+    await settle();
+
+    const note = app.vault.getFileByPath('Notes/Deleted.md')!;
+    expect(await app.vault.read(note)).toBe(
+      `Recreated note\\n\\n[[${MAP_PATH}#pin=${encodeURIComponent(id)}|View on map]]\\n`,
+    );
+  });
+
   it('places no pin for a name that cannot be a note', async () => {
     const { store, input } = await openDropdown();
     typeAndPress(input, 'A/B', 'Enter');
