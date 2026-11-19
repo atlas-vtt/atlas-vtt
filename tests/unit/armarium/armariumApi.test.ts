@@ -50,8 +50,15 @@ describe('the Armarium API from Atlas', () => {
     expect(await client.submission('sub-1')).toEqual({
       id: 'sub-1', state: 'checked', bytes: 1200, parts: [], progress: null,
       findings: [{ code: 'note-unsafe-link', level: 'warning', path: 'Lore/Cave.md', detail: '12: http:' }],
-      manifest: { uid: 'col', version: 1, name: 'Caves', notes: null }, listing: null,
+      manifest: { uid: 'col', version: 1, name: 'Caves', notes: null, listingFormat: 'collection' }, listing: null,
     });
+  });
+
+  it('reads what a bundle is from its manifest, and a listing\'s format from My uploads', async () => {
+    const item = api(() => ({ status: 200, json: { ...SUBMISSION, manifest: { uid: 'tpl', version: 2, name: 'Goblin', notes: 'Saves', listingFormat: 'statblock-template' } } }));
+    expect((await item.client.submission('sub-1')).manifest).toEqual({ uid: 'tpl', version: 2, name: 'Goblin', notes: 'Saves', listingFormat: 'statblock-template' });
+    const mine = api(() => ({ status: 200, json: { listings: [{ uid: 'dice', slug: 'bone-dice', format: 'dice-set', fields: null, versions: [{ version: 3 }] }] } }));
+    expect(await mine.client.ownListing('dice')).toEqual({ uid: 'dice', slug: 'bone-dice', format: 'dice-set', fields: null, newestVersion: 3 });
   });
 
   it('turns a refusal into its code, with its date and the fields a bad-fields answer names', async () => {
@@ -92,7 +99,7 @@ describe('the Armarium API from Atlas', () => {
       },
     }));
     expect(await client.ownListing('col')).toEqual({
-      uid: 'col', slug: 'blue-mouth-caves', newestVersion: 4,
+      uid: 'col', slug: 'blue-mouth-caves', format: 'collection', newestVersion: 4,
       fields: { kind: 'adventure', system: 'cairn', description: 'Six caves under the Blue Mouth.', tags: ['underground'], licence: 'cc-by-4.0', credits: '' },
     });
     expect(await client.ownListing('missing')).toBeNull();

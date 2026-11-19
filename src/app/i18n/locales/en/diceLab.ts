@@ -14,6 +14,7 @@ export const diceLab = {
   'diceLab.newSetName': 'New dice set',
   'diceLab.noDiceYet': 'No dice yet',
   'diceLab.duplicateSet': 'Duplicate {name}',
+  'diceLab.moreFor': 'More for {name}',
   'diceLab.duplicateToEdit': 'Duplicate to edit',
   'diceLab.copyName': '{name} copy',
   'diceLab.deleteSet': 'Delete {name}',

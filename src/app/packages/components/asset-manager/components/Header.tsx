@@ -19,6 +19,7 @@ import { CollectionGlyph } from './collectionGlyph';
 import { TokenIcon } from '../../../../react/components/TokenIcon';
 import { tabHasFolders } from '../utils/tabKinds';
 import { t } from '../../../../i18n';
+import type { ShareWhat } from '../../../../armarium/armariumMessages';
 
 export interface HeaderProps {
   app: App;
@@ -50,7 +51,7 @@ export interface HeaderProps {
    * Set while the Armarium is shown: no tab is current, Back leads to the library, and the store's actions stand
    * where the search and Create do, which belong to the library.
    */
-  armarium?: { onBack: () => void; onReload: () => void; page: string; onShare: () => void } | undefined;
+  armarium?: { onBack: () => void; onReload: () => void; page: string; onShare: (what: ShareWhat) => void } | undefined;
   /** Shows the Armarium: the last place of the tab strip, current while `armarium` is set. */
   onShowArmarium?: (() => void) | undefined;
 }

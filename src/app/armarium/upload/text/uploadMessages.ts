@@ -12,6 +12,7 @@ import {
   type UploadRefusal,
 } from '../uploadContract';
 import { tagLabel } from './listingVocabulary';
+import { ITEM_NOTES_LIMITS } from '../shareState';
 import { formatByteSize } from '../../../utils/fileSize';
 
 /**
@@ -81,7 +82,7 @@ const REFUSALS: Readonly<Record<UploadRefusal, Sentence>> = {
 export const UPLOAD_ERROR_CODES = [
   'not-found', 'bad-request', 'bad-origin', 'too-many-requests', 'bad-part-size', 'bad-part-hash', 'upload-incomplete',
   'upload-expired', 'upload-corrupt', 'upload-gone', 'wrong-state', 'bad-fields', 'declaration-missing', 'listing-not-yours',
-  'listing-removed', 'version-not-higher', 'check-files-invalid', 'blocked-file', 'changed-meanwhile', 'internal', 'network',
+  'listing-removed', 'version-not-higher', 'format-changed', 'check-files-invalid', 'blocked-file', 'changed-meanwhile', 'internal', 'network',
   'empty-file', 'stopped', STALE_DEVICE_SESSION,
 ] as const;
 type ErrorCode = (typeof UPLOAD_ERROR_CODES)[number];
@@ -103,6 +104,7 @@ const ERRORS: Readonly<Record<ErrorCode, () => string>> = {
   'listing-not-yours': () => t('armariumUpload.error.listing-not-yours'),
   'listing-removed': () => t('armariumUpload.error.listing-removed'),
   'version-not-higher': () => t('armariumUpload.error.version-not-higher'),
+  'format-changed': () => t('armariumUpload.error.format-changed'),
   'check-files-invalid': () => t('armariumUpload.error.check-files-invalid'),
   'blocked-file': () => t('armariumUpload.error.blocked-file'),
   'changed-meanwhile': () => t('armariumUpload.error.changed-meanwhile'),
@@ -194,5 +196,6 @@ export function fieldProblemMessage(field: string, problem: string): string {
   if (field === 'tags') return tagProblem(problem);
   if (problem === 'missing') return missingField(field);
   if (field === 'description' || field === 'credits') return textProblem(problem, LISTING_TEXT[field]) ?? t('armariumListing.problem.notRight');
+  if (field === 'notes') return textProblem(problem, ITEM_NOTES_LIMITS) ?? t('armariumListing.problem.notRight');
   return t('armariumListing.problem.notRight');
 }

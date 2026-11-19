@@ -6,39 +6,55 @@ import { TransferDialog } from '../../packages/components/asset-manager/collecti
 import { useObjectUrl } from '../../packages/components/asset-manager/collection-transfer/useObjectUrl';
 import { t } from '../../i18n';
 import { useAtlasUI } from '../../react/root/AtlasUIContext';
-import type { ShareSession } from '../upload/ShareSession';
-import type { ShareSnapshot } from '../upload/shareState';
+import type { AnyShareSession } from '../upload/anyShareSession';
+import type { CollectionShareSnapshot, ShareSnapshot } from '../upload/shareState';
 import { ShareRail } from './ShareRail';
 import { shareStepParts } from './shareStepParts';
+import { itemKindLabel } from './shareWording';
 import { useAccountState } from './useShare';
 
 interface ShareDialogProps {
-  session: ShareSession;
+  session: AnyShareSession;
   snapshot: ShareSnapshot;
   account: AtlasAccount;
   onClose: () => void;
 }
 
+/** What the hero shows of what is shared: its name, the version it becomes, its cover and what kind of thing it is. */
+interface Shown {
+  name: string;
+  version: string;
+  imageUrl: string | undefined;
+  details: string[];
+}
+
+/** A collection as its listing will show it: the cover chosen for the export, the release's or fork's name and version. */
+function useCollectionShown(snapshot: ShareSnapshot): Shown | null {
+  const collection: CollectionShareSnapshot | null = snapshot.subject === 'collection' ? snapshot : null;
+  const cover = collection?.choice?.cover ?? { kind: 'current' as const };
+  const uploadUrl = useObjectUrl(cover.kind === 'upload' ? cover.image : undefined);
+  if (collection === null) return null;
+  const { preview, choice, bundle } = collection;
+  const name = bundle?.name ?? (choice?.kind === 'fork' ? choice.name.trim() : preview.collection.name);
+  return { name, version: `v${bundle?.version ?? chosenVersion(collection)}`, imageUrl: coverUrl(cover, preview, uploadUrl), details: [] };
+}
+
 /**
- * The share's own dialog, in the export dialog's frame: the collection as the Armarium will show it, the steps beside
+ * The share's own dialog, in the export dialog's frame: what is shared as the Armarium will show it, the steps beside
  * it, and the open step with its actions. Focus moves to the step's heading as each step opens.
  */
 export function ShareDialog({ session, snapshot, account, onClose }: ShareDialogProps): React.JSX.Element {
   const { app } = useAtlasUI();
   const accountState = useAccountState(account);
-  const { preview, choice, bundle } = snapshot;
-  const cover = choice?.cover ?? { kind: 'current' as const };
-  const uploadUrl = useObjectUrl(cover.kind === 'upload' ? cover.image : undefined);
-  const imageUrl = coverUrl(cover, preview, uploadUrl);
-  const name = bundle?.name ?? (choice?.kind === 'fork' ? choice.name.trim() : preview.collection.name);
-  const version = bundle?.version ?? chosenVersion(snapshot);
+  const collection = useCollectionShown(snapshot);
+  const shown: Shown = collection ?? itemShown(snapshot);
   const parts = shareStepParts({ app, session, snapshot, account, accountState, onClose });
   return (
     <TransferDialog
-      label={t('armariumShare.dialogLabel', { name })}
+      label={t('armariumShare.dialogLabel', { name: shown.name })}
       onClose={onClose}
-      ambientUrl={imageUrl}
-      hero={<CollectionHero eyebrow={t('exportDialog.shareInArmarium')} imageUrl={imageUrl} name={name} version={`v${version}`} details={[]} />}
+      ambientUrl={shown.imageUrl}
+      hero={<CollectionHero eyebrow={t('exportDialog.shareInArmarium')} imageUrl={shown.imageUrl} name={shown.name} version={shown.version} details={shown.details} />}
       aside={<ShareRail snapshot={snapshot} accountState={accountState} />}
       summary={parts.summary}
       actions={parts.actions}
@@ -51,8 +67,18 @@ export function ShareDialog({ session, snapshot, account, onClose }: ShareDialog
   );
 }
 
+/** A single file: no cover (the Armarium draws its kind's), its kind beside the version once that is known. */
+function itemShown(snapshot: ShareSnapshot): Shown {
+  if (snapshot.subject !== 'item') return { name: '', version: '', imageUrl: undefined, details: [] };
+  const kind = itemKindLabel(snapshot.item.kind);
+  const version = snapshot.bundle?.version ?? snapshot.version;
+  return version === null
+    ? { name: snapshot.item.name, version: kind, imageUrl: undefined, details: [] }
+    : { name: snapshot.item.name, version: `v${version}`, imageUrl: undefined, details: [kind] };
+}
+
 /** The version the share will publish before the bundle is packed: the release's, a fork's first, else the suggested one. */
-function chosenVersion({ choice, preview }: ShareSnapshot): number {
+function chosenVersion({ choice, preview }: CollectionShareSnapshot): number {
   if (choice?.kind === 'release') return choice.version;
   if (choice?.kind === 'fork') return 1;
   return preview.suggestedVersion;

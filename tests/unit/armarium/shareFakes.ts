@@ -1,5 +1,5 @@
 import { ArmariumError, type ArmariumApi } from '../../../src/app/armarium/upload/armariumApi';
-import type { ListingFields, OwnListing, SubmissionView, UploadEligibility, UploadTicket } from '../../../src/app/armarium/upload/uploadContract';
+import type { ListingFields, ManifestSummary, OwnListing, SubmissionView, UploadEligibility, UploadTicket } from '../../../src/app/armarium/upload/uploadContract';
 
 export type FakeApi = Pick<ArmariumApi, 'eligibility' | 'ownListing' | 'ticket' | 'putPart' | 'complete' | 'submission' | 'discard' | 'putListing' | 'publish'>;
 
@@ -22,6 +22,10 @@ export class FakeArmarium implements FakeApi {
   checkedAs: SubmissionView['state'] = 'checked';
   findings: SubmissionView['findings'] = [];
   storedListing: ListingFields | null = null;
+  /** What the checks read from the bundle's manifest. */
+  manifest: ManifestSummary = { uid: 'col-uid', version: 3, name: 'Blue Mouth Caves', notes: null, listingFormat: 'collection' };
+  /** The listing fields of every `putListing`, in order. */
+  readonly sentListings: ListingFields[] = [];
   state: SubmissionView['state'] = 'uploading';
   publishedAs: SubmissionView['state'] = 'published';
   private tickets = 0;
@@ -47,7 +51,7 @@ export class FakeArmarium implements FakeApi {
       parts: [...this.parts].map(([n, part]) => ({ n, sha256: part.sha256 })),
       progress: this.state === 'checking' ? { stage: 'images', done: 3, total: 10 } : null,
       findings: this.state === 'checking' ? [] : this.findings,
-      manifest: this.state === 'uploading' ? null : { uid: 'col-uid', version: 3, name: 'Blue Mouth Caves', notes: null },
+      manifest: this.state === 'uploading' ? null : this.manifest,
       listing: this.storedListing,
     };
   }
@@ -98,6 +102,7 @@ export class FakeArmarium implements FakeApi {
   putListing(_id: string, fields: ListingFields): Promise<SubmissionView> {
     return this.answer('putListing', () => {
       this.storedListing = fields;
+      this.sentListings.push(fields);
       return this.view();
     });
   }

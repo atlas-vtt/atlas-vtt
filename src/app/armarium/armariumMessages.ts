@@ -6,20 +6,28 @@ import { readStoreTags, type StoreTags } from './storeTags';
 /** Where an install stands, as the Armarium page is told. */
 export type InstallState = 'downloading' | 'reviewing' | 'installed' | 'cancelled' | 'failed';
 
+/** What the page's Share asks Atlas to share: a collection, or a single Atlas file of one of these kinds. */
+export const SHARE_WHATS = ['collection', 'statblock-template', 'system-preset', 'dice-set'] as const;
+export type ShareWhat = (typeof SHARE_WHATS)[number];
+
 /** What the Armarium page may ask of Atlas. */
 export type FrameMessage =
   | { type: 'atlas-armarium:hello' }
   | ({ type: 'atlas-armarium:install' } & ArmariumRequest)
-  /** Share a collection of the vault in the Armarium: the page's Share a collection, in Atlas. */
-  | { type: 'atlas-armarium:share' }
+  /**
+   * Share something of the vault in the Armarium: the page's Share, in Atlas. Without `what` (pages from before items)
+   * it is a collection.
+   */
+  | { type: 'atlas-armarium:share'; what?: ShareWhat }
   /** The store's tags and what its filter holds, sent whenever either changes, once Atlas named `tags`. */
   | ({ type: 'atlas-armarium:tags' } & StoreTags);
 
 /**
  * What Atlas does for the page beyond installing, named in its `installed` message so the page offers only that.
+ * `share`: Atlas shares a collection; `share-items`: also a statblock template, game system or dice set (`what`).
  * `tags`: the asset manager's sidebar shows the store's tags and picks them (`toggle-tag`, `clear-tags`).
  */
-export type ArmariumFeature = 'share' | 'tags';
+export type ArmariumFeature = 'share' | 'share-items' | 'tags';
 
 /** What Atlas tells the Armarium page. */
 export type AtlasMessage =
@@ -36,7 +44,12 @@ export type AtlasMessage =
 export function readFrameMessage(data: unknown): FrameMessage | null {
   if (!isRecord(data) || data.format !== ARMARIUM_FORMAT) return null;
   if (data.type === 'atlas-armarium:hello') return { type: 'atlas-armarium:hello' };
-  if (data.type === 'atlas-armarium:share') return { type: 'atlas-armarium:share' };
+  if (data.type === 'atlas-armarium:share') {
+    if (data.what === undefined) return { type: 'atlas-armarium:share' };
+    // A kind of thing a later page shares and this Atlas does not know is not shared as something else.
+    const what = SHARE_WHATS.find((known) => known === data.what);
+    return what === undefined ? null : { type: 'atlas-armarium:share', what };
+  }
   if (data.type === 'atlas-armarium:tags') {
     const tags = readStoreTags(data);
     return tags ? { type: 'atlas-armarium:tags', ...tags } : null;

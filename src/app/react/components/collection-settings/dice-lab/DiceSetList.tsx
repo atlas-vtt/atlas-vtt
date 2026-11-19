@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Copy, Lock, Plus, Trash2 } from 'lucide-react';
 import { cn } from '../../../../../utils/cn';
 import { setRollText } from '../../../../gameSystems/diceSets';
@@ -7,6 +7,9 @@ import { LabelTooltip } from '../../../../packages/components/primitives/tooltip
 import type { DiceSet } from '../../../../types/diceSetTypes';
 import { scrollWithin } from '../../../../utils/scrollWithin';
 import { t } from '../../../../i18n';
+import { ActionsMenuButton } from '../../../../packages/components/shared/ActionsMenuButton';
+import { AtlasUIContext } from '../../../root/AtlasUIContext';
+import { itemShareEntries } from '../../../../armarium/share/openItemShare';
 
 interface DiceSetListProps {
   sets: readonly DiceSet[];
@@ -55,13 +58,16 @@ function moveFocus(event: React.KeyboardEvent<HTMLElement>): void {
 
 /**
  * The vault's dice sets in the lab's sidebar: built-in sets first, each with
- * a lock, then the vault's own. A row's actions show while it is hovered,
- * focused or open; deleting asks a second press.
+ * a lock, then the vault's own, whose menu shares them in the Armarium or
+ * exports them as a file. A row's actions show while it is hovered, focused
+ * or open; deleting asks a second press.
  */
 export function DiceSetList(props: DiceSetListProps): React.ReactElement {
   const { sets, selectedId, newSetName, canEdit, onSelect, onCreate, onDuplicate, onDelete } = props;
   const [confirming, setConfirming] = useState<string | null>(null);
   const list = useRef<HTMLUListElement>(null);
+  // Outside Atlas' UI (no app to share with) a set offers no Share or Export.
+  const app = useContext(AtlasUIContext)?.app ?? null;
 
   // The open set stays in view: a new set, a copy just made, the set the lab opened on
   const openKey = newSetName !== null ? 'new' : selectedId;
@@ -95,6 +101,7 @@ export function DiceSetList(props: DiceSetListProps): React.ReactElement {
         {sets.map((set) => {
           const open = set.id === selectedId;
           const asking = confirming === set.id;
+          const shared = app !== null && !set.builtIn;
           return (
             <li key={set.id} className={cn('atlas-dice-lab__set-row', open && 'atlas-selected', asking && 'atlas-asking')}
               onMouseLeave={() => { if (asking) setConfirming(null); }}>
@@ -109,14 +116,19 @@ export function DiceSetList(props: DiceSetListProps): React.ReactElement {
                   </>
                 )}
               </button>
-              {canEdit && (
+              {(canEdit || shared) && (
                 <span className="atlas-dice-lab__set-actions">
-                  <LabelTooltip label={t('diceLab.duplicateSet', { name: set.name })}>
-                    <Button variant="ghost" size="icon" className="atlas-dice-lab__icon-btn" onClick={() => onDuplicate(set)}>
-                      <Copy />
-                    </Button>
-                  </LabelTooltip>
-                  {!set.builtIn && (
+                  {canEdit && (
+                    <LabelTooltip label={t('diceLab.duplicateSet', { name: set.name })}>
+                      <Button variant="ghost" size="icon" className="atlas-dice-lab__icon-btn" onClick={() => onDuplicate(set)}>
+                        <Copy />
+                      </Button>
+                    </LabelTooltip>
+                  )}
+                  {shared && (
+                    <ActionsMenuButton label={t('diceLab.moreFor', { name: set.name })} entries={itemShareEntries(app, { kind: 'dice-set', id: set.id, name: set.name })} className="atlas-dice-lab__icon-btn" />
+                  )}
+                  {canEdit && !set.builtIn && (
                     <LabelTooltip label={asking ? t('diceLab.confirmDelete', { name: set.name }) : t('diceLab.deleteSet', { name: set.name })}>
                       <Button variant={asking ? 'destructive' : 'ghost'} size="icon" className="atlas-dice-lab__icon-btn"
                         onClick={() => remove(set)} onBlur={() => { if (asking) setConfirming(null); }}>

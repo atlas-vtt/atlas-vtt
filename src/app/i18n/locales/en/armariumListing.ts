@@ -7,11 +7,13 @@ export const armariumListing = {
   'armariumListing.kind.tokens': 'Tokens',
   'armariumListing.kind.templates': 'Templates',
   'armariumListing.kind.game-system': 'Game system',
+  'armariumListing.kind.dice': 'Dice sets',
   'armariumListing.kindLine.adventure': 'Scenes, tokens and notes that play as one adventure.',
   'armariumListing.kindLine.maps': 'Maps and scenes for any adventure.',
   'armariumListing.kindLine.tokens': 'Tokens, with or without statblocks.',
   'armariumListing.kindLine.templates': 'Templates for statblocks or notes.',
   'armariumListing.kindLine.game-system': 'The rules of a game as Atlas uses them, such as conditions, dice and resources.',
+  'armariumListing.kindLine.dice': 'Dice for the dice tray, with their colours and rules.',
 
   'armariumListing.system.none': 'None named',
   'armariumListing.system.any': 'Any system',

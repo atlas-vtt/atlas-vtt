@@ -1,8 +1,9 @@
 import type { BundleProgress } from '../../services/collectionBundle/bundleProgress';
 import type { ExportChoice, ExportPreview } from '../../services/collectionBundle/collectionExport';
+import { MAX_ITEM_NOTES, type ItemRef } from '../../services/itemBundle/itemBundleFormat';
 import type { UploadProgress } from './BundleUpload';
 import type { ListingDraft } from './listingDraft';
-import type { OwnListing, SubmissionView } from './uploadContract';
+import type { ListingKind, OwnListing, SubmissionView, TextLimits } from './uploadContract';
 
 /** The steps of a share as the dialog's rail lists them. */
 export const SHARE_STEPS = ['account', 'bundle', 'upload', 'checks', 'listing', 'publish'] as const;
@@ -30,16 +31,13 @@ export interface PackedBundle {
   readonly version: number;
 }
 
-/** Everything the share dialog shows; `ShareSession` changes it, the dialog only reads it and sends actions. */
-export interface ShareSnapshot {
+/** What every share shows, whatever it shares; a session changes it, the dialog only reads it and sends actions. */
+export interface ShareCommon {
   readonly step: ShareStep;
   /** Null while nobody is signed in. */
   readonly gate: Gate | null;
-  /** The collection's export, with the version floor raised above what the Armarium has published of it. */
-  readonly preview: ExportPreview;
-  /** The account's listing of this collection, when it has one: an update's form starts from it. */
+  /** The account's listing of what is shared, when it has one: an update's form starts from it. */
   readonly ownListing: OwnListing | null;
-  readonly choice: ExportChoice | null;
   readonly packing: BundleProgress | null;
   readonly bundle: PackedBundle | null;
   readonly upload: UploadProgress | null;
@@ -55,6 +53,40 @@ export interface ShareSnapshot {
   readonly refusal: Refusal | null;
   /** Published (or held for the team): where its page will be, and whether the vault's release record failed. */
   readonly published: { readonly slug: string | null; readonly held: boolean; readonly recordFailed: string | null } | null;
+}
+
+/** A share of a collection: its export, and the release or fork the GM chose in the export dialog. */
+export interface CollectionShareSnapshot extends ShareCommon {
+  readonly subject: 'collection';
+  /** The collection's export, with the version floor raised above what the Armarium has published of it. */
+  readonly preview: ExportPreview;
+  readonly choice: ExportChoice | null;
+}
+
+/** A single Atlas file of the vault as a share names it: its kind, the id inside its file, and its name. */
+export type SharedItem = ItemRef & { readonly name: string };
+
+/** A share of one Atlas file of the vault: a statblock template, a game system or a dice set. */
+export interface ItemShareSnapshot extends ShareCommon {
+  readonly subject: 'item';
+  readonly item: SharedItem;
+  /** The listing's kind, which the item decides. */
+  readonly listingKind: ListingKind;
+  /** The version this share publishes, once the account's listings were read: the newest published one + 1, else 1. */
+  readonly version: number | null;
+  /** What changed in this version; asked for from the second version on. */
+  readonly notes: string;
+}
+
+/** Everything the share dialog shows. */
+export type ShareSnapshot = CollectionShareSnapshot | ItemShareSnapshot;
+
+/** How long an item's release notes may be, as its manifest carries them. */
+export const ITEM_NOTES_LIMITS: TextLimits = { min: 0, max: MAX_ITEM_NOTES, maxLines: 40, maxLinks: 5 };
+
+/** The version an item's share publishes: one above the listing's newest, or the first of a new listing. */
+export function nextItemVersion(listing: OwnListing | null): number {
+  return (listing?.newestVersion ?? 0) + 1;
 }
 
 /** States of a submission whose check is still on its way: the session asks again. */

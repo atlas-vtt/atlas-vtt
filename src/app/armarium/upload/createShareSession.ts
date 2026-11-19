@@ -3,11 +3,16 @@ import { AtlasAccount } from '../../account/AtlasAccount';
 import { obsidianHttp } from '../../account/obsidianHttp';
 import type { AssetService } from '../../services/AssetService';
 import { exportCollectionBundle, type ExportChoice, type ExportPreview } from '../../services/collectionBundle/collectionExport';
+import { exportItemBundle } from '../../services/itemBundle/itemExport';
+import { itemListingUid } from '../../services/itemBundle/itemListingUid';
+import { TemplateLibrary } from '../../statblocks/library/TemplateLibrary';
 import { sha256 } from '../../utils/hashing';
 import { t } from '../../i18n';
 import { ArmariumApi } from './armariumApi';
+import { ItemShareSession } from './ItemShareSession';
 import { systemOfPreset } from './listingDraft';
 import { ShareSession } from './ShareSession';
+import type { SharedItem } from './shareState';
 
 /** Why a wait ended early: the signal's own reason when it is an error. */
 const abortReason = (signal: AbortSignal): Error => (signal.reason instanceof Error ? signal.reason : new Error('Aborted'));
@@ -45,6 +50,30 @@ export function createShareSession(app: App, assets: AssetService, preview: Expo
     nameTaken: (name) => assets.isCollectionNameTaken(name, preview.collection.id),
     nameTakenText: (name) => t('bundle.nameTaken', { name: name.trim() }),
     committed,
+    sha256: (bytes) => sha256(bytes),
+    sleep: abortableSleep,
+  });
+}
+
+/**
+ * A share of one vault item with this app's account and the Armarium's API; null when the account is not set up. A
+ * template's own description starts a new listing's.
+ */
+export function createItemShareSession(app: App, item: SharedItem): ItemShareSession | null {
+  const account = AtlasAccount.forApp(app);
+  if (account === null) return null;
+  const api = new ArmariumApi({ http: obsidianHttp, token: () => account.token(), signedOut: () => account.signedOutByServer() });
+  const description = item.kind === 'statblock-template' ? TemplateLibrary.forApp(app).get(item.id)?.template.description ?? null : null;
+  return new ItemShareSession({
+    account,
+    api,
+    item,
+    description,
+    listingUid: (accountId) => itemListingUid(accountId, item.kind, item.id),
+    pack: async (uid, version, notes) => {
+      const exported = await exportItemBundle(app, item, { uid, version, notes });
+      return { fileName: exported.fileName, bytes: exported.bytes, name: exported.manifest.item.name };
+    },
     sha256: (bytes) => sha256(bytes),
     sleep: abortableSleep,
   });

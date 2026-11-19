@@ -5,7 +5,7 @@ import { Skeleton, SkeletonGroup } from '../packages/components/primitives/Skele
 import { SiteFrame } from '../react/components/siteFrame/SiteFrame';
 import { t } from '../i18n';
 import { ARMARIUM_PAGE_URL } from './armariumUrls';
-import { acceptFrameMessage } from './armariumMessages';
+import { acceptFrameMessage, type ShareWhat } from './armariumMessages';
 import { ArmariumInstaller } from './ArmariumInstaller';
 import { useArmariumBridge } from './useArmariumBridge';
 import type { StoreTagFilter } from './storeTagFilter';
@@ -40,7 +40,7 @@ function saysHello(event: MessageEvent, frameWindow: Window | null): boolean {
 /**
  * The Armarium, atlas-vtt.dev's library of collections, filling the asset manager's content area. Its Install buttons
  * ask Atlas to install a free collection (`useArmariumBridge`), whose import review opens over the same window, and its
- * Share a collection opens `onShare`, Atlas' own share. Each mount loads the page anew: the store's front, or the page
+ * Share opens `onShare`, Atlas' own share of what the page names. Each mount loads the page anew: the store's front, or the page
  * `url` names (a listing a share just published). Not `shown`, it stays mounted and hidden, its page as it was left,
  * and still hears where installs stand. The page leaves as soon as the window starts to close: it runs in a process of
  * its own, and the window's closing motion over it dropped most of the frames. With `tagFilter`, the page's tags reach
@@ -50,7 +50,7 @@ export function ArmariumPane({ app, url = ARMARIUM_PAGE_URL, shown = true, onSha
   app: App;
   url?: string;
   shown?: boolean;
-  onShare?: () => void;
+  onShare?: (what: ShareWhat) => void;
   tagFilter?: StoreTagFilter;
 }): React.ReactElement {
   const paneRef = useRef<HTMLDivElement>(null);

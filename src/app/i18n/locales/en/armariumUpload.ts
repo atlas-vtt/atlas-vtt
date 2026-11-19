@@ -37,6 +37,7 @@ export const armariumUpload = {
   'armariumUpload.error.declaration-missing': 'Confirm that you may share this collection.',
   'armariumUpload.error.listing-not-yours': 'This collection belongs to a listing of another account. Only its creator can add versions.',
   'armariumUpload.error.listing-removed': 'The Armarium team removed the listing of this collection, so it takes no new version. We sent the reasons to your email. To object, reply to that mail.',
+  'armariumUpload.error.format-changed': 'This listing holds another kind of thing than what you share. A new version must be the same kind as its earlier versions.',
   'armariumUpload.error.version-not-higher': 'The listing already has this version or a newer one. Start over and choose a higher version number.',
   'armariumUpload.error.check-files-invalid': 'The checked files changed on our side. Start over to upload the collection again.',
   'armariumUpload.error.blocked-file': 'A file in this bundle was removed from the Armarium before and cannot be shared again.',

@@ -1,7 +1,6 @@
 import React, { useId, useRef } from 'react';
-import { Dices, ScrollText, Shapes, type LucideIcon } from 'lucide-react';
 import type { ItemReview } from '../../../../services/itemBundle/itemImport';
-import type { ItemKind } from '../../../../services/itemBundle/itemBundleFormat';
+import { ITEM_KIND_ICON } from './itemKindIcon';
 import { Button } from '../../primitives/button';
 import { CloseButton } from '../../primitives/CloseButton';
 import { useDialogEscape } from '../../primitives/useDialogEscape';
@@ -13,12 +12,6 @@ interface ItemReviewDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
 }
-
-const KIND_ICON: Readonly<Record<ItemKind, LucideIcon>> = {
-  'statblock-template': ScrollText,
-  'system-preset': Shapes,
-  'dice-set': Dices,
-};
 
 /** The four things a confirm can do: add, update, add a copy beside the GM's own, or nothing new. */
 type Action = 'new' | 'update' | 'copy' | 'same';
@@ -62,7 +55,7 @@ export function ItemReviewDialog({ review, onConfirm, onCancel }: ItemReviewDial
   useDialogEscape(dialogRef, onCancel);
   useFocusTrap(dialogRef);
   const action = actionOf(review);
-  const Icon = KIND_ICON[review.kind];
+  const Icon = ITEM_KIND_ICON[review.kind];
   const meta = [t('itemReview.version', { version: review.version }), review.creator ? t('common.by', { author: review.creator }) : ''].filter(Boolean).join(' · ');
 
   return (

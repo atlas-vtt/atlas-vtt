@@ -1,6 +1,6 @@
 import { getLocale, t } from '../../../i18n';
 import { formatByteSize } from '../../../utils/fileSize';
-import { CHECKER_CODES, RULE_CODES, UPLOAD_LIMITS, type CheckFinding, type FindingCode } from '../uploadContract';
+import { CHECKER_CODES, LISTING_FORMATS, RULE_CODES, UPLOAD_LIMITS, type CheckFinding, type FindingCode } from '../uploadContract';
 
 /**
  * One sentence for every finding of a check, ported from the Armarium's share page. Atlas shows the file, the line
@@ -40,6 +40,12 @@ function baseExpression(detail: string): string | null {
   return null;
 }
 
+/** The listing's own format, which the detail of `format-changed` names. */
+function formatChanged(detail: string): string | null {
+  const format = LISTING_FORMATS.find((known) => known === detail.trim());
+  return format === undefined ? null : t(`armariumFindings.detail.formatChanged.${format}`);
+}
+
 const VARIANTS: Readonly<Partial<Record<FindingCode, Variant>>> = {
   'file-type': (extension) => (extension === '' ? null : t('armariumFindings.detail.fileTypeNamed', { extension })),
   'note-raw-html': (detail) => {
@@ -65,6 +71,7 @@ const VARIANTS: Readonly<Partial<Record<FindingCode, Variant>>> = {
   'base-shape': baseShape,
   'base-expression': baseExpression,
   'image-type-converted': converted,
+  'format-changed': formatChanged,
   'rebuild-too-large': (limit) => (limit === 'contents' ? t('armariumFindings.detail.rebuildTooManyPaths') : null),
 };
 

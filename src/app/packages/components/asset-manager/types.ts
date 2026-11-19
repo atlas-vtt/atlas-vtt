@@ -147,6 +147,8 @@ export interface AssetManagerProps {
   pendingImport?: ExternalImport;
   /** Raised by every request to show the Armarium; above 0, the window opens on it and shows it again when raised. */
   armariumRequest?: number;
+  /** The Armarium page a request opens (a listing a share just published); the store's front without one. */
+  armariumPage?: string;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────

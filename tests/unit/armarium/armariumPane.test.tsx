@@ -132,13 +132,18 @@ describe('the Armarium pane', () => {
     const { frame } = renderPane(onShare);
     const post = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => undefined);
     fromPage({ type: 'atlas-armarium:hello', format: 1 }, frame.contentWindow);
-    await vi.waitFor(() => expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: 'atlas-armarium:installed', features: ['share'] }), 'https://atlas-vtt.dev'));
+    await vi.waitFor(() => expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: 'atlas-armarium:installed', features: ['share', 'share-items'] }), 'https://atlas-vtt.dev'));
 
     fromPage({ type: 'atlas-armarium:share', format: 1 }, window);
     fromPage({ type: 'atlas-armarium:share', format: 1 }, frame.contentWindow, 'https://evil.example');
     expect(onShare).not.toHaveBeenCalled();
     fromPage({ type: 'atlas-armarium:share', format: 1 }, frame.contentWindow);
     expect(onShare).toHaveBeenCalledTimes(1);
+    expect(onShare).toHaveBeenLastCalledWith('collection');
+    fromPage({ type: 'atlas-armarium:share', format: 1, what: 'dice-set' }, frame.contentWindow);
+    expect(onShare).toHaveBeenLastCalledWith('dice-set');
+    fromPage({ type: 'atlas-armarium:share', format: 1, what: 'adventure-module' }, frame.contentWindow);
+    expect(onShare).toHaveBeenCalledTimes(2);
     expect(installer.install).not.toHaveBeenCalled();
   });
 

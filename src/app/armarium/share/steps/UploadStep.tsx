@@ -8,6 +8,7 @@ import type { PartStatus } from '../../upload/BundleUpload';
 import type { ShareSnapshot } from '../../upload/shareState';
 import { uploadMessageFor } from '../../upload/text/uploadMessages';
 import { ShareNotice } from './ShareNotice';
+import { shareSaid } from '../shareWording';
 
 function PartMark({ status }: { status: PartStatus }): React.JSX.Element {
   if (status === 'sent') return <Check className="atlas-share-part__icon" aria-hidden="true" />;
@@ -23,11 +24,12 @@ const PART_STATUS: Readonly<Record<PartStatus, string>> = {
   failed: t('armariumShare.part.failed'),
 };
 
-/** The upload step: packing the collection in memory, then its parts on their way, each with where it stands. */
+/** The upload step: packing what is shared in memory, then its parts on their way, each with where it stands. */
 export function UploadStep({ snapshot }: { snapshot: ShareSnapshot }): React.JSX.Element {
-  const { packing, upload, refusal } = snapshot;
+  const { packing, upload, refusal, subject } = snapshot;
+  const packingText = shareSaid(subject, 'armariumShare.packing');
   const failure = refusal === null ? null : refusal.code === 'export-failed'
-    ? t('armariumShare.exportFailed', { error: refusal.detail ?? '' })
+    ? shareSaid(subject, 'armariumShare.exportFailed', { error: refusal.detail ?? '' })
     : uploadMessageFor(refusal.code, refusal.until);
   const sentText = upload === null ? '' : t('armariumShare.sentOf', { sent: formatFileSize(upload.sentBytes), total: formatFileSize(upload.totalBytes) });
   return (
@@ -36,9 +38,9 @@ export function UploadStep({ snapshot }: { snapshot: ShareSnapshot }): React.JSX
         <div className="atlas-share-progress" role="status">
           <span className="atlas-share-progress__line">
             <LoadingSpinner size={16} />
-            <span>{packing.message || t('armariumShare.packing')}</span>
+            <span>{packing.message || packingText}</span>
           </span>
-          <ProgressBar value={Math.round(packing.fraction * 100)} max={100} label={t('armariumShare.packing')} />
+          <ProgressBar value={Math.round(packing.fraction * 100)} max={100} label={packingText} />
         </div>
       )}
       {upload !== null && (

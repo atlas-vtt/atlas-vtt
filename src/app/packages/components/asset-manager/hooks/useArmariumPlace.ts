@@ -39,9 +39,10 @@ export interface ArmariumPlace {
  * Whether the asset manager shows the Armarium. Each opening starts on the library unless the Armarium was asked for
  * (`request` above 0, raised by every such request); a request while open shows it too. While open, the window is
  * an `ArmariumHost`, so an install started from its store is reviewed over it; showing the store makes it the newest.
- * `handedImport` is a bundle its owner handed over before the window was a host (`GlobalAssetManagerService`).
+ * `handedImport` is a bundle its owner handed over before the window was a host (`GlobalAssetManagerService`), and
+ * `requestedPage` the page a request asked for.
  */
-export function useArmariumPlace(app: App, isOpen: boolean, request: number, handedImport?: ExternalImport): ArmariumPlace {
+export function useArmariumPlace(app: App, isOpen: boolean, request: number, handedImport?: ExternalImport, requestedPage?: string): ArmariumPlace {
   const [shown, setShown] = useState(false);
   const [framed, setFramed] = useState(false);
   const [libraryLeaving, setLibraryLeaving] = useState(false);
@@ -59,7 +60,11 @@ export function useArmariumPlace(app: App, isOpen: boolean, request: number, han
     setFramed(request > 0);
     setLibraryLeaving(false);
     setLeaving(false);
-  }, [isOpen, request]);
+    if (request > 0 && requestedPage !== undefined && isArmariumPageUrl(requestedPage)) {
+      setPage(requestedPage);
+      setFrameKey((key) => key + 1);
+    }
+  }, [isOpen, request, requestedPage]);
 
   useEffect(() => {
     if (!libraryLeaving) return undefined;

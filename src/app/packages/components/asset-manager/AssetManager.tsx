@@ -39,9 +39,11 @@ import { showDungeonGenerator } from '../dungeon-generator/openDungeonGenerator'
 import { runInBackground } from '../../../utils/backgroundTask';
 import { useArmariumPlace, useStoreOnTop } from './hooks/useArmariumPlace';
 import { ArmariumPane } from '../../../armarium/ArmariumPane';
+import type { ShareWhat } from '../../../armarium/armariumMessages';
+import { pickItemToShare } from '../../../armarium/share/openItemShare';
 import { useStoreTagFilter, useStoreTags } from '../../../armarium/storeTagFilter';
 
-export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, onExitComplete, pendingImport, armariumRequest = 0 }: AssetManagerProps): React.JSX.Element {
+export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, onExitComplete, pendingImport, armariumRequest = 0, armariumPage }: AssetManagerProps): React.JSX.Element {
   const isOpen = useOpenedAfterPress(isOpenProp);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('tokens');
@@ -57,7 +59,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
   const data = useAssetData(activeTab, selectedCollection, isOpen);
   useFollowSelectedCollection(data.collections, selectedCollection, setSelectedCollection);
   const settings = useAtlasSettings(SettingsService.forApp(data.app));
-  const armarium = useArmariumPlace(data.app, isOpen, armariumRequest, pendingImport);
+  const armarium = useArmariumPlace(data.app, isOpen, armariumRequest, pendingImport, armariumPage);
   const storeTagFilter = useStoreTagFilter();
   const storeTagsState = useStoreTags(storeTagFilter);
 
@@ -120,6 +122,11 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
     draggedItems, setDraggedItems, setDropTarget, data.setAssets, reveal.inFolder, sel,
   );
   useExternalImport(armarium.pendingImport, isOpen, crud);
+  // The Armarium's Share: the selected collection, or one of the vault's own items of the kind it names.
+  const shareInArmarium = (what: ShareWhat): void => {
+    if (what === 'collection') void crud.handleShareCollection();
+    else pickItemToShare(data.app, what);
+  };
   // The library's selection stays behind: Escape over the store closes the window, never clears what is not shown.
   useEffect(() => {
     if (armarium.shown) sel.handleClearSelection();
@@ -211,7 +218,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
             onToggleSidebar={sidebar.toggle}
             sel={sel}
             onShowArmarium={() => armarium.show()}
-            armarium={armarium.shown ? { onBack: armarium.leave, onReload: armarium.reload, page: armarium.page, onShare: () => { void crud.handleShareCollection(); } } : undefined}
+            armarium={armarium.shown ? { onBack: armarium.leave, onReload: armarium.reload, page: armarium.page, onShare: shareInArmarium } : undefined}
           />
           <div
             className="atlas-asset-manager-body"
@@ -283,7 +290,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
               </div>
             )}
             {armarium.framed && (
-              <ArmariumPane key={armarium.frameKey} app={data.app} url={armarium.page} shown={storeOnTop} onShare={() => { void crud.handleShareCollection(); }} tagFilter={storeTagFilter} />
+              <ArmariumPane key={armarium.frameKey} app={data.app} url={armarium.page} shown={storeOnTop} onShare={shareInArmarium} tagFilter={storeTagFilter} />
             )}
           </div>
         </div>

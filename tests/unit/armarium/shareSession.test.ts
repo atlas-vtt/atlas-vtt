@@ -92,7 +92,7 @@ describe('sharing a collection in the Armarium', () => {
     expect(session.snapshot().refusal).toEqual({ code: 'declaration-missing', until: null });
     expect(commit).not.toHaveBeenCalled();
 
-    api.own = { uid: 'col-uid', slug: 'blue-mouth-caves', fields: null, newestVersion: 3 };
+    api.own = { uid: 'col-uid', slug: 'blue-mouth-caves', format: 'collection', fields: null, newestVersion: 3 };
     session.setDeclared(true);
     await session.publish();
     expect(api.storedListing).toMatchObject({ kind: 'adventure', system: 'cairn', licence: 'cc-by-sa-4.0' });
@@ -126,7 +126,7 @@ describe('sharing a collection in the Armarium', () => {
 
   it('starts an update\'s form from the listing, and its version above the newest published one', async () => {
     const { session, api } = setup();
-    api.own = { uid: 'col-uid', slug: 'blue-mouth-caves', newestVersion: 4, fields: { kind: 'adventure', system: 'cairn', description: LISTING.description, tags: ['underground'], licence: 'cc-by-4.0', credits: 'Art by Oozejar' } };
+    api.own = { uid: 'col-uid', slug: 'blue-mouth-caves', format: 'collection', newestVersion: 4, fields: { kind: 'adventure', system: 'cairn', description: LISTING.description, tags: ['underground'], licence: 'cc-by-4.0', credits: 'Art by Oozejar' } };
     await toListing(session);
     expect(session.snapshot().preview).toMatchObject({ minimumVersion: 5, suggestedVersion: 5 });
     expect(session.snapshot().draft).toMatchObject({ kind: 'adventure', tags: ['underground'], licence: 'cc-by-4.0', credits: 'Art by Oozejar' });

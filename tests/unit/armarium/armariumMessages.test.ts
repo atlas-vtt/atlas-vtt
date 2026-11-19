@@ -53,6 +53,15 @@ describe('messages from the Armarium page', () => {
     expect(readFrameMessage({ type: 'atlas-armarium:share', format: 2 })).toBeNull();
     expect(() => postToFrame(null, installedMessage([]))).not.toThrow();
   });
+
+  it('reads what the page asks to share: a collection without `what`, an item kind with it, nothing it does not know', () => {
+    expect(installedMessage([], ['share', 'share-items'])).toMatchObject({ features: ['share', 'share-items'] });
+    for (const what of ['collection', 'statblock-template', 'system-preset', 'dice-set'] as const) {
+      expect(readFrameMessage({ type: 'atlas-armarium:share', format: 1, what })).toEqual({ type: 'atlas-armarium:share', what });
+    }
+    expect(readFrameMessage({ type: 'atlas-armarium:share', format: 1, what: 'map' })).toBeNull();
+    expect(readFrameMessage({ type: 'atlas-armarium:share', format: 1, what: 3 })).toBeNull();
+  });
 });
 
 describe('the store\'s tags from the Armarium page', () => {

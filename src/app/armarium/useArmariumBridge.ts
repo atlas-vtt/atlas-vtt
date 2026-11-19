@@ -1,13 +1,14 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import type { ArmariumInstaller } from './ArmariumInstaller';
 import type { ArmariumRequest } from './armariumRequest';
-import { acceptFrameMessage, installedMessage, postToFrame, statusMessage, type ArmariumFeature } from './armariumMessages';
+import { acceptFrameMessage, installedMessage, postToFrame, statusMessage, type ArmariumFeature, type ShareWhat } from './armariumMessages';
 import type { StoreTagFilter } from './storeTagFilter';
 
 /**
  * Connects the Armarium page in `frameRef` with the installer: its install requests start an install, its hello is
  * answered with what the vault holds, and it hears where every install stands. With `onShare`, Atlas names `share`
- * among its features and the page's Share a collection opens Atlas' own share instead of the site's. With `tagFilter`,
+ * and `share-items` among its features and the page's Share opens Atlas' own share instead of the site's, of what the
+ * page names (`what`; a collection where it names nothing). With `tagFilter`,
  * Atlas names `tags`: the page says its tags to the filter, which the sidebar shows and whose presses reach the page.
  * Messages count
  * only from the Armarium's origin and from this frame (`acceptFrameMessage`). They are heard on the window `hostRef`
@@ -17,7 +18,7 @@ export function useArmariumBridge(
   installer: ArmariumInstaller | null,
   frameRef: RefObject<HTMLIFrameElement | null>,
   hostRef: RefObject<HTMLElement | null>,
-  onShare?: () => void,
+  onShare?: (what: ShareWhat) => void,
   tagFilter?: StoreTagFilter,
 ): void {
   const shareRef = useRef(onShare);
@@ -27,7 +28,7 @@ export function useArmariumBridge(
     const win = hostRef.current?.win;
     if (!installer || !win) return undefined;
     const frameWindow = (): Window | null => frameRef.current?.contentWindow ?? null;
-    const features: ArmariumFeature[] = [...(shares ? ['share' as const] : []), ...(tagFilter ? ['tags' as const] : [])];
+    const features: ArmariumFeature[] = [...(shares ? ['share' as const, 'share-items' as const] : []), ...(tagFilter ? ['tags' as const] : [])];
     // Read while the page loads, so its hello is answered at once: the read waits on the installable list.
     let early: Promise<ArmariumRequest[]> | null = installer.installedItems();
     const sendInstalled = (): void => {
@@ -38,7 +39,7 @@ export function useArmariumBridge(
     const onMessage = (event: MessageEvent): void => {
       const message = acceptFrameMessage(event, frameWindow());
       if (message?.type === 'atlas-armarium:hello') sendInstalled();
-      else if (message?.type === 'atlas-armarium:share') shareRef.current?.();
+      else if (message?.type === 'atlas-armarium:share') shareRef.current?.(message.what ?? 'collection');
       else if (message?.type === 'atlas-armarium:tags') tagFilter?.receive({ groups: message.groups, picked: message.picked });
       else if (message) void installer.install({ uid: message.uid, version: message.version });
     };

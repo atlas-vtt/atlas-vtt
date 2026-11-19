@@ -27,6 +27,7 @@ export class ArmariumHosts {
   }
 
   private readonly hosts: ArmariumHost[] = [];
+  private fallback: ArmariumHost | null = null;
 
   /** Adds `host` as the newest; the returned function takes it out again. */
   attach(host: ArmariumHost): () => void {
@@ -40,5 +41,18 @@ export class ArmariumHosts {
   /** The newest open asset manager, if any. */
   current(): ArmariumHost | null {
     return this.hosts.at(-1) ?? null;
+  }
+
+  /** Where the Armarium goes while no asset manager is open: one opened for it. The returned function takes it out. */
+  setFallback(host: ArmariumHost): () => void {
+    this.fallback = host;
+    return (): void => {
+      if (this.fallback === host) this.fallback = null;
+    };
+  }
+
+  /** The newest open asset manager, else the one opened for the Armarium (a share published from a settings dialog). */
+  target(): ArmariumHost | null {
+    return this.current() ?? this.fallback;
   }
 }

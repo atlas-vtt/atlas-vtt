@@ -135,7 +135,7 @@ describe('the share dialog', () => {
 
   it('opens the published listing in the Armarium of the asset manager behind', async () => {
     const api = new FakeArmarium();
-    api.own = { uid: 'col-uid', slug: 'blue-mouth-caves', fields: null, newestVersion: null };
+    api.own = { uid: 'col-uid', slug: 'blue-mouth-caves', format: 'collection', fields: null, newestVersion: null };
     const show = vi.fn();
     const detach = ArmariumHosts.forApp(app).attach({ show, review: () => undefined });
     const { session, onClose } = share(api);

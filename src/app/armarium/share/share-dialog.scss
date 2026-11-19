@@ -337,6 +337,13 @@ $mark-size: 24px;
   }
 }
 
+// A value the share decides and shows, such as a single file's listing kind: in a field's place, not editable.
+.atlas-share-fixed {
+  @include atlas-inset-surface;
+  padding: $spacing-s;
+  color: var(--text-normal);
+}
+
 .atlas-share-field {
   @include atlas-flex-col($gap: $spacing-s);
   min-width: 0;
@@ -430,4 +437,61 @@ $mark-size: 24px;
   @include atlas-flex-col($gap: $spacing-s);
   @include atlas-inset-surface;
   padding: $spacing-m;
+}
+
+// The vault's own items of a kind, to choose the one to share: rows in the item review's look (`_item-review.scss`).
+.atlas-modal.atlas-item-pick {
+  width: min(440px, 100%);
+}
+
+.atlas-item-pick {
+  &__list {
+    @include atlas-flex-col($gap: $spacing-s);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__placeholder {
+    height: 58px;
+  }
+
+  &__item {
+    @include atlas-flex-row($gap: $spacing-m);
+    @include atlas-interactive-surface;
+    width: 100%;
+    height: auto;
+    padding: $spacing-s;
+    border: $border-width-s solid var(--background-modifier-border);
+    box-shadow: none;
+    color: var(--text-normal);
+    text-align: start;
+    cursor: pointer;
+  }
+
+  &__icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: $radius-m;
+    background: var(--background-modifier-hover);
+    color: var(--text-muted);
+
+    svg {
+      width: $icon-m;
+      height: $icon-m;
+    }
+  }
+
+  &__name {
+    min-width: 0;
+    overflow: hidden;
+    font-size: $font-ui-medium;
+    font-weight: $font-weight-semibold;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }

@@ -7,6 +7,7 @@ import { CHECK_STAGES, type SubmissionView } from '../../upload/uploadContract';
 import { stageLabel, stateMessage, uploadMessageFor } from '../../upload/text/uploadMessages';
 import { FindingReport } from './FindingReport';
 import { ShareNotice } from './ShareNotice';
+import { shareSaid } from '../shareWording';
 
 /** The stages in their order, each ticked once the check is past it; the one that runs shows how far it is. */
 function Stages({ submission }: { submission: SubmissionView }): React.JSX.Element {
@@ -38,9 +39,9 @@ export function ChecksStep({ snapshot }: { snapshot: ShareSnapshot }): React.JSX
   if (submission.state === 'rejected') {
     return (
       <>
-        <ShareNotice tone="error">{t('armariumShare.rejected')}</ShareNotice>
+        <ShareNotice tone="error">{shareSaid(snapshot.subject, 'armariumShare.rejected')}</ShareNotice>
         <FindingReport findings={submission.findings} />
-        <p className="atlas-share-text atlas-share-text--muted">{t('armariumShare.fixThenShare')}</p>
+        <p className="atlas-share-text atlas-share-text--muted">{shareSaid(snapshot.subject, 'armariumShare.fixThenShare')}</p>
       </>
     );
   }
