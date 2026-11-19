@@ -52,7 +52,6 @@ $rt-row-height: $button-height-m;
 // ── A table: no fill at rest, the hover's fill on hover ────────────────────
 .atlas-rt-row {
   border-radius: $radius-m;
-  @include atlas-corner-shape;
   transition: background-color $transition-fast $transition-ease;
 
   &:hover,
@@ -137,15 +136,11 @@ $rt-row-height: $button-height-m;
 // What a table gives: a small two-way switch, as tall as a row's controls.
 .atlas-rt-row .atlas-segmented {
   flex-shrink: 0;
-  gap: 2px;
-  padding: 2px;
-  border-radius: $radius-m;
 }
 
 .atlas-rt-row .atlas-segmented__option {
-  height: calc(#{$button-height-s} - 4px);
+  height: calc(#{$button-height-s} - #{2 * $surface-inset});
   padding: 0 $spacing-s;
-  border-radius: calc(#{$radius-m} - 2px);
   font-size: $font-ui-smaller;
 }
 
@@ -156,10 +151,12 @@ $rt-row-height: $button-height-m;
   font-size: $font-ui-smaller;
 }
 
+// At the end of its row, $surface-inset inside it (a table's and a rarity's alike): concentric with the row.
 .atlas-rt-row__remove.btn--icon {
   width: $button-height-s;
   height: $button-height-s;
   flex-shrink: 0;
+  border-radius: $control-inset-radius;
   color: var(--text-faint);
   opacity: 0;
   transition: opacity $transition-fast $transition-ease;

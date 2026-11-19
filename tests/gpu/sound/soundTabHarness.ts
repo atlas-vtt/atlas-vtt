@@ -30,7 +30,6 @@ import { createViewAtlasStore, type ViewAtlasStore } from '@/app/storeFactory';
 import { createInMemoryApp, type InMemoryApp } from '../../mocks/inMemoryVault';
 import { fakeLibrary, type LibraryRig, type LibraryRigOptions } from '../../helpers/libraryRig';
 import { fillMockLibrary, MOCK_LIBRARY } from './libraryScene';
-import { withSound } from '../../mocks/experimentalFeatures';
 
 const SHARED = `
   body { margin: 0; font: var(--font-ui-small)/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--text-normal); background: var(--background-secondary);
@@ -159,7 +158,6 @@ async function soundApp(theme: string, appId: string, sounds: Record<string, Tab
   const settings = new SettingsService(app);
   // Read first: a setting changed before the data was read is lost to it.
   await settings.initialize();
-  withSound(app);
   const held = linked ? fakeLibrary(app, KEEPING_LIBRARY) : null;
   if (held) await fillMockLibrary(held.locations);
   else settings.setSoundRoots(HARNESS_ROOTS);

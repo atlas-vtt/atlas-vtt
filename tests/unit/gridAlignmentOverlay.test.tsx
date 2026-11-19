@@ -277,6 +277,24 @@ describe('GridAlignmentOverlay', () => {
     expect(store.getState().grid).toMatchObject({ type: 'hex-vertical', size: 35.37, mapStretch: { x: 1.048, y: 1 } });
   });
 
+  it('takes a measurement that starts outside the lit quarter: a map padded with black may have no cell there', async () => {
+    snapGridToMapGray.mockReturnValue(null);
+    const { canvas } = open({ ...SCENE_GRID, type: 'square' });
+    fireEvent.click(screen.getByText('Measure'));
+
+    // Off the map nothing is measured.
+    clickMap(canvas, 1500, 1500);
+    expect(screen.getByText('Click a corner of a cell.')).toBeTruthy();
+
+    // The first quarter lit is the top left; the cells of this level lie in the bottom right.
+    clickMap(canvas, 800, 800);
+    expect(screen.getByText('Now the next corner to the right.')).toBeTruthy();
+    clickMap(canvas, 850, 800);
+
+    await waitFor(() => expect(snapGridToMapGray).toHaveBeenCalledTimes(1));
+    expect(snapGridToMapGray.mock.calls[0]![1][0]).toMatchObject({ gridType: 'square', cellSize: 50 });
+  });
+
   it('keeps the grid as measured where the lines answer nothing, after all four measurements', async () => {
     snapGridToMapGray.mockReturnValue(null);
     const { gridSystem, canvas } = open({ ...SCENE_GRID, type: 'square' });

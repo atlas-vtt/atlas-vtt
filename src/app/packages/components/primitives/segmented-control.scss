@@ -1,11 +1,17 @@
 @use '../../../../../styles/tokens' as *;
 
+// The options stand $surface-inset inside the track and run concentric with its corner. A place
+// that gives the track another corner (the corner of a menu or panel it sits in) sets
+// `--atlas-segmented-radius`, never the options' radius, so they follow.
 .atlas-segmented {
+  --atlas-segmented-radius: #{$radius-m};
   display: flex;
-  gap: $spacing-xs;
-  padding: $spacing-xs;
-  background: var(--background-modifier-border);
-  border-radius: $radius-l;
+  gap: $surface-inset;
+  padding: $surface-inset;
+  // A faint tint of the surface it lies on, so the chosen option stands out by itself and the track never outweighs
+  // the actions around it (owner, 2026-11-17: the border colour's fill was the loudest thing in the dice tray).
+  background: color-mix(in oklch, var(--mono-100) 6%, transparent);
+  border-radius: var(--atlas-segmented-radius);
 }
 
 .atlas-segmented__option {
@@ -13,7 +19,6 @@
   flex: 1;
   height: auto;
   padding: $spacing-xs $spacing-s;
-  border-radius: $radius-m;
   color: var(--text-muted);
   font-size: $font-ui-small;
   font-weight: $font-weight-medium;
@@ -21,12 +26,18 @@
   &.atlas-active {
     background: var(--background-primary) !important;
     color: var(--text-normal);
-    box-shadow: $shadow-sm;
+    box-shadow: $segmented-chosen-shadow;
   }
 }
 
 // Choices of unequal length (a long first label, short others) share the row by what each needs,
 // each with the same padding on every side.
+// Concentric inside the track. Written with the track, or `.btn`'s radius, which comes later in
+// the stylesheet at the same specificity, wins (it did: options had the track's 10 px).
+.atlas-segmented .atlas-segmented__option {
+  border-radius: calc(var(--atlas-segmented-radius) - #{$surface-inset});
+}
+
 .atlas-segmented--fit .atlas-segmented__option {
   flex: 1 1 auto;
   padding: $spacing-xs;

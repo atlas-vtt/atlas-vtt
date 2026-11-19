@@ -26,7 +26,7 @@ import {
   UserCheck,
   History,
   Layers,
-  Replace, Gauge, SunMoon } from 'lucide-react';
+  Replace, Gauge, SunMoon, LayoutDashboard, BoomBox } from 'lucide-react';
 import { runInBackground } from '../../utils/backgroundTask';
 import { viewedLevelId } from '../../levels/sceneLevels';
 import { collectionIdOfPath } from '../../services/assetPaths';
@@ -61,6 +61,11 @@ import { replaceMapImage } from './levels/replaceMapImage';
 import { pickMapImage } from './levels/MapImagePickerModal';
 import { placePalette, type PalettePosition } from './command-palette/palettePlacement';
 import { customizeToolbarCommand } from './command-palette/customizeToolbarCommand';
+import { hotkeyHelpCommand } from './command-palette/hotkeyHelpCommand';
+import { mapTourCommand } from './command-palette/mapTourCommand';
+import { SettingsService } from '../../services/SettingsService';
+import { docsCommand } from './command-palette/docsCommand';
+import { armariumCommand } from './command-palette/armariumCommand';
 import { isSettingsPanelId, type CommandOption, type SettingsPanelId } from './command-palette/types';
 import { t } from '../../i18n';
 import { showNotice } from '../../ui/notice';
@@ -122,6 +127,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   const setInitiativeTrackerOpen = useAtlasStore(state => state.setInitiativeTrackerOpen);
   const setDiceLogOpen = useAtlasStore(state => state.setDiceLogOpen);
   const setLootRollerOpen = useAtlasStore(state => state.setLootRollerOpen);
+  const setHotkeyHelpOpen = useAtlasStore(state => state.setHotkeyHelpOpen);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [focusedOptionIndex, setFocusedOptionIndex] = useState<number>(-1);
@@ -259,11 +265,36 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       id: "open-scene-browser",
       icon: <FolderOpen />,
       label: t('palette.openSceneBrowser'),
-      keywords: ["asset manager", "maps", "toggle"],
+      keywords: ["scenes", "scene browser", "maps", "tokens", "library", "toggle"],
       section: "tools",
       action: () => {
         onClose();
         view?.openSceneBrowser();
+      },
+    },
+    {
+      id: "open-dm-screen",
+      icon: <LayoutDashboard />,
+      label: t('palette.openDMScreen'),
+      keywords: ["dm", "screen"],
+      shortcut: hotkeyLabel('dashboard'),
+      section: "tools",
+      action: () => {
+        onClose();
+        store.getState().setDMScreenPage("statblocks");
+        store.getState().setDMScreenOpen(true);
+      },
+    },
+    {
+      id: "open-sound-page",
+      icon: <BoomBox />,
+      label: t('palette.openSoundPage'),
+      keywords: ["sound", "audio", "music", "ambience"],
+      section: "tools",
+      action: () => {
+        onClose();
+        store.getState().setDMScreenPage("sound");
+        store.getState().setDMScreenOpen(true);
       },
     },
     {
@@ -323,6 +354,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         onClose();
       },
     },
+    hotkeyHelpCommand(() => setHotkeyHelpOpen(true), onClose, hotkeyLabel('help')),
+    mapTourCommand(() => SettingsService.forApp(app)?.replayTutorial('map'), onClose),
     // Mode commands
     {
       id: "toggle-player-mode",
@@ -495,7 +528,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "experimental-features",
       icon: <FlaskConical />,
-      label: t('palette.experimentalFeatures'),
+      label: t('settings.experimental.heading'),
       keywords: ["beta", "feature", "dynamic lighting", "walls", "lights", "vision"],
       section: "settings",
       hasSubmenu: true,
@@ -510,6 +543,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       ],
     },
     ...(onCustomizeToolbar ? [customizeToolbarCommand(() => onCustomizeToolbar(choosingByKeyboard.current), onClose)] : []),
+    docsCommand(() => store.getState().setDocsOpen(true), onClose),
+    armariumCommand(() => store.getState().openArmarium(), onClose),
   ];
 
   // Derive rows from current state so open-menu toggles stay in sync.
@@ -721,6 +756,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         case "Enter":
           if (focusedOptionIndex >= 0 && focusedOptionIndex < filteredOptions.length) {
             const option = filteredOptions[focusedOptionIndex]!;
+            // A dialog the action opens takes focus before the key's default runs,
+            // which would then press the dialog's first button (its Close).
+            e.preventDefault();
             if (option.hasSubmenu) {
               enterSubmenu(option);
             } else if (option.action) {

@@ -56,6 +56,8 @@ import type { ArtFloors } from '../../levels/levelSurfaces';
 import { t } from '../../i18n';
 import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
+import type { MapSize } from '../../online/gm/moveCheck';
+import { sessionDragWalls, type SessionDragWalls } from './sessionDragWalls';
 
 interface DragState {
   isDragging: boolean;
@@ -74,6 +76,10 @@ interface DragState {
   copyOnDrag?: boolean;
   /** The token the pointer grabbed; the drag ruler measures its path. */
   rulerTokenId?: string;
+  /** The walls the dragged tokens stop at (session view only), fixed when the drag starts. */
+  walls?: SessionDragWalls | null;
+  /** Where each dragged token stands now: under the pointer, or before the wall that stopped it. */
+  current?: Record<string, { x: number; y: number }>;
 }
 
 export class InteractionController implements ITokenInteractionController {
@@ -113,6 +119,8 @@ export class InteractionController implements ITokenInteractionController {
   private settleToken?: (tokenId: string, x: number, y: number) => void;
   /** What the view draws of the levels' maps, through which a dropped token falls; none without lighting. */
   private artFloors: (() => ArtFloors | undefined) | undefined;
+  /** The map's size in world pixels, which sets how wide walls stop a dragged token. */
+  private mapSize: () => MapSize | null = () => null;
   private updateControlsPosition?: (x: number, y: number, tokenSize: number) => void;
   private onTokensHeldChange?: (tokenIds: string[]) => void;
   private updateHandlePositions?: () => void;
@@ -357,38 +365,40 @@ export class InteractionController implements ITokenInteractionController {
       // Held are the tokens that move: the copies of an Alt-drag, before anything has moved.
       this.reportHeld(this.dragState.dragIds);
       this.startDragRuler(this.dragState.dragIds[grabbedIndex]);
+      this.dragState.walls = sessionDragWalls(this.store.getState(), this.mapSize());
+      this.dragState.current = {};
     }
     
     // If we haven't moved enough, don't update positions
     if (!this.dragState.hasMoved) return;
-    
-    for (const id of this.dragState.dragIds) {
+
+    // Positions come from the pointer, not the sprites: an Alt-drag copy may still be loading its sprite.
+    // In session view each token follows the pointer only up to the first wall in its way.
+    const { walls, current = {} } = this.dragState;
+    const state = this.store.getState();
+    const updates = this.dragState.dragIds.flatMap((id) => {
+      const initPos = this.dragState.initialPositions[id];
+      if (!initPos) return [];
+      const target = { x: initPos.x + dx, y: initPos.y + dy };
+      const at = walls ? walls.follow(state, id, current[id] ?? initPos, target) : target;
+      current[id] = at;
+      return [{ id, x: at.x, y: at.y }];
+    });
+
+    for (const { id, x, y } of updates) {
       const sprite = this.getTokenSprite?.(id);
       if (!sprite) continue;
-      
-      const initPos = this.dragState.initialPositions[id];
-      if (initPos) {
-        const newX = initPos.x + dx;
-        const newY = initPos.y + dy;
-        
-        // Update sprite position
-        sprite.position.set(newX, newY);
-        this.updateUIPosition?.(id, newX, newY);
-      }
+      sprite.position.set(x, y);
+      this.updateUIPosition?.(id, x, y);
     }
 
-    const rulerStart = this.dragState.rulerTokenId ? this.dragState.initialPositions[this.dragState.rulerTokenId] : undefined;
-    if (rulerStart) this.dragRuler?.update({ x: rulerStart.x + dx, y: rulerStart.y + dy });
+    const rulerAt = this.dragState.rulerTokenId ? current[this.dragState.rulerTokenId] : undefined;
+    if (rulerAt) this.dragRuler?.update(rulerAt);
 
     // The store follows the sprites on every move, so sight and a token's footprint in the dark
     // move with the token in the same frame (as Foundry ties a token's vision to where it is drawn);
     // a throttled store left the footprint trailing the sprite. Chromium sends one pointermove per
     // frame, so this is one write per frame.
-    // Positions come from the pointer, not the sprites: an Alt-drag copy may still be loading its sprite.
-    const updates = this.dragState.dragIds.flatMap((id) => {
-      const initPos = this.dragState.initialPositions[id];
-      return initPos ? [{ id, x: initPos.x + dx, y: initPos.y + dy }] : [];
-    });
     if (updates.length > 0) {
       // Sight waits for the drop when the scene has sight on drop on (`SightTokens`). Persistence
       // is debounced, and the open history transaction keeps these writes out of the undo stack.
@@ -429,7 +439,7 @@ export class InteractionController implements ITokenInteractionController {
       if (selectedId) {
         const sprite = this.getTokenSprite?.(selectedId);
         if (sprite) {
-          const tokenSize = sprite.getChildByLabel('tokenSprite')?.width || 70;
+          const tokenSize = sprite.tokenSize || 70;
           this.updateControlsPosition?.(sprite.position.x, sprite.position.y, tokenSize);
         }
       }
@@ -499,8 +509,10 @@ export class InteractionController implements ITokenInteractionController {
       const dy = worldPos.y - this.dragState.dragStartPointer.y;
       
       const tokenUpdates: Array<{id: string, x: number, y: number}> = [];
-      const snapToGrid = this.store.getState().grid?.snapToGrid ?? true;
-      const tokens = mapTokens(levelObjects(this.store.getState()));
+      const state = this.store.getState();
+      const snapToGrid = state.grid?.snapToGrid ?? true;
+      const tokens = mapTokens(levelObjects(state));
+      const { walls, current = {} } = this.dragState;
       
       for (const id of this.dragState.dragIds) {
         const initPos = this.dragState.initialPositions[id];
@@ -508,11 +520,15 @@ export class InteractionController implements ITokenInteractionController {
         
         const newX = initPos.x + dx;
         const newY = initPos.y + dy;
+        const size = tokens[id]?.size || 1;
         
-        // Snap to grid if enabled
-        const finalPos = snapToGrid 
-          ? this.gridSystem.snapTokenCenter(newX, newY, tokens[id]?.size || 1)
-          : { x: newX, y: newY };
+        // In session view the token comes to rest before walls and snaps only to a place it reaches
+        // (back where it was taken from when it reaches none); otherwise it snaps to the grid if enabled.
+        const finalPos = walls
+          ? walls.drop(state, { id, size, ...(current[id] ?? initPos) }, { x: newX, y: newY }) ?? initPos
+          : snapToGrid
+            ? this.gridSystem.snapTokenCenter(newX, newY, size)
+            : { x: newX, y: newY };
         
         // The token, with its resource bars and nameplate, glides from the pointer to where it snaps
         this.settleToken?.(id, finalPos.x, finalPos.y);
@@ -539,6 +555,8 @@ export class InteractionController implements ITokenInteractionController {
       if (wasDrag && !stepHeld) endHistoryTransaction(this.store);
       this.dragRuler?.end();
       delete this.dragState.rulerTokenId;
+      delete this.dragState.walls;
+      delete this.dragState.current;
 
       // Always clean up event listeners to prevent accumulation
       this.cleanupDragListeners();
@@ -804,6 +822,11 @@ export class InteractionController implements ITokenInteractionController {
   /** What the view draws of the levels' maps (`ArtFloors`): a token dropped where a level below shows falls to it. */
   setArtFloors(provider: (() => ArtFloors | undefined) | undefined): void {
     this.artFloors = provider;
+  }
+
+  /** The map's size in world pixels (`sessionDragWalls`). */
+  setMapSize(read: () => MapSize | null): void {
+    this.mapSize = read;
   }
 
   /** How a dropped token gets from where the pointer left it to its place. */

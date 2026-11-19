@@ -50,7 +50,7 @@ export function CampaignsSection({ app, service, campaigns, isLoading, worldMaps
   const shown = searching ? found : campaigns;
 
   return (
-    <section className="dashboard-section" aria-labelledby={headingId}>
+    <section className="dashboard-section dashboard-campaigns" aria-labelledby={headingId}>
       <div className="dashboard-section__heading">
         <h2 id={headingId} className="dashboard-section__title">{t('campaign.campaigns')}</h2>
         {searching && (

@@ -45,15 +45,16 @@ export function MeasureToolGroup({ activeTool, selectTool, menuOpen, toggleMenu,
         onSelect={() => selectTool(face.tool)}
         onMenuToggle={toggleMenu}
       >
+        {/* The choice stands in the menu's top corner; what it is about is said under it. */}
         <div className="atlas-dropdown-section">
           <div className="atlas-dropdown-stack">
-            <span className="atlas-dropdown-label">{t('toolbar.dragDistance')}</span>
             <SegmentedControl<DragDistance>
               value={settings?.getDragDistance() ?? DEFAULT_DRAG_DISTANCE}
               options={DRAG_DISTANCE_OPTIONS}
               ariaLabel={t('toolbar.dragDistance')}
               onChange={(choice) => settings?.setDragDistance(choice)}
             />
+            <p className="atlas-dropdown-hint" aria-hidden="true">{t('toolbar.dragDistance')}</p>
           </div>
         </div>
         {!playerView && (

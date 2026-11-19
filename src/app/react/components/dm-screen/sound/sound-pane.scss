@@ -5,9 +5,9 @@
 // The DM screen's Sound page: one surface, the library and the moods side by side above a recessed desk.
 .atlas-sound-pane {
   @include atlas-elevated-surface;
-  // The surface's stroke as a ring just outside its box, not a border inside it: the box's own corner (24) is then
-  // what the cards are concentric with, and one $spacing-s in they round at a whole 16 (not 24 − 1.5 − 8 = 14.5).
-  @include atlas-panel-radius($radius-2xl, 0px);
+  // The surface's stroke as a ring just outside its box, not a border inside it, so the parts inset in it measure
+  // from the box's own corner.
+  @include atlas-panel-radius($surface-radius, 0px);
   border: none;
   box-shadow: 0 0 0 $border-width-m color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent), $shadow-elevated;
   // How deep the desk and a fader's slot lie: darkening is all that reads as lower, on any theme.
@@ -19,8 +19,10 @@
   flex: 1;
   min-width: 0;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
+  // The library's rail runs the whole height at the left, as the asset manager's sidebar does; stage and desk beside it.
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   margin: $spacing-l var(--atlas-dm-screen-inset) var(--atlas-dm-screen-inset);
   overflow: hidden;
   font-size: $font-ui-small;
@@ -43,16 +45,63 @@
   }
 }
 
+// The rail's column: tinted, flush to the pane's left, top and bottom edges and clipped by its corners.
+.atlas-sound-lib.atlas-sound-side {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  container-type: normal;
+  flex: none;
+  // Its width from the first frame, before the library mounts its rail into it, so the moods never move after opening.
+  width: $sound-rail-width;
+  min-height: 0;
+  background: var(--background-secondary);
+
+  > .atlas-sound-lib__rail {
+    flex: 1;
+    width: auto;
+  }
+}
+
+// Nothing linked yet: the library's first screen has no rail.
+.atlas-sound-pane:has(.atlas-sound-lib__nolink) .atlas-sound-side {
+  display: none;
+}
+
+.atlas-sound-stage,
+.atlas-sound-pane > .atlas-sound-desk {
+  grid-column: 2;
+}
+
+// Too narrow for a rail beside the page: it stands over it.
+@container atlas-dm-screen (max-width: 560px) {
+  .atlas-sound-pane {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .atlas-sound-lib.atlas-sound-side {
+    grid-row: auto;
+    width: auto;
+    max-height: 34cqh;
+  }
+
+  .atlas-sound-stage,
+  .atlas-sound-pane > .atlas-sound-desk {
+    grid-column: 1;
+  }
+}
+
 .atlas-sound-stage {
-  flex: 1;
   min-height: 0;
   display: flex;
 
   // Past this width a list gains nothing and the moods take the room in more columns (owner, 2026-11-03).
   // It still leaves the rows more than the 620 px under which the library takes its narrow layout.
+  // The rail beside the stage counts as the library's: rail and rows take 58 % of the surface up to 860 px. The rows'
+  // basis is 0 and the moods' 21/29 of the rail, so the moods get 0.42 × stage + 0.58 × 21/29 × rail = 0.42 × surface.
   .atlas-sound-lib {
     flex: 58 1 0;
-    max-width: 860px;
+    max-width: calc(860px - #{$sound-rail-width});
   }
 
   @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
@@ -66,14 +115,14 @@
 
 .atlas-sound-moods {
   padding: $card-inset;
-  flex: 42 1 0;
+  flex: 42 1 calc(#{$sound-rail-width} * 21 / 29);
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  box-shadow: inset $border-width-s 0 0 $hairline;
 
+  // Stacked under the rows, they share the height alone.
   @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
-    box-shadow: inset 0 $border-width-s 0 $hairline;
+    flex-basis: 0;
   }
 }
 
@@ -124,7 +173,8 @@
     stroke-width: 1.6;
   }
 
-  &:hover:not(:disabled) {
+  &:hover:not(:disabled),
+  &[aria-expanded='true'] {
     background: $hairline;
     color: var(--text-normal);
   }
@@ -191,7 +241,6 @@
   font-size: $font-ui-smaller;
   font-weight: $font-weight-semibold;
   font-variant-numeric: tabular-nums;
-  @include atlas-corner-shape;
 
   svg {
     width: 12px;
@@ -205,6 +254,18 @@
     display: inline-flex;
     align-items: center;
     gap: $spacing-xs;
+  }
+
+  // Atlas' ghost button, the size of the status bar's own icons. Nested, so it outranks Obsidian's
+  // `button:not(.clickable-icon)`.
+  .atlas-sound-status .atlas-sound-status__stop-all {
+    @include atlas-ghost-button;
+    display: flex;
+    height: auto;
+    padding: $spacing-xs;
+    border: none;
+    border-radius: $radius-s;
+    box-shadow: none;
   }
 
   .atlas-sound-status__stop-all svg {

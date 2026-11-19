@@ -4,7 +4,8 @@
   pointer-events: auto;
 }
 
-.atlas-view-actions-btn {
+// Nested, so it outranks Obsidian's `button:not(.clickable-icon)`.
+.atlas-view-actions .atlas-view-actions-btn {
   width: 32px;
   height: 32px;
   display: flex;
@@ -12,7 +13,8 @@
   justify-content: center;
   background: rgba(0, 0, 0, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
+  border-radius: $radius-m;
+  box-shadow: none;
   color: var(--text-normal);
   cursor: pointer;
   transition: all 0.2s ease;

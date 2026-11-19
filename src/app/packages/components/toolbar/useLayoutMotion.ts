@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react"
-import { UNDO_BAR_ID } from "../../../toolbar/toolbarCatalog"
+import { SIDE_BAR_IDS } from "../../../toolbar/toolbarCatalog"
 import type { ToolbarLayout } from "../../../toolbar/toolbarLayout"
 import { STAGGER_MS } from "./editor/editorMotion"
 
@@ -31,7 +31,7 @@ export function slotChange(motion: ToolbarMotion, id: string, animate: boolean):
 }
 
 function flippedControls(previous: ToolbarLayout, next: ToolbarLayout): string[] {
-  return [UNDO_BAR_ID, ...next.order].filter((id) => previous.hidden.has(id) !== next.hidden.has(id))
+  return [...SIDE_BAR_IDS, ...next.order].filter((id) => previous.hidden.has(id) !== next.hidden.has(id))
 }
 
 export interface LayoutMotion {

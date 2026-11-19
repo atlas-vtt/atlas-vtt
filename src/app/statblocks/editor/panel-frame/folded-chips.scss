@@ -16,7 +16,6 @@ $chip-height: 28px;
   }
 
   .atlas-sb-folded .btn {
-    @include atlas-corner-shape;
     gap: $spacing-xs;
     height: $chip-height;
     padding: 0 $spacing-s;

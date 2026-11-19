@@ -72,21 +72,21 @@ describe('the Sound page in a tab of its own', () => {
     seedMoods(screen);
     await expect.poll(() => document.querySelectorAll('.atlas-sound-mood').length).toBe(11);
     await act(async () => { await sleep(350); });
-    const before = { pane: box('.atlas-sound-pane'), lib: box('.atlas-sound-lib'), moods: box('.atlas-sound-moods'), desk: box('.atlas-sound-desk'), mood: box('.atlas-sound-mood') };
+    const before = { pane: box('.atlas-sound-pane'), lib: box('.atlas-sound-stage > .atlas-sound-lib'), moods: box('.atlas-sound-moods'), desk: box('.atlas-sound-desk'), mood: box('.atlas-sound-mood') };
     screen.unmount();
     open = null;
 
     await view(1644, 960);
     expect(box('.atlas-sound-pane').width).toBeCloseTo(before.pane.width, 0);
-    expect(box('.atlas-sound-lib').width).toBeCloseTo(before.lib.width, 0);
+    expect(box('.atlas-sound-stage > .atlas-sound-lib').width).toBeCloseTo(before.lib.width, 0);
     expect(box('.atlas-sound-moods').width).toBeCloseTo(before.moods.width, 0);
     expect(box('.atlas-sound-desk').height).toBe(before.desk.height);
     expect(box('.atlas-sound-mood').width).toBeCloseTo(before.mood.width, 0);
     expect(box('.atlas-sound-mood').height).toBe(before.mood.height);
     // The library takes 58 parts of what the moods share with it, as there.
-    expect(box('.atlas-sound-lib').width / box('.atlas-sound-pane').width).toBeCloseTo(0.58, 1);
+    expect((box('.atlas-sound-side').width + box('.atlas-sound-stage > .atlas-sound-lib').width) / box('.atlas-sound-pane').width).toBeCloseTo(0.58, 1);
     // The stage grows by what the control and its gap took, and nothing else moves.
-    expect(box('.atlas-sound-lib').height).toBeGreaterThan(before.lib.height);
+    expect(box('.atlas-sound-stage > .atlas-sound-lib').height).toBeGreaterThan(before.lib.height);
   });
 
   it('follows the tab\'s own width: three tiles across at 1644, two at 1280, stacked below the breakpoint', async () => {
@@ -100,12 +100,12 @@ describe('the Sound page in a tab of its own', () => {
     await size(1280, 820);
     await act(async () => { await sleep(100); });
     expect(across()).toBe(2);
-    expect(box('.atlas-sound-lib').top).toBe(box('.atlas-sound-moods').top);
+    expect(box('.atlas-sound-stage > .atlas-sound-lib').top).toBe(box('.atlas-sound-moods').top);
 
     await size(700, 800);
     await act(async () => { await sleep(100); });
-    expect(box('.atlas-sound-lib').left).toBe(box('.atlas-sound-moods').left);
-    expect(box('.atlas-sound-moods').top).toBeGreaterThanOrEqual(box('.atlas-sound-lib').bottom - 1);
+    expect(box('.atlas-sound-stage > .atlas-sound-lib').left).toBe(box('.atlas-sound-moods').left);
+    expect(box('.atlas-sound-moods').top).toBeGreaterThanOrEqual(box('.atlas-sound-stage > .atlas-sound-lib').bottom - 1);
     expect(box('.atlas-sound-desk').bottom).toBeLessThanOrEqual(box('.atlas-sound-pane').bottom);
     await page.screenshot({ path: `${SHOTS}/700-dark.png` });
   });

@@ -86,7 +86,7 @@ describe('The note pin picker', () => {
     await open();
 
     expect(picker()).toBeNull();
-    expect(showNotice).toHaveBeenCalledWith('Switch to GM View (D) to place pins');
+    expect(showNotice).toHaveBeenCalledWith('Switch to GM view (D) to place pins');
 
     store.getState().setGMView(true);
     await open();

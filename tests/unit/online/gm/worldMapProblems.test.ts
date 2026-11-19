@@ -26,7 +26,9 @@ async function read(image: string, files: Record<string, { stat: FileStat; image
     read: () => undefined,
     stored,
   });
-  for (let round = 0; round < 5 && maps.get() === undefined; round += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+  // Hashing and storing take more than a few turns on a busy machine: wait up to two seconds.
+  const until = Date.now() + 2000;
+  while (maps.get() === undefined && Date.now() < until) await new Promise((resolve) => setTimeout(resolve, 0));
   return { map: maps.get(), problem: maps.problem() };
 }
 

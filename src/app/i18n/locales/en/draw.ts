@@ -15,7 +15,7 @@ export const draw = {
   'draw.mode.cellsTip': 'Drag to colour the grid\'s cells',
   'draw.cellsNeedGrid': 'Show the grid or snap to it to colour cells',
   'draw.mode.eraser': 'Eraser',
-  'draw.needsGmView': 'Switch to GM View ({key}) to draw',
+  'draw.needsGmView': 'Switch to GM view ({key}) to draw',
   'draw.size': 'Size',
   'draw.size.s': 'Small',
   'draw.size.m': 'Medium',

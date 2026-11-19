@@ -19,6 +19,14 @@ import { campaign } from './campaign';
 import { quest } from './quest';
 import { dashboard } from './dashboard';
 import { dice } from './dice';
+import { docs } from './docs';
+import { siteFrame } from './siteFrame';
+import { armarium } from './armarium';
+import { armariumFindings } from './armariumFindings';
+import { armariumListing } from './armariumListing';
+import { armariumUpload } from './armariumUpload';
+import { armariumShare } from './armariumShare';
+import { account } from './account';
 import { diceLab } from './diceLab';
 import { diceRoll } from './diceRoll';
 import { diceSettings } from './diceSettings';
@@ -135,6 +143,9 @@ export const en = {
   ...quest,
   ...dashboard,
   ...dice,
+  ...docs,
+  ...siteFrame,
+  ...armarium,
   ...diceLab,
   ...diceRoll,
   ...diceSettings,
@@ -230,4 +241,9 @@ export const en = {
   ...uvttFloors,
   ...uvtt,
   ...fog,
+  ...armariumFindings,
+  ...armariumListing,
+  ...armariumUpload,
+  ...armariumShare,
+  ...account,
 } as const;

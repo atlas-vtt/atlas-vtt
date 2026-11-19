@@ -78,8 +78,7 @@ export class SoundShelf {
 
   /** How the sound a key names goes over its length, once that is known. */
   peaksOfKey(key: string): Uint8Array<ArrayBuffer> | null {
-    const record = this.recordOfKey(key);
-    return record && (this.copies?.peaksFor(record) ?? null);
+    return this.copies?.peaksOfKey(key) ?? null;
   }
 
   /** What a mix names that has a record; a deleted sound is simply gone from it. */

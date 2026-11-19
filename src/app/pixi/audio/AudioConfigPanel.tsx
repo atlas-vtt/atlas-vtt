@@ -12,6 +12,9 @@ import { useDraggablePosition } from '../../react/hooks/useDraggablePosition';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { ToggleSwitch } from '../../packages/components/primitives/Toggle';
+import { Select, type SelectOption } from '../../packages/components/primitives/Select';
+import { Slider } from '../../packages/components/primitives/slider';
+import { handledByAnotherControl } from '../../keyboard/tooltipEscape';
 import { unitLabelFor } from '../../grid/measurementFormat';
 import { t } from '../../i18n';
 import { levelObjects } from '../../levels/levelObjects';
@@ -54,6 +57,10 @@ function AudioConfigPanelInner({
   const unitLabel = unitLabelFor(grid?.unitType);
 
   const loopLabelId = useId();
+  const soundLabelId = useId();
+  const volumeLabelId = useId();
+  const innerLabelId = useId();
+  const outerLabelId = useId();
   const [soundId, setSoundId] = useState(audio.soundId);
   const [volume, setVolume] = useState(Math.round(audio.volume * 100));
   const [innerUnits, setInnerUnits] = useState(
@@ -66,7 +73,8 @@ function AudioConfigPanelInner({
 
   const { position, panelRef, startDrag } = useDraggablePosition({ x: screenX + 20, y: screenY - 40 });
 
-  const soundsByCategory = registry.listByCategory();
+  const soundOptions: SelectOption<string>[] = (Object.entries(registry.listByCategory()) as [SoundCategory, SoundMeta[]][])
+    .flatMap(([category, sounds]) => sounds.map((sound) => ({ value: sound.id, label: sound.name, group: category })));
 
   // The whole editing session is one undo step, even though changes apply live
   useEffect(() => {
@@ -88,7 +96,8 @@ function AudioConfigPanelInner({
   // Escape to close
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
+      // An open sound list closes on Escape by itself and keeps the panel open.
+      if (e.key === 'Escape' && !handledByAnotherControl(e)) {
         e.preventDefault();
         e.stopPropagation();
         onClose();
@@ -118,27 +127,9 @@ function AudioConfigPanelInner({
 
       <div className="atlas-audio-config__body">
         {/* Sound picker */}
-        <div className="atlas-audio-config__section-label">{t('audio.sound')}</div>
+        <div id={soundLabelId} className="atlas-audio-config__section-label">{t('audio.sound')}</div>
         <div className="atlas-audio-config__sound-picker">
-          <select
-            className="atlas-input atlas-audio-config__select"
-            value={soundId}
-            onChange={(e) => setSoundId(e.target.value)}
-          >
-            {(
-              Object.entries(soundsByCategory) as [SoundCategory, SoundMeta[]][]
-            )
-              .filter(([, sounds]) => sounds.length > 0)
-              .map(([category, sounds]) => (
-                <optgroup key={category} label={category}>
-                  {sounds.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-          </select>
+          <Select labelledBy={soundLabelId} value={soundId} options={soundOptions} onChange={setSoundId} />
           {onPreview && (
             <LabelTooltip label={t('audio.preview')}>
               <button
@@ -152,18 +143,17 @@ function AudioConfigPanelInner({
         </div>
 
         {/* Volume */}
-        <div className="atlas-audio-config__section-label">{t('audio.volume')}</div>
+        <div id={volumeLabelId} className="atlas-audio-config__section-label">{t('audio.volume')}</div>
         <div className="atlas-audio-config__field">
           <div className="atlas-audio-config__slider-row">
             <Volume2 size={14} className="atlas-audio-config__volume-icon" />
-            <input
-              type="range"
+            <Slider
+              aria-labelledby={volumeLabelId}
               min={0}
               max={100}
               step={1}
-              value={volume}
-              onChange={(e) => setVolume(Number(e.target.value))}
-              className="atlas-audio-config__slider"
+              value={[volume]}
+              onValueChange={(next: number[]) => setVolume(next[0] ?? volume)}
             />
             <span className="atlas-audio-config__value">{volume}%</span>
           </div>
@@ -172,22 +162,22 @@ function AudioConfigPanelInner({
         {/* Range */}
         <div className="atlas-audio-config__section-label">{t('audio.range')}</div>
         <div className="atlas-audio-config__field">
-          <label className="atlas-audio-config__label">
+          <label id={innerLabelId} className="atlas-audio-config__label">
             Inner Radius{unitLabel ? ` (${unitLabel})` : ''}
           </label>
           <div className="atlas-audio-config__slider-row">
-            <input
-              type="range"
+            <Slider
+              aria-labelledby={innerLabelId}
               min={0}
               max={120}
               step={5}
-              value={innerUnits}
-              onChange={(e) => setInnerUnits(Number(e.target.value))}
-              className="atlas-audio-config__slider"
+              value={[innerUnits]}
+              onValueChange={(next: number[]) => setInnerUnits(next[0] ?? innerUnits)}
             />
             <input
               type="number"
-              className="atlas-input atlas-audio-config__number"
+              aria-labelledby={innerLabelId}
+              className="atlas-audio-config__number"
               value={innerUnits}
               onChange={(e) => setInnerUnits(Math.max(0, Number(e.target.value)))}
               min={0}
@@ -196,22 +186,22 @@ function AudioConfigPanelInner({
         </div>
 
         <div className="atlas-audio-config__field">
-          <label className="atlas-audio-config__label">
+          <label id={outerLabelId} className="atlas-audio-config__label">
             Outer Radius{unitLabel ? ` (${unitLabel})` : ''}
           </label>
           <div className="atlas-audio-config__slider-row">
-            <input
-              type="range"
+            <Slider
+              aria-labelledby={outerLabelId}
               min={0}
               max={240}
               step={5}
-              value={outerUnits}
-              onChange={(e) => setOuterUnits(Number(e.target.value))}
-              className="atlas-audio-config__slider"
+              value={[outerUnits]}
+              onValueChange={(next: number[]) => setOuterUnits(next[0] ?? outerUnits)}
             />
             <input
               type="number"
-              className="atlas-input atlas-audio-config__number"
+              aria-labelledby={outerLabelId}
+              className="atlas-audio-config__number"
               value={outerUnits}
               onChange={(e) => setOuterUnits(Math.max(0, Number(e.target.value)))}
               min={0}

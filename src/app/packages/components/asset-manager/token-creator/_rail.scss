@@ -61,7 +61,7 @@
   justify-content: center;
   padding: $spacing-xl $spacing-l;
   border: $border-width-m solid transparent;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: var(--background-modifier-hover);
   text-align: center;
   cursor: pointer;
@@ -179,6 +179,11 @@
 
   &:focus-within {
     border-color: $am-control-border-focus;
+  }
+
+  // The clear button at the field's end.
+  .atlas-collection-header-btn.btn {
+    border-radius: $search-field-button-radius;
   }
 
   > svg {

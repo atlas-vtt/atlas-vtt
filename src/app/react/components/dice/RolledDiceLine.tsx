@@ -46,7 +46,8 @@ export function listsDice(result: Pick<DiceRollResult, 'rolls' | 'advantage' | '
 /**
  * A roll that kept some of its dice, or that advantage changed, as its dice:
  * each by its name and number, the kept in bold and the dropped (or rolled
- * again) struck through, then the modifier: `17 · 4 + 5`.
+ * again) lighter and in brackets, as the 3D breakdown and the Details chips
+ * write them, then the modifier: `17 · (4) + 5`.
  */
 export function RolledDiceLine({ result, className }: { result: Pick<DiceRollResult, 'rolls' | 'modifiers' | 'namedModifiers' | 'diceSet'>; className?: string }): React.ReactElement {
   const chunks = chunksOf(result.rolls);
@@ -57,10 +58,11 @@ export function RolledDiceLine({ result, className }: { result: Pick<DiceRollRes
         <React.Fragment key={i}>
           {i > 0 && ' · '}
           {chunk.dropped ? (
-            <s className="atlas-rolled-dice__die atlas-rolled-dice__die--dropped">
-              {chunk.text}
+            // In brackets, never struck: a strike across a 1 reads as a 4.
+            <span className="atlas-rolled-dice__die atlas-rolled-dice__die--dropped">
+              {`(${chunk.text})`}
               <span className="atlas-rolled-dice__hidden">{` (${t('dice.droppedDie')})`}</span>
-            </s>
+            </span>
           ) : (
             <span className="atlas-rolled-dice__die atlas-rolled-dice__die--kept">{chunk.text}</span>
           )}

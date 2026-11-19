@@ -10,6 +10,8 @@ import { formatReportMarkdown, issueForm, type IssueForm, type IssueReport } fro
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../ui/nativeModal';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
+import { createAtlasButton } from '../ui/atlasButton';
+import { createToggleSwitch } from '../ui/toggleSwitchElement';
 
 export interface IssueReportPreset {
   type?: IssueType;
@@ -27,6 +29,7 @@ export interface IssueReportModalOptions {
 
 const TYPE_LABEL_ID = 'atlas-issue-report-type-label';
 const AREA_LABEL_ID = 'atlas-issue-report-area-label';
+const FIELD_ID = 'atlas-issue-report-field';
 
 function selectOptions<T extends string>(labels: Record<T, string>): SelectOption<T>[] {
   return (Object.entries(labels) as [T, string][]).map(([value, label]) => ({ value, label }));
@@ -126,35 +129,59 @@ export class IssueReportModal extends Modal {
 
   private renderText(): void {
     const { description, steps } = this.wording;
-    new Setting(this.contentEl).setName(t('issue.titleLabel')).setClass('atlas-issue-report-field').addText(text => {
-      text.setPlaceholder(t('issue.titlePlaceholder')).onChange(value => { this.title = value; });
-      text.inputEl.setAttribute('maxlength', '120');
+    const title = this.field(t('issue.titleLabel'), 'title');
+    const input = title.controlEl.createEl('input', {
+      cls: 'atlas-issue-report-input',
+      type: 'text',
+      attr: { placeholder: t('issue.titlePlaceholder'), maxlength: '120', 'aria-labelledby': title.nameEl.id },
     });
-    this.descriptionSetting = new Setting(this.contentEl).setName(description.label).setDesc(description.hint)
-      .setClass('atlas-issue-report-field').addTextArea(area => {
-        area.onChange(value => { this.description = value; });
-        area.inputEl.rows = 6;
-      });
-    this.stepsSetting = new Setting(this.contentEl).setName(steps.label).setDesc(steps.hint)
-      .setClass('atlas-issue-report-field').addTextArea(area => {
-        area.onChange(value => { this.steps = value; });
-        area.inputEl.rows = 5;
-      });
+    input.addEventListener('input', () => { this.title = input.value; });
+    this.descriptionSetting = this.textArea(description, 'description', 6, value => { this.description = value; });
+    this.stepsSetting = this.textArea(steps, 'steps', 5, value => { this.steps = value; });
+  }
+
+  /** A field's row with its name above its control; the name carries an id the control is named by. */
+  private field(name: string, key: string): Setting {
+    const setting = new Setting(this.contentEl).setName(name).setClass('atlas-issue-report-field');
+    setting.nameEl.id = `${FIELD_ID}-${key}`;
+    return setting;
+  }
+
+  private textArea(wording: { label: string; hint: string }, key: string, rows: number, onInput: (value: string) => void): Setting {
+    const setting = this.field(wording.label, key).setDesc(wording.hint);
+    const area = setting.controlEl.createEl('textarea', { cls: 'atlas-issue-report-input', attr: { rows: String(rows), 'aria-labelledby': setting.nameEl.id } });
+    area.addEventListener('input', () => onInput(area.value));
+    return setting;
   }
 
   private renderIncludes(): void {
-    new Setting(this.contentEl)
-      .setName(t('issue.plugins'))
-      .setDesc(t('issue.pluginsDesc'))
-      .addToggle(toggle => toggle.setValue(this.includePlugins).onChange(value => {
-        this.includePlugins = value;
-        this.renderEnvironmentText();
-      }));
+    this.addSwitch(new Setting(this.contentEl).setName(t('issue.plugins')).setDesc(t('issue.pluginsDesc')), 'plugins', this.includePlugins, value => {
+      this.includePlugins = value;
+      this.renderEnvironmentText();
+    });
     const count = this.options.errors.length;
-    new Setting(this.contentEl)
-      .setName(t('issue.errors'))
-      .setDesc(count ? t('issue.errorsDesc', { count }) : t('issue.noErrors'))
-      .addToggle(toggle => toggle.setValue(this.includeErrors).setDisabled(count === 0).onChange(value => { this.includeErrors = value; }));
+    const errors = new Setting(this.contentEl).setName(t('issue.errors')).setDesc(count ? t('issue.errorsDesc', { count }) : t('issue.noErrors'));
+    this.addSwitch(errors, 'errors', this.includeErrors, value => { this.includeErrors = value; }, count === 0);
+  }
+
+  /** Atlas' switch in `setting`'s control, named by its name; it draws itself again after each change, focus kept. */
+  private addSwitch(setting: Setting, key: string, value: boolean, onChange: (value: boolean) => void, disabled = false): void {
+    const labelledBy = `${FIELD_ID}-${key}`;
+    setting.nameEl.id = labelledBy;
+    const draw = (current: boolean, focus: boolean): void => {
+      setting.controlEl.empty();
+      const control = createToggleSwitch(setting.controlEl, {
+        value: current,
+        labelledBy,
+        disabled,
+        onChange: next => {
+          onChange(next);
+          draw(next, true);
+        },
+      });
+      if (focus) control.focus();
+    };
+    draw(value, false);
   }
 
   private renderEnvironment(): void {
@@ -173,14 +200,13 @@ export class IssueReportModal extends Modal {
     this.statusEl = this.contentEl.createEl('p', { cls: 'atlas-issue-report-status' });
     this.statusEl.setAttribute('role', 'alert');
     const actions = this.contentEl.createDiv({ cls: 'atlas-issue-report-actions' });
-    new Setting(actions)
-      .addButton(button => button.setButtonText(t('issue.copy'))
-        .onClick(() => runInBackground(this.copyReport(), 'Copying the issue report', t('issue.clipboardFailed'))))
-      .addButton(button => {
-        this.submitButton = button.buttonEl;
-        button.setButtonText(t('issue.submit')).setCta()
-          .onClick(() => { void this.submit(); });
-      });
+    createAtlasButton(actions, {
+      text: t('issue.copy'),
+      variant: 'outline',
+      size: 'sm',
+      onClick: () => runInBackground(this.copyReport(), 'Copying the issue report', t('issue.clipboardFailed')),
+    });
+    this.submitButton = createAtlasButton(actions, { text: t('issue.submit'), size: 'sm', onClick: () => { void this.submit(); } });
   }
 
   private applyWording(): void {
@@ -239,10 +265,9 @@ export class IssueReportModal extends Modal {
       this.clearContent();
       this.setTitle(t('issue.submitted'));
       this.contentEl.createEl('p', { text: t('issue.submittedAs', { number: String(receipt.number) }) });
-      new Setting(this.contentEl)
-        .addButton(button => button.setButtonText(t('issue.view'))
-          .onClick(() => this.options.openExternal(receipt.url)))
-        .addButton(button => button.setButtonText(t('common.close')).setCta().onClick(() => this.close()));
+      const actions = this.contentEl.createDiv({ cls: 'atlas-issue-report-actions' });
+      createAtlasButton(actions, { text: t('issue.view'), variant: 'outline', size: 'sm', onClick: () => this.options.openExternal(receipt.url) });
+      createAtlasButton(actions, { text: t('common.close'), size: 'sm', onClick: () => this.close() });
     } catch (error) {
       const message = error instanceof Error ? error.message : t('issue.sendFailed');
       this.statusEl?.setText(t('issue.stillHere', { message }));
