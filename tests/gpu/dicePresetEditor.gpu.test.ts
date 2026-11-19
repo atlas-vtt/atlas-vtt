@@ -40,6 +40,7 @@ function Scene(): React.ReactElement {
     h('div', { className: 'atlas-dice-tray', style: { left: '78%', bottom: 20, top: 'auto' } },
       h(DicePresetsPanel, {
         shelf, onChange: () => undefined, trayFormula: '', problemOf: () => null, onRoll: () => undefined, onEdit: () => undefined, sets: [],
+        editingId: editing.id,
       }, h(DicePresetEditor, {
         preset: editing,
         onSave: (preset: DicePreset) => {
@@ -83,6 +84,14 @@ describe('a saved roll\'s editor', () => {
     expect(editor.bottom).toBeLessThanOrEqual(column.top);
     expect(Math.abs((editor.left + editor.right) / 2 - (column.left + column.right) / 2)).toBeLessThan(1);
     expect(document.querySelectorAll('.atlas-dice-preset-editor .atlas-dice-lab__die')).toHaveLength(2);
+    // The roll being edited stays lit in the list; the dice lie on the card, with no felt under them.
+    expect(document.querySelector('.atlas-dice-presets__item')!.hasAttribute('data-editing')).toBe(true);
+    expect(getComputedStyle(document.querySelector('.atlas-dice-preset-editor .atlas-dice-lab__field')!).backgroundImage).toBe('none');
+    // The bonus and the rules' switch share one row.
+    const bonus = document.querySelector('.atlas-dice-preset-editor__bonus')!.getBoundingClientRect();
+    const rulesSwitch = document.querySelector('.atlas-dice-preset-editor__rules-toggle')!.getBoundingClientRect();
+    expect(Math.abs(bonus.top - rulesSwitch.top)).toBeLessThan(1);
+    expect(rulesSwitch.left).toBeGreaterThan(bonus.right);
 
     const die = centreOf(document.querySelector('.atlas-dice-preset-editor .atlas-dice-lab__die')!);
     await mouse.click(die.x, die.y);

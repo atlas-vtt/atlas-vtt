@@ -89,25 +89,27 @@ export function DicePresetEditor({ preset, onSave, onClose }: DicePresetEditorPr
             />
           </div>
 
-          <div className="atlas-dice-tray__entry atlas-dice-preset-editor__bonus">
-            <span className="atlas-dice-preset-editor__bonus-label">{t('diceRoll.presetBonus')}</span>
-            <DiceTrayModifier
-              value={draft.bonus}
-              onChange={(bonus) => edit({ bonus: clampModifier(bonus) }, 'now')}
-              onStep={(delta) => edit({ bonus: clampModifier(draft.bonus + delta) }, 'now')}
-            />
+          {/* One row: the bonus as the tray's formula bar, and the switch that unfolds the rules under it. */}
+          <div className="atlas-dice-preset-editor__row">
+            <div className="atlas-dice-tray__entry atlas-dice-preset-editor__bonus">
+              <span className="atlas-dice-preset-editor__bonus-label">{t('diceRoll.presetBonus')}</span>
+              <DiceTrayModifier
+                value={draft.bonus}
+                onChange={(bonus) => edit({ bonus: clampModifier(bonus) }, 'now')}
+                onStep={(delta) => edit({ bonus: clampModifier(draft.bonus + delta) }, 'now')}
+              />
+            </div>
+            <button
+              type="button"
+              className="atlas-dice-tray__history-toggle atlas-dice-preset-editor__rules-toggle"
+              aria-expanded={rulesOpen}
+              aria-controls={rulesId}
+              onClick={() => setRulesOpen(!rulesOpen)}
+            >
+              <span className="atlas-dice-tray__history-title">{t('diceRoll.presetRules')}</span>
+              <ChevronDown aria-hidden="true" className="atlas-dice-tray__history-chevron" />
+            </button>
           </div>
-
-          <button
-            type="button"
-            className="atlas-dice-tray__history-toggle atlas-dice-preset-editor__rules-toggle"
-            aria-expanded={rulesOpen}
-            aria-controls={rulesId}
-            onClick={() => setRulesOpen(!rulesOpen)}
-          >
-            <span className="atlas-dice-tray__history-title">{t('diceRoll.presetRules')}</span>
-            <ChevronDown aria-hidden="true" className="atlas-dice-tray__history-chevron" />
-          </button>
           <div id={rulesId} className="atlas-dice-tray__history-reveal" data-open={rulesOpen ? '' : undefined} inert={!rulesOpen}>
             <div className="atlas-dice-tray__history atlas-dice-preset-editor__rules">
               <CritRuleField crit={draft.crit} onChange={(crit) => edit({ crit }, 'now')} />

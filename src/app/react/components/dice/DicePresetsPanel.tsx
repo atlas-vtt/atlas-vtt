@@ -24,8 +24,10 @@ interface DicePresetsPanelProps {
   onEdit: (id: string) => void;
   /** The Dice Lab's sets, which can be kept as saved rolls. */
   sets: readonly DiceSet[];
-  /** The editor of a saved roll, floating beside the cards. */
+  /** The editor of a saved roll, floating above the cards. */
   children?: React.ReactNode;
+  /** The saved roll whose editor is open: its card stays lit, so it is clear which one is edited. */
+  editingId?: string | null | undefined;
 }
 
 /**
@@ -33,7 +35,7 @@ interface DicePresetsPanelProps {
  * saved rolls' tour explains them): first a card that saves the tray's roll under a name, then one card per saved
  * roll, a click rolling it, its pin putting it in the tray's row. Top to top with the tray, and as tall.
  */
-export function DicePresetsPanel({ shelf, onChange, trayFormula, problemOf, onRoll, onEdit, sets, children }: DicePresetsPanelProps): React.ReactElement {
+export function DicePresetsPanel({ shelf, onChange, trayFormula, problemOf, onRoll, onEdit, sets, children, editingId = null }: DicePresetsPanelProps): React.ReactElement {
   const messageId = useId();
   const [name, setName] = useState('');
   // The field follows the tray until it is typed in, and again once a roll is saved.
@@ -116,6 +118,7 @@ export function DicePresetsPanel({ shelf, onChange, trayFormula, problemOf, onRo
               pinned={shelf.row.some((slot) => sameSlot(slot, { kind: 'preset', id: preset.id }))}
               onRoll={() => onRoll(preset)}
               onEdit={() => onEdit(preset.id)}
+              editing={preset.id === editingId}
               onChange={onChange}
             />
           ))}

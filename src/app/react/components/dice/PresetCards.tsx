@@ -19,6 +19,8 @@ interface PresetCardProps {
   shelf: DiceShelf;
   onRoll: () => void;
   onEdit: () => void;
+  /** Its editor is open: the card stays lit. */
+  editing: boolean;
   onChange: (change: ShelfChange) => void;
 }
 
@@ -26,7 +28,7 @@ interface PresetCardProps {
  * A saved roll: a click rolls it; a pin beside its name says it stands in the tray's row. Its ⋯, shown only under
  * the pointer (or with focus inside, or while its menu is open), holds Edit, the dice row and Delete.
  */
-export function PresetCard({ index, preset, pinned, shelf, onRoll, onEdit, onChange }: PresetCardProps): React.ReactElement {
+export function PresetCard({ index, preset, pinned, shelf, onRoll, onEdit, editing, onChange }: PresetCardProps): React.ReactElement {
   const rowFull = shelf.row.length >= MAX_ROW;
   const text = presetText(preset);
   const entries: ContextMenuEntry[] = [
@@ -45,7 +47,8 @@ export function PresetCard({ index, preset, pinned, shelf, onRoll, onEdit, onCha
     { type: 'item', label: t('diceRoll.presetDelete'), icon: 'trash-2', destructive: true, onClick: () => onChange(withoutPreset(shelf, preset.id)) },
   ];
   return (
-    <li className="atlas-dice-presets__card atlas-dice-presets__item" data-pinned={pinned ? '' : undefined} style={arrival(index)}>
+    <li className="atlas-dice-presets__card atlas-dice-presets__item" data-pinned={pinned ? '' : undefined} data-editing={editing ? '' : undefined}
+      aria-current={editing ? 'true' : undefined} style={arrival(index)}>
       <button type="button" className="atlas-dice-presets__roll" onClick={onRoll} aria-label={t('diceRoll.presetRoll', { name: preset.name, formula: text })}>
         <span className="atlas-dice-presets__name">
           {preset.name}

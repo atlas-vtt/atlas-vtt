@@ -211,6 +211,12 @@ $item-control: calc(#{$button-height-l} + #{$spacing-s});
     background: color-mix(in oklch, var(--background-primary), var(--text-normal) 7%);
   }
 
+  // Its editor is open above: the card stays lit, its edge in the accent, so it is clear which roll is edited.
+  &[data-editing] {
+    background: color-mix(in oklch, var(--background-primary), var(--text-normal) 7%);
+    border-color: color-mix(in oklch, var(--interactive-accent) 60%, transparent);
+  }
+
   .atlas-dice-presets__roll {
     height: $item-control;
     padding-inline: $spacing-m $spacing-s;

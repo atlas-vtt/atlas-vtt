@@ -73,7 +73,8 @@ $editor-control: $button-height-l;
   color: var(--text-accent);
 }
 
-// The Dice Lab's felt tray, at a height of its own: its dice fan out over it, so it keeps room around them.
+// The Dice Lab's tray, at a height of its own, without its felt: the dice lie on the card itself. Its dice fan out
+// over it, so it keeps room around them.
 .atlas-dice-preset-editor__stage {
   display: flex;
   height: $editor-stage;
@@ -84,10 +85,24 @@ $editor-control: $button-height-l;
   .atlas-dice-lab__field {
     border-radius: inherit;
   }
+
+  .atlas-dice-lab__field {
+    background: none;
+    box-shadow: none;
+  }
+}
+
+// The bonus and the rules' switch side by side.
+.atlas-dice-preset-editor__row {
+  display: flex;
+  align-items: center;
+  gap: $surface-inset;
 }
 
 // The bonus as the tray's formula bar: its name where the formula stands, the steps at its end.
 .atlas-dice-preset-editor__bonus.atlas-dice-tray__entry {
+  flex: 1 1 auto;
+  min-width: 0;
   margin-inline: 0;
   border-radius: var(--atlas-bar-control-radius);
 }
@@ -101,7 +116,9 @@ $editor-control: $button-height-l;
 
 // "Rules" folds the Dice Lab's options open under it, as the tray's history unfolds.
 .atlas-dice-preset-editor__rules-toggle.atlas-dice-tray__history-toggle {
-  padding-inline: $spacing-s;
+  flex: 0 0 auto;
+  width: auto;
+  padding-inline: $spacing-m $spacing-s;
   border-radius: var(--atlas-bar-control-radius);
 }
 

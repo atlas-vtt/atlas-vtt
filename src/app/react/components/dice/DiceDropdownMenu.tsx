@@ -114,6 +114,7 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
             onRoll={(preset) => saved.roll(preset)}
             onEdit={saved.setEditing}
             sets={saved.sets}
+            editingId={saved.editing?.id ?? null}
           >
             {saved.editing && (
               <DicePresetEditor key={saved.editing.id} preset={saved.editing} onSave={saved.save} onClose={() => saved.setEditing(null)} />
