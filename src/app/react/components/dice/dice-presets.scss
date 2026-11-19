@@ -4,7 +4,7 @@
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-$presets-width: 248px;
+$presets-width: 288px;
 $presets-gap: $spacing-s;
 $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
 // Room inside the scroller for the cards' shadows, which a scroller would cut: Obsidian's `--shadow-l` (the
