@@ -185,6 +185,19 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
   });
 
   plugin.addCommand({
+    id: 'reset-explored-areas',
+    name: t('sceneLight.forgetExplored'),
+    checkCallback: (checking) => {
+      const view = app.workspace.getActiveViewOfType(AtlasView);
+      if (!view || !view.getStore().getState().lighting.enabled) return false;
+      if (!checking) {
+        view.serviceManager.getEventBus().emit('lighting-reset-explored');
+      }
+      return true;
+    },
+  });
+
+  plugin.addCommand({
     id: 'open-docs',
     name: t('docs.command'),
     checkCallback: (checking) => {
