@@ -1,4 +1,4 @@
-name: Build Obsidian Test Plugin
+name: Build Obsidian Test Release
 
 on:
   push:
@@ -7,19 +7,21 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: obsidian-test-build-${{ github.ref }}
+  group: obsidian-test-release-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build installable plugin
+  build-and-release:
+    name: Build and publish test release
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -33,17 +35,41 @@ jobs:
       - name: Build plugin
         run: npm run build:ci
 
-      - name: Prepare Obsidian plugin files
+      - name: Prepare release files
         run: |
-          mkdir -p obsidian-test-plugin
-          cp dist/main.js obsidian-test-plugin/main.js
-          cp dist/styles.css obsidian-test-plugin/styles.css
-          cp manifest.json obsidian-test-plugin/manifest.json
+          mkdir -p release
+          cp dist/main.js release/main.js
+          cp dist/styles.css release/styles.css
+          cp manifest.json release/manifest.json
+          test -s release/main.js
+          test -s release/styles.css
+          test -s release/manifest.json
 
-      - name: Upload test plugin
-        uses: actions/upload-artifact@v4
-        with:
-          name: atlas-vtt-obsidian-test
-          path: obsidian-test-plugin/
-          if-no-files-found: error
-          retention-days: 7
+      - name: Create or update GitHub test release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          SHORT_SHA="${GITHUB_SHA::12}"
+          TAG="note-to-pin-test-${SHORT_SHA}"
+          TITLE="Atlas VTT note-to-pin test build (${SHORT_SHA})"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" \
+              release/main.js release/styles.css release/manifest.json \
+              --clobber
+            gh release edit "$TAG" --title "$TITLE" \
+              --notes "Automated Obsidian test build from commit $GITHUB_SHA on branch $GITHUB_REF_NAME."
+          else
+            gh release create "$TAG" \
+              release/main.js release/styles.css release/manifest.json \
+              --target "$GITHUB_SHA" \
+              --title "$TITLE" \
+              --prerelease \
+              --notes "Automated Obsidian test build from commit $GITHUB_SHA on branch $GITHUB_REF_NAME."
+          fi
+
+          echo "## Test release published" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tag: $TAG" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Assets: main.js, styles.css, manifest.json" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [Open release](https://github.com/$GH_REPO/releases/tag/$TAG)" >> "$GITHUB_STEP_SUMMARY"
