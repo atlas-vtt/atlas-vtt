@@ -68,4 +68,9 @@ export const hotkey: Translation = {
   'hotkey.search': 'Поиск сочетаний',
   'hotkey.noMatch': 'Нет сочетаний для «{query}»',
   'hotkey.or': 'или',
+  'hotkey.drawSmaller': 'Уменьшить кисть рисования или тумана',
+  'hotkey.drawLarger': 'Увеличить кисть рисования или тумана',
+  'hotkey.measureKeep': 'Сохранять измерения',
+  'hotkey.nextMood': 'Следующее настроение',
+  'hotkey.silence': 'Остановить весь звук',
 };

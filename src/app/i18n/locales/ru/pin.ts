@@ -112,4 +112,5 @@ export const pin: Translation = {
   'pin.search.invalidName': 'В названии заметки нельзя использовать \\ / : * ? " < > | # ^ [ и ]',
   'pin.search.dotName': 'Название заметки не может начинаться с точки',
   'pin.search.createFailed': 'Не удалось создать «{name}»',
+  'pin.group.marks': 'Отметки',
 };
