@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { App } from 'obsidian';
 import type { CampaignStorage } from '../../../campaigns/CampaignFiles';
 import { CampaignPlay } from '../../../campaigns/campaignPlay';
@@ -31,7 +31,10 @@ export function Dashboard({ app, campaignStorage, onOpenScene, onCreateMap, onOp
   const play = CampaignPlay.forApp(app);
   const playingId = useCampaignPlay(play);
   const [openId, setOpenId] = useState<string | null>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  // The element as state too, for the tour, which watches whether the page is on screen.
+  const [root, setRoot] = useState<HTMLDivElement | null>(null);
+  const attachRoot = useCallback((element: HTMLDivElement | null): void => { rootRef.current = element; setRoot(element); }, []);
   const parties = useCampaignParties(app, campaigns, rootRef);
   const openCampaign = openId === null ? undefined : campaigns.find((campaign) => campaign.id === openId);
 
@@ -51,7 +54,7 @@ export function Dashboard({ app, campaignStorage, onOpenScene, onCreateMap, onOp
   }, [openId]);
 
   return (
-    <div ref={rootRef} className="atlas-dashboard">
+    <div ref={attachRoot} className="atlas-dashboard">
       {service && openCampaign ? (
         <CampaignPage
           key={openCampaign.id}
@@ -82,6 +85,7 @@ export function Dashboard({ app, campaignStorage, onOpenScene, onCreateMap, onOp
           onCreateMap={onCreateMap}
           onOpenAssetManager={onOpenAssetManager}
           onOpenCampaign={setOpenId}
+          root={root}
         />
       )}
     </div>

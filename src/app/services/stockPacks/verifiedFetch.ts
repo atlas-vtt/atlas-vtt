@@ -26,9 +26,14 @@ export async function fetchBytes(url: string): Promise<ArrayBuffer> {
   return response.arrayBuffer;
 }
 
+/** Whether `bytes` are the file `expected` describes: its size, then its SHA-256. */
+export async function matchesFile(bytes: ArrayBuffer, expected: Pick<PackedFile, 'bytes' | 'sha256'>): Promise<boolean> {
+  return bytes.byteLength === expected.bytes && (await sha256(bytes)) === expected.sha256;
+}
+
 /** Fetches a file from `host` and checks it against its size and SHA-256, so a broken or tampered download is never kept. */
 export async function fetchVerified(host: string, file: PackedFile, fetch: FetchBytes = fetchBytes): Promise<ArrayBuffer> {
   const bytes = await fetch(host + file.key);
-  if (bytes.byteLength !== file.bytes || (await sha256(bytes)) !== file.sha256) throw new StockPackError(`${file.key} is not the file the pack names.`);
+  if (!(await matchesFile(bytes, file))) throw new StockPackError(`${file.key} is not the file the pack names.`);
   return bytes;
 }

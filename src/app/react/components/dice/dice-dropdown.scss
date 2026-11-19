@@ -7,10 +7,12 @@
 
 // ── Keyframes ────────────────────────────────
 
+// Both ease out (entering elements), written in the keyframes too, so the easing is each keyframe's own.
 @keyframes atlas-dice-slide-up {
   from {
     opacity: 0;
     transform: translateX(-50%) translateY(8px);
+    animation-timing-function: $transition-ease-out;
   }
   to {
     opacity: 1;
@@ -21,9 +23,21 @@
 @keyframes atlas-dice-badge-pop {
   from {
     transform: scale(0);
+    animation-timing-function: $transition-ease-out;
   }
   to {
     transform: scale(1);
+  }
+}
+
+// Reduced motion: the tray only fades in, nothing moves or grows.
+@keyframes atlas-dice-fade-in {
+  from {
+    opacity: 0;
+    animation-timing-function: $transition-ease-out;
+  }
+  to {
+    opacity: 1;
   }
 }
 
@@ -38,8 +52,37 @@
   transform: translateX(-50%);
   z-index: $z-atlas-dropdown;
   pointer-events: auto;
-  animation: atlas-dice-slide-up 0.2s ease-out both;
+  animation: atlas-dice-slide-up $transition-normal $transition-ease-out both;
   @include atlas-keep-in-view;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: atlas-dice-fade-in;
+  }
+}
+
+// A short window caps the tray's height (`useKeepInView`): the tray itself does not scroll then, its body does
+// (`__scroll`), with Atlas' overlay scrollbar and the scroll shadow saying more lies beyond, while Roll and Clear
+// stay pinned at its foot, in view and above the toolbar.
+.atlas-dice-tray.atlas-keep-in-view--capped {
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+
+  > .atlas-dice-panel {
+    flex-shrink: 1;
+    min-height: 0;
+  }
+
+  .atlas-dice-tray__content {
+    min-height: 0;
+  }
+
+  .atlas-dice-tray__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 }
 
 // ── Panel ────────────────────────────────────
@@ -47,13 +90,18 @@
 .atlas-dice-panel {
   background: var(--background-primary);
   border: $border-width-m solid color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   box-shadow: $shadow-elevated;
-  padding: $spacing-s;
+  // Dice in its top corners and buttons in its bottom ones: they stand $surface-inset inside the
+  // border, concentric with it, and everything in the tray keeps that gap.
+  padding: $surface-inset;
   display: flex;
   flex-direction: column;
-  gap: $spacing-s;
+  gap: $surface-inset;
   width: fit-content;
+  // The menus' text edge, $spacing-m inside the padding: everything that is no corner control stands
+  // on it (the switch row, the advantage choice, the modifier, the formula).
+  --atlas-menu-text-inset: #{$spacing-m};
 }
 
 // ── Tray ─────────────────────────────────────
@@ -61,113 +109,181 @@
 // Square faces, all seven dice in one row.
 $tray-face: 48px;
 $tray-dice: 7;
-$tray-grip-height: 24px;
 $tray-art: 32px;
+// One rhythm: every group (dice; formula and modifier; the side; history and sharing; the actions) stands the same
+// distance from the next, the rows inside a group closer.
+$tray-group-gap: $spacing-l + $spacing-xs;
+$tray-row-gap: $spacing-s;
+// Two heights: the dice, and every other control (fields, the side, the switch's row, the actions).
+$tray-control: $button-height-l;
+// The tray's small quiet text (captions, hints, chip notes): a step brighter than muted text, which reads at
+// APCA Lc 58–60 at 12 px on the dark panel.
+$tray-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
+
+/// Fades at the ends of a sideways scroller held by this element, shown where `data-cut-start` / `data-cut-end` say
+/// its content runs on past that edge; `$inset` keeps them inside a border, `$mark` writes a sign at the edge.
+@mixin tray-cut-fades($surface, $inset: 0px, $mark: '') {
+  &::before,
+  &::after {
+    content: $mark;
+    position: absolute;
+    top: $inset;
+    bottom: $inset;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    width: $spacing-xl;
+    padding-inline: $spacing-xs;
+    box-sizing: border-box;
+    color: $tray-quiet-text;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity $transition-fast $transition-ease;
+  }
+
+  &::before {
+    left: $inset;
+    justify-content: flex-start;
+    border-radius: calc(#{$radius-m} - #{$inset}) 0 0 calc(#{$radius-m} - #{$inset});
+    background: linear-gradient(to right, #{$surface} 40%, transparent);
+  }
+
+  &::after {
+    right: $inset;
+    justify-content: flex-end;
+    border-radius: 0 calc(#{$radius-m} - #{$inset}) calc(#{$radius-m} - #{$inset}) 0;
+    background: linear-gradient(to left, #{$surface} 40%, transparent);
+  }
+
+  &[data-cut-start]::before,
+  &[data-cut-end]::after {
+    opacity: 1;
+  }
+}
 
 .atlas-dice-tray__content {
   display: flex;
   flex-direction: column;
-  gap: $spacing-s;
+  // The actions are one more group of the rhythm.
+  gap: $tray-group-gap;
+}
+
+.atlas-dice-tray__scroll {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: $tray-group-gap;
+  @include atlas-scroll-shadow;
+}
+
+.atlas-dice-tray__group {
+  display: flex;
+  flex-direction: column;
+  gap: $tray-row-gap;
 }
 
 .atlas-dice-tray__dice {
   display: grid;
   grid-template-columns: repeat($tray-dice, $tray-face);
-  gap: $spacing-s;
-}
-
-.atlas-dice-tray__die {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-xs;
+  gap: $surface-inset;
 }
 
 // Obsidian styles every <button>; the tray's own controls start from nothing.
 .atlas-dice-tray__face,
-.atlas-dice-tray__grip {
+.atlas-dice-tray__step,
+.atlas-dice-tray__history-toggle,
+.atlas-dice-tray__history-again,
+.atlas-dice-tray__restore {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
   margin: 0;
   padding: 0;
   box-shadow: none;
   cursor: pointer;
-  @include atlas-corner-shape;
-  transition: background-color $transition-fast $transition-ease;
-
-  &:disabled {
-    cursor: default;
-    opacity: 0.6;
-  }
+  transition: background-color $transition-fast $transition-ease, border-color $transition-fast $transition-ease;
 }
 
 .atlas-dice-tray__face {
   position: relative;
+  width: 100%;
   height: $tray-face;
   background: var(--background-secondary);
   border: $border-width-m solid color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent);
-  border-radius: $radius-l;
+  border-radius: $radius-m;
 
-  &:hover:not(:disabled) {
-    background: var(--background-modifier-hover);
+  // A face lights up as clearly as a segmented option does: the panel's surface would barely change.
+  &:hover:not([aria-disabled='true']) {
+    background: color-mix(in oklch, var(--background-secondary), var(--text-normal) 10%);
+    border-color: color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
   }
 
-  &:active:not(:disabled) {
+  &:active:not([aria-disabled='true']) {
     transform: scale(0.96);
   }
-}
 
-// The outer dice sit $spacing-s below the panel's top corners: concentric with them.
-.atlas-dice-tray__die:first-child > .atlas-dice-tray__face {
-  @include atlas-panel-inset-radius($spacing-s, top-left);
-}
+  // At its limit: still focusable and still gives dice back; its tooltip says why it takes no more. The
+  // art fades, the count stays as legible as on any held die (a blanket rule fades the whole button).
+  &[aria-disabled='true'] {
+    cursor: default;
+    opacity: 1;
 
-.atlas-dice-tray__die:last-child > .atlas-dice-tray__face {
-  @include atlas-panel-inset-radius($spacing-s, top-right);
-}
-
-.atlas-dice-tray__grip {
-  height: $tray-grip-height;
-  background: transparent;
-  border: none;
-  border-radius: $radius-m;
-  color: var(--text-muted);
-
-  svg {
-    width: 14px;
-    height: 14px;
-  }
-
-  &:hover:not(:disabled) {
-    background: var(--background-modifier-hover);
-    color: var(--text-normal);
+    .atlas-die-face {
+      opacity: 0.45;
+    }
   }
 }
 
-.atlas-dice-tray__grip-space {
-  height: $tray-grip-height;
+// A die and its name under it.
+.atlas-dice-tray__die {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-xs;
 }
 
+// The outer dice sit $surface-inset inside the panel's top corners: concentric with them.
+.atlas-dice-tray__die:first-child .atlas-dice-tray__face {
+  @include atlas-panel-inset-radius($surface-inset, top-left);
+}
+
+.atlas-dice-tray__die:last-child .atlas-dice-tray__face {
+  @include atlas-panel-inset-radius($surface-inset, top-right);
+}
+
+// What the die is, for those who do not know the bodies by sight: small, quiet, one 16 px line.
+.atlas-dice-tray__caption {
+  height: $spacing-l;
+  font-size: $font-ui-smaller;
+  line-height: $spacing-l;
+  color: $tray-quiet-text;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+// The accent darkened as Atlas' primary buttons are (`atlas-accent-fill`), so the count reads at 4.5:1.
 .atlas-dice-tray__count {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: $spacing-xs;
+  right: $spacing-xs;
   min-width: 18px;
   height: 18px;
-  padding: 0 5px;
+  padding: 0 $spacing-xs;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: $radius-full;
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-  font-size: 11px;
+  @include atlas-accent-fill;
+  font-size: $font-ui-smaller;
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
-  animation: atlas-dice-badge-pop 0.15s ease-out both;
+  animation: atlas-dice-badge-pop $transition-fast $transition-ease-out both;
+
+  // Reduced motion: the count is simply there.
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 }
 
 // Pencil drawings lie in the surface rather than on it; the dark theme inverts
@@ -209,73 +325,552 @@ $tray-art: 32px;
   }
 }
 
-.atlas-dice-tray__modifier {
-  display: flex;
-  align-items: center;
-  gap: $spacing-xs;
+.atlas-dice-tray__advantage {
+  margin-inline: var(--atlas-menu-text-inset);
+
+  // As tall as every other control: the options $surface-inset inside the track.
+  .atlas-segmented__option {
+    height: $tray-control - 2 * $surface-inset;
+    padding-block: 0;
+  }
 }
 
-.atlas-dice-tray__modifier-label {
-  margin-right: auto;
-  font-size: $font-ui-smaller;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+// The formula and the modifier share one row on the text edge: the formula takes the room. Their group holds the
+// message line out of the flow, in the gap below, so the gaps stay alike and nothing moves when it speaks.
+.atlas-dice-tray__group:has(> .atlas-dice-tray__entry) {
+  position: relative;
+}
+
+.atlas-dice-tray__entry {
+  // One bar: the formula on the left, the modifier's − value + on the right, a hairline between them; one edge,
+  // hover, focus and refusal for both. The steps stand $surface-inset inside the bar's edge with the control-inset
+  // corner, so they run concentric with it.
+  display: flex;
+  align-items: stretch;
+  height: $tray-control;
+  margin-inline: var(--atlas-menu-text-inset);
+  box-sizing: border-box;
+  background: var(--background-modifier-form-field);
+  border: $border-width-s solid $field-edge;
+  border-radius: $radius-m;
+  transition: border-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
+
+  &:hover:not(:focus-within) {
+    border-color: $field-edge-hover;
+  }
+
+  &:focus-within {
+    border-color: $field-edge-focus;
+    box-shadow: $field-focus-ring;
+  }
+
+  // Refused: the edge takes the error text's colour (`atlas-error-text`), at 3:1 and more in both themes.
+  &:has(.atlas-dice-tray__formula[aria-invalid='true']) {
+    border-color: color-mix(in srgb, var(--text-error) 50%, white);
+
+    &:is(.theme-light *) {
+      border-color: color-mix(in srgb, var(--text-error) 72%, black);
+    }
+  }
+
+  .atlas-dice-tray__formula-box {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
+.atlas-dice-tray__modifier {
+  display: flex;
+  flex: none;
+  align-items: center;
+
+  // The hairline between formula and modifier, a little shorter than the bar.
+  &::before {
+    content: '';
+    align-self: center;
+    width: $border-width-s;
+    height: 50%;
+    background: $field-edge;
+  }
+}
+
+$tray-step: $tray-control - 2 * $surface-inset;
+
+.atlas-dice-tray__stepper {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  // With the bar's border, the steps stand $surface-inset inside its edge.
+  padding: $surface-inset - $border-width-s;
+  box-sizing: border-box;
 }
 
 .atlas-dice-tray__step {
-  width: 32px;
+  width: $tray-step;
+  height: $tray-step;
+  background: transparent;
+  border: none;
+  border-radius: $control-inset-radius;
+  color: var(--text-muted);
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.45;
+  }
+}
+
+// The bar is the field: the inputs inside it draw no edge of their own. Figures with a distinct 1 and equal widths:
+// the dice font's 1 reads as l, and they are typed in.
+.atlas-dice-tray__modifier-value,
+.atlas-dice-tray__formula {
+  @include atlas-text-input;
+  height: 100%;
+  font-variant-numeric: tabular-nums lining-nums;
+
+  &,
+  &:hover:not(:focus),
+  &:focus {
+    border: none;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  &::placeholder {
+    color: var(--text-muted);
+  }
 }
 
 .atlas-dice-tray__modifier-value {
-  width: 32px;
+  width: 40px;
+  padding: 0;
   text-align: center;
-  font-family: $font-dice-display;
-  font-size: $font-ui-medium;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-normal);
 }
 
-// Always there, even empty: a region that appears with its content goes unheard.
-.atlas-dice-tray__formula {
-  margin: 0;
-  padding: $spacing-xs $spacing-s;
-  border: $border-width-s solid color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent);
-  border-radius: $radius-l;
-  background: var(--background-secondary);
-  text-align: center;
-  font-family: $font-dice-display;
-  font-size: $font-ui-medium;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-normal);
-  @include atlas-corner-shape;
+// Holds the field and the fades that say its text runs on past an edge.
+.atlas-dice-tray__formula-box {
+  position: relative;
+  @include tray-cut-fades(var(--background-modifier-form-field), 0px, '…');
 
-  &--empty {
-    font-style: italic;
+  // The end towards the modifier is straight: only the bar's own corner is round.
+  &::after {
+    border-radius: 0;
+  }
+}
+
+.atlas-dice-tray__formula {
+  width: 100%;
+}
+
+// What to do next, why the dice take no more, or why the formula cannot be rolled: always one line, so
+// nothing above it moves while the GM types (the tray grows upward); the full text reaches screen readers.
+.atlas-dice-tray__message {
+  // Out of the flow, in the gap under the fields: a line as tall as the gap less 2 px above and below it.
+  $line: $tray-group-gap - 2 * 2px;
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  margin: 0;
+  padding-inline: var(--atlas-menu-text-inset);
+  font-size: $font-ui-smaller;
+  line-height: $line;
+  color: $tray-quiet-text;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  // As wide as the tray, asking for no width of its own: the dice decide it.
+  right: 0;
+  box-sizing: border-box;
+
+  &--error {
+    @include atlas-error-text;
+  }
+}
+
+// ── Roll history and the share switch ────────
+
+// One row: the history's toggle on the left, the share switch on the right.
+.atlas-dice-tray__bar {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  // A hover row reaches the 4 px inset as menu rows do; its words still start on the text edge.
+  padding-inline-end: var(--atlas-menu-text-inset);
+}
+
+$tray-history-row: $button-height-m;
+
+.atlas-dice-tray__history-toggle {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  gap: $spacing-s;
+  min-width: 0;
+  height: $tray-control;
+  padding-inline: var(--atlas-menu-text-inset) $spacing-s;
+  background: transparent;
+  border: none;
+  border-radius: $radius-m;
+  color: var(--text-normal);
+  font-size: $font-ui-small;
+
+  &:hover {
+    background: var(--background-modifier-hover);
+  }
+}
+
+.atlas-dice-tray__history-title {
+  white-space: nowrap;
+}
+
+.atlas-dice-tray__history-count {
+  min-width: 18px;
+  padding: 0 $spacing-xs;
+  border-radius: $radius-full;
+  background: var(--background-modifier-hover);
+  color: $tray-quiet-text;
+  font-size: $font-ui-smaller;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums lining-nums;
+  text-align: center;
+}
+
+.atlas-dice-tray__history-chevron {
+  flex-shrink: 0;
+  width: $icon-s;
+  height: $icon-s;
+  color: $tray-quiet-text;
+  transition: transform $transition-fast $transition-ease-out;
+
+  [aria-expanded='true'] > & {
+    transform: rotate(180deg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.atlas-dice-tray__share {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: $spacing-s;
+}
+
+.atlas-dice-tray__share-label {
+  font-size: $font-ui-small;
+  color: var(--text-normal);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+// The list's group lays out its own gap: the space above the rows lies inside what unfolds, so a closed list
+// leaves none behind.
+.atlas-dice-tray__group--history {
+  gap: 0;
+}
+
+// Unfolding: the list's row of the grid grows from nothing to its height (the real height, never a scale), the
+// rows fade in and settle a few pixels down into place, the chevron turns. Opening eases out over the normal time;
+// folding away is quicker, and the rows fade first, so the list never shows half a row cut by the closing edge.
+$history-open: 260ms;
+$history-close: 180ms;
+
+.atlas-dice-tray__history-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  // What has not unfolded yet is cut off at the closing edge.
+  overflow: hidden;
+  // The gap above the rows unfolds with them, so a closed list leaves nothing behind.
+  transition-property: grid-template-rows, padding-top;
+  transition-duration: $history-close;
+  transition-timing-function: $transition-ease-out;
+
+  > .atlas-dice-tray__history {
+    min-height: 0;
+    opacity: 0;
+    transform: translateY(-#{$spacing-xs});
+    transition: opacity calc(#{$history-close} * 0.6) $transition-ease-out, transform $history-close $transition-ease-out;
+  }
+
+  &[data-open] {
+    grid-template-rows: 1fr;
+    padding-top: $tray-row-gap;
+    transition-duration: $history-open;
+
+    > .atlas-dice-tray__history {
+      opacity: 1;
+      transform: none;
+      transition: opacity $history-open $transition-ease-out calc(#{$history-open} * 0.15), transform $history-open $transition-ease-out;
+    }
+  }
+
+  // Without motion: the list is there or gone, with a short fade.
+  @media (prefers-reduced-motion: reduce) {
+    &,
+    &[data-open] {
+      transition: none;
+
+      > .atlas-dice-tray__history {
+        transform: none;
+        transition: opacity $transition-fast linear;
+      }
+    }
+  }
+}
+
+// The rolls: about four rows high, more scroll (overlay scrollbar); rows in the quiet hover language of menus.
+.atlas-dice-tray__history {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  max-height: calc(4 * #{$tray-history-row});
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.atlas-dice-tray__history-row {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: $spacing-s;
+  height: $tray-history-row;
+  padding-inline: var(--atlas-menu-text-inset) $surface-inset;
+  border-radius: $radius-m;
+  font-size: $font-ui-small;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--background-modifier-hover);
+
+    .atlas-dice-tray__history-again {
+      color: var(--text-normal);
+    }
+  }
+}
+
+.atlas-dice-tray__history-formula {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-dice-tray__history-total {
+  font-weight: $font-weight-medium;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+// The roll-again mark: always there, quiet, full ink under the pointer.
+.atlas-dice-tray__history-again {
+  flex-shrink: 0;
+  width: $button-height-s;
+  height: $button-height-s;
+  background: transparent;
+  border: none;
+  border-radius: $control-inset-radius;
+  color: $tray-quiet-text;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  &:hover {
+    background: var(--background-modifier-hover);
+  }
+}
+
+.atlas-dice-tray__history-empty {
+  height: $tray-history-row;
+  padding-inline: var(--atlas-menu-text-inset);
+  font-size: $font-ui-smaller;
+  line-height: $tray-history-row;
+  color: $tray-quiet-text;
+}
+
+// "Tray cleared · Restore": a link in the line, the accent's words, no box.
+.atlas-dice-tray__restore {
+  display: inline;
+  height: auto;
+  background: transparent;
+  border: none;
+  color: var(--text-accent);
+  font-size: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+// Pressed: every control of the tray gives under the pointer, as the dice do.
+.atlas-dice-tray__step,
+.atlas-dice-tray__actions .btn {
+  transition: background-color $transition-fast $transition-ease, transform $transition-press $transition-ease-out;
+
+  &:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+}
+
+// A wide button gives less, or its ends travel far.
+.atlas-dice-tray__actions .btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+// Clear is a ghost beside Roll: its words in the quiet ink until the pointer comes, then the soft hover fill and the
+// text colour, a firmer fill under the press (with the actions' press scale); disabled, only fainter words, no box.
+// So Roll alone carries weight at the foot.
+.atlas-dice-tray__actions .atlas-dice-tray__clear.btn--ghost {
+  padding-inline: $spacing-l;
+  color: var(--text-muted);
+  transition: color $transition-fast $transition-ease, background-color $transition-fast $transition-ease, transform $transition-press $transition-ease-out;
+
+  &:hover:not(:disabled) {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+
+  &:active:not(:disabled) {
+    background: var(--background-modifier-active-hover, color-mix(in oklch, var(--background-modifier-hover), var(--text-normal) 10%));
+  }
+
+  &:disabled {
+    opacity: 1;
+    background: transparent;
     color: var(--text-faint);
   }
 }
 
 .atlas-dice-tray__actions {
   display: flex;
-  gap: $spacing-s;
+  flex-shrink: 0;
+  gap: $surface-inset;
+
+  // A disabled Roll reads as disabled: a flat neutral fill and faded words, still legible (faded to half, the words
+  // vanished in dark at APCA Lc 19.6). Clear, a ghost, only fades its words (above).
+  .atlas-dice-tray__roll:disabled {
+    opacity: 1;
+    background: var(--background-secondary);
+    border: $border-width-s solid var(--background-modifier-border);
+    color: color-mix(in srgb, var(--text-muted) 70%, var(--background-secondary));
+  }
 
   .btn {
-    height: $button-height-m;
-    border-radius: $radius-l;
+    height: $button-height-l;
+    border-radius: $radius-m;
+
+    // Under a finger the actions take the 44 px a primary target asks for.
+    @media (pointer: coarse) {
+      height: $input-height-l;
+    }
   }
 
   // The buttons sit in the panel's bottom corners.
   > .btn:first-child {
-    @include atlas-panel-inset-radius($spacing-s, bottom-left);
+    @include atlas-panel-inset-radius($surface-inset, bottom-left);
   }
 
   > .btn:last-child {
-    @include atlas-panel-inset-radius($spacing-s, bottom-right);
+    @include atlas-panel-inset-radius($surface-inset, bottom-right);
   }
 }
 
 .atlas-dice-tray__roll {
   flex: 1;
+  min-width: 0;
+
+  gap: $spacing-s;
+
+  // "Roll 1d20 + 5 again" in an empty tray: a long formula ends in an ellipsis, the name stays whole.
+  .atlas-dice-tray__roll-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  // Its key on its face, quieter than its name: Enter rolls.
+  .atlas-dice-tray__roll-key {
+    flex: none;
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+    font-family: var(--font-interface);
+    font-size: $font-ui-small;
+    line-height: 1;
+    color: inherit;
+    opacity: 0.6;
+  }
+
+  // Pressed reads apart from hovered: a darker fill on top of the press.
+  &.btn--default:active:not(:disabled) {
+    background: color-mix(in oklch, var(--interactive-accent) 74%, black);
+  }
+
+  // Nothing to roll yet: the actions' neutral disabled look, not the accent washed out.
+  &.btn--default:disabled {
+    background: var(--background-secondary);
+  }
+}
+
+// Under a finger every target of the tray reaches $touch-target (Apple HIG, WCAG 2.5.5), as the asset manager's
+// coarse block does (`_open-window.scss`): fields, steppers and the side's options grow; the switch keeps its look
+// and takes a 44 px hit area of its own around it.
+// On the tray's own root, not its dropdown: the online page shows it in a sheet of its own.
+@media (pointer: coarse) {
+  .atlas-dice-tray__content {
+    // The bar is as tall as a finger; the modifier's steps and its number fill its height and are a finger wide.
+    .atlas-dice-tray__entry {
+      height: $touch-target;
+    }
+
+    .atlas-dice-tray__stepper {
+      padding: 0;
+    }
+
+    .atlas-dice-tray__step,
+    .atlas-dice-tray__modifier-value {
+      width: $touch-target;
+      height: 100%;
+    }
+
+    .atlas-dice-tray__history-toggle,
+    .atlas-dice-tray__history-row {
+      height: $touch-target;
+    }
+
+    .atlas-dice-tray__history {
+      max-height: calc(4 * #{$touch-target});
+    }
+
+    .atlas-dice-tray__history-again {
+      width: $touch-target;
+      height: $touch-target;
+    }
+
+    .atlas-dice-tray__advantage .atlas-segmented__option {
+      min-height: $touch-target;
+    }
+
+    .atlas-toggle::before {
+      position: absolute;
+      inset: calc((100% - #{$touch-target}) / 2);
+      content: '';
+    }
+  }
+}
+
+// Says what the tray holds after clicks and keys, for screen readers only.
+.atlas-dice-tray__announce {
+  @include atlas-visually-hidden;
 }

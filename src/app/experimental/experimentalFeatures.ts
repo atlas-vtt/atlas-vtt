@@ -1,11 +1,10 @@
 import type { App } from 'obsidian';
-import { t } from '../i18n';
 import { SettingsService } from '../services/SettingsService';
 
 /**
- * Features the GM switches on in the command palette's Experimental features page. All are off
- * until then, and the choice is stored in Atlas' settings (`AtlasSettings.experimental`) under
- * the feature's id, so never rename one.
+ * Features the GM switches on in the command palette's Experimental features page or in Atlas'
+ * settings tab. All are off until then, and the choice is stored in Atlas' settings
+ * (`AtlasSettings.experimental`) under the feature's id, so never rename one.
  */
 export const EXPERIMENTAL_FEATURES = [
   {
@@ -17,11 +16,6 @@ export const EXPERIMENTAL_FEATURES = [
     id: 'onlinePlay',
     label: 'Online play',
     hint: 'Host a table that players join from their browsers: the online control at the bottom left of a map, and the account settings. While off, Atlas connects to nothing.',
-  },
-  {
-    id: 'sound',
-    label: t('audio.experimental.label'),
-    hint: t('audio.experimental.hint'),
   },
 ] as const;
 

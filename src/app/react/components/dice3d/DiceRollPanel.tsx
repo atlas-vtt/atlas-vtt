@@ -6,13 +6,15 @@ import { chainDepth, layoutDice, restingFrame, type DiceScene } from '../../../d
 import type { ThrowStyle } from '../../../dice3d/diceDisplay';
 import { ratchet, reveal } from '../../../dice3d/audio/diceSounds';
 import type { DiceRollResult } from '../../../types/diceTypes';
-import type { RollSourcePresentation, UseDiceAvatar } from '../dice/diceSourcePresentation';
+import type { RollAudience, RollSourcePresentation, UseDiceAvatar } from '../dice/diceSourcePresentation';
 import { DiceStage, type DiceStageHandle } from './DiceStage';
 import { DiceRollHeader } from './DiceRollHeader';
 import { DiceRollEngraving } from './DiceRollEngraving';
-import { DiceRollChip } from './DiceRollChip';
-import { advantageText, hasBreakdown, rollBreakdown, rollLabel } from './diceRollText';
-import { rollFormulaText } from '../../../tools/diceLabels';
+import { critText, hasBreakdown, rollBreakdown, rollFormula, rollLabel, shownFormula, titledByFormula, withSide } from './diceRollText';
+import { RollDigits } from './RollDigits';
+import { ROLL_LINGER_MS, useLingerTimer } from './useLingerTimer';
+import { useTotalCarry } from './useTotalCarry';
+import { listsDice, RolledDiceLine } from '../dice/RolledDiceLine';
 import { modifierSteps } from '../../../tools/namedModifiers';
 import { t } from '../../../i18n';
 import { useElementHeight } from '../../hooks/useElementHeight';
@@ -21,6 +23,8 @@ interface DiceRollPanelProps {
   result: DiceRollResult;
   /** Who the roll names; unset looks it up as the GM's window does. */
   presentation?: RollSourcePresentation | null | undefined;
+  /** Whom the GM's roll was shown to; unset shows no mark. */
+  audience: RollAudience | undefined;
   scene: DiceScene;
   /** A newer roll took the large place: carry on as a row. */
   compact: boolean;
@@ -36,10 +40,6 @@ interface DiceRollPanelProps {
   useAvatar: UseDiceAvatar;
 }
 
-/** How long the total stays before the panel leaves on its own. */
-const LINGER_MS = 3600;
-/** A row leaves sooner: it showed its number and the next roll wants the place. */
-const LINGER_COMPACT_MS = 2600;
 /**
  * The ripcord: the panel leaves even if the dice never land, e.g. when the
  * frame loop sleeps in a hidden window. The longest real flight is about two
@@ -53,13 +53,15 @@ const LINGER_STUCK_MS = 9000;
  */
 const TICK_DELAY_MS = 420;
 const TICK_EVERY_MS = 260;
-/** Close to the spring, so an invisible row never holds its place for long. */
+/** The fade out (`atlas-dice-roll-out` in dice-roll.scss, a little shorter) and then the panel goes. */
 const LEAVE_MS = 430;
 const LEAVE_REDUCED_MS = 130;
 /**
- * The morph between large and row: a spring, not a curtain. The panel's real
- * height is animated, never a scale: a scaled panel stretches its corners, its
- * border, its shadow and the dice on it.
+ * The morph between large and row, and the column's places: a spring, not a curtain. The
+ * panel's real height is animated, never a scale: a scaled panel stretches its corners, its
+ * border, its shadow and the dice on it. Under reduced motion both change at once. Entering,
+ * leaving and the total's own motion are CSS animations of opacity, translate and scale
+ * (dice-roll.scss), which run off the main thread and hold their end state themselves.
  */
 const MORPH = { type: 'spring', duration: 0.42, bounce: 0.16 } as const;
 
@@ -68,18 +70,17 @@ const MORPH = { type: 'spring', duration: 0.42, bounce: 0.16 } as const;
  * throws follow one another: one, and one more for every die of the longest
  * chain of explosions, each of which the ripcord has to wait out.
  */
-function lingerMs(landed: boolean, compact: boolean, throws: number): number {
-  if (!landed) return LINGER_STUCK_MS * throws;
-  return compact ? LINGER_COMPACT_MS : LINGER_MS;
+function lingerMs(landed: boolean, throws: number): number {
+  return landed ? ROLL_LINGER_MS : LINGER_STUCK_MS * throws;
 }
 
 /**
  * A roll as a call across the table, not a dialog: no backdrop, no focus trap,
- * nothing that catches clicks except the panel itself. The throw starts on its
- * own, shows the number and leaves. A click on the panel skips the flight, or
- * closes it once the dice lie.
+ * and no surface that takes a click; its one control is the close button
+ * (Escape dismisses every roll). The throw starts on its own, shows the number
+ * and leaves.
  */
-export function DiceRollPanel({ result, presentation, scene, compact: compactNow, leaving, muted, style, onClose, onDone, useAvatar }: DiceRollPanelProps): React.ReactElement {
+export function DiceRollPanel({ result, presentation, audience, scene, compact: compactNow, leaving, muted, style, onClose, onDone, useAvatar }: DiceRollPanelProps): React.ReactElement {
   // A panel leaves at the size it had: a row displaced by a newer roll would
   // otherwise open up to full size while disappearing.
   const [leavingSize, setLeavingSize] = useState<boolean | null>(null);
@@ -87,6 +88,7 @@ export function DiceRollPanel({ result, presentation, scene, compact: compactNow
   const compact = leavingSize ?? compactNow;
 
   const [landed, setLanded] = useState(false);
+  const [hovered, setHovered] = useState(false);
   /** How many modifier steps have clicked in. */
   const [applied, setApplied] = useState(0);
   const reduced = useReducedMotion() === true;
@@ -118,153 +120,125 @@ export function DiceRollPanel({ result, presentation, scene, compact: compactNow
     stageRef.current?.skip();
   }, [compact, leaving]);
 
-  // Reduced motion and rows show the full number at once: nobody watches the counter there.
-  const instant = reduced || compact;
-  const appliedSteps = instant ? stepCount : applied;
+  // Reduced motion shows the full number at once. A row counts on from where its total stood (`useTotalCarry`).
+  const appliedSteps = reduced ? stepCount : applied;
 
   useEffect(() => {
-    if (!landed || instant || stepCount === 0) return;
+    if (!landed || reduced || stepCount === 0) return;
     const timers = Array.from({ length: stepCount }, (_, i) => window.setTimeout(() => {
       setApplied(i + 1);
       if (!muted && !displaced.current) ratchet(i);
     }, (TICK_DELAY_MS + i * TICK_EVERY_MS) / style.speed));
     return (): void => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [landed, instant, stepCount, muted, style.speed]);
+  }, [landed, reduced, stepCount, muted, style.speed]);
 
   const counted = steps.slice(appliedSteps).reduce((sum, step) => sum - step.value, result.total);
   const shown = landed ? counted : null;
 
-  // The clock runs from the start: if the dice never land, the ripcord pulls.
-  useEffect(() => {
-    if (leaving) return;
-    const timer = window.setTimeout(close, lingerMs(landed, compact, 1 + chainDepth(scene.plan)));
-    return (): void => window.clearTimeout(timer);
-  }, [landed, compact, leaving, close, scene]);
-
-  const tap = (): void => {
-    if (stageRef.current?.skip()) return;
-    close();
-  };
+  // The clock runs from the start: if the dice never land, the ripcord pulls. Landing starts it afresh,
+  // and a pointer over the panel holds it.
+  useLingerTimer(leaving ? null : lingerMs(landed, 1 + chainDepth(scene.plan)), close, hovered);
 
   const crit = landed ? result.crit ?? null : null;
-  const label = rollLabel(result);
+  const label = withSide(rollLabel(result), result);
+  const formulaTitle = titledByFormula(result);
   // The resting dice's field in a shrunk row, shaped like their layout.
   const field = useMemo(() => {
     const { offsets, radius } = layoutDice(scene.plan.length);
     return restingFrame(offsets, radius);
   }, [scene]);
   const breakdown = rollBreakdown(result, scene);
-  const formula = [advantageText(result), rollFormulaText(result)].filter(Boolean).join(' · ');
-  const slotRem = 3.2 + (hasBreakdown(result, scene) ? 1.05 : 0);
-  const exit = reduced ? { opacity: 0 } : { opacity: 0, y: -14, scale: 0.96 };
-  const transition = reduced ? { duration: 0.12 } : MORPH;
+  // While the dice fly the slot says what the title does not: the formula, where an action's name is the title.
+  const flying = formulaTitle ? '' : rollFormula(result);
+  // The caption that names a crit in words, never by its tint alone; its line is held from the start.
+  const critCaption = critText(result.crit);
+  const slotRem = 3.2 + (hasBreakdown(result, scene) ? 1.05 : 0) + (critCaption ? 1.05 : 0);
+  // A newer roll shrinks this one to a row: its total travels into the row's place (the count
+  // finishes there) instead of being swapped. Reduced motion lets it change at once.
+  const carry = useTotalCarry(compact, reduced);
+  const header = <DiceRollHeader result={result} presentation={presentation} label={label} formula={formulaTitle} audience={audience} useAvatar={useAvatar} />;
 
   return (
     <motion.div
-      layout="position"
+      layout={reduced ? false : 'position'}
+      transition={MORPH}
       className={cn(
         'atlas-dice-roll',
         compact && 'atlas-dice-roll--compact',
+        leaving && 'atlas-dice-roll--leaving',
         crit === 'high' && 'atlas-dice-roll--crit-success',
         crit === 'low' && 'atlas-dice-roll--crit-fail',
       )}
-      initial={reduced ? { opacity: 0 } : { opacity: 0, y: -28, scale: 0.92 }}
-      animate={leaving ? exit : { opacity: 1, y: 0, scale: 1 }}
-      transition={transition}
-      onClick={tap}
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
     >
-      <div className="atlas-dice-roll__sheet" style={{ '--atlas-dice-field-aspect': field.aspect } as React.CSSProperties}>
+      <div
+        ref={carry.sheet}
+        className="atlas-dice-roll__sheet"
+        style={{ '--atlas-dice-field-aspect': field.aspect, '--atlas-dice-tick-ms': `${Math.round(TICK_EVERY_MS / style.speed)}ms` } as React.CSSProperties}
+      >
         {!compact && <DiceRollEngraving />}
         {/* The dish lies over the engraving: it is the shape of the surface, and a
             shadow falls on what is printed on it too. */}
         {!compact && <div className="atlas-dice-roll__dish" aria-hidden="true" />}
 
         {crit !== null && (
-          <motion.div
-            aria-hidden="true"
-            className="atlas-dice-roll__glow"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6 }}
-          />
+          <div aria-hidden="true" className="atlas-dice-roll__glow" />
         )}
 
         {!compact && (
           <CloseButton
             className="atlas-dice-roll__close"
-            aria-label={t('diceRoll.hide')}
-            onClick={(e) => {
-              e.stopPropagation();
-              close();
-            }}
+            aria-label={t('diceRoll.dismiss')}
+            onClick={close}
           />
         )}
 
-        {/* The sheet is as tall as this clip, which follows its content's height. The
-            clip gets no height before its content was measured, so the first one is
-            the height it already has and only later ones are animated to. An
-            animation from `auto` would start at the panel as it is drawn then,
-            scaled down by its entrance, and jump to its size when the spring ends. */}
-        <motion.div animate={contentHeight === null ? {} : { height: contentHeight }} transition={transition}>
+        {/* The sheet is as tall as this clip, which follows its content's height through a CSS
+            transition (`atlas-dice-roll__clip`: the browser animates it, no script runs per
+            frame, and reduced motion changes it at once). The clip gets no height before its
+            content was measured; from `auto` nothing transitions, so the first height is set and
+            only later ones are animated to. */}
+        <div className="atlas-dice-roll__clip" style={contentHeight === null ? undefined : { height: contentHeight }}>
           <div ref={contentRef} className="atlas-dice-roll__content">
             {compact ? (
               <div className="atlas-dice-roll__row">
-                <DiceRollHeader result={result} presentation={presentation} label={label} useAvatar={useAvatar} />
-                <span className="atlas-dice-roll__total atlas-dice-roll__total--row">{shown ?? formula}</span>
+                {header}
+                <span ref={carry.row} className="atlas-dice-roll__total atlas-dice-roll__total--row">
+                  {shown !== null && <RollDigits value={shown} />}
+                </span>
               </div>
             ) : (
               <>
-                <div className="atlas-dice-roll__header">
-                  <DiceRollHeader result={result} presentation={presentation} label={label} useAvatar={useAvatar} />
-                </div>
+                <div className="atlas-dice-roll__header">{header}</div>
                 {/* Holds the height where the dice come to rest; they roll over the whole panel. */}
                 <div className="atlas-dice-roll__floor" />
                 <div className="atlas-dice-roll__slot" style={{ height: `${slotRem}rem` }}>
                   {shown !== null ? (
                     <>
-                      <motion.span
-                        className="atlas-dice-roll__total"
-                        initial={reduced ? false : { opacity: 0, y: 10, scale: 0.8 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={reduced ? { duration: 0.12 } : { type: 'spring', duration: 0.55, bounce: 0.3 }}
-                      >
-                        {/* Every step its own key: the counter jumps, it does not cross-fade. */}
-                        <motion.span
-                          key={shown}
-                          className="atlas-dice-roll__count"
-                          initial={reduced || appliedSteps === 0 ? false : { scale: 1.22 }}
-                          animate={{ scale: 1 }}
-                          transition={{ type: 'spring', duration: 0.34, bounce: 0.42 }}
-                        >
-                          {shown}
-                        </motion.span>
-                      </motion.span>
-                      {breakdown !== null && (
-                        <motion.span
-                          className="atlas-dice-roll__breakdown"
-                          initial={reduced ? false : { opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ duration: 0.3, delay: reduced ? 0 : 0.12 }}
-                        >
-                          {breakdown}
-                        </motion.span>
+                      <span ref={carry.large} className="atlas-dice-roll__total">
+                        {/* Every step its own key: the counter jumps once per step (a bump shorter
+                            than a step, so the next never cuts one off), it does not cross-fade. */}
+                        <span key={shown} className={cn('atlas-dice-roll__count', appliedSteps > 0 && 'atlas-dice-roll__count--bump')}>
+                          <RollDigits value={shown} />
+                        </span>
+                      </span>
+                      {/* With advantage the kept die and the one dropped, in brackets, as the card writes them. */}
+                      {listsDice(result)
+                        ? <RolledDiceLine result={result} className="atlas-dice-roll__breakdown atlas-dice-roll__dice" />
+                        : breakdown !== null && <span className="atlas-dice-roll__breakdown">{breakdown}</span>}
+                      {crit !== null && critCaption && (
+                        <span className={cn('atlas-roll-crit', `atlas-roll-crit--${crit}`, 'atlas-dice-roll__crit')}>{critCaption}</span>
                       )}
                     </>
-                  ) : (
-                    <motion.span
-                      className="atlas-dice-roll__formula"
-                      initial={reduced ? false : { opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.16 }}
-                    >
-                      {formula}
-                    </motion.span>
+                  ) : flying !== '' && (
+                    <span className="atlas-dice-roll__formula">{flying}</span>
                   )}
                 </div>
               </>
             )}
           </div>
-        </motion.div>
+        </div>
 
         <DiceStage
           ref={stageRef}
@@ -279,18 +253,10 @@ export function DiceRollPanel({ result, presentation, scene, compact: compactNow
             // The verdict belongs to the roll being watched; a displaced one reports silently.
             if (!muted && !displaced.current) reveal(result.crit ?? null);
           }}
-          label={shown === null ? t('diceRoll.rolling', { formula: result.formula }) : t('diceRoll.rolled', { label, total: String(shown) })}
+          label={shown === null ? t('diceRoll.rolling', { formula: shownFormula(result.formula) }) : t('diceRoll.rolled', { label, total: String(shown) })}
           className="atlas-dice-roll__stage"
         />
       </div>
-
-      {!compact && stepCount > 0 && (
-        <div className="atlas-dice-roll__chips">
-          {steps.map((step, i) => (
-            <DiceRollChip key={i} label={step.label} amount={step.value} applied={appliedSteps > i} reduced={reduced} />
-          ))}
-        </div>
-      )}
     </motion.div>
   );
 }

@@ -145,7 +145,7 @@ describe('the dungeon wizard over the Atlas view', () => {
     expect(Math.abs(card.top - (860 - card.bottom))).toBeLessThanOrEqual(1);
   });
 
-  it('keeps New layout and Export in the map’s top right corner, concentric with it', async () => {
+  it('keeps New layout and Export in the map’s top right corner, on a bar whose buttons run concentric with it', async () => {
     await openWizard(1440, 860, { left: 300, top: 120, width: 320, height: 420 });
     await expect.poll(() => tab.querySelector('canvas.atlas-dungeon-preview__canvas'), { timeout: 20_000 }).not.toBeNull();
     await mapSettled();
@@ -153,9 +153,12 @@ describe('the dungeon wizard over the Atlas view', () => {
     const tools = box('.atlas-dungeon-wizard-preview__tools');
     expect(tools.top - map.top).toBeCloseTo(12, 1);
     expect(map.right - tools.right).toBeCloseTo(12, 1);
-    // outer = inner + inset (the map has no border)
-    const concentric = computed('.atlas-dungeon-preview__map', 'borderTopRightRadius') - 12;
-    expect(Math.abs(concentric - computed('.atlas-dungeon-wizard-preview__tools', 'borderTopRightRadius'))).toBeLessThanOrEqual(0.5);
+    // A floating bar has the surface's corner, the map's own; its buttons run concentric with it: outer = inner + inset + border.
+    expect(computed('.atlas-dungeon-wizard-preview__tools', 'borderTopRightRadius')).toBe(computed('.atlas-dungeon-preview__map', 'borderTopRightRadius'));
+    const button = [...tab.querySelectorAll('.atlas-dungeon-wizard-preview__tool')].at(-1)!.getBoundingClientRect();
+    const inset = tools.right - button.right;
+    const concentric = computed('.atlas-dungeon-wizard-preview__tools', 'borderTopRightRadius') - inset;
+    expect(Math.abs(concentric - computed('.atlas-dungeon-wizard-preview__tool', 'borderTopRightRadius'))).toBeLessThanOrEqual(0.5);
   });
 
   it('keeps one height on every step, the style gallery two cards a row scrolling under a scrollbar that takes no room', async () => {

@@ -51,6 +51,7 @@ describe('a player\'s roll with advantage', () => {
     gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '+3', token: gm.hero, advantage: 'advantage' });
     expect(gm.rolled[0]).toMatchObject({ formula: '1d20+3', advantage: 'advantage' });
     expect(gm.rolled[0]?.rolls.map((die) => [die.max, die.dropped === true])).toEqual([[20, false], [20, true]]);
+    expect(last(gm.sent, 'roll')?.result).toMatchObject({ formula: '1d20+3', advantage: 'advantage' });
     gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '1d20+1', token: null, mode: 'gm', advantage: 'advantage' });
     expect(gm.logged.at(-1)?.roll.rolls).toHaveLength(2);
     expect(gm.errors).toEqual([]);

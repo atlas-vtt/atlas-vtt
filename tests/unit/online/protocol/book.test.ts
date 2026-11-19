@@ -85,12 +85,20 @@ describe('book messages to a player', () => {
     expect(isQuestDone({ state: 'failed' })).toBe(true);
   });
 
+  it('read a quest placed on a map the world map leads into, and that place only where it has none on the world map', () => {
+    const nested = { ...QUEST, place: null, nestedPlace: { map: ID, x: 0.5, y: 0.25 } };
+    expect(parseGmMessage({ t: 'book', book: { ...BOOK, quests: [nested] } })).toEqual({ t: 'book', book: { ...BOOK, quests: [nested] } });
+    expect(parseGmMessage({ t: 'book', book: { ...BOOK, quests: [{ ...QUEST, nestedPlace: { map: ID, x: 0.5, y: 0.25 } }] } })).toEqual({ t: 'book', book: BOOK });
+  });
+
   it('leave out a malformed quest and show the rest of the book', () => {
     const broken: unknown[] = [
       { ...QUEST, kind: 'urgent' },
       { ...QUEST, state: 'heard' },
       { ...QUEST, title: '' },
       { ...QUEST, place: { x: 2, y: 0 } },
+      { ...QUEST, place: null, nestedPlace: { map: 'not a map', x: 0.5, y: 0.5 } },
+      { ...QUEST, place: null, nestedPlace: { map: ID, x: 0.5, y: -1 } },
       { ...QUEST, xp: -1 },
       { ...QUEST, xp: 1.5 },
       { ...QUEST, rewards: Array.from({ length: MAX_QUEST_REWARDS + 1 }, () => 'Gold') },

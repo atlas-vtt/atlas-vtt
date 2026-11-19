@@ -37,7 +37,8 @@ describe('tutorial steps with screenshots', () => {
     ]} />);
 
     expect(screen.getByRole('img', { name: 'A base of item notes' }).getAttribute('src')).toBe('base.webp');
-    expect(screen.getByText('Loot · 1 / 2')).toBeTruthy();
+    expect(screen.getByText('Loot')).toBeTruthy();
+    expect(screen.getByText('Step 1 of 2')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     expect(screen.queryByRole('img')).toBeNull();
   });

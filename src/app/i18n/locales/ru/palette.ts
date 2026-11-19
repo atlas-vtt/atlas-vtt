@@ -22,7 +22,7 @@ export const palette: Translation = {
   'palette.notePinTool': 'Пин заметки',
   'palette.openDiceLog': 'Открыть журнал бросков',
   'palette.openLootRoller': 'Открыть случайные таблицы',
-  'palette.openSceneBrowser': 'Открыть список сцен',
+  'palette.openSceneBrowser': 'Открыть менеджер ресурсов',
   'palette.panel.grid': 'Настройки сетки',
   'palette.panel.playerView': 'Настройки экрана игроков',
   'palette.panel.snapshots': 'Снимки сцены',

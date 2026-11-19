@@ -5,6 +5,9 @@ import type { WallSegment } from '../../types/wallTypes';
 /** Screen pixels: how close to a wall's end a point lands on it. */
 const WALL_END_SNAP = 10;
 
+/** World pixels: how close to a wall's end a point lands on it at viewport `zoom`. */
+export const wallEndReach = (zoom: number): number => WALL_END_SNAP / zoom;
+
 /** World pixels: ends this close are one joint, which moves as one. */
 export const SHARED_END_TOLERANCE = 2;
 
@@ -28,7 +31,7 @@ export interface WallEndSearch {
 export function wallEndNear(point: Point, walls: Record<string, WallSegment>, zoom: number, { skip, avoid = [], also = [] }: WallEndSearch = {}): Point | null {
   const ends = wallList(walls).flatMap((wall) => (skip?.has(wall.id) ? [] : [wall.p1, wall.p2]));
   let found: Point | null = null;
-  let best = WALL_END_SNAP / zoom;
+  let best = wallEndReach(zoom);
   for (const end of [...ends, ...also]) {
     const distance = Math.hypot(point.x - end.x, point.y - end.y);
     if (distance <= best && !avoid.some((place) => sameJoint(place, end))) {

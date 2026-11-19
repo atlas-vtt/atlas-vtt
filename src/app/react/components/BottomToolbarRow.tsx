@@ -5,6 +5,8 @@ import { observeResize } from '../../utils/observeResize';
 
 interface BottomToolbarRowProps {
   /** Docked to the left of the toolbar (undo/redo). */
+  /** At the row's left edge, in a cell of its own over the start of the row (online play's button); what it takes the start slot keeps room for. */
+  lead?: React.ReactNode;
   start?: React.ReactNode;
   /** At the right edge of the view (view actions). */
   end?: React.ReactNode;
@@ -24,7 +26,7 @@ interface BottomToolbarRowProps {
  * controls or off the view. The toolbar editor's state is shared through the
  * row, since it arranges the undo/redo bar beside the toolbar too.
  */
-export function BottomToolbarRow({ start, end, above, options, children }: BottomToolbarRowProps): React.ReactElement {
+export function BottomToolbarRow({ lead, start, end, above, options, children }: BottomToolbarRowProps): React.ReactElement {
   const rowRef = useRef<HTMLDivElement>(null);
   const startRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -58,6 +60,7 @@ export function BottomToolbarRow({ start, end, above, options, children }: Botto
   return (
     <ToolbarRowBridgeContext.Provider value={bridge}>
       <div ref={rowRef} className="atlas-bottom-toolbar-row">
+        <div className="atlas-bottom-toolbar-row__lead">{lead}</div>
         <div ref={startRef} className="atlas-bottom-toolbar-row__start">{start}</div>
         <ToolbarSpaceContext.Provider value={space}>{children}</ToolbarSpaceContext.Provider>
         <div ref={endRef} className="atlas-bottom-toolbar-row__end">{end}</div>

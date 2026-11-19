@@ -794,7 +794,7 @@ export class TokenRenderer {
     const selectedIds = this.store.getState().selectedIds;
     if (!selectedIds.includes(tokenId)) return;
     if (selectedIds.length === 1) {
-      const tokenSize = this.tokenSprites[tokenId]?.getChildByLabel('tokenSprite')?.width || 70;
+      const tokenSize = this.tokenSprites[tokenId]?.tokenSize || 70;
       this.uiManager.updateControlsPosition(x, y, tokenSize);
     }
     this.selectionOverlayUpdater();
@@ -1683,6 +1683,11 @@ export class TokenRenderer {
   /** The lighting lays out the levels' maps (`ArtFloors`): a token dropped where it draws a level below falls there. */
   public setArtFloors(provider: () => ArtFloors | undefined): void {
     this.interactionController.setArtFloors(provider);
+  }
+
+  /** The map's size in world pixels: in session view it sets how wide walls stop a dragged token. */
+  public setMapSize(read: () => { width: number; height: number } | null): void {
+    this.interactionController.setMapSize(read);
   }
 
   /** The stairs tool's editor: it takes every left press, move and release while the stairs tool is active. */

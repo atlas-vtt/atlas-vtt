@@ -30,7 +30,7 @@ $campaign-page-face: 40px;
   @include atlas-inset-surface;
   @include atlas-flex-col($spacing-m);
   padding: $spacing-m;
-  border-radius: $radius-xl;
+  border-radius: $surface-radius;
 }
 
 .campaigns-empty {

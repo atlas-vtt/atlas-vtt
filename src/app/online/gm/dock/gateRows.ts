@@ -1,9 +1,8 @@
-import { shownJoinCode } from '../../protocol/index.ts';
 import { PAUSED_TEXT, type GateActions, type GateView } from '../joinGate.ts';
-import { copyRow, textButton } from './controls.ts';
+import { textButton } from './controls.ts';
 import type { MenuEntry } from './dockMenu.ts';
-import { copyText } from './dockDom.ts';
 import type { OnlineApi } from './panelModel.ts';
+import { secretCode } from './secretCode.ts';
 import { t } from '../../../i18n';
 
 /**
@@ -20,21 +19,14 @@ export function gateRowsOf(gate: GateView | null): GateRows | null {
 }
 
 /** What the gates' rows and menu entries do. */
-export interface GateRowActions extends Pick<GateActions, 'newCode' | 'setRequireCode' | 'setAskToJoin'> {
-  /** Copies the join code as people read it; false while there is none or the clipboard refused. */
-  copyCode(): Promise<boolean>;
-}
+export type GateRowActions = Pick<GateActions, 'newCode' | 'setRequireCode' | 'setAskToJoin'>;
 
-/** The gates' actions for the control whose root is `root`. */
-export function gateRowActions(api: OnlineApi, root: HTMLElement): GateRowActions {
+/** The gates' actions. */
+export function gateRowActions(api: OnlineApi): GateRowActions {
   return {
     newCode: () => api.gate.newCode(),
     setRequireCode: (on) => api.gate.setRequireCode(on),
     setAskToJoin: (on) => api.gate.setAskToJoin(on),
-    copyCode: () => {
-      const code = api.snapshot().gate?.code ?? null;
-      return code === null ? Promise.resolve(false) : copyText(root, shownJoinCode(code));
-    },
   };
 }
 
@@ -62,8 +54,8 @@ export function renderPausedRow(layer: HTMLElement, gate: GateRows | null, actio
   if (!gate.pauseArmed) button.setAttribute('aria-disabled', 'true');
 }
 
-/** `Code 483 912` as a row that copies it, while the table asks for a code. */
-export function renderCodeRow(layer: HTMLElement, gate: GateRows | null, actions: GateRowActions): void {
+/** `Code ••• •••` as a row that shows it, then copies it, while the table asks for a code. */
+export function renderCodeRow(layer: HTMLElement, gate: GateRows | null): void {
   if (gate === null || gate.code === null) return;
-  copyRow(layer, { icon: 'key-round', text: t('online.codeShown', { code: shownJoinCode(gate.code) }), copied: t('online.codeCopied'), focusKey: 'code' }, () => actions.copyCode()).addClass('atlas-online-code-row');
+  secretCode(layer, { code: gate.code, focusKey: 'code', labelled: true }, ['atlas-online-invite', 'atlas-online-code-row']);
 }

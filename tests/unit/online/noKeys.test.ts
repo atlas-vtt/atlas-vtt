@@ -42,13 +42,13 @@ describe('online play\'s source', () => {
   const naming = (pattern: RegExp): string[] => files.filter((file) => pattern.test(readFileSync(file, 'utf8'))).map((file) => path.relative(ROOT, file)).sort();
 
   it('reads the account token in one place, and sends it from three', () => {
-    // The secrets themselves are read by the token store and the salt store alone, and the token store by the account control alone.
-    expect(naming(/getSecret\(/)).toEqual(['gm/account/saltStore.ts', 'gm/account/tokenStore.ts']);
-    expect(naming(/tokens\.get\(/)).toEqual(['gm/account/AccountControl.ts']);
-    // A bearer is written by the table request, the account's own calls (what it may host, sign-out) and the asset store's client.
+    // The salt is read by the salt store alone; the token is the plugin's account's (below).
+    expect(naming(/getSecret\(/)).toEqual(['gm/account/saltStore.ts']);
+    expect(naming(/tokens\.get\(/)).toEqual([]);
+    // A bearer is written by the table request, the relay's account call (what it may host) and the asset store's client.
     expect(naming(/Bearer \$\{/)).toEqual(['gm/account/relayAccount.ts', 'gm/assets/storeClient.ts', 'gm/createTable.ts']);
     // The diagnostics make requests of their own, and never with it.
-    expect(naming(/requestUrl\(/)).toEqual(['gm/account/obsidianHttp.ts', 'gm/assets/storeClient.ts', 'gm/companionDiagnostics.ts']);
+    expect(naming(/requestUrl\(/)).toEqual(['gm/assets/storeClient.ts', 'gm/companionDiagnostics.ts']);
     expect(readFileSync(path.join(ROOT, 'gm/companionDiagnostics.ts'), 'utf8')).not.toMatch(/Authorization|Bearer|token\(|secretStorage/);
   });
 
@@ -63,5 +63,26 @@ describe('online play\'s source', () => {
   it('asks the relay only for tables and for the account', () => {
     const paths = new Set(files.flatMap((file) => readFileSync(file, 'utf8').match(/\/api\/(?:tables|me|invites)[a-z/]*/g) ?? []));
     expect([...paths].sort()).toEqual(['/api/me', '/api/tables', '/api/tables/']);
+  });
+});
+
+/**
+ * The plugin's Atlas account, shared by online play and the Armarium: the token is read in one place, and sent only to
+ * the account service (who is signed in, sign-out) and the Armarium's API, both on api.atlas-vtt.dev.
+ */
+describe('the Atlas account\'s source', () => {
+  const SRC = path.resolve(__dirname, '../../../src/app');
+  const files = [...sources(path.join(SRC, 'account')), ...sources(path.join(SRC, 'armarium'))];
+  const naming = (pattern: RegExp): string[] => files.filter((file) => pattern.test(readFileSync(file, 'utf8'))).map((file) => path.relative(SRC, file)).sort();
+
+  it('reads the token from secret storage in the token store alone, and holds it in the account alone', () => {
+    expect(naming(/getSecret\(/)).toEqual(['account/tokenStore.ts']);
+    expect(naming(/tokens\.get\(/)).toEqual(['account/AtlasAccount.ts']);
+  });
+
+  it('sends it as a bearer from the account service\'s calls and the Armarium\'s API only', () => {
+    expect(naming(/Bearer \$\{/)).toEqual(['account/accountIdentity.ts', 'armarium/upload/armariumApi.ts']);
+    expect(readFileSync(path.join(SRC, 'account/accountServers.ts'), 'utf8')).toContain("ACCOUNTS_ORIGIN = 'https://api.atlas-vtt.dev'");
+    expect(readFileSync(path.join(SRC, 'armarium/upload/armariumApi.ts'), 'utf8')).toContain('ARMARIUM_API = `${ACCOUNTS_ORIGIN}/v1/armarium`');
   });
 });

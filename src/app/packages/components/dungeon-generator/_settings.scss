@@ -59,11 +59,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-// − count +, framed like the fields beside it; the buttons inset by the frame's padding.
+// − count +, framed like the fields beside it; the buttons inset by the frame's padding, concentric
+// with its corners.
+$stepper-inset: 2px;
+
 .atlas-dungeon-stepper {
-  @include atlas-flex-row($gap: 2px);
+  @include atlas-flex-row($gap: $stepper-inset);
   height: var(--input-height);
-  padding: 2px;
+  padding: $stepper-inset;
   border: $border-width-s solid var(--background-modifier-border);
   border-radius: $radius-m;
   background: var(--background-modifier-form-field);
@@ -84,7 +87,7 @@
   width: 24px;
   height: 100%;
   padding: 0;
-  border-radius: $radius-s;
+  border-radius: calc(#{$radius-m} - #{$border-width-s} - #{$stepper-inset});
   box-shadow: none;
   color: var(--text-muted);
 

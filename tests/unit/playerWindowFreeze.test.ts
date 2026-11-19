@@ -518,6 +518,29 @@ describe('player camera freeze', () => {
       expect(service.glassOf('scene-a')).toBeNull();
     });
 
+    it('goes with the GM between frames while players follow, and stays on what they were shown while the scene loads', () => {
+      const { service, source, settings, setDmCamera, nextFrame } = setup();
+      settings.setTableTvSettings({ viewGlideMs: 0 });
+      setDmCamera({ centerX: 10, centerY: 20, scale: 1 });
+      nextFrame();
+      // The GM pans before the next frame is mirrored: the outline is drawn through this camera, so the glass must be too
+      setDmCamera({ centerX: 60, centerY: 70, scale: 1 });
+      expect(service.glassOf('scene-a')).toMatchObject({ centerX: 60, centerY: 70 });
+      expect(service.playerViewFrame('scene-a')).toMatchObject({ centerX: 60, centerY: 70 });
+
+      // While the scene loads the view's camera is not the scene's yet
+      source.store!.setState({ isMapLoading: true });
+      setDmCamera({ centerX: 900, centerY: 900, scale: 1 });
+      expect(service.glassOf('scene-a')).toMatchObject({ centerX: 10, centerY: 20 });
+
+      // Pinned players stay where they are, whatever the GM's camera does
+      source.store!.setState({ isMapLoading: false });
+      nextFrame();
+      service.toggleCameraFreeze();
+      setDmCamera({ centerX: 5, centerY: 5, scale: 1 });
+      expect(service.glassOf('scene-a')).toMatchObject({ centerX: 900, centerY: 900 });
+    });
+
     it("tells its followers when the players' camera moves: a freeze, each glide step, a frame through another camera", () => {
       const { service, source, setDmCamera, nextFrame } = setup();
       const moved = vi.fn();

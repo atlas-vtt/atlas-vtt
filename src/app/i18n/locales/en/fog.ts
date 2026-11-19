@@ -33,7 +33,7 @@ export const fog = {
   'fog.noFog': 'No fog on this map',
   'fog.noFogOnLevel': 'No fog on this level',
   'fog.more': 'More',
-  'fog.gmOpacity': 'Fog opacity in GM View',
+  'fog.gmOpacity': 'Fog opacity in GM view',
   'fog.hideRooms': 'Hide all rooms',
   'fog.roomsHidden': { one: '{count} room hidden', other: '{count} rooms hidden' },
   'fog.noRooms': 'No rooms found',

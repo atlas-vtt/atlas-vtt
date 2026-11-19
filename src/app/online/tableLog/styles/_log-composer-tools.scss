@@ -18,6 +18,7 @@ $composer-control: 28px;
     flex: none;
   }
 
+  // In the field beside Send, $surface-inset inside the box: concentric with its corner, as Send is.
   .atlas-online-log__chip-button {
     @include log-button;
     display: grid;
@@ -25,7 +26,7 @@ $composer-control: 28px;
     place-items: center;
     width: $composer-control;
     height: $composer-control;
-    border-radius: $radius-m;
+    border-radius: $control-inset-radius;
     color: var(--text-muted);
     transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease;
     @include log-button-states;

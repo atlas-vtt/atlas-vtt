@@ -12,11 +12,11 @@ import undo from '../../../assets/toolbar/undo.webp'
 import wall from '../../../assets/toolbar/wall.webp'
 
 /**
- * Each control (and the undo/redo bar) at work, as the toolbar editor's card shows it: 560 × 350 px
+ * Each control (and the bars beside the toolbar) at work, as the toolbar editor's card shows it: 560 × 350 px
  * WebP, at most 40 KB each (`tests/unit/toolbarScreenshots.test.ts`), since
  * the build inlines them into `main.js`. Null where there is none; the card
  * then shows its text alone.
  */
 export const TOOLBAR_SCREENSHOTS = {
-  move, fog, draw, measure, wall, pin, audio: null, dice, loot, assets, palette, undo,
+  move, fog, draw, measure, wall, pin, audio: null, dice, loot, assets, palette, undo, help: null, online: null,
 } satisfies Record<ToolbarUnitId, string | null>

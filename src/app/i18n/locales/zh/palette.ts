@@ -22,7 +22,7 @@ export const palette: Translation = {
   'palette.notePinTool': '笔记图钉工具',
   'palette.openDiceLog': '打开骰子记录',
   'palette.openLootRoller': '打开随机表',
-  'palette.openSceneBrowser': '打开场景浏览器',
+  'palette.openSceneBrowser': '打开素材库',
   'palette.panel.grid': '网格设置',
   'palette.panel.playerView': '玩家视图设置',
   'palette.panel.snapshots': '场景快照',

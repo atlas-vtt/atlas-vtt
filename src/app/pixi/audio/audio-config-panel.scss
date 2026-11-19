@@ -8,11 +8,11 @@
   max-width: 90vw;
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
-  @include atlas-panel-radius($radius-2xl, 1px);
+  @include atlas-panel-radius($surface-radius, 1px);
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.35),
     0 2px 8px rgba(0, 0, 0, 0.2);
-  overflow: hidden;
+  // No clip: the sound select's list hangs out of the panel. The header rounds its own top instead.
   user-select: none;
 }
 
@@ -23,6 +23,8 @@
   @include atlas-close-header(10px);
   background: var(--background-secondary);
   border-bottom: 1px solid var(--background-modifier-border);
+  border-start-start-radius: var(--atlas-panel-inner-radius);
+  border-start-end-radius: var(--atlas-panel-inner-radius);
   cursor: grab;
 
   &:active {
@@ -62,21 +64,10 @@
   display: flex;
   gap: 6px;
   align-items: center;
-}
 
-.atlas-audio-config__select {
-  flex: 1;
-  padding: 6px 8px;
-  border-radius: 8px;
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-modifier-form-field);
-  color: var(--text-normal);
-  font-size: var(--font-ui-small);
-  cursor: pointer;
-
-  &:focus {
-    border-color: var(--interactive-accent);
-    outline: none;
+  > .atlas-select {
+    flex: 1;
+    min-width: 0;
   }
 }
 
@@ -86,7 +77,7 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: $radius-m;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
   color: var(--text-muted);
@@ -122,30 +113,8 @@
   flex-shrink: 0;
 }
 
-.atlas-audio-config__slider {
-  flex: 1;
-  height: 4px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: var(--background-modifier-border);
-  border-radius: 2px;
-  outline: none;
-  cursor: pointer;
-
-  &::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: var(--interactive-accent);
-    cursor: pointer;
-    border: 2px solid var(--background-primary);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  }
-}
-
-.atlas-audio-config__number {
+input.atlas-audio-config__number {
+  @include atlas-text-input;
   width: 56px;
   flex-shrink: 0;
   text-align: center;
@@ -169,7 +138,7 @@
 .atlas-audio-config__delete-btn {
   width: 100%;
   padding: 8px;
-  border-radius: 8px;
+  border-radius: $radius-m;
   border: 1px solid var(--background-modifier-border);
   background: transparent;
   color: var(--text-error);

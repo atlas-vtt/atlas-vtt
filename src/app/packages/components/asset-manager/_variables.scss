@@ -27,6 +27,9 @@ $window-corner-inset: calc(#{$border-width-m} + #{$spacing-m});
 /// Icon buttons inside a search field: the 24 px target WCAG 2.2 asks for at least.
 $search-button-size: 24px;
 
+/// The corner of a button at a search field's end, $spacing-xs inside its border: concentric with the field's.
+$search-field-button-radius: calc(#{$radius-m} - #{$border-width-s} - #{$spacing-xs});
+
 /// A filter section's search field: room for its 24 px close button inside the border.
 $filter-search-height: 28px;
 
@@ -38,7 +41,7 @@ $am-control-border: color-mix(in srgb, var(--text-muted) 22%, var(--background-m
 $am-control-border-hover: color-mix(in srgb, var(--text-muted) 45%, var(--background-modifier-border));
 /// The same edge while the field is typed in or its list is open: the accent, softened into the border, so the field
 /// in use is told at once without a hard line (Obsidian's focus border is lighter than its rest one in the light theme).
-$am-control-border-focus: color-mix(in srgb, var(--interactive-accent) 70%, var(--background-modifier-border));
+$am-control-border-focus: $field-edge-focus; // as `atlas-input-focus`: the accent, softened
 /// The edge of a control that must be found by it alone (an unchecked checkbox, which has no fill of its own):
 /// 3:1 against its surface in both themes (WCAG 1.4.11; 3.5:1 on a light card's #eee).
 $am-checkbox-border: color-mix(in srgb, var(--text-muted) 75%, var(--background-modifier-border));

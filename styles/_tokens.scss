@@ -12,28 +12,53 @@ $spacing-l:  16px;
 $spacing-xl: 24px;
 $spacing-2xl: 32px;
 
-// ── Border Radius ────────────────────────────────────────────────────────────
-// Snapped to Obsidian's radius scale (--radius-s 4 / -m 8 / -l 12 / -xl 24) so
-// our surfaces match the host UI and follow the active theme.
-// Nesting rule: containers use $radius-xl, inner elements $radius-l.
-$radius-xs: var(--radius-s);   // 4px
-$radius-s:  var(--radius-s);   // 4px  – chips, checkboxes
-$radius-m:  var(--radius-m);   // 8px  – buttons, inputs, cards
-$radius-l:  var(--radius-m);   // 8px  – inner elements inside padded containers
-$radius-xl: var(--radius-l);   // 12px – panels, popovers, dropdowns
-$radius-2xl: var(--radius-xl); // 24px – full modals (matches --modal-radius)
-$radius-full: 9999px;          // For pills and circles
-// The corner of every bar and card on the map (main toolbar, undo/redo bar, a tool's bars, scene
-// tabs, player window bar, the editor's tray, widgets, the online play button): one radius, the
-// roundest at which the shortest bars (39 px) stay rounded rectangles; panels take $radius-2xl.
-$toolbar-radius: 16px;
-// How far every bar's and card's controls stand inside its border, and the gap between them. Small,
-// so the controls' corners, concentric with $toolbar-radius, stay round (16 - 1.5 - 4 = 10.5 px).
-$toolbar-inset: $spacing-xs;
+// ── Borders ──────────────────────────────────────────────────────────────────
+$border-width-s: 1px;
+$border-width-m: 1.5px;
+$border-width-l: 2px;
+
+// Theme-aware border tints (use with color-mix())
+// Example: border: $border-width-m solid color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent);
+$border-opacity-subtle: 10%;
+$border-opacity-default: 18%;
+$border-opacity-strong: 30%;
+// The edge of a text field: the same quiet tint as every Atlas border, a step stronger under the pointer. Strokes
+// separate and give depth; they are never stark (owner, 2026-11-17: an edge at 3:1 "looks too stark", reversing O4).
+// The field's own fill tells it from the surface; the edge only finishes it.
+$field-edge: color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
+$field-edge-hover: color-mix(in oklch, var(--mono-100) $border-opacity-strong, transparent);
+// A field in use: the accent, softened, with a faint ring.
+$field-edge-focus: color-mix(in oklch, var(--interactive-accent) 60%, transparent);
+$field-focus-ring: 0 0 0 2px color-mix(in oklch, var(--interactive-accent) 12%, transparent);
+
+// ── Corners ──────────────────────────────────────────────────────────────────
+// Atlas' own corners, the same on every platform and under every theme (Obsidian's --radius-*
+// inside Atlas are set from them, see `atlas-host-layout`). Three radii and the pill, nothing else
+// (`tests/unit/cornerTokens.test.ts` rejects any other length):
+// - a mark ($radius-s): chips, checkboxes, swatches, small badges;
+// - a control ($radius-m): buttons, inputs, menu rows, cards inside a panel;
+// - a surface ($surface-radius): everything that floats (bars, menus, dropdowns, popovers,
+//   dialogs, the asset manager, widgets). It is not chosen: it is a control's radius plus the
+//   inset its corner controls stand at plus the border, so a control in a surface's corner is
+//   concentric with it, and every surface has the same corner because they all share the inset.
+// Content further inside a surface than the inset is not concentric with it and keeps $radius-m.
+// The same holds one level down: what stands $surface-inset inside a control (a switch's thumb, a
+// segmented control's options, a button in a row's end) takes $control-inset-radius, so it runs
+// concentric with the control's corner.
+$radius-s: 4px;
+$radius-m: 10px;
+$radius-full: 9999px;
+// How far a surface's corner controls stand inside its border, and the gap between them.
+$surface-inset: $spacing-xs;
+$surface-radius: $radius-m + $surface-inset + $border-width-m;
+$control-inset-radius: $radius-m - $surface-inset;
 
 // ── Shadows ──────────────────────────────────────────────────────────────────
 // Subtle shadow for cards and containers
 $shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+// A segmented control's chosen option: lifted from the track by its fill and a soft shadow, with a hairline in the
+// quiet border tint (owner, 2026-11-17: a 3:1 edge looked too stark).
+$segmented-chosen-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent), $shadow-sm;
 
 // Medium shadow for dropdowns and popovers (Obsidian's menu shadow)
 $shadow-md: var(--shadow-s);
@@ -62,17 +87,6 @@ $font-weight-normal:   var(--font-normal);
 $font-weight-medium:   var(--font-medium);
 $font-weight-semibold: var(--font-semibold);
 $font-weight-bold:     var(--font-bold);
-
-// ── Borders ──────────────────────────────────────────────────────────────────
-$border-width-s: 1px;
-$border-width-m: 1.5px;
-$border-width-l: 2px;
-
-// Theme-aware border tints (use with color-mix())
-// Example: border: $border-width-m solid color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent);
-$border-opacity-subtle: 10%;
-$border-opacity-default: 18%;
-$border-opacity-strong: 30%;
 
 // ── Z-Index Layers ───────────────────────────────────────────────────────────
 // Organized from lowest to highest
@@ -138,7 +152,7 @@ $touch-target: 44px;
 // Close button: the "×" of every panel. One size, and one gap to the panel's
 // border above and beside it, whatever the panel's size or radius.
 $close-button-size: var(--input-height);
-$close-button-gap: $spacing-s;
+$close-button-gap: $surface-inset;
 
 // ── Statblock surfaces ───────────────────────────────────────────────────────
 // Mirrors src/app/statblocks/render/statblockSurfaceWidths.ts (a unit test keeps
@@ -166,6 +180,102 @@ $dm-screen-inset: clamp(#{$spacing-l}, 3cqi, 64px);
 // These CSS variables allow tokens to be used in inline styles and JavaScript.
 // They're scoped to .atlas-vtt-plugin for specificity.
 
+/// The layout Obsidian and its themes vary, fixed inside Atlas: Obsidian changes corners, radii and
+/// control sizes for macOS (`body.mod-macos`) and a theme may change any of them, so Atlas' own rules
+/// and Obsidian's controls inside Atlas would look different on every platform. Set on every Atlas
+/// root (`.atlas-vtt-plugin`, Atlas' notices). Colours stay the theme's.
+@mixin atlas-host-layout {
+  // Obsidian's scales
+  --radius-s: #{$radius-s};
+  --radius-m: #{$radius-m};
+  --radius-l: #{$surface-radius};
+  --radius-xl: #{$surface-radius};
+  --size-2-1: 2px;
+  --size-2-2: 4px;
+  --size-2-3: 6px;
+  --size-4-1: 4px;
+  --size-4-2: 8px;
+  --size-4-3: 12px;
+  --size-4-4: 16px;
+  --size-4-5: 20px;
+  --size-4-6: 24px;
+  --size-4-8: 32px;
+  --size-4-9: 36px;
+  --size-4-10: 40px;
+  --size-4-12: 48px;
+  --size-4-16: 64px;
+  --size-4-18: 72px;
+  --icon-xs: 14px;
+  --icon-s: 16px;
+  --icon-m: 16px;
+  --icon-l: 18px;
+  --icon-xl: 32px;
+  --input-height: 30px;
+
+  // The shapes and sizes `body.mod-macos` changes, at Obsidian's default for every other platform.
+  // Its colours are left alone: a theme sets those, and its own values win on macOS too.
+  --corner-shape: round;
+  // Atlas' controls are flat; Obsidian bevels buttons and inputs everywhere but on macOS.
+  --input-shadow: none;
+  --input-shadow-hover: none;
+  // Except the corners of controls: inside Atlas whatever Obsidian draws as a control (an input, a
+  // button, an icon button) takes Atlas' control radius, never Obsidian's 5 px or 4 px.
+  --clickable-icon-radius: var(--radius-m);
+  --input-radius: var(--radius-m);
+  --input-icon-inset: var(--size-4-1);
+  --modal-radius: var(--radius-l);
+  --search-input-radius: var(--input-radius);
+  --search-input-corner-shape: var(--input-corner-shape);
+  --slider-thumb-border-width: 0.5px;
+  --slider-thumb-width: 18px;
+  --slider-thumb-opacity-active: 1;
+  --slider-thumb-height-active: var(--slider-thumb-height);
+  --slider-thumb-width-active: var(--slider-thumb-width);
+  --slider-thumb-y-active: var(--slider-thumb-y);
+  --tab-radius: var(--radius-s);
+  --toggle-width: 40px;
+  --toggle-radius: 18px;
+  --toggle-thumb-radius: 18px;
+  --toggle-thumb-height: 18px;
+  --toggle-thumb-width: 18px;
+  --toggle-thumb-opacity-active: 1;
+  --toggle-s-width: 34px;
+  --toggle-s-thumb-height: 15px;
+  --toggle-s-thumb-width: 15px;
+
+  // Obsidian resolves these from the ones above where it declares them, on <body>, and inherits the
+  // result, so inside Atlas they must be declared again to follow Atlas' values (Obsidian 1.15).
+  --bases-cards-corner-shape: var(--corner-shape);
+  --bases-cards-radius: var(--radius-m);
+  --bases-embed-border-radius: var(--radius-s);
+  --bases-kanban-card-corner-shape: var(--corner-shape);
+  --bases-kanban-card-radius: var(--radius-m);
+  --bases-kanban-column-radius: var(--radius-m);
+  --bases-table-container-border-radius: var(--radius-s);
+  --button-corner-shape: var(--corner-shape);
+  --button-radius: var(--input-radius);
+  --callout-radius: var(--radius-s);
+  --checkbox-radius: var(--radius-s);
+  --code-radius: var(--radius-s);
+  --embed-action-radius: var(--clickable-icon-radius);
+  --embed-actions-corner-shape: var(--corner-shape);
+  --embed-actions-radius: calc(var(--embed-action-radius) + var(--embed-actions-padding));
+  --footnote-radius: var(--radius-s);
+  --input-corner-shape: var(--corner-shape);
+  --menu-corner-shape: var(--corner-shape);
+  --menu-radius: var(--radius-m);
+  --mermaid-radius: var(--radius-s);
+  --metadata-property-corner-shape: var(--corner-shape);
+  --metadata-property-corner-shape-focus: var(--corner-shape);
+  --metadata-property-corner-shape-hover: var(--corner-shape);
+  --notice-corner-shape: var(--corner-shape);
+  --notice-radius: var(--radius-m);
+  --scrollbar-radius: var(--radius-l);
+  --setting-items-radius: var(--radius-l);
+  --tooltip-corner-shape: var(--corner-shape);
+  --tooltip-radius: var(--radius-l);
+}
+
 @mixin atlas-css-tokens {
   // Spacing
   --atlas-spacing-xs: #{$spacing-xs};
@@ -178,8 +288,6 @@ $dm-screen-inset: clamp(#{$spacing-l}, 3cqi, 64px);
   // Border radius
   --atlas-radius-s: #{$radius-s};
   --atlas-radius-m: #{$radius-m};
-  --atlas-radius-l: #{$radius-l};
-  --atlas-radius-xl: #{$radius-xl};
 
   // Transitions
   --atlas-transition-fast: #{$transition-fast};

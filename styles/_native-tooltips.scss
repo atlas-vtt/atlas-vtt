@@ -11,7 +11,9 @@
 
 // Obsidian UI hosted inside Atlas keeps Obsidian's behaviour: view headers and the
 // note editors embedded in previews and the DM screen.
+// So do Atlas' buttons in Obsidian's settings (`addSettingButton`), like the controls around them.
 :where([class^='atlas-'], [class*=' atlas-']) .view-header,
-.atlas-embedded-leaf-view {
+.atlas-embedded-leaf-view,
+.atlas-setting-control {
   --no-tooltip: initial;
 }

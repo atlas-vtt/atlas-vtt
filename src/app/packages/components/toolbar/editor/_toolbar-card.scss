@@ -24,14 +24,15 @@ $card-content-width: 280px;
   padding: $spacing-s;
   pointer-events: none;
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
 
   &[hidden] {
     display: none;
   }
 }
 
-// 16:10, stored at twice its size; its corners that face the card's run concentric with them.
+// 16:10, stored at twice its size. A card of content, not controls: the picture stands $spacing-s
+// inside, deeper than a surface's corner controls, so it keeps a control's corner.
 .atlas-toolbar-card__image {
   display: block;
   width: 100%;
@@ -39,8 +40,7 @@ $card-content-width: 280px;
   aspect-ratio: 16 / 10;
   object-fit: cover;
   background: var(--background-secondary);
-  border-radius: $radius-l;
-  @include atlas-panel-inset-radius($spacing-s, top-left, top-right);
+  border-radius: $radius-m;
 }
 
 // The heading and its sentence read as one block of text.
