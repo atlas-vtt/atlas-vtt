@@ -108,6 +108,14 @@ describe('saved rolls through the real tray', () => {
     fireEvent.keyDown(field, { key: 'Enter' });
     draw();
     expect(store.settings.diceRow?.at(-1)).toEqual({ kind: 'die', sides: 3 });
+    // A die the row already has stays out, and the row says why.
+    fireEvent.click(within(row()).getByRole('button', { name: 'Add die' }));
+    const again = within(row()).getByRole('textbox', { name: 'Add die' });
+    fireEvent.change(again, { target: { value: 'd20' } });
+    fireEvent.keyDown(again, { key: 'Enter' });
+    expect(document.querySelector('.atlas-dice-tray__row-note')?.textContent).toBe('d20 is already in the row');
+    fireEvent.change(again, { target: { value: '' } });
+    fireEvent.blur(again);
     fireEvent.keyDown(within(row()).getByRole('img', { name: /^d3,/ }), { key: 'ArrowLeft', altKey: true });
     draw();
     expect(store.settings.diceRow?.slice(-2)).toEqual([{ kind: 'die', sides: 3 }, { kind: 'die', sides: 20 }]);

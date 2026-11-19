@@ -401,3 +401,102 @@ $presets-shadow-room: $spacing-m;
     border-color: var(--text-error);
   }
 }
+
+// What a typed die that cannot join the row says: under the row, out of the flow, in the gap above the formula.
+.atlas-dice-tray__row-edit {
+  position: relative;
+}
+
+.atlas-dice-tray__row-note {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding-top: 2px;
+  @include atlas-error-text;
+  font-size: $font-ui-smaller;
+  line-height: $spacing-l;
+  text-align: center;
+
+  &:empty {
+    display: none;
+  }
+}
+
+// A refused die shakes its field; two identical keyframes, taken in turn, so every refusal shakes again.
+@keyframes atlas-dice-shake-a {
+  0%, 100% { translate: 0 0; }
+  20%, 60% { translate: -3px 0; }
+  40%, 80% { translate: 3px 0; }
+}
+
+@keyframes atlas-dice-shake-b {
+  0%, 100% { translate: 0 0; }
+  20%, 60% { translate: -3px 0; }
+  40%, 80% { translate: 3px 0; }
+}
+
+.atlas-dice-tray__add-field {
+  &[data-shake='1'] {
+    animation: atlas-dice-shake-a 260ms $transition-ease-out;
+  }
+
+  &[data-shake='0'] {
+    animation: atlas-dice-shake-b 260ms $transition-ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &[data-shake] {
+      animation: none;
+    }
+  }
+}
+
+// A saved roll's place: its first die's body, and small marks in three corners (the fourth is the tray's count).
+.atlas-preset-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.atlas-preset-face__mark {
+  position: absolute;
+  max-width: calc(100% - 2 * #{$spacing-xs});
+  overflow: hidden;
+  padding: 0 3px;
+  border-radius: $radius-s;
+  background: color-mix(in oklch, var(--background-primary) 82%, transparent);
+  color: var(--text-normal);
+  font-size: 9px;
+  font-weight: $font-weight-semibold;
+  font-variant-numeric: tabular-nums lining-nums;
+  line-height: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.atlas-preset-face__mark--count {
+  top: 2px;
+  left: 2px;
+}
+
+.atlas-preset-face__mark--rule {
+  bottom: 2px;
+  left: 2px;
+  max-width: 55%;
+  color: var(--text-accent);
+}
+
+.atlas-preset-face__mark--rest {
+  right: 2px;
+  bottom: 2px;
+}
+
+// With a rule beside it, the rest keeps to its half of the foot.
+.atlas-preset-face__mark--rule ~ .atlas-preset-face__mark--rest {
+  max-width: 45%;
+}

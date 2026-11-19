@@ -10,15 +10,19 @@ import type { ArmariumRequest } from './armariumRequest';
  * `listed` are told: the page learns nothing of collections that are not the Armarium's.
  */
 export async function installedListings(app: App, assets: AssetService, listed: ReadonlySet<string>): Promise<ArmariumRequest[]> {
-  const versions = new Map<string, number>();
-  for (const collection of await assets.getCollections()) {
-    if (!listed.has(collection.uid)) continue;
+  const collections = (await assets.getCollections()).filter((collection) => listed.has(collection.uid));
+  // Read together: the page waits on the answer to show its Install buttons.
+  const records = await Promise.all(collections.map(async (collection) => {
     try {
-      const record = await readInstallRecord(app, collection);
-      if (record) versions.set(record.uid, Math.max(record.version, versions.get(record.uid) ?? 0));
+      return await readInstallRecord(app, collection);
     } catch (error) {
       console.error(`[Atlas] Reading the install record of ${collection.id} failed:`, error);
+      return null;
     }
+  }));
+  const versions = new Map<string, number>();
+  for (const record of records) {
+    if (record) versions.set(record.uid, Math.max(record.version, versions.get(record.uid) ?? 0));
   }
   return [...versions].map(([uid, version]) => ({ uid, version }));
 }

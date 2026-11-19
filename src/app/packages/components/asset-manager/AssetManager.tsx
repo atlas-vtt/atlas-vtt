@@ -210,10 +210,10 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
             onDragOver={(e) => { if (draggedItems && sel.selectedFolderId === null) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
             onDrop={(e) => { if (draggedItems && sel.selectedFolderId === null) { e.preventDefault(); crud.handleDrop(null); } }}
           >
-            {armarium.shown ? (
-              <ArmariumPane key={armarium.frameKey} app={data.app} url={armarium.page} onShare={() => { void crud.handleShareCollection(); }} tagFilter={storeTagFilter} />
-            ) : (
-              <>
+            {/* The library and the store are layers of the body: the store's frame stays, hidden, once shown, and the
+                library stays under the store while the store fades in over it. */}
+            {armarium.libraryShown && (
+              <div className="atlas-asset-manager-library" inert={armarium.shown}>
                 <ActiveFilterBar groups={filterSearch.chips} onReset={filterSearch.reset} />
                 {/* A filtered list holds the matches of every folder, so the location reads as the tab's root while it shows. */}
                 <LocationBar
@@ -271,7 +271,10 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
                     />
                   </AssetTagMenuContext.Provider>
                 </div>
-              </>
+              </div>
+            )}
+            {armarium.framed && (
+              <ArmariumPane key={armarium.frameKey} app={data.app} url={armarium.page} shown={armarium.shown} onShare={() => { void crud.handleShareCollection(); }} tagFilter={storeTagFilter} />
             )}
           </div>
         </div>

@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MAX_PRESETS, MAX_ROW, STANDARD_ROW, readDiceShelf, typedDie, withPinToggled, withRowDie, withRowSlotMoved, withSavedPreset, withoutPreset,
+  MAX_PRESETS, MAX_ROW, STANDARD_ROW, readDiceShelf, typedRowDie, withPinToggled, withRowDie, withRowSlotMoved, withSavedPreset, withoutPreset,
   type DiceShelf,
 } from '../../src/app/react/components/dice/diceShelf';
 import { presetCount, presetTerm, withDie, withPreset, withoutPresetTerms } from '../../src/app/react/components/dice/diceTrayText';
 import { diceCounts } from '../../src/app/react/components/dice/diceTrayPool';
+import { presetFaceParts } from '../../src/app/react/components/dice/presetFace';
 import type { DicePreset } from '../../src/app/types/dicePresetTypes';
 
 const sword: DicePreset = { id: 'a', name: 'Longsword', formula: '1d8+3[slashing]' };
@@ -51,8 +52,16 @@ describe('dice shelf', () => {
     expect(withSavedPreset({ ...shelf, presets: many }, 'x', '1d6')).toBeNull();
   });
 
-  it('reads a typed die', () => {
-    expect([typedDie('d3'), typedDie('7'), typedDie('d%'), typedDie('d1'), typedDie('2d6')]).toEqual([3, 7, 100, null, null]);
+  it('reads a typed die and says why one cannot join the row', () => {
+    const shelf: DiceShelf = { presets: [], row: STANDARD_ROW, ownRow: false };
+    expect(typedRowDie(shelf, 'd3')).toEqual({ sides: 3, problem: null });
+    expect(typedRowDie(shelf, '7').sides).toBe(7);
+    expect(typedRowDie(shelf, 'd%')).toEqual({ sides: 100, problem: 'present' });
+    expect(typedRowDie(shelf, 'd20')).toEqual({ sides: 20, problem: 'present' });
+    expect(typedRowDie(shelf, 'd1')).toEqual({ sides: 1, problem: 'faces' });
+    expect(typedRowDie(shelf, '2d6')).toEqual({ sides: null, problem: 'not-a-die' });
+    const full = Array.from({ length: MAX_ROW }, (_, at) => ({ kind: 'die' as const, sides: at + 2 }));
+    expect(typedRowDie({ ...shelf, row: full }, 'd30').problem).toBe('full');
   });
 });
 
@@ -82,5 +91,20 @@ describe('the tray with saved rolls and dice of any size', () => {
   it('counts and writes dice the standard row does not have', () => {
     expect(withDie(withDie('1d20', 3, 1), 3, 1)).toBe('2d3 + 1d20');
     expect(diceCounts('2d3 + 1d7')).toEqual({ 3: 2, 7: 1 });
+  });
+});
+
+describe('a saved roll\'s face', () => {
+  it('shows the first die, how many, what is done to them and what is added', () => {
+    expect(presetFaceParts('3d8kh1+3')).toEqual({ sides: 8, count: 3, rule: 'kh1', rest: '+3' });
+    expect(presetFaceParts('(1d8+3[slashing])')).toEqual({ sides: 8, count: 1, rule: '', rest: '+3' });
+    expect(presetFaceParts('2d12')).toEqual({ sides: 12, count: 2, rule: '', rest: '' });
+    expect(presetFaceParts('4d6kh3')).toEqual({ sides: 6, count: 4, rule: 'kh3', rest: '' });
+    expect(presetFaceParts('2d6! + 1d4 − 1')).toEqual({ sides: 6, count: 2, rule: '!', rest: '+1d4-1' });
+    expect(presetFaceParts('3 + 1d6')).toEqual({ sides: 6, count: 1, rule: '', rest: '+3' });
+    expect(presetFaceParts('(1d8+2)*2')).toEqual({ sides: 8, count: 1, rule: '', rest: '(+2)*2' });
+    expect(presetFaceParts('d%')).toMatchObject({ sides: 100, count: 1 });
+    expect(presetFaceParts('4dF')).toMatchObject({ sides: null, count: 4 });
+    expect(presetFaceParts('+3')).toBeNull();
   });
 });

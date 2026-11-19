@@ -118,10 +118,15 @@ export function withRowSlotMoved(shelf: DiceShelf, from: number, to: number): Sh
 /** The standard seven dice again. */
 export const STANDARD_ROW_CHANGE: ShelfChange = { diceRow: undefined };
 
-/** The die a `d12` the GM types names: `d12`, `12`, `d%`; null for anything else. */
-export function typedDie(text: string): number | null {
+/** Why a die typed for the row cannot join it. */
+export type RowDieProblem = 'not-a-die' | 'faces' | 'present' | 'full';
+
+/** The die a GM types for the row (`d12`, `12`, `d%`) and whether it can join; `sides` null where it is none. */
+export function typedRowDie(shelf: DiceShelf, text: string): { sides: number | null; problem: RowDieProblem | null } {
   const match = /^\s*d?(\d{1,4}|%)\s*$/i.exec(text);
-  if (!match) return null;
+  if (!match) return { sides: null, problem: 'not-a-die' };
   const sides = match[1] === '%' ? 100 : Number(match[1]);
-  return isDieSize(sides) ? sides : null;
+  if (!isDieSize(sides)) return { sides, problem: 'faces' };
+  if (shelf.row.some((slot) => sameSlot(slot, { kind: 'die', sides }))) return { sides, problem: 'present' };
+  return { sides, problem: shelf.row.length >= MAX_ROW ? 'full' : null };
 }
