@@ -34,6 +34,9 @@ jobs:
       - name: Build plugin
         run: npm run build:ci
 
+      - name: Copy plugin files into the installable root
+        run: npm run postbuild
+
       - name: Verify and stage Obsidian files
         run: |
           mkdir -p test-release
