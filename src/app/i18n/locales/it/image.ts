@@ -11,5 +11,15 @@ export const image = {
   "image.windowUnavailable": "La finestra giocatori non è disponibile",
   "image.displayFailed": "Impossibile mostrare l’immagine nella vista giocatori",
   "image.closed": "Visualizzazione dell’immagine chiusa",
-  "image.tooLarge": "Questa immagine misura {width} × {height} px e supera i limiti di Obsidian: al massimo {megapixels} megapixel e {side} px per lato. Esportala a dimensioni inferiori e importala di nuovo."
+  "image.tooLarge": "Questa immagine misura {width} × {height} px e supera i limiti di Obsidian: al massimo {megapixels} megapixel e {side} px per lato. Esportala a dimensioni inferiori e importala di nuovo.",
+  "image.tooLargeForDevice": "Questa immagine misura {width} × {height} px, più di quanto questo dispositivo possa aprire: al massimo {megapixels} megapixel. Esportala a dimensioni inferiori e importala di nuovo.",
+  "image.unsupported": "Questa immagine misura {width} × {height} px, più di quanto Obsidian apra in una volta, e Atlas può leggere un’immagine così grande solo come JPEG semplice o PNG senza interlacciamento. {advice}",
+  "image.unsupported.progressive": "Salvala come JPEG semplice, non progressivo, e importala di nuovo.",
+  "image.unsupported.interlaced": "Salva il PNG senza interlacciamento e importalo di nuovo.",
+  "image.unsupported.orientation": "Esportala già dritta, senza la rotazione nei dati della fotocamera, e importala di nuovo.",
+  "image.unsupported.scans": "Salvala come JPEG semplice e importala di nuovo.",
+  "image.unsupported.coding": "Salvala come JPEG semplice a 8 bit e importala di nuovo.",
+  "image.unsupported.components": "Salvala come JPEG RGB e importala di nuovo.",
+  "image.unsupported.corrupt": "Impossibile leggere il file; esportalo di nuovo.",
+  "image.unreadable": "Questa immagine misura {width} × {height} px, più di quanto Obsidian apra in una volta, e non è stato possibile leggerne il file. Esportala e importala di nuovo.",
 } satisfies Translation;

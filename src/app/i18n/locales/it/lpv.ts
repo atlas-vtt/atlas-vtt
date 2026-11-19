@@ -12,4 +12,10 @@ export const lpv = {
   "lpv.showInitiative": "Mostra pannello dell’iniziativa",
   "lpv.showWidgets": "Mostra widget",
 
+  "lpv.shared": "Locale e online",
+  "lpv.playerWindow": "Finestra giocatori",
+  "lpv.online": "Gioco online",
+  "lpv.playersDraw": "I giocatori possono disegnare",
+  "lpv.playersDrawHint": "I giocatori online ricevono un proprio strumento Disegno. Puoi modificare e cancellare ciò che disegnano.",
+  "lpv.view4k": "Renderizza fino a 4K",
 } satisfies Translation;

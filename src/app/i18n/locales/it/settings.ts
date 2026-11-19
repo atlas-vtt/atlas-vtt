@@ -68,4 +68,14 @@ export const settings = {
   "settings.updates.update": "Aggiorna",
   "settings.updates.whatsNew": "Novità",
 
+  "settings.experimental.heading": "Funzioni sperimentali",
+  "settings.maps.selectionBar": "Mostra la barra di selezione",
+  "settings.maps.selectionBarHint": "Modifica, Duplica ed Elimina sopra ciò che è selezionato sulla mappa. Su un touch screen è sempre visibile.",
+  "settings.navigation.zoomButtons": "Mostra i pulsanti dello zoom",
+  "settings.navigation.zoomButtonsHint": "Pulsanti sul bordo destro della mappa per ingrandire, ridurre e adattare l’intera mappa.",
+  "settings.navigation.fingers": "Dita",
+  "settings.navigation.fingersPan": "Sposta la mappa",
+  "settings.navigation.fingersPanHint": "La penna disegna, dipinge e misura. Un dito sposta la mappa e un tocco posiziona comunque ciò che posiziona lo strumento.",
+  "settings.navigation.fingersTool": "Usa lo strumento",
+  "settings.navigation.fingersToolHint": "Un dito disegna, dipinge e misura, come la penna. Due dita spostano e ingrandiscono.",
 } satisfies Translation;

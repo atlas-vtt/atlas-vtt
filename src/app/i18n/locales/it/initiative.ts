@@ -112,4 +112,5 @@ export const initiative = {
   "initiative.fallbackInfo": "Campo da leggere quando un blocco statistiche non contiene né il campo del modificatore né quello contrassegnato come iniziativa nel suo modello.",
   "initiative.fallbackValue": "{field}",
   "initiative.fallbackScoreValue": "{field}, come punteggio di caratteristica",
+  "initiative.empty.touch": "Tocca e tieni premuto un token per aggiungerlo",
 } satisfies Translation;

@@ -29,5 +29,13 @@ export const transfer = {
   "transfer.move.withoutLinks": "Sposta senza collegamenti",
   "transfer.moveFailed": "Impossibile spostare {what}: {error}",
   "transfer.moved": "Spostamento di {what} in {target} completato",
-  "transfer.selection": "La selezione"
+  "transfer.selection": "La selezione",
+  "transfer.openCollection": "Apri collezione",
+  "transfer.pick.confirm.copy": "Copia",
+  "transfer.pick.confirm.move": "Sposta",
+  "transfer.pick.info.copy": "Copia di {what}",
+  "transfer.pick.info.move": "Spostamento di {what}",
+  "transfer.pick.target": "Collezione di destinazione",
+  "transfer.pick.title.copy": "Copia nella collezione",
+  "transfer.pick.title.move": "Sposta nella collezione",
 } satisfies Translation;

@@ -31,5 +31,11 @@ export const filters = {
   "filters.exclude": "Escludi",
   "filters.filterBy": "Filtra per",
   "filters.excludeField": "Escludi {field}",
-  "filters.keyword.range": "{label}: un valore o un intervallo, come {example1} o {example2}"
+  "filters.keyword.range": "{label}: un valore o un intervallo, come {example1} o {example2}",
+  "filters.hint.touch": "Tocca un’opzione per richiederla, toccala di nuovo per escluderla.",
+  "filters.searchOptions": "Cerca {field}",
+  "filters.noOptionMatch": "Nessuna corrispondenza.",
+  "filters.keyword.text": "Testo del blocco statistiche: una parola o una frase in qualsiasi punto, come text:fuoco o text:tattiche di branco",
+  "filters.templateFields": "Dal modello di blocco statistiche",
+  "filters.noValueMatch": "Nessun risultato per “{value}”",
 } satisfies Translation;

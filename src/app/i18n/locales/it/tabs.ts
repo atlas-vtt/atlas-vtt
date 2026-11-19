@@ -6,5 +6,8 @@ export const tabs = {
   "tabs.openMaps": "Mappe aperte",
   "tabs.openScene": "Apri scena",
   "tabs.show": "Mostra {name} nella vista giocatori",
-  "tabs.shown": "{name} è mostrata nella vista giocatori"
+  "tabs.shown": "{name} è mostrata nella vista giocatori",
+  "tabs.moveLeft": "Sposta a sinistra",
+  "tabs.moveRight": "Sposta a destra",
+  "tabs.processing": "Elaborazione · {percent}%",
 } satisfies Translation;

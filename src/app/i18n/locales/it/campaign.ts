@@ -40,5 +40,6 @@ export const campaign = {
   "campaign.systemNoneSummary": "Ogni mappa segue le regole della propria collezione",
   "campaign.delete": "Elimina campagna",
   "campaign.deleteTitle": "Eliminare {name}?",
-  "campaign.deleteMessage": "Le scene, le mappe e i token utilizzati restano nella tua libreria."
+  "campaign.deleteMessage": "Le scene, le mappe e i token utilizzati restano nella tua libreria.",
+  "campaign.systemWhenPlayed": "Le mappe seguono queste regole solo mentre il tavolo online di questa campagna è aperto.",
 } satisfies Translation;

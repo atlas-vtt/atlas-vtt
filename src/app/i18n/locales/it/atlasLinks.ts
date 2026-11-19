@@ -19,5 +19,8 @@ export const atlasLinks = {
   "atlasLinks.tokenCount": {
     "one": "{count} token",
     "other": "{count} token"
-  }
+  },
+  "atlasLinks.startFight": "Inizia combattimento",
+  "atlasLinks.addBeside": "Aggiungi all’iniziativa senza posizionare",
+  "atlasLinks.tokenRange": { one: "{range} token", other: "{range} token" },
 } satisfies Translation;

@@ -11,5 +11,7 @@ export const validation = {
     "one": "{count} sfondo della mappa",
     "other": "{count} sfondi della mappa"
   },
-  "validation.placeholders": "Le risorse mancanti verranno mostrate come segnaposto."
+  "validation.placeholders": "Le risorse mancanti verranno mostrate come segnaposto.",
+  "validation.roof": "Tetto",
+  "validation.roofs": { one: "{count} immagine del tetto", other: "{count} immagini dei tetti" },
 } satisfies Translation;

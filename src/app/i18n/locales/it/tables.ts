@@ -147,5 +147,23 @@ export const tables = {
   "tables.weightedLong": {
     "one": "{count} riga, in base al peso",
     "other": "{count} righe, in base al peso"
-  }
+  },
+  "tables.generator.lock": "Mantieni {part} quando ritiri",
+  "tables.generator.open": "Apri",
+  "tables.generator.parts": { one: "{count} parte, tirata insieme", other: "{count} parti, tutte tirate insieme" },
+  "tables.generator.rerollPart": "Ritira {part}",
+  "tables.generator.rerollUnlocked": "Ritira le parti non bloccate",
+  "tables.generator.save": "Salva come nota",
+  "tables.generator.saveFailed": "Impossibile salvare il risultato come nota",
+  "tables.generator.saved": "“{name}” salvato.",
+  "tables.group.generators": "Generatori",
+  "tables.kind.generator": "Generatore",
+  "tables.openBase": "Apri base",
+  "tables.options": "Opzioni della tabella",
+  "tables.removeFromList": "Rimuovi dall’elenco",
+  "tables.removed": "{name} rimossa dall’elenco.",
+  "tables.renameField": "Nuovo nome per {name}",
+  "tables.settings.label": "Nome in Atlas",
+  "tables.settings.saveFolder": "Salva i risultati in",
+  "tables.settings.saveFolderNone": "Non salvati",
 } satisfies Translation;

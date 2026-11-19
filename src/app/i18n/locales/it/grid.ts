@@ -30,5 +30,7 @@ export const grid = {
   "grid.unit": "Unità",
   "grid.type.hexFlat": "Esagonale (lato in alto)",
   "grid.type.hexPointy": "Esagonale (vertice in alto)",
-  "grid.type.square": "Quadrata"
+  "grid.type.square": "Quadrata",
+  "grid.unitName": "Nome dell’unità",
+  "grid.unitNameHint": "Per questa scena, come mi o al. Vuoto usa l’unità abituale",
 } satisfies Translation;

@@ -18,5 +18,17 @@ export const token = {
   "token.playerCharacterFailed": "Impossibile modificare lo stato di personaggio giocante di questo token.",
   "token.linkFailed": "Impossibile collegare il blocco statistiche",
   "token.ringColor": "Colore del bordo",
-  "token.reset": "Ripristina"
+  "token.reset": "Ripristina",
+  "token.height": "Altezza",
+  "token.onTheFloor": "A terra",
+  "token.aura": "Aura",
+  "token.noAura": "Nessuna aura",
+  "token.movement": "Movimento",
+  "token.movementWalk": "A piedi",
+  "token.placeHint": "Fai clic per posizionare · Esc per annullare",
+  "token.placeHintMany": "Fai clic per posizionarli tutti · Maiusc + clic per posizionarli uno alla volta · Esc per annullare",
+  "token.placing": "Posizionamento dei token",
+  "token.placeOneByOne": "Uno alla volta",
+  "token.placePrevious": "Token precedente",
+  "token.placeNext": "Token successivo",
 } satisfies Translation;

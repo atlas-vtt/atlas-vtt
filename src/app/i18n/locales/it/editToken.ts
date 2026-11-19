@@ -9,5 +9,7 @@ export const editToken = {
   "editToken.showNameplate": "Mostra nome",
   "editToken.resources": "Risorse",
   "editToken.token": "Token",
-  "editToken.resetStatblock": "Ripristina valore del blocco statistiche"
+  "editToken.resetStatblock": "Ripristina valore del blocco statistiche",
+  "editToken.speed": "Velocità",
+  "editToken.speedDefault": "Predefinita: {value}",
 } satisfies Translation;

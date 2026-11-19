@@ -118,5 +118,6 @@ export const diceLab = {
   "diceLab.factDisadvantageTakes": "svantaggio −{what}",
   "diceLab.default": "Predefinito",
   "diceLab.collectionDice": "Dadi della collezione",
-  "diceLab.ofCollection": "Collezione {name}"
+  "diceLab.ofCollection": "Collezione {name}",
+  "diceLab.edgeOnlySetDice.touch": "Cambiano solo i tiri dei dadi del set: un tiro per i danni resta invariato. Tocca e tieni premuto un tiro per il vantaggio o lo svantaggio.",
 } satisfies Translation;

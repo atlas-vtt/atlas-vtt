@@ -25,5 +25,11 @@ export const exportDialog = {
   "exportDialog.sameVersion": "Uguale all’ultima versione pubblicata. Chi ha installato la v{version} ne vedrà una copia modificata.",
   "exportDialog.version": "Versione",
   "exportDialog.versionInvalid": "La versione deve essere un numero intero pari o superiore a {min}.",
-  "exportDialog.zipHint": "Salva la collezione come file .zip da condividere"
+  "exportDialog.zipHint": "Salva la collezione come file .zip da condividere",
+  "exportDialog.tooLargeToShare": "Questa selezione occupa {size}; l’Armarium accetta fino a {limit}. Escludi alcuni elementi o condividi la collezione in due parti.",
+  "exportDialog.shareInArmarium": "Condividi nell’Armarium",
+  "exportDialog.shareIntro": "Scegli cosa condividere nell’Armarium. Atlas impacchetta la collezione e la carica; non viene salvato nessun file e la versione viene registrata qui solo dopo la pubblicazione.",
+  "exportDialog.uploadVersion": "Carica v{version}",
+  "exportDialog.uploadHint": "Impacchetta la collezione e caricala nell’Armarium",
+  "exportDialog.closeShareHint": "Chiudi senza condividere",
 } satisfies Translation;
