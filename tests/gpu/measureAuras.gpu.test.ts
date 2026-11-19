@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MeasureRenderer, type MeasureGrid } from '../../src/app/pixi/measure/MeasureRenderer';
 import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 import type { TokenEntity } from '../../src/app/types';
-import { openLitView } from '../helpers/litView';
+import { measureMotionDone, openLitView } from '../helpers/litView';
 import { differingIn, playerViewScenes, type PlayerViewScene } from '../helpers/playerViewScene';
 
 vi.mock('events', async () => import('eventemitter3'));
@@ -153,6 +153,7 @@ describe('the body of an aura under the lighting', () => {
       store.getState().setTokenAuras([{ tokenId: 'hero', aura: 20, points: [{ x: TOKEN.x, y: TOKEN.y }, { x: TOKEN.x + 144, y: TOKEN.y }] }], { color: '#e93147' });
       const [id] = Object.keys(store.getState().objects.measures ?? {});
       store.getState().updateMeasure(id!, { walls: false });
+      await measureMotionDone();
     }
     displayFrames(30);
     const target = RenderTexture.create({ width: MAP, height: MAP });

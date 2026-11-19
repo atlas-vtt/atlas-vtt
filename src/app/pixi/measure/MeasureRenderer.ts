@@ -34,11 +34,14 @@ import { RangeMarks, type RangeSources } from './RangeMarks';
 
 export { MEASURE_FADE_MS, type MeasureGrid } from './LiveMeasuring';
 
-type MeasureState = Pick<ViewState, 'activeTool' | 'grid' | 'objects' | 'levels' | 'viewedLevel' | 'measureTool' | 'mapPath' | 'selectedIds' | 'tokenSettings' | 'lighting' | CoversMap> & Pick<MeasuresSlice, 'addMeasure'>
+type MeasureState = Pick<ViewState, 'activeTool' | 'grid' | 'objects' | 'levels' | 'viewedLevel' | 'measureTool' | 'mapPath' | 'selectedIds' | 'tokenSettings' | 'lighting' | 'isMapLoading' | CoversMap> & Pick<MeasuresSlice, 'addMeasure'>
   & ReturnType<MeasureHandleStore['getState']>;
 
 /** What the measure tool reads of its view's state, and what it writes: a measurement to keep, and what the handles of the kept ones change. */
 export type MeasureStore = Pick<StoreApi<MeasureState>, 'getState' | 'subscribe'>;
+
+/** The scene and level a view shows. */
+const sceneKey = ({ mapPath, viewedLevel }: Pick<MeasureState, 'mapPath' | 'viewedLevel'>): string => `${mapPath ?? ''}\u0000${viewedLevel ?? ''}`;
 
 const sameList = (a: readonly KeptMeasure[], b: readonly KeptMeasure[]): boolean => a.length === b.length && a.every((measure, index) => measure === b[index]);
 
@@ -81,6 +84,8 @@ export class MeasureRenderer {
   /** The record the kept measurements were last read from, and what it reads as. */
   private keptRecord: unknown = null;
   private keptList: readonly KeptMeasure[] = [];
+  /** The scene and level the kept measurements were last read from: only changes within them come and go with motion. */
+  private keptScene: string | null = null;
   /** The walls and the tokens of the level shown, which areas stop at, ring and count. */
   private readonly scene: MeasuredScene;
   /** The kept areas pointed at mark the tokens in them. */
@@ -149,8 +154,8 @@ export class MeasureRenderer {
     this.stops.push(this.store.subscribe((state, previous) => this.follow(state, previous)));
 
     const state = this.store.getState();
-    this.readKept(state);
-    this.readScene(state);
+    this.readKept(state, false);
+    this.readScene(state, false);
     this.input.setEnabled(state.activeTool === 'measure');
   }
 
@@ -248,8 +253,10 @@ export class MeasureRenderer {
     if (COVERS_MAP.some((open) => state[open] && !previous[open])) this.input.cancel();
     this.input.setEnabled(measuring);
     if (state.measureTool.players !== previous.measureTool.players) this.live.setHidden(!state.measureTool.players);
-    this.readKept(state);
-    this.readScene(state);
+    // Asked before the kept measurements are read, which notes the scene and level they belong to.
+    const inPlace = this.inPlace(state);
+    this.readKept(state, inPlace);
+    this.readScene(state, inPlace);
     this.handles.follow(state);
     this.pointed.follow(this.store.getState().measurePopover ?? null);
     if (state.grid === previous.grid) return;
@@ -258,14 +265,15 @@ export class MeasureRenderer {
     this.handles.placesChanged();
   }
 
-  /** Draws the kept measurements of the level shown, and tells those players may see, when their record is another. */
-  private readKept(state: MeasureState): void {
+  /** Draws the kept measurements of the level shown, and tells those players may see, when their record is another; `animate` lets them come and go with motion. */
+  private readKept(state: MeasureState, animate: boolean): void {
     const record = levelObjects(state).measures;
+    this.keptScene = sceneKey(state);
     if (record === this.keptRecord) return;
     this.keptRecord = record;
     const list = measureList(record);
     this.keptList = list;
-    this.layer.setKept(list);
+    this.layer.setKept(list, animate);
     this.handles.setKept(list);
     // An aura is among them as it is kept: whoever passes it on places it around its token (`isAura`), never by its points.
     const kept = list.filter((measure) => measure.hidden !== true);
@@ -273,18 +281,27 @@ export class MeasureRenderer {
   }
 
   /** Follows the walls and the tokens of the level shown, asked of their records alone: other walls cut the areas again, other tokens move the auras and are counted again. */
-  private readScene(state: MeasureState): void {
+  private readScene(state: MeasureState, animate: boolean): void {
     const changed = this.scene.follow(state);
     if (changed.walls) this.layer.wallsChanged();
     if (changed.tokens) {
       // Auras first: one that moved marks and counts its tokens where it lies now.
-      this.layer.aurasMoved();
+      this.layer.aurasMoved(animate);
       // A badge stands on the rim of the token its measurement lies on: tokens that moved, came or went place the badges anew.
       if (this.keptList.length > 0) this.handles.placesChanged();
       this.layer.tokensChanged();
     }
     const walled = this.scene.walled(state);
     if (walled !== (this.measurements.get().walled ?? false)) this.measurements.set({ walled });
+  }
+
+  /**
+   * Whether what the store holds now is an edit of the scene and level the kept measurements were
+   * read from (a measurement kept, deleted, undone): those come and go with motion. A load, another
+   * scene and another level show theirs at once.
+   */
+  private inPlace(state: MeasureState): boolean {
+    return !state.isMapLoading && this.keptScene === sceneKey(state);
   }
 
   /** The live measurement is another, or gone: it is drawn at the zoom the view has now. */

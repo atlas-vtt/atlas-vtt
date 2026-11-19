@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { Container, Text } from 'pixi.js';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MeasurementSettings } from '../../../src/app/grid/measurementFormat';
 import type { KeptMeasure } from '../../../src/app/measure/measureTypes';
 import { handleDrag, sameDragChanges } from '../../../src/app/pixi/measure/measureHandleDrag';
@@ -8,12 +8,13 @@ import type { MeasurePlayersView } from '../../../src/app/pixi/measurePartsVisib
 import { captureWithLayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
 import { getHistoryStore } from '../../../src/app/stores/history';
 import type { TokenEntity } from '../../../src/app/types';
-import { GRID, measureScene, type MeasureScene } from '../../helpers/measureScene';
+import { finishMeasureExits, GRID, measureScene, type MeasureScene } from '../../helpers/measureScene';
 
 let current: MeasureScene | undefined;
 afterEach(() => {
   current?.destroy();
   current = undefined;
+  vi.useRealTimers();
 });
 
 const FEET: MeasurementSettings = { mode: 'metric', unitType: 'feet', unitDistance: 5, ruleDistance: 5, rangeBands: [], coneAngle: 90, diagonalRule: 'equidistant' };
@@ -109,9 +110,11 @@ describe('an aura on the map', () => {
   });
 
   it('is drawn with its token or not at all: gone while the token is beside the map, back when it returns', () => {
+    vi.useFakeTimers();
     const { s, aura } = scene();
     expect(bodies(s)).toHaveLength(1);
     s.store.getState().updateTokens([{ id: 'hero', changes: { offMap: true } }]);
+    finishMeasureExits();
     expect(bodies(s)).toHaveLength(0);
     expect(badge(s)).toBeNull();
     expect(labels(s)).toEqual([]);

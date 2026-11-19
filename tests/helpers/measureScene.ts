@@ -2,6 +2,7 @@ import { Container, EventBoundary, FederatedPointerEvent, Text, type EventSystem
 import type { HideableLayer } from '../../src/app/pixi/playerSafeFrame';
 import { Viewport } from 'pixi-viewport';
 import { MeasureRenderer, type MeasureGrid } from '../../src/app/pixi/measure/MeasureRenderer';
+import { MEASURE_MOTION } from '../../src/app/pixi/measure/measurePresence';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
@@ -14,6 +15,11 @@ export interface PointerKeys {
   alt?: boolean;
   /** The browser's own event the press came from. */
   native?: PointerEvent;
+}
+
+/** Lets the kept measurements that left the map finish leaving it (fake timers drive the animation frames). */
+export function finishMeasureExits(): void {
+  vi.advanceTimersByTime(MEASURE_MOTION.exit.ms + 50);
 }
 
 export const GRID = 70;
