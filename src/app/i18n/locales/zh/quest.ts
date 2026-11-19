@@ -16,6 +16,7 @@ export const quest: Translation = {
   'quest.status.active': '进行中',
   'quest.status.done': '已完成',
   'quest.status.failed': '失败',
+  'quest.status.hidden': '隐藏',
   'quest.statusOf': '{title}的状态',
   'quest.experience': '{count} XP',
   'quest.createFailed': '无法创建任务笔记。',

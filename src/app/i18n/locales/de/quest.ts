@@ -16,6 +16,7 @@ export const quest: Translation = {
   'quest.status.active': 'Aktiv',
   'quest.status.done': 'Erledigt',
   'quest.status.failed': 'Gescheitert',
+  'quest.status.hidden': 'Verborgen',
   'quest.statusOf': 'Status von {title}',
   'quest.experience': '{count} EP',
   'quest.createFailed': 'Die Notiz der Quest konnte nicht erstellt werden.',

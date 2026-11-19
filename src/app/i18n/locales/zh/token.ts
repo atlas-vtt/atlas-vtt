@@ -3,6 +3,8 @@ import type { Translation } from '../../types';
 export const token: Translation = {
   'token.unknownCreature': '未知生物',
   'token.clickToName': '点击命名',
+  'token.size.tiny': '超小型（0.5×0.5）',
+  'token.size.small': '小型（0.75×0.75）',
   'token.size.medium': '中型（1×1）',
   'token.size.large': '大型（2×2）',
   'token.size.huge': '巨型（3×3）',

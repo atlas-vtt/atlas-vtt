@@ -3,6 +3,8 @@ import type { Translation } from '../../types';
 export const token: Translation = {
   'token.unknownCreature': 'Неизвестное существо',
   'token.clickToName': 'Щёлкните, чтобы назвать',
+  'token.size.tiny': 'Крошечный (0,5×0,5)',
+  'token.size.small': 'Маленький (0,75×0,75)',
   'token.size.medium': 'Средний (1×1)',
   'token.size.large': 'Большой (2×2)',
   'token.size.huge': 'Огромный (3×3)',

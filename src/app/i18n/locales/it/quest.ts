@@ -15,6 +15,7 @@ export const quest = {
   "quest.status.active": "Attiva",
   "quest.status.done": "Completata",
   "quest.status.failed": "Fallita",
+  "quest.status.hidden": "Nascosta",
   "quest.statusOf": "Stato di {title}",
   "quest.experience": "{count} PE",
   "quest.createFailed": "Impossibile creare la nota della missione.",
