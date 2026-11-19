@@ -93,6 +93,17 @@ export class MixDesk {
     }
   }
 
+  setSilence(silenced: boolean): void {
+    const {mix} = this.table;
+    const now = this.table.now();
+    if (!silenced) {
+      this.output.unlock();
+      this.table.commit(bringBack(mix, now));
+    } else if (isPlaying(mix.table, now)) {
+      this.table.commit(stopEverything(mix, now));
+    }
+  }
+  
   /** Ends the mix. */
   stop(): void {
     const { now, fadeMs } = this.table.timing();

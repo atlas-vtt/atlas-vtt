@@ -1,8 +1,8 @@
-import type { App } from 'obsidian';
+import {App} from 'obsidian';
 import { t } from '../i18n';
 import type { LocalLevels } from '../sound/engine/mixerGraph';
 import type { Mood, SoundRecord, TableSound } from '../sound/soundTypes';
-import { moodAfter } from '../soundLibrary/moodOrdering';
+import {moodAfter, moodBefore} from '../soundLibrary/moodOrdering';
 import { loadLastMix, type LastMix, type StoredOutput } from './deviceFacts';
 import { noteDirector, openedDirector } from './directorRegistry';
 import { LastMixKeeper } from './lastMixKeeper';
@@ -21,6 +21,7 @@ import { SoundTable } from './soundTable';
 import { stopFade } from './tableSound';
 import { stopAll } from './liveEdits';
 import type { AudienceLine, TableClock } from './tableClock';
+import MediaKeysManager from "./MediaKeysManager.ts";
 
 const SHELF_AFTER_FADE_MS = 500;
 
@@ -62,6 +63,7 @@ export class SoundDirector {
   private readonly choice: OutputChoice;
   private readonly previews: SoundPreview;
   private readonly dropSettings: () => void;
+  private readonly mediaKeysManager: MediaKeysManager;
 
   constructor(private readonly deps: SoundDirectorDeps) {
     this.output = new SoundOutput({
@@ -96,6 +98,12 @@ export class SoundDirector {
     this.players = new PlayersSeam(deps, () => this.publish({ playersRevision: this.current.playersRevision + 1 }));
     this.dropSettings = deps.settings.onChange(() => this.sync());
     this.sync();
+    
+    this.mediaKeysManager = new MediaKeysManager(this.desk, {
+      pressNext: () => this.pressNext(),
+      pressPrevious: () => this.pressPrevious(),
+    });
+
   }
 
   get isOn(): boolean { return this.on; }
@@ -149,7 +157,12 @@ export class SoundDirector {
     const next = moodAfter(this.deps.moods.moods(), this.table.mix.mood?.id ?? null);
     if (next) this.press(next);
   }
-
+  
+  pressPrevious(): void {
+    const previous = moodBefore(this.deps.moods.moods(), this.table.mix.mood?.id ?? null);
+    if (previous) this.press(previous);
+  }
+    
   /** Ends the mix, with nothing left to bring back. */
   stop(): void {
     this.fights.follow.manualPress();
@@ -293,6 +306,7 @@ export class SoundDirector {
     this.lastMix.schedule();
     this.publish({ mix });
     if (tableChanged) for (const listener of [...this.stateListeners]) listener(mix.table);
+    this.mediaKeysManager.syncMediaKeys(mix, this.current);
   }
 
   private publish(change: Partial<SoundSnapshot>): void {
