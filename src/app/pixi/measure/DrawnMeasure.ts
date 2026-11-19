@@ -19,6 +19,7 @@ import { AreaBody, type BodyLook } from './AreaBody';
 import { AreaTokenRings, markedTokens } from './AreaTokenRings';
 import type { AreaEffects } from './effects/AreaEffects';
 import { legDistances, rulerRise } from './measureDistances';
+import type { Presence } from './measurePresence';
 import { PlayersLabel } from './PlayersLabel';
 
 /** A leg's label beside the distance's: the same pill, smaller. */
@@ -141,6 +142,28 @@ export class DrawnMeasure {
         labelForPlayers: (count, seen) => this.labelForPlayers(count, seen),
       },
     };
+  }
+
+  /** The measurement drawn; null while nothing is. */
+  get measurement(): Measurement | null {
+    return this.drawn?.measurement ?? null;
+  }
+
+  /**
+   * How far it is on the map (`MeasurePresence`): every piece fades with it and grows about where
+   * it starts (an aura's token), the labels with them, the rings on tokens only fade.
+   */
+  present({ alpha, grow }: Presence): void {
+    const drawn = this.drawn;
+    const about = drawn?.aura?.shaped.origin ?? drawn?.measurement.points[0] ?? { x: 0, y: 0 };
+    this.ink.present(alpha, grow, about);
+    this.rings.present(alpha);
+    for (const view of [this.body.view, this.labels]) {
+      view.alpha = alpha;
+      view.scale.set(grow);
+      view.pivot.set(about.x, about.y);
+      view.position.set(about.x, about.y);
+    }
   }
 
   /** The container of its labels, for what stands with them (the pin). */

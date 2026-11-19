@@ -25,7 +25,7 @@ export interface NavigationSettings {
 }
 
 /** Every tutorial Atlas has; the settings list those the user finished or skipped. */
-export const TUTORIAL_IDS = ['dashboard', 'map', 'online', 'tableLog', 'assets', 'palette', 'tokenStatblocks', 'lootSettings', 'lootRoller', 'lootResults'] as const;
+export const TUTORIAL_IDS = ['dashboard', 'map', 'online', 'tableLog', 'assets', 'palette', 'tokenStatblocks', 'lootSettings', 'lootRoller', 'lootResults', 'savedRolls'] as const;
 export type TutorialId = typeof TUTORIAL_IDS[number];
 
 export interface AtlasSettings {

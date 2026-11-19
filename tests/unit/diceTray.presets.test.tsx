@@ -24,6 +24,8 @@ vi.mock('../../src/app/react/ViewStoreContext', () => ({
 vi.mock('../../src/app/react/components/dice/useDiceShelf', () => ({
   useDiceShelf: () => ({ shelf: readDiceShelf(store.settings), change: (change: ShelfChange) => { store.settings = { ...store.settings, ...change }; } }),
 }));
+// The first-run tour has its own tests; here it stays away.
+vi.mock('../../src/app/onboarding/Tutorial', () => ({ Tutorial: (): null => null }));
 vi.mock('../../src/app/keyboard/mapHotkeys', () => ({ canRunMapHotkeys: () => true }));
 vi.mock('../../src/app/packages/components/primitives/tooltip', () => ({
   LabelTooltip: ({ children }: { children: React.ReactNode }): React.ReactNode => children,
@@ -53,7 +55,7 @@ describe('saved rolls through the real tray', () => {
     const panel = screen.getByRole('region', { name: 'Saved rolls' });
     expect(within(panel).getByRole('textbox', { name: 'Formula' })).toHaveProperty('value', '2d12');
     fireEvent.change(within(panel).getByRole('textbox', { name: 'Name' }), { target: { value: 'Duality' } });
-    fireEvent.click(within(panel).getByRole('button', { name: 'Save' }));
+    fireEvent.click(within(panel).getByRole('button', { name: 'Save roll' }));
     draw();
     expect(store.settings.dicePresets?.map(({ name, formula }) => ({ name, formula }))).toEqual([{ name: 'Duality', formula: '2d12' }]);
 
@@ -65,7 +67,9 @@ describe('saved rolls through the real tray', () => {
     // The eighth place: its number key adds it to the tray, before the modifier.
     fireEvent.change(trayFormula(), { target: { value: '1d20 + 2' } });
     fireEvent.keyDown(document.body, { key: '8' });
-    expect(trayFormula().value).toBe('1d20 + 2d12 + 2');
+    expect(trayFormula().value).toBe('1d20 + (2d12) + 2');
+    // The saved roll's dice are its own: the d12 shows none held.
+    expect(screen.getByRole('button', { name: 'd12' })).toBeTruthy();
     fireEvent.contextMenu(screen.getByRole('button', { name: 'Duality, 1 in the tray' }));
     expect(trayFormula().value).toBe('1d20 + 2');
   });
@@ -75,11 +79,11 @@ describe('saved rolls through the real tray', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Saved rolls' }));
     const panel = screen.getByRole('region', { name: 'Saved rolls' });
     fireEvent.change(within(panel).getByRole('textbox', { name: 'Formula' }), { target: { value: '1d6' } });
-    fireEvent.click(within(panel).getByRole('button', { name: 'Save' }));
+    fireEvent.click(within(panel).getByRole('button', { name: 'Save roll' }));
     expect(panel.textContent).toContain('Give the roll a name');
     fireEvent.change(within(panel).getByRole('textbox', { name: 'Name' }), { target: { value: 'Too many' } });
     fireEvent.change(within(panel).getByRole('textbox', { name: 'Formula' }), { target: { value: '1d6 +' } });
-    fireEvent.click(within(panel).getByRole('button', { name: 'Save' }));
+    fireEvent.click(within(panel).getByRole('button', { name: 'Save roll' }));
     expect(store.settings.dicePresets).toBeUndefined();
   });
 
@@ -90,5 +94,28 @@ describe('saved rolls through the real tray', () => {
     fireEvent.keyDown(document.body, { key: '2' });
     fireEvent.keyDown(document.body, { key: '1' });
     expect(trayFormula().value).toBe('1d3 + 1d20');
+  });
+
+  it('edits the row in place: E starts it, × takes a die out, + adds one, Alt+arrow moves one, Escape ends it', () => {
+    const { draw } = harness();
+    fireEvent.keyDown(document.body, { key: 'e' });
+    const row = (): HTMLElement => screen.getByRole('group', { name: 'Dice row' });
+    fireEvent.click(within(row()).getByRole('button', { name: 'Take d100 out of the row' }));
+    draw();
+    fireEvent.click(within(row()).getByRole('button', { name: 'Add die' }));
+    const field = within(row()).getByRole('textbox', { name: 'Add die' });
+    fireEvent.change(field, { target: { value: 'd3' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    draw();
+    expect(store.settings.diceRow?.at(-1)).toEqual({ kind: 'die', sides: 3 });
+    fireEvent.keyDown(within(row()).getByRole('img', { name: /^d3,/ }), { key: 'ArrowLeft', altKey: true });
+    draw();
+    expect(store.settings.diceRow?.slice(-2)).toEqual([{ kind: 'die', sides: 3 }, { kind: 'die', sides: 20 }]);
+    // While the row is edited a die's number key adds nothing, and Enter rolls nothing.
+    fireEvent.keyDown(document.body, { key: '1' });
+    expect(trayFormula().value).toBe('');
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(screen.queryByRole('group', { name: 'Dice row' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'd3' })).toBeTruthy();
   });
 });

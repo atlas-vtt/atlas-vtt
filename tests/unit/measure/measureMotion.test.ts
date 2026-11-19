@@ -1,0 +1,116 @@
+// @vitest-environment jsdom
+import type { Container } from 'pixi.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MEASURE_FADE_MS } from '../../../src/app/pixi/measure/MeasureRenderer';
+import { LIVE_DISSOLVE_MS, MEASURE_MOTION } from '../../../src/app/pixi/measure/measurePresence';
+import { getHistoryStore } from '../../../src/app/stores/history';
+import { finishMeasureExits, measureFrom, measureScene, type MeasureScene } from '../../helpers/measureScene';
+
+let current: MeasureScene | undefined;
+afterEach(() => {
+  current?.destroy();
+  current = undefined;
+  vi.useRealTimers();
+});
+
+function scene(): MeasureScene {
+  vi.useFakeTimers();
+  current = measureScene();
+  current.store.getState().setActiveTool('measure');
+  return current;
+}
+
+/** The labels of the first kept measurement, which fade with all of it. */
+const keptLabels = (s: MeasureScene): Container => s.parts()[3] as Container;
+const liveLabels = (s: MeasureScene): Container => s.parts()[1] as Container;
+
+describe('how measurements come and go', () => {
+  it('keeps a measurement in the place of the live one, at full strength and size: keeping it never flickers', () => {
+    const s = scene();
+    s.store.getState().setMeasureTool({ keep: true });
+    s.pointer('pointerdown', 35, 35);
+    s.pointer('pointermove', 175, 35);
+    vi.advanceTimersByTime(MEASURE_MOTION.live.ms + 50);
+    s.pointer('pointerup', 175, 35);
+    expect(s.parts()).toHaveLength(4);
+    expect(keptLabels(s).alpha).toBe(1);
+    expect(keptLabels(s).scale.x).toBe(1);
+  });
+
+  it('keeps a measurement released before its first drawing had faded in from where that had got to', () => {
+    const s = scene();
+    s.store.getState().setMeasureTool({ keep: true });
+    s.pointer('pointerdown', 35, 35);
+    s.pointer('pointermove', 175, 35);
+    vi.advanceTimersByTime(MEASURE_MOTION.live.ms / 3);
+    const live = liveLabels(s).alpha;
+    s.pointer('pointerup', 175, 35);
+    expect(keptLabels(s).alpha).toBe(live);
+    vi.advanceTimersByTime(MEASURE_MOTION.enter.ms + 50);
+    expect(keptLabels(s).alpha).toBe(1);
+  });
+
+  it('grows a measurement that comes back by undo out of where it starts, and fades one that goes before it leaves', () => {
+    const s = scene();
+    s.store.getState().setMeasureTool({ keep: true });
+    measureFrom(s, 35, 35, 175, 35);
+    const history = getHistoryStore(s.store)!;
+    history.getState().undo();
+    vi.advanceTimersByTime(MEASURE_MOTION.exit.ms / 2);
+    // On its way out: still drawn, fainter and a little smaller.
+    expect(s.parts()).toHaveLength(4);
+    expect(keptLabels(s).alpha).toBeLessThan(1);
+    expect(keptLabels(s).scale.x).toBeLessThan(1);
+    finishMeasureExits();
+    expect(s.parts()).toHaveLength(2);
+    history.getState().redo();
+    expect(keptLabels(s).alpha).toBe(0);
+    expect(keptLabels(s).scale.x).toBe(MEASURE_MOTION.enter.from.grow);
+    // It grows about its start, which stays where it is.
+    expect(keptLabels(s).toGlobal({ x: 35, y: 35 })).toEqual({ x: 35, y: 35 });
+    vi.advanceTimersByTime(MEASURE_MOTION.enter.ms + 50);
+    expect(keptLabels(s).alpha).toBe(1);
+    expect(keptLabels(s).scale.x).toBe(1);
+  });
+
+  it('turns a measurement deleted while it grows in, from where it had got to', () => {
+    const s = scene();
+    s.store.getState().setMeasureTool({ keep: true });
+    measureFrom(s, 35, 35, 175, 35);
+    const history = getHistoryStore(s.store)!;
+    history.getState().undo();
+    finishMeasureExits();
+    history.getState().redo();
+    vi.advanceTimersByTime(MEASURE_MOTION.enter.ms / 3);
+    const halfway = keptLabels(s).alpha;
+    expect(halfway).toBeGreaterThan(0);
+    history.getState().undo();
+    vi.advanceTimersByTime(20);
+    expect(keptLabels(s).alpha).toBeLessThan(halfway);
+    finishMeasureExits();
+    expect(s.parts()).toHaveLength(2);
+  });
+
+  it('dissolves a released measurement nobody keeps over the end of its time, and its pin still keeps it there', () => {
+    const s = scene();
+    measureFrom(s, 35, 35, 175, 35);
+    vi.advanceTimersByTime(MEASURE_MOTION.live.ms + 50);
+    expect(liveLabels(s).alpha).toBe(1);
+    vi.advanceTimersByTime(MEASURE_FADE_MS - LIVE_DISSOLVE_MS / 2 - MEASURE_MOTION.live.ms - 50);
+    const fading = liveLabels(s).alpha;
+    expect(fading).toBeGreaterThan(0);
+    expect(fading).toBeLessThan(1);
+    expect(s.measure.measurements.get().live).not.toBeNull();
+    vi.advanceTimersByTime(LIVE_DISSOLVE_MS);
+    expect(s.measure.measurements.get().live).toBeNull();
+  });
+
+  it('shows a load\'s measurements and takes them away at once', () => {
+    const s = scene();
+    s.store.getState().setMeasureTool({ keep: true });
+    measureFrom(s, 35, 35, 175, 35);
+    s.store.setState({ isMapLoading: true });
+    s.store.getState().clearMeasures();
+    expect(s.parts()).toHaveLength(2);
+  });
+});

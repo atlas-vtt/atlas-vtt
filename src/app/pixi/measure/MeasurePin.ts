@@ -5,6 +5,8 @@ import { destroyTree } from '../utils/destroyTree';
 import { createLucideIconTexture } from '../utils/lucideIconTexture';
 import { drawLabelPill, labelColors, type MeasureLabel } from '../utils/measureLabel';
 import { FINGER_TARGET_RADIUS, fingerReaches } from '../utils/pointerReach';
+import { ValueTransition } from '../utils/ValueTransition';
+import { MOTION_SLOW_MS, prefersReducedMotion } from '../../utils/motion';
 
 /** Inner markup of Lucide's `pin` icon. */
 const PIN_SVG = [
@@ -22,6 +24,8 @@ const PIN_LOOK = {
   glyph: 9,
   /** How far beyond its disc a press still takes the pin. */
   reach: 2,
+  /** Its size as a share of its own as it pops in beside the label. */
+  popFrom: 0.5,
 } as const;
 
 /**
@@ -35,9 +39,22 @@ export class MeasurePin {
   private texture: Promise<Texture> | null = null;
   /** Where the pin takes a press, in world units; null until it is placed. */
   private area: { readonly x: number; readonly y: number; readonly radius: number; readonly fingerRadius: number } | null = null;
+  /** The label's scale it takes, before it pops in. */
+  private size = 1;
+  private readonly appear = new ValueTransition(1, MOTION_SLOW_MS, (shown) => this.applyAppear(shown));
 
   constructor() {
     this.view.addChild(this.disc);
+  }
+
+  /** Pops in where it was placed: it fades in as it grows to its size. */
+  popIn(): void {
+    if (prefersReducedMotion(document.body)) {
+      this.appear.jumpTo(1);
+      return;
+    }
+    this.appear.jumpTo(0);
+    this.appear.animateTo(1);
   }
 
   /** Puts the pin at the end of `label` as that is drawn now, at `zoom`. */
@@ -46,7 +63,8 @@ export class MeasurePin {
     const { width, height } = label.pillSize;
     const x = label.view.position.x + (width / 2 + PIN_LOOK.gap + height / 2) * scale;
     const y = label.view.position.y;
-    this.view.scale.set(scale);
+    this.size = scale;
+    this.applyAppear(this.appear.value);
     this.view.position.set(x, y);
     const colors = labelColors();
     const viewZoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
@@ -63,9 +81,16 @@ export class MeasurePin {
   }
 
   destroy(): void {
+    this.appear.cancel();
     this.texture?.then((texture) => texture.destroy(true), () => undefined);
     this.texture = null;
     destroyTree(this.view);
+  }
+
+  private applyAppear(shown: number): void {
+    if (this.view.destroyed) return;
+    this.view.alpha = shown;
+    this.view.scale.set(this.size * (PIN_LOOK.popFrom + (1 - PIN_LOOK.popFrom) * shown));
   }
 
   /** The glyph in the label's ink; it joins the disc once its texture is there. */

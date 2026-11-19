@@ -2,7 +2,7 @@ import { Container, RenderTexture, Sprite, Texture } from 'pixi.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MeasureRenderer, type MeasureGrid } from '../../src/app/pixi/measure/MeasureRenderer';
 import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
-import { openLitView, type LitView } from '../helpers/litView';
+import { measureMotionDone, openLitView, type LitView } from '../helpers/litView';
 
 vi.mock('events', async () => import('eventemitter3'));
 
@@ -52,7 +52,10 @@ describe('the body of a measured area under the lighting', () => {
     state.setSceneLighting({ enabled: lit, ambient: 0 });
     state.addWall({ type: 'solid', p1: { x: 128, y: -64 }, p2: { x: 128, y: 320 } });
     state.addLight({ x: 64, y: 128, emission: { bright: 10, dim: 20, color: '#ffffff', intensity: 1, animation: 'none' } });
-    if (area) state.addMeasure({ shape: 'circle', points: [{ x: 128, y: 128 }, { x: 128, y: 224 }], color: '#e93147', walls: false });
+    if (area) {
+      state.addMeasure({ shape: 'circle', points: [{ x: 128, y: 128 }, { x: 128, y: 224 }], color: '#e93147', walls: false });
+      await measureMotionDone();
+    }
     displayFrames(30);
     const read = (layers: Parameters<typeof captureWithLayerVisibility>[0]): Uint8ClampedArray => {
       const target = RenderTexture.create({ width: MAP, height: MAP });

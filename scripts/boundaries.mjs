@@ -139,6 +139,7 @@ export const BOUNDARIES = {
       "src/app/pixi/measure/MeasurePin.ts",
       "src/app/pixi/measure/PlayersLabel.ts",
       "src/app/pixi/measure/measureDistances.ts",
+      "src/app/pixi/measure/measurePresence.ts",
       "src/app/pixi/measure/measureGesture.ts",
       "src/app/pixi/measure/measureHandle.ts",
       "src/app/pixi/measure/measureHandleDrag.ts",
