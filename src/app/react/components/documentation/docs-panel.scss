@@ -1,0 +1,112 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Documentation — floating window of the map view (DM only)
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss.
+// A header that drags the window, then the live docs site in a frame.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// Default size; the user resizes from the right and bottom edges. The frame needs the site's `lg` breakpoint
+// (1024 px) to show its desktop layout: the guide list and search beside the text, not the phone menu.
+$docs-width: 1080px;
+$docs-height: 820px;
+$docs-resize-hit: 8px;
+
+.atlas-docs-panel {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($surface-radius);
+  position: absolute;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  width: $docs-width;
+  height: $docs-height;
+  max-width: calc(100% - 2 * #{$spacing-m});
+  max-height: calc(100% - 2 * #{$spacing-m});
+  overflow: hidden;
+  pointer-events: auto;
+  color: var(--text-normal);
+  font-size: $font-ui-small;
+  transform-origin: top center;
+  transition: box-shadow $transition-normal $transition-ease;
+
+  &.is-dragging,
+  &.is-resizing {
+    box-shadow: $shadow-elevated, 0 18px 48px rgba(0, 0, 0, 0.28);
+    user-select: none;
+  }
+}
+
+// While the window moves or grows the pointer passes over the frame, whose page
+// would take the moves: the drag would stop until the pointer left it again.
+.atlas-docs-panel.is-dragging .atlas-site-frame__frame,
+.atlas-docs-panel.is-resizing .atlas-site-frame__frame {
+  pointer-events: none;
+}
+
+// ── Header ─────────────────────────────────────────────────────────────────
+.atlas-docs-panel__header {
+  @include atlas-flex-row($close-button-gap);
+  @include atlas-close-header($spacing-m);
+  flex-shrink: 0;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.atlas-docs-panel.is-dragging .atlas-docs-panel__header {
+  cursor: grabbing;
+}
+
+.atlas-docs-panel__title {
+  flex: 1;
+  min-width: 0;
+  font-weight: $font-weight-semibold;
+  @include atlas-truncate;
+}
+
+.atlas-docs-panel__action.btn {
+  @include atlas-ghost-button;
+  width: $close-button-size;
+  height: $close-button-size;
+  padding: 0;
+  border-radius: $radius-m;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+// ── Frame ──────────────────────────────────────────────────────────────────
+// The site itself is `SiteFrame` (`site-frame.scss`); here only its line under the header and the docs' skeleton.
+.atlas-docs-panel__site {
+  border-top: $border-width-s solid var(--divider-color);
+}
+
+// A page of the site in outline: its header bar, a heading and the first lines.
+.atlas-docs-panel__skeleton-bar {
+  height: 40px;
+  margin-bottom: $spacing-m;
+  border-radius: $radius-m;
+}
+
+.atlas-docs-panel__skeleton-heading {
+  width: 55%;
+  height: 24px;
+  border-radius: $radius-m;
+}
+
+.atlas-docs-panel__skeleton-line {
+  height: 12px;
+}
+
+// ── Resize handles ─────────────────────────────────────────────────────────
+.atlas-docs-panel__resize {
+  @include atlas-floating-resize-handle($docs-resize-hit);
+}
+
+.atlas-docs-panel.is-resizing .atlas-docs-panel__resize--corner::after {
+  opacity: 1;
+}

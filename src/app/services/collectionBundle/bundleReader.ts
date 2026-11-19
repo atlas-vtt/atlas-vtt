@@ -49,7 +49,7 @@ export async function openBundle(data: Blob, onProgress: BundleProgressListener)
       if (file.sha256) damaged.push(file);
       continue;
     }
-    const hash = await sha256(await entry.async('uint8array'));
+    const hash = await sha256(await entry.async('arraybuffer'));
     if (file.sha256 && file.sha256 !== hash) damaged.push(file);
     sourceHashes.set(file.vaultPath, hash);
   }

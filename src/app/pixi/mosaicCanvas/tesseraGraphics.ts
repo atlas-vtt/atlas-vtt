@@ -36,7 +36,7 @@ export interface GraphicsPrimitives {
   createImageBitmap: CreateBitmap;
   createCanvas: (width: number, height: number) => TesseraCanvas;
   /** `ImageData` over RGBA bytes with straight alpha, `width * height * 4` of them. */
-  createImageData: (data: Uint8ClampedArray, width: number, height: number) => ImageData;
+  createImageData: (data: Uint8ClampedArray<ArrayBuffer>, width: number, height: number) => ImageData;
 }
 
 /** One piece of a composed picture: `source`'s rect `from` drawn into `to`. */
@@ -52,7 +52,7 @@ export interface TesseraGraphics {
   resize(source: ImageBitmap, width: number, height: number): Promise<ImageBitmap>;
   crop(source: ImageBitmap, rect: PixelRect): Promise<ImageBitmap>;
   /** A bitmap of decoded rows: RGBA with straight alpha, `width * height * 4` bytes. */
-  fromPixels(data: Uint8ClampedArray, width: number, height: number): Promise<ImageBitmap>;
+  fromPixels(data: Uint8ClampedArray<ArrayBuffer>, width: number, height: number): Promise<ImageBitmap>;
   /** `source`'s rect encoded as a WebP tessera. */
   encodeTessera(source: ImageBitmap, rect: PixelRect): Promise<Blob>;
   compose(width: number, height: number, parts: readonly ComposedPart[]): ImageBitmap;

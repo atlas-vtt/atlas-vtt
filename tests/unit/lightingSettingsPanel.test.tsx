@@ -65,7 +65,7 @@ describe('the command palette\'s Lighting page', () => {
 
   it('shows a scene that was saved with sight on drop off as off', () => {
     const { store } = renderPanel();
-    act(() => store.getState().setSceneLighting({ sightOnDrop: false }));
+    act(() => { store.getState().setSceneLighting({ sightOnDrop: false }); });
     expect(toggleOf('Update sight when a token is dropped').getAttribute('aria-checked')).toBe('false');
   });
 
@@ -173,7 +173,7 @@ describe('the command palette\'s Lighting page', () => {
     const said = (text: string): boolean => !screen.getByText(text).hasAttribute('aria-hidden');
     expect(said('Players see only what their tokens see')).toBe(true);
     expect(said('Players see everything the light shows')).toBe(false);
-    act(() => store.getState().setSceneLighting({ tokenVision: false }));
+    act(() => { store.getState().setSceneLighting({ tokenVision: false }); });
     expect(said('Players see only what their tokens see')).toBe(false);
     expect(said('Players see everything the light shows')).toBe(true);
   });

@@ -1,4 +1,5 @@
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { t } from '../../../../../i18n';
 import { Button } from '../../../../../packages/components/primitives/button';
 import { useLoadingReveal } from '../../../../../packages/components/primitives/useLoadingReveal';
@@ -67,10 +68,12 @@ interface LibraryViewProps {
   /** The search as typed. The page holds it, since it narrows the moods beside the library too. */
   query: string;
   onQuery: (query: string) => void;
+  /** Where the rail stands: the page's side column, which runs its full height. Without one it stands beside the rows. */
+  railSlot?: HTMLElement | null;
 }
 
 /** The sound library: the folders linked as music and ambience, all that lies in them, narrowed by tags. */
-export function LibraryView({ query, onQuery: setQuery }: LibraryViewProps): React.JSX.Element | null {
+export function LibraryView({ query, onQuery: setQuery, railSlot }: LibraryViewProps): React.JSX.Element | null {
   const { app } = useAtlasUI();
   const library = SoundLibrary.forApp(app);
   const director = SoundDirector.forApp(app);
@@ -165,6 +168,9 @@ export function LibraryView({ query, onQuery: setQuery }: LibraryViewProps): Rea
       : !linked ? t('audio.library.linkHere')
         : library.isMissing(place.kind) ? t('audio.library.unreachable') : t('audio.library.folderEmpty');
 
+  // A portal keeps the rail in this tree: its keys and drops still reach the handlers below.
+  const rail = <LibraryRail library={library} director={director} actions={actions} shelves={shelves} kind={searching === '' ? place.kind : null} selected={selectedKeys} onRoot={showRoot} onTag={pressTag} />;
+
   return (
     <div
       className="atlas-sound-lib"
@@ -180,7 +186,7 @@ export function LibraryView({ query, onQuery: setQuery }: LibraryViewProps): Rea
         dropFiles([...event.dataTransfer.files]);
       }}
     >
-      <LibraryRail library={library} director={director} actions={actions} shelves={shelves} kind={searching === '' ? place.kind : null} selected={selectedKeys} onRoot={showRoot} onTag={pressTag} />
+      {railSlot ? createPortal(rail, railSlot) : rail}
       <div className="atlas-sound-lib__main">
         <LibraryHead library={library} actions={actions} kind={place.kind} rows={found ?? listed} scope={found ? 'results' : selected.length > 0 ? 'tagged' : 'all'} query={query} onQuery={setQuery} shuffle={shuffle} first={playFirst} />
         <LibraryRows

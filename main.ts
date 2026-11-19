@@ -65,7 +65,8 @@ import { EXTENSION_ATLASMAP } from './src/app/utils/sceneFiles';
 import { registerColorSwatchIcons } from './src/app/plugin/colorSwatchIcons';
 import { HeaderAutocompleteSuggest } from './src/app/plugin/HeaderAutocompleteSuggest';
 import { registerAtlasLinks } from './src/app/links/registerAtlasLinks';
-import { registerCommands } from './src/app/plugin/registerCommands';
+import { openDashboard, registerCommands } from './src/app/plugin/registerCommands';
+import { registerArmarium } from './src/app/plugin/armarium';
 import { CampaignFiles } from './src/app/campaigns/CampaignFiles';
 import { CampaignBooks } from './src/app/campaigns/players/CampaignBooks';
 import { CampaignPlayers } from './src/app/campaigns/players/CampaignPlayers';
@@ -84,6 +85,8 @@ import { SoundDirector } from './src/app/soundDirector/SoundDirector';
 import { SceneMoodLinks } from './src/app/soundLibrary/SceneMoodLinks';
 import { soundSettingsSection } from './src/app/settings/soundSettingsSection';
 import { registerOnlinePlay, type OnlinePlay } from './src/app/plugin/onlinePlay';
+import { registerAtlasAccount } from './src/app/plugin/atlasAccount';
+import { accountSettingsSection } from './src/app/account/accountSettingsSection';
 import type { TableChat } from './src/app/online/gm/tableChat';
 import { registerPlayerWindowReloadCleanup } from './src/app/plugin/playerWindowReload';
 import { registerReturnToAtlasOnClose } from './src/app/plugin/returnToAtlasOnClose';
@@ -202,6 +205,8 @@ export default class AtlasVTTPlugin extends Plugin {
     // before the slower startup path finishes.
     try {
       this.registerAtlasViews();
+      // The Armarium's command, installer and install link; they reach the asset manager once it exists.
+      registerArmarium(this, () => this.globalAssetManager);
     } catch (error) {
       // An earlier Atlas that failed to unload still holds them; only a restart frees them.
       showNotice(t('notice.restartForAtlas'));
@@ -237,7 +242,8 @@ export default class AtlasVTTPlugin extends Plugin {
     this.globalAssetManager = new GlobalAssetManagerService(this.app);
     this.imageDisplayService = new ImageDisplayService(this.app);
 
-    const onlinePlay = registerOnlinePlay(this, this.settingsService);
+    const account = registerAtlasAccount(this);
+    const onlinePlay = registerOnlinePlay(this, this.settingsService, account);
     this.onlinePlay = onlinePlay;
     this.addSettingTab(new AtlasSettingTab(this.app, this, () => [
       navigationSettingsSection(this.settingsService),
@@ -248,6 +254,7 @@ export default class AtlasVTTPlugin extends Plugin {
       hotkeySettingsSection(this.settingsService),
       onboardingSettingsSection(this.settingsService),
       changelogSettingsSection(this.settingsService, changelogService, this.manifest.version, updateWatch),
+      accountSettingsSection(account),
       ...onlinePlay.settingsSections(),
       experimentalSettingsSection(this.settingsService),
       supportSettingsSection(issueReporter),
@@ -270,6 +277,8 @@ export default class AtlasVTTPlugin extends Plugin {
       this.imageDisplayService.registerContextMenu();
       registerChromeVisibility(this);
       this.changelogService?.showUpdates();
+      // A vault Atlas has never run in opens on the start page, whose tour takes it from there.
+      runInBackground(existingInstallation.then(async (existing) => { if (!existing && !this.unloaded) await openDashboard(this); }), 'Opening the start page');
       runInBackground(addStarterTokens(this.app, AssetService.getInstance(this.app), this.settingsService), 'Adding the starter tokens');
       runInBackground(this.carryOverTokenBars(), 'Carrying over the token bar settings');
       runInBackground(migrateLegacySnapshots(this.app, AssetService.getInstance(this.app)), 'Moving scene snapshots into their collections');

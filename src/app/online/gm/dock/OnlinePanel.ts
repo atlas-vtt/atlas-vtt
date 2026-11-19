@@ -120,7 +120,7 @@ export function renderPanel(layer: HTMLElement, view: PanelView, actions: PanelA
   renderPausedRow(layer, view.gate, actions);
   renderImageRow(layer, view.imageShown, actions);
   if (view.link !== null) inviteRow(layer, () => actions.copy(), { open: view.qr, toggle: () => actions.toggleQr() }, linkEntries(layer, actions, redraw));
-  renderCodeRow(layer, view.gate, actions);
+  renderCodeRow(layer, view.gate);
   renderPlayerList(layer, view.groups, view.players, listActions(layer, actions, redraw));
   addPlayerRow(layer, actions, redraw);
   if (view.bar !== null) renderSelectionBar(layer, view.bar, view.players, actions, !hadBar);

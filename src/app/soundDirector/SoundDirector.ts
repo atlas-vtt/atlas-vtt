@@ -271,6 +271,8 @@ export class SoundDirector {
 
   private async refreshShelf(): Promise<void> {
     await this.shelf.refresh();
+    // A record changed while it plays (its trim, its loop points) is heard at once, as a grown copy is.
+    this.desk.followCopies();
     this.desk.requestWaiting();
     this.publish({ shelfRevision: this.current.shelfRevision + 1 });
   }

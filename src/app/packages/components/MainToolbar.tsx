@@ -14,7 +14,8 @@ import AssetManager from "./asset-manager/AssetManager"
 import { useAtlasUI } from "src/app/react/root/AtlasUIContext"
 import { Toggle } from "./primitives/Toggle"
 import { isAtlasToolAvailable } from "../../tools/toolAvailability"
-import { availableToolbarControls, DEFAULT_TOOLBAR_ORDER } from "../../toolbar/toolbarCatalog"
+import { availableToolbarControls, DEFAULT_TOOLBAR_ORDER, ONLINE_BAR, SIDE_BAR_IDS, type SideBarId } from "../../toolbar/toolbarCatalog"
+import { useOnlinePlayOn } from "../../react/hooks/useOnlinePlayOn"
 import { ResponsiveToolbar } from "./toolbar/ResponsiveToolbar"
 import { useToolbarHotkeys } from "./toolbar/useToolbarHotkeys"
 import { useToolbarLayout } from "./toolbar/useToolbarLayout"
@@ -65,6 +66,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   const setCommandPaletteOpen = useAtlasStore(s => s.setCommandPaletteOpen)
   const isAssetManagerOpen = useAtlasStore(s => s.isAssetManagerOpen)
   const assetManagerInitialTab = useAtlasStore(s => s.assetManagerInitialTab)
+  const assetManagerArmarium = useAtlasStore(s => s.assetManagerArmarium)
   const isDiceTrayOpen = useAtlasStore(s => s.isDiceTrayOpen)
   const setDiceTrayOpen = useAtlasStore(s => s.setDiceTrayOpen)
   const lootRollerOpen = useAtlasStore(s => s.lootRoller.open)
@@ -163,7 +165,10 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   const available = availableToolbarControls(!dm)
   const order = (dm ? layout.order : DEFAULT_TOOLBAR_ORDER).filter((id) => available.has(id))
   const items: ResponsiveToolbarItem[] = order.map((id) => ({ id, ...TOOLBAR_CONTROL_ITEMS[id](ctx) }))
-  const editor = useToolbarEditor({ access: layoutAccess, store: editStore, items, available, hotkeyLabel, editing, stop: stopEditing })
+  // The GM's bars beside the toolbar; online play's only while it runs.
+  const onlinePlayOn = useOnlinePlayOn()
+  const sideBars = useMemo<readonly SideBarId[]>(() => dm ? SIDE_BAR_IDS.filter((id) => id !== ONLINE_BAR.id || onlinePlayOn) : [], [dm, onlinePlayOn])
+  const editor = useToolbarEditor({ access: layoutAccess, store: editStore, items, available, sideBars, hotkeyLabel, editing, stop: stopEditing })
   const hiddenIds: ReadonlySet<string> = layout.hidden
   const publishedEdit = editing ? editor.api : null
 
@@ -232,6 +237,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
             isOpen={isAssetManagerOpen}
             onClose={handleCloseAssetManager}
             {...(assetManagerInitialTab && { initialTab: assetManagerInitialTab })}
+            {...(assetManagerArmarium > 0 && { armariumRequest: assetManagerArmarium })}
           />
         </div>,
         portalHost(),

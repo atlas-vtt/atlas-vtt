@@ -47,7 +47,7 @@ describe('focus around the editor menu', () => {
     const harness = renderToolbar();
     startEditing(harness);
     const fog = handle(harness.container, 'fog');
-    act(() => fog.focus());
+    act(() => { fog.focus(); });
     fireEvent.keyDown(fog, { key: 'F10', shiftKey: true });
     fireEvent.keyDown(await screen.findByRole('menuitem', { name: 'Hide' }), { key: 'Escape' });
     await waitFor(() => expect(document.activeElement).toBe(handle(harness.container, 'fog')));
@@ -78,7 +78,7 @@ describe('Delete and Backspace while editing', () => {
     try {
       startEditing(harness);
       const tray = handle(harness.container, 'fog', 'tray');
-      act(() => tray.focus());
+      act(() => { tray.focus(); });
       expect(fireEvent.keyDown(tray, { key: 'Delete' })).toBe(false);
       expect(fireEvent.keyDown(tray, { key: 'Backspace' })).toBe(false);
       fireEvent.keyDown(screen.getByRole('button', { name: 'Reset toolbar' }), { key: 'Delete' });

@@ -22,7 +22,7 @@ export const palette: Translation = {
   'palette.notePinTool': 'Пин заметки',
   'palette.openDiceLog': 'Открыть журнал бросков',
   'palette.openLootRoller': 'Открыть случайные таблицы',
-  'palette.openSceneBrowser': 'Открыть список сцен',
+  'palette.openSceneBrowser': 'Открыть менеджер ресурсов',
   'palette.openDMScreenWindow': 'Открыть экран ведущего в новой вкладке',
   'palette.dmScreenTitle': 'Экран ведущего',
   'palette.dmScreenWindowFailed': 'Не удалось открыть вкладку экрана ведущего',

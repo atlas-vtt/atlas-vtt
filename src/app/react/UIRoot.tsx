@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { LightPopoverHost } from '../pixi/lighting/LightPopover';
 import { LightZonePopoverHost } from '../pixi/lighting/LightZonePopover';
 import { SelectionBarHost } from '../packages/components/toolbar/SelectionBar';
@@ -14,7 +15,9 @@ import { GridAlignmentOverlay } from './components/GridAlignmentOverlay';
 import { ResponsiveWidgetBar } from './components/ResponsiveWidgetBar';
 import { useViewStoreHook, useAtlasStore } from './ViewStoreContext';
 import { ViewActionsMenu } from './components/ViewActionsMenu';
+import { HotkeyHelpButton } from './components/HotkeyHelpButton';
 import { UndoRedoControls } from './components/UndoRedoControls';
+import { OnlinePlayRoom, OnlinePlaySlot } from './components/OnlinePlaySlot';
 import { BottomToolbarRow } from './components/BottomToolbarRow';
 import { DrawToolBar } from '../packages/components/toolbar/DrawToolBar';
 import { LightingToolBar } from '../packages/components/toolbar/LightingToolBar';
@@ -27,6 +30,7 @@ import { DiceRollLog } from './components/dice-log/DiceRollLog';
 import { DiceRollDisplay } from './components/dice/DiceRollDisplay';
 import { TurnAnnouncer } from './components/TurnAnnouncer';
 import { RandomTables } from './components/randomTables/RandomTablesPanel';
+import { DocsWindow } from './components/documentation/DocsPanel';
 import { MapLoadingOverlay } from './components/MapLoadingOverlay';
 import { SceneTabBar } from './components/SceneTabBar';
 import { LevelSwitcher } from './components/levels/LevelSwitcher';
@@ -38,6 +42,7 @@ import { PlacementHint } from './components/PlacementHint';
 import { canRunMapHotkeys, matchesMapHotkey } from '../keyboard/mapHotkeys';
 import { SettingsService } from '../services/SettingsService';
 import { HotkeyHelp } from '../keyboard/HotkeyHelp';
+import { MapTours } from '../onboarding/MapTours';
 import { defeatedOnMap } from '../initiative/defeatedOnMap';
 
 
@@ -62,7 +67,6 @@ interface UIRootProps {
  */
 export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   const settings = SettingsService.forApp(app);
-  const [hotkeyHelpOpen, setHotkeyHelpOpen] = useState(false);
   const [isSceneSwitcherOpen, setSceneSwitcherOpen] = useState(false);
 
   // Get the store directly from context
@@ -75,6 +79,8 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   const setGridAlignmentOpen = useAtlasStore(s => s.setGridAlignmentOpen);
   const isDiceLogOpen = useAtlasStore(s => s.isDiceLogOpen);
   const setDiceLogOpen = useAtlasStore(s => s.setDiceLogOpen);
+  const isHotkeyHelpOpen = useAtlasStore(s => s.isHotkeyHelpOpen);
+  const setHotkeyHelpOpen = useAtlasStore(s => s.setHotkeyHelpOpen);
 
   useMapNavigationHotkeys(view, store, settings);
 
@@ -116,7 +122,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!canRunMapHotkeys(e, view?.viewId)) return;
       if (matchesMapHotkey(e, 'help', settings)) {
-        e.preventDefault(); setHotkeyHelpOpen(true); return;
+        e.preventDefault(); store.getState().setHotkeyHelpOpen(true); return;
       }
 
       // Enter: Toggle Dice Roll Log (both DM and player views)
@@ -170,11 +176,19 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   return (
     <AtlasUIContext.Provider value={contextValue}>
       <ContextMenuProvider>
-        {hotkeyHelpOpen && (
-          <PanelBoundary name="the hotkey help">
-            <HotkeyHelp settings={settings} isPlayerView={isPlayerView} onClose={() => setHotkeyHelpOpen(false)} />
-          </PanelBoundary>
-        )}
+        <AnimatePresence>
+          {isHotkeyHelpOpen && (
+            <PanelBoundary key="cheat-sheet" name="the cheat sheet">
+              <HotkeyHelp
+                settings={settings}
+                isPlayerView={isPlayerView}
+                onClose={() => setHotkeyHelpOpen(false)}
+                onTour={isPlayerView ? undefined : () => { setHotkeyHelpOpen(false); settings?.replayTutorial('map'); }}
+              />
+            </PanelBoundary>
+          )}
+        </AnimatePresence>
+        {!isPlayerView && <PanelBoundary name="the tours"><MapTours root={view?.containerEl ?? null} settings={settings} /></PanelBoundary>}
         <div className="atlas-ui" style={{ position: 'relative', width: '100%', height: '100%' }}>
           {/* Every surface has its own boundary: one that fails must not take the others with it */}
           {/* Map chrome stays mounted while a scene loads; the loading overlay blocks input meanwhile */}
@@ -208,10 +222,21 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
             </div>
           </div>
 
-          {/* Bottom row — undo/redo docked left of the main toolbar, view actions (DM only) at the right edge */}
+          {/* Bottom row — undo/redo docked left of the main toolbar; view actions and the shortcuts button (DM only) at the right edge */}
           <BottomToolbarRow
-            start={!isPlayerView && <PanelBoundary name="undo and redo"><UndoRedoControls viewId={view?.viewId} /></PanelBoundary>}
-            end={!isPlayerView && <PanelBoundary name="the view actions"><ViewActionsMenu app={app} filePath={view?.file?.path} /></PanelBoundary>}
+            lead={!isPlayerView && <PanelBoundary name="online play's place"><OnlinePlaySlot /></PanelBoundary>}
+            start={!isPlayerView && (
+              <>
+                <OnlinePlayRoom />
+                <PanelBoundary name="undo and redo"><UndoRedoControls viewId={view?.viewId} /></PanelBoundary>
+              </>
+            )}
+            end={!isPlayerView && (
+              <>
+                <PanelBoundary name="the view actions"><ViewActionsMenu app={app} filePath={view?.file?.path} /></PanelBoundary>
+                <PanelBoundary name="the keyboard shortcuts button"><HotkeyHelpButton /></PanelBoundary>
+              </>
+            )}
             above={!isPlayerView && (
               <>
                 <PanelBoundary name="the turn banner"><TurnAnnouncer /></PanelBoundary>
@@ -269,6 +294,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
 
           {/* Loot Roller - floating window, DM only */}
           {!isPlayerView && <PanelBoundary name="the random tables"><RandomTables /></PanelBoundary>}
+          {!isPlayerView && <PanelBoundary name="the documentation"><DocsWindow /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the players' glass"><GlassChip view={view} /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the light settings"><LightPopoverHost /><LightZonePopoverHost /><LevelSurfacePopoverHost /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the selection bar"><SelectionBarHost /></PanelBoundary>}

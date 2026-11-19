@@ -3,7 +3,6 @@ import { ATLAS_NATIVE_MODAL_CLASSES } from '../ui/nativeModal';
 import { CHOICE_VARIANTS } from '../ui/confirmDialog';
 import { t } from '../i18n';
 import { createAtlasButton } from '../ui/atlasButton';
-import { choiceVariant } from '../ui/confirmDialog';
 
 export interface ChoiceModalButton<T> {
   text: string;

@@ -22,7 +22,7 @@ export const palette: Translation = {
   'palette.notePinTool': '笔记图钉工具',
   'palette.openDiceLog': '打开骰子记录',
   'palette.openLootRoller': '打开随机表',
-  'palette.openSceneBrowser': '打开场景浏览器',
+  'palette.openSceneBrowser': '打开素材库',
   'palette.openDMScreenWindow': '在新标签页中打开主持人屏幕',
   'palette.dmScreenTitle': '主持人屏幕',
   'palette.dmScreenWindowFailed': '无法打开主持人屏幕标签页',

@@ -97,7 +97,7 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
   line-height: 1;
 }
 
-// ── Small header-row action buttons ─────────────────────────────────────────
+// ── Small icon buttons of the tags' header and search ───────────────────────
 
 .atlas-collection-header-btn {
   &.btn,
@@ -118,7 +118,12 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
   }
 }
 
-// ── Manage button (bottom) ──────────────────────────────────────────────────
+// ── Manage (bottom) ─────────────────────────────────────────────────────────
+
+.atlas-sidebar-actions {
+  @include atlas-flex-col($spacing-xs);
+  flex-shrink: 0;
+}
 
 .atlas-asset-manager-manage-btn {
   &.btn {
@@ -131,7 +136,6 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
     font-weight: $font-weight-medium;
     color: var(--text-muted);
     border-radius: $radius-m;
-    @include atlas-concentric-corner(bottom-left, $window-radius, $window-corner-inset);
     flex-shrink: 0;
   }
 
@@ -139,6 +143,10 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
     width: $icon-xs;
     height: $icon-xs;
   }
+}
+
+.atlas-asset-manager-manage-btn.btn {
+  @include atlas-concentric-corner(bottom-left, $window-radius, $window-corner-inset);
 }
 
 // ── Bestiary tokens offer, above Manage ──

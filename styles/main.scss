@@ -9,6 +9,7 @@
 @use './tokens' as *;
 @use './mixins' as *;
 @use '../src/app/onboarding/onboarding';
+@use '../src/app/keyboard/cheat-sheet';
 @use '../src/app/changelog/changelog';
 @use '../src/app/support/issue-report';
 @use '../src/app/online/gm/styles/dock';
@@ -114,7 +115,7 @@ body.theme-light {
   @import '../src/app/packages/components/toolbar/editor/toolbar-editor';
   @import '../src/app/packages/components/toolbar/editor/toolbar-drag';
   @import '../src/app/packages/components/toolbar/editor/toolbar-card';
-  @import '../src/app/packages/components/toolbar/editor/toolbar-undo-bar';
+  @import '../src/app/packages/components/toolbar/editor/toolbar-side-bar';
   @import '../src/app/packages/components/primitives/toggle.scss';
   @import '../src/app/packages/components/primitives/input-modal.scss';
   @import '../src/app/packages/components/primitives/select.scss';
@@ -158,6 +159,10 @@ body.theme-light {
   @import '../src/app/react/components/dice-log/dice-roll-log.scss';
   @import '../src/app/react/components/dice/rolled-dice.scss';
   @import '../src/app/react/components/loot/loot-roller.scss';
+  @import '../src/app/react/components/siteFrame/site-frame.scss';
+  @import '../src/app/armarium/armarium-pane.scss';
+  @import '../src/app/armarium/share/share-dialog.scss';
+  @import '../src/app/react/components/documentation/docs-panel.scss';
   @import '../src/app/pixi/lighting/light-panel.scss';
   @import '../src/app/pixi/lighting/light-popover.scss';
   @import '../src/app/react/components/loot/loot-source-tree.scss';
@@ -497,8 +502,24 @@ body.theme-light {
     grid-column: 1;
   }
 
+  // Online play's button at the row's left edge, over the start slot's cell; the start slot keeps
+  // room for it (`OnlinePlayRoom`), so the two never overlap.
+  .atlas-bottom-toolbar-row__lead {
+    grid-row: 1;
+    grid-column: 1;
+    justify-self: start;
+    display: flex;
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  // The view actions and the keyboard shortcuts bar, which keeps the bottom right corner.
   .atlas-bottom-toolbar-row__end {
     grid-column: 3;
+    align-items: center;
+    gap: $spacing-s;
   }
 
   // Main toolbar and undo/redo bar - uses elevated surface pattern

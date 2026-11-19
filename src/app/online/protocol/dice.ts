@@ -115,6 +115,12 @@ export interface SharedRoll {
    * GM sends none, and an older page reads `modifiers` alone.
    */
   readonly namedModifiers?: readonly SharedNamedModifier[];
+  /**
+   * The side of advantage the roll was made with, where the GM's dice set changed it (its dropped dice
+   * are marked `dropped`), so rolling it again rolls it the same way. Added later: an older GM sends
+   * none, and an older page rolls it again plain.
+   */
+  readonly advantage?: AdvantageSide;
 }
 
 /** A constant of a roll written with a label: `+2[Proficiency]` is Proficiency, 2; a subtracted one is negative. */
@@ -232,7 +238,7 @@ function parseNamedModifiers(value: unknown, modifiers: number, linear: boolean)
   return Math.abs(plain) <= MAX_TOTAL ? entries : undefined;
 }
 
-/** A shared roll as the client reads it, or null for anything malformed: nothing else reaches the dice. */
+/** A shared roll as the client reads it, or null for anything malformed: nothing else reaches the dice. A side of advantage it does not know is left out. */
 export function parseSharedRoll(value: unknown): SharedRoll | null {
   if (!isRecord(value)) return null;
   const { id, timestamp, formula, modifiers, total, crit } = value;
@@ -248,6 +254,7 @@ export function parseSharedRoll(value: unknown): SharedRoll | null {
     id, timestamp, formula, rolls: rolls as SharedDie[], modifiers, total,
     ...(value.linear === false && { linear: false as const }),
     ...(namedModifiers !== undefined && { namedModifiers }),
+    ...(isAdvantageSide(value.advantage) && { advantage: value.advantage }),
     ...(crit !== undefined && { crit }),
     ...(source !== undefined && { source }),
   };
