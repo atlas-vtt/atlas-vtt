@@ -6,13 +6,12 @@ import { confirmSnapshotRestore, restoreSnapshotInView } from '../snapshots/snap
 import { spawnEncounterTokens, type SpawnPlacement } from '../packages/components/asset-manager/utils/tokenSpawnService';
 import { formatServiceAsset } from '../packages/components/asset-manager/utils/assetFormatters';
 import { encounterOfFile, findSnapshot, snapshotsOfMap } from './atlasLinkAssets';
-import { snapshotNameOfSubpath } from './atlasLinkTargets';
+import { pinIdOfSubpath, snapshotNameOfSubpath } from './atlasLinkTargets';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
 import type { NotePin } from '../types';
 import { pinSceneLevel } from '../levels/pinSceneLevel';
 import { diceRandom } from '../services/offlineDiceInputs';
-import { pinIdOfSubpath } from './atlasLinkTargets';
 import { everyLevelObjects } from '../levels/levelObjects';
 import { hasLevels, resolveLevel } from '../levels/sceneLevels';
 import { allowZoom } from '../pixi/zoomRange';
