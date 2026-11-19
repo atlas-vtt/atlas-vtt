@@ -53,6 +53,8 @@ export const MAP_LAYER_Z = {
   gridAlignment: 99,
   /** The button above a group selection that turns it: above the tokens' bars, which must not cover it. */
   groupRotate: 101,
+  /** The chevrons of tokens a Shift-drag turns (GM only): above the tokens' bars, which a token facing down points at. */
+  facing: 101,
   /** What the Draw tool shows around drawings and texts (handles, frames, the mark of what a press places, the eraser's ring): above the lighting, below the fog. */
   annotationChrome: 900,
   /**

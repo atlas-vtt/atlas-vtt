@@ -41,6 +41,8 @@
 
 - Small (75 % of Medium) and Tiny (50 %) sizes in the token creator, the asset library and the map's Size menu, and by shrinking with the resize handles. Contributed by Jackson98Tomphson
 - Tiny tokens snap to any quarter of a square cell; on hex grids both sizes take the hex's centre. Contributed by Jackson98Tomphson
+- Hold Shift and drag a token to turn it towards the pointer, as when you place it from the library. With several tokens selected, they all turn together. A Shift-click still adds a token to the selection or takes it out
+- Any kept measurement can follow a token: switch on Follows token in its menu. It keeps its shape and moves and turns with the token, so a cone stays in front of it
 
 **Initiative, quests and lighting**
 
@@ -60,6 +62,7 @@
 
 ## Fixed
 
+- A token's ring now turns with its art
 - On Windows, converting music or ambience in a linked folder now moves the originals to the trash when you chose that, instead of keeping them
 - While the Armarium is open in the asset manager, the sidebar shows the Armarium's tags and filters the store by them, instead of the tags of the collection you were in
 - The table log has room around its messages again; rolls and the message field no longer sit against its edge

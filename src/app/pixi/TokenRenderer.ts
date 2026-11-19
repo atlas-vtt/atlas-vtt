@@ -1552,7 +1552,12 @@ export class TokenRenderer {
     // Players learn of the turn only where their initiative list shows it
     const turnShown = settings.showInitiative && state.initiativeTrackerOpen;
     return [...this.playerSight.frameLayers(perception), ...this.uiManager.getPlayerViewLayers(settings, isSeen), ...this.dragRuler.getPlayerViewLayers(isSeen), ...this.exit.playerViewLayers(),
-      ...this.turnMarkers.playerLayers(seenByPlayers(mapTokens(levelObjects(state)), perception), turnShown)];
+      ...this.turnMarkers.playerLayers(seenByPlayers(mapTokens(levelObjects(state)), perception), turnShown), ...this.hiddenTurnLayers()];
+  }
+
+  /** The chevrons of a Shift-drag turn are the GM's alone: neither the players' frame nor a picture of the scene shows them. */
+  private hiddenTurnLayers(): LayerVisibility[] {
+    return this.interactionController.turnLayers().map((layer) => ({ layer, visible: false }));
   }
 
   /** How far a selected token's bars stand out from it, in world units. */
@@ -1582,7 +1587,7 @@ export class TokenRenderer {
 
   /** Tokens and their bars, nameplates and badges as the GM view shows them, whatever view the canvas is in: for a picture of the scene. */
   public getGmViewLayers(): LayerVisibility[] {
-    return [...gmTokenLayers(mapTokens(levelObjects(this.store.getState())), this.tokenSprites), ...this.uiManager.getGmViewLayers(), ...this.playerSight.gmLayers(), ...this.turnMarkers.pictureLayers()];
+    return [...gmTokenLayers(mapTokens(levelObjects(this.store.getState())), this.tokenSprites), ...this.uiManager.getGmViewLayers(), ...this.playerSight.gmLayers(), ...this.turnMarkers.pictureLayers(), ...this.hiddenTurnLayers()];
   }
 
   /** Get all token sprites for external systems like SelectionManager. */
@@ -2044,8 +2049,9 @@ export class TokenRenderer {
     if (tokenId) {
       markHandled(e);
       this.interactionController.handleViewportTokenPointerDown(tokenId, e);
-      // Drawings and texts selected alongside the token follow its drag; a token from outside the selection moves alone
-      if (primary && this.store.getState().selectedIds.includes(tokenId)) this.annotationHandlers?.dragAlong(e);
+      // Drawings and texts selected alongside the token follow its drag; a token from outside the selection moves alone.
+      // A Shift-drag turns the tokens and moves nothing.
+      if (primary && !e.shiftKey && this.store.getState().selectedIds.includes(tokenId)) this.annotationHandlers?.dragAlong(e);
       return;
     }
 

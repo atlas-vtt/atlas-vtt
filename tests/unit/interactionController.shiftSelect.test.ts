@@ -43,12 +43,13 @@ describe('InteractionController shift-click selection', () => {
     expect(controller.isDraggingTokens()).toBe(true);
   });
 
-  it('removes a selected token without starting a drag', () => {
+  it('removes a selected token when the press is released in place, since a Shift-drag turns the selection', () => {
     const { controller, setSelection, viewport } = makeController(['a', 'b']);
     controller.handleViewportTokenPointerDown('b', shiftClick);
-    expect(setSelection).toHaveBeenCalledWith(['a']);
-    expect(viewport.plugins.pause).not.toHaveBeenCalled();
-    expect(controller.isDraggingTokens()).toBe(false);
+    expect(setSelection).not.toHaveBeenCalled();
+    const onUp = viewport.on.mock.calls.find(([name]: [string]) => name === 'pointerup')[1];
+    onUp({ global: { x: 0, y: 0 } });
+    expect(setSelection).toHaveBeenCalledExactlyOnceWith(['a']);
   });
 
   it('plain click replaces the selection once the button is released', () => {
@@ -113,11 +114,12 @@ describe('InteractionController with Select more on', () => {
     expect(setSelection).toHaveBeenCalledWith(['a', 'b']);
   });
 
-  it('leaves Shift as it was: a selected token goes at the press, and nothing is dragged', () => {
-    const { controller, setSelection } = makeController(['a', 'b'], true);
+  it('leaves Shift as it is without the switch: a selected token goes when the press is released in place', () => {
+    const { controller, setSelection, viewport } = makeController(['a', 'b'], true);
     controller.handleViewportTokenPointerDown('b', shiftClick);
-    expect(setSelection).toHaveBeenCalledWith(['a']);
-    expect(controller.isDraggingTokens()).toBe(false);
+    const onUp = viewport.on.mock.calls.find(([name]: [string]) => name === 'pointerup')[1];
+    onUp({ global: { x: 0, y: 0 } });
+    expect(setSelection).toHaveBeenCalledExactlyOnceWith(['a']);
   });
 });
 
