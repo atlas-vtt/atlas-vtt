@@ -81,6 +81,9 @@ export class MeasureInk {
   private readonly dark = new Graphics({ label: 'measure-dark', blendMode: 'max' });
   private readonly accent = new Graphics({ label: 'measure-accent' });
   private zoom = 1;
+  /** Its size as a share of its own about `about` (world), while it comes or goes. */
+  private grow = 1;
+  private about: Point = { x: 0, y: 0 };
 
   constructor(layer: MeasureInkLayer) {
     this.line.addChild(this.dark, this.accent);
@@ -99,9 +102,27 @@ export class MeasureInk {
   /** Clears the drawing and sizes what follows for `zoom` (screen pixels per world unit). */
   begin(zoom: number): void {
     this.zoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
-    this.area.scale.set(1 / this.zoom);
-    this.line.scale.set(1 / this.zoom);
+    this.place();
     this.clear();
+  }
+
+  /** Fades the drawing to `alpha` and sizes it at `grow` of its own about the world point `about`, as it comes onto the map or leaves it. */
+  present(alpha: number, grow: number, about: Point): void {
+    this.area.alpha = alpha;
+    this.line.alpha = alpha;
+    this.grow = grow;
+    this.about = about;
+    this.place();
+  }
+
+  /** Drawn in screen pixels, scaled back to the world: `about` stays where it is whatever the growth. */
+  private place(): void {
+    const { zoom, grow, about } = this;
+    for (const part of [this.area, this.line]) {
+      part.scale.set(grow / zoom);
+      part.pivot.set(about.x * zoom, about.y * zoom);
+      part.position.set(about.x, about.y);
+    }
   }
 
   clear(): void {

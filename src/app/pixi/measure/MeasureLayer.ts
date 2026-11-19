@@ -13,6 +13,7 @@ import { AuraPlaces } from './AuraPlaces';
 import { DrawnMeasure, type MeasureLook, type MeasureSurfaces } from './DrawnMeasure';
 import type { AreaEffects } from './effects/AreaEffects';
 import { MeasurePin } from './MeasurePin';
+import { MEASURE_MOTION, MeasurePresence } from './measurePresence';
 
 /** Told which kept measurements have a drawing, so that what shows them to players can follow. */
 export interface KeptDrawings {
@@ -29,6 +30,17 @@ const TOKEN_LAYER = 'tokenContainer';
 const NO_IDS: ReadonlySet<string> = new Set<string>();
 
 const colorOf = (color: string | null | undefined): number | null => (color ? cssColorToHexNumber(color) : null);
+
+/** A kept measurement as it is drawn, and how far it is on the map. */
+interface KeptDrawing {
+  readonly measure: KeptMeasure;
+  readonly aura: PlacedAura | null;
+  readonly drawn: DrawnMeasure;
+  readonly presence: MeasurePresence;
+}
+
+const sameMeasurement = (a: Measurement, b: Measurement): boolean =>
+  a.shape === b.shape && a.points.length === b.points.length && a.points.every((point, index) => point.x === b.points[index]?.x && point.y === b.points[index]?.y);
 
 /**
  * Puts `layer` among `parent`'s children right under the tokens, and so above the map, the liquids
@@ -75,7 +87,13 @@ export class MeasureLayer {
   readonly liveParts: LiveMeasureParts;
   private readonly live: DrawnMeasure;
   private readonly pin = new MeasurePin();
-  private readonly kept = new Map<string, { readonly measure: KeptMeasure; readonly aura: PlacedAura | null; readonly drawn: DrawnMeasure }>();
+  private readonly kept = new Map<string, KeptDrawing>();
+  /** Kept measurements that left the list and are on their way off the map: shown and hidden as they were until they are gone. */
+  private readonly leaving = new Set<KeptDrawing>();
+  /** How far the live measurement is on the map: it fades in with its first drawing and dissolves when nobody keeps it. */
+  private readonly livePresence: MeasurePresence;
+  /** Whether the live measurement is drawn: its first drawing fades in. */
+  private liveDrawn = false;
   private list: readonly KeptMeasure[] = [];
   /** Where the auras among them lie; `auras` says whether there is one. */
   readonly places = new AuraPlaces();
@@ -93,6 +111,7 @@ export class MeasureLayer {
     parent.addChild(this.shapes.view, ...(options.gmOutlines === false ? [] : [this.outlines.view]), this.labels);
     // An area being made marks the tokens in it for as long as it shows.
     this.live = new DrawnMeasure(this.surfaces, true);
+    this.livePresence = new MeasurePresence((presence) => this.live.present(presence));
     this.live.labelLayer.addChild(this.pin.view);
     this.liveParts = { ...this.live.parts, pin: this.pin.view };
   }
@@ -105,14 +124,25 @@ export class MeasureLayer {
   /** Draws the live measurement in `color` ('#rrggbb'; null is the accent). */
   drawLive(measurement: Measurement, color: string | null): void {
     this.live.draw(measurement, colorOf(color), this.look());
+    if (this.liveDrawn) return;
+    this.liveDrawn = true;
+    this.livePresence.enter(MEASURE_MOTION.live.from, MEASURE_MOTION.live.ms);
   }
 
-  /** Puts the pin beside the live measurement's distance as that stands now: it is about to show. */
+  /** Puts the pin beside the live measurement's distance as that stands now, and pops it in: it is about to show. */
   placePin(): void {
     this.pin.place(this.live.distance, this.look().zoom);
+    this.pin.popIn();
+  }
+
+  /** The live measurement dissolves over `ms`; whoever clears it does so when that is done. */
+  dissolveLive(ms: number): void {
+    this.livePresence.exit(() => undefined, ms);
   }
 
   clearLive(): void {
+    this.livePresence.settle();
+    this.liveDrawn = false;
     this.live.clear();
   }
 
@@ -121,29 +151,33 @@ export class MeasureLayer {
     return this.live.labelLayer.visible && this.pin.contains(point);
   }
 
-  /** The kept measurements to show, in order: what left the list goes, what is new or another object is drawn. */
-  setKept(list: readonly KeptMeasure[]): void {
+  /**
+   * The kept measurements to show, in order: what left the list goes, what is new or another object
+   * is drawn. With `animate` (the same level of the same scene, nothing loading) what comes grows in
+   * and what goes fades out; otherwise both happen at once.
+   */
+  setKept(list: readonly KeptMeasure[], animate = false): void {
     if (list === this.list) return;
     this.list = list;
     this.auras = list.some(isAura);
     const ids = new Set(list.map((measure) => measure.id));
     this.places.keep(ids);
-    for (const [id, { drawn }] of this.kept) {
-      if (!ids.has(id)) this.forget(id, drawn);
+    for (const [id, kept] of this.kept) {
+      if (!ids.has(id)) this.forget(id, kept, animate);
     }
-    this.sync();
+    this.sync(animate);
   }
 
   /** The tokens of the level shown stand elsewhere: the auras among the kept measurements follow theirs. True when one moved. */
-  aurasMoved(): boolean {
-    return this.auras && this.sync();
+  aurasMoved(animate = false): boolean {
+    return this.auras && this.sync(animate);
   }
 
   /**
    * Draws the kept measurements that are new, another object or, an aura, placed elsewhere. An
    * aura whose token is not on the map shown has no drawing. True when an aura was placed anew.
    */
-  private sync(): boolean {
+  private sync(animate = false): boolean {
     let look: MeasureLook | null = null;
     let moved = false;
     for (const measure of this.list) {
@@ -153,25 +187,54 @@ export class MeasureLayer {
       if (known?.measure === measure && known.aura === aura) continue;
       if (follows && !aura) {
         // Without its token it has no drawing: nothing changes while it had none.
-        if (known) this.forget(measure.id, known.drawn);
+        if (known) this.forget(measure.id, known, animate);
         moved ||= known !== undefined;
         continue;
       }
       moved ||= follows;
       const drawn = known?.drawn ?? new DrawnMeasure(this.surfaces);
+      const presence = known?.presence ?? new MeasurePresence((shown) => drawn.present(shown));
       look ??= this.look();
       drawn.setMarked(this.pointed.has(measure.id), look);
       drawn.draw(measure, colorOf(measure.color), look, measure.walls !== false, aura, measure.effect ? { effect: measure.effect, seed: measure.id } : null);
-      this.kept.set(measure.id, { measure, aura, drawn });
+      this.kept.set(measure.id, { measure, aura, drawn, presence });
       this.drawings.kept(drawn.parts, keptAudience(measure));
+      if (!known) this.arrive(measure, presence, animate);
     }
     return moved;
   }
 
-  private forget(id: string, drawn: DrawnMeasure): void {
-    this.drawings.forgotten(drawn.parts);
-    drawn.destroy();
+  /**
+   * A kept measurement drawn for the first time comes in. The live one just kept is already there:
+   * it takes the live one's place as it stands, so keeping it never flickers, and one rescued while
+   * it dissolved comes back from where it had got to.
+   */
+  private arrive(measure: KeptMeasure, presence: MeasurePresence, animate: boolean): void {
+    const live = this.liveDrawn ? this.live.measurement : null;
+    if (live && sameMeasurement(live, measure)) {
+      const from = this.livePresence.presence;
+      if (from.alpha < 1 || from.grow !== 1) presence.enter(from);
+      return;
+    }
+    if (animate) presence.enter();
+  }
+
+  /** A kept measurement's drawing goes: at once, or (`animate`) once it has faded out, shown to whoever saw it until then. */
+  private forget(id: string, kept: KeptDrawing, animate: boolean): void {
     this.kept.delete(id);
+    if (!animate) {
+      this.drop(kept);
+      return;
+    }
+    this.leaving.add(kept);
+    kept.presence.exit(() => this.drop(kept));
+  }
+
+  private drop(kept: KeptDrawing): void {
+    kept.presence.stop();
+    this.leaving.delete(kept);
+    this.drawings.forgotten(kept.drawn.parts);
+    kept.drawn.destroy();
   }
 
   /** The kept measurements pointed at (a handle under the pointer, an open popover): those that are areas mark the tokens in them. */
@@ -224,8 +287,13 @@ export class MeasureLayer {
   }
 
   destroy(): void {
-    for (const { drawn } of this.kept.values()) drawn.destroy();
+    for (const kept of [...this.kept.values(), ...this.leaving]) {
+      kept.presence.stop();
+      kept.drawn.destroy();
+    }
     this.kept.clear();
+    this.leaving.clear();
+    this.livePresence.stop();
     this.pin.destroy();
     this.live.destroy();
     this.shapes.destroy();

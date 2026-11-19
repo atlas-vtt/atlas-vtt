@@ -28,6 +28,10 @@
 - Saved rolls and the row belong to the collection, so each game keeps its own
 - A label can follow brackets: in `2d6[slashing]+(1d10+12)[necrotic]` the d10 and the 12 are both necrotic
 
+## Improved
+
+- Measurements come and go smoothly: a kept ruler, circle, cone, square or line grows in from where it starts and fades out when deleted or undone, and one you don't keep dissolves instead of vanishing. The pin that keeps it pops in beside its label
+
 ## Fixed
 
 - On Windows, converting music or ambience in a linked folder now moves the originals to the trash when you chose that, instead of keeping them

@@ -12,12 +12,13 @@ import { hexColorOf } from '../utils/colorUtils';
 import type { MeasureLook } from './DrawnMeasure';
 import type { MeasureInputHost } from './MeasureInput';
 import type { MeasureLayer } from './MeasureLayer';
+import { LIVE_DISSOLVE_MS } from './measurePresence';
 import type { LiveMeasure } from './measurements';
 
 /** The grid a measurement snaps to and is measured on. */
 export type MeasureGrid = Pick<GridSystem, 'getOptions' | 'snapToCellCenter'>;
 
-/** How long a released measurement that is not kept stays, with the pin that keeps it. */
+/** How long a released measurement that is not kept stays, with the pin that keeps it; it dissolves over the last `LIVE_DISSOLVE_MS`. */
 export const MEASURE_FADE_MS = 2000;
 
 /** The shapes the tool measures with; its other modes measure nothing. */
@@ -39,7 +40,7 @@ export interface LiveMeasuringState extends ToolSwitchState {
 export interface LiveMeasuringDeps {
   store: { getState(): LiveMeasuringState };
   grid: MeasureGrid;
-  layer: Pick<MeasureLayer, 'drawLive' | 'clearLive' | 'placePin' | 'pinAt'>;
+  layer: Pick<MeasureLayer, 'drawLive' | 'clearLive' | 'dissolveLive' | 'placePin' | 'pinAt'>;
   parts: Pick<MeasurePartsVisibility, 'start' | 'drawn' | 'pinned' | 'cleared' | 'setLiveHidden' | 'liveOrigin'>;
   /** A measurement is being made: the pointer is down for one, or between its clicks. */
   measuring: () => boolean;
@@ -102,6 +103,8 @@ export class LiveMeasuring implements MeasureInputHost {
   }
 
   started(pressed: Point, start: Point): void {
+    // One that still fades makes way: the new one comes in on its own.
+    if (this.fadeTimer !== null) this.deps.layer.clearLive();
     this.stopFade();
     this.pressed = pressed;
     this.start = start;
@@ -189,15 +192,18 @@ export class LiveMeasuring implements MeasureInputHost {
     return toolLook(measurement, state.measureTool, { scale: unitScaleOf(look.settings, state.grid), lit: state.lighting.enabled, accent: hexColorOf(look.accent) });
   }
 
-  /** Leaves the released measurement on the map for a while, its pin beside its label. */
+  /** Leaves the released measurement on the map for a while, its pin beside its label, and lets it dissolve at the end; the pin keeps it until it is gone. */
   private fade(): void {
     this.stopFade();
     this.deps.layer.placePin();
     this.deps.parts.pinned(true);
     this.fadeTimer = window.setTimeout(() => {
-      this.fadeTimer = null;
-      this.clear();
-    }, MEASURE_FADE_MS);
+      this.deps.layer.dissolveLive(LIVE_DISSOLVE_MS);
+      this.fadeTimer = window.setTimeout(() => {
+        this.fadeTimer = null;
+        this.clear();
+      }, LIVE_DISSOLVE_MS);
+    }, MEASURE_FADE_MS - LIVE_DISSOLVE_MS);
   }
 
   private stopFade(): void {

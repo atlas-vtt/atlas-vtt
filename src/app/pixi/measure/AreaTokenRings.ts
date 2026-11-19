@@ -3,6 +3,8 @@ import type { TokenRingPart } from '../measurePartsVisibility';
 import { computeTokenPixelSize } from '../token-renderer/tokenSizing';
 import { MeasureInk, type MeasureInkLayer } from '../utils/measureInk';
 
+const ORIGIN = { x: 0, y: 0 };
+
 /** Screen pixels between a token's rim and the ring around it. */
 const RING_GAP = 3;
 
@@ -32,6 +34,8 @@ export function markedTokens(ids: readonly string[], tokens: Readonly<Record<str
 export class AreaTokenRings {
   private readonly inks = new Map<string, MeasureInk>();
   private parts: TokenRingPart[] = [];
+  /** How far its measurement is on the map: a ring stays on its token and only fades. */
+  private alpha = 1;
 
   constructor(private readonly layer: MeasureInkLayer) {}
 
@@ -51,12 +55,19 @@ export class AreaTokenRings {
     this.parts = tokens.map((token) => {
       let ink = this.inks.get(token.id);
       if (!ink) this.inks.set(token.id, (ink = new MeasureInk(this.layer)));
+      if (this.alpha !== 1) ink.present(this.alpha, 1, ORIGIN);
       ink.begin(zoom);
       const { x, y } = ink.screen(token);
       const radius = ink.screen({ x: token.radius, y: 0 }).x + RING_GAP;
       ink.stroke((g) => { g.circle(x, y, radius); }, color);
       return { tokenId: token.id, layer: ink.shape };
     });
+  }
+
+  /** Fades every ring to `alpha` with its measurement. */
+  present(alpha: number): void {
+    this.alpha = alpha;
+    for (const ink of this.inks.values()) ink.present(alpha, 1, ORIGIN);
   }
 
   clear(): void {

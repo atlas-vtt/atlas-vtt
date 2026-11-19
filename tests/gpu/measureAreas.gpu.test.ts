@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Perception } from '../../src/app/vision/perception';
+import { measureMotionDone } from '../helpers/litView';
 import { CELL, differingIn, differingPixels, playerViewScenes, samePixels, type PlayerViewScene } from '../helpers/playerViewScene';
 
 const { scene } = playerViewScenes();
@@ -35,6 +36,7 @@ async function kept(tokens: Array<typeof HERO>, more: { walls?: false; color?: s
   const s = await scene();
   await s.add(...tokens);
   const id = s.store.getState().addMeasure({ shape: 'circle', points: [{ ...CENTRE }, { ...END }], color: '#e93147', ...more })!;
+  await measureMotionDone();
   s.store.getState().setActiveTool('select');
   await s.settle();
   return Object.assign(s, { id });
@@ -154,6 +156,7 @@ describe('an area that stops at a wall', () => {
     empty.store.getState().addWall(WALL);
     s.store.getState().setMeasureTool({ mode: 'circle' });
     s.measureFrom(CENTRE.x, CENTRE.y, END.x, END.y, true);
+    await measureMotionDone();
     expect(pastWall(s.frame(), empty.frame())).toBe(0);
     expect(differingPixels(s.frame(), empty.frame())).toBeGreaterThan(4000);
   });
