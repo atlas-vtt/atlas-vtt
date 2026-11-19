@@ -75,7 +75,7 @@ describe('the measure renderer\'s wiring', () => {
       store: { getState: () => ({ objects: { tokens: {} }, tokenSettings: { tokenRingSize: 1 } }), subscribe: vi.fn(() => stopHeights) },
       gridSystem: { getOptions: () => ({ size: 70 }) },
       tokenRenderer: { onPlayersViewChange: vi.fn((listener: () => void) => { listeners.push(listener); return unsubscribe; }), setMeasureHandlers: vi.fn() },
-      measureRenderer: { refreshVisibility, rulesChanged: vi.fn(), playersView: null, handles: { pointer: {}, leave: vi.fn() }, ranges: {}, effects: { setMode: vi.fn() } },
+      measureRenderer: { refreshVisibility, rulesChanged: vi.fn(), followShown: vi.fn(), playersView: null, handles: { pointer: {}, leave: vi.fn() }, ranges: {}, effects: { setMode: vi.fn() } },
       // The popover of a kept measurement closes when the view is left
       eventBus: { on: busOn, off: busOff },
       viewId: 'view',

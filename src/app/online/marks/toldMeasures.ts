@@ -7,6 +7,8 @@
 import type { PlacedAura } from '../../measure/auraArea';
 import type { KeptAura, Measurement } from '../../measure/measureTypes';
 import type { DrawnMeasure } from '../../pixi/measure/DrawnMeasure';
+import type { MeasureMorph } from '../../pixi/measure/measureMorph';
+import type { MeasurePresence } from '../../pixi/measure/measurePresence';
 import type { ToldMeasure } from './measureWords.ts';
 import type { PointerTrack } from './PointerTrack.ts';
 
@@ -20,6 +22,10 @@ export interface Kept {
   /** Where the aura was last laid around its token; null while its token is drawn nowhere. */
   placed: PlacedAura | null;
   readonly drawn: DrawnMeasure;
+  /** How far it is on the map, as it comes and goes. */
+  readonly presence: MeasurePresence;
+  /** Its way from where it was drawn to where it was told again, an edit of its own. */
+  readonly morph: MeasureMorph;
 }
 
 /** A measurement being drawn: as its sender last told it, and its end as it is drawn, a moment behind. */
@@ -28,6 +34,7 @@ export interface Live {
   readonly track: PointerTrack;
   end: Point;
   readonly drawn: DrawnMeasure;
+  readonly presence: MeasurePresence;
 }
 
 /** One sender's drawings, and the colour of those that name none. */

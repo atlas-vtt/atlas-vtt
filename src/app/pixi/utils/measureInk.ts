@@ -84,6 +84,8 @@ export class MeasureInk {
   /** Its size as a share of its own about `about` (world), while it comes or goes. */
   private grow = 1;
   private about: Point = { x: 0, y: 0 };
+  /** How far it is drawn from where it lies, world pixels: it goes with a token drawn on its way. */
+  private shift: Point = { x: 0, y: 0 };
 
   constructor(layer: MeasureInkLayer) {
     this.line.addChild(this.dark, this.accent);
@@ -106,22 +108,26 @@ export class MeasureInk {
     this.clear();
   }
 
-  /** Fades the drawing to `alpha` and sizes it at `grow` of its own about the world point `about`, as it comes onto the map or leaves it. */
-  present(alpha: number, grow: number, about: Point): void {
+  /**
+   * Fades the drawing to `alpha` and sizes it at `grow` of its own about the world point `about`, as
+   * it comes onto the map or leaves it, and draws it `shift` world pixels from where it lies.
+   */
+  present(alpha: number, grow: number, about: Point, shift: Point = { x: 0, y: 0 }): void {
     this.area.alpha = alpha;
     this.line.alpha = alpha;
     this.grow = grow;
     this.about = about;
+    this.shift = shift;
     this.place();
   }
 
   /** Drawn in screen pixels, scaled back to the world: `about` stays where it is whatever the growth. */
   private place(): void {
-    const { zoom, grow, about } = this;
+    const { zoom, grow, about, shift } = this;
     for (const part of [this.area, this.line]) {
       part.scale.set(grow / zoom);
       part.pivot.set(about.x * zoom, about.y * zoom);
-      part.position.set(about.x, about.y);
+      part.position.set(about.x + shift.x, about.y + shift.y);
     }
   }
 

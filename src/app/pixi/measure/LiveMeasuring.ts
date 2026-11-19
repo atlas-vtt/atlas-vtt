@@ -40,7 +40,7 @@ export interface LiveMeasuringState extends ToolSwitchState {
 export interface LiveMeasuringDeps {
   store: { getState(): LiveMeasuringState };
   grid: MeasureGrid;
-  layer: Pick<MeasureLayer, 'drawLive' | 'clearLive' | 'dissolveLive' | 'placePin' | 'pinAt'>;
+  layer: Pick<MeasureLayer, 'drawLive' | 'clearLive' | 'dissolveLive' | 'placePin' | 'pinAt' | 'keepPinned'>;
   parts: Pick<MeasurePartsVisibility, 'start' | 'drawn' | 'pinned' | 'cleared' | 'setLiveHidden' | 'liveOrigin'>;
   /** A measurement is being made: the pointer is down for one, or between its clicks. */
   measuring: () => boolean;
@@ -98,7 +98,7 @@ export class LiveMeasuring implements MeasureInputHost {
     if (press && this.deps.spent?.(press)) return true;
     const { live } = this;
     if (this.fadeTimer === null || !live || !this.deps.layer.pinAt(world)) return false;
-    if (this.keep(live)) this.clear();
+    if (this.deps.layer.keepPinned(() => this.keep(live))) this.clear();
     return true;
   }
 

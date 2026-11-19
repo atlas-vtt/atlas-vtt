@@ -1287,7 +1287,7 @@ export class PixiRendererOrchestrator { // Renamed class
     }
 
     this.lighting?.wire(this.tokenRenderer);
-    if (this.measureRenderer) this.tokenRenderer.setMeasureHandlers(this.measureRenderer.handles.pointer);
+    if (this.measureRenderer) this.tokenRenderer.setMeasureHandlers(this.measureRenderer.pointer);
 
     // Wire audio tool viewport handlers
     if (this.audioRenderer && this.audioTool) {
@@ -1335,9 +1335,11 @@ export class PixiRendererOrchestrator { // Renamed class
     const rules = rulesLookup(this.obsApp);
     measure.measurementSettingsProvider = () => mapMeasurementSettings(rules, this.store.getState());
     measure.effects.setMode(this.mapVideoMode);
+    // Auras and grouped measurements go with their token as it glides to its place.
+    measure.followShown(this.shownPlaces);
     const grid = this.gridSystem;
     if (grid) measure.playersView = measurePlayersView({ store: this.store, grid, tokens: () => this.tokenRenderer, lighting: () => this.lighting?.playerSight() });
-    this.tokenRenderer?.setMeasureHandlers(measure.handles.pointer);
+    this.tokenRenderer?.setMeasureHandlers(measure.pointer);
     this.stopMeasuresFollowingPlayers?.();
     this.stopMeasuresFollowingPlayers = this.tokenRenderer?.onPlayersViewChange(() => measure.refreshVisibility());
     this.stopMeasuresFollowingRules?.();

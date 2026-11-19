@@ -1,19 +1,20 @@
 import { Container } from 'pixi.js';
-import { keptAudience, type PlacedAura } from '../../measure/auraArea';
+import { keptAudience } from '../../measure/auraArea';
 import { isAura } from '../../measure/keptMeasures';
 import type { KeptMeasure, Measurement } from '../../measure/measureTypes';
 import type { MeasureAudience } from '../../vision/measureOrigin';
 import type { Point } from '../../types/visionTypes';
 import { MAP_LAYER_Z } from '../mapLayerOrder';
 import type { LiveMeasureParts, MeasureParts } from '../measurePartsVisibility';
-import { cssColorToHexNumber } from '../utils/colorUtils';
 import { destroyTree } from '../utils/destroyTree';
 import { MeasureInkLayer } from '../utils/measureInk';
 import { AuraPlaces } from './AuraPlaces';
-import { DrawnMeasure, type MeasureLook, type MeasureSurfaces } from './DrawnMeasure';
+import type { DrawnMeasure, MeasureLook, MeasureSurfaces } from './DrawnMeasure';
 import type { AreaEffects } from './effects/AreaEffects';
-import { MeasurePin } from './MeasurePin';
-import { MEASURE_MOTION, MeasurePresence } from './measurePresence';
+import { colorOf, KeptDrawing } from './KeptDrawing';
+import { LiveDrawing } from './LiveDrawing';
+import { TokenOffsets } from './TokenOffsets';
+import type { ShownPlaces } from '../../lighting/shownPlaces';
 
 /** Told which kept measurements have a drawing, so that what shows them to players can follow. */
 export interface KeptDrawings {
@@ -23,21 +24,20 @@ export interface KeptDrawings {
   forgotten(parts: MeasureParts): void;
   /** The measurement in `parts`, live or kept, was drawn anew: its rings on tokens and what its label says of them show to whoever may see them. */
   marked(parts: MeasureParts): void;
+  /** A kept measurement is drawn elsewhere than before on its way (`MeasureLayer.shownWay`): what stands with it (its handles) follows. */
+  shownElsewhere?(): void;
+}
+
+/** Where a kept measurement is drawn while it moves: the points it is drawn at (null: its own) and how far it is shifted with its token. */
+export interface ShownWay {
+  readonly points: readonly Point[] | null;
+  readonly shift: Point;
 }
 
 /** The label of the layer the tokens are drawn in (`TokenRenderer`). */
 const TOKEN_LAYER = 'tokenContainer';
 const NO_IDS: ReadonlySet<string> = new Set<string>();
 
-const colorOf = (color: string | null | undefined): number | null => (color ? cssColorToHexNumber(color) : null);
-
-/** A kept measurement as it is drawn, and how far it is on the map. */
-interface KeptDrawing {
-  readonly measure: KeptMeasure;
-  readonly aura: PlacedAura | null;
-  readonly drawn: DrawnMeasure;
-  readonly presence: MeasurePresence;
-}
 
 const sameMeasurement = (a: Measurement, b: Measurement): boolean =>
   a.shape === b.shape && a.points.length === b.points.length && a.points.every((point, index) => point.x === b.points[index]?.x && point.y === b.points[index]?.y);
@@ -85,15 +85,14 @@ export class MeasureLayer {
   private readonly labels = new Container({ label: 'measure-labels', eventMode: 'none', interactiveChildren: false });
   /** The live measurement's parts, for what shows and hides them. */
   readonly liveParts: LiveMeasureParts;
-  private readonly live: DrawnMeasure;
-  private readonly pin = new MeasurePin();
+  private readonly live: LiveDrawing;
   private readonly kept = new Map<string, KeptDrawing>();
   /** Kept measurements that left the list and are on their way off the map: shown and hidden as they were until they are gone. */
   private readonly leaving = new Set<KeptDrawing>();
-  /** How far the live measurement is on the map: it fades in with its first drawing and dissolves when nobody keeps it. */
-  private readonly livePresence: MeasurePresence;
-  /** Whether the live measurement is drawn: its first drawing fades in. */
-  private liveDrawn = false;
+  /** How far gliding tokens are drawn from their places: what goes with a token is drawn with it (`followShown`). */
+  private readonly offsets = new TokenOffsets();
+  /** The live measurement is being kept by its pin (`keepPinned`). */
+  private pinning = false;
   private list: readonly KeptMeasure[] = [];
   /** Where the auras among them lie; `auras` says whether there is one. */
   readonly places = new AuraPlaces();
@@ -110,10 +109,8 @@ export class MeasureLayer {
     this.labels.zIndex = MAP_LAYER_Z.measure;
     parent.addChild(this.shapes.view, ...(options.gmOutlines === false ? [] : [this.outlines.view]), this.labels);
     // An area being made marks the tokens in it for as long as it shows.
-    this.live = new DrawnMeasure(this.surfaces, true);
-    this.livePresence = new MeasurePresence((presence) => this.live.present(presence));
-    this.live.labelLayer.addChild(this.pin.view);
-    this.liveParts = { ...this.live.parts, pin: this.pin.view };
+    this.live = new LiveDrawing(this.surfaces);
+    this.liveParts = this.live.parts;
   }
 
   /** The areas' outlines, which only the GM's view of the canvas shows; empty, and in no map, where the layer draws none. */
@@ -124,39 +121,49 @@ export class MeasureLayer {
   /** Draws the live measurement in `color` ('#rrggbb'; null is the accent). */
   drawLive(measurement: Measurement, color: string | null): void {
     this.live.draw(measurement, colorOf(color), this.look());
-    if (this.liveDrawn) return;
-    this.liveDrawn = true;
-    this.livePresence.enter(MEASURE_MOTION.live.from, MEASURE_MOTION.live.ms);
   }
 
   /** Puts the pin beside the live measurement's distance as that stands now, and pops it in: it is about to show. */
   placePin(): void {
-    this.pin.place(this.live.distance, this.look().zoom);
-    this.pin.popIn();
+    this.live.showPin(this.look().zoom);
   }
 
   /** The live measurement dissolves over `ms`; whoever clears it does so when that is done. */
   dissolveLive(ms: number): void {
-    this.livePresence.exit(() => undefined, ms);
+    this.live.dissolve(ms);
   }
 
   clearLive(): void {
-    this.livePresence.settle();
-    this.liveDrawn = false;
     this.live.clear();
   }
 
   /** Whether a press at the world point `point` is on the live label's pin, while that shows. */
   pinAt(point: Point): boolean {
-    return this.live.labelLayer.visible && this.pin.contains(point);
+    return this.live.pinAt(point);
+  }
+
+  /** The pointer is over the live label's pin, or left it: the pin lifts or settles. */
+  hoverPin(hovered: boolean): void {
+    this.live.hoverPin(hovered);
+  }
+
+  /** Keeps the live measurement by its pin (`keep`): the kept one takes its place and glows once, so it is seen to stay. */
+  keepPinned(keep: () => boolean): boolean {
+    this.pinning = true;
+    try {
+      return keep();
+    } finally {
+      this.pinning = false;
+    }
   }
 
   /**
    * The kept measurements to show, in order: what left the list goes, what is new or another object
    * is drawn. With `animate` (the same level of the same scene, nothing loading) what comes grows in
-   * and what goes fades out; otherwise both happen at once.
+   * and what goes fades out; otherwise both happen at once. `travelled`: an undo or redo wrote the
+   * list, and a measurement it moved, resized or turned shows its way there.
    */
-  setKept(list: readonly KeptMeasure[], animate = false): void {
+  setKept(list: readonly KeptMeasure[], animate = false, travelled = false): void {
     if (list === this.list) return;
     this.list = list;
     this.auras = list.some(isAura);
@@ -165,7 +172,17 @@ export class MeasureLayer {
     for (const [id, kept] of this.kept) {
       if (!ids.has(id)) this.forget(id, kept, animate);
     }
-    this.sync(animate);
+    this.sync(animate, travelled);
+  }
+
+  /**
+   * Draws whatever goes with a token (an aura, a grouped measurement) where that token is drawn:
+   * a token glides to the place the store gives it (`places`), and what goes with it, drawn at that
+   * place, is shifted back to where the token is on its way, so the two move as one.
+   */
+  followShown(places: ShownPlaces, storedAt: (tokenId: string) => Point | undefined): void {
+    this.offsets.follow(places, storedAt, () => this.shiftAll());
+    this.shiftAll();
   }
 
   /** The tokens of the level shown stand elsewhere: the auras among the kept measurements follow theirs. True when one moved. */
@@ -177,7 +194,7 @@ export class MeasureLayer {
    * Draws the kept measurements that are new, another object or, an aura, placed elsewhere. An
    * aura whose token is not on the map shown has no drawing. True when an aura was placed anew.
    */
-  private sync(animate = false): boolean {
+  private sync(animate = false, travelled = false): boolean {
     let look: MeasureLook | null = null;
     let moved = false;
     for (const measure of this.list) {
@@ -192,31 +209,53 @@ export class MeasureLayer {
         continue;
       }
       moved ||= follows;
-      const drawn = known?.drawn ?? new DrawnMeasure(this.surfaces);
-      const presence = known?.presence ?? new MeasurePresence((shown) => drawn.present(shown));
+      const kept = known ?? new KeptDrawing(this.surfaces, () => this.look(), (drawn) => {
+        this.drawings.marked(drawn.parts);
+        this.drawings.shownElsewhere?.();
+      });
       look ??= this.look();
-      drawn.setMarked(this.pointed.has(measure.id), look);
-      drawn.draw(measure, colorOf(measure.color), look, measure.walls !== false, aura, measure.effect ? { effect: measure.effect, seed: measure.id } : null);
-      this.kept.set(measure.id, { measure, aura, drawn, presence });
-      this.drawings.kept(drawn.parts, keptAudience(measure));
-      if (!known) this.arrive(measure, presence, animate);
+      kept.drawn.setMarked(this.pointed.has(measure.id), look);
+      kept.draw(measure, aura, look, travelled);
+      this.kept.set(measure.id, kept);
+      this.drawings.kept(kept.drawn.parts, keptAudience(measure));
+      if (!known) this.arrive(measure, kept, animate);
+      this.shiftOne(kept);
     }
     return moved;
+  }
+
+  private shiftAll(): void {
+    for (const kept of this.kept.values()) this.shiftOne(kept);
+  }
+
+  /** Draws a kept measurement as far from where it lies as its token is drawn from where the store has it. */
+  private shiftOne(kept: KeptDrawing): void {
+    if (kept.drawn.shift(this.offsets.of(kept.token))) this.drawings.shownElsewhere?.();
+  }
+
+  /** Where the kept measurement `id` is drawn while it moves (a morph, its token's glide); null while it is drawn where it lies, and for one that is gone. */
+  shownWay(id: string): ShownWay | null {
+    const kept = this.kept.get(id);
+    if (!kept) return null;
+    const points = kept.wayPoints;
+    const shift = kept.drawn.shifted;
+    return points === null && shift.x === 0 && shift.y === 0 ? null : { points, shift };
   }
 
   /**
    * A kept measurement drawn for the first time comes in. The live one just kept is already there:
    * it takes the live one's place as it stands, so keeping it never flickers, and one rescued while
-   * it dissolved comes back from where it had got to.
+   * it dissolved comes back from where it had got to. One kept by its pin glows.
    */
-  private arrive(measure: KeptMeasure, presence: MeasurePresence, animate: boolean): void {
-    const live = this.liveDrawn ? this.live.measurement : null;
-    if (live && sameMeasurement(live, measure)) {
-      const from = this.livePresence.presence;
-      if (from.alpha < 1 || from.grow !== 1) presence.enter(from);
+  private arrive(measure: KeptMeasure, kept: KeptDrawing, animate: boolean): void {
+    const live = this.live.showing;
+    if (live && sameMeasurement(live.measurement, measure)) {
+      const from = live.presence;
+      if (from.alpha < 1 || from.grow !== 1) kept.presence.enter(from);
+      if (this.pinning) kept.drawn.glow();
       return;
     }
-    if (animate) presence.enter();
+    if (animate) kept.presence.enter();
   }
 
   /** A kept measurement's drawing goes: at once, or (`animate`) once it has faded out, shown to whoever saw it until then. */
@@ -227,14 +266,13 @@ export class MeasureLayer {
       return;
     }
     this.leaving.add(kept);
-    kept.presence.exit(() => this.drop(kept));
+    kept.leave(() => this.drop(kept));
   }
 
   private drop(kept: KeptDrawing): void {
-    kept.presence.stop();
     this.leaving.delete(kept);
     this.drawings.forgotten(kept.drawn.parts);
-    kept.drawn.destroy();
+    kept.destroy();
   }
 
   /** The kept measurements pointed at (a handle under the pointer, an open popover): those that are areas mark the tokens in them. */
@@ -282,19 +320,15 @@ export class MeasureLayer {
       // Rings drawn anew show to whoever may see them, and the players' label is written again: a ruler's too, which rings nothing.
       this.drawings.marked(parts);
     }
-    if (this.pin.view.visible) this.pin.place(this.live.distance, look.zoom);
+    this.live.replacePin(look.zoom);
     return moved;
   }
 
   destroy(): void {
-    for (const kept of [...this.kept.values(), ...this.leaving]) {
-      kept.presence.stop();
-      kept.drawn.destroy();
-    }
+    for (const kept of [...this.kept.values(), ...this.leaving]) kept.destroy();
+    this.offsets.stop();
     this.kept.clear();
     this.leaving.clear();
-    this.livePresence.stop();
-    this.pin.destroy();
     this.live.destroy();
     this.shapes.destroy();
     this.outlines.destroy();
@@ -309,6 +343,6 @@ export class MeasureLayer {
 
   /** Every drawing with the parts it is shown and hidden by: the live one's are `liveParts`. */
   private all(): [DrawnMeasure, MeasureParts][] {
-    return [[this.live, this.liveParts], ...[...this.kept.values()].map(({ drawn }): [DrawnMeasure, MeasureParts] => [drawn, drawn.parts])];
+    return [[this.live.drawn, this.liveParts], ...[...this.kept.values()].map(({ drawn }): [DrawnMeasure, MeasureParts] => [drawn, drawn.parts])];
   }
 }
