@@ -401,7 +401,7 @@ export class NotePinTool {
 
     const subpath = `#pin=${encodeURIComponent(pinId)}`;
     const pin = levelObjects(this.store.getState()).pins[pinId];
-    const fallbackName = linkpath.split('/').pop()?.replace(/\\.md$/i, '') ?? '';
+    const fallbackName = linkpath.split('/').pop()?.replace(/\.md$/i, '') ?? '';
     const label = `View on map - ${pin ? pinName(pin) : fallbackName}`;
     const link = this.obsidianApp.fileManager.generateMarkdownLink(mapFile, linkpath, subpath, label);
     const previousLink = previousName === undefined
@@ -412,7 +412,7 @@ export class NotePinTool {
       if (previousLink && content.includes(previousLink)) return content.replace(previousLink, link);
       if (content.includes(link)) return content;
       if (content.includes(legacyLink)) return content.replace(legacyLink, link);
-      const separator = content.trim() ? '\\n\\n' : '';
+      const separator = content.trim() ? '\n\n' : '';
       return `${content.trimEnd()}${separator}${link}\\n`;
     });
   }
