@@ -2,12 +2,18 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { formatMessage, getLocale, resolveLocale, setLocale, setPlatformSource, setPointerSource, t, tPlatform, tPointer } from '../../src/app/i18n';
 import { TRANSLATIONS } from '../../src/app/i18n/languages';
 import { en } from '../../src/app/i18n/locales/en';
-import type { Message, MessageKey } from '../../src/app/i18n/types';
+import type { Message, MessageKey, Translation } from '../../src/app/i18n/types';
 
 /** Every `{name}` a message fills in, over all its plural forms. */
 function placeholders(message: Message): string[] {
   const forms = typeof message === 'string' ? [message] : Object.values(message);
   return [...new Set(forms.flatMap((form) => [...form.matchAll(/\{(\w+)\}/g)].map((match) => match[1]!)))].sort();
+}
+
+/** `translation` without `key`, as a language that has not translated it yet. */
+function withoutKey(translation: Translation, key: MessageKey): Translation {
+  const { [key]: _dropped, ...rest } = translation;
+  return rest;
 }
 
 describe('i18n', () => {
@@ -24,7 +30,12 @@ describe('i18n', () => {
     expect(resolveLocale('zh', TRANSLATIONS)).toBe('zh');
     expect(resolveLocale('zh-CN', TRANSLATIONS)).toBe('zh');
     expect(resolveLocale('zh-TW', TRANSLATIONS)).toBe('zh');
-    expect(resolveLocale('pt-BR', TRANSLATIONS)).toBe('en');
+    expect(resolveLocale('de-AT', TRANSLATIONS)).toBe('de');
+    expect(resolveLocale('es', TRANSLATIONS)).toBe('es');
+    expect(resolveLocale('fr', TRANSLATIONS)).toBe('fr');
+    expect(resolveLocale('pt', TRANSLATIONS)).toBe('pt');
+    expect(resolveLocale('pt-BR', TRANSLATIONS)).toBe('pt');
+    expect(resolveLocale('ja', TRANSLATIONS)).toBe('en');
     expect(resolveLocale('', TRANSLATIONS)).toBe('en');
   });
 
@@ -36,7 +47,7 @@ describe('i18n', () => {
     expect(getLocale()).toBe('zh');
     expect(t('command.openDashboard')).toBe('打开仪表盘');
     expect(t('count.files', { count: 1 })).toBe('1 个文件');
-    setLocale('fr', TRANSLATIONS);
+    setLocale('ja', TRANSLATIONS);
     expect(t('command.openDashboard')).toBe('Open dashboard');
   });
 
@@ -62,7 +73,7 @@ describe('i18n', () => {
     expect(tPointer('tour.loot.rollBody', { hotkey: 'L' })).not.toContain('{hotkey}');
     expect(tPointer('tour.loot.rollBody', { hotkey: 'L' })).not.toBe(t('tour.loot.rollBody', { hotkey: 'L' }));
     // A language without the finger's wording shows the English one, as for any missing key.
-    setLocale('ru', TRANSLATIONS);
+    setLocale('ru', { ...TRANSLATIONS, ru: withoutKey(TRANSLATIONS.ru!, 'initiative.empty.touch') });
     expect(tPointer('initiative.empty')).toBe('Touch and hold a token to add it');
     // The pointer is asked at every call: a mouse attached to a tablet gets its own wording back.
     finger = false;
@@ -88,7 +99,7 @@ describe('i18n', () => {
     expect(tPlatform('loot.openPlayerView')).toBe('Start an online table to show loot to your players.');
     expect(tPlatform('present.shownElsewhere', { name: 'Tavern' })).toBe('Players see Tavern');
     // A language without the mobile wording shows the English one
-    setLocale('ru', TRANSLATIONS);
+    setLocale('ru', { ...TRANSLATIONS, ru: withoutKey(TRANSLATIONS.ru!, 'dice.showRollsToPlayersHint.mobile') });
     expect(tPlatform('dice.showRollsToPlayersHint')).toBe('Your rolls appear in Table mode too.');
   });
 

@@ -35,9 +35,9 @@ describe('Atlas in Italian', () => {
     expect(getLocale()).toBe('it');
   });
 
-  it('keeps current translations nonempty and falls back for new upstream texts', () => {
+  it('keeps every translation nonempty', () => {
     expect(Object.keys(italian).every((key) => key in en)).toBe(true);
-    expect(t('dungeon.title')).toBe(en['dungeon.title']);
+    expect(t('dungeon.title')).toBe('Generatore di dungeon');
     for (const [key, message] of Object.entries(italian)) {
       const forms = typeof message === 'string' ? [message] : Object.values(message);
       for (const form of forms) expect(form.trim(), key).not.toBe('');
@@ -75,7 +75,7 @@ describe('Atlas in Italian', () => {
     } as unknown as Plugin;
     registerCommands(plugin, {} as CommandDependencies);
     expect(commands.find((command) => command.id === 'open-dashboard')?.name).toBe('Apri bacheca');
-    expect(commands.find((command) => command.id === 'open-scene-browser')?.name).toBe('Apri elenco delle scene');
+    expect(commands.find((command) => command.id === 'open-scene-browser')?.name).toBe('Apri gestione risorse');
     expect(commands.find((command) => command.id === 'new-statblock-template')?.name).toBe('Nuovo modello di blocco statistiche…');
     expect(ribbon).toContain('Mostra immagine nella vista giocatori');
   });
@@ -93,11 +93,11 @@ describe('Atlas in Italian', () => {
       { title: t('am.tour.libraryTitle'), body: t('am.tour.libraryBody') },
       { title: t('am.tour.collectionTitle'), body: t('am.tour.collectionBody') },
     ]} />);
-    expect(screen.getByText('La libreria della tua campagna')).toBeTruthy();
+    expect(screen.getByText('La tua libreria')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Avanti' }));
-    expect(screen.getByText('Inizia con una collezione')).toBeTruthy();
+    expect(screen.getByText('Collezioni')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Indietro' }));
-    expect(screen.getByText('La libreria della tua campagna')).toBeTruthy();
+    expect(screen.getByText('La tua libreria')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Avanti' }));
     fireEvent.click(screen.getByRole('button', { name: 'Ho capito' }));
     expect(settings.shouldShowTutorial('assets')).toBe(false);
