@@ -16,7 +16,8 @@ const THEME = `
     --background-modifier-border: #363636; --background-modifier-hover: rgba(255, 255, 255, 0.075); --background-modifier-form-field: #2a2a2a;
     --text-normal: #dadada; --text-muted: #b3b3b3; --text-faint: #777; --text-accent: #a68af9; --text-error: #fb464c; --interactive-accent: #7f6df2;
     --radius-s: 4px; --radius-m: 8px; --radius-l: 12px; --radius-xl: 16px; --font-ui-smaller: 12px; --font-ui-small: 13px; --font-ui-medium: 15px;
-    --font-ui-large: 20px; --input-height: 30px; --mono-100: #fff; }
+    --font-ui-large: 20px; --input-height: 30px; --mono-100: #fff;
+    --shadow-l: 0px 1.8px 7.3px rgba(0, 0, 0, 0.071), 0px 6.3px 24.7px rgba(0, 0, 0, 0.112), 0px 30px 90px rgba(0, 0, 0, 0.2); }
 `;
 const h = React.createElement;
 const settle = (ms = 400): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -85,5 +86,9 @@ describe('the saved rolls beside the dice tray', () => {
     const hovered = centreOf(card.querySelector('.atlas-dice-presets__roll')!);
     await mouse.hover(hovered.x, hovered.y);
     await settle();
+    // The room around the list for the shadows takes no pointer: the map beside it gets the press.
+    const list = document.querySelector('.atlas-dice-presets__list')!.getBoundingClientRect();
+    const beside = document.elementFromPoint(list.left + 20, list.top + 40);
+    expect(beside?.closest('.atlas-dice-presets__list')).toBeNull();
   });
 });

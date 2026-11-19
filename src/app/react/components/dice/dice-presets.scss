@@ -7,8 +7,12 @@
 $presets-width: 248px;
 $presets-gap: $spacing-s;
 $presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
-// Room inside the scroller for the cards' shadows, which a scroller would cut.
-$presets-shadow-room: $spacing-m;
+// Room inside the scroller for the cards' shadows, which a scroller would cut: Obsidian's `--shadow-l` (the
+// elevated shadow) blurs 90 px, 30 px down. Beside the cards and below them; above, the save card stands.
+$presets-shadow-side: 96px;
+$presets-shadow-below: 128px;
+// How far the list fades out at the column's foot.
+$presets-fade: $spacing-l;
 
 // No panel: a column of floating cards beside the tray, top to top with it and as tall, out of the tray's flow so the
 // tray keeps its place over its button. On the left: the tray's own tooltips open to its right.
@@ -54,15 +58,28 @@ $card-control-radius: atlas-panel-inset-radius-value($surface-inset, calc(#{$car
   flex-direction: column;
   gap: $presets-gap;
   min-height: 0;
-  // The scroller reaches past the column on three sides, so the shadows show; above, it starts where the gap does.
-  margin: (-$presets-gap) (-$presets-shadow-room) (-$presets-shadow-room);
-  padding: $presets-gap $presets-shadow-room $presets-shadow-room;
+  // The scroller reaches far past the column beside and below it, so the cards' shadows are not cut at its box; that
+  // room takes no pointer (the map and the toolbar under it stay usable), the cards do, and the wheel over a card
+  // still scrolls the list. The mask only fades the list at the column's top and foot: past the foot, cards are
+  // hidden, while their shadows beside them show whole.
+  margin: (-$presets-gap) (-$presets-shadow-side) (-$presets-shadow-below);
+  padding: $presets-gap $presets-shadow-side $presets-shadow-below;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
   list-style: none;
-  pointer-events: auto;
-  mask-image: linear-gradient(to bottom, transparent 0, #000 $presets-gap, #000 calc(100% - #{$presets-shadow-room} * 2), transparent 100%);
+  pointer-events: none;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 $presets-gap,
+    #000 calc(100% - #{$presets-shadow-below} - #{$presets-fade}),
+    transparent calc(100% - #{$presets-shadow-below})
+  );
+
+  > * {
+    pointer-events: auto;
+  }
 
   &::-webkit-scrollbar {
     display: none;
