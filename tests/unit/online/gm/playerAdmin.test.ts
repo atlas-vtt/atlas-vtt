@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MenuEntry } from '../../../../src/app/online/gm/dock/dockMenu.ts';
 import { renderMenu, type MenuActions } from '../../../../src/app/online/gm/dock/ConnectionMenu.ts';
 import { renderPanel, panelView, type PanelActions } from '../../../../src/app/online/gm/dock/OnlinePanel.ts';
 import { menuModel, type OnlineSnapshot, type SceneFacts } from '../../../../src/app/online/gm/dock/panelModel.ts';
 import { renderKnocks } from '../../../../src/app/online/gm/dock/knockStack.ts';
+import { CODE_SHOWN_MS } from '../../../../src/app/online/gm/dock/secretCode.ts';
 
 const menus = vi.hoisted(() => ({ opened: [] as (readonly MenuEntry[])[] }));
 vi.mock('../../../../src/app/online/gm/dock/dockMenu.ts', () => ({ openMenuBelow: (entries: readonly MenuEntry[]) => menus.opened.push(entries) }));
@@ -18,9 +19,9 @@ const snapshot = (over: Partial<OnlineSnapshot> = {}): OnlineSnapshot => ({ stat
 function actions(): PanelActions {
   return {
     selectToken: vi.fn(), assign: vi.fn(), release: vi.fn(), unmark: vi.fn(), mark: vi.fn(), kick: vi.fn(), drawingsOf: () => 0, clearDrawings: vi.fn(), selected: () => [], imageSrc: (path) => path,
-    copyPlayerCode: vi.fn(() => Promise.resolve(true)), newPlayerCode: vi.fn(), renamePlayer: vi.fn(), removeFromCampaign: vi.fn(), addPlayer: vi.fn(() => ({ id: 'd'.repeat(20), name: 'Dora', code: '731904' })), newLink: vi.fn(),
+    playerCode: () => '482193', newPlayerCode: vi.fn(), renamePlayer: vi.fn(), removeFromCampaign: vi.fn(), addPlayer: vi.fn(() => ({ id: 'd'.repeat(20), name: 'Dora', code: '731904' })), newLink: vi.fn(),
     start: vi.fn(), choose: vi.fn(), search: vi.fn(), openCampaigns: vi.fn(), stop: vi.fn(), share: vi.fn(), copy: () => Promise.resolve(true), toggleQr: vi.fn(), close: vi.fn(), hideImage: vi.fn(), openAccountPage: vi.fn(),
-    newCode: vi.fn(), copyCode: vi.fn(), setRequireCode: vi.fn(), setAskToJoin: vi.fn(),
+    newCode: vi.fn(), setRequireCode: vi.fn(), setAskToJoin: vi.fn(),
     toggleFeedback: vi.fn(), feedbackText: () => '', setFeedbackText: vi.fn(), setFeedbackDiagnostics: vi.fn(), sendFeedback: vi.fn(), setErrorReports: vi.fn(),
   } as unknown as PanelActions;
 }
@@ -128,7 +129,13 @@ describe('renaming a player', () => {
 });
 
 describe('adding a player', () => {
-  it('asks for a name, then shows that player\'s code once with a way to copy it', async () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => {
+    vi.advanceTimersByTime(CODE_SHOWN_MS);
+    vi.useRealTimers();
+  });
+
+  it('asks for a name, then gives that player\'s code once, hidden until pressed, with a way to copy it', async () => {
     const { layer, does } = panel();
     press(layer, 'Add player');
     const field = layer.querySelector<HTMLInputElement>('input.atlas-online-prompt__input')!;
@@ -137,10 +144,15 @@ describe('adding a player', () => {
     field.dispatchEvent(new Event('input'));
     press(layer, 'Add');
     expect(does.addPlayer).toHaveBeenCalledWith('Dora');
-    expect(layer.querySelector('.atlas-online-code-row')?.textContent).toContain('731 904');
+    const row = layer.querySelector<HTMLButtonElement>('.atlas-online-code-row')!;
+    // Hidden like every code: the first press shows it, the next copies it.
+    expect(row.textContent).not.toContain('731');
     const write = vi.fn(() => Promise.resolve());
     Object.defineProperty(window.navigator, 'clipboard', { value: { writeText: write }, configurable: true });
-    layer.querySelector<HTMLButtonElement>('.atlas-online-code-row')?.click();
+    row.click();
+    expect(row.textContent).toContain('731 904');
+    expect(write).not.toHaveBeenCalled();
+    row.click();
     await Promise.resolve();
     expect(write).toHaveBeenCalledWith('731 904');
     press(layer, 'Done');
@@ -160,6 +172,12 @@ describe('adding a player', () => {
 });
 
 describe('adding the first player', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => {
+    vi.advanceTimersByTime(CODE_SHOWN_MS);
+    vi.useRealTimers();
+  });
+
   it('can be done from the menu a campaign without players opens to, with the code shown once', () => {
     const layer = document.body.createDiv();
     const does = actions() as unknown as MenuActions;
@@ -171,7 +189,10 @@ describe('adding the first player', () => {
     field.dispatchEvent(new Event('input'));
     press(layer, 'Add');
     expect(does.addPlayer).toHaveBeenCalledWith('Dora');
-    expect(layer.querySelector('.atlas-online-code-row')?.textContent).toContain('731 904');
+    const row = layer.querySelector<HTMLButtonElement>('.atlas-online-code-row')!;
+    expect(row.textContent).not.toContain('731');
+    row.click();
+    expect(row.textContent).toContain('731 904');
     press(layer, 'Done');
     expect(layer.textContent).not.toContain('731');
   });

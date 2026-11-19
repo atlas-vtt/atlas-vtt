@@ -1,6 +1,8 @@
 import type { Message } from '../../types';
 
 export const palette = {
+  'palette.panel.experimental': 'Experimental Features',
+  'palette.experimentalLighting': 'Dynamic lighting',
   'palette.enterAlignment': 'Enter Alignment Mode',
   'palette.enterPlayerMode': 'Enter Player Mode',
   'palette.exitPlayerMode': 'Exit Player Mode',
@@ -22,7 +24,7 @@ export const palette = {
   'palette.notePinTool': 'Note Pin Tool',
   'palette.openDiceLog': 'Open dice log',
   'palette.openLootRoller': 'Open random tables',
-  'palette.openSceneBrowser': 'Open scene browser',
+  'palette.openSceneBrowser': 'Open asset manager',
   'palette.openDMScreen': 'Open DM screen',
   'palette.openSoundPage': 'Open Sound page',
   'palette.panel.grid': 'Grid Settings',

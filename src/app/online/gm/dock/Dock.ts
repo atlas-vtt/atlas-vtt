@@ -5,7 +5,7 @@ import { accountActions, MENU_WIDTH, renderMenu, type MenuActions } from './Conn
 import { campaignPick, type CampaignPick } from './campaignPicker.ts';
 import { DockButton } from './dockButton.ts';
 import type { DockDeps } from './dockDeps.ts';
-import { copyText, detached, isInsideControl, isPlaced, place, roomAbove, rowOf, BAR_GAP } from './dockDom.ts';
+import { copyText, detached, inOwnPlace, isInsideControl, isPlaced, place, roomAbove, rowOf, BAR_GAP } from './dockDom.ts';
 import { qrTableOf, tableFactsOf, viewFactsOf, type ViewStoreState } from './dockFacts.ts';
 import { CLOSED, close, closesDiceLog, escapeCloses, escapeClosesQr, keyStaysInControl, makesWay, open, outsidePressCloses, pressClosesQr, tableChanged, toggle, type DockState, type Surface, type TableFacts, type ViewFacts } from './dockState.ts';
 import { DockTooltip } from './dockTooltip.ts';
@@ -14,7 +14,6 @@ import { gateRowActions } from './gateRows.ts';
 import { InviteQr } from './inviteQr.ts';
 import { KNOCK_ROOM, knockCards, KnockStack, restCards, stackCards } from './knockStack.ts';
 import { DockSurface } from './dockSurface.ts';
-import { playerCodeCopier } from './playerCodes.ts';
 import { PANEL_WIDTH, panelView, renderPanel, type PanelActions } from './OnlinePanel.ts';
 import { badgeOf, isRunning, menuModel, tableTitle, tooltipOf, type OnlineSnapshot, type SceneFacts } from './panelModel.ts';
 import { t } from '../../../i18n';
@@ -146,7 +145,7 @@ export class Dock {
   /** Puts the two nodes back into the row whenever Atlas rebuilt it; nothing while the view has no row. */
   private mount(): void {
     // Called on every change of the view's DOM: nothing to look up while both nodes stand.
-    if (this.root.isConnected && this.spacer.isConnected) return;
+    if (this.root.isConnected && (this.spacer.isConnected || inOwnPlace(this.root))) return;
     const row = rowOf(this.container);
     if (row === null || isPlaced(row, this.root, this.spacer)) return;
     place(row, this.root, this.spacer);
@@ -268,7 +267,7 @@ export class Dock {
   private menuActions(): MenuActions {
     return {
       ...accountActions(this.deps.account),
-      ...gateRowActions(this.deps.api, this.root),
+      ...gateRowActions(this.deps.api),
       start: () => {
         const chosen = this.pick().chosen;
         if (chosen !== null) this.deps.api.start(this.leaf, chosen);
@@ -312,7 +311,7 @@ export class Dock {
       kick: (playerId) => api.kick(playerId),
       drawingsOf: (playerId) => api.playerDrawings(playerId),
       clearDrawings: (playerId) => api.clearPlayerDrawings(playerId),
-      copyPlayerCode: playerCodeCopier(api, this.root),
+      playerCode: (playerId) => api.playerCode(playerId),
       newPlayerCode: (playerId) => api.newPlayerCode(playerId),
       renamePlayer: (playerId, name) => api.renamePlayer(playerId, name),
       removeFromCampaign: (playerId) => api.removeFromCampaign(playerId),

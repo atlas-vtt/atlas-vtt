@@ -25,6 +25,15 @@ $dock-inner: calc(#{$button-height-l} + 2 * #{$surface-inset});
   pointer-events: none;
 }
 
+// Atlas' own place for the control (`OnlinePlaySlot`): exactly the collapsed control's box, which
+// the control fills from its bottom left; the toolbar editor lays its handle over it.
+.atlas-online-place {
+  position: relative;
+  width: calc(#{$dock-inner} + 2 * #{$border-width-m});
+  height: calc(#{$dock-inner} + 2 * #{$border-width-m});
+  pointer-events: auto;
+}
+
 // Their sizes are content sizes, so they must win over the plugin's reset that makes every element
 // in `.atlas-vtt-plugin` border-box.
 .atlas-vtt-plugin :is(.atlas-online-room, .atlas-online-dock) {

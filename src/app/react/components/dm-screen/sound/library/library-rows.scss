@@ -19,8 +19,9 @@
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) 100px 60px 88px 32px;
   align-items: center;
-  height: 38px;
-  padding: 0 4px;
+  // The ⋯ (28 px) at its end stands $surface-inset from top, bottom and end, concentric with the row's corner.
+  height: 36px;
+  padding: 0 $surface-inset;
   border-radius: $radius-m;
   contain: layout style;
   transition: background-color 100ms var(--atlas-sound-lib-press);
@@ -34,16 +35,6 @@
     background: var(--background-modifier-active-hover);
   }
 
-  // Selected is more than a hue: a bar at the row's start, which hover never draws.
-  &[aria-selected='true']::before {
-    content: '';
-    position: absolute;
-    top: $spacing-s;
-    bottom: $spacing-s;
-    left: 0;
-    width: 2px;
-    background: var(--interactive-accent);
-  }
 }
 
 .atlas-sound-lib__rows:focus-visible .atlas-sound-lib__row[data-active] {

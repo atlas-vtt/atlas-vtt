@@ -44,12 +44,12 @@ export function renderPopover(open = true): Rendered {
       <ViewStoreProvider store={store}><LightPopoverHost /></ViewStoreProvider>
     </AtlasUIContext.Provider>,
   );
-  if (open) act(() => store.getState().openLightPopover(torch));
+  if (open) act(() => { store.getState().openLightPopover(torch); });
   return {
     store, torch, lantern, mapKeys,
     light: (id = torch) => store.getState().objects.lights[id]!,
     steps: () => history.getState().pastStates.length,
-    undo: () => act(() => history.getState().undo()),
+    undo: () => act(() => { history.getState().undo(); }),
   };
 }
 

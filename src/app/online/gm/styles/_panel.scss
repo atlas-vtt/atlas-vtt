@@ -249,11 +249,77 @@
     }
   }
 
+  // The player's code, hidden until pressed (`secretCode.ts`): a ghost at the row's end, before the menu.
+  .atlas-online-player__code {
+    &,
+    &:hover,
+    &:active,
+    &:focus-visible {
+      display: flex;
+      flex: none;
+      align-items: center;
+      height: $online-control;
+      margin-left: auto;
+      padding: 0 $spacing-s;
+      border: none;
+      border-radius: $online-row-control-radius;
+      box-shadow: none;
+      color: var(--text-muted);
+      font-size: $font-ui-smaller;
+      font-weight: $font-weight-medium;
+      cursor: pointer;
+    }
+
+    & {
+      background: transparent;
+      transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease;
+    }
+
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover);
+        color: var(--text-normal);
+      }
+    }
+
+    &:active {
+      background: var(--background-modifier-active-hover);
+    }
+
+    &:focus-visible {
+      box-shadow: $online-focus-ring;
+    }
+
+    &.is-copied {
+      color: var(--color-green);
+    }
+  }
+
   .atlas-online-player__more {
     margin-left: auto;
     // $online-inset inside its row, in its end: concentric with the row's corner.
     border-radius: $online-row-control-radius;
     @include online-on-row-hover;
+  }
+
+  .atlas-online-player__code + .atlas-online-player__more {
+    margin-left: 0;
+  }
+
+  // A code that a shared screen must not show: blurred until the GM presses it. What stands there
+  // while hidden is no digit of it, so the blur only says that something is hidden.
+  .atlas-online-secret__digits {
+    font-variant-numeric: tabular-nums;
+    filter: blur(3px);
+    transition: filter $transition-fast $transition-ease;
+  }
+
+  .atlas-online-secret.is-shown .atlas-online-secret__digits {
+    filter: none;
+  }
+
+  .atlas-online-secret.is-copied .atlas-online-secret__label {
+    display: none;
   }
 
   .atlas-online-player:hover .atlas-online-player__more,

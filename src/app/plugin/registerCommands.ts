@@ -30,7 +30,8 @@ function isImageFile(file: TFile): boolean {
   return IMAGE_EXTENSIONS.includes(file.extension.toLowerCase());
 }
 
-async function openDashboard(plugin: Plugin): Promise<void> {
+/** Opens Atlas' start page in a new tab and brings it to the front. */
+export async function openDashboard(plugin: Plugin): Promise<void> {
   try {
     const leaf = plugin.app.workspace.getLeaf(true);
     await leaf.setViewState({ type: DASHBOARD_VIEW_TYPE, state: {} });
@@ -126,6 +127,8 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
     name: t('command.openDashboard'),
     callback: () => void openDashboard(plugin),
   });
+  // Atlas' one door in the ribbon: the start page leads to everything else.
+  plugin.addRibbonIcon('map', t('command.openAtlas'), () => void openDashboard(plugin));
 
   plugin.addCommand({
     id: 'generate-dungeon',
@@ -182,6 +185,30 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
   });
 
   plugin.addCommand({
+    id: 'reset-explored-areas',
+    name: t('sceneLight.forgetExplored'),
+    checkCallback: (checking) => {
+      const view = app.workspace.getActiveViewOfType(AtlasView);
+      if (!view || !view.getStore().getState().lighting.enabled) return false;
+      if (!checking) {
+        view.serviceManager.getEventBus().emit('lighting-reset-explored');
+      }
+      return true;
+    },
+  });
+
+  plugin.addCommand({
+    id: 'open-docs',
+    name: t('docs.command'),
+    checkCallback: (checking) => {
+      const view = app.workspace.getActiveViewOfType(AtlasView);
+      if (!view) return false;
+      if (!checking) view.getStore().getState().setDocsOpen(true);
+      return true;
+    },
+  });
+
+  plugin.addCommand({
     id: 'clean-up-missing-assets',
     name: t('command.cleanUpMissingAssets'),
     checkCallback: (checking) => {
@@ -219,7 +246,7 @@ function registerStatblockCommands(plugin: Plugin): void {
 
   plugin.addCommand({
     id: 'new-statblock-template',
-    name: 'New statblock template…',
+    name: t('command.newStatblockTemplate'),
     checkCallback: (checking) => {
       if (!experimentalFeatureOn(app, 'statblockEditor')) return false;
       if (!checking) runInBackground(openTemplateGallery(app), 'Opening the template gallery');
