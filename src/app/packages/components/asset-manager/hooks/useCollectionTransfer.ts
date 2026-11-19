@@ -182,7 +182,7 @@ export function useCollectionTransfer({ app, assetService, selectedCollection, o
     external.current = from;
     setTransfer({ step: 'working', title: IMPORTING, progress: { message: t('bundle.reading'), fraction: 0 } });
     try {
-      const opened = await openBundleImport(app, assetService, data, working(IMPORTING), { creator: from?.creator });
+      const opened = await openBundleImport(app, assetService, data, working(IMPORTING), { creator: from?.creator, listingUid: from?.listingUid });
       if (opened.kind === 'item') {
         itemSession.current = opened.session;
         setTransfer({ step: 'item-review', review: opened.session.review });

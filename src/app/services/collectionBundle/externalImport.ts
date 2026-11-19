@@ -14,6 +14,11 @@ export interface ExternalImport {
   readonly data: Blob;
   /** Who shared it, where the source knows: the item review names them. */
   readonly creator?: string | undefined;
+  /**
+   * The listing the bytes were downloaded and checked for (an Armarium install). A bundle naming another
+   * listing is refused, and only a bundle so verified may update an installed item in place.
+   */
+  readonly listingUid?: string | undefined;
   /** The review is shown and waits for the GM. */
   onReview(): void;
   onSettled(outcome: ExternalImportOutcome): void;

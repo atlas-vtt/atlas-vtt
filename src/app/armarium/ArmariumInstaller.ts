@@ -166,6 +166,7 @@ export class ArmariumInstaller {
       let settled = false;
       this.deps.review({
         data,
+        listingUid: request.uid,
         ...(creator && { creator }),
         onReview: () => {
           if (settled || !this.current) return;

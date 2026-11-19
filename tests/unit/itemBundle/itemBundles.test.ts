@@ -64,10 +64,10 @@ async function bundleOf(vault: InMemoryApp, ref: ItemRef = TEMPLATE, version = 1
   return bytes.slice();
 }
 
-async function install(vault: InMemoryApp, bytes: Uint8Array<ArrayBuffer>, creator?: string): Promise<Awaited<ReturnType<typeof openItemImport>>> {
+async function install(vault: InMemoryApp, bytes: Uint8Array<ArrayBuffer>, creator?: string, listingUid: string | null = UID): Promise<Awaited<ReturnType<typeof openItemImport>>> {
   await DiceSetFiles.forApp(vault.app)!.flush();
   await SystemPresetFiles.forApp(vault.app)!.flush();
-  return openItemImport(vault.app, await readItemBundle(bytes), { creator });
+  return openItemImport(vault.app, await readItemBundle(bytes), { creator, listingUid: listingUid ?? undefined });
 }
 
 const json = (vault: InMemoryApp, path: string): Record<string, unknown> => JSON.parse(vault.files.get(path) ?? '{}') as Record<string, unknown>;
@@ -196,6 +196,21 @@ describe('installing an item', () => {
     await session.apply();
     expect(json(vault, MARSH_PATH)).toMatchObject({ armarium: { version: 1, source: MARSH } });
     expect(json(vault, MARSH_PATH).description).not.toBe('Not yours');
+  });
+
+  it('updates an install in place only from a download checked for its listing, never from a file', async () => {
+    const vault = await vaultWith();
+    await (await install(vault, await bundleOf(await creatorVault()))).apply();
+    const newer = await bundleOf(await creatorVault({ description: 'Wetter creatures' }), TEMPLATE, 2);
+    const fromFile = await install(vault, newer, 'Mara', null);
+    expect(fromFile.review).toMatchObject({ outcome: 'copy', installedVersion: null });
+    await fromFile.apply();
+    expect(json(vault, MARSH_PATH)).toMatchObject({ armarium: { version: 1 } });
+  });
+
+  it('refuses an Armarium download that names another listing', async () => {
+    const vault = await vaultWith();
+    await expect(openBundleImport(vault.app, {} as AssetService, new Blob([await bundleOf(await creatorVault())]), undefined, { listingUid: 'feedfacefeedfacefeedfacefeedface' })).rejects.toThrow();
   });
 
   it('drops provenance a bundle carries in its dice set, and writes none for it', async () => {

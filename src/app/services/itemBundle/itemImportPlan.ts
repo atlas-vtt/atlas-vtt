@@ -62,12 +62,14 @@ async function planTemplate(app: App, bundle: OpenedItemBundle, installed: Insta
 
 /**
  * Decides what the import of `bundle` does. `mark` names copies and new files whose name is
- * taken ("Goblin (Mara)"): the creator, or the version.
+ * taken ("Goblin (Mara)"): the creator, or the version. Only a `verified` bundle (downloaded and
+ * checked for its listing) may update the vault's install of that listing; any other is planned as
+ * if nothing were installed, so it comes in beside a changed item rather than over it.
  */
-export async function planItemImport(app: App, bundle: OpenedItemBundle, mark: string): Promise<ItemImportPlan> {
+export async function planItemImport(app: App, bundle: OpenedItemBundle, mark: string, verified: boolean): Promise<ItemImportPlan> {
   const { manifest, files } = bundle;
   const { kind, uid, id } = manifest.item;
-  const installed = await installedItemOf(app, kind, uid, id);
+  const installed = verified ? await installedItemOf(app, kind, uid, id) : null;
   if (kind === 'dice-set') {
     const [record] = await planRecordImport(app, DICE_SET_RECORDS, manifest, files, installedEntry(installed, id), mark);
     if (!record) throw new Error('The bundle holds no dice set.');

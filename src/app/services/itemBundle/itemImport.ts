@@ -49,6 +49,11 @@ export interface ItemImportSession {
 export interface ItemImportOptions {
   /** The creator's display name, where the source knows it. */
   creator?: string | undefined;
+  /**
+   * The Armarium listing the bytes were downloaded and checked for. Only then may the import update the
+   * vault's install of that listing in place: a file from anywhere else names a uid anyone can read.
+   */
+  listingUid?: string | undefined;
 }
 
 /** The record kind the plan's record item is kept as. */
@@ -125,7 +130,7 @@ async function applyItemImport(app: App, bundle: OpenedItemBundle, plan: ItemImp
 export async function openItemImport(app: App, bundle: OpenedItemBundle, options: ItemImportOptions = {}): Promise<ItemImportSession> {
   const { item } = bundle.manifest;
   const creator = options.creator?.trim() || undefined;
-  const plan = await planItemImport(app, bundle, creator ?? `v${item.version}`);
+  const plan = await planItemImport(app, bundle, creator ?? `v${item.version}`, options.listingUid === item.uid);
   const planned = plannedItem(plan);
   const review: ItemReview = {
     kind: item.kind,
