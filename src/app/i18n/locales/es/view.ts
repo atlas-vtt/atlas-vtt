@@ -1,0 +1,26 @@
+import type { Translation } from '../../types';
+
+export const view: Translation = {
+  'view.copyFailed': 'No se pudo copiar la ruta del archivo',
+  'view.copyPath': 'Copiar ruta del archivo',
+  'view.more': 'Más opciones',
+  'view.zoom': 'Zoom',
+  'view.zoomIn': 'Acercar',
+  'view.zoomOut': 'Alejar',
+  'view.pathCopied': 'Ruta del archivo copiada al portapapeles',
+  'view.rename': 'Renombrar…',
+  'view.reveal': 'Mostrar en el explorador de archivos',
+  'view.splitDown': 'Dividir hacia abajo',
+  'view.splitRight': 'Dividir a la derecha',
+  'view.mainWindowOnly': 'Atlas funciona en tu ventana principal de Obsidian. Para usar dos pantallas, mueve tus notas a una ventana nueva.',
+  'view.initializing': 'Iniciando…',
+  'view.sceneNotFound': 'No se encontró el archivo de escena: {path}',
+  'view.preparing': 'Preparando…',
+  'view.canvas': 'Lienzo de Atlas',
+  'view.player': 'Vista de jugadores',
+  'view.playerRestoreFailed': 'No se pudo restaurar la vista de jugadores. Vuelve a enviar una escena a esta ventana.',
+  'view.connecting': 'Conectando con la sesión de juego…',
+  'view.playerTitle': 'Vista de jugadores: {name}',
+  'view.playerDefault': 'Vista de jugadores',
+  'view.noGraphics': 'Atlas necesita aceleración gráfica para dibujar mapas. Activa la aceleración por hardware en los ajustes generales de Obsidian o revisa los controladores gráficos.',
+};
