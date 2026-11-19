@@ -5,6 +5,11 @@ export function moodAfter(moods: readonly Mood[], id: string | null): Mood | nul
   return moods[(moods.findIndex((mood) => mood.id === id) + 1) % Math.max(1, moods.length)] ?? null;
 }
 
+export function moodBefore(moods: readonly Mood[], id: string | null): Mood | null {
+  const index = moods.findIndex((mood) => mood.id === id);
+  return moods[(index - 1 + moods.length) % Math.max(1, moods.length)] ?? null;
+}
+
 /**
  * The `order` that puts a mood at `index` among the others, written to that one mood alone: a move
  * touches one file, so a sync conflict can cost at most that move.
