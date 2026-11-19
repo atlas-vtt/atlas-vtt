@@ -1,5 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import type { ArmariumInstaller } from './ArmariumInstaller';
+import type { ArmariumRequest } from './armariumRequest';
 import { acceptFrameMessage, installedMessage, postToFrame, statusMessage, type ArmariumFeature } from './armariumMessages';
 import type { StoreTagFilter } from './storeTagFilter';
 
@@ -27,8 +28,12 @@ export function useArmariumBridge(
     if (!installer || !win) return undefined;
     const frameWindow = (): Window | null => frameRef.current?.contentWindow ?? null;
     const features: ArmariumFeature[] = [...(shares ? ['share' as const] : []), ...(tagFilter ? ['tags' as const] : [])];
+    // Read while the page loads, so its hello is answered at once: the read waits on the installable list.
+    let early: Promise<ArmariumRequest[]> | null = installer.installedItems();
     const sendInstalled = (): void => {
-      void installer.installedItems().then((items) => postToFrame(frameWindow(), installedMessage(items, features)));
+      const items = early ?? installer.installedItems();
+      early = null;
+      void items.then((held) => postToFrame(frameWindow(), installedMessage(held, features)));
     };
     const onMessage = (event: MessageEvent): void => {
       const message = acceptFrameMessage(event, frameWindow());
@@ -40,7 +45,10 @@ export function useArmariumBridge(
     const disconnect = tagFilter?.connect((message) => postToFrame(frameWindow(), message));
     const stopStatus = installer.onStatus((request, state) => {
       postToFrame(frameWindow(), statusMessage(request, state));
-      if (state === 'installed') sendInstalled();
+      if (state !== 'installed') return;
+      // What was read early no longer holds the release just installed.
+      early = null;
+      sendInstalled();
     });
     win.addEventListener('message', onMessage);
     return (): void => {

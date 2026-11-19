@@ -7,19 +7,30 @@
 @use '../../../styles/tokens' as *;
 @use '../../../styles/mixins' as *;
 
-// Takes the body's whole height, under the header, to the window's edges.
+// Lies over the library in the body, under the header, to the window's edges, and fades in and out over it: opacity
+// alone, which the compositor draws however busy the page in the frame is. Hidden, it stays (so its page keeps its
+// place) and takes no pointer, focus or paint; the visibility follows the fade out, and leads the fade in.
 .atlas-armarium-pane {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   display: flex;
-  flex: 1;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-}
+  background-color: var(--background-primary);
+  opacity: 1;
+  transition: opacity $transition-normal $transition-ease-out, visibility 0s;
 
-.atlas-armarium-skeleton__bar {
-  height: 40px;
-  margin-bottom: $spacing-m;
-  border-radius: $radius-m;
+  @starting-style {
+    opacity: 0;
+  }
+
+  &.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity $transition-normal $transition-ease-out, visibility 0s linear $transition-normal;
+  }
 }
 
 .atlas-armarium-skeleton__heading {
