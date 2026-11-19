@@ -103,7 +103,7 @@ describe('NotePinTool creating a note', () => {
 
     const note = app.vault.getFileByPath('Notes/Deleted.md')!;
     expect(await app.vault.read(note)).toBe(
-      `Recreated note\\n\\n[[${MAP_PATH}#pin=${encodeURIComponent(id)}|View on map]]\\n`,
+      `Recreated note\n\n[[${MAP_PATH}#pin=${encodeURIComponent(id)}|View on map]]\n`,
     );
   });
 
