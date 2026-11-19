@@ -44,7 +44,9 @@ export function useDiceTrayKeys(root: React.RefObject<HTMLElement | null>, keys:
       }
       if (event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
       if (event.key === 'Enter') {
-        if (event.shiftKey || root.current?.contains(event.target as Node) || !current.current.mapKeys(event)) return;
+        // Enter on the tray, or on a panel beside it (`.atlas-dice-tray`), is that control's own.
+        const surface = root.current?.closest('.atlas-dice-tray') ?? root.current;
+        if (event.shiftKey || surface?.contains(event.target as Node) || !current.current.mapKeys(event)) return;
         if (current.current.onEnter()) event.preventDefault();
         return;
       }

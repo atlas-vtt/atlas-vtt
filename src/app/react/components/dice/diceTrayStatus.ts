@@ -5,7 +5,7 @@
 import { FORMULA_LIMITS, parseFormula, type FormulaError, type FormulaErrorCode } from '../../../tools/parseFormula';
 import type { AdvantageSide } from '../../../types/diceSetTypes';
 import type { TrayAdvantageChoice } from '../../../tools/diceTrayMemory';
-import { MAX_DICE, MAX_PER_DIE, TRAY_DICE, trayDiceCount, type TrayPool } from './diceTrayPool';
+import { MAX_DICE, MAX_PER_DIE, trayDiceCount, type TrayPool } from './diceTrayPool';
 import { modifierOf, parseableFormula } from './diceTrayText';
 import { t } from '../../../i18n';
 
@@ -98,7 +98,7 @@ function refusal(formula: string, code: FormulaErrorCode, byAdvantage: boolean):
 /** Why clicks put no more dice in the tray, where they do not; null while they do. */
 function limitReached(counts: TrayPool): string | null {
   if (trayDiceCount(counts) >= MAX_DICE) return t('diceRoll.limitTotal', { max: MAX_DICE });
-  const full = TRAY_DICE.find((sides) => (counts[sides] ?? 0) >= MAX_PER_DIE);
+  const full = Object.keys(counts).map(Number).find((sides) => (counts[sides] ?? 0) >= MAX_PER_DIE);
   return full ? t('diceRoll.limitDie', { max: MAX_PER_DIE, sides: full }) : null;
 }
 

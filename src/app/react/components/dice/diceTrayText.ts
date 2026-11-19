@@ -66,3 +66,40 @@ export function withDie(text: string, sides: TrayDie, delta: number): string {
   const rest = operator === '' ? text.slice(end).replace(/^\s*\+\s*/, '') : text.slice(end);
   return `${text.slice(0, start)}${rest}`.trim();
 }
+
+/** A saved roll as one term of the tray's formula: in brackets where it adds, subtracts, multiplies or divides itself. */
+export function presetTerm(formula: string): string {
+  const bare = formula.trim().replace(/\[[^\]]*\]/g, '');
+  return /[+\-−*/\s]/.test(bare) ? `(${formula.trim()})` : formula.trim();
+}
+
+const escaped = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Where `term` stands in `text` as a whole term added (at the start, or after ` + `), last one first. */
+function termPlaces(text: string, term: string): RegExpExecArray[] {
+  const pattern = new RegExp(`(^|\\s*\\+\\s*)${escaped(term)}(?=\\s*[+\\-\\u2212]|\\s*$)`, 'g');
+  return [...text.matchAll(pattern)].reverse();
+}
+
+/** How many times a saved roll stands in the tray's formula: the badge on its place in the row. */
+export function presetCount(text: string, formula: string): number {
+  return termPlaces(text, presetTerm(formula)).length;
+}
+
+/**
+ * The formula with a saved roll added (before its modifier, as a die is) or, for `delta` −1, its last copy
+ * taken out with the ` + ` before it.
+ */
+export function withPreset(text: string, formula: string, delta: 1 | -1): string {
+  const term = presetTerm(formula);
+  if (delta < 0) {
+    const last = termPlaces(text, term)[0];
+    if (!last) return text;
+    const rest = `${text.slice(0, last.index)}${text.slice(last.index + last[0].length)}`;
+    return (last.index === 0 ? rest.replace(/^\s*\+\s*/, '') : rest).trim();
+  }
+  if (text.trim() === '') return term;
+  const trailing = TRAILING_MODIFIER.exec(text);
+  const at = trailing ? trailing.index : text.trimEnd().length;
+  return `${text.slice(0, at)} + ${term}${text.slice(at)}`;
+}

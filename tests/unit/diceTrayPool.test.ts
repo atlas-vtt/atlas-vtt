@@ -24,7 +24,8 @@ describe('dice tray pool', () => {
     expect(readTray('2d6+d20-3')).toEqual({ pool: { 6: 2, 20: 1 }, modifier: -3 });
     expect(readTray('1d20 − 1 + 4')).toEqual({ pool: { 20: 1 }, modifier: 3 });
     expect(readTray('4d6kh3')).toBeNull();
-    expect(readTray('2d7')).toBeNull();
+    expect(readTray('2d7')).toEqual({ pool: { 7: 2 }, modifier: 0 });
+    expect(readTray('1d1001')).toBeNull();
     expect(readTray('1d20 -1d4')).toBeNull();
     expect(readTray('1d20 +')).toBeNull();
   });

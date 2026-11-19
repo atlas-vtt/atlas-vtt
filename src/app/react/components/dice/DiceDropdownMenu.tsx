@@ -3,6 +3,9 @@ import { cn } from 'src/utils/cn';
 import { useKeepInView } from '../../../packages/components/primitives/useKeepInView';
 import { DiceTool } from '../../../tools/DiceTool';
 import { DiceTray } from './DiceTray';
+import { DicePresetsPanel } from './DicePresetsPanel';
+import { useDiceShelf } from './useDiceShelf';
+import { statusMessage } from './diceTrayStatus';
 import type { TrayAdvantage } from './diceTrayStatus';
 import { advantageSidesFor, ruledSides } from '../../../tools/diceAdvantage';
 import { setRollText } from '../../../gameSystems/diceSets';
@@ -29,6 +32,8 @@ function trayAdvantage(diceTool: DiceTool): TrayAdvantage | undefined {
 
 /** This device remembers whether the tray's roll history stands open (a preference of the hand, not of the vault). */
 const HISTORY_OPEN_KEY = 'atlas-vtt-dice-tray-history-open';
+/** And whether the saved rolls stand open beside the tray. */
+const PRESETS_OPEN_KEY = 'atlas-vtt-dice-tray-presets-open';
 
 export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: DiceDropdownMenuProps): React.ReactElement | null {
   const trayRef = useRef<HTMLDivElement>(null);
@@ -41,6 +46,21 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
   const shareRolls = useShareRolls();
   // Read as the tray opens: it unmounts when closed, so a set changed meanwhile is read anew.
   const advantage = isOpen ? trayAdvantage(diceTool) : undefined;
+  const { shelf, change } = useDiceShelf();
+  const [presetsOpen, setPresetsOpen] = useState<boolean>(() => app?.loadLocalStorage?.(PRESETS_OPEN_KEY) === true);
+  const togglePresets = (): void => {
+    setPresetsOpen(!presetsOpen);
+    app?.saveLocalStorage?.(PRESETS_OPEN_KEY, !presetsOpen);
+  };
+  // What the tray holds, for the panel's form; read anew as the tray opens.
+  const [trayFormula, setTrayFormula] = useState(diceTool.tray.formula);
+  useEffect(() => {
+    if (isOpen) setTrayFormula(diceTool.tray.formula);
+  }, [isOpen, diceTool]);
+  const problemOf = (formula: string): string | null => {
+    const error = diceTool.checkRoll(formula);
+    return error ? statusMessage({ kind: 'invalid', formula, code: error.code, byAdvantage: false }) : null;
+  };
 
   // ── Click-outside ────────────────────────────
 
@@ -77,6 +97,16 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
       className={cn('atlas-dice-tray', keepInView.capped && 'atlas-keep-in-view--capped')}
       style={keepInView.style}
     >
+      {presetsOpen && (
+        <DicePresetsPanel
+          shelf={shelf}
+          onChange={change}
+          trayFormula={trayFormula}
+          problemOf={problemOf}
+          onRoll={(preset) => diceTool.rollDice(preset.formula)}
+          onClose={togglePresets}
+        />
+      )}
       <div className="atlas-dice-panel">
         <DiceTray
           memory={diceTool.tray}
@@ -93,6 +123,10 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
           onClose={onToggle}
           mapKeys={(event) => canRunMapHotkeys(event, viewId)}
           advantage={advantage}
+          row={shelf.row}
+          presets={shelf.presets}
+          onFormula={setTrayFormula}
+          presetsPanel={{ open: presetsOpen, onToggle: togglePresets }}
           {...(shareRolls && { shareRolls })}
         />
       </div>

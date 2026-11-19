@@ -22,6 +22,9 @@
 
 **Dice**
 
+- Saved rolls: the bookmark at the foot of the dice tray (or P) opens a panel beside it. Save a roll under a name, then roll it with one click
+- Change the tray's dice row: pin saved rolls into it, add dice of any size (a d3, a d30), take out what you never roll and drag the rest into order, up to ten places. Swap the d100 for Daggerheart's two d12, for example. Number keys 1 to 0 follow the row
+- Saved rolls and the row belong to the collection, so each game keeps its own
 - A label can follow brackets: in `2d6[slashing]+(1d10+12)[necrotic]` the d10 and the 12 are both necrotic
 
 ## Fixed

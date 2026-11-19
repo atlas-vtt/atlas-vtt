@@ -12,7 +12,7 @@ import type { DiceRollResult } from '../../src/app/types/diceTypes';
 const store = vi.hoisted(() => ({ diceLog: [] as DiceRollResult[], local: new Map<string, unknown>() }));
 vi.mock('../../src/app/react/root/AtlasUIContext', () => ({
   useAtlasUI: () => ({
-    app: { loadLocalStorage: (key: string) => store.local.get(key) ?? null, saveLocalStorage: (key: string, value: unknown) => store.local.set(key, value) },
+    app: { workspace: { on: () => ({}), offref: () => undefined }, loadLocalStorage: (key: string) => store.local.get(key) ?? null, saveLocalStorage: (key: string, value: unknown) => store.local.set(key, value) },
     view: { getViewType: () => 'atlas-vtt' },
   }),
 }));

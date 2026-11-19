@@ -6,7 +6,7 @@ import { DiceDropdownMenu } from '../../src/app/react/components/dice/DiceDropdo
 import type { DiceTool } from '../../src/app/tools/DiceTool';
 
 vi.mock('../../src/app/react/root/AtlasUIContext', () => ({
-  useAtlasUI: () => ({ app: {}, view: { getViewType: () => 'atlas-vtt' } }),
+  useAtlasUI: () => ({ app: { workspace: { on: () => ({}), offref: () => undefined } }, view: { getViewType: () => 'atlas-vtt' } }),
 }));
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (state: { isPlayerView: boolean }) => unknown) => selector({ isPlayerView: false }),

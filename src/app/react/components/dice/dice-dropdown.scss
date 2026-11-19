@@ -184,7 +184,8 @@ $tray-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
 
 .atlas-dice-tray__dice {
   display: grid;
-  grid-template-columns: repeat($tray-dice, $tray-face);
+  // The collection's row: up to ten places, seven standard dice by default.
+  grid-template-columns: repeat(var(--atlas-tray-slots, #{$tray-dice}), $tray-face);
   gap: $surface-inset;
 }
 
@@ -253,6 +254,10 @@ $tray-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
 
 // What the die is, for those who do not know the bodies by sight: small, quiet, one 16 px line.
 .atlas-dice-tray__caption {
+  max-width: $tray-face;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   height: $spacing-l;
   font-size: $font-ui-smaller;
   line-height: $spacing-l;
@@ -301,6 +306,21 @@ $tray-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
     filter: invert(1) hue-rotate(180deg);
     mix-blend-mode: screen;
   }
+}
+
+// A die without a body (`d3`), or a saved roll that is no die's pair: its name, small, in the body's place.
+.atlas-die-face--named {
+  width: 100%;
+  height: auto;
+  text-align: center;
+  padding-inline: $spacing-xs;
+  overflow: hidden;
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-medium;
+  font-variant-numeric: tabular-nums lining-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-normal);
 }
 
 // d100 has no body of its own: two offset d10s, tens behind and units in front.

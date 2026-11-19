@@ -1,17 +1,20 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
+import { Bookmark } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
 import { Button } from '../../../packages/components/primitives/button';
 import { ToggleSwitch } from '../../../packages/components/primitives/Toggle';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { emptyTrayMemory, type DiceTrayMemory, type TrayRoll } from '../../../tools/diceTrayMemory';
+import type { DicePreset, DiceRowSlot } from '../../../types/dicePresetTypes';
 import type { DiceRollResult } from '../../../types/diceTypes';
 import { DiceTrayAdvantage, SIDE_KEYS } from './DiceTrayAdvantage';
 import { DiceTrayDice } from './DiceTrayDice';
+import { STANDARD_ROW } from './diceShelf';
 import { DiceTrayFormula } from './DiceTrayFormula';
 import { DiceTrayModifier } from './DiceTrayModifier';
 import { DiceTrayHistoryList, DiceTrayHistoryToggle, historyTitle } from './DiceTrayHistory';
-import { MAX_DICE, MAX_PER_DIE, TRAY_DICE, TRAY_SURFACE, TRAY_TOOLTIP_GAP, clampModifier, diceCounts, trayDiceCount, writeTray, type TrayDie } from './diceTrayPool';
-import { modifierOf, parseableFormula, withDie, withModifier } from './diceTrayText';
+import { MAX_DICE, MAX_PER_DIE, TRAY_SURFACE, TRAY_TOOLTIP_GAP, clampModifier, diceCounts, modifierSuffix, trayDiceCount, writeTray } from './diceTrayPool';
+import { modifierOf, parseableFormula, presetTerm, withDie, withModifier, withPreset } from './diceTrayText';
 import { advantageMoot, rollSide, statusMessage, trayStatus, type TrayAdvantage, type TrayCheck } from './diceTrayStatus';
 import { stopMapKeys, useDiceTrayKeys } from './useDiceTrayKeys';
 import { useSpokenOnce } from './useSpokenOnce';
@@ -52,6 +55,13 @@ interface DiceTrayProps {
   shareRolls?: ShareRolls | undefined;
   /** Left out where the set has no rule for either side. */
   advantage?: TrayAdvantage | undefined;
+  /** The row of dice and saved rolls (`diceShelf.ts`); left out, the seven standard dice. */
+  row?: readonly DiceRowSlot[] | undefined;
+  presets?: readonly DicePreset[] | undefined;
+  /** Tells whoever holds the tray what it holds now, as it changes (the saved rolls' panel saves it). */
+  onFormula?: ((formula: string) => void) | undefined;
+  /** The saved rolls' panel: whether it stands open, and its switch (P). Left out where there is none. */
+  presetsPanel?: { open: boolean; onToggle: () => void } | undefined;
 }
 
 /** How long clicks and keys must rest before the tray says what it holds. */
@@ -75,7 +85,10 @@ function cancelTimer(timer: WindowTimer | null): void {
  * the next roll. Shift-click rolls a single die at once, and the roll history
  * (the dice log's rolls) rolls an earlier roll again.
  */
-export function DiceTray({ memory, onRemember, check, onRoll, history, onRepeat, historyOpen, onHistoryOpen, onClose, mapKeys, shareRolls, advantage }: DiceTrayProps): React.ReactElement {
+export function DiceTray({
+  memory, onRemember, check, onRoll, history, onRepeat, historyOpen, onHistoryOpen, onClose, mapKeys, shareRolls, advantage,
+  row = STANDARD_ROW, presets = [], onFormula, presetsPanel,
+}: DiceTrayProps): React.ReactElement {
   const rootRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLInputElement>(null);
   const messageId = useId();
@@ -97,6 +110,7 @@ export function DiceTray({ memory, onRemember, check, onRoll, history, onRepeat,
     if ('formula' in patch || 'side' in patch) setCleared(null);
     latest.current = next;
     onRemember(next);
+    if ('formula' in patch) onFormula?.(next.formula);
     setHeld(next);
   };
   const keep = (patch: Partial<DiceTrayMemory>): void => edit(() => patch);
@@ -147,14 +161,30 @@ export function DiceTray({ memory, onRemember, check, onRoll, history, onRepeat,
     return true;
   };
 
-  const rollNow = (sides: TrayDie): void => {
-    const single = writeTray({ pool: { [sides]: 1 }, modifier: modifierOf(formula) });
+  const presetFormula = (id: string): string | undefined => presets.find((preset) => preset.id === id)?.formula;
+
+  const rollNow = (slot: DiceRowSlot): void => {
+    const modifier = modifierOf(formula);
+    const saved = slot.kind === 'preset' ? presetFormula(slot.id) : undefined;
+    if (slot.kind === 'preset' && saved === undefined) return;
+    const single = saved === undefined ? writeTray({ pool: { [slot.kind === 'die' ? slot.sides : 0]: 1 }, modifier })
+      : modifier === 0 ? saved : `${presetTerm(saved)}${modifierSuffix(modifier)}`;
     roll({ formula: single, advantage: rollSide(single, side, advantage) });
   };
 
-  const addDie = (sides: TrayDie): void => editAnnounced((before) => {
+  const addSlot = (slot: DiceRowSlot): void => editAnnounced((before) => {
+    if (slot.kind === 'preset') {
+      const saved = presetFormula(slot.id);
+      return saved === undefined ? {} : { formula: withPreset(before.formula, saved, 1) };
+    }
     const held = diceCounts(before.formula);
-    return (held[sides] ?? 0) >= MAX_PER_DIE || trayDiceCount(held) >= MAX_DICE ? {} : { formula: withDie(before.formula, sides, 1) };
+    return (held[slot.sides] ?? 0) >= MAX_PER_DIE || trayDiceCount(held) >= MAX_DICE ? {} : { formula: withDie(before.formula, slot.sides, 1) };
+  });
+
+  const takeBack = (slot: DiceRowSlot): void => editAnnounced((before) => {
+    if (slot.kind === 'die') return { formula: withDie(before.formula, slot.sides, -1) };
+    const saved = presetFormula(slot.id);
+    return saved === undefined ? {} : { formula: withPreset(before.formula, saved, -1) };
   });
 
   const step = (delta: 1 | -1): void =>
@@ -174,15 +204,16 @@ export function DiceTray({ memory, onRemember, check, onRoll, history, onRepeat,
   };
 
   /**
-   * The tray's own keys: the number keys add the dice by their place in the row (1 is the first), `/` puts
-   * the caret in the formula field, S switches showing the rolls to players, N, A and D choose the side, + and
-   * − step the modifier.
+   * The tray's own keys: the number keys add the row's dice and saved rolls by their place (1 is the first, 0
+   * the tenth), `/` puts the caret in the formula field, S switches showing the rolls to players, P the saved
+   * rolls' panel, N, A and D choose the side, + and − step the modifier.
    */
   const shortcut = (key: string): boolean => {
-    const place = /^[1-9]$/.test(key) ? TRAY_DICE[Number(key) - 1] : undefined;
-    if (place !== undefined) addDie(place);
+    const place = /^[0-9]$/.test(key) ? row[(Number(key) + 9) % 10] : undefined;
+    if (place !== undefined) addSlot(place);
     else if (key === '/') fieldRef.current?.focus();
     else if (key === 's' && shareRolls) shareRolls.onToggle();
+    else if (key === 'p' && presetsPanel) presetsPanel.onToggle();
     else if (key === '+' || key === '=') step(1);
     else if (key === '-' || key === '\u2212') step(-1);
     else {
@@ -206,12 +237,7 @@ export function DiceTray({ memory, onRemember, check, onRoll, history, onRepeat,
     <div ref={rootRef} className="atlas-dice-tray__content" onKeyDown={stopMapKeys}>
       {/* In a short window this part scrolls; Roll and Clear stay at the foot, in view. */}
       <div className="atlas-dice-tray__scroll">
-        <DiceTrayDice
-          counts={counts}
-          onAdd={addDie}
-          onTakeBack={(sides) => editAnnounced((before) => ({ formula: withDie(before.formula, sides, -1) }))}
-          onRollNow={rollNow}
-        />
+        <DiceTrayDice row={row} presets={presets} formula={formula} counts={counts} onAdd={addSlot} onTakeBack={takeBack} onRollNow={rollNow} />
 
         <div className="atlas-dice-tray__group">
           {/* What to roll and what to add, side by side: the formula takes the room, the modifier its number. */}
@@ -283,6 +309,20 @@ export function DiceTray({ memory, onRemember, check, onRoll, history, onRepeat,
         <Button variant="ghost" className="atlas-dice-tray__clear" onClick={clear} disabled={!canClear}>
           {t('diceRoll.clear')}
         </Button>
+        {presetsPanel && (
+          <LabelTooltip label={t('diceRoll.presetsTitle')} shortcut="P" outside={TRAY_SURFACE} side="right" sideOffset={TRAY_TOOLTIP_GAP}>
+            <Button
+              variant="ghost"
+              className="atlas-dice-tray__presets-toggle"
+              aria-label={t('diceRoll.presetsTitle')}
+              aria-pressed={presetsPanel.open}
+              aria-keyshortcuts="P"
+              onClick={presetsPanel.onToggle}
+            >
+              <Bookmark aria-hidden="true" />
+            </Button>
+          </LabelTooltip>
+        )}
       </div>
     </div>
   );

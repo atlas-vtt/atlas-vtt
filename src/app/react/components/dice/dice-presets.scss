@@ -1,0 +1,306 @@
+// ──────────────────────────────────────────────
+// Saved rolls – the panel beside the dice tray: BEM atlas-dice-presets*
+// ──────────────────────────────────────────────
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+$presets-width: 280px;
+$presets-row: $button-height-m;
+$presets-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
+
+// Beside the tray, its foot on the tray's foot: out of the tray's flow, so the tray keeps its place over its button.
+// On the left: the tray's own tooltips open to its right.
+.atlas-dice-presets {
+  position: absolute;
+  right: calc(100% + #{$spacing-s});
+  bottom: 0;
+  width: $presets-width;
+  // The tray's rhythm: its groups stand this far apart.
+  gap: $spacing-l + $spacing-xs;
+  font-size: $font-ui-small;
+
+  // Its parts keep their height; the list scrolls inside its own.
+  > * {
+    flex-shrink: 0;
+  }
+  animation: atlas-dice-fade-in $transition-normal $transition-ease-out both;
+}
+
+.atlas-dice-presets__header {
+  display: flex;
+  justify-content: space-between;
+  // The panel's padding already holds the button $close-button-gap from its border.
+  padding: 0 0 0 var(--atlas-menu-text-inset);
+  align-items: center;
+}
+
+.atlas-dice-presets__title {
+  margin: 0;
+  font-size: $font-ui-small;
+  font-weight: $font-weight-semibold;
+}
+
+.atlas-dice-presets__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  max-height: calc(6 * #{$presets-row});
+  overflow-y: auto;
+  list-style: none;
+}
+
+.atlas-dice-presets__item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  height: $presets-row;
+  border-radius: $radius-m;
+
+  @include atlas-hover {
+    background: var(--background-modifier-hover);
+  }
+}
+
+// Obsidian styles every <button>; the panel's controls start from nothing.
+.atlas-dice-presets__roll,
+.atlas-dice-presets__icon,
+.atlas-dice-presets__chip-remove,
+.atlas-dice-presets__link {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.atlas-dice-presets__roll {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: $spacing-s;
+  min-width: 0;
+  height: 100%;
+  padding-inline: var(--atlas-menu-text-inset) 0;
+  justify-content: flex-start;
+  color: var(--text-normal);
+  font-size: inherit;
+  text-align: start;
+}
+
+.atlas-dice-presets__name,
+.atlas-dice-presets__formula {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-dice-presets__name {
+  flex-shrink: 0;
+  max-width: 60%;
+}
+
+.atlas-dice-presets__formula {
+  min-width: 0;
+  color: $presets-quiet-text;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.atlas-dice-presets__icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: $button-height-s;
+  height: $button-height-s;
+  border-radius: $control-inset-radius;
+  color: $presets-quiet-text;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  @include atlas-hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+
+  &[aria-pressed='true'] {
+    color: var(--text-accent);
+  }
+
+  &[aria-disabled='true'] {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  // Under a finger the controls of a row show without a hover, and take a finger's width.
+  @include atlas-coarse-pointer {
+    width: $touch-target;
+    height: $touch-target;
+  }
+}
+
+.atlas-dice-presets__note {
+  margin: 0;
+  padding-inline: var(--atlas-menu-text-inset);
+  color: $presets-quiet-text;
+  font-size: $font-ui-smaller;
+  line-height: 1.4;
+}
+
+// Name and formula, then Save; the message under them.
+.atlas-dice-presets__form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: $surface-inset;
+}
+
+.atlas-dice-presets__field {
+  @include atlas-text-input;
+  min-width: 0;
+
+  &[aria-invalid='true'] {
+    border-color: var(--text-error);
+  }
+}
+
+.atlas-dice-presets__field--formula {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.atlas-dice-presets__save.btn {
+  height: var(--input-height);
+  border-radius: $radius-m;
+}
+
+.atlas-dice-presets__message {
+  grid-column: 1 / -1;
+  min-height: 1.4em;
+  margin: 0;
+  padding-inline: var(--atlas-menu-text-inset);
+  @include atlas-error-text;
+  font-size: $font-ui-smaller;
+  line-height: 1.4;
+
+  &:empty {
+    min-height: 0;
+  }
+}
+
+.atlas-dice-presets__row-editor {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-s;
+}
+
+.atlas-dice-presets__label-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-inline: var(--atlas-menu-text-inset);
+}
+
+.atlas-dice-presets__label {
+  color: $presets-quiet-text;
+  font-size: $font-ui-smaller;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.atlas-dice-presets__link {
+  color: var(--text-accent);
+  font-size: $font-ui-smaller;
+
+  &:disabled {
+    color: var(--text-faint);
+    cursor: default;
+  }
+}
+
+.atlas-dice-presets__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $surface-inset;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atlas-dice-presets__chip {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  max-width: 100%;
+  height: $button-height-s;
+  padding-inline: $spacing-s $spacing-xs;
+  border: $border-width-s solid $field-edge;
+  border-radius: $radius-full;
+  background: var(--background-secondary);
+  cursor: grab;
+
+  &[data-dragged] {
+    opacity: 0.5;
+  }
+}
+
+.atlas-dice-presets__chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: $font-ui-smaller;
+}
+
+.atlas-dice-presets__chip-remove {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: $icon-s;
+  height: $icon-s;
+  border-radius: $radius-full;
+  color: $presets-quiet-text;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  @include atlas-hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+}
+
+.atlas-dice-presets__add {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+
+  .atlas-dice-presets__field {
+    width: 80px;
+  }
+}
+
+// The toggle at the tray's foot: an icon beside Clear, the accent while the panel stands open.
+.atlas-dice-tray__actions .atlas-dice-tray__presets-toggle.btn--ghost {
+  flex-shrink: 0;
+  width: $button-height-l;
+  padding: 0;
+  color: var(--text-muted);
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+
+  &[aria-pressed='true'] {
+    color: var(--text-accent);
+  }
+
+  @include atlas-hover('&:hover:not(:disabled)') {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+}

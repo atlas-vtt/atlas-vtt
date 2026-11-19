@@ -1,6 +1,9 @@
-/** The bodies in the tray, in the order they stand in the formula. */
+import { FORMULA_LIMITS } from '../../../tools/parseFormula';
+
+/** The standard bodies of the tray's row (`diceShelf.ts`), in the order they stand in it. */
 export const TRAY_DICE = [4, 6, 8, 10, 12, 20, 100] as const;
-export type TrayDie = (typeof TRAY_DICE)[number];
+/** A die of the tray by its faces: one of `TRAY_DICE`, or any other a collection put in its row. */
+export type TrayDie = number;
 
 /** How many dice of one kind a click puts in the tray. */
 export const MAX_PER_DIE = 20;
@@ -17,7 +20,7 @@ export const TRAY_TOOLTIP_GAP = 8;
 /** The true minus sign the tray writes; the formula parser reads the hyphen. */
 export const MINUS = '−';
 
-export type TrayPool = Partial<Record<TrayDie, number>>;
+export type TrayPool = Partial<Record<number, number>>;
 
 /** What lies in a tray that holds plain dice and a modifier, and nothing else. */
 export interface TrayDice {
@@ -25,7 +28,12 @@ export interface TrayDice {
   modifier: number;
 }
 
-const isTrayDie = (sides: number): sides is TrayDie => (TRAY_DICE as readonly number[]).includes(sides);
+/** Any die a formula may roll: the tray counts and writes all of them, whichever the row shows. */
+const isTrayDie = (sides: number): boolean => Number.isInteger(sides) && sides >= 2 && sides <= FORMULA_LIMITS.faces;
+
+/** The dice a pool holds, smallest first. */
+const heldDice = (pool: TrayPool): number[] =>
+  Object.keys(pool).map(Number).filter((sides) => (pool[sides] ?? 0) > 0).sort((a, b) => a - b);
 
 /** `+3`, `−3` or `0`, as the modifier shows and the tray writes it. */
 export function formatModifier(modifier: number): string {
@@ -44,7 +52,7 @@ export function modifierSuffix(modifier: number): string {
  * a modifier of 0 is left out, and a modifier without dice stands alone (`+3`).
  */
 export function writeTray({ pool, modifier }: TrayDice): string {
-  const terms = TRAY_DICE.filter((sides) => (pool[sides] ?? 0) > 0).map((sides) => `${pool[sides]}d${sides}`);
+  const terms = heldDice(pool).map((sides) => `${pool[sides]}d${sides}`);
   if (terms.length === 0) return modifier === 0 ? '' : formatModifier(modifier);
   return `${terms.join(' + ')}${modifierSuffix(modifier)}`;
 }
@@ -105,7 +113,7 @@ export function diceCounts(text: string): TrayPool {
 }
 
 export function trayDiceCount(pool: TrayPool): number {
-  return TRAY_DICE.reduce((sum, sides) => sum + (pool[sides] ?? 0), 0);
+  return heldDice(pool).reduce((sum, sides) => sum + (pool[sides] ?? 0), 0);
 }
 
 export function clampModifier(modifier: number): number {
