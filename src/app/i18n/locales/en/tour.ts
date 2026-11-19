@@ -69,7 +69,7 @@ export const tour = {
   'tour.online.logBody': 'Chat and rolls from everyone at the table. Type /help in it to see the whisper and roll commands.',
   'tour.savedRolls.label': 'Saved rolls',
   'tour.savedRolls.saveTitle': 'Save a roll',
-  'tour.savedRolls.saveBody': 'Name the roll and press +. It starts as what the tray holds. Click a saved roll to roll it.',
+  'tour.savedRolls.saveBody': 'Name the roll and press +. Its dice open beside it: click a die for its faces, name and colour, as in the Dice Lab. The flask brings in a set from the Dice Lab. Click a saved roll to roll it.',
   'tour.savedRolls.rowTitle': 'Your dice row',
   'tour.savedRolls.rowBody': 'The pin puts a saved roll among the dice at the top of the tray. The pencil lets you drag them into order, take one out with × or add a die such as d3.',
 } as const satisfies Record<string, Message>;

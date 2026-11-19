@@ -8,6 +8,7 @@ import type { CollectionSettings } from '../../../types/collectionSettingsTypes'
 import type { DicePreset, DiceRowSlot } from '../../../types/dicePresetTypes';
 import { FORMULA_LIMITS } from '../../../tools/parseFormula';
 import { TRAY_DICE } from './diceTrayPool';
+import { readPresetLook } from './presetLook';
 
 /** Places in the row: the number keys 1 to 9, then 0. */
 export const MAX_ROW = 10;
@@ -33,14 +34,23 @@ const own = (record: Record<string, unknown>, key: string): unknown => (Object.h
 export const isDieSize = (sides: unknown): sides is number =>
   typeof sides === 'number' && Number.isInteger(sides) && sides >= MIN_FACES && sides <= FORMULA_LIMITS.faces;
 
+/** A saved roll as settings hold it: a formula, or designed dice (`look`) with a bonus; null where it is neither. */
 function readPreset(raw: unknown): DicePreset | null {
   if (!isRecord(raw)) return null;
   const [id, name, formula] = [own(raw, 'id'), own(raw, 'name'), own(raw, 'formula')];
   if (typeof id !== 'string' || id === '' || id.length > 64) return null;
   if (typeof name !== 'string' || name.trim() === '' || name.length > MAX_PRESET_NAME) return null;
-  if (typeof formula !== 'string' || formula.trim() === '' || formula.length > FORMULA_LIMITS.characters) return null;
-  return { id, name: name.trim(), formula: formula.trim() };
+  if (typeof formula !== 'string' || formula.length > FORMULA_LIMITS.characters) return null;
+  const base = { id, name: name.trim(), formula: formula.trim() };
+  if (own(raw, 'look') !== undefined) {
+    const look = readPresetLook(own(raw, 'look'), base.formula);
+    if (look) return { ...base, look };
+  }
+  return base.formula === '' || readsAsBonus(base.formula) ? null : base;
 }
+
+/** A look that could not be read leaves a bonus alone, which is no roll of its own. */
+const readsAsBonus = (formula: string): boolean => /^[+-]\d+$/.test(formula);
 
 function readSlot(raw: unknown, presets: readonly DicePreset[]): DiceRowSlot | null {
   if (!isRecord(raw)) return null;
@@ -75,10 +85,20 @@ export function readDiceShelf(settings: Pick<CollectionSettings, 'dicePresets' |
   return { presets, row, ownRow: true };
 }
 
+/** A new saved roll; its formula as it was written, or designed dice where `look` says them. */
+export function newPreset(name: string, formula: string, look?: DicePreset['look'], id: string = crypto.randomUUID()): DicePreset {
+  return { id, name: name.trim().slice(0, MAX_PRESET_NAME), formula: formula.trim(), ...(look && { look }) };
+}
+
 /** The shelf with a new roll saved; null where it holds as many as it may. */
-export function withSavedPreset(shelf: DiceShelf, name: string, formula: string, id: string = crypto.randomUUID()): ShelfChange | null {
+export function withSavedPreset(shelf: DiceShelf, preset: DicePreset): ShelfChange | null {
   if (shelf.presets.length >= MAX_PRESETS) return null;
-  return { dicePresets: [...shelf.presets, { id, name: name.trim().slice(0, MAX_PRESET_NAME), formula: formula.trim() }] };
+  return { dicePresets: [...shelf.presets, preset] };
+}
+
+/** The shelf with a saved roll changed in its place. */
+export function withPresetReplaced(shelf: DiceShelf, preset: DicePreset): ShelfChange {
+  return { dicePresets: shelf.presets.map((kept) => (kept.id === preset.id ? preset : kept)) };
 }
 
 /** The shelf without a saved roll, and the row without its place. */

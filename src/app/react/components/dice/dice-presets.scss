@@ -229,7 +229,7 @@ $card-control-radius: atlas-panel-inset-radius-value($surface-inset, calc(#{$car
 .atlas-dice-presets__form {
   display: grid;
   flex-shrink: 0;
-  grid-template-columns: 1fr auto 1fr auto;
+  grid-template-columns: 1fr auto 1fr auto auto;
   align-items: center;
   column-gap: 0;
   animation: atlas-dice-preset-in 240ms $transition-ease-out both;
@@ -421,9 +421,9 @@ $card-control-radius: atlas-panel-inset-radius-value($surface-inset, calc(#{$car
   }
 }
 
-// The place that adds a die: a dashed outline, then the field the die is typed into.
+// The place that adds a die: a quiet outline and no fill, then the field the die is typed into.
 .atlas-dice-tray__add.atlas-dice-tray__face {
-  border-style: dashed;
+  border-color: color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MAX_PRESETS, MAX_ROW, STANDARD_ROW, readDiceShelf, typedRowDie, withPinToggled, withRowDie, withRowSlotMoved, withSavedPreset, withoutPreset,
+  MAX_PRESETS, MAX_ROW, STANDARD_ROW, newPreset, readDiceShelf, typedRowDie, withPinToggled, withRowDie, withRowSlotMoved, withSavedPreset, withoutPreset,
   type DiceShelf,
 } from '../../src/app/react/components/dice/diceShelf';
 import { presetCount, presetTerm, withDie, withPreset, withoutPresetTerms } from '../../src/app/react/components/dice/diceTrayText';
@@ -47,9 +47,9 @@ describe('dice shelf', () => {
     const shelf: DiceShelf = { presets: [sword, duality], row: [{ kind: 'preset', id: 'b' }], ownRow: true };
     expect(withoutPreset(shelf, 'b')).toEqual({ dicePresets: [sword], diceRow: [] });
     expect(withoutPreset(shelf, 'a')).toEqual({ dicePresets: [duality] });
-    expect(withSavedPreset(shelf, ' Fire bolt ', ' 1d10[fire] ', 'c')!.dicePresets!.at(-1)).toEqual({ id: 'c', name: 'Fire bolt', formula: '1d10[fire]' });
+    expect(withSavedPreset(shelf, newPreset(' Fire bolt ', ' 1d10[fire] ', undefined, 'c'))!.dicePresets!.at(-1)).toEqual({ id: 'c', name: 'Fire bolt', formula: '1d10[fire]' });
     const many = Array.from({ length: MAX_PRESETS }, (_, at) => ({ ...sword, id: String(at) }));
-    expect(withSavedPreset({ ...shelf, presets: many }, 'x', '1d6')).toBeNull();
+    expect(withSavedPreset({ ...shelf, presets: many }, newPreset('x', '1d6'))).toBeNull();
   });
 
   it('reads a typed die and says why one cannot join the row', () => {

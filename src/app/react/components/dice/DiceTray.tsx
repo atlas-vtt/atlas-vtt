@@ -1,14 +1,15 @@
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useId, useRef, useState } from 'react';
 import { cn } from '../../../../utils/cn';
 import { emptyTrayMemory, type DiceTrayMemory, type TrayRoll } from '../../../tools/diceTrayMemory';
-import type { DiceRowSlot } from '../../../types/dicePresetTypes';
+import type { DicePreset, DiceRowSlot } from '../../../types/dicePresetTypes';
+import type { AdvantageSide } from '../../../types/diceSetTypes';
 import type { DiceRollResult } from '../../../types/diceTypes';
 import { DiceTrayAdvantage, SIDE_KEYS } from './DiceTrayAdvantage';
 import { DiceTrayDice } from './DiceTrayDice';
 import { DiceRowEditor } from './DiceRowEditor';
 import { DiceTrayActions } from './DiceTrayActions';
 import { DiceTrayShare, type ShareRolls } from './DiceTrayShare';
-import { rowDiceCounts, slotAlone, withSlot } from './diceTraySlots';
+import { designedPreset, rowDiceCounts, slotAlone, withSlot } from './diceTraySlots';
 import { STANDARD_ROW, STANDARD_ROW_CHANGE, type DiceShelf, type ShelfChange } from './diceShelf';
 import { DiceTrayFormula } from './DiceTrayFormula';
 import { DiceTrayModifier } from './DiceTrayModifier';
@@ -18,6 +19,7 @@ import { modifierOf, parseableFormula, withModifier } from './diceTrayText';
 import { advantageMoot, rollSide, statusMessage, trayStatus, type TrayAdvantage, type TrayCheck } from './diceTrayStatus';
 import { stopMapKeys, useDiceTrayKeys } from './useDiceTrayKeys';
 import { useSpokenOnce } from './useSpokenOnce';
+import { ANNOUNCE_REST_MS, useTrayAnnouncement } from './useTrayAnnouncement';
 import { t } from '../../../i18n';
 
 export type { TrayAdvantage } from './diceTrayStatus';
@@ -57,22 +59,12 @@ interface DiceTrayProps {
   onShelfChange?: ((change: ShelfChange) => void) | undefined;
   /** Tells whoever holds the tray what it holds now, as it changes (the saved rolls' panel saves it). */
   onFormula?: ((formula: string) => void) | undefined;
+  /** Rolls a saved roll whose dice are designed (`look`) at once, with the side of advantage the tray holds. */
+  onRollPreset?: ((preset: DicePreset, side: AdvantageSide | null) => void) | undefined;
   /** The saved rolls' panel: whether it stands open, and its switch (P). Left out where there is none. */
   presetsPanel?: { open: boolean; onToggle: () => void } | undefined;
 }
 
-/** How long clicks and keys must rest before the tray says what it holds. */
-const ANNOUNCE_REST_MS = 500;
-
-/** A timeout set on the tray's own window (a popout has its own). */
-interface WindowTimer {
-  win: Window;
-  id: number;
-}
-
-function cancelTimer(timer: WindowTimer | null): void {
-  if (timer) timer.win.clearTimeout(timer.id);
-}
 
 /**
  * Seven bodies to click, a modifier and a formula field they write into, which
@@ -84,7 +76,7 @@ function cancelTimer(timer: WindowTimer | null): void {
  */
 export function DiceTray({
   memory, onRemember, check, onRoll, history, onRepeat, historyOpen, onHistoryOpen, onClose, mapKeys, shareRolls, advantage,
-  shelf, onShelfChange, onFormula, presetsPanel,
+  shelf, onShelfChange, onFormula, onRollPreset, presetsPanel,
 }: DiceTrayProps): React.ReactElement {
   const row = shelf?.row ?? STANDARD_ROW;
   const presets = shelf?.presets ?? [];
@@ -95,9 +87,6 @@ export function DiceTray({
   const messageId = useId();
   const historyId = useId();
   const [held, setHeld] = useState<DiceTrayMemory>(memory);
-  // What the tray holds now, said once a burst of clicks or keys has rested (never per keypress in the field).
-  const [announced, setAnnounced] = useState('');
-  const announceTimer = useRef<WindowTimer | null>(null);
   // What Clear took away, offered back by Restore in the message line until the dice or the side change again.
   const [cleared, setCleared] = useState<DiceTrayMemory | null>(null);
 
@@ -115,22 +104,12 @@ export function DiceTray({
   };
   const keep = (patch: Partial<DiceTrayMemory>): void => edit(() => patch);
 
-  /** A change made by a click or key outside the field: its new formula is announced politely once it rests. */
-  const announce = (): void => {
-    const win = rootRef.current?.ownerDocument.defaultView ?? window;
-    cancelTimer(announceTimer.current);
-    const id = win.setTimeout(() => {
-      announceTimer.current = null;
-      const now = latest.current.formula.trim();
-      setAnnounced(now === '' ? t('diceRoll.announceEmpty') : t('diceRoll.announceTray', { formula: now }));
-    }, ANNOUNCE_REST_MS);
-    announceTimer.current = { win, id };
-  };
+  // A change made by a click or key outside the field: its new formula is announced politely once it rests.
+  const { announced, announce } = useTrayAnnouncement(rootRef, () => latest.current.formula);
   const editAnnounced = (change: (before: DiceTrayMemory) => Partial<DiceTrayMemory>): void => {
     edit(change);
     announce();
   };
-  useEffect(() => () => cancelTimer(announceTimer.current), []);
 
   const { formula, side } = held;
   // The row's dice count only their own: the dice of a saved roll in the tray belong to that roll.
@@ -162,11 +141,22 @@ export function DiceTray({
     return true;
   };
 
+  /** A designed roll in the row rolls at once, whatever the tray holds: its dice are its own set. */
+  const rolledDesigned = (slot: DiceRowSlot): boolean => {
+    const preset = designedPreset(slot, presets);
+    if (!preset) return false;
+    onRollPreset?.(preset, side === 'normal' ? null : side);
+    return true;
+  };
+
   const rollNow = (slot: DiceRowSlot): void => {
+    if (rolledDesigned(slot)) return;
     const single = slotAlone(formula, slot, presets);
     if (single !== null) roll({ formula: single, advantage: rollSide(single, side, advantage) });
   };
-  const addSlot = (slot: DiceRowSlot): void => editAnnounced((before) => ({ formula: withSlot(before.formula, slot, presets, 1) }));
+  const addSlot = (slot: DiceRowSlot): void => {
+    if (!rolledDesigned(slot)) editAnnounced((before) => ({ formula: withSlot(before.formula, slot, presets, 1) }));
+  };
   const takeBack = (slot: DiceRowSlot): void => editAnnounced((before) => ({ formula: withSlot(before.formula, slot, presets, -1) }));
 
   const step = (delta: 1 | -1): void =>
