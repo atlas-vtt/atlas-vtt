@@ -43,4 +43,6 @@ export const bundle: Translation = {
   'bundle.damaged': '此合集导出文件已损坏。',
   'bundle.unsafe': '此合集导出文件含有 Atlas 不会写入的文件：{path}',
   'bundle.checksum': { other: '此合集导出文件已损坏：{count} 个文件与校验和不符（{names}）。没有导入任何内容。' },
+  'bundle.switchedNotes': { other: '{count} 个属性块现在使用模板副本。' },
+  'bundle.group.templates': '属性块模板',
 };

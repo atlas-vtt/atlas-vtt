@@ -30,4 +30,12 @@ export const filters: Translation = {
   'filters.excludeField': '排除{field}',
   'filters.keyword.range': '{label}：一个值或范围，例如 {example1} 或 {example2}',
   'filters.noValueMatch': '没有与「{value}」匹配的结果',
+  'filters.hint.touch': '轻点选项表示必须符合，再轻点一次表示排除。',
+  'filters.template': '模板',
+  'filters.searchOptions': '搜索{field}',
+  'filters.noOptionMatch': '没有匹配项。',
+  'filters.keyword.template': '属性块模板或版式',
+  'filters.keyword.text': '属性块文字：其中任意位置的一个词或短语，例如 text:fire 或 text:pack tactics',
+  'filters.text': '文字',
+  'filters.templateFields': '来自属性块模板',
 };

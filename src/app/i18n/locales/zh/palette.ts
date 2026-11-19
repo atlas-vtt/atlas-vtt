@@ -45,4 +45,13 @@ export const palette: Translation = {
   'palette.tour.ownBody': '在设置里调整网格、棋子和小组件。回到地图后按 {key} 查看快捷键。可在 Obsidian 设置 → Atlas VTT → 地图快捷键 中修改。',
   'palette.tour.ownTitle': '把地图调成你自己的',
   'palette.widgetSettings': '小组件设置',
+  'palette.panel.experimental': '实验性功能',
+  'palette.experimentalLighting': '动态光照',
+  'palette.openDMScreen': '打开 DM 屏',
+  'palette.openSoundPage': '打开声音页面',
+  'palette.panel.levels': '场景楼层',
+  'palette.sceneLevels': '场景楼层',
+  'palette.positionFloor': '定位楼层',
+  'palette.replaceMapImage': '替换地图图片',
+  'palette.tour.ownBody.touch': '在设置里调整网格、棋子和小组件。',
 };

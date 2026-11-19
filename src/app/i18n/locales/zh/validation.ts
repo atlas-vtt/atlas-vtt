@@ -6,4 +6,6 @@ export const validation: Translation = {
   'validation.tokenImages': { other: '{count} 张棋子图片' },
   'validation.backgrounds': { other: '{count} 张地图背景' },
   'validation.placeholders': '缺失的素材会显示为占位图。',
+  'validation.roof': '屋顶',
+  'validation.roofs': { other: '{count} 张屋顶图片' },
 };

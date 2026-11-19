@@ -8,4 +8,5 @@ export const link: Translation = {
   'link.noneCreated': '没有创建棋子。',
   'link.importFailed': '无法导入此属性块。',
   'link.unknown': '未知',
+  'link.moved': '此属性块现在关联到 {token}，不再关联 {previous}',
 };

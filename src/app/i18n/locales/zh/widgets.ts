@@ -30,4 +30,5 @@ export const widgets: Translation = {
   'widgets.type.clock': '时钟',
   'widgets.type.counter': '计数器',
   'widgets.type.timer': '计时器',
+  'widgets.spreadStack': '显示全部 {count} 个小组件',
 };

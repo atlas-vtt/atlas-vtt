@@ -25,4 +25,5 @@ export const sbImport: Translation = {
   'sbImport.addN': '把 {count} 个加入导入',
   'sbImport.scanningNotes': '正在扫描笔记',
   'sbImport.loadingImagesStatus': '正在加载图片',
+  'sbImport.noneFoundInVault': '你的仓库里没有找到属性块笔记。',
 };

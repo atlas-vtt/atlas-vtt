@@ -17,4 +17,6 @@ export const command: Translation = {
   'command.toggleInitiativeTracker': '开关先攻追踪',
   'command.toggleLootRoller': '开关随机表',
   'command.viewChangelog': '查看更新日志',
+  'command.newStatblockTemplate': '新建属性块模板…',
+  'command.generateDungeon': '生成地城',
 };
