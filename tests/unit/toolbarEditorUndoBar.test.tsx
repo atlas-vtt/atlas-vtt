@@ -30,7 +30,7 @@ const undoSlot = (container: HTMLElement): HTMLElement => {
 
 /** A change the history records, so undo has something to take back. */
 function recordChange({ store }: ToolbarHarness): void {
-  act(() => store.setState({ background: 'maps/cave.png' }));
+  act(() => { store.setState({ background: 'maps/cave.png' }); });
 }
 
 setUpToolbarTestDom();
@@ -64,7 +64,7 @@ describe('the undo/redo bar in the toolbar editor', () => {
     const harness = renderToolbar({ undoBar: true });
     startEditing(harness);
     const undo = handle(harness.container, 'undo');
-    act(() => undo.focus());
+    act(() => { undo.focus(); });
     expect(fireEvent.keyDown(undo, { key: 'Delete' })).toBe(false);
     expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['undo'] });
     expect(document.activeElement).toBe(handle(harness.container, 'move'));
@@ -75,7 +75,7 @@ describe('the undo/redo bar in the toolbar editor', () => {
     startEditing(harness);
     expect(undoSlot(harness.container).hidden).toBe(true);
     const face = handle(harness.container, 'undo', 'tray');
-    act(() => face.focus());
+    act(() => { face.focus(); });
     expect(fireEvent.keyDown(face, { key: 'Enter' })).toBe(false);
     expect(harness.settings.getToolbarLayout()).toEqual({});
     expect(undoSlot(harness.container).hidden).toBe(false);
@@ -105,7 +105,7 @@ describe('the undo/redo bar in the toolbar editor', () => {
     const harness = renderToolbar({ undoBar: true });
     startEditing(harness);
     const move = handle(harness.container, 'move');
-    act(() => move.focus());
+    act(() => { move.focus(); });
     fireEvent.keyDown(move, { key: 'ArrowLeft' });
     const undo = handle(harness.container, 'undo');
     expect(document.activeElement).toBe(undo);
@@ -142,7 +142,7 @@ describe('the undo/redo bar in the toolbar editor', () => {
     const harness = renderToolbar({ undoBar: true, player: true, stored: { hidden: ['undo', 'move'] } });
     expect(harness.container.querySelector('.atlas-side-bar[data-side-bar="undo"]')).toBeNull();
     expect(harness.container.querySelector('[data-toolbar-item="move"]')?.hasAttribute('hidden')).toBe(false);
-    act(() => harness.store.getState().setToolbarEditing(true));
+    act(() => { harness.store.getState().setToolbarEditing(true); });
     await waitFor(() => expect(harness.container.querySelector('.atlas-toolbar-tray')).toBeNull());
   });
 });

@@ -59,13 +59,13 @@ describe('LightingToolBar', () => {
     const store = renderBar();
     const gone = (): Promise<void> => waitFor(() => expect(screen.queryByRole('toolbar')).toBeNull());
     modesBar();
-    act(() => store.setState({ isToolbarEditing: true }));
+    act(() => { store.setState({ isToolbarEditing: true }); });
     await gone();
-    act(() => store.setState({ isToolbarEditing: false, isPlayerView: true }));
+    act(() => { store.setState({ isToolbarEditing: false, isPlayerView: true }); });
     await gone();
-    act(() => store.setState({ isPlayerView: false, activeTool: 'move' }));
+    act(() => { store.setState({ isPlayerView: false, activeTool: 'move' }); });
     await gone();
-    act(() => store.setState({ activeTool: 'wall' }));
+    act(() => { store.setState({ activeTool: 'wall' }); });
     modesBar();
   });
 
@@ -80,7 +80,7 @@ describe('LightingToolBar', () => {
     fireEvent.click(button('Fill in'));
     expect(store.getState().lightingTool.mode).toBe('rooms');
     expect(store.getState().roomTool.action).toBe('carve');
-    act(() => store.setState({ isGMView: true }));
+    act(() => { store.setState({ isGMView: true }); });
     expect(MODES.slice(0, 3).some(inert)).toBe(false);
     fireEvent.click(button('Fill in'));
     expect(store.getState().roomTool.action).toBe('fill');
@@ -147,13 +147,13 @@ describe('LightingToolBar', () => {
     expect(inert('Openings')).toBe(true);
     fireEvent.click(button('Explored memory'));
     expect(store.getState().lightingTool.mode).toBe('rooms');
-    act(() => store.getState().setSceneLighting({ enabled: true }));
+    act(() => { store.getState().setSceneLighting({ enabled: true }); });
     expect(inert('Explored memory')).toBe(false);
   });
 
   it('sets the memory\'s stroke and shape, and keeps them while another mode is in use', async () => {
     const store = renderBar();
-    act(() => store.getState().setSceneLighting({ enabled: true }));
+    act(() => { store.getState().setSceneLighting({ enabled: true }); });
     fireEvent.click(button('Explored memory'));
     await toolsOf('Explored memory');
     fireEvent.click(button('Forget'));

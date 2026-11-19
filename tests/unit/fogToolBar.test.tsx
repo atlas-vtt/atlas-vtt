@@ -71,17 +71,17 @@ describe('FogToolBar', () => {
     const { store } = renderBar();
     const gone = (): Promise<void> => waitFor(() => expect(screen.queryByRole('toolbar')).toBeNull());
     whatBar();
-    act(() => store.setState({ activeTool: 'eraser' }));
+    act(() => { store.setState({ activeTool: 'eraser' }); });
     whatBar();
-    act(() => store.setState({ isToolbarEditing: true }));
+    act(() => { store.setState({ isToolbarEditing: true }); });
     await gone();
-    act(() => store.setState({ isToolbarEditing: false, isMapLoading: true }));
+    act(() => { store.setState({ isToolbarEditing: false, isMapLoading: true }); });
     await gone();
-    act(() => store.setState({ isMapLoading: false, isPlayerView: true }));
+    act(() => { store.setState({ isMapLoading: false, isPlayerView: true }); });
     await gone();
-    act(() => store.setState({ isPlayerView: false, activeTool: 'move' }));
+    act(() => { store.setState({ isPlayerView: false, activeTool: 'move' }); });
     await gone();
-    act(() => store.setState({ activeTool: 'fog' }));
+    act(() => { store.setState({ activeTool: 'fog' }); });
     whatBar();
   });
 
@@ -98,7 +98,7 @@ describe('FogToolBar', () => {
       expect(names(toolsBar())).toEqual(TOOLS);
     }
     // The tool's key shows in the bar.
-    act(() => store.getState().setActiveTool('eraser'));
+    act(() => { store.getState().setActiveTool('eraser'); });
     expect(pressed('Eraser')).toBe(true);
     expect(pressed('Fog')).toBe(false);
   });
@@ -132,7 +132,7 @@ describe('FogToolBar', () => {
     expect(inert('Cells')).toBe(false);
     fireEvent.click(button('Cells'));
     expect(store.getState().fogTool.shape).toBe('cells');
-    act(() => store.setState((state) => ({ grid: { ...state.grid, size: 0 } })));
+    act(() => { store.setState((state) => ({ grid: { ...state.grid, size: 0 } })); });
     expect(inert('Cells')).toBe(true);
     expect(store.getState().fogTool.shape).toBe('brush');
     expect(pressed('Brush')).toBe(true);
@@ -142,7 +142,7 @@ describe('FogToolBar', () => {
     expect(store.getState().fogTool.shape).toBe('brush');
     // No other shape needs the grid.
     expect(['Brush', 'Rectangle', 'Polygon', 'Lasso'].some(inert)).toBe(false);
-    act(() => store.setState((state) => ({ grid: { ...state.grid, size: 70 } })));
+    act(() => { store.setState((state) => ({ grid: { ...state.grid, size: 70 } })); });
     expect(inert('Cells')).toBe(false);
     expect(store.getState().fogTool.shape).toBe('brush');
   });
@@ -164,7 +164,7 @@ describe('FogToolBar', () => {
     // The size button is the brush's.
     expect(inert('Brush size')).toBe(true);
     // The walls go: the brush takes Room's place, and the bar keeps its buttons.
-    act(() => store.getState().deleteWalls(walls));
+    act(() => { store.getState().deleteWalls(walls); });
     expect(inert('Room')).toBe(true);
     expect(store.getState().fogTool.shape).toBe('brush');
     expect(names(toolsBar())).toEqual(TOOLS);
@@ -178,7 +178,7 @@ describe('FogToolBar', () => {
     });
     expect(inert('Room')).toBe(false);
     fireEvent.click(button('Room'));
-    act(() => store.getState().setViewedLevel('upper'));
+    act(() => { store.getState().setViewedLevel('upper'); });
     expect(inert('Room')).toBe(true);
     expect(store.getState().fogTool.shape).toBe('brush');
   });
@@ -242,20 +242,20 @@ describe('FogToolBar', () => {
   it('says how wide the brush is in cells of the map\'s grid, and nothing on a map without one', () => {
     const { store } = renderBar();
     const value = (): string => document.querySelector('.atlas-dropdown-slider-row__value')!.textContent;
-    act(() => store.setState((state) => ({ grid: { ...state.grid, type: 'square', size: 70, offsetX: 0, offsetY: 0 } })));
+    act(() => { store.setState((state) => ({ grid: { ...state.grid, type: 'square', size: 70, offsetX: 0, offsetY: 0 } })); });
     fireEvent.click(button('Brush size'));
     // A brush of 50 px to either side of the pointer is 100 px wide: 1.4 cells of 70.
     expect(value()).toBe('1.4 cells');
     expect(screen.getByRole('slider', { name: 'Brush size' }).getAttribute('aria-valuetext')).toBe('1.4 cells');
-    act(() => store.getState().setFogTool({ brushSize: 35 }));
+    act(() => { store.getState().setFogTool({ brushSize: 35 }); });
     expect(value()).toBe('1 cell');
-    act(() => store.getState().setFogTool({ brushSize: 200 }));
+    act(() => { store.getState().setFogTool({ brushSize: 200 }); });
     expect(value()).toBe('5.7 cells');
     // Hexes are as wide as the grid's size too.
-    act(() => store.setState((state) => ({ grid: { ...state.grid, type: 'hex-vertical', size: 100 } })));
+    act(() => { store.setState((state) => ({ grid: { ...state.grid, type: 'hex-vertical', size: 100 } })); });
     expect(value()).toBe('4 cells');
     // Without a grid there are no cells to count in, and pixels say nothing: no number.
-    act(() => store.setState((state) => ({ grid: { ...state.grid, size: 0 } })));
+    act(() => { store.setState((state) => ({ grid: { ...state.grid, size: 0 } })); });
     expect(value()).toBe('');
   });
 
@@ -279,15 +279,15 @@ describe('FogToolBar', () => {
     fireEvent.click(button('Brush size'));
     expect(button('Brush size').getAttribute('aria-expanded')).toBe('true');
     expect(slider()!.getAttribute('aria-valuenow')).toBe('50');
-    act(() => slider()!.focus());
+    act(() => { slider()!.focus(); });
     fireEvent.keyDown(slider()!, { key: 'ArrowRight' });
     expect(store.getState().fogTool.brushSize).toBe(51);
     // The keys' steps show in the slider and on the button.
     const small = dot();
-    act(() => store.getState().setFogTool({ brushSize: 200 }));
+    act(() => { store.getState().setFogTool({ brushSize: 200 }); });
     expect(slider()!.getAttribute('aria-valuenow')).toBe('200');
     expect(dot()).toBeGreaterThan(small);
-    act(() => store.getState().setFogTool({ brushSize: 10 }));
+    act(() => { store.getState().setFogTool({ brushSize: 10 }); });
     expect(dot()).toBeLessThan(small);
     expect(dot()).toBeGreaterThan(0);
     fireEvent.click(button('Brush size'));
@@ -333,9 +333,9 @@ describe('FogToolBar', () => {
     expect(fogOf(store)).toEqual([]);
     expect(history.getState().pastStates).toHaveLength(2);
     expect(inert('Delete all fog')).toBe(true);
-    act(() => history.getState().undo());
+    act(() => { history.getState().undo(); });
     expect(fogOf(store)).toHaveLength(1);
-    act(() => history.getState().undo());
+    act(() => { history.getState().undo(); });
     expect(fogOf(store)).toEqual([]);
     expect(showNotice).not.toHaveBeenCalled();
   });
@@ -358,7 +358,7 @@ describe('FogToolBar', () => {
     expect(inert('Delete all fog')).toBe(true);
     fireEvent.click(button('Delete all fog'));
     expect(fogOf(store)).toHaveLength(1);
-    act(() => store.getState().setViewedLevel('ground'));
+    act(() => { store.getState().setViewedLevel('ground'); });
     expect(inert('Delete all fog')).toBe(false);
   });
 
@@ -369,7 +369,7 @@ describe('FogToolBar', () => {
     fireEvent.click(button('More'));
     expect(slider()!.getAttribute('aria-valuenow')).toBe('50');
     expect(slider()!.getAttribute('aria-valuetext')).toBe('50%');
-    act(() => slider()!.focus());
+    act(() => { slider()!.focus(); });
     fireEvent.keyDown(slider()!, { key: 'ArrowRight' });
     expect(settings.getGmFogOpacity()).toBe(0.55);
     expect(slider()!.getAttribute('aria-valuenow')).toBe('55');
@@ -406,7 +406,7 @@ describe('FogToolBar', () => {
 
   it('takes every choice in the session view too, where fog is painted as players see it', () => {
     const { store } = renderBar();
-    act(() => store.setState({ isGMView: false }));
+    act(() => { store.setState({ isGMView: false }); });
     expect(['Fog', 'Eraser', 'Brush', 'Rectangle', 'Lasso', 'Brush size', 'Cover all', 'More'].some(inert)).toBe(false);
     fireEvent.click(button('Lasso'));
     expect(store.getState().fogTool.shape).toBe('lasso');

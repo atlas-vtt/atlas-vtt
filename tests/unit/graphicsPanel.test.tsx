@@ -7,8 +7,10 @@ import { GraphicsPanel } from '../../src/app/react/components/command-palette/Gr
 import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { memoryPluginData } from '../mocks/pluginData';
+import { setLocale } from '../../src/app/i18n';
+import { TRANSLATIONS } from '../../src/app/i18n/languages';
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); setLocale('en', TRANSLATIONS); });
 
 /** The page over settings of their own, chosen `high` so no device pick is asked for. */
 async function openPage(): Promise<SettingsService> {
@@ -25,6 +27,16 @@ async function openPage(): Promise<SettingsService> {
 }
 
 describe('the Graphics page', () => {
+  it('shows Italian choices and keeps preset selection working', async () => {
+    setLocale('it', TRANSLATIONS);
+    const settings = await openPage();
+    const presets = within(screen.getByRole('radiogroup', { name: 'Qualità' }));
+    expect(presets.getByRole('radio', { name: 'Alta' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('radiogroup', { name: 'Tracciamento dei raggi' })).toBeTruthy();
+    fireEvent.click(presets.getByRole('radio', { name: 'Risparmio' }));
+    expect(settings.getGraphics()).toEqual({ preset: 'saver', overrides: {} });
+  });
+
   it('shows the presets as tabs and every knob as a row, and a preset tab sets every knob', async () => {
     const settings = await openPage();
     expect(screen.getAllByRole('radiogroup').length).toBeGreaterThanOrEqual(8);

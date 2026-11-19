@@ -89,7 +89,7 @@ export function renderToolbar({ player = false, stored = {}, space = null, noteP
 }
 
 export function startEditing({ store }: ToolbarHarness): void {
-  act(() => store.getState().setToolbarEditing(true));
+  act(() => { store.getState().setToolbarEditing(true); });
 }
 
 const SIDE_BAR_IDS = ['undo', 'help', 'online'];

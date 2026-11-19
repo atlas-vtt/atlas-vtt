@@ -84,13 +84,13 @@ function setup(): Setup {
   return {
     store, ruler, circle, tokensIn, camera, popover,
     measure: (id) => store.getState().objects.measures?.[id],
-    frame: () => act(() => ticks.forEach((tick) => tick())),
+    frame: () => act(() => { ticks.forEach((tick) => tick()); }),
     position: () => {
       const [x, y] = popover().style.translate.split(' ').map((value) => Number.parseFloat(value));
       return { x: x!, y: y! };
     },
     steps: () => history.getState().pastStates.length,
-    undo: () => act(() => history.getState().undo()),
+    undo: () => act(() => { history.getState().undo(); }),
   };
 }
 
@@ -98,7 +98,7 @@ describe('MeasurePopover', () => {
   it('is closed until a measurement is opened, then names every control and repeats nothing the label on the map says', async () => {
     const { store, ruler, popover } = setup();
     expect(screen.queryByRole('dialog')).toBeNull();
-    act(() => store.getState().openMeasurePopover(ruler));
+    act(() => { store.getState().openMeasurePopover(ruler); });
     // What it is and measures stands on the map; the popover has no heading, and its swatches no label to read.
     expect(popover().querySelector('.atlas-light-popover__heading')).toBeNull();
     expect(within(popover()).getByText('Colour').hidden).toBe(true);
@@ -117,9 +117,9 @@ describe('MeasurePopover', () => {
 
   it('shows the other measurement when that one is opened: the same popover', () => {
     const { store, ruler, circle, popover } = setup();
-    act(() => store.getState().openMeasurePopover(ruler));
+    act(() => { store.getState().openMeasurePopover(ruler); });
     const element = popover();
-    act(() => store.getState().openMeasurePopover(circle));
+    act(() => { store.getState().openMeasurePopover(circle); });
     expect(popover()).toBe(element);
     expect(screen.getByRole('button', { name: 'Red' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('switch', { name: 'Players see it' }).getAttribute('aria-checked')).toBe('false');
@@ -127,7 +127,7 @@ describe('MeasurePopover', () => {
 
   it('gives the measurement a colour, and the theme\'s back with the first swatch, one undo step each', () => {
     const { store, ruler, measure, steps, undo } = setup();
-    act(() => store.getState().openMeasurePopover(ruler));
+    act(() => { store.getState().openMeasurePopover(ruler); });
     expect(screen.getByRole('button', { name: 'Default' }).getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: 'Green' }));
     expect(measure(ruler)?.color).toBe('#08b94e');
@@ -142,7 +142,7 @@ describe('MeasurePopover', () => {
 
   it('keeps a measurement from the players, and shows it to them again without leaving a field behind', () => {
     const { store, ruler, measure, steps } = setup();
-    act(() => store.getState().openMeasurePopover(ruler));
+    act(() => { store.getState().openMeasurePopover(ruler); });
     const players = screen.getByRole('switch', { name: 'Players see it' });
     fireEvent.click(players);
     expect(measure(ruler)?.hidden).toBe(true);
@@ -154,7 +154,7 @@ describe('MeasurePopover', () => {
 
   it('deletes the measurement in one undo step and closes; undo brings the measurement back, not the popover', async () => {
     const { store, ruler, measure, steps, undo } = setup();
-    act(() => store.getState().openMeasurePopover(ruler));
+    act(() => { store.getState().openMeasurePopover(ruler); });
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect(measure(ruler)).toBeUndefined();
     expect(store.getState().measurePopover).toBeNull();
@@ -170,7 +170,7 @@ describe('MeasurePopover', () => {
     const map = vi.fn();
     document.addEventListener('keydown', map);
     try {
-      act(() => store.getState().openMeasurePopover(ruler));
+      act(() => { store.getState().openMeasurePopover(ruler); });
       expect(document.activeElement).toBe(popover());
       fireEvent.keyDown(screen.getByRole('switch', { name: 'Players see it' }), { key: ' ' });
       fireEvent.keyDown(popover(), { key: 'Tab' });
@@ -202,7 +202,7 @@ describe('the popover of a kept area', () => {
   it('holds, in this order: its colour, its look, Gives light, Players see it, Stops at walls, Follows token, a line\'s Width, Select tokens and Delete', () => {
     const { store, circle, ruler, popover } = setup();
     const line = store.getState().addMeasure({ shape: 'line', points: [{ x: 300, y: 600 }, { x: 580, y: 600 }], width: 70 })!;
-    act(() => store.getState().openMeasurePopover(circle));
+    act(() => { store.getState().openMeasurePopover(circle); });
     expect(controls(popover())).toEqual(['colours', 'effects', 'Gives light', 'Players see it', 'Stops at walls', 'Follows token', 'Select tokens', 'Delete']);
     act(() => store.getState().openMeasurePopover(line));
     expect(controls(popover())).toEqual(['colours', 'effects', 'Gives light', 'Players see it', 'Stops at walls', 'Follows token', 'Width', 'Select tokens', 'Delete']);
@@ -213,8 +213,8 @@ describe('the popover of a kept area', () => {
 
   it('gives an area a look in one step: the effect, its usual colour and, on a lit scene, the light it starts with', () => {
     const { store, circle, measure, steps, undo } = setup();
-    act(() => store.getState().setSceneLighting({ enabled: true }));
-    act(() => store.getState().openMeasurePopover(circle));
+    act(() => { store.getState().setSceneLighting({ enabled: true }); });
+    act(() => { store.getState().openMeasurePopover(circle); });
     const chip = (name: string): HTMLElement => within(screen.getByRole('group', { name: 'Effect' })).getByRole('button', { name });
     expect(within(screen.getByRole('group', { name: 'Effect' })).getAllByRole('button').map((item) => item.getAttribute('aria-label'))).toEqual(['None', 'Fire', 'Frost', 'Lightning', 'Mist', 'Radiance', 'Shadow']);
     expect(chip('None').getAttribute('aria-pressed')).toBe('true');
@@ -248,8 +248,8 @@ describe('the popover of a kept area', () => {
 
   it('switches an area\'s light on with ranges sized by it and folds them away again, one undo step each', () => {
     const { store, circle, measure, steps } = setup();
-    act(() => store.getState().setSceneLighting({ enabled: true }));
-    act(() => store.getState().openMeasurePopover(circle));
+    act(() => { store.getState().setSceneLighting({ enabled: true }); });
+    act(() => { store.getState().openMeasurePopover(circle); });
     const light = (): HTMLElement => screen.getByRole('switch', { name: 'Gives light' });
     expect(light().getAttribute('aria-checked')).toBe('false');
     expect(screen.queryByLabelText('Bright')).toBeNull();
@@ -274,7 +274,7 @@ describe('the popover of a kept area', () => {
   it('shows the switch as it is and takes no press on a scene without dynamic lighting, and for Shadow on a shape without a radius', () => {
     const { store, circle, measure } = setup();
     const line = store.getState().addMeasure({ shape: 'line', points: [{ x: 300, y: 600 }, { x: 580, y: 600 }], width: 70 })!;
-    act(() => store.getState().openMeasurePopover(circle));
+    act(() => { store.getState().openMeasurePopover(circle); });
     const light = (): HTMLElement => screen.getByRole('switch', { name: 'Gives light' });
     const disabled = (): boolean => light().getAttribute('aria-disabled') === 'true';
     expect(disabled()).toBe(true);
@@ -284,9 +284,9 @@ describe('the popover of a kept area', () => {
     fireEvent.click(within(screen.getByRole('group', { name: 'Effect' })).getByRole('button', { name: 'Fire' }));
     expect(measure(circle)).toMatchObject({ effect: 'fire', color: '#ec7500' });
     expect(measure(circle)).not.toHaveProperty('light');
-    act(() => store.getState().setSceneLighting({ enabled: true }));
+    act(() => { store.getState().setSceneLighting({ enabled: true }); });
     expect(disabled()).toBe(false);
-    act(() => store.getState().openMeasurePopover(line));
+    act(() => { store.getState().openMeasurePopover(line); });
     expect(disabled()).toBe(false);
     fireEvent.click(within(screen.getByRole('group', { name: 'Effect' })).getByRole('button', { name: 'Shadow' }));
     expect(measure(line)).toMatchObject({ effect: 'shadow' });
@@ -296,7 +296,7 @@ describe('the popover of a kept area', () => {
 
   it('lets an area pass walls, and stop at them again without leaving a field behind, one undo step each', () => {
     const { store, circle, measure, steps, undo } = setup();
-    act(() => store.getState().openMeasurePopover(circle));
+    act(() => { store.getState().openMeasurePopover(circle); });
     const walls = (): HTMLElement => screen.getByRole('switch', { name: 'Stops at walls' });
     expect(walls().getAttribute('aria-checked')).toBe('true');
     fireEvent.click(walls());
@@ -313,7 +313,7 @@ describe('the popover of a kept area', () => {
     const { store, measure, popover, steps } = setup();
     const line = store.getState().addMeasure({ shape: 'line', points: [{ x: 300, y: 600 }, { x: 580, y: 600 }], width: 70 })!;
     const before = steps();
-    act(() => store.getState().openMeasurePopover(line));
+    act(() => { store.getState().openMeasurePopover(line); });
     const narrower = screen.getByRole('button', { name: 'Narrower' }) as HTMLButtonElement;
     expect(narrower.disabled).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Wider' }));
@@ -329,12 +329,12 @@ describe('the popover of a kept area', () => {
 
   it('selects the tokens in the area and closes, and offers nothing to select while it holds none', async () => {
     const { store, circle, tokensIn } = setup();
-    act(() => store.getState().openMeasurePopover(circle));
+    act(() => { store.getState().openMeasurePopover(circle); });
     const select = (): HTMLButtonElement => screen.getByRole('button', { name: 'Select tokens' }) as HTMLButtonElement;
     expect(select().disabled).toBe(true);
     tokensIn[circle] = ['goblin', 'hero'];
     // The scene changed: the button asks again.
-    act(() => store.getState().setSnapToGrid(false));
+    act(() => { store.getState().setSnapToGrid(false); });
     expect(select().disabled).toBe(false);
     fireEvent.click(select());
     expect(store.getState().selectedIds).toEqual(['goblin', 'hero']);
@@ -344,7 +344,7 @@ describe('the popover of a kept area', () => {
 
   it('has none of an area\'s controls for a ruler', () => {
     const { store, ruler } = setup();
-    act(() => store.getState().openMeasurePopover(ruler));
+    act(() => { store.getState().openMeasurePopover(ruler); });
     expect(screen.queryByRole('switch', { name: 'Stops at walls' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Select tokens' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Wider' })).toBeNull();
@@ -354,7 +354,7 @@ describe('the popover of a kept area', () => {
 describe('the measurement popover on the map', () => {
   it('stands beside its handle, growing out of it, and follows the map', () => {
     const { store, ruler, camera, frame, popover, position } = setup();
-    act(() => store.getState().openMeasurePopover(ruler));
+    act(() => { store.getState().openMeasurePopover(ruler); });
     // 300 + the handle's 10 px + a 12 px gap; centred on the handle's height.
     expect(position()).toEqual({ x: 322, y: 320 });
     expect(popover().style.transformOrigin).toBe('-22px 80px');
@@ -366,18 +366,18 @@ describe('the measurement popover on the map', () => {
 
   it('follows its measurement when that is moved, and travels to another one that is opened', () => {
     const { store, ruler, circle, frame, position } = setup();
-    act(() => store.getState().openMeasurePopover(ruler));
-    act(() => store.getState().updateMeasure(ruler, { points: [{ x: 370, y: 470 }, { x: 580, y: 470 }] }));
+    act(() => { store.getState().openMeasurePopover(ruler); });
+    act(() => { store.getState().updateMeasure(ruler, { points: [{ x: 370, y: 470 }, { x: 580, y: 470 }] }); });
     frame();
     expect(position()).toEqual({ x: 392, y: 390 });
-    act(() => store.getState().openMeasurePopover(circle));
+    act(() => { store.getState().openMeasurePopover(circle); });
     // The circle is on the right half: the popover stands on its roomier, left side.
     expect(position()).toEqual({ x: 900 - 22 - 272, y: 320 });
   });
 
   it('stays inside the view at its edges', () => {
     const { store, ruler, camera, frame, position } = setup();
-    act(() => store.getState().openMeasurePopover(ruler));
+    act(() => { store.getState().openMeasurePopover(ruler); });
     camera.y = 380;
     frame();
     // The handle is 20 px above the view's bottom: the popover ends 8 px inside it.
@@ -392,7 +392,7 @@ describe('a measurement that follows a token', () => {
 
   it('cannot follow where it starts on no token: the switch shows off and says why', () => {
     const { store, circle, measure, steps } = setup();
-    act(() => store.getState().openMeasurePopover(circle));
+    act(() => { store.getState().openMeasurePopover(circle); });
     expect(follows().getAttribute('aria-checked')).toBe('false');
     expect(follows().getAttribute('aria-disabled')).toBe('true');
     fireEvent.click(follows());
@@ -404,7 +404,7 @@ describe('a measurement that follows a token', () => {
     const { store, circle, measure, steps, undo } = setup();
     act(() => store.setState({ objects: { ...store.getState().objects, tokens: { hero } } }));
     getHistoryStore(store)!.getState().clear();
-    act(() => store.getState().openMeasurePopover(circle));
+    act(() => { store.getState().openMeasurePopover(circle); });
     expect(follows().getAttribute('aria-disabled')).toBeNull();
     fireEvent.click(follows());
     expect(measure(circle)).toEqual({ ...measure(circle), shape: 'circle', points: [{ x: 900, y: 400 }, { x: 1040, y: 400 }], follows: 'hero', anchor: { x: 875, y: 385, rotation: 0 } });
@@ -428,7 +428,7 @@ describe('a measurement that follows a token', () => {
     expect(follows().getAttribute('aria-checked')).toBe('true');
 
     // The token walks off; let go, the aura stays as a circle around where the token stands then.
-    act(() => store.getState().setTokenPositions([{ id: 'hero', x: 455, y: 385 }]));
+    act(() => { store.getState().setTokenPositions([{ id: 'hero', x: 455, y: 385 }]); });
     fireEvent.click(follows());
     const let_go = measure(circle)!;
     expect(let_go).not.toHaveProperty('follows');
@@ -440,12 +440,12 @@ describe('a measurement that follows a token', () => {
 
   it('stands beside its badge on the rim of its token, wherever the token is', () => {
     const { store, circle, frame, position } = setup();
-    act(() => store.setState({ objects: { ...store.getState().objects, tokens: { hero } } }));
-    act(() => store.getState().updateMeasure(circle, { follows: 'hero', aura: 10 }));
-    act(() => store.getState().openMeasurePopover(circle));
+    act(() => { store.setState({ objects: { ...store.getState().objects, tokens: { hero } } }); });
+    act(() => { store.getState().updateMeasure(circle, { follows: 'hero', aura: 10 }); });
+    act(() => { store.getState().openMeasurePopover(circle); });
     frame();
     const before = position();
-    act(() => store.getState().setTokenPositions([{ id: 'hero', x: 875 - 210, y: 385 }]));
+    act(() => { store.getState().setTokenPositions([{ id: 'hero', x: 875 - 210, y: 385 }]); });
     frame();
     expect(position().x).toBeCloseTo(before.x - 210, 6);
     expect(position().y).toBeCloseTo(before.y, 6);

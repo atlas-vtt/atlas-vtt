@@ -75,7 +75,7 @@ describe('the widget used last', () => {
 
   it('leaves the number keys to the dice tray while it is open', () => {
     const store = renderBar();
-    act(() => store.getState().setDiceTrayOpen(true));
+    act(() => { store.getState().setDiceTrayOpen(true); });
     const event = new KeyboardEvent('keydown', { key: '2', code: 'Digit2', bubbles: true, cancelable: true });
     act(() => { document.body.dispatchEvent(event); });
     expect(event.defaultPrevented).toBe(false);
@@ -84,7 +84,7 @@ describe('the widget used last', () => {
 
   it('lets the open tray add its dice by the number keys, past the widget bar that listens first', () => {
     const store = renderBar();
-    act(() => store.getState().setDiceTrayOpen(true));
+    act(() => { store.getState().setDiceTrayOpen(true); });
     renderDiceTray();
     for (const [key, code] of [['2', 'Digit2'], ['2', 'Digit2'], ['6', 'Digit6']]) {
       press(key!, code!);

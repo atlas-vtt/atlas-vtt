@@ -20,7 +20,7 @@ const torch = emissionOf(onMap.find((preset) => preset.id === 'torch')!);
 
 afterEach(() => {
   const cancel = screen.queryByRole('button', { name: 'Cancel' });
-  if (cancel) act(() => cancel.click());
+  if (cancel) act(() => { cancel.click(); });
   document.body.replaceChildren();
 });
 
@@ -29,13 +29,13 @@ function open(overrides: Partial<Character> = {}): { store: ViewAtlasStore; save
   const store = createViewAtlasStore(app, `edit-token-merge-${Math.random()}`);
   const token: Character = { id: 't', kind: 'character', name: 'Gunner', imagePath: 't.png', x: 0, y: 0, ...overrides };
   store.setState({ persistenceEnabled: false, objects: { ...store.getState().objects, tokens: { t: token } } });
-  act(() => openEditTokenModal(token, store, app, [HP, AMMO]));
+  act(() => { openEditTokenModal(token, store, app, [HP, AMMO]); });
   const input = (label: string): HTMLInputElement =>
     screen.getByText(label).parentElement!.querySelector<HTMLInputElement>('input[type="number"]')!;
   return { store, saved: () => store.getState().objects.tokens.t as Character, input };
 }
 
-const save = (): void => act(() => screen.getByRole('button', { name: 'Save' }).click());
+const save = (): void => act(() => { screen.getByRole('button', { name: 'Save' }).click(); });
 
 describe('Edit token writes senses, light and resources together', () => {
   it('editing only a resource keeps a statblock-following vision without a senses list, and the light', () => {
@@ -112,7 +112,7 @@ describe('Edit token writes senses, light and resources together', () => {
   it('saves only what the form changed, onto the token as it is now: changes made on the map meanwhile stay', () => {
     const first = open({ vision: { enabled: true }, resources: { hp: { current: 8, max: 8 } } });
     // Damage arrives while the modal is open (the map, undo, another view).
-    act(() => first.store.getState().updateToken('t', { resources: { hp: { current: 2, max: 8 } }, x: 140 }));
+    act(() => { first.store.getState().updateToken('t', { resources: { hp: { current: 2, max: 8 } }, x: 140 }); });
     fireEvent.keyDown(screen.getByRole('button', { name: 'Add sense' }), { key: 'ArrowDown' });
     fireEvent.click(screen.getByRole('menuitem', { name: /^Darkvision/ }));
     save();
@@ -122,7 +122,7 @@ describe('Edit token writes senses, light and resources together', () => {
     document.body.replaceChildren();
 
     const second = open({ vision: { enabled: false }, resources: { hp: { current: 8, max: 8 } } });
-    act(() => second.store.getState().updateToken('t', { light: torch, vision: { enabled: true }, resources: { hp: { current: 3, max: 8 } }, name: 'Sniper' }));
+    act(() => { second.store.getState().updateToken('t', { light: torch, vision: { enabled: true }, resources: { hp: { current: 3, max: 8 } }, name: 'Sniper' }); });
     fireEvent.change(second.input('Max HP'), { target: { value: '9' } });
     save();
     // The new maximum goes onto the hit points the token has now; light, vision and name are the map's.
@@ -140,7 +140,7 @@ describe('Edit token writes senses, light and resources together', () => {
     document.body.replaceChildren();
 
     const gone = open({ resources: { hp: { current: 5, max: 8 } } });
-    act(() => gone.store.getState().deleteToken('t'));
+    act(() => { gone.store.getState().deleteToken('t'); });
     fireEvent.change(gone.input('Max HP'), { target: { value: '9' } });
     save();
     expect(gone.store.getState().objects.tokens.t).toBeUndefined();
@@ -163,7 +163,7 @@ describe('Edit token for a token that follows its statblock', () => {
     const store = createViewAtlasStore(current.app, `edit-token-linked-${Math.random()}`);
     const token: Character = { id: 't', kind: 'character', name: 'Goblin', imagePath: 't.png', x: 0, y: 0, statblockPath: GOBLIN, vision: { enabled: true }, resources: { hp: { current: 3, max: 7 } }, ...overrides };
     store.setState({ persistenceEnabled: false, objects: { ...store.getState().objects, tokens: { t: token } } });
-    act(() => openEditTokenModal(token, store, current.app, [HP, AMMO]));
+    act(() => { openEditTokenModal(token, store, current.app, [HP, AMMO]); });
     const input = (label: string): HTMLInputElement =>
       screen.getByText(label).parentElement!.querySelector<HTMLInputElement>('input[type="number"]')!;
     return { saved: () => store.getState().objects.tokens.t as Character, input };
