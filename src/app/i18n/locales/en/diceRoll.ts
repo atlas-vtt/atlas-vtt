@@ -74,5 +74,7 @@ export const diceRoll = {
   'diceRoll.rowPlace': '{name}, place {place}. Alt and an arrow key move it',
   'diceRoll.rowRemove': 'Take {name} out of the row',
   'diceRoll.rowAddDie': 'Add die',
-  'diceRoll.rowAddDiePlaceholder': '+ die',
+  'diceRoll.rowAddDieCaption': 'Add',
+  'diceRoll.rowEdit': 'Edit dice row',
+  'diceRoll.rowDone': 'Done',
 } as const satisfies Record<string, Message>;

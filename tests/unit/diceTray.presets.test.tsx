@@ -95,4 +95,27 @@ describe('saved rolls through the real tray', () => {
     fireEvent.keyDown(document.body, { key: '1' });
     expect(trayFormula().value).toBe('1d3 + 1d20');
   });
+
+  it('edits the row in place: E starts it, × takes a die out, + adds one, Alt+arrow moves one, Escape ends it', () => {
+    const { draw } = harness();
+    fireEvent.keyDown(document.body, { key: 'e' });
+    const row = (): HTMLElement => screen.getByRole('group', { name: 'Dice row' });
+    fireEvent.click(within(row()).getByRole('button', { name: 'Take d100 out of the row' }));
+    draw();
+    fireEvent.click(within(row()).getByRole('button', { name: 'Add die' }));
+    const field = within(row()).getByRole('textbox', { name: 'Add die' });
+    fireEvent.change(field, { target: { value: 'd3' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    draw();
+    expect(store.settings.diceRow?.at(-1)).toEqual({ kind: 'die', sides: 3 });
+    fireEvent.keyDown(within(row()).getByRole('img', { name: /^d3,/ }), { key: 'ArrowLeft', altKey: true });
+    draw();
+    expect(store.settings.diceRow?.slice(-2)).toEqual([{ kind: 'die', sides: 3 }, { kind: 'die', sides: 20 }]);
+    // While the row is edited a die's number key adds nothing, and Enter rolls nothing.
+    fireEvent.keyDown(document.body, { key: '1' });
+    expect(trayFormula().value).toBe('');
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(screen.queryByRole('group', { name: 'Dice row' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'd3' })).toBeTruthy();
+  });
 });
