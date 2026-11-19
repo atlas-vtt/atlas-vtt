@@ -5,5 +5,7 @@ export const names = {
   "names.invalidCollection": "I nomi delle collezioni non possono contenere \\ / : * ? \" < > | # ^ [ o ]",
   "names.collectionDot": "I nomi delle collezioni non possono iniziare con un punto",
   "names.enter": "Inserisci un nome",
-  "names.presetTaken": "Esiste già una configurazione con questo nome"
+  "names.presetTaken": "Esiste già una configurazione con questo nome",
+  "names.invalidFolder": "I nomi delle cartelle non possono contenere \\ / : * ? \" < > | # ^ [ o ]",
+  "names.folderDot": "I nomi delle cartelle non possono iniziare con un punto",
 } satisfies Translation;

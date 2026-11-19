@@ -105,8 +105,32 @@ import { view } from './view';
 import { vision } from './vision';
 import { wall } from './wall';
 import { widgets } from './widgets';
+import { account } from './account';
+import { armarium } from './armarium';
+import { armariumFindings } from './armariumFindings';
+import { armariumListing } from './armariumListing';
+import { armariumShare } from './armariumShare';
+import { armariumUpload } from './armariumUpload';
+import { assetGrid } from './assetGrid';
+import { deviceFiles } from './deviceFiles';
+import { docs } from './docs';
+import { fog } from './fog';
+import { initRules } from './initRules';
+import { openings } from './openings';
+import { playerBar } from './playerBar';
+import { rooms } from './rooms';
+import { selection } from './selection';
+import { siteFrame } from './siteFrame';
+import { table } from './table';
+import { tabletDiag } from './tabletDiag';
+import { uvtt } from './uvtt';
+import { uvttFloors } from './uvttFloors';
+import { videoMap } from './videoMap';
 
 export const it = {
+  'index.unreadable': 'Atlas VTT non ha potuto leggere il suo indice delle risorse ({path}) e lo ha lasciato invariato. Riavvia Obsidian per riprovare.',
+  'index.rebuilding': 'Atlas VTT non ha potuto leggere il suo indice delle risorse e lo sta ricostruendo dai file delle tue collezioni. Il file illeggibile è stato conservato come {path}.',
+  'index.folderMoved': 'La cartella di Atlas è stata spostata in "{path}". Atlas trova la sua libreria solo in "{folder}" al primo livello del vault: riporta lì la cartella e mappe, scene e token torneranno disponibili.',
   ...draw,
   ...measure,
   ...experimental,
@@ -213,4 +237,25 @@ export const it = {
   ...vision,
   ...wall,
   ...widgets,
+  ...account,
+  ...armarium,
+  ...armariumFindings,
+  ...armariumListing,
+  ...armariumShare,
+  ...armariumUpload,
+  ...assetGrid,
+  ...deviceFiles,
+  ...docs,
+  ...fog,
+  ...initRules,
+  ...openings,
+  ...playerBar,
+  ...rooms,
+  ...selection,
+  ...siteFrame,
+  ...table,
+  ...tabletDiag,
+  ...uvtt,
+  ...uvttFloors,
+  ...videoMap,
 } satisfies Translation;

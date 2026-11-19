@@ -97,5 +97,13 @@ export const creator = {
   "creator.saving.createTokens": "Creazione dei token",
   "creator.optimizingImages": "Ottimizzazione delle immagini",
   "creator.savePreviewsFailed": "Impossibile salvare le anteprime.",
-  "creator.scaledDown": "Ridotta da {from} px alle dimensioni massime consentite per una mappa"
+  "creator.scaledDown": "Ridotta da {from} px alle dimensioni massime consentite per una mappa",
+  "creator.discard": "Scarta",
+  "creator.dropAnywhere.touch": "Scegli immagini",
+  "creator.emptyHint.touch": "Scegli immagini da questo dispositivo. Puoi ritagliarle, regolare lo zoom e assegnare un nome a ciascuna prima di crearle.",
+  "creator.tagsApply": { one: "Le etichette si applicano a {count} anteprima selezionata.", other: "Le etichette si applicano a {count} anteprime selezionate." },
+  "creator.fromComputer": "Scegli file…",
+  "creator.map.browse.touch": "Tocca per cercare immagini di mappe",
+  "creator.token.browse.touch": "Tocca per cercare immagini di token",
+  "creator.savedSome": "Salvati {saved} su {total}. Gli altri restano qui per riprovare.",
 } satisfies Translation;

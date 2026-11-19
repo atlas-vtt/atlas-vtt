@@ -1,6 +1,7 @@
 import type { App } from 'obsidian';
 import { t } from '../i18n';
 import { SettingsService } from '../services/SettingsService';
+import { t } from '../i18n';
 
 /**
  * Features the GM switches on in the command palette's Experimental features page or in Atlas'

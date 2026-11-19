@@ -39,4 +39,5 @@ export const dice: Translation = {
   'dice.volumeHint': 'Насколько громко звучат кубики при броске и приземлении. В крайнем левом положении звук выключен.',
   'dice.volumeOff': 'Выкл.',
   'dice.volumePercent': '{percent}%',
+  'dice.showRollsToPlayersHint.mobile': 'Ваши броски появляются и в режиме стола.',
 };

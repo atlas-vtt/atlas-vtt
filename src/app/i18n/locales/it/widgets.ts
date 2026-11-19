@@ -29,5 +29,6 @@ export const widgets = {
   "widgets.type": "Tipo di widget",
   "widgets.type.clock": "Orologio",
   "widgets.type.counter": "Contatore",
-  "widgets.type.timer": "Timer"
+  "widgets.type.timer": "Timer",
+  "widgets.spreadStack": "Mostra tutti i {count} widget",
 } satisfies Translation;

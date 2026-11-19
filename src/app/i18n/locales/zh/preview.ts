@@ -8,4 +8,5 @@ export const preview: Translation = {
   'preview.close': '关闭窗口',
   'preview.notFound': '错误：找不到文件',
   'preview.openLinkFailed': '无法打开链接的笔记',
+  'preview.show': '预览',
 };

@@ -49,4 +49,5 @@ export const issue: Translation = {
   'issue.view': '查看 issue',
   'issue.sendFailed': '无法发送报告。',
   'issue.stillHere': '{message} 报告还在。可以再试一次，或复制下来保存。',
+  'issue.area.online': '在线游戏',
 };

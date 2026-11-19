@@ -59,5 +59,17 @@ export const loot = {
   "loot.tree.untickAll": "Deseleziona tutte le viste di questa base.",
   "loot.openPlayerView": "Apri la vista giocatori per mostrare loro il bottino.",
   "loot.query.note": "Atlas legge questa vista per il generatore di bottino. Apri il generatore su una mappa per effettuare un tiro.",
-  "loot.query.name": "Bottino di Atlas"
+  "loot.query.name": "Bottino di Atlas",
+  "loot.give.all": "Tutti i giocatori",
+  "loot.give.copies": "{count} × {item}",
+  "loot.give.doneAll": { one: "{item} consegnato a {count} giocatore", other: "{item} consegnato a {count} giocatori" },
+  "loot.give.failedAll": "Impossibile consegnare {item} a nessuno",
+  "loot.give.fewer": "Consegna meno",
+  "loot.give.more": "Consegna di più",
+  "loot.give.quantity": "Quantità",
+  "loot.rarityMenu.all": "Tutte le rarità",
+  "loot.rarityMenu.none": "Nessuna rarità",
+  "loot.rarityMenu.some": "{on} rarità su {total}",
+  "loot.openPlayerView.mobile": "Avvia un tavolo online per mostrare il bottino ai tuoi giocatori.",
+  "loot.unreadable": "Impossibile leggerlo",
 } satisfies Translation;

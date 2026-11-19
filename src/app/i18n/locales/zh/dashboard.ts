@@ -21,4 +21,10 @@ export const dashboard: Translation = {
   'dashboard.failed': '仪表盘加载失败。请查看控制台中的错误。',
   'dashboard.openFailed': '打开场景时出错',
   'dashboard.addMapFirst': '请先添加地图图片，再从它创建场景。',
+  'dashboard.allCreatures': '全部（{count}）',
+  'dashboard.inThisFight': '本场战斗（{count}）',
+  'dashboard.statblockScope': '显示的属性块',
+  'dashboard.closeScreen': '关闭 DM 屏',
+  'dashboard.begin': '开始',
+  'dashboard.resume': '继续',
 };

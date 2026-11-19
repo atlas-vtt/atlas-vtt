@@ -22,5 +22,9 @@ export const dashboard = {
   "dashboard.title": "Bacheca di Atlas",
   "dashboard.failed": "Caricamento della bacheca non riuscito. Controlla gli errori nella console.",
   "dashboard.openFailed": "Errore durante l’apertura della scena",
-  "dashboard.addMapFirst": "Aggiungi prima un’immagine di mappa, poi crea una scena a partire da essa."
+  "dashboard.addMapFirst": "Aggiungi prima un’immagine di mappa, poi crea una scena a partire da essa.",
+  "dashboard.allCreatures": "Tutte ({count})",
+  "dashboard.inThisFight": "In questo combattimento ({count})",
+  "dashboard.statblockScope": "Blocchi statistiche mostrati",
+  "dashboard.closeScreen": "Chiudi schermo del GM",
 } satisfies Translation;

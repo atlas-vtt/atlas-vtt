@@ -38,5 +38,6 @@ export const dice = {
   "dice.rollFormula": "Tira {formula}",
   "dice.showRollsToPlayers": "Mostra i miei tiri ai giocatori",
   "dice.showRollsToPlayersHint": "I tuoi tiri appaiono anche nella finestra giocatori.",
-  "dice.volumeOff": "Disattivati"
+  "dice.volumeOff": "Disattivati",
+  "dice.showRollsToPlayersHint.mobile": "I tuoi tiri appaiono anche in modalità tavolo.",
 } satisfies Translation;

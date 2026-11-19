@@ -17,4 +17,7 @@ export const atlasLinks: Translation = {
   'atlasLinks.snapshotOf': '{scene} 的快照',
   'atlasLinks.tokenCount': { other: '{count} 个棋子' },
   'atlasLinks.tokenRange': { other: '{range} 个棋子' },
+  'atlasLinks.more': '更多',
+  'atlasLinks.startFight': '开始战斗',
+  'atlasLinks.addBeside': '加入先攻但不放置',
 };

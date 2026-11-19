@@ -12,5 +12,9 @@ export const count = {
   "count.items": {
     "one": "{count} elemento",
     "other": "{count} elementi"
-  }
+  },
+  "count.encounters": { one: "{count} incontro", other: "{count} incontri" },
+  "count.maps": { one: "{count} mappa", other: "{count} mappe" },
+  "count.scenes": { one: "{count} scena", other: "{count} scene" },
+  "count.tokens": { one: "{count} token", other: "{count} token" },
 } satisfies Translation;

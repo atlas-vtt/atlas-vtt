@@ -17,4 +17,7 @@ export const map: Translation = {
   'map.openFailed': 'Atlas VTT 无法打开场景 {name}（{reason}）。',
   'map.syncLeavesOutFiles': 'Obsidian Sync 在此设备上不会同步 Atlas 的场景和地图。请在每台设备的“设置 → 同步”中开启“同步所有其他类型文件”。',
   'map.imageUnshown': 'Atlas VTT 无法显示地图图片 {file}。{reason}',
+  'map.processing': '正在处理地图 · {percent}%',
+  'map.videoTooLarge': '动态地图 {file} 是 {width} × {height} 像素，超过了此设备能播放的大小（单边 {side} 像素），因此只显示第一帧。',
+  'map.videoUnplayable': '动态地图 {file} 无法在这里播放，因此只显示第一帧。{reason}',
 };

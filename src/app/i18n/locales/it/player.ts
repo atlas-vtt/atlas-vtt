@@ -9,5 +9,6 @@ export const player = {
   "player.connecting": "Connessione alla sessione di gioco…",
   "player.paused": "Inquadratura in pausa",
   "player.title": "Vista giocatori di Atlas",
-  "player.setupFailed": "Impossibile configurare la finestra giocatori"
+  "player.setupFailed": "Impossibile configurare la finestra giocatori",
+  "player.toggleFullScreen": "Attiva/disattiva lo schermo intero della finestra giocatori",
 } satisfies Translation;

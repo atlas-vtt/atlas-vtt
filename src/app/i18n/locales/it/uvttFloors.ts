@@ -1,0 +1,27 @@
+import type { Translation } from '../../types';
+
+export const uvttFloors: Translation = {
+  'uvttFloors.fileProblem': '{file}: {problem}',
+  'uvttFloors.failed': 'Impossibile importare i file.',
+  'uvttFloors.tooMany': 'Una scena contiene al massimo {count} piani.',
+  'uvttFloors.tooLarge': 'Insieme, i file superano i {size} MB.',
+  'uvttFloors.tooManyWalls': 'Insieme, i file hanno più di {count} segmenti di muro.',
+  'uvttFloors.tooManyLights': 'Insieme, i file hanno più di {count} luci.',
+  'uvttFloors.otherGrid': 'Le celle di {file} sono larghe {size} pixel, quelle di {other} {otherSize} pixel, quindi non condividono una griglia.',
+  'uvttFloors.mapName': '{scene}, {level}',
+  'uvttFloors.reading': 'Lettura di {files}…',
+  'uvttFloors.importing': 'Importazione di "{name}" con {count} livelli…',
+  'uvttFloors.couldNot': 'Impossibile importare "{name}". {problem}',
+  'uvttFloors.imported': { one: '"{name}" importata con {count} livello: {contents}.', other: '"{name}" importata con {count} livelli: {contents}.' },
+  'uvttFloors.walls': { one: '{count} muro', other: '{count} muri' },
+  'uvttFloors.doors': { one: '{count} porta', other: '{count} porte' },
+  'uvttFloors.lights': { one: '{count} luce', other: '{count} luci' },
+  'uvttFloors.lightsOff': 'Le luci il cui bagliore è già nell’immagine sono spente.',
+  'uvttFloors.scaledDown': 'Le immagini di {files} sono state ridotte alle dimensioni massime che una mappa conserva.',
+  'uvttFloors.title': 'Importa {count} mappe',
+  'uvttFloors.sceneName': 'Nome della scena',
+  'uvttFloors.levels': 'Livelli, dal piano più alto',
+  'uvttFloors.asScenes': 'Importa come {count} scene',
+  'uvttFloors.asLevels': 'Importa come un’unica scena',
+  'uvttFloors.separately': 'Ogni file è diventato una scena a sé. {reason}',
+};

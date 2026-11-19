@@ -8,4 +8,5 @@ export const preview: Translation = {
   'preview.close': 'Закрыть окно',
   'preview.notFound': 'Ошибка: файл не найден',
   'preview.openLinkFailed': 'Не удалось открыть связанную заметку',
+  'preview.show': 'Предпросмотр',
 };

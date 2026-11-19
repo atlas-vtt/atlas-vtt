@@ -19,4 +19,5 @@ export const map: Translation = {
   'map.imageUnshown': 'Atlas VTT не удалось показать изображение карты {file}. {reason}',
   'map.videoTooLarge': 'Анимированная карта {file} размером {width} × {height} px больше, чем может воспроизвести это устройство ({side} px по стороне). Показывается её первый кадр.',
   'map.videoUnplayable': 'Анимированная карта {file} здесь не воспроизводится, поэтому показывается её первый кадр. {reason}',
+  'map.processing': 'Обработка карты · {percent}%',
 };

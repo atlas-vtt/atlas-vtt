@@ -19,4 +19,8 @@ export const view: Translation = {
   'view.playerTitle': 'Экран игроков: {name}',
   'view.playerDefault': 'Экран игроков',
   'view.noGraphics': 'Atlas нужно аппаратное ускорение графики, чтобы рисовать карты. Включите аппаратное ускорение в общих настройках Obsidian или проверьте драйверы видеокарты.',
+  'view.zoom': 'Масштаб',
+  'view.zoomIn': 'Приблизить',
+  'view.zoomOut': 'Отдалить',
+  'view.mainWindowOnly': 'Atlas работает в главном окне Obsidian. Чтобы использовать два экрана, перенесите заметки в новое окно.',
 };

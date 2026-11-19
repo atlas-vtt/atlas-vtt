@@ -80,7 +80,7 @@ describe('falling back to English', () => {
   afterEach(() => setLocale('en', TRANSLATIONS));
 
   it('speaks English for a language Atlas has no translation for', () => {
-    setLocale('de', TRANSLATIONS);
+    setLocale('ja', TRANSLATIONS);
     expect(getLocale()).toBe('en');
     expect(t('count.files', { count: 3 })).toBe('3 files');
     expect(registeredNames().commands.find((command) => command.id === 'open-dashboard')?.name).toBe('Open dashboard');

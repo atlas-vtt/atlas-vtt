@@ -18,4 +18,9 @@ export const view: Translation = {
   'view.connecting': '正在连接游戏会话…',
   'view.playerTitle': '玩家视图：{name}',
   'view.playerDefault': '玩家视图',
+  'view.zoom': '缩放',
+  'view.zoomIn': '放大',
+  'view.zoomOut': '缩小',
+  'view.mainWindowOnly': 'Atlas 在你的 Obsidian 主窗口中运行。如果要用两块屏幕，请把你的笔记移到一个新窗口里。',
+  'view.noGraphics': 'Atlas 需要图形加速来绘制地图。请在 Obsidian 的通用设置中打开硬件加速，或检查你的显卡驱动。',
 };

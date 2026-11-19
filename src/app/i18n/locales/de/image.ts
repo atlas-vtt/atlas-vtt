@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const image: Translation = {
+  'image.copy': 'Bild kopieren',
+  'image.openDefault': 'In Standard-App öffnen',
+  'image.openDefaultMenu': 'In Standard-App öffnen',
+  'image.display': 'In der Spieleransicht zeigen',
+  'image.copied': 'Bild in die Zwischenablage kopiert',
+  'image.copyFailed': 'Das Bild konnte nicht kopiert werden',
+  'image.windowClosed': 'Das Spielerfenster ist nicht geöffnet. Öffne es zuerst.',
+  'image.windowUnavailable': 'Das Spielerfenster ist nicht verfügbar',
+  'image.displayFailed': 'Das Bild konnte nicht in der Spieleransicht gezeigt werden',
+  'image.closed': 'Bildanzeige geschlossen',
+  'image.tooLarge': 'Dieses Bild ist {width} × {height} px groß, größer als Obsidian öffnen kann: höchstens {megapixels} Megapixel und {side} px pro Seite. Exportiere es kleiner und importiere es erneut.',
+  'image.tooLargeForDevice': 'Dieses Bild ist {width} × {height} px groß, größer als dieses Gerät öffnen kann: höchstens {megapixels} Megapixel. Exportiere es kleiner und importiere es erneut.',
+  'image.unsupported': 'Dieses Bild ist {width} × {height} px groß, mehr als Obsidian auf einmal öffnet, und Atlas kann ein so großes Bild nur als einfaches JPEG oder als PNG ohne Interlacing lesen. {advice}',
+  'image.unsupported.progressive': 'Speichere es als einfaches, nicht progressives JPEG und importiere es erneut.',
+  'image.unsupported.interlaced': 'Speichere das PNG ohne Interlacing und importiere es erneut.',
+  'image.unsupported.orientation': 'Exportiere es aufrecht, ohne die Drehung in den Kameradaten, und importiere es erneut.',
+  'image.unsupported.scans': 'Speichere es als einfaches JPEG und importiere es erneut.',
+  'image.unsupported.coding': 'Speichere es als einfaches 8-Bit-JPEG und importiere es erneut.',
+  'image.unsupported.components': 'Speichere es als RGB-JPEG und importiere es erneut.',
+  'image.unsupported.corrupt': 'Die Datei konnte nicht gelesen werden; exportiere sie erneut.',
+  'image.unreadable': 'Dieses Bild ist {width} × {height} px groß, mehr als Obsidian auf einmal öffnet, und seine Datei konnte nicht gelesen werden. Exportiere es erneut und importiere es noch einmal.',
+};

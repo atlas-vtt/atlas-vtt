@@ -7,5 +7,7 @@ export const present = {
   "present.shownElsewhere": "I giocatori vedono {name}; la finestra giocatori locale resta chiusa",
   "present.chosen": "I giocatori vedranno {name} quando aprirai la finestra giocatori",
   "present.reconnect": "Apri la scena presentata e inviala alla vista giocatori per riconnettere.",
-  "present.loadFailed": "Impossibile caricare la scena presentata. Invia una scena per riconnettere."
+  "present.loadFailed": "Impossibile caricare la scena presentata. Invia una scena per riconnettere.",
+  "present.shownElsewhere.mobile": "I giocatori vedono {name}",
+  "present.sceneLevel": "{scene}: {level}",
 } satisfies Translation;

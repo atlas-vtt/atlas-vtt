@@ -45,6 +45,10 @@
 - Quests can be set to Hidden: players are not sent them until you change their status. Contributed by young-george
 - Forget explored areas is now a command in the command palette, on a lit scene. Contributed by CatapultTV
 
+**Languages**
+
+- Atlas now speaks German, French, Spanish, Portuguese and Italian, following Obsidian's language, and Russian and Chinese cover every text. Italian contributed by Jackson98Tomphson
+
 ## Fixed
 
 - On Windows, converting music or ambience in a linked folder now moves the originals to the trash when you chose that, instead of keeping them

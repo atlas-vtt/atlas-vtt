@@ -2,8 +2,6 @@ import type { Translation } from '../../types';
 
 export const palette = {
   'palette.panel.experimental': 'Funzioni sperimentali',
-  'palette.openDMScreen': 'Apri lo schermo del GM',
-  'palette.openSoundPage': 'Apri la pagina Suono',
   'palette.experimentalLighting': 'Illuminazione dinamica',
   'palette.panel.levels': 'Livelli della scena',
   'palette.sceneLevels': 'Livelli della scena',
@@ -29,7 +27,6 @@ export const palette = {
   "palette.notePinTool": "Strumento segnaposto nota",
   "palette.openDiceLog": "Apri registro dei tiri",
   "palette.openLootRoller": "Apri tabelle casuali",
-  "palette.openSceneBrowser": "Apri elenco delle scene",
   "palette.panel.grid": "Impostazioni della griglia",
 
   "palette.panel.snapshots": "Istantanee della scena",
@@ -55,4 +52,9 @@ export const palette = {
 ,
   "palette.playerViewSettings": "Impostazioni della vista giocatori",
   "palette.panel.playerView": "Impostazioni della vista giocatori",
+  "palette.openSceneBrowser": "Apri Gestione risorse",
+  "palette.openDMScreen": "Apri schermo del GM",
+  "palette.openSoundPage": "Apri la pagina Suono",
+  "palette.positionFloor": "Posiziona piano",
+  "palette.tour.ownBody.touch": "Regola griglia, token e widget dalle Impostazioni.",
 } satisfies Translation;
