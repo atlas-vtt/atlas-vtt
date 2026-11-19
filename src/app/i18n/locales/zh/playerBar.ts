@@ -14,5 +14,5 @@ export const playerBar: Translation = {
   'playerBar.freeze': '暂停玩家视图',
   'playerBar.unfreeze': '继续：玩家视图重新跟随你',
   'playerBar.freezeTrueScale': '开启 TrueScale 时，把玩家固定在你地图上的画框中',
-  'playerBar.takeBack': '收回讲义',
+  'playerBar.takeBack': '收回资料',
 };

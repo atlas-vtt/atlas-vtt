@@ -15,15 +15,15 @@ export const bundle = {
     "other": "{count} file scritti"
   },
   "bundle.switchedNotes": {
-    "one": "{count} blocco statistiche ora usa le copie dei modelli.",
-    "other": "{count} blocchi statistiche ora usano le copie dei modelli."
+    "one": "{count} statblock ora usa le copie dei modelli.",
+    "other": "{count} statblock ora usano le copie dei modelli."
   },
   "bundle.group.encounters": "Incontri",
   "bundle.group.maps": "Mappe",
   "bundle.group.notes": "Note",
   "bundle.group.scenes": "Scene",
-  "bundle.group.statblocks": "Blocchi statistiche",
-  "bundle.group.templates": "Modelli dei blocchi statistiche",
+  "bundle.group.statblocks": "Statblock",
+  "bundle.group.templates": "Modelli degli statblock",
   "bundle.group.tokens": "Token",
   "bundle.importFailed": "Importazione non riuscita",
   "bundle.imported": "{name} importata.",

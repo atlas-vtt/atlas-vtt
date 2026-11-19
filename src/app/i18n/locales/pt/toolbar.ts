@@ -2,7 +2,7 @@ import type { Translation } from '../../types';
 
 export const toolbar: Translation = {
   'toolbar.ambientSound': 'Som ambiente',
-  'toolbar.assetManager': 'Gerenciador de recursos',
+  'toolbar.assetManager': 'Gerenciador de assets',
   'toolbar.circle': 'Círculo',
   'toolbar.colour': 'Cor',
   'toolbar.commandPalette': 'Paleta de comandos',

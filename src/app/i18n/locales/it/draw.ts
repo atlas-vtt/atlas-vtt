@@ -18,7 +18,7 @@ export const draw = {
   "draw.constrainNeedsShape": "Si possono vincolare linee, rettangoli ed ellissi.",
   "draw.cellsNeedGrid": "Mostra la griglia o agganciati a essa per colorare le celle",
   "draw.mode.eraser": "Gomma",
-  "draw.needsGmView": "Passa alla vista GM ({key}) per disegnare",
+  "draw.needsGmView": "Passa alla vista del master ({key}) per disegnare",
   "draw.size.s": "Piccola",
   "draw.size.m": "Media",
   "draw.size.l": "Grande",

@@ -25,7 +25,7 @@ export const palette: Translation = {
   'palette.openDiceLog': 'Würfelprotokoll öffnen',
   'palette.openLootRoller': 'Zufallstabellen öffnen',
   'palette.openSceneBrowser': 'Asset-Manager öffnen',
-  'palette.openDMScreen': 'Spielleiterschirm öffnen',
+  'palette.openDMScreen': 'SL-Schirm öffnen',
   'palette.openSoundPage': 'Sound-Seite öffnen',
   'palette.panel.grid': 'Rastereinstellungen',
   'palette.panel.playerView': 'Einstellungen der Spieleransicht',

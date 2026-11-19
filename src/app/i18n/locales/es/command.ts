@@ -3,10 +3,10 @@ import type { Translation } from '../../types';
 export const command: Translation = {
   'command.newStatblockTemplate': 'Nueva plantilla de bloque de estadísticas…',
   'command.cleanUpMissingAssets': 'Limpiar recursos que faltan en el mapa actual',
-  'command.createTokenFromStatblock': 'Crear ficha a partir de la imagen del bloque de estadísticas',
+  'command.createTokenFromStatblock': 'Crear token a partir de la imagen del bloque de estadísticas',
   'command.dismissImageFromPlayerView': 'Quitar imagen de la vista de jugadores',
   'command.displayImageOnPlayerView': 'Mostrar imagen en la vista de jugadores',
-  'command.importStatblockTokens': 'Importar fichas desde Fantasy Statblocks',
+  'command.importStatblockTokens': 'Importar tokens desde Fantasy Statblocks',
   'command.openAtlas': 'Abrir Atlas VTT',
   'command.openDashboard': 'Abrir panel',
   'command.generateDungeon': 'Generar mazmorra',

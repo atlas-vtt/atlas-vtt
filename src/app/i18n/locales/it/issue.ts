@@ -19,7 +19,7 @@ export const issue = {
   "issue.type.question": "Domanda o altro",
   "issue.area.maps": "Mappe, scene e griglia",
   "issue.area.tokens": "Token",
-  "issue.area.notes": "Note, segnaposto e blocchi statistiche",
+  "issue.area.notes": "Note, segnaposto e statblock",
   "issue.area.vision": "Nebbia di guerra e illuminazione",
   "issue.area.combat": "Iniziativa e combattimento",
   "issue.area.dice": "Dadi",

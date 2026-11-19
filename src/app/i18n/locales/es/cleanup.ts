@@ -9,5 +9,5 @@ export const cleanup: Translation = {
   'cleanup.noMapData': 'No se puede acceder a los datos del mapa',
   'cleanup.nothingMissing': 'No falta ningún recurso',
   'cleanup.title': 'Limpiar recursos que faltan',
-  'cleanup.tokens': { one: '{count} ficha', other: '{count} fichas' },
+  'cleanup.tokens': { one: '{count} token', other: '{count} tokens' },
 };

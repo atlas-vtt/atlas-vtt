@@ -1,9 +1,9 @@
 import type { Translation } from '../../types';
 
 export const statblock: Translation = {
-  'statblock.assignToken': '分配棋子',
-  'statblock.assignTokenHint': '为此属性块分配棋子',
-  'statblock.changeToken': '更换此属性块的棋子',
+  'statblock.assignToken': '分配指示物',
+  'statblock.assignTokenHint': '为此数据卡分配指示物',
+  'statblock.changeToken': '更换此数据卡的指示物',
   'statblock.creature': '生物',
   'statblock.decrease': '减少{label}',
   'statblock.editNamed': '编辑 {name}',
@@ -12,7 +12,7 @@ export const statblock: Translation = {
   'statblock.locate': '在地图上定位{label}',
   'statblock.pip': '{label} {n} / {max}',
   'statblock.pipDamage': '{label}伤害 {n} / {max}',
-  'statblock.pluginMissing': '请安装并启用 Fantasy Statblocks 插件以预览属性块。',
+  'statblock.pluginMissing': '请安装并启用 Fantasy Statblocks 插件以预览数据卡。',
   'statblock.spellcasting': '施法',
   'statblock.traitDescription': '特质描述',
   'statblock.traitName': '特质名称',
@@ -30,7 +30,7 @@ export const statblock: Translation = {
   'statblock.counterRows': '行',
   'statblock.counterUses': '{name} 的次数',
   'statblock.countersNameFirst': '先给计数器命名：点击卡片上的标签。',
-  'statblock.trackedNowhere': '{label} 保存在角色的棋子或其进行中的战役里：把角色放到地图上，或开始它的战役',
+  'statblock.trackedNowhere': '{label} 保存在角色的指示物或其进行中的战役里：把角色放到地图上，或开始它的战役',
   'statblock.players': '玩家',
   'statblock.playersEdit': '可编辑',
   'statblock.playersHidden': '隐藏',

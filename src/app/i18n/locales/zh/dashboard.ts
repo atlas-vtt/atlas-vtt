@@ -3,7 +3,7 @@ import type { Translation } from '../../types';
 export const dashboard: Translation = {
   'dashboard.linkNote': '为此地图关联一篇笔记',
   'dashboard.linkOther': '关联另一篇笔记',
-  'dashboard.loading': '正在加载属性块…',
+  'dashboard.loading': '正在加载数据卡…',
   'dashboard.openNote': '在新标签页打开笔记',
   'dashboard.pickNote': '选一篇笔记放在地图旁边',
   'dashboard.justNow': '刚刚',
@@ -23,7 +23,7 @@ export const dashboard: Translation = {
   'dashboard.addMapFirst': '请先添加地图图片，再从它创建场景。',
   'dashboard.allCreatures': '全部（{count}）',
   'dashboard.inThisFight': '本场战斗（{count}）',
-  'dashboard.statblockScope': '显示的属性块',
+  'dashboard.statblockScope': '显示的数据卡',
   'dashboard.closeScreen': '关闭 DM 屏',
   'dashboard.begin': '开始',
   'dashboard.resume': '继续',

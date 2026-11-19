@@ -33,7 +33,7 @@ export const fog: Translation = {
   'fog.noFog': 'Nessuna nebbia su questa mappa',
   'fog.noFogOnLevel': 'Nessuna nebbia su questo livello',
   'fog.more': 'Altro',
-  'fog.gmOpacity': 'Opacità della nebbia nella vista GM',
+  'fog.gmOpacity': 'Opacità della nebbia nella vista del master',
   'fog.hideRooms': 'Nascondi tutte le stanze',
   'fog.roomsHidden': { one: '{count} stanza nascosta', other: '{count} stanze nascoste' },
   'fog.noRooms': 'Nessuna stanza trovata',

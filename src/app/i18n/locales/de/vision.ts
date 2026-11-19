@@ -16,6 +16,6 @@ export const vision: Translation = {
   'vision.partyMemberHint': 'Die Spieler sehen die Karte durch dieses Token. Das Token selbst ist für sie immer sichtbar.',
   'vision.carriesLight': 'Trägt ein Licht',
   'vision.carriesLightHint': 'Eine Fackel oder Laterne: Ihr Licht bewegt sich mit dem Token.',
-  'vision.noneFromStatblock': 'Keine, laut Werteblock',
-  'vision.rangeFromStatblock': '{range}, laut Werteblock',
+  'vision.noneFromStatblock': 'Keine, laut Statblock',
+  'vision.rangeFromStatblock': '{range}, laut Statblock',
 };

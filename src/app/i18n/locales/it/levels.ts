@@ -69,7 +69,7 @@ export const levels = {
   'levels.roofs': 'Tetti',
   'levels.roofsHide': 'Nascondi i tetti nella tua vista; i giocatori continuano a vedere i propri',
   'levels.roofsShow': 'Mostra i tetti nella tua vista',
-  'levels.roofsInSession': 'I giocatori vedono sempre i propri tetti; passa alla vista del GM per nasconderli nella tua',
+  'levels.roofsInSession': 'I giocatori vedono sempre i propri tetti; passa alla vista del master per nasconderli nella tua',
   'levels.position': 'Posiziona {name} sopra un altro piano',
   'levels.positionBar': 'Posiziona piano',
   'levels.positioning': 'Posizionamento di {name}',

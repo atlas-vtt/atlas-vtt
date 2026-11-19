@@ -18,7 +18,7 @@ export const token = {
   "token.makePlayerCharacter": "Rendi personaggio giocante",
   "token.noLongerPlayerCharacter": "Rimuovi stato di personaggio giocante",
   "token.playerCharacterFailed": "Impossibile modificare lo stato di personaggio giocante di questo token.",
-  "token.linkFailed": "Impossibile collegare il blocco statistiche",
+  "token.linkFailed": "Impossibile collegare lo statblock",
   "token.ringColor": "Colore del bordo",
   "token.reset": "Ripristina",
   "token.height": "Altezza",

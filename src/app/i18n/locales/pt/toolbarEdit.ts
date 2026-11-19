@@ -17,7 +17,7 @@ export const toolbarEdit: Translation = {
   'toolbarEdit.audio.description': 'Coloque sons no mapa que ficam mais altos quando os tokens se aproximam.',
   'toolbarEdit.dice.label': 'Dados',
   'toolbarEdit.dice.description': 'Role qualquer combinação de dados e mostre o resultado a todos na mesa.',
-  'toolbarEdit.assets.label': 'Gerenciador de recursos',
+  'toolbarEdit.assets.label': 'Gerenciador de assets',
   'toolbarEdit.assets.description': 'Encontre e coloque seus mapas, tokens, cenas e encontros.',
   'toolbarEdit.palette.label': 'Paleta de comandos',
   'toolbarEdit.palette.description': 'Encontre qualquer comando ou configuração do Atlas digitando o nome.',

@@ -1,7 +1,7 @@
 import type { Translation } from '../../types';
 
 export const review: Translation = {
-  'review.kind.token': 'Ficha',
+  'review.kind.token': 'Token',
   'review.kind.map': 'Mapa',
   'review.kind.note': 'Nota',
   'review.kind.statblock': 'Bloque de estadísticas',

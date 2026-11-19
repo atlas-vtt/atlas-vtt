@@ -24,7 +24,7 @@ export const armariumFindings: Translation = {
   'armariumFindings.code.manifest-folder': '合集包指定的合集文件夹不是 Atlas 会写入的。请重新导出合集。',
   'armariumFindings.code.manifest-cover': '合集包指定的封面不在它的文件中。请重新导出合集。',
   'armariumFindings.code.manifest-own-file': '这是 Atlas 自用的文件，合集包不能携带。请重新导出合集。',
-  'armariumFindings.code.manifest-statblock-image': '此属性块笔记引用的图片路径 Armarium 无法接受。请移动或重命名该图片。',
+  'armariumFindings.code.manifest-statblock-image': '此数据卡笔记引用的图片路径 Armarium 无法接受。请移动或重命名该图片。',
   'armariumFindings.code.zip-not-a-zip': '此文件不是 ZIP。请上传 Atlas 导出的 ZIP。',
   'armariumFindings.code.zip-too-large': 'ZIP 超过了 {size}。更大的合集请拆成两个分享。',
   'armariumFindings.code.zip-too-many-entries': 'ZIP 中的文件数超过了 Armarium 对单个合集的上限。请把合集拆成两个。',

@@ -53,6 +53,7 @@
 **Languages**
 
 - Atlas now speaks German, French, Spanish, Portuguese and Italian, following Obsidian's language, and Russian and Chinese cover every text. Italian contributed by Jackson98Tomphson
+- Gaming words read the way players at the table say them: Statblock, Encounter and Loot in German, token in Spanish, statblock and master in Italian, loot and assets in Portuguese
 
 ## Improved
 

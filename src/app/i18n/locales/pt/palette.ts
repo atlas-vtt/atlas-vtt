@@ -24,7 +24,7 @@ export const palette: Translation = {
   'palette.notePinTool': 'Ferramenta de alfinete de nota',
   'palette.openDiceLog': 'Abrir histórico de dados',
   'palette.openLootRoller': 'Abrir tabelas aleatórias',
-  'palette.openSceneBrowser': 'Abrir gerenciador de recursos',
+  'palette.openSceneBrowser': 'Abrir gerenciador de assets',
   'palette.openDMScreen': 'Abrir escudo do Mestre',
   'palette.openSoundPage': 'Abrir página de som',
   'palette.panel.grid': 'Configurações da grade',

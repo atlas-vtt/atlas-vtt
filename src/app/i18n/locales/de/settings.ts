@@ -58,7 +58,7 @@ export const settings: Translation = {
   'settings.tutorials.resetDesc': 'Jede Einführung beim nächsten Öffnen ihrer Funktion wieder zeigen.',
   'settings.tutorials.resetDone': 'Die Einführungen erscheinen wieder, wenn du die jeweilige Funktion das nächste Mal öffnest.',
   'settings.tutorials.show': 'Einführungen zeigen',
-  'settings.tutorials.showDesc': 'Kurze geführte Touren durch den Asset-Manager, die Befehlspalette, Token-Werteblöcke und Beute, jeweils einmal gezeigt.',
+  'settings.tutorials.showDesc': 'Kurze geführte Touren durch den Asset-Manager, die Befehlspalette, Token-Statblöcke und Loot, jeweils einmal gezeigt.',
   'settings.updates.available': 'Atlas {version} ist verfügbar',
   'settings.updates.changelog': 'Änderungsprotokoll',
   'settings.updates.changelogDesc': 'Installierte Version {version}. Neue Funktionen, Verbesserungen und Korrekturen ansehen.',

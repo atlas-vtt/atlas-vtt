@@ -4,7 +4,7 @@ export const hotkey: Translation = {
   'hotkey.help': 'Шпаргалка',
   'hotkey.palette': 'Палитра команд',
   'hotkey.assets': 'Менеджер ресурсов',
-  'hotkey.dashboard': 'Экран мастера',
+  'hotkey.dashboard': 'Ширма мастера',
   'hotkey.gmView': 'Вид мастера',
   'hotkey.sceneSwitcher': 'Переключение открытых карт',
   'hotkey.fitMap': 'Вписать карту в окно',

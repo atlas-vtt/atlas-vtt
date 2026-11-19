@@ -1,9 +1,9 @@
 import type { Translation } from '../../types';
 
 export const command: Translation = {
-  'command.newStatblockTemplate': 'Neue Werteblock-Vorlage…',
+  'command.newStatblockTemplate': 'Neue Statblock-Vorlage…',
   'command.cleanUpMissingAssets': 'Fehlende Assets in der aktuellen Karte bereinigen',
-  'command.createTokenFromStatblock': 'Token aus Werteblock-Bild erstellen',
+  'command.createTokenFromStatblock': 'Token aus Statblock-Bild erstellen',
   'command.dismissImageFromPlayerView': 'Bild aus der Spieleransicht entfernen',
   'command.displayImageOnPlayerView': 'Bild in der Spieleransicht zeigen',
   'command.importStatblockTokens': 'Tokens aus Fantasy Statblocks importieren',

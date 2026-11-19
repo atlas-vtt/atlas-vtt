@@ -237,7 +237,7 @@ export const statblockEditor: Translation = {
   'statblockEditor.role.enterName': 'Digite um nome',
   'statblockEditor.role.folder': 'Pasta para novas fichas de {name}',
   'statblockEditor.role.fromSystem': 'Do sistema {name}',
-  'statblockEditor.role.hint': 'Papéis são os tipos de ficha que esta coleção cria, como monstros e PdMs. Uma nova ficha começa do modelo do seu papel e é criada na pasta do seu papel.',
+  'statblockEditor.role.hint': 'Papéis são os tipos de ficha que esta coleção cria, como monstros e NPCs. Uma nova ficha começa do modelo do seu papel e é criada na pasta do seu papel.',
   'statblockEditor.role.lastOne': 'Uma coleção precisa de pelo menos um papel',
   'statblockEditor.role.missingTemplate': 'O modelo do papel não está neste cofre, então novas fichas começam do modelo embutido {name}.',
   'statblockEditor.role.name': 'Nome do papel',

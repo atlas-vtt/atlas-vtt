@@ -76,7 +76,7 @@ export const armariumListing: Translation = {
   'armariumListing.tag.monsters': 'Монстры',
   'armariumListing.tag.npcs': 'НИП',
   'armariumListing.tag.player-characters': 'Персонажи игроков',
-  'armariumListing.tag.encounters': 'Стычки',
+  'armariumListing.tag.encounters': 'Столкновения',
   'armariumListing.tag.items-and-loot': 'Предметы и добыча',
   'armariumListing.tag.puzzles-and-traps': 'Головоломки и ловушки',
   'armariumListing.tag.random-tables': 'Случайные таблицы',

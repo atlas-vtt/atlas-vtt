@@ -13,7 +13,7 @@ export const snapshots: Translation = {
   'snapshots.overwriteWithCurrent': 'Sobrescribir con el mapa actual',
   'snapshots.renameFailed': 'No se pudo renombrar la instantánea',
   'snapshots.renameNamed': 'Renombrar {name}',
-  'snapshots.restoreBody': 'Las fichas, chinchetas, la niebla, los dibujos, la iniciativa y todo lo demás de este mapa vuelven a como estaban en esta instantánea.',
+  'snapshots.restoreBody': 'Los tokens, chinchetas, la niebla, los dibujos, la iniciativa y todo lo demás de este mapa vuelven a como estaban en esta instantánea.',
   'snapshots.restoreFailed': 'No se pudo restaurar la instantánea',
   'snapshots.restoreNamed': 'Restaurar {name}',
   'snapshots.restoreTitle': '¿Restaurar "{name}"?',

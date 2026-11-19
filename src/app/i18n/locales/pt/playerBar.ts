@@ -14,5 +14,5 @@ export const playerBar: Translation = {
   'playerBar.freeze': 'Pausar a visão dos jogadores',
   'playerBar.unfreeze': 'Retomar: a visão dos jogadores volta a seguir você',
   'playerBar.freezeTrueScale': 'Com o TrueScale ligado, fixa os jogadores no enquadramento do seu mapa',
-  'playerBar.takeBack': 'Recolher o documento',
+  'playerBar.takeBack': 'Recolher o handout',
 };

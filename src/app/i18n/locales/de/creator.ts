@@ -20,7 +20,7 @@ export const creator: Translation = {
   'creator.tagsApply': { one: 'Tags gelten für {count} ausgewählte Vorschau.', other: 'Tags gelten für {count} ausgewählte Vorschauen.' },
   'creator.imageSource': 'Bildquelle',
   'creator.fromComputer': 'Dateien wählen…',
-  'creator.statblockNotes': 'Werteblock-Notizen wählen…',
+  'creator.statblockNotes': 'Statblock-Notizen wählen…',
   'creator.map.browse': 'oder klicke, um Kartenbilder auszuwählen',
   'creator.map.browse.touch': 'Tippe, um Kartenbilder auszuwählen',
   'creator.map.count': { one: '{count} Karte', other: '{count} Karten' },
