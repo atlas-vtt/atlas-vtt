@@ -24,7 +24,7 @@ export const armariumFindings: Translation = {
   'armariumFindings.code.manifest-folder': 'Il pacchetto indica una cartella di collezione che Atlas non scriverebbe. Esporta di nuovo la collezione.',
   'armariumFindings.code.manifest-cover': 'Il pacchetto indica una copertina che non è tra i suoi file. Esporta di nuovo la collezione.',
   'armariumFindings.code.manifest-own-file': 'Questo è un file che Atlas riserva a sé e che un pacchetto non può contenere. Esporta di nuovo la collezione.',
-  'armariumFindings.code.manifest-statblock-image': 'Questa nota del blocco statistiche indica un’immagine in un percorso che l’Armarium non accetta. Sposta o rinomina l’immagine.',
+  'armariumFindings.code.manifest-statblock-image': 'Questa nota dello statblock indica un’immagine in un percorso che l’Armarium non accetta. Sposta o rinomina l’immagine.',
   'armariumFindings.code.zip-not-a-zip': 'Questo file non è uno zip. Carica lo zip esportato da Atlas.',
   'armariumFindings.code.zip-too-large': 'Lo zip supera {size}. Condividi una collezione più grande in due parti.',
   'armariumFindings.code.zip-too-many-entries': 'Lo zip contiene più file di quanti l’Armarium ne accetti in una collezione. Dividi la collezione in due.',

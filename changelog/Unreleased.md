@@ -19,12 +19,15 @@
 - The floor moves by whole cells, so its grid stays lined up; hold Alt to place it freely, or use the arrow keys
 - Tokens, walls and lights on that floor move with it; every move is one undo step
 - Open it from a floor's row in Scene levels, the command palette, or the offer after adding a floor
+- Add level opens your Maps library to choose the new floor's map, with thumbnails, folders, tags and search; changing a floor's map or roof uses it too
 
 **Dice**
 
 - Dice written in a note roll with Atlas: click 2d6+3, d20, +4 or `dice: 1d20+5` in reading view to roll it into the open map's dice log, Shift-click for advantage and Alt-click for disadvantage. With a contribution by young-george
 - Saved rolls: the bookmark at the foot of the dice tray (or P) opens a panel beside it. Save a roll under a name, then roll it with one click
 - Change the tray's dice row: the pencil (or E) makes its dice wiggle. Drag them into order, take one out with its ×, add a die of any size (a d3, a d30) with +, and pin saved rolls into it from their panel, up to ten places. Swap the d100 for Daggerheart's two d12, for example. Number keys 1 to 0 follow the row
+- Dress a saved roll as in the Dice Lab: its dice open beside it when you save it, or with the pencil. Click a die for its faces, name and colour, set the bonus, and the critical, exploding and advantage rules. In the dice row it shows its first die in its colour and rolls at once
+- Keep a Dice Lab set as a saved roll with the flask beside +
 - Saved rolls and the row belong to the collection, so each game keeps its own
 - A label can follow brackets: in `2d6[slashing]+(1d10+12)[necrotic]` the d10 and the 12 are both necrotic
 
@@ -38,6 +41,8 @@
 
 - Small (75 % of Medium) and Tiny (50 %) sizes in the token creator, the asset library and the map's Size menu, and by shrinking with the resize handles. Contributed by Jackson98Tomphson
 - Tiny tokens snap to any quarter of a square cell; on hex grids both sizes take the hex's centre. Contributed by Jackson98Tomphson
+- Hold Shift and drag a token to turn it towards the pointer, as when you place it from the library. With several tokens selected, they all turn together. A Shift-click still adds a token to the selection or takes it out
+- Any kept measurement can follow a token: switch on Follows token in its menu. It keeps its shape and moves and turns with the token, so a cone stays in front of it
 
 **Armarium**
 
@@ -57,6 +62,7 @@
 **Languages**
 
 - Atlas now speaks German, French, Spanish, Portuguese and Italian, following Obsidian's language, and Russian and Chinese cover every text. Italian contributed by Jackson98Tomphson
+- Gaming words read the way players at the table say them: Statblock, Encounter and Loot in German, token in Spanish, statblock and master in Italian, loot and assets in Portuguese
 
 ## Improved
 
@@ -66,6 +72,7 @@
 
 ## Fixed
 
+- A token's ring now turns with its art
 - On Windows, converting music or ambience in a linked folder now moves the originals to the trash when you chose that, instead of keeping them
 - While the Armarium is open in the asset manager, the sidebar shows the Armarium's tags and filters the store by them, instead of the tags of the collection you were in
 - The table log has room around its messages again; rolls and the message field no longer sit against its edge

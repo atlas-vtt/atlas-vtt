@@ -41,7 +41,7 @@ export const settings = {
   "settings.tutorials.resetDesc": "Mostra di nuovo ogni tutorial alla prossima apertura della relativa funzionalità.",
   "settings.tutorials.resetDone": "I tutorial riappariranno alla prossima apertura delle rispettive funzionalità.",
   "settings.tutorials.show": "Mostra tutorial",
-  "settings.tutorials.showDesc": "Brevi visite guidate alla gestione risorse, al riquadro comandi, ai blocchi statistiche dei token e al bottino, mostrate una sola volta.",
+  "settings.tutorials.showDesc": "Brevi visite guidate alla gestione risorse, al riquadro comandi, agli statblock dei token e al bottino, mostrate una sola volta.",
   "settings.updates.changelog": "Note di versione",
   "settings.updates.changelogDesc": "Versione installata: {version}. Esplora novità, miglioramenti e correzioni.",
   "settings.updates.featureOnly": "Solo aggiornamenti delle funzionalità",

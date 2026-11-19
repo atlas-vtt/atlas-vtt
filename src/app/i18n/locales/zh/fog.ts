@@ -33,7 +33,7 @@ export const fog: Translation = {
   'fog.noFog': '这张地图上没有迷雾',
   'fog.noFogOnLevel': '这个楼层上没有迷雾',
   'fog.more': '更多',
-  'fog.gmOpacity': '主持人视图中的迷雾不透明度',
+  'fog.gmOpacity': 'GM 视图中的迷雾不透明度',
   'fog.hideRooms': '隐藏所有房间',
   'fog.roomsHidden': { other: '已隐藏 {count} 个房间' },
   'fog.noRooms': '没有找到房间',

@@ -18,7 +18,7 @@ export const toolbarEdit: Translation = {
   'toolbarEdit.dice.label': 'Кубики',
   'toolbarEdit.dice.description': 'Бросайте любой набор кубиков и показывайте результат всем за столом.',
   'toolbarEdit.assets.label': 'Менеджер ресурсов',
-  'toolbarEdit.assets.description': 'Находите и размещайте карты, токены, сцены и стычки.',
+  'toolbarEdit.assets.description': 'Находите и размещайте карты, токены, сцены и столкновения.',
   'toolbarEdit.palette.label': 'Палитра команд',
   'toolbarEdit.palette.description': 'Найдите любую команду или настройку Atlas, набрав её название.',
   'toolbarEdit.undo.label': 'Отмена и повтор',

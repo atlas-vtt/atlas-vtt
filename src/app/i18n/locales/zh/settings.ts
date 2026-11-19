@@ -42,7 +42,7 @@ export const settings: Translation = {
   'settings.tutorials.resetDesc': '下次打开对应功能时再次显示每个教程。',
   'settings.tutorials.resetDone': '下次打开各项功能时会再次显示教程。',
   'settings.tutorials.show': '显示教程',
-  'settings.tutorials.showDesc': '素材库、命令面板、棋子属性块和战利品的简短引导，各自只显示一次。',
+  'settings.tutorials.showDesc': '素材库、命令面板、指示物数据卡和战利品的简短引导，各自只显示一次。',
   'settings.updates.changelog': '更新日志',
   'settings.updates.changelogDesc': '已安装版本 {version}。浏览新功能、改进和修复。',
   'settings.updates.featureOnly': '仅功能更新',

@@ -117,6 +117,7 @@ export class BelowTokens {
     shown.group.position.set(token.x, token.y);
     shown.group.zIndex = token.layer ?? 0;
     shown.art.rotation = ((token.rotation ?? 0) * Math.PI) / 180;
+    shown.ring.rotation = shown.art.rotation;
     shown.mask.clear().circle(0, 0, size / 2).fill({ color: 0xffffff });
     this.fitArt(shown);
     this.drawRing(shown);

@@ -23,7 +23,7 @@ export const issue: Translation = {
   'issue.area.vision': 'Névoa de guerra e iluminação',
   'issue.area.combat': 'Iniciativa e combate',
   'issue.area.dice': 'Dados',
-  'issue.area.asset-manager': 'Gerenciador de recursos',
+  'issue.area.asset-manager': 'Gerenciador de assets',
   'issue.area.player-view': 'Visão dos jogadores',
   'issue.area.settings': 'Configurações, comandos e atualizações',
   'issue.area.online': 'Jogo online',

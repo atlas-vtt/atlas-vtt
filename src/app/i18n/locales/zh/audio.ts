@@ -67,7 +67,7 @@ export const audio: Translation = {
   'audio.outputNamed': '{device}，此设备的输出',
   'audio.outputHint': '此设备上音乐、环境音和骰子声的播放位置。',
   'audio.screen.pages': 'DM 屏页面',
-  'audio.screen.statblocks': '属性块',
+  'audio.screen.statblocks': '数据卡',
   'audio.screen.sound': '声音',
   'audio.nextTag': '下一个氛围',
   'audio.playingTag': '正在播放',

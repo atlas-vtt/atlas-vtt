@@ -29,7 +29,7 @@ export const importReview: Translation = {
   'importReview.restore': 'Restaurar o original: substituir também tudo o que você alterou ou excluiu nesta coleção',
   'importReview.restoreHint': 'Substituir tudo o que você alterou pelo original',
   'importReview.shared': 'Esta é uma cópia que alguém compartilhou, não um lançamento do autor. Ela pode conter alterações dessa pessoa.',
-  'importReview.skipped': { one: '{count} recurso ficará de fora porque se refere a arquivos fora da pasta do Atlas:', other: '{count} recursos ficarão de fora porque se referem a arquivos fora da pasta do Atlas:' },
+  'importReview.skipped': { one: '{count} asset ficará de fora porque se refere a arquivos fora da pasta do Atlas:', other: '{count} assets ficarão de fora porque se referem a arquivos fora da pasta do Atlas:' },
   'importReview.title.changed': 'Cópia alterada de “{name}”',
   'importReview.title.new': 'Importar “{name}”',
   'importReview.title.newer': 'Atualizar “{name}”',

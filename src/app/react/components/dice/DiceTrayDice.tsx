@@ -3,6 +3,8 @@ import { LabelTooltip, TooltipProvider } from '../../../packages/components/prim
 import type { DicePreset, DiceRowSlot } from '../../../types/dicePresetTypes';
 import { DieFace } from './DieFace';
 import { PresetFace } from './PresetFace';
+import { PresetLookFace } from './PresetLookFace';
+import { presetText } from './presetLook';
 import { MAX_DICE, MAX_PER_DIE, TRAY_TOOLTIP_GAP, trayDiceCount, type TrayPool } from './diceTrayPool';
 import { presetCount } from './diceTrayText';
 import { t } from '../../../i18n';
@@ -56,6 +58,14 @@ export function faceOf(slot: DiceRowSlot, presets: readonly DicePreset[], formul
   }
   const preset = presets.find((candidate) => candidate.id === slot.id);
   if (!preset) return null;
+  if (preset.look) {
+    const look = preset.look;
+    return {
+      key: preset.id, caption: preset.name, name: preset.name, held: 0, limit: null,
+      hint: `${presetText(preset)} · ${t('diceRoll.presetRollsAtOnce')}`,
+      art: <PresetLookFace preset={{ ...preset, look }} />,
+    };
+  }
   const held = presetCount(formula, preset.formula);
   return {
     key: preset.id, caption: preset.name,

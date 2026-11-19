@@ -57,7 +57,7 @@ export const loot: Translation = {
   'loot.tree.untickAll': 'Décocher toutes les vues de cette base.',
   'loot.openPlayerView': 'Ouvrez la vue joueurs pour montrer le butin à vos joueurs.',
   'loot.openPlayerView.mobile': 'Lancez une table en ligne pour montrer le butin à vos joueurs.',
-  'loot.query.note': 'Atlas lit cette vue pour son tireur de butin. Ouvrez le tireur de butin sur une carte pour tirer dessus.',
+  'loot.query.note': 'Atlas lit cette vue pour ses tables aléatoires. Ouvrez les tables aléatoires sur une carte pour tirer dessus.',
   'loot.query.name': 'Butin Atlas',
   'loot.unreadable': 'Illisible',
 };

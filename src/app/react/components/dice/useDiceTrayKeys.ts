@@ -38,6 +38,9 @@ export function useDiceTrayKeys(root: React.RefObject<HTMLElement | null>, keys:
     if (!doc) return undefined;
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
+        // In a saved roll's editor Escape is the editor's (it steps back through a die's fan, then closes the editor),
+        // and in a menu one of its choices opened, the menu's.
+        if (event.target instanceof Element && event.target.closest('.atlas-dice-preset-editor, .atlas-ctx-menu')) return;
         event.preventDefault();
         current.current.onClose();
         return;

@@ -57,7 +57,7 @@ export const armariumUpload: Translation = {
   'armariumUpload.stage.manifest': 'Inhaltsverzeichnis',
   'armariumUpload.stage.json': 'Szenen und Daten',
   'armariumUpload.stage.notes': 'Notizen',
-  'armariumUpload.stage.bases': 'Beute-Bases',
+  'armariumUpload.stage.bases': 'Loot-Bases',
   'armariumUpload.stage.images': 'Bilder',
   'armariumUpload.stage.cross-files': 'Links zwischen Dateien',
   'armariumUpload.stage.rebuild': 'Neuaufbau',

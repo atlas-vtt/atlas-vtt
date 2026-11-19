@@ -62,7 +62,6 @@ export const diceRoll = {
   "diceRoll.presetUnpin": "Togli dalla fila di dadi",
   "diceRoll.presetRowFull": "La fila di dadi ne contiene {max}; prima togline uno",
   "diceRoll.presetDelete": "Elimina",
-  "diceRoll.presetDeleteNamed": "Elimina {name}",
   "diceRoll.presetName": "Nome",
   "diceRoll.presetFormula": "Formula",
   "diceRoll.presetSave": "Salva tiro",

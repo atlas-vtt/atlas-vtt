@@ -9,7 +9,7 @@ export const review: Translation = {
   'review.kind.scene': 'Cena',
   'review.kind.encounter': 'Encontro',
   'review.kind.player': 'Jogador',
-  'review.kind.asset': 'Recurso',
+  'review.kind.asset': 'Asset',
   'review.kind.collection': 'Coleção',
   'review.kind.file': 'Arquivo',
   'review.field.name': 'Nome da coleção',

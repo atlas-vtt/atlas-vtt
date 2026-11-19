@@ -3,7 +3,7 @@ import type { Translation } from '../../types';
 export const menu: Translation = {
   'menu.clearRing': '清除环颜色',
   'menu.conditions': '状态',
-  'menu.conditionsFor': { other: '状态（{count} 个棋子）' },
+  'menu.conditionsFor': { other: '状态（{count} 个指示物）' },
   'menu.lower': '降低{label}',
   'menu.raise': '提高{label}',
   'menu.ring.blue': '蓝色',

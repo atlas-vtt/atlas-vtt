@@ -43,6 +43,8 @@ import { picksMore } from '../../annotations/selectMore';
 import { pasteAtViewCentre } from '../../selection/wholeSelection';
 import { toolSwitch } from '../../types/toolSwitches';
 import { OPEN_PREVIEW_EVENT } from '../../services/previewByHand';
+import { TokenTurnDrag } from './TokenTurnDrag';
+import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils';
 
 interface DragState {
   isDragging: boolean;
@@ -61,6 +63,8 @@ interface DragState {
   deselectsOnRelease?: boolean;
   /** Alt/Option was held at pointer down: the drag moves copies and leaves the originals. */
   copyOnDrag?: boolean;
+  /** Shift was held at pointer down: the drag turns the tokens to look at the pointer instead of moving them (`TokenTurnDrag`). */
+  turnsOnDrag?: boolean;
   /** The token the pointer grabbed; the drag ruler measures its path. */
   rulerTokenId?: string;
   /** The walls the dragged tokens stop at (session view only), fixed when the drag starts. */
@@ -118,6 +122,8 @@ export class InteractionController implements ITokenInteractionController {
   private lostPointerTargets: { canvas: HTMLElement; win: Window | null } | null = null;
   /** The popover of a change for the selection's tokens, made with the first one (`selectionResourceEntry`). */
   private selectionEditing: SelectionResourceEditing | null = null;
+  /** Turns tokens on a Shift-drag, made with the first. */
+  private turnDrag: TokenTurnDrag | null = null;
 
   constructor(
     viewport: Viewport,
@@ -247,13 +253,9 @@ export class InteractionController implements ITokenInteractionController {
     // Shift, or Select more: the press adds the token to the selection or takes it out
     const more = picksMore(state, e);
 
-    // Such a press toggles membership. With Shift a selected token leaves at once, and nothing is dragged;
-    // with the switch it leaves when the press is released in place, since the switch stays on while the selection is dragged.
+    // Such a press toggles membership: a selected token leaves when the press is released in place,
+    // since a drag moves the selection (with the switch) or turns it (with Shift).
     const leaves = more && isTokenSelected;
-    if (leaves && e.shiftKey) {
-      setSelection(selectedIds.filter((id) => id !== token.id));
-      return;
-    }
 
     this.viewport.plugins.pause('drag');
     
@@ -267,7 +269,8 @@ export class InteractionController implements ITokenInteractionController {
     // Store the token for potential click handling
     this.dragState.clickToken = token;
     this.dragState.hasMoved = false;
-    this.dragState.copyOnDrag = e.altKey;
+    this.dragState.copyOnDrag = e.altKey && !e.shiftKey;
+    this.dragState.turnsOnDrag = e.shiftKey;
     this.dragState.selectsOnRelease = false;
     this.dragState.deselectsOnRelease = leaves;
     
@@ -338,6 +341,10 @@ export class InteractionController implements ITokenInteractionController {
   /** Ends the press or drag as if it had never begun: the tokens stand where they were taken from, and no undo step is left. */
   private putBack(): void {
     if (!this.dragState.isDragging) return;
+    if (this.dragState.turnsOnDrag && this.dragState.hasMoved) {
+      this.endTurn(false);
+      return;
+    }
     const wasDrag = this.dragState.hasMoved;
     this.dragState.isDragging = false;
     this.cleanupDragListeners();
@@ -385,20 +392,15 @@ export class InteractionController implements ITokenInteractionController {
     const moveDistance = Math.sqrt(dx * dx + dy * dy);
     if (!this.dragState.hasMoved && moveDistance > tokenDragDistance(this.viewport, e)) {
       this.dragState.hasMoved = true;
-      this.store.getState().setIsDragging(true);
-      // The whole drag becomes one undo step; closed in onPointerUp.
-      beginHistoryTransaction(this.store);
-      const grabbedIndex = Math.max(0, this.dragState.dragIds.indexOf(this.dragState.clickToken?.id ?? ''));
-      if (this.dragState.copyOnDrag) this.dragCopiesInstead();
-      // Held are the tokens that move: the copies of an Alt-drag, before anything has moved.
-      this.reportHeld(this.dragState.dragIds);
-      this.startDragRuler(this.dragState.dragIds[grabbedIndex]);
-      this.dragState.walls = sessionDragWalls(this.store.getState(), this.mapSize());
-      this.dragState.current = {};
+      if (this.dragState.turnsOnDrag) this.beginTurn();
+      else this.beginMove();
     }
-    
     // If we haven't moved enough, don't update positions
     if (!this.dragState.hasMoved) return;
+    if (this.dragState.turnsOnDrag) {
+      this.turnDrag?.to(worldPos, e.altKey);
+      return;
+    }
 
     // Positions come from the pointer, not the sprites: an Alt-drag copy may still be loading its sprite.
     // In session view each token follows the pointer only up to the first wall in its way.
@@ -439,6 +441,48 @@ export class InteractionController implements ITokenInteractionController {
       this.dragState.animationFrameId = window.requestAnimationFrame(() => this.throttledUIUpdate());
     }
   };
+
+  /** A drag past the threshold: the held tokens follow the pointer, as one undo step closed in `endDrag`. */
+  private beginMove(): void {
+    this.store.getState().setIsDragging(true);
+    beginHistoryTransaction(this.store);
+    const grabbedIndex = Math.max(0, this.dragState.dragIds.indexOf(this.dragState.clickToken?.id ?? ''));
+    if (this.dragState.copyOnDrag) this.dragCopiesInstead();
+    // Held are the tokens that move: the copies of an Alt-drag, before anything has moved.
+    this.reportHeld(this.dragState.dragIds);
+    this.startDragRuler(this.dragState.dragIds[grabbedIndex]);
+    this.dragState.walls = sessionDragWalls(this.store.getState(), this.mapSize());
+    this.dragState.current = {};
+  }
+
+  /** A Shift-drag past the threshold: the held tokens turn to look at the pointer, where they stand. */
+  private beginTurn(): void {
+    this.turnDrag ??= new TokenTurnDrag(this.viewport, this.store, () => cssColorToHexNumber(getObsidianAccentColor()));
+    this.turnDrag.begin(this.dragState.dragIds.flatMap((id) => {
+      const at = this.dragState.initialPositions[id];
+      return at ? [{ id, at, diameter: this.getTokenSprite?.(id)?.tokenSize ?? 70 }] : [];
+    }));
+  }
+
+  /** Ends a Shift-drag's turn: kept as one undo step, or turned back (`keep` false) with none. */
+  private endTurn(keep: boolean): void {
+    this.dragState.isDragging = false;
+    if (keep) this.turnDrag?.end();
+    else this.turnDrag?.cancel();
+    this.cleanupDragListeners();
+    this.viewport.plugins.resume('drag');
+    this.dragState.hasMoved = false;
+    this.dragState.turnsOnDrag = false;
+    delete this.dragState.clickToken;
+    this.dragState.selectsOnRelease = false;
+    this.dragState.deselectsOnRelease = false;
+    this.reportHeld([]);
+  }
+
+  /** The chevrons of a turn under way: the GM's alone (`markerLayers`). */
+  public turnLayers(): Container[] {
+    return this.turnDrag ? [this.turnDrag.layer] : [];
+  }
 
   /** Swaps the drag over to fresh copies of the dragged tokens, which then become the selection. */
   private dragCopiesInstead(): void {
@@ -503,6 +547,10 @@ export class InteractionController implements ITokenInteractionController {
    */
   private endDrag(worldPos: { x: number; y: number }, menuAt: StairsMenuPlace | null = null): void {
     if (!this.dragState.isDragging) return;
+    if (this.dragState.turnsOnDrag && this.dragState.hasMoved) {
+      this.endTurn(true);
+      return;
+    }
     const wasDrag = this.dragState.hasMoved;
     let stepHeld = false;
 
@@ -769,8 +817,11 @@ export class InteractionController implements ITokenInteractionController {
       delete this.hoverHandlers[tokenId];
     }
 
-    // A drag interrupted by teardown must not leave its transaction open
-    if (this.dragState.hasMoved) endHistoryTransaction(this.store);
+    // A drag interrupted by teardown must not leave its transaction open (a turn closes its own)
+    const turning = this.turnDrag?.turning ?? false;
+    this.turnDrag?.destroy();
+    this.turnDrag = null;
+    if (this.dragState.hasMoved && !turning) endHistoryTransaction(this.store);
     holdTokens(this.store, []);
     this.dragRuler?.end();
     this.selectionEditing?.close();

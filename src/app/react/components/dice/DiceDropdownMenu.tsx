@@ -4,7 +4,8 @@ import { useKeepInView } from '../../../packages/components/primitives/useKeepIn
 import { DiceTool } from '../../../tools/DiceTool';
 import { DiceTray } from './DiceTray';
 import { DicePresetsPanel } from './DicePresetsPanel';
-import { useDiceShelf } from './useDiceShelf';
+import { useSavedRolls } from './useSavedRolls';
+import { DicePresetEditor } from './DicePresetEditor';
 import { Tutorial } from '../../../onboarding/Tutorial';
 import { savedRollsSteps } from '../../../onboarding/savedRollsTour';
 import { t } from '../../../i18n';
@@ -49,7 +50,8 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
   const shareRolls = useShareRolls();
   // Read as the tray opens: it unmounts when closed, so a set changed meanwhile is read anew.
   const advantage = isOpen ? trayAdvantage(diceTool) : undefined;
-  const { shelf, change } = useDiceShelf();
+  const saved = useSavedRolls(diceTool);
+  const { shelf, change } = saved;
   const [presetsOpen, setPresetsOpen] = useState<boolean>(() => app?.loadLocalStorage?.(PRESETS_OPEN_KEY) === true);
   const togglePresets = (): void => {
     setPresetsOpen(!presetsOpen);
@@ -74,7 +76,8 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
       const target = event.target as HTMLElement;
       if (triggerRef?.current?.contains(target)) return;
       // The tray, and the saved rolls' tour over it, which explains the tray and must not close it.
-      if (target.closest('.atlas-dice-tray, .atlas-onboarding-overlay')) return;
+      // A menu a choice of the saved roll's editor opened lies in the document, outside the tray, and is the tray's too.
+      if (target.closest('.atlas-dice-tray, .atlas-onboarding-overlay, .atlas-ctx-menu')) return;
       onToggle();
     };
 
@@ -108,8 +111,15 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
             onChange={change}
             trayFormula={trayFormula}
             problemOf={problemOf}
-            onRoll={(preset) => diceTool.rollDice(preset.formula)}
-          />
+            onRoll={(preset) => saved.roll(preset)}
+            onEdit={saved.setEditing}
+            sets={saved.sets}
+            editingId={saved.editing?.id ?? null}
+          >
+            {saved.editing && (
+              <DicePresetEditor key={saved.editing.id} preset={saved.editing} onSave={saved.save} onClose={() => saved.setEditing(null)} />
+            )}
+          </DicePresetsPanel>
           <Tutorial id="savedRolls" root={trayRef.current} label={t('tour.savedRolls.label')} steps={savedRollsSteps()} />
         </>
       )}
@@ -133,6 +143,7 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
           onShelfChange={change ?? undefined}
           onFormula={setTrayFormula}
           presetsPanel={change ? { open: presetsOpen, onToggle: togglePresets } : undefined}
+          onRollPreset={(preset, side) => saved.roll(preset, side)}
           {...(shareRolls && { shareRolls })}
         />
       </div>

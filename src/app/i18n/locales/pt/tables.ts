@@ -100,7 +100,7 @@ export const tables: Translation = {
   'tables.settings.addNote': 'Adicionar de uma nota',
   'tables.settings.addRarity': 'Adicionar raridade',
   'tables.settings.addTables': { one: 'Adicionar {count} tabela', other: 'Adicionar {count} tabelas' },
-  'tables.settings.bases': 'Bases de espólio',
+  'tables.settings.bases': 'Bases de loot',
   'tables.settings.hiddenColumns': 'Só você vê',
   'tables.settings.label': 'Nome no Atlas',
   'tables.settings.kindOf': 'O que {name} dá',

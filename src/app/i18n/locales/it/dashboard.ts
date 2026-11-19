@@ -3,7 +3,7 @@ import type { Translation } from '../../types';
 export const dashboard = {
   "dashboard.linkNote": "Collega una nota a questa mappa",
   "dashboard.linkOther": "Collega un’altra nota",
-  "dashboard.loading": "Caricamento dei blocchi statistiche…",
+  "dashboard.loading": "Caricamento degli statblock…",
   "dashboard.openNote": "Apri nota in una nuova scheda",
   "dashboard.pickNote": "Scegli una nota da tenere accanto alla mappa",
   "dashboard.justNow": "Ora",
@@ -25,6 +25,6 @@ export const dashboard = {
   "dashboard.addMapFirst": "Aggiungi prima un’immagine di mappa, poi crea una scena a partire da essa.",
   "dashboard.allCreatures": "Tutte ({count})",
   "dashboard.inThisFight": "In questo combattimento ({count})",
-  "dashboard.statblockScope": "Blocchi statistiche mostrati",
-  "dashboard.closeScreen": "Chiudi schermo del GM",
+  "dashboard.statblockScope": "Statblock mostrati",
+  "dashboard.closeScreen": "Chiudi schermo del master",
 } satisfies Translation;

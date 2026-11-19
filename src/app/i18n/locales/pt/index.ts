@@ -126,8 +126,8 @@ import { wall } from './wall';
 import { widgets } from './widgets';
 
 export const pt: Translation = {
-  'index.unreadable': 'O Atlas VTT não conseguiu ler o índice de recursos ({path}) e o deixou intacto. Reinicie o Obsidian para tentar de novo.',
-  'index.rebuilding': 'O Atlas VTT não conseguiu ler o índice de recursos e está reconstruindo-o a partir dos arquivos das suas coleções. O arquivo ilegível foi guardado como {path}.',
+  'index.unreadable': 'O Atlas VTT não conseguiu ler o índice de assets ({path}) e o deixou intacto. Reinicie o Obsidian para tentar de novo.',
+  'index.rebuilding': 'O Atlas VTT não conseguiu ler o índice de assets e está reconstruindo-o a partir dos arquivos das suas coleções. O arquivo ilegível foi guardado como {path}.',
   'index.folderMoved': 'A pasta do Atlas foi movida para “{path}”. O Atlas só encontra a biblioteca dele em “{folder}”, na raiz do cofre: mova a pasta de volta para lá e seus mapas, cenas e tokens voltam.',
   ...account,
   ...align,

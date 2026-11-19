@@ -15,9 +15,15 @@ const SIZES: ReadonlyArray<{ upTo: number; size: number }> = [
   { upTo: 16, size: 64 },
 ];
 const SMALLEST = 56;
+/** The same for a tray in a small card (a saved roll's editor): a few dice still share a line. */
+const COMPACT_SIZES: ReadonlyArray<{ upTo: number; size: number }> = [
+  { upTo: 3, size: 80 },
+  { upTo: 5, size: 72 },
+  { upTo: 8, size: 64 },
+];
 
-export function dieSize(cells: number): number {
-  return SIZES.find(({ upTo }) => cells <= upTo)?.size ?? SMALLEST;
+export function dieSize(cells: number, compact = false): number {
+  return (compact ? COMPACT_SIZES : SIZES).find(({ upTo }) => cells <= upTo)?.size ?? SMALLEST;
 }
 
 /** Room between the die's edge and its fan's buttons. */

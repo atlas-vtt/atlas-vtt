@@ -5,6 +5,6 @@ export const sbToken: Translation = {
   'sbToken.noteGone': 'La nota del bloque de estadísticas ya no existe.',
   'sbToken.unrecognized': 'No hay ningún bloque de estadísticas reconocido en esta nota.',
   'sbToken.imageGone': 'La imagen de origen ya no existe.',
-  'sbToken.created': 'Ficha creada.',
-  'sbToken.failed': 'No se pudo crear esta ficha.',
+  'sbToken.created': 'Token creado.',
+  'sbToken.failed': 'No se pudo crear este token.',
 };

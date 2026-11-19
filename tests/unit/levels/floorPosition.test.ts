@@ -98,8 +98,18 @@ function pointer(target: EventTarget, type: string, clientX: number, clientY: nu
   target.dispatchEvent(event);
 }
 
-function key(name: string, shiftKey = false): void {
-  window.dispatchEvent(new KeyboardEvent('keydown', { key: name, shiftKey, bubbles: true, cancelable: true }));
+function key(name: string, shiftKey = false, repeat = false): void {
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: name, shiftKey, repeat, bubbles: true, cancelable: true }));
+}
+
+function keyUp(name: string): void {
+  window.dispatchEvent(new KeyboardEvent('keyup', { key: name, bubbles: true, cancelable: true }));
+}
+
+/** A key pressed and let go. */
+function tap(name: string, shiftKey = false): void {
+  key(name, shiftKey);
+  keyUp(name);
 }
 
 describe('Position floor on the map', () => {
@@ -109,21 +119,36 @@ describe('Position floor on the map', () => {
     positioning = null;
   });
 
-  function start(store: ViewAtlasStore, zoom = 1): { canvas: HTMLCanvasElement; done: { count: number } } {
+  /** What the map image was drawn with while a move lasted: offsets, null for the scene's own placement. */
+  type Previews = ({ x: number; y: number } | null)[];
+
+  function start(store: ViewAtlasStore, zoom = 1): { canvas: HTMLCanvasElement; done: { count: number }; previews: Previews } {
     const canvas = mountCanvas();
     const done = { count: 0 };
-    positioning = new FloorPositioning({ store, viewId: VIEW_ID, canvas, zoom: () => zoom, onStopped: () => {}, onDone: () => { done.count++; } });
-    return { canvas, done };
+    const previews: Previews = [];
+    positioning = new FloorPositioning({
+      store, viewId: VIEW_ID, canvas, zoom: () => zoom,
+      preview: (placement) => previews.push(placement ? placement.offset ?? { x: 0, y: 0 } : null),
+      onStopped: () => {}, onDone: () => { done.count++; },
+    });
+    return { canvas, done, previews };
   }
 
   it('drags the floor shown by whole cells with what stands on it alone, in one undo step', () => {
     const store = threeFloors();
-    const { canvas } = start(store, 2);
+    const before = store.getState().objects;
+    const { canvas, previews } = start(store, 2);
 
     pointer(canvas, 'pointerdown', 100, 100);
     pointer(window, 'pointermove', 200, 120);
+    pointer(window, 'pointermove', 210, 125);
     pointer(window, 'pointermove', 400, 240);
+    // While it lasts the drag only draws the map image, once per cell it reaches: the scene is written at the release
+    expect(store.getState().objects).toBe(before);
+    expect(store.getState().levelAlignments).toBeUndefined();
+    expect(previews).toEqual([{ x: 70, y: 0 }, { x: 140, y: 70 }]);
     pointer(window, 'pointerup', 400, 240);
+    expect(previews.at(-1)).toBeNull();
 
     // 300 × 140 screen pixels at zoom 2 are 150 × 70 world pixels: two cells and one
     const state = store.getState();
@@ -141,11 +166,12 @@ describe('Position floor on the map', () => {
   it('puts the floor back where it lay when the drag is cancelled with Escape, leaving no step', () => {
     const store = threeFloors();
     const before = store.getState().objects;
-    const { canvas, done } = start(store);
+    const { canvas, done, previews } = start(store);
 
     pointer(canvas, 'pointerdown', 0, 0);
     pointer(window, 'pointermove', 300, 0);
     key('Escape');
+    expect(previews).toEqual([{ x: 280, y: 0 }, null]);
 
     expect(store.getState().objects).toBe(before);
     expect(store.getState().levelAlignments).toBeUndefined();
@@ -160,11 +186,26 @@ describe('Position floor on the map', () => {
     const store = threeFloors();
     start(store);
 
-    key('ArrowRight');
-    key('ArrowDown', true);
+    tap('ArrowRight');
+    tap('ArrowDown', true);
 
     expect(store.getState().levelAlignments?.cellar?.offset).toEqual({ x: 70, y: 350 });
     expect(store.temporal.getState().pastStates).toHaveLength(2);
+  });
+
+  it('draws a held arrow key\'s moves and writes them once, when it is let go', () => {
+    const store = threeFloors();
+    const { previews } = start(store);
+
+    key('ArrowRight');
+    key('ArrowRight', false, true);
+    key('ArrowRight', false, true);
+    expect(store.getState().levelAlignments).toBeUndefined();
+    expect(previews).toEqual([{ x: 70, y: 0 }, { x: 140, y: 0 }, { x: 210, y: 0 }]);
+
+    keyUp('ArrowRight');
+    expect(store.getState().levelAlignments?.cellar?.offset).toEqual({ x: 210, y: 0 });
+    expect(store.temporal.getState().pastStates).toHaveLength(1);
   });
 
   it('leaves the arrow keys and Enter to a control that uses them, such as a slider', () => {

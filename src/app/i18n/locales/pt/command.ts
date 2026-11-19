@@ -2,7 +2,7 @@ import type { Translation } from '../../types';
 
 export const command: Translation = {
   'command.newStatblockTemplate': 'Novo modelo de ficha…',
-  'command.cleanUpMissingAssets': 'Limpar recursos ausentes no mapa atual',
+  'command.cleanUpMissingAssets': 'Limpar assets ausentes no mapa atual',
   'command.createTokenFromStatblock': 'Criar token a partir da imagem da ficha',
   'command.dismissImageFromPlayerView': 'Tirar imagem da visão dos jogadores',
   'command.displayImageOnPlayerView': 'Mostrar imagem na visão dos jogadores',
@@ -11,7 +11,7 @@ export const command: Translation = {
   'command.openDashboard': 'Abrir painel',
   'command.generateDungeon': 'Gerar masmorra',
   'command.openPlayerWindow': 'Abrir janela dos jogadores',
-  'command.openSceneBrowser': 'Abrir gerenciador de recursos',
+  'command.openSceneBrowser': 'Abrir gerenciador de assets',
   'command.reportIssue': 'Relatar um problema…',
   'command.sendMapToPlayerView': 'Enviar mapa atual para a visão dos jogadores',
   'command.showMapInPlayerWindow': 'Mostrar mapa atual na janela dos jogadores local',

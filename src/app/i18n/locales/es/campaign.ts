@@ -41,5 +41,5 @@ export const campaign: Translation = {
   'campaign.systemWhenPlayed': 'Los mapas se juegan con estas reglas solo mientras la mesa en línea de esta campaña esté abierta.',
   'campaign.delete': 'Eliminar campaña',
   'campaign.deleteTitle': '¿Eliminar {name}?',
-  'campaign.deleteMessage': 'Las escenas, mapas y fichas que usaba se quedan en tu biblioteca.',
+  'campaign.deleteMessage': 'Las escenas, mapas y tokens que usaba se quedan en tu biblioteca.',
 };

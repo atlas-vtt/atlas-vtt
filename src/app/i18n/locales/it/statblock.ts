@@ -2,8 +2,8 @@ import type { Translation } from '../../types';
 
 export const statblock = {
   "statblock.assignToken": "Assegna token",
-  "statblock.assignTokenHint": "Assegna un token a questo blocco statistiche",
-  "statblock.changeToken": "Cambia token di questo blocco statistiche",
+  "statblock.assignTokenHint": "Assegna un token a questo statblock",
+  "statblock.changeToken": "Cambia token di questo statblock",
   "statblock.creature": "Creatura",
   "statblock.decrease": "Diminuisci {label}",
   "statblock.editNamed": "Modifica {name}",
@@ -13,7 +13,7 @@ export const statblock = {
   "statblock.pip": "{label} {n} di {max}",
   "statblock.pipDamage": "Danni {label} {n} di {max}",
   "statblock.players": "Giocatori",
-  "statblock.pluginMissing": "Installa e attiva il plugin Fantasy Statblocks per visualizzare le anteprime dei blocchi statistiche.",
+  "statblock.pluginMissing": "Installa e attiva il plugin Fantasy Statblocks per visualizzare le anteprime degli statblock.",
   "statblock.spellcasting": "Incantesimi",
   "statblock.traitDescription": "descrizione del tratto",
   "statblock.traitName": "nome del tratto",

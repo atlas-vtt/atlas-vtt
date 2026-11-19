@@ -27,7 +27,7 @@ export const rest: Translation = {
   'rest.skipNoValue': '{label} (keine offene Szene und keine gespielte Kampagne enthält es)',
   'rest.skipNoToken': '{label} (kein Token auf einer offenen Karte)',
   'rest.skipCounters': '{label} (seine Zähler lassen sich nicht lesen)',
-  'rest.skipMissingField': '{label} (der Werteblock hat kein {field})',
+  'rest.skipMissingField': '{label} (der Statblock hat kein {field})',
   'rest.skipNotWhole': '{label} ({field} ist keine ganze Zahl)',
   'rest.skipLimits': '{label} (zu groß, um auf einmal zu würfeln)',
   'rest.skipLimitsField': '{label} ({field} macht den Wurf zu groß)',

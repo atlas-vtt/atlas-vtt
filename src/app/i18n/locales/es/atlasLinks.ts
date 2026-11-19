@@ -18,6 +18,6 @@ export const atlasLinks: Translation = {
   'atlasLinks.addBeside': 'Añadir a la iniciativa sin colocar',
   'atlasLinks.snapshotMissing': 'Esta escena no tiene ninguna instantánea llamada "{name}".',
   'atlasLinks.snapshotOf': 'Instantánea de {scene}',
-  'atlasLinks.tokenCount': { one: '{count} ficha', other: '{count} fichas' },
-  'atlasLinks.tokenRange': { one: '{range} ficha', other: '{range} fichas' },
+  'atlasLinks.tokenCount': { one: '{count} token', other: '{count} tokens' },
+  'atlasLinks.tokenRange': { one: '{range} token', other: '{range} tokens' },
 };

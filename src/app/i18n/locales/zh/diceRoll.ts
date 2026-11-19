@@ -62,7 +62,6 @@ export const diceRoll: Translation = {
   'diceRoll.presetUnpin': '从骰子栏移出',
   'diceRoll.presetRowFull': '骰子栏最多容纳 {max} 个；请先移出一个',
   'diceRoll.presetDelete': '删除',
-  'diceRoll.presetDeleteNamed': '删除 {name}',
   'diceRoll.presetName': '名称',
   'diceRoll.presetFormula': '公式',
   'diceRoll.presetSave': '保存掷骰',

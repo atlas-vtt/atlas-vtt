@@ -32,7 +32,7 @@ export const bundle: Translation = {
   'bundle.writing': 'Gravando…',
   'bundle.comparing': 'Comparando com o seu cofre…',
   'bundle.ready': 'Pronto',
-  'bundle.registering': 'Registrando recursos…',
+  'bundle.registering': 'Registrando assets…',
   'bundle.done': 'Concluído',
   'bundle.compressing': 'Compactando…',
   'bundle.step.writing': 'Gravando {n} de {total} arquivos…',

@@ -18,7 +18,7 @@ export const issue: Translation = {
   'issue.type.feature': 'Petición de función',
   'issue.type.question': 'Pregunta u otra cosa',
   'issue.area.maps': 'Mapas, escenas y cuadrícula',
-  'issue.area.tokens': 'Fichas',
+  'issue.area.tokens': 'Tokens',
   'issue.area.notes': 'Notas, chinchetas y bloques de estadísticas',
   'issue.area.vision': 'Niebla de guerra e iluminación',
   'issue.area.combat': 'Iniciativa y combate',

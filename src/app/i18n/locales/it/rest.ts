@@ -27,7 +27,7 @@ export const rest = {
   "rest.skipNoValue": "{label} (nessuna scena aperta o campagna giocata lo contiene)",
   "rest.skipNoToken": "{label} (nessun token su una mappa aperta)",
   "rest.skipCounters": "{label} (impossibile leggerne i contatori)",
-  "rest.skipMissingField": "{label} (il blocco statistiche non ha {field})",
+  "rest.skipMissingField": "{label} (lo statblock non ha {field})",
   "rest.skipNotWhole": "{label} ({field} non è un numero intero)",
   "rest.skipLimits": "{label} (troppo grande da tirare in una volta)",
   "rest.skipLimitsField": "{label} ({field} rende il tiro troppo grande)",

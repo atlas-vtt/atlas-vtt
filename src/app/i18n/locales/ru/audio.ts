@@ -66,7 +66,7 @@ export const audio: Translation = {
   'audio.output': 'Выход',
   'audio.outputNamed': '{device}, выход этого устройства',
   'audio.outputHint': 'Куда на этом устройстве идут музыка, фон и кубики.',
-  'audio.screen.pages': 'Страница экрана мастера',
+  'audio.screen.pages': 'Страница ширмы мастера',
   'audio.screen.statblocks': 'Статблоки',
   'audio.screen.sound': 'Звук',
   'audio.nextTag': 'Следующее настроение',

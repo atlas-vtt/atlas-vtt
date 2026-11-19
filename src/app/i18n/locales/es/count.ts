@@ -7,5 +7,5 @@ export const count: Translation = {
   'count.items': { one: '{count} elemento', other: '{count} elementos' },
   'count.maps': { one: '{count} mapa', other: '{count} mapas' },
   'count.scenes': { one: '{count} escena', other: '{count} escenas' },
-  'count.tokens': { one: '{count} ficha', other: '{count} fichas' },
+  'count.tokens': { one: '{count} token', other: '{count} tokens' },
 };

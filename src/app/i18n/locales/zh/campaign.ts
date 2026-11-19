@@ -41,5 +41,5 @@ export const campaign: Translation = {
   'campaign.systemWhenPlayed': '仅在此战役的在线游戏桌开启时，地图才按这些规则进行。',
   'campaign.delete': '删除战役',
   'campaign.deleteTitle': '删除{name}？',
-  'campaign.deleteMessage': '它用到的场景、地图和棋子会保留在你的素材库中。',
+  'campaign.deleteMessage': '它用到的场景、地图和指示物会保留在你的素材库中。',
 };

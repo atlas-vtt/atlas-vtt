@@ -16,7 +16,7 @@ export const creator = {
   "creator.firstTag": "Scrivi un nome per creare la tua prima etichetta.",
   "creator.imageSource": "Origine dell’immagine",
 
-  "creator.statblockNotes": "Scegli note con blocchi statistiche…",
+  "creator.statblockNotes": "Scegli note con statblock…",
   "creator.map.browse": "oppure fai clic per cercare immagini di mappe",
   "creator.map.count": {
     "one": "{count} mappa",

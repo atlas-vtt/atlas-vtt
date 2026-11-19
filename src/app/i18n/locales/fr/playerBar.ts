@@ -14,5 +14,5 @@ export const playerBar: Translation = {
   'playerBar.freeze': 'Mettre en pause la vue joueurs',
   'playerBar.unfreeze': 'Reprendre : la vue joueurs vous suit de nouveau',
   'playerBar.freezeTrueScale': 'Avec TrueScale actif, fixer les joueurs sur le cadre de votre carte',
-  'playerBar.takeBack': 'Reprendre le document',
+  'playerBar.takeBack': 'Reprendre l\'aide de jeu',
 };

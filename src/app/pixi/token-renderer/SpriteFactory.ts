@@ -147,12 +147,13 @@ export class SpriteFactory implements ITokenSpriteFactory {
     container.position.set(x, y);
   }
 
+  /** Turns the token's art and its ring, never the container: its UI and glass stay upright. */
   updateTokenRotation(container: Container, rotation: number): void {
-    // Find and rotate the sprite, not the container
-    const sprite = container.getChildByLabel('tokenSprite') as Sprite;
-    if (sprite) {
-      sprite.rotation = (rotation * Math.PI) / 180;
-    }
+    const radians = (rotation * Math.PI) / 180;
+    const sprite = container.getChildByLabel('tokenSprite');
+    if (sprite) sprite.rotation = radians;
+    const ring = container.getChildByLabel('tokenRing');
+    if (ring) ring.rotation = radians;
   }
 
   setTokenRingTextureReadyCallback(callback: (() => void) | undefined): void {
@@ -216,6 +217,8 @@ export class SpriteFactory implements ITokenSpriteFactory {
     ring.eventMode = 'none';
     ring.interactive = false;
     ring.tint = ringTint;
+    // The ring turns with the art it frames
+    ring.rotation = container.getChildByLabel('tokenSprite')?.rotation ?? 0;
 
     container.addChild(ring);
     return ring;
