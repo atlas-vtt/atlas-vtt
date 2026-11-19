@@ -67,7 +67,9 @@ describe('saved rolls through the real tray', () => {
     // The eighth place: its number key adds it to the tray, before the modifier.
     fireEvent.change(trayFormula(), { target: { value: '1d20 + 2' } });
     fireEvent.keyDown(document.body, { key: '8' });
-    expect(trayFormula().value).toBe('1d20 + 2d12 + 2');
+    expect(trayFormula().value).toBe('1d20 + (2d12) + 2');
+    // The saved roll's dice are its own: the d12 shows none held.
+    expect(screen.getByRole('button', { name: 'd12' })).toBeTruthy();
     fireEvent.contextMenu(screen.getByRole('button', { name: 'Duality, 1 in the tray' }));
     expect(trayFormula().value).toBe('1d20 + 2');
   });

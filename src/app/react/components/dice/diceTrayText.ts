@@ -42,15 +42,17 @@ function dieTerm(sides: TrayDie): RegExp {
  * The formula with `delta` more (or fewer) dice of `sides` faces. A formula of
  * its own changes the first term of that die (`4d6kh3` takes a fifth d6 as
  * `5d6kh3`) or gains the die before its modifier; a term taken down to none
- * goes with its operator.
+ * goes with its operator. The terms of the saved rolls `presets` are never changed.
  */
-export function withDie(text: string, sides: TrayDie, delta: number): string {
-  const simple = readTray(text);
+export function withDie(text: string, sides: TrayDie, delta: number, presets: readonly string[] = []): string {
+  // The terms of saved rolls are left as they are: the die is a term of its own beside them.
+  const blanked = withoutPresetTerms(text, presets);
+  const simple = blanked === text ? readTray(text) : null;
   if (simple) {
     const count = Math.max(0, (simple.pool[sides] ?? 0) + delta);
     return writeTray({ pool: { ...simple.pool, [sides]: count }, modifier: simple.modifier });
   }
-  const term = dieTerm(sides).exec(text);
+  const term = dieTerm(sides).exec(blanked);
   if (!term) {
     if (delta <= 0) return text;
     const trailing = TRAILING_MODIFIER.exec(text);
@@ -67,10 +69,12 @@ export function withDie(text: string, sides: TrayDie, delta: number): string {
   return `${text.slice(0, start)}${rest}`.trim();
 }
 
-/** A saved roll as one term of the tray's formula: in brackets where it adds, subtracts, multiplies or divides itself. */
+/**
+ * A saved roll as one term of the tray's formula, always in brackets (`(3d8+3)`, `(2d12)`): a term of its own,
+ * which the row's dice never count or grow.
+ */
 export function presetTerm(formula: string): string {
-  const bare = formula.trim().replace(/\[[^\]]*\]/g, '');
-  return /[+\-−*/\s]/.test(bare) ? `(${formula.trim()})` : formula.trim();
+  return `(${formula.trim()})`;
 }
 
 const escaped = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -79,6 +83,25 @@ const escaped = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\
 function termPlaces(text: string, term: string): RegExpExecArray[] {
   const pattern = new RegExp(`(^|\\s*\\+\\s*)${escaped(term)}(?=\\s*[+\\-\\u2212]|\\s*$)`, 'g');
   return [...text.matchAll(pattern)].reverse();
+}
+
+/** What blanks out a saved roll's term: no die, digit, sign, bracket or space, so no rule of the tray reads it. */
+const BLANK = '#';
+
+/**
+ * The formula with every term of the saved rolls `formulas` blanked out, at the same length, so places in it
+ * are places in the formula: what the row's dice count and change.
+ */
+export function withoutPresetTerms(text: string, formulas: readonly string[]): string {
+  let blanked = text;
+  for (const formula of formulas) {
+    const term = presetTerm(formula);
+    for (const place of termPlaces(blanked, term)) {
+      const start = place.index + place[0].length - term.length;
+      blanked = `${blanked.slice(0, start)}${BLANK.repeat(term.length)}${blanked.slice(start + term.length)}`;
+    }
+  }
+  return blanked;
 }
 
 /** How many times a saved roll stands in the tray's formula: the badge on its place in the row. */

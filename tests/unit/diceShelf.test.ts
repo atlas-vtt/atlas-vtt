@@ -3,7 +3,7 @@ import {
   MAX_PRESETS, MAX_ROW, STANDARD_ROW, readDiceShelf, typedDie, withPinToggled, withRowDie, withRowSlotMoved, withSavedPreset, withoutPreset,
   type DiceShelf,
 } from '../../src/app/react/components/dice/diceShelf';
-import { presetCount, presetTerm, withDie, withPreset } from '../../src/app/react/components/dice/diceTrayText';
+import { presetCount, presetTerm, withDie, withPreset, withoutPresetTerms } from '../../src/app/react/components/dice/diceTrayText';
 import { diceCounts } from '../../src/app/react/components/dice/diceTrayPool';
 import type { DicePreset } from '../../src/app/types/dicePresetTypes';
 
@@ -57,14 +57,26 @@ describe('dice shelf', () => {
 });
 
 describe('the tray with saved rolls and dice of any size', () => {
-  it('adds a saved roll as a term of its own before the modifier, and takes its last copy back', () => {
+  it('adds a saved roll as a bracketed term of its own before the modifier, and takes its last copy back', () => {
     expect(presetTerm(sword.formula)).toBe('(1d8+3[slashing])');
-    expect(withPreset('', duality.formula, 1)).toBe('2d12');
+    expect(withPreset('', duality.formula, 1)).toBe('(2d12)');
     expect(withPreset('1d20 + 3', sword.formula, 1)).toBe('1d20 + (1d8+3[slashing]) + 3');
-    expect(withPreset('2d12 + 2d12 + 3', duality.formula, -1)).toBe('2d12 + 3');
-    expect(withPreset('2d12 + 3', duality.formula, -1)).toBe('3');
-    expect(presetCount('2d12 + 1d6 + 2d12 − 1', duality.formula)).toBe(2);
-    expect(presetCount('12d12', duality.formula)).toBe(0);
+    expect(withPreset('(2d12) + (2d12) + 3', duality.formula, -1)).toBe('(2d12) + 3');
+    expect(withPreset('(2d12) + 3', duality.formula, -1)).toBe('3');
+    expect(presetCount('(2d12) + 1d6 + (2d12) − 1', duality.formula)).toBe(2);
+    expect(presetCount('2d12', duality.formula)).toBe(0);
+  });
+
+  it('keeps the dice of a saved roll apart from the row\'s dice: never counted, never grown', () => {
+    const presets = ['3d8+3', duality.formula];
+    const text = withPreset(withPreset('', '3d8+3', 1), duality.formula, 1);
+    expect(text).toBe('(3d8+3) + (2d12)');
+    expect(diceCounts(withoutPresetTerms(text, presets))).toEqual({});
+    const more = withDie(withDie(text, 8, 1, presets), 12, 1, presets);
+    expect(more).toBe('(3d8+3) + (2d12) + 1d8 + 1d12');
+    expect(diceCounts(withoutPresetTerms(more, presets))).toEqual({ 8: 1, 12: 1 });
+    expect(withDie(withDie(more, 8, -1, presets), 12, -1, presets)).toBe(text);
+    expect(presetCount(more, '3d8+3')).toBe(1);
   });
 
   it('counts and writes dice the standard row does not have', () => {

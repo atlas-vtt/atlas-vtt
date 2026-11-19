@@ -14,7 +14,7 @@ import { DiceTrayFormula } from './DiceTrayFormula';
 import { DiceTrayModifier } from './DiceTrayModifier';
 import { DiceTrayHistoryList, DiceTrayHistoryToggle, historyTitle } from './DiceTrayHistory';
 import { MAX_DICE, MAX_PER_DIE, TRAY_SURFACE, TRAY_TOOLTIP_GAP, clampModifier, diceCounts, modifierSuffix, trayDiceCount, writeTray } from './diceTrayPool';
-import { modifierOf, parseableFormula, presetTerm, withDie, withModifier, withPreset } from './diceTrayText';
+import { modifierOf, parseableFormula, presetTerm, withDie, withModifier, withPreset, withoutPresetTerms } from './diceTrayText';
 import { advantageMoot, rollSide, statusMessage, trayStatus, type TrayAdvantage, type TrayCheck } from './diceTrayStatus';
 import { stopMapKeys, useDiceTrayKeys } from './useDiceTrayKeys';
 import { useSpokenOnce } from './useSpokenOnce';
@@ -133,7 +133,9 @@ export function DiceTray({
   useEffect(() => () => cancelTimer(announceTimer.current), []);
 
   const { formula, side } = held;
-  const counts = diceCounts(formula);
+  const presetFormulas = presets.map((preset) => preset.formula);
+  // The row's dice count only their own: the dice of a saved roll in the tray belong to that roll.
+  const counts = diceCounts(withoutPresetTerms(formula, presetFormulas));
   const status = trayStatus(formula, side, advantage, check);
   const moot = advantageMoot(formula, advantage);
   const message = statusMessage(status, counts);
@@ -177,12 +179,12 @@ export function DiceTray({
       const saved = presetFormula(slot.id);
       return saved === undefined ? {} : { formula: withPreset(before.formula, saved, 1) };
     }
-    const held = diceCounts(before.formula);
-    return (held[slot.sides] ?? 0) >= MAX_PER_DIE || trayDiceCount(held) >= MAX_DICE ? {} : { formula: withDie(before.formula, slot.sides, 1) };
+    const held = diceCounts(withoutPresetTerms(before.formula, presetFormulas));
+    return (held[slot.sides] ?? 0) >= MAX_PER_DIE || trayDiceCount(held) >= MAX_DICE ? {} : { formula: withDie(before.formula, slot.sides, 1, presetFormulas) };
   });
 
   const takeBack = (slot: DiceRowSlot): void => editAnnounced((before) => {
-    if (slot.kind === 'die') return { formula: withDie(before.formula, slot.sides, -1) };
+    if (slot.kind === 'die') return { formula: withDie(before.formula, slot.sides, -1, presetFormulas) };
     const saved = presetFormula(slot.id);
     return saved === undefined ? {} : { formula: withPreset(before.formula, saved, -1) };
   });
