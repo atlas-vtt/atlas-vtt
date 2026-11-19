@@ -126,12 +126,21 @@ $editor-control: $button-height-l;
   @include atlas-flex-col($spacing-m);
   max-height: none;
   overflow: visible;
-  padding: $spacing-xs $spacing-s $spacing-s;
+  padding-inline: $spacing-s;
 }
 
-// Unfolded, the rules let their choices' lists hang past them (the lists open in place, inside the tray).
-.atlas-dice-preset-editor .atlas-dice-tray__history-reveal[data-open] {
-  overflow: visible;
+// Folded, the rules take no room, not even the card's gap above them, so the row is the card's foot and its corners
+// are concentric with the card's; unfolding opens the gap with them. Unfolded, they let their choices' lists hang
+// past them (the lists open in place, inside the tray).
+.atlas-dice-preset-editor .atlas-dice-tray__history-reveal {
+  margin-top: calc(-1 * #{$surface-inset});
+  transition-property: grid-template-rows, padding, margin-top;
+
+  &[data-open] {
+    margin-top: 0;
+    padding-block: $spacing-xs $spacing-s;
+    overflow: visible;
+  }
 }
 
 .atlas-dice-preset-editor__formula.atlas-dice-presets__field {

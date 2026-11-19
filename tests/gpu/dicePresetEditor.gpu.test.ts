@@ -92,6 +92,12 @@ describe('a saved roll\'s editor', () => {
     const rulesSwitch = document.querySelector('.atlas-dice-preset-editor__rules-toggle')!.getBoundingClientRect();
     expect(Math.abs(bonus.top - rulesSwitch.top)).toBeLessThan(1);
     expect(rulesSwitch.left).toBeGreaterThan(bonus.right);
+    // With the rules folded the row is the card's foot: as far from its bottom as from its sides, so its corners
+    // are concentric with the card's.
+    const border = parseFloat(cs.borderLeftWidth);
+    expect(Math.abs((editor.bottom - bonus.bottom) - (bonus.left - editor.left))).toBeLessThan(1);
+    expect(Math.abs((editor.right - rulesSwitch.right) - (bonus.left - editor.left))).toBeLessThan(1);
+    expect(bonus.left - editor.left - border).toBeCloseTo(parseFloat(cs.paddingLeft), 0);
 
     const die = centreOf(document.querySelector('.atlas-dice-preset-editor .atlas-dice-lab__die')!);
     await mouse.click(die.x, die.y);
