@@ -66,11 +66,18 @@ export interface KeptMeasure extends Measurement, OnOneLevel {
   /** An area that walls do not stop. Unset: it stops at walls, as every area does when it is made. */
   walls?: false;
   /**
-   * The token (its id) a circle follows: an aura. It lies around that token wherever the token
-   * stands, drawn from the token's place and never written when the token moves, so its `points`
-   * are where it lay when it was last edited. Only with `aura`.
+   * The token (its id) a measurement follows. With `aura`, a circle that is an aura: it lies
+   * around that token wherever the token stands, drawn from the token's place and never written
+   * when the token moves, so its `points` are where it lay when it was last edited. With `anchor`,
+   * any measurement grouped with the token: it keeps its shape and moves and turns with the token
+   * (`followerMoves`).
    */
   follows?: string;
+  /**
+   * Where the token a grouped measurement follows stood and how it was turned when the
+   * measurement's `points` were last written. Only with `follows`, never with `aura`.
+   */
+  anchor?: MeasureAnchor;
   /**
    * How far an aura reaches from the edge of its token's space, in game units: the token may
    * grow or shrink and its aura still reaches as far. Only with `follows`.
@@ -85,8 +92,18 @@ export interface KeptMeasure extends Measurement, OnOneLevel {
   effect?: MeasureEffect;
 }
 
+/** A token's place (world pixels, its centre) and rotation (degrees, clockwise) that a grouped measurement was written at. */
+export interface MeasureAnchor {
+  x: number;
+  y: number;
+  rotation: number;
+}
+
 /** A kept circle that follows a token. */
 export type KeptAura = KeptMeasure & { shape: 'circle'; follows: string; aura: number };
+
+/** A kept measurement of any shape grouped with a token: it moves and turns with it. */
+export type KeptFollower = KeptMeasure & { follows: string; anchor: MeasureAnchor };
 
 export type MeasureInput = Omit<KeptMeasure, 'id' | 'kind'>;
 

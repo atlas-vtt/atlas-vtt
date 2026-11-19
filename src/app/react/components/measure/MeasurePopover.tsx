@@ -116,7 +116,7 @@ function MeasurePopover({ measureId }: { measureId: string }): React.ReactElemen
       <div className="atlas-light-popover__section">
         <SwitchRow label={t('toolbar.measurePlayers')} value={measure.hidden !== true} onChange={(players) => update({ hidden: players ? undefined : true })} />
         {area && <SwitchRow label={t('measure.stopsAtWalls')} value={measure.walls !== false} onChange={(stops) => update({ walls: stops ? undefined : false })} />}
-        {measure.shape === 'circle' && <FollowsToken measure={measure} />}
+        <FollowsToken measure={measure} />
         {measure.shape === 'line' && <LineWidth measure={measure} />}
       </div>
       <div className="atlas-light-popover__section atlas-light-popover__actions">

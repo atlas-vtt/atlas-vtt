@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
 import { t } from '../../../i18n';
 import { levelObjects } from '../../../levels/levelObjects';
-import { auraCells, auraCellsOfCircle, auraDirection, auraOfCells, auraPoints } from '../../../measure/auraArea';
-import { isAura } from '../../../measure/keptMeasures';
+import { auraCells, auraDirection, auraPoints } from '../../../measure/auraArea';
+import { isAura, isFollower } from '../../../measure/keptMeasures';
+import { anchorOf, tokenAtStart } from '../../../measure/measureFollowers';
 import type { KeptMeasure } from '../../../measure/measureTypes';
-import { tokenStandingAt } from '../../../measure/tokenDistance';
 import { mapMeasurementSettings } from '../../../services/mapMeasurementSettings';
 import { rulesLookup } from '../../../services/mapRules';
 import { mapTokens } from '../../../tokens/offMap';
@@ -13,36 +13,38 @@ import { useAtlasStore, useViewStoreHook } from '../../ViewStoreContext';
 import { SwitchRow } from './SwitchRow';
 
 /**
- * Whether a kept circle follows a token. On, it becomes the aura of the token its centre lies on:
- * it reaches as far past the edge of that token's space as it did, in whole cells where the map
- * counts cells, and goes where the token goes. Off, it stays where it is as a circle. A circle on
- * no token shows the switch as it is and says why it cannot be switched. One store write either
- * way, so one undo step.
+ * Whether a kept measurement follows a token. On, it is grouped with the token its start lies on:
+ * it keeps its shape and moves and turns with the token (`followTokensWithMeasures`). Off, it stays
+ * where it lies. An aura (made from the token's menu) shows it on, and off is let go as the circle
+ * it shows. A measurement starting on no token shows the switch as it is and says why it cannot be
+ * switched. One store write either way, so one undo step.
  */
 export function FollowsToken({ measure }: { measure: KeptMeasure }): React.ReactElement {
   const { app } = useAtlasUI();
   const store = useViewStoreHook();
   const rules = useMemo(() => rulesLookup(app), [app]);
-  const follows = isAura(measure);
+  const follows = isAura(measure) || isFollower(measure);
   const under = useAtlasStore((state) => {
-    const centre = measure.points[0];
-    return centre && state.grid ? tokenStandingAt(centre, Object.values(mapTokens(levelObjects(state))), state.grid)?.id ?? null : null;
+    const start = measure.points[0];
+    return start && state.grid ? tokenAtStart(start, Object.values(mapTokens(levelObjects(state))), state.grid)?.id ?? null : null;
   });
 
   const change = (on: boolean): void => {
     const state = store.getState();
-    const { grid } = state;
-    const tokenId = isAura(measure) ? measure.follows : under;
-    const token = tokenId === null ? undefined : mapTokens(levelObjects(state))[tokenId];
-    if (!grid || !token) {
-      // Its token is gone from the map shown: it is let go where it lies.
-      if (!on) state.updateMeasure(measure.id, { follows: undefined, aura: undefined });
+    if (on) {
+      const token = under === null ? undefined : mapTokens(levelObjects(state))[under];
+      if (token && !follows) state.updateMeasure(measure.id, { follows: token.id, anchor: anchorOf(token) });
       return;
     }
-    const { unitDistance } = mapMeasurementSettings(rules, state);
-    const cells = isAura(measure) ? auraCells(measure.aura, unitDistance) : auraCellsOfCircle(measure.points, token, grid);
-    const points = auraPoints(token, cells, grid, auraDirection(measure));
-    state.updateMeasure(measure.id, on ? { follows: token.id, aura: auraOfCells(cells, unitDistance), points } : { follows: undefined, aura: undefined, points });
+    if (!isAura(measure)) {
+      state.updateMeasure(measure.id, { follows: undefined, anchor: undefined });
+      return;
+    }
+    // An aura is let go as the circle it shows around its token; where its token is gone from the map shown, where it lies.
+    const token = mapTokens(levelObjects(state))[measure.follows];
+    const { grid } = state;
+    const points = token && grid ? auraPoints(token, auraCells(measure.aura, mapMeasurementSettings(rules, state).unitDistance), grid, auraDirection(measure)) : undefined;
+    state.updateMeasure(measure.id, { follows: undefined, aura: undefined, ...(points && { points }) });
   };
 
   return <SwitchRow label={t('measure.followsToken')} value={follows} onChange={change} unavailable={follows || under !== null ? null : t('measure.noTokenUnder')} />;

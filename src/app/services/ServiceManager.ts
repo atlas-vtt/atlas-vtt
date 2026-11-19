@@ -2,6 +2,7 @@ import { MapController } from '../MapController';
 import { App } from 'obsidian';
 import { watchLevelsToRefit } from '../react/components/levels/levelRefitNotice';
 import { followHistoryAcrossLevels } from '../react/components/levels/levelHistoryFollow';
+import { followTokensWithMeasures } from '../measure/measureFollowers';
 import type AtlasVTTPlugin from '../../../main';
 import { EventEmitter } from '../utils/typedEmitter';
 import { RendererService } from './RendererService';
@@ -49,6 +50,7 @@ export class ServiceManager {
   private sceneThumbnails: SceneThumbnailUpdater;
   private readonly stopRefitNotice: () => void;
   private readonly stopHistoryFollow: () => void;
+  private readonly stopMeasureFollow: () => void;
   
   constructor(private app: App, private store: ViewAtlasStore, private plugin?: AtlasVTTPlugin, viewId?: string) {
     // Create event bus for inter-service communication
@@ -83,6 +85,7 @@ export class ServiceManager {
     
     this.stopRefitNotice = watchLevelsToRefit(store);
     this.stopHistoryFollow = followHistoryAcrossLevels(store);
+    this.stopMeasureFollow = followTokensWithMeasures(store);
     this.sceneThumbnails = new SceneThumbnailUpdater(store, {
       render: () => this.renderMapThumbnail(),
       levelShown: () => MapController.showsViewedLevel(this.rendererService.getRenderer()?.getMapImage() ?? null, store.getState()),
@@ -257,6 +260,7 @@ export class ServiceManager {
     
     this.stopRefitNotice();
     this.stopHistoryFollow();
+    this.stopMeasureFollow();
 
     // Writes a pending thumbnail, so it must run while the renderer still shows the scene
     this.sceneThumbnails.destroy();
