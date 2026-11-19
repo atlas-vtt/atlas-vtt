@@ -2,7 +2,7 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Pencil, Plus, RotateCcw } from 'lucide-react';
 import { t } from '../../../i18n';
-import { senseSummary } from '../../../gameSystems/senseEditing';
+import { senseDisplayName, senseSummary } from '../../../gameSystems/senseEditing';
 import { findSense } from '../../../gameSystems/senseRules';
 import { senseRows, type SenseRow } from '../../../lighting/tokenLighting';
 import { Button } from '../../../packages/components/primitives/button';
@@ -145,7 +145,7 @@ export function SensesEditor({ senses, onChange, definitions, unit, emptyText, i
                 >
                   {available.map((definition) => (
                     <DropdownMenu.Item key={definition.id} className="atlas-ctx-item atlas-sense-offer" onSelect={() => add(definition)}>
-                      <span className="atlas-sense-offer__name">{definition.name}</span>
+                      <span className="atlas-sense-offer__name">{senseDisplayName(definition)}</span>
                       <span className="atlas-sense-offer__text">{senseSummary(definition)}</span>
                     </DropdownMenu.Item>
                   ))}
