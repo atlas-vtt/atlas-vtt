@@ -108,14 +108,14 @@ describe('the socket editor of the Resources tab', () => {
     expect((page.getByRole('textbox', { name: 'Name' }).element() as HTMLInputElement).value).toBe('HP!');
   });
 
-  it('keeps the fan\'s buttons and the field chips round where Obsidian shapes buttons as squircles', async () => {
+  it('keeps every button round where Obsidian shapes buttons as squircles', async () => {
     if (!CSS.supports('corner-shape', 'round')) return;
     const shapeOf = (element: Element): string => getComputedStyle(element).getPropertyValue('corner-shape');
     const reference = document.body.createDiv();
     reference.style.setProperty('corner-shape', 'round');
     const round = shapeOf(reference);
-    // The theme's shape does reach buttons that do not say otherwise
-    expect(shapeOf(page.getByRole('button', { name: /^HP: / }).element())).not.toBe(round);
+    // Inside Atlas even a button that names no shape is round (`atlas-host-layout`)
+    expect(shapeOf(page.getByRole('button', { name: /^HP: / }).element())).toBe(round);
 
     await userEvent.click(page.getByRole('button', { name: /^HP: / }));
     const controls = [...document.querySelectorAll('.atlas-csm-fan__button, .atlas-csm-field-chip')];

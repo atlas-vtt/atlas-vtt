@@ -122,7 +122,7 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, o
                   onClick={() => onPresentTab(tab.id)}
                 />
                 <span className="atlas-scene-tab__label">
-                  <LabelTooltip side="bottom" label={tab.filePath}>
+                  <LabelTooltip side="bottom" label={tab.displayName}>
                     <span className="atlas-scene-tab__name">{tab.displayName}</span>
                   </LabelTooltip>
                   <SceneTabProcessing scenePath={tab.filePath} />

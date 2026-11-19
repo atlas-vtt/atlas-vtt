@@ -1,4 +1,5 @@
 import { createDialogShell } from './dialogShell';
+import { createAtlasButton } from './atlasButton';
 import { t } from '../i18n';
 
 export interface TextInputDialogOptions {
@@ -26,15 +27,13 @@ export function promptForText(options: TextInputDialogOptions): Promise<string |
     textarea.value = options.initialValue ?? '';
     if (options.placeholder) textarea.placeholder = options.placeholder;
 
-    const cancelButton = footer.createEl('button', { text: t('common.cancel') });
-    const confirmButton = footer.createEl('button', { cls: 'mod-cta', text: options.confirmLabel });
     const confirm = (): void => {
       const text = textarea.value.trim();
       close(text !== '' || options.allowEmpty === true ? text : null);
     };
+    createAtlasButton(footer, { text: t('common.cancel'), variant: 'outline', size: 'sm', onClick: () => close(null) });
+    createAtlasButton(footer, { text: options.confirmLabel, size: 'sm', onClick: confirm });
 
-    confirmButton.addEventListener('click', confirm);
-    cancelButton.addEventListener('click', () => close(null));
     root.addEventListener('click', (event) => {
       if (event.target === root) close(null);
     });

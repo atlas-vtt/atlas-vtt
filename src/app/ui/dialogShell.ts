@@ -2,6 +2,7 @@ import { setIcon } from 'obsidian';
 import { portalHost } from '../host/portalHost';
 import { t } from '../i18n';
 import { keepTabWithin } from '../packages/components/primitives/tabStops';
+import { createAtlasButton } from './atlasButton';
 
 export interface DialogShell {
   /** Backdrop covering the window; removing it closes the dialog. */
@@ -21,7 +22,7 @@ export interface DialogShellOptions {
 
 let shellCount = 0;
 
-/** Marks Atlas' host while it holds a dialog, so `tooltip.css` hides the tooltips behind it. */
+/** Marks Atlas' host while it holds a dialog, so `tooltip.scss` hides the tooltips behind it. */
 const HOLDS_DIALOG = 'atlas-portal-host--dialog';
 
 /** Marks `host` until `root` and every other dialog in it are gone: callers close a dialog by removing its root. */
@@ -66,12 +67,7 @@ export function createDialogShell(title: string, options: DialogShellOptions = {
   const { onDismiss } = options;
   if (onDismiss) {
     // CloseButton's look and place (`atlas-close-btn`), in a dialog built without React.
-    const close = header.createEl('button', {
-      cls: 'atlas-close-btn btn btn--ghost btn--icon',
-      attr: { type: 'button', 'aria-label': t('common.close') },
-    });
-    setIcon(close, 'x');
-    close.addEventListener('click', () => onDismiss());
+    createAtlasButton(header, { icon: 'x', label: t('common.close'), variant: 'ghost', size: 'icon', cls: ['atlas-close-btn'], onClick: () => onDismiss() });
   }
 
   const dialog = frame.createDiv({ cls: 'atlas-text-dialog__body' });

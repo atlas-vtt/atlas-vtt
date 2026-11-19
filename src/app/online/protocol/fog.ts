@@ -25,6 +25,18 @@ export type SharedFogOperation = { readonly id?: string } & (
  */
 export type SharedFog = readonly SharedFogOperation[] | null;
 
+/** The widest fog edge a GM can set, in world pixels (Atlas's own limit). */
+export const MAX_SHARED_FOG_EDGE = 300;
+
+/**
+ * How the GM's fog edge looks (Atlas's setting): `soft` fades it, `crackle` breaks it up; `width` is
+ * how far it reaches to either side of the fog's outline, in world pixels, 0 keeping it hard.
+ */
+export interface SharedFogEdge {
+  readonly style: 'soft' | 'crackle';
+  readonly width: number;
+}
+
 const isCoordinate = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= MAX_FOG_COORDINATE;
 
 function parsePoints(value: unknown, budget: { left: number }): number[] | null {
@@ -46,6 +58,14 @@ function parseOperation(value: unknown, budget: { left: number }): SharedFogOper
   if (points === null) return null;
   if (value.type === 'lasso') return { ...named, type: 'lasso', erase, points };
   return value.type === 'brush' && isCoordinate(value.radius) && value.radius >= 0 ? { ...named, type: 'brush', erase, points, radius: value.radius } : null;
+}
+
+/** A `fog` message's edge, or null when it is malformed. */
+export function parseFogEdge(value: unknown): SharedFogEdge | null {
+  if (!isRecord(value)) return null;
+  const { style, width } = value;
+  if (style !== 'soft' && style !== 'crackle') return null;
+  return typeof width === 'number' && Number.isFinite(width) && width >= 0 && width <= MAX_SHARED_FOG_EDGE ? { style, width } : null;
 }
 
 /** The fog of a `fog` message, or undefined when it or any operation in it is malformed. */

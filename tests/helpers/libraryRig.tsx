@@ -15,7 +15,6 @@ import { SoundRecordStore } from '../../src/app/soundLibrary/SoundRecordStore';
 import { SoundRoots, type OriginalsChoice } from '../../src/app/soundLibrary/SoundRoots';
 import type { SharedSoundRoots } from '../../src/app/soundLibrary/soundRootsStore';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
-import { withSound } from '../mocks/experimentalFeatures';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { FakeSoundLocation } from './fakeSoundLocation';
 
@@ -78,7 +77,6 @@ export async function libraryRig(options: LibraryRigOptions = {}): Promise<Libra
   const { app } = createInMemoryApp({ folders: ['atlas-vtt/collections'] });
   Object.assign(app, { appId: `library-${Math.random()}` });
   new SettingsService(app);
-  withSound(app);
   const records = SoundRecordStore.forApp(app);
   await records.whenLoaded();
 

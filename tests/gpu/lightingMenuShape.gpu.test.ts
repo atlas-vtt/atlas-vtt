@@ -61,4 +61,39 @@ describe('the lighting tool\'s menu', () => {
     act(() => store.getState().setSceneLighting({ enabled: false }));
     expect(shape()).toEqual(off);
   });
+
+  it('spans the time of day in its top corners and stands everything else on the text edge', () => {
+    const row = document.querySelector<HTMLElement>('.atlas-dropdown-menu-item')!.getBoundingClientRect();
+    const rect = (selector: string): DOMRect => document.querySelector(selector)!.getBoundingClientRect();
+    // The time of day is the menu's first thing: it reaches out as far as the rows, concentric with the corners.
+    const time = rect('.atlas-segmented');
+    expect(time.left).toBeCloseTo(row.left, 1);
+    expect(time.right).toBeCloseTo(row.right, 1);
+    expect(getComputedStyle(document.querySelector('.atlas-segmented')!).borderTopLeftRadius)
+      .toBe(getComputedStyle(document.querySelector('.atlas-dropdown-menu-item')!).borderTopLeftRadius);
+    // The ambient slider, its colour and the dynamic lighting switch stand 12px inside the rows on both sides.
+    const [start, end] = [row.left + 12, row.right - 12];
+    expect(rect('.atlas-scene-lighting__ambient .slider-track').left).toBeCloseTo(start, 1);
+    expect(rect('.atlas-swatch--picker').right).toBeCloseTo(end, 1);
+    expect(rect('.atlas-dropdown-toggle-row__label').left).toBeCloseTo(start, 1);
+    // The dynamic lighting switch is the menu's last thing: it stands in the bottom corner, as far out as the rows.
+    expect(rect('.atlas-dropdown-toggle-row .atlas-toggle').right).toBeCloseTo(row.right, 1);
+    const menu = rect('.atlas-dropdown-content');
+    expect(menu.bottom - rect('.atlas-dropdown-toggle-row .atlas-toggle').bottom).toBeCloseTo(menu.right - row.right, 1);
+    // The time of day's options run concentric inside it.
+    const option = document.querySelector('.atlas-segmented__option')!;
+    expect(parseFloat(getComputedStyle(option).borderTopLeftRadius)).toBe(parseFloat(getComputedStyle(document.querySelector('.atlas-segmented')!).borderTopLeftRadius) - 4);
+  });
+
+  it('moves the time of day to the text edge once a row stands above it', () => {
+    act(() => {
+      store.getState().setLightingTool({ mode: 'rooms' });
+      store.getState().setRoomTool({ shape: 'brush' });
+    });
+    const row = document.querySelector<HTMLElement>('.atlas-dropdown-menu-item')!.getBoundingClientRect();
+    const time = document.querySelector<HTMLElement>('.atlas-segmented')!;
+    expect(time.getBoundingClientRect().left).toBeCloseTo(row.left + 12, 1);
+    expect(time.getBoundingClientRect().right).toBeCloseTo(row.right - 12, 1);
+    expect(getComputedStyle(time).borderTopLeftRadius).toBe('10px');
+  });
 });

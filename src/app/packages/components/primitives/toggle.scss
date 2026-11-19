@@ -1,16 +1,36 @@
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-// The switch is a small padded container and the thumb the element inside it, so their radii
-// step down the scale like a panel's and its buttons'. A toggle in the corner of a panel or bar
-// gets the corners that face it set concentric with it there (dropdown-menu.scss, the toolbar
-// in main.scss): on `.atlas-toggle`, whose radius the switch and the focus ring both take.
+// One switch everywhere: whatever its size, its corner is the control radius and its thumb stands
+// $surface-inset inside it (padding and border), as the switch stands inside a bar, its corner
+// concentric with the switch's ($control-inset-radius). Places only ever change the size, never the corners, so
+// the switch reads the same in the toolbar, a menu, a popover or a line of text; a size too small
+// for those radii rounds into a capsule by itself. The focus ring takes `.atlas-toggle`'s radius.
+$toggle-gap: $surface-inset;
+
+/// A switch `$width` × `$height` (either may be a `calc()`), its thumb a square $toggle-gap inside it.
+@mixin atlas-toggle-size($width, $height) {
+  .atlas-toggle__switch {
+    width: $width;
+    height: $height;
+  }
+
+  .atlas-toggle__thumb {
+    width: calc(#{$height} - #{2 * $toggle-gap});
+    height: calc(#{$height} - #{2 * $toggle-gap});
+  }
+
+  .atlas-toggle__thumb--on {
+    transform: translateX(calc(#{$width} - #{$height}));
+  }
+}
+
 .atlas-toggle {
   position: relative;
   cursor: pointer;
-  border-radius: $radius-xl;
-  @include atlas-corner-shape;
+  border-radius: $radius-m;
   @include atlas-focus-ring;
+  @include atlas-toggle-size(60px, 40px);
 }
 
 // Kept in place and focusable (a tooltip says why), dimmed and inert.
@@ -20,15 +40,12 @@
 }
 
 .atlas-toggle__switch {
-  height: 40px;
-  width: 60px;
   display: flex;
   align-items: center;
-  padding: 6px;
+  padding: $toggle-gap - $border-width-s;
   transition: background-color 200ms ease;
   border: $border-width-s solid var(--background-modifier-border);
   border-radius: inherit;
-  @include atlas-corner-shape;
 }
 
 .atlas-toggle__switch--on {
@@ -37,24 +54,31 @@
 
 .atlas-toggle__switch--off {
   background-color: var(--background-secondary-alt);
+  // A quiet edge, the tint of every Atlas border, a step stronger than the track's own: it finishes the
+  // switch without outlining it (owner, 2026-11-17: the 3:1 edge looked too stark).
+  border-color: color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
+}
+
+// Under the pointer the track deepens a step, on and off alike, as Atlas' other controls light up.
+.atlas-toggle:not(.atlas-toggle--disabled):hover {
+  .atlas-toggle__switch--off {
+    background-color: color-mix(in oklch, var(--background-secondary-alt), var(--text-normal) 12%);
+  }
+
+  .atlas-toggle__switch--on {
+    background-color: color-mix(in oklch, var(--interactive-accent) 86%, black);
+  }
 }
 
 .atlas-toggle__thumb {
-  height: 28px;
-  width: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: transform 200ms ease;
   background-color: var(--background-primary);
   border: $border-width-s solid var(--background-modifier-border);
-  border-radius: $radius-l;
-  @include atlas-corner-shape;
-  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.12);
-}
-
-.atlas-toggle__thumb--on {
-  transform: translateX(18px);
+  border-radius: $control-inset-radius;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
 }
 
 .atlas-toggle__thumb--off {
@@ -67,38 +91,14 @@
   color: var(--text-normal);
 }
 
-// The small switch: as tall as a small control, its thumb a disc concentric with the pill
-// (outer radius = thumb radius + the 2px between them), and no icon to read as a button.
-// The pill sizes: a pill `$width` × `$height` around a disc 2px smaller all round (1px padding, 1px border).
-@mixin atlas-toggle-pill($width, $height) {
-  border-radius: $radius-full;
-
-  .atlas-toggle__switch {
-    width: $width;
-    height: $height;
-    padding: 1px;
-    border-radius: $radius-full;
-  }
-
-  .atlas-toggle__thumb {
-    width: $height - 4px;
-    height: $height - 4px;
-    border-radius: $radius-full;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
-  }
-
-  .atlas-toggle__thumb--on {
-    transform: translateX($width - $height);
-  }
-}
-
+// The small switch: as tall as a small control, with no icon to read as a button.
 .atlas-toggle--s {
-  @include atlas-toggle-pill(36px, 20px);
+  @include atlas-toggle-size(36px, 20px);
 }
 
 // The smallest, for a switch in a line of text: no taller than the line.
 .atlas-toggle--xs {
-  @include atlas-toggle-pill(28px, 16px);
+  @include atlas-toggle-size(28px, 16px);
 }
 
 // A small switch with its text after it (`ToggleLabel`); the text toggles it as well.

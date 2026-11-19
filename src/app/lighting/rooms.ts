@@ -57,22 +57,3 @@ export function outlinesWithHoles(area: QShape): { outline: QPolygon; holes: QPo
   }
   return outlines;
 }
-
-/** `end` moved on along the line from `other`, to the first wall within `reach`, and a pixel past it. */
-export function extended(end: Point, other: Point, walls: readonly { p1: Point; p2: Point }[], reach: number): Point {
-  const length = Math.hypot(end.x - other.x, end.y - other.y);
-  if (length === 0) return end;
-  const dx = (end.x - other.x) / length;
-  const dy = (end.y - other.y) / length;
-  let nearest = Infinity;
-  for (const { p1, p2 } of walls) {
-    const ex = p2.x - p1.x;
-    const ey = p2.y - p1.y;
-    const denom = dx * ey - dy * ex;
-    if (Math.abs(denom) < 1e-9) continue;
-    const t = ((p1.x - end.x) * ey - (p1.y - end.y) * ex) / denom;
-    const u = ((p1.x - end.x) * dy - (p1.y - end.y) * dx) / denom;
-    if (t >= 0 && t <= reach && u >= 0 && u <= 1) nearest = Math.min(nearest, t);
-  }
-  return nearest === Infinity ? end : { x: end.x + dx * (nearest + 1), y: end.y + dy * (nearest + 1) };
-}

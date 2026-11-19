@@ -15,7 +15,7 @@ export interface DropdownSliderRowProps {
   onChange: (value: number) => void
 }
 
-/** A menu row with a slider: its name and value on the menu's text edge, the track across the menu. A screen reader hears the value as it is shown, with its unit. */
+/** A menu row with a slider: its name, value and track on the menu's text edge. A screen reader hears the value as it is shown, with its unit. */
 export const DropdownSliderRow: FC<DropdownSliderRowProps> = ({
   label,
   value,

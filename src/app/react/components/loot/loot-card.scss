@@ -1,39 +1,30 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Loot card — one item, in the DM's loot roller and the players' loot window
 // ═══════════════════════════════════════════════════════════════════════════
-// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss. Both
-// windows keep their cards $loot-card-inset inside their border, so a card's
-// corner runs concentric with the window's.
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss. A card is
+// content of a list deep inside its window, not one of its corner controls, so
+// it keeps a control's corner.
 
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
-
-$loot-card-inset: calc(#{$spacing-m} + #{$border-width-m});
-$loot-inset-radius: atlas-panel-inset-radius-value($loot-card-inset);
 
 .atlas-loot-card {
   // The rarity's colour: the classic ladder in the theme's own hues.
   --atlas-loot-tone: var(--text-muted);
   @include atlas-flex-col($spacing-s);
-  @include atlas-corner-shape;
   padding: $spacing-m;
   border: $border-width-s solid var(--background-modifier-border);
-  border-radius: $loot-inset-radius;
+  border-radius: $radius-m;
   background: var(--background-secondary);
 
   &--fresh {
-    animation: atlas-loot-fresh 1.6s $transition-ease-out;
+    animation: atlas-loot-fresh $transition-normal $transition-ease-out backwards;
   }
 
   &[data-rarity='uncommon'] { --atlas-loot-tone: var(--color-green); }
   &[data-rarity='rare'] { --atlas-loot-tone: var(--color-blue); }
   &[data-rarity='epic'] { --atlas-loot-tone: var(--color-purple); }
   &[data-rarity='legendary'] { --atlas-loot-tone: var(--color-orange); }
-
-  &[data-rarity]:not([data-rarity='common']) {
-    border-color: color-mix(in oklch, var(--atlas-loot-tone) 45%, var(--background-modifier-border));
-    background: color-mix(in oklch, var(--atlas-loot-tone) 7%, var(--background-secondary));
-  }
 }
 
 .atlas-loot-card__title {
@@ -57,10 +48,11 @@ $loot-inset-radius: atlas-panel-inset-radius-value($loot-card-inset);
   font-weight: $font-weight-semibold;
 }
 
+// A card just rolled settles into place; the rarity's colour in its name says the rest.
 @keyframes atlas-loot-fresh {
   from {
-    border-color: var(--interactive-accent);
-    box-shadow: 0 0 0 3px color-mix(in oklch, var(--interactive-accent) 28%, transparent);
+    opacity: 0;
+    transform: translateY(4px);
   }
 }
 

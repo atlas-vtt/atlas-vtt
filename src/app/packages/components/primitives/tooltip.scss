@@ -1,0 +1,192 @@
+@use '../../../../../styles/tokens' as *;
+
+// Tooltip styles on Obsidian's theme variables.
+//
+// Tooltips live in a portal outside Atlas' CSS custom properties, so they take Sass tokens, which compile to
+// literals: the curve is `$transition-ease-out` (`MOTION_EASE_OUT`), for the entrance and the exit alike, as the
+// tokens ask of UI motion; a tooltip floats, so its corner is `$surface-radius` and its border `$border-width-m`, and
+// a keycap in it is a mark (`$radius-s`). It holds text, not controls, so it keeps text's padding.
+
+$tooltip-in: 120ms $transition-ease-out;
+$tooltip-out: 100ms $transition-ease-out;
+
+.tooltip-content {
+  position: relative;
+  /* Above every Atlas panel and dropdown (highest is 99999); Radix copies this onto its portal wrapper. */
+  z-index: 100000;
+  overflow: hidden;
+  border-radius: $surface-radius;
+  border: $border-width-m solid color-mix(in oklch, var(--mono-100) 18%, transparent);
+  background-color: var(--background-primary);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 8px;
+  font-size: 0.8125rem; /* 13px */
+  line-height: 1.4;
+  color: var(--text-normal);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    0 1px 3px rgba(0, 0, 0, 0.1);
+  will-change: transform, opacity;
+  animation: tooltip-fade-in $tooltip-in, tooltip-zoom-in $tooltip-in;
+  pointer-events: none;
+}
+
+/* A tight tooltip, for a gap a full one would overflow onto the next control (a chip's under a field): one line of
+   text and a smaller keycap, 28 px in all. */
+.tooltip-content.tooltip-content--compact {
+  padding: 2px 8px;
+
+  .tooltip-kbd {
+    height: 16px;
+    min-width: 16px;
+  }
+}
+
+/* Radix places a tooltip with a wrapper of the tooltip's size, which took the pointer the tooltip itself leaves alone:
+   what a showing or fading tooltip lay over (the icons of the row above its own) got no hover, so no tooltip, and no click.
+   The wrapper is Radix's element, so TooltipContent gives it this class: `:has()` on an element that is not Atlas' own
+   makes Obsidian's whole document pay for the selector. */
+.atlas-tooltip-wrapper {
+  pointer-events: none;
+}
+
+/* Inner layout for structured tooltip content */
+.tooltip-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tooltip-label {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* A name with a quieter line under it: the name and its keycap side by side, the hint below, the tooltip as wide as
+   the longer of the two. */
+.tooltip-inner--hint {
+  flex-wrap: wrap;
+  column-gap: 6px;
+  row-gap: 2px;
+}
+
+.tooltip-hint {
+  flex-basis: 100%;
+  max-width: 240px;
+  font-size: 0.75rem; /* 12px */
+  font-weight: 400;
+  color: var(--text-muted);
+  white-space: normal;
+  text-wrap: balance;
+}
+
+/* An explanation rather than a name: it wraps, and reads as text. */
+.tooltip-label--multiline {
+  max-width: 280px;
+  font-weight: 400;
+  white-space: normal;
+  // Balanced lines: no word left alone on the last one.
+  text-wrap: balance;
+}
+
+.tooltip-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: $radius-s;
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary);
+  font-size: 0.6875rem; /* 11px */
+  font-weight: 500;
+  font-family: inherit;
+  line-height: 1;
+  color: var(--text-muted);
+}
+
+.tooltip-subtitle {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.6875rem; /* 11px */
+  color: var(--text-muted);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+/* Keyframes */
+@keyframes tooltip-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes tooltip-zoom-in {
+  from { transform: scale(0.96); }
+  to { transform: scale(1); }
+}
+@keyframes tooltip-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes tooltip-zoom-out {
+  from { transform: scale(1); }
+  to { transform: scale(0.96); }
+}
+
+@keyframes tooltip-slide-in-from-top {
+  from { transform: translateY(-4px); }
+  to { transform: translateY(0); }
+}
+@keyframes tooltip-slide-in-from-right {
+  from { transform: translateX(4px); }
+  to { transform: translateX(0); }
+}
+@keyframes tooltip-slide-in-from-left {
+  from { transform: translateX(-4px); }
+  to { transform: translateX(0); }
+}
+@keyframes tooltip-slide-in-from-bottom {
+  from { transform: translateY(4px); }
+  to { transform: translateY(0); }
+}
+
+/* Side-based slide animations */
+.tooltip-content[data-side="bottom"] {
+  animation: tooltip-fade-in $tooltip-in, tooltip-zoom-in $tooltip-in, tooltip-slide-in-from-top $tooltip-in;
+}
+.tooltip-content[data-side="top"] {
+  animation: tooltip-fade-in $tooltip-in, tooltip-zoom-in $tooltip-in, tooltip-slide-in-from-bottom $tooltip-in;
+}
+.tooltip-content[data-side="left"] {
+  animation: tooltip-fade-in $tooltip-in, tooltip-zoom-in $tooltip-in, tooltip-slide-in-from-right $tooltip-in;
+}
+.tooltip-content[data-side="right"] {
+  animation: tooltip-fade-in $tooltip-in, tooltip-zoom-in $tooltip-in, tooltip-slide-in-from-left $tooltip-in;
+}
+
+/* The exit, after the entrances: Radix gives every tooltip a side, and a side's entrance of the same specificity
+   written later took the closing tooltip's animation, so none ever faded out. */
+.tooltip-content[data-state="closed"],
+.tooltip-content[data-side][data-state="closed"] {
+  animation: tooltip-fade-out $tooltip-out, tooltip-zoom-out $tooltip-out;
+}
+
+/* A confirmation holds no tooltips: one left open by the control whose menu opened it would stand over its question.
+   The host is marked while it holds one (`dialogShell.ts`): a `:has()` on the host had every element put into it (a
+   menu row, a card scrolled in) restyle everything the host holds, the asset manager's window included. */
+.atlas-portal-host.atlas-portal-host--dialog .tooltip-content {
+  display: none;
+}
+
+/* Reduced motion: a tooltip only fades, in and out; no zoom and no slide (every Atlas tooltip). */
+@media (prefers-reduced-motion: reduce) {
+  .tooltip-content,
+  .tooltip-content[data-side] {
+    animation: tooltip-fade-in $tooltip-in;
+  }
+
+  .tooltip-content[data-side][data-state="closed"] {
+    animation: tooltip-fade-out $tooltip-out;
+  }
+}

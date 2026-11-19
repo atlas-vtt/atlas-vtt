@@ -24,8 +24,6 @@ export const audio = {
   'audio.trackFadeDefault': 'Auto',
   'audio.trackFadeSeconds': '{seconds} s',
 
-  'audio.experimental.label': 'Sound',
-  'audio.experimental.hint': 'Music and ambience from folders you link: moods and a library on the DM screen. While off, both stay hidden.',
 
   'audio.importing': 'Adding sounds: {done} of {total}',
   'audio.added': { one: 'Added {count} sound.', other: 'Added {count} sounds.' },

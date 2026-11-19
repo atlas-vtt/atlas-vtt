@@ -1,6 +1,7 @@
 import type { SettingsService } from '../services/SettingsService';
 import type { AtlasSettingRow } from '../settings/settingSections';
 import { t } from '../i18n';
+import { addSettingButton } from '../ui/atlasButton';
 import { openUpdate } from './updateNotice';
 import type { UpdateWatch } from './UpdateWatch';
 
@@ -21,24 +22,24 @@ export function updateSettingsRows(settings: SettingsService, watch: UpdateWatch
       name: statusName(watch),
       aliases: ['update', 'new version', 'upgrade'],
       render: setting => {
-        let unsubscribe: (() => void) | undefined;
-        setting.addButton(button => {
-          const show = (): void => {
-            setting.setName(statusName(watch));
-            const available = watch.available() !== null;
-            const checking = watch.isChecking();
-            button.setButtonText(buttonText(available, checking))
-              .setDisabled(!available && checking);
-            button.buttonEl.toggleClass('mod-cta', available);
-          };
-          button.onClick(() => {
+        const button = addSettingButton(setting, {
+          onClick: () => {
             if (watch.available()) openUpdate();
             else void watch.check({ force: true });
-          });
-          show();
-          unsubscribe = watch.onChange(show);
+          },
         });
-        return unsubscribe;
+        const show = (): void => {
+          setting.setName(statusName(watch));
+          const available = watch.available() !== null;
+          const checking = watch.isChecking();
+          button.setText(buttonText(available, checking));
+          button.disabled = !available && checking;
+          // An update waiting is the row's call to action: Atlas' filled button.
+          button.toggleClass('btn--default', available);
+          button.toggleClass('btn--outline', !available);
+        };
+        show();
+        return watch.onChange(show);
       },
     },
     {

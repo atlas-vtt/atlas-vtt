@@ -1,113 +1,108 @@
 @use '../../../styles/tokens' as *;
 @use '../../../styles/mixins' as *;
 
-.atlas-onboarding-overlay, .atlas-hotkey-help {
+.atlas-onboarding-overlay {
   position: fixed;
   inset: 0;
   z-index: $z-atlas-modal + $z-notification;
   pointer-events: auto;
 }
-.atlas-onboarding-dimmer { position: absolute; inset: 0; background: var(--background-modifier-cover); }
+// One spotlight for the whole tour: it glides from target to target and closes to a point where a step has none.
 .atlas-onboarding-spotlight {
   position: fixed;
   border: $border-width-l solid var(--interactive-accent);
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   box-shadow: 0 0 0 100vmax var(--background-modifier-cover);
   pointer-events: none;
+  transition-property: left, top, width, height, border-color;
+  transition-duration: $transition-slow;
+  transition-timing-function: $transition-ease-in-out;
 }
-.atlas-onboarding-card, .atlas-hotkey-help-card {
+.atlas-onboarding-spotlight--none { border-color: transparent; }
+.atlas-onboarding-card {
   --atlas-onboarding-control-radius: #{$radius-m};
   --atlas-onboarding-padding: #{$spacing-xl};
 
   color: var(--text-normal);
   background: var(--background-primary);
   border: $border-width-s solid var(--background-modifier-border);
-  // Align the panel's outer curve with the inset buttons, including its border.
-  border-radius: calc(var(--atlas-onboarding-control-radius) + var(--atlas-onboarding-padding) + #{$border-width-s});
+  @include atlas-panel-radius($surface-radius, $border-width-s);
   box-shadow: $shadow-elevated;
   padding: var(--atlas-onboarding-padding);
   h2, h3 { margin: 0 0 $spacing-m; font-size: $font-ui-medium; font-weight: $font-weight-semibold; }
-  p { margin: 0 0 $spacing-l; font-size: $font-ui-small; line-height: 1.5; color: var(--text-muted); }
+  p { margin: 0 0 $spacing-l; font-size: $font-ui-small; line-height: 1.5; color: var(--text-muted); text-wrap: pretty; }
 }
-.atlas-vtt-plugin :is(.atlas-onboarding-card, .atlas-hotkey-help-card) .btn {
+// Focus moves to a tour's next step by itself; Atlas draws no keyboard focus rings, so neither does the tour.
+.atlas-vtt-plugin .atlas-onboarding-card .btn:focus-visible { box-shadow: none; }
+.atlas-vtt-plugin .atlas-onboarding-card .btn {
   border-radius: var(--atlas-onboarding-control-radius);
 }
 .atlas-onboarding-card {
-  --atlas-onboarding-padding: #{$spacing-s};
+  // Its picture stands in its top corners: $surface-inset inside, concentric with them.
+  --atlas-onboarding-padding: #{$surface-inset};
 
   position: fixed;
   max-height: calc(100vh - 32px);
   overflow: auto;
+  transition: left $transition-slow $transition-ease-in-out, top $transition-slow $transition-ease-in-out;
+  animation: atlas-onboarding-card-in $transition-slow $transition-ease-out;
+}
+// Each step's text settles in as the card moves to it.
+.atlas-onboarding-step { animation: atlas-onboarding-step-in $transition-normal $transition-ease-out; }
+@keyframes atlas-onboarding-card-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+}
+@keyframes atlas-onboarding-step-in {
+  from { opacity: 0; transform: translateY(4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-onboarding-spotlight, .atlas-onboarding-card { transition: none; }
+  .atlas-onboarding-card, .atlas-onboarding-step { animation: none; }
 }
 .atlas-onboarding-image {
   display: block;
   width: 100%;
   height: auto;
   // Flush with the card's padding, so its corners run concentric with the card's.
-  border-radius: var(--atlas-onboarding-control-radius);
+  @include atlas-panel-inset-radius($surface-inset);
   border: $border-width-s solid var(--background-modifier-border);
   box-sizing: border-box;
 }
-.atlas-onboarding-content {
-  padding: $spacing-l;
-
-  > p:last-child { margin-bottom: 0; }
-}
-.atlas-onboarding-eyebrow { font-size: $font-ui-smaller; color: var(--text-muted); margin-bottom: $spacing-s; }
-.atlas-onboarding-actions, .atlas-onboarding-actions-end { display: flex; align-items: center; gap: $spacing-s; }
-.atlas-onboarding-actions { justify-content: space-between; }
-.atlas-hotkey-help { display: grid; place-items: center; padding: $spacing-l; background: var(--background-modifier-cover); }
-.atlas-hotkey-help-card {
-  box-sizing: border-box;
-  width: min(1040px, 100%);
-  max-height: calc(100dvh - #{$spacing-2xl});
-  display: flex;
-  flex-direction: column;
-  @include atlas-panel-radius($radius-2xl, $border-width-s);
-}
-// Reaches past the card's padding to its top-right corner, where the close button belongs.
-.atlas-hotkey-help-header {
+.atlas-onboarding-content { padding: $spacing-l; }
+.atlas-onboarding-step > :last-child { margin-bottom: 0; }
+.atlas-onboarding-eyebrow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: $spacing-l;
-  margin: calc(-1 * var(--atlas-onboarding-padding)) calc(-1 * var(--atlas-onboarding-padding)) $spacing-s 0;
-  @include atlas-close-header(0);
-  flex-shrink: 0;
-
-  h2 { margin: 0; font-size: $font-ui-large; }
+  gap: $spacing-s;
+  font-size: $font-ui-smaller;
+  color: var(--text-muted);
+  margin-bottom: $spacing-s;
 }
-.atlas-hotkey-help-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: $spacing-xl $spacing-2xl;
-  overflow: auto;
-  min-height: 0;
+.atlas-onboarding-progress {
+  display: flex;
+  gap: $spacing-xs;
 
-  section { min-width: 0; }
-  h3 { margin-bottom: $spacing-s; }
-  dl {
-    display: grid;
-    grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
-    column-gap: $spacing-m;
-    margin: 0;
-    font-size: $font-ui-medium;
-    line-height: 1.4;
+  > .atlas-onboarding-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: $radius-full;
+    background: var(--background-modifier-border);
+    transition: width $transition-normal $transition-ease-out, background-color $transition-normal $transition-ease;
   }
-  dl > div {
-    display: grid;
-    grid-template-columns: subgrid;
-    grid-column: 1 / -1;
-    align-items: baseline;
-    padding: calc(#{$spacing-xs} / 2) 0;
-  }
-  dd { margin: 0; }
-  kbd { font-size: $font-ui-medium; color: var(--text-muted); overflow-wrap: anywhere; }
-  p { margin: 0; font-size: $font-ui-medium; }
-
-  @media (max-width: $breakpoint-m) {
-    grid-template-columns: minmax(0, 1fr);
-  }
+  > .atlas-onboarding-dot.is-done { background: var(--text-faint); }
+  > .atlas-onboarding-dot.is-current { width: 16px; background: var(--interactive-accent); }
+  > .atlas-onboarding-progress__label { @include atlas-visually-hidden; }
 }
+.atlas-onboarding-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-xs;
+
+  kbd { @include atlas-keycap(24px); }
+}
+.atlas-onboarding-actions, .atlas-onboarding-actions-end { display: flex; align-items: center; gap: $spacing-s; }
+.atlas-onboarding-actions { justify-content: space-between; }
+.atlas-onboarding-actions-end { margin-left: auto; }
 .atlas-hotkey-recorder { width: 12em; }
 .atlas-hotkey-warning { color: var(--text-warning); }

@@ -1,5 +1,5 @@
 // The selected tile's toolbar (spec §4.2): a 36 px capsule under the tile,
-// its kind's name, then its controls; its buttons sit $spacing-xs inside the
+// its kind's name, then its controls; its buttons sit $surface-inset inside the
 // border, so their outer corners run concentric with the capsule's ends. It
 // takes the pointer over its whole capsule while its tile is selected.
 
@@ -7,8 +7,7 @@
 @use '../../../../../../styles/mixins' as *;
 
 $toolbar-height: 36px;
-$toolbar-inset: $spacing-xs;
-$toolbar-button: calc(#{$toolbar-height} - 2 * #{$border-width-m} - 2 * #{$toolbar-inset});
+$toolbar-button: calc(#{$toolbar-height} - 2 * #{$border-width-m} - 2 * #{$surface-inset});
 $chip-max: 88px;
 
 .atlas-vtt-plugin {
@@ -21,10 +20,10 @@ $chip-max: 88px;
     z-index: 2;
     display: flex;
     align-items: center;
-    gap: $toolbar-inset;
+    gap: $surface-inset;
     box-sizing: border-box;
     height: $toolbar-height;
-    padding: $toolbar-inset;
+    padding: $surface-inset;
     border-radius: $toolbar-height * 0.5;
     box-shadow: $shadow-md;
     pointer-events: auto;
@@ -35,7 +34,6 @@ $chip-max: 88px;
     }
 
     .atlas-tool-button button.btn {
-      @include atlas-corner-shape;
       height: $toolbar-button;
       border: none;
       border-radius: calc(#{$toolbar-button} / 2);

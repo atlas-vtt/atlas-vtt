@@ -16,12 +16,34 @@
   .atlas-tab-button {
     @include atlas-tab-button;
 
+    // The Armarium's tab is its icon alone: square, as tall as the tabs beside it.
+    &.atlas-tab-button--icon {
+      justify-content: center;
+      aspect-ratio: 1;
+      padding: 0;
+
+      // Alone, the icon takes the size of the header's other icons.
+      svg {
+        width: $icon-s;
+        height: $icon-s;
+      }
+    }
+
     // A count is information, so it reads at AA (the shared tab mixin's is faint).
     .atlas-tab-count {
       min-width: 2ch;
       text-align: left;
       color: var(--text-muted);
     }
+  }
+
+  // The Armarium is a place beside the library, not an asset type: a hairline sets it apart from the tabs before it.
+  .atlas-tab-divider {
+    flex-shrink: 0;
+    width: $border-width-s;
+    height: $icon-s;
+    margin-inline: $spacing-xs;
+    background-color: var(--background-modifier-border);
   }
 }
 
@@ -150,7 +172,7 @@
       width: $face;
       height: $face;
       flex-shrink: 0;
-      border-radius: $radius-s;
+      border-radius: $search-field-button-radius;
 
       &::before {
         position: absolute;
@@ -235,5 +257,41 @@
 
   &.atlas-active svg {
     transform: rotate(45deg);
+  }
+}
+
+// ── Armarium ────────────────────────────────────────────────────────────────
+// While the store is shown its Reload and Open in browser stand where the search and Create do, ghost buttons of
+// Create's size; the last one takes the window's corner as Create does.
+
+.atlas-am-toolbar-right--armarium {
+  grid-template-columns: none;
+}
+
+.atlas-am-armarium-actions {
+  @include atlas-flex-row($gap: $spacing-xs);
+}
+
+.atlas-am-header-action {
+  &.btn,
+  &.btn--icon {
+    width: $header-control-height;
+    height: $header-control-height;
+    flex-shrink: 0;
+    border-radius: $radius-m;
+    color: var(--text-muted);
+  }
+
+  // Each button is followed by its tooltip's hidden label.
+  &:last-of-type {
+    &.btn,
+    &.btn--icon {
+      @include atlas-concentric-corner(top-right, $window-radius, $window-corner-inset);
+    }
+  }
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
   }
 }

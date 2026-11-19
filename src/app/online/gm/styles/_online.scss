@@ -6,8 +6,10 @@
 $online-control: var(--input-height);
 $online-inset: $spacing-xs;
 $online-row: calc(#{$online-control} + 2 * #{$online-inset});
-// Concentric with the controls inside a row: their radius plus the inset.
-$online-row-radius: $radius-xl;
+// A row is a control and has a control's corner; what stands $online-inset inside it (a button, a
+// picture) runs concentric with it.
+$online-row-radius: $radius-m;
+$online-row-control-radius: $radius-m - $online-inset;
 $online-text-inset: $spacing-xs;
 // Drawn inside the element, so a scrolling list never clips it.
 $online-focus-ring: inset 0 0 0 2px var(--background-modifier-border-focus);

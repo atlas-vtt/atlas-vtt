@@ -20,8 +20,6 @@
   padding: 2px $spacing-s;
   border: $border-width-s solid var(--background-modifier-border) !important;
   border-radius: $radius-full !important;
-  // A capsule, not Obsidian's squircle
-  corner-shape: round;
   background: none !important;
   box-shadow: none !important;
   color: var(--text-muted);

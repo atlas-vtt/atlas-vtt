@@ -81,9 +81,12 @@ export class SoundCopies {
     return info && { ...info, ...(record.crossfadeSeconds !== undefined && { crossfadeMs: record.crossfadeSeconds * 1000 }), ...(record.startAtLoopIn && record.loop && { startAtLoopIn: true as const }) };
   }
 
-  /** How a music sound goes over its length, as its file says; null for ambience and until it is known. */
-  peaksFor(record: SoundRecord): Uint8Array<ArrayBuffer> | null {
-    return this.entryOf(record)?.peaks ?? null;
+  /**
+   * How the music a key names goes over its length, as its copy says; null for ambience and until it is known. Read
+   * by the key, as the copy is played, never through a record and the file it names now, which may be read again.
+   */
+  peaksOfKey(key: string): Uint8Array<ArrayBuffer> | null {
+    return this.keys.peaksOf(key);
   }
 
   /** The record a copy was last made or found for. */

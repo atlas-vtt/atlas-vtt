@@ -9,6 +9,7 @@ import { ResponsiveWidgetBar } from '../../src/app/react/components/ResponsiveWi
 import { useMapHotkeys } from '../../src/app/keyboard/useMapHotkeys';
 import type { CounterWidget, TimerWidget } from '../../src/app/types/widgetTypes';
 import { timerShownSeconds } from '../../src/app/utils/timerWidget';
+import { renderDiceTray } from '../helpers/renderDiceTray';
 
 const counter: CounterWidget = {
   id: 'fear', type: 'counter', label: 'Fear', icon: 'skull',
@@ -70,6 +71,26 @@ describe('the widget used last', () => {
     expect(topLabel()).toBe('Torch');
     release('2', 'Digit2');
     expect(topLabel()).toBe('Torch');
+  });
+
+  it('leaves the number keys to the dice tray while it is open', () => {
+    const store = renderBar();
+    act(() => store.getState().setDiceTrayOpen(true));
+    const event = new KeyboardEvent('keydown', { key: '2', code: 'Digit2', bubbles: true, cancelable: true });
+    act(() => { document.body.dispatchEvent(event); });
+    expect(event.defaultPrevented).toBe(false);
+    expect(topLabel()).toBe('Fear');
+  });
+
+  it('lets the open tray add its dice by the number keys, past the widget bar that listens first', () => {
+    const store = renderBar();
+    act(() => store.getState().setDiceTrayOpen(true));
+    renderDiceTray();
+    for (const [key, code] of [['2', 'Digit2'], ['2', 'Digit2'], ['6', 'Digit6']]) {
+      press(key!, code!);
+      release(key!, code!);
+    }
+    expect((document.querySelector('.atlas-dice-tray__formula') as HTMLInputElement).value).toBe('2d6 + 1d20');
   });
 
   it('is the one a click landed on', () => {
