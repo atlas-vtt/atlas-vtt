@@ -77,8 +77,10 @@ export function MusicPosition({ director }: { director: SoundDirector }): React.
       if (band) {
         band.hidden = !loop || frames === 0;
         if (loop && frames > 0) {
-          band.style.left = `${(loop.startFrame / frames) * 100}%`;
-          band.style.width = `${((loop.endFrame - loop.startFrame) / frames) * 100}%`;
+          band.setCssProps({
+            '--atlas-sound-loop-start': `${(loop.startFrame / frames) * 100}%`,
+            '--atlas-sound-loop-width': `${((loop.endFrame - loop.startFrame) / frames) * 100}%`,
+          });
         }
       }
       const frame = position ? (held.current === null ? position.frame : Math.round(held.current * frames)) : 0;

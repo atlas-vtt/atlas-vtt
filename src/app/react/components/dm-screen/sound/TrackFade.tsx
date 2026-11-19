@@ -1,13 +1,15 @@
 import React from 'react';
-import { Blend, ChevronDown } from 'lucide-react';
+import { Blend } from 'lucide-react';
 import { t } from '../../../../i18n';
 import type { SoundRecord } from '../../../../sound/soundTypes';
 import { musicPosition, soundingMusic } from '../../../../soundDirector/musicList';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import type { SoundSnapshot } from '../../../../soundDirector/soundSnapshot';
 import { SoundRecordStore } from '../../../../soundLibrary/SoundRecordStore';
-import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
 import { useAtlasUI } from '../../../root/AtlasUIContext';
+import { useContextMenu } from '../../../root/ContextMenuContext';
+import type { ContextMenuEntry } from '../../context-menu/AtlasContextMenu';
+import { IconAction } from './IconAction';
 import { useSoundValue } from './useSound';
 
 /** Crossfades a track may have of its own, in seconds. */
@@ -21,37 +23,37 @@ function currentRecord(director: SoundDirector, { mix }: SoundSnapshot): SoundRe
   return key ? director.shelf.recordOfKey(key) : null;
 }
 
+/** The choices of a track's own crossfade, the one it has ticked; unset follows the setting. */
+function fadeEntries(seconds: number | undefined, choose: (next: number | undefined) => void): ContextMenuEntry[] {
+  return [
+    { type: 'item', label: t('audio.trackFadeDefault'), checked: seconds === undefined, onClick: () => choose(undefined) },
+    ...TRACK_FADES.map((choice): ContextMenuEntry => ({ type: 'item', label: t('audio.trackFadeSeconds', { seconds: choice }), checked: seconds === choice, onClick: () => choose(choice) })),
+  ];
+}
+
 /**
  * How long the track that plays crossfades into the next, at its loop seam, and into its own start where it goes round
- * whole: a small dropdown that sets it on the track's record. `''` is unset, which follows the setting.
+ * whole: a quiet button whose menu sets it on the track's record, pressed while the track has a crossfade of its own.
  */
 export function TrackFade({ director }: { director: SoundDirector }): React.JSX.Element {
   const { app } = useAtlasUI();
+  const menu = useContextMenu();
   const id = useSoundValue(director, (snapshot) => currentRecord(director, snapshot)?.id ?? null);
-  const value = useSoundValue(director, (snapshot) => {
-    const seconds = currentRecord(director, snapshot)?.crossfadeSeconds;
-    return seconds === undefined ? '' : String(seconds);
-  });
+  const seconds = useSoundValue(director, (snapshot) => currentRecord(director, snapshot)?.crossfadeSeconds);
   const label = t('audio.trackFade');
   return (
-    <LabelTooltip label={label}>
-      <label className="atlas-sound-music__pick atlas-sound-music__quiet" data-disabled={id === null || undefined} data-set={value !== '' || undefined}>
-        <Blend className="atlas-sound-music__pick-icon" />
-        <select
-          className="dropdown"
-          aria-label={label}
-          disabled={id === null}
-          value={value}
-          onChange={(event) => {
-            const next = event.currentTarget.value;
-            if (id !== null) SoundRecordStore.forApp(app).update([id], { crossfadeSeconds: next === '' ? undefined : Number(next) });
-          }}
-        >
-          <option value="">{t('audio.trackFadeDefault')}</option>
-          {TRACK_FADES.map((seconds) => <option key={seconds} value={String(seconds)}>{t('audio.trackFadeSeconds', { seconds })}</option>)}
-        </select>
-        <ChevronDown className="atlas-sound-music__pick-chevron" />
-      </label>
-    </LabelTooltip>
+    <IconAction
+      label={label}
+      icon={Blend}
+      pressed={seconds !== undefined}
+      disabled={id === null}
+      className="atlas-sound-music__quiet"
+      onClick={(event) => {
+        if (id === null) return;
+        const box = event.currentTarget.getBoundingClientRect();
+        const choose = (next: number | undefined): void => SoundRecordStore.forApp(app).update([id], { crossfadeSeconds: next });
+        menu.open(fadeEntries(seconds, choose), { x: box.left, y: box.bottom }, { returnFocus: event.currentTarget, label });
+      }}
+    />
   );
 }
