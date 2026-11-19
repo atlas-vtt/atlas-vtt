@@ -132,7 +132,7 @@ export class ArmariumInstaller {
       progress.hide();
     }
     if (this.released) return 'cancelled';
-    const outcome = await this.review(request, new Blob([bytes], { type: 'application/zip' }));
+    const outcome = await this.review(request, new Blob([bytes], { type: 'application/zip' }), listing.creator);
     return outcome.kind;
   }
 
@@ -161,11 +161,12 @@ export class ArmariumInstaller {
   }
 
   /** Hands the bytes to the import review and waits for the GM; only the first outcome counts. */
-  private review(request: ArmariumRequest, data: Blob): Promise<ExternalImportOutcome> {
+  private review(request: ArmariumRequest, data: Blob, creator: string | null): Promise<ExternalImportOutcome> {
     return new Promise((resolve) => {
       let settled = false;
       this.deps.review({
         data,
+        ...(creator && { creator }),
         onReview: () => {
           if (settled || !this.current) return;
           this.current.state = 'reviewing';

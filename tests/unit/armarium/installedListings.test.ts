@@ -14,6 +14,7 @@ const record = (collectionId: string, uid: string, version: number): string =>
 function vaultWith(files: Record<string, string>): App {
   return {
     vault: {
+      getFiles: () => [],
       getFileByPath: (path: string) => (path in files ? { path } : null),
       read: async (file: { path: string }) => files[file.path]!,
       adapter: { exists: async () => false },
@@ -49,7 +50,8 @@ describe('the Armarium listings a vault holds', () => {
     };
     const app = {
       vault: {
-        getFileByPath: (path: string) => (path in files ? { path } : null),
+        getFiles: () => [],
+      getFileByPath: (path: string) => (path in files ? { path } : null),
         read: async (file: { path: string }) => {
           reading += 1;
           most = Math.max(most, reading);

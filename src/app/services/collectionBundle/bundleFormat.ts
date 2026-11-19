@@ -105,7 +105,7 @@ export interface CollectionBundleManifest {
 export const zipPathFor = (vaultPath: string): string => `${BUNDLE_FILES_DIR}/${vaultPath}`;
 
 /** The uid names the collection's install record file. */
-const SAFE_UID = /^[A-Za-z0-9-]{8,64}$/;
+export const SAFE_UID = /^[A-Za-z0-9-]{8,64}$/;
 
 /** Asset ids end up in file names (`maps/<id>.json`) and index records, so they must not name another folder or a prototype key. */
 const SAFE_ID = /^[^/\\.][^/\\]{0,127}$/;
@@ -144,7 +144,7 @@ const isStatblockImage = (value: unknown): boolean =>
 
 const isStrings = (value: unknown): boolean => Array.isArray(value) && value.every((entry) => typeof entry === 'string');
 
-const isBundleFile = (value: unknown): value is BundleFile =>
+export const isBundleFile = (value: unknown): value is BundleFile =>
   isRecord(value)
   && typeof value.vaultPath === 'string'
   && typeof value.role === 'string'

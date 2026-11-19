@@ -3,7 +3,10 @@ import { type App as ObsidianApp } from 'obsidian';
 import type { AssetService } from '../../../../services/AssetService';
 import type { BundleProgress, BundleProgressListener } from '../../../../services/collectionBundle/bundleProgress';
 import { exportCollectionBundle, prepareCollectionExport, type ExportChoice, type ExportPreview } from '../../../../services/collectionBundle/collectionExport';
-import { openCollectionImport, type CollectionImportResult, type ImportDecision, type ImportSession } from '../../../../services/collectionBundle/collectionImport';
+import type { CollectionImportResult, ImportDecision, ImportSession } from '../../../../services/collectionBundle/collectionImport';
+import { openBundleImport } from '../../../../services/itemBundle/bundleImport';
+import type { ItemImportResult, ItemImportSession, ItemReview } from '../../../../services/itemBundle/itemImport';
+import { describeItemImport, itemImportTitle } from './itemImportText';
 import type { BundleFileReader } from '../../../../services/collectionBundle/bundleReader';
 import type { ImportReview } from '../../../../services/collectionBundle/importReview';
 import type { ExternalImport, ExternalImportOutcome } from '../../../../services/collectionBundle/externalImport';
@@ -21,8 +24,10 @@ export type CollectionTransfer =
   | { step: 'working'; title: string; progress: BundleProgress }
   | { step: 'export-options'; preview: ExportPreview }
   | { step: 'import-review'; review: ImportReview; files: BundleFileReader }
+  | { step: 'item-review'; review: ItemReview }
   | { step: 'share'; session: ShareSession }
-  | { step: 'done'; title: string; message: string };
+  /** `installed`: the single item an import put in the vault, which the result offers to open. */
+  | { step: 'done'; title: string; message: string; installed?: ItemImportResult | undefined };
 
 export interface CollectionTransferActions {
   transfer: CollectionTransfer | null;
@@ -34,6 +39,8 @@ export interface CollectionTransferActions {
   startExternalImport: (pending: ExternalImport) => boolean;
   confirmExport: (choice: ExportChoice) => Promise<string | null>;
   confirmImport: (decision: ImportDecision) => Promise<void>;
+  /** Installs the single item under review. */
+  confirmItemImport: () => Promise<void>;
   closeTransfer: () => void;
 }
 
@@ -66,6 +73,7 @@ function describeImport(result: CollectionImportResult): string {
 export function useCollectionTransfer({ app, assetService, selectedCollection, onImported }: Deps): CollectionTransferActions {
   const [transfer, setTransfer] = useState<CollectionTransfer | null>(null);
   const session = useRef<ImportSession | null>(null);
+  const itemSession = useRef<ItemImportSession | null>(null);
   /** The outside bundle under review, told how its import ended. */
   const external = useRef<ExternalImport | null>(null);
   const settleExternal = (outcome: ExternalImportOutcome): void => {
@@ -91,20 +99,22 @@ export function useCollectionTransfer({ app, assetService, selectedCollection, o
 
   const closeTransfer = (): void => {
     session.current = null;
+    itemSession.current = null;
     setTransfer(null);
     // Only a review still waits for the GM here; a finished import told its outcome already.
     settleExternal({ kind: 'cancelled' });
   };
 
   // The dialog stays open with the result: a fast transfer would otherwise only flash.
-  const finish = (title: string, message: string): void => {
+  const finish = (title: string, message: string, installed?: ItemImportResult): void => {
     session.current = null;
+    itemSession.current = null;
     // An update can close the map view hosting this asset manager; the result must still reach the user.
     if (!isMounted.current) {
       showNotice(message);
       return;
     }
-    setTransfer({ step: 'done', title, message });
+    setTransfer({ step: 'done', title, message, installed });
   };
 
   const handleExportCollection = async (): Promise<void> => {
@@ -172,8 +182,14 @@ export function useCollectionTransfer({ app, assetService, selectedCollection, o
     external.current = from;
     setTransfer({ step: 'working', title: IMPORTING, progress: { message: t('bundle.reading'), fraction: 0 } });
     try {
-      session.current = await openCollectionImport(app, assetService, data, working(IMPORTING));
-      setTransfer({ step: 'import-review', review: session.current.review, files: session.current.files });
+      const opened = await openBundleImport(app, assetService, data, working(IMPORTING), { creator: from?.creator });
+      if (opened.kind === 'item') {
+        itemSession.current = opened.session;
+        setTransfer({ step: 'item-review', review: opened.session.review });
+      } else {
+        session.current = opened.session;
+        setTransfer({ step: 'import-review', review: opened.session.review, files: opened.session.files });
+      }
       external.current?.onReview();
     } catch (error) {
       console.error('[useCollectionTransfer] Reading the bundle failed:', error);
@@ -215,6 +231,26 @@ export function useCollectionTransfer({ app, assetService, selectedCollection, o
     app.workspace.trigger('atlas-vtt:refresh-assets');
   };
 
+  const confirmItemImport = async (): Promise<void> => {
+    const current = itemSession.current;
+    if (!current) return;
+    // Taken out of the ref: once confirmed, the import runs to its end even if the asset manager closes meanwhile.
+    const from = external.current;
+    external.current = null;
+    setTransfer({ step: 'working', title: IMPORTING, progress: { message: t('bundle.writing'), fraction: 0.5 } });
+    let result: ItemImportResult;
+    try {
+      result = await current.apply();
+    } catch (error) {
+      console.error('[useCollectionTransfer] Installing the item failed:', error);
+      from?.onSettled({ kind: 'failed' });
+      finish(t('bundle.importFailed'), describeError(error));
+      return;
+    }
+    from?.onSettled({ kind: 'installed' });
+    finish(itemImportTitle(result), describeItemImport(result), result);
+  };
+
   const handleImportCollection = (): void => {
     if (transfer) return;
     const input = document.body.createEl('input', {
@@ -231,5 +267,5 @@ export function useCollectionTransfer({ app, assetService, selectedCollection, o
     input.click();
   };
 
-  return { transfer, handleExportCollection, handleImportCollection, handleShareCollection, startExternalImport, confirmExport, confirmImport, closeTransfer };
+  return { transfer, handleExportCollection, handleImportCollection, handleShareCollection, startExternalImport, confirmExport, confirmImport, confirmItemImport, closeTransfer };
 }

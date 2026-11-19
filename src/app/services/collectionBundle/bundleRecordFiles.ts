@@ -111,7 +111,7 @@ function copyNameFor(name: string, collectionName: string, n: number, max: numbe
 export async function planRecordImport(
   app: App,
   kind: BundledRecordKind,
-  manifest: CollectionBundleManifest,
+  manifest: Pick<CollectionBundleManifest, 'files'>,
   files: BundleFileReader,
   installed: Readonly<Record<string, InstalledRecord>> | undefined,
   collectionName: string,

@@ -22,6 +22,8 @@ import { dice } from './dice';
 import { docs } from './docs';
 import { siteFrame } from './siteFrame';
 import { armarium } from './armarium';
+import { itemBundle } from './itemBundle';
+import { itemReview } from './itemReview';
 import { armariumFindings } from './armariumFindings';
 import { armariumListing } from './armariumListing';
 import { armariumUpload } from './armariumUpload';
@@ -254,4 +256,6 @@ export const en = {
   ...armariumShare,
   ...account,
   ...selection,
+  ...itemBundle,
+  ...itemReview,
 } as const;

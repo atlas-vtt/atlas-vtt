@@ -39,6 +39,12 @@
 - Small (75 % of Medium) and Tiny (50 %) sizes in the token creator, the asset library and the map's Size menu, and by shrinking with the resize handles. Contributed by Jackson98Tomphson
 - Tiny tokens snap to any quarter of a square cell; on hex grids both sizes take the hex's centre. Contributed by Jackson98Tomphson
 
+**Armarium**
+
+- Share a statblock template, a game system or a dice set on its own in the Armarium, and add one to your vault in one click
+- A template brings the note it starts statblocks with and the dice set it rolls; a game system brings its dice set too
+- An update replaces your copy where you left it as it came, and comes in beside it where you changed it
+
 **Initiative, quests and lighting**
 
 - Initiative by sides can roll once at combat start: each side rolls, and that order holds for the whole fight; the order of the sides in the settings breaks ties. Contributed by iviaxpow3r
