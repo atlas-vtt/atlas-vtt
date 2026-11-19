@@ -185,6 +185,19 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
   });
 
   plugin.addCommand({
+    id: 'reset-explored-areas',
+    name: t('sceneLight.forgetExplored'),
+    checkCallback: (checking) => {
+      const view = app.workspace.getActiveViewOfType(AtlasView);
+      if (!view || !view.getStore().getState().lighting.enabled) return false;
+      if (!checking) {
+        view.serviceManager.getEventBus().emit('lighting-reset-explored');
+      }
+      return true;
+    },
+  });
+
+  plugin.addCommand({
     id: 'open-docs',
     name: t('docs.command'),
     checkCallback: (checking) => {
@@ -233,7 +246,7 @@ function registerStatblockCommands(plugin: Plugin): void {
 
   plugin.addCommand({
     id: 'new-statblock-template',
-    name: 'New statblock template…',
+    name: t('command.newStatblockTemplate'),
     checkCallback: (checking) => {
       if (!experimentalFeatureOn(app, 'statblockEditor')) return false;
       if (!checking) runInBackground(openTemplateGallery(app), 'Opening the template gallery');
