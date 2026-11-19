@@ -26,6 +26,8 @@ beforeAll(async () => {
       minify: false,
       sourcemap: false,
       lib: { entry: 'tests/fixtures/desktop-runtime.ts', formats: ['cjs'], fileName: 'runtime' },
+      // Rolldown keeps JSDoc in an unminified bundle, and pako's shows `require('pako')` as an example.
+      rolldownOptions: { output: { comments: { jsdoc: false } } },
     },
   });
   const bundle = Array.isArray(output) ? output[0] : output;

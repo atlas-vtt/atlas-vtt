@@ -111,7 +111,7 @@ describe('MeasurePopover', () => {
     // Its controls come in this order, Delete last.
     const order = [...popover().querySelectorAll('.atlas-swatch-grid, [role="switch"], .atlas-light-popover__delete')].map((element) => element.className.split(' ')[0]);
     expect(order).toEqual(['atlas-swatch-grid', 'atlas-toggle', 'atlas-toggle', 'btn']);
-    act(() => store.getState().closeMeasurePopover());
+    act(() => { store.getState().closeMeasurePopover(); });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
@@ -204,10 +204,10 @@ describe('the popover of a kept area', () => {
     const line = store.getState().addMeasure({ shape: 'line', points: [{ x: 300, y: 600 }, { x: 580, y: 600 }], width: 70 })!;
     act(() => { store.getState().openMeasurePopover(circle); });
     expect(controls(popover())).toEqual(['colours', 'effects', 'Gives light', 'Players see it', 'Stops at walls', 'Follows token', 'Select tokens', 'Delete']);
-    act(() => store.getState().openMeasurePopover(line));
+    act(() => { store.getState().openMeasurePopover(line); });
     expect(controls(popover())).toEqual(['colours', 'effects', 'Gives light', 'Players see it', 'Stops at walls', 'Follows token', 'Width', 'Select tokens', 'Delete']);
     // A ruler has neither a look nor a light.
-    act(() => store.getState().openMeasurePopover(ruler));
+    act(() => { store.getState().openMeasurePopover(ruler); });
     expect(controls(popover())).toEqual(['colours', 'Players see it', 'Follows token', 'Delete']);
   });
 
@@ -402,7 +402,7 @@ describe('a measurement that follows a token', () => {
 
   it('is grouped with the token it starts on, keeping its shape, and let go where it lies', () => {
     const { store, circle, measure, steps, undo } = setup();
-    act(() => store.setState({ objects: { ...store.getState().objects, tokens: { hero } } }));
+    act(() => { store.setState({ objects: { ...store.getState().objects, tokens: { hero } } }); });
     getHistoryStore(store)!.getState().clear();
     act(() => { store.getState().openMeasurePopover(circle); });
     expect(follows().getAttribute('aria-disabled')).toBeNull();
@@ -421,10 +421,10 @@ describe('a measurement that follows a token', () => {
 
   it('lets an aura go as a circle again where its token stands', () => {
     const { store, circle, measure, undo } = setup();
-    act(() => store.setState({ objects: { ...store.getState().objects, tokens: { hero } } }));
-    act(() => store.getState().updateMeasure(circle, { follows: 'hero', aura: 10, points: [{ x: 875, y: 385 }, { x: 875 + 35 + 140, y: 385 }] }));
+    act(() => { store.setState({ objects: { ...store.getState().objects, tokens: { hero } } }); });
+    act(() => { store.getState().updateMeasure(circle, { follows: 'hero', aura: 10, points: [{ x: 875, y: 385 }, { x: 875 + 35 + 140, y: 385 }] }); });
     getHistoryStore(store)!.getState().clear();
-    act(() => store.getState().openMeasurePopover(circle));
+    act(() => { store.getState().openMeasurePopover(circle); });
     expect(follows().getAttribute('aria-checked')).toBe('true');
 
     // The token walks off; let go, the aura stays as a circle around where the token stands then.

@@ -73,7 +73,7 @@ export interface SceneSound {
 /** What the engine reads a sound through: the Opus cache on the GM's side, the store on a page. */
 export interface SoundBytes {
   readonly byteLength: number;
-  read(start: number, end: number): Promise<Uint8Array>;
+  read(start: number, end: number): Promise<Uint8Array<ArrayBuffer>>;
 }
 
 /** What the engine knows of a converted sound. */

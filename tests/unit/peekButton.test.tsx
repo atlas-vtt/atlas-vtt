@@ -56,10 +56,10 @@ it('ends the peek when the system takes the press away, once', () => {
 
 it('ends the peek when it goes while held, and takes no press in the session view', () => {
   const { store, peeks, unmount } = mount();
-  act(() => store.getState().setGMView(false));
+  act(() => { store.getState().setGMView(false); });
   press();
   expect(peeks).toEqual([]);
-  act(() => store.getState().setGMView(true));
+  act(() => { store.getState().setGMView(true); });
   press();
   unmount();
   expect(peeks).toEqual([true, false]);

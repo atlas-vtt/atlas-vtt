@@ -71,7 +71,7 @@ describe('LightingToolBar', () => {
 
   it('stays in the session view, where no button takes a choice', () => {
     const store = renderBar();
-    act(() => store.setState({ isGMView: false }));
+    act(() => { store.setState({ isGMView: false }); });
     expect(names(modesBar())).toEqual(MODES_BAR);
     expect([...MODES, 'Carve', 'Fill in', 'Rectangle'].every(inert)).toBe(true);
     // The chosen mode and tool still show as chosen.
@@ -100,7 +100,7 @@ describe('LightingToolBar', () => {
     expect(store.getState().toolSwitches).toMatchObject({ roomSnap: true, lightingSnap: false });
     expect(pressed('Snap')).toBe(false);
     // A room has only a square grid to snap to: on another the switch stays, disabled.
-    act(() => store.getState().setGrid({ ...store.getState().grid, type: 'hex-vertical' }));
+    act(() => { store.getState().setGrid({ ...store.getState().grid, type: 'hex-vertical' }); });
     fireEvent.click(button('Draw rooms'));
     expect(inert('Snap')).toBe(true);
     expect(pressed('Snap')).toBe(false);
@@ -108,7 +108,7 @@ describe('LightingToolBar', () => {
 
   it('keeps the modes in a bar of their own, the same in every mode, and the tools in another', async () => {
     const store = renderBar();
-    act(() => store.getState().setSceneLighting({ enabled: true }));
+    act(() => { store.getState().setSceneLighting({ enabled: true }); });
     expect(names(modesBar())).toEqual(MODES_BAR);
     // The tool opens on rooms, the first of its modes; single walls come second.
     expect(store.getState().lightingTool.mode).toBe('rooms');

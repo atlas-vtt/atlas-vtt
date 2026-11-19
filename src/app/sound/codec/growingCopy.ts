@@ -163,7 +163,7 @@ export class GrowingCopy implements SoundBytes, WindowedSound {
     });
   }
 
-  async read(start: number, end: number): Promise<Uint8Array> {
+  async read(start: number, end: number): Promise<Uint8Array<ArrayBuffer>> {
     if (this.failure) throw this.failure;
     this.whole ??= new Blob(this.pieces);
     return new Uint8Array(await this.whole.slice(start, Math.min(end, this.written)).arrayBuffer());
