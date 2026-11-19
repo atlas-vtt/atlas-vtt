@@ -114,16 +114,64 @@ $card-control-radius: atlas-panel-inset-radius-value($surface-inset, calc(#{$car
     animation-delay: 0ms;
   }
 
-  // Under the pointer or with focus inside, a card shows its pin and bin.
+  // Under the pointer, with focus inside or while its menu is open, a card shows its ⋯.
   @include atlas-hover {
-    .atlas-dice-presets__icon {
-      opacity: 1;
+    .btn.atlas-dice-presets__more {
+      display: flex;
     }
   }
 
-  &:focus-within .atlas-dice-presets__icon {
-    opacity: 1;
+  &:focus-within .btn.atlas-dice-presets__more,
+  .btn.atlas-dice-presets__more[aria-expanded='true'] {
+    display: flex;
   }
+}
+
+// A card's ⋯: as tall as the card's inside and concentric with it, like every control of a card. Hidden, it is not
+// drawn at all (no control held at opacity 0); shown, it fades in. Under a finger nothing hovers: it stands shown.
+.atlas-dice-presets__item .btn.atlas-dice-presets__more {
+  display: none;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: $card-control;
+  height: $card-control;
+  padding: 0;
+  border-radius: var(--atlas-bar-control-radius);
+  color: $presets-quiet-text;
+  transition: opacity $transition-fast $transition-ease, background-color $transition-fast $transition-ease;
+
+  @starting-style {
+    opacity: 0;
+  }
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+
+  @include atlas-hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+
+  &[aria-expanded='true'] {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+
+  @include atlas-hover-reveal {
+    display: flex;
+  }
+}
+
+// A saved roll that stands in the tray's row: a small pin after its name.
+.atlas-dice-presets__pinned {
+  width: $icon-xs;
+  height: $icon-xs;
+  margin-inline-start: $spacing-xs;
+  vertical-align: -1px;
+  color: var(--text-accent);
 }
 
 // Every control of a card: no look of Obsidian's, the card's control corner on all four corners, the menus' quiet

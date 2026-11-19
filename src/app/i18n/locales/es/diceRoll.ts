@@ -62,7 +62,6 @@ export const diceRoll: Translation = {
   'diceRoll.presetUnpin': 'Quitar de la fila de dados',
   'diceRoll.presetRowFull': 'La fila de dados admite {max}; quita uno primero',
   'diceRoll.presetDelete': 'Eliminar',
-  'diceRoll.presetDeleteNamed': 'Eliminar {name}',
   'diceRoll.presetName': 'Nombre',
   'diceRoll.presetFormula': 'Fórmula',
   'diceRoll.presetSave': 'Guardar tirada',

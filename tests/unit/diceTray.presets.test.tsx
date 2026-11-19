@@ -44,6 +44,14 @@ function harness(): { tool: DiceTool; draw: () => void } {
   return { tool, draw };
 }
 
+/** Chooses `item` in a saved roll's ⋯ menu. */
+function choose(roll: string, item: string): void {
+  // The ⋯ takes its name from its tooltip, which these tests leave out: it is found on its card.
+  const card = screen.getByRole('button', { name: new RegExp(`^Roll ${roll}:`) }).closest('li')!;
+  fireEvent.keyDown(card.querySelector('.atlas-dice-presets__more')!, { key: 'Enter' });
+  fireEvent.click(screen.getByRole('menuitem', { name: item }));
+}
+
 const trayFormula = (): HTMLInputElement => document.querySelector<HTMLInputElement>('.atlas-dice-tray__formula')!;
 
 describe('saved rolls through the real tray', () => {
@@ -65,7 +73,7 @@ describe('saved rolls through the real tray', () => {
     fireEvent.click(within(screen.getByRole('region', { name: 'Saved rolls' })).getByRole('button', { name: 'Roll Stat line: 4d6kh3' }));
     expect(tool.state.rollHistory[0]?.formula).toBe('4d6kh3');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Put in the dice row' }));
+    choose('Stat line', 'Put in the dice row');
     draw();
     // The eighth place: its number key adds it to the tray, before the modifier.
     fireEvent.change(trayFormula(), { target: { value: '1d20 + 2' } });
@@ -91,7 +99,7 @@ describe('saved rolls through the real tray', () => {
     expect(within(screen.getByRole('region', { name: 'Edit Longsword' })).getByRole('textbox', { name: 'Modifier' })).toHaveProperty('value', '+3');
 
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Put in the dice row' }));
+    choose('Longsword', 'Put in the dice row');
     draw();
     fireEvent.change(trayFormula(), { target: { value: '1d20' } });
     fireEvent.click(screen.getByRole('button', { name: 'Longsword' }));

@@ -86,8 +86,19 @@ describe('the saved rolls beside the dice tray', () => {
         expect(Math.abs(px(corner) + inset - px(cardStyle.borderTopLeftRadius))).toBeLessThan(0.6);
       }
     }
+    // A card's ⋯ is drawn only under the pointer, and opens its menu.
+    const more = (of: Element): string => getComputedStyle(of.querySelector('.atlas-dice-presets__more')!).display;
+    const cards = [...document.querySelectorAll('.atlas-dice-presets__item')];
+    expect(cards.map(more).every((display) => display === 'none')).toBe(true);
     const hovered = centreOf(card.querySelector('.atlas-dice-presets__roll')!);
     await mouse.hover(hovered.x, hovered.y);
+    await settle();
+    expect(cards.map(more)).toEqual(['flex', ...cards.slice(1).map(() => 'none')]);
+    const button = centreOf(card.querySelector('.atlas-dice-presets__more')!);
+    await mouse.click(button.x, button.y);
+    await settle();
+    expect(document.querySelectorAll('.atlas-ctx-menu [role="menuitem"]')).toHaveLength(3);
+    await mouse.click(5, 5);
     await settle();
     // The room around the list for the shadows takes no pointer: the map beside it gets the press.
     const list = document.querySelector('.atlas-dice-presets__list')!.getBoundingClientRect();

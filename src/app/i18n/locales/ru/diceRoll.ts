@@ -62,7 +62,6 @@ export const diceRoll: Translation = {
   'diceRoll.presetUnpin': 'Убрать из ряда кубиков',
   'diceRoll.presetRowFull': 'В ряду кубиков помещается {max}; сначала уберите один',
   'diceRoll.presetDelete': 'Удалить',
-  'diceRoll.presetDeleteNamed': 'Удалить {name}',
   'diceRoll.presetName': 'Название',
   'diceRoll.presetFormula': 'Формула',
   'diceRoll.presetSave': 'Сохранить бросок',

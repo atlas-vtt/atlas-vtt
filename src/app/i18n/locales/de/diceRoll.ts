@@ -62,7 +62,6 @@ export const diceRoll: Translation = {
   'diceRoll.presetUnpin': 'Aus der Würfelreihe nehmen',
   'diceRoll.presetRowFull': 'Die Würfelreihe fasst {max}; nimm zuerst einen heraus',
   'diceRoll.presetDelete': 'Löschen',
-  'diceRoll.presetDeleteNamed': '{name} löschen',
   'diceRoll.presetName': 'Name',
   'diceRoll.presetFormula': 'Formel',
   'diceRoll.presetSave': 'Wurf speichern',

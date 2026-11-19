@@ -62,7 +62,6 @@ export const diceRoll: Translation = {
   'diceRoll.presetUnpin': 'Retirer de la rangée de dés',
   'diceRoll.presetRowFull': 'La rangée de dés en contient {max} ; retirez-en un d\'abord',
   'diceRoll.presetDelete': 'Supprimer',
-  'diceRoll.presetDeleteNamed': 'Supprimer {name}',
   'diceRoll.presetName': 'Nom',
   'diceRoll.presetFormula': 'Formule',
   'diceRoll.presetSave': 'Enregistrer le jet',
