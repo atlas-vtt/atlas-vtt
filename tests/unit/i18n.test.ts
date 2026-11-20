@@ -65,19 +65,19 @@ describe('i18n', () => {
   });
 
   it('words a text for the pointer in use: the mouse\'s, or the finger\'s own sentence', () => {
-    expect(tPointer('initiative.empty')).toBe(t('initiative.empty'));
+    expect(tPointer('am.tour.libraryBody')).toBe(t('am.tour.libraryBody'));
     let finger = true;
     setPointerSource(() => finger);
-    expect(tPointer('initiative.empty')).toBe('Touch and hold a token to add it');
+    expect(tPointer('am.tour.libraryBody')).toBe('Tokens, maps, scenes and encounters each have a tab. Create brings in images from this device.');
     // Values fill either wording, and one it does not name is left out.
     expect(tPointer('tour.loot.rollBody', { hotkey: 'L' })).not.toContain('{hotkey}');
     expect(tPointer('tour.loot.rollBody', { hotkey: 'L' })).not.toBe(t('tour.loot.rollBody', { hotkey: 'L' }));
     // A language without the finger's wording shows the English one, as for any missing key.
-    setLocale('ru', { ...TRANSLATIONS, ru: withoutKey(TRANSLATIONS.ru!, 'initiative.empty.touch') });
-    expect(tPointer('initiative.empty')).toBe('Touch and hold a token to add it');
+    setLocale('ru', { ...TRANSLATIONS, ru: withoutKey(TRANSLATIONS.ru!, 'am.tour.libraryBody.touch') });
+    expect(tPointer('am.tour.libraryBody')).toBe('Tokens, maps, scenes and encounters each have a tab. Create brings in images from this device.');
     // The pointer is asked at every call: a mouse attached to a tablet gets its own wording back.
     finger = false;
-    expect(tPointer('initiative.empty')).toBe(t('initiative.empty'));
+    expect(tPointer('am.tour.libraryBody')).toBe(t('am.tour.libraryBody'));
   });
 
   it('gives a finger\'s wording only to texts that have a mouse\'s, and names no mouse or key in it', () => {

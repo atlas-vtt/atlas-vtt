@@ -63,8 +63,6 @@ export const initiative: Translation = {
   'initiative.rollAll': 'Lancer l\'initiative',
   'initiative.startCombat': 'Lancer le combat',
   'initiative.endCombat': 'Terminer le combat',
-  'initiative.empty': 'Faites un clic droit sur un jeton pour l\'ajouter',
-  'initiative.empty.touch': 'Touchez longuement un jeton pour l\'ajouter',
   'initiative.hiddenFromPlayers': 'Caché aux joueurs',
   'initiative.side.players': 'Joueurs',
   'initiative.side.opponents': 'Adversaires',
