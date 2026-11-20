@@ -53,9 +53,10 @@ export function useTurnFlash(initiative: InitiativeState): boolean {
 
 /**
  * The tracker comes and goes as the lists do (`enterList`, `exitList`): it stays drawn while it leaves, and a tracker
- * opened again meanwhile comes back from where it was. Its first drawing (a map opened with the tracker open) does not move.
+ * opened again meanwhile comes back from where it was. Its first drawing (a map opened with the tracker open) does not
+ * move, and neither does a change while `instant` (a scene loading).
  */
-export function useListPresence(open: boolean, element: HTMLElement | null, outward: Outward): { drawn: boolean; leaving: boolean } {
+export function useListPresence(open: boolean, element: HTMLElement | null, outward: Outward, instant = false): { drawn: boolean; leaving: boolean } {
   // Drawn from the render that opens it until its exit is over: a close must not unmount it before the exit plays
   const [present, setPresent] = useState(open);
   if (open && !present) setPresent(true);
@@ -69,6 +70,12 @@ export function useListPresence(open: boolean, element: HTMLElement | null, outw
     }
     if (shown.current === open) return;
     shown.current = open;
+    if (instant) {
+      exit.current?.cancel();
+      exit.current = null;
+      if (!open) setPresent(false);
+      return;
+    }
     if (open) {
       exit.current?.cancel();
       exit.current = null;
@@ -84,7 +91,7 @@ export function useListPresence(open: boolean, element: HTMLElement | null, outw
     };
     if (animation) animation.finished.then(done, done);
     else done();
-  }, [open, element, outward]);
+  }, [open, element, outward, instant]);
   return { drawn: open || present, leaving: !open && present };
 }
 

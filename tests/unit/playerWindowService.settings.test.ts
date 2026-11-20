@@ -27,7 +27,7 @@ function sourceFor(store: StoreApi<CounterScene>): PlayerFrameSource {
 }
 
 describe('live player settings', () => {
-  it('updates widgets immediately and releases the settings listener on close', () => {
+  it('updates widgets immediately and releases the settings listener on close', async () => {
     vi.useFakeTimers();
     const settings = new SettingsService(app);
     const store = createStore(() => counterScene('Counter', 3));
@@ -39,6 +39,11 @@ describe('live player settings', () => {
     const widgets = doc.getElementById('atlas-player-widgets')!;
     expect(widgets.textContent).toContain('Counter');
     settings.setLocalPlayerViewSettings({ showWidgets: false });
+    // The bar leaves towards its edge, taking no pointer, and is gone once it has
+    expect(widgets.querySelectorAll('.atlas-widget-bar:not(.atlas-widget-bar--leaving)')).toHaveLength(0);
+    expect(widgets.querySelector('.atlas-widget-bar--leaving')).not.toBeNull();
+    await Promise.resolve();
+    await Promise.resolve();
     expect(widgets.childElementCount).toBe(0);
     settings.setLocalPlayerViewSettings({ showWidgets: true });
     expect(widgets.textContent).toContain('Counter');

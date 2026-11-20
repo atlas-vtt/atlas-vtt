@@ -3,6 +3,7 @@
  * list as a fight starts and ends): the panel slides a short way in from the edge it stands at as it fades in and
  * settles to its size, and its cards fade in together a moment after it; it leaves the same way, quicker and as one. The slide is
  * the `translate` property, so it moves the panel in its parent's frame, whatever `transform` places or turns it.
+ * The cards end on how they rest (a stack's hidden cards stay hidden). The widgets come and go by the same motion.
  */
 
 import { MOTION_EASE_OUT, prefersReducedMotion } from '../../utils/motion';
@@ -42,7 +43,7 @@ export function enterList(panel: HTMLElement, outward: Outward, delay = 0): Anim
   // The cards follow the panel together: they fade in as they settle to their size
   for (const card of panel.querySelectorAll<HTMLElement>(`[${TURN_KEY_ATTRIBUTE}]`)) {
     card.animate(
-      [{ opacity: 0, scale: '0.97' }, { opacity: 1, scale: '1' }],
+      [{ opacity: 0, scale: '0.97', offset: 0 }],
       { duration: CARD_MS, delay: delay + CARD_DELAY_MS, easing: MOTION_EASE_OUT, fill: 'backwards' },
     );
   }
@@ -81,7 +82,7 @@ export function morphList(panel: HTMLElement, from: { width: number; height: num
   }
   for (const card of panel.querySelectorAll<HTMLElement>(`[${TURN_KEY_ATTRIBUTE}]`)) {
     card.animate(
-      [{ opacity: 0, scale: '0.97' }, { opacity: 1, scale: '1' }],
+      [{ opacity: 0, scale: '0.97', offset: 0 }],
       { duration: CARD_MS, delay: CARD_DELAY_MS, easing: MOTION_EASE_OUT, fill: 'backwards' },
     );
   }
