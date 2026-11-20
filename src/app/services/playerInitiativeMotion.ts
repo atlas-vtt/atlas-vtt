@@ -9,7 +9,7 @@ import type { Outward } from '../initiative/motion/listPresence';
 import { prefersReducedMotion } from '../utils/motion';
 
 /** Which way a list at each edge leaves the window. */
-const OUTWARD: Readonly<Record<PlayersListEdge, Outward>> = { right: [1, 0], top: [0, -1], bottom: [0, 1] };
+const OUTWARD: Readonly<Record<PlayersListEdge, Outward>> = { right: [1, 0], left: [-1, 0], top: [0, -1], bottom: [0, 1] };
 
 /** The way out of the window from the edge `panel` stands at, in its parent's frame (a turned list's too). */
 export function outwardOf(panel: HTMLElement): Outward {

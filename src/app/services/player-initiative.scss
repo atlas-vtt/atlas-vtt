@@ -101,6 +101,13 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
     top: $spacing-m;
   }
 
+  // The right column's mirror at the left edge, turned around for the players across the table (Mirrored initiative)
+  &--left {
+    right: auto;
+    left: $spacing-m;
+    transform: translateY(-50%) rotate(180deg);
+  }
+
   &--bottom {
     top: auto;
     bottom: $spacing-m;

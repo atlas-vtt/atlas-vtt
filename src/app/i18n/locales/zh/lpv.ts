@@ -2,7 +2,9 @@ import type { Translation } from '../../types';
 
 export const lpv: Translation = {
   'lpv.initiativeRows': '横向先攻',
-  'lpv.initiativeRowsHint': '玩家的先攻列表在顶部和底部各排一行，各自从自己那一侧阅读，适合平放在桌上的屏幕。',
+  'lpv.initiativeRowsHint': '玩家的先攻列表横向排成一行，而不是竖在一侧，适合平放在桌上的屏幕。',
+  'lpv.initiativeMirrored': '镜像先攻',
+  'lpv.initiativeMirroredHint': '在屏幕另一侧再显示一份翻转的先攻列表，让桌子对面的玩家也能看清。',
   'lpv.shared': '本地与在线',
   'lpv.playerWindow': '玩家窗口',
   'lpv.online': '在线游戏',

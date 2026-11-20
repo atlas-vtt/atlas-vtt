@@ -74,7 +74,7 @@ describe('the turn passing on and back', () => {
   beforeEach(() => document.head.append(style));
   afterEach(() => style.remove());
 
-  for (const edge of ['right', 'bottom'] as const) {
+  for (const edge of ['right', 'left', 'bottom'] as const) {
     it(`glides every card one place on the players' list at the ${edge}, who acted sliding out at the front and in at the end, and back`, async () => {
       await page.viewport(1000, 700);
       document.body.innerHTML = '';

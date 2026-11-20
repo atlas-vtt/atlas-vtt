@@ -277,7 +277,8 @@ export function renderPlayerInitiative(container: HTMLElement, list: PlayerIniti
     const side = panel.querySelector('.atlas-player-initiative__side--active');
     const card = panel.querySelector('.atlas-player-initiative__card--active');
     const axis = across ? 'x' : 'y';
-    const edgesOf = look.faces ? ([layoutEdges] as const) : ([] as const);
+    // A turned list scrolls along its own axis: a row facing its side, and the left column turned around
+    const edgesOf = look.faces || look.dock === 'left' ? ([layoutEdges] as const) : ([] as const);
     if (side) scrollWithin(entries, side, 'start', 0, axis, ...edgesOf);
     else if (card && fromTurn) scrollWithin(entries, card, 'start', 0, axis, ...edgesOf);
     else if (card) scrollWithin(entries, card, 'nearest', 2, axis, ...edgesOf);

@@ -2,7 +2,9 @@ import type { Translation } from '../../types';
 
 export const lpv = {
   "lpv.initiativeRows": "Iniziativa orizzontale",
-  "lpv.initiativeRowsHint": "La lista di iniziativa dei giocatori forma una riga in alto e una in basso, ciascuna leggibile dal suo lato, per uno schermo appoggiato sul tavolo.",
+  "lpv.initiativeRowsHint": "La lista di iniziativa dei giocatori forma una riga attraverso lo schermo invece di una colonna sul lato, per uno schermo appoggiato sul tavolo.",
+  "lpv.initiativeMirrored": "Iniziativa speculare",
+  "lpv.initiativeMirroredHint": "Una seconda lista di iniziativa sul lato opposto dello schermo, capovolta, così anche i giocatori dall'altra parte del tavolo possono leggerla.",
   'lpv.view4kHint': 'Su un televisore 4K o uno schermo ultrawide, ogni pixel viene renderizzato alla risoluzione dello schermo anziché ingrandire un’immagine a 1440p. Il carico grafico della vista giocatori può aumentare fino a 2,25 volte. Solo su questo dispositivo.',
   "lpv.alreadyOpen": "La finestra giocatori è già aperta",
 

@@ -15,6 +15,10 @@ describe('a turn banner attached to a players\' list', () => {
     expect(bannerAnchor(box, 'bottom', false)).toMatchObject({ y: 400, turn: 0, side: 'above' });
     expect(bannerAnchor(box, 'right', false)).toEqual({ x: 100, y: 450, turn: 0, side: 'left', align: 'centre' });
   });
+
+  it('stands beside the left column, the right one\'s mirror, on its inner side and turned around with it', () => {
+    expect(bannerAnchor(box, 'left', false)).toEqual({ x: 300, y: 450, turn: 180, side: 'left', align: 'centre' });
+  });
 });
 
 describe('the frame the banners stand in', () => {

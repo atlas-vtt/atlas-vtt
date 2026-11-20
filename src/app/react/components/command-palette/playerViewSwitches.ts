@@ -9,7 +9,7 @@ import { useAtlasUI } from '../../root/AtlasUIContext';
 import { useAtlasStore } from '../../ViewStoreContext';
 import { resourceToggleLabel } from './resourceToggleLabel';
 import { t } from '../../../i18n';
-import { DEFAULT_INITIATIVE_LAYOUT, PLAYERS_LIST_SHAPES, playersListShape } from '../../../initiative/initiativeLayout';
+import { DEFAULT_INITIATIVE_LAYOUT, playersListLayout, playersListMirrored, playersListShape } from '../../../initiative/initiativeLayout';
 import { DEFAULT_TURN_OPTIONS } from '../../../initiative/turnOptions';
 
 type LocalPlayerViewSettings = AtlasSettings['localPlayerView'];
@@ -60,7 +60,7 @@ export interface PlayerViewSwitch {
 
 /** What players see, as switches: the palette's player view settings and the player window bar's menu show the same ones. */
 export interface PlayerViewSwitches {
-  /** The widgets, initiative (and whether its list runs as rows across the table) and dice rolls: the player window and online players alike. */
+  /** The widgets, initiative (whether its list runs as a row, and is mirrored for the far side of the table) and dice rolls: the player window and online players alike. */
   shared: PlayerViewSwitch[];
   /** The players' cursors, whether players may draw and whether they move only on their turn: online play only, none while it is switched off. */
   online: PlayerViewSwitch[];
@@ -104,14 +104,24 @@ export function usePlayerViewSwitches(explicit?: SettingsService): PlayerViewSwi
     runInBackground(updateMapRules(app, source, { resources: next }), 'Saving what players see');
   };
 
-  // The players' list across the table: a row at the top and one at the bottom, each read from its side (a TV on the table)
-  const rows = playersListShape(settings?.initiativeLayout() ?? DEFAULT_INITIATIVE_LAYOUT) === 'horizontal';
+  // The players' list as a row across the screen, and mirrored for the far side of the table: two choices, each kept as
+  // the other changes
+  const layout = settings?.initiativeLayout() ?? DEFAULT_INITIATIVE_LAYOUT;
+  const rows = playersListShape(layout) === 'horizontal';
+  const mirrored = playersListMirrored(layout);
   const initiativeRows: PlayerViewSwitch = {
     id: 'initiativeRows',
     label: t('lpv.initiativeRows'),
     hint: t('lpv.initiativeRowsHint'),
     value: rows,
-    onToggle: () => settings?.setInitiativeLayout(PLAYERS_LIST_SHAPES[rows ? 'vertical' : 'horizontal']),
+    onToggle: () => settings?.setInitiativeLayout(playersListLayout(rows ? 'vertical' : 'horizontal', mirrored)),
+  };
+  const initiativeMirrored: PlayerViewSwitch = {
+    id: 'initiativeMirrored',
+    label: t('lpv.initiativeMirrored'),
+    hint: t('lpv.initiativeMirroredHint'),
+    value: mirrored,
+    onToggle: () => settings?.setInitiativeLayout(playersListLayout(rows ? 'horizontal' : 'vertical', !mirrored)),
   };
   // A GM's choice for the table rather than a player view setting, but the player view's online settings are where it is looked for
   const movesOnTurn = (settings?.initiativeTurnOptions() ?? DEFAULT_TURN_OPTIONS).movesOnTurn;
@@ -124,7 +134,7 @@ export function usePlayerViewSwitches(explicit?: SettingsService): PlayerViewSwi
   };
 
   return {
-    shared: UI_SWITCHES.flatMap((text) => (text.key === 'showInitiative' ? [switchOf(text), initiativeRows] : [switchOf(text)])),
+    shared: UI_SWITCHES.flatMap((text) => (text.key === 'showInitiative' ? [switchOf(text), initiativeRows, initiativeMirrored] : [switchOf(text)])),
     online: onlinePlay ? [...ONLINE_SWITCHES.map(switchOf), movesOnTurnSwitch] : [],
     initiative: INITIATIVE_SWITCHES.map(switchOf),
     view4k: { id: 'view4k', label: t('lpv.view4k'), value: view4k, onToggle: () => settings?.setPlayerView4k(!view4k) },

@@ -2,7 +2,9 @@ import type { Translation } from '../../types';
 
 export const lpv: Translation = {
   'lpv.initiativeRows': 'Horizontale Initiative',
-  'lpv.initiativeRowsHint': 'Die Initiativeliste der Spieler läuft als Reihe oben und unten, jede von ihrer Seite lesbar, für einen Fernseher, der auf dem Tisch liegt.',
+  'lpv.initiativeRowsHint': 'Die Initiativeliste der Spieler läuft als Reihe über den Bildschirm statt als Spalte an seiner Seite, für einen Fernseher, der auf dem Tisch liegt.',
+  'lpv.initiativeMirrored': 'Gespiegelte Initiative',
+  'lpv.initiativeMirroredHint': 'Eine zweite Initiativeliste auf der gegenüberliegenden Seite des Bildschirms, umgedreht, damit auch die Spieler gegenüber sie lesen können.',
   'lpv.shared': 'Lokal und online',
   'lpv.playerWindow': 'Spielerfenster',
   'lpv.online': 'Online-Spiel',

@@ -326,6 +326,24 @@ describe('the players\' initiative list', () => {
     }
   });
 
+  it('mirrors the column at the left edge for the far side of the table, turned around, its padding and gaps as the right one\'s', async () => {
+    const right = box(showPlayers({ dock: 'right' }));
+    const panel = showPlayers({ dock: 'left' });
+    const left = box(panel);
+    // As far from the left edge as the right column is from the right one, at its height and size
+    expect(left.left).toBeCloseTo(1000 - right.right - (1000 - 420), 0);
+    expect(left.top).toBeCloseTo(right.top, 0);
+    expect(left.width).toBeCloseTo(right.width, 0);
+    // Turned half way round: read from across the table
+    const matrix = new DOMMatrix(getComputedStyle(panel).transform);
+    expect(matrix.a).toBeCloseTo(-1, 3);
+    expect(matrix.d).toBeCloseTo(-1, 3);
+    // So its first card, the turn, stands at the bottom of the screen: the top for those across the table
+    const cards = [...panel.querySelectorAll('.atlas-player-initiative__card')].map(box);
+    expect(cards[0]!.top).toBeGreaterThan(cards[1]!.top);
+    await page.screenshot({ path: `${SHOTS}/players-left.png`, element: panel.parentElement! });
+  });
+
   it('runs as a row across the top or the bottom, in the middle, the cards side by side inside the panel', async () => {
     await page.viewport(1300, 600);
     for (const dock of ['top', 'bottom'] as const) {

@@ -18,21 +18,31 @@ describe('the initiative lists\' layout', () => {
     expect(settings.initiativeLayout()).toEqual({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false });
   });
 
-  it('lays the players\' list out as a column at the right edge or a row on each side of the table', async () => {
-    const { PLAYERS_LIST_SHAPES, playersListShape } = await import('../../src/app/initiative/initiativeLayout');
+  it('lays the players\' list out as a column or a row, alone or mirrored for the far side of the table', async () => {
+    const { playersListLayout, playersListMirrored, playersListShape } = await import('../../src/app/initiative/initiativeLayout');
     const { settings, data, app } = await loaded();
     expect(playersListShape(settings.initiativeLayout())).toBe('vertical');
-    settings.setInitiativeLayout(PLAYERS_LIST_SHAPES.horizontal);
+    expect(playersListMirrored(settings.initiativeLayout())).toBe(false);
+    // A column mirrored at the left edge; a row alone at the bottom
+    settings.setInitiativeLayout(playersListLayout('vertical', true));
+    expect(settings.initiativeLayout()).toMatchObject({ edges: ['right', 'left'], dock: 'right', facesPlayers: false });
+    expect(playersListShape(settings.initiativeLayout())).toBe('vertical');
+    expect(playersListMirrored(settings.initiativeLayout())).toBe(true);
+    settings.setInitiativeLayout(playersListLayout('horizontal', false));
+    expect(settings.initiativeLayout()).toMatchObject({ edges: ['bottom'], dock: 'bottom', facesPlayers: true });
+    settings.setInitiativeLayout(playersListLayout('horizontal', true));
     await settings.saveSettingsNow();
-    expect(data.stored()).toMatchObject({ initiativeEdges: ['top', 'bottom'], initiativeDock: 'top', initiativeFacesPlayers: true });
+    expect(data.stored()).toMatchObject({ initiativeEdges: ['top', 'bottom'], initiativeDock: 'bottom', initiativeFacesPlayers: true });
     const reopened = new SettingsService(app, undefined, data);
     await reopened.initialize();
-    expect(reopened.initiativeLayout()).toMatchObject({ edges: ['top', 'bottom'], dock: 'top', facesPlayers: true });
+    expect(reopened.initiativeLayout()).toMatchObject({ edges: ['top', 'bottom'], dock: 'bottom', facesPlayers: true });
     expect(playersListShape(reopened.initiativeLayout())).toBe('horizontal');
-    reopened.setInitiativeLayout(PLAYERS_LIST_SHAPES.vertical);
+    reopened.setInitiativeLayout(playersListLayout('vertical', false));
     expect(reopened.initiativeLayout()).toMatchObject({ edges: ['right'], dock: 'right', facesPlayers: false });
-    // A left edge an older version stored, and edges written by hand that are none, read as the right edge
+    // A left edge an older version stored alone, and edges written by hand that are none, read as the right edge;
+    // the left one counts only beside the right, as its mirror
     expect((await loaded({ initiativeDock: 'left', initiativeEdges: ['left', 'middle'] })).settings.initiativeLayout().edges).toEqual(['right']);
+    expect((await loaded({ initiativeDock: 'right', initiativeEdges: ['right', 'left'] })).settings.initiativeLayout().edges).toEqual(['right', 'left']);
   });
 
   it('keeps the GM\'s choices in the synced settings and reads what it does not know as the default; the lists always start at the turn', async () => {

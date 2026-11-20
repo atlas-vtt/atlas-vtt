@@ -2,7 +2,9 @@ import type { Translation } from '../../types';
 
 export const lpv: Translation = {
   'lpv.initiativeRows': 'Iniciativa horizontal',
-  'lpv.initiativeRowsHint': 'A lista de iniciativa dos jogadores forma uma fila em cima e outra em baixo, cada uma legível do seu lado, para um ecrã deitado na mesa.',
+  'lpv.initiativeRowsHint': 'A lista de iniciativa dos jogadores forma uma fila ao longo do ecrã em vez de uma coluna no seu lado, para um ecrã deitado na mesa.',
+  'lpv.initiativeMirrored': 'Iniciativa espelhada',
+  'lpv.initiativeMirroredHint': 'Uma segunda lista de iniciativa no lado oposto do ecrã, virada, para que os jogadores do outro lado da mesa também a leiam.',
   'lpv.shared': 'Local e online',
   'lpv.playerWindow': 'Janela dos jogadores',
   'lpv.online': 'Jogo online',
