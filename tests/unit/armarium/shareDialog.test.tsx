@@ -179,6 +179,28 @@ describe('the share dialog', () => {
     expect(button('Preparing its page…').disabled).toBe(true);
   });
 
+  it('offers My uploads in the browser, where the published version shows as Processing until its page is built', async () => {
+    vi.mocked(requestUrl).mockResolvedValue({ status: 404 } as Awaited<ReturnType<typeof requestUrl>>);
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const api = new FakeArmarium();
+    api.own = { uid: 'col-uid', slug: 'blue-mouth-caves', format: 'collection', fields: null, newestVersion: null, coverUrl: null };
+    const { session } = share(api);
+    await act(async () => {
+      session.start();
+      await settle();
+      await session.confirmBundle({ kind: 'release', version: 3 });
+      await vi.waitFor(() => expect(session.snapshot().step).toBe('listing'));
+      session.setDraft({ kind: 'maps', description: 'Six caves under the Blue Mouth, for three to five players.', licence: 'cc0' });
+      session.continueToPublish();
+      session.setDeclared(true);
+      await session.publish();
+    });
+    expect(screen.getByText(/My uploads shows it as Processing/)).toBeTruthy();
+    fireEvent.click(button('My uploads'));
+    expect(open).toHaveBeenCalledWith('https://atlas-vtt.dev/armarium/mine');
+    open.mockRestore();
+  });
+
   it('asks before leaving an upload, and discards it when the GM leaves', async () => {
     const api = new FakeArmarium();
     const { session, onClose } = share(api);

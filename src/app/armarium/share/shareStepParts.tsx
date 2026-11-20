@@ -5,7 +5,7 @@ import { Button } from '../../packages/components/primitives/button';
 import { formatFileSize } from '../../utils/fileSize';
 import { t } from '../../i18n';
 import { ArmariumHosts } from '../armariumHosts';
-import { armariumListingUrl } from '../armariumUrls';
+import { ARMARIUM_MINE_URL, armariumListingUrl } from '../armariumUrls';
 import type { AnyShareSession } from '../upload/anyShareSession';
 import { ItemShareSession } from '../upload/ItemShareSession';
 import type { ShareSnapshot } from '../upload/shareState';
@@ -123,6 +123,8 @@ export function shareStepParts({ app, session, snapshot, account, accountState, 
         body: <DoneStep snapshot={snapshot} />,
         actions: [
           action(t('common.close'), onClose),
+          // The site's page of the account's uploads, which refuses a frame: it opens in the browser.
+          action(t('armariumShare.myUploads'), () => { window.open(ARMARIUM_MINE_URL); }),
           ...(slug === null || snapshot.published?.held === true ? [] : [action(listingPageReady ? t('armariumShare.openListing') : t('armariumShare.preparingPage'), () => {
             onClose();
             ArmariumHosts.forApp(app).target()?.show(armariumListingUrl(slug));

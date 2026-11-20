@@ -7,6 +7,8 @@
 export const ARMARIUM_ORIGIN = 'https://atlas-vtt.dev';
 /** The store's page, framed in the asset manager. */
 export const ARMARIUM_PAGE_URL = `${ARMARIUM_ORIGIN}/armarium`;
+/** My uploads: the account's listings and uploads with where each stands. The site opens it in the browser only. */
+export const ARMARIUM_MINE_URL = `${ARMARIUM_PAGE_URL}/mine`;
 /** What may be shared in the Armarium, which the publish step points to beside the declaration. */
 export const ARMARIUM_RULES_URL = `${ARMARIUM_PAGE_URL}/rules#sharing`;
 
