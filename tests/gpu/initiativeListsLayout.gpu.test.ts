@@ -296,6 +296,17 @@ describe('the players\' initiative list', () => {
           expect(Math.abs(box(card).width - box(card).height)).toBeLessThan(0.5);
           const value = card.querySelector('.atlas-player-initiative__value');
           if (value) expect(box(card).right - box(value).right).toBeCloseTo(box(value).top - box(card).top, 0);
+          // The hit points: a capsule as far inside the card's border at its foot as at its sides, its ends concentric
+          // with the card's bottom corners
+          const hp = card.querySelector('.atlas-player-initiative__hp');
+          if (!hp) continue;
+          const border = parseFloat(getComputedStyle(card).borderTopWidth);
+          const inset = box(hp).left - box(card).left - border;
+          expect(inset).toBeCloseTo(4, 0);
+          expect(box(card).right - border - box(hp).right).toBeCloseTo(inset, 0);
+          expect(box(card).bottom - border - box(hp).bottom).toBeCloseTo(inset, 0);
+          const cardInner = parseFloat(getComputedStyle(card).borderBottomLeftRadius) - border;
+          expect(box(hp).height / 2).toBeCloseTo(cardInner - inset, 1);
         }
         for (const card of cards) {
           expect(card.top).toBeGreaterThanOrEqual(frame.top);

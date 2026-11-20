@@ -19,6 +19,9 @@ $badge: scaled(28px);
 // panel's $surface-radius; a row's cards are as wide as the column's
 $card-width: calc(#{scaled(96px)} - 2 * #{$border-width-m} - 2 * #{$surface-inset});
 
+// What lies in a card's corners stands $surface-inset inside its border with this radius, concentric with the card's
+$card-corner-radius: calc(#{$radius-m} - #{$border-width-s} - #{$surface-inset});
+
 // The rounds' names and lines take the theme's heading face, rule and red where it has them (the Atlas VTT
 // theme does), else Obsidian's own
 $round-line: var(--atlas-theme-rule, var(--text-faint));
@@ -225,7 +228,7 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     // Square whatever it holds
     min-height: 0;
     box-sizing: border-box;
-    padding: $spacing-xs;
+    padding: $surface-inset;
     background: var(--background-modifier-hover);
     border: $border-width-s solid var(--background-modifier-border);
     border-radius: $radius-m;
@@ -319,7 +322,7 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     }
   }
 
-  // The number in the top right: a plate concentric with the card's corner
+  // The number in the top right: a plate concentric with the card's corner (`$card-corner-radius`)
   &__value {
     position: absolute;
     top: $surface-inset;
@@ -336,7 +339,7 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: $control-inset-radius;
+    border-radius: $card-corner-radius;
     background: var(--background-primary);
     box-shadow: 0 0 0 1px var(--background-modifier-border);
     line-height: 1;
@@ -363,7 +366,8 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     font-variant-numeric: tabular-nums;
   }
 
-  // The number the token's badge shows the players, in the same look as on the GM's card, in the top left
+  // The number the token's badge shows the players, in the colours of the map's badge, in the top left: concentric with
+  // the card's corner like the number in the other
   &__badge {
     position: absolute;
     top: $surface-inset;
@@ -375,7 +379,7 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: $radius-full;
+    border-radius: $card-corner-radius;
     background: #000;
     border: 1.5px solid #555;
     color: #fff;
@@ -412,13 +416,14 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     text-shadow: 0 1px 2px rgb(0 0 0 / 0.8);
   }
 
-  // A slim bar on a track that reads on the card's fill and, lighter, on its art
+  // A capsule along the card's foot, $surface-inset inside its border, whose ends run concentric with the card's bottom
+  // corners: twice `$card-corner-radius` high
   &__hp {
     --atlas-hp-track: var(--background-modifier-border);
     appearance: none;
     display: block;
     width: 100%;
-    height: $spacing-xs;
+    height: calc(2 * #{$card-corner-radius});
     border: none;
     border-radius: $radius-full;
     overflow: hidden;
@@ -429,6 +434,7 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     }
 
     &::-webkit-progress-value {
+      border-radius: inherit;
       background: var(--color-green);
     }
 
@@ -437,8 +443,10 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     }
   }
 
+  // On the art: a dark track with a light rim, so the bar reads on light and dark art alike
   &__card--art &__hp {
-    --atlas-hp-track: rgb(255 255 255 / 0.25);
+    --atlas-hp-track: rgb(0 0 0 / 0.55);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
   }
 
   // The conditions the map shows players on the token, as the GM's card draws them
