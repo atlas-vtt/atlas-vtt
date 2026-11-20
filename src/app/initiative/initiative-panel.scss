@@ -3,6 +3,8 @@
 // next round's divider, and the cards. Each list adds only what is its own: the tracker its place, bars, numbers and
 // what the GM does with a card (`initiative-tracker.scss`), the players' list its places, rows, size and pulse
 // (`player-initiative.scss`). Sizes grow with `--atlas-initiative-scale` (the player view's initiative size); spacing stays.
+// A row (`--row`, the players' list across the top or bottom) is the column turned on its side: its start is the
+// column's top, its end the column's foot.
 @use '../../../styles/tokens' as *;
 @use '../../../styles/mixins' as *;
 @use '../../../styles/initiative-cards' as *;
@@ -48,10 +50,16 @@ $list-shade: scaled(44px);
 // cards' own shades are): one of the panel's colour turned white there.
 @mixin list-shade($towards) {
   position: absolute;
-  right: 0;
-  left: 0;
   box-sizing: border-box;
-  height: calc(#{$list-shade} + #{$surface-inset});
+  @if $towards == top or $towards == bottom {
+    right: 0;
+    left: 0;
+    height: calc(#{$list-shade} + #{$surface-inset});
+  } @else {
+    top: 0;
+    bottom: 0;
+    width: calc(#{$list-shade} + #{$surface-inset});
+  }
   // Over the cards' own layers (their plates and marks are at 2)
   z-index: 4;
   background: linear-gradient(
@@ -473,4 +481,89 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
 
 .atlas-initiative-card--tile .atlas-initiative-card__art img {
   transition: filter 120ms ease-out;
+}
+
+// A row: the column turned on its side. Its cards run along it under a shade at each end, the round over its end on
+// the one that rises from the end, the cards scrolled past its start fading under the other; the names of sides and
+// the next round read up the row's height, the dividers stand upright.
+.atlas-initiative-panel--row {
+  flex-direction: row;
+
+  .atlas-initiative-panel__list {
+    flex-direction: row;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-padding-top: 0;
+    scroll-padding-inline: $list-shade 0;
+  }
+
+  &:has(.atlas-initiative-panel__round) .atlas-initiative-panel__list {
+    scroll-padding-bottom: 0;
+    scroll-padding-inline-end: $list-shade;
+  }
+
+  // Written up the row's height: a vertical line of text turned half round, so it reads from the row's foot. Turned with
+  // it, the shade and the corners are set for the side they end up on
+  .atlas-initiative-panel__round {
+    @include list-shade(left);
+    right: 0;
+    left: auto;
+    height: auto;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    // Along the row's height in the middle, at the row's end
+    justify-content: center;
+    align-items: flex-end;
+    padding: 0 0 0 $surface-inset;
+    border-radius: var(--atlas-panel-inner-radius) 0 0 var(--atlas-panel-inner-radius);
+  }
+
+  .atlas-initiative-panel__top-shade {
+    @include list-shade(left);
+    right: auto;
+    left: 0;
+    height: auto;
+    border-radius: var(--atlas-panel-inner-radius) 0 0 var(--atlas-panel-inner-radius);
+  }
+
+  // A side's cards after its name
+  .atlas-initiative-side {
+    flex-flow: row nowrap;
+    flex-shrink: 0;
+    align-items: stretch;
+  }
+
+  .atlas-initiative-side__label {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    flex: 0 0 auto;
+    white-space: nowrap;
+    // Its box as wide as its letters, so the gap to the cards reads as the list's inset
+    line-height: 1;
+  }
+
+  // Where the list runs on into the next round: the name between two upright lines
+  .atlas-initiative-round {
+    flex-direction: column;
+    flex-shrink: 0;
+
+    &::before,
+    &::after {
+      width: 1px;
+      height: auto;
+    }
+  }
+
+  .atlas-initiative-round__label {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    line-height: 1;
+  }
+}
+
+@supports (animation-timeline: --a) {
+  .atlas-initiative-panel--row .atlas-initiative-panel__list {
+    scroll-timeline: --atlas-initiative-list inline;
+  }
 }

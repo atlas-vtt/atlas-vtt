@@ -13,7 +13,6 @@ import { entryConditions } from '../initiative/combatantConditions';
 import { entryToken } from '../initiative/party';
 import { layoutEdges, scrollWithin } from '../utils/scrollWithin';
 import { renderPlayerCard } from './playerInitiativeCard';
-import { renderRoundRow } from './playerInitiativeRounds';
 import { TURN_KEY_ATTRIBUTE } from '../initiative/motion/turnMotion';
 import '../initiative/initiative-panel.scss';
 import './player-initiative.scss';
@@ -255,6 +254,8 @@ export function renderPlayerInitiative(container: HTMLElement, list: PlayerIniti
   if (shape && shape !== 'right') panel.addClass(`atlas-player-initiative--${shape}`);
   if (look.faces) panel.addClass(`atlas-player-initiative--faces-${look.dock ?? 'right'}`);
   const across = shape === 'top' || shape === 'bottom';
+  // A row is the column turned on its side (`initiative-panel.scss`)
+  if (across) panel.addClass('atlas-initiative-panel--row');
   if (look.pulse) {
     panel.addClass('atlas-player-initiative--pulse');
     // Taken up where the clock has it, so a new drawing goes on with the pulse instead of starting it again
@@ -263,17 +264,12 @@ export function renderPlayerInitiative(container: HTMLElement, list: PlayerIniti
   const fromTurn = look.fromTurn === true;
   const entries = panel.createDiv({ cls: 'atlas-initiative-panel__list' });
   const segments = playerSegments(list, fromTurn, look.maxCards);
-  // A row in turn order during a fight: each round's cards over its name, which move on with them
-  const byRounds = across && list.isActive && !list.bySides;
-  if (byRounds) renderRoundRow(entries, segments, list.round, (into, segment) => renderSegment(into, segment, list, look));
-  else {
-    // In turn order the list is the list of combatants; by sides each side is one
-    if (!list.bySides) entries.setAttribute('role', 'list');
-    for (const segment of segments) renderSegment(entries, segment, list, look);
-  }
+  // In turn order the list is the list of combatants; by sides each side is one
+  if (!list.bySides) entries.setAttribute('role', 'list');
+  for (const segment of segments) renderSegment(entries, segment, list, look);
   renderMore(entries, list, segments);
-  // A column fades the cards scrolled past its top under a shade, as the GM's tracker does; a row scrolls sideways
-  if (!across) panel.createDiv({ cls: 'atlas-initiative-panel__top-shade', attr: { 'aria-hidden': 'true' } });
+  // The cards scrolled past the list's start fade under a shade, as on the GM's tracker
+  panel.createDiv({ cls: 'atlas-initiative-panel__top-shade', attr: { 'aria-hidden': 'true' } });
   if (list.isActive && look.turnFlash !== undefined) {
     const holders = panel.querySelectorAll<HTMLElement>('.atlas-initiative-card--active, .atlas-initiative-side--active .atlas-initiative-card');
     for (const card of holders) {
@@ -282,7 +278,7 @@ export function renderPlayerInitiative(container: HTMLElement, list: PlayerIniti
     }
   }
   if (list.isActive) {
-    if (!byRounds) panel.createDiv({ cls: 'atlas-initiative-panel__round', text: t('playerInit.round', { round: list.round }) });
+    panel.createDiv({ cls: 'atlas-initiative-panel__round', text: t('playerInit.round', { round: list.round }) });
     // The list is drawn anew on every change: show the turn and the next two visible combatants,
     // or the top of a list that starts at the turn
     const side = panel.querySelector('.atlas-initiative-side--active');

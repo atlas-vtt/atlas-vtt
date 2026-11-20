@@ -126,7 +126,9 @@ function expectUniform(panel: HTMLElement, value: number): void {
 function expectRowUniform(panel: HTMLElement, value: number): void {
   const border = parseFloat(getComputedStyle(panel).borderTopWidth);
   const frame = box(panel);
-  const parts = [...panel.children].filter((part) => shown(part) && !part.classList.contains('atlas-initiative-panel__surface')).map(box).sort((a, b) => a.left - b.left);
+  // The round and the shade over the list's start lie over the cards and take no room, as in the column
+  const overlays = ['atlas-initiative-panel__surface', 'atlas-initiative-panel__round', 'atlas-initiative-panel__top-shade'];
+  const parts = [...panel.children].filter((part) => shown(part) && !overlays.some((name) => part.classList.contains(name))).map(box).sort((a, b) => a.left - b.left);
   for (const part of parts) {
     expect(part.top - frame.top - border).toBeCloseTo(value, 0);
     expect(frame.bottom - border - part.bottom).toBeCloseTo(value, 0);
@@ -134,7 +136,7 @@ function expectRowUniform(panel: HTMLElement, value: number): void {
   expect(parts[0]!.left - frame.left - border).toBeCloseTo(value, 0);
   expect(frame.right - border - parts.at(-1)!.right).toBeCloseTo(value, 0);
   // Along the row: labels, cards and the line between rounds, in the order they stand
-  const items = [...panel.querySelectorAll('.atlas-initiative-card, .atlas-player-initiative__round-label, .atlas-initiative-side__label, .atlas-initiative-panel__round, .atlas-initiative-round')]
+  const items = [...panel.querySelectorAll('.atlas-initiative-card, .atlas-initiative-side__label, .atlas-initiative-round')]
     .map(box).sort((a, b) => a.left - b.left);
   for (let i = 1; i < items.length; i++) {
     const gap = items[i]!.left - items[i - 1]!.right;

@@ -3,7 +3,6 @@
 // its edge), its size, the pulse of the turn and the tile counting the combatants it leaves out.
 @use '../../../styles/tokens' as *;
 @use '../../../styles/mixins' as *;
-@use '../../../styles/initiative-cards' as *;
 
 // The player view's initiative size: widths and text grow with it, spacing stays
 $scale: var(--atlas-player-initiative-scale, 1);
@@ -18,21 +17,6 @@ $banner-scale: var(--atlas-player-turn-banner-scale, 1);
 
 // A row's cards are as wide as the column's: the column's width less its border and padding
 $card-width: calc(#{scaled(96px)} - 2 * #{$border-width-m} - 2 * #{$surface-inset});
-
-// A name standing at the start of its cards in a row across the top or bottom, read from the row's foot up
-@mixin row-label {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  flex: 0 0 auto;
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: $spacing-xs;
-  white-space: nowrap;
-  // Its box as wide as its letters, so the gap to the cards and the border reads as the list's inset
-  line-height: 1;
-}
 
 .atlas-player-initiative {
   // The shared look's sizes follow the player view's initiative size
@@ -66,8 +50,6 @@ $card-width: calc(#{scaled(96px)} - 2 * #{$border-width-m} - 2 * #{$surface-inse
     width: auto;
     max-width: calc(100% - 2 * max(160px, var(--atlas-player-widgets-room, 0px)));
     max-height: none;
-    // A fight's round stands before the cards, its name read along the row's height
-    flex-direction: row;
     align-items: stretch;
   }
 
@@ -163,92 +145,16 @@ $card-width: calc(#{scaled(96px)} - 2 * #{$border-width-m} - 2 * #{$surface-inse
   }
 }
 
-// A row across the top or bottom, as low as it can be read across a table: square cards of the column's width, and the
-// names of rounds and sides read along the row's height at the start of their cards
+// A row across the top or bottom (`atlas-initiative-panel--row`, the column turned on its side): square cards of the
+// column's width
 .atlas-player-initiative--top,
 .atlas-player-initiative--bottom {
   .atlas-initiative-panel__list {
     flex: 1 1 auto;
-    min-width: 0;
-    flex-direction: row;
-    align-items: stretch;
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-
-  // A side's cards after its name
-  .atlas-initiative-side {
-    flex-flow: row nowrap;
-    flex-shrink: 0;
-    align-items: stretch;
-  }
-
-  .atlas-initiative-side__label {
-    @include row-label;
-  }
-
-  // The round stands before the cards, in the row, without the column's shade
-  .atlas-initiative-panel__round {
-    @include row-label;
-    position: static;
-    order: -1;
-    height: auto;
-    padding: 0;
-    background: none;
-    border-radius: 0;
-    text-shadow: none;
-    color: $round-accent;
   }
 
   .atlas-initiative-card {
     width: $card-width;
-  }
-
-  // A round's name, then its cards (`renderRoundRow`); a slim line closes every round but the last
-  .atlas-player-initiative__round-group {
-    display: flex;
-    flex-shrink: 0;
-    gap: $surface-inset;
-  }
-
-  .atlas-player-initiative__round-cards {
-    display: flex;
-    gap: $surface-inset;
-  }
-
-  // Its own element, so it glides with the cards (`renderRoundRow`)
-  .atlas-player-initiative__round-end {
-    flex: 0 0 2px;
-    border-radius: $radius-full;
-    background: $round-line;
-  }
-
-  .atlas-player-initiative__round-label {
-    @include initiative-round-name(scaled($font-ui-small));
-    @include row-label;
-    order: -1;
-    color: var(--text-muted);
-  }
-
-  // The round that runs stands out of the next
-  .atlas-player-initiative__round-group:first-child .atlas-player-initiative__round-label {
-    color: $round-accent;
-  }
-
-  // Where a list by sides runs on into the next round: the name between two lines, down the row's height
-  .atlas-initiative-round {
-    flex-direction: column;
-
-    &::before,
-    &::after {
-      width: 1px;
-      height: auto;
-    }
-  }
-
-  .atlas-initiative-round__label {
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
   }
 }
 
