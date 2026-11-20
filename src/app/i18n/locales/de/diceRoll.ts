@@ -79,4 +79,12 @@ export const diceRoll: Translation = {
   'diceRoll.rowPresent': 'd{sides} ist schon in der Reihe',
   'diceRoll.rowEdit': 'Würfelreihe bearbeiten',
   'diceRoll.rowDone': 'Fertig',
+  'diceRoll.presetEdit': '{name} bearbeiten',
+  'diceRoll.presetEditShort': 'Bearbeiten',
+  'diceRoll.presetActions': 'Weitere Optionen für {name}',
+  'diceRoll.presetBonus': 'Bonus',
+  'diceRoll.presetRules': 'Regeln',
+  'diceRoll.presetFromLab': 'Aus dem Würfellabor',
+  'diceRoll.presetFromSet': '{name} als gespeicherten Wurf behalten',
+  'diceRoll.presetRollsAtOnce': 'würfelt sofort',
 };

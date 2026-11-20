@@ -107,4 +107,6 @@ export const armariumListing: Translation = {
   'armariumListing.problem.tooManyTags': 'Utilisez au plus {count} étiquettes.',
   'armariumListing.problem.tagTwice': 'Utilisez chaque étiquette une seule fois.',
   'armariumListing.problem.tagsExclusive': 'Utilisez une seule étiquette parmi {tags}.',
+  'armariumListing.kind.dice': 'Sets de dés',
+  'armariumListing.kindLine.dice': 'Des dés pour le plateau de dés, avec leurs couleurs et leurs règles.',
 };

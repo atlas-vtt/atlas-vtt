@@ -116,6 +116,8 @@ import { experimental } from './experimental';
 import { fog } from './fog';
 import { glass } from './glass';
 import { graphics } from './graphics';
+import { itemBundle } from './itemBundle';
+import { itemReview } from './itemReview';
 import { measure } from './measure';
 import { playerBar } from './playerBar';
 import { rooms } from './rooms';
@@ -246,6 +248,8 @@ export const ru: Translation = {
   ...fog,
   ...glass,
   ...graphics,
+  ...itemBundle,
+  ...itemReview,
   ...measure,
   ...playerBar,
   ...rooms,

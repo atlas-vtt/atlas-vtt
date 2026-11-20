@@ -55,6 +55,8 @@ import { importReview } from './importReview';
 import { initRules } from './initRules';
 import { initiative } from './initiative';
 import { issue } from './issue';
+import { itemBundle } from './itemBundle';
+import { itemReview } from './itemReview';
 import { laser } from './laser';
 import { levels } from './levels';
 import { light } from './light';
@@ -185,6 +187,8 @@ export const es: Translation = {
   ...initRules,
   ...initiative,
   ...issue,
+  ...itemBundle,
+  ...itemReview,
   ...laser,
   ...levels,
   ...light,

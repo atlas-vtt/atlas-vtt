@@ -62,4 +62,5 @@ export const armariumUpload: Translation = {
   'armariumUpload.stage.cross-files': 'Links zwischen Dateien',
   'armariumUpload.stage.rebuild': 'Neuaufbau',
   'armariumUpload.stage.outputs': 'Vorschauen',
+  'armariumUpload.error.format-changed': 'Dieser Eintrag enthält eine andere Art von Inhalt als das, was du teilst. Eine neue Version muss dieselbe Art haben wie seine früheren Versionen.',
 };

@@ -19,4 +19,5 @@ export const armarium: Translation = {
   'armarium.mismatch': 'Der Download von {name} ist nicht die Datei, die das Armarium angibt, daher wurde nichts installiert.',
   'armarium.failed': 'Die Installation aus dem Armarium ist fehlgeschlagen.',
   'armarium.badLink': 'Dieser Installationslink ist unvollständig. Öffne die Sammlung im Armarium und versuche es erneut.',
+  'armarium.otherListing': 'Die Datei des Armariums gehört zu einem anderen Eintrag als dem angefragten, daher wurde nichts installiert.',
 };

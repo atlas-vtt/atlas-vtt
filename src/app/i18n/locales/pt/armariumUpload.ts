@@ -35,6 +35,7 @@ export const armariumUpload: Translation = {
   'armariumUpload.error.declaration-missing': 'Confirme que você pode compartilhar esta coleção.',
   'armariumUpload.error.listing-not-yours': 'Esta coleção pertence a um anúncio de outra conta. Só quem o criou pode adicionar versões.',
   'armariumUpload.error.listing-removed': 'A equipe do Armarium removeu o anúncio desta coleção, então ele não aceita novas versões. Enviamos os motivos para o seu e-mail. Para contestar, responda a esse e-mail.',
+  'armariumUpload.error.format-changed': 'Este anúncio contém um tipo de conteúdo diferente do que você está compartilhando. Uma nova versão precisa ser do mesmo tipo que as anteriores.',
   'armariumUpload.error.version-not-higher': 'O anúncio já tem esta versão ou uma mais nova. Recomece e escolha um número de versão maior.',
   'armariumUpload.error.check-files-invalid': 'Os arquivos verificados mudaram do nosso lado. Recomece para enviar a coleção outra vez.',
   'armariumUpload.error.blocked-file': 'Um arquivo deste pacote já foi removido do Armarium antes e não pode ser compartilhado de novo.',

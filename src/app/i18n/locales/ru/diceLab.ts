@@ -31,6 +31,7 @@ export const diceLab: Translation = {
   'diceLab.newSetName': 'Новый набор кубиков',
   'diceLab.noDiceYet': 'Кубиков пока нет',
   'diceLab.duplicateSet': 'Дублировать {name}',
+  'diceLab.moreFor': 'Действия: {name}',
   'diceLab.duplicateToEdit': 'Дублировать для правки',
   'diceLab.copyName': '{name} (копия)',
   'diceLab.deleteSet': 'Удалить {name}',

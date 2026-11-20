@@ -16,6 +16,7 @@ export const armarium: Translation = {
   'armarium.versionChanged': '页面加载后 {name} 有了变化：现在提供的是 {version} 版。请重新加载 Armarium 后重试。',
   'armarium.downloading': '正在下载 {name}…',
   'armarium.downloadFailed': '无法下载 {name}。请检查网络连接后重试。',
+  'armarium.otherListing': 'Armarium 返回的文件属于另一个条目，而不是所请求的条目，因此没有安装任何内容。',
   'armarium.mismatch': '下载的 {name} 与 Armarium 列出的文件不一致，因此没有安装任何内容。',
   'armarium.failed': '从 Armarium 安装失败。',
   'armarium.badLink': '此安装链接不完整。请在 Armarium 中打开该合集后重试。',
