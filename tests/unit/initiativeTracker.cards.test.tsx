@@ -8,7 +8,7 @@ import type { ContextMenuEntry } from '../../src/app/react/components/context-me
 
 const state = vi.hoisted(() => ({
   initiativeTrackerOpen: true,
-  initiative: { entries: [] as unknown[], isActive: false, round: 0, config: { autoSort: true } },
+  initiative: { entries: [] as unknown[], isActive: false, round: 0 },
   setInitiativeConfig: vi.fn(),
   resetInitiative: vi.fn(),
   objects: { tokens: {} as Record<string, unknown> },

@@ -36,10 +36,13 @@ const entryOf = (index: number, turn: number): InitiativeEntry => ({
 });
 
 const box = (element: Element): DOMRect => element.getBoundingClientRect();
-const running = (element: Element): Animation[] => element.getAnimations().filter((animation) => animation.playState !== 'finished');
+const running = (element: Element): Animation[] => element.getAnimations().filter((animation) => animation.playState !== 'finished' && animation.timeline instanceof DocumentTimeline);
+const byTime = (animation: Animation): boolean => animation.timeline instanceof DocumentTimeline;
+
 /** Every animation in the document held at `ms` of its own time, so a frame can be measured and drawn. */
 function holdAt(ms: number): void {
-  for (const animation of document.getAnimations()) {
+  // Scroll-driven ones (the tracker's top shade) run by the list's scroll, not by time
+  for (const animation of document.getAnimations().filter(byTime)) {
     animation.pause();
     animation.currentTime = ms;
   }
@@ -47,7 +50,7 @@ function holdAt(ms: number): void {
 
 /** Every animation with an end run to it; a pulse that never ends is left where it is. */
 function finishAll(): void {
-  for (const animation of document.getAnimations()) if (animation.effect?.getComputedTiming().endTime !== Infinity) animation.finish();
+  for (const animation of document.getAnimations().filter(byTime)) if (animation.effect?.getComputedTiming().endTime !== Infinity) animation.finish();
 }
 
 /** The players' list at `edge` with the turn at `turn`, drawn anew as `PlayerInitiativePanel.refresh` does, gliding from the last. */
@@ -85,6 +88,8 @@ describe('the turn passing on and back', () => {
       };
       const at = (key: string): { left: number; top: number } => inList(host.querySelector(`[data-turn-key="${key}"]`)!);
       const rest = { mira: at('t1'), rat: at('t2') };
+      // A row's line between the rounds glides with the cards, never ahead of them
+      const line = edge === 'bottom' ? at('round:2:end') : null;
 
       // On: Cave Rat takes Mira's place at the front, Mira leaves the front and comes in at the end
       const list = drawPlayers(host, 2, edge);
@@ -96,6 +101,7 @@ describe('the turn passing on and back', () => {
       expect(at('t2').top).toBeCloseTo(rest.rat.top, 0);
       expect(inList(ghosts[0]!).left).toBeCloseTo(rest.mira.left, 0);
       expect(inList(ghosts[0]!).top).toBeCloseTo(rest.mira.top, 0);
+      if (line) expect(at('round:2:end').left).toBeCloseTo(line.left, 0);
       holdAt(TURN_MOVE_MS / 2);
       await page.screenshot({ path: `${SHOTS}/players-${edge}-on-mid.png` });
       holdAt(TURN_MOVE_MS + 200);

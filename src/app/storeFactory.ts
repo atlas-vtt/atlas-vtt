@@ -13,7 +13,7 @@ import type { WallSegment, WallInput } from './types/wallTypes';
 import { DEFAULT_SCENE_LIGHTING, type LightChanges, type LightInput, type LightZoneChanges, type LightZoneInput, type SceneLightingChanges, type SceneLightingOption } from './types/lightingTypes';
 import type { AudioSource, AudioInput } from './types/audioTypes';
 import type { AnyWidget, WidgetSettings } from './types/widgetTypes';
-import type { InitiativeEntry, InitiativeConfig } from './types/initiativeTypes';
+import type { InitiativeEntry } from './types/initiativeTypes';
 import { createDefaultInitiativeState } from './types/initiativeTypes';
 import { createAtlasStorage, ATLAS_SCHEMA, ATLAS_VERSION } from './services/MapPersistence';
 import type { CameraState, GridState } from './types/gridTypes';
@@ -307,7 +307,6 @@ export interface ViewAtlasState extends ViewState {
   setCombatantCondition: InitiativeTurnActions['setCombatantCondition'];
   setCombatantConditionTurns: InitiativeTurnActions['setCombatantConditionTurns'];
   resetInitiative: () => void;
-  setInitiativeConfig: (config: Partial<InitiativeConfig>) => void;
   addDiceLogEntry: (entry: DiceRollResult) => void;
   clearDiceLog: () => void;
 

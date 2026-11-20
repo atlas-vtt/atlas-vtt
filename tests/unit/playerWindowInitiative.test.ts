@@ -271,15 +271,14 @@ describe('player initiative panel', () => {
     expect(art()?.classList.contains('atlas-player-initiative__art--framed')).toBe(true);
   });
 
-  it('keeps the combatant whose turn it is in view: the list is drawn anew on every change', () => {
-    const { store, doc, settings } = setup();
-    settings.setInitiativeLayout({ fromTurn: false });
+  it('keeps the combatant whose turn it is at the top: the list is drawn anew on every change', () => {
+    const { store, doc } = setup();
     const { initiative } = store.getState();
     scrolls.calls.length = 0;
 
     store.setState({ initiative: { ...initiative, round: 2 } });
 
-    expect(scrolls.calls).toEqual([[doc.querySelector('.atlas-player-initiative__list'), doc.querySelector('.atlas-player-initiative__card--active'), 'nearest', 2, 'y']]);
+    expect(scrolls.calls).toEqual([[doc.querySelector('.atlas-player-initiative__list'), doc.querySelector('.atlas-player-initiative__card--active'), 'start', 0, 'y']]);
     expect(scrolls.calls[0]?.[1]).not.toBeNull();
   });
 

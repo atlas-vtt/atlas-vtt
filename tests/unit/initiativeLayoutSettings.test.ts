@@ -35,17 +35,18 @@ describe('the initiative lists\' layout', () => {
     expect((await loaded({ initiativeDock: 'left', initiativeEdges: ['left', 'middle'] })).settings.initiativeLayout().edges).toEqual(['right']);
   });
 
-  it('keeps the GM\'s choices in the synced settings and reads what it does not know as the default', async () => {
+  it('keeps the GM\'s choices in the synced settings and reads what it does not know as the default; the lists always start at the turn', async () => {
     const { settings, data, app } = await loaded();
-    settings.setInitiativeLayout({ fromTurn: false, dock: 'bottom' });
+    settings.setInitiativeLayout({ dock: 'bottom' });
     await settings.saveSettingsNow();
-    expect(data.stored()).toMatchObject({ initiativeFromTurn: false, initiativeDock: 'bottom' });
+    expect(data.stored()).toMatchObject({ initiativeDock: 'bottom' });
 
     const reopened = new SettingsService(app, undefined, data);
     await reopened.initialize();
-    expect(reopened.initiativeLayout()).toMatchObject({ fromTurn: false, dock: 'bottom' });
+    expect(reopened.initiativeLayout()).toMatchObject({ fromTurn: true, dock: 'bottom' });
 
-    expect((await loaded({ initiativeDock: 'middle', initiativeFromTurn: 'yes' })).settings.initiativeLayout()).toMatchObject({ dock: 'right', fromTurn: true });
+    // An older version's choice not to start at the turn is no longer read
+    expect((await loaded({ initiativeDock: 'middle', initiativeFromTurn: false })).settings.initiativeLayout()).toMatchObject({ dock: 'right', fromTurn: true });
   });
 
   it('tells nobody of a change that changes nothing', async () => {

@@ -26,7 +26,6 @@ const state = vi.hoisted(() => ({
   updateTokens: vi.fn(),
   setInitiativeSitsOut: vi.fn(),
   resetInitiative: vi.fn(),
-  setInitiativeConfig: vi.fn(),
   delayInitiativeTurn: vi.fn(),
   actNowInInitiative: vi.fn(),
 }));
@@ -80,7 +79,7 @@ function scene(initiative: Partial<InitiativeState> = {}): void {
     goblin: token('goblin'), hero: token('hero', { vision: { enabled: true } }), rat: token('rat'), cleric: token('cleric', { side: 'players' }),
   };
   state.initiative = {
-    entries: [entryOf('goblin', 0), entryOf('hero', 1), entryOf('rat', 2), entryOf('cleric', 3)], isActive: false, round: 0, config: { autoSort: true }, ...initiative,
+    entries: [entryOf('goblin', 0), entryOf('hero', 1), entryOf('rat', 2), entryOf('cleric', 3)], isActive: false, round: 0, ...initiative,
   } as InitiativeState;
 }
 
@@ -230,7 +229,7 @@ describe('clearing the initiative tracker', () => {
   });
 
   it('has nothing to clear in an empty tracker', () => {
-    state.initiative = { entries: [], isActive: false, round: 0, config: { autoSort: true } } as unknown as InitiativeState;
+    state.initiative = { entries: [], isActive: false, round: 0 } as unknown as InitiativeState;
     render(<InitiativeTracker />);
     options();
     const clear = opened.entries.find((entry) => entry.type === 'item' && entry.label === 'Clear initiative');
@@ -238,20 +237,13 @@ describe('clearing the initiative tracker', () => {
   });
 });
 
-describe('the auto sort switch', () => {
-  it('shows the setting and switches it', () => {
+describe('the tracker\'s options', () => {
+  it('hold the compact view, the turn banner and adding or clearing combatants, nothing the tracker always does', () => {
     collection.rules = { mode: 'turn-order', roll: '1d20', firstSide: 'players' };
     render(<InitiativeTracker />);
     fireEvent.click(screen.getByRole('button', { name: 'Tracker options' }));
-    expect(opened.entries[0]).toMatchObject({ label: 'Auto sort', checked: true, disabled: false });
-    clickItem('Auto sort');
-    expect(state.setInitiativeConfig).toHaveBeenCalledWith({ autoSort: false });
-  });
-
-  it('stays in place, disabled, where the sides take turns', () => {
-    render(<InitiativeTracker />);
-    fireEvent.click(screen.getByRole('button', { name: 'Tracker options' }));
-    expect(opened.entries[0]).toMatchObject({ label: 'Auto sort', disabled: true });
+    const labels = opened.entries.flatMap((entry) => ('label' in entry ? [entry.label] : []));
+    expect(labels).toEqual(['Compact view', 'Turn banner', 'Add enemy', 'Reset initiative', 'Clear initiative']);
   });
 });
 

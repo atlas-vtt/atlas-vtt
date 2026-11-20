@@ -7,6 +7,7 @@ import type { DicePreset } from '../../../types/dicePresetTypes';
 import type { DiceSet } from '../../../types/diceSetTypes';
 import { MAX_ROW, withPinToggled, withoutPreset, type DiceShelf, type ShelfChange } from './diceShelf';
 import { presetText } from './presetLook';
+import { PresetDice } from './PresetDice';
 import { t } from '../../../i18n';
 
 /** A card's place in the list, for the cards' staggered arrival. */
@@ -55,6 +56,7 @@ export function PresetCard({ index, preset, pinned, shelf, onRoll, onEdit, editi
           {pinned && <Pin aria-hidden="true" className="atlas-dice-presets__pinned" />}
         </span>
         <span className="atlas-dice-presets__formula">{text}</span>
+        <PresetDice preset={preset} />
       </button>
       <ActionsMenuButton label={t('diceRoll.presetActions', { name: preset.name })} entries={entries} className="atlas-dice-presets__more" />
     </li>
@@ -68,6 +70,7 @@ export function LabSetCard({ index, set, onPick }: { index: number; set: DiceSet
       <button type="button" className="atlas-dice-presets__roll" onClick={onPick} aria-label={t('diceRoll.presetFromSet', { name: set.name })}>
         <span className="atlas-dice-presets__name">{set.name}</span>
         <span className="atlas-dice-presets__formula">{setRollText(set.dice)}</span>
+        <PresetDice preset={{ formula: '', look: set }} />
       </button>
     </li>
   );
