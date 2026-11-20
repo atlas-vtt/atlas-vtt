@@ -44,7 +44,7 @@ function setup(badgeNumbers: PlayerBadgeNumbers): { service: PlayerWindowService
 }
 
 const badges = (doc: Document): (string | null)[] =>
-  [...doc.querySelectorAll('.atlas-player-initiative__card')].map((card) => card.querySelector('.atlas-player-initiative__badge')?.textContent ?? null);
+  [...doc.querySelectorAll('.atlas-initiative-card')].map((card) => card.querySelector('.atlas-initiative-card__instance-badge')?.textContent ?? null);
 
 describe('look-alikes in the players\' initiative list', () => {
   it('carry the number their badge shows the players on the map, and none where it shows none', () => {
@@ -75,7 +75,7 @@ describe('look-alikes in the players\' initiative list', () => {
 
   it('show no initiative numbers, which stay on the GM screen', () => {
     const { doc } = setup(badgesOnTheMap({}));
-    expect(doc.querySelectorAll('.atlas-player-initiative__card').length).toBeGreaterThan(0);
-    expect(doc.querySelector('.atlas-player-initiative__list')?.textContent).not.toMatch(/10|9/);
+    expect(doc.querySelectorAll('.atlas-initiative-card').length).toBeGreaterThan(0);
+    expect(doc.querySelector('.atlas-initiative-panel__list')?.textContent).not.toMatch(/10|9/);
   });
 });

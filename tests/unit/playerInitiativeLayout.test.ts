@@ -22,8 +22,8 @@ function draw(entries: PlayerInitiativeEntry[], look: { fromTurn?: boolean; dock
   const list = playerInitiativeList({ entries, isActive: true, round: 4 }, (listed) => (hidden.includes(listed.tokenId) ? null : VISIBLE), TURN_ORDER, false);
   renderPlayerInitiative(document.body, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null, ...look });
   const panel = document.querySelector<HTMLElement>('.atlas-player-initiative')!;
-  const words = [...panel.querySelectorAll('.atlas-player-initiative__name, .atlas-player-initiative__next-round')].map((element) =>
-    element.classList.contains('atlas-player-initiative__next-round') ? `|${element.getAttribute('aria-label') ?? ''}|` : element.textContent ?? '');
+  const words = [...panel.querySelectorAll('.atlas-initiative-card__name, .atlas-initiative-round')].map((element) =>
+    element.classList.contains('atlas-initiative-round') ? `|${element.getAttribute('aria-label') ?? ''}|` : element.textContent ?? '');
   return { panel, words };
 }
 
@@ -35,14 +35,14 @@ describe('the players\' list that starts at the turn', () => {
   it('runs from the combatant whose turn it is into the next round below a divider, and shows its top', () => {
     const { panel, words } = draw(fight, { fromTurn: true });
     expect(words).toEqual(['c', 'd', '|Round 5|', 'a', 'b']);
-    expect(scrolls.calls).toEqual([[panel.querySelector('.atlas-player-initiative__list'), panel.querySelector('.atlas-player-initiative__card--active'), 'start', 0, 'y']]);
+    expect(scrolls.calls).toEqual([[panel.querySelector('.atlas-initiative-panel__list'), panel.querySelector('.atlas-initiative-card--active'), 'start', 0, 'y']]);
   });
 
   it('keeps the order without the GM\'s choice, the turn and the next two scrolled into view', () => {
     const { panel, words } = draw(fight);
     expect(words).toEqual(['a', 'b', 'c', 'd']);
     expect(scrolls.calls[0]?.slice(2)).toEqual(['nearest', 2, 'y']);
-    expect(panel.querySelector('.atlas-player-initiative__next-round')).toBeNull();
+    expect(panel.querySelector('.atlas-initiative-round')).toBeNull();
   });
 
   it('turns where the hidden combatant with the turn stands, without giving it away', () => {
@@ -100,9 +100,9 @@ describe('the sides and the room on the players\' list', () => {
     const side = (id: string): EntryToken => ({ hp: null, showRing: true, side: id === 'a' || id === 'c' ? 'players' : 'opponents', defeated: false });
     const list = playerInitiativeList({ entries, isActive: true, round: 1 }, (current) => side(current.tokenId!), TURN_ORDER, false);
     const panel = renderPlayerInitiative(document.body, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null, maxCards: 2 })!;
-    const cards = [...panel.querySelectorAll('.atlas-player-initiative__card')];
-    expect(cards.map((card) => card.classList.contains('atlas-player-initiative__card--ally'))).toEqual([true, false]);
-    expect(cards[1]!.classList.contains('atlas-player-initiative__card--coloured')).toBe(false);
+    const cards = [...panel.querySelectorAll('.atlas-initiative-card')];
+    expect(cards.map((card) => card.classList.contains('atlas-initiative-card--ally'))).toEqual([true, false]);
+    expect(cards[1]!.classList.contains('atlas-initiative-card--coloured')).toBe(false);
     const more = panel.querySelector('.atlas-player-initiative__more')!;
     expect(more.textContent).toBe('+2');
     expect(more.getAttribute('aria-label')).toBe('2 more combatants');

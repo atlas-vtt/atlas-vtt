@@ -76,7 +76,7 @@ describe('player initiative panel', () => {
   it('flashes the border of who holds a turn that begins, not of a fight seen running', () => {
     const { store, doc } = setup();
     const now = vi.spyOn(performance, 'now').mockReturnValue(1000);
-    const flashing = (): Element[] => [...doc.querySelectorAll('.atlas-player-initiative__card--turn-flash')];
+    const flashing = (): Element[] => [...doc.querySelectorAll('.atlas-initiative-card--turn-flash')];
     expect(flashing()).toEqual([]);
     const ara: InitiativeEntry = {
       id: 'ara', partyMemberId: 'member-ara', name: 'Ara', initiative: 12, initiativeModifier: 0,
@@ -119,16 +119,16 @@ describe('player initiative panel', () => {
       imagePath: '', isActive: false, isNPC: false, order: 1,
     };
     store.setState({ initiative: { ...store.getState().initiative, entries: [...store.getState().initiative.entries, ara] } });
-    expect(doc.querySelectorAll('.atlas-player-initiative__card')).toHaveLength(2);
-    expect(doc.querySelector('.atlas-player-initiative__list')?.textContent).not.toMatch(/18|21/);
+    expect(doc.querySelectorAll('.atlas-initiative-card')).toHaveLength(2);
+    expect(doc.querySelector('.atlas-initiative-panel__list')?.textContent).not.toMatch(/18|21/);
 
     // By sides a player at the table is on the players' side
     initiativeRules.value = { ...TURN_ORDER, mode: 'sides' };
     store.setState({ initiative: { ...store.getState().initiative, sides: { first: 'players', active: 'players' } } });
     // (the harness' token has no vision, so it is an opponent)
-    const players = doc.querySelector('.atlas-player-initiative__side[aria-label="Players"]');
-    expect(players?.querySelectorAll('.atlas-player-initiative__card')).toHaveLength(1);
-    expect(doc.querySelectorAll('.atlas-player-initiative__side[aria-label="Opponents"] .atlas-player-initiative__card')).toHaveLength(1);
+    const players = doc.querySelector('.atlas-initiative-side[aria-label="Players"]');
+    expect(players?.querySelectorAll('.atlas-initiative-card')).toHaveLength(1);
+    expect(doc.querySelectorAll('.atlas-initiative-side[aria-label="Opponents"] .atlas-initiative-card')).toHaveLength(1);
   });
 
   it('requires the DM tracker to be open and reacts immediately to visibility changes', () => {
@@ -199,7 +199,7 @@ describe('player initiative panel', () => {
     })).not.toThrow();
 
     const panel = doc.querySelector('[aria-label="Initiative order"]:not([aria-hidden])');
-    expect(panel?.querySelector('.atlas-player-initiative__art')).not.toBeNull();
+    expect(panel?.querySelector('.atlas-initiative-card__art')).not.toBeNull();
     expect(panel?.querySelector('.atlas-initiative-wound')).toBeNull();
   });
 
@@ -262,7 +262,7 @@ describe('player initiative panel', () => {
 
   it('fills each card with the token\'s art, cropped closer where the art brings its own frame (no ring on the map)', () => {
     const { store, doc } = setup();
-    const art = (): Element | null => doc.querySelector('[aria-label="Initiative order"] .atlas-player-initiative__art');
+    const art = (): Element | null => doc.querySelector('[aria-label="Initiative order"] .atlas-initiative-card__art');
     const withArt = (token: Partial<TokenEntity>): void => {
       const { objects, initiative } = store.getState();
       store.setState({
@@ -273,11 +273,11 @@ describe('player initiative panel', () => {
 
     withArt({ ringColor: '#c0392b' });
     expect(art()?.querySelector('img')?.getAttribute('src')).toBe('data:image/png;base64,AAAA');
-    expect(art()?.classList.contains('atlas-player-initiative__art--framed')).toBe(false);
+    expect(art()?.classList.contains('atlas-initiative-card__art--framed')).toBe(false);
 
     // The list follows the token when the GM takes its ring away
     withArt({ showRing: false });
-    expect(art()?.classList.contains('atlas-player-initiative__art--framed')).toBe(true);
+    expect(art()?.classList.contains('atlas-initiative-card__art--framed')).toBe(true);
   });
 
   it('keeps the combatant whose turn it is at the top: the list is drawn anew on every change', () => {
@@ -287,7 +287,7 @@ describe('player initiative panel', () => {
 
     store.setState({ initiative: { ...initiative, round: 2 } });
 
-    expect(scrolls.calls).toEqual([[doc.querySelector('.atlas-player-initiative__list'), doc.querySelector('.atlas-player-initiative__card--active'), 'start', 0, 'y']]);
+    expect(scrolls.calls).toEqual([[doc.querySelector('.atlas-initiative-panel__list'), doc.querySelector('.atlas-initiative-card--active'), 'start', 0, 'y']]);
     expect(scrolls.calls[0]?.[1]).not.toBeNull();
   });
 
@@ -336,9 +336,9 @@ describe('player initiative panel of a collection that fights by sides', () => {
   }
   const FIGHT = { isActive: true, round: 1, sides: { first: 'players', active: 'players' } } as const;
   const groups = (doc: Document): Array<{ side: string | null; names: string[]; active: boolean }> =>
-    [...doc.querySelectorAll('.atlas-player-initiative__side')].map((group) => ({
+    [...doc.querySelectorAll('.atlas-initiative-side')].map((group) => ({
       side: group.getAttribute('aria-label'),
-      names: [...group.querySelectorAll('.atlas-player-initiative__name')].map((name) => name.textContent ?? ''),
+      names: [...group.querySelectorAll('.atlas-initiative-card__name')].map((name) => name.textContent ?? ''),
       active: group.getAttribute('aria-current') === 'true',
     }));
 
@@ -349,21 +349,21 @@ describe('player initiative panel of a collection that fights by sides', () => {
       { side: 'Opponents', names: ['goblin', 'rat'], active: false },
     ]);
     expect(doc.querySelector('.atlas-player-initiative__value')).toBeNull();
-    expect(doc.querySelector('.atlas-player-initiative__side-label')?.textContent).toBe('Players');
+    expect(doc.querySelector('.atlas-initiative-side__label')?.textContent).toBe('Players');
   });
 
   it('marks the side whose turn it is and the combatant who sits the round out', () => {
     const { doc, store } = sides({ isActive: true, round: 2, sides: { first: 'opponents', active: 'players' } }, 'opponents');
     // The side whose turn it is is brought into view
-    expect(scrolls.calls.at(-1)).toEqual([doc.querySelector('.atlas-player-initiative__list'), doc.querySelector('.atlas-player-initiative__side--active'), 'start', 0, 'y']);
+    expect(scrolls.calls.at(-1)).toEqual([doc.querySelector('.atlas-initiative-panel__list'), doc.querySelector('.atlas-initiative-side--active'), 'start', 0, 'y']);
     // No single combatant has the turn, whatever its entry says
     const { initiative } = store.getState();
     store.setState({ initiative: { ...initiative, entries: initiative.entries.map((each) => ({ ...each, isActive: true })) } });
-    expect(doc.querySelector('.atlas-player-initiative__card--active')).toBeNull();
+    expect(doc.querySelector('.atlas-initiative-card--active')).toBeNull();
     // The GM's list starts at the turn: the side whose turn it is on top, the next round's below a divider
     expect(groups(doc).map(({ side, active }) => [side, active])).toEqual([['Players', true], ['Opponents', false]]);
-    expect(doc.querySelector('.atlas-player-initiative__next-round')?.getAttribute('aria-label')).toBe('Round 3');
-    expect(doc.querySelectorAll('.atlas-player-initiative__card--sitting-out')).toHaveLength(1);
+    expect(doc.querySelector('.atlas-initiative-round')?.getAttribute('aria-label')).toBe('Round 3');
+    expect(doc.querySelectorAll('.atlas-initiative-card--sitting-out')).toHaveLength(1);
     expect(doc.body.textContent).toContain('Round 2');
   });
 
@@ -377,6 +377,6 @@ describe('player initiative panel of a collection that fights by sides', () => {
   it('keeps a fight that was started in turn order in turn order', () => {
     const { doc } = sides({ isActive: true, round: 1 });
     expect(groups(doc)).toEqual([]);
-    expect(doc.querySelectorAll('.atlas-player-initiative__card')).toHaveLength(4);
+    expect(doc.querySelectorAll('.atlas-initiative-card')).toHaveLength(4);
   });
 });

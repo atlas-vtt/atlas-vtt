@@ -76,7 +76,7 @@ describe('the combatants of the initiative tracker', () => {
 
     expect(state.addToInitiative).not.toHaveBeenCalled();
     expect(container.querySelectorAll('.atlas-initiative-card:not(.atlas-initiative-card--placeholder)')).toHaveLength(0);
-    expect(container.querySelector('.atlas-initiative-tracker__content')?.textContent).toBe('');
+    expect(container.querySelector('.atlas-initiative-panel__list')?.textContent).toBe('');
   });
 
   it('leaves the empty card\'s stand-in out once there is a combatant', () => {

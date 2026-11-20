@@ -27,7 +27,7 @@ describe('the players\' list growing for a condition', () => {
       const oldHeight = before.offsetHeight;
       const panel = draw(host, true, faces);
       glideHeight(panel, oldHeight);
-      const card = (): DOMRect => panel.querySelector('.atlas-player-initiative__card')!.getBoundingClientRect();
+      const card = (): DOMRect => panel.querySelector('.atlas-initiative-card')!.getBoundingClientRect();
       const start = card();
       panel.getAnimations().forEach((animation) => animation.finish());
       const end = card();

@@ -121,6 +121,23 @@ describe('exporting an item', () => {
     expect([...vault.files.keys()].filter((path) => path.includes('cover'))).toEqual([]);
   });
 
+  it('carries a template\'s card pictures, which an install never writes into the vault', async () => {
+    const creator = await creatorVault();
+    const previews = { light: new Uint8Array([1, 2]).buffer, dark: new Uint8Array([3, 4]).buffer };
+    const { bytes, manifest } = await exportItemBundle(creator.app, TEMPLATE, { uid: UID, version: 1, previews });
+    expect(manifest.files.slice(-2)).toMatchObject([{ vaultPath: 'preview-light.png', role: 'preview-light' }, { vaultPath: 'preview-dark.png', role: 'preview-dark' }]);
+    const vault = await vaultWith();
+    await (await install(vault, bytes.slice())).apply();
+    expect([...vault.files.keys()].filter((path) => path.includes('preview'))).toEqual([]);
+  });
+
+  it('packs no card pictures for a dice set, which has no card', async () => {
+    const creator = await creatorVault();
+    const previews = { light: new Uint8Array([1]).buffer, dark: new Uint8Array([2]).buffer };
+    const { manifest } = await exportItemBundle(creator.app, { kind: 'dice-set', id: 'boons' }, { uid: UID, version: 1, previews });
+    expect(manifest.files.map((file) => file.role)).toEqual(['dice-set']);
+  });
+
   it('refuses a built-in and an item the vault lacks', async () => {
     const vault = await creatorVault();
     await expect(exportItemBundle(vault.app, { kind: 'statblock-template', id: 'builtin:d20-creature' }, { uid: UID, version: 1 })).rejects.toThrow(/built into Atlas/);
