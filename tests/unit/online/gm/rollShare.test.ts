@@ -73,6 +73,15 @@ describe('the GM\'s rolls', () => {
     expect(JSON.stringify(sent)).not.toMatch(/spy|Spy|Sneak|Bestiary|art\/|Player/);
   });
 
+  it('made public from the log reach the players even while the player view does not show dice rolls', async () => {
+    const gm = await table(false);
+    const rolled = gm.share.dice.rollAsGm(() => gm.bus.emit('dice-rolled', gmRoll('hero'), origin('hero')), {});
+    expect(rolled).toBe(true);
+    expect(rollsSent(gm.sent).map((roll) => [roll.who, roll.token])).toEqual([['gm', gm.heroAlias]]);
+    gm.bus.emit('dice-rolled', gmRoll('hero'), origin('hero'));
+    expect(rollsSent(gm.sent)).toHaveLength(1);
+  });
+
   it('stop with the share', async () => {
     const gm = await table(true);
     gm.share.stop();

@@ -3,8 +3,8 @@ import { Component, type App, type Plugin, type TFile } from 'obsidian';
 import { showNotice } from '../../ui/notice';
 import type { AtlasSettingSection } from '../../settings/settingSections';
 import { AccountControl } from './account/AccountControl.ts';
-import { obsidianHttp } from './account/obsidianHttp.ts';
-import { secretTokenStore } from './account/tokenStore.ts';
+import { obsidianHttp } from '../../account/obsidianHttp.ts';
+import type { AtlasAccount } from '../../account/AtlasAccount';
 import { activeAtlasLeaf } from './atlasView.ts';
 import { AssetService } from '../../services/AssetService';
 import { openPinNote } from '../../services/noteHeadings';
@@ -38,6 +38,7 @@ import { appCampaignChoices } from './campaignChoices.ts';
 import { DASHBOARD_VIEW_TYPE } from '../../dashboard-view';
 import { DEFAULT_SETTINGS, onlineSettingsSections, readSettings, type OnlineSettings } from './settings.ts';
 import { t } from '../../i18n';
+import { nameAnnotationAuthors } from '../../annotations/annotationAuthors';
 import { secretSaltStore } from './account/saltStore.ts';
 import { AssetSalt } from './assets/assetSalt.ts';
 import { AssetStoreClient } from './assets/storeClient.ts';
@@ -87,7 +88,7 @@ export class OnlineFeature extends Component {
   private ready = false;
   private readonly commands = new Map<OnlineCommandId, (checking: boolean) => boolean>();
 
-  constructor(private readonly plugin: Plugin, private readonly data: OnlineDataFile) {
+  constructor(private readonly plugin: Plugin, private readonly data: OnlineDataFile, private readonly atlasAccount: AtlasAccount) {
     super();
     this.app = plugin.app;
     const campaigns = this.campaigns();
@@ -102,20 +103,7 @@ export class OnlineFeature extends Component {
       now: () => companionTimers().now(),
       sleep: (ms) => new Promise((resolve) => companionTimers().setTimer(resolve, ms)),
     });
-    this.account = new AccountControl({
-      http: obsidianHttp,
-      timers: companionTimers(),
-      tokens: secretTokenStore(this.app),
-      openUrl: (url) => void window.open(url),
-      notify: (text) => showNotice(text),
-      signedIn: () => {
-        void this.salt.ensure(true);
-        this.online.table?.signedIn();
-      },
-      signedOut: () => this.salt.clear(),
-      // The table uploads nothing more once the account's token is gone.
-      beforeSignOut: () => Promise.resolve(this.online.table?.suspendAssets()),
-    });
+    this.account = new AccountControl({ http: obsidianHttp, timers: companionTimers(), account: atlasAccount });
   }
 
   /** The account as tables are started with it, with what keeps assets in the store for players. */
@@ -145,6 +133,14 @@ export class OnlineFeature extends Component {
 
   onload(): void {
     this.live = true;
+    // A sign-in anywhere in Atlas (the dock, the settings, the Armarium) reaches the table and the asset salt.
+    this.register(this.atlasAccount.onSignedIn(() => {
+      void this.salt.ensure(true);
+      this.online.table?.signedIn();
+    }));
+    this.register(this.atlasAccount.onSignedOut(() => this.salt.clear()));
+    // The table uploads nothing more once the account's token is gone.
+    this.register(this.atlasAccount.beforeSignOut(() => Promise.resolve(this.online.table?.suspendAssets())));
     void this.start().catch((error: unknown) => console.error('[Atlas] Online play could not start:', error));
   }
 
@@ -183,6 +179,8 @@ export class OnlineFeature extends Component {
       this.savedTable = table;
       void this.saveSettings();
     }, this.host(), { read: () => this.savedLog, write: (entries) => this.keepLog(entries) }, this.books);
+    // A drawing an online player made says who made it, while the campaign's players are known.
+    this.register(nameAnnotationAuthors((id) => ownership.nameOf(id)));
     // Atlas's "Display on player view" reaches the players online too, while a table runs.
     const images = new ImageTakeover<TFile>(() => atlasImageDisplay(this.app), {
       share: () => this.online.table?.image ?? null,

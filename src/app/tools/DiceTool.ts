@@ -4,12 +4,13 @@ import { EventEmitter } from 'events';
 import type { DiceRules } from '../types/diceRulesTypes';
 import type { AdvantageSide, DiceSet, RolledWithSet, RollingDice } from '../types/diceSetTypes';
 import { rollingRules } from '../gameSystems/diceSets';
-import { completeFormula } from './completeFormula';
-import { withAdvantage } from './diceAdvantage';
+import { completeFormula, type CompleteFormula } from './completeFormula';
+import { withAdvantage, type AdvantagedFormula } from './diceAdvantage';
 import { getDiceCrit } from './diceCrit';
 import { rollFormula } from './diceFormula';
 import { dressSetDice } from './diceAppearance';
 import type { FormulaError } from './parseFormula';
+import { emptyTrayMemory, type DiceTrayMemory } from './diceTrayMemory';
 
 /** How a roll is made besides its formula. */
 export interface RollOptions {
@@ -24,7 +25,6 @@ export interface RollOptions {
 export interface DiceToolState {
   isTrayOpen: boolean;
   rollHistory: DiceRollResult[];
-  activeFormula: string;
   quickDice: string[]; // Quick access dice buttons
 }
 
@@ -40,6 +40,8 @@ export class DiceTool {
   private eventBus: EventEmitter;
   /** The dice this tool rolls a bare bonus with: its map's dice set. */
   readonly getDiceRules: () => DiceRules | RollingDice;
+  /** What the dice tray holds while it is closed. */
+  private trayMemory: DiceTrayMemory = emptyTrayMemory();
 
   /** `getDiceRules` gives the dice a bare bonus rolls with: the collection's dice set. */
   constructor(eventBus: EventEmitter, getDiceRules: () => DiceRules | RollingDice, private readonly inputs: DiceRollInputs) {
@@ -48,7 +50,6 @@ export class DiceTool {
     this.state = {
       isTrayOpen: false,
       rollHistory: [],
-      activeFormula: '',
       quickDice: ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100']
     };
   }
@@ -99,8 +100,20 @@ export class DiceTool {
     this.eventBus.emit('dice-history-cleared');
   }
 
-  public setActiveFormula(formula: string): void {
-    this.state.activeFormula = formula;
+  /** Whether a roll of `formula` would be refused, and why, without rolling anything: the tray's check as it is typed. */
+  public checkRoll(formula: string, options?: RollOptions): FormulaError | null {
+    const { rules } = rollingWith(this.getDiceRules(), options?.set);
+    const prepared = prepareDiceRoll(formula, rules, options?.advantage);
+    return 'code' in prepared ? prepared : null;
+  }
+
+  /** What the dice tray held when it closed. */
+  public get tray(): DiceTrayMemory {
+    return this.trayMemory;
+  }
+
+  public rememberTray(memory: DiceTrayMemory): void {
+    this.trayMemory = memory;
   }
 
   public getQuickDice(): string[] {
@@ -136,6 +149,25 @@ export function rollingWith(
   return own ? { rules: collection } : { rules: set, shown: { id: set.id, name: set.name } };
 }
 
+/** A formula checked against every limit, advantage included, and ready to roll. */
+interface PreparedRoll {
+  complete: CompleteFormula;
+  rolling: RollingDice;
+  looks: RollingDice['dice'];
+  helped: AdvantagedFormula | null;
+}
+
+/** Checks `formula` (and what `advantage` makes of it) before any randomness: the roll it makes, or why it is refused. */
+function prepareDiceRoll(formula: string, rules: DiceRules | RollingDice, advantage?: AdvantageSide): PreparedRoll | FormulaError {
+  const rolling = rollingRules(rules);
+  const complete = completeFormula(formula, rules);
+  if (!complete.ok) return complete;
+  const looks = complete.written ? [] : rolling.dice;
+  const helped = advantage ? withAdvantage(complete.parsed, looks, rolling, advantage) : null;
+  if (helped && 'ok' in helped) return helped;
+  return { complete, rolling, looks, helped };
+}
+
 /**
  * Rolls a formula by a dice set (or a collection's dice rules), as the dice
  * tool does but without telling anyone: one without dice (`+3`) is added to
@@ -149,18 +181,12 @@ export function rollingWith(
 export function rollDiceFormula(
   formula: string, rules: DiceRules | RollingDice, inputs: DiceRollInputs, shown?: RolledWithSet, advantage?: AdvantageSide, setAppearance = false,
 ): DiceRollResult | null {
-  const rolling = rollingRules(rules);
-  const complete = completeFormula(formula, rules);
-  if (!complete.ok) {
-    inputs.onFormulaError(complete);
+  const prepared = prepareDiceRoll(formula, rules, advantage);
+  if ('code' in prepared) {
+    inputs.onFormulaError(prepared);
     return null;
   }
-  const looks = complete.written ? [] : rolling.dice;
-  const helped = advantage ? withAdvantage(complete.parsed, looks, rolling, advantage) : null;
-  if (helped && 'ok' in helped) {
-    inputs.onFormulaError(helped);
-    return null;
-  }
+  const { complete, rolling, looks, helped } = prepared;
   const { rolls, modifiers, named, total, linear } = helped
     ? rollFormula(helped.formula, inputs.random, helped.explodeRules, helped.looks)
     : rollFormula(complete.parsed, inputs.random, rolling, looks);

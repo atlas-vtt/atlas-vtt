@@ -9,6 +9,7 @@ import type { LevelAlignment, LevelLinkChanges, LevelLinkInput, SceneLevel } fro
 import { isRecord } from '../utils/guards';
 import type { MapMove } from '../grid/mapStretch';
 import { objectsMovedWithMap } from '../grid/mapStretchObjects';
+import { aurasToTokenLevels } from '../measure/auraUpkeep';
 import type { ViewState } from '../types/viewState';
 
 export interface SceneLevelsSlice {
@@ -32,7 +33,7 @@ export interface SceneLevelsSlice {
   deleteLevelLink: (id: string) => void;
 }
 
-type LevelsDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects' | 'background' | 'exploredMask' | 'exploredMasks' | 'levelAlignments' | 'selectedIds' | 'lightPopover' | 'lightZonePopover' | 'levelLinkPopover'>;
+type LevelsDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects' | 'background' | 'exploredMask' | 'exploredMasks' | 'levelAlignments' | 'selectedIds' | 'lightPopover' | 'lightZonePopover' | 'levelLinkPopover' | 'measurePopover'>;
 
 type ImmerSet = (fn: (draft: LevelsDraft) => void) => void;
 
@@ -60,6 +61,7 @@ export function createSceneLevelsActions(set: ImmerSet, get: () => LevelsDraft):
       draft.lightPopover = null;
       draft.lightZonePopover = null;
       draft.levelLinkPopover = null;
+      draft.measurePopover = null;
     }),
 
     setLevels: (levels) => set((draft) => {
@@ -119,6 +121,8 @@ export function createSceneLevelsActions(set: ImmerSet, get: () => LevelsDraft):
         token.level = levelId;
         moved.add(id);
       }
+      // An aura lies on the level its token stands on.
+      aurasToTokenLevels(draft.objects, moved);
       if (moved.size > 0 && levelId !== viewedLevelId(draft)) draft.selectedIds = draft.selectedIds.filter((id) => !moved.has(id));
     }),
   };

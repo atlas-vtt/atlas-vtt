@@ -91,7 +91,8 @@ export function realDirectorDeps(app: App): SoundDirectorDeps {
     settings: {
       getSoundSettings: () => settings()?.getSoundSettings() ?? DEFAULT_SOUND_SETTINGS,
       setSoundSettings: (changes) => settings()?.setSoundSettings(changes),
-      isOn: () => settings()?.isExperimentalOn('sound') ?? false,
+      // ponytail: sound is no longer switched off; the seam stays for the tests' off state and the unload.
+      isOn: () => true,
       onChange: (listener) => settings()?.onChange(listener) ?? (() => undefined),
     },
     moods: MoodStore.forApp(app),

@@ -1,7 +1,7 @@
 import { DeltaReader, parseGmMessage, type DeltaOf, type GmMessage, type RollRequestAnswer } from '../../../../src/app/online/protocol/index.ts';
 import type { LoggedRoll, RollRequest } from '../../../../src/app/online/gm/log/TableLog.ts';
 import { produce } from 'immer';
-import type { TokenEntity } from '../../../../src/app/types';
+import type { NotePin, TokenEntity } from '../../../../src/app/types';
 import type { TokenPerception } from '../../../../src/app/vision/tokenPerception';
 import type { SceneState, SceneStore } from '../../../../src/app/online/gm/atlasView.ts';
 import type { SeatSource } from '../../../../src/app/online/gm/seatSource.ts';
@@ -12,6 +12,7 @@ import type { MapLayerSource } from '../../../../src/app/online/gm/atlasMapLayer
 import type { TokenRules } from '../../../../src/app/online/gm/tokenUI.ts';
 import type { RemoteDrag } from '../../../../src/app/online/marks/index.ts';
 import type { GmRuler } from '../../../../src/app/online/gm/dragRulers.ts';
+import type { GmMarkSource } from '../../../../src/app/online/gm/MarkShare.ts';
 import { fakeTokenSource } from './fakeTokenSource.ts';
 import { GENERIC_SOURCE, PLAYER_SETTINGS } from './gmLighting.ts';
 import { settled } from './settled.ts';
@@ -60,6 +61,8 @@ export interface ShareHarness {
   rules: TokenRules | null;
   /** What the GM's own drag ruler measures; none by default. */
   gmRuler: GmRuler | null;
+  /** The GM's own marks on the tab (measurements, laser, the drawing under way); none by default. */
+  marks: GmMarkSource | null;
   /** The rulers of the players' drags the GM's overlay was given, in order. */
   readonly playerDrags: (readonly RemoteDrag[])[];
   /** The rolls taken into the table's log. */
@@ -68,6 +71,8 @@ export interface ShareHarness {
   requests: (from: string, answer: RollRequestAnswer) => RollRequest | null;
   /** The log entry of whoever found a readable pin; nobody by default. */
   foundPin: (mapPath: string, pinId: string) => string | null;
+  /** Told of the shared map's pins whenever they changed; nobody listens by default. */
+  pinsChanged: (mapPath: string, pins: Readonly<Record<string, NotePin>>) => void;
   /** The level of a scene with several Atlas presents to its player view; unset is the first. */
   presented: string | undefined;
   /** The vault's animated maps by path, whose posters are their entries in the images; none by default. */
@@ -116,10 +121,12 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
     layers: null,
     rules: null,
     gmRuler: null,
+    marks: null,
     playerDrags: [],
     logged: [],
     requests: () => null,
     foundPin: () => null,
+    pinsChanged: () => undefined,
     presented: undefined,
     videos: new Map(),
     videoReads: 0,
@@ -128,6 +135,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       logRoll: (roll) => harness.logged.push(roll),
       rollRequest: (from, answer) => harness.requests(from, answer),
       foundPin: (mapPath, pinId) => harness.foundPin(mapPath, pinId),
+      pinsChanged: (mapPath, pins) => harness.pinsChanged(mapPath, pins),
       mapLayers: () => harness.layers,
       lightingSource: () => harness.lighting,
       atlasSettings: () => harness.settings,
@@ -136,6 +144,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       tokenRules: () => harness.rules,
       tokenSource: () => (harness.rendered ? source : null),
       gmDragRuler: () => harness.gmRuler,
+      gmMarks: () => harness.marks,
       showPlayerDrags: (drags) => harness.playerDrags.push(drags),
       readImage: (path) => {
         const bytes = images.get(path);

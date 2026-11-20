@@ -94,7 +94,7 @@ export class ReflectionTiles {
     const texture = createTarget(rect[2] / this.texel, rect[3] / this.texel, 'r8unorm', 'nearest');
     const covered: Rect = [rect[0], rect[1], texture.source.pixelWidth * this.texel, texture.source.pixelHeight * this.texel];
     this.uniforms.uniforms.uReflectRect.set(covered);
-    const geometry = fansOf(parts);
+    const geometry = reflectionFans(parts);
     const mesh = new Mesh({ geometry, shader: this.shaderFor(field) });
     mesh.blendMode = 'max';
     this.scene.addChild(mesh);
@@ -161,8 +161,8 @@ export class ReflectionTiles {
   }
 }
 
-/** Every part's polygon as a triangle fan from its point, which each corner carries with the part's reach and strength (`aPart`). */
-function fansOf(parts: readonly ReflectionPart[]): Geometry {
+/** Every part's polygon as a triangle fan from its point, which each corner carries with the part's reach and strength (`aPart`, read by `reflectionVertex`). */
+export function reflectionFans(parts: readonly ReflectionPart[]): Geometry {
   const corners = parts.reduce((sum, part) => sum + part.polygon.length + 1, 0);
   const positions = new Float32Array(corners * 2);
   const info = new Float32Array(corners * 4);

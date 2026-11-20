@@ -1,9 +1,10 @@
 import { isCount, parseAsset, parseAssetProgress, parseVideoAsset, type AssetProgress, type AssetRef } from './asset.ts';
-import { isBookType, isPlayerBookType, parseBookCover, parseBookMessage, parseBookTokenMessage, parsePlayerBookMessage, type BookMessage, type BookTokenMessage, type PlayerBookCover, type PlayerBookMessage, type PlayerBookParts } from './book.ts';
+import { isBookType, isPlayerBookType, parseBookCover, parseBookParts, parseBookMessage, parseBookTokenMessage, parsePlayerBookMessage, type BookMessage, type BookTokenMessage, type PlayerBookCover, type PlayerBookMessage, type PlayerBookParts } from './book.ts';
+import { parseSignFound, type PlayerSignFound } from './bookLevels.ts';
 import { parseBookRestMessage, type BookRestMessage } from './bookRest.ts';
 import { isDeltaOf, parseDelta, parseSeq, type DeltaMessage, type DeltaOf } from './delta.ts';
 import { parseFloor, type SharedFloor } from './floor.ts';
-import type { SharedFog } from './fog.ts';
+import type { SharedFog, SharedFogEdge } from './fog.ts';
 import { parseImageMessage, type ImageMessage } from './image.ts';
 import type { SharedInitiative } from './initiative.ts';
 import type { SharedLightingScene, SharedSight } from './lighting.ts';
@@ -12,7 +13,10 @@ import type { LiveMessage } from './live.ts';
 import type { LogMessage, PlayerLogMessage } from './log.ts';
 import { isPlayerLogType, parseLogMessage, parsePlayerLog } from './logParse.ts';
 import { parsePlayerRoll, parseRoll, parseRollDice, parseRollRefused, type PlayerRoll, type RollMessage, type RollRefused, type SharedRollDice } from './dice.ts';
-import { parsePinFound, type PlayerPinFound, type SensedMark, type SharedAnnotations, type SharedDoor, type SharedGrid, type SharedPin } from './mapLayers.ts';
+import type { SharedAnnotations } from './annotations.ts';
+import { isPlayerDrawType, type DrawMine, type DrawRefused, type PlayerDrawMessage } from './draw.ts';
+import { parseDrawMine, parseDrawRefused, parsePlayerDraw } from './drawParse.ts';
+import { parsePinFound, type PlayerPinFound, type SensedMark, type SharedDoor, type SharedGrid, type SharedPin } from './mapLayers.ts';
 import { parseMapPlacement, type SharedMapPlacement } from './mapPlacement.ts';
 import { parseMarks, parsePlayerMark, type MarksMessage, type PlayerCursor, type PlayerLaser, type PlayerMeasure } from './marks.ts';
 import { isRecord } from './shape.ts';
@@ -69,8 +73,11 @@ export type GmMessage =
   | { readonly t: 'mine'; readonly scene: string; readonly tokens: readonly string[]; readonly dice?: Readonly<Record<string, SharedRollDice>> }
   /** How far the GM's uploads to the asset store have come. */
   | AssetProgress
-  /** The committed fog of the scene `scene`; `seq` numbers it for the deltas that follow. */
-  | { readonly t: 'fog'; readonly scene: string; readonly seq?: number; readonly fog: SharedFog }
+  /**
+   * The committed fog of the scene `scene`; `seq` numbers it for the deltas that follow. `edge` is
+   * how the GM's fog edge looks; added later: without it the fog's edge is hard.
+   */
+  | { readonly t: 'fog'; readonly scene: string; readonly seq?: number; readonly fog: SharedFog; readonly edge?: SharedFogEdge }
   | ({ readonly t: 'lighting'; readonly scene: string } & SharedLightingScene)
   | ({ readonly t: 'sight'; readonly scene: string; readonly seq?: number } & SharedSight)
   /** The change from the last `tokens`, `sight` or `fog` message to the next. */
@@ -101,8 +108,15 @@ export type GmMessage =
   | { readonly t: 'sensed'; readonly scene: string; readonly tokens: readonly SensedMark[] }
   /** The readable pins where the players see the map now. */
   | { readonly t: 'pins'; readonly scene: string; readonly pins: readonly SharedPin[] }
-  /** The drawings and texts on the map, but those committed fog covers whole. */
-  | ({ readonly t: 'annotations'; readonly scene: string } & SharedAnnotations)
+  /**
+   * The drawings and texts on the map, but those committed fog covers whole. `rev` numbers the
+   * message among those of its scene (added later), so a player can be told which of its entries
+   * are theirs (`draw-mine`).
+   */
+  | ({ readonly t: 'annotations'; readonly scene: string; readonly rev?: number } & SharedAnnotations)
+  /** Which of the scene's drawings and texts are one player's own, and that a request of theirs was not taken. Added later (level 14). */
+  | DrawMine
+  | DrawRefused
   /** The players' initiative list; null while it is not shown. */
   | { readonly t: 'initiative'; readonly scene: string; readonly list: SharedInitiative | null }
   /** The widgets players see, as Atlas's player window shows them; null while it shows none. */
@@ -129,7 +143,7 @@ export interface PlayerResync {
   readonly of: DeltaOf;
 }
 
-export type PlayerMessage = PlayerResync | PlayerMove | PlayerDrag | PlayerDragCancel | PlayerRoll | PlayerLaser | PlayerMeasure | PlayerCursor | PlayerLogMessage | PlayerBookMessage | PlayerBookParts | PlayerBookCover | BookTokenMessage | BookRestMessage | PlayerPinFound | PlayerSoundState;
+export type PlayerMessage = PlayerResync | PlayerMove | PlayerDrag | PlayerDragCancel | PlayerRoll | PlayerLaser | PlayerMeasure | PlayerCursor | PlayerLogMessage | PlayerBookMessage | PlayerBookParts | PlayerBookCover | BookTokenMessage | BookRestMessage | PlayerPinFound | PlayerSignFound | PlayerSoundState | PlayerDrawMessage;
 
 const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 
@@ -206,6 +220,10 @@ export function parseGmMessage(value: unknown): GmMessage | null {
       return parseMarks(value);
     case 'delta':
       return parseDelta(value);
+    case 'draw-mine':
+      return parseDrawMine(value);
+    case 'draw-refused':
+      return parseDrawRefused(value);
     case 'log':
     case 'log-entry':
     case 'log-remove':
@@ -230,13 +248,15 @@ export function parsePlayerMessage(value: unknown): PlayerMessage | null {
   if (value.t === 'move' || value.t === 'drag') return parsePlayerMove(value, value.t);
   if (value.t === 'drag-cancel') return parseDragCancel(value);
   if (value.t === 'pin-found') return parsePinFound(value, isSceneId);
+  if (value.t === 'sign-found') return parseSignFound(value);
   if (value.t === 'roll') return parsePlayerRoll(value);
   if (value.t === 'laser' || value.t === 'measure' || value.t === 'cursor') return parsePlayerMark(value);
+  if (isPlayerDrawType(value.t)) return parsePlayerDraw(value);
   if (isPlayerLogType(value.t)) return parsePlayerLog(value);
   if (isPlayerBookType(value.t)) return parsePlayerBookMessage(value);
   if (value.t === 'book-token') return parseBookTokenMessage(value);
   if (value.t === 'book-rest') return parseBookRestMessage(value);
-  if (value.t === 'book-parts') return { t: 'book-parts' };
+  if (value.t === 'book-parts') return parseBookParts(value);
   if (value.t === 'book-cover') return parseBookCover(value);
   if (value.t === 'sound-state') return parsePlayerSoundState(value);
   if (value.t === 'resync') return isSceneId(value.scene) && isDeltaOf(value.of) ? { t: 'resync', scene: value.scene, of: value.of } : null;

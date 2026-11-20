@@ -38,6 +38,7 @@ export const campaign = {
   'campaign.systemTitle': '{name}: Game system',
   'campaign.closeSystem': 'Close game system settings',
   'campaign.systemNoneSummary': "Every map plays by its collection's rules",
+  'campaign.systemWhenPlayed': "Maps play by these rules only while this campaign's online table is open.",
   'campaign.delete': 'Delete campaign',
   'campaign.deleteTitle': 'Delete {name}?',
   'campaign.deleteMessage': 'The scenes, maps and tokens it used stay in your library.',

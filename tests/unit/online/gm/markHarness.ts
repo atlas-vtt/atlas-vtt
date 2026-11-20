@@ -1,6 +1,8 @@
+import { UnderWay } from '../../../../src/app/annotations/underWay';
+import type { FogCoverage } from '../../../../src/app/fog/fogCoverage';
 import type { CursorSource, LaserSource, Press, TrailBatch } from '../../../../src/app/online/marks/index.ts';
 import type { GmMessage, LaserState, MarkPoint, MarksMessage, SharedCursor } from '../../../../src/app/online/protocol/index.ts';
-import type { Measurements } from '../../../../src/app/pixi/MeasureRenderer';
+import type { Measurements } from '../../../../src/app/pixi/measure/measurements';
 import type { TokenFootprint } from '../../../../src/app/vision/measureOrigin';
 import { MarkShare, type GmMarkSource, type PlayerMarks } from '../../../../src/app/online/gm/MarkShare.ts';
 import type { MapSize } from '../../../../src/app/online/gm/moveCheck.ts';
@@ -96,6 +98,10 @@ export interface MarkHarness {
   readonly shows: PlayerMarks[];
   readonly laser: FakeLaser;
   readonly cursor: FakeCursor;
+  /** The drawing the GM's Draw tool is making. */
+  readonly stroke: UnderWay;
+  /** The committed fog a drawing under way is judged by; none covers anything by default, and null cannot be read. */
+  fog: FogCoverage | null;
   /** Whether the GM lets everyone see each other's cursor. */
   cursorsOn: boolean;
   /** Every list of players' cursors the GM's overlay was told to draw, in order. */
@@ -104,6 +110,8 @@ export interface MarkHarness {
   measure(next: Measurements): Promise<void>;
   footprints: readonly TokenFootprint[];
   seen: (id: string) => boolean;
+  /** The ids players know the GM's tokens by; none by default, so no aura is told. */
+  aliases: Record<string, string>;
   now(): number;
   advance(ms: number): void;
   /** Called with each message as it is sent, before it is recorded. */
@@ -119,6 +127,7 @@ export function markHarness(map: MapSize | null = { width: 2000, height: 2000 })
   const listeners = new Set<(next: Measurements, previous: Measurements) => void>();
   const laser = new FakeLaser();
   const cursor = new FakeCursor();
+  const stroke = new UnderWay();
   const names: Record<string, string> = { ['a'.repeat(20)]: 'Ana', ['b'.repeat(20)]: 'Ben' };
   const source: GmMarkSource = {
     measurements: {
@@ -133,6 +142,8 @@ export function markHarness(map: MapSize | null = { width: 2000, height: 2000 })
     laserLook: () => ({ color: '#ff0059', size: 16 }),
     footprints: () => harness.footprints,
     seen: () => harness.seen,
+    stroke,
+    fog: () => harness.fog,
   };
   const harness: MarkHarness = {
     sent: [],
@@ -141,10 +152,13 @@ export function markHarness(map: MapSize | null = { width: 2000, height: 2000 })
     shows: [],
     laser,
     cursor,
+    stroke,
+    fog: { shape: [], covers: () => false },
     cursorsOn: false,
     cursorShows: [],
     footprints: [],
     seen: () => true,
+    aliases: {},
     onSend: null,
     share: new MarkShare({
       send: (body: GmMessage, to?: string) => {
@@ -165,6 +179,7 @@ export function markHarness(map: MapSize | null = { width: 2000, height: 2000 })
         harness.shows.push(marks);
       },
       cursorsShown: () => harness.cursorsOn,
+      tokenAlias: (tokenId) => harness.aliases[tokenId],
       nameOf: (player) => names[player] ?? null,
       showPlayerCursors: (cursors) => void harness.cursorShows.push(cursors),
       now: () => now,

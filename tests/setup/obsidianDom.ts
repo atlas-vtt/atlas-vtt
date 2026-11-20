@@ -95,6 +95,12 @@ const helpers: Record<string, (this: HTMLElement, ...args: never[]) => unknown> 
   setCssProps(this: HTMLElement, props: Record<string, string>) {
     for (const [name, value] of Object.entries(props)) this.style.setProperty(name, value);
   },
+  setCssStyles(this: HTMLElement, styles: Partial<CSSStyleDeclaration>) {
+    Object.assign(this.style, styles);
+  },
+  detach(this: HTMLElement) {
+    this.remove();
+  },
   instanceOf(this: HTMLElement, type: new () => unknown) {
     return this instanceof type;
   },

@@ -25,6 +25,8 @@ import type { DiceGpu } from './DiceGpu';
 import type { DieSides } from './dieGeometry';
 import { releaseColoured, retainColoured, type ColourableAssets } from './dieColours';
 import { dieAssets } from './dieMesh';
+import type { FaceNumbers } from './dieArtwork';
+import type { DieRole } from './diceScene';
 import { DroppedDice } from './droppedDice';
 import type { DieAnim } from './dieMotion';
 import { FLOOR_Y } from './dieTour';
@@ -58,6 +60,11 @@ function place(mesh: THREE.Mesh, anim: DieAnim): boolean {
   return moved;
 }
 
+/** How a planned die's faces are numbered. */
+function numbersOf(die: PlannedBody): FaceNumbers {
+  return die.role === 'tens' ? 'tens' : 'plain';
+}
+
 /** A length in CSS pixels as whole device pixels, as a canvas counts them. */
 function devicePixels(css: number, dpr: number): number {
   return Math.floor(css * dpr);
@@ -71,6 +78,8 @@ export function stagePixelRatio(win: Window): number {
 /** A die on the stage: its body, its colour where a dice set gives it one, and whether the roll dropped it. */
 export interface PlannedBody {
   sides: DieSides;
+  /** A percentile roll's tens die reads in tens (10 … 90, 00); every other die its own numbers. */
+  role?: DieRole | undefined;
   colour?: string | undefined;
   dropped?: boolean | undefined;
 }
@@ -118,13 +127,13 @@ export class DiceRenderer {
     this.shadow.bodiesChanged();
 
     const chainLength = chainLengthFor(dice.length);
-    const coloured = dice.flatMap((die) => (die.colour === undefined ? [] : [dieAssets(die.sides, die.colour)]));
+    const coloured = dice.flatMap((die) => (die.colour === undefined ? [] : [dieAssets(die.sides, die.colour, numbersOf(die))]));
     retainColoured(coloured);
     releaseColoured(this.coloured);
     this.coloured = coloured;
 
     this.meshes = dice.map((die) => {
-      const assets = dieAssets(die.sides, die.colour);
+      const assets = dieAssets(die.sides, die.colour, numbersOf(die));
       const mesh = new THREE.Mesh(assets.geometry, assets.material);
       mesh.castShadow = true;
       mesh.visible = false;

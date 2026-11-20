@@ -25,6 +25,9 @@ export const loot: Translation = {
   'loot.rarity.legendary': '传说',
   'loot.rarity.rare': '稀有',
   'loot.rarity.uncommon': '非普通',
+  'loot.rarityMenu.all': '全部稀有度',
+  'loot.rarityMenu.none': '无稀有度',
+  'loot.rarityMenu.some': '稀有度：{on}/{total}',
   'loot.rarityOff': { other: '已把 {count} 件{rarity}物品排除在抽取之外。点击以重新纳入。' },
   'loot.rarityOn': { other: '已勾选的视图中有 {count} 件{rarity}物品。点击以排除在抽取之外。' },
   'loot.received': '获得的战利品',
@@ -37,7 +40,6 @@ export const loot: Translation = {
   'loot.tabs.latest': '最近一次',
   'loot.tabs.latestHint': '这张地图上的最后一次抽取。',
   'loot.tabs.list': '抽取记录',
-  'loot.title': '随机表',
   'loot.tree.all': '全部',
   'loot.tree.none': '无',
   'loot.tree.tickAll': '勾选此 Base 的每个视图。',
@@ -45,4 +47,5 @@ export const loot: Translation = {
   'loot.openPlayerView': '打开玩家视图，才能把战利品展示给玩家。',
   'loot.query.note': 'Atlas 读取此视图用于战利品抽取。在地图上打开战利品抽取即可从中抽取。',
   'loot.query.name': 'Atlas 战利品',
+  'loot.unreadable': '无法读取',
 };

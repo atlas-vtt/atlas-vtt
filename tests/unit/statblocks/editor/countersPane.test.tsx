@@ -70,7 +70,7 @@ describe('Counters in the statblock pane', () => {
     const harness = await pane({});
     await press(within(block(harness)).getByRole('button', { name: '1st level 2 of 2' }));
     expect(harness.writer.patches()).toEqual([{
-      op: 'set', path: ['slots'], base: undefined, next: [{ name: '1st level', max: 2, used: 1 }, { name: '2nd level', max: 1, used: 0 }],
+      op: 'set', path: ['slots'], base: undefined, next: [{ name: '1st level', max: 2, used: 1, templateMax: 2 }, { name: '2nd level', max: 1, used: 0, templateMax: 1 }],
     }]);
   });
 
@@ -78,7 +78,20 @@ describe('Counters in the statblock pane', () => {
     const harness = await pane({ slots: [{ name: '1st level', max: 2, used: 2 }] });
     await press(within(block(harness)).getByRole('button', { name: '2nd level 1 of 1' }));
     expect(harness.writer.patches()).toEqual([{
-      op: 'set', path: ['slots'], base: [{ name: '1st level', max: 2, used: 2 }], next: [{ name: '1st level', max: 2, used: 2 }, { name: '2nd level', max: 1, used: 1 }],
+      op: 'set', path: ['slots'], base: [{ name: '1st level', max: 2, used: 2 }],
+      next: [{ name: '1st level', max: 2, used: 2, templateMax: 2 }, { name: '2nd level', max: 1, used: 1, templateMax: 1 }],
+    }]);
+  });
+
+  it('shows a row that took its maximum from the template at the template\'s as it is now, and writes it only with the next change', async () => {
+    const slots = [{ name: '1st level', max: 4, used: 3, templateMax: 4 }, { name: '2nd level', max: 1, used: 0, templateMax: 1 }];
+    const harness = await pane({ slots });
+    const pips = within(within(block(harness)).getByRole('group', { name: '1st level' })).getAllByRole('button');
+    expect(pips.map((pip) => pip.getAttribute('aria-pressed'))).toEqual(['false', 'false']);
+    expect(harness.writer.patches()).toEqual([]);
+    await press(pips[0]!);
+    expect(harness.writer.patches()).toEqual([{
+      op: 'set', path: ['slots'], base: slots, next: [{ name: '1st level', max: 2, used: 1, templateMax: 2 }, slots[1]],
     }]);
   });
 

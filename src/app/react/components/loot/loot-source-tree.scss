@@ -34,7 +34,6 @@
 .atlas-loot-tree__row {
   @include atlas-flex-row(2px);
   border-radius: $radius-m;
-  @include atlas-corner-shape;
   transition: background-color $transition-fast $transition-ease;
 
   &:hover {
@@ -80,7 +79,11 @@
   padding: $spacing-xs $spacing-s $spacing-xs $spacing-xs;
   cursor: pointer;
 
+  // Neutral ticks: a list of views to roll on is a quiet filter, not a call to action in the accent.
   input[type='checkbox'] {
+    --checkbox-color: var(--text-muted);
+    --checkbox-color-hover: var(--text-normal);
+    --checkbox-marker-color: var(--background-primary);
     flex-shrink: 0;
     margin: 0;
   }

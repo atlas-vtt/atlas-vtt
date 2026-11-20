@@ -10,6 +10,9 @@ $campaign-art-height: 40px;
 $campaign-row: calc(#{$campaign-art-height} + 2 * #{$online-inset});
 $campaign-gap: 2px;
 $campaigns-shown: 5;
+$search-clear-size: 20px;
+// How far the clear button stands inside the field, on three sides.
+$search-clear-inset: calc((#{$online-control} - #{$search-clear-size}) / 2);
 
 .atlas-online-dock {
   .atlas-online-campaigns {
@@ -26,7 +29,8 @@ $campaigns-shown: 5;
     font-weight: $font-weight-semibold;
   }
 
-  .atlas-online-campaigns__note {
+  .atlas-online-campaigns__note,
+  .atlas-online-campaigns__system {
     padding: 0 $online-text-inset;
   }
 
@@ -41,12 +45,11 @@ $campaigns-shown: 5;
     align-items: center;
     gap: $spacing-xs;
     height: $online-control;
-    padding: 0 $spacing-xs 0 $spacing-s;
+    padding: 0 calc(#{$search-clear-inset} - #{$border-width-s}) 0 $spacing-s;
     border: $border-width-s solid var(--background-modifier-border);
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     background: var(--background-modifier-form-field);
     transition: border-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
-    @include atlas-corner-shape;
 
     &:hover {
       border-color: var(--background-modifier-border-hover);
@@ -86,11 +89,12 @@ $campaigns-shown: 5;
       flex: none;
       align-items: center;
       justify-content: center;
-      width: 20px;
-      height: 20px;
+      width: $search-clear-size;
+      height: $search-clear-size;
       padding: 0;
       border: none;
-      border-radius: $radius-full;
+      // As far inside the field at its end as from top and bottom: concentric with its corner.
+      border-radius: calc(#{$radius-m} - #{$search-clear-inset});
       background: transparent;
       box-shadow: none;
       color: var(--text-faint);
@@ -164,7 +168,6 @@ $campaigns-shown: 5;
       text-align: start;
       cursor: pointer;
       transition: background-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
-      @include atlas-corner-shape;
     }
 
     &:hover {
@@ -202,10 +205,10 @@ $campaigns-shown: 5;
     width: $campaign-art-width;
     height: $campaign-art-height;
     overflow: hidden;
-    border-radius: $radius-l;
+    // $online-inset inside its row, in its start: concentric with the row's corner.
+    border-radius: $online-row-control-radius;
     background: var(--background-secondary-alt);
     box-shadow: inset 0 0 0 1px var(--background-modifier-border);
-    @include atlas-corner-shape;
 
     img {
       display: block;

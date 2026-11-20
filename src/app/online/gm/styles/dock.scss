@@ -11,10 +11,10 @@
 @use 'qr';
 @use 'campaign-picker';
 
-// The collapsed control stands as high as Atlas's bars: a 40 px control with $spacing-s around it,
+// The collapsed control stands as high as Atlas's bars: a 40 px control with $surface-inset around it,
 // inside the border, so its top and bottom edges run level with the undo/redo bar and the toolbar.
 // Sizes are content sizes: the browser snaps the border to device pixels, as it does the bars'.
-$dock-inner: calc(#{$button-height-l} + 2 * #{$spacing-s});
+$dock-inner: calc(#{$button-height-l} + 2 * #{$surface-inset});
 
 // The room the control takes in the row: first in the start slot, so the undo/redo bar and the
 // toolbar always stand clear of the button. Its transparent border snaps like the control's.
@@ -23,6 +23,15 @@ $dock-inner: calc(#{$button-height-l} + 2 * #{$spacing-s});
   width: calc(#{$dock-inner} + #{$spacing-s});
   border-inline: $border-width-m solid transparent;
   pointer-events: none;
+}
+
+// Atlas' own place for the control (`OnlinePlaySlot`): exactly the collapsed control's box, which
+// the control fills from its bottom left; the toolbar editor lays its handle over it.
+.atlas-online-place {
+  position: relative;
+  width: calc(#{$dock-inner} + 2 * #{$border-width-m});
+  height: calc(#{$dock-inner} + 2 * #{$border-width-m});
+  pointer-events: auto;
 }
 
 // Their sizes are content sizes, so they must win over the plugin's reset that makes every element
@@ -43,7 +52,7 @@ $dock-inner: calc(#{$button-height-l} + 2 * #{$spacing-s});
   pointer-events: auto;
   font-size: $font-ui-small;
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
 }
 
 // Clips the button's fill to the corner; the badge lies outside it, over the corner.
@@ -52,7 +61,6 @@ $dock-inner: calc(#{$button-height-l} + 2 * #{$spacing-s});
   inset: 0;
   overflow: clip;
   border-radius: var(--atlas-panel-inner-radius);
-  @include atlas-corner-shape;
 }
 
 // The button fills the control to its border, and takes the accent while its menu or panel is open.
@@ -69,7 +77,6 @@ $dock-inner: calc(#{$button-height-l} + 2 * #{$spacing-s});
   color: var(--text-muted);
   cursor: pointer;
   transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease;
-  @include atlas-corner-shape;
 
   &:hover {
     background: var(--background-modifier-hover);
@@ -187,7 +194,7 @@ $dock-inner: calc(#{$button-height-l} + 2 * #{$spacing-s});
   box-sizing: border-box;
   transform-origin: bottom left;
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
 }
 
 // The menu's or panel's content.

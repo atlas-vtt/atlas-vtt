@@ -1,5 +1,4 @@
 import type { ResourceDefinition, ResourceHolder, ResourceValue } from './resourceTypes';
-import { t } from '../i18n';
 
 export function clampValue(value: ResourceValue): ResourceValue {
   const max = Math.max(0, value.max);
@@ -90,13 +89,4 @@ export function defeatedResources(token: ResourceHolder, definitions: readonly R
 /** The token's resources with every defined one back at its start: full when draining, empty when filling. */
 export function restedResources(token: ResourceHolder, definitions: readonly ResourceDefinition[]): Record<string, ResourceValue> | undefined {
   return mapDefined(token, definitions, (definition, value) => startingValue(definition, value.max));
-}
-
-/** The keys of the two bars every map had before resources were defined per collection. */
-const FIRST_BARS: readonly string[] = ['hp', 'stress'];
-
-/** The Reset entry of a token's menu: worded as it always was where the collection has no resource beyond those two bars. */
-export function resetLabel(definitions: readonly ResourceDefinition[]): string {
-  const onlyFirstBars = definitions.every(({ key }) => FIRST_BARS.includes(key));
-  return onlyFirstBars ? t('token.reset') : t('resource.resetAll');
 }

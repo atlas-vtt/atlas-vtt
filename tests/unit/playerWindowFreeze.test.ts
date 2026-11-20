@@ -11,6 +11,7 @@ import { playerWindowStore } from '../../src/app/stores/playerWindowStore';
 import type { PlayerFrame, Screen } from '../../src/app/types/playerFrame';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { framePiece, sizePlayerWindow } from '../mocks/playerFrameSource';
+import { SCENE_DIP_MS } from '../../src/app/services/playerSceneFade';
 
 vi.mock('obsidian', async (importOriginal) => ({ ...(await importOriginal<typeof import('obsidian')>()), Notice: vi.fn() }));
 afterEach(() => { PlayerWindowService.getInstance()?.destroy(); vi.restoreAllMocks(); vi.mocked(Notice).mockClear(); });
@@ -87,7 +88,7 @@ function setup({ attach: attachNow = true } = {}): Harness {
   };
 }
 
-const NOTHING_TO_FREEZE = 'Players are not shown this scene yet, so there is nothing to freeze';
+const NOTHING_TO_FREEZE = 'Players are not shown this scene yet, so there is nothing to pause';
 
 describe('player camera freeze', () => {
   it('keeps rendering the live scene through the camera players saw when frozen', () => {
@@ -110,7 +111,11 @@ describe('player camera freeze', () => {
     expect(shown(lastFrame())).toEqual(before);
     expect(session.camera).toEqual({ centerX: 100, centerY: 200, scale: 2, width: 400, height: 300 });
 
+    // Through the dip to black: the GM's view once the sheet is down
+    let now = performance.now();
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
     service.toggleCameraFreeze();
+    now += SCENE_DIP_MS;
     nextFrame();
     expect(lastFrame()).toMatchObject({ centerX: 900, centerY: 900 });
     expect(session).toMatchObject({ frozen: false, camera: { centerX: 900, centerY: 900, scale: 3 } });
@@ -138,6 +143,16 @@ describe('player camera freeze', () => {
     nextFrame();
     // The window is 16:9: now the pane's width fills it
     expect(shown(lastFrame())[2]).toBe(800);
+  });
+
+  it('takes "Camera paused" away once a present ends a held frame', () => {
+    const { service, source, doc } = setup();
+    const indicator = (): string | undefined => doc.getElementById('atlas-player-freeze-indicator')?.style.display;
+    expect(indicator()).toBe('none');
+    service.holdCurrentFrame();
+    expect(indicator()).toBe('flex');
+    service.presentCanvas(source, 'scene-a');
+    expect(indicator()).toBe('none');
   });
 
   it('holds a still frame while the DM is on another tab and returns to the frozen camera', () => {
@@ -222,9 +237,9 @@ describe('player camera freeze', () => {
       vi.mocked(Notice).mockClear();
       service.toggleCameraFreeze();
       expect(session.camera).toMatchObject({ centerX: 300, centerY: 200, width: 400, height: 300 });
-      expect(vi.mocked(Notice).mock.calls).toEqual([['Player view camera frozen']]);
+      expect(vi.mocked(Notice).mock.calls).toEqual([['Player view paused']]);
       service.toggleCameraFreeze();
-      expect(vi.mocked(Notice).mock.calls.at(-1)).toEqual(['Player view camera unfrozen']);
+      expect(vi.mocked(Notice).mock.calls.at(-1)).toEqual(['Player view playing again']);
     });
 
     it('freezes players on the new scene\'s own view when it is frozen before its first frame comes', () => {
@@ -501,6 +516,29 @@ describe('player camera freeze', () => {
       expect(service.glassOf('scene-b')).toBeNull();
       service.holdCurrentFrame();
       expect(service.glassOf('scene-a')).toBeNull();
+    });
+
+    it('goes with the GM between frames while players follow, and stays on what they were shown while the scene loads', () => {
+      const { service, source, settings, setDmCamera, nextFrame } = setup();
+      settings.setTableTvSettings({ viewGlideMs: 0 });
+      setDmCamera({ centerX: 10, centerY: 20, scale: 1 });
+      nextFrame();
+      // The GM pans before the next frame is mirrored: the outline is drawn through this camera, so the glass must be too
+      setDmCamera({ centerX: 60, centerY: 70, scale: 1 });
+      expect(service.glassOf('scene-a')).toMatchObject({ centerX: 60, centerY: 70 });
+      expect(service.playerViewFrame('scene-a')).toMatchObject({ centerX: 60, centerY: 70 });
+
+      // While the scene loads the view's camera is not the scene's yet
+      source.store!.setState({ isMapLoading: true });
+      setDmCamera({ centerX: 900, centerY: 900, scale: 1 });
+      expect(service.glassOf('scene-a')).toMatchObject({ centerX: 10, centerY: 20 });
+
+      // Pinned players stay where they are, whatever the GM's camera does
+      source.store!.setState({ isMapLoading: false });
+      nextFrame();
+      service.toggleCameraFreeze();
+      setDmCamera({ centerX: 5, centerY: 5, scale: 1 });
+      expect(service.glassOf('scene-a')).toMatchObject({ centerX: 900, centerY: 900 });
     });
 
     it("tells its followers when the players' camera moves: a freeze, each glide step, a frame through another camera", () => {

@@ -64,7 +64,7 @@ export class StatblockShare {
   /** The statblock a character's player gets now: none without a note, undefined while its note is read or drawn. */
   of(character: PlayedCharacter | null): DrawnStatblock | undefined {
     if (character === null || character.statblockPath === null) return NO_STATBLOCK;
-    return this.sheets.drawn(character.statblockPath, character.drawnWith.definitions, character.drawnWith.resources);
+    return this.sheets.drawn(character.statblockPath, character.key, character.drawnWith.definitions, character.drawnWith.resources);
   }
 
   /** A character's note as it is drawn now; undefined before it was read. */

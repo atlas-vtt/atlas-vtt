@@ -20,6 +20,24 @@ export interface WorldMapQuest {
   readonly id: string;
 }
 
+/**
+ * A pin the GM made readable on a map of the world map, where it stands: a point of the scene's
+ * world. Players are sent its place and face under an alias, and nothing of its note until it is
+ * found, as a readable pin of the table.
+ */
+export interface WorldMapSign {
+  readonly x: number;
+  readonly y: number;
+  /** The scene file it is saved in and its id there: a find is logged under both, as at the table. */
+  readonly map: string;
+  readonly pin: string;
+  /** The note it links (`NotePin.notePath`), which a find reads. */
+  readonly link: string;
+  /** The face of the GM's pin (`sentPinFace`). */
+  readonly icon?: string;
+  readonly label?: string;
+}
+
 /** One map players may be shown: the world map, or a map its pins lead into. */
 export interface WorldMapLevel {
   /** The map's or scene's asset id. It is never sent. */
@@ -32,6 +50,8 @@ export interface WorldMapLevel {
   readonly entrances: readonly WorldMapEntrance[];
   /** The quests its pins place, by the pins that link their notes; none where no pin links a quest. */
   readonly quests?: readonly WorldMapQuest[];
+  /** Its readable pins that place no quest; none where it has none. */
+  readonly signs?: readonly WorldMapSign[];
 }
 
 /** The world map and every map its pins lead into, however deep: `root` is the key of the world map, `levels` hold it first and each map once. */

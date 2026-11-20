@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronsDownUp, ChevronsUpDown, Dices, Ellipsis, Swords, Users } from 'lucide-react';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
+import { Button } from '../../packages/components/primitives/button';
 import { EndCombatIcon } from './EndCombatIcon';
 import { t } from '../../i18n';
 
@@ -35,36 +36,37 @@ export function InitiativeTrackerHeader(props: InitiativeTrackerHeaderProps): Re
   return (
     <>
       <LabelTooltip label={toggleLabel} side={tooltipSide}>
-        <button
-          className="clickable-icon atlas-initiative-tracker__collapse"
+        <Button
+          variant="ghost"
+          className="atlas-initiative-tracker__collapse"
           onClick={props.onToggleCollapsed}
           aria-expanded={!collapsed}
         >
           {collapsed ? <ChevronsUpDown /> : <ChevronsDownUp />}
           {collapsed && leftOut > 0 && <span className="atlas-initiative-tracker__left-out">{t('initiative.leftOut', { count: leftOut })}</span>}
-        </button>
+        </Button>
       </LabelTooltip>
 
       <div className="atlas-initiative-tracker__controls">
         {rolls && (
           <LabelTooltip label={t('initiative.rollAll')}>
-            <button className="clickable-icon atlas-initiative-tracker__btn" onClick={props.onRoll} disabled={empty || rolling}>
+            <Button variant="ghost" size="icon" className="atlas-initiative-tracker__btn" onClick={props.onRoll} disabled={empty || rolling}>
               <Dices />
-            </button>
+            </Button>
           </LabelTooltip>
         )}
 
         {!fightRuns ? (
           <LabelTooltip label={t('initiative.startCombat')}>
-            <button className="clickable-icon atlas-initiative-tracker__btn" onClick={props.onStart} disabled={empty}>
+            <Button variant="ghost" size="icon" className="atlas-initiative-tracker__btn" onClick={props.onStart} disabled={empty}>
               <Swords />
-            </button>
+            </Button>
           </LabelTooltip>
         ) : (
           <LabelTooltip label={t('initiative.endCombat')}>
-            <button className="clickable-icon atlas-initiative-tracker__btn atlas-initiative-tracker__btn--end" onClick={props.onEnd}>
+            <Button variant="ghost" size="icon" className="atlas-initiative-tracker__btn atlas-initiative-tracker__btn--end" onClick={props.onEnd}>
               <EndCombatIcon />
-            </button>
+            </Button>
           </LabelTooltip>
         )}
 
@@ -77,9 +79,9 @@ export function InitiativeTrackerHeader(props: InitiativeTrackerHeaderProps): Re
         )}
 
         <LabelTooltip label={t('initiative.options')}>
-          <button className="clickable-icon atlas-initiative-tracker__btn" onClick={props.onOptions} aria-haspopup="menu">
+          <Button variant="ghost" size="icon" className="atlas-initiative-tracker__btn" onClick={props.onOptions} aria-haspopup="menu">
             <Ellipsis />
-          </button>
+          </Button>
         </LabelTooltip>
       </div>
     </>

@@ -127,7 +127,7 @@ $empty-height: 28px;
     height: var(--atlas-te-h);
     min-height: $empty-height;
     border: $border-width-m solid color-mix(in oklch, var(--interactive-accent) 60%, transparent);
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     background: color-mix(in oklch, var(--interactive-accent) 6%, transparent);
     color: var(--text-accent);
     font-size: $font-ui-smaller;
@@ -145,7 +145,7 @@ $empty-height: 28px;
   .atlas-te-drop-landed__fill {
     position: absolute;
     inset: -$spacing-xs;
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     background: color-mix(in oklch, var(--interactive-accent) 18%, transparent);
   }
 

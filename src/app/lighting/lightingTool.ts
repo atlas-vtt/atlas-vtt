@@ -15,4 +15,5 @@ export interface LightingToolOptions {
   lightPreset: string | null;
 }
 
-export const DEFAULT_LIGHTING_TOOL: LightingToolOptions = { mode: 'draw', drawMode: 'point-to-point', lightPreset: null };
+/** The tool opens on rooms, the first of its modes. */
+export const DEFAULT_LIGHTING_TOOL: LightingToolOptions = { mode: 'rooms', drawMode: 'point-to-point', lightPreset: null };

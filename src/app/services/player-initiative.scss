@@ -35,9 +35,8 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
 .atlas-player-initiative {
   // Its look is its surface's (below); the border keeps its place, so the cards stand where they did
   border: $border-width-m solid transparent;
-  // Concentric with the cards: their corner, the padding around them and the border, so every card's corner
-  // runs along the panel's, not the first alone
-  @include atlas-panel-radius(calc(#{$radius-l} + #{$spacing-s} + #{$border-width-m}));
+  // Concentric with the cards: their corner, the padding around them and the border
+  @include atlas-panel-radius($surface-radius);
   position: absolute;
   top: 50%;
   right: $spacing-m;
@@ -220,7 +219,7 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     padding: $spacing-s;
     background: var(--background-modifier-hover);
     border: $border-width-s solid var(--background-modifier-border);
-    border-radius: $radius-l;
+    border-radius: $radius-m;
 
     // The colour the GM gave the card: its border and a wash of its fill; the turn's accent wins
     &--coloured {
@@ -307,7 +306,7 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: scaled(9px);
+    border-radius: $radius-full;
     background: #000;
     border: 1.5px solid #555;
     color: #fff;

@@ -5,10 +5,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { MotionGlobalConfig } from 'framer-motion';
 import type { App } from 'obsidian';
 import { BestiaryTokensOffer } from '../../src/app/packages/components/asset-manager/components/BestiaryTokensOffer';
-import { HeaderMenu } from '../../src/app/packages/components/asset-manager/components/HeaderMenu';
 import { useStarterOfferDismissal } from '../../src/app/packages/components/asset-manager/hooks/useStarterOfferDismissal';
-import { useStarterTokensEntry } from '../../src/app/packages/components/asset-manager/hooks/useStarterTokensEntry';
-import type { Tab } from '../../src/app/packages/components/asset-manager/types';
 import { AssetService } from '../../src/app/services/AssetService';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { showAtlasToast, type AtlasToastAction } from '../../src/app/react/components/AtlasToast';
@@ -18,18 +15,10 @@ import { memoryPluginData } from '../mocks/pluginData';
 
 vi.mock('../../src/app/react/components/AtlasToast', () => ({ showAtlasToast: vi.fn(() => ({ dismiss: () => undefined })) }));
 
-/** The sidebar's offer and the header's Create menu, as the asset manager wires them for one collection. */
-function Library({ app, assets, collection, uid, tab = 'tokens' }: { app: App; assets: AssetService; collection: string; uid: string; tab?: Tab }): React.JSX.Element {
+/** The sidebar's offer, as the asset manager wires it for one collection. */
+function Library({ app, assets, collection, uid }: { app: App; assets: AssetService; collection: string; uid: string }): React.JSX.Element {
   const offer = useStarterOfferDismissal(app, uid);
-  const entry = useStarterTokensEntry(app, assets, collection, tab);
-  return (
-    <>
-      <BestiaryTokensOffer app={app} assets={assets} collection={collection} variant="sidebar" dismissed={offer.dismissed} {...(offer.dismiss && { onDismiss: offer.dismiss })} />
-      <HeaderMenu label="Create" triggerClassName="atlas-asset-manager-create-btn" triggerContent="+" items={entry ? [entry.item] : []}>
-        {entry?.popover}
-      </HeaderMenu>
-    </>
-  );
+  return <BestiaryTokensOffer app={app} assets={assets} collection={collection} variant="sidebar" dismissed={offer.dismissed} {...(offer.dismiss && { onDismiss: offer.dismiss })} />;
 }
 
 async function library(): Promise<{ app: App; assets: AssetService; settings: SettingsService; data: ReturnType<typeof memoryPluginData>; uidOf: (id: string) => Promise<string> }> {
@@ -123,38 +112,5 @@ describe('the sidebar offer of starter tokens', () => {
     const settings = new SettingsService(createInMemoryApp().app, undefined, memoryPluginData({ hiddenStarterOffers: 'all' }));
     await settings.initialize();
     expect(settings.isStarterOfferHidden('all')).toBe(false);
-  });
-});
-
-describe("the Create menu's Get starter tokens", () => {
-  const openMenu = (view: RenderResult): void => {
-    fireEvent.click(view.getByRole('button', { name: 'Create' }));
-  };
-
-  it('is offered on the Tokens tab whether or not the sidebar offer is hidden, and leaves it hidden', async () => {
-    const { app, assets, settings, uidOf } = await library();
-    const winter = await uidOf('Winter Camp');
-    const view = render(<Library app={app} assets={assets} collection="Winter Camp" uid={winter} />);
-    await waitFor(() => expect(offerShown(view)).toBe(true));
-    openMenu(view);
-    expect(view.getByRole('menuitem', { name: new RegExp(t('am.header.getStarterTokens')) })).toBeTruthy();
-    fireEvent.click(view.getByRole('button', { name: 'Create' }));
-
-    await act(async () => fireEvent.click(view.getByRole('button', { name: t('am.bestiary.hide') })));
-    openMenu(view);
-    const item = view.getByRole('menuitem', { name: new RegExp(t('am.header.getStarterTokens')) });
-    expect(item.hasAttribute('disabled')).toBe(false);
-    await act(async () => fireEvent.click(item));
-
-    expect(view.getByRole('dialog', { name: t('am.bestiary.statblocks') })).toBeTruthy();
-    expect(settings.isStarterOfferHidden(winter)).toBe(true);
-  });
-
-  it('is not in the menu on other tabs', async () => {
-    const { app, assets, uidOf } = await library();
-    const view = render(<Library app={app} assets={assets} collection="Winter Camp" uid={await uidOf('Winter Camp')} tab="maps" />);
-    await act(async () => undefined);
-    openMenu(view);
-    expect(view.queryByRole('menuitem', { name: new RegExp(t('am.header.getStarterTokens')) })).toBeNull();
   });
 });

@@ -58,7 +58,7 @@
   padding: $spacing-xs;
   background: var(--menu-background);
   border: var(--menu-border-width, #{$border-width-s}) solid var(--menu-border-color);
-  border-radius: $radius-xl;
+  border-radius: $surface-radius;
   box-shadow: var(--menu-shadow, #{$shadow-md});
   transform-origin: top right;
   transition: opacity 150ms $transition-ease-out, transform 150ms $transition-ease-out;
@@ -153,7 +153,7 @@
   right: $spacing-m;
   z-index: $z-popover;
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   display: flex;
   flex-direction: column;
   width: 380px;
@@ -221,16 +221,17 @@
 }
 
 .atlas-filter-panel__footer {
-  @include atlas-flex-row($gap: $spacing-s);
+  @include atlas-flex-row($gap: $surface-inset);
   flex-shrink: 0;
   justify-content: flex-end;
-  padding: $spacing-s;
+  padding: $surface-inset;
 }
 
 .atlas-filter-panel__hidden {
   flex: 1;
   min-width: 0;
-  padding-left: $spacing-s;
+  // Its words start on the body's edge.
+  padding-left: calc(#{$spacing-l} - #{$surface-inset});
   color: var(--text-muted);
   font-size: $font-ui-smaller;
   line-height: var(--line-height-tight);
@@ -238,9 +239,9 @@
   text-wrap: pretty;
 }
 
-// The footer's end control sits in the panel's bottom-right corner.
+// The footer's end control sits $surface-inset inside the panel's bottom-right corner, concentric with it.
 .atlas-filter-panel__done.btn {
-  @include atlas-panel-inset-radius($spacing-s, bottom-right);
+  @include atlas-panel-inset-radius($surface-inset, bottom-right);
 }
 
 // ── Sections and option chips ──────────────────────────────────────────────
@@ -264,7 +265,7 @@
   height: $search-button-size;
   flex-shrink: 0;
   padding: 0;
-  border-radius: $radius-s;
+  border-radius: $radius-m;
   color: var(--text-muted);
 
   svg {
@@ -277,6 +278,9 @@
   }
 }
 
+// The close button fills the field's height but for this much on either side.
+$search-close-inset: ($filter-search-height - $search-button-size) * 0.5;
+
 .atlas-filter-section__search {
   display: flex;
   flex: 1;
@@ -284,16 +288,23 @@
   gap: $spacing-xs;
   min-width: 0;
   height: $filter-search-height;
-  padding: 0 1px 0 $spacing-xs;
+  // Close stands $search-close-inset inside the field on three sides, its corner concentric with the field's;
+  // the glyph at the start stands as far from the edge as from top and bottom.
+  padding: $search-close-inset - $border-width-s;
   border: $border-width-s solid $am-control-border;
-  border-radius: $radius-s;
+  border-radius: $radius-m;
   background: var(--background-modifier-form-field);
 
   > svg {
     flex-shrink: 0;
     width: 12px;
     height: 12px;
+    margin-inline-start: ($filter-search-height - 12px) * 0.5 - $search-close-inset;
     color: var(--text-faint);
+  }
+
+  .atlas-filter-section__search-close.btn {
+    border-radius: $radius-m - $search-close-inset;
   }
 
   input {
@@ -463,7 +474,7 @@ input.atlas-filter-range__input {
   height: 24px;
   padding: 0 $spacing-xs;
   border: $border-width-s solid $am-control-border;
-  border-radius: $radius-s;
+  border-radius: $radius-m;
   background: transparent;
   color: var(--text-muted);
   font-size: $font-ui-smaller;
@@ -471,7 +482,7 @@ input.atlas-filter-range__input {
   transition: border-color $transition-fast $transition-ease, background-color $transition-fast $transition-ease;
 
   &:hover {
-    border-color: var(--text-muted);
+    border-color: $am-control-border-hover;
   }
 
   &:focus {
@@ -556,7 +567,7 @@ input.atlas-filter-range__input {
   padding: $spacing-xs;
   background: var(--menu-background);
   border: var(--menu-border-width, #{$border-width-s}) solid var(--menu-border-color);
-  border-radius: $radius-xl;
+  border-radius: $surface-radius;
   box-shadow: var(--menu-shadow, #{$shadow-md});
 }
 

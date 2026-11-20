@@ -1,8 +1,7 @@
 import type { TokenEntity } from '../types';
-import type { ShownRollToken } from '../services/playerRollSource';
+import { tokenFace, type ShownRollToken } from '../services/playerRollSource';
 import type { TokenPerception } from '../vision/tokenPerception';
 import { seenByPlayers } from './token-renderer/PlayerSightTokens';
-import { tokenDisplayName } from './token-renderer/tokenDisplayName';
 import { levelObjects } from '../levels/levelObjects';
 import { mapTokens } from '../tokens/offMap';
 
@@ -38,12 +37,9 @@ export function shownRollTokens(
     const token = tokens[id];
     if (!token || !sprites[id] || !seen(id)) continue;
     shown.set(id, Object.freeze({
-      name: tokenDisplayName(token),
+      ...tokenFace(token),
       ...(token.showNameplate === true ? { showNameplate: true } : {}),
       mapShowsNameplates: scene.tokenSettings?.showNameplates ?? false,
-      imagePath: token.imagePath || undefined,
-      showRing: token.showRing !== false,
-      ringColor: token.ringColor,
     }));
   }
   return shown;

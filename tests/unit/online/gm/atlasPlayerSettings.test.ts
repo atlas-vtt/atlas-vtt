@@ -40,4 +40,13 @@ describe('the Atlas settings an online table follows', () => {
     expect(atlasPlayerSettings(app).initiativeDock).toBe('left');
     expect(atlasPlayerSettings({} as App).initiativeDock).toBe('right');
   });
+
+  it('reads how the fog\'s edge looks, and nothing when it cannot', () => {
+    const settingsService = new SettingsService({} as never);
+    const app = { plugins: { plugins: { 'atlas-vtt': { settingsService } } } } as unknown as App;
+    expect(atlasPlayerSettings(app).fogEdge).toEqual({ style: 'crackle', width: 15 });
+    settingsService.setFogEdge({ style: 'soft', width: 60 });
+    expect(atlasPlayerSettings(app).fogEdge).toEqual({ style: 'soft', width: 60 });
+    expect(atlasPlayerSettings({} as App)).not.toHaveProperty('fogEdge');
+  });
 });

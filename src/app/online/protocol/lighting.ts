@@ -5,6 +5,8 @@ import { MAX_COORDINATE, MAX_TOKEN_SIZE, TOKEN_ID_PATTERN } from './tokens.ts';
 export const MAX_WALLS = 20_000;
 /** Placed lights one `sight` message may carry. */
 export const MAX_LIGHTS = 2_000;
+/** The most numbers (x, y pairs) of the outline a light glows from: 256 corners, as many as Atlas reads. */
+export const MAX_LIGHT_AREA_NUMBERS = 512;
 /** Light zones, and corners of one zone (Atlas reads no more). */
 export const MAX_ZONES = 64;
 export const MAX_ZONE_CORNERS = 64;
@@ -37,6 +39,14 @@ export interface SharedZone {
   readonly colour?: string;
 }
 
+/**
+ * A light of the scene. Two fields came later, and a reader that does not know one of them does
+ * not look at it: `area` is the outline a light glows from, its corners flat `[x0, y0, …]`, three
+ * at least, with `x`, `y` its middle and the emission's ranges counted from the outline (such a
+ * reader shines the light from its middle); `token` is the token of the same message, by its id,
+ * that the light stands on, with `x`, `y` where that token stood when the message was made (such a
+ * reader leaves the light there until it is told again).
+ */
 export interface SharedLight {
   readonly id: string;
   readonly x: number;
@@ -44,6 +54,8 @@ export interface SharedLight {
   readonly emission: JsonRecord;
   readonly rotation?: number;
   readonly activeBelowAmbient?: number;
+  readonly area?: readonly number[];
+  readonly token?: string;
 }
 
 /** How a vision token perceives, worked out by the GM (statblock senses included). Ranges in game units. */
@@ -127,14 +139,21 @@ function parseZone(value: unknown): SharedZone | null {
   return { polygon: value.polygon, ambient: value.ambient, ...(value.colour !== undefined && { colour: value.colour }) };
 }
 
+/** An outline: x, y pairs of three corners at least and no more numbers than `MAX_LIGHT_AREA_NUMBERS`. */
+const isOutline = (value: unknown): value is number[] => Array.isArray(value) && value.length >= 6 && value.length <= MAX_LIGHT_AREA_NUMBERS && value.length % 2 === 0 && value.every(isCoordinate);
+
 function parseLight(value: unknown): SharedLight | null {
   if (!isRecord(value) || !isId(value.id) || !isCoordinate(value.x) || !isCoordinate(value.y) || !isRecord(value.emission)) return null;
   if (value.rotation !== undefined && !isAngle(value.rotation)) return null;
   if (value.activeBelowAmbient !== undefined && !isFiniteIn(value.activeBelowAmbient, 0, 1)) return null;
+  const { area, token } = value;
+  if ((area !== undefined && !isOutline(area)) || (token !== undefined && !isId(token))) return null;
   return {
     id: value.id, x: value.x, y: value.y, emission: value.emission,
     ...(value.rotation !== undefined && { rotation: value.rotation }),
     ...(value.activeBelowAmbient !== undefined && { activeBelowAmbient: value.activeBelowAmbient }),
+    ...(area !== undefined && { area }),
+    ...(token !== undefined && { token }),
   };
 }
 

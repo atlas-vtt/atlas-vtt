@@ -1,4 +1,4 @@
-import type { App } from 'obsidian';
+import type { App, TFile } from 'obsidian';
 import { bookLine, MAX_FOUND_TITLE, type FoundNote, type QuestImage } from '../../protocol/index.ts';
 import { questBody, withoutComments } from '../../../campaigns/quests/questText';
 import type { QuestImages } from '../../../plugin/questImages';
@@ -30,15 +30,21 @@ export interface FoundHandout {
  * is gone or is no Markdown.
  */
 export async function readPinNote(app: App, notePath: string, sourcePath: string): Promise<NoteReading | null> {
-  const { linkpath, heading } = pinNoteLink(notePath);
-  const file = noteFile(app, linkpath === '' ? sourcePath : linkpath, sourcePath);
+  const file = pinNoteFile(app, notePath, sourcePath);
   if (file === null) return null;
+  const { heading } = pinNoteLink(notePath);
   const content = await app.vault.cachedRead(file);
   if (heading === null) return { path: file.path, title: file.basename, body: questBody(content) };
   const cache = app.metadataCache.getFileCache(file);
   const section = cache === null ? null : headingSection(cache, heading);
   if (section === null) return null;
   return { path: file.path, title: section.heading, body: withoutComments(content.slice(section.start, section.end ?? content.length)) };
+}
+
+/** The note file a pin's link names from the map `sourcePath` (`#heading` alone names the map's own note), or null. */
+export function pinNoteFile(app: App, notePath: string, sourcePath: string): TFile | null {
+  const { linkpath } = pinNoteLink(notePath);
+  return noteFile(app, linkpath === '' ? sourcePath : linkpath, sourcePath);
 }
 
 /**

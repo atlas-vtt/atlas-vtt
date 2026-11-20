@@ -14,6 +14,8 @@ $widget-bar-offset: $spacing-s;
   max-width: calc(100vw - 2 * #{$widget-bar-offset});
   z-index: 50; // below the asset manager (100)
   pointer-events: none;
+  // Slides clear of the window's buttons while in use (useClearOfWindowControls).
+  transition: translate $transition-normal $transition-ease-out;
 }
 
 // Lays the cards out without a panel of its own; only the cards catch the pointer,
@@ -27,7 +29,7 @@ $widget-bar-offset: $spacing-s;
 
 // The stack's one control, over its whole box (`useWidgetStack`); the cards under it are inert.
 .atlas-widget-stack-opener {
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   @include atlas-focus-ring;
   appearance: none;
   position: absolute;
@@ -73,10 +75,10 @@ $widget-bar-offset: $spacing-s;
   --widget-color: var(--interactive-accent);
 
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
-  @include atlas-flex-row($spacing-s);
+  @include atlas-panel-radius($surface-radius);
+  @include atlas-flex-row($surface-inset);
   position: relative;
-  padding: $spacing-s;
+  padding: $surface-inset;
   pointer-events: auto;
   transition: border-color $transition-normal $transition-ease,
               box-shadow $transition-normal $transition-ease-out,
@@ -92,11 +94,6 @@ $widget-bar-offset: $spacing-s;
   flex-shrink: 0;
   width: $button-height-l;
   height: $button-height-l;
-  border-radius: $radius-m;
-  // $spacing-s from the card's border on the left (and above and below while
-  // the bar rests): the outer corners run concentric with the card's.
-  @include atlas-panel-inset-radius($spacing-s, top-left, bottom-left);
-  background: color-mix(in oklch, var(--widget-color) 16%, transparent);
   color: var(--widget-color);
   transition: width $transition-normal $transition-ease-out,
               height $transition-normal $transition-ease-out;
@@ -107,9 +104,12 @@ $widget-bar-offset: $spacing-s;
   }
 }
 
+// The icon fills the card's left corners; the value and label end on the menus' text edge, $spacing-m
+// inside the card's padding.
 .atlas-widget-content {
   @include atlas-flex-col($spacing-xs);
   align-items: center;
+  padding-inline-end: $spacing-m;
 }
 
 .atlas-widget-value-row {

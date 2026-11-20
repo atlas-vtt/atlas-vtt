@@ -40,7 +40,6 @@ $chrome-offset: 4px;
     max-width: calc(100% - 2 * #{$spacing-l});
     translate: -50% 0;
     padding: $spacing-s;
-    border-radius: $radius-l;
     box-shadow: $shadow-md;
     color: var(--text-muted);
     font-size: $font-ui-smaller;
@@ -108,7 +107,7 @@ $chrome-offset: 4px;
 
   // While a handle is hovered or pressed, or its menu is open, what it acts on shows (§3.5).
   .atlas-statblock [data-sb-menu-target] {
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     outline: $border-width-s solid var(--interactive-accent);
     outline-offset: $chrome-offset;
     background-color: color-mix(in oklch, var(--interactive-accent) 6%, transparent);
@@ -117,7 +116,8 @@ $chrome-offset: 4px;
   // An ability the pointer is over: a wash on its whole line, reaching past it by a shadow. Its handle turns
   // the same shape accent, so nothing jumps between the two. One being typed has its fields instead.
   .atlas-sb-pane .atlas-statblock [data-item-key]:not(.atlas-sb-pane-entry-editor) {
-    border-radius: $radius-s;
+    // The wash's corner is a control's; the line, $chrome-offset inside it, runs concentric.
+    border-radius: calc(#{$radius-m} - #{$chrome-offset});
     outline: $border-width-s solid transparent;
     outline-offset: $chrome-offset;
     transition-property: background-color, box-shadow, outline-color;
@@ -168,7 +168,7 @@ $chrome-offset: 4px;
     box-sizing: border-box;
     margin: 0;
     padding: calc(var(--atlas-list-ghost-inset) - #{$border-width-m});
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     background: var(--background-primary);
     box-shadow: $shadow-elevated;
     transition: scale $transition-fast $transition-ease-out;
@@ -206,7 +206,7 @@ $chrome-offset: 4px;
   // The list's bounds, one per column it runs through, shown only while dragging.
   .atlas-list-drag-bound {
     position: absolute;
-    border-radius: $radius-l;
+    border-radius: $radius-m;
     outline: $border-width-m solid color-mix(in oklch, var(--interactive-accent) 50%, transparent);
     outline-offset: $chrome-offset;
   }

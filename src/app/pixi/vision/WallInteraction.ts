@@ -1,11 +1,10 @@
-import { wallList } from '../../vision/wallList';
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../../storeFactory';
 import { beginHistoryTransaction, endHistoryTransaction, runHistoryTransaction } from '../../stores/history';
 import type { WallRenderer } from './WallRenderer';
 import type { Point } from '../../types/visionTypes';
 import type { WallSegment, WallType } from '../../types/wallTypes';
-import { endsAt, snapToWallEnd, type WallEnd } from '../lighting/wallEnds';
+import { connectedChain, endsAt, snapToWallEnd, type WallEnd } from '../lighting/wallEnds';
 import type { WallEdit } from '../lighting/wallJoints';
 import { levelObjects } from '../../levels/levelObjects';
 
@@ -133,11 +132,7 @@ export class WallInteraction {
 
   /** Applies an edit of whole walls as one undo step, and clears the selection. */
   apply(edit: WallEdit): void {
-    const state = this.store.getState();
-    runHistoryTransaction(this.store, () => {
-      if (edit.remove.length > 0) state.deleteWalls(edit.remove);
-      for (const wall of edit.add) state.addWall(wall);
-    });
+    this.store.getState().editWalls(edit.remove, edit.add);
     this.clearSelection();
   }
 
@@ -191,19 +186,13 @@ export class WallInteraction {
   // ─── Selection Logic ─────────────────────────────────────────────────
 
   /**
-   * Select a wall chain. With addToSelection, toggles the chain in/out.
+   * Select a wall chain: the walls drawn with this one that still reach it end to end (`connectedChain`).
+   * With addToSelection, toggles the chain in/out.
    * Without it, replaces the selection.
    */
   selectWallChain(wallId: string, addToSelection: boolean): void {
-    const walls = levelObjects(this.store.getState()).walls;
-    const wall = walls[wallId];
-    if (!wall) return;
-
-    // Resolve chain IDs
-    const chainId = wall.chainId;
-    const chainIds: string[] = chainId
-      ? wallList(walls).filter(w => w.chainId === chainId).map(w => w.id)
-      : [wallId];
+    const chainIds = connectedChain(wallId, levelObjects(this.store.getState()).walls);
+    if (chainIds.length === 0) return;
 
     if (addToSelection) {
       // Toggle: if the chain is already fully selected, deselect it; otherwise add it

@@ -5,13 +5,14 @@
 
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/mixins' as *;
+@use '../../packages/components/primitives/toggle' as *;
 
 // One spacing throughout: the popover's padding, and the gap between everything in it.
 $gap: $spacing-s;
 
 .atlas-light-popover {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   // Placed with `translate` by useLightPopoverPosition, which also sets the light as its
   // transform origin, so the scale it opens and closes with grows out of the marker.
   position: absolute;
@@ -40,6 +41,28 @@ $gap: $spacing-s;
   .atlas-swatch {
     height: auto;
     min-width: 0;
+  }
+}
+
+// The swatches lie $gap inside the popover's border like the chips, the first row of a kept
+// measurement's popover right under its corners: they take the chips' radius, concentric with
+// the popover's, where a swatch's own small radius sat square in a round corner.
+.atlas-light-popover .atlas-swatch {
+  @include atlas-panel-inset-radius($gap);
+}
+
+// Every control at a row's end is one control high here: a field, a select, a stepper. The
+// switch is the usual one, tick and cross on its thumb, at that height instead of its own, so
+// the rows keep one rhythm.
+.atlas-light-popover .atlas-toggle:not(.atlas-toggle--s, .atlas-toggle--xs) {
+  // Obsidian's control height, which the select and the stepper beside it take too.
+  $height: var(--input-height, 30px);
+
+  @include atlas-toggle-size(calc(#{$height} * 1.5), $height);
+
+  .atlas-toggle__icon {
+    width: 14px;
+    height: 14px;
   }
 }
 
@@ -100,6 +123,23 @@ $gap: $spacing-s;
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+}
+
+// A measured area's seven looks: squares of a swatch's size, spread over the row from edge to
+// edge, so the swatches above and the looks read as two rows of one kind of bead.
+.atlas-light-popover__kinds--square {
+  justify-content: space-between;
+
+  .atlas-light-kind {
+    flex: 0 0 calc((100% - 7 * #{$spacing-xs}) / 8);
+    height: auto;
+    aspect-ratio: 1;
+  }
+
+  .atlas-light-glyph {
+    width: 18px;
+    height: 18px;
+  }
 }
 
 // The last chip of a collection with more lights than fit: it opens the others as a menu. It
@@ -209,11 +249,7 @@ $gap: $spacing-s;
   }
 
   .atlas-segmented {
-    @include atlas-panel-inset-radius($gap);
-  }
-
-  .atlas-segmented__option {
-    @include atlas-panel-inset-radius($gap + $spacing-xs);
+    --atlas-segmented-radius: #{atlas-panel-inset-radius-value($gap)};
   }
 }
 

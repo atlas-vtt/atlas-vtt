@@ -80,7 +80,7 @@ export class LibraryWriter {
   }
 
   private async writeOne(desired: DesiredFile, previousPath: string | undefined): Promise<void> {
-    const hash = hashText(desired.content);
+    const { hash } = desired;
     if (this.state.derived[desired.identity] === hash) return;
     delete this.state.derived[desired.identity];
 
@@ -94,10 +94,10 @@ export class LibraryWriter {
     if (desired.payloadUnread && file) return;
 
     if (file) {
-      if (hashText(await this.app.vault.read(file)) !== hash) await this.app.vault.process(file, () => desired.content);
+      if (hashText(await this.app.vault.read(file)) !== hash) await this.app.vault.process(file, () => desired.content());
     } else {
       await ensureFolder(this.app, parentPath(desired.path));
-      file = await this.app.vault.create(desired.path, desired.content);
+      file = await this.app.vault.create(desired.path, desired.content());
     }
     this.state.files[desired.path] = stampOf(file, desired.key, hash);
   }

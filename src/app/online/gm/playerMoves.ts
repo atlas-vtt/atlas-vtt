@@ -1,12 +1,12 @@
 import type { GmMessage, PlayerDrag, PlayerDragCancel, PlayerMove } from '../protocol/index.ts';
 import { placeTokens, type PlacedTokensState } from '../../stores/tokenStacking';
 import type { ViewState } from '../../types/viewState';
-import { checkMove, insideMap, landing, MoveRate, type MoveContext } from './moveCheck.ts';
+import { checkMove, dropPlace, insideMap, MoveRate, samePlace, type MoveContext } from './moveCheck.ts';
 import { PlayerDrags } from './playerDrags.ts';
 import { mapTokens } from '../../tokens/offMap';
 
 /** What player moves read and write of an Atlas tab's store. */
-export type MoveState = PlacedTokensState & Pick<ViewState, 'objects' | 'mapLoaded' | 'isMapLoading' | 'isDragging' | 'heldTokens'>;
+export type MoveState = PlacedTokensState & Pick<ViewState, 'objects' | 'grid' | 'mapLoaded' | 'isMapLoading' | 'isDragging' | 'heldTokens'>;
 
 export interface MoveStore {
   getState(): MoveState;
@@ -35,11 +35,12 @@ interface Waiting {
 /**
  * Players' moves of their own tokens. A drag is followed live (`PlayerDrags`) and its drop ends it.
  * A drop without a drag under way is checked (`checkMove`, a rate per player), then put down as the
- * GM's drop puts tokens down (`placeTokens`: the place and on top of the others), one undo step per
- * move; on a lit scene a token stops before the first wall in its way (`landing`), and its sender
- * hears where. Everyone sees it through the token list. While the GM holds tokens (a write would join the
- * GM's drag in one undo step) a move waits, and is taken once the GM's drag has closed, unless the
- * GM moved that token meanwhile. A refused move tells its sender where the token stays.
+ * GM's drop puts tokens down (`placeTokens`: the place and on top of the others; `dropPlace`: where
+ * the scene's grid snaps it), one undo step per move; on a lit scene a token stops before the first
+ * wall in its way and ends on a place it reaches, and its sender hears where. Everyone sees it
+ * through the token list. While the GM holds tokens (a write would join the GM's drag in one undo
+ * step) a move waits, and is taken once the GM's drag has closed, unless the GM moved that token
+ * meanwhile. A refused move tells its sender where the token stays.
  */
 export class PlayerMoves {
   private readonly store: MoveStore;
@@ -108,7 +109,7 @@ export class PlayerMoves {
     if (!this.rate.take(from, this.ports.now()) || !state.mapLoaded || state.isMapLoading) return this.refuse(from, move);
     const dropped = this.drags.drop(from, move);
     if (dropped === 'turn') return this.refuse(from, move, 'turn');
-    if (dropped !== null) return dropped !== false && dropped.x === move.x && dropped.y === move.y ? undefined : this.refuse(from, move);
+    if (dropped !== null) return dropped !== false && samePlace(dropped, move) ? undefined : this.refuse(from, move);
     const verdict = checkMove(from, move, this.context(state));
     if (!verdict.ok) return this.refuse(from, move, verdict.reason === 'turn' ? 'turn' : undefined);
     if (!this.drags.gmHolds(state)) return this.apply(from, verdict.tokenId, move);
@@ -143,15 +144,17 @@ export class PlayerMoves {
   }
 
   /**
-   * Puts the token down where the move takes it: its place, or before the first wall on the way there.
-   * Its sender hears where it stays when that is not the place they sent, and nothing is written when
-   * a wall keeps it where it is.
+   * Puts the token down where the move takes it: where the GM's own drop would put it coming from
+   * the move's place, or from before the first wall on the way there (`dropPlace`). Its sender hears
+   * where it stays when that is not the place they sent, and nothing is written when a wall keeps it
+   * where it is.
    */
   private apply(from: string, tokenId: string, move: PlayerMove): void {
     const state = this.store.getState();
     const token = mapTokens(state.objects)[tokenId];
-    const at = token === undefined ? move : landing(this.context(state), state, tokenId, token, move);
-    const stopped = at.x !== move.x || at.y !== move.y;
+    const at = token === undefined ? move : dropPlace(this.context(state), state, token, move);
+    if (at === null) return this.refuse(from, move);
+    const stopped = !samePlace(at, move);
     // A token put down on stairs goes to the level they lead to, and its player's picture follows it there
     if (!stopped || at.x !== token?.x || at.y !== token.y) this.store.setState((draft) => placeTokens(draft, [{ id: tokenId, x: at.x, y: at.y }]));
     if (stopped) this.refuse(from, move);

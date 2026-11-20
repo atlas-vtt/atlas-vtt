@@ -8,6 +8,8 @@
 
 export const ROW_CLASS = 'atlas-bottom-toolbar-row';
 export const START_CLASS = 'atlas-bottom-toolbar-row__start';
+/** Atlas' own place for the control (`OnlinePlaySlot`), which its toolbar editor hides and shows; the row keeps room for it itself. */
+export const PLACE_CLASS = 'atlas-online-place';
 /** Atlas's gap between bars: the open control keeps it below the scene tabs. */
 export const BAR_GAP = 8;
 
@@ -30,14 +32,34 @@ function startOf(row: HTMLElement): HTMLElement | null {
   return Array.from(row.children).find((child): child is HTMLElement => child.classList.contains(START_CLASS)) ?? null;
 }
 
-/** Whether both nodes stand where they belong: the control in the row, the spacer first in its start slot. */
+function ownPlaceOf(row: HTMLElement): HTMLElement | null {
+  return row.querySelector<HTMLElement>(`.${PLACE_CLASS}`);
+}
+
+/** Whether the control stands in Atlas' own place for it, where it needs no spacer. */
+export function inOwnPlace(control: HTMLElement): boolean {
+  return control.parentElement?.classList.contains(PLACE_CLASS) === true;
+}
+
+/**
+ * Whether both nodes stand where they belong: the control in Atlas' place for it where the row has
+ * one (and no spacer), else the control in the row and the spacer first in its start slot.
+ */
 export function isPlaced(row: HTMLElement, control: HTMLElement, spacer: HTMLElement): boolean {
+  const own = ownPlaceOf(row);
+  if (own !== null) return control.parentElement === own && !spacer.isConnected;
   const start = startOf(row);
   return control.parentElement === row && start !== null && start.firstElementChild === spacer;
 }
 
-/** Puts both nodes into the row; false when the row has no start slot. */
+/** Puts both nodes into the row (the control alone into Atlas' place for it); false when the row has neither. */
 export function place(row: HTMLElement, control: HTMLElement, spacer: HTMLElement): boolean {
+  const own = ownPlaceOf(row);
+  if (own !== null) {
+    if (control.parentElement !== own) own.appendChild(control);
+    spacer.remove();
+    return true;
+  }
   const start = startOf(row);
   if (start === null) return false;
   if (control.parentElement !== row) row.appendChild(control);
@@ -56,7 +78,7 @@ export function isInsideControl(root: HTMLElement, node: EventTarget | null): bo
 
 /**
  * The room from the row's bottom up to the scene tabs, a gap below them and below what hangs from
- * them (the table log's unread tab): the open control's tallest height.
+ * them (the table log's tab): the open control's tallest height.
  */
 export function roomAbove(container: HTMLElement, row: HTMLElement, gap: number): number {
   const rowBottom = row.getBoundingClientRect().bottom;

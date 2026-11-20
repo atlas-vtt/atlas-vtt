@@ -16,7 +16,7 @@
   flex-direction: column;
   gap: $spacing-xs;
   padding: $spacing-xs;
-  border-radius: $radius-xl;
+  border-radius: $radius-m;
   cursor: pointer;
   outline: none;
   color: var(--text-normal);
@@ -84,7 +84,8 @@
   position: relative;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: $radius-l;
+  // $spacing-xs inside the card: concentric with its corner.
+  border-radius: $control-inset-radius;
   background: var(--background-secondary);
   overflow: hidden;
   transition: transform $transition-press $transition-ease-out;
@@ -204,7 +205,7 @@
   justify-content: center;
   width: 18px;
   height: 18px;
-  border: $border-width-s solid $am-control-border;
+  border: $border-width-s solid $am-checkbox-border;
   border-radius: var(--checkbox-radius);
   background: var(--background-primary);
   color: var(--checkbox-marker-color);

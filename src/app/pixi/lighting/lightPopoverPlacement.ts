@@ -21,6 +21,8 @@ export interface LightPopoverPlacementInput {
   /** The ring handles on the map. */
   handles: readonly Point[];
   size: { width: number; height: number };
+  /** The height by which it stands level with the light when beside it; unset, its own: one that grew since it took its place keeps its top edge. */
+  level?: number;
   area: { width: number; height: number };
   /** Bars along the top and bottom of the area (scene tabs, toolbars) the popover keeps clear of. */
   inset?: { top: number; bottom: number };
@@ -91,7 +93,7 @@ export function placeLightPopover(input: LightPopoverPlacementInput): LightPopov
     const clearance = choice.outside ? input.ringClearance : input.markerClearance;
     const beside = choice.side === 'right' || choice.side === 'left';
     const idealX = choice.side === 'right' ? anchor.x + clearance : choice.side === 'left' ? anchor.x - clearance - size.width : anchor.x - size.width / 2;
-    const idealY = choice.side === 'below' ? anchor.y + clearance : choice.side === 'above' ? anchor.y - clearance - size.height : anchor.y - size.height / 2;
+    const idealY = choice.side === 'below' ? anchor.y + clearance : choice.side === 'above' ? anchor.y - clearance - size.height : anchor.y - (input.level ?? size.height) / 2;
     const x = Math.round(clamp(idealX, minX, maxX));
     const y = Math.round(clamp(idealY, minY, maxY));
     const push = beside ? Math.abs(x - idealX) : Math.abs(y - idealY);

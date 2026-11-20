@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { desktopDependencies } from './vite/desktop-dependencies.mts';
 import { changelog } from './vite/changelog.mts';
+import { motionNativeAnimation } from './vite/motion-native-animation.mts';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const copyToTestVault = process.env.COPY_ON_CHANGE === 'true';
@@ -103,6 +104,7 @@ export default defineConfig({
   plugins: [
     changelog(),
     desktopDependencies(),
+    motionNativeAnimation(),
     react(), // Enable React support
     copyFilesPlugin() // Add our custom plugin
   ],
@@ -119,6 +121,9 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     cssCodeSplit: true,
+    // Lightning CSS, Vite's default, keeps a `/*!` notice only at the very top of a stylesheet; the bundled
+    // fonts' notice in styles/main.scss must survive where it stands (`npm run preflight`).
+    cssMinify: 'esbuild',
     sourcemap: isProduction ? false : 'inline',
     minify: isProduction,
     lib: {
@@ -126,7 +131,7 @@ export default defineConfig({
       formats: ['cjs'],
       fileName: () => 'main.js',
     },
-    rollupOptions: {
+    rolldownOptions: {
       // Externalize Obsidian & Node built‑ins
       external: [
         'obsidian',
@@ -154,13 +159,18 @@ export default defineConfig({
         dir: 'dist',
         format: 'cjs',
         exports: 'named',
-        inlineDynamicImports: true,
+        codeSplitting: false,
+        // Vite 8 drops legal comments from a minified bundle: keep the banner above and the licences of bundled code.
+        comments: { legal: true },
         entryFileNames: 'main.js',
         assetFileNames: (assetInfo) =>
           assetInfo.name?.endsWith('.css') ? 'styles.css' : assetInfo.name ?? '[name][extname]',
       },
     },
   },
+  // Read only by the CSS minifier above, whose Vite default drops legal comments. Scripts are Oxc's since Vite 8,
+  // so the build's notice that these esbuild options are "ignored" next to the React plugin's oxc options is expected.
+  esbuild: { legalComments: 'inline' },
   // Define global constants if needed (e.g., for process.env)
   define: {
     '__ATLAS_RELEASE_BUILD__': JSON.stringify(isProduction && !copyToTestVault),
@@ -172,7 +182,7 @@ export default defineConfig({
   // Resolve aliases if needed
   resolve: {
     alias: {
-      'src': path.resolve(__dirname, 'src') // Define src alias
+      'src': path.resolve(import.meta.dirname, 'src') // Define src alias
     },
     extensions: ['.tsx', '.ts', '.jsx', '.js', '.mjs', '.json'],
   },

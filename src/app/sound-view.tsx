@@ -3,19 +3,17 @@ import React, { useEffect, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { t } from './i18n';
 import { SoundPane } from './react/components/dm-screen/sound/SoundPane';
-import { useExperimentalFeature } from './react/hooks/useExperimentalFeature';
 import { AtlasUIContext } from './react/root/AtlasUIContext';
 import { ContextMenuProvider } from './react/root/ContextMenuContext';
 import { observeResize } from './utils/observeResize';
 
 export const SOUND_VIEW_TYPE = 'atlas-sound';
 
-/** The page while sound is switched on. Another tab in front measures this one 0 wide, and meters are read only while someone looks. */
-function SoundPage({ frame }: { frame: HTMLElement }): React.JSX.Element | null {
-  const on = useExperimentalFeature('sound');
+/** The page. Another tab in front measures this one 0 wide, and meters are read only while someone looks. */
+function SoundPage({ frame }: { frame: HTMLElement }): React.JSX.Element {
   const [shown, setShown] = useState(() => frame.clientWidth > 0);
   useEffect(() => observeResize([frame], () => setShown(frame.clientWidth > 0)), [frame]);
-  return on ? <SoundPane active={shown} /> : null;
+  return <SoundPane active={shown} />;
 }
 
 /**

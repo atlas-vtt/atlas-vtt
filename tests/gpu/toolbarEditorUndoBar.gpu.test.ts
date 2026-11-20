@@ -12,11 +12,11 @@ vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ openPlayerWindo
 vi.mock('../../src/app/react/components/command-palette/GridSettingsPanel', () => ({ GridSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/TokenSettingsPanel', () => ({ TokenSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/WidgetSettingsPanel', () => ({ WidgetSettingsPanel: () => null }));
-vi.mock('../../src/app/react/components/command-palette/LocalPlayerViewSettingsPanel', () => ({ LocalPlayerViewSettingsPanel: () => null }));
+vi.mock('../../src/app/react/components/command-palette/PlayerViewSettingsPanel', () => ({ PlayerViewSettingsPanel: () => null }));
 vi.mock('../../src/app/packages/components/asset-manager/AssetManager', () => ({ default: () => null }));
 
-const undoSlot = (): HTMLElement => query('.atlas-bottom-toolbar-row__start > .atlas-undo-bar');
-const undoBar = (): HTMLElement => query('.atlas-undo-bar > .atlas-undo-redo-controls');
+const undoSlot = (): HTMLElement => query('.atlas-bottom-toolbar-row__start .atlas-side-bar[data-side-bar="undo"]');
+const undoBar = (): HTMLElement => query('.atlas-side-bar[data-side-bar="undo"] > .atlas-undo-redo-controls');
 const traySlots = (): string[] =>
   Array.from(document.querySelectorAll<HTMLElement>('.atlas-toolbar-tray [data-tray-item]:not([hidden])')).map(item => item.dataset.trayItem ?? '');
 const spacers = (): Element[] => Array.from(document.querySelectorAll('.atlas-main-toolbar > .atlas-toolbar-spacer'));

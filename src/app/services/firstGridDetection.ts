@@ -56,8 +56,6 @@ function searchForGrid({ store, renderer, isCurrent, refitCamera }: Omit<FirstGr
   };
 
   if (scan) {
-    // The grid a new scene starts with says nothing about its map: it would only be in the way.
-    renderer.getGridSystem()?.updateOptions({ enabled: false });
     scan.whenStill(() => scan.destroy());
     scan.start();
   }

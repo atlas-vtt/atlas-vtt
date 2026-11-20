@@ -41,19 +41,19 @@ export interface HeaderMenuProps {
   /** The key that opens the menu, shown in the button's tooltip; it is registered by whoever opens it through `handle`. */
   shortcut?: ModShortcut;
   handle?: React.Ref<HeaderMenuHandle> | undefined;
-  /** A popover an item opens, hung from the trigger as the menu is (the Create menu's starter tokens choice). */
-  children?: React.ReactNode;
+  /** Checked items are switches, any number on at once: choosing one leaves the menu open. */
+  multiple?: boolean;
 }
 
 /**
- * A toolbar button that opens a menu below it. Closes on selection, Escape or a
- * click elsewhere. The trigger carries `atlas-active` while the menu is open.
+ * A toolbar button that opens a menu below it. Closes on selection (not of a
+ * switch in a `multiple` menu), Escape or a click elsewhere. The trigger carries `atlas-active` while the menu is open.
  * From the keyboard it is a WAI-ARIA menu button: Down, Up, Enter or Space open
  * it on an item, the arrows move between items, Escape gives focus back.
  */
 export function HeaderMenu({
   label, className = '', triggerClassName, triggerVariant = 'ghost', iconTrigger = false,
-  triggerContent, align = 'end', items, shortcut, handle, children,
+  triggerContent, align = 'end', items, shortcut, handle, multiple = false,
 }: HeaderMenuProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -87,7 +87,7 @@ export function HeaderMenu({
 
   const select = (item: HeaderMenuItem): void => {
     item.onSelect?.();
-    setIsOpen(false);
+    if (!multiple) setIsOpen(false);
   };
 
   // A click the keyboard made (Enter or Space: no pointer, `detail` 0) opens the menu on its first item.
@@ -123,7 +123,7 @@ export function HeaderMenu({
               {item.separated && <div className="atlas-am-menu-divider" role="separator" />}
               <button
                 type="button"
-                role={item.checked === undefined ? 'menuitem' : 'menuitemradio'}
+                role={item.checked === undefined ? 'menuitem' : multiple ? 'menuitemcheckbox' : 'menuitemradio'}
                 aria-checked={item.checked}
                 tabIndex={-1}
                 className={`atlas-am-menu-item ${item.checked ? 'atlas-checked' : ''}`}
@@ -139,7 +139,6 @@ export function HeaderMenu({
           ))}
         </div>
       )}
-      {children}
     </div>
   );
 }

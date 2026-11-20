@@ -41,8 +41,21 @@ export interface TokenResourceValue {
 
 /** Base interface for any token entity. */
 export interface BaseToken extends OnOneLevel {
-  /** Height above its level's floor in game units (flying); unset stands on the floor. */
-  elevation?: number;
+  /**
+   * Height above its level's floor in game units: a flier, or below 0 a swimmer or a creature in a
+   * pit. Unset stands on the floor. Read with `tokenHeight`; `undefined` clears it when patched.
+   */
+  elevation?: number | undefined;
+  /**
+   * How far the token moves in one move, in game units, set by hand. Unset follows its statblock;
+   * read with `tokenSpeed`. `undefined` clears it when patched.
+   */
+  speed?: number | undefined;
+  /**
+   * Which of the speeds its statblock states the token moves by, by the speed's name ("fly");
+   * unset is the first. Read with `tokenSpeed`; `undefined` clears it when patched.
+   */
+  speedKind?: string | undefined;
   /** False preserves the whole artwork without an Atlas frame. Defaults to true. */
   showRing?: boolean;
   /** Expendable resources by definition key; see `src/app/resources/`. */
@@ -77,7 +90,7 @@ export interface BaseToken extends OnOneLevel {
   showNameplate?: boolean;
   /** Rotation in degrees (0-360) */
   rotation?: number;
-  /** Token size in logical cells (default 1: 1=1x1, 1.5=2x2, 2=3x3, 2.5=4x4, 3=5x5, etc.) */
+  /** Stored size multiplier (default 1): diameter = 2*size-1 cells; Tiny=.75, Small=.875, Medium=1, Large=1.5. */
   size?: number;
   /** Layer for z-ordering (higher values appear on top) */
   layer?: number;
@@ -138,7 +151,8 @@ export interface TextElement extends OnOneLevel {
   padding?: number;
   borderRadius?: number;
   opacity?: number;
-  width?: number; // Auto-size if not set
+  /** The width its words wrap at, world pixels before `scale`; unset is a text as wide as its words. */
+  width?: number;
   height?: number; // Auto-size if not set
   align?: 'left' | 'center' | 'right';
   bold?: boolean;
@@ -147,20 +161,71 @@ export interface TextElement extends OnOneLevel {
   rotation?: number;
   /** Text scale multiplier (default 1) */
   scale?: number;
+  /** The halo look. `backgroundColor` set is the plate, whatever this says; neither is plain. */
+  outline?: true;
+  /** Where a wrapped text's lines break, as indexes into `text`. */
+  breaks?: number[];
+  /** Only the GM sees it. Unset: players see it. */
+  hidden?: true;
+  /** On the floor, under the grid and the tokens. Unset: above the tokens. Both are lit like the map. */
+  layer?: 'map';
+  locked?: true;
+  /** Its place in the one order of drawings and texts; unset lies under every annotation that has one above 0. */
+  order?: number;
+  /** Annotations of one group select and move as one. */
+  group?: string;
+  /** The online player who made it; unset is the GM. */
+  by?: string;
 }
 
 export interface DrawingStroke extends OnOneLevel {
   id: string;
   kind: 'drawing';
   timestamp: number;
-  type: 'pen' | 'eraser' | 'line' | 'rectangle' | 'circle' | 'icon';
+  /**
+   * A hint for the handles; `points` is the truth. `'circle'` is the ellipse. Read drawings only
+   * through `annotationList`, which checks the hint against the points.
+   */
+  type: 'pen' | 'line' | 'rectangle' | 'circle' | 'icon';
+  /**
+   * The line a pen would have drawn. A rectangle: its four corners and the first again. An
+   * ellipse: 64 points of `c + a·cos t + b·sin t` and the first again. A line: its corners, or
+   * with `anchors` the sampled curve; closed when its last point is its first. A stamp: its centre.
+   */
   points: Array<{ x: number; y: number }>;
   color: string;
-  /** Line width for strokes, footprint size for `icon` stamps */
+  /** Line width for strokes (0: a fill without a line), footprint size for `icon` stamps */
   width: number;
   opacity: number;
-  /** Key into `MAP_ICON_SVG`; only set when `type` is `'icon'` */
+  /** A stamp's symbol: a pin icon's id, or one of the twelve ids stamps had before (`stampGlyph`). Only set when `type` is `'icon'`. */
   icon?: string;
+  /** A closed outline's inside, in `color`; soft is a quarter of it. */
+  fill?: 'soft' | 'solid';
+  /** Rings cut out of the fill. */
+  holes?: Array<Array<{ x: number; y: number }>>;
+  /** A hint: this fill was made cell by cell (the Cells mode), so that mode grows it and clears it. */
+  cells?: true;
+  dash?: 'dashed' | 'dotted';
+  /** Arrowheads: at the line's end, or at both ends. */
+  ends?: 'end' | 'both';
+  /**
+   * The clicked points of a curved path, whose sampled curve is `points`: every anchor is one of
+   * `points`, in order, the first at its start and (on an open path) the last at its end.
+   */
+  anchors?: Array<{ x: number; y: number }>;
+  /** A stamp's turn, degrees. */
+  rotation?: number;
+  /** Only the GM sees it. Unset: players see it. */
+  hidden?: true;
+  /** On the floor, under the grid and the tokens. Unset: above the tokens. Both are lit like the map. */
+  layer?: 'map';
+  locked?: true;
+  /** Its place in the one order of drawings and texts; unset lies under every annotation that has one above 0. */
+  order?: number;
+  /** Annotations of one group select and move as one. */
+  group?: string;
+  /** The online player who made it; unset is the GM. */
+  by?: string;
 }
 
 export type ToolMode =
@@ -170,19 +235,11 @@ export type ToolMode =
   | 'fog-paint'
   | 'fog-erase'
   | 'measure'
-  | 'measure-circle'
-  | 'measure-cone'
   | 'pointer'
-  | 'text'
   | 'note-pin'
   | 'dice'
   | 'laser-pointer'
-  | 'draw-pen'
-  | 'draw-eraser'
-  | 'draw-icon'
-  | 'draw-line'
-  | 'draw-rectangle'
-  | 'draw-circle'
+  | 'draw'
   | 'audio';
 
  

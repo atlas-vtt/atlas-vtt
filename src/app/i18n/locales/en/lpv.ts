@@ -1,11 +1,15 @@
 import type { Message } from '../../types';
 
 export const lpv = {
+  'lpv.shared': 'Local and online',
+  'lpv.playerWindow': 'Player window',
+  'lpv.online': 'Online play',
   'lpv.alreadyOpen': 'Player window is already open',
-  'lpv.interface': 'Interface',
   'lpv.notePreviews': 'Note previews',
   'lpv.notePreviewsHint': 'Note previews are not shared with the player window.',
   'lpv.openWindow': 'Open player window',
+  'lpv.playersDraw': 'Players may draw',
+  'lpv.playersDrawHint': 'Online players get a Draw tool of their own. You can change and clear what they draw.',
   'lpv.showCursors': 'Show everyone\'s cursors',
   'lpv.showDiceRolls': 'Show dice rolls',
   'lpv.view4k': 'Render up to 4K',
@@ -27,5 +31,4 @@ export const lpv = {
   'lpv.initiativeMaxCards': 'Cards shown in initiative',
   'lpv.initiativeMaxCardsAll': 'All',
   'lpv.showWidgets': 'Show widgets',
-  'lpv.tokens': 'Tokens',
 } as const satisfies Record<string, Message>;

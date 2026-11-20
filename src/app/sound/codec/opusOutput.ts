@@ -102,7 +102,7 @@ export class OpusOutput {
     if (!this.writer) {
       const description = metadata?.decoderConfig?.description;
       if (!description) throw new SoundImportError('no-encoder', 'The encoder gives no Opus header.');
-      const head = readOpusHead(description instanceof ArrayBuffer ? new Uint8Array(description) : new Uint8Array(description.buffer, description.byteOffset, description.byteLength));
+      const head = readOpusHead(ArrayBuffer.isView(description) ? new Uint8Array(description.buffer, description.byteOffset, description.byteLength) : new Uint8Array(description));
       this.preSkip = head.preSkip;
       const written = writeOpusHead(this.channels, head.preSkip);
       this.head = written;

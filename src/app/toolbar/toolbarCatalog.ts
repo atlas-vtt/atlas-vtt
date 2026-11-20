@@ -33,10 +33,6 @@ export const TOOLBAR_CONTROLS = [
     description: t('toolbarEdit.draw.description'),
   },
   {
-    id: 'text', label: t('toolbarEdit.text.label'), hotkey: 'text', dmOnly: true, hideable: true,
-    description: t('toolbarEdit.text.description'),
-  },
-  {
     id: 'measure', label: t('toolbarEdit.measure.label'), hotkey: 'measure', dmOnly: false, hideable: true,
     description: t('toolbarEdit.measure.description'),
   },
@@ -73,24 +69,53 @@ export const TOOLBAR_CONTROLS = [
 export type ToolbarControlId = (typeof TOOLBAR_CONTROLS)[number]['id'];
 
 /**
- * The undo/redo bar, which the editor hides and shows as one unit like a
- * control. It is a bar of its own left of the main toolbar, never part of the
- * main bar's order. Never rename its id: stored layouts use it.
+ * A bar of its own beside the main toolbar that the editor hides and shows as one unit, like a
+ * control, but never part of the main bar's order: each keeps its own place.
+ */
+export interface SideBarDefinition extends Omit<ToolbarControlDefinition, 'hotkey' | 'dmOnly'> {
+  /** The key that works the bar while it is hidden; the online play button has none. */
+  hotkey?: MapHotkeyId
+}
+
+/**
+ * The bars beside the main toolbar, left to right: online play's button at the row's start, the
+ * undo/redo bar left of the main toolbar, the keyboard shortcuts button at the row's end. All are
+ * the GM's. Never rename an id: stored layouts use them.
  */
 export const UNDO_BAR = {
-  id: 'undo', label: t('toolbarEdit.undo.label'), hotkey: 'undo', dmOnly: true, hideable: true,
+  id: 'undo', label: t('toolbarEdit.undo.label'), hotkey: 'undo', hideable: true,
   description: t('toolbarEdit.undo.description'),
-} as const satisfies ToolbarControlDefinition;
+} as const satisfies SideBarDefinition
 
-export const UNDO_BAR_ID = UNDO_BAR.id;
+export const HELP_BAR = {
+  id: 'help', label: t('toolbarEdit.help.label'), hotkey: 'help', hideable: true,
+  description: t('toolbarEdit.help.description'),
+} as const satisfies SideBarDefinition
 
-/** What the editor can hide and show: the main toolbar's controls and the undo/redo bar. */
-export type ToolbarUnitId = ToolbarControlId | typeof UNDO_BAR_ID;
+export const ONLINE_BAR = {
+  id: 'online', label: t('toolbarEdit.online.label'), hideable: true,
+  description: t('toolbarEdit.online.description'),
+} as const satisfies SideBarDefinition
+
+export const SIDE_BARS = [ONLINE_BAR, UNDO_BAR, HELP_BAR] as const satisfies readonly SideBarDefinition[]
+
+export type SideBarId = (typeof SIDE_BARS)[number]['id']
+
+export const SIDE_BAR_IDS: readonly SideBarId[] = SIDE_BARS.map(bar => bar.id)
+
+export const UNDO_BAR_ID = UNDO_BAR.id
+
+/** What the editor can hide and show: the main toolbar's controls and the bars beside it. */
+export type ToolbarUnitId = ToolbarControlId | SideBarId
+
+/** A control or a side bar, as the editor's card and announcements read it. */
+export type ToolbarUnitDefinition = ToolbarControlDefinition | SideBarDefinition
 
 export const DEFAULT_TOOLBAR_ORDER: readonly ToolbarControlId[] = TOOLBAR_CONTROLS.map(control => control.id);
 
 const CONTROLS_BY_ID = new Map<string, ToolbarControlDefinition>(TOOLBAR_CONTROLS.map(control => [control.id, control]));
-const UNITS_BY_ID = new Map<string, ToolbarControlDefinition>([...CONTROLS_BY_ID, [UNDO_BAR_ID, UNDO_BAR]]);
+const SIDE_BARS_BY_ID = new Map<string, SideBarDefinition>(SIDE_BARS.map(bar => [bar.id, bar]));
+const UNITS_BY_ID = new Map<string, ToolbarUnitDefinition>([...CONTROLS_BY_ID, ...SIDE_BARS_BY_ID]);
 
 export function isToolbarControlId(id: string): id is ToolbarControlId {
   return CONTROLS_BY_ID.has(id);
@@ -102,19 +127,23 @@ export function toolbarControl(id: ToolbarControlId): ToolbarControlDefinition {
   return control;
 }
 
+export function isSideBarId(id: string): id is SideBarId {
+  return SIDE_BARS_BY_ID.has(id);
+}
+
 export function isToolbarUnitId(id: string): id is ToolbarUnitId {
   return UNITS_BY_ID.has(id);
 }
 
-/** A control of the main toolbar, or the undo/redo bar. */
-export function toolbarUnit(id: ToolbarUnitId): ToolbarControlDefinition {
+/** A control of the main toolbar, or a bar beside it. */
+export function toolbarUnit(id: ToolbarUnitId): ToolbarUnitDefinition {
   const unit = UNITS_BY_ID.get(id);
   if (!unit) throw new Error(`Unknown toolbar unit: ${id}`);
   return unit;
 }
 
 /**
- * Whether the user may hide the control or the undo/redo bar; false for the
+ * Whether the user may hide the control or the bar beside the toolbar; false for the
  * Command palette and for ids this version does not know.
  */
 export function isHideableToolbarControl(id: string): boolean {

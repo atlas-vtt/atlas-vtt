@@ -22,7 +22,7 @@ $log-width: 360px;
   pointer-events: auto;
 
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
 
   animation: dice-log-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -312,8 +312,9 @@ $log-width: 360px;
   &--rerolled {
     background: transparent;
     box-shadow: inset 0 0 0 1px var(--background-modifier-border);
-    color: var(--text-faint);
-    text-decoration: line-through;
+    // Its label writes it in brackets (`d20: (4)`): no strike, which across a 1 reads as a 4, and
+    // readable (4.5:1), as the result card writes it.
+    color: var(--text-muted);
   }
 }
 

@@ -10,39 +10,50 @@ $picker-row-height: 28px;
 // The widest the sidebar's collection list grows for a long name.
 $picker-max-width: 360px;
 
+// The sidebar's first row: the picker and the collection's ⋯ menu. It stands in the header's controls row, its
+// controls as tall as the search and Create there, so both halves of the window share one top edge and centre line.
 .atlas-asset-manager-sidebar .atlas-collections {
-  @include atlas-flex-col($gap: $spacing-s);
+  @include atlas-flex-row($gap: $spacing-s);
   position: relative;
   z-index: 100;
   flex-shrink: 0;
 
-  .atlas-collections-heading-row {
-    @include atlas-flex-row($gap: $spacing-s);
-    justify-content: space-between;
-    height: 24px;
+  .atlas-collection-dropdown {
+    flex: 1;
+    min-width: 0;
   }
 
-  .atlas-collections-heading-actions {
-    @include atlas-flex-row($gap: $spacing-xs);
+  .atlas-collection-dropdown-trigger {
+    height: $header-control-height;
+    // The control nearest the window's top-left corner, as Manage is at its bottom-left.
+    @include atlas-concentric-corner(top-left, $window-radius, $window-corner-inset);
   }
 
-  .atlas-collection-row {
-    @include atlas-flex-row($gap: $spacing-xs);
+  .atlas-collection-more-btn {
+    @include atlas-control-icon-button;
 
-    .atlas-collection-dropdown {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .atlas-collection-header-btn {
-      &.btn,
-      &.btn--icon {
-        width: $control-height;
-        height: $control-height;
-        border-radius: $radius-m;
-      }
+    &.btn,
+    &.btn--icon {
+      width: $header-control-height;
+      height: $header-control-height;
     }
   }
+
+  // The ⋯ menu hangs from the whole row, not from its button, so its edges are the picker's left and the button's right.
+  .atlas-am-menu-root {
+    position: static;
+  }
+
+  .atlas-am-menu {
+    left: 0;
+    right: 0;
+    min-width: 0;
+  }
+}
+
+// Floating, the sidebar is a card with corners of its own, not the window's.
+.atlas-asset-manager-sidebar.atlas-floating .atlas-collections .atlas-collection-dropdown-trigger {
+  border-top-left-radius: $radius-m;
 }
 
 .atlas-collection-dropdown {
@@ -55,11 +66,10 @@ $picker-max-width: 360px;
 
 .atlas-collection-dropdown-trigger {
   @include atlas-select-trigger($control-height);
-  // Found by its edge alone, as the header's search is (3:1 in both themes).
   border-color: $am-control-border !important;
 
   &:hover {
-    border-color: var(--text-muted) !important;
+    border-color: $am-control-border-hover !important;
   }
 
   &.atlas-open {
@@ -98,8 +108,8 @@ $picker-max-width: 360px;
 
 .atlas-collection-dropdown-content {
   @include atlas-select-popover;
-  // The context menus' language: 28 px capsule rows $spacing-xs inside the border, the corner concentric with them.
-  @include atlas-panel-radius($picker-row-height * 0.5 + $spacing-xs + $border-width-s, $border-width-s);
+  // The context menus' language: rows $spacing-xs inside the border, concentric with its corner.
+  @include atlas-panel-radius($surface-radius, $border-width-s);
 }
 
 // The sidebar's picker: portaled out of the sidebar, which clips, into the window's container, and placed under its

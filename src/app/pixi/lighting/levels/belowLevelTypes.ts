@@ -40,6 +40,8 @@ export interface BelowLevelDeps {
   renderer: Renderer;
   store: LightingStore;
   quality: LightingQuality;
+  /** Whether the scene is lit. A level below an unlit scene is drawn as it is, all of it seen: no lighting of its own, no memory. */
+  lit: boolean;
   /** Makes the level's map image, read through the snapshot's camera. */
   image: (camera: SnapshotView) => BelowMapImage;
   art: TokenArt;

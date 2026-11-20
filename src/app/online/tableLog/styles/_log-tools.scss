@@ -37,7 +37,7 @@ $tools-ease: cubic-bezier(0.2, 0, 0, 1);
     max-width: 100%;
     padding: $tools-pad;
     @include atlas-elevated-surface;
-    @include atlas-panel-radius($radius-xl);
+    @include atlas-panel-radius($surface-radius);
     box-shadow: $shadow-md;
     transform: translateY(-50%);
     animation: atlas-online-log-tools-in 140ms $transition-ease-out both;

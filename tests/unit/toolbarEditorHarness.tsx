@@ -7,6 +7,8 @@ import { MainToolbar } from '../../src/app/packages/components/MainToolbar';
 import { ToolbarSpaceContext } from '../../src/app/packages/components/toolbar/toolbarSpace';
 import { BottomToolbarRow } from '../../src/app/react/components/BottomToolbarRow';
 import { UndoRedoControls } from '../../src/app/react/components/UndoRedoControls';
+import { HotkeyHelpButton } from '../../src/app/react/components/HotkeyHelpButton';
+import { OnlinePlayRoom, OnlinePlaySlot } from '../../src/app/react/components/OnlinePlaySlot';
 import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
 import { ContextMenuProvider } from '../../src/app/react/root/ContextMenuContext';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
@@ -38,17 +40,20 @@ export interface ToolbarHarnessOptions {
   notePreviews?: { suspendPreviews: () => void; resumePreviews: () => void };
   /** The bottom row as UIRoot lays it out, the undo/redo bar in its start slot; the row then gives the bar no room limit. */
   undoBar?: boolean;
+  /** With the undo/redo bar's row: the keyboard shortcuts button at its end and, with online play on, online play's place at its left edge. */
+  sideBars?: { online: boolean };
 }
 
 // jsdom lays nothing out: every control of the bar is 40px wide where the bar has room to measure.
 const CONTROL_WIDTH = 40;
 
-export function renderToolbar({ player = false, stored = {}, space = null, notePreviews, undoBar = false }: ToolbarHarnessOptions = {}): ToolbarHarness {
+export function renderToolbar({ player = false, stored = {}, space = null, notePreviews, undoBar = false, sideBars }: ToolbarHarnessOptions = {}): ToolbarHarness {
   const { app } = createInMemoryApp({ files: {} });
   const settings = new SettingsService(app);
   // The palette's first-run tutorial would cover it and take its keys.
   settings.completeTutorial('palette');
   settings.setToolbarLayout(stored);
+  if (sideBars?.online) settings.setExperimental('onlinePlay', true);
   const store = createViewAtlasStore(app, `toolbar-editor-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
   const bus = new EventEmitter();
@@ -56,8 +61,6 @@ export function renderToolbar({ player = false, stored = {}, space = null, noteP
     viewId: 'view-1',
     getViewType: () => (player ? 'atlas-vtt-player' : 'atlas-vtt'),
     serviceManager: { getEventBus: () => bus, getToolController: () => null, getNotePreviewUIManager: () => notePreviews ?? null, getRendererService: () => null },
-    setFogBrushSize: vi.fn(),
-    clearAllFog: vi.fn(),
     openSceneBrowser: vi.fn(),
   };
   const ui = { app, view, pixiApp: null, renderer: { getTokenRenderer: () => ({ visibleTokenIds: () => [] }) } } as unknown as AtlasUIContextValue;
@@ -65,8 +68,12 @@ export function renderToolbar({ player = false, stored = {}, space = null, noteP
     <AtlasUIContext.Provider value={ui}>
       <ViewStoreProvider store={store}>
         <ContextMenuProvider>
-          {undoBar ? (
-            <BottomToolbarRow start={!player && <UndoRedoControls viewId="view-1" />}>
+          {undoBar || sideBars ? (
+            <BottomToolbarRow
+              lead={sideBars && !player && <OnlinePlaySlot />}
+              start={!player && <><OnlinePlayRoom /><UndoRedoControls viewId="view-1" /></>}
+              end={sideBars && !player && <HotkeyHelpButton />}
+            >
               <MainToolbar viewId="view-1" />
             </BottomToolbarRow>
           ) : (
@@ -82,12 +89,14 @@ export function renderToolbar({ player = false, stored = {}, space = null, noteP
 }
 
 export function startEditing({ store }: ToolbarHarness): void {
-  act(() => store.getState().setToolbarEditing(true));
+  act(() => { store.getState().setToolbarEditing(true); });
 }
 
-/** The handle of a control on the bar (the undo/redo bar's own for it), or in the tray. */
+const SIDE_BAR_IDS = ['undo', 'help', 'online'];
+
+/** The handle of a control on the bar (a side bar's own for it), or in the tray. */
 export const handle = (container: HTMLElement, id: string, where: 'bar' | 'tray' = 'bar'): HTMLElement => {
-  const scope = where === 'tray' ? '.atlas-toolbar-tray' : id === 'undo' ? '.atlas-undo-bar' : '.atlas-main-toolbar';
+  const scope = where === 'tray' ? '.atlas-toolbar-tray' : SIDE_BAR_IDS.includes(id) ? `.atlas-side-bar[data-side-bar="${id}"]` : '.atlas-main-toolbar';
   const element = container.querySelector<HTMLElement>(`${scope} .atlas-toolbar-handle[data-control="${id}"]`);
   if (!element) throw new Error(`No ${where} handle for ${id}`);
   return element;

@@ -2,7 +2,7 @@ import type { StoreApi } from 'zustand';
 import type { GridSystem } from '../../src/app/grid/GridSystem';
 import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import type { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
-import type { MeasureRenderer } from '../../src/app/pixi/MeasureRenderer';
+import type { MeasureRenderer } from '../../src/app/pixi/measure/MeasureRenderer';
 import type { TokenPerception } from '../../src/app/vision/tokenPerception';
 import type { LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 import { measurePlayersView } from '../../src/app/pixi/measurePlayersView';
@@ -24,6 +24,7 @@ export function wirePlayerMeasurements(deps: {
   lighting: () => TokenPerception | undefined;
 }): () => void {
   deps.measure.playersView = measurePlayersView({ store: deps.store, grid: deps.grid, tokens: () => deps.tokens, lighting: deps.lighting });
+  deps.tokens.setMeasureHandlers(deps.measure.handles.pointer);
   return deps.tokens.onPlayersViewChange(() => deps.measure.refreshVisibility());
 }
 

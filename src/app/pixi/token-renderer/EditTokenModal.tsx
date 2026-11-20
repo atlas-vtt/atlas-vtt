@@ -8,25 +8,30 @@ import type { TokenEntity } from '../../types';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
 import { Button } from '../../packages/components/primitives/button';
 import { TooltipProvider } from '../../packages/components/primitives/tooltip';
+import { useAnchoredTop } from '../../packages/components/primitives/useAnchoredTop';
 import { AssetService } from '../../services/AssetService';
 import { mapMeasurementSettings } from '../../services/mapMeasurementSettings';
+import { mapMovementRules } from '../../services/mapMovementRules';
 import type { SenseRules } from '../../creatures/tokenSensesResolver';
 import { mapLightPresets } from '../../services/mapCollectionRules';
 import { mapSenseRules } from '../../services/mapSenseRules';
 import { rulesLookup } from '../../services/mapRules';
 import { useStatblockSenses, type StatblockLink } from './useStatblockSenses';
 import { useStatblockResourceDefaults } from './useStatblockResourceDefaults';
+import { useStatblockSpeed } from './useStatblockSpeed';
+import { ownSpeed } from '../../creatures/statblockSpeeds';
 import { parseNumberInput } from './NumberOverrideField';
 import { buildResourceEdits } from '../../resources/resourceEdits';
 import type { ResourceDefinition, ResourceValue } from '../../resources/resourceTypes';
 import { handledByAnotherControl } from '../../keyboard/tooltipEscape';
 import { TokenIdentitySection, TokenResourcesSection } from './EditTokenSections';
+import type { TokenSpeedContext } from './TokenSpeedField';
 import { TokenLightSection, TokenVisionSection, type TokenLightingContext } from './TokenLightingFields';
-import { unitLabelFor } from '../../grid/measurementFormat';
+import { unitLabelFor, type MeasurementSettings } from '../../grid/measurementFormat';
 import { unitScaleOf } from '../../lighting/lightingUnits';
 import { maxLightRange } from '../../lighting/lightRanges';
 import { lightForm, lightFromForm, visionForm, visionFromForm, type LightForm, type VisionForm } from '../../lighting/tokenLighting';
-import { numberText } from '../../utils/numberInput';
+import { numberText, positiveNumber } from '../../utils/numberInput';
 import { t } from '../../i18n';
 import { sceneTokens } from '../../tokens/offMap';
 import { everyLevelObjects } from '../../levels/levelObjects';
@@ -36,6 +41,8 @@ import { portalHost } from '../../host/portalHost';
 interface EditTokenValues {
   name: string;
   showNameplate: boolean;
+  /** The token's own speed in game units; undefined follows the statblock. */
+  speed: number | undefined;
   /** Maximum per resource key; undefined follows the statblock, or removes a resource the statblock lacks. */
   maxima: Record<string, number | undefined>;
   vision: VisionForm;
@@ -47,6 +54,8 @@ interface EditTokenModalProps {
   /** The resources of the map's collection, in the order they show. */
   definitions: readonly ResourceDefinition[];
   lighting: TokenLightingContext;
+  /** What a speed is typed and shown in on the token's map. */
+  speedContext: TokenSpeedContext;
   /** The statblock the token links, whose senses it follows while it has none of its own. */
   statblock: StatblockLink | null;
   /** Saves the form; `resourceDefaults` is what the linked statblock gives each resource. */
@@ -59,16 +68,20 @@ interface EditTokenModalProps {
  * vision) and the light it carries on the right, so the fields are read and tabbed through
  * column by column. A dialog too narrow for two columns stacks them in the same order.
  */
-function EditTokenModalInner({ initial, definitions, lighting, statblock, onSave, onClose }: EditTokenModalProps): React.ReactElement {
+function EditTokenModalInner({ initial, definitions, lighting, speedContext, statblock, onSave, onClose }: EditTokenModalProps): React.ReactElement {
   const inherited = useStatblockSenses(statblock);
   const resourceDefaults = useStatblockResourceDefaults(statblock, definitions);
+  const statblockSpeed = useStatblockSpeed(statblock, speedContext.settings);
   const [name, setName] = useState(initial.name);
   const [showNameplate, setShowNameplate] = useState(initial.showNameplate);
+  const [speed, setSpeed] = useState(numberText(initial.speed));
   const [maxInputs, setMaxInputs] = useState<Record<string, string>>(
     () => Object.fromEntries(definitions.map(({ key }) => [key, numberText(initial.maxima[key])])),
   );
   const [vision, setVision] = useState(initial.vision);
   const [light, setLight] = useState(initial.light);
+  const [dialog, setDialog] = useState<HTMLDivElement | null>(null);
+  useAnchoredTop(dialog);
   const inputRef = useRef<HTMLInputElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const context = { ...lighting, inherited };
@@ -84,6 +97,7 @@ function EditTokenModalInner({ initial, definitions, lighting, statblock, onSave
     onSave({
       name,
       showNameplate,
+      speed: positiveNumber(parseNumberInput(speed)),
       maxima: Object.fromEntries(definitions.map(({ key }) => [key, parseNumberInput(maxInputs[key] ?? '')])),
       vision,
       light,
@@ -111,7 +125,7 @@ function EditTokenModalInner({ initial, definitions, lighting, statblock, onSave
 
   return (
     <div ref={overlayRef} className="atlas-modal-overlay" onClick={onClose}>
-      <div className="atlas-modal atlas-edit-token-modal" onClick={(e) => e.stopPropagation()}>
+      <div ref={setDialog} className="atlas-modal atlas-edit-token-modal" onClick={(e) => e.stopPropagation()}>
         <div className="atlas-modal-header">
           <h3>{t('editToken.title')}</h3>
           <CloseButton onClick={onClose} />
@@ -119,7 +133,17 @@ function EditTokenModalInner({ initial, definitions, lighting, statblock, onSave
 
         <div className="atlas-modal-body atlas-edit-token__body">
           <div className="atlas-edit-token__column">
-            <TokenIdentitySection name={name} onNameChange={setName} showNameplate={showNameplate} onShowNameplateChange={setShowNameplate} nameRef={inputRef} />
+            <TokenIdentitySection
+              name={name}
+              onNameChange={setName}
+              showNameplate={showNameplate}
+              onShowNameplateChange={setShowNameplate}
+              nameRef={inputRef}
+              speed={speed}
+              onSpeedChange={setSpeed}
+              speedContext={speedContext}
+              statblockSpeed={statblockSpeed}
+            />
             {definitions.length > 0 && (
               <TokenResourcesSection
                 definitions={definitions}
@@ -153,10 +177,10 @@ function takesEnter(target: EventTarget | null): boolean {
 }
 
 /** What the rules the token's map plays by say about vision and light. */
-function lightingContext(state: ViewAtlasState, app: App, rules: SenseRules): TokenLightingContext {
-  const { unitType, unitDistance } = mapMeasurementSettings(rulesLookup(app), state);
+function lightingContext(state: ViewAtlasState, app: App, rules: SenseRules, settings: MeasurementSettings): TokenLightingContext {
+  const { unitType, unitName, unitDistance } = settings;
   return {
-    unit: unitLabelFor(unitType),
+    unit: unitLabelFor(unitType, unitName),
     unitDistance,
     maxLightRange: maxLightRange(unitScaleOf({ unitDistance }, state.grid)),
     senses: rules.definitions,
@@ -179,8 +203,10 @@ export function openEditTokenModal(
   const character = token.kind === 'character' ? token : undefined;
   // The senses of the map's rules and what they measure in, as its statblocks are read with.
   const rules = mapSenseRules(app, AssetService.getInstance(app), store.getState());
-  const lighting = lightingContext(store.getState(), app, rules);
-  const statblock = character?.statblockPath ? { app, path: character.statblockPath, rules } : null;
+  const settings = mapMeasurementSettings(rulesLookup(app), store.getState());
+  const lighting = lightingContext(store.getState(), app, rules, settings);
+  const speedContext: TokenSpeedContext = { settings, defaultSpeed: mapMovementRules(app, store.getState().mapPath).speed };
+  const statblock = character?.statblockPath ? { app, path: character.statblockPath, rules, speedKind: token.speedKind } : null;
   const container = getDomHost().createDiv(portalHost(doc), 'atlas-vtt-plugin atlas-vtt-root');
   const root = createRoot(container);
 
@@ -192,6 +218,7 @@ export function openEditTokenModal(
   const initial: EditTokenValues = {
     name: character?.name ?? '',
     showNameplate: token.showNameplate ?? false,
+    speed: ownSpeed(token),
     maxima: Object.fromEntries(definitions.map(({ key }) => [key, character?.resources?.[key]?.max])),
     vision: visionForm(token.vision, lighting.senses),
     light: lightForm(token.light, lighting.lightPresets),
@@ -210,6 +237,7 @@ export function openEditTokenModal(
     const updates: TokenUpdates = {
       ...(changed('name') && { name: values.name }),
       ...(changed('showNameplate') && { showNameplate: values.showNameplate }),
+      ...(changed('speed') && { speed: values.speed }),
       ...(changed('vision') && { vision: visionFromForm(values.vision) }),
       ...(changed('light') && { light: lightFromForm(values.light) }),
       ...(maxima.length > 0 && current && buildResourceEdits(
@@ -228,6 +256,7 @@ export function openEditTokenModal(
       <EditTokenModalInner
         initial={initial}
         lighting={lighting}
+        speedContext={speedContext}
         statblock={statblock}
         definitions={definitions}
         onSave={handleSave}

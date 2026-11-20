@@ -1,24 +1,14 @@
 import React, { useId } from 'react';
 import { BEAM_SLIDER, DIRECTION_STEP, withBeam } from '../../lighting/lightBeam';
 import { editEmission } from '../../lighting/lightEmissionForm';
-import { Select } from '../../packages/components/primitives/Select';
 import { ToggleSwitch } from '../../packages/components/primitives/Toggle';
 import type { LightPresetDefinition } from '../../types/lightPresetTypes';
-import type { LightAnimation, LightEmission } from '../../types/lightingTypes';
+import type { LightEmission } from '../../types/lightingTypes';
 import { coneAngle } from '../../vision/visionCone';
 import { SliderField } from './lightingPanelFields';
 import { LightPresetChips } from './LightPresetChips';
-import { ColorSwatches, RangeFields } from './lightPopoverFields';
+import { ColorSwatches, FlickerField, RangeFields } from './lightPopoverFields';
 import { t } from '../../i18n';
-
-const FLICKERS: { value: LightAnimation; label: string }[] = [
-  { value: 'none', label: t('light.flicker.steady') },
-  { value: 'torch', label: t('light.flicker.torch') },
-  { value: 'candle', label: t('light.flicker.candle') },
-  { value: 'pulse', label: t('light.flicker.pulse') },
-  { value: 'magic', label: t('light.flicker.shimmer') },
-  { value: 'smoulder', label: t('light.flicker.smoulder') },
-];
 
 const NOTHING = (): void => undefined;
 
@@ -60,7 +50,6 @@ interface LightEmissionFieldsProps {
 export function LightEmissionFields({
   emission, onChange, presets, unit, unitDistance, maxRange, direction, more, surface = false, onBeamCommit, onSliderPointerDown = NOTHING, onPickStart = NOTHING, onPickEnd = NOTHING,
 }: LightEmissionFieldsProps): React.ReactElement {
-  const flickerId = useId();
   const outshinesId = useId();
   const ranges = <RangeFields emission={emission} unit={unit} unitDistance={unitDistance} maxRange={maxRange} onChange={onChange} onSliderPointerDown={onSliderPointerDown} />;
   if (emission.darkness) {
@@ -93,10 +82,7 @@ export function LightEmissionFields({
           onPointerDown={onSliderPointerDown} onChange={(value) => onChange(editEmission(emission, 'intensity', String(value)))} />
         <SliderField label={t('light.softness')} value={emission.sourceRadius ?? 1} min={0} max={5} step={0.25} display={surface ? '–' : String(emission.sourceRadius ?? 1)} disabled={surface}
           onPointerDown={onSliderPointerDown} onChange={(value) => onChange(editEmission(emission, 'sourceRadius', String(value)))} />
-        <div className="atlas-light-popover__flicker">
-          <span id={flickerId}>{t('light.flicker')}</span>
-          <Select value={emission.animation} options={FLICKERS} labelledBy={flickerId} onChange={(animation) => onChange({ ...emission, animation })} />
-        </div>
+        <FlickerField emission={emission} onChange={onChange} />
         {more}
         <div className="atlas-light-popover__flicker">
           <span id={outshinesId}>{t('light.outshines')}</span>

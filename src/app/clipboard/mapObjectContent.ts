@@ -1,9 +1,11 @@
 import type { DrawingStroke, NotePin, TextElement, TokenEntity } from '../types';
+import type { KeptMeasure } from '../measure/measureTypes';
 import type { LevelLink } from '../types/sceneLevelTypes';
 import { copiedLevelLink, type CopiedLevelLink } from '../levels/levelLinkCopies';
 import { levelLinkList } from '../levels/levelLinks';
 import { viewedLevelId, type LevelView } from '../levels/sceneLevels';
 import { mapTokens } from '../tokens/offMap';
+import { anchorsAndHolesMoved } from '../annotations/annotationList';
 
 export interface Point {
   x: number;
@@ -18,6 +20,8 @@ export interface CopyableCollections {
   pins: Record<string, NotePin>;
   /** Stairs, which the stairs tool copies; a scene from an older version has none. */
   levelLinks?: Record<string, LevelLink> | undefined;
+  /** Kept measurements: never copied, but a token's aura goes with the token that is removed. */
+  measures?: Record<string, KeptMeasure> | undefined;
 }
 
 /** Detached copies of map objects, as held on the clipboard or inserted by paste and duplicate. */
@@ -98,6 +102,8 @@ export function translateMapObjects(
     drawings: content.drawings.map((drawing) => ({
       ...structuredClone(drawing),
       points: drawing.points.map(shift),
+      // What lies with the points goes with them: a curved path's anchors, the holes of a fill
+      ...anchorsAndHolesMoved(drawing, shift),
     })),
     texts: content.texts.map(move),
     pins: content.pins.map(move),

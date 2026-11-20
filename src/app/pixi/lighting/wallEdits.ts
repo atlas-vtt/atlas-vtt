@@ -17,7 +17,8 @@ export function shareAlong(wall: Pick<WallSegment, 'p1' | 'p2'>, at: Point): num
   return lengthSq === 0 ? null : ((at.x - wall.p1.x) * dx + (at.y - wall.p1.y) * dy) / lengthSq;
 }
 
-function pointAlong(wall: Pick<WallSegment, 'p1' | 'p2'>, share: number): Point {
+/** The point at `share` of `wall`'s length from `p1`. */
+export function pointAlong(wall: Pick<WallSegment, 'p1' | 'p2'>, share: number): Point {
   return { x: wall.p1.x + share * (wall.p2.x - wall.p1.x), y: wall.p1.y + share * (wall.p2.y - wall.p1.y) };
 }
 

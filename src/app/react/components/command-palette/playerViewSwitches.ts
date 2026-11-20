@@ -16,26 +16,34 @@ type PlayerViewSwitchKey = {
   [Key in keyof LocalPlayerViewSettings]: LocalPlayerViewSettings[Key] extends boolean ? Key : never;
 }[Exclude<keyof LocalPlayerViewSettings, 'showToolbar' | 'showCommandPalette' | 'showNotePreviews'>];
 
-const UI_SWITCHES: ReadonlyArray<{ key: PlayerViewSwitchKey; label: string }> = [
+interface SwitchText {
+  key: PlayerViewSwitchKey;
+  label: string;
+  /** What the switch does, in a sentence: shown where a row has room for it. */
+  hint?: string;
+}
+
+const UI_SWITCHES: ReadonlyArray<SwitchText> = [
   { key: 'showWidgets', label: t('lpv.showWidgets') },
   { key: 'showInitiative', label: t('lpv.showInitiative') },
   { key: 'showDiceRolls', label: t('lpv.showDiceRolls') },
 ];
 
 /** What only an online table has: shown while online play is switched on. */
-const ONLINE_SWITCHES: ReadonlyArray<{ key: PlayerViewSwitchKey; label: string }> = [
+const ONLINE_SWITCHES: ReadonlyArray<SwitchText> = [
   { key: 'showCursors', label: t('lpv.showCursors') },
+  { key: 'playersDraw', label: t('lpv.playersDraw'), hint: t('lpv.playersDrawHint') },
 ];
 
 /** How the initiative list looks to the players. */
-const INITIATIVE_SWITCHES: ReadonlyArray<{ key: PlayerViewSwitchKey; label: string }> = [
-  { key: 'showInitiativeNames', label: t('lpv.initiativeNames') },
-  { key: 'initiativePulse', label: t('lpv.initiativePulse') },
-  { key: 'turnBannerAtLists', label: t('lpv.turnBannerAtLists') },
-  { key: 'turnDim', label: t('lpv.turnDim') },
+const INITIATIVE_SWITCHES: ReadonlyArray<SwitchText> = [
+  { key: 'showInitiativeNames', label: t('lpv.initiativeNames'), hint: t('lpv.initiativeNamesHint') },
+  { key: 'initiativePulse', label: t('lpv.initiativePulse'), hint: t('lpv.initiativePulseHint') },
+  { key: 'turnBannerAtLists', label: t('lpv.turnBannerAtLists'), hint: t('lpv.turnBannerAtListsHint') },
+  { key: 'turnDim', label: t('lpv.turnDim'), hint: t('lpv.turnDimHint') },
 ];
 
-const TOKEN_SWITCHES: ReadonlyArray<{ key: PlayerViewSwitchKey; label: string }> = [
+const TOKEN_SWITCHES: ReadonlyArray<SwitchText> = [
   { key: 'showTokenNameplates', label: t('tokens.showNameplates') },
 ];
 
@@ -43,24 +51,28 @@ const TOKEN_SWITCHES: ReadonlyArray<{ key: PlayerViewSwitchKey; label: string }>
 export interface PlayerViewSwitch {
   id: string;
   label: string;
+  /** What the switch does, in a sentence; none for one whose name says it. */
+  hint?: string;
   value: boolean;
   onToggle: () => void;
 }
 
 /** What players see, as switches: the palette's player view settings and the player window bar's menu show the same ones. */
 export interface PlayerViewSwitches {
-  /** The widgets, initiative and dice rolls, and online the players' cursors. */
-  interface: PlayerViewSwitch[];
-  /** The initiative list's names and pulse. */
+  /** The widgets, initiative and dice rolls: the player window and online players alike. */
+  shared: PlayerViewSwitch[];
+  /** The players' cursors and whether players may draw: online play only, none while it is switched off. */
+  online: PlayerViewSwitch[];
+  /** The initiative list's names, pulse and turn banner in the player window. */
   initiative: PlayerViewSwitch[];
-  /** Rendering up to 4K, on this device. */
+  /** Rendering up to 4K, on this device: the player window only. */
   view4k: PlayerViewSwitch;
   /**
    * One per resource of the rules the open scene plays by, bars and wheels alike; none for a map
    * that plays by no rules. The player window shows the wheels they see at rest, as it cannot hover or select.
    */
   resources: PlayerViewSwitch[];
-  /** The tokens' nameplates. */
+  /** The tokens' nameplates, for the player window and online players alike. */
   tokens: PlayerViewSwitch[];
 }
 
@@ -74,11 +86,12 @@ export function usePlayerViewSwitches(explicit?: SettingsService): PlayerViewSwi
   const view4k = settings?.isPlayerView4k() ?? false;
   const onlinePlay = settings?.isExperimentalOn('onlinePlay') ?? false;
 
-  const switchOf = ({ key, label }: { key: PlayerViewSwitchKey; label: string }): PlayerViewSwitch => ({
+  const switchOf = ({ key, label, hint }: SwitchText): PlayerViewSwitch => ({
     id: key,
     label,
-    value: values[key],
-    onToggle: () => settings?.setLocalPlayerViewSettings({ [key]: !values[key] }),
+    ...(hint !== undefined && { hint }),
+    value: values[key] === true,
+    onToggle: () => settings?.setLocalPlayerViewSettings({ [key]: values[key] !== true }),
   });
 
   const { source } = mapRules(app, mapPath);
@@ -91,7 +104,8 @@ export function usePlayerViewSwitches(explicit?: SettingsService): PlayerViewSwi
   };
 
   return {
-    interface: [...UI_SWITCHES, ...(onlinePlay ? ONLINE_SWITCHES : [])].map(switchOf),
+    shared: UI_SWITCHES.map(switchOf),
+    online: onlinePlay ? ONLINE_SWITCHES.map(switchOf) : [],
     initiative: INITIATIVE_SWITCHES.map(switchOf),
     view4k: { id: 'view4k', label: t('lpv.view4k'), value: view4k, onToggle: () => settings?.setPlayerView4k(!view4k) },
     resources: source.kind === 'none' ? [] : slottedResources(resources).map(({ definition: resource, slot }) => ({

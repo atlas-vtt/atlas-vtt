@@ -1,7 +1,21 @@
 // Dropdown Menu Styles
 // Uses design tokens from _tokens.scss
+@use 'sass:list';
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
+
+// Selectors for `$element` being the first or the last thing a menu holds, directly or as the first
+// or last child of up to two wrappers (a section, and a stack or other wrapper inside it): such an
+// element stands in one of the menu's corners.
+@function menu-corner($element) {
+  $selectors: ();
+  @each $end in (first, last) {
+    $selectors: list.append($selectors, '> #{$element}:#{$end}-child', comma);
+    $selectors: list.append($selectors, '> :#{$end}-child > #{$element}:#{$end}-child', comma);
+    $selectors: list.append($selectors, '> :#{$end}-child > :#{$end}-child > #{$element}:#{$end}-child', comma);
+  }
+  @return $selectors;
+}
 
 .atlas-dropdown-menu {
   position: relative;
@@ -35,35 +49,48 @@
   flex-direction: column;
   min-width: 220px;
   z-index: $z-atlas-dropdown;
-  padding: $spacing-s;
+  padding: $surface-inset;
 
   // Elevated surface styles (consistent with toolbar/modals)
   background: var(--background-primary);
   border: $border-width-m solid color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   box-shadow: $shadow-elevated;
   @include atlas-keep-in-view;
 
-  // The menu's text edge: where the content of its rows begins and ends. Row labels, switch
-  // labels, slider names and values and section labels all start on it; tracks and grids span
-  // the menu's width.
+  // The menu's text edge: where its content begins and ends. Labels, values, hints, switches,
+  // slider tracks, swatch grids and segmented controls all stand on it, on both sides. Only two
+  // kinds of thing reach out to $surface-inset, concentric with the menu's corners: rows that
+  // light up as a whole (item rows), and a segmented control or a switch standing in one of the
+  // menu's corners (the first or last thing it holds). Swatches, sliders and the like stay on the
+  // text edge in a corner too.
   --atlas-menu-text-inset: #{$spacing-m};
 
-  // Every row runs concentric with the menu's corners, so all rows match. A segmented control
-  // is one such row: its track takes the rows' radius, and its options, $spacing-xs inside the
-  // track, run concentric with it. `:where` leaves the rows' rule as specific as it was.
-  .btn:where(:not(.atlas-segmented__option)),
+  // Every row runs concentric with the menu's corners, so all rows match. `:where` leaves the
+  // rows' rule as specific as it was.
+  .btn:where(:not(.atlas-segmented__option)) {
+    @include atlas-panel-inset-radius($surface-inset);
+  }
+
+  // A segmented control is a control, not a row: on the text edge, with the control radius its
+  // options follow (segmented-control.scss).
   .atlas-segmented {
-    @include atlas-panel-inset-radius($spacing-s);
+    margin-inline: var(--atlas-menu-text-inset);
   }
 
-  .atlas-segmented__option {
-    @include atlas-panel-inset-radius($spacing-s + $spacing-xs);
+  // One in a corner (the first or the last thing the menu holds, through the section and stack
+  // it stands in) spans the menu instead, concentric with its corners. Read from the structure,
+  // so a row added above or below moves it to the text edge by itself.
+  #{menu-corner('.atlas-segmented')} {
+    --atlas-segmented-radius: #{atlas-panel-inset-radius-value($surface-inset)};
+    margin-inline: 0;
   }
 
-  // A toggle closing the menu sits in its bottom-right corner, like a button would.
-  > .atlas-dropdown-section:last-child .atlas-dropdown-toggle-row:last-child .atlas-toggle {
-    @include atlas-panel-inset-radius($spacing-s, bottom-right);
+  // A switch row in a corner keeps its label on the text edge and puts its switch in the corner,
+  // $surface-inset from the border, its corner concentric with the menu's. Every other switch of
+  // that menu stands there too, so its switches stay one column.
+  &:has(#{menu-corner('.atlas-dropdown-toggle-row')}) .atlas-dropdown-toggle-row {
+    padding-inline-end: 0;
   }
 }
 
@@ -103,7 +130,7 @@
   border: none;
   cursor: pointer;
   transition: all $transition-fast $transition-ease;
-  border-radius: $radius-s;
+  border-radius: $radius-m;
 
   &:hover {
     background-color: var(--background-modifier-hover);
@@ -126,6 +153,11 @@
   white-space: nowrap;
 }
 
+/* A row of a menu without ticks: icon / label / shortcut, the icon on the menu's text edge */
+.atlas-dropdown-menu-item--flush {
+  grid-template-columns: $icon-s 1fr auto;
+}
+
 .atlas-dropdown-menu-item__check {
   display: flex;
   align-items: center;
@@ -143,13 +175,13 @@
   flex-shrink: 0;
 }
 
-/* Toggle row: its label, and the switch at the right-hand edge of the menu's rows */
+/* Toggle row: its label, and the switch on the menu's text edge, under the items' shortcuts */
 .atlas-dropdown-toggle-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: $spacing-m;
-  padding-left: var(--atlas-menu-text-inset, 0px);
+  padding-inline: var(--atlas-menu-text-inset, 0px);
 
   .atlas-toggle {
     flex-shrink: 0;
@@ -175,9 +207,22 @@
   color: var(--text-normal);
 }
 
-/* Slider row: name and value on the text edge, the track across the menu */
+/* A line under a row that says what the row does. It wraps within the menu and never widens it:
+   it asks for no width of its own and then takes the menu's. */
+.atlas-dropdown-hint {
+  box-sizing: border-box;
+  width: 0;
+  min-width: 100%;
+  margin: 0;
+  padding-inline: var(--atlas-menu-text-inset, 0px);
+  font-size: $font-ui-smaller;
+  color: var(--text-muted);
+}
+
+/* Slider row: name, value and track on the text edge */
 .atlas-dropdown-slider-row {
   @include atlas-flex-col($spacing-s);
+  padding-inline: var(--atlas-menu-text-inset, 0px);
   padding-bottom: $spacing-m;
 }
 
@@ -187,12 +232,11 @@
   align-items: baseline;
 
   .atlas-dropdown-label {
-    padding-inline-end: 0;
+    padding-inline: 0;
   }
 }
 
 .atlas-dropdown-slider-row__value {
-  padding-inline-end: var(--atlas-menu-text-inset, 0px);
   font-size: $font-ui-smaller;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
@@ -264,52 +308,23 @@
   font-style: italic;
 }
 
-/* Icon picker grid (draw tool → icon stamps) */
-.atlas-icon-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: $spacing-xs;
-}
-
-.atlas-icon-grid__item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: $spacing-xs;
-  border: $border-width-s solid transparent;
-  border-radius: $radius-l;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-
-  &:hover {
-    background: var(--background-modifier-hover);
-    color: var(--text-normal);
-  }
-
-  &:active {
-    background: var(--background-modifier-active-hover);
-  }
-
-  &--active {
-    border-color: var(--interactive-accent);
-    color: var(--interactive-accent);
-  }
-}
-
-/* Colour swatch grid (text tool → colour) */
+/* Colour swatch grid (text tool → colour): label, grid and hint on the text edge */
 .atlas-dropdown-swatches {
   @include atlas-flex-col($spacing-s);
+  padding-inline: var(--atlas-menu-text-inset, 0px);
+
+  // Swatches that are all the menu holds stand in its corners instead (below).
+  &:has(> .atlas-swatch-grid--fills-menu) {
+    padding-inline: 0;
+  }
 }
 
 .atlas-dropdown-swatches__label {
-  padding-inline: var(--atlas-menu-text-inset, 0px);
   font-size: $font-ui-small;
   color: var(--text-normal);
 }
 
 .atlas-dropdown-swatches__hint {
-  padding-inline: var(--atlas-menu-text-inset, 0px);
   font-size: $font-ui-smaller;
   color: var(--text-muted);
 }
@@ -320,19 +335,51 @@
   gap: $spacing-xs;
 }
 
+// In a menu a swatch never shrinks below a small control: standing on the text edge, the grid
+// asks the menu for the room instead. Set on the swatch, not as the columns' minimum: a column's
+// `auto` minimum grows to fit its swatch (a toolbar's button rules give some a wider minimum),
+// where a fixed one let the swatches spill over the gaps and touch.
+.atlas-dropdown-content .atlas-swatch {
+  min-width: $button-height-s;
+}
+
+// Swatches that are all their menu holds stand in its corners: the swatch in a corner is
+// concentric with the menu there and keeps its own radius on its other corners. The grid has
+// eight columns, so the corners are the first and eighth swatch and the ends of the last row.
+// Counted by type: each swatch is followed by its tooltip's hidden name.
+.atlas-swatch-grid--fills-menu > .atlas-swatch {
+  &:first-of-type {
+    @include atlas-panel-inset-radius($surface-inset, top-left);
+  }
+
+  &:nth-of-type(8) {
+    @include atlas-panel-inset-radius($surface-inset, top-right);
+  }
+
+  &:nth-of-type(8n + 1):nth-last-of-type(-n + 8) {
+    @include atlas-panel-inset-radius($surface-inset, bottom-left);
+  }
+
+  &:nth-of-type(8n):last-of-type {
+    @include atlas-panel-inset-radius($surface-inset, bottom-right);
+  }
+}
+
 .atlas-swatch {
   display: flex;
   align-items: center;
   justify-content: center;
+  // As wide as its column and as tall as wide. Obsidian gives every <button> a height, which the
+  // aspect ratio turned into a width: wider than a narrow column, the swatches covered the gaps.
+  width: 100%;
+  height: auto;
   aspect-ratio: 1;
   padding: 0;
   // Steps down from the dropdown's own radius.
   border-radius: $radius-s;
   border: $border-width-s solid color-mix(in oklch, var(--mono-100) $border-opacity-subtle, transparent);
   cursor: pointer;
-  // The swatch is small, so the ring sits outside it rather than shrinking the colour.
-  box-shadow: 0 0 0 0 var(--text-normal);
-  transition-property: box-shadow, scale;
+  transition-property: border-color, scale;
   transition-duration: $transition-normal;
   transition-timing-function: $transition-ease;
 
@@ -344,10 +391,9 @@
     scale: 0.96;
   }
 
-  // A ring in the text colour contrasts with the menu, not with the swatch, so it shows
-  // around every colour; the tick marks the choice without relying on colour at all.
+  // The tick marks the choice; its own border only firms up a little.
   &--active {
-    box-shadow: 0 0 0 2px var(--text-normal);
+    border-color: color-mix(in oklch, var(--text-normal) 50%, transparent);
   }
 
   &:disabled {

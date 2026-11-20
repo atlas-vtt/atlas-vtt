@@ -18,9 +18,16 @@ export interface TemplateOffer {
   detail: string;
 }
 
+/** "New statblock…" in a dialog: what the statblock can start from, and what choosing one does. */
+export interface NewStatblockOption {
+  choices: readonly TemplateOffer[];
+  onChoose: (offer: TemplateOffer) => void;
+}
+
 export interface OffersInput {
   /** The collection's roles, each with the template it starts from. */
   roles: ReadonlyArray<{ roleId: string; name: string; templateId: TemplateId; templateName: string }>;
+  /** The templates offered after the roles: the library's, or the part of it an entry point lists. */
   templates: readonly LibraryTemplate[];
   /** The template the editor shows (the command ran from it): offered first. */
   preferred: TemplateId | null;

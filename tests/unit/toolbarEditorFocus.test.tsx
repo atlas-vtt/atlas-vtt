@@ -14,7 +14,7 @@ vi.mock('../../src/app/utils/activeLeafGuard', async (importOriginal) => ({
 vi.mock('../../src/app/react/components/command-palette/GridSettingsPanel', () => ({ GridSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/TokenSettingsPanel', () => ({ TokenSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/WidgetSettingsPanel', () => ({ WidgetSettingsPanel: () => null }));
-vi.mock('../../src/app/react/components/command-palette/LocalPlayerViewSettingsPanel', () => ({ LocalPlayerViewSettingsPanel: () => null }));
+vi.mock('../../src/app/react/components/command-palette/PlayerViewSettingsPanel', () => ({ PlayerViewSettingsPanel: () => null }));
 vi.mock('../../src/app/packages/components/asset-manager/AssetManager', () => ({ default: () => null }));
 
 const trayIds = (container: HTMLElement): string[] =>
@@ -47,7 +47,7 @@ describe('focus around the editor menu', () => {
     const harness = renderToolbar();
     startEditing(harness);
     const fog = handle(harness.container, 'fog');
-    act(() => fog.focus());
+    act(() => { fog.focus(); });
     fireEvent.keyDown(fog, { key: 'F10', shiftKey: true });
     fireEvent.keyDown(await screen.findByRole('menuitem', { name: 'Hide' }), { key: 'Escape' });
     await waitFor(() => expect(document.activeElement).toBe(handle(harness.container, 'fog')));
@@ -78,7 +78,7 @@ describe('Delete and Backspace while editing', () => {
     try {
       startEditing(harness);
       const tray = handle(harness.container, 'fog', 'tray');
-      act(() => tray.focus());
+      act(() => { tray.focus(); });
       expect(fireEvent.keyDown(tray, { key: 'Delete' })).toBe(false);
       expect(fireEvent.keyDown(tray, { key: 'Backspace' })).toBe(false);
       fireEvent.keyDown(screen.getByRole('button', { name: 'Reset toolbar' }), { key: 'Delete' });
@@ -142,7 +142,7 @@ describe('Lighting in the editor', () => {
 
 describe('a press outside the editor', () => {
   it('ends edit mode with the left button, and not on the bars, the tray or with the right button', () => {
-    const harness = renderToolbar({ stored: { hidden: ['text'] }, undoBar: true });
+    const harness = renderToolbar({ stored: { hidden: ['measure'] }, undoBar: true });
     startEditing(harness);
     const outside = document.body.appendChild(document.createElement('div'));
     const press = (target: Element, button = 0): void => {
@@ -152,7 +152,7 @@ describe('a press outside the editor', () => {
     };
 
     press(handle(harness.container, 'fog'));
-    press(handle(harness.container, 'text', 'tray'));
+    press(handle(harness.container, 'measure', 'tray'));
     press(handle(harness.container, 'undo'));
     press(outside, 2);
     expect(harness.store.getState().isToolbarEditing).toBe(true);

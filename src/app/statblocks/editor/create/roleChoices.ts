@@ -16,12 +16,6 @@ export interface RoleChoice {
   templateName: string;
 }
 
-/** "New statblock…" in a dialog: the roles to make one with, and what choosing one does. */
-export interface NewStatblockOption {
-  choices: readonly RoleChoice[];
-  onChoose: (roleId: string) => void;
-}
-
 /**
  * One choice per role, in the collection's order. A role whose template the
  * library lacks starts from the generic template (`roleTemplate`), so the menu

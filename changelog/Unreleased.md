@@ -1,5 +1,10 @@
+## Fixed
+
+- On Windows, converting music or ambience in a linked folder now moves the originals to the trash when you chose that, instead of keeping them
+
 ## New
 
+- Kept cones, squares and lines have a turn handle next to their end: drag it to rotate the measurement without changing its size
 - **Party**: a collection's settings get a Party tab for the players at your table: a name, a picture and a colour each. The initiative tracker's party button adds them all at once, without tokens on the map; Roll initiative leaves them out and a click on a player's card takes the number they rolled. The tab also sets up the picture an enemy added with Add enemy starts with.
 - **More from the initiative tracker's options**: Add enemy adds an enemy without a token, named Enemy 1, Enemy 2 and so on, on the opponents' side. Add combatant opens the library, and a token or encounter opened there joins the fight beside the map. Reset initiative ends the fight and empties every number and condition, keeping the combatants for the next roll. Compact view shows the tracker as a plain list without portraits. The tracker can stand at an edge of its own, apart from the players' list.
 - **Card menu**: give any combatant who isn't on the players' side a colour (opponents start in red), which both lists show; hide any combatant from the players' list without hiding its token on the map.

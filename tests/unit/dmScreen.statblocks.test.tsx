@@ -72,6 +72,8 @@ const app = {
 };
 const state = {
   objects: { tokens: {} as Record<string, { id: string; name: string; statblockPath: string }> },
+  dmScreenPage: 'statblocks',
+  setDMScreenPage: vi.fn(),
   initiative: { entries: [] as Array<{ id: string; tokenId: string; order: number }>, isActive: false, round: 0 },
   dmNotePath: null,
   setDMNotePath: vi.fn(),
@@ -220,6 +222,26 @@ describe('DM screen while Fantasy Statblocks parses the vault', () => {
 });
 
 describe('DM screen token actions', () => {
+  it('closes on Escape', async () => {
+    const onClose = vi.fn();
+    const { container } = showDMScreen([creaturePath], onClose);
+    const wrapper = container.querySelector<HTMLElement>('.atlas-dm-screen-wrapper')!;
+    wrapper.focus();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+
+  it('stays open on an Escape a control inside it used', async () => {
+    const onClose = vi.fn();
+    showDMScreen([creaturePath], onClose);
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    event.preventDefault();
+    window.dispatchEvent(event);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it('persists an independent resource update through the map store', async () => {
     showDMScreen([legacyPath, creaturePath, creaturePath]);
     const entry = await screen.findByRole('group', { name: 'Acid Burrower #2' });

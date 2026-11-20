@@ -15,7 +15,7 @@ vi.mock('../../src/app/utils/activeLeafGuard', async (importOriginal) => ({
 vi.mock('../../src/app/react/components/command-palette/GridSettingsPanel', () => ({ GridSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/TokenSettingsPanel', () => ({ TokenSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/WidgetSettingsPanel', () => ({ WidgetSettingsPanel: () => null }));
-vi.mock('../../src/app/react/components/command-palette/LocalPlayerViewSettingsPanel', () => ({ LocalPlayerViewSettingsPanel: () => null }));
+vi.mock('../../src/app/react/components/command-palette/PlayerViewSettingsPanel', () => ({ PlayerViewSettingsPanel: () => null }));
 vi.mock('../../src/app/packages/components/asset-manager/AssetManager', () => ({ default: () => null }));
 
 // Every control keeps a slot in the tray; those of tools on the bar are hidden.
@@ -43,7 +43,7 @@ setUpToolbarTestDom();
 describe('entering the toolbar editor', () => {
   it('is offered in the GM\'s palette and starts edit mode, closing the palette', () => {
     const harness = renderToolbar();
-    act(() => harness.store.getState().setCommandPaletteOpen(true));
+    act(() => { harness.store.getState().setCommandPaletteOpen(true); });
     fireEvent.click(screen.getByRole('button', { name: /^Customize toolbar/ }));
     expect(harness.store.getState()).toMatchObject({ isToolbarEditing: true, isCommandPaletteOpen: false });
     expect(harness.container.querySelector('.atlas-toolbar-tray')).not.toBeNull();
@@ -52,7 +52,7 @@ describe('entering the toolbar editor', () => {
 
   it('is not offered in the player view', () => {
     const harness = renderToolbar({ player: true });
-    act(() => harness.store.getState().setCommandPaletteOpen(true));
+    act(() => { harness.store.getState().setCommandPaletteOpen(true); });
     expect(screen.getByPlaceholderText('Search commands…')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /^Customize toolbar/ })).toBeNull();
     expect(harness.container.querySelector('[role="status"]')).toBeNull();
@@ -60,7 +60,7 @@ describe('entering the toolbar editor', () => {
 
   it('moves focus onto the bar only when the palette action was chosen with the keyboard', () => {
     const harness = renderToolbar();
-    act(() => harness.store.getState().setCommandPaletteOpen(true));
+    act(() => { harness.store.getState().setCommandPaletteOpen(true); });
     const input = screen.getByPlaceholderText('Search commands…');
     fireEvent.change(input, { target: { value: 'Customize toolbar' } });
     fireEvent.keyDown(input, { key: 'Enter' });
@@ -82,7 +82,7 @@ describe('entering the toolbar editor', () => {
 
   it('closes the dice tray', () => {
     const harness = renderToolbar();
-    act(() => harness.store.getState().setDiceTrayOpen(true));
+    act(() => { harness.store.getState().setDiceTrayOpen(true); });
     startEditing(harness);
     expect(harness.store.getState().isDiceTrayOpen).toBe(false);
   });
@@ -164,7 +164,7 @@ describe('the editor menu', () => {
     fireEvent.contextMenu(handle(harness.container, 'fog', 'tray'), { clientX: 10, clientY: 10 });
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Show on toolbar' }));
     expect(harness.settings.getToolbarLayout()).toEqual({});
-    expect(liveRegion(harness.container)).toBe('Fog of war is back on the toolbar, position 2 of 11.');
+    expect(liveRegion(harness.container)).toBe('Fog of war is back on the toolbar, position 2 of 10.');
   });
 
   it('opens Hide from a row of "More tools" instead of running the control', async () => {
@@ -185,9 +185,9 @@ describe('the keyboard path', () => {
     const harness = renderToolbar();
     startEditing(harness);
     const fog = handle(harness.container, 'fog');
-    act(() => fog.focus());
+    act(() => { fog.focus(); });
     expect(fireEvent.keyDown(fog, { key: 'ArrowRight', altKey: true })).toBe(false);
-    expect(harness.settings.getToolbarLayout().order?.slice(0, 4)).toEqual(['move', 'draw', 'fog', 'text']);
+    expect(harness.settings.getToolbarLayout().order?.slice(0, 4)).toEqual(['move', 'draw', 'fog', 'measure']);
     expect(document.activeElement).toBe(handle(harness.container, 'fog'));
     expect(liveRegion(harness.container)).toBe('Fog of war moved from position 2 to 3.');
   });
@@ -196,7 +196,7 @@ describe('the keyboard path', () => {
     const harness = renderToolbar();
     startEditing(harness);
     const move = handle(harness.container, 'move');
-    act(() => move.focus());
+    act(() => { move.focus(); });
     fireEvent.keyDown(move, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(handle(harness.container, 'fog'));
     expect(handle(harness.container, 'fog').tabIndex).toBe(0);
@@ -218,7 +218,7 @@ describe('the keyboard path', () => {
     const harness = renderToolbar({ stored: { hidden: ['fog'] } });
     startEditing(harness);
     const move = handle(harness.container, 'move');
-    act(() => move.focus());
+    act(() => { move.focus(); });
     fireEvent.keyDown(move, { key: 'ArrowUp' });
     expect(document.activeElement).toBe(handle(harness.container, 'fog', 'tray'));
     fireEvent.keyDown(handle(harness.container, 'fog', 'tray'), { key: 'Enter' });
@@ -231,7 +231,7 @@ describe('the keyboard path', () => {
     const harness = renderToolbar();
     startEditing(harness);
     const fog = handle(harness.container, 'fog');
-    act(() => fog.focus());
+    act(() => { fog.focus(); });
     expect(fireEvent.keyDown(fog, { key: 'F10', shiftKey: true })).toBe(false);
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Hide' }));
     expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['fog'] });
@@ -246,7 +246,7 @@ describe('the keyboard path', () => {
       startEditing(harness);
       const handles = Array.from(harness.container.querySelectorAll<HTMLElement>('.atlas-main-toolbar > .atlas-toolbar-item:not([hidden]) > .atlas-toolbar-handle'));
       const last = handles[handles.length - 1]!;
-      act(() => last.focus());
+      act(() => { last.focus(); });
       expect(fireEvent.keyDown(last, { key: 'Tab' })).toBe(true);
       expect(harness.store.getState().isDMScreenOpen).toBe(false);
       const tabbable = Array.from(harness.container.querySelectorAll<HTMLElement>('button'))
@@ -277,7 +277,7 @@ describe('leaving edit mode', () => {
     const harness = renderToolbar();
     startEditing(harness);
     const fog = handle(harness.container, 'fog');
-    act(() => fog.focus());
+    act(() => { fog.focus(); });
     expect(fireEvent.keyDown(fog, { key: 'Escape' })).toBe(false);
     expect(harness.store.getState().isToolbarEditing).toBe(false);
     expect(document.activeElement).toBe(paletteButton(harness.container));
@@ -308,14 +308,14 @@ describe('leaving edit mode', () => {
 
     startEditing(harness);
     const leafChange = harness.workspaceOn.mock.calls.filter(([event]) => event === 'active-leaf-change').at(-1)?.[1] as (leaf: unknown) => void;
-    act(() => leafChange({}));
+    act(() => { leafChange({}); });
     expect(harness.store.getState().isToolbarEditing).toBe(false);
   });
 
   it('ends when the palette opens', async () => {
     const harness = renderToolbar();
     startEditing(harness);
-    act(() => harness.store.getState().setCommandPaletteOpen(true));
+    act(() => { harness.store.getState().setCommandPaletteOpen(true); });
     expect(harness.store.getState().isToolbarEditing).toBe(false);
     await waitFor(() => expect(harness.container.querySelector('.atlas-toolbar-tray')).toBeNull());
   });
