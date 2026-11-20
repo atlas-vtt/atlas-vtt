@@ -12,7 +12,8 @@ const CLEAR_GAP = 2;
  * A token's height on a pill in the nameplate's look ("↑ 30ft"), over the top of the token as the
  * nameplate and the bars are under its foot: just above its ring, clear of the badges that sit on
  * the ring there (conditions fan out up to the top, the instance number sits to its right). Laid
- * out in UI units like the nameplate. It is drawn again only when its text or the theme is another.
+ * out in UI units like the nameplate, and scaled with the token like those badges. It is drawn
+ * again only when its text or the theme is another.
  */
 export class HeightChip {
   readonly view = new Container({ label: 'heightChip', eventMode: 'none', interactiveChildren: false });

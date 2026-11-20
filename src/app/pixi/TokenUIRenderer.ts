@@ -652,12 +652,13 @@ export class TokenUIRenderer {
     });
     this.besideToken.position.set(anchor.x, anchor.y);
     this.leftOfToken.position.set(-anchor.x, anchor.y);
-    // The chip keeps the size of a resting token's UI, stands clear of the badges on the ring, and
-    // rises with the selection to make way for the rotate button; both grow with the token
+    // The chip grows with the token, like the badges on the ring it stands clear of and the rotate
+    // button it rises over while the token is selected, so it keeps its place on any token
     const tokenScale = tokenUIScale(this.currentTokenSize);
     const badgeReach = (CONDITION_BADGE_RADIUS + 1) * tokenScale;
     const handleReach = (RESIZE_HANDLE_SIZE / 2) * tokenScale;
-    this.heightChip.place(this.ringRadius(), resting, badgeReach + this.emphasis.value * Math.max(0, handleReach - badgeReach));
+    this.heightChip.place(this.ringRadius(), tokenScale, badgeReach + this.emphasis.value * Math.max(0, handleReach - badgeReach));
+    this.heightChip.setResolution(tokenTextResolution(tokenScale));
     // A selected token's text keeps a constant screen size, which the resting resolution covers
     this.setTextResolution(tokenTextResolution(resting));
     this.onScaleChange?.(scale);
@@ -668,7 +669,6 @@ export class TokenUIRenderer {
     if (this.nameText.resolution !== resolution) this.nameText.resolution = resolution;
     this.resources.setResolution(resolution);
     this.wheels.setResolution(resolution);
-    this.heightChip.setResolution(resolution);
   }
   
   public setVisibility(visible: boolean): void {

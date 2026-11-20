@@ -127,6 +127,19 @@ describe('the height chip of a token', () => {
     expect(lowerEdge(chip())).toBeGreaterThan(-(RING + BADGE_REACH + 4));
   });
 
+  it('grows with its token and keeps its place over a larger token\'s ring', () => {
+    const { ui: made, chip } = renderer();
+    made.update(flier(), SPRITE);
+    const medium = chip().scale.x;
+    // A size 2 token is three cells across, so its UI, the badges on its ring included, is three times as large
+    const large = computeTokenPixelSize(70, 2);
+    const ring = getTokenRingCenterRadius(large, 4, 1);
+    made.update(flier(), large);
+    expect(chip().scale.x).toBeCloseTo(3 * medium);
+    expect(lowerEdge(chip())).toBeLessThan(-(ring + 3 * BADGE_REACH));
+    expect(lowerEdge(chip())).toBeGreaterThan(-(ring + 3 * (BADGE_REACH + 4)));
+  });
+
   it('is hidden while its token is resized or turned', () => {
     const { ui: made, chip } = renderer();
     made.update(flier(), SPRITE);
