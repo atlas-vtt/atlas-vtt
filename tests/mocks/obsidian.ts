@@ -662,3 +662,11 @@ export class Menu {
 export async function loadPdfJs(): Promise<unknown> {
   throw new Error('PDF.js must be supplied by PDF reader tests');
 }
+
+// Whether an editor shows Live Preview; tests set it per state with `editorLivePreviewField.init`.
+import { StateField } from '@codemirror/state';
+
+export const editorLivePreviewField = StateField.define<boolean>({
+  create: () => true,
+  update: (value) => value,
+});

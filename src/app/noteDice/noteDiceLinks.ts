@@ -15,7 +15,7 @@ const DICE_PREFIX = /^[ \t]*dice:[ \t]?/i;
  * dice (`2d6+3`); null where it is no such roll, so code that only holds a formula among other text
  * (`version 2d6`) stays code.
  */
-function codeRoll(text: string): string | null {
+export function codeRoll(text: string): string | null {
   const prefix = DICE_PREFIX.exec(text);
   const expression = prefix ? text.slice(prefix[0].length) : text;
   if (!parseFormula(expression).ok) return null;
