@@ -794,13 +794,15 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
   filter: none;
 }
 
-// The card under the pointer, or whose statblock Mod shows, steps forward: its art lit a little
+// The card under the pointer, or whose statblock Mod shows, steps forward: its art lit a little, at once, fading back
+// when the pointer leaves
 .atlas-initiative-card--tile .atlas-initiative-card__art img {
-  transition: filter 150ms ease;
+  transition: filter 120ms ease-out;
 }
 
 .atlas-initiative-tracker .atlas-initiative-card--tile:is(:hover, .atlas-initiative-card--preview-hover) .atlas-initiative-card__art img {
   filter: brightness(1.12);
+  transition-duration: 0s;
 }
 
 // Hover, press, a selected token and Mod's statblock preview ring the card's edge (`--atlas-card-ring`). The art covers
@@ -835,7 +837,12 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
     border-radius: inherit;
     box-shadow: inset 0 0 0 2px var(--atlas-card-ring);
     pointer-events: none;
-    transition: box-shadow 150ms ease;
+    transition: box-shadow 120ms ease-out;
+  }
+
+  // A ring comes at once, so hover and press never lag the pointer, and fades when it goes
+  &:is(:hover, :active, .atlas-initiative-card--selected, .atlas-initiative-card--preview-hover)::after {
+    transition-duration: 0s;
   }
 }
 

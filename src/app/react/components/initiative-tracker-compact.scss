@@ -62,7 +62,7 @@ $plate-height: 24px;
       // The name's shadow keeps it readable over the lightest art
       filter: brightness(0.85);
       mask-image: linear-gradient(to right, transparent 8%, rgb(0 0 0 / 0.45) 50%, #000 90%);
-      transition: opacity 150ms ease, filter 150ms ease;
+      transition: opacity 120ms ease-out, filter 120ms ease-out;
     }
 
     // The turn's ring and glow, which the art would cover on the card itself
@@ -107,6 +107,7 @@ $plate-height: 24px;
   .atlas-initiative-card:is(:hover, .atlas-initiative-card--preview-hover) .atlas-initiative-card__backdrop img {
     opacity: 0.95;
     filter: none;
+    transition-duration: 0s;
   }
 
   .atlas-initiative-card--hidden .atlas-initiative-card__backdrop {
