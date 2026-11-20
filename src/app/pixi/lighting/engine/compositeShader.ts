@@ -184,8 +184,8 @@ const TRACED_FACES_GLSL = `
  * map and the grid's backing there, so what is left of the scene beneath is the viewed level's own
  * tokens, lit as everywhere, over uBelow1 or uBelow2 (that level's snapshot, its own composite
  * drawn in world space over the stack's box from texel uBelowGrid.xy, uBelowGrid.z of its texels a
- * side in a stack texel, read at the snapshot texel inside this very stack texel, where
- * uBelowShown says there is one) dimmed by uBelowDim once per level
+ * side in a stack texel, filtered only between snapshot texels whose stack texels show that level,
+ * where uBelowShown says there is one) dimmed by uBelowDim once per level
  * down, or nothing (black for the GM, the unexplored colour for the players). In a level below's
  * composite (uLevelIndex 1 or 2) nothing is seen outside the texels that show it.
  * Worked out on fewer pixels than the render's (uShownOut: how many of the render's pixels across
