@@ -79,19 +79,20 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
       if (state.isGMView) state.setDrawTool({ mode: "text" })
       selectTool("draw")
     }),
-    // The tool keeps its mode while another tool is in use; pressed again while measuring, the key steps to the next mode.
-    // Held while measuring with another tool in use, it gives that tool back on release (`measureWhileHeld`).
-    measure: (event) => {
-      const state = store.getState()
-      // Ranges is stepped over where the bar offers it disabled (`useUnavailableMeasureModes`) or not at all.
-      const ranges = !isPlayerView && state.isGMView && mapOffersRanges(app, state)
-      if (state.activeTool === "measure") {
-        state.setMeasureTool({ mode: nextMeasureMode(state.measureTool.mode, ranges) })
-        return
-      }
-      measureWhileHeld(event, state.activeTool, () => activeTool() === "measure", selectTool)
-      selectTool("measure")
-    },
+    // A tap picks the tool in the mode it was left in, and while measuring steps to the next mode, when the key goes up.
+    // Held while the map is pressed, it measures with a ruler and leaves the tool in use as it is (`measureWhileHeld`).
+    measure: (event) => measureWhileHeld(event, {
+      onMap: (target) => target !== null && target === renderer?.getViewportInstance()?.options.events?.domElement,
+      tap: () => {
+        const state = store.getState()
+        // Ranges is stepped over where the bar offers it disabled (`useUnavailableMeasureModes`) or not at all.
+        const ranges = !isPlayerView && state.isGMView && mapOffersRanges(app, state)
+        if (state.activeTool === "measure") state.setMeasureTool({ mode: nextMeasureMode(state.measureTool.mode, ranges) })
+        else selectTool("measure")
+      },
+      press: () => store.getState().holdRuler(),
+      release: () => store.getState().releaseRuler(),
+    }),
     measureKeep: dmOnly(() => {
       const state = store.getState()
       if (state.activeTool === "measure") state.setMeasureTool({ keep: !state.measureTool.keep })

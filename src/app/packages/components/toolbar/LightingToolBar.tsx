@@ -14,6 +14,7 @@ import { TooltipProvider } from "../primitives/tooltip"
 import { DRAW_MODES, LIGHTING_MODES, MEMORY_ACTIONS, MEMORY_SHAPES, ROOM_ACTIONS, ROOM_SHAPES, lightChoices } from "./lightingToolChoices"
 import { ChoiceButtons, GroupBreak, ToolOptionsBars } from "./ToolOptionsBar"
 import { ToolSwitchButton } from "./ToolSwitchButton"
+import { shownTool } from "../../../measure/heldRuler"
 
 /** Why a mode cannot be chosen now, or null where it can. */
 export function useUnavailableModes(): (mode: WallToolSubMode) => string | null {
@@ -87,7 +88,7 @@ function SnapSwitch({ mode, locked }: { mode: WallToolSubMode; locked: string | 
  * and while the toolbar is arranged.
  */
 export function LightingToolBar(): React.ReactElement {
-  const shown = useAtlasStore((state) => state.activeTool === 'wall' && !state.isPlayerView
+  const shown = useAtlasStore((state) => shownTool(state) === 'wall' && !state.isPlayerView
     && !state.isToolbarEditing && !state.isMapLoading)
   return <ToolOptionsBars shown={shown}><LightingBars /></ToolOptionsBars>
 }

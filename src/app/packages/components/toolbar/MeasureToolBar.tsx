@@ -30,7 +30,7 @@ interface MeasureToolBarProps {
  * there. Hidden while the toolbar is arranged.
  */
 export function MeasureToolBar({ playerView }: MeasureToolBarProps): React.ReactElement {
-  const shown = useAtlasStore((state) => state.activeTool === 'measure' && !state.isToolbarEditing && !state.isMapLoading)
+  const shown = useAtlasStore((state) => state.activeTool === 'measure' && state.heldRulerFrom === undefined && !state.isToolbarEditing && !state.isMapLoading)
   return <ToolOptionsBars shown={shown}><MeasureBars playerView={playerView} /></ToolOptionsBars>
 }
 

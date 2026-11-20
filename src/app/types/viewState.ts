@@ -130,6 +130,12 @@ export interface ViewState extends ViewUIState {
 
   // Tool and selection state
   activeTool: 'move' | 'select' | 'fog' | 'draw' | 'measure' | 'eraser' | 'asset' | 'note-pin' | 'laser-pointer' | 'wall' | 'audio' | 'stairs';
+  /**
+   * The tool in use when a press with the measure key held took the map (`holdRuler`): until it
+   * is let go, `activeTool` is the measure tool, which measures with a ruler and keeps nothing,
+   * and the toolbar goes on showing this tool (`measure/heldRuler.ts`). Never saved.
+   */
+  heldRulerFrom?: ViewState['activeTool'] | undefined;
   selectionMode: 'box' | 'lasso';
   selectedIds: string[];
 

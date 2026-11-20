@@ -200,6 +200,10 @@ export interface ViewAtlasState extends ViewState {
   updateAudio: (id: string, changes: Partial<AudioSource>) => void;
   deleteAudio: (id: string) => void;
   setActiveTool: (tool: ViewAtlasState['activeTool']) => void;
+  /** A press with the measure key held: the measure tool takes it as a ruler, and the tool in use waits (`heldRulerFrom`). */
+  holdRuler: () => void;
+  /** The measure key and the button are let go: the tool that waited comes back, unless another was picked meanwhile. */
+  releaseRuler: () => void;
   setSelectionMode: (mode: ViewAtlasState['selectionMode']) => void;
   setSelection: (ids: string[]) => void;
   clearSelection: () => void;
@@ -815,6 +819,18 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               return;
             }
             draft.activeTool = tool;
+            draft.heldRulerFrom = undefined;
+          }),
+
+          holdRuler: () => set((draft) => {
+            draft.heldRulerFrom ??= draft.activeTool;
+            draft.activeTool = 'measure';
+          }),
+
+          releaseRuler: () => set((draft) => {
+            if (draft.heldRulerFrom === undefined) return;
+            draft.activeTool = draft.heldRulerFrom;
+            draft.heldRulerFrom = undefined;
           }),
 
           setSelectionMode: (mode) => set((draft) => {
