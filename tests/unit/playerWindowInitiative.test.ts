@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { turnBannerScaleFor } from '../../src/app/initiative/banner/turnBannerElement';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';
@@ -54,14 +55,22 @@ function setup(initiativeTrackerOpen = true): { service: PlayerWindowService; se
 }
 
 describe('player initiative panel', () => {
-  it('sizes the list and the turn banner by the player view settings', () => {
+  it('sizes the list by the player view settings, and the turn banner by the window', () => {
     const { settings, doc } = setup();
+    // The player window as the service holds it
+    const view = (doc.body as HTMLElement & { win: Window & { addEventListener: ReturnType<typeof vi.fn> } }).win;
     const overlays = (): HTMLElement => doc.querySelector<HTMLElement>('.atlas-player-overlays')!;
+    const bannerScale = (): number => Number(overlays().style.getPropertyValue('--atlas-player-turn-banner-scale'));
     expect(overlays().style.getPropertyValue('--atlas-player-initiative-scale')).toBe('1');
-    expect(overlays().style.getPropertyValue('--atlas-player-turn-banner-scale')).toBe('2');
-    settings.setLocalPlayerViewSettings({ initiativeScale: 2, turnBannerScale: 3 });
+    expect(bannerScale()).toBeCloseTo(turnBannerScaleFor(view.innerWidth, view.innerHeight), 5);
+    settings.setLocalPlayerViewSettings({ initiativeScale: 2 });
     expect(overlays().style.getPropertyValue('--atlas-player-initiative-scale')).toBe('2');
-    expect(overlays().style.getPropertyValue('--atlas-player-turn-banner-scale')).toBe('3');
+    // A window made the size of a 1080p TV draws it twice its own size
+    expect(view.addEventListener.mock.calls.some(([name]) => name === 'resize')).toBe(true);
+    Object.assign(view, { innerWidth: 1920, innerHeight: 1080 });
+    // What a resize runs, as any change of the player view's look runs it
+    settings.setLocalPlayerViewSettings({ initiativeScale: 1 });
+    expect(bannerScale()).toBe(2);
   });
 
   it('flashes the border of who holds a turn that begins, not of a fight seen running', () => {

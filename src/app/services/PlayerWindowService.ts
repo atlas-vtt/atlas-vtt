@@ -1,5 +1,6 @@
 import { App } from 'obsidian';
 import { initiativeScaleOf } from './playerInitiativeList';
+import { turnBannerScaleFor } from '../initiative/banner/turnBannerElement';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import type { SettingsService } from './SettingsService';
@@ -623,12 +624,15 @@ export class PlayerWindowService {
       const applyTurn = (): void => {
         const tv = this.tableTv();
         if (tv) applyTableTvLook(body, overlayLayer, tv);
-        // How large the initiative lists and the turn banner are drawn
-        const { initiativeScale, turnBannerScale } = this.settingsService.getLocalPlayerViewSettings();
+        // How large the initiative lists are drawn (the player view's setting), and the turn banner (the window's size)
+        const { initiativeScale } = this.settingsService.getLocalPlayerViewSettings();
         overlayLayer.style.setProperty('--atlas-player-initiative-scale', String(initiativeScaleOf(initiativeScale)));
-        overlayLayer.style.setProperty('--atlas-player-turn-banner-scale', String(turnBannerScale));
+        const win = this.playerWindow;
+        if (win) overlayLayer.style.setProperty('--atlas-player-turn-banner-scale', String(turnBannerScaleFor(win.innerWidth, win.innerHeight)));
       };
       applyTurn();
+      const playerWindow = this.playerWindow;
+      playerWindow.addEventListener('resize', applyTurn);
       this.sceneOverlays.forEach((overlay) => overlay.mount(overlayLayer));
       this.settingsUnsubscribe?.();
       // Player view settings decide which layers players see
@@ -644,6 +648,7 @@ export class PlayerWindowService {
       this.settingsUnsubscribe = () => {
         unsubscribeSettings();
         stopRules();
+        playerWindow.removeEventListener('resize', applyTurn);
       };
 
       // Create freeze indicator
