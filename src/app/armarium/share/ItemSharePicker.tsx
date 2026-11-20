@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import type { App } from 'obsidian';
+import { ChevronRight } from 'lucide-react';
 import { t } from '../../i18n';
 import { ITEM_KIND_ICON } from '../../packages/components/asset-manager/collection-transfer/itemKindIcon';
 import { Button } from '../../packages/components/primitives/button';
@@ -54,6 +55,7 @@ function PickerBody({ reading, kind, onPick }: { reading: Reading; kind: ItemKin
           <button type="button" className="atlas-item-pick__item" onClick={() => onPick(item)}>
             <span className="atlas-item-pick__icon"><Icon aria-hidden /></span>
             <span className="atlas-item-pick__name">{item.name}</span>
+            <ChevronRight className="atlas-item-pick__go" aria-hidden />
           </button>
         </li>
       ))}

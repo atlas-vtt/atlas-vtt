@@ -439,45 +439,50 @@ $mark-size: 24px;
   padding: $spacing-m;
 }
 
-// The vault's own items of a kind, to choose the one to share: rows in the item review's look (`_item-review.scss`).
+// The vault's own items of a kind, to choose the one to share: one inset list of rows, each starting at the list's
+// edge (Obsidian centres a <button>'s content), with the way on at its end.
 .atlas-modal.atlas-item-pick {
   width: min(440px, 100%);
 }
 
 .atlas-item-pick {
   &__list {
-    @include atlas-flex-col($gap: $spacing-s);
+    @include atlas-flex-col($gap: $spacing-xs);
+    @include atlas-inset-surface;
+    max-height: min(420px, 60vh);
     margin: 0;
-    padding: 0;
+    padding: $spacing-xs;
+    overflow-y: auto;
     list-style: none;
   }
 
   &__placeholder {
-    height: 58px;
+    height: 40px;
+    border-radius: $radius-m - $spacing-xs;
   }
 
   &__item {
-    @include atlas-flex-row($gap: $spacing-m);
-    @include atlas-interactive-surface;
+    @include atlas-flex-row($gap: $spacing-s);
+    justify-content: flex-start;
     width: 100%;
-    height: auto;
+    height: 40px;
     padding: $spacing-s;
-    border: $border-width-s solid var(--background-modifier-border);
+    border: none;
+    border-radius: $radius-m - $spacing-xs;
+    background: transparent;
     box-shadow: none;
     color: var(--text-normal);
     text-align: start;
     cursor: pointer;
+
+    &:hover {
+      background: var(--background-modifier-hover);
+    }
   }
 
   &__icon {
     display: flex;
     flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: $radius-m;
-    background: var(--background-modifier-hover);
     color: var(--text-muted);
 
     svg {
@@ -487,11 +492,24 @@ $mark-size: 24px;
   }
 
   &__name {
+    flex: 1;
     min-width: 0;
     overflow: hidden;
     font-size: $font-ui-medium;
-    font-weight: $font-weight-semibold;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  &__go {
+    flex-shrink: 0;
+    width: $icon-s;
+    height: $icon-s;
+    color: var(--text-faint);
+    opacity: 0;
+    transition: opacity $transition-fast $transition-ease;
+  }
+
+  &__item:hover &__go {
+    opacity: 1;
   }
 }

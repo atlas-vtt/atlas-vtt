@@ -46,6 +46,7 @@ describe('a press inside a dialog', () => {
     const overlays = [
       'atlas-collection-settings-overlay', 'atlas-modal-overlay', 'atlas-tag-manager-modal', 'atlas-create-scene-modal',
       'atlas-create-collection-overlay', 'atlas-asset-manager-move-modal', 'atlas-uvtt-floors-overlay', 'atlas-paste-table-overlay',
+      'atlas-share-host',
     ];
     for (const cls of overlays) {
       const overlay = document.body.createDiv({ cls: `atlas-vtt-root ${cls}` });
