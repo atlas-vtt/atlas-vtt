@@ -38,7 +38,7 @@
 - Share a statblock template, a game system or a dice set on its own in the Armarium, and add one to your vault in one click
 - A template brings the note it starts statblocks with and the dice set it rolls; a game system brings its dice set too
 - A shared template's page in the Armarium shows its card as Atlas draws it, filled with sample values, in light and dark
-- After sharing, My uploads opens your uploads on the Armarium's site, where a version shows as Processing until its page is up
+- My uploads in the Armarium tab lists everything you shared with where it stands (a new version shows as Processing until its page is up), and lets you edit, unpublish or share a new version, signed in with your Atlas account. The share dialog's last step opens it too
 - An update replaces your copy where you left it as it came, and comes in beside it where you changed it
 - Share in the Armarium… sits in the menu of each of your templates (collection settings and template editor), game systems (System tab) and dice sets (Dice Lab). Atlas counts up the version and asks what changed
 - Export… beside it saves the same file, to hand to someone who imports it in the asset manager

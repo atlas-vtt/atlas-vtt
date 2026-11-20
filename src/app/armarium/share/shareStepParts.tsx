@@ -123,8 +123,16 @@ export function shareStepParts({ app, session, snapshot, account, accountState, 
         body: <DoneStep snapshot={snapshot} />,
         actions: [
           action(t('common.close'), onClose),
-          // The site's page of the account's uploads, which refuses a frame: it opens in the browser.
-          action(t('armariumShare.myUploads'), () => { window.open(ARMARIUM_MINE_URL); }),
+          // The site's page of the account's uploads, in the Armarium behind; in the browser where none is open.
+          action(t('armariumShare.myUploads'), () => {
+            const host = ArmariumHosts.forApp(app).target();
+            if (host === null) {
+              window.open(ARMARIUM_MINE_URL);
+              return;
+            }
+            onClose();
+            host.show(ARMARIUM_MINE_URL);
+          }),
           ...(slug === null || snapshot.published?.held === true ? [] : [action(listingPageReady ? t('armariumShare.openListing') : t('armariumShare.preparingPage'), () => {
             onClose();
             ArmariumHosts.forApp(app).target()?.show(armariumListingUrl(slug));

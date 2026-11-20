@@ -2,6 +2,7 @@ import { ACCOUNTS_ORIGIN } from '../../account/accountServers';
 import { field, type Http, type HttpRequest, type HttpResponse } from '../../account/http';
 import { DECLARATION, type ListingFields, type OwnListing, type SubmissionView, type UploadEligibility, type UploadTicket } from './uploadContract';
 import { parseEligibility, parseOwnListing, parseSubmission, parseTicket, readFieldProblems } from './uploadReaders';
+import type { PageRequest } from '../myUploadsRequests';
 
 /** The Armarium's API, on the account service's origin: the only place the plugin sends the token for it. */
 export const ARMARIUM_API = `${ACCOUNTS_ORIGIN}/v1/armarium`;
@@ -92,6 +93,24 @@ export class ArmariumApi {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * One of My uploads' requests for the site's page in Atlas' frame (`myUploadsRequests.ts`), sent with the account's
+   * token: the API's status and JSON as they came, for the page to read as its own. 0 where the API cannot be reached,
+   * 401 while signed out. A 401 from the API forgets the token, as on every route Atlas sends it to.
+   */
+  async forward({ method, path, body }: PageRequest): Promise<{ status: number; body: unknown }> {
+    const token = this.ports.token();
+    if (token === null) return { status: 401, body: { code: 'signed-out' } };
+    let response: HttpResponse;
+    try {
+      response = await this.ports.http({ method, url: `${ARMARIUM_API}${path}`, authorization: `Bearer ${token}`, ...(body === undefined ? {} : { json: body }) });
+    } catch {
+      return { status: 0, body: null };
+    }
+    if (response.status === 401 && this.ports.token() === token) this.ports.signedOut();
+    return { status: response.status, body: response.json };
   }
 
   private async json(request: ApiRequest, options: CallOptions = {}): Promise<unknown> {
