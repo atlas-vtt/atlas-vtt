@@ -6,8 +6,10 @@ import type { App } from 'obsidian';
 import { ArmariumInstaller, type StatusListener } from '../../../src/app/armarium/ArmariumInstaller';
 import { ArmariumPane } from '../../../src/app/armarium/ArmariumPane';
 import { StoreTagFilter } from '../../../src/app/armarium/storeTagFilter';
+import { armariumAccountPort, type ArmariumAccountPort } from '../../../src/app/armarium/armariumAccountPort';
 
 vi.mock('../../../src/app/ui/notice', () => ({ showNotice: vi.fn(() => ({ hide: vi.fn() })) }));
+vi.mock('../../../src/app/armarium/armariumAccountPort', () => ({ armariumAccountPort: vi.fn(() => null) }));
 
 const UID = 'da0b742f-d1fc-4f2a-9b0f-300d7e45538e';
 const app = { workspace: {} } as unknown as App;
@@ -145,6 +147,38 @@ describe('the Armarium pane', () => {
     fromPage({ type: 'atlas-armarium:share', format: 1, what: 'adventure-module' }, frame.contentWindow);
     expect(onShare).toHaveBeenCalledTimes(2);
     expect(installer.install).not.toHaveBeenCalled();
+  });
+
+  it("with Atlas' account, sends My uploads' requests for its page alone, signs in when asked and says when the account changed", async () => {
+    let changed: (() => void) | null = null;
+    const port: ArmariumAccountPort = {
+      forward: vi.fn(async () => ({ status: 200, body: { listings: [] } })),
+      signIn: vi.fn(),
+      onChange: (listener) => {
+        changed = listener;
+        return () => { changed = null; };
+      },
+    };
+    vi.mocked(armariumAccountPort).mockReturnValue(port);
+    const { frame } = renderPane();
+    const post = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => undefined);
+    fromPage({ type: 'atlas-armarium:hello', format: 1 }, frame.contentWindow);
+    await vi.waitFor(() => expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: 'atlas-armarium:installed', features: ['account'] }), 'https://atlas-vtt.dev'));
+
+    const ask = { type: 'atlas-armarium:api', format: 1, id: 'r7', method: 'GET', path: '/v1/armarium/mine' };
+    fromPage(ask, frame.contentWindow, 'https://evil.example');
+    fromPage(ask, window);
+    fromPage({ ...ask, method: 'POST', path: '/v1/armarium/uploads' }, frame.contentWindow);
+    expect(port.forward).not.toHaveBeenCalled();
+    fromPage(ask, frame.contentWindow);
+    expect(port.forward).toHaveBeenCalledWith({ method: 'GET', path: '/mine' });
+    await vi.waitFor(() => expect(post).toHaveBeenCalledWith({ type: 'atlas-armarium:api-result', format: 1, id: 'r7', status: 200, body: { listings: [] } }, 'https://atlas-vtt.dev'));
+
+    fromPage({ type: 'atlas-armarium:sign-in', format: 1 }, frame.contentWindow);
+    expect(port.signIn).toHaveBeenCalledTimes(1);
+    act(() => changed?.());
+    expect(post).toHaveBeenCalledWith({ type: 'atlas-armarium:account', format: 1 }, 'https://atlas-vtt.dev');
+    vi.mocked(armariumAccountPort).mockReturnValue(null);
   });
 
   it('stops listening once unmounted', () => {

@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import React, { useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { useIsPresent } from 'framer-motion';
 import { Skeleton, SkeletonGroup } from '../packages/components/primitives/Skeleton';
 import { SiteFrame } from '../react/components/siteFrame/SiteFrame';
@@ -7,6 +7,7 @@ import { t } from '../i18n';
 import { ARMARIUM_PAGE_URL } from './armariumUrls';
 import { acceptFrameMessage, type ShareWhat } from './armariumMessages';
 import { ArmariumInstaller } from './ArmariumInstaller';
+import { armariumAccountPort } from './armariumAccountPort';
 import { useArmariumBridge } from './useArmariumBridge';
 import type { StoreTagFilter } from './storeTagFilter';
 
@@ -56,7 +57,8 @@ export function ArmariumPane({ app, url = ARMARIUM_PAGE_URL, shown = true, onSha
   const paneRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const present = useIsPresent();
-  useArmariumBridge(ArmariumInstaller.forApp(app), frameRef, paneRef, onShare, tagFilter);
+  const account = useMemo(() => armariumAccountPort(app), [app]);
+  useArmariumBridge(ArmariumInstaller.forApp(app), frameRef, paneRef, onShare, tagFilter, account);
   return (
     <div ref={paneRef} className={shown ? 'atlas-armarium-pane' : 'atlas-armarium-pane is-hidden'} inert={!shown}>
       {present && <SiteFrame

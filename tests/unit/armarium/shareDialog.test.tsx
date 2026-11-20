@@ -179,9 +179,10 @@ describe('the share dialog', () => {
     expect(button('Preparing its page…').disabled).toBe(true);
   });
 
-  it('offers My uploads in the browser, where the published version shows as Processing until its page is built', async () => {
+  it('offers My uploads in the Armarium behind, where the published version shows as Processing until its page is built', async () => {
     vi.mocked(requestUrl).mockResolvedValue({ status: 404 } as Awaited<ReturnType<typeof requestUrl>>);
-    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const show = vi.fn();
+    const detach = ArmariumHosts.forApp(app).attach({ show, review: () => undefined });
     const api = new FakeArmarium();
     api.own = { uid: 'col-uid', slug: 'blue-mouth-caves', format: 'collection', fields: null, newestVersion: null, coverUrl: null };
     const { session } = share(api);
@@ -197,8 +198,8 @@ describe('the share dialog', () => {
     });
     expect(screen.getByText(/My uploads shows it as Processing/)).toBeTruthy();
     fireEvent.click(button('My uploads'));
-    expect(open).toHaveBeenCalledWith('https://atlas-vtt.dev/armarium/mine');
-    open.mockRestore();
+    expect(show).toHaveBeenCalledWith('https://atlas-vtt.dev/armarium/mine');
+    detach();
   });
 
   it('asks before leaving an upload, and discards it when the GM leaves', async () => {
