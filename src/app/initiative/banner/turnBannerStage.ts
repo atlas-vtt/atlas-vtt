@@ -50,6 +50,9 @@ const ANCHOR_GAP_PX = 16;
 /** A fight's start or end stands at least this long: a moment alone, while the lists slide, then a while after. */
 const FIGHT_BANNER_STAND_MS = FIGHT_INTRO_HOLD_MS + LIST_EXIT_MS + 1200;
 
+/** How long a fight's start or end stands for the players, before the banner after it (its first turn) follows. */
+export const FIGHT_BANNER_SHOWN_MS = Math.max(PLAYER_TURN_BANNER_MS, FIGHT_BANNER_STAND_MS);
+
 /** Whether a fight starts or ends: its banner stands at the lists. */
 export type FightMove = 'start' | 'end';
 
@@ -126,7 +129,7 @@ export class TurnBannerStage {
     return new TurnBannerDisplay(
       host,
       this.portraitSrc,
-      (banner) => (banner.kind ? Math.max(PLAYER_TURN_BANNER_MS, FIGHT_BANNER_STAND_MS) : PLAYER_TURN_BANNER_MS),
+      (banner) => (banner.kind ? FIGHT_BANNER_SHOWN_MS : PLAYER_TURN_BANNER_MS),
       motion,
     );
   }
