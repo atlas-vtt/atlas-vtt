@@ -574,11 +574,11 @@ export class TokenUIRenderer {
   }
 
   /**
-   * Condition badges sit on the token's ring at the resting UI scale, whatever the
-   * selection; the hover card keeps a constant screen size, like a tooltip.
+   * Condition badges sit on the token's ring and grow with the token, like its resize and rotate
+   * buttons, whatever the selection; the hover card keeps a constant screen size, like a tooltip.
    */
   private conditionsLayout(): TokenConditionsLayout {
-    const badgeScale = restingTokenUIScale(this.store?.getState().grid?.size ?? 70);
+    const badgeScale = tokenUIScale(this.currentTokenSize);
     const zoom = this.zoomProvider?.();
     return { ringRadius: this.ringRadius(), badgeScale, cardScale: zoom ? 1 / zoom : badgeScale };
   }
@@ -652,10 +652,11 @@ export class TokenUIRenderer {
     });
     this.besideToken.position.set(anchor.x, anchor.y);
     this.leftOfToken.position.set(-anchor.x, anchor.y);
-    // The chip keeps the size of a resting token's UI, like the badges on the ring it stands over, and
-    // rises with the selection to make way for the rotate button, which is larger on a larger token
-    const badgeReach = (CONDITION_BADGE_RADIUS + 1) * resting;
-    const handleReach = (RESIZE_HANDLE_SIZE / 2) * tokenUIScale(this.currentTokenSize);
+    // The chip keeps the size of a resting token's UI, stands clear of the badges on the ring, and
+    // rises with the selection to make way for the rotate button; both grow with the token
+    const tokenScale = tokenUIScale(this.currentTokenSize);
+    const badgeReach = (CONDITION_BADGE_RADIUS + 1) * tokenScale;
+    const handleReach = (RESIZE_HANDLE_SIZE / 2) * tokenScale;
     this.heightChip.place(this.ringRadius(), resting, badgeReach + this.emphasis.value * Math.max(0, handleReach - badgeReach));
     // A selected token's text keeps a constant screen size, which the resting resolution covers
     this.setTextResolution(tokenTextResolution(resting));

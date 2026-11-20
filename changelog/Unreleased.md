@@ -71,6 +71,7 @@
 - Undo and redo carry a moved or resized measurement back along its way, with its handles. Auras and measurements grouped with a token glide with the token instead of jumping ahead of it
 - Players' measurements come and go the same way on your map, and one they move glides there
 - Kept cones, squares and lines have a turn handle next to their end: drag it to rotate the measurement without changing its size. Contributed by aryistia
+- A token's condition badges and the badge that marks a token your players can't see grow with the token, like its resize and rotate buttons, so they stay in proportion on large creatures
 
 ## Fixed
 
