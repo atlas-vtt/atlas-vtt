@@ -278,7 +278,11 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
       position: absolute;
       inset: 0;
       border-radius: inherit;
-      background: linear-gradient(to bottom, rgb(0 0 0 / 0.5), transparent 35%, transparent 50%, rgb(0 0 0 / 0.75));
+      // The shade the number and the foot read on, over a fade into the card's sides that gives the art depth
+      background:
+        linear-gradient(to bottom, rgb(0 0 0 / 0.5), transparent 35%, transparent 50%, rgb(0 0 0 / 0.75)),
+        linear-gradient(to right, rgb(0 0 0 / 0.55), transparent 28%, transparent 72%, rgb(0 0 0 / 0.55)),
+        radial-gradient(ellipse 75% 85% at 50% 42%, transparent 55%, rgb(0 0 0 / 0.35));
     }
   }
 
