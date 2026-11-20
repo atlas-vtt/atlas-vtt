@@ -105,6 +105,22 @@ describe('the GM\'s initiative cards', () => {
     }
   });
 
+  it('give every line of the compact view one height, with a bar or without, two bars or none, by numbers or by sides', async () => {
+    const container = await show(true);
+    const heights = (): number[] => [...container.querySelectorAll('.atlas-initiative-card')].map((card) => box(card).height);
+    const withBar = heights();
+    expect(new Set(withBar).size).toBe(1);
+
+    const { a, b } = store.getState().objects.tokens;
+    store.setState({ objects: { ...store.getState().objects, tokens: { a: { ...a!, resources: {} }, b: { ...b!, resources: { hp: { current: 4, max: 7 }, stress: { current: 1, max: 3 } } } } } });
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    expect(heights()).toEqual(withBar);
+
+    store.setState({ initiative: { ...store.getState().initiative, isActive: true, sides: { first: 'players', active: 'players' } } });
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    expect(heights()).toEqual(withBar);
+  });
+
   it('are square, the number and the bar the same inset inside the border, concentric with its corners', async () => {
     for (const card of (await show(false)).querySelectorAll('.atlas-initiative-card')) {
       const frame = box(card);

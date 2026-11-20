@@ -7,6 +7,9 @@
 // A whole pixel, as the tiles have, so the plate's corners stay concentric with the card's
 $line-border: $border-width-s;
 $plate-radius: initiative-corner-radius($line-border);
+// The number plate's height, which every line takes, and the slot under the name its bars stand in, bars or not
+$plate-height: 24px;
+$bar-slot: 5px;
 
 .atlas-initiative-tracker--compact {
   gap: $spacing-xs;
@@ -18,7 +21,10 @@ $plate-radius: initiative-corner-radius($line-border);
   .atlas-initiative-card {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-rows: minmax(0, 1fr) $bar-slot;
     align-items: center;
+    // One height for every line, whatever it shows: a number or none, bars or none
+    height: calc(#{$plate-height} + 2 * #{$surface-inset} + 2 * #{$line-border});
     gap: $surface-inset;
     // The name and its bars are one stack beside the number
     row-gap: 2px;
@@ -173,29 +179,27 @@ $plate-radius: initiative-corner-radius($line-border);
     position: static;
   }
 
-  // Under the name, starting where its text does; a slim bar, since the line is short
+  // Under the name, starting where its text does; a slim bar, since the line is short. Several stand side by side,
+  // so the line keeps its height
   .atlas-initiative-card__resources {
     grid-area: 2 / 2;
     align-self: start;
-    gap: 2px;
+    flex-direction: row;
+    gap: $spacing-xs;
     padding-inline: $spacing-xs;
     box-sizing: border-box;
   }
 
   // Above the bar's own rule (`.atlas-initiative-card .atlas-initiative-card__hp-bar`)
   .atlas-initiative-card .atlas-initiative-card__hp-bar {
-    height: 5px;
+    flex: 1;
+    height: $bar-slot;
   }
 
   .atlas-initiative-card__hp-meter {
     height: 3px;
   }
 
-  // Without bars the name stands in the middle of the line
-  .atlas-initiative-card:not(:has(.atlas-initiative-card__resources)) .atlas-initiative-card__name {
-    grid-row: 1 / 3;
-    align-self: center;
-  }
 
   // Hidden from the players: the line is translucent, as its portrait is otherwise
   .atlas-initiative-card--hidden .atlas-initiative-card__name {
