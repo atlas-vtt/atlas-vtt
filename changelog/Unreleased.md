@@ -78,6 +78,7 @@
 - The documentation opens in the middle of the scene, whatever size the view has
 - The documentation closes smoothly, without stuttering: its page leaves as soon as the window starts to close, as in the Armarium
 - The initiative tracker's buttons float above and below it and show when the pointer comes near, so the panel holds only the fight; its foot shows the round as the players' list does
+- The initiative numbers on the tracker's cards show only while the pointer is near the tracker, growing in from their corners in a soft wave down the list, so a resting tracker shows just the combatants' art
 - While the players' initiative list runs as rows across the top and bottom, the widgets on the player view stand as a column down the right edge, and the rows always keep clear of them
 - With the Atlas VTT theme, ivy grows over the corners of the GM's initiative tracker as on the players' list, and on both it comes and goes at once when you switch themes
 - The initiative lists move as one on both views: when the turn passes on or back, every card glides to its new place in a soft wave, with the line between the rounds, whoever goes round the order slides out at one end and back in at the other, and the card whose turn begins lights up once. Opening or closing the tracker, and a fight starting or ending, brings the lists in from their edge, their cards fading in together a moment after, and takes them out the same way

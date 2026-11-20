@@ -350,6 +350,68 @@ $tile-corner-radius: initiative-corner-radius($border-width-s);
   }
 }
 
+// A tile's number shows only while the GM is near the tracker, as its bars do (the panel, its bars and its reach,
+// `__reach`), or works in it: a resting tracker shows the art alone. Coming near, the numbers grow out of their
+// corners in a wave down the list (`--atlas-card-place`, at most `$number-wave-cards` deep), settling with a little
+// spring; going away, they fade together, quicker. The number being typed always shows, and a pointer that cannot
+// hover sees them all the time.
+$number-wave-cards: 8;
+$number-wave-step: 22ms;
+
+.atlas-initiative-tracker .atlas-initiative-card--tile {
+  .atlas-initiative-card__initiative,
+  .atlas-initiative-card__dealt {
+    opacity: 0;
+    scale: 0.78;
+    filter: blur(2px);
+    transform-origin: top right;
+    pointer-events: none;
+    transition:
+      opacity 140ms $transition-ease-out,
+      scale 140ms $transition-ease-out,
+      filter 140ms $transition-ease-out;
+  }
+}
+
+@mixin numbers-shown {
+  opacity: 1;
+  scale: 1;
+  filter: none;
+  pointer-events: auto;
+  transition:
+    opacity 220ms $transition-ease-out,
+    scale 380ms cubic-bezier(0.34, 1.45, 0.64, 1),
+    filter 220ms $transition-ease-out;
+  transition-delay: calc(min(var(--atlas-card-place, 0), #{$number-wave-cards}) * #{$number-wave-step});
+}
+
+.atlas-initiative-tracker:is(:hover, :focus-within) .atlas-initiative-card--tile {
+  .atlas-initiative-card__initiative,
+  .atlas-initiative-card__dealt {
+    @include numbers-shown;
+  }
+}
+
+.atlas-initiative-tracker .atlas-initiative-card--tile {
+  .atlas-initiative-card__initiative,
+  .atlas-initiative-card__dealt {
+    @include atlas-hover-reveal {
+      @include numbers-shown;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-initiative-tracker .atlas-initiative-card--tile {
+    .atlas-initiative-card__initiative,
+    .atlas-initiative-card__dealt {
+      scale: 1;
+      filter: none;
+      transition: opacity 140ms $transition-ease-out;
+    }
+  }
+}
+
 // The card under the pointer, or whose statblock Mod shows, steps forward: its art lit a little, at once, fading back
 // when the pointer leaves
 .atlas-initiative-tracker .atlas-initiative-card--tile:is(:hover, .atlas-initiative-card--preview-hover) .atlas-initiative-card__art img {

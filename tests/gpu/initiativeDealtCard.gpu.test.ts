@@ -12,6 +12,9 @@ import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/ap
 import type { Character } from '../../src/app/types';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
+/** The numbers as they stand once shown (they show while the pointer is near the tracker), so they are measured at rest. */
+const SHOWN_NUMBERS = '.atlas-initiative-card__initiative, .atlas-initiative-card__dealt { opacity: 1 !important; scale: 1 !important; filter: none !important; transition: none !important; }';
+
 /** Obsidian's theme as the tracker meets it (as in `initiativeCardLayout.gpu.test.ts`). */
 const THEME = `
   body { margin: 0; font: 13px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; --background-primary: #1e1e1e; --background-secondary: #262626;
@@ -52,7 +55,7 @@ const box = (element: Element | null): DOMRect => element!.getBoundingClientRect
 
 describe('the card a combatant was dealt, on the GM\'s initiative cards', () => {
   const style = document.createElement('style');
-  style.textContent = THEME + css;
+  style.textContent = THEME + css + SHOWN_NUMBERS;
   beforeEach(() => document.head.append(style));
   afterEach(() => { style.remove(); document.body.innerHTML = ''; });
 

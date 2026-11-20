@@ -221,7 +221,8 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
     <div
       ref={cardRef}
       className={cardClasses}
-      style={turn ? ({ '--atlas-turn-color': turn } as React.CSSProperties) : undefined}
+      // Its turn colour, and its place, by which its number joins the wave that shows the numbers
+      style={{ ...(turn ? { '--atlas-turn-color': turn } : {}), '--atlas-card-place': index } as React.CSSProperties}
       // A field being typed in keeps its text selection to itself
       draggable={!isEditingNumber}
       onClick={handleClick}

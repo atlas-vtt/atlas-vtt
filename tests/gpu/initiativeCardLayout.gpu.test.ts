@@ -2,7 +2,7 @@ import '../setup/obsidianDom';
 import React from 'react';
 import { act, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import css from '../../styles/main.scss?inline';
 import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
@@ -12,6 +12,9 @@ import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFa
 import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/app/types/initiativeTypes';
 import type { Character } from '../../src/app/types';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+
+/** The numbers as they stand once shown (they show while the pointer is near the tracker), so they are measured at rest. */
+const SHOWN_NUMBERS = '.atlas-initiative-card__initiative, .atlas-initiative-card__dealt { opacity: 1 !important; scale: 1 !important; filter: none !important; transition: none !important; }';
 
 /** Obsidian's theme as the tracker meets it: its sizes, and its own look of every button, which the cards' controls must undo. */
 const THEME = `
@@ -65,7 +68,7 @@ const box = (element: Element | null): DOMRect => element!.getBoundingClientRect
 
 describe('the GM\'s initiative cards', () => {
   const style = document.createElement('style');
-  style.textContent = THEME + css;
+  style.textContent = THEME + css + SHOWN_NUMBERS;
   beforeEach(() => document.head.append(style));
   afterEach(() => style.remove());
 
@@ -252,6 +255,35 @@ describe('the GM\'s initiative cards', () => {
         }
         expect(getComputedStyle(art).overflow).toBe('hidden');
       }
+    }
+  });
+
+  it('show a tile\'s number only while the pointer is near the tracker, growing in down the list and leaving together', async () => {
+    // Measured as the GM meets them: without the numbers held shown
+    style.textContent = THEME + css;
+    try {
+      await userEvent.hover(document.body, { position: { x: 1, y: 1 } });
+      const container = await show(false);
+      const tracker = container.querySelector<HTMLElement>('.atlas-initiative-tracker')!;
+      const numbers = [...container.querySelectorAll<HTMLElement>('.atlas-initiative-card__initiative')];
+      expect(numbers).toHaveLength(2);
+      const opacities = (): string[] => numbers.map((number) => getComputedStyle(number).opacity);
+      expect(opacities()).toEqual(['0', '0']);
+      expect(getComputedStyle(numbers[0]!).pointerEvents).toBe('none');
+
+      await userEvent.hover(tracker);
+      await expect.poll(opacities).toEqual(['1', '1']);
+      expect(getComputedStyle(numbers[0]!).pointerEvents).toBe('auto');
+      // A wave down the list: each card's number a step after the one above
+      const delay = (number: HTMLElement): number => parseFloat(getComputedStyle(number).transitionDelay.split(',')[0]!);
+      expect(delay(numbers[1]!)).toBeGreaterThan(delay(numbers[0]!));
+
+      await userEvent.hover(document.body, { position: { x: 1, y: 1 } });
+      await expect.poll(opacities).toEqual(['0', '0']);
+      // Leaving, they go together
+      expect(numbers.map(delay)).toEqual([0, 0]);
+    } finally {
+      style.textContent = THEME + css + SHOWN_NUMBERS;
     }
   });
 });
