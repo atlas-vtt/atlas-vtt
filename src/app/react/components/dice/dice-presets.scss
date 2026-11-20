@@ -408,7 +408,7 @@ $item-control: calc(#{$button-height-l} + #{$spacing-s});
   }
 }
 
-// The icons at the tray's foot beside Clear (edit the row, saved rolls): the accent while what they open stands open.
+// The icons at the tray's foot before Clear (saved rolls, edit the row): the accent while what they open stands open.
 .atlas-dice-tray__actions .atlas-dice-tray__foot-icon.btn--ghost {
   flex-shrink: 0;
   width: $button-height-l;
