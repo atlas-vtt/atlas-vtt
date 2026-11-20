@@ -39,6 +39,7 @@ import { InitiativeStatblockPreview, type PreviewedEntry } from './InitiativeSta
 import { captureRollContext } from '../../tools/diceRollOrigins';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
 import { t } from '../../i18n';
+import '../../initiative/initiative-panel.scss';
 import './initiative-tracker.scss';
 import './initiative-tracker-compact.scss';
 
@@ -238,7 +239,7 @@ export const InitiativeTracker: React.FC = () => {
   );
 
   const trackerClasses = [
-    'atlas-initiative-tracker',
+    'atlas-initiative-panel atlas-initiative-tracker',
     // The compact list is all names
     compact && 'atlas-initiative-tracker--named atlas-initiative-tracker--compact',
     leaving && 'atlas-initiative-tracker--leaving',
@@ -247,7 +248,7 @@ export const InitiativeTracker: React.FC = () => {
   return (
     <div ref={setRoot} className={trackerClasses}>
       {/* Its surface is a layer of its own, so the theme's ivy can lie behind it; near it, its bars show */}
-      <div className="atlas-initiative-tracker__surface" aria-hidden="true" />
+      <div className="atlas-initiative-panel__surface" aria-hidden="true" />
       <div className="atlas-initiative-tracker__reach" aria-hidden="true" />
       {/* Nothing is rolled where the sides take turns or cards are dealt */}
       <InitiativeTrackerHeader
@@ -262,7 +263,7 @@ export const InitiativeTracker: React.FC = () => {
       />
 
       {/* The combatants, in the order the list shows them */}
-      <div ref={contentRef} className="atlas-initiative-tracker__content">
+      <div ref={contentRef} className="atlas-initiative-panel__list">
         {/* Empty, the panel keeps the size it has with one combatant: an unseen card of the view's shape holds it */}
         {sortedEntries.length === 0 && (
           <div className={`atlas-initiative-card${compact ? '' : ' atlas-initiative-card--tile'} atlas-initiative-card--placeholder`} aria-hidden="true" />
@@ -271,10 +272,10 @@ export const InitiativeTracker: React.FC = () => {
       </div>
 
       {/* The shade over the list's top, shown once it is scrolled */}
-      <div className="atlas-initiative-tracker__top-shade" aria-hidden="true" />
+      <div className="atlas-initiative-panel__top-shade" aria-hidden="true" />
 
       {/* The round at the list's foot, as the players' list shows it */}
-      {initiative.isActive && <div className="atlas-initiative-tracker__round">{t('playerInit.round', { round: initiative.round })}</div>}
+      {initiative.isActive && <div className="atlas-initiative-panel__round">{t('playerInit.round', { round: initiative.round })}</div>}
 
       <InitiativeStatblockPreview app={app} state={previewState} tokens={tokens} side={inward} />
 

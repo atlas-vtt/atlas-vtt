@@ -1,3 +1,6 @@
+// The players' initiative list: the GM's tracker as it looks (`initiative-panel.scss`), placed on the player view. What
+// is its own: its places (a column at the right or mirrored at the left, a row across the top or bottom, turned to face
+// its edge), its size, the pulse of the turn and the tile counting the combatants it leaves out.
 @use '../../../styles/tokens' as *;
 @use '../../../styles/mixins' as *;
 @use '../../../styles/initiative-cards' as *;
@@ -13,17 +16,8 @@ $banner-scale: var(--atlas-player-turn-banner-scale, 1);
   @return calc(#{$length} * #{$scale});
 }
 
-
-// The list's cards stand $surface-inset inside its border and apart, so a card's $radius-m corner is concentric with the
-// panel's $surface-radius; a row's cards are as wide as the column's
+// A row's cards are as wide as the column's: the column's width less its border and padding
 $card-width: calc(#{scaled(96px)} - 2 * #{$border-width-m} - 2 * #{$surface-inset});
-
-// What lies in a card's corners stands $surface-inset inside its border with this radius, concentric with the card's
-$card-corner-radius: initiative-corner-radius($border-width-s);
-
-@mixin round-name {
-  @include initiative-round-name(scaled($font-ui-small));
-}
 
 // A name standing at the start of its cards in a row across the top or bottom, read from the row's foot up
 @mixin row-label {
@@ -41,45 +35,25 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
 }
 
 .atlas-player-initiative {
-  // Its look is its surface's (below); the border keeps its place, so the cards stand where they did
-  border: $border-width-m solid transparent;
-  // Concentric with the cards: their corner, the padding around them and the border
-  @include atlas-panel-radius($surface-radius);
+  // The shared look's sizes follow the player view's initiative size
+  --atlas-initiative-scale: #{$scale};
   position: absolute;
   top: 50%;
   right: $spacing-m;
   transform: translateY(-50%);
+  // As wide as the GM's tracker at size 1
   width: scaled(96px);
   // Like the DM tracker, stays clear of the widget bar at the top right.
   max-height: calc(100% - 2 * 160px);
-  padding: $surface-inset;
-  gap: $surface-inset;
-  display: flex;
-  flex-direction: column;
   // While its height glides to its content's (`glideHeight`), the content keeps the place it has at rest: in the
   // middle of a column, at the foot of a row
   justify-content: center;
-  box-sizing: border-box;
   // Never clips: a theme's ivy hangs past its corners, and the list clips its own cards
   z-index: $z-base;
   color: var(--text-normal);
-  font-family: var(--font-interface);
   font-size: scaled($font-ui-small);
   font-variant-numeric: tabular-nums;
   -webkit-app-region: no-drag;
-
-  &__surface {
-    @include atlas-elevated-surface;
-    position: absolute;
-    inset: calc(-1 * #{$border-width-m});
-    z-index: -1;
-    border-radius: inherit;
-    pointer-events: none;
-  }
-
-  // The theme's corner ivy (`lendThemeIvy`): the whole vine behind the surface, which lies at -1
-  --atlas-theme-ivy-scale: calc(0.2 * #{$scale});
-  @include atlas-theme-ivy-corners(-2);
 
   // Across the top or bottom edge: the cards side by side, in the middle of the edge, as clear of the widgets as the
   // column is; they stand as a column down the right edge then, and the row leaves their room free on both sides
@@ -137,150 +111,18 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
     transform: rotate(-90deg) translate(50%, -100%);
   }
 
+  // The list is drawn anew on every change, so it scrolls to the turn at once: a smooth scroll would start from its
+  // top each time. Its cards glide on their own (`playTurnMotion`)
+  .atlas-initiative-panel__list {
+    scroll-behavior: auto;
+  }
+
   // While its height glides (`glideHeight`) the list keeps its content's height, standing past the box
-  &--gliding &__list {
+  &--gliding .atlas-initiative-panel__list {
     flex-shrink: 0;
   }
 
-  &__list {
-    @include initiative-gliding-list;
-    display: flex;
-    flex-direction: column;
-    gap: $surface-inset;
-    min-height: 0;
-    overflow-y: auto;
-    scrollbar-width: none;
-  }
-
-  // A side of a fight by sides: its combatants under its name
-  &__side {
-    display: flex;
-    flex-direction: column;
-    gap: $surface-inset;
-  }
-
-  // Where the list runs on into the next round: the round's name between two hairlines
-  &__next-round {
-    display: flex;
-    align-items: center;
-    gap: $spacing-xs;
-    color: var(--text-muted);
-
-    &::before,
-    &::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--background-modifier-border);
-    }
-  }
-
-  &__next-round-label {
-    @include round-name;
-  }
-
-  &__side-label {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: $spacing-xs;
-    text-align: center;
-    color: var(--text-muted);
-    font-size: scaled($font-ui-smaller);
-    font-weight: $font-weight-semibold;
-    overflow-wrap: anywhere;
-  }
-
-  // The side whose turn it is: its name and its combatants take the accent
-  &__side--active &__side-label {
-    color: var(--interactive-accent);
-  }
-
-  // The turn's border in the combatant's own colour (`--atlas-turn-color`), else the accent
-  &__side--active &__card:not(&__card--sitting-out) {
-    border-color: var(--atlas-turn-color, var(--interactive-accent));
-    box-shadow: inset 0 0 0 $border-width-s var(--atlas-turn-color, var(--interactive-accent));
-  }
-
-  // A square card: the token's art fills it (`__art`), red rising in it as the combatant loses hit points (`__wound`),
-  // the look-alike's badge in its top left; a card without art has its name at its foot
-  &__card {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    flex-shrink: 0;
-    aspect-ratio: 1;
-    // Square whatever it holds
-    min-height: 0;
-    box-sizing: border-box;
-    padding: $surface-inset;
-    background: var(--background-modifier-hover);
-    border: $border-width-s solid var(--background-modifier-border);
-    border-radius: $radius-m;
-
-    // The players' own side, framed in green, so the sides read at a glance
-    &--ally {
-      --atlas-side-color: var(--color-green);
-      border-color: initiative-side-line(var(--atlas-side-color));
-    }
-
-    &--active {
-      border-color: var(--atlas-turn-color, var(--interactive-accent));
-      box-shadow: inset 0 0 0 $border-width-s var(--atlas-turn-color, var(--interactive-accent));
-    }
-
-    // Does not act this round
-    &--sitting-out {
-      opacity: 0.45;
-    }
-
-    // Delayed its turn: waits below the order, without the card's fill until it acts
-    &--delayed {
-      background: transparent;
-    }
-
-    // Defeated, as the GM's card shows it: dimmed, with the skull over the art
-    &--defeated {
-      opacity: 0.45;
-      filter: grayscale(70%);
-    }
-  }
-
-  // The token's art, filling the card inside its border
-  &__art {
-    @include initiative-art($border-width-s);
-  }
-
-  // The life it lost, red rising in its art (`initiative-wound`)
-  & .atlas-initiative-wound {
-    @include initiative-wound;
-  }
-
-  &__art--framed {
-    @include initiative-art-framed;
-  }
-
-  &__card--art#{&}__card--ally &__art::after {
-    @include initiative-side-glow(var(--atlas-side-color), scaled(14px));
-  }
-
-  &__card--art#{&}__card--active &__art::after,
-  &__side--active &__card--art:not(&__card--sitting-out) &__art::after {
-    @include initiative-turn-ring(var(--atlas-turn-color, var(--interactive-accent)), scaled(14px));
-  }
-
-  // While someone holds the turn, everyone else's art steps back a little, so the turn stands out whatever its colour
-  &:has(&__card--active, &__side--active) &__card:not(&__card--active) &__art img {
-    filter: $initiative-art-dim;
-  }
-
-  &:has(&__side--active) &__side--active &__card:not(&__card--sitting-out) &__art img {
-    filter: none;
-  }
-
-  // The combatants a list that shows only so many leaves out, counted in a tile after it
+  // The combatants a list that shows only so many leaves out, counted in a tile at its end
   &__more {
     flex: 0 0 auto;
     display: flex;
@@ -300,95 +142,16 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
     font-variant-numeric: tabular-nums;
   }
 
-  &__defeated {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
-
-    svg {
-      width: $icon-l;
-      height: $icon-l;
-    }
-
-    // Over the art, which fills the card
-    &--over {
-      position: absolute;
-      inset: 0;
-      z-index: 1;
-      border-radius: inherit;
-      background: rgb(0 0 0 / 0.55);
-    }
-  }
-
-  // The number the token's badge shows the players, in the colours of the map's badge, in the top left: concentric with
-  // the card's corner
-  &__badge {
-    position: absolute;
-    top: $surface-inset;
-    left: $surface-inset;
-    min-width: scaled(18px);
-    height: scaled(18px);
-    padding: 0 $spacing-xs;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: $card-corner-radius;
-    background: #000;
-    border: 1.5px solid #555;
-    color: #fff;
-    font-size: scaled(11px);
-    font-weight: 700;
-    line-height: 1;
-    z-index: 2;
-  }
-
-  // The name of a card without art, at its foot
-  &__foot {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    gap: $spacing-xs;
-  }
-
-  // Two lines at most, so the card stays square
-  &__name {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    overflow: hidden;
-    overflow-wrap: anywhere;
-    text-align: center;
-    font-size: scaled($font-ui-smaller);
-    line-height: 1.2;
-  }
-
-  // On the art the name is light, on its shade
-  &__card--art &__name {
-    color: #fff;
-    text-shadow: 0 1px 2px rgb(0 0 0 / 0.8);
-  }
-
-  &__round {
-    @include round-name;
-    text-align: center;
-    color: $round-accent;
-  }
-
-  // The turn's border pulses: the accent ring fades in and out over the card's own
-  // border; only its opacity moves, so the pulse costs the compositor alone. As thick as the
-  // turn banner's flash (`turn-banner.scss`, drawn at the banner's size), so the two read as one
-  &--pulse &__card--active,
-  &--pulse &__side--active &__card:not(&__card--sitting-out) {
-    border-color: var(--background-modifier-border);
-    box-shadow: none;
-
+  // The turn's border pulses (the player view's pulse): the accent ring fades in and out over the card; only its
+  // opacity moves, so the pulse costs the compositor alone. As thick as the turn banner's flash (`turn-banner.scss`,
+  // drawn at the banner's size), so the two read as one
+  &--pulse .atlas-initiative-card--active,
+  &--pulse .atlas-initiative-side--active .atlas-initiative-card:not(.atlas-initiative-card--sitting-out) {
     &::after {
       content: '';
       position: absolute;
       inset: calc(-1 * #{$border-width-s});
+      z-index: 3;
       border: calc(2px * #{$banner-scale}) solid var(--atlas-turn-color, var(--interactive-accent));
       border-radius: inherit;
       box-shadow: inset 0 0 calc(#{$spacing-m} * #{$banner-scale}) var(--atlas-turn-color, var(--interactive-accent));
@@ -404,7 +167,7 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
 // names of rounds and sides read along the row's height at the start of their cards
 .atlas-player-initiative--top,
 .atlas-player-initiative--bottom {
-  .atlas-player-initiative__list {
+  .atlas-initiative-panel__list {
     flex: 1 1 auto;
     min-width: 0;
     flex-direction: row;
@@ -414,22 +177,30 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
   }
 
   // A side's cards after its name
-  .atlas-player-initiative__side {
+  .atlas-initiative-side {
     flex-flow: row nowrap;
     flex-shrink: 0;
     align-items: stretch;
   }
 
-  .atlas-player-initiative__side-label {
+  .atlas-initiative-side__label {
     @include row-label;
   }
 
-  .atlas-player-initiative__round {
+  // The round stands before the cards, in the row, without the column's shade
+  .atlas-initiative-panel__round {
     @include row-label;
+    position: static;
     order: -1;
+    height: auto;
+    padding: 0;
+    background: none;
+    border-radius: 0;
+    text-shadow: none;
+    color: $round-accent;
   }
 
-  .atlas-player-initiative__card {
+  .atlas-initiative-card {
     width: $card-width;
   }
 
@@ -453,7 +224,7 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
   }
 
   .atlas-player-initiative__round-label {
-    @include round-name;
+    @include initiative-round-name(scaled($font-ui-small));
     @include row-label;
     order: -1;
     color: var(--text-muted);
@@ -465,7 +236,7 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
   }
 
   // Where a list by sides runs on into the next round: the name between two lines, down the row's height
-  .atlas-player-initiative__next-round {
+  .atlas-initiative-round {
     flex-direction: column;
 
     &::before,
@@ -475,15 +246,10 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
     }
   }
 
-  .atlas-player-initiative__next-round-label {
+  .atlas-initiative-round__label {
     writing-mode: vertical-rl;
     transform: rotate(180deg);
   }
-}
-
-// The turn began: who holds it lights up once (`initiative-turn-flash`)
-.atlas-player-initiative__card--turn-flash {
-  @include initiative-turn-flash('.atlas-player-initiative__art', $border-width-s);
 }
 
 @keyframes atlas-player-initiative-pulse {
@@ -498,7 +264,7 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .atlas-player-initiative--pulse .atlas-player-initiative__card::after {
+  .atlas-player-initiative--pulse .atlas-initiative-card::after {
     animation: none;
   }
 }

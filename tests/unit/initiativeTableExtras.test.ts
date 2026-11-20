@@ -105,18 +105,18 @@ describe('the players\' list', () => {
 
   it('flashes the border of who holds a turn that just began, taken up where a redraw left it', () => {
     const panel = draw({ turnFlash: 300 }, [entry({ tokenId: 'a', isActive: true }), entry({ tokenId: 'b', order: 1 })]);
-    const flashing = [...panel.querySelectorAll<HTMLElement>('.atlas-player-initiative__card--turn-flash')];
+    const flashing = [...panel.querySelectorAll<HTMLElement>('.atlas-initiative-card--turn-flash')];
     expect(flashing).toHaveLength(1);
-    expect(flashing[0]?.classList.contains('atlas-player-initiative__card--active')).toBe(true);
+    expect(flashing[0]?.classList.contains('atlas-initiative-card--active')).toBe(true);
     expect(flashing[0]?.style.getPropertyValue('--atlas-turn-flash-delay')).toBe('-300ms');
-    expect(draw({}, [entry({ tokenId: 'a', isActive: true })]).querySelector('.atlas-player-initiative__card--turn-flash')).toBeNull();
+    expect(draw({}, [entry({ tokenId: 'a', isActive: true })]).querySelector('.atlas-initiative-card--turn-flash')).toBeNull();
   });
 
   it('shows a portrait\'s art without the transparent margins its image has, as the GM\'s card does', () => {
     const asked: string[] = [];
     const panel = draw({ artViewBox: (imagePath, apply) => { asked.push(imagePath); apply('inset(10.00% 20.00% 10.00% 20.00%)'); } }, [entry({ tokenId: 'a', imagePath: 'a.webp' })]);
     expect(asked).toEqual(['a.webp']);
-    expect(panel.querySelector<HTMLElement>('.atlas-player-initiative__art img')?.style.getPropertyValue('--atlas-art-view-box')).toBe('inset(10.00% 20.00% 10.00% 20.00%)');
+    expect(panel.querySelector<HTMLElement>('.atlas-initiative-card__art img')?.style.getPropertyValue('--atlas-art-view-box')).toBe('inset(10.00% 20.00% 10.00% 20.00%)');
   });
 
   it('keeps the size between 1 and the largest', () => {
@@ -128,8 +128,8 @@ describe('the players\' list', () => {
 
   it('names a card without a portrait, and draws no colour an older file gave it', () => {
     const panel = draw({}, [entry({ name: 'Enemy 1', color: '#dc2626' } as never), entry({ name: 'Goblin', tokenId: 'g', imagePath: 'g.webp', order: 1 })]);
-    const names = [...panel.querySelectorAll('.atlas-player-initiative__name')].map((name) => name.textContent);
+    const names = [...panel.querySelectorAll('.atlas-initiative-card__name')].map((name) => name.textContent);
     expect(names).toEqual(['Enemy 1']);
-    expect(panel.querySelector('.atlas-player-initiative__card--coloured')).toBeNull();
+    expect(panel.querySelector('.atlas-initiative-card--coloured')).toBeNull();
   });
 });

@@ -235,7 +235,7 @@ describe('the frames of sides', () => {
   it('holds the size of one card while empty, with no text in it', () => {
     state.initiative.entries = [];
     const { container } = render(<InitiativeTracker />);
-    const content = container.querySelector('.atlas-initiative-tracker__content')!;
+    const content = container.querySelector('.atlas-initiative-panel__list')!;
     expect(content.textContent).toBe('');
     expect(content.querySelectorAll('.atlas-initiative-card--placeholder')).toHaveLength(1);
   });

@@ -33,7 +33,7 @@ export function InitiativeNumber({ value, empty, editing, onStartEdit, onCommit,
     answeredRef.current = false;
     input.focus({ preventScroll: true });
     input.select();
-    const list = input.closest<HTMLElement>('.atlas-initiative-tracker__content');
+    const list = input.closest<HTMLElement>('.atlas-initiative-panel__list');
     const card = input.closest('.atlas-initiative-card');
     if (list && card) scrollWithin(list, card, 'nearest');
   }, [editing]);

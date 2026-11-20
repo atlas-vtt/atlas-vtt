@@ -99,7 +99,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
    */
   override refresh(): void {
     const before = new Map(this.drawnPanels.map((panel) => {
-      const list = panel.querySelector<HTMLElement>('.atlas-player-initiative__list');
+      const list = panel.querySelector<HTMLElement>('.atlas-initiative-panel__list');
       return [panel.dataset.edge, { height: panel.offsetHeight, list, places: snapshotTurn(list), ghosts: ghostsOf(list) }];
     }));
     super.refresh();
@@ -108,7 +108,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
       if (was === undefined) continue;
       // A list coming in has its own motion (`enterList`), which a glide would fight
       if (!this.arriving()) {
-        const list = panel.querySelector<HTMLElement>('.atlas-player-initiative__list');
+        const list = panel.querySelector<HTMLElement>('.atlas-initiative-panel__list');
         adoptGhosts(list, was.ghosts);
         playTurnMotion(list, was.places);
       }

@@ -15,6 +15,7 @@ import { layoutEdges, scrollWithin } from '../utils/scrollWithin';
 import { renderPlayerCard } from './playerInitiativeCard';
 import { renderRoundRow } from './playerInitiativeRounds';
 import { TURN_KEY_ATTRIBUTE } from '../initiative/motion/turnMotion';
+import '../initiative/initiative-panel.scss';
 import './player-initiative.scss';
 import { t } from '../i18n';
 
@@ -35,7 +36,7 @@ export interface EntryToken {
 }
 
 /** What the players' list shows of an initiative entry. */
-export type PlayerInitiativeEntry = Pick<InitiativeEntry, 'hiddenFromPlayers' | 'tokenId' | 'name' | 'initiative' | 'awaitingInitiative' | 'isActive' | 'imagePath' | 'order' | 'sitsOut' | 'delayed' | 'card'>;
+export type PlayerInitiativeEntry = Pick<InitiativeEntry, 'hiddenFromPlayers' | 'tokenId' | 'name' | 'initiative' | 'awaitingInitiative' | 'isActive' | 'imagePath' | 'order' | 'sitsOut' | 'delayed' | 'card'> & Partial<Pick<InitiativeEntry, 'isNPC'>>;
 
 /** A combatant the players see, with what the list shows of its token. */
 export interface Combatant {
@@ -235,14 +236,15 @@ export function playerSegments(list: PlayerInitiativeList, fromTurn: boolean, ma
 /** Draws the players' list into `container` and answers its panel; nothing (null) while it has no combatants. */
 export function renderPlayerInitiative(container: HTMLElement, list: PlayerInitiativeList, look: PlayerInitiativeLook): HTMLElement | null {
   if (!list.combatants.length) return null;
+  // The GM's tracker's panel (`initiative-panel.scss`), placed for the players
   const panel = container.createDiv({
-    cls: 'atlas-player-initiative',
+    cls: 'atlas-initiative-panel atlas-player-initiative',
     attr: { role: 'region', 'aria-label': t('playerInit.order') },
   });
   // Its edge, where a turn banner attached to it finds it (`turnBannerAnchors.ts`)
   panel.dataset.edge = look.dock ?? 'right';
   // The panel's own surface: a layer of its own, so a theme's ivy can lie behind it (`themeIvy.ts`)
-  panel.createDiv({ cls: 'atlas-player-initiative__surface', attr: { 'aria-hidden': 'true' } });
+  panel.createDiv({ cls: 'atlas-initiative-panel__surface', attr: { 'aria-hidden': 'true' } });
   // A list that faces its edge is the bottom's row, turned there
   const shape = look.faces ? 'bottom' : look.dock;
   if (shape && shape !== 'right') panel.addClass(`atlas-player-initiative--${shape}`);
@@ -254,7 +256,7 @@ export function renderPlayerInitiative(container: HTMLElement, list: PlayerIniti
     panel.style.setProperty('--atlas-pulse-phase', `${-Math.round(performance.now() % PULSE_MS)}ms`);
   }
   const fromTurn = look.fromTurn === true;
-  const entries = panel.createDiv({ cls: 'atlas-player-initiative__list' });
+  const entries = panel.createDiv({ cls: 'atlas-initiative-panel__list' });
   const segments = playerSegments(list, fromTurn, look.maxCards);
   // A row in turn order during a fight: each round's cards over its name, which move on with them
   const byRounds = across && list.isActive && !list.bySides;
@@ -264,20 +266,22 @@ export function renderPlayerInitiative(container: HTMLElement, list: PlayerIniti
     if (!list.bySides) entries.setAttribute('role', 'list');
     for (const segment of segments) renderSegment(entries, segment, list, look);
   }
-  renderMore(panel, list, segments);
+  renderMore(entries, list, segments);
+  // A column fades the cards scrolled past its top under a shade, as the GM's tracker does; a row scrolls sideways
+  if (!across) panel.createDiv({ cls: 'atlas-initiative-panel__top-shade', attr: { 'aria-hidden': 'true' } });
   if (list.isActive && look.turnFlash !== undefined) {
-    const holders = panel.querySelectorAll<HTMLElement>('.atlas-player-initiative__card--active, .atlas-player-initiative__side--active .atlas-player-initiative__card');
+    const holders = panel.querySelectorAll<HTMLElement>('.atlas-initiative-card--active, .atlas-initiative-side--active .atlas-initiative-card');
     for (const card of holders) {
-      card.addClass('atlas-player-initiative__card--turn-flash');
+      card.addClass('atlas-initiative-card--turn-flash');
       card.style.setProperty('--atlas-turn-flash-delay', `${-Math.round(look.turnFlash)}ms`);
     }
   }
   if (list.isActive) {
-    if (!byRounds) panel.createDiv({ cls: 'atlas-player-initiative__round', text: t('playerInit.round', { round: list.round }) });
+    if (!byRounds) panel.createDiv({ cls: 'atlas-initiative-panel__round', text: t('playerInit.round', { round: list.round }) });
     // The list is drawn anew on every change: show the turn and the next two visible combatants,
     // or the top of a list that starts at the turn
-    const side = panel.querySelector('.atlas-player-initiative__side--active');
-    const card = panel.querySelector('.atlas-player-initiative__card--active');
+    const side = panel.querySelector('.atlas-initiative-side--active');
+    const card = panel.querySelector('.atlas-initiative-card--active');
     const axis = across ? 'x' : 'y';
     // A turned list scrolls along its own axis: a row facing its side, and the left column turned around
     const edgesOf = look.faces || look.dock === 'left' ? ([layoutEdges] as const) : ([] as const);
@@ -288,38 +292,37 @@ export function renderPlayerInitiative(container: HTMLElement, list: PlayerIniti
   return panel;
 }
 
-/** Where the list shows only so many (`maxCards`), a tile after it counts the combatants it leaves out. */
-function renderMore(panel: HTMLElement, list: PlayerInitiativeList, segments: readonly ListSegment<Combatant>[]): void {
+/** Where the list shows only so many (`maxCards`), a tile at its end counts the combatants it leaves out. */
+function renderMore(entries: HTMLElement, list: PlayerInitiativeList, segments: readonly ListSegment<Combatant>[]): void {
   const acting = list.combatants.filter(({ entry }) => !entry.delayed).length;
   const left = acting - shownItems(segments).filter(({ entry }) => !entry.delayed).length;
   if (left <= 0) return;
-  panel.createDiv({ cls: 'atlas-player-initiative__more', text: `+${left}`, attr: { role: 'note', 'aria-label': t('playerInit.more', { count: left }) } });
+  entries.createDiv({ cls: 'atlas-player-initiative__more', text: `+${left}`, attr: { role: 'note', 'aria-label': t('playerInit.more', { count: left }) } });
 }
 
 function renderSegment(entries: HTMLElement, segment: ListSegment<Combatant>, list: PlayerInitiativeList, look: PlayerInitiativeLook): void {
   if (segment.kind === 'round') {
     const label = t('playerInit.round', { round: segment.round });
-    entries.createDiv({ cls: 'atlas-player-initiative__next-round', attr: { role: 'separator', 'aria-label': label, [TURN_KEY_ATTRIBUTE]: `round:${segment.round}` } })
-      .createSpan({ cls: 'atlas-player-initiative__next-round-label', text: label, attr: { 'aria-hidden': 'true' } });
+    entries.createDiv({ cls: 'atlas-initiative-round', attr: { role: 'separator', 'aria-label': label, [TURN_KEY_ATTRIBUTE]: `round:${segment.round}` } })
+      .createSpan({ cls: 'atlas-initiative-round__label', text: label, attr: { 'aria-hidden': 'true' } });
     return;
   }
   if (segment.side) {
     // A side's roll, like every initiative number, stays on the GM's screen
     const { name } = segment.side;
-    const group = entries.createDiv({ cls: 'atlas-player-initiative__side', attr: { role: 'list', 'aria-label': name } });
+    const group = entries.createDiv({ cls: 'atlas-initiative-side', attr: { role: 'list', 'aria-label': name } });
     if (segment.active) {
-      group.addClass('atlas-player-initiative__side--active');
+      group.addClass('atlas-initiative-side--active');
       group.setAttribute('aria-current', 'true');
     }
-    const heading = group.createDiv({ cls: 'atlas-player-initiative__side-label', attr: { 'aria-hidden': 'true', [TURN_KEY_ATTRIBUTE]: `side:${name}` } });
-    heading.createSpan({ text: name });
+    group.createDiv({ cls: 'atlas-initiative-side__label', text: name, attr: { 'aria-hidden': 'true', [TURN_KEY_ATTRIBUTE]: `side:${name}` } });
     // By sides the turn is the side's
     for (const member of segment.items) renderPlayerCard(group, member, look, false);
     return;
   }
   if (segment.delayed) {
-    const group = entries.createDiv({ cls: 'atlas-player-initiative__side', attr: { role: 'list', 'aria-label': t('playerInit.delayed') } });
-    group.createDiv({ cls: 'atlas-player-initiative__side-label', text: t('playerInit.delayed'), attr: { 'aria-hidden': 'true', [TURN_KEY_ATTRIBUTE]: 'delayed' } });
+    const group = entries.createDiv({ cls: 'atlas-initiative-side atlas-initiative-side--delayed', attr: { role: 'list', 'aria-label': t('playerInit.delayed') } });
+    group.createDiv({ cls: 'atlas-initiative-side__label', text: t('playerInit.delayed'), attr: { 'aria-hidden': 'true', [TURN_KEY_ATTRIBUTE]: 'delayed' } });
     for (const combatant of segment.items) renderPlayerCard(group, combatant, look, false);
     return;
   }

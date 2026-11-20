@@ -7,23 +7,24 @@ import { t } from '../i18n';
 import type { Combatant, PlayerInitiativeLook } from './playerInitiativeList';
 
 /**
- * One combatant of the players' list, as Baldur's Gate 3 draws its turn order: a card filled with its token's art, red
- * rising in it as it loses hit points (where players see them), and the number its badge shows players. Its initiative
- * (number or card dealt) stays on the GM's screen: players read the order from the list itself. A card without art shows
- * the name instead. A token whose art brings its own frame (no ring on the map) is cropped closer, so the frame falls
+ * One combatant of the players' list, drawn as the GM's tracker draws a tile (`InitiativeCard`, `initiative-panel.scss`)
+ * without what is the GM's: a card filled with its token's art, red rising in it as it loses hit points (where players
+ * see them), and the number its badge shows players. Its initiative (number or card dealt) stays on the GM's screen:
+ * players read the order from the list itself. A card without art shows its name where the players may read it, else
+ * the GM's stand-in. A token whose art brings its own frame (no ring on the map) is cropped closer, so the frame falls
  * outside the card. `combatActive` marks the combatant whose turn it is.
  */
 export function renderPlayerCard(parent: HTMLElement, { entry, token }: Combatant, look: PlayerInitiativeLook, combatActive: boolean): void {
   // Marked by its combatant, so it glides to its new place as the turn passes (`turnMotion.ts`)
-  const card = parent.createDiv({ cls: 'atlas-player-initiative__card', attr: { role: 'listitem', [TURN_KEY_ATTRIBUTE]: entry.tokenId ?? `name:${entry.name}` } });
+  const card = parent.createDiv({ cls: 'atlas-initiative-card atlas-initiative-card--tile', attr: { role: 'listitem', [TURN_KEY_ATTRIBUTE]: entry.tokenId ?? `name:${entry.name}` } });
   if (combatActive && entry.isActive) {
-    card.addClass('atlas-player-initiative__card--active');
+    card.addClass('atlas-initiative-card--active');
     card.setAttribute('aria-current', 'true');
   }
-  if (entry.sitsOut) card.addClass('atlas-player-initiative__card--sitting-out');
-  if (entry.delayed) card.addClass('atlas-player-initiative__card--delayed');
+  if (entry.sitsOut) card.addClass('atlas-initiative-card--sitting-out');
+  if (entry.delayed) card.addClass('atlas-initiative-card--delayed');
   // The players' own side is framed, so the sides read at a glance across the table
-  if (token.side === 'players') card.addClass('atlas-player-initiative__card--ally');
+  if (token.side === 'players') card.addClass('atlas-initiative-card--ally');
   // Its turn flashes in its token's ring colour
   const flash = turnColor(token);
   if (flash) card.style.setProperty('--atlas-turn-color', flash);
@@ -36,30 +37,27 @@ export function renderPlayerCard(parent: HTMLElement, { entry, token }: Combatan
   // Its art alone, where the image has transparent margins (a token cropped zoomed out), as the GM's card shows it
   const img = art?.querySelector('img');
   if (img) look.artViewBox?.(entry.imagePath, (viewBox) => img.style.setProperty('--atlas-art-view-box', viewBox));
-  const badge = entry.tokenId === undefined ? null : look.badgeNumber?.(entry.tokenId) ?? null;
-  if (badge !== null) card.createSpan({ cls: 'atlas-player-initiative__badge', text: String(badge) });
-  if (token.defeated) renderDefeated(card, art !== null);
   // The art says who it is; a card without art (an enemy added by name, a player without a picture) has nothing but
-  // its name to tell it apart, where the GM shows it. Conditions and resources show on the tokens, so the card leaves them out
-  if (art) return;
-  const shownName = name ?? (entry.tokenId === undefined ? entry.name : null);
-  if (shownName !== null) card.createDiv({ cls: 'atlas-player-initiative__foot' }).createSpan({ cls: 'atlas-player-initiative__name', text: shownName });
+  // its name to tell it apart, where the GM shows it, else the GM's stand-in. Conditions and resources show on the tokens
+  const shownName = art ? null : name ?? (entry.tokenId === undefined ? entry.name : null);
+  if (!art && shownName === null) setIcon(card.createDiv({ cls: 'atlas-initiative-card__avatar' }), entry.isNPC ? 'bot' : 'user');
+  if (token.defeated) renderDefeated(card);
+  const badge = entry.tokenId === undefined ? null : look.badgeNumber?.(entry.tokenId) ?? null;
+  if (badge !== null) card.createSpan({ cls: 'atlas-initiative-card__marks' }).createSpan({ cls: 'atlas-initiative-card__instance-badge', text: String(badge) });
+  if (shownName !== null) card.createSpan({ cls: 'atlas-initiative-card__name', text: shownName });
 }
 
 /** The token's art filling the card and the red of the life it lost rising in it. */
 function renderArt(card: HTMLElement, src: string, alt: string, ringed: boolean, wound: number | null): HTMLElement {
-  card.addClass('atlas-player-initiative__card--art');
-  const art = card.createDiv({ cls: 'atlas-player-initiative__art' });
-  if (!ringed) art.addClass('atlas-player-initiative__art--framed');
+  const art = card.createDiv({ cls: 'atlas-initiative-card__art' });
+  if (!ringed) art.addClass('atlas-initiative-card__art--framed');
   art.createEl('img', { attr: { src, alt, draggable: 'false', decoding: 'async' } });
   if (wound !== null) art.createDiv({ cls: 'atlas-initiative-wound', attr: { 'aria-hidden': 'true' } }).style.setProperty('--atlas-wound', String(wound));
   return art;
 }
 
-/** The GM card's skull, over a defeated combatant's portrait (in its place without one); the card is dimmed with it. */
-function renderDefeated(card: HTMLElement, overPortrait: boolean): void {
-  card.addClass('atlas-player-initiative__card--defeated');
-  const mark = card.createSpan({ cls: 'atlas-player-initiative__defeated', attr: { role: 'img', 'aria-label': t('playerInit.defeated') } });
-  if (overPortrait) mark.addClass('atlas-player-initiative__defeated--over');
-  setIcon(mark, 'skull');
+/** The GM card's skull over a defeated combatant; the card is dimmed with it. */
+function renderDefeated(card: HTMLElement): void {
+  card.addClass('atlas-initiative-card--defeated');
+  setIcon(card.createDiv({ cls: 'atlas-initiative-card__defeated-overlay', attr: { role: 'img', 'aria-label': t('playerInit.defeated') } }), 'skull');
 }

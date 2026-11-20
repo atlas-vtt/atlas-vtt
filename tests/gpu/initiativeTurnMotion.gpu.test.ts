@@ -55,14 +55,14 @@ function finishAll(): void {
 
 /** The players' list at `edge` with the turn at `turn`, drawn anew as `PlayerInitiativePanel.refresh` does, gliding from the last. */
 function drawPlayers(host: HTMLElement, turn: number, edge: PlayersListEdge): HTMLElement {
-  const old = host.querySelector<HTMLElement>('.atlas-player-initiative__list');
+  const old = host.querySelector<HTMLElement>('.atlas-initiative-panel__list');
   const places = snapshotTurn(old);
   const ghosts = ghostsOf(old);
   host.empty();
   const entries: PlayerInitiativeEntry[] = [0, 1, 2, 3, 4].map((index) => entryOf(index, turn));
   const list = playerInitiativeList({ entries, isActive: true, round: 2 }, (_, index) => entryTokenOf(creature(index), [], []), { mode: 'turn-order', roll: '1d20', firstSide: 'players' }, true);
   renderPlayerInitiative(host, list, { showNames: false, mapShowsNameplates: true, portraitSrc: (src) => src, fromTurn: true, dock: edge });
-  const fresh = host.querySelector<HTMLElement>('.atlas-player-initiative__list')!;
+  const fresh = host.querySelector<HTMLElement>('.atlas-initiative-panel__list')!;
   adoptGhosts(fresh, ghosts);
   playTurnMotion(fresh, places);
   return fresh;
@@ -83,7 +83,7 @@ describe('the turn passing on and back', () => {
       drawPlayers(host, 1, edge);
       // In the list's frame: a row's panel may change its width by a few pixels as its rounds change
       const inList = (element: Element): { left: number; top: number } => {
-        const list = box(host.querySelector('.atlas-player-initiative__list')!);
+        const list = box(host.querySelector('.atlas-initiative-panel__list')!);
         return { left: box(element).left - list.left, top: box(element).top - list.top };
       };
       const at = (key: string): { left: number; top: number } => inList(host.querySelector(`[data-turn-key="${key}"]`)!);

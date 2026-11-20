@@ -108,7 +108,7 @@ describe('the tracker\'s controls', () => {
     const { container, rerender } = render(<InitiativeTracker />);
     expect(container.querySelector('.atlas-initiative-tracker__float--top')).not.toBeNull();
     expect(container.querySelector('.atlas-initiative-tracker__float--bottom')).toBeNull();
-    expect(container.querySelector('.atlas-initiative-tracker__round')).toBeNull();
+    expect(container.querySelector('.atlas-initiative-panel__round')).toBeNull();
     fight();
     rerender(<InitiativeTracker />);
     expect(container.querySelectorAll('.atlas-initiative-tracker__float--bottom button')).toHaveLength(2);
@@ -117,7 +117,7 @@ describe('the tracker\'s controls', () => {
   it('shows the round at the list\'s foot in the players\' words', () => {
     fight();
     const { container } = render(<InitiativeTracker />);
-    expect(container.querySelector('.atlas-initiative-tracker__round')?.textContent).toBe('Round 2');
+    expect(container.querySelector('.atlas-initiative-panel__round')?.textContent).toBe('Round 2');
   });
 });
 

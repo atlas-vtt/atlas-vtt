@@ -33,9 +33,9 @@ function draw(active: number, hidden: number[] = []): { list: HTMLElement; cards
   );
   renderPlayerInitiative(host, list, { showNames: true, mapShowsNameplates: true, portraitSrc: (src) => src });
   return {
-    list: host.querySelector<HTMLElement>('.atlas-player-initiative__list')!,
-    cards: [...host.querySelectorAll<HTMLElement>('.atlas-player-initiative__card')],
-    current: host.querySelector<HTMLElement>('.atlas-player-initiative__card--active'),
+    list: host.querySelector<HTMLElement>('.atlas-initiative-panel__list')!,
+    cards: [...host.querySelectorAll<HTMLElement>('.atlas-initiative-card')],
+    current: host.querySelector<HTMLElement>('.atlas-initiative-card--active'),
   };
 }
 
@@ -57,7 +57,10 @@ describe('the player initiative list shows who is on deck', () => {
     host.style.height = '600px';
     const { list, cards, current } = draw(6);
     expectVisible(list, current!);
-    expect(current!.getBoundingClientRect().top).toBeCloseTo(list.getBoundingClientRect().top, 0);
+    // Clear of the shade over the list's top, as on the GM's tracker
+    const shade = parseFloat(getComputedStyle(list).scrollPaddingTop);
+    expect(shade).toBeGreaterThan(0);
+    expect(current!.getBoundingClientRect().top).toBeCloseTo(list.getBoundingClientRect().top + shade, 0);
     expect(cards[8]!.getBoundingClientRect().bottom).toBeGreaterThan(list.getBoundingClientRect().bottom);
   });
 
@@ -65,8 +68,9 @@ describe('the player initiative list shows who is on deck', () => {
     const { list, cards, current } = draw(5, [6, 7]);
     expect(list.textContent).not.toContain('Combatant 6');
     expect(list.textContent).not.toContain('Combatant 7');
-    expect(cards[6]!.textContent).toContain('Combatant 8');
-    expect(cards[7]!.textContent).toContain('Combatant 9');
+    // The art names a combatant
+    expect(cards[6]!.querySelector('img')?.alt).toBe('Combatant 8');
+    expect(cards[7]!.querySelector('img')?.alt).toBe('Combatant 9');
     for (const card of [current!, cards[6]!, cards[7]!]) expectVisible(list, card);
   });
 
@@ -83,7 +87,7 @@ describe('the player initiative list shows who is on deck', () => {
     const first = draw(0);
     for (const card of first.cards.slice(0, 3)) expectVisible(first.list, card);
     expect(first.list.scrollTop).toBe(0);
-    expect(first.cards.map((card) => card.querySelector('.atlas-player-initiative__name')?.textContent))
+    expect(first.cards.map((card) => card.querySelector('img')?.alt))
       .toEqual(Array.from({ length: 12 }, (_, index) => `Combatant ${index}`));
   });
 });

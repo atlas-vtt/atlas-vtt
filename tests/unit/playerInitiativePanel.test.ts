@@ -78,18 +78,18 @@ describe('the players\' initiative list', () => {
     expect(slides()[0]!.keyframes[0]!.translate).toMatch(/^\d+px 0px$/);
     expect(slides()[0]!.timing.delay).toBeGreaterThan(900);
     // Its cards follow it in
-    const cards = motions.filter(({ target }) => target.hasClass('atlas-player-initiative__card'));
+    const cards = motions.filter(({ target }) => target.hasClass('atlas-initiative-card'));
     expect(cards.length).toBeGreaterThan(0);
     expect(cards[0]!.timing.delay!).toBeGreaterThan(slides()[0]!.timing.delay!);
 
     // The last turn's flash, as the list drew it
-    container.querySelector('.atlas-player-initiative__card')!.addClass('atlas-player-initiative__card--turn-flash');
+    container.querySelector('.atlas-initiative-card')!.addClass('atlas-initiative-card--turn-flash');
 
     made.store.getState().endCombat();
     const leaving = container.querySelector('.atlas-player-initiative--leaving');
     expect(leaving).not.toBeNull();
     // Put back into every drawing, it plays it no more
-    expect(leaving!.querySelector('.atlas-player-initiative__card--turn-flash')).toBeNull();
+    expect(leaving!.querySelector('.atlas-initiative-card--turn-flash')).toBeNull();
     const exit = slides()[1]!;
     expect(exit.keyframes[1]!.translate).toMatch(/^\d+px 0px$/);
     expect(exit.keyframes[1]!.opacity).toBe(0);
