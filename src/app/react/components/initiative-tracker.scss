@@ -146,12 +146,12 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   border-radius: 0 0 var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius);
   background: linear-gradient(
     to top,
-    color-mix(in srgb, var(--background-primary) 96%, transparent),
-    color-mix(in srgb, var(--background-primary) 88%, transparent) 22%,
-    color-mix(in srgb, var(--background-primary) 70%, transparent) 40%,
-    color-mix(in srgb, var(--background-primary) 44%, transparent) 58%,
-    color-mix(in srgb, var(--background-primary) 20%, transparent) 76%,
-    color-mix(in srgb, var(--background-primary) 6%, transparent) 90%,
+    var(--background-primary),
+    color-mix(in srgb, var(--background-primary) 98%, transparent) 22%,
+    color-mix(in srgb, var(--background-primary) 80%, transparent) 40%,
+    color-mix(in srgb, var(--background-primary) 52%, transparent) 58%,
+    color-mix(in srgb, var(--background-primary) 26%, transparent) 76%,
+    color-mix(in srgb, var(--background-primary) 8%, transparent) 90%,
     transparent
   );
   text-align: center;
