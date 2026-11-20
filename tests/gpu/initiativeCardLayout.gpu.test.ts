@@ -258,7 +258,7 @@ describe('the GM\'s initiative cards', () => {
     }
   });
 
-  it('show a tile\'s number only while the pointer is near the tracker, growing in down the list and leaving together', async () => {
+  it('show a tile\'s number only while the pointer is near the tracker, all at once', async () => {
     // Measured as the GM meets them: without the numbers held shown
     style.textContent = THEME + css;
     try {
@@ -274,13 +274,12 @@ describe('the GM\'s initiative cards', () => {
       await userEvent.hover(tracker);
       await expect.poll(opacities).toEqual(['1', '1']);
       expect(getComputedStyle(numbers[0]!).pointerEvents).toBe('auto');
-      // A wave down the list: each card's number a step after the one above
+      // All at once, never one after another
       const delay = (number: HTMLElement): number => parseFloat(getComputedStyle(number).transitionDelay.split(',')[0]!);
-      expect(delay(numbers[1]!)).toBeGreaterThan(delay(numbers[0]!));
+      expect(numbers.map(delay)).toEqual([0, 0]);
 
       await userEvent.hover(document.body, { position: { x: 1, y: 1 } });
       await expect.poll(opacities).toEqual(['0', '0']);
-      // Leaving, they go together
       expect(numbers.map(delay)).toEqual([0, 0]);
     } finally {
       style.textContent = THEME + css + SHOWN_NUMBERS;
