@@ -53,7 +53,9 @@ $plate-radius: initiative-corner-radius($line-border);
       // Through the faces, which sit high in most token art
       object-position: 50% 30%;
       opacity: 0.6;
-      mask-image: linear-gradient(to right, transparent, #000 60%);
+      // Darker, and gone well before the name: it fades in slowly and is whole only at the right end
+      filter: brightness(0.7);
+      mask-image: linear-gradient(to right, transparent 15%, rgb(0 0 0 / 0.3) 55%, #000);
     }
 
     // The turn's ring and glow, which the art would cover on the card itself
