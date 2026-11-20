@@ -807,16 +807,21 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
 
 // Hover, press, a selected token and Mod's statblock preview ring the card's edge (`--atlas-card-ring`). The art covers
 // the card's own border, fill and inset shadow, so the ring is a layer above it, `::after`, which the drop indicator
-// takes while a dragged card would land below this one
+// takes while a dragged card would land below this one. The ring stands out from the panel around the card: white on a
+// dark theme's, dark on a light theme's (the compact line is a dark surface in both and keeps white,
+// `initiative-tracker-compact.scss`)
 .atlas-initiative-card {
   --atlas-card-ring: transparent;
+  --atlas-card-ring-hover: rgb(255 255 255 / 0.45);
+  --atlas-card-ring-press: rgb(255 255 255 / 0.7);
+  --atlas-card-ring-preview: rgb(255 255 255 / 0.9);
 
   &:hover {
-    --atlas-card-ring: rgb(255 255 255 / 0.45);
+    --atlas-card-ring: var(--atlas-card-ring-hover);
   }
 
   &:active {
-    --atlas-card-ring: rgb(255 255 255 / 0.7);
+    --atlas-card-ring: var(--atlas-card-ring-press);
   }
 
   // Its token is selected on the map: the accent, as long as it stays selected
@@ -826,7 +831,7 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
 
   // Mod held over it: its statblock shows
   &.atlas-initiative-card--preview-hover {
-    --atlas-card-ring: rgb(255 255 255 / 0.9);
+    --atlas-card-ring: var(--atlas-card-ring-preview);
   }
 
   &:not(.atlas-initiative-card--drop-below)::after {
@@ -844,6 +849,12 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
   &:is(:hover, :active, .atlas-initiative-card--selected, .atlas-initiative-card--preview-hover)::after {
     transition-duration: 0s;
   }
+}
+
+.theme-light .atlas-initiative-card {
+  --atlas-card-ring-hover: rgb(0 0 0 / 0.35);
+  --atlas-card-ring-press: rgb(0 0 0 / 0.55);
+  --atlas-card-ring-preview: rgb(0 0 0 / 0.8);
 }
 
 // Note: Statblock preview styles are in statblock-hover-preview.scss (shared component)

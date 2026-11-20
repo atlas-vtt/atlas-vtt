@@ -202,6 +202,9 @@ $plate-height: 24px;
   --text-muted: rgb(236 230 218 / 0.72);
   --text-faint: rgb(236 230 218 / 0.45);
   --mono-100: #fff;
+  --atlas-card-ring-hover: rgb(255 255 255 / 0.45);
+  --atlas-card-ring-press: rgb(255 255 255 / 0.7);
+  --atlas-card-ring-preview: rgb(255 255 255 / 0.9);
   color-scheme: dark;
 
   // A delayed card has no fill of its own, which would show the light panel through
