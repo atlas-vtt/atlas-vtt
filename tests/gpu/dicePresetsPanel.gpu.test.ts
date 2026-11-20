@@ -16,7 +16,7 @@ const THEME = `
     --background-modifier-border: #363636; --background-modifier-hover: rgba(255, 255, 255, 0.075); --background-modifier-form-field: #2a2a2a;
     --text-normal: #dadada; --text-muted: #b3b3b3; --text-faint: #777; --text-accent: #a68af9; --text-error: #fb464c; --interactive-accent: #7f6df2;
     --radius-s: 4px; --radius-m: 8px; --radius-l: 12px; --radius-xl: 16px; --font-ui-smaller: 12px; --font-ui-small: 13px; --font-ui-medium: 15px;
-    --font-ui-large: 20px; --input-height: 30px; --mono-100: #fff;
+    --font-ui-large: 20px; --input-height: 30px; --mono-100: #fff; --mono-rgb-100: 255, 255, 255;
     --shadow-l: 0px 1.8px 7.3px rgba(0, 0, 0, 0.071), 0px 6.3px 24.7px rgba(0, 0, 0, 0.112), 0px 30px 90px rgba(0, 0, 0, 0.2); }
 `;
 const h = React.createElement;
@@ -150,7 +150,7 @@ describe('the saved rolls beside the dice tray', () => {
     const first = cards[0]!;
     const before = first.querySelector('.atlas-dice-presets__dice')!.getBoundingClientRect().left;
     const point = centreOf(first.querySelector('.atlas-dice-presets__name')!);
-    await mouse.move(point.x, point.y);
+    await mouse.hover(point.x, point.y);
     await settle(300);
     expect(getComputedStyle(first.querySelector('.atlas-dice-presets__more')!).display).toBe('flex');
     expect(first.querySelector('.atlas-dice-presets__dice')!.getBoundingClientRect().left).toBeCloseTo(before, 1);
@@ -158,5 +158,31 @@ describe('the saved rolls beside the dice tray', () => {
     expect(cards[4]!.querySelectorAll('.atlas-die-still')).toHaveLength(2);
     expect(cards[1]!.querySelectorAll('.atlas-die-still')).toHaveLength(1);
     await page.screenshot({ path: '__screenshots__/dice/saved-roll-dice.png', element: document.querySelector<HTMLElement>('.atlas-dice-presets')! });
+  });
+
+  it('presses a saved roll\'s whole card where its roll is pressed, and only the ⋯ where the ⋯ is', async () => {
+    render(h(Scene));
+    await settle();
+    const card = document.querySelector<HTMLElement>('.atlas-dice-presets__item')!;
+    const roll = card.querySelector<HTMLElement>('.atlas-dice-presets__roll')!;
+    const tint = (element: Element): string => getComputedStyle(element).backgroundImage;
+
+    const name = centreOf(card.querySelector('.atlas-dice-presets__name')!);
+    await mouse.hover(name.x, name.y);
+    await mouse.down(name.x, name.y);
+    expect(tint(card)).toContain('gradient');
+    expect(tint(roll)).toBe('none');
+    await mouse.up(name.x, name.y);
+    expect(tint(card)).toBe('none');
+
+    await mouse.hover(name.x, name.y);
+    await settle(200);
+    const more = card.querySelector<HTMLElement>('.atlas-dice-presets__more')!;
+    const dots = centreOf(more);
+    await mouse.hover(dots.x, dots.y);
+    await mouse.down(dots.x, dots.y);
+    expect(tint(more)).toContain('gradient');
+    expect(tint(card)).toBe('none');
+    await mouse.up(dots.x, dots.y);
   });
 });

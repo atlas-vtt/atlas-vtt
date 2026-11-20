@@ -600,9 +600,10 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   background: transparent;
   cursor: text;
 
+  // A click edits it: the border takes a hint of the accent the field is framed in while typed
   &:hover {
     background: var(--background-modifier-hover);
-    border-color: var(--background-modifier-border);
+    border-color: color-mix(in srgb, var(--interactive-accent) 60%, var(--background-modifier-border));
   }
 
   @include atlas-focus-ring;
@@ -615,11 +616,29 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   }
 }
 
+// Typed in place, the field keeps the plate's size and colours (each layout sets them for both) and only gains the
+// accent frame. The `:focus` rules outrank Obsidian's own for text inputs, which would make it a translucent form field.
 .atlas-initiative-card .atlas-initiative-card__initiative-input {
   width: 48px;
-  background: var(--background-modifier-form-field);
-  border-color: var(--interactive-accent);
-  outline: none;
+
+  &,
+  &:focus {
+    background: var(--background-modifier-form-field);
+  }
+
+  @supports (field-sizing: content) {
+    width: auto;
+    field-sizing: content;
+  }
+
+  &,
+  &:hover,
+  &:focus,
+  &:focus-visible {
+    border-color: var(--interactive-accent);
+    outline: none;
+    box-shadow: 0 0 0 1px var(--interactive-accent);
+  }
 }
 
 // The combatant's name, where the GM chose to see names
@@ -739,12 +758,20 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
     border-radius: $tile-corner-radius;
   }
 
+  .atlas-initiative-card__initiative:not(.atlas-initiative-card__initiative--empty),
+  .atlas-initiative-card__initiative-input:not(.atlas-initiative-card__initiative-input--empty) {
+    &,
+    &:focus {
+      background: var(--background-primary);
+    }
+  }
+
   .atlas-initiative-card__initiative:not(.atlas-initiative-card__initiative--empty) {
-    background: var(--background-primary);
     border-color: var(--background-modifier-border);
 
     &:hover {
       background: var(--background-secondary);
+      border-color: color-mix(in srgb, var(--interactive-accent) 60%, var(--background-modifier-border));
     }
   }
 

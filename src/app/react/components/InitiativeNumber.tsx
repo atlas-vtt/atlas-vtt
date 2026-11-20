@@ -81,7 +81,7 @@ export function InitiativeNumber({ value, empty, editing, onStartEdit, onCommit,
       type="text"
       inputMode="numeric"
       autoComplete="off"
-      className="atlas-initiative-card__initiative-input"
+      className={`atlas-initiative-card__initiative-input${empty ? ' atlas-initiative-card__initiative-input--empty' : ''}`}
       aria-label={t('initiative.total')}
       defaultValue={empty ? '' : String(value)}
       onKeyDown={onKeyDown}

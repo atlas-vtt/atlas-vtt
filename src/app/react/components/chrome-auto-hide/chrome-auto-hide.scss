@@ -18,9 +18,15 @@ $chrome-hide-grace-ms: 160ms;
 
 $chrome-units: '.atlas-bottom-toolbar-row__lead, .atlas-bottom-toolbar-row__start, .atlas-main-toolbar, .atlas-bottom-toolbar-row__options, .atlas-bottom-toolbar-row__end, .atlas-level-switcher';
 
-// Away from the pointer, unless one of its menus or panels is open, whatever opened it (a hotkey too),
-// or the tool just changed (`data-peek`, the toolbar alone).
-$chrome-hidden: ":is(#{$chrome-units}):not([data-near], [data-peek]):not(:has([aria-expanded='true'], [data-state='open']))";
+// A menu or panel open in a bar, whatever opened it (a hotkey too): the bar stays while it is.
+$chrome-open: "[aria-expanded='true'], [data-state='open']";
+$chrome-toolbar: '.atlas-main-toolbar, .atlas-bottom-toolbar-row__options';
+// Away from the pointer (`data-near`) and not just after a tool change (`data-peek`, the toolbar
+// alone), and nothing open in it. The toolbar and the active tool's bars above it stay together,
+// so a menu open in either keeps both.
+$chrome-hidden:
+  ":is(.atlas-bottom-toolbar-row__lead, .atlas-bottom-toolbar-row__start, .atlas-bottom-toolbar-row__end, .atlas-level-switcher):not([data-near], [data-peek]):not(:has(#{$chrome-open})), " +
+  ".atlas-bottom-toolbar-row:not(:has(> :is(#{$chrome-toolbar}) :is(#{$chrome-open}))) > :is(#{$chrome-toolbar}):not([data-near], [data-peek])";
 
 @media (any-hover: hover) {
   .atlas-ui[data-chrome-auto-hide] {

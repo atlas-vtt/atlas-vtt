@@ -115,12 +115,20 @@ $plate-height: 24px;
     border-radius: $plate-radius;
   }
 
+  .atlas-initiative-card__initiative:not(.atlas-initiative-card__initiative--empty),
+  .atlas-initiative-card__initiative-input:not(.atlas-initiative-card__initiative-input--empty) {
+    &,
+    &:focus {
+      background: color-mix(in srgb, var(--background-primary) 70%, transparent);
+    }
+  }
+
   .atlas-initiative-card__initiative:not(.atlas-initiative-card__initiative--empty) {
-    background: color-mix(in srgb, var(--background-primary) 70%, transparent);
     border-color: var(--background-modifier-border);
 
     &:hover {
       background: var(--background-secondary);
+      border-color: color-mix(in srgb, var(--interactive-accent) 60%, var(--background-modifier-border));
     }
   }
 
