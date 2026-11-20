@@ -53,6 +53,13 @@ describe('InitiativeCard portrait', () => {
     expect(card.querySelector('.atlas-token-ring')).toBeNull();
   });
 
+  it('pulses its turn in the card\'s colour, else the ring\'s', () => {
+    const style = (card: HTMLElement): CSSStyleDeclaration => card.querySelector<HTMLElement>('.atlas-initiative-card')!.style;
+    expect(style(renderCard({ ringColor: '#c0392b' }, { ...entry, color: '#22c55e' })).getPropertyValue('--atlas-turn-color')).toBe('#22c55e');
+    expect(style(renderCard({ ringColor: '#c0392b' })).getPropertyValue('--atlas-turn-color')).toBe('#c0392b');
+    expect(style(renderCard({})).getPropertyValue('--atlas-turn-color')).toBe('');
+  });
+
   it('keeps the icon for an entry without art', () => {
     const card = renderCard({}, { ...entry, imagePath: '' });
 

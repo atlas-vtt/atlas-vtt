@@ -43,7 +43,7 @@ describe('PlayerWindowService cleanup', () => {
       getTableTvSettings: () => DEFAULT_TABLE_TV_SETTINGS,
       getTableTvDevice: () => DEFAULT_TABLE_TV_DEVICE,
       onChange: () => vi.fn(),
-      initiativeLayout: () => ({ fromTurn: true, dock: 'right', collapsed: false }),
+      initiativeLayout: () => ({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false, gmDock: 'right', collapsed: false }),
     };
     const service = new PlayerWindowService({ workspace: {} } as any, store as any, settings as any);
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);

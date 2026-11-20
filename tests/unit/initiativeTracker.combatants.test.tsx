@@ -104,7 +104,7 @@ describe('the combatants of the initiative tracker', () => {
     expect(cards.map((card) => card.textContent?.includes('Hidden from players'))).toEqual([false, true]);
   });
 
-  it('hides a combatant from the players and shows it again from its card', () => {
+  it('hides a combatant from the players, leaving its token on the map, and shows a hidden token again from its card', () => {
     state.objects.tokens = { goblin: token('goblin'), rat: token('rat', true) };
     state.initiative.entries = [entryOf('goblin'), entryOf('rat', 1)];
     const cards = render(<InitiativeTracker />).container.querySelectorAll('.atlas-initiative-card');
@@ -114,9 +114,7 @@ describe('the combatants of the initiative tracker', () => {
     fireEvent.contextMenu(cards[1]!);
     clickItem('Show to Players');
 
-    expect(state.updateTokens.mock.calls).toEqual([
-      [[{ id: 'goblin', changes: { isHidden: true } }]],
-      [[{ id: 'rat', changes: { isHidden: false } }]],
-    ]);
+    expect(state.updateInitiativeEntry.mock.calls).toEqual([[entryOf('goblin').id, { hiddenFromPlayers: true }]]);
+    expect(state.updateTokens.mock.calls).toEqual([[[{ id: 'rat', changes: { isHidden: false } }]]]);
   });
 });

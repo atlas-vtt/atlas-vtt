@@ -65,8 +65,8 @@ describe('a combatant kept beside the map, in the tracker', () => {
   it('is added from the tracker\'s options, which open the library\'s tokens', () => {
     const addCombatant = vi.fn();
     const entries = initiativeTrackerOptions(
-      { autoSort: true, bySides: false, empty: true, showNames: false, fromTurn: true, dock: 'right', turn: DEFAULT_TURN_OPTIONS, online: false },
-      { setAutoSort: noop, setShowNames: noop, setFromTurn: noop, setDock: noop, setTurn: noop, clear: noop, addCombatant },
+      { autoSort: true, bySides: false, empty: true, showNames: false, fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false, turn: DEFAULT_TURN_OPTIONS, online: false },
+      { setAutoSort: noop, setShowNames: noop, setFromTurn: noop, setEdges: noop, setFacesPlayers: noop, setTurn: noop, clear: noop, addCombatant },
     );
     const item = entries.find((candidate): candidate is Extract<ContextMenuEntry, { type: 'item' }> => candidate.type === 'item' && candidate.label === 'Add combatant…');
     void item?.onClick();

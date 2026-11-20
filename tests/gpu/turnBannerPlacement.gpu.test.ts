@@ -91,21 +91,37 @@ describe('where the turn banner stands', () => {
     }
   });
 
-  it('in the player window: at the bottom centre, clear of the dice rolls at the top and the initiative list at the side', async () => {
+  it('in the player window: centred as large as set, clear of the dice rolls, the table dimmed behind it until it leaves', async () => {
     await page.viewport(1280, 720);
     document.head.append(style);
     document.body.classList.add('atlas-player-window');
     const dice = document.body.createDiv({ cls: 'atlas-player-dice-rolls' }).createDiv({ cls: 'atlas-dice-rolls atlas-vtt-plugin' });
     dice.createDiv({ cls: 'atlas-dice-roll' }).createDiv({ cls: 'atlas-dice-roll__sheet' }).style.height = '260px';
     const host = document.body.createDiv({ cls: 'atlas-player-turn-banner' });
-    const banner = renderTurnBanner(host, { ...BANNER, title: null, round: null }, portrait);
+    host.style.setProperty('--atlas-player-turn-banner-scale', '2.5');
+    // The dim's fade, which the checks below would catch half way
+    const still = document.head.createEl('style', { text: '.atlas-player-turn-banner::before { transition: none !important; }' });
+    const banner = renderTurnBanner(host, BANNER, portrait);
     await new Promise((resolve) => requestAnimationFrame(resolve));
     const at = box(banner);
     expect(overlaps(at, box(dice))).toBe(false);
     expect(Math.abs((at.left + at.right) / 2 - 640)).toBeLessThan(1);
-    expect(720 - at.bottom).toBeCloseTo(16, 0);
-    // The players' list stands in the middle of the side and stops 160 px above the bottom
-    expect(720 - at.top).toBeLessThan(160);
+    expect(Math.abs((at.top + at.bottom) / 2 - 360)).toBeLessThan(1);
+    // The table dims behind it, by a layer that is always there (`::before`) and only fades
+    const dim = getComputedStyle(host, '::before');
+    expect(dim.backgroundColor).toBe('rgba(0, 0, 0, 0.45)');
+    expect(dim.opacity).toBe('1');
+    // Its border flashes, then pulses fainter for as long as it stands
+    banner.style.setProperty('--atlas-turn-banner-stand', '6000ms');
+    const ring = getComputedStyle(banner, '::before');
+    expect(ring.animationName).toBe('atlas-turn-banner-flash, atlas-turn-banner-pulse, atlas-turn-banner-fade');
+    expect(ring.animationDuration).toBe('0.9s, 1.6s, 6s');
+    // Once its portrait popped in
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    expect(box(banner.querySelector('.atlas-turn-banner__portrait')).width).toBe(100);
     await page.screenshot({ path: `${SHOTS}/banner-player.png` });
+    banner.addClass('atlas-turn-banner--leaving');
+    expect(getComputedStyle(host, '::before').opacity).toBe('0');
+    still.remove();
   });
 });

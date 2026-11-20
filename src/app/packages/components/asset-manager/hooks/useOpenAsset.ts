@@ -48,7 +48,9 @@ export async function openMap(deps: OpenAssetDeps, map: MapAsset): Promise<void>
 
 /**
  * The primary action of an asset (double-click or its spawn button): tokens
- * and encounters go into the GM's hand to be placed on the map, scenes open,
+ * and encounters go into the GM's hand to be placed on the map, or into the
+ * initiative tracker beside it where the tracker's Add combatant opened the
+ * asset manager; scenes open,
  * maps open their latest scene or start one (`openMap`). On the Maps tab the
  * collection's scenes are read ahead, so a map's menu can offer its scene.
  * The returned function keeps one identity across renders.
@@ -63,18 +65,19 @@ export function useOpenAsset(deps: OpenAssetDeps, tab: Tab): OpenAsset {
     const spawnCtx: SpawnContext = {
       app: deps.app, view: deps.view, assetService: deps.assetService, random: diceRandom,
     };
+    const placement = deps.view?.getStore().getState().assetManagerAddsCombatants ? 'beside' : 'map';
     switch (asset.type) {
       case 'maps':
         await openMap(deps, asset);
         return;
       case 'tokens':
-        await spawnAndClose(spawnCtx, deps.onClose, (ctx) => spawnTokenAsset(ctx, asset, Math.max(1, spawnCount)));
+        await spawnAndClose(spawnCtx, deps.onClose, (ctx) => spawnTokenAsset(ctx, asset, Math.max(1, spawnCount), placement));
         return;
       case 'scenes':
         await openScene(deps, asset.id);
         return;
       case 'encounters':
-        await spawnAndClose(spawnCtx, deps.onClose, (ctx) => spawnEncounterTokens(ctx, asset));
+        await spawnAndClose(spawnCtx, deps.onClose, (ctx) => spawnEncounterTokens(ctx, asset, placement));
     }
   });
 }

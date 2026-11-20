@@ -153,10 +153,13 @@ export function createInitiativeActions(
     }),
 
     rollAllInitiative: (roll = DEFAULT_ROLL, fromStatblocks) => {
-      const rolls = new Map(get().initiative.entries.map((entry): [string, RolledTotal] => {
-        const modifier = combatantModifier(ownModifier(entry), fromStatblocks?.get(entry.id));
-        return [entry.id, { total: rollInitiativeDice(roll, random) + modifier, modifier }];
-      }));
+      const rolls = new Map(get().initiative.entries
+        // Players at the table roll themselves; the GM types their number in
+        .filter(entry => entry.partyMemberId === undefined)
+        .map((entry): [string, RolledTotal] => {
+          const modifier = combatantModifier(ownModifier(entry), fromStatblocks?.get(entry.id));
+          return [entry.id, { total: rollInitiativeDice(roll, random) + modifier, modifier }];
+        }));
       set((draft) => {
         for (const entry of draft.initiative.entries) {
           const rolled = rolls.get(entry.id);

@@ -37,6 +37,8 @@ export interface ViewUIState {
   isDocsOpen: boolean;
   isAssetManagerOpen: boolean;
   assetManagerInitialTab?: 'scenes' | 'maps' | 'encounters' | 'tokens' | 'party' | undefined;
+  /** The tracker's Add combatant opened the asset manager: a token or encounter opened there joins initiative beside the map. */
+  assetManagerAddsCombatants: boolean;
   /** Raised by every request for the Armarium (the command palette); 0 while the asset manager opens on the library. Never saved. */
   assetManagerArmarium: number;
   isCommandPaletteOpen: boolean;
