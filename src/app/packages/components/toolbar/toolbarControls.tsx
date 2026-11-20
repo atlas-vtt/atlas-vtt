@@ -36,7 +36,7 @@ export const TOOLBAR_CONTROL_ITEMS = {
     active: dice.open,
     element: (
       <div ref={dice.buttonRef} className="relative flex items-center">
-        <ToolButton icon={Dices} label={t('toolbar.rollDice')} shortcut={hotkeyLabel('diceTray')} isActive={dice.open} onClick={dice.toggle} />
+        <ToolButton icon={Dices} label={t('toolbar.rollDice')} shortcut={hotkeyLabel('diceTray')} isActive={dice.open} menuExpanded={dice.open} onClick={dice.toggle} />
         {dice.tool && (
           <DiceDropdownMenu diceTool={dice.tool} isOpen={dice.open} onToggle={dice.toggle} triggerRef={dice.buttonRef} />
         )}
