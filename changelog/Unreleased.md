@@ -88,6 +88,7 @@
 - A token's height shows only while you hover or select it, like the resource wheels, right above the token and at one size on screen at any zoom, and steps aside while you drag the token, like the card that lists its conditions
 - On smaller screens the Sound page gives its list of music and ambience more room: the moods keep one column beside it, and a lone mood no longer stretches into a wide bar
 - Images you show on the player view reach your players while the curtain is down: the image shows over a soft, blurred glow of its own colours instead of the map, and closing it leaves the curtain in place
+- A roll's name stands only in its title: a statblock roll or a formula you named (`1d20+2[Stealth]`) writes its formula and the sum under the total in numbers alone, and an armed bonus joins the title (Agility + Pickpocket)
 
 ## Fixed
 

@@ -9,7 +9,7 @@ import { rollLine } from '../../../tools/diceLabels';
 import { listsDice, RolledDiceLine } from './RolledDiceLine';
 import { DiceDetails } from './DiceDetails';
 import { RollAudienceMark } from './RollAudienceMark';
-import { critText, shownFormula, withSide } from '../dice3d/diceRollText';
+import { critText, rollName, shownFormula, withSide } from '../dice3d/diceRollText';
 import { RollDigits } from '../dice3d/RollDigits';
 import { ROLL_LINGER_MS, useLingerTimer } from '../dice3d/useLingerTimer';
 import { t } from '../../../i18n';
@@ -51,6 +51,7 @@ export function DiceToast({ result, presentation, audience, phase, onDismiss, us
   const hasSource = presented
     ? Boolean(avatar || presentation?.name)
     : source?.type === 'statblock' && Boolean(source.tokenName);
+  const name = rollName(result);
 
   return (
     <div
@@ -82,7 +83,7 @@ export function DiceToast({ result, presentation, audience, phase, onDismiss, us
           ))}
           <div className="atlas-dice-toast__content">
             {hasSource && sourceTokenName && <span className="atlas-dice-toast__name">{sourceTokenName}</span>}
-            {source?.abilityName && <span className="atlas-dice-toast__ability">{source.abilityName}</span>}
+            {name && <span className="atlas-dice-toast__ability">{name}</span>}
             <span className="atlas-dice-toast__title">
               <span className="atlas-dice-toast__formula">{withSide(shownFormula(rollLine(result)), result)}</span>
               <RollAudienceMark audience={audience} />

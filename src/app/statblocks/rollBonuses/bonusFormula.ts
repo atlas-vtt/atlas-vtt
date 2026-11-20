@@ -6,17 +6,9 @@
  * is rolled, so a value that takes it past a limit refuses the roll. Pure.
  */
 
-import { LABEL_CHARACTERS, LABEL_LENGTH } from '../../tools/formulaTerms';
-import { labelledConstant } from '../../tools/namedModifiers';
+import { formulaLabel, labelledConstant } from '../../tools/namedModifiers';
 import type { ArmableValues } from './armableValues';
 import type { ArmedBonus } from './armedBonuses';
-
-const NOT_IN_LABEL = new RegExp(`[^${LABEL_CHARACTERS}]+`, 'gu');
-
-/** A label as a dice formula can hold it: other characters read as spaces, and it is cut to the formula's limit. */
-export function formulaLabel(label: string): string {
-  return label.replace(NOT_IN_LABEL, ' ').replace(/\s+/g, ' ').trim().slice(0, LABEL_LENGTH).trim();
-}
 
 /** A formula that is a bare bonus: a whole number the dice set's dice complete (`+4`, `-1`, `2`). */
 const BARE_BONUS = /^[+-]?\d+$/;

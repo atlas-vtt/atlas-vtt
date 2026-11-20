@@ -14,7 +14,7 @@
 
 import { parseFormula } from '../../tools/parseFormula';
 import { rollPieces, toRollFormula } from '../../tools/textRolls';
-import { formulaLabel } from '../rollBonuses/bonusFormula';
+import { formulaLabel } from '../../tools/namedModifiers';
 import { fillReferences, stringsIn, type Filled } from './fillReferences';
 import { namesReference, type FieldLookup } from './references';
 
