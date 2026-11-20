@@ -7,6 +7,7 @@ import type { InitiativeEntry } from '../../src/app/types/initiativeTypes';
 const state = vi.hoisted(() => ({
   objects: { tokens: {} as Record<string, unknown> },
   tokenSettings: { showInstanceBadges: true },
+  selectedIds: [] as string[],
   levels: undefined as unknown,
 }));
 
@@ -58,6 +59,14 @@ describe('InitiativeCard portrait', () => {
     const style = (card: HTMLElement): CSSStyleDeclaration => card.querySelector<HTMLElement>('.atlas-initiative-card')!.style;
     expect(style(renderCard({ ringColor: '#c0392b' })).getPropertyValue('--atlas-turn-color')).toBe('#c0392b');
     expect(style(renderCard({})).getPropertyValue('--atlas-turn-color')).toBe('');
+  });
+
+  it('marks its card while its token is selected on the map', () => {
+    const selected = (): boolean => renderCard({}).querySelector('.atlas-initiative-card')!.classList.contains('atlas-initiative-card--selected');
+    expect(selected()).toBe(false);
+    state.selectedIds = ['t1'];
+    expect(selected()).toBe(true);
+    state.selectedIds = [];
   });
 
   it('keeps the icon for an entry without art', () => {

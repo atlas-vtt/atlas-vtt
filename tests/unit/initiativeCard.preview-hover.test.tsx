@@ -18,6 +18,7 @@ vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (state: any) => unknown) => selector({
     objects: { tokens: {} },
     tokenSettings: { showInstanceBadges: true },
+    selectedIds: [] as string[],
   }),
 }));
 

@@ -9,11 +9,12 @@ import type { TokenEntity } from '../../src/app/types';
 const state = vi.hoisted(() => ({
   objects: { tokens: {} as Record<string, unknown> },
   tokenSettings: { showInstanceBadges: true },
+  selectedIds: [] as string[],
 }));
 
 vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
   AtlasUIContext: (await import('react')).createContext(null),
-  useAtlasUI: () => ({ app: { vault: { adapter: { getResourcePath: (path: string) => `app://${path}` } } }, view: null }),
+  useAtlasUI: () => ({ app: { vault: { adapter: { getResourcePath: (path: string) => `app://${path}` }, getAbstractFileByPath: () => null, on: () => ({}), offref: () => undefined } }, view: null }),
 }));
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (s: typeof state) => unknown) => selector(state),

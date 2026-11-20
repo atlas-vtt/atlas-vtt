@@ -786,12 +786,57 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
 }
 
 // While someone holds the turn, everyone else's art steps back a little, so the turn stands out whatever its colour
-.atlas-initiative-tracker:has(.atlas-initiative-card--active, .atlas-initiative-side--active) .atlas-initiative-card--tile:not(.atlas-initiative-card--active) .atlas-initiative-card__art img {
+.atlas-initiative-tracker:has(.atlas-initiative-card--active, .atlas-initiative-side--active) .atlas-initiative-card--tile:not(.atlas-initiative-card--active, :hover, .atlas-initiative-card--preview-hover) .atlas-initiative-card__art img {
   filter: $initiative-art-dim;
 }
 
 .atlas-initiative-side--active .atlas-initiative-card--tile:not(.atlas-initiative-card--sitting-out) .atlas-initiative-card__art img {
   filter: none;
+}
+
+// The card under the pointer, or whose statblock Mod shows, steps forward: its art lit a little
+.atlas-initiative-card--tile .atlas-initiative-card__art img {
+  transition: filter 150ms ease;
+}
+
+.atlas-initiative-tracker .atlas-initiative-card--tile:is(:hover, .atlas-initiative-card--preview-hover) .atlas-initiative-card__art img {
+  filter: brightness(1.12);
+}
+
+// Hover, press, a selected token and Mod's statblock preview ring the card's edge (`--atlas-card-ring`). The art covers
+// the card's own border, fill and inset shadow, so the ring is a layer above it, `::after`, which the drop indicator
+// takes while a dragged card would land below this one
+.atlas-initiative-card {
+  --atlas-card-ring: transparent;
+
+  &:hover {
+    --atlas-card-ring: rgb(255 255 255 / 0.45);
+  }
+
+  &:active {
+    --atlas-card-ring: rgb(255 255 255 / 0.7);
+  }
+
+  // Its token is selected on the map: the accent, as long as it stays selected
+  &.atlas-initiative-card--selected {
+    --atlas-card-ring: var(--interactive-accent);
+  }
+
+  // Mod held over it: its statblock shows
+  &.atlas-initiative-card--preview-hover {
+    --atlas-card-ring: rgb(255 255 255 / 0.9);
+  }
+
+  &:not(.atlas-initiative-card--drop-below)::after {
+    content: '';
+    position: absolute;
+    inset: calc(-1 * #{$border-width-s});
+    z-index: 3;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 2px var(--atlas-card-ring);
+    pointer-events: none;
+    transition: box-shadow 150ms ease;
+  }
 }
 
 // Note: Statblock preview styles are in statblock-hover-preview.scss (shared component)

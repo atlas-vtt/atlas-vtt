@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
   initiative: { entries: [] as unknown[], isActive: false, round: 0 },
   objects: { tokens: {} as Record<string, unknown> },
   tokenSettings: { showInstanceBadges: true },
+  selectedIds: [] as string[],
   addToInitiative: vi.fn(),
   removeFromInitiative: vi.fn(),
   rollAllInitiative: vi.fn(),
