@@ -109,11 +109,11 @@ it('lays the players\' initiative list out across the table from its switch, as 
   context.settings = new SettingsService({} as never);
   const settings = context.settings as SettingsService;
   render(<PlayerViewSettingsPanel />);
-  const toggle = screen.getByRole('switch', { name: 'Initiative across the table' });
+  const toggle = screen.getByRole('switch', { name: 'Horizontal initiative' });
   expect(toggle.getAttribute('aria-checked')).toBe('false');
   fireEvent.click(toggle);
   expect(settings.initiativeLayout()).toMatchObject({ edges: ['top', 'bottom'], facesPlayers: true });
-  fireEvent.click(screen.getByRole('switch', { name: 'Initiative across the table' }));
+  fireEvent.click(screen.getByRole('switch', { name: 'Horizontal initiative' }));
   expect(settings.initiativeLayout()).toMatchObject({ edges: ['right'], facesPlayers: false });
 });
 

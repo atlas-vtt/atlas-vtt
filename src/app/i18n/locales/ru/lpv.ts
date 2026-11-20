@@ -1,7 +1,7 @@
 import type { Translation } from '../../types';
 
 export const lpv: Translation = {
-  'lpv.initiativeRows': 'Инициатива по обе стороны стола',
+  'lpv.initiativeRows': 'Горизонтальная инициатива',
   'lpv.initiativeRowsHint': 'Список инициативы игроков идёт рядом сверху и рядом снизу, каждый читается со своей стороны, для экрана, лежащего на столе.',
   'lpv.shared': 'Локально и онлайн',
   'lpv.playerWindow': 'Окно игроков',
