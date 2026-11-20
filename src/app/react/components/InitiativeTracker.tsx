@@ -276,6 +276,9 @@ export const InitiativeTracker: React.FC = () => {
         {sortedEntries.length > 0 && <InitiativeTrackerList segments={segments} card={card} />}
       </div>
 
+      {/* The shade over the list's top, shown once it is scrolled */}
+      <div className="atlas-initiative-tracker__top-shade" aria-hidden="true" />
+
       {/* The round at the list's foot, as the players' list shows it */}
       {initiative.isActive && <div className="atlas-initiative-tracker__round">{t('playerInit.round', { round: initiative.round })}</div>}
 
