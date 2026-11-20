@@ -8,6 +8,12 @@ $page-leave: 120ms;
 $page-arrive: 80ms;
 $page-shift: clamp(24px, 3cqi, 56px);
 
+// The tracks of the screen's own controls (pages, statblock scope): nearly opaque, since the blurred map lies under them.
+@mixin dm-screen-track {
+  background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
+  box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) 9%, transparent);
+}
+
 // DM screen styles
 //
 // The wrapper covers the map view: Obsidian gives every `.workspace-leaf` `contain: strict`,
@@ -133,7 +139,6 @@ $page-shift: clamp(24px, 3cqi, 56px);
   flex: 1;
   display: flex;
   gap: 16px;
-  overflow: hidden;
   padding: 12px;
   padding-top: 70px; // keeps the panes below the map's top bar row
   position: relative;
@@ -184,8 +189,7 @@ $page-shift: clamp(24px, 3cqi, 56px);
     gap: 2px;
     padding: $surface-inset;
     --atlas-segmented-radius: #{$radius-m + $surface-inset};
-    background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
-    box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) 9%, transparent);
+    @include dm-screen-track;
   }
 
   .atlas-segmented__option {
@@ -252,12 +256,14 @@ $page-shift: clamp(24px, 3cqi, 56px);
   border-radius: $radius-m;
   background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
   color: var(--text-muted);
-  font-family: var(--font-interface);
-  font-size: $font-ui-medium;
-  font-weight: $font-weight-semibold;
-  line-height: 1;
   pointer-events: none;
   user-select: none;
+
+  // An icon, not the arrow characters: fonts without them (Linux) drew them small from a fallback.
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
 }
 
 .atlas-dm-sound-page {
@@ -427,6 +433,7 @@ $page-shift: clamp(24px, 3cqi, 56px);
 }
 
 // While a fight runs: the fight's statblocks or every creature's, above the feeds
-.atlas-dm-statblock-scope {
+.atlas-segmented.atlas-dm-statblock-scope {
+  @include dm-screen-track;
   margin-bottom: $spacing-s;
 }
