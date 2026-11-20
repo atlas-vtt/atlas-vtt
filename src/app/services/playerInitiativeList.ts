@@ -94,7 +94,12 @@ export interface PlayerInitiativeLook {
   turnFlash?: number | undefined;
   /** The most cards the list shows, 0 for all (`initiativeMaxCardsOf`). */
   maxCards?: number;
+  /** Draws one of the card's icons into `parent` (Obsidian's `setIcon` in Atlas), so the list imports nothing of Obsidian's and the player page draws it too. */
+  icon?(parent: HTMLElement, name: PlayerCardIcon): void;
 }
+
+/** The icons a card draws: the stand-in of a combatant without art or a name shown, and the skull of the defeated. */
+export type PlayerCardIcon = 'bot' | 'user' | 'skull';
 
 /** How long the card of a combatant whose turn began lights up (both lists); `initiative-turn-flash` in `_initiative-cards.scss` lasts as long. */
 export const TURN_FLASH_MS = 900;
