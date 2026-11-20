@@ -90,8 +90,14 @@ describe('the GM\'s initiative cards', () => {
       expect(box(number).top - frame.top - border).toBeCloseTo(4, 0);
       expect(parseFloat(getComputedStyle(number).borderTopLeftRadius)).toBeCloseTo(inner - 4, 1);
       const name = box(card.querySelector('.atlas-initiative-card__name'));
-      expect((name.top + name.bottom) / 2).toBeCloseTo((box(number).top + box(number).bottom) / 2, 0);
       expect(name.left).toBeGreaterThan(box(number).right);
+      // The bar under the name, the two in the number's height, so the line keeps one row
+      const bar = box(card.querySelector('.atlas-initiative-card__hp-bar'));
+      expect(bar.top).toBeGreaterThanOrEqual(name.bottom);
+      expect(bar.left).toBeCloseTo(name.left + parseFloat(getComputedStyle(card.querySelector('.atlas-initiative-card__name')!).paddingLeft), 0);
+      expect(bar.right).toBeLessThanOrEqual(name.right + 0.5);
+      expect(name.top).toBeGreaterThanOrEqual(box(number).top - 0.5);
+      expect(bar.bottom).toBeLessThanOrEqual(box(number).bottom + 0.5);
       // The art lies under the line, across the card's right end
       const backdrop = card.querySelector('.atlas-initiative-card__backdrop img')!;
       expect(box(backdrop).right).toBeCloseTo(frame.right - border, 0);
