@@ -24,13 +24,15 @@ export function toolFace({ activeTool, measureTool, drawTool, lightingTool }: To
  */
 export function useToolbarPeek(rootRef: RefObject<HTMLElement | null>, on: boolean): void {
   const face = useAtlasStore(toolFace);
+  // A tool picked in the palette: the toolbar stays hidden under it, where the palette took its place.
+  const paletteOpen = useAtlasStore(state => state.isCommandPaletteOpen);
   const lastFace = useRef(face);
 
   useEffect(() => {
     const root = rootRef.current;
     if (face === lastFace.current) return undefined;
     lastFace.current = face;
-    if (!root || !on) return undefined;
+    if (!root || !on || paletteOpen) return undefined;
     const peeking = PEEKING.flatMap(selector => root.querySelector(selector) ?? []);
     for (const element of peeking) element.setAttribute(PEEK, '');
     const timer = root.win.setTimeout(() => {
@@ -40,5 +42,5 @@ export function useToolbarPeek(rootRef: RefObject<HTMLElement | null>, on: boole
       root.win.clearTimeout(timer);
       for (const element of peeking) element.removeAttribute(PEEK);
     };
-  }, [rootRef, on, face]);
+  }, [rootRef, on, face, paletteOpen]);
 }

@@ -601,7 +601,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     const frame = overlay.getBoundingClientRect();
     const toolbar = toolbarRef?.current;
     const aboveToolbar: PalettePosition = toolbar
-      ? placePalette(toolbar.getBoundingClientRect(), frame)
+      ? placePalette(toolbar.getBoundingClientRect(), frame, toolbar.win.getComputedStyle(toolbar).visibility === 'hidden')
       : { width: DEFAULT_PALETTE_WIDTH, left: (frame.width - DEFAULT_PALETTE_WIDTH) / 2, bottom: 100, reserved: 100 };
     setPosition(atTop ? placePaletteAtTop(aboveToolbar, frame, visibleViewport(overlay.win).bottom) : aboveToolbar);
   }, [toolbarRef, atTop]);

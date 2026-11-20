@@ -26,6 +26,10 @@ describe('placePalette', () => {
     expect(placePalette(toolbar(1050, 200), frame(1200)).left).toBe(1200 - 16 - PALETTE_MIN_WIDTH);
   });
 
+  it('stands near the view\'s lower edge where the toolbar is hidden away, as wide as above it', () => {
+    expect(placePalette(toolbar(300, 700), frame(1200), true)).toEqual({ width: 700, left: 200, bottom: PALETTE_VIEW_MARGIN, reserved: PALETTE_VIEW_MARGIN });
+  });
+
   it('never gets wider than the view', () => {
     expect(placePalette(toolbar(120, 300), frame(400))).toMatchObject({ width: 368, left: 16 });
   });

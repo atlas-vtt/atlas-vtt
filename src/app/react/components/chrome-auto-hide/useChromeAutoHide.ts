@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { useAtlasSettings } from '../../../keyboard/useMapHotkeys';
 import type { SettingsService } from '../../../services/SettingsService';
 import { useAtlasStore } from '../../ViewStoreContext';
@@ -64,6 +64,9 @@ export function useChromeAutoHide(rootRef: RefObject<HTMLElement | null>, player
   const editing = useAtlasStore(state => state.isToolbarEditing);
   const on = !playerView && !editing && settings?.isToolbarAutoHide() === true;
   useToolbarPeek(rootRef, on);
+  // The palette takes a hidden toolbar's place: while it is open the bars stay as they were.
+  const paletteOpen = useRef(false);
+  paletteOpen.current = useAtlasStore(state => state.isCommandPaletteOpen);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -74,6 +77,7 @@ export function useChromeAutoHide(rootRef: RefObject<HTMLElement | null>, player
 
     const update = (): void => {
       frame = 0;
+      if (paletteOpen.current) return;
       const view = root.getBoundingClientRect();
       const inView = pointer.x >= view.left && pointer.x <= view.right && pointer.y >= view.top && pointer.y <= view.bottom;
       for (const unit of unitsIn(root)) {
