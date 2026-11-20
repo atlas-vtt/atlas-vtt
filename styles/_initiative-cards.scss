@@ -63,9 +63,16 @@ $initiative-art-dim: brightness(0.72) saturate(0.8);
   }
 }
 
-/// A side's frame on the art (`initiative-art`'s `::after`): a ring inside the border, thick enough to read across a table.
-@mixin initiative-side-ring($color) {
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, #{$color} 85%, transparent);
+/// A side's colour on a card's border: softened, since a thin line in a strong colour shimmers on a dark map. The border
+/// is a side's one drawn line; a second ring on the art met it at the corners in two curves that never lined up.
+@function initiative-side-line($color) {
+  @return color-mix(in oklch, #{$color} 70%, transparent);
+}
+
+/// A side's glow inside a card (on the art's `::after`, or the card itself): no edge of its own, so it reads beside the
+/// border's line without doubling it.
+@mixin initiative-side-glow($color, $blur: 14px) {
+  box-shadow: inset 0 0 #{$blur} color-mix(in oklch, #{$color} 32%, transparent);
 }
 
 /// The turn's ring on the art: thicker than a side's and glowing inward, so it reads over any side's frame.

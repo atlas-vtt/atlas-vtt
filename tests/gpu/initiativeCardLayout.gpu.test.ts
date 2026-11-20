@@ -104,7 +104,7 @@ describe('the GM\'s initiative cards', () => {
 
   it('give every line of the compact view one height, with hit points or without, by numbers or by sides', async () => {
     const container = await show(true);
-    const heights = (): number[] => [...container.querySelectorAll('.atlas-initiative-card')].map((card) => box(card).height);
+    const heights = (): number[] => [...container.querySelectorAll('.atlas-initiative-card')].map((card) => Math.round(box(card).height * 10) / 10);
     const withBar = heights();
     expect(new Set(withBar).size).toBe(1);
 

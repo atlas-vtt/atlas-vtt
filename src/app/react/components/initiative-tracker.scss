@@ -381,8 +381,14 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   // The colour the GM gave the card: its border and a wash of its fill; the turn's accent wins
   &--coloured,
   &--coloured:hover {
-    border-color: var(--atlas-combatant-color);
+    border-color: initiative-side-line(var(--atlas-combatant-color));
     background: color-mix(in srgb, var(--atlas-combatant-color) 22%, var(--background-modifier-hover));
+  }
+
+  // The players' own side, framed in green as opponents are in their colour
+  &--ally,
+  &--ally:hover {
+    border-color: initiative-side-line(var(--color-green));
   }
 
   // Active turn state
@@ -749,24 +755,20 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
     opacity: 0.5;
   }
 
-  // A side's frame and the turn's ring lie on the art, which covers the card's own border and inset shadow
+  // A side's glow and the turn's ring lie on the art, which covers the card's own inset shadow; the side's line is the
+  // card's border
   &.atlas-initiative-card--coloured .atlas-initiative-card__art::after {
-    @include initiative-side-ring(var(--atlas-combatant-color));
+    @include initiative-side-glow(var(--atlas-combatant-color));
   }
 
   &.atlas-initiative-card--ally .atlas-initiative-card__art::after {
-    @include initiative-side-ring(var(--color-green));
+    @include initiative-side-glow(var(--color-green));
   }
 
   &.atlas-initiative-card--active .atlas-initiative-card__art::after,
   .atlas-initiative-side--active &:not(.atlas-initiative-card--sitting-out) .atlas-initiative-card__art::after {
     @include initiative-turn-ring(var(--atlas-turn-color, var(--interactive-accent)));
   }
-}
-
-// The players' own side, framed in green as opponents are in their colour
-.atlas-initiative-card--ally {
-  border-color: var(--color-green);
 }
 
 // While someone holds the turn, everyone else's art steps back a little, so the turn stands out whatever its colour

@@ -75,6 +75,15 @@ $plate-height: 24px;
     @include initiative-art-framed;
   }
 
+  // A side's glow inside the line, beside its border's line; under the art it fades with it
+  .atlas-initiative-card--coloured:not(.atlas-initiative-card--active, .atlas-initiative-side--active *) {
+    @include initiative-side-glow(var(--atlas-combatant-color), 10px);
+  }
+
+  .atlas-initiative-card--ally:not(.atlas-initiative-card--active, .atlas-initiative-side--active *) {
+    @include initiative-side-glow(var(--color-green), 10px);
+  }
+
   .atlas-initiative-card--active .atlas-initiative-card__backdrop::after,
   .atlas-initiative-side--active .atlas-initiative-card:not(.atlas-initiative-card--sitting-out) .atlas-initiative-card__backdrop::after {
     box-shadow:
