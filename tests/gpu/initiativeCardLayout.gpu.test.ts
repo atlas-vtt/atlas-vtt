@@ -1,7 +1,7 @@
 import '../setup/obsidianDom';
 import React from 'react';
 import { act, render } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import css from '../../styles/main.scss?inline';
 import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
@@ -33,10 +33,17 @@ const entryOf = (tokenId: string, order: number, initiative: number, awaiting = 
 
 let store: ViewAtlasStore;
 let settings: SettingsService;
+let vaultApp: ReturnType<typeof createInMemoryApp>['app'];
 
-async function show(names: boolean): Promise<HTMLElement> {
+async function show(names: boolean, art?: Blob): Promise<HTMLElement> {
   await page.viewport(1200, 900);
   const { app } = createInMemoryApp({ files: {} });
+  vaultApp = app;
+  // The tokens' art as a vault image, before the cards measure it
+  if (art) {
+    await app.vault.createBinary('goblin.png', await art.arrayBuffer());
+    await expect.poll(() => app.vault.getAbstractFileByPath('goblin.png')).toBeTruthy();
+  }
   settings = new SettingsService(app);
   settings.setCompactInitiative(names);
   store = createViewAtlasStore(app, `initiative-layout-${Math.random()}`);
@@ -116,6 +123,46 @@ describe('the GM\'s initiative cards', () => {
     store.setState({ initiative: { ...store.getState().initiative, isActive: true, sides: { first: 'players', active: 'players' } } });
     await new Promise((resolve) => requestAnimationFrame(resolve));
     expect(heights()).toEqual(withBar);
+  });
+
+  it.each([false, true])('fill the card with the art alone where its image has transparent margins (compact view: %s)', async (names) => {
+    // A token cropped zoomed out: its art a rounded square in the middle of a transparent image
+    const canvas = new OffscreenCanvas(200, 200);
+    const pen = canvas.getContext('2d')!;
+    pen.fillStyle = '#3b6ea8';
+    pen.beginPath();
+    pen.roundRect(40, 30, 120, 140, 18);
+    pen.fill();
+    const blob = await canvas.convertToBlob({ type: 'image/png' });
+    const container = await show(names, blob);
+    const img = container.querySelector<HTMLImageElement>(names ? '.atlas-initiative-card__backdrop img' : '.atlas-initiative-card__art img')!;
+    await expect.poll(() => img.style.getPropertyValue('--atlas-art-view-box')).toMatch(/^inset\(/);
+    const [top, right, bottom, left] = img.style.getPropertyValue('--atlas-art-view-box').match(/[\d.]+/g)!.map(Number);
+    // Past the margins (15 and 20 %) and the rounded corners, never past the art's middle
+    expect(top).toBeGreaterThan(15);
+    expect(left).toBeGreaterThan(20);
+    expect(Math.max(top!, right!, bottom!, left!)).toBeLessThan(35);
+    expect(getComputedStyle(img).getPropertyValue('object-view-box')).toContain('inset(');
+    // What the GM sees: the test vault's resource address loads nothing, so show the pixels themselves
+    img.src = URL.createObjectURL(blob);
+    await img.decode();
+    await page.screenshot({ path: `__screenshots__/init-cards/margins-${names ? 'compact' : 'tile'}.png`, element: container.querySelector('.atlas-initiative-tracker')! });
+  });
+
+  it('measures art that arrives after the tracker opened, as a sync tool may deliver it', async () => {
+    const canvas = new OffscreenCanvas(100, 100);
+    const pen = canvas.getContext('2d')!;
+    pen.fillStyle = '#7a3a3a';
+    pen.fillRect(20, 20, 60, 60);
+    const container = await show(false);
+    const img = container.querySelector<HTMLImageElement>('.atlas-initiative-card__art img')!;
+    expect(img.style.getPropertyValue('--atlas-art-view-box')).toBe('');
+    const file = await vaultApp.vault.createBinary('goblin.png', await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer());
+    // Obsidian says the file was created (the test vault does not)
+    for (const [name, callback] of vi.mocked(vaultApp.vault.on).mock.calls as unknown as [string, (file: unknown) => void][]) if (name === 'create') callback(file);
+    await expect.poll(() => img.style.getPropertyValue('--atlas-art-view-box')).toMatch(/^inset\(/);
+    // A fifth of each side, to the measure's resolution
+    for (const share of img.style.getPropertyValue('--atlas-art-view-box').match(/[\d.]+/g)!.map(Number)) expect(share).toBeCloseTo(20, -0.5);
   });
 
   it.each([false, true])('keep the size of one card while the tracker is empty (compact view: %s)', async (names) => {

@@ -17,6 +17,7 @@ import { InitiativeNumber, type NumberStep } from './InitiativeNumber';
 import { OffMapIcon } from './OffMapIcon';
 import { woundShare } from '../../initiative/woundShare';
 import { useCardPreviewHover } from './useCardPreviewHover';
+import { useArtViewBox } from './useArtViewBox';
 import { t } from '../../i18n';
 import { DealtCard } from './DealtCard';
 import { entryToken } from '../../initiative/party';
@@ -111,6 +112,10 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
     ...(color ? { '--atlas-combatant-color': color } : {}),
     ...(turn ? { '--atlas-turn-color': turn } : {}),
   } as React.CSSProperties;
+
+  // The art without the transparent margins its image may have (a token cropped zoomed out), so it fills the card
+  const artViewBox = useArtViewBox(app, entry.imagePath);
+  const artStyle = artViewBox ? ({ '--atlas-art-view-box': artViewBox } as React.CSSProperties) : undefined;
 
   // Get image URL from vault path
   const getImageUrl = useCallback((imagePath: string): string => {
@@ -247,7 +252,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
           {entry.imagePath && (
             // The token's art faded in behind the line, from its right end
             <div className={`atlas-initiative-card__backdrop${token?.showRing === false ? ' atlas-initiative-card__backdrop--framed' : ''}`} aria-hidden="true">
-              <img src={getImageUrl(entry.imagePath)} alt="" draggable={false} decoding="async" />
+              <img src={getImageUrl(entry.imagePath)} alt="" draggable={false} decoding="async" style={artStyle} />
               {woundFill}
             </div>
           )}
@@ -258,7 +263,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
           {entry.imagePath ? (
             // The card names the combatant (`aria-label`): its art is a picture no one needs read again
             <div className={`atlas-initiative-card__art${token?.showRing === false ? ' atlas-initiative-card__art--framed' : ''}`} aria-hidden="true">
-              <img src={getImageUrl(entry.imagePath)} alt="" draggable={false} decoding="async" />
+              <img src={getImageUrl(entry.imagePath)} alt="" draggable={false} decoding="async" style={artStyle} />
               {woundFill}
             </div>
           ) : (

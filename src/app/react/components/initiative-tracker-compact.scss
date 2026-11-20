@@ -54,6 +54,7 @@ $plate-height: 24px;
       width: 75%;
       height: 100%;
       object-fit: cover;
+      object-view-box: var(--atlas-art-view-box, none);
       // Through the faces, which sit high in most token art
       object-position: 50% 30%;
       opacity: 0.6;
