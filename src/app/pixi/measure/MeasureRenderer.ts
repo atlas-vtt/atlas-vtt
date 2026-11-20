@@ -37,7 +37,7 @@ import { RangeMarks, type RangeSources } from './RangeMarks';
 
 export { MEASURE_FADE_MS, type MeasureGrid } from './LiveMeasuring';
 
-type MeasureState = Pick<ViewState, 'activeTool' | 'grid' | 'objects' | 'levels' | 'viewedLevel' | 'measureTool' | 'mapPath' | 'selectedIds' | 'tokenSettings' | 'lighting' | 'isMapLoading' | CoversMap> & Pick<MeasuresSlice, 'addMeasure'>
+type MeasureState = Pick<ViewState, 'activeTool' | 'heldRulerFrom' | 'grid' | 'objects' | 'levels' | 'viewedLevel' | 'measureTool' | 'mapPath' | 'selectedIds' | 'tokenSettings' | 'lighting' | 'isMapLoading' | CoversMap> & Pick<MeasuresSlice, 'addMeasure'>
   & ReturnType<MeasureHandleStore['getState']>;
 
 /** What the measure tool reads of its view's state, and what it writes: a measurement to keep, and what the handles of the kept ones change. */

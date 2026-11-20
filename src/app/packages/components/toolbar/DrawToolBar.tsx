@@ -11,6 +11,7 @@ import { PlacingMenu } from "./DrawToolMenus"
 import { DRAW_MODE_CHOICES, drawModeChoice, drawModeTools, drawModeUnavailable } from "./drawToolChoices"
 import { ChoiceButtons, GroupBreak, ToolOptionsBars } from "./ToolOptionsBar"
 import { useDrawStyle } from "./useDrawStyle"
+import { shownTool } from "../../../measure/heldRuler"
 
 /** Why the bars take no choice now, or null: drawing is done in the GM's view, and the session view shows the players'. */
 function useLockedReason(): string | null {
@@ -30,7 +31,7 @@ function useLockedReason(): string | null {
  * while the toolbar is arranged.
  */
 export function DrawToolBar(): React.ReactElement {
-  const shown = useAtlasStore((state) => state.activeTool === 'draw' && !state.isPlayerView
+  const shown = useAtlasStore((state) => shownTool(state) === 'draw' && !state.isPlayerView
     && !state.isToolbarEditing && !state.isMapLoading)
   return <ToolOptionsBars shown={shown}><DrawBars /></ToolOptionsBars>
 }

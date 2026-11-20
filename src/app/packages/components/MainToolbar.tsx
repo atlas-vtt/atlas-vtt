@@ -33,13 +33,14 @@ import type { ToolbarContext, ToolMenu } from "./toolbar/toolbarContext"
 import type { ResponsiveToolbarItem } from "./toolbar/toolbarTypes"
 import { t } from '../../i18n';
 import { portalHost } from '../../host/portalHost';
+import { shownTool } from "../../measure/heldRuler"
 
 interface MainToolbarProps {
   viewId?: string;
 }
 
 export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewId }, ref) => {
-  const activeTool = useAtlasStore(state => state.activeTool)
+  const activeTool = useAtlasStore(shownTool)
   const setActiveTool = useAtlasStore(state => state.setActiveTool)
   const measureMode = useAtlasStore(state => state.measureTool.mode)
   const drawMode = useAtlasStore(state => state.drawTool.mode)

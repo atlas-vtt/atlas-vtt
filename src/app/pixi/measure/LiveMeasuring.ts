@@ -14,6 +14,8 @@ import type { MeasureInputHost } from './MeasureInput';
 import type { MeasureLayer } from './MeasureLayer';
 import { LIVE_DISSOLVE_MS } from './measurePresence';
 import type { LiveMeasure } from './measurements';
+import { measureToolInUse } from '../../measure/heldRuler';
+import type { ViewState } from '../../types/viewState';
 
 /** The grid a measurement snaps to and is measured on. */
 export type MeasureGrid = Pick<GridSystem, 'getOptions' | 'snapToCellCenter'>;
@@ -32,6 +34,8 @@ const OFFERED: readonly MeasureShapeKind[] = ['ruler', 'circle', 'cone', 'square
 export interface LiveMeasuringState extends ToolSwitchState {
   readonly grid: Pick<GridState, 'snapToGrid' | 'size'> | null;
   readonly measureTool: MeasureToolOptions;
+  /** Set while the measure key is held for a press: it measures with a ruler and keeps nothing (`measureToolInUse`). */
+  readonly heldRulerFrom?: ViewState['activeTool'] | undefined;
   readonly lighting: Pick<SceneLighting, 'enabled'>;
   /** Keeps a measurement and returns its id; null, and nothing kept, where no more can be (`MeasuresSlice.addMeasure`). */
   addMeasure(measure: MeasureInput): string | null;
@@ -75,7 +79,7 @@ export class LiveMeasuring implements MeasureInputHost {
   constructor(private readonly deps: LiveMeasuringDeps) {}
 
   shape(): MeasureShapeKind | null {
-    const { mode } = this.deps.store.getState().measureTool;
+    const { mode } = measureToolInUse(this.deps.store.getState());
     return OFFERED.find((shape) => shape === mode) ?? null;
   }
 
@@ -119,7 +123,7 @@ export class LiveMeasuring implements MeasureInputHost {
   finished(made: Measurement, shift: boolean): void {
     const measurement = this.sized(made);
     this.show(measurement);
-    if (this.deps.store.getState().measureTool.keep !== shift && this.keep(measurement)) this.clear();
+    if (measureToolInUse(this.deps.store.getState()).keep !== shift && this.keep(measurement)) this.clear();
     else this.fade();
   }
 
