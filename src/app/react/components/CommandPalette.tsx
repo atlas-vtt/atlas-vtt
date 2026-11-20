@@ -31,6 +31,7 @@ import { runInBackground } from '../../utils/backgroundTask';
 import { viewedLevelId } from '../../levels/sceneLevels';
 import { collectionIdOfPath } from '../../services/assetPaths';
 import { CoinIcon } from './CoinIcon';
+import { showDMScreenView } from '../../dm-screen-view';
 
 import { useStore } from 'zustand';
 import { useAtlasStore, useViewStoreHook } from '../ViewStoreContext';
@@ -283,6 +284,17 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         onClose();
         store.getState().setDMScreenPage("statblocks");
         store.getState().setDMScreenOpen(true);
+      },
+    },
+    {
+      id: "open-dm-screen-window",
+      icon: <AppWindow />,
+      label: t('palette.openDMScreenWindow'),
+      keywords: ["dm", "screen", "window"],
+      section: "tools",
+      action: () => {
+        onClose();
+        runInBackground(showDMScreenView(app), 'Opening the DM screen tab', t('palette.dmScreenWindowFailed'));
       },
     },
     {

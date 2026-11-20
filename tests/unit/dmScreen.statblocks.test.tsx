@@ -8,6 +8,8 @@ vi.mock('../../src/app/pixi/utils/tokenHighlight', () => ({ zoomToTokenWithHighl
 import { zoomToTokenWithHighlight } from '../../src/app/pixi/utils/tokenHighlight';
 
 vi.mock('../../src/app/react/components/LinkedNotePicker', () => ({ default: () => null }));
+vi.mock('../../src/app/dm-screen-view', () => ({ showDMScreenView: vi.fn(async () => {}) }));
+import { showDMScreenView } from '../../src/app/dm-screen-view';
 vi.mock('../../src/app/resources/useMapResources', async () => {
   const definitions = [(await import('../../src/app/resources/resourceDefinitions')).HP_RESOURCE];
   return { useMapResources: () => definitions };
@@ -222,6 +224,18 @@ describe('DM screen while Fantasy Statblocks parses the vault', () => {
 });
 
 describe('DM screen token actions', () => {
+  it('opens the DM screen in a window from the overlay', async () => {
+    showDMScreen([creaturePath]);
+    fireEvent.click(screen.getByRole('button', { name: 'Open DM screen in a new window' }));
+    await waitFor(() => expect(showDMScreenView).toHaveBeenCalledWith(app));
+  });
+
+  it('does not offer the window action in the standalone view', () => {
+    placeTokens([]);
+    render(<DMScreen isOpen inTab onClose={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: 'Open DM screen in a new window' })).toBeNull();
+  });
+
   it('closes on Escape', async () => {
     const onClose = vi.fn();
     const { container } = showDMScreen([creaturePath], onClose);

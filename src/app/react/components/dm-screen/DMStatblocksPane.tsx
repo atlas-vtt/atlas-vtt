@@ -19,10 +19,11 @@ interface DMStatblocksPaneProps {
   scopeSwitch: React.ReactNode;
   loading: boolean;
   onClose: () => void;
+  onLocate?: (() => void) | undefined;
 }
 
 /** Left side of the DM screen's first page: the statblocks of the tokens on the map. */
-export function DMStatblocksPane({ app, shown, scopeSwitch, loading, onClose }: DMStatblocksPaneProps): React.JSX.Element {
+export function DMStatblocksPane({ app, shown, scopeSwitch, loading, onClose, onLocate }: DMStatblocksPaneProps): React.JSX.Element {
   const { view } = useAtlasUI();
   const tokens = useAtlasStore((state) => state.objects?.tokens || {});
   const updateToken = useAtlasStore((state) => state.updateToken);
@@ -54,7 +55,8 @@ export function DMStatblocksPane({ app, shown, scopeSwitch, loading, onClose }: 
                         // A combatant kept beside the map has no place on it to show
                         if (!token || isOffMap(token)) return;
                         zoomToTokenWithHighlight(view, id, { x: token.x, y: token.y });
-                        onClose();
+                        if (onLocate) onLocate();
+                        else onClose();
                       },
                     }}
                   />
