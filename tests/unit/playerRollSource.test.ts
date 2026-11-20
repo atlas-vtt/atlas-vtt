@@ -151,6 +151,14 @@ describe('a roll as the player window shows it', () => {
     expect(raw).toEqual(before);
   });
 
+  it('keeps what a toolbar roll\'s roller wrote it for, even naming no token', () => {
+    const raw = rawRoll({ type: 'toolbar', tokenId: 'canary-token-id', tokenName: 'Canary Name', abilityName: 'Longsword' });
+    const prepared = rollForPlayers(raw, origin, sceneShowing(null), view);
+    expect(prepared.result.source).toEqual({ type: 'toolbar', abilityName: 'Longsword' });
+    expect(prepared.sourcePresentation).toBeNull();
+    expect(JSON.stringify(prepared)).not.toContain('Canary');
+  });
+
   it('asks the scene only with an origin that names the rolled token', () => {
     const rollScene = sceneShowing(wolf);
     rollForPlayers(rawRoll(), { ...origin, tokenId: 'other' }, rollScene, view);

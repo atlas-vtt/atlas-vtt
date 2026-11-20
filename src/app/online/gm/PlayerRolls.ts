@@ -163,10 +163,15 @@ export class PlayerRolls {
     if (!verdict.ok) return this.refuse(verdict.reason, from);
     const { tokenId } = verdict;
     const token = tokenId === null ? undefined : context.tokens[tokenId];
-    const source: NonNullable<DiceRollResult['source']> = tokenId === null || token === undefined ? { type: 'toolbar' } : { type: 'toolbar', tokenId, tokenName: tokenLabel(token) };
     const notes: RollNotes = request !== undefined && asked !== undefined
       ? { flavor: request.label, request: { id: asked.id, label: request.label } }
       : sent.flavor === undefined ? {} : { flavor: sent.flavor };
+    // What the roll is for ("Longsword") names it wherever it shows, as a statblock's roll names its ability.
+    const source: NonNullable<DiceRollResult['source']> = {
+      type: 'toolbar',
+      ...(tokenId !== null && token !== undefined && { tokenId, tokenName: tokenLabel(token) }),
+      ...(notes.flavor !== undefined && { abilityName: notes.flavor }),
+    };
     const mode = message.mode ?? 'public';
     const dice = this.ports.dice();
     const set = pinned === undefined ? (token === undefined ? undefined : dice?.setFor?.(token)) : presetSet(pinned) ?? undefined;
@@ -188,8 +193,9 @@ export class PlayerRolls {
   /** A private roll: into the log for its audience, and thrown on the roller's page unless it is blind. */
   private rollPrivately(from: string, formula: string, mode: Exclude<RollMode, 'public'>, tokenId: string | null, source: NonNullable<DiceRollResult['source']>, context: RollContext, notes: RollNotes, how: PrivateRoll): void {
     const { whisper, set, setAppearance, advantage } = how;
-    const roll = this.ports.quietRoll(formula, set, setAppearance, advantage);
-    if (roll === null) return this.refuse('formula', from);
+    const quiet = this.ports.quietRoll(formula, set, setAppearance, advantage);
+    if (quiet === null) return this.refuse('formula', from);
+    const roll: SharedRoll = notes.flavor === undefined ? quiet : { ...quiet, source: { type: 'toolbar', abilityName: notes.flavor } };
     const token = tokenId === null ? null : this.ports.alias(tokenId);
     this.ports.logged({ who: from, roll, token, shared: true, mode, to: rollAudience(mode, from, whisper), ...notes, ...rollFaceOf(source, context.tokens) });
     if (mode !== 'blind') this.ports.send({ t: 'roll', who: from, result: roll, token }, from);

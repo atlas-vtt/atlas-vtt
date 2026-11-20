@@ -75,8 +75,8 @@ export const RollRow = memo(function RollRow({ entry, face, portrait, time, thre
               <span className="atlas-online-log__roll-request-text">{`for ${request.label}`}</span>
             </button>
           )}
-          {ability !== undefined && ability !== '' && <span className="atlas-online-log__roll-ability atlas-dice-toast__ability">{ability}</span>}
-          {flavor !== undefined && flavor !== request?.label && <span className="atlas-online-log__roll-flavor atlas-dice-toast__ability">{flavor}</span>}
+          {ability !== undefined && ability !== '' && ability !== request?.label && <span className="atlas-online-log__roll-ability atlas-dice-toast__ability">{ability}</span>}
+          {flavor !== undefined && flavor !== request?.label && flavor !== ability && <span className="atlas-online-log__roll-flavor atlas-dice-toast__ability">{flavor}</span>}
           <div className="atlas-online-log__roll-summary">
             <span className="atlas-online-log__roll-formula">{formulaLine(roll)}</span>
             <span className="atlas-online-log__roll-equals" aria-hidden="true">=</span>
