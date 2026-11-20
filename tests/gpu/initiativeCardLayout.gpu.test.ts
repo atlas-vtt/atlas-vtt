@@ -151,10 +151,16 @@ describe('the GM\'s initiative cards', () => {
     expect(getComputedStyle(empty!).color).not.toBe(getComputedStyle(number!).color);
 
     const before = box(number!);
+    const plate = getComputedStyle(number!).backgroundColor;
     act(() => number!.click());
-    const field = container.querySelector('.atlas-initiative-card__initiative-input')!;
+    const field = container.querySelector<HTMLElement>('.atlas-initiative-card__initiative-input')!;
+    expect(document.activeElement).toBe(field);
     expect(box(field).height).toBe(before.height);
+    expect(box(field).width).toBeCloseTo(before.width, 0);
     expect(box(field).top).toBeCloseTo(before.top, 0);
+    // Typed in place it keeps the plate's colour and only gains a frame
+    expect(getComputedStyle(field).backgroundColor).toBe(plate);
+    expect(getComputedStyle(field).boxShadow).not.toBe('none');
   });
 
   it('fill the art with red from the bottom by the hit points lost, under the art\'s shade, in the tile and the compact line alike', async () => {
