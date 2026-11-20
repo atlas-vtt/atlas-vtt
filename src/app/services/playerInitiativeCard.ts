@@ -1,6 +1,6 @@
 import { setIcon } from 'obsidian';
 import { TURN_KEY_ATTRIBUTE } from '../initiative/motion/turnMotion';
-import { combatantColor, turnColor } from '../initiative/combatantColor';
+import { turnColor } from '../initiative/turnColor';
 import { nameShownToPlayers } from '../pixi/token-renderer/nameplateVisibility';
 import { woundShare } from '../initiative/woundShare';
 import { t } from '../i18n';
@@ -26,17 +26,10 @@ export function renderPlayerCard(parent: HTMLElement, { entry, token }: Combatan
   }
   if (entry.sitsOut) card.addClass('atlas-player-initiative__card--sitting-out');
   if (entry.delayed) card.addClass('atlas-player-initiative__card--delayed');
-  // The colour the GM gave the card
-  const color = combatantColor(entry);
-  if (color) {
-    card.addClass('atlas-player-initiative__card--coloured');
-    card.style.setProperty('--atlas-combatant-color', color);
-  } else if (token.side === 'players') {
-    // The players' own side is framed too, so the sides read at a glance across the table
-    card.addClass('atlas-player-initiative__card--ally');
-  }
-  // Its turn flashes in its own colour
-  const flash = turnColor(entry, token);
+  // The players' own side is framed, so the sides read at a glance across the table
+  if (token.side === 'players') card.addClass('atlas-player-initiative__card--ally');
+  // Its turn flashes in its token's ring colour
+  const flash = turnColor(token);
   if (flash) card.style.setProperty('--atlas-turn-color', flash);
   const src = entry.imagePath ? look.portraitSrc(entry.imagePath) : null;
   // A combatant the GM's map leaves unnamed shows a placeholder for its name

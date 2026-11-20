@@ -82,11 +82,7 @@ $plate-height: 24px;
     @include initiative-wound-from(left);
   }
 
-  // A side's glow inside the line, beside its border's line; under the art it fades with it
-  .atlas-initiative-card--coloured:not(.atlas-initiative-card--active, .atlas-initiative-side--active *) {
-    @include initiative-side-glow(var(--atlas-combatant-color), 10px);
-  }
-
+  // The players' glow inside the line, beside its border's line; under the art it fades with it
   .atlas-initiative-card--ally:not(.atlas-initiative-card--active, .atlas-initiative-side--active *) {
     @include initiative-side-glow(var(--color-green), 10px);
   }

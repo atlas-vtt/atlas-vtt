@@ -230,14 +230,7 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
     border: $border-width-s solid var(--background-modifier-border);
     border-radius: $radius-m;
 
-    // The colour the GM gave the card (opponents start in red): its border and a wash of its fill; the turn's accent wins
-    &--coloured {
-      --atlas-side-color: var(--atlas-combatant-color);
-      border-color: initiative-side-line(var(--atlas-side-color));
-      background: color-mix(in srgb, var(--atlas-combatant-color) 22%, var(--background-modifier-hover));
-    }
-
-    // The players' own side, framed in green as the opponents are in their colour
+    // The players' own side, framed in green, so the sides read at a glance
     &--ally {
       --atlas-side-color: var(--color-green);
       border-color: initiative-side-line(var(--atlas-side-color));
@@ -280,7 +273,6 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
     @include initiative-art-framed;
   }
 
-  &__card--art#{&}__card--coloured &__art::after,
   &__card--art#{&}__card--ally &__art::after {
     @include initiative-side-glow(var(--atlas-side-color), scaled(14px));
   }

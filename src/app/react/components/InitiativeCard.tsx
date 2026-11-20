@@ -21,7 +21,7 @@ import { useArtViewBox } from './useArtViewBox';
 import { t } from '../../i18n';
 import { DealtCard } from './DealtCard';
 import { entryToken } from '../../initiative/party';
-import { combatantColor, turnColor } from '../../initiative/combatantColor';
+import { turnColor } from '../../initiative/turnColor';
 import { sideOf } from '../../initiative/sides';
 
 interface InitiativeCardProps {
@@ -102,16 +102,10 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   // Kept beside the map: in the tracker only, until the GM places it
   const offMap = isOffMap(token);
   const name = (token && tokenDisplayName(token)) || entry.name;
-  // The colour the GM gave the card, and the one its turn pulses in
-  const color = combatantColor(entry);
-  const turn = turnColor(entry, token);
-  // Only the players' own side is framed, in its colour or else green: a player at the table has no token. Anyone
-  // else's colour shows only in its turn, which the GM's tracker frames anyway
+  // The colour its turn pulses in: its token's ring colour
+  const turn = turnColor(token);
+  // Only the players' own side is framed: a player at the table has no token
   const playerSide = entry.partyMemberId !== undefined || (token !== undefined && sideOf(token) === 'players');
-  const colours = {
-    ...(color ? { '--atlas-combatant-color': color } : {}),
-    ...(turn ? { '--atlas-turn-color': turn } : {}),
-  } as React.CSSProperties;
 
   // The art without the transparent margins its image may have (a token cropped zoomed out), so it fills the card
   const artViewBox = useArtViewBox(app, entry.imagePath);
@@ -208,8 +202,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   const cardClasses = [
     'atlas-initiative-card',
     !compact && 'atlas-initiative-card--tile',
-    playerSide && color && 'atlas-initiative-card--coloured',
-    playerSide && !color && 'atlas-initiative-card--ally',
+    playerSide && 'atlas-initiative-card--ally',
     entry.isActive && !bySides && 'atlas-initiative-card--active',
     defeated && 'atlas-initiative-card--defeated',
     hiddenFromPlayers && 'atlas-initiative-card--hidden',
@@ -225,7 +218,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
     <div
       ref={cardRef}
       className={cardClasses}
-      style={color || turn ? colours : undefined}
+      style={turn ? ({ '--atlas-turn-color': turn } as React.CSSProperties) : undefined}
       // A field being typed in keeps its text selection to itself
       draggable={!isEditingNumber}
       onClick={handleClick}

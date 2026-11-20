@@ -216,20 +216,20 @@ describe('names on the GM\'s cards', () => {
 });
 
 describe('the frames of sides', () => {
-  it('frames only the players\' side: an opponent in the enemies\' red has no frame, a player character green or its own colour', () => {
+  it('frames only the players\' side, in green, whatever colour an older file gave a card', () => {
     state.objects.tokens = {
       orc: token('orc'),
       hero: { ...token('hero'), side: 'players' } as TokenEntity,
     };
     state.initiative.entries = [
-      { ...entryOf('orc', 0, 15), color: '#dc2626' },
+      { ...entryOf('orc', 0, 15), color: '#dc2626' } as InitiativeEntry,
       entryOf('hero', 1, 12),
-      { id: 'entry-mira', name: 'Mira', partyMemberId: 'mira', color: '#3366ff', initiative: 10, initiativeModifier: 0, imagePath: '', isActive: false, isNPC: false, order: 2 },
+      { id: 'entry-mira', name: 'Mira', partyMemberId: 'mira', color: '#3366ff', initiative: 10, initiativeModifier: 0, imagePath: '', isActive: false, isNPC: false, order: 2 } as InitiativeEntry,
     ];
     const cards = [...render(<InitiativeTracker />).container.querySelectorAll('.atlas-initiative-card')];
 
     const frames = cards.map((card) => ['--coloured', '--ally'].filter((mark) => card.classList.contains(`atlas-initiative-card${mark}`)));
-    expect(frames).toEqual([[], ['--ally'], ['--coloured']]);
+    expect(frames).toEqual([[], ['--ally'], ['--ally']]);
   });
 
   it('holds the size of one card while empty, with no text in it', () => {

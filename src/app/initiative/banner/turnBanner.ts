@@ -13,7 +13,7 @@ import type { InitiativeState } from '../../types/initiativeTypes';
 import { currentTurn, turnKey } from '../turnHolders';
 import { fightSides, sideName } from '../sides';
 import { entryToken } from '../party';
-import { turnColor } from '../combatantColor';
+import { turnColor } from '../turnColor';
 
 /** The portrait of the combatant whose turn it is, drawn as the map draws its token. */
 export interface TurnBannerPortrait {
@@ -81,7 +81,7 @@ export function turnBannerOf(
     ? (token ? tokenDisplayName(token) : null) ?? entry.name
     : token ? nameShownToPlayers(entry.name, token, viewer.mapShowsNameplates, viewer.showNames) : viewer.showNames ? entry.name : null;
   const portrait = entry.imagePath ? { imagePath: entry.imagePath, showRing: token?.showRing !== false, ringColor: token?.ringColor } : null;
-  const color = turnColor(entry, token);
+  const color = turnColor(token);
   return { key, round, title: title || null, portrait, ...(color ? { color } : {}) };
 }
 

@@ -21,9 +21,6 @@ export interface InitiativeEntry {
   /** Display name */
   name: string;
 
-  /** The colour the GM gave the card, `#rrggbb`; read with `combatantColor`. Older versions ignore it. */
-  color?: string | undefined;
-
   /** Rolled initiative value (after modifiers) */
   initiative: number;
 

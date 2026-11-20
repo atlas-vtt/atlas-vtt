@@ -24,13 +24,8 @@ describe('the party at the table', () => {
     expect(entrySide({ tokenId: 'goblin' }, { goblin: {} as TokenEntity })).toBe('opponents');
   });
 
-  it('gives a member\'s colour to their entry, and follows it as it changes', () => {
-    const red = { ...ARA, color: '#dc2626' };
-    expect(collectionParty({ party: [red, { ...BOR, color: 'red' }] })).toEqual([red, BOR]);
-    expect(missingPartyEntries([red], [])[0]?.color).toBe('#dc2626');
-    const entry = { id: 'e', partyMemberId: 'ara', name: 'Ara', imagePath: 'party/ara.webp' } as never;
-    expect(partyEntryChanges(entry, [red])).toEqual({ name: 'Ara', imagePath: 'party/ara.webp', color: '#dc2626' });
-    expect(partyEntryChanges({ ...(entry as object), color: '#dc2626' } as never, [red])).toBeNull();
+  it('leaves out a colour an older roster gave a member', () => {
+    expect(collectionParty({ party: [{ ...ARA, color: '#dc2626' } as never] })).toEqual([ARA]);
   });
 
   it('keeps an entry showing its member as the roster has them, and leaves one whose member left', () => {

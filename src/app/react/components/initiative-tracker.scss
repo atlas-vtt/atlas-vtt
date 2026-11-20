@@ -376,14 +376,7 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
     transform: scale(0.96);
   }
 
-  // A player character's own colour (a party member's): its border and a wash of its fill; the turn's accent wins
-  &--coloured,
-  &--coloured:hover {
-    border-color: initiative-side-line(var(--atlas-combatant-color));
-    background: color-mix(in srgb, var(--atlas-combatant-color) 22%, var(--background-modifier-hover));
-  }
-
-  // The players' own side, framed in green as opponents are in their colour
+  // The players' own side, framed in green
   &--ally,
   &--ally:hover {
     border-color: initiative-side-line(var(--color-green));
@@ -392,7 +385,7 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   // Active turn state
   // Ring and glow are inset: the list scrolls, so anything drawn outside the
   // card box is clipped on the straight edges and leaves ragged corners.
-  // In the combatant's own colour (`--atlas-turn-color`, `turnColor`), else the accent
+  // In its token's ring colour (`--atlas-turn-color`, `turnColor`), else the accent
   &--active {
     border-color: var(--atlas-turn-color, var(--interactive-accent));
     box-shadow:
@@ -780,12 +773,8 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
     opacity: 0.5;
   }
 
-  // A side's glow and the turn's ring lie on the art, which covers the card's own inset shadow; the side's line is the
-  // card's border
-  &.atlas-initiative-card--coloured .atlas-initiative-card__art::after {
-    @include initiative-side-glow(var(--atlas-combatant-color));
-  }
-
+  // The players' glow and the turn's ring lie on the art, which covers the card's own inset shadow; the side's line is
+  // the card's border
   &.atlas-initiative-card--ally .atlas-initiative-card__art::after {
     @include initiative-side-glow(var(--color-green));
   }
@@ -931,11 +920,3 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
   }
 }
 
-// A colour's swatch in the card menu's Colour submenu
-.atlas-initiative-colour-dot {
-  display: block;
-  width: $icon-s;
-  height: $icon-s;
-  border-radius: 50%;
-  border: $border-width-s solid var(--background-modifier-border);
-}
