@@ -7,11 +7,16 @@
 $tracker-width: 96px;
 // Wide enough for a name of two short words a line, which the portrait column alone is not
 $tracker-width-named: 168px;
-// The collapse toggle: as tall as a card's number slot
-$collapse-height: 24px;
-// What the tracker keeps of itself in a pane too short for its clearance: its controls (the toggle and
-// two rows of buttons, with the panel's border, padding and gaps) and one card, which is taller with a name.
-$tracker-chrome-height: 118px;
+// The bars floating above and below the tracker: a capsule of buttons, $float-gap from the panel
+$float-button: 28px;
+$float-height: calc(#{$float-button} + 2 * #{$surface-inset} + 2 * #{$border-width-m});
+$float-gap: $spacing-s;
+$float-room: calc(#{$float-height} + #{$float-gap});
+// How far past the panel and its bars the pointer counts as near the tracker
+$float-reach: $spacing-s;
+// What the tracker keeps of itself in a pane too short for its clearance: the round at its foot (with the panel's
+// border, padding and gap) and one card, which is taller with a name.
+$tracker-chrome-height: 40px;
 $tracker-min-height: $tracker-chrome-height + 116px;
 $tracker-min-height-named: $tracker-chrome-height + 140px;
 
@@ -21,15 +26,14 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   right: $spacing-m;
   transform: translateY(-50%);
   width: $tracker-width;
-  // Centred panel: symmetric clearance keeps its top below the top bar row
+  // Centred panel: symmetric clearance keeps its top, and the bar floating above it, below the top bar row
   // (Obsidian tab header + row offset + expanded widget bar + gap). The view is the map's pane, which
-  // may be shorter than the clearance alone: the tracker then keeps a card and its controls.
-  max-height: max(#{$tracker-min-height}, calc(#{atlas-view-height()} - 2 * 160px));
+  // may be shorter than the clearance alone: the tracker then keeps a card and its round.
+  max-height: max(#{$tracker-min-height}, calc(#{atlas-view-height()} - 2 * (160px + #{$float-room})));
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  // Its corners hold controls (the collapse toggle, the turn buttons): they stand $surface-inset
-  // inside the border and run concentric with it, and the cards keep the same gap.
+  // The cards stand $surface-inset inside the border, concentric with it, and as far apart
   gap: $surface-inset;
   padding: $surface-inset;
   z-index: 50;
@@ -41,12 +45,18 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   @include atlas-elevated-surface;
   @include atlas-panel-radius($surface-radius);
 
-  overflow: hidden;
+  // Near the tracker: the panel, its bars and a little around them. Its bars show while the pointer is there
+  &::before {
+    content: '';
+    position: absolute;
+    inset: calc(-1 * (#{$float-room} + #{$float-reach})) calc(-1 * #{$float-reach});
+    z-index: -1;
+  }
 
   // The compact list's cards show names
   &--named {
     width: $tracker-width-named;
-    max-height: max(#{$tracker-min-height-named}, calc(#{atlas-view-height()} - 2 * 160px));
+    max-height: max(#{$tracker-min-height-named}, calc(#{atlas-view-height()} - 2 * (160px + #{$float-room})));
   }
 }
 
@@ -59,63 +69,71 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   right: calc(#{$spacing-m} + #{$tracker-width-named} + #{$spacing-s});
 }
 
-// Collapses the tracker to the turn and the next combatants; a ghost control the width of the panel,
-// in the panel's top corners. Above Atlas's button rules (`.atlas-vtt-plugin .btn`), whose size it changes.
-.atlas-initiative-tracker .btn.atlas-initiative-tracker__collapse {
+// A bar of buttons floating above the tracker (Roll, Start or End combat, the options) or below it (the turns):
+// a capsule in the middle of the panel's width, shown while the pointer is near (`::before` above), while a control
+// in it has focus or a turn hotkey presses one of its buttons. It glides in from the panel and fades.
+.atlas-initiative-tracker__float {
+  --atlas-float-nudge: 0px;
+  position: absolute;
+  left: 50%;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: $spacing-xs;
-  width: 100%;
-  height: $collapse-height;
-  padding: 0;
-  flex-shrink: 0;
-  @include atlas-panel-inset-radius($surface-inset);
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-
-  &:hover {
-    color: var(--text-normal);
-  }
-
-  svg {
-    width: 14px;
-    height: 14px;
-  }
-}
-
-// Controls — fills panel width, buttons sized to fit
-.atlas-initiative-tracker__controls,
-.atlas-initiative-tracker__turn-controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   gap: $surface-inset;
-  width: 100%;
+  padding: $surface-inset;
+  box-sizing: border-box;
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius(calc(#{$float-height} / 2));
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, var(--atlas-float-nudge));
+  transition: opacity $transition-normal $transition-ease-out, transform $transition-normal $transition-ease-out;
+
+  &--top {
+    --atlas-float-nudge: #{$spacing-xs};
+    // From the panel's border, past which an absolute child is placed
+    bottom: calc(100% + #{$border-width-m} + #{$float-gap});
+  }
+
+  &--bottom {
+    --atlas-float-nudge: calc(-1 * #{$spacing-xs});
+    top: calc(100% + #{$border-width-m} + #{$float-gap});
+  }
+
+  .atlas-initiative-tracker:hover &,
+  .atlas-initiative-tracker:focus-within &,
+  &:has(.atlas-initiative-tracker__btn--pressed) {
+    --atlas-float-nudge: 0px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  @include atlas-hover-reveal {
+    --atlas-float-nudge: 0px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity $transition-normal $transition-ease-out;
+  }
 }
 
+// The round at the list's foot, as the players' list writes it
 .atlas-initiative-tracker__round {
-  flex: 1;
-  font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
+  @include initiative-round-name($font-ui-small);
+  flex-shrink: 0;
   text-align: center;
-  min-width: 0;
+  color: $round-accent;
 }
 
-// A ghost icon button (`Button`), above Atlas's button rules (`.atlas-vtt-plugin .btn--icon`), whose size it changes
+// A ghost icon button (`Button`) in a floating bar, above Atlas's button rules (`.atlas-vtt-plugin .btn--icon`), whose
+// size it changes; concentric with the bar's capsule
 .atlas-initiative-tracker .btn.atlas-initiative-tracker__btn {
-  flex: 1;
-  width: auto;
-  height: 36px;
+  flex: none;
+  width: $float-button;
+  height: $float-button;
   padding: 0;
   color: var(--text-muted);
-  // $surface-inset inside the border where it stands in a corner (the last row): concentric with it
-  @include atlas-panel-inset-radius($surface-inset);
+  border-radius: atlas-panel-inset-radius-value($surface-inset, calc(#{$float-button} / 2));
   transition: all 0.15s ease;
 
   &:hover {
@@ -196,11 +214,8 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
 }
 
 .atlas-initiative-round__label {
-  font-size: 11px;
-  font-weight: 600;
+  @include initiative-round-name($font-ui-small);
   line-height: 1.4;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
 }
 
 .atlas-initiative-side__label {

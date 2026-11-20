@@ -50,9 +50,9 @@ vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (storeState: typeof state) => unknown) => selector(state),
   useViewStoreHook: () => ({ getState: () => state }),
 }));
-const layout = vi.hoisted(() => ({ fromTurn: false, dock: 'right' as 'right' | 'top' | 'bottom', collapsed: false, set: vi.fn() }));
+const layout = vi.hoisted(() => ({ fromTurn: false, dock: 'right' as 'right' | 'top' | 'bottom', set: vi.fn() }));
 vi.mock('../../src/app/initiative/useInitiativeLayout', () => ({
-  useInitiativeLayout: () => ({ layout: { fromTurn: layout.fromTurn, dock: layout.dock, edges: [layout.dock], facesPlayers: false, collapsed: layout.collapsed }, setLayout: layout.set }),
+  useInitiativeLayout: () => ({ layout: { fromTurn: layout.fromTurn, dock: layout.dock, edges: [layout.dock], facesPlayers: false }, setLayout: layout.set }),
 }));
 const resources = vi.hoisted(() => ({ definitions: [] as unknown[] }));
 vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => resources.definitions }));
@@ -109,7 +109,7 @@ beforeEach(() => {
   confirm.asked = [];
   resources.definitions = [];
   scrolls.calls.length = 0;
-  Object.assign(layout, { fromTurn: false, dock: 'right', collapsed: false });
+  Object.assign(layout, { fromTurn: false, dock: 'right' });
   collection.rules = { mode: 'sides', roll: '1d20', firstSide: 'players' };
   scene();
 });
@@ -285,8 +285,9 @@ describe('a fight in turn order', () => {
   it('passes the defeated combatants to the turn buttons', () => {
     resources.definitions = [{ ...HP_RESOURCE }];
     state.objects.tokens.rat = token('rat', { resources: { hp: { current: 0, max: 7 } } });
+    state.initiative = { ...state.initiative, isActive: true, round: 1 };
     const { container } = render(<InitiativeTracker />);
-    const [previous, next] = container.querySelectorAll('.atlas-initiative-tracker__turn-controls button');
+    const [previous, next] = container.querySelectorAll('.atlas-initiative-tracker__float--bottom button');
     fireEvent.click(next!);
     fireEvent.click(previous!);
     expect(state.nextTurn).toHaveBeenCalledWith(new Set(['entry-rat']));

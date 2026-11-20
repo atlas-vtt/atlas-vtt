@@ -80,7 +80,7 @@ describe('everything that reads a side', () => {
 
   it('gives a player character without vision the same side: both lists, the turn and the deal', () => {
     known({ library: () => [record('ranger', true), record('wolf')] });
-    const groups = trackerSegments(entries, tokens, { bySides: true, sides, fightRuns: false, round: 0, fromTurn: false, collapsed: false })
+    const groups = trackerSegments(entries, tokens, { bySides: true, sides, fightRuns: false, round: 0, fromTurn: false })
       .flatMap((segment) => (segment.kind === 'round' ? [] : [[segment.side?.id, segment.items.map((item) => item.tokenId)]]));
     expect(groups).toEqual([['players', ['ranger']], ['opponents', ['wolf']]]);
     expect([entryTokenOf(tokens.ranger, []).side, entryTokenOf(tokens.wolf, []).side]).toEqual(['players', 'opponents']);

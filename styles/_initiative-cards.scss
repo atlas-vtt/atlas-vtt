@@ -3,6 +3,22 @@
 // its top corners, the resources a capsule along its foot, the conditions peeking out below it.
 @use 'tokens' as *;
 
+/// The rounds' names and lines take the theme's heading face, rule and red where it has them (the Atlas VTT theme
+/// does), else Obsidian's own.
+$round-line: var(--atlas-theme-rule, var(--text-faint));
+$round-accent: var(--atlas-theme-red, var(--text-accent));
+
+/// A round's name, as both lists write it (the round at the list's foot, the next round's divider).
+@mixin initiative-round-name($size) {
+  font-family: var(--atlas-theme-heading-font, var(--font-interface));
+  font-size: $size;
+  // A heading face without a bold one is never made bold: 500 takes its regular weight
+  font-weight: 500;
+  letter-spacing: var(--atlas-theme-heading-tracking, 0.04em);
+  white-space: nowrap;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
 /// The radius of what stands `$surface-inset` inside the border of a card (`$border` wide) in its corners: concentric
 /// with the card's `$radius-m`.
 @function initiative-corner-radius($border) {

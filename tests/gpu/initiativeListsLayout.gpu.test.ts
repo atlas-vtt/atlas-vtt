@@ -2,7 +2,7 @@ import '../setup/obsidianDom';
 import React from 'react';
 import { render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import css from '../../styles/main.scss?inline';
 import type { ConditionDefinition } from '../../src/app/types/collectionSettingsTypes';
 
@@ -66,7 +66,7 @@ async function showTracker({ names = false, layout = {}, sides = false, turn = 3
   const { app } = createInMemoryApp({ files: {} });
   const settings = new SettingsService(app);
   settings.setCompactInitiative(names);
-  settings.setInitiativeLayout({ fromTurn: true, dock: 'right', collapsed: false, ...layout });
+  settings.setInitiativeLayout({ fromTurn: true, dock: 'right', ...layout });
   const store = createViewAtlasStore(app, `initiative-lists-${Math.random()}`);
   store.setState({
     persistenceEnabled: false,
@@ -107,8 +107,8 @@ const shown = (element: Element): boolean => getComputedStyle(element).display !
 /** The panel's padding on all sides and the gaps between its parts are one value. */
 function expectUniform(panel: HTMLElement, value: number): void {
   const border = parseFloat(getComputedStyle(panel).borderTopWidth);
-  // The panel's surface is a layer behind its parts, not one of them
-  const parts = [...panel.children].filter((part) => shown(part) && !part.classList.contains('atlas-player-initiative__surface')).map(box);
+  // The panel's surface is a layer behind its parts, not one of them, and the GM's bars float outside it
+  const parts = [...panel.children].filter((part) => shown(part) && !part.classList.contains('atlas-player-initiative__surface') && !part.classList.contains('atlas-initiative-tracker__float')).map(box);
   const frame = box(panel);
   expect(parts[0]!.top - frame.top - border).toBeCloseTo(value, 0);
   expect(frame.bottom - border - parts.at(-1)!.bottom).toBeCloseTo(value, 0);
@@ -171,7 +171,8 @@ function insetRadius(panel: HTMLElement, inset: number): number {
 
 describe('the GM\'s initiative tracker', () => {
   const style = document.createElement('style');
-  style.textContent = THEME + css;
+  // The bars show and hide at once, so they are measured where they come to rest
+  style.textContent = THEME + css + '.atlas-initiative-tracker__float { transition: none !important; }';
   beforeEach(() => document.head.append(style));
   afterEach(() => style.remove());
 
@@ -183,24 +184,38 @@ describe('the GM\'s initiative tracker', () => {
       expectUniform(tracker, 4);
       expectNoOverflow(tracker.querySelector('.atlas-initiative-tracker__content')!, '.atlas-initiative-card');
 
-      const radius = insetRadius(tracker, 4);
-      const toggle = tracker.querySelector('.atlas-initiative-tracker__collapse')!;
-      expect(parseFloat(getComputedStyle(toggle).borderTopLeftRadius)).toBeCloseTo(radius, 1);
-      expect(parseFloat(getComputedStyle(toggle).borderTopRightRadius)).toBeCloseTo(radius, 1);
-      const [previous, next] = [...tracker.querySelectorAll('.atlas-initiative-tracker__turn-controls button')];
-      expect(parseFloat(getComputedStyle(previous!).borderBottomLeftRadius)).toBeCloseTo(radius, 1);
-      expect(parseFloat(getComputedStyle(next!).borderBottomRightRadius)).toBeCloseTo(radius, 1);
-      // The controls of one row are as tall as each other
-      const heights = [...tracker.querySelectorAll('.atlas-initiative-tracker__controls button, .atlas-initiative-tracker__turn-controls button')].map((button) => box(button).height);
-      expect(new Set(heights).size).toBe(1);
+      // The round at the list's foot, in the players' words
+      expect(tracker.querySelector('.atlas-initiative-tracker__round')?.textContent).toBe('Round 2');
+
+      // The bars float $spacing-s above and below the panel, in the middle of its width: capsules whose buttons are
+      // concentric with them and as tall as each other
+      await userEvent.hover(tracker);
+      const panel = box(tracker);
+      const top = tracker.querySelector<HTMLElement>('.atlas-initiative-tracker__float--top')!;
+      const bottom = tracker.querySelector<HTMLElement>('.atlas-initiative-tracker__float--bottom')!;
+      // Within half a pixel: Chromium draws the panel's 1.5 px border 1 px wide at this pixel ratio
+      expect(Math.abs(panel.top - box(top).bottom - 8)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(box(bottom).top - panel.bottom - 8)).toBeLessThanOrEqual(0.5);
+      for (const bar of [top, bottom]) {
+        const frame = box(bar);
+        expect((frame.left + frame.right) / 2).toBeCloseTo((panel.left + panel.right) / 2, 0);
+        expect(parseFloat(getComputedStyle(bar).borderTopLeftRadius)).toBeGreaterThanOrEqual(frame.height / 2);
+        for (const button of bar.querySelectorAll('button')) {
+          expect(box(button).height).toBe(28);
+          // A capsule too: the bar's inner radius less the inset is half its height
+          expect(parseFloat(getComputedStyle(button).borderTopLeftRadius)).toBeCloseTo(14, 1);
+        }
+      }
+      expect(top.querySelectorAll('button')).toHaveLength(3);
+      expect(bottom.querySelectorAll('button')).toHaveLength(2);
       await page.screenshot({ path: `${SHOTS}/gm-${names ? 'names' : 'normal'}.png`, element: tracker });
     }
   });
 
-  it('keeps a card and its controls in a pane shorter than its clearance, and its old height in a tall one', async () => {
+  it('keeps a card and its round in a pane shorter than its clearance, and room for its bars in a tall one', async () => {
     const tracker = await showTracker();
-    // 900 px of view less the clearance above and below
-    expect(box(tracker).height).toBe(580);
+    // 900 px of view less the clearance above and below and a bar's room (39 px and 8 px of gap) on each side
+    expect(box(tracker).height).toBe(486);
 
     for (const height of [420, 330, 200]) {
       await page.viewport(1200, height);
@@ -208,9 +223,9 @@ describe('the GM\'s initiative tracker', () => {
       const cards = [...tracker.querySelectorAll('.atlas-initiative-card')].map(box);
       const whole = cards.filter((card) => card.top >= content.top - 0.5 && card.bottom <= content.bottom + 0.5);
       expect(whole.length, `${height} px`).toBeGreaterThanOrEqual(1);
-      for (const control of tracker.querySelectorAll('.atlas-initiative-tracker__collapse, .atlas-initiative-tracker__controls button, .atlas-initiative-tracker__turn-controls button')) {
-        expect(box(control).height, `${height} px`).toBeGreaterThanOrEqual(24);
-      }
+      const round = box(tracker.querySelector('.atlas-initiative-tracker__round')!);
+      expect(round.bottom, `${height} px`).toBeLessThanOrEqual(box(tracker).bottom);
+      expect(round.height, `${height} px`).toBeGreaterThan(10);
     }
   });
 
@@ -242,12 +257,15 @@ describe('the GM\'s initiative tracker', () => {
     expect(row.top).toBeLessThan(box(card.querySelector('.atlas-initiative-card__hp-bar')).bottom);
   });
 
-  it('collapses to the turn and the next two, and stands at the right edge with the dice log open', async () => {
-    const collapsed = await showTracker({ layout: { collapsed: true } });
-    expect(collapsed.querySelectorAll('.atlas-initiative-card')).toHaveLength(3);
-    expectUniform(collapsed, 4);
-    await page.screenshot({ path: `${SHOTS}/gm-collapsed.png`, element: collapsed });
+  it('hides its bars until the pointer comes near', async () => {
+    const tracker = await showTracker();
+    for (const bar of tracker.querySelectorAll('.atlas-initiative-tracker__float')) expect(getComputedStyle(bar).opacity).toBe('0');
+    // Above the panel, where the top bar shows: near the tracker, outside its panel
+    await userEvent.hover(tracker, { position: { x: box(tracker).width / 2, y: -20 } });
+    for (const bar of tracker.querySelectorAll('.atlas-initiative-tracker__float')) expect(getComputedStyle(bar).opacity).toBe('1');
+  });
 
+  it('stands at the right edge with the dice log open', async () => {
     const tracker = await showTracker({ diceLog: true });
     expect(1200 - box(tracker).right).toBe(12);
   });

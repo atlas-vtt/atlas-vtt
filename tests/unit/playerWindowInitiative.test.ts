@@ -288,10 +288,6 @@ describe('player initiative panel', () => {
     expect(panel()?.classList.contains('atlas-player-initiative--bottom')).toBe(false);
     settings.setInitiativeLayout({ dock: 'bottom' });
     expect(panel()?.classList.contains('atlas-player-initiative--bottom')).toBe(true);
-    // Collapsing the GM's tracker is the GM's own view of it: the players' list stays as it is
-    const drawn = panel();
-    settings.setInitiativeLayout({ collapsed: true });
-    expect(panel()).toBe(drawn);
   });
 
   it('defaults on for old settings and persists the DM choice across reloads', async () => {

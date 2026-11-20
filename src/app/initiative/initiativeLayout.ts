@@ -4,8 +4,7 @@ const PLAYERS_LIST_EDGES: readonly PlayersListEdge[] = ['right', 'top', 'bottom'
 
 /**
  * How the initiative lists are laid out. `fromTurn` and the players' list's edges are the GM's choices, kept in
- * Atlas' settings and followed by the players' list; `collapsed` is this device's, since how much
- * room the tracker may take depends on the screen it is shown on. The GM's tracker always stands at the right edge:
+ * Atlas' settings and followed by the players' list. The GM's tracker always stands at the right edge:
  * the left one holds the dice log and the map's other controls.
  */
 export interface InitiativeLayout {
@@ -17,12 +16,7 @@ export interface InitiativeLayout {
   edges: readonly PlayersListEdge[];
   /** Each copy turns to face the players at its edge: it runs as a row, read from that edge. */
   facesPlayers: boolean;
-  /** The GM's tracker shows only the turn and the next combatants. */
-  collapsed: boolean;
 }
-
-/** Combatants a collapsed tracker shows: the one whose turn it is and the next two. */
-export const COLLAPSED_CARDS = 3;
 
 /** The two ways the GM lays the players' list out: a column down the right edge, or a row on each side of a table TV. */
 export type PlayersListShape = 'vertical' | 'horizontal';
@@ -49,5 +43,5 @@ export function readListEdges(value: unknown, dock: PlayersListEdge): PlayersLis
   return stored.length > 0 ? stored : [dock];
 }
 
-/** The layout before any choice: the turn on top, at the right edge, expanded. */
-export const DEFAULT_INITIATIVE_LAYOUT: InitiativeLayout = { fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false, collapsed: false };
+/** The layout before any choice: the turn on top, at the right edge. */
+export const DEFAULT_INITIATIVE_LAYOUT: InitiativeLayout = { fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false };

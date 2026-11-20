@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { INITIATIVE_COLLAPSED_STORAGE_KEY } from '../../src/app/services/deviceSettings';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { memoryPluginData } from '../mocks/pluginData';
@@ -16,7 +15,7 @@ async function loaded(stored: unknown = null): Promise<{ settings: SettingsServi
 describe('the initiative lists\' layout', () => {
   it('starts at the turn, at the right edge and expanded until the GM chooses otherwise', async () => {
     const { settings } = await loaded();
-    expect(settings.initiativeLayout()).toEqual({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false, collapsed: false });
+    expect(settings.initiativeLayout()).toEqual({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false });
   });
 
   it('lays the players\' list out as a column at the right edge or a row on each side of the table', async () => {
@@ -49,27 +48,11 @@ describe('the initiative lists\' layout', () => {
     expect((await loaded({ initiativeDock: 'middle', initiativeFromTurn: 'yes' })).settings.initiativeLayout()).toMatchObject({ dock: 'right', fromTurn: true });
   });
 
-  it('keeps a collapsed tracker on this device alone, never in the synced settings', async () => {
-    const { settings, data, app } = await loaded();
-    const listener = vi.fn();
-    settings.onChange(listener);
-    settings.setInitiativeLayout({ collapsed: true });
-    expect(listener).toHaveBeenCalledTimes(1);
-    expect(app.loadLocalStorage(INITIATIVE_COLLAPSED_STORAGE_KEY)).toBe('collapsed');
-    await settings.saveSettingsNow();
-    expect(JSON.stringify(data.stored())).not.toContain('collapsed');
-
-    // Expanded is stored as a word: Obsidian drops a falsy value instead of storing it
-    settings.setInitiativeLayout({ collapsed: false });
-    expect(app.loadLocalStorage(INITIATIVE_COLLAPSED_STORAGE_KEY)).toBe('expanded');
-    expect(settings.initiativeLayout().collapsed).toBe(false);
-  });
-
   it('tells nobody of a change that changes nothing', async () => {
     const { settings } = await loaded();
     const listener = vi.fn();
     settings.onChange(listener);
-    settings.setInitiativeLayout({ fromTurn: true, dock: 'right', collapsed: false });
+    settings.setInitiativeLayout({ fromTurn: true, dock: 'right' });
     expect(listener).not.toHaveBeenCalled();
   });
 });
