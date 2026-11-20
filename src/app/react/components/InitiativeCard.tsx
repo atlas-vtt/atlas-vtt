@@ -56,7 +56,7 @@ const NOTHING = (): void => undefined;
 /**
  * A combatant in the GM's tracker, as the players' list draws it (`styles/_initiative-cards.scss`): a square card
  * filled with the token's art, its number in the top right, its badge and marks in the top left, the bars of the
- * resources that defeat it along its foot and its conditions peeking out below. The compact list is one line instead.
+ * resources that defeat it along its foot and its conditions peeking out below. The compact list is one line instead, over the token's art faded in from its right end.
  */
 export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   entry,
@@ -239,7 +239,17 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
       </div>
 
       {/* The token's art filling the card, with its badge and marks in the top left; the compact list shows the marks alone, beside the name */}
-      {compact ? <span className="atlas-initiative-card__marks">{defeated && <Skull className="atlas-initiative-card__defeated-mark" />}{marks}</span> : (
+      {compact ? (
+        <>
+          {entry.imagePath && (
+            // The token's art faded in behind the line, from its right end
+            <div className={`atlas-initiative-card__backdrop${token?.showRing === false ? ' atlas-initiative-card__backdrop--framed' : ''}`} aria-hidden="true">
+              <img src={getImageUrl(entry.imagePath)} alt="" draggable={false} decoding="async" />
+            </div>
+          )}
+          <span className="atlas-initiative-card__marks">{defeated && <Skull className="atlas-initiative-card__defeated-mark" />}{marks}</span>
+        </>
+      ) : (
         <>
           {entry.imagePath ? (
             // The card names the combatant (`aria-label`): its art is a picture no one needs read again

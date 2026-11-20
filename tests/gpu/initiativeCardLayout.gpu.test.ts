@@ -67,13 +67,35 @@ describe('the GM\'s initiative cards', () => {
     document.body.innerHTML = '';
 
     const container = await show(true);
-    expect(box(container.querySelector('.atlas-initiative-tracker')).width).toBe(168);
+    expect(box(container.querySelector('.atlas-initiative-tracker')).width).toBe(216);
     for (const card of container.querySelectorAll('.atlas-initiative-card')) {
       const name = card.querySelector<HTMLElement>('.atlas-initiative-card__name')!;
       const lineHeight = parseFloat(getComputedStyle(name).lineHeight);
       expect(box(name).height).toBeLessThanOrEqual(2 * lineHeight + 0.5);
       expect(box(name).left).toBeGreaterThanOrEqual(box(card).left);
       expect(box(name).right).toBeLessThanOrEqual(box(card).right);
+    }
+  });
+
+  it('are one line in the compact view: the number a plate concentric with the card, the name beside it, the art behind', async () => {
+    const container = await show(true);
+    store.setState({ initiative: { ...store.getState().initiative, entries: store.getState().initiative.entries.map((entry) => ({ ...entry, imagePath: 'goblin.png' })) } });
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    for (const card of container.querySelectorAll('.atlas-initiative-card')) {
+      const frame = box(card);
+      const border = parseFloat(getComputedStyle(card).borderTopWidth);
+      const inner = parseFloat(getComputedStyle(card).borderTopLeftRadius) - border;
+      const number = card.querySelector('.atlas-initiative-card__initiative')!;
+      expect(box(number).left - frame.left - border).toBeCloseTo(4, 0);
+      expect(box(number).top - frame.top - border).toBeCloseTo(4, 0);
+      expect(parseFloat(getComputedStyle(number).borderTopLeftRadius)).toBeCloseTo(inner - 4, 1);
+      const name = box(card.querySelector('.atlas-initiative-card__name'));
+      expect((name.top + name.bottom) / 2).toBeCloseTo((box(number).top + box(number).bottom) / 2, 0);
+      expect(name.left).toBeGreaterThan(box(number).right);
+      // The art lies under the line, across the card's right end
+      const backdrop = card.querySelector('.atlas-initiative-card__backdrop img')!;
+      expect(box(backdrop).right).toBeCloseTo(frame.right - border, 0);
+      expect(Number(getComputedStyle(card.querySelector('.atlas-initiative-card__name')!).zIndex)).toBeGreaterThan(Number(getComputedStyle(card.querySelector('.atlas-initiative-card__backdrop')!).zIndex));
     }
   });
 

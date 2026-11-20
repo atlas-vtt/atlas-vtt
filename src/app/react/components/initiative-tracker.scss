@@ -5,8 +5,8 @@
 @use '../../../../styles/initiative-cards' as *;
 
 $tracker-width: 96px;
-// Wide enough for a name of two short words a line, which the portrait column alone is not
-$tracker-width-named: 168px;
+// The compact list's line: room for a name beside the number, three conditions and a badge
+$tracker-width-named: 216px;
 // The bars floating above and below the tracker: a capsule of buttons, $float-gap from the panel
 $float-button: 28px;
 $float-height: calc(#{$float-button} + 2 * #{$surface-inset} + 2 * #{$border-width-m});

@@ -176,10 +176,10 @@ describe('the GM\'s initiative tracker', () => {
   beforeEach(() => document.head.append(style));
   afterEach(() => style.remove());
 
-  it('keeps its padding and the gaps between its parts equal, its corner controls concentric, nothing past its cards at 96 and 168 px', async () => {
+  it('keeps its padding and the gaps between its parts equal, its corner controls concentric, nothing past its cards at 96 and 216 px', async () => {
     for (const names of [false, true]) {
       const tracker = await showTracker({ names });
-      expect(box(tracker).width).toBe(names ? 168 : 96);
+      expect(box(tracker).width).toBe(names ? 216 : 96);
       // $surface-inset: its corner controls run concentric with the panel's
       expectUniform(tracker, 4);
       expectNoOverflow(tracker.querySelector('.atlas-initiative-tracker__content')!, '.atlas-initiative-card');

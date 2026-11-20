@@ -1,6 +1,12 @@
-// The GM's compact tracker (the tracker's Compact view): a plain list to work with, no portraits. Each card is
-// one line of number, name and marks, with the bars and conditions below across its width.
+// The GM's compact tracker (the tracker's Compact view): a list to work with, a line per combatant as a deck
+// builder lists its cards. Number, name, up to three conditions and the marks in one line over the token's art,
+// which fades in from the right end; the resource bars below across the card's width.
 @use '../../../../styles/tokens' as *;
+@use '../../../../styles/initiative-cards' as *;
+
+// A whole pixel, as the tiles have, so the plate's corners stay concentric with the card's
+$line-border: $border-width-s;
+$plate-radius: initiative-corner-radius($line-border);
 
 .atlas-initiative-tracker--compact {
   gap: $spacing-xs;
@@ -11,32 +17,135 @@
 
   .atlas-initiative-card {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     align-items: center;
-    gap: $spacing-xs $spacing-s;
-    padding: $spacing-xs $spacing-s;
+    gap: $surface-inset;
+    padding: $surface-inset;
+    border-width: $line-border;
+    // The art lies under everything the line holds
+    isolation: isolate;
 
     &:active {
       transform: none;
     }
+
+    > :not(.atlas-initiative-card__backdrop) {
+      z-index: 1;
+    }
   }
 
+  // The token's art from the right end, faded into the card on its left, where the number and the name read
+  .atlas-initiative-card__backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    border-radius: calc(#{$radius-m} - #{$line-border});
+    pointer-events: none;
+
+    img {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 75%;
+      height: 100%;
+      object-fit: cover;
+      // Through the faces, which sit high in most token art
+      object-position: 50% 30%;
+      opacity: 0.6;
+      mask-image: linear-gradient(to right, transparent, #000 60%);
+    }
+
+    // The turn's ring and glow, which the art would cover on the card itself
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+    }
+  }
+
+  .atlas-initiative-card__backdrop--framed {
+    @include initiative-art-framed;
+  }
+
+  .atlas-initiative-card--active .atlas-initiative-card__backdrop::after,
+  .atlas-initiative-side--active .atlas-initiative-card:not(.atlas-initiative-card--sitting-out) .atlas-initiative-card__backdrop::after {
+    box-shadow:
+      inset 0 0 0 1px var(--atlas-turn-color, var(--interactive-accent)),
+      inset 0 0 12px color-mix(in oklch, var(--atlas-turn-color, var(--interactive-accent)) 25%, transparent);
+  }
+
+  .atlas-initiative-card--active .atlas-initiative-card__backdrop::after {
+    animation: atlas-initiative-pulse 2s ease-in-out infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+
+  .atlas-initiative-card--hidden .atlas-initiative-card__backdrop {
+    opacity: 0.5;
+  }
+
+  // The number on a plate at the line's start, concentric with the card's corners
   .atlas-initiative-card__initiative,
   .atlas-initiative-card__initiative-input,
   .atlas-initiative-card__dealt {
     grid-area: 1 / 1;
   }
 
+  .atlas-initiative-card__initiative,
+  .atlas-initiative-card__initiative-input {
+    border-radius: $plate-radius;
+  }
+
+  .atlas-initiative-card__initiative:not(.atlas-initiative-card__initiative--empty) {
+    background: color-mix(in srgb, var(--background-primary) 70%, transparent);
+    border-color: var(--background-modifier-border);
+
+    &:hover {
+      background: var(--background-secondary);
+    }
+  }
+
+  .atlas-initiative-card__dealt {
+    border-radius: $plate-radius;
+  }
+
   .atlas-initiative-card__name {
     grid-area: 1 / 2;
+    padding-inline: $spacing-xs;
     text-align: start;
     display: block;
     white-space: nowrap;
     text-overflow: ellipsis;
+    // Readable where the art reaches under it
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.8);
+  }
+
+  // Up to three conditions and the count of the rest, at the line's end before the marks
+  .atlas-initiative-card__conditions {
+    grid-area: 1 / 3;
+    flex-wrap: nowrap;
+    width: auto;
+  }
+
+  .atlas-initiative-card__condition {
+    border-radius: $radius-full;
+    box-shadow: 0 0 0 1.5px var(--background-primary);
+  }
+
+  .atlas-initiative-card__conditions--stacked {
+    gap: 0;
+
+    > * + * {
+      margin-inline-start: -4px;
+    }
   }
 
   .atlas-initiative-card__marks {
-    grid-area: 1 / 3;
+    grid-area: 1 / 4;
     display: flex;
     align-items: center;
     gap: $spacing-xs;
@@ -59,10 +168,8 @@
     position: static;
   }
 
-  .atlas-initiative-card__resources,
-  .atlas-initiative-card__conditions {
+  .atlas-initiative-card__resources {
     grid-column: 1 / -1;
-    justify-content: flex-start;
   }
 
   // Hidden from the players: the line is translucent, as its portrait is otherwise
