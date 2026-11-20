@@ -17,6 +17,7 @@ import { ownerIn } from './seatSource.ts';
 import { PlayerDrawings } from './playerDrawings.ts';
 import { ClearedPlayers } from './playerDrawingsClear.ts';
 import { PlayerMoves } from './playerMoves.ts';
+import { playerMoveDistance } from './playerTurnMoves.ts';
 import type { SceneSharePorts } from './sceneSharePorts.ts';
 import { movesOutOfTurn } from './turnShare.ts';
 import { RulesShare } from './RulesShare.ts';
@@ -134,6 +135,8 @@ export class FloorShare {
           const settings = ports.atlasSettings();
           return movesOutOfTurn(store.getState(), { movesOnTurn: settings.movesOnTurn === true, definitions: ports.tokenRules?.()?.resources ?? [] }, tokenId);
         },
+        // A player's drop counts towards the turn's movement as the GM's own drag does (`DragRuler.countDrop`)
+        turnMove: (tokenId, from, to) => (ports.tokenMoves?.()?.rules().countPerTurn === true ? playerMoveDistance(store.getState(), ports.measurement?.() ?? null, tokenId, from, to) : null),
       }),
     });
     // An aura names its token by the id the token list gives it

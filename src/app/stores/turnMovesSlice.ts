@@ -12,18 +12,21 @@ export interface TurnMovesSlice {
   countTurnMove: (tokenIds: readonly string[], distance: number) => void;
 }
 
-type TurnMovesDraft = Pick<TurnMovesState, 'initiative' | 'fightsStarted'> & { turnMoves?: Record<string, TurnMove> | undefined };
+export type TurnMovesDraft = Partial<Pick<TurnMovesState, 'initiative' | 'fightsStarted'>> & { turnMoves?: Record<string, TurnMove> | undefined };
 
 type ImmerSet = (fn: (draft: TurnMovesDraft) => void) => void;
 
+/** `countTurnMove` inside a write already under way (an Immer draft), for writes that move tokens and count in one step. */
+export function countTurnMoveIn(draft: TurnMovesDraft, tokenIds: readonly string[], distance: number): void {
+  const turn = movementTurn({ initiative: draft.initiative, fightsStarted: draft.fightsStarted });
+  for (const id of tokenIds) {
+    const entry = turnMoveAfter(draft.turnMoves?.[id], turn, distance);
+    if (entry) (draft.turnMoves ??= {})[id] = entry;
+  }
+}
+
 export function createTurnMovesActions(set: ImmerSet): TurnMovesSlice {
   return {
-    countTurnMove: (tokenIds, distance) => set((draft) => {
-      const turn = movementTurn(draft);
-      for (const id of tokenIds) {
-        const entry = turnMoveAfter(draft.turnMoves?.[id], turn, distance);
-        if (entry) (draft.turnMoves ??= {})[id] = entry;
-      }
-    }),
+    countTurnMove: (tokenIds, distance) => set((draft) => countTurnMoveIn(draft, tokenIds, distance)),
   };
 }
