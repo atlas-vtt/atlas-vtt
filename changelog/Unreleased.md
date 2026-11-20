@@ -73,6 +73,7 @@
 - The initiative tracker stays at the right edge, clear of the table log and the map's controls on the left, and shows names in the compact view
 - The scene tabs' Open scene and All open tabs buttons show a background only while hovered or pressed
 - The documentation opens in the middle of the scene, whatever size the view has
+- The documentation closes smoothly, without stuttering: its page leaves as soon as the window starts to close, as in the Armarium
 - The initiative tracker's buttons float above and below it and show when the pointer comes near, so the panel holds only the fight; its foot shows the round as the players' list does
 - While the players' initiative list runs as rows across the top and bottom, the widgets on the player view stand as a column down the right edge, and the rows always keep clear of them
 - With the Atlas VTT theme, ivy grows over the corners of the GM's initiative tracker as on the players' list, and on both it comes and goes at once when you switch themes

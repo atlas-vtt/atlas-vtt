@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useIsPresent } from 'framer-motion';
 import { ExternalLink } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { CloseButton } from '../../../packages/components/primitives/CloseButton';
@@ -32,8 +32,13 @@ export function DocsWindow(): React.ReactElement {
   return <AnimatePresence>{open && <DocsPanel key="docs" />}</AnimatePresence>;
 }
 
+/**
+ * The panel's page leaves as soon as the panel starts to close: it runs in a process of its own, and the closing
+ * motion over it dropped most of the frames (as over the Armarium, `ArmariumPane`).
+ */
 function DocsPanel(): React.ReactElement {
   const { view } = useAtlasUI();
+  const present = useIsPresent();
   const setOpen = useAtlasStore((state) => state.setDocsOpen);
   const windowVariants = useDialogWindowVariants();
   const { position, panelRef, startDrag, isDragging } = useDraggablePosition(centred, { margin: MARGIN });
@@ -97,7 +102,7 @@ function DocsPanel(): React.ReactElement {
         <CloseButton onClick={close} aria-label={t('docs.close')} />
       </header>
 
-      <DocsFrame frameRef={frameRef} />
+      {present && <DocsFrame frameRef={frameRef} />}
 
       <div className="atlas-docs-panel__resize atlas-docs-panel__resize--right" onPointerDown={startResize('right')} />
       <div className="atlas-docs-panel__resize atlas-docs-panel__resize--bottom" onPointerDown={startResize('bottom')} />
