@@ -1,8 +1,9 @@
 import React, { useId, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { RotateCcw, Undo2 } from 'lucide-react'
+import { PanelBottomDashed, RotateCcw, Undo2 } from 'lucide-react'
 import { cn } from 'src/utils/cn'
 import { t } from '../../../../i18n'
+import { useAtlasSettings } from '../../../../keyboard/useMapHotkeys'
 import { isHideableToolbarControl, isToolbarControlId, type ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
 import { Button } from '../../primitives/button'
 import { ToolButton } from '../../primitives/ToolButton'
@@ -66,7 +67,7 @@ interface ToolbarTrayProps {
 /**
  * The slim capsule above the bar while the toolbar editor is open: the
  * undo/redo bar while it is hidden, the tools that are not on the bar, then
- * Reset (Undo reset right after one) and Done.
+ * the switch that shows the bars only on hover, Reset (Undo reset right after one) and Done.
  * It is no dialog, so hidden tools keep their hotkeys meanwhile. While the
  * Command palette is dragged, which it refuses, it dims.
  */
@@ -77,6 +78,8 @@ export function ToolbarTray({ edit, items, motion: layoutMotion }: ToolbarTrayPr
   const drag = useToolbarEditState(state => state.drag)
   const settle = useToolbarEditState(state => state.settle)
   const pressed = useToolbarEditState(state => state.pressed)
+  const settings = useAtlasSettings()
+  const autoHide = settings?.isToolbarAutoHide() === true
   const animateChanges = useChangedSinceCommit(layoutMotion.revision) || edit.flight !== null || drag !== null || settle !== null
   const inTray = new Set<string>(edit.trayIds)
   const tabStop = edit.current.tray && inTray.has(edit.current.tray) ? edit.current.tray : edit.trayIds[0]
@@ -120,6 +123,14 @@ export function ToolbarTray({ edit, items, motion: layoutMotion }: ToolbarTrayPr
       {anyOpen
         ? <div className="atlas-toolbar-tray__divider" />
         : <span className="atlas-toolbar-tray__hint">{t('toolbarEdit.dragHere')}</span>}
+      <ToolButton
+        icon={PanelBottomDashed}
+        label={t('toolbarEdit.showOnHover')}
+        isActive={autoHide}
+        pressed={autoHide}
+        disabled={!settings}
+        onClick={() => settings?.setToolbarAutoHide(!autoHide)}
+      />
       {edit.canUndoReset
         ? <ToolButton icon={Undo2} label={t('toolbarEdit.undoReset')} isActive={false} onClick={edit.undoReset} />
         : <ToolButton icon={RotateCcw} label={t('toolbarEdit.resetToolbar')} isActive={false} disabled={!edit.canReset} onClick={edit.reset} />}

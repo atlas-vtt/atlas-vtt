@@ -33,6 +33,7 @@ export const toolbarEdit: Translation = {
   'toolbarEdit.dragHere': 'Перетащите инструмент сюда, чтобы скрыть его',
   'toolbarEdit.undoReset': 'Отменить сброс',
   'toolbarEdit.resetToolbar': 'Сбросить панель инструментов',
+  'toolbarEdit.showOnHover': 'Показывать панель при наведении',
   'toolbarEdit.showOnToolbar': 'Показать на панели инструментов',
   'toolbarEdit.hint.tray': 'Enter возвращает его на панель инструментов.',
   'toolbarEdit.hint.undoBar': 'Delete скрывает его.',

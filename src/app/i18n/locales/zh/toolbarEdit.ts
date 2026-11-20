@@ -33,6 +33,7 @@ export const toolbarEdit: Translation = {
   'toolbarEdit.dragHere': '把工具拖到这里来隐藏它',
   'toolbarEdit.undoReset': '撤销重置',
   'toolbarEdit.resetToolbar': '重置工具栏',
+  'toolbarEdit.showOnHover': '悬停时显示工具栏',
   'toolbarEdit.showOnToolbar': '在工具栏上显示',
   'toolbarEdit.hint.tray': '按 Enter 把它放回工具栏。',
   'toolbarEdit.hint.undoBar': '按 Delete 隐藏它。',
