@@ -71,6 +71,7 @@
 
 - The dice log is now called the table log everywhere, also when no online session runs: its panel, its hotkey, the command palette and the Obsidian command
 - The initiative tracker stays at the right edge, clear of the table log and the map's controls on the left, and shows names in the compact view
+- The scene tabs' Open scene and All open tabs buttons show a background only while hovered or pressed
 - The initiative tracker's buttons float above and below it and show when the pointer comes near, so the panel holds only the fight; its foot shows the round as the players' list does
 - While the players' initiative list runs as rows across the top and bottom, the widgets on the player view stand as a column down the right edge, and the rows always keep clear of them
 - With the Atlas VTT theme, ivy grows over the corners of the GM's initiative tracker as on the players' list, and on both it comes and goes at once when you switch themes
