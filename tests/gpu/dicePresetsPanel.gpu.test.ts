@@ -28,6 +28,7 @@ const shelf = readDiceShelf({
     { id: 'b', name: 'Longsword', formula: '1d8+3[slashing]' },
     { id: 'c', name: 'Stat line', formula: '4d6kh3' },
     { id: 'd', name: 'Smite', formula: '3d8kh1+3' },
+    { id: 'e', name: 'Fire bolt', formula: '+2', look: { crit: 'natural', dice: [{ count: 1, sides: 12, colour: '#c0392b' }, { count: 1, sides: 20, colour: '#2e86c1' }] } },
   ],
   diceRow: [...STANDARD_ROW.slice(0, 5), { kind: 'preset', id: 'a' }, { kind: 'die', sides: 3 }, { kind: 'preset', id: 'b' }, { kind: 'preset', id: 'd' }],
 });
@@ -125,5 +126,29 @@ describe('the saved rolls beside the dice tray', () => {
     const list = document.querySelector('.atlas-dice-presets__list')!.getBoundingClientRect();
     const beside = document.elementFromPoint(list.left + 20, list.top + 40);
     expect(beside?.closest('.atlas-dice-presets__list')).toBeNull();
+  });
+
+  it('shows each saved roll\'s dice at its card\'s end, inside the card, beside the text', async () => {
+    render(h(Scene));
+    // The dice are drawn by the map's dice renderer; give it time.
+    await expect.poll(() => document.querySelectorAll('.atlas-dice-presets__dice img').length, { timeout: 15_000 }).toBeGreaterThanOrEqual(6);
+    await settle();
+    const cards = [...document.querySelectorAll<HTMLElement>('.atlas-dice-presets__item')];
+    for (const card of cards) {
+      const dice = card.querySelector('.atlas-dice-presets__dice')!;
+      expect(dice.closest('.atlas-dice-presets__roll')).not.toBeNull();
+      const box = card.getBoundingClientRect();
+      const strip = dice.getBoundingClientRect();
+      expect(strip.right).toBeLessThanOrEqual(box.right);
+      expect(strip.top).toBeGreaterThanOrEqual(box.top);
+      expect(strip.bottom).toBeLessThanOrEqual(box.bottom);
+      for (const text of card.querySelectorAll('.atlas-dice-presets__name, .atlas-dice-presets__formula')) {
+        expect(text.getBoundingClientRect().right).toBeLessThanOrEqual(strip.left);
+      }
+    }
+    // One per kind: the designed roll's two coloured dice, the longsword's d8.
+    expect(cards[4]!.querySelectorAll('.atlas-die-still')).toHaveLength(2);
+    expect(cards[1]!.querySelectorAll('.atlas-die-still')).toHaveLength(1);
+    await page.screenshot({ path: '__screenshots__/dice/saved-roll-dice.png', element: document.querySelector<HTMLElement>('.atlas-dice-presets')! });
   });
 });
