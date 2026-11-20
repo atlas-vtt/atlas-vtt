@@ -64,6 +64,7 @@ describe('the rolls of a text with references', () => {
 
   it('leaves out a roll another value makes without the name', () => {
     expect(namedReferenceRolls(['2d8 + @agility', 'Bite: 1d6 + @str'], lookup)).toEqual(new Map([['2d8-1', '2d8-1[Agility]'], ['1d6+3', '1d6+3[Str]']]));
+    expect(namedReferenceRolls(['1d20 + @agility adv'], lookup)).toEqual(new Map([['1d20-1', '1d20-1[Agility]']]));
     expect(namedReferenceRolls(['2d8 + @agility', { desc: 'Claw: 2d8-1' }], lookup)).toEqual(new Map());
     expect(namedReferenceRolls(['2d8 + @agility', '2d8 + @int.mod'], lookup)).toEqual(new Map());
     expect(namedReferenceRolls(['2d8-1'], lookup).size).toBe(0);

@@ -19,12 +19,16 @@
  * (`101d6`, `1d0`) rolls nothing. Where that leaves a number outside every roll, the whole text is
  * read as one formula instead, so a value such as `2 + 1d6` or `(1d8+2)*2` rolls whole.
  *
+ * A roll may end with `adv` or `dis` after a space (`1d20+5 adv`, `ATK: +4 dis`), which its formula
+ * keeps last for the dice tool to roll with the dice set's rule for that side (`writtenAdvantage.ts`).
+ *
  * A roll joined to a `@` reference by operators, brackets and spaces alone (`2d6 + @int`,
  * `@level d6`) is part of one that cannot be made: text is read once its references that name a
  * number are filled in, so one left names none, and the roll beside it rolls nothing. An `@` inside
  * a word (an address) is none.
  */
 import { parseFormula } from './parseFormula';
+import { writtenSide } from './writtenAdvantage';
 
 /** A piece of a text: words, or a roll written in it with the formula a click on it rolls. */
 export interface RollPiece {
@@ -50,9 +54,10 @@ const DIE_TERM = `${DIE}${LABEL}${ENDS}`;
 const TERM = String.raw`(?:${DIE}|\d+(?!\.\d))${LABEL}${ENDS}`;
 const SIGN = '[+\\-−]';
 const OPERATOR = String.raw`[ \t]*(?:\+[ \t]*-|[+\-−–*/×])[ \t]*`;
+const SIDE = String.raw`(?:[ \t]+(?:adv|dis)${ENDS})?`;
 
 const ROLLS = new RegExp(
-  String.raw`${OPENS}(?:(?:ATK|Attack)[ \t]*:[ \t]*${SIGN}${TERM}|${SIGN}${TERM}|${DIE_TERM})(?:${OPERATOR}${TERM})*`,
+  String.raw`${OPENS}(?:(?:ATK|Attack)[ \t]*:[ \t]*${SIGN}${TERM}|${SIGN}${TERM}|${DIE_TERM})(?:${OPERATOR}${TERM})*${SIDE}`,
   'giu',
 );
 
@@ -69,9 +74,14 @@ function spelled(written: string): string {
     .replace(/\+[ \t]*-/g, '-');
 }
 
-/** A roll as written, as the formula the dice tool rolls: no spaces (but in a label), no label before it; a bare bonus stays bare. */
+/**
+ * A roll as written, as the formula the dice tool rolls: no spaces (but in a label), no label before it, a
+ * side written last kept last after one space (`1d20+5 adv`); a bare bonus stays bare.
+ */
 export function toRollFormula(written: string): string {
-  return spelled(written).replace(/\s+(?![^[]*\])/g, '');
+  const { formula, word } = writtenSide(written.trim());
+  const roll = spelled(formula).replace(/\s+(?![^[]*\])/g, '');
+  return word === '' ? roll : `${roll} ${word}`;
 }
 
 /** Whether a formula is a roll: the parser accepts it, and it throws dice or opens with a sign. */
@@ -82,7 +92,7 @@ export function isRollFormula(formula: string): boolean {
 
 /** The formula a text written as one roll rolls, or null where it is no roll. */
 export function writtenRoll(written: string): string | null {
-  return isRollFormula(spelled(written)) ? toRollFormula(written) : null;
+  return isRollFormula(spelled(writtenSide(written.trim()).formula)) ? toRollFormula(written) : null;
 }
 
 /** The text in pieces as running text reads it, before a stray number sends it to be read whole. */
