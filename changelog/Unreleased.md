@@ -17,6 +17,7 @@
 - Keep a Dice Lab set as a saved roll with the flask beside +
 - Saved rolls and the row belong to the collection, so each game keeps its own
 - A label can follow brackets: in `2d6[slashing]+(1d10+12)[necrotic]` the d10 and the 12 are both necrotic
+- Write advantage into a roll: end it with adv or dis, as in `1d20+5 adv` or `+3 dis`. It follows your game's dice rules, so it rolls 2d20 in 5E, adds the edge in Draw Steel and a bonus die in Call of Cthulhu. Works in the dice tray, saved rolls and dice in notes; Shift or Alt for the other side cancels it
 
 **Sound**
 
@@ -47,7 +48,7 @@
 - More from the initiative tracker's options: Add enemy adds an enemy without a token, named Enemy 1, Enemy 2 and so on, on the opponents' side. Reset initiative ends the fight and empties every number and condition, keeping the combatants for the next roll. Compact view shows the tracker as a list of lines, each with its number and its name over its token's art faded in from the right. Contributed by ThatMattLatt
 - Card menu: hide any combatant from the players' list without hiding its token on the map. Contributed by ThatMattLatt
 - Conditions from the tracker: a combatant's card menu gives and takes away the map's conditions, also for combatants without tokens. Contributed by ThatMattLatt
-- The players' initiative list: vertical down the right edge, or as a row across it (Horizontal initiative, in What players see), and mirrored for the far side of the table (Mirrored initiative). A row is low: each number sits on its portrait, the round's name stands before its cards, and the row moves on like a conveyor: who acted slides out at the front and comes in again at the end. The lists slide in when a fight starts and out when it ends. Contributed by ThatMattLatt
+- The players' initiative list: vertical down the right edge, or as a row across it (Horizontal initiative, in What players see), and mirrored for the far side of the table (Mirrored initiative). A row is low: the round's name stands before its cards, and the row moves on like a conveyor: who acted slides out at the front and comes in again at the end. The lists slide in when a fight starts and out when it ends. Contributed by ThatMattLatt
 - Turn banners on the player view: a fight's start and end get banners of their own, every turn banner's border flashes in the colour of the combatant's token ring, and the turn's card on the list flashes and can pulse. The player view settings set how large the list is and how many cards each list shows; the banner grows with the player window and stands for four seconds. The banner can stand at each list, on its side towards the table, instead of in the middle, or the table can dim instead while the cards move on. Contributed by ThatMattLatt
 
 **Initiative, quests and lighting**
@@ -72,14 +73,18 @@
 - The dice log is now called the table log everywhere, also when no online session runs: its panel, its hotkey, the command palette and the Obsidian command
 - The initiative tracker stays at the right edge, clear of the table log and the map's controls on the left, and shows names in the compact view
 - The scene tabs' Open scene and All open tabs buttons show a background only while hovered or pressed
+- The documentation opens in the middle of the scene, whatever size the view has
+- The documentation closes smoothly, without stuttering: its page leaves as soon as the window starts to close, as in the Armarium
 - The initiative tracker's buttons float above and below it and show when the pointer comes near, so the panel holds only the fight; its foot shows the round as the players' list does
 - While the players' initiative list runs as rows across the top and bottom, the widgets on the player view stand as a column down the right edge, and the rows always keep clear of them
 - With the Atlas VTT theme, ivy grows over the corners of the GM's initiative tracker as on the players' list, and on both it comes and goes at once when you switch themes
 - The initiative lists move as one on both views: when the turn passes on or back, every card glides to its new place in a soft wave, with the line between the rounds, whoever goes round the order slides out at one end and back in at the other, and the card whose turn begins lights up once. Opening or closing the tracker, and a fight starting or ending, brings the lists in from their edge, their cards fading in together a moment after, and takes them out the same way
 - Initiative cards show only the token's art, the initiative number and the look-alike number, as Baldur's Gate 3 does: red rises in the art from the bottom as the creature loses hit points. Conditions, hit point bars and other resources are left to the tokens on the map
+- The players' initiative list on the player view shows only the combatants' art: initiative numbers, cards dealt and the sides' rolls stay on your screen
 - The initiative tracker's options are fewer: the list always sorts by number and starts at the turn, and your view always follows the turn, gliding there more calmly. Horizontal initiative moved to What players see, and Players move only on their turn to the player view's online play settings
 - Mirrored initiative, in What players see: a second copy of the players' initiative list on the opposite side of the screen, turned around for the players across the table. It works with the vertical list (a column at each side) and with Horizontal initiative (a row at the top and the bottom); on its own, Horizontal initiative is one row at the bottom
 - The GM's initiative cards light up under the pointer and when pressed, in the tracker and its compact view, keep a ring in the accent colour while their token is selected, and stand out brightest while Ctrl (Cmd on macOS) shows their statblock
+- The widgets move as the initiative lists do, on your map, in a player view and in the player window: showing or hiding them all brings them down from the top edge and takes them back up, and a widget switched on grows in where it lands while one switched off or deleted fades where it stood, the others gliding to their new places, as they also do when you reorder them
 - Switching Horizontal initiative moves the players' lists: the old ones leave towards their edge as the new ones come in from theirs, and the widgets glide between their row and their column. Switching the tracker's compact view glides it to its new size as its cards fade in anew
 - Measurements come and go smoothly: a kept ruler, circle, cone, square or line grows in from where it starts and fades out when deleted or undone, and one you don't keep dissolves instead of vanishing. The pin that keeps it pops in beside its label, lifts under the pointer, and the measurement it keeps glows once
 - Condition badges on tokens are redrawn: a flat disc in the condition's colour with a fine ring inside its edge and a crisp dark outline, and they stay perfectly round however far you zoom in. The initiative lists and menus show them the same way

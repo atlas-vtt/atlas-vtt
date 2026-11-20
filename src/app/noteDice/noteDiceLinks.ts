@@ -1,5 +1,6 @@
 import { createDiceLink, linkDiceIn } from '../services/statblockDiceLinks';
 import { parseFormula } from '../tools/parseFormula';
+import { writtenSide } from '../tools/writtenAdvantage';
 
 /** Atlas' statblocks, which link and roll their own dice with what they know of the creature. */
 export const STATBLOCK_SURFACES = '.atlas-statblock, .atlas-statblock-fence, .atlas-sb-markdown';
@@ -18,7 +19,8 @@ const DICE_PREFIX = /^[ \t]*dice:[ \t]?/i;
 export function codeRoll(text: string): string | null {
   const prefix = DICE_PREFIX.exec(text);
   const expression = prefix ? text.slice(prefix[0].length) : text;
-  if (!parseFormula(expression).ok) return null;
+  // A side written last (`dice: 1d20+5 adv`) is read when the link rolls.
+  if (!parseFormula(writtenSide(expression).formula).ok) return null;
   const formula = expression.replace(/^[ \t]+|[ \t]+$/g, '');
   return prefix || /^\d+d\d+/i.test(formula) ? formula : null;
 }

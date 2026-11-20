@@ -304,18 +304,17 @@ function renderSegment(entries: HTMLElement, segment: ListSegment<Combatant>, li
     return;
   }
   if (segment.side) {
-    const { name, roll } = segment.side;
-    const label = roll === null ? name : t('initRules.sideRolled', { side: name, roll });
-    const group = entries.createDiv({ cls: 'atlas-player-initiative__side', attr: { role: 'list', 'aria-label': label } });
+    // A side's roll, like every initiative number, stays on the GM's screen
+    const { name } = segment.side;
+    const group = entries.createDiv({ cls: 'atlas-player-initiative__side', attr: { role: 'list', 'aria-label': name } });
     if (segment.active) {
       group.addClass('atlas-player-initiative__side--active');
       group.setAttribute('aria-current', 'true');
     }
     const heading = group.createDiv({ cls: 'atlas-player-initiative__side-label', attr: { 'aria-hidden': 'true', [TURN_KEY_ATTRIBUTE]: `side:${name}` } });
     heading.createSpan({ text: name });
-    if (roll !== null) heading.createSpan({ cls: 'atlas-player-initiative__side-roll', text: String(roll) });
-    // By sides the turn is the side's and there are no numbers
-    for (const member of segment.items) renderPlayerCard(group, member, look, false, 'none');
+    // By sides the turn is the side's
+    for (const member of segment.items) renderPlayerCard(group, member, look, false);
     return;
   }
   if (segment.delayed) {
@@ -324,5 +323,5 @@ function renderSegment(entries: HTMLElement, segment: ListSegment<Combatant>, li
     for (const combatant of segment.items) renderPlayerCard(group, combatant, look, false);
     return;
   }
-  for (const combatant of segment.items) renderPlayerCard(entries, combatant, look, list.isActive, list.byCards ? 'card' : 'number');
+  for (const combatant of segment.items) renderPlayerCard(entries, combatant, look, list.isActive);
 }

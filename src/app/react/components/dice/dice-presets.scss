@@ -65,9 +65,10 @@ $item-control: calc(#{$button-height-l} + #{$spacing-s});
   // The scroller reaches far past the column beside and below it, so the cards' shadows are not cut at its box; that
   // room takes no pointer (the map and the toolbar under it stay usable), the cards do, and the wheel over a card
   // still scrolls the list. The mask only fades the list at the column's top and foot: past the foot, cards are
-  // hidden, while their shadows beside them show whole.
+  // hidden, while their shadows beside them show whole. The padding below reaches past the fade too, so the last card
+  // scrolls clear of it and shows whole.
   margin: (-$presets-gap) (-$presets-shadow-side) (-$presets-shadow-below);
-  padding: $presets-gap $presets-shadow-side $presets-shadow-below;
+  padding: $presets-gap $presets-shadow-side calc(#{$presets-shadow-below} + #{$presets-fade});
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;

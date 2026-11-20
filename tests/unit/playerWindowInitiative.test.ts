@@ -99,7 +99,7 @@ describe('player initiative panel', () => {
     const { settings, store, doc } = setup();
     const panel = (): Element | null => doc.querySelector('[aria-label="Initiative order"]:not([aria-hidden])');
     expect(panel()).not.toBeNull();
-    expect(panel()?.textContent).toContain('18');
+    expect(panel()?.textContent).not.toContain('18');
     expect(panel()?.textContent).toContain('Round 1');
     expect(panel()?.querySelector('button, input, [draggable="true"]')).toBeNull();
     settings.setLocalPlayerViewSettings({ showWidgets: false });
@@ -112,15 +112,15 @@ describe('player initiative panel', () => {
     expect(store.getState().initiativeTrackerOpen).toBe(true);
   });
 
-  it('lists the players at the table, who have no token, with the number the GM typed in', () => {
+  it('lists the players at the table, who have no token, without the number the GM typed in', () => {
     const { store, doc } = setup();
     const ara: InitiativeEntry = {
       id: 'ara', partyMemberId: 'member-ara', name: 'Ara', initiative: 21, initiativeModifier: 0,
       imagePath: '', isActive: false, isNPC: false, order: 1,
     };
     store.setState({ initiative: { ...store.getState().initiative, entries: [...store.getState().initiative.entries, ara] } });
-    const values = [...doc.querySelectorAll('.atlas-player-initiative__value')].map((value) => value.textContent);
-    expect(values).toEqual(['18', '21']);
+    expect(doc.querySelectorAll('.atlas-player-initiative__card')).toHaveLength(2);
+    expect(doc.querySelector('.atlas-player-initiative__list')?.textContent).not.toMatch(/18|21/);
 
     // By sides a player at the table is on the players' side
     initiativeRules.value = { ...TURN_ORDER, mode: 'sides' };
@@ -377,6 +377,6 @@ describe('player initiative panel of a collection that fights by sides', () => {
   it('keeps a fight that was started in turn order in turn order', () => {
     const { doc } = sides({ isActive: true, round: 1 });
     expect(groups(doc)).toEqual([]);
-    expect(doc.querySelectorAll('.atlas-player-initiative__value')).toHaveLength(4);
+    expect(doc.querySelectorAll('.atlas-player-initiative__card')).toHaveLength(4);
   });
 });

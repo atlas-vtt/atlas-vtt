@@ -8,7 +8,8 @@ import { CLOCK_VIEW_SIZE, DEFAULT_CLOCK_COLOR, clockFace, clockProgressLabel } f
 import { PlayerSceneOverlay, type PlayerSettings } from './PlayerSceneOverlay';
 import type { SettingsService } from './SettingsService';
 import { playersListShape, type PlayersListShape } from '../initiative/initiativeLayout';
-import { playTurnMotion, snapshotTurn, TURN_KEY_ATTRIBUTE } from '../initiative/motion/turnMotion';
+import { adoptGhosts, ghostsOf, playTurnMotion, snapshotTurn, widgetMotionMark } from '../initiative/motion/turnMotion';
+import { enterList, exitList, LIST_ARRIVAL_MS, type Outward } from '../initiative/motion/listPresence';
 
 /**
  * Set on the overlays' layer while the widgets stand as a column: the room they take from the right edge, which the
@@ -19,7 +20,14 @@ const WIDGETS_ROOM = '--atlas-player-widgets-room';
 const WIDGETS_OFFSET_PX = 8;
 const ROWS_GAP_PX = 12;
 
-type WidgetScene = Pick<ViewAtlasState, 'widgetSettings' | 'widgetValues'>;
+type WidgetScene = Pick<ViewAtlasState, 'widgetSettings' | 'widgetValues' | 'isMapLoading'>;
+
+/** A row at the top right comes down from the top edge; a column down the right edge comes in from it. */
+const ROW_OUTWARD: Outward = [0, -1];
+const COLUMN_OUTWARD: Outward = [1, 0];
+function outwardOf(bar: HTMLElement): Outward {
+  return bar.hasClass('atlas-widget-bar--column') ? COLUMN_OUTWARD : ROW_OUTWARD;
+}
 
 /**
  * Read-only widget bar showing the presented scene's player-visible widgets. While the players' initiative list runs
@@ -36,6 +44,14 @@ export class PlayerWidgetBar extends PlayerSceneOverlay<WidgetScene> {
   private roomLayer: HTMLElement | undefined;
   /** The bar drawn last, which the next drawing's widgets glide from. */
   private bar: HTMLElement | undefined;
+  /** Bars on their way out, put back into every drawing until they are gone. */
+  private leaving: HTMLElement[] = [];
+  /** When the bar last came in, while it still does: a drawing meanwhile carries its entrance on. */
+  private arrivedAt: number | null = null;
+  /** Whether a scene was presented before: the first one's widgets are there at once, as the window opens. */
+  private presented = false;
+  /** Whether the drawing under way shows a scene that is loading, whose changes are no edits and do not move. */
+  private loading = false;
 
   constructor(private readonly settings: SettingsService) {
     super({ cls: 'atlas-vtt-plugin', attr: { id: 'atlas-player-widgets' } }, settings);
@@ -49,12 +65,20 @@ export class PlayerWidgetBar extends PlayerSceneOverlay<WidgetScene> {
     });
   }
 
-  protected select({ widgetSettings, widgetValues }: ViewAtlasState): WidgetScene {
-    return { widgetSettings, widgetValues };
+  override present(...args: Parameters<PlayerSceneOverlay<WidgetScene>['present']>): void {
+    const first = !this.presented;
+    this.presented = true;
+    this.loading = first;
+    super.present(...args);
+  }
+
+  protected select({ widgetSettings, widgetValues, isMapLoading }: ViewAtlasState): WidgetScene {
+    return { widgetSettings, widgetValues, isMapLoading };
   }
 
   protected render(container: HTMLElement, scene: WidgetScene, settings: PlayerSettings): void {
     const { widgetSettings } = scene;
+    this.loading ||= scene.isMapLoading;
     if (!settings.showWidgets || !widgetSettings?.globalVisible) return;
 
     const widgets = Object.values(widgetSettings.widgets)
@@ -78,16 +102,63 @@ export class PlayerWidgetBar extends PlayerSceneOverlay<WidgetScene> {
   }
 
   /**
-   * Draws anew. The widgets glide from where they stood to their new places (a row becoming a column as the players'
-   * list turns horizontal, and back), read from the bar's top right corner, where it is anchored.
+   * Draws anew, moving as the map view's bar does (`useWidgetBarMotion`). The widgets glide from where they stood to
+   * their new places (a row becoming a column as the players' list turns horizontal, a widget moved), read from the
+   * bar's top right corner, where it is anchored; one switched on grows in and one gone fades where it stood. The bar
+   * shown or hidden as a whole comes in from its edge or leaves towards it.
    */
   override refresh(): void {
     this.stopTicking();
     this.releaseRoom();
-    const before = this.bar ? snapshotTurn(this.bar, { fromRight: true }) : null;
+    const old = this.bar;
+    const before = old ? snapshotTurn(old, { fromRight: true }) : null;
+    const ghosts = ghostsOf(old ?? null);
     this.bar = undefined;
     super.refresh();
-    if (before && this.bar) playTurnMotion(this.bar, before, { fromRight: true, wrap: false });
+    const bar = this.bar as HTMLElement | undefined;
+    const still = this.loading;
+    this.loading = false;
+    const sinceArrival = this.arrivedAt === null ? null : performance.now() - this.arrivedAt;
+    if (bar && sinceArrival !== null && sinceArrival < LIST_ARRIVAL_MS) {
+      // Its entrance goes on where it was, on the bar drawn in its place
+      enterList(bar, outwardOf(bar), -sinceArrival);
+    } else if (still) {
+      // A scene loading or presented as the window opens: its widgets are simply there
+    } else if (bar && before) {
+      playTurnMotion(bar, before, { fromRight: true, wrap: false });
+      adoptGhosts(bar, ghosts);
+    } else if (bar) {
+      this.arrivedAt = performance.now();
+      enterList(bar, outwardOf(bar));
+    } else if (old) {
+      this.sendOff(old);
+    }
+    if (!bar) this.arrivedAt = null;
+    this.keepLeaving();
+  }
+
+  /** `bar` leaves towards its edge, kept in the container until it is gone. */
+  private sendOff(bar: HTMLElement): void {
+    const container = this.containerOf();
+    if (!container) return;
+    bar.addClass('atlas-widget-bar--leaving');
+    bar.setAttribute('aria-hidden', 'true');
+    // Back in the container first: a bar out of the document measures nothing
+    container.append(bar);
+    this.leaving.push(bar);
+    const gone = (): void => {
+      bar.remove();
+      this.leaving = this.leaving.filter((other) => other !== bar);
+    };
+    const animation = exitList(bar, outwardOf(bar));
+    if (animation) animation.finished.then(gone, gone);
+    else gone();
+  }
+
+  /** The bars still leaving are put back into every drawing until they are gone, under the one that is shown. */
+  private keepLeaving(): void {
+    const container = this.containerOf();
+    if (container) for (const bar of this.leaving) container.prepend(bar);
   }
 
   override destroy(): void {
@@ -181,7 +252,7 @@ export class PlayerWidgetBar extends PlayerSceneOverlay<WidgetScene> {
    * where Obsidian installs the same DOM helpers.
    */
   private renderWidget(parent: HTMLElement, widget: AnyWidget, typeClass: string, defaultColor: string): HTMLElement {
-    const widgetEl = parent.createDiv({ cls: `atlas-widget ${typeClass}`, attr: { [TURN_KEY_ATTRIBUTE]: `widget:${widget.id}` } });
+    const widgetEl = parent.createDiv({ cls: `atlas-widget ${typeClass}`, attr: widgetMotionMark(widget.id) });
     widgetEl.style.setProperty('--widget-color', widget.color || defaultColor);
     widgetEl.createDiv({ cls: 'atlas-widget-icon-wrapper' })
       .createSvg('svg', { attr: { viewBox: WIDGET_ICON_VIEW_BOX, fill: 'currentColor' } })

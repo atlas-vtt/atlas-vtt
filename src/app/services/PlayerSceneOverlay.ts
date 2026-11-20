@@ -84,6 +84,11 @@ export abstract class PlayerSceneOverlay<Scene extends object> implements Player
     this.unsubscribeSettings();
   }
 
+  /** The container drawings go into, once mounted. */
+  protected containerOf(): HTMLElement | undefined {
+    return this.container;
+  }
+
   /** Picks the store values this overlay shows; a shallow change triggers a re-render. */
   protected abstract select(state: ViewAtlasState): Scene;
 

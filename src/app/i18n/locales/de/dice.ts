@@ -9,6 +9,7 @@ export const dice: Translation = {
   'dice.formulaError.depth': 'Eine Würfelformel darf Klammern höchstens 8 Ebenen tief verschachteln.',
   'dice.formulaError.modifier': 'Ein Modifikator passt nicht zu seinen Würfeln. Behalte oder verwirf mindestens einen Würfel und nicht mehr, als der Term wirft, und lass eine Seite übrig, die weder explodiert noch neu gewürfelt wird. Fate-Würfel explodieren nicht und werden nicht neu gewürfelt.',
   'dice.formulaError.total': 'Eine Würfelformel darf in beide Richtungen höchstens 1.000.000.000 ergeben.',
+  'dice.formulaError.advantage': 'adv und dis ändern nur Würfe mit den Würfeln des Würfelsets, und nur wenn das Set eine Regel für diese Seite hat.',
   'dice.advantage': 'Vorteil',
   'dice.disadvantage': 'Nachteil',
   'dice.normal': 'Normal',

@@ -192,16 +192,6 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
     overflow-wrap: anywhere;
   }
 
-  // This round's roll of a side, where the sides roll for their order
-  &__side-roll {
-    min-width: 16px;
-    padding-inline: $spacing-xs;
-    border-radius: $radius-s;
-    background: var(--background-modifier-hover);
-    color: var(--text-normal);
-    font-variant-numeric: tabular-nums;
-  }
-
   // The side whose turn it is: its name and its combatants take the accent
   &__side--active &__side-label {
     color: var(--interactive-accent);
@@ -214,7 +204,7 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
   }
 
   // A square card: the token's art fills it (`__art`), red rising in it as the combatant loses hit points (`__wound`),
-  // the number in its top right and the look-alike's badge in its top left; a card without art has its name at its foot
+  // the look-alike's badge in its top left; a card without art has its name at its foot
   &__card {
     position: relative;
     display: flex;
@@ -258,8 +248,7 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
     }
   }
 
-  // The token's art, filling the card inside its border, under a shade at the top and the foot that the number and the
-  // foot read on
+  // The token's art, filling the card inside its border
   &__art {
     @include initiative-art($border-width-s);
   }
@@ -332,52 +321,8 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
     }
   }
 
-  // The number in the top right: a plate concentric with the card's corner (`$card-corner-radius`)
-  &__value {
-    position: absolute;
-    top: $surface-inset;
-    right: $surface-inset;
-    z-index: 2;
-    font-weight: $font-weight-semibold;
-  }
-
-  &__value:not(&__card-dealt) {
-    min-width: scaled(22px);
-    height: scaled(22px);
-    padding-inline: $spacing-xs;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: $card-corner-radius;
-    background: var(--background-primary);
-    box-shadow: 0 0 0 1px var(--background-modifier-border);
-    line-height: 1;
-  }
-
-  // Whoever holds the turn carries it on their number too
-  &__card--active &__value:not(&__card-dealt),
-  &__side--active &__card:not(&__card--sitting-out) &__value:not(&__card-dealt) {
-    background: var(--atlas-turn-color, var(--interactive-accent));
-    box-shadow: none;
-    color: var(--text-on-accent, #fff);
-  }
-
-  // The card dealt in a fight by cards: a small playing card where the number stands otherwise
-  &__card-dealt {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: scaled(20px);
-    height: scaled(26px);
-    border: $border-width-s solid var(--background-modifier-border);
-    border-radius: $radius-s;
-    background: var(--background-primary);
-    font-variant-numeric: tabular-nums;
-  }
-
   // The number the token's badge shows the players, in the colours of the map's badge, in the top left: concentric with
-  // the card's corner like the number in the other
+  // the card's corner
   &__badge {
     position: absolute;
     top: $surface-inset;

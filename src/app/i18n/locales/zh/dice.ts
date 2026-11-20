@@ -23,6 +23,7 @@ export const dice: Translation = {
   'dice.formulaError.depth': '骰子公式的括号最多嵌套 8 层。',
   'dice.formulaError.modifier': '有个修饰符与它的骰子不匹配。至少保留或舍弃一颗骰子，且不超过该项投掷的数量；并至少留一个不会爆炸或重骰的面。命运骰既不会爆炸也不会重骰。',
   'dice.formulaError.total': '骰子公式的结果最多为正负 1,000,000,000。',
+  'dice.formulaError.advantage': 'adv 和 dis 只改变使用该骰组自身骰子的投掷，且仅当该骰组为这一方设有规则时有效。',
   'dice.advantage': '优势',
   'dice.disadvantage': '劣势',
   'dice.normal': '普通',

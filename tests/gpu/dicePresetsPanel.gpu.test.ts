@@ -33,15 +33,15 @@ const shelf = readDiceShelf({
   diceRow: [...STANDARD_ROW.slice(0, 5), { kind: 'preset', id: 'a' }, { kind: 'die', sides: 3 }, { kind: 'preset', id: 'b' }, { kind: 'preset', id: 'd' }],
 });
 
-function Scene(): React.ReactElement {
+function Scene({ saved = shelf }: { readonly saved?: typeof shelf }): React.ReactElement {
   return h(TooltipProvider, null, h('div', { className: 'atlas-vtt-plugin', style: { position: 'relative', height: 760 } },
     h('div', { className: 'atlas-dice-tray', style: { left: '70%', bottom: 20, top: 'auto' } },
-      h(DicePresetsPanel, { shelf, onChange: () => undefined, trayFormula: '2d12 + 3', problemOf: () => null, onRoll: () => undefined }),
+      h(DicePresetsPanel, { shelf: saved, onChange: () => undefined, trayFormula: '2d12 + 3', problemOf: () => null, onRoll: () => undefined }),
       h('div', { className: 'atlas-dice-panel' },
         h(DiceTray, {
           memory: { formula: '2d12 + 3', side: 'normal' }, onRemember: () => undefined, check: () => null, onRoll: () => true, history: [],
           onRepeat: () => true, historyOpen: false, onHistoryOpen: () => undefined, onClose: () => undefined,
-          shelf, presetsPanel: { open: true, onToggle: () => undefined },
+          shelf: saved, presetsPanel: { open: true, onToggle: () => undefined },
         })))));
 }
 
@@ -184,5 +184,20 @@ describe('the saved rolls beside the dice tray', () => {
     expect(tint(more)).toContain('gradient');
     expect(tint(card)).toBe('none');
     await mouse.up(dots.x, dots.y);
+  });
+
+  it('scrolls the last saved roll clear of the fade at the list\'s foot', async () => {
+    const many = readDiceShelf({ dicePresets: Array.from({ length: 14 }, (_, i) => ({ id: `p${i}`, name: `Roll ${i}`, formula: `${i + 1}d6` })) });
+    render(h(Scene, { saved: many }));
+    await settle();
+    const list = document.querySelector<HTMLElement>('.atlas-dice-presets__list')!;
+    expect(list.scrollHeight).toBeGreaterThan(list.clientHeight);
+    list.scrollTop = list.scrollHeight;
+    await settle(100);
+    // Where the mask starts to fade: the larger of its `calc(100% - Npx)` stops.
+    const stops = [...getComputedStyle(list).maskImage.matchAll(/calc\(100% - ([\d.]+)px\)/g)].map((match) => Number(match[1]));
+    const fadeStarts = list.getBoundingClientRect().bottom - Math.max(...stops);
+    const cards = list.querySelectorAll('.atlas-dice-presets__item');
+    expect(cards[cards.length - 1]!.getBoundingClientRect().bottom).toBeLessThanOrEqual(fadeStarts + 0.5);
   });
 });
