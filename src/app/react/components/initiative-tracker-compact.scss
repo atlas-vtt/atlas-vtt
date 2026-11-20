@@ -62,6 +62,7 @@ $plate-height: 24px;
       // The name's shadow keeps it readable over the lightest art
       filter: brightness(0.85);
       mask-image: linear-gradient(to right, transparent 8%, rgb(0 0 0 / 0.45) 50%, #000 90%);
+      transition: opacity 120ms ease-out, filter 120ms ease-out;
     }
 
     // The turn's ring and glow, which the art would cover on the card itself
@@ -100,6 +101,13 @@ $plate-height: 24px;
     @media (prefers-reduced-motion: reduce) {
       animation: none;
     }
+  }
+
+  // Under the pointer, or showing its statblock: the art comes up
+  .atlas-initiative-card:is(:hover, .atlas-initiative-card--preview-hover) .atlas-initiative-card__backdrop img {
+    opacity: 0.95;
+    filter: none;
+    transition-duration: 0s;
   }
 
   .atlas-initiative-card--hidden .atlas-initiative-card__backdrop {
@@ -194,6 +202,9 @@ $plate-height: 24px;
   --text-muted: rgb(236 230 218 / 0.72);
   --text-faint: rgb(236 230 218 / 0.45);
   --mono-100: #fff;
+  --atlas-card-ring-hover: rgb(255 255 255 / 0.45);
+  --atlas-card-ring-press: rgb(255 255 255 / 0.7);
+  --atlas-card-ring-preview: rgb(255 255 255 / 0.9);
   color-scheme: dark;
 
   // A delayed card has no fill of its own, which would show the light panel through

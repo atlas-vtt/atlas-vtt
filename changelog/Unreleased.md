@@ -10,7 +10,7 @@
 
 **Dice**
 
-- Dice written in a note roll with Atlas: click 2d6+3, d20, +4 or `dice: 1d20+5` in reading view to roll it into the open map's dice log, Shift-click for advantage and Alt-click for disadvantage. With a contribution by young-george
+- Dice written in a note roll with Atlas: click 2d6+3, d20, +4 or `dice: 1d20+5` in reading view, or Ctrl/Cmd-click it while editing in Live Preview, to roll it into the open map's dice log; add Shift for advantage and Alt for disadvantage. With a contribution by young-george
 - Saved rolls: the bookmark at the foot of the dice tray (or P) opens a panel beside it. Save a roll under a name, then roll it with one click
 - Change the tray's dice row: the pencil (or E) makes its dice wiggle. Drag them into order, take one out with its ×, add a die of any size (a d3, a d30) with +, and pin saved rolls into it from their panel, up to ten places. Swap the d100 for Daggerheart's two d12, for example. Number keys 1 to 0 follow the row
 - Dress a saved roll as in the Dice Lab: its dice open beside it when you save it, or with the pencil. Click a die for its faces, name and colour, set the bonus, and the critical, exploding and advantage rules. In the dice row it shows its first die in its colour and rolls at once
@@ -77,6 +77,7 @@
 - Initiative cards show only the token's art, the initiative number and the look-alike number, as Baldur's Gate 3 does: red rises in the art from the bottom as the creature loses hit points. Conditions, hit point bars and other resources are left to the tokens on the map
 - The initiative tracker's options are fewer: the list always sorts by number and starts at the turn, and your view always follows the turn, gliding there more calmly. Horizontal initiative moved to What players see, and Players move only on their turn to the player view's online play settings
 - Mirrored initiative, in What players see: a second copy of the players' initiative list on the opposite side of the screen, turned around for the players across the table. It works with the vertical list (a column at each side) and with Horizontal initiative (a row at the top and the bottom); on its own, Horizontal initiative is one row at the bottom
+- The GM's initiative cards light up under the pointer and when pressed, in the tracker and its compact view, keep a ring in the accent colour while their token is selected, and stand out brightest while Ctrl (Cmd on macOS) shows their statblock
 - Switching Horizontal initiative moves the players' lists: the old ones leave towards their edge as the new ones come in from theirs, and the widgets glide between their row and their column. Switching the tracker's compact view glides it to its new size as its cards fade in anew
 - Measurements come and go smoothly: a kept ruler, circle, cone, square or line grows in from where it starts and fades out when deleted or undone, and one you don't keep dissolves instead of vanishing. The pin that keeps it pops in beside its label, lifts under the pointer, and the measurement it keeps glows once
 - Condition badges on tokens are redrawn: a flat disc in the condition's colour with a fine ring inside its edge and a crisp dark outline, and they stay perfectly round however far you zoom in. The initiative lists and menus show them the same way

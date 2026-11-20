@@ -84,6 +84,8 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   const tokens = useAtlasStore((s) => s.objects?.tokens) || {};
   const badgesOn = useAtlasStore((s) => s.tokenSettings?.showInstanceBadges ?? true);
   const levels = useAtlasStore((s) => s.levels);
+  // Its token is selected on the map (a click on the card selects it)
+  const selected = useAtlasStore((s) => entry.tokenId !== undefined && s.selectedIds.includes(entry.tokenId));
   const [dropPosition, setDropPosition] = useState<'above' | 'below' | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const hover = useCardPreviewHover(cardRef, entry, isHoveredForPreview, onHover);
@@ -209,6 +211,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
     entry.sitsOut && 'atlas-initiative-card--sitting-out',
     entry.delayed && 'atlas-initiative-card--delayed',
     isHoveredForPreview && 'atlas-initiative-card--preview-hover',
+    selected && 'atlas-initiative-card--selected',
     dropPosition === 'above' && 'atlas-initiative-card--drop-above',
     dropPosition === 'below' && 'atlas-initiative-card--drop-below',
     turnFlash && 'atlas-initiative-card--turn-flash',

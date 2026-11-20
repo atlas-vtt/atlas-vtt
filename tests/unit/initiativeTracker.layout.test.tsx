@@ -14,6 +14,7 @@ const state = vi.hoisted(() => ({
   initiative: { entries: [], isActive: false, round: 0 } as unknown as InitiativeState,
   objects: { tokens: {} as Record<string, unknown> },
   tokenSettings: { showInstanceBadges: true },
+  selectedIds: [] as string[],
   nextTurn: vi.fn(), previousTurn: vi.fn(), reorderInitiative: vi.fn(), startCombat: vi.fn(), endCombat: vi.fn(),
   updateInitiativeEntry: vi.fn(), resetInitiative: vi.fn(),
 }));
