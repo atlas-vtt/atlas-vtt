@@ -70,6 +70,7 @@
 - Measurements come and go smoothly: a kept ruler, circle, cone, square or line grows in from where it starts and fades out when deleted or undone, and one you don't keep dissolves instead of vanishing. The pin that keeps it pops in beside its label, lifts under the pointer, and the measurement it keeps glows once
 - Undo and redo carry a moved or resized measurement back along its way, with its handles. Auras and measurements grouped with a token glide with the token instead of jumping ahead of it
 - Players' measurements come and go the same way on your map, and one they move glides there
+- Kept cones, squares and lines have a turn handle next to their end: drag it to rotate the measurement without changing its size. Contributed by aryistia
 
 ## Fixed
 

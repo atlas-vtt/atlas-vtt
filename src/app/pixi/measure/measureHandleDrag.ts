@@ -3,7 +3,7 @@
 import type { GridGeometry } from '../../grid/gridDistance';
 import { auraCellsDragged, auraDirection, auraOfCells, auraPoints, type PlacedAura } from '../../measure/auraArea';
 import { isAura } from '../../measure/keptMeasures';
-import { areaResizedBy, measureMovedBy } from '../../measure/measureMove';
+import { areaResizedBy, measureMovedBy, measureTurnedBy } from '../../measure/measureMove';
 import type { KeptMeasure, MeasureChanges } from '../../measure/measureTypes';
 import type { TokenGrid } from '../../measure/tokenDistance';
 import type { Point } from '../../types/visionTypes';
@@ -38,12 +38,14 @@ export function sameDragChanges(a: MeasureChanges, b: MeasureChanges): boolean {
  * point snapping to `snapGrid` as a new one's start would; the handle at an area's far end resizes
  * and turns it, its size snapping as a new area's would. An aura lies where its token stands: its
  * far handle changes how far it reaches (`aura` says by what), and its badge moves nothing, so
- * there is no drag of it (null).
+ * there is no drag of it (null). The turn handle only turns the measurement about its origin, by
+ * the angle it sweeps from `turnFrom`, where it stood when grabbed (`measureTurnHandlePoint`), and
+ * never changes a size or snaps; without `turnFrom` there is no drag of it (null).
  */
-export function handleDrag(measure: KeptMeasure, part: MeasureHandlePart, snapGrid: () => GridGeometry | null, aura: AuraDragSetting | null): HandleDrag | null {
+export function handleDrag(measure: KeptMeasure, part: MeasureHandlePart, snapGrid: () => GridGeometry | null, aura: AuraDragSetting | null, turnFrom: Point | null = null): HandleDrag | null {
   const origin = measure.points.map(({ x, y }) => ({ x, y }));
   if (isAura(measure)) {
-    if (part === 'origin' || !aura) return null;
+    if (part !== 'end' || !aura) return null;
     const { placed, grid, unitDistance } = aura;
     const direction = auraDirection(measure);
     return {
@@ -53,6 +55,9 @@ export function handleDrag(measure: KeptMeasure, part: MeasureHandlePart, snapGr
       },
       restore: { aura: measure.aura, points: origin },
     };
+  }
+  if (part === 'turn') {
+    return turnFrom ? { changes: (by) => ({ points: measureTurnedBy(origin, turnFrom, by) }), restore: { points: origin } } : null;
   }
   return {
     changes: (by, free) => ({ points: part === 'end' ? areaResizedBy(origin, by, snapGrid(), free) : measureMovedBy(measure.shape, origin, by, snapGrid(), free) }),
