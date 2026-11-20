@@ -29,7 +29,6 @@ export const initRules: Translation = {
   'initRules.sideNameError': 'Dê um nome a cada lado.',
   'initRules.sideOrder': 'Ordem dos lados',
   'initRules.sideRoll': 'Rolagem do lado',
-  'initRules.sideRolled': '{side}, tirou {roll}',
   'initRules.sidesOrder': 'Na ordem em que agem.',
   'initRules.swapCard': 'Trocar carta com',
 };

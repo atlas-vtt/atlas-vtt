@@ -34,7 +34,6 @@ export const initRules: Translation = {
   'initRules.sideNameError': 'Дайте название каждой стороне.',
   'initRules.sideOrder': 'Порядок сторон',
   'initRules.sideRoll': 'Бросок стороны',
-  'initRules.sideRolled': '{side}: выпало {roll}',
   'initRules.sidesOrder': 'В порядке хода.',
   'initRules.swapCard': 'Обменяться картой с',
 };

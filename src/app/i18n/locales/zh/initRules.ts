@@ -29,7 +29,6 @@ export const initRules: Translation = {
   'initRules.sideNameError': '请给每个阵营起名。',
   'initRules.sideOrder': '阵营顺序',
   'initRules.sideRoll': '阵营掷骰',
-  'initRules.sideRolled': '{side}，掷出 {roll}',
   'initRules.sidesOrder': '按行动顺序排列。',
   'initRules.swapCard': '交换卡牌给',
 };

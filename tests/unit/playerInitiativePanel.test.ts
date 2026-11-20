@@ -40,7 +40,8 @@ describe('the players\' initiative list', () => {
 
     made.store.getState().startCombat();
     expect(container.childElementCount).toBeGreaterThan(0);
-    expect(container.textContent).toContain('12');
+    expect(container.textContent).toContain('Mira');
+    expect(container.textContent).not.toContain('12');
 
     made.store.getState().endCombat();
     // It slides out first
