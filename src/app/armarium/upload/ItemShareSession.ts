@@ -1,7 +1,7 @@
 import type { AtlasAccount } from '../../account/AtlasAccount';
 import { describeError } from '../../utils/errors';
 import { ArmariumError } from './armariumApi';
-import { draftFrom, textLength, type ListingDraft } from './listingDraft';
+import { draftFrom, systemOfSharedPreset, textLength, type ListingDraft } from './listingDraft';
 import { freshShare, ShareFlow, type ShareFlowDeps } from './ShareFlow';
 import { ITEM_NOTES_LIMITS, nextItemVersion, type ItemShareSnapshot, type SharedItem } from './shareState';
 import { ITEM_LISTING_KINDS, type ListingFields, type OwnListing } from './uploadContract';
@@ -36,7 +36,7 @@ export class ItemShareSession extends ShareFlow<ItemShareSnapshot> {
 
   constructor(private readonly deps: ItemShareDeps) {
     const listingKind = ITEM_LISTING_KINDS[deps.item.kind];
-    super(deps, { ...freshShare({ ...draftFrom(null, null), kind: listingKind }), subject: 'item', item: deps.item, listingKind, version: null, notes: '' });
+    super(deps, { ...freshShare({ ...draftFrom(null, deps.item.kind === 'system-preset' ? systemOfSharedPreset(deps.item.name) : null), kind: listingKind }), subject: 'item', item: deps.item, listingKind, version: null, notes: '' });
   }
 
   setNotes(notes: string): void {

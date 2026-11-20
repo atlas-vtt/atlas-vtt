@@ -123,3 +123,42 @@
   .atlas-select-chevron,
   .atlas-select-check { transition: none; }
 }
+
+// ComboBox (see ComboBox.tsx): a field that takes a choice or typed text, in the select's look.
+.atlas-combobox-field {
+  cursor: text;
+
+  &[data-invalid] {
+    border-color: var(--text-error) !important;
+  }
+
+  .atlas-select-chevron {
+    cursor: pointer;
+  }
+}
+
+.atlas-combobox-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: inherit;
+  font: inherit;
+}
+
+.atlas-combobox-list .atlas-select-option.atlas-active {
+  background-color: var(--background-modifier-hover);
+}
+
+.atlas-combobox-typed {
+  color: var(--text-muted);
+}
+
+.atlas-combobox-typed-icon {
+  flex-shrink: 0;
+  width: $icon-s;
+  height: $icon-s;
+}

@@ -5,14 +5,17 @@ import type { AssetService } from '../../services/AssetService';
 import { exportCollectionBundle, type ExportChoice, type ExportPreview } from '../../services/collectionBundle/collectionExport';
 import { exportItemBundle } from '../../services/itemBundle/itemExport';
 import { itemListingUid } from '../../services/itemBundle/itemListingUid';
+import { recordItemName } from '../../services/itemBundle/vaultItems';
+import { SystemPresetFiles } from '../../services/systemPresets/SystemPresetFiles';
 import { TemplateLibrary } from '../../statblocks/library/TemplateLibrary';
 import { sha256 } from '../../utils/hashing';
 import { t } from '../../i18n';
 import { ArmariumApi } from './armariumApi';
 import { ItemShareSession } from './ItemShareSession';
-import { systemOfPreset } from './listingDraft';
+import { systemOfPreset, systemOfSharedPreset } from './listingDraft';
 import { ShareSession } from './ShareSession';
 import type { SharedItem } from './shareState';
+import type { ListingSystem } from './uploadContract';
 
 /** Why a wait ended early: the signal's own reason when it is an error. */
 const abortReason = (signal: AbortSignal): Error => (signal.reason instanceof Error ? signal.reason : new Error('Aborted'));
@@ -33,6 +36,15 @@ export function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
+/** The system a collection's listing starts with: its built-in system's, else its own game system's name. */
+function collectionSystem(app: App, presetId: string | undefined): ListingSystem | null {
+  const builtIn = systemOfPreset(presetId);
+  if (builtIn !== null || presetId === undefined) return builtIn;
+  const entry = SystemPresetFiles.forApp(app)?.entries().find((each) => each.id === presetId);
+  const name = entry === undefined ? null : recordItemName('system-preset', entry);
+  return name === null ? null : systemOfSharedPreset(name);
+}
+
 /**
  * A share of the previewed collection with this app's account, the Armarium's API and the vault's export; null when
  * the account is not set up (Atlas is still loading). `committed` hears the release recorded after a publish.
@@ -45,7 +57,7 @@ export function createShareSession(app: App, assets: AssetService, preview: Expo
     account,
     api,
     preview,
-    collectionSystem: systemOfPreset(preview.collection.settings.systemPresetId),
+    collectionSystem: collectionSystem(app, preview.collection.settings.systemPresetId),
     pack: (shared, choice, onProgress) => exportCollectionBundle(app, assets, shared, choice, onProgress),
     nameTaken: (name) => assets.isCollectionNameTaken(name, preview.collection.id),
     nameTakenText: (name) => t('bundle.nameTaken', { name: name.trim() }),

@@ -126,6 +126,41 @@ export type LicenceId = (typeof LICENCES)[number];
 export const SYSTEMS = ['any', 'cairn', 'coc7e', 'cyberpunkred', 'daggerheart', 'dnd5e', 'drawsteel', 'ose', 'pathfinder2e', 'shadowdark'] as const;
 export type SystemId = (typeof SYSTEMS)[number];
 
+/** The names the Armarium shows the known systems under; what a typed name is matched against (Atlas shows its translations). */
+export const SYSTEM_NAMES: Readonly<Record<SystemId, string>> = {
+  any: 'Any system',
+  cairn: 'Cairn',
+  coc7e: 'Call of Cthulhu',
+  cyberpunkred: 'Cyberpunk RED',
+  daggerheart: 'Daggerheart',
+  dnd5e: 'D&D 5e',
+  drawsteel: 'Draw Steel',
+  ose: 'Old-School Essentials',
+  pathfinder2e: 'Pathfinder 2e',
+  shadowdark: 'Shadowdark',
+};
+
+/** A listing's game system: a known system's id, or the name its creator typed for one the list lacks. */
+export type ListingSystem = string;
+
+/** A typed system name: one line of 2 to 40 characters, without links. */
+export const SYSTEM_LABEL: TextLimits = { min: 2, max: 40, maxLines: 1, maxLinks: 0 };
+
+/** What two system names are compared by: letters and digits only, in lower case ("Draw-Steel" is `drawsteel`). */
+export function systemKey(value: string): string {
+  return value.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+export function isKnownSystem(value: string): value is SystemId {
+  return SYSTEMS.some((known) => known === value);
+}
+
+/** The known system a typed name means, by its id or its name; the Armarium stores such a name as the id. */
+export function knownSystemOf(value: string): SystemId | null {
+  const key = systemKey(value);
+  return key === '' ? null : SYSTEMS.find((id) => key === systemKey(id) || key === systemKey(SYSTEM_NAMES[id])) ?? null;
+}
+
 /** The tags a creator ticks from, grouped as the picker shows them. Ids never change: listings store them. */
 export const TAG_GROUPS = [
   { id: 'genre', tags: ['fantasy', 'dark-fantasy', 'fairy-tale', 'horror', 'mystery', 'sci-fi', 'cyberpunk', 'post-apocalyptic', 'modern', 'historical', 'western'] },
@@ -163,7 +198,7 @@ export const LISTING_TEXT = {
 /** What the creator chooses for a listing; name, version, notes and cover come from the bundle. */
 export interface ListingFields {
   kind: ListingKind;
-  system: SystemId | null;
+  system: ListingSystem | null;
   description: string;
   tags: TagId[];
   licence: LicenceId;

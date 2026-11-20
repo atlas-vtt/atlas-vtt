@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { draftFrom, fieldsOfDraft, listingProblems, rightsProblems, systemOfPreset, toggledTags } from '../../../src/app/armarium/upload/listingDraft';
+import { draftFrom, fieldsOfDraft, listingProblems, rightsProblems, systemOfPreset, systemOfSharedPreset, toggledTags } from '../../../src/app/armarium/upload/listingDraft';
 import { withPublishedFloor } from '../../../src/app/armarium/upload/shareState';
 import type { ExportPreview } from '../../../src/app/services/collectionBundle/collectionExport';
 
@@ -11,7 +11,22 @@ describe('the listing form', () => {
     expect(systemOfPreset('my-homebrew-preset')).toBeNull();
     expect(systemOfPreset(undefined)).toBeNull();
     expect(draftFrom(null, 'cairn')).toEqual({ kind: null, system: 'cairn', description: '', tags: [], licence: null, credits: '' });
-    expect(draftFrom({ kind: 'maps', system: null, description: 'd', tags: ['forest'], licence: 'cc0', credits: '' }, 'cairn').system).toBe('none');
+    expect(draftFrom({ kind: 'maps', system: null, description: 'd', tags: ['forest'], licence: 'cc0', credits: '' }, 'cairn').system).toBe('');
+  });
+
+  it('takes a system the list lacks as the name typed, and a typed known system as its id', () => {
+    const draft = { ...draftFrom(null, null), kind: 'templates' as const, description: 'Twenty characters at least.', licence: 'cc0' as const };
+    expect(fieldsOfDraft({ ...draft, system: '  Mothership  ' })?.system).toBe('Mothership');
+    expect(fieldsOfDraft({ ...draft, system: 'draw-steel' })?.system).toBe('drawsteel');
+    expect(fieldsOfDraft({ ...draft, system: 'D&D 5E' })?.system).toBe('dnd5e');
+    expect(fieldsOfDraft({ ...draft, system: '   ' })?.system).toBeNull();
+    expect(listingProblems({ ...draft, system: 'x' })).toEqual({ system: 'too-short' });
+    expect(listingProblems({ ...draft, system: 'x'.repeat(41) })).toEqual({ system: 'too-long' });
+    expect(listingProblems({ ...draft, system: 'cairn' })).toEqual({});
+    // A game system's own listing names it: the known system its name means, else its name where it fits.
+    expect(systemOfSharedPreset('Mothership 1e')).toBe('Mothership 1e');
+    expect(systemOfSharedPreset('Shadowdark')).toBe('shadowdark');
+    expect(systemOfSharedPreset('x'.repeat(41))).toBeNull();
   });
 
   it('asks for a kind and a description of 20 to 5000 characters before the rights', () => {

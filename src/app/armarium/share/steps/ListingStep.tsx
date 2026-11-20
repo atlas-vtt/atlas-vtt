@@ -1,9 +1,10 @@
 import React, { useId } from 'react';
+import { ComboBox, type ComboBoxOption } from '../../../packages/components/primitives/ComboBox';
 import { Select, type SelectOption } from '../../../packages/components/primitives/Select';
 import { t } from '../../../i18n';
 import type { AnyShareSession } from '../../upload/anyShareSession';
 import type { ShareSnapshot } from '../../upload/shareState';
-import { KINDS, LISTING_TEXT, SYSTEMS, type ListingKind, type SystemId } from '../../upload/uploadContract';
+import { KINDS, LISTING_TEXT, SYSTEM_NAMES, SYSTEMS, systemKey, type ListingKind } from '../../upload/uploadContract';
 import { kindLabel, kindLine, systemLabel } from '../../upload/text/listingVocabulary';
 import { FindingReport } from './FindingReport';
 import { CountedText, FieldProblem, TagPicker, useOverlayLayer } from './ListingFields';
@@ -14,10 +15,14 @@ const KIND_OPTIONS: SelectOption<ListingKind | typeof NO_KIND>[] = [
   { value: NO_KIND, label: t('armariumShare.chooseKind') },
   ...KINDS.map((kind) => ({ value: kind, label: kindLabel(kind), detail: kindLine(kind) })),
 ];
-const SYSTEM_OPTIONS: SelectOption<SystemId | 'none'>[] = [
-  { value: 'none', label: systemLabel(null) },
-  ...SYSTEMS.map((system) => ({ value: system, label: systemLabel(system) })),
-];
+const SYSTEM_OPTIONS: ComboBoxOption[] = SYSTEMS.map((system) => ({ value: system, label: systemLabel(system) }));
+
+/** A known system answers what was typed when its name, in this language or the Armarium's, or its id holds it. */
+function systemMatches(option: ComboBoxOption, text: string): boolean {
+  const key = systemKey(text);
+  const names = [option.label, option.value, SYSTEM_NAMES[option.value as keyof typeof SYSTEM_NAMES] ?? ''];
+  return key === '' || names.some((name) => systemKey(name).includes(key));
+}
 
 /** The kind of a single file's listing, which the file decides: shown, never chosen. */
 function FixedKind({ kind }: { kind: ListingKind }): React.JSX.Element {
@@ -60,7 +65,19 @@ export function ListingStep({ snapshot, session }: { snapshot: ShareSnapshot; se
         )}
         <div className="atlas-share-field">
           <span id={systemId} className="atlas-share-field__label">{t('armariumShare.system')}</span>
-          <Select labelledBy={systemId} layer={layer} value={draft.system} options={SYSTEM_OPTIONS} onChange={(system) => session.setDraft({ system })} />
+          <ComboBox
+            labelledBy={systemId}
+            layer={layer}
+            value={draft.system}
+            options={SYSTEM_OPTIONS}
+            matches={systemMatches}
+            typedLabel={(name) => t('armariumShare.systemTyped', { name })}
+            placeholder={t('armariumShare.systemPlaceholder')}
+            describedBy={`${systemId}-hint ${systemId}-problem`}
+            invalid={problems.system !== undefined}
+            onChange={(system) => session.setDraft({ system })}
+          />
+          <span id={`${systemId}-hint`} className="atlas-share-field__hint">{t('armariumShare.systemHint')}</span>
           <FieldProblem id={`${systemId}-problem`} field="system" problems={problems} />
         </div>
       </div>

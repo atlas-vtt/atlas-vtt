@@ -60,7 +60,7 @@ describe('sharing a single Atlas file in the Armarium', () => {
     await vi.waitFor(() => expect(session.snapshot().step).toBe('listing'));
     expect(pack).toHaveBeenCalledWith(uid, 1, undefined);
     expect(session.snapshot().bundle).toMatchObject({ fileName: 'Goblin v1.atlas-template.zip', name: 'Goblin', version: 1 });
-    expect(session.snapshot().draft).toMatchObject({ kind: 'templates', system: 'none', description: 'Goblins of the Blue Mouth caves, as five-foot menaces.' });
+    expect(session.snapshot().draft).toMatchObject({ kind: 'templates', system: '', description: 'Goblins of the Blue Mouth caves, as five-foot menaces.' });
 
     session.continueToPublish();
     session.setDraft({ licence: 'cc-by-4.0' });
