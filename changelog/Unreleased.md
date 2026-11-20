@@ -10,7 +10,7 @@
 
 **Dice**
 
-- Dice written in a note roll with Atlas: click 2d6+3, d20, +4 or `dice: 1d20+5` in reading view, or Ctrl/Cmd-click it while editing in Live Preview, to roll it into the open map's dice log; add Shift for advantage and Alt for disadvantage. With a contribution by young-george
+- Dice written in a note roll with Atlas: click 2d6+3, d20, +4 or `dice: 1d20+5` in reading view, or Ctrl/Cmd-click it while editing in Live Preview, to roll it into the open map's table log; add Shift for advantage and Alt for disadvantage. With a contribution by young-george
 - Saved rolls: the bookmark at the foot of the dice tray (or P) opens a panel beside it. Save a roll under a name, then roll it with one click
 - Change the tray's dice row: the pencil (or E) makes its dice wiggle. Drag them into order, take one out with its ×, add a die of any size (a d3, a d30) with +, and pin saved rolls into it from their panel, up to ten places. Swap the d100 for Daggerheart's two d12, for example. Number keys 1 to 0 follow the row
 - Dress a saved roll as in the Dice Lab: its dice open beside it when you save it, or with the pencil. Click a die for its faces, name and colour, set the bonus, and the critical, exploding and advantage rules. In the dice row it shows its first die in its colour and rolls at once
@@ -69,7 +69,8 @@
 
 ## Improved
 
-- The initiative tracker stays at the right edge, clear of the dice log and the map's controls on the left, and shows names in the compact view
+- The dice log is now called the table log everywhere, also when no online session runs: its panel, its hotkey, the command palette and the Obsidian command
+- The initiative tracker stays at the right edge, clear of the table log and the map's controls on the left, and shows names in the compact view
 - The initiative tracker's buttons float above and below it and show when the pointer comes near, so the panel holds only the fight; its foot shows the round as the players' list does
 - While the players' initiative list runs as rows across the top and bottom, the widgets on the player view stand as a column down the right edge, and the rows always keep clear of them
 - With the Atlas VTT theme, ivy grows over the corners of the GM's initiative tracker as on the players' list, and on both it comes and goes at once when you switch themes
@@ -103,5 +104,5 @@
 - After you share something in the Armarium, Open in the Armarium waits until its page is ready, instead of opening a page that could not be found
 - While the Armarium is open in the asset manager, the sidebar shows the Armarium's tags and filters the store by them, instead of the tags of the collection you were in
 - The table log has room around its messages again; rolls and the message field no longer sit against its edge
-- The table log and the dice log show a roll's result once the dice have landed, not while they are still rolling
+- The table log shows a roll's result once the dice have landed, not while they are still rolling
 - In the Sound page's list, a track an hour or longer no longer runs its length into Playing or In the mix beside it

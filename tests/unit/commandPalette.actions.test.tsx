@@ -215,8 +215,8 @@ describe('Atlas search actions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Tools/ }));
     const input = screen.getByPlaceholderText('Search commands…');
-    fireEvent.change(input, { target: { value: 'dice log' } });
-    const action = screen.getByRole('button', { name: /Open dice log/ });
+    fireEvent.change(input, { target: { value: 'table log' } });
+    const action = screen.getByRole('button', { name: /Open table log/ });
     expect(action.querySelector('.atlas-command-item-toggle')).toBeNull();
 
     if (activation === 'click') fireEvent.click(action);

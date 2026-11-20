@@ -37,7 +37,7 @@ export const hotkey = {
   'hotkey.deleteAlt': 'Delete selection (alternate)',
   'hotkey.cancel': 'Cancel tool / clear selection',
   'hotkey.diceTray': 'Dice tray',
-  'hotkey.diceLog': 'Dice roll log',
+  'hotkey.diceLog': 'Table log',
   'hotkey.initiative': 'Initiative tracker',
   'hotkey.lootRoller': 'Random tables',
   'hotkey.previousTurn': 'Previous turn (during combat)',

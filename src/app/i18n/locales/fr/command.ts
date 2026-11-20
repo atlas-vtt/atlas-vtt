@@ -15,7 +15,7 @@ export const command: Translation = {
   'command.reportIssue': 'Signaler un problème…',
   'command.sendMapToPlayerView': 'Envoyer la carte actuelle à la vue joueurs',
   'command.showMapInPlayerWindow': 'Afficher la carte actuelle dans la fenêtre joueurs locale',
-  'command.toggleDiceLog': 'Afficher/masquer le journal des dés',
+  'command.toggleDiceLog': 'Afficher/masquer le journal de la table',
   'command.toggleInitiativeTracker': 'Afficher/masquer le suivi d\'initiative',
   'command.toggleLootRoller': 'Afficher/masquer les tables aléatoires',
   'command.viewChangelog': 'Voir le journal des modifications',

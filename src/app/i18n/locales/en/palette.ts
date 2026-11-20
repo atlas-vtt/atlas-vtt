@@ -22,7 +22,7 @@ export const palette = {
   'palette.noResults': 'No results found',
   'palette.noResultsHint': 'Try a different search term',
   'palette.notePinTool': 'Note Pin Tool',
-  'palette.openDiceLog': 'Open dice log',
+  'palette.openDiceLog': 'Open table log',
   'palette.openLootRoller': 'Open random tables',
   'palette.openSceneBrowser': 'Open asset manager',
   'palette.openDMScreen': 'Open DM screen',

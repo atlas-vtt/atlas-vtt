@@ -29,7 +29,7 @@ export const hotkey = {
   "hotkey.deleteAlt": "Elimina selezione (alternativa)",
   "hotkey.cancel": "Annulla strumento / annulla selezione",
   "hotkey.diceTray": "Vassoio dei dadi",
-  "hotkey.diceLog": "Registro dei tiri",
+  "hotkey.diceLog": "Registro del tavolo",
   "hotkey.initiative": "Indicatore di iniziativa",
   "hotkey.lootRoller": "Tabelle casuali",
   "hotkey.previousTurn": "Turno precedente (durante il combattimento)",

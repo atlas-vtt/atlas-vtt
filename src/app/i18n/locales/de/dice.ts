@@ -24,7 +24,7 @@ export const dice: Translation = {
   'dice.clearSelection': 'Auswahl aufheben',
   'dice.closeHint': 'Schließen (Enter oder Esc)',
   'dice.details': 'Details',
-  'dice.log': 'Würfelprotokoll',
+  'dice.log': 'Tischprotokoll',
   'dice.noRolls': 'Noch keine Würfe',
   'dice.pin': 'Panel anheften',
   'dice.rollAgain': 'Erneut würfeln',

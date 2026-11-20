@@ -27,7 +27,7 @@ export const dice = {
   "dice.clearSelection": "Annulla selezione",
   "dice.closeHint": "Chiudi (Invio o Esc)",
   "dice.details": "Dettagli",
-  "dice.log": "Registro dei tiri",
+  "dice.log": "Registro del tavolo",
   "dice.noRolls": "Ancora nessun tiro",
   "dice.pin": "Mantieni aperto il pannello",
   "dice.rollAgain": "Tira di nuovo",

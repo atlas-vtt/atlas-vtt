@@ -25,7 +25,7 @@ export const palette = {
   "palette.noResults": "Nessun risultato trovato",
   "palette.noResultsHint": "Prova un altro termine di ricerca",
   "palette.notePinTool": "Strumento segnaposto nota",
-  "palette.openDiceLog": "Apri registro dei tiri",
+  "palette.openDiceLog": "Apri registro del tavolo",
   "palette.openLootRoller": "Apri tabelle casuali",
   "palette.panel.grid": "Impostazioni della griglia",
 

@@ -352,7 +352,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       id: "open-dice-log",
       icon: <Dices />,
       label: t('palette.openDiceLog'),
-      keywords: ["roll history", "toggle"],
+      keywords: ["roll history", "dice log", "toggle"],
       shortcut: hotkeyLabel('diceLog'),
       section: "tools",
       action: () => {

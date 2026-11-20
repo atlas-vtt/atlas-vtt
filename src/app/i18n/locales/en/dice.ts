@@ -24,7 +24,7 @@ export const dice = {
   'dice.clearSelection': 'Clear selection',
   'dice.closeHint': 'Close (Enter or Esc)',
   'dice.details': 'Details',
-  'dice.log': 'Dice Log',
+  'dice.log': 'Table log',
   'dice.noRolls': 'No rolls yet',
   'dice.pin': 'Pin panel open',
   'dice.rollAgain': 'Roll again',

@@ -30,7 +30,7 @@ export const hotkey: Translation = {
   'hotkey.deleteAlt': '删除所选（备用）',
   'hotkey.cancel': '取消工具 / 清除选择',
   'hotkey.diceTray': '骰子盘',
-  'hotkey.diceLog': '骰子记录',
+  'hotkey.diceLog': '桌面记录',
   'hotkey.initiative': '先攻追踪',
   'hotkey.lootRoller': '随机表',
   'hotkey.previousTurn': '上一回合（战斗中）',

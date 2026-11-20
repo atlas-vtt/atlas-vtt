@@ -20,7 +20,7 @@ export const palette: Translation = {
   'palette.noResults': 'Ничего не найдено',
   'palette.noResultsHint': 'Попробуйте другой запрос',
   'palette.notePinTool': 'Пин заметки',
-  'palette.openDiceLog': 'Открыть журнал бросков',
+  'palette.openDiceLog': 'Открыть журнал стола',
   'palette.openLootRoller': 'Открыть случайные таблицы',
   'palette.openSceneBrowser': 'Открыть менеджер ресурсов',
   'palette.panel.grid': 'Настройки сетки',
