@@ -1,5 +1,6 @@
 import { useEffect, type RefObject } from 'react';
 import { useAtlasSettings } from '../../../keyboard/useMapHotkeys';
+import type { SettingsService } from '../../../services/SettingsService';
 import { useAtlasStore } from '../../ViewStoreContext';
 import './chrome-auto-hide.scss';
 
@@ -52,11 +53,12 @@ function unitsIn(root: HTMLElement): Element[][] {
 /**
  * The GM's "show the toolbar on hover": while it is on, the bars along the bottom of the map and
  * the level switcher show only while the pointer is near them (`data-near`); the stylesheet hides
- * the rest, keeps a bar whose menu is open, and never hides anything on a screen without hover.
+ * the rest, keeps a bar whose menu is open, and never hides anything where no mouse or trackpad can hover.
  * Off in the player view and while the toolbar editor is open.
  */
-export function useChromeAutoHide(rootRef: RefObject<HTMLElement | null>, playerView: boolean): void {
-  const settings = useAtlasSettings();
+export function useChromeAutoHide(rootRef: RefObject<HTMLElement | null>, playerView: boolean, explicitSettings: SettingsService | undefined): void {
+  // Passed in: UIRoot, which calls this, is where the view's context is provided, so none reaches it.
+  const settings = useAtlasSettings(explicitSettings);
   const editing = useAtlasStore(state => state.isToolbarEditing);
   const on = !playerView && !editing && settings?.isToolbarAutoHide() === true;
 

@@ -112,7 +112,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   const storeIsPlayerView = useAtlasStore(state => state.isPlayerView);
   const isPlayerView = storeIsPlayerView || view?.getViewType?.() === 'atlas-vtt-player';
   const uiRef = useRef<HTMLDivElement>(null);
-  useChromeAutoHide(uiRef, isPlayerView);
+  useChromeAutoHide(uiRef, isPlayerView, settings);
   // Get loading state from store
   const isMapLoading = useAtlasStore(state => state.isMapLoading);
   const mapLoadingProgress = useAtlasStore(state => state.mapLoadingProgress);

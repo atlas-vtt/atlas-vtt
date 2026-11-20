@@ -21,7 +21,7 @@ $chrome-units: '.atlas-bottom-toolbar-row__lead, .atlas-bottom-toolbar-row__star
 // Away from the pointer, unless one of its menus or panels is open, whatever opened it (a hotkey too).
 $chrome-hidden: ":is(#{$chrome-units}):not([data-near]):not(:has([aria-expanded='true'], [data-state='open']))";
 
-@media (hover: hover) {
+@media (any-hover: hover) {
   .atlas-ui[data-chrome-auto-hide] {
     :is(#{$chrome-units}) {
       transition:
