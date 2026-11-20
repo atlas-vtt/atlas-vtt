@@ -24,7 +24,8 @@ export const dashboard = {
   "dashboard.openFailed": "Errore durante l’apertura della scena",
   "dashboard.addMapFirst": "Aggiungi prima un’immagine di mappa, poi crea una scena a partire da essa.",
   "dashboard.allCreatures": "Tutte ({count})",
-  "dashboard.inThisFight": "In questo combattimento ({count})",
+  "dashboard.thisFight": "Questo combattimento ({count})",
+  "dashboard.playerCharacters": "Personaggi giocanti ({count})",
   "dashboard.statblockScope": "Statblock mostrati",
   "dashboard.closeScreen": "Chiudi schermo del master",
 } satisfies Translation;

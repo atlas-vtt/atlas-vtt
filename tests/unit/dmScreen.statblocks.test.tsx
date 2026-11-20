@@ -21,6 +21,7 @@ vi.mock('../../src/app/react/ViewStoreContext', () => ({
 }));
 
 import DMScreen from '../../src/app/react/components/DMScreen';
+import { setPlayerTokenSource } from '../../src/app/characters/playerTokens';
 import { installParsingBestiary, type ParsingBestiary } from '../mocks/parsingBestiary';
 
 const view = {};
@@ -100,6 +101,7 @@ function showDMScreen(paths: string[], onClose = vi.fn()) {
 afterEach(() => {
   cleanup();
   state.initiative = { entries: [], isActive: false, round: 0 };
+  setPlayerTokenSource(null);
   bestiaryEvents.clear();
   vi.restoreAllMocks();
   delete (window as Window & { FantasyStatblocks?: unknown }).FantasyStatblocks;
@@ -270,7 +272,7 @@ describe('the DM screen during a fight', () => {
     const { container } = showDMScreen([creaturePath, fencePath]);
     await waitFor(() => expect(container.textContent).toContain('Inline Creature'));
     expect(shownNames(container)).toHaveLength(1);
-    expect(screen.getByRole('radio', { name: 'In this fight (1)' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('radio', { name: 'This fight (1)' }).getAttribute('aria-checked')).toBe('true');
 
     fireEvent.click(screen.getByRole('radio', { name: 'All (2)' }));
     await waitFor(() => expect(shownNames(container)).toHaveLength(2));
@@ -289,7 +291,7 @@ describe('the DM screen during a fight', () => {
     state.initiative = { ...state.initiative, isActive: true };
     rerender(<DMScreen isOpen onClose={vi.fn()} />);
     await waitFor(() => expect(shownNames(container)).toHaveLength(1));
-    expect(screen.getByRole('radio', { name: 'In this fight (1)' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('radio', { name: 'This fight (1)' }).getAttribute('aria-checked')).toBe('true');
   });
 
   it('keeps All while the screen closes and opens again during one fight', async () => {
@@ -309,6 +311,44 @@ describe('the DM screen during a fight', () => {
   it('shows every statblock and no switch without a fight, or where the fight uses every creature', async () => {
     const { container } = showDMScreen([creaturePath, fencePath]);
     await waitFor(() => expect(shownNames(container)).toHaveLength(2));
-    expect(screen.queryByRole('radio', { name: /In this fight/ })).toBeNull();
+    expect(screen.queryByRole('radio', { name: /This fight/ })).toBeNull();
+  });
+});
+
+describe('the DM screen\'s player characters choice', () => {
+  const shownNames = (container: HTMLElement): string[] =>
+    [...container.querySelectorAll('.atlas-dm-statblock-feed-item')].map((item) => item.textContent ?? '');
+  /** The first token placed (on the fence note) is a player character. */
+  const firstTokenIsPlayers = (): void =>
+    setPlayerTokenSource({ isPlayers: (token) => token.id === '0', subscribe: () => () => undefined });
+
+  it('shows the player characters\' statblocks alone outside a fight', async () => {
+    firstTokenIsPlayers();
+    const { container } = showDMScreen([fencePath, creaturePath]);
+    await waitFor(() => expect(shownNames(container)).toHaveLength(2));
+    expect(screen.getByRole('radio', { name: 'All (2)' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.queryByRole('radio', { name: /This fight/ })).toBeNull();
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Player characters (1)' }));
+    await waitFor(() => expect(shownNames(container)).toHaveLength(1));
+    expect(shownNames(container)[0]).toContain('Inline Creature');
+  });
+
+  it('offers it beside This fight and All during a fight', async () => {
+    firstTokenIsPlayers();
+    state.initiative = { entries: [{ id: 'e', tokenId: '1', order: 0 }], isActive: true, round: 1 };
+    const { container } = showDMScreen([fencePath, creaturePath]);
+    await waitFor(() => expect(shownNames(container)).toHaveLength(1));
+    expect(screen.getByRole('radio', { name: 'This fight (1)' }).getAttribute('aria-checked')).toBe('true');
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Player characters (1)' }));
+    await waitFor(() => expect(shownNames(container)[0]).toContain('Inline Creature'));
+    expect(shownNames(container)).toHaveLength(1);
+  });
+
+  it('is not offered without player characters on the map', async () => {
+    const { container } = showDMScreen([fencePath, creaturePath]);
+    await waitFor(() => expect(shownNames(container)).toHaveLength(2));
+    expect(screen.queryByRole('radio', { name: /Player characters/ })).toBeNull();
   });
 });

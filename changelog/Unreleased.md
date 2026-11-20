@@ -72,6 +72,7 @@
 
 ## Improved
 
+- The DM screen can show the player characters' statblocks alone: pick Player characters beside This fight and All above the statblocks, during a fight or outside one
 - The dice log is now called the table log everywhere, also when no online session runs: its panel, its hotkey, the command palette and the Obsidian command
 - The initiative tracker stays at the right edge, clear of the table log and the map's controls on the left, and shows names in the compact view
 - The scene tabs' Open scene and All open tabs buttons show a background only while hovered or pressed
