@@ -1068,6 +1068,16 @@
 // ── Text ─────────────────────────────────────────────────────────────────────
 
 /// Truncate text with ellipsis.
+/// The name of a setting beside its control. It takes the room the control leaves and wraps there, so a translation
+/// longer than the English grows the row instead of running under the control; a word too long for the room breaks.
+/// Never `white-space: nowrap` on such a label: German and Russian names are a third longer and more.
+@mixin atlas-row-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
 @mixin atlas-truncate {
   overflow: hidden;
   text-overflow: ellipsis;
