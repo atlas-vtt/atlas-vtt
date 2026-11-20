@@ -226,16 +226,20 @@ describe('the GM\'s initiative tracker', () => {
     await page.screenshot({ path: `${SHOTS}/gm-rotated.png`, element: tracker });
   });
 
-  it('draws conditions as the map does, 18 px badges inside the card, a valued one with its number', async () => {
+  it('draws conditions as the map does, three 18 px badges and a count, a valued one with its number, peeking out below the card', async () => {
     const tracker = await showTracker();
     const card = tracker.querySelector('[aria-label="Goblin Archer of the Western Hills"]')!;
     const badges = [...card.querySelectorAll('.atlas-condition-badge')];
-    expect(badges).toHaveLength(4);
+    expect(badges).toHaveLength(3);
     for (const badge of badges) expect(box(badge).width).toBe(18);
+    expect(card.querySelector('.atlas-initiative-card__condition-more')?.textContent).toBe('+1');
     const pip = card.querySelector('.atlas-condition-badge__value')!;
     expect(pip.textContent).toBe('2');
-    // The number overhangs its badge, never into the next one
-    expect(box(pip).right).toBeLessThan(box(badges[1]!).left);
+    const row = box(card.querySelector('.atlas-initiative-card__conditions'));
+    expect(row.left).toBeGreaterThanOrEqual(box(card).left);
+    expect(row.right).toBeLessThanOrEqual(box(card).right);
+    expect(row.bottom).toBeGreaterThan(box(card).bottom);
+    expect(row.top).toBeLessThan(box(card.querySelector('.atlas-initiative-card__hp-bar')).bottom);
   });
 
   it('collapses to the turn and the next two, and stands at the right edge with the dice log open', async () => {

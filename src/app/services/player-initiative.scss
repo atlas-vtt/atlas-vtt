@@ -1,5 +1,6 @@
 @use '../../../styles/tokens' as *;
 @use '../../../styles/mixins' as *;
+@use '../../../styles/initiative-cards' as *;
 
 // The player view's initiative size: widths and text grow with it, spacing stays
 $scale: var(--atlas-player-initiative-scale, 1);
@@ -22,7 +23,7 @@ $badge-peek: calc(#{$badge} * 0.5);
 $card-width: calc(#{scaled(96px)} - 2 * #{$border-width-m} - 2 * #{$surface-inset});
 
 // What lies in a card's corners stands $surface-inset inside its border with this radius, concentric with the card's
-$card-corner-radius: calc(#{$radius-m} - #{$border-width-s} - #{$surface-inset});
+$card-corner-radius: initiative-corner-radius($border-width-s);
 
 // The rounds' names and lines take the theme's heading face, rule and red where it has them (the Atlas VTT
 // theme does), else Obsidian's own
@@ -273,54 +274,26 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
   // The token's art, filling the card inside its border, under a shade at the top and the foot that the number and the
   // foot read on
   &__art {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-    border-radius: calc(#{$radius-m} - #{$border-width-s});
-
-    img {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    &::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      // The shade the number and the foot read on, over a fade into the card's sides that gives the art depth
-      background:
-        linear-gradient(to bottom, rgb(0 0 0 / 0.5), transparent 35%, transparent 50%, rgb(0 0 0 / 0.75)),
-        linear-gradient(to right, rgb(0 0 0 / 0.55), transparent 28%, transparent 72%, rgb(0 0 0 / 0.55)),
-        radial-gradient(ellipse 75% 85% at 50% 42%, transparent 55%, rgb(0 0 0 / 0.35));
-    }
+    @include initiative-art($border-width-s);
   }
 
-  // Art that brings its own frame (a token without a ring on the map) is cropped closer, so the frame falls outside
-  &__art--framed img {
-    transform: scale(1.4);
-    transform-origin: 50% 45%;
+  &__art--framed {
+    @include initiative-art-framed;
   }
 
-  // On the art a side's frame is a ring inside the border, thick enough to read across a table
   &__card--art#{&}__card--coloured &__art::after,
   &__card--art#{&}__card--ally &__art::after {
-    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--atlas-side-color) 85%, transparent);
+    @include initiative-side-ring(var(--atlas-side-color));
   }
 
-  // The turn's ring is thicker and glows inward, so it reads over any side's frame
   &__card--art#{&}__card--active &__art::after,
   &__side--active &__card--art:not(&__card--sitting-out) &__art::after {
-    box-shadow:
-      inset 0 0 0 3px var(--atlas-turn-color, var(--interactive-accent)),
-      inset 0 0 #{scaled(14px)} color-mix(in srgb, var(--atlas-turn-color, var(--interactive-accent)) 55%, transparent);
+    @include initiative-turn-ring(var(--atlas-turn-color, var(--interactive-accent)), scaled(14px));
   }
 
   // While someone holds the turn, everyone else's art steps back a little, so the turn stands out whatever its colour
   &:has(&__card--active, &__side--active) &__card:not(&__card--active) &__art img {
-    filter: brightness(0.72) saturate(0.8);
+    filter: $initiative-art-dim;
   }
 
   &:has(&__side--active) &__side--active &__card:not(&__card--sitting-out) &__art img {
@@ -337,8 +310,10 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     min-height: scaled(40px);
     padding: $surface-inset;
     box-sizing: border-box;
-    border: $border-width-s dashed var(--background-modifier-border);
+    // A quiet fill, as an empty place is in Atlas: never a dashed line
+    border: $border-width-s solid var(--background-modifier-border);
     border-radius: $radius-m;
+    background: var(--background-modifier-hover);
     color: var(--text-muted);
     font-size: scaled($font-ui-medium);
     font-weight: $font-weight-semibold;
@@ -460,16 +435,14 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     text-shadow: 0 1px 2px rgb(0 0 0 / 0.8);
   }
 
-  // A capsule along the card's foot, $surface-inset inside its border, whose ends run concentric with the card's bottom
-  // corners: twice `$card-corner-radius` high
+  // A capsule along the card's foot whose ends run concentric with the card's bottom corners
   &__hp {
     --atlas-hp-track: var(--background-modifier-border);
+    @include initiative-resource-capsule($border-width-s);
     appearance: none;
     display: block;
     width: 100%;
-    height: calc(2 * #{$card-corner-radius});
     border: none;
-    border-radius: $radius-full;
     overflow: hidden;
     background: var(--atlas-hp-track);
 

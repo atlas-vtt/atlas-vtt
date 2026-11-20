@@ -12,7 +12,6 @@ import { hasInitiative } from '../../initiative/awaitingInitiative';
 import { tokenDisplayName } from '../../pixi/token-renderer/tokenDisplayName';
 import { isOffMap } from '../../tokens/offMap';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
-import { TokenPortrait } from '../../packages/components/shared/TokenPortrait';
 import { InitiativeNumber, type NumberStep } from './InitiativeNumber';
 import { CardResourceBars } from './CardResourceBars';
 import { OffMapIcon } from './OffMapIcon';
@@ -24,6 +23,7 @@ import { t } from '../../i18n';
 import { DealtCard } from './DealtCard';
 import { entryToken } from '../../initiative/party';
 import { combatantColor, turnColor } from '../../initiative/combatantColor';
+import { sideOf } from '../../initiative/sides';
 
 interface InitiativeCardProps {
   entry: InitiativeEntry;
@@ -54,8 +54,9 @@ interface InitiativeCardProps {
 const NOTHING = (): void => undefined;
 
 /**
- * Individual initiative tracker card
- * Displays the token as the map shows it (its ring, or unframed), its initiative value and the bars of its resources
+ * A combatant in the GM's tracker, as the players' list draws it (`styles/_initiative-cards.scss`): a square card
+ * filled with the token's art, its number in the top right, its badge and marks in the top left, the bars of the
+ * resources that defeat it along its foot and its conditions peeking out below. The compact list is one line instead.
  */
 export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   entry,
@@ -104,6 +105,8 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   // The colour the GM gave the card, and the one its turn pulses in
   const color = combatantColor(entry);
   const turn = turnColor(entry, token);
+  // The players' own side is framed in green as opponents are in their colour; a player at the table has no token
+  const ally = !color && (entry.partyMemberId !== undefined || (token !== undefined && sideOf(token) === 'players'));
   const colours = {
     ...(color ? { '--atlas-combatant-color': color } : {}),
     ...(turn ? { '--atlas-turn-color': turn } : {}),
@@ -199,7 +202,9 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   // Build class names
   const cardClasses = [
     'atlas-initiative-card',
+    !compact && 'atlas-initiative-card--tile',
     color && 'atlas-initiative-card--coloured',
+    ally && 'atlas-initiative-card--ally',
     entry.isActive && !bySides && 'atlas-initiative-card--active',
     defeated && 'atlas-initiative-card--defeated',
     hiddenFromPlayers && 'atlas-initiative-card--hidden',
@@ -233,32 +238,26 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
         <GripVertical />
       </div>
 
-      {/* Avatar with optional instance badge; the compact list shows the marks alone, beside the name */}
+      {/* The token's art filling the card, with its badge and marks in the top left; the compact list shows the marks alone, beside the name */}
       {compact ? <span className="atlas-initiative-card__marks">{defeated && <Skull className="atlas-initiative-card__defeated-mark" />}{marks}</span> : (
-      <div className="atlas-initiative-card__avatar-wrapper">
-        {entry.imagePath ? (
-          <TokenPortrait
-            className="atlas-initiative-card__portrait"
-            src={getImageUrl(entry.imagePath)}
-            alt={name}
-            showRing={token?.showRing !== false}
-            ringColor={token?.ringColor}
-          />
-        ) : (
-          <div className="atlas-initiative-card__avatar">
-            {entry.isNPC ? <Bot /> : <User />}
-          </div>
-        )}
-
-        {/* Defeated overlay */}
-        {defeated && (
-          <div className="atlas-initiative-card__defeated-overlay">
-            <Skull />
-          </div>
-        )}
-
-        {marks}
-      </div>
+        <>
+          {entry.imagePath ? (
+            // The card names the combatant (`aria-label`): its art is a picture no one needs read again
+            <div className={`atlas-initiative-card__art${token?.showRing === false ? ' atlas-initiative-card__art--framed' : ''}`} aria-hidden="true">
+              <img src={getImageUrl(entry.imagePath)} alt="" draggable={false} decoding="async" />
+            </div>
+          ) : (
+            <div className="atlas-initiative-card__avatar">
+              {entry.isNPC ? <Bot /> : <User />}
+            </div>
+          )}
+          {defeated && (
+            <div className="atlas-initiative-card__defeated-overlay">
+              <Skull />
+            </div>
+          )}
+          <span className="atlas-initiative-card__marks">{marks}</span>
+        </>
       )}
 
       {showName && <span className="atlas-initiative-card__name" aria-hidden="true">{name}</span>}
