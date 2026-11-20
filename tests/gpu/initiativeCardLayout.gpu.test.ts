@@ -38,7 +38,7 @@ async function show(names: boolean): Promise<HTMLElement> {
   await page.viewport(1200, 900);
   const { app } = createInMemoryApp({ files: {} });
   settings = new SettingsService(app);
-  settings.setInitiativeNames(names);
+  settings.setCompactInitiative(names);
   store = createViewAtlasStore(app, `initiative-layout-${Math.random()}`);
   store.setState({
     persistenceEnabled: false,
@@ -62,7 +62,7 @@ describe('the GM\'s initiative cards', () => {
   beforeEach(() => document.head.append(style));
   afterEach(() => style.remove());
 
-  it('keep the narrow tracker without names and widen it for them, every name inside its card in two lines at most', async () => {
+  it('keep the narrow tracker without names and widen it for the compact view\'s, every name inside its card in two lines at most', async () => {
     expect(box((await show(false)).querySelector('.atlas-initiative-tracker')).width).toBe(96);
     document.body.innerHTML = '';
 
@@ -78,7 +78,7 @@ describe('the GM\'s initiative cards', () => {
   });
 
   it('keep the padding of a card and the gaps between its parts equal', async () => {
-    const card = (await show(true)).querySelector('.atlas-initiative-card')!;
+    const card = (await show(false)).querySelector('.atlas-initiative-card')!;
     const parts = [...card.children].filter((child) => getComputedStyle(child).display !== 'none').map(box);
     const frame = box(card);
     const border = parseFloat(getComputedStyle(card).borderTopWidth);

@@ -7,14 +7,12 @@ describe('a turn banner attached to a players\' list', () => {
   it('stands on the side of the list that faces into the room, turned with a list that faces its players', () => {
     expect(bannerAnchor(box, 'bottom', true)).toEqual({ x: 200, y: 400, turn: 0, side: 'above', align: 'centre' });
     expect(bannerAnchor(box, 'top', true)).toEqual({ x: 200, y: 500, turn: 180, side: 'above', align: 'centre' });
-    expect(bannerAnchor(box, 'left', true)).toEqual({ x: 300, y: 450, turn: 90, side: 'above', align: 'centre' });
     expect(bannerAnchor(box, 'right', true)).toEqual({ x: 100, y: 450, turn: -90, side: 'above', align: 'centre' });
   });
 
   it('stands on the inner side of a list that is not turned: below a row along the top, beside a column', () => {
     expect(bannerAnchor(box, 'top', false)).toMatchObject({ y: 500, turn: 0, side: 'below' });
     expect(bannerAnchor(box, 'bottom', false)).toMatchObject({ y: 400, turn: 0, side: 'above' });
-    expect(bannerAnchor(box, 'left', false)).toEqual({ x: 300, y: 450, turn: 0, side: 'right', align: 'centre' });
     expect(bannerAnchor(box, 'right', false)).toEqual({ x: 100, y: 450, turn: 0, side: 'left', align: 'centre' });
   });
 });

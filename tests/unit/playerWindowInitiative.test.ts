@@ -287,9 +287,9 @@ describe('player initiative panel', () => {
   it('follows the GM\'s layout: the edge the lists stand at, drawn anew when it changes', () => {
     const { settings, doc } = setup();
     const panel = (): Element | null => doc.querySelector('.atlas-player-initiative');
-    expect(panel()?.classList.contains('atlas-player-initiative--left')).toBe(false);
-    settings.setInitiativeLayout({ dock: 'left' });
-    expect(panel()?.classList.contains('atlas-player-initiative--left')).toBe(true);
+    expect(panel()?.classList.contains('atlas-player-initiative--bottom')).toBe(false);
+    settings.setInitiativeLayout({ dock: 'bottom' });
+    expect(panel()?.classList.contains('atlas-player-initiative--bottom')).toBe(true);
     // Collapsing the GM's tracker is the GM's own view of it: the players' list stays as it is
     const drawn = panel();
     settings.setInitiativeLayout({ collapsed: true });

@@ -32,6 +32,19 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
   font-variant-numeric: lining-nums tabular-nums;
 }
 
+// A name standing at the start of its cards in a row across the top or bottom, read from the row's foot up
+@mixin row-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  flex: 0 0 auto;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-xs;
+  white-space: nowrap;
+}
+
 .atlas-player-initiative {
   // Its look is its surface's (below); the border keeps its place, so the cards stand where they did
   border: $border-width-m solid transparent;
@@ -73,12 +86,6 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
   --atlas-theme-ivy-scale: calc(0.2 * #{$scale});
   @include atlas-theme-ivy-corners(-2);
 
-  // The GM docked the lists at the left edge
-  &--left {
-    right: auto;
-    left: $spacing-m;
-  }
-
   // Across the top or bottom edge: the cards side by side, in the middle of the edge, as
   // clear of the widget bar at the top right as the column is
   &--top,
@@ -89,8 +96,8 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     width: auto;
     max-width: calc(100% - 2 * 160px);
     max-height: none;
-    // The round stands below the cards
-    flex-direction: column;
+    // A fight's round stands before the cards, its name read along the row's height
+    flex-direction: row;
     align-items: stretch;
   }
 
@@ -101,7 +108,11 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
   &--bottom {
     top: auto;
     bottom: $spacing-m;
-    justify-content: flex-end;
+  }
+
+  // While a row's height glides (`glideHeight`) its content keeps its own height at the row's foot
+  &--bottom#{&}--gliding > * {
+    align-self: flex-end;
   }
 
   // A row turned to face the players at its edge: its foot, where the bottom row's lies, towards them.
@@ -112,21 +123,11 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     transform: translateX(-50%) rotate(180deg);
   }
 
-  &--faces-left,
   &--faces-right {
     top: 50%;
     bottom: auto;
     // The row runs down the edge, as long as the column may be tall
     max-width: calc(100vh - 2 * 160px);
-  }
-
-  &--faces-left {
-    left: $spacing-m;
-    transform-origin: top left;
-    transform: rotate(90deg) translate(-50%, -100%);
-  }
-
-  &--faces-right {
     right: $spacing-m;
     left: auto;
     transform-origin: top right;
@@ -436,34 +437,36 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
   }
 }
 
-// A row across the top or bottom: cards as wide as the column's, sides and the next round's
-// line side by side, scrolling sideways
+// A row across the top or bottom, as low as it can be read across a table: every card one height, the number
+// on the portrait's foot, and the names of rounds and sides read along the row's height at the start of their cards
 .atlas-player-initiative--top,
 .atlas-player-initiative--bottom {
+  // The number's plate on the portrait's foot
+  --atlas-row-plate: #{scaled(20px)};
+
   .atlas-player-initiative__list {
+    flex: 1 1 auto;
+    min-width: 0;
     flex-direction: row;
     align-items: stretch;
     overflow-x: auto;
     overflow-y: hidden;
   }
 
-  // A side's name above its cards, which stand side by side beneath it
+  // A side's cards after its name
   .atlas-player-initiative__side {
-    flex-flow: row wrap;
+    flex-flow: row nowrap;
     flex-shrink: 0;
-    align-items: flex-start;
-    align-content: flex-start;
+    align-items: stretch;
   }
 
-  // The name takes the line above the cards and as much room as they do, never more
   .atlas-player-initiative__side-label {
-    flex-basis: 100%;
-    contain: inline-size;
+    @include row-label;
   }
 
   .atlas-player-initiative__round {
-    white-space: nowrap;
-    align-self: center;
+    @include row-label;
+    order: -1;
   }
 
   // The turn passed on (`playerInitiativePush.ts`): who acted slides out at the front as its card comes in at
@@ -483,9 +486,48 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     animation: atlas-player-initiative-push-in 700ms ease-in-out var(--atlas-turn-push-delay, 0ms) both;
   }
 
+  // The portrait, the hit points under it, a name only where there is no portrait; the number lies on the portrait
   .atlas-player-initiative__card {
     width: calc(#{scaled(96px)} - 2 * #{$spacing-s});
     box-sizing: border-box;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    justify-items: center;
+  }
+
+  .atlas-player-initiative__avatar {
+    grid-area: 1 / 1;
+  }
+
+  // On the portrait's foot, over its ring, where it reads as the combatant's plate
+  .atlas-player-initiative__avatar ~ .atlas-player-initiative__value {
+    grid-area: 1 / 1;
+    align-self: end;
+    z-index: 1;
+    margin-bottom: -2px;
+  }
+
+  .atlas-player-initiative__value:not(.atlas-player-initiative__card-dealt) {
+    min-width: var(--atlas-row-plate);
+    height: var(--atlas-row-plate);
+    padding-inline: $spacing-xs;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: $radius-full;
+    background: var(--background-primary);
+    box-shadow: 0 0 0 1px var(--background-modifier-border);
+    line-height: 1;
+  }
+
+  // Whoever holds the turn carries it on their plate too
+  .atlas-player-initiative__card--active .atlas-player-initiative__value:not(.atlas-player-initiative__card-dealt),
+  .atlas-player-initiative__side--active .atlas-player-initiative__card:not(.atlas-player-initiative__card--sitting-out) .atlas-player-initiative__value:not(.atlas-player-initiative__card-dealt) {
+    background: var(--atlas-turn-color, var(--interactive-accent));
+    box-shadow: none;
+    color: var(--text-on-accent, #fff);
   }
 
   // A row keeps its cards level: the list gives the room for badges over any of them
@@ -498,61 +540,39 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     padding-top: $badge-room;
   }
 
-  // A round's cards over its name (`renderRoundRow`), the name at the cards' start, as wide as they are
+  // A round's name, then its cards (`renderRoundRow`); a slim line closes every round but the last
   .atlas-player-initiative__round-group {
     display: flex;
-    flex-direction: column;
     flex-shrink: 0;
-    gap: $spacing-xs;
+    gap: $spacing-s;
   }
 
   .atlas-player-initiative__round-cards {
     display: flex;
     gap: $spacing-s;
+  }
 
-    // Where the next round begins: a slim line between the cards
-    .atlas-player-initiative__round-group:not(:last-child) > &::after {
-      content: '';
-      flex: 0 0 2px;
-      border-radius: $radius-full;
-      background: $round-line;
-    }
+  .atlas-player-initiative__round-group:not(:last-child) > .atlas-player-initiative__round-cards::after {
+    content: '';
+    flex: 0 0 2px;
+    border-radius: $radius-full;
+    background: $round-line;
   }
 
   .atlas-player-initiative__round-label {
     @include round-name;
-    display: flex;
-    align-items: center;
-    gap: $spacing-xs;
-    contain: inline-size;
+    @include row-label;
+    order: -1;
     color: var(--text-muted);
-
-    // To the round's end, where the line between the rounds stands
-    &::after {
-      content: '';
-      flex: 1 0 $spacing-s;
-      height: 2px;
-      border-radius: $radius-full;
-      background: $round-line;
-    }
   }
 
   // The round that runs stands out of the next
   .atlas-player-initiative__round-group:first-child:not(.atlas-player-initiative__leaving) .atlas-player-initiative__round-label,
   .atlas-player-initiative__leaving + .atlas-player-initiative__round-group .atlas-player-initiative__round-label {
     color: $round-accent;
-
-    &::after {
-      background: color-mix(in oklch, #{$round-accent} 45%, transparent);
-    }
   }
 
-  .atlas-player-initiative__round-name {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
+  // Where a list by sides runs on into the next round: the name between two lines, down the row's height
   .atlas-player-initiative__next-round {
     flex-direction: column;
 
@@ -561,6 +581,11 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
       width: 1px;
       height: auto;
     }
+  }
+
+  .atlas-player-initiative__next-round-label {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
   }
 }
 

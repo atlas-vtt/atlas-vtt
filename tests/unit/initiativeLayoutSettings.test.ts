@@ -16,59 +16,35 @@ async function loaded(stored: unknown = null): Promise<{ settings: SettingsServi
 describe('the initiative lists\' layout', () => {
   it('starts at the turn, at the right edge and expanded until the GM chooses otherwise', async () => {
     const { settings } = await loaded();
-    expect(settings.initiativeLayout()).toEqual({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false, gmDock: 'right', collapsed: false });
+    expect(settings.initiativeLayout()).toEqual({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false, collapsed: false });
   });
 
-  it('stands the players\' list at any edges the GM picks, the dock among them for older versions', async () => {
+  it('lays the players\' list out as a column at the right edge or a row on each side of the table', async () => {
+    const { PLAYERS_LIST_SHAPES, playersListShape } = await import('../../src/app/initiative/initiativeLayout');
     const { settings, data, app } = await loaded();
-    settings.setInitiativeLayout({ edges: ['right', 'left'] });
-    // Kept in the menu's order; the dock stays where it was while it is among them
-    expect(settings.initiativeLayout()).toMatchObject({ edges: ['left', 'right'], dock: 'right' });
-    settings.setInitiativeLayout({ edges: ['top', 'bottom'], facesPlayers: true });
+    expect(playersListShape(settings.initiativeLayout())).toBe('vertical');
+    settings.setInitiativeLayout(PLAYERS_LIST_SHAPES.horizontal);
     await settings.saveSettingsNow();
     expect(data.stored()).toMatchObject({ initiativeEdges: ['top', 'bottom'], initiativeDock: 'top', initiativeFacesPlayers: true });
     const reopened = new SettingsService(app, undefined, data);
     await reopened.initialize();
     expect(reopened.initiativeLayout()).toMatchObject({ edges: ['top', 'bottom'], dock: 'top', facesPlayers: true });
-    // One edge chosen alone, as older versions do, is the only one
-    reopened.setInitiativeLayout({ dock: 'left' });
-    expect(reopened.initiativeLayout().edges).toEqual(['left']);
-    // Edges written by hand that are none read as the dock
-    expect((await loaded({ initiativeDock: 'left', initiativeEdges: ['middle'] })).settings.initiativeLayout().edges).toEqual(['left']);
-  });
-
-  it('never switches off the last edge', async () => {
-    const { toggledEdge } = await import('../../src/app/initiative/initiativeLayout');
-    expect(toggledEdge(['right'], 'right')).toEqual(['right']);
-    expect(toggledEdge(['right'], 'top')).toEqual(['right', 'top']);
-    expect(toggledEdge(['top', 'right'], 'top')).toEqual(['right']);
-  });
-
-  it('puts the GM\'s tracker where the players\' list stands until the GM chooses its own edge', async () => {
-    const { settings, data } = await loaded();
-    settings.setInitiativeLayout({ dock: 'left' });
-    expect(settings.initiativeLayout()).toMatchObject({ dock: 'left', gmDock: 'left' });
-    // Another choice leaves the tracker following the list
-    settings.setInitiativeLayout({ fromTurn: false });
-    await settings.saveSettingsNow();
-    expect(data.stored()).not.toHaveProperty('initiativeGmDock');
-    settings.setInitiativeLayout({ gmDock: 'right' });
-    expect(settings.initiativeLayout()).toMatchObject({ dock: 'left', gmDock: 'right' });
-    // Its own edge stays when the players' list moves
-    settings.setInitiativeLayout({ dock: 'right' });
-    settings.setInitiativeLayout({ dock: 'left' });
-    expect(settings.initiativeLayout()).toMatchObject({ dock: 'left', gmDock: 'right' });
+    expect(playersListShape(reopened.initiativeLayout())).toBe('horizontal');
+    reopened.setInitiativeLayout(PLAYERS_LIST_SHAPES.vertical);
+    expect(reopened.initiativeLayout()).toMatchObject({ edges: ['right'], dock: 'right', facesPlayers: false });
+    // A left edge an older version stored, and edges written by hand that are none, read as the right edge
+    expect((await loaded({ initiativeDock: 'left', initiativeEdges: ['left', 'middle'] })).settings.initiativeLayout().edges).toEqual(['right']);
   });
 
   it('keeps the GM\'s choices in the synced settings and reads what it does not know as the default', async () => {
     const { settings, data, app } = await loaded();
-    settings.setInitiativeLayout({ fromTurn: false, dock: 'left' });
+    settings.setInitiativeLayout({ fromTurn: false, dock: 'bottom' });
     await settings.saveSettingsNow();
-    expect(data.stored()).toMatchObject({ initiativeFromTurn: false, initiativeDock: 'left' });
+    expect(data.stored()).toMatchObject({ initiativeFromTurn: false, initiativeDock: 'bottom' });
 
     const reopened = new SettingsService(app, undefined, data);
     await reopened.initialize();
-    expect(reopened.initiativeLayout()).toMatchObject({ fromTurn: false, dock: 'left' });
+    expect(reopened.initiativeLayout()).toMatchObject({ fromTurn: false, dock: 'bottom' });
 
     expect((await loaded({ initiativeDock: 'middle', initiativeFromTurn: 'yes' })).settings.initiativeLayout()).toMatchObject({ dock: 'right', fromTurn: true });
   });

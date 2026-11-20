@@ -56,8 +56,6 @@ export const initiative: Translation = {
   'initiative.addCombatantHint': 'Adicione tokens da biblioteca à iniciativa sem colocá-los no mapa, pelo menu deles na aba Personagens',
   'initiative.removeFallback': 'Remover alternativa',
   'initiative.roll': 'Rolar iniciativa',
-  'initiative.showNames': 'Mostrar nomes',
-  'initiative.showNamesHint': 'Põe o nome de cada combatente na carta, para distinguir dois do mesmo tipo',
   'initiative.sitOut': 'Ficar fora desta rodada',
   'initiative.statblocksLoading': { one: 'O Fantasy Statblocks ainda está lendo o cofre: {count} combatente rolou sem o modificador da ficha', other: 'O Fantasy Statblocks ainda está lendo o cofre: {count} combatentes rolaram sem o modificador da ficha' },
   'initiative.total': 'Iniciativa',

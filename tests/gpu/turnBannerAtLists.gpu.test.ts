@@ -76,22 +76,20 @@ function expectBeside(banner: HTMLElement, list: HTMLElement, towards: 'up' | 'd
 describe('the turn banner at the players\' lists', () => {
   it('stands just above each list that faces its edge, centred on it', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const { lists, banners } = await showAtLists(0, ['bottom', 'top', 'left', 'right'], true);
-    expect(banners).toHaveLength(4);
+    const { lists, banners } = await showAtLists(0, ['bottom', 'top', 'right'], true);
+    expect(banners).toHaveLength(3);
     expectBeside(banners[0]!, lists[0]!, 'up');
     expectBeside(banners[1]!, lists[1]!, 'down');
-    expectBeside(banners[2]!, lists[2]!, 'right');
-    expectBeside(banners[3]!, lists[3]!, 'left');
+    expectBeside(banners[2]!, lists[2]!, 'left');
   });
 
-  it('stands on the inner side of each upright list: below the top row, above the bottom one, beside the columns', async () => {
+  it('stands on the inner side of each upright list: below the top row, above the bottom one, beside the column', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const { lists, banners } = await showAtLists(0, ['bottom', 'top', 'left', 'right'], false);
-    expect(banners).toHaveLength(4);
+    const { lists, banners } = await showAtLists(0, ['bottom', 'top', 'right'], false);
+    expect(banners).toHaveLength(3);
     expectBeside(banners[0]!, lists[0]!, 'up');
     expectBeside(banners[1]!, lists[1]!, 'down');
-    expectBeside(banners[2]!, lists[2]!, 'right');
-    expectBeside(banners[3]!, lists[3]!, 'left');
+    expectBeside(banners[2]!, lists[2]!, 'left');
   });
 
   it('stays at its list on a table TV turned half way or sideways', async () => {
@@ -105,10 +103,9 @@ describe('the turn banner at the players\' lists', () => {
     shown = await showAtLists(90, ['bottom'], true);
     expectBeside(shown.banners[0]!, shown.lists[0]!, 'right');
     document.body.innerHTML = '';
-    // The table this was made for: lists at the left, right and bottom of a TV turned a quarter
-    shown = await showAtLists(90, ['left', 'right', 'bottom'], true);
-    expectBeside(shown.banners[0]!, shown.lists[0]!, 'down');
-    expectBeside(shown.banners[1]!, shown.lists[1]!, 'up');
-    expectBeside(shown.banners[2]!, shown.lists[2]!, 'right');
+    // A row on each long side of a TV turned a quarter
+    shown = await showAtLists(90, ['top', 'bottom'], true);
+    expectBeside(shown.banners[0]!, shown.lists[0]!, 'left');
+    expectBeside(shown.banners[1]!, shown.lists[1]!, 'right');
   });
 });

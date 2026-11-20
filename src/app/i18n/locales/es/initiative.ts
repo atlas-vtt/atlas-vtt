@@ -56,8 +56,6 @@ export const initiative: Translation = {
   'initiative.addCombatantHint': 'Añade tokens de la biblioteca a la iniciativa sin colocarlos, desde su menú en la pestaña Personajes',
   'initiative.removeFallback': 'Quitar alternativa',
   'initiative.roll': 'Tirar iniciativa',
-  'initiative.showNames': 'Mostrar nombres',
-  'initiative.showNamesHint': 'Pone el nombre de cada combatiente en su tarjeta, para distinguir a dos del mismo tipo',
   'initiative.sitOut': 'No actuar este asalto',
   'initiative.statblocksLoading': { one: 'Fantasy Statblocks aún está leyendo la bóveda: {count} combatiente tiró sin el modificador de su bloque de estadísticas', other: 'Fantasy Statblocks aún está leyendo la bóveda: {count} combatientes tiraron sin el modificador de su bloque de estadísticas' },
   'initiative.total': 'Iniciativa',

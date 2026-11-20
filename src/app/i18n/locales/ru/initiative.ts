@@ -101,8 +101,6 @@ export const initiative: Translation = {
   'initiative.addCombatant': 'Добавить участника…',
   'initiative.addCombatantHint': 'Добавляйте токены из библиотеки в инициативу, не ставя их на карту, через их меню во вкладке «Токены»',
   'initiative.removeFallback': 'Убрать запасное поле',
-  'initiative.showNames': 'Показывать имена',
-  'initiative.showNamesHint': 'Пишет имя каждого участника на его карточке, чтобы различать двух одинаковых',
   'initiative.statblocksLoading': {
     one: 'Fantasy Statblocks ещё читает хранилище: {count} участник бросил без модификатора из статблока',
     few: 'Fantasy Statblocks ещё читает хранилище: {count} участника бросили без модификатора из статблока',

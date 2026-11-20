@@ -56,8 +56,6 @@ export const initiative: Translation = {
   'initiative.addCombatantHint': 'Füge Tokens aus der Bibliothek zur Initiative hinzu, ohne sie zu platzieren, über ihr Menü im Tab Charaktere',
   'initiative.removeFallback': 'Ersatz entfernen',
   'initiative.roll': 'Initiative würfeln',
-  'initiative.showNames': 'Namen zeigen',
-  'initiative.showNamesHint': 'Schreibt den Namen jedes Kampfteilnehmers auf seine Karte, damit sich zwei Gleichartige unterscheiden lassen',
   'initiative.sitOut': 'Diese Runde aussetzen',
   'initiative.statblocksLoading': { one: 'Fantasy Statblocks liest noch den Tresor: {count} Kampfteilnehmer hat ohne den Modifikator seines Statblocks gewürfelt', other: 'Fantasy Statblocks liest noch den Tresor: {count} Kampfteilnehmer haben ohne den Modifikator ihres Statblocks gewürfelt' },
   'initiative.total': 'Initiative',

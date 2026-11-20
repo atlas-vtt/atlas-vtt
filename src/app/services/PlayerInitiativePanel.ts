@@ -201,9 +201,9 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     this.drawnPanels = [];
     for (const dock of edges) {
       const panel = renderPlayerInitiative(container, list, {
-        // Names the map shows on nameplates are no secret in the list either; the initiative names show every name
-        showNames: settings.showTokenNameplates || settings.showInitiativeNames,
-        mapShowsNameplates: settings.showInitiativeNames || scene.mapShowsNameplates,
+        // Names the map shows on nameplates are no secret in the list either
+        showNames: settings.showTokenNameplates,
+        mapShowsNameplates: scene.mapShowsNameplates,
         fromTurn,
         dock,
         faces: facesPlayers,

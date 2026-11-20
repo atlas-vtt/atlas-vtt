@@ -65,7 +65,7 @@ async function showTracker({ names = false, layout = {}, sides = false, turn = 3
   await page.viewport(1200, 900);
   const { app } = createInMemoryApp({ files: {} });
   const settings = new SettingsService(app);
-  settings.setInitiativeNames(names);
+  settings.setCompactInitiative(names);
   settings.setInitiativeLayout({ fromTurn: true, dock: 'right', collapsed: false, ...layout });
   const store = createViewAtlasStore(app, `initiative-lists-${Math.random()}`);
   store.setState({
@@ -172,20 +172,18 @@ describe('the GM\'s initiative tracker', () => {
   });
 
   it('keeps a card and its controls in a pane shorter than its clearance, and its old height in a tall one', async () => {
-    for (const names of [false, true]) {
-      const tracker = await showTracker({ names });
-      // 900 px of view less the clearance above and below
-      expect(box(tracker).height).toBe(580);
+    const tracker = await showTracker();
+    // 900 px of view less the clearance above and below
+    expect(box(tracker).height).toBe(580);
 
-      for (const height of [420, 330, 200]) {
-        await page.viewport(1200, height);
-        const content = box(tracker.querySelector('.atlas-initiative-tracker__content')!);
-        const cards = [...tracker.querySelectorAll('.atlas-initiative-card')].map(box);
-        const whole = cards.filter((card) => card.top >= content.top - 0.5 && card.bottom <= content.bottom + 0.5);
-        expect(whole.length, `${height} px, names ${names}`).toBeGreaterThanOrEqual(1);
-        for (const control of tracker.querySelectorAll('.atlas-initiative-tracker__collapse, .atlas-initiative-tracker__controls button, .atlas-initiative-tracker__turn-controls button')) {
-          expect(box(control).height, `${height} px, names ${names}`).toBeGreaterThanOrEqual(24);
-        }
+    for (const height of [420, 330, 200]) {
+      await page.viewport(1200, height);
+      const content = box(tracker.querySelector('.atlas-initiative-tracker__content')!);
+      const cards = [...tracker.querySelectorAll('.atlas-initiative-card')].map(box);
+      const whole = cards.filter((card) => card.top >= content.top - 0.5 && card.bottom <= content.bottom + 0.5);
+      expect(whole.length, `${height} px`).toBeGreaterThanOrEqual(1);
+      for (const control of tracker.querySelectorAll('.atlas-initiative-tracker__collapse, .atlas-initiative-tracker__controls button, .atlas-initiative-tracker__turn-controls button')) {
+        expect(box(control).height, `${height} px`).toBeGreaterThanOrEqual(24);
       }
     }
   });
@@ -214,18 +212,14 @@ describe('the GM\'s initiative tracker', () => {
     expect(box(pip).right).toBeLessThan(box(badges[1]!).left);
   });
 
-  it('collapses to the turn and the next two, and docks at the left edge', async () => {
+  it('collapses to the turn and the next two, and stands at the right edge with the dice log open', async () => {
     const collapsed = await showTracker({ layout: { collapsed: true } });
     expect(collapsed.querySelectorAll('.atlas-initiative-card')).toHaveLength(3);
     expectUniform(collapsed, 4);
     await page.screenshot({ path: `${SHOTS}/gm-collapsed.png`, element: collapsed });
 
-    const left = await showTracker({ layout: { dock: 'left' } });
-    expect(box(left).left).toBe(12);
-    await page.screenshot({ path: `${SHOTS}/gm-docked-left.png`, element: left });
-
-    // Beside the dice log (360 px wide, 12 px from the edge) while it is open, a gap of 8 px between them
-    expect(box(await showTracker({ layout: { dock: 'left' }, diceLog: true })).left).toBe(12 + 360 + 8);
+    const tracker = await showTracker({ diceLog: true });
+    expect(1200 - box(tracker).right).toBe(12);
   });
 
   it('goes by sides as groups, the side whose turn it is on top', async () => {
@@ -268,8 +262,14 @@ describe('the players\' initiative list', () => {
         expect(frame.width).toBeLessThanOrEqual(host.width - 320 + 0.5);
         const cards = [...panel.querySelectorAll('.atlas-player-initiative__card')].map(box);
         expect(cards.length).toBe(5);
-        // Side by side, left to right, each inside the panel
+        // Side by side, left to right, each inside the panel, every card one height whatever round or side it is in
         for (let i = 1; i < cards.length; i++) expect(cards[i]!.left).toBeGreaterThan(cards[i - 1]!.right - 0.5);
+        expect(new Set(cards.map((card) => Math.round(card.height))).size).toBe(1);
+        // The number lies on the portrait's foot, so a card is no taller than its portrait, its hit points and its padding
+        for (const card of panel.querySelectorAll('.atlas-player-initiative__card')) {
+          const value = card.querySelector('.atlas-player-initiative__value');
+          if (value) expect(box(value).bottom).toBeLessThanOrEqual(box(card.querySelector('.atlas-player-initiative__avatar')!).bottom + 2.5);
+        }
         for (const card of cards) {
           expect(card.top).toBeGreaterThanOrEqual(frame.top);
           expect(card.bottom).toBeLessThanOrEqual(frame.bottom);
@@ -280,12 +280,8 @@ describe('the players\' initiative list', () => {
     }
   });
 
-  it('follows the GM: docked left, in turn order, and by sides', async () => {
+  it('follows the GM: in turn order, and by sides', async () => {
     await page.viewport(1200, 1000);
-    const left = showPlayers({ dock: 'left' });
-    expect(box(left).left - box(left.parentElement!).left).toBe(12);
-    await page.screenshot({ path: `${SHOTS}/players-docked-left.png`, element: left });
-
     const plain = showPlayers({ fromTurn: false });
     expect(plain.querySelector('.atlas-player-initiative__next-round')).toBeNull();
     await page.screenshot({ path: `${SHOTS}/players-in-order.png`, element: plain });

@@ -5,7 +5,7 @@ import type { DiceDisplay } from '../dice3d/diceDisplay';
 import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
 import { DEFAULT_DICE_LOOK, type DiceColour, type DiceFont } from '../dice3d/diceLook';
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
-import type { InitiativeDock, PlayersListEdge } from '../initiative/initiativeLayout';
+import type { PlayersListEdge } from '../initiative/initiativeLayout';
 import { DEFAULT_DUNGEON_GENERATOR_SETTINGS, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
 import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from './soundSettings';
 import type { SharedSoundRoots } from '../soundLibrary/soundRootsStore';
@@ -64,16 +64,12 @@ export interface AtlasSettings {
   diceColour: DiceColour;
   /** Face of the dice numerals and roll totals. Read with `getDiceLook`. */
   diceFont: DiceFont;
-  /** Whether the GM's initiative cards show each combatant's name. Read with `showsInitiativeNames`. */
-  initiativeNames: boolean;
   /** Whether the initiative lists start at the turn during a fight. Read with `initiativeLayout`. */
   initiativeFromTurn: boolean;
   /** The GM's tracker is a compact list without portraits. Read with `showsCompactInitiative`. */
   initiativeCompact?: boolean;
   /** The edge the players' list stands at; `top` and `bottom` run it as a row. Read with `initiativeLayout`. */
   initiativeDock: PlayersListEdge;
-  /** The edge the GM's tracker stands at; unset, the players' list's (`initiativeDock`). */
-  initiativeGmDock?: InitiativeDock;
   /** Every edge the players' list stands at; unset, `initiativeDock` alone, which stays the first of them for older versions. */
   initiativeEdges?: PlayersListEdge[];
   /** Whether each copy of the players' list turns to face its edge; unset, upright. */
@@ -102,8 +98,6 @@ export interface AtlasSettings {
     showCommandPalette: boolean;
     /** Online play: everyone at the table sees everyone else's cursor on the shared map. */
     showCursors: boolean;
-    /** The initiative list shows names even where the tokens show no nameplates. */
-    showInitiativeNames: boolean;
     /** How large the initiative list is drawn, 1 to `MAX_INITIATIVE_SCALE`. Read with `initiativeScaleOf`. */
     initiativeScale: number;
     /** The border of the combatant whose turn it is pulses instead of standing still. */
@@ -145,7 +139,6 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
   dragDistance: DEFAULT_DRAG_DISTANCE,
   diceColour: DEFAULT_DICE_LOOK.colour,
   diceFont: DEFAULT_DICE_LOOK.font,
-  initiativeNames: false,
   initiativeFromTurn: true,
   initiativeDock: 'right',
   initiativeBanner: true,
@@ -164,7 +157,6 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     showDiceRolls: false,
     showCommandPalette: false, // Hide command palette
     showCursors: false,
-    showInitiativeNames: false,
     initiativeScale: 1,
     initiativePulse: false,
     turnBannerScale: 2,

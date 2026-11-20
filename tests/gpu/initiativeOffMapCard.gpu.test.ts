@@ -53,14 +53,14 @@ const entryOf = (tokenId: string, order: number, card?: number): InitiativeEntry
   isActive: order === 0, isNPC: true, order, ...(card === undefined ? {} : { card }),
 });
 
-interface View { names: boolean; dock: 'left' | 'right'; cards: boolean }
+interface View { names: boolean; dock: 'right'; cards: boolean }
 
 async function show({ names, dock, cards }: View): Promise<HTMLElement> {
   document.body.innerHTML = '';
   await page.viewport(1200, 900);
   const { app } = createInMemoryApp({ files: {} });
   const settings = new SettingsService(app);
-  settings.setInitiativeNames(names);
+  settings.setCompactInitiative(names);
   settings.setInitiativeLayout({ fromTurn: true, dock, collapsed: false });
   const store = createViewAtlasStore(app, `off-map-card-${Math.random()}`);
   store.setState({
@@ -91,8 +91,8 @@ describe('the card of a combatant kept beside the map', () => {
   const views: View[] = [
     { names: false, dock: 'right', cards: false },
     { names: true, dock: 'right', cards: false },
-    { names: true, dock: 'left', cards: true },
-    { names: false, dock: 'left', cards: true },
+    { names: true, dock: 'right', cards: true },
+    { names: false, dock: 'right', cards: true },
   ];
   for (const view of views) {
     const label = `${view.names ? 'names' : 'plain'}-${view.dock}${view.cards ? '-cards' : ''}`;

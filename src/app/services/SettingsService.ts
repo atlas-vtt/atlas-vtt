@@ -29,7 +29,7 @@ import {
 import { readGpuFacts } from './gpuFacts';
 import { pickLightingQuality } from '../lighting/deviceTier';
 import { deviceProfile } from '../platform/deviceProfile';
-import { readDock, readListEdge, readListEdges, type InitiativeLayout } from '../initiative/initiativeLayout';
+import { readListEdge, readListEdges, type InitiativeLayout } from '../initiative/initiativeLayout';
 import type { InitiativeTurnOptions } from '../initiative/turnOptions';
 import type { LightingQuality, LightingQualityLevel } from '../lighting/lightingQuality';
 import { knobsOf, qualityOf, type GraphicsChoice } from '../lighting/graphicsSettings';
@@ -386,17 +386,6 @@ export class SettingsService {
     this.commit();
   }
 
-  /** Whether the GM's initiative cards show names: off unless the file says `true`. */
-  showsInitiativeNames(): boolean {
-    return this.settings.initiativeNames === true;
-  }
-
-  setInitiativeNames(on: boolean): void {
-    if (this.showsInitiativeNames() === on) return;
-    this.settings.initiativeNames = on;
-    this.commit();
-  }
-
   /** Whether the GM's tracker is the compact list: off unless the file says `true`. */
   showsCompactInitiative(): boolean {
     return this.settings.initiativeCompact === true;
@@ -418,7 +407,6 @@ export class SettingsService {
       dock: edges.includes(dock) ? dock : edges[0] ?? dock,
       edges,
       facesPlayers: this.settings.initiativeFacesPlayers === true,
-      gmDock: readDock(this.settings.initiativeGmDock ?? this.settings.initiativeDock),
       collapsed: loadInitiativeCollapsed(this.app),
     };
   }
@@ -426,12 +414,12 @@ export class SettingsService {
   /** The GM's choices go into the synced settings, the collapsed tracker into this device's local storage. */
   setInitiativeLayout(changes: Partial<InitiativeLayout>): void {
     const current = this.initiativeLayout();
-    const { fromTurn = current.fromTurn, gmDock = current.gmDock, collapsed = current.collapsed, facesPlayers = current.facesPlayers } = changes;
+    const { fromTurn = current.fromTurn, collapsed = current.collapsed, facesPlayers = current.facesPlayers } = changes;
     // One edge chosen alone is the list's only edge; edges chosen keep the dock among them, as its first where it left them
     const edges = changes.edges ?? (changes.dock !== undefined ? [changes.dock] : current.edges);
     const dock = changes.dock ?? (edges.includes(current.dock) ? current.dock : edges[0] ?? current.dock);
     if (collapsed !== current.collapsed) saveInitiativeCollapsed(this.app, collapsed);
-    if (fromTurn === current.fromTurn && dock === current.dock && gmDock === current.gmDock && facesPlayers === current.facesPlayers && edges.join() === current.edges.join()) {
+    if (fromTurn === current.fromTurn && dock === current.dock && facesPlayers === current.facesPlayers && edges.join() === current.edges.join()) {
       if (collapsed !== current.collapsed) this.notify();
       return;
     }
@@ -439,8 +427,6 @@ export class SettingsService {
     this.settings.initiativeDock = dock;
     if (edges.length > 1 || this.settings.initiativeEdges !== undefined) this.settings.initiativeEdges = [...edges];
     if (facesPlayers || this.settings.initiativeFacesPlayers !== undefined) this.settings.initiativeFacesPlayers = facesPlayers;
-    // Stored once the GM chooses the tracker's own edge; until then it follows the players' list
-    if (changes.gmDock !== undefined || this.settings.initiativeGmDock !== undefined) this.settings.initiativeGmDock = gmDock;
     this.commit();
   }
 

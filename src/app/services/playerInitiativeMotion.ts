@@ -7,7 +7,7 @@ import type { PlayersListEdge } from '../initiative/initiativeLayout';
 import { prefersReducedMotion } from '../utils/motion';
 
 /** Which way a list at each edge leaves the window. */
-const OUTWARD: Readonly<Record<PlayersListEdge, readonly [number, number]>> = { right: [1, 0], left: [-1, 0], top: [0, -1], bottom: [0, 1] };
+const OUTWARD: Readonly<Record<PlayersListEdge, readonly [number, number]>> = { right: [1, 0], top: [0, -1], bottom: [0, 1] };
 
 /** How much further than its depth a list slides: its gap to the edge and the theme's ivy past its corners. */
 const SLIDE_MARGIN_PX = 64;

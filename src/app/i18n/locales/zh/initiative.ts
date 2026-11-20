@@ -73,8 +73,6 @@ export const initiative: Translation = {
   'initiative.addCombatant': '添加参战者…',
   'initiative.addCombatantHint': '在角色标签页里，从指示物的菜单把素材库中的指示物加入先攻，而无需放置',
   'initiative.removeFallback': '移除后备字段',
-  'initiative.showNames': '显示名称',
-  'initiative.showNamesHint': '在每个参战者的卡片上显示名称，便于区分同类的两个',
   'initiative.sitOut': '本轮不行动',
   'initiative.statblocksLoading': { other: 'Fantasy Statblocks 仍在读取仓库：{count} 个参战者掷骰时没有用上数据卡的调整值' },
   'initiative.total': '先攻',
