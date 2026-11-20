@@ -53,6 +53,8 @@ export function DicePresetEditor({ preset, onSave, onClose }: DicePresetEditorPr
       className={cn('atlas-dice-presets__card atlas-dice-preset-editor', keepInView.capped && 'atlas-keep-in-view--capped')}
       style={keepInView.style}
       aria-label={t('diceRoll.presetEdit', { name: preset.name })}
+      // A die's step panel (sides, name, colour) may open past the card, not only over its dice
+      data-step-frame=""
       onKeyDown={onKeyDown}
     >
       <div className="atlas-dice-preset-editor__head">

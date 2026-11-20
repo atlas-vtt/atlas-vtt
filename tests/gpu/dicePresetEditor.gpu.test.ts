@@ -102,6 +102,20 @@ describe('a saved roll\'s editor', () => {
     const die = centreOf(document.querySelector('.atlas-dice-preset-editor .atlas-dice-lab__die')!);
     await mouse.click(die.x, die.y);
     await settle();
+    // A step of the die's fan (its sides) opens whole, past the card where the card is too small, never cut off.
+    const sidesStep = centreOf(document.querySelector('.atlas-dice-preset-editor .atlas-dice-lab__fan-sides')!.closest('button')!);
+    await mouse.click(sidesStep.x, sidesStep.y);
+    await settle(400);
+    const stepPanel = document.querySelector<HTMLElement>('.atlas-dice-preset-editor .atlas-dice-lab__step-panel')!;
+    const panelBox = stepPanel.getBoundingClientRect();
+    expect(stepPanel.scrollHeight).toBeLessThanOrEqual(stepPanel.clientHeight);
+    expect(panelBox.top).toBeGreaterThanOrEqual(0);
+    expect(panelBox.bottom).toBeLessThanOrEqual(window.innerHeight);
+    const atCentre = document.elementFromPoint((panelBox.left + panelBox.right) / 2, panelBox.bottom - 12);
+    expect(stepPanel.contains(atCentre)).toBe(true);
+    await mouse.click(sidesStep.x, sidesStep.y);
+    await settle(400);
+
     const toggle = document.querySelector('.atlas-dice-preset-editor__rules-toggle')!;
     toggle.scrollIntoView({ block: 'nearest' });
     const rules = centreOf(toggle);

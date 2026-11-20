@@ -74,12 +74,11 @@ $editor-control: $button-height-l;
 }
 
 // The Dice Lab's tray, at a height of its own, without its felt: the dice lie on the card itself. Its dice fan out
-// over it, so it keeps room around them.
+// over it, so it keeps room around them. It cuts nothing off: a die's step panel opens over the whole card.
 .atlas-dice-preset-editor__stage {
   display: flex;
   height: $editor-stage;
   border-radius: var(--atlas-bar-control-radius);
-  overflow: hidden;
 
   .atlas-dice-lab__tray,
   .atlas-dice-lab__field {
