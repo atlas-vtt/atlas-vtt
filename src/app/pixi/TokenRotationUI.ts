@@ -57,6 +57,10 @@ export class TokenRotationUI {
     // Listen for resize events to hide/show handles
     window.addEventListener('atlas-token-resize-started', this.onResizeStarted);
     window.addEventListener('atlas-token-resize-ended', this.onResizeEnded);
+
+    // A turn without the handle (Shift and a drag on the token) hides it
+    window.addEventListener('atlas-token-rotation-started', this.onTurnStarted);
+    window.addEventListener('atlas-token-rotation-ended', this.onTurnEnded);
   }
   
   /**
@@ -476,6 +480,23 @@ export class TokenRotationUI {
     }
   };
   
+  private onTurnStarted = (e: CustomEvent<TokenGestureEventDetail>): void => {
+    if (this.isRotating) return;
+    this.isHiddenDuringRotation = true;
+    for (const tokenId of e.detail.tokenIds) {
+      const handle = this.rotationHandles.get(tokenId);
+      if (handle) handle.visible = false;
+    }
+  };
+
+  private onTurnEnded = (e: CustomEvent<TokenGestureEventDetail>): void => {
+    this.isHiddenDuringRotation = false;
+    for (const tokenId of e.detail.tokenIds) {
+      const handle = this.rotationHandles.get(tokenId);
+      if (handle) handle.visible = true;
+    }
+  };
+
   /**
    * Handle resize started events - hide rotation handles for specific tokens
    */
@@ -541,6 +562,8 @@ export class TokenRotationUI {
     window.removeEventListener('atlas-token-size-changing', this.onTokenSizeChanging);
     window.removeEventListener('atlas-token-resize-started', this.onResizeStarted);
     window.removeEventListener('atlas-token-resize-ended', this.onResizeEnded);
+    window.removeEventListener('atlas-token-rotation-started', this.onTurnStarted);
+    window.removeEventListener('atlas-token-rotation-ended', this.onTurnEnded);
     
     // Destroy textures
     for (const texture of this.iconTextures.values()) {

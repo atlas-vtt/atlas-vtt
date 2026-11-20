@@ -65,6 +65,8 @@ export class TokenTurnDrag {
       marks,
       facing: null,
     };
+    // The token's UI steps aside as for a turn by its handle
+    window.dispatchEvent(new CustomEvent('atlas-token-rotation-started', { detail: { tokenIds: tokens.map(({ id }) => id) } }));
   }
 
   /** The pointer is at `world`; `alt` turns freely (or in steps, where the Snap switch is off). */
@@ -103,7 +105,10 @@ export class TokenTurnDrag {
   }
 
   private clear(): void {
-    for (const mark of this.turn?.marks ?? []) destroyTree(mark);
+    const turn = this.turn;
+    if (!turn) return;
+    for (const mark of turn.marks) destroyTree(mark);
     this.turn = null;
+    window.dispatchEvent(new CustomEvent('atlas-token-rotation-ended', { detail: { tokenIds: [...turn.before.keys()] } }));
   }
 }

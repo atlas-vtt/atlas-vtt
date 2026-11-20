@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import type { App } from 'obsidian';
 import { Container, type FederatedPointerEvent } from 'pixi.js';
@@ -97,5 +98,24 @@ describe('a Shift-drag on a token', () => {
     expect(controller.turnLayers()[0]?.children).toHaveLength(1);
     release({ x: 135, y: 35, shift: true });
     expect(controller.turnLayers()[0]?.children).toHaveLength(0);
+  });
+
+  it('hides the turned tokens\' UI while it turns, as a turn by the handle does', () => {
+    const { controller, press, move, release } = setup(['a', 'b']);
+    const heard: string[] = [];
+    const hear = (e: Event): void => { heard.push(`${e.type}:${(e as CustomEvent<{ tokenIds: string[] }>).detail.tokenIds.join()}`); };
+    window.addEventListener('atlas-token-rotation-started', hear);
+    window.addEventListener('atlas-token-rotation-ended', hear);
+    try {
+      press('a', { x: 35, y: 35, shift: true });
+      move({ x: 135, y: 35, shift: true });
+      expect(controller.isTurningTokens()).toBe(true);
+      release({ x: 135, y: 35, shift: true });
+    } finally {
+      window.removeEventListener('atlas-token-rotation-started', hear);
+      window.removeEventListener('atlas-token-rotation-ended', hear);
+    }
+    expect(heard).toEqual(['atlas-token-rotation-started:a,b', 'atlas-token-rotation-ended:a,b']);
+    expect(controller.isTurningTokens()).toBe(false);
   });
 });

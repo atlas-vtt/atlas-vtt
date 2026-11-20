@@ -242,6 +242,11 @@ export class InteractionController implements ITokenInteractionController {
     return this.dragState.isDragging;
   }
 
+  /** Shift and a drag on a token turn it. */
+  public isTurningTokens(): boolean {
+    return this.turnDrag?.turning ?? false;
+  }
+
   private prepareInteraction(token: TokenEntity, e: FederatedPointerEvent): void {
     // A second pointer (another finger) pressing during a drag is not a new gesture: taking it
     // would let go of the held tokens and leave the drag's history transaction open.

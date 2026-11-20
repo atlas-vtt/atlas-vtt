@@ -1565,9 +1565,9 @@ export class TokenRenderer {
     return this.uiManager.bars(tokenId);
   }
 
-  /** A token is being resized or turned by its handles. */
+  /** A token is being resized or turned, by its handles or with Shift. */
   public transforming(): boolean {
-    return this.uiManager.transforming();
+    return this.uiManager.transforming() || this.interactionController.isTurningTokens();
   }
 
   /** What can be done with the token and the selection it belongs to (`tokenActions`), for a menu at `at` in the window. */
