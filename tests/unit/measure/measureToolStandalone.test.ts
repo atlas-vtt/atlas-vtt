@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { Container, EventBoundary, FederatedPointerEvent, Text, type EventSystem } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MeasurementSettings } from '../../../src/app/grid/measurementFormat';
 import { areaMapOf } from '../../../src/app/measure/areaOnMap';
 import { DEFAULT_MEASURE_TOOL, type KeptMeasure, type MeasureInput as KeptInput, type MeasureToolOptions } from '../../../src/app/measure/measureTypes';
@@ -9,6 +9,7 @@ import type { MeasureLook } from '../../../src/app/pixi/measure/DrawnMeasure';
 import { LiveMeasuring, type LiveMeasuringState } from '../../../src/app/pixi/measure/LiveMeasuring';
 import { MeasureInput } from '../../../src/app/pixi/measure/MeasureInput';
 import { MeasureLayer } from '../../../src/app/pixi/measure/MeasureLayer';
+import { LIVE_DISSOLVE_MS } from '../../../src/app/pixi/measure/measurePresence';
 import { MeasurePartsVisibility } from '../../../src/app/pixi/measurePartsVisibility';
 import type { WallSegment } from '../../../src/app/types/wallTypes';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
@@ -29,6 +30,8 @@ function standalone(): {
   held: { from?: 'move' | undefined };
   map: Container;
   viewport: Viewport;
+  live: LiveMeasuring;
+  layer: MeasureLayer;
   pointer(type: 'pointerdown' | 'pointermove' | 'pointerup', x: number, y: number): void;
   key(key: string): void;
   destroy(): void;
@@ -76,7 +79,7 @@ function standalone(): {
   input.setEnabled(true);
   const boundary = new EventBoundary(viewport);
   return {
-    tool, kept, held, map, viewport,
+    tool, kept, held, map, viewport, live, layer,
     pointer(type, x, y): void {
       const event = new FederatedPointerEvent(boundary);
       event.button = 0;
@@ -153,5 +156,26 @@ describe('the measure tool without a view\'s store', () => {
     s.pointer('pointermove', 315, 105);
     s.pointer('pointerup', 315, 105);
     expect(s.kept[0]?.shape).toBe('circle');
+  });
+
+  it('lets the held ruler dissolve when it is let go, and clears it once that is done', () => {
+    vi.useFakeTimers();
+    try {
+      const s = (tool = standalone());
+      const dissolve = vi.spyOn(s.layer, 'dissolveLive');
+      const clear = vi.spyOn(s.layer, 'clearLive');
+      s.held.from = 'move';
+      s.pointer('pointerdown', 105, 105);
+      s.pointer('pointermove', 315, 105);
+      s.pointer('pointerup', 315, 105);
+      s.held.from = undefined;
+      s.live.dissolve();
+      expect(dissolve).toHaveBeenCalledWith(LIVE_DISSOLVE_MS);
+      expect(clear).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(LIVE_DISSOLVE_MS);
+      expect(clear).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

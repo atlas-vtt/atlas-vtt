@@ -149,6 +149,17 @@ export class LiveMeasuring implements MeasureInputHost {
     this.deps.changed(null);
   }
 
+  /** Lets the live measurement dissolve over `LIVE_DISSOLVE_MS`, without its pin, and clears it then: the held ruler let go. */
+  dissolve(): void {
+    if (!this.shown) return this.clear();
+    this.stopFade();
+    this.deps.layer.dissolveLive(LIVE_DISSOLVE_MS);
+    this.fadeTimer = window.setTimeout(() => {
+      this.fadeTimer = null;
+      this.clear();
+    }, LIVE_DISSOLVE_MS);
+  }
+
   destroy(): void {
     this.stopFade();
   }

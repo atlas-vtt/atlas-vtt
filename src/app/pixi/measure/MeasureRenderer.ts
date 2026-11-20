@@ -274,7 +274,9 @@ export class MeasureRenderer {
     // Another mode, scene or level, or the tool put away: what was being measured belongs to none of them. Asked of the change alone.
     if (putAway || !sameScene || state.measureTool.mode !== previous.measureTool.mode) {
       this.input.cancel();
-      this.live.clear();
+      // The held ruler let go dissolves as a released measurement does, rather than vanishing.
+      if (putAway && sameScene && previous.heldRulerFrom !== undefined) this.live.dissolve();
+      else this.live.clear();
     }
     // The DM screen, the command palette or the asset manager opened over the map, by a key too: nothing waits for its next click under them.
     if (COVERS_MAP.some((open) => state[open] && !previous[open])) this.input.cancel();
