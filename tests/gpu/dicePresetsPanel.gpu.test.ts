@@ -128,7 +128,7 @@ describe('the saved rolls beside the dice tray', () => {
     expect(beside?.closest('.atlas-dice-presets__list')).toBeNull();
   });
 
-  it('shows each saved roll\'s dice at its card\'s end, inside the card, beside the text', async () => {
+  it('shows each saved roll\'s dice before its text, inside the card, and they stay put when the ⋯ shows', async () => {
     render(h(Scene));
     // The dice are drawn by the map's dice renderer; give it time.
     await expect.poll(() => document.querySelectorAll('.atlas-dice-presets__dice img').length, { timeout: 15_000 }).toBeGreaterThanOrEqual(6);
@@ -139,13 +139,21 @@ describe('the saved rolls beside the dice tray', () => {
       expect(dice.closest('.atlas-dice-presets__roll')).not.toBeNull();
       const box = card.getBoundingClientRect();
       const strip = dice.getBoundingClientRect();
-      expect(strip.right).toBeLessThanOrEqual(box.right);
+      expect(strip.left).toBeGreaterThanOrEqual(box.left);
       expect(strip.top).toBeGreaterThanOrEqual(box.top);
       expect(strip.bottom).toBeLessThanOrEqual(box.bottom);
       for (const text of card.querySelectorAll('.atlas-dice-presets__name, .atlas-dice-presets__formula')) {
-        expect(text.getBoundingClientRect().right).toBeLessThanOrEqual(strip.left);
+        expect(text.getBoundingClientRect().left).toBeGreaterThanOrEqual(strip.right);
       }
     }
+    // The ⋯ comes in at the card's end under the pointer; the dice keep their place.
+    const first = cards[0]!;
+    const before = first.querySelector('.atlas-dice-presets__dice')!.getBoundingClientRect().left;
+    const point = centreOf(first.querySelector('.atlas-dice-presets__name')!);
+    await mouse.move(point.x, point.y);
+    await settle(300);
+    expect(getComputedStyle(first.querySelector('.atlas-dice-presets__more')!).display).toBe('flex');
+    expect(first.querySelector('.atlas-dice-presets__dice')!.getBoundingClientRect().left).toBeCloseTo(before, 1);
     // One per kind: the designed roll's two coloured dice, the longsword's d8.
     expect(cards[4]!.querySelectorAll('.atlas-die-still')).toHaveLength(2);
     expect(cards[1]!.querySelectorAll('.atlas-die-still')).toHaveLength(1);
