@@ -82,6 +82,7 @@
 - While the players' initiative list runs as rows across the top and bottom, the widgets on the player view stand as a column down the right edge, and the rows always keep clear of them
 - With the Atlas VTT theme, ivy grows over the corners of the GM's initiative tracker as on the players' list, and on both it comes and goes at once when you switch themes
 - Measurements come and go smoothly: a kept ruler, circle, cone, square or line grows in from where it starts and fades out when deleted or undone, and one you don't keep dissolves instead of vanishing. The pin that keeps it pops in beside its label, lifts under the pointer, and the measurement it keeps glows once
+- Condition badges on tokens are redrawn: a domed disc in the condition's colour set in a thin metal bezel, on a soft shadow, and they stay perfectly round however far you zoom in. The initiative lists and menus show them the same way
 - Undo and redo carry a moved or resized measurement back along its way, with its handles. Auras and measurements grouped with a token glide with the token instead of jumping ahead of it
 - Players' measurements come and go the same way on your map, and one they move glides there
 - Kept cones, squares and lines have a turn handle next to their end: drag it to rotate the measurement without changing its size. Contributed by aryistia
