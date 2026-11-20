@@ -91,14 +91,10 @@ describe('the GM\'s initiative cards', () => {
       expect(parseFloat(getComputedStyle(number).borderTopLeftRadius)).toBeCloseTo(inner - 4, 1);
       const name = box(card.querySelector('.atlas-initiative-card__name'));
       expect(name.left).toBeGreaterThan(box(number).right);
-      // The bar under the name, the two in the number's height, so the line keeps one row
-      const bar = box(card.querySelector('.atlas-initiative-card__hp-bar'));
-      expect(bar.top).toBeGreaterThanOrEqual(name.bottom);
-      expect(bar.left).toBeCloseTo(name.left + parseFloat(getComputedStyle(card.querySelector('.atlas-initiative-card__name')!).paddingLeft), 0);
-      // To the line's end, as far inside the border as the number at its start
-      expect(frame.right - border - bar.right).toBeCloseTo(4, 0);
+      // The name in the number's height, so the line keeps one row; no bars and no conditions
       expect(name.top).toBeGreaterThanOrEqual(box(number).top - 0.5);
-      expect(bar.bottom).toBeLessThanOrEqual(box(number).bottom + 0.5);
+      expect(name.bottom).toBeLessThanOrEqual(box(number).bottom + 0.5);
+      expect(card.querySelector('.atlas-initiative-card__hp-bar, .atlas-condition-badge')).toBeNull();
       // The art lies under the line, across the card's right end
       const backdrop = card.querySelector('.atlas-initiative-card__backdrop img')!;
       expect(box(backdrop).right).toBeCloseTo(frame.right - border, 0);
@@ -106,15 +102,11 @@ describe('the GM\'s initiative cards', () => {
     }
   });
 
-  it('give every line of the compact view one height, with a bar or without, two bars or none, by numbers or by sides', async () => {
+  it('give every line of the compact view one height, with hit points or without, by numbers or by sides', async () => {
     const container = await show(true);
     const heights = (): number[] => [...container.querySelectorAll('.atlas-initiative-card')].map((card) => box(card).height);
     const withBar = heights();
     expect(new Set(withBar).size).toBe(1);
-    // One length on every line, whatever marks or conditions stand above it
-    const bars = [...container.querySelectorAll('.atlas-initiative-card__hp-bar')].map(box);
-    expect(new Set(bars.map((bar) => Math.round(bar.width))).size).toBe(1);
-    expect(new Set(bars.map((bar) => Math.round(bar.left))).size).toBe(1);
 
     const { a, b } = store.getState().objects.tokens;
     store.setState({ objects: { ...store.getState().objects, tokens: { a: { ...a!, resources: {} }, b: { ...b!, resources: { hp: { current: 4, max: 7 }, stress: { current: 1, max: 3 } } } } } });
@@ -126,7 +118,7 @@ describe('the GM\'s initiative cards', () => {
     expect(heights()).toEqual(withBar);
   });
 
-  it('are square, the number and the bar the same inset inside the border, concentric with its corners', async () => {
+  it('are square, the number inset inside the border, concentric with its corners', async () => {
     for (const card of (await show(false)).querySelectorAll('.atlas-initiative-card')) {
       const frame = box(card);
       expect(Math.abs(frame.width - frame.height)).toBeLessThan(0.5);
@@ -136,12 +128,6 @@ describe('the GM\'s initiative cards', () => {
       expect(box(number).top - frame.top - border).toBeCloseTo(4, 0);
       expect(frame.right - border - box(number).right).toBeCloseTo(4, 0);
       expect(parseFloat(getComputedStyle(number).borderTopRightRadius)).toBeCloseTo(inner - 4, 1);
-      const bar = card.querySelector('.atlas-initiative-card__hp-bar');
-      if (!bar) continue;
-      expect(box(bar).left - frame.left - border).toBeCloseTo(4, 0);
-      expect(frame.right - border - box(bar).right).toBeCloseTo(4, 0);
-      expect(frame.bottom - border - box(bar).bottom).toBeCloseTo(4, 0);
-      expect(box(bar).height / 2).toBeCloseTo(inner - 4, 1);
     }
   });
 
@@ -161,11 +147,19 @@ describe('the GM\'s initiative cards', () => {
     expect(box(field).top).toBeCloseTo(before.top, 0);
   });
 
-  it('draw the hit point bar as a capsule its whole target fills', async () => {
-    const bar = (await show(false)).querySelector('.atlas-initiative-card__hp-bar')!;
-    const meter = bar.querySelector('.atlas-initiative-card__hp-meter')!;
-    expect(box(meter).height).toBeCloseTo(box(bar).height, 1);
-    expect(parseFloat(getComputedStyle(meter).borderTopLeftRadius)).toBeGreaterThanOrEqual(box(bar).height / 2 - 0.5);
-    expect(getComputedStyle(bar).boxShadow).toBe('none');
+  it('fill the art with red from the bottom by the hit points lost, under the art\'s shade, in the tile and the compact line alike', async () => {
+    for (const names of [false, true]) {
+      const container = await show(names);
+      store.setState({ initiative: { ...store.getState().initiative, entries: store.getState().initiative.entries.map((entry) => ({ ...entry, imagePath: 'goblin.png' })) } });
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      for (const card of container.querySelectorAll('.atlas-initiative-card')) {
+        const art = card.querySelector(names ? '.atlas-initiative-card__backdrop' : '.atlas-initiative-card__art')!;
+        const wound = art.querySelector<HTMLElement>('.atlas-initiative-wound')!;
+        wound.style.transition = 'none';
+        // 4 of 7 left: three sevenths of the art, from its bottom edge up
+        expect(box(art).bottom - box(wound).top).toBeCloseTo((box(art).height * 3) / 7, 0);
+        expect(getComputedStyle(art).overflow).toBe('hidden');
+      }
+    }
   });
 });

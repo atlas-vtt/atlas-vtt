@@ -79,17 +79,12 @@ describe('conditions in the players\' list', () => {
   const creature = (extra: Partial<TokenEntity> = {}): TokenEntity =>
     ({ id: 'a', kind: 'character', name: 'a', x: 0, y: 0, imagePath: '', conditions: ['frightened', 'prone', 'gone'], conditionValues: { frightened: 2 }, ...extra } as TokenEntity);
 
-  it('shows the badges the map shows players on the token, each named, a valued one with its number', () => {
+  it('draws no badges on the card: the token shows them on the map', () => {
     document.body.empty();
     const token = entryTokenOf(creature(), [], definitions);
     const list = playerInitiativeList({ entries: [entry('a', 0)], isActive: false, round: 0 }, () => token, TURN_ORDER, false);
     renderPlayerInitiative(document.body, list, { showNames: false, mapShowsNameplates: true, portraitSrc: () => null });
-    const badges = [...document.querySelectorAll('.atlas-player-initiative__condition')];
-    expect(badges.map((badge) => badge.getAttribute('aria-label'))).toEqual(['Frightened 2', 'Prone']);
-    expect(badges[0]!.querySelector('svg path')).not.toBeNull();
-    expect(badges[0]!.querySelector('.atlas-condition-badge__value')?.textContent).toBe('2');
-    expect(badges[1]!.textContent).toBe('P');
-    expect(badges[1]!.querySelector('.atlas-condition-badge--light')).not.toBeNull();
+    expect(document.querySelector('.atlas-condition-badge')).toBeNull();
   });
 
   it('shows none on a token the map draws no conditions on, as on the map', () => {

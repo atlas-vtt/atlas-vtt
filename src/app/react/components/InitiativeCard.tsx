@@ -14,11 +14,8 @@ import { tokenDisplayName } from '../../pixi/token-renderer/tokenDisplayName';
 import { isOffMap } from '../../tokens/offMap';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { InitiativeNumber, type NumberStep } from './InitiativeNumber';
-import { CardResourceBars } from './CardResourceBars';
 import { OffMapIcon } from './OffMapIcon';
-import { CardConditions } from './CardConditions';
-import { useMapConditions } from '../hooks/useMapConditions';
-import { entryConditions } from '../../initiative/combatantConditions';
+import { woundShare } from '../../initiative/woundShare';
 import { useCardPreviewHover } from './useCardPreviewHover';
 import { t } from '../../i18n';
 import { DealtCard } from './DealtCard';
@@ -58,8 +55,8 @@ const NOTHING = (): void => undefined;
 
 /**
  * A combatant in the GM's tracker, as the players' list draws it (`styles/_initiative-cards.scss`): a square card
- * filled with the token's art, its number in the top right, its badge and marks in the top left, the bars of the
- * resources that defeat it along its foot and its conditions peeking out below. The compact list is one line instead, over the token's art faded in from its right end.
+ * filled with the token's art, red rising in it as it loses hit points (`woundShare`), its number in the top right and
+ * its badge and marks in the top left. Conditions and resources show on its token, so the card leaves them out. The compact list is one line instead, over the token's art faded in from its right end.
  */
 export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   entry,
@@ -93,14 +90,12 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   // The number its token's badge shows on the map, where look-alikes on its level are told apart
   const instanceBadge = cardInstanceNumber(tokens, entry.tokenId, badgesOn, levels);
 
-  // Read live from the token: the resources that defeat it (hit points), and whether one of them has
+  // Read live from the token: how much of the resources that defeat it (hit points) it has lost, and whether one is spent
   const definitions = useMapResources();
-  const conditionDefinitions = useMapConditions();
   const token = entryToken(tokens, entry);
-  const bars = token ? visibleResources(token, definitions, 'dm').filter(({ definition }) => definition.defeatedWhenSpent) : [];
+  const wound = token ? woundShare(visibleResources(token, definitions, 'dm').filter(({ definition }) => definition.defeatedWhenSpent)) : null;
+  const woundFill = wound === null ? null : <div className="atlas-initiative-wound" style={{ '--atlas-wound': wound } as React.CSSProperties} aria-hidden="true" />;
   const defeated = combatantDefeated(token, definitions);
-  // Its token's, else its own, each with the turns it lasts
-  const conditions = entryConditions(entry, token, conditionDefinitions);
   // A hidden token's entry, or one the GM hid, is left out of the players' list (`PlayerInitiativePanel`)
   const hiddenFromPlayers = token?.isHidden === true || entry.hiddenFromPlayers === true;
   // Kept beside the map: in the tracker only, until the GM places it
@@ -252,6 +247,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
             // The token's art faded in behind the line, from its right end
             <div className={`atlas-initiative-card__backdrop${token?.showRing === false ? ' atlas-initiative-card__backdrop--framed' : ''}`} aria-hidden="true">
               <img src={getImageUrl(entry.imagePath)} alt="" draggable={false} decoding="async" />
+              {woundFill}
             </div>
           )}
           <span className="atlas-initiative-card__marks">{defeated && <Skull className="atlas-initiative-card__defeated-mark" />}{marks}</span>
@@ -262,6 +258,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
             // The card names the combatant (`aria-label`): its art is a picture no one needs read again
             <div className={`atlas-initiative-card__art${token?.showRing === false ? ' atlas-initiative-card__art--framed' : ''}`} aria-hidden="true">
               <img src={getImageUrl(entry.imagePath)} alt="" draggable={false} decoding="async" />
+              {woundFill}
             </div>
           ) : (
             <div className="atlas-initiative-card__avatar">
@@ -291,9 +288,6 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
         />
       ))}
 
-      {token && bars.length > 0 && <CardResourceBars tokenId={token.id} bars={bars} />}
-
-      <CardConditions conditions={conditions} tooltipSide={tooltipSide} />
     </div>
   );
 };

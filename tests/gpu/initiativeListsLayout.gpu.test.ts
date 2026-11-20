@@ -223,8 +223,8 @@ describe('the GM\'s initiative tracker', () => {
 
   it('keeps a card and its round in a pane shorter than its clearance, and room for its bars in a tall one', async () => {
     const tracker = await showTracker();
-    // 900 px of view less the clearance above and below and a bar's room (39 px and 8 px of gap) on each side
-    expect(box(tracker).height).toBe(486);
+    // At most 900 px of view less the clearance above and below and a bar's room (39 px and 8 px of gap) on each side
+    expect(box(tracker).height).toBeLessThanOrEqual(486);
 
     for (const height of [420, 330, 200]) {
       await page.viewport(1200, height);
@@ -250,20 +250,16 @@ describe('the GM\'s initiative tracker', () => {
     await page.screenshot({ path: `${SHOTS}/gm-rotated.png`, element: tracker });
   });
 
-  it('draws conditions as the map does, three 18 px badges and a count, a valued one with its number, peeking out below the card', async () => {
+  it('shows only the art, the number and the look-alike\'s number: red rises in the art by the hit points lost, no bar, no conditions', async () => {
     const tracker = await showTracker();
     const card = tracker.querySelector('[aria-label="Goblin Archer of the Western Hills"]')!;
-    const badges = [...card.querySelectorAll('.atlas-condition-badge')];
-    expect(badges).toHaveLength(3);
-    for (const badge of badges) expect(box(badge).width).toBe(18);
-    expect(card.querySelector('.atlas-initiative-card__condition-more')?.textContent).toBe('+1');
-    const pip = card.querySelector('.atlas-condition-badge__value')!;
-    expect(pip.textContent).toBe('2');
-    const row = box(card.querySelector('.atlas-initiative-card__conditions'));
-    expect(row.left).toBeGreaterThanOrEqual(box(card).left);
-    expect(row.right).toBeLessThanOrEqual(box(card).right);
-    expect(row.bottom).toBeGreaterThan(box(card).bottom);
-    expect(row.top).toBeLessThan(box(card.querySelector('.atlas-initiative-card__hp-bar')).bottom);
+    expect(card.querySelector('.atlas-condition-badge, .atlas-initiative-card__hp-bar, .atlas-initiative-card__resources')).toBeNull();
+    const art = card.querySelector('.atlas-initiative-card__art')!;
+    const wound = art.querySelector<HTMLElement>('.atlas-initiative-wound')!;
+    wound.style.transition = 'none';
+    // 3 of 10 left
+    expect(box(art).bottom - box(wound).top).toBeCloseTo(box(art).height * 0.7, 0);
+    await page.screenshot({ path: `${SHOTS}/gm-wounds.png`, element: tracker });
   });
 
   it('hides its bars until the pointer comes near', async () => {

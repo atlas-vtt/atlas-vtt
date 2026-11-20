@@ -159,21 +159,12 @@ describe('where the lists stand', () => {
   });
 });
 
-describe('conditions on the cards', () => {
-  it('shows the conditions the token shows on the map, a valued one with its number', () => {
-    conditions.definitions = [
-      { id: 'poisoned', name: 'Poisoned', color: '#22aa22', icon: 'skull' },
-      { id: 'frightened', name: 'Frightened', color: '#aa2222', valued: true },
-    ];
-    state.objects.tokens.rat = token('rat', { conditions: ['frightened', 'poisoned', 'unknown'], conditionValues: { frightened: 3 } });
+describe('what the cards leave to the tokens', () => {
+  it('shows no conditions: the token shows them on the map', () => {
+    conditions.definitions = [{ id: 'poisoned', name: 'Poisoned', color: '#22aa22', icon: 'skull' }];
+    state.objects.tokens.rat = token('rat', { conditions: ['poisoned'] });
     const { container } = render(<InitiativeTracker />);
-    const card = container.querySelector('[aria-label="rat"]')!;
-    const badges = [...card.querySelectorAll('.atlas-initiative-card__condition')];
-    expect(badges).toHaveLength(2);
-    expect(badges[0]!.querySelector('.atlas-condition-badge__value')?.textContent).toBe('3');
-    expect(badges[1]!.querySelector('svg')).not.toBeNull();
-    // Each badge is named by its tooltip's label, as the map's hover card names it
-    expect(badges.map((badge) => document.getElementById(badge.getAttribute('aria-labelledby') ?? '')?.textContent)).toEqual(['Frightened 3', 'Poisoned']);
-    expect(container.querySelector('[aria-label="ogre"] .atlas-initiative-card__conditions')).toBeNull();
+    expect(container.querySelector('[aria-label="rat"] .atlas-condition-badge')).toBeNull();
   });
 });
+

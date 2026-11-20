@@ -1,16 +1,14 @@
 // The GM's compact tracker (the tracker's Compact view): a list to work with, a line per combatant as a deck
-// builder lists its cards. Number, name, up to three conditions and the marks in one line over the token's art,
-// which fades in from the right end; the resource bars under them, one length on every line whatever stands above.
+// builder lists its cards. Number, name and the marks in one line over the token's art, which fades in from the right
+// end, red rising in it as the combatant loses hit points (`initiative-wound`).
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/initiative-cards' as *;
 
 // A whole pixel, as the tiles have, so the plate's corners stay concentric with the card's
 $line-border: $border-width-s;
 $plate-radius: initiative-corner-radius($line-border);
-// The number plate's height, which every line takes, and the slot under the name its bars stand in, bars or not
+// The number plate's height, which every line takes
 $plate-height: 24px;
-// Leaves the top row the 18 px of a condition badge beside the name
-$bar-slot: 4px;
 
 .atlas-initiative-tracker--compact {
   gap: $spacing-xs;
@@ -21,14 +19,11 @@ $bar-slot: 4px;
 
   .atlas-initiative-card {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    grid-template-rows: minmax(0, 1fr) $bar-slot;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    // One height for every line, whatever it shows: a number or none, bars or none
+    // One height for every line, whatever it shows: a number or none
     height: calc(#{$plate-height} + 2 * #{$surface-inset} + 2 * #{$line-border});
     gap: $surface-inset;
-    // The name and its bars are one stack beside the number
-    row-gap: 2px;
     padding: $surface-inset;
     border-width: $line-border;
     // The art lies under everything the line holds
@@ -103,7 +98,7 @@ $bar-slot: 4px;
   .atlas-initiative-card__initiative,
   .atlas-initiative-card__initiative-input,
   .atlas-initiative-card__dealt {
-    grid-area: 1 / 1 / 3 / 2;
+    grid-area: 1 / 1;
   }
 
   .atlas-initiative-card__initiative,
@@ -135,28 +130,8 @@ $bar-slot: 4px;
     text-shadow: 0 1px 2px rgb(0 0 0 / 0.8);
   }
 
-  // Up to three conditions and the count of the rest, at the line's end before the marks
-  .atlas-initiative-card__conditions {
-    grid-area: 1 / 3;
-    flex-wrap: nowrap;
-    width: auto;
-  }
-
-  .atlas-initiative-card__condition {
-    border-radius: $radius-full;
-    box-shadow: 0 0 0 1.5px var(--background-primary);
-  }
-
-  .atlas-initiative-card__conditions--stacked {
-    gap: 0;
-
-    > * + * {
-      margin-inline-start: -4px;
-    }
-  }
-
   .atlas-initiative-card__marks {
-    grid-area: 1 / 4;
+    grid-area: 1 / 3;
     display: flex;
     align-items: center;
     gap: $spacing-xs;
@@ -178,28 +153,6 @@ $bar-slot: 4px;
   .atlas-initiative-card__off-map-badge {
     position: static;
   }
-
-  // From where the name's text starts to the line's end, under the conditions and marks too: what stands above never
-  // shortens a bar, which would read as fewer hit points. Several stand side by side, so the line keeps its height
-  .atlas-initiative-card__resources {
-    grid-area: 2 / 2 / 3 / 5;
-    align-self: start;
-    flex-direction: row;
-    gap: $spacing-xs;
-    padding-inline-start: $spacing-xs;
-    box-sizing: border-box;
-  }
-
-  // Above the bar's own rule (`.atlas-initiative-card .atlas-initiative-card__hp-bar`)
-  .atlas-initiative-card .atlas-initiative-card__hp-bar {
-    flex: 1;
-    height: $bar-slot;
-  }
-
-  .atlas-initiative-card__hp-meter {
-    height: 3px;
-  }
-
 
   // Hidden from the players: the line is translucent, as its portrait is otherwise
   .atlas-initiative-card--hidden .atlas-initiative-card__name {

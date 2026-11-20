@@ -1,11 +1,11 @@
-// Initiative Tracker: a column of cards (the token's art, number, bars, conditions) at the right edge of the map, on
+// Initiative Tracker: a column of cards (the token's art, its number and look-alike's number) at the right edge of the map, on
 // the elevated surface the toolbar has
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/mixins' as *;
 @use '../../../../styles/initiative-cards' as *;
 
 $tracker-width: 96px;
-// The compact list's line: room for a name beside the number, three conditions and a badge
+// The compact list's line: room for a name beside the number and a badge
 $tracker-width-named: 216px;
 // The bars floating above and below the tracker: a capsule of buttons, $float-gap from the panel
 $float-button: 28px;
@@ -140,7 +140,7 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   right: 0;
   bottom: 0;
   left: 0;
-  // Over the cards' own layers (a tile's conditions are at 3)
+  // Over the cards' own layers (their plates and marks are at 2)
   z-index: 4;
   padding: $spacing-xl $surface-inset $surface-inset;
   border-radius: 0 0 var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius);
@@ -202,6 +202,11 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
 // While it leaves it takes no pointer: what lies under it is the map's again
 .atlas-initiative-tracker--leaving {
   pointer-events: none;
+}
+
+// The life a combatant lost, red rising in its art or the compact line's backdrop (`initiative-wound`)
+.atlas-initiative-wound {
+  @include initiative-wound;
 }
 
 // Content area — scrollable, hidden scrollbar; its cards glide as the turn passes (`useTurnMotion`)
@@ -608,109 +613,10 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   @include atlas-visually-hidden;
 }
 
-// HP Bar — full width
-// One thin bar per resource of the token, in the collection's order; a click edits it
-.atlas-initiative-card__resources {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
-
-// The bar is drawn 4px high inside a taller button, so it is easy to hit
-.atlas-initiative-card .atlas-initiative-card__hp-bar {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  height: 10px;
-  padding: 0;
-  border: none;
-  border-radius: $radius-s;
-  background: transparent;
-  box-shadow: none;
-  cursor: pointer;
-
-  &:hover .atlas-initiative-card__hp-meter {
-    background: color-mix(in oklch, var(--mono-100) 20%, transparent);
-  }
-
-  @include atlas-focus-ring;
-}
-
-.atlas-initiative-card__hp-meter {
-  display: block;
-  width: 100%;
-  height: 4px;
-  background: color-mix(in oklch, var(--mono-100) 10%, transparent);
-  border-radius: $radius-s;
-  overflow: hidden;
-}
-
-.atlas-initiative-card__hp-fill {
-  display: block;
-  height: 100%;
-  border-radius: $radius-s;
-  // The resource's own colour, set per bar
-  background: var(--atlas-resource-color, var(--color-green));
-  transition: width 0.3s ease;
-}
-
-// The combatant's conditions as its token shows them (`CardConditions`), each named by its tooltip
-.atlas-initiative-card__conditions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: $spacing-xs;
-  width: 100%;
-}
-
-.atlas-initiative-card__condition {
-  position: relative;
-  display: flex;
-}
-
-// The turns a condition still lasts, at the badge's foot, as a valued condition's number sits at its top
-.atlas-initiative-card__condition-turns {
-  position: absolute;
-  right: -4px;
-  bottom: -4px;
-  min-width: 12px;
-  height: 12px;
-  padding-inline: 2px;
-  box-sizing: border-box;
-  border-radius: $radius-full;
-  background: var(--background-primary);
-  box-shadow: 0 0 0 1px var(--background-modifier-border);
-  color: var(--text-normal);
-  font-size: 9px;
-  font-weight: 600;
-  line-height: 12px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-// A count of the conditions a card leaves out, named by its tooltip; over the badge before it, as each lies over the one before
-.atlas-initiative-card__condition-more {
-  position: relative;
-  display: grid;
-  place-items: center;
-  min-width: 18px;
-  height: 18px;
-  padding-inline: 3px;
-  box-sizing: border-box;
-  border-radius: $radius-full;
-  background: var(--background-secondary);
-  box-shadow: 0 0 0 2px var(--background-primary), inset 0 0 0 1px var(--background-modifier-border);
-  color: var(--text-normal);
-  font-size: 10px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
 // The tracker's cards as the players' list draws them (`styles/_initiative-cards.scss`): square, filled with the
-// token's art, everything else in its corners, along its foot and peeking out below it. The compact list keeps its line.
+// token's art, red rising in it as it loses hit points, its number and marks in its top corners. The compact list keeps its line.
 $tile-border: $border-width-s;
 $tile-corner-radius: initiative-corner-radius($tile-border);
-$condition-peek: 9px;
 
 .atlas-initiative-card--tile {
   justify-content: flex-end;
@@ -722,11 +628,6 @@ $condition-peek: 9px;
   padding: $surface-inset;
   // As the players' cards: a whole pixel, which every screen draws as it is, so the corners stay concentric
   border-width: $tile-border;
-
-  // The room its conditions peek into, below it
-  &:has(.atlas-initiative-card__conditions) {
-    margin-bottom: $condition-peek;
-  }
 
   .atlas-initiative-card__art {
     @include initiative-art($tile-border);
@@ -791,57 +692,6 @@ $condition-peek: 9px;
 
     &:hover {
       background: var(--background-secondary);
-    }
-  }
-
-  // The bars of its resources along its foot: capsules concentric with the card's bottom corners
-  .atlas-initiative-card__resources {
-    position: relative;
-    z-index: 1;
-    gap: $surface-inset;
-  }
-
-  .atlas-initiative-card__hp-bar {
-    @include initiative-resource-capsule($tile-border);
-  }
-
-  .atlas-initiative-card__hp-meter {
-    height: 100%;
-    border-radius: inherit;
-    background: rgb(0 0 0 / 0.55);
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
-  }
-
-  .atlas-initiative-card__hp-bar:hover .atlas-initiative-card__hp-meter {
-    background: rgb(0 0 0 / 0.4);
-  }
-
-  .atlas-initiative-card__hp-fill {
-    border-radius: inherit;
-  }
-
-  // Over the middle of its foot and its bars, peeking out below the card
-  .atlas-initiative-card__conditions {
-    position: absolute;
-    left: 50%;
-    bottom: calc(-1 * #{$condition-peek} - #{$tile-border});
-    z-index: 3;
-    flex-wrap: nowrap;
-    width: auto;
-    transform: translateX(-50%);
-  }
-
-  .atlas-initiative-card__condition {
-    border-radius: $radius-full;
-    box-shadow: 0 0 0 2px var(--background-primary);
-  }
-
-  // With a count after them they overlap a little, to stay inside the card
-  .atlas-initiative-card__conditions--stacked {
-    gap: 0;
-
-    > * + * {
-      margin-inline-start: -4px;
     }
   }
 

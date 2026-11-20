@@ -75,11 +75,20 @@ $initiative-art-dim: brightness(0.72) saturate(0.8);
     inset 0 0 #{$glow} color-mix(in srgb, #{$color} 55%, transparent);
 }
 
-/// A resource along the card's foot, `$surface-inset` inside its border: a capsule whose ends run concentric with the
-/// card's bottom corners, so twice `initiative-corner-radius` high.
-@mixin initiative-resource-capsule($border) {
-  height: calc(2 * #{initiative-corner-radius($border)});
-  border-radius: $radius-full;
+/// How much life a combatant has lost (`--atlas-wound`, 0 to 1, `woundShare`), as Baldur's Gate 3 shows it: red rises
+/// in its art from the bottom, under the art's shade, its surface a bright line. It moves by `transform`, gliding as
+/// hit points change. The art (or the compact line's backdrop) clips it.
+@mixin initiative-wound {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform: translateY(calc((1 - var(--atlas-wound, 0)) * 100%));
+  background: linear-gradient(to bottom, rgb(255 96 72 / 0.9) 0 1.5px, rgb(196 28 24 / 0.5) 1.5px, rgb(128 8 8 / 0.72));
+  transition: transform 700ms cubic-bezier(0.32, 0.72, 0, 1);
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 }
 
 /// The turn began (both lists): the card of who holds it lights up once. Its ring blooms inside its border and fades

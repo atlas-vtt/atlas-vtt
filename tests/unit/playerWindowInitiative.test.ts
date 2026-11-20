@@ -141,7 +141,7 @@ describe('player initiative panel', () => {
     expect(panel()).not.toBeNull();
   });
 
-  it('excludes hidden and deleted tokens, and shows names and HP only where players may see them', () => {
+  it('excludes hidden and deleted tokens, and names a card without art only where players may see the name', () => {
     const { settings, store, doc } = setup();
     const panel = (): Element | null => doc.querySelector('[aria-label="Initiative order"]:not([aria-hidden])');
     expect(panel()?.textContent).not.toContain('Hero');
@@ -154,11 +154,6 @@ describe('player initiative panel', () => {
     expect(panel()?.textContent).toContain('Unknown Creature');
     store.setState({ tokenSettings: MAP_NAMES });
     expect(panel()?.textContent).toContain('Hero');
-    // HP stays hidden until the collection lets players see it
-    expect(panel()?.querySelector('progress')).toBeNull();
-    collection.hpVisibleToPlayers = true;
-    settings.setLocalPlayerViewSettings({ showTokenNameplates: true, showWidgets: false });
-    expect(panel()?.querySelector('progress')?.value).toBe(8);
     const objects = store.getState().objects;
     store.setState({ objects: { ...objects, tokens: { hero: { ...objects.tokens.hero!, isHidden: true } } } });
     expect(panel()).toBeNull();
@@ -166,31 +161,37 @@ describe('player initiative panel', () => {
     expect(panel()).toBeNull();
   });
 
-  it('shows and hides HP as soon as the collection changes what players see', () => {
-    const { doc, collectionChanged } = setup();
-    const progress = (): Element | null => doc.querySelector('[aria-label="Initiative order"] progress');
-    expect(progress()).toBeNull();
+  it('fills the art with red by the hit points lost, as soon as the collection lets players see them, and hides it again', () => {
+    const { store, doc, collectionChanged } = setup();
+    const { initiative } = store.getState();
+    store.setState({ initiative: { ...initiative, entries: [{ ...initiative.entries[0]!, imagePath: 'data:image/png;base64,AAAA' }] } });
+    const wound = (): string | null => doc.querySelector<HTMLElement>('[aria-label="Initiative order"] .atlas-initiative-wound')?.style.getPropertyValue('--atlas-wound') ?? null;
+    expect(doc.querySelector('[aria-label="Initiative order"] progress')).toBeNull();
+    expect(wound()).toBeNull();
     collection.hpVisibleToPlayers = true;
     collectionChanged();
-    expect(progress()).not.toBeNull();
+    // 8 of 10 left
+    expect(Number(wound())).toBeCloseTo(0.2);
     collection.hpVisibleToPlayers = false;
     collectionChanged();
-    expect(progress()).toBeNull();
+    expect(wound()).toBeNull();
   });
 
-  it('shows a token without hit points without an HP bar', () => {
-    const { settings, store, doc, collectionChanged } = setup();
+  it('shows no red on a token without hit points', () => {
+    const { store, doc, collectionChanged } = setup();
     collection.hpVisibleToPlayers = true;
     collectionChanged();
-    settings.setLocalPlayerViewSettings({ showTokenNameplates: true });
-    const objects = store.getState().objects;
+    const { objects, initiative } = store.getState();
     const { resources: _resources, ...withoutHp } = objects.tokens.hero!;
 
-    expect(() => store.setState({ objects: { ...objects, tokens: { hero: withoutHp as typeof objects.tokens.hero } } })).not.toThrow();
+    expect(() => store.setState({
+      objects: { ...objects, tokens: { hero: withoutHp as typeof objects.tokens.hero } },
+      initiative: { ...initiative, entries: [{ ...initiative.entries[0]!, imagePath: 'data:image/png;base64,AAAA' }] },
+    })).not.toThrow();
 
     const panel = doc.querySelector('[aria-label="Initiative order"]:not([aria-hidden])');
-    expect(panel?.textContent).toContain('Hero');
-    expect(panel?.querySelector('progress')).toBeNull();
+    expect(panel?.querySelector('.atlas-player-initiative__art')).not.toBeNull();
+    expect(panel?.querySelector('.atlas-initiative-wound')).toBeNull();
   });
 
   it('holds the presented initiative while browsing and binds to a newly presented view', () => {

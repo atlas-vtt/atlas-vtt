@@ -13,10 +13,6 @@ $banner-scale: var(--atlas-player-turn-banner-scale, 1);
   @return calc(#{$length} * #{$scale});
 }
 
-// A condition badge on a card, as `playerInitiativeCard.ts` draws it
-$badge: scaled(20px);
-// How far the badges peek out below their card: half of them, so they cover only the lower half of its hit points
-$badge-peek: calc(#{$badge} * 0.5);
 
 // The list's cards stand $surface-inset inside its border and apart, so a card's $radius-m corner is concentric with the
 // panel's $surface-radius; a row's cards are as wide as the column's
@@ -210,8 +206,8 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
     box-shadow: inset 0 0 0 $border-width-s var(--atlas-turn-color, var(--interactive-accent));
   }
 
-  // A square card: the token's art fills it (`__art`), the number stands in its top right, the look-alike's badge in
-  // its top left, and the foot (conditions, name, hit points) lies on the shade at its bottom
+  // A square card: the token's art fills it (`__art`), red rising in it as the combatant loses hit points (`__wound`),
+  // the number in its top right and the look-alike's badge in its top left; a card without art has its name at its foot
   &__card {
     position: relative;
     display: flex;
@@ -266,6 +262,11 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
   // foot read on
   &__art {
     @include initiative-art($border-width-s);
+  }
+
+  // The life it lost, red rising in its art (`initiative-wound`)
+  & .atlas-initiative-wound {
+    @include initiative-wound;
   }
 
   &__art--framed {
@@ -399,7 +400,7 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
     z-index: 2;
   }
 
-  // Conditions, the name and the hit points, on the shade at the card's foot
+  // The name of a card without art, at its foot
   &__foot {
     position: relative;
     z-index: 1;
@@ -424,109 +425,6 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
   &__card--art &__name {
     color: #fff;
     text-shadow: 0 1px 2px rgb(0 0 0 / 0.8);
-  }
-
-  // A capsule along the card's foot whose ends run concentric with the card's bottom corners
-  &__hp {
-    --atlas-hp-track: var(--background-modifier-border);
-    @include initiative-resource-capsule($border-width-s);
-    appearance: none;
-    display: block;
-    width: 100%;
-    border: none;
-    overflow: hidden;
-    background: var(--atlas-hp-track);
-
-    &::-webkit-progress-bar {
-      background: var(--atlas-hp-track);
-    }
-
-    &::-webkit-progress-value {
-      border-radius: inherit;
-      background: var(--color-green);
-    }
-
-    &::-moz-progress-bar {
-      background: var(--color-green);
-    }
-  }
-
-  // On the art: a dark track with a light rim, so the bar reads on light and dark art alike
-  &__card--art &__hp {
-    --atlas-hp-track: rgb(0 0 0 / 0.55);
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
-  }
-
-  // The conditions the map shows players on the token, as the GM's card draws them: over the middle of the card's foot
-  // and its hit points, peeking out below the card
-  &__conditions {
-    position: absolute;
-    left: 50%;
-    bottom: calc(-1 * #{$badge-peek} - #{$border-width-s});
-    z-index: 3;
-    display: flex;
-    gap: $spacing-xs;
-    transform: translateX(-50%);
-    pointer-events: none;
-  }
-
-  // The room the badges peek into: below a column's card, and below a row's cards while any of them has some
-  &__card--conditions {
-    margin-bottom: $badge-peek;
-  }
-
-  // Three and more overlap, each over the one before, so four with a count of turns stay inside the card, ringed in the
-  // panel's colour so their edges read
-  &__conditions--stacked {
-    gap: 0;
-
-    > * + * {
-      margin-inline-start: calc(#{$badge} * -0.25);
-    }
-  }
-
-  &__condition {
-    position: relative;
-    display: flex;
-    border-radius: $radius-full;
-    box-shadow: 0 0 0 2px var(--background-primary);
-  }
-
-  // The turns a condition still lasts, at its foot
-  &__condition-turns {
-    position: absolute;
-    right: -4px;
-    bottom: -4px;
-    min-width: scaled(12px);
-    height: scaled(12px);
-    padding-inline: 2px;
-    box-sizing: border-box;
-    border-radius: $radius-full;
-    background: var(--background-primary);
-    box-shadow: 0 0 0 1px var(--background-modifier-border);
-    color: var(--text-normal);
-    font-size: scaled(9px);
-    font-weight: 600;
-    line-height: scaled(12px);
-    text-align: center;
-  }
-
-  // Over the badge before it, as each badge lies over the one before
-  &__condition-more {
-    position: relative;
-    display: grid;
-    place-items: center;
-    min-width: $badge;
-    height: $badge;
-    padding-inline: 3px;
-    box-sizing: border-box;
-    border-radius: $radius-full;
-    background: var(--background-secondary);
-    // Ringed like the badges, with a rim of its own: it has no colour to stand out by
-    box-shadow: 0 0 0 2px var(--background-primary), inset 0 0 0 1px var(--background-modifier-border);
-    color: var(--text-normal);
-    font-size: scaled(11px);
-    font-weight: 600;
   }
 
   &__round {
@@ -589,15 +487,6 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
 
   .atlas-player-initiative__card {
     width: $card-width;
-  }
-
-  // The badges peek into room the list gives below every card while any has some, so the cards stay level and square
-  .atlas-player-initiative__card--conditions {
-    margin-bottom: 0;
-  }
-
-  .atlas-player-initiative__list:has(.atlas-player-initiative__card--conditions) {
-    padding-bottom: $badge-peek;
   }
 
   // A round's name, then its cards (`renderRoundRow`); a slim line closes every round but the last
