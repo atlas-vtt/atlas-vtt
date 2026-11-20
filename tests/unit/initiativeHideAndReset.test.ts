@@ -18,11 +18,11 @@ describe('hiding a combatant from the players and resetting the numbers', () => 
     store.getState().addToInitiative({ name: 'Enemy 1', initiative: 7, initiativeModifier: 0, imagePath: '', isNPC: true });
     store.getState().startCombat();
     const enemy = store.getState().initiative.entries.find((entry) => entry.name === 'Enemy 1')!.id;
-    store.getState().setCombatantConditionTurns(enemy, 'prone', 2);
+    store.getState().setCombatantCondition(enemy, 'prone', true);
     expect(store.getState().initiative.entries.find((entry) => entry.id === enemy)?.conditions).toEqual(['prone']);
     store.getState().resetInitiativeNumbers();
     const reset = store.getState().initiative.entries.find((entry) => entry.id === enemy)!;
-    expect([reset.conditions, reset.conditionTurns]).toEqual([undefined, undefined]);
+    expect(reset.conditions).toBeUndefined();
     const { initiative } = store.getState();
     expect(initiative.isActive).toBe(false);
     expect(initiative.entries.map((entry) => [entry.name, entry.initiative, entry.awaitingInitiative])).toEqual([['Mira', 0, true], ['Enemy 1', 0, true]]);

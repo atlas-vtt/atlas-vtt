@@ -92,8 +92,6 @@ export const initiative: Translation = {
   'initiative.addEnemy': 'Ajouter un ennemi',
   'initiative.addEnemyHint': 'Ajoute un ennemi sans jeton, nommé Ennemi 1, Ennemi 2, etc., dans le camp des adversaires',
   'initiative.enemyName': 'Ennemi {number}',
-  'initiative.conditionTurns': 'Durée de {name} en tours',
-  'initiative.conditionTurnsLeft': { one: '{name}, encore {count} tour', other: '{name}, encore {count} tours' },
   'initiative.compact': 'Vue compacte',
   'initiative.compactHint': 'Une liste simple sans portraits : nombre, nom, points de vie et états sur une seule carte',
   'initiative.partySetUp': 'Configurer le groupe',

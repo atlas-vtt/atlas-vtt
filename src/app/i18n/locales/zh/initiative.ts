@@ -70,8 +70,6 @@ export const initiative: Translation = {
   'initiative.addEnemy': '添加敌人',
   'initiative.addEnemyHint': '在对手一方添加一个没有指示物的敌人，依次命名为敌人 1、敌人 2 等',
   'initiative.enemyName': '敌人 {number}',
-  'initiative.conditionTurns': '{name} 持续的回合数',
-  'initiative.conditionTurnsLeft': { other: '{name}，剩余 {count} 回合' },
   'initiative.removeFallback': '移除后备字段',
   'initiative.sitOut': '本轮不行动',
   'initiative.statblocksLoading': { other: 'Fantasy Statblocks 仍在读取仓库：{count} 个参战者掷骰时没有用上数据卡的调整值' },

@@ -50,8 +50,6 @@ export const initiative: Translation = {
   'initiative.addEnemy': 'Añadir enemigo',
   'initiative.addEnemyHint': 'Añade un enemigo sin token, llamado Enemigo 1, Enemigo 2, etc., en el bando de los oponentes',
   'initiative.enemyName': 'Enemigo {number}',
-  'initiative.conditionTurns': 'Turnos que dura {name}',
-  'initiative.conditionTurnsLeft': { one: '{name}, queda {count} turno', other: '{name}, quedan {count} turnos' },
   'initiative.removeFallback': 'Quitar alternativa',
   'initiative.roll': 'Tirar iniciativa',
   'initiative.compact': 'Vista compacta',

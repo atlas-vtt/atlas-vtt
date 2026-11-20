@@ -11,8 +11,7 @@ const BADGE_SIZE = 16;
 
 /**
  * "Conditions" submenu of a combatant's card in the tracker: the map's conditions, each ticked while the combatant
- * has it, with a stepper for the turns it lasts (∞ until taken away). A step up from ∞ gives the condition for one turn.
- * It stays open and follows the store, so several can be set in a row.
+ * has it. It stays open and follows the store, so several can be set in a row.
  */
 export function combatantConditionsMenu(store: StoreApi<ViewAtlasState>, definitions: readonly ConditionDefinition[], entryId: string): ContextMenuEntry {
   const children = (): ContextMenuEntry[] => {
@@ -22,7 +21,6 @@ export function combatantConditionsMenu(store: StoreApi<ViewAtlasState>, definit
     const holder = conditionHolder(entry, state.objects.tokens);
     return definitions.map((condition): ContextMenuEntry => {
       const has = holder.conditions?.includes(condition.id) === true;
-      const turns = has ? entry.conditionTurns?.[condition.id] : undefined;
       const name = condition.name.trim() || t('menu.unnamedCondition');
       return {
         type: 'item',
@@ -31,13 +29,6 @@ export function combatantConditionsMenu(store: StoreApi<ViewAtlasState>, definit
         keepOpen: true,
         leading: createElement(ConditionBadgePreview, { condition, size: BADGE_SIZE }),
         onClick: () => store.getState().setCombatantCondition(entryId, condition.id, !has),
-        stepper: {
-          value: turns === undefined ? '∞' : String(turns),
-          label: t('initiative.conditionTurns', { name }),
-          canDecrement: turns !== undefined,
-          onDecrement: () => store.getState().setCombatantConditionTurns(entryId, condition.id, turns === undefined || turns <= 1 ? null : turns - 1),
-          onIncrement: () => store.getState().setCombatantConditionTurns(entryId, condition.id, (turns ?? 0) + 1),
-        },
       };
     });
   };

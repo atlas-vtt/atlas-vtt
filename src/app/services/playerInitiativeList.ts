@@ -8,8 +8,8 @@ import { listedByCards, listedBySides, listedSides, sideOf, type ListedSide } fr
 import { combatantDefeated } from '../initiative/defeated';
 import { firstCards, listSegments, shownItems, type ListSegment } from '../initiative/listSegments';
 import type { PlayersListEdge } from '../initiative/initiativeLayout';
-import { combatantConditions } from '../utils/activeConditions';
-import { entryConditions, type CombatantCondition } from '../initiative/combatantConditions';
+import { combatantConditions, type ActiveCondition } from '../utils/activeConditions';
+import { entryConditions } from '../initiative/combatantConditions';
 import { entryToken } from '../initiative/party';
 import { layoutEdges, scrollWithin } from '../utils/scrollWithin';
 import { renderPlayerCard } from './playerInitiativeCard';
@@ -28,8 +28,8 @@ export interface EntryToken {
   side: SideId;
   /** Defeated, as the GM's card shows it with its skull: shown dimmed and marked, never left out. */
   defeated: boolean;
-  /** The condition badges the map shows players on the token (`combatantConditions`), or the entry's own, with their turns. */
-  conditions?: CombatantCondition[];
+  /** The condition badges the map shows players on the token (`combatantConditions`), or the entry's own. */
+  conditions?: ActiveCondition[];
   /** The token's own Show nameplate, which names it where the map shows no nameplates (`nameplateShownToPlayers`). */
   showNameplate?: boolean;
 }
@@ -136,14 +136,14 @@ export function listedForPlayers(token: Pick<TokenEntity, 'isHidden'> | undefine
  * always, on the opponents'; a token's entry while its token is listed (`listedForPlayers`). The other arguments are `entryTokenOf`'s.
  */
 export function playersEntryToken(
-  entry: Pick<InitiativeEntry, 'tokenId' | 'partyMemberId' | 'conditions' | 'conditionValues' | 'conditionTurns' | 'hiddenFromPlayers'>,
+  entry: Pick<InitiativeEntry, 'tokenId' | 'partyMemberId' | 'conditions' | 'conditionValues' | 'hiddenFromPlayers'>,
   tokens: Readonly<Record<string, TokenEntity>> | undefined,
   definitions: readonly ResourceDefinition[],
   conditionDefinitions: readonly ConditionDefinition[] = [],
   sides?: readonly SideId[],
 ): EntryToken | null {
-  // Conditions the tracker gave: a token's own, else the entry's, with the turns they last
-  const conditions = (token: TokenEntity | undefined): CombatantCondition[] => entryConditions(entry, token, conditionDefinitions);
+  // Conditions the tracker gave: a token's own, else the entry's
+  const conditions = (token: TokenEntity | undefined): ActiveCondition[] => entryConditions(entry, token, conditionDefinitions);
   // Whomever the GM hid from the players
   if (entry.hiddenFromPlayers) return null;
   if (entry.partyMemberId !== undefined) return { ...entryTokenOf(undefined, definitions, conditionDefinitions, sides), side: 'players', conditions: conditions(undefined) };

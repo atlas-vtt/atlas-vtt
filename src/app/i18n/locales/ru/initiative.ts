@@ -99,8 +99,6 @@ export const initiative: Translation = {
   'initiative.addEnemy': 'Добавить противника',
   'initiative.addEnemyHint': 'Добавляет противника без токена на сторону противников, с именами Противник 1, Противник 2 и так далее',
   'initiative.enemyName': 'Противник {number}',
-  'initiative.conditionTurns': 'Сколько ходов длится {name}',
-  'initiative.conditionTurnsLeft': { one: '{name}, остался {count} ход', few: '{name}, осталось {count} хода', many: '{name}, осталось {count} ходов', other: '{name}, осталось {count} хода' },
   'initiative.removeFallback': 'Убрать запасное поле',
   'initiative.statblocksLoading': {
     one: 'Fantasy Statblocks ещё читает хранилище: {count} участник бросил без модификатора из статблока',

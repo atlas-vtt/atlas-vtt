@@ -92,8 +92,6 @@ export const initiative: Translation = {
   'initiative.addEnemy': 'Gegner hinzufügen',
   'initiative.addEnemyHint': 'Fügt auf der Seite der Gegner einen Gegner ohne Token hinzu, mit den Namen Gegner 1, Gegner 2 und so weiter',
   'initiative.enemyName': 'Gegner {number}',
-  'initiative.conditionTurns': 'Dauer von {name} in Zügen',
-  'initiative.conditionTurnsLeft': { one: '{name}, noch {count} Zug', other: '{name}, noch {count} Züge' },
   'initiative.compact': 'Kompakte Ansicht',
   'initiative.compactHint': 'Eine schlichte Liste ohne Porträts: Zahl, Name, Trefferpunkte und Zustände auf einer Karte',
   'initiative.partySetUp': 'Gruppe einrichten',

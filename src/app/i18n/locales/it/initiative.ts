@@ -102,8 +102,6 @@ export const initiative = {
   "initiative.addEnemy": "Aggiungi nemico",
   "initiative.addEnemyHint": "Aggiunge un nemico senza token, chiamato Nemico 1, Nemico 2 e così via, dalla parte degli avversari",
   "initiative.enemyName": "Nemico {number}",
-  "initiative.conditionTurns": "Turni di durata di {name}",
-  "initiative.conditionTurnsLeft": { one: "{name}, manca {count} turno", other: "{name}, mancano {count} turni" },
   "initiative.compact": "Vista compatta",
   "initiative.compactHint": "Un semplice elenco senza ritratti: numero, nome, punti ferita e condizioni su una sola scheda",
   "initiative.partySetUp": "Configura il gruppo",
