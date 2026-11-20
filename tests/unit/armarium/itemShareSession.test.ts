@@ -71,7 +71,7 @@ describe('sharing a single Atlas file in the Armarium', () => {
     api.own = { uid, slug: 'goblin', format: 'statblock-template', fields: null, newestVersion: 1, coverUrl: null };
     await session.publish();
     expect(api.sentListings).toEqual([{ kind: 'templates', system: null, description: 'Goblins of the Blue Mouth caves, as five-foot menaces.', tags: [], licence: 'cc-by-4.0', credits: '' }]);
-    expect(session.snapshot()).toMatchObject({ step: 'done', published: { slug: 'goblin', held: false, recordFailed: null } });
+    expect(session.snapshot()).toMatchObject({ step: 'done', published: { held: false, recordFailed: null } });
   });
 
   it('continues the account\'s listing one version above its newest, with what changed, and starts from what the listing holds', async () => {

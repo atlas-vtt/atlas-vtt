@@ -54,14 +54,11 @@ export function parseInstallableList(data: unknown): InstallableListing[] | null
   return [...listings.values()];
 }
 
-/**
- * Reads the installable list from the site. Nothing about the user or the vault goes with the request; `query` (a
- * time) only keeps a cached list out.
- */
-export async function fetchInstallableList(query?: string): Promise<InstallableListing[]> {
+/** Reads the installable list from the site. Nothing about the user or the vault goes with the request. */
+export async function fetchInstallableList(): Promise<InstallableListing[]> {
   let response: RequestUrlResponse;
   try {
-    response = await requestUrl({ url: query === undefined ? ARMARIUM_LIST_URL : `${ARMARIUM_LIST_URL}?${query}`, throw: false });
+    response = await requestUrl({ url: ARMARIUM_LIST_URL, throw: false });
   } catch (error) {
     throw new ArmariumListError(`The Armarium could not be reached: ${error instanceof Error ? error.message : String(error)}`, true);
   }

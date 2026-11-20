@@ -18,12 +18,6 @@ const confirm = vi.hoisted(() => vi.fn<() => Promise<boolean>>());
 vi.mock('../../../src/app/ui/confirmDialog', () => ({ confirmAction: confirm }));
 vi.mock('obsidian', async (original) => ({ ...(await original<typeof import('obsidian')>()), requestUrl: vi.fn() }));
 
-/** The site's installable list as its build wrote it, naming version `version` of the listing `col-uid`. */
-function siteList(version: number): Awaited<ReturnType<typeof requestUrl>> {
-  const listing = { uid: 'col-uid', name: 'Blue Mouth Caves', creator: 'Mara', version, fileName: 'Blue Mouth Caves.zip', bytes: 1200, sha256: 'a'.repeat(64), downloadUrl: 'https://atlasvttusercontent.com/x.zip' };
-  return { status: 200, json: { format: 1, listings: [listing] } } as Awaited<ReturnType<typeof requestUrl>>;
-}
-
 const PREVIEW = {
   collection: { id: 'caves', uid: 'col-uid', name: 'Blue Mouth Caves', version: 2, settings: { systemPresetId: 'builtin:cairn' } },
   publisher: 'self', minimumVersion: 2, suggestedVersion: 3, cover: undefined, coverCandidates: [], assets: [], files: [], missing: [], fileSizes: new Map(),
@@ -41,7 +35,7 @@ let account: AtlasAccount;
 beforeEach(() => {
   token = 'tok';
   confirm.mockReset();
-  vi.mocked(requestUrl).mockReset().mockResolvedValue(siteList(3));
+  vi.mocked(requestUrl).mockReset().mockResolvedValue({ status: 200 } as Awaited<ReturnType<typeof requestUrl>>);
   account = AtlasAccount.open(app, {
     http: () => Promise.resolve({ status: 200, json: { user: { id: 'u', name: 'Mara', handle: 'mara' } } }),
     timers: { now: () => 0, setTimer: () => 0, clearTimer: () => undefined },
@@ -136,58 +130,12 @@ describe('the share dialog', () => {
       await settle(100);
     });
     expect(screen.getByText('Shared')).toBeTruthy();
-    expect(screen.getByText('Blue Mouth Caves, version 3, is published.')).toBeTruthy();
+    expect(screen.getByText('Blue Mouth Caves, version 3, is uploaded.')).toBeTruthy();
     expect(commit).toHaveBeenCalledTimes(1);
     expect(api.storedListing?.tags).toEqual(['underground']);
   });
 
-  it('opens the published listing in the Armarium of the asset manager behind', async () => {
-    const api = new FakeArmarium();
-    api.own = { uid: 'col-uid', slug: 'blue-mouth-caves', format: 'collection', fields: null, newestVersion: null, coverUrl: null };
-    const show = vi.fn();
-    const detach = ArmariumHosts.forApp(app).attach({ show, review: () => undefined });
-    const { session, onClose } = share(api);
-    await act(async () => {
-      session.start();
-      await settle();
-      await session.confirmBundle({ kind: 'release', version: 3 });
-      await vi.waitFor(() => expect(session.snapshot().step).toBe('listing'));
-      session.setDraft({ kind: 'maps', description: 'Six caves under the Blue Mouth, for three to five players.', licence: 'cc0' });
-      session.continueToPublish();
-      session.setDeclared(true);
-      await session.publish();
-    });
-    expect(session.snapshot().step).toBe('done');
-    await vi.waitFor(() => expect(button('Open in the Armarium').disabled).toBe(false));
-    fireEvent.click(button('Open in the Armarium'));
-    expect(onClose).toHaveBeenCalledTimes(1);
-    expect(show).toHaveBeenCalledWith('https://atlas-vtt.dev/armarium/blue-mouth-caves');
-    detach();
-  });
-
-  it('offers the listing only once the site shows the version it published', async () => {
-    // The site's build still shows the version before: the page stands, without the new version.
-    vi.mocked(requestUrl).mockResolvedValue(siteList(2));
-    const api = new FakeArmarium();
-    api.own = { uid: 'col-uid', slug: 'blue-mouth-caves', format: 'collection', fields: null, newestVersion: null, coverUrl: null };
-    const { session } = share(api);
-    await act(async () => {
-      session.start();
-      await settle();
-      await session.confirmBundle({ kind: 'release', version: 3 });
-      await vi.waitFor(() => expect(session.snapshot().step).toBe('listing'));
-      session.setDraft({ kind: 'maps', description: 'Six caves under the Blue Mouth, for three to five players.', licence: 'cc0' });
-      session.continueToPublish();
-      session.setDeclared(true);
-      await session.publish();
-    });
-    await vi.waitFor(() => expect(requestUrl).toHaveBeenCalled());
-    expect(vi.mocked(requestUrl).mock.calls[0]?.[0]).toMatchObject({ url: expect.stringMatching(/^https:\/\/atlas-vtt\.dev\/api\/armarium\/v1\?built=\d+$/) as string });
-    expect(button('Preparing its page…').disabled).toBe(true);
-  });
-
-  it('offers My uploads in the Armarium behind, where the published version shows as Processing until its page is built', async () => {
-    vi.mocked(requestUrl).mockResolvedValue(siteList(2));
+  it('says the version is uploaded and processing, and leads to My uploads in the Armarium behind, never to the listing\'s page', async () => {
     const show = vi.fn();
     const detach = ArmariumHosts.forApp(app).attach({ show, review: () => undefined });
     const api = new FakeArmarium();
@@ -203,7 +151,10 @@ describe('the share dialog', () => {
       session.setDeclared(true);
       await session.publish();
     });
-    expect(screen.getByText(/My uploads shows it as Processing/)).toBeTruthy();
+    expect(screen.getByText('Blue Mouth Caves, version 3, is uploaded.')).toBeTruthy();
+    expect(screen.getByText(/processing now .* My uploads shows where it stands/)).toBeTruthy();
+    // Its page shows the new version only once the site is rebuilt: the dialog leads there by My uploads alone.
+    expect(screen.queryByRole('button', { name: /Open in the Armarium|Preparing its page/ })).toBeNull();
     fireEvent.click(button('My uploads'));
     expect(show).toHaveBeenCalledWith('https://atlas-vtt.dev/armarium/mine');
     detach();

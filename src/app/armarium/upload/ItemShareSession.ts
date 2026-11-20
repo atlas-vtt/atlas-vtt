@@ -78,10 +78,6 @@ export class ItemShareSession extends ShareFlow<ItemShareSnapshot> {
     return this.uid;
   }
 
-  protected knownUid(): string | null {
-    return this.uid;
-  }
-
   protected opened(ownListing: OwnListing | null): Partial<ItemShareSnapshot> {
     if (ownListing?.coverUrl) void this.keepListedCover(ownListing.coverUrl);
     return { version: nextItemVersion(ownListing) };

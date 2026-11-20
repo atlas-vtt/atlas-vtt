@@ -109,7 +109,7 @@
 - The map no longer shifts aside with a strip beside it, or gets cut off on the left until a reload: opening the command palette, or something near the map's edge taking focus, scrolled the window's panes sideways
 - A token's ring now turns with its art
 - On Windows, converting music or ambience in a linked folder now moves the originals to the trash when you chose that, instead of keeping them
-- After you share something in the Armarium, Open in the Armarium waits until its page is ready, instead of opening a page that could not be found
+- After you share something in the Armarium, the dialog says it is uploaded and processing and leads to My uploads, instead of to a page that still showed the version before
 - While the Armarium is open in the asset manager, the sidebar shows the Armarium's tags and filters the store by them, instead of the tags of the collection you were in
 - The table log has room around its messages again; rolls and the message field no longer sit against its edge
 - The table log shows a roll's result once the dice have landed, not while they are still rolling

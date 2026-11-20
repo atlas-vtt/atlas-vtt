@@ -48,8 +48,6 @@ export abstract class ShareFlow<S extends ShareCommon> {
 
   /** The uid of the listing this share continues, read once the account is known; null where it has none yet. */
   protected abstract listingUid(): Promise<string | null>;
-  /** The uid known now, for the published listing's page. */
-  protected abstract knownUid(): string | null;
   /** What the snapshot takes once the account may share, beside the step and the listing. */
   protected abstract opened(ownListing: OwnListing | null): Partial<S>;
   /** The listing's form, from what the Armarium already holds of it. */
@@ -265,9 +263,7 @@ export abstract class ShareFlow<S extends ShareCommon> {
       console.error('[Atlas] Recording the published release failed:', error);
       recordFailed = describeError(error);
     }
-    const uid = view.manifest?.uid ?? this.knownUid();
-    const listing = uid ? await this.flow.api.ownListing(uid) : null;
-    this.set({ busy: false, submission: view, step: 'done', published: { slug: listing?.slug ?? null, uid: uid ?? null, version: view.manifest?.version ?? null, held: view.state === 'held', recordFailed } });
+    this.set({ busy: false, submission: view, step: 'done', published: { held: view.state === 'held', recordFailed } });
   }
 }
 

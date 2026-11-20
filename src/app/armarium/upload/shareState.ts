@@ -52,8 +52,8 @@ export interface ShareCommon {
   readonly reapproving: boolean;
   readonly refusal: Refusal | null;
   /** Published (or held for the team): where its page will be, and whether the vault's release record failed. */
-  /** What was published: its listing's page (`slug`), and the listing and version the site shows once its build is done. */
-  readonly published: { readonly slug: string | null; readonly uid: string | null; readonly version: number | null; readonly held: boolean; readonly recordFailed: string | null } | null;
+  /** Published (processing until its page is built), or held for the Armarium team. */
+  readonly published: { readonly held: boolean; readonly recordFailed: string | null } | null;
 }
 
 /** A share of a collection: its export, and the release or fork the GM chose in the export dialog. */

@@ -4,7 +4,7 @@ import type { ShareSnapshot } from '../../upload/shareState';
 import { stateMessage } from '../../upload/text/uploadMessages';
 import { ShareNotice } from './ShareNotice';
 
-/** The end: published (its page appears within minutes), or held for the Armarium team while staff switched that on. */
+/** The end: uploaded and processing until its page is built, or held for the Armarium team while staff switched that on. */
 export function DoneStep({ snapshot }: { snapshot: ShareSnapshot }): React.JSX.Element | null {
   const { published, bundle } = snapshot;
   if (published === null) return null;

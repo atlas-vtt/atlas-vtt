@@ -98,7 +98,7 @@ describe('sharing a collection in the Armarium', () => {
     expect(api.storedListing).toMatchObject({ kind: 'adventure', system: 'cairn', licence: 'cc-by-sa-4.0' });
     expect(commit).toHaveBeenCalledTimes(1);
     expect(committed).toHaveBeenCalledWith(RELEASE);
-    expect(session.snapshot()).toMatchObject({ step: 'done', published: { slug: 'blue-mouth-caves', held: false, recordFailed: null } });
+    expect(session.snapshot()).toMatchObject({ step: 'done', published: { held: false, recordFailed: null } });
   });
 
   it('waits for a sign-in, then asks whether the account may share', async () => {

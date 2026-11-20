@@ -5,7 +5,7 @@ import { Button } from '../../packages/components/primitives/button';
 import { formatFileSize } from '../../utils/fileSize';
 import { t } from '../../i18n';
 import { ArmariumHosts } from '../armariumHosts';
-import { ARMARIUM_MINE_URL, armariumListingUrl } from '../armariumUrls';
+import { ARMARIUM_MINE_URL } from '../armariumUrls';
 import type { AnyShareSession } from '../upload/anyShareSession';
 import { ItemShareSession } from '../upload/ItemShareSession';
 import type { ShareSnapshot } from '../upload/shareState';
@@ -33,8 +33,6 @@ interface PartsInput {
   account: AtlasAccount;
   accountState: AccountState;
   onClose: () => void;
-  /** The published listing's page is on the site, so Open in the Armarium finds it. */
-  listingPageReady: boolean;
 }
 
 const action = (label: string, onClick: () => void, primary = false, disabled = false): React.JSX.Element => (
@@ -74,7 +72,7 @@ function accountParts(snapshot: ShareSnapshot, session: AnyShareSession, account
 }
 
 /** The open step's title, content and actions; the dialog lays them out. */
-export function shareStepParts({ app, session, snapshot, account, accountState, onClose, listingPageReady }: PartsInput): StepParts {
+export function shareStepParts({ app, session, snapshot, account, accountState, onClose }: PartsInput): StepParts {
   const { step, busy, refusal, bundle } = snapshot;
   switch (step) {
     case 'bundle':
@@ -116,14 +114,14 @@ export function shareStepParts({ app, session, snapshot, account, accountState, 
           action(busy ? t('armariumShare.publishing') : t('armariumShare.publish'), () => void session.publish(), true, busy),
         ]),
       };
-    case 'done': {
-      const slug = snapshot.published?.slug ?? null;
+    case 'done':
+      // No way to the listing's page: it shows the new version only once the site is rebuilt. My uploads says where
+      // the version stands (Processing, then Published, or In review), in the Armarium behind or else in the browser.
       return {
         title: t('armariumShare.title.done'),
         body: <DoneStep snapshot={snapshot} />,
         actions: [
           action(t('common.close'), onClose),
-          // The site's page of the account's uploads, in the Armarium behind; in the browser where none is open.
           action(t('armariumShare.myUploads'), () => {
             const host = ArmariumHosts.forApp(app).target();
             if (host === null) {
@@ -132,13 +130,8 @@ export function shareStepParts({ app, session, snapshot, account, accountState, 
             }
             onClose();
             host.show(ARMARIUM_MINE_URL);
-          }),
-          ...(slug === null || snapshot.published?.held === true ? [] : [action(listingPageReady ? t('armariumShare.openListing') : t('armariumShare.preparingPage'), () => {
-            onClose();
-            ArmariumHosts.forApp(app).target()?.show(armariumListingUrl(slug));
-          }, true, !listingPageReady)]),
+          }, true),
         ],
       };
-    }
   }
 }

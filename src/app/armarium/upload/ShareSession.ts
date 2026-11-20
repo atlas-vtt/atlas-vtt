@@ -52,10 +52,6 @@ export class ShareSession extends ShareFlow<CollectionShareSnapshot> {
     return Promise.resolve(this.state.preview.collection.uid || null);
   }
 
-  protected knownUid(): string | null {
-    return this.state.preview.collection.uid || null;
-  }
-
   protected opened(ownListing: OwnListing | null): Partial<CollectionShareSnapshot> {
     return { preview: withPublishedFloor(this.deps.preview, ownListing) };
   }

@@ -83,12 +83,10 @@ export const armariumShare = {
   'armariumShare.publishing': 'Publishing…',
 
   'armariumShare.nameVersion': '{name}, version {version},',
-  'armariumShare.published': '{name} is published.',
-  'armariumShare.publishedPlain': 'Your collection is published.',
-  'armariumShare.pageSoon': 'Its page in the Armarium is ready within a few minutes. Until then, My uploads shows it as Processing.',
-  'armariumShare.openListing': 'Open in the Armarium',
+  'armariumShare.published': '{name} is uploaded.',
+  'armariumShare.publishedPlain': 'Your upload is done.',
+  'armariumShare.pageSoon': 'It is processing now and goes online in the Armarium within a few minutes. My uploads shows where it stands.',
   'armariumShare.myUploads': 'My uploads',
-  'armariumShare.preparingPage': 'Preparing its page…',
   'armariumShare.recordFailed': 'The Armarium published it, but Atlas could not record the release in this vault: {error}. Export the collection once more to record it.',
 
   'armariumShare.leaveTitle': 'Stop sharing?',
