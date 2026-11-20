@@ -22,7 +22,7 @@ function createViewport(width = 1200, height = 800, worldSize = 4000): Viewport 
 }
 
 function finishAnimation(viewport: Viewport): void {
-  for (let i = 0; i < 40; i++) viewport.update(16);
+  for (let i = 0; i < 80; i++) viewport.update(16);
 }
 
 afterEach(() => {

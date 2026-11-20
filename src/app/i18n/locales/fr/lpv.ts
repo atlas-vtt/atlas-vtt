@@ -1,6 +1,8 @@
 import type { Translation } from '../../types';
 
 export const lpv: Translation = {
+  'lpv.initiativeRows': 'Initiative de part et d\'autre de la table',
+  'lpv.initiativeRowsHint': 'La liste d\'initiative des joueurs forme une rangée en haut et une en bas, chacune lisible de son côté, pour un écran posé sur la table.',
   'lpv.shared': 'Local et en ligne',
   'lpv.playerWindow': 'Fenêtre joueurs',
   'lpv.online': 'Jeu en ligne',

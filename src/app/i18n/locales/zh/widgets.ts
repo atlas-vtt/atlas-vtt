@@ -2,7 +2,6 @@ import type { Translation } from '../../types';
 
 export const widgets: Translation = {
   'widgets.add': '添加小组件',
-  'widgets.autoSort': '按先攻自动排序',
   'widgets.colour': '小组件颜色',
   'widgets.delete': '删除小组件',
   'widgets.deleteEverywhere': '从每个场景删除',

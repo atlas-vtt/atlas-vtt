@@ -64,8 +64,6 @@ export interface AtlasSettings {
   diceColour: DiceColour;
   /** Face of the dice numerals and roll totals. Read with `getDiceLook`. */
   diceFont: DiceFont;
-  /** Whether the initiative lists start at the turn during a fight. Read with `initiativeLayout`. */
-  initiativeFromTurn: boolean;
   /** The GM's tracker is a compact list without portraits. Read with `showsCompactInitiative`. */
   initiativeCompact?: boolean;
   /** The edge the players' list stands at; `top` and `bottom` run it as a row. Read with `initiativeLayout`. */
@@ -76,8 +74,6 @@ export interface AtlasSettings {
   initiativeFacesPlayers?: boolean;
   /** Whether a turn change shows the turn banner. Read with `initiativeTurnOptions`. */
   initiativeBanner: boolean;
-  /** Whether the GM's view pans to the combatant whose turn begins. Read with `initiativeTurnOptions`. */
-  initiativeFollowTurn: boolean;
   /** Whether online players move their tokens in a fight only on their turn. Read with `initiativeTurnOptions`. */
   initiativeMovesOnTurn: boolean;
   /** Experimental features the GM switched on. Read with `isExperimentalOn`. */
@@ -139,10 +135,8 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
   dragDistance: DEFAULT_DRAG_DISTANCE,
   diceColour: DEFAULT_DICE_LOOK.colour,
   diceFont: DEFAULT_DICE_LOOK.font,
-  initiativeFromTurn: true,
   initiativeDock: 'right',
   initiativeBanner: true,
-  initiativeFollowTurn: false,
   initiativeMovesOnTurn: false,
   experimental: {},
   toolbar: {},

@@ -4,7 +4,7 @@
  */
 
 import type { TokenEntity } from '../types';
-import type { InitiativeState, InitiativeEntry, InitiativeConfig } from '../types/initiativeTypes';
+import type { InitiativeState, InitiativeEntry } from '../types/initiativeTypes';
 import { createDefaultInitiativeState } from '../types/initiativeTypes';
 import { DEFAULT_INITIATIVE_RULES } from '../gameSystems/initiativeRules';
 import { combatantModifier, ownModifier } from '../initiative/initiativeModifier';
@@ -44,7 +44,6 @@ export interface InitiativeSlice extends InitiativeTurnActions {
   moveToBack: (id: string) => void;
   /** Removes every combatant and ends the fight. */
   resetInitiative: () => void;
-  setInitiativeConfig: (config: Partial<InitiativeConfig>) => void;
 }
 
 /**
@@ -147,8 +146,8 @@ export function createInitiativeActions(
         // A number or modifier of its own replaces where Act Now placed it
         if (initiativeChanged || modifierChanged) delete entry.tieBreak;
 
-        // Re-sort if initiative value changed and autoSort is enabled
-        if (initiativeChanged && draft.initiative.config.autoSort) sortCombatants(draft.initiative);
+        // The order always follows the numbers
+        if (initiativeChanged) sortCombatants(draft.initiative);
       }
     }),
 
@@ -165,7 +164,7 @@ export function createInitiativeActions(
           const rolled = rolls.get(entry.id);
           if (rolled) applyRoll(entry, rolled);
         }
-        if (draft.initiative.config.autoSort) sortCombatants(draft.initiative);
+        sortCombatants(draft.initiative);
       });
     },
 
@@ -177,7 +176,7 @@ export function createInitiativeActions(
       set((draft) => {
         const current = draft.initiative.entries.find(e => e.id === id);
         if (current) applyRoll(current, rolled);
-        if (draft.initiative.config.autoSort) sortCombatants(draft.initiative);
+        sortCombatants(draft.initiative);
       });
     },
 
@@ -237,10 +236,6 @@ export function createInitiativeActions(
       delete draft.initiative.sides;
       delete draft.initiative.cards;
       clearSittingOut(draft.initiative);
-    }),
-
-    setInitiativeConfig: (config) => set((draft) => {
-      draft.initiative.config = { ...draft.initiative.config, ...config };
     }),
   };
 }

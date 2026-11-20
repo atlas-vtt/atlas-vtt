@@ -24,8 +24,6 @@ vi.mock('../../src/app/react/hooks/useMapConditions', () => ({ useMapConditions:
 
 import { InitiativeCard } from '../../src/app/react/components/InitiativeCard';
 import { initiativeCardMenu } from '../../src/app/react/components/initiativeCardMenu';
-import { DEFAULT_TURN_OPTIONS } from '../../src/app/initiative/turnOptions';
-import { initiativeTrackerOptions } from '../../src/app/react/components/initiativeTrackerOptions';
 
 const entry: InitiativeEntry = {
   id: 'entry-1', tokenId: 't1', name: 'Goblin', initiative: 12, initiativeModifier: 0,
@@ -62,14 +60,4 @@ describe('a combatant kept beside the map, in the tracker', () => {
     expect(labels(initiativeCardMenu(entry, goblin(), MODE, { ...actions, placeOnMap }))).not.toContain('Place on Map');
   });
 
-  it('is added from the tracker\'s options, which open the library\'s tokens', () => {
-    const addCombatant = vi.fn();
-    const entries = initiativeTrackerOptions(
-      { autoSort: true, bySides: false, empty: true, showNames: false, fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false, turn: DEFAULT_TURN_OPTIONS, online: false },
-      { setAutoSort: noop, setShowNames: noop, setFromTurn: noop, setEdges: noop, setFacesPlayers: noop, setTurn: noop, clear: noop, addCombatant },
-    );
-    const item = entries.find((candidate): candidate is Extract<ContextMenuEntry, { type: 'item' }> => candidate.type === 'item' && candidate.label === 'Add combatant…');
-    void item?.onClick();
-    expect(addCombatant).toHaveBeenCalledTimes(1);
-  });
 });

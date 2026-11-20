@@ -9,6 +9,8 @@ import { useAtlasUI } from '../../root/AtlasUIContext';
 import { useAtlasStore } from '../../ViewStoreContext';
 import { resourceToggleLabel } from './resourceToggleLabel';
 import { t } from '../../../i18n';
+import { DEFAULT_INITIATIVE_LAYOUT, PLAYERS_LIST_SHAPES, playersListShape } from '../../../initiative/initiativeLayout';
+import { DEFAULT_TURN_OPTIONS } from '../../../initiative/turnOptions';
 
 type LocalPlayerViewSettings = AtlasSettings['localPlayerView'];
 /** The settings that are switches; the sizes and durations are sliders of the palette's panel. */
@@ -58,9 +60,9 @@ export interface PlayerViewSwitch {
 
 /** What players see, as switches: the palette's player view settings and the player window bar's menu show the same ones. */
 export interface PlayerViewSwitches {
-  /** The widgets, initiative and dice rolls: the player window and online players alike. */
+  /** The widgets, initiative (and whether its list runs as rows across the table) and dice rolls: the player window and online players alike. */
   shared: PlayerViewSwitch[];
-  /** The players' cursors and whether players may draw: online play only, none while it is switched off. */
+  /** The players' cursors, whether players may draw and whether they move only on their turn: online play only, none while it is switched off. */
   online: PlayerViewSwitch[];
   /** The initiative list's pulse and turn banner in the player window. */
   initiative: PlayerViewSwitch[];
@@ -102,9 +104,28 @@ export function usePlayerViewSwitches(explicit?: SettingsService): PlayerViewSwi
     runInBackground(updateMapRules(app, source, { resources: next }), 'Saving what players see');
   };
 
+  // The players' list across the table: a row at the top and one at the bottom, each read from its side (a TV on the table)
+  const rows = playersListShape(settings?.initiativeLayout() ?? DEFAULT_INITIATIVE_LAYOUT) === 'horizontal';
+  const initiativeRows: PlayerViewSwitch = {
+    id: 'initiativeRows',
+    label: t('lpv.initiativeRows'),
+    hint: t('lpv.initiativeRowsHint'),
+    value: rows,
+    onToggle: () => settings?.setInitiativeLayout(PLAYERS_LIST_SHAPES[rows ? 'vertical' : 'horizontal']),
+  };
+  // A GM's choice for the table rather than a player view setting, but the player view's online settings are where it is looked for
+  const movesOnTurn = (settings?.initiativeTurnOptions() ?? DEFAULT_TURN_OPTIONS).movesOnTurn;
+  const movesOnTurnSwitch: PlayerViewSwitch = {
+    id: 'movesOnTurn',
+    label: t('initiative.movesOnTurn'),
+    hint: t('initiative.movesOnTurnHint'),
+    value: movesOnTurn,
+    onToggle: () => settings?.setInitiativeTurnOptions({ movesOnTurn: !movesOnTurn }),
+  };
+
   return {
-    shared: UI_SWITCHES.map(switchOf),
-    online: onlinePlay ? ONLINE_SWITCHES.map(switchOf) : [],
+    shared: UI_SWITCHES.flatMap((text) => (text.key === 'showInitiative' ? [switchOf(text), initiativeRows] : [switchOf(text)])),
+    online: onlinePlay ? [...ONLINE_SWITCHES.map(switchOf), movesOnTurnSwitch] : [],
     initiative: INITIATIVE_SWITCHES.map(switchOf),
     view4k: { id: 'view4k', label: t('lpv.view4k'), value: view4k, onToggle: () => settings?.setPlayerView4k(!view4k) },
     resources: source.kind === 'none' ? [] : slottedResources(resources).map(({ definition: resource, slot }) => ({

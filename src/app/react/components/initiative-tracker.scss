@@ -133,7 +133,8 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
 
 // The round at the list's foot, as the players' list writes it. It takes no room: the list runs to the panel's border
 // beneath it, and the round lies over the cards that pass, on a shade rising from the bottom edge that reads it. The
-// shade is eased over many stops, so it has no line where it begins.
+// shade is a shadow, dark in light themes too (the cards' own shades are), eased over many stops, so it has no line
+// where it begins.
 .atlas-initiative-tracker__round {
   @include initiative-round-name($font-ui-small);
   position: absolute;
@@ -146,17 +147,18 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   border-radius: 0 0 var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius);
   background: linear-gradient(
     to top,
-    var(--background-primary),
-    color-mix(in srgb, var(--background-primary) 98%, transparent) 22%,
-    color-mix(in srgb, var(--background-primary) 80%, transparent) 40%,
-    color-mix(in srgb, var(--background-primary) 52%, transparent) 58%,
-    color-mix(in srgb, var(--background-primary) 26%, transparent) 76%,
-    color-mix(in srgb, var(--background-primary) 8%, transparent) 90%,
+    rgb(0 0 0 / 0.82),
+    rgb(0 0 0 / 0.8) 22%,
+    rgb(0 0 0 / 0.66) 40%,
+    rgb(0 0 0 / 0.43) 58%,
+    rgb(0 0 0 / 0.21) 76%,
+    rgb(0 0 0 / 0.07) 90%,
     transparent
   );
   text-align: center;
-  color: $round-accent;
-  text-shadow: 0 0 2px var(--background-primary), 0 0 8px var(--background-primary);
+  // A touch lighter than the accent, so a dark accent (a light theme's) still reads on the shadow
+  color: color-mix(in oklch, #{$round-accent}, #fff 25%);
+  text-shadow: 0 0 2px rgb(0 0 0 / 0.9), 0 0 8px rgb(0 0 0 / 0.7);
   // The cards beneath keep their clicks
   pointer-events: none;
 }

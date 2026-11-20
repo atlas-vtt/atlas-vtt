@@ -149,8 +149,10 @@ describe('a fight by sides', () => {
 describe('delaying a turn', () => {
   it('passes the turn on, waits outside the order, and acts before the combatant whose turn it is', () => {
     const store = fight(['a', 'b', 'c']);
-    store.getState().setInitiativeConfig({ autoSort: false });
+    // The order always follows the numbers: a, b, c
+    store.getState().updateInitiativeEntry(idOf(store, 'a'), { initiative: 14 });
     store.getState().updateInitiativeEntry(idOf(store, 'b'), { initiative: 12 });
+    store.getState().updateInitiativeEntry(idOf(store, 'c'), { initiative: 10 });
     store.getState().startCombat();
     expect(turn(store)).toEqual([1, 'a']);
     store.getState().delayInitiativeTurn(idOf(store, 'a'));

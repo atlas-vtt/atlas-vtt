@@ -11,7 +11,6 @@ import { defeatedCombatants } from '../../initiative/defeated';
 import { shownItems } from '../../initiative/listSegments';
 import { trackerSegments } from '../../initiative/trackerSegments';
 import { useInitiativeLayout } from '../../initiative/useInitiativeLayout';
-import { PLAYERS_LIST_SHAPES, playersListShape } from '../../initiative/initiativeLayout';
 import { useMapResources } from '../../resources/useMapResources';
 import { useInitiativeTokenSync } from '../../initiative/useInitiativeTokenSync';
 import { missingPartyEntries } from '../../initiative/party';
@@ -58,7 +57,7 @@ export const InitiativeTracker: React.FC = () => {
   const { app, view } = useAtlasUI();
   const settings = useAtlasSettings();
   const compact = settings?.showsCompactInitiative() ?? false;
-  const { layout, setLayout } = useInitiativeLayout();
+  const { layout } = useInitiativeLayout();
   // The tracker stands at the right edge: popups and tooltips open to its left
   const inward = 'left';
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
@@ -92,8 +91,6 @@ export const InitiativeTracker: React.FC = () => {
   const reorderInitiative = useAtlasStore((s) => s.reorderInitiative);
   const endCombat = useAtlasStore((s) => s.endCombat);
   const updateInitiativeEntry = useAtlasStore((s) => s.updateInitiativeEntry);
-  const openAssetManager = useAtlasStore((s) => s.openAssetManager);
-  const setInitiativeConfig = useAtlasStore((s) => s.setInitiativeConfig);
   const addToInitiative = useAtlasStore((s) => s.addToInitiative);
 
   // Turns pass defeated combatants by, as their cards show them now
@@ -177,24 +174,18 @@ export const InitiativeTracker: React.FC = () => {
     const button = event.currentTarget;
     const rect = button.getBoundingClientRect();
     const entries = initiativeTrackerOptions(
-      // Cards keep the order they were dealt in, so the Auto sort switch is disabled there as by sides
-      { autoSort: initiative.config.autoSort, bySides: bySides || byCards, empty: initiative.entries.length === 0, compact, fromTurn: layout.fromTurn,
-        playersList: playersListShape(layout),
+      { empty: initiative.entries.length === 0, compact,
         // Adds the players at the table; with none to add, opens the collection's party to set it up
         party: collectionId === null ? null : {
           label: party.length === 0 ? t('initiative.partySetUp') : missingParty.length > 0 ? t('initiative.partyAdd') : t('initiative.partyEdit'),
           onClick: () => (missingParty.length > 0 ? missingParty.forEach((entry) => addToInitiative(entry)) : setPartySettingsOpen(true)),
         },
-        turn: settings?.initiativeTurnOptions() ?? DEFAULT_TURN_OPTIONS, online: settings?.isExperimentalOn('onlinePlay') ?? false },
+        banner: (settings?.initiativeTurnOptions() ?? DEFAULT_TURN_OPTIONS).banner },
       {
-        setAutoSort: (autoSort) => setInitiativeConfig({ autoSort }),
         setCompact: (on) => settings?.setCompactInitiative(on),
-        setFromTurn: (fromTurn) => setLayout({ fromTurn }),
-        setPlayersList: (shape) => setLayout(PLAYERS_LIST_SHAPES[shape]),
-        setTurn: (changes) => settings?.setInitiativeTurnOptions(changes),
+        setBanner: (banner) => settings?.setInitiativeTurnOptions({ banner }),
         clear: () => clearCombatants(store),
         resetNumbers: () => store.getState().resetInitiativeNumbers(),
-        addCombatant: () => openAssetManager('tokens', true),
         addEnemy: () => addToInitiative(nextTokenlessEnemy(store.getState().initiative.entries, app ? mapEnemyImage(app, store.getState().mapPath) : '')),
       },
     );

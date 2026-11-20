@@ -8,7 +8,6 @@ import { TURN_BANNER_MS, TurnBannerDisplay } from '../../src/app/initiative/bann
 import { PlayerTurnBanner } from '../../src/app/services/PlayerTurnBanner';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { initiativeTrackerOptions } from '../../src/app/react/components/initiativeTrackerOptions';
-import { DEFAULT_TURN_OPTIONS } from '../../src/app/initiative/turnOptions';
 import { DEFAULT_SETTINGS } from '../../src/app/services/atlasSettings';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { setIcon } from 'obsidian';
@@ -167,24 +166,23 @@ describe('the banners of a fight\'s start and end', () => {
 });
 
 describe('the tracker\'s turn options', () => {
-  const state = { autoSort: true, bySides: false, empty: false, showNames: false, fromTurn: true, dock: 'right' as const, edges: ['right' as const], facesPlayers: false, turn: DEFAULT_TURN_OPTIONS };
-  const actions = { setAutoSort: vi.fn(), setShowNames: vi.fn(), setFromTurn: vi.fn(), setEdges: vi.fn(), setFacesPlayers: vi.fn(), setTurn: vi.fn(), clear: vi.fn() };
-  const labels = (online: boolean): string[] => initiativeTrackerOptions({ ...state, online }, actions).flatMap((item) => (item.type === 'item' ? [item.label] : []));
-
-  it('switch the banner (on by default) and following (off), and moves on the turn only with online play', () => {
-    expect(labels(false)).toEqual(expect.arrayContaining(['Turn banner', 'Follow the turn']));
-    expect(labels(false)).not.toContain('Players move only on their turn');
-    expect(labels(true)).toContain('Players move only on their turn');
-    const banner = initiativeTrackerOptions({ ...state, online: false }, actions).find((item) => item.type === 'item' && item.label === 'Turn banner');
+  it('switch the banner (on by default); the view always follows the turn, and moving on one\'s turn is the player view\'s', () => {
+    const setBanner = vi.fn();
+    const entries = initiativeTrackerOptions({ empty: false, compact: false, party: null, banner: true }, { setCompact: vi.fn(), setBanner, clear: vi.fn(), resetNumbers: vi.fn(), addEnemy: vi.fn() });
+    const labels = entries.flatMap((item) => (item.type === 'item' ? [item.label] : []));
+    expect(labels).not.toContain('Follow the turn');
+    expect(labels).not.toContain('Players move only on their turn');
+    const banner = entries.find((item) => item.type === 'item' && item.label === 'Turn banner');
     expect(banner?.type === 'item' && banner.checked).toBe(true);
     if (banner?.type === 'item') banner.onClick?.();
-    expect(actions.setTurn).toHaveBeenCalledWith({ banner: false });
+    expect(setBanner).toHaveBeenCalledWith(false);
   });
 
-  it('are kept in Atlas\' settings: the banner on unless switched off, the others off unless switched on', () => {
+  it('are kept in Atlas\' settings: the banner on unless switched off, moving on one\'s turn off unless switched on', () => {
     const settings = new SettingsService(createInMemoryApp().app);
-    expect(settings.initiativeTurnOptions()).toEqual({ banner: true, followTurn: false, movesOnTurn: false });
-    settings.setInitiativeTurnOptions({ followTurn: true, movesOnTurn: true });
-    expect(settings.initiativeTurnOptions()).toEqual({ banner: true, followTurn: true, movesOnTurn: true });
+    expect(settings.initiativeTurnOptions()).toEqual({ banner: true, movesOnTurn: false });
+    settings.setInitiativeTurnOptions({ movesOnTurn: true });
+    expect(settings.initiativeTurnOptions()).toEqual({ banner: true, movesOnTurn: true });
   });
 });
+

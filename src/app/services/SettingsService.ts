@@ -402,7 +402,8 @@ export class SettingsService {
     const dock = readListEdge(this.settings.initiativeDock);
     const edges = readListEdges(this.settings.initiativeEdges, dock);
     return {
-      fromTurn: this.settings.initiativeFromTurn !== false,
+      // During a fight the lists always start at the turn
+      fromTurn: true,
       // An older version may have moved the list since: the dock it wrote counts among the edges
       dock: edges.includes(dock) ? dock : edges[0] ?? dock,
       edges,
@@ -413,23 +414,21 @@ export class SettingsService {
   /** The GM's choices go into the synced settings. */
   setInitiativeLayout(changes: Partial<InitiativeLayout>): void {
     const current = this.initiativeLayout();
-    const { fromTurn = current.fromTurn, facesPlayers = current.facesPlayers } = changes;
+    const { facesPlayers = current.facesPlayers } = changes;
     // One edge chosen alone is the list's only edge; edges chosen keep the dock among them, as its first where it left them
     const edges = changes.edges ?? (changes.dock !== undefined ? [changes.dock] : current.edges);
     const dock = changes.dock ?? (edges.includes(current.dock) ? current.dock : edges[0] ?? current.dock);
-    if (fromTurn === current.fromTurn && dock === current.dock && facesPlayers === current.facesPlayers && edges.join() === current.edges.join()) return;
-    this.settings.initiativeFromTurn = fromTurn;
+    if (dock === current.dock && facesPlayers === current.facesPlayers && edges.join() === current.edges.join()) return;
     this.settings.initiativeDock = dock;
     if (edges.length > 1 || this.settings.initiativeEdges !== undefined) this.settings.initiativeEdges = [...edges];
     if (facesPlayers || this.settings.initiativeFacesPlayers !== undefined) this.settings.initiativeFacesPlayers = facesPlayers;
     this.commit();
   }
 
-  /** What a turn change does: the banner is on unless the file says `false`, the others off unless it says `true`. */
+  /** What a turn change does: the banner is on unless the file says `false`, moving only on one's turn off unless it says `true`. */
   initiativeTurnOptions(): InitiativeTurnOptions {
     return {
       banner: this.settings.initiativeBanner !== false,
-      followTurn: this.settings.initiativeFollowTurn === true,
       movesOnTurn: this.settings.initiativeMovesOnTurn === true,
     };
   }
@@ -437,9 +436,8 @@ export class SettingsService {
   setInitiativeTurnOptions(changes: Partial<InitiativeTurnOptions>): void {
     const next = { ...this.initiativeTurnOptions(), ...changes };
     const current = this.initiativeTurnOptions();
-    if (next.banner === current.banner && next.followTurn === current.followTurn && next.movesOnTurn === current.movesOnTurn) return;
+    if (next.banner === current.banner && next.movesOnTurn === current.movesOnTurn) return;
     this.settings.initiativeBanner = next.banner;
-    this.settings.initiativeFollowTurn = next.followTurn;
     this.settings.initiativeMovesOnTurn = next.movesOnTurn;
     this.commit();
   }
