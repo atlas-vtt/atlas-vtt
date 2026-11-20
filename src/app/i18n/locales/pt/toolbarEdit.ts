@@ -33,6 +33,7 @@ export const toolbarEdit: Translation = {
   'toolbarEdit.dragHere': 'Arraste uma ferramenta para cá para ocultá-la',
   'toolbarEdit.undoReset': 'Desfazer redefinição',
   'toolbarEdit.resetToolbar': 'Redefinir barra',
+  'toolbarEdit.showOnHover': 'Mostrar a barra ao passar o cursor',
   'toolbarEdit.showOnToolbar': 'Mostrar na barra',
   'toolbarEdit.hint.tray': 'Enter a coloca de volta na barra.',
   'toolbarEdit.hint.undoBar': 'Delete a oculta.',

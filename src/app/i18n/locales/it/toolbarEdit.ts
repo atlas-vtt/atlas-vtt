@@ -31,6 +31,7 @@ export const toolbarEdit = {
   "toolbarEdit.dragHere": "Trascina qui uno strumento per nasconderlo",
   "toolbarEdit.undoReset": "Annulla reimpostazione",
   "toolbarEdit.resetToolbar": "Reimposta barra degli strumenti",
+  "toolbarEdit.showOnHover": "Mostra la barra al passaggio del mouse",
   "toolbarEdit.showOnToolbar": "Mostra sulla barra degli strumenti",
   "toolbarEdit.help.label": "Scorciatoie da tastiera",
   "toolbarEdit.help.description": "Tutti i tasti che Atlas conosce su una mappa, in un’unica scheda.",
