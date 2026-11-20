@@ -55,9 +55,10 @@ function scene(): Kept {
 }
 
 const START = [{ x: 105, y: 105 }, { x: 315, y: 105 }];
-/** The badges at the measurements' origins, and the dots at the areas' far ends. */
+/** The badges at the measurements' origins, the dots at the areas' far ends, and the turn handles beyond them. */
 const badges = (s: MeasureScene): Container[] => s.measure.handles.layer.getChildByLabel('measure-origin-handles')?.children ?? [];
 const ends = (s: MeasureScene): Container[] => s.measure.handles.layer.getChildByLabel('measure-end-handles')?.children ?? [];
+const turns = (s: MeasureScene): Container[] => s.measure.handles.layer.getChildByLabel('measure-turn-handles')?.children ?? [];
 /** Lets a cancelled drag's undo step close, which waits for the store write that cancelled it. */
 const settled = (): Promise<void> => Promise.resolve();
 
@@ -382,9 +383,12 @@ describe('the handles and the players', () => {
     expect(layer.children.map(({ position }) => [position.x, position.y])).toEqual([[105, 105], [525, 525]]);
     // The cone, an area, has a second handle at its far end; the ruler has none.
     expect(ends(s).map(({ position }) => [position.x, position.y])).toEqual([[665, 525]]);
+    // The cone has a turn handle next to its far end; the ruler has none.
+    expect(turns(s).map(({ position }) => [position.x, position.y])).toEqual([[665, 541]]);
     press(105, 105);
     move(258, 183);
     up();
+    expect(turns(s).map(({ position }) => [position.x, position.y])).toEqual([[665, 541]]);
     expect(layer.children.map(({ position }) => [position.x, position.y])).toEqual([[245, 175], [525, 525]]);
     // Handles keep their size on screen: twice the world pixels at half the zoom, where a press reaches twice as far.
     expect(layer.children.map(({ scale }) => scale.x)).toEqual([1, 1]);
@@ -400,6 +404,18 @@ describe('the handles and the players', () => {
     s.store.getState().deleteMeasure(other);
     expect(layer.children).toHaveLength(0);
     expect(ends(s)).toHaveLength(0);
+    expect(turns(s)).toHaveLength(0);
+  });
+
+  it('keep the turn handle at its distance on screen when the zoom changes, and have none for a circle or a ruler', () => {
+    const { s } = scene();
+    s.store.getState().addMeasure({ shape: 'circle', points: [{ x: 525, y: 245 }, { x: 665, y: 245 }] });
+    s.store.getState().addMeasure({ shape: 'cone', points: [{ x: 525, y: 525 }, { x: 665, y: 525 }] });
+    expect(turns(s)).toHaveLength(1);
+    s.viewport.scale.set(0.5);
+    s.viewport.emit('zoomed', { viewport: s.viewport, type: 'wheel' });
+    expect(turns(s).map(({ position }) => [position.x, position.y])).toEqual([[665, 525 + 32]]);
+    expect(turns(s).map(({ scale }) => scale.x)).toEqual([2]);
   });
 });
 
@@ -544,5 +560,64 @@ describe('the handle at an area\'s far end', () => {
     expect(s.store.getState().measurePopover).toBeNull();
     expect(circle()?.points).toEqual(CIRCLE);
     expect(steps()).toBe(0);
+  });
+});
+
+describe('the turn handle', () => {
+  const CONE = [{ x: 525, y: 385 }, { x: 665, y: 385 }];
+
+  /** The scene's ruler and a kept cone of two cells from (525, 385), its turn handle at (665, 401). */
+  function withCone(): Kept & { cone: () => KeptMeasure | undefined; coneId: string } {
+    const kept = scene();
+    const coneId = kept.s.store.getState().addMeasure({ shape: 'cone', points: CONE.map((point) => ({ ...point })) })!;
+    getHistoryStore(kept.s.store)!.getState().clear();
+    return { ...kept, coneId, cone: () => kept.s.store.getState().objects.measures?.[coneId] };
+  }
+
+  it('turns the area about its origin without changing its size, as one undo step', () => {
+    const { cone, press, move, up, steps, undo } = withCone();
+    expect(press(665, 401)).toBe(true);
+    move(600, 500);
+    // The handle is brought to where a quarter turn about the origin puts it: the cone as long as before.
+    move(509, 525);
+    const [origin, end] = cone()!.points;
+    expect(origin).toEqual({ x: 525, y: 385 });
+    expect(end!.x).toBeCloseTo(525);
+    expect(end!.y).toBeCloseTo(525);
+    // Not in whole cells: a turn that lands between two cells' lines is kept as it is.
+    move(600, 450);
+    expect(Math.hypot(cone()!.points[1]!.x - 525, cone()!.points[1]!.y - 385)).toBeCloseTo(140, 6);
+    up();
+    expect(steps()).toBe(1);
+    undo();
+    expect(cone()?.points).toEqual(CONE);
+  });
+
+  it('is not on a kept ruler, whose distance would read another turned', () => {
+    const { s, ruler, press } = scene();
+    expect(press(331, 105)).toBe(false);
+    expect(turns(s)).toHaveLength(0);
+    expect(ruler()?.points).toEqual(START);
+  });
+
+  it('is put back by Escape and leaves no undo step; a click on it opens the popover', async () => {
+    const { s, coneId, cone, press, move, up, steps } = withCone();
+    press(665, 401);
+    move(509, 525);
+    expect(s.measure.handles.handleEscape()).toBe(true);
+    await settled();
+    expect(cone()?.points).toEqual(CONE);
+    up();
+    expect(steps()).toBe(0);
+    press(665, 401);
+    up();
+    expect(s.store.getState().measurePopover).toBe(coneId);
+  });
+
+  it('is not there for a circle', () => {
+    const { s, press } = scene();
+    s.store.getState().addMeasure({ shape: 'circle', points: CONE.map((point) => ({ ...point })) });
+    expect(press(665, 401)).toBe(false);
+    expect(turns(s)).toHaveLength(0);
   });
 });

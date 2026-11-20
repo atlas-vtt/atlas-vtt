@@ -1,8 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import type { GridGeometry } from '../../../src/app/grid/gridDistance';
-import { areaResizedBy, measureMovedBy } from '../../../src/app/measure/measureMove';
+import { areaResizedBy, measureMovedBy, measureTurnedBy } from '../../../src/app/measure/measureMove';
 import type { KeptMeasure } from '../../../src/app/measure/measureTypes';
-import { MEASURE_END_HANDLE_HIT_RADIUS, MEASURE_HANDLE_HIT_RADIUS, measureHandleAt, measureHandleLook } from '../../../src/app/pixi/measure/measureHandle';
+import {
+  MEASURE_END_HANDLE_HIT_RADIUS,
+  MEASURE_HANDLE_HIT_RADIUS,
+  MEASURE_TURN_HANDLE_HIT_RADIUS,
+  MEASURE_TURN_HANDLE_OFFSET,
+  measureHandleAt,
+  measureHandleLook,
+  measureTurnHandlePoint,
+} from '../../../src/app/pixi/measure/measureHandle';
+import { handleDrag } from '../../../src/app/pixi/measure/measureHandleDrag';
+import { mapMarkerScale } from '../../../src/app/pixi/utils/mapMarkerScale';
 
 const SQUARES: GridGeometry = { type: 'square', size: 70, offsetX: 0, offsetY: 0 };
 const HEXES: GridGeometry = { type: 'hex-vertical', size: 70, offsetX: 0, offsetY: 0 };
@@ -127,5 +137,95 @@ describe('areaResizedBy', () => {
     expect(areaResizedBy(CIRCLE.points, { x: -130, y: 0 }, SQUARES)).toEqual([{ x: 525, y: 105 }, { x: 595, y: 105 }]);
     expect(areaResizedBy(CIRCLE.points, { x: -130, y: 4 }, SQUARES, true)).toEqual([{ x: 525, y: 105 }, { x: 535, y: 109 }]);
     expect(areaResizedBy(CIRCLE.points, { x: -140, y: 0 }, null)).toEqual([{ x: 525, y: 105 }, { x: 665, y: 105 }]);
+  });
+});
+
+describe('the turn handle', () => {
+  const CONE = kept('cone', 'cone', [[105, 105], [105, 245]]);
+  const reach = MEASURE_TURN_HANDLE_OFFSET * mapMarkerScale(1);
+
+  it('stands beside an area\'s far end, to the right of it as seen from the origin, a fixed distance away on screen', () => {
+    // From (105, 105) looking down to (105, 245), the right hand is the screen's left.
+    const cone = measureTurnHandlePoint(CONE, 1)!;
+    expect(cone.x).toBeCloseTo(105 - reach);
+    expect(cone.y).toBeCloseTo(245);
+    const slanted = measureTurnHandlePoint(kept('slanted', 'line', [[105, 105], [315, 315]]), 1)!;
+    expect(Math.hypot(slanted.x - 315, slanted.y - 315)).toBeCloseTo(reach);
+    // Square to the way the area points, so along its edge there: right of it is down and to the left.
+    expect((slanted.x - 315) * (315 - 105) + (slanted.y - 315) * (315 - 105)).toBeCloseTo(0);
+    expect(slanted.x).toBeLessThan(315);
+    expect(slanted.y).toBeGreaterThan(315);
+    const zoomed = measureTurnHandlePoint(CONE, 2)!;
+    expect(105 - zoomed.x).toBeCloseTo(reach * mapMarkerScale(2) / mapMarkerScale(1));
+  });
+
+  it('is not there for a circle, nor for a ruler (its distance follows the grid\'s diagonals, so a turned one would read another), nor for an area whose points lie on each other', () => {
+    expect(measureTurnHandlePoint(CIRCLE, 1)).toBeNull();
+    expect(measureTurnHandlePoint(RULER, 1)).toBeNull();
+    expect(measureTurnHandlePoint(kept('flat', 'cone', [[105, 105], [105, 105]]), 1)).toBeNull();
+    expect(measureTurnHandlePoint(kept('none', 'ruler', []), 1)).toBeNull();
+  });
+
+  it('takes a press on itself, apart from the end handle and the origin', () => {
+    const at = measureTurnHandlePoint(CONE, 1)!;
+    expect(measureHandleAt([CONE], { x: at.x - MEASURE_TURN_HANDLE_HIT_RADIUS, y: at.y }, 1)).toEqual({ id: 'cone', part: 'turn' });
+    expect(measureHandleAt([CONE], { x: at.x - MEASURE_TURN_HANDLE_HIT_RADIUS - 1, y: at.y }, 1)).toBeNull();
+    expect(measureHandleAt([CONE], { x: 105, y: 245 }, 1)).toEqual({ id: 'cone', part: 'end' });
+    expect(measureHandleAt([CONE], { x: 105, y: 105 }, 1)).toEqual({ id: 'cone', part: 'origin' });
+    expect(measureHandleAt([RULER], { x: 315 + reach, y: 315 }, 1)).toBeNull();
+  });
+
+  it('lifts by itself on hover and drag', () => {
+    const theme = { background: 0x2a2a2a, stroke: 0xffffff, accent: 0x4da6ff };
+    const look = measureHandleLook(CONE, { hovered: 'turn', selected: false, dragging: null }, theme);
+    expect([look.lift, look.endLift, look.turnLift > 1]).toEqual([1, 1, true]);
+  });
+});
+
+describe('measureTurnedBy', () => {
+  const pair = [{ x: 100, y: 100 }, { x: 100, y: 240 }];
+  const lengths = (points: readonly { x: number; y: number }[]): number[] => points.slice(1).map((point, index) => Math.hypot(point.x - points[index]!.x, point.y - points[index]!.y));
+
+  it('turns the far end about the first point by the angle the handle sweeps, smoothly', () => {
+    // The handle below the end, dragged to the left of the origin: a quarter turn.
+    const [origin, end] = measureTurnedBy(pair, { x: 100, y: 262 }, { x: -162, y: -162 });
+    expect(origin).toEqual({ x: 100, y: 100 });
+    expect(end!.x).toBeCloseTo(-40);
+    expect(end!.y).toBeCloseTo(100);
+    const [, small] = measureTurnedBy(pair, { x: 100, y: 262 }, { x: 5, y: 0 });
+    expect(small!.x).toBeGreaterThan(100);
+  });
+
+  it('never changes a length, however far the pointer goes: every distance between the points stays', () => {
+    const before = lengths(RULER.points);
+    for (const by of [{ x: 13, y: -7 }, { x: -300, y: 41 }, { x: 0, y: -500 }, { x: 999, y: 999 }]) {
+      const after = measureTurnedBy(RULER.points, { x: 335, y: 335 }, by);
+      lengths(after).forEach((length, index) => expect(length).toBeCloseTo(before[index]!, 6));
+      expect(after[0]).toEqual({ x: 105, y: 105 });
+    }
+  });
+
+  it('leaves the points as they were where there is no angle, and turns nothing without points', () => {
+    expect(measureTurnedBy(pair, { x: 100, y: 262 }, { x: 0, y: -162 })).toEqual(pair);
+    expect(measureTurnedBy(pair, { x: 100, y: 100 }, { x: 5, y: 5 })).toEqual(pair);
+    expect(measureTurnedBy([], { x: 1, y: 1 }, { x: 5, y: 5 })).toEqual([]);
+  });
+});
+
+describe('handleDrag of the turn handle', () => {
+  const cone = kept('cone', 'cone', [[105, 105], [105, 245]]);
+
+  it('only turns: the length stays, whatever the grid snaps to, and a cancelled drag restores the points', () => {
+    const from = measureTurnHandlePoint(cone, 1)!;
+    const drag = handleDrag(cone, 'turn', () => SQUARES, null, from)!;
+    const points = drag.changes({ x: -83, y: -61 }, false).points!;
+    expect(Math.hypot(points[1]!.x - points[0]!.x, points[1]!.y - points[0]!.y)).toBeCloseTo(140);
+    expect(drag.restore.points).toEqual(cone.points);
+  });
+
+  it('has no drag without the place the handle was grabbed at, and none for an aura', () => {
+    expect(handleDrag(cone, 'turn', () => SQUARES, null)).toBeNull();
+    const aura = { ...kept('aura', 'circle', [[105, 105], [175, 105]]), follows: 'token', aura: 5 };
+    expect(handleDrag(aura, 'turn', () => SQUARES, null, { x: 0, y: 0 })).toBeNull();
   });
 });
