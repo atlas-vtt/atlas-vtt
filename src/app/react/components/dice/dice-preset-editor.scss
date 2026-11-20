@@ -38,7 +38,8 @@ $editor-control: $button-height-l;
   }
 }
 
-// The name, as a field the card's head is: one edge with hover and focus, as the save card's; Done at its end.
+// The name, as a field the card's head is: one edge with hover and focus, as the save card's; Done at its end, a
+// control of its own: under the pointer it alone lights up.
 .atlas-dice-preset-editor__head {
   display: flex;
   align-items: center;
@@ -46,7 +47,7 @@ $editor-control: $button-height-l;
   border-radius: var(--atlas-bar-control-radius);
   transition: border-color $transition-fast $transition-ease, background-color $transition-fast $transition-ease;
 
-  @include atlas-hover('&:hover:not(:focus-within)') {
+  @include atlas-hover('&:hover:not(:focus-within):not(:has(.atlas-dice-preset-editor__done:hover))') {
     background: var(--background-modifier-hover);
   }
 

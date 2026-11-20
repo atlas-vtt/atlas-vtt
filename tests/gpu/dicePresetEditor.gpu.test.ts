@@ -99,6 +99,19 @@ describe('a saved roll\'s editor', () => {
     expect(Math.abs((editor.right - rulesSwitch.right) - (bonus.left - editor.left))).toBeLessThan(1);
     expect(bonus.left - editor.left - border).toBeCloseTo(parseFloat(cs.paddingLeft), 0);
 
+    // Done is a control of its own: under the pointer it alone lights up, not the name's field.
+    const head = document.querySelector('.atlas-dice-preset-editor__head')!;
+    const resting = getComputedStyle(head).backgroundColor;
+    const done = centreOf(document.querySelector('.atlas-dice-preset-editor__done')!);
+    await mouse.hover(done.x, done.y);
+    await settle(300);
+    expect(getComputedStyle(head).backgroundColor).toBe(resting);
+    expect(getComputedStyle(document.querySelector('.atlas-dice-preset-editor__done')!).backgroundColor).not.toBe(resting);
+    const name = document.querySelector('.atlas-dice-preset-editor__name')!.getBoundingClientRect();
+    await mouse.hover(name.left + 20, (name.top + name.bottom) / 2);
+    await settle(300);
+    expect(getComputedStyle(head).backgroundColor).not.toBe(resting);
+
     const die = centreOf(document.querySelector('.atlas-dice-preset-editor .atlas-dice-lab__die')!);
     await mouse.click(die.x, die.y);
     await settle();

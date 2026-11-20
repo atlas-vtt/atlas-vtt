@@ -199,11 +199,12 @@ $item-control: calc(#{$button-height-l} + #{$spacing-s});
   }
 }
 
-// A saved roll lights up whole under the pointer, its ⋯ included, and stays lit while its menu is open.
+// A saved roll lights up whole under the pointer, the ⋯'s place included, and stays lit while its menu is open. The ⋯
+// is a control of its own: under the pointer it alone lights up.
 .atlas-dice-presets__item {
   transition: background-color $transition-fast $transition-ease;
 
-  @include atlas-hover {
+  @include atlas-hover('&:hover:not(:has(.atlas-dice-presets__more:hover))') {
     background: color-mix(in oklch, var(--background-primary), var(--text-normal) 7%);
   }
 
@@ -318,7 +319,8 @@ $item-control: calc(#{$button-height-l} + #{$spacing-s});
     animation-name: atlas-dice-fade-in;
   }
 
-  @include atlas-hover('&:hover:not(:focus-within)') {
+  // Its buttons are controls of their own: under the pointer they alone light up.
+  @include atlas-hover('&:hover:not(:focus-within):not(:has(.atlas-dice-presets__icon:hover))') {
     border-color: $field-edge-hover;
   }
 
