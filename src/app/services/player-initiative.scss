@@ -67,7 +67,6 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     z-index: -1;
     border-radius: inherit;
     pointer-events: none;
-    @include atlas-corner-shape;
   }
 
   // The theme's corner ivy (`lendThemeIvy`): the whole vine behind the surface, which lies at -1
