@@ -267,7 +267,7 @@ export abstract class ShareFlow<S extends ShareCommon> {
     }
     const uid = view.manifest?.uid ?? this.knownUid();
     const listing = uid ? await this.flow.api.ownListing(uid) : null;
-    this.set({ busy: false, submission: view, step: 'done', published: { slug: listing?.slug ?? null, held: view.state === 'held', recordFailed } });
+    this.set({ busy: false, submission: view, step: 'done', published: { slug: listing?.slug ?? null, uid: uid ?? null, version: view.manifest?.version ?? null, held: view.state === 'held', recordFailed } });
   }
 }
 

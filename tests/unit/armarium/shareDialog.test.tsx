@@ -18,6 +18,12 @@ const confirm = vi.hoisted(() => vi.fn<() => Promise<boolean>>());
 vi.mock('../../../src/app/ui/confirmDialog', () => ({ confirmAction: confirm }));
 vi.mock('obsidian', async (original) => ({ ...(await original<typeof import('obsidian')>()), requestUrl: vi.fn() }));
 
+/** The site's installable list as its build wrote it, naming version `version` of the listing `col-uid`. */
+function siteList(version: number): Awaited<ReturnType<typeof requestUrl>> {
+  const listing = { uid: 'col-uid', name: 'Blue Mouth Caves', creator: 'Mara', version, fileName: 'Blue Mouth Caves.zip', bytes: 1200, sha256: 'a'.repeat(64), downloadUrl: 'https://atlasvttusercontent.com/x.zip' };
+  return { status: 200, json: { format: 1, listings: [listing] } } as Awaited<ReturnType<typeof requestUrl>>;
+}
+
 const PREVIEW = {
   collection: { id: 'caves', uid: 'col-uid', name: 'Blue Mouth Caves', version: 2, settings: { systemPresetId: 'builtin:cairn' } },
   publisher: 'self', minimumVersion: 2, suggestedVersion: 3, cover: undefined, coverCandidates: [], assets: [], files: [], missing: [], fileSizes: new Map(),
@@ -35,7 +41,7 @@ let account: AtlasAccount;
 beforeEach(() => {
   token = 'tok';
   confirm.mockReset();
-  vi.mocked(requestUrl).mockReset().mockResolvedValue({ status: 200 } as Awaited<ReturnType<typeof requestUrl>>);
+  vi.mocked(requestUrl).mockReset().mockResolvedValue(siteList(3));
   account = AtlasAccount.open(app, {
     http: () => Promise.resolve({ status: 200, json: { user: { id: 'u', name: 'Mara', handle: 'mara' } } }),
     timers: { now: () => 0, setTimer: () => 0, clearTimer: () => undefined },
@@ -159,8 +165,9 @@ describe('the share dialog', () => {
     detach();
   });
 
-  it('offers the listing only once its page is built', async () => {
-    vi.mocked(requestUrl).mockResolvedValue({ status: 404 } as Awaited<ReturnType<typeof requestUrl>>);
+  it('offers the listing only once the site shows the version it published', async () => {
+    // The site's build still shows the version before: the page stands, without the new version.
+    vi.mocked(requestUrl).mockResolvedValue(siteList(2));
     const api = new FakeArmarium();
     api.own = { uid: 'col-uid', slug: 'blue-mouth-caves', format: 'collection', fields: null, newestVersion: null, coverUrl: null };
     const { session } = share(api);
@@ -175,12 +182,12 @@ describe('the share dialog', () => {
       await session.publish();
     });
     await vi.waitFor(() => expect(requestUrl).toHaveBeenCalled());
-    expect(vi.mocked(requestUrl).mock.calls[0]?.[0]).toMatchObject({ method: 'HEAD' });
+    expect(vi.mocked(requestUrl).mock.calls[0]?.[0]).toMatchObject({ url: expect.stringMatching(/^https:\/\/atlas-vtt\.dev\/api\/armarium\/v1\?built=\d+$/) as string });
     expect(button('Preparing its page…').disabled).toBe(true);
   });
 
   it('offers My uploads in the Armarium behind, where the published version shows as Processing until its page is built', async () => {
-    vi.mocked(requestUrl).mockResolvedValue({ status: 404 } as Awaited<ReturnType<typeof requestUrl>>);
+    vi.mocked(requestUrl).mockResolvedValue(siteList(2));
     const show = vi.fn();
     const detach = ArmariumHosts.forApp(app).attach({ show, review: () => undefined });
     const api = new FakeArmarium();
