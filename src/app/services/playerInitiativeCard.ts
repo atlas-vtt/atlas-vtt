@@ -57,9 +57,9 @@ export function renderPlayerCard(parent: HTMLElement, { entry, token }: Combatan
   // An entry without a token or a portrait (an enemy added by name, a player without a picture) has
   // nothing but its name to tell it apart; a token's name stays the GM's to show
   const shownName = name ?? (!art && entry.tokenId === undefined ? entry.name : null);
-  // What lies on the shade at the card's foot: conditions, the name, the hit points
+  // What lies on the shade at the card's foot: the name and the hit points; the conditions sit over its middle
   const foot = card.createDiv({ cls: 'atlas-player-initiative__foot' });
-  if (token.conditions?.length) renderConditions(card, foot, token.conditions);
+  if (token.conditions?.length) renderConditions(card, token.conditions);
   if (shownName !== null) foot.createSpan({ cls: 'atlas-player-initiative__name', text: shownName });
   const { hp } = token;
   if (hp && hp.max > 0) {
@@ -90,12 +90,12 @@ function renderDefeated(card: HTMLElement, overPortrait: boolean): void {
 
 /**
  * The conditions the map shows players on the token, or the tracker gave the combatant, each named for assistive
- * tech ("Frightened 2", "Poisoned, 2 turns left"). They lie at the card's foot: side by side, overlapping
+ * tech ("Frightened 2", "Poisoned, 2 turns left"). They sit over the middle of the card's foot, peeking out below it: side by side, overlapping
  * from three on (they are large, to be read across the table), and past `SHOWN_CONDITIONS` the rest as a count; one that lasts a number of turns shows what is left.
  */
-function renderConditions(card: HTMLElement, foot: HTMLElement, conditions: readonly CombatantCondition[]): void {
+function renderConditions(card: HTMLElement, conditions: readonly CombatantCondition[]): void {
   card.addClass('atlas-player-initiative__card--conditions');
-  const list = foot.createDiv({ cls: 'atlas-player-initiative__conditions', attr: { role: 'list', 'aria-label': t('playerInit.conditions') } });
+  const list = card.createDiv({ cls: 'atlas-player-initiative__conditions', attr: { role: 'list', 'aria-label': t('playerInit.conditions') } });
   if (conditions.length > 2) list.addClass('atlas-player-initiative__conditions--stacked');
   const shown = conditions.length > SHOWN_CONDITIONS ? conditions.slice(0, SHOWN_CONDITIONS - 1) : conditions;
   for (const condition of shown) {

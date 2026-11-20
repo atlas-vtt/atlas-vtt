@@ -300,6 +300,13 @@ describe('the players\' initiative list', () => {
           // with the card's bottom corners
           const hp = card.querySelector('.atlas-player-initiative__hp');
           if (!hp) continue;
+          // Conditions sit over the hit points and peek out below the card, inside the panel's inset
+          const badges = card.querySelector('.atlas-player-initiative__conditions');
+          if (badges) {
+            expect(box(badges).top).toBeLessThan(box(hp).bottom);
+            expect(box(badges).bottom).toBeGreaterThan(box(card).bottom);
+            expect(frame.bottom - parseFloat(getComputedStyle(panel).borderBottomWidth) - box(badges).bottom).toBeGreaterThanOrEqual(4 - 0.5);
+          }
           const border = parseFloat(getComputedStyle(card).borderTopWidth);
           const inset = box(hp).left - box(card).left - border;
           expect(inset).toBeCloseTo(4, 0);

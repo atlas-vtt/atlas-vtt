@@ -14,6 +14,8 @@ $banner-scale: var(--atlas-player-turn-banner-scale, 1);
 
 // A condition badge on a card, as `playerInitiativeCard.ts` draws it
 $badge: scaled(28px);
+// How far the badges peek out below their card, over its hit points; the list gives them that room
+$badge-peek: calc(#{$badge} * 0.4);
 
 // The list's cards stand $surface-inset inside its border and apart, so a card's $radius-m corner is concentric with the
 // panel's $surface-radius; a row's cards are as wide as the column's
@@ -491,11 +493,22 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
   }
 
-  // The conditions the map shows players on the token, as the GM's card draws them
+  // The conditions the map shows players on the token, as the GM's card draws them: over the middle of the card's foot
+  // and its hit points, peeking out below the card
   &__conditions {
+    position: absolute;
+    left: 50%;
+    bottom: calc(-1 * #{$badge-peek} - #{$border-width-s});
+    z-index: 3;
     display: flex;
     gap: $spacing-xs;
+    transform: translateX(-50%);
     pointer-events: none;
+  }
+
+  // The room the badges peek into: below a column's card, and below a row's cards while any of them has some
+  &__card--conditions {
+    margin-bottom: $badge-peek;
   }
 
   // Three and more overlap, each over the one before, so four with a count of turns stay inside the card, ringed in the
@@ -626,6 +639,15 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
 
   .atlas-player-initiative__card {
     width: $card-width;
+  }
+
+  // The badges peek into room the list gives below every card while any has some, so the cards stay level and square
+  .atlas-player-initiative__card--conditions {
+    margin-bottom: 0;
+  }
+
+  .atlas-player-initiative__list:has(.atlas-player-initiative__card--conditions) {
+    padding-bottom: $badge-peek;
   }
 
   // A round's name, then its cards (`renderRoundRow`); a slim line closes every round but the last
