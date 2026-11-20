@@ -3,12 +3,12 @@ export type PlayersListEdge = 'right' | 'top' | 'bottom';
 const PLAYERS_LIST_EDGES: readonly PlayersListEdge[] = ['right', 'top', 'bottom'];
 
 /**
- * How the initiative lists are laid out. `fromTurn` and the players' list's edges are the GM's choices, kept in
+ * How the initiative lists are laid out. The players' list's edges are the GM's choice (What players see), kept in
  * Atlas' settings and followed by the players' list. The GM's tracker always stands at the right edge:
  * the left one holds the dice log and the map's other controls.
  */
 export interface InitiativeLayout {
-  /** During a fight the lists start at the combatant whose turn it is and run on into the next round. */
+  /** During a fight the lists start at the combatant whose turn it is and run on into the next round: always, no longer a choice. */
   fromTurn: boolean;
   /** The edge the players' list stands at; across the top or bottom one it runs as a row. The first of `edges`. */
   dock: PlayersListEdge;

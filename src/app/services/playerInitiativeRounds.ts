@@ -16,8 +16,9 @@ function roundGroup(entries: HTMLElement, round: number): HTMLElement {
 
 /**
  * A row in turn order during a fight: the cards of this round and of the next each over their round's name, a
- * slim line between them in place of the column's divider, so the names move on with the cards. Returns the rows of
- * cards, this round's first; a round nobody is shown in is left out.
+ * slim line between them in place of the column's divider, so the names move on with the cards. The line is an
+ * element of its own, marked by its round, so it glides with the cards as the turn passes (`turnMotion.ts`). Returns
+ * the rows of cards, this round's first; a round nobody is shown in is left out.
  */
 export function renderRoundRow(entries: HTMLElement, segments: readonly ListSegment<Combatant>[], round: number, draw: (into: HTMLElement, segment: ListSegment<Combatant>) => void): HTMLElement[] {
   const rows = [roundGroup(entries, round)];
@@ -27,5 +28,10 @@ export function renderRoundRow(entries: HTMLElement, segments: readonly ListSegm
   }
   const shown = rows.filter((cards) => cards.childElementCount > 0);
   for (const cards of rows) if (cards.childElementCount === 0) cards.parentElement?.remove();
+  // The line that closes every round but the last
+  shown.slice(0, -1).forEach((cards) => {
+    const round = cards.parentElement?.querySelector('.atlas-player-initiative__round-label')?.getAttribute(TURN_KEY_ATTRIBUTE) ?? '';
+    cards.createDiv({ cls: 'atlas-player-initiative__round-end', attr: { 'aria-hidden': 'true', role: 'none', [TURN_KEY_ATTRIBUTE]: `${round}:end` } });
+  });
   return shown;
 }

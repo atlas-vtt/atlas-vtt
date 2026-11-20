@@ -12,7 +12,7 @@ const goblin = { id: 'g', kind: 'character', name: 'Goblin', x: 0, y: 0, imagePa
 
 function fight(): TurnStoreState {
   return {
-    initiative: { isActive: true, round: 1, currentIndex: 0, entries: [entry('a', 0, { tokenId: 'g' }), entry('b', 1)], config: { autoSort: true } } as TurnStoreState['initiative'],
+    initiative: { isActive: true, round: 1, currentIndex: 0, entries: [entry('a', 0, { tokenId: 'g' }), entry('b', 1)] } as TurnStoreState['initiative'],
     objects: { tokens: { g: { ...goblin } } },
   };
 }

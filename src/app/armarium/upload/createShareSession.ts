@@ -17,7 +17,7 @@ import { ItemShareSession } from './ItemShareSession';
 import { systemOfPreset, systemOfSharedPreset } from './listingDraft';
 import { ShareSession } from './ShareSession';
 import type { SharedItem } from './shareState';
-import type { ListingSystem } from './uploadContract';
+import type { SystemId } from './uploadContract';
 
 /** Why a wait ended early: the signal's own reason when it is an error. */
 const abortReason = (signal: AbortSignal): Error => (signal.reason instanceof Error ? signal.reason : new Error('Aborted'));
@@ -38,8 +38,8 @@ export function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-/** The system a collection's listing starts with: its built-in system's, else its own game system's name. */
-function collectionSystem(app: App, presetId: string | undefined): ListingSystem | null {
+/** The system a collection's listing starts with: its built-in system's, else the known system its own game system's name means. */
+function collectionSystem(app: App, presetId: string | undefined): SystemId | null {
   const builtIn = systemOfPreset(presetId);
   if (builtIn !== null || presetId === undefined) return builtIn;
   const entry = SystemPresetFiles.forApp(app)?.entries().find((each) => each.id === presetId);

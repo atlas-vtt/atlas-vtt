@@ -1,6 +1,8 @@
 import type { Translation } from '../../types';
 
 export const lpv: Translation = {
+  'lpv.initiativeRows': '桌子两侧的先攻',
+  'lpv.initiativeRowsHint': '玩家的先攻列表在顶部和底部各排一行，各自从自己那一侧阅读，适合平放在桌上的屏幕。',
   'lpv.shared': '本地与在线',
   'lpv.playerWindow': '玩家窗口',
   'lpv.online': '在线游戏',

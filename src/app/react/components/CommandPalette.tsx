@@ -126,8 +126,6 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   const updateWidget = useAtlasStore(state => state.updateWidget);
   const addWidget = useAtlasStore(state => state.addWidget);
   const removeWidget = useAtlasStore(state => state.removeWidget);
-  const initiative = useAtlasStore(state => state.initiative);
-  const setInitiativeConfig = useAtlasStore(state => state.setInitiativeConfig);
   const initiativeTrackerOpen = useAtlasStore(state => state.initiativeTrackerOpen);
   const setInitiativeTrackerOpen = useAtlasStore(state => state.setInitiativeTrackerOpen);
   const setDiceLogOpen = useAtlasStore(state => state.setDiceLogOpen);
@@ -966,8 +964,6 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
             addWidget={addWidget}
             removeWidget={removeWidget}
             sortedWidgets={sortedWidgets}
-            initiative={initiative}
-            setInitiativeConfig={setInitiativeConfig}
             initiativeTrackerOpen={initiativeTrackerOpen}
             setInitiativeTrackerOpen={setInitiativeTrackerOpen}
           />

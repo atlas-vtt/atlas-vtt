@@ -126,7 +126,7 @@ export type LicenceId = (typeof LICENCES)[number];
 export const SYSTEMS = ['any', 'cairn', 'coc7e', 'cyberpunkred', 'daggerheart', 'dnd5e', 'drawsteel', 'ose', 'pathfinder2e', 'shadowdark'] as const;
 export type SystemId = (typeof SYSTEMS)[number];
 
-/** The names the Armarium shows the known systems under; what a typed name is matched against (Atlas shows its translations). */
+/** The names the Armarium shows the known systems under; a shared game system's name is matched against them. */
 export const SYSTEM_NAMES: Readonly<Record<SystemId, string>> = {
   any: 'Any system',
   cairn: 'Cairn',
@@ -140,22 +140,12 @@ export const SYSTEM_NAMES: Readonly<Record<SystemId, string>> = {
   shadowdark: 'Shadowdark',
 };
 
-/** A listing's game system: a known system's id, or the name its creator typed for one the list lacks. */
-export type ListingSystem = string;
-
-/** A typed system name: one line of 2 to 40 characters, without links. */
-export const SYSTEM_LABEL: TextLimits = { min: 2, max: 40, maxLines: 1, maxLinks: 0 };
-
 /** What two system names are compared by: letters and digits only, in lower case ("Draw-Steel" is `drawsteel`). */
 export function systemKey(value: string): string {
   return value.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 }
 
-export function isKnownSystem(value: string): value is SystemId {
-  return SYSTEMS.some((known) => known === value);
-}
-
-/** The known system a typed name means, by its id or its name; the Armarium stores such a name as the id. */
+/** The known system a name means, by its id or its name. */
 export function knownSystemOf(value: string): SystemId | null {
   const key = systemKey(value);
   return key === '' ? null : SYSTEMS.find((id) => key === systemKey(id) || key === systemKey(SYSTEM_NAMES[id])) ?? null;
@@ -198,7 +188,7 @@ export const LISTING_TEXT = {
 /** What the creator chooses for a listing; name, version, notes and cover come from the bundle. */
 export interface ListingFields {
   kind: ListingKind;
-  system: ListingSystem | null;
+  system: SystemId | null;
   description: string;
   tags: TagId[];
   licence: LicenceId;

@@ -501,8 +501,8 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
     gap: $surface-inset;
   }
 
-  .atlas-player-initiative__round-group:not(:last-child) > .atlas-player-initiative__round-cards::after {
-    content: '';
+  // Its own element, so it glides with the cards (`renderRoundRow`)
+  .atlas-player-initiative__round-end {
     flex: 0 0 2px;
     border-radius: $radius-full;
     background: $round-line;

@@ -15,7 +15,7 @@ const state = vi.hoisted(() => ({
   objects: { tokens: {} as Record<string, unknown> },
   tokenSettings: { showInstanceBadges: true },
   nextTurn: vi.fn(), previousTurn: vi.fn(), reorderInitiative: vi.fn(), startCombat: vi.fn(), endCombat: vi.fn(),
-  updateInitiativeEntry: vi.fn(), resetInitiative: vi.fn(), setInitiativeConfig: vi.fn(),
+  updateInitiativeEntry: vi.fn(), resetInitiative: vi.fn(),
 }));
 const collection = vi.hoisted(() => ({ rules: { mode: 'turn-order', roll: '1d20', firstSide: 'players' } as InitiativeRules }));
 const opened = vi.hoisted(() => ({ entries: [] as ContextMenuEntry[] }));
@@ -60,7 +60,7 @@ function fight(turn = 2): void {
   state.objects.tokens = Object.fromEntries(names.map((name) => [name, token(name)]));
   state.initiative = {
     entries: names.map((name, index) => entryOf(name, index, { isActive: index === turn })),
-    isActive: true, round: 2, currentIndex: turn, config: { autoSort: true },
+    isActive: true, round: 2, currentIndex: turn,
   } as InitiativeState;
 }
 
@@ -68,13 +68,6 @@ function fight(turn = 2): void {
 const words = (container: HTMLElement): string[] =>
   [...container.querySelectorAll('.atlas-initiative-card, .atlas-initiative-round')].map((element) =>
     element.classList.contains('atlas-initiative-round') ? `|${element.getAttribute('aria-label') ?? ''}|` : element.getAttribute('aria-label') ?? '');
-
-function option(label: string): ContextMenuEntry & { type: 'item' } {
-  fireEvent.click(screen.getByRole('button', { name: 'Tracker options' }));
-  const item = opened.entries.find((entry) => entry.type === 'item' && entry.label === label);
-  if (item?.type !== 'item') throw new Error(`no "${label}" option`);
-  return item;
-}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -105,13 +98,7 @@ describe('a tracker that starts at the turn', () => {
     expect(order).toEqual(['Opponents', 'Round 3', 'Players']);
   });
 
-  it('is switched in the tracker\'s options', () => {
-    render(<InitiativeTracker />);
-    const item = option('Turn on top');
-    expect(item.checked).toBe(true);
-    void item.onClick?.();
-    expect(layout.set).toHaveBeenCalledWith({ fromTurn: false });
-  });
+
 });
 
 describe('the tracker\'s controls', () => {
@@ -134,27 +121,11 @@ describe('the tracker\'s controls', () => {
 });
 
 describe('where the lists stand', () => {
-  it('keeps the tracker at the right edge, and lays the players\' list out as a column or as rows from its options', () => {
+  it('keeps the tracker at the right edge, beside the dice log', () => {
     state.isDiceLogOpen = true;
-    const { container, rerender } = render(<InitiativeTracker />);
+    const { container } = render(<InitiativeTracker />);
     expect(container.querySelector('.atlas-initiative-tracker--left')).toBeNull();
     expect(container.querySelector('.atlas-initiative-tracker--beside-log')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Tracker options' }));
-    const labels = opened.entries.flatMap((entry) => (entry.type === 'item' ? [entry.label] : []));
-    expect(labels).not.toContain('Tracker on the left');
-    const list = opened.entries.find((entry) => entry.type === 'submenu' && entry.label === 'Players\' list');
-    if (list?.type !== 'submenu' || !Array.isArray(list.children)) throw new Error('no "Players\' list" choice');
-    expect(list.children.map((entry) => (entry.type === 'item' ? [entry.label, entry.checked] : null))).toEqual([['Vertical', true], ['Horizontal', false]]);
-    const horizontal = list.children[1];
-    if (horizontal?.type !== 'item') throw new Error('no horizontal');
-    void horizontal.onClick?.();
-    expect(layout.set).toHaveBeenCalledWith({ edges: ['top', 'bottom'], facesPlayers: true });
-    layout.edges = ['top', 'bottom'];
-    rerender(<InitiativeTracker />);
-    fireEvent.click(screen.getByRole('button', { name: 'Tracker options' }));
-    const again = opened.entries.find((entry) => entry.type === 'submenu' && entry.label === 'Players\' list');
-    if (again?.type !== 'submenu' || !Array.isArray(again.children)) throw new Error('no "Players\' list" choice');
-    expect(again.children.map((entry) => (entry.type === 'item' ? entry.checked : null))).toEqual([false, true]);
     state.isDiceLogOpen = false;
   });
 });

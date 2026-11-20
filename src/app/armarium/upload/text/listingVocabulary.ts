@@ -1,5 +1,5 @@
 import { t } from '../../../i18n';
-import { isKnownSystem, type LicenceId, type ListingKind, type ListingSystem, type TagGroupId, type TagId } from '../uploadContract';
+import type { LicenceId, ListingKind, SystemId, TagGroupId, TagId } from '../uploadContract';
 
 /** The words a listing is described with, as the Armarium's share page names them. */
 
@@ -21,10 +21,9 @@ export function kindLine(kind: ListingKind): string {
   return t(`armariumListing.kindLine.${kind}`);
 }
 
-/** A game system's name: a known one's in the active language, a typed one as its creator wrote it; null names none. */
-export function systemLabel(system: ListingSystem | null): string {
-  if (system === null) return t('armariumListing.system.none');
-  return isKnownSystem(system) ? t(`armariumListing.system.${system}`) : system;
+/** A game system's name; null is a listing that names none. */
+export function systemLabel(system: SystemId | null): string {
+  return system === null ? t('armariumListing.system.none') : t(`armariumListing.system.${system}`);
 }
 
 export function licenceLabel(licence: LicenceId): string {

@@ -96,7 +96,7 @@ describe('a creature with a statblock but no hit points in the initiative', () =
         state: {
           mapPath: SCENE, initiativeTrackerOpen: true,
           objects: { tokens: { burrower: token('burrower'), bear: token('bear', { current: 3, max: 6 }) } },
-          initiative: { entries: [entry('burrower'), entry('bear')], currentIndex: -1, round: 0, isActive: false, config: { autoSort: true }, removedTokenIds: [] },
+          initiative: { entries: [entry('burrower'), entry('bear')], currentIndex: -1, round: 0, isActive: false, removedTokenIds: [] },
         },
       }),
     });

@@ -14,12 +14,10 @@ describe('the Atlas settings an online table follows', () => {
     expect(atlasPlayerSettings({} as App).showCursors).toBe(false);
   });
 
-  it('reads whether the GM\'s initiative lists start at the turn, and reads no when it cannot', () => {
+  it('reads that the GM\'s initiative lists start at the turn, and reads no when it cannot', () => {
     const settingsService = new SettingsService({ loadLocalStorage: () => null, saveLocalStorage: () => undefined } as never);
     const app = { plugins: { plugins: { 'atlas-vtt': { settingsService } } } } as unknown as App;
     expect(atlasPlayerSettings(app).initiativeFromTurn).toBe(true);
-    settingsService.setInitiativeLayout({ fromTurn: false });
-    expect(atlasPlayerSettings(app).initiativeFromTurn).toBe(false);
     expect(atlasPlayerSettings({} as App).initiativeFromTurn).toBe(false);
   });
 

@@ -2,7 +2,6 @@ import type { Message } from '../../types';
 
 export const widgets = {
   'widgets.add': 'Add widget',
-  'widgets.autoSort': 'Auto-sort by initiative',
   'widgets.colour': 'Widget colour',
   'widgets.delete': 'Delete widget',
   'widgets.deleteEverywhere': 'Delete from every scene',

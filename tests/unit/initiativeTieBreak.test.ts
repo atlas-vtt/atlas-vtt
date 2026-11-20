@@ -59,10 +59,4 @@ describe('one combatant rolled while the fight runs', () => {
     expect(get().initiative.round).toBe(2);
   });
 
-  it('stays in place with Auto sort off', () => {
-    const { actions, get } = setup([entry('a', { initiative: 15 }), entry('b', { initiative: 10 })], 18);
-    actions.setInitiativeConfig({ autoSort: false });
-    actions.rollEntryInitiative('b');
-    expect(get().initiative.entries.map((e) => [e.id, e.initiative])).toEqual([['a', 15], ['b', 18]]);
-  });
 });

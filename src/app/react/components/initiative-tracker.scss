@@ -133,8 +133,9 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   }
 }
 
-// A shade of the panel's own colour over an end of the list, from the panel's border to `$list-shade` inside the list,
-// eased over many stops so it has no line where it begins. `$towards` is the end it is solid at.
+// A shadow over an end of the list, from the panel's border to `$list-shade` inside the list, eased over many stops so
+// it has no line where it begins. `$towards` is the end it is darkest at. A shadow is dark in light themes too (the
+// cards' own shades are): one of the panel's colour turned white there.
 @mixin list-shade($towards) {
   position: absolute;
   right: 0;
@@ -146,12 +147,12 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   background: linear-gradient(
     to $towards,
     transparent,
-    color-mix(in srgb, var(--background-primary) 8%, transparent) 10%,
-    color-mix(in srgb, var(--background-primary) 26%, transparent) 24%,
-    color-mix(in srgb, var(--background-primary) 52%, transparent) 42%,
-    color-mix(in srgb, var(--background-primary) 80%, transparent) 60%,
-    color-mix(in srgb, var(--background-primary) 98%, transparent) 78%,
-    var(--background-primary)
+    rgb(0 0 0 / 0.07) 10%,
+    rgb(0 0 0 / 0.21) 24%,
+    rgb(0 0 0 / 0.43) 42%,
+    rgb(0 0 0 / 0.66) 60%,
+    rgb(0 0 0 / 0.8) 78%,
+    rgb(0 0 0 / 0.82)
   );
   // The cards beneath keep their clicks
   pointer-events: none;
@@ -168,8 +169,9 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   justify-content: center;
   padding: 0 $surface-inset $surface-inset;
   border-radius: 0 0 var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius);
-  color: $round-accent;
-  text-shadow: 0 0 2px var(--background-primary), 0 0 8px var(--background-primary);
+  // A touch lighter than the accent, so a dark accent (a light theme's) still reads on the shadow
+  color: color-mix(in oklch, #{$round-accent}, #fff 25%);
+  text-shadow: 0 0 2px rgb(0 0 0 / 0.9), 0 0 8px rgb(0 0 0 / 0.7);
 }
 
 // The same shade over the list's top, fading in over the first `$list-shade` the list is scrolled, so cards that pass

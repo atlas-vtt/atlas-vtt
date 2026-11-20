@@ -24,6 +24,8 @@ export const lpv = {
   'lpv.turnBannerSecondsValue': '{seconds} s',
   'lpv.turnBannerAtLists': 'Turn banner at the initiative lists',
   'lpv.turnBannerAtListsHint': 'The turn banner stands just above each initiative list, turned with it, instead of in the middle of the table.',
+  'lpv.initiativeRows': 'Initiative across the table',
+  'lpv.initiativeRowsHint': 'The players\' initiative list runs as a row at the top and one at the bottom, each read from its side, for a TV lying on the table.',
   'lpv.turnDim': 'Dim the table instead of the turn banner',
   'lpv.turnDimHint': 'A new turn dims the table for the turn banner\'s duration instead of showing its banner, while the initiative lists stay lit, so the cards moving on stand out. A fight\'s start and end keep their banners.',
   'lpv.initiativeMaxCards': 'Cards shown in initiative',

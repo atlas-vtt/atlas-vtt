@@ -6,14 +6,6 @@
 import type { InitiativeSide, SideId, SideRef } from './initiativeRulesTypes';
 
 /**
- * Configuration for the initiative tracker
- */
-export interface InitiativeConfig {
-  /** Whether to auto-sort entries by initiative value after rolling */
-  autoSort: boolean;
-}
-
-/**
  * A single entry in the initiative tracker
  */
 export interface InitiativeEntry {
@@ -155,9 +147,6 @@ export interface InitiativeState {
   /** Whether combat is currently active */
   isActive: boolean;
 
-  /** Configuration for initiative calculation */
-  config: InitiativeConfig;
-
   /**
    * Set while a fight runs by sides: the side that acts first in a round and the one whose
    * turn it is. A fight keeps the mode it was started in, whatever the collection's rules say since.
@@ -189,13 +178,6 @@ export interface CountedDown {
 }
 
 /**
- * Default configuration for initiative
- */
-export const DEFAULT_INITIATIVE_CONFIG: InitiativeConfig = {
-  autoSort: true,
-};
-
-/**
  * Default empty initiative state
  */
 export const createDefaultInitiativeState = (): InitiativeState => ({
@@ -203,5 +185,4 @@ export const createDefaultInitiativeState = (): InitiativeState => ({
   currentIndex: -1,
   round: 0,
   isActive: false,
-  config: { ...DEFAULT_INITIATIVE_CONFIG },
 });

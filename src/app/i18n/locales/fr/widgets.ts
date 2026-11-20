@@ -2,7 +2,6 @@ import type { Translation } from '../../types';
 
 export const widgets: Translation = {
   'widgets.add': 'Ajouter un widget',
-  'widgets.autoSort': 'Trier automatiquement par initiative',
   'widgets.colour': 'Couleur du widget',
   'widgets.delete': 'Supprimer le widget',
   'widgets.deleteEverywhere': 'Supprimer de toutes les scènes',
