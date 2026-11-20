@@ -150,6 +150,29 @@ describe('the GM\'s initiative cards', () => {
     await page.screenshot({ path: `__screenshots__/init-cards/margins-${names ? 'compact' : 'tile'}.png`, element: container.querySelector('.atlas-initiative-tracker')! });
   });
 
+  it('keep a compact line dark under light words in a light theme, where the panel around it is light', async () => {
+    const light = document.head.createEl('style', { text: `body.theme-light { --background-primary: #ffffff; --background-secondary: #f5f5f5;
+      --background-modifier-hover: #ececec; --background-modifier-border: #d8d8d8; --background-modifier-form-field: #fff; --text-normal: #222;
+      --text-muted: #555; --text-faint: #999; --mono-100: #000; }` });
+    document.body.classList.add('theme-light');
+    try {
+      const container = await show(true);
+      const luminance = (colour: string): number => {
+        const [r, g, b] = colour.match(/[\d.]+/g)!.map(Number);
+        return (0.2126 * r! + 0.7152 * g! + 0.0722 * b!) / 255;
+      };
+      for (const card of container.querySelectorAll('.atlas-initiative-card')) {
+        expect(luminance(getComputedStyle(card).backgroundColor)).toBeLessThan(0.2);
+        expect(luminance(getComputedStyle(card.querySelector('.atlas-initiative-card__name')!).color)).toBeGreaterThan(0.8);
+        expect(luminance(getComputedStyle(card.querySelector('.atlas-initiative-card__initiative')!).color)).toBeGreaterThan(0.4);
+      }
+      await page.screenshot({ path: '__screenshots__/init-cards/compact-light.png', element: container.querySelector('.atlas-initiative-tracker')! });
+    } finally {
+      document.body.classList.remove('theme-light');
+      light.remove();
+    }
+  });
+
   it('measures art that arrives after the tracker opened, as a sync tool may deliver it', async () => {
     const canvas = new OffscreenCanvas(100, 100);
     const pen = canvas.getContext('2d')!;

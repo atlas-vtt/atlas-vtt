@@ -183,3 +183,25 @@ $plate-height: 24px;
     opacity: 0.6;
   }
 }
+
+// A compact line is a dark surface in a light theme too, as the shadows over the list's ends are: its art fades into
+// dark under light words, never into white under dark ones. The theme's colours take dark values inside the line, so
+// every rule that reads them follows (fill, name, number plate, marks); a dark theme keeps its own.
+.theme-light .atlas-initiative-tracker--compact .atlas-initiative-card {
+  --background-primary: #1c1c1f;
+  --background-secondary: #2a2a2e;
+  --background-modifier-hover: #26262a;
+  --background-modifier-active-hover: #303035;
+  --background-modifier-border: rgb(255 255 255 / 0.14);
+  --background-modifier-form-field: #1c1c1f;
+  --text-normal: #ece6da;
+  --text-muted: rgb(236 230 218 / 0.72);
+  --text-faint: rgb(236 230 218 / 0.45);
+  --mono-100: #fff;
+  color-scheme: dark;
+
+  // A delayed card has no fill of its own, which would show the light panel through
+  &.atlas-initiative-card--delayed {
+    background: rgb(28 28 31 / 0.6);
+  }
+}
