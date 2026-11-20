@@ -284,7 +284,8 @@ describe('player initiative panel', () => {
 
   it('follows the GM\'s layout: the edge the lists stand at, drawn anew when it changes', () => {
     const { settings, doc } = setup();
-    const panel = (): Element | null => doc.querySelector('.atlas-player-initiative');
+    // The list at the old edge leaves while the new one comes in
+    const panel = (): Element | null => doc.querySelector('.atlas-player-initiative:not(.atlas-player-initiative--leaving)');
     expect(panel()?.classList.contains('atlas-player-initiative--bottom')).toBe(false);
     settings.setInitiativeLayout({ dock: 'bottom' });
     expect(panel()?.classList.contains('atlas-player-initiative--bottom')).toBe(true);

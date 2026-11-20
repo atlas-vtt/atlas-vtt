@@ -4,7 +4,7 @@ import type { ViewAtlasState } from '../../storeFactory';
 import type { InitiativeState } from '../../types/initiativeTypes';
 import { currentTurn, turnKey } from '../../initiative/turnHolders';
 import { playTurnMotion, snapshotTurn, type TurnSnapshot } from '../../initiative/motion/turnMotion';
-import { enterList, exitList, type Outward } from '../../initiative/motion/listPresence';
+import { enterList, exitList, morphList, type Outward } from '../../initiative/motion/listPresence';
 import { TURN_FLASH_MS } from '../../services/playerInitiativeList';
 
 /** What a change of the tracker's order is read by: the round, the turn and every combatant's place. */
@@ -86,4 +86,22 @@ export function useListPresence(open: boolean, element: HTMLElement | null, outw
     else done();
   }, [open, element, outward]);
   return { drawn: open || present, leaving: !open && present };
+}
+
+/**
+ * The tracker changes its look when `look` changes (the compact view switched on or off): it glides from its old size to
+ * its new one and its cards fade in anew (`morphList`). Its old size is read while React draws the new look, before the
+ * page shows it.
+ */
+export function useLookMorph(element: HTMLElement | null, look: unknown): void {
+  const shown = useRef(look);
+  const from = useRef<{ width: number; height: number } | null>(null);
+  if (look !== shown.current && element && from.current === null) from.current = { width: element.offsetWidth, height: element.offsetHeight };
+  useLayoutEffect(() => {
+    if (look === shown.current) return;
+    shown.current = look;
+    const size = from.current;
+    from.current = null;
+    if (element && size) morphList(element, size);
+  }, [element, look]);
 }

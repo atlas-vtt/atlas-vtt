@@ -89,4 +89,36 @@ describe('the players\' widgets beside a horizontal initiative list', () => {
     expect(layer.style.getPropertyValue('--atlas-player-widgets-room')).toBe('');
     bar.destroy();
   });
+
+  it('glide from a row to a column and back as the players\' list changes its shape', async () => {
+    await page.viewport(1000, 700);
+    document.body.innerHTML = '';
+    const layer = document.body.createDiv({ cls: 'atlas-vtt-plugin' });
+    Object.assign(layer.style, { position: 'relative', width: '1000px', height: '700px', transform: 'translate(0, 0)' });
+    let edges: PlayersListEdge[] = ['right'];
+    const listeners: (() => void)[] = [];
+    const settings = {
+      getLocalPlayerViewSettings: () => ({ showWidgets: true }),
+      initiativeLayout: () => ({ fromTurn: true, dock: edges[0]!, edges, facesPlayers: edges[0] !== 'right' }),
+      onChange: (listener: () => void) => { listeners.push(listener); return () => undefined; },
+    } as unknown as SettingsService;
+    const bar = new PlayerWidgetBar(settings);
+    bar.mount(layer);
+    const widgets = Object.fromEntries(['Doom', 'Torches'].map((label, index) => [`w${index}`, counter(`w${index}`, label, index)]));
+    bar.present(createStore(() => ({ widgetSettings: { widgets, globalVisible: true, position: 'top', scale: 1 }, widgetValues: {} })) as never);
+    const card = (id: string): Element => layer.querySelector(`[data-turn-key="widget:${id}"]`)!;
+    const row = { doom: box(card('w0')), torches: box(card('w1')) };
+    expect(row.torches.left).toBeGreaterThan(row.doom.right);
+
+    edges = ['top', 'bottom'];
+    for (const listener of listeners) listener();
+    for (const animation of document.getAnimations()) { animation.pause(); animation.currentTime = 0; }
+    // Each starts where it stood in the row, and glides into the column
+    expect(box(card('w0')).left).toBeCloseTo(row.doom.left, 0);
+    expect(box(card('w1')).left).toBeCloseTo(row.torches.left, 0);
+    for (const animation of document.getAnimations()) animation.finish();
+    expect(box(card('w1')).top).toBeGreaterThan(box(card('w0')).bottom);
+    bar.destroy();
+  });
 });
+

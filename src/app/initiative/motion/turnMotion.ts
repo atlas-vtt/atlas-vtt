@@ -39,6 +39,16 @@ interface Place {
 
 export type TurnSnapshot = ReadonlyMap<string, Place>;
 
+/**
+ * How places are read and moves played. `fromRight` reads places from the list's right edge, for a box anchored there
+ * whose width changes (the player view's widgets); `wrap` false glides every element to its new place, however far
+ * and whichever way, and fades in what is new: for a list laid out anew rather than moved on.
+ */
+export interface MotionOptions {
+  fromRight?: boolean;
+  wrap?: boolean;
+}
+
 /** The offset of `element` from `list`'s padding box, adding up the positioned ancestors between them; null outside it. */
 function offsetIn(list: HTMLElement, element: HTMLElement): { x: number; y: number } | null {
   let x = 0;
@@ -59,7 +69,7 @@ function translationOf(style: CSSStyleDeclaration): { x: number; y: number } {
 }
 
 /** Where every marked element of `list` stands now, as it is seen: a glide under way included. */
-export function snapshotTurn(list: HTMLElement | null): TurnSnapshot {
+export function snapshotTurn(list: HTMLElement | null, { fromRight = false }: MotionOptions = {}): TurnSnapshot {
   const places = new Map<string, Place>();
   if (!list) return places;
   const view = list.ownerDocument.defaultView;
@@ -70,7 +80,7 @@ export function snapshotTurn(list: HTMLElement | null): TurnSnapshot {
     const style = view?.getComputedStyle(element);
     const moved = style ? translationOf(style) : { x: 0, y: 0 };
     places.set(key, {
-      x: offset.x + moved.x,
+      x: offset.x + moved.x - (fromRight ? list.offsetWidth : 0),
       y: offset.y + moved.y,
       width: element.offsetWidth,
       height: element.offsetHeight,
@@ -145,10 +155,10 @@ function arrive(element: HTMLElement, step: Vector): void {
  * Moves the marked elements of `list` from where `before` saw them to where they stand now. Elements that did not move
  * stay still; with reduced motion nothing moves, the lists change at once.
  */
-export function playTurnMotion(list: HTMLElement | null, before: TurnSnapshot): void {
+export function playTurnMotion(list: HTMLElement | null, before: TurnSnapshot, options: MotionOptions = {}): void {
   if (!list || before.size === 0 || typeof list.animate !== 'function' || prefersReducedMotion(list)) return;
-  const after = snapshotTurn(list);
-  const step = commonStep(before, after);
+  const after = snapshotTurn(list, options);
+  const step = options.wrap === false ? null : commonStep(before, after);
   const gliding: { place: Place; from: Vector; opacity: number }[] = [];
   for (const [key, place] of after) {
     const was = before.get(key);
@@ -158,6 +168,9 @@ export function playTurnMotion(list: HTMLElement | null, before: TurnSnapshot): 
     } else if (step) {
       if (was) leave(list, was, step);
       arrive(place.element, step);
+    } else if (!was) {
+      // Laid out anew: what is new fades in where it stands
+      place.element.animate([{ opacity: 0 }, { opacity: 1 }], { duration: TURN_MOVE_MS, delay: ARRIVE_DELAY_MS, easing: MOVE_EASING, fill: 'backwards' });
     }
   }
   if (step) for (const [key, was] of before) if (!after.has(key)) leave(list, was, step);

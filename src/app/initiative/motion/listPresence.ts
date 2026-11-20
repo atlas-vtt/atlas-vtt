@@ -60,3 +60,29 @@ export function exitList(panel: HTMLElement, outward: Outward, delay = 0): Anima
     : { opacity: 0, translate: `${x * EXIT_DISTANCE_PX}px ${y * EXIT_DISTANCE_PX}px`, scale: '0.98' };
   return panel.animate([from, to], { duration: LIST_EXIT_MS, delay, easing: LIST_EXIT_EASING, fill: 'forwards' });
 }
+
+/** How long a list takes to change its look (the GM's compact view and back): its size glides, its cards fade in anew. */
+const MORPH_MS = 380;
+
+/**
+ * `panel` changed its look and so its size: it glides from the size it had (`from`, its border box) to the one it has
+ * now, settling softly, while its cards fade in together a beat later, so the change reads as one motion rather than a
+ * jump. The size moves by `width` and `height` (a scale would stretch the border, corners and text); the panel's content
+ * lays itself out inside meanwhile. With reduced motion only the cards fade.
+ */
+export function morphList(panel: HTMLElement, from: { width: number; height: number }): void {
+  if (typeof panel.animate !== 'function') return;
+  const to = { width: panel.offsetWidth, height: panel.offsetHeight };
+  if (!prefersReducedMotion(panel) && (Math.abs(to.width - from.width) > 0.5 || Math.abs(to.height - from.height) > 0.5)) {
+    panel.animate(
+      [{ width: `${from.width}px`, height: `${from.height}px` }, { width: `${to.width}px`, height: `${to.height}px` }],
+      { duration: MORPH_MS, easing: LIST_ENTER_EASING },
+    );
+  }
+  for (const card of panel.querySelectorAll<HTMLElement>(`[${TURN_KEY_ATTRIBUTE}]`)) {
+    card.animate(
+      [{ opacity: 0, scale: '0.97' }, { opacity: 1, scale: '1' }],
+      { duration: CARD_MS, delay: CARD_DELAY_MS, easing: MOTION_EASE_OUT, fill: 'backwards' },
+    );
+  }
+}

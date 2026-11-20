@@ -17,6 +17,9 @@ import { glideHeight, outwardOf, settle } from './playerInitiativeMotion';
 import { adoptGhosts, ghostsOf, playTurnMotion, snapshotTurn } from '../initiative/motion/turnMotion';
 import { enterList, exitList, LIST_ARRIVAL_MS } from '../initiative/motion/listPresence';
 
+/** How long the lists of a new layout wait before they come in, while the old ones have begun to leave. */
+const LAYOUT_SWAP_DELAY_MS = 120;
+
 /** What of the GM's layout the list is drawn by: drawn anew when it changes. */
 const layoutKey = ({ fromTurn, edges, facesPlayers }: InitiativeLayout): string => [fromTurn, facesPlayers, ...edges].join();
 
@@ -66,12 +69,19 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
 
   constructor(private readonly app: App, private readonly settings: SettingsService) {
     super({ cls: 'atlas-player-initiative-container' }, settings);
-    // The GM's layout is no player setting: the list is drawn anew when the edge or the start changes
+    // The GM's layout is no player setting: the list is drawn anew when the edge or the start changes. Lists standing at
+    // other edges then leave towards theirs as the new ones come in from theirs, overlapping a little
     let drawn = layoutKey(settings.initiativeLayout());
     this.stopLayout = settings.onChange(() => {
       const next = layoutKey(settings.initiativeLayout());
       if (next === drawn) return;
       drawn = next;
+      const container = this.drawnPanels[0]?.parentElement;
+      if (container && typeof container.animate === 'function') {
+        this.sendOff(container, this.drawnPanels, 0);
+        this.drawnPanels = [];
+        this.arrival = { at: performance.now(), delay: LAYOUT_SWAP_DELAY_MS };
+      }
       this.refresh();
     });
     // Another theme, or none: the ivy comes or goes with the Atlas VTT theme
@@ -250,33 +260,40 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     }
     if (!drawn && this.listsDrawn === true && typeof container.animate === 'function') {
       this.arrival = null;
-      this.leaving = this.drawnPanels;
-      const delay = !fightRuns && bannerFirst ? FIGHT_INTRO_HOLD_MS : 0;
-      for (const panel of this.leaving) {
-        panel.addClass('atlas-player-initiative--leaving');
-        panel.setAttribute('aria-hidden', 'true');
-        settle(panel);
-        // Back in the emptied container first: a list out of the document measures nothing, and slid only its margin
-        container.append(panel);
-        const gone = (): void => {
-          panel.remove();
-          this.leaving = this.leaving.filter((other) => other !== panel);
-        };
-        const leaving = exitList(panel, outwardOf(panel), delay);
-        if (leaving) leaving.finished.then(gone, gone);
-        else gone();
-      }
+      this.sendOff(container, this.drawnPanels, !fightRuns && bannerFirst ? FIGHT_INTRO_HOLD_MS : 0);
     }
-    if (!drawn) {
-      this.drawnPanels = [];
-      for (const panel of this.leaving) {
-        // Its pulse starts again as it is put back: in step with the clock again
-        if (panel.style.getPropertyValue('--atlas-pulse-phase')) panel.style.setProperty('--atlas-pulse-phase', `${-Math.round(performance.now() % PULSE_MS)}ms`);
-        container.append(panel);
-      }
-    }
+    if (!drawn) this.drawnPanels = [];
+    this.keepLeaving(container);
     this.listsDrawn = drawn;
     this.fightRan = fightRuns;
+  }
+
+  /** `panels` leave towards their edges after `delay` (`exitList`), kept in the container until they are gone. */
+  private sendOff(container: HTMLElement, panels: readonly HTMLElement[], delay: number): void {
+    for (const panel of panels) {
+      panel.addClass('atlas-player-initiative--leaving');
+      panel.setAttribute('aria-hidden', 'true');
+      settle(panel);
+      // Back in the container first: a list out of the document measures nothing, and slid only its margin
+      container.append(panel);
+      this.leaving.push(panel);
+      const gone = (): void => {
+        panel.remove();
+        this.leaving = this.leaving.filter((other) => other !== panel);
+      };
+      const leaving = exitList(panel, outwardOf(panel), delay);
+      if (leaving) leaving.finished.then(gone, gone);
+      else gone();
+    }
+  }
+
+  /** The lists still leaving are put back into every drawing until they are gone. */
+  private keepLeaving(container: HTMLElement): void {
+    for (const panel of this.leaving) {
+      // Its pulse starts again as it is put back: in step with the clock again
+      if (panel.style.getPropertyValue('--atlas-pulse-phase')) panel.style.setProperty('--atlas-pulse-phase', `${-Math.round(performance.now() % PULSE_MS)}ms`);
+      container.append(panel);
+    }
   }
 
   /** Whether the lists are still coming in (`slideIn`); an arrival that is over is forgotten. */

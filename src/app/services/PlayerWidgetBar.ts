@@ -8,6 +8,7 @@ import { CLOCK_VIEW_SIZE, DEFAULT_CLOCK_COLOR, clockFace, clockProgressLabel } f
 import { PlayerSceneOverlay, type PlayerSettings } from './PlayerSceneOverlay';
 import type { SettingsService } from './SettingsService';
 import { playersListShape, type PlayersListShape } from '../initiative/initiativeLayout';
+import { playTurnMotion, snapshotTurn, TURN_KEY_ATTRIBUTE } from '../initiative/motion/turnMotion';
 
 /**
  * Set on the overlays' layer while the widgets stand as a column: the room they take from the right edge, which the
@@ -33,6 +34,8 @@ export class PlayerWidgetBar extends PlayerSceneOverlay<WidgetScene> {
   /** Follows the column's width into `WIDGETS_ROOM` on the overlays' layer. */
   private roomWatch: ResizeObserver | undefined;
   private roomLayer: HTMLElement | undefined;
+  /** The bar drawn last, which the next drawing's widgets glide from. */
+  private bar: HTMLElement | undefined;
 
   constructor(private readonly settings: SettingsService) {
     super({ cls: 'atlas-vtt-plugin', attr: { id: 'atlas-player-widgets' } }, settings);
@@ -61,6 +64,7 @@ export class PlayerWidgetBar extends PlayerSceneOverlay<WidgetScene> {
 
     const column = this.shape === 'horizontal';
     const widgetBar = container.createDiv({ cls: column ? 'atlas-widget-bar atlas-widget-bar--column' : 'atlas-widget-bar' });
+    this.bar = widgetBar;
     const widgetContainer = widgetBar.createDiv({ cls: 'atlas-widget-container' });
     const scale = widgetSettings.scale || 1;
     widgetContainer.style.transform = `scale(${scale})`;
@@ -73,10 +77,17 @@ export class PlayerWidgetBar extends PlayerSceneOverlay<WidgetScene> {
     this.tick();
   }
 
+  /**
+   * Draws anew. The widgets glide from where they stood to their new places (a row becoming a column as the players'
+   * list turns horizontal, and back), read from the bar's top right corner, where it is anchored.
+   */
   override refresh(): void {
     this.stopTicking();
     this.releaseRoom();
+    const before = this.bar ? snapshotTurn(this.bar, { fromRight: true }) : null;
+    this.bar = undefined;
     super.refresh();
+    if (before && this.bar) playTurnMotion(this.bar, before, { fromRight: true, wrap: false });
   }
 
   override destroy(): void {
@@ -170,7 +181,7 @@ export class PlayerWidgetBar extends PlayerSceneOverlay<WidgetScene> {
    * where Obsidian installs the same DOM helpers.
    */
   private renderWidget(parent: HTMLElement, widget: AnyWidget, typeClass: string, defaultColor: string): HTMLElement {
-    const widgetEl = parent.createDiv({ cls: `atlas-widget ${typeClass}` });
+    const widgetEl = parent.createDiv({ cls: `atlas-widget ${typeClass}`, attr: { [TURN_KEY_ATTRIBUTE]: `widget:${widget.id}` } });
     widgetEl.style.setProperty('--widget-color', widget.color || defaultColor);
     widgetEl.createDiv({ cls: 'atlas-widget-icon-wrapper' })
       .createSvg('svg', { attr: { viewBox: WIDGET_ICON_VIEW_BOX, fill: 'currentColor' } })
