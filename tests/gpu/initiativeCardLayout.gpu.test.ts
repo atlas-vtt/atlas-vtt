@@ -118,6 +118,16 @@ describe('the GM\'s initiative cards', () => {
     expect(heights()).toEqual(withBar);
   });
 
+  it.each([false, true])('keep the size of one card while the tracker is empty (compact view: %s)', async (names) => {
+    const container = await show(names);
+    const card = box(container.querySelector('.atlas-initiative-card'));
+    await act(async () => { store.setState({ initiative: { ...store.getState().initiative, entries: [] } }); });
+    const placeholder = container.querySelector('.atlas-initiative-card--placeholder');
+    expect(box(placeholder).height).toBeCloseTo(card.height, 0);
+    expect(getComputedStyle(placeholder!).visibility).toBe('hidden');
+    await page.screenshot({ path: `__screenshots__/init-cards/empty-${names ? 'compact' : 'tiles'}.png`, element: container.querySelector('.atlas-initiative-tracker')! });
+  });
+
   it('are square, the number inset inside the border, concentric with its corners', async () => {
     for (const card of (await show(false)).querySelectorAll('.atlas-initiative-card')) {
       const frame = box(card);

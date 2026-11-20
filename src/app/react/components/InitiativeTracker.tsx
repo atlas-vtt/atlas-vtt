@@ -39,7 +39,7 @@ import { useStatblockHoverPreview } from './StatblockHoverPreview';
 import { InitiativeStatblockPreview, type PreviewedEntry } from './InitiativeStatblockPreview';
 import { captureRollContext } from '../../tools/diceRollOrigins';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
-import { t, tPointer } from '../../i18n';
+import { t } from '../../i18n';
 import './initiative-tracker.scss';
 import './initiative-tracker-compact.scss';
 
@@ -270,8 +270,9 @@ export const InitiativeTracker: React.FC = () => {
 
       {/* The combatants, in the order the list shows them */}
       <div ref={contentRef} className="atlas-initiative-tracker__content">
+        {/* Empty, the panel keeps the size it has with one combatant: an unseen card of the view's shape holds it */}
         {sortedEntries.length === 0 && (
-          <p className="atlas-initiative-tracker__empty">{collectionId !== null ? tPointer('initiative.emptyWithParty') : tPointer('initiative.empty')}</p>
+          <div className={`atlas-initiative-card${compact ? '' : ' atlas-initiative-card--tile'} atlas-initiative-card--placeholder`} aria-hidden="true" />
         )}
         {sortedEntries.length > 0 && <InitiativeTrackerList segments={segments} card={card} />}
       </div>

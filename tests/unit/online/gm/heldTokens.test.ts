@@ -2,7 +2,7 @@ import type { GmMessage, PlayerDrag, PlayerMove } from '../../../../src/app/onli
 import { describe, expect, it } from 'vitest';
 import { parseMoveRefused } from '../../../../src/app/online/protocol/moves.ts';
 import { parseTokens } from '../../../../src/app/online/protocol/tokens.ts';
-import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
+import { TOKEN_INTERVAL_MS, TOKEN_POLL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import { holdTokens } from '../../../../src/app/lighting/sightOnDrop';
 import { createDefaultInitiativeState, type InitiativeEntry, type InitiativeState } from '../../../../src/app/types/initiativeTypes';
@@ -53,13 +53,34 @@ describe('tokens that wait for their turn', () => {
     expect((await table({ movesOnTurn: false })).held).toEqual([]);
   });
 
-  it('wait only while the players are shown the turn: with the list off or the tracker closed nobody waits and nothing is refused', async () => {
+  it('wait for the whole fight, whatever players are shown: with the list off or the tracker closed they still wait and are refused', async () => {
     for (const options of [{ showInitiative: false }, { trackerOpen: false }]) {
       const { held, refusals, move } = await table(options);
-      expect(held, JSON.stringify(options)).toEqual([]);
+      expect(held, JSON.stringify(options)).toEqual([105]);
       move(105);
-      expect(refusals(), JSON.stringify(options)).toEqual([]);
+      expect(refusals().map(({ reason }) => reason), JSON.stringify(options)).toEqual(['turn']);
     }
+  });
+
+  it('follow the switch, the turn and the fight live, without a new table', async () => {
+    const { share } = await table({ movesOnTurn: false });
+    const heldNow = async (): Promise<number[]> => {
+      await share.advance(TOKEN_POLL_MS);
+      return (tokenLists(share.sent).at(-1)?.tokens ?? []).filter((shared) => shared.held).map((shared) => shared.x);
+    };
+    const state = share.state();
+    expect(await heldNow()).toEqual([]);
+    // The GM switches it on mid-fight: the hero waits for its turn
+    share.settings = { ...share.settings, movesOnTurn: true };
+    expect(await heldNow()).toEqual([105]);
+    // The turn passes to the hero (the ogre waits now), back to the ogre, then the fight ends
+    const heroTurn = { ...fight(), entries: [entry('ogre', 0, false), entry('hero', 1, true)] };
+    await share.set({ ...state, initiative: heroTurn });
+    expect(await heldNow()).toEqual([315]);
+    await share.set({ ...state, initiative: fight() });
+    expect(await heldNow()).toEqual([105]);
+    await share.set({ ...state, initiative: { ...fight(), isActive: false } });
+    expect(await heldNow()).toEqual([]);
   });
 
   it('are refused with the turn as the reason; a token outside the fight moves, and other refusals give no reason', async () => {

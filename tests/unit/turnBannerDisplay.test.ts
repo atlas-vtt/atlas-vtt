@@ -127,7 +127,7 @@ describe('the banners of a fight\'s start and end', () => {
     return { store, banner };
   }
 
-  it('says the fight started with crossed swords, then names its first turn', () => {
+  it('says the fight started, then names its first turn', () => {
     const { store, banner } = setup(false);
     expect(banner()).toBeNull();
     store.setState({ initiative: fight('hero') });
@@ -135,8 +135,11 @@ describe('the banners of a fight\'s start and end', () => {
     // Its border pulses as long as it stands
     expect((banner() as HTMLElement).style.getPropertyValue('--atlas-turn-banner-stand')).toBe(`${DEFAULT_SETTINGS.localPlayerView.turnBannerSeconds * 1000}ms`);
     expect(banner()?.textContent).toBe('Combat has started');
-    expect(banner()?.querySelector('.atlas-turn-banner__icon')).not.toBeNull();
-    expect(vi.mocked(setIcon)).toHaveBeenCalledWith(banner()?.querySelector('.atlas-turn-banner__icon'), 'swords');
+    // A title between two rules, without the turn's capsule look or an icon
+    expect(banner()?.classList.contains('atlas-turn-banner--fight')).toBe(true);
+    expect(banner()?.querySelectorAll('.atlas-fight-banner__rule')).toHaveLength(2);
+    expect(banner()?.querySelector('.atlas-fight-banner__title')?.textContent).toBe('Combat has started');
+    expect(vi.mocked(setIcon)).not.toHaveBeenCalled();
     // As long as the player view sets it
     const stand = DEFAULT_SETTINGS.localPlayerView.turnBannerSeconds * 1000;
     vi.advanceTimersByTime(stand - 1);
@@ -157,6 +160,20 @@ describe('the banners of a fight\'s start and end', () => {
     store.setState({ initiativeTrackerOpen: true, mapPath: 'a.atlasmap' });
     store.setState({ initiative: { ...store.getState().initiative } });
     expect(banner()?.classList.contains('atlas-turn-banner--fight-end')).toBe(true);
+  });
+
+  it('dissolves by its own motion whoever shows it, gone once the dissolve has run', () => {
+    vi.useFakeTimers();
+    const host = document.body.createDiv();
+    const display = new TurnBannerDisplay(host, () => null);
+    display.show({ kind: 'fight-end', key: 'fight-end', round: null, title: 'Combat has ended', portrait: null });
+    display.hide();
+    const leaving = host.querySelector('.atlas-turn-banner--fight');
+    expect(leaving?.classList.contains('atlas-turn-banner--leaving')).toBe(true);
+    vi.advanceTimersByTime(699);
+    expect(leaving?.isConnected).toBe(true);
+    vi.advanceTimersByTime(1);
+    expect(leaving?.isConnected).toBe(false);
   });
 
   it('says nothing for a scene met with its fight running or not', () => {

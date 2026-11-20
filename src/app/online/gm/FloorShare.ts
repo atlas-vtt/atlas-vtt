@@ -132,7 +132,7 @@ export class FloorShare {
         walls: sceneWalls(levelObjects(store.getState()).walls, this.scene?.lit === true, this.mapSize),
         outOfTurn: (tokenId) => {
           const settings = ports.atlasSettings();
-          return movesOutOfTurn(store.getState(), { movesOnTurn: settings.movesOnTurn === true, showInitiative: settings.showInitiative, definitions: ports.tokenRules?.()?.resources ?? [] }, tokenId);
+          return movesOutOfTurn(store.getState(), { movesOnTurn: settings.movesOnTurn === true, definitions: ports.tokenRules?.()?.resources ?? [] }, tokenId);
         },
       }),
     });

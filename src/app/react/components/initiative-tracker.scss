@@ -277,13 +277,9 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   }
 }
 
-// Shown while the tracker has no combatants
-.atlas-initiative-tracker__empty {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--text-muted);
-  text-align: center;
+// Holds the size of one combatant's card while the tracker has none; nothing of it shows
+.atlas-initiative-card--placeholder {
+  visibility: hidden;
 }
 
 // A side of a fight by sides: its combatants under its name
@@ -378,7 +374,7 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
     transform: scale(0.96);
   }
 
-  // The colour the GM gave the card: its border and a wash of its fill; the turn's accent wins
+  // A player character's own colour (a party member's): its border and a wash of its fill; the turn's accent wins
   &--coloured,
   &--coloured:hover {
     border-color: initiative-side-line(var(--atlas-combatant-color));

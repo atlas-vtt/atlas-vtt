@@ -249,7 +249,7 @@ export class TokenShare {
     const showInitiative = settings?.showInitiative === true;
     const turn = sharedTurnTokens(turnState, showInitiative, rules.resources);
     // The GM decides which tokens wait for their turn: the page never works it out itself
-    const moveRules = { movesOnTurn: settings?.movesOnTurn === true, showInitiative, definitions: rules.resources };
+    const moveRules = { movesOnTurn: settings?.movesOnTurn === true, definitions: rules.resources };
     const held = new Set([...shown.keys()].filter((id) => movesOutOfTurn(turnState, moveRules, id)));
     const moves = this.ports.tokenMoves?.() ?? null;
     const everyToken = mapTokens(levelObjects(state));
