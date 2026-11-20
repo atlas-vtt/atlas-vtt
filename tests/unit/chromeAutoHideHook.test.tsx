@@ -56,4 +56,18 @@ describe('useChromeAutoHide', () => {
     act(() => { vi.advanceTimersByTime(200); });
     expect(toolbar.hasAttribute('data-peek')).toBe(false);
   });
+
+  it('leaves the toolbar hidden under the palette when a tool is picked there', () => {
+    const { app } = createInMemoryApp({ files: {} });
+    const settings = new SettingsService(app);
+    const store = createViewAtlasStore(app, `chrome-auto-hide-${Math.random()}`);
+    store.getState().setPersistenceEnabled(false);
+    settings.setToolbarAutoHide(true);
+    const { container } = render(<ViewStoreProvider store={store}><Root settings={settings} /></ViewStoreProvider>);
+    const toolbar = container.querySelector('.atlas-main-toolbar')!;
+
+    act(() => { store.getState().setCommandPaletteOpen(true); });
+    act(() => { store.getState().setActiveTool('fog'); });
+    expect(toolbar.hasAttribute('data-peek')).toBe(false);
+  });
 });
