@@ -163,6 +163,17 @@ describe('the height chip of a token', () => {
     await vi.waitFor(() => expect(chip().alpha).toBe(1));
   });
 
+  it('steps aside while its token is pressed or dragged, as the conditions card does', () => {
+    const { ui: made, chip } = renderer();
+    made.update(flier(), SPRITE);
+    made.setHeld(true);
+    expect(chip().visible).toBe(false);
+    made.update(flier({ x: 140 }), SPRITE);
+    expect(chip().visible).toBe(false);
+    made.setHeld(false);
+    expect(chip().visible).toBe(true);
+  });
+
   it('is hidden while its token is resized or turned', () => {
     const { ui: made, chip } = renderer();
     made.update(flier(), SPRITE);
