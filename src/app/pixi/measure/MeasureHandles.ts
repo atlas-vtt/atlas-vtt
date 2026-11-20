@@ -8,12 +8,14 @@ import { destroyTree } from '../utils/destroyTree';
 import { mapMarkerScale } from '../utils/mapMarkerScale';
 import { createLineGlyphTexture } from '../utils/pinIconTexture';
 import { ValueTransition } from '../utils/ValueTransition';
+import { drawTurnHandle } from './measureTurnHandle';
 import {
   MEASURE_END_HANDLE_RADIUS,
   MEASURE_HANDLE_GLYPH_SIZE,
   MEASURE_HANDLE_RADIUS,
   handlesAtPoints,
   measureHandleAt,
+  measureTurnHandlePoint,
   measureHandleLook,
   sameHandleLook,
   type MeasureHandleLook,
@@ -45,6 +47,8 @@ interface Handle extends Grip {
   glyph: Sprite | null;
   /** The dot at an area's far end; null for a ruler. */
   end: (Grip & { readonly view: Graphics }) | null;
+  /** The round handle next to it that only turns the area; null for a circle and a ruler. */
+  turn: (Grip & { readonly view: Graphics }) | null;
   measure: KeptMeasure;
   look: MeasureHandleLook;
   /** The theme its badge was drawn in. */
@@ -63,7 +67,8 @@ function sameTheme(a: CanvasBadgeTheme, b: CanvasBadgeTheme): boolean {
  * it lies on (`place`), which leaves the token's middle to the token: a badge in the light
  * markers' language and a size smaller, with the shape's glyph and a thin ring in the
  * measurement's colour. An area has a second one at its far end, a plain dot with the same ring,
- * which resizes and turns it. They are all of a kept measurement that takes the pointer. Handles
+ * which resizes and turns it, and a third next to that one, which only turns it (a circle and a
+ * ruler have none). They are all of a kept measurement that takes the pointer. Handles
  * keep their size on screen, move in place when their measurement changes or the token they stand
  * on moves (`place` says where they stand; `moved` asks again), and are drawn again only when
  * their look is another. They are the GM's controls: `MeasurePartsVisibility` shows the
@@ -71,6 +76,8 @@ function sameTheme(a: CanvasBadgeTheme, b: CanvasBadgeTheme): boolean {
  */
 export class MeasureHandles {
   readonly view = new Container({ label: 'measure-handles', zIndex: MAP_LAYER_Z.measure, eventMode: 'none', interactiveChildren: false });
+  /** The turn handles, beneath the dots and the badges. */
+  private readonly turns = new Container({ label: 'measure-turn-handles' });
   /** The dots at the areas' far ends, beneath every badge. */
   private readonly ends = new Container({ label: 'measure-end-handles' });
   private readonly badges = new Container({ label: 'measure-origin-handles' });
@@ -90,7 +97,7 @@ export class MeasureHandles {
     private readonly readTheme: () => CanvasBadgeTheme = canvasBadgeTheme,
   ) {
     this.theme = readTheme();
-    this.view.addChild(this.ends, this.badges);
+    this.view.addChild(this.turns, this.ends, this.badges);
     parent.addChild(this.view);
   }
 
@@ -132,6 +139,7 @@ export class MeasureHandles {
       for (const handle of this.handles.values()) {
         this.applyScale(handle);
         if (handle.end) this.applyScale(handle.end);
+        this.placeTurn(handle);
       }
       return;
     }
@@ -178,6 +186,7 @@ export class MeasureHandles {
       this.lift(handle, look.lift);
       if (handle.view.position.x !== at.origin.x || handle.view.position.y !== at.origin.y) handle.view.position.set(at.origin.x, at.origin.y);
       this.syncEnd(handle, at.end, look, redrawn);
+      this.syncTurn(handle, measure, look, redrawn);
       // One that undo brought back takes its old place among the others.
       if (this.badges.children[index] !== handle.view) this.badges.setChildIndex(handle.view, index);
       index++;
@@ -189,7 +198,7 @@ export class MeasureHandles {
 
   private create(measure: KeptMeasure, look: MeasureHandleLook): Handle {
     const view = this.badges.addChild(new Container());
-    const handle: Handle = { view, badge: view.addChild(new Graphics()), glyph: null, end: null, measure, look, theme: this.theme, lift: null };
+    const handle: Handle = { view, badge: view.addChild(new Graphics()), glyph: null, end: null, turn: null, measure, look, theme: this.theme, lift: null };
     this.handles.set(measure.id, handle);
     this.applyScale(handle);
     return handle;
@@ -233,7 +242,32 @@ export class MeasureHandles {
     this.lift(end, look.endLift);
   }
 
+  /** The turn handle: made with the measurement, kept at its distance on screen, and gone for a circle. */
+  private syncTurn(handle: Handle, measure: KeptMeasure, look: MeasureHandleLook, redrawn: boolean): void {
+    if (!measureTurnHandlePoint(measure, this.zoom())) {
+      if (handle.turn) this.removeGrip(handle.turn);
+      handle.turn = null;
+      return;
+    }
+    const made = handle.turn === null;
+    handle.turn ??= { view: this.turns.addChild(new Graphics()), lift: null };
+    if (made || redrawn) drawTurnHandle(handle.turn.view, look.ringColor, this.theme);
+    if (made) this.applyScale(handle.turn);
+    this.placeTurn(handle, measure);
+    this.lift(handle.turn, look.turnLift);
+  }
+
+  /** Puts the turn handle where its measurement and the zoom say. */
+  private placeTurn(handle: Handle, measure: KeptMeasure = handle.measure): void {
+    const at = handle.turn && measureTurnHandlePoint(measure, this.zoom());
+    if (handle.turn && at) {
+      this.applyScale(handle.turn);
+      handle.turn.view.position.set(at.x, at.y);
+    }
+  }
+
   private remove(handle: Handle): void {
+    if (handle.turn) this.removeGrip(handle.turn);
     if (handle.end) this.removeGrip(handle.end);
     this.removeGrip(handle);
   }
@@ -246,6 +280,7 @@ export class MeasureHandles {
   private stopLifts(handle: Handle): void {
     handle.lift?.cancel();
     handle.end?.lift?.cancel();
+    handle.turn?.lift?.cancel();
   }
 
   private glyphTexture(shape: MeasureShapeKind): Texture | null {

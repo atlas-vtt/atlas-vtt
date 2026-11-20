@@ -1,4 +1,4 @@
-/** A kept measurement moved as a whole (every point by the same way, so its shape and size stay), and an area resized and turned by its far end. */
+/** A kept measurement moved as a whole (every point by the same way, so its shape and size stay), an area resized and turned by its far end, and an area turned about its start without any change of size. */
 
 import type { GridGeometry } from '../grid/gridDistance';
 import type { Point } from '../types/visionTypes';
@@ -32,4 +32,25 @@ export function areaResizedBy(points: readonly Point[], by: Point, grid: GridGeo
   const moved = snapAreaEnd(grid, origin, { x: end.x + by.x, y: end.y + by.y }, free);
   const sized = Math.hypot(moved.x - origin.x, moved.y - origin.y) > 0;
   return [{ x: origin.x, y: origin.y }, sized ? moved : { x: end.x, y: end.y }];
+}
+
+/**
+ * `points` turned about the first point, by the angle the handle at `from` sweeps about it when it
+ * moves by `by`. Every distance between the points stays, so nothing is resized. Never snapped: the turn is as smooth as the pointer. A turn that would put the
+ * handle on the pivot has no angle, and leaves the points as they were.
+ */
+export function measureTurnedBy(points: readonly Point[], from: Point, by: Point): Point[] {
+  const pivot = points[0];
+  if (!pivot) return [];
+  const to = { x: from.x + by.x, y: from.y + by.y };
+  if (Math.hypot(from.x - pivot.x, from.y - pivot.y) === 0 || Math.hypot(to.x - pivot.x, to.y - pivot.y) === 0) return points.map(({ x, y }) => ({ x, y }));
+  const angle = Math.atan2(to.y - pivot.y, to.x - pivot.x) - Math.atan2(from.y - pivot.y, from.x - pivot.x);
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return points.map(({ x, y }, index) => {
+    if (index === 0) return { x, y };
+    const dx = x - pivot.x;
+    const dy = y - pivot.y;
+    return { x: pivot.x + dx * cos - dy * sin, y: pivot.y + dx * sin + dy * cos };
+  });
 }
