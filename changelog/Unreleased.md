@@ -77,6 +77,7 @@
 - The dice log is now called the table log everywhere, also when no online session runs: its panel, its hotkey, the command palette and the Obsidian command
 - The initiative tracker stays at the right edge, clear of the table log and the map's controls on the left, and shows names in the compact view
 - The scene tabs' Open scene and All open tabs buttons show a background only while hovered or pressed
+- The command palette flows into its settings pages and back: it grows to the page's size on one smooth motion while the list gives way to the page, and the search field is ready again when you come back
 - The documentation opens in the middle of the scene, whatever size the view has
 - The documentation closes smoothly, without stuttering: its page leaves as soon as the window starts to close, as in the Armarium
 - The initiative tracker's buttons float above and below it and show when the pointer comes near, so the panel holds only the fight; its foot shows the round as the players' list does

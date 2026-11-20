@@ -88,7 +88,8 @@ describe('Space command menu panel toggles', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Scene snapshots/ }));
     expect(screen.getByRole('heading', { name: 'Scene Snapshots' })).toBeTruthy();
-    expect(screen.queryByPlaceholderText('Search commands…')).toBeNull();
+    // The list leaves: inert and hidden from assistive technology while it fades out.
+    expect(screen.queryByRole('textbox')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Restore snapshot' }));
     expect(onClose).toHaveBeenCalledTimes(1);

@@ -1,7 +1,7 @@
 import { Tutorial } from '../../onboarding/Tutorial';
 import { useHotkeyLabels } from '../../keyboard/useMapHotkeys';
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
-import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
+import { AnimatePresence, MotionConfig, animate, motion, useMotionValue } from 'framer-motion';
 import {
   Search,
   ArrowUp,
@@ -42,7 +42,7 @@ import { playerWindowStore } from '../../stores/playerWindowStore';
 import { debounce } from '../../../utils/debounce';
 import { cn } from '../../../utils/cn';
 import { isShortcutScopeActive } from '../../utils/activeLeafGuard';
-import { EASE_OUT_CONTROL_POINTS as EASE_OUT } from '../../utils/motion';
+import { EASE_OUT_CONTROL_POINTS as EASE_OUT, prefersReducedMotion } from '../../utils/motion';
 import { Button } from '../../packages/components/primitives/button';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
 import { CommandItem } from './command-palette/CommandItem';
@@ -58,6 +58,7 @@ import { GraphicsPanel } from './command-palette/GraphicsPanel';
 import { LightingSettingsPanel } from './command-palette/LightingSettingsPanel';
 import { SceneSnapshotsPanel } from './command-palette/SceneSnapshotsPanel';
 import { SceneLevelsPanel } from './command-palette/SceneLevelsPanel';
+import { PALETTE_MORPH, PalettePage, PaletteSurface } from './command-palette/PaletteMorph';
 import { replaceMapImage } from './levels/replaceMapImage';
 import { startFloorPositioning } from './levels/levelEditing';
 import { pickMapImage } from './levels/mapImagePicker';
@@ -74,6 +75,9 @@ import { armariumCommand } from './command-palette/armariumCommand';
 import { isSettingsPanelId, type CommandOption, type SettingsPanelId } from './command-palette/types';
 import { t, tPointer } from '../../i18n';
 import { showNotice } from '../../ui/notice';
+
+/** Where the palette stands, and the width of the frame it stands in (its centre is the settings pages' centre). */
+type PalettePlace = PalettePosition & { frameWidth: number };
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -208,7 +212,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   );
 
   // Position starts as null so the first paint already sits at the measured spot
-  const [position, setPosition] = useState<PalettePosition | null>(null);
+  const [position, setPosition] = useState<PalettePlace | null>(null);
   // A finger opens the palette at the top of the view and types only once it taps the field.
   const atTop = useCoarsePointer();
   const [hasCalculatedInitialPosition, setHasCalculatedInitialPosition] = useState(false);
@@ -605,7 +609,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     const aboveToolbar: PalettePosition = toolbar
       ? placePalette(toolbar.getBoundingClientRect(), frame, toolbar.win.getComputedStyle(toolbar).visibility === 'hidden')
       : { width: DEFAULT_PALETTE_WIDTH, left: (frame.width - DEFAULT_PALETTE_WIDTH) / 2, bottom: 100, reserved: 100 };
-    setPosition(atTop ? placePaletteAtTop(aboveToolbar, frame, visibleViewport(overlay.win).bottom) : aboveToolbar);
+    const placed = atTop ? placePaletteAtTop(aboveToolbar, frame, visibleViewport(overlay.win).bottom) : aboveToolbar;
+    setPosition({ ...placed, frameWidth: frame.width });
   }, [toolbarRef, atTop]);
 
   // Measure before the first paint so the palette never flashes at a stale spot
@@ -660,7 +665,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     }
   }, [searchQuery, activeTab, activeSubmenu, submenuOptions, showingSubmenu, filteredOptions.length]);
 
-  // Every delayed focus attempt belongs to this opening and its own window.
+  // Every delayed focus attempt belongs to this opening and its own window. Coming back from a
+  // page, the list's new field takes the keys again (a leaving list's field is inert).
   useEffect(() => {
     const input = inputRef.current;
     const win = input?.ownerDocument.defaultView;
@@ -681,7 +687,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       win.cancelAnimationFrame(frame);
       timers.forEach(timer => win.clearTimeout(timer));
     };
-  }, [isOpen, isTemporarilyHidden, atTop]);
+  }, [isOpen, isTemporarilyHidden, atTop, activeSubmenu]);
 
   const clearSearch = (): void => {
     setSearchQuery("");
@@ -901,6 +907,21 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
 
   const activePanel: SettingsPanelId | null = isSettingsPanelId(activeSubmenu) ? activeSubmenu : null;
 
+  // The list stands above the toolbar, a page at the frame's centre. The anchor moves between the
+  // two on the surface's spring, and follows the toolbar and the frame at once otherwise, as it
+  // does while the palette opens (straight into a page, too).
+  const anchorShift = useMotionValue(0);
+  const shiftedFor = useRef<string | null>(null);
+  const pageKey = activePanel ?? 'list';
+  const shift = position && !activePanel ? position.left + (position.width - position.frameWidth) / 2 : 0;
+  useLayoutEffect(() => {
+    const overlay = overlayRef.current;
+    const morph = hasCalculatedInitialPosition && shiftedFor.current !== pageKey && !!overlay && !prefersReducedMotion(overlay);
+    shiftedFor.current = pageKey;
+    if (morph) animate(anchorShift, shift, PALETTE_MORPH);
+    else anchorShift.jump(shift);
+  }, [anchorShift, shift, pageKey, hasCalculatedInitialPosition]);
+
   const sections = [
     { id: 'tools', title: t('palette.tab.tools') },
     { id: 'mode', title: t('palette.tab.mode') },
@@ -980,17 +1001,15 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     }
   };
 
-  // The anchor places the palette and slides between list and panel; the
-  // window inside carries the open / close animation, and the container sizes it.
+  // The anchor stands at the frame's centre and is shifted onto the list's place above the
+  // toolbar; a settings page stands at the centre. The window inside carries the open / close
+  // animation, the surface the size of the page it shows.
   const anchorStyle: Record<string, string> = {};
   if (position) {
-    anchorStyle.left = activePanel ? '50%' : `${position.left}px`;
-    anchorStyle.transform = activePanel ? 'translateX(-50%)' : 'none';
     if (position.top === undefined) anchorStyle.bottom = `${position.bottom}px`;
     else anchorStyle.top = `${position.top}px`;
     anchorStyle['--atlas-palette-bottom'] = `${position.reserved}px`;
   }
-  const containerStyle = position && !activePanel ? { width: `${position.width}px` } : {};
 
   return (
     <MotionConfig reducedMotion="user">
@@ -1011,142 +1030,144 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
             ]} />}
             <div className="atlas-command-palette-backdrop" onClick={onClose} />
 
-            <div
+            <motion.div
               className={cn(
                 'atlas-command-palette-anchor',
-                !hasCalculatedInitialPosition && 'atlas-no-transition',
                 position?.top !== undefined && 'atlas-command-palette-anchor--top',
                 (isTemporarilyHidden || !position) && 'atlas-command-palette-anchor--hidden',
               )}
-              style={anchorStyle}
+              style={{ ...anchorStyle, x: anchorShift }}
             >
               <motion.div className="atlas-command-palette-window" variants={paletteVariants}>
-                <div
-                  ref={containerRef}
-                  className={cn(
-                    'atlas-command-palette-container',
-                    activePanel && 'atlas-command-palette-container--expanded',
-                    activePanel && `atlas-command-palette-container--${activePanel}`,
-                  )}
-                  style={containerStyle}
-                >
-                  {activePanel ? (
-                    <SettingsPanelHeader
-                      icon={SETTINGS_PANEL_META[activePanel].icon}
-                      title={SETTINGS_PANEL_META[activePanel].title}
-                      onBack={exitSubmenu}
-                      actions={
-                        activePanel === 'grid-settings' ? (
-                          <Button variant="secondary" size="sm" onClick={() => store.getState().setGridAlignmentOpen(true)}>
-                            <Move />
-                            {t('palette.enterAlignment')}
-                          </Button>
-                        ) : activePanel === 'lighting-settings' ? (
-                          // How much the picture may cost this device is the Graphics page's.
-                          <Button variant="ghost" size="sm" onClick={() => setActiveSubmenu('graphics-settings')}>
-                            <Gauge />
-                            {t('graphics.command')}
-                          </Button>
-                        ) : undefined
-                      }
-                    />
-                  ) : (
-                    <>
-                      <div className="atlas-command-palette-search">
-                        <div className="atlas-command-palette-search-inner">
-                          <Search className="atlas-command-palette-search-icon" />
-                          <input
-                            ref={inputRef}
-                            type="text"
-                            placeholder={t('palette.searchPlaceholder')}
-                            className="atlas-command-palette-input"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            tabIndex={0}
-                            autoComplete="off"
-                            spellCheck={false}
-                          />
-                          {searchQuery && (
-                            <CloseButton placement="inline" onClick={clearSearch} aria-label={t('common.clearSearch')} />
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="atlas-command-palette-tabs">
-                        {tabs.map((tab) => (
-                          <Button
-                            key={tab.id}
-                            variant="ghost"
-                            size="sm"
-                            className={cn(
-                              'atlas-command-palette-tab',
-                              activeTab === tab.id && 'atlas-active',
-                            )}
-                            onClick={() => setActiveTab(tab.id)}
-                          >
-                            <span className="atlas-command-palette-tab-label">{tab.label}</span>
-                          </Button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-
-                  <div
-                    ref={optionsContainerRef}
-                    className="atlas-command-palette-options"
-                    onMouseMove={handleMouseMove}
+                <PaletteSurface depth={activePanel ? 1 : -1} surfaceRef={containerRef}>
+                  <PalettePage
+                    key={pageKey}
+                    className={cn(
+                      'atlas-command-palette-container',
+                      activePanel && 'atlas-command-palette-container--expanded',
+                      activePanel && `atlas-command-palette-container--${activePanel}`,
+                    )}
+                    width={activePanel ? undefined : position?.width}
                   >
                     {activePanel ? (
-                      renderSettingsPanel(activePanel)
+                      <SettingsPanelHeader
+                        icon={SETTINGS_PANEL_META[activePanel].icon}
+                        title={SETTINGS_PANEL_META[activePanel].title}
+                        onBack={exitSubmenu}
+                        actions={
+                          activePanel === 'grid-settings' ? (
+                            <Button variant="secondary" size="sm" onClick={() => store.getState().setGridAlignmentOpen(true)}>
+                              <Move />
+                              {t('palette.enterAlignment')}
+                            </Button>
+                          ) : activePanel === 'lighting-settings' ? (
+                            // How much the picture may cost this device is the Graphics page's.
+                            <Button variant="ghost" size="sm" onClick={() => setActiveSubmenu('graphics-settings')}>
+                              <Gauge />
+                              {t('graphics.command')}
+                            </Button>
+                          ) : undefined
+                        }
+                      />
                     ) : (
-                      <div className="atlas-command-palette-options-inner">
-                        {sections.map((section) =>
-                          section.options.length > 0 ? (
-                            <div key={section.id} className="atlas-command-palette-section">
-                              <div className="atlas-command-palette-section-header">{section.title}</div>
-                              {section.options.map((option) => renderCommandItem(option))}
-                            </div>
-                          ) : null,
-                        )}
-
-                        {filteredOptions.length === 0 && (
-                          <div className="atlas-command-palette-empty">
-                            <div className="atlas-command-palette-empty-text">{t('palette.noResults')}</div>
-                            <div className="atlas-command-palette-empty-hint">{t('palette.noResultsHint')}</div>
+                      <>
+                        <div className="atlas-command-palette-search">
+                          <div className="atlas-command-palette-search-inner">
+                            <Search className="atlas-command-palette-search-icon" />
+                            <input
+                              ref={inputRef}
+                              type="text"
+                              placeholder={t('palette.searchPlaceholder')}
+                              className="atlas-command-palette-input"
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              tabIndex={0}
+                              autoComplete="off"
+                              spellCheck={false}
+                            />
+                            {searchQuery && (
+                              <CloseButton placement="inline" onClick={clearSearch} aria-label={t('common.clearSearch')} />
+                            )}
                           </div>
-                        )}
+                        </div>
+
+                        <div className="atlas-command-palette-tabs">
+                          {tabs.map((tab) => (
+                            <Button
+                              key={tab.id}
+                              variant="ghost"
+                              size="sm"
+                              className={cn(
+                                'atlas-command-palette-tab',
+                                activeTab === tab.id && 'atlas-active',
+                              )}
+                              onClick={() => setActiveTab(tab.id)}
+                            >
+                              <span className="atlas-command-palette-tab-label">{tab.label}</span>
+                            </Button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    <div
+                      // The list's alone: a leaving page would let go of it after the list took it.
+                      ref={activePanel ? undefined : optionsContainerRef}
+                      className="atlas-command-palette-options"
+                      onMouseMove={handleMouseMove}
+                    >
+                      {activePanel ? (
+                        renderSettingsPanel(activePanel)
+                      ) : (
+                        <div className="atlas-command-palette-options-inner">
+                          {sections.map((section) =>
+                            section.options.length > 0 ? (
+                              <div key={section.id} className="atlas-command-palette-section">
+                                <div className="atlas-command-palette-section-header">{section.title}</div>
+                                {section.options.map((option) => renderCommandItem(option))}
+                              </div>
+                            ) : null,
+                          )}
+
+                          {filteredOptions.length === 0 && (
+                            <div className="atlas-command-palette-empty">
+                              <div className="atlas-command-palette-empty-text">{t('palette.noResults')}</div>
+                              <div className="atlas-command-palette-empty-hint">{t('palette.noResultsHint')}</div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {!activePanel && (
+                      <div className="atlas-command-palette-footer">
+                        <div className="atlas-command-palette-footer-left">
+                          <div className="atlas-command-palette-footer-item">
+                            <kbd className="atlas-command-palette-kbd">Tab / Shift+Tab</kbd>
+                            <span>{t('palette.footer.switchTabs')}</span>
+                          </div>
+                          <div className="atlas-command-palette-footer-item">
+                            <span className="atlas-command-palette-footer-arrows">
+                              <ArrowUp className="atlas-command-palette-arrow" />
+                              <ArrowUp className="atlas-command-palette-arrow atlas-down" />
+                            </span>
+                            <span>{t('palette.footer.navigate')}</span>
+                          </div>
+                          <div className="atlas-command-palette-footer-item">
+                            <kbd className="atlas-command-palette-kbd">↵</kbd>
+                            <span>{t('palette.footer.select')}</span>
+                          </div>
+                        </div>
+                        <div className="atlas-command-palette-footer-right">
+                          <kbd className="atlas-command-palette-kbd">Esc</kbd>
+                          <span>{searchQuery ? t('palette.footer.clear') : t('palette.footer.close')}</span>
+                        </div>
                       </div>
                     )}
-                  </div>
-
-                  {!activePanel && (
-                    <div className="atlas-command-palette-footer">
-                      <div className="atlas-command-palette-footer-left">
-                        <div className="atlas-command-palette-footer-item">
-                          <kbd className="atlas-command-palette-kbd">Tab / Shift+Tab</kbd>
-                          <span>{t('palette.footer.switchTabs')}</span>
-                        </div>
-                        <div className="atlas-command-palette-footer-item">
-                          <span className="atlas-command-palette-footer-arrows">
-                            <ArrowUp className="atlas-command-palette-arrow" />
-                            <ArrowUp className="atlas-command-palette-arrow atlas-down" />
-                          </span>
-                          <span>{t('palette.footer.navigate')}</span>
-                        </div>
-                        <div className="atlas-command-palette-footer-item">
-                          <kbd className="atlas-command-palette-kbd">↵</kbd>
-                          <span>{t('palette.footer.select')}</span>
-                        </div>
-                      </div>
-                      <div className="atlas-command-palette-footer-right">
-                        <kbd className="atlas-command-palette-kbd">Esc</kbd>
-                        <span>{searchQuery ? t('palette.footer.clear') : t('palette.footer.close')}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  </PalettePage>
+                </PaletteSurface>
               </motion.div>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
