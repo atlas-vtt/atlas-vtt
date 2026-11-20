@@ -111,6 +111,8 @@ export const armariumShare = {
   'armariumShare.item.updateIntro': 'You shared this before. This is the next version of your listing, and whoever installed it is offered the update.',
   'armariumShare.item.notes': 'What changed',
   'armariumShare.item.notesHint': 'Shown with this version to whoever updates. You can leave it empty.',
+  'armariumShare.item.coverHint': 'Shown on its card and page in the Armarium',
+  'armariumShare.item.noCoverHint': 'The Armarium shows a drawing of its kind',
   'armariumShare.title.uploadItem': 'Uploading',
   'armariumShare.packingItem': 'Packing…',
   'armariumShare.exportItemFailed': 'It could not be packed: {error}',

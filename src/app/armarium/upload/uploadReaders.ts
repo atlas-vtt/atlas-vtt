@@ -1,4 +1,5 @@
 import { isRecord } from '../../utils/guards';
+import { isArmariumFileUrl } from '../armariumUrls';
 import {
   CHECK_STAGES,
   KINDS,
@@ -131,6 +132,12 @@ export function parseSubmission(value: unknown): SubmissionView {
 }
 
 /** One listing of My uploads, or null for an entry Atlas cannot read (the others still count). */
+/** A listing's cover URL from `/mine`, where it lies on the Armarium's file hosts; anything else is no cover. */
+function coverUrlOf(cover: unknown): string | null {
+  const url = isRecord(cover) ? cover.url : undefined;
+  return typeof url === 'string' && isArmariumFileUrl(url) ? url : null;
+}
+
 export function parseOwnListing(value: unknown): OwnListing | null {
   try {
     const fields = record(value, 'mine.listing');
@@ -142,6 +149,7 @@ export function parseOwnListing(value: unknown): OwnListing | null {
       format: formatOf(fields.format, 'mine.listing.format'),
       fields: fields.fields === null || fields.fields === undefined ? null : parseListingFields(fields.fields, 'mine.listing.fields'),
       newestVersion: numbers.length === 0 ? null : Math.max(...numbers),
+      coverUrl: coverUrlOf(fields.cover),
     };
   } catch {
     return null;

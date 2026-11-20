@@ -90,7 +90,7 @@ export async function coverCandidates(app: App, assets: readonly Asset[]): Promi
 }
 
 /** `image` scaled to fit the cover size, as a derived file: WebP, or PNG where the platform encodes no WebP. */
-async function renderCover(image: Blob): Promise<ArrayBuffer> {
+export async function renderCover(image: Blob): Promise<ArrayBuffer> {
   const { image: cover } = await optimizeImage(image, { maxWidth: COVER_MAX_SIZE, maxHeight: COVER_MAX_SIZE, quality: 0.85 }, { webpOnly: true });
   return cover.arrayBuffer();
 }

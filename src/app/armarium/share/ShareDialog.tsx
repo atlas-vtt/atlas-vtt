@@ -47,7 +47,8 @@ export function ShareDialog({ session, snapshot, account, onClose }: ShareDialog
   const { app } = useAtlasUI();
   const accountState = useAccountState(account);
   const collection = useCollectionShown(snapshot);
-  const shown: Shown = collection ?? itemShown(snapshot);
+  const itemCoverUrl = useObjectUrl(snapshot.subject === 'item' ? snapshot.cover ?? undefined : undefined);
+  const shown: Shown = collection ?? itemShown(snapshot, itemCoverUrl);
   const parts = shareStepParts({ app, session, snapshot, account, accountState, onClose });
   return (
     <TransferDialog
@@ -67,14 +68,14 @@ export function ShareDialog({ session, snapshot, account, onClose }: ShareDialog
   );
 }
 
-/** A single file: no cover (the Armarium draws its kind's), its kind beside the version once that is known. */
-function itemShown(snapshot: ShareSnapshot): Shown {
+/** A single file: the cover chosen for it (without one the Armarium draws its kind's), its kind beside the version once that is known. */
+function itemShown(snapshot: ShareSnapshot, imageUrl: string | undefined): Shown {
   if (snapshot.subject !== 'item') return { name: '', version: '', imageUrl: undefined, details: [] };
   const kind = itemKindLabel(snapshot.item.kind);
   const version = snapshot.bundle?.version ?? snapshot.version;
   return version === null
-    ? { name: snapshot.item.name, version: kind, imageUrl: undefined, details: [] }
-    : { name: snapshot.item.name, version: `v${version}`, imageUrl: undefined, details: [kind] };
+    ? { name: snapshot.item.name, version: kind, imageUrl, details: [] }
+    : { name: snapshot.item.name, version: `v${version}`, imageUrl, details: [kind] };
 }
 
 /** The version the share will publish before the bundle is packed: the release's, a fork's first, else the suggested one. */

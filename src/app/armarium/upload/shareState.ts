@@ -76,6 +76,11 @@ export interface ItemShareSnapshot extends ShareCommon {
   readonly version: number | null;
   /** What changed in this version; asked for from the second version on. */
   readonly notes: string;
+  /** The image packed as the listing's cover, as chosen; null for none. */
+  readonly cover: Blob | null;
+  /** The listing's cover as published, once fetched, and the image uploaded in this dialog: what the picker offers. */
+  readonly listedCover: Blob | null;
+  readonly uploadedCover: Blob | null;
 }
 
 /** Everything the share dialog shows. */

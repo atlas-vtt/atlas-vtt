@@ -26,9 +26,11 @@ function account(who: Who = { id: 'acct-1', name: 'Mara', handle: 'mara' }): {
   };
 }
 
-function setup(options: { who?: Who; description?: string | null } = {}): { session: ItemShareSession; api: FakeArmarium; pack: ReturnType<typeof vi.fn<(uid: string, version: number, notes: string | undefined) => Promise<PackedItemBundle>>> } {
+type Pack = (uid: string, version: number, notes: string | undefined, cover: Blob | null) => Promise<PackedItemBundle>;
+
+function setup(options: { who?: Who; description?: string | null; fetchCover?: (url: string) => Promise<Blob | null> } = {}): { session: ItemShareSession; api: FakeArmarium; pack: ReturnType<typeof vi.fn<Pack>> } {
   const api = new FakeArmarium();
-  const pack = vi.fn((_uid: string, version: number, _notes: string | undefined) => Promise.resolve<PackedItemBundle>({ fileName: `Goblin v${version}.atlas-template.zip`, bytes: new Uint8Array(10), name: 'Goblin' }));
+  const pack = vi.fn<Pack>((_uid, version) => Promise.resolve<PackedItemBundle>({ fileName: `Goblin v${version}.atlas-template.zip`, bytes: new Uint8Array(10), name: 'Goblin' }));
   const session = new ItemShareSession({
     account: account(options.who),
     api,
@@ -36,6 +38,7 @@ function setup(options: { who?: Who; description?: string | null } = {}): { sess
     description: options.description === undefined ? 'Goblins of the Blue Mouth caves, as five-foot menaces.' : options.description,
     listingUid: (accountId) => itemListingUid(accountId, TEMPLATE.kind, TEMPLATE.id),
     pack,
+    fetchCover: options.fetchCover ?? (() => Promise.resolve(null)),
     sha256: (bytes) => sha256(bytes),
     sleep: noSleep,
   });
@@ -58,14 +61,14 @@ describe('sharing a single Atlas file in the Armarium', () => {
     session.setNotes('Ignored for a first version');
     session.confirmItem();
     await vi.waitFor(() => expect(session.snapshot().step).toBe('listing'));
-    expect(pack).toHaveBeenCalledWith(uid, 1, undefined);
+    expect(pack).toHaveBeenCalledWith(uid, 1, undefined, null);
     expect(session.snapshot().bundle).toMatchObject({ fileName: 'Goblin v1.atlas-template.zip', name: 'Goblin', version: 1 });
     expect(session.snapshot().draft).toMatchObject({ kind: 'templates', system: '', description: 'Goblins of the Blue Mouth caves, as five-foot menaces.' });
 
     session.continueToPublish();
     session.setDraft({ licence: 'cc-by-4.0' });
     session.setDeclared(true);
-    api.own = { uid, slug: 'goblin', format: 'statblock-template', fields: null, newestVersion: 1 };
+    api.own = { uid, slug: 'goblin', format: 'statblock-template', fields: null, newestVersion: 1, coverUrl: null };
     await session.publish();
     expect(api.sentListings).toEqual([{ kind: 'templates', system: null, description: 'Goblins of the Blue Mouth caves, as five-foot menaces.', tags: [], licence: 'cc-by-4.0', credits: '' }]);
     expect(session.snapshot()).toMatchObject({ step: 'done', published: { slug: 'goblin', held: false, recordFailed: null } });
@@ -74,7 +77,7 @@ describe('sharing a single Atlas file in the Armarium', () => {
   it('continues the account\'s listing one version above its newest, with what changed, and starts from what the listing holds', async () => {
     const { session, api, pack } = setup();
     const uid = await itemListingUid('acct-1', 'statblock-template', TEMPLATE.id);
-    api.own = { uid, slug: 'goblin', format: 'statblock-template', fields: STORED, newestVersion: 2 };
+    api.own = { uid, slug: 'goblin', format: 'statblock-template', fields: STORED, newestVersion: 2, coverUrl: null };
     api.manifest = { uid, version: 3, name: 'Goblin', notes: 'Adds the bite.', listingFormat: 'statblock-template' };
     await toItemStep(session);
     expect(api.calls).toContain('ownListing');
@@ -83,13 +86,13 @@ describe('sharing a single Atlas file in the Armarium', () => {
     session.setNotes('  Adds the bite.  ');
     session.confirmItem();
     await vi.waitFor(() => expect(session.snapshot().step).toBe('listing'));
-    expect(pack).toHaveBeenCalledWith(uid, 3, 'Adds the bite.');
+    expect(pack).toHaveBeenCalledWith(uid, 3, 'Adds the bite.', null);
     expect(session.snapshot().draft).toMatchObject({ kind: 'templates', system: 'dnd5e', description: STORED.description, licence: 'cc0' });
   });
 
   it('keeps notes longer than a manifest carries on the item step', async () => {
     const { session, api, pack } = setup();
-    api.own = { uid: await itemListingUid('acct-1', 'statblock-template', TEMPLATE.id), slug: 'goblin', format: 'statblock-template', fields: null, newestVersion: 1 };
+    api.own = { uid: await itemListingUid('acct-1', 'statblock-template', TEMPLATE.id), slug: 'goblin', format: 'statblock-template', fields: null, newestVersion: 1, coverUrl: null };
     await toItemStep(session);
     session.setNotes('x'.repeat(ITEM_NOTES_LIMITS.max + 1));
     session.confirmItem();
@@ -122,5 +125,47 @@ describe('sharing a single Atlas file in the Armarium', () => {
     session.retryUpload();
     await vi.waitFor(() => expect(session.snapshot().step).toBe('listing'));
     expect(pack).toHaveBeenCalledTimes(2);
+  });
+
+  it('packs the cover chosen on the item step: an uploaded image, or none', async () => {
+    const { session, pack } = setup();
+    await toItemStep(session);
+    const image = new Blob(['art'], { type: 'image/png' });
+    session.uploadCover(image);
+    expect(session.snapshot()).toMatchObject({ cover: image, uploadedCover: image });
+    session.setCover(null);
+    expect(session.snapshot()).toMatchObject({ cover: null, uploadedCover: image });
+    session.setCover(image);
+    session.confirmItem();
+    await vi.waitFor(() => expect(pack).toHaveBeenCalled());
+    expect(pack.mock.calls[0]?.[3]).toBe(image);
+  });
+
+  it('keeps the published cover for the next version unless another is chosen', async () => {
+    const listed = new Blob(['listed'], { type: 'image/webp' });
+    const fetchCover = vi.fn(() => Promise.resolve(listed));
+    const { session, api, pack } = setup({ fetchCover });
+    const uid = await itemListingUid('acct-1', 'statblock-template', TEMPLATE.id);
+    api.own = { uid, slug: 'goblin', format: 'statblock-template', fields: STORED, newestVersion: 2, coverUrl: 'https://atlasvttusercontent.com/covers/goblin.webp' };
+    await toItemStep(session);
+    await vi.waitFor(() => expect(session.snapshot().cover).toBe(listed));
+    expect(fetchCover).toHaveBeenCalledWith('https://atlasvttusercontent.com/covers/goblin.webp');
+    expect(session.snapshot().listedCover).toBe(listed);
+    session.confirmItem();
+    await vi.waitFor(() => expect(pack).toHaveBeenCalled());
+    expect(pack.mock.calls[0]?.[3]).toBe(listed);
+  });
+
+  it('leaves a cover chosen before the published one arrived', async () => {
+    const listed = new Blob(['listed']);
+    let deliver: (blob: Blob) => void = () => undefined;
+    const { session, api } = setup({ fetchCover: () => new Promise<Blob | null>((resolve) => { deliver = resolve; }) });
+    const uid = await itemListingUid('acct-1', 'statblock-template', TEMPLATE.id);
+    api.own = { uid, slug: 'goblin', format: 'statblock-template', fields: STORED, newestVersion: 2, coverUrl: 'https://atlasvttusercontent.com/covers/goblin.webp' };
+    await toItemStep(session);
+    session.setCover(null);
+    deliver(listed);
+    await vi.waitFor(() => expect(session.snapshot().listedCover).toBe(listed));
+    expect(session.snapshot().cover).toBeNull();
   });
 });

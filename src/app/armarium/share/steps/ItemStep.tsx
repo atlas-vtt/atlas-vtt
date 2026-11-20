@@ -1,5 +1,8 @@
 import React from 'react';
 import { t } from '../../../i18n';
+import { CoverPicker } from '../../../packages/components/asset-manager/collection-transfer/CoverPicker';
+import { useObjectUrl } from '../../../packages/components/asset-manager/collection-transfer/useObjectUrl';
+import type { CoverChoice } from '../../../services/collectionBundle/collectionCover';
 import type { ItemShareSession } from '../../upload/ItemShareSession';
 import { ITEM_NOTES_LIMITS, type ItemShareSnapshot } from '../../upload/shareState';
 import { itemKindLabel } from '../shareWording';
@@ -7,7 +10,8 @@ import { CountedText } from './ListingFields';
 
 /**
  * A single file's own step: what it is, the version it becomes (the first of a new listing, or the next of the
- * account's listing of it) and, for a next version, what changed, which whoever updates reads.
+ * account's listing of it), the cover its listing shows and, for a next version, what changed, which whoever updates
+ * reads.
  */
 export function ItemStep({ snapshot, session }: { snapshot: ItemShareSnapshot; session: ItemShareSession }): React.JSX.Element {
   const { item, version, notes, problems } = snapshot;
@@ -23,6 +27,7 @@ export function ItemStep({ snapshot, session }: { snapshot: ItemShareSnapshot; s
         <dt>{t('armariumShare.item.version')}</dt>
         <dd>{update ? t('armariumShare.item.nextVersion', { version }) : t('armariumShare.item.newListing')}</dd>
       </dl>
+      <ItemCover snapshot={snapshot} session={session} />
       {update && (
         <CountedText
           label={t('armariumShare.item.notes')}
@@ -36,5 +41,26 @@ export function ItemStep({ snapshot, session }: { snapshot: ItemShareSnapshot; s
         />
       )}
     </div>
+  );
+}
+
+/** The cover as the picker offers it: the listing's published one, the image uploaded here, or none. */
+function ItemCover({ snapshot, session }: { snapshot: ItemShareSnapshot; session: ItemShareSession }): React.JSX.Element {
+  const { cover, listedCover, uploadedCover } = snapshot;
+  const listedUrl = useObjectUrl(listedCover ?? undefined);
+  const uploadedUrl = useObjectUrl(uploadedCover ?? undefined);
+  const value: CoverChoice = cover === null ? { kind: 'none' } : cover === listedCover ? { kind: 'current' } : { kind: 'upload', image: cover };
+  return (
+    <CoverPicker
+      layout="row"
+      hint={t('armariumShare.item.coverHint')}
+      noneHint={t('armariumShare.item.noCoverHint')}
+      value={value}
+      current={listedCover && listedUrl ? { path: '', url: listedUrl } : undefined}
+      candidates={[]}
+      upload={uploadedCover && uploadedUrl ? { image: uploadedCover, url: uploadedUrl } : undefined}
+      onUpload={(image) => session.uploadCover(image)}
+      onChange={(choice) => session.setCover(choice.kind === 'current' ? listedCover : choice.kind === 'upload' ? choice.image : null)}
+    />
   );
 }

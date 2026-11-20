@@ -109,6 +109,18 @@ describe('exporting an item', () => {
     expect(await bundle.files.text(BODY_PATH)).toBe(BODY);
   });
 
+  it('carries the listing\'s cover, which an install never writes into the vault', async () => {
+    const creator = await creatorVault();
+    // The RIFF/WEBP header is what tells a WebP from a PNG.
+    const cover = new Uint8Array([0x52, 0x49, 0x46, 0x46, 4, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, 1, 2, 3, 4]).buffer;
+    const { bytes, manifest } = await exportItemBundle(creator.app, { kind: 'dice-set', id: 'boons' }, { uid: UID, version: 1, cover });
+    expect(manifest.files.at(-1)).toMatchObject({ vaultPath: 'cover.webp', role: 'cover' });
+    const vault = await vaultWith();
+    await (await install(vault, bytes.slice())).apply();
+    expect(DiceSetFiles.forApp(vault.app)!.entries()[0]).toMatchObject({ id: 'boons' });
+    expect([...vault.files.keys()].filter((path) => path.includes('cover'))).toEqual([]);
+  });
+
   it('refuses a built-in and an item the vault lacks', async () => {
     const vault = await creatorVault();
     await expect(exportItemBundle(vault.app, { kind: 'statblock-template', id: 'builtin:d20-creature' }, { uid: UID, version: 1 })).rejects.toThrow(/built into Atlas/);

@@ -242,4 +242,6 @@ export interface OwnListing {
   fields: ListingFields | null;
   /** The newest published version; null for a listing without one. */
   newestVersion: number | null;
+  /** The public URL of its cover at full size; null without one. An item's next version keeps it unless changed. */
+  coverUrl: string | null;
 }

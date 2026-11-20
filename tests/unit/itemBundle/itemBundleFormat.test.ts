@@ -44,6 +44,19 @@ describe('an item manifest', () => {
     expect(itemManifestProblem(manifest('dice-set', [{ vaultPath: SET, role: 'dice-set' }]))).toBeNull();
   });
 
+  it('accepts one cover beside an item of any kind, and refuses a second, a misplaced or a linked one', () => {
+    const cover = { vaultPath: 'cover.webp', role: 'cover' };
+    expect(itemManifestProblem(manifest('dice-set', [{ vaultPath: SET, role: 'dice-set' }, cover]))).toBeNull();
+    expect(itemManifestProblem(manifest('system-preset', [{ vaultPath: PRESET, role: 'system-preset' }, { ...cover, vaultPath: 'cover.png' }]))).toBeNull();
+    expect(itemManifestProblem(manifest('statblock-template', [{ vaultPath: TEMPLATE, role: 'statblock-template' }, cover]))).toBeNull();
+    for (const files of [
+      [{ vaultPath: SET, role: 'dice-set' }, cover, { ...cover, vaultPath: 'cover.png' }],
+      [{ vaultPath: SET, role: 'dice-set' }, { ...cover, vaultPath: 'atlas-vtt/cover.webp' }],
+      [{ vaultPath: SET, role: 'dice-set' }, { ...cover, vaultPath: 'cover.jpg' }],
+      [{ vaultPath: SET, role: 'dice-set' }, { ...cover, linkedFrom: [SET] }],
+    ]) expect(itemManifestProblem(manifest('dice-set', files))).toMatch(/damaged/i);
+  });
+
   it('refuses a manifest of a newer format as made with a newer Atlas', () => {
     expect(itemManifestProblem({ ...manifest('dice-set', [{ vaultPath: SET, role: 'dice-set' }]), format: 11 })).toMatch(/newer version/);
   });

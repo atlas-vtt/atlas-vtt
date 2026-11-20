@@ -58,7 +58,15 @@ describe('the Armarium API from Atlas', () => {
     const item = api(() => ({ status: 200, json: { ...SUBMISSION, manifest: { uid: 'tpl', version: 2, name: 'Goblin', notes: 'Saves', listingFormat: 'statblock-template' } } }));
     expect((await item.client.submission('sub-1')).manifest).toEqual({ uid: 'tpl', version: 2, name: 'Goblin', notes: 'Saves', listingFormat: 'statblock-template' });
     const mine = api(() => ({ status: 200, json: { listings: [{ uid: 'dice', slug: 'bone-dice', format: 'dice-set', fields: null, versions: [{ version: 3 }] }] } }));
-    expect(await mine.client.ownListing('dice')).toEqual({ uid: 'dice', slug: 'bone-dice', format: 'dice-set', fields: null, newestVersion: 3 });
+    expect(await mine.client.ownListing('dice')).toEqual({ uid: 'dice', slug: 'bone-dice', format: 'dice-set', fields: null, newestVersion: 3, coverUrl: null });
+  });
+
+  it('reads a listing\'s cover only from the Armarium\'s file hosts', async () => {
+    const listing = (url: string): unknown => ({ listings: [{ uid: 'dice', slug: 'bone-dice', format: 'dice-set', fields: null, versions: [], cover: { url, width: 1600, height: 900 } }] });
+    const ours = api(() => ({ status: 200, json: listing('https://atlasvttusercontent.com/l/dice/cover-full.webp') }));
+    expect((await ours.client.ownListing('dice'))?.coverUrl).toBe('https://atlasvttusercontent.com/l/dice/cover-full.webp');
+    const foreign = api(() => ({ status: 200, json: listing('https://example.com/cover.webp') }));
+    expect((await foreign.client.ownListing('dice'))?.coverUrl).toBeNull();
   });
 
   it('turns a refusal into its code, with its date and the fields a bad-fields answer names', async () => {
@@ -99,7 +107,7 @@ describe('the Armarium API from Atlas', () => {
       },
     }));
     expect(await client.ownListing('col')).toEqual({
-      uid: 'col', slug: 'blue-mouth-caves', format: 'collection', newestVersion: 4,
+      uid: 'col', slug: 'blue-mouth-caves', format: 'collection', newestVersion: 4, coverUrl: null,
       fields: { kind: 'adventure', system: 'cairn', description: 'Six caves under the Blue Mouth.', tags: ['underground'], licence: 'cc-by-4.0', credits: '' },
     });
     expect(await client.ownListing('missing')).toBeNull();

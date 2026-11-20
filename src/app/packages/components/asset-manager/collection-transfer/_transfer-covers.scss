@@ -28,6 +28,25 @@
     padding: $spacing-xs;
     overflow-y: auto;
   }
+
+  // In a form: the cards side by side, all of one shape.
+  &[data-layout='row'] {
+    flex: none;
+
+    .atlas-transfer-covers__header {
+      padding-right: 0;
+    }
+
+    .atlas-transfer-covers__list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(144px, 1fr));
+      overflow: visible;
+    }
+
+    .atlas-transfer-cover-card[data-variant='action'] {
+      aspect-ratio: 16 / 9;
+    }
+  }
 }
 
 .atlas-transfer-cover-card {

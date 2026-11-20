@@ -21,27 +21,42 @@ export interface ItemShareDeps extends ShareFlowDeps {
   readonly description: string | null;
   /** The uid of the account's listing of the item (`itemListingUid`). */
   readonly listingUid: (accountId: string) => Promise<string>;
-  /** Packs the item as a bundle of the listing `uid` at `version`, with what changed in it. */
-  readonly pack: (uid: string, version: number, notes: string | undefined) => Promise<PackedItemBundle>;
+  /** Packs the item as a bundle of the listing `uid` at `version`, with what changed in it and the cover its listing shows. */
+  readonly pack: (uid: string, version: number, notes: string | undefined, cover: Blob | null) => Promise<PackedItemBundle>;
+  /** The image at a listing's cover URL; null where it cannot be had. */
+  readonly fetchCover: (url: string) => Promise<Blob | null>;
 }
 
 /**
  * One "Share in the Armarium" of a single Atlas file (a statblock template, a game system, a dice set): the account,
- * then the item with the version it becomes (one above what this account published of it, else 1) and what changed,
- * then the upload, checks, listing (its kind fixed by the item) and publish as for a collection. Its listing's uid is
+ * then the item with the version it becomes (one above what this account published of it, else 1), what changed and
+ * the cover its listing shows (the published one to begin with), then the upload, checks, listing (its kind fixed by the item) and publish as for a collection. Its listing's uid is
  * worked out from the account and the item, so nothing is recorded in the vault.
  */
 export class ItemShareSession extends ShareFlow<ItemShareSnapshot> {
   private uid: string | null = null;
+  private coverChosen = false;
 
   constructor(private readonly deps: ItemShareDeps) {
     const listingKind = ITEM_LISTING_KINDS[deps.item.kind];
-    super(deps, { ...freshShare({ ...draftFrom(null, deps.item.kind === 'system-preset' ? systemOfSharedPreset(deps.item.name) : null), kind: listingKind }), subject: 'item', item: deps.item, listingKind, version: null, notes: '' });
+    super(deps, { ...freshShare({ ...draftFrom(null, deps.item.kind === 'system-preset' ? systemOfSharedPreset(deps.item.name) : null), kind: listingKind }), subject: 'item', item: deps.item, listingKind, version: null, notes: '', cover: null, listedCover: null, uploadedCover: null });
   }
 
   setNotes(notes: string): void {
     const problems = Object.fromEntries(Object.entries(this.state.problems).filter(([field]) => field !== 'notes'));
     this.set({ notes, problems });
+  }
+
+  /** Packs `image` as the listing's cover, or none for null. */
+  setCover(image: Blob | null): void {
+    this.coverChosen = true;
+    this.set({ cover: image });
+  }
+
+  /** An image the creator picked for the cover, which becomes it. */
+  uploadCover(image: Blob): void {
+    this.coverChosen = true;
+    this.set({ cover: image, uploadedCover: image });
   }
 
   /** Packs the item at its version and uploads it; notes longer than a manifest carries keep it on this step. */
@@ -68,7 +83,15 @@ export class ItemShareSession extends ShareFlow<ItemShareSnapshot> {
   }
 
   protected opened(ownListing: OwnListing | null): Partial<ItemShareSnapshot> {
+    if (ownListing?.coverUrl) void this.keepListedCover(ownListing.coverUrl);
     return { version: nextItemVersion(ownListing) };
+  }
+
+  /** Offers the published cover, and packs it unless the creator chose another meanwhile. */
+  private async keepListedCover(url: string): Promise<void> {
+    const listed = await this.deps.fetchCover(url);
+    if (listed === null) return;
+    this.set(this.coverChosen ? { listedCover: listed } : { listedCover: listed, cover: listed });
   }
 
   /** What the listing holds for an update; for a new listing the item's own description. The kind is the item's. */
@@ -93,7 +116,7 @@ export class ItemShareSession extends ShareFlow<ItemShareSnapshot> {
     const notes = version > 1 && this.state.notes.trim() !== '' ? this.state.notes.trim() : undefined;
     let packed: PackedItemBundle;
     try {
-      packed = await this.deps.pack(uid, version, notes);
+      packed = await this.deps.pack(uid, version, notes, this.state.cover);
     } catch (error) {
       console.error('[Atlas] Packing the item for the Armarium failed:', error);
       return this.set({ busy: false, packing: null, refusal: { code: 'export-failed', until: null, detail: describeError(error) } });

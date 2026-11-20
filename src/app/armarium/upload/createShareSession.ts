@@ -3,7 +3,9 @@ import { AtlasAccount } from '../../account/AtlasAccount';
 import { obsidianHttp } from '../../account/obsidianHttp';
 import type { AssetService } from '../../services/AssetService';
 import { exportCollectionBundle, type ExportChoice, type ExportPreview } from '../../services/collectionBundle/collectionExport';
+import { renderCover } from '../../services/collectionBundle/collectionCover';
 import { exportItemBundle } from '../../services/itemBundle/itemExport';
+import { fetchBytes } from '../../services/stockPacks/verifiedFetch';
 import { itemListingUid } from '../../services/itemBundle/itemListingUid';
 import { recordItemName } from '../../services/itemBundle/vaultItems';
 import { SystemPresetFiles } from '../../services/systemPresets/SystemPresetFiles';
@@ -82,9 +84,17 @@ export function createItemShareSession(app: App, item: SharedItem): ItemShareSes
     item,
     description,
     listingUid: (accountId) => itemListingUid(accountId, item.kind, item.id),
-    pack: async (uid, version, notes) => {
-      const exported = await exportItemBundle(app, item, { uid, version, notes });
+    pack: async (uid, version, notes, cover) => {
+      const exported = await exportItemBundle(app, item, { uid, version, notes, cover: cover === null ? undefined : await renderCover(cover) });
       return { fileName: exported.fileName, bytes: exported.bytes, name: exported.manifest.item.name };
+    },
+    fetchCover: async (url) => {
+      try {
+        return new Blob([await fetchBytes(url)]);
+      } catch (error) {
+        console.warn('[Atlas] The listing\'s cover could not be fetched:', error);
+        return null;
+      }
     },
     sha256: (bytes) => sha256(bytes),
     sleep: abortableSleep,

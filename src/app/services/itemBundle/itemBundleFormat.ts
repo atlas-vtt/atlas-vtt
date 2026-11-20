@@ -1,7 +1,8 @@
 /**
  * Item bundles: one Atlas file shared on its own (a statblock template, a user game system
  * preset, a dice set) in the zip collections travel in: `manifest.json` first, the files under
- * `files/<vaultPath>`, with an item manifest of format 10 instead of a collection manifest.
+ * `files/<vaultPath>`, with an item manifest of format 10 instead of a collection manifest. It may
+ * carry the cover its Armarium listing shows (`cover.webp`), which no import writes.
  * Atlas versions that stop at format 9 refuse it as made with a newer Atlas.
  */
 
@@ -11,6 +12,7 @@ import {
   DICE_SET_ROLE, PRESET_ROLE, SAFE_UID, TEMPLATE_BODY_ROLE, TEMPLATE_ROLE, isBundleFile, isSafeBundlePath,
   type BundleFile, type BundleFileRole,
 } from '../collectionBundle/bundleFormat';
+import type { DerivedFormat } from '../../imageProcessing/imageEncoder';
 import { t } from '../../i18n';
 
 /** The newest item bundle format this version reads and the one it writes. */
@@ -55,11 +57,18 @@ export const ITEM_ROLE: Readonly<Record<ItemKind, BundleFileRole>> = {
   'dice-set': DICE_SET_ROLE,
 };
 
+/** The role of the cover a listing shows: an image no import writes into the vault. */
+export const ITEM_COVER_ROLE: BundleFileRole = 'cover';
+
+/** Where an item bundle's cover lies: `cover.webp`, or `cover.png` from a device that cannot encode WebP. */
+const COVER_PATH = /^cover\.(?:webp|png)$/;
+export const itemCoverPath = (extension: DerivedFormat): string => `cover.${extension}`;
+
 /** The files a bundle of each kind may hold beside its item, at most one of each. */
 const COMPANION_ROLES: Readonly<Record<ItemKind, readonly BundleFileRole[]>> = {
-  'statblock-template': [TEMPLATE_BODY_ROLE, DICE_SET_ROLE],
-  'system-preset': [DICE_SET_ROLE],
-  'dice-set': [],
+  'statblock-template': [TEMPLATE_BODY_ROLE, DICE_SET_ROLE, ITEM_COVER_ROLE],
+  'system-preset': [DICE_SET_ROLE, ITEM_COVER_ROLE],
+  'dice-set': [ITEM_COVER_ROLE],
 };
 
 /** The suffix of an item bundle's file name, by kind. */
@@ -112,7 +121,8 @@ function holdsItsFiles(kind: ItemKind, files: readonly BundleFile[]): boolean {
   if (COMPANION_ROLES[kind].some((role) => role !== itemRole && count(role) > 1)) return false;
   const itemPath = files.find((file) => file.role === itemRole)!.vaultPath;
   // The note beside a template goes where the template goes, so it must name it.
-  return files.every((file) => file.role !== TEMPLATE_BODY_ROLE || file.linkedFrom?.[0] === itemPath);
+  if (!files.every((file) => file.role !== TEMPLATE_BODY_ROLE || file.linkedFrom?.[0] === itemPath)) return false;
+  return files.every((file) => file.role !== ITEM_COVER_ROLE || (file.linkedFrom === undefined && COVER_PATH.test(file.vaultPath)));
 }
 
 /** Why an item bundle cannot be imported, or null when its manifest is sound. Its files' contents are checked on reading. */
