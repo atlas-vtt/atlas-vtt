@@ -95,7 +95,8 @@ describe('the GM\'s initiative cards', () => {
       const bar = box(card.querySelector('.atlas-initiative-card__hp-bar'));
       expect(bar.top).toBeGreaterThanOrEqual(name.bottom);
       expect(bar.left).toBeCloseTo(name.left + parseFloat(getComputedStyle(card.querySelector('.atlas-initiative-card__name')!).paddingLeft), 0);
-      expect(bar.right).toBeLessThanOrEqual(name.right + 0.5);
+      // To the line's end, as far inside the border as the number at its start
+      expect(frame.right - border - bar.right).toBeCloseTo(4, 0);
       expect(name.top).toBeGreaterThanOrEqual(box(number).top - 0.5);
       expect(bar.bottom).toBeLessThanOrEqual(box(number).bottom + 0.5);
       // The art lies under the line, across the card's right end
@@ -110,6 +111,10 @@ describe('the GM\'s initiative cards', () => {
     const heights = (): number[] => [...container.querySelectorAll('.atlas-initiative-card')].map((card) => box(card).height);
     const withBar = heights();
     expect(new Set(withBar).size).toBe(1);
+    // One length on every line, whatever marks or conditions stand above it
+    const bars = [...container.querySelectorAll('.atlas-initiative-card__hp-bar')].map(box);
+    expect(new Set(bars.map((bar) => Math.round(bar.width))).size).toBe(1);
+    expect(new Set(bars.map((bar) => Math.round(bar.left))).size).toBe(1);
 
     const { a, b } = store.getState().objects.tokens;
     store.setState({ objects: { ...store.getState().objects, tokens: { a: { ...a!, resources: {} }, b: { ...b!, resources: { hp: { current: 4, max: 7 }, stress: { current: 1, max: 3 } } } } } });

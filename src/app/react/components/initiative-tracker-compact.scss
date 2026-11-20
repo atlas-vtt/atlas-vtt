@@ -1,6 +1,6 @@
 // The GM's compact tracker (the tracker's Compact view): a list to work with, a line per combatant as a deck
 // builder lists its cards. Number, name, up to three conditions and the marks in one line over the token's art,
-// which fades in from the right end; the resource bars under the name, as long as it may be, never the card's width.
+// which fades in from the right end; the resource bars under them, one length on every line whatever stands above.
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/initiative-cards' as *;
 
@@ -9,7 +9,8 @@ $line-border: $border-width-s;
 $plate-radius: initiative-corner-radius($line-border);
 // The number plate's height, which every line takes, and the slot under the name its bars stand in, bars or not
 $plate-height: 24px;
-$bar-slot: 5px;
+// Leaves the top row the 18 px of a condition badge beside the name
+$bar-slot: 4px;
 
 .atlas-initiative-tracker--compact {
   gap: $spacing-xs;
@@ -125,7 +126,6 @@ $bar-slot: 5px;
 
   .atlas-initiative-card__name {
     grid-area: 1 / 2;
-    align-self: end;
     padding-inline: $spacing-xs;
     text-align: start;
     display: block;
@@ -137,7 +137,7 @@ $bar-slot: 5px;
 
   // Up to three conditions and the count of the rest, at the line's end before the marks
   .atlas-initiative-card__conditions {
-    grid-area: 1 / 3 / 3 / 4;
+    grid-area: 1 / 3;
     flex-wrap: nowrap;
     width: auto;
   }
@@ -156,7 +156,7 @@ $bar-slot: 5px;
   }
 
   .atlas-initiative-card__marks {
-    grid-area: 1 / 4 / 3 / 5;
+    grid-area: 1 / 4;
     display: flex;
     align-items: center;
     gap: $spacing-xs;
@@ -179,14 +179,14 @@ $bar-slot: 5px;
     position: static;
   }
 
-  // Under the name, starting where its text does; a slim bar, since the line is short. Several stand side by side,
-  // so the line keeps its height
+  // From where the name's text starts to the line's end, under the conditions and marks too: what stands above never
+  // shortens a bar, which would read as fewer hit points. Several stand side by side, so the line keeps its height
   .atlas-initiative-card__resources {
-    grid-area: 2 / 2;
+    grid-area: 2 / 2 / 3 / 5;
     align-self: start;
     flex-direction: row;
     gap: $spacing-xs;
-    padding-inline: $spacing-xs;
+    padding-inline-start: $spacing-xs;
     box-sizing: border-box;
   }
 
