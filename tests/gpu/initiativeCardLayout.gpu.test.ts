@@ -163,7 +163,7 @@ describe('the GM\'s initiative cards', () => {
     expect(getComputedStyle(field).boxShadow).not.toBe('none');
   });
 
-  it('fill the art with red from the bottom by the hit points lost, under the art\'s shade, in the tile and the compact line alike', async () => {
+  it('fill the art with red by the hit points lost, from the bottom in a tile and from the left in a compact line', async () => {
     for (const names of [false, true]) {
       const container = await show(names);
       store.setState({ initiative: { ...store.getState().initiative, entries: store.getState().initiative.entries.map((entry) => ({ ...entry, imagePath: 'goblin.png' })) } });
@@ -172,8 +172,13 @@ describe('the GM\'s initiative cards', () => {
         const art = card.querySelector(names ? '.atlas-initiative-card__backdrop' : '.atlas-initiative-card__art')!;
         const wound = art.querySelector<HTMLElement>('.atlas-initiative-wound')!;
         wound.style.transition = 'none';
-        // 4 of 7 left: three sevenths of the art, from its bottom edge up
-        expect(box(art).bottom - box(wound).top).toBeCloseTo((box(art).height * 3) / 7, 0);
+        // 4 of 7 left: three sevenths of the art, from its bottom edge up, or in a line from its left edge on
+        if (names) {
+          expect(box(wound).right - box(art).left).toBeCloseTo((box(art).width * 3) / 7, 0);
+          expect(box(wound).top).toBeCloseTo(box(art).top, 0);
+        } else {
+          expect(box(art).bottom - box(wound).top).toBeCloseTo((box(art).height * 3) / 7, 0);
+        }
         expect(getComputedStyle(art).overflow).toBe('hidden');
       }
     }

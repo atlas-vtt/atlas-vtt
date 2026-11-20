@@ -1,6 +1,6 @@
 // The GM's compact tracker (the tracker's Compact view): a list to work with, a line per combatant as a deck
 // builder lists its cards. Number, name and the marks in one line over the token's art, which fades in from the right
-// end, red rising in it as the combatant loses hit points (`initiative-wound`).
+// end, red filling it from the left as the combatant loses hit points (`initiative-wound`, turned on its side).
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/initiative-cards' as *;
 
@@ -73,6 +73,11 @@ $plate-height: 24px;
 
   .atlas-initiative-card__backdrop--framed {
     @include initiative-art-framed;
+  }
+
+  // A line is long and low, so the life lost fills it from its start, as a bar does, its bright edge leading
+  .atlas-initiative-wound {
+    @include initiative-wound-from(left);
   }
 
   // A side's glow inside the line, beside its border's line; under the art it fades with it
