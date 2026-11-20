@@ -2,7 +2,7 @@
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { App } from 'obsidian';
+import { requestUrl, type App } from 'obsidian';
 import { AtlasAccount } from '../../../src/app/account/AtlasAccount';
 import { ArmariumShareLayer } from '../../../src/app/armarium/share/ArmariumShareLayer';
 import { ArmariumHosts } from '../../../src/app/armarium/armariumHosts';
@@ -16,6 +16,7 @@ import { FakeArmarium, noSleep, settle } from './shareFakes';
 
 const confirm = vi.hoisted(() => vi.fn<() => Promise<boolean>>());
 vi.mock('../../../src/app/ui/confirmDialog', () => ({ confirmAction: confirm }));
+vi.mock('obsidian', async (original) => ({ ...(await original<typeof import('obsidian')>()), requestUrl: vi.fn() }));
 
 const PREVIEW = {
   collection: { id: 'caves', uid: 'col-uid', name: 'Blue Mouth Caves', version: 2, settings: { systemPresetId: 'builtin:cairn' } },
@@ -34,6 +35,7 @@ let account: AtlasAccount;
 beforeEach(() => {
   token = 'tok';
   confirm.mockReset();
+  vi.mocked(requestUrl).mockReset().mockResolvedValue({ status: 200 } as Awaited<ReturnType<typeof requestUrl>>);
   account = AtlasAccount.open(app, {
     http: () => Promise.resolve({ status: 200, json: { user: { id: 'u', name: 'Mara', handle: 'mara' } } }),
     timers: { now: () => 0, setTimer: () => 0, clearTimer: () => undefined },
@@ -150,10 +152,31 @@ describe('the share dialog', () => {
       await session.publish();
     });
     expect(session.snapshot().step).toBe('done');
+    await vi.waitFor(() => expect(button('Open in the Armarium').disabled).toBe(false));
     fireEvent.click(button('Open in the Armarium'));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(show).toHaveBeenCalledWith('https://atlas-vtt.dev/armarium/blue-mouth-caves');
     detach();
+  });
+
+  it('offers the listing only once its page is built', async () => {
+    vi.mocked(requestUrl).mockResolvedValue({ status: 404 } as Awaited<ReturnType<typeof requestUrl>>);
+    const api = new FakeArmarium();
+    api.own = { uid: 'col-uid', slug: 'blue-mouth-caves', format: 'collection', fields: null, newestVersion: null, coverUrl: null };
+    const { session } = share(api);
+    await act(async () => {
+      session.start();
+      await settle();
+      await session.confirmBundle({ kind: 'release', version: 3 });
+      await vi.waitFor(() => expect(session.snapshot().step).toBe('listing'));
+      session.setDraft({ kind: 'maps', description: 'Six caves under the Blue Mouth, for three to five players.', licence: 'cc0' });
+      session.continueToPublish();
+      session.setDeclared(true);
+      await session.publish();
+    });
+    await vi.waitFor(() => expect(requestUrl).toHaveBeenCalled());
+    expect(vi.mocked(requestUrl).mock.calls[0]?.[0]).toMatchObject({ method: 'HEAD' });
+    expect(button('Preparing its page…').disabled).toBe(true);
   });
 
   it('asks before leaving an upload, and discards it when the GM leaves', async () => {

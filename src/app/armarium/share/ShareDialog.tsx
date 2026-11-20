@@ -12,6 +12,7 @@ import { ShareRail } from './ShareRail';
 import { shareStepParts } from './shareStepParts';
 import { itemKindLabel } from './shareWording';
 import { useAccountState } from './useShare';
+import { useListingPageReady } from './useListingPage';
 
 interface ShareDialogProps {
   session: AnyShareSession;
@@ -49,7 +50,9 @@ export function ShareDialog({ session, snapshot, account, onClose }: ShareDialog
   const collection = useCollectionShown(snapshot);
   const itemCoverUrl = useObjectUrl(snapshot.subject === 'item' ? snapshot.cover ?? undefined : undefined);
   const shown: Shown = collection ?? itemShown(snapshot, itemCoverUrl);
-  const parts = shareStepParts({ app, session, snapshot, account, accountState, onClose });
+  const published = snapshot.step === 'done' && snapshot.published?.held === false ? snapshot.published.slug : null;
+  const listingPageReady = useListingPageReady(published);
+  const parts = shareStepParts({ app, session, snapshot, account, accountState, onClose, listingPageReady });
   return (
     <TransferDialog
       label={t('armariumShare.dialogLabel', { name: shown.name })}
