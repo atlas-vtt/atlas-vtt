@@ -57,10 +57,11 @@ $plate-height: 24px;
       object-view-box: var(--atlas-art-view-box, none);
       // Through the faces, which sit high in most token art
       object-position: 50% 30%;
-      opacity: 0.6;
-      // Darker, and gone well before the name: it fades in slowly and is whole only at the right end
-      filter: brightness(0.7);
-      mask-image: linear-gradient(to right, transparent 15%, rgb(0 0 0 / 0.3) 55%, #000);
+      opacity: 0.75;
+      // A little darker, and faint under the name: it fades in from the number's end and is whole only at the right end.
+      // The name's shadow keeps it readable over the lightest art
+      filter: brightness(0.85);
+      mask-image: linear-gradient(to right, transparent 8%, rgb(0 0 0 / 0.45) 50%, #000 90%);
     }
 
     // The turn's ring and glow, which the art would cover on the card itself
@@ -149,8 +150,8 @@ $plate-height: 24px;
     display: block;
     white-space: nowrap;
     text-overflow: ellipsis;
-    // Readable where the art reaches under it
-    text-shadow: 0 1px 2px rgb(0 0 0 / 0.8);
+    // Readable where the art reaches under it, however light: a tight shadow and a soft halo
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.9), 0 0 6px rgb(0 0 0 / 0.7);
   }
 
   .atlas-initiative-card__marks {

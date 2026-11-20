@@ -126,10 +126,11 @@ describe('the GM\'s initiative cards', () => {
   });
 
   it.each([false, true])('fill the card with the art alone where its image has transparent margins (compact view: %s)', async (names) => {
-    // A token cropped zoomed out: its art a rounded square in the middle of a transparent image
+    // A token cropped zoomed out: its art a rounded square in the middle of a transparent image, as light as art gets,
+    // under which the name must still read
     const canvas = new OffscreenCanvas(200, 200);
     const pen = canvas.getContext('2d')!;
-    pen.fillStyle = '#3b6ea8';
+    pen.fillStyle = '#f1ece0';
     pen.beginPath();
     pen.roundRect(40, 30, 120, 140, 18);
     pen.fill();
