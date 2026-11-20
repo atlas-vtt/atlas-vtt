@@ -295,6 +295,11 @@ $fight-banner-rule: 72px;
   }
 }
 
+// At a players' list it hangs from a point (`__anchor`, no width of its own), so its room is the window's
+.atlas-player-turn-banner__anchor .atlas-turn-banner.atlas-turn-banner--fight {
+  max-width: min(560px, calc(100vw - 2 * #{$spacing-l}));
+}
+
 .atlas-turn-banner--fight-start {
   --atlas-fight-banner-accent: var(--atlas-theme-red, #e0574f);
 
