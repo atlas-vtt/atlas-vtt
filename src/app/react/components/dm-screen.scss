@@ -435,5 +435,7 @@ $page-shift: clamp(24px, 3cqi, 56px);
 // While a fight runs: the fight's statblocks or every creature's, above the feeds
 .atlas-segmented.atlas-dm-statblock-scope {
   @include dm-screen-track;
+  // A switch, not a heading: as wide as two short choices, not the whole pane.
+  max-width: 360px;
   margin-bottom: $spacing-s;
 }
