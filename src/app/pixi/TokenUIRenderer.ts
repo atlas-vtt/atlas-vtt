@@ -113,6 +113,7 @@ export class TokenUIRenderer {
   public conditionDefsProvider: (() => ConditionDefinition[]) | null = null;
   /** How far off the floor the token stands, over the top of its ring; nothing on the floor. */
   private heightChip = new HeightChip();
+  private heightText = '';
   /** What the map measures in, for the height chip's distance; without it no height is shown. */
   public measurementProvider: (() => MeasurementSettings) | null = null;
   /** The resources of the map's collection, in the order they show. */
@@ -243,7 +244,7 @@ export class TokenUIRenderer {
       this.nameBadge.visible = false;
       this.nameText.visible = false;
       this.conditionUI.setHidden(true);
-      this.heightChip.view.visible = false;
+      this.updateHeightChipVisibility();
     }
   };
 
@@ -282,7 +283,7 @@ export class TokenUIRenderer {
       this.nameBadge.visible = false;
       this.nameText.visible = false;
       this.conditionUI.setHidden(true);
-      this.heightChip.view.visible = false;
+      this.updateHeightChipVisibility();
     }
   };
   
@@ -391,7 +392,8 @@ export class TokenUIRenderer {
     this.refreshConditions();
     this.conditionUI.setHidden(this.isHiddenDuringResize || this.isHiddenDuringRotation);
     this.heightChip.write(heightText);
-    this.heightChip.view.visible = heightText !== '' && !this.isHiddenDuringResize && !this.isHiddenDuringRotation;
+    this.heightText = heightText;
+    this.updateHeightChipVisibility();
 
     // Before the early return: the controls lay out from the stack's slots, which must empty with it
     const baseGap = 2; // Gap between token and first bar
@@ -610,6 +612,12 @@ export class TokenUIRenderer {
     this.isHeld = held;
     this.updateEmphasis();
     this.updateConditionCard();
+    this.updateHeightChipVisibility();
+  }
+
+  /** The chip steps aside while its token is resized, turned, pressed or dragged, as the conditions card does. */
+  private updateHeightChipVisibility(): void {
+    this.heightChip.view.visible = this.heightText !== '' && !this.isHiddenDuringResize && !this.isHiddenDuringRotation && !this.isHeld;
   }
 
   /** Eases the UI to a selected token's on-screen size, or back to rest while unselected or held. */
