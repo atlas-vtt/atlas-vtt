@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { t } from '../../i18n';
 import { matchesMapHotkey } from '../../keyboard/mapHotkeys';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
@@ -160,9 +161,9 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
 
       <div className={`atlas-dm-screen atlas-dm-screen--pages ${closing ? 'is-closing' : contentReady ? 'is-visible' : ''}`}>
         <div className="atlas-dm-screen-header">
-          <kbd className="atlas-dm-screen-key" aria-hidden="true">←</kbd>
+          <kbd className="atlas-dm-screen-key" aria-hidden="true"><ArrowLeft /></kbd>
           <SegmentedControl className="atlas-dm-screen-pages" value={page} options={PAGES} onChange={setPage} ariaLabel={t('audio.screen.pages')} roving />
-          <kbd className="atlas-dm-screen-key" aria-hidden="true">→</kbd>
+          <kbd className="atlas-dm-screen-key" aria-hidden="true"><ArrowRight /></kbd>
           {/* A finger has no Escape and no backdrop to press: the screen fills the view */}
           {coarse && <CloseButton className="atlas-dm-screen-close" onClick={handleClose} aria-label={t('dashboard.closeScreen')} />}
         </div>

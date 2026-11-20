@@ -21,6 +21,7 @@
 }
 
 .atlas-sound-music__body {
+  container: atlas-sound-music / inline-size;
   flex: 1;
   min-width: 0;
   display: grid;
@@ -215,6 +216,23 @@
   margin-top: $spacing-s;
   // Skip's press area ends inside the card.
   padding-inline-end: $spacing-xs;
+}
+
+// A card too narrow for the clock beside the controls (the DM screen in a narrow view) gives the clock a line of
+// its own above them: a squeezed clock ran out of its column under the controls.
+@container atlas-sound-music (max-width: 360px) {
+  .atlas-sound-music__clock {
+    grid-column: 1 / -1;
+  }
+
+  .atlas-sound-music__actions {
+    grid-row: 5;
+    justify-self: end;
+  }
+
+  .atlas-sound-music__body[data-list-open] .atlas-sound-music__actions {
+    grid-row: 6;
+  }
 }
 
 // How the list goes on is the card's secondary row: a step narrower than the transport.

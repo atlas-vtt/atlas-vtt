@@ -82,6 +82,7 @@
     // The folders between the tab and the open one give way first; the tab and the open folder keep theirs.
     flex: 0 4 auto;
     min-width: 0;
+    overflow: hidden;
 
     &:first-of-type {
       flex-shrink: 0;
@@ -275,6 +276,7 @@
   white-space: nowrap;
   // Alone on its row and still too long, its text ends in an ellipsis.
   min-width: 0;
+  overflow: hidden;
   max-width: 100%;
   opacity: 1;
   transform: translateX(0);
