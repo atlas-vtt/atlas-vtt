@@ -25,6 +25,7 @@ export const hotkey: Translation = {
   'hotkey.audio': 'Áudio ambiente',
   'hotkey.nextMood': 'Próximo clima',
   'hotkey.silence': 'Parar todo o som',
+  'hotkey.soundPage': 'Página de som',
   'hotkey.selectAll': 'Selecionar tudo',
   'hotkey.copy': 'Copiar seleção',
   'hotkey.cut': 'Recortar seleção',

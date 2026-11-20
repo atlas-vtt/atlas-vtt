@@ -121,14 +121,20 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
         return;
       }
       if (e.defaultPrevented) return;
-      if (matchesMapHotkey(e, 'dashboard', SettingsService.forApp(app))) {
+      const settings = SettingsService.forApp(app);
+      if (matchesMapHotkey(e, 'dashboard', settings)) {
         e.preventDefault();
         handleClose();
+      } else if (matchesMapHotkey(e, 'soundPage', settings)) {
+        // The Sound page's key closes the screen from that page and turns to it from the other
+        e.preventDefault();
+        if (page === 'sound') handleClose();
+        else setPage('sound');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, handleClose, isNoteFocused, app, view]);
+  }, [isOpen, handleClose, isNoteFocused, app, view, page, setPage]);
 
   // Left and right change pages, as a game's shoulder buttons do; the keycaps beside the page control say so.
   // On the Sound page they always do, since nothing there takes the arrows for focus (owner, 2026-11-03);

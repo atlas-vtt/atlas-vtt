@@ -147,6 +147,13 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
       }
 
       if (!isPlayerView) {
+        // The open DM screen takes the key itself (`DMScreen`): map shortcuts wait while it is open
+        if (matchesMapHotkey(e, 'soundPage', settings)) {
+          e.preventDefault();
+          store.getState().setDMScreenPage('sound');
+          store.getState().setDMScreenOpen(true);
+          return;
+        }
         if (matchesMapHotkey(e, 'nextMood', settings)) {
           e.preventDefault();
           SoundDirector.forApp(app).pressNext();

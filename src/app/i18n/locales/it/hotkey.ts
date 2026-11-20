@@ -65,6 +65,7 @@ export const hotkey = {
   "hotkey.measureKeep": "Mantieni le misurazioni",
   "hotkey.nextMood": "Atmosfera successiva",
   "hotkey.silence": "Ferma tutti i suoni",
+  "hotkey.soundPage": "Pagina Suono",
   "hotkey.title": "Guida rapida",
   "hotkey.close": "Chiudi la guida rapida",
   "hotkey.intro": "Le scorciatoie funzionano quando una mappa ha il focus. Modificale in Impostazioni → Atlas VTT → Scorciatoie della mappa.",

@@ -73,4 +73,5 @@ export const hotkey: Translation = {
   'hotkey.measureKeep': '保留测量',
   'hotkey.nextMood': '下一个氛围',
   'hotkey.silence': '停止所有声音',
+  'hotkey.soundPage': '声音页面',
 };

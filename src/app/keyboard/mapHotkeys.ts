@@ -20,6 +20,8 @@ export const MAP_HOTKEYS = [
   { id: 'levelDown', label: t('hotkey.levelDown'), group: t('hotkey.group.map'), defaultKey: 'PageDown', dmOnly: true },
   { id: 'nextMood', label: t('hotkey.nextMood'), group: t('hotkey.group.map'), defaultKey: 'n', dmOnly: true },
   { id: 'silence', label: t('hotkey.silence'), group: t('hotkey.group.map'), defaultKey: 'Shift+s', dmOnly: true },
+  // Opens the DM screen on its Sound page, and closes it from there (`UIRoot`, `DMScreen`).
+  { id: 'soundPage', label: t('hotkey.soundPage'), group: t('hotkey.group.map'), defaultKey: 's', dmOnly: true },
   { id: 'move', label: t('hotkey.move'), group: t('hotkey.group.tools'), defaultKey: 'v' },
   { id: 'fog', label: t('hotkey.fog'), group: t('hotkey.group.tools'), defaultKey: 'f', dmOnly: true },
   { id: 'draw', label: t('hotkey.draw'), group: t('hotkey.group.tools'), defaultKey: 'b', dmOnly: true },
@@ -33,6 +35,7 @@ export const MAP_HOTKEYS = [
   { id: 'measureKeep', label: t('hotkey.measureKeep'), group: t('hotkey.group.tools'), defaultKey: 'k', dmOnly: true },
   { id: 'pin', label: t('hotkey.pin'), group: t('hotkey.group.tools'), defaultKey: 'p', dmOnly: true },
   { id: 'wall', label: t('hotkey.wall'), group: t('hotkey.group.tools'), defaultKey: 'w', dmOnly: true },
+  // Shares S with the Sound page while the tool is switched off: a disabled tool reserves no key.
   { id: 'audio', label: t('hotkey.audio'), group: t('hotkey.group.tools'), defaultKey: 's', dmOnly: true, enabled: AMBIENT_AUDIO_ENABLED },
   { id: 'selectAll', label: t('hotkey.selectAll'), group: t('hotkey.group.editing'), defaultKey: 'Mod+a', dmOnly: true },
   { id: 'copy', label: t('hotkey.copy'), group: t('hotkey.group.editing'), defaultKey: 'Mod+c', dmOnly: true, yieldsToTextSelection: true },

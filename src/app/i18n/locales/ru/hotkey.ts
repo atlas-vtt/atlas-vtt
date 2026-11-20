@@ -73,4 +73,5 @@ export const hotkey: Translation = {
   'hotkey.measureKeep': 'Сохранять измерения',
   'hotkey.nextMood': 'Следующее настроение',
   'hotkey.silence': 'Остановить весь звук',
+  'hotkey.soundPage': 'Страница «Звук»',
 };

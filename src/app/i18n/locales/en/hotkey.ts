@@ -25,6 +25,7 @@ export const hotkey = {
   'hotkey.audio': 'Ambient audio',
   'hotkey.nextMood': 'Next mood',
   'hotkey.silence': 'Stop all sound',
+  'hotkey.soundPage': 'Sound page',
   'hotkey.selectAll': 'Select all',
   'hotkey.copy': 'Copy selection',
   'hotkey.cut': 'Cut selection',

@@ -8,6 +8,7 @@ vi.mock('../../src/app/pixi/utils/tokenHighlight', () => ({ zoomToTokenWithHighl
 import { zoomToTokenWithHighlight } from '../../src/app/pixi/utils/tokenHighlight';
 
 vi.mock('../../src/app/react/components/LinkedNotePicker', () => ({ default: () => null }));
+vi.mock('../../src/app/react/components/dm-screen/sound/SoundPane', () => ({ SoundPane: () => null }));
 vi.mock('../../src/app/resources/useMapResources', async () => {
   const definitions = [(await import('../../src/app/resources/resourceDefinitions')).HP_RESOURCE];
   return { useMapResources: () => definitions };
@@ -232,6 +233,23 @@ describe('DM screen token actions', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' });
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+
+  it('turns to the Sound page on S, and closes from there on S again', async () => {
+    const onClose = vi.fn();
+    const { container } = showDMScreen([creaturePath], onClose);
+    container.querySelector<HTMLElement>('.atlas-dm-screen-wrapper')!.focus();
+    fireEvent.keyDown(window, { key: 's', code: 'KeyS' });
+    expect(state.setDMScreenPage).toHaveBeenCalledWith('sound');
+    expect(onClose).not.toHaveBeenCalled();
+
+    state.dmScreenPage = 'sound';
+    cleanup();
+    const reopened = render(<DMScreen isOpen onClose={onClose} />);
+    reopened.container.querySelector<HTMLElement>('.atlas-dm-screen-wrapper')!.focus();
+    fireEvent.keyDown(window, { key: 's', code: 'KeyS' });
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    state.dmScreenPage = 'statblocks';
   });
 
   it('stays open on an Escape a control inside it used', async () => {

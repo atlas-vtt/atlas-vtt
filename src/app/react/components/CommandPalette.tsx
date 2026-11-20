@@ -296,6 +296,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       icon: <BoomBox />,
       label: t('palette.openSoundPage'),
       keywords: ["sound", "audio", "music", "ambience"],
+      shortcut: hotkeyLabel('soundPage'),
       section: "tools",
       action: () => {
         onClose();
