@@ -17,7 +17,7 @@
 
 - Line up the floors of a scene whose maps differ in size: drag a floor over the floor below, shown see-through, until stairs and walls meet
 - The floor moves by whole cells, so its grid stays lined up; hold Alt to place it freely, or use the arrow keys
-- Tokens, walls and lights on that floor move with it; every move is one undo step
+- Tokens, walls and lights on that floor move with it: they fade out while you drag and back in where the floor lands; every move is one undo step
 - Open it from a floor's row in Scene levels, the command palette, or the offer after adding a floor
 - Add level opens your Maps library to choose the new floor's map, with thumbnails, folders, tags and search; changing a floor's map or roof uses it too
 
@@ -71,6 +71,10 @@
 - Measurements come and go smoothly: a kept ruler, circle, cone, square or line grows in from where it starts and fades out when deleted or undone, and one you don't keep dissolves instead of vanishing. The pin that keeps it pops in beside its label, lifts under the pointer, and the measurement it keeps glows once
 - Undo and redo carry a moved or resized measurement back along its way, with its handles. Auras and measurements grouped with a token glide with the token instead of jumping ahead of it
 - Players' measurements come and go the same way on your map, and one they move glides there
+- Kept cones, squares and lines have a turn handle next to their end: drag it to rotate the measurement without changing its size. Contributed by aryistia
+- A token's condition badges and the badge that marks a token your players can't see grow with the token, like its resize and rotate buttons, so they stay in proportion on large creatures
+- A token's height shows only while you hover or select it, like the resource wheels, right above the token and at one size on screen at any zoom, and steps aside while you drag the token, like the card that lists its conditions
+- On smaller screens the Sound page gives its list of music and ambience more room: the moods keep one column beside it, and a lone mood no longer stretches into a wide bar
 
 ## Fixed
 
@@ -79,3 +83,4 @@
 - While the Armarium is open in the asset manager, the sidebar shows the Armarium's tags and filters the store by them, instead of the tags of the collection you were in
 - The table log has room around its messages again; rolls and the message field no longer sit against its edge
 - The table log and the dice log show a roll's result once the dice have landed, not while they are still rolling
+- In the Sound page's list, a track an hour or longer no longer runs its length into Playing or In the mix beside it

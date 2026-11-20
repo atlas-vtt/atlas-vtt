@@ -4,14 +4,14 @@ import { describeError } from '../../utils/errors';
 import { draftFrom, type ListingDraft } from './listingDraft';
 import { freshShare, ShareFlow, type ShareFlowDeps } from './ShareFlow';
 import { withPublishedFloor, type CollectionShareSnapshot } from './shareState';
-import type { ListingFields, OwnListing, SystemId } from './uploadContract';
+import type { ListingFields, ListingSystem, OwnListing } from './uploadContract';
 
 export { POLL_MS } from './ShareFlow';
 
 export interface ShareSessionDeps extends ShareFlowDeps {
   readonly preview: ExportPreview;
   /** The collection's game system as the Armarium names it, which a new listing's form starts with. */
-  readonly collectionSystem: SystemId | null;
+  readonly collectionSystem: ListingSystem | null;
   /** Packs the collection in memory, as Export collection does, without handing the file anywhere. */
   readonly pack: (preview: ExportPreview, choice: ExportChoice, onProgress: BundleProgressListener) => Promise<ExportedBundle>;
   /** Whether a fork's name is taken by another collection of this vault. */

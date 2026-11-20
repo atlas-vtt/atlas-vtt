@@ -5,7 +5,7 @@
 // $surface-inset inside it (padding and border), as the switch stands inside a bar, its corner
 // concentric with the switch's ($control-inset-radius). Places only ever change the size, never the corners, so
 // the switch reads the same in the toolbar, a menu, a popover or a line of text; a size too small
-// for those radii rounds into a capsule by itself. The focus ring takes `.atlas-toggle`'s radius.
+// for those radii rounds into a capsule by itself. It shows no focus ring: Atlas shows no keyboard focus anywhere.
 // The three sizes are custom properties: a coarse pointer gives each a larger one of the same proportion
 // (`_coarse-pointer.scss`), the radii staying on the scale.
 $toggle-gap: $surface-inset;
@@ -31,11 +31,16 @@ $toggle-gap: $surface-inset;
   position: relative;
   cursor: pointer;
   border-radius: $radius-m;
-  @include atlas-focus-ring;
+
   @include atlas-toggle-size(var(--atlas-toggle-m-width, 60px), var(--atlas-toggle-m-height, 40px));
 
   // Under a finger a switch smaller than a target takes one around it; its look stays its own.
   @include atlas-coarse-hit($positioned: true);
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
 }
 
 // Kept in place and focusable (a tooltip says why), dimmed and inert.

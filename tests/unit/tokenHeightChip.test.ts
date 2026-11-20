@@ -15,6 +15,10 @@ const SPRITE = computeTokenPixelSize(70, 1);
 const RING = getTokenRingCenterRadius(SPRITE, 4, 1);
 /** How far a condition badge on the ring reaches from the ring's middle, with its bezel, on a 70 px grid. */
 const BADGE_REACH = CONDITION_BADGE_RADIUS + 1;
+/** How far the ring's band reaches past its middle: half the grid stroke on a 70 px grid. */
+const BAND = 2;
+/** Between the pill and what it clears, in screen pixels: world units at zoom 1. */
+const GAP = 4;
 /** Where the pill's lower edge lies, in world units from the token's centre. */
 const lowerEdge = (chip: Container): number => chip.position.y + (NAMEPLATE_HEIGHT / 2) * chip.scale.y;
 
@@ -53,10 +57,12 @@ describe('the height chip of a token', () => {
     expect(chip().visible).toBe(true);
     expect(made.getContainer().visible).toBe(true);
     expect(text()).toBe('↑ 30ft');
-    // Its lower edge clears a condition badge on the top of the ring, by less than a badge.
+    // It stands just over the ring's outer edge
     expect(chip().position.x).toBe(0);
-    expect(lowerEdge(chip())).toBeLessThan(-(RING + BADGE_REACH));
-    expect(lowerEdge(chip())).toBeGreaterThan(-(RING + BADGE_REACH + 4));
+    expect(lowerEdge(chip())).toBeCloseTo(-(RING + BAND + GAP));
+    // With conditions, whose badges fan out up to the top, its lower edge clears them
+    made.update(flier({ conditions: ['poisoned'] }), SPRITE);
+    expect(lowerEdge(chip())).toBeCloseTo(-(RING + BADGE_REACH + GAP));
 
     made.update(flier({ elevation: -10 }), SPRITE);
     expect(text()).toBe('↓ 10ft');
@@ -121,10 +127,51 @@ describe('the height chip of a token', () => {
     made.update(flier(), SPRITE);
     expect(chip().scale.x).toBeCloseTo(resting);
     // The rotate button is a disc of RESIZE_HANDLE_SIZE on the top of the ring; the pill's lower edge lies above it.
-    expect(lowerEdge(chip())).toBeLessThan(-(RING + RESIZE_HANDLE_SIZE / 2));
-    expect(lowerEdge(chip())).toBeGreaterThan(-(RING + RESIZE_HANDLE_SIZE / 2 + 4));
+    expect(lowerEdge(chip())).toBeCloseTo(-(RING + RESIZE_HANDLE_SIZE / 2 + GAP));
     made.setSelectionState(false);
-    expect(lowerEdge(chip())).toBeGreaterThan(-(RING + BADGE_REACH + 4));
+    expect(lowerEdge(chip())).toBeCloseTo(-(RING + BAND + GAP));
+  });
+
+  it('keeps one size on screen at any zoom and on any token, like the condition card', () => {
+    const { ui: made, chip } = renderer();
+    let zoom = 1;
+    made.zoomProvider = () => zoom;
+    made.update(flier(), SPRITE);
+    const onScreen = chip().scale.x;
+    zoom = 4;
+    made.refreshScale();
+    expect(chip().scale.x * zoom).toBeCloseTo(onScreen);
+    // The gap is in screen pixels too; the ring's band is the token's
+    expect(lowerEdge(chip())).toBeCloseTo(-(RING + BAND + GAP / zoom));
+    // A size 2 token is three cells across: a larger ring, badges three times as large, the same chip
+    const large = computeTokenPixelSize(70, 2);
+    const ring = getTokenRingCenterRadius(large, 4, 1);
+    made.update(flier({ conditions: ['poisoned'] }), large);
+    expect(chip().scale.x * zoom).toBeCloseTo(onScreen);
+    expect(lowerEdge(chip())).toBeCloseTo(-(ring + 3 * BADGE_REACH + GAP / zoom));
+  });
+
+  it('shows only while its token is hovered or selected, like the wheels', async () => {
+    const { ui: made, chip } = renderer();
+    made.update(flier(), SPRITE);
+    expect(chip().alpha).toBe(0);
+    made.setHoverState(true);
+    await vi.waitFor(() => expect(chip().alpha).toBe(1));
+    made.setHoverState(false);
+    await vi.waitFor(() => expect(chip().alpha).toBe(0));
+    made.setSelectionState(true);
+    await vi.waitFor(() => expect(chip().alpha).toBe(1));
+  });
+
+  it('steps aside while its token is pressed or dragged, as the conditions card does', () => {
+    const { ui: made, chip } = renderer();
+    made.update(flier(), SPRITE);
+    made.setHeld(true);
+    expect(chip().visible).toBe(false);
+    made.update(flier({ x: 140 }), SPRITE);
+    expect(chip().visible).toBe(false);
+    made.setHeld(false);
+    expect(chip().visible).toBe(true);
   });
 
   it('is hidden while its token is resized or turned', () => {

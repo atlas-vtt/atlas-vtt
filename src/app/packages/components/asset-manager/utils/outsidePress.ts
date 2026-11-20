@@ -22,6 +22,8 @@ const OWN_SURFACES = [
   '.atlas-paste-table-overlay',
   '.atlas-statblock-preview-window',
   '.atlas-toast-container',
+  // The Armarium's share of one item and its picker, hosted on the body (`openItemShare.tsx`).
+  '.atlas-share-host',
   // A map's dice rolls stand in front of the window (`useMapRollLayer`): a click dismisses the roll alone.
   '.atlas-dice-rolls',
 ].join(', ');

@@ -113,6 +113,7 @@ export class TokenUIRenderer {
   public conditionDefsProvider: (() => ConditionDefinition[]) | null = null;
   /** How far off the floor the token stands, over the top of its ring; nothing on the floor. */
   private heightChip = new HeightChip();
+  private heightText = '';
   /** What the map measures in, for the height chip's distance; without it no height is shown. */
   public measurementProvider: (() => MeasurementSettings) | null = null;
   /** The resources of the map's collection, in the order they show. */
@@ -243,7 +244,7 @@ export class TokenUIRenderer {
       this.nameBadge.visible = false;
       this.nameText.visible = false;
       this.conditionUI.setHidden(true);
-      this.heightChip.view.visible = false;
+      this.updateHeightChipVisibility();
     }
   };
 
@@ -282,7 +283,7 @@ export class TokenUIRenderer {
       this.nameBadge.visible = false;
       this.nameText.visible = false;
       this.conditionUI.setHidden(true);
-      this.heightChip.view.visible = false;
+      this.updateHeightChipVisibility();
     }
   };
   
@@ -391,7 +392,8 @@ export class TokenUIRenderer {
     this.refreshConditions();
     this.conditionUI.setHidden(this.isHiddenDuringResize || this.isHiddenDuringRotation);
     this.heightChip.write(heightText);
-    this.heightChip.view.visible = heightText !== '' && !this.isHiddenDuringResize && !this.isHiddenDuringRotation;
+    this.heightText = heightText;
+    this.updateHeightChipVisibility();
 
     // Before the early return: the controls lay out from the stack's slots, which must empty with it
     const baseGap = 2; // Gap between token and first bar
@@ -574,11 +576,11 @@ export class TokenUIRenderer {
   }
 
   /**
-   * Condition badges sit on the token's ring at the resting UI scale, whatever the
-   * selection; the hover card keeps a constant screen size, like a tooltip.
+   * Condition badges sit on the token's ring and grow with the token, like its resize and rotate
+   * buttons, whatever the selection; the hover card keeps a constant screen size, like a tooltip.
    */
   private conditionsLayout(): TokenConditionsLayout {
-    const badgeScale = restingTokenUIScale(this.store?.getState().grid?.size ?? 70);
+    const badgeScale = tokenUIScale(this.currentTokenSize);
     const zoom = this.zoomProvider?.();
     return { ringRadius: this.ringRadius(), badgeScale, cardScale: zoom ? 1 / zoom : badgeScale };
   }
@@ -610,6 +612,12 @@ export class TokenUIRenderer {
     this.isHeld = held;
     this.updateEmphasis();
     this.updateConditionCard();
+    this.updateHeightChipVisibility();
+  }
+
+  /** The chip steps aside while its token is resized, turned, pressed or dragged, as the conditions card does. */
+  private updateHeightChipVisibility(): void {
+    this.heightChip.view.visible = this.heightText !== '' && !this.isHiddenDuringResize && !this.isHiddenDuringRotation && !this.isHeld;
   }
 
   /** Eases the UI to a selected token's on-screen size, or back to rest while unselected or held. */
@@ -635,6 +643,7 @@ export class TokenUIRenderer {
   private layoutUIScale(): void {
     const state = this.store?.getState();
     const gridSize = state?.grid?.size ?? 70;
+    const ringScale = state?.tokenSettings?.tokenRingSize ?? 1;
     const resting = restingTokenUIScale(gridSize);
     const scale = resting + (this.selectedScale() - resting) * this.emphasis.value;
     this.belowToken.scale.set(scale);
@@ -643,7 +652,7 @@ export class TokenUIRenderer {
     const anchor = wheelAnchor({
       spriteSize: this.currentTokenSize,
       gridSize,
-      ringScale: state?.tokenSettings?.tokenRingSize ?? 1,
+      ringScale,
       uiScale: scale,
       barsBottom: this.barsBottom(),
       barButtons: this.barButtonRoom.value,
@@ -652,11 +661,17 @@ export class TokenUIRenderer {
     });
     this.besideToken.position.set(anchor.x, anchor.y);
     this.leftOfToken.position.set(-anchor.x, anchor.y);
-    // The chip keeps the size of a resting token's UI, like the badges on the ring it stands over, and
-    // rises with the selection to make way for the rotate button, which is larger on a larger token
-    const badgeReach = (CONDITION_BADGE_RADIUS + 1) * resting;
-    const handleReach = (RESIZE_HANDLE_SIZE / 2) * tokenUIScale(this.currentTokenSize);
-    this.heightChip.place(this.ringRadius(), resting, badgeReach + this.emphasis.value * Math.max(0, handleReach - badgeReach));
+    // The chip keeps one size on screen, like the condition card. At rest it stands over the ring's
+    // outer edge, above its badges where the token has conditions (they fan out up to the top), and
+    // rises over the rotate button while the token is selected; both grow with the token
+    const tokenScale = tokenUIScale(this.currentTokenSize);
+    const restingReach = (this.currentToken?.conditions?.length ?? 0) > 0
+      ? (CONDITION_BADGE_RADIUS + 1) * tokenScale
+      : (computeTokenStrokeWidth(gridSize) * ringScale) / 2;
+    const handleReach = (RESIZE_HANDLE_SIZE / 2) * tokenScale;
+    const reach = restingReach + this.emphasis.value * Math.max(0, handleReach - restingReach);
+    const zoom = this.zoomProvider?.();
+    this.heightChip.place(this.ringRadius(), zoom ? 1 / zoom : 1, reach);
     // A selected token's text keeps a constant screen size, which the resting resolution covers
     this.setTextResolution(tokenTextResolution(resting));
     this.onScaleChange?.(scale);
@@ -667,7 +682,6 @@ export class TokenUIRenderer {
     if (this.nameText.resolution !== resolution) this.nameText.resolution = resolution;
     this.resources.setResolution(resolution);
     this.wheels.setResolution(resolution);
-    this.heightChip.setResolution(resolution);
   }
   
   public setVisibility(visible: boolean): void {
@@ -724,10 +738,12 @@ export class TokenUIRenderer {
     this.leftOfToken.visible = visible;
   }
 
-  /** Bar numbers and wheels show together, on hover and selection; wheels at rest show always. */
+  /** Bar numbers, wheels and the height chip show on hover and selection; wheels and chip at rest always. */
   private setRevealAlpha(alpha: number): void {
     this.resources.setTextAlpha(alpha);
-    this.wheels.setAlpha(this.wheelsAtRest ? 1 : alpha);
+    const wheelAlpha = this.wheelsAtRest ? 1 : alpha;
+    this.wheels.setAlpha(wheelAlpha);
+    this.heightChip.view.alpha = wheelAlpha;
   }
 
   private updateTextVisibility(): void {

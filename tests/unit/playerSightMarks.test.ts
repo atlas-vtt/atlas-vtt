@@ -2,7 +2,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Graphics, Sprite, Texture, type Container } from 'pixi.js';
 import { PlayerSightMarks } from '../../src/app/pixi/lighting/PlayerSightMarks';
-import type { SightMark } from '../../src/app/pixi/lighting/sightMarks';
+import { sightMarks, type SightMark } from '../../src/app/pixi/lighting/sightMarks';
+import { restingTokenUIScale } from '../../src/app/pixi/token-renderer/tokenSizing';
+import type { TokenEntity } from '../../src/app/types';
 import { createLucideIconTexture } from '../../src/app/pixi/utils/lucideIconTexture';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
 
@@ -11,7 +13,7 @@ vi.mock('../../src/app/pixi/utils/lucideIconTexture', () => ({
   createLucideIconTexture: vi.fn(async () => new Texture()),
 }));
 
-const mark = (tokenId: string, kind: SightMark['kind'] = 'unseen'): SightMark => ({ tokenId, kind, x: 10, y: 20 });
+const mark = (tokenId: string, kind: SightMark['kind'] = 'unseen'): SightMark => ({ tokenId, kind, x: 10, y: 20, scale: 1 });
 const badges = (marks: PlayerSightMarks): Container[] => marks.view.children as Container[];
 const eye = (badge: Container): Sprite | undefined => badge.children.find((child): child is Sprite => child instanceof Sprite);
 
@@ -36,7 +38,7 @@ function setup(): PlayerSightMarks {
 describe('PlayerSightMarks', () => {
   it('draws the badge many times larger than it shows, so its circles stay round when the map is zoomed in', () => {
     const marks = setup();
-    marks.sync([mark('a', 'sensed')], 1);
+    marks.sync([mark('a', 'sensed')]);
     const shape = badges(marks)[0]!.children[0] as Graphics;
     expect(shape).toBeInstanceOf(Graphics);
     expect(shape.scale.x).toBe(1 / 16);
@@ -46,7 +48,7 @@ describe('PlayerSightMarks', () => {
 
   it('gives every unseen badge an eye from one white texture, tinted in the theme\'s ink, and a sensed badge none', async () => {
     const marks = setup();
-    marks.sync([mark('a'), mark('b'), mark('c', 'sensed')], 1);
+    marks.sync([mark('a'), mark('b'), mark('c', 'sensed')]);
     await vi.waitFor(() => expect(eye(badges(marks)[1]!)).toBeDefined());
     const [first, second, sensed] = badges(marks);
     expect(eye(first!)!.texture).toBe(eye(second!)!.texture);
@@ -60,12 +62,12 @@ describe('PlayerSightMarks', () => {
 
   it('draws a badge anew in the other theme, its eye in that theme\'s ink from the same texture', async () => {
     const marks = setup();
-    marks.sync([mark('a')], 1);
+    marks.sync([mark('a')]);
     await vi.waitFor(() => expect(eye(badges(marks)[0]!)).toBeDefined());
     const light = badges(marks)[0]!;
     const { texture } = eye(light)!;
     document.body.classList.add('theme-dark');
-    marks.sync([mark('a')], 1);
+    marks.sync([mark('a')]);
     expect(light.destroyed).toBe(true);
     await vi.waitFor(() => expect(eye(badges(marks)[0]!)).toBeDefined());
     expect(eye(badges(marks)[0]!)!.tint).toBe(0xffffff);
@@ -75,9 +77,9 @@ describe('PlayerSightMarks', () => {
 
   it('leaves a badge alone that went before its eye arrived, and destroys the texture with the marks', async () => {
     const marks = setup();
-    marks.sync([mark('a')], 1);
+    marks.sync([mark('a')]);
     const gone = badges(marks)[0]!;
-    marks.sync([], 1);
+    marks.sync([]);
     expect(gone.destroyed).toBe(true);
     const texture = await vi.mocked(createLucideIconTexture).mock.results[0]!.value as Texture;
     const destroy = vi.spyOn(texture, 'destroy');
@@ -86,5 +88,17 @@ describe('PlayerSightMarks', () => {
     cleanup = null;
     await vi.waitFor(() => expect(destroy).toHaveBeenCalledWith(true));
     expect(eye(gone)).toBeUndefined();
+  });
+
+  it('grows each badge with its token, as the token\'s resize and rotate buttons do', () => {
+    const token = (id: string, size: number): TokenEntity => ({ id, kind: 'token', imagePath: `${id}.png`, x: 0, y: 0, size }) as TokenEntity;
+    const found = sightMarks({ m: token('m', 1), h: token('h', 2) }, () => 'unseen', 70);
+    const scale = Object.fromEntries(found.map(({ tokenId, scale }) => [tokenId, scale]));
+    expect(scale.m).toBeCloseTo(restingTokenUIScale(70));
+    // Size 2 is three cells across
+    expect(scale.h).toBeCloseTo(3 * scale.m!);
+    const marks = setup();
+    marks.sync(found);
+    expect(badges(marks).map((badge) => badge.scale.x)).toEqual(found.map(({ scale }) => scale));
   });
 });

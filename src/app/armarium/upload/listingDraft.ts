@@ -4,19 +4,23 @@ import {
   LICENCES,
   LISTING_TEXT,
   MAX_TAGS,
+  SYSTEM_LABEL,
   SYSTEMS,
   TAG_IDS,
+  isKnownSystem,
+  knownSystemOf,
   type LicenceId,
   type ListingFields,
   type ListingKind,
-  type SystemId,
+  type ListingSystem,
   type TagId,
 } from './uploadContract';
 
-/** The listing's fields as the form holds them: nothing chosen yet is null, and no system is `none`. */
+/** The listing's fields as the form holds them: nothing chosen yet is null, and no system is the empty text. */
 export interface ListingDraft {
   kind: ListingKind | null;
-  system: SystemId | 'none';
+  /** A known system's id, the name typed for another, or empty for none. */
+  system: ListingSystem;
   description: string;
   tags: TagId[];
   licence: LicenceId | null;
@@ -24,15 +28,31 @@ export interface ListingDraft {
 }
 
 /** The Armarium system of a collection's game system preset: a built-in's key where the Armarium names it, else none. */
-export function systemOfPreset(presetId: string | undefined): SystemId | null {
+export function systemOfPreset(presetId: string | undefined): ListingSystem | null {
   const key = presetId?.startsWith('builtin:') ? presetId.slice('builtin:'.length) : null;
   return SYSTEMS.find((system) => system !== 'any' && system === key) ?? null;
 }
 
-/** The form's start: what the submission or the listing already holds, else the collection's system and nothing else. */
-export function draftFrom(fields: ListingFields | null, collectionSystem: SystemId | null): ListingDraft {
-  if (fields !== null) return { ...fields, tags: [...fields.tags], system: fields.system ?? 'none' };
-  return { kind: null, system: collectionSystem ?? 'none', description: '', tags: [], licence: null, credits: '' };
+/** A game system's own listing names the system it is: the known one its name means, else its name where it fits. */
+export function systemOfSharedPreset(name: string): ListingSystem | null {
+  const known = knownSystemOf(name);
+  if (known !== null) return known;
+  const length = textLength(name);
+  return length >= SYSTEM_LABEL.min && length <= SYSTEM_LABEL.max ? name.trim() : null;
+}
+
+/** The form's start: what the submission or the listing already holds, else the system the shared thing names. */
+export function draftFrom(fields: ListingFields | null, startSystem: ListingSystem | null): ListingDraft {
+  if (fields !== null) return { ...fields, tags: [...fields.tags], system: fields.system ?? '' };
+  return { kind: null, system: startSystem ?? '', description: '', tags: [], licence: null, credits: '' };
+}
+
+/** What a typed system name may not be; the Armarium checks the rest (hidden characters, links). */
+function systemProblem(system: ListingSystem): FieldProblems {
+  if (system.trim() === '' || isKnownSystem(system)) return {};
+  const length = textLength(system.replace(/\s+/gu, ' '));
+  if (length < SYSTEM_LABEL.min) return { system: 'too-short' };
+  return length > SYSTEM_LABEL.max ? { system: 'too-long' } : {};
 }
 
 /** Characters as the API counts them for a text's limits: code points of the text without the white space around it. */
@@ -54,6 +74,7 @@ function textProblem(text: string, limits: { min: number; max: number }, field: 
 export function listingProblems(draft: ListingDraft): FieldProblems {
   return {
     ...(draft.kind === null ? { kind: 'missing' } : {}),
+    ...systemProblem(draft.system),
     ...textProblem(draft.description, LISTING_TEXT.description, 'description'),
   };
 }
@@ -71,7 +92,7 @@ export function fieldsOfDraft(draft: ListingDraft): ListingFields | null {
   const kind = KINDS.find((known) => known === draft.kind);
   const licence = LICENCES.find((known) => known === draft.licence);
   if (kind === undefined || licence === undefined) return null;
-  return { kind, system: SYSTEMS.find((known) => known === draft.system) ?? null, description: draft.description, tags: TAG_IDS.filter((tag) => draft.tags.includes(tag)), licence, credits: draft.credits };
+  return { kind, system: draft.system.trim() === '' ? null : knownSystemOf(draft.system) ?? draft.system.trim(), description: draft.description, tags: TAG_IDS.filter((tag) => draft.tags.includes(tag)), licence, credits: draft.credits };
 }
 
 /**

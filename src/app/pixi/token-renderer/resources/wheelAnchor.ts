@@ -1,7 +1,7 @@
 import { barDimensions } from '../../../styles/designTokens';
 import { CONDITION_BADGE_RADIUS } from '../ConditionBadge';
 import { getTokenRingCenterRadius } from '../tokenRingMetrics';
-import { computeTokenStrokeWidth, RESIZE_HANDLE_SIZE, restingTokenUIScale, tokenUIScale } from '../tokenSizing';
+import { computeTokenStrokeWidth, RESIZE_HANDLE_SIZE, tokenUIScale } from '../tokenSizing';
 import { BAR_BUTTON_SIZE } from './ResourceStack';
 
 /** What the wheels of a token must stand clear of, and how large its UI is drawn. */
@@ -38,7 +38,7 @@ export function wheelAnchor(input: WheelAnchorInput): { x: number; y: number } {
   const buttonSpan = input.barButtonSpan ?? gap + BAR_BUTTON_SIZE;
   const ringRadius = getTokenRingCenterRadius(spriteSize * ringScale, computeTokenStrokeWidth(gridSize), ringScale);
   const resizeButton = ringRadius + (RESIZE_HANDLE_SIZE / 2) * tokenUIScale(spriteSize);
-  const conditionBadge = ringRadius + (CONDITION_BADGE_RADIUS + 1) * restingTokenUIScale(gridSize);
+  const conditionBadge = ringRadius + (CONDITION_BADGE_RADIUS + 1) * tokenUIScale(spriteSize);
   const bars = barsBottom > 0 ? width / 2 + barButtons * buttonSpan : 0;
   const belowToken = Math.max(bars, nameplateHalfWidth) * uiScale;
   return {

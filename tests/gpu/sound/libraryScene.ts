@@ -36,7 +36,7 @@ export function stageFrame(theme: string, width = 1644, height = 960): { host: H
   return { host: frame, remove: () => { frame.remove(); style.remove(); document.body.classList.remove('theme-light'); } };
 }
 
-const BATTLE: ReadonlyArray<[string, number]> = [['Blood on the ford', 222], ['Steel in the reeds', 258], ['The last gate', 365], ['Riders at the treeline', 178], ['Shield wall', 311], ['Under siege', 444], ['No quarter', 187], ['Horns over the ridge', 289]];
+const BATTLE: ReadonlyArray<[string, number]> = [['Blood on the ford', 222], ['Steel in the reeds', 258], ['The last gate', 365], ['Riders at the treeline', 178], ['Shield wall', 311], ['Under siege', 444], ['No quarter', 3784], ['Horns over the ridge', 289]];
 
 const secondsByName = new Map(BATTLE.map(([name, seconds]) => [name, seconds]));
 

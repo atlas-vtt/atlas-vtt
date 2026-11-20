@@ -40,6 +40,14 @@
   align-content: start;
 }
 
+// Room for one column only: it keeps a tile's width rather than stretch into a bar, its heading with it.
+@container atlas-sound-moods (max-width: #{2 * 190px + $card-inset - 1px}) {
+  .atlas-sound-moods__head,
+  .atlas-sound-moods__grid {
+    max-width: $sound-mood-tile-max;
+  }
+}
+
 .atlas-sound-mood {
   --atlas-sound-tone: var(--atlas-sound-tone-light);
   position: relative;

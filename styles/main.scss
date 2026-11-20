@@ -669,12 +669,8 @@ body.theme-light {
     }
   }
 
-  // Nor does a switch or a segmented option of a toolbar, or of a menu that hangs from one: a
-  // click leaves the focus on it and the menu open. A chosen option keeps the shadow it rests with.
-  #{$toolbars} .atlas-toggle:focus-visible {
-    outline: none;
-  }
-
+  // Nor does a segmented option of a toolbar, or of a menu that hangs from one: a click leaves the
+  // focus on it and the menu open. A chosen option keeps the shadow it rests with.
   #{$toolbars} .atlas-segmented__option:focus-visible {
     box-shadow: none;
 

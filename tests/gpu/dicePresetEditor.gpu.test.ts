@@ -32,12 +32,23 @@ const sword: DicePreset = {
 
 let stored: Pick<CollectionSettings, 'dicePresets' | 'diceRow'> = {};
 
-function Scene(): React.ReactElement {
+/** Nothing of the tray or the saved rolls lies over `panel`, wherever it hangs. */
+function expectUncovered(panel: HTMLElement): void {
+  const box = panel.getBoundingClientRect();
+  for (let x = box.left + 12; x < box.right - 12; x += 24) {
+    for (let y = box.top + 12; y < box.bottom - 12; y += 24) {
+      const hit = document.elementFromPoint(x, y);
+      expect(panel.contains(hit), `${x}, ${y}: ${hit?.className}`).toBe(true);
+    }
+  }
+}
+
+function Scene({ trayLeft = '78%' }: { trayLeft?: string }): React.ReactElement {
   const [settings, setSettings] = useState(stored);
   const shelf = readDiceShelf(settings);
   const editing = shelf.presets[0]!;
   return h(TooltipProvider, null, h('div', { className: 'atlas-vtt-plugin', style: { position: 'relative', height: 760 } },
-    h('div', { className: 'atlas-dice-tray', style: { left: '78%', bottom: 20, top: 'auto' } },
+    h('div', { className: 'atlas-dice-tray', style: { left: trayLeft, bottom: 20, top: 'auto' } },
       h(DicePresetsPanel, {
         shelf, onChange: () => undefined, trayFormula: '', problemOf: () => null, onRoll: () => undefined, onEdit: () => undefined, sets: [],
         editingId: editing.id,
@@ -99,9 +110,35 @@ describe('a saved roll\'s editor', () => {
     expect(Math.abs((editor.right - rulesSwitch.right) - (bonus.left - editor.left))).toBeLessThan(1);
     expect(bonus.left - editor.left - border).toBeCloseTo(parseFloat(cs.paddingLeft), 0);
 
+    // Done is a control of its own: under the pointer it alone lights up, not the name's field.
+    const head = document.querySelector('.atlas-dice-preset-editor__head')!;
+    const resting = getComputedStyle(head).backgroundColor;
+    const done = centreOf(document.querySelector('.atlas-dice-preset-editor__done')!);
+    await mouse.hover(done.x, done.y);
+    await settle(300);
+    expect(getComputedStyle(head).backgroundColor).toBe(resting);
+    expect(getComputedStyle(document.querySelector('.atlas-dice-preset-editor__done')!).backgroundColor).not.toBe(resting);
+    const name = document.querySelector('.atlas-dice-preset-editor__name')!.getBoundingClientRect();
+    await mouse.hover(name.left + 20, (name.top + name.bottom) / 2);
+    await settle(300);
+    expect(getComputedStyle(head).backgroundColor).not.toBe(resting);
+
     const die = centreOf(document.querySelector('.atlas-dice-preset-editor .atlas-dice-lab__die')!);
     await mouse.click(die.x, die.y);
     await settle();
+    // A step of the die's fan (its sides) opens whole, past the card where the card is too small, never cut off.
+    const sidesStep = centreOf(document.querySelector('.atlas-dice-preset-editor .atlas-dice-lab__fan-sides')!.closest('button')!);
+    await mouse.click(sidesStep.x, sidesStep.y);
+    await settle(400);
+    const stepPanel = document.querySelector<HTMLElement>('.atlas-dice-preset-editor .atlas-dice-lab__step-panel')!;
+    const panelBox = stepPanel.getBoundingClientRect();
+    expect(stepPanel.scrollHeight).toBeLessThanOrEqual(stepPanel.clientHeight);
+    expect(panelBox.top).toBeGreaterThanOrEqual(0);
+    expect(panelBox.bottom).toBeLessThanOrEqual(window.innerHeight);
+    expectUncovered(stepPanel);
+    await mouse.click(sidesStep.x, sidesStep.y);
+    await settle(400);
+
     const toggle = document.querySelector('.atlas-dice-preset-editor__rules-toggle')!;
     toggle.scrollIntoView({ block: 'nearest' });
     const rules = centreOf(toggle);
@@ -127,5 +164,23 @@ describe('a saved roll\'s editor', () => {
     expect(editor.left).toBeGreaterThanOrEqual(0);
     expect(editor.right).toBeLessThanOrEqual(560);
     expect(editor.top).toBeGreaterThanOrEqual(0);
+  });
+
+  it('lies over the tray\'s own dice where a die\'s step panel hangs over the tray', async () => {
+    // The saved rolls near the window's left edge: the editor is moved back to the right, over the tray.
+    render(h(Scene, { trayLeft: '330px' }));
+    await settle(1500);
+    const card = document.querySelector<HTMLElement>('.atlas-dice-preset-editor')!;
+    await Promise.all(card.getAnimations().map((animation) => animation.finished));
+    const dice = card.querySelectorAll('.atlas-dice-lab__die');
+    const die = centreOf(dice[dice.length - 1]!);
+    await mouse.click(die.x, die.y);
+    await settle();
+    const sidesStep = centreOf(card.querySelector('.atlas-dice-lab__fan-sides')!.closest('button')!);
+    await mouse.click(sidesStep.x, sidesStep.y);
+    await settle(400);
+    const panel = card.querySelector<HTMLElement>('.atlas-dice-lab__step-panel')!.getBoundingClientRect();
+    expect(panel.right).toBeGreaterThan(document.querySelector('.atlas-dice-panel')!.getBoundingClientRect().left + 24);
+    expectUncovered(card.querySelector<HTMLElement>('.atlas-dice-lab__step-panel')!);
   });
 });

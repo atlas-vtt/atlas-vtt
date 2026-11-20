@@ -7,7 +7,6 @@ import type { SceneStore } from '../../lighting/shownTokens';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds } from '../../vision/visibility';
-import { restingTokenUIScale } from '../token-renderer/tokenSizing';
 import { destroyTree } from '../utils/destroyTree';
 import type { TokenPerception } from '../../vision/tokenPerception';
 import { PlayerSightMarks } from './PlayerSightMarks';
@@ -92,7 +91,7 @@ export class GmSightAids {
     const state = store.getState();
     const perceived = this.shown() ? perception() : undefined;
     const { cellSize } = unitScaleOf(measurement(), state.grid);
-    this.marks.sync(perceived ? sightMarks(mapTokens(levelObjects(state)), perceived, cellSize) : [], restingTokenUIScale(cellSize));
+    this.marks.sync(perceived ? sightMarks(mapTokens(levelObjects(state)), perceived, cellSize) : []);
     this.rings.draw();
   }
 

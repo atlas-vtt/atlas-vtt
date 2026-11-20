@@ -89,7 +89,7 @@ describe('the Sound page in a tab of its own', () => {
     expect(box('.atlas-sound-stage > .atlas-sound-lib').height).toBeGreaterThan(before.lib.height);
   });
 
-  it('follows the tab\'s own width: three tiles across at 1644, two at 1280, stacked below the breakpoint', async () => {
+  it('follows the tab\'s own width: three tiles across at 1644, one at 1280 beside a library that takes its full width, stacked below the breakpoint', async () => {
     await view(1644, 960);
     const across = (): number => {
       const tops = [...document.querySelectorAll('.atlas-sound-mood')].map((mood) => mood.getBoundingClientRect().top);
@@ -99,7 +99,8 @@ describe('the Sound page in a tab of its own', () => {
 
     await size(1280, 820);
     await act(async () => { await sleep(100); });
-    expect(across()).toBe(2);
+    expect(across()).toBe(1);
+    expect(box('.atlas-sound-mood').width).toBe(240);
     expect(box('.atlas-sound-stage > .atlas-sound-lib').top).toBe(box('.atlas-sound-moods').top);
 
     await size(700, 800);

@@ -148,6 +148,11 @@ export class FogOfWarRenderer {
     this.gesture.refreshVisibility();
   }
 
+  /** The fog's layer in the viewport. */
+  get layer(): PIXI.Container {
+    return this.container;
+  }
+
   /** Whether the fog is fading from the picture before an edit to the one it has now. */
   get fading(): boolean {
     return this.picture.fading;
