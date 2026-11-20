@@ -20,8 +20,11 @@ const MARGIN = 12;
 /** Narrow enough to stand beside the map, wide enough for the site's one-column pages. */
 const MIN_SIZE = { width: 360, height: 320 };
 
-/** First placement: the right edge of the map, below the scene tabs. */
-const rightEdge = (area: PanelArea, panel: PanelArea): PanelPosition => ({ x: area.width - panel.width - MARGIN, y: 64 });
+/** Every opening places the panel in the middle of the scene; the hook keeps it inside the map's edges. */
+const centred = (area: PanelArea, panel: PanelArea): PanelPosition => ({
+  x: (area.width - panel.width) / 2,
+  y: (area.height - panel.height) / 2,
+});
 
 /** The documentation window of the map view; shown for the GM while it is open. */
 export function DocsWindow(): React.ReactElement {
@@ -33,7 +36,7 @@ function DocsPanel(): React.ReactElement {
   const { view } = useAtlasUI();
   const setOpen = useAtlasStore((state) => state.setDocsOpen);
   const windowVariants = useDialogWindowVariants();
-  const { position, panelRef, startDrag, isDragging } = useDraggablePosition(rightEdge, { margin: MARGIN });
+  const { position, panelRef, startDrag, isDragging } = useDraggablePosition(centred, { margin: MARGIN });
   const [size, setSize] = useState<PanelArea | null>(null);
   // The site lays out and repaints its whole page at every size it is given, so it is sized once, on release.
   const frameRef = useRef<HTMLIFrameElement>(null);
