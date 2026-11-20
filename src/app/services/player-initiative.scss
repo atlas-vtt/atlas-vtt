@@ -17,6 +17,10 @@ $badge: scaled(28px);
 // The room a card's badges take above it: half a badge and their ring
 $badge-room: calc(#{$badge} / 2 + 2px);
 
+// The list's cards stand $surface-inset inside its border and apart, so a card's $radius-m corner is concentric with the
+// panel's $surface-radius; a row's cards are as wide as the column's
+$card-width: calc(#{scaled(96px)} - 2 * #{$border-width-m} - 2 * #{$surface-inset});
+
 // The rounds' names and lines take the theme's heading face, rule and red where it has them (the Atlas VTT
 // theme does), else Obsidian's own
 $round-line: var(--atlas-theme-rule, var(--text-faint));
@@ -43,6 +47,8 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
   justify-content: center;
   gap: $spacing-xs;
   white-space: nowrap;
+  // Its box as wide as its letters, so the gap to the cards and the border reads as the list's inset
+  line-height: 1;
 }
 
 .atlas-player-initiative {
@@ -57,8 +63,8 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
   width: scaled(96px);
   // Like the DM tracker, stays clear of the widget bar at the top right.
   max-height: calc(100% - 2 * 160px);
-  padding: $spacing-s;
-  gap: $spacing-s;
+  padding: $surface-inset;
+  gap: $surface-inset;
   display: flex;
   flex-direction: column;
   // While its height glides to its content's (`glideHeight`), the content keeps the place it has at rest: in the
@@ -142,7 +148,7 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
   &__list {
     display: flex;
     flex-direction: column;
-    gap: $spacing-s;
+    gap: $surface-inset;
     min-height: 0;
     overflow-y: auto;
     scrollbar-width: none;
@@ -152,7 +158,7 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
   &__side {
     display: flex;
     flex-direction: column;
-    gap: $spacing-s;
+    gap: $surface-inset;
   }
 
   // Where the list runs on into the next round: the round's name between two hairlines
@@ -479,7 +485,7 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
   .atlas-player-initiative__push-group {
     display: flex;
     flex-shrink: 0;
-    gap: $spacing-s;
+    gap: $surface-inset;
   }
 
   .atlas-player-initiative__push-in {
@@ -488,7 +494,7 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
 
   // The portrait, the hit points under it, a name only where there is no portrait; the number lies on the portrait
   .atlas-player-initiative__card {
-    width: calc(#{scaled(96px)} - 2 * #{$spacing-s});
+    width: $card-width;
     box-sizing: border-box;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -530,26 +536,27 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     color: var(--text-on-accent, #fff);
   }
 
-  // A row keeps its cards level: the list gives the room for badges over any of them
+  // A row keeps one height and its inset: the badges lie inside the card's top, over the portrait's ring
   .atlas-player-initiative__card--conditions {
     margin-top: 0;
     scroll-margin-top: 0;
   }
 
-  .atlas-player-initiative__list:has(.atlas-player-initiative__card--conditions) {
-    padding-top: $badge-room;
+  .atlas-player-initiative__conditions {
+    top: $spacing-xs;
+    transform: translateX(-50%);
   }
 
   // A round's name, then its cards (`renderRoundRow`); a slim line closes every round but the last
   .atlas-player-initiative__round-group {
     display: flex;
     flex-shrink: 0;
-    gap: $spacing-s;
+    gap: $surface-inset;
   }
 
   .atlas-player-initiative__round-cards {
     display: flex;
-    gap: $spacing-s;
+    gap: $surface-inset;
   }
 
   .atlas-player-initiative__round-group:not(:last-child) > .atlas-player-initiative__round-cards::after {
@@ -637,7 +644,7 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
 
   to {
     // Its own width (a card's, or a round's with its line) and the gap after it
-    margin-inline-start: calc(-1 * var(--atlas-push-width, calc(#{scaled(96px)} - 2 * #{$spacing-s})) - #{$spacing-s});
+    margin-inline-start: calc(-1 * var(--atlas-push-width, #{$card-width}) - #{$surface-inset});
     opacity: 0;
   }
 }
@@ -645,7 +652,7 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
 @keyframes atlas-player-initiative-push-in {
   from {
     // Its own width (a card's, or several cards' coming in together) and the gap before it
-    margin-inline-end: calc(-1 * var(--atlas-push-in-width, calc(#{scaled(96px)} - 2 * #{$spacing-s})) - #{$spacing-s});
+    margin-inline-end: calc(-1 * var(--atlas-push-in-width, #{$card-width}) - #{$surface-inset});
     opacity: 0;
   }
 

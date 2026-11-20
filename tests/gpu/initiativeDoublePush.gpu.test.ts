@@ -27,7 +27,7 @@ describe('the row moving on past one who sits the round out', () => {
     expect(cards).toHaveLength(2);
     const [first, second] = cards.map((card) => card.getBoundingClientRect());
     // Side by side with the row's gap, not one over the other
-    expect(Math.round(second!.left - first!.right)).toBe(8);
+    expect(Math.round(second!.left - first!.right)).toBe(4);
     style.remove();
   });
 });

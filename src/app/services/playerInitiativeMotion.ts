@@ -45,8 +45,8 @@ const GLIDE_MS = 300;
 
 /**
  * A list drawn anew at another height glides there from the height it had, so its surface and the theme's ivy
- * move instead of jumping. Its content stays where it rests meanwhile (`justify-content` in `player-initiative.scss`),
- * which holds for every list but a row along the top, whose cards themselves move down for the badges: that one jumps.
+ * move instead of jumping. Its content stays where it rests meanwhile (`player-initiative.scss`); a row along the top
+ * jumps, since its content rests at its top.
  */
 export function glideHeight(panel: HTMLElement, from: number): void {
   const to = panel.offsetHeight;

@@ -119,6 +119,32 @@ function expectUniform(panel: HTMLElement, value: number): void {
   for (let i = 1; i < parts.length; i++) expect(parts[i]!.top - parts[i - 1]!.bottom).toBeCloseTo(value, 0);
 }
 
+/**
+ * A row's inset and gaps are one value: its parts stand that far inside its border on every side, the names of rounds
+ * and sides that far from their cards, the cards that far apart; and every card's corner is concentric with the panel's.
+ */
+function expectRowUniform(panel: HTMLElement, value: number): void {
+  const border = parseFloat(getComputedStyle(panel).borderTopWidth);
+  const frame = box(panel);
+  const parts = [...panel.children].filter((part) => shown(part) && !part.classList.contains('atlas-player-initiative__surface')).map(box).sort((a, b) => a.left - b.left);
+  for (const part of parts) {
+    expect(part.top - frame.top - border).toBeCloseTo(value, 0);
+    expect(frame.bottom - border - part.bottom).toBeCloseTo(value, 0);
+  }
+  expect(parts[0]!.left - frame.left - border).toBeCloseTo(value, 0);
+  expect(frame.right - border - parts.at(-1)!.right).toBeCloseTo(value, 0);
+  // Along the row: labels, cards and the line between rounds, in the order they stand
+  const items = [...panel.querySelectorAll('.atlas-player-initiative__card, .atlas-player-initiative__round-label, .atlas-player-initiative__side-label, .atlas-player-initiative__round, .atlas-player-initiative__next-round')]
+    .map(box).sort((a, b) => a.left - b.left);
+  for (let i = 1; i < items.length; i++) {
+    const gap = items[i]!.left - items[i - 1]!.right;
+    // A round's last card and the next round's name have the slim line and its two gaps between them
+    expect(Math.abs(gap - value) < 0.5 || Math.abs(gap - (2 * value + 2)) < 0.5, `gap ${gap}`).toBe(true);
+  }
+  const radius = insetRadius(panel, value);
+  for (const card of panel.querySelectorAll('.atlas-player-initiative__card')) expect(parseFloat(getComputedStyle(card).borderTopLeftRadius)).toBeCloseTo(radius, 1);
+}
+
 /** Nothing a card holds reaches past the card's sides, and no card past its list. */
 function expectNoOverflow(list: HTMLElement, cardSelector: string): void {
   const frame = box(list);
@@ -241,7 +267,7 @@ describe('the players\' initiative list', () => {
     for (const names of [false, true]) {
       const panel = showPlayers({ names });
       expect(box(panel).width).toBe(96);
-      expectUniform(panel, 8);
+      expectUniform(panel, 4);
       expectNoOverflow(panel.querySelector('.atlas-player-initiative__list')!, '.atlas-player-initiative__card');
       expect(panel.querySelector('.atlas-player-initiative__next-round')?.getAttribute('aria-label')).toBe('Round 3');
       await page.screenshot({ path: `${SHOTS}/players-${names ? 'names' : 'normal'}.png`, element: panel });
@@ -275,6 +301,7 @@ describe('the players\' initiative list', () => {
           expect(card.bottom).toBeLessThanOrEqual(frame.bottom);
         }
         expectNoOverflow(panel.querySelector('.atlas-player-initiative__list')!, '.atlas-player-initiative__card');
+        expectRowUniform(panel, 4);
         await page.screenshot({ path: `${SHOTS}/players-${dock}${sides ? '-sides' : ''}.png`, element: panel });
       }
     }
@@ -287,7 +314,7 @@ describe('the players\' initiative list', () => {
     await page.screenshot({ path: `${SHOTS}/players-in-order.png`, element: plain });
 
     const sides = showPlayers({ sides: true });
-    expectUniform(sides, 8);
+    expectUniform(sides, 4);
     await page.screenshot({ path: `${SHOTS}/players-sides.png`, element: sides });
   });
 
