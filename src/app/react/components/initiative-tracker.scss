@@ -131,12 +131,34 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   }
 }
 
-// The round at the list's foot, as the players' list writes it
+// The round at the list's foot, as the players' list writes it. It takes no room: the list runs to the panel's border
+// beneath it, and the round lies over the cards that pass, on a shade rising from the bottom edge that reads it. The
+// shade is eased over many stops, so it has no line where it begins.
 .atlas-initiative-tracker__round {
   @include initiative-round-name($font-ui-small);
-  flex-shrink: 0;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  // Over the cards' own layers (a tile's conditions are at 3)
+  z-index: 4;
+  padding: $spacing-xl $surface-inset $surface-inset;
+  border-radius: 0 0 var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius);
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--background-primary) 96%, transparent),
+    color-mix(in srgb, var(--background-primary) 88%, transparent) 22%,
+    color-mix(in srgb, var(--background-primary) 70%, transparent) 40%,
+    color-mix(in srgb, var(--background-primary) 44%, transparent) 58%,
+    color-mix(in srgb, var(--background-primary) 20%, transparent) 76%,
+    color-mix(in srgb, var(--background-primary) 6%, transparent) 90%,
+    transparent
+  );
   text-align: center;
   color: $round-accent;
+  text-shadow: 0 0 2px var(--background-primary), 0 0 8px var(--background-primary);
+  // The cards beneath keep their clicks
+  pointer-events: none;
 }
 
 // A ghost icon button (`Button`) in a floating bar, above Atlas's button rules (`.atlas-vtt-plugin .btn--icon`), whose

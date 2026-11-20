@@ -108,7 +108,7 @@ const shown = (element: Element): boolean => getComputedStyle(element).display !
 function expectUniform(panel: HTMLElement, value: number): void {
   const border = parseFloat(getComputedStyle(panel).borderTopWidth);
   // The panel's surface is a layer behind its parts, not one of them, and the GM's bars float outside it
-  const parts = [...panel.children].filter((part) => shown(part) && !part.classList.contains('atlas-player-initiative__surface') && !part.classList.contains('atlas-initiative-tracker__float') && !part.classList.contains('atlas-initiative-tracker__surface') && !part.classList.contains('atlas-initiative-tracker__reach')).map(box);
+  const parts = [...panel.children].filter((part) => shown(part) && !part.classList.contains('atlas-player-initiative__surface') && !part.classList.contains('atlas-initiative-tracker__float') && !part.classList.contains('atlas-initiative-tracker__surface') && !part.classList.contains('atlas-initiative-tracker__reach') && !part.classList.contains('atlas-initiative-tracker__round')).map(box);
   const frame = box(panel);
   expect(parts[0]!.top - frame.top - border).toBeCloseTo(value, 0);
   expect(frame.bottom - border - parts.at(-1)!.bottom).toBeCloseTo(value, 0);
@@ -189,6 +189,12 @@ describe('the GM\'s initiative tracker', () => {
       expect(getComputedStyle(tracker, '::after').backgroundImage).toBe('none');
       // The round at the list's foot, in the players' words
       expect(tracker.querySelector('.atlas-initiative-tracker__round')?.textContent).toBe('Round 2');
+      // It takes no room: the list runs to the border's inset beneath it, and it lies over the list's foot
+      const round = box(tracker.querySelector('.atlas-initiative-tracker__round')!);
+      const content = box(tracker.querySelector('.atlas-initiative-tracker__content')!);
+      expect(box(tracker).bottom - parseFloat(getComputedStyle(tracker).borderBottomWidth) - round.bottom).toBeCloseTo(0, 0);
+      expect(round.top).toBeLessThan(content.bottom);
+      expect(getComputedStyle(tracker.querySelector('.atlas-initiative-tracker__round')!).pointerEvents).toBe('none');
 
       // The bars float $spacing-s above and below the panel, in the middle of its width: capsules whose buttons are
       // concentric with them and as tall as each other
