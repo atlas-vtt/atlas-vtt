@@ -69,6 +69,10 @@
 - Quests can be set to Hidden: players are not sent them until you change their status. Contributed by young-george
 - Forget explored areas is now a command in the command palette, on a lit scene. Contributed by CatapultTV
 
+**Toolbar on hover**
+
+- Show toolbar on hover, in Customize toolbar: the toolbar, undo and redo, online play, the shortcuts button and the level switcher stay out of sight until the pointer comes near them
+
 **Languages**
 
 - Atlas now speaks German, French, Spanish, Portuguese and Italian, following Obsidian's language, and Russian and Chinese cover every text. Italian contributed by Jackson98Tomphson

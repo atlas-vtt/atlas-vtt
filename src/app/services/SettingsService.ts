@@ -537,6 +537,17 @@ export class SettingsService {
     this.commit();
   }
 
+  /** Whether the map's bars hide until the pointer comes near them: off unless the file says `true`. */
+  isToolbarAutoHide(): boolean {
+    return this.settings.toolbarAutoHide === true;
+  }
+
+  setToolbarAutoHide(on: boolean): void {
+    if (this.isToolbarAutoHide() === on) return;
+    this.settings.toolbarAutoHide = on;
+    this.commit();
+  }
+
   /** The stored look, with the defaults for anything the file holds that Atlas does not know. */
   getDiceLook(): DiceLook {
     return {

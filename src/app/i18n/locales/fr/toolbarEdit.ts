@@ -33,6 +33,7 @@ export const toolbarEdit: Translation = {
   'toolbarEdit.dragHere': 'Faites glisser un outil ici pour le masquer',
   'toolbarEdit.undoReset': 'Annuler la réinitialisation',
   'toolbarEdit.resetToolbar': 'Réinitialiser la barre d\'outils',
+  'toolbarEdit.showOnHover': 'Afficher la barre au survol',
   'toolbarEdit.showOnToolbar': 'Afficher dans la barre d\'outils',
   'toolbarEdit.hint.tray': 'Enter le remet dans la barre d\'outils.',
   'toolbarEdit.hint.undoBar': 'Suppr le masque.',

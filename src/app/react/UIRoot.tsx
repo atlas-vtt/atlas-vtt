@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { LightPopoverHost } from '../pixi/lighting/LightPopover';
 import { LightZonePopoverHost } from '../pixi/lighting/LightZonePopover';
@@ -58,6 +58,7 @@ import { PanelBoundary } from './root/PanelBoundary';
 import { useMapNavigationHotkeys } from './useMapNavigationHotkeys';
 import type { AtlasView } from '../atlas-view';
 import { runInBackground } from '../utils/backgroundTask';
+import { useChromeAutoHide } from './components/chrome-auto-hide/useChromeAutoHide';
 
 interface UIRootProps {
   app: App;
@@ -110,6 +111,8 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   // Check if this is a player view - use store state which is authoritative
   const storeIsPlayerView = useAtlasStore(state => state.isPlayerView);
   const isPlayerView = storeIsPlayerView || view?.getViewType?.() === 'atlas-vtt-player';
+  const uiRef = useRef<HTMLDivElement>(null);
+  useChromeAutoHide(uiRef, isPlayerView);
   // Get loading state from store
   const isMapLoading = useAtlasStore(state => state.isMapLoading);
   const mapLoadingProgress = useAtlasStore(state => state.mapLoadingProgress);
@@ -193,7 +196,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           )}
         </AnimatePresence>
         {!isPlayerView && <PanelBoundary name="the tours"><MapTours root={view?.containerEl ?? null} settings={settings} /></PanelBoundary>}
-        <div className="atlas-ui" style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <div ref={uiRef} className="atlas-ui" style={{ position: 'relative', width: '100%', height: '100%' }}>
           {/* Every surface has its own boundary: one that fails must not take the others with it */}
           {/* Map chrome stays mounted while a scene loads; the loading overlay blocks input meanwhile */}
           {/* Top row — scene tabs (DM only) and widget bar share one flex row */}

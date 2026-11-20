@@ -33,6 +33,7 @@ export const toolbarEdit: Translation = {
   'toolbarEdit.dragHere': 'Ziehe ein Werkzeug hierher, um es auszublenden',
   'toolbarEdit.undoReset': 'Zurücksetzen rückgängig',
   'toolbarEdit.resetToolbar': 'Werkzeugleiste zurücksetzen',
+  'toolbarEdit.showOnHover': 'Werkzeugleiste beim Darüberfahren zeigen',
   'toolbarEdit.showOnToolbar': 'In Werkzeugleiste zeigen',
   'toolbarEdit.hint.tray': 'Enter bringt es zurück in die Werkzeugleiste.',
   'toolbarEdit.hint.undoBar': 'Entf blendet es aus.',

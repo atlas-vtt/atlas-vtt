@@ -80,6 +80,8 @@ export interface AtlasSettings {
   experimental: Partial<Record<ExperimentalFeatureId, boolean>>;
   /** The GM's toolbar layout, only what differs from the default; read with `getToolbarLayout`. */
   toolbar: StoredToolbarLayout;
+  /** Whether the bars along the bottom and the level switcher show only while the pointer is near them; unset, always shown. Read with `isToolbarAutoHide`. */
+  toolbarAutoHide?: boolean;
   /** The dungeon generator's style, view and last tags. Read with `getDungeonGenerator`. */
   dungeonGenerator: DungeonGeneratorSettings;
   localPlayerView: {

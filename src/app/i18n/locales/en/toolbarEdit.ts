@@ -33,6 +33,7 @@ export const toolbarEdit = {
   'toolbarEdit.dragHere': 'Drag a tool here to hide it',
   'toolbarEdit.undoReset': 'Undo reset',
   'toolbarEdit.resetToolbar': 'Reset toolbar',
+  'toolbarEdit.showOnHover': 'Show toolbar on hover',
   'toolbarEdit.showOnToolbar': 'Show on toolbar',
   'toolbarEdit.hint.tray': 'Enter puts it back on the toolbar.',
   'toolbarEdit.hint.undoBar': 'Delete hides it.',
