@@ -332,7 +332,7 @@ describe('the initiative tracker of a collection that deals cards', () => {
 });
 
 describe('the initiative tracker keeps the turn in view', () => {
-  const list = (container: HTMLElement): Element => container.querySelector('.atlas-initiative-tracker__content')!;
+  const list = (container: HTMLElement): Element => container.querySelector('.atlas-initiative-panel__list')!;
 
   it('scrolls its list to the combatant whose turn it is and the next two when the turn moves on', () => {
     collection.rules = { mode: 'turn-order', roll: '1d20', firstSide: 'players' };

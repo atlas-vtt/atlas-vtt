@@ -17,6 +17,7 @@
 - Keep a Dice Lab set as a saved roll with the flask beside +
 - Saved rolls and the row belong to the collection, so each game keeps its own
 - A label can follow brackets: in `2d6[slashing]+(1d10+12)[necrotic]` the d10 and the 12 are both necrotic
+- Write advantage into a roll: end it with adv or dis, as in `1d20+5 adv` or `+3 dis`. It follows your game's dice rules, so it rolls 2d20 in 5E, adds the edge in Draw Steel and a bonus die in Call of Cthulhu. Works in the dice tray, saved rolls and dice in notes; Shift or Alt for the other side cancels it
 
 **Sound**
 
@@ -80,7 +81,7 @@
 - With the Atlas VTT theme, ivy grows over the corners of the GM's initiative tracker as on the players' list, and on both it comes and goes at once when you switch themes
 - The initiative lists move as one on both views: when the turn passes on or back, every card glides to its new place in a soft wave, with the line between the rounds, whoever goes round the order slides out at one end and back in at the other, and the card whose turn begins lights up once. Opening or closing the tracker, and a fight starting or ending, brings the lists in from their edge, their cards fading in together a moment after, and takes them out the same way
 - Initiative cards show only the token's art, the initiative number and the look-alike number, as Baldur's Gate 3 does: red rises in the art from the bottom as the creature loses hit points. Conditions, hit point bars and other resources are left to the tokens on the map
-- The players' initiative list on the player view shows only the combatants' art: initiative numbers, cards dealt and the sides' rolls stay on your screen
+- The players' initiative list on the player view shows only the combatants' art: initiative numbers, cards dealt and the sides' rolls stay on your screen. Otherwise it looks just like your tracker: the same cards, sides and dividers, the round over its foot on a soft shade, and cards scrolled past its top fading out
 - The initiative tracker's options are fewer: the list always sorts by number and starts at the turn, and your view always follows the turn, gliding there more calmly. Horizontal initiative moved to What players see, and Players move only on their turn to the player view's online play settings
 - Mirrored initiative, in What players see: a second copy of the players' initiative list on the opposite side of the screen, turned around for the players across the table. It works with the vertical list (a column at each side) and with Horizontal initiative (a row at the top and the bottom); on its own, Horizontal initiative is one row at the bottom
 - The GM's initiative cards light up under the pointer and when pressed, in the tracker and its compact view, keep a ring in the accent colour while their token is selected, and stand out brightest while Ctrl (Cmd on macOS) shows their statblock

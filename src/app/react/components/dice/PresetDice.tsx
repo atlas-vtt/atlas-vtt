@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { MAX_SET_GROUPS } from '../../../gameSystems/diceSets';
 import { parseFormula } from '../../../tools/parseFormula';
+import { writtenSide } from '../../../tools/writtenAdvantage';
 import type { DicePreset } from '../../../types/dicePresetTypes';
 import type { DiceSetDie } from '../../../types/diceSetTypes';
 import { DieStill } from '../collection-settings/dice-lab/DieStill';
@@ -12,7 +13,7 @@ const STILL_HEIGHT = 32;
 /** The kinds of dice a roll throws, in its order: a designed roll's groups in their colours, a formula's dice terms. */
 function rollDice(preset: Pick<DicePreset, 'formula' | 'look'>): DiceSetDie[] {
   if (preset.look) return preset.look.dice.slice(0, MAX_SET_GROUPS);
-  const parsed = parseFormula(preset.formula.replaceAll('−', '-'));
+  const parsed = parseFormula(writtenSide(preset.formula.replaceAll('−', '-')).formula);
   if (!parsed.ok) return [];
   return parsed.terms.flatMap((term) => (term.kind === 'dice' && !term.fate ? [{ count: term.count, sides: term.faces }] : [])).slice(0, MAX_SET_GROUPS);
 }

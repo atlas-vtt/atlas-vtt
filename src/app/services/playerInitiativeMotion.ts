@@ -21,7 +21,7 @@ export function outwardOf(panel: HTMLElement): Outward {
  * animation starts over each time its element is, so the turn's flash would play again.
  */
 export function settle(panel: HTMLElement): void {
-  panel.querySelectorAll('.atlas-player-initiative__card--turn-flash').forEach((card) => card.removeClass('atlas-player-initiative__card--turn-flash'));
+  panel.querySelectorAll('.atlas-initiative-card--turn-flash').forEach((card) => card.removeClass('atlas-initiative-card--turn-flash'));
 }
 
 /** How long a list takes to grow or shrink to its new content, as a condition's badges make room or leave. */

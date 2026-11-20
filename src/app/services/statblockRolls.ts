@@ -20,6 +20,7 @@ import type { ArmableValues } from '../statblocks/rollBonuses/armableValues';
 import { armedValues, namedBareBonus, withArmedBonuses } from '../statblocks/rollBonuses/bonusFormula';
 import { completeFormula } from '../tools/completeFormula';
 import { parseFormula } from '../tools/parseFormula';
+import { changedBeforeSide } from '../tools/writtenAdvantage';
 
 export interface DiceRollSource {
   /** The view that owns this statblock; used for routing, never saved on the roll. */
@@ -131,7 +132,12 @@ export function statblockRollingDice(app: App, source: DiceRollSource, offMap?: 
  * would take it past what the dice roll (a limit, once a bonus is completed with the game's dice), it
  * is thrown plain, as it would be without them.
  */
-function thrownFormula(app: App, formula: string, armed: readonly ArmedBonus[], source: DiceRollSource, offMap: OffMapRolls | null | undefined): string {
+function thrownFormula(app: App, text: string, armed: readonly ArmedBonus[], source: DiceRollSource, offMap: OffMapRolls | null | undefined): string {
+  // A side written last (`dice: 1d20+5 adv`) stays last, for the dice tool to read.
+  return changedBeforeSide(text, (formula) => namedFormula(app, formula, armed, source, offMap));
+}
+
+function namedFormula(app: App, formula: string, armed: readonly ArmedBonus[], source: DiceRollSource, offMap: OffMapRolls | null | undefined): string {
   const plain = withArmedBonuses(formula, armed);
   const named = source.namedRolls?.get(formula) ?? namedBareBonus(formula, source.abilityName);
   if (named === null) return plain;

@@ -9,6 +9,7 @@ export const dice = {
   'dice.formulaError.depth': 'A dice formula can nest parentheses at most 8 deep.',
   'dice.formulaError.modifier': 'A modifier does not fit its dice. Keep or drop at least one die and no more than the term rolls, and leave a face that does not explode or roll again. Fate dice neither explode nor roll again.',
   'dice.formulaError.total': 'A dice formula can come to at most 1,000,000,000 either way.',
+  'dice.formulaError.advantage': 'adv and dis change only rolls of the dice set\'s own dice, and only where the set has a rule for that side.',
   'dice.advantage': 'Advantage',
   'dice.disadvantage': 'Disadvantage',
   'dice.normal': 'Normal',
