@@ -15,7 +15,7 @@ vi.mock('../../src/app/initiative/useMapInitiativeRules', () => ({
 vi.mock('../../src/app/react/ViewStoreContext', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/app/react/ViewStoreContext')>(),
   useAtlasStore: (selector: (value: unknown) => unknown) => selector(gm.state),
-  useViewStoreHook: () => ({ getState: () => gm.state }),
+  useViewStoreHook: () => ({ getState: () => gm.state, subscribe: () => () => undefined }),
 }));
 // jsdom has no WebGL: the player window shows result cards.
 vi.mock('../../src/app/dice3d/stagePool', async (importOriginal) => ({

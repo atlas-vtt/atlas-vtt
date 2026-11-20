@@ -4,9 +4,8 @@ import type { App } from 'obsidian';
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
 import type { PlayerBadgeNumbers } from '../pixi/token-renderer/PlayerBadgeNumbers';
-import { TurnPushWatch } from './playerInitiativePush';
 import { lendThemeIvy } from './themeIvy';
-import { FIGHT_INTRO_HOLD_MS, initiativeMaxCardsOf, LIST_LEAVE_EASING, LIST_LEAVE_MS, LIST_SLIDE_MS, playerInitiativeList, PULSE_MS, playerSegments, playersEntryToken, renderPlayerInitiative, sideIdsOf, TURN_FLASH_MS, type EntryToken } from './playerInitiativeList';
+import { FIGHT_INTRO_HOLD_MS, initiativeMaxCardsOf, playerInitiativeList, PULSE_MS, playersEntryToken, renderPlayerInitiative, sideIdsOf, TURN_FLASH_MS, type EntryToken } from './playerInitiativeList';
 import { currentTurn, turnKey } from '../initiative/turnHolders';
 import { mapInitiativeRules } from './mapInitiativeRules';
 import { mapConditions } from '../gameSystems/mapRules';
@@ -14,7 +13,9 @@ import { PlayerSceneOverlay, type PlayerSettings } from './PlayerSceneOverlay';
 import type { SettingsService } from './SettingsService';
 import type { InitiativeLayout } from '../initiative/initiativeLayout';
 import { portraitSrc } from '../utils/portraitSrc';
-import { glideHeight, settle, slideList } from './playerInitiativeMotion';
+import { glideHeight, outwardOf, settle } from './playerInitiativeMotion';
+import { adoptGhosts, ghostsOf, playTurnMotion, snapshotTurn } from '../initiative/motion/turnMotion';
+import { enterList, exitList, LIST_ARRIVAL_MS } from '../initiative/motion/listPresence';
 
 /** What of the GM's layout the list is drawn by: drawn anew when it changes. */
 const layoutKey = ({ fromTurn, edges, facesPlayers }: InitiativeLayout): string => [fromTurn, facesPlayers, ...edges].join();
@@ -54,8 +55,6 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
   private turnSeen: string | null | undefined = undefined;
   /** When the turn the list shows began, while its border flashes. */
   private turnBegan: number | null = null;
-  /** The row's conveyor as the turn passes on. */
-  private readonly pushWatch = new TurnPushWatch();
   /** Whether the lists were drawn, and the fight ran, at the last drawing; undefined before a scene's first. */
   private listsDrawn: boolean | undefined = undefined;
   private fightRan: boolean | undefined = undefined;
@@ -83,13 +82,26 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     this.stopTheme = () => app.workspace.offref(themeRef);
   }
 
-  /** Draws anew; a list that stands at an edge it stood at before glides from its old height (`glideHeight`). */
+  /**
+   * Draws anew. A list that stands at an edge it stood at before glides from its old height (`glideHeight`), and its
+   * cards from where they stood to their new places (`playTurnMotion`), the copies still sliding out laid over it again.
+   */
   override refresh(): void {
-    const heights = new Map(this.drawnPanels.map((panel) => [panel.dataset.edge, panel.offsetHeight]));
+    const before = new Map(this.drawnPanels.map((panel) => {
+      const list = panel.querySelector<HTMLElement>('.atlas-player-initiative__list');
+      return [panel.dataset.edge, { height: panel.offsetHeight, list, places: snapshotTurn(list), ghosts: ghostsOf(list) }];
+    }));
     super.refresh();
     for (const panel of this.drawnPanels) {
-      const from = heights.get(panel.dataset.edge);
-      if (from !== undefined && typeof panel.animate === 'function') glideHeight(panel, from);
+      const was = before.get(panel.dataset.edge);
+      if (was === undefined) continue;
+      // A list coming in has its own motion (`enterList`), which a glide would fight
+      if (!this.arriving()) {
+        const list = panel.querySelector<HTMLElement>('.atlas-player-initiative__list');
+        adoptGhosts(list, was.ghosts);
+        playTurnMotion(list, was.places);
+      }
+      if (typeof panel.animate === 'function') glideHeight(panel, was.height);
     }
   }
 
@@ -106,7 +118,6 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     // Another scene's fight is not a turn beginning
     this.turnSeen = undefined;
     this.turnBegan = null;
-    this.pushWatch.forget();
     this.ivyLent = false;
     // Another scene's lists neither arrive nor leave
     this.listsDrawn = undefined;
@@ -175,10 +186,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     // Outside a fight there is no list to show players, however the GM prepares one
     const drawn = settings.showInitiative && initiativeTrackerOpen && initiative?.isActive === true;
     this.arriveOrLeave(container, drawn, initiative?.isActive === true);
-    if (!drawn) {
-      this.pushWatch.forget();
-      return;
-    }
+    if (!drawn) return;
     const tokenOf = JSON.parse(scene.tokens) as (EntryToken | null)[];
     // Players see HP where the map's rules show it to them
     const hpVisible = mapResources(rulesLookup(this.app), scene.mapPath).some((definition) => definition.key === 'hp' && definition.visibleToPlayers);
@@ -200,7 +208,6 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     this.shownNumbers = shown;
     const { fromTurn, edges, facesPlayers } = this.settings.initiativeLayout();
     const maxCards = initiativeMaxCardsOf(settings.initiativeMaxCards);
-    const push = this.pushWatch.see(playerSegments(list, fromTurn, maxCards), list, fromTurn);
     if (!this.ivyLent) {
       lendThemeIvy(container);
       this.ivyLent = true;
@@ -217,14 +224,13 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
         faces: facesPlayers,
         pulse: settings.initiativePulse,
         turnFlash,
-        push,
         maxCards,
         badgeNumber: (tokenId) => shown.get(tokenId) ?? null,
         portraitSrc: (imagePath) => portraitSrc(this.app, imagePath),
       });
       if (!panel) continue;
       this.drawnPanels.push(panel);
-      this.slideIn(panel, facesPlayers);
+      this.slideIn(panel);
     }
   }
 
@@ -256,7 +262,9 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
           panel.remove();
           this.leaving = this.leaving.filter((other) => other !== panel);
         };
-        slideList(panel, this.settings.initiativeLayout().facesPlayers, true, { duration: LIST_LEAVE_MS, delay, easing: LIST_LEAVE_EASING, fill: 'forwards' }).finished.then(gone, gone);
+        const leaving = exitList(panel, outwardOf(panel), delay);
+        if (leaving) leaving.finished.then(gone, gone);
+        else gone();
       }
     }
     if (!drawn) {
@@ -271,21 +279,28 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     this.fightRan = fightRuns;
   }
 
+  /** Whether the lists are still coming in (`slideIn`); an arrival that is over is forgotten. */
+  private arriving(): boolean {
+    if (this.arrival && performance.now() - this.arrival.at >= this.arrival.delay + LIST_ARRIVAL_MS) this.arrival = null;
+    return this.arrival !== null;
+  }
+
   /**
    * A list drawn while the lists arrive slides on from where the last drawing's was. It starts once this drawing is done:
    * the turn banner, an overlay drawn after this one, measures the lists where they will stand (`turnBannerAnchors.ts`),
    * and nothing is painted before the microtask runs.
    */
-  private slideIn(panel: HTMLElement, faces: boolean): void {
+  private slideIn(panel: HTMLElement): void {
     const arrival = this.arrival;
     if (!arrival || typeof panel.animate !== 'function') return;
     queueMicrotask(() => {
       const elapsed = performance.now() - arrival.at;
-      if (elapsed >= arrival.delay + LIST_SLIDE_MS) {
+      if (elapsed >= arrival.delay + LIST_ARRIVAL_MS) {
         if (this.arrival === arrival) this.arrival = null;
         return;
       }
-      slideList(panel, faces, false, { duration: LIST_SLIDE_MS, delay: arrival.delay - elapsed, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)', fill: 'backwards' });
+      // Taken up where it was: a drawing during the arrival starts the motion as far along as the first one is
+      enterList(panel, outwardOf(panel), arrival.delay - elapsed);
     });
   }
 }

@@ -13,7 +13,8 @@ import { entryConditions, type CombatantCondition } from '../initiative/combatan
 import { entryToken } from '../initiative/party';
 import { layoutEdges, scrollWithin } from '../utils/scrollWithin';
 import { renderPlayerCard } from './playerInitiativeCard';
-import { renderRoundRow, renderTurnPush, type TurnPush } from './playerInitiativePush';
+import { renderRoundRow } from './playerInitiativeRounds';
+import { TURN_KEY_ATTRIBUTE } from '../initiative/motion/turnMotion';
 import './player-initiative.scss';
 import { t } from '../i18n';
 
@@ -88,30 +89,19 @@ export interface PlayerInitiativeLook {
    * holds it flashes, taken up where it was, since the list is drawn anew on every change.
    */
   turnFlash?: number | undefined;
-  /** The turn just passed on: a row that starts at the turn pushes who acted out at its front (`playerInitiativePush.ts`). */
-  push?: TurnPush | undefined;
   /** The most cards the list shows, 0 for all (`initiativeMaxCardsOf`). */
   maxCards?: number;
 }
 
-/** How long the border of a combatant whose turn began flashes; the animation in `player-initiative.scss` lasts as long. */
+/** How long the card of a combatant whose turn began lights up (both lists); `initiative-turn-flash` in `_initiative-cards.scss` lasts as long. */
 export const TURN_FLASH_MS = 900;
 
 /**
- * As a fight starts, its banner stands this long where the lists will be before they slide in from their edges
- * beneath it, over `LIST_SLIDE_MS`, pushing it up to stand above them (`PlayerTurnBanner`). As it ends, its banner stands as
- * long above the lists before they slide out over `LIST_LEAVE_MS` and it settles where they were. Without a banner they move at once.
+ * As a fight starts, its banner stands this long where the lists will be before they come in from their edges
+ * beneath it (`enterList`), pushing it up to stand above them (`PlayerTurnBanner`). As it ends, its banner stands as
+ * long above the lists before they leave (`exitList`) and it settles where they were. Without a banner they move at once.
  */
 export const FIGHT_INTRO_HOLD_MS = 1000;
-
-/** How long a players' list takes to slide in from its edge, or out as the fight ends. */
-export const LIST_SLIDE_MS = 700;
-
-/** How long a players' list takes to slide out as the fight ends: a little slower than it came, gentle at both ends. */
-export const LIST_LEAVE_MS = 1000;
-
-/** The easing of a list sliding out, and of the fight's end banner settling with it. */
-export const LIST_LEAVE_EASING = 'cubic-bezier(0.45, 0, 0.55, 1)';
 
 /** How long one pulse of the turn's border lasts; `$pulse-ms` in `player-initiative.scss`. */
 export const PULSE_MS = 1600;
@@ -266,15 +256,13 @@ export function renderPlayerInitiative(container: HTMLElement, list: PlayerIniti
   const segments = playerSegments(list, fromTurn, look.maxCards);
   // A row in turn order during a fight: each round's cards over its name, which move on with them
   const byRounds = across && list.isActive && !list.bySides;
-  const rounds = byRounds ? renderRoundRow(entries, segments, list.round, (into, segment) => renderSegment(into, segment, list, look)) : [];
-  if (!byRounds) {
+  if (byRounds) renderRoundRow(entries, segments, list.round, (into, segment) => renderSegment(into, segment, list, look));
+  else {
     // In turn order the list is the list of combatants; by sides each side is one
     if (!list.bySides) entries.setAttribute('role', 'list');
     for (const segment of segments) renderSegment(entries, segment, list, look);
   }
   renderMore(panel, list, segments);
-  const pushing = byRounds && fromTurn && look.push !== undefined;
-  if (pushing && look.push) renderTurnPush(entries, rounds, look.push, look, list.round);
   if (list.isActive && look.turnFlash !== undefined) {
     const holders = panel.querySelectorAll<HTMLElement>('.atlas-player-initiative__card--active, .atlas-player-initiative__side--active .atlas-player-initiative__card');
     for (const card of holders) {
@@ -290,8 +278,6 @@ export function renderPlayerInitiative(container: HTMLElement, list: PlayerIniti
     const card = panel.querySelector('.atlas-player-initiative__card--active');
     const axis = across ? 'x' : 'y';
     const edgesOf = look.faces ? ([layoutEdges] as const) : ([] as const);
-    // A push starts at the front, where the turn is
-    if (pushing) return panel;
     if (side) scrollWithin(entries, side, 'start', 0, axis, ...edgesOf);
     else if (card && fromTurn) scrollWithin(entries, card, 'start', 0, axis, ...edgesOf);
     else if (card) scrollWithin(entries, card, 'nearest', 2, axis, ...edgesOf);
@@ -310,7 +296,7 @@ function renderMore(panel: HTMLElement, list: PlayerInitiativeList, segments: re
 function renderSegment(entries: HTMLElement, segment: ListSegment<Combatant>, list: PlayerInitiativeList, look: PlayerInitiativeLook): void {
   if (segment.kind === 'round') {
     const label = t('playerInit.round', { round: segment.round });
-    entries.createDiv({ cls: 'atlas-player-initiative__next-round', attr: { role: 'separator', 'aria-label': label } })
+    entries.createDiv({ cls: 'atlas-player-initiative__next-round', attr: { role: 'separator', 'aria-label': label, [TURN_KEY_ATTRIBUTE]: `round:${segment.round}` } })
       .createSpan({ cls: 'atlas-player-initiative__next-round-label', text: label, attr: { 'aria-hidden': 'true' } });
     return;
   }
@@ -322,7 +308,7 @@ function renderSegment(entries: HTMLElement, segment: ListSegment<Combatant>, li
       group.addClass('atlas-player-initiative__side--active');
       group.setAttribute('aria-current', 'true');
     }
-    const heading = group.createDiv({ cls: 'atlas-player-initiative__side-label', attr: { 'aria-hidden': 'true' } });
+    const heading = group.createDiv({ cls: 'atlas-player-initiative__side-label', attr: { 'aria-hidden': 'true', [TURN_KEY_ATTRIBUTE]: `side:${name}` } });
     heading.createSpan({ text: name });
     if (roll !== null) heading.createSpan({ cls: 'atlas-player-initiative__side-roll', text: String(roll) });
     // By sides the turn is the side's and there are no numbers
@@ -331,7 +317,7 @@ function renderSegment(entries: HTMLElement, segment: ListSegment<Combatant>, li
   }
   if (segment.delayed) {
     const group = entries.createDiv({ cls: 'atlas-player-initiative__side', attr: { role: 'list', 'aria-label': t('playerInit.delayed') } });
-    group.createDiv({ cls: 'atlas-player-initiative__side-label', text: t('playerInit.delayed'), attr: { 'aria-hidden': 'true' } });
+    group.createDiv({ cls: 'atlas-player-initiative__side-label', text: t('playerInit.delayed'), attr: { 'aria-hidden': 'true', [TURN_KEY_ATTRIBUTE]: 'delayed' } });
     for (const combatant of segment.items) renderPlayerCard(group, combatant, look, false);
     return;
   }

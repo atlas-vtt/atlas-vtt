@@ -1,4 +1,5 @@
 import { useMapResources } from '../../resources/useMapResources';
+import { TURN_KEY_ATTRIBUTE } from '../../initiative/motion/turnMotion';
 import { combatantDefeated } from '../../initiative/defeated';
 import { visibleResources } from '../../resources/visibleResources';
 import React, { useCallback, useRef, useState } from 'react';
@@ -49,6 +50,8 @@ interface InitiativeCardProps {
   onDragEnd: () => void;
   onContextMenu: (e: React.MouseEvent, entry: InitiativeEntry, cardElement: HTMLElement) => void;
   onHover: (entry: InitiativeEntry | null, cardElement?: HTMLElement) => void;
+  /** Its turn just began: it lights up once (`initiative-turn-flash`), as on the players' list. */
+  turnFlash?: boolean;
 }
 
 const NOTHING = (): void => undefined;
@@ -76,6 +79,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   onDragEnd,
   onContextMenu,
   onHover,
+  turnFlash = false,
 }) => {
   const { app, view } = useAtlasUI();
   const store = useViewStoreHook();
@@ -213,6 +217,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
     isHoveredForPreview && 'atlas-initiative-card--preview-hover',
     dropPosition === 'above' && 'atlas-initiative-card--drop-above',
     dropPosition === 'below' && 'atlas-initiative-card--drop-below',
+    turnFlash && 'atlas-initiative-card--turn-flash',
   ].filter(Boolean).join(' ');
 
   return (
@@ -230,6 +235,8 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
       onContextMenu={handleContextMenu}
       {...hover}
       role="listitem"
+      // It glides to its new place as the turn passes (`turnMotion.ts`)
+      {...{ [TURN_KEY_ATTRIBUTE]: entry.id }}
       aria-roledescription={t('initiative.card')}
       aria-label={name}
     >

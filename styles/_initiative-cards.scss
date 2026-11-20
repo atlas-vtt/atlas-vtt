@@ -81,3 +81,77 @@ $initiative-art-dim: brightness(0.72) saturate(0.8);
   height: calc(2 * #{initiative-corner-radius($border)});
   border-radius: $radius-full;
 }
+
+/// The turn began (both lists): the card of who holds it lights up once. Its ring blooms inside its border and fades
+/// (`::before`, in the turn's colour, `--atlas-turn-color`), and its art swells and brightens as if stepping forward,
+/// inside the art's own clip, so nothing is cut off at a scrolling list's edge. `--atlas-turn-flash-delay` takes it up
+/// where it was in a list drawn anew. Lasts `TURN_FLASH_MS`.
+@mixin initiative-turn-flash($art, $border) {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: calc(-1 * #{$border});
+    z-index: 2;
+    border: 2px solid var(--atlas-turn-color, var(--interactive-accent));
+    border-radius: inherit;
+    box-shadow: inset 0 0 14px 2px var(--atlas-turn-color, var(--interactive-accent));
+    opacity: 0;
+    pointer-events: none;
+    animation: atlas-initiative-turn-bloom 900ms linear var(--atlas-turn-flash-delay, 0ms) both;
+  }
+
+  #{$art} img {
+    animation: atlas-initiative-turn-swell 700ms linear var(--atlas-turn-flash-delay, 0ms) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #{$art} img {
+      animation: none;
+    }
+  }
+}
+
+// Each stretch eases on its own: a quick rise (`$transition-ease-out`), a long settle (`$transition-ease-in-out`)
+@keyframes atlas-initiative-turn-bloom {
+  0% {
+    opacity: 0;
+    animation-timing-function: $transition-ease-out;
+  }
+
+  22% {
+    opacity: 1;
+    animation-timing-function: $transition-ease-in-out;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes atlas-initiative-turn-swell {
+  0% {
+    scale: 1;
+    filter: brightness(1);
+    animation-timing-function: $transition-ease-out;
+  }
+
+  30% {
+    scale: 1.1;
+    filter: brightness(1.3);
+    animation-timing-function: $transition-ease-in-out;
+  }
+
+  100% {
+    scale: 1;
+    filter: brightness(1);
+  }
+}
+
+/// A list whose cards glide (`turnMotion.ts`): the copies of who leaves lie over it, placed in its frame.
+@mixin initiative-gliding-list {
+  position: relative;
+
+  > .atlas-initiative-ghost {
+    z-index: 0;
+  }
+}

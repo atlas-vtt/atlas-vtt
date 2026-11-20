@@ -31,7 +31,7 @@ vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
 
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (storeState: typeof state) => unknown) => selector(state),
-  useViewStoreHook: () => ({ getState: () => state }),
+  useViewStoreHook: () => ({ getState: () => state, subscribe: () => () => undefined }),
 }));
 
 vi.mock('../../src/app/resources/useMapResources', async () => {

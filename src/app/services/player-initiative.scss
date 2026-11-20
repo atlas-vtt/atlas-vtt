@@ -140,6 +140,7 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
   }
 
   &__list {
+    @include initiative-gliding-list;
     display: flex;
     flex-direction: column;
     gap: $surface-inset;
@@ -586,23 +587,6 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
     order: -1;
   }
 
-  // The turn passed on (`playerInitiativePush.ts`): who acted slides out at the front as its card comes in at
-  // the end, each by one card and the gap, so the row keeps its length
-  .atlas-player-initiative__leaving {
-    animation: atlas-player-initiative-push-out 700ms ease-in-out var(--atlas-turn-push-delay, 0ms) both;
-  }
-
-  // Who acted and whom the turn passed by, leaving together
-  .atlas-player-initiative__push-group {
-    display: flex;
-    flex-shrink: 0;
-    gap: $surface-inset;
-  }
-
-  .atlas-player-initiative__push-in {
-    animation: atlas-player-initiative-push-in 700ms ease-in-out var(--atlas-turn-push-delay, 0ms) both;
-  }
-
   .atlas-player-initiative__card {
     width: $card-width;
   }
@@ -643,8 +627,7 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
   }
 
   // The round that runs stands out of the next
-  .atlas-player-initiative__round-group:first-child:not(.atlas-player-initiative__leaving) .atlas-player-initiative__round-label,
-  .atlas-player-initiative__leaving + .atlas-player-initiative__round-group .atlas-player-initiative__round-label {
+  .atlas-player-initiative__round-group:first-child .atlas-player-initiative__round-label {
     color: $round-accent;
   }
 
@@ -665,33 +648,9 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
   }
 }
 
-// The turn began: who holds it flashes three times, a ring over the card's border in its own
-// colour (`turnColor`, the accent without one); a
-// redraw during the flash takes it up where it was (`--atlas-turn-flash-delay`). Lasts `TURN_FLASH_MS`.
-.atlas-player-initiative__card--turn-flash::before {
-  content: '';
-  position: absolute;
-  inset: calc(-1 * #{$border-width-s});
-  border: 2px solid var(--atlas-turn-color, var(--interactive-accent));
-  border-radius: inherit;
-  box-shadow: inset 0 0 $spacing-m var(--atlas-turn-color, var(--interactive-accent));
-  opacity: 0;
-  pointer-events: none;
-  animation: atlas-player-initiative-turn-flash 900ms ease-out var(--atlas-turn-flash-delay, 0ms) both;
-}
-
-@keyframes atlas-player-initiative-turn-flash {
-  0%,
-  33%,
-  66% {
-    opacity: 1;
-  }
-
-  16%,
-  50%,
-  100% {
-    opacity: 0;
-  }
+// The turn began: who holds it lights up once (`initiative-turn-flash`)
+.atlas-player-initiative__card--turn-flash {
+  @include initiative-turn-flash('.atlas-player-initiative__art', $border-width-s);
 }
 
 @keyframes atlas-player-initiative-pulse {
@@ -705,43 +664,8 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
   }
 }
 
-@keyframes atlas-player-initiative-push-out {
-  from {
-    margin-inline-start: 0;
-    opacity: 1;
-  }
-
-  to {
-    // Its own width (a card's, or a round's with its line) and the gap after it
-    margin-inline-start: calc(-1 * var(--atlas-push-width, #{$card-width}) - #{$surface-inset});
-    opacity: 0;
-  }
-}
-
-@keyframes atlas-player-initiative-push-in {
-  from {
-    // Its own width (a card's, or several cards' coming in together) and the gap before it
-    margin-inline-end: calc(-1 * var(--atlas-push-in-width, #{$card-width}) - #{$surface-inset});
-    opacity: 0;
-  }
-
-  to {
-    margin-inline-end: 0;
-    opacity: 1;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .atlas-player-initiative__leaving {
-    display: none;
-  }
-
-  .atlas-player-initiative__push-in {
-    animation: none;
-  }
-
-  .atlas-player-initiative--pulse .atlas-player-initiative__card::after,
-  .atlas-player-initiative__card--turn-flash::before {
+  .atlas-player-initiative--pulse .atlas-player-initiative__card::after {
     animation: none;
   }
 }

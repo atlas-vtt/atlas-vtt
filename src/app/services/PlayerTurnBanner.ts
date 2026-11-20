@@ -8,7 +8,8 @@ import { prefersReducedMotion } from '../utils/motion';
 import { portraitSrc } from '../utils/portraitSrc';
 import { bannerAnchor, listBox, type BannerAnchor, type Box } from './turnBannerAnchors';
 import type { PlayersListEdge } from '../initiative/initiativeLayout';
-import { FIGHT_INTRO_HOLD_MS, LIST_LEAVE_EASING, LIST_LEAVE_MS, LIST_SLIDE_MS } from './playerInitiativeList';
+import { FIGHT_INTRO_HOLD_MS } from './playerInitiativeList';
+import { LIST_ENTER_EASING, LIST_ENTER_MS, LIST_EXIT_EASING, LIST_EXIT_MS } from '../initiative/motion/listPresence';
 import type { PlayerOverlay } from './PlayerSceneOverlay';
 import type { SettingsService } from './SettingsService';
 
@@ -51,7 +52,7 @@ const DIM_FADE_MS = 450;
 const ANCHOR_GAP_PX = 16;
 
 /** A fight's start or end stands at least this long: a moment alone, while the lists slide, then a while after. */
-const FIGHT_BANNER_STAND_MS = FIGHT_INTRO_HOLD_MS + LIST_LEAVE_MS + 1200;
+const FIGHT_BANNER_STAND_MS = FIGHT_INTRO_HOLD_MS + LIST_EXIT_MS + 1200;
 
 /** Whether a fight starts or ends: its banner stands at the lists. */
 type FightMove = 'start' | 'end';
@@ -70,8 +71,8 @@ function fightMotion(move: FightMove, lift: { x: number; y: number }, at: Banner
       const kind = move === 'start' ? 'atlas-turn-banner--fight-start' : 'atlas-turn-banner--fight-end';
       if (!anchor || !element.hasClass(kind) || prefersReducedMotion(element)) return;
       const timing: KeyframeAnimationOptions = move === 'start'
-        ? { duration: LIST_SLIDE_MS, delay: FIGHT_INTRO_HOLD_MS, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)', fill: 'backwards' }
-        : { duration: LIST_LEAVE_MS, delay: FIGHT_INTRO_HOLD_MS, easing: LIST_LEAVE_EASING, fill: 'forwards' };
+        ? { duration: LIST_ENTER_MS, delay: FIGHT_INTRO_HOLD_MS, easing: LIST_ENTER_EASING, fill: 'backwards' }
+        : { duration: LIST_EXIT_MS, delay: FIGHT_INTRO_HOLD_MS, easing: LIST_EXIT_EASING, fill: 'forwards' };
       // Where the banner rests beside its anchor (`turn-banner.scss`), and where it stands centred on the list's middle
       const beside = at.side === 'left';
       const rest = beside ? '0 -50%' : '-50% 0';

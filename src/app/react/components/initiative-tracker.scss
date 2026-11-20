@@ -177,8 +177,14 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   }
 }
 
-// Content area — scrollable, hidden scrollbar
+// While it leaves it takes no pointer: what lies under it is the map's again
+.atlas-initiative-tracker--leaving {
+  pointer-events: none;
+}
+
+// Content area — scrollable, hidden scrollbar; its cards glide as the turn passes (`useTurnMotion`)
 .atlas-initiative-tracker__content {
+  @include initiative-gliding-list;
   display: flex;
   flex-direction: column;
   gap: $surface-inset;
@@ -362,6 +368,11 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   &--drop-below::after {
     bottom: -3px;
   }
+}
+
+// The turn began: who holds it lights up once, as on the players' list (`initiative-turn-flash`)
+.atlas-initiative-card--turn-flash {
+  @include initiative-turn-flash('.atlas-initiative-card__art', $border-width-s);
 }
 
 @keyframes atlas-initiative-pulse {

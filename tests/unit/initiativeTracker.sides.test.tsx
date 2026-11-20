@@ -48,7 +48,7 @@ vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
   AtlasUIContext: (await import('react')).createContext(null), useAtlasUI: () => ({ app: null, view: null }) }));
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (storeState: typeof state) => unknown) => selector(state),
-  useViewStoreHook: () => ({ getState: () => state }),
+  useViewStoreHook: () => ({ getState: () => state, subscribe: () => () => undefined }),
 }));
 const layout = vi.hoisted(() => ({ fromTurn: false, dock: 'right' as 'right' | 'top' | 'bottom', set: vi.fn() }));
 vi.mock('../../src/app/initiative/useInitiativeLayout', () => ({

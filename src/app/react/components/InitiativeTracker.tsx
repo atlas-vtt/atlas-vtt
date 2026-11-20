@@ -19,6 +19,8 @@ import { mapEnemyImage } from '../../initiative/mapParty';
 import { useMapParty, usePartyEntrySync } from '../../initiative/useMapParty';
 import { useMapCollectionId } from '../hooks/useMapCollectionId';
 import { useThemeIvy } from '../hooks/useThemeIvy';
+import { useListPresence, useTurnFlash, useTurnMotion } from './useInitiativeMotion';
+import type { Outward } from '../../initiative/motion/listPresence';
 import { CollectionSettingsModal } from './CollectionSettingsModal';
 import { useMapInitiativeRules } from '../../initiative/useMapInitiativeRules';
 import { useInitiativeRolls } from '../../initiative/useInitiativeRolls';
@@ -49,6 +51,9 @@ import './initiative-tracker-compact.scss';
  * the right edge, its controls floating above and below it while the pointer is near; the GM lets the list start at
  * the turn (`useInitiativeLayout`).
  */
+/** The tracker stands at the right edge, and comes from and leaves towards it. */
+const OUTWARD: Outward = [1, 0];
+
 export const InitiativeTracker: React.FC = () => {
   const { app, view } = useAtlasUI();
   const settings = useAtlasSettings();
@@ -56,11 +61,14 @@ export const InitiativeTracker: React.FC = () => {
   const { layout, setLayout } = useInitiativeLayout();
   // The tracker stands at the right edge: popups and tooltips open to its left
   const inward = 'left';
+  const [root, setRoot] = useState<HTMLDivElement | null>(null);
   // The Atlas VTT theme's ivy over its corners, as on the players' list
-  const ivyRef = useThemeIvy(app ?? undefined);
+  useThemeIvy(app ?? undefined, root);
 
   // Store state
   const isOpen = useAtlasStore((s) => s.initiativeTrackerOpen);
+  // It comes in and leaves as the players' list does, opened by its hotkey or command
+  const { drawn, leaving } = useListPresence(isOpen, root, OUTWARD);
   const initiative = useAtlasStore((s) => s.initiative);
   const tokens = useAtlasStore((s) => s.objects?.tokens) || {};
   const mapPath = useAtlasStore((s) => s.mapPath);
@@ -131,6 +139,9 @@ export const InitiativeTracker: React.FC = () => {
   const contentRef = useRef<HTMLDivElement>(null);
   const turnOf = initiative.sides?.active ?? initiative.entries.find((entry) => entry.isActive)?.id;
   useTurnInView(contentRef, { fightRuns: initiative.isActive, turnOf, round: initiative.round, fromTurn: layout.fromTurn });
+  // The cards glide as the turn passes on or back, and who holds it lights up, as on the players' list
+  useTurnMotion(store, contentRef);
+  const turnFlash = useTurnFlash(initiative);
 
   // Numbers typed on the cards; Tab goes on down the list as it shows
   const numberEditing = useNumberEditing(shownOrder, updateInitiativeEntry);
@@ -206,10 +217,10 @@ export const InitiativeTracker: React.FC = () => {
     [previewActions, view, mapPath, mapLoaded, isMapLoading, tokens]
   );
 
-  // Don't render if closed
-  if (!isOpen) return null;
+  // Not drawn once closed and gone
+  if (!drawn) return null;
 
-  const card = (entry: InitiativeEntry): React.ReactElement => (
+  const card = (entry: InitiativeEntry, inTurn = false): React.ReactElement => (
     <InitiativeCard
       key={entry.id}
       entry={entry}
@@ -229,6 +240,7 @@ export const InitiativeTracker: React.FC = () => {
       onDragEnd={handleDragEnd}
       onContextMenu={handleContextMenu}
       onHover={handleEntryHover}
+      turnFlash={turnFlash && (bySides ? inTurn && !entry.sitsOut : entry.isActive && !entry.delayed)}
     />
   );
 
@@ -236,10 +248,11 @@ export const InitiativeTracker: React.FC = () => {
     'atlas-initiative-tracker',
     // The compact list is all names
     compact && 'atlas-initiative-tracker--named atlas-initiative-tracker--compact',
+    leaving && 'atlas-initiative-tracker--leaving',
   ].filter(Boolean).join(' ');
 
   return (
-    <div ref={ivyRef} className={trackerClasses}>
+    <div ref={setRoot} className={trackerClasses}>
       {/* Its surface is a layer of its own, so the theme's ivy can lie behind it; near it, its bars show */}
       <div className="atlas-initiative-tracker__surface" aria-hidden="true" />
       <div className="atlas-initiative-tracker__reach" aria-hidden="true" />
