@@ -20,7 +20,7 @@ import type { MeasureLook } from './DrawnMeasure';
 import { RangeCheck } from './RangeCheck';
 import { RangeRings } from './RangeRings';
 
-type RangeState = Pick<ViewState, 'activeTool' | 'grid' | 'objects' | 'levels' | 'viewedLevel' | 'measureTool' | 'mapPath' | 'selectedIds'>;
+type RangeState = Pick<ViewState, 'activeTool' | 'heldRulerFrom' | 'grid' | 'objects' | 'levels' | 'viewedLevel' | 'measureTool' | 'mapPath' | 'selectedIds'>;
 
 /** What the range marks read of their view's state; they write nothing. */
 export type RangeStore = Pick<StoreApi<RangeState>, 'getState' | 'subscribe'>;
@@ -47,6 +47,8 @@ export interface RangeMarksDeps {
 /** What the rings stand around: a token, by its id and as it was when they were drawn, or a point. */
 type RingTarget = { readonly token: TokenEntity } | { readonly point: Point };
 
+/** The marks belong to the measure tool when it is chosen; a press with the measure key held is a ruler's alone. */
+const marksRange = (state: RangeState): boolean => state.activeTool === 'measure' && state.heldRulerFrom === undefined;
 const shownTokens = (state: RangeState): Readonly<Record<string, TokenEntity>> => mapTokens(levelObjects(state));
 
 /**
@@ -78,7 +80,7 @@ export class RangeMarks {
     this.check = new RangeCheck(this.ink, this.labels);
     deps.viewport.addChild(this.view);
     this.stopStore = deps.store.subscribe((state, previous) => this.follow(state, previous));
-    this.setEnabled(deps.store.getState().activeTool === 'measure');
+    this.setEnabled(marksRange(deps.store.getState()));
   }
 
   /** The texts on the map now: the check's distance, and the rings' names from the innermost; for tests. */
@@ -161,7 +163,7 @@ export class RangeMarks {
   private readonly onPointerLeave = (): void => this.hover(null);
 
   private follow(state: RangeState, previous: RangeState): void {
-    this.setEnabled(state.activeTool === 'measure');
+    this.setEnabled(marksRange(state));
     if (!this.enabled) return;
     const sameScene = state.mapPath === previous.mapPath && state.viewedLevel === previous.viewedLevel;
     if (!sameScene || state.measureTool.mode !== 'ranges') this.clearRings();

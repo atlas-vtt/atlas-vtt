@@ -26,6 +26,7 @@ const WALL: WallSegment = { id: 'w', kind: 'wall', type: 'solid', p1: { x: 490, 
 function standalone(): {
   tool: MeasureToolOptions;
   kept: KeptMeasure[];
+  held: { from?: 'move' | undefined };
   map: Container;
   viewport: Viewport;
   pointer(type: 'pointerdown' | 'pointermove' | 'pointerup', x: number, y: number): void;
@@ -39,9 +40,11 @@ function standalone(): {
   viewport.addChild(map);
   const tool: MeasureToolOptions = { ...DEFAULT_MEASURE_TOOL };
   const kept: KeptMeasure[] = [];
+  const held: { from?: 'move' | undefined } = {};
   const state: LiveMeasuringState = {
     grid: { snapToGrid: true, size: CELL },
     get measureTool() { return tool; },
+    get heldRulerFrom() { return held.from; },
     lighting: { enabled: true },
     addMeasure: (measure: KeptInput) => {
       const id = `own${kept.length}`;
@@ -73,7 +76,7 @@ function standalone(): {
   input.setEnabled(true);
   const boundary = new EventBoundary(viewport);
   return {
-    tool, kept, map, viewport,
+    tool, kept, held, map, viewport,
     pointer(type, x, y): void {
       const event = new FederatedPointerEvent(boundary);
       event.button = 0;
@@ -133,5 +136,22 @@ describe('the measure tool without a view\'s store', () => {
     // The top of the map holds the rulers' ink and the labels, and no layer of outlines.
     expect(s.viewport.children.map((child) => child.label)).toEqual(['under-tokens', 'measures', 'measure-labels']);
     expect(s.viewport.getChildByLabel('measures')?.getLocalBounds().width).toBe(0);
+  });
+
+  it('measures with a ruler that is never kept while the measure key is held, whatever shape and Keep the tool has', () => {
+    const s = (tool = standalone());
+    s.tool.mode = 'circle';
+    s.tool.keep = true;
+    s.held.from = 'move';
+    s.pointer('pointerdown', 105, 105);
+    s.pointer('pointermove', 315, 105);
+    s.pointer('pointerup', 315, 105);
+    expect(s.kept).toEqual([]);
+    expect(texts(s.viewport).length).toBeGreaterThan(0);
+    s.held.from = undefined;
+    s.pointer('pointerdown', 105, 105);
+    s.pointer('pointermove', 315, 105);
+    s.pointer('pointerup', 315, 105);
+    expect(s.kept[0]?.shape).toBe('circle');
   });
 });
