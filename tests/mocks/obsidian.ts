@@ -79,6 +79,11 @@ export class View {
   async setState(_state: unknown, _result: unknown): Promise<void> {}
 
   setEphemeralState(_state: unknown): void {}
+
+  /** As Obsidian's views (Components) listen: on any event target, the listener taken off when the view unloads. */
+  registerDomEvent(el: EventTarget, type: string, callback: (event: Event) => unknown, options?: AddEventListenerOptions): void {
+    el.addEventListener(type, callback, options);
+  }
 }
 
 export class ItemView extends View {

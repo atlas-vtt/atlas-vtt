@@ -16,7 +16,7 @@ import { enterList, exitList, LIST_ARRIVAL_MS, type Outward } from '../initiativ
  * players' rows leave free on both sides (`player-initiative.scss`).
  */
 const WIDGETS_ROOM = '--atlas-player-widgets-room';
-/** The widgets' distance from the edge and the rows' gap to them (`widget-bar.scss`, `$spacing-m`). */
+/** How far the widgets stand off the edge, and the rows' gap to them (`$spacing-m` in widget-bar.scss). */
 const WIDGETS_OFFSET_PX = 8;
 const ROWS_GAP_PX = 12;
 

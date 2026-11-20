@@ -69,7 +69,10 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   padding: $surface-inset;
   box-sizing: border-box;
   @include atlas-elevated-surface;
-  @include atlas-panel-radius(calc(#{$float-height} / 2));
+  // A capsule: the pill radius rounds it at half its height, and its buttons, which round at most to half their own
+  // height (`atlas-panel-inset-radius-value`), stay concentric with it.
+  border-radius: $radius-full;
+  --atlas-panel-inner-radius: #{$radius-full};
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, var(--atlas-float-nudge));
