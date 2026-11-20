@@ -9,6 +9,7 @@ export const dice: Translation = {
   'dice.formulaError.depth': 'Una fórmula de dados puede anidar paréntesis como máximo 8 niveles.',
   'dice.formulaError.modifier': 'Un modificador no encaja con sus dados. Conserva o descarta al menos un dado y no más de los que tira el término, y deja una cara que no explote ni se vuelva a tirar. Los dados Fate ni explotan ni se vuelven a tirar.',
   'dice.formulaError.total': 'Una fórmula de dados puede dar como máximo 1.000.000.000, en positivo o en negativo.',
+  'dice.formulaError.advantage': 'adv y dis solo cambian tiradas con los dados del propio conjunto, y solo si el conjunto tiene una regla para ese lado.',
   'dice.advantage': 'Ventaja',
   'dice.disadvantage': 'Desventaja',
   'dice.normal': 'Normal',

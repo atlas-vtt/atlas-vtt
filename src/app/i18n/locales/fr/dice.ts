@@ -9,6 +9,7 @@ export const dice: Translation = {
   'dice.formulaError.depth': 'Une formule de dés peut imbriquer au plus 8 niveaux de parenthèses.',
   'dice.formulaError.modifier': 'Un modificateur ne correspond pas à ses dés. Gardez ou retirez au moins un dé et pas plus que le terme n\'en lance, et laissez une face qui n\'explose pas et ne relance pas. Les dés Fate n\'explosent pas et ne relancent pas.',
   'dice.formulaError.total': 'Une formule de dés peut atteindre au plus 1 000 000 000, dans un sens comme dans l\'autre.',
+  'dice.formulaError.advantage': 'adv et dis ne changent que les jets des dés du jeu de dés, et seulement si ce jeu a une règle pour ce côté.',
   'dice.advantage': 'Avantage',
   'dice.disadvantage': 'Désavantage',
   'dice.normal': 'Normal',
