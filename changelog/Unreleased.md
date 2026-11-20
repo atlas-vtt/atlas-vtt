@@ -87,6 +87,7 @@
 - Condition badges on tokens are redrawn: a domed disc in the condition's colour set in a thin metal bezel, on a soft shadow, and they stay perfectly round however far you zoom in. The initiative lists and menus show them the same way
 - Undo and redo carry a moved or resized measurement back along its way, with its handles. Auras and measurements grouped with a token glide with the token instead of jumping ahead of it
 - Players' measurements come and go the same way on your map, and one they move glides there
+- Hold M and drag across the map to measure a distance without leaving your tool: let go of M and the tool you had comes back. A tap on M still picks the measure tool
 - Kept cones, squares and lines have a turn handle next to their end: drag it to rotate the measurement without changing its size. Contributed by aryistia
 - A token's condition badges and the badge that marks a token your players can't see grow with the token, like its resize and rotate buttons, so they stay in proportion on large creatures
 - A token's height shows only while you hover or select it, like the resource wheels, right above the token and at one size on screen at any zoom, and steps aside while you drag the token, like the card that lists its conditions

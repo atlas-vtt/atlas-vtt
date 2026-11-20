@@ -7,6 +7,7 @@ import { DEFAULT_DRAW_TOOL, type DrawMode } from "../../../annotations/annotatio
 import { stepDrawSize } from "./drawStyleStore"
 import { eraserOrBack, nextDrawMode } from "./drawToolChoices"
 import { nextMeasureMode } from "./measureToolChoices"
+import { measureWhileHeld } from "./measureWhileHeld"
 import type { Tool } from "./toolFaces"
 import { mapOffersRanges } from "../../../services/mapRanges"
 import { selectAllTokens } from "../../../selection/wholeSelection"
@@ -79,12 +80,17 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
       selectTool("draw")
     }),
     // The tool keeps its mode while another tool is in use; pressed again while measuring, the key steps to the next mode.
-    measure: () => {
+    // Held while measuring with another tool in use, it gives that tool back on release (`measureWhileHeld`).
+    measure: (event) => {
       const state = store.getState()
       // Ranges is stepped over where the bar offers it disabled (`useUnavailableMeasureModes`) or not at all.
       const ranges = !isPlayerView && state.isGMView && mapOffersRanges(app, state)
-      if (state.activeTool === "measure") state.setMeasureTool({ mode: nextMeasureMode(state.measureTool.mode, ranges) })
-      else selectTool("measure")
+      if (state.activeTool === "measure") {
+        state.setMeasureTool({ mode: nextMeasureMode(state.measureTool.mode, ranges) })
+        return
+      }
+      measureWhileHeld(event, state.activeTool, () => activeTool() === "measure", selectTool)
+      selectTool("measure")
     },
     measureKeep: dmOnly(() => {
       const state = store.getState()
