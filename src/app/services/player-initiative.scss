@@ -85,15 +85,16 @@ $card-corner-radius: initiative-corner-radius($border-width-s);
   --atlas-theme-ivy-scale: calc(0.2 * #{$scale});
   @include atlas-theme-ivy-corners(-2);
 
-  // Across the top or bottom edge: the cards side by side, in the middle of the edge, as
-  // clear of the widget bar at the top right as the column is
+  // Across the top or bottom edge: the cards side by side, in the middle of the edge, as clear of the widgets as the
+  // column is; they stand as a column down the right edge then, and the row leaves their room free on both sides
+  // (`PlayerWidgetBar`), however wide they are
   &--top,
   &--bottom {
     right: auto;
     left: 50%;
     transform: translateX(-50%);
     width: auto;
-    max-width: calc(100% - 2 * 160px);
+    max-width: calc(100% - 2 * max(160px, var(--atlas-player-widgets-room, 0px)));
     max-height: none;
     // A fight's round stands before the cards, its name read along the row's height
     flex-direction: row;

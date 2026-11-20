@@ -7,17 +7,43 @@ import { DEFAULT_TIMER_COLOR, formatTimerTime, isTimerExpired, msUntilNextSecond
 import { CLOCK_VIEW_SIZE, DEFAULT_CLOCK_COLOR, clockFace, clockProgressLabel } from '../utils/clockWidget';
 import { PlayerSceneOverlay, type PlayerSettings } from './PlayerSceneOverlay';
 import type { SettingsService } from './SettingsService';
+import { playersListShape, type PlayersListShape } from '../initiative/initiativeLayout';
+
+/**
+ * Set on the overlays' layer while the widgets stand as a column: the room they take from the right edge, which the
+ * players' rows leave free on both sides (`player-initiative.scss`).
+ */
+const WIDGETS_ROOM = '--atlas-player-widgets-room';
+/** The widgets' distance from the edge and the rows' gap to them (`widget-bar.scss`, `$spacing-m`). */
+const WIDGETS_OFFSET_PX = 8;
+const ROWS_GAP_PX = 12;
 
 type WidgetScene = Pick<ViewAtlasState, 'widgetSettings' | 'widgetValues'>;
 
-/** Read-only widget bar showing the presented scene's player-visible widgets. */
+/**
+ * Read-only widget bar showing the presented scene's player-visible widgets. While the players' initiative list runs
+ * as rows across the top and bottom, the widgets stand as a column down the right edge, and the rows keep clear of it.
+ */
 export class PlayerWidgetBar extends PlayerSceneOverlay<WidgetScene> {
   /** The shown running timers, whose time this bar counts itself between store changes. */
   private runningTimers: { widget: TimerWidget; display: HTMLElement }[] = [];
   private tickTimeout: number | undefined;
+  private shape: PlayersListShape;
+  private readonly stopLayout: () => void;
+  /** Follows the column's width into `WIDGETS_ROOM` on the overlays' layer. */
+  private roomWatch: ResizeObserver | undefined;
+  private roomLayer: HTMLElement | undefined;
 
-  constructor(settings: SettingsService) {
+  constructor(private readonly settings: SettingsService) {
     super({ cls: 'atlas-vtt-plugin', attr: { id: 'atlas-player-widgets' } }, settings);
+    this.shape = playersListShape(settings.initiativeLayout());
+    // The GM's layout is no player setting: the widgets are laid out anew when the players' list changes shape
+    this.stopLayout = settings.onChange(() => {
+      const shape = playersListShape(settings.initiativeLayout());
+      if (shape === this.shape) return;
+      this.shape = shape;
+      this.refresh();
+    });
   }
 
   protected select({ widgetSettings, widgetValues }: ViewAtlasState): WidgetScene {
@@ -33,25 +59,53 @@ export class PlayerWidgetBar extends PlayerSceneOverlay<WidgetScene> {
       .sort((a, b) => a.order - b.order);
     if (widgets.length === 0) return;
 
-    const widgetBar = container.createDiv({ cls: 'atlas-widget-bar' });
+    const column = this.shape === 'horizontal';
+    const widgetBar = container.createDiv({ cls: column ? 'atlas-widget-bar atlas-widget-bar--column' : 'atlas-widget-bar' });
     const widgetContainer = widgetBar.createDiv({ cls: 'atlas-widget-container' });
-    widgetContainer.style.transform = `scale(${widgetSettings.scale || 1})`;
+    const scale = widgetSettings.scale || 1;
+    widgetContainer.style.transform = `scale(${scale})`;
     for (const widget of widgets) {
       if (widget.type === 'timer') this.renderTimer(widgetContainer, widget);
       else if (widget.type === 'clock') this.renderClock(widgetContainer, widget, readCounterValue(scene, widget));
       else this.renderCounter(widgetContainer, widget, readCounterValue(scene, widget));
     }
+    if (column) this.watchRoom(container, widgetContainer, scale);
     this.tick();
   }
 
   override refresh(): void {
     this.stopTicking();
+    this.releaseRoom();
     super.refresh();
   }
 
   override destroy(): void {
     this.stopTicking();
+    this.releaseRoom();
+    this.stopLayout();
     super.destroy();
+  }
+
+  /**
+   * Publishes the room the column takes from the right edge on the overlays' layer, followed as the widgets change
+   * size. The column is scaled from its top right corner, so its width scales as it is.
+   */
+  private watchRoom(container: HTMLElement, column: HTMLElement, scale: number): void {
+    const layer = container.parentElement;
+    const Observer = container.ownerDocument.defaultView?.ResizeObserver;
+    if (!layer || !Observer) return;
+    this.roomLayer = layer;
+    const publish = (): void => layer.style.setProperty(WIDGETS_ROOM, `${column.offsetWidth * scale + WIDGETS_OFFSET_PX + ROWS_GAP_PX}px`);
+    publish();
+    this.roomWatch = new Observer(publish);
+    this.roomWatch.observe(column);
+  }
+
+  private releaseRoom(): void {
+    this.roomWatch?.disconnect();
+    this.roomWatch = undefined;
+    this.roomLayer?.style.removeProperty(WIDGETS_ROOM);
+    this.roomLayer = undefined;
   }
 
   private renderCounter(parent: HTMLElement, widget: CounterWidget, value: number): void {

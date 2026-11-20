@@ -27,6 +27,17 @@ $widget-bar-offset: $spacing-s;
   justify-content: flex-end;
 }
 
+// While the players' initiative list runs as rows across the top and bottom (player view), the widgets stand as a
+// column down the right edge, scaled from its top right corner, so the room they take is their width
+.atlas-widget-bar--column {
+  .atlas-widget-container {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    transform-origin: top right;
+  }
+}
+
 // The stack's one control, over its whole box (`useWidgetStack`); the cards under it are inert.
 .atlas-widget-stack-opener {
   @include atlas-panel-radius($surface-radius);
