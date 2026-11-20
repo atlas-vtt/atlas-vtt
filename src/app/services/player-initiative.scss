@@ -233,10 +233,17 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     border: $border-width-s solid var(--background-modifier-border);
     border-radius: $radius-m;
 
-    // The colour the GM gave the card: its border and a wash of its fill; the turn's accent wins
+    // The colour the GM gave the card (opponents start in red): its border and a wash of its fill; the turn's accent wins
     &--coloured {
+      --atlas-side-color: var(--atlas-combatant-color);
       border-color: var(--atlas-combatant-color);
       background: color-mix(in srgb, var(--atlas-combatant-color) 22%, var(--background-modifier-hover));
+    }
+
+    // The players' own side, framed in green as the opponents are in their colour
+    &--ally {
+      --atlas-side-color: var(--color-green);
+      border-color: var(--atlas-side-color);
     }
 
     &--active {
@@ -295,10 +302,45 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     transform-origin: 50% 45%;
   }
 
-  // The turn's ring lies over the art, which covers the card's own inset shadow
+  // On the art a side's frame is a ring inside the border, thick enough to read across a table
+  &__card--art#{&}__card--coloured &__art::after,
+  &__card--art#{&}__card--ally &__art::after {
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--atlas-side-color) 85%, transparent);
+  }
+
+  // The turn's ring is thicker and glows inward, so it reads over any side's frame
   &__card--art#{&}__card--active &__art::after,
   &__side--active &__card--art:not(&__card--sitting-out) &__art::after {
-    box-shadow: inset 0 0 0 2px var(--atlas-turn-color, var(--interactive-accent));
+    box-shadow:
+      inset 0 0 0 3px var(--atlas-turn-color, var(--interactive-accent)),
+      inset 0 0 #{scaled(14px)} color-mix(in srgb, var(--atlas-turn-color, var(--interactive-accent)) 55%, transparent);
+  }
+
+  // While someone holds the turn, everyone else's art steps back a little, so the turn stands out whatever its colour
+  &:has(&__card--active, &__side--active) &__card:not(&__card--active) &__art img {
+    filter: brightness(0.72) saturate(0.8);
+  }
+
+  &:has(&__side--active) &__side--active &__card:not(&__card--sitting-out) &__art img {
+    filter: none;
+  }
+
+  // The combatants a list that shows only so many leaves out, counted in a tile after it
+  &__more {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: scaled(40px);
+    min-height: scaled(40px);
+    padding: $surface-inset;
+    box-sizing: border-box;
+    border: $border-width-s dashed var(--background-modifier-border);
+    border-radius: $radius-m;
+    color: var(--text-muted);
+    font-size: scaled($font-ui-medium);
+    font-weight: $font-weight-semibold;
+    font-variant-numeric: tabular-nums;
   }
 
   &__defeated {

@@ -37,6 +37,9 @@ export function renderPlayerCard(parent: HTMLElement, { entry, token }: Combatan
   if (color) {
     card.addClass('atlas-player-initiative__card--coloured');
     card.style.setProperty('--atlas-combatant-color', color);
+  } else if (token.side === 'players') {
+    // The players' own side is framed too, so the sides read at a glance across the table
+    card.addClass('atlas-player-initiative__card--ally');
   }
   // Its turn flashes in its own colour
   const flash = turnColor(entry, token);
@@ -48,8 +51,8 @@ export function renderPlayerCard(parent: HTMLElement, { entry, token }: Combatan
   const badge = entry.tokenId === undefined ? null : look.badgeNumber?.(entry.tokenId) ?? null;
   if (badge !== null) card.createSpan({ cls: 'atlas-player-initiative__badge', text: String(badge) });
   if (token.defeated) renderDefeated(card, art !== null);
-  // A combatant without a number yet shows a dash, not a 0 nobody rolled
-  if (value === 'number') card.createSpan({ cls: 'atlas-player-initiative__value', text: entry.initiative !== 0 ? String(entry.initiative) : '\u00a0' });
+  // A combatant without a number yet shows none, not a 0 nobody rolled
+  if (value === 'number' && entry.initiative !== 0) card.createSpan({ cls: 'atlas-player-initiative__value', text: String(entry.initiative) });
   if (value === 'card') card.createSpan({ cls: 'atlas-player-initiative__value atlas-player-initiative__card-dealt', text: entry.card === undefined ? '–' : String(entry.card) });
   // An entry without a token or a portrait (an enemy added by name, a player without a picture) has
   // nothing but its name to tell it apart; a token's name stays the GM's to show

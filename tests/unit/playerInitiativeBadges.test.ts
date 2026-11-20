@@ -73,8 +73,8 @@ describe('look-alikes in the players\' initiative list', () => {
     expect(badges(doc)).toEqual(['2', '1', null]);
   });
 
-  it('leave the number blank for a combatant without one yet', () => {
+  it('show no number for a combatant without one yet', () => {
     const { doc } = setup(badgesOnTheMap({}));
-    expect([...doc.querySelectorAll('.atlas-player-initiative__value')].map((value) => value.textContent)).toEqual(['10', '9', '\u00a0']);
+    expect([...doc.querySelectorAll('.atlas-player-initiative__value')].map((value) => value.textContent)).toEqual(['10', '9']);
   });
 });

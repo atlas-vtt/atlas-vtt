@@ -6,7 +6,7 @@ import type { InitiativeRules, InitiativeSide, SideId } from '../types/initiativ
 import { firstBuiltInSide } from '../gameSystems/initiativeSideRules';
 import { listedByCards, listedBySides, listedSides, sideOf, type ListedSide } from '../initiative/sides';
 import { combatantDefeated } from '../initiative/defeated';
-import { firstCards, listSegments, type ListSegment } from '../initiative/listSegments';
+import { firstCards, listSegments, shownItems, type ListSegment } from '../initiative/listSegments';
 import type { PlayersListEdge } from '../initiative/initiativeLayout';
 import { combatantConditions } from '../utils/activeConditions';
 import { entryConditions, type CombatantCondition } from '../initiative/combatantConditions';
@@ -272,6 +272,7 @@ export function renderPlayerInitiative(container: HTMLElement, list: PlayerIniti
     if (!list.bySides) entries.setAttribute('role', 'list');
     for (const segment of segments) renderSegment(entries, segment, list, look);
   }
+  renderMore(panel, list, segments);
   const pushing = byRounds && fromTurn && look.push !== undefined;
   if (pushing && look.push) renderTurnPush(entries, rounds, look.push, look, list.round);
   if (list.isActive && look.turnFlash !== undefined) {
@@ -296,6 +297,14 @@ export function renderPlayerInitiative(container: HTMLElement, list: PlayerIniti
     else if (card) scrollWithin(entries, card, 'nearest', 2, axis, ...edgesOf);
   }
   return panel;
+}
+
+/** Where the list shows only so many (`maxCards`), a tile after it counts the combatants it leaves out. */
+function renderMore(panel: HTMLElement, list: PlayerInitiativeList, segments: readonly ListSegment<Combatant>[]): void {
+  const acting = list.combatants.filter(({ entry }) => !entry.delayed).length;
+  const left = acting - shownItems(segments).filter(({ entry }) => !entry.delayed).length;
+  if (left <= 0) return;
+  panel.createDiv({ cls: 'atlas-player-initiative__more', text: `+${left}`, attr: { role: 'note', 'aria-label': t('playerInit.more', { count: left }) } });
 }
 
 function renderSegment(entries: HTMLElement, segment: ListSegment<Combatant>, list: PlayerInitiativeList, look: PlayerInitiativeLook): void {
