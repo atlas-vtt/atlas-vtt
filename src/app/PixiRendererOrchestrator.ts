@@ -55,6 +55,7 @@ import { createBelowLevelsHost, createRoofHost } from './pixi/lighting/belowLeve
 import { FloorGhost } from './pixi/levels/FloorGhost';
 import { MapContentsFade } from './pixi/levels/MapContentsFade';
 import { LIGHTING_Z_INDEX } from './pixi/lighting/LightingRenderer';
+import { ROOF_Z_INDEX } from './pixi/lighting/levels/RoofLayer';
 import { prefersReducedMotion } from './utils/motion';
 import { ViewRoofs } from './pixi/roofs/ViewRoofs';
 import { ShownPlaces } from './lighting/shownPlaces';
@@ -859,13 +860,14 @@ export class PixiRendererOrchestrator { // Renamed class
     if (!viewport) return null;
     this.mapContentsFade ??= new MapContentsFade({
       viewport,
-      // The lighting and the fog stay: players see through the same stage, and must never see the map beneath them.
+      // The lighting, the roof and the fog stay: players see through the same stage, and must never see what they hide.
       keeps: (layer) =>
         layer === this.mapImage?.layer ||
         layer === this.floorGhost?.layer ||
         layer === this.gridSystem?.getGridSprite() ||
         layer === this.fogRenderer?.layer ||
-        layer.zIndex === LIGHTING_Z_INDEX,
+        layer.zIndex === LIGHTING_Z_INDEX ||
+        layer.zIndex === ROOF_Z_INDEX,
       requestRender: () => requestRender(this.app),
       reducedMotion: () => prefersReducedMotion(this.pixiAppManager.getCanvasElement()),
     });
