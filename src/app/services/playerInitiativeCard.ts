@@ -12,9 +12,9 @@ export type PlayerCardValue = 'number' | 'card' | 'none';
 
 /** Diameter of a condition badge on a card, as the GM's cards draw them. */
 // Grows with the list
-const CONDITION_SIZE = 'calc(28px * var(--atlas-player-initiative-scale, 1))';
+const CONDITION_SIZE = 'calc(20px * var(--atlas-player-initiative-scale, 1))';
 /** The most badges over a card; past them the rest are a count, which takes the last place. */
-const SHOWN_CONDITIONS = 4;
+const SHOWN_CONDITIONS = 3;
 
 /**
  * One combatant of the players' list: a card filled with its token's art, under a shade that carries the number its
@@ -90,14 +90,15 @@ function renderDefeated(card: HTMLElement, overPortrait: boolean): void {
 
 /**
  * The conditions the map shows players on the token, or the tracker gave the combatant, each named for assistive
- * tech ("Frightened 2", "Poisoned, 2 turns left"). They sit over the middle of the card's foot, peeking out below it: side by side, overlapping
- * from three on (they are large, to be read across the table), and past `SHOWN_CONDITIONS` the rest as a count; one that lasts a number of turns shows what is left.
+ * tech ("Frightened 2", "Poisoned, 2 turns left"). They sit over the middle of the card's foot, peeking out below it, small
+ * enough to leave its hit points readable: side by side, `SHOWN_CONDITIONS` at most and the rest as a count after them,
+ * which then overlap a little to stay inside the card; one that lasts a number of turns shows what is left.
  */
 function renderConditions(card: HTMLElement, conditions: readonly CombatantCondition[]): void {
   card.addClass('atlas-player-initiative__card--conditions');
   const list = card.createDiv({ cls: 'atlas-player-initiative__conditions', attr: { role: 'list', 'aria-label': t('playerInit.conditions') } });
-  if (conditions.length > 2) list.addClass('atlas-player-initiative__conditions--stacked');
-  const shown = conditions.length > SHOWN_CONDITIONS ? conditions.slice(0, SHOWN_CONDITIONS - 1) : conditions;
+  if (conditions.length > SHOWN_CONDITIONS) list.addClass('atlas-player-initiative__conditions--stacked');
+  const shown = conditions.slice(0, SHOWN_CONDITIONS);
   for (const condition of shown) {
     const item = list.createSpan({ cls: 'atlas-player-initiative__condition', attr: { role: 'listitem', 'aria-label': turnsLabel(condition) } });
     createConditionBadge(item, condition, CONDITION_SIZE);

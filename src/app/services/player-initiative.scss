@@ -13,9 +13,9 @@ $banner-scale: var(--atlas-player-turn-banner-scale, 1);
 }
 
 // A condition badge on a card, as `playerInitiativeCard.ts` draws it
-$badge: scaled(28px);
-// How far the badges peek out below their card, over its hit points; the list gives them that room
-$badge-peek: calc(#{$badge} * 0.4);
+$badge: scaled(20px);
+// How far the badges peek out below their card: half of them, so they cover only the lower half of its hit points
+$badge-peek: calc(#{$badge} * 0.5);
 
 // The list's cards stand $surface-inset inside its border and apart, so a card's $radius-m corner is concentric with the
 // panel's $surface-radius; a row's cards are as wide as the column's
@@ -517,7 +517,7 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     gap: 0;
 
     > * + * {
-      margin-inline-start: calc(#{$badge} * -0.55);
+      margin-inline-start: calc(#{$badge} * -0.25);
     }
   }
 
@@ -533,21 +533,23 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     position: absolute;
     right: -4px;
     bottom: -4px;
-    min-width: scaled(15px);
-    height: scaled(15px);
+    min-width: scaled(12px);
+    height: scaled(12px);
     padding-inline: 2px;
     box-sizing: border-box;
     border-radius: $radius-full;
     background: var(--background-primary);
     box-shadow: 0 0 0 1px var(--background-modifier-border);
     color: var(--text-normal);
-    font-size: scaled(11px);
+    font-size: scaled(9px);
     font-weight: 600;
-    line-height: scaled(15px);
+    line-height: scaled(12px);
     text-align: center;
   }
 
+  // Over the badge before it, as each badge lies over the one before
   &__condition-more {
+    position: relative;
     display: grid;
     place-items: center;
     min-width: $badge;
@@ -556,9 +558,10 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     box-sizing: border-box;
     border-radius: $radius-full;
     background: var(--background-secondary);
-    box-shadow: 0 0 0 2px var(--background-primary);
+    // Ringed like the badges, with a rim of its own: it has no colour to stand out by
+    box-shadow: 0 0 0 2px var(--background-primary), inset 0 0 0 1px var(--background-modifier-border);
     color: var(--text-normal);
-    font-size: scaled(13px);
+    font-size: scaled(11px);
     font-weight: 600;
   }
 
