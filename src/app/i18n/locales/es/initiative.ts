@@ -15,8 +15,6 @@ export const initiative: Translation = {
   'initiative.defeated': 'Derrotado',
   'initiative.delay': 'Retrasar turno',
   'initiative.delayed': 'Retrasado',
-  'initiative.dockLeft': 'Acoplar a la izquierda',
-  'initiative.dockLeftHint': 'Coloca el registro y la lista de los jugadores en el borde izquierdo del mapa',
   'initiative.edit': 'Editar iniciativa',
   'initiative.editNumber': 'Iniciativa {value}, haz clic para escribir',
   'initiative.editHint': 'Enter para guardar · Esc para cancelar',

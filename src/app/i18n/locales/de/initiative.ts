@@ -15,8 +15,6 @@ export const initiative: Translation = {
   'initiative.defeated': 'Besiegt',
   'initiative.delay': 'Zug verzögern',
   'initiative.delayed': 'Verzögert',
-  'initiative.dockLeft': 'Links andocken',
-  'initiative.dockLeftHint': 'Setzt die Initiativeleiste und die Liste der Spieler an den linken Kartenrand',
   'initiative.edit': 'Initiative bearbeiten',
   'initiative.editNumber': 'Initiative {value}, zum Eintippen klicken',
   'initiative.editHint': 'Enter zum Speichern · Esc zum Abbrechen',

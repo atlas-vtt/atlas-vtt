@@ -25,9 +25,10 @@ export interface UISlice extends ViewUIState {
   setGridAlignmentOpen: (open: boolean) => void;
   setFloorPositioning: (on: boolean) => void;
   setDiceLogOpen: (open: boolean) => void;
+  /** `addsCombatants`: opening a token or an encounter there adds it to initiative beside the map. */
+  openAssetManager: (tab?: UISlice['assetManagerInitialTab'], addsCombatants?: boolean) => void;
   setHotkeyHelpOpen: (open: boolean) => void;
   setDocsOpen: (open: boolean) => void;
-  openAssetManager: (tab?: UISlice['assetManagerInitialTab']) => void;
   /** Opens the asset manager on the Armarium, or shows the Armarium in it while it is open. */
   openArmarium: () => void;
   closeAssetManager: () => void;
@@ -77,6 +78,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
   | 'isDocsOpen'
   | 'isAssetManagerOpen'
   | 'assetManagerInitialTab'
+  | 'assetManagerAddsCombatants'
   | 'assetManagerArmarium'
   | 'isCommandPaletteOpen'
   | 'commandPalettePage'
@@ -109,6 +111,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
     isDocsOpen: false,
     isAssetManagerOpen: false,
     assetManagerInitialTab: undefined,
+    assetManagerAddsCombatants: false,
     assetManagerArmarium: 0,
     isCommandPaletteOpen: false,
     commandPalettePage: null,
@@ -187,9 +190,10 @@ export function createUIActions(
     setHotkeyHelpOpen: (open) => set((draft) => { draft.isHotkeyHelpOpen = open; }),
     setDocsOpen: (open) => set((draft) => { draft.isDocsOpen = open; }),
     // The palette, the dice tray and the asset manager open where the toolbar editor's tray sits, or over the map: each ends edit mode.
-    openAssetManager: (tab) => set((draft) => {
+    openAssetManager: (tab, addsCombatants = false) => set((draft) => {
       draft.isAssetManagerOpen = true;
       draft.assetManagerInitialTab = tab;
+      draft.assetManagerAddsCombatants = addsCombatants;
       draft.isToolbarEditing = false;
     }),
     openArmarium: () => set((draft) => {
@@ -200,6 +204,7 @@ export function createUIActions(
     closeAssetManager: () => set((draft) => {
       draft.isAssetManagerOpen = false;
       draft.assetManagerInitialTab = undefined;
+      draft.assetManagerAddsCombatants = false;
       draft.assetManagerArmarium = 0;
     }),
     setCommandPaletteOpen: (open, page) => set((draft) => {

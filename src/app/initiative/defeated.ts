@@ -2,6 +2,7 @@ import { isDefeated } from '../resources/resourceValues';
 import type { ResourceDefinition } from '../resources/resourceTypes';
 import type { TokenEntity } from '../types';
 import type { InitiativeEntry } from '../types/initiativeTypes';
+import { entryToken } from './party';
 
 /**
  * Whether a combatant is defeated, as its card's skull says: its token holds a resource that
@@ -17,5 +18,5 @@ export function defeatedCombatants(
   tokens: Readonly<Record<string, TokenEntity>>,
   definitions: readonly ResourceDefinition[],
 ): ReadonlySet<string> {
-  return new Set(entries.filter((entry) => combatantDefeated(tokens[entry.tokenId], definitions)).map((entry) => entry.id));
+  return new Set(entries.filter((entry) => combatantDefeated(entryToken(tokens, entry), definitions)).map((entry) => entry.id));
 }

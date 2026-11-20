@@ -5,6 +5,7 @@ import type { ModifierStatblock } from './modifierFields';
 import type { TokenEntity } from '../types';
 import type { InitiativeEntry } from '../types/initiativeTypes';
 import { statblockInitiativeModifier } from './initiativeModifier';
+import { entryToken } from './party';
 
 export interface StatblockModifiers {
   /** Entry id to the modifier its statblock holds, for entries whose statblock holds one. */
@@ -31,7 +32,7 @@ export async function readStatblockModifiers(
   read: (path: string) => Promise<ModifierStatblock | null>,
 ): Promise<StatblockModifiers> {
   const notes = new Map(entries.flatMap((entry) => {
-    const note = linkedNote(tokens[entry.tokenId]);
+    const note = linkedNote(entryToken(tokens, entry));
     return note ? [[entry.id, note] as const] : [];
   }));
   const paths = [...new Set(notes.values())];
