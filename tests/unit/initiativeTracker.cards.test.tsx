@@ -43,7 +43,7 @@ vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
 vi.mock('../../src/app/keyboard/useMapHotkeys', () => ({
   useAtlasSettings: () => ({
     showsCompactInitiative: () => settings.compact, setCompactInitiative: settings.setCompactInitiative,
-    initiativeLayout: () => ({ fromTurn: false, dock: 'right', edges: ['right'], facesPlayers: false, collapsed: false }), setInitiativeLayout: vi.fn(),
+    initiativeLayout: () => ({ fromTurn: false, dock: 'right', edges: ['right'], facesPlayers: false }), setInitiativeLayout: vi.fn(),
     initiativeTurnOptions: () => ({ banner: true, followTurn: false, movesOnTurn: false }), setInitiativeTurnOptions: vi.fn(), isExperimentalOn: () => false,
   }),
 }));

@@ -25,19 +25,8 @@ $card-width: calc(#{scaled(96px)} - 2 * #{$border-width-m} - 2 * #{$surface-inse
 // What lies in a card's corners stands $surface-inset inside its border with this radius, concentric with the card's
 $card-corner-radius: initiative-corner-radius($border-width-s);
 
-// The rounds' names and lines take the theme's heading face, rule and red where it has them (the Atlas VTT
-// theme does), else Obsidian's own
-$round-line: var(--atlas-theme-rule, var(--text-faint));
-$round-accent: var(--atlas-theme-red, var(--text-accent));
-
 @mixin round-name {
-  font-family: var(--atlas-theme-heading-font, var(--font-interface));
-  font-size: scaled($font-ui-small);
-  // A heading face without a bold one is never made bold: 500 takes its regular weight
-  font-weight: 500;
-  letter-spacing: var(--atlas-theme-heading-tracking, 0.04em);
-  white-space: nowrap;
-  font-variant-numeric: lining-nums tabular-nums;
+  @include initiative-round-name(scaled($font-ui-small));
 }
 
 // A name standing at the start of its cards in a row across the top or bottom, read from the row's foot up

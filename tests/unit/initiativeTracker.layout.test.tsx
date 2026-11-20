@@ -19,7 +19,7 @@ const state = vi.hoisted(() => ({
 }));
 const collection = vi.hoisted(() => ({ rules: { mode: 'turn-order', roll: '1d20', firstSide: 'players' } as InitiativeRules }));
 const opened = vi.hoisted(() => ({ entries: [] as ContextMenuEntry[] }));
-const layout = vi.hoisted(() => ({ fromTurn: true, edges: ['right'] as ('right' | 'top' | 'bottom')[], collapsed: false, set: vi.fn() }));
+const layout = vi.hoisted(() => ({ fromTurn: true, edges: ['right'] as ('right' | 'top' | 'bottom')[], set: vi.fn() }));
 const conditions = vi.hoisted(() => ({ definitions: [] as ConditionDefinition[] }));
 
 vi.mock('../../src/app/utils/scrollWithin', () => ({ scrollWithin: vi.fn() }));
@@ -34,7 +34,7 @@ vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useViewStoreHook: () => ({ getState: () => state }),
 }));
 vi.mock('../../src/app/initiative/useInitiativeLayout', () => ({
-  useInitiativeLayout: () => ({ layout: { fromTurn: layout.fromTurn, dock: layout.edges[0]!, edges: layout.edges, facesPlayers: layout.edges[0] !== 'right', collapsed: layout.collapsed }, setLayout: layout.set }),
+  useInitiativeLayout: () => ({ layout: { fromTurn: layout.fromTurn, dock: layout.edges[0]!, edges: layout.edges, facesPlayers: layout.edges[0] !== 'right' }, setLayout: layout.set }),
 }));
 vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => [] }));
 vi.mock('../../src/app/react/hooks/useMapConditions', () => ({ useMapConditions: () => conditions.definitions }));
@@ -81,7 +81,7 @@ beforeEach(() => {
   opened.entries = [];
   conditions.definitions = [];
   state.isDiceLogOpen = false;
-  Object.assign(layout, { fromTurn: true, edges: ['right'], collapsed: false });
+  Object.assign(layout, { fromTurn: true, edges: ['right'] });
   collection.rules = { mode: 'turn-order', roll: '1d20', firstSide: 'players' };
   fight();
 });
@@ -114,36 +114,22 @@ describe('a tracker that starts at the turn', () => {
   });
 });
 
-describe('a collapsed tracker', () => {
-  it('shows the turn and the next two, across the round\'s end, and how many it leaves out', () => {
-    layout.collapsed = true;
-    fight(4);
-    const { container } = render(<InitiativeTracker />);
-    expect(words(container)).toEqual(['bat', '|Round 3|', 'ogre', 'hero']);
-    expect(container.querySelector('.atlas-initiative-tracker--collapsed')).not.toBeNull();
-    expect(container.querySelector('.atlas-initiative-tracker__left-out')?.textContent).toBe('+2');
-  });
-
-  it('keeps the side whose turn it is in a fight by sides, while nobody in it is tracked', () => {
-    layout.collapsed = true;
-    collection.rules = { mode: 'sides', roll: '1d20', firstSide: 'opponents' };
-    state.initiative = { ...state.initiative, entries: state.initiative.entries.map((entry) => ({ ...entry, isActive: false })), sides: { first: 'opponents', active: 'players' } };
-    const { container } = render(<InitiativeTracker />);
-    const order = [...container.querySelectorAll('.atlas-initiative-side__label, .atlas-initiative-round')].map((element) => element.textContent);
-    expect(order).toEqual(['Players', 'Round 3', 'Opponents']);
-    expect(container.querySelector('.atlas-initiative-side--active .atlas-initiative-side__label')?.textContent).toBe('Players');
-    expect(container.querySelectorAll('.atlas-initiative-card')).toHaveLength(3);
-  });
-
-  it('is collapsed and expanded with the toggle at its head', () => {
+describe('the tracker\'s controls', () => {
+  it('float above it, and the turn buttons below it only during a fight', () => {
+    state.initiative = { ...state.initiative, isActive: false };
     const { container, rerender } = render(<InitiativeTracker />);
-    const toggle = container.querySelector<HTMLButtonElement>('.atlas-initiative-tracker__collapse')!;
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    fireEvent.click(toggle);
-    expect(layout.set).toHaveBeenCalledWith({ collapsed: true });
-    layout.collapsed = true;
+    expect(container.querySelector('.atlas-initiative-tracker__float--top')).not.toBeNull();
+    expect(container.querySelector('.atlas-initiative-tracker__float--bottom')).toBeNull();
+    expect(container.querySelector('.atlas-initiative-tracker__round')).toBeNull();
+    fight();
     rerender(<InitiativeTracker />);
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(container.querySelectorAll('.atlas-initiative-tracker__float--bottom button')).toHaveLength(2);
+  });
+
+  it('shows the round at the list\'s foot in the players\' words', () => {
+    fight();
+    const { container } = render(<InitiativeTracker />);
+    expect(container.querySelector('.atlas-initiative-tracker__round')?.textContent).toBe('Round 2');
   });
 });
 

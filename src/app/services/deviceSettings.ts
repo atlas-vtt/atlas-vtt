@@ -19,8 +19,6 @@ export const GRAPHICS_STORAGE_KEY = 'atlas-vtt:graphics';
 export const PICKED_LIGHTING_QUALITY_STORAGE_KEY = 'atlas-vtt:lighting-quality-picked';
 /** Whether animated maps play on this device; unset follows the system's reduced motion (`animateMapsOn`). */
 export const ANIMATE_MAPS_STORAGE_KEY = 'atlas-vtt:animate-maps';
-/** Whether the initiative tracker is collapsed on this device: `collapsed` or `expanded`, never a falsy value Obsidian would drop. */
-export const INITIATIVE_COLLAPSED_STORAGE_KEY = 'atlas-vtt:initiative-tracker';
 /** Whether this device renders the player view with up to 4K pixels: `4k`, else the default budget. */
 export const PLAYER_VIEW_4K_STORAGE_KEY = 'atlas-vtt:player-view-4k';
 /** The Draw tool's last style on this device (`RememberedDrawTool` as JSON). */
@@ -175,24 +173,6 @@ export function saveSelectionBarShown(storage: DeviceStorage, shown: boolean): v
     storage.saveLocalStorage(SELECTION_BAR_STORAGE_KEY, shown ? 'shown' : null);
   } catch (error) {
     console.error('[Atlas] Could not save whether this device shows the selection bar', error);
-  }
-}
-
-/** Whether the GM collapsed the initiative tracker on this device; expanded until chosen. */
-export function loadInitiativeCollapsed(storage: DeviceStorage): boolean {
-  try {
-    return storage.loadLocalStorage(INITIATIVE_COLLAPSED_STORAGE_KEY) === 'collapsed';
-  } catch (error) {
-    console.error('[Atlas] Could not read how this device shows the initiative tracker', error);
-    return false;
-  }
-}
-
-export function saveInitiativeCollapsed(storage: DeviceStorage, collapsed: boolean): void {
-  try {
-    storage.saveLocalStorage(INITIATIVE_COLLAPSED_STORAGE_KEY, collapsed ? 'collapsed' : 'expanded');
-  } catch (error) {
-    console.error('[Atlas] Could not save how this device shows the initiative tracker', error);
   }
 }
 

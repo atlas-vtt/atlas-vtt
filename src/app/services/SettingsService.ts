@@ -22,9 +22,9 @@ import {
   TUTORIAL_IDS,
 } from './atlasSettings';
 import {
-  loadAnimateMaps, loadGmFogOpacity, loadGraphicsChoice, loadInitiativeCollapsed, loadInputMode, loadLightingQuality, loadPickedLightingQuality, loadPlayerView4k,
+  loadAnimateMaps, loadGmFogOpacity, loadGraphicsChoice, loadInputMode, loadLightingQuality, loadPickedLightingQuality, loadPlayerView4k,
   loadSelectionBarShown,
-  saveAnimateMaps, saveGmFogOpacity, saveGraphicsChoice, saveInitiativeCollapsed, saveInputMode, savePickedLightingQuality, savePlayerView4k, saveSelectionBarShown,
+  saveAnimateMaps, saveGmFogOpacity, saveGraphicsChoice, saveInputMode, savePickedLightingQuality, savePlayerView4k, saveSelectionBarShown,
 } from './deviceSettings';
 import { readGpuFacts } from './gpuFacts';
 import { pickLightingQuality } from '../lighting/deviceTier';
@@ -49,7 +49,7 @@ type SettingsListener = (settings: AtlasSettings) => void;
 
 /**
  * The GM's Atlas preferences, kept in the plugin's data (`data.json`), except the input mode,
- * the lighting quality, whether maps animate and the collapsed initiative tracker, which belong to the device (`deviceSettings.ts`). Without a data store (tests, a view
+ * the lighting quality and whether maps animate, which belong to the device (`deviceSettings.ts`). Without a data store (tests, a view
  * without the plugin) the settings live in memory only.
  */
 export class SettingsService {
@@ -397,7 +397,7 @@ export class SettingsService {
     this.commit();
   }
 
-  /** How the initiative lists are laid out: the GM's choices, and whether this device collapsed the tracker. */
+  /** How the initiative lists are laid out: the GM's choices. */
   initiativeLayout(): InitiativeLayout {
     const dock = readListEdge(this.settings.initiativeDock);
     const edges = readListEdges(this.settings.initiativeEdges, dock);
@@ -407,22 +407,17 @@ export class SettingsService {
       dock: edges.includes(dock) ? dock : edges[0] ?? dock,
       edges,
       facesPlayers: this.settings.initiativeFacesPlayers === true,
-      collapsed: loadInitiativeCollapsed(this.app),
     };
   }
 
-  /** The GM's choices go into the synced settings, the collapsed tracker into this device's local storage. */
+  /** The GM's choices go into the synced settings. */
   setInitiativeLayout(changes: Partial<InitiativeLayout>): void {
     const current = this.initiativeLayout();
-    const { fromTurn = current.fromTurn, collapsed = current.collapsed, facesPlayers = current.facesPlayers } = changes;
+    const { fromTurn = current.fromTurn, facesPlayers = current.facesPlayers } = changes;
     // One edge chosen alone is the list's only edge; edges chosen keep the dock among them, as its first where it left them
     const edges = changes.edges ?? (changes.dock !== undefined ? [changes.dock] : current.edges);
     const dock = changes.dock ?? (edges.includes(current.dock) ? current.dock : edges[0] ?? current.dock);
-    if (collapsed !== current.collapsed) saveInitiativeCollapsed(this.app, collapsed);
-    if (fromTurn === current.fromTurn && dock === current.dock && facesPlayers === current.facesPlayers && edges.join() === current.edges.join()) {
-      if (collapsed !== current.collapsed) this.notify();
-      return;
-    }
+    if (fromTurn === current.fromTurn && dock === current.dock && facesPlayers === current.facesPlayers && edges.join() === current.edges.join()) return;
     this.settings.initiativeFromTurn = fromTurn;
     this.settings.initiativeDock = dock;
     if (edges.length > 1 || this.settings.initiativeEdges !== undefined) this.settings.initiativeEdges = [...edges];
