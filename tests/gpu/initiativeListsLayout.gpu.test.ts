@@ -153,7 +153,8 @@ function expectNoOverflow(list: HTMLElement, cardSelector: string): void {
     expect(outer.left).toBeGreaterThanOrEqual(frame.left - 0.5);
     expect(outer.right).toBeLessThanOrEqual(frame.right + 0.5);
     for (const part of card.querySelectorAll('*')) {
-      if (!shown(part)) continue;
+      // The red of the life lost slides in from past the art's edge, which clips it
+      if (!shown(part) || part.classList.contains('atlas-initiative-wound')) continue;
       expect(box(part).left).toBeGreaterThanOrEqual(outer.left - 0.5);
       expect(box(part).right).toBeLessThanOrEqual(outer.right + 0.5);
     }
