@@ -147,18 +147,24 @@
   box-shadow: none !important;
   color: inherit;
   font: inherit;
+
+  // Obsidian and Atlas ring a focused text field; this one's box is the field around it.
+  &:focus,
+  &:focus-visible {
+    border: none !important;
+    outline: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
 }
 
 .atlas-combobox-list .atlas-select-option.atlas-active {
   background-color: var(--background-modifier-hover);
 }
 
-.atlas-combobox-typed {
-  color: var(--text-muted);
-}
-
 .atlas-combobox-typed-icon {
   flex-shrink: 0;
   width: $icon-s;
   height: $icon-s;
+  color: var(--text-muted);
 }

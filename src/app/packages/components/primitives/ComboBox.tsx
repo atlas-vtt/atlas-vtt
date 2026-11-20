@@ -114,7 +114,7 @@ export function ComboBox({ value, options, onChange, labelledBy, typedLabel, mat
         const selected = row.kind === 'option' && row.option.value === value;
         return (
           <div key={row.kind === 'option' ? row.option.value : 'typed'} id={`${listId}-${index}`} data-row={index} role="option" aria-selected={selected}
-            className={cn('atlas-select-option', selected && 'atlas-selected', index === active && 'atlas-active', row.kind === 'typed' && 'atlas-combobox-typed')}
+            className={cn('atlas-select-option', selected && 'atlas-selected', index === active && 'atlas-active')}
             onPointerDown={(event) => event.preventDefault()} onClick={() => choose(row)} onPointerMove={() => setActive(index)}>
             {row.kind === 'typed' && <Plus aria-hidden="true" className="atlas-combobox-typed-icon" />}
             <span className="atlas-select-option-text">{row.kind === 'option' ? row.option.label : typedLabel(row.text)}</span>
