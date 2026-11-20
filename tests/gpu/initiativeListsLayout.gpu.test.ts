@@ -108,7 +108,7 @@ const shown = (element: Element): boolean => getComputedStyle(element).display !
 function expectUniform(panel: HTMLElement, value: number): void {
   const border = parseFloat(getComputedStyle(panel).borderTopWidth);
   // The panel's surface is a layer behind its parts, not one of them, and the GM's bars float outside it
-  const parts = [...panel.children].filter((part) => shown(part) && !part.classList.contains('atlas-player-initiative__surface') && !part.classList.contains('atlas-initiative-tracker__float')).map(box);
+  const parts = [...panel.children].filter((part) => shown(part) && !part.classList.contains('atlas-player-initiative__surface') && !part.classList.contains('atlas-initiative-tracker__float') && !part.classList.contains('atlas-initiative-tracker__surface') && !part.classList.contains('atlas-initiative-tracker__reach')).map(box);
   const frame = box(panel);
   expect(parts[0]!.top - frame.top - border).toBeCloseTo(value, 0);
   expect(frame.bottom - border - parts.at(-1)!.bottom).toBeCloseTo(value, 0);
@@ -184,6 +184,9 @@ describe('the GM\'s initiative tracker', () => {
       expectUniform(tracker, 4);
       expectNoOverflow(tracker.querySelector('.atlas-initiative-tracker__content')!, '.atlas-initiative-card');
 
+      // Without the Atlas VTT theme there is no ivy
+      expect(getComputedStyle(tracker, '::before').backgroundImage).toBe('none');
+      expect(getComputedStyle(tracker, '::after').backgroundImage).toBe('none');
       // The round at the list's foot, in the players' words
       expect(tracker.querySelector('.atlas-initiative-tracker__round')?.textContent).toBe('Round 2');
 

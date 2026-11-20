@@ -18,6 +18,7 @@ import { missingPartyEntries } from '../../initiative/party';
 import { mapEnemyImage } from '../../initiative/mapParty';
 import { useMapParty, usePartyEntrySync } from '../../initiative/useMapParty';
 import { useMapCollectionId } from '../hooks/useMapCollectionId';
+import { useThemeIvy } from '../hooks/useThemeIvy';
 import { CollectionSettingsModal } from './CollectionSettingsModal';
 import { useMapInitiativeRules } from '../../initiative/useMapInitiativeRules';
 import { useInitiativeRolls } from '../../initiative/useInitiativeRolls';
@@ -55,6 +56,8 @@ export const InitiativeTracker: React.FC = () => {
   const { layout, setLayout } = useInitiativeLayout();
   // The tracker stands at the right edge: popups and tooltips open to its left
   const inward = 'left';
+  // The Atlas VTT theme's ivy over its corners, as on the players' list
+  const ivyRef = useThemeIvy(app ?? undefined);
 
   // Store state
   const isOpen = useAtlasStore((s) => s.initiativeTrackerOpen);
@@ -236,7 +239,10 @@ export const InitiativeTracker: React.FC = () => {
   ].filter(Boolean).join(' ');
 
   return (
-    <div className={trackerClasses}>
+    <div ref={ivyRef} className={trackerClasses}>
+      {/* Its surface is a layer of its own, so the theme's ivy can lie behind it; near it, its bars show */}
+      <div className="atlas-initiative-tracker__surface" aria-hidden="true" />
+      <div className="atlas-initiative-tracker__reach" aria-hidden="true" />
       {/* Nothing is rolled where the sides take turns or cards are dealt */}
       <InitiativeTrackerHeader
         rolls={!bySides && !byCards}

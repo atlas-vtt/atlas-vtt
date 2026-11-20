@@ -47,7 +47,8 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
   private shownNumbers: ReadonlyMap<string, number> = new Map();
   private redrawQueued = false;
   private readonly stopLayout: () => void;
-  /** The theme's ivy was lent to the lists' container; read again with each scene presented. */
+  private readonly stopTheme: () => void;
+  /** The theme's ivy was lent to the lists' container; read again with each scene presented and when the theme changes. */
   private ivyLent = false;
   /** The turn the list last drew (`turnKey`, null for none); undefined before a scene's first draw. */
   private turnSeen: string | null | undefined = undefined;
@@ -74,6 +75,12 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
       drawn = next;
       this.refresh();
     });
+    // Another theme, or none: the ivy comes or goes with the Atlas VTT theme
+    const themeRef = app.workspace.on('css-change', () => {
+      this.ivyLent = false;
+      this.refresh();
+    });
+    this.stopTheme = () => app.workspace.offref(themeRef);
   }
 
   /** Draws anew; a list that stands at an edge it stood at before glides from its old height (`glideHeight`). */
@@ -88,6 +95,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
 
   override destroy(): void {
     this.stopLayout();
+    this.stopTheme();
     super.destroy();
   }
 

@@ -45,7 +45,7 @@ describe('PlayerWindowService cleanup', () => {
       onChange: () => vi.fn(),
       initiativeLayout: () => ({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false }),
     };
-    const service = new PlayerWindowService({ workspace: {} } as any, store as any, settings as any);
+    const service = new PlayerWindowService({ workspace: { on: () => ({}), offref: () => {} } } as any, store as any, settings as any);
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
     const doc = attachFakePlayerWindow(service, { canvas: createEl('canvas'), store: store as any, withPlayerSafeFrame: vi.fn() });
     expect(doc.getElementById('atlas-player-widgets')?.textContent).toContain('Action');

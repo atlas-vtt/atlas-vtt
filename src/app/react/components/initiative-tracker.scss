@@ -41,16 +41,29 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   pointer-events: auto;
   box-sizing: border-box;
 
-  // Panel background — matches toolbar
-  @include atlas-elevated-surface;
+  // Its look is its surface's (below); the border keeps its place, so the cards stand where they did
+  border: $border-width-m solid transparent;
   @include atlas-panel-radius($surface-radius);
 
+  // The Atlas VTT theme's corner ivy (`useThemeIvy`), as on the players' list: the whole vine behind the surface
+  --atlas-theme-ivy-scale: 0.2;
+  @include atlas-theme-ivy-corners(-2);
+
+  // Panel background — matches toolbar
+  &__surface {
+    @include atlas-elevated-surface;
+    position: absolute;
+    inset: calc(-1 * #{$border-width-m});
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
   // Near the tracker: the panel, its bars and a little around them. Its bars show while the pointer is there
-  &::before {
-    content: '';
+  &__reach {
     position: absolute;
     inset: calc(-1 * (#{$float-room} + #{$float-reach})) calc(-1 * #{$float-reach});
-    z-index: -1;
+    z-index: -3;
   }
 
   // The compact list's cards show names
@@ -71,10 +84,11 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
 
 // A bar of buttons floating above the tracker (Roll, Start or End combat, the options) or below it (the turns):
 // a capsule in the middle of the panel's width, shown while the pointer is near (`::before` above), while a control
-// in it has focus or a turn hotkey presses one of its buttons. It glides in from the panel and fades.
+// in it has focus or a turn hotkey presses one of its buttons. It glides in from the panel and fades, over the ivy.
 .atlas-initiative-tracker__float {
   --atlas-float-nudge: 0px;
   position: absolute;
+  z-index: 2;
   left: 50%;
   display: flex;
   gap: $surface-inset;
