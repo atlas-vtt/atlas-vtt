@@ -82,4 +82,11 @@ describe('bars that show on hover', () => {
     await settle(450);
     expect(getComputedStyle(bar).visibility).toBe('hidden');
   });
+
+  it('shows the toolbar alone while the tool just changed', async () => {
+    element('.atlas-main-toolbar').toggleAttribute('data-peek', true);
+    await settle(450);
+    expect(shown('.atlas-main-toolbar')).toBe(true);
+    expect(shown('.atlas-bottom-toolbar-row__start')).toBe(false);
+  });
 });

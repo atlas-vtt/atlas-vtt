@@ -51,12 +51,12 @@ export function PresetCard({ index, preset, pinned, shelf, onRoll, onEdit, editi
     <li className="atlas-dice-presets__card atlas-dice-presets__item" data-pinned={pinned ? '' : undefined} data-editing={editing ? '' : undefined}
       aria-current={editing ? 'true' : undefined} style={arrival(index)}>
       <button type="button" className="atlas-dice-presets__roll" onClick={onRoll} aria-label={t('diceRoll.presetRoll', { name: preset.name, formula: text })}>
+        <PresetDice preset={preset} />
         <span className="atlas-dice-presets__name">
           {preset.name}
           {pinned && <Pin aria-hidden="true" className="atlas-dice-presets__pinned" />}
         </span>
         <span className="atlas-dice-presets__formula">{text}</span>
-        <PresetDice preset={preset} />
       </button>
       <ActionsMenuButton label={t('diceRoll.presetActions', { name: preset.name })} entries={entries} className="atlas-dice-presets__more" />
     </li>
@@ -68,9 +68,9 @@ export function LabSetCard({ index, set, onPick }: { index: number; set: DiceSet
   return (
     <li className="atlas-dice-presets__card atlas-dice-presets__item" style={arrival(index)}>
       <button type="button" className="atlas-dice-presets__roll" onClick={onPick} aria-label={t('diceRoll.presetFromSet', { name: set.name })}>
+        <PresetDice preset={{ formula: '', look: set }} />
         <span className="atlas-dice-presets__name">{set.name}</span>
         <span className="atlas-dice-presets__formula">{setRollText(set.dice)}</span>
-        <PresetDice preset={{ formula: '', look: set }} />
       </button>
     </li>
   );

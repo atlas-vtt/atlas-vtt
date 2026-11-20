@@ -18,8 +18,9 @@ $chrome-hide-grace-ms: 160ms;
 
 $chrome-units: '.atlas-bottom-toolbar-row__lead, .atlas-bottom-toolbar-row__start, .atlas-main-toolbar, .atlas-bottom-toolbar-row__options, .atlas-bottom-toolbar-row__end, .atlas-level-switcher';
 
-// Away from the pointer, unless one of its menus or panels is open, whatever opened it (a hotkey too).
-$chrome-hidden: ":is(#{$chrome-units}):not([data-near]):not(:has([aria-expanded='true'], [data-state='open']))";
+// Away from the pointer, unless one of its menus or panels is open, whatever opened it (a hotkey too),
+// or the tool just changed (`data-peek`, the toolbar alone).
+$chrome-hidden: ":is(#{$chrome-units}):not([data-near], [data-peek]):not(:has([aria-expanded='true'], [data-state='open']))";
 
 @media (any-hover: hover) {
   .atlas-ui[data-chrome-auto-hide] {

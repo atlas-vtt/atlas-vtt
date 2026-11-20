@@ -72,6 +72,7 @@
 **Toolbar on hover**
 
 - Show toolbar on hover, in Customize toolbar: the toolbar, undo and redo, online play, the shortcuts button and the level switcher stay out of sight until the pointer comes near them
+- Switching tools, by hotkey or any other way, shows the toolbar for a moment, so you see which tool you picked as you cycle through them
 
 **Languages**
 
