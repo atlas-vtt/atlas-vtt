@@ -27,6 +27,7 @@ import { viewedLevelId } from '../../levels/sceneLevels';
 import { drawCell } from '../../annotations/drawSizes';
 import { isVideoMapPath, videoMimeType } from '../../pixi/mosaicCanvas/video/videoMapFiles';
 import { isHistoryTravelling } from '../../stores/history';
+import { sceneDiceShelf, sharedDiceRow } from './diceRowShare.ts';
 import { t } from '../../i18n';
 
 /** The type of an animated map's video by its path, or null for a path that is no video map. */
@@ -117,7 +118,9 @@ export class FloorShare {
       map: () => this.mapSize,
     });
     const draw = (): { readonly cell: number } | null => (playersDraw() ? { cell: drawCell(store.getState().grid) } : null);
-    this.rules = new RulesShare(store, { ...ports, cursorsShown, rollDice: () => mapRollDice(ports.dice?.() ?? null), draw });
+    this.rules = new RulesShare(store, {
+      ...ports, cursorsShown, rollDice: () => mapRollDice(ports.dice?.() ?? null), draw, diceRow: () => sharedDiceRow(sceneDiceShelf(ports, store)),
+    });
     this.moves = new PlayerMoves(store, {
       ...ports,
       context: () => ({

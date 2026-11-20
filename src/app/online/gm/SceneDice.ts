@@ -7,6 +7,7 @@ import { rollFaceOf } from './log/logEntries.ts';
 import type { SpokenAs } from './log/TableLog.ts';
 import { LogSpeakers } from './logSpeakers.ts';
 import { PlayerRolls } from './PlayerRolls.ts';
+import { pinnedDesignedRoll, sceneDiceShelf } from './diceRowShare.ts';
 import { quietRoll } from './quietRoll.ts';
 import { RollShare, type RollNotes } from './RollShare.ts';
 import type { SceneSharePorts } from './sceneSharePorts.ts';
@@ -63,6 +64,7 @@ export class SceneDice {
       rollAs: (who, run, notes) => this.share.rollAs(who, run, notes),
       quietRoll: (formula, set, setAppearance, advantage) => this.quietRoll(formula, set, setAppearance, advantage),
       request: (from, answer) => ports.rollRequest?.(from, answer) ?? null,
+      pinnedRoll: (id) => pinnedDesignedRoll(sceneDiceShelf(ports, store), id),
       logged: (roll) => ports.logRoll?.(roll),
       alias: (id) => parts.alias(id),
       send: (body, to) => ports.send(body, to),

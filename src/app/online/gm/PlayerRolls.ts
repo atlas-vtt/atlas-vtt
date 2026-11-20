@@ -9,6 +9,8 @@ import { isRollFormula } from '../../tools/textRolls';
 import type { TokenEntity } from '../../types';
 import type { DiceRollResult } from '../../types/diceTypes';
 import type { DiceSource } from './atlasDice.ts';
+import { designedRollFormula, type DesignedRoll } from './diceRowShare.ts';
+import { presetSet } from '../../react/components/dice/presetLook';
 import { tokenLabel } from './atlasView.ts';
 import type { LoggedRoll, RollRequest } from './log/TableLog.ts';
 import { rollFaceOf } from './log/logEntries.ts';
@@ -116,6 +118,8 @@ export interface PlayerRollsPorts {
   quietRoll(formula: string, set?: DiceSet, setAppearance?: true, advantage?: AdvantageSide): SharedRoll | null;
   /** The roll button of the log a roll answers, as its presser may roll it; null where there is none. */
   request(from: string, answer: RollRequestAnswer): RollRequest | null;
+  /** The designed roll pinned to the GM's dice row by this id, which players may roll; null for any other. */
+  pinnedRoll?(id: string): DesignedRoll | null;
   /** Takes a private roll into the table's log. */
   logged(roll: LoggedRoll): void;
   /** The id players know a token by. */
@@ -149,7 +153,11 @@ export class PlayerRolls {
     const asked = sent.request;
     const request = asked === undefined ? undefined : this.ports.request(from, asked);
     if (request === null) return this.refuse('formula', from);
-    const message: PlayerRoll = request === undefined ? sent : { ...sent, formula: request.formula, mode: buttonMode(request) };
+    // A designed roll of the dice row is rolled as the GM's tray rolls it: its own dice, names, colours and rules.
+    const pinned = request !== undefined || sent.preset === undefined ? undefined : this.ports.pinnedRoll?.(sent.preset) ?? null;
+    if (pinned === null) return this.refuse('formula', from);
+    const message: PlayerRoll = request !== undefined ? { ...sent, formula: request.formula, mode: buttonMode(request) }
+      : pinned !== undefined ? { ...sent, formula: designedRollFormula(pinned), setAppearance: true } : sent;
     const context = this.ports.context(from);
     const verdict = checkRoll(from, message, context);
     if (!verdict.ok) return this.refuse(verdict.reason, from);
@@ -161,7 +169,7 @@ export class PlayerRolls {
       : sent.flavor === undefined ? {} : { flavor: sent.flavor };
     const mode = message.mode ?? 'public';
     const dice = this.ports.dice();
-    const set = token === undefined ? undefined : dice?.setFor?.(token);
+    const set = pinned === undefined ? (token === undefined ? undefined : dice?.setFor?.(token)) : presetSet(pinned) ?? undefined;
     const setAppearance = request === undefined ? message.setAppearance : undefined;
     const rules = set ?? dice?.rules();
     const formula = rolledFormula(message.formula, rules);
