@@ -108,7 +108,7 @@ const shown = (element: Element): boolean => getComputedStyle(element).display !
 function expectUniform(panel: HTMLElement, value: number): void {
   const border = parseFloat(getComputedStyle(panel).borderTopWidth);
   // The panel's surface is a layer behind its parts, not one of them, and the GM's bars float outside it
-  const parts = [...panel.children].filter((part) => shown(part) && !part.classList.contains('atlas-player-initiative__surface') && !part.classList.contains('atlas-initiative-tracker__float') && !part.classList.contains('atlas-initiative-tracker__surface') && !part.classList.contains('atlas-initiative-tracker__reach') && !part.classList.contains('atlas-initiative-tracker__round')).map(box);
+  const parts = [...panel.children].filter((part) => shown(part) && !part.classList.contains('atlas-player-initiative__surface') && !part.classList.contains('atlas-initiative-tracker__float') && !part.classList.contains('atlas-initiative-tracker__surface') && !part.classList.contains('atlas-initiative-tracker__reach') && !part.classList.contains('atlas-initiative-tracker__round') && !part.classList.contains('atlas-initiative-tracker__top-shade')).map(box);
   const frame = box(panel);
   expect(parts[0]!.top - frame.top - border).toBeCloseTo(value, 0);
   expect(frame.bottom - border - parts.at(-1)!.bottom).toBeCloseTo(value, 0);
@@ -219,6 +219,31 @@ describe('the GM\'s initiative tracker', () => {
       expect(bottom.querySelectorAll('button')).toHaveLength(2);
       await page.screenshot({ path: `${SHOTS}/gm-${names ? 'names' : 'normal'}.png`, element: tracker });
     }
+  });
+
+  it('fades the cards that pass under its top edge once the list is scrolled, with a shade as tall as the round\'s', async () => {
+    const tracker = await showTracker();
+    await page.viewport(1200, 330);
+    const content = tracker.querySelector<HTMLElement>('.atlas-initiative-tracker__content')!;
+    const shade = tracker.querySelector<HTMLElement>('.atlas-initiative-tracker__top-shade')!;
+    const opacityAt = async (scrollTop: number): Promise<number> => {
+      content.style.scrollBehavior = 'auto';
+      content.scrollTop = scrollTop;
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      return Number(getComputedStyle(shade).opacity);
+    };
+    expect(content.scrollHeight).toBeGreaterThan(content.clientHeight + 60);
+    expect(await opacityAt(0)).toBe(0);
+    expect(await opacityAt(22)).toBeCloseTo(0.5, 1);
+    expect(await opacityAt(60)).toBe(1);
+    await page.screenshot({ path: `${SHOTS}/gm-scrolled.png`, element: tracker });
+
+    // From the panel's border, as the round's shade is from its bottom border, and as tall
+    const frame = box(tracker);
+    const border = parseFloat(getComputedStyle(tracker).borderTopWidth);
+    expect(box(shade).top - frame.top - border).toBeCloseTo(0, 0);
+    expect(box(shade).height).toBeCloseTo(box(tracker.querySelector('.atlas-initiative-tracker__round')!).height, 0);
+    expect(getComputedStyle(shade).pointerEvents).toBe('none');
   });
 
   it('keeps a card and its round in a pane shorter than its clearance, and room for its bars in a tall one', async () => {

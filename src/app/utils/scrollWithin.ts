@@ -27,7 +27,8 @@ export function layoutEdges(element: Element): Edges {
  * (`start`), or no farther than it takes (`nearest`). `scrollIntoView` scrolls every ancestor
  * that can scroll, the map view around a panel included. Include up to `followingSiblings`
  * after the element where they fit, without scrolling the element itself out of view. A list that
- * runs as a row scrolls along `x` (its left edge for the top). The element's `scroll-margin` stays in view before it.
+ * runs as a row scrolls along `x` (its left edge for the top). The element's `scroll-margin` stays in view before it,
+ * and the container's `scroll-padding` is taken as covered (a shade over its ends), as `scrollIntoView` takes it.
  */
 export function scrollWithin(container: HTMLElement, element: Element, block: 'start' | 'nearest', followingSiblings = 0, axis: 'x' | 'y' = 'y', edgesOf: EdgesOf = screenEdges): void {
   const box = edgesOf(container);
@@ -41,8 +42,11 @@ export function scrollWithin(container: HTMLElement, element: Element, block: 's
   // The room the element keeps before it (CSS `scroll-margin`, as `scrollIntoView` keeps it): badges standing over a card's top
   const style = element.ownerDocument?.defaultView?.getComputedStyle(element);
   const margin = Number.parseFloat((axis === 'y' ? style?.scrollMarginTop : style?.scrollMarginLeft) ?? '') || 0;
-  const fromStart = rect[start] - margin - box[start];
-  const pastEnd = edgesOf(last)[end] - box[end];
+  const own = container.ownerDocument?.defaultView?.getComputedStyle(container);
+  const coveredStart = Number.parseFloat((axis === 'y' ? own?.scrollPaddingTop : own?.scrollPaddingLeft) ?? '') || 0;
+  const coveredEnd = Number.parseFloat((axis === 'y' ? own?.scrollPaddingBottom : own?.scrollPaddingRight) ?? '') || 0;
+  const fromStart = rect[start] - margin - (box[start] + coveredStart);
+  const pastEnd = edgesOf(last)[end] - (box[end] - coveredEnd);
   if (block === 'start' || fromStart < 0) container[scroll] += fromStart;
   // Keep the active element visible even when the following siblings do not all fit.
   else if (pastEnd > 0) container[scroll] += Math.min(pastEnd, fromStart);

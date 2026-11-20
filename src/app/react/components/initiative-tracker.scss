@@ -11,6 +11,8 @@ $tracker-width-named: 216px;
 $float-button: 28px;
 $float-height: calc(#{$float-button} + 2 * #{$surface-inset} + 2 * #{$border-width-m});
 $float-gap: $spacing-s;
+// How far the shades over the list's ends reach into it: the round's at its foot, and at its top once it is scrolled
+$list-shade: 44px;
 $float-room: calc(#{$float-height} + #{$float-gap});
 // How far past the panel and its bars the pointer counts as near the tracker
 $float-reach: $spacing-s;
@@ -131,34 +133,75 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   }
 }
 
-// The round at the list's foot, as the players' list writes it. It takes no room: the list runs to the panel's border
-// beneath it, and the round lies over the cards that pass, on a shade rising from the bottom edge that reads it. The
-// shade is eased over many stops, so it has no line where it begins.
-.atlas-initiative-tracker__round {
-  @include initiative-round-name($font-ui-small);
+// A shade of the panel's own colour over an end of the list, from the panel's border to `$list-shade` inside the list,
+// eased over many stops so it has no line where it begins. `$towards` is the end it is solid at.
+@mixin list-shade($towards) {
   position: absolute;
   right: 0;
-  bottom: 0;
   left: 0;
+  box-sizing: border-box;
+  height: calc(#{$list-shade} + #{$surface-inset});
   // Over the cards' own layers (their plates and marks are at 2)
   z-index: 4;
-  padding: $spacing-xl $surface-inset $surface-inset;
-  border-radius: 0 0 var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius);
   background: linear-gradient(
-    to top,
-    var(--background-primary),
-    color-mix(in srgb, var(--background-primary) 98%, transparent) 22%,
-    color-mix(in srgb, var(--background-primary) 80%, transparent) 40%,
-    color-mix(in srgb, var(--background-primary) 52%, transparent) 58%,
-    color-mix(in srgb, var(--background-primary) 26%, transparent) 76%,
-    color-mix(in srgb, var(--background-primary) 8%, transparent) 90%,
-    transparent
+    to $towards,
+    transparent,
+    color-mix(in srgb, var(--background-primary) 8%, transparent) 10%,
+    color-mix(in srgb, var(--background-primary) 26%, transparent) 24%,
+    color-mix(in srgb, var(--background-primary) 52%, transparent) 42%,
+    color-mix(in srgb, var(--background-primary) 80%, transparent) 60%,
+    color-mix(in srgb, var(--background-primary) 98%, transparent) 78%,
+    var(--background-primary)
   );
-  text-align: center;
-  color: $round-accent;
-  text-shadow: 0 0 2px var(--background-primary), 0 0 8px var(--background-primary);
   // The cards beneath keep their clicks
   pointer-events: none;
+}
+
+// The round at the list's foot, as the players' list writes it. It takes no room: the list runs to the panel's border
+// beneath it, and the round lies over the cards that pass, on a shade rising from the bottom edge that reads it.
+.atlas-initiative-tracker__round {
+  @include initiative-round-name($font-ui-small);
+  @include list-shade(bottom);
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 $surface-inset $surface-inset;
+  border-radius: 0 0 var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius);
+  color: $round-accent;
+  text-shadow: 0 0 2px var(--background-primary), 0 0 8px var(--background-primary);
+}
+
+// The same shade over the list's top, fading in over the first `$list-shade` the list is scrolled, so cards that pass
+// under the panel's top edge fade out instead of being cut off. The list's scroll drives it (a scroll timeline, run by
+// the compositor); where there is none, or the list does not scroll, it stays hidden.
+.atlas-initiative-tracker__top-shade {
+  @include list-shade(top);
+  top: 0;
+  border-radius: var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius) 0 0;
+  opacity: 0;
+}
+
+@supports (animation-timeline: --a) {
+  .atlas-initiative-tracker {
+    timeline-scope: --atlas-initiative-list;
+  }
+
+  .atlas-initiative-tracker__content {
+    scroll-timeline: --atlas-initiative-list block;
+  }
+
+  .atlas-initiative-tracker__top-shade {
+    animation: atlas-initiative-top-shade linear both;
+    animation-timeline: --atlas-initiative-list;
+    animation-range: 0 $list-shade;
+  }
+}
+
+@keyframes atlas-initiative-top-shade {
+  to {
+    opacity: 1;
+  }
 }
 
 // A ghost icon button (`Button`) in a floating bar, above Atlas's button rules (`.atlas-vtt-plugin .btn--icon`), whose
@@ -220,6 +263,12 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   overflow-y: auto;
   overflow-x: hidden;
   @include atlas-scrollbar-none;
+  // What the shades cover: the list follows the turn (`scrollWithin`) to a card clear of them
+  scroll-padding-top: $list-shade;
+
+  .atlas-initiative-tracker:has(.atlas-initiative-tracker__round) & {
+    scroll-padding-bottom: $list-shade;
+  }
   // The list glides to the turn it follows
   scroll-behavior: smooth;
 
