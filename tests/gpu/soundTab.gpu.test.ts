@@ -300,9 +300,10 @@ describe('the DM screen’s Sound page', () => {
     expect(columns()).toBe(3);
     viewport.style.width = '1280px';
     await act(async () => { await sleep(50); });
-    expect(columns()).toBe(2);
-    const surface = box('.atlas-sound-pane');
-    expect((box('.atlas-sound-side').width + box('.atlas-sound-stage > .atlas-sound-lib').width) / surface.width).toBeCloseTo(0.58, 1);
+    // The rows take their full width first; the moods keep one column of tiles that grow no wider than a tile.
+    expect(columns()).toBe(1);
+    expect(box('.atlas-sound-mood').width).toBe(240);
+    expect(box('.atlas-sound-side').width + box('.atlas-sound-stage > .atlas-sound-lib').width).toBeCloseTo(860, 0);
     expect(box('.atlas-sound-moods').left).toBeCloseTo(box('.atlas-sound-stage > .atlas-sound-lib').right, 0);
     viewport.style.width = '700px';
     await act(async () => { await sleep(50); });

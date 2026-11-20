@@ -72,6 +72,7 @@
 - Players' measurements come and go the same way on your map, and one they move glides there
 - Kept cones, squares and lines have a turn handle next to their end: drag it to rotate the measurement without changing its size. Contributed by aryistia
 - A token's condition badges, its height and the badge that marks a token your players can't see grow with the token, like its resize and rotate buttons, so they stay in proportion and in place on large creatures
+- On smaller screens the Sound page gives its list of music and ambience more room: the moods keep one column beside it, and a lone mood no longer stretches into a wide bar
 
 ## Fixed
 
@@ -80,3 +81,4 @@
 - While the Armarium is open in the asset manager, the sidebar shows the Armarium's tags and filters the store by them, instead of the tags of the collection you were in
 - The table log has room around its messages again; rolls and the message field no longer sit against its edge
 - The table log and the dice log show a roll's result once the dice have landed, not while they are still rolling
+- In the Sound page's list, a track an hour or longer no longer runs its length into Playing or In the mix beside it
