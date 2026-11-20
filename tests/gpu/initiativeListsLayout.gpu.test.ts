@@ -291,10 +291,11 @@ describe('the players\' initiative list', () => {
         // Side by side, left to right, each inside the panel, every card one height whatever round or side it is in
         for (let i = 1; i < cards.length; i++) expect(cards[i]!.left).toBeGreaterThan(cards[i - 1]!.right - 0.5);
         expect(new Set(cards.map((card) => Math.round(card.height))).size).toBe(1);
-        // The number lies on the portrait's foot, so a card is no taller than its portrait, its hit points and its padding
+        // Square cards, the number in the top right corner over the art
         for (const card of panel.querySelectorAll('.atlas-player-initiative__card')) {
+          expect(Math.abs(box(card).width - box(card).height)).toBeLessThan(0.5);
           const value = card.querySelector('.atlas-player-initiative__value');
-          if (value) expect(box(value).bottom).toBeLessThanOrEqual(box(card.querySelector('.atlas-player-initiative__avatar')!).bottom + 2.5);
+          if (value) expect(box(card).right - box(value).right).toBeCloseTo(box(value).top - box(card).top, 0);
         }
         for (const card of cards) {
           expect(card.top).toBeGreaterThanOrEqual(frame.top);

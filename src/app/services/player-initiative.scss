@@ -12,10 +12,8 @@ $banner-scale: var(--atlas-player-turn-banner-scale, 1);
   @return calc(#{$length} * #{$scale});
 }
 
-// A condition badge over a card, as `playerInitiativeCard.ts` draws it
+// A condition badge on a card, as `playerInitiativeCard.ts` draws it
 $badge: scaled(28px);
-// The room a card's badges take above it: half a badge and their ring
-$badge-room: calc(#{$badge} / 2 + 2px);
 
 // The list's cards stand $surface-inset inside its border and apart, so a card's $radius-m corner is concentric with the
 // panel's $surface-radius; a row's cards are as wide as the column's
@@ -215,14 +213,19 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     box-shadow: inset 0 0 0 $border-width-s var(--atlas-turn-color, var(--interactive-accent));
   }
 
+  // A square card: the token's art fills it (`__art`), the number stands in its top right, the look-alike's badge in
+  // its top left, and the foot (conditions, name, hit points) lies on the shade at its bottom
   &__card {
     position: relative;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    justify-content: flex-end;
     flex-shrink: 0;
-    gap: $spacing-s;
-    padding: $spacing-s;
+    aspect-ratio: 1;
+    // Square whatever it holds
+    min-height: 0;
+    box-sizing: border-box;
+    padding: $spacing-xs;
     background: var(--background-modifier-hover);
     border: $border-width-s solid var(--background-modifier-border);
     border-radius: $radius-m;
@@ -248,11 +251,47 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
       background: transparent;
     }
 
-    // Defeated, as the GM's card shows it: dimmed, with the skull over the portrait
+    // Defeated, as the GM's card shows it: dimmed, with the skull over the art
     &--defeated {
       opacity: 0.45;
       filter: grayscale(70%);
     }
+  }
+
+  // The token's art, filling the card inside its border, under a shade at the top and the foot that the number and the
+  // foot read on
+  &__art {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: calc(#{$radius-m} - #{$border-width-s});
+
+    img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(to bottom, rgb(0 0 0 / 0.5), transparent 35%, transparent 50%, rgb(0 0 0 / 0.75));
+    }
+  }
+
+  // Art that brings its own frame (a token without a ring on the map) is cropped closer, so the frame falls outside
+  &__art--framed img {
+    transform: scale(1.4);
+    transform-origin: 50% 45%;
+  }
+
+  // The turn's ring lies over the art, which covers the card's own inset shadow
+  &__card--art#{&}__card--active &__art::after,
+  &__side--active &__card--art:not(&__card--sitting-out) &__art::after {
+    box-shadow: inset 0 0 0 2px var(--atlas-turn-color, var(--interactive-accent));
   }
 
   &__defeated {
@@ -266,25 +305,45 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
       height: $icon-l;
     }
 
-    // Over the portrait, which fills the card's width inside its padding
+    // Over the art, which fills the card
     &--over {
       position: absolute;
-      top: $spacing-s;
-      left: $spacing-s;
-      right: $spacing-s;
-      aspect-ratio: 1;
-      border-radius: 50%;
-      background: rgba(0, 0, 0, 0.6);
+      inset: 0;
+      z-index: 1;
+      border-radius: inherit;
+      background: rgb(0 0 0 / 0.55);
     }
   }
 
-  // A token portrait (`createTokenPortrait`): square, with the token's ring
-  &__avatar {
-    width: 100%;
+  // The number in the top right: a plate concentric with the card's corner
+  &__value {
+    position: absolute;
+    top: $surface-inset;
+    right: $surface-inset;
+    z-index: 2;
+    font-weight: $font-weight-semibold;
   }
 
-  &__value {
-    font-weight: $font-weight-semibold;
+  &__value:not(&__card-dealt) {
+    min-width: scaled(22px);
+    height: scaled(22px);
+    padding-inline: $spacing-xs;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: $control-inset-radius;
+    background: var(--background-primary);
+    box-shadow: 0 0 0 1px var(--background-modifier-border);
+    line-height: 1;
+  }
+
+  // Whoever holds the turn carries it on their number too
+  &__card--active &__value:not(&__card-dealt),
+  &__side--active &__card:not(&__card--sitting-out) &__value:not(&__card-dealt) {
+    background: var(--atlas-turn-color, var(--interactive-accent));
+    box-shadow: none;
+    color: var(--text-on-accent, #fff);
   }
 
   // The card dealt in a fight by cards: a small playing card where the number stands otherwise
@@ -300,11 +359,11 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     font-variant-numeric: tabular-nums;
   }
 
-  // The number the token's badge shows the players, in the same place and look as on the GM's card
+  // The number the token's badge shows the players, in the same look as on the GM's card, in the top left
   &__badge {
     position: absolute;
-    bottom: -2px;
-    left: -4px;
+    top: $surface-inset;
+    left: $surface-inset;
     min-width: scaled(18px);
     height: scaled(18px);
     padding: 0 $spacing-xs;
@@ -322,55 +381,77 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     z-index: 2;
   }
 
-  // Without a portrait it stands in the card's column, above the number
-  &__card > &__badge {
-    position: static;
+  // Conditions, the name and the hit points, on the shade at the card's foot
+  &__foot {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
   }
 
+  // Two lines at most, so the card stays square
   &__name {
-    width: 100%;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
     overflow-wrap: anywhere;
     text-align: center;
     font-size: scaled($font-ui-smaller);
+    line-height: 1.2;
   }
 
+  // On the art the name is light, on its shade
+  &__card--art &__name {
+    color: #fff;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.8);
+  }
+
+  // A slim bar on a track that reads on the card's fill and, lighter, on its art
   &__hp {
+    --atlas-hp-track: var(--background-modifier-border);
+    appearance: none;
+    display: block;
     width: 100%;
     height: $spacing-xs;
-    accent-color: var(--color-green);
+    border: none;
+    border-radius: $radius-full;
+    overflow: hidden;
+    background: var(--atlas-hp-track);
+
+    &::-webkit-progress-bar {
+      background: var(--atlas-hp-track);
+    }
+
+    &::-webkit-progress-value {
+      background: var(--color-green);
+    }
+
+    &::-moz-progress-bar {
+      background: var(--color-green);
+    }
+  }
+
+  &__card--art &__hp {
+    --atlas-hp-track: rgb(255 255 255 / 0.25);
   }
 
   // The conditions the map shows players on the token, as the GM's card draws them
-  // Over the card's top edge, half above it: the card gives them the room in the list
-  &__card--conditions {
-    margin-top: $badge-room;
-    // Kept in view as the column scrolls the card to its top (`scrollWithin`)
-    scroll-margin-top: $badge-room;
-  }
-
   &__conditions {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    z-index: 1;
     display: flex;
     gap: $spacing-xs;
-    transform: translate(-50%, -50%);
     pointer-events: none;
   }
 
-  // Three and more overlap, each over the one before (four with the count still fit a row's card), ringed in the panel's colour so their edges read
+  // Three and more overlap, each over the one before, so four with a count of turns stay inside the card, ringed in the
+  // panel's colour so their edges read
   &__conditions--stacked {
     gap: 0;
 
     > * + * {
-      margin-inline-start: calc(#{$badge} * -0.4);
+      margin-inline-start: calc(#{$badge} * -0.55);
     }
-  }
-
-  // A column's cards are its width: there they overlap further, so four with a count of turns stay inside it
-  &:not(&--top):not(&--bottom) &__conditions--stacked > * + * {
-    margin-inline-start: calc(#{$badge} * -0.55);
   }
 
   &__condition {
@@ -443,13 +524,10 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
   }
 }
 
-// A row across the top or bottom, as low as it can be read across a table: every card one height, the number
-// on the portrait's foot, and the names of rounds and sides read along the row's height at the start of their cards
+// A row across the top or bottom, as low as it can be read across a table: square cards of the column's width, and the
+// names of rounds and sides read along the row's height at the start of their cards
 .atlas-player-initiative--top,
 .atlas-player-initiative--bottom {
-  // The number's plate on the portrait's foot
-  --atlas-row-plate: #{scaled(20px)};
-
   .atlas-player-initiative__list {
     flex: 1 1 auto;
     min-width: 0;
@@ -492,59 +570,8 @@ $round-accent: var(--atlas-theme-red, var(--text-accent));
     animation: atlas-player-initiative-push-in 700ms ease-in-out var(--atlas-turn-push-delay, 0ms) both;
   }
 
-  // The portrait, the hit points under it, a name only where there is no portrait; the number lies on the portrait
   .atlas-player-initiative__card {
     width: $card-width;
-    box-sizing: border-box;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    align-content: start;
-    justify-items: center;
-  }
-
-  .atlas-player-initiative__avatar {
-    grid-area: 1 / 1;
-  }
-
-  // On the portrait's foot, over its ring, where it reads as the combatant's plate
-  .atlas-player-initiative__avatar ~ .atlas-player-initiative__value {
-    grid-area: 1 / 1;
-    align-self: end;
-    z-index: 1;
-    margin-bottom: -2px;
-  }
-
-  .atlas-player-initiative__value:not(.atlas-player-initiative__card-dealt) {
-    min-width: var(--atlas-row-plate);
-    height: var(--atlas-row-plate);
-    padding-inline: $spacing-xs;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: $radius-full;
-    background: var(--background-primary);
-    box-shadow: 0 0 0 1px var(--background-modifier-border);
-    line-height: 1;
-  }
-
-  // Whoever holds the turn carries it on their plate too
-  .atlas-player-initiative__card--active .atlas-player-initiative__value:not(.atlas-player-initiative__card-dealt),
-  .atlas-player-initiative__side--active .atlas-player-initiative__card:not(.atlas-player-initiative__card--sitting-out) .atlas-player-initiative__value:not(.atlas-player-initiative__card-dealt) {
-    background: var(--atlas-turn-color, var(--interactive-accent));
-    box-shadow: none;
-    color: var(--text-on-accent, #fff);
-  }
-
-  // A row keeps one height and its inset: the badges lie inside the card's top, over the portrait's ring
-  .atlas-player-initiative__card--conditions {
-    margin-top: 0;
-    scroll-margin-top: 0;
-  }
-
-  .atlas-player-initiative__conditions {
-    top: $spacing-xs;
-    transform: translateX(-50%);
   }
 
   // A round's name, then its cards (`renderRoundRow`); a slim line closes every round but the last

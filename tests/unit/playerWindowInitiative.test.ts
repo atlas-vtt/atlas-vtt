@@ -250,9 +250,9 @@ describe('player initiative panel', () => {
     expect(doc.body.textContent).toContain('Round 4');
   });
 
-  it('shows each token as the map does: inside its ring in the ring\'s colour, or unframed without one', () => {
+  it('fills each card with the token\'s art, cropped closer where the art brings its own frame (no ring on the map)', () => {
     const { store, doc } = setup();
-    const portrait = (): Element | null => doc.querySelector('[aria-label="Initiative order"] .atlas-token-portrait');
+    const art = (): Element | null => doc.querySelector('[aria-label="Initiative order"] .atlas-player-initiative__art');
     const withArt = (token: Partial<TokenEntity>): void => {
       const { objects, initiative } = store.getState();
       store.setState({
@@ -262,14 +262,12 @@ describe('player initiative panel', () => {
     };
 
     withArt({ ringColor: '#c0392b' });
-    expect(portrait()?.classList.contains('atlas-token-portrait--unframed')).toBe(false);
-    expect(portrait()?.querySelector('img')?.getAttribute('src')).toBe('data:image/png;base64,AAAA');
-    expect(portrait()?.querySelector<HTMLElement>('.atlas-token-ring')?.style.getPropertyValue('--atlas-token-ring-color')).toBe('#c0392b');
+    expect(art()?.querySelector('img')?.getAttribute('src')).toBe('data:image/png;base64,AAAA');
+    expect(art()?.classList.contains('atlas-player-initiative__art--framed')).toBe(false);
 
     // The list follows the token when the GM takes its ring away
     withArt({ showRing: false });
-    expect(portrait()?.classList.contains('atlas-token-portrait--unframed')).toBe(true);
-    expect(portrait()?.querySelector('.atlas-token-ring')).toBeNull();
+    expect(art()?.classList.contains('atlas-player-initiative__art--framed')).toBe(true);
   });
 
   it('keeps the combatant whose turn it is in view: the list is drawn anew on every change', () => {
