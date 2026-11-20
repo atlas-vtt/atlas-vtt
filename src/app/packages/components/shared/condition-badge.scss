@@ -4,11 +4,9 @@
 
 @use '../../../../../styles/tokens' as *;
 
-// Mirrors the canvas badge (ConditionBadge.ts): a domed disc in the condition's colour lit from the upper
-// left, set in a thin gunmetal bezel with a dark keyline, resting on a soft shadow
+// Mirrors the canvas badge (ConditionBadge.ts): a flat disc in the condition's colour with a fine ring
+// inside its edge, a dark keyline around it and a faint shadow under it
 .atlas-condition-badge {
-  --atlas-condition-bezel: max(1px, calc(var(--atlas-condition-size, 16px) * 0.046));
-  --atlas-condition-drop: calc(var(--atlas-condition-size, 16px) * 0.03);
   position: relative;
   box-sizing: border-box;
   width: var(--atlas-condition-size, 16px);
@@ -18,49 +16,47 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: var(--atlas-condition-bezel) solid transparent;
   border-radius: 50%;
   color: #fff;
   font-weight: $font-weight-bold;
   line-height: 1;
-  text-shadow: 0 var(--atlas-condition-drop) 0 rgba(0, 0, 0, 0.4);
-  background:
-    radial-gradient(
-        120% 120% at 40% 28%,
-        color-mix(in srgb, var(--atlas-condition-color), #fff 24%),
-        var(--atlas-condition-color) 40%,
-        color-mix(in srgb, var(--atlas-condition-color), #0b0b0e 14%) 80%
-      )
-      padding-box,
-    linear-gradient(to bottom, #6a6a74, #2e2e35 50%, #141418) border-box;
+  background: var(--atlas-condition-color);
   box-shadow:
-    0 0 0 0.5px rgba(11, 11, 14, 0.85),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
-    0 1px 3px rgba(0, 0, 0, 0.45);
+    0 0 0 1px rgba(11, 11, 14, 0.85),
+    0 0 3px rgba(0, 0, 0, 0.3);
+
+  // The fine inset ring; a hairline, so it stays at least one device pixel on the smallest badges
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 11%;
+    border: max(0.5px, calc(var(--atlas-condition-size, 16px) * 0.022)) solid rgba(255, 255, 255, 0.4);
+    border-radius: 50%;
+    pointer-events: none;
+  }
 
   svg {
-    width: 56%;
-    height: 56%;
-    filter: drop-shadow(0 var(--atlas-condition-drop) 0 rgba(0, 0, 0, 0.4));
+    width: 54%;
+    height: 54%;
   }
 
   &--light {
     color: #16161a;
-    text-shadow: 0 var(--atlas-condition-drop) 0 rgba(255, 255, 255, 0.35);
 
-    svg {
-      filter: drop-shadow(0 var(--atlas-condition-drop) 0 rgba(255, 255, 255, 0.35));
+    &::after {
+      border-color: rgba(11, 11, 14, 0.24);
     }
   }
 }
 
-// A valued condition's number, in a small graphite disc in the same bezel over the badge's lower right, as on the map
+// A valued condition's number, in a small dark disc over the badge's lower right, as on the map
 .atlas-condition-badge__value {
   position: absolute;
   // Overhangs the disc by less than the gap between badges, so it never touches the next one
   right: -12%;
   bottom: -12%;
+  // Above the badge's inset ring
+  z-index: 1;
   box-sizing: border-box;
   min-width: 66%;
   height: 66%;
@@ -68,14 +64,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: var(--atlas-condition-bezel) solid transparent;
   border-radius: $radius-full;
-  background:
-    radial-gradient(120% 120% at 40% 28%, #46464f, #26262d 40%, #202026 80%) padding-box,
-    linear-gradient(to bottom, #6a6a74, #2e2e35 50%, #141418) border-box;
-  box-shadow: 0 0 0 0.5px rgba(11, 11, 14, 0.85);
+  background: #2a2a31;
+  box-shadow: 0 0 0 1px rgba(11, 11, 14, 0.85);
   color: #fff;
   font-size: max(8px, calc(var(--atlas-condition-size, 16px) * 0.44));
   font-variant-numeric: tabular-nums;
-  text-shadow: none;
 }

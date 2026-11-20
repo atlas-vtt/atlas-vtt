@@ -11,6 +11,8 @@ $tracker-width-named: 216px;
 $float-button: 28px;
 $float-height: calc(#{$float-button} + 2 * #{$surface-inset} + 2 * #{$border-width-m});
 $float-gap: $spacing-s;
+// How far the shades over the list's ends reach into it: the round's at its foot, and at its top once it is scrolled
+$list-shade: 44px;
 $float-room: calc(#{$float-height} + #{$float-gap});
 // How far past the panel and its bars the pointer counts as near the tracker
 $float-reach: $spacing-s;
@@ -131,36 +133,77 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   }
 }
 
-// The round at the list's foot, as the players' list writes it. It takes no room: the list runs to the panel's border
-// beneath it, and the round lies over the cards that pass, on a shade rising from the bottom edge that reads it. The
-// shade is a shadow, dark in light themes too (the cards' own shades are), eased over many stops, so it has no line
-// where it begins.
-.atlas-initiative-tracker__round {
-  @include initiative-round-name($font-ui-small);
+// A shadow over an end of the list, from the panel's border to `$list-shade` inside the list, eased over many stops so
+// it has no line where it begins. `$towards` is the end it is darkest at. A shadow is dark in light themes too (the
+// cards' own shades are): one of the panel's colour turned white there.
+@mixin list-shade($towards) {
   position: absolute;
   right: 0;
-  bottom: 0;
   left: 0;
+  box-sizing: border-box;
+  height: calc(#{$list-shade} + #{$surface-inset});
   // Over the cards' own layers (their plates and marks are at 2)
   z-index: 4;
-  padding: $spacing-xl $surface-inset $surface-inset;
-  border-radius: 0 0 var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius);
   background: linear-gradient(
-    to top,
-    rgb(0 0 0 / 0.82),
-    rgb(0 0 0 / 0.8) 22%,
-    rgb(0 0 0 / 0.66) 40%,
-    rgb(0 0 0 / 0.43) 58%,
-    rgb(0 0 0 / 0.21) 76%,
-    rgb(0 0 0 / 0.07) 90%,
-    transparent
+    to $towards,
+    transparent,
+    rgb(0 0 0 / 0.07) 10%,
+    rgb(0 0 0 / 0.21) 24%,
+    rgb(0 0 0 / 0.43) 42%,
+    rgb(0 0 0 / 0.66) 60%,
+    rgb(0 0 0 / 0.8) 78%,
+    rgb(0 0 0 / 0.82)
   );
-  text-align: center;
+  // The cards beneath keep their clicks
+  pointer-events: none;
+}
+
+// The round at the list's foot, as the players' list writes it. It takes no room: the list runs to the panel's border
+// beneath it, and the round lies over the cards that pass, on a shade rising from the bottom edge that reads it.
+.atlas-initiative-tracker__round {
+  @include initiative-round-name($font-ui-small);
+  @include list-shade(bottom);
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 $surface-inset $surface-inset;
+  border-radius: 0 0 var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius);
   // A touch lighter than the accent, so a dark accent (a light theme's) still reads on the shadow
   color: color-mix(in oklch, #{$round-accent}, #fff 25%);
   text-shadow: 0 0 2px rgb(0 0 0 / 0.9), 0 0 8px rgb(0 0 0 / 0.7);
-  // The cards beneath keep their clicks
-  pointer-events: none;
+}
+
+// The same shade over the list's top, fading in over the first `$list-shade` the list is scrolled, so cards that pass
+// under the panel's top edge fade out instead of being cut off. The list's scroll drives it (a scroll timeline, run by
+// the compositor); where there is none, or the list does not scroll, it stays hidden.
+.atlas-initiative-tracker__top-shade {
+  @include list-shade(top);
+  top: 0;
+  border-radius: var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius) 0 0;
+  opacity: 0;
+}
+
+@supports (animation-timeline: --a) {
+  .atlas-initiative-tracker {
+    timeline-scope: --atlas-initiative-list;
+  }
+
+  .atlas-initiative-tracker__content {
+    scroll-timeline: --atlas-initiative-list block;
+  }
+
+  .atlas-initiative-tracker__top-shade {
+    animation: atlas-initiative-top-shade linear both;
+    animation-timeline: --atlas-initiative-list;
+    animation-range: 0 $list-shade;
+  }
+}
+
+@keyframes atlas-initiative-top-shade {
+  to {
+    opacity: 1;
+  }
 }
 
 // A ghost icon button (`Button`) in a floating bar, above Atlas's button rules (`.atlas-vtt-plugin .btn--icon`), whose
@@ -222,6 +265,12 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   overflow-y: auto;
   overflow-x: hidden;
   @include atlas-scrollbar-none;
+  // What the shades cover: the list follows the turn (`scrollWithin`) to a card clear of them
+  scroll-padding-top: $list-shade;
+
+  .atlas-initiative-tracker:has(.atlas-initiative-tracker__round) & {
+    scroll-padding-bottom: $list-shade;
+  }
   // The list glides to the turn it follows
   scroll-behavior: smooth;
 
@@ -230,13 +279,9 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   }
 }
 
-// Shown while the tracker has no combatants
-.atlas-initiative-tracker__empty {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--text-muted);
-  text-align: center;
+// Holds the size of one combatant's card while the tracker has none; nothing of it shows
+.atlas-initiative-card--placeholder {
+  visibility: hidden;
 }
 
 // A side of a fight by sides: its combatants under its name
@@ -331,11 +376,17 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
     transform: scale(0.96);
   }
 
-  // The colour the GM gave the card: its border and a wash of its fill; the turn's accent wins
+  // A player character's own colour (a party member's): its border and a wash of its fill; the turn's accent wins
   &--coloured,
   &--coloured:hover {
-    border-color: var(--atlas-combatant-color);
+    border-color: initiative-side-line(var(--atlas-combatant-color));
     background: color-mix(in srgb, var(--atlas-combatant-color) 22%, var(--background-modifier-hover));
+  }
+
+  // The players' own side, framed in green as opponents are in their colour
+  &--ally,
+  &--ally:hover {
+    border-color: initiative-side-line(var(--color-green));
   }
 
   // Active turn state
@@ -702,24 +753,20 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
     opacity: 0.5;
   }
 
-  // A side's frame and the turn's ring lie on the art, which covers the card's own border and inset shadow
+  // A side's glow and the turn's ring lie on the art, which covers the card's own inset shadow; the side's line is the
+  // card's border
   &.atlas-initiative-card--coloured .atlas-initiative-card__art::after {
-    @include initiative-side-ring(var(--atlas-combatant-color));
+    @include initiative-side-glow(var(--atlas-combatant-color));
   }
 
   &.atlas-initiative-card--ally .atlas-initiative-card__art::after {
-    @include initiative-side-ring(var(--color-green));
+    @include initiative-side-glow(var(--color-green));
   }
 
   &.atlas-initiative-card--active .atlas-initiative-card__art::after,
   .atlas-initiative-side--active &:not(.atlas-initiative-card--sitting-out) .atlas-initiative-card__art::after {
     @include initiative-turn-ring(var(--atlas-turn-color, var(--interactive-accent)));
   }
-}
-
-// The players' own side, framed in green as opponents are in their colour
-.atlas-initiative-card--ally {
-  border-color: var(--color-green);
 }
 
 // While someone holds the turn, everyone else's art steps back a little, so the turn stands out whatever its colour

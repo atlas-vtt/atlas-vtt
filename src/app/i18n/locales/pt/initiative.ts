@@ -55,8 +55,6 @@ export const initiative: Translation = {
   'initiative.rollAll': 'Rolar iniciativa',
   'initiative.startCombat': 'Iniciar combate',
   'initiative.endCombat': 'Encerrar combate',
-  'initiative.empty': 'Clique com o botão direito em um token para adicioná-lo',
-  'initiative.empty.touch': 'Toque e segure um token para adicioná-lo',
   'initiative.hiddenFromPlayers': 'Oculto dos jogadores',
   'initiative.side.players': 'Jogadores',
   'initiative.side.opponents': 'Oponentes',

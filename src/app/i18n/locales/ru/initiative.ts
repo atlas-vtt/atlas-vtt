@@ -13,7 +13,6 @@ export const initiative: Translation = {
   'initiative.startCombat': 'Начать бой',
   'initiative.endCombat': 'Закончить бой',
   'initiative.clear': 'Очистить инициативу',
-  'initiative.empty': 'Щёлкните токен правой кнопкой, чтобы добавить его',
   'initiative.hiddenFromPlayers': 'Скрыто от игроков',
   'initiative.side.players': 'Игроки',
   'initiative.side.opponents': 'Противники',
@@ -111,5 +110,4 @@ export const initiative: Translation = {
   'initiative.fallbackInfo': 'Читается, если в статблоке нет ни поля модификатора, ни поля, которое шаблон отмечает как инициативу.',
   'initiative.fallbackValue': '{field}',
   'initiative.fallbackScoreValue': '{field}, как значение характеристики',
-  'initiative.empty.touch': 'Коснитесь токена и удерживайте, чтобы добавить его',
 };

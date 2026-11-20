@@ -22,8 +22,8 @@ const fight = (active: string, changes: Partial<InitiativeState> = {}): Initiati
   entries: [entry('hero', 0, { isActive: active === 'hero' }), entry('ogre', 1, { isActive: active === 'ogre' })], ...changes,
 });
 const tokens = { hero: token('hero', { vision: { enabled: true } } as never), ogre: token('ogre'), cart: token('cart') };
-/** The GM keeps moves to the turn, and players are shown the list. */
-const ON = { movesOnTurn: true, showInitiative: true };
+/** The GM keeps moves to the turn. */
+const ON = { movesOnTurn: true };
 const state = (initiative: InitiativeState | undefined, open = true): TurnShareState => ({ initiative, initiativeTrackerOpen: open, objects: { tokens } });
 
 describe('the turn players are told of', () => {
@@ -74,9 +74,8 @@ describe('players who move only on their turn', () => {
     const sides = fight('none', { sides: { first: 'players', active: 'players' } });
     expect(movesOutOfTurn(state(sides), ON, 'hero')).toBe(false);
     expect(movesOutOfTurn(state(sides), ON, 'ogre')).toBe(true);
-    // A turn nobody is shown holds nobody: the player view's list off, or the GM's tracker closed
-    expect(movesOutOfTurn(state(fight('hero')), { ...ON, showInitiative: false }, 'ogre')).toBe(false);
-    expect(movesOutOfTurn(state(fight('hero'), false), ON, 'ogre')).toBe(false);
+    // The rule holds for the whole fight: the GM's tracker closed frees nobody
+    expect(movesOutOfTurn(state(fight('hero'), false), ON, 'ogre')).toBe(true);
   });
 
   it('are refused by the move check, after ownership', () => {

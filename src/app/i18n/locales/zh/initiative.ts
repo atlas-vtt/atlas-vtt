@@ -69,8 +69,6 @@ export const initiative: Translation = {
   'initiative.rollAll': '投先攻',
   'initiative.startCombat': '开始战斗',
   'initiative.endCombat': '结束战斗',
-  'initiative.empty': '右键点击指示物即可加入',
-  'initiative.empty.touch': '长按指示物即可加入',
   'initiative.hiddenFromPlayers': '对玩家隐藏',
   'initiative.side.players': '玩家',
   'initiative.side.opponents': '对手',

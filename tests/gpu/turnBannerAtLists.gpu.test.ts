@@ -8,6 +8,7 @@ import type { ViewAtlasState } from '../../src/app/storeFactory';
 import { createDefaultInitiativeState, type InitiativeEntry, type InitiativeState } from '../../src/app/types/initiativeTypes';
 import { entryTokenOf, playerInitiativeList, renderPlayerInitiative } from '../../src/app/services/playerInitiativeList';
 import { PlayerTurnBanner } from '../../src/app/services/PlayerTurnBanner';
+import { renderTurnBanner } from '../../src/app/initiative/banner/turnBannerElement';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import type { PlayersListEdge } from '../../src/app/initiative/initiativeLayout';
 import type { Character } from '../../src/app/types';
@@ -107,5 +108,25 @@ describe('the turn banner at the players\' lists', () => {
     shown = await showAtLists(90, ['top', 'bottom'], true);
     expectBeside(shown.banners[0]!, shown.lists[0]!, 'left');
     expectBeside(shown.banners[1]!, shown.lists[1]!, 'right');
+  });
+});
+
+describe('a fight\'s banner at the players\' lists', () => {
+  it.each(['above', 'below', 'left'] as const)('shows its words whole, centred on its anchor, on its shade (%s)', async (side) => {
+    await page.viewport(1600, 900);
+    document.body.className = 'atlas-player-window';
+    const host = document.body.createDiv({ cls: 'atlas-player-turn-banner' });
+    const anchor = host.createDiv({ cls: 'atlas-player-turn-banner__anchor', attr: { 'data-side': side } });
+    anchor.style.setProperty('--atlas-anchor-x', '800px');
+    anchor.style.setProperty('--atlas-anchor-y', '450px');
+    const banner = renderTurnBanner(anchor, { kind: 'fight-end', key: 'fight-end', round: null, title: 'Combat has ended', portrait: null }, () => null);
+    await new Promise((resolve) => setTimeout(resolve, 1400));
+    const title = banner.querySelector<HTMLElement>('.atlas-fight-banner__title')!;
+    expect(title.getBoundingClientRect().width).toBeGreaterThan(120);
+    expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth);
+    const at = banner.getBoundingClientRect();
+    if (side === 'left') expect(Math.abs((at.top + at.bottom) / 2 - 450)).toBeLessThan(2);
+    else expect(Math.abs((at.left + at.right) / 2 - 800)).toBeLessThan(2);
+    expect(getComputedStyle(banner, '::before').opacity).toBe('1');
   });
 });

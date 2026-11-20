@@ -39,6 +39,8 @@ function mount(playerView = false): ViewAtlasStore {
 }
 
 const press = (key: string): boolean => fireEvent.keyDown(window, { key });
+const letGo = (key: string): boolean => fireEvent.keyUp(window, { key });
+const pointer = (type: 'pointerdown' | 'pointerup', button = 0): boolean => window.dispatchEvent(new MouseEvent(type, { button }));
 
 describe('the measure tool\'s keys', () => {
   it('lists Keep among the GM\'s tool keys, on K, and not among the players\'', () => {
@@ -85,5 +87,52 @@ describe('the measure tool\'s keys', () => {
     expect(store.getState().activeTool).toBe('measure');
     press('k');
     expect(store.getState().measureTool.keep).toBe(false);
+  });
+
+  it('stays on the measure tool when its key is tapped, even held long, without a press on the map', () => {
+    const store = mount();
+    store.getState().setActiveTool('draw');
+    press('m');
+    letGo('m');
+    expect(store.getState().activeTool).toBe('measure');
+  });
+
+  it('gives the tool in use back when the key was held while measuring, once key and button are let go', () => {
+    const store = mount();
+    store.getState().setActiveTool('fog');
+    press('m');
+    expect(store.getState().activeTool).toBe('measure');
+    pointer('pointerdown');
+    letGo('m');
+    // The button is still down: the measurement under way goes on.
+    expect(store.getState().activeTool).toBe('measure');
+    pointer('pointerup');
+    expect(store.getState().activeTool).toBe('fog');
+  });
+
+  it('gives the tool back on the key\'s release when the button was let go first, and not for a right-drag', () => {
+    const store = mount();
+    press('m');
+    pointer('pointerdown', 2);
+    pointer('pointerup', 2);
+    letGo('m');
+    expect(store.getState().activeTool).toBe('measure');
+    store.getState().setActiveTool('move');
+    press('m');
+    pointer('pointerdown');
+    pointer('pointerup');
+    expect(store.getState().activeTool).toBe('measure');
+    letGo('m');
+    expect(store.getState().activeTool).toBe('move');
+  });
+
+  it('keeps a tool picked while the key was held', () => {
+    const store = mount();
+    press('m');
+    pointer('pointerdown');
+    store.getState().setActiveTool('draw');
+    pointer('pointerup');
+    letGo('m');
+    expect(store.getState().activeTool).toBe('draw');
   });
 });

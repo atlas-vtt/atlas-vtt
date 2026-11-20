@@ -104,7 +104,7 @@ describe('the GM\'s initiative cards', () => {
 
   it('give every line of the compact view one height, with hit points or without, by numbers or by sides', async () => {
     const container = await show(true);
-    const heights = (): number[] => [...container.querySelectorAll('.atlas-initiative-card')].map((card) => box(card).height);
+    const heights = (): number[] => [...container.querySelectorAll('.atlas-initiative-card')].map((card) => Math.round(box(card).height * 10) / 10);
     const withBar = heights();
     expect(new Set(withBar).size).toBe(1);
 
@@ -116,6 +116,16 @@ describe('the GM\'s initiative cards', () => {
     store.setState({ initiative: { ...store.getState().initiative, isActive: true, sides: { first: 'players', active: 'players' } } });
     await new Promise((resolve) => requestAnimationFrame(resolve));
     expect(heights()).toEqual(withBar);
+  });
+
+  it.each([false, true])('keep the size of one card while the tracker is empty (compact view: %s)', async (names) => {
+    const container = await show(names);
+    const card = box(container.querySelector('.atlas-initiative-card'));
+    await act(async () => { store.setState({ initiative: { ...store.getState().initiative, entries: [] } }); });
+    const placeholder = container.querySelector('.atlas-initiative-card--placeholder');
+    expect(box(placeholder).height).toBeCloseTo(card.height, 0);
+    expect(getComputedStyle(placeholder!).visibility).toBe('hidden');
+    await page.screenshot({ path: `__screenshots__/init-cards/empty-${names ? 'compact' : 'tiles'}.png`, element: container.querySelector('.atlas-initiative-tracker')! });
   });
 
   it('are square, the number inset inside the border, concentric with its corners', async () => {

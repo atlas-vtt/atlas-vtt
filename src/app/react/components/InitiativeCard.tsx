@@ -104,8 +104,9 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   // The colour the GM gave the card, and the one its turn pulses in
   const color = combatantColor(entry);
   const turn = turnColor(entry, token);
-  // The players' own side is framed in green as opponents are in their colour; a player at the table has no token
-  const ally = !color && (entry.partyMemberId !== undefined || (token !== undefined && sideOf(token) === 'players'));
+  // Only the players' own side is framed, in its colour or else green: a player at the table has no token. Anyone
+  // else's colour shows only in its turn, which the GM's tracker frames anyway
+  const playerSide = entry.partyMemberId !== undefined || (token !== undefined && sideOf(token) === 'players');
   const colours = {
     ...(color ? { '--atlas-combatant-color': color } : {}),
     ...(turn ? { '--atlas-turn-color': turn } : {}),
@@ -202,8 +203,8 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   const cardClasses = [
     'atlas-initiative-card',
     !compact && 'atlas-initiative-card--tile',
-    color && 'atlas-initiative-card--coloured',
-    ally && 'atlas-initiative-card--ally',
+    playerSide && color && 'atlas-initiative-card--coloured',
+    playerSide && !color && 'atlas-initiative-card--ally',
     entry.isActive && !bySides && 'atlas-initiative-card--active',
     defeated && 'atlas-initiative-card--defeated',
     hiddenFromPlayers && 'atlas-initiative-card--hidden',
