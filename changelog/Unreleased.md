@@ -91,6 +91,7 @@
 - The initiative tracker's options are fewer: the list always sorts by number and starts at the turn, and your view always follows the turn, gliding there more calmly. Horizontal initiative moved to What players see, and Players move only on their turn to the player view's online play settings
 - Measurements come and go smoothly: a kept ruler, circle, cone, square or line grows in from where it starts and fades out when deleted or undone, and one you don't keep dissolves instead of vanishing. The pin that keeps it pops in beside its label, lifts under the pointer, and the measurement it keeps glows once
 - Condition badges on tokens are redrawn: a flat disc in the condition's colour with a fine ring inside its edge and a crisp dark outline, and they stay perfectly round however far you zoom in. The initiative lists and menus show them the same way
+- The number that tells look-alike tokens apart takes the same look and size as the condition badges, with its digits set larger and centred
 - Undo and redo carry a moved or resized measurement back along its way, with its handles. Auras and measurements grouped with a token glide with the token instead of jumping ahead of it
 - Players' measurements come and go the same way on your map, and one they move glides there
 - Hold M and drag across the map to measure a distance with the ruler, whatever tool you're using: your tool stays picked, and the ruler goes when you let go of M. Tap M to pick the measure tool and its other shapes
