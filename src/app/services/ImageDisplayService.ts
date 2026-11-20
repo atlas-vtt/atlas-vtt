@@ -488,7 +488,7 @@ export class ImageDisplayService {
     await after;
     // Removed at once meanwhile (destroy)
     if (!this.leavingDisplays.has(display)) return;
-    await playImageExit(display.container, display.stage);
+    await playImageExit(display.container, display.stage, after !== undefined);
     if (!this.leavingDisplays.delete(display)) return;
     this.removeImageDisplay(display);
   }
