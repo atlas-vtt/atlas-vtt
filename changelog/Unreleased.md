@@ -95,6 +95,7 @@
 
 ## Fixed
 
+- Enter rolls the dice tray after you click a die: a click no longer leaves the die holding Enter, and Enter on any button of the tray rolls
 - The documentation and the loot and tables window stand over the map's scene tabs, widgets, initiative tracker and command palette, where those covered them
 - The map no longer shifts aside with a strip beside it, or gets cut off on the left until a reload: opening the command palette, or something near the map's edge taking focus, scrolled the window's panes sideways
 - A token's ring now turns with its art
