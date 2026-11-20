@@ -3,7 +3,7 @@ import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
 import { TurnWatch, type TurnBanner } from '../initiative/banner/turnBanner';
 import { FightWatch, fightBanner } from '../initiative/banner/fightWatch';
-import { TurnBannerDisplay, type TurnBannerMotion } from '../initiative/banner/turnBannerElement';
+import { TurnBannerDisplay, withFightBannerMotion, type TurnBannerMotion } from '../initiative/banner/turnBannerElement';
 import { prefersReducedMotion } from '../utils/motion';
 import { portraitSrc } from '../utils/portraitSrc';
 import { bannerAnchor, listBox, type BannerAnchor, type Box } from './turnBannerAnchors';
@@ -14,11 +14,11 @@ import type { PlayerOverlay } from './PlayerSceneOverlay';
 import type { SettingsService } from './SettingsService';
 
 /**
- * How the players' banner comes and goes: it springs out of a blur and dims the table behind
+ * How the players' turn banner comes and goes (a fight's keeps its own, `withFightBannerMotion`): it springs out of a blur and dims the table behind
  * it (`turn-banner.scss`, until it is `--leaving`), its border pulsing fainter as long as it stands
  * (`--atlas-turn-banner-stand`), then swells as it fades away. It grows to its size and stays there.
  */
-const TV_MOTION: TurnBannerMotion = {
+const TV_MOTION: TurnBannerMotion = withFightBannerMotion({
   enter(element, standMs) {
     element.style.setProperty('--atlas-turn-banner-stand', `${standMs}ms`);
     const still = prefersReducedMotion(element);
@@ -43,7 +43,7 @@ const TV_MOTION: TurnBannerMotion = {
     const remove = (): void => element.remove();
     animation.finished.then(remove, remove);
   },
-};
+});
 
 /** How long the table's dim takes to fade (its `transition` in `turn-banner.scss`). */
 const DIM_FADE_MS = 450;
