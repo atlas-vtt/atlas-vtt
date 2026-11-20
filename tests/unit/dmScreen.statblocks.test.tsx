@@ -347,7 +347,7 @@ describe('the DM screen\'s player characters choice', () => {
     expect(screen.getByRole('radio', { name: 'All (2)' }).getAttribute('aria-checked')).toBe('true');
     expect(screen.queryByRole('radio', { name: /This fight/ })).toBeNull();
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Player characters (1)' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Players (1)' }));
     await waitFor(() => expect(shownNames(container)).toHaveLength(1));
     expect(shownNames(container)[0]).toContain('Inline Creature');
   });
@@ -359,7 +359,7 @@ describe('the DM screen\'s player characters choice', () => {
     await waitFor(() => expect(shownNames(container)).toHaveLength(1));
     expect(screen.getByRole('radio', { name: 'This fight (1)' }).getAttribute('aria-checked')).toBe('true');
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Player characters (1)' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Players (1)' }));
     await waitFor(() => expect(shownNames(container)[0]).toContain('Inline Creature'));
     expect(shownNames(container)).toHaveLength(1);
   });
@@ -367,6 +367,6 @@ describe('the DM screen\'s player characters choice', () => {
   it('is not offered without player characters on the map', async () => {
     const { container } = showDMScreen([fencePath, creaturePath]);
     await waitFor(() => expect(shownNames(container)).toHaveLength(2));
-    expect(screen.queryByRole('radio', { name: /Player characters/ })).toBeNull();
+    expect(screen.queryByRole('radio', { name: /Players/ })).toBeNull();
   });
 });

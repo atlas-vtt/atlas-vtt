@@ -3,7 +3,7 @@ import type { Translation } from '../../types';
 export const dashboard: Translation = {
   'dashboard.allCreatures': 'Todos ({count})',
   'dashboard.thisFight': 'Este combate ({count})',
-  'dashboard.playerCharacters': 'Personajes jugadores ({count})',
+  'dashboard.playerCharacters': 'Jugadores ({count})',
   'dashboard.statblockScope': 'Bloques de estadísticas mostrados',
   'dashboard.linkNote': 'Vincular una nota a este mapa',
   'dashboard.closeScreen': 'Cerrar pantalla del DJ',

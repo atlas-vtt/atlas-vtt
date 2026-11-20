@@ -25,7 +25,7 @@ export const dashboard = {
   "dashboard.addMapFirst": "Aggiungi prima un’immagine di mappa, poi crea una scena a partire da essa.",
   "dashboard.allCreatures": "Tutte ({count})",
   "dashboard.thisFight": "Questo combattimento ({count})",
-  "dashboard.playerCharacters": "Personaggi giocanti ({count})",
+  "dashboard.playerCharacters": "Giocatori ({count})",
   "dashboard.statblockScope": "Statblock mostrati",
   "dashboard.closeScreen": "Chiudi schermo del master",
 } satisfies Translation;

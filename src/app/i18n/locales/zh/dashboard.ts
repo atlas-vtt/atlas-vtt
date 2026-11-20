@@ -23,7 +23,7 @@ export const dashboard: Translation = {
   'dashboard.addMapFirst': '请先添加地图图片，再从它创建场景。',
   'dashboard.allCreatures': '全部（{count}）',
   'dashboard.thisFight': '本场战斗（{count}）',
-  'dashboard.playerCharacters': '玩家角色（{count}）',
+  'dashboard.playerCharacters': '玩家（{count}）',
   'dashboard.statblockScope': '显示的数据卡',
   'dashboard.closeScreen': '关闭 DM 屏',
   'dashboard.begin': '开始',

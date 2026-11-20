@@ -23,7 +23,7 @@ export const dashboard: Translation = {
   'dashboard.addMapFirst': 'Сначала добавьте изображение карты, затем создайте из него сцену.',
   'dashboard.allCreatures': 'Все ({count})',
   'dashboard.thisFight': 'Этот бой ({count})',
-  'dashboard.playerCharacters': 'Персонажи игроков ({count})',
+  'dashboard.playerCharacters': 'Игроки ({count})',
   'dashboard.statblockScope': 'Какие статблоки показывать',
   'dashboard.begin': 'Начать',
   'dashboard.resume': 'Продолжить',

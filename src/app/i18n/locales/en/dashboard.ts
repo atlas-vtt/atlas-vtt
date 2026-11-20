@@ -3,7 +3,7 @@ import type { Message } from '../../types';
 export const dashboard = {
   'dashboard.allCreatures': 'All ({count})',
   'dashboard.thisFight': 'This fight ({count})',
-  'dashboard.playerCharacters': 'Player characters ({count})',
+  'dashboard.playerCharacters': 'Players ({count})',
   'dashboard.statblockScope': 'Statblocks shown',
   'dashboard.linkNote': 'Link a note to this map',
   'dashboard.closeScreen': 'Close DM screen',
