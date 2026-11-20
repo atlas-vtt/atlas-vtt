@@ -205,7 +205,8 @@ export const BOUNDARIES = {
       "src/app/statblocks/roles/collectionStatblockRoles.ts",
       "src/app/recovery/recoveryTypes.ts",
       "src/app/recovery/parseRecovery.ts",
-      "src/app/recovery/collectionRecovery.ts"
+      "src/app/recovery/collectionRecovery.ts",
+      "src/app/styles/designTokens.ts"
     ],
     "exclude": [
       "src/app/grid/GridController.ts",
