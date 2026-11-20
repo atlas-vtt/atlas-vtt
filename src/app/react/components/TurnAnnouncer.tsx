@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { TurnWatch } from '../../initiative/banner/turnBanner';
+import { FightWatch, fightBanner } from '../../initiative/banner/fightWatch';
 import { TurnBannerDisplay } from '../../initiative/banner/turnBannerElement';
 import { defeatedOnMap } from '../../initiative/defeatedOnMap';
 import { followTurn } from '../../initiative/followTurn';
@@ -37,15 +38,21 @@ export function TurnAnnouncer(): React.ReactElement {
     if (!host) return undefined;
     const display = new TurnBannerDisplay(host, (imagePath) => portraitSrc(app, imagePath));
     const watch = new TurnWatch();
+    const fights = new FightWatch();
     const look = (state: ViewAtlasState): void => {
       const banner = watch.next(state, { kind: 'gm' });
+      const change = fights.next(state);
+      const options = SettingsService.forApp(app)?.initiativeTurnOptions() ?? DEFAULT_TURN_OPTIONS;
       if (!state.initiative?.isActive) {
-        if (display.showing) display.hide();
+        // The fight ended: its banner replaces the turn's; a turn's banner leaves with the fight
+        if (change === 'ended' && options.banner) display.show(fightBanner('ended'));
+        else if (display.showing && !display.showsFightEnd) display.hide();
         return;
       }
+      // A fight that starts says so, then names its first turn
+      if (change === 'started' && options.banner) display.show(fightBanner('started'), ...(banner ? [banner] : []));
       if (!banner) return;
-      const options = SettingsService.forApp(app)?.initiativeTurnOptions() ?? DEFAULT_TURN_OPTIONS;
-      if (options.banner) display.show(banner);
+      if (options.banner && change !== 'started') display.show(banner);
       if (options.followTurn) {
         const shows = (tokenId: string): boolean => (view?.renderer?.canvasShowsToken(tokenId) ?? false) || onAnotherFloor(state, tokenId);
         followTurn(view?.renderer?.getViewportInstance(), state, shows, defeatedOnMap(app, state), (tokenId) => showLevelOfToken(state, tokenId));

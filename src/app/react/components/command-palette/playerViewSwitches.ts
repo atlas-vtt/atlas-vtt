@@ -3,6 +3,7 @@ import { slottedResources } from '../../../resources/resourceSlots';
 import { useMapResources } from '../../../resources/useMapResources';
 import { mapRules, updateMapRules } from '../../../services/mapRules';
 import type { AtlasSettings, SettingsService } from '../../../services/SettingsService';
+import { DEFAULT_SETTINGS } from '../../../services/atlasSettings';
 import { runInBackground } from '../../../utils/backgroundTask';
 import { useAtlasUI } from '../../root/AtlasUIContext';
 import { useAtlasStore } from '../../ViewStoreContext';
@@ -10,19 +11,10 @@ import { resourceToggleLabel } from './resourceToggleLabel';
 import { t } from '../../../i18n';
 
 type LocalPlayerViewSettings = AtlasSettings['localPlayerView'];
-type PlayerViewSwitchKey = Exclude<keyof LocalPlayerViewSettings, 'showToolbar' | 'showCommandPalette' | 'showNotePreviews'>;
-
-const DEFAULT_LOCAL_PLAYER_VIEW_SETTINGS: LocalPlayerViewSettings = {
-  showToolbar: false,
-  showTokenNameplates: false,
-  showNotePreviews: false,
-  showWidgets: true,
-  showInitiative: true,
-  showDiceRolls: false,
-  showCommandPalette: false,
-  showCursors: false,
-  playersDraw: false,
-};
+/** The settings that are switches; the sizes and durations are sliders of the palette's panel. */
+type PlayerViewSwitchKey = {
+  [Key in keyof LocalPlayerViewSettings]: LocalPlayerViewSettings[Key] extends boolean ? Key : never;
+}[Exclude<keyof LocalPlayerViewSettings, 'showToolbar' | 'showCommandPalette' | 'showNotePreviews'>];
 
 interface SwitchText {
   key: PlayerViewSwitchKey;
@@ -41,6 +33,14 @@ const UI_SWITCHES: ReadonlyArray<SwitchText> = [
 const ONLINE_SWITCHES: ReadonlyArray<SwitchText> = [
   { key: 'showCursors', label: t('lpv.showCursors') },
   { key: 'playersDraw', label: t('lpv.playersDraw'), hint: t('lpv.playersDrawHint') },
+];
+
+/** How the initiative list looks to the players. */
+const INITIATIVE_SWITCHES: ReadonlyArray<SwitchText> = [
+  { key: 'showInitiativeNames', label: t('lpv.initiativeNames'), hint: t('lpv.initiativeNamesHint') },
+  { key: 'initiativePulse', label: t('lpv.initiativePulse'), hint: t('lpv.initiativePulseHint') },
+  { key: 'turnBannerAtLists', label: t('lpv.turnBannerAtLists'), hint: t('lpv.turnBannerAtListsHint') },
+  { key: 'turnDim', label: t('lpv.turnDim'), hint: t('lpv.turnDimHint') },
 ];
 
 const TOKEN_SWITCHES: ReadonlyArray<SwitchText> = [
@@ -63,6 +63,8 @@ export interface PlayerViewSwitches {
   shared: PlayerViewSwitch[];
   /** The players' cursors and whether players may draw: online play only, none while it is switched off. */
   online: PlayerViewSwitch[];
+  /** The initiative list's names, pulse and turn banner in the player window. */
+  initiative: PlayerViewSwitch[];
   /** Rendering up to 4K, on this device: the player window only. */
   view4k: PlayerViewSwitch;
   /**
@@ -80,7 +82,7 @@ export function usePlayerViewSwitches(explicit?: SettingsService): PlayerViewSwi
   const settings = useAtlasSettings(explicit);
   const resources = useMapResources();
   const mapPath = useAtlasStore((state) => state.mapPath);
-  const values = settings?.getLocalPlayerViewSettings() ?? DEFAULT_LOCAL_PLAYER_VIEW_SETTINGS;
+  const values = settings?.getLocalPlayerViewSettings() ?? DEFAULT_SETTINGS.localPlayerView;
   const view4k = settings?.isPlayerView4k() ?? false;
   const onlinePlay = settings?.isExperimentalOn('onlinePlay') ?? false;
 
@@ -104,6 +106,7 @@ export function usePlayerViewSwitches(explicit?: SettingsService): PlayerViewSwi
   return {
     shared: UI_SWITCHES.map(switchOf),
     online: onlinePlay ? ONLINE_SWITCHES.map(switchOf) : [],
+    initiative: INITIATIVE_SWITCHES.map(switchOf),
     view4k: { id: 'view4k', label: t('lpv.view4k'), value: view4k, onToggle: () => settings?.setPlayerView4k(!view4k) },
     resources: source.kind === 'none' ? [] : slottedResources(resources).map(({ definition: resource, slot }) => ({
       id: `resource:${resource.key}`,

@@ -1,0 +1,72 @@
+// The GM's compact tracker (the tracker's Compact view): a plain list to work with, no portraits. Each card is
+// one line of number, name and marks, with the bars and conditions below across its width.
+@use '../../../../styles/tokens' as *;
+
+.atlas-initiative-tracker--compact {
+  gap: $spacing-xs;
+
+  .atlas-initiative-tracker__content {
+    gap: $spacing-xs;
+  }
+
+  .atlas-initiative-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: $spacing-xs $spacing-s;
+    padding: $spacing-xs $spacing-s;
+
+    &:active {
+      transform: none;
+    }
+  }
+
+  .atlas-initiative-card__initiative,
+  .atlas-initiative-card__initiative-input,
+  .atlas-initiative-card__dealt {
+    grid-area: 1 / 1;
+  }
+
+  .atlas-initiative-card__name {
+    grid-area: 1 / 2;
+    text-align: start;
+    display: block;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .atlas-initiative-card__marks {
+    grid-area: 1 / 3;
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    color: var(--text-muted);
+
+    &:empty {
+      display: none;
+    }
+
+    > svg {
+      width: 14px;
+      height: 14px;
+    }
+  }
+
+  // The portrait's corner badges, set in the line
+  .atlas-initiative-card__instance-badge,
+  .atlas-initiative-card__hidden-badge,
+  .atlas-initiative-card__off-map-badge {
+    position: static;
+  }
+
+  .atlas-initiative-card__resources,
+  .atlas-initiative-card__conditions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  // Hidden from the players: the line is translucent, as its portrait is otherwise
+  .atlas-initiative-card--hidden .atlas-initiative-card__name {
+    opacity: 0.6;
+  }
+}

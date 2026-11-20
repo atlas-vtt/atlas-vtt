@@ -8,7 +8,8 @@ import type { TokenEntity } from '../types';
 import type { SideId } from '../types/initiativeRulesTypes';
 import type { InitiativeEntry, InitiativeState } from '../types/initiativeTypes';
 import { activeSides } from './sideOrder';
-import { fightSides, sideOf } from './sides';
+import { fightSides } from './sides';
+import { entrySide, entryToken } from './party';
 
 type TurnState = Pick<InitiativeState, 'isActive' | 'round' | 'entries' | 'sides'>;
 
@@ -54,14 +55,16 @@ export function turnEntries(
   if (!turn) return [];
   if (turn.kind === 'combatant') return [turn.entry];
   const known = knownSideIds(initiative);
-  return initiative.entries.filter((entry) => !entry.sitsOut && !entry.delayed && !defeated.has(entry.id) && tokens[entry.tokenId] !== undefined
-    && turn.sides.includes(sideOf(tokens[entry.tokenId], known)));
+  return initiative.entries.filter((entry) => !entry.sitsOut && !entry.delayed && !defeated.has(entry.id)
+    // A player at the table and an enemy added by name have no token, and take their side's turns
+    && (entry.tokenId === undefined || entryToken(tokens, entry) !== undefined)
+    && turn.sides.includes(entrySide(entry, tokens, known)));
 }
 
 /** The ids of the tokens that hold the turn now (by sides without the `defeated` entries); none outside a fight. */
 export function turnTokenIds(initiative: TurnState | undefined, tokens: Readonly<Record<string, TokenEntity>>, defeated: ReadonlySet<string> = NOBODY): string[] {
   if (!initiative) return [];
-  return turnEntries(currentTurn(initiative), initiative, tokens, defeated).map((entry) => entry.tokenId);
+  return turnEntries(currentTurn(initiative), initiative, tokens, defeated).flatMap((entry) => (entry.tokenId === undefined ? [] : [entry.tokenId]));
 }
 
 /** Whether `tokenId` fights in the tracker's fight: it has an entry. */

@@ -20,11 +20,17 @@ export interface InitiativeEntry {
   /** Unique identifier for this entry */
   id: string;
 
-  /** Reference to the token on the map */
-  tokenId: string;
+  /** The token on the map; none for a player at the table (`partyMemberId`) or an enemy added by name (`isTokenlessEnemy`). */
+  tokenId?: string;
+
+  /** The collection's party member this entry is (`PartyMember.id`); such an entry has no token. */
+  partyMemberId?: string;
 
   /** Display name */
   name: string;
+
+  /** The colour the GM gave the card, `#rrggbb`; read with `combatantColor`. Older versions ignore it. */
+  color?: string | undefined;
 
   /** Rolled initiative value (after modifiers) */
   initiative: number;
@@ -49,6 +55,12 @@ export interface InitiativeEntry {
 
   /** Path to linked statblock note (for CMD+hover preview); `undefined` clears it when patched */
   statblockPath?: string | undefined;
+
+  /**
+   * The GM hides the combatant from the players' list, whatever it is, without hiding a token on the map
+   * (`playersEntryToken`); the GM's card shows it as a hidden token's. `undefined` clears it when patched; older versions ignore it.
+   */
+  hiddenFromPlayers?: true | undefined;
 
   /** Whether this entry has the current turn */
   isActive: boolean;
@@ -86,6 +98,16 @@ export interface InitiativeEntry {
    * first, and look-alikes may share one. Older versions ignore it and read the order as it stands.
    */
   card?: number;
+
+  /** The conditions of a combatant without a token (a player at the table, an enemy added by name); a token keeps its own. */
+  conditions?: string[];
+  conditionValues?: Record<string, number>;
+
+  /**
+   * How many of the combatant's own turns a condition still lasts, by condition id (`combatantConditions.ts`):
+   * counted down as a turn it held ends, and the condition ends at 0. A condition not named here lasts until taken away.
+   */
+  conditionTurns?: Record<string, number>;
 }
 
 /** A fight by sides as it runs: which side has the turn, and in what order the sides act. */
@@ -150,6 +172,20 @@ export interface InitiativeState {
    * over the start puts their marks back. Only rounds that cleared something are kept.
    */
   satOut?: Record<string, string[]>;
+
+  /**
+   * What the end of each turn counted off the conditions of whoever held it, by the turn's `turnKey`, so that stepping
+   * back to the turn gives it back (`countBackConditions`). Only turns that counted something are kept; a fight's end clears them.
+   */
+  conditionCountdowns?: Record<string, CountedDown[]>;
+}
+
+/** One condition a turn's end counted down (`countDownConditions`): a turn off it, or its end. */
+export interface CountedDown {
+  entryId: string;
+  conditionId: string;
+  /** The condition ended with this turn; its number where it had one, to give it back with. */
+  ended?: { value?: number };
 }
 
 /**

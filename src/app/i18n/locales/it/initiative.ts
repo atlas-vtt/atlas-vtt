@@ -54,8 +54,6 @@ export const initiative = {
   "initiative.defeated": "Sconfitto",
   "initiative.delay": "Ritarda turno",
   "initiative.delayed": "Turno ritardato",
-  "initiative.dockLeft": "Posiziona a sinistra",
-  "initiative.dockLeftHint": "Posiziona l’indicatore di iniziativa e l’elenco dei giocatori sul bordo sinistro della mappa",
   "initiative.editNumber": "Iniziativa {value}, fai clic per modificarla",
   "initiative.expand": "Mostra tutti i combattenti",
   "initiative.fantasyDex": "Des",

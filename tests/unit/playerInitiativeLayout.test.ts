@@ -4,9 +4,11 @@ import { entryTokenOf, playerInitiativeList, renderPlayerInitiative, type EntryT
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';
 import type { ConditionDefinition } from '../../src/app/types/collectionSettingsTypes';
 import type { TokenEntity } from '../../src/app/types';
+import type { PlayersListEdge } from '../../src/app/initiative/initiativeLayout';
+import { layoutEdges } from '../../src/app/utils/scrollWithin';
 
 const scrolls = vi.hoisted(() => ({ calls: [] as unknown[][] }));
-vi.mock('../../src/app/utils/scrollWithin', () => ({ scrollWithin: (...args: unknown[]) => { scrolls.calls.push(args); } }));
+vi.mock('../../src/app/utils/scrollWithin', () => ({ scrollWithin: (...args: unknown[]) => { scrolls.calls.push(args); }, layoutEdges: () => ({ left: 0, top: 0, right: 0, bottom: 0 }) }));
 
 const TURN_ORDER: InitiativeRules = { mode: 'turn-order', roll: '1d20', firstSide: 'players' };
 const VISIBLE: EntryToken = { hp: null, showRing: false, side: 'opponents', defeated: false };
@@ -15,7 +17,7 @@ const entry = (name: string, order: number, extra: Partial<PlayerInitiativeEntry
   ({ tokenId: name, name, initiative: 20 - order, imagePath: '', order, isActive: false, ...extra });
 
 /** Draws the players' list of `entries` (those in `hidden` left out, as their tokens are) and reads it back as words. */
-function draw(entries: PlayerInitiativeEntry[], look: { fromTurn?: boolean; dock?: 'left' | 'right' } = {}, hidden: string[] = []): { panel: HTMLElement; words: string[] } {
+function draw(entries: PlayerInitiativeEntry[], look: { fromTurn?: boolean; dock?: PlayersListEdge; faces?: boolean } = {}, hidden: string[] = []): { panel: HTMLElement; words: string[] } {
   document.body.empty();
   const list = playerInitiativeList({ entries, isActive: true, round: 4 }, (listed) => (hidden.includes(listed.tokenId) ? null : VISIBLE), TURN_ORDER, false);
   renderPlayerInitiative(document.body, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null, ...look });
@@ -33,13 +35,13 @@ describe('the players\' list that starts at the turn', () => {
   it('runs from the combatant whose turn it is into the next round below a divider, and shows its top', () => {
     const { panel, words } = draw(fight, { fromTurn: true });
     expect(words).toEqual(['c', 'd', '|Round 5|', 'a', 'b']);
-    expect(scrolls.calls).toEqual([[panel.querySelector('.atlas-player-initiative__list'), panel.querySelector('.atlas-player-initiative__card--active'), 'start']]);
+    expect(scrolls.calls).toEqual([[panel.querySelector('.atlas-player-initiative__list'), panel.querySelector('.atlas-player-initiative__card--active'), 'start', 0, 'y']]);
   });
 
   it('keeps the order without the GM\'s choice, the turn and the next two scrolled into view', () => {
     const { panel, words } = draw(fight);
     expect(words).toEqual(['a', 'b', 'c', 'd']);
-    expect(scrolls.calls[0]?.slice(2)).toEqual(['nearest', 2]);
+    expect(scrolls.calls[0]?.slice(2)).toEqual(['nearest', 2, 'y']);
     expect(panel.querySelector('.atlas-player-initiative__next-round')).toBeNull();
   });
 
@@ -53,6 +55,24 @@ describe('the players\' list that starts at the turn', () => {
   it('stands at the edge the GM docked the lists at', () => {
     expect(draw(fight, { dock: 'left' }).panel.classList.contains('atlas-player-initiative--left')).toBe(true);
     expect(draw(fight).panel.classList.contains('atlas-player-initiative--left')).toBe(false);
+  });
+
+  it('runs as a row across the top or the bottom, scrolling sideways to the turn', () => {
+    for (const dock of ['top', 'bottom'] as const) {
+      scrolls.calls.length = 0;
+      expect(draw(fight, { dock }).panel.classList.contains(`atlas-player-initiative--${dock}`)).toBe(true);
+      expect(scrolls.calls[0]?.[4]).toBe('x');
+    }
+  });
+
+  it('turns a row to face the players at its edge, scrolling along its own axis', () => {
+    for (const dock of ['top', 'right', 'bottom', 'left'] as const) {
+      scrolls.calls.length = 0;
+      const { classList } = draw(fight, { dock, faces: true }).panel;
+      expect([...classList].filter((name) => name.startsWith('atlas-player-initiative--'))).toEqual(['atlas-player-initiative--bottom', `atlas-player-initiative--faces-${dock}`]);
+      expect(scrolls.calls[0]?.[4]).toBe('x');
+      expect(scrolls.calls[0]?.[5]).toBe(layoutEdges);
+    }
   });
 });
 

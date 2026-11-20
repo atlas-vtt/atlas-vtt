@@ -16,7 +16,7 @@ function holders(state: TurnShareState, definitions: readonly ResourceDefinition
   const initiative = state.initiative;
   if (!initiative) return [];
   const defeated = defeatedCombatants(initiative.entries, state.objects.tokens, definitions);
-  return turnEntries(currentTurn(initiative), initiative, state.objects.tokens, defeated).map((entry) => entry.tokenId);
+  return turnEntries(currentTurn(initiative), initiative, state.objects.tokens, defeated).flatMap((entry) => (entry.tokenId === undefined ? [] : [entry.tokenId]));
 }
 
 /**

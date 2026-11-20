@@ -22,6 +22,110 @@ $turn-banner-title-width: 240px;
   pointer-events: none;
   color: var(--text-normal);
   font-family: var(--font-interface);
+  // Holds the flash ring
+  position: relative;
+  --atlas-turn-banner-flash: var(--interactive-accent);
+
+  // As it appears its border flashes, in the combatant's colour (`TurnBanner.color`), else the accent
+  &::before {
+    content: '';
+    position: absolute;
+    inset: calc(-1 * #{$border-width-m});
+    border: 2px solid var(--atlas-turn-banner-flash);
+    border-radius: inherit;
+    box-shadow: inset 0 0 $spacing-m var(--atlas-turn-banner-flash);
+    opacity: 0;
+    pointer-events: none;
+    animation: atlas-turn-banner-flash 900ms ease-out both;
+  }
+
+  // A fight that starts: crossed swords in a red border, which flashes red
+  &--fight-start {
+    border-color: var(--color-red);
+    --atlas-turn-banner-flash: var(--color-red);
+  }
+
+  // A fight that ends stands quietly
+  &--fight-end::before {
+    content: none;
+  }
+}
+
+// A fight's own banner: its icon where a turn's portrait stands, in a circle as large
+.atlas-turn-banner__icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: $turn-banner-portrait;
+  height: $turn-banner-portrait;
+  border-radius: 50%;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+
+  svg {
+    width: $icon-m;
+    height: $icon-m;
+  }
+
+  .atlas-turn-banner--fight-start & {
+    color: var(--color-red);
+  }
+}
+
+@keyframes atlas-turn-banner-flash {
+  0%,
+  33%,
+  66% {
+    opacity: 1;
+  }
+
+  16%,
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes atlas-turn-banner-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes atlas-turn-banner-fade {
+  from {
+    filter: none;
+  }
+
+  to {
+    filter: opacity(0.3);
+  }
+}
+
+@keyframes atlas-turn-banner-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4) rotate(-12deg);
+  }
+}
+
+@keyframes atlas-turn-banner-words {
+  from {
+    opacity: 0;
+    transform: translateX(-#{$spacing-m});
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-turn-banner::before {
+    animation: none;
+  }
 }
 
 .atlas-turn-banner__portrait {
@@ -70,20 +174,120 @@ $turn-banner-title-width: 240px;
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(100% + #{$spacing-s} + var(--atlas-toolbar-lift, 0px));
+  bottom: calc(100% + #{$spacing-s});
   display: flex;
   justify-content: center;
   pointer-events: none;
 }
 
-// In the player window: centred at the bottom, as the dice rolls stand at the top centre
+// In the player window: in the middle of the table, as large as the player view sets it. While one
+// stands the table behind it dims; its portrait and words follow the capsule in (`TV_MOTION`)
 .atlas-player-turn-banner {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: $spacing-l;
+  inset: 0;
   display: flex;
+  align-items: center;
   justify-content: center;
+  padding: $spacing-l;
   pointer-events: none;
   z-index: $z-base;
+
+  // The dim is a layer that is always there and only fades: one that appeared with the banner made
+  // the TV's compositor rebuild its layers, which showed the picture brighter for a moment first
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 45%);
+    opacity: 0;
+    transition: opacity 450ms ease;
+    will-change: opacity;
+  }
+
+  &:has(.atlas-turn-banner:not(.atlas-turn-banner--leaving))::before,
+  &--dim::before {
+    opacity: 1;
+  }
+
+  .atlas-turn-banner {
+    zoom: var(--atlas-player-turn-banner-scale, 1);
+  }
+
+  // Its border flashes, then pulses as the players' list's turn does, fainter and fainter for as
+  // long as it stands: the pulse moves the opacity, the fade the filter's
+  .atlas-turn-banner::before {
+    animation:
+      atlas-turn-banner-flash 900ms ease-out both,
+      atlas-turn-banner-pulse 1.6s ease-in-out 900ms infinite,
+      atlas-turn-banner-fade var(--atlas-turn-banner-stand, 4s) linear both;
+  }
+
+  .atlas-turn-banner__portrait,
+  .atlas-turn-banner__icon {
+    animation: atlas-turn-banner-pop 500ms 120ms cubic-bezier(0.3, 1.6, 0.5, 1) both;
+  }
+
+  .atlas-turn-banner__text {
+    animation: atlas-turn-banner-words 450ms 220ms ease-out both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-turn-banner::before,
+    .atlas-turn-banner__portrait,
+    .atlas-turn-banner__icon,
+    .atlas-turn-banner__text {
+      animation: none;
+    }
+  }
+
+  // At a players' list (`turnBannerAnchors.ts`): a point on the list's box, turned as the list is, from which the
+  // banner hangs a little way off the list
+  &__anchor {
+    position: absolute;
+    left: var(--atlas-anchor-x);
+    top: var(--atlas-anchor-y);
+    width: 0;
+    height: 0;
+    rotate: var(--atlas-anchor-turn, 0deg);
+
+    .atlas-turn-banner {
+      position: absolute;
+      bottom: $spacing-l;
+      left: 0;
+      width: max-content;
+      max-width: 360px;
+      translate: -50% 0;
+    }
+
+    &[data-side='below'] .atlas-turn-banner {
+      top: $spacing-l;
+      bottom: auto;
+      transform-origin: 50% 0;
+    }
+
+    // Beside an upright column at the left or right edge, level with its middle, towards the table's middle
+    &[data-side='right'] .atlas-turn-banner,
+    &[data-side='left'] .atlas-turn-banner {
+      top: 0;
+      bottom: auto;
+      translate: 0 -50%;
+    }
+
+    &[data-side='right'] .atlas-turn-banner {
+      left: $spacing-l;
+      transform-origin: 0 50%;
+    }
+
+    &[data-side='left'] .atlas-turn-banner {
+      left: auto;
+      right: $spacing-l;
+      transform-origin: 100% 50%;
+    }
+  }
+}
+
+// A turn that dims the table (`turnDim`): the players' lists stand above the dim, lit, while their cards move on,
+// and until the dim has faded (`--lists-lit` outlasts `--dim` by the fade, `DIM_FADE_MS`)
+.atlas-player-initiative-container:has(~ .atlas-player-turn-banner--lists-lit) .atlas-player-initiative {
+  z-index: $z-base + 1;
 }

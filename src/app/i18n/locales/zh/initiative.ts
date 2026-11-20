@@ -36,8 +36,6 @@ export const initiative: Translation = {
   'initiative.defeated': '已击败',
   'initiative.delay': '延后回合',
   'initiative.delayed': '已延后',
-  'initiative.dockLeft': '停靠在左侧',
-  'initiative.dockLeftHint': '把先攻追踪和玩家的列表放到地图左边缘',
   'initiative.editNumber': '先攻 {value}，点击输入',
   'initiative.expand': '显示所有参战者',
   'initiative.fantasyDex': '敏捷',
