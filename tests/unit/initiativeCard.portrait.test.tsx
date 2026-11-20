@@ -38,19 +38,17 @@ function renderCard(token: Record<string, unknown>, shown: InitiativeEntry = ent
 }
 
 describe('InitiativeCard portrait', () => {
-  it('shows a token as the map does: its art inside its ring, in the ring\'s colour', () => {
+  it('fills the card with the token\'s art', () => {
     const card = renderCard({ ringColor: '#c0392b' });
 
-    expect(card.querySelector('.atlas-token-portrait')?.classList.contains('atlas-token-portrait--unframed')).toBe(false);
-    expect(card.querySelector<HTMLImageElement>('.atlas-token-portrait img')?.src).toBe('app://tokens/troll.webp');
-    expect(card.querySelector<HTMLElement>('.atlas-token-ring')?.style.getPropertyValue('--atlas-token-ring-color')).toBe('#c0392b');
+    expect(card.querySelector<HTMLImageElement>('.atlas-initiative-card__art img')?.src).toBe('app://tokens/troll.webp');
+    expect(card.querySelector('.atlas-initiative-card__art--framed')).toBeNull();
   });
 
-  it('shows a token without a ring unframed, with its whole art', () => {
+  it('crops the art of a token without a ring closer, so the frame it brings falls outside the card', () => {
     const card = renderCard({ showRing: false });
 
-    expect(card.querySelector('.atlas-token-portrait--unframed')).not.toBeNull();
-    expect(card.querySelector('.atlas-token-ring')).toBeNull();
+    expect(card.querySelector('.atlas-initiative-card__art--framed img')).not.toBeNull();
   });
 
   it('pulses its turn in the card\'s colour, else the ring\'s', () => {

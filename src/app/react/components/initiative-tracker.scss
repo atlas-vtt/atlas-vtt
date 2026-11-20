@@ -1,7 +1,8 @@
-// Initiative Tracker: a column of cards (portrait, number, bars, conditions) at the right
-// or left edge of the map, on the elevated surface the toolbar has
+// Initiative Tracker: a column of cards (the token's art, number, bars, conditions) at the right edge of the map, on
+// the elevated surface the toolbar has
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/mixins' as *;
+@use '../../../../styles/initiative-cards' as *;
 
 $tracker-width: 96px;
 // Wide enough for a name of two short words a line, which the portrait column alone is not
@@ -623,6 +624,197 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   line-height: 12px;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+// A count of the conditions a card leaves out, named by its tooltip; over the badge before it, as each lies over the one before
+.atlas-initiative-card__condition-more {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding-inline: 3px;
+  box-sizing: border-box;
+  border-radius: $radius-full;
+  background: var(--background-secondary);
+  box-shadow: 0 0 0 2px var(--background-primary), inset 0 0 0 1px var(--background-modifier-border);
+  color: var(--text-normal);
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+// The tracker's cards as the players' list draws them (`styles/_initiative-cards.scss`): square, filled with the
+// token's art, everything else in its corners, along its foot and peeking out below it. The compact list keeps its line.
+$tile-border: $border-width-s;
+$tile-corner-radius: initiative-corner-radius($tile-border);
+$condition-peek: 9px;
+
+.atlas-initiative-card--tile {
+  justify-content: flex-end;
+  align-items: stretch;
+  aspect-ratio: 1;
+  // Square whatever it holds
+  min-height: 0;
+  gap: $surface-inset;
+  padding: $surface-inset;
+  // As the players' cards: a whole pixel, which every screen draws as it is, so the corners stay concentric
+  border-width: $tile-border;
+
+  // The room its conditions peek into, below it
+  &:has(.atlas-initiative-card__conditions) {
+    margin-bottom: $condition-peek;
+  }
+
+  .atlas-initiative-card__art {
+    @include initiative-art($tile-border);
+  }
+
+  .atlas-initiative-card__art--framed {
+    @include initiative-art-framed;
+  }
+
+  // Stands in for a token without art, in the middle of the card
+  .atlas-initiative-card__avatar {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .atlas-initiative-card__defeated-overlay {
+    z-index: 1;
+    border-radius: calc(#{$radius-m} - #{$tile-border});
+  }
+
+  // Its look-alike's number and what the players do not see of it, down the left side from the top corner, clear of
+  // the number in the other
+  .atlas-initiative-card__marks {
+    position: absolute;
+    top: $surface-inset;
+    left: $surface-inset;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .atlas-initiative-card__instance-badge,
+  .atlas-initiative-card__hidden-badge,
+  .atlas-initiative-card__off-map-badge {
+    position: static;
+    border-radius: $tile-corner-radius;
+  }
+
+  // The number in the top right: a plate concentric with the card's corner, typed in place
+  .atlas-initiative-card__initiative,
+  .atlas-initiative-card__initiative-input,
+  .atlas-initiative-card__dealt {
+    position: absolute;
+    top: $surface-inset;
+    right: $surface-inset;
+    z-index: 2;
+  }
+
+  .atlas-initiative-card__initiative,
+  .atlas-initiative-card__initiative-input {
+    min-width: 24px;
+    border-radius: $tile-corner-radius;
+  }
+
+  .atlas-initiative-card__initiative:not(.atlas-initiative-card__initiative--empty) {
+    background: var(--background-primary);
+    border-color: var(--background-modifier-border);
+
+    &:hover {
+      background: var(--background-secondary);
+    }
+  }
+
+  // The bars of its resources along its foot: capsules concentric with the card's bottom corners
+  .atlas-initiative-card__resources {
+    position: relative;
+    z-index: 1;
+    gap: $surface-inset;
+  }
+
+  .atlas-initiative-card__hp-bar {
+    @include initiative-resource-capsule($tile-border);
+  }
+
+  .atlas-initiative-card__hp-meter {
+    height: 100%;
+    border-radius: inherit;
+    background: rgb(0 0 0 / 0.55);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
+  }
+
+  .atlas-initiative-card__hp-bar:hover .atlas-initiative-card__hp-meter {
+    background: rgb(0 0 0 / 0.4);
+  }
+
+  .atlas-initiative-card__hp-fill {
+    border-radius: inherit;
+  }
+
+  // Over the middle of its foot and its bars, peeking out below the card
+  .atlas-initiative-card__conditions {
+    position: absolute;
+    left: 50%;
+    bottom: calc(-1 * #{$condition-peek} - #{$tile-border});
+    z-index: 3;
+    flex-wrap: nowrap;
+    width: auto;
+    transform: translateX(-50%);
+  }
+
+  .atlas-initiative-card__condition {
+    border-radius: $radius-full;
+    box-shadow: 0 0 0 2px var(--background-primary);
+  }
+
+  // With a count after them they overlap a little, to stay inside the card
+  .atlas-initiative-card__conditions--stacked {
+    gap: 0;
+
+    > * + * {
+      margin-inline-start: -4px;
+    }
+  }
+
+  // Hidden from the players: translucent, like its token on the map
+  &.atlas-initiative-card--hidden .atlas-initiative-card__art {
+    opacity: 0.5;
+  }
+
+  // A side's frame and the turn's ring lie on the art, which covers the card's own border and inset shadow
+  &.atlas-initiative-card--coloured .atlas-initiative-card__art::after {
+    @include initiative-side-ring(var(--atlas-combatant-color));
+  }
+
+  &.atlas-initiative-card--ally .atlas-initiative-card__art::after {
+    @include initiative-side-ring(var(--color-green));
+  }
+
+  &.atlas-initiative-card--active .atlas-initiative-card__art::after,
+  .atlas-initiative-side--active &:not(.atlas-initiative-card--sitting-out) .atlas-initiative-card__art::after {
+    @include initiative-turn-ring(var(--atlas-turn-color, var(--interactive-accent)));
+  }
+}
+
+// The players' own side, framed in green as opponents are in their colour
+.atlas-initiative-card--ally {
+  border-color: var(--color-green);
+}
+
+// While someone holds the turn, everyone else's art steps back a little, so the turn stands out whatever its colour
+.atlas-initiative-tracker:has(.atlas-initiative-card--active, .atlas-initiative-side--active) .atlas-initiative-card--tile:not(.atlas-initiative-card--active) .atlas-initiative-card__art img {
+  filter: $initiative-art-dim;
+}
+
+.atlas-initiative-side--active .atlas-initiative-card--tile:not(.atlas-initiative-card--sitting-out) .atlas-initiative-card__art img {
+  filter: none;
 }
 
 // Note: Statblock preview styles are in statblock-hover-preview.scss (shared component)

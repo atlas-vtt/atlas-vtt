@@ -77,14 +77,23 @@ describe('the GM\'s initiative cards', () => {
     }
   });
 
-  it('keep the padding of a card and the gaps between its parts equal', async () => {
-    const card = (await show(false)).querySelector('.atlas-initiative-card')!;
-    const parts = [...card.children].filter((child) => getComputedStyle(child).display !== 'none').map(box);
-    const frame = box(card);
-    const border = parseFloat(getComputedStyle(card).borderTopWidth);
-    expect(parts[0]!.top - frame.top - border).toBeCloseTo(8, 0);
-    expect(frame.bottom - parts[parts.length - 1]!.bottom - border).toBeCloseTo(8, 0);
-    for (let i = 1; i < parts.length; i++) expect(parts[i]!.top - parts[i - 1]!.bottom).toBeCloseTo(8, 0);
+  it('are square, the number and the bar the same inset inside the border, concentric with its corners', async () => {
+    for (const card of (await show(false)).querySelectorAll('.atlas-initiative-card')) {
+      const frame = box(card);
+      expect(Math.abs(frame.width - frame.height)).toBeLessThan(0.5);
+      const border = parseFloat(getComputedStyle(card).borderTopWidth);
+      const inner = parseFloat(getComputedStyle(card).borderTopLeftRadius) - border;
+      const number = card.querySelector('.atlas-initiative-card__initiative')!;
+      expect(box(number).top - frame.top - border).toBeCloseTo(4, 0);
+      expect(frame.right - border - box(number).right).toBeCloseTo(4, 0);
+      expect(parseFloat(getComputedStyle(number).borderTopRightRadius)).toBeCloseTo(inner - 4, 1);
+      const bar = card.querySelector('.atlas-initiative-card__hp-bar');
+      if (!bar) continue;
+      expect(box(bar).left - frame.left - border).toBeCloseTo(4, 0);
+      expect(frame.right - border - box(bar).right).toBeCloseTo(4, 0);
+      expect(frame.bottom - border - box(bar).bottom).toBeCloseTo(4, 0);
+      expect(box(bar).height / 2).toBeCloseTo(inner - 4, 1);
+    }
   });
 
   it('show the number as a slot that turns into a field of the same size, an empty one framed, never Obsidian\'s button', async () => {
@@ -92,9 +101,9 @@ describe('the GM\'s initiative cards', () => {
     const [number, empty] = [...container.querySelectorAll<HTMLElement>('.atlas-initiative-card__initiative')];
     expect(box(number!).height).toBe(24);
     expect(getComputedStyle(number!).boxShadow).toBe('none');
-    // An empty slot is framed like a field, where a number only shows its frame under the pointer
-    expect(getComputedStyle(empty!).borderTopColor).not.toBe(getComputedStyle(number!).borderTopColor);
+    // An empty slot is a field asking for a number, where a number is a plate on the art
     expect(getComputedStyle(empty!).backgroundColor).not.toBe(getComputedStyle(number!).backgroundColor);
+    expect(getComputedStyle(empty!).color).not.toBe(getComputedStyle(number!).color);
 
     const before = box(number!);
     act(() => number!.click());
@@ -103,12 +112,11 @@ describe('the GM\'s initiative cards', () => {
     expect(box(field).top).toBeCloseTo(before.top, 0);
   });
 
-  it('draw the hit point bar 4px high in a taller target, centred', async () => {
+  it('draw the hit point bar as a capsule its whole target fills', async () => {
     const bar = (await show(false)).querySelector('.atlas-initiative-card__hp-bar')!;
     const meter = bar.querySelector('.atlas-initiative-card__hp-meter')!;
-    expect(box(bar).height).toBe(10);
-    expect(box(meter).height).toBe(4);
-    expect(box(meter).top - box(bar).top).toBeCloseTo(box(bar).bottom - box(meter).bottom, 1);
+    expect(box(meter).height).toBeCloseTo(box(bar).height, 1);
+    expect(parseFloat(getComputedStyle(meter).borderTopLeftRadius)).toBeGreaterThanOrEqual(box(bar).height / 2 - 0.5);
     expect(getComputedStyle(bar).boxShadow).toBe('none');
   });
 });

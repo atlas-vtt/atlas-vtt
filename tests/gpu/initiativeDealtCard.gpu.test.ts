@@ -56,21 +56,22 @@ describe('the card a combatant was dealt, on the GM\'s initiative cards', () => 
   beforeEach(() => document.head.append(style));
   afterEach(() => { style.remove(); document.body.innerHTML = ''; });
 
-  it(`keeps every card's padding and gaps equal and nothing outside it at 96 px`, async () => {
+  it('keeps every card square at 96 px, the card dealt in its top right corner and nothing outside it', async () => {
     const container = await show();
     expect(box(container.querySelector('.atlas-initiative-tracker')).width).toBe(96);
     const cards = [...container.querySelectorAll('.atlas-initiative-card')];
     expect(cards).toHaveLength(3);
     for (const card of cards) {
       const frame = box(card);
+      expect(Math.abs(frame.width - frame.height)).toBeLessThan(0.5);
       const border = parseFloat(getComputedStyle(card).borderTopWidth);
-      const parts = [...card.children].filter((child) => getComputedStyle(child).display !== 'none' && getComputedStyle(child).position !== 'absolute').map(box);
-      expect(parts[0]!.top - frame.top - border).toBeCloseTo(8, 0);
-      expect(frame.bottom - parts[parts.length - 1]!.bottom - border).toBeCloseTo(8, 0);
-      for (let i = 1; i < parts.length; i++) expect(parts[i]!.top - parts[i - 1]!.bottom).toBeCloseTo(8, 0);
-      for (const part of parts) {
-        expect(part.left).toBeGreaterThanOrEqual(frame.left);
-        expect(part.right).toBeLessThanOrEqual(frame.right);
+      const dealt = box(card.querySelector('.atlas-initiative-card__dealt'));
+      expect(dealt.top - frame.top - border).toBeCloseTo(4, 0);
+      expect(frame.right - border - dealt.right).toBeCloseTo(4, 0);
+      for (const part of card.querySelectorAll(':scope > *')) {
+        if (getComputedStyle(part).display === 'none' || part.classList.contains('atlas-initiative-card__conditions')) continue;
+        expect(box(part).left).toBeGreaterThanOrEqual(frame.left - 0.5);
+        expect(box(part).right).toBeLessThanOrEqual(frame.right + 0.5);
       }
     }
   });

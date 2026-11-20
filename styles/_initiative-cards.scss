@@ -1,0 +1,67 @@
+// The look both initiative lists give a combatant's card (the players' list, `player-initiative.scss`, and the GM's
+// tracker, `initiative-tracker.scss`): a square card filled with the token's art under a shade, the number and marks in
+// its top corners, the resources a capsule along its foot, the conditions peeking out below it.
+@use 'tokens' as *;
+
+/// The radius of what stands `$surface-inset` inside the border of a card (`$border` wide) in its corners: concentric
+/// with the card's `$radius-m`.
+@function initiative-corner-radius($border) {
+  @return calc(#{$radius-m} - #{$border} - #{$surface-inset});
+}
+
+/// How the art of everyone but the combatant whose turn it is steps back, so the turn stands out whatever its colour.
+$initiative-art-dim: brightness(0.72) saturate(0.8);
+
+/// The token's art filling a card inside its border (`$border` wide), under a shade at its top and foot that its
+/// corner plates and foot read on, fading into its sides. Its `::after` is the shade, and the side's and the turn's rings.
+@mixin initiative-art($border) {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: calc(#{$radius-m} - #{$border});
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background:
+      linear-gradient(to bottom, rgb(0 0 0 / 0.5), transparent 35%, transparent 50%, rgb(0 0 0 / 0.75)),
+      linear-gradient(to right, rgb(0 0 0 / 0.55), transparent 28%, transparent 72%, rgb(0 0 0 / 0.55)),
+      radial-gradient(ellipse 75% 85% at 50% 42%, transparent 55%, rgb(0 0 0 / 0.35));
+  }
+}
+
+/// Art that brings its own frame (a token without a ring on the map), cropped closer so the frame falls outside the card.
+@mixin initiative-art-framed {
+  img {
+    transform: scale(1.4);
+    transform-origin: 50% 45%;
+  }
+}
+
+/// A side's frame on the art (`initiative-art`'s `::after`): a ring inside the border, thick enough to read across a table.
+@mixin initiative-side-ring($color) {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, #{$color} 85%, transparent);
+}
+
+/// The turn's ring on the art: thicker than a side's and glowing inward, so it reads over any side's frame.
+@mixin initiative-turn-ring($color, $glow: 14px) {
+  box-shadow:
+    inset 0 0 0 3px #{$color},
+    inset 0 0 #{$glow} color-mix(in srgb, #{$color} 55%, transparent);
+}
+
+/// A resource along the card's foot, `$surface-inset` inside its border: a capsule whose ends run concentric with the
+/// card's bottom corners, so twice `initiative-corner-radius` high.
+@mixin initiative-resource-capsule($border) {
+  height: calc(2 * #{initiative-corner-radius($border)});
+  border-radius: $radius-full;
+}
