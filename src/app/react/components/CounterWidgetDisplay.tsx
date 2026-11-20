@@ -7,6 +7,7 @@ import { DEFAULT_COUNTER_COLOR, clampCounterValue, readCounterValue, stepCounter
 import { WidgetIconGlyph } from './WidgetIconGlyph';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { t } from '../../i18n';
+import { widgetMotionMark } from '../../initiative/motion/turnMotion';
 
 interface CounterWidgetDisplayProps {
   widget: CounterWidget;
@@ -75,6 +76,7 @@ export function CounterWidgetDisplay({
   return (
     <div
       className={widgetClasses}
+      {...widgetMotionMark(widget.id)}
       style={{ '--widget-color': color, '--pulse-intensity': pulseIntensity } as React.CSSProperties}
     >
       <div className="atlas-widget-icon-wrapper">

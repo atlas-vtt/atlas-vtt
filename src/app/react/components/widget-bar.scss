@@ -18,6 +18,14 @@ $widget-bar-offset: $spacing-s;
   transition: translate $transition-normal $transition-ease-out;
 }
 
+// While it leaves it takes no pointer: what lies under it is the map's again
+.atlas-widget-bar--leaving {
+  .atlas-widget,
+  .atlas-widget-stack-opener {
+    pointer-events: none;
+  }
+}
+
 // Lays the cards out without a panel of its own; only the cards catch the pointer,
 // so the gaps between them stay clickable on the map. Cards that do not fit in one
 // row wrap into more, right-aligned under the first.
