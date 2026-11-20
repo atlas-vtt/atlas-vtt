@@ -332,6 +332,8 @@ export class ImageDisplayService {
     const previous = this.detachImageDisplay();
 
     this.imageContainer = doc.body.createDiv({ cls: 'atlas-image-display' });
+    // The image's own colours behind it while the curtain hides the map (`image-display.scss`)
+    this.imageContainer.createEl('img', { cls: 'atlas-image-display__backdrop', attr: { src: imageUrl, alt: '', 'aria-hidden': 'true' } });
     // Turns with a table TV (the body's --atlas-tv-rotation); the close button stays on the window
     const turn = this.imageContainer.createDiv({ cls: 'atlas-image-display__turn' });
     this.imageStage = turn.createDiv({ cls: 'atlas-image-display__stage' });
