@@ -60,7 +60,7 @@ export interface FloorPositioningDeps {
   zoom: () => number;
   /**
    * Draws the floor the view shows with `placement` while it is moved, and nothing else (the map image alone, as the
-   * grid alignment's preview does); null draws it as the scene has it again.
+   * grid alignment's preview does; what stands on the map fades out); null draws it as the scene has it again.
    */
   preview: (placement: MapStretch | null) => void;
   /** A move reached the world's edge and stopped short of where it went (true), or did not. */

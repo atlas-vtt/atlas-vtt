@@ -53,6 +53,9 @@ import { LightingController } from './pixi/lighting/LightingController';
 import { settingsLightingQuality } from './pixi/lighting/settingsLightingQuality';
 import { createBelowLevelsHost, createRoofHost } from './pixi/lighting/belowLevelsHost';
 import { FloorGhost } from './pixi/levels/FloorGhost';
+import { MapContentsFade } from './pixi/levels/MapContentsFade';
+import { LIGHTING_Z_INDEX } from './pixi/lighting/LightingRenderer';
+import { prefersReducedMotion } from './utils/motion';
 import { ViewRoofs } from './pixi/roofs/ViewRoofs';
 import { ShownPlaces } from './lighting/shownPlaces';
 import type { SceneFrame } from './pixi/lighting/engine/types';
@@ -156,6 +159,8 @@ export class PixiRendererOrchestrator { // Renamed class
   private alignsLevelImage = false;
   /** Another floor's map, see-through, while the GM places the floor shown (`showFloorGhost`). */
   private floorGhost: FloorGhost | null = null;
+  /** What stands on the map, faded while a floor's map image is moved alone (`previewViewedPlacement`). */
+  private mapContentsFade: MapContentsFade | null = null;
   private obsApp: App;
   private eventBus: EventEmitter;
   private activeHoverLinkAnchorEl: HTMLElement | null = null;
@@ -840,10 +845,31 @@ export class PixiRendererOrchestrator { // Renamed class
   /**
    * Draws the floor the view shows with `placement` while the GM moves it (Position floor), the map
    * image alone: what covers the map keeps the scene's size until the move is written, as during an
-   * alignment's preview (`isPreviewingStretch`). Null draws it as the scene has it.
+   * alignment's preview (`isPreviewingStretch`). Everything else on the map fades out meanwhile and in
+   * again once it is drawn as the scene has it (null), so what moves with the floor is never seen jump.
    */
   public previewViewedPlacement(placement: MapStretch | null): void {
     this.mapImage?.setStretch(placement ?? viewedImagePlacement(this.store.getState()));
+    if (placement) this.fadeMapContents()?.out();
+    else this.mapContentsFade?.in();
+  }
+
+  private fadeMapContents(): MapContentsFade | null {
+    const viewport = this.viewport;
+    if (!viewport) return null;
+    this.mapContentsFade ??= new MapContentsFade({
+      viewport,
+      // The lighting and the fog stay: players see through the same stage, and must never see the map beneath them.
+      keeps: (layer) =>
+        layer === this.mapImage?.layer ||
+        layer === this.floorGhost?.layer ||
+        layer === this.gridSystem?.getGridSprite() ||
+        layer === this.fogRenderer?.layer ||
+        layer.zIndex === LIGHTING_Z_INDEX,
+      requestRender: () => requestRender(this.app),
+      reducedMotion: () => prefersReducedMotion(this.pixiAppManager.getCanvasElement()),
+    });
+    return this.mapContentsFade;
   }
 
   /**
@@ -1463,6 +1489,8 @@ export class PixiRendererOrchestrator { // Renamed class
     this.hexLinkInteraction?.destroy();
     this.hexLinkRenderer?.destroy();
     this.levelLinks?.destroy();
+    this.mapContentsFade?.destroy();
+    this.mapContentsFade = null;
     this.floorGhost?.destroy();
     this.floorGhost = null;
     this.mapFeatures?.destroy();

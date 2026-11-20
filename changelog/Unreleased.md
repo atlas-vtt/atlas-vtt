@@ -17,7 +17,7 @@
 
 - Line up the floors of a scene whose maps differ in size: drag a floor over the floor below, shown see-through, until stairs and walls meet
 - The floor moves by whole cells, so its grid stays lined up; hold Alt to place it freely, or use the arrow keys
-- Tokens, walls and lights on that floor move with it; every move is one undo step
+- Tokens, walls and lights on that floor move with it: they fade out while you drag and back in where the floor lands; every move is one undo step
 - Open it from a floor's row in Scene levels, the command palette, or the offer after adding a floor
 - Add level opens your Maps library to choose the new floor's map, with thumbnails, folders, tags and search; changing a floor's map or roof uses it too
 
