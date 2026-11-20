@@ -4,11 +4,13 @@
 
 @use '../../../../../styles/tokens' as *;
 
-// Mirrors the canvas badge (ConditionBadge.ts): a domed disc in the condition's colour lit from the upper
-// left, set in a thin gunmetal bezel with a dark keyline, resting on a soft shadow
+// Mirrors the canvas badge (ConditionBadge.ts, conditionBadgeMaterials.ts): a gem in the condition's colour
+// set in a silver bezel with a dark keyline and an inner groove, a glint on its upper left, shade under the
+// bezel's lip and light gathering in its lower edge, resting on a soft shadow
 .atlas-condition-badge {
-  --atlas-condition-bezel: max(1px, calc(var(--atlas-condition-size, 16px) * 0.046));
+  --atlas-condition-bezel: max(1px, calc(var(--atlas-condition-size, 16px) * 0.033));
   --atlas-condition-drop: calc(var(--atlas-condition-size, 16px) * 0.03);
+  --atlas-condition-silver: linear-gradient(to bottom, #d4d4dc, #9a9aa5 30%, #55555f 62%, #2c2c33);
   position: relative;
   box-sizing: border-box;
   width: var(--atlas-condition-size, 16px);
@@ -25,18 +27,27 @@
   line-height: 1;
   text-shadow: 0 var(--atlas-condition-drop) 0 rgba(0, 0, 0, 0.4);
   background:
-    radial-gradient(
-        120% 120% at 40% 28%,
-        color-mix(in srgb, var(--atlas-condition-color), #fff 24%),
-        var(--atlas-condition-color) 40%,
-        color-mix(in srgb, var(--atlas-condition-color), #0b0b0e 14%) 80%
+    radial-gradient(42% 22% at 32% 22%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0)) padding-box,
+    linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.16),
+        rgba(0, 0, 0, 0) 20%,
+        transparent 68%,
+        color-mix(in srgb, var(--atlas-condition-color), #fff 60%) 160%
       )
       padding-box,
-    linear-gradient(to bottom, #6a6a74, #2e2e35 50%, #141418) border-box;
+    radial-gradient(
+        120% 120% at 38% 26%,
+        color-mix(in srgb, var(--atlas-condition-color), #fff 30%),
+        var(--atlas-condition-color) 42%,
+        color-mix(in srgb, var(--atlas-condition-color), #0b0b0e 8%) 80%
+      )
+      padding-box,
+    var(--atlas-condition-silver) border-box;
   box-shadow:
     0 0 0 0.5px rgba(11, 11, 14, 0.85),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    inset 0 0 0 0.5px rgba(11, 11, 14, 0.78),
+    inset 0 0 calc(var(--atlas-condition-size, 16px) * 0.1) rgba(0, 0, 0, 0.3),
     0 1px 3px rgba(0, 0, 0, 0.45);
 
   svg {
@@ -55,7 +66,7 @@
   }
 }
 
-// A valued condition's number, in a small graphite disc in the same bezel over the badge's lower right, as on the map
+// A valued condition's number, in a small graphite gem in the same bezel over the badge's lower right, as on the map
 .atlas-condition-badge__value {
   position: absolute;
   // Overhangs the disc by less than the gap between badges, so it never touches the next one
@@ -71,9 +82,11 @@
   border: var(--atlas-condition-bezel) solid transparent;
   border-radius: $radius-full;
   background:
-    radial-gradient(120% 120% at 40% 28%, #46464f, #26262d 40%, #202026 80%) padding-box,
-    linear-gradient(to bottom, #6a6a74, #2e2e35 50%, #141418) border-box;
-  box-shadow: 0 0 0 0.5px rgba(11, 11, 14, 0.85);
+    radial-gradient(120% 120% at 38% 26%, #4e4e57, #2a2a31 42%, #26262c 80%) padding-box,
+    var(--atlas-condition-silver) border-box;
+  box-shadow:
+    0 0 0 0.5px rgba(11, 11, 14, 0.85),
+    inset 0 0 0 0.5px rgba(11, 11, 14, 0.78);
   color: #fff;
   font-size: max(8px, calc(var(--atlas-condition-size, 16px) * 0.44));
   font-variant-numeric: tabular-nums;
