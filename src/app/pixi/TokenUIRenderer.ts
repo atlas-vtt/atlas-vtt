@@ -635,6 +635,7 @@ export class TokenUIRenderer {
   private layoutUIScale(): void {
     const state = this.store?.getState();
     const gridSize = state?.grid?.size ?? 70;
+    const ringScale = state?.tokenSettings?.tokenRingSize ?? 1;
     const resting = restingTokenUIScale(gridSize);
     const scale = resting + (this.selectedScale() - resting) * this.emphasis.value;
     this.belowToken.scale.set(scale);
@@ -643,7 +644,7 @@ export class TokenUIRenderer {
     const anchor = wheelAnchor({
       spriteSize: this.currentTokenSize,
       gridSize,
-      ringScale: state?.tokenSettings?.tokenRingSize ?? 1,
+      ringScale,
       uiScale: scale,
       barsBottom: this.barsBottom(),
       barButtons: this.barButtonRoom.value,
@@ -652,12 +653,15 @@ export class TokenUIRenderer {
     });
     this.besideToken.position.set(anchor.x, anchor.y);
     this.leftOfToken.position.set(-anchor.x, anchor.y);
-    // The chip grows with the token, like the badges on the ring it stands clear of and the rotate
-    // button it rises over while the token is selected, so it keeps its place on any token
+    // The chip grows with the token, like the badges on the ring and the rotate button it rises over
+    // while the token is selected. At rest it sits on the ring's outer edge, above its badges where
+    // the token has conditions (they fan out up to the top)
     const tokenScale = tokenUIScale(this.currentTokenSize);
-    const badgeReach = (CONDITION_BADGE_RADIUS + 1) * tokenScale;
+    const restingReach = (this.currentToken?.conditions?.length ?? 0) > 0
+      ? (CONDITION_BADGE_RADIUS + 1) * tokenScale
+      : (computeTokenStrokeWidth(gridSize) * ringScale) / 2;
     const handleReach = (RESIZE_HANDLE_SIZE / 2) * tokenScale;
-    this.heightChip.place(this.ringRadius(), tokenScale, badgeReach + this.emphasis.value * Math.max(0, handleReach - badgeReach));
+    this.heightChip.place(this.ringRadius(), tokenScale, restingReach + this.emphasis.value * Math.max(0, handleReach - restingReach));
     this.heightChip.setResolution(tokenTextResolution(tokenScale));
     // A selected token's text keeps a constant screen size, which the resting resolution covers
     this.setTextResolution(tokenTextResolution(resting));
@@ -725,10 +729,12 @@ export class TokenUIRenderer {
     this.leftOfToken.visible = visible;
   }
 
-  /** Bar numbers and wheels show together, on hover and selection; wheels at rest show always. */
+  /** Bar numbers, wheels and the height chip show on hover and selection; wheels and chip at rest always. */
   private setRevealAlpha(alpha: number): void {
     this.resources.setTextAlpha(alpha);
-    this.wheels.setAlpha(this.wheelsAtRest ? 1 : alpha);
+    const wheelAlpha = this.wheelsAtRest ? 1 : alpha;
+    this.wheels.setAlpha(wheelAlpha);
+    this.heightChip.view.alpha = wheelAlpha;
   }
 
   private updateTextVisibility(): void {

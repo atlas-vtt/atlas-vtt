@@ -15,6 +15,8 @@ const SPRITE = computeTokenPixelSize(70, 1);
 const RING = getTokenRingCenterRadius(SPRITE, 4, 1);
 /** How far a condition badge on the ring reaches from the ring's middle, with its bezel, on a 70 px grid. */
 const BADGE_REACH = CONDITION_BADGE_RADIUS + 1;
+/** How far the ring's band reaches past its middle: half the grid stroke on a 70 px grid. */
+const BAND = 2;
 /** Where the pill's lower edge lies, in world units from the token's centre. */
 const lowerEdge = (chip: Container): number => chip.position.y + (NAMEPLATE_HEIGHT / 2) * chip.scale.y;
 
@@ -53,8 +55,12 @@ describe('the height chip of a token', () => {
     expect(chip().visible).toBe(true);
     expect(made.getContainer().visible).toBe(true);
     expect(text()).toBe('↑ 30ft');
-    // Its lower edge clears a condition badge on the top of the ring, by less than a badge.
+    // It sits on the ring's outer edge
     expect(chip().position.x).toBe(0);
+    expect(lowerEdge(chip())).toBeLessThan(-(RING + BAND));
+    expect(lowerEdge(chip())).toBeGreaterThan(-(RING + BAND + 4));
+    // With conditions, whose badges fan out up to the top, its lower edge clears them
+    made.update(flier({ conditions: ['poisoned'] }), SPRITE);
     expect(lowerEdge(chip())).toBeLessThan(-(RING + BADGE_REACH));
     expect(lowerEdge(chip())).toBeGreaterThan(-(RING + BADGE_REACH + 4));
 
@@ -124,7 +130,7 @@ describe('the height chip of a token', () => {
     expect(lowerEdge(chip())).toBeLessThan(-(RING + RESIZE_HANDLE_SIZE / 2));
     expect(lowerEdge(chip())).toBeGreaterThan(-(RING + RESIZE_HANDLE_SIZE / 2 + 4));
     made.setSelectionState(false);
-    expect(lowerEdge(chip())).toBeGreaterThan(-(RING + BADGE_REACH + 4));
+    expect(lowerEdge(chip())).toBeGreaterThan(-(RING + BAND + 4));
   });
 
   it('grows with its token and keeps its place over a larger token\'s ring', () => {
@@ -136,8 +142,21 @@ describe('the height chip of a token', () => {
     const ring = getTokenRingCenterRadius(large, 4, 1);
     made.update(flier(), large);
     expect(chip().scale.x).toBeCloseTo(3 * medium);
+    made.update(flier({ conditions: ['poisoned'] }), large);
     expect(lowerEdge(chip())).toBeLessThan(-(ring + 3 * BADGE_REACH));
     expect(lowerEdge(chip())).toBeGreaterThan(-(ring + 3 * (BADGE_REACH + 4)));
+  });
+
+  it('shows only while its token is hovered or selected, like the wheels', async () => {
+    const { ui: made, chip } = renderer();
+    made.update(flier(), SPRITE);
+    expect(chip().alpha).toBe(0);
+    made.setHoverState(true);
+    await vi.waitFor(() => expect(chip().alpha).toBe(1));
+    made.setHoverState(false);
+    await vi.waitFor(() => expect(chip().alpha).toBe(0));
+    made.setSelectionState(true);
+    await vi.waitFor(() => expect(chip().alpha).toBe(1));
   });
 
   it('is hidden while its token is resized or turned', () => {

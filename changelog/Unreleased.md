@@ -72,6 +72,7 @@
 - Players' measurements come and go the same way on your map, and one they move glides there
 - Kept cones, squares and lines have a turn handle next to their end: drag it to rotate the measurement without changing its size. Contributed by aryistia
 - A token's condition badges, its height and the badge that marks a token your players can't see grow with the token, like its resize and rotate buttons, so they stay in proportion and in place on large creatures
+- A token's height shows only while you hover or select it, like the resource wheels, and sits right on top of the token
 - On smaller screens the Sound page gives its list of music and ambience more room: the moods keep one column beside it, and a lone mood no longer stretches into a wide bar
 
 ## Fixed
