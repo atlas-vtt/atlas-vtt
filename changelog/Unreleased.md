@@ -4,4 +4,4 @@
 
 ## New
 
-- Kept cones, squares, lines and rulers have a turn handle beyond their end: drag it to rotate the measurement without changing its size
+- Kept cones, squares and lines have a turn handle next to their end: drag it to rotate the measurement without changing its size
