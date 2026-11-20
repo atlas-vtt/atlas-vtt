@@ -37,6 +37,9 @@ export function renderPlayerCard(parent: HTMLElement, { entry, token }: Combatan
   // Players read hit points as the GM's card shows them: red rising in the art (`woundShare`), where they may see them
   const wound = token.hp ? woundShare([{ definition: { direction: 'drains' }, value: token.hp }]) : null;
   const art = src ? renderArt(card, src, name === entry.name ? name : '', token.showRing, wound) : null;
+  // Its art alone, where the image has transparent margins (a token cropped zoomed out), as the GM's card shows it
+  const img = art?.querySelector('img');
+  if (img) look.artViewBox?.(entry.imagePath, (viewBox) => img.style.setProperty('--atlas-art-view-box', viewBox));
   const badge = entry.tokenId === undefined ? null : look.badgeNumber?.(entry.tokenId) ?? null;
   if (badge !== null) card.createSpan({ cls: 'atlas-player-initiative__badge', text: String(badge) });
   if (token.defeated) renderDefeated(card, art !== null);

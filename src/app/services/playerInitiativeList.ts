@@ -74,6 +74,8 @@ export interface PlayerInitiativeLook {
   mapShowsNameplates: boolean;
   /** The address of an entry's portrait, or null to draw none. */
   portraitSrc(imagePath: string): string | null;
+  /** Hands `apply` the `object-view-box` that shows a portrait's art without its transparent margins (`withArtViewBox`). */
+  artViewBox?(imagePath: string, apply: (viewBox: string) => void): void;
   /** The number a combatant's badge shows the players on the map, which tells look-alikes apart; null for none. */
   badgeNumber?(tokenId: string): number | null;
   /** The GM's choice: during a fight the list starts at the turn and runs on into the next round. */

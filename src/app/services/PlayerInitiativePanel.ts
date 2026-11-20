@@ -13,6 +13,7 @@ import { PlayerSceneOverlay, type PlayerSettings } from './PlayerSceneOverlay';
 import type { SettingsService } from './SettingsService';
 import type { InitiativeLayout } from '../initiative/initiativeLayout';
 import { portraitSrc } from '../utils/portraitSrc';
+import { withArtViewBox } from '../initiative/art/artInset';
 import { glideHeight, outwardOf, settle } from './playerInitiativeMotion';
 import { adoptGhosts, ghostsOf, playTurnMotion, snapshotTurn } from '../initiative/motion/turnMotion';
 import { enterList, exitList, LIST_ARRIVAL_MS } from '../initiative/motion/listPresence';
@@ -237,6 +238,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
         maxCards,
         badgeNumber: (tokenId) => shown.get(tokenId) ?? null,
         portraitSrc: (imagePath) => portraitSrc(this.app, imagePath),
+        artViewBox: (imagePath, apply) => withArtViewBox(this.app, imagePath, apply),
       });
       if (!panel) continue;
       this.drawnPanels.push(panel);

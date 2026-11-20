@@ -91,7 +91,7 @@ describe('turn colours', () => {
 });
 
 describe('the players\' list', () => {
-  const draw = (look: { pulse?: boolean; showNames?: boolean; turnFlash?: number }, entries: PlayerInitiativeEntry[]): HTMLElement => {
+  const draw = (look: { pulse?: boolean; showNames?: boolean; turnFlash?: number; artViewBox?: (imagePath: string, apply: (viewBox: string) => void) => void }, entries: PlayerInitiativeEntry[]): HTMLElement => {
     document.body.empty();
     const list = playerInitiativeList({ entries, isActive: true, round: 1 }, () => ({ hp: null, showRing: false, side: 'opponents', defeated: false }), TURN_ORDER, false);
     renderPlayerInitiative(document.body, list, { showNames: false, portraitSrc: () => 'art.webp', ...look });
@@ -110,6 +110,13 @@ describe('the players\' list', () => {
     expect(flashing[0]?.classList.contains('atlas-player-initiative__card--active')).toBe(true);
     expect(flashing[0]?.style.getPropertyValue('--atlas-turn-flash-delay')).toBe('-300ms');
     expect(draw({}, [entry({ tokenId: 'a', isActive: true })]).querySelector('.atlas-player-initiative__card--turn-flash')).toBeNull();
+  });
+
+  it('shows a portrait\'s art without the transparent margins its image has, as the GM\'s card does', () => {
+    const asked: string[] = [];
+    const panel = draw({ artViewBox: (imagePath, apply) => { asked.push(imagePath); apply('inset(10.00% 20.00% 10.00% 20.00%)'); } }, [entry({ tokenId: 'a', imagePath: 'a.webp' })]);
+    expect(asked).toEqual(['a.webp']);
+    expect(panel.querySelector<HTMLElement>('.atlas-player-initiative__art img')?.style.getPropertyValue('--atlas-art-view-box')).toBe('inset(10.00% 20.00% 10.00% 20.00%)');
   });
 
   it('keeps the size between 1 and the largest', () => {
