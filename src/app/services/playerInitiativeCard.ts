@@ -1,10 +1,9 @@
-import { setIcon } from 'obsidian';
 import { TURN_KEY_ATTRIBUTE } from '../initiative/motion/turnMotion';
 import { turnColor } from '../initiative/turnColor';
 import { nameShownToPlayers } from '../pixi/token-renderer/nameplateVisibility';
 import { woundShare } from '../initiative/woundShare';
 import { t } from '../i18n';
-import type { Combatant, PlayerInitiativeLook } from './playerInitiativeList';
+import type { Combatant, PlayerCardIcon, PlayerInitiativeLook } from './playerInitiativeList';
 
 /**
  * One combatant of the players' list, drawn as the GM's tracker draws a tile (`InitiativeCard`, `initiative-panel.scss`)
@@ -40,8 +39,8 @@ export function renderPlayerCard(parent: HTMLElement, { entry, token }: Combatan
   // The art says who it is; a card without art (an enemy added by name, a player without a picture) has nothing but
   // its name to tell it apart, where the GM shows it, else the GM's stand-in. Conditions and resources show on the tokens
   const shownName = art ? null : name ?? (entry.tokenId === undefined ? entry.name : null);
-  if (!art && shownName === null) setIcon(card.createDiv({ cls: 'atlas-initiative-card__avatar' }), entry.isNPC ? 'bot' : 'user');
-  if (token.defeated) renderDefeated(card);
+  if (!art && shownName === null) drawIcon(card.createDiv({ cls: 'atlas-initiative-card__avatar' }), entry.isNPC ? 'bot' : 'user', look);
+  if (token.defeated) renderDefeated(card, look);
   const badge = entry.tokenId === undefined ? null : look.badgeNumber?.(entry.tokenId) ?? null;
   if (badge !== null) card.createSpan({ cls: 'atlas-initiative-card__marks' }).createSpan({ cls: 'atlas-initiative-card__instance-badge', text: String(badge) });
   if (shownName !== null) card.createSpan({ cls: 'atlas-initiative-card__name', text: shownName });
@@ -57,7 +56,12 @@ function renderArt(card: HTMLElement, src: string, alt: string, ringed: boolean,
 }
 
 /** The GM card's skull over a defeated combatant; the card is dimmed with it. */
-function renderDefeated(card: HTMLElement): void {
+function renderDefeated(card: HTMLElement, look: PlayerInitiativeLook): void {
   card.addClass('atlas-initiative-card--defeated');
-  setIcon(card.createDiv({ cls: 'atlas-initiative-card__defeated-overlay', attr: { role: 'img', 'aria-label': t('playerInit.defeated') } }), 'skull');
+  drawIcon(card.createDiv({ cls: 'atlas-initiative-card__defeated-overlay', attr: { role: 'img', 'aria-label': t('playerInit.defeated') } }), 'skull', look);
+}
+
+/** One of the card's icons, drawn by whoever draws the list (`PlayerInitiativeLook.icon`); its place stays where none is drawn. */
+function drawIcon(parent: HTMLElement, name: PlayerCardIcon, look: PlayerInitiativeLook): void {
+  look.icon?.(parent, name);
 }
