@@ -50,7 +50,7 @@ vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (storeState: typeof state) => unknown) => selector(state),
   useViewStoreHook: () => ({ getState: () => state }),
 }));
-const layout = vi.hoisted(() => ({ fromTurn: false, dock: 'right' as 'left' | 'right', collapsed: false, set: vi.fn() }));
+const layout = vi.hoisted(() => ({ fromTurn: false, dock: 'right' as 'right' | 'top' | 'bottom', collapsed: false, set: vi.fn() }));
 vi.mock('../../src/app/initiative/useInitiativeLayout', () => ({
   useInitiativeLayout: () => ({ layout: { fromTurn: layout.fromTurn, dock: layout.dock, edges: [layout.dock], facesPlayers: false, collapsed: layout.collapsed }, setLayout: layout.set }),
 }));

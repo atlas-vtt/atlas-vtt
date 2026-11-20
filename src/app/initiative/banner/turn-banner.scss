@@ -265,20 +265,11 @@ $turn-banner-title-width: 240px;
       transform-origin: 50% 0;
     }
 
-    // Beside an upright column at the left or right edge, level with its middle, towards the table's middle
-    &[data-side='right'] .atlas-turn-banner,
+    // Beside an upright column at the right edge, level with its middle, towards the table's middle
     &[data-side='left'] .atlas-turn-banner {
       top: 0;
       bottom: auto;
       translate: 0 -50%;
-    }
-
-    &[data-side='right'] .atlas-turn-banner {
-      left: $spacing-l;
-      transform-origin: 0 50%;
-    }
-
-    &[data-side='left'] .atlas-turn-banner {
       left: auto;
       right: $spacing-l;
       transform-origin: 100% 50%;

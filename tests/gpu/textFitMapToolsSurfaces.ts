@@ -270,7 +270,7 @@ const entryOf = (tokenId: string, order: number, initiative: number): Initiative
 async function initiative(check: Check): Promise<void> {
   for (const names of [false, true]) {
     const { app, settings } = appWithSettings();
-    settings.setInitiativeNames(names);
+    settings.setCompactInitiative(names);
     const store = mapStore(app, 'initiative');
     store.setState({
       initiativeTrackerOpen: true,

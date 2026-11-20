@@ -15,8 +15,6 @@ export const lpv = {
   'lpv.view4k': 'Render up to 4K',
   'lpv.view4kHint': 'A 4K TV or an ultrawide gets a rendered pixel for every pixel of its screen instead of an upscaled 1440p picture, at up to 2.25 times the graphics work for the player view. This device only.',
   'lpv.showInitiative': 'Show initiative panel',
-  'lpv.initiativeNames': 'Show names in initiative',
-  'lpv.initiativeNamesHint': 'Names stand under the portraits even where the tokens show no nameplates.',
   'lpv.initiativePulse': 'Pulse the turn\'s border',
   'lpv.initiativePulseHint': 'The border of the combatant whose turn it is pulses instead of standing still.',
   'lpv.initiativeScale': 'Initiative size',

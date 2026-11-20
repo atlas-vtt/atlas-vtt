@@ -52,11 +52,6 @@ describe('the players\' list that starts at the turn', () => {
     expect(draw(last, { fromTurn: true }, ['c']).words).toEqual(['a', 'b']);
   });
 
-  it('stands at the edge the GM docked the lists at', () => {
-    expect(draw(fight, { dock: 'left' }).panel.classList.contains('atlas-player-initiative--left')).toBe(true);
-    expect(draw(fight).panel.classList.contains('atlas-player-initiative--left')).toBe(false);
-  });
-
   it('runs as a row across the top or the bottom, scrolling sideways to the turn', () => {
     for (const dock of ['top', 'bottom'] as const) {
       scrolls.calls.length = 0;
@@ -66,7 +61,7 @@ describe('the players\' list that starts at the turn', () => {
   });
 
   it('turns a row to face the players at its edge, scrolling along its own axis', () => {
-    for (const dock of ['top', 'right', 'bottom', 'left'] as const) {
+    for (const dock of ['top', 'right', 'bottom'] as const) {
       scrolls.calls.length = 0;
       const { classList } = draw(fight, { dock, faces: true }).panel;
       expect([...classList].filter((name) => name.startsWith('atlas-player-initiative--'))).toEqual(['atlas-player-initiative--bottom', `atlas-player-initiative--faces-${dock}`]);

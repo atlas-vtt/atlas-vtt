@@ -11,6 +11,7 @@ import { defeatedCombatants } from '../../initiative/defeated';
 import { shownItems } from '../../initiative/listSegments';
 import { trackerSegments } from '../../initiative/trackerSegments';
 import { useInitiativeLayout } from '../../initiative/useInitiativeLayout';
+import { PLAYERS_LIST_SHAPES, playersListShape } from '../../initiative/initiativeLayout';
 import { useMapResources } from '../../resources/useMapResources';
 import { useInitiativeTokenSync } from '../../initiative/useInitiativeTokenSync';
 import { missingPartyEntries } from '../../initiative/party';
@@ -43,24 +44,20 @@ import './initiative-tracker-compact.scss';
  * Initiative Tracker Panel
  * Modern minimal design with floating cards. The GM chooses the combatants from the token menu;
  * the players' list (`PlayerInitiativePanel`) shows the same ones, without those whose token is hidden.
- * The collection's initiative rules decide whether they act in turn order or by sides. The GM
- * docks it at either edge, lets the list start at the turn and collapses it to the next combatants
+ * The collection's initiative rules decide whether they act in turn order or by sides. It stands at
+ * the right edge; the GM lets the list start at the turn and collapses it to the next combatants
  * (`useInitiativeLayout`).
  */
 export const InitiativeTracker: React.FC = () => {
   const { app, view } = useAtlasUI();
   const settings = useAtlasSettings();
   const compact = settings?.showsCompactInitiative() ?? false;
-  // The compact list is all names
-  const showNames = compact || (settings?.showsInitiativeNames() ?? false);
   const { layout, setLayout } = useInitiativeLayout();
-  // Popups and tooltips open away from the edge the tracker stands at
-  const inward = layout.gmDock === 'left' ? 'right' : 'left';
+  // The tracker stands at the right edge: popups and tooltips open to its left
+  const inward = 'left';
 
   // Store state
   const isOpen = useAtlasStore((s) => s.initiativeTrackerOpen);
-  // The dice log opens at the left edge: a tracker docked there moves beside it
-  const diceLogOpen = useAtlasStore((s) => s.isDiceLogOpen);
   const initiative = useAtlasStore((s) => s.initiative);
   const tokens = useAtlasStore((s) => s.objects?.tokens) || {};
   const mapPath = useAtlasStore((s) => s.mapPath);
@@ -167,18 +164,19 @@ export const InitiativeTracker: React.FC = () => {
     const rect = button.getBoundingClientRect();
     const entries = initiativeTrackerOptions(
       // Cards keep the order they were dealt in, so the Auto sort switch is disabled there as by sides
-      { autoSort: initiative.config.autoSort, bySides: bySides || byCards, empty: initiative.entries.length === 0, showNames, compact, fromTurn: layout.fromTurn, dock: layout.dock, gmDock: layout.gmDock,
-        playersList: () => settings?.initiativeLayout() ?? layout,
-        ...(settings && { subscribeSettings: (onChange: () => void) => settings.onChange(onChange) }),
+      { autoSort: initiative.config.autoSort, bySides: bySides || byCards, empty: initiative.entries.length === 0, compact, fromTurn: layout.fromTurn,
+        playersList: playersListShape(layout),
+        // Adds the players at the table; with none to add, opens the collection's party to set it up
+        party: collectionId === null ? null : {
+          label: party.length === 0 ? t('initiative.partySetUp') : missingParty.length > 0 ? t('initiative.partyAdd') : t('initiative.partyEdit'),
+          onClick: () => (missingParty.length > 0 ? missingParty.forEach((entry) => addToInitiative(entry)) : setPartySettingsOpen(true)),
+        },
         turn: settings?.initiativeTurnOptions() ?? DEFAULT_TURN_OPTIONS, online: settings?.isExperimentalOn('onlinePlay') ?? false },
       {
         setAutoSort: (autoSort) => setInitiativeConfig({ autoSort }),
-        setShowNames: (on) => settings?.setInitiativeNames(on),
         setCompact: (on) => settings?.setCompactInitiative(on),
         setFromTurn: (fromTurn) => setLayout({ fromTurn }),
-        setEdges: (edges) => setLayout({ edges }),
-        setFacesPlayers: (facesPlayers) => setLayout({ facesPlayers }),
-        setGmDock: (gmDock) => setLayout({ gmDock }),
+        setPlayersList: (shape) => setLayout(PLAYERS_LIST_SHAPES[shape]),
         setTurn: (changes) => settings?.setInitiativeTurnOptions(changes),
         clear: () => clearCombatants(store),
         resetNumbers: () => store.getState().resetInitiativeNumbers(),
@@ -215,7 +213,7 @@ export const InitiativeTracker: React.FC = () => {
       index={placeOf.get(entry.id) ?? 0}
       bySides={bySides}
       byCards={byCards}
-      showName={showNames}
+      showName={compact}
       compact={compact}
       tooltipSide={inward}
       isEditingNumber={numberEditing.editingId === entry.id}
@@ -233,10 +231,8 @@ export const InitiativeTracker: React.FC = () => {
 
   const trackerClasses = [
     'atlas-initiative-tracker',
-    showNames && 'atlas-initiative-tracker--named',
-    compact && 'atlas-initiative-tracker--compact',
-    layout.gmDock === 'left' && 'atlas-initiative-tracker--left',
-    layout.gmDock === 'left' && diceLogOpen && 'atlas-initiative-tracker--beside-log',
+    // The compact list is all names
+    compact && 'atlas-initiative-tracker--named atlas-initiative-tracker--compact',
     layout.collapsed && 'atlas-initiative-tracker--collapsed',
   ].filter(Boolean).join(' ');
 
@@ -256,11 +252,6 @@ export const InitiativeTracker: React.FC = () => {
         onEnd={endCombat}
         onOptions={openOptions}
         onToggleCollapsed={() => setLayout({ collapsed: !layout.collapsed })}
-        // Adds the players at the table; with none to add, opens the collection's party to set it up
-        party={collectionId === null ? null : {
-          label: party.length === 0 ? t('initiative.partySetUp') : missingParty.length > 0 ? t('initiative.partyAdd') : t('initiative.partyEdit'),
-          onClick: () => (missingParty.length > 0 ? missingParty.forEach((entry) => addToInitiative(entry)) : setPartySettingsOpen(true)),
-        }}
       />
 
       {/* The combatants, in the order the list shows them */}

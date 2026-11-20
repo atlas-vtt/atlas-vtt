@@ -73,10 +73,10 @@ function fightMotion(move: FightMove, lift: { x: number; y: number }, at: Banner
         ? { duration: LIST_SLIDE_MS, delay: FIGHT_INTRO_HOLD_MS, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)', fill: 'backwards' }
         : { duration: LIST_LEAVE_MS, delay: FIGHT_INTRO_HOLD_MS, easing: LIST_LEAVE_EASING, fill: 'forwards' };
       // Where the banner rests beside its anchor (`turn-banner.scss`), and where it stands centred on the list's middle
-      const beside = at.side === 'right' || at.side === 'left';
+      const beside = at.side === 'left';
       const rest = beside ? '0 -50%' : '-50% 0';
       const onList = beside
-        ? `${at.side === 'right' ? `calc(-50% - ${ANCHOR_GAP_PX}px)` : `calc(50% + ${ANCHOR_GAP_PX}px)`} -50%`
+        ? `calc(50% + ${ANCHOR_GAP_PX}px) -50%`
         : `-50% ${at.side === 'above' ? `calc(50% + ${ANCHOR_GAP_PX}px)` : `calc(-50% - ${ANCHOR_GAP_PX}px)`}`;
       const inList = [[{ translate: `${lift.x}px ${lift.y}px` }, { translate: onList }], [{ translate: '0 0' }, { translate: rest }]] as const;
       const [from, to] = move === 'start' ? inList : [inList[1], inList[0]];
@@ -159,7 +159,7 @@ export class PlayerTurnBanner implements PlayerOverlay {
     lists.forEach((list, index) => {
       const edge = list.dataset.edge as PlayersListEdge;
       // Measured in the overlays' own frame, which a table TV turns
-      const box = listBox(list, host, facesPlayers && (edge === 'left' || edge === 'right'));
+      const box = listBox(list, host, facesPlayers && edge === 'right');
       const at = bannerAnchor(box, edge, facesPlayers);
       const motion = fight ? fightMotion(fight, liftOf(box, at), at) : TV_MOTION;
       const anchor = host.createDiv({ cls: 'atlas-player-turn-banner__anchor', attr: { 'data-side': at.side, 'data-align': at.align } });
@@ -248,8 +248,8 @@ export class PlayerTurnBanner implements PlayerOverlay {
   private look(state: ViewAtlasState): void {
     const localPlayerView = this.settings.getLocalPlayerViewSettings();
     // Names as the players' list shows them
-    const showNames = localPlayerView.showTokenNameplates || localPlayerView.showInitiativeNames;
-    const mapShowsNameplates = localPlayerView.showInitiativeNames || (state.tokenSettings?.showNameplates ?? false);
+    const showNames = localPlayerView.showTokenNameplates;
+    const mapShowsNameplates = state.tokenSettings?.showNameplates ?? false;
     const banner = this.watch.next(state, { kind: 'players', showNames, mapShowsNameplates });
     const change = this.fights.next(state);
     const shown = localPlayerView.showInitiative && state.initiativeTrackerOpen && this.settings.initiativeTurnOptions().banner;

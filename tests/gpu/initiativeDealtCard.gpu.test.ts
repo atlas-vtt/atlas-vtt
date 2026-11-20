@@ -7,7 +7,6 @@ import css from '../../styles/main.scss?inline';
 import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
 import { InitiativeTracker } from '../../src/app/react/components/InitiativeTracker';
-import { SettingsService } from '../../src/app/services/SettingsService';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/app/types/initiativeTypes';
 import type { Character } from '../../src/app/types';
@@ -31,10 +30,9 @@ const entryOf = (tokenId: string, order: number, card?: number): InitiativeEntry
 });
 
 /** A fight by cards from a deck of fifty: two digits on the widest card, one combatant still without a card. */
-async function show(names: boolean): Promise<HTMLElement> {
+async function show(): Promise<HTMLElement> {
   await page.viewport(1200, 900);
   const { app } = createInMemoryApp({ files: {} });
-  new SettingsService(app).setInitiativeNames(names);
   const store = createViewAtlasStore(app, `dealt-card-${Math.random()}`);
   store.setState({
     persistenceEnabled: false,
@@ -58,29 +56,27 @@ describe('the card a combatant was dealt, on the GM\'s initiative cards', () => 
   beforeEach(() => document.head.append(style));
   afterEach(() => { style.remove(); document.body.innerHTML = ''; });
 
-  for (const names of [false, true]) {
-    it(`keeps every card's padding and gaps equal and nothing outside it ${names ? 'with names' : 'at 96 px'}`, async () => {
-      const container = await show(names);
-      expect(box(container.querySelector('.atlas-initiative-tracker')).width).toBe(names ? 168 : 96);
-      const cards = [...container.querySelectorAll('.atlas-initiative-card')];
-      expect(cards).toHaveLength(3);
-      for (const card of cards) {
-        const frame = box(card);
-        const border = parseFloat(getComputedStyle(card).borderTopWidth);
-        const parts = [...card.children].filter((child) => getComputedStyle(child).display !== 'none' && getComputedStyle(child).position !== 'absolute').map(box);
-        expect(parts[0]!.top - frame.top - border).toBeCloseTo(8, 0);
-        expect(frame.bottom - parts[parts.length - 1]!.bottom - border).toBeCloseTo(8, 0);
-        for (let i = 1; i < parts.length; i++) expect(parts[i]!.top - parts[i - 1]!.bottom).toBeCloseTo(8, 0);
-        for (const part of parts) {
-          expect(part.left).toBeGreaterThanOrEqual(frame.left);
-          expect(part.right).toBeLessThanOrEqual(frame.right);
-        }
+  it(`keeps every card's padding and gaps equal and nothing outside it at 96 px`, async () => {
+    const container = await show();
+    expect(box(container.querySelector('.atlas-initiative-tracker')).width).toBe(96);
+    const cards = [...container.querySelectorAll('.atlas-initiative-card')];
+    expect(cards).toHaveLength(3);
+    for (const card of cards) {
+      const frame = box(card);
+      const border = parseFloat(getComputedStyle(card).borderTopWidth);
+      const parts = [...card.children].filter((child) => getComputedStyle(child).display !== 'none' && getComputedStyle(child).position !== 'absolute').map(box);
+      expect(parts[0]!.top - frame.top - border).toBeCloseTo(8, 0);
+      expect(frame.bottom - parts[parts.length - 1]!.bottom - border).toBeCloseTo(8, 0);
+      for (let i = 1; i < parts.length; i++) expect(parts[i]!.top - parts[i - 1]!.bottom).toBeCloseTo(8, 0);
+      for (const part of parts) {
+        expect(part.left).toBeGreaterThanOrEqual(frame.left);
+        expect(part.right).toBeLessThanOrEqual(frame.right);
       }
-    });
-  }
+    }
+  });
 
   it('stands where the number does, as tall as the number slot, its number inside its face', async () => {
-    const container = await show(false);
+    const container = await show();
     const faces = [...container.querySelectorAll<HTMLElement>('.atlas-initiative-card__dealt')];
     expect(faces.map((face) => face.firstChild?.textContent)).toEqual(['48', '7', '–']);
     expect(container.querySelector('.atlas-initiative-card__initiative')).toBeNull();

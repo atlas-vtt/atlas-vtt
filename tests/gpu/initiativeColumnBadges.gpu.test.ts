@@ -39,16 +39,16 @@ function expectBadgesInside(panel: HTMLElement): void {
 }
 
 describe('condition badges on an upright list', () => {
-  it('stay inside a column at either side, four of them with their turns as well', () => {
+  it('stay inside the column, four of them with their turns as well', () => {
     const style = document.createElement('style');
     style.textContent = css;
     document.head.append(style);
-    expectBadgesInside(draw('left', 0, [1, 2, 0, 0]));
+    expectBadgesInside(draw('right', 0, [1, 2, 0, 0]));
     expectBadgesInside(draw('right', 1, [0, 3, 4, 5]));
   });
 
   it('stay in view over the turn\'s card when a long column scrolls it to its top', () => {
-    const panel = draw('left', 6, [1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1]);
+    const panel = draw('right', 6, [1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1]);
     expectBadgesInside(panel);
   });
 });

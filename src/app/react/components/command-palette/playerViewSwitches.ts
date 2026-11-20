@@ -37,7 +37,6 @@ const ONLINE_SWITCHES: ReadonlyArray<SwitchText> = [
 
 /** How the initiative list looks to the players. */
 const INITIATIVE_SWITCHES: ReadonlyArray<SwitchText> = [
-  { key: 'showInitiativeNames', label: t('lpv.initiativeNames'), hint: t('lpv.initiativeNamesHint') },
   { key: 'initiativePulse', label: t('lpv.initiativePulse'), hint: t('lpv.initiativePulseHint') },
   { key: 'turnBannerAtLists', label: t('lpv.turnBannerAtLists'), hint: t('lpv.turnBannerAtListsHint') },
   { key: 'turnDim', label: t('lpv.turnDim'), hint: t('lpv.turnDimHint') },
@@ -63,7 +62,7 @@ export interface PlayerViewSwitches {
   shared: PlayerViewSwitch[];
   /** The players' cursors and whether players may draw: online play only, none while it is switched off. */
   online: PlayerViewSwitch[];
-  /** The initiative list's names, pulse and turn banner in the player window. */
+  /** The initiative list's pulse and turn banner in the player window. */
   initiative: PlayerViewSwitch[];
   /** Rendering up to 4K, on this device: the player window only. */
   view4k: PlayerViewSwitch;

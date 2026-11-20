@@ -10,10 +10,10 @@ export interface BannerAnchor {
   /** Degrees the banner turns with its list (a list that faces its players). */
   turn: number;
   /**
-   * The banner stands above the point, below it (a row along the top), or to its right or left, level with it (an
-   * upright column at the left or right edge: the banner beside it, on its inner side).
+   * The banner stands above the point, below it (a row along the top), or to its left, level with it (an upright
+   * column at the right edge: the banner beside it, on its inner side).
    */
-  side: 'above' | 'below' | 'right' | 'left';
+  side: 'above' | 'below' | 'left';
   /** The banner's middle lies at the point. */
   align: 'centre';
 }
@@ -29,7 +29,6 @@ export interface Box {
 const FACING: Readonly<Record<PlayersListEdge, { turn: number; inner: keyof Box }>> = {
   bottom: { turn: 0, inner: 'top' },
   top: { turn: 180, inner: 'bottom' },
-  left: { turn: 90, inner: 'right' },
   right: { turn: -90, inner: 'left' },
 };
 
@@ -45,9 +44,7 @@ export function bannerAnchor(box: Box, edge: PlayersListEdge, faces: boolean): B
   if (edge === 'top') return { x, y: box.bottom, turn: 0, side: 'below', align: 'centre' };
   if (edge === 'bottom') return { x, y: box.top, turn: 0, side: 'above', align: 'centre' };
   // An upright column: beside it, towards the middle of the table, level with the column's middle
-  return edge === 'left'
-    ? { x: box.right, y, turn: 0, side: 'right', align: 'centre' }
-    : { x: box.left, y, turn: 0, side: 'left', align: 'centre' };
+  return { x: box.left, y, turn: 0, side: 'left', align: 'centre' };
 }
 
 /**

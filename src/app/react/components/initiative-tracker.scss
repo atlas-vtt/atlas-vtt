@@ -6,8 +6,6 @@
 $tracker-width: 96px;
 // Wide enough for a name of two short words a line, which the portrait column alone is not
 $tracker-width-named: 168px;
-// Where the tracker stands while the dice log is open at the same edge: beside it
-$dice-log-width: 360px;
 // The collapse toggle: as tall as a card's number slot
 $collapse-height: 24px;
 // What the tracker keeps of itself in a pane too short for its clearance: its controls (the toggle and
@@ -44,31 +42,19 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
 
   overflow: hidden;
 
-  // The GM's cards show names (the tracker's Show names)
+  // The compact list's cards show names
   &--named {
     width: $tracker-width-named;
     max-height: max(#{$tracker-min-height-named}, calc(#{atlas-view-height()} - 2 * 160px));
   }
-
-  // Docked at the left edge (the tracker's Dock on the left)
-  &--left {
-    right: auto;
-    left: $spacing-m;
-  }
-
-  // The dice log opens at the left edge: a tracker docked there moves beside it
-  &--beside-log {
-    left: calc(#{$spacing-m} + #{$dice-log-width} + #{$spacing-s});
-  }
 }
 
-// The zoom buttons stand at the right edge at the tracker's height: while the tracker is docked
-// there they stand beside it, as the tracker itself moves beside the dice log.
-.atlas-ui:has(.atlas-initiative-tracker:not(.atlas-initiative-tracker--left)) .atlas-zoom-cluster {
+// The zoom buttons stand at the right edge at the tracker's height: while the tracker is open they stand beside it.
+.atlas-ui:has(.atlas-initiative-tracker) .atlas-zoom-cluster {
   right: calc(#{$spacing-m} + #{$tracker-width} + #{$spacing-s});
 }
 
-.atlas-ui:has(.atlas-initiative-tracker--named:not(.atlas-initiative-tracker--left)) .atlas-zoom-cluster {
+.atlas-ui:has(.atlas-initiative-tracker--named) .atlas-zoom-cluster {
   right: calc(#{$spacing-m} + #{$tracker-width-named} + #{$spacing-s});
 }
 

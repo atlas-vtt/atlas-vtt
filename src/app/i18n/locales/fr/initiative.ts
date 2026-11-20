@@ -56,8 +56,6 @@ export const initiative: Translation = {
   'initiative.addCombatantHint': 'Ajoutez des jetons de la bibliothèque à l\'initiative sans les placer, depuis leur menu dans l\'onglet Jetons',
   'initiative.removeFallback': 'Retirer le champ de repli',
   'initiative.roll': 'Lancer l\'initiative',
-  'initiative.showNames': 'Afficher les noms',
-  'initiative.showNamesHint': 'Inscrit le nom de chaque combattant sur sa carte, pour distinguer deux créatures du même type',
   'initiative.sitOut': 'Passer ce round',
   'initiative.statblocksLoading': { one: 'Fantasy Statblocks lit encore le coffre : {count} combattant a lancé sans le modificateur de sa fiche', other: 'Fantasy Statblocks lit encore le coffre : {count} combattants ont lancé sans le modificateur de leur fiche' },
   'initiative.total': 'Initiative',
