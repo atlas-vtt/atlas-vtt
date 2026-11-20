@@ -17,10 +17,11 @@ import { InitiativeNumber, type NumberStep } from './InitiativeNumber';
 import { OffMapIcon } from './OffMapIcon';
 import { woundShare } from '../../initiative/woundShare';
 import { useCardPreviewHover } from './useCardPreviewHover';
+import { useArtViewBox } from './useArtViewBox';
 import { t } from '../../i18n';
 import { DealtCard } from './DealtCard';
 import { entryToken } from '../../initiative/party';
-import { combatantColor, turnColor } from '../../initiative/combatantColor';
+import { turnColor } from '../../initiative/turnColor';
 import { sideOf } from '../../initiative/sides';
 
 interface InitiativeCardProps {
@@ -83,6 +84,8 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   const tokens = useAtlasStore((s) => s.objects?.tokens) || {};
   const badgesOn = useAtlasStore((s) => s.tokenSettings?.showInstanceBadges ?? true);
   const levels = useAtlasStore((s) => s.levels);
+  // Its token is selected on the map (a click on the card selects it)
+  const selected = useAtlasStore((s) => entry.tokenId !== undefined && s.selectedIds.includes(entry.tokenId));
   const [dropPosition, setDropPosition] = useState<'above' | 'below' | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const hover = useCardPreviewHover(cardRef, entry, isHoveredForPreview, onHover);
@@ -101,16 +104,14 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   // Kept beside the map: in the tracker only, until the GM places it
   const offMap = isOffMap(token);
   const name = (token && tokenDisplayName(token)) || entry.name;
-  // The colour the GM gave the card, and the one its turn pulses in
-  const color = combatantColor(entry);
-  const turn = turnColor(entry, token);
-  // Only the players' own side is framed, in its colour or else green: a player at the table has no token. Anyone
-  // else's colour shows only in its turn, which the GM's tracker frames anyway
+  // The colour its turn pulses in: its token's ring colour
+  const turn = turnColor(token);
+  // Only the players' own side is framed: a player at the table has no token
   const playerSide = entry.partyMemberId !== undefined || (token !== undefined && sideOf(token) === 'players');
-  const colours = {
-    ...(color ? { '--atlas-combatant-color': color } : {}),
-    ...(turn ? { '--atlas-turn-color': turn } : {}),
-  } as React.CSSProperties;
+
+  // The art without the transparent margins its image may have (a token cropped zoomed out), so it fills the card
+  const artViewBox = useArtViewBox(app, entry.imagePath);
+  const artStyle = artViewBox ? ({ '--atlas-art-view-box': artViewBox } as React.CSSProperties) : undefined;
 
   // Get image URL from vault path
   const getImageUrl = useCallback((imagePath: string): string => {
@@ -203,14 +204,14 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   const cardClasses = [
     'atlas-initiative-card',
     !compact && 'atlas-initiative-card--tile',
-    playerSide && color && 'atlas-initiative-card--coloured',
-    playerSide && !color && 'atlas-initiative-card--ally',
+    playerSide && 'atlas-initiative-card--ally',
     entry.isActive && !bySides && 'atlas-initiative-card--active',
     defeated && 'atlas-initiative-card--defeated',
     hiddenFromPlayers && 'atlas-initiative-card--hidden',
     entry.sitsOut && 'atlas-initiative-card--sitting-out',
     entry.delayed && 'atlas-initiative-card--delayed',
     isHoveredForPreview && 'atlas-initiative-card--preview-hover',
+    selected && 'atlas-initiative-card--selected',
     dropPosition === 'above' && 'atlas-initiative-card--drop-above',
     dropPosition === 'below' && 'atlas-initiative-card--drop-below',
     turnFlash && 'atlas-initiative-card--turn-flash',
@@ -220,7 +221,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
     <div
       ref={cardRef}
       className={cardClasses}
-      style={color || turn ? colours : undefined}
+      style={turn ? ({ '--atlas-turn-color': turn } as React.CSSProperties) : undefined}
       // A field being typed in keeps its text selection to itself
       draggable={!isEditingNumber}
       onClick={handleClick}
@@ -247,7 +248,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
           {entry.imagePath && (
             // The token's art faded in behind the line, from its right end
             <div className={`atlas-initiative-card__backdrop${token?.showRing === false ? ' atlas-initiative-card__backdrop--framed' : ''}`} aria-hidden="true">
-              <img src={getImageUrl(entry.imagePath)} alt="" draggable={false} decoding="async" />
+              <img src={getImageUrl(entry.imagePath)} alt="" draggable={false} decoding="async" style={artStyle} />
               {woundFill}
             </div>
           )}
@@ -258,7 +259,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
           {entry.imagePath ? (
             // The card names the combatant (`aria-label`): its art is a picture no one needs read again
             <div className={`atlas-initiative-card__art${token?.showRing === false ? ' atlas-initiative-card__art--framed' : ''}`} aria-hidden="true">
-              <img src={getImageUrl(entry.imagePath)} alt="" draggable={false} decoding="async" />
+              <img src={getImageUrl(entry.imagePath)} alt="" draggable={false} decoding="async" style={artStyle} />
               {woundFill}
             </div>
           ) : (

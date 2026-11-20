@@ -73,8 +73,9 @@ describe('look-alikes in the players\' initiative list', () => {
     expect(badges(doc)).toEqual(['2', '1', null]);
   });
 
-  it('show no number for a combatant without one yet', () => {
+  it('show no initiative numbers, which stay on the GM screen', () => {
     const { doc } = setup(badgesOnTheMap({}));
-    expect([...doc.querySelectorAll('.atlas-player-initiative__value')].map((value) => value.textContent)).toEqual(['10', '9']);
+    expect(doc.querySelectorAll('.atlas-player-initiative__card').length).toBeGreaterThan(0);
+    expect(doc.querySelector('.atlas-player-initiative__list')?.textContent).not.toMatch(/10|9/);
   });
 });

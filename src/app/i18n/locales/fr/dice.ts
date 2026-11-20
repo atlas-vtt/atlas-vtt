@@ -24,7 +24,7 @@ export const dice: Translation = {
   'dice.clearSelection': 'Effacer la sélection',
   'dice.closeHint': 'Fermer (Enter ou Esc)',
   'dice.details': 'Détails',
-  'dice.log': 'Journal des dés',
+  'dice.log': 'Journal de la table',
   'dice.noRolls': 'Aucun jet pour l\'instant',
   'dice.pin': 'Épingler le panneau ouvert',
   'dice.rollAgain': 'Relancer',

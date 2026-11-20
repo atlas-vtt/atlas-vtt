@@ -107,4 +107,6 @@ export const armariumListing: Translation = {
   'armariumListing.problem.tooManyTags': 'Verwende höchstens {count} Tags.',
   'armariumListing.problem.tagTwice': 'Verwende jedes Tag nur einmal.',
   'armariumListing.problem.tagsExclusive': 'Verwende nur eines von {tags}.',
+  'armariumListing.kind.dice': 'Würfelsets',
+  'armariumListing.kindLine.dice': 'Würfel für die Würfelablage, mit ihren Farben und Regeln.',
 };

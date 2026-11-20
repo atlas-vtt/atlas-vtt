@@ -48,7 +48,8 @@ function harness(): { tool: DiceTool; draw: () => void } {
 function choose(roll: string, item: string): void {
   // The ⋯ takes its name from its tooltip, which these tests leave out: it is found on its card.
   const card = screen.getByRole('button', { name: new RegExp(`^Roll ${roll}:`) }).closest('li')!;
-  fireEvent.keyDown(card.querySelector('.atlas-dice-presets__more')!, { key: 'Enter' });
+  // Not with Enter: Enter anywhere in the tray rolls, on its ⋯ too.
+  fireEvent.keyDown(card.querySelector('.atlas-dice-presets__more')!, { key: 'ArrowDown' });
   fireEvent.click(screen.getByRole('menuitem', { name: item }));
 }
 

@@ -19,7 +19,7 @@ $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
   @include atlas-elevated-surface;
   @include atlas-panel-radius($surface-radius);
   position: absolute;
-  z-index: 45;
+  z-index: $z-atlas-map-panel;
   display: flex;
   flex-direction: column;
   width: $loot-width;

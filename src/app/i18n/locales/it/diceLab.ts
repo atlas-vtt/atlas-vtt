@@ -14,6 +14,7 @@ export const diceLab = {
   "diceLab.newSetName": "Nuovo set di dadi",
   "diceLab.noDiceYet": "Ancora nessun dado",
   "diceLab.duplicateSet": "Duplica {name}",
+  "diceLab.moreFor": "Altre opzioni per {name}",
   "diceLab.duplicateToEdit": "Duplica per modificare",
   "diceLab.copyName": "Copia di {name}",
   "diceLab.deleteSet": "Elimina {name}",

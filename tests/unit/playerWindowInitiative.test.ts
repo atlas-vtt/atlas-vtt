@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { turnBannerScaleFor } from '../../src/app/initiative/banner/turnBannerElement';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';
@@ -54,14 +55,22 @@ function setup(initiativeTrackerOpen = true): { service: PlayerWindowService; se
 }
 
 describe('player initiative panel', () => {
-  it('sizes the list and the turn banner by the player view settings', () => {
+  it('sizes the list by the player view settings, and the turn banner by the window', () => {
     const { settings, doc } = setup();
+    // The player window as the service holds it
+    const view = (doc.body as HTMLElement & { win: Window & { addEventListener: ReturnType<typeof vi.fn> } }).win;
     const overlays = (): HTMLElement => doc.querySelector<HTMLElement>('.atlas-player-overlays')!;
+    const bannerScale = (): number => Number(overlays().style.getPropertyValue('--atlas-player-turn-banner-scale'));
     expect(overlays().style.getPropertyValue('--atlas-player-initiative-scale')).toBe('1');
-    expect(overlays().style.getPropertyValue('--atlas-player-turn-banner-scale')).toBe('2');
-    settings.setLocalPlayerViewSettings({ initiativeScale: 2, turnBannerScale: 3 });
+    expect(bannerScale()).toBeCloseTo(turnBannerScaleFor(view.innerWidth, view.innerHeight), 5);
+    settings.setLocalPlayerViewSettings({ initiativeScale: 2 });
     expect(overlays().style.getPropertyValue('--atlas-player-initiative-scale')).toBe('2');
-    expect(overlays().style.getPropertyValue('--atlas-player-turn-banner-scale')).toBe('3');
+    // A window made the size of a 1080p TV draws it twice its own size
+    expect(view.addEventListener.mock.calls.some(([name]) => name === 'resize')).toBe(true);
+    Object.assign(view, { innerWidth: 1920, innerHeight: 1080 });
+    // What a resize runs, as any change of the player view's look runs it
+    settings.setLocalPlayerViewSettings({ initiativeScale: 1 });
+    expect(bannerScale()).toBe(2);
   });
 
   it('flashes the border of who holds a turn that begins, not of a fight seen running', () => {
@@ -90,7 +99,7 @@ describe('player initiative panel', () => {
     const { settings, store, doc } = setup();
     const panel = (): Element | null => doc.querySelector('[aria-label="Initiative order"]:not([aria-hidden])');
     expect(panel()).not.toBeNull();
-    expect(panel()?.textContent).toContain('18');
+    expect(panel()?.textContent).not.toContain('18');
     expect(panel()?.textContent).toContain('Round 1');
     expect(panel()?.querySelector('button, input, [draggable="true"]')).toBeNull();
     settings.setLocalPlayerViewSettings({ showWidgets: false });
@@ -103,15 +112,15 @@ describe('player initiative panel', () => {
     expect(store.getState().initiativeTrackerOpen).toBe(true);
   });
 
-  it('lists the players at the table, who have no token, with the number the GM typed in', () => {
+  it('lists the players at the table, who have no token, without the number the GM typed in', () => {
     const { store, doc } = setup();
     const ara: InitiativeEntry = {
       id: 'ara', partyMemberId: 'member-ara', name: 'Ara', initiative: 21, initiativeModifier: 0,
       imagePath: '', isActive: false, isNPC: false, order: 1,
     };
     store.setState({ initiative: { ...store.getState().initiative, entries: [...store.getState().initiative.entries, ara] } });
-    const values = [...doc.querySelectorAll('.atlas-player-initiative__value')].map((value) => value.textContent);
-    expect(values).toEqual(['18', '21']);
+    expect(doc.querySelectorAll('.atlas-player-initiative__card')).toHaveLength(2);
+    expect(doc.querySelector('.atlas-player-initiative__list')?.textContent).not.toMatch(/18|21/);
 
     // By sides a player at the table is on the players' side
     initiativeRules.value = { ...TURN_ORDER, mode: 'sides' };
@@ -284,7 +293,8 @@ describe('player initiative panel', () => {
 
   it('follows the GM\'s layout: the edge the lists stand at, drawn anew when it changes', () => {
     const { settings, doc } = setup();
-    const panel = (): Element | null => doc.querySelector('.atlas-player-initiative');
+    // The list at the old edge leaves while the new one comes in
+    const panel = (): Element | null => doc.querySelector('.atlas-player-initiative:not(.atlas-player-initiative--leaving)');
     expect(panel()?.classList.contains('atlas-player-initiative--bottom')).toBe(false);
     settings.setInitiativeLayout({ dock: 'bottom' });
     expect(panel()?.classList.contains('atlas-player-initiative--bottom')).toBe(true);
@@ -367,6 +377,6 @@ describe('player initiative panel of a collection that fights by sides', () => {
   it('keeps a fight that was started in turn order in turn order', () => {
     const { doc } = sides({ isActive: true, round: 1 });
     expect(groups(doc)).toEqual([]);
-    expect(doc.querySelectorAll('.atlas-player-initiative__value')).toHaveLength(4);
+    expect(doc.querySelectorAll('.atlas-player-initiative__card')).toHaveLength(4);
   });
 });

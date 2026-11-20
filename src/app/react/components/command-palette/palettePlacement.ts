@@ -30,14 +30,16 @@ export const PALETTE_TOOLBAR_GAP = 8;
  * Places the palette above the toolbar: as wide as the toolbar, but within
  * PALETTE_MIN_WIDTH and PALETTE_MAX_WIDTH, so a toolbar with few or many
  * tools neither squeezes nor stretches it, and never wider than the view. It stays centred on the toolbar where
- * the view allows and otherwise keeps PALETTE_VIEW_MARGIN from its sides.
+ * the view allows and otherwise keeps PALETTE_VIEW_MARGIN from its sides. A toolbar hidden away
+ * (Show toolbar on hover) leaves its place free: the palette then stands PALETTE_VIEW_MARGIN above
+ * the view's lower edge.
  */
-export function placePalette(toolbar: Box, frame: Box): PalettePosition {
+export function placePalette(toolbar: Box, frame: Box, toolbarHidden = false): PalettePosition {
   const room = Math.max(0, frame.width - 2 * PALETTE_VIEW_MARGIN);
   const width = Math.min(room, Math.min(Math.max(toolbar.width, PALETTE_MIN_WIDTH), PALETTE_MAX_WIDTH));
   const centred = toolbar.left - frame.left + (toolbar.width - width) / 2;
   const left = Math.min(Math.max(centred, PALETTE_VIEW_MARGIN), frame.width - PALETTE_VIEW_MARGIN - width);
-  const bottom = frame.bottom - toolbar.top + PALETTE_TOOLBAR_GAP;
+  const bottom = toolbarHidden ? PALETTE_VIEW_MARGIN : frame.bottom - toolbar.top + PALETTE_TOOLBAR_GAP;
   return { width, left, bottom, reserved: bottom };
 }
 

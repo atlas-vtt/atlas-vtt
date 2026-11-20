@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countDownConditions, entryConditions, setCombatantCondition, setCombatantConditionTurns } from '../../src/app/initiative/combatantConditions';
+import { entryConditions, setCombatantCondition } from '../../src/app/initiative/combatantConditions';
 import { createInitiativeTurnActions, type TurnStoreState } from '../../src/app/stores/initiativeTurnActions';
 import type { TokenEntity } from '../../src/app/types';
 import type { InitiativeEntry } from '../../src/app/types/initiativeTypes';
@@ -27,74 +27,15 @@ describe('conditions given from the tracker', () => {
     expect(entryConditions(draft.initiative.entries[1]!, undefined, [POISONED]).map((c) => c.name)).toEqual(['Poisoned']);
   });
 
-  it('count down as the holder\'s turn ends and end at 0; others\' turns leave them', () => {
+  it('last as the turns pass, until taken away', () => {
     let state = fight();
-    setCombatantConditionTurns(state, 'a', 'poisoned', 2);
-    expect(state.objects.tokens.g?.conditions).toEqual(['poisoned']);
+    setCombatantCondition(state, 'a', 'poisoned', true);
     const set = (fn: (draft: TurnStoreState) => void): void => { const next = structuredClone(state); fn(next); state = next; };
     const actions = createInitiativeTurnActions(set, () => state, () => 0.5);
-    actions.nextTurn(); // a's turn ends
-    expect(state.initiative.entries[0]?.conditionTurns).toEqual({ poisoned: 1 });
-    actions.nextTurn(); // b's turn ends
-    expect(state.initiative.entries[0]?.conditionTurns).toEqual({ poisoned: 1 });
-    actions.nextTurn(); // a's second turn ends
-    expect(state.objects.tokens.g?.conditions).toBeUndefined();
-    expect(state.initiative.entries[0]?.conditionTurns).toBeUndefined();
-  });
-
-  it('count back up as a step back returns to the turn that counted them, and come back once ended', () => {
-    let state = fight();
-    setCombatantConditionTurns(state, 'a', 'poisoned', 2);
-    // b keeps a valued condition on its entry, for one turn
-    setCombatantConditionTurns(state, 'b', 'frightened', 1);
-    state.initiative.entries[1]!.conditionValues = { frightened: 3 };
-    const set = (fn: (draft: TurnStoreState) => void): void => { const next = structuredClone(state); fn(next); state = next; };
-    const actions = createInitiativeTurnActions(set, () => state, () => 0.5);
-    const turnsOf = (index: number): Record<string, number> | undefined => state.initiative.entries[index]?.conditionTurns;
-    actions.nextTurn(); // a's turn ends: 2 → 1
-    actions.nextTurn(); // b's turn ends: frightened ends
-    actions.nextTurn(); // a's second turn ends: poisoned ends
-    expect(state.objects.tokens.g?.conditions).toBeUndefined();
-    expect(state.initiative.entries[1]?.conditions).toBeUndefined();
-    actions.previousTurn(); // back to a's second turn: poisoned again, one turn left
-    expect(state.objects.tokens.g?.conditions).toEqual(['poisoned']);
-    expect(turnsOf(0)).toEqual({ poisoned: 1 });
-    actions.previousTurn(); // back to b's turn: frightened again, with its number
-    expect(state.initiative.entries[1]?.conditions).toEqual(['frightened']);
-    expect(state.initiative.entries[1]?.conditionValues).toEqual({ frightened: 3 });
-    expect(turnsOf(1)).toEqual({ frightened: 1 });
-    actions.previousTurn(); // back to a's first turn: 1 → 2
-    expect(turnsOf(0)).toEqual({ poisoned: 2 });
-    expect(state.initiative.conditionCountdowns).toBeUndefined();
-    // And on again, as before
-    actions.nextTurn();
-    expect(turnsOf(0)).toEqual({ poisoned: 1 });
-  });
-
-  it('give nothing back that the GM took away since, and forget it all when the fight ends', () => {
-    let state = fight();
-    setCombatantConditionTurns(state, 'a', 'poisoned', 3);
-    const set = (fn: (draft: TurnStoreState) => void): void => { const next = structuredClone(state); fn(next); state = next; };
-    const actions = createInitiativeTurnActions(set, () => state, () => 0.5);
-    actions.nextTurn();
-    set((draft) => setCombatantCondition(draft, 'a', 'poisoned', false));
+    for (let turn = 0; turn < 5; turn++) actions.nextTurn();
     actions.previousTurn();
+    expect(state.objects.tokens.g?.conditions).toEqual(['poisoned']);
+    set((draft) => setCombatantCondition(draft, 'a', 'poisoned', false));
     expect(state.objects.tokens.g?.conditions).toBeUndefined();
-    setCombatantConditionTurns(state, 'a', 'poisoned', 3);
-    actions.nextTurn();
-    expect(state.initiative.conditionCountdowns).toBeDefined();
-    actions.endCombat();
-    expect(state.initiative.conditionCountdowns).toBeUndefined();
-  });
-
-  it('drop the count of a condition taken away elsewhere, and last until taken away without one', () => {
-    const draft = fight();
-    setCombatantConditionTurns(draft, 'b', 'poisoned', 3);
-    delete draft.initiative.entries[1]!.conditions;
-    countDownConditions(draft, ['b'], null);
-    expect(draft.initiative.entries[1]?.conditionTurns).toBeUndefined();
-    setCombatantCondition(draft, 'b', 'poisoned', true);
-    countDownConditions(draft, ['b'], null);
-    expect(draft.initiative.entries[1]?.conditions).toEqual(['poisoned']);
   });
 });

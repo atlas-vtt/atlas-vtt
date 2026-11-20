@@ -18,7 +18,7 @@ import { mapEnemyImage } from '../../initiative/mapParty';
 import { useMapParty, usePartyEntrySync } from '../../initiative/useMapParty';
 import { useMapCollectionId } from '../hooks/useMapCollectionId';
 import { useThemeIvy } from '../hooks/useThemeIvy';
-import { useListPresence, useTurnFlash, useTurnMotion } from './useInitiativeMotion';
+import { useListPresence, useLookMorph, useTurnFlash, useTurnMotion } from './useInitiativeMotion';
 import type { Outward } from '../../initiative/motion/listPresence';
 import { CollectionSettingsModal } from './CollectionSettingsModal';
 import { useMapInitiativeRules } from '../../initiative/useMapInitiativeRules';
@@ -68,6 +68,8 @@ export const InitiativeTracker: React.FC = () => {
   const isOpen = useAtlasStore((s) => s.initiativeTrackerOpen);
   // It comes in and leaves as the players' list does, opened by its hotkey or command
   const { drawn, leaving } = useListPresence(isOpen, root, OUTWARD);
+  // Switching the compact view on or off glides the tracker to its new size as its cards fade in anew
+  useLookMorph(root, compact);
   const initiative = useAtlasStore((s) => s.initiative);
   const tokens = useAtlasStore((s) => s.objects?.tokens) || {};
   const mapPath = useAtlasStore((s) => s.mapPath);

@@ -13,7 +13,7 @@ export const command: Translation = {
   'command.reportIssue': '报告问题…',
   'command.sendMapToPlayerView': '把当前地图送到玩家视图',
   'command.showMapInPlayerWindow': '在本地玩家窗口中显示当前地图',
-  'command.toggleDiceLog': '开关骰子记录',
+  'command.toggleDiceLog': '开关桌面记录',
   'command.toggleInitiativeTracker': '开关先攻追踪',
   'command.toggleLootRoller': '开关随机表',
   'command.viewChangelog': '查看更新日志',

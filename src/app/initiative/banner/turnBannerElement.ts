@@ -10,6 +10,18 @@ export const TURN_BANNER_MS = 2000;
 /** The largest the players' turn banner grows. */
 export const MAX_TURN_BANNER_SCALE = 5;
 
+/** The window, in CSS pixels, in which the players' banner is drawn at its own size; it grows with larger windows. */
+const BANNER_BASE_WINDOW = { long: 960, short: 540 } as const;
+
+/**
+ * How large the players' turn banner is drawn in a window of `width` × `height` CSS pixels: twice its own size on a
+ * 1080p TV, in step with the window and the same whichever way a table TV is turned, never smaller than its own size.
+ */
+export function turnBannerScaleFor(width: number, height: number): number {
+  const fit = Math.min(Math.max(width, height) / BANNER_BASE_WINDOW.long, Math.min(width, height) / BANNER_BASE_WINDOW.short);
+  return Number.isFinite(fit) ? Math.min(Math.max(fit, 1), MAX_TURN_BANNER_SCALE) : 1;
+}
+
 /** How a banner comes and goes: `enter` is told how long it stands, `leave` removes it once gone. */
 export interface TurnBannerMotion {
   enter(element: HTMLElement, standMs: number): void;

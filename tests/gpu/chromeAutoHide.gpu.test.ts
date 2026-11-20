@@ -11,9 +11,9 @@ const MAP_UI = `
       <div class="atlas-bottom-toolbar-row">
         <div class="atlas-bottom-toolbar-row__lead"></div>
         <div class="atlas-bottom-toolbar-row__start"><button style="width: 80px; height: 48px; pointer-events: auto">undo</button></div>
-        <div class="atlas-vtt-toolbar atlas-main-toolbar" style="width: 300px; height: 48px"><button aria-expanded="false">dice</button></div>
+        <div class="atlas-vtt-toolbar atlas-main-toolbar" style="width: 300px; height: 48px"><button aria-expanded="false">dice</button><div class="atlas-dropdown-menu" data-state="closed"></div></div>
         <div class="atlas-bottom-toolbar-row__end"></div>
-        <div class="atlas-bottom-toolbar-row__options"></div>
+        <div class="atlas-bottom-toolbar-row__options"><div class="atlas-tool-bar" style="width: 200px; height: 40px"><div class="atlas-dropdown-menu" data-state="closed"></div></div></div>
       </div>
       <div class="atlas-level-switcher"><div class="atlas-level-switcher__level">Ground</div></div>
     </div>
@@ -81,5 +81,36 @@ describe('bars that show on hover', () => {
     bar.toggleAttribute('data-near', false);
     await settle(450);
     expect(getComputedStyle(bar).visibility).toBe('hidden');
+  });
+
+  it('shows the toolbar alone while the tool just changed', async () => {
+    element('.atlas-main-toolbar').toggleAttribute('data-peek', true);
+    await settle(450);
+    expect(shown('.atlas-main-toolbar')).toBe(true);
+    expect(shown('.atlas-bottom-toolbar-row__start')).toBe(false);
+  });
+
+  it('keeps the toolbar while a tool menu is open, and the tool bars with it', async () => {
+    element('.atlas-main-toolbar .atlas-dropdown-menu').dataset.state = 'open';
+    await settle(500);
+    expect(shown('.atlas-main-toolbar')).toBe(true);
+    expect(shown('.atlas-bottom-toolbar-row__options')).toBe(true);
+    expect(shown('.atlas-bottom-toolbar-row__start')).toBe(false);
+  });
+
+  it('keeps the toolbar while a menu of the tool bars is open', async () => {
+    element('.atlas-bottom-toolbar-row__options .atlas-dropdown-menu').dataset.state = 'open';
+    await settle(500);
+    expect(shown('.atlas-main-toolbar')).toBe(true);
+    expect(shown('.atlas-bottom-toolbar-row__options')).toBe(true);
+  });
+
+  it('hides them again once the menu closes', async () => {
+    const menu = element('.atlas-main-toolbar .atlas-dropdown-menu');
+    menu.dataset.state = 'open';
+    await settle(450);
+    menu.dataset.state = 'closed';
+    await settle(450);
+    expect(getComputedStyle(element('.atlas-main-toolbar')).visibility).toBe('hidden');
   });
 });

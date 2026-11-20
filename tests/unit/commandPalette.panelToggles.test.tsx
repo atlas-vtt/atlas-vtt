@@ -67,8 +67,8 @@ describe('Space command menu panel toggles', () => {
     const onClose = vi.fn();
     render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={onClose} /></ViewStoreProvider>);
     const input = screen.getByPlaceholderText('Search commands…');
-    fireEvent.change(input, { target: { value: 'dice log' } });
-    const command = screen.getByRole('button', { name: /Open dice log/ });
+    fireEvent.change(input, { target: { value: 'table log' } });
+    const command = screen.getByRole('button', { name: /Open table log/ });
 
     expect(store.getState().isDiceLogOpen).toBe(false);
     fireEvent.click(command);

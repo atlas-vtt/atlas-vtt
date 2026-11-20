@@ -14,6 +14,7 @@ export const diceLab: Translation = {
   'diceLab.newSetName': 'Novo conjunto de dados',
   'diceLab.noDiceYet': 'Nenhum dado ainda',
   'diceLab.duplicateSet': 'Duplicar {name}',
+  'diceLab.moreFor': 'Mais opções de {name}',
   'diceLab.duplicateToEdit': 'Duplicar para editar',
   'diceLab.copyName': 'Cópia de {name}',
   'diceLab.deleteSet': 'Excluir {name}',

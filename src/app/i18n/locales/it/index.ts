@@ -116,6 +116,8 @@ import { deviceFiles } from './deviceFiles';
 import { docs } from './docs';
 import { fog } from './fog';
 import { initRules } from './initRules';
+import { itemBundle } from './itemBundle';
+import { itemReview } from './itemReview';
 import { openings } from './openings';
 import { playerBar } from './playerBar';
 import { rooms } from './rooms';
@@ -248,6 +250,8 @@ export const it = {
   ...docs,
   ...fog,
   ...initRules,
+  ...itemBundle,
+  ...itemReview,
   ...openings,
   ...playerBar,
   ...rooms,

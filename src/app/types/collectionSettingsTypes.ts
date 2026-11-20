@@ -179,6 +179,4 @@ export interface PartyMember {
   name: string;
   /** Vault path of the player's picture. */
   imagePath?: string;
-  /** The colour of the player's card in initiative, `#rrggbb`. */
-  color?: string | undefined;
 }

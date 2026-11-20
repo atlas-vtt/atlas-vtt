@@ -44,7 +44,7 @@ async function showAtLists(rotation: number, edges: PlayersListEdge[], faces: bo
 
   const { app } = createInMemoryApp({ files: {} });
   const settings = new SettingsService(app);
-  settings.setLocalPlayerViewSettings({ turnBannerAtLists: true, turnBannerScale: 1 });
+  settings.setLocalPlayerViewSettings({ turnBannerAtLists: true });
   settings.setInitiativeLayout({ edges, facesPlayers: faces });
   const store = createStore(() => ({
     initiative: fight(0), initiativeTrackerOpen: true, mapPath: 'a.atlasmap', isMapLoading: false,

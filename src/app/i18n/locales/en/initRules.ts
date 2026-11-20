@@ -32,7 +32,6 @@ export const initRules = {
   'initRules.sideNameError': 'Give every side a name.',
   'initRules.sideOrder': 'Side order',
   'initRules.sideRoll': 'Side roll',
-  'initRules.sideRolled': '{side}, rolled {roll}',
   'initRules.sidesOrder': 'In the order they act.',
   'initRules.swapCard': 'Swap Card With',
 } as const satisfies Record<string, Message>;

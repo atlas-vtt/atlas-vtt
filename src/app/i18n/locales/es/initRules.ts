@@ -29,7 +29,6 @@ export const initRules: Translation = {
   'initRules.sideNameError': 'Ponle nombre a cada bando.',
   'initRules.sideOrder': 'Orden de los bandos',
   'initRules.sideRoll': 'Tirada del bando',
-  'initRules.sideRolled': '{side}, sacó {roll}',
   'initRules.sidesOrder': 'En el orden en que actúan.',
   'initRules.swapCard': 'Intercambiar carta con',
 };

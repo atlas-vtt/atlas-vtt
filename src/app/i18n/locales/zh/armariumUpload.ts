@@ -35,6 +35,7 @@ export const armariumUpload: Translation = {
   'armariumUpload.error.declaration-missing': '请确认你有权分享此合集。',
   'armariumUpload.error.listing-not-yours': '此合集属于另一个账户的条目。只有其作者才能添加新版本。',
   'armariumUpload.error.listing-removed': 'Armarium 团队已移除此合集的条目，因此它不再接受新版本。原因已发送到你的邮箱。如有异议，请回复那封邮件。',
+  'armariumUpload.error.format-changed': '此条目包含的内容类别与你分享的不同。新版本必须与它之前的版本属于同一类别。',
   'armariumUpload.error.version-not-higher': '条目已有此版本或更新的版本。请重新开始并选择更高的版本号。',
   'armariumUpload.error.check-files-invalid': '我们这边受检的文件发生了变化。请重新开始以再次上传合集。',
   'armariumUpload.error.blocked-file': '此合集包中的某个文件此前已从 Armarium 移除，不能再次分享。',

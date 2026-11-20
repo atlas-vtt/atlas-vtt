@@ -4,7 +4,7 @@ import type { ViewAtlasState } from '../../storeFactory';
 import type { InitiativeState } from '../../types/initiativeTypes';
 import { currentTurn, turnKey } from '../../initiative/turnHolders';
 import { playTurnMotion, snapshotTurn, type TurnSnapshot } from '../../initiative/motion/turnMotion';
-import { enterList, exitList, type Outward } from '../../initiative/motion/listPresence';
+import { enterList, exitList, morphList, type Outward } from '../../initiative/motion/listPresence';
 import { TURN_FLASH_MS } from '../../services/playerInitiativeList';
 
 /** What a change of the tracker's order is read by: the round, the turn and every combatant's place. */
@@ -53,9 +53,10 @@ export function useTurnFlash(initiative: InitiativeState): boolean {
 
 /**
  * The tracker comes and goes as the lists do (`enterList`, `exitList`): it stays drawn while it leaves, and a tracker
- * opened again meanwhile comes back from where it was. Its first drawing (a map opened with the tracker open) does not move.
+ * opened again meanwhile comes back from where it was. Its first drawing (a map opened with the tracker open) does not
+ * move, and neither does a change while `instant` (a scene loading).
  */
-export function useListPresence(open: boolean, element: HTMLElement | null, outward: Outward): { drawn: boolean; leaving: boolean } {
+export function useListPresence(open: boolean, element: HTMLElement | null, outward: Outward, instant = false): { drawn: boolean; leaving: boolean } {
   // Drawn from the render that opens it until its exit is over: a close must not unmount it before the exit plays
   const [present, setPresent] = useState(open);
   if (open && !present) setPresent(true);
@@ -69,6 +70,12 @@ export function useListPresence(open: boolean, element: HTMLElement | null, outw
     }
     if (shown.current === open) return;
     shown.current = open;
+    if (instant) {
+      exit.current?.cancel();
+      exit.current = null;
+      if (!open) setPresent(false);
+      return;
+    }
     if (open) {
       exit.current?.cancel();
       exit.current = null;
@@ -84,6 +91,24 @@ export function useListPresence(open: boolean, element: HTMLElement | null, outw
     };
     if (animation) animation.finished.then(done, done);
     else done();
-  }, [open, element, outward]);
+  }, [open, element, outward, instant]);
   return { drawn: open || present, leaving: !open && present };
+}
+
+/**
+ * The tracker changes its look when `look` changes (the compact view switched on or off): it glides from its old size to
+ * its new one and its cards fade in anew (`morphList`). Its old size is read while React draws the new look, before the
+ * page shows it.
+ */
+export function useLookMorph(element: HTMLElement | null, look: unknown): void {
+  const shown = useRef(look);
+  const from = useRef<{ width: number; height: number } | null>(null);
+  if (look !== shown.current && element && from.current === null) from.current = { width: element.offsetWidth, height: element.offsetHeight };
+  useLayoutEffect(() => {
+    if (look === shown.current) return;
+    shown.current = look;
+    const size = from.current;
+    from.current = null;
+    if (element && size) morphList(element, size);
+  }, [element, look]);
 }

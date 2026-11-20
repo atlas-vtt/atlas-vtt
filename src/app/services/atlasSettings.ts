@@ -100,10 +100,6 @@ export interface AtlasSettings {
     initiativeScale: number;
     /** The border of the combatant whose turn it is pulses instead of standing still. */
     initiativePulse: boolean;
-    /** How large the turn banner is drawn, 1 to `MAX_TURN_BANNER_SCALE`. */
-    turnBannerScale: number;
-    /** How long the turn banner stands, in seconds. */
-    turnBannerSeconds: number;
     /** The turn banner stands just above each initiative list, turned with it, instead of in the middle. */
     turnBannerAtLists: boolean;
     /** A turn dims the table instead of showing its banner, the initiative lists left lit. A fight's start and end keep theirs. */
@@ -155,8 +151,6 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     showCursors: false,
     initiativeScale: 1,
     initiativePulse: false,
-    turnBannerScale: 2,
-    turnBannerSeconds: 4,
     turnBannerAtLists: false,
     turnDim: false,
     initiativeMaxCards: 0,

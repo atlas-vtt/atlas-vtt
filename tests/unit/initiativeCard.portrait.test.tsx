@@ -7,12 +7,16 @@ import type { InitiativeEntry } from '../../src/app/types/initiativeTypes';
 const state = vi.hoisted(() => ({
   objects: { tokens: {} as Record<string, unknown> },
   tokenSettings: { showInstanceBadges: true },
+  selectedIds: [] as string[],
   levels: undefined as unknown,
 }));
 
 vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
   AtlasUIContext: (await import('react')).createContext(null),
-  useAtlasUI: () => ({ app: { vault: { adapter: { getResourcePath: (path: string) => `app://${path}` } } }, view: null }),
+  useAtlasUI: () => ({
+    app: { vault: { adapter: { getResourcePath: (path: string) => `app://${path}` }, getAbstractFileByPath: () => null, on: () => ({}), offref: () => undefined } },
+    view: null,
+  }),
 }));
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (s: typeof state) => unknown) => selector(state),
@@ -51,11 +55,18 @@ describe('InitiativeCard portrait', () => {
     expect(card.querySelector('.atlas-initiative-card__art--framed img')).not.toBeNull();
   });
 
-  it('pulses its turn in the card\'s colour, else the ring\'s', () => {
+  it('pulses its turn in its token\'s ring colour, else the accent', () => {
     const style = (card: HTMLElement): CSSStyleDeclaration => card.querySelector<HTMLElement>('.atlas-initiative-card')!.style;
-    expect(style(renderCard({ ringColor: '#c0392b' }, { ...entry, color: '#22c55e' })).getPropertyValue('--atlas-turn-color')).toBe('#22c55e');
     expect(style(renderCard({ ringColor: '#c0392b' })).getPropertyValue('--atlas-turn-color')).toBe('#c0392b');
     expect(style(renderCard({})).getPropertyValue('--atlas-turn-color')).toBe('');
+  });
+
+  it('marks its card while its token is selected on the map', () => {
+    const selected = (): boolean => renderCard({}).querySelector('.atlas-initiative-card')!.classList.contains('atlas-initiative-card--selected');
+    expect(selected()).toBe(false);
+    state.selectedIds = ['t1'];
+    expect(selected()).toBe(true);
+    state.selectedIds = [];
   });
 
   it('keeps the icon for an entry without art', () => {

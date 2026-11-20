@@ -37,7 +37,7 @@ export const hotkey: Translation = {
   'hotkey.deleteAlt': 'Excluir seleção (alternativo)',
   'hotkey.cancel': 'Cancelar ferramenta / limpar seleção',
   'hotkey.diceTray': 'Bandeja de dados',
-  'hotkey.diceLog': 'Histórico de rolagens',
+  'hotkey.diceLog': 'Registro da mesa',
   'hotkey.initiative': 'Controle de iniciativa',
   'hotkey.lootRoller': 'Tabelas aleatórias',
   'hotkey.previousTurn': 'Turno anterior (em combate)',

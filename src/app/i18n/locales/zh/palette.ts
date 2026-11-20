@@ -20,7 +20,7 @@ export const palette: Translation = {
   'palette.noResults': '没有找到结果',
   'palette.noResultsHint': '试试别的搜索词',
   'palette.notePinTool': '笔记图钉工具',
-  'palette.openDiceLog': '打开骰子记录',
+  'palette.openDiceLog': '打开桌面记录',
   'palette.openLootRoller': '打开随机表',
   'palette.openSceneBrowser': '打开素材库',
   'palette.panel.grid': '网格设置',

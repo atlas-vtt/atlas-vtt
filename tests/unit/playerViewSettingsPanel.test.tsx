@@ -109,12 +109,27 @@ it('lays the players\' initiative list out across the table from its switch, as 
   context.settings = new SettingsService({} as never);
   const settings = context.settings as SettingsService;
   render(<PlayerViewSettingsPanel />);
-  const toggle = screen.getByRole('switch', { name: 'Initiative across the table' });
+  const toggle = screen.getByRole('switch', { name: 'Horizontal initiative' });
   expect(toggle.getAttribute('aria-checked')).toBe('false');
   fireEvent.click(toggle);
-  expect(settings.initiativeLayout()).toMatchObject({ edges: ['top', 'bottom'], facesPlayers: true });
-  fireEvent.click(screen.getByRole('switch', { name: 'Initiative across the table' }));
+  expect(settings.initiativeLayout()).toMatchObject({ edges: ['bottom'], facesPlayers: true });
+  fireEvent.click(screen.getByRole('switch', { name: 'Horizontal initiative' }));
   expect(settings.initiativeLayout()).toMatchObject({ edges: ['right'], facesPlayers: false });
+});
+
+it('mirrors the players\' initiative list for the far side of the table, as a column or a row, keeping the other switch', () => {
+  context.settings = new SettingsService({} as never);
+  const settings = context.settings as SettingsService;
+  render(<PlayerViewSettingsPanel />);
+  const mirrored = (): HTMLElement => screen.getByRole('switch', { name: 'Mirrored initiative' });
+  expect(mirrored().getAttribute('aria-checked')).toBe('false');
+  fireEvent.click(mirrored());
+  expect(settings.initiativeLayout()).toMatchObject({ edges: ['right', 'left'], facesPlayers: false });
+  // Turned horizontal, it stays mirrored: a row at the top and one at the bottom
+  fireEvent.click(screen.getByRole('switch', { name: 'Horizontal initiative' }));
+  expect(settings.initiativeLayout()).toMatchObject({ edges: ['top', 'bottom'], facesPlayers: true });
+  fireEvent.click(mirrored());
+  expect(settings.initiativeLayout()).toMatchObject({ edges: ['bottom'], facesPlayers: true });
 });
 
 it('offers Players move only on their turn among online play\'s settings, off until the GM switches it on', () => {

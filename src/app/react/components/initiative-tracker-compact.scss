@@ -1,6 +1,6 @@
 // The GM's compact tracker (the tracker's Compact view): a list to work with, a line per combatant as a deck
 // builder lists its cards. Number, name and the marks in one line over the token's art, which fades in from the right
-// end, red rising in it as the combatant loses hit points (`initiative-wound`).
+// end, red filling it from the left as the combatant loses hit points (`initiative-wound`, turned on its side).
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/initiative-cards' as *;
 
@@ -54,12 +54,15 @@ $plate-height: 24px;
       width: 75%;
       height: 100%;
       object-fit: cover;
+      object-view-box: var(--atlas-art-view-box, none);
       // Through the faces, which sit high in most token art
       object-position: 50% 30%;
-      opacity: 0.6;
-      // Darker, and gone well before the name: it fades in slowly and is whole only at the right end
-      filter: brightness(0.7);
-      mask-image: linear-gradient(to right, transparent 15%, rgb(0 0 0 / 0.3) 55%, #000);
+      opacity: 0.75;
+      // A little darker, and faint under the name: it fades in from the number's end and is whole only at the right end.
+      // The name's shadow keeps it readable over the lightest art
+      filter: brightness(0.85);
+      mask-image: linear-gradient(to right, transparent 8%, rgb(0 0 0 / 0.45) 50%, #000 90%);
+      transition: opacity 120ms ease-out, filter 120ms ease-out;
     }
 
     // The turn's ring and glow, which the art would cover on the card itself
@@ -75,11 +78,12 @@ $plate-height: 24px;
     @include initiative-art-framed;
   }
 
-  // A side's glow inside the line, beside its border's line; under the art it fades with it
-  .atlas-initiative-card--coloured:not(.atlas-initiative-card--active, .atlas-initiative-side--active *) {
-    @include initiative-side-glow(var(--atlas-combatant-color), 10px);
+  // A line is long and low, so the life lost fills it from its start, as a bar does, its bright edge leading
+  .atlas-initiative-wound {
+    @include initiative-wound-from(left);
   }
 
+  // The players' glow inside the line, beside its border's line; under the art it fades with it
   .atlas-initiative-card--ally:not(.atlas-initiative-card--active, .atlas-initiative-side--active *) {
     @include initiative-side-glow(var(--color-green), 10px);
   }
@@ -99,6 +103,13 @@ $plate-height: 24px;
     }
   }
 
+  // Under the pointer, or showing its statblock: the art comes up
+  .atlas-initiative-card:is(:hover, .atlas-initiative-card--preview-hover) .atlas-initiative-card__backdrop img {
+    opacity: 0.95;
+    filter: none;
+    transition-duration: 0s;
+  }
+
   .atlas-initiative-card--hidden .atlas-initiative-card__backdrop {
     opacity: 0.5;
   }
@@ -115,12 +126,20 @@ $plate-height: 24px;
     border-radius: $plate-radius;
   }
 
+  .atlas-initiative-card__initiative:not(.atlas-initiative-card__initiative--empty),
+  .atlas-initiative-card__initiative-input:not(.atlas-initiative-card__initiative-input--empty) {
+    &,
+    &:focus {
+      background: color-mix(in srgb, var(--background-primary) 70%, transparent);
+    }
+  }
+
   .atlas-initiative-card__initiative:not(.atlas-initiative-card__initiative--empty) {
-    background: color-mix(in srgb, var(--background-primary) 70%, transparent);
     border-color: var(--background-modifier-border);
 
     &:hover {
       background: var(--background-secondary);
+      border-color: color-mix(in srgb, var(--interactive-accent) 60%, var(--background-modifier-border));
     }
   }
 
@@ -135,8 +154,8 @@ $plate-height: 24px;
     display: block;
     white-space: nowrap;
     text-overflow: ellipsis;
-    // Readable where the art reaches under it
-    text-shadow: 0 1px 2px rgb(0 0 0 / 0.8);
+    // Readable where the art reaches under it, however light: a tight shadow and a soft halo
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.9), 0 0 6px rgb(0 0 0 / 0.7);
   }
 
   .atlas-initiative-card__marks {
@@ -166,5 +185,30 @@ $plate-height: 24px;
   // Hidden from the players: the line is translucent, as its portrait is otherwise
   .atlas-initiative-card--hidden .atlas-initiative-card__name {
     opacity: 0.6;
+  }
+}
+
+// A compact line is a dark surface in a light theme too, as the shadows over the list's ends are: its art fades into
+// dark under light words, never into white under dark ones. The theme's colours take dark values inside the line, so
+// every rule that reads them follows (fill, name, number plate, marks); a dark theme keeps its own.
+.theme-light .atlas-initiative-tracker--compact .atlas-initiative-card {
+  --background-primary: #1c1c1f;
+  --background-secondary: #2a2a2e;
+  --background-modifier-hover: #26262a;
+  --background-modifier-active-hover: #303035;
+  --background-modifier-border: rgb(255 255 255 / 0.14);
+  --background-modifier-form-field: #1c1c1f;
+  --text-normal: #ece6da;
+  --text-muted: rgb(236 230 218 / 0.72);
+  --text-faint: rgb(236 230 218 / 0.45);
+  --mono-100: #fff;
+  --atlas-card-ring-hover: rgb(255 255 255 / 0.45);
+  --atlas-card-ring-press: rgb(255 255 255 / 0.7);
+  --atlas-card-ring-preview: rgb(255 255 255 / 0.9);
+  color-scheme: dark;
+
+  // A delayed card has no fill of its own, which would show the light panel through
+  &.atlas-initiative-card--delayed {
+    background: rgb(28 28 31 / 0.6);
   }
 }

@@ -138,7 +138,7 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
     name: t('table.mode'),
     checkCallback: (checking) => {
       const view = app.workspace.getActiveViewOfType(AtlasView);
-      if (!view) return false;
+      if (!view || isDesktopApp()) return false;
       if (!checking) toggleTableMode(view);
       return true;
     },

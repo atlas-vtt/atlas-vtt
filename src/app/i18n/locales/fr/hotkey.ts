@@ -37,7 +37,7 @@ export const hotkey: Translation = {
   'hotkey.deleteAlt': 'Supprimer la sélection (alternative)',
   'hotkey.cancel': 'Annuler l\'outil / effacer la sélection',
   'hotkey.diceTray': 'Plateau de dés',
-  'hotkey.diceLog': 'Journal des jets de dés',
+  'hotkey.diceLog': 'Journal de la table',
   'hotkey.initiative': 'Suivi d\'initiative',
   'hotkey.lootRoller': 'Tables aléatoires',
   'hotkey.previousTurn': 'Tour précédent (en combat)',

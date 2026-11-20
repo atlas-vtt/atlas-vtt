@@ -1,8 +1,10 @@
 import type { Translation } from '../../types';
 
 export const lpv: Translation = {
-  'lpv.initiativeRows': 'Initiative de part et d\'autre de la table',
-  'lpv.initiativeRowsHint': 'La liste d\'initiative des joueurs forme une rangée en haut et une en bas, chacune lisible de son côté, pour un écran posé sur la table.',
+  'lpv.initiativeRows': 'Initiative horizontale',
+  'lpv.initiativeRowsHint': 'La liste d\'initiative des joueurs forme une rangée en travers de l\'écran au lieu d\'une colonne sur son côté, pour un écran posé sur la table.',
+  'lpv.initiativeMirrored': 'Initiative en miroir',
+  'lpv.initiativeMirroredHint': 'Une seconde liste d\'initiative de l\'autre côté de l\'écran, retournée, pour que les joueurs en face puissent la lire aussi.',
   'lpv.shared': 'Local et en ligne',
   'lpv.playerWindow': 'Fenêtre joueurs',
   'lpv.online': 'Jeu en ligne',
@@ -18,4 +20,14 @@ export const lpv: Translation = {
   'lpv.view4kHint': 'Une TV 4K ou un écran ultra-large reçoit un pixel calculé pour chaque pixel de son écran au lieu d\'une image 1440p agrandie, pour jusqu\'à 2,25 fois le travail graphique de la vue joueurs. Cet appareil seulement.',
   'lpv.showInitiative': 'Afficher le panneau d\'initiative',
   'lpv.showWidgets': 'Afficher les widgets',
+  'lpv.initiativePulse': 'Faire pulser la bordure du tour',
+  'lpv.initiativePulseHint': 'La bordure du combattant dont c\'est le tour pulse au lieu de rester fixe.',
+  'lpv.initiativeScale': 'Taille de l\'initiative',
+  'lpv.initiativeScaleValue': '{percent} %',
+  'lpv.turnBannerAtLists': 'Bannière de tour près des listes d\'initiative',
+  'lpv.turnBannerAtListsHint': 'La bannière de tour se place juste au-dessus de chaque liste d\'initiative, tournée avec elle, au lieu du milieu de la table.',
+  'lpv.turnDim': 'Assombrir la table au lieu de la bannière de tour',
+  'lpv.turnDimHint': 'Un nouveau tour assombrit la table pendant la durée de la bannière de tour au lieu d\'afficher sa bannière, tandis que les listes d\'initiative restent éclairées, pour que les cartes qui avancent ressortent. Le début et la fin d\'un combat gardent leurs bannières.',
+  'lpv.initiativeMaxCards': 'Cartes affichées dans l\'initiative',
+  'lpv.initiativeMaxCardsAll': 'Toutes',
 };

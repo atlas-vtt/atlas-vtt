@@ -15,7 +15,7 @@ export const command: Translation = {
   'command.reportIssue': 'Informar de un problema…',
   'command.sendMapToPlayerView': 'Enviar mapa actual a la vista de jugadores',
   'command.showMapInPlayerWindow': 'Mostrar mapa actual en la ventana de jugadores local',
-  'command.toggleDiceLog': 'Mostrar/ocultar historial de dados',
+  'command.toggleDiceLog': 'Mostrar/ocultar el registro de la mesa',
   'command.toggleInitiativeTracker': 'Mostrar/ocultar registro de iniciativa',
   'command.toggleLootRoller': 'Mostrar/ocultar tablas aleatorias',
   'command.viewChangelog': 'Ver registro de cambios',

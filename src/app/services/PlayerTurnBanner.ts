@@ -45,6 +45,9 @@ const TV_MOTION: TurnBannerMotion = withFightBannerMotion({
   },
 });
 
+/** How long a turn's banner (or its dim) stands for the players: long enough to read from across a table. */
+const PLAYER_TURN_BANNER_MS = 4000;
+
 /** How long the table's dim takes to fade (its `transition` in `turn-banner.scss`). */
 const DIM_FADE_MS = 450;
 
@@ -126,10 +129,7 @@ export class PlayerTurnBanner implements PlayerOverlay {
     return new TurnBannerDisplay(
       host,
       (imagePath) => portraitSrc(this.app, imagePath),
-      (banner) => {
-        const standMs = this.settings.getLocalPlayerViewSettings().turnBannerSeconds * 1000;
-        return banner.kind ? Math.max(standMs, FIGHT_BANNER_STAND_MS) : standMs;
-      },
+      (banner) => (banner.kind ? Math.max(PLAYER_TURN_BANNER_MS, FIGHT_BANNER_STAND_MS) : PLAYER_TURN_BANNER_MS),
       motion,
     );
   }
@@ -192,7 +192,7 @@ export class PlayerTurnBanner implements PlayerOverlay {
     if (this.litTimer !== null) view.clearTimeout(this.litTimer);
     this.litTimer = null;
     host.addClass('atlas-player-turn-banner--dim', 'atlas-player-turn-banner--lists-lit');
-    this.dimTimer = view.setTimeout(() => this.undim(), this.settings.getLocalPlayerViewSettings().turnBannerSeconds * 1000);
+    this.dimTimer = view.setTimeout(() => this.undim(), PLAYER_TURN_BANNER_MS);
   }
 
   /** The dim fades; the lists stay above it until it has, or they would be dimmed for the fade's length. */

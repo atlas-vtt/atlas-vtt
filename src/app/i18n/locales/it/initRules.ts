@@ -29,7 +29,6 @@ export const initRules: Translation = {
   'initRules.sideNameError': 'Dai un nome a ogni squadra.',
   'initRules.sideOrder': 'Ordine delle squadre',
   'initRules.sideRoll': 'Tiro della squadra',
-  'initRules.sideRolled': '{side}, ha tirato {roll}',
   'initRules.sidesOrder': 'Nell’ordine in cui agiscono.',
   'initRules.swapCard': 'Scambia carta con',
 };

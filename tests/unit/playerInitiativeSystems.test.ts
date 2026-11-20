@@ -37,21 +37,22 @@ describe("the players' list of a fight by sides", () => {
     expect(groups(container)).toEqual([['Players', 'hero', ''], ['Allies', 'hireling', ''], ['Opponents', 'ogre', '']]);
   });
 
-  it('heads each side with its roll, the highest first, and marks sides with equal rolls together', () => {
+  it('orders the sides by their roll, the highest first, marks sides with equal rolls together and shows no roll', () => {
     const initiative: InitiativeState = {
       ...createDefaultInitiativeState(), entries, isActive: true, round: 1,
       sides: { first: 'players', active: 'opponents', order: THREE.sides!, roll: '1d6', rolls: { 1: { players: 2, 'side-allies': 5, opponents: 5 } } },
     };
     const container = draw(initiative, { ...THREE, sideRoll: '1d6' }, tokens);
-    expect(groups(container)).toEqual([['Allies5', 'hireling', 'active'], ['Opponents5', 'ogre', 'active'], ['Players2', 'hero', '']]);
-    expect(container.querySelector('.atlas-player-initiative__side')!.getAttribute('aria-label')).toBe('Allies, rolled 5');
+    expect(groups(container)).toEqual([['Allies', 'hireling', 'active'], ['Opponents', 'ogre', 'active'], ['Players', 'hero', '']]);
+    expect(container.querySelector('.atlas-player-initiative__side')!.getAttribute('aria-label')).toBe('Allies');
   });
 });
 
 describe("the players' list of a fight by cards", () => {
-  it('shows the card each combatant was dealt where its number stands', () => {
+  it('leaves the cards dealt to the GM', () => {
     const initiative: InitiativeState = { ...createDefaultInitiativeState(), isActive: true, round: 1, cards: { deck: 10 }, entries: [entry('a', 0, { card: 2, initiative: 15 }), entry('b', 1)] };
     const container = draw(initiative, { mode: 'cards', roll: '1d20', firstSide: 'players' }, { a: token('a'), b: token('b') });
-    expect([...container.querySelectorAll('.atlas-player-initiative__card-dealt')].map((card) => card.textContent)).toEqual(['2', '–']);
+    expect(container.querySelectorAll('.atlas-player-initiative__card')).toHaveLength(2);
+    expect(container.querySelector('.atlas-player-initiative__list')?.textContent).not.toMatch(/[0-9–]/);
   });
 });

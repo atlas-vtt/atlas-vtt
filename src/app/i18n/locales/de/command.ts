@@ -15,7 +15,7 @@ export const command: Translation = {
   'command.reportIssue': 'Problem melden…',
   'command.sendMapToPlayerView': 'Aktuelle Karte an die Spieleransicht senden',
   'command.showMapInPlayerWindow': 'Aktuelle Karte im lokalen Spielerfenster zeigen',
-  'command.toggleDiceLog': 'Würfelprotokoll ein-/ausblenden',
+  'command.toggleDiceLog': 'Tischprotokoll ein-/ausblenden',
   'command.toggleInitiativeTracker': 'Initiativeleiste ein-/ausblenden',
   'command.toggleLootRoller': 'Zufallstabellen ein-/ausblenden',
   'command.viewChangelog': 'Änderungsprotokoll anzeigen',

@@ -61,6 +61,7 @@ import { SceneLevelsPanel } from './command-palette/SceneLevelsPanel';
 import { replaceMapImage } from './levels/replaceMapImage';
 import { startFloorPositioning } from './levels/levelEditing';
 import { pickMapImage } from './levels/mapImagePicker';
+import { scrollWithin } from '../../utils/scrollWithin';
 import { placePalette, placePaletteAtTop, type PalettePosition } from './command-palette/palettePlacement';
 import { useCoarsePointer } from '../../platform/useCoarsePointer';
 import { visibleViewport } from '../../host/visibleViewport';
@@ -351,7 +352,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       id: "open-dice-log",
       icon: <Dices />,
       label: t('palette.openDiceLog'),
-      keywords: ["roll history", "toggle"],
+      keywords: ["roll history", "dice log", "toggle"],
       shortcut: hotkeyLabel('diceLog'),
       section: "tools",
       action: () => {
@@ -601,7 +602,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     const frame = overlay.getBoundingClientRect();
     const toolbar = toolbarRef?.current;
     const aboveToolbar: PalettePosition = toolbar
-      ? placePalette(toolbar.getBoundingClientRect(), frame)
+      ? placePalette(toolbar.getBoundingClientRect(), frame, toolbar.win.getComputedStyle(toolbar).visibility === 'hidden')
       : { width: DEFAULT_PALETTE_WIDTH, left: (frame.width - DEFAULT_PALETTE_WIDTH) / 2, bottom: 100, reserved: 100 };
     setPosition(atTop ? placePaletteAtTop(aboveToolbar, frame, visibleViewport(overlay.win).bottom) : aboveToolbar);
   }, [toolbarRef, atTop]);
@@ -665,9 +666,11 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     if (!isOpen || isTemporarilyHidden || atTop || !input || !win) return;
     const timers: number[] = [];
     const focusInput = (): void => {
-      input.focus();
+      // Without scrolling: the palette is still moving into place, and a focus that scrolled to it
+      // scrolled Obsidian's containers around the view, shifting the whole map aside.
+      input.focus({ preventScroll: true });
       timers.push(win.setTimeout(() => {
-        if (input.ownerDocument.activeElement !== input) input.focus();
+        if (input.ownerDocument.activeElement !== input) input.focus({ preventScroll: true });
       }, 10));
     };
     focusInput();
@@ -682,7 +685,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   const clearSearch = (): void => {
     setSearchQuery("");
     setActiveTab("all");
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   };
 
   // Handle entering submenu
@@ -804,17 +807,12 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     };
   }, [isOpen, onClose, filteredOptions, focusedOptionIndex, searchQuery, tabs]);
 
-  // Scroll focused option into view
+  // Scroll the focused option into view within the list alone: `scrollIntoView` also scrolled
+  // Obsidian's containers around the map while the palette rose into place, shifting the map aside.
   useEffect(() => {
-    if (focusedOptionIndex >= 0 && optionsContainerRef.current) {
-      const options = optionsContainerRef.current.querySelectorAll(".atlas-command-item");
-      if (options[focusedOptionIndex]) {
-        options[focusedOptionIndex].scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      }
-    }
+    const list = optionsContainerRef.current;
+    const option = focusedOptionIndex >= 0 ? list?.querySelectorAll(".atlas-command-item")[focusedOptionIndex] : undefined;
+    if (list && option) scrollWithin(list, option, 'nearest');
   }, [focusedOptionIndex]);
 
   // Close on click outside
@@ -1063,7 +1061,6 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
                             className="atlas-command-palette-input"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            autoFocus={!atTop}
                             tabIndex={0}
                             autoComplete="off"
                             spellCheck={false}

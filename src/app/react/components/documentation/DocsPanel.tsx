@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useIsPresent } from 'framer-motion';
 import { ExternalLink } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { CloseButton } from '../../../packages/components/primitives/CloseButton';
@@ -20,8 +20,11 @@ const MARGIN = 12;
 /** Narrow enough to stand beside the map, wide enough for the site's one-column pages. */
 const MIN_SIZE = { width: 360, height: 320 };
 
-/** First placement: the right edge of the map, below the scene tabs. */
-const rightEdge = (area: PanelArea, panel: PanelArea): PanelPosition => ({ x: area.width - panel.width - MARGIN, y: 64 });
+/** Every opening places the panel in the middle of the scene; the hook keeps it inside the map's edges. */
+const centred = (area: PanelArea, panel: PanelArea): PanelPosition => ({
+  x: (area.width - panel.width) / 2,
+  y: (area.height - panel.height) / 2,
+});
 
 /** The documentation window of the map view; shown for the GM while it is open. */
 export function DocsWindow(): React.ReactElement {
@@ -29,11 +32,16 @@ export function DocsWindow(): React.ReactElement {
   return <AnimatePresence>{open && <DocsPanel key="docs" />}</AnimatePresence>;
 }
 
+/**
+ * The panel's page leaves as soon as the panel starts to close: it runs in a process of its own, and the closing
+ * motion over it dropped most of the frames (as over the Armarium, `ArmariumPane`).
+ */
 function DocsPanel(): React.ReactElement {
   const { view } = useAtlasUI();
+  const present = useIsPresent();
   const setOpen = useAtlasStore((state) => state.setDocsOpen);
   const windowVariants = useDialogWindowVariants();
-  const { position, panelRef, startDrag, isDragging } = useDraggablePosition(rightEdge, { margin: MARGIN });
+  const { position, panelRef, startDrag, isDragging } = useDraggablePosition(centred, { margin: MARGIN });
   const [size, setSize] = useState<PanelArea | null>(null);
   // The site lays out and repaints its whole page at every size it is given, so it is sized once, on release.
   const frameRef = useRef<HTMLIFrameElement>(null);
@@ -94,7 +102,7 @@ function DocsPanel(): React.ReactElement {
         <CloseButton onClick={close} aria-label={t('docs.close')} />
       </header>
 
-      <DocsFrame frameRef={frameRef} />
+      {present && <DocsFrame frameRef={frameRef} />}
 
       <div className="atlas-docs-panel__resize atlas-docs-panel__resize--right" onPointerDown={startResize('right')} />
       <div className="atlas-docs-panel__resize atlas-docs-panel__resize--bottom" onPointerDown={startResize('bottom')} />

@@ -1,8 +1,10 @@
 import type { Translation } from '../../types';
 
 export const lpv: Translation = {
-  'lpv.initiativeRows': 'Initiative quer über den Tisch',
-  'lpv.initiativeRowsHint': 'Die Initiativeliste der Spieler läuft als Reihe oben und unten, jede von ihrer Seite lesbar, für einen Fernseher, der auf dem Tisch liegt.',
+  'lpv.initiativeRows': 'Horizontale Initiative',
+  'lpv.initiativeRowsHint': 'Die Initiativeliste der Spieler läuft als Reihe über den Bildschirm statt als Spalte an seiner Seite, für einen Fernseher, der auf dem Tisch liegt.',
+  'lpv.initiativeMirrored': 'Gespiegelte Initiative',
+  'lpv.initiativeMirroredHint': 'Eine zweite Initiativeliste auf der gegenüberliegenden Seite des Bildschirms, umgedreht, damit auch die Spieler gegenüber sie lesen können.',
   'lpv.shared': 'Lokal und online',
   'lpv.playerWindow': 'Spielerfenster',
   'lpv.online': 'Online-Spiel',
@@ -18,4 +20,14 @@ export const lpv: Translation = {
   'lpv.view4kHint': 'Ein 4K-Fernseher oder ein Ultrawide-Monitor bekommt für jedes Pixel seines Bildschirms ein gerendertes Pixel statt eines hochskalierten 1440p-Bildes, bei bis zu 2,25-mal so viel Grafikarbeit für die Spieleransicht. Nur auf diesem Gerät.',
   'lpv.showInitiative': 'Initiativeleiste zeigen',
   'lpv.showWidgets': 'Widgets zeigen',
+  'lpv.initiativePulse': 'Rahmen am Zug pulsieren lassen',
+  'lpv.initiativePulseHint': 'Der Rahmen des Kampfteilnehmers, der am Zug ist, pulsiert, statt still zu stehen.',
+  'lpv.initiativeScale': 'Größe der Initiative',
+  'lpv.initiativeScaleValue': '{percent} %',
+  'lpv.turnBannerAtLists': 'Zugbanner an den Initiativelisten',
+  'lpv.turnBannerAtListsHint': 'Das Zugbanner steht direkt über jeder Initiativeliste und ist mit ihr gedreht, statt in der Mitte des Tisches.',
+  'lpv.turnDim': 'Tisch abdunkeln statt Zugbanner',
+  'lpv.turnDimHint': 'Ein neuer Zug dunkelt den Tisch für die Dauer des Zugbanners ab, statt sein Banner zu zeigen, während die Initiativelisten hell bleiben, damit die weiterrückenden Karten hervorstechen. Beginn und Ende eines Kampfs behalten ihre Banner.',
+  'lpv.initiativeMaxCards': 'Karten in der Initiative',
+  'lpv.initiativeMaxCardsAll': 'Alle',
 };

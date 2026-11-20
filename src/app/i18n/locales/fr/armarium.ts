@@ -19,4 +19,5 @@ export const armarium: Translation = {
   'armarium.mismatch': 'Le téléchargement de {name} ne correspond pas au fichier listé par l\'Armarium, rien n\'a donc été installé.',
   'armarium.failed': 'L\'installation depuis l\'Armarium a échoué.',
   'armarium.badLink': 'Ce lien d\'installation est incomplet. Ouvrez la collection dans l\'Armarium et réessayez.',
+  'armarium.otherListing': 'Le fichier de l\'Armarium correspond à une autre annonce que celle demandée, rien n\'a donc été installé.',
 };

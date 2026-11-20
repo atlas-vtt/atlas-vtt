@@ -14,6 +14,7 @@ export const diceLab: Translation = {
   'diceLab.newSetName': '新骰组',
   'diceLab.noDiceYet': '还没有骰子',
   'diceLab.duplicateSet': '复制 {name}',
+  'diceLab.moreFor': '{name} 的更多操作',
   'diceLab.duplicateToEdit': '复制后编辑',
   'diceLab.copyName': '{name} 副本',
   'diceLab.deleteSet': '删除 {name}',

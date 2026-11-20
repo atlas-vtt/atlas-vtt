@@ -33,6 +33,8 @@ interface PartsInput {
   account: AtlasAccount;
   accountState: AccountState;
   onClose: () => void;
+  /** The published listing's page is on the site, so Open in the Armarium finds it. */
+  listingPageReady: boolean;
 }
 
 const action = (label: string, onClick: () => void, primary = false, disabled = false): React.JSX.Element => (
@@ -72,7 +74,7 @@ function accountParts(snapshot: ShareSnapshot, session: AnyShareSession, account
 }
 
 /** The open step's title, content and actions; the dialog lays them out. */
-export function shareStepParts({ app, session, snapshot, account, accountState, onClose }: PartsInput): StepParts {
+export function shareStepParts({ app, session, snapshot, account, accountState, onClose, listingPageReady }: PartsInput): StepParts {
   const { step, busy, refusal, bundle } = snapshot;
   switch (step) {
     case 'bundle':
@@ -121,10 +123,10 @@ export function shareStepParts({ app, session, snapshot, account, accountState, 
         body: <DoneStep snapshot={snapshot} />,
         actions: [
           action(t('common.close'), onClose),
-          ...(slug === null || snapshot.published?.held === true ? [] : [action(t('armariumShare.openListing'), () => {
+          ...(slug === null || snapshot.published?.held === true ? [] : [action(listingPageReady ? t('armariumShare.openListing') : t('armariumShare.preparingPage'), () => {
             onClose();
             ArmariumHosts.forApp(app).target()?.show(armariumListingUrl(slug));
-          }, true)]),
+          }, true, !listingPageReady)]),
         ],
       };
     }

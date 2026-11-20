@@ -100,6 +100,8 @@ import { fog } from './fog';
 import { glass } from './glass';
 import { graphics } from './graphics';
 import { initRules } from './initRules';
+import { itemBundle } from './itemBundle';
+import { itemReview } from './itemReview';
 import { levels } from './levels';
 import { mapFeature } from './mapFeature';
 import { measure } from './measure';
@@ -231,6 +233,8 @@ export const zh: Translation = {
   ...glass,
   ...graphics,
   ...initRules,
+  ...itemBundle,
+  ...itemReview,
   ...levels,
   ...mapFeature,
   ...measure,

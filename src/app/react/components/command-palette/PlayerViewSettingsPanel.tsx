@@ -6,7 +6,6 @@ import { openPlayerWindow } from '../../../services/PlayerWindowPresenter';
 import type { AtlasSettings, SettingsService } from '../../../services/SettingsService';
 import { DEFAULT_SETTINGS } from '../../../services/atlasSettings';
 import { initiativeMaxCardsOf, initiativeScaleOf, MAX_INITIATIVE_CARDS, MAX_INITIATIVE_SCALE } from '../../../services/playerInitiativeList';
-import { MAX_TURN_BANNER_SCALE } from '../../../initiative/banner/turnBannerElement';
 import { SettingRow, SettingSliderRow, SettingToggleRow } from './SettingRows';
 import { usePlayerViewSwitches, type PlayerViewSwitch } from './playerViewSwitches';
 import { t } from '../../../i18n';
@@ -16,7 +15,7 @@ const renderSwitch = ({ id, label, hint, value, onToggle }: PlayerViewSwitch): R
   <SettingToggleRow key={id} label={label} hint={hint} value={value} onToggle={onToggle} />
 );
 
-/** The sliders: how large the players' initiative list and turn banner are, and how long the banner stands. */
+/** The sliders: how large the players' initiative list is, and how many cards it shows. */
 function InitiativeLookSliders({ settings }: { settings: SettingsService | undefined }): React.ReactElement {
   const values: AtlasSettings['localPlayerView'] = settings?.getLocalPlayerViewSettings() ?? DEFAULT_SETTINGS.localPlayerView;
   const update = (changes: Partial<AtlasSettings['localPlayerView']>): void => settings?.setLocalPlayerViewSettings(changes);
@@ -41,24 +40,6 @@ function InitiativeLookSliders({ settings }: { settings: SettingsService | undef
         step={1}
         displayValue={maxCards === 0 ? t('lpv.initiativeMaxCardsAll') : String(maxCards)}
         onChange={(value) => update({ initiativeMaxCards: value })}
-      />
-      <SettingSliderRow
-        label={t('lpv.turnBannerScale')}
-        value={values.turnBannerScale}
-        min={1}
-        max={MAX_TURN_BANNER_SCALE}
-        step={0.25}
-        displayValue={t('lpv.initiativeScaleValue', { percent: Math.round(values.turnBannerScale * 100) })}
-        onChange={(value) => update({ turnBannerScale: value })}
-      />
-      <SettingSliderRow
-        label={t('lpv.turnBannerSeconds')}
-        value={values.turnBannerSeconds}
-        min={1}
-        max={10}
-        step={0.5}
-        displayValue={t('lpv.turnBannerSecondsValue', { seconds: values.turnBannerSeconds })}
-        onChange={(value) => update({ turnBannerSeconds: value })}
       />
     </>
   );

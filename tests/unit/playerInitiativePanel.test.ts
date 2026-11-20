@@ -40,7 +40,8 @@ describe('the players\' initiative list', () => {
 
     made.store.getState().startCombat();
     expect(container.childElementCount).toBeGreaterThan(0);
-    expect(container.textContent).toContain('12');
+    expect(container.textContent).toContain('Mira');
+    expect(container.textContent).not.toContain('12');
 
     made.store.getState().endCombat();
     // It slides out first
@@ -98,5 +99,59 @@ describe('the players\' initiative list', () => {
     exit.finish();
     await Promise.resolve();
     expect(container.childElementCount).toBe(0);
+  });
+});
+
+describe('the players\' list laid out anew', () => {
+  afterEach(() => {
+    delete (HTMLElement.prototype as Partial<HTMLElement>).animate;
+    document.body.empty();
+  });
+
+  it('leaves towards its edge as the lists of the new layout come in from theirs, a moment later', async () => {
+    const motions: { target: HTMLElement; keyframes: Keyframe[]; timing: KeyframeAnimationOptions }[] = [];
+    HTMLElement.prototype.animate = function (this: HTMLElement, keyframes: Keyframe[], timing: KeyframeAnimationOptions) {
+      motions.push({ target: this, keyframes, timing });
+      return { finished: new Promise<void>(() => undefined), cancel: () => undefined } as unknown as Animation;
+    } as unknown as HTMLElement['animate'];
+    const { app } = createInMemoryApp({ files: {} });
+    const store = createViewAtlasStore(app, 'player-initiative-swap');
+    store.getState().setPersistenceEnabled(false);
+    let layout = { fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false };
+    const listeners: (() => void)[] = [];
+    const settings = {
+      getLocalPlayerViewSettings: () => ({ showInitiative: true }),
+      onChange: (listener: () => void) => { listeners.push(listener); return () => undefined; },
+      initiativeLayout: () => layout,
+      initiativeTurnOptions: () => ({ banner: false }),
+    } as unknown as SettingsService;
+    const panel = new PlayerInitiativePanel(app, settings);
+    panel.mount(document.body);
+    panel.present(store);
+    store.getState().addToInitiative({ partyMemberId: 'mira', name: 'Mira', initiative: 12, initiativeModifier: 0, imagePath: '', isNPC: false });
+    store.getState().setInitiativeTrackerOpen(true);
+    store.getState().startCombat();
+    await Promise.resolve();
+    motions.length = 0;
+
+    layout = { fromTurn: true, dock: 'top', edges: ['top', 'bottom'], facesPlayers: true };
+    for (const listener of listeners) listener();
+    await Promise.resolve();
+
+    const panels = [...document.querySelectorAll<HTMLElement>('.atlas-player-initiative')];
+    const old = panels.find((candidate) => candidate.hasClass('atlas-player-initiative--leaving'))!;
+    expect(old.dataset.edge).toBe('right');
+    const exit = motions.find(({ target }) => target === old)!;
+    expect(exit.keyframes[1]!.opacity).toBe(0);
+    expect(exit.keyframes[1]!.translate).toMatch(/^\d+px 0px$/);
+    const fresh = panels.filter((candidate) => !candidate.hasClass('atlas-player-initiative--leaving'));
+    expect(fresh.map((candidate) => candidate.dataset.edge).sort()).toEqual(['bottom', 'top']);
+    for (const list of fresh) {
+      const enter = motions.find(({ target }) => target === list)!;
+      expect(enter.keyframes[0]!.opacity).toBe(0);
+      // A moment after the old list began to leave
+      expect(enter.timing.delay).toBeGreaterThan(80);
+    }
+    panel.destroy();
   });
 });

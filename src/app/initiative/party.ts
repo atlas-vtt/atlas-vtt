@@ -3,7 +3,6 @@ import type { CollectionSettings, PartyMember } from '../types/collectionSetting
 import type { SideId } from '../types/initiativeRulesTypes';
 import type { InitiativeEntry } from '../types/initiativeTypes';
 import { sideOf } from './sides';
-import { combatantColor } from './combatantColor';
 
 /** A new entry for `addToInitiative`. */
 type NewEntry = Omit<InitiativeEntry, 'id' | 'order' | 'isActive'>;
@@ -15,8 +14,7 @@ export function collectionParty(settings: Pick<CollectionSettings, 'party'> | nu
   return party.flatMap((member: Partial<PartyMember> | null): PartyMember[] => {
     if (typeof member?.id !== 'string' || !member.id || typeof member.name !== 'string' || !member.name.trim()) return [];
     const { imagePath } = member;
-    const color = combatantColor(member);
-    return [{ id: member.id, name: member.name.trim(), ...(typeof imagePath === 'string' && imagePath ? { imagePath } : {}), ...(color ? { color } : {}) }];
+    return [{ id: member.id, name: member.name.trim(), ...(typeof imagePath === 'string' && imagePath ? { imagePath } : {}) }];
   });
 }
 
@@ -37,15 +35,14 @@ export function missingPartyEntries(party: readonly PartyMember[], entries: read
     .filter((member) => !inTracker.has(member.id))
     .map((member) => ({
       partyMemberId: member.id, name: member.name, imagePath: member.imagePath ?? '', initiative: 0, initiativeModifier: 0, isNPC: false,
-      ...(member.color ? { color: member.color } : {}),
     }));
 }
 
-/** What an entry must change to show its party member as the roster has them now (name, picture, colour); nothing for a member that left. */
+/** What an entry must change to show its party member as the roster has them now (name, picture); nothing for a member that left. */
 export function partyEntryChanges(entry: InitiativeEntry, party: readonly PartyMember[]): Partial<InitiativeEntry> | null {
   const member = entry.partyMemberId === undefined ? undefined : party.find(({ id }) => id === entry.partyMemberId);
   if (!member) return null;
   const imagePath = member.imagePath ?? '';
-  if (entry.name === member.name && entry.imagePath === imagePath && entry.color === member.color) return null;
-  return { name: member.name, imagePath, color: member.color };
+  if (entry.name === member.name && entry.imagePath === imagePath) return null;
+  return { name: member.name, imagePath };
 }

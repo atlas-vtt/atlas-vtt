@@ -71,7 +71,6 @@ export function useInitiativeCardMenu(inputs: CardMenuInputs): (event: React.Mou
       placeOnMap: () => { if (view && entry.tokenId !== undefined) placeCombatantOnMap(view, entry.tokenId); },
       ...(entry.statblockPath && preview && { preview: () => preview(entry, cardElement) }),
       remove: () => removeCombatant(store, entry, defeated()),
-      setColor: (color) => updateInitiativeEntry(entry.id, { color }),
       setHiddenFromPlayers: (hidden) => updateInitiativeEntry(entry.id, { hiddenFromPlayers: hidden ? true : undefined }),
     }, conditionDefinitions.length > 0 ? combatantConditionsMenu(store, conditionDefinitions, entry.id) : null);
     openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });

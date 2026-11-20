@@ -114,4 +114,5 @@ export const diceLab: Translation = {
   'diceLab.default': 'Par défaut',
   'diceLab.collectionDice': 'Dés de la collection',
   'diceLab.ofCollection': 'Collection {name}',
+  'diceLab.moreFor': 'Plus d\'options pour {name}',
 };

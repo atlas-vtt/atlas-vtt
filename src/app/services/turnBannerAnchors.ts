@@ -30,6 +30,7 @@ const FACING: Readonly<Record<PlayersListEdge, { turn: number; inner: keyof Box 
   bottom: { turn: 0, inner: 'top' },
   top: { turn: 180, inner: 'bottom' },
   right: { turn: -90, inner: 'left' },
+  left: { turn: 90, inner: 'right' },
 };
 
 /** The anchor of a banner for the list in `box` at `edge`: on the list's side that faces into the room. */
@@ -43,6 +44,9 @@ export function bannerAnchor(box: Box, edge: PlayersListEdge, faces: boolean): B
   }
   if (edge === 'top') return { x, y: box.bottom, turn: 0, side: 'below', align: 'centre' };
   if (edge === 'bottom') return { x, y: box.top, turn: 0, side: 'above', align: 'centre' };
+  // The left column, the right one's mirror turned around for the far side of the table: beside it on its inner side,
+  // turned with it, so the banner stands to its right on screen and reads from across the table
+  if (edge === 'left') return { x: box.right, y, turn: 180, side: 'left', align: 'centre' };
   // An upright column: beside it, towards the middle of the table, level with the column's middle
   return { x: box.left, y, turn: 0, side: 'left', align: 'centre' };
 }

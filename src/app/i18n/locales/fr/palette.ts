@@ -22,7 +22,7 @@ export const palette: Translation = {
   'palette.noResults': 'Aucun résultat',
   'palette.noResultsHint': 'Essayez un autre terme de recherche',
   'palette.notePinTool': 'Outil d\'épingle de note',
-  'palette.openDiceLog': 'Ouvrir le journal des dés',
+  'palette.openDiceLog': 'Ouvrir le journal de la table',
   'palette.openLootRoller': 'Ouvrir les tables aléatoires',
   'palette.openSceneBrowser': 'Ouvrir le gestionnaire de ressources',
   'palette.openDMScreen': 'Ouvrir l\'écran du MJ',

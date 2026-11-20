@@ -22,7 +22,7 @@ export const palette: Translation = {
   'palette.noResults': 'Keine Ergebnisse gefunden',
   'palette.noResultsHint': 'Versuche einen anderen Suchbegriff',
   'palette.notePinTool': 'Notiz-Pin-Werkzeug',
-  'palette.openDiceLog': 'Würfelprotokoll öffnen',
+  'palette.openDiceLog': 'Tischprotokoll öffnen',
   'palette.openLootRoller': 'Zufallstabellen öffnen',
   'palette.openSceneBrowser': 'Asset-Manager öffnen',
   'palette.openDMScreen': 'SL-Schirm öffnen',

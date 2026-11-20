@@ -51,6 +51,18 @@ describe('the command palette under a finger', () => {
     expect(anchor.style.bottom).toBe('');
   });
 
+  // A scrolling focus or `scrollIntoView` while the palette rose into place scrolled Obsidian's containers around the map, shifting it aside.
+  it('with a mouse focuses its search field and highlights a command without scrolling anything around it', () => {
+    pointer.coarse = false;
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+    const { input } = openPalette();
+    const onField = focus.mock.calls.filter((_, call) => focus.mock.contexts[call] === input);
+    expect(onField.length).toBeGreaterThan(0);
+    for (const [options] of onField) expect(options).toEqual({ preventScroll: true });
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+    focus.mockRestore();
+  });
+
   it('with a mouse opens above the toolbar with its search field focused, as ever', () => {
     pointer.coarse = false;
     const { input, anchor } = openPalette();

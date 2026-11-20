@@ -1,6 +1,9 @@
-/** Where the players' list stands: down the right edge, or across the top or bottom one. */
-export type PlayersListEdge = 'right' | 'top' | 'bottom';
-const PLAYERS_LIST_EDGES: readonly PlayersListEdge[] = ['right', 'top', 'bottom'];
+/**
+ * Where the players' list stands: down the right edge, across the top or bottom one, or down the left edge, turned
+ * around, as the right column's mirror for the far side of the table.
+ */
+export type PlayersListEdge = 'right' | 'left' | 'top' | 'bottom';
+const PLAYERS_LIST_EDGES: readonly PlayersListEdge[] = ['right', 'left', 'top', 'bottom'];
 
 /**
  * How the initiative lists are laid out. The players' list's edges are the GM's choice (What players see), kept in
@@ -18,28 +21,41 @@ export interface InitiativeLayout {
   facesPlayers: boolean;
 }
 
-/** The two ways the GM lays the players' list out: a column down the right edge, or a row on each side of a table TV. */
+/** The two ways the GM lays the players' list out (Horizontal initiative): a column down the side, or a row across. */
 export type PlayersListShape = 'vertical' | 'horizontal';
 
-/** The layout of each shape: the horizontal one is a row at the top and one at the bottom, each read from its own side. */
-export const PLAYERS_LIST_SHAPES: Readonly<Record<PlayersListShape, Pick<InitiativeLayout, 'edges' | 'facesPlayers'>>> = {
-  vertical: { edges: ['right'], facesPlayers: false },
-  horizontal: { edges: ['top', 'bottom'], facesPlayers: true },
-};
+/**
+ * The layout of a shape (Horizontal initiative), alone or mirrored for the far side of the table (Mirrored
+ * initiative): a column at the right edge, mirrored by one at the left turned around; a row at the bottom, mirrored by
+ * one at the top, each row read from its own side.
+ */
+export function playersListLayout(shape: PlayersListShape, mirrored: boolean): Pick<InitiativeLayout, 'edges' | 'facesPlayers'> {
+  if (shape === 'horizontal') return { edges: mirrored ? ['top', 'bottom'] : ['bottom'], facesPlayers: true };
+  return { edges: mirrored ? ['right', 'left'] : ['right'], facesPlayers: false };
+}
 
 /** The shape a layout reads as: a row wherever the list stands at the top or bottom. */
 export function playersListShape({ edges }: Pick<InitiativeLayout, 'edges'>): PlayersListShape {
-  return edges.some((edge) => edge !== 'right') ? 'horizontal' : 'vertical';
+  return edges.some((edge) => edge === 'top' || edge === 'bottom') ? 'horizontal' : 'vertical';
 }
 
-/** The stored edge of the players' list: the right one unless the settings name another (an older left edge reads as right). */
+/** Whether a layout has a copy of the list for the far side of the table too. */
+export function playersListMirrored({ edges }: Pick<InitiativeLayout, 'edges'>): boolean {
+  return edges.length > 1;
+}
+
+/**
+ * The stored edge of the players' list: the right one unless the settings name another. A left edge alone (an older
+ * version's tracker on the left) reads as right: the left column is only ever the right one's mirror.
+ */
 export function readListEdge(value: unknown): PlayersListEdge {
-  return PLAYERS_LIST_EDGES.find((edge) => edge === value) ?? 'right';
+  return PLAYERS_LIST_EDGES.find((edge) => edge === value && edge !== 'left') ?? 'right';
 }
 
-/** The stored edges of the players' list, in order; where none are, `dock` alone. */
+/** The stored edges of the players' list, in order; where none are, `dock` alone. The left edge counts only beside the right. */
 export function readListEdges(value: unknown, dock: PlayersListEdge): PlayersListEdge[] {
-  const stored = Array.isArray(value) ? PLAYERS_LIST_EDGES.filter((edge) => value.includes(edge)) : [];
+  const named = Array.isArray(value) ? PLAYERS_LIST_EDGES.filter((edge) => value.includes(edge)) : [];
+  const stored = named.includes('right') ? named : named.filter((edge) => edge !== 'left');
   return stored.length > 0 ? stored : [dock];
 }
 

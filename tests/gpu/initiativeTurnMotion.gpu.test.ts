@@ -74,7 +74,7 @@ describe('the turn passing on and back', () => {
   beforeEach(() => document.head.append(style));
   afterEach(() => style.remove());
 
-  for (const edge of ['right', 'bottom'] as const) {
+  for (const edge of ['right', 'left', 'bottom'] as const) {
     it(`glides every card one place on the players' list at the ${edge}, who acted sliding out at the front and in at the end, and back`, async () => {
       await page.viewport(1000, 700);
       document.body.innerHTML = '';
@@ -204,4 +204,42 @@ describe('the turn passing on and back', () => {
     holdAt(140);
     await page.screenshot({ path: `${SHOTS}/gm-enter-mid.png` });
   });
+
+  it('glides the GM\'s tracker to its new size as the compact view is switched on and off, its cards fading in anew', async () => {
+    await page.viewport(1200, 900);
+    document.body.innerHTML = '';
+    const { app } = createInMemoryApp({ files: {} });
+    const settings = new SettingsService(app);
+    settings.setInitiativeLayout({ dock: 'right' });
+    const store = createViewAtlasStore(app, `look-morph-${Math.random()}`);
+    store.setState({
+      persistenceEnabled: false,
+      initiativeTrackerOpen: true,
+      objects: { ...store.getState().objects, tokens: Object.fromEntries([0, 1, 2, 3, 4].map((index) => [`t${index}`, creature(index)])) },
+      initiative: { ...createDefaultInitiativeState(), isActive: true, round: 2, currentIndex: 1, entries: [0, 1, 2, 3, 4].map((index) => entryOf(index, 1)) },
+    });
+    const ui = { app, view: null, pixiApp: null, renderer: null } as never;
+    render(React.createElement(AtlasUIContext.Provider, { value: ui }, React.createElement(ViewStoreProvider, { store }, React.createElement(InitiativeTracker))));
+    const tracker = document.querySelector<HTMLElement>('.atlas-initiative-tracker')!;
+    const cards = { width: box(tracker).width, height: box(tracker).height };
+
+    await act(async () => settings.setCompactInitiative(true));
+    holdAt(0);
+    // It starts at the size it had, its cards not yet in sight
+    expect(box(tracker).width).toBeCloseTo(cards.width, 0);
+    expect(box(tracker).height).toBeCloseTo(cards.height, 0);
+    expect(Number(getComputedStyle(tracker.querySelector('[data-turn-key="e0"]')!).opacity)).toBe(0);
+    holdAt(190);
+    await page.screenshot({ path: `${SHOTS}/gm-compact-mid.png` });
+    finishAll();
+    const lines = { width: box(tracker).width, height: box(tracker).height };
+    expect(lines.width).toBeGreaterThan(cards.width);
+
+    await act(async () => settings.setCompactInitiative(false));
+    holdAt(0);
+    expect(box(tracker).width).toBeCloseTo(lines.width, 0);
+    finishAll();
+    expect(box(tracker).width).toBeCloseTo(cards.width, 0);
+  });
 });
+

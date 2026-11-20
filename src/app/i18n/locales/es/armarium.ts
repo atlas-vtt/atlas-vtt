@@ -16,6 +16,7 @@ export const armarium: Translation = {
   'armarium.versionChanged': '{name} ha cambiado desde que se cargó la página: ahora se ofrece la versión {version}. Recarga el Armarium e inténtalo de nuevo.',
   'armarium.downloading': 'Descargando {name}…',
   'armarium.downloadFailed': 'No se pudo descargar {name}. Comprueba tu conexión e inténtalo de nuevo.',
+  'armarium.otherListing': 'El archivo del Armarium indica una ficha distinta de la solicitada, así que no se instaló nada.',
   'armarium.mismatch': 'La descarga de {name} no es el archivo que lista el Armarium, así que no se instaló nada.',
   'armarium.failed': 'Falló la instalación desde el Armarium.',
   'armarium.badLink': 'Este enlace de instalación está incompleto. Abre la colección en el Armarium e inténtalo de nuevo.',

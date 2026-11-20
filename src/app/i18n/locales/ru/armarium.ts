@@ -16,6 +16,7 @@ export const armarium: Translation = {
   'armarium.versionChanged': '{name} изменилась после загрузки страницы: сейчас предлагается версия {version}. Обновите Armarium и попробуйте снова.',
   'armarium.downloading': 'Скачивание {name}…',
   'armarium.downloadFailed': 'Не удалось скачать {name}. Проверьте подключение и попробуйте снова.',
+  'armarium.otherListing': 'Файл из Armarium относится не к той странице, которую запросили, поэтому ничего не установлено.',
   'armarium.mismatch': 'Скачанный файл {name} не совпадает с файлом в Armarium, поэтому ничего не установлено.',
   'armarium.failed': 'Не удалось установить из Armarium.',
   'armarium.badLink': 'Эта ссылка установки неполная. Откройте коллекцию в Armarium и попробуйте снова.',

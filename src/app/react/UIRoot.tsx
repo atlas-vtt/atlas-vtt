@@ -112,7 +112,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   const storeIsPlayerView = useAtlasStore(state => state.isPlayerView);
   const isPlayerView = storeIsPlayerView || view?.getViewType?.() === 'atlas-vtt-player';
   const uiRef = useRef<HTMLDivElement>(null);
-  useChromeAutoHide(uiRef, isPlayerView);
+  useChromeAutoHide(uiRef, isPlayerView, settings);
   // Get loading state from store
   const isMapLoading = useAtlasStore(state => state.isMapLoading);
   const mapLoadingProgress = useAtlasStore(state => state.mapLoadingProgress);
@@ -298,7 +298,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           {!isPlayerView && <PanelBoundary name="the dungeon generator"><DungeonGeneratorOverlay /></PanelBoundary>}
 
           {/* Dice Roll Log - left side panel */}
-          <PanelBoundary name="the dice log"><DiceRollLog isOpen={isDiceLogOpen} onClose={() => setDiceLogOpen(false)} /></PanelBoundary>
+          <PanelBoundary name="the table log"><DiceRollLog isOpen={isDiceLogOpen} onClose={() => setDiceLogOpen(false)} /></PanelBoundary>
 
           {/* Initiative Tracker - only for DM view */}
           {!isPlayerView && <PanelBoundary name="the initiative tracker"><InitiativeTracker /></PanelBoundary>}

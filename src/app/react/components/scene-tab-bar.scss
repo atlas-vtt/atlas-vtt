@@ -256,8 +256,12 @@ $tab-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
   }
 }
 
-.atlas-scene-tab-bar__button {
+// Ghost buttons: shown only on hover and press. Obsidian fills every <button> (`button:not(.clickable-icon)`), which
+// outranks a single class.
+.atlas-scene-tab-bar button.atlas-scene-tab-bar__button {
   flex-shrink: 0;
+  box-shadow: none;
+  @include atlas-ghost-button;
 }
 
 // ── Under a coarse pointer ──────────────────────────────────────────────────

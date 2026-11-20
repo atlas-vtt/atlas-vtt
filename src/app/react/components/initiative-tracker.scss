@@ -376,14 +376,7 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
     transform: scale(0.96);
   }
 
-  // A player character's own colour (a party member's): its border and a wash of its fill; the turn's accent wins
-  &--coloured,
-  &--coloured:hover {
-    border-color: initiative-side-line(var(--atlas-combatant-color));
-    background: color-mix(in srgb, var(--atlas-combatant-color) 22%, var(--background-modifier-hover));
-  }
-
-  // The players' own side, framed in green as opponents are in their colour
+  // The players' own side, framed in green
   &--ally,
   &--ally:hover {
     border-color: initiative-side-line(var(--color-green));
@@ -392,7 +385,7 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   // Active turn state
   // Ring and glow are inset: the list scrolls, so anything drawn outside the
   // card box is clipped on the straight edges and leaves ragged corners.
-  // In the combatant's own colour (`--atlas-turn-color`, `turnColor`), else the accent
+  // In its token's ring colour (`--atlas-turn-color`, `turnColor`), else the accent
   &--active {
     border-color: var(--atlas-turn-color, var(--interactive-accent));
     box-shadow:
@@ -600,9 +593,10 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   background: transparent;
   cursor: text;
 
+  // A click edits it: the border takes a hint of the accent the field is framed in while typed
   &:hover {
     background: var(--background-modifier-hover);
-    border-color: var(--background-modifier-border);
+    border-color: color-mix(in srgb, var(--interactive-accent) 60%, var(--background-modifier-border));
   }
 
   @include atlas-focus-ring;
@@ -615,11 +609,29 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   }
 }
 
+// Typed in place, the field keeps the plate's size and colours (each layout sets them for both) and only gains the
+// accent frame. The `:focus` rules outrank Obsidian's own for text inputs, which would make it a translucent form field.
 .atlas-initiative-card .atlas-initiative-card__initiative-input {
   width: 48px;
-  background: var(--background-modifier-form-field);
-  border-color: var(--interactive-accent);
-  outline: none;
+
+  &,
+  &:focus {
+    background: var(--background-modifier-form-field);
+  }
+
+  @supports (field-sizing: content) {
+    width: auto;
+    field-sizing: content;
+  }
+
+  &,
+  &:hover,
+  &:focus,
+  &:focus-visible {
+    border-color: var(--interactive-accent);
+    outline: none;
+    box-shadow: 0 0 0 1px var(--interactive-accent);
+  }
 }
 
 // The combatant's name, where the GM chose to see names
@@ -739,12 +751,20 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
     border-radius: $tile-corner-radius;
   }
 
+  .atlas-initiative-card__initiative:not(.atlas-initiative-card__initiative--empty),
+  .atlas-initiative-card__initiative-input:not(.atlas-initiative-card__initiative-input--empty) {
+    &,
+    &:focus {
+      background: var(--background-primary);
+    }
+  }
+
   .atlas-initiative-card__initiative:not(.atlas-initiative-card__initiative--empty) {
-    background: var(--background-primary);
     border-color: var(--background-modifier-border);
 
     &:hover {
       background: var(--background-secondary);
+      border-color: color-mix(in srgb, var(--interactive-accent) 60%, var(--background-modifier-border));
     }
   }
 
@@ -753,12 +773,8 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
     opacity: 0.5;
   }
 
-  // A side's glow and the turn's ring lie on the art, which covers the card's own inset shadow; the side's line is the
-  // card's border
-  &.atlas-initiative-card--coloured .atlas-initiative-card__art::after {
-    @include initiative-side-glow(var(--atlas-combatant-color));
-  }
-
+  // The players' glow and the turn's ring lie on the art, which covers the card's own inset shadow; the side's line is
+  // the card's border
   &.atlas-initiative-card--ally .atlas-initiative-card__art::after {
     @include initiative-side-glow(var(--color-green));
   }
@@ -770,12 +786,75 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
 }
 
 // While someone holds the turn, everyone else's art steps back a little, so the turn stands out whatever its colour
-.atlas-initiative-tracker:has(.atlas-initiative-card--active, .atlas-initiative-side--active) .atlas-initiative-card--tile:not(.atlas-initiative-card--active) .atlas-initiative-card__art img {
+.atlas-initiative-tracker:has(.atlas-initiative-card--active, .atlas-initiative-side--active) .atlas-initiative-card--tile:not(.atlas-initiative-card--active, :hover, .atlas-initiative-card--preview-hover) .atlas-initiative-card__art img {
   filter: $initiative-art-dim;
 }
 
 .atlas-initiative-side--active .atlas-initiative-card--tile:not(.atlas-initiative-card--sitting-out) .atlas-initiative-card__art img {
   filter: none;
+}
+
+// The card under the pointer, or whose statblock Mod shows, steps forward: its art lit a little, at once, fading back
+// when the pointer leaves
+.atlas-initiative-card--tile .atlas-initiative-card__art img {
+  transition: filter 120ms ease-out;
+}
+
+.atlas-initiative-tracker .atlas-initiative-card--tile:is(:hover, .atlas-initiative-card--preview-hover) .atlas-initiative-card__art img {
+  filter: brightness(1.12);
+  transition-duration: 0s;
+}
+
+// Hover, press, a selected token and Mod's statblock preview ring the card's edge (`--atlas-card-ring`). The art covers
+// the card's own border, fill and inset shadow, so the ring is a layer above it, `::after`, which the drop indicator
+// takes while a dragged card would land below this one. The ring stands out from the panel around the card: white on a
+// dark theme's, dark on a light theme's (the compact line is a dark surface in both and keeps white,
+// `initiative-tracker-compact.scss`)
+.atlas-initiative-card {
+  --atlas-card-ring: transparent;
+  --atlas-card-ring-hover: rgb(255 255 255 / 0.45);
+  --atlas-card-ring-press: rgb(255 255 255 / 0.7);
+  --atlas-card-ring-preview: rgb(255 255 255 / 0.9);
+
+  &:hover {
+    --atlas-card-ring: var(--atlas-card-ring-hover);
+  }
+
+  &:active {
+    --atlas-card-ring: var(--atlas-card-ring-press);
+  }
+
+  // Its token is selected on the map: the accent, as long as it stays selected
+  &.atlas-initiative-card--selected {
+    --atlas-card-ring: var(--interactive-accent);
+  }
+
+  // Mod held over it: its statblock shows
+  &.atlas-initiative-card--preview-hover {
+    --atlas-card-ring: var(--atlas-card-ring-preview);
+  }
+
+  &:not(.atlas-initiative-card--drop-below)::after {
+    content: '';
+    position: absolute;
+    inset: calc(-1 * #{$border-width-s});
+    z-index: 3;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 2px var(--atlas-card-ring);
+    pointer-events: none;
+    transition: box-shadow 120ms ease-out;
+  }
+
+  // A ring comes at once, so hover and press never lag the pointer, and fades when it goes
+  &:is(:hover, :active, .atlas-initiative-card--selected, .atlas-initiative-card--preview-hover)::after {
+    transition-duration: 0s;
+  }
+}
+
+.theme-light .atlas-initiative-card {
+  --atlas-card-ring-hover: rgb(0 0 0 / 0.35);
+  --atlas-card-ring-press: rgb(0 0 0 / 0.55);
+  --atlas-card-ring-preview: rgb(0 0 0 / 0.8);
 }
 
 // Note: Statblock preview styles are in statblock-hover-preview.scss (shared component)
@@ -904,11 +983,3 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
   }
 }
 
-// A colour's swatch in the card menu's Colour submenu
-.atlas-initiative-colour-dot {
-  display: block;
-  width: $icon-s;
-  height: $icon-s;
-  border-radius: 50%;
-  border: $border-width-s solid var(--background-modifier-border);
-}

@@ -29,7 +29,6 @@ export const initRules: Translation = {
   'initRules.sideNameError': 'Gib jeder Seite einen Namen.',
   'initRules.sideOrder': 'Reihenfolge der Seiten',
   'initRules.sideRoll': 'Wurf der Seite',
-  'initRules.sideRolled': '{side}, {roll} gewürfelt',
   'initRules.sidesOrder': 'In der Reihenfolge, in der sie handeln.',
   'initRules.swapCard': 'Karte tauschen mit',
 };

@@ -1,5 +1,6 @@
 import { FileView, WorkspaceLeaf, TFile, normalizePath, ViewStateResult } from "obsidian";
 import { ServiceManager } from './services/ServiceManager';
+import { keepViewInPlace } from './utils/keepViewInPlace';
 import { SceneOpenHistory } from './services/sceneOpenHistory';
 import { createViewAtlasStore, ViewAtlasStore } from './storeFactory';
 import { getHistoryStore, runUntracked, type HistoryState } from './stores/history';
@@ -242,6 +243,7 @@ export class AtlasView extends FileView {
     containerEl.addClass('atlas-vtt-plugin');
     containerEl.addClass('atlas-vtt-view');
     containerEl.tabIndex = -1;
+    this.registerDomEvent(containerEl.doc, 'scroll', (event) => keepViewInPlace(event.target, containerEl), { capture: true });
 
     // Atlas runs in the main window only: a view opened in a popout loads nothing, since
     // `keepAtlasInMainWindow` closes it and opens its scenes in the main window.

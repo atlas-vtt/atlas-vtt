@@ -30,7 +30,7 @@ export const hotkey: Translation = {
   'hotkey.deleteAlt': 'Удалить выделенное (доп. клавиша)',
   'hotkey.cancel': 'Отменить инструмент / снять выделение',
   'hotkey.diceTray': 'Лоток кубиков',
-  'hotkey.diceLog': 'Журнал бросков',
+  'hotkey.diceLog': 'Журнал стола',
   'hotkey.initiative': 'Трекер инициативы',
   'hotkey.lootRoller': 'Случайные таблицы',
   'hotkey.previousTurn': 'Предыдущий ход (в бою)',

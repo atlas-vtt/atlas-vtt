@@ -35,6 +35,7 @@ export const armariumUpload: Translation = {
   'armariumUpload.error.declaration-missing': 'Conferma di avere il diritto di condividere questa collezione.',
   'armariumUpload.error.listing-not-yours': 'Questa collezione appartiene alla scheda di un altro account. Solo il suo autore può aggiungere versioni.',
   'armariumUpload.error.listing-removed': 'Il team dell’Armarium ha rimosso la scheda di questa collezione, quindi non accetta nuove versioni. Ti abbiamo inviato le motivazioni via email. Per contestare, rispondi a quel messaggio.',
+  'armariumUpload.error.format-changed': 'Questa scheda contiene un tipo di contenuto diverso da ciò che condividi. Una nuova versione deve essere dello stesso tipo delle precedenti.',
   'armariumUpload.error.version-not-higher': 'La scheda ha già questa versione o una più recente. Ricomincia e scegli un numero di versione più alto.',
   'armariumUpload.error.check-files-invalid': 'I file controllati sono cambiati da parte nostra. Ricomincia per caricare di nuovo la collezione.',
   'armariumUpload.error.blocked-file': 'Un file di questo pacchetto è già stato rimosso dall’Armarium e non può essere condiviso di nuovo.',

@@ -5,4 +5,5 @@ export const playerInit: Translation = {
   'playerInit.delayed': 'Retardé',
   'playerInit.order': 'Ordre d\'initiative',
   'playerInit.round': 'Round {round}',
+  'playerInit.more': { one: '{count} autre combattant', other: '{count} autres combattants' },
 };

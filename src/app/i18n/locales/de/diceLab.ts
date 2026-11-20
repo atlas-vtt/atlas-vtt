@@ -114,4 +114,5 @@ export const diceLab: Translation = {
   'diceLab.default': 'Standard',
   'diceLab.collectionDice': 'Würfel der Sammlung',
   'diceLab.ofCollection': 'Sammlung {name}',
+  'diceLab.moreFor': 'Weitere Optionen für {name}',
 };

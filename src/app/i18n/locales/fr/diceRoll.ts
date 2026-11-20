@@ -79,4 +79,12 @@ export const diceRoll: Translation = {
   'diceRoll.rowPresent': 'Le d{sides} est déjà dans la rangée',
   'diceRoll.rowEdit': 'Modifier la rangée de dés',
   'diceRoll.rowDone': 'Terminé',
+  'diceRoll.presetEdit': 'Modifier {name}',
+  'diceRoll.presetEditShort': 'Modifier',
+  'diceRoll.presetActions': 'Plus d\'options pour {name}',
+  'diceRoll.presetBonus': 'Bonus',
+  'diceRoll.presetRules': 'Règles',
+  'diceRoll.presetFromLab': 'Depuis l\'atelier de dés',
+  'diceRoll.presetFromSet': 'Garder {name} comme jet enregistré',
+  'diceRoll.presetRollsAtOnce': 'se lance aussitôt',
 };

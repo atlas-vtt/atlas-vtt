@@ -467,6 +467,13 @@ body.theme-light {
     > .atlas-vtt-toolbar {
       grid-area: 1 / 2;
     }
+
+    // A menu or tray open from the toolbar or a tool's bars, and the toolbar editor, stand over the
+    // map's floating panels, which would otherwise cover them. The command palette does not: like
+    // every other part of the map's interface it lies below them.
+    &:has(.atlas-toolbar-editor, [aria-expanded='true'], [data-state='open']) {
+      z-index: $z-atlas-map-panel + 1;
+    }
   }
 
   .atlas-bottom-toolbar-row__start,
@@ -977,10 +984,13 @@ body {
 }
 
 // The leaf content elements our views take over as their root
+// `clip`, not `hidden`: a hidden overflow can still be scrolled, and focusing anything that pokes
+// past the view's edge (a panel dragged half out, a bar's control) scrolled the view sideways,
+// cutting off its left side until a reload. A clipped box never scrolls.
 .workspace-leaf-content.atlas-vtt-view {
   padding: 0;
   position: relative;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .workspace-leaf-content.atlas-dashboard-view {
@@ -1014,7 +1024,7 @@ body {
   // Ensure the view maintains proper dimensions
   min-width: 100%;
   min-height: 100%;
-  overflow: hidden;
+  overflow: clip;
 
   // Ensure the canvas container doesn't shrink but doesn't cover header
   canvas {

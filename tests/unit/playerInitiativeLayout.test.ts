@@ -94,15 +94,15 @@ describe('conditions in the players\' list', () => {
 });
 
 describe('the sides and the room on the players\' list', () => {
-  it('frames the players\' own side, leaves a coloured card to its colour, and counts those the list leaves out', () => {
+  it('frames the players\' own side, a colour an older file gave a card left out, and counts those the list leaves out', () => {
     document.body.empty();
-    const entries = [entry('a', 0, { isActive: true }), entry('b', 1, { color: '#dc2626' }), entry('c', 2), entry('d', 3)];
+    const entries = [entry('a', 0, { isActive: true }), entry('b', 1, { color: '#dc2626' } as never), entry('c', 2), entry('d', 3)];
     const side = (id: string): EntryToken => ({ hp: null, showRing: true, side: id === 'a' || id === 'c' ? 'players' : 'opponents', defeated: false });
     const list = playerInitiativeList({ entries, isActive: true, round: 1 }, (current) => side(current.tokenId!), TURN_ORDER, false);
     const panel = renderPlayerInitiative(document.body, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null, maxCards: 2 })!;
     const cards = [...panel.querySelectorAll('.atlas-player-initiative__card')];
     expect(cards.map((card) => card.classList.contains('atlas-player-initiative__card--ally'))).toEqual([true, false]);
-    expect(cards[1]!.classList.contains('atlas-player-initiative__card--coloured')).toBe(true);
+    expect(cards[1]!.classList.contains('atlas-player-initiative__card--coloured')).toBe(false);
     const more = panel.querySelector('.atlas-player-initiative__more')!;
     expect(more.textContent).toBe('+2');
     expect(more.getAttribute('aria-label')).toBe('2 more combatants');

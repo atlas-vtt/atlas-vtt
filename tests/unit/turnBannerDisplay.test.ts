@@ -4,11 +4,10 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';
 import { createDefaultInitiativeState, type InitiativeEntry, type InitiativeState } from '../../src/app/types/initiativeTypes';
-import { TURN_BANNER_MS, TurnBannerDisplay } from '../../src/app/initiative/banner/turnBannerElement';
+import { TURN_BANNER_MS, TurnBannerDisplay, turnBannerScaleFor } from '../../src/app/initiative/banner/turnBannerElement';
 import { PlayerTurnBanner } from '../../src/app/services/PlayerTurnBanner';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { initiativeTrackerOptions } from '../../src/app/react/components/initiativeTrackerOptions';
-import { DEFAULT_SETTINGS } from '../../src/app/services/atlasSettings';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { setIcon } from 'obsidian';
 
@@ -109,6 +108,19 @@ describe('the turn banner in the player window', () => {
   });
 });
 
+describe('the size of the players\' turn banner', () => {
+  it('grows with the window from its own size, twice it on a 1080p TV, the same turned on its side, up to five times', () => {
+    expect(turnBannerScaleFor(1920, 1080)).toBe(2);
+    expect(turnBannerScaleFor(1080, 1920)).toBe(2);
+    expect(turnBannerScaleFor(1280, 720)).toBeCloseTo(4 / 3, 5);
+    // An ultrawide window: its height decides
+    expect(turnBannerScaleFor(3440, 1440)).toBeCloseTo(1440 / 540, 5);
+    expect(turnBannerScaleFor(800, 450)).toBe(1);
+    expect(turnBannerScaleFor(7680, 4320)).toBe(5);
+    expect(turnBannerScaleFor(0, 0)).toBe(1);
+  });
+});
+
 describe('the banners of a fight\'s start and end', () => {
   function setup(running: boolean) {
     vi.useFakeTimers();
@@ -132,15 +144,15 @@ describe('the banners of a fight\'s start and end', () => {
     store.setState({ initiative: fight('hero') });
     expect(banner()?.classList.contains('atlas-turn-banner--fight-start')).toBe(true);
     // Its border pulses as long as it stands
-    expect((banner() as HTMLElement).style.getPropertyValue('--atlas-turn-banner-stand')).toBe(`${DEFAULT_SETTINGS.localPlayerView.turnBannerSeconds * 1000}ms`);
+    expect((banner() as HTMLElement).style.getPropertyValue('--atlas-turn-banner-stand')).toBe('4000ms');
     expect(banner()?.textContent).toBe('Combat has started');
     // A title between two rules, without the turn's capsule look or an icon
     expect(banner()?.classList.contains('atlas-turn-banner--fight')).toBe(true);
     expect(banner()?.querySelectorAll('.atlas-fight-banner__rule')).toHaveLength(2);
     expect(banner()?.querySelector('.atlas-fight-banner__title')?.textContent).toBe('Combat has started');
     expect(vi.mocked(setIcon)).not.toHaveBeenCalled();
-    // As long as the player view sets it
-    const stand = DEFAULT_SETTINGS.localPlayerView.turnBannerSeconds * 1000;
+    // Four seconds, long enough to read from across a table
+    const stand = 4000;
     vi.advanceTimersByTime(stand - 1);
     expect(banner()?.classList.contains('atlas-turn-banner--fight-start')).toBe(true);
     vi.advanceTimersByTime(1);

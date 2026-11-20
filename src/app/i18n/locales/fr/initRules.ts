@@ -29,7 +29,6 @@ export const initRules: Translation = {
   'initRules.sideNameError': 'Donnez un nom à chaque camp.',
   'initRules.sideOrder': 'Ordre des camps',
   'initRules.sideRoll': 'Jet du camp',
-  'initRules.sideRolled': '{side}, jet de {roll}',
   'initRules.sidesOrder': 'Dans l\'ordre où ils agissent.',
   'initRules.swapCard': 'Échanger la carte avec',
 };

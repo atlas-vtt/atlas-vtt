@@ -12,7 +12,7 @@ export const command = {
   "command.reportIssue": "Segnala un problema…",
   "command.sendMapToPlayerView": "Invia la mappa attuale alla vista giocatori",
   "command.showMapInPlayerWindow": "Mostra la mappa attuale nella finestra giocatori locale",
-  "command.toggleDiceLog": "Mostra/nascondi registro dei tiri",
+  "command.toggleDiceLog": "Mostra/nascondi registro del tavolo",
   "command.toggleInitiativeTracker": "Mostra/nascondi indicatore di iniziativa",
   "command.toggleLootRoller": "Mostra/nascondi tabelle casuali",
   "command.viewChangelog": "Mostra note di versione",

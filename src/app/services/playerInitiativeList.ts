@@ -8,8 +8,8 @@ import { listedByCards, listedBySides, listedSides, sideOf, type ListedSide } fr
 import { combatantDefeated } from '../initiative/defeated';
 import { firstCards, listSegments, shownItems, type ListSegment } from '../initiative/listSegments';
 import type { PlayersListEdge } from '../initiative/initiativeLayout';
-import { combatantConditions } from '../utils/activeConditions';
-import { entryConditions, type CombatantCondition } from '../initiative/combatantConditions';
+import { combatantConditions, type ActiveCondition } from '../utils/activeConditions';
+import { entryConditions } from '../initiative/combatantConditions';
 import { entryToken } from '../initiative/party';
 import { layoutEdges, scrollWithin } from '../utils/scrollWithin';
 import { renderPlayerCard } from './playerInitiativeCard';
@@ -28,14 +28,14 @@ export interface EntryToken {
   side: SideId;
   /** Defeated, as the GM's card shows it with its skull: shown dimmed and marked, never left out. */
   defeated: boolean;
-  /** The condition badges the map shows players on the token (`combatantConditions`), or the entry's own, with their turns. */
-  conditions?: CombatantCondition[];
+  /** The condition badges the map shows players on the token (`combatantConditions`), or the entry's own. */
+  conditions?: ActiveCondition[];
   /** The token's own Show nameplate, which names it where the map shows no nameplates (`nameplateShownToPlayers`). */
   showNameplate?: boolean;
 }
 
 /** What the players' list shows of an initiative entry. */
-export type PlayerInitiativeEntry = Pick<InitiativeEntry, 'hiddenFromPlayers' | 'tokenId' | 'name' | 'initiative' | 'awaitingInitiative' | 'isActive' | 'imagePath' | 'order' | 'sitsOut' | 'delayed' | 'card' | 'color'>;
+export type PlayerInitiativeEntry = Pick<InitiativeEntry, 'hiddenFromPlayers' | 'tokenId' | 'name' | 'initiative' | 'awaitingInitiative' | 'isActive' | 'imagePath' | 'order' | 'sitsOut' | 'delayed' | 'card'>;
 
 /** A combatant the players see, with what the list shows of its token. */
 export interface Combatant {
@@ -74,6 +74,8 @@ export interface PlayerInitiativeLook {
   mapShowsNameplates: boolean;
   /** The address of an entry's portrait, or null to draw none. */
   portraitSrc(imagePath: string): string | null;
+  /** Hands `apply` the `object-view-box` that shows a portrait's art without its transparent margins (`withArtViewBox`). */
+  artViewBox?(imagePath: string, apply: (viewBox: string) => void): void;
   /** The number a combatant's badge shows the players on the map, which tells look-alikes apart; null for none. */
   badgeNumber?(tokenId: string): number | null;
   /** The GM's choice: during a fight the list starts at the turn and runs on into the next round. */
@@ -136,14 +138,14 @@ export function listedForPlayers(token: Pick<TokenEntity, 'isHidden'> | undefine
  * always, on the opponents'; a token's entry while its token is listed (`listedForPlayers`). The other arguments are `entryTokenOf`'s.
  */
 export function playersEntryToken(
-  entry: Pick<InitiativeEntry, 'tokenId' | 'partyMemberId' | 'conditions' | 'conditionValues' | 'conditionTurns' | 'hiddenFromPlayers'>,
+  entry: Pick<InitiativeEntry, 'tokenId' | 'partyMemberId' | 'conditions' | 'conditionValues' | 'hiddenFromPlayers'>,
   tokens: Readonly<Record<string, TokenEntity>> | undefined,
   definitions: readonly ResourceDefinition[],
   conditionDefinitions: readonly ConditionDefinition[] = [],
   sides?: readonly SideId[],
 ): EntryToken | null {
-  // Conditions the tracker gave: a token's own, else the entry's, with the turns they last
-  const conditions = (token: TokenEntity | undefined): CombatantCondition[] => entryConditions(entry, token, conditionDefinitions);
+  // Conditions the tracker gave: a token's own, else the entry's
+  const conditions = (token: TokenEntity | undefined): ActiveCondition[] => entryConditions(entry, token, conditionDefinitions);
   // Whomever the GM hid from the players
   if (entry.hiddenFromPlayers) return null;
   if (entry.partyMemberId !== undefined) return { ...entryTokenOf(undefined, definitions, conditionDefinitions, sides), side: 'players', conditions: conditions(undefined) };
@@ -277,7 +279,8 @@ export function renderPlayerInitiative(container: HTMLElement, list: PlayerIniti
     const side = panel.querySelector('.atlas-player-initiative__side--active');
     const card = panel.querySelector('.atlas-player-initiative__card--active');
     const axis = across ? 'x' : 'y';
-    const edgesOf = look.faces ? ([layoutEdges] as const) : ([] as const);
+    // A turned list scrolls along its own axis: a row facing its side, and the left column turned around
+    const edgesOf = look.faces || look.dock === 'left' ? ([layoutEdges] as const) : ([] as const);
     if (side) scrollWithin(entries, side, 'start', 0, axis, ...edgesOf);
     else if (card && fromTurn) scrollWithin(entries, card, 'start', 0, axis, ...edgesOf);
     else if (card) scrollWithin(entries, card, 'nearest', 2, axis, ...edgesOf);
@@ -301,18 +304,17 @@ function renderSegment(entries: HTMLElement, segment: ListSegment<Combatant>, li
     return;
   }
   if (segment.side) {
-    const { name, roll } = segment.side;
-    const label = roll === null ? name : t('initRules.sideRolled', { side: name, roll });
-    const group = entries.createDiv({ cls: 'atlas-player-initiative__side', attr: { role: 'list', 'aria-label': label } });
+    // A side's roll, like every initiative number, stays on the GM's screen
+    const { name } = segment.side;
+    const group = entries.createDiv({ cls: 'atlas-player-initiative__side', attr: { role: 'list', 'aria-label': name } });
     if (segment.active) {
       group.addClass('atlas-player-initiative__side--active');
       group.setAttribute('aria-current', 'true');
     }
     const heading = group.createDiv({ cls: 'atlas-player-initiative__side-label', attr: { 'aria-hidden': 'true', [TURN_KEY_ATTRIBUTE]: `side:${name}` } });
     heading.createSpan({ text: name });
-    if (roll !== null) heading.createSpan({ cls: 'atlas-player-initiative__side-roll', text: String(roll) });
-    // By sides the turn is the side's and there are no numbers
-    for (const member of segment.items) renderPlayerCard(group, member, look, false, 'none');
+    // By sides the turn is the side's
+    for (const member of segment.items) renderPlayerCard(group, member, look, false);
     return;
   }
   if (segment.delayed) {
@@ -321,5 +323,5 @@ function renderSegment(entries: HTMLElement, segment: ListSegment<Combatant>, li
     for (const combatant of segment.items) renderPlayerCard(group, combatant, look, false);
     return;
   }
-  for (const combatant of segment.items) renderPlayerCard(entries, combatant, look, list.isActive, list.byCards ? 'card' : 'number');
+  for (const combatant of segment.items) renderPlayerCard(entries, combatant, look, list.isActive);
 }

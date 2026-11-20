@@ -10,7 +10,7 @@ export const dice: Translation = {
   'dice.clearSelection': '清除选择',
   'dice.closeHint': '关闭（Enter 或 Esc）',
   'dice.details': '详情',
-  'dice.log': '骰子记录',
+  'dice.log': '桌面记录',
   'dice.noRolls': '还没有投掷',
   'dice.pin': '固定面板',
   'dice.rollAgain': '再掷一次',
