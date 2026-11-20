@@ -39,9 +39,12 @@
   flex-shrink: 0;
 }
 
+// Two columns where both have the room for a translated name beside its control, else one.
+$panel-column-min: 360px;
+
 .atlas-command-palette-panel {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, $panel-column-min), 1fr));
   gap: $spacing-xl;
   padding: $spacing-l;
 }
@@ -63,7 +66,7 @@
 
 .atlas-setting-row-info {
   @include atlas-flex-col(2px);
-  min-width: 0;
+  @include atlas-row-label;
 }
 
 .atlas-setting-row-control {
