@@ -1,6 +1,6 @@
 import type { DiceScene } from '../../../dice3d/diceScene';
 import { diceList, diceSum, keptRolls, namedDiceLine, rollFormulaText } from '../../../tools/diceLabels';
-import { modifiersText } from '../../../tools/namedModifiers';
+import { formulaLabel, modifierText, namedModifiersOf, withoutConstantLabels } from '../../../tools/namedModifiers';
 import type { DiceRollResult } from '../../../types/diceTypes';
 import type { RollAudience } from '../dice/diceSourcePresentation';
 import { t } from '../../../i18n';
@@ -14,17 +14,35 @@ export function shownFormula(formula: string): string {
 }
 
 /**
- * What a roll is titled with: its action ("Scimitar"), else its formula ("2d6 + 1d20 + 3",
+ * What a roll is named: its action, then the labels of its constants that name something else
+ * ("Agility + Pickpocket" for Agility rolled with Pickpocket armed; "Stealth" for a typed
+ * `1d20+2[Stealth]`). Empty where it names nothing. The roll's lines show only numbers.
+ */
+export function rollName(result: Pick<DiceRollResult, 'source' | 'modifiers' | 'namedModifiers'>): string {
+  const names = new Map<string, string>();
+  for (const name of [result.source?.abilityName ?? '', ...namedModifiersOf(result).map((term) => term.label)]) {
+    // As a formula writes it: a statblock labels a bare bonus with its action's name that way.
+    const key = formulaLabel(name).toLocaleLowerCase();
+    if (key !== '' && !names.has(key)) names.set(key, name.trim());
+  }
+  return [...names.values()].join(' + ');
+}
+
+/**
+ * What a roll is titled with: its name (`rollName`), else its formula ("2d6 + 1d20 + 3",
  * after the dice set where that was not the collection's); "Roll" only for a roll that has
  * neither. Never who rolled it: the creature's portrait beside the title says that.
  */
 export function rollLabel(result: DiceRollResult): string {
-  return result.source?.abilityName || rollFormula(result) || t('diceRoll.label');
+  return rollName(result) || rollFormula(result) || t('diceRoll.label');
 }
 
-/** What a roll rolled as it shows it: its formula with a true minus, after the dice set where that was not the collection's. */
+/**
+ * What a roll rolled as it shows it: its formula with a true minus and without the labels of its
+ * constants (the title names them), after the dice set where that was not the collection's.
+ */
 export function rollFormula(result: Pick<DiceRollResult, 'formula' | 'diceSet'>): string {
-  return rollFormulaText({ formula: shownFormula(result.formula), diceSet: result.diceSet });
+  return rollFormulaText({ formula: shownFormula(withoutConstantLabels(result.formula)), diceSet: result.diceSet });
 }
 
 /**
@@ -38,7 +56,7 @@ export function withSide(title: string, result: Pick<DiceRollResult, 'advantage'
 
 /** Whether the title is the roll's formula, set in the interface font, rather than an action's name. */
 export function titledByFormula(result: DiceRollResult): boolean {
-  return !result.source?.abilityName && result.formula !== '';
+  return rollName(result) === '' && result.formula !== '';
 }
 
 /** "Critical success" or "Critical failure", as the roll's own `crit` says; null otherwise. */
@@ -85,7 +103,7 @@ export function rollBreakdown(result: DiceRollResult, scene: DiceScene): string 
   const thrown = result.rolls.filter((roll) => !roll.rerolled).length;
   if (result.linear === false) return thrown > 6 ? `${thrown} dice` : diceList(result.rolls);
 
-  const suffix = modifiersText(result);
+  const suffix = modifierText(result.modifiers);
   const kept = keptRolls(result.rolls);
   const shown = countedRolls(result);
   const diceTotal = result.total - result.modifiers;
@@ -111,6 +129,6 @@ export function hasBreakdown(result: DiceRollResult, scene: DiceScene): boolean 
     || scene.plan[0]?.role === 'tens'
     || scene.plan.some((die) => die.fold !== undefined)
     || countedRolls(result).length > 1
-    || modifiersText(result) !== ''
+    || result.modifiers !== 0
     || result.linear === false;
 }

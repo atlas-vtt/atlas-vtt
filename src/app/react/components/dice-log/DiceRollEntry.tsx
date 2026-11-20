@@ -9,6 +9,8 @@ import { dieLabel, dieStates, droppedAny, rollLine } from '../../../tools/diceLa
 import { AdvantageTag, listsDice, RolledDiceLine } from '../dice/RolledDiceLine';
 import { t } from '../../../i18n';
 import { useRollLanded } from '../../../dice3d/rollsInFlight';
+import { withoutConstantLabels } from '../../../tools/namedModifiers';
+import { rollName } from '../dice3d/diceRollText';
 
 interface DiceRollEntryProps {
   result: DiceRollResult;
@@ -48,6 +50,7 @@ export function DiceRollEntry({ result, isNew, onRepeat }: DiceRollEntryProps): 
   const avatar = useDiceAvatar(source);
 
   const hasSource = source?.type === 'statblock' && source.tokenName;
+  const name = rollName(result);
 
   return (
     <div
@@ -85,16 +88,14 @@ export function DiceRollEntry({ result, isNew, onRepeat }: DiceRollEntryProps): 
         {hasSource && (
           <span className="dice-log-entry__token-name">{sourceTokenName}</span>
         )}
-        {source?.abilityName && (
-          <span className="dice-log-entry__ability-name">{source.abilityName}</span>
-        )}
+        {name && <span className="dice-log-entry__ability-name">{name}</span>}
         <AdvantageTag side={result.advantage} />
 
         {/* Summary: formula = total */}
         <div className="dice-log-entry__summary">
           {landed && listsDice(result)
             ? <RolledDiceLine result={result} className="dice-log-entry__formula" />
-            : <span className="dice-log-entry__formula">{landed ? rollLine(result) : result.formula}</span>}
+            : <span className="dice-log-entry__formula">{landed ? rollLine(result) : withoutConstantLabels(result.formula)}</span>}
           <span className="dice-log-entry__eq">=</span>
           <span className="dice-log-entry__total">{landed ? result.total : '…'}</span>
         </div>
