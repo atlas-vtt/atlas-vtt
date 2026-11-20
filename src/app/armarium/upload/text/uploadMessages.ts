@@ -2,7 +2,6 @@ import { getLocale, t } from '../../../i18n';
 import {
   EXCLUSIVE_TAGS,
   LISTING_TEXT,
-  SYSTEM_LABEL,
   MAX_TAGS,
   STALE_DEVICE_SESSION,
   UPLOAD_LIMITS,
@@ -198,6 +197,5 @@ export function fieldProblemMessage(field: string, problem: string): string {
   if (problem === 'missing') return missingField(field);
   if (field === 'description' || field === 'credits') return textProblem(problem, LISTING_TEXT[field]) ?? t('armariumListing.problem.notRight');
   if (field === 'notes') return textProblem(problem, ITEM_NOTES_LIMITS) ?? t('armariumListing.problem.notRight');
-  if (field === 'system') return textProblem(problem, SYSTEM_LABEL) ?? t('armariumListing.problem.notRight');
   return t('armariumListing.problem.notRight');
 }

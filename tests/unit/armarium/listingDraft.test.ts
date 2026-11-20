@@ -11,22 +11,16 @@ describe('the listing form', () => {
     expect(systemOfPreset('my-homebrew-preset')).toBeNull();
     expect(systemOfPreset(undefined)).toBeNull();
     expect(draftFrom(null, 'cairn')).toEqual({ kind: null, system: 'cairn', description: '', tags: [], licence: null, credits: '' });
-    expect(draftFrom({ kind: 'maps', system: null, description: 'd', tags: ['forest'], licence: 'cc0', credits: '' }, 'cairn').system).toBe('');
+    expect(draftFrom({ kind: 'maps', system: null, description: 'd', tags: ['forest'], licence: 'cc0', credits: '' }, 'cairn').system).toBe('none');
   });
 
-  it('takes a system the list lacks as the name typed, and a typed known system as its id', () => {
+  it('names only systems the Armarium knows: a shared game system preselects the one its name means', () => {
     const draft = { ...draftFrom(null, null), kind: 'templates' as const, description: 'Twenty characters at least.', licence: 'cc0' as const };
-    expect(fieldsOfDraft({ ...draft, system: '  Mothership  ' })?.system).toBe('Mothership');
-    expect(fieldsOfDraft({ ...draft, system: 'draw-steel' })?.system).toBe('drawsteel');
-    expect(fieldsOfDraft({ ...draft, system: 'D&D 5E' })?.system).toBe('dnd5e');
-    expect(fieldsOfDraft({ ...draft, system: '   ' })?.system).toBeNull();
-    expect(listingProblems({ ...draft, system: 'x' })).toEqual({ system: 'too-short' });
-    expect(listingProblems({ ...draft, system: 'x'.repeat(41) })).toEqual({ system: 'too-long' });
-    expect(listingProblems({ ...draft, system: 'cairn' })).toEqual({});
-    // A game system's own listing names it: the known system its name means, else its name where it fits.
-    expect(systemOfSharedPreset('Mothership 1e')).toBe('Mothership 1e');
+    expect(fieldsOfDraft({ ...draft, system: 'none' })?.system).toBeNull();
+    expect(fieldsOfDraft({ ...draft, system: 'cairn' })?.system).toBe('cairn');
     expect(systemOfSharedPreset('Shadowdark')).toBe('shadowdark');
-    expect(systemOfSharedPreset('x'.repeat(41))).toBeNull();
+    expect(systemOfSharedPreset('D&D 5E')).toBe('dnd5e');
+    expect(systemOfSharedPreset('Mothership 1e')).toBeNull();
   });
 
   it('asks for a kind and a description of 20 to 5000 characters before the rights', () => {
