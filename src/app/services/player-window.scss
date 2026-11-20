@@ -137,9 +137,10 @@ body.atlas-player-window {
     display: none !important;
   }
 
-  // The curtain (PlayerWindowService.setCurtain): black over everything players see, the image
-  // display (z 10000) and the loot handout (z 10001) included. The canvas is blacked as well. The
-  // rule below says where it rests; `showPlayerCurtain` fades it there.
+  // The curtain (PlayerWindowService.setCurtain): black over everything players see, the loot
+  // handout (z 10001) included, but under the image display (z 10003): an image the GM shows
+  // reaches players with the curtain down. The canvas is blacked as well. The rule below says
+  // where it rests; `showPlayerCurtain` fades it there.
   .atlas-player-curtain {
     position: fixed;
     inset: 0;
