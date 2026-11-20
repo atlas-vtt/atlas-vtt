@@ -18,9 +18,11 @@ declare module 'obsidian' {
       plugins: Record<string, Plugin>;
       enabledPlugins: Set<string>;
     };
-    /** Active theme name, empty for the default theme. */
+    /** Active theme name, empty for the default theme; the elements holding the theme's CSS and the enabled snippets'. */
     customCss?: {
       theme?: string;
+      styleEl?: HTMLStyleElement | null;
+      extraStyleEls?: HTMLStyleElement[];
     };
     /** Renders `![[file]]` embeds and hover previews of non-markdown files, by extension. */
     embedRegistry?: EmbedRegistry;

@@ -17,6 +17,7 @@ import { ItemShareSession } from './ItemShareSession';
 import { systemOfPreset, systemOfSharedPreset } from './listingDraft';
 import { ShareSession } from './ShareSession';
 import type { SharedItem } from './shareState';
+import { templateCardPictures, type CardPictures } from './cardPictures/templateCardPictures';
 import type { SystemId } from './uploadContract';
 
 /** Why a wait ended early: the signal's own reason when it is an error. */
@@ -69,6 +70,18 @@ export function createShareSession(app: App, assets: AssetService, preview: Expo
   });
 }
 
+/** The template's card for its listing page; none where it cannot be drawn, and the page then shows the card's plan. */
+async function cardPicturesOf(app: App, id: string): Promise<CardPictures | undefined> {
+  const entry = TemplateLibrary.forApp(app).get(id);
+  if (entry === null) return undefined;
+  try {
+    return await templateCardPictures(app, entry.template, entry.name);
+  } catch (error) {
+    console.warn('[Atlas] The template\'s card could not be drawn for its listing:', error);
+    return undefined;
+  }
+}
+
 /**
  * A share of one vault item with this app's account and the Armarium's API; null when the account is not set up. A
  * template's own description starts a new listing's.
@@ -85,7 +98,8 @@ export function createItemShareSession(app: App, item: SharedItem): ItemShareSes
     description,
     listingUid: (accountId) => itemListingUid(accountId, item.kind, item.id),
     pack: async (uid, version, notes, cover) => {
-      const exported = await exportItemBundle(app, item, { uid, version, notes, cover: cover === null ? undefined : await renderCover(cover) });
+      const previews = item.kind === 'statblock-template' ? await cardPicturesOf(app, item.id) : undefined;
+      const exported = await exportItemBundle(app, item, { uid, version, notes, cover: cover === null ? undefined : await renderCover(cover), previews });
       return { fileName: exported.fileName, bytes: exported.bytes, name: exported.manifest.item.name };
     },
     fetchCover: async (url) => {

@@ -57,6 +57,21 @@ describe('an item manifest', () => {
     ]) expect(itemManifestProblem(manifest('dice-set', files))).toMatch(/damaged/i);
   });
 
+  it('accepts a template\'s card in each look, and refuses it beside another kind, twice, misplaced or linked', () => {
+    const template = { vaultPath: TEMPLATE, role: 'statblock-template' };
+    const light = { vaultPath: 'preview-light.png', role: 'preview-light' };
+    const dark = { vaultPath: 'preview-dark.png', role: 'preview-dark' };
+    expect(itemManifestProblem(manifest('statblock-template', [template, light, dark]))).toBeNull();
+    expect(itemManifestProblem(manifest('statblock-template', [template, dark]))).toBeNull();
+    expect(itemManifestProblem(manifest('dice-set', [{ vaultPath: SET, role: 'dice-set' }, light]))).toMatch(/damaged/i);
+    for (const files of [
+      [template, light, { ...light }],
+      [template, { ...light, vaultPath: 'preview-dark.png' }],
+      [template, { ...dark, vaultPath: 'atlas-vtt/preview-dark.png' }],
+      [template, { ...dark, linkedFrom: [TEMPLATE] }],
+    ]) expect(itemManifestProblem(manifest('statblock-template', files))).toMatch(/damaged/i);
+  });
+
   it('refuses a manifest of a newer format as made with a newer Atlas', () => {
     expect(itemManifestProblem({ ...manifest('dice-set', [{ vaultPath: SET, role: 'dice-set' }]), format: 11 })).toMatch(/newer version/);
   });

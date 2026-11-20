@@ -2,7 +2,8 @@
  * Item bundles: one Atlas file shared on its own (a statblock template, a user game system
  * preset, a dice set) in the zip collections travel in: `manifest.json` first, the files under
  * `files/<vaultPath>`, with an item manifest of format 10 instead of a collection manifest. It may
- * carry the cover its Armarium listing shows (`cover.webp`), which no import writes.
+ * carry the cover its Armarium listing shows (`cover.webp`) and, for a template, its card drawn in
+ * Obsidian's light and dark look (`preview-light.png`, `preview-dark.png`), which no import writes.
  * Atlas versions that stop at format 9 refuse it as made with a newer Atlas.
  */
 
@@ -64,9 +65,14 @@ export const ITEM_COVER_ROLE: BundleFileRole = 'cover';
 const COVER_PATH = /^cover\.(?:webp|png)$/;
 export const itemCoverPath = (extension: DerivedFormat): string => `cover.${extension}`;
 
+/** A template's card as its listing page shows it, by look: drawn by Atlas with sample values, never written by an import. */
+export const ITEM_PREVIEW_PATHS = { 'preview-light': 'preview-light.png', 'preview-dark': 'preview-dark.png' } as const satisfies Partial<Record<BundleFileRole, string>>;
+type PreviewRole = keyof typeof ITEM_PREVIEW_PATHS;
+const isPreviewRole = (role: BundleFileRole): role is PreviewRole => Object.hasOwn(ITEM_PREVIEW_PATHS, role);
+
 /** The files a bundle of each kind may hold beside its item, at most one of each. */
 const COMPANION_ROLES: Readonly<Record<ItemKind, readonly BundleFileRole[]>> = {
-  'statblock-template': [TEMPLATE_BODY_ROLE, DICE_SET_ROLE, ITEM_COVER_ROLE],
+  'statblock-template': [TEMPLATE_BODY_ROLE, DICE_SET_ROLE, ITEM_COVER_ROLE, 'preview-light', 'preview-dark'],
   'system-preset': [DICE_SET_ROLE, ITEM_COVER_ROLE],
   'dice-set': [ITEM_COVER_ROLE],
 };
@@ -122,7 +128,8 @@ function holdsItsFiles(kind: ItemKind, files: readonly BundleFile[]): boolean {
   const itemPath = files.find((file) => file.role === itemRole)!.vaultPath;
   // The note beside a template goes where the template goes, so it must name it.
   if (!files.every((file) => file.role !== TEMPLATE_BODY_ROLE || file.linkedFrom?.[0] === itemPath)) return false;
-  return files.every((file) => file.role !== ITEM_COVER_ROLE || (file.linkedFrom === undefined && COVER_PATH.test(file.vaultPath)));
+  if (!files.every((file) => file.role !== ITEM_COVER_ROLE || (file.linkedFrom === undefined && COVER_PATH.test(file.vaultPath)))) return false;
+  return files.every((file) => !isPreviewRole(file.role) || (file.linkedFrom === undefined && file.vaultPath === ITEM_PREVIEW_PATHS[file.role]));
 }
 
 /** Why an item bundle cannot be imported, or null when its manifest is sound. Its files' contents are checked on reading. */

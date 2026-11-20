@@ -5,7 +5,7 @@ import { showNotice } from '../../ui/notice';
 import { toBuffer } from '../collectionBundle/bundleContent';
 import { BUNDLE_MANIFEST, zipPathFor, type BundleFile } from '../collectionBundle/bundleFormat';
 import { derivedImageExtension } from '../assetImageFiles';
-import { ITEM_BUNDLE_FORMAT, ITEM_COVER_ROLE, MAX_ITEM_NOTES, itemBundleFileName, itemCoverPath, type ItemBundleManifest, type ItemRef } from './itemBundleFormat';
+import { ITEM_BUNDLE_FORMAT, ITEM_COVER_ROLE, ITEM_PREVIEW_PATHS, MAX_ITEM_NOTES, itemBundleFileName, itemCoverPath, type ItemBundleManifest, type ItemRef } from './itemBundleFormat';
 import { itemListingUid } from './itemListingUid';
 import { packItem, type PackedItemFile } from './itemPacking';
 import { t } from '../../i18n';
@@ -17,6 +17,8 @@ export interface ItemExportOptions {
   notes?: string | undefined;
   /** The cover the listing shows, already made a cover (`renderCover`). */
   cover?: ArrayBuffer | undefined;
+  /** A template's card as its listing page shows it, PNG in Obsidian's light and dark look (`templateCardPictures`). */
+  previews?: { light: ArrayBuffer; dark: ArrayBuffer } | undefined;
 }
 
 export interface ItemExport {
@@ -28,13 +30,18 @@ export interface ItemExport {
 
 /**
  * Packs the vault item `ref` as an item bundle (format 10): the manifest first, then the item's
- * file, the note beside a template, the vault dice set it rolls with and the listing's cover, each with its SHA-256.
+ * file, the note beside a template, the vault dice set it rolls with, the listing's cover and a template's card
+ * pictures, each with its SHA-256.
  * Throws for a built-in and for an item the vault does not hold or cannot read.
  */
 export async function exportItemBundle(app: App, ref: ItemRef, options: ItemExportOptions): Promise<ItemExport> {
   const packed = await packItem(app, ref);
   const contents: Array<{ file: Omit<PackedItemFile, 'text'>; data: ArrayBuffer }> = packed.files.map((file) => ({ file, data: toBuffer(file.text) }));
   if (options.cover) contents.push({ file: { vaultPath: itemCoverPath(derivedImageExtension(options.cover)), role: ITEM_COVER_ROLE }, data: options.cover });
+  if (options.previews && ref.kind === 'statblock-template') {
+    contents.push({ file: { vaultPath: ITEM_PREVIEW_PATHS['preview-light'], role: 'preview-light' }, data: options.previews.light });
+    contents.push({ file: { vaultPath: ITEM_PREVIEW_PATHS['preview-dark'], role: 'preview-dark' }, data: options.previews.dark });
+  }
   const files: BundleFile[] = [];
   for (const { file, data } of contents) {
     files.push({ vaultPath: file.vaultPath, role: file.role, sha256: await sha256(data), ...(file.linkedFrom && { linkedFrom: file.linkedFrom }) });
