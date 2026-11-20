@@ -3,6 +3,7 @@
  * a modifier is written anew (`2d6 + 1d20 − 3`); one the GM typed for itself
  * (`4d6kh3 + 2`) is changed only where a click changes it, and keeps the rest.
  */
+import { changedBeforeSide, writtenSide } from '../../../tools/writtenAdvantage';
 import { MINUS, dieCountOf, modifierSuffix, readTray, writeTray, type TrayDie } from './diceTrayPool';
 
 /** The formula as the parser reads it: the tray writes a true minus sign, the parser reads the hyphen. */
@@ -14,7 +15,8 @@ export function parseableFormula(text: string): string {
 const TRAILING_MODIFIER = /\s*([+\-−])\s*(\d+)\s*$/;
 
 /** The number at the formula's end (`2d6 + 3` gives 3, `4d6kh3 − 1` gives −1), else 0. */
-export function modifierOf(text: string): number {
+export function modifierOf(written: string): number {
+  const text = writtenSide(written).formula;
   const simple = readTray(text);
   if (simple) return simple.modifier;
   const trailing = TRAILING_MODIFIER.exec(text);
@@ -25,6 +27,10 @@ export function modifierOf(text: string): number {
 
 /** The formula with `modifier` at its end in place of the one it had. */
 export function withModifier(text: string, modifier: number): string {
+  return changedBeforeSide(text, (formula) => modifierChanged(formula, modifier));
+}
+
+function modifierChanged(text: string, modifier: number): string {
   const simple = readTray(text);
   if (simple) return writeTray({ pool: simple.pool, modifier });
   const trailing = TRAILING_MODIFIER.exec(text);
@@ -45,6 +51,10 @@ function dieTerm(sides: TrayDie): RegExp {
  * goes with its operator. The terms of the saved rolls `presets` are never changed.
  */
 export function withDie(text: string, sides: TrayDie, delta: number, presets: readonly string[] = []): string {
+  return changedBeforeSide(text, (formula) => dieChanged(formula, sides, delta, presets));
+}
+
+function dieChanged(text: string, sides: TrayDie, delta: number, presets: readonly string[]): string {
   // The terms of saved rolls are left as they are: the die is a term of its own beside them.
   const blanked = withoutPresetTerms(text, presets);
   const simple = blanked === text ? readTray(text) : null;
@@ -114,6 +124,10 @@ export function presetCount(text: string, formula: string): number {
  * taken out with the ` + ` before it.
  */
 export function withPreset(text: string, formula: string, delta: 1 | -1): string {
+  return changedBeforeSide(text, (written) => presetChanged(written, formula, delta));
+}
+
+function presetChanged(text: string, formula: string, delta: 1 | -1): string {
   const term = presetTerm(formula);
   if (delta < 0) {
     const last = termPlaces(text, term)[0];

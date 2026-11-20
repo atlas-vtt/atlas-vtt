@@ -9,6 +9,7 @@ export const dice: Translation = {
   'dice.formulaError.depth': 'Uma fórmula de dados pode aninhar parênteses no máximo 8 níveis.',
   'dice.formulaError.modifier': 'Um modificador não combina com seus dados. Mantenha ou descarte pelo menos um dado e não mais do que o termo rola, e deixe uma face que não explode nem rola de novo. Dados Fate não explodem nem rolam de novo.',
   'dice.formulaError.total': 'Uma fórmula de dados pode chegar no máximo a 1.000.000.000, para mais ou para menos.',
+  'dice.formulaError.advantage': 'adv e dis só mudam rolagens com os dados do próprio conjunto, e só quando o conjunto tem uma regra para esse lado.',
   'dice.advantage': 'Vantagem',
   'dice.disadvantage': 'Desvantagem',
   'dice.normal': 'Normal',

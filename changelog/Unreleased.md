@@ -17,6 +17,7 @@
 - Keep a Dice Lab set as a saved roll with the flask beside +
 - Saved rolls and the row belong to the collection, so each game keeps its own
 - A label can follow brackets: in `2d6[slashing]+(1d10+12)[necrotic]` the d10 and the 12 are both necrotic
+- Write advantage into a roll: end it with adv or dis, as in `1d20+5 adv` or `+3 dis`. It follows your game's dice rules, so it rolls 2d20 in 5E, adds the edge in Draw Steel and a bonus die in Call of Cthulhu. Works in the dice tray, saved rolls and dice in notes; Shift or Alt for the other side cancels it
 
 **Sound**
 
