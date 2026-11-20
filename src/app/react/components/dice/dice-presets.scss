@@ -27,6 +27,8 @@ $presets-fade: $spacing-l;
   width: $presets-width;
   font-size: $font-ui-small;
   pointer-events: none;
+  // Above the tray's own content: a saved roll's editor, and a die's step panel in it, may hang over the tray.
+  z-index: 1;
 
   // A window too narrow for both side by side (a tablet upright): above the tray, at its right edge, growing upward.
   @media (max-width: 1000px) {
