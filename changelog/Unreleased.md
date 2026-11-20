@@ -108,7 +108,7 @@
 ## Fixed
 
 - The documentation and the loot and tables window stand over the map's scene tabs, widgets, initiative tracker and command palette, where those covered them
-- The left side of a map no longer gets cut off until a reload: the view could scroll sideways when something near its edge took focus
+- The map no longer shifts aside with a strip beside it, or gets cut off on the left until a reload: opening the command palette, or something near the map's edge taking focus, scrolled the window's panes sideways
 - A token's ring now turns with its art
 - On Windows, converting music or ambience in a linked folder now moves the originals to the trash when you chose that, instead of keeping them
 - While the Armarium is open in the asset manager, the sidebar shows the Armarium's tags and filters the store by them, instead of the tags of the collection you were in
