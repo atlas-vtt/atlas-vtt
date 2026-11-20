@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useAtlasStore, useViewStoreHook } from '../react/ViewStoreContext';
 import type { TokenEntity } from '../types';
 import type { InitiativeEntry } from '../types/initiativeTypes';
+import { entryToken } from './party';
 import { initiativeEntryForToken } from '../stores/initiativeEntries';
 import { offMapWithoutEntry } from './offMapCombatants';
 
@@ -13,10 +14,10 @@ export function useInitiativeTokenSync(tokens: Record<string, TokenEntity>, entr
   const store = useViewStoreHook();
   const isMapLoading = useAtlasStore((s) => s.isMapLoading);
 
-  // The entry of a deleted token goes with it
+  // The entry of a deleted token goes with it; a party member's has none
   useEffect(() => {
     entries.forEach((entry) => {
-      if (!tokens[entry.tokenId]) {
+      if (entry.tokenId !== undefined && !tokens[entry.tokenId]) {
         removeFromInitiative(entry.id);
       }
     });
@@ -32,7 +33,7 @@ export function useInitiativeTokenSync(tokens: Record<string, TokenEntity>, entr
   // Entries follow their token's name, image and statblock; resources are read from the token itself
   useEffect(() => {
     entries.forEach((entry) => {
-      const token = tokens[entry.tokenId];
+      const token = entryToken(tokens, entry);
       if (!token) return;
 
       const updates: Partial<InitiativeEntry> = {};

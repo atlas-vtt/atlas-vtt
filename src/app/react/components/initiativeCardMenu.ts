@@ -6,7 +6,10 @@ import type { InitiativeEntry } from '../../types/initiativeTypes';
 import type { SideId } from '../../types/initiativeRulesTypes';
 import { playerVision } from '../../characters/playerVision';
 import { isOffMap } from '../../tokens/offMap';
+import { RESOURCE_COLORS } from '../../resources/resourceColors';
+import { combatantColor } from '../../initiative/combatantColor';
 import { t } from '../../i18n';
+import { createElement } from 'react';
 
 interface CardMenuActions {
   roll: () => void;
@@ -23,6 +26,30 @@ interface CardMenuActions {
   placeOnMap: () => void;
   /** Takes the combatant out of the tracker; one kept beside the map goes with its token. */
   remove: () => void;
+  /** Gives the card a colour, or takes it away. */
+  setColor: (color: string | undefined) => void;
+  /** Hides the combatant from the players' list, or shows it there again (`hiddenFromPlayers`). */
+  setHiddenFromPlayers: (hidden: boolean) => void;
+}
+
+/** The colours a card may take: the resources' palette, which reads on dark and light themes alike. */
+function colourMenu(entry: InitiativeEntry, setColor: CardMenuActions['setColor']): ContextMenuEntry {
+  const current = combatantColor(entry);
+  return {
+    type: 'submenu',
+    label: t('initiative.colour'),
+    icon: 'palette',
+    children: [
+      { type: 'item', label: t('initiative.noColour'), icon: 'circle-off', checked: current === null, onClick: () => setColor(undefined) },
+      ...RESOURCE_COLORS.map(({ value, label }): ContextMenuEntry => ({
+        type: 'item',
+        label,
+        checked: current === value,
+        leading: createElement('span', { className: 'atlas-initiative-colour-dot', style: { background: value }, 'aria-hidden': true }),
+        onClick: () => setColor(value),
+      })),
+    ],
+  };
 }
 
 /** Moves a token to `side`; one moved to the players' side sees by default (`playerVision`), and nothing switches vision off. */
@@ -54,8 +81,19 @@ export function initiativeCardMenu(
   token: TokenEntity | undefined,
   mode: CardMenuMode,
   actions: CardMenuActions,
+  /** The combatant's conditions (`combatantConditionsMenu`); none where the map defines none. */
+  conditions: ContextMenuEntry | null = null,
 ): ContextMenuEntry[] {
-  const hidden = token?.isHidden ?? false;
+  // A player at the table rolls their own number and is always on the players' side; an enemy added by name
+  // has no token either, so it is never moved to another side. Any of them can be hidden from the players' list
+  const isParty = entry.partyMemberId !== undefined;
+  const hidden = token?.isHidden === true || entry.hiddenFromPlayers === true;
+  // Hiding leaves the map alone; showing shows a hidden token on it too, or the list would still leave it out
+  const toggleHidden = (): void => {
+    if (!hidden) return actions.setHiddenFromPlayers(true);
+    if (entry.hiddenFromPlayers) actions.setHiddenFromPlayers(false);
+    if (token?.isHidden) actions.updateToken({ isHidden: false });
+  };
   const current = sideOf(token, mode.sides.map((side) => side.id));
   const item = (label: string, icon: string, onClick: () => void): ContextMenuEntry => ({ type: 'item', label, icon, onClick });
   const sitOut = entry.sitsOut
@@ -95,15 +133,18 @@ export function initiativeCardMenu(
   const numbered = !mode.bySides && !mode.cards;
 
   return [
-    ...(numbered ? [item(t('initiative.roll'), 'dice', actions.roll)] : []),
+    ...(numbered && !isParty ? [item(t('initiative.roll'), 'dice', actions.roll)] : []),
     item(t('initiative.toFront'), 'arrow-up-to-line', actions.moveToFront),
     item(t('initiative.toBack'), 'arrow-down-to-line', actions.moveToBack),
-    ...(mode.bySides ? [moveToSide] : []),
+    ...(mode.bySides && token ? [moveToSide] : []),
     ...(numbered ? [item(t('initiative.edit'), 'pencil', actions.edit)] : []),
     ...(mode.cards && entry.card !== undefined && mode.swapTargets.length > 0 ? [swapCard] : []),
     ...(mode.fightRuns ? [sitOut, ...(numbered ? [delay] : [])] : []),
     ...(isOffMap(token) ? [item(t('initiative.placeOnMap'), 'map-pin', actions.placeOnMap)] : []),
-    item(hidden ? t('initiative.showToPlayers') : t('initiative.hideFromPlayers'), hidden ? 'eye' : 'eye-off', () => actions.updateToken({ isHidden: !hidden })),
+    item(hidden ? t('initiative.showToPlayers') : t('initiative.hideFromPlayers'), hidden ? 'eye' : 'eye-off', toggleHidden),
+    ...(conditions ? [conditions] : []),
+    // Combatants who are not the players' are told apart by colour; one moved to the players' side can still lose its colour
+    ...(isParty || (current === 'players' && combatantColor(entry) === null) ? [] : [colourMenu(entry, actions.setColor)]),
     { type: 'item', label: t('initiative.remove'), icon: 'trash-2', destructive: true, onClick: actions.remove },
   ];
 }

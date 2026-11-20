@@ -60,9 +60,15 @@ vi.mock('../../src/app/react/ViewStoreContext', () => ({
 }));
 
 vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => [] }));
+vi.mock('../../src/app/react/hooks/useMapConditions', () => ({ useMapConditions: () => [] }));
 
 vi.mock('../../src/app/initiative/useMapInitiativeRules', () => ({
   useMapInitiativeRules: () => ({ mode: 'turn-order', roll: '1d20', firstSide: 'players' }),
+}));
+
+vi.mock('../../src/app/initiative/useMapParty', () => ({
+  useMapParty: () => [],
+  usePartyEntrySync: () => undefined,
 }));
 
 vi.mock('../../src/app/react/components/InitiativeCard', () => ({

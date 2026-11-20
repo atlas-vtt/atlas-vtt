@@ -2,7 +2,8 @@ import type { TokenEntity } from '../types';
 import type { InitiativeEntry } from '../types/initiativeTypes';
 import { COLLAPSED_CARDS } from './initiativeLayout';
 import { firstCards, listSegments, type ListSegment } from './listSegments';
-import { sideOf, type ListedSide } from './sides';
+import type { ListedSide } from './sides';
+import { entrySide } from './party';
 
 /** What the GM's tracker draws its list by. */
 export interface TrackerListOptions {
@@ -30,7 +31,7 @@ export function trackerSegments(
   const segments = listSegments(entries, {
     bySides: options.bySides,
     sides: options.sides,
-    sideOf: (entry) => sideOf(tokens[entry.tokenId], known),
+    sideOf: (entry) => entrySide(entry, tokens, known),
     delayed: (entry) => entry.delayed === true,
     fightRuns: options.fightRuns,
     round: options.round,
