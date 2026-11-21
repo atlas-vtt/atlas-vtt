@@ -120,6 +120,29 @@ $ctx-inset: $surface-inset;
     }
   }
 
+  // A row offered above the others (a whole collection): its name stronger, a line under it, the same corners.
+  &--feature {
+    padding-block: $spacing-s;
+    align-items: center;
+
+    .atlas-ctx-item__label {
+      font-size: $font-ui-medium;
+      font-weight: $font-weight-semibold;
+    }
+  }
+
+  &__stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-2-1);
+    min-width: 0;
+  }
+
+  &__tagline {
+    color: var(--text-accent);
+    font-size: var(--font-ui-smaller);
+  }
+
   &__leading {
     display: flex;
     align-items: center;

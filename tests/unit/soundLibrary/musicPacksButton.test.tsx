@@ -33,7 +33,8 @@ describe('the music pack offer', () => {
     expect(offer()?.closest('[aria-label="Music"]')).not.toBeNull();
     await act(async () => offer()?.click());
     const items = screen.getAllByRole('menuitem').map((item) => item.textContent ?? '');
-    expect(items[0]).toMatch(/^All packs[\d,]+ tracks · [\d,]+ MB$/);
+    // The whole collection leads, with how long it plays: 28 hours from the catalogue's seconds.
+    expect(items[0]).toBe('The complete collection28 hours of free fantasy music365 tracks · 1.2 GB');
     // A pack not yet there is a plain row, not a checkbox: choosing it downloads it.
     expect(items.slice(1).map((item) => item.replace(/[\d,]+ tracks? · [\d,]+ MB$/, ''))).toEqual(MUSIC_PACKS.map((pack) => pack.name));
     expect(screen.queryAllByRole('menuitemcheckbox')).toEqual([]);
@@ -55,7 +56,7 @@ describe('the music pack offer', () => {
     await waitFor(() => expect(offer()).toBeNull());
   });
 
-  it('shows a pack on its way or partly there instead of starting it twice, and All packs queues one job per missing pack', async () => {
+  it('shows a pack on its way or partly there instead of starting it twice, and the rest of the collection queues one job per missing pack', async () => {
     const [first, second] = MUSIC_PACKS;
     if (!first || !second) throw new Error('no packs');
     // Never answered: every job stays on its way.
@@ -75,7 +76,7 @@ describe('the music pack offer', () => {
     const row = screen.getByRole('menuitem', { name: new RegExp(`^${first.name}`) });
     expect(row.getAttribute('aria-disabled') ?? row.getAttribute('data-disabled')).not.toBeNull();
     expect(row.textContent).toContain('0%');
-    await act(async () => screen.getByRole('menuitem', { name: /^All packs/ }).click());
+    await act(async () => screen.getByRole('menuitem', { name: /^The rest of the collection/ }).click());
     expect(manager.jobs().map((job) => job.id)).toEqual(MUSIC_PACKS.map((pack) => `music-pack:${pack.id}`));
     expect(manager.jobs().slice(1).every((job) => job.state === 'queued')).toBe(true);
   });

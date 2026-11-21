@@ -1,4 +1,4 @@
-import { t } from '../../../../../i18n';
+import { getLocale, t } from '../../../../../i18n';
 import type { DownloadManager } from '../../../../../downloads/DownloadManager';
 import { isActive, type DownloadJob } from '../../../../../downloads/downloadTypes';
 import { explainStockPackError } from '../../../../../services/stockPacks/verifiedFetch';
@@ -17,6 +17,19 @@ export const STARTER_JOB = 'starter-ambience';
 export const musicJobOf = (pack: Pick<MusicPackSummary, 'id'>): string => `music-pack:${pack.id}`;
 
 const megabytes = (bytes: number): number => Math.max(1, Math.round(bytes / 1_000_000));
+
+/** Tracks and size, in gigabytes once a set reaches one. */
+function packSize(tracks: number, bytes: number): string {
+  if (bytes < 1_000_000_000) return t('audio.library.musicPackDetail', { count: tracks, size: megabytes(bytes) });
+  const size = new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 1 }).format(bytes / 1_000_000_000);
+  return t('audio.library.musicPackDetailGb', { count: tracks, size });
+}
+
+/** What a set of packs offers, in whole hours from one hour on, else in minutes. */
+function playingTime(seconds: number): string {
+  const hours = Math.round(seconds / 3600);
+  return hours >= 1 ? t('audio.library.musicPacksHours', { count: hours }) : t('audio.library.musicPacksMinutes', { count: Math.max(1, Math.round(seconds / 60)) });
+}
 
 /** How far a job has come, as a whole percent. */
 export function percentOf(job: Pick<DownloadJob, 'done' | 'total'>): number {
@@ -80,12 +93,16 @@ export function musicPackMenu(manager: DownloadManager, library: SoundLibrary): 
   const counts = musicPackTrackCounts(library) ?? new Map<string, number>();
   const haveOf = (pack: MusicPackSummary): number => counts.get(pack.id) ?? 0;
   const missing = MUSIC_PACKS.filter((pack) => haveOf(pack) < pack.tracks && !isActive(manager.job(musicJobOf(pack)) ?? { state: 'done' }));
-  const sum = (key: 'tracks' | 'bytes'): number => missing.reduce((total, pack) => total + pack[key], 0);
+  // Nothing left to fetch: the row names the whole collection, greyed.
+  const offered = missing.length > 0 ? missing : MUSIC_PACKS;
+  const sum = (key: 'tracks' | 'bytes' | 'seconds'): number => offered.reduce((total, pack) => total + pack[key], 0);
+  const whole = offered.length === MUSIC_PACKS.length;
   return [
     {
       type: 'item',
-      label: t('audio.library.musicPacksAll'),
-      detail: t('audio.library.musicPackDetail', { count: sum('tracks'), size: megabytes(sum('bytes')) }),
+      label: t(whole ? 'audio.library.musicPacksAll' : 'audio.library.musicPacksRestAll'),
+      tagline: playingTime(sum('seconds')),
+      detail: packSize(sum('tracks'), sum('bytes')),
       disabled: missing.length === 0,
       onClick: () => queueMusicPacks(manager, library, missing),
     },
