@@ -216,9 +216,14 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
       @include atlas-wiggle-slower;
     }
 
+    // Lifted over its neighbours it stays solid: its translucent fill is laid over the panel's surface it rested on
     &[data-held] {
       @include atlas-wiggle-held;
       z-index: 4;
+      opacity: 1;
+      background:
+        linear-gradient(var(--background-modifier-active-hover), var(--background-modifier-active-hover)),
+        var(--background-primary);
       transform: none;
       transition: none;
       cursor: grabbing;
