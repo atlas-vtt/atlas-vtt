@@ -45,9 +45,18 @@ $ctx-inset: $surface-inset;
   }
 }
 
-// A menu that leads with a feature row (a name and a line under it, besides its detail) takes the room to show them whole.
+// A menu that leads with a feature row (a name and a line under it, besides its detail) takes the room to show them
+// whole, and its rows read as two columns: names, and well apart from them, what each offers.
 .atlas-ctx-menu:has(.atlas-ctx-item--feature) {
-  max-width: min(400px, var(--radix-dropdown-menu-content-available-width, 400px));
+  max-width: min(460px, var(--radix-dropdown-menu-content-available-width, 460px));
+
+  .atlas-ctx-item {
+    column-gap: $spacing-xl;
+  }
+
+  .atlas-ctx-item--feature {
+    column-gap: $spacing-2xl;
+  }
 }
 
 // A menu too tall for its window (`useMenuFit`); `--atlas-ctx-rows` is how many rows fit
