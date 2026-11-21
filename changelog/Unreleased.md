@@ -14,6 +14,7 @@
 - What’s new in Atlas links to the Atlas website and Patreon beside GitHub, and takes the look of the other dialogs
 - Dragging cards in the initiative tracker works like arranging a phone's home screen: the cards wiggle, the one you hold lifts and the others make room, in the compact view too
 - A card moved in the initiative tracker glides straight to its new place in the player view
+- The initiative tracker's compact view shows twelve lines and scrolls for the rest, instead of growing to the height of the map
 - The dice tray offers advantage and disadvantage only where the collection's dice set has a rule for them: collections without a game system, Old-School Essentials, Daggerheart and Cairn roll a plain die. Pick the d20 set in the collection's Dice settings to get advantage back
 - Where combatants act by sides, drag a side by its heading before the fight to choose which side goes first: its cards pile up while you carry it, so a long side is as easy to move as one card, and spread out again where you drop it
 - The Ranges rings and the range check of the measure tool now show in the player view, and to online players, as other measurements do: not while Players see it is off, and not on a token the players cannot see. Ranges can now be used in the session view too
