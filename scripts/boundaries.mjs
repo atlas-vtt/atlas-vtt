@@ -150,6 +150,8 @@ export const BOUNDARIES = {
       "src/app/pixi/measure/measureHandle.ts",
       "src/app/pixi/measure/measureHandleDrag.ts",
       "src/app/pixi/measure/measurements.ts",
+      "src/app/pixi/measure/RangeCheck.ts",
+      "src/app/pixi/measure/RangeRings.ts",
       "src/app/pixi/measure/effects/**/*.ts",
       "src/app/pixi/liquids/**/*.ts",
       "src/app/pixi/lighting/lightMarker.ts",

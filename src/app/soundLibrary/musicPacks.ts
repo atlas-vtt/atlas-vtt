@@ -71,7 +71,7 @@ function readManifest(bytes: ArrayBuffer): Manifest {
     if (!isRecord(entry) || typeof entry.id !== 'string' || !Array.isArray(entry.tracks)) throw new StockPackError('The manifest names a pack it does not describe.');
     return { id: entry.id, name: safeName(entry.name, ''), tracks: entry.tracks.map(readTrack) };
   });
-  return { credits: packedFile(data.credits, /^credits\.md$/), packs };
+  return { credits: packedFile(data.credits, /^credits(-\d+)?\.md$/), packs };
 }
 
 const packFolder = (name: string): string => `${MUSIC_FOLDER}/${name}`;

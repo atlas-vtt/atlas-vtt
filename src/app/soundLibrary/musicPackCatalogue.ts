@@ -8,7 +8,7 @@ export interface MusicPackSummary {
   bytes: number;
 }
 
-export const MUSIC_MANIFEST: PackedFile = { key: 'manifest.json', bytes: 66258, sha256: '043ce22063a833459afdd97ffa814ab92d9c8e492f1c4bf988794ecf1b9a8c81' };
+export const MUSIC_MANIFEST: PackedFile = { key: 'manifest-2.json', bytes: 66265, sha256: 'ab9c09047eb8bfea98d2d321c3270464264890dc3bef6abd71f029514652c255' };
 
 export const MUSIC_PACKS: readonly MusicPackSummary[] = [
   { id: 'tavern', name: 'Tavern and town', tracks: 32, bytes: 83975147 },
@@ -20,5 +20,5 @@ export const MUSIC_PACKS: readonly MusicPackSummary[] = [
   { id: 'dread', name: 'Dread and darkness', tracks: 24, bytes: 62892384 },
   { id: 'battle', name: 'Battle and glory', tracks: 37, bytes: 94932844 },
   { id: 'winter', name: 'Winter and yule', tracks: 18, bytes: 47586048 },
-  { id: 'realms', name: 'Endless realms', tracks: 6, bytes: 262035217 },
+  { id: 'realms', name: 'Ambient soundscapes', tracks: 6, bytes: 262035217 },
 ];

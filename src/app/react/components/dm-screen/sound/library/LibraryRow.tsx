@@ -38,6 +38,8 @@ export interface RowHandlers {
 
 interface LibraryRowProps {
   row: Row;
+  /** Its place in the grid, the heads being the first. */
+  rowIndex: number;
   library: SoundLibrary;
   handlers: RowHandlers;
   selected: boolean;
@@ -97,7 +99,7 @@ function RowTitle({ name }: { name: string }): React.JSX.Element {
 }
 
 /** One row of the library: its controls take no focus, as the list holds it and the keys act on the row in view. */
-export const LibraryRow = memo(function LibraryRow({ row, library, handlers, selected, active, renaming, held, previewing, sounding, hold, preparing, conversion, style }: LibraryRowProps): React.JSX.Element {
+export const LibraryRow = memo(function LibraryRow({ row, rowIndex, library, handlers, selected, active, renaming, held, previewing, sounding, hold, preparing, conversion, style }: LibraryRowProps): React.JSX.Element {
   const relinkable = row.type === 'waiting' && handlers.mayRelink(row.sound.kind);
   const waitsForCopy = preparing && row.type === 'file' && conversion?.state === 'not-converted' && !held;
   const missingText = row.type === 'waiting' && library.locationOf(row.sound.kind) === null ? t('audio.state.notHere') : t('audio.state.missing');
@@ -111,6 +113,7 @@ export const LibraryRow = memo(function LibraryRow({ row, library, handlers, sel
     <div
       id={`atlas-sound-row-${row.id}`}
       role="row"
+      aria-rowindex={rowIndex}
       aria-selected={selected}
       className={cn('atlas-sound-lib__row', held && 'atlas-sound-lib__row--mix', row.type === 'waiting' && 'atlas-sound-lib__row--waiting')}
       data-active={active || undefined}

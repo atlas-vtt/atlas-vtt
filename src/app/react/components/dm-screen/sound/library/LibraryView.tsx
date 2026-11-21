@@ -21,6 +21,7 @@ import { LibraryRows } from './LibraryRows';
 import { MusicPacksButton, StarterPackButton } from './PackOffers';
 import { useHeldInMix, useLibraryVersion } from './useLibrary';
 import { useLibraryActions, type LibraryActions } from './useLibraryActions';
+import { useRowSort } from './useRowSort';
 
 /** Keys the library never keeps: Tab opens and closes the DM screen, and Escape closes what is open once nothing here uses it. */
 const PASSES_THROUGH: ReadonlySet<string> = new Set(['Tab', 'Escape']);
@@ -127,13 +128,15 @@ export function LibraryView({ query, onQuery: setQuery, railSlot }: LibraryViewP
   const found = useMemo<readonly LibraryRow[] | null>(() => (searching === '' ? null : searchRows(library.search(searching), (kind) => t(kind === 'music' ? 'audio.music' : 'audio.ambience'))), [library, searching, version]);
   // The one search narrows the moods beside the library too (by name, or by a sound they hold).
   const foundMoods = useMemo(() => moodsMatching(moods, searching, director), [moods, searching, director, version]);
+  // The order the viewer chose, for the root, its tags and a search's hits alike: what Play, Enter and a Shift range go by.
+  const order = useRowSort(library, found ?? listed);
+  const rows = order.rows;
   // Enter starts the first result: a mood where one matches, else what the first file row's Play would play.
-  const firstFound = found?.find((row) => row.type === 'file');
+  const firstFound = found ? rows.find((row) => row.type === 'file') : undefined;
   const firstMood = foundMoods[0];
   let playFirst: { name: string; play: () => void } | null = null;
   if (firstMood) playFirst = { name: firstMood.name, play: () => director.press(firstMood) };
   else if (firstFound?.type === 'file') playFirst = { name: firstFound.name, play: () => actions.toMix([firstFound.file], firstFound.file.kind === 'music' ? 'now' : 'add') };
-  const rows = found ?? listed;
 
   const linked = isLinked(library.rootOf(place.kind));
   const loading = library.locationOf(place.kind) !== null && !library.isWalked(place.kind) && listed.length === 0 && searching === '';
@@ -189,9 +192,12 @@ export function LibraryView({ query, onQuery: setQuery, railSlot }: LibraryViewP
     >
       {railSlot ? createPortal(rail, railSlot) : rail}
       <div className="atlas-sound-lib__main">
-        <LibraryHead library={library} actions={actions} kind={place.kind} rows={found ?? listed} scope={found ? 'results' : selected.length > 0 ? 'tagged' : 'all'} query={query} onQuery={setQuery} shuffle={shuffle} first={playFirst} />
+        <LibraryHead library={library} actions={actions} kind={place.kind} rows={rows} scope={found ? 'results' : selected.length > 0 ? 'tagged' : 'all'} query={query} onQuery={setQuery} shuffle={shuffle} first={playFirst} />
         <LibraryRows
           rows={rows}
+          sort={order.sort}
+          reading={order.reading}
+          onSort={(by) => library.sort.press(by)}
           preparing={preparing}
           loading={loading && showSkeleton}
           emptyText={emptyText}

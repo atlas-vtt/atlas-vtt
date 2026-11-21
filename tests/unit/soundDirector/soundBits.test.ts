@@ -135,6 +135,17 @@ describe('the output device', () => {
     await setOutputDevice('');
   });
 
+  it('says nothing of a context that closes while it moves', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const closing = { setSinkId: vi.fn(() => Promise.reject(new DOMException('AudioContext is going away', 'InvalidStateError'))) };
+    followOutputDevice(closing);
+    await setOutputDevice('usb');
+    expect(error).not.toHaveBeenCalled();
+    forgetOutputFollower(closing);
+    await setOutputDevice('');
+    error.mockRestore();
+  });
+
   it('falls back to the default when the device is gone, and says so', async () => {
     const output = {
       setSinkId: vi.fn((id: string) => (id === '' ? Promise.resolve() : Promise.reject(new DOMException('gone', 'NotFoundError')))),

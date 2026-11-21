@@ -96,7 +96,7 @@ export class LibraryCopyFolder implements CopyFolder {
   /** What a file in the folder says of itself; the library learns of every copy read, so a source beside its own is not listed. */
   private async copyAt({ kind, location }: Place, path: string, refuse: boolean): Promise<AtlasCopyFacts | null> {
     const copy = await this.reader.copyAt(location, path, refuse);
-    if (copy) this.library()?.copies.note(kind, path, copy.facts.from, copy.size);
+    if (copy) this.library()?.copies.note(kind, path, copy.facts.from, copy.size, copy.facts.frames);
     return copy?.facts ?? null;
   }
 
@@ -109,7 +109,7 @@ export class LibraryCopyFolder implements CopyFolder {
     if (!facts) throw new SoundImportError('verify-failed', 'The copy does not say what it is.');
     let final = await this.placeCopy(place, copy, facts);
     final = await this.dealWithSource(place, final, choice, sourceStat, facts, copy.size);
-    library.copies.note(place.kind, final, facts.from, (await place.location.stat(final))?.size ?? copy.size);
+    library.copies.note(place.kind, final, facts.from, (await place.location.stat(final))?.size ?? copy.size, facts.frames);
     const copyAudio = library.audioPathOf(place.kind, final) ?? sourceAudio;
     await this.follow(sourceAudio, copyAudio, copy.size);
     this.found.set(copyId(facts), { kind: place.kind, path: final });

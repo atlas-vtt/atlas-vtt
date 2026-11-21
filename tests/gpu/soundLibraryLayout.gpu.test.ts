@@ -374,7 +374,7 @@ describe('the sound library', () => {
     frame = stageFrame(ATLAS_DARK);
     const opened = performance.now();
     rig.mount(frame.host, PAGE);
-    await expect.poll(() => document.querySelector('.atlas-sound-lib__rows [role="row"]'), { timeout: 30_000 }).not.toBeNull();
+    await expect.poll(() => document.querySelector('.atlas-sound-lib__rows .atlas-sound-lib__row[role="row"]'), { timeout: 30_000 }).not.toBeNull();
     const firstRows = performance.now() - opened;
     await expect.poll(() => rig!.library.isWalked('music'), { timeout: 30_000 }).toBe(true);
     const walked = performance.now() - opened;
@@ -443,6 +443,47 @@ describe('the sound library', () => {
     expect(r.director.snapshot().mix.table.music).toBeNull();
   });
 
+  it('stands each sort head over its column, wide and narrow, and keeps the heads over the rows as they scroll', async () => {
+    for (const [width, height] of [[1644, 960], [1000, 800]] as const) {
+      const r = await open(ATLAS_DARK, width, height);
+      await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__row').length).toBeGreaterThan(10);
+      const word = (by: string): DOMRect => box(`.atlas-sound-lib__colhead--${by} .atlas-sound-lib__sort-word`);
+      const row = document.querySelector<HTMLElement>('.atlas-sound-lib__row')!;
+      const length = row.querySelector<HTMLElement>('.atlas-sound-lib__length')!;
+      await expect.poll(() => length.textContent).not.toBe('');
+      const digits = document.createRange();
+      digits.selectNodeContents(length);
+      expect(Math.abs(word('name').left - box('.atlas-sound-lib__title', row).left), `name at ${width}`).toBeLessThanOrEqual(1);
+      expect(Math.abs(word('length').right - digits.getBoundingClientRect().right), `length at ${width}`).toBeLessThanOrEqual(1);
+      expect(box('.atlas-sound-lib__colheads').height).toBe(28);
+      // The first row starts under the heads, and the heads stay where they are as the rows scroll.
+      expect(row.getBoundingClientRect().top).toBeGreaterThanOrEqual(box('.atlas-sound-lib__colheads').bottom - 0.5);
+      const top = box('.atlas-sound-lib__colheads').top;
+      const rows = document.querySelector<HTMLElement>('.atlas-sound-lib__rows')!;
+      rows.scrollTop = 200;
+      await settled();
+      expect(box('.atlas-sound-lib__colheads').top).toBe(top);
+      rows.scrollTop = 0;
+      act(() => r.library.sort.press('length'));
+      await expect.poll(() => document.querySelector('.atlas-sound-lib__colhead--length')?.getAttribute('aria-sort')).toBe('ascending');
+      await expect.poll(() => document.querySelector('.atlas-sound-lib__colhead--length')?.hasAttribute('aria-busy')).toBe(false);
+      await settled();
+      expectNoOverflow();
+      const mark = document.querySelector<HTMLElement>('.atlas-sound-lib__colhead--length .atlas-sound-lib__sort-mark')!;
+      await expect.poll(() => getComputedStyle(mark).opacity, `mark at ${width}`).toBe('1');
+      expect(mark.getBoundingClientRect().width).toBe(12);
+      for (const one of document.querySelectorAll<HTMLElement>('.atlas-sound-lib__sort-word')) expect(one.scrollWidth, `${one.textContent} at ${width}`).toBeLessThanOrEqual(one.clientWidth);
+      const sortedDigits = document.createRange();
+      sortedDigits.selectNodeContents(document.querySelector('.atlas-sound-lib__row .atlas-sound-lib__length')!);
+      expect(Math.abs(word('length').right - sortedDigits.getBoundingClientRect().right), `length sorted at ${width}`).toBeLessThanOrEqual(1);
+      await page.screenshot({ path: `${SHOTS}/library-sorted-${width}.png`, element: LIBRARY_SHOT(frame!.host) });
+      rig?.unmount();
+      rig = null;
+      frame?.remove();
+      frame = null;
+    }
+  });
+
   it('a root linked only on another device says so, and its records wait', async () => {
     await page.viewport(1644, 960);
     rig = await mockLibrary({ local: {}, shared: { music: { type: 'external' }, ambience: { type: 'vault', path: 'Audio/Ambience' } } });
@@ -474,8 +515,8 @@ describe('the sound library', () => {
     expect(document.querySelector('.atlas-sound-lib__none')).toBeNull();
     await page.screenshot({ path: `${SHOTS}/library-skeleton.png`, element: LIBRARY_SHOT(frame.host) });
     release();
-    await expect.poll(() => document.querySelector('.atlas-sound-lib__rows [role="row"]')).not.toBeNull();
-    expect(document.querySelector('.atlas-sound-lib__rows [role="row"]')!.getBoundingClientRect().top).toBe(top);
+    await expect.poll(() => document.querySelector('.atlas-sound-lib__rows .atlas-sound-lib__row[role="row"]')).not.toBeNull();
+    expect(document.querySelector('.atlas-sound-lib__rows .atlas-sound-lib__row[role="row"]')!.getBoundingClientRect().top).toBe(top);
   });
 
   it('hands a 300 MiB file over as a Blob in pieces, keeping the main thread free', async () => {

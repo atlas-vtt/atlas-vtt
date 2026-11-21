@@ -1,4 +1,5 @@
 import type { SoundKind } from '../../../../../sound/soundTypes';
+import { sortKey } from '../../../../../soundLibrary/FolderTree';
 import type { LibraryEntry } from '../../../../../soundLibrary/libraryOperations';
 import type { LibraryFile, SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { parentOfRelative, stemOf } from '../../../../../soundLibrary/soundPaths';
@@ -11,6 +12,8 @@ interface RowOf {
   /** The faint text beside the name: a row's tags, a search hit's place. */
   where: string;
   tagKeys: readonly string[];
+  /** What a sort by name compares, worked out once with the row (`sortKey`): plain `<`, no collator. */
+  order: string;
 }
 
 export type LibraryRow =
@@ -44,7 +47,7 @@ export function shelfOf(library: SoundLibrary, sounds: readonly StoredSound[], b
   const reachable = library.locationOf(kind) !== null;
   const all = library.filesOf(kind);
   const files = all.filter(({ entry }) => !library.isCopied(kind, entry.path))
-    .map(({ entry }) => ({ entry, tags: tagsOfTrack(entry.path, byFile.get(library.audioPathOf(kind, entry.path) ?? '') ?? []) }));
+    .map(({ entry, order }) => ({ entry, order, tags: tagsOfTrack(entry.path, byFile.get(library.audioPathOf(kind, entry.path) ?? '') ?? []) }));
   const waiting = reachable && !library.isWalked(kind)
     ? []
     : waitingIn(library, sounds, kind, reachable, new Set(all.map(({ entry }) => entry.path))).map(({ sound, path }) => ({ sound, tags: tagsOfTrack(path, [sound]) }));
@@ -57,8 +60,8 @@ export function shelfOf(library: SoundLibrary, sounds: readonly StoredSound[], b
   return {
     tags,
     rows: [
-      ...files.map(({ entry, tags: track }): LibraryRow => ({ ...shown(track), type: 'file', id: rowIdOf(kind, entry.path), file: { ...entry, kind }, name: stemOf(entry.name) })),
-      ...waiting.map(({ sound, tags: track }): LibraryRow => ({ ...shown(track), type: 'waiting', id: sound.id, sound, name: sound.name })),
+      ...files.map(({ entry, order, tags: track }): LibraryRow => ({ ...shown(track), type: 'file', id: rowIdOf(kind, entry.path), file: { ...entry, kind }, name: stemOf(entry.name), order })),
+      ...waiting.map(({ sound, tags: track }): LibraryRow => ({ ...shown(track), type: 'waiting', id: sound.id, sound, name: sound.name, order: `${sortKey(sound.name)}\0${sound.id}` })),
     ],
   };
 }
@@ -72,7 +75,7 @@ export const filesOfRows = (rows: readonly LibraryRow[]): LibraryFile[] => rows.
 export const searchRows = (hits: readonly LibraryFile[], rootName: (kind: SoundKind) => string): LibraryRow[] =>
   hits.map((file) => {
     const folder = parentOfRelative(file.path);
-    return { type: 'file', id: rowIdOf(file.kind, file.path), file, name: stemOf(file.name), tagKeys: [], where: [rootName(file.kind), ...(folder === '' ? [] : folder.split('/'))].join(' / ') };
+    return { type: 'file', id: rowIdOf(file.kind, file.path), file, name: stemOf(file.name), order: `${sortKey(file.name)}\0${file.kind}\0${file.path}`, tagKeys: [], where: [rootName(file.kind), ...(folder === '' ? [] : folder.split('/'))].join(' / ') };
   });
 
 export const entryOfRow = (row: LibraryRow): LibraryEntry | null => (row.type === 'file' ? { kind: row.file.kind, path: row.file.path } : null);

@@ -66,5 +66,4 @@ export const toolbar: Translation = {
   'toolbar.ranges': 'Reichweiten',
   'toolbar.rangesTip': 'Klicke auf ein Token oder einen Ort, um seine Reichweiten zu sehen',
   'toolbar.rangesNoRules': 'Dieses Spielsystem hat keine Reichweiten oder Bewegungsabschnitte',
-  'toolbar.rangesNeedGmView': 'Wechsle zur SL-Ansicht ({key}), um Reichweiten zu sehen',
 };

@@ -66,5 +66,4 @@ export const toolbar: Translation = {
   'toolbar.ranges': 'Дистанции',
   'toolbar.rangesTip': 'Щёлкните токен или место, чтобы увидеть его дистанции',
   'toolbar.rangesNoRules': 'В этой игровой системе нет дистанций и шагов перемещения',
-  'toolbar.rangesNeedGmView': 'Переключитесь в вид мастера ({key}), чтобы видеть дистанции',
 };

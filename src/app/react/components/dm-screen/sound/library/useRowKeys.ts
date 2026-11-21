@@ -19,10 +19,12 @@ interface RowKeysOptions {
   setRenaming: (id: string | null) => void;
   openMenu: (row: Row, at: { x: number; y: number }, anchor: HTMLElement | null) => void;
   list: React.RefObject<HTMLElement | null>;
+  /** Up from the first row: the heads over the rows. */
+  toHead: () => void;
 }
 
 /** The list's keys: arrows and Home and End move, Shift extends, Enter is the row's primary action, Space previews, Delete asks, F2 renames. */
-export function useRowKeys({ rows, activeIndex, setActiveIndex, selected, setSelected, anchor, setAnchor, scrollTo, actions, primary, inHand, setRenaming, openMenu, list }: RowKeysOptions): (event: React.KeyboardEvent) => void {
+export function useRowKeys({ rows, activeIndex, setActiveIndex, selected, setSelected, anchor, setAnchor, scrollTo, actions, primary, inHand, setRenaming, openMenu, list, toHead }: RowKeysOptions): (event: React.KeyboardEvent) => void {
   const moveActive = (index: number, extend: boolean): void => {
     const next = Math.max(0, Math.min(rows.length - 1, index));
     const row = rows[next];
@@ -69,7 +71,12 @@ export function useRowKeys({ rows, activeIndex, setActiveIndex, selected, setSel
     };
     switch (event.key) {
       case 'ArrowDown': take(activeIndex + 1); return;
-      case 'ArrowUp': take(activeIndex - 1); return;
+      case 'ArrowUp':
+        if (activeIndex <= 0 && !event.shiftKey) {
+          event.preventDefault();
+          toHead();
+        } else take(activeIndex - 1);
+        return;
       case 'Home': take(0); return;
       case 'End': take(rows.length - 1); return;
       case 'PageDown': take(activeIndex + PAGE_ROWS); return;
