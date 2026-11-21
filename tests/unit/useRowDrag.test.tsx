@@ -45,6 +45,14 @@ describe('useRowDrag', () => {
     expect(onMove).toHaveBeenCalledWith(0, 1);
   });
 
+  it('moves a vertical list\'s held place up and down only', () => {
+    const places = column([null, null]);
+    const { result } = renderHook(() => useRowDrag(() => places, vi.fn(), 'vertical'));
+    act(() => result.current.onPointerDown(0, pointer(20)));
+    act(() => result.current.onPointerMove({ ...pointer(60), clientX: 90 }));
+    expect(result.current.offsetOf(0)).toBe('0px 40px');
+  });
+
   it('drops nothing for a click or a press let go elsewhere', () => {
     const onMove = vi.fn();
     const places = column([null, null]);

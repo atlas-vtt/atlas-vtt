@@ -71,9 +71,10 @@ function swallowNextClick(win: Window): void {
  * `places` gives the places in their order (a row that may wrap into a grid, a list split into groups). A place marked
  * with a group (`DRAG_GROUP_ATTRIBUTE`) lands only among its group, whose places follow each other. The pointer is
  * captured once the press becomes a drag, so a finger drags as the mouse does and a plain click still reaches what was
- * pressed; a cancelled pointer drops nothing.
+ * pressed; a cancelled pointer drops nothing. A list of one column (`axis` 'vertical') moves its held place up and
+ * down only.
  */
-export function useRowDrag(places: () => readonly Element[], onMove: (from: number, to: number) => void): RowDrag {
+export function useRowDrag(places: () => readonly Element[], onMove: (from: number, to: number) => void, axis: 'both' | 'vertical' = 'both'): RowDrag {
   const [drag, setDrag] = useState<Drag | null>(null);
   const [settling, setSettling] = useState(false);
   const current = useRef<Drag | null>(null);
@@ -108,7 +109,7 @@ export function useRowDrag(places: () => readonly Element[], onMove: (from: numb
       setDrag(null);
       return;
     }
-    const delta = { x: event.clientX - now.start.x, y: event.clientY - now.start.y };
+    const delta = { x: axis === 'vertical' ? 0 : event.clientX - now.start.x, y: event.clientY - now.start.y };
     const moved = now.moved || Math.hypot(delta.x, delta.y) > DRAG_THRESHOLD;
     if (moved && !now.moved) event.currentTarget.setPointerCapture(event.pointerId);
     const held = now.centres[now.from]!;
