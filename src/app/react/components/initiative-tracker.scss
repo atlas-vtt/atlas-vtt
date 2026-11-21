@@ -266,7 +266,7 @@ $held-room: $spacing-l;
     // A side is tall: its ends move as far as a card's at a smaller angle
     @include atlas-wiggle(0.3deg);
     transition: translate $transition-fast $transition-ease-out;
-    border-radius: $radius-l;
+    border-radius: $radius-m;
 
     &:nth-of-type(even) {
       @include atlas-wiggle-shifted;
