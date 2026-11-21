@@ -1,5 +1,7 @@
 import type { SceneSource } from '../../host/sceneSource';
 import type { KeptMeasure, Measurement } from '../../measure/measureTypes';
+import type { RangeOrigin } from '../../measure/rangeOutline';
+import type { RangeRing } from '../../measure/rangeRings';
 import type { Point } from '../../types/visionTypes';
 
 /** The measurement being made, or showing after its release. */
@@ -14,6 +16,31 @@ export interface LiveMeasure extends Measurement {
   readonly hidden?: true;
   /** '#rrggbb': the colour it is drawn in, where the tool names one; unset, the accent. */
   readonly color?: string;
+}
+
+/** The rings of Ranges as they stand: around a token (`tokenIds` names it, `at` is its place and size) or a point (no `tokenIds`). */
+export interface ShownRangeRings {
+  readonly tokenIds: readonly string[];
+  readonly at: RangeOrigin;
+  readonly rings: readonly RangeRing[];
+}
+
+/** The range check as it stands: between two tokens (`tokenIds`), each by its place and size, and what it reads. */
+export interface ShownRangeCheck {
+  readonly tokenIds: readonly [string, string];
+  readonly from: RangeOrigin;
+  readonly to: RangeOrigin;
+  readonly text: string;
+}
+
+/** The measure tool's range marks as they stand (`RangeMarks`): no measurements, never kept, seen by the rule measurements are. */
+export interface RangeMarksShown {
+  readonly rings: ShownRangeRings | null;
+  readonly check: ShownRangeCheck | null;
+  /** Tokens stand anywhere on the map (its Snap is off): rings are round, never cells. */
+  readonly loose: boolean;
+  /** The GM measures for themselves (the Players switch is off): players are shown nothing of them. */
+  readonly hidden: boolean;
 }
 
 /**
@@ -31,6 +58,8 @@ export interface Measurements {
    * Unset: none.
    */
   readonly walled?: boolean;
+  /** The range check and the rings of Ranges while either shows; unset or null: neither. */
+  readonly ranges?: RangeMarksShown | null;
 }
 
 export const NO_MEASUREMENTS: Measurements = Object.freeze({ live: null, kept: Object.freeze([]), walled: false });

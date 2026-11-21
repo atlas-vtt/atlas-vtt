@@ -211,13 +211,12 @@ describe('MeasureRenderer and the players\' picture', () => {
     const seen = vi.fn(() => true);
     const footprints = vi.fn(() => []);
     const seenAtStart = vi.fn(() => seen);
-    // The GM's own layers follow the canvas whatever is measured: the range marks, which are no measurement's, are on one.
+    // The GM's own layers follow the canvas whatever is measured.
     s.measure.playersView = { footprints, seenAtStart, seenOnCanvas: () => seen };
     s.measure.refreshVisibility();
     expect(seen).not.toHaveBeenCalled();
     expect(footprints).not.toHaveBeenCalled();
     expect(seenAtStart).not.toHaveBeenCalled();
-    expect(s.measure.ranges.view.visible).toBe(false);
     expect(s.measure.handles.layer.visible).toBe(false);
   });
 });

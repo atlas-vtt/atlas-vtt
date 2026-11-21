@@ -16,7 +16,7 @@ export const MEASURE_MODES: readonly ToolChoice<MeasureMode>[] = [
   { value: 'ranges', icon: Target, label: t('toolbar.ranges'), tip: t('toolbar.rangesTip') },
 ]
 
-/** The modes without Ranges: what the players' view measures with, since the rings of Ranges are the GM's own. */
+/** The modes without Ranges: what the players' view measures with, since Ranges is the GM's to point with (players see its rings). */
 export const PLAYER_MEASURE_MODES: readonly ToolChoice<MeasureMode>[] = MEASURE_MODES.filter((choice) => choice.value !== 'ranges')
 
 /** The bar's button for a mode; the ruler's for a mode the bar does not offer. */
