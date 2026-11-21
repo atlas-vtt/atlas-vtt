@@ -16,6 +16,23 @@ const CRC8 = Uint8Array.from({ length: 256 }, (_, index) => {
   return crc;
 });
 
+const CRC16 = Uint16Array.from({ length: 256 }, (_, index) => {
+  let crc = index << 8;
+  for (let bit = 0; bit < 8; bit++) crc = crc & 0x8000 ? ((crc << 1) ^ 0x8005) & 0xffff : (crc << 1) & 0xffff;
+  return crc;
+});
+
+/**
+ * Whether the frame that starts at 0 ends at `end`: a frame closes with the CRC-16 of everything before it.
+ * A header's CRC-8 alone lets a false sync code inside the audio through about once in a few thousand
+ * frames, which cut a third of real music files in two.
+ */
+function frameEndsAt(bytes: Uint8Array, end: number): boolean {
+  let crc = 0;
+  for (let i = 0; i < end - 2; i++) crc = ((crc << 8) & 0xffff) ^ (CRC16[(crc >> 8) ^ (bytes[i] ?? 0)] ?? 0);
+  return crc === (((bytes[end - 2] ?? 0) << 8) | (bytes[end - 1] ?? 0));
+}
+
 /** The block size of the frame whose header is valid at `at`, else 0. The header's CRC tells real from false. */
 function frameHeaderAt(bytes: Uint8Array, at: number, streamBlock: number): number {
   if (bytes[at] !== 0xff || ((bytes[at + 1] ?? 0) & 0xfe) !== 0xf8) return 0;
@@ -98,7 +115,7 @@ export async function demuxFlac(window: BlobWindow): Promise<EncodedSource> {
           continue;
         }
         let next = 2;
-        while (next < bytes.length - MAX_FRAME_HEADER && !frameHeaderAt(bytes, next, maxBlock)) next++;
+        while (next < bytes.length - MAX_FRAME_HEADER && !(frameHeaderAt(bytes, next, maxBlock) && frameEndsAt(bytes, next))) next++;
         const found = next < bytes.length - MAX_FRAME_HEADER;
         if (!found && !atEnd) throw new SoundImportError('unreadable', 'A FLAC frame longer than any should be.');
         const end = found ? next : bytes.length;
