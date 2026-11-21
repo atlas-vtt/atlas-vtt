@@ -59,6 +59,12 @@ export interface AnnotationInteractionDeps {
    * selects, moves and lets go of nothing, so nothing is drawn by it either. Unset: no press does.
    */
   closesMenu?(): boolean;
+  /**
+   * Whether something lies at `point` that the move and select tools give the press to before the
+   * drawings on the map, as they give it to a token: a linked hex, which opens its note from under
+   * a cell fill. Drawings above the tokens still lie over it. Unset: nothing does.
+   */
+  overMap?(point: Point): boolean;
   /** A drag of annotations ended, by its release or not: the pointer rests where the drag left it, with the cursor of the drag. */
   settled?(): void;
 }
@@ -250,8 +256,10 @@ export class AnnotationInteraction {
   /** The topmost annotation at `point` that the tool in hand takes: by its scope, or as one of the kind `own`. */
   private taken(point: Point, read: SelectionRead, own: OwnKind | null = null): Annotation | null {
     if (read.scope !== 'all' && read.scope !== 'move' && own === null) return null;
+    let overMap: boolean | undefined;
+    const yields = (annotation: Annotation): boolean => read.scope === 'move' && annotation.layer === 'map' && (overMap ??= this.deps.overMap?.(point) ?? false);
     return annotationsAt(point, pointerReach(HIT_TOLERANCE) / this.zoom, read.list, this.deps.measure)
-      .find((annotation) => takesPress(read.scope, annotation) || takesOwn(own, annotation)) ?? null;
+      .find((annotation) => (takesPress(read.scope, annotation) && !yields(annotation)) || takesOwn(own, annotation)) ?? null;
   }
 
   private handleUnder(point: Point, read: SelectionRead): HandleRef | null {

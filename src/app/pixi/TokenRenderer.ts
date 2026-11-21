@@ -1869,8 +1869,9 @@ export class TokenRenderer {
     // A token takes the right-click from a linked hex or fog beneath it, as it takes the left-click
     const tokenTools = activeTool === 'select' || activeTool === 'move';
     const onToken = tokenTools && this.hitTestTokens(x, y) !== null;
-    // A drawing or text lies above linked hexes and features. A fill and a selection's frame cover whole
-    // stretches of the map too: like theirs, its press stays unhandled and its menu opens on a release in place
+    // A drawing or text lies above linked hexes and features, but one on the map leaves a linked hex its menu (`overMap`).
+    // A fill and a selection's frame cover whole stretches of the map too: like theirs, its press stays unhandled and its
+    // menu opens on a release in place
     if (!onToken && this.annotationHandlers?.menuAt(x, y)) {
       return { on: 'release', menu: true, open: (up) => this.annotationHandlers?.openMenu(x, y, up) };
     }
@@ -2062,7 +2063,7 @@ export class TokenRenderer {
       return;
     }
 
-    // 3. Drawings and texts above the tokens (select + drag; tokens selected alongside follow the drag)
+    // 3. Drawings and texts (select + drag; tokens selected alongside follow the drag); one on the map leaves a linked hex its press
     if (primary && this.annotationHandlers?.pointerDown(worldPos.x, worldPos.y, e)) {
       markHandled(e);
       return;

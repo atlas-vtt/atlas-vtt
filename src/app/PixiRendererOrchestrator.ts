@@ -566,6 +566,8 @@ export class PixiRendererOrchestrator { // Renamed class
       showsPlayers: () => (this.tokenRenderer ? this.tokenRenderer.playersSeeOnCanvas() !== null : null),
       requestRender: () => requestRender(this.pixiAppManager.app),
       dragTokens: (event) => this.tokenRenderer?.dragSelectedTokens(event),
+      // A linked hex opens its note from under the drawings on the map, as a token takes the press from them
+      overMap: (point) => (this.hexLinkInteraction?.hitTest(point.x, point.y) ?? null) !== null,
     });
     this.annotations = annotations;
     this.eventBusUnsubscribers.push(onLeavingView({ eventBus: this.eventBus, obsApp: this.obsApp, viewId: this.viewId }, () => annotations.leave()));
