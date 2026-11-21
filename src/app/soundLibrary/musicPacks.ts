@@ -13,8 +13,9 @@ const HOST = 'https://assets.atlas-vtt.dev/starter/vindsvept-1/';
 
 /** The music root's folder the packs go to; it and each pack's folder are the tracks' tags. */
 export const MUSIC_FOLDER = 'Vindsvept';
-/** A pack's subfolder for tracks that are sung, so "With vocals" is a tag of its own. */
+/** A pack's subfolders for sung tracks and for the others, so "With vocals" and "Instrumental" are tags of their own. */
 export const VOCALS_FOLDER = 'With vocals';
+export const INSTRUMENTAL_FOLDER = 'Instrumental';
 const CREDITS_NAME = 'Credits.md';
 /** Requests at a time. */
 const PARALLEL = 4;
@@ -73,13 +74,23 @@ function readManifest(bytes: ArrayBuffer): Manifest {
 }
 
 const packFolder = (name: string): string => `${MUSIC_FOLDER}/${name}`;
-const trackPath = (pack: MusicPack, track: PackTrack): string => `${packFolder(pack.name)}/${track.vocals ? `${VOCALS_FOLDER}/` : ''}${track.name}`;
+const trackPath = (pack: MusicPack, track: PackTrack): string => `${packFolder(pack.name)}/${track.vocals ? VOCALS_FOLDER : INSTRUMENTAL_FOLDER}/${track.name}`;
 
-/** The packs whose folder holds a track; null until the music root has been read whole. A GM who deleted some tracks kept the rest on purpose. */
-export function installedMusicPacks(library: SoundLibrary): ReadonlySet<string> | null {
-  if (!library.locationOf('music') || !library.isWalked('music')) return library.rootOf('music').status === 'unlinked' ? new Set() : null;
+/** How many tracks of each pack lie in its folder; null until the music root has been read whole. */
+export function musicPackTrackCounts(library: SoundLibrary): ReadonlyMap<string, number> | null {
+  if (!library.locationOf('music') || !library.isWalked('music')) return library.rootOf('music').status === 'unlinked' ? new Map() : null;
   const paths = library.filesOf('music').map(({ entry }) => entry.path);
-  return new Set(MUSIC_PACKS.filter((pack) => paths.some((path) => path.startsWith(`${packFolder(pack.name)}/`))).map((pack) => pack.id));
+  return new Map(MUSIC_PACKS.map((pack) => [pack.id, paths.filter((path) => path.startsWith(`${packFolder(pack.name)}/`)).length]));
+}
+
+/**
+ * The packs whose folder holds all their tracks; null until the music root has been read whole. A pack
+ * with only some of them was stopped part way (or thinned out by hand) and is offered again, for the rest.
+ */
+export function installedMusicPacks(library: SoundLibrary): ReadonlySet<string> | null {
+  const counts = musicPackTrackCounts(library);
+  if (!counts) return null;
+  return new Set(MUSIC_PACKS.filter((pack) => (counts.get(pack.id) ?? 0) >= pack.tracks).map((pack) => pack.id));
 }
 
 /** Whether this device could take a pack: the music root is linked here and reachable, or not linked at all (the default folder is linked then). */

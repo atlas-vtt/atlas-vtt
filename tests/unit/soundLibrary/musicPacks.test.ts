@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SoundKind } from '../../../src/app/sound/soundTypes';
 import { ExternalLocation } from '../../../src/app/soundLibrary/externalLocation';
-import { installedMusicPacks, installMusicPacks, mayInstallMusicPacks, MUSIC_FOLDER, MUSIC_PACK_BYTES, MUSIC_PACKS, VOCALS_FOLDER } from '../../../src/app/soundLibrary/musicPacks';
+import { installedMusicPacks, installMusicPacks, mayInstallMusicPacks, MUSIC_FOLDER, MUSIC_PACK_BYTES, MUSIC_PACKS, INSTRUMENTAL_FOLDER, musicPackTrackCounts, VOCALS_FOLDER } from '../../../src/app/soundLibrary/musicPacks';
 import type { NodeFsModule } from '../../../src/app/soundLibrary/nodeFiles';
 import { SoundLibrary } from '../../../src/app/soundLibrary/SoundLibrary';
 import { SoundRoots } from '../../../src/app/soundLibrary/SoundRoots';
@@ -108,18 +108,18 @@ describe('the music packs', () => {
     expect(MUSIC_PACK_BYTES).toBe(MUSIC_PACKS.reduce((sum, pack) => sum + pack.bytes, 0));
   });
 
-  it('writes the chosen packs, sung tracks in a folder of their own, with the credits beside them', async () => {
+  it('writes the chosen packs, sung and instrumental tracks in folders of their own, with the credits beside them', async () => {
     const { manifest, served } = await host([TAVERN, DREAD]);
     const fetch = serving(served);
     const steps: number[] = [];
     const written = await installMusicPacks(library, ['tavern'], { manifest, fetch, onStep: (share) => steps.push(share) });
-    expect(fs.readFileSync(inFolder('Tavern', 'The Old Mill.opus'), 'utf8')).toBe('MILL');
+    expect(fs.readFileSync(inFolder('Tavern', INSTRUMENTAL_FOLDER, 'The Old Mill.opus'), 'utf8')).toBe('MILL');
     expect(fs.readFileSync(inFolder('Tavern', VOCALS_FOLDER, 'Sung.opus'), 'utf8')).toBe('SUNG');
     expect(fs.readFileSync(inFolder('Credits.md'), 'utf8')).toBe('CREDITS');
     expect(fs.existsSync(inFolder('Dread'))).toBe(false);
-    expect([...written].sort()).toEqual([`${MUSIC_FOLDER}/Tavern/The Old Mill.opus`, `${MUSIC_FOLDER}/Tavern/${VOCALS_FOLDER}/Sung.opus`].sort());
+    expect([...written].sort()).toEqual([`${MUSIC_FOLDER}/Tavern/${INSTRUMENTAL_FOLDER}/The Old Mill.opus`, `${MUSIC_FOLDER}/Tavern/${VOCALS_FOLDER}/Sung.opus`].sort());
     // Listed at once, so the library shows them without a reread by hand.
-    expect(library.filesOf('music').map(({ entry }) => entry.path)).toContain(`${MUSIC_FOLDER}/Tavern/The Old Mill.opus`);
+    expect(library.filesOf('music').map(({ entry }) => entry.path)).toContain(`${MUSIC_FOLDER}/Tavern/${INSTRUMENTAL_FOLDER}/The Old Mill.opus`);
     expect(steps[0]).toBe(0);
     expect(steps.at(-1)).toBe(1);
   });
@@ -150,12 +150,12 @@ describe('the music packs', () => {
   });
 
   it('leaves a track already there alone and does not fetch it, so an interrupted download goes on', async () => {
-    fs.mkdirSync(inFolder('Tavern'), { recursive: true });
-    fs.writeFileSync(inFolder('Tavern', 'The Old Mill.opus'), 'MINE');
+    fs.mkdirSync(inFolder('Tavern', INSTRUMENTAL_FOLDER), { recursive: true });
+    fs.writeFileSync(inFolder('Tavern', INSTRUMENTAL_FOLDER, 'The Old Mill.opus'), 'MINE');
     const { manifest, served } = await host([TAVERN]);
     const fetch = serving(served);
     await installMusicPacks(library, ['tavern'], { manifest, fetch });
-    expect(fs.readFileSync(inFolder('Tavern', 'The Old Mill.opus'), 'utf8')).toBe('MINE');
+    expect(fs.readFileSync(inFolder('Tavern', INSTRUMENTAL_FOLDER, 'The Old Mill.opus'), 'utf8')).toBe('MINE');
     expect(fetch.mock.calls.map(([url]) => url)).not.toContain('https://assets.atlas-vtt.dev/starter/vindsvept-1/tavern/the-old-mill.opus');
   });
 
@@ -163,20 +163,26 @@ describe('the music packs', () => {
     open({}, {});
     const { manifest, served } = await host([DREAD]);
     await installMusicPacks(library, ['dread'], { manifest, fetch: serving(served) });
-    expect(vault.files.get(`atlas-vtt/sounds/music/${MUSIC_FOLDER}/Dread/The Undead Horde.opus`)).toBe('HORDE');
+    expect(vault.files.get(`atlas-vtt/sounds/music/${MUSIC_FOLDER}/Dread/${INSTRUMENTAL_FOLDER}/The Undead Horde.opus`)).toBe('HORDE');
     expect(library.rootOf('music')).toMatchObject({ status: 'vault', path: 'atlas-vtt/sounds/music' });
   });
 
-  it('counts a pack as there once a track lies in its folder, and knows nothing before the folder is read', async () => {
+  it('counts a pack as there once all its tracks lie in its folder, and knows nothing before the folder is read', async () => {
     const [first] = MUSIC_PACKS;
     if (!first) throw new Error('no packs');
     expect(installedMusicPacks(library)).toBeNull();
     library.rescan();
     await vi.waitFor(() => expect(library.isWalked('music')).toBe(true));
     expect(installedMusicPacks(library)?.has(first.id)).toBe(false);
-    fs.mkdirSync(inFolder(first.name), { recursive: true });
-    fs.writeFileSync(inFolder(first.name, 'A track.opus'), 'X');
-    await library.settle('music', [`${MUSIC_FOLDER}/${first.name}/A track.opus`]);
+    const paths = Array.from({ length: first.tracks }, (_, i) => `${MUSIC_FOLDER}/${first.name}/${INSTRUMENTAL_FOLDER}/Track ${i}.opus`);
+    fs.mkdirSync(inFolder(first.name, INSTRUMENTAL_FOLDER), { recursive: true });
+    for (const file of paths.slice(1)) fs.writeFileSync(path.join(music(), file), 'X');
+    await library.settle('music', paths.slice(1));
+    // A pack stopped part way is offered again, for the tracks it lacks.
+    expect(musicPackTrackCounts(library)?.get(first.id)).toBe(first.tracks - 1);
+    expect(installedMusicPacks(library)?.has(first.id)).toBe(false);
+    fs.writeFileSync(path.join(music(), paths[0] ?? ''), 'X');
+    await library.settle('music', paths.slice(0, 1));
     expect(installedMusicPacks(library)?.has(first.id)).toBe(true);
   });
 

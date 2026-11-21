@@ -41,13 +41,14 @@ describe('the music pack offer', () => {
   it('marks a pack that lies in the music folder already, and leaves once all do', async () => {
     const [first] = MUSIC_PACKS;
     if (!first) throw new Error('no packs');
-    rig.locations.music.addFile(`${MUSIC_FOLDER}/${first.name}/A track.opus`);
+    const firstPaths = Array.from({ length: first.tracks }, (_, i) => `${MUSIC_FOLDER}/${first.name}/Instrumental/Track ${i}.opus`);
+    for (const file of firstPaths) rig.locations.music.addFile(file);
     await act(async () => rig.mount(host));
-    await act(async () => { await rig.library.settle('music', [`${MUSIC_FOLDER}/${first.name}/A track.opus`]); });
+    await act(async () => { await rig.library.settle('music', firstPaths); });
     await waitFor(() => expect(offer()).not.toBeNull());
     await act(async () => offer()?.click());
     expect(screen.getByRole('menuitemcheckbox', { name: new RegExp(first.name) }).getAttribute('aria-checked')).toBe('true');
-    const paths = MUSIC_PACKS.map((pack) => `${MUSIC_FOLDER}/${pack.name}/A track.opus`);
+    const paths = MUSIC_PACKS.flatMap((pack) => Array.from({ length: pack.tracks }, (_, i) => `${MUSIC_FOLDER}/${pack.name}/Instrumental/Track ${i}.opus`));
     for (const path of paths) rig.locations.music.addFile(path);
     await act(async () => { await rig.library.settle('music', paths); });
     await waitFor(() => expect(offer()).toBeNull());
