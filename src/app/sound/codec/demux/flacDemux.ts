@@ -23,14 +23,21 @@ const CRC16 = Uint16Array.from({ length: 256 }, (_, index) => {
 });
 
 /**
- * Whether the frame that starts at 0 ends at `end`: a frame closes with the CRC-16 of everything before it.
+ * The CRC-16 that closes a frame, kept as the scan for the next header goes on, so every byte is read once.
  * A header's CRC-8 alone lets a false sync code inside the audio through about once in a few thousand
  * frames, which cut a third of real music files in two.
  */
-function frameEndsAt(bytes: Uint8Array, end: number): boolean {
-  let crc = 0;
-  for (let i = 0; i < end - 2; i++) crc = ((crc << 8) & 0xffff) ^ (CRC16[(crc >> 8) ^ (bytes[i] ?? 0)] ?? 0);
-  return crc === (((bytes[end - 2] ?? 0) << 8) | (bytes[end - 1] ?? 0));
+class FrameCrc {
+  private crc = 0;
+  private covered = 0;
+
+  constructor(private readonly bytes: Uint8Array) {}
+
+  /** Whether the frame that starts at 0 ends at `end`: a frame closes with the CRC-16 of everything before it. */
+  endsAt(end: number): boolean {
+    for (; this.covered < end - 2; this.covered++) this.crc = ((this.crc << 8) & 0xffff) ^ (CRC16[(this.crc >> 8) ^ (this.bytes[this.covered] ?? 0)] ?? 0);
+    return this.crc === (((this.bytes[end - 2] ?? 0) << 8) | (this.bytes[end - 1] ?? 0));
+  }
 }
 
 /** The block size of the frame whose header is valid at `at`, else 0. The header's CRC tells real from false. */
@@ -115,7 +122,8 @@ export async function demuxFlac(window: BlobWindow): Promise<EncodedSource> {
           continue;
         }
         let next = 2;
-        while (next < bytes.length - MAX_FRAME_HEADER && !(frameHeaderAt(bytes, next, maxBlock) && frameEndsAt(bytes, next))) next++;
+        const frameCrc = new FrameCrc(bytes);
+        while (next < bytes.length - MAX_FRAME_HEADER && !(frameHeaderAt(bytes, next, maxBlock) && frameCrc.endsAt(next))) next++;
         const found = next < bytes.length - MAX_FRAME_HEADER;
         if (!found && !atEnd) throw new SoundImportError('unreadable', 'A FLAC frame longer than any should be.');
         const end = found ? next : bytes.length;

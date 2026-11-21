@@ -61,4 +61,15 @@ describe('the FLAC demuxer', () => {
     const packets = await packetsOf([0x66, 0x4c, 0x61, 0x43, ...streamInfo(), ...first, ...second, ...third]);
     expect(packets.map((packet) => packet.data.length)).toEqual([first.length, second.length, third.length]);
   });
+
+  it('reads each byte of a frame once, however many false headers its audio holds', async () => {
+    // A hostile file: 400 KB of headers that pass their CRC-8, none closing a frame.
+    const fakes = Array.from({ length: 70_000 }, () => header(1)).flat();
+    const started = performance.now();
+    const frames = [...frame(0, fakes), ...frame(1, noise(60, 5))];
+    const packets = await packetsOf([0x66, 0x4c, 0x61, 0x43, ...streamInfo(), ...frames]);
+    expect(performance.now() - started).toBeLessThan(2000);
+    // So many candidates may meet a CRC-16 by chance, which real audio, with one or two per frame, does not; no byte is lost either way.
+    expect(packets.reduce((sum, packet) => sum + packet.data.length, 0)).toBe(frames.length);
+  });
 });
