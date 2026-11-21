@@ -5,6 +5,9 @@ import type { RemoteSettingsStore } from '../soundRemote/remoteSettings';
 import { showNotice } from '../ui/notice';
 import type { AtlasSettingSection } from './settingSections';
 
+/** Where the Atlas plugin for Stream Deck is published. */
+const STREAM_DECK_PLUGIN_URL = 'https://github.com/atlas-vtt/atlas-vtt-streamdeck/releases/latest';
+
 function pairedText(remote: RemoteSettingsStore): string {
   const { client, pairedAt } = remote.get();
   if (!client || pairedAt === null) return t('remote.notPaired');
@@ -16,6 +19,14 @@ export function soundRemoteSettingsSection(remote: RemoteSettingsStore): AtlasSe
   return {
     heading: t('remote.heading'),
     rows: [
+      {
+        name: t('remote.plugin'),
+        desc: t('remote.pluginHint'),
+        aliases: ['stream deck', 'streamdeck', 'elgato', 'opendeck', 'plugin', 'download', 'install'],
+        render: (setting) => {
+          setting.addButton((button) => button.setButtonText(t('remote.pluginGet')).onClick(() => { window.open(STREAM_DECK_PLUGIN_URL); }));
+        },
+      },
       {
         name: t('remote.enable'),
         desc: t('remote.enableHint', { port: REMOTE_PORT }),

@@ -6,6 +6,7 @@
 
 ## Improved
 
+- The starter ambience plays the moment it is downloaded, without being converted first, and is a third smaller
 - The Sound page stays smooth with thousands of tracks: the list scrolls without stutter, pressing a tag, typing a search or adding a file redraws only what changed, and tags, moods, track lengths and scene pictures show placeholders in their own shape while they load
 - The starter ambience and starter music offers on the Sound page can be hidden with their ×; both stay in the ⋯ menu of Ambience and Music
 - Sort the Sound page's library by name or by length: press a column's heading, press again to reverse. The choice applies to tags and search results too, and Play all plays in that order

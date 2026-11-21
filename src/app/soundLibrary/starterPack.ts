@@ -7,7 +7,7 @@ import type { SoundLibrary } from './SoundLibrary';
  * Where the starter ambience lies. A pack is never changed in place: a new pack is a new folder
  * on the host and a new list below, so the hashes here always name what is served.
  */
-const STARTER_HOST = 'https://assets.atlas-vtt.dev/starter/ambience-1/';
+const STARTER_HOST = 'https://assets.atlas-vtt.dev/starter/ambience-2/';
 
 /** The folder of the ambience root the pack goes to; its name is the tracks' tag. */
 export const STARTER_FOLDER = 'Starter ambience';
@@ -20,14 +20,17 @@ export interface StarterFile extends PackedFile {
 
 const AUDIO = 'audio/ogg';
 
-/** CC0 recordings, cut to seamless loops; their sources are in `credits.md`. */
+/**
+ * CC0 recordings, cut to seamless loops; their sources are in `credits.md`. Each is an Atlas copy, made as Atlas
+ * makes one from the loop a GM imports (`ATLAS_FROM` the `.ogg` the first pack held), so it plays as it lands.
+ */
 export const STARTER_FILES: readonly StarterFile[] = [
-  { key: 'quiet-forest.ogg', name: 'Quiet forest.ogg', bytes: 2_745_587, sha256: 'cb817204c73738517dbc05f9ac61cdddb4fe0ea1604de7366b1f53289a176344', type: AUDIO },
-  { key: 'campfire.ogg', name: 'Campfire.ogg', bytes: 4_221_306, sha256: 'ce87b7d516cd7786ec6c3f24c1917677784b3ac64484cf3365f37640c2f9e982', type: AUDIO },
-  { key: 'thunderstorm.ogg', name: 'Thunderstorm.ogg', bytes: 1_524_571, sha256: 'e960c53378a3addc2a8e9e127c5cadd7cc25e5ddb85e3741d6636231ba297490', type: AUDIO },
-  { key: 'beach-waves.ogg', name: 'Beach waves.ogg', bytes: 2_276_399, sha256: '48f58f46c331cb110d54d05123e4a3ac358237746ea0f96556ba409bf8a3cf12', type: AUDIO },
-  { key: 'night-marsh.ogg', name: 'Night marsh.ogg', bytes: 1_656_392, sha256: 'ef68d3ce929d18f3d2e67e5826c01c3e709588e0ebf90a86d67688885981df57', type: AUDIO },
-  { key: 'cave.ogg', name: 'Cave.ogg', bytes: 1_196_882, sha256: '97abb4305f52878bc2edf57daee64e6e555fd041f97d139c949f17d987ae2b63', type: AUDIO },
+  { key: 'quiet-forest.opus', name: 'Quiet forest.opus', bytes: 1_894_912, sha256: '62674b1cabda4e411c423822594e100fafe87899a2fb050271f66f47f0b8a78d', type: AUDIO },
+  { key: 'campfire.opus', name: 'Campfire.opus', bytes: 2_682_518, sha256: '5787725beaf4c0aff3ebbb4279df53c6d249ec39d31a67dc6fc959cf3935a0de', type: AUDIO },
+  { key: 'thunderstorm.opus', name: 'Thunderstorm.opus', bytes: 1_389_867, sha256: '8a0870ca42db8550ba624f5eddc155176e958218fc9b08b85d07f72998a259e8', type: AUDIO },
+  { key: 'beach-waves.opus', name: 'Beach waves.opus', bytes: 1_778_401, sha256: '1fe635dc916e1e1baa5cf03ff92678232d68036dea856b72e03bca3700127363', type: AUDIO },
+  { key: 'night-marsh.opus', name: 'Night marsh.opus', bytes: 767_466, sha256: '0f327f1cc957f0a165f4d20ee54cab9cd4a2bdf941826fe9a35ca1bfabb71e1d', type: AUDIO },
+  { key: 'cave.opus', name: 'Cave.opus', bytes: 693_124, sha256: '896f2bd7282453fda515498687b7fdc22abda39c355468416a3e4e5399baff8f', type: AUDIO },
   { key: 'credits.md', name: 'Credits.md', bytes: 938, sha256: '64a61ebedf6e471731647355e6fd14bcefa1d42c08a4f39c361dafadf4c7df07', type: 'text/markdown' },
 ];
 

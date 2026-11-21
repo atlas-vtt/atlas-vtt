@@ -97,7 +97,7 @@ describe('the starter pack', () => {
     const fetch = serving(served);
     const { progress, files: reported, total } = recordingProgress();
     await installStarterPack(library, { files, fetch, progress });
-    expect(fetch.mock.calls.map(([url]) => url)).toEqual(['https://assets.atlas-vtt.dev/starter/ambience-1/cave.ogg', 'https://assets.atlas-vtt.dev/starter/ambience-1/credits.md']);
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual(['https://assets.atlas-vtt.dev/starter/ambience-2/cave.ogg', 'https://assets.atlas-vtt.dev/starter/ambience-2/credits.md']);
     expect(fs.readFileSync(inPack('Cave.ogg'), 'utf8')).toBe('CAVE');
     expect(fs.readFileSync(inPack('Credits.md'), 'utf8')).toBe('CREDITS');
     // Listed at once, so its copies can be made before the first press.

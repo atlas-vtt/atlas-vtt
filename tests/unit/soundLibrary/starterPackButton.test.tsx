@@ -51,7 +51,7 @@ describe('the starter ambience offer', () => {
     await act(async () => offer()?.click());
     expect(offer()?.disabled).toBe(true);
     expect(offer()?.textContent).toBe('0%');
-    expect(vi.mocked(requestUrl).mock.calls[0][0]).toMatchObject({ url: `https://assets.atlas-vtt.dev/starter/ambience-1/${STARTER_FILES[0].key}` });
+    expect(vi.mocked(requestUrl).mock.calls[0][0]).toMatchObject({ url: `https://assets.atlas-vtt.dev/starter/ambience-2/${STARTER_FILES[0].key}` });
     // A second press cannot queue it twice.
     await act(async () => offer()?.click());
     expect(DownloadManager.forApp(rig.app).jobs()).toHaveLength(1);

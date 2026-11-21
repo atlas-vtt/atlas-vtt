@@ -2,6 +2,9 @@ import type { Translation } from '../../types';
 
 export const remote: Translation = {
   'remote.heading': 'Stream Deck',
+  'remote.plugin': 'Atlas-Plugin für Stream Deck',
+  'remote.pluginHint': 'Installiere es in Elgatos Stream-Deck-App oder unter Linux in OpenDeck, schalte dann unten die Steuerung ein und kopple es.',
+  'remote.pluginGet': 'Plugin holen',
   'remote.enable': 'Sound mit einem Stream Deck steuern',
   'remote.enableHint': 'Erlaubt dem Atlas-Plugin für Stream Deck oder einem anderen Programm auf diesem Computer, das du koppelst, Stimmungen abzuspielen, zu stoppen, zu pausieren, Titel zu überspringen und Lautstärken zu ändern. Atlas hört nur auf diesem Computer (127.0.0.1, Port {port}); nichts verlässt ihn.',
   'remote.paired': 'Gekoppelter Controller',

@@ -1,5 +1,8 @@
 export const remote = {
   'remote.heading': 'Stream Deck',
+  'remote.plugin': 'Atlas plugin for Stream Deck',
+  'remote.pluginHint': 'Install it in Elgato\'s Stream Deck app, or in OpenDeck on Linux, then switch on control below and pair it.',
+  'remote.pluginGet': 'Get the plugin',
   'remote.enable': 'Control sound from a Stream Deck',
   'remote.enableHint': 'Lets the Atlas plugin for Stream Deck, or another program on this computer you pair, play moods, stop, pause, skip and change levels. Atlas listens on this computer only (127.0.0.1, port {port}); nothing leaves it.',
   'remote.paired': 'Paired controller',
