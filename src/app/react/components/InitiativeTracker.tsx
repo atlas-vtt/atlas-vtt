@@ -36,8 +36,6 @@ import { InitiativeTurnControls } from './InitiativeTurnControls';
 import { useTurnInView } from './useTurnInView';
 import { useStatblockHoverPreview } from './StatblockHoverPreview';
 import { InitiativeStatblockPreview, type PreviewedEntry } from './InitiativeStatblockPreview';
-import { CombatantHoverCard } from './CombatantHoverCard';
-import { useCombatantHover } from './useCombatantHover';
 import { captureRollContext } from '../../tools/diceRollOrigins';
 import { useRowDrag } from '../hooks/useRowDrag';
 import { TURN_KEY_ATTRIBUTE } from '../../initiative/motion/turnMotion';
@@ -157,10 +155,6 @@ export const InitiativeTracker: React.FC = () => {
     { axis: 'vertical', scroller: () => contentRef.current },
   );
 
-  // The card beside the tracker naming the combatant under the pointer and its conditions; away while a card is
-  // dragged or Ctrl or Cmd shows its statblock
-  const combatantHover = useCombatantHover(drag.held !== null || previewState.hoveredEntry !== null || leaving);
-
   // Numbers typed on the cards; Tab goes on down the list as it shows
   const numberEditing = useNumberEditing(shownOrder, updateInitiativeEntry);
 
@@ -268,7 +262,6 @@ export const InitiativeTracker: React.FC = () => {
         className={['atlas-initiative-panel__list', drag.held !== null && 'atlas-initiative-tracker__list--dragging', drag.settling && 'atlas-initiative-tracker__list--settling'].filter(Boolean).join(' ')}
         // The cards' art is images, which the browser would drag as files and cancel the pointer for
         onDragStart={(event) => event.preventDefault()}
-        {...combatantHover.listHandlers}
       >
         {/* Empty, the panel keeps the size it has with one combatant: an unseen card of the view's shape holds it */}
         {sortedEntries.length === 0 && (
@@ -286,8 +279,6 @@ export const InitiativeTracker: React.FC = () => {
         : <div className="atlas-initiative-panel__bottom-shade" aria-hidden="true" />}
 
       <InitiativeStatblockPreview app={app} state={previewState} tokens={tokens} side={inward} />
-
-      <CombatantHoverCard hover={combatantHover.hover} entries={initiative.entries} tokens={tokens} />
 
       {initiative.isActive && (
         <InitiativeTurnControls
