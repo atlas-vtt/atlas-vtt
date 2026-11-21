@@ -1,0 +1,20 @@
+@use '../../../../../styles/tokens' as *;
+
+// A template's card drawn for its Armarium listing (templateCardPictures.tsx): rendered off screen, out of the
+// pointer's and the screen reader's way, then copied into a picture with Obsidian's own look.
+.atlas-card-picture-host {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: -100000px;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+// What the picture shows: the card on the note panel's background, as wide as its columns need. Padding as
+// SPACING in the script.
+.atlas-vtt-plugin.atlas-card-picture {
+  box-sizing: border-box;
+  width: var(--atlas-card-picture-width, #{$statblock-feed-max-width});
+  padding: $spacing-l;
+  background: var(--background-primary);
+}

@@ -7,6 +7,8 @@ import { addRendererSystemsByEntry } from "./utils/rendererSystems";
 import { showNoGraphicsNotice } from './noGraphicsNotice';
 import { refitZoomRange } from './fitMapRect';
 import { MAX_ZOOM, MIN_ZOOM } from "./zoomRange";
+import { MouseDrag } from './input/MouseDrag';
+import { installTouchGestures, type MapGestures } from './input/installTouchGestures';
 
 
 export class PixiAppManager {
@@ -18,6 +20,8 @@ export class PixiAppManager {
   private height: number;
   private canvasEl: HTMLCanvasElement;
   private _canvasContextMenuPreventer: ((e: Event) => void) | null = null;
+  /** Fingers and pens on the canvas; a mouse never passes through it. */
+  private gestures: MapGestures | null = null;
   public onRecoverCallback?: () => void;
 
   constructor(initialWidth: number, initialHeight: number) {
@@ -78,6 +82,8 @@ export class PixiAppManager {
         userSelect: 'none'  // Prevent text selection
       });
       this.canvasEl.id = 'atlas-pixi-canvas-debug'; // For debugging
+      // No callout or magnifier under a finger that rests on the map (`styles/_touch.scss`)
+      this.canvasEl.classList.add('atlas-map-canvas');
 
       this.initViewport(); // Initialize viewport and add to stage
       
@@ -160,14 +166,15 @@ export class PixiAppManager {
     this.viewport.interactiveChildren = true;
     this.viewport.sortableChildren = true; // Enable z-index sorting
 
-    this.viewport
-      .drag({ mouseButtons: 'right', pressDrag: true })
-      .clampZoom({
-        minScale: MIN_ZOOM,
-        maxScale: MAX_ZOOM,
-      });
+    // The right button pans, for a mouse alone: fingers navigate through the gesture layer.
+    this.viewport.plugins.add('drag', new MouseDrag(this.viewport, { mouseButtons: 'right', pressDrag: true }));
+    this.viewport.clampZoom({
+      minScale: MIN_ZOOM,
+      maxScale: MAX_ZOOM,
+    });
     this.viewport.plugins.add('decelerate', new SmoothDecelerate(this.viewport));
-    
+    this.gestures = installTouchGestures(this.app, this.viewport, this.canvasEl);
+
     this._canvasContextMenuPreventer = (e) => e.preventDefault();
     this.canvasEl.addEventListener('contextmenu', this._canvasContextMenuPreventer);
 
@@ -243,6 +250,9 @@ export class PixiAppManager {
       this._canvasContextMenuPreventer = null;
     }
     
+    this.gestures?.destroy();
+    this.gestures = null;
+
     if (this.viewport) {
       try {
         this.viewport.plugins.pause('drag');
@@ -292,5 +302,10 @@ export class PixiAppManager {
   
   getCanvasElement(): HTMLCanvasElement {
     return this.canvasEl;
+  }
+
+  /** The gesture layer of this view's canvas; null before the viewport exists. */
+  getGestures(): MapGestures | null {
+    return this.gestures;
   }
 } 

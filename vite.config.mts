@@ -121,6 +121,9 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     cssCodeSplit: true,
+    // Lightning CSS, Vite's default, keeps a `/*!` notice only at the very top of a stylesheet; the bundled
+    // fonts' notice in styles/main.scss must survive where it stands (`npm run preflight`).
+    cssMinify: 'esbuild',
     sourcemap: isProduction ? false : 'inline',
     minify: isProduction,
     lib: {
@@ -128,8 +131,10 @@ export default defineConfig({
       formats: ['cjs'],
       fileName: () => 'main.js',
     },
-    rollupOptions: {
-      // Externalize Obsidian & Node built‑ins
+    rolldownOptions: {
+      // Obsidian's modules are the host's. Node's built-ins stay external too, so that an import of one
+      // stands in the bundle as a `require`, which the preflight rejects (Obsidian's mobile apps have
+      // no Node), where Vite would otherwise put an empty module in its place.
       external: [
         'obsidian',
         'electron',
@@ -156,13 +161,18 @@ export default defineConfig({
         dir: 'dist',
         format: 'cjs',
         exports: 'named',
-        inlineDynamicImports: true,
+        codeSplitting: false,
+        // Vite 8 drops legal comments from a minified bundle: keep the banner above and the licences of bundled code.
+        comments: { legal: true },
         entryFileNames: 'main.js',
         assetFileNames: (assetInfo) =>
           assetInfo.name?.endsWith('.css') ? 'styles.css' : assetInfo.name ?? '[name][extname]',
       },
     },
   },
+  // Read only by the CSS minifier above, whose Vite default drops legal comments. Scripts are Oxc's since Vite 8,
+  // so the build's notice that these esbuild options are "ignored" next to the React plugin's oxc options is expected.
+  esbuild: { legalComments: 'inline' },
   // Define global constants if needed (e.g., for process.env)
   define: {
     '__ATLAS_RELEASE_BUILD__': JSON.stringify(isProduction && !copyToTestVault),
@@ -174,7 +184,7 @@ export default defineConfig({
   // Resolve aliases if needed
   resolve: {
     alias: {
-      'src': path.resolve(__dirname, 'src') // Define src alias
+      'src': path.resolve(import.meta.dirname, 'src') // Define src alias
     },
     extensions: ['.tsx', '.ts', '.jsx', '.js', '.mjs', '.json'],
   },

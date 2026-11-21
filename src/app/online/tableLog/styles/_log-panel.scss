@@ -21,18 +21,18 @@
   }
 }
 
-// Place, size and motion of Atlas's dice log. The message field stands in its bottom corners and the
-// close button in its top one: $surface-inset inside the border, concentric with it, and its parts
-// keep that gap. The rows and the field keep their own room for their text.
+// Place, size and motion of Atlas's dice log. A chat needs room to read: its rows, cards and message
+// field stand $log-pad inside the border and as far apart. Only the close button reaches into the
+// corner, $surface-inset inside the border and concentric with it.
 .atlas-online-log--floating {
   position: fixed;
   left: $log-edge;
   top: 50%;
   transform: translateY(-50%);
-  width: min(#{$log-width}, calc(100vw - 2 * #{$log-edge}));
-  height: 80vh;
-  gap: $surface-inset;
-  padding: $surface-inset;
+  width: min(#{$log-width}, calc(#{atlas-view-width()} - 2 * #{$log-edge}));
+  height: #{atlas-view-height(80)};
+  gap: $log-pad;
+  padding: $log-pad;
   z-index: $z-dropdown;
   pointer-events: auto;
   @include atlas-elevated-surface;
@@ -48,7 +48,7 @@
 }
 
 .atlas-online-log {
-  // Reaches past the panel's padding to its top-right corner, where the close button belongs.
+  // Reaches past the floating panel's padding to its top-right corner, where the close button belongs.
   .atlas-online-log__header {
     display: flex;
     flex: none;
@@ -56,13 +56,13 @@
     justify-content: space-between;
     gap: $spacing-s;
     @include atlas-close-header(0);
-    margin: calc(-1 * #{$surface-inset}) calc(-1 * #{$surface-inset}) 0 0;
+    margin: calc(-1 * #{$log-pad}) calc(-1 * #{$log-pad}) 0 0;
   }
 
-  // On the menus' text edge, $spacing-m inside the panel's padding.
+  // On the rows' text edge.
   .atlas-online-log__title {
     flex: 1;
-    padding-left: $spacing-m;
+    padding-left: $spacing-s;
     color: var(--text-muted);
     font-size: 11px;
     font-weight: 600;
@@ -103,7 +103,7 @@
     align-items: center;
     gap: $spacing-xs;
     min-width: 0;
-    padding-left: $spacing-m;
+    padding-left: $spacing-s;
   }
 
   .atlas-online-log__ask-text {

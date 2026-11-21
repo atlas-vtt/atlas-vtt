@@ -6,7 +6,7 @@ import { resolveMeasurementSettings } from '../../../src/app/grid/measurementFor
 import { MAX_MEASURES, type KeptMeasure } from '../../../src/app/measure/measureTypes';
 import { MEASURE_FADE_MS } from '../../../src/app/pixi/measure/MeasureRenderer';
 import { getHistoryStore } from '../../../src/app/stores/history';
-import { measureFrom, measureScene, type MeasureScene } from '../../helpers/measureScene';
+import { finishMeasureExits, measureFrom, measureScene, type MeasureScene } from '../../helpers/measureScene';
 
 let current: MeasureScene | undefined;
 afterEach(() => {
@@ -171,7 +171,8 @@ describe('the measure tool, placed click by click', () => {
 });
 
 describe('keeping a measurement', () => {
-  it('keeps it once per release as one undo step, with the tool\'s colour, and undo takes it off the map at once', () => {
+  it('keeps it once per release as one undo step, with the tool\'s colour, and undo takes it off the map, the drawing once it has faded out', () => {
+    vi.useFakeTimers();
     const s = scene();
     const history = getHistoryStore(s.store)!;
     history.getState().clear();
@@ -182,6 +183,8 @@ describe('keeping a measurement', () => {
     expect(s.parts()).toHaveLength(4);
     history.getState().undo();
     expect(s.measure.measurements.get().kept).toEqual([]);
+    expect(s.parts()).toHaveLength(4);
+    finishMeasureExits();
     expect(s.parts()).toHaveLength(2);
     history.getState().redo();
     expect(s.measure.measurements.get().kept).toHaveLength(1);
@@ -189,6 +192,7 @@ describe('keeping a measurement', () => {
   });
 
   it('draws again only the kept measurement that changed', () => {
+    vi.useFakeTimers();
     const s = scene();
     s.store.getState().setMeasureTool({ keep: true });
     measureFrom(s, 35, 35, 175, 35);
@@ -200,6 +204,7 @@ describe('keeping a measurement', () => {
     expect(s.parts().slice(2)).toEqual(before);
     expect(s.measure.measurements.get().kept[0]).toBe(first);
     s.store.getState().deleteMeasure(first!.id);
+    finishMeasureExits();
     expect(s.parts().slice(2)).toEqual(before.slice(2));
   });
 

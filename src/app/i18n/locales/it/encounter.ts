@@ -1,0 +1,47 @@
+import type { Translation } from '../../types';
+
+export const encounter = {
+  "encounter.saveTitle": "Salva come incontro",
+  "encounter.createWith": {
+    "one": "Crea un incontro con {count} token:",
+    "other": "Crea un incontro con {count} token:"
+  },
+  "encounter.tokens": "Token:",
+  "encounter.namePlaceholder": "Inserisci il nome dell’incontro…",
+  "encounter.defaultName": "Incontro {date}",
+  "encounter.save": "Salva incontro",
+  "encounter.noTokens": "Nessun token da salvare come incontro",
+  "encounter.description": {
+    "one": "Incontro con {count} token",
+    "other": "Incontro con {count} token"
+  },
+  "encounter.saved": "Incontro \"{name}\" salvato!",
+  "encounter.saveFailed": "Impossibile salvare l’incontro",
+  "encounter.builder.add": "Aggiungi",
+  "encounter.builder.save": "Salva incontro",
+  "encounter.noImage": "I token selezionati non hanno un’immagine e non possono essere salvati come incontro",
+  "encounter.descriptionRange": { one: "Incontro con {range} token", other: "Incontro con {range} token" },
+  "encounter.builder.title": "Crea incontro",
+  "encounter.builder.editTitle": "Modifica incontro",
+  "encounter.builder.name": "Nome dell’incontro",
+  "encounter.builder.showStatblock": "Mostra lo statblock di {name}",
+  "encounter.builder.moreCreatures": { one: "Ancora {count} creatura", other: "Altre {count} creature" },
+  "encounter.builder.search": "Creature",
+  "encounter.builder.creatures": "Creature",
+  "encounter.builder.count": { one: "{count} creatura", other: "{count} creature" },
+  "encounter.builder.countRange": { one: "{range} creatura", other: "{range} creature" },
+  "encounter.builder.shown": { one: "{shown} di {count} creatura", other: "{shown} di {count} creature" },
+  "encounter.builder.addNamed": "Aggiungi {name} all’incontro",
+  "encounter.builder.fewer": "Un {name} in meno",
+  "encounter.builder.more": "Un {name} in più",
+  "encounter.builder.fewerDice": "Un dado in meno per {name}",
+  "encounter.builder.moreDice": "Un dado in più per {name}",
+  "encounter.builder.quantityOf": "Numero di {name}",
+  "encounter.builder.quantityHint": "Un numero, o dadi come 2d4, tirati ogni volta che l’incontro viene posizionato",
+  "encounter.builder.countOf": "{name}: {count}",
+  "encounter.builder.noCreatures": "Nessuna creatura di questa collezione ha ancora uno statblock. Collega uno statblock a un token per usarlo negli incontri.",
+  "encounter.builder.noMatches": "Nessuna creatura corrisponde alla ricerca e ai filtri.",
+  "encounter.builder.clear": "Svuota",
+  "encounter.builder.ratingHint": "Dalla creatura più debole alla più forte",
+  "encounter.builder.totalHint": "{name} di tutte le creature insieme",
+} satisfies Translation;

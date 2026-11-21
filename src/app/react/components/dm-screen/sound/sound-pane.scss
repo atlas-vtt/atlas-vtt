@@ -95,34 +95,35 @@
   min-height: 0;
   display: flex;
 
-  // Past this width a list gains nothing and the moods take the room in more columns (owner, 2026-11-03).
-  // It still leaves the rows more than the 620 px under which the library takes its narrow layout.
-  // The rail beside the stage counts as the library's: rail and rows take 58 % of the surface up to 860 px. The rows'
-  // basis is 0 and the moods' 21/29 of the rail, so the moods get 0.42 × stage + 0.58 × 21/29 × rail = 0.42 × surface.
+  // Side by side the rows come first, up to the width past which a list gains nothing (owner, 2026-11-03); it still
+  // leaves them more than the 620 px under which the library takes its narrow layout. The moods keep one column of
+  // tiles beside them and gain columns only from the room the rows leave (owner, 2026-11-20).
   .atlas-sound-lib {
-    flex: 58 1 0;
+    flex: 0 1 100%;
     max-width: calc(860px - #{$sound-rail-width});
   }
 
+  // Stacked, the rows take 58 % of the height and the moods the rest.
   @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
     flex-direction: column;
 
     .atlas-sound-lib {
+      flex: 58 1 0;
       max-width: none;
     }
   }
 }
 
 .atlas-sound-moods {
+  container: atlas-sound-moods / inline-size;
   padding: $card-inset;
-  flex: 42 1 calc(#{$sound-rail-width} * 21 / 29);
+  flex: 1 0 calc(#{$sound-mood-tile-max} + 2 * #{$card-inset});
   min-width: 0;
   min-height: 0;
   overflow: auto;
 
-  // Stacked under the rows, they share the height alone.
   @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
-    flex-basis: 0;
+    flex: 42 1 0;
   }
 }
 
@@ -288,7 +289,7 @@
 }
 
 // Where no pointer hovers (Obsidian on a tablet), what hover shows stays shown; right-click is no road there.
-@media (hover: none) {
+@include atlas-hover-reveal {
   .atlas-sound-pane {
     .atlas-sound-music__quiet,
     .atlas-sound-track__grip,

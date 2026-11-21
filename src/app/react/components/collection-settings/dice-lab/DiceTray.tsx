@@ -29,6 +29,8 @@ interface DiceTrayProps {
   edgeDice?: readonly EdgeDie[] | undefined;
   /** A side's die changed, or was taken off (null): the side then rolls no die. */
   onEdgeDie?: ((side: AdvantageSide, change: DieChange | null, pace: EditPace) => void) | undefined;
+  /** Smaller dice, for a tray in a small card (a saved roll's editor). */
+  compact?: boolean | undefined;
 }
 
 const NO_EDGE_DICE: readonly EdgeDie[] = [];
@@ -52,7 +54,7 @@ const limitText = (limit: DiceLimit): string =>
  * advantage and disadvantage roll lie in a row of their own under the set's,
  * marked + and −; their fan sets sides, name and colour, or takes them off.
  */
-export function DiceTray({ dice, editable, setName, onDice, edgeDice = NO_EDGE_DICE, onEdgeDie }: DiceTrayProps): React.ReactElement {
+export function DiceTray({ dice, editable, setName, onDice, edgeDice = NO_EDGE_DICE, onEdgeDie, compact = false }: DiceTrayProps): React.ReactElement {
   const tray = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement | null>(null);
@@ -71,7 +73,7 @@ export function DiceTray({ dice, editable, setName, onDice, edgeDice = NO_EDGE_D
   }, []);
   const openEdge = edgeDice.find((edge) => edge.die.id === openId) ?? null;
   const open = dice.find((die) => die.id === openId) ?? openEdge?.die ?? null;
-  const size = dieSize(dice.length + edgeDice.length + (editable ? 1 : 0));
+  const size = dieSize(dice.length + edgeDice.length + (editable ? 1 : 0), compact);
   const layoutKey = [...dice, ...edgeDice.map((edge) => edge.die)].map((die) => `${die.id}:${die.sides}`).join();
   const places = useTrayPlaces(tray, field, panel, open ? open.id : null, `${layoutKey}|${step ?? ''}|${size}`);
   // Kept while the panel of another step leaves, so the one that opens is measured

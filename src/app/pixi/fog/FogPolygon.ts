@@ -51,6 +51,11 @@ export class FogPolygon {
     return this.draft.active;
   }
 
+  /** Whether the corners placed make an area: Enter closes the polygon then. */
+  get closes(): boolean {
+    return this.draft.outlineWith(null) !== null;
+  }
+
   /** A press at `world` (`screen` on the canvas): places a corner, or closes the polygon on its first corner or by a double click. */
   press(world: Point, screen: Point, keys: PlaceKeys): void {
     const second = this.clicks.pressed('fog-polygon', screen);

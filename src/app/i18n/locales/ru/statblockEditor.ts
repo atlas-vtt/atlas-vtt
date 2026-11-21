@@ -238,7 +238,7 @@ export const statblockEditor: Translation = {
   'statblockEditor.role.enterName': 'Введите название',
   'statblockEditor.role.folder': 'Папка для новых статблоков роли {name}',
   'statblockEditor.role.fromSystem': 'Из системы {name}',
-  'statblockEditor.role.hint': 'Роли — это виды статблоков, которые создаёт коллекция, например монстры и NPC. Новый статблок начинается с шаблона своей роли и создаётся в её папке.',
+  'statblockEditor.role.hint': 'Роли — это виды статблоков, которые создаёт коллекция, например монстры и НИП. Новый статблок начинается с шаблона своей роли и создаётся в её папке.',
   'statblockEditor.role.lastOne': 'В коллекции нужна хотя бы одна роль',
   'statblockEditor.role.missingTemplate': 'Шаблона роли нет в этом хранилище, поэтому новые статблоки начинаются со встроенного шаблона {name}.',
   'statblockEditor.role.name': 'Название роли',

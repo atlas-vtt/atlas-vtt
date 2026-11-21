@@ -99,3 +99,31 @@ describe('Toggle loot roller command', () => {
     expect(command!.checkCallback!(true)).toBe(false);
   });
 });
+
+describe('Forget explored areas command', () => {
+  it('is offered only on a lit scene and asks that view to forget its explored memory', () => {
+    const emit = vi.fn();
+    const state = { lighting: { enabled: false, ambient: 1 } };
+    let activeView: unknown = {
+      getStore: () => ({ getState: () => state }),
+      serviceManager: { getEventBus: () => ({ emit }) },
+    };
+    const commands: Command[] = [];
+    const plugin = {
+      app: { workspace: { getActiveViewOfType: () => activeView } },
+      addCommand: (command: Command) => commands.push(command),
+      addRibbonIcon: vi.fn(),
+    } as unknown as Plugin;
+    registerCommands(plugin, {} as CommandDependencies);
+    const command = commands.find((entry) => entry.id === 'reset-explored-areas');
+
+    expect(command!.checkCallback!(true)).toBe(false);
+    state.lighting.enabled = true;
+    expect(command!.checkCallback!(true)).toBe(true);
+    expect(emit).not.toHaveBeenCalled();
+    command!.checkCallback!(false);
+    expect(emit).toHaveBeenCalledWith('lighting-reset-explored');
+    activeView = null;
+    expect(command!.checkCallback!(true)).toBe(false);
+  });
+});

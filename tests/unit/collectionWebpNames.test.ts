@@ -25,6 +25,7 @@ const ENCODED_COVER = webp(2);
 const ENCODED_THUMBNAIL = webp(3);
 
 const COVER = 'atlas-vtt/collections/source/cover.webp';
+const PNG_COVER = 'atlas-vtt/collections/source/cover.png';
 const TOKEN_IMAGE = 'atlas-vtt/assets/goblin_1.png';
 const TOKEN_THUMBNAIL = 'atlas-vtt/assets/thumbnails/goblin_1-abc.webp';
 
@@ -132,6 +133,39 @@ describe('files a collection stores under WebP names', () => {
     expect(await packed(bundle, TOKEN_THUMBNAIL)).toEqual(ENCODED_THUMBNAIL);
     expect(b.written).toEqual([]);
     expect(b.binaries.get(COVER)).toEqual(PNG);
+  });
+
+  it('names a new cover by its bytes where no WebP can be encoded: cover.png, in place of the WebP cover', async () => {
+    const b = await bench({ cover: STORED_WEBP });
+    vi.mocked(optimizeImage).mockResolvedValue({ image: new Blob([PNG]), thumbnail: null, preview: null, sourcePreview: null });
+
+    const bundle = await exportFrom(b, { cover: { kind: 'upload', image: new Blob([JPEG]) } });
+    await bundle.commit();
+
+    expect(await packed(bundle, PNG_COVER)).toEqual(PNG);
+    expect(await packed(bundle, COVER)).toBeUndefined();
+    expect(b.binaries.get(PNG_COVER)).toEqual(PNG);
+    expect((await b.assets.getCollection('source'))?.coverPath).toBe(PNG_COVER);
+    expect(b.vault.files.has(COVER)).toBe(false);
+
+    // The next export carries the PNG under its own name and converts nothing.
+    vi.mocked(optimizeImage).mockClear();
+    const next = await exportFrom(b);
+    expect(optimizeImage).not.toHaveBeenCalled();
+    expect(await packed(next, PNG_COVER)).toEqual(PNG);
+  });
+
+  it('exports mislabelled files as they are where converting them gives no WebP', async () => {
+    const b = await bench({ cover: PNG, thumbnail: JPEG });
+    vi.mocked(optimizeImage).mockResolvedValue({ image: new Blob([PNG]), thumbnail: null, preview: null, sourcePreview: null });
+    vi.mocked(renderThumbnail).mockResolvedValue(PNG.slice().buffer);
+
+    const bundle = await exportFrom(b);
+    await bundle.commit();
+
+    expect(await packed(bundle, COVER)).toEqual(PNG);
+    expect(await packed(bundle, TOKEN_THUMBNAIL)).toEqual(JPEG);
+    expect(b.written).toEqual([]);
   });
 
   it('exports a cover that is a WebP byte for byte and does not rewrite it', async () => {

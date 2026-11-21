@@ -1,20 +1,11 @@
-import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { App } from 'obsidian';
 import { AtlasUIContext, type AtlasUIContextValue } from '../../../react/root/AtlasUIContext';
-import { DiceRollDisplay, type DiceRollSubscription } from '../../../react/components/dice/DiceRollDisplay';
-import { diceSetOfCollection } from '../../../services/diceSets/collectionDiceSets';
+import { DiceRollDisplay } from '../../../react/components/dice/DiceRollDisplay';
+import { RollFeed } from '../../../react/components/dice/rollFeed';
 import type { OffMapRolls } from '../../../services/statblockRolls';
-import { rollingRules } from '../../../gameSystems/diceSets';
-import { rollDiceFormula, rollingWith } from '../../../tools/DiceTool';
-import type { DiceRollResult } from '../../../types/diceTypes';
+import { collectionRolls } from '../../../services/collectionRolls';
 import { OffMapRollsContext } from '../../render/shared/offMapRolls';
-import { offlineDiceInputs } from '../../../services/offlineDiceInputs';
-
-type RollListener = (result: DiceRollResult, options: { muted: boolean }) => void;
-interface ShownRoll {
-  result: DiceRollResult;
-  muted: boolean;
-}
 
 export interface PaneDiceRollsProps {
   app: App;
@@ -28,41 +19,23 @@ export interface PaneDiceRollsProps {
  * (`statblockRolls.ts`): rolled by the collection's dice set (or the template's) while no map is
  * open, and thrown at the top of the pane by the dice display maps use, so a
  * click on a die is always seen. A map on screen shows its own rolls. The
- * display mounts with the first roll: dice stages hold graphics memory, and
- * most notes are read without rolling.
+ * display mounts with the first roll (`RollFeed`).
  */
 export function PaneDiceRolls({ app, collectionId, children }: PaneDiceRollsProps): React.JSX.Element {
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const [rolled, setRolled] = useState(false);
-  const listeners = useRef(new Set<RollListener>());
-  /** Rolls made before the display listened: the first one mounts it. */
-  const waiting = useRef<ShownRoll[]>([]);
+  const [feed] = useState(() => new RollFeed());
   const collection = useRef(collectionId);
   useLayoutEffect(() => {
     collection.current = collectionId;
   });
 
   const offMap = useMemo((): OffMapRolls => ({
-    roll: (formula, source, options) => {
-      const { rules, shown } = rollingWith(diceSetOfCollection(app, collection.current), options?.set);
-      const result = rollDiceFormula(formula, rules, offlineDiceInputs(), shown, options?.advantage);
-      return result && { ...result, source };
-    },
-    rollingDice: (set) => rollingRules(rollingWith(diceSetOfCollection(app, collection.current), set).rules),
+    ...collectionRolls(app, () => collection.current),
     show: (result, muted) => {
-      if (listeners.current.size === 0) {
-        waiting.current.push({ result, muted });
-        setRolled(true);
-        return;
-      }
-      for (const listener of listeners.current) listener(result, { muted });
+      if (!feed.show(result, muted)) setRolled(true);
     },
-  }), [app]);
-  const subscribe = useCallback<DiceRollSubscription>((onRoll) => {
-    listeners.current.add(onRoll);
-    for (const { result, muted } of waiting.current.splice(0)) onRoll(result, { muted });
-    return () => { listeners.current.delete(onRoll); };
-  }, []);
+  }), [app, feed]);
   const ui = useMemo((): AtlasUIContextValue => ({ app, view: null, pixiApp: null, renderer: null }), [app]);
 
   return (
@@ -71,7 +44,7 @@ export function PaneDiceRolls({ app, collectionId, children }: PaneDiceRollsProp
       <div ref={setHost} className="atlas-sb-pane-rolls" />
       {host && rolled && (
         <AtlasUIContext.Provider value={ui}>
-          <DiceRollDisplay container={host} subscribe={subscribe} cardSounds />
+          <DiceRollDisplay container={host} subscribe={feed.subscribe} cardSounds />
         </AtlasUIContext.Provider>
       )}
     </OffMapRollsContext.Provider>

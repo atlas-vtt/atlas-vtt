@@ -1,7 +1,7 @@
 import type { App } from 'obsidian';
 import type { PixelRect, TesseraRef } from './pyramid';
 import { TesseraPortKeeper, type TesseraWorkerCrash } from './tesseraPortKeeper';
-import { workerPort, type PortFactory } from './tesseraPorts';
+import { workerPort, type PortFactory, type TesseraPort } from './tesseraPorts';
 import { MapClosedError, TesseraLevelError } from './tesseraErrors';
 import { openWithRetry, type BytesSource, type MainThreadDecode, type OpenExchange } from './tesseraOpenRequest';
 import type { ArtAlpha } from '../../levels/artRaster';
@@ -11,11 +11,14 @@ import {
   isTesseraEvent,
   type FileIdentity,
   type OpenedPyramid,
+  type TesseraBudgets,
   type TesseraEvent,
   type TesseraReply,
   type TesseraRequest,
 } from './tesseraProtocol';
 import TesseraWorker from './tesseraWorker?worker&inline';
+import { deviceProfile } from '../../platform/deviceProfile';
+import { maxSourcePixelsFor } from './decodedLevels';
 
 /**
  * The main thread's side of the map tessera worker: one worker per app, shared
@@ -34,6 +37,8 @@ export type OpenedMap = OpenedPyramid;
 export interface TesseraDecoderClientOptions {
   /** Names the vault's tessera cache; null keeps it in memory. */
   appId: string | null;
+  /** What the device lets the worker hold; the desktop's budgets when unset. */
+  budgets?: TesseraBudgets;
   worker: PortFactory;
   /** Used when the worker cannot start. */
   inThread?: PortFactory;
@@ -58,8 +63,15 @@ export class TesseraDecoderClient {
   static forApp(app: App): TesseraDecoderClient {
     let client = TesseraDecoderClient.instances.get(app);
     if (!client) {
+      const { budgets } = deviceProfile();
       client = new TesseraDecoderClient({
         appId: app.appId,
+        budgets: {
+          decodedLevels: budgets.decodedLevelsBudget,
+          cacheMax: budgets.tileCacheMax,
+          cacheQuotaShare: budgets.tileCacheQuotaShare,
+          sourcePixels: maxSourcePixelsFor(budgets.imageSourceBytes),
+        },
         worker: workerPort(() => new TesseraWorker({ name: 'Atlas map tesserae' })),
       });
       TesseraDecoderClient.instances.set(app, client);
@@ -82,6 +94,9 @@ export class TesseraDecoderClient {
   private nextId = 1;
   private nextHandle = 1;
   private disposed = false;
+  private buildsHeld = false;
+  /** The port that was told `buildsHeld`: a worker started later is told before its first request. */
+  private toldBuilds: TesseraPort | null = null;
 
   constructor(options: TesseraDecoderClientOptions) {
     this.ports = new TesseraPortKeeper({
@@ -188,6 +203,17 @@ export class TesseraDecoderClient {
     this.ports.running?.post({ type: 'close', handle: target }, []);
   }
 
+  /**
+   * Holds the worker's builds before their next tessera while `held` (`TesseraDecoderCore.holdBuilds`),
+   * and lets them go on after. No worker is started for it.
+   */
+  holdBuilds(held: boolean): void {
+    if (this.disposed || held === this.buildsHeld) return;
+    this.buildsHeld = held;
+    this.toldBuilds = this.ports.running;
+    this.toldBuilds?.post({ type: 'builds', held }, []);
+  }
+
   async cacheSize(): Promise<number> {
     const reply = await this.request({ type: 'cache-size', id: this.nextId++ }, []);
     if (reply.type !== 'cache-size') throw this.failure(reply);
@@ -276,7 +302,12 @@ export class TesseraDecoderClient {
     return new Promise((resolve, reject) => {
       this.pending.set(message.id, { resolve, reject, ...(handle === undefined ? {} : { handle }) });
       try {
-        this.ports.current().post(message, transfer);
+        const port = this.ports.current();
+        if (this.buildsHeld && port !== this.toldBuilds) {
+          this.toldBuilds = port;
+          port.post({ type: 'builds', held: true }, []);
+        }
+        port.post(message, transfer);
       } catch (error) {
         this.pending.delete(message.id);
         reject(error instanceof Error ? error : new Error(String(error)));

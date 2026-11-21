@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { EventEmitter } from 'events';
+import { installPointerEvents, pointerEvent } from '../helpers/pointerEvents';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { MarkdownView, Platform, WorkspaceLeaf, type OpenViewState } from 'obsidian';
@@ -177,9 +178,9 @@ function sizeLeaf(leafRoot: HTMLElement, width: number, height: number): void {
 /** Ends a drag of the header (`handle` omitted) or of a resize handle with the window laid out as given. */
 function dragTo(previewEl: HTMLElement, layout: PreviewWindowLayout, handle?: 'se'): void {
   const selector = handle ? `.atlas-note-preview-resize-handle-${handle}` : '.atlas-note-preview-header';
-  previewEl.querySelector(selector)!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+  previewEl.querySelector(selector)!.dispatchEvent(pointerEvent('pointerdown', { bubbles: true }));
   layOut(previewEl, layout);
-  document.dispatchEvent(new MouseEvent('mouseup'));
+  document.dispatchEvent(pointerEvent('pointerup'));
 }
 
 function shownLayout(previewEl: HTMLElement): string[] {
@@ -190,6 +191,7 @@ describe('NotePreviewUIManager pinned previews', () => {
   let harness: Harness;
 
   beforeEach(async () => {
+    installPointerEvents();
     vi.stubGlobal('ResizeObserver', LeafResizeObserver);
     harness = createHarness();
     await loadMap(harness, TAVERN);

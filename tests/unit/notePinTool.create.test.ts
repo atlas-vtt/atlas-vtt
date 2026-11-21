@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import type { App, TFolder } from 'obsidian';
 import { NotePinTool } from '../../src/app/tools/NotePinTool';
 import { noteCreateEntry } from '../../src/app/tools/pinCreateEntries';

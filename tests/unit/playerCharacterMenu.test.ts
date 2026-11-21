@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../src/app/utils/typedEmitter';
 import type { App } from 'obsidian';
 import { InteractionController } from '../../src/app/pixi/token-renderer/InteractionController';
 import type { GridSystem } from '../../src/app/grid/GridSystem';

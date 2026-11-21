@@ -7,12 +7,16 @@
 // pointer enters it, gone a second later.
 
 // Atlas' scroll areas: an element with an `atlas-` class, of a tag that can hold a shadow root (`SCROLLBAR_HOST_TAGS`
-// in `scrollAreas.ts`, keep both alike). Obsidian's own scroll areas and text fields keep their scrollbars.
-:is(div, section, article, aside, nav, main, header, footer, span, p, blockquote):is([class^='atlas-'], [class*=' atlas-']) {
-  scrollbar-width: none;
+// in `scrollAreas.ts`, keep both alike). Obsidian's own scroll areas and text fields keep their scrollbars. So do
+// Atlas' areas where the overlay cannot be drawn: it is placed by an anchor and moved by a scroll timeline, which
+// web views before iPadOS 26 have neither of (`canDrawOverlayScrollbars` asks the same question, keep both alike).
+@supports (anchor-name: --a) and (animation-timeline: --a) {
+  :is(div, section, article, aside, nav, main, header, footer, span, p, blockquote):is([class^='atlas-'], [class*=' atlas-']) {
+    scrollbar-width: none;
 
-  &::-webkit-scrollbar {
-    display: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 }
 

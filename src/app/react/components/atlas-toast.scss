@@ -11,18 +11,25 @@ $toast-action-height: 24px;
 // The container carries `.atlas-vtt-plugin` itself (`AtlasToast.ts`): it lies in Atlas' host under <body>.
 &.atlas-toast-container {
   position: fixed;
-  position-anchor: --atlas-toast-frame;
   // Within the window (or the view) less a gutter on each side, so a long message wraps at 320 px instead of
-  // leaving the screen.
-  left: calc(anchor(left, 0px) + #{$spacing-l});
-  right: calc(anchor(right, 0px) + #{$spacing-l});
-  bottom: calc(anchor(bottom, #{$spacing-s}) + #{$spacing-l});
+  // leaving the screen. A web view that places nothing by an anchor (iPadOS before 26) drops `anchor()` whole,
+  // so the view's own edges stand first.
+  left: $spacing-l;
+  right: $spacing-l;
+  bottom: $spacing-s + $spacing-l;
   display: flex;
   flex-direction: column-reverse;
   align-items: center;
   gap: $spacing-s;
   z-index: $z-atlas-modal + 100;
   pointer-events: none;
+
+  @supports (left: anchor(left)) {
+    position-anchor: --atlas-toast-frame;
+    left: calc(anchor(left, 0px) + #{$spacing-l});
+    right: calc(anchor(right, 0px) + #{$spacing-l});
+    bottom: calc(anchor(bottom, #{$spacing-s}) + #{$spacing-l});
+  }
 }
 
 // A floating surface like every panel: the elevated surface's border and shadow and the surface corner.

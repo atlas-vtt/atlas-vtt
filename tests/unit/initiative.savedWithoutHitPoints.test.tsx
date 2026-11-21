@@ -59,7 +59,7 @@ const savedEntries = (files: Map<string, string>): Array<Record<string, unknown>
 afterEach(() => vi.restoreAllMocks());
 
 describe('a creature with a statblock but no hit points in the initiative', () => {
-  it('is added, synced, saved and shown again after a reload without an HP bar', async () => {
+  it('is added, synced, saved and shown again after a reload without the red of lost hit points', async () => {
     const { app, files } = vault();
     const store = await openScene(app, 'no-hp-session');
     act(() => {
@@ -70,7 +70,7 @@ describe('a creature with a statblock but no hit points in the initiative', () =
 
     const session = showTracker(app, store);
     expect(session.querySelectorAll('.atlas-initiative-card')).toHaveLength(1);
-    expect(session.querySelector('.atlas-initiative-card__hp-bar')).toBeNull();
+    expect(session.querySelector('.atlas-initiative-wound')).toBeNull();
     await store.flushStorage();
 
     expect(savedEntries(files)).toHaveLength(1);
@@ -79,7 +79,7 @@ describe('a creature with a statblock but no hit points in the initiative', () =
 
     const reloaded = showTracker(app, await openScene(app, 'no-hp-reload'));
     expect(reloaded.querySelectorAll('.atlas-initiative-card')).toHaveLength(1);
-    expect(reloaded.querySelector('.atlas-initiative-card__hp-bar')).toBeNull();
+    expect(reloaded.querySelector('.atlas-initiative-wound')).toBeNull();
   });
 
   it('shows entries that hold no hp, isDefeated, order or isActive, with the hit points of their tokens', async () => {
@@ -96,7 +96,7 @@ describe('a creature with a statblock but no hit points in the initiative', () =
         state: {
           mapPath: SCENE, initiativeTrackerOpen: true,
           objects: { tokens: { burrower: token('burrower'), bear: token('bear', { current: 3, max: 6 }) } },
-          initiative: { entries: [entry('burrower'), entry('bear')], currentIndex: -1, round: 0, isActive: false, config: { autoSort: true }, removedTokenIds: [] },
+          initiative: { entries: [entry('burrower'), entry('bear')], currentIndex: -1, round: 0, isActive: false, removedTokenIds: [] },
         },
       }),
     });
@@ -106,8 +106,8 @@ describe('a creature with a statblock but no hit points in the initiative', () =
 
     expect(tracker.querySelectorAll('.atlas-initiative-card')).toHaveLength(2);
     // The creature with hit points shows them from its token (stored in the old format here); the other has none
-    expect(tracker.querySelectorAll('.atlas-initiative-card__hp-bar')).toHaveLength(1);
-    expect(tracker.querySelector<HTMLElement>('.atlas-initiative-card__hp-fill')?.style.width).toBe('50%');
+    expect(tracker.querySelectorAll('.atlas-initiative-wound')).toHaveLength(1);
+    expect(tracker.querySelector<HTMLElement>('.atlas-initiative-wound')?.style.getPropertyValue('--atlas-wound')).toBe('0.5');
     expect(store.getState().initiative.entries.some((saved) => 'hp' in saved)).toBe(false);
     expect(store.getState().objects.tokens.bear?.resources).toEqual({ hp: { current: 3, max: 6 } });
   });

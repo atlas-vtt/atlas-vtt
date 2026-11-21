@@ -1,246 +1,176 @@
+// The players' initiative list: the GM's tracker as it looks (`initiative-panel.scss`), placed on the player view. What
+// is its own: its places (a column at the right or mirrored at the left, a row across the top or bottom, turned to face
+// its edge), its size, the pulse of the turn and the tile counting the combatants it leaves out.
 @use '../../../styles/tokens' as *;
 @use '../../../styles/mixins' as *;
 
+// The player view's initiative size: widths and text grow with it, spacing stays
+$scale: var(--atlas-player-initiative-scale, 1);
+// How long one pulse of the turn's border lasts; `PULSE_MS` in `playerInitiativeList.ts`
+$pulse-ms: 1600ms;
+// The turn banner's size, which the pulse's ring matches
+$banner-scale: var(--atlas-player-turn-banner-scale, 1);
+
+@function scaled($length) {
+  @return calc(#{$length} * #{$scale});
+}
+
+// A row's cards are as wide as the column's: the column's width less its border and padding
+$card-width: calc(#{scaled(96px)} - 2 * #{$border-width-m} - 2 * #{$surface-inset});
+
 .atlas-player-initiative {
-  @include atlas-elevated-surface;
-  @include atlas-panel-radius($surface-radius);
+  // The shared look's sizes follow the player view's initiative size
+  --atlas-initiative-scale: #{$scale};
   position: absolute;
   top: 50%;
   right: $spacing-m;
   transform: translateY(-50%);
-  width: 96px;
+  // As wide as the GM's tracker at size 1
+  width: scaled(96px);
   // Like the DM tracker, stays clear of the widget bar at the top right.
   max-height: calc(100% - 2 * 160px);
-  padding: $spacing-s;
-  gap: $spacing-s;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  overflow: hidden;
+  // While its height glides to its content's (`glideHeight`), the content keeps the place it has at rest: in the
+  // middle of a column, at the foot of a row
+  justify-content: center;
+  // Never clips: a theme's ivy hangs past its corners, and the list clips its own cards
   z-index: $z-base;
   color: var(--text-normal);
-  font-family: var(--font-interface);
-  font-size: $font-ui-small;
+  font-size: scaled($font-ui-small);
   font-variant-numeric: tabular-nums;
   -webkit-app-region: no-drag;
 
-  // The GM docked the lists at the left edge
+  // Across the top or bottom edge: the cards side by side, in the middle of the edge, as clear of the widgets as the
+  // column is; they stand as a column down the right edge then, and the row leaves their room free on both sides
+  // (`PlayerWidgetBar`), however wide they are
+  &--top,
+  &--bottom {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    max-width: calc(100% - 2 * max(160px, var(--atlas-player-widgets-room, 0px)));
+    max-height: none;
+    align-items: stretch;
+  }
+
+  &--top {
+    top: $spacing-m;
+  }
+
+  // The right column's mirror at the left edge, turned around for the players across the table (Mirrored initiative)
   &--left {
     right: auto;
     left: $spacing-m;
+    transform: translateY(-50%) rotate(180deg);
   }
 
-  &__list {
+  &--bottom {
+    top: auto;
+    bottom: $spacing-m;
+  }
+
+  // While a row's height glides (`glideHeight`) its content keeps its own height at the row's foot
+  &--bottom#{&}--gliding > * {
+    align-self: flex-end;
+  }
+
+  // A row turned to face the players at its edge: its foot, where the bottom row's lies, towards them.
+  // Each turn sets the row's middle on the edge, then turns it about that point.
+  &--faces-top {
+    top: $spacing-m;
+    bottom: auto;
+    transform: translateX(-50%) rotate(180deg);
+  }
+
+  &--faces-right {
+    top: 50%;
+    bottom: auto;
+    // The row runs down the edge, as long as the column may be tall
+    max-width: calc(100vh - 2 * 160px);
+    right: $spacing-m;
+    left: auto;
+    transform-origin: top right;
+    transform: rotate(-90deg) translate(50%, -100%);
+  }
+
+  // The list is drawn anew on every change, so it scrolls to the turn at once: a smooth scroll would start from its
+  // top each time. Its cards glide on their own (`playTurnMotion`)
+  .atlas-initiative-panel__list {
+    scroll-behavior: auto;
+  }
+
+  // While its height glides (`glideHeight`) the list keeps its content's height, standing past the box
+  &--gliding .atlas-initiative-panel__list {
+    flex-shrink: 0;
+  }
+
+  // The combatants a list that shows only so many leaves out, counted in a tile at its end
+  &__more {
+    flex: 0 0 auto;
     display: flex;
-    flex-direction: column;
-    gap: $spacing-s;
-    min-height: 0;
-    overflow-y: auto;
-    @include atlas-scrollbar-none;
-  }
-
-  // A side of a fight by sides: its combatants under its name
-  &__side {
-    display: flex;
-    flex-direction: column;
-    gap: $spacing-s;
-  }
-
-  // Where the list runs on into the next round: the round's name between two hairlines
-  &__next-round {
-    display: flex;
-    align-items: center;
-    gap: $spacing-xs;
-    color: var(--text-muted);
-
-    &::before,
-    &::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--background-modifier-border);
-    }
-  }
-
-  &__next-round-label {
-    font-size: $font-ui-smaller;
-    font-weight: $font-weight-semibold;
-    white-space: nowrap;
-  }
-
-  &__side-label {
-    display: flex;
-    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    gap: $spacing-xs;
-    text-align: center;
-    color: var(--text-muted);
-    font-size: $font-ui-smaller;
-    font-weight: $font-weight-semibold;
-    overflow-wrap: anywhere;
-  }
-
-  // This round's roll of a side, where the sides roll for their order
-  &__side-roll {
-    min-width: 16px;
-    padding-inline: $spacing-xs;
-    border-radius: $radius-s;
-    background: var(--background-modifier-hover);
-    color: var(--text-normal);
-    font-variant-numeric: tabular-nums;
-  }
-
-  // The side whose turn it is: its name and its combatants take the accent
-  &__side--active &__side-label {
-    color: var(--interactive-accent);
-  }
-
-  &__side--active &__card:not(&__card--sitting-out) {
-    border-color: var(--interactive-accent);
-    box-shadow: inset 0 0 0 $border-width-s var(--interactive-accent);
-  }
-
-  &__card {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    flex-shrink: 0;
-    gap: $spacing-s;
-    padding: $spacing-s;
-    background: var(--background-modifier-hover);
+    min-width: scaled(40px);
+    min-height: scaled(40px);
+    padding: $surface-inset;
+    box-sizing: border-box;
+    // A quiet fill, as an empty place is in Atlas: never a dashed line
     border: $border-width-s solid var(--background-modifier-border);
     border-radius: $radius-m;
-
-    // The first card sits $spacing-s below the panel's top border.
-    &:first-child {
-      @include atlas-panel-inset-radius($spacing-s, top-left, top-right);
-    }
-
-    &--active {
-      border-color: var(--interactive-accent);
-      box-shadow: inset 0 0 0 $border-width-s var(--interactive-accent);
-    }
-
-    // Does not act this round
-    &--sitting-out {
-      opacity: 0.45;
-    }
-
-    // Delayed its turn: waits below the order, without the card's fill until it acts
-    &--delayed {
-      background: transparent;
-    }
-
-    // Defeated, as the GM's card shows it: dimmed, with the skull over the portrait
-    &--defeated {
-      opacity: 0.45;
-      filter: grayscale(70%);
-    }
-  }
-
-  &__defeated {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: var(--background-modifier-hover);
     color: var(--text-muted);
-
-    svg {
-      width: $icon-l;
-      height: $icon-l;
-    }
-
-    // Over the portrait, which fills the card's width inside its padding
-    &--over {
-      position: absolute;
-      top: $spacing-s;
-      left: $spacing-s;
-      right: $spacing-s;
-      aspect-ratio: 1;
-      border-radius: 50%;
-      background: rgba(0, 0, 0, 0.6);
-    }
-  }
-
-  // A token portrait (`createTokenPortrait`): square, with the token's ring
-  &__avatar {
-    width: 100%;
-  }
-
-  &__value {
+    font-size: scaled($font-ui-medium);
     font-weight: $font-weight-semibold;
-  }
-
-  // The card dealt in a fight by cards: a small playing card where the number stands otherwise
-  &__card-dealt {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 26px;
-    border: $border-width-s solid var(--background-modifier-border);
-    border-radius: $radius-s;
-    background: var(--background-primary);
     font-variant-numeric: tabular-nums;
   }
 
-  // The number the token's badge shows the players, in the same place and look as on the GM's card
-  &__badge {
-    position: absolute;
-    bottom: -2px;
-    left: -4px;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 $spacing-xs;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: $radius-full;
-    background: #000;
-    border: 1.5px solid #555;
-    color: #fff;
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 1;
-    z-index: 2;
+  // The turn's border pulses (the player view's pulse): the accent ring fades in and out over the card; only its
+  // opacity moves, so the pulse costs the compositor alone. As thick as the turn banner's flash (`turn-banner.scss`,
+  // drawn at the banner's size), so the two read as one
+  &--pulse .atlas-initiative-card--active,
+  &--pulse .atlas-initiative-side--active .atlas-initiative-card:not(.atlas-initiative-card--sitting-out) {
+    &::after {
+      content: '';
+      position: absolute;
+      inset: calc(-1 * #{$border-width-s});
+      z-index: 3;
+      border: calc(2px * #{$banner-scale}) solid var(--atlas-turn-color, var(--interactive-accent));
+      border-radius: inherit;
+      box-shadow: inset 0 0 calc(#{$spacing-m} * #{$banner-scale}) var(--atlas-turn-color, var(--interactive-accent));
+      pointer-events: none;
+      // In step with the clock (`PULSE_MS`, `--atlas-pulse-phase`): the list is drawn anew on every change, and a pulse
+      // that started over with each drawing jumped whenever a condition or anything else changed
+      animation: atlas-player-initiative-pulse #{$pulse-ms} ease-in-out var(--atlas-pulse-phase, 0ms) infinite;
+    }
+  }
+}
+
+// A row across the top or bottom (`atlas-initiative-panel--row`, the column turned on its side): square cards of the
+// column's width
+.atlas-player-initiative--top,
+.atlas-player-initiative--bottom {
+  .atlas-initiative-panel__list {
+    flex: 1 1 auto;
   }
 
-  // Without a portrait it stands in the card's column, above the number
-  &__card > &__badge {
-    position: static;
+  .atlas-initiative-card {
+    width: $card-width;
+  }
+}
+
+@keyframes atlas-player-initiative-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
   }
 
-  &__name {
-    width: 100%;
-    overflow-wrap: anywhere;
-    text-align: center;
-    font-size: $font-ui-smaller;
+  50% {
+    opacity: 1;
   }
+}
 
-  &__hp {
-    width: 100%;
-    height: $spacing-xs;
-    accent-color: var(--color-green);
-  }
-
-  // The conditions the map shows players on the token, as the GM's card draws them
-  &__conditions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: $spacing-xs;
-    width: 100%;
-  }
-
-  &__condition {
-    display: flex;
-  }
-
-  &__round {
-    text-align: center;
-    color: var(--text-muted);
-    font-size: $font-ui-smaller;
+@media (prefers-reduced-motion: reduce) {
+  .atlas-player-initiative--pulse .atlas-initiative-card::after {
+    animation: none;
   }
 }

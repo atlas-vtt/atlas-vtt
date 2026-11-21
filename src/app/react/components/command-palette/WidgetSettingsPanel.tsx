@@ -27,8 +27,6 @@ interface WidgetSettingsPanelProps {
   addWidget: ViewAtlasState['addWidget'];
   removeWidget: ViewAtlasState['removeWidget'];
   sortedWidgets: AnyWidget[];
-  initiative: ViewAtlasState['initiative'];
-  setInitiativeConfig: ViewAtlasState['setInitiativeConfig'];
   initiativeTrackerOpen: boolean;
   setInitiativeTrackerOpen: ViewAtlasState['setInitiativeTrackerOpen'];
 }
@@ -42,8 +40,6 @@ export const WidgetSettingsPanel = React.memo(function WidgetSettingsPanel({
   addWidget,
   removeWidget,
   sortedWidgets,
-  initiative,
-  setInitiativeConfig,
   initiativeTrackerOpen,
   setInitiativeTrackerOpen,
 }: WidgetSettingsPanelProps): React.ReactElement {
@@ -59,9 +55,8 @@ export const WidgetSettingsPanel = React.memo(function WidgetSettingsPanel({
     [sortedWidgets, widgetSettings, library],
   );
 
-  // Persisted state from older maps can lack these fields; both default to on.
+  // Persisted state from older maps can lack this field; it defaults to on.
   const globalVisible = widgetSettings?.globalVisible !== false;
-  const autoSort = initiative?.config?.autoSort ?? true;
 
   const toggleGlobalVisible = (): void => {
     setWidgetSettings({ ...widgetSettings, globalVisible: !globalVisible });
@@ -166,11 +161,6 @@ export const WidgetSettingsPanel = React.memo(function WidgetSettingsPanel({
                 label={t('widgets.showInitiative')}
                 value={initiativeTrackerOpen}
                 onToggle={() => setInitiativeTrackerOpen(!initiativeTrackerOpen)}
-              />
-              <SettingToggleRow
-                label={t('widgets.autoSort')}
-                value={autoSort}
-                onToggle={() => setInitiativeConfig({ autoSort: !autoSort })}
               />
             </div>
           )}

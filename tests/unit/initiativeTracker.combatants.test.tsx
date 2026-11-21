@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
   initiative: { entries: [] as unknown[], isActive: false, round: 0 },
   objects: { tokens: {} as Record<string, unknown> },
   tokenSettings: { showInstanceBadges: true },
+  selectedIds: [] as string[],
   addToInitiative: vi.fn(),
   removeFromInitiative: vi.fn(),
   rollAllInitiative: vi.fn(),
@@ -34,7 +35,7 @@ vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
   AtlasUIContext: (await import('react')).createContext(null), useAtlasUI: () => ({ app: null, view: null }) }));
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (storeState: typeof state) => unknown) => selector(state),
-  useViewStoreHook: () => ({ getState: () => state }),
+  useViewStoreHook: () => ({ getState: () => state, subscribe: () => () => undefined }),
 }));
 vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => [] }));
 vi.mock('../../src/app/pixi/utils/tokenHighlight', () => ({ zoomToTokenWithHighlight: vi.fn() }));
@@ -68,21 +69,21 @@ beforeEach(() => {
 });
 
 describe('the combatants of the initiative tracker', () => {
-  it('adds no token of the map by itself and says how the GM adds one', () => {
+  it('adds no token of the map by itself, and keeps one card\'s room without a word while empty', () => {
     state.objects.tokens = { goblin: token('goblin'), rat: token('rat') };
 
     const { container } = render(<InitiativeTracker />);
 
     expect(state.addToInitiative).not.toHaveBeenCalled();
-    expect(container.querySelectorAll('.atlas-initiative-card')).toHaveLength(0);
-    expect(container.querySelector('.atlas-initiative-tracker__empty')?.textContent).toMatch(/right-click/i);
+    expect(container.querySelectorAll('.atlas-initiative-card:not(.atlas-initiative-card--placeholder)')).toHaveLength(0);
+    expect(container.querySelector('.atlas-initiative-panel__list')?.textContent).toBe('');
   });
 
-  it('keeps the hint away once there is a combatant', () => {
+  it('leaves the empty card\'s stand-in out once there is a combatant', () => {
     state.objects.tokens = { goblin: token('goblin') };
     state.initiative.entries = [entryOf('goblin')];
 
-    expect(render(<InitiativeTracker />).container.querySelector('.atlas-initiative-tracker__empty')).toBeNull();
+    expect(render(<InitiativeTracker />).container.querySelector('.atlas-initiative-card--placeholder')).toBeNull();
   });
 
   it('removes the entry of a token that was deleted', () => {
@@ -104,7 +105,7 @@ describe('the combatants of the initiative tracker', () => {
     expect(cards.map((card) => card.textContent?.includes('Hidden from players'))).toEqual([false, true]);
   });
 
-  it('hides a combatant from the players and shows it again from its card', () => {
+  it('hides a combatant from the players, leaving its token on the map, and shows a hidden token again from its card', () => {
     state.objects.tokens = { goblin: token('goblin'), rat: token('rat', true) };
     state.initiative.entries = [entryOf('goblin'), entryOf('rat', 1)];
     const cards = render(<InitiativeTracker />).container.querySelectorAll('.atlas-initiative-card');
@@ -114,9 +115,7 @@ describe('the combatants of the initiative tracker', () => {
     fireEvent.contextMenu(cards[1]!);
     clickItem('Show to Players');
 
-    expect(state.updateTokens.mock.calls).toEqual([
-      [[{ id: 'goblin', changes: { isHidden: true } }]],
-      [[{ id: 'rat', changes: { isHidden: false } }]],
-    ]);
+    expect(state.updateInitiativeEntry.mock.calls).toEqual([[entryOf('goblin').id, { hiddenFromPlayers: true }]]);
+    expect(state.updateTokens.mock.calls).toEqual([[[{ id: 'rat', changes: { isHidden: false } }]]]);
   });
 });

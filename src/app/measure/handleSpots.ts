@@ -6,7 +6,7 @@
 
 import type { Point } from '../types/visionTypes';
 import { auraBadgePoint } from './auraArea';
-import { isAura } from './keptMeasures';
+import { isAura, isFollower } from './keptMeasures';
 import type { AreaToken } from './measureTokens';
 import type { KeptMeasure } from './measureTypes';
 import { spaceRadius, type TokenGrid } from './tokenDistance';
@@ -40,9 +40,9 @@ export function tokenHolding(point: Point, tokens: Iterable<AreaToken>, grid: Pi
   return top;
 }
 
-/** The token a kept measurement lies on: the one an aura follows, else the one that holds its origin. */
+/** The token a kept measurement lies on: the one it follows, else the one that holds its origin. */
 function bearerOf(measure: KeptMeasure, tokens: Readonly<Record<string, AreaToken>>, grid: Pick<TokenGrid, 'size'>): AreaToken | null {
-  if (isAura(measure)) return tokens[measure.follows] ?? null;
+  if (isAura(measure) || isFollower(measure)) return tokens[measure.follows] ?? null;
   const origin = measure.points[0];
   return origin ? tokenHolding(origin, Object.values(tokens), grid) : null;
 }

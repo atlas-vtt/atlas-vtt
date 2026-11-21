@@ -27,10 +27,24 @@
     opacity: 1;
     transform: scale(1);
   }
+
+  // The pointer's arrival shows it (`ViewActionsMenu`); a touch screen has no arrival to wait for.
+  @include atlas-hover-reveal {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  // Under a finger it is as large as the buttons of the bar it stands beside, with their corner
+  @include atlas-coarse-pointer {
+    width: $button-height-l;
+    height: $button-height-l;
+  }
   
-  &:hover {
-    background: rgba(0, 0, 0, 0.9);
-    border-color: rgba(255, 255, 255, 0.25);
+  @media (hover: hover) {
+    &:hover {
+      background: rgba(0, 0, 0, 0.9);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
   }
   
   &:active {
@@ -41,7 +55,9 @@
     opacity: 0.8;
   }
   
-  &:hover svg {
-    opacity: 1;
+  @media (hover: hover) {
+    &:hover svg {
+      opacity: 1;
+    }
   }
 }

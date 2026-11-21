@@ -5,7 +5,7 @@ import { getObsidianAccentColor, cssColorToHexNumber } from "./utils/colorUtils"
 import { isHandled } from "./utils/handledEvents";
 import { isPrimaryPress } from "./utils/pointerButtons";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import { annotationList } from '../annotations/annotationList';
 import { pressScope, type PressScope } from '../annotations/annotationPress';
 import type { Annotation } from '../annotations/annotationTypes';
@@ -20,6 +20,9 @@ import { MAP_LAYER_Z } from './mapLayerOrder';
 import { pointInPolygon } from '../vision/visibility';
 import { levelObjects } from '../levels/levelObjects';
 import { GroupRotation, type GroupTurnHost } from './selection/GroupRotation';
+import { GROUP_ROTATE_REACH } from './selection/GroupRotateButton';
+import type { Box } from './selection/selectionGeometry';
+import { marqueeSelection, selectMoreAfter } from '../annotations/selectMore';
 import { mapTokens } from '../tokens/offMap';
 
 /** What the drawings and texts of a view tell the selection (`AnnotationsRenderer`). */
@@ -41,6 +44,8 @@ function byId(list: readonly Annotation[]): Map<string, Annotation> {
 
 /** What says whether a press on the empty map draws a marquee, and what it takes: the tool. */
 const marqueeScope = (state: Pick<ViewAtlasState, 'activeTool'>): PressScope => pressScope(state.activeTool);
+/** A marquee no larger than this, in screen pixels, was a tap. */
+const MARQUEE_TAP_PX = 4;
 /** A marquee is drawn with the move and select tools. */
 const drawsMarquee = (scope: PressScope): boolean => scope === 'move';
 
@@ -60,11 +65,13 @@ export class SelectionManager {
   private selectionMode: 'box' | 'lasso' = 'box';
   private mapLoadedHandler: (() => void) | null = null;
   private lassoPoints: { x: number; y: number }[] = [];
+  private shown: Box | null = null;
 
   private _unsubscribeFromSelectionChanges?: () => void;
   private _unsubscribeFromToolChanges?: () => void;
   private _unsubscribeFromDrawingChanges?: () => void;
   private _unsubscribeFromSelectionMode?: () => void;
+  private _unsubscribeFromSelectMore?: () => void;
   private store: ViewAtlasStore;
   private eventBus: EventEmitter;
 
@@ -170,6 +177,13 @@ export class SelectionManager {
       { fireImmediately: true }
     );
 
+    // Select more ends with the selection it was adding to, and with the tool that selects
+    this._unsubscribeFromSelectMore = this.store.subscribe((state, before) => {
+      if (!state.selectMore || (state.selectedIds === before.selectedIds && state.activeTool === before.activeTool)) return;
+      const stays = selectMoreAfter(true, { tool: state.activeTool, had: before.selectedIds.length, has: state.selectedIds.length });
+      if (!stays) state.setSelectMore(false);
+    });
+
     // Dragged or undone drawings and texts move without the selection changing
     this._unsubscribeFromDrawingChanges = this.store.subscribe(
       (state: ViewAtlasState) => annotationList(levelObjects(state)),
@@ -186,15 +200,18 @@ export class SelectionManager {
           this.viewport.off('pointermove', this.marqueeMoveHandler);
           this.viewport.off('pointerup', this.marqueeUpHandler);
           this.viewport.off('pointerupoutside', this.marqueeUpHandler);
+          this.viewport.off('pointercancel', this.dropMarquee);
           this.viewport.on('pointerdown', this.marqueeDownHandler);
           this.viewport.on('pointermove', this.marqueeMoveHandler);
           this.viewport.on('pointerup', this.marqueeUpHandler);
           this.viewport.on('pointerupoutside', this.marqueeUpHandler);
+          this.viewport.on('pointercancel', this.dropMarquee);
         } else {
           this.viewport.off('pointerdown', this.marqueeDownHandler);
           this.viewport.off('pointermove', this.marqueeMoveHandler);
           this.viewport.off('pointerup', this.marqueeUpHandler);
           this.viewport.off('pointerupoutside', this.marqueeUpHandler);
+          this.viewport.off('pointercancel', this.dropMarquee);
           if (this.marqueeGraphics && !this.marqueeGraphics.destroyed) {
             this.marqueeGraphics.clear();
           }
@@ -243,6 +260,20 @@ export class SelectionManager {
     }
     this.updateSelectionOverlay();
   }
+
+  /** A press on the empty map waits to be dragged into a marquee: nothing on the map took it. */
+  get marqueePending(): boolean {
+    return this.selectionStart !== null;
+  }
+
+  /** The press that began a marquee is lost (a second finger, a pan, a touch the system took): it selects nothing and the selection stays. */
+  private readonly dropMarquee = (): void => {
+    if (!this.selectionStart) return;
+    this.selectionStart = null;
+    this.lassoPoints = [];
+    if (!this.marqueeGraphics.destroyed) this.marqueeGraphics.clear();
+    this.updateSelectionOverlay();
+  };
 
   private handleMarqueeMove(e: FederatedPointerEvent): void {
     if (!this.selectionStart || !drawsMarquee(marqueeScope(this.store.getState()))) return;
@@ -317,7 +348,9 @@ export class SelectionManager {
     this.selectionStart = null;
     this.lassoPoints = [];
     // The store subscription shows the new selection, now without a marquee under way
-    this.store.getState().setSelection(selectedIds);
+    const state = this.store.getState();
+    const tapped = Math.max(box.width, box.height) * this.zoom() < MARQUEE_TAP_PX;
+    state.setSelection(marqueeSelection(state.selectedIds, selectedIds, state.selectMore, tapped));
   }
 
   /** The tokens a lasso or, without one, a marquee's box takes. A token the canvas hides (session view) is not selectable. */
@@ -354,6 +387,20 @@ export class SelectionManager {
     return false;
   }
 
+  /**
+   * The box around everything the selection shows on the map, in world units: its highlights, a
+   * token's bars and handles, and the button that turns a group. Null while it shows nothing.
+   * The same object until the selection is drawn again, so whoever follows it can tell by it.
+   */
+  public shownBox(): Box | null {
+    return this.shown;
+  }
+
+  /** The selection is being changed as a whole: a group is turned, or a marquee is drawn. */
+  public get busy(): boolean {
+    return this.groupRotation.turning || this.selectionStart !== null;
+  }
+
   /** Whether a press at the world point lands inside the frame drawn around a selection of two or more. */
   public groupFrameContains(worldX: number, worldY: number): boolean {
     return this.highlights.groupFrameContains(worldX, worldY);
@@ -383,6 +430,9 @@ export class SelectionManager {
     const tokens = mapTokens(objects);
     const tokenIds = this.groupTurnHost ? targets.filter((target) => tokens[target.id]).map((target) => target.id) : [];
     this.groupRotation.follow(this.highlights.groupFrameBox(), tokenIds, this.selectionStart !== null);
+    const box = this.highlights.shownBox();
+    const lift = box && this.groupRotation.offered ? GROUP_ROTATE_REACH / this.zoom() : 0;
+    this.shown = box && lift > 0 ? { x: box.x, y: box.y - lift, width: box.width, height: box.height + lift } : box;
   }
 
   /** Re-registers viewport event listeners, pushing them to the end of the listener queue.
@@ -393,10 +443,12 @@ export class SelectionManager {
       this.viewport.off('pointermove', this.marqueeMoveHandler);
       this.viewport.off('pointerup', this.marqueeUpHandler);
       this.viewport.off('pointerupoutside', this.marqueeUpHandler);
+      this.viewport.off('pointercancel', this.dropMarquee);
       this.viewport.on('pointerdown', this.marqueeDownHandler);
       this.viewport.on('pointermove', this.marqueeMoveHandler);
       this.viewport.on('pointerup', this.marqueeUpHandler);
       this.viewport.on('pointerupoutside', this.marqueeUpHandler);
+      this.viewport.on('pointercancel', this.dropMarquee);
     }
   }
 
@@ -406,12 +458,14 @@ export class SelectionManager {
     this._unsubscribeFromToolChanges?.();
     this._unsubscribeFromDrawingChanges?.();
     this._unsubscribeFromSelectionMode?.();
+    this._unsubscribeFromSelectMore?.();
 
     // Remove event listeners from viewport
     this.viewport.off('pointerdown', this.marqueeDownHandler);
     this.viewport.off('pointermove', this.marqueeMoveHandler);
     this.viewport.off('pointerup', this.marqueeUpHandler);
     this.viewport.off('pointerupoutside', this.marqueeUpHandler);
+    this.viewport.off('pointercancel', this.dropMarquee);
     
     if (this.mapLoadedHandler) {
       this.eventBus.off('map-loaded', this.mapLoadedHandler);

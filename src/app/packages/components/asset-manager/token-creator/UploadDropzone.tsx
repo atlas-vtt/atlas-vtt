@@ -3,6 +3,7 @@ import { Upload } from 'lucide-react';
 import { cn } from '../../../../../utils/cn';
 import { UVTT_ACCEPT } from '../../../../import/uvtt/uvttFileNames';
 import { VIDEO_MAP_ACCEPT } from '../../../../pixi/mosaicCanvas/video/videoMapFiles';
+import { fileInputAccept } from '../../../../platform/fileInputAccept';
 
 interface UploadDropzoneProps {
   title: string;
@@ -47,7 +48,7 @@ export function UploadDropzone({ title, hint, multiple, acceptsMapFiles = false,
       <span className="atlas-token-creator__dropzone-title">{title}</span>
       <span className="atlas-token-creator__dropzone-hint">{hint}</span>
       <span className="atlas-token-creator__dropzone-formats">{acceptsMapFiles ? 'PNG · JPG · WebP · Universal VTT · WebM · MP4' : 'PNG · JPG · WebP'}</span>
-      <input ref={inputRef} type="file" accept={acceptsMapFiles ? `image/*,${UVTT_ACCEPT},${VIDEO_MAP_ACCEPT}` : 'image/*'} multiple={multiple} onChange={handleChange} />
+      <input ref={inputRef} type="file" accept={fileInputAccept(acceptsMapFiles ? `image/*,${UVTT_ACCEPT},${VIDEO_MAP_ACCEPT}` : 'image/*')} multiple={multiple} onChange={handleChange} />
     </div>
   );
 }

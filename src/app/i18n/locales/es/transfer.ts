@@ -1,0 +1,26 @@
+import type { Translation } from '../../types';
+
+export const transfer: Translation = {
+  'transfer.andScenes': { one: '{what} y {count} escena enlazada', other: '{what} y {count} escenas enlazadas' },
+  'transfer.copied': 'Se copió {what} a {target}',
+  'transfer.copy.withScenes': { one: 'Copiar con {count} escena enlazada', other: 'Copiar con {count} escenas enlazadas' },
+  'transfer.copy.withoutLinks': 'Copiar sin enlaces',
+  'transfer.copyFailed': 'No se pudo copiar {what}: {error}',
+  'transfer.linked.copy': { one: '{subject} enlaza con otra escena de esta colección: {names}.', other: '{subject} enlaza con otras {count} escenas de esta colección: {names}.' },
+  'transfer.linked.move': { one: 'Hay enlaces entre {subject} y otra escena de esta colección: {names}.', other: 'Hay enlaces entre {subject} y otras {count} escenas de esta colección: {names}.' },
+  'transfer.linked.rule': 'Las escenas solo enlazan con escenas de su propia colección. Lleva las escenas enlazadas a {target} para conservar los enlaces, o quita los enlaces.',
+  'transfer.linked.title': 'Escenas enlazadas',
+  'transfer.move.withScenes': { one: 'Mover con {count} escena enlazada', other: 'Mover con {count} escenas enlazadas' },
+  'transfer.move.withoutLinks': 'Mover sin enlaces',
+  'transfer.moveFailed': 'No se pudo mover {what}: {error}',
+  'transfer.moved': 'Se movió {what} a {target}',
+  'transfer.openCollection': 'Abrir colección',
+  'transfer.pick.confirm.copy': 'Copiar',
+  'transfer.pick.confirm.move': 'Mover',
+  'transfer.pick.info.copy': 'Copiando {what}',
+  'transfer.pick.info.move': 'Moviendo {what}',
+  'transfer.pick.target': 'Colección de destino',
+  'transfer.pick.title.copy': 'Copiar a la colección',
+  'transfer.pick.title.move': 'Mover a la colección',
+  'transfer.selection': 'La selección',
+};

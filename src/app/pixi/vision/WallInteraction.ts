@@ -1,12 +1,13 @@
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../../storeFactory';
-import { beginHistoryTransaction, endHistoryTransaction, runHistoryTransaction } from '../../stores/history';
+import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction, runHistoryTransaction } from '../../stores/history';
 import type { WallRenderer } from './WallRenderer';
 import type { Point } from '../../types/visionTypes';
 import type { WallSegment, WallType } from '../../types/wallTypes';
 import { connectedChain, endsAt, snapToWallEnd, type WallEnd } from '../lighting/wallEnds';
 import type { WallEdit } from '../lighting/wallJoints';
 import { levelObjects } from '../../levels/levelObjects';
+import { dragThreshold } from '../utils/pointerReach';
 
 /** Screen pixels a pressed wall end must travel before it follows the pointer: less is a click. */
 const DRAG_THRESHOLD = 3;
@@ -81,7 +82,7 @@ export class WallInteraction {
     const drag = this.drag;
     if (!drag) return;
     const zoom = this.wallRenderer.zoom;
-    if (!drag.moved && Math.hypot(worldX - drag.pressedAt.x, worldY - drag.pressedAt.y) < DRAG_THRESHOLD / zoom) return;
+    if (!drag.moved && Math.hypot(worldX - drag.pressedAt.x, worldY - drag.pressedAt.y) < dragThreshold(DRAG_THRESHOLD) / zoom) return;
     if (!drag.moved) {
       // Live drag writes hit the store on every move; the transaction folds them into one undo step.
       drag.moved = true;
@@ -99,6 +100,16 @@ export class WallInteraction {
     const drag = this.drag;
     this.endDrag();
     return drag && !drag.moved && drag.plain ? drag.joint : null;
+  }
+
+  /** The press that holds a joint is lost: the joint goes back where it was taken from, and no undo step is left. */
+  cancelDrag(): void {
+    const drag = this.drag;
+    this.drag = null;
+    if (!drag?.moved) return;
+    const state = this.store.getState();
+    for (const end of drag.ends) state.updateWall(end.wallId, { [end.end]: drag.joint });
+    abandonHistoryTransaction(this.store);
   }
 
   private endDrag(): void {

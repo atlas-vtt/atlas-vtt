@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { rollPieces, writtenRoll } from '../../src/app/tools/textRolls';
 import { DiceTool, type DiceRollInputs } from '../../src/app/tools/DiceTool';
 import type { DiceRules } from '../../src/app/types/diceRulesTypes';
@@ -72,6 +72,16 @@ describe('the rolls of running text', () => {
   it('reads a value of one roll and other numbers term by term, not whole', () => {
     expect(rolls('1d6 2')).toEqual([['1d6', '1d6']]);
     expect(rolls('Hit: 7 (2d6) slashing')).toEqual([['2d6', '2d6']]);
+  });
+
+  it('keeps adv or dis after a roll with it, and only as a word of its own', () => {
+    expect(rolls('Stealth +5 adv, Perception +3')).toEqual([['+5 adv', '+5 adv'], ['+3', '+3']]);
+    expect(rolls('Bite: 1d20 + 4 dis')).toEqual([['1d20 + 4 dis', '1d20+4 dis']]);
+    expect(rolls('ATK: +4 ADV')).toEqual([['ATK: +4 ADV', '+4 ADV']]);
+    expect(rolls('+5 advantage on saves')).toEqual([['+5', '+5']]);
+    expect(rolls('2 + 1d6 adv')).toEqual([['2 + 1d6 adv', '2+1d6 adv']]);
+    expect(writtenRoll('1d20+5 adv')).toBe('1d20+5 adv');
+    expect(writtenRoll('adv')).toBeNull();
   });
 
   it('rolls nothing past the limits a formula may have', () => {

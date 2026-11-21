@@ -15,10 +15,11 @@ import type { MadeShape } from '../../annotations/madeDrawing';
 import { STEADY_SLACK, steadied } from '../../annotations/penStroke';
 import { squared, stepped15 } from '../../annotations/shapeOutlines';
 import type { Point } from '../../types/visionTypes';
+import { dragThreshold, pointerReach } from '../utils/pointerReach';
 
-/** How far a press may move, in screen pixels, and still be a click: the measure tool's threshold. */
+/** How far a mouse's press may move, in screen pixels, and still be a click: the measure tool's threshold. */
 export const DRAW_DRAG_THRESHOLD = 5;
-/** How near to a path's last corner a click ends it, and to its first closes it, in screen pixels. */
+/** How near to a path's last corner a mouse's click ends it, and to its first closes it, in screen pixels; a finger reaches further (`pointerReach`). */
 export const CORNER_REACH = 8;
 /** The corners one path may have: a curved one is sampled sixteen times between two, and must stay a drawing. */
 export const MAX_LINE_CORNERS = 1000;
@@ -61,7 +62,7 @@ const CANCEL: DrawGestureResult = { kind: 'cancel' };
 
 const copy = ({ x, y }: Point): Point => ({ x, y });
 const same = (a: Point, b: Point): boolean => a.x === b.x && a.y === b.y;
-const near = (a: Point, b: Point, zoom: number): boolean => Math.hypot(a.x - b.x, a.y - b.y) * (zoom > 0 ? zoom : 1) <= CORNER_REACH;
+const near = (a: Point, b: Point, zoom: number): boolean => Math.hypot(a.x - b.x, a.y - b.y) * (zoom > 0 ? zoom : 1) <= pointerReach(CORNER_REACH);
 
 export class DrawGesture {
   private current: GestureMode | null = null;
@@ -141,7 +142,7 @@ export class DrawGesture {
       this.end = copy(at.raw);
       return { kind: 'sweep', from, to: this.end };
     }
-    if (this.pressedAt && Math.hypot(at.screen.x - this.pressedAt.x, at.screen.y - this.pressedAt.y) > DRAW_DRAG_THRESHOLD) this.dragged = true;
+    if (this.pressedAt && Math.hypot(at.screen.x - this.pressedAt.x, at.screen.y - this.pressedAt.y) > dragThreshold(DRAW_DRAG_THRESHOLD)) this.dragged = true;
     return this.aim(at) ? LIVE : NONE;
   }
 
@@ -191,6 +192,28 @@ export class DrawGesture {
     if (!this.active) return NONE;
     this.reset();
     return CANCEL;
+  }
+
+  /**
+   * The press is lost without a release (a second finger came down, the system took the touch). A
+   * shape placed click by click waits between its clicks: it keeps its points and waits on, as if
+   * the press had never come. Whatever a press holds (a stroke, a dragged shape, a sweep) is dropped.
+   */
+  lose(): DrawGestureResult {
+    if (!this.placing) return this.cancel();
+    this.pressedAt = null;
+    this.dragged = false;
+    return NONE;
+  }
+
+  /** Whether a line placed click by click is under way: Enter ends it, and Backspace takes a corner back. */
+  get placingLine(): boolean {
+    return this.current === 'line' && this.placing;
+  }
+
+  /** How many corners the line under way has placed: the first stays, the others can be taken back. */
+  get corners(): number {
+    return this.fixed.length;
   }
 
   /** The tool's work ends by something else than its own keys: a shape under way is dropped, a sweep ends where it is. */

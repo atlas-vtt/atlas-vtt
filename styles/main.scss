@@ -12,19 +12,23 @@
 @use '../src/app/keyboard/cheat-sheet';
 @use '../src/app/changelog/changelog';
 @use '../src/app/support/issue-report';
+@use '../src/app/support/tablet/tablet-diagnostics';
 @use '../src/app/online/gm/styles/dock';
 @use '../src/app/online/marks/styles/marks';
 @use '../src/app/online/tableLog/styles/table-log';
+@use '../src/app/noteDice/note-dice';
 @use './native-tooltips';
 @use './native-checkboxes';
 @use './button-press';
 @use './notices';
+@use './coarse-pointer';
 // At the root, outside the plugin's namespace: its scope includes the floating layer under <body>.
 @use '../src/app/packages/components/asset-manager/open-window';
 @use './scroll-lock';
 @use './portal-host';
 // At the root too: Atlas' scroll areas are found by class, in every window and floating layer.
 @use './overlay-scrollbars';
+@use './touch';
 
 // Atlas' scroll shadow (`atlas-scroll-shadow`): always dark, lighter on the light theme's pale surfaces.
 body.theme-dark {
@@ -112,6 +116,7 @@ body.theme-light {
   @import '../src/app/packages/components/toolbar/tool-options-bar.scss';
   @import '../src/app/packages/components/toolbar/fog-tool-bar.scss';
   @import '../src/app/packages/components/toolbar/selection-bar.scss';
+  @import '../src/app/packages/components/toolbar/selection-actions-bar.scss';
   @import '../src/app/packages/components/toolbar/editor/toolbar-editor';
   @import '../src/app/packages/components/toolbar/editor/toolbar-drag';
   @import '../src/app/packages/components/toolbar/editor/toolbar-card';
@@ -125,11 +130,14 @@ body.theme-light {
   @import '../src/app/packages/components/primitives/segmented-control.scss';
   @import '../src/app/packages/components/primitives/close-button.scss';
   @import '../src/app/react/components/dice/dice-dropdown.scss';
+  @import '../src/app/react/components/dice/dice-presets.scss';
+  @import '../src/app/react/components/dice/dice-preset-editor.scss';
   @import '../src/app/react/components/dice/dice-toast.scss';
   @import '../src/app/react/components/dice3d/dice-roll.scss';
   @import '../src/app/react/components/character-select-mode.scss';
   @import '../src/app/packages/token.scss';
     @import '../src/app/react/components/view-actions-menu.scss';
+    @import '../src/app/react/components/zoom-cluster.scss';
   @import '../src/app/react/components/undo-redo-controls.scss';
   @import '../src/app/react/components/dm-screen.scss';
   @import '../src/app/react/components/linked-note-panel.scss';
@@ -346,7 +354,7 @@ body.theme-light {
       > .atlas-widget-bar > .atlas-widget-container {
         $shadow-room: 120px;
 
-        max-height: 50vh;
+        max-height: #{atlas-view-height(50)};
         overflow: hidden auto;
         overscroll-behavior: contain;
         @include atlas-scrollbar-none;
@@ -411,13 +419,15 @@ body.theme-light {
         }
       }
 
-      > .atlas-widget-bar[data-stack='closed']:has(.atlas-widget-stack-opener:hover) > .atlas-widget-container > .atlas-widget {
-        &[data-stack-depth='1'] {
-          transform: translateY(2 * $stack-step) rotate(-3.5deg);
-        }
+      @media (hover: hover) {
+        > .atlas-widget-bar[data-stack='closed']:has(.atlas-widget-stack-opener:hover) > .atlas-widget-container > .atlas-widget {
+          &[data-stack-depth='1'] {
+            transform: translateY(2 * $stack-step) rotate(-3.5deg);
+          }
 
-        &[data-stack-depth='2'] {
-          transform: translateY(4 * $stack-step) rotate(2.6deg);
+          &[data-stack-depth='2'] {
+            transform: translateY(4 * $stack-step) rotate(2.6deg);
+          }
         }
       }
 
@@ -456,6 +466,13 @@ body.theme-light {
 
     > .atlas-vtt-toolbar {
       grid-area: 1 / 2;
+    }
+
+    // A menu or tray open from the toolbar or a tool's bars, and the toolbar editor, stand over the
+    // map's floating panels, which would otherwise cover them. The command palette does not: like
+    // every other part of the map's interface it lies below them.
+    &:has(.atlas-toolbar-editor, [aria-expanded='true'], [data-state='open']) {
+      z-index: $z-atlas-map-panel + 1;
     }
   }
 
@@ -576,6 +593,11 @@ body.theme-light {
     }
   }
 
+  // What stands before the GM view switch (a finger's peek button) keeps the bar's gap from it.
+  .atlas-toolbar-end {
+    gap: $surface-inset;
+  }
+
   // Keeps its own width while its slot opens or closes around it.
   .atlas-toolbar-item__content {
     flex-shrink: 0;
@@ -622,8 +644,10 @@ body.theme-light {
     border-radius: $radius-s;
     cursor: pointer;
     
-    &:hover {
-      background-color: var(--background-modifier-hover);
+    @media (hover: hover) {
+      &:hover {
+        background-color: var(--background-modifier-hover);
+      }
     }
   }
 
@@ -652,12 +676,8 @@ body.theme-light {
     }
   }
 
-  // Nor does a switch or a segmented option of a toolbar, or of a menu that hangs from one: a
-  // click leaves the focus on it and the menu open. A chosen option keeps the shadow it rests with.
-  #{$toolbars} .atlas-toggle:focus-visible {
-    outline: none;
-  }
-
+  // Nor does a segmented option of a toolbar, or of a menu that hangs from one: a click leaves the
+  // focus on it and the menu open. A chosen option keeps the shadow it rests with.
   #{$toolbars} .atlas-segmented__option:focus-visible {
     box-shadow: none;
 
@@ -666,10 +686,12 @@ body.theme-light {
     }
   }
 
-  #{$toolbars} button.btn:hover:not(#{$own-look}),
-  #{$toolbars} button.btn--toolbar:hover {
-    background: var(--background-modifier-hover) !important;
-    color: var(--text-normal) !important;
+  @media (hover: hover) {
+    #{$toolbars} button.btn:hover:not(#{$own-look}),
+    #{$toolbars} button.btn--toolbar:hover {
+      background: var(--background-modifier-hover) !important;
+      color: var(--text-normal) !important;
+    }
   }
 
   // .btn.is-active outranks the tool group's transparent reset below
@@ -677,9 +699,11 @@ body.theme-light {
     background: var(--interactive-accent) !important;
     color: var(--text-on-accent) !important;
 
-    &:hover {
-      background: var(--interactive-accent-hover) !important;
-      color: var(--text-on-accent) !important;
+    @media (hover: hover) {
+      &:hover {
+        background: var(--interactive-accent-hover) !important;
+        color: var(--text-on-accent) !important;
+      }
     }
   }
 
@@ -725,16 +749,23 @@ body.theme-light {
 
   // Muted until hovered; filled while its menu is open. Never takes the tool's accent.
   #{$toolbars} .atlas-tool-group button.btn.atlas-tool-group__chevron {
-    width: $icon-m;
+    // Wider under a finger (`_coarse-pointer.scss`).
+    width: var(--atlas-tool-chevron-width, #{$icon-m});
     height: $button-height-l;
     padding: 0;
     color: var(--text-muted);
     border-radius: var(--atlas-bar-control-radius, #{$radius-m}) !important;
 
-    &:hover,
     &.atlas-is-active {
       background: var(--background-modifier-hover) !important;
       color: var(--text-normal) !important;
+    }
+
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover) !important;
+        color: var(--text-normal) !important;
+      }
     }
   }
 
@@ -750,8 +781,10 @@ body.theme-light {
     &.atlas-dropdown-btn--destructive {
       color: var(--text-error) !important;
 
-      &:hover {
-        background: color-mix(in oklch, var(--background-modifier-error) 15%, transparent) !important;
+      @media (hover: hover) {
+        &:hover {
+          background: color-mix(in oklch, var(--background-modifier-error) 15%, transparent) !important;
+        }
       }
     }
   }
@@ -813,9 +846,11 @@ body.theme-light {
     background: var(--background-primary);
     color: var(--text-normal);
 
-    &:hover {
-      background: var(--interactive-hover);
-      color: var(--text-normal);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--interactive-hover);
+        color: var(--text-normal);
+      }
     }
   }
 
@@ -823,8 +858,10 @@ body.theme-light {
     background: var(--interactive-normal);
     color: var(--text-normal);
 
-    &:hover {
-      background: var(--interactive-hover);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--interactive-hover);
+      }
     }
   }
 
@@ -836,9 +873,11 @@ body.theme-light {
     border: none;
     box-shadow: none;
 
-    &:hover {
-      background: var(--background-modifier-hover);
-      color: var(--text-normal);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover);
+        color: var(--text-normal);
+      }
     }
 
     &:active:not(:disabled) {
@@ -860,9 +899,11 @@ body.theme-light {
     border: none;
     outline: none;
 
-    &:hover {
-      background: var(--background-modifier-hover) !important;
-      color: var(--text-normal);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover) !important;
+        color: var(--text-normal);
+      }
     }
 
     &.is-active {
@@ -876,9 +917,11 @@ body.theme-light {
     text-decoration: underline;
     text-underline-offset: 4px;
 
-    &:hover {
-      color: var(--text-accent-hover);
-      text-decoration: none;
+    @media (hover: hover) {
+      &:hover {
+        color: var(--text-accent-hover);
+        text-decoration: none;
+      }
     }
   }
 
@@ -909,8 +952,9 @@ body.theme-light {
   }
 }
 
-// Hide Obsidian's native view header (forward/back nav) in Atlas views
-.workspace-leaf-content[data-type="atlas-vtt"] {
+// Hide Obsidian's native view header (forward/back nav) in Atlas views. On mobile it stays: it holds
+// the navigation and the sidebar toggles, which have no other place there.
+body:not(.is-mobile) .workspace-leaf-content[data-type="atlas-vtt"] {
   .view-header {
     display: none !important;
   }
@@ -921,11 +965,32 @@ body.theme-light {
   }
 }
 
+// On mobile the header stays above the map (`emptyViewRoot`). Atlas' root is the whole leaf, so the map
+// fills it behind the header, and the row of the scene tabs and widgets begins below the header.
+body.is-mobile .workspace-leaf-content[data-type="atlas-vtt"] .atlas-top-bar-row {
+  top: calc(#{$spacing-s} + var(--view-header-height, 0px));
+}
+
+// What a tablet's on-screen keyboard covers of the window (`_viewport.scss`). Obsidian keeps its own
+// measure of it where it does not resize the web view, which stands until `keyboardViewport.ts`
+// has measured the visual viewport. Obsidian shrinks its workspace by that much, so a leaf already
+// ends above the keyboard: what stands inside a leaf gives it no room of its own.
+body {
+  --atlas-keyboard-inset: var(--keyboard-height, 0px);
+}
+
+.workspace-leaf {
+  --atlas-keyboard-inset: 0px;
+}
+
 // The leaf content elements our views take over as their root
+// `clip`, not `hidden`: a hidden overflow can still be scrolled, and focusing anything that pokes
+// past the view's edge (a panel dragged half out, a bar's control) scrolled the view sideways,
+// cutting off its left side until a reload. A clipped box never scrolls.
 .workspace-leaf-content.atlas-vtt-view {
   padding: 0;
   position: relative;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .workspace-leaf-content.atlas-dashboard-view {
@@ -959,7 +1024,7 @@ body.theme-light {
   // Ensure the view maintains proper dimensions
   min-width: 100%;
   min-height: 100%;
-  overflow: hidden;
+  overflow: clip;
 
   // Ensure the canvas container doesn't shrink but doesn't cover header
   canvas {

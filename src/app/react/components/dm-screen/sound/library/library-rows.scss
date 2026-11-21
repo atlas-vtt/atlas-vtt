@@ -3,6 +3,9 @@
 
 // ---- Rows ----
 
+// A length reads up to h:mm:ss in tabular digits (7ch), a gap before it and room before the action after it.
+$length-track: calc(7ch + #{$spacing-s + $spacing-l});
+
 .atlas-sound-lib__rows {
   flex: 1;
   min-height: 0;
@@ -17,7 +20,7 @@
 
 .atlas-sound-lib__row {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) 100px 60px 88px 32px;
+  grid-template-columns: 36px minmax(0, 1fr) 100px $length-track 88px 32px;
   align-items: center;
   // The ⋯ (28 px) at its end stands $surface-inset from top, bottom and end, concentric with the row's corner.
   height: 36px;
@@ -120,6 +123,11 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+
+  // Kept off a long name the column beside it cuts short.
+  &:not(:empty) {
+    padding-inline-start: $spacing-s;
+  }
 }
 
 // A file Atlas cannot read: what went wrong and what to do, on up to two lines within its share of the row (the name
@@ -181,7 +189,8 @@
   color: var(--atlas-sound-muted);
   text-align: right;
   font-variant-numeric: tabular-nums;
-  padding-right: $spacing-l;
+  white-space: nowrap;
+  padding-inline: $spacing-s $spacing-l;
 }
 
 .atlas-sound-lib .atlas-sound-lib__act {
@@ -269,7 +278,7 @@
 }
 
 // Where no pointer hovers (Obsidian on a tablet), a row's actions stay shown.
-@media (hover: none) {
+@include atlas-hover-reveal {
   .atlas-sound-lib .atlas-sound-lib__act,
   .atlas-sound-lib .atlas-sound-lib__more {
     opacity: 1;
@@ -280,7 +289,7 @@
 @media (pointer: coarse) {
   .atlas-sound-lib__row {
     height: 44px;
-    grid-template-columns: 48px minmax(0, 1fr) 100px 60px 88px 48px;
+    grid-template-columns: 48px minmax(0, 1fr) 100px $length-track 88px 48px;
   }
 
   .atlas-sound-lib__row .atlas-sound-lib__play,

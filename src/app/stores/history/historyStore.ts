@@ -44,6 +44,8 @@ export interface HistoryState {
    * listeners hear of that write, so a listener can tell what undo put back from an edit.
    */
   isTravelling: () => boolean;
+  /** Whether a transaction is open: a gesture or a panel is writing what will be one step. */
+  isInTransaction: () => boolean;
 }
 
 /** The store a history belongs to, as the history sees it. */
@@ -102,6 +104,7 @@ export function createHistory(tracked: TrackedStore): History {
     },
     untracked: (fn) => attribution.asSystem(fn),
     isTravelling: () => travelling,
+    isInTransaction: () => depth > 0,
   }));
   const get = (): HistoryState => store.getState();
 

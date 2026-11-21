@@ -78,7 +78,9 @@ describe('the lighting tool\'s bar above the toolbar', () => {
     expect(modes.height).toBeCloseTo(42, 0);
     expect(modes.height).toBeLessThan(toolbar.height - 6);
     const buttons = [...document.querySelectorAll('.atlas-tool-bar--modes .atlas-tool-button')].map((button) => button.getBoundingClientRect());
-    expect(buttons.map((button) => Math.round(button.width))).toEqual([32, 32, 32, 32, 32, 32]);
+    // The six modes, and after a doubled gap the Snap switch.
+    expect(buttons.map((button) => Math.round(button.width))).toEqual([32, 32, 32, 32, 32, 32, 32]);
+    expect(Math.round(buttons[6]!.left - buttons[5]!.right)).toBe(8);
     // Every toolbar has the same corner.
     const corner = (selector: string): number => parseFloat(getComputedStyle(document.querySelector(selector)!).borderTopLeftRadius);
     expect(corner('.atlas-tool-bar--modes')).toBe(corner('.atlas-main-toolbar'));

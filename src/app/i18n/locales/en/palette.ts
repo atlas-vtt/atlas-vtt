@@ -1,6 +1,8 @@
 import type { Message } from '../../types';
 
 export const palette = {
+  'palette.panel.experimental': 'Experimental Features',
+  'palette.experimentalLighting': 'Dynamic lighting',
   'palette.enterAlignment': 'Enter Alignment Mode',
   'palette.enterPlayerMode': 'Enter Player Mode',
   'palette.exitPlayerMode': 'Exit Player Mode',
@@ -20,7 +22,7 @@ export const palette = {
   'palette.noResults': 'No results found',
   'palette.noResultsHint': 'Try a different search term',
   'palette.notePinTool': 'Note Pin Tool',
-  'palette.openDiceLog': 'Open dice log',
+  'palette.openDiceLog': 'Open table log',
   'palette.openLootRoller': 'Open random tables',
   'palette.openSceneBrowser': 'Open asset manager',
   'palette.openDMScreen': 'Open DM screen',
@@ -34,6 +36,7 @@ export const palette = {
   'palette.playerDashboard': 'Player dashboard configuration',
   'palette.sceneSnapshots': 'Scene snapshots',
   'palette.sceneLevels': 'Scene levels',
+  'palette.positionFloor': 'Position floor',
   'palette.replaceMapImage': 'Replace map image',
   'palette.searchPlaceholder': 'Search commands…',
   'palette.openPlayerWindow': 'Open Player Window',
@@ -48,6 +51,7 @@ export const palette = {
   'palette.tour.findBody': 'Search for a tool or setting here. Use the tabs to narrow the list, then arrow keys and Enter to choose.',
   'palette.tour.findTitle': 'Find a command',
   'palette.tour.ownBody': 'Adjust your grid, tokens, and widgets from Settings. Back on the map, press {key} to see shortcuts. Change them in Obsidian Settings → Atlas VTT → Map hotkeys.',
+  'palette.tour.ownBody.touch': 'Adjust your grid, tokens, and widgets from Settings.',
   'palette.tour.ownTitle': 'Make the map your own',
   'palette.widgetSettings': 'Widget settings',
 } as const satisfies Record<string, Message>;

@@ -1,0 +1,58 @@
+@use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
+
+.atlas-vtt-plugin.atlas-tablet-diag-modal {
+  width: min(680px, #{atlas-view-width(92)});
+  max-height: calc(#{atlas-view-height()} - #{$spacing-2xl});
+
+  .modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-m;
+    min-height: 0;
+  }
+
+  .atlas-tablet-diag__intro,
+  .atlas-tablet-diag__warning {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: $font-ui-small;
+  }
+
+  .atlas-tablet-diag__tests {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-s;
+  }
+
+  input.atlas-tablet-diag__field {
+    @include atlas-text-input;
+  }
+
+  .atlas-tablet-diag__buttons,
+  .atlas-tablet-diag__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-s;
+  }
+
+  .atlas-tablet-diag__actions {
+    justify-content: flex-end;
+  }
+
+  // The report is there to be selected and copied by hand where the clipboard refuses.
+  .atlas-tablet-diag__report {
+    flex: 1 1 auto;
+    min-height: 120px;
+    margin: 0;
+    padding: $spacing-m;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: var(--font-ui-smaller);
+    background: var(--background-secondary);
+    border-radius: $radius-m;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+}

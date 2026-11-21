@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { visibleViewport } from '../../host/visibleViewport';
 import { isActiveAtlasLeaf } from '../../utils/activeLeafGuard';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
 import { t } from '../../i18n';
@@ -62,8 +63,7 @@ export function EditInitiativePopup({
   }, [onConfirm, onCancel]);
 
   // Beside the card, centred on it vertically, on the side away from the tracker's edge
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
+  const { right: viewportWidth, bottom: viewportHeight } = visibleViewport(window);
   const anchorCenterY = anchorRect.top + anchorRect.height / 2;
   const popupHeight = 72; // Approximate height of the compact popup
 

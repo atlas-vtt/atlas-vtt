@@ -17,7 +17,7 @@ $docs-resize-hit: 8px;
   @include atlas-elevated-surface;
   @include atlas-panel-radius($surface-radius);
   position: absolute;
-  z-index: 45;
+  z-index: $z-atlas-map-panel;
   display: flex;
   flex-direction: column;
   width: $docs-width;

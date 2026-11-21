@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Point, Texture, type Container, type EventSystem, type FederatedPointerEvent } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../../src/app/utils/typedEmitter';
 import { PinRenderer } from '../../../src/app/pixi/PinRenderer';
 import { NotePinTool } from '../../../src/app/tools/NotePinTool';
 import { MapService } from '../../../src/app/services/MapService';

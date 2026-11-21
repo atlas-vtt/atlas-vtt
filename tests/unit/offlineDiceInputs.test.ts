@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DiceTool } from '../../src/app/tools/DiceTool';
 import { offlineDiceInputs } from '../../src/app/services/offlineDiceInputs';

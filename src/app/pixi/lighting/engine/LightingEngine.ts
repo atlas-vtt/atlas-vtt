@@ -9,6 +9,7 @@ import { contextLost, glOf } from './gpu';
 import { createEngineWorld, type EngineWorld } from './engineWorld';
 import { ambientLift, darkLooks } from './senseDrawing';
 import { describeShaderFailures, failedEngineShaders } from './shaderCheck';
+import { unrenderableEngineTargets } from './targetCheck';
 import { SceneSightLayers } from './SceneSightLayers';
 import type { EngineScene, SceneFrame } from './types';
 import type { Box } from '../../../vision/polygonBounds';
@@ -41,7 +42,8 @@ const NOTHING_BELOW: BelowShown = { pictures: NO_BELOW, dim: 1 };
  * only while lighting is enabled.
  *
  * The engine never takes its caller down. Before it draws on a context it asks the driver
- * whether its shaders link (`failedEngineShaders`); it draws nothing while the context is lost;
+ * whether its shaders link (`failedEngineShaders`) and whether it renders into the engine's
+ * texture formats (`unrenderableEngineTargets`); it draws nothing while the context is lost;
  * and an error thrown by a pass stops it for good (`failed`): the layer is hidden, the world and
  * the back buffer are released, and every later call does nothing. A restored context is only
  * noted in PIXI's runner; the world is rebuilt from the last scene at the engine's next call.
@@ -311,7 +313,7 @@ export class LightingEngine {
   }
 
   /**
-   * Whether the context is there and links the engine's shaders. After a restored context the
+   * Whether the context is there, links the engine's shaders and renders into its texture formats. After a restored context the
    * world goes (its textures are blank) and the shaders are checked again on the new one.
    * Another renderer than WebGL (PIXI's Canvas or WebGPU renderer, which a browser without
    * WebGL gets) has no pipe for the engine's meshes: the engine stops before it draws anything.
@@ -333,10 +335,16 @@ export class LightingEngine {
       return false;
     }
     const failures = failedEngineShaders(gl);
+    const unrenderable = unrenderableEngineTargets(gl);
     // Lost while compiling: the logs say nothing about the device. Wait for the restore.
     if (contextLost(this.renderer)) return false;
     if (failures.length > 0) {
       console.error(`Atlas: dynamic lighting cannot run on this graphics device. These shaders did not compile:\n${describeShaderFailures(failures)}`);
+      this.stop();
+      return false;
+    }
+    if (unrenderable.length > 0) {
+      console.error(`Atlas: dynamic lighting cannot run on this graphics device. It cannot render into these texture formats: ${unrenderable.join(', ')}`);
       this.stop();
       return false;
     }

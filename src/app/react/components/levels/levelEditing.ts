@@ -5,7 +5,7 @@ import type { ViewAtlasStore } from '../../../storeFactory';
 import { getHistoryStore, runUntracked } from '../../../stores/history';
 import type { LevelElevation, SceneLevel } from '../../../types/sceneLevelTypes';
 import { chooseAction } from '../../../ui/confirmDialog';
-import { showNotice } from '../../../ui/notice';
+import { showNotice, showNoticeWithAction } from '../../../ui/notice';
 
 /**
  * Edits of a scene's levels from its settings. Levels are scene settings, like its lighting:
@@ -50,8 +50,24 @@ export function addLevel(store: ViewAtlasStore, background: string | null): void
   editLevels(name, () => {
     const levels = withLevelAdded(state, { name, background }, t('levels.firstName'));
     runUntracked(store, () => state.setLevels(levels));
-    store.getState().setViewedLevel(levels.at(-1)?.id ?? null);
+    const added = levels.at(-1)?.id ?? null;
+    store.getState().setViewedLevel(added);
+    // A floor's map rarely begins where the one below begins: lining it up is offered at once.
+    if (added && background) showNoticeWithAction(t('levels.positionAdded', { name }), t('levels.positionAddedAction'), () => startFloorPositioning(store, added), POSITION_OFFER_MS);
   });
+}
+
+/** How long the offer to line a new floor up stays. */
+const POSITION_OFFER_MS = 10_000;
+
+/** Shows level `id` and lets the GM place it by hand over another floor (Position floor); the command palette steps aside. */
+export function startFloorPositioning(store: ViewAtlasStore, id: string): void {
+  const state = store.getState();
+  if ((state.levels?.length ?? 0) < 2) return;
+  state.setViewedLevel(id);
+  state.setCommandPaletteOpen(false);
+  state.setGridAlignmentOpen(false);
+  state.setFloorPositioning(true);
 }
 
 /**

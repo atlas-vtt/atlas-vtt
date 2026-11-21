@@ -11,6 +11,7 @@ import { AssetThumbnailService, THUMBNAIL_SPEC } from '../../services/AssetThumb
 import { MAP_THUMBNAIL_SIZE, MapThumbnailService } from '../../services/MapThumbnailService';
 import { t } from '../../i18n';
 import { INVALID_NAME_CHARACTERS } from '../../services/assetPaths';
+import { generatedMapLimits, type GeneratedMapLimits } from '../../platform/generatedMapLimits';
 import type { DungeonModel, DungeonRequest } from '../model';
 import { DEFAULT_PX_PER_CELL, SCENE_MAP_PIXELS, SCENE_MAP_QUALITY, type MapLayout } from '../render/layoutSize';
 import type { Vec } from '../render/geometry';
@@ -30,6 +31,8 @@ export interface DungeonSceneDeps extends MapSceneDeps {
   render: (job: DungeonJob) => Promise<DungeonRendered>;
   /** The map image as a map stores it, with its thumbnail: the image workers, which take the bitmap over. */
   convertImage: (image: ImageBitmap) => Promise<ProcessedImage>;
+  /** What this device draws of a map on one canvas, where that is less than a scene's map has (`deviceBudgets.ts`). */
+  mapLimits?: GeneratedMapLimits;
 }
 
 export interface DungeonSceneOptions {
@@ -106,7 +109,12 @@ class NotDrawn extends Error {}
  * model was given; the others draw that one. Null where a floor could not be drawn.
  */
 async function drawFloors(deps: DungeonSceneDeps, options: DungeonSceneOptions): Promise<DrawnFloors | null> {
-  const size = { pxPerCell: options.pxPerCell ?? DEFAULT_PX_PER_CELL, maxPixels: SCENE_MAP_PIXELS };
+  const limits = deps.mapLimits;
+  const size = {
+    pxPerCell: options.pxPerCell ?? DEFAULT_PX_PER_CELL,
+    maxPixels: Math.min(SCENE_MAP_PIXELS, limits?.maxPixels ?? Infinity),
+    ...(limits && Number.isFinite(limits.maxSide) && { maxSide: limits.maxSide }),
+  };
   const job = (model: DungeonModel | undefined, output: DungeonJob['output']): DungeonJob => ({
     request: options.request,
     ...(model && { model }),
@@ -226,6 +234,7 @@ export async function createDungeonScene(app: App, assetService: AssetService, o
       // A generated map is all fine grain, which a PNG cannot pack: stored as WebP, a thirtieth of the size
       convertImage: (image) => optimizeBitmap(image, { ...IMAGE_PRESETS.map, quality: SCENE_MAP_QUALITY }, { thumbnail: THUMBNAIL_SPEC }),
       thumbnails: AssetThumbnailService.getInstance(app, assetService),
+      mapLimits: generatedMapLimits(),
     },
     options,
   );

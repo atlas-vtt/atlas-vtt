@@ -21,12 +21,20 @@ $quest-status-width: 112px;
   @include campaign-ghost-control;
 }
 
-// Padding and gaps alike; rows take the panel's inner radius step.
+// Padding and gaps alike; rows take the panel's inner radius step. The statuses of every group share one column,
+// as wide as the widest status shown and never narrower than $quest-status-width, so a translated status is never
+// cut and every quest's name still starts on one line.
 .dashboard-panel.campaign-quests__panel {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
   height: auto;
   max-height: none;
   gap: $spacing-s;
   padding: $spacing-s;
+
+  > * {
+    grid-column: 1 / -1;
+  }
 
   > .campaigns-empty {
     padding: $spacing-xs $spacing-s;
@@ -41,7 +49,13 @@ $quest-status-width: 112px;
 }
 
 .campaign-quests__group {
-  @include atlas-flex-col($spacing-xs);
+  display: grid;
+  grid-template-columns: subgrid;
+  row-gap: $spacing-xs;
+
+  > * {
+    grid-column: 1 / -1;
+  }
 }
 
 .campaign-quests__label {
@@ -53,7 +67,9 @@ $quest-status-width: 112px;
 }
 
 .campaign-quests__list {
-  @include atlas-flex-col(2px);
+  display: grid;
+  grid-template-columns: subgrid;
+  row-gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -92,7 +108,10 @@ $quest-status-width: 112px;
 // ── A quest ─────────────────────────────────────────────────────────────────
 
 .campaign-quest {
-  @include atlas-flex-row($spacing-s);
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  align-items: center;
   position: relative;
   min-width: 0;
   padding: $spacing-xs;
@@ -105,8 +124,7 @@ $quest-status-width: 112px;
 }
 
 .campaign-quest__status {
-  flex-shrink: 0;
-  width: $quest-status-width;
+  min-width: $quest-status-width;
 }
 
 .campaign-quest__open {
@@ -114,7 +132,6 @@ $quest-status-width: 112px;
   @include atlas-flex-col(2px);
   align-items: flex-start;
   justify-content: center;
-  flex: 1;
   min-width: 0;
   height: auto;
   min-height: var(--input-height);

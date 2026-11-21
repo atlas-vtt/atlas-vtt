@@ -4,7 +4,8 @@
 // ── Command palette shell ───────────────────────────────────────────────────
 // Opened by hotkey many times per session: the shell rises out of the toolbar
 // in a short Framer Motion animation (CommandPalette.tsx). Besides that, the
-// shell morphs between list and settings panel, and controls give press feedback.
+// surface springs to the size of the page it shows (PaletteMorph.tsx), and
+// controls give press feedback.
 
 .atlas-command-palette-overlay {
   position: fixed;
@@ -22,22 +23,32 @@
   background: transparent;
 }
 
-// Places the palette above the toolbar and slides it between the list's and
-// the settings panel's position. Its transform is its own, so the window's
-// open / close animation can use the window's.
+// Centred on the frame and shifted (Framer Motion's `x`) onto the list's place
+// above the toolbar; a settings page stands at the centre. Its transform is its
+// own, so the window's open / close animation can use the window's.
 .atlas-command-palette-anchor {
   position: absolute;
-  transition: left $transition-normal $transition-ease-out,
-              transform $transition-normal $transition-ease-out;
+  left: 50%;
+  translate: -50% 0;
 
   &--hidden {
     visibility: hidden;
   }
 
-  // Position is measured after mount; skip the transition until it is known.
-  &.atlas-no-transition,
-  &.atlas-no-transition .atlas-command-palette-container {
-    transition: none;
+  // Opened by a finger it hangs from the view's top, clear of the keyboard that rises from below
+  // (`placePaletteAtTop`), and its settings pages end above the keyboard too and scroll inside.
+  &--top {
+    .atlas-command-palette-window {
+      transform-origin: top center;
+    }
+
+    .atlas-command-palette-container--expanded {
+      max-height: min(650px, calc(100cqh - var(--atlas-palette-bottom, 0px) - #{$spacing-l}));
+    }
+
+    .atlas-command-palette-container--expanded.atlas-command-palette-container--scene-snapshots {
+      max-height: calc(100cqh - var(--atlas-palette-bottom, 0px) - #{$spacing-l});
+    }
   }
 }
 
@@ -51,27 +62,48 @@
   transform-origin: bottom center;
 }
 
-.atlas-command-palette-container {
+// What is seen of the palette: background, border, shadow and corners. Its size
+// is set from the page it shows and springs between pages; it clips the pages,
+// which keep their own size, so nothing inside reflows while it moves. Content
+// box: the border lies around the page.
+.atlas-command-palette-surface {
   @include atlas-elevated-surface;
   @include atlas-panel-radius($surface-radius);
   position: relative;
+  box-sizing: content-box;
+  overflow: hidden;
+}
+
+// A page: the list or a settings page, at its own size.
+.atlas-command-palette-container {
   display: flex;
   flex-direction: column;
   width: 600px;
   height: 450px;
-  // A small view shrinks the palette instead of cutting it off.
+  // A small view shrinks the palette instead of cutting it off. `--atlas-palette-bottom` is what its
+  // height leaves free of the view's: the room under it, or above it and under the keyboard.
   max-width: calc(100cqw - #{2 * $spacing-l});
   max-height: calc(100cqh - var(--atlas-palette-bottom, 0px) - #{$spacing-l});
-  overflow: hidden;
-  transition: width $transition-normal $transition-ease-out,
-              height $transition-normal $transition-ease-out;
-
   &--expanded {
     width: 900px;
     height: auto;
     max-height: 650px;
   }
+}
 
+// In the surface, pages hang from its top edge, centred, so a page's header
+// rides that edge while the surface moves, and the leaving and the coming page
+// lie over each other. A leaving page takes no pointer (it is inert as well).
+.atlas-command-palette-surface > .atlas-command-palette-container {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  translate: -50% 0;
+  transform-origin: top center;
+
+  &[inert] {
+    pointer-events: none;
+  }
 }
 
 // ── Search ──────────────────────────────────────────────────────────────────
@@ -255,11 +287,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .atlas-command-palette-anchor,
-  .atlas-command-palette-container {
-    transition: none;
-  }
-
   .atlas-command-palette-tab.btn:active {
     transform: none;
   }

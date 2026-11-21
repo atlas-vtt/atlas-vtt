@@ -1,4 +1,4 @@
-import { Container, FederatedPointerEvent, Graphics, Sprite, Texture, Circle } from 'pixi.js';
+import { Container, FederatedPointerEvent, Graphics, Sprite, Texture } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
@@ -10,8 +10,10 @@ import type { TokenHandleContainer } from './token-renderer/types';
 import { findTokenGroup } from './token-renderer/findTokenGroup';
 import type { TokenResizeUI } from './TokenResizeUI';
 import { destroyTree } from './utils/destroyTree';
+import { HandleHitArea } from './utils/handleHitArea';
 import { levelObjects } from '../levels/levelObjects';
 import { mapTokens } from '../tokens/offMap';
+import { toolSwitch } from '../types/toolSwitches';
 
 export class TokenRotationUI {
   private viewport: Viewport;
@@ -55,6 +57,10 @@ export class TokenRotationUI {
     // Listen for resize events to hide/show handles
     window.addEventListener('atlas-token-resize-started', this.onResizeStarted);
     window.addEventListener('atlas-token-resize-ended', this.onResizeEnded);
+
+    // A turn without the handle (Shift and a drag on the token) hides it
+    window.addEventListener('atlas-token-rotation-started', this.onTurnStarted);
+    window.addEventListener('atlas-token-rotation-ended', this.onTurnEnded);
   }
   
   /**
@@ -197,8 +203,8 @@ export class TokenRotationUI {
     handle.interactive = true;
     handle.cursor = 'grab';
     const radius = this.HANDLE_SIZE / 2;
-    // Set a circular hit area for the handle - this should be precise to avoid blocking token
-    handle.hitArea = new Circle(0, 0, radius);
+    // Precise for a mouse, so the handle never blocks its token; a finger reaches further where the token is not nearer
+    handle.hitArea = new HandleHitArea(handle, radius, TOKEN_HANDLE_LABEL);
 
     paintRotateHandle(bg, radius, false);
     handle.addChild(bg);
@@ -283,7 +289,18 @@ export class TokenRotationUI {
     this.viewport.on('pointermove', this.onRotationMove);
     this.viewport.on('pointerup', this.onRotationEnd);
     this.viewport.on('pointerupoutside', this.onRotationEnd);
+    this.viewport.on('pointercancel', this.onRotationCancel);
   }
+
+  /** The press on the handle is lost (a second finger, a touch the system took): the tokens face as they did. */
+  private onRotationCancel = (e: FederatedPointerEvent): void => {
+    if (!this.isRotating) return;
+    const tokenIds = [...this.rotatingTokenIds];
+    this.hasRotated = false;
+    this.onRotationEnd(e);
+    // Drawn again without the turn the drag showed
+    window.dispatchEvent(new CustomEvent('atlas-tokens-rotation-update', { detail: { tokenIds } }));
+  };
   
   /**
    * Handle rotation movement
@@ -317,8 +334,8 @@ export class TokenRotationUI {
     // Calculate rotation delta
     let deltaAngle = (currentAngle - this.rotationStartAngle) * 180 / Math.PI;
     
-    // Always snap to increments
-    const snapIncrement = e.shiftKey ? 45 : 15; // 45 degrees with shift, 15 degrees normally
+    // Steps of 15 degrees, 45 with Shift; whole degrees while the select tool's Snap is off
+    const snapIncrement = e.shiftKey ? 45 : toolSwitch(this.store.getState(), 'selectSnap') ? 15 : 1;
     deltaAngle = Math.round(deltaAngle / snapIncrement) * snapIncrement;
     
     // Update all selected tokens WITHOUT creating undo states
@@ -426,6 +443,7 @@ export class TokenRotationUI {
     this.viewport.off('pointermove', this.onRotationMove);
     this.viewport.off('pointerup', this.onRotationEnd);
     this.viewport.off('pointerupoutside', this.onRotationEnd);
+    this.viewport.off('pointercancel', this.onRotationCancel);
   };
   
   /**
@@ -462,6 +480,23 @@ export class TokenRotationUI {
     }
   };
   
+  private onTurnStarted = (e: CustomEvent<TokenGestureEventDetail>): void => {
+    if (this.isRotating) return;
+    this.isHiddenDuringRotation = true;
+    for (const tokenId of e.detail.tokenIds) {
+      const handle = this.rotationHandles.get(tokenId);
+      if (handle) handle.visible = false;
+    }
+  };
+
+  private onTurnEnded = (e: CustomEvent<TokenGestureEventDetail>): void => {
+    this.isHiddenDuringRotation = false;
+    for (const tokenId of e.detail.tokenIds) {
+      const handle = this.rotationHandles.get(tokenId);
+      if (handle) handle.visible = true;
+    }
+  };
+
   /**
    * Handle resize started events - hide rotation handles for specific tokens
    */
@@ -527,6 +562,8 @@ export class TokenRotationUI {
     window.removeEventListener('atlas-token-size-changing', this.onTokenSizeChanging);
     window.removeEventListener('atlas-token-resize-started', this.onResizeStarted);
     window.removeEventListener('atlas-token-resize-ended', this.onResizeEnded);
+    window.removeEventListener('atlas-token-rotation-started', this.onTurnStarted);
+    window.removeEventListener('atlas-token-rotation-ended', this.onTurnEnded);
     
     // Destroy textures
     for (const texture of this.iconTextures.values()) {

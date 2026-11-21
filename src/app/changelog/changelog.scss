@@ -5,9 +5,9 @@
 $changelog-scroll-fade: $spacing-xl;
 
 .atlas-vtt-plugin.atlas-changelog-modal {
-  width: min(640px, 90vw);
+  width: min(640px, #{atlas-view-width(90)});
   // Fixed height so expanding an accordion never resizes the modal; the history scrolls instead.
-  height: min(680px, 85vh);
+  height: min(680px, #{atlas-view-height(85)});
   padding: $spacing-l;
   display: flex;
   flex-direction: column;

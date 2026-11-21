@@ -70,10 +70,14 @@ export function seekMusic(state: TableSound, frame: number, now: number): TableS
   const play = state.music;
   const span = play && play.startAt <= now ? musicSpanAt(play, playFrameAt(play.startAt, now)) : null;
   if (!play || !span) return state;
-  const startAt = now - (span.startPlayFrame + Math.max(0, Math.min(framesToWrap(span, 0) - 1, Math.round(frame)))) / FRAMES_PER_MS;
+  // The seek's play begins at the sound's start (`fromFrame` 0): one begun at its loop in (a seam's, or a track that
+  // starts there) would lie ahead for a frame before it.
+  const whole = { ...play, fromFrame: 0 };
+  const spanStart = span.endPlayFrame === null ? 0 : span.startPlayFrame;
+  const startAt = now - (spanStart + Math.max(0, Math.min(framesToWrap(span, 0) - 1, Math.round(frame)))) / FRAMES_PER_MS;
   const live = withoutFinished(state, now);
   return changed(live, {
-    music: { ...play, startAt, fade: { at: startAt, ms: 0 } },
+    music: { ...whole, startAt, fade: { at: startAt, ms: 0 } },
     outgoing: [...live.outgoing.filter((other) => other !== play), leaving(play, now, SEEK_FADE_MS)],
   });
 }

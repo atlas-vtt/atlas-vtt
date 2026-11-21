@@ -7,4 +7,7 @@ export const pinMenu: Translation = {
   'pinMenu.showName': '显示名称',
   'pinMenu.rename': '重命名…',
   'pinMenu.renameTitle': '图钉名称',
+  'pinMenu.rollEncounter': '随机遭遇',
+  'pinMenu.openOnLevel': '打开的楼层',
+  'pinMenu.levelAsLeft': '上次显示的楼层',
 };

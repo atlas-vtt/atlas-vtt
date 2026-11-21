@@ -18,6 +18,8 @@ import { openTemplateGallery } from '../statblocks/editor/gallery/openTemplateGa
 import { experimentalFeatureOn } from '../experimental/experimentalFeatures';
 import { runInBackground } from '../utils/backgroundTask';
 import { showNotice } from '../ui/notice';
+import { isDesktopApp } from '../platform/desktopOnly';
+import { toggleTableMode } from '../tableMode/viewTableMode';
 
 export interface CommandDependencies {
   imageDisplay: ImageDisplayService;
@@ -64,12 +66,6 @@ function registerPlayerViewCommands(plugin: Plugin, imageDisplay: ImageDisplaySe
       if (!checking) imageDisplay.closeImageDisplay();
       return true;
     },
-  });
-
-  plugin.addCommand({
-    id: 'send-map-to-player-view',
-    name: t('command.sendMapToPlayerView'),
-    callback: () => void presentActiveTab(plugin.app),
   });
 
   plugin.addCommand({
@@ -130,6 +126,24 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
   // Atlas' one door in the ribbon: the start page leads to everything else.
   plugin.addRibbonIcon('map', t('command.openAtlas'), () => void openDashboard(plugin));
 
+  // Presents the active map: in the player window on desktop, in Table mode or at the online table on mobile
+  plugin.addCommand({
+    id: 'send-map-to-player-view',
+    name: t('command.sendMapToPlayerView'),
+    callback: () => void presentActiveTab(plugin.app),
+  });
+
+  plugin.addCommand({
+    id: 'toggle-table-mode',
+    name: t('table.mode'),
+    checkCallback: (checking) => {
+      const view = app.workspace.getActiveViewOfType(AtlasView);
+      if (!view || isDesktopApp()) return false;
+      if (!checking) toggleTableMode(view);
+      return true;
+    },
+  });
+
   plugin.addCommand({
     id: 'generate-dungeon',
     name: t('command.generateDungeon'),
@@ -185,6 +199,19 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
   });
 
   plugin.addCommand({
+    id: 'reset-explored-areas',
+    name: t('sceneLight.forgetExplored'),
+    checkCallback: (checking) => {
+      const view = app.workspace.getActiveViewOfType(AtlasView);
+      if (!view || !view.getStore().getState().lighting.enabled) return false;
+      if (!checking) {
+        view.serviceManager.getEventBus().emit('lighting-reset-explored');
+      }
+      return true;
+    },
+  });
+
+  plugin.addCommand({
     id: 'open-docs',
     name: t('docs.command'),
     checkCallback: (checking) => {
@@ -233,7 +260,7 @@ function registerStatblockCommands(plugin: Plugin): void {
 
   plugin.addCommand({
     id: 'new-statblock-template',
-    name: 'New statblock template…',
+    name: t('command.newStatblockTemplate'),
     checkCallback: (checking) => {
       if (!experimentalFeatureOn(app, 'statblockEditor')) return false;
       if (!checking) runInBackground(openTemplateGallery(app), 'Opening the template gallery');
@@ -243,7 +270,8 @@ function registerStatblockCommands(plugin: Plugin): void {
 }
 
 export function registerCommands(plugin: Plugin, deps: CommandDependencies): void {
-  registerPlayerViewCommands(plugin, deps.imageDisplay);
+  // The player window, and showing an image in it, need a second window: desktop only
+  if (isDesktopApp()) registerPlayerViewCommands(plugin, deps.imageDisplay);
   registerMapCommands(plugin, deps);
   registerStatblockCommands(plugin);
 }

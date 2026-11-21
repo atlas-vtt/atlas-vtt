@@ -105,17 +105,6 @@ describe('Atlas settings in the plugin data', () => {
     expect((await loaded({ detectGridOnNewScenes: 'no' })).settings.detectsGridOnNewScenes()).toBe(true);
   });
 
-  it('shows no names on the GM\'s initiative cards until the GM switches them on', async () => {
-    const { settings, data } = await loaded();
-    expect(settings.showsInitiativeNames()).toBe(false);
-
-    settings.setInitiativeNames(true);
-    await settings.saveSettingsNow();
-    expect(settings.showsInitiativeNames()).toBe(true);
-    expect(data.stored()).toMatchObject({ initiativeNames: true });
-    expect((await loaded({ initiativeNames: 'yes' })).settings.showsInitiativeNames()).toBe(false);
-  });
-
   it('reads the plugin data again when it changed on disk and tells every listener', async () => {
     const { settings, data } = await loaded({ diceColour: 'card' });
     const heard = vi.fn();

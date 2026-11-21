@@ -31,6 +31,7 @@ export const diceLab: Translation = {
   'diceLab.newSetName': 'Новый набор кубиков',
   'diceLab.noDiceYet': 'Кубиков пока нет',
   'diceLab.duplicateSet': 'Дублировать {name}',
+  'diceLab.moreFor': 'Действия: {name}',
   'diceLab.duplicateToEdit': 'Дублировать для правки',
   'diceLab.copyName': '{name} (копия)',
   'diceLab.deleteSet': 'Удалить {name}',
@@ -45,7 +46,7 @@ export const diceLab: Translation = {
   'diceLab.critRollUnderHint': '1 — критический успех, старшая грань — критический провал. Для бросков, где нужно выкинуть не больше числа.',
   'diceLab.critDoublesHint': 'Если на всех кубиках по умолчанию одно и то же число — критический успех, например 7 и 7 на 2d12.',
   'diceLab.critHighTotalHint': 'Если кубики по умолчанию дают в сумме наибольшее число или на единицу меньше — критический успех, например 19 или 20 на 2d10.',
-  'diceLab.exploding': 'Взрывные кубики',
+  'diceLab.exploding': 'Взрывающиеся кубики',
   'diceLab.explodeDefaultHint': 'Кубики набора перебрасываются на старшей грани, и новый кубик прибавляется. Кубики, вписанные в бросок, например 1d6 урона, не взрываются.',
   'diceLab.explodeAllHint': 'Каждый кубик броска перебрасывается на старшей грани, и новый кубик прибавляется: и кубики набора, и вписанные в бросок, например 1d6 урона.',
   'diceLab.explodeSubtracts': 'Младшая грань вычитается',
@@ -123,4 +124,5 @@ export const diceLab: Translation = {
   'diceLab.default': 'По умолчанию',
   'diceLab.collectionDice': 'Кубики коллекции',
   'diceLab.ofCollection': 'Коллекция {name}',
+  'diceLab.edgeOnlySetDice.touch': 'Меняются только броски кубиков набора: бросок урона бросается как есть. Коснитесь броска и удерживайте, чтобы бросить с преимуществом или помехой.',
 };

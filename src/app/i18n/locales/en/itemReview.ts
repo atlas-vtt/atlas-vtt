@@ -1,0 +1,30 @@
+import type { Message } from '../../types';
+
+/** The review of a single statblock template, game system or dice set before it comes into the vault. */
+export const itemReview = {
+  'itemReview.title.statblock-template': 'Add statblock template',
+  'itemReview.title.system-preset': 'Add game system',
+  'itemReview.title.dice-set': 'Add dice set',
+  'itemReview.version': 'Version {version}',
+  'itemReview.outcome.new': 'It comes into your library.',
+  'itemReview.outcome.update': 'Your copy is updated from version {installed} to version {version}.',
+  'itemReview.outcome.updateUnknown': 'Your copy is updated to version {version}.',
+  'itemReview.outcome.copy': 'You changed your copy, so this version comes in beside it as {name}.',
+  'itemReview.outcome.differs': 'Your library has another version of it, so this one comes in beside it as {name}.',
+  'itemReview.outcome.same': 'Already in your library.',
+  'itemReview.diceSet.new': 'It brings the dice set {name}.',
+  'itemReview.diceSet.copy': 'It brings its dice set as {name}, beside your own.',
+  'itemReview.diceSet.same': 'It rolls with your dice set {name}.',
+  'itemReview.notes': 'What’s new',
+  'itemReview.confirm.new': 'Add',
+  'itemReview.confirm.update': 'Update',
+  'itemReview.confirm.copy': 'Add copy',
+  'itemReview.confirm.same': 'Done',
+  'itemReview.open': 'Open',
+  'itemReview.done.addedTitle': 'Added to your library',
+  'itemReview.done.updatedTitle': 'Updated',
+  'itemReview.done.added': '{name} v{version} is in your library.',
+  'itemReview.done.updated': '{name} is updated to v{version}.',
+  'itemReview.done.copied': '{name} v{version} is in your library, beside your own copy.',
+  'itemReview.done.same': '{name} v{version} was already in your library.',
+} as const satisfies Record<string, Message>;

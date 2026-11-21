@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, type RefObject } from 'react';
 import { partyOf, type PartyMember } from '../../../campaigns/campaignParty';
 import type { Campaign } from '../../../campaigns/campaignTypes';
 import { scenePlacedTokens } from '../../../campaigns/scenePlacedTokens';
+import { isElementShown } from '../../../platform/elementShown';
 import { AssetService } from '../../../services/AssetService';
 import { resourceUrl } from './libraryPictures';
 
@@ -18,12 +19,6 @@ const NO_PARTIES: CampaignParties = new Map();
 
 /** How long a scene file must be quiet before its party is read again: a map being played saves often. */
 export const PARTY_RELOAD_MS = 1500;
-
-/** Whether the element is on screen: connected and not inside a hidden tab. */
-function isShown(element: HTMLElement | null): boolean {
-  if (!element?.isConnected) return false;
-  return typeof element.checkVisibility !== 'function' || element.checkVisibility();
-}
 
 async function readParties(app: App, lastScenes: ReadonlyMap<string, string>): Promise<{ parties: CampaignParties; paths: Set<string> }> {
   const assets = AssetService.getInstance(app);
@@ -80,7 +75,7 @@ export function useCampaignParties(app: App, campaigns: readonly Campaign[], roo
         .catch((error: unknown) => console.error('[Dashboard] Reading the campaigns\' parties failed:', error));
     };
     const loadIfShown = (): void => {
-      if (stale && isShown(rootRef.current)) load();
+      if (stale && isElementShown(rootRef.current)) load();
     };
     const reloadLater = (): void => {
       stale = true;

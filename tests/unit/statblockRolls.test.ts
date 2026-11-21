@@ -82,6 +82,12 @@ describe('where a statblock\'s roll goes', () => {
     expect(roll?.source).toEqual({ type: 'statblock', statblockPath: 'Aboleth.md' });
   });
 
+  it('keeps a side written last after the names it adds, for the dice tool to read', () => {
+    const map = mapView(true);
+    rollStatblockDice(appWith(map.view), '+4 adv', { abilityName: 'Agility' }, offMap());
+    expect(map.rolls[0]?.formula).toBe('+4[Agility] adv');
+  });
+
   it('is not rolled where no map is open and nothing shows rolls (a hover preview)', () => {
     expect(rollStatblockDice(appWith(), '1d6', {})).toBeNull();
   });

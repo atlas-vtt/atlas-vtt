@@ -11,6 +11,8 @@ interface RememberedPlaceDeps {
   initialTab: Tab | undefined;
   data: AssetData;
   sel: SelectionState;
+  /** Whether the place is kept for the next opening; a window opened to choose a map leaves the library's place alone. */
+  remember: boolean;
   /** The parts of the place the manager itself holds. */
   place: Pick<RestoredPlace, 'collection' | 'tab' | 'search' | 'collapsedSections'>;
   apply: (place: Pick<RestoredPlace, 'collection' | 'tab' | 'search' | 'collapsedSections'>) => void;
@@ -20,7 +22,7 @@ interface RememberedPlaceDeps {
  * Opens the asset manager where it was left (tab, collection, folder, search,
  * tag filter, sort) and remembers that place when it closes or unmounts.
  */
-export function useRememberedPlace({ isOpen, initialTab, data, sel, place, apply }: RememberedPlaceDeps): AssetManagerMemory {
+export function useRememberedPlace({ isOpen, initialTab, data, sel, remember, place, apply }: RememberedPlaceDeps): AssetManagerMemory {
   const memory = useMemo(() => AssetManagerMemory.forApp(data.app), [data.app]);
   const openedOver = useRef<string | null>(null);
   const latest = useRef<AssetManagerPlace | null>(null);
@@ -77,13 +79,13 @@ export function useRememberedPlace({ isOpen, initialTab, data, sel, place, apply
       wasOpen.current = true;
       return;
     }
-    if (wasOpen.current && latest.current) memory.setPlace(latest.current);
+    if (remember && wasOpen.current && latest.current) memory.setPlace(latest.current);
     wasOpen.current = false;
-  }, [isOpen, memory]);
+  }, [isOpen, memory, remember]);
 
   useEffect(() => () => {
-    if (wasOpen.current && latest.current) memory.setPlace(latest.current);
-  }, [memory]);
+    if (remember && wasOpen.current && latest.current) memory.setPlace(latest.current);
+  }, [memory, remember]);
 
   return memory;
 }

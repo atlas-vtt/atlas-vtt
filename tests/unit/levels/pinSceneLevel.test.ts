@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../../src/app/utils/typedEmitter';
 import { describe, expect, it, vi } from 'vitest';
 import { NotePinTool } from '../../../src/app/tools/NotePinTool';
 import { pinSceneLevel } from '../../../src/app/levels/pinSceneLevel';

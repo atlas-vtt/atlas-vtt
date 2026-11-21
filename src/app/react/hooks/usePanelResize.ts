@@ -44,6 +44,8 @@ export function usePanelResize(
       height: Math.max(min.height, area.height - panel.offsetTop - margin),
     };
     const start = { x: event.clientX, y: event.clientY, width: panel.offsetWidth, height: panel.offsetHeight };
+    // The pointer that pressed resizes the panel; a second finger laid down meanwhile does not
+    const { pointerId } = event;
     let size = { width: start.width, height: start.height };
     panel.classList.add('is-resizing');
     const content = held?.current;
@@ -53,6 +55,7 @@ export function usePanelResize(
     }
 
     const onMove = (move: PointerEvent): void => {
+      if (move.pointerId !== pointerId) return;
       size = {
         width: edge === 'bottom' ? start.width : Math.min(max.width, Math.max(min.width, start.width + move.clientX - start.x)),
         height: edge === 'right' ? start.height : Math.min(max.height, Math.max(min.height, start.height + move.clientY - start.y)),
@@ -60,7 +63,8 @@ export function usePanelResize(
       panel.style.width = `${size.width}px`;
       panel.style.height = `${size.height}px`;
     };
-    const onUp = (): void => {
+    const onUp = (up: PointerEvent): void => {
+      if (up.pointerId !== pointerId) return;
       win.removeEventListener('pointermove', onMove);
       win.removeEventListener('pointerup', onUp);
       win.removeEventListener('pointercancel', onUp);

@@ -51,6 +51,8 @@ export interface BelowLevelDeps {
   liquids?: (changed: () => void) => BelowLiquids;
   /** How long a piece of the roof takes to fade. */
   fadeMs: number;
+  /** The longest side of the canvas the level's fog is composed on (`BelowLevelsHost.fogCanvasSide`). */
+  fogCanvasSide?: number;
   requestRender: () => void;
   /** The level's picture became ready, or stopped being: the stack must be worked out again. */
   onReady: () => void;

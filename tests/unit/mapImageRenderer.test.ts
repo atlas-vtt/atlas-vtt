@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { Container, Ticker } from 'pixi.js';
 import { TFile } from 'obsidian';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
@@ -38,6 +38,7 @@ async function showScene(size = 1400): Promise<Harness> {
   const manager = {
     init: vi.fn(),
     getViewport: () => viewport,
+    getGestures: () => null,
     getApp: () => ({ renderer: { resolution: 1, name: 'canvas' }, canvas: document.createElement('canvas'), ticker }),
     destroy: vi.fn(),
   };

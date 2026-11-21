@@ -130,6 +130,22 @@ export default defineConfig({
           },
         },
       },
+      {
+        extends: true,
+        // What a tablet's engine does differently (it encodes no WebP), on Playwright's WebKit: local only, as the gpu project.
+        test: {
+          name: 'webkit',
+          setupFiles: ['./tests/setup/obsidianDom.ts', './tests/setup/domHost.ts'],
+          include: ['tests/gpu/derivedImageEncoding.gpu.test.ts'],
+          testTimeout: 600_000,
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright(),
+            instances: [{ browser: 'webkit' }],
+          },
+        },
+      },
     ],
   },
 });

@@ -34,8 +34,10 @@
     box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.07);
   }
 
-  &:hover:not(.atlas-is-active) {
-    background-color: var(--background-modifier-hover);
+  @media (hover: hover) {
+    &:hover:not(.atlas-is-active) {
+      background-color: var(--background-modifier-hover);
+    }
   }
 
   &:active:not(.atlas-is-active) {
@@ -132,8 +134,10 @@
   transition: all $transition-fast $transition-ease;
   border-radius: $radius-m;
 
-  &:hover {
-    background-color: var(--background-modifier-hover);
+  @media (hover: hover) {
+    &:hover {
+      background-color: var(--background-modifier-hover);
+    }
   }
 
   &:focus {
@@ -189,9 +193,7 @@
 }
 
 .atlas-dropdown-toggle-row__label {
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
+  @include atlas-row-label;
   font-size: $font-ui-small;
   color: var(--text-normal);
 }
@@ -383,8 +385,10 @@
   transition-duration: $transition-normal;
   transition-timing-function: $transition-ease;
 
-  &:hover {
-    scale: 1.08;
+  @media (hover: hover) {
+    &:hover {
+      scale: 1.08;
+    }
   }
 
   &:active {
@@ -407,8 +411,8 @@
 .atlas-swatch--picker {
   appearance: none;
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
+  width: $button-height-s;
+  height: $button-height-s;
   background: none;
   overflow: hidden;
 

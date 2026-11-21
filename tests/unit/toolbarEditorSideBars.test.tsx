@@ -34,7 +34,7 @@ describe('the keyboard shortcuts button in the toolbar editor', () => {
     const harness = renderToolbar({ sideBars: { online: false } });
     startEditing(harness);
     const help = handle(harness.container, 'help');
-    act(() => help.focus());
+    act(() => { help.focus(); });
     fireEvent.keyDown(help, { key: 'Delete' });
     expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['help'] });
     expect(sideSlot(harness.container, 'help').hidden).toBe(true);
@@ -50,7 +50,7 @@ describe('the keyboard shortcuts button in the toolbar editor', () => {
     const harness = renderToolbar({ sideBars: { online: false } });
     startEditing(harness);
     const palette = handle(harness.container, 'palette');
-    act(() => palette.focus());
+    act(() => { palette.focus(); });
     fireEvent.keyDown(palette, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(handle(harness.container, 'help'));
   });
@@ -71,7 +71,7 @@ describe('online play\'s button in the toolbar editor', () => {
     startEditing(harness);
     // First of the bar's handles, at the row's left edge.
     const move = handle(harness.container, 'move');
-    act(() => move.focus());
+    act(() => { move.focus(); });
     fireEvent.keyDown(move, { key: 'ArrowLeft' });
     fireEvent.keyDown(document.activeElement!, { key: 'ArrowLeft' });
     expect(document.activeElement).toBe(handle(harness.container, 'online'));

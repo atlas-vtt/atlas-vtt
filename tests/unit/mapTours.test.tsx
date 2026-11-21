@@ -55,9 +55,9 @@ describe('the map tour', () => {
     renderTours(store, mapView(), settings());
     expect(screen.queryByRole('dialog')).toBeNull();
 
-    act(() => store.setState({ isMapLoading: false, isHotkeyHelpOpen: true }));
+    act(() => { store.setState({ isMapLoading: false, isHotkeyHelpOpen: true }); });
     expect(screen.queryByRole('dialog')).toBeNull();
-    act(() => store.setState({ isHotkeyHelpOpen: false }));
+    act(() => { store.setState({ isHotkeyHelpOpen: false }); });
     expect(screen.getByRole('dialog')).toBeTruthy();
   });
 

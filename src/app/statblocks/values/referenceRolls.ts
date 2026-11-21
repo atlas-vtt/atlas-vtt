@@ -14,13 +14,14 @@
 
 import { parseFormula } from '../../tools/parseFormula';
 import { rollPieces, toRollFormula } from '../../tools/textRolls';
-import { formulaLabel } from '../rollBonuses/bonusFormula';
+import { writtenSide } from '../../tools/writtenAdvantage';
+import { formulaLabel } from '../../tools/namedModifiers';
 import { fillReferences, stringsIn, type Filled } from './fillReferences';
 import { namesReference, type FieldLookup } from './references';
 
 /** A roll of a text with references. */
 export interface ReferenceRoll {
-  /** What the filled text rolls, as the card's link on it rolls it (`toRollFormula`). */
+  /** What the filled text rolls, as the card's link on it rolls it (`toRollFormula`), without a side written last (`adv`). */
   readonly formula: string;
   /** The same roll with its references' numbers named; null where it names none. */
   readonly named: string | null;
@@ -34,7 +35,7 @@ export function referenceLabel(path: string): string {
 
 /** The roll of the filled text between `from` and `to` with each reference added in it named, but one labelled already; null where none is, or the parser refuses it. */
 function namedRoll(filled: Filled, from: number, to: number): string | null {
-  let piece = filled.text.slice(from, to);
+  let piece = writtenSide(filled.text.slice(from, to)).formula;
   let named = false;
   for (const reference of [...filled.filled].reverse()) {
     const label = referenceLabel(reference.path);
@@ -56,7 +57,10 @@ export function referenceRolls(text: string, lookup: FieldLookup): ReferenceRoll
   let at = 0;
   for (const piece of rollPieces(filled.text)) {
     const end = at + piece.text.length;
-    if (piece.formula !== null) rolls.push({ formula: piece.formula, named: filled.filled.length === 0 ? null : namedRoll(filled, at, end) });
+    if (piece.formula !== null) {
+      // Keyed without a side written last: the statblock's roll names the formula before it (`thrownFormula`).
+      rolls.push({ formula: writtenSide(piece.formula).formula, named: filled.filled.length === 0 ? null : namedRoll(filled, at, end) });
+    }
     at = end;
   }
   return rolls;

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { BUILT_IN_DICE_SETS } from '../../src/app/gameSystems/builtInDiceSets';
@@ -12,7 +12,7 @@ import type { DiceRollResult } from '../../src/app/types/diceTypes';
 const store = vi.hoisted(() => ({ diceLog: [] as DiceRollResult[], local: new Map<string, unknown>() }));
 vi.mock('../../src/app/react/root/AtlasUIContext', () => ({
   useAtlasUI: () => ({
-    app: { loadLocalStorage: (key: string) => store.local.get(key) ?? null, saveLocalStorage: (key: string, value: unknown) => store.local.set(key, value) },
+    app: { workspace: { on: () => ({}), offref: () => undefined }, loadLocalStorage: (key: string) => store.local.get(key) ?? null, saveLocalStorage: (key: string, value: unknown) => store.local.set(key, value) },
     view: { getViewType: () => 'atlas-vtt' },
   }),
 }));

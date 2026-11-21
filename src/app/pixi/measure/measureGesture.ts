@@ -11,8 +11,9 @@
 
 import { MAX_RULER_POINTS, type Measurement, type MeasureShapeKind } from '../../measure/measureTypes';
 import type { Point } from '../../types/visionTypes';
+import { dragThreshold } from '../utils/pointerReach';
 
-/** How far a press may move, in screen pixels, and still be a click: the light markers' threshold (`LIGHT_DRAG_THRESHOLD`). */
+/** How far a mouse's press may move, in screen pixels, and still be a click: the light markers' threshold (`LIGHT_DRAG_THRESHOLD`). */
 export const MEASURE_DRAG_THRESHOLD = 5;
 
 export type GestureResult =
@@ -87,7 +88,7 @@ export class MeasureGesture {
   move(point: Point, screen: Point): GestureResult {
     const end = this.end;
     if (!end) return NONE;
-    if (this.pressedAt && Math.hypot(screen.x - this.pressedAt.x, screen.y - this.pressedAt.y) > MEASURE_DRAG_THRESHOLD) this.dragged = true;
+    if (this.pressedAt && Math.hypot(screen.x - this.pressedAt.x, screen.y - this.pressedAt.y) > dragThreshold(MEASURE_DRAG_THRESHOLD)) this.dragged = true;
     if (end.x === point.x && end.y === point.y) return NONE;
     this.end = point;
     return LIVE;
@@ -132,6 +133,28 @@ export class MeasureGesture {
     if (!this.active) return NONE;
     this.reset();
     return CANCEL;
+  }
+
+  /**
+   * The press is lost without a release (a second finger came down, the system took the touch). A
+   * measurement placed click by click waits between its clicks: it keeps its points and waits on,
+   * as if the press had never come. One a press holds (a drag) is dropped.
+   */
+  lose(): GestureResult {
+    if (!this.placing) return this.cancel();
+    this.pressedAt = null;
+    this.dragged = false;
+    return NONE;
+  }
+
+  /** Whether a ruler placed click by click is under way: Enter ends it, and Backspace takes a corner back. */
+  get placingRuler(): boolean {
+    return this.active && this.placing && this.shape === 'ruler';
+  }
+
+  /** How many points the measurement under way has placed: the first stays, the others can be taken back. */
+  get corners(): number {
+    return this.fixed.length;
   }
 
   /** A click while placing: on the last point it finishes; else it ends an area, or is a ruler's next corner. */

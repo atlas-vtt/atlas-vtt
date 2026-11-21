@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { acceptFrameMessage, installedMessage, postToFrame, readFrameMessage, statusMessage } from '../../../src/app/armarium/armariumMessages';
+import { acceptFrameMessage, clearTagsMessage, installedMessage, postToFrame, readFrameMessage, statusMessage, toggleTagMessage } from '../../../src/app/armarium/armariumMessages';
 import { requestFromParams } from '../../../src/app/armarium/armariumRequest';
 
 const UID = 'da0b742f-d1fc-4f2a-9b0f-300d7e45538e';
@@ -52,6 +52,61 @@ describe('messages from the Armarium page', () => {
     expect(readFrameMessage({ type: 'atlas-armarium:share', format: 1, extra: 1 })).toEqual({ type: 'atlas-armarium:share' });
     expect(readFrameMessage({ type: 'atlas-armarium:share', format: 2 })).toBeNull();
     expect(() => postToFrame(null, installedMessage([]))).not.toThrow();
+  });
+
+  it('reads what the page asks to share: a collection without `what`, an item kind with it, nothing it does not know', () => {
+    expect(installedMessage([], ['share', 'share-items'])).toMatchObject({ features: ['share', 'share-items'] });
+    for (const what of ['collection', 'statblock-template', 'system-preset', 'dice-set'] as const) {
+      expect(readFrameMessage({ type: 'atlas-armarium:share', format: 1, what })).toEqual({ type: 'atlas-armarium:share', what });
+    }
+    expect(readFrameMessage({ type: 'atlas-armarium:share', format: 1, what: 'map' })).toBeNull();
+    expect(readFrameMessage({ type: 'atlas-armarium:share', format: 1, what: 3 })).toBeNull();
+  });
+});
+
+describe('the store\'s tags from the Armarium page', () => {
+  const tags = {
+    type: 'atlas-armarium:tags',
+    format: 1,
+    groups: [
+      { id: 'genre', label: 'Genre', tags: [{ id: 'dark-fantasy', label: 'Dark fantasy', count: 3 }] },
+      { id: 'place', label: 'Place', tags: [{ id: 'forest', label: ' Forest ', count: 0 }, { id: 'dungeon', label: 'Dungeon', count: 1 }] },
+    ],
+    picked: ['forest'],
+  };
+  const withGroup = (group: unknown): unknown => ({ ...tags, groups: [group] });
+
+  it('reads groups, counts and picked tags, trimming labels and ignoring fields beyond the contract', () => {
+    expect(readFrameMessage({ ...tags, extra: true })).toEqual({
+      type: 'atlas-armarium:tags',
+      groups: [
+        { id: 'genre', label: 'Genre', tags: [{ id: 'dark-fantasy', label: 'Dark fantasy', count: 3 }] },
+        { id: 'place', label: 'Place', tags: [{ id: 'forest', label: 'Forest', count: 0 }, { id: 'dungeon', label: 'Dungeon', count: 1 }] },
+      ],
+      picked: ['forest'],
+    });
+  });
+
+  it.each([
+    ['no groups', { ...tags, groups: undefined }],
+    ['no picked list', { ...tags, picked: undefined }],
+    ['a picked tag that is not offered', { ...tags, picked: ['castle'] }],
+    ['a tag offered twice', withGroup({ id: 'g', label: 'G', tags: [{ id: 'a', label: 'A', count: 1 }, { id: 'a', label: 'A', count: 1 }] })],
+    ['an id that is no kebab-case id', withGroup({ id: 'g', label: 'G', tags: [{ id: 'Dark Fantasy', label: 'A', count: 1 }] })],
+    ['an empty label', withGroup({ id: 'g', label: 'G', tags: [{ id: 'a', label: '  ', count: 1 }] })],
+    ['a label too long', withGroup({ id: 'g', label: 'G', tags: [{ id: 'a', label: 'x'.repeat(81), count: 1 }] })],
+    ['a fractional count', withGroup({ id: 'g', label: 'G', tags: [{ id: 'a', label: 'A', count: 1.5 }] })],
+    ['a negative count', withGroup({ id: 'g', label: 'G', tags: [{ id: 'a', label: 'A', count: -1 }] })],
+    ['a group without tags', withGroup({ id: 'g', label: 'G' })],
+    ['too many groups', { ...tags, groups: Array.from({ length: 33 }, (_, i) => ({ id: `g${i}`, label: 'G', tags: [] })), picked: [] }],
+    ['too many tags', withGroup({ id: 'g', label: 'G', tags: Array.from({ length: 257 }, (_, i) => ({ id: `t${i}`, label: 'T', count: 0 })) })],
+  ])('ignores %s', (_case, data) => {
+    expect(readFrameMessage(data)).toBeNull();
+  });
+
+  it('answers presses in format 1', () => {
+    expect(toggleTagMessage('forest')).toEqual({ type: 'atlas-armarium:toggle-tag', format: 1, tag: 'forest' });
+    expect(clearTagsMessage()).toEqual({ type: 'atlas-armarium:clear-tags', format: 1 });
   });
 });
 

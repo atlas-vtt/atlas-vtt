@@ -21,6 +21,7 @@
 }
 
 .atlas-sound-music__body {
+  container: atlas-sound-music / inline-size;
   flex: 1;
   min-width: 0;
   display: grid;
@@ -68,6 +69,100 @@
     width: 100%;
     height: 100%;
   }
+}
+
+// The loop the GM set on the track: a band between its in and out, edged where the seam lies.
+.atlas-sound-music__loop {
+  position: absolute;
+  inset-block: 0;
+  left: var(--atlas-sound-loop-start, 0);
+  width: var(--atlas-sound-loop-width, 0);
+  border-inline: $border-width-m solid currentColor;
+  border-radius: $radius-s;
+  background: color-mix(in oklch, currentColor 14%, transparent);
+  pointer-events: none;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+// Its edges are grips: drag one along the wave to move the loop's in or out.
+.atlas-sound-music__loop-edge {
+  position: absolute;
+  inset-block: 0;
+  width: 12px;
+  border-radius: $radius-s;
+  cursor: ew-resize;
+  pointer-events: auto;
+  touch-action: none;
+
+  &--in {
+    left: -7px;
+  }
+
+  &--out {
+    right: -7px;
+  }
+
+  &:hover,
+  &:active {
+    background: color-mix(in oklch, currentColor 35%, transparent);
+  }
+}
+
+// Where the pointer is on the track: a hairline over the wave and the time it stands at beside it. Not state, so
+// the normal text's colour and not the accent the played part takes; it moves by transform alone and fades in.
+.atlas-sound-music__hover {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 0;
+  transform: translateX(var(--atlas-sound-hover-x, 0));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity $transition-fast $press-ease;
+
+  &[data-shown] {
+    opacity: 1;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    left: -0.5 * $border-width-l;
+    width: $border-width-l;
+    border-radius: $border-width-l;
+    background: var(--text-normal);
+    box-shadow: 0 0 0 $border-width-s var(--background-primary-alt);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.atlas-sound-music__hover-time {
+  position: absolute;
+  top: 0;
+  left: $spacing-xs + $border-width-s;
+  padding: $spacing-xs;
+  border-radius: $cap-radius;
+  background: var(--background-primary);
+  box-shadow: inset 0 0 0 $border-width-s $hairline, $shadow-sm;
+  color: var(--text-normal);
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-medium;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+// Where the wave's end leaves the time no room on the right, it stands on the line's left.
+.atlas-sound-music__hover[data-flip] .atlas-sound-music__hover-time {
+  left: auto;
+  right: $spacing-xs + $border-width-s;
 }
 
 // A card this narrow has room for its controls and the time, not the length as well.
@@ -121,6 +216,23 @@
   margin-top: $spacing-s;
   // Skip's press area ends inside the card.
   padding-inline-end: $spacing-xs;
+}
+
+// A card too narrow for the clock beside the controls (the DM screen in a narrow view) gives the clock a line of
+// its own above them: a squeezed clock ran out of its column under the controls.
+@container atlas-sound-music (max-width: 360px) {
+  .atlas-sound-music__clock {
+    grid-column: 1 / -1;
+  }
+
+  .atlas-sound-music__actions {
+    grid-row: 5;
+    justify-self: end;
+  }
+
+  .atlas-sound-music__body[data-list-open] .atlas-sound-music__actions {
+    grid-row: 6;
+  }
 }
 
 // How the list goes on is the card's secondary row: a step narrower than the transport.

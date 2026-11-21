@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { t } from '../../i18n';
 import { matchesMapHotkey } from '../../keyboard/mapHotkeys';
+import { CloseButton } from '../../packages/components/primitives/CloseButton';
 import { SegmentedControl, type SegmentedOption } from '../../packages/components/primitives/SegmentedControl';
+import { useCoarsePointer } from '../../platform/useCoarsePointer';
 import { SettingsService } from '../../services/SettingsService';
 import type { DMScreenPage } from '../../types/viewUIState';
 import { isShortcutScopeActive } from '../../utils/activeLeafGuard';
@@ -58,6 +61,7 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
   const page = useAtlasStore((state) => state.dmScreenPage);
   const setPage = useAtlasStore((state) => state.setDMScreenPage);
   const { app, view } = useAtlasUI();
+  const coarse = useCoarsePointer();
   const { statblocks, loading } = useDMScreenStatblocks(isOpen, app, { viewId: view?.viewId, mapPath, mapLoaded, isMapLoading, tokens });
   const { shown, scopeSwitch } = useFightStatblocks(statblocks, tokens);
   const [contentReady, setContentReady] = useState(false);
@@ -117,14 +121,20 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
         return;
       }
       if (e.defaultPrevented) return;
-      if (matchesMapHotkey(e, 'dashboard', SettingsService.forApp(app))) {
+      const settings = SettingsService.forApp(app);
+      if (matchesMapHotkey(e, 'dashboard', settings)) {
         e.preventDefault();
         handleClose();
+      } else if (matchesMapHotkey(e, 'soundPage', settings)) {
+        // The Sound page's key closes the screen from that page and turns to it from the other
+        e.preventDefault();
+        if (page === 'sound') handleClose();
+        else setPage('sound');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, handleClose, isNoteFocused, app, view]);
+  }, [isOpen, handleClose, isNoteFocused, app, view, page, setPage]);
 
   // Left and right change pages, as a game's shoulder buttons do; the keycaps beside the page control say so.
   // On the Sound page they always do, since nothing there takes the arrows for focus (owner, 2026-11-03);
@@ -157,9 +167,11 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
 
       <div className={`atlas-dm-screen atlas-dm-screen--pages ${closing ? 'is-closing' : contentReady ? 'is-visible' : ''}`}>
         <div className="atlas-dm-screen-header">
-          <kbd className="atlas-dm-screen-key" aria-hidden="true">←</kbd>
+          <kbd className="atlas-dm-screen-key" aria-hidden="true"><ArrowLeft /></kbd>
           <SegmentedControl className="atlas-dm-screen-pages" value={page} options={PAGES} onChange={setPage} ariaLabel={t('audio.screen.pages')} roving />
-          <kbd className="atlas-dm-screen-key" aria-hidden="true">→</kbd>
+          <kbd className="atlas-dm-screen-key" aria-hidden="true"><ArrowRight /></kbd>
+          {/* A finger has no Escape and no backdrop to press: the screen fills the view */}
+          {coarse && <CloseButton className="atlas-dm-screen-close" onClick={handleClose} aria-label={t('dashboard.closeScreen')} />}
         </div>
         <div className="atlas-dm-screen-stage" data-turning={leaving !== null || undefined}>
           {/* Stays mounted while hidden: the note's editor needs its own cleanup, and statblocks are not loaded twice. */}

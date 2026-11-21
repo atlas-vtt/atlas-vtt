@@ -842,7 +842,7 @@ div.player-dashboard-widget {
 // AddCharacterModal specific styling improvements
 .atlas-modal {
   width: 500px;
-  max-width: 90vw;
+  max-width: #{atlas-view-width(90)};
   
   // Improve form group spacing
   .atlas-form-group {

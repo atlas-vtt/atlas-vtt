@@ -76,6 +76,11 @@
   overflow-y: auto;
 }
 
+// The note rendered, where the workspace gave it no leaf of its own (`NoteContent`)
+.atlas-dm-note-rendered {
+  padding: $spacing-m;
+}
+
 // ── Picker ──────────────────────────────────────────────────────────────────
 
 .atlas-linked-note-picker {

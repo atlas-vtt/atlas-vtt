@@ -22,6 +22,8 @@ import { dice } from './dice';
 import { docs } from './docs';
 import { siteFrame } from './siteFrame';
 import { armarium } from './armarium';
+import { itemBundle } from './itemBundle';
+import { itemReview } from './itemReview';
 import { armariumFindings } from './armariumFindings';
 import { armariumListing } from './armariumListing';
 import { armariumUpload } from './armariumUpload';
@@ -70,6 +72,7 @@ import { search } from './search';
 import { senses } from './senses';
 import { sort } from './sort';
 import { tableTv } from './tableTv';
+import { table } from './table';
 import { glass } from './glass';
 import { toolbar } from './toolbar';
 import { toolbarEdit } from './toolbarEdit';
@@ -113,15 +116,21 @@ import { migration } from './migration';
 import { wall } from './wall';
 import { sceneLight } from './sceneLight';
 import { graphics } from './graphics';
+import { experimental } from './experimental';
 import { vision } from './vision';
 import { videoMap } from './videoMap';
 import { uvttFloors } from './uvttFloors';
 import { uvtt } from './uvtt';
+import { deviceFiles } from './deviceFiles';
+import { tabletDiag } from './tabletDiag';
 import { fog } from './fog';
+import { selection } from './selection';
 
 /** English, the source language: every key exists here, and other languages translate a subset of it. */
 export const en = {
   ...align,
+  ...deviceFiles,
+  ...tabletDiag,
   ...atlasLinks,
   ...am,
   ...assetGrid,
@@ -188,6 +197,7 @@ export const en = {
   ...senses,
   ...sort,
   ...tableTv,
+  ...table,
   ...glass,
   ...toolbar,
   ...toolbarEdit,
@@ -234,6 +244,7 @@ export const en = {
   ...wall,
   ...sceneLight,
   ...graphics,
+  ...experimental,
   ...vision,
   ...videoMap,
   ...uvttFloors,
@@ -244,4 +255,7 @@ export const en = {
   ...armariumUpload,
   ...armariumShare,
   ...account,
+  ...selection,
+  ...itemBundle,
+  ...itemReview,
 } as const;

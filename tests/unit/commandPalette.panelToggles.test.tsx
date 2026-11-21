@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MotionGlobalConfig } from 'framer-motion';
 import { create } from 'zustand';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
 
@@ -31,6 +32,10 @@ function createPanelStore() {
     setDiceLogOpen: (open) => set({ isDiceLogOpen: open }),
   }));
 }
+
+// Exits finish at once: jsdom never ends a transform animation.
+beforeAll(() => { MotionGlobalConfig.skipAnimations = true; });
+afterAll(() => { MotionGlobalConfig.skipAnimations = false; });
 
 beforeEach(() => {
   Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: vi.fn() });
@@ -67,8 +72,8 @@ describe('Space command menu panel toggles', () => {
     const onClose = vi.fn();
     render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={onClose} /></ViewStoreProvider>);
     const input = screen.getByPlaceholderText('Search commands…');
-    fireEvent.change(input, { target: { value: 'dice log' } });
-    const command = screen.getByRole('button', { name: /Open dice log/ });
+    fireEvent.change(input, { target: { value: 'table log' } });
+    const command = screen.getByRole('button', { name: /Open table log/ });
 
     expect(store.getState().isDiceLogOpen).toBe(false);
     fireEvent.click(command);
@@ -88,9 +93,26 @@ describe('Space command menu panel toggles', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Scene snapshots/ }));
     expect(screen.getByRole('heading', { name: 'Scene Snapshots' })).toBeTruthy();
-    expect(screen.queryByPlaceholderText('Search commands…')).toBeNull();
+    // The list leaves: inert and hidden from assistive technology while it fades out.
+    expect(screen.queryByRole('textbox')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Restore snapshot' }));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives the search field the keys again when Escape leaves a page opened from a search', async () => {
+    // In the map's leaf, as in Obsidian: the palette's keys work while it is the active leaf.
+    render(<div className="workspace-leaf mod-active"><ViewStoreProvider store={createPanelStore()}><CommandPalette isOpen onClose={vi.fn()} /></ViewStoreProvider></div>);
+    const input = screen.getByPlaceholderText('Search commands…');
+    input.focus();
+    fireEvent.change(input, { target: { value: 'grid' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(screen.getByRole('heading', { name: 'Grid Settings' })).toBeTruthy();
+    // The list has left, as it does once its fade is over: the field coming back is a new one.
+    await waitFor(() => expect(screen.queryByPlaceholderText('Search commands…')).toBeNull());
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    const field = await screen.findByRole('textbox');
+    await waitFor(() => expect(document.activeElement).toBe(field));
   });
 });

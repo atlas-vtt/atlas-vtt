@@ -1,0 +1,52 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+// The compact review of a single statblock template, game system or dice set.
+
+.atlas-modal.atlas-item-review {
+  width: min(440px, 100%);
+}
+
+.atlas-item-review {
+  &__item {
+    @include atlas-flex-row($gap: $spacing-m);
+    @include atlas-inset-surface;
+    padding: $spacing-m;
+  }
+
+  &__icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: $radius-m;
+    background: var(--background-modifier-hover);
+    color: var(--text-muted);
+
+    svg {
+      width: $icon-m;
+      height: $icon-m;
+    }
+  }
+
+  &__names {
+    @include atlas-flex-col($gap: $spacing-xs);
+    min-width: 0;
+  }
+
+  &__name {
+    overflow: hidden;
+    color: var(--text-normal);
+    font-size: $font-ui-medium;
+    font-weight: $font-weight-semibold;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__meta {
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+}

@@ -47,7 +47,7 @@
   right: auto;
   min-width: 100%;
   width: max-content;
-  max-width: min(360px, 90vw);
+  max-width: min(360px, #{atlas-view-width(90)});
 }
 
 // Wider than the room after the trigger's start: it starts from the trigger's end instead.

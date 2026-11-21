@@ -14,11 +14,14 @@ $shown-image-share: 0.9;
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.9);
-  z-index: 10000;
+  // Above the player window's curtain (z 10002, `player-window.scss`), so an image goes through it
+  z-index: 10003;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: grab;
+  // A finger pans the image; the window behind it never scrolls
+  touch-action: none;
   -webkit-user-select: none;
   user-select: none;
 
@@ -28,6 +31,28 @@ $shown-image-share: 0.9;
 
   &.is-leaving {
     pointer-events: none;
+  }
+
+  // With the curtain down there is no map behind the scrim, so the image's own colours fill the
+  // window instead: a blurred, dimmed copy that fades with the curtain (CURTAIN_DOWN_MS). Scaled
+  // past the window, since a blur fades its own edges to transparent. Static, so the blur is
+  // drawn once; only its opacity changes.
+  .atlas-image-display__backdrop {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: blur(48px) saturate(1.3) brightness(0.75);
+    transform: scale(1.2);
+    opacity: 0;
+    transition: opacity 400ms $transition-ease;
+    pointer-events: none;
+    -webkit-user-drag: none;
+  }
+
+  .atlas-player-window--curtain & .atlas-image-display__backdrop {
+    opacity: 0.6;
   }
 
   // The window as a table TV turns it (the body's --atlas-tv-rotation, PlayerWindowService):

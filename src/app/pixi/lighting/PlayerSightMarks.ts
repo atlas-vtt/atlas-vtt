@@ -28,16 +28,17 @@ interface Badge {
  * The GM's marks on tokens the players do not see now: a small badge in the pins' language on
  * the token's edge, an eye struck through for a token they do not perceive, a dashed circle for
  * one they only sense (its outline is all they get). The badges take the theme's colours and
- * scale like token UI. Every eye is a sprite of one white texture, tinted in the theme's ink,
- * made on first use and destroyed with the marks. Part of the GM's sight aids (`GmSightAids`).
+ * grow with their token, like its resize and rotate buttons. Every eye is a sprite of one white
+ * texture, tinted in the theme's ink, made on first use and destroyed with the marks. Part of
+ * the GM's sight aids (`GmSightAids`).
  */
 export class PlayerSightMarks {
   readonly view = new Container({ label: 'player-sight-marks', eventMode: 'none', interactiveChildren: false });
   private readonly badges = new Map<string, Badge>();
   private eye: Promise<Texture> | null = null;
 
-  /** Shows exactly `marks`, each badge `scale` world units per UI unit. */
-  sync(marks: readonly SightMark[], scale: number): void {
+  /** Shows exactly `marks`, each badge at its mark's scale. */
+  sync(marks: readonly SightMark[]): void {
     const colors = canvasBadgeColors();
     const wanted = new Set(marks.map((mark) => mark.tokenId));
     for (const [id, badge] of this.badges) {
@@ -57,7 +58,7 @@ export class PlayerSightMarks {
         this.badges.set(mark.tokenId, badge);
       }
       badge.view.position.set(mark.x, mark.y);
-      badge.view.scale.set(scale);
+      badge.view.scale.set(mark.scale);
     }
     this.view.visible = marks.length > 0;
   }

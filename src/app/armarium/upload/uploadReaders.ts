@@ -1,14 +1,17 @@
 import { isRecord } from '../../utils/guards';
+import { isArmariumFileUrl } from '../armariumUrls';
 import {
   CHECK_STAGES,
   KINDS,
   LICENCES,
+  LISTING_FORMATS,
   SUBMISSION_STATES,
   SYSTEMS,
   TAG_IDS,
   type CheckFinding,
   type CheckProgress,
   type ListingFields,
+  type ListingFormat,
   type ManifestSummary,
   type OwnListing,
   type SubmissionView,
@@ -46,6 +49,9 @@ function oneOf<T extends string>(value: unknown, values: readonly T[], where: st
 }
 
 const textOrNull = (value: unknown, where: string): string | null => (value === null || value === undefined ? null : text(value, where));
+
+/** A listing format; an answer from before items names none, which is a collection. */
+const formatOf = (value: unknown, where: string): ListingFormat => (value === null || value === undefined ? 'collection' : oneOf(value, LISTING_FORMATS, where));
 
 export function parseEligibility(value: unknown): UploadEligibility {
   const fields = record(value, 'eligibility');
@@ -97,7 +103,13 @@ function parseProgress(value: unknown): CheckProgress | null {
 function parseManifest(value: unknown): ManifestSummary | null {
   if (value === null || value === undefined) return null;
   const fields = record(value, 'manifest');
-  return { uid: text(fields.uid, 'manifest.uid'), version: count(fields.version, 'manifest.version', 1), name: text(fields.name, 'manifest.name'), notes: textOrNull(fields.notes, 'manifest.notes') };
+  return {
+    uid: text(fields.uid, 'manifest.uid'),
+    version: count(fields.version, 'manifest.version', 1),
+    name: text(fields.name, 'manifest.name'),
+    notes: textOrNull(fields.notes, 'manifest.notes'),
+    listingFormat: formatOf(fields.listingFormat, 'manifest.listingFormat'),
+  };
 }
 
 export function parseSubmission(value: unknown): SubmissionView {
@@ -120,6 +132,12 @@ export function parseSubmission(value: unknown): SubmissionView {
 }
 
 /** One listing of My uploads, or null for an entry Atlas cannot read (the others still count). */
+/** A listing's cover URL from `/mine`, where it lies on the Armarium's file hosts; anything else is no cover. */
+function coverUrlOf(cover: unknown): string | null {
+  const url = isRecord(cover) ? cover.url : undefined;
+  return typeof url === 'string' && isArmariumFileUrl(url) ? url : null;
+}
+
 export function parseOwnListing(value: unknown): OwnListing | null {
   try {
     const fields = record(value, 'mine.listing');
@@ -128,8 +146,10 @@ export function parseOwnListing(value: unknown): OwnListing | null {
     return {
       uid: text(fields.uid, 'mine.listing.uid'),
       slug: text(fields.slug, 'mine.listing.slug'),
+      format: formatOf(fields.format, 'mine.listing.format'),
       fields: fields.fields === null || fields.fields === undefined ? null : parseListingFields(fields.fields, 'mine.listing.fields'),
       newestVersion: numbers.length === 0 ? null : Math.max(...numbers),
+      coverUrl: coverUrlOf(fields.cover),
     };
   } catch {
     return null;

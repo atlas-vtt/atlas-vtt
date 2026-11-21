@@ -1,4 +1,5 @@
 import type { HoverText } from './mapFeatureText';
+import { visibleViewport } from '../../host/visibleViewport';
 import './map-feature-label.scss';
 import { portalHost } from '../../host/portalHost';
 
@@ -100,8 +101,9 @@ export class MapFeatureLabel {
     const { offsetWidth: width, offsetHeight: height } = this.el;
     const right = this.clientX + POINTER_GAP;
     const below = this.clientY + POINTER_GAP;
-    const x = right + width > this.win.innerWidth - EDGE ? this.clientX - POINTER_GAP - width : right;
-    const y = below + height > this.win.innerHeight - EDGE ? this.clientY - POINTER_GAP - height : below;
+    const seen = visibleViewport(this.win);
+    const x = right + width > seen.right - EDGE ? this.clientX - POINTER_GAP - width : right;
+    const y = below + height > seen.bottom - EDGE ? this.clientY - POINTER_GAP - height : below;
     this.el.style.left = `${Math.max(EDGE, x)}px`;
     this.el.style.top = `${Math.max(EDGE, y)}px`;
   }

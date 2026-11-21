@@ -64,12 +64,12 @@ export function DiceRollLog({ isOpen, onClose }: DiceRollLogProps): React.ReactE
     };
 
     const timer = window.setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('pointerdown', handleClickOutside);
     }, 0);
 
     return () => {
       window.clearTimeout(timer);
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('pointerdown', handleClickOutside);
     };
   }, [isOpen, isPinned, onClose]);
 

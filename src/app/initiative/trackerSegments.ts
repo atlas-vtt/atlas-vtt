@@ -1,8 +1,8 @@
 import type { TokenEntity } from '../types';
 import type { InitiativeEntry } from '../types/initiativeTypes';
-import { COLLAPSED_CARDS } from './initiativeLayout';
-import { firstCards, listSegments, type ListSegment } from './listSegments';
-import { sideOf, type ListedSide } from './sides';
+import { listSegments, type ListSegment } from './listSegments';
+import type { ListedSide } from './sides';
+import { entrySide } from './party';
 
 /** What the GM's tracker draws its list by. */
 export interface TrackerListOptions {
@@ -13,8 +13,6 @@ export interface TrackerListOptions {
   round: number;
   /** The GM's choice: the list starts at the turn during a fight. */
   fromTurn: boolean;
-  /** Only the turn and the next combatants, which start at the turn whatever `fromTurn` says. */
-  collapsed: boolean;
 }
 
 /**
@@ -27,16 +25,15 @@ export function trackerSegments(
   options: TrackerListOptions,
 ): ListSegment<InitiativeEntry>[] {
   const known = options.sides.map((side) => side.id);
-  const segments = listSegments(entries, {
+  return listSegments(entries, {
     bySides: options.bySides,
     sides: options.sides,
-    sideOf: (entry) => sideOf(tokens[entry.tokenId], known),
+    sideOf: (entry) => entrySide(entry, tokens, known),
     delayed: (entry) => entry.delayed === true,
     fightRuns: options.fightRuns,
     round: options.round,
     turnAt: entries.filter((entry) => !entry.delayed).findIndex((entry) => entry.isActive),
-    fromTurn: options.fromTurn || options.collapsed,
+    fromTurn: options.fromTurn,
     emptySides: true,
   });
-  return options.collapsed ? firstCards(segments, COLLAPSED_CARDS) : segments;
 }

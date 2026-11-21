@@ -9,11 +9,14 @@ $snapshot-stroke: color-mix(in oklch, var(--mono-100) 10%, transparent);
 $snapshot-stroke-hover: color-mix(in oklch, var(--mono-100) 24%, transparent);
 $snapshot-ease: $transition-ease-out;
 
+// What the page keeps of itself in a view shorter than its clearance: its header and a row of cards.
+$snapshots-min-height: 240px;
+
 // Tall enough for four rows of three cards before the list scrolls, and no
 // divider under the header: the grid sits one gap below the title.
 .atlas-command-palette-container--expanded.atlas-command-palette-container--scene-snapshots {
   height: 760px;
-  max-height: calc(100vh - 160px);
+  max-height: max(#{$snapshots-min-height}, calc(#{atlas-view-height()} - 160px));
 
   .atlas-command-palette-panel-header {
     border-bottom: none;

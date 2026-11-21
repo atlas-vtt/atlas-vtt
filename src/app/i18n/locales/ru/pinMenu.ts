@@ -7,7 +7,7 @@ export const pinMenu: Translation = {
   'pinMenu.showName': 'Показывать название',
   'pinMenu.rename': 'Переименовать…',
   'pinMenu.renameTitle': 'Название пина',
-  'pinMenu.rollEncounter': 'Бросить стычку',
+  'pinMenu.rollEncounter': 'Бросить столкновение',
   'pinMenu.openOnLevel': 'Открывается на уровне',
   'pinMenu.levelAsLeft': 'Последний показанный уровень',
 };

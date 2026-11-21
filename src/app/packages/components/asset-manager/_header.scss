@@ -77,3 +77,16 @@
 .atlas-am-toolbar-center {
   justify-self: start;
 }
+
+// A window choosing a map names what the map is for where the tabs stand (`MapPick`).
+.atlas-am-pick-title {
+  @include atlas-truncate;
+  margin: 0;
+  font-size: $font-ui-medium;
+  font-weight: $font-weight-semibold;
+  color: var(--text-normal);
+}
+
+.atlas-am-pick-none {
+  flex-shrink: 0;
+}

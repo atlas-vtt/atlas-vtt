@@ -81,6 +81,26 @@
   }
 }
 
+/* Where Atlas marks the pointer as coarse (`data-atlas-pointer`), the disc itself grows to 28 px inside the same 44 px
+ * thumb, so it shows under a finger; the root then reaches 8 px past the track at each end. */
+body[data-atlas-pointer='coarse'] .slider-root {
+  width: calc(100% + 16px);
+  margin-inline: -8px;
+}
+
+body[data-atlas-pointer='coarse'] .slider-track {
+  margin-inline: 8px;
+}
+
+body[data-atlas-pointer='coarse'] .slider-thumb {
+  width: 44px;
+  height: 44px;
+}
+
+body[data-atlas-pointer='coarse'] .slider-thumb::before {
+  inset: 8px;
+}
+
 .slider-thumb[data-disabled] {
   pointer-events: none;
   opacity: 0.5;

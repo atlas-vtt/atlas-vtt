@@ -17,6 +17,7 @@ import type { StatblockRole } from '../model/roleTypes';
 import type { TemplateId } from '../model/templateTypes';
 import { rowDetail, templateRows, usageText, type TemplateRow } from './templateRows';
 import { useTemplateNoteCounts } from './useTemplateNoteCounts';
+import { itemShareEntries } from '../../armarium/share/openItemShare';
 import { t } from '../../i18n';
 import './template-list.scss';
 
@@ -45,7 +46,7 @@ interface Deleting {
 /**
  * The Templates of the Statblocks tab (§9): the library's templates with how
  * many statblocks use them, the roles' first; New template opens the gallery,
- * and each row opens, duplicates or deletes its template. The library belongs
+ * and each row opens, duplicates, shares, exports or deletes its template. The library belongs
  * to the vault, so every collection lists the same templates.
  */
 export function TemplateList(props: TemplateListProps): React.JSX.Element {
@@ -69,6 +70,8 @@ export function TemplateList(props: TemplateListProps): React.JSX.Element {
       ? [{ type: 'item' as const, label: t('statblockEditor.open'), icon: 'pencil', disabled: editBlocked !== null, onClick: () => onEditTemplate(entry.template.id) }]
       : []),
     { type: 'item', label: t('statblockEditor.duplicate'), icon: 'copy', onClick: () => duplicate(entry) },
+    // Built-ins are every Atlas's already: only the vault's own templates are shared.
+    ...(entry.builtIn ? [] : itemShareEntries(app, { kind: 'statblock-template', id: entry.template.id, name: entry.name }, root?.doc)),
     {
       type: 'item', label: t('statblockEditor.deleteMenu'), icon: 'trash-2', destructive: true, disabled: entry.builtIn,
       onClick: () => setDeleting({ entry, usage: templateUsage(app, entry.template.id) }),

@@ -3,6 +3,8 @@ import type { Message } from '../../types';
 export const token = {
   'token.unknownCreature': 'Unknown Creature',
   'token.clickToName': 'Click to name',
+  'token.size.tiny': 'Tiny (0.5×0.5)',
+  'token.size.small': 'Small (0.75×0.75)',
   'token.size.medium': 'Medium (1×1)',
   'token.size.large': 'Large (2×2)',
   'token.size.huge': 'Huge (3×3)',
@@ -26,4 +28,8 @@ export const token = {
   'token.reset': 'Reset',
   'token.placeHint': 'Click to place · Esc to cancel',
   'token.placeHintMany': 'Click to place all · Shift-click to place one at a time · Esc to cancel',
+  'token.placing': 'Placing tokens',
+  'token.placeOneByOne': 'One by one',
+  'token.placePrevious': 'Previous token',
+  'token.placeNext': 'Next token',
 } as const satisfies Record<string, Message>;

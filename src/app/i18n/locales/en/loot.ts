@@ -56,6 +56,7 @@ export const loot = {
   'loot.tree.tickAll': 'Tick every view of this base.',
   'loot.tree.untickAll': 'Untick every view of this base.',
   'loot.openPlayerView': 'Open the player view to show loot to your players.',
+  'loot.openPlayerView.mobile': 'Start an online table to show loot to your players.',
   'loot.query.note': 'Atlas reads this view for its loot roller. Open the loot roller on a map to roll on it.',
   'loot.query.name': 'Atlas loot',
   'loot.unreadable': 'Could not be read',

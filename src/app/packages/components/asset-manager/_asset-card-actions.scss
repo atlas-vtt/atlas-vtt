@@ -54,9 +54,11 @@
     height: $icon-s;
   }
 
-  &.btn:hover {
-    background: var(--background-primary);
-    color: var(--text-normal);
+  @media (hover: hover) {
+    &.btn:hover {
+      background: var(--background-primary);
+      color: var(--text-normal);
+    }
   }
 
   .atlas-asset-grid-cell:hover &.btn,

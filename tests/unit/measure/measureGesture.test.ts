@@ -168,3 +168,38 @@ describe('MeasureGesture, placed click by click', () => {
     expect(gesture.measurement?.points).toEqual([at(0), at(140)]);
   });
 });
+
+describe('MeasureGesture, a press that is lost', () => {
+  it('keeps a ruler placed click by click, with its corners: the lost press placed none', () => {
+    const gesture = new MeasureGesture();
+    click(gesture, 0);
+    click(gesture, 70);
+    // The first finger of two that move the map: its press came, its release never does.
+    gesture.press(at(300), at(300));
+    expect(gesture.lose()).toEqual({ kind: 'none' });
+    expect(gesture.placingRuler).toBe(true);
+    expect(gesture.corners).toBe(2);
+    expect(gesture.release(at(300))).toEqual({ kind: 'none' });
+    click(gesture, 140);
+    expect(gesture.finish()).toEqual({ kind: 'finish', measurement: { shape: 'ruler', points: [at(0), at(70), at(140)] } });
+  });
+
+  it('drops a measurement its press holds: a drag, and a first press not yet released', () => {
+    const dragged = new MeasureGesture();
+    dragged.begin('ruler', at(0), at(0));
+    dragged.move(at(70), at(70));
+    expect(dragged.lose()).toEqual({ kind: 'cancel' });
+    expect(dragged.active).toBe(false);
+    const pressed = new MeasureGesture();
+    pressed.begin('circle', at(0), at(0));
+    expect(pressed.lose()).toEqual({ kind: 'cancel' });
+  });
+
+  it('says which ruler waits for a corner: an area ends with its second click and has no corners to take back', () => {
+    const area = new MeasureGesture();
+    area.begin('circle', at(0), at(0));
+    area.release(at(0));
+    expect(area.placingRuler).toBe(false);
+    expect(new MeasureGesture().placingRuler).toBe(false);
+  });
+});

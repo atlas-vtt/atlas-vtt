@@ -71,6 +71,11 @@ $dock-end-radius: $dock-radius - $border-width-m - $dock-inset;
     }
   }
 
+  // A finger that rests on a kind drags it onto the card (`PressPointerSensor`), which needs its moves.
+  .atlas-te-dock__add {
+    touch-action: none;
+  }
+
   .atlas-te-dock__divider {
     width: $dock-button - 2 * $spacing-xs;
     height: $border-width-s;

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { visibleViewport } from '../host/visibleViewport';
 import { createPortal } from 'react-dom';
 import { Button } from '../packages/components/primitives/button';
 import { useAtlasSettings } from '../keyboard/useMapHotkeys';
@@ -59,18 +60,19 @@ function TutorialCard({ settings, id, steps, label = t('tour.label'), action, ro
     else if (event.key === 'ArrowLeft' && at > 0) { event.preventDefault(); setIndex(at - 1); }
   };
   // Screenshots need room to be read.
-  const width = Math.min(step.image ? 440 : 360, window.innerWidth - 32);
+  const seen = visibleViewport(window);
+  const width = Math.min(step.image ? 440 : 360, seen.right - 32);
   const height = card.current?.offsetHeight ?? 240;
   const placement: React.CSSProperties = rect
-    ? { width, ...placeTutorialCard(rect, { width, height }, { width: window.innerWidth, height: window.innerHeight }) }
-    : { width, left: (window.innerWidth - width) / 2, top: Math.max(16, (window.innerHeight - height) / 2) };
+    ? { width, ...placeTutorialCard(rect, { width, height }, { width: seen.right, height: seen.bottom }) }
+    : { width, left: (seen.right - width) / 2, top: Math.max(16, (seen.bottom - height) / 2) };
   return createPortal(
     <div className="atlas-vtt-plugin atlas-vtt-root atlas-onboarding-overlay">
       <div
         className={`atlas-onboarding-spotlight${rect ? '' : ' atlas-onboarding-spotlight--none'}`}
         style={rect
           ? { left: rect.left - 4, top: rect.top - 4, width: rect.width + 8, height: rect.height + 8 }
-          : { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 }}
+          : { left: seen.right / 2, top: seen.bottom / 2, width: 0, height: 0 }}
       />
       <div ref={card} className="atlas-onboarding-card" style={placement} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={bodyId} onKeyDown={onKeyDown}>
         {step.image && <img className="atlas-onboarding-image" src={step.image.src} alt={step.image.alt} />}

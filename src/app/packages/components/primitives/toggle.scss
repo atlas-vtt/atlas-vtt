@@ -5,7 +5,9 @@
 // $surface-inset inside it (padding and border), as the switch stands inside a bar, its corner
 // concentric with the switch's ($control-inset-radius). Places only ever change the size, never the corners, so
 // the switch reads the same in the toolbar, a menu, a popover or a line of text; a size too small
-// for those radii rounds into a capsule by itself. The focus ring takes `.atlas-toggle`'s radius.
+// for those radii rounds into a capsule by itself. It shows no focus ring: Atlas shows no keyboard focus anywhere.
+// The three sizes are custom properties: a coarse pointer gives each a larger one of the same proportion
+// (`_coarse-pointer.scss`), the radii staying on the scale.
 $toggle-gap: $surface-inset;
 
 /// A switch `$width` × `$height` (either may be a `calc()`), its thumb a square $toggle-gap inside it.
@@ -29,8 +31,16 @@ $toggle-gap: $surface-inset;
   position: relative;
   cursor: pointer;
   border-radius: $radius-m;
-  @include atlas-focus-ring;
-  @include atlas-toggle-size(60px, 40px);
+
+  @include atlas-toggle-size(var(--atlas-toggle-m-width, 60px), var(--atlas-toggle-m-height, 40px));
+
+  // Under a finger a switch smaller than a target takes one around it; its look stays its own.
+  @include atlas-coarse-hit($positioned: true);
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
 }
 
 // Kept in place and focusable (a tooltip says why), dimmed and inert.
@@ -60,13 +70,15 @@ $toggle-gap: $surface-inset;
 }
 
 // Under the pointer the track deepens a step, on and off alike, as Atlas' other controls light up.
-.atlas-toggle:not(.atlas-toggle--disabled):hover {
-  .atlas-toggle__switch--off {
-    background-color: color-mix(in oklch, var(--background-secondary-alt), var(--text-normal) 12%);
-  }
+@media (hover: hover) {
+  .atlas-toggle:not(.atlas-toggle--disabled):hover {
+    .atlas-toggle__switch--off {
+      background-color: color-mix(in oklch, var(--background-secondary-alt), var(--text-normal) 12%);
+    }
 
-  .atlas-toggle__switch--on {
-    background-color: color-mix(in oklch, var(--interactive-accent) 86%, black);
+    .atlas-toggle__switch--on {
+      background-color: color-mix(in oklch, var(--interactive-accent) 86%, black);
+    }
   }
 }
 
@@ -93,12 +105,12 @@ $toggle-gap: $surface-inset;
 
 // The small switch: as tall as a small control, with no icon to read as a button.
 .atlas-toggle--s {
-  @include atlas-toggle-size(36px, 20px);
+  @include atlas-toggle-size(var(--atlas-toggle-s-width, 36px), var(--atlas-toggle-s-height, 20px));
 }
 
 // The smallest, for a switch in a line of text: no taller than the line.
 .atlas-toggle--xs {
-  @include atlas-toggle-size(28px, 16px);
+  @include atlas-toggle-size(var(--atlas-toggle-xs-width, 28px), var(--atlas-toggle-xs-height, 16px));
 }
 
 // A small switch with its text after it (`ToggleLabel`); the text toggles it as well.

@@ -1,0 +1,35 @@
+import type { Translation } from '../../types';
+
+export const lpv = {
+  "lpv.initiativeRows": "Iniziativa orizzontale",
+  "lpv.initiativeRowsHint": "La lista di iniziativa dei giocatori forma una riga attraverso lo schermo invece di una colonna sul lato, per uno schermo appoggiato sul tavolo.",
+  "lpv.initiativeMirrored": "Iniziativa speculare",
+  "lpv.initiativeMirroredHint": "Una seconda lista di iniziativa sul lato opposto dello schermo, capovolta, così anche i giocatori dall'altra parte del tavolo possono leggerla.",
+  "lpv.turnDim": "Oscura il tavolo invece dell’avviso del turno",
+  "lpv.turnDimHint": "Un nuovo turno oscura il tavolo per la durata dell’avviso invece di mostrarlo, mentre le liste di iniziativa restano illuminate, così le schede che avanzano risaltano. L’inizio e la fine di un combattimento mantengono i loro avvisi.",
+  "lpv.initiativeMaxCards": "Schede mostrate nell’iniziativa",
+  "lpv.initiativeMaxCardsAll": "Tutte",
+  'lpv.view4kHint': 'Su un televisore 4K o uno schermo ultrawide, ogni pixel viene renderizzato alla risoluzione dello schermo anziché ingrandire un’immagine a 1440p. Il carico grafico della vista giocatori può aumentare fino a 2,25 volte. Solo su questo dispositivo.',
+  "lpv.alreadyOpen": "La finestra giocatori è già aperta",
+
+  "lpv.notePreviews": "Anteprime delle note",
+  "lpv.notePreviewsHint": "Le anteprime delle note non vengono condivise con la finestra giocatori.",
+  "lpv.openWindow": "Apri finestra giocatori",
+  "lpv.showCursors": "Mostra i puntatori di tutti",
+  "lpv.showDiceRolls": "Mostra tiri dei dadi",
+  "lpv.showInitiative": "Mostra pannello dell’iniziativa",
+  "lpv.initiativePulse": "Bordo del turno pulsante",
+  "lpv.initiativePulseHint": "Il bordo del combattente di turno pulsa invece di restare fermo.",
+  "lpv.initiativeScale": "Dimensione dell’iniziativa",
+  "lpv.initiativeScaleValue": "{percent}%",
+  "lpv.turnBannerAtLists": "Avviso del turno sulle liste di iniziativa",
+  "lpv.turnBannerAtListsHint": "L’avviso del turno compare appena sopra ogni lista di iniziativa, ruotato con essa, invece che al centro del tavolo.",
+  "lpv.showWidgets": "Mostra widget",
+
+  "lpv.shared": "Locale e online",
+  "lpv.playerWindow": "Finestra giocatori",
+  "lpv.online": "Gioco online",
+  "lpv.playersDraw": "I giocatori possono disegnare",
+  "lpv.playersDrawHint": "I giocatori online ricevono un proprio strumento Disegno. Puoi modificare e cancellare ciò che disegnano.",
+  "lpv.view4k": "Renderizza fino a 4K",
+} satisfies Translation;

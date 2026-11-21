@@ -57,11 +57,13 @@ $controls-end-radius: atlas-panel-inset-radius-value($controls-inset, $control *
   bottom: calc(100% - #{$spacing-s} + #{$spacing-xs});
   padding: $controls-inset;
   cursor: grab;
+  // A finger moves the window by them; the statblock below scrolls
+  touch-action: none;
   opacity: 0;
   pointer-events: none;
   transition: opacity $transition-fast $transition-ease;
 
-  @media (hover: none) {
+  @include atlas-hover-reveal {
     opacity: 1;
     pointer-events: auto;
   }

@@ -14,10 +14,11 @@ vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
 }));
 
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
-  useViewStoreHook: () => ({ getState: () => ({}) }),
+  useViewStoreHook: () => ({ getState: () => ({}), subscribe: () => () => undefined }),
   useAtlasStore: (selector: (state: any) => unknown) => selector({
     objects: { tokens: {} },
     tokenSettings: { showInstanceBadges: true },
+    selectedIds: [] as string[],
   }),
 }));
 

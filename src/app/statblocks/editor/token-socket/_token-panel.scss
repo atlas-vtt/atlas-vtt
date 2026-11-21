@@ -13,7 +13,7 @@
     right: var(--atlas-sb-socket-right, 0);
     bottom: var(--atlas-sb-socket-bottom, auto);
     z-index: $z-popover;
-    width: min(#{$panel-width}, calc(100vw - 2 * #{$spacing-s}));
+    width: min(#{$panel-width}, calc(#{atlas-view-width()} - 2 * #{$spacing-s}));
     translate: var(--atlas-keep-in-view-x);
   }
 

@@ -29,6 +29,8 @@ export interface MoveContext {
   readonly walls: MoveWalls | null;
   /** Whether a token that fights may not move now, for it does not hold the turn (`movesOutOfTurn`); none are without. */
   outOfTurn?(tokenId: string): boolean;
+  /** How far a drop from `from` to `to` moves the token, in game units, where the map counts movement per turn; null (or unset) where nothing is counted. */
+  turnMove?(tokenId: string, from: Point, to: Point): number | null;
 }
 
 export type MoveVerdict =

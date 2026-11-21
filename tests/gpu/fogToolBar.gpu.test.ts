@@ -167,7 +167,7 @@ describe('the fog tool\'s bars above the toolbar', () => {
     expect(track.right).toBeLessThanOrEqual(size.right - 8);
 
     // A press outside the open menu closes it, as on any other control of the bar.
-    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
     await vi.waitFor(() => expect(menus()).toHaveLength(0));
     act(() => button('More').click());
     expect(menus()).toHaveLength(1);

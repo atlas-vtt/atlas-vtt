@@ -17,6 +17,8 @@ export class GlobalAssetManagerService {
   private pendingImport: ExternalImport | undefined;
   /** Raised by every request for the Armarium while open; 0 opens the library. */
   private armariumRequest = 0;
+  /** The Armarium page the newest request asked for (a listing a share just published); the store's front where none. */
+  private armariumPage: string | undefined;
 
   constructor(app: App) {
     this.app = app;
@@ -43,10 +45,11 @@ export class GlobalAssetManagerService {
     this.render(this.root, true);
   }
 
-  /** Shows the Armarium in the open window, which stays mounted, or in one opened for it. */
-  openArmarium(): void {
+  /** Shows the Armarium in the open window, which stays mounted, or in one opened for it: its front, or `page`. */
+  openArmarium(page?: string): void {
     if (!this.isOpen || !this.root) this.open();
     this.armariumRequest += 1;
+    this.armariumPage = page;
     if (this.root) this.render(this.root, true);
   }
 
@@ -79,7 +82,8 @@ export class GlobalAssetManagerService {
             ...(onExitComplete ? { onExitComplete } : {}),
             ...(this.initialTab ? { initialTab: this.initialTab } : {}),
             ...(this.pendingImport ? { pendingImport: this.pendingImport } : {}),
-            ...(this.armariumRequest > 0 ? { armariumRequest: this.armariumRequest } : {})
+            ...(this.armariumRequest > 0 ? { armariumRequest: this.armariumRequest } : {}),
+            ...(this.armariumPage ? { armariumPage: this.armariumPage } : {})
           })
         })
       })
@@ -96,6 +100,7 @@ export class GlobalAssetManagerService {
     this.initialTab = undefined;
     this.pendingImport = undefined;
     this.armariumRequest = 0;
+    this.armariumPage = undefined;
     if (!root) {
       container?.remove();
       return;

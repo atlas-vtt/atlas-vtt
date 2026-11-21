@@ -6,7 +6,9 @@ import { useSceneTabStore } from '../hooks/useSceneTabStore';
 import { useTabStripOverflow } from '../hooks/useTabStripOverflow';
 import { useTabReorderDrag } from '../hooks/useTabReorderDrag';
 import type { SceneTab } from '../../types/sceneTabTypes';
+import { lastPointerWasTouch } from '../../packages/components/primitives/lastInput';
 import { LabelTooltip, TooltipProvider } from '../../packages/components/primitives/tooltip';
+import { openContextMenuGlobal, type ContextMenuEntry } from '../root/ContextMenuContext';
 import { SceneTabProcessing } from './SceneTabProcessing';
 import './scene-tab-bar.scss';
 import { t } from '../../i18n';
@@ -16,7 +18,7 @@ interface SceneTabBarProps {
   onCloseTab: (tabId: string) => void;
   onAddTab: () => void;
   onPresentTab: (tabId: string) => void;
-  /** Moves a tab to another place in the bar, by drag. */
+  /** Moves a tab to another place in the bar: by a mouse's drag, or from the menu a long press opens. */
   onMoveTab: (tabId: string, toIndex: number) => void;
   /** The tab players are shown, whether or not the player window is open; null while none is. */
   presentedTabId?: string | null;
@@ -54,6 +56,17 @@ function TabActionButton({ icon: Icon, label, end, isActive, onClick }: TabActio
       </button>
     </LabelTooltip>
   );
+}
+
+/**
+ * A tab's menu under a finger, which scrolls the strip where a mouse drags a tab along it: the
+ * tab moves one place to either side, and the row that has nowhere to go stays, disabled.
+ */
+export function sceneTabMoveEntries(index: number, count: number, moveTo: (toIndex: number) => void): ContextMenuEntry[] {
+  return [
+    { type: 'item', label: t('tabs.moveLeft'), icon: 'arrow-left', disabled: index <= 0, onClick: () => moveTo(index - 1) },
+    { type: 'item', label: t('tabs.moveRight'), icon: 'arrow-right', disabled: index >= count - 1, onClick: () => moveTo(index + 1) },
+  ];
 }
 
 export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, onMoveTab, presentedTabId = null, onShowAllTabs }: SceneTabBarProps): React.ReactElement | null {
@@ -99,6 +112,12 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, o
                 tabIndex={0}
                 className={cn('atlas-scene-tab', stateClass, isPresented && 'atlas-scene-tab--presented')}
                 onPointerDown={(e) => startDrag(e, tab.id)}
+                onContextMenu={(e) => {
+                  // A long press: a mouse reorders by dragging, and its right-click is left as it was.
+                  if (!lastPointerWasTouch() || tabs.length < 2) return;
+                  e.preventDefault();
+                  openContextMenuGlobal(sceneTabMoveEntries(tabs.indexOf(tab), tabs.length, (toIndex) => onMoveTab(tab.id, toIndex)), { x: e.clientX, y: e.clientY });
+                }}
                 onClick={() => onSwitchTab(tab.id)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {

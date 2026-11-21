@@ -1,4 +1,6 @@
 import { App } from 'obsidian';
+import { initiativeScaleOf } from './playerInitiativeList';
+import { turnBannerScaleFor } from '../initiative/banner/turnBannerElement';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import type { SettingsService } from './SettingsService';
@@ -27,6 +29,7 @@ import { PlayerSceneFade } from './playerSceneFade';
 import { watchPlayerWindowDisplay } from './playerWindowDisplay';
 import { keepPlayerWindowAwake } from './playerWindowThrottling';
 import { PlayerMirrorFallback } from './playerMirrorFallback';
+import { isDesktopApp } from '../platform/desktopOnly';
 
 /** Scopes the rules in `player-window.scss` to the popout document. */
 const PLAYER_WINDOW_BODY_CLASS = 'atlas-player-window';
@@ -467,9 +470,11 @@ export class PlayerWindowService {
 
   /**
    * Opens the player window's leaf in a popout (or reuses the one there is) on `scene`; the
-   * presenter then attaches it to the view that holds the scene. Null when Obsidian gave no player view.
+   * presenter then attaches it to the view that holds the scene. Null when Obsidian gave no player view,
+   * and on mobile, which has no second window to open.
    */
   public static async openLeaf(app: App, scene: PresentedScene): Promise<LocalPlayerView | null> {
+    if (!isDesktopApp()) return null;
     const leaf = app.workspace.getLeavesOfType(LOCAL_PLAYER_VIEW_TYPE)[0] ?? app.workspace.openPopoutLeaf();
     await leaf.setViewState({ type: LOCAL_PLAYER_VIEW_TYPE, state: { tabId: scene.tabId, filePath: scene.filePath, ...(scene.levelId ? { levelId: scene.levelId } : {}), frozen: false } });
     return leaf.view instanceof LocalPlayerView ? leaf.view : null;
@@ -619,8 +624,15 @@ export class PlayerWindowService {
       const applyTurn = (): void => {
         const tv = this.tableTv();
         if (tv) applyTableTvLook(body, overlayLayer, tv);
+        // How large the initiative lists are drawn (the player view's setting), and the turn banner (the window's size)
+        const { initiativeScale } = this.settingsService.getLocalPlayerViewSettings();
+        overlayLayer.style.setProperty('--atlas-player-initiative-scale', String(initiativeScaleOf(initiativeScale)));
+        const win = this.playerWindow;
+        if (win) overlayLayer.style.setProperty('--atlas-player-turn-banner-scale', String(turnBannerScaleFor(win.innerWidth, win.innerHeight)));
       };
       applyTurn();
+      const playerWindow = this.playerWindow;
+      playerWindow.addEventListener('resize', applyTurn);
       this.sceneOverlays.forEach((overlay) => overlay.mount(overlayLayer));
       this.settingsUnsubscribe?.();
       // Player view settings decide which layers players see
@@ -636,6 +648,7 @@ export class PlayerWindowService {
       this.settingsUnsubscribe = () => {
         unsubscribeSettings();
         stopRules();
+        playerWindow.removeEventListener('resize', applyTurn);
       };
 
       // Create freeze indicator

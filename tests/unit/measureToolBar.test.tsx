@@ -55,13 +55,13 @@ describe('MeasureToolBar', () => {
     const store = renderBar();
     const gone = (): Promise<void> => waitFor(() => expect(screen.queryByRole('toolbar')).toBeNull());
     modesBar();
-    act(() => store.setState({ isToolbarEditing: true }));
+    act(() => { store.setState({ isToolbarEditing: true }); });
     await gone();
-    act(() => store.setState({ isToolbarEditing: false, isMapLoading: true }));
+    act(() => { store.setState({ isToolbarEditing: false, isMapLoading: true }); });
     await gone();
-    act(() => store.setState({ isMapLoading: false, activeTool: 'move' }));
+    act(() => { store.setState({ isMapLoading: false, activeTool: 'move' }); });
     await gone();
-    act(() => store.setState({ activeTool: 'measure' }));
+    act(() => { store.setState({ activeTool: 'measure' }); });
     modesBar();
   });
 
@@ -91,13 +91,13 @@ describe('MeasureToolBar', () => {
     expect(button('Keep').classList.contains('atlas-tool-bar__choice')).toBe(true);
     expect(button('Ruler').classList.contains('atlas-tool-bar__choice')).toBe(false);
     // A key that switched Keep shows in the bar.
-    act(() => store.getState().setMeasureTool({ keep: false }));
+    act(() => { store.getState().setMeasureTool({ keep: false }); });
     expect(pressed('Keep')).toBe(false);
   });
 
   it('stays as it is in the session view, where measuring is the same', () => {
     const store = renderBar();
-    act(() => store.setState({ isGMView: false }));
+    act(() => { store.setState({ isGMView: false }); });
     expect([...MODES, 'Keep', 'Players see it', 'Look'].some(inert)).toBe(false);
     fireEvent.click(button('Keep'));
     expect(store.getState().measureTool.keep).toBe(true);
@@ -129,7 +129,7 @@ describe('MeasureToolBar', () => {
     expect(kept()).toBe(0);
     expect(history.getState().pastStates).toHaveLength(steps + 1);
     expect(inert('Clear')).toBe(true);
-    act(() => history.getState().undo());
+    act(() => { history.getState().undo(); });
     expect(kept()).toBe(2);
     expect(inert('Clear')).toBe(false);
   });
@@ -143,7 +143,7 @@ describe('MeasureToolBar', () => {
     expect(inert('Clear')).toBe(true);
     fireEvent.click(button('Clear'));
     expect(Object.keys(store.getState().objects.measures ?? {})).toHaveLength(1);
-    act(() => store.getState().setViewedLevel('ground'));
+    act(() => { store.getState().setViewedLevel('ground'); });
     expect(inert('Clear')).toBe(false);
   });
 
@@ -198,7 +198,7 @@ describe('MeasureToolBar', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(colours()).toBeNull();
     fireEvent.click(button('Look'));
-    fireEvent.mouseDown(document.body);
+    fireEvent.pointerDown(document.body);
     expect(colours()).toBeNull();
   });
 });

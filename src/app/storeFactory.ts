@@ -13,7 +13,7 @@ import type { WallSegment, WallInput } from './types/wallTypes';
 import { DEFAULT_SCENE_LIGHTING, type LightChanges, type LightInput, type LightZoneChanges, type LightZoneInput, type SceneLightingChanges, type SceneLightingOption } from './types/lightingTypes';
 import type { AudioSource, AudioInput } from './types/audioTypes';
 import type { AnyWidget, WidgetSettings } from './types/widgetTypes';
-import type { InitiativeEntry, InitiativeConfig } from './types/initiativeTypes';
+import type { InitiativeEntry } from './types/initiativeTypes';
 import { createDefaultInitiativeState } from './types/initiativeTypes';
 import { createAtlasStorage, ATLAS_SCHEMA, ATLAS_VERSION } from './services/MapPersistence';
 import type { CameraState, GridState } from './types/gridTypes';
@@ -52,6 +52,7 @@ import { createSceneLevelsActions, writeExploredMask, type SceneLevelsSlice } fr
 import { createLevelSurfacesActions, type LevelSurfacesSlice } from './stores/levelSurfacesSlice';
 import { createMapFeaturesActions, type MapFeaturesSlice } from './stores/mapFeaturesSlice';
 import { createRoomsSlice, DEFAULT_ROOM_TOOL, type RoomsSlice } from './stores/roomsSlice';
+import { createTableModeActions, type TableModeSlice } from './stores/tableModeSlice';
 import { createLiquidsActions, type LiquidsSlice } from './stores/liquidsSlice';
 import { createMeasuresActions, dropTokenAuras, type MeasuresSlice } from './stores/measuresSlice';
 import { createAnnotationsActions, type AnnotationsSlice } from './stores/annotationsSlice';
@@ -199,6 +200,10 @@ export interface ViewAtlasState extends ViewState {
   updateAudio: (id: string, changes: Partial<AudioSource>) => void;
   deleteAudio: (id: string) => void;
   setActiveTool: (tool: ViewAtlasState['activeTool']) => void;
+  /** A press with the measure key held: the measure tool takes it as a ruler, and the tool in use waits (`heldRulerFrom`). */
+  holdRuler: () => void;
+  /** The measure key and the button are let go: the tool that waited comes back, unless another was picked meanwhile. */
+  releaseRuler: () => void;
   setSelectionMode: (mode: ViewAtlasState['selectionMode']) => void;
   setSelection: (ids: string[]) => void;
   clearSelection: () => void;
@@ -250,6 +255,10 @@ export interface ViewAtlasState extends ViewState {
   // The rooms mode's choices (from roomsSlice.ts)
   roomTool: RoomsSlice['roomTool'];
   setRoomTool: RoomsSlice['setRoomTool'];
+  // The view as the players' picture on a tablet on the table (from tableModeSlice.ts)
+  tableMode: TableModeSlice['tableMode'];
+  enterTableMode: TableModeSlice['enterTableMode'];
+  leaveTableMode: TableModeSlice['leaveTableMode'];
   // Water, lava and acid that move on animated maps (from liquidsSlice.ts)
   addLiquids: LiquidsSlice['addLiquids'];
   deleteLiquid: LiquidsSlice['deleteLiquid'];
@@ -294,12 +303,13 @@ export interface ViewAtlasState extends ViewState {
   moveToBack: (id: string) => void;
   startCombat: InitiativeTurnActions['startCombat'];
   endCombat: () => void;
+  resetInitiativeNumbers: InitiativeTurnActions['resetInitiativeNumbers'];
   setInitiativeSitsOut: (id: string, sitsOut: boolean) => void;
   delayInitiativeTurn: InitiativeTurnActions['delayInitiativeTurn'];
   actNowInInitiative: InitiativeTurnActions['actNowInInitiative'];
   swapInitiativeCards: InitiativeTurnActions['swapInitiativeCards'];
+  setCombatantCondition: InitiativeTurnActions['setCombatantCondition'];
   resetInitiative: () => void;
-  setInitiativeConfig: (config: Partial<InitiativeConfig>) => void;
   addDiceLogEntry: (entry: DiceRollResult) => void;
   clearDiceLog: () => void;
 
@@ -327,16 +337,19 @@ export interface ViewAtlasState extends ViewState {
   setDrawTool: UISlice['setDrawTool'];
   setFogTool: UISlice['setFogTool'];
   setLightingTool: UISlice['setLightingTool'];
+  setToolSwitch: UISlice['setToolSwitch'];
   setHeldTokens: UISlice['setHeldTokens'];
   setExploredBrush: UISlice['setExploredBrush'];
   setToolbarEditing: UISlice['setToolbarEditing'];
   openDungeonGenerator: UISlice['openDungeonGenerator'];
   closeDungeonGenerator: UISlice['closeDungeonGenerator'];
   setRoofsHidden: UISlice['setRoofsHidden'];
+  setSelectMore: UISlice['setSelectMore'];
   setGridSettingsOpen: UISlice['setGridSettingsOpen'];
   setDMScreenOpen: UISlice['setDMScreenOpen'];
   setDMScreenPage: UISlice['setDMScreenPage'];
   setGridAlignmentOpen: UISlice['setGridAlignmentOpen'];
+  setFloorPositioning: UISlice['setFloorPositioning'];
   setDiceLogOpen: UISlice['setDiceLogOpen'];
   setHotkeyHelpOpen: UISlice['setHotkeyHelpOpen'];
   setDocsOpen: UISlice['setDocsOpen'];
@@ -804,6 +817,18 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               return;
             }
             draft.activeTool = tool;
+            draft.heldRulerFrom = undefined;
+          }),
+
+          holdRuler: () => set((draft) => {
+            draft.heldRulerFrom ??= draft.activeTool;
+            draft.activeTool = 'measure';
+          }),
+
+          releaseRuler: () => set((draft) => {
+            if (draft.heldRulerFrom === undefined) return;
+            draft.activeTool = draft.heldRulerFrom;
+            draft.heldRulerFrom = undefined;
           }),
 
           setSelectionMode: (mode) => set((draft) => {
@@ -1425,6 +1450,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           ...createMapFeaturesActions(set),
           roomTool: DEFAULT_ROOM_TOOL,
           ...createRoomsSlice(set),
+          tableMode: null,
+          ...createTableModeActions(set),
           ...createLiquidsActions(set),
           ...createMeasuresActions(set),
           ...createTurnMovesActions(set),

@@ -1,4 +1,4 @@
-import React, { useState, type RefObject } from 'react';
+import React, { useEffect, useState, type RefObject } from 'react';
 import { WifiOff } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
@@ -20,6 +20,11 @@ export interface SiteFrameProps {
   offlineBody: string;
   /** The frame element: held at its size while a window is resized, and the window that messages come from. */
   frameRef: RefObject<HTMLIFrameElement | null>;
+  /**
+   * Whether a message is the page saying it is ready, which shows it before its `load`: that waits for every picture
+   * and font. Kept the same function between renders. Without it, the page shows on `load`.
+   */
+  readyMessage?: (event: MessageEvent, frameWindow: Window | null) => boolean;
   className?: string;
 }
 
@@ -35,11 +40,21 @@ function Offline({ body, onRetry }: { body: string; onRetry: () => void }): Reac
   );
 }
 
-type LiveFrameProps = Pick<SiteFrameProps, 'url' | 'label' | 'skeleton' | 'frameRef'>;
+type LiveFrameProps = Pick<SiteFrameProps, 'url' | 'label' | 'skeleton' | 'frameRef' | 'readyMessage'>;
 
 /** The site in a frame; its own state, so every mount starts with the skeleton. */
-function LiveFrame({ url, label, skeleton, frameRef }: LiveFrameProps): React.ReactElement {
+function LiveFrame({ url, label, skeleton, frameRef, readyMessage }: LiveFrameProps): React.ReactElement {
   const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    const frame = frameRef.current;
+    const win = frame?.ownerDocument.defaultView;
+    if (loaded || !readyMessage || !frame || !win) return undefined;
+    const onMessage = (event: MessageEvent): void => {
+      if (readyMessage(event, frame.contentWindow)) setLoaded(true);
+    };
+    win.addEventListener('message', onMessage);
+    return (): void => win.removeEventListener('message', onMessage);
+  }, [frameRef, readyMessage, loaded]);
   return (
     <>
       <iframe
@@ -49,7 +64,6 @@ function LiveFrame({ url, label, skeleton, frameRef }: LiveFrameProps): React.Re
         aria-label={label}
         sandbox={SANDBOX}
         allow={ALLOW}
-        allowFullScreen
         referrerPolicy="strict-origin-when-cross-origin"
         loading="eager"
         onLoad={() => setLoaded(true)}
@@ -60,11 +74,11 @@ function LiveFrame({ url, label, skeleton, frameRef }: LiveFrameProps): React.Re
 }
 
 /**
- * A page of atlas-vtt.dev in a sandboxed frame, with a skeleton until its first page has loaded.
- * Offline it shows why instead of an empty frame, and loads again once the connection is back.
+ * A page of atlas-vtt.dev in a sandboxed frame, with a skeleton until its first page is ready (`readyMessage`) or has
+ * loaded. Offline it shows why instead of an empty frame, and loads again once the connection is back.
  * The documentation window and the asset manager's Armarium both show the site through it.
  */
-export function SiteFrame({ url, label, skeleton, offlineBody, frameRef, className }: SiteFrameProps): React.ReactElement {
+export function SiteFrame({ url, label, skeleton, offlineBody, frameRef, readyMessage, className }: SiteFrameProps): React.ReactElement {
   const online = useOnlineStatus();
   // A retry renders again, which reads the connection anew, and gives the frame a fresh load.
   const [attempt, setAttempt] = useState(0);
@@ -72,7 +86,7 @@ export function SiteFrame({ url, label, skeleton, offlineBody, frameRef, classNa
   return (
     <div className={className ? `atlas-site-frame ${className}` : 'atlas-site-frame'}>
       {online
-        ? <LiveFrame key={attempt} url={url} label={label} skeleton={skeleton} frameRef={frameRef} />
+        ? <LiveFrame key={attempt} url={url} label={label} skeleton={skeleton} frameRef={frameRef} {...(readyMessage && { readyMessage })} />
         : <Offline body={offlineBody} onRetry={retry} />}
     </div>
   );

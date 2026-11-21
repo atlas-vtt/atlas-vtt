@@ -12,6 +12,8 @@
 $flyout-gap: $spacing-s; // matches ANCHOR_GAP_PX in pinPlaceFlyout.ts
 $flyout-columns: 8; // matches COLUMNS in pinPlaceRows.ts
 $flyout-enter: 160ms;
+// What the flyout keeps of itself in a view shorter than its clearance: its name, its search and two rows of icons.
+$flyout-min-height: 160px;
 
 // Where the Symbol button's flyout hangs: nothing itself, over the map's bars.
 .atlas-stamp-symbols {
@@ -29,7 +31,7 @@ $flyout-enter: 160ms;
   // Seventy-six icons are taller than many windows: the groups scroll, the name and the search stay.
   .pin-place-flyout {
     box-sizing: border-box;
-    max-height: min(560px, calc(100vh - 150px));
+    max-height: min(560px, max(#{$flyout-min-height}, calc(#{atlas-view-height()} - 150px)));
   }
 
   // As wide as its rows of icons whatever a search leaves of them, so the panel keeps its width.

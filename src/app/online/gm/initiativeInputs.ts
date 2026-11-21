@@ -4,7 +4,7 @@ import { BUILT_IN_SYSTEM_PRESETS } from '../../gameSystems/builtInPresets';
 import { collectionInitiativeRules, DEFAULT_INITIATIVE_RULES } from '../../gameSystems/initiativeRules';
 import { mapConditions, rulesForMap, type RulesLookup } from '../../gameSystems/mapRules';
 import { mapResources } from '../../resources/collectionResources';
-import { entryTokenOf, listedForPlayers, playerInitiativeList, playerSegments, sideIdsOf, type PlayerInitiativeList } from '../../services/playerInitiativeList';
+import { playerInitiativeList, playerSegments, playersEntryToken, sideIdsOf, type PlayerInitiativeList } from '../../services/playerInitiativeList';
 import { sharedConditions } from './tokenUI.ts';
 import type { TokenEntity } from '../../types';
 import type { InitiativeRules } from '../../types/initiativeRulesTypes';
@@ -81,7 +81,8 @@ function initiativeRulesOf(rules: RulesLookup | null, mapPath: string | null): I
 }
 
 /**
- * The players' initiative list as Atlas's player window shows it (`PlayerInitiativePanel`): only
+ * The players' initiative list as Atlas's player window shows it (`PlayerInitiativePanel`), but
+ * for being sent before a fight too: only
  * while the GM's tracker is open and the player view shows it; every entry whose token is on the
  * map and not hidden, in turn order or by sides; names only where players see the nameplate, hit points only where
  * the map's rules show them to players. Nothing of a hidden token's entry is read.
@@ -98,7 +99,7 @@ export function sharedInitiative(inputs: InitiativeInputs): SharedInitiative | n
   const sides = sideIdsOf(initiative, initiativeRules);
   const list = playerInitiativeList(
     initiative,
-    (entry) => (listedForPlayers(tokens[entry.tokenId]) ? entryTokenOf(tokens[entry.tokenId], definitions, conditions, sides) : null),
+    (entry) => playersEntryToken(entry, tokens, definitions, conditions, sides),
     initiativeRules,
     hpVisible,
   );
@@ -129,8 +130,9 @@ export function sharedInitiative(inputs: InitiativeInputs): SharedInitiative | n
       hp: token.hp !== null && finite(token.hp.current) && finite(token.hp.max) ? { current: token.hp.current, max: token.hp.max } : null,
       ...(nextRound.has(combatant) ? { nextRound: true } : {}),
       ...(token.conditions?.length ? { conditions: sharedConditions(token.conditions) } : {}),
-      ...instanceOf(inputs.badge?.(entry.tokenId) ?? null),
-      ...aliasOf(inputs.tokenAlias?.(entry.tokenId)),
+      // A player at the table has no token: no badge, no alias
+      ...instanceOf(entry.tokenId === undefined ? null : inputs.badge?.(entry.tokenId) ?? null),
+      ...aliasOf(entry.tokenId === undefined ? undefined : inputs.tokenAlias?.(entry.tokenId)),
     };
   });
   return {

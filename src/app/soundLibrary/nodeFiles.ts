@@ -1,4 +1,4 @@
-import { Platform } from 'obsidian';
+import { isDesktopApp } from '../platform/desktopOnly';
 
 /** What a directory entry says of itself. */
 export interface NodeDirent {
@@ -55,7 +55,7 @@ function required(win: Window, module: string): unknown {
 
 /** Node's files on the desktop app; null anywhere else, where a folder outside the vault cannot be linked. */
 export function nodeFilesOf(win: Window): NodeFiles | null {
-  if (!Platform.isDesktop || !Platform.isDesktopApp) return null;
+  if (!isDesktopApp()) return null;
   try {
     const fs = required(win, 'fs') as NodeFsModule | null;
     const path = required(win, 'path') as { sep: string } | null;

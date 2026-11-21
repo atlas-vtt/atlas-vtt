@@ -26,6 +26,7 @@ import { readDerivedFrom, readHeader, readImportedFrom, readLookups, readPlayers
 import { JSON_OBJECT, asJsonRecord, asKey, asPositiveInteger, asString } from './valueReads';
 import { parseRecoveryButtons } from '../../recovery/parseRecovery';
 import type { RecoveryButton } from '../../recovery/recoveryTypes';
+import { readProvenance } from '../../services/itemBundle/itemProvenance';
 
 export type TemplateParseStatus = 'ok' | 'invalid' | 'newer' | 'reserved';
 
@@ -125,6 +126,7 @@ function readBody(file: Record<string, unknown>, version: number, id: string, pr
     ...readLookups(r),
     ...r.opt('sample', asJsonRecord, JSON_OBJECT),
     ...r.opt('recovery', asRecovery, 'a list of recovery buttons'),
+    ...r.opt('armarium', readProvenance, 'where it was installed from in the Armarium'),
   });
   problems.push(...danglingFieldProblems(template), ...counterProblems(template));
   return template;

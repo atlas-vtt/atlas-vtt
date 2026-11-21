@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Character } from '../../src/app/types';
 import { initiativeEntryForToken } from '../../src/app/stores/initiativeEntries';
 import { hasInitiative, setInitiative } from '../../src/app/initiative/awaitingInitiative';
+import { ENEMY_COLOR } from '../../src/app/initiative/tokenlessEnemies';
 
 const character: Character = {
   id: 'goblin', kind: 'character', name: 'Goblin', x: 10, y: 20,
@@ -19,7 +20,8 @@ describe('new initiative entries', () => {
     expect(initiativeEntryForToken(savedToken)).toEqual({
       tokenId: 'goblin', name: 'Goblin', imagePath: 'goblin.webp',
       statblockPath: 'Creatures/Goblin.md', initiative: 0, awaitingInitiative: true, initiativeModifier: 0,
-      isNPC: true,
+      // An opponent, without vision of its own: it starts in the enemies' red
+      isNPC: true, color: ENEMY_COLOR,
     });
   });
 });

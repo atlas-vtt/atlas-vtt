@@ -1,9 +1,10 @@
 /**
  * SystemTab — Choose the collection's game system from the vault's presets,
- * or save its current rules as a preset of your own.
+ * or save its current rules as a preset of your own, which its menu also
+ * shares in the Armarium or exports as a file.
  */
 
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { Plus, RotateCcw } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
@@ -16,6 +17,8 @@ import { runInBackground } from '../../../utils/backgroundTask';
 import { PresetNameInput } from './PresetNameInput';
 import { SystemPresetRow } from './SystemPresetRow';
 import { t } from '../../../i18n';
+import { AtlasUIContext } from '../../root/AtlasUIContext';
+import { itemShareEntries } from '../../../armarium/share/openItemShare';
 
 interface SystemTabProps {
   service: SystemPresetService;
@@ -42,6 +45,8 @@ export function SystemTab({
   service, presets, rules, presetId, onApplyPreset, onPresetIdChange, onDeletePreset, none,
 }: SystemTabProps): React.ReactElement {
   const [pending, setPending] = useState<PendingEdit | null>(null);
+  // Outside Atlas' UI (no app to share with) the menu offers no Share or Export.
+  const app = useContext(AtlasUIContext)?.app ?? null;
   const hasNone = none?.isActive === true;
   const active = hasNone ? undefined : findActivePreset(presets, presetId, rules);
   const isEdited = active !== undefined && !sameSystemRules(active.rules, rules);
@@ -68,6 +73,7 @@ export function SystemTab({
       ? [{ type: 'item' as const, label: t('csm.system.saveChanges'), icon: 'save', onClick: () => service.update(preset.id, rules) }]
       : []),
     { type: 'item', label: t('common.rename'), icon: 'pencil', onClick: () => setPending({ kind: 'rename', presetId: preset.id }) },
+    ...(app === null ? [] : itemShareEntries(app, { kind: 'system-preset', id: preset.id, name: preset.name })),
     { type: 'item', label: t('common.delete'), icon: 'trash-2', destructive: true, onClick: () => setPending({ kind: 'delete', presetId: preset.id }) },
   ];
 

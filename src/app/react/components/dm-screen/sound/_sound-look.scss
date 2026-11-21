@@ -11,6 +11,8 @@ $control-line: color-mix(in srgb, var(--mono-100) 50%, var(--background-primary-
 // The library's rail, in the page's side column.
 $sound-rail-width: clamp(192px, 14cqi, 232px);
 $card-inset: $spacing-s;
+// The widest a mood tile grows while it stands alone in its column.
+$sound-mood-tile-max: 240px;
 $card-radius: atlas-panel-inset-radius-value($card-inset);
 $control-radius: $radius-m;
 $cap-radius: $radius-s;

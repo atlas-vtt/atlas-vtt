@@ -1,4 +1,5 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
+import { visibleViewport } from '../host/visibleViewport';
 import type { NotePin } from '../types';
 import type { ViewAtlasState } from '../storeFactory';
 import { App, type WorkspaceLeaf } from 'obsidian';
@@ -29,6 +30,7 @@ import { portalHost } from '../host/portalHost';
 import { isTextEntryTarget } from '../keyboard/textEntry';
 import { DEFAULT_MAP_HOTKEYS, formatHotkey } from '../keyboard/mapHotkeys';
 import { SettingsService } from '../services/SettingsService';
+import { OPEN_PREVIEW_EVENT } from '../services/previewByHand';
 
 interface NotePinDropdownResult {
   accepted: boolean;
@@ -109,14 +111,15 @@ export class NotePinTool {
         return;
       }
 
-      // Shift links the note to the clicked hex instead of pinning it to the point
-      const hexLayout = e.shiftKey ? this.preview.hexLayout() : null;
+      // With the tool's cell switch on (Shift turns it around) the note is linked to the clicked hex instead of pinned to the point
+      const toCell = this.preview.toCell(e.shiftKey);
+      const hexLayout = toCell ? this.preview.hexLayout() : null;
       if (hexLayout) {
         runInBackground(this.linkHexAt(e.worldX, e.worldY, hexLayout), 'Linking a note to a hex', 'Could not link the note to the hex');
         return;
       }
-      // On a square grid Shift puts a plain pin in the centre of the square: square grids link no cells
-      const centre = e.shiftKey ? this.preview.cellCentre({ x: e.worldX, y: e.worldY }) : null;
+      // On a square grid the switch puts a plain pin in the centre of the square: square grids link no cells
+      const centre = toCell ? this.preview.cellCentre({ x: e.worldX, y: e.worldY }) : null;
       if (centre) this.preview.showCell(centre);
       runInBackground(this.placePinAt(centre?.x ?? e.worldX, centre?.y ?? e.worldY), 'Placing a note pin', 'Could not place the note pin');
     });
@@ -131,6 +134,10 @@ export class NotePinTool {
         // The note's hover preview makes way for the note itself; NotePreviewUIManager keeps a pinned one
         this.eventBus.emit('close-active-preview', pin.notePath);
         this.openLinkedNote(pin);
+      } else if (action === 'preview') {
+        // The preview a held Mod opens over the pin, from its menu
+        const at = e.detail.at ?? { x: activeWindow.innerWidth / 2, y: activeWindow.innerHeight / 2 };
+        this.eventBus.emit(OPEN_PREVIEW_EVENT, { pin, screenX: at.x, screenY: at.y });
       } else if (action === 'edit') {
         // Show the note selection dropdown at the pin's position
         runInBackground(this.showNotePinDropdownForExistingPin(pin), 'Opening the note pin editor');
@@ -246,7 +253,8 @@ export class NotePinTool {
             const rect = dropdown.getBoundingClientRect();
             const gap = 12;
             const margin = 8;
-            const spaceRight = window.innerWidth - clientX;
+            const seen = visibleViewport(window);
+            const spaceRight = seen.right - clientX;
             const spaceLeft = clientX;
 
             // Open to whichever side has more room
@@ -258,13 +266,13 @@ export class NotePinTool {
             } else {
               // Fallback: whichever side has more space
               left = spaceRight > spaceLeft
-                ? Math.min(clientX + gap, window.innerWidth - rect.width - margin)
+                ? Math.min(clientX + gap, seen.right - rect.width - margin)
                 : Math.max(margin, clientX - rect.width - gap);
             }
 
             // Vertically center on click point, clamped to viewport
             let top = clientY - rect.height / 2;
-            top = Math.max(margin, Math.min(top, window.innerHeight - rect.height - margin));
+            top = Math.max(margin, Math.min(top, seen.bottom - rect.height - margin));
 
             dropdown.style.left = `${left}px`;
             dropdown.style.top = `${top}px`;
@@ -286,7 +294,7 @@ export class NotePinTool {
       // The click that opened the dropdown must not close it. Closing cancels the wait, or the
       // listener would be added after the dropdown is gone and never removed.
       this.outsideClickTimer = window.setTimeout(() => {
-        document.addEventListener('mousedown', handleOutsideClick, true);
+        document.addEventListener('pointerdown', handleOutsideClick, true);
         this.outsideClickTimer = null;
       }, 100);
 
@@ -318,7 +326,7 @@ export class NotePinTool {
         this.outsideClickTimer = null;
       }
       if (this.outsideClickHandler) {
-        document.removeEventListener('mousedown', this.outsideClickHandler, true);
+        document.removeEventListener('pointerdown', this.outsideClickHandler, true);
         this.outsideClickHandler = null;
       }
 

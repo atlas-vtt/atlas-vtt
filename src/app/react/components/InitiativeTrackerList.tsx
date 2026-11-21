@@ -2,12 +2,13 @@ import React, { useId } from 'react';
 import type { ListSegment } from '../../initiative/listSegments';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
 import { t } from '../../i18n';
+import { TURN_KEY_ATTRIBUTE } from '../../initiative/motion/turnMotion';
 
 interface InitiativeTrackerListProps {
   /** The list as it is drawn (`listSegments`). */
   segments: readonly ListSegment<InitiativeEntry>[];
-  /** Draws a card. */
-  card: (entry: InitiativeEntry) => React.ReactElement;
+  /** Draws a card; `inTurn` says it stands in the side whose turn it is. */
+  card: (entry: InitiativeEntry, inTurn?: boolean) => React.ReactElement;
 }
 
 /**
@@ -26,13 +27,13 @@ export const InitiativeTrackerList: React.FC<InitiativeTrackerListProps> = ({ se
         if (segment.kind === 'round') {
           const label = t('initiative.nextRound', { round: segment.round });
           return (
-            <div key="round" className="atlas-initiative-round" role="separator" aria-label={label}>
+            <div key="round" className="atlas-initiative-round" role="separator" aria-label={label} {...{ [TURN_KEY_ATTRIBUTE]: `round:${segment.round}` }}>
               <span className="atlas-initiative-round__label" aria-hidden="true">{label}</span>
             </div>
           );
         }
         const label = segment.side ? segment.side.name : segment.delayed ? t('initiative.delayed') : null;
-        if (label === null) return <React.Fragment key={segment.key}>{segment.items.map(card)}</React.Fragment>;
+        if (label === null) return <React.Fragment key={segment.key}>{segment.items.map((entry) => card(entry))}</React.Fragment>;
         const classes = [
           'atlas-initiative-side',
           segment.active && 'atlas-initiative-side--active',
@@ -40,7 +41,7 @@ export const InitiativeTrackerList: React.FC<InitiativeTrackerListProps> = ({ se
         ].filter(Boolean).join(' ');
         return (
           <section key={segment.key} className={classes} aria-labelledby={`${labelId}-${segment.key}`} aria-current={segment.active || undefined}>
-            <h4 id={`${labelId}-${segment.key}`} className="atlas-initiative-side__label">
+            <h4 id={`${labelId}-${segment.key}`} className="atlas-initiative-side__label" {...{ [TURN_KEY_ATTRIBUTE]: `side:${segment.key}` }}>
               {segment.side?.roll == null ? label : (
                 <>
                   <span className="atlas-initiative-side__name">{label}</span>
@@ -48,7 +49,7 @@ export const InitiativeTrackerList: React.FC<InitiativeTrackerListProps> = ({ se
                 </>
               )}
             </h4>
-            {segment.items.map(card)}
+            {segment.items.map((entry) => card(entry, segment.active))}
           </section>
         );
       })}

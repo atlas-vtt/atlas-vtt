@@ -32,7 +32,7 @@ describe('DropdownMenu outside click behavior', () => {
     fireEvent.click(screen.getByTestId('toggle'));
     expect(screen.getByText('Option A')).not.toBeNull();
 
-    fireEvent.mouseDown(screen.getByTestId('outside'));
+    fireEvent.pointerDown(screen.getByTestId('outside'));
     expect(screen.queryByText('Option A')).toBeNull();
   });
 
@@ -43,7 +43,7 @@ describe('DropdownMenu outside click behavior', () => {
     const option = screen.getByText('Option A');
     expect(option).not.toBeNull();
 
-    fireEvent.mouseDown(option);
+    fireEvent.pointerDown(option);
     expect(screen.queryByText('Option A')).not.toBeNull();
   });
 });
@@ -62,7 +62,7 @@ describe('DropdownMenu in a map of its own window', () => {
 
   it('closes on a press outside it in its own window', () => {
     const { popout, unmount } = openInPopout();
-    fireEvent.mouseDown(popout.querySelector('[data-testid="outside"]') as HTMLElement);
+    fireEvent.pointerDown(popout.querySelector('[data-testid="outside"]') as HTMLElement);
     expect(popout.body.textContent).not.toContain('Option A');
     unmount();
   });
@@ -76,7 +76,7 @@ describe('DropdownMenu in a map of its own window', () => {
 
   it('stays open for a press in another window', () => {
     const { popout, unmount } = openInPopout();
-    fireEvent.mouseDown(document.body);
+    fireEvent.pointerDown(document.body);
     expect(popout.body.textContent).toContain('Option A');
     unmount();
   });

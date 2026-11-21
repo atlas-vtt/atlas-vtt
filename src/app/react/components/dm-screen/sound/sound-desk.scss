@@ -64,6 +64,7 @@
 .atlas-sound-output {
   @include bare-button;
   min-width: 0;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   height: $button-height-m;

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { MemoryTesseraBackend } from '../../../src/app/pixi/mosaicCanvas/memoryTesseraBackend';
 import { TESSERA_SPEC, type TesseraRef } from '../../../src/app/pixi/mosaicCanvas/pyramid';
+import { TESSERA_BUILD } from '../../../src/app/pixi/mosaicCanvas/tesseraStore';
+import { manifestEncoding, tesseraRecipe } from '../../../src/app/pixi/mosaicCanvas/pyramidManifest';
 import {
   TESSERA_CACHE_MAX_BYTES,
   TesseraStore,
@@ -17,10 +19,9 @@ interface Harness {
   clock: { time: number };
 }
 
-function harness(quota: number | null = null): Harness {
-  const backend = new MemoryTesseraBackend();
+function harness(quota: number | null = null, format?: 'webp' | 'png', backend = new MemoryTesseraBackend()): Harness {
   const clock = { time: 1000 };
-  const store = new TesseraStore({ backend, estimateQuota: () => Promise.resolve(quota), now: () => clock.time });
+  const store = new TesseraStore({ backend, estimateQuota: () => Promise.resolve(quota), now: () => clock.time, ...(format && { format: () => Promise.resolve(format) }) });
   return { store, backend, clock };
 }
 
@@ -59,10 +60,59 @@ describe('TesseraStore', () => {
     expect((await backend.hasTesserae('old')).size).toBe(0);
   });
 
+  it('treats a manifest of another build, or one from before builds were recorded, as absent and deletes its pyramid', async () => {
+    const { store, backend } = harness();
+    for (const build of [undefined, TESSERA_BUILD + 1]) {
+      await backend.putManifest({ ...source('old'), spec: TESSERA_SPEC, build, complete: true, bytes: 4, lastUsed: 0 });
+      await backend.writeTesserae('old', [tessera(0, 0, 0, 4)], (stored) => stored);
+      expect(await store.readManifest('old')).toBeNull();
+      expect((await backend.hasTesserae('old')).size).toBe(0);
+    }
+  });
+
+  it('records a pyramid of WebP tesserae as every version did: spec and build, no encoding', async () => {
+    for (const format of [undefined, 'webp'] as const) {
+      const { store, backend } = harness(null, format);
+      await store.beginPyramid(source('h'));
+      const { lastUsed: _lastUsed, ...recipe } = (await backend.getManifest('h'))!;
+      expect(recipe).toEqual({ hash: 'h', width: 2000, height: 1000, decodedScale: 1, spec: 2, build: 1, complete: false, bytes: 0 });
+      expect(manifestEncoding('webp')).toEqual({});
+    }
+    expect(tesseraRecipe('webp')).toBe('2.1');
+  });
+
+  it('records the encoding of a pyramid of PNG tesserae, made where WebP cannot be encoded', async () => {
+    const { store, backend } = harness(null, 'png');
+    await store.beginPyramid(source('h'));
+    expect(await backend.getManifest('h')).toMatchObject({ spec: 2, build: 1, encoding: 'png' });
+    expect(manifestEncoding('png')).toEqual({ encoding: 'png' });
+    expect(tesseraRecipe('png')).toBe('2.1.png');
+    expect(await store.writeTesserae('h', [tessera(0, 0, 0, 8)])).toBe(true);
+    expect(await store.markComplete('h')).toBe(true);
+    expect(await store.readManifest('h')).toMatchObject({ complete: true, bytes: 8, encoding: 'png' });
+  });
+
+  it.each([['png', 'webp'], ['webp', 'png']] as const)('rebuilds a pyramid of %s tesserae on a device that encodes %s: it reads as absent and takes no further tessera', async (cached, device) => {
+    const backend = new MemoryTesseraBackend();
+    const before = harness(null, cached, backend);
+    await before.store.beginPyramid(source('h'));
+    await before.store.writeTesserae('h', [tessera(0, 0, 0, 8)]);
+    await before.store.markComplete('h');
+
+    const { store } = harness(null, device, backend);
+    expect(await store.writeTesserae('h', [tessera(0, 1, 0, 8)])).toBe(false);
+    expect(await store.markComplete('h')).toBe(false);
+    expect(await store.readManifest('h')).toBeNull();
+    expect((await backend.hasTesserae('h')).size).toBe(0);
+    const begun = await store.beginPyramid(source('h'));
+    expect(begun).toMatchObject({ complete: false, bytes: 0 });
+    expect(begun.encoding).toBe(device === 'png' ? 'png' : undefined);
+  });
+
   it('starts an empty incomplete pyramid and accumulates the bytes of each batch', async () => {
     const { store, clock } = harness();
     const begun = await store.beginPyramid(source('h'));
-    expect(begun).toMatchObject({ hash: 'h', spec: TESSERA_SPEC, complete: false, bytes: 0, lastUsed: 1000 });
+    expect(begun).toMatchObject({ hash: 'h', spec: TESSERA_SPEC, build: TESSERA_BUILD, complete: false, bytes: 0, lastUsed: 1000 });
     clock.time = 2000;
     expect(await store.writeTesserae('h', [tessera(1, 0, 0, 10), tessera(1, 1, 0, 20)])).toBe(true);
     expect(await store.writeTesserae('h', [tessera(0, 0, 0, 5)])).toBe(true);
@@ -127,6 +177,15 @@ describe('TesseraStore', () => {
     expect(tesseraCacheBudget(0)).toBe(TESSERA_CACHE_MAX_BYTES);
     expect(tesseraCacheBudget(100 * GIB)).toBe(4 * GIB);
     expect(tesseraCacheBudget(10_000)).toBe(1000);
+  });
+
+  it('budgets within the limits of its device where it is told them, a tablet\'s 512 MiB and a twentieth of the quota', async () => {
+    const limits = { maxBytes: 512 * 1024 ** 2, quotaShare: 0.05 };
+    expect(tesseraCacheBudget(null, limits)).toBe(512 * 1024 ** 2);
+    expect(tesseraCacheBudget(100 * GIB, limits)).toBe(512 * 1024 ** 2);
+    expect(tesseraCacheBudget(10_000, limits)).toBe(500);
+    const store = new TesseraStore({ backend: new MemoryTesseraBackend(), estimateQuota: () => Promise.resolve(2 * GIB), cacheLimits: limits });
+    expect(await store.budget()).toBe(Math.floor(2 * GIB * 0.05));
   });
 
   it('reads the budget as 4 GiB when the quota cannot be estimated', async () => {

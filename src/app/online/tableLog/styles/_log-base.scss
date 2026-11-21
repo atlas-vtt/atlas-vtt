@@ -4,14 +4,17 @@
 
 $log-width: 360px;
 $log-edge: 12px;
+// The floating panel's padding and the gap between its parts.
+$log-pad: $spacing-s;
 $log-disc: 32px;
 $log-roll-disc: 44px;
 $log-quote-disc: 16px;
 // A speaker's face on the composer's chip and in its menu.
 $log-chip-face: 24px;
-// A touch target, where fingers are the pointer (`html[data-pointer="coarse"]`, set by the player's page).
+// A touch target, where fingers are the pointer: the player's page says so on its root
+// (`html[data-pointer="coarse"]`), Atlas on the body of every window (`data-atlas-pointer`, `pointerAttribute.ts`).
 $log-target: 44px;
-$log-coarse: 'html[data-pointer="coarse"]';
+$log-coarse: ':is(html[data-pointer="coarse"], body[data-atlas-pointer="coarse"])';
 // Drawn inside the element, so the scrolling list never clips it.
 $log-focus-ring: inset 0 0 0 2px var(--background-modifier-border-focus);
 $log-hairline: color-mix(in oklch, var(--mono-100) #{$border-opacity-subtle}, transparent);

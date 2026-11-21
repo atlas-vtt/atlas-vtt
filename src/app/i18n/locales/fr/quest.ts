@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const quest: Translation = {
+  'quest.quests': 'Quêtes',
+  'quest.new': 'Nouvelle quête',
+  'quest.titleLabel': 'Titre de la quête',
+  'quest.kindLabel': 'Type de quête',
+  'quest.kind.main': 'Principale',
+  'quest.kind.side': 'Secondaire',
+  'quest.mainQuests': 'Quêtes principales',
+  'quest.sideQuests': 'Quêtes secondaires',
+  'quest.over': 'Terminées et échouées',
+  'quest.none': 'Pas encore de quêtes.',
+  'quest.placeHint': 'Liez une épingle de la carte du monde à la note d\'une quête : les joueurs voient cette épingle tant que la quête est Active.',
+  'quest.status.open': 'Ouverte',
+  'quest.status.active': 'Active',
+  'quest.status.done': 'Terminée',
+  'quest.status.failed': 'Échouée',
+  'quest.status.hidden': 'Cachée',
+  'quest.statusOf': 'Statut de {title}',
+  'quest.experience': '{count} PX',
+  'quest.createFailed': 'Impossible de créer la note de la quête.',
+  'quest.openFailed': 'Impossible d\'ouvrir la note de la quête.',
+  'quest.writeFailed': 'Impossible de modifier la note de la quête.',
+};

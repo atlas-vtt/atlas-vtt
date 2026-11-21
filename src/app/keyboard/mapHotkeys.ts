@@ -20,6 +20,8 @@ export const MAP_HOTKEYS = [
   { id: 'levelDown', label: t('hotkey.levelDown'), group: t('hotkey.group.map'), defaultKey: 'PageDown', dmOnly: true },
   { id: 'nextMood', label: t('hotkey.nextMood'), group: t('hotkey.group.map'), defaultKey: 'n', dmOnly: true },
   { id: 'silence', label: t('hotkey.silence'), group: t('hotkey.group.map'), defaultKey: 'Shift+s', dmOnly: true },
+  // Opens the DM screen on its Sound page, and closes it from there (`UIRoot`, `DMScreen`).
+  { id: 'soundPage', label: t('hotkey.soundPage'), group: t('hotkey.group.map'), defaultKey: 's', dmOnly: true },
   { id: 'move', label: t('hotkey.move'), group: t('hotkey.group.tools'), defaultKey: 'v' },
   { id: 'fog', label: t('hotkey.fog'), group: t('hotkey.group.tools'), defaultKey: 'f', dmOnly: true },
   { id: 'draw', label: t('hotkey.draw'), group: t('hotkey.group.tools'), defaultKey: 'b', dmOnly: true },
@@ -33,6 +35,7 @@ export const MAP_HOTKEYS = [
   { id: 'measureKeep', label: t('hotkey.measureKeep'), group: t('hotkey.group.tools'), defaultKey: 'k', dmOnly: true },
   { id: 'pin', label: t('hotkey.pin'), group: t('hotkey.group.tools'), defaultKey: 'p', dmOnly: true },
   { id: 'wall', label: t('hotkey.wall'), group: t('hotkey.group.tools'), defaultKey: 'w', dmOnly: true },
+  // Shares S with the Sound page while the tool is switched off: a disabled tool reserves no key.
   { id: 'audio', label: t('hotkey.audio'), group: t('hotkey.group.tools'), defaultKey: 's', dmOnly: true, enabled: AMBIENT_AUDIO_ENABLED },
   { id: 'selectAll', label: t('hotkey.selectAll'), group: t('hotkey.group.editing'), defaultKey: 'Mod+a', dmOnly: true },
   { id: 'copy', label: t('hotkey.copy'), group: t('hotkey.group.editing'), defaultKey: 'Mod+c', dmOnly: true, yieldsToTextSelection: true },
@@ -112,6 +115,8 @@ export function canRunMapHotkeys(event: KeyboardEvent, viewId?: string): boolean
   if (isTextEntryTarget(event.target)) return false;
   // Modals and overlays open in the focused window
   if (activeDocument.querySelector('.modal-container, .prompt, .suggestion-container, .menu, .atlas-asset-manager-modal, .atlas-command-palette-overlay, .atlas-onboarding-overlay, .atlas-hotkey-help, .atlas-text-dialog-backdrop, .atlas-dm-screen-wrapper, .atlas-grid-alignment-panel, [aria-modal="true"]')) return false;
+  // A map in Table mode is the players' picture: none of the GM's shortcuts runs on it
+  if (activeDocument.querySelector('.atlas-table-surface')) return false;
   // The note pin's picker takes a name: a key pressed while it is open, on one of its buttons too, is no shortcut of the map
   if (activeDocument.querySelector(NOTE_PIN_PICKER)) return false;
   // Nor while the Stamp mode's symbols are open: a name typed there searches them

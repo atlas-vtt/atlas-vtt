@@ -192,6 +192,12 @@
     opacity: 1;
   }
 
+  @include atlas-hover-reveal {
+    .atlas-item-actions {
+      opacity: 1;
+    }
+  }
+
   // Its icon buttons stand $spacing-xs inside the row: concentric with its corner.
   .atlas-collection-header-btn.btn {
     border-radius: $control-inset-radius;

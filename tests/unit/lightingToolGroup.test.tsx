@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TooltipProvider } from '../../src/app/packages/components/primitives/tooltip';
@@ -83,7 +83,7 @@ function checked(label: string): boolean {
 }
 
 /** Chooses the tool's mode, as the bar above the toolbar does. */
-const mode = (store: ViewAtlasStore, value: LightingToolOptions['mode']): void => act(() => store.getState().setLightingTool({ mode: value }));
+const mode = (store: ViewAtlasStore, value: LightingToolOptions['mode']): void => act(() => { store.getState().setLightingTool({ mode: value }); });
 
 describe('LightingToolGroup', () => {
   it('holds no modes and no ways of drawing: those are the bar above the toolbar', () => {
@@ -110,7 +110,7 @@ describe('LightingToolGroup', () => {
 
   it('keeps forgetting explored areas and the graphics settings out of the menu, behind the palette\'s Lighting page', () => {
     const { store, closeMenu } = renderGroup('wall');
-    act(() => store.getState().setSceneLighting({ enabled: true }));
+    act(() => { store.getState().setSceneLighting({ enabled: true }); });
     expect(screen.queryByText('Forget explored areas')).toBeNull();
     expect(screen.queryByText('Graphics settings…')).toBeNull();
     fireEvent.click(row('Lighting settings…'));
@@ -124,19 +124,19 @@ describe('LightingToolGroup', () => {
       .map((item) => `${item.className.replace(/\s*\S+--disabled/g, '')}: ${item.querySelectorAll('button, [role="switch"], [role="slider"]').length}`);
     const off = rows();
     expect(row('Lighting settings…').disabled).toBe(true);
-    act(() => store.getState().setSceneLighting({ enabled: true }));
+    act(() => { store.getState().setSceneLighting({ enabled: true }); });
     expect(rows()).toEqual(off);
     expect(row('Lighting settings…').disabled).toBe(false);
   });
 
   it('sizes the memory brush, and only the brush', () => {
     const { store } = renderGroup('wall');
-    act(() => store.getState().setSceneLighting({ enabled: true }));
+    act(() => { store.getState().setSceneLighting({ enabled: true }); });
     mode(store, 'explored-memory');
     expect(screen.getByText('50px')).toBeTruthy();
     fireEvent.keyDown(screen.getByRole('slider', { name: 'Brush size' }), { key: 'ArrowRight' });
     expect(store.getState().exploredBrush.brushSize).toBe(51);
-    act(() => store.getState().setExploredBrush({ shape: 'lasso' }));
+    act(() => { store.getState().setExploredBrush({ shape: 'lasso' }); });
     expect(screen.queryByText('Brush size')).toBeNull();
   });
 
@@ -144,11 +144,11 @@ describe('LightingToolGroup', () => {
     const { store } = renderGroup('wall');
     mode(store, 'rooms');
     expect(screen.queryByText('Brush size')).toBeNull();
-    act(() => store.getState().setRoomTool({ shape: 'brush' }));
+    act(() => { store.getState().setRoomTool({ shape: 'brush' }); });
     const slider = screen.getByRole('slider', { name: 'Brush size' });
     fireEvent.keyDown(slider, { key: 'ArrowRight' });
     expect(store.getState().roomTool.brushSize).toBeGreaterThan(0);
-    act(() => store.getState().setRoomTool({ action: 'door' }));
+    act(() => { store.getState().setRoomTool({ action: 'door' }); });
     expect(document.querySelector('.atlas-dropdown-slider-row--disabled')).not.toBeNull();
     expect(screen.queryByText('Join all rooms')).toBeNull();
   });
@@ -156,10 +156,10 @@ describe('LightingToolGroup', () => {
   it('leaves the memory mode for the tool\'s first when the scene stops remembering or its lighting goes off', () => {
     for (const off of [{ exploredMemory: false }, { enabled: false }]) {
       const { store } = renderGroup('wall');
-      act(() => store.getState().setSceneLighting({ enabled: true }));
+      act(() => { store.getState().setSceneLighting({ enabled: true }); });
       mode(store, 'explored-memory');
       expect(store.getState().lightingTool.mode).toBe('explored-memory');
-      act(() => store.getState().setSceneLighting(off));
+      act(() => { store.getState().setSceneLighting(off); });
       expect(store.getState().lightingTool.mode).toBe('rooms');
       cleanup();
     }
@@ -173,7 +173,7 @@ describe('LightingToolGroup', () => {
 
   it('marks all areas explored from a row offered in the memory mode alone', () => {
     const { store, closeMenu, events } = renderGroup('wall');
-    act(() => store.getState().setSceneLighting({ enabled: true }));
+    act(() => { store.getState().setSceneLighting({ enabled: true }); });
     expect(screen.queryByText('Mark all areas explored')).toBeNull();
     mode(store, 'explored-memory');
     const rows = [...document.querySelectorAll('.atlas-dropdown-menu-item')].map((item) => item.textContent);

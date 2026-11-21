@@ -54,6 +54,8 @@ export interface BelowLevelsHost extends RoofHost {
   viewedRoof(): ((point: Point) => boolean) | null;
   /** Puts the openings' eraser (and what draws the openings of an unlit scene) into the view's stage, between its grid and its tokens. */
   placeEraser(eraser: Container): void;
+  /** The longest side of a fog canvas on this device; unset, a level's size decides alone. */
+  fogCanvasSide?: number;
 }
 
 export interface LevelsBelowDeps {
@@ -355,6 +357,7 @@ export class LevelsBelow {
       roofs: deps.host,
       ...(deps.host.createLiquids && { liquids: (changed: () => void) => deps.host.createLiquids!(id, changed) }),
       fadeMs: deps.fadeMs ?? 0,
+      ...(deps.host.fogCanvasSide !== undefined && { fogCanvasSide: deps.host.fogCanvasSide }),
       requestRender: deps.requestRender,
       onReady: deps.onReady,
       guard: deps.guard,

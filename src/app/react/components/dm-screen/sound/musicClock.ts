@@ -1,9 +1,16 @@
 import { SOUND_RATE } from '../../../../sound/engine/soundMath';
 
+/** A time on a track: `m:ss`, and `h:mm:ss` from an hour on. */
 export function clock(frames: number): string {
   const seconds = Math.max(0, Math.floor(frames / SOUND_RATE));
   const minutes = Math.floor(seconds / 60);
-  return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
+  const rest = twoDigits(seconds % 60);
+  if (minutes < 60) return `${minutes}:${rest}`;
+  return `${Math.floor(minutes / 60)}:${twoDigits(minutes % 60)}:${rest}`;
+}
+
+function twoDigits(value: number): string {
+  return String(value).padStart(2, '0');
 }
 
 export function writeText(element: HTMLElement | null, text: string): void {

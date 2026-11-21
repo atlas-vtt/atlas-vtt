@@ -28,6 +28,8 @@ export interface PlacementSessionDeps {
   release(ghosts: PlacementGhost[]): void;
   /** The session ended with the ids of every token it placed. */
   end(placed: string[]): void;
+  /** Whether a press turns tokens freely: the select tool's Snap switch, turned around while Alt is `held`. Unset: as Alt says. */
+  turnsFreely?(held: boolean): boolean;
 }
 
 /** A press that will put tokens down when the button is released; moved meanwhile, it turns them. */
@@ -67,6 +69,8 @@ export class PlacementSession {
   private readonly placed: string[] = [];
   private pointer: Point;
   private shift = false;
+  /** The queue is kept without Shift (the strip's switch on a touch screen). */
+  private kept = false;
   private onMap = true;
   private ended = false;
   private press: Press | null = null;
@@ -108,6 +112,13 @@ export class PlacementSession {
     this.arrange();
   }
 
+  /** Keeps the tokens queued, one put down per press, whether Shift is held or not. */
+  keepQueue(kept: boolean): void {
+    if (this.ended || this.press || kept === this.kept) return;
+    this.kept = kept;
+    this.arrange();
+  }
+
   /** The pointer left the map or came back to it: held tokens wait faintly where they were. */
   setOnMap(onMap: boolean): void {
     if (this.ended || onMap === this.onMap) return;
@@ -131,7 +142,7 @@ export class PlacementSession {
     this.arrange();
   }
 
-  /** The pointer moved to `screen` with the button held: the pressed tokens face it, in 15° steps unless `free`. */
+  /** The pointer moved to `screen` with the button held: the pressed tokens face it, in 15° steps or freely (`free`: Alt is held, read with the Snap switch). */
   turn(screen: Point, free: boolean): void {
     const press = this.press;
     if (!press) return;
@@ -139,11 +150,22 @@ export class PlacementSession {
     press.turning = true;
     const batch = this.hand.slice(0, press.count);
     const centre = handCentre(this.places.slice(0, press.count).map((home, i) => ({ home, size: batch[i]!.size })));
-    const facing = facingTowards(centre, this.deps.toWorld(screen), free);
+    const facing = facingTowards(centre, this.deps.toWorld(screen), this.deps.turnsFreely?.(free) ?? free);
     for (const token of batch) {
       token.rotation = facing;
       token.ghost.turnTo(facing, true);
     }
+  }
+
+  /**
+   * A finger moved to `screen` with the tokens pressed: they go with it and are put down where it
+   * lifts. A finger cannot bring the tokens to a place before it presses, as a mouse does, so its
+   * press carries them and turns nothing.
+   */
+  carry(screen: Point): void {
+    if (this.ended || !this.press) return;
+    this.pointer = screen;
+    this.arrange();
   }
 
   /** The button came up: the pressed tokens are put down where they are held, facing as they were turned. */
@@ -209,7 +231,7 @@ export class PlacementSession {
   }
 
   private queued(): boolean {
-    return this.shift && this.hand.length > 1;
+    return (this.shift || this.kept) && this.hand.length > 1;
   }
 
   /** How the `index`th held token is held: pressed onto the map while a press holds it, lifted otherwise. */

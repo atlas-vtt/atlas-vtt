@@ -20,6 +20,8 @@
 }
 
 // Delete says what it does in the theme's warning colour as the pointer comes to it.
-.atlas-tool-bar button.btn.atlas-tool-bar__destructive:hover:not(:disabled) {
-  color: var(--text-error) !important;
+@media (hover: hover) {
+  .atlas-tool-bar button.btn.atlas-tool-bar__destructive:hover:not(:disabled) {
+    color: var(--text-error) !important;
+  }
 }

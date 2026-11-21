@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
+import { visibleViewport } from '../../../../host/visibleViewport';
 import { createPortal } from 'react-dom';
 import { t } from '../../../../i18n';
 import { Button } from '../../../../packages/components/primitives/button';
@@ -38,7 +39,8 @@ function usePlaceAtTile(ref: React.RefObject<HTMLDivElement | null>, anchor: HTM
       const box = ref.current;
       if (!box) return;
       const tile = anchor.getBoundingClientRect();
-      setPlace(placeUnderTile(tile, { width: box.offsetWidth, height: box.offsetHeight }, { width: win.innerWidth, height: win.innerHeight }));
+      const seen = visibleViewport(win);
+      setPlace(placeUnderTile(tile, { width: box.offsetWidth, height: box.offsetHeight }, { width: seen.right, height: seen.bottom }));
     };
     const press = (event: Event): void => {
       const target = event.target as Node | null;

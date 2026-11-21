@@ -4,7 +4,9 @@
 // Reusable style patterns built on design tokens.
 // Import _tokens.scss before this file.
 
+@forward 'viewport';
 @use 'tokens' as *;
+@use 'viewport' as *;
 
 // ── Surfaces ─────────────────────────────────────────────────────────────────
 
@@ -31,8 +33,10 @@
   background: color-mix(in oklch, var(--interactive-accent) 82%, black);
   color: var(--text-on-accent);
 
-  &:hover:not(:disabled) {
-    background: color-mix(in oklch, var(--interactive-accent) 88%, black);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background: color-mix(in oklch, var(--interactive-accent) 88%, black);
+    }
   }
 }
 
@@ -43,8 +47,10 @@
   background: color-mix(in srgb, var(--background-modifier-error) 80%, black);
   color: white;
 
-  &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--background-modifier-error) 86%, black);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--background-modifier-error) 86%, black);
+    }
   }
 }
 
@@ -80,8 +86,10 @@
   background: var(--background-secondary);
   border-radius: $radius-m;
 
-  &:hover {
-    background: var(--background-modifier-hover);
+  @media (hover: hover) {
+    &:hover {
+      background: var(--background-modifier-hover);
+    }
   }
 
   &:active {
@@ -169,8 +177,10 @@
 
   transition: transform $transition-press $transition-ease-out;
 
-  &:hover:not(:disabled) {
-    color: var(--text-normal);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      color: var(--text-normal);
+    }
   }
 
   &:active:not(:disabled) {
@@ -189,9 +199,11 @@
   background: transparent;
   color: var(--text-muted);
 
-  &:hover {
-    background: var(--background-modifier-hover);
-    color: var(--text-normal);
+  @media (hover: hover) {
+    &:hover {
+      background: var(--background-modifier-hover);
+      color: var(--text-normal);
+    }
   }
 
   &:active {
@@ -218,8 +230,10 @@
     color: var(--text-faint);
   }
 
-  &:hover:not(:focus) {
-    border-color: $field-edge-hover;
+  @media (hover: hover) {
+    &:hover:not(:focus) {
+      border-color: $field-edge-hover;
+    }
   }
 
   @include atlas-input-focus;
@@ -299,9 +313,11 @@
   border: $border-width-s solid var(--background-modifier-border);
   color: var(--text-normal);
 
-  &:hover:not(:disabled) {
-    background-color: var(--interactive-hover);
-    border-color: var(--background-modifier-border-hover);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background-color: var(--interactive-hover);
+      border-color: var(--background-modifier-border-hover);
+    }
   }
 }
 
@@ -312,8 +328,10 @@
   border: none;
   color: var(--text-on-accent);
 
-  &:hover:not(:disabled) {
-    background-color: var(--interactive-accent-hover);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background-color: var(--interactive-accent-hover);
+    }
   }
 }
 
@@ -341,8 +359,10 @@
   cursor: pointer;
   text-align: left;
 
-  &:hover {
-    border-color: var(--background-modifier-border-hover) !important;
+  @media (hover: hover) {
+    &:hover {
+      border-color: var(--background-modifier-border-hover) !important;
+    }
   }
 
   &.atlas-open {
@@ -397,9 +417,14 @@
   cursor: pointer;
   text-align: left;
 
-  &:hover,
   &:focus-visible {
     background-color: var(--background-modifier-hover) !important;
+  }
+
+  @media (hover: hover) {
+    &:hover {
+      background-color: var(--background-modifier-hover) !important;
+    }
   }
 
   &:active {
@@ -475,11 +500,13 @@
 
 // ── Modals ──────────────────────────────────────────────────────────────────
 
-/// Full-screen modal overlay with blurred backdrop.
+/// Full-screen modal overlay with blurred backdrop. It ends above a tablet's on-screen keyboard
+/// (`atlas-above-keyboard`), so its dialog, never taller than the overlay, is seen whole and scrolls inside.
 /// @param {Number} $z - z-index layer for the overlay
 @mixin atlas-modal-overlay($z: $z-atlas-dropdown) {
   position: fixed;
   inset: 0;
+  @include atlas-above-keyboard;
   z-index: $z;
   display: flex;
   align-items: center;
@@ -591,9 +618,11 @@
     stroke-width: 2;
   }
 
-  &:hover {
-    background: var(--background-modifier-hover);
-    color: var(--text-normal);
+  @media (hover: hover) {
+    &:hover {
+      background: var(--background-modifier-hover);
+      color: var(--text-normal);
+    }
   }
 
   &:active {
@@ -610,7 +639,7 @@
 /// Resize handles of a floating window moved with `usePanelResize`: put on the
 /// handle's base class, with `--right`, `--bottom` and `--corner` modifiers. The
 /// corner carries a grip mark along the window's own corner.
-/// @param {Length} $hit - thickness of the edge handles
+/// @param {Length} $hit - thickness of the edge handles; a coarse pointer gets wider ones (`--atlas-resize-edge`)
 @mixin atlas-floating-resize-handle($hit: 8px) {
   position: absolute;
   z-index: 2;
@@ -620,7 +649,7 @@
     top: $surface-radius;
     right: 0;
     bottom: $surface-radius;
-    width: $hit;
+    width: max(#{$hit}, var(--atlas-resize-edge, 0px));
     cursor: ew-resize;
   }
 
@@ -628,15 +657,15 @@
     right: $surface-radius;
     bottom: 0;
     left: $surface-radius;
-    height: $hit;
+    height: max(#{$hit}, var(--atlas-resize-edge, 0px));
     cursor: ns-resize;
   }
 
   &--corner {
     right: 0;
     bottom: 0;
-    width: $surface-radius;
-    height: $surface-radius;
+    width: max(#{$surface-radius}, 2 * var(--atlas-resize-edge, 0px));
+    height: max(#{$surface-radius}, 2 * var(--atlas-resize-edge, 0px));
     cursor: nwse-resize;
 
     &::after {
@@ -653,8 +682,10 @@
       transition: opacity $transition-fast $transition-ease;
     }
 
-    &:hover::after {
-      opacity: 1;
+    @media (hover: hover) {
+      &:hover::after {
+        opacity: 1;
+      }
     }
   }
 }
@@ -829,6 +860,66 @@
   }
 }
 
+// ── Coarse pointer ───────────────────────────────────────────────────────────
+
+/// Styles for a coarse pointer (a finger), which Atlas marks on every window's `body` (`data-atlas-pointer`, `pointerAttribute.ts`).
+/// Inside a rule the content is that rule's declarations (`.row { @include atlas-coarse-pointer { height: 44px; } }`); at the root of a file it is whole rules.
+@mixin atlas-coarse-pointer {
+  @if & {
+    @at-root body[data-atlas-pointer='coarse'] & {
+      @content;
+    }
+  } @else {
+    body[data-atlas-pointer='coarse'] {
+      @content;
+    }
+  }
+}
+
+/// What shows only under the pointer (a card's menu, a row's ×, a tab's controls) has no pointer to wait for on a
+/// touch screen. The content is the shown state: it holds where nothing can hover and under a coarse pointer.
+/// Inside a rule the content is that rule's declarations; at the root of a file, or to name another element, whole
+/// rules, written as the rule that shows on hover is, less its `:hover`, so they outweigh the hidden state as it does.
+@mixin atlas-hover-reveal {
+  @media (hover: none) {
+    @content;
+  }
+
+  @include atlas-coarse-pointer {
+    @content;
+  }
+}
+
+/// Hover styles, only where the pointer can hover: a touch screen leaves `:hover` on what was tapped last, so a tint
+/// meant for the pointer would stay on it. A device that hovers gets the same rule as without the mixin.
+/// @param {String} $selector - the hovered state, `&` being the rule the mixin is in
+@mixin atlas-hover($selector: '&:hover') {
+  @media (hover: hover) {
+    #{$selector} {
+      @content;
+    }
+  }
+}
+
+/// Under a coarse pointer the element takes a hit area of at least $size around its middle, drawn by nothing: its
+/// look and the layout around it stay as they are. For a control that must stay small where it stands (a stepper in
+/// a row, a switch in a line of text). The element must not clip its overflow.
+/// @param {Length} $size - the least width and height of the hit area
+/// @param {Boolean} $positioned - the element is positioned already (absolute, fixed, relative) and keeps that
+@mixin atlas-coarse-hit($size: $touch-target, $positioned: false) {
+  @include atlas-coarse-pointer {
+    @if not $positioned {
+      position: relative;
+    }
+
+    &::before {
+      position: absolute;
+      inset: min(0px, calc((100% - #{$size}) / 2));
+      content: '';
+    }
+  }
+}
+
 // ── Checkbox hit area ───────────────────────────────────────────────────────
 
 /// Under a coarse pointer the native checkboxes inside take a 44 px hit area (WCAG 2.5.5): a `::before` around Obsidian's
@@ -866,7 +957,7 @@
   align-items: center;
   gap: $spacing-xs;
   // Never under the 24 px WCAG 2.2 asks of a target (2.5.8): at Obsidian's 30 px control height the track grows to 32.
-  height: max(#{$button-height-s}, calc(var(--input-height) - 2 * #{$surface-inset}));
+  height: max(#{$target-min}, calc(var(--input-height) - 2 * #{$surface-inset}));
   padding: 0 $spacing-m;
   border-radius: $control-inset-radius;
   color: var(--text-muted);
@@ -882,8 +973,10 @@
     height: $icon-xs;
   }
 
-  &:hover {
-    color: var(--text-normal);
+  @media (hover: hover) {
+    &:hover {
+      color: var(--text-normal);
+    }
   }
 
   &:active {
@@ -910,6 +1003,12 @@
 /// strip of tabs or cards whose edges fade or whose shadows reach past its box, where a thumb would stand apart.
 @mixin atlas-scrollbar-none {
   --atlas-scrollbar: none;
+  // Its own, too, where the overlay cannot be drawn and Atlas' areas keep theirs (`_overlay-scrollbars.scss`).
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /// Scroll shadow of a scroll area, where a divider line used to set it apart from a header or footer: a narrow dark
@@ -969,6 +1068,16 @@
 // ── Text ─────────────────────────────────────────────────────────────────────
 
 /// Truncate text with ellipsis.
+/// The name of a setting beside its control. It takes the room the control leaves and wraps there, so a translation
+/// longer than the English grows the row instead of running under the control; a word too long for the room breaks.
+/// Never `white-space: nowrap` on such a label: German and Russian names are a third longer and more.
+@mixin atlas-row-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
 @mixin atlas-truncate {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -997,6 +1106,36 @@
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
+}
+
+// ── The Atlas VTT theme ──────────────────────────────────────────────────────
+
+/// The Atlas VTT theme's corner ivy over two opposite corners, placed as on its asset manager (its point
+/// on the element's corner), where `lendThemeIvy` lent its drawings and at `--atlas-theme-ivy-scale`:
+/// the whole vine behind at `$back-z`, the stretches that lie on the element in front. Without the
+/// theme nothing is drawn.
+@mixin atlas-theme-ivy-corners($back-z: -1) {
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: calc(-132px * var(--atlas-theme-ivy-scale));
+    left: calc(-142px * var(--atlas-theme-ivy-scale));
+    z-index: 1;
+    width: calc(100% / var(--atlas-theme-ivy-scale) + 284px);
+    height: calc(100% / var(--atlas-theme-ivy-scale) + 264px);
+    scale: var(--atlas-theme-ivy-scale);
+    transform-origin: 0 0;
+    background: var(--atlas-theme-ivy-corner-front, none) no-repeat 0 0 / 100% 100%;
+    // A clip at rest, so the exit draws the ivy back from it: from none it would vanish at once
+    clip-path: inset(0 0 0 0);
+    pointer-events: none;
+  }
+
+  &::before {
+    z-index: $back-z;
+    background-image: var(--atlas-theme-ivy-corner-back, none);
+  }
 }
 
 // What a page that fills its view keeps from the edges (`$dm-screen-inset`), on the 4 px scale where the browser can

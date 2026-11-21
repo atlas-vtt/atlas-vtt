@@ -36,6 +36,8 @@ interface DiceRollPanelProps {
   style: ThrowStyle;
   onClose: () => void;
   onDone: () => void;
+  /** Its dice lie still (landed, laid down as a row, or the panel is leaving or gone); called once or more. */
+  onLanded?: (() => void) | undefined;
   /** Finds the roller's portrait for the header. */
   useAvatar: UseDiceAvatar;
 }
@@ -80,7 +82,7 @@ function lingerMs(landed: boolean, throws: number): number {
  * (Escape dismisses every roll). The throw starts on its own, shows the number
  * and leaves.
  */
-export function DiceRollPanel({ result, presentation, audience, scene, compact: compactNow, leaving, muted, style, onClose, onDone, useAvatar }: DiceRollPanelProps): React.ReactElement {
+export function DiceRollPanel({ result, presentation, audience, scene, compact: compactNow, leaving, muted, style, onClose, onDone, onLanded, useAvatar }: DiceRollPanelProps): React.ReactElement {
   // A panel leaves at the size it had: a row displaced by a newer roll would
   // otherwise open up to full size while disappearing.
   const [leavingSize, setLeavingSize] = useState<boolean | null>(null);
@@ -119,6 +121,12 @@ export function DiceRollPanel({ result, presentation, audience, scene, compact: 
     displaced.current = true;
     stageRef.current?.skip();
   }, [compact, leaving]);
+
+  // The logs may tell the number once the dice lie still here, and at the latest when the panel goes.
+  useEffect(() => {
+    if (landed || compact || leaving) onLanded?.();
+  }, [landed, compact, leaving, onLanded]);
+  useEffect(() => (): void => onLanded?.(), [onLanded]);
 
   // Reduced motion shows the full number at once. A row counts on from where its total stood (`useTotalCarry`).
   const appliedSteps = reduced ? stepCount : applied;

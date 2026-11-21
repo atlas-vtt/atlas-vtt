@@ -9,7 +9,7 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: 12vh $spacing-s $spacing-s;
+  padding: #{atlas-view-height(12)} $spacing-s $spacing-s;
   pointer-events: auto;
 }
 
@@ -38,7 +38,7 @@
   flex-direction: column;
   gap: 4px;
   width: min(520px, 100%);
-  max-height: 60vh;
+  max-height: #{atlas-view-height(60)};
   padding: 4px;
 
   @include atlas-elevated-surface;

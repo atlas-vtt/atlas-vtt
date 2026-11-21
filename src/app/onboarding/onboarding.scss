@@ -42,7 +42,7 @@
   --atlas-onboarding-padding: #{$surface-inset};
 
   position: fixed;
-  max-height: calc(100vh - 32px);
+  max-height: calc(#{atlas-view-height()} - 32px);
   overflow: auto;
   transition: left $transition-slow $transition-ease-in-out, top $transition-slow $transition-ease-in-out;
   animation: atlas-onboarding-card-in $transition-slow $transition-ease-out;

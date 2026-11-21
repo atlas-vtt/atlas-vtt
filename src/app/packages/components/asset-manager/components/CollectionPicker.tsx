@@ -81,8 +81,8 @@ export function CollectionPicker({ collections, selectedCollection, onSelectColl
       const target = event.target as Node;
       if (!rootRef.current?.contains(target) && !popover?.contains(target)) close(false);
     };
-    doc.addEventListener('mousedown', handleClickOutside);
-    return () => doc.removeEventListener('mousedown', handleClickOutside);
+    doc.addEventListener('pointerdown', handleClickOutside);
+    return () => doc.removeEventListener('pointerdown', handleClickOutside);
   }, [isOpen, popover]);
 
   // The highlighted row stays in view as the arrows move it.

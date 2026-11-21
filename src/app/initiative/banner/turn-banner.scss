@@ -22,6 +22,77 @@ $turn-banner-title-width: 240px;
   pointer-events: none;
   color: var(--text-normal);
   font-family: var(--font-interface);
+  // Holds the flash ring
+  position: relative;
+  --atlas-turn-banner-flash: var(--interactive-accent);
+
+  // As it appears its border flashes, in the combatant's colour (`TurnBanner.color`), else the accent
+  &::before {
+    content: '';
+    position: absolute;
+    inset: calc(-1 * #{$border-width-m});
+    border: 2px solid var(--atlas-turn-banner-flash);
+    border-radius: inherit;
+    box-shadow: inset 0 0 $spacing-m var(--atlas-turn-banner-flash);
+    opacity: 0;
+    pointer-events: none;
+    animation: atlas-turn-banner-flash 900ms ease-out both;
+  }
+}
+
+@keyframes atlas-turn-banner-flash {
+  0%,
+  33%,
+  66% {
+    opacity: 1;
+  }
+
+  16%,
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes atlas-turn-banner-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes atlas-turn-banner-fade {
+  from {
+    filter: none;
+  }
+
+  to {
+    filter: opacity(0.3);
+  }
+}
+
+@keyframes atlas-turn-banner-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4) rotate(-12deg);
+  }
+}
+
+@keyframes atlas-turn-banner-words {
+  from {
+    opacity: 0;
+    transform: translateX(-#{$spacing-m});
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-turn-banner::before {
+    animation: none;
+  }
 }
 
 .atlas-turn-banner__portrait {
@@ -70,20 +141,264 @@ $turn-banner-title-width: 240px;
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(100% + #{$spacing-s} + var(--atlas-toolbar-lift, 0px));
+  bottom: calc(100% + #{$spacing-s});
   display: flex;
   justify-content: center;
   pointer-events: none;
 }
 
-// In the player window: centred at the bottom, as the dice rolls stand at the top centre
+// In the player window: in the middle of the table, as large as the player view sets it. While one
+// stands the table behind it dims; its portrait and words follow the capsule in (`TV_MOTION`)
 .atlas-player-turn-banner {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: $spacing-l;
+  inset: 0;
   display: flex;
+  align-items: center;
   justify-content: center;
+  padding: $spacing-l;
   pointer-events: none;
   z-index: $z-base;
+
+  // The dim is a layer that is always there and only fades: one that appeared with the banner made
+  // the TV's compositor rebuild its layers, which showed the picture brighter for a moment first
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 45%);
+    opacity: 0;
+    transition: opacity 450ms ease;
+    will-change: opacity;
+  }
+
+  &:has(.atlas-turn-banner:not(.atlas-turn-banner--leaving))::before,
+  &--dim::before {
+    opacity: 1;
+  }
+
+  .atlas-turn-banner {
+    zoom: var(--atlas-player-turn-banner-scale, 1);
+  }
+
+  // Its border flashes, then pulses as the players' list's turn does, fainter and fainter for as
+  // long as it stands: the pulse moves the opacity, the fade the filter's
+  .atlas-turn-banner::before {
+    animation:
+      atlas-turn-banner-flash 900ms ease-out both,
+      atlas-turn-banner-pulse 1.6s ease-in-out 900ms infinite,
+      atlas-turn-banner-fade var(--atlas-turn-banner-stand, 4s) linear both;
+  }
+
+  .atlas-turn-banner__portrait {
+    animation: atlas-turn-banner-pop 500ms 120ms cubic-bezier(0.3, 1.6, 0.5, 1) both;
+  }
+
+  // A fight's banner keeps its own shade and motion (below)
+  .atlas-turn-banner--fight::before {
+    animation: atlas-fight-banner-shade 900ms $transition-ease-out both;
+  }
+
+  .atlas-turn-banner__text {
+    animation: atlas-turn-banner-words 450ms 220ms ease-out both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .atlas-turn-banner::before,
+    .atlas-turn-banner__portrait,
+    .atlas-turn-banner__text {
+      animation: none;
+    }
+  }
+
+  // At a players' list (`turnBannerAnchors.ts`): a point on the list's box, turned as the list is, from which the
+  // banner hangs a little way off the list
+  &__anchor {
+    position: absolute;
+    left: var(--atlas-anchor-x);
+    top: var(--atlas-anchor-y);
+    width: 0;
+    height: 0;
+    rotate: var(--atlas-anchor-turn, 0deg);
+
+    .atlas-turn-banner {
+      position: absolute;
+      bottom: $spacing-l;
+      left: 0;
+      width: max-content;
+      max-width: 360px;
+      translate: -50% 0;
+    }
+
+    &[data-side='below'] .atlas-turn-banner {
+      top: $spacing-l;
+      bottom: auto;
+      transform-origin: 50% 0;
+    }
+
+    // Beside an upright column at the right edge, level with its middle, towards the table's middle
+    &[data-side='left'] .atlas-turn-banner {
+      top: 0;
+      bottom: auto;
+      translate: 0 -50%;
+      left: auto;
+      right: $spacing-l;
+      transform-origin: 100% 50%;
+    }
+  }
+}
+
+// A turn that dims the table (`turnDim`): the players' lists stand above the dim, lit, while their cards move on,
+// and until the dim has faded (`--lists-lit` outlasts `--dim` by the fade, `DIM_FADE_MS`)
+.atlas-player-initiative-container:has(~ .atlas-player-turn-banner--lists-lit) .atlas-player-initiative {
+  z-index: $z-base + 1;
+}
+
+// A fight's own banner, as a game titles a moment: no capsule, the sentence in the theme's heading face between two
+// hairline rules that fade outward, over a soft shade that reads it on any map. Red rules as a fight starts, pale gold as
+// it ends. It comes in by its stylesheet alone (`withFightBannerMotion`): the shade widens, the words resolve out of a blur
+// as their spacing settles, the rules draw outward from them; `--leaving` dissolves it. Only opacity, transform, filter
+// and the title's spacing move.
+$fight-banner-ink: #f2ead9;
+$fight-banner-rule: 72px;
+
+.atlas-turn-banner.atlas-turn-banner--fight {
+  --atlas-fight-banner-accent: #d8c396;
+  gap: $spacing-m;
+  width: max-content;
+  max-width: min(560px, calc(100% - 2 * #{$spacing-l}));
+  padding: $spacing-m $spacing-xl;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  color: $fight-banner-ink;
+  isolation: isolate;
+
+  // The shade: wider than the words and soft at every edge, so the map beneath darkens without a shape
+  &::before {
+    inset: calc(-1 * #{$spacing-l}) calc(-1 * #{$spacing-2xl});
+    z-index: -1;
+    border: none;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgb(0 0 0 / 0.66), rgb(0 0 0 / 0.5) 40%, rgb(0 0 0 / 0.22) 72%, transparent);
+    box-shadow: none;
+    opacity: 1;
+    animation: atlas-fight-banner-shade 900ms $transition-ease-out both;
+  }
+
+  &.atlas-turn-banner--leaving {
+    animation: atlas-fight-banner-out 700ms ease-in both;
+
+    .atlas-fight-banner__title {
+      animation: atlas-fight-banner-title-out 700ms ease-in both;
+    }
+  }
+}
+
+// At a players' list it hangs from a point (`__anchor`, no width of its own), so its room is the window's
+.atlas-player-turn-banner__anchor .atlas-turn-banner.atlas-turn-banner--fight {
+  max-width: min(560px, calc(100vw - 2 * #{$spacing-l}));
+}
+
+.atlas-turn-banner--fight-start {
+  --atlas-fight-banner-accent: var(--atlas-theme-red, #e0574f);
+
+  .atlas-fight-banner__title {
+    text-shadow:
+      0 1px 2px rgb(0 0 0 / 0.9),
+      0 0 18px color-mix(in srgb, var(--atlas-fight-banner-accent) 45%, transparent);
+  }
+}
+
+.atlas-fight-banner__title {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--atlas-theme-heading-font, var(--font-interface));
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.9);
+  animation: atlas-fight-banner-title 1000ms 80ms $transition-ease-out both;
+}
+
+// Each rule fades towards its outer end and draws outward from the words
+.atlas-fight-banner__rule {
+  flex: 0 0 $fight-banner-rule;
+  height: 1px;
+  animation: atlas-fight-banner-rule 1100ms 200ms $transition-ease-out both;
+
+  &--before {
+    background: linear-gradient(to left, var(--atlas-fight-banner-accent), transparent);
+    transform-origin: 100% 50%;
+  }
+
+  &--after {
+    background: linear-gradient(to right, var(--atlas-fight-banner-accent), transparent);
+    transform-origin: 0 50%;
+  }
+}
+
+@keyframes atlas-fight-banner-shade {
+  from {
+    opacity: 0;
+    transform: scaleX(0.6);
+  }
+}
+
+@keyframes atlas-fight-banner-title {
+  from {
+    opacity: 0;
+    letter-spacing: 0.32em;
+    filter: blur(8px);
+  }
+}
+
+@keyframes atlas-fight-banner-rule {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+}
+
+@keyframes atlas-fight-banner-out {
+  to {
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+
+@keyframes atlas-fight-banner-title-out {
+  to {
+    letter-spacing: 0.14em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-turn-banner.atlas-turn-banner--fight,
+  .atlas-turn-banner.atlas-turn-banner--fight::before,
+  .atlas-player-turn-banner .atlas-turn-banner--fight::before,
+  .atlas-fight-banner__title,
+  .atlas-fight-banner__rule {
+    animation: atlas-fight-banner-fade 200ms ease-out both;
+  }
+
+  .atlas-turn-banner.atlas-turn-banner--fight.atlas-turn-banner--leaving,
+  .atlas-turn-banner--fight.atlas-turn-banner--leaving .atlas-fight-banner__title {
+    animation: atlas-fight-banner-out-still 200ms ease-in both;
+  }
+}
+
+@keyframes atlas-fight-banner-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes atlas-fight-banner-out-still {
+  to {
+    opacity: 0;
+  }
 }

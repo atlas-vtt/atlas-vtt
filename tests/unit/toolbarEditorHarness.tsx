@@ -1,5 +1,5 @@
 import React from 'react';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { act, cleanup, render } from '@testing-library/react';
 import { MotionGlobalConfig } from 'framer-motion';
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
@@ -89,7 +89,7 @@ export function renderToolbar({ player = false, stored = {}, space = null, noteP
 }
 
 export function startEditing({ store }: ToolbarHarness): void {
-  act(() => store.getState().setToolbarEditing(true));
+  act(() => { store.getState().setToolbarEditing(true); });
 }
 
 const SIDE_BAR_IDS = ['undo', 'help', 'online'];

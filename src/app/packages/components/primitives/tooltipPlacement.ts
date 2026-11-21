@@ -1,3 +1,5 @@
+import { visibleViewport } from '../../../host/visibleViewport';
+
 /**
  * Where a tooltip stands so that it names its own control and covers nothing else of the surface it stands in
  * (a menu, the dice tray): one gap from the control, on a gap of the surface or outside it, never over another
@@ -98,7 +100,8 @@ export function placeTooltip(
   const win = trigger.ownerDocument.defaultView;
   if (!surface || !win) return null;
   const t = trigger.getBoundingClientRect();
-  const frame: Box = { left: WINDOW_MARGIN, top: WINDOW_MARGIN, right: win.innerWidth - WINDOW_MARGIN, bottom: win.innerHeight - WINDOW_MARGIN };
+  const seen = visibleViewport(win);
+  const frame: Box = { left: WINDOW_MARGIN, top: WINDOW_MARGIN, right: seen.right - WINDOW_MARGIN, bottom: seen.bottom - WINDOW_MARGIN };
   const obstacles = obstaclesOf(trigger, surface);
   const free = (box: Box): boolean =>
     box.left >= frame.left && box.right <= frame.right && box.top >= frame.top && box.bottom <= frame.bottom

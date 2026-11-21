@@ -19,6 +19,8 @@ import { ToolButton } from "../primitives/ToolButton"
 import { LabelTooltip, TooltipProvider } from "../primitives/tooltip"
 import { FOG_MODES, FOG_SHAPES } from "./fogToolChoices"
 import { ChoiceButtons, GroupBreak, TOOL_BAR_CHOICE_CLASS, ToolOptionsBars } from "./ToolOptionsBar"
+import { ToolSwitchRow } from "./ToolSwitchRow"
+import { shownTool } from "../../../measure/heldRuler"
 
 /** The dot on the size button, in pixels: as small and as large as the button's icon may be. */
 const SIZE_DOT = { min: 4, max: 16 } as const
@@ -31,13 +33,13 @@ const SIZE_DOT = { min: 4, max: 16 } as const
  * its reason. The GM's alone; hidden while the toolbar is arranged.
  */
 export function FogToolBar(): React.ReactElement {
-  const shown = useAtlasStore((state) => isFogTool(state.activeTool) && !state.isPlayerView
+  const shown = useAtlasStore((state) => isFogTool(shownTool(state)) && !state.isPlayerView
     && !state.isToolbarEditing && !state.isMapLoading)
   return <ToolOptionsBars shown={shown}><FogBars /></ToolOptionsBars>
 }
 
 function FogBars(): React.ReactElement {
-  const mode = useAtlasStore((state) => (state.activeTool === 'eraser' ? 'eraser' : 'fog'))
+  const mode = useAtlasStore((state) => (shownTool(state) === 'eraser' ? 'eraser' : 'fog'))
   const shape = useAtlasStore((state) => state.fogTool.shape)
   const setActiveTool = useAtlasStore((state) => state.setActiveTool)
   const setFogTool = useAtlasStore((state) => state.setFogTool)
@@ -164,7 +166,7 @@ function WholeMap(): React.ReactElement {
   )
 }
 
-/** What is rarely changed or done: how opaque fog is in the GM's view, kept on this device, and hiding every room of the level shown. */
+/** What is rarely changed or done: how opaque fog is in the GM's view, kept on this device, how a shape's corners land, and hiding every room of the level shown. */
 function MoreMenu(): React.ReactElement {
   const { renderer } = useAtlasUI()
   const settings = useAtlasSettings()
@@ -204,6 +206,11 @@ function MoreMenu(): React.ReactElement {
           disabled={!settings}
           onChange={(next) => settings?.setGmFogOpacity(next / 100)}
         />
+      </div>
+      {/* What Ctrl or Cmd and Shift are to a keyboard: corners land on the grid and on walls, rectangles are squares. */}
+      <div className="atlas-dropdown-section">
+        <ToolSwitchRow id="fogSnap" label={t('toolbar.snap')} />
+        <ToolSwitchRow id="fogConstrain" label={t('toolbar.constrain')} />
       </div>
       <div className="atlas-dropdown-section">
         {/* The row stays where it is without walls, and says why. */}

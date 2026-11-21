@@ -6,6 +6,7 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 import { cn } from "../../../../utils/cn"
 import { noteTooltipDismissal } from "../../../keyboard/tooltipEscape"
 import { portalHost } from "../../../host/portalHost"
+import { lastInputWasTouch } from "./lastInput"
 import { placeTooltip, type TooltipPlacement } from "./tooltipPlacement"
 import "./tooltip.scss"
 
@@ -54,6 +55,10 @@ function openStore(initial: boolean): OpenStore {
  * Radix compares each request with the `open` it was last rendered with, so a change must be rendered before the next
  * event: a store read with `useSyncExternalStore` is, while state set from a pointer move or a timer waits for a task of
  * its own, and a request arriving before that task (the pointer leaving as the delay ends) would be dropped.
+ *
+ * A finger gets no tooltip: Radix opens none for a touch that moves, but it opens one for focus, which a button is given
+ * back when the menu or dialog it opened closes, and that tooltip would stand until the next tap elsewhere. So a request
+ * to open that follows a touch is not heard; a mouse or a pen that hovers, and the keyboard, get theirs on any device.
  */
 function Tooltip({ open, defaultOpen = false, onOpenChange, ...props }: React.ComponentProps<typeof TooltipPrimitive.Root>): React.ReactElement {
   const [held] = React.useState(() => openStore(defaultOpen))
@@ -63,6 +68,7 @@ function Tooltip({ open, defaultOpen = false, onOpenChange, ...props }: React.Co
       {...props}
       open={open ?? heldOpen}
       onOpenChange={(next) => {
+        if (next && lastInputWasTouch()) return
         if (open === undefined) held.set(next)
         onOpenChange?.(next)
       }}

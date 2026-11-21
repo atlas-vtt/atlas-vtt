@@ -14,6 +14,7 @@ import {
 import { WidgetIconGlyph } from './WidgetIconGlyph';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { t } from '../../i18n';
+import { widgetMotionMark } from '../../initiative/motion/turnMotion';
 
 interface ClockWidgetDisplayProps {
   widget: ClockWidget;
@@ -74,6 +75,7 @@ export function ClockWidgetDisplay({
   return (
     <div
       className={widgetClasses}
+      {...widgetMotionMark(widget.id)}
       style={{ '--widget-color': widget.color || DEFAULT_CLOCK_COLOR, '--pulse-intensity': pulseIntensity } as React.CSSProperties}
     >
       <div className="atlas-widget-icon-wrapper">

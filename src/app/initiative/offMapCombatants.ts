@@ -44,7 +44,7 @@ export function addOffMapCombatants(store: CombatStore, inputs: readonly TokenIn
 export function removeCombatant(store: CombatStore, entry: Pick<InitiativeEntry, 'id' | 'tokenId'>, defeated: ReadonlySet<string>): void {
   const { objects, removeFromInitiative, removeMapObjects } = store.getState();
   removeFromInitiative(entry.id, defeated);
-  if (isOffMap(sceneTokens(objects)[entry.tokenId])) removeMapObjects([entry.tokenId]);
+  if (entry.tokenId !== undefined && isOffMap(sceneTokens(objects)[entry.tokenId])) removeMapObjects([entry.tokenId]);
 }
 
 /** Empties the tracker and ends the fight; the combatants kept beside the map go with it, in one undo step. */

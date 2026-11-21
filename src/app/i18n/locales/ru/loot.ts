@@ -59,4 +59,5 @@ export const loot: Translation = {
   'loot.give.more': 'Отдать больше',
   'loot.give.noCharacter': 'Нет персонажа',
   'loot.give.quantity': 'Количество',
+  'loot.openPlayerView.mobile': 'Запустите онлайн-стол, чтобы показать игрокам добычу.',
 };

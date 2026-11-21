@@ -4,6 +4,8 @@ import type { Measurement, MeasureShapeKind } from '../../measure/measureTypes';
 import type { Point } from '../../types/visionTypes';
 import { isHandled } from '../utils/handledEvents';
 import { MEASURE_DRAG_THRESHOLD, MeasureGesture, type GestureResult } from './measureGesture';
+import { doubleClickSlack, dragThreshold } from '../utils/pointerReach';
+import { isOpenShapeControl, type OpenShape, type OpenShapeControls } from '../utils/openShape';
 
 /** A press this soon after the click that ended a measurement, in the same place, is that click's second (a double click) and measures nothing. */
 const DOUBLE_CLICK_MS = 500;
@@ -56,6 +58,10 @@ export interface MeasureKeys {
  * is not the map's (`MeasureKeys.areMaps`: another tab in front, a dialog, a menu or the DM screen over
  * the map). A key typed into a field is that field's and changes nothing. All of it is heard in
  * the canvas's own window and document, so a map in a popout is followed there.
+ *
+ * A press that is lost without a release (a second finger came down to move the map) drops the
+ * measurement it holds; one placed click by click waits on with its points. While a ruler waits,
+ * `open` knows of it, for the buttons that end it and take a corner back under a finger.
  */
 export class MeasureInput {
   private readonly gesture = new MeasureGesture();
@@ -74,7 +80,14 @@ export class MeasureInput {
     private readonly host: MeasureInputHost,
     private readonly keys: MeasureKeys,
     private readonly now: () => number = () => performance.now(),
+    private readonly open: OpenShape | null = null,
   ) {}
+
+  /** What the buttons of a ruler under way do: what Enter and Backspace do. */
+  private readonly controls: OpenShapeControls = {
+    finish: () => this.apply(this.gesture.finish(), false),
+    back: () => this.apply(this.gesture.back(), false),
+  };
 
   /** A measurement is being made: a press belongs to it, wherever it lands. */
   get measuring(): boolean {
@@ -148,20 +161,23 @@ export class MeasureInput {
     const pressed = this.pressedAt;
     this.pressedAt = null;
     // A measurement ended by a click may be followed by the second click of a double click.
-    const clicked = result.kind !== 'live' && pressed !== null && Math.hypot(e.global.x - pressed.x, e.global.y - pressed.y) <= MEASURE_DRAG_THRESHOLD;
+    const clicked = result.kind !== 'live' && pressed !== null && Math.hypot(e.global.x - pressed.x, e.global.y - pressed.y) <= dragThreshold(MEASURE_DRAG_THRESHOLD, e);
     this.lastClick = clicked ? { at: pressed, time: this.now() } : null;
     this.apply(result, shiftHeld(e));
   };
 
-  /** The browser took the pointer away (a touch that became a system gesture): its measurement is dropped. */
-  private readonly onPointerCancel = (): void => this.cancel();
+  /** The press is lost: the browser took the pointer away, or a second finger came down and the two move the map. */
+  private readonly onPointerCancel = (): void => {
+    this.pressedAt = null;
+    this.apply(this.gesture.lose(), false);
+  };
 
   /** The window lost focus, or the GM turned to something else: the measurement under way is dropped. */
   private readonly drop = (): void => this.cancel();
 
   /** A press anywhere but on the canvas (a toolbar, a panel, another tab) is not the measurement's. */
   private readonly onPressInDocument = (event: PointerEvent): void => {
-    if (event.target !== this.canvas) this.cancel();
+    if (event.target !== this.canvas && !isOpenShapeControl(event.target)) this.cancel();
   };
 
   /** Focus went to something outside the map's tab: a dialog opened over it, by a key or by itself. */
@@ -219,13 +235,14 @@ export class MeasureInput {
   private followsLastClick(screen: Point): boolean {
     const last = this.lastClick;
     this.lastClick = null;
-    return last !== null && this.now() - last.time <= DOUBLE_CLICK_MS && Math.hypot(screen.x - last.at.x, screen.y - last.at.y) <= MEASURE_DRAG_THRESHOLD;
+    return last !== null && this.now() - last.time <= DOUBLE_CLICK_MS && Math.hypot(screen.x - last.at.x, screen.y - last.at.y) <= doubleClickSlack(MEASURE_DRAG_THRESHOLD);
   }
 
   private apply(result: GestureResult, shift: boolean): void {
     if (result.kind === 'none') return;
     if (this.gesture.active) this.hold();
     else this.release();
+    this.tellOpen();
     const live = this.gesture.measurement;
     if (result.kind === 'live') {
       if (live) this.host.changed(live);
@@ -235,6 +252,13 @@ export class MeasureInput {
       if (result.kind === 'finish') this.host.finished(result.measurement, shift);
       else this.host.cancelled();
     }
+  }
+
+  /** A ruler that waits for its next corner is known to the buttons that end it; any other measurement is none of theirs. */
+  private tellOpen(): void {
+    if (!this.open) return;
+    if (this.gesture.placingRuler) this.open.show(this, this.controls, { canFinish: true, canGoBack: this.gesture.corners > 1 });
+    else this.open.end(this);
   }
 
   /** The canvas the viewport takes its pointer from. */

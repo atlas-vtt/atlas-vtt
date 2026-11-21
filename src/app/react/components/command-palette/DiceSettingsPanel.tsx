@@ -10,7 +10,7 @@ import { DICE_FONT_OPTIONS } from '../../../dice3d/diceLook';
 import { SettingsService } from '../../../services/SettingsService';
 import { DiceColourStrip } from './DiceColourStrip';
 import { SettingRow, SettingSliderRow, SettingToggleRow } from './SettingRows';
-import { t } from '../../../i18n';
+import { t, tPlatform } from '../../../i18n';
 
 /** How dice rolls look, for every map: how they are shown, and the dice themselves. */
 export function DiceSettingsPanel(): React.ReactElement {
@@ -47,7 +47,7 @@ export function DiceSettingsPanel(): React.ReactElement {
         {shareRolls && (
           <SettingToggleRow
             label={t('dice.showRollsToPlayers')}
-            hint={t('dice.showRollsToPlayersHint')}
+            hint={tPlatform('dice.showRollsToPlayersHint')}
             value={shareRolls.shown}
             onToggle={shareRolls.onToggle}
           />

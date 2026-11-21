@@ -4,10 +4,12 @@ import { imageExtension } from '../assetImageFiles';
 import { THUMBNAIL_SPEC } from '../AssetThumbnailService';
 
 /**
- * Covers and thumbnails are stored under WebP names. Atlas 0.7.0 kept a PNG or
- * JPEG that needed no scaling as it was there too, so a vault may hold such a
- * file in another format than its name says. A bundle carries it as the WebP it
- * is named, and a release or fork writes that over the vault's copy.
+ * Covers and thumbnails are named by their format (WebP, or PNG from a device
+ * that cannot encode WebP). Atlas 0.7.0 kept a PNG or JPEG that needed no
+ * scaling as it was under a WebP name, so a vault may hold such a file in
+ * another format than its name says. A bundle carries it as the WebP it is
+ * named, and a release or fork writes that over the vault's copy. A device that
+ * cannot encode WebP has no WebP to give: there the file travels as it is.
  */
 
 /** A WebP made for a bundle that the vault has yet to store at `path`. */
@@ -19,12 +21,13 @@ export interface NamedWebp {
 /**
  * The file at `path` as the WebP its name says, made by `render` from the PNG
  * or JPEG it holds. Null when it holds neither under a WebP name, or cannot be
- * converted and so stays as it is.
+ * converted (`render` failed, or made no WebP) and so stays as it is.
  */
 export async function asNamedWebp(path: string, data: ArrayBuffer, render: (image: Blob) => Promise<ArrayBuffer>): Promise<ArrayBuffer | null> {
   if (!/\.webp$/i.test(path) || imageExtension(data) === 'webp') return null;
   try {
-    return await render(new Blob([data]));
+    const rendered = await render(new Blob([data]));
+    return imageExtension(rendered) === 'webp' ? rendered : null;
   } catch (error) {
     console.warn(`[CollectionExport] ${path} holds another format than its name says and could not be converted:`, error);
     return null;

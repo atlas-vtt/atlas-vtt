@@ -9,7 +9,7 @@ import { isFogTool, type FogShape, type FogToolChoices } from '../../fog/fogTool
 import type { LayerVisibility } from '../playerSafeFrame';
 import { hearPressesLast, isHandled } from '../utils/handledEvents';
 import { isPrimaryPress } from '../utils/pointerButtons';
-import { placeKeysOf } from './FogSnapping';
+import { placeKeysOf, placeKeysWith } from './FogSnapping';
 import { FogStroke, type FogStrokeDeps } from './FogStroke';
 
 export type FogGestureDeps = FogStrokeDeps;
@@ -25,6 +25,8 @@ export class FogGesture {
   private readonly onPointerMove = (event: PIXI.FederatedPointerEvent): void => this.pointerMove(event);
   private readonly onPointerUp = (): void => this.pointerUp();
   private readonly onPointerLeave = (): void => this.pointerLeave();
+  /** The press is lost (a second finger, a touch the system took): the drag under way goes, a polygon keeps its corners. */
+  private readonly onPointerCancel = (): void => this.stroke.dropDrag();
   private readonly onZoomed = (): void => this.stroke.rescale();
 
   constructor(private readonly deps: FogGestureDeps) {
@@ -39,6 +41,7 @@ export class FogGesture {
     viewport.on('pointermove', this.onPointerMove);
     viewport.on('pointerup', this.onPointerUp);
     viewport.on('pointerupoutside', this.onPointerUp);
+    viewport.on('pointercancel', this.onPointerCancel);
     viewport.on('zoomed', this.onZoomed);
     // The ring goes when the pointer leaves the canvas.
     deps.canvas().addEventListener('pointerleave', this.onPointerLeave);
@@ -115,6 +118,7 @@ export class FogGesture {
     viewport.off('pointermove', this.onPointerMove);
     viewport.off('pointerup', this.onPointerUp);
     viewport.off('pointerupoutside', this.onPointerUp);
+    viewport.off('pointercancel', this.onPointerCancel);
     viewport.off('zoomed', this.onZoomed);
     canvas().removeEventListener('pointerleave', this.onPointerLeave);
     this.stroke.destroy();
@@ -145,7 +149,7 @@ export class FogGesture {
     this.stroke.setFlipped(event.altKey === true);
     const screen = { x: event.global.x, y: event.global.y };
     const world = this.worldOf(screen);
-    const keys = placeKeysOf(event);
+    const keys = placeKeysWith(this.deps.store.getState(), placeKeysOf(event));
     this.over = screen;
     this.stroke.pointer = world;
     // A room is no shape until the press is released in place.
@@ -159,7 +163,7 @@ export class FogGesture {
     if (fogTool) this.stroke.setFlipped(event.altKey === true);
     const screen = { x: event.global.x, y: event.global.y };
     const world = this.worldOf(screen);
-    const keys = placeKeysOf(event);
+    const keys = placeKeysWith(this.deps.store.getState(), placeKeysOf(event));
     this.over = screen;
 
     if (this.shape === 'brush' && fogTool) this.stroke.moveRing(world);

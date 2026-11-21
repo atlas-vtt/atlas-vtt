@@ -79,6 +79,11 @@ export class View {
   async setState(_state: unknown, _result: unknown): Promise<void> {}
 
   setEphemeralState(_state: unknown): void {}
+
+  /** As Obsidian's views (Components) listen: on any event target, the listener taken off when the view unloads. */
+  registerDomEvent(el: EventTarget, type: string, callback: (event: Event) => unknown, options?: AddEventListenerOptions): void {
+    el.addEventListener(type, callback, options);
+  }
 }
 
 export class ItemView extends View {
@@ -662,3 +667,11 @@ export class Menu {
 export async function loadPdfJs(): Promise<unknown> {
   throw new Error('PDF.js must be supplied by PDF reader tests');
 }
+
+// Whether an editor shows Live Preview; tests set it per state with `editorLivePreviewField.init`.
+import { StateField } from '@codemirror/state';
+
+export const editorLivePreviewField = StateField.define<boolean>({
+  create: () => true,
+  update: (value) => value,
+});

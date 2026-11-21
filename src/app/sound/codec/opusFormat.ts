@@ -38,7 +38,7 @@ export function writeOpusHead(channels: number, preSkip: number): Uint8Array<Arr
   return bytes;
 }
 
-export function writeOpusTags(comments: readonly string[]): Uint8Array {
+export function writeOpusTags(comments: readonly string[]): Uint8Array<ArrayBuffer> {
   const encoder = new TextEncoder();
   const vendor = encoder.encode('Atlas VTT');
   const encoded = comments.map((comment) => encoder.encode(comment));

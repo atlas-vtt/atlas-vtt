@@ -36,7 +36,7 @@ function harness(): { renderer: PixiRendererOrchestrator; s: DrawScene; shown():
     },
   });
   const renderer = Object.assign(Object.create(PixiRendererOrchestrator.prototype) as PixiRendererOrchestrator, {
-    pixiAppManager: { getApp: () => ({ renderer: { render: vi.fn() }, stage: {} }), getViewport: fakeViewport },
+    pixiAppManager: { getApp: () => ({ renderer: { render: vi.fn() }, stage: {} }), getViewport: fakeViewport, getGestures: () => null },
     playerFrames: fakePlayerFrames(),
     annotations: s.renderer,
     dmScreenOverlays: new Set(),

@@ -95,8 +95,10 @@ $tab-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
   // How much of the name's start a control covers while the controls show: none where the eye has its own place.
   --atlas-tab-covered-start: #{$tab-action};
 
-  &:hover {
-    background: var(--background-modifier-hover);
+  @media (hover: hover) {
+    &:hover {
+      background: var(--background-modifier-hover);
+    }
   }
 
   &:focus-visible {
@@ -177,9 +179,11 @@ $tab-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
     align-items: center;
     justify-content: center;
 
-    &:hover {
-      background: var(--background-modifier-hover);
-      color: var(--text-normal);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover);
+        color: var(--text-normal);
+      }
     }
 
     &--start {
@@ -252,6 +256,58 @@ $tab-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
   }
 }
 
-.atlas-scene-tab-bar__button {
+// Ghost buttons: shown only on hover and press. Obsidian fills every <button> (`button:not(.clickable-icon)`), which
+// outranks a single class.
+.atlas-scene-tab-bar button.atlas-scene-tab-bar__button {
   flex-shrink: 0;
+  box-shadow: none;
+  @include atlas-ghost-button;
+}
+
+// ── Under a coarse pointer ──────────────────────────────────────────────────
+// A finger has no hover to show a tab's controls with, so they stand in the tab, the eye before the name and the ×
+// after it, each a $coarse-tab-action square in a hit area as tall as the tab. The inset stays the tab's one inset, so
+// the corners are the ones a fine pointer sees.
+$coarse-tab-height: var(--atlas-scene-tab-height, #{$tab-height});
+$coarse-tab-action: var(--atlas-scene-tab-action, #{$tab-action});
+// Both controls, their gaps to the name and the tab's padding, and about ten letters of the name.
+$coarse-tab-min-width: 152px;
+
+@include atlas-coarse-pointer {
+  .atlas-scene-tab {
+    height: $coarse-tab-height;
+    border-radius: atlas-panel-inset-radius-value($tab-bar-inset, calc(#{$coarse-tab-height} * 0.5));
+
+    .atlas-scene-tab__action {
+      position: relative;
+      top: auto;
+      left: auto;
+      right: auto;
+      visibility: visible;
+      width: $coarse-tab-action;
+      height: $coarse-tab-action;
+
+      &::before {
+        position: absolute;
+        inset: -$tab-inset;
+        content: '';
+      }
+    }
+
+    // Nothing lies over the name's ends, so nothing of it fades.
+    .atlas-scene-tab__label {
+      -webkit-mask-image: none;
+      mask-image: none;
+    }
+  }
+
+  .atlas-scene-tab-bar__strip > .atlas-scene-tab {
+    min-width: $coarse-tab-min-width;
+  }
+
+  // The bar's own buttons are as wide as they are tall.
+  .atlas-scene-tab-bar__button {
+    justify-content: center;
+    min-width: $coarse-tab-height;
+  }
 }

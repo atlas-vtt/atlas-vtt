@@ -77,6 +77,17 @@ describe('scrollWithin', () => {
     expect(container.scrollTop).toBe(count === 1 ? 10 : 40);
   });
 
+  it('keeps a card out from under the shades over the list\'s ends (its scroll-padding)', () => {
+    const { container, elements } = cards(120, [[30, 20], [60, 20], [90, 20], [200, 20]]);
+    container.style.scrollPaddingTop = '40px';
+    container.style.scrollPaddingBottom = '30px';
+    scrollWithin(container, elements[1]!, 'nearest');
+    expect(container.scrollTop).toBe(20);
+    container.scrollTop = 0;
+    scrollWithin(container, elements[3]!, 'nearest');
+    expect(container.scrollTop).toBe(150);
+  });
+
   it('does not scroll the surrounding view', () => {
     const outer = document.createElement('div');
     outer.scrollTop = 75;

@@ -346,7 +346,7 @@ $root-more-inset: (40px - 28px) * 0.5;
 }
 
 // Where nothing hovers, a root's and a tag's ⋯ stand shown: their counts step aside for them.
-@media (hover: none) {
+@include atlas-hover-reveal {
   .atlas-sound-lib__root small,
   .atlas-sound-lib__tag-line small {
     margin-inline-end: 32px;

@@ -1,6 +1,7 @@
 import type { Message } from '../../types';
 
 export const command = {
+  'command.newStatblockTemplate': 'New statblock template…',
   'command.cleanUpMissingAssets': 'Clean up missing assets in current map',
   'command.createTokenFromStatblock': 'Create token from statblock image',
   'command.dismissImageFromPlayerView': 'Dismiss image from player view',
@@ -14,7 +15,7 @@ export const command = {
   'command.reportIssue': 'Report an issue…',
   'command.sendMapToPlayerView': 'Send current map to player view',
   'command.showMapInPlayerWindow': 'Show current map in local player window',
-  'command.toggleDiceLog': 'Toggle dice log',
+  'command.toggleDiceLog': 'Toggle table log',
   'command.toggleInitiativeTracker': 'Toggle initiative tracker',
   'command.toggleLootRoller': 'Toggle random tables',
   'command.viewChangelog': 'View changelog',

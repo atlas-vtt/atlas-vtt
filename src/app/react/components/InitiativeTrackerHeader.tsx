@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronsDownUp, ChevronsUpDown, Dices, Ellipsis, Swords } from 'lucide-react';
+import { Dices, Ellipsis, Swords } from 'lucide-react';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { Button } from '../../packages/components/primitives/button';
 import { EndCombatIcon } from './EndCombatIcon';
@@ -11,69 +11,47 @@ interface InitiativeTrackerHeaderProps {
   fightRuns: boolean;
   empty: boolean;
   rolling: boolean;
-  collapsed: boolean;
-  /** Combatants the collapsed tracker leaves out. */
-  leftOut: number;
-  /** The side tooltips open on: away from the edge the tracker stands at. */
-  tooltipSide: 'left' | 'right';
   onRoll: () => void;
   onStart: () => void;
   onEnd: () => void;
   onOptions: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  onToggleCollapsed: () => void;
 }
 
 /**
- * The tracker's head: the toggle that collapses it to the turn and the next combatants, then
- * Roll, Start or End combat and the options. Four buttons side by side do not fit the narrow
- * tracker, so the toggle has a row of its own.
+ * The bar floating above the tracker: Roll, Start or End combat and the options. It shows while the
+ * pointer is near the tracker (`initiative-tracker.scss`).
  */
 export function InitiativeTrackerHeader(props: InitiativeTrackerHeaderProps): React.ReactElement {
-  const { rolls, fightRuns, empty, rolling, collapsed, leftOut, tooltipSide } = props;
-  const toggleLabel = collapsed ? t('initiative.expand') : t('initiative.collapse');
+  const { rolls, fightRuns, empty, rolling } = props;
   return (
-    <>
-      <LabelTooltip label={toggleLabel} side={tooltipSide}>
-        <Button
-          variant="ghost"
-          className="atlas-initiative-tracker__collapse"
-          onClick={props.onToggleCollapsed}
-          aria-expanded={!collapsed}
-        >
-          {collapsed ? <ChevronsUpDown /> : <ChevronsDownUp />}
-          {collapsed && leftOut > 0 && <span className="atlas-initiative-tracker__left-out">{t('initiative.leftOut', { count: leftOut })}</span>}
-        </Button>
-      </LabelTooltip>
-
-      <div className="atlas-initiative-tracker__controls">
-        {rolls && (
-          <LabelTooltip label={t('initiative.rollAll')}>
-            <Button variant="ghost" size="icon" className="atlas-initiative-tracker__btn" onClick={props.onRoll} disabled={empty || rolling}>
-              <Dices />
-            </Button>
-          </LabelTooltip>
-        )}
-
-        {!fightRuns ? (
-          <LabelTooltip label={t('initiative.startCombat')}>
-            <Button variant="ghost" size="icon" className="atlas-initiative-tracker__btn" onClick={props.onStart} disabled={empty}>
-              <Swords />
-            </Button>
-          </LabelTooltip>
-        ) : (
-          <LabelTooltip label={t('initiative.endCombat')}>
-            <Button variant="ghost" size="icon" className="atlas-initiative-tracker__btn atlas-initiative-tracker__btn--end" onClick={props.onEnd}>
-              <EndCombatIcon />
-            </Button>
-          </LabelTooltip>
-        )}
-
-        <LabelTooltip label={t('initiative.options')}>
-          <Button variant="ghost" size="icon" className="atlas-initiative-tracker__btn" onClick={props.onOptions} aria-haspopup="menu">
-            <Ellipsis />
+    <div className="atlas-initiative-tracker__float atlas-initiative-tracker__float--top">
+      {rolls && (
+        <LabelTooltip label={t('initiative.rollAll')}>
+          <Button variant="ghost" size="icon" className="atlas-initiative-tracker__btn" onClick={props.onRoll} disabled={empty || rolling}>
+            <Dices />
           </Button>
         </LabelTooltip>
-      </div>
-    </>
+      )}
+
+      {!fightRuns ? (
+        <LabelTooltip label={t('initiative.startCombat')}>
+          <Button variant="ghost" size="icon" className="atlas-initiative-tracker__btn" onClick={props.onStart} disabled={empty}>
+            <Swords />
+          </Button>
+        </LabelTooltip>
+      ) : (
+        <LabelTooltip label={t('initiative.endCombat')}>
+          <Button variant="ghost" size="icon" className="atlas-initiative-tracker__btn atlas-initiative-tracker__btn--end" onClick={props.onEnd}>
+            <EndCombatIcon />
+          </Button>
+        </LabelTooltip>
+      )}
+
+      <LabelTooltip label={t('initiative.options')}>
+        <Button variant="ghost" size="icon" className="atlas-initiative-tracker__btn" onClick={props.onOptions} aria-haspopup="menu">
+          <Ellipsis />
+        </Button>
+      </LabelTooltip>
+    </div>
   );
 }

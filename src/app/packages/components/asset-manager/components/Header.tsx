@@ -19,6 +19,8 @@ import { CollectionGlyph } from './collectionGlyph';
 import { TokenIcon } from '../../../../react/components/TokenIcon';
 import { tabHasFolders } from '../utils/tabKinds';
 import { t } from '../../../../i18n';
+import type { ShareWhat } from '../../../../armarium/armariumMessages';
+import type { MapPick } from '../mapPick';
 
 export interface HeaderProps {
   app: App;
@@ -50,9 +52,11 @@ export interface HeaderProps {
    * Set while the Armarium is shown: no tab is current, Back leads to the library, and the store's actions stand
    * where the search and Create do, which belong to the library.
    */
-  armarium?: { onBack: () => void; onReload: () => void; page: string; onShare: () => void } | undefined;
+  armarium?: { onBack: () => void; onReload: () => void; page: string; onShare: (what: ShareWhat) => void } | undefined;
   /** Shows the Armarium: the last place of the tab strip, current while `armarium` is set. */
   onShowArmarium?: (() => void) | undefined;
+  /** The window chooses a map: its purpose stands where the tabs do, and nothing is created. */
+  pick?: MapPick;
 }
 
 /**
@@ -82,6 +86,7 @@ export function Header({
   sel,
   armarium,
   onShowArmarium,
+  pick,
 }: HeaderProps): React.JSX.Element {
   const backLabel = armarium ? t('armarium.backToLibrary') : t('common.back');
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -127,7 +132,9 @@ export function Header({
         </div>
 
         <div className="atlas-am-toolbar-center">
-          <TabSwitcher activeTab={armarium ? null : activeTab} onTabChange={onTabChange} assetCounts={assetCounts} countsFailed={countsFailed} onShowArmarium={onShowArmarium} />
+          {pick
+            ? <h2 className="atlas-am-pick-title">{pick.title}</h2>
+            : <TabSwitcher activeTab={armarium ? null : activeTab} onTabChange={onTabChange} assetCounts={assetCounts} countsFailed={countsFailed} onShowArmarium={onShowArmarium} />}
         </div>
 
         {armarium ? (
@@ -138,7 +145,11 @@ export function Header({
           <div className="atlas-am-toolbar-right">
             {/* Its Cmd/Ctrl+F lives in the manager's own key scope (`useAssetManagerShortcuts`), which a dialog over it lifts. */}
             <HeaderSearch app={app} search={search} onSearch={onSearch} query={query} shortcut={false} shortcutShown />
-            <HeaderMenu
+            {pick ? (
+              pick.noneLabel !== undefined && (
+                <Button variant="outline" className="atlas-am-pick-none" onClick={() => pick.onPick(null)}>{pick.noneLabel}</Button>
+              )
+            ) : <HeaderMenu
               label={t('am.header.create')}
               triggerClassName="atlas-asset-manager-create-btn"
               triggerVariant="default"
@@ -154,7 +165,7 @@ export function Header({
                 { key: 'folder', label: t('am.header.newFolder'), icon: <FolderPlus />, disabled: !tabHasFolders(activeTab), onSelect: onCreateFolder },
                 { key: 'collection', label: t('am.header.createCollection'), icon: <CollectionGlyph />, separated: true, onSelect: onCreateCollection },
               ]}
-            />
+            />}
           </div>
         )}
       </div>

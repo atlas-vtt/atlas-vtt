@@ -11,11 +11,19 @@ $widget-bar-offset: $spacing-s;
   position: fixed;
   top: $widget-bar-offset;
   right: $widget-bar-offset;
-  max-width: calc(100vw - 2 * #{$widget-bar-offset});
+  max-width: calc(#{atlas-view-width()} - 2 * #{$widget-bar-offset});
   z-index: 50; // below the asset manager (100)
   pointer-events: none;
   // Slides clear of the window's buttons while in use (useClearOfWindowControls).
   transition: translate $transition-normal $transition-ease-out;
+}
+
+// While it leaves it takes no pointer: what lies under it is the map's again
+.atlas-widget-bar--leaving {
+  .atlas-widget,
+  .atlas-widget-stack-opener {
+    pointer-events: none;
+  }
 }
 
 // Lays the cards out without a panel of its own; only the cards catch the pointer,
@@ -25,6 +33,17 @@ $widget-bar-offset: $spacing-s;
   @include atlas-flex-row($spacing-s);
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+// While the players' initiative list runs as rows across the top and bottom (player view), the widgets stand as a
+// column down the right edge, scaled from its top right corner, so the room they take is their width
+.atlas-widget-bar--column {
+  .atlas-widget-container {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    transform-origin: top right;
+  }
 }
 
 // The stack's one control, over its whole box (`useWidgetStack`); the cards under it are inert.
@@ -44,9 +63,11 @@ $widget-bar-offset: $spacing-s;
   cursor: pointer;
   pointer-events: auto;
 
-  &:hover {
-    background: transparent;
-    box-shadow: none;
+  @media (hover: hover) {
+    &:hover {
+      background: transparent;
+      box-shadow: none;
+    }
   }
 }
 
@@ -141,8 +162,10 @@ $widget-bar-offset: $spacing-s;
   &.editable {
     cursor: text;
 
-    &:hover {
-      background: var(--background-modifier-hover);
+    @media (hover: hover) {
+      &:hover {
+        background: var(--background-modifier-hover);
+      }
     }
   }
 }
@@ -193,12 +216,16 @@ $widget-bar-offset: $spacing-s;
 .atlas-widget-clock:has(.atlas-widget-btn) .atlas-clock-wedge {
   cursor: pointer;
 
-  &:hover {
-    fill: color-mix(in oklch, var(--widget-color) 40%, transparent);
+  @media (hover: hover) {
+    &:hover {
+      fill: color-mix(in oklch, var(--widget-color) 40%, transparent);
+    }
   }
 
-  &.is-filled:hover {
-    fill: color-mix(in oklch, var(--widget-color) 80%, var(--background-primary));
+  @media (hover: hover) {
+    &.is-filled:hover {
+      fill: color-mix(in oklch, var(--widget-color) 80%, var(--background-primary));
+    }
   }
 }
 

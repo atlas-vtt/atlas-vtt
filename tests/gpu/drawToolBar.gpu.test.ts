@@ -94,8 +94,9 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     expect(tools.bottom).toBeCloseTo(modes.bottom, 0);
     expect(tools.height).toBeCloseTo(modes.height, 1);
     expect(modes.height).toBeCloseTo(42, 0);
-    expect(names(MODES)).toEqual(['Pen', 'Line', 'Rectangle', 'Ellipse', 'Text', 'Stamp', 'Cells', 'Eraser']);
-    expect(rects(`${MODES} .atlas-tool-button`).map((item) => Math.round(item.width))).toEqual(MODE_NAMES.map(() => 32));
+    // The modes, and after a doubled gap the menu of how points land.
+    expect(names(MODES)).toEqual(['Pen', 'Line', 'Rectangle', 'Ellipse', 'Text', 'Stamp', 'Cells', 'Eraser', 'Snapping']);
+    expect(rects(`${MODES} .atlas-tool-button`).map((item) => Math.round(item.width))).toEqual([...MODE_NAMES, 'Snapping'].map(() => 32));
     // The pen's tools: the four every drawing has, a doubled gap, and its see-through ink. Buttons of 32 px, 4 px apart, menus' buttons among them.
     expect(names(TOOLS)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens', 'See-through']);
     const controls = rects(`${TOOLS} .atlas-tool-button`);
@@ -155,8 +156,8 @@ describe('the Draw tool\'s bars above the toolbar', () => {
       expect(names(TOOLS).slice(0, 4)).toEqual(['Colour', 'Size', 'Players see it', 'Under tokens']);
       expect(rects(`${TOOLS} .atlas-tool-button`).slice(0, 4).map((item) => item.left)).toEqual(common);
     }
-    // Buttons of 32 px, 4 px apart and from the bar's edge, a group 4 px further: the widest pair is 294 + 8 + 334 px.
-    expect(Math.round(modes.width)).toBe(294);
+    // Buttons of 32 px, 4 px apart and from the bar's edge, a group 4 px further: the widest pair is 334 + 8 + 334 px.
+    expect(Math.round(modes.width)).toBe(334);
     expect(widths).toEqual({ pen: 190, line: 334, rectangle: 226, ellipse: 226, text: 226, stamp: 190, cells: 190, eraser: 122 });
     // Line has the most tools; no mode's bar is wider than its.
     expect(Math.max(...Object.values(widths))).toBe(widths.line);
@@ -214,7 +215,7 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     // The widest pair, Line's: both bars side by side with room to spare.
     await choose('line');
     expect(rect(MODES).width + 8 + rect(TOOLS).width).toBeLessThanOrEqual(900);
-    expect(Math.round(rect(MODES).width + 8 + rect(TOOLS).width)).toBe(636);
+    expect(Math.round(rect(MODES).width + 8 + rect(TOOLS).width)).toBe(676);
   });
 
   it('offers no None for a selected drawing that is nothing but its fill: the row stays in its place, disabled', async () => {
@@ -432,7 +433,7 @@ describe('the Draw tool\'s bars above the toolbar', () => {
     expect(rect(MODES)).toEqual(modes);
     expect(rect(TOOLS)).toEqual(tools);
     const all = [...document.querySelectorAll<HTMLElement>('.atlas-tool-bar .atlas-tool-button button')];
-    expect(all).toHaveLength(8 + 9);
+    expect(all).toHaveLength(9 + 9);
     for (const item of all) expect(item.getAttribute('aria-disabled'), nameOf(item)).toBe('true');
     // A press opens no menu and changes nothing.
     act(() => button('Size').closest<HTMLElement>('.atlas-dropdown-menu')!.querySelector<HTMLElement>('span')!.click());

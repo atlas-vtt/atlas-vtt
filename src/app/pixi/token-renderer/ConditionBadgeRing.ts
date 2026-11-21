@@ -16,7 +16,7 @@ const BADGE_DIAMETER = (CONDITION_BADGE_RADIUS + 1) * 2;
 /** Distance between the centres of neighbouring badges, in UI units. */
 const BADGE_PITCH = BADGE_DIAMETER + 1.5;
 const MAX_SLOTS = 6;
-const OVERFLOW_COLOR = 0x3a3a42;
+const OVERFLOW_COLOR = 0x4a4a54;
 /** A new badge grows from this share of its size while it fades in. */
 const ENTRANCE_SCALE = 0.5;
 

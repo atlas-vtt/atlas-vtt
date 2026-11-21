@@ -4,7 +4,7 @@ import type { Asset, AssetService, CollectionMetadata } from '../AssetService';
 import { zipPathFor } from './bundleFormat';
 import { rewriteContent } from './bundleContent';
 import { reportFileStep, type BundleProgressListener } from './bundleProgress';
-import { bundleCover, bundleFileReader, openBundle, type BundleFileReader } from './bundleReader';
+import { bundleCover, bundleFileReader, checkedBundle, openBundle, type BundleArchive, type BundleFileReader } from './bundleReader';
 import { assetFingerprint, fieldFingerprint } from './fingerprints';
 import { gatherImportInputs, installedAsset, ownAsset, planTargets, referencedStrings, vaultFileHash, type ImportTargets } from './importInputs';
 import { storeLegacyCollectionResources } from '../collectionScenes';
@@ -56,17 +56,17 @@ export interface ImportSession {
 }
 
 /**
- * Reads a collection bundle, verifies it and compares it with the vault: a new
- * collection, or the three-way difference between the installed release, the
- * vault's copy and the bundle. Nothing is written until `apply`.
+ * Reads a collection bundle (or takes one already read, `BundleArchive`), verifies it and
+ * compares it with the vault: a new collection, or the three-way difference between the
+ * installed release, the vault's copy and the bundle. Nothing is written until `apply`.
  */
 export async function openCollectionImport(
   app: App,
   assets: AssetService,
-  data: Blob,
+  data: Blob | BundleArchive,
   onProgress: BundleProgressListener = () => undefined,
 ): Promise<ImportSession> {
-  const bundle = await openBundle(data, onProgress);
+  const bundle = 'zip' in data ? await checkedBundle(data, onProgress) : await openBundle(data, onProgress);
   const { manifest } = bundle;
   const existing = await assets.findCollectionByUid(manifest.collection.uid);
   const record = existing ? await readInstallRecord(app, existing) : null;

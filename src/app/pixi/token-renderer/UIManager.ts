@@ -41,6 +41,7 @@ export class UIManager implements ITokenUIManager {
   private readonly selectionBar: { hovered: string | null; active: string | null } = { hovered: null, active: null };
   /** The token whose bars show their +/- buttons, whose wheels make room for them. */
   private barButtonsTokenId: string | null = null;
+  private barButtonsSpan: number | undefined;
   private tokenRotationUI?: TokenRotationUI;
   private tokenResizeUI?: TokenResizeUI;
   
@@ -50,6 +51,8 @@ export class UIManager implements ITokenUIManager {
   public resourceDefsProvider: ResourceDefsProvider = () => [];
   /** What the map measures in, for the tokens' height chips. */
   public measurementProvider: (() => MeasurementSettings) | null = null;
+  /** Whether players see names while the canvas is the table's picture (`TokenUIRenderer.tableNameplates`). */
+  public tableNameplates: (() => boolean | undefined) | null = null;
   /** Called once the handles and controls of a new selection stand: the selection highlight passes behind them. */
   public onSelectionUIChange: (() => void) | null = null;
 
@@ -92,7 +95,7 @@ export class UIManager implements ITokenUIManager {
       this.tokenControlsUI.resourceDefsProvider = () => this.resourceDefsProvider();
       this.tokenControlsUI.slotsProvider = (tokenId) => this.tokenUIs[tokenId]?.getResourceSlots() ?? [];
       this.tokenControlsUI.wheelAnchorProvider = (tokenId) => this.tokenUIs[tokenId]?.getWheelAnchor() ?? null;
-      this.tokenControlsUI.onBarButtonsChange = (tokenId) => this.setBarButtonsToken(tokenId);
+      this.tokenControlsUI.onBarButtonsChange = (tokenId, span) => this.setBarButtonsToken(tokenId, span);
       this.tokenRotationUI = new TokenRotationUI(this.viewport, this.store);
       this.tokenResizeUI = new TokenResizeUI(this.viewport, this.store);
       
@@ -145,6 +148,7 @@ export class UIManager implements ITokenUIManager {
     ui.conditionDefsProvider = this.conditionDefsProvider;
     ui.resourceDefsProvider = () => this.resourceDefsProvider();
     ui.measurementProvider = this.measurementProvider;
+    ui.tableNameplates = this.tableNameplates;
     ui.zoomProvider = () => this.viewport.scale.x;
     ui.onScaleChange = (scale) => this.tokenControlsUI?.setScaleFor(tokenId, scale);
     ui.setPlayersView(this.playersView);
@@ -376,11 +380,12 @@ export class UIManager implements ITokenUIManager {
   }
 
   /** Scale of `tokenId`'s bars, which its +/- controls match. */
-  private setBarButtonsToken(tokenId: string | null): void {
-    if (tokenId === this.barButtonsTokenId) return;
-    if (this.barButtonsTokenId) this.tokenUIs[this.barButtonsTokenId]?.setBarButtonsShown(false);
+  private setBarButtonsToken(tokenId: string | null, span?: number): void {
+    if (tokenId === this.barButtonsTokenId && span === this.barButtonsSpan) return;
+    if (tokenId !== this.barButtonsTokenId && this.barButtonsTokenId) this.tokenUIs[this.barButtonsTokenId]?.setBarButtonsShown(false);
     this.barButtonsTokenId = tokenId;
-    if (tokenId) this.tokenUIs[tokenId]?.setBarButtonsShown(true);
+    this.barButtonsSpan = span;
+    if (tokenId) this.tokenUIs[tokenId]?.setBarButtonsShown(true, span);
   }
 
   private barScale(tokenId: string): number {
@@ -490,6 +495,11 @@ export class UIManager implements ITokenUIManager {
   /** Redraws every token's resources, after the collection's resource definitions changed. */
   public refreshResources(): void {
     this.updateAllTokenSettings();
+  }
+
+  /** A token is being resized or turned by its handles. */
+  public transforming(): boolean {
+    return this.tokenResizeUI?.isCurrentlyResizing === true || this.tokenRotationUI?.isCurrentlyRotating === true;
   }
 
   /** How far a selected token's bars stand out from it, in world units. */

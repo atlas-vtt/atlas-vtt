@@ -39,6 +39,12 @@ function mount(playerView = false): ViewAtlasStore {
 }
 
 const press = (key: string): boolean => fireEvent.keyDown(window, { key });
+const letGo = (key: string): boolean => fireEvent.keyUp(window, { key });
+/** The measure key acts when it goes up; any other key when it goes down. */
+const tap = (key: string): void => {
+  press(key);
+  letGo(key);
+};
 
 describe('the measure tool\'s keys', () => {
   it('lists Keep among the GM\'s tool keys, on K, and not among the players\'', () => {
@@ -53,16 +59,16 @@ describe('the measure tool\'s keys', () => {
     const store = mount();
     store.getState().setMeasureTool({ mode: 'circle' });
     expect(store.getState().activeTool).toBe('move');
-    press('m');
+    tap('m');
     expect(store.getState().activeTool).toBe('measure');
     expect(store.getState().measureTool.mode).toBe('circle');
-    press('m');
+    tap('m');
     expect(store.getState().measureTool.mode).toBe('cone');
-    press('m');
+    tap('m');
     expect(store.getState().measureTool.mode).toBe('square');
-    press('m');
+    tap('m');
     expect(store.getState().measureTool.mode).toBe('line');
-    press('m');
+    tap('m');
     expect(store.getState().measureTool.mode).toBe('ruler');
     expect(store.getState().activeTool).toBe('measure');
   });
@@ -71,7 +77,7 @@ describe('the measure tool\'s keys', () => {
     const store = mount();
     press('k');
     expect(store.getState().measureTool.keep).toBe(false);
-    press('m');
+    tap('m');
     press('k');
     expect(store.getState().measureTool.keep).toBe(true);
     press('k');
@@ -81,9 +87,18 @@ describe('the measure tool\'s keys', () => {
 
   it('leaves Keep alone in the players\' view, which keeps nothing', () => {
     const store = mount(true);
-    press('m');
+    tap('m');
     expect(store.getState().activeTool).toBe('measure');
     press('k');
     expect(store.getState().measureTool.keep).toBe(false);
+  });
+
+  it('picks nothing while the measure key is down, and the tool when it goes up', () => {
+    const store = mount();
+    store.getState().setActiveTool('draw');
+    press('m');
+    expect(store.getState().activeTool).toBe('draw');
+    letGo('m');
+    expect(store.getState().activeTool).toBe('measure');
   });
 });

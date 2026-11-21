@@ -5,6 +5,8 @@ import { readVaultBinary } from '../../utils/hiddenVaultFiles';
 import { optimizeImage } from '../../imageProcessing/imageProcessing';
 import { baseName } from '../../utils/pathUtils';
 import { sceneThumbnailPath } from './collectionReferences';
+import { derivedImageExtension } from '../assetImageFiles';
+import type { DerivedFormat } from '../../imageProcessing/imageEncoder';
 import { asNamedWebp } from './webpNamedFiles';
 import { isVideoMapPath } from '../../pixi/mosaicCanvas/video/videoMapFiles';
 
@@ -40,7 +42,13 @@ export interface CoverFile {
   isNew: boolean;
 }
 
-export const collectionCoverPath = (collectionId: string): string => `${COLLECTIONS_DIR}/${collectionId}/cover.webp`;
+/** Where a collection's cover of `extension` lies: `cover.webp`, or `cover.png` from a device that cannot encode WebP. */
+export const collectionCoverPath = (collectionId: string, extension: DerivedFormat = 'webp'): string => `${COLLECTIONS_DIR}/${collectionId}/cover.${extension}`;
+
+/** A cover just made of `data`, at the path that names its format. */
+function newCover(collectionId: string, data: ArrayBuffer): CoverFile {
+  return { path: collectionCoverPath(collectionId, derivedImageExtension(data)), data, isNew: true };
+}
 
 /** Covers fill the dialog's banner; this keeps them sharp on high-density screens without bloating the bundle. */
 const COVER_MAX_SIZE = 1600;
@@ -81,8 +89,8 @@ export async function coverCandidates(app: App, assets: readonly Asset[]): Promi
   return [...candidates.values()];
 }
 
-/** `image` scaled to fit the cover size, as the WebP the cover's name says. */
-async function renderCover(image: Blob): Promise<ArrayBuffer> {
+/** `image` scaled to fit the cover size, as a derived file: WebP, or PNG where the platform encodes no WebP. */
+export async function renderCover(image: Blob): Promise<ArrayBuffer> {
   const { image: cover } = await optimizeImage(image, { maxWidth: COVER_MAX_SIZE, maxHeight: COVER_MAX_SIZE, quality: 0.85 }, { webpOnly: true });
   return cover.arrayBuffer();
 }
@@ -102,17 +110,29 @@ export async function coverFileFor(app: App, collection: CollectionMetadata, cho
     case 'artwork': {
       const source = await readVaultBinary(app, choice.path);
       if (!source) throw new Error(`The cover image ${baseName(choice.path)} is missing.`);
-      return { path: collectionCoverPath(collection.id), data: await renderCover(new Blob([source])), isNew: true };
+      return newCover(collection.id, await renderCover(new Blob([source])));
     }
     case 'upload':
-      return { path: collectionCoverPath(collection.id), data: await renderCover(choice.image), isNew: true };
+      return newCover(collection.id, await renderCover(choice.image));
   }
 }
 
-/** Writes a newly made cover into the collection's folder, over the cover it replaces. */
-export async function storeCover(app: App, cover: CoverFile): Promise<void> {
+/**
+ * Writes a newly made cover into the collection's folder, over the cover it replaces. A cover of
+ * the other format (`replaced`, the collection's cover until now) goes to the trash, so the folder
+ * keeps one.
+ */
+export async function storeCover(app: App, cover: CoverFile, replaced?: string): Promise<void> {
   if (!cover.isNew) return;
   const existing = app.vault.getAbstractFileByPath(cover.path);
   if (existing instanceof TFile) await app.vault.modifyBinary(existing, cover.data);
   else await app.vault.createBinary(cover.path, cover.data);
+  const old = replaced && replaced !== cover.path && isOtherFormat(replaced, cover.path) ? app.vault.getAbstractFileByPath(replaced) : null;
+  if (old instanceof TFile) await app.fileManager.trashFile(old);
+}
+
+/** Whether two paths differ only in their extension: the same cover in two formats. */
+function isOtherFormat(a: string, b: string): boolean {
+  const stem = (path: string): string => path.replace(/\.[^./]+$/, '');
+  return stem(a) === stem(b);
 }

@@ -110,4 +110,13 @@ describe('the documentation panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close documentation' }));
     expect(store.getState().isDocsOpen).toBe(false);
   });
+
+  it('takes the page out as the panel starts to close, while the panel is still leaving', () => {
+    const store = createDocsStore(true);
+    render(<ViewStoreProvider store={store}><DocsWindow /></ViewStoreProvider>);
+    expect(screen.getByLabelText('Atlas documentation', { selector: 'iframe' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Close documentation' }));
+    expect(screen.getByRole('button', { name: 'Close documentation' })).toBeTruthy();
+    expect(screen.queryByLabelText('Atlas documentation', { selector: 'iframe' })).toBeNull();
+  });
 });

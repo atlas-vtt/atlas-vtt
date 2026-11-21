@@ -4,7 +4,8 @@
 
 @use '../../../../../styles/tokens' as *;
 
-// Mirrors the canvas badge (ConditionBadge.ts): lit disc in the condition's colour, dark bezel
+// Mirrors the canvas badge (ConditionBadge.ts): a flat disc in the condition's colour with a fine ring
+// inside its edge, a dark keyline around it and a faint shadow under it
 .atlas-condition-badge {
   position: relative;
   box-sizing: border-box;
@@ -19,24 +20,32 @@
   color: #fff;
   font-weight: $font-weight-bold;
   line-height: 1;
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--atlas-condition-color), #fff 18%),
-    var(--atlas-condition-color) 55%,
-    color-mix(in srgb, var(--atlas-condition-color), #000 20%)
-  );
+  background: var(--atlas-condition-color);
   box-shadow:
-    0 0 0 1px #111114,
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    0 1px 2px rgba(0, 0, 0, 0.3);
+    0 0 0 1px rgba(11, 11, 14, 0.85),
+    0 0 3px rgba(0, 0, 0, 0.3);
 
-  &--light {
-    color: #16161a;
+  // The fine inset ring; a hairline, so it stays at least one device pixel on the smallest badges
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 11%;
+    border: max(0.5px, calc(var(--atlas-condition-size, 16px) * 0.022)) solid rgba(255, 255, 255, 0.4);
+    border-radius: 50%;
+    pointer-events: none;
   }
 
   svg {
-    width: 62%;
-    height: 62%;
+    width: 54%;
+    height: 54%;
+  }
+
+  &--light {
+    color: #16161a;
+
+    &::after {
+      border-color: rgba(11, 11, 14, 0.24);
+    }
   }
 }
 
@@ -46,6 +55,8 @@
   // Overhangs the disc by less than the gap between badges, so it never touches the next one
   right: -12%;
   bottom: -12%;
+  // Above the badge's inset ring
+  z-index: 1;
   box-sizing: border-box;
   min-width: 66%;
   height: 66%;
@@ -54,8 +65,8 @@
   align-items: center;
   justify-content: center;
   border-radius: $radius-full;
-  background: #1c1c22;
-  box-shadow: 0 0 0 1px #111114;
+  background: #2a2a31;
+  box-shadow: 0 0 0 1px rgba(11, 11, 14, 0.85);
   color: #fff;
   font-size: max(8px, calc(var(--atlas-condition-size, 16px) * 0.44));
   font-variant-numeric: tabular-nums;

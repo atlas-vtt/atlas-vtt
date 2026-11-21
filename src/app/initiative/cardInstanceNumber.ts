@@ -30,7 +30,7 @@ export function instanceBadgeNumbers(tokens: Readonly<Record<string, NumberedTok
 }
 
 /** The number on a GM's card, the number its token's badge shows on the map (`instanceBadgeNumbers`); none without a badge. */
-export function cardInstanceNumber(tokens: Readonly<Record<string, TokenEntity>>, tokenId: string, badgesOn: boolean, levels?: SceneLevels): number | null {
-  if (!tokens[tokenId]) return null;
+export function cardInstanceNumber(tokens: Readonly<Record<string, TokenEntity>>, tokenId: string | undefined, badgesOn: boolean, levels?: SceneLevels): number | null {
+  if (tokenId === undefined || !tokens[tokenId]) return null;
   return instanceBadgeNumbers(tokens, badgesOn, levels).get(tokenId) ?? null;
 }

@@ -29,14 +29,18 @@ export const BUNDLE_FILES_DIR = 'files';
  * beside a carried template that new statblocks of it start with, placed beside the template
  * wherever the template goes) and `dice-set` (a dice set the collection, its preset or a carried
  * template rolls with: matched by its set id and placed in the dice sets folder). Development
- * builds wrote templates as format 7, which this version still reads.
+ * builds wrote templates as format 7, which this version still reads. `preview-light` and
+ * `preview-dark` are an item bundle's alone: a template's card drawn for its Armarium listing.
  */
 const BUNDLE_FILE_ROLES = [
   'asset-file', 'thumbnail', 'scene-map', 'scene-thumbnail', 'scene-snapshot', 'scene-snapshot-thumbnail', 'background', 'token-image', 'statblock-note', 'statblock-image',
   'linked-note', 'note-attachment', 'cover', 'loot-base', 'loot-item', 'statblock-template', 'system-preset',
-  'statblock-template-body', 'dice-set',
+  'statblock-template-body', 'dice-set', 'preview-light', 'preview-dark',
 ] as const;
 export type BundleFileRole = typeof BUNDLE_FILE_ROLES[number];
+
+/** Roles only an item bundle's files have: no collection lists them. */
+const ITEM_ONLY_ROLES: ReadonlySet<BundleFileRole> = new Set<BundleFileRole>(['preview-light', 'preview-dark']);
 
 /** Markdown notes, whatever brought them along: any of them may be a native statblock naming its template. */
 export const NOTE_FILE_ROLES: ReadonlySet<BundleFileRole> = new Set<BundleFileRole>(['statblock-note', 'linked-note', 'loot-item']);
@@ -105,7 +109,7 @@ export interface CollectionBundleManifest {
 export const zipPathFor = (vaultPath: string): string => `${BUNDLE_FILES_DIR}/${vaultPath}`;
 
 /** The uid names the collection's install record file. */
-const SAFE_UID = /^[A-Za-z0-9-]{8,64}$/;
+export const SAFE_UID = /^[A-Za-z0-9-]{8,64}$/;
 
 /** Asset ids end up in file names (`maps/<id>.json`) and index records, so they must not name another folder or a prototype key. */
 const SAFE_ID = /^[^/\\.][^/\\]{0,127}$/;
@@ -144,7 +148,7 @@ const isStatblockImage = (value: unknown): boolean =>
 
 const isStrings = (value: unknown): boolean => Array.isArray(value) && value.every((entry) => typeof entry === 'string');
 
-const isBundleFile = (value: unknown): value is BundleFile =>
+export const isBundleFile = (value: unknown): value is BundleFile =>
   isRecord(value)
   && typeof value.vaultPath === 'string'
   && typeof value.role === 'string'
@@ -177,7 +181,7 @@ export function manifestProblem(value: unknown): string | null {
     && assets.every((asset) => isRecord(asset) && isSafeId(asset.id) && typeof asset.type === 'string' && typeof asset.name === 'string'
       && (asset.tags === undefined || (Array.isArray(asset.tags) && asset.tags.every((tag) => typeof tag === 'string'))))
     && Array.isArray(files)
-    && files.every(isBundleFile);
+    && files.every((file): file is BundleFile => isBundleFile(file) && !ITEM_ONLY_ROLES.has(file.role));
   if (!isSound) return t('bundle.damaged');
   const { coverPath } = collection;
   if (coverPath !== undefined && !files.some((file) => file.role === 'cover' && file.vaultPath === coverPath)) return t('bundle.damaged');

@@ -1,5 +1,6 @@
 import { FileView, WorkspaceLeaf, TFile, normalizePath, ViewStateResult } from "obsidian";
 import { ServiceManager } from './services/ServiceManager';
+import { keepViewInPlace } from './utils/keepViewInPlace';
 import { SceneOpenHistory } from './services/sceneOpenHistory';
 import { createViewAtlasStore, ViewAtlasStore } from './storeFactory';
 import { getHistoryStore, runUntracked, type HistoryState } from './stores/history';
@@ -16,9 +17,13 @@ import type { ViewCamera } from './pixi/viewCamera';
 import { showNotice } from './ui/notice';
 import { observeResize } from './utils/observeResize';
 import { inMainWindow } from './plugin/atlasMainWindow';
+import { deviceProfile } from './platform/deviceProfile';
+import { emptyViewRoot } from './platform/viewRoot';
 
 import { ATLAS_VIEW_TYPE } from './atlasViewType';
 import { followPresentedScene } from './services/PlayerWindowPresenter';
+import type { TableMode } from './tableMode/TableMode';
+import { viewTableMode } from './tableMode/viewTableMode';
 
 export { ATLAS_VIEW_TYPE };
 
@@ -81,6 +86,8 @@ export class AtlasView extends FileView {
   private stopResizeObserver: (() => void) | null = null;
   /** Stops showing players the presented scene from this view once it loads it (`followPresentedScene`). */
   private stopFollowingPresentedScene: (() => void) | null = null;
+  /** The view as the players' picture, while its store says so (`tableModeSlice.ts`). */
+  private tableMode: TableMode | null = null;
   private lastContainerWidth: number = 0;
   private lastContainerHeight: number = 0;
   private isViewClosing = false;
@@ -232,10 +239,11 @@ export class AtlasView extends FileView {
   async onOpen(): Promise<void> {
     this.isViewClosing = false;
     const { containerEl } = this;
-    containerEl.empty();
+    emptyViewRoot(containerEl, deviceProfile().isMobileApp);
     containerEl.addClass('atlas-vtt-plugin');
     containerEl.addClass('atlas-vtt-view');
     containerEl.tabIndex = -1;
+    this.registerDomEvent(containerEl.doc, 'scroll', (event) => keepViewInPlace(event.target, containerEl), { capture: true });
 
     // Atlas runs in the main window only: a view opened in a popout loads nothing, since
     // `keepAtlasInMainWindow` closes it and opens its scenes in the main window.
@@ -269,6 +277,8 @@ export class AtlasView extends FileView {
       // Mount UI overlay once the renderer is initialized
       const uiOverlay = this._serviceManager.getUIOverlay();
       uiOverlay.mount(containerEl, this, pixiApp);
+      this.tableMode?.destroy();
+      this.tableMode = viewTableMode(this);
 
       // If state already has a map, trigger load now (file property provided by FileView)
       if (this.file instanceof TFile) {
@@ -320,6 +330,8 @@ export class AtlasView extends FileView {
 
     this.stopFollowingPresentedScene?.();
     this.stopFollowingPresentedScene = null;
+    this.tableMode?.destroy();
+    this.tableMode = null;
 
     // Clean up all services
     this._serviceManager.destroy();
@@ -819,13 +831,21 @@ export class AtlasView extends FileView {
     return this._serviceManager.getRendererService().getRenderer();
   }
 
-  /** Sizes the PIXI canvas to the pane whenever the pane changes size. */
+  /**
+   * Sizes the PIXI canvas to the pane whenever the pane changes size, and tells the pane's own size
+   * to everything inside it (`atlas-view-height()` / `atlas-view-width()` in `_viewport.scss`), which
+   * is sized by the view and never by the window. A covered pane measures nothing and keeps its size.
+   */
   private setupWindowResizeDetection(): void {
     this.stopResizeObserver?.();
     this.stopResizeObserver = observeResize([this.containerEl], () => {
       const currentWidth = this.containerEl.clientWidth;
       const currentHeight = this.containerEl.clientHeight;
       if (currentWidth === this.lastContainerWidth && currentHeight === this.lastContainerHeight) return;
+      if (currentWidth > 0 && currentHeight > 0) {
+        this.containerEl.style.setProperty('--atlas-view-width', `${currentWidth}px`);
+        this.containerEl.style.setProperty('--atlas-view-height', `${currentHeight}px`);
+      }
       this.lastContainerWidth = currentWidth;
       this.lastContainerHeight = currentHeight;
       this._serviceManager.getRendererService().resize(currentWidth, currentHeight);

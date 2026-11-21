@@ -30,22 +30,26 @@ describe('a value a player\'s sheet works out', () => {
     expect(valueLabelled(statblock, 'Skills')?.field).toMatchObject({ key: 'skillsaves' });
   });
 
-  it('is read only where a fallback shows in its place, and a value shown as it is stays the player\'s', () => {
+  it('stays the player\'s where a fallback shows in its place, the fallback its prompt, and a value shown as it is too', () => {
     const fields: TemplateField[] = [
       { key: 'name', label: 'Name', type: 'text' },
       { key: 'dex', label: 'Dex', type: 'number' },
       { key: 'speed', label: 'Speed', type: 'text' },
       { key: 'init', label: 'Initiative', type: 'number' },
       { key: 'alignment', label: 'Alignment', type: 'text' },
+      { key: 'athletics', label: 'Athletics', type: 'choice', options: ['◇', '◆'] },
     ];
     const blocks: TemplateBlock[] = [
       { id: 'init0001', type: 'stat', field: 'init', look: 'run-in', whenEmpty: 'fallback', fallback: '{dex|signed}' },
       { id: 'speed001', type: 'stat', field: 'speed', look: 'run-in', pattern: '{speed}' },
       { id: 'dex00001', type: 'stat', field: 'dex', look: 'run-in', pattern: 'Dex {dex}' },
       { id: 'line0001', type: 'line', fields: ['alignment'] },
+      { id: 'athl0001', type: 'stat', field: 'athletics', look: 'run-in', whenEmpty: 'fallback', fallback: '◇' },
     ];
     const statblock = statblockSheet({ resolved: resolvedOf(templateOf(fields, blocks), { name: 'Ana', dex: 2, speed: '30 ft.', alignment: 'Neutral' }), definitions: [], resources: undefined })!;
-    expect(valueLabelled(statblock, 'Initiative')).toMatchObject({ text: { opening: '+2' }, field: null });
+    expect(valueLabelled(statblock, 'Initiative')).toMatchObject({ text: { opening: '+2' }, prompt: '+2', field: { key: 'init', value: null } });
+    // A choice the note holds no value of yet is picked over its fallback
+    expect(valueLabelled(statblock, 'Athletics')).toMatchObject({ text: { opening: '◇' }, prompt: '◇', field: { key: 'athletics', options: ['◇', '◆'], value: null } });
     expect(valueLabelled(statblock, 'Speed')?.field).toMatchObject({ key: 'speed' });
     expect(valueLabelled(statblock, 'Dex')).toMatchObject({ text: { opening: 'Dex 2' }, field: null });
     expect(values(statblock.blocks).find((value) => value.text.opening === 'Neutral')?.field).toMatchObject({ key: 'alignment' });

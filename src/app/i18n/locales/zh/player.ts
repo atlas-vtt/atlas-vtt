@@ -10,4 +10,5 @@ export const player: Translation = {
   'player.paused': '镜头已暂停',
   'player.title': 'Atlas 玩家视图',
   'player.setupFailed': '无法设置玩家窗口',
+  'player.toggleFullScreen': '切换玩家窗口全屏',
 };

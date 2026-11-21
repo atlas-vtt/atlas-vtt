@@ -1,5 +1,5 @@
 import '../setup/obsidianDom';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { Application, Graphics } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { afterEach, describe, expect, it, vi } from 'vitest';

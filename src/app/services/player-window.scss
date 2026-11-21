@@ -1,4 +1,5 @@
 @use '../../../styles/tokens' as *;
+@use './player-overlays' as *;
 
 // Popout window that shows the presented scene to players.
 
@@ -81,26 +82,10 @@ body.atlas-player-window {
 
   // Rolls stand at the top centre, where the whole table can read them. The window
   // is a drag region; the rolls must still take clicks to skip, expand or dismiss.
+  @include player-dice-rolls;
+
   .atlas-dice-rolls {
-    position: fixed;
-    top: 1rem;
-    right: auto;
-    left: 50%;
-    transform: translateX(-50%);
-    align-items: center;
     -webkit-app-region: no-drag;
-  }
-
-  .atlas-dice-roll__chip {
-    align-self: center;
-  }
-
-  .atlas-dice-toast--entering {
-    animation-name: atlas-player-dice-toast-enter;
-  }
-
-  .atlas-dice-toast--exiting {
-    animation-name: atlas-player-dice-toast-exit;
   }
 
   #atlas-player-titlebar-container {
@@ -152,9 +137,10 @@ body.atlas-player-window {
     display: none !important;
   }
 
-  // The curtain (PlayerWindowService.setCurtain): black over everything players see, the image
-  // display (z 10000) and the loot handout (z 10001) included. The canvas is blacked as well. The
-  // rule below says where it rests; `showPlayerCurtain` fades it there.
+  // The curtain (PlayerWindowService.setCurtain): black over everything players see, the loot
+  // handout (z 10001) included, but under the image display (z 10003): an image the GM shows
+  // reaches players with the curtain down. The canvas is blacked as well. The rule below says
+  // where it rests; `showPlayerCurtain` fades it there.
   .atlas-player-curtain {
     position: fixed;
     inset: 0;

@@ -5,11 +5,12 @@ import { badgeColour } from './conditionBadgeColour';
 import './condition-badge.scss';
 
 /** `ConditionBadge` for panels built with the DOM instead of React: the same elements and classes. */
-export function createConditionBadge(parent: HTMLElement, condition: Pick<ActiveCondition, 'color' | 'glyph' | 'value'>, size: number): HTMLElement {
+export function createConditionBadge(parent: HTMLElement, condition: Pick<ActiveCondition, 'color' | 'glyph' | 'value'>, size: number | string): HTMLElement {
   const badge = parent.createSpan({ cls: 'atlas-condition-badge', attr: { 'aria-hidden': 'true' } });
   if (isLightBadgeColor(condition.color)) badge.addClass('atlas-condition-badge--light');
   badge.style.setProperty('--atlas-condition-color', badgeColour(condition.color));
-  badge.style.setProperty('--atlas-condition-size', `${size}px`);
+  // A length in CSS: the players' list grows its badges with the list
+  badge.style.setProperty('--atlas-condition-size', typeof size === 'number' ? `${size}px` : size);
   const { glyph } = condition;
   if (glyph.kind === 'icon') {
     const svg = badge.createSvg('svg', { attr: { viewBox: WIDGET_ICON_VIEW_BOX, fill: 'currentColor', 'aria-hidden': 'true' } });

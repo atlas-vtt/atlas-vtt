@@ -2,12 +2,13 @@ import { useCallback, useRef, useSyncExternalStore } from 'react';
 import type { AccountState, AtlasAccount } from '../../account/AtlasAccount';
 import { confirmAction } from '../../ui/confirmDialog';
 import { t } from '../../i18n';
-import type { ShareSession } from '../upload/ShareSession';
+import type { AnyShareSession } from '../upload/anyShareSession';
 import type { ShareSnapshot } from '../upload/shareState';
 import { leaveShare } from './leaveShare';
+import { shareSaid } from './shareWording';
 
 /** The share as it stands, rendered anew whenever the session changes. */
-export function useShareSnapshot(session: ShareSession): ShareSnapshot {
+export function useShareSnapshot(session: AnyShareSession): ShareSnapshot {
   return useSyncExternalStore(
     useCallback((listener: () => void) => session.subscribe(listener), [session]),
     () => session.snapshot(),
@@ -36,7 +37,7 @@ function losesUpload(snapshot: ShareSnapshot): boolean {
  * Closing the share: at once where nothing was uploaded or it is published, after the GM confirmed where an upload
  * would be discarded. Never while a publish is on its way, which would leave the vault not knowing its own release.
  */
-export function useShareClose(session: ShareSession, onClose: () => void): () => void {
+export function useShareClose(session: AnyShareSession, onClose: () => void): () => void {
   const asking = useRef(false);
   return useCallback((): void => {
     const snapshot = session.snapshot();
@@ -49,7 +50,7 @@ export function useShareClose(session: ShareSession, onClose: () => void): () =>
     asking.current = true;
     void confirmAction({
       title: t('armariumShare.leaveTitle'),
-      message: [t('armariumShare.leaveBody')],
+      message: [shareSaid(snapshot.subject, 'armariumShare.leaveBody')],
       confirmLabel: t('armariumShare.leaveConfirm'),
       destructive: true,
     }).then((leave) => {
