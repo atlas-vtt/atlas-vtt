@@ -3,7 +3,7 @@ import { BUILT_IN_DICE_SETS } from '../../src/app/gameSystems/builtInDiceSets';
 import { advantageSidesFor, ruledSides } from '../../src/app/tools/diceAdvantage';
 import { rollingWith } from '../../src/app/tools/DiceTool';
 import { DiceTool } from '../../src/app/tools/DiceTool';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import {
   advantageMoot, statusMessage, trayStatus, type TrayAdvantage,
 } from '../../src/app/react/components/dice/diceTrayStatus';

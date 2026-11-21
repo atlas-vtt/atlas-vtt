@@ -12,7 +12,7 @@ import type { Point } from '../types/visionTypes';
 import { isRecord } from '../utils/guards';
 import { isHexColor } from '../utils/hexColor';
 import { readMeasureEffect } from './measureEffects';
-import { MAX_AURA, MAX_MEASURES, MAX_MEASURE_AUTHOR, MAX_ORIGIN_TOKENS, MAX_RULER_POINTS, MEASURE_SHAPES, type KeptAura, type KeptMeasure, type KeptMeasureOrigin, type MeasureShapeKind } from './measureTypes';
+import { MAX_AURA, MAX_MEASURES, MAX_MEASURE_AUTHOR, MAX_ORIGIN_TOKENS, MAX_RULER_POINTS, MEASURE_SHAPES, type KeptAura, type KeptFollower, type KeptMeasure, type KeptMeasureOrigin, type MeasureAnchor, type MeasureShapeKind } from './measureTypes';
 
 const NONE: readonly KeptMeasure[] = [];
 const lists = new WeakMap<object, readonly KeptMeasure[]>();
@@ -44,34 +44,49 @@ function isOrigin(value: unknown): value is KeptMeasureOrigin {
 
 const isAuraReach = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= MAX_AURA;
 
+function isAnchor(value: unknown): value is MeasureAnchor {
+  return isPoint(value) && isRecord(value) && typeof value.rotation === 'number' && Number.isFinite(value.rotation);
+}
+
+const isTokenId = (value: unknown): value is string => typeof value === 'string' && value !== '';
+
 /** Whether `measure` is an aura: a circle that names the token it follows and how far it reaches from it. */
 export function isAura(measure: KeptMeasure): measure is KeptAura {
-  return measure.shape === 'circle' && typeof measure.follows === 'string' && measure.follows !== '' && isAuraReach(measure.aura);
+  return measure.shape === 'circle' && isTokenId(measure.follows) && isAuraReach(measure.aura);
+}
+
+/** Whether `measure` is grouped with a token: it names the token and where that token stood when its points were written, and is no aura. */
+export function isFollower(measure: KeptMeasure): measure is KeptFollower {
+  return isTokenId(measure.follows) && measure.aura === undefined && isAnchor(measure.anchor);
 }
 
 /**
- * The token the entry `value` of a measures record follows: the reader's own answer to whether it
- * is an aura, for whoever keeps auras with their tokens. Null for everything `readMeasure` does
- * not read as one: a ruler or another area that names a token, a circle without a reach, an entry
- * that is no measurement. Read anew at every call, so it may be asked of a store draft.
+ * The token the entry `value` of a measures record follows, as an aura or grouped with it: the
+ * reader's own answer, for whoever keeps such measurements with their tokens. Null for everything
+ * `readMeasure` does not read as one: a measurement that names a token alone, an entry that is no
+ * measurement. `grouped: false` asks for auras alone. Read anew at every call, so it may be asked
+ * of a store draft.
  */
-export function followedToken(id: string, value: unknown): string | null {
+export function followedToken(id: string, value: unknown, grouped = true): string | null {
   const measure = isRecord(value) ? measureOf(id, value) : null;
-  return measure && isAura(measure) ? measure.follows : null;
+  if (!measure) return null;
+  if (isAura(measure)) return measure.follows;
+  return grouped && isFollower(measure) ? measure.follows : null;
 }
 
 function measureOf(id: string, value: Record<string, unknown>): KeptMeasure | null {
   const { shape, points } = value;
   if (!isShape(shape) || !isPath(points, shape)) return null;
-  const { id: ownId, kind, width, color, hidden, by, origin, level, walls, follows, aura, light, effect, ...rest } = value;
+  const { id: ownId, kind, width, color, hidden, by, origin, level, walls, follows, aura, anchor, light, effect, ...rest } = value;
   const emission = light === undefined ? null : readEmission(light);
   const look = readMeasureEffect(effect);
-  // An aura is both of its fields on a circle; one alone, or on another shape, says nothing.
-  const follower = shape === 'circle' && typeof follows === 'string' && follows !== '' && isAuraReach(aura);
+  // An aura is both of its fields on a circle, a grouped measurement its token and anchor on any shape; one alone says nothing.
+  const aural = shape === 'circle' && isTokenId(follows) && isAuraReach(aura);
+  const grouped = isTokenId(follows) && aura === undefined && isAnchor(anchor);
   const sound = ownId === id && kind === 'measure'
     && (width === undefined || isWidth(width)) && (color === undefined || isHexColor(color)) && (hidden === undefined || hidden === true)
     && (by === undefined || isAuthor(by)) && (origin === undefined || isOrigin(origin)) && (level === undefined || typeof level === 'string')
-    && (walls === undefined || walls === false) && (follower || (follows === undefined && aura === undefined))
+    && (walls === undefined || walls === false) && ((aural && anchor === undefined) || grouped || (follows === undefined && aura === undefined && anchor === undefined))
     && (light === undefined || emission === light) && (effect === undefined || look !== undefined);
   if (sound) return value as unknown as KeptMeasure;
   // What this Atlas does not know (`rest`) stays on the view, for readers that do.
@@ -88,7 +103,8 @@ function measureOf(id: string, value: Record<string, unknown>): KeptMeasure | nu
     ...(origin !== undefined && { origin: isOrigin(origin) ? origin : UNREADABLE_ORIGIN }),
     ...(typeof level === 'string' && { level }),
     ...(walls === false && { walls }),
-    ...(follower && { follows, aura }),
+    ...(aural && { follows, aura }),
+    ...(grouped && { follows, anchor }),
     ...(emission && { light: emission }),
     ...(look && { effect: look }),
   };
@@ -100,7 +116,8 @@ function measureOf(id: string, value: Record<string, unknown>): KeptMeasure | nu
  * `MAX_RULER_POINTS` for a ruler). A colour that is not `#rrggbb`, a width that is no size and a
  * maker that is no name read as unset, `hidden` only where it is `true`, `walls` only where it is
  * `false`, an origin that cannot be read as one the players never saw, and `follows` with `aura`
- * only as a pair on a circle (`isAura`): a circle that names one of them alone stays where it is.
+ * only as a pair on a circle (`isAura`), and with `anchor` only without `aura` (`isFollower`): a
+ * measurement that names one of them alone stays where it is.
  * A `light` is read as every light's emission is (`readEmission`: none without its two ranges),
  * and an `effect` this Atlas does not know as none.
  */
@@ -146,7 +163,8 @@ export function measuresFromFile(value: unknown): Record<string, KeptMeasure> | 
  */
 export function measureMovedWithMap<T>(measure: T, move: (point: Point) => Point): T {
   if (!isRecord(measure)) return measure;
-  const { points } = measure;
+  const { points, anchor } = measure;
   if (!Array.isArray(points) || !points.every(isPoint)) return measure;
-  return { ...measure, points: points.map(move) };
+  // A grouped measurement's anchor moves with it, or its token's move would move it a second time.
+  return { ...measure, points: points.map(move), ...(isAnchor(anchor) && { anchor: { ...move(anchor), rotation: anchor.rotation } }) };
 }

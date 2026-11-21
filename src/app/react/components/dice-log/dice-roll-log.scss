@@ -11,7 +11,7 @@ $log-width: 360px;
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  height: 80vh;
+  height: #{atlas-view-height(80)};
   width: $log-width;
   display: flex;
   flex-direction: column;
@@ -350,4 +350,10 @@ $log-width: 360px;
 
 .dice-log-entry:hover .dice-log-entry__repeat {
   opacity: 1;
+}
+
+@include atlas-hover-reveal {
+  .dice-log-entry .dice-log-entry__repeat {
+    opacity: 1;
+  }
 }

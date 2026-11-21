@@ -150,12 +150,25 @@ describe('the sound library', () => {
     await page.screenshot({ path: `${SHOTS}/library-1800.png`, element: LIBRARY_SHOT(frame!.host) });
   });
 
-  it('keeps name, state and length readable at 1280, the action over the length, and what does not fit in the head in a menu', async () => {
-    await open(ATLAS_DARK, 1280, 800);
+  it('keeps name, state and length readable at 1000, the action over the length, and what does not fit in the head in a menu', async () => {
+    await open(ATLAS_DARK, 1000, 800);
     await pressTag('Battle');
     await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__row').length).toBeGreaterThan(4);
     expect(box('.atlas-sound-lib__rail').width).toBe(192);
-    expect((box('.atlas-sound-side').width + box('.atlas-sound-stage > .atlas-sound-lib').width) / 1280).toBeCloseTo(0.58, 1);
+    // The moods keep one column of tiles; the rows take the rest.
+    expect(box('.atlas-sound-moods').width).toBe(256);
+    // An hour's length stands whole in its column, at a larger interface font too (Obsidian's font size setting).
+    const long = rowNamed('No quarter').querySelector<HTMLElement>('.atlas-sound-lib__length')!;
+    await expect.poll(() => long.textContent).toBe('1:03:04');
+    const rows = document.querySelector<HTMLElement>('.atlas-sound-lib__rows')!;
+    rows.style.fontSize = '18px';
+    const text = document.createRange();
+    text.selectNodeContents(long);
+    const words = text.getBoundingClientRect();
+    const cell = long.getBoundingClientRect();
+    expect(words.left).toBeGreaterThanOrEqual(cell.left + 4);
+    expect(words.right).toBeLessThanOrEqual(cell.right + 0.5);
+    rows.style.fontSize = '';
     expectNoOverflow();
     const row = rowNamed('Riders at the treeline');
     const title = row.querySelector<HTMLElement>('.atlas-sound-lib__title')!;
@@ -172,7 +185,7 @@ describe('the sound library', () => {
     expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth);
     expect(getComputedStyle(document.querySelector('.atlas-sound-lib__btn--folds')!).display).toBe('none');
     await withMoods(rig!);
-    expectTilesRead(2);
+    expectTilesRead(1);
     expectNoOverflow();
     await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-lib__head-more')!);
     await expect.poll(() => [...document.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent)).toEqual(['Import']);

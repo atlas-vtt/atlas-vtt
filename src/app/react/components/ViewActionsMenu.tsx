@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { MoreVertical } from 'lucide-react';
 import { App, FileView } from 'obsidian';
 import { getActiveWorkspaceLeaf } from '../../utils/embeddedLeafFocus';
@@ -6,18 +6,21 @@ import { openContextMenuGlobal, type ContextMenuEntry } from '../root/ContextMen
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { t } from '../../i18n';
 import { showNotice } from '../../ui/notice';
+import { desktopOnly } from '../../platform/desktopOnly';
+import { deviceProfile } from '../../platform/deviceProfile';
 
 interface ViewActionsMenuProps {
   app: App;
   filePath?: string | undefined;
 }
 
+/**
+ * The view's own actions (split, rename, close): what Obsidian's view header holds, which Atlas
+ * hides on desktop. On mobile that header stays and its menu offers them, so this button is left out.
+ */
 export const ViewActionsMenu: React.FC<ViewActionsMenuProps> = ({ app, filePath }) => {
   const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    // mount tracking (no-op)
-  }, []);
+  if (deviceProfile().isMobileApp) return null;
 
   const showMenu = (e: React.MouseEvent): void => {
     e.preventDefault();
@@ -40,13 +43,14 @@ export const ViewActionsMenu: React.FC<ViewActionsMenuProps> = ({ app, filePath 
 
     if (filePath) {
       entries.push(
-        {
+        // The system's file manager: desktop only
+        ...desktopOnly<ContextMenuEntry>({
           type: 'item', label: t('view.reveal'), icon: 'folder-open',
           onClick: async () => {
             const file = app.vault.getAbstractFileByPath(filePath);
             if (file) app.showInFolder(file.path);
           },
-        },
+        }),
         {
           type: 'item', label: t('view.copyPath'), icon: 'copy',
           onClick: () => {

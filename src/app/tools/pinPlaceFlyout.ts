@@ -1,4 +1,5 @@
 import { PIN_PLACE_GROUPS, getPinIconDefinition, type PinIconId, type PinPlaceGroup } from '../types/pinIcons';
+import { visibleViewport } from '../host/visibleViewport';
 import { setPinGlyph, setPinTone } from './pinIconDom';
 import { placeNeighbour } from './pinPlaceRows';
 import { createPinPlaceSearch, type PinPlaceSearch, type PinPlaceSearchTexts } from './pinPlaceSearch';
@@ -177,13 +178,13 @@ export function createPinPlaceFlyout(container: HTMLElement, options: PinPlaceFl
       const gap = options.gap?.() ?? ANCHOR_GAP_PX;
       const roomAbove = slot.top - gap - VIEWPORT_MARGIN_PX;
       // The anchor's own window: a map in a popout has one of its own.
-      const view = doc.defaultView ?? window;
-      const roomBelow = view.innerHeight - slot.bottom - gap - VIEWPORT_MARGIN_PX;
+      const view = visibleViewport(doc.defaultView ?? window);
+      const roomBelow = view.bottom - slot.bottom - gap - VIEWPORT_MARGIN_PX;
       const above = roomAbove >= height || (roomBelow < height && roomAbove >= roomBelow);
       const top = above ? slot.top - gap - height : slot.bottom + gap;
       const left = slot.left + slot.width / 2 - width / 2;
-      flyout.style.left = `${clamp(left, view.innerWidth - width)}px`;
-      flyout.style.top = `${clamp(top, view.innerHeight - height)}px`;
+      flyout.style.left = `${clamp(left, view.right - width)}px`;
+      flyout.style.top = `${clamp(top, view.bottom - height)}px`;
       // A search leaves fewer icons: the panel keeps the size it opened with, so it stays where it hangs.
       if (search) flyout.style.height = `${height}px`;
       flyout.dataset.side = above ? 'top' : 'bottom';

@@ -3,12 +3,13 @@ import { accountStateText, signInNoticeText } from '../../../account/accountSett
 import type { AccountState } from '../../../account/AtlasAccount';
 import { Skeleton, SkeletonGroup } from '../../../packages/components/primitives/Skeleton';
 import { t } from '../../../i18n';
-import type { Gate } from '../../upload/shareState';
+import type { Gate, ShareSnapshot } from '../../upload/shareState';
 import { uploadMessageFor } from '../../upload/text/uploadMessages';
 import { ShareNotice } from './ShareNotice';
+import { shareSaid } from '../shareWording';
 
 /** The account step: sign in on this device, then whether the account may share now. */
-export function AccountStep({ state, gate }: { state: AccountState; gate: Gate | null }): React.JSX.Element {
+export function AccountStep({ state, gate, subject }: { state: AccountState; gate: Gate | null; subject: ShareSnapshot['subject'] }): React.JSX.Element {
   switch (state.kind) {
     case 'unavailable':
       return <ShareNotice tone="error">{accountStateText(state)}</ShareNotice>;
@@ -16,7 +17,7 @@ export function AccountStep({ state, gate }: { state: AccountState; gate: Gate |
       const notice = signInNoticeText(state.notice);
       return (
         <>
-          <p className="atlas-share-text">{t('armariumShare.signInWhy')}</p>
+          <p className="atlas-share-text">{shareSaid(subject, 'armariumShare.signInWhy')}</p>
           <p className="atlas-share-text atlas-share-text--muted">{t('armariumShare.signInHow')}</p>
           {notice !== null && <ShareNotice tone="error">{notice}</ShareNotice>}
         </>

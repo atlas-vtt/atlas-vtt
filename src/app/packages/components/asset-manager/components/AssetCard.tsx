@@ -19,6 +19,8 @@ import { CardMoreButton } from './CardMoreButton';
 import { SceneMarkers, sceneCardName, useSceneMarks } from './SceneMarkers';
 import { isCut } from '../../../../react/components/dm-screen/sound/CutTooltip';
 import { t } from '../../../../i18n';
+import { useCoarsePointer } from '../../../../platform/useCoarsePointer';
+import { useMapPick } from '../mapPick';
 
 export interface AssetCardProps extends AssetCardHandlers {
   asset: AnyAsset;
@@ -115,7 +117,12 @@ export const AssetCard = memo(function AssetCard({
   const awaitsArt = asset.thumbnailPending === true;
   const sceneMarks = useSceneMarks(asset.type === 'scenes' ? asset.scenePath : undefined);
   const status = cardStatus(asset, spawnCount, statblockMissing);
+  // A finger types no count over a card: the selected token's counter stands ready at one, and its Go spawns.
+  const stepperForFinger = useCoarsePointer() && isSelected && asset.type === 'tokens';
   const markedName = sceneCardName(asset.name, sceneMarks);
+  // A window choosing a map: the card is the choice, and nothing else on it (selection, tags, menu, dragging) is offered.
+  const pick = useMapPick();
+  const choose = pick && asset.type === 'maps' ? (): void => pick.onPick(asset.mapFilePath) : null;
   // One tooltip per pointer position: the card's waits while a control's own shows. It tells the main action, and the
   // name above it where the name's line cuts it.
   const nameRef = useRef<HTMLSpanElement>(null);
@@ -155,7 +162,7 @@ export const AssetCard = memo(function AssetCard({
   const handleDoubleClick = (event: React.MouseEvent): void => {
     event.preventDefault();
     event.stopPropagation();
-    if (!event.shiftKey && !event.ctrlKey && !event.metaKey) onOpen(asset, spawnCount);
+    if (!choose && !event.shiftKey && !event.ctrlKey && !event.metaKey) onOpen(asset, spawnCount);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
@@ -163,6 +170,10 @@ export const AssetCard = memo(function AssetCard({
     if (!action) return;
     event.preventDefault();
     event.stopPropagation();
+    if (choose) {
+      if (action === 'open' || action === 'select') choose();
+      return;
+    }
     if (action === 'open') onOpen(asset, spawnCount);
     else if (action === 'select') onSelect(asset.id, event);
     else if (action === 'delete') onDelete(asset);
@@ -179,9 +190,13 @@ export const AssetCard = memo(function AssetCard({
             className={`atlas-asset-card ${isSelected ? 'atlas-selected' : ''} ${isDragging ? 'atlas-dragging' : ''}`}
             data-type={asset.type}
             data-asset-id={asset.id}
-            onClick={(event) => onSelect(asset.id, event)}
+            onClick={(event) => (choose ? choose() : onSelect(asset.id, event))}
             onDoubleClick={handleDoubleClick}
-            onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); onContextMenu(asset, anchorAtPointer(event)); }}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              if (!pick) onContextMenu(asset, anchorAtPointer(event));
+            }}
             role="option"
             tabIndex={tabbable ? 0 : -1}
             aria-selected={isSelected}
@@ -189,7 +204,7 @@ export const AssetCard = memo(function AssetCard({
             {...(status && { 'aria-describedby': statusId })}
             {...(position !== undefined && { 'aria-posinset': position })}
             {...(setSize !== undefined && { 'aria-setsize': setSize })}
-            draggable
+            draggable={!pick}
             onDragStart={(event) => onDragStart(asset.id, event)}
             onDragEnd={onDragEnd}
             onKeyDown={handleKeyDown}
@@ -198,15 +213,17 @@ export const AssetCard = memo(function AssetCard({
             <div className="atlas-asset-card-thumb" aria-hidden="true">
               <Artwork asset={asset} />
 
-              <span className="atlas-asset-card-checkbox" onClick={(event) => { event.stopPropagation(); onSelect(asset.id, event, true); }}>
-                <LabelTooltip label={t('am.card.select', { name: asset.name })}>
-                  <span className={`atlas-asset-card-check${isSelected ? ' atlas-checked' : ''}`}>
-                    {isSelected && <Check />}
-                  </span>
-                </LabelTooltip>
-              </span>
+              {!pick && (
+                <span className="atlas-asset-card-checkbox" onClick={(event) => { event.stopPropagation(); onSelect(asset.id, event, true); }}>
+                  <LabelTooltip label={t('am.card.select', { name: asset.name })}>
+                    <span className={`atlas-asset-card-check${isSelected ? ' atlas-checked' : ''}`}>
+                      {isSelected && <Check />}
+                    </span>
+                  </LabelTooltip>
+                </span>
+              )}
 
-              <AssetTagMenu asset={asset} />
+              {!pick && <AssetTagMenu asset={asset} />}
 
               {asset.type === 'maps' && asset.animated && (
                 <LabelTooltip label={t('am.card.animated')}>
@@ -232,7 +249,7 @@ export const AssetCard = memo(function AssetCard({
                 </LabelTooltip>
               )}
 
-              {spawnCount > 1 && (
+              {(spawnCount > 1 || stepperForFinger) && (
                 <SpawnCountBadge
                   count={spawnCount}
                   onChange={(count) => onSpawnCountChange(asset.id, count)}
@@ -251,12 +268,12 @@ export const AssetCard = memo(function AssetCard({
         <TooltipContent className="atlas-asset-card-tooltip" side="top" sideOffset={10}>
           {nameCut && <span className="atlas-asset-card-tooltip__name">{asset.name}</span>}
           <span className="tooltip-inner">
-            <span className="atlas-asset-card-tooltip__hint">{cardActionHint(asset.type)}</span>
+            <span className="atlas-asset-card-tooltip__hint">{pick ? t('am.pick.choose') : cardActionHint(asset.type)}</span>
             <kbd className="tooltip-kbd">Enter</kbd>
           </span>
         </TooltipContent>
       </Tooltip>
-      <CardMoreButton onOpen={(button) => onContextMenu(asset, anchorUnder(button, cardRef.current))} />
+      {!pick && <CardMoreButton onOpen={(button) => onContextMenu(asset, anchorUnder(button, cardRef.current))} />}
     </>
   );
 });

@@ -2,9 +2,6 @@ import type { CollectionSettings } from '../types/collectionSettingsTypes';
 import type { InitiativeEntry } from '../types/initiativeTypes';
 import { t } from '../i18n';
 
-/** The colour an enemy added by name starts with: the palette's red (`RESOURCE_COLORS`), which the card menu changes or takes away. */
-export const ENEMY_COLOR = '#dc2626';
-
 /** A new entry for `addToInitiative`. */
 type NewEntry = Omit<InitiativeEntry, 'id' | 'order' | 'isActive'>;
 
@@ -23,10 +20,10 @@ export function collectionEnemyImage(settings: Pick<CollectionSettings, 'enemyIm
   return typeof image === 'string' ? image : '';
 }
 
-/** An enemy without a token, named "Enemy 1", "Enemy 2", … with the first number no entry is named by yet, in red, with the picture the GM set up (`collectionEnemyImage`). */
+/** An enemy without a token, named "Enemy 1", "Enemy 2", … with the first number no entry is named by yet, with the picture the GM set up (`collectionEnemyImage`). */
 export function nextTokenlessEnemy(entries: readonly Pick<InitiativeEntry, 'name'>[], imagePath = ''): NewEntry {
   const taken = new Set(entries.map((entry) => entry.name));
   let number = 1;
   while (taken.has(t('initiative.enemyName', { number }))) number++;
-  return { name: t('initiative.enemyName', { number }), color: ENEMY_COLOR, imagePath, initiative: 0, awaitingInitiative: true, initiativeModifier: 0, isNPC: true };
+  return { name: t('initiative.enemyName', { number }), imagePath, initiative: 0, awaitingInitiative: true, initiativeModifier: 0, isNPC: true };
 }

@@ -1,3 +1,4 @@
+import { resumeOnGesture } from '../sound/engine/audioUnlock';
 import { followOutputDevice, forgetOutputFollower } from '../sound/engine/outputDevice';
 import type { SoundContext } from '../sound/engine/audioNodes';
 import type { LocalLevels } from '../sound/engine/mixerGraph';
@@ -131,6 +132,7 @@ export class SoundOutput {
   private open(): OutputContext {
     if (this.context) return this.context;
     const context = this.deps.createContext();
+    resumeOnGesture(context);
     followOutputDevice(context);
     this.context = context;
     this.player = this.playerOn(context, this.deps.levels());
@@ -160,6 +162,7 @@ export class SoundOutput {
   private rebuild(): void {
     this.closeContext();
     const context = this.deps.createContext();
+    resumeOnGesture(context);
     followOutputDevice(context);
     this.context = context;
     this.player?.useContext(context);

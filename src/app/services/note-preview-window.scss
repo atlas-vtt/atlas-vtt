@@ -19,11 +19,11 @@
   flex-direction: column;
   overflow: hidden;
   width: 400px;
-  height: 50vh;
+  height: #{atlas-view-height(50)};
   min-width: 150px;
-  max-width: 90vw;
+  max-width: #{atlas-view-width(90)};
   min-height: 75px;
-  max-height: 90vh;
+  max-height: #{atlas-view-height(90)};
   padding: $spacing-s;
   gap: $spacing-s;
 
@@ -31,6 +31,24 @@
   @include atlas-panel-radius($surface-radius);
 
   animation: note-preview-slide-in $transition-normal $transition-ease-out;
+}
+
+// On mobile the preview is a sheet over the map (`NotePreviewWindow.sheet`): as tall as the view, at
+// its end edge, opened and closed with the panels' motion. The place and size in its inline styles
+// are a desktop window's, saved with the map: they stay as they are for the desktop to use again.
+.atlas-note-preview-window--sheet {
+  inset: $spacing-s $spacing-s $spacing-s auto !important;
+  width: min(480px, calc(100% - #{2 * $spacing-s})) !important;
+  height: auto !important;
+  max-width: none;
+  max-height: none;
+  animation: none;
+  transform-origin: center right;
+
+  .atlas-note-preview-header {
+    cursor: default;
+    touch-action: auto;
+  }
 }
 
 .atlas-note-preview-window.is-dragging,
@@ -48,6 +66,8 @@
   margin: calc(-1 * #{$spacing-s}) calc(-1 * #{$spacing-s}) 0 0;
   cursor: grab;
   user-select: none;
+  // A finger moves the window by it; the note below it scrolls
+  touch-action: none;
   flex-shrink: 0;
 }
 
@@ -139,46 +159,52 @@
   position: absolute;
   background: transparent;
   z-index: 20;
+  touch-action: none;
 }
+
+// Half inside the window and half outside it; a coarse pointer gets wider strips (`--atlas-resize-edge`).
+$resize-edge: max(#{$spacing-s}, var(--atlas-resize-edge, 0px));
+$resize-corner: max(#{$spacing-m}, 1.5 * var(--atlas-resize-edge, 0px));
+$resize-out: calc(#{$resize-edge} / -2);
 
 // Edge handles — full-length strips
 .atlas-note-preview-resize-handle-n {
-  top: -$spacing-xs;
+  top: $resize-out;
   left: 0;
   right: 0;
-  height: $spacing-s;
+  height: $resize-edge;
   cursor: ns-resize;
 }
 
 .atlas-note-preview-resize-handle-s {
-  bottom: -$spacing-xs;
+  bottom: $resize-out;
   left: 0;
   right: 0;
-  height: $spacing-s;
+  height: $resize-edge;
   cursor: ns-resize;
 }
 
 .atlas-note-preview-resize-handle-e {
-  right: -$spacing-xs;
+  right: $resize-out;
   top: 0;
   bottom: 0;
-  width: $spacing-s;
+  width: $resize-edge;
   cursor: ew-resize;
 }
 
 .atlas-note-preview-resize-handle-w {
-  left: -$spacing-xs;
+  left: $resize-out;
   top: 0;
   bottom: 0;
-  width: $spacing-s;
+  width: $resize-edge;
   cursor: ew-resize;
 }
 
 // Corner handles — small squares
-.atlas-note-preview-resize-handle-nw { top: -$spacing-xs; left: -$spacing-xs; width: $spacing-m; height: $spacing-m; cursor: nwse-resize; }
-.atlas-note-preview-resize-handle-ne { top: -$spacing-xs; right: -$spacing-xs; width: $spacing-m; height: $spacing-m; cursor: nesw-resize; }
-.atlas-note-preview-resize-handle-sw { bottom: -$spacing-xs; left: -$spacing-xs; width: $spacing-m; height: $spacing-m; cursor: nesw-resize; }
-.atlas-note-preview-resize-handle-se { bottom: -$spacing-xs; right: -$spacing-xs; width: $spacing-m; height: $spacing-m; cursor: nwse-resize; }
+.atlas-note-preview-resize-handle-nw { top: $resize-out; left: $resize-out; width: $resize-corner; height: $resize-corner; cursor: nwse-resize; }
+.atlas-note-preview-resize-handle-ne { top: $resize-out; right: $resize-out; width: $resize-corner; height: $resize-corner; cursor: nesw-resize; }
+.atlas-note-preview-resize-handle-sw { bottom: $resize-out; left: $resize-out; width: $resize-corner; height: $resize-corner; cursor: nesw-resize; }
+.atlas-note-preview-resize-handle-se { bottom: $resize-out; right: $resize-out; width: $resize-corner; height: $resize-corner; cursor: nwse-resize; }
 
 // ── Highlighted Header ──────────────────────────────────────────────────
 

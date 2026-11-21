@@ -8,7 +8,7 @@ import type { ContextMenuEntry } from '../../src/app/react/components/context-me
 
 const state = vi.hoisted(() => ({
   initiativeTrackerOpen: true,
-  initiative: { entries: [] as unknown[], isActive: false, round: 0, config: { autoSort: true } },
+  initiative: { entries: [] as unknown[], isActive: false, round: 0 },
   setInitiativeConfig: vi.fn(),
   resetInitiative: vi.fn(),
   objects: { tokens: {} as Record<string, unknown> },
@@ -29,7 +29,7 @@ const state = vi.hoisted(() => ({
   updateInitiativeEntry: vi.fn(),
   updateTokens: vi.fn(),
 }));
-const settings = vi.hoisted(() => ({ names: false, compact: false, setInitiativeNames: vi.fn(), setCompactInitiative: vi.fn() }));
+const settings = vi.hoisted(() => ({ compact: false, setCompactInitiative: vi.fn() }));
 
 const opened = vi.hoisted(() => ({ entries: [] as ContextMenuEntry[] }));
 vi.mock('../../src/app/react/root/ContextMenuContext', () => ({
@@ -42,15 +42,14 @@ vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
 }));
 vi.mock('../../src/app/keyboard/useMapHotkeys', () => ({
   useAtlasSettings: () => ({
-    showsInitiativeNames: () => settings.names, setInitiativeNames: settings.setInitiativeNames,
     showsCompactInitiative: () => settings.compact, setCompactInitiative: settings.setCompactInitiative,
-    initiativeLayout: () => ({ fromTurn: false, dock: 'right', edges: ['right'], facesPlayers: false, gmDock: 'right', collapsed: false }), setInitiativeLayout: vi.fn(),
+    initiativeLayout: () => ({ fromTurn: false, dock: 'right', edges: ['right'], facesPlayers: false }), setInitiativeLayout: vi.fn(),
     initiativeTurnOptions: () => ({ banner: true, followTurn: false, movesOnTurn: false }), setInitiativeTurnOptions: vi.fn(), isExperimentalOn: () => false,
   }),
 }));
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (storeState: typeof state) => unknown) => selector(state),
-  useViewStoreHook: () => ({ getState: () => state }),
+  useViewStoreHook: () => ({ getState: () => state, subscribe: () => () => undefined }),
 }));
 vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => [] }));
 vi.mock('../../src/app/react/components/StatblockHoverPreview', () => ({
@@ -84,7 +83,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   opened.entries = [];
   state.selectedIds = [];
-  settings.names = false;
   canvas.shows = () => true;
 });
 
@@ -193,33 +191,16 @@ describe('a click on a card', () => {
 });
 
 describe('names on the GM\'s cards', () => {
-  it('shows none until the GM switches them on in the tracker\'s options', () => {
+  it('shows none outside the compact view, and the options offer no switch for them', () => {
     const container = table();
     expect(container.querySelector('.atlas-initiative-card__name')).toBeNull();
     expect(container.querySelector('.atlas-initiative-tracker--named')).toBeNull();
 
     fireEvent.click(container.querySelector('[aria-haspopup="menu"]')!);
-    const item = opened.entries.find((entry) => entry.type === 'item' && entry.label === 'Show names');
-    if (item?.type !== 'item') throw new Error('no names switch');
-    expect(item.checked).toBe(false);
-    void item.onClick();
-
-    expect(settings.setInitiativeNames).toHaveBeenCalledWith(true);
-  });
-
-  it('names each combatant as the map names its token, in a wider tracker', () => {
-    settings.names = true;
-    state.objects.tokens = { a: token('a', 'Bandit Captain'), b: token('b') };
-    state.initiative.entries = [entryOf('a', 0, 10), entryOf('b', 1, 8)];
-
-    const { container } = render(<InitiativeTracker />);
-
-    expect(container.querySelector('.atlas-initiative-tracker--named')).not.toBeNull();
-    expect([...container.querySelectorAll('.atlas-initiative-card__name')].map((name) => name.textContent)).toEqual(['Bandit Captain', 'b']);
+    expect(opened.entries.some((entry) => entry.type === 'item' && entry.label === 'Show names')).toBe(false);
   });
 
   it('is a plain list of names without portraits in the compact view', () => {
-    settings.names = false;
     settings.compact = true;
     state.objects.tokens = { a: token('a', 'Bandit Captain'), b: token('b') };
     state.initiative.entries = [entryOf('a', 0, 10), entryOf('b', 1, 8)];
@@ -231,5 +212,31 @@ describe('names on the GM\'s cards', () => {
     expect(container.querySelectorAll('.atlas-initiative-card__marks')).toHaveLength(2);
     expect([...container.querySelectorAll('.atlas-initiative-card__name')].map((name) => name.textContent)).toEqual(['Bandit Captain', 'b']);
     settings.compact = false;
+  });
+});
+
+describe('the frames of sides', () => {
+  it('frames only the players\' side, in green, whatever colour an older file gave a card', () => {
+    state.objects.tokens = {
+      orc: token('orc'),
+      hero: { ...token('hero'), side: 'players' } as TokenEntity,
+    };
+    state.initiative.entries = [
+      { ...entryOf('orc', 0, 15), color: '#dc2626' } as InitiativeEntry,
+      entryOf('hero', 1, 12),
+      { id: 'entry-mira', name: 'Mira', partyMemberId: 'mira', color: '#3366ff', initiative: 10, initiativeModifier: 0, imagePath: '', isActive: false, isNPC: false, order: 2 } as InitiativeEntry,
+    ];
+    const cards = [...render(<InitiativeTracker />).container.querySelectorAll('.atlas-initiative-card')];
+
+    const frames = cards.map((card) => ['--coloured', '--ally'].filter((mark) => card.classList.contains(`atlas-initiative-card${mark}`)));
+    expect(frames).toEqual([[], ['--ally'], ['--ally']]);
+  });
+
+  it('holds the size of one card while empty, with no text in it', () => {
+    state.initiative.entries = [];
+    const { container } = render(<InitiativeTracker />);
+    const content = container.querySelector('.atlas-initiative-panel__list')!;
+    expect(content.textContent).toBe('');
+    expect(content.querySelectorAll('.atlas-initiative-card--placeholder')).toHaveLength(1);
   });
 });

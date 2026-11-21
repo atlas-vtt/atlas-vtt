@@ -9,6 +9,8 @@ import { useAtlasUI } from '../../root/AtlasUIContext';
 import { useAtlasStore } from '../../ViewStoreContext';
 import { resourceToggleLabel } from './resourceToggleLabel';
 import { t } from '../../../i18n';
+import { DEFAULT_INITIATIVE_LAYOUT, playersListLayout, playersListMirrored, playersListShape } from '../../../initiative/initiativeLayout';
+import { DEFAULT_TURN_OPTIONS } from '../../../initiative/turnOptions';
 
 type LocalPlayerViewSettings = AtlasSettings['localPlayerView'];
 /** The settings that are switches; the sizes and durations are sliders of the palette's panel. */
@@ -37,7 +39,6 @@ const ONLINE_SWITCHES: ReadonlyArray<SwitchText> = [
 
 /** How the initiative list looks to the players. */
 const INITIATIVE_SWITCHES: ReadonlyArray<SwitchText> = [
-  { key: 'showInitiativeNames', label: t('lpv.initiativeNames'), hint: t('lpv.initiativeNamesHint') },
   { key: 'initiativePulse', label: t('lpv.initiativePulse'), hint: t('lpv.initiativePulseHint') },
   { key: 'turnBannerAtLists', label: t('lpv.turnBannerAtLists'), hint: t('lpv.turnBannerAtListsHint') },
   { key: 'turnDim', label: t('lpv.turnDim'), hint: t('lpv.turnDimHint') },
@@ -59,11 +60,11 @@ export interface PlayerViewSwitch {
 
 /** What players see, as switches: the palette's player view settings and the player window bar's menu show the same ones. */
 export interface PlayerViewSwitches {
-  /** The widgets, initiative and dice rolls: the player window and online players alike. */
+  /** The widgets, initiative (whether its list runs as a row, and is mirrored for the far side of the table) and dice rolls: the player window and online players alike. */
   shared: PlayerViewSwitch[];
-  /** The players' cursors and whether players may draw: online play only, none while it is switched off. */
+  /** The players' cursors, whether players may draw and whether they move only on their turn: online play only, none while it is switched off. */
   online: PlayerViewSwitch[];
-  /** The initiative list's names, pulse and turn banner in the player window. */
+  /** The initiative list's pulse and turn banner in the player window. */
   initiative: PlayerViewSwitch[];
   /** Rendering up to 4K, on this device: the player window only. */
   view4k: PlayerViewSwitch;
@@ -103,9 +104,38 @@ export function usePlayerViewSwitches(explicit?: SettingsService): PlayerViewSwi
     runInBackground(updateMapRules(app, source, { resources: next }), 'Saving what players see');
   };
 
+  // The players' list as a row across the screen, and mirrored for the far side of the table: two choices, each kept as
+  // the other changes
+  const layout = settings?.initiativeLayout() ?? DEFAULT_INITIATIVE_LAYOUT;
+  const rows = playersListShape(layout) === 'horizontal';
+  const mirrored = playersListMirrored(layout);
+  const initiativeRows: PlayerViewSwitch = {
+    id: 'initiativeRows',
+    label: t('lpv.initiativeRows'),
+    hint: t('lpv.initiativeRowsHint'),
+    value: rows,
+    onToggle: () => settings?.setInitiativeLayout(playersListLayout(rows ? 'vertical' : 'horizontal', mirrored)),
+  };
+  const initiativeMirrored: PlayerViewSwitch = {
+    id: 'initiativeMirrored',
+    label: t('lpv.initiativeMirrored'),
+    hint: t('lpv.initiativeMirroredHint'),
+    value: mirrored,
+    onToggle: () => settings?.setInitiativeLayout(playersListLayout(rows ? 'horizontal' : 'vertical', !mirrored)),
+  };
+  // A GM's choice for the table rather than a player view setting, but the player view's online settings are where it is looked for
+  const movesOnTurn = (settings?.initiativeTurnOptions() ?? DEFAULT_TURN_OPTIONS).movesOnTurn;
+  const movesOnTurnSwitch: PlayerViewSwitch = {
+    id: 'movesOnTurn',
+    label: t('initiative.movesOnTurn'),
+    hint: t('initiative.movesOnTurnHint'),
+    value: movesOnTurn,
+    onToggle: () => settings?.setInitiativeTurnOptions({ movesOnTurn: !movesOnTurn }),
+  };
+
   return {
-    shared: UI_SWITCHES.map(switchOf),
-    online: onlinePlay ? ONLINE_SWITCHES.map(switchOf) : [],
+    shared: UI_SWITCHES.flatMap((text) => (text.key === 'showInitiative' ? [switchOf(text), initiativeRows, initiativeMirrored] : [switchOf(text)])),
+    online: onlinePlay ? [...ONLINE_SWITCHES.map(switchOf), movesOnTurnSwitch] : [],
     initiative: INITIATIVE_SWITCHES.map(switchOf),
     view4k: { id: 'view4k', label: t('lpv.view4k'), value: view4k, onToggle: () => settings?.setPlayerView4k(!view4k) },
     resources: source.kind === 'none' ? [] : slottedResources(resources).map(({ definition: resource, slot }) => ({

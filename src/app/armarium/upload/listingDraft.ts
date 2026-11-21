@@ -6,6 +6,7 @@ import {
   MAX_TAGS,
   SYSTEMS,
   TAG_IDS,
+  knownSystemOf,
   type LicenceId,
   type ListingFields,
   type ListingKind,
@@ -29,10 +30,15 @@ export function systemOfPreset(presetId: string | undefined): SystemId | null {
   return SYSTEMS.find((system) => system !== 'any' && system === key) ?? null;
 }
 
-/** The form's start: what the submission or the listing already holds, else the collection's system and nothing else. */
-export function draftFrom(fields: ListingFields | null, collectionSystem: SystemId | null): ListingDraft {
+/** A game system's own listing names the known system its name means, if any. */
+export function systemOfSharedPreset(name: string): SystemId | null {
+  return knownSystemOf(name);
+}
+
+/** The form's start: what the submission or the listing already holds, else the system the shared thing names. */
+export function draftFrom(fields: ListingFields | null, startSystem: SystemId | null): ListingDraft {
   if (fields !== null) return { ...fields, tags: [...fields.tags], system: fields.system ?? 'none' };
-  return { kind: null, system: collectionSystem ?? 'none', description: '', tags: [], licence: null, credits: '' };
+  return { kind: null, system: startSystem ?? 'none', description: '', tags: [], licence: null, credits: '' };
 }
 
 /** Characters as the API counts them for a text's limits: code points of the text without the white space around it. */
@@ -71,7 +77,7 @@ export function fieldsOfDraft(draft: ListingDraft): ListingFields | null {
   const kind = KINDS.find((known) => known === draft.kind);
   const licence = LICENCES.find((known) => known === draft.licence);
   if (kind === undefined || licence === undefined) return null;
-  return { kind, system: SYSTEMS.find((known) => known === draft.system) ?? null, description: draft.description, tags: TAG_IDS.filter((tag) => draft.tags.includes(tag)), licence, credits: draft.credits };
+  return { kind, system: draft.system === 'none' ? null : draft.system, description: draft.description, tags: TAG_IDS.filter((tag) => draft.tags.includes(tag)), licence, credits: draft.credits };
 }
 
 /**

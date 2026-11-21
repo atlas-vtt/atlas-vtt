@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   initiative: { entries: [], isActive: false, round: 0 } as unknown as InitiativeState,
   objects: { tokens: {} as Record<string, unknown> },
   tokenSettings: { showInstanceBadges: true },
+  selectedIds: [] as string[],
   removeFromInitiative: vi.fn(),
   rollAllInitiative: vi.fn(),
   rollEntryInitiative: vi.fn(),
@@ -26,7 +27,6 @@ const state = vi.hoisted(() => ({
   updateTokens: vi.fn(),
   setInitiativeSitsOut: vi.fn(),
   resetInitiative: vi.fn(),
-  setInitiativeConfig: vi.fn(),
   delayInitiativeTurn: vi.fn(),
   actNowInInitiative: vi.fn(),
 }));
@@ -48,11 +48,11 @@ vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
   AtlasUIContext: (await import('react')).createContext(null), useAtlasUI: () => ({ app: null, view: null }) }));
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (storeState: typeof state) => unknown) => selector(state),
-  useViewStoreHook: () => ({ getState: () => state }),
+  useViewStoreHook: () => ({ getState: () => state, subscribe: () => () => undefined }),
 }));
-const layout = vi.hoisted(() => ({ fromTurn: false, dock: 'right' as 'left' | 'right', collapsed: false, set: vi.fn() }));
+const layout = vi.hoisted(() => ({ fromTurn: false, dock: 'right' as 'right' | 'top' | 'bottom', set: vi.fn() }));
 vi.mock('../../src/app/initiative/useInitiativeLayout', () => ({
-  useInitiativeLayout: () => ({ layout: { fromTurn: layout.fromTurn, dock: layout.dock, edges: [layout.dock], facesPlayers: false, collapsed: layout.collapsed }, setLayout: layout.set }),
+  useInitiativeLayout: () => ({ layout: { fromTurn: layout.fromTurn, dock: layout.dock, edges: [layout.dock], facesPlayers: false }, setLayout: layout.set }),
 }));
 const resources = vi.hoisted(() => ({ definitions: [] as unknown[] }));
 vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => resources.definitions }));
@@ -80,7 +80,7 @@ function scene(initiative: Partial<InitiativeState> = {}): void {
     goblin: token('goblin'), hero: token('hero', { vision: { enabled: true } }), rat: token('rat'), cleric: token('cleric', { side: 'players' }),
   };
   state.initiative = {
-    entries: [entryOf('goblin', 0), entryOf('hero', 1), entryOf('rat', 2), entryOf('cleric', 3)], isActive: false, round: 0, config: { autoSort: true }, ...initiative,
+    entries: [entryOf('goblin', 0), entryOf('hero', 1), entryOf('rat', 2), entryOf('cleric', 3)], isActive: false, round: 0, ...initiative,
   } as InitiativeState;
 }
 
@@ -109,7 +109,7 @@ beforeEach(() => {
   confirm.asked = [];
   resources.definitions = [];
   scrolls.calls.length = 0;
-  Object.assign(layout, { fromTurn: false, dock: 'right', collapsed: false });
+  Object.assign(layout, { fromTurn: false, dock: 'right' });
   collection.rules = { mode: 'sides', roll: '1d20', firstSide: 'players' };
   scene();
 });
@@ -230,7 +230,7 @@ describe('clearing the initiative tracker', () => {
   });
 
   it('has nothing to clear in an empty tracker', () => {
-    state.initiative = { entries: [], isActive: false, round: 0, config: { autoSort: true } } as unknown as InitiativeState;
+    state.initiative = { entries: [], isActive: false, round: 0 } as unknown as InitiativeState;
     render(<InitiativeTracker />);
     options();
     const clear = opened.entries.find((entry) => entry.type === 'item' && entry.label === 'Clear initiative');
@@ -238,20 +238,13 @@ describe('clearing the initiative tracker', () => {
   });
 });
 
-describe('the auto sort switch', () => {
-  it('shows the setting and switches it', () => {
+describe('the tracker\'s options', () => {
+  it('hold the compact view, the turn banner and adding or clearing combatants, nothing the tracker always does', () => {
     collection.rules = { mode: 'turn-order', roll: '1d20', firstSide: 'players' };
     render(<InitiativeTracker />);
     fireEvent.click(screen.getByRole('button', { name: 'Tracker options' }));
-    expect(opened.entries[0]).toMatchObject({ label: 'Auto sort', checked: true, disabled: false });
-    clickItem('Auto sort');
-    expect(state.setInitiativeConfig).toHaveBeenCalledWith({ autoSort: false });
-  });
-
-  it('stays in place, disabled, where the sides take turns', () => {
-    render(<InitiativeTracker />);
-    fireEvent.click(screen.getByRole('button', { name: 'Tracker options' }));
-    expect(opened.entries[0]).toMatchObject({ label: 'Auto sort', disabled: true });
+    const labels = opened.entries.flatMap((entry) => ('label' in entry ? [entry.label] : []));
+    expect(labels).toEqual(['Compact view', 'Turn banner', 'Add enemy', 'Reset initiative', 'Clear initiative']);
   });
 });
 
@@ -285,8 +278,9 @@ describe('a fight in turn order', () => {
   it('passes the defeated combatants to the turn buttons', () => {
     resources.definitions = [{ ...HP_RESOURCE }];
     state.objects.tokens.rat = token('rat', { resources: { hp: { current: 0, max: 7 } } });
+    state.initiative = { ...state.initiative, isActive: true, round: 1 };
     const { container } = render(<InitiativeTracker />);
-    const [previous, next] = container.querySelectorAll('.atlas-initiative-tracker__turn-controls button');
+    const [previous, next] = container.querySelectorAll('.atlas-initiative-tracker__float--bottom button');
     fireEvent.click(next!);
     fireEvent.click(previous!);
     expect(state.nextTurn).toHaveBeenCalledWith(new Set(['entry-rat']));
@@ -338,7 +332,7 @@ describe('the initiative tracker of a collection that deals cards', () => {
 });
 
 describe('the initiative tracker keeps the turn in view', () => {
-  const list = (container: HTMLElement): Element => container.querySelector('.atlas-initiative-tracker__content')!;
+  const list = (container: HTMLElement): Element => container.querySelector('.atlas-initiative-panel__list')!;
 
   it('scrolls its list to the combatant whose turn it is and the next two when the turn moves on', () => {
     collection.rules = { mode: 'turn-order', roll: '1d20', firstSide: 'players' };

@@ -83,7 +83,7 @@ export function atlasPlayerSettings(app: App): AtlasPlayerSettings {
     showWidgets: field(view, 'showWidgets') === true,
     showCursors: field(view, 'showCursors') === true,
     initiativeFromTurn: field(layout, 'fromTurn') === true,
-    initiativeDock: field(layout, 'dock') === 'left' ? 'left' : 'right',
+    initiativeDock: 'right',
     turnBanner: field(turn, 'banner') !== false,
     movesOnTurn: field(turn, 'movesOnTurn') === true,
     playersDraw: field(view, 'playersDraw') === true,

@@ -1,11 +1,12 @@
 import type { DiceRollResult } from '../types/diceTypes';
 import type { DiceRollOrigin } from '../types/diceRollOrigin';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import type { DiceRules } from '../types/diceRulesTypes';
 import type { AdvantageSide, DiceSet, RolledWithSet, RollingDice } from '../types/diceSetTypes';
 import { rollingRules } from '../gameSystems/diceSets';
 import { completeFormula, type CompleteFormula } from './completeFormula';
 import { withAdvantage, type AdvantagedFormula } from './diceAdvantage';
+import { combinedSide, writtenSide } from './writtenAdvantage';
 import { getDiceCrit } from './diceCrit';
 import { rollFormula } from './diceFormula';
 import { dressSetDice } from './diceAppearance';
@@ -155,28 +156,37 @@ interface PreparedRoll {
   rolling: RollingDice;
   looks: RollingDice['dice'];
   helped: AdvantagedFormula | null;
+  /** The side the roll is made with: the one the formula writes (`adv`) and the one asked for, which cancel. */
+  side: AdvantageSide | null;
 }
 
-/** Checks `formula` (and what `advantage` makes of it) before any randomness: the roll it makes, or why it is refused. */
+/**
+ * Checks `formula` (and what `advantage` makes of it) before any randomness: the roll it makes, or why it is
+ * refused. A side the formula writes that changes nothing (no rule for it, none of the set's dice) is refused,
+ * so a typed word never does nothing silently; one only asked for rolls the formula as it is, as a click does.
+ */
 function prepareDiceRoll(formula: string, rules: DiceRules | RollingDice, advantage?: AdvantageSide): PreparedRoll | FormulaError {
   const rolling = rollingRules(rules);
-  const complete = completeFormula(formula, rules);
+  const written = writtenSide(formula);
+  const complete = completeFormula(written.formula, rules);
   if (!complete.ok) return complete;
   const looks = complete.written ? [] : rolling.dice;
-  const helped = advantage ? withAdvantage(complete.parsed, looks, rolling, advantage) : null;
+  const side = combinedSide(written.side, advantage);
+  const helped = side ? withAdvantage(complete.parsed, looks, rolling, side) : null;
   if (helped && 'ok' in helped) return helped;
-  return { complete, rolling, looks, helped };
+  if (written.side && written.side === side && !helped) return { ok: false, code: 'advantage' };
+  return { complete, rolling, looks, helped, side };
 }
 
 /**
  * Rolls a formula by a dice set (or a collection's dice rules), as the dice
  * tool does but without telling anyone: one without dice (`+3`) is added to
  * the set's dice, which take their names and colours, and an empty one rolls
- * them alone. Dice written out roll as written. `advantage` rolls a roll of the
- * set's dice as its rule for that side says. A formula it refuses (advantage
- * taking it past a limit too) is reported to `inputs.onFormulaError` and rolls
- * nothing (null). `shown` names the set on the result, where it is not the
- * collection's own.
+ * them alone. Dice written out roll as written. `advantage`, and a side the
+ * formula writes (`1d20+5 adv`), rolls a roll of the set's dice as its rule for
+ * that side says. A formula it refuses (advantage taking it past a limit too)
+ * is reported to `inputs.onFormulaError` and rolls nothing (null). `shown`
+ * names the set on the result, where it is not the collection's own.
  */
 export function rollDiceFormula(
   formula: string, rules: DiceRules | RollingDice, inputs: DiceRollInputs, shown?: RolledWithSet, advantage?: AdvantageSide, setAppearance = false,
@@ -186,7 +196,7 @@ export function rollDiceFormula(
     inputs.onFormulaError(prepared);
     return null;
   }
-  const { complete, rolling, looks, helped } = prepared;
+  const { complete, rolling, looks, helped, side } = prepared;
   const { rolls, modifiers, named, total, linear } = helped
     ? rollFormula(helped.formula, inputs.random, helped.explodeRules, helped.looks)
     : rollFormula(complete.parsed, inputs.random, rolling, looks);
@@ -203,6 +213,6 @@ export function rollDiceFormula(
     crit: getDiceCrit(rolls, rolling),
     player: inputs.roller(),
     ...(shown && { diceSet: shown }),
-    ...(helped && advantage && { advantage }),
+    ...(helped && side && { advantage: side }),
   };
 }

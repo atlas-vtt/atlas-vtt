@@ -15,9 +15,11 @@ export const quest = {
   "quest.status.active": "Attiva",
   "quest.status.done": "Completata",
   "quest.status.failed": "Fallita",
+  "quest.status.hidden": "Nascosta",
   "quest.statusOf": "Stato di {title}",
   "quest.experience": "{count} PE",
   "quest.createFailed": "Impossibile creare la nota della missione.",
   "quest.openFailed": "Impossibile aprire la nota della missione.",
-  "quest.writeFailed": "Impossibile modificare la nota della missione."
+  "quest.writeFailed": "Impossibile modificare la nota della missione.",
+  "quest.placeHint": "Collega un segnaposto della mappa del mondo alla nota di una missione: i giocatori vedono quel segnaposto finché la missione è Attiva.",
 } satisfies Translation;

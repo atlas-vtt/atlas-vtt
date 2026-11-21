@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import { StoreApi } from 'zustand';
 import { ToolMode } from '../types';
 import type { ViewAtlasState } from '../storeFactory';

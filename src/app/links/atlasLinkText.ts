@@ -4,6 +4,7 @@ import { primaryPath } from '../services/vault-sync/assetFiles';
 import { linkSafeName } from './atlasLinkTargets';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
+import { copyTextWhenReady } from '../platform/clipboardWrites';
 
 export interface AtlasLinkOptions {
   /** The name the link shows; left out where it is the file's own name. */
@@ -36,11 +37,23 @@ export async function copyAtlasLink(app: App, path: string, options: AtlasLinkOp
 
 /** Copies a link to the file of the scene or encounter `assetId`, named like the asset. */
 export async function copyAssetLink(app: App, assets: AssetService, assetId: string): Promise<void> {
-  const asset = await assets.getAssetById(assetId);
-  const path = asset ? primaryPath(asset) : null;
-  if (!asset || !path) {
+  let missing = false;
+  // The asset is looked up while the clipboard already waits for its link: asked within the press.
+  const link = assets.getAssetById(assetId).then((asset) => {
+    const path = asset ? primaryPath(asset) : null;
+    const file = path ? app.vault.getFileByPath(path) : null;
+    if (!asset || !file) {
+      missing = true;
+      throw new Error(`No file for the asset ${assetId}`);
+    }
+    return atlasLink(app, file, '', { name: asset.name });
+  });
+  try {
+    await copyTextWhenReady(link);
+  } catch (error) {
+    if (!missing) throw error;
     showNotice(t('atlasLinks.fileMissing'));
     return;
   }
-  await copyAtlasLink(app, path, { name: asset.name });
+  showNotice(t('atlasLinks.copied'));
 }

@@ -1,4 +1,5 @@
 import { parseRollDice, type SharedRollDice } from './dice.ts';
+import { parseDiceRow, type SharedRowPlace } from './diceRow.ts';
 import { isRecord } from './shape.ts';
 import { MAX_SCENE_ID, parseSnapGrid, type SnapGrid } from './moves.ts';
 import { MAX_COORDINATE } from './tokens.ts';
@@ -60,6 +61,9 @@ export interface SharedMoveStep {
  * `moveSteps` are the steps a token's move falls into on this map, in rising order (added later): a
  * drag of a token that tells its speed (`SharedToken.move`) takes its step's colour and reads
  * against how far that step reaches. Without them a drag reads as its distance alone.
+ * `diceRow` is the row of the GM's dice tray for this map where the GM made it their own (added
+ * later): the dice and the saved rolls pinned there, in the GM's order. Without it a page's tray
+ * shows the standard dice.
  */
 export interface SharedRules {
   readonly grid: SnapGrid;
@@ -70,6 +74,7 @@ export interface SharedRules {
   readonly dice?: SharedRollDice;
   readonly draw?: { readonly cell: number };
   readonly moveSteps?: readonly SharedMoveStep[];
+  readonly diceRow?: readonly SharedRowPlace[];
 }
 
 export type RulesMessage = { readonly t: 'rules'; readonly scene: string } & SharedRules;
@@ -140,5 +145,9 @@ export function parseRules(value: Record<string, unknown>): RulesMessage | null 
   // A word about drawing that cannot be read is left out: players then do not draw.
   const draw = isRecord(value.draw) && isDistance(value.draw.cell) ? { cell: value.draw.cell } : undefined;
   const moveSteps = parseMoveSteps(value.moveSteps);
-  return { t: 'rules', scene, grid, snap, measurement, accent, ...(cursors === true && { cursors }), ...(dice !== undefined && { dice }), ...(draw !== undefined && { draw }), ...(moveSteps !== undefined && { moveSteps }) };
+  const diceRow = parseDiceRow(value.diceRow);
+  return {
+    t: 'rules', scene, grid, snap, measurement, accent, ...(cursors === true && { cursors }), ...(dice !== undefined && { dice }), ...(draw !== undefined && { draw }),
+    ...(moveSteps !== undefined && { moveSteps }), ...(diceRow !== undefined && { diceRow }),
+  };
 }

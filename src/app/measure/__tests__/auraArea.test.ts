@@ -6,7 +6,6 @@ import {
   AuraOnMapMemo,
   auraCells,
   auraCellsDragged,
-  auraCellsOfCircle,
   auraDirection,
   auraOfCells,
   auraPoints,
@@ -176,14 +175,6 @@ describe('an aura that is resized or made from a circle', () => {
     expect(auraCellsDragged(2, { x: 30, y: 0 }, right, SQUARES, true)).toBe(2.4);
     expect(auraCellsDragged(2, { x: 30, y: 0 }, right, FREE)).toBe(2.4);
     expect(auraCellsDragged(2, { x: -700, y: 0 }, right, FREE)).toBe(0.5);
-  });
-
-  it('reaches as far past its token\'s space as the circle did, in whole cells', () => {
-    const token = { ...centre(4, 4), size: 1 };
-    // A circle of two cells from the token's centre ends a cell and a half past its space: two cells, as the GM meant.
-    expect(auraCellsOfCircle([centre(4, 4), { x: centre(4, 4).x + 140, y: centre(4, 4).y }], token, SQUARES)).toBe(2);
-    expect(auraCellsOfCircle([centre(4, 4), { x: centre(4, 4).x + 10, y: centre(4, 4).y }], token, SQUARES)).toBe(1);
-    expect(auraCellsOfCircle([centre(4, 4), { x: centre(4, 4).x, y: centre(4, 4).y - 250 }], token, FREE)).toBe(3.1);
   });
 });
 

@@ -1,8 +1,11 @@
 import { TFile, type App } from 'obsidian';
 import { AssetService, type MapAsset, type TokenAsset } from './AssetService';
 import { ensureFolder } from '../plugin/vaultFolders';
+import { DERIVED_FORMATS, type DerivedFormat } from '../imageProcessing/imageEncoder';
 import { renderThumbnail, type ThumbnailSpec } from '../imageProcessing/imageProcessing';
 import { fnv1a32 } from '../utils/hashing';
+import { derivedImageExtension } from './assetImageFiles';
+import { thumbnailFiles } from './thumbnailFiles';
 import { isVideoMapPath, videoMimeType } from '../pixi/mosaicCanvas/video/videoMapFiles';
 import { videoPosterBlob } from '../pixi/mosaicCanvas/video/videoPoster';
 
@@ -49,7 +52,10 @@ function pathDigest(path: string): string {
  * that lack one (older assets, imported collections) get theirs generated in
  * the background, a few at a time. Lists hear of a thumbnail soon after it was
  * written (`onUpdated`, `stateOf`); it is recorded on its asset in batches,
- * since each record saves the whole index.
+ * since each record saves the whole index. A thumbnail's file is named by its
+ * bytes (`DERIVED_FORMATS`), so the path recorded on the asset is what
+ * names it; where that file has not arrived yet and the other device's is
+ * there, that one is shown and nothing is made or recorded anew.
  */
 export class AssetThumbnailService {
   private static readonly instances = new WeakMap<App, AssetThumbnailService>();
@@ -62,6 +68,8 @@ export class AssetThumbnailService {
   private unannounced: ThumbnailUpdate[] = [];
   private queue: ThumbnailAsset[] = [];
   private running = 0;
+  /** No queued thumbnail is begun while set (`hold`); the ones under way end. */
+  private held = false;
   private announceTimer: number | null = null;
   private recordTimer: number | null = null;
 
@@ -80,16 +88,25 @@ export class AssetThumbnailService {
     private readonly render: ThumbnailRenderer = (source, size) => renderThumbnail(source, { ...THUMBNAIL_SPEC, size }),
   ) {}
 
-  /** Vault path of the thumbnail that belongs to `imagePath`, whether or not it exists yet. */
-  thumbnailPathFor(imagePath: string): string {
+  /** Vault path of the thumbnail that belongs to `imagePath` in the format of `extension`, whether or not it exists yet. */
+  thumbnailPathFor(imagePath: string, extension: DerivedFormat = 'webp'): string {
     const fileName = imagePath.slice(imagePath.lastIndexOf('/') + 1).replace(/\.[^.]+$/, '');
     const safeName = fileName.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || 'token';
-    return `${THUMBNAIL_DIR}/${safeName}-${pathDigest(imagePath)}.webp`;
+    return `${THUMBNAIL_DIR}/${safeName}-${pathDigest(imagePath)}.${extension}`;
   }
 
   hasThumbnail(asset: ThumbnailAsset): boolean {
-    return asset.thumbnailPath !== undefined
-      && this.app.vault.getAbstractFileByPath(asset.thumbnailPath) instanceof TFile;
+    return this.storedThumbnail(asset) !== undefined;
+  }
+
+  /** The thumbnail file of `asset` the vault holds: the recorded one, else the same thumbnail in the other format. */
+  private storedThumbnail(asset: ThumbnailAsset): string | undefined {
+    if (asset.thumbnailPath === undefined) return undefined;
+    return thumbnailFiles(asset.thumbnailPath).find((path) => this.isFile(path));
+  }
+
+  private isFile(path: string): boolean {
+    return this.app.vault.getAbstractFileByPath(path) instanceof TFile;
   }
 
   /** Renders and writes the thumbnail of the image at `imagePath` (of an animated map: of its poster), returning the thumbnail's path. */
@@ -101,9 +118,9 @@ export class AssetThumbnailService {
     return this.storeForImage(imagePath, await this.render(source, THUMBNAIL_SIZE));
   }
 
-  /** Writes the thumbnail of the image at `imagePath`, returning the thumbnail's path. */
+  /** Writes the thumbnail of the image at `imagePath` under the extension of its format, returning the thumbnail's path. */
   private async storeForImage(imagePath: string, thumbnail: ArrayBuffer): Promise<string> {
-    const thumbnailPath = this.thumbnailPathFor(imagePath);
+    const thumbnailPath = this.thumbnailPathFor(imagePath, derivedImageExtension(thumbnail));
     await this.writeThumbnail(thumbnailPath, thumbnail);
     return thumbnailPath;
   }
@@ -150,9 +167,11 @@ export class AssetThumbnailService {
    * falls back to the image itself.
    */
   stateOf(asset: ThumbnailAsset): ThumbnailState {
-    if (this.hasThumbnail(asset) && asset.thumbnailPath) return { path: asset.thumbnailPath, pending: false };
-    const made = this.thumbnailPathFor(sourceImagePath(asset));
-    if (this.made.has(made) && this.app.vault.getAbstractFileByPath(made) instanceof TFile) return { path: made, pending: false };
+    const stored = this.storedThumbnail(asset);
+    if (stored) return { path: stored, pending: false };
+    const imagePath = sourceImagePath(asset);
+    const made = DERIVED_FORMATS.map((extension) => this.thumbnailPathFor(imagePath, extension)).find((path) => this.made.has(path) && this.isFile(path));
+    if (made) return { path: made, pending: false };
     return { pending: this.queued.has(asset.id) };
   }
 
@@ -180,8 +199,18 @@ export class AssetThumbnailService {
     this.queue = [...first, ...this.queue.filter((asset) => !wanted.has(asset.id))];
   }
 
+  /**
+   * Begins no queued thumbnail while `held`, and goes on with the queue after: a tablet makes them
+   * only while its window is seen. Thumbnails someone asks for by name are made all the same.
+   */
+  hold(held: boolean): void {
+    if (held === this.held) return;
+    this.held = held;
+    if (!held) this.pump();
+  }
+
   private pump(): void {
-    while (this.running < MAX_CONCURRENT && this.queue.length > 0) {
+    while (!this.held && this.running < MAX_CONCURRENT && this.queue.length > 0) {
       const asset = this.queue.shift()!;
       this.running += 1;
       void this.generate(asset).finally(() => {

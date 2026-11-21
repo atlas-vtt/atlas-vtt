@@ -1,5 +1,6 @@
 import type { ExploredBrushOptions } from '../lighting/exploredEdits';
 import type { LightingToolOptions } from '../lighting/lightingTool';
+import type { ToolSwitches } from './toolSwitches';
 import type { DrawToolChoices } from '../annotations/annotationTypes';
 import type { FogToolChoices } from '../fog/fogToolChoices';
 import type { MeasureToolOptions } from '../measure/measureTypes';
@@ -30,6 +31,8 @@ export interface ViewUIState {
   isDMScreenOpen: boolean;
   dmScreenPage: DMScreenPage;
   isGridAlignmentOpen: boolean;
+  /** Position floor: the GM moves the floor the view shows over another floor's see-through map. Never saved. */
+  isFloorPositioning: boolean;
   isDiceLogOpen: boolean;
   /** The keyboard shortcuts cheat sheet: opened by its hotkey, the map's help button and the palette. Never saved. */
   isHotkeyHelpOpen: boolean;
@@ -63,6 +66,8 @@ export interface ViewUIState {
   fogTool: FogToolChoices;
   /** The lighting tool's mode and choices: the bar above the toolbar sets them, the controller hands them to its editors. */
   lightingTool: LightingToolOptions;
+  /** The tools' switches that stand for a key held during a press (`toolSwitches.ts`): the tools' menus set them, the tools read them. Never saved. */
+  toolSwitches: ToolSwitches;
   /** The tokens the pointer holds (pressed or dragged), each where it stood when taken; set through `holdTokens`. */
   heldTokens: HeldTokens;
   /** What the lighting tool's explored-memory mode does with a stroke: the one place the menu and the tool read it from. */
@@ -72,6 +77,8 @@ export interface ViewUIState {
    * does not have, is the first. Kept with the tab's camera, never with the scene, and never an undo step.
    */
   viewedLevel?: string | null | undefined;
+  /** Select more is on: a press adds to the selection or takes from it, a marquee adds (`selectMore.ts`). Never saved. */
+  selectMore: boolean;
   /** The toolbar editor is open in this view: tray, hide and show, inert tools. Never saved. */
   isToolbarEditing: boolean;
   /** The dungeon generator, filling the view while it is open. */

@@ -1,8 +1,11 @@
 import type { Container } from 'pixi.js';
 import type { PixelRect } from './pyramid';
 
-/** `image`: another image (or none) is shown, its world rect may differ; `albedo`: `albedoTexture()` became ready. */
-export type MosaicCanvasChange = 'image' | 'albedo';
+/**
+ * `image`: another image (or none) is shown, its world rect may differ; `placement`: the same image is drawn elsewhere or
+ * stretched otherwise (`setStretch`), so its world rect differs and its pixels do not; `albedo`: `albedoTexture()` became ready.
+ */
+export type MosaicCanvasChange = 'image' | 'placement' | 'albedo';
 
 /** Where a map's pixels are read from: the whole image fit within `maxSide`, or a part of it, or null without one. */
 export interface MapPixels {

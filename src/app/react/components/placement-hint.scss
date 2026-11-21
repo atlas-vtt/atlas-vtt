@@ -26,3 +26,37 @@
     opacity: 0;
   }
 }
+
+// Under a coarse pointer the hint is a strip of buttons (`PlacementStrip`): the toolbar's surface and buttons, with
+// the count before them and Done after them as text.
+.atlas-placement-strip {
+  max-width: calc(100% - 2 * #{$spacing-l});
+  box-sizing: border-box;
+  color: var(--text-normal);
+  font-family: var(--font-interface);
+  font-size: $font-ui-small;
+}
+
+.atlas-placement-strip__count {
+  // The count is text on the bar's surface: it keeps the room a button's label has from its edge.
+  padding-inline: $spacing-s;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+// A strip's buttons that are words: Done, and what stands beside it (`OpenShapeStrip`'s Undo point). They are as
+// wide as their words: the toolbar's own button is a chevron's width (`.btn--toolbar`, which the plugin's root
+// scopes, so these rules name the root too).
+.atlas-vtt-plugin .atlas-placement-strip .atlas-placement-strip__done,
+.atlas-vtt-plugin .atlas-placement-strip .atlas-placement-strip__text {
+  width: auto;
+  height: $button-height-l;
+  padding-inline: $spacing-m;
+  border-radius: var(--atlas-bar-control-radius, #{$radius-m});
+  white-space: nowrap;
+}
+
+.atlas-vtt-plugin .atlas-placement-strip .atlas-placement-strip__done {
+  font-weight: 600;
+}

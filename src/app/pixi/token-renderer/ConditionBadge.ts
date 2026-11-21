@@ -1,7 +1,7 @@
-import { Container, FillGradient, Graphics, Sprite } from 'pixi.js';
-import { darkenColor, lightenColor } from '../../styles/designTokens';
+import { Container, Sprite, type Texture } from 'pixi.js';
 import { isLightBadgeColor, type ConditionGlyph } from '../../utils/conditionGlyph';
 import { getConditionGlyphTexture } from './conditionGlyphTexture';
+import { BADGE_KEYLINE, GRAPHITE, drawFlatDisc } from './flatBadge';
 
 export interface ConditionBadgeSpec {
   /** Badge colour as 0xRRGGBB. */
@@ -13,82 +13,54 @@ export interface ConditionBadgeSpec {
 
 /** Radius of a badge on the token's ring, in UI units (a medium token is 62 wide). */
 export const CONDITION_BADGE_RADIUS = 6;
-/** Dark rim that separates the badge from any token art or map behind it. */
-const BEZEL_WIDTH = 1;
-const BEZEL_COLOR = 0x111114;
-/** Glyph edge length as a share of the badge's diameter. */
-const GLYPH_SHARE = 0.62;
+/** The badge reaches `radius + RIM_WIDTH`, its dark keyline included. */
+const RIM_WIDTH = 1;
+/** How far a badge on the ring reaches from its centre, in UI units; the instance number is as large. */
+export const CONDITION_BADGE_REACH = CONDITION_BADGE_RADIUS + RIM_WIDTH;
+const WHITE = 0xffffff;
+/** Glyph edge length as a share of the disc's diameter: icons fill less than letters, whose ink is narrower. */
+const ICON_SHARE = 0.54;
+const TEXT_SHARE = 0.58;
 const DARK_GLYPH_COLOR = 0x16161a;
 /** Value pip radius as a share of the badge radius, and where its centre sits. */
 const PIP_SHARE = 0.6;
 const PIP_OFFSET = 0.72;
-const PIP_COLOR = 0x1c1c22;
-
-/** Badge gradients depend only on the colour, so badges of one condition share one. */
-const badgeGradients = new Map<number, FillGradient>();
-
-function getBadgeGradient(color: number): FillGradient {
-  let gradient = badgeGradients.get(color);
-  if (!gradient) {
-    gradient = new FillGradient({
-      type: 'linear',
-      colorStops: [
-        { offset: 0, color: lightenColor(color, 0.18) },
-        { offset: 0.55, color },
-        { offset: 1, color: darkenColor(color, 0.2) },
-      ],
-      start: { x: 0, y: 0 },
-      end: { x: 0, y: 1 },
-    });
-    badgeGradients.set(color, gradient);
-  }
-  return gradient;
-}
+const PIP_DIGIT_SHARE = 0.78;
 
 /**
- * A round condition badge centred on its origin: a softly lit disc in the condition's
- * colour inside a dark bezel, with the condition's glyph in white (or near-black on
- * light colours). Used on the token's ring and in the hover card, so both read as one.
+ * A round condition badge centred on its origin: a flat disc in the condition's colour
+ * with a fine ring inside its edge, a dark keyline around it and a faint shadow under it,
+ * and the condition's glyph in white (or near-black on light colours). Used on the token's
+ * ring and in the hover card, so both read as one.
  */
 export function createConditionBadge(spec: ConditionBadgeSpec, radius: number = CONDITION_BADGE_RADIUS): Container {
   const badge = new Container({ eventMode: 'none', interactiveChildren: false });
-  const disc = new Graphics()
-    .circle(0, radius * 0.18, radius + BEZEL_WIDTH + 0.5)
-    .fill({ color: 0x000000, alpha: 0.3 })
-    .circle(0, 0, radius + BEZEL_WIDTH)
-    .fill({ color: BEZEL_COLOR })
-    .circle(0, 0, radius)
-    .fill(getBadgeGradient(spec.color))
-    .circle(0, 0, radius)
-    .stroke({ width: radius * 0.08, color: 0xffffff, alpha: 0.18, alignment: 1 });
-  badge.addChild(disc);
+  const light = isLightBadgeColor(spec.color);
+  badge.addChild(drawFlatDisc(spec.color, radius + RIM_WIDTH, light, true));
 
   const texture = getConditionGlyphTexture(spec.glyph);
   if (texture) {
-    const glyph = new Sprite({ texture, anchor: 0.5, eventMode: 'none' });
-    glyph.setSize(radius * 2 * GLYPH_SHARE);
-    glyph.tint = isLightBadgeColor(spec.color) ? DARK_GLYPH_COLOR : 0xffffff;
-    badge.addChild(glyph);
+    const disc = radius + RIM_WIDTH - BADGE_KEYLINE;
+    const size = disc * 2 * (spec.glyph.kind === 'icon' ? ICON_SHARE : TEXT_SHARE);
+    badge.addChild(glyphSprite(texture, size, light ? DARK_GLYPH_COLOR : WHITE));
   }
   if (spec.value !== undefined) badge.addChild(createValuePip(spec.value, radius));
   return badge;
 }
 
-/** Small dark disc with the condition's number, overlapping the badge's lower right. */
+function glyphSprite(texture: Texture, size: number, tint: number): Sprite {
+  const sprite = new Sprite({ texture, anchor: 0.5, eventMode: 'none', tint });
+  sprite.setSize(size);
+  return sprite;
+}
+
+/** A small dark disc with the condition's number over the badge's lower right, keylined like the badge. */
 function createValuePip(value: number, radius: number): Container {
   const pipRadius = radius * PIP_SHARE;
   const pip = new Container({ eventMode: 'none', interactiveChildren: false });
   pip.position.set(radius * PIP_OFFSET, radius * PIP_OFFSET);
-  pip.addChild(new Graphics()
-    .circle(0, 0, pipRadius + BEZEL_WIDTH * 0.75)
-    .fill({ color: BEZEL_COLOR })
-    .circle(0, 0, pipRadius)
-    .fill({ color: PIP_COLOR }));
+  pip.addChild(drawFlatDisc(GRAPHITE, pipRadius + BADGE_KEYLINE, false, false));
   const texture = getConditionGlyphTexture({ kind: 'text', text: String(value) });
-  if (texture) {
-    const digits = new Sprite({ texture, anchor: 0.5, eventMode: 'none' });
-    digits.setSize(pipRadius * 2 * 0.78);
-    pip.addChild(digits);
-  }
+  if (texture) pip.addChild(glyphSprite(texture, pipRadius * 2 * PIP_DIGIT_SHARE, WHITE));
   return pip;
 }

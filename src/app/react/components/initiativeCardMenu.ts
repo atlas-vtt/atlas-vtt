@@ -6,12 +6,10 @@ import type { InitiativeEntry } from '../../types/initiativeTypes';
 import type { SideId } from '../../types/initiativeRulesTypes';
 import { playerVision } from '../../characters/playerVision';
 import { isOffMap } from '../../tokens/offMap';
-import { RESOURCE_COLORS } from '../../resources/resourceColors';
-import { combatantColor } from '../../initiative/combatantColor';
 import { t } from '../../i18n';
-import { createElement } from 'react';
+import { previewEntry } from '../../services/previewByHand';
 
-interface CardMenuActions {
+export interface CardMenuActions {
   roll: () => void;
   moveToFront: () => void;
   moveToBack: () => void;
@@ -24,32 +22,12 @@ interface CardMenuActions {
   actNow: () => void;
   /** Puts a combatant kept beside the map on it. */
   placeOnMap: () => void;
+  /** Shows the combatant's statblock beside its card, as Mod held over the card does; unset where it has none. */
+  preview?: (() => void) | undefined;
   /** Takes the combatant out of the tracker; one kept beside the map goes with its token. */
   remove: () => void;
-  /** Gives the card a colour, or takes it away. */
-  setColor: (color: string | undefined) => void;
   /** Hides the combatant from the players' list, or shows it there again (`hiddenFromPlayers`). */
   setHiddenFromPlayers: (hidden: boolean) => void;
-}
-
-/** The colours a card may take: the resources' palette, which reads on dark and light themes alike. */
-function colourMenu(entry: InitiativeEntry, setColor: CardMenuActions['setColor']): ContextMenuEntry {
-  const current = combatantColor(entry);
-  return {
-    type: 'submenu',
-    label: t('initiative.colour'),
-    icon: 'palette',
-    children: [
-      { type: 'item', label: t('initiative.noColour'), icon: 'circle-off', checked: current === null, onClick: () => setColor(undefined) },
-      ...RESOURCE_COLORS.map(({ value, label }): ContextMenuEntry => ({
-        type: 'item',
-        label,
-        checked: current === value,
-        leading: createElement('span', { className: 'atlas-initiative-colour-dot', style: { background: value }, 'aria-hidden': true }),
-        onClick: () => setColor(value),
-      })),
-    ],
-  };
 }
 
 /** Moves a token to `side`; one moved to the players' side sees by default (`playerVision`), and nothing switches vision off. */
@@ -140,11 +118,10 @@ export function initiativeCardMenu(
     ...(numbered ? [item(t('initiative.edit'), 'pencil', actions.edit)] : []),
     ...(mode.cards && entry.card !== undefined && mode.swapTargets.length > 0 ? [swapCard] : []),
     ...(mode.fightRuns ? [sitOut, ...(numbered ? [delay] : [])] : []),
+    ...(actions.preview ? [previewEntry(actions.preview)] : []),
     ...(isOffMap(token) ? [item(t('initiative.placeOnMap'), 'map-pin', actions.placeOnMap)] : []),
     item(hidden ? t('initiative.showToPlayers') : t('initiative.hideFromPlayers'), hidden ? 'eye' : 'eye-off', toggleHidden),
     ...(conditions ? [conditions] : []),
-    // Combatants who are not the players' are told apart by colour; one moved to the players' side can still lose its colour
-    ...(isParty || (current === 'players' && combatantColor(entry) === null) ? [] : [colourMenu(entry, actions.setColor)]),
     { type: 'item', label: t('initiative.remove'), icon: 'trash-2', destructive: true, onClick: actions.remove },
   ];
 }

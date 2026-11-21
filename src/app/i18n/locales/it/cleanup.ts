@@ -17,5 +17,6 @@ export const cleanup = {
   "cleanup.tokens": {
     "one": "{count} token",
     "other": "{count} token"
-  }
+  },
+  "cleanup.roofs": { one: "{count} tetto", other: "{count} tetti" },
 } satisfies Translation;

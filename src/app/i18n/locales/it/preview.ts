@@ -7,5 +7,6 @@ export const preview = {
   "preview.openFile": "Apri file",
   "preview.close": "Chiudi finestra",
   "preview.notFound": "Errore: file non trovato",
-  "preview.openLinkFailed": "Impossibile aprire la nota collegata"
+  "preview.openLinkFailed": "Impossibile aprire la nota collegata",
+  "preview.show": "Anteprima",
 } satisfies Translation;

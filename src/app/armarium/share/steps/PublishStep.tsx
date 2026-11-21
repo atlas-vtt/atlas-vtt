@@ -4,7 +4,7 @@ import { Button } from '../../../packages/components/primitives/button';
 import { Select, type SelectOption } from '../../../packages/components/primitives/Select';
 import { ToggleLabel } from '../../../packages/components/primitives/Toggle';
 import { t } from '../../../i18n';
-import type { ShareSession } from '../../upload/ShareSession';
+import type { AnyShareSession } from '../../upload/anyShareSession';
 import type { ShareSnapshot } from '../../upload/shareState';
 import { ACCOUNT_PAGE_REFUSALS, DECLARATION, LICENCES, LISTING_TEXT, type LicenceId } from '../../upload/uploadContract';
 import { LICENCE_URLS, licenceLabel, licenceLine } from '../../upload/text/listingVocabulary';
@@ -13,6 +13,7 @@ import { ARMARIUM_RULES_URL } from '../../armariumUrls';
 import { useAccountState } from '../useShare';
 import { CountedText, FieldProblem, useOverlayLayer } from './ListingFields';
 import { ShareNotice } from './ShareNotice';
+import { shareSaid } from '../shareWording';
 
 const NO_LICENCE = 'none';
 const LICENCE_OPTIONS: SelectOption<LicenceId | typeof NO_LICENCE>[] = [
@@ -21,7 +22,7 @@ const LICENCE_OPTIONS: SelectOption<LicenceId | typeof NO_LICENCE>[] = [
 ];
 
 /** The publish step: the licence, the credits and the GM's declaration, in the exact words the Armarium stores. */
-export function PublishStep({ snapshot, session, account }: { snapshot: ShareSnapshot; session: ShareSession; account: AtlasAccount }): React.JSX.Element {
+export function PublishStep({ snapshot, session, account }: { snapshot: ShareSnapshot; session: AnyShareSession; account: AtlasAccount }): React.JSX.Element {
   const { draft, problems, declared, refusal, reapproving } = snapshot;
   const licenceId = useId();
   const [layer, layerRef] = useOverlayLayer();
@@ -46,7 +47,7 @@ export function PublishStep({ snapshot, session, account }: { snapshot: ShareSna
       </div>
       <CountedText
         label={t('armariumShare.credits')}
-        hint={t('armariumShare.creditsHint')}
+        hint={shareSaid(snapshot.subject, 'armariumShare.creditsHint')}
         value={draft.credits}
         onChange={(credits) => session.setDraft({ credits })}
         limits={LISTING_TEXT.credits}

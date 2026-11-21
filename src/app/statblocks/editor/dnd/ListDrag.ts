@@ -9,6 +9,8 @@
  */
 
 import { scrollNearEdge } from './autoScroll';
+import { pressBecameDrag } from '../../../input/pressBecameDrag';
+import { TOUCH_DELAY_MS, TOUCH_TOLERANCE } from './dndConfig';
 import type { Box, Point } from './dropGeometry';
 import { ListDragView } from './listDragView';
 import { clampToList, fragmentsOf, gapAt, gapLineOf, isNoMove, slidesFor, type Fragment, type ListItemBoxes } from './listDragGeometry';
@@ -16,9 +18,6 @@ import { swallowNextClick } from '../../../utils/swallowClick';
 
 /** A press becomes a drag after this many pixels (mouse, pen, trackpad). */
 export const DRAG_THRESHOLD = 4;
-/** A touch becomes a drag after resting this long within `TOUCH_TOLERANCE` px. */
-export const TOUCH_DELAY_MS = 250;
-const TOUCH_TOLERANCE = 5;
 /** How far past its list the pointer pulls before the hint says why the ability stays. */
 export const PULL_HINT = 24;
 
@@ -128,6 +127,8 @@ export class ListDrag {
       return;
     }
     this.active = true;
+    // A finger that rests on: its long press, due a little later, opens no menu on what it drags.
+    pressBecameDrag();
     try {
       this.handle.setPointerCapture(this.pointerId);
     } catch {

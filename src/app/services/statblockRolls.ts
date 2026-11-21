@@ -2,8 +2,9 @@
  * Where a statblock's roll is made and shown. A map open in Atlas rolls it
  * with its own dice tool, so the roll lands in that map's dice log and on its
  * tokens, and is thrown on the map. Where that map is not on screen (another
- * tab), or no map is open at all, the surface the statblock is drawn on may
- * show the roll itself (`OffMapRolls`: the statblock beside its note).
+ * tab or another window), or no map is open at all, the surface the statblock
+ * is drawn on may show the roll itself (`OffMapRolls`: the statblock beside
+ * its note, a note's text).
  */
 
 import type { App } from 'obsidian';
@@ -19,6 +20,7 @@ import type { ArmableValues } from '../statblocks/rollBonuses/armableValues';
 import { armedValues, namedBareBonus, withArmedBonuses } from '../statblocks/rollBonuses/bonusFormula';
 import { completeFormula } from '../tools/completeFormula';
 import { parseFormula } from '../tools/parseFormula';
+import { changedBeforeSide } from '../tools/writtenAdvantage';
 
 export interface DiceRollSource {
   /** The view that owns this statblock; used for routing, never saved on the roll. */
@@ -58,6 +60,8 @@ export interface OffMapRolls {
   show(result: DiceRollResult, muted: boolean): void;
   /** The dice a roll is made with, by `set` where one is given, else the collection's: what advantage can do. */
   rollingDice?(set?: RollOptions['set']): RollingDice;
+  /** The window it shows rolls in, where a map on screen in another window is not seen; unset: the map's. */
+  document?: Document;
 }
 
 interface DiceToolLike {
@@ -70,6 +74,8 @@ interface MapDice {
   /** Whether the map's view is on screen, where its rolls are seen. */
   onScreen: boolean;
   viewId: string | undefined;
+  /** The window the map's view is in. */
+  document: Document | undefined;
 }
 
 interface MapViewLike {
@@ -89,7 +95,7 @@ function mapDice(app: App, viewId: string | undefined): MapDice | null {
     const element = view.containerEl;
     // An element without Obsidian's `isShown` (a bare test double) counts as shown.
     const onScreen = typeof element?.isShown === 'function' ? element.isShown() : true;
-    const found = { tool, onScreen, viewId: view.viewId };
+    const found = { tool, onScreen, viewId: view.viewId, document: element?.ownerDocument };
     if (onScreen) return found;
     hidden ??= found;
   }
@@ -126,7 +132,12 @@ export function statblockRollingDice(app: App, source: DiceRollSource, offMap?: 
  * would take it past what the dice roll (a limit, once a bonus is completed with the game's dice), it
  * is thrown plain, as it would be without them.
  */
-function thrownFormula(app: App, formula: string, armed: readonly ArmedBonus[], source: DiceRollSource, offMap: OffMapRolls | null | undefined): string {
+function thrownFormula(app: App, text: string, armed: readonly ArmedBonus[], source: DiceRollSource, offMap: OffMapRolls | null | undefined): string {
+  // A side written last (`dice: 1d20+5 adv`) stays last, for the dice tool to read.
+  return changedBeforeSide(text, (formula) => namedFormula(app, formula, armed, source, offMap));
+}
+
+function namedFormula(app: App, formula: string, armed: readonly ArmedBonus[], source: DiceRollSource, offMap: OffMapRolls | null | undefined): string {
   const plain = withArmedBonuses(formula, armed);
   const named = source.namedRolls?.get(formula) ?? namedBareBonus(formula, source.abilityName);
   if (named === null) return plain;
@@ -159,6 +170,11 @@ export function rollStatblockDice(
   return result;
 }
 
+/** Whether a map's rolls are seen where `offMap` shows its own: on screen, and in its window where it names one. */
+function seenFrom(map: MapDice, offMap: OffMapRolls | null | undefined): boolean {
+  return map.onScreen && (!offMap?.document || !map.document || map.document === offMap.document);
+}
+
 function rollWithSource(
   app: App, formula: string, source: DiceRollSource, offMap: OffMapRolls | null | undefined, advantage: AdvantageSide | null | undefined,
 ): DiceRollResult | null {
@@ -173,8 +189,8 @@ function rollWithSource(
     const origin = sameView ? rollOrigin(context, source.tokenId) : undefined;
     const result = options ? map.tool.rollDice(formula, rollSource, origin, options)
       : origin ? map.tool.rollDice(formula, rollSource, origin) : map.tool.rollDice(formula, rollSource);
-    // A map on screen shows its rolls in front of every surface (`useMapRollLayer`), the asset manager's included.
-    if (result && !map.onScreen) offMap?.show(result, true);
+    // A map on screen shows its rolls in front of every surface of its window (`useMapRollLayer`), the asset manager's included.
+    if (result && !seenFrom(map, offMap)) offMap?.show(result, true);
     return result;
   }
   if (!offMap) return null;

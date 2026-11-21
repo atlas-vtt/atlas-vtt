@@ -47,7 +47,7 @@ export interface DrawScene {
   players: { shown: boolean | null };
   /** Takes the Draw tool into hand in `mode`, with other choices where given. */
   tool(choices: Partial<DrawToolChoices>): void;
-  pointer(type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointertap', x: number, y: number, keys?: PointerKeys): void;
+  pointer(type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointertap' | 'pointercancel', x: number, y: number, keys?: PointerKeys): void;
   /**
    * A press as the viewport's dispatch (`TokenRenderer`) hands it to the drawings and texts before
    * the viewport's other listeners hear it: the handles first, then what the tool in hand takes.

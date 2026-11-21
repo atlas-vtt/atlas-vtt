@@ -103,10 +103,14 @@ export class FakeTesseraGraphics implements TesseraGraphics {
     return Promise.resolve(new Blob([JSON.stringify({ width: rect.width, height: rect.height })], { type: 'image/webp' }));
   }
 
-  compose(width: number, height: number, parts: readonly ComposedPart[]): ImageBitmap {
+  tesseraFormat(): Promise<'webp'> {
+    return Promise.resolve('webp');
+  }
+
+  compose(width: number, height: number, parts: readonly ComposedPart[]): Promise<ImageBitmap> {
     for (const part of parts) asFake(part.source);
     this.composes.push({ width, height, parts: parts.length });
-    return this.make(width, height, 'composed');
+    return Promise.resolve(this.make(width, height, 'composed'));
   }
 
   /** Pixels without colour: the fake holds art in its left half. */
@@ -145,6 +149,8 @@ export function nextTask(): Promise<void> {
 
 export interface CoreHarnessOptions {
   decodedBudget?: number;
+  /** The most pixels of a source the core decodes whole; the desktop's by default. */
+  maxSourcePixels?: number;
   backend?: MemoryTesseraBackend;
   /** Also receives every event the core emits. */
   forward?: (event: TesseraEvent) => void;
@@ -170,6 +176,7 @@ export function coreHarness(options: CoreHarnessOptions = {}): CoreHarness {
       for (const waiter of waiters.filter((w) => w.hash === event.hash)) waiter.resolve();
     },
     ...(options.decodedBudget === undefined ? {} : { decodedBudget: options.decodedBudget }),
+    ...(options.maxSourcePixels === undefined ? {} : { maxSourcePixels: options.maxSourcePixels }),
     ...(options.bandDecoderOf === undefined ? {} : { bandDecoderOf: options.bandDecoderOf }),
   });
   const completed = (hash: string): Promise<void> => new Promise((resolve) => {

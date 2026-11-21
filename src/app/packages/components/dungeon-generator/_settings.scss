@@ -84,8 +84,9 @@ $stepper-inset: 2px;
 }
 
 .atlas-dungeon-stepper__button.btn {
-  width: 24px;
+  width: $button-height-s;
   height: 100%;
+  @include atlas-coarse-hit;
   padding: 0;
   border-radius: calc(#{$radius-m} - #{$border-width-s} - #{$stepper-inset});
   box-shadow: none;

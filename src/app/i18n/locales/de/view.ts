@@ -1,0 +1,26 @@
+import type { Translation } from '../../types';
+
+export const view: Translation = {
+  'view.copyFailed': 'Der Dateipfad konnte nicht kopiert werden',
+  'view.copyPath': 'Dateipfad kopieren',
+  'view.more': 'Weitere Optionen',
+  'view.zoom': 'Zoom',
+  'view.zoomIn': 'Vergrößern',
+  'view.zoomOut': 'Verkleinern',
+  'view.pathCopied': 'Dateipfad in die Zwischenablage kopiert',
+  'view.rename': 'Umbenennen…',
+  'view.reveal': 'Im Datei-Explorer zeigen',
+  'view.splitDown': 'Nach unten teilen',
+  'view.splitRight': 'Nach rechts teilen',
+  'view.mainWindowOnly': 'Atlas läuft in deinem Obsidian-Hauptfenster. Um zwei Bildschirme zu nutzen, verschiebe stattdessen deine Notizen in ein neues Fenster.',
+  'view.initializing': 'Wird initialisiert…',
+  'view.sceneNotFound': 'Szenendatei nicht gefunden: {path}',
+  'view.preparing': 'Wird vorbereitet…',
+  'view.canvas': 'Atlas-Zeichenfläche',
+  'view.player': 'Spieleransicht',
+  'view.playerRestoreFailed': 'Die Spieleransicht konnte nicht wiederhergestellt werden. Sende erneut eine Szene an dieses Fenster.',
+  'view.connecting': 'Verbindung zur Spielsitzung wird hergestellt…',
+  'view.playerTitle': 'Spieleransicht: {name}',
+  'view.playerDefault': 'Spieleransicht',
+  'view.noGraphics': 'Atlas braucht Grafikbeschleunigung, um Karten zu zeichnen. Schalte die Hardwarebeschleunigung in den allgemeinen Einstellungen von Obsidian ein oder prüfe deine Grafiktreiber.',
+};

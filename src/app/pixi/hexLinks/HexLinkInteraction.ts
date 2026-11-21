@@ -9,6 +9,7 @@ import { pinNameEntries } from '../pinNameMenu';
 import { watchClick } from '../utils/clickRelease';
 import { dispatchPinAction } from '../utils/pinActions';
 import { pinOpenLook } from '../pinOpenLook';
+import { previewEntry } from '../../services/previewByHand';
 import type { HexLinkRenderer } from './HexLinkRenderer';
 import { t } from '../../i18n';
 import { levelObjects } from '../../levels/levelObjects';
@@ -85,6 +86,7 @@ export class HexLinkInteraction implements HexLinkPointerHandlers {
     const entries: ContextMenuEntry[] = [
       { type: 'item', ...pinOpenLook(pin), onClick: () => dispatchPinAction('open', pin, this.options.store) },
       { type: 'item', label: t('hex.changeNote'), icon: 'edit', onClick: () => dispatchPinAction('edit', pin, this.options.store) },
+      previewEntry(() => dispatchPinAction('preview', pin, this.options.store, position)),
       ...[readablePinEntry(this.options.store, pin)].filter((entry) => entry !== null),
       ...pinNameEntries(this.options.store, pin),
       {

@@ -1,13 +1,22 @@
 import { TFile, type App } from 'obsidian';
 import { headerOf } from '../imageProcessing/imageDimensions';
+import type { DerivedFormat } from '../imageProcessing/imageEncoder';
 import { GLOBAL_ASSETS_DIR } from './assetPaths';
 
-/** The file extension for an image Atlas stores, read from its bytes: what imports keep (PNG, JPEG) or write (WebP). */
+/**
+ * The file extension for an image Atlas stores, read from its bytes: what imports keep (PNG, JPEG)
+ * or write (WebP, or PNG where the platform cannot encode WebP). Bytes it does not know read as WebP.
+ */
 export function imageExtension(data: ArrayBuffer): 'png' | 'jpg' | 'webp' {
   const format = headerOf(new DataView(data))?.format;
   if (format === 'png') return 'png';
   if (format === 'jpeg') return 'jpg';
   return 'webp';
+}
+
+/** The file extension of a derived picture (a thumbnail, a cover), read from its bytes: `png` for a PNG, else `webp`. */
+export function derivedImageExtension(data: ArrayBuffer): DerivedFormat {
+  return imageExtension(data) === 'png' ? 'png' : 'webp';
 }
 
 /** Writes a token or map image into Atlas' shared assets folder under a unique name and returns its path. */

@@ -7,5 +7,5 @@ export const count: Translation = {
   'count.items': { other: '{count} 项' },
   'count.maps': { other: '{count} 张地图' },
   'count.scenes': { other: '{count} 个场景' },
-  'count.tokens': { other: '{count} 个棋子' },
+  'count.tokens': { other: '{count} 个指示物' },
 };

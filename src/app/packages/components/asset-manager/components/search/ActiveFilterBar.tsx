@@ -4,6 +4,7 @@ import { Button } from '../../../primitives/button';
 import type { FilterChipGroup } from '../../search/activeFilterChips';
 import { filterGlyph } from '../../search/filterGlyphs';
 import { t } from '../../../../../i18n';
+import { lastInputWasTouch } from '../../../primitives/lastInput';
 
 /** How long the pointer may leave a grouped chip before it folds, so moving into its list does not close it. */
 const CLOSE_DELAY_MS = 120;
@@ -35,6 +36,7 @@ function SingleChip({ group }: { group: FilterChipGroup }): React.JSX.Element {
 function GroupedChip({ group }: { group: FilterChipGroup }): React.JSX.Element {
   const [open, setOpen] = useState(false);
   const closeTimer = useRef<number | null>(null);
+  const groupRef = useRef<HTMLDivElement>(null);
   const cancelClose = (): void => {
     if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
     closeTimer.current = null;
@@ -45,13 +47,26 @@ function GroupedChip({ group }: { group: FilterChipGroup }): React.JSX.Element {
     closeTimer.current = window.setTimeout(() => setOpen(false), CLOSE_DELAY_MS);
   };
   useEffect(() => cancelClose, []);
+  // A finger has no hover to take away: a press outside the chip folds it.
+  useEffect(() => {
+    const group = groupRef.current;
+    if (!open || !group) return undefined;
+    const doc = group.ownerDocument;
+    const onPress = (event: PointerEvent): void => {
+      if (event.pointerType === 'touch' && !group.contains(event.target as Node | null)) setOpen(false);
+    };
+    doc.addEventListener('pointerdown', onPress, true);
+    return () => doc.removeEventListener('pointerdown', onPress, true);
+  }, [open]);
 
   return (
     <div
+      ref={groupRef}
       className={`atlas-active-filter-group${open ? ' atlas-open' : ''}`}
-      onMouseEnter={show}
-      onMouseLeave={hide}
-      onFocus={show}
+      // A finger's tap brings a hover and a focus of its own before its click, which then closed what they had opened: a finger never hovers, and only a key's focus opens.
+      onPointerEnter={(event) => { if (event.pointerType !== 'touch') show(); }}
+      onPointerLeave={(event) => { if (event.pointerType !== 'touch') hide(); }}
+      onFocus={() => { if (!lastInputWasTouch()) show(); }}
       onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) hide(); }}
     >
       <Button variant="ghost" className="atlas-active-filter" aria-expanded={open} onClick={() => setOpen(!open)}>

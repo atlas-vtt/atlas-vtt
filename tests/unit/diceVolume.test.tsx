@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { App } from 'obsidian';
 import React from 'react';
 import { act, cleanup, render } from '@testing-library/react';

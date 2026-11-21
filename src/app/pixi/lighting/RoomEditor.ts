@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../utils/typedEmitter';
 import type { Viewport } from 'pixi-viewport';
 import { strokePolygons } from '../../lighting/exploredEdits';
 import { roomDoor } from '../../lighting/roomDoor';
@@ -15,6 +15,7 @@ import { wallList } from '../../vision/wallList';
 import { closesDraft } from '../areas/areaGeometry';
 import { RoomOverlay } from './RoomOverlay';
 import { wallEndReach } from './wallEnds';
+import { switchApplies } from '../../types/toolSwitches';
 
 export interface RoomEditorDeps {
   viewport: Viewport;
@@ -243,7 +244,7 @@ export class RoomEditor {
   /** With Shift, a corner lands on the nearest crossing of a square grid. */
   private snapped(point: Point, { shiftKey }: RoomKeys): Point {
     const grid = this.deps.store.getState().grid;
-    if (!shiftKey || !grid || grid.type !== 'square' || !(grid.size > 0)) return point;
+    if (!switchApplies(this.deps.store.getState(), 'roomSnap', shiftKey) || !grid || grid.type !== 'square' || !(grid.size > 0)) return point;
     const snap = (v: number, offset: number): number => Math.round((v - offset) / grid.size) * grid.size + offset;
     return { x: snap(point.x, grid.offsetX), y: snap(point.y, grid.offsetY) };
   }

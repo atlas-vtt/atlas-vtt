@@ -132,7 +132,9 @@ export default defineConfig({
       fileName: () => 'main.js',
     },
     rolldownOptions: {
-      // Externalize Obsidian & Node built‑ins
+      // Obsidian's modules are the host's. Node's built-ins stay external too, so that an import of one
+      // stands in the bundle as a `require`, which the preflight rejects (Obsidian's mobile apps have
+      // no Node), where Vite would otherwise put an empty module in its place.
       external: [
         'obsidian',
         'electron',

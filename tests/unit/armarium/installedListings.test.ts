@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { App } from 'obsidian';
 import type { AssetService, CollectionMetadata } from '../../../src/app/services/AssetService';
 import { installFilePath } from '../../../src/app/services/library/libraryPaths';
@@ -14,6 +14,7 @@ const record = (collectionId: string, uid: string, version: number): string =>
 function vaultWith(files: Record<string, string>): App {
   return {
     vault: {
+      getFiles: () => [],
       getFileByPath: (path: string) => (path in files ? { path } : null),
       read: async (file: { path: string }) => files[file.path]!,
       adapter: { exists: async () => false },
@@ -37,6 +38,39 @@ describe('the Armarium listings a vault holds', () => {
     const app = vaultWith({ [installFilePath('My skeletons')]: record('Skeletons', LISTED, 4) });
     const assets = assetsWith([collection('My skeletons', LISTED, 4), collection('Fresh', 'b-listing')]);
     expect(await installedListings(app, assets, new Set([LISTED, 'b-listing']))).toEqual([{ uid: LISTED, version: 4 }]);
+  });
+
+  it('reads every record at once, and a record that cannot be read leaves the others told', async () => {
+    let reading = 0;
+    let most = 0;
+    const files: Record<string, string> = {
+      [installFilePath('Skeletons')]: record('Skeletons', LISTED, 5),
+      [installFilePath('Broken')]: '{',
+      [installFilePath('Later')]: record('Later', 'b-listing', 2),
+    };
+    const app = {
+      vault: {
+        getFiles: () => [],
+      getFileByPath: (path: string) => (path in files ? { path } : null),
+        read: async (file: { path: string }) => {
+          reading += 1;
+          most = Math.max(most, reading);
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          reading -= 1;
+          return files[file.path]!;
+        },
+        adapter: { exists: async () => false },
+      },
+    } as unknown as App;
+    const assets = assetsWith([collection('Skeletons', LISTED, 5), collection('Broken', 'c-listing'), collection('Later', 'b-listing', 2)]);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      const items = await installedListings(app, assets, new Set([LISTED, 'b-listing', 'c-listing']));
+      expect(items).toEqual([{ uid: LISTED, version: 5 }, { uid: 'b-listing', version: 2 }]);
+      expect(most).toBe(3);
+    } finally {
+      error.mockRestore();
+    }
   });
 
   it('ignores a record that belongs to another collection', async () => {

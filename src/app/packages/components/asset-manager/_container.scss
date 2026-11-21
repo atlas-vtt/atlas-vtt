@@ -25,6 +25,7 @@
 .atlas-asset-manager-modal {
   position: fixed;
   inset: 0;
+  @include atlas-above-keyboard;
   z-index: $z-sticky;
   display: flex;
   align-items: center;

@@ -108,6 +108,17 @@
   @include atlas-flex-col($gap: 0);
 }
 
+// The Armarium store's groups (Genre, Place…): a quiet label on the tags' text edge, room above all but the first.
+.atlas-tags-group-label {
+  @include atlas-section-label;
+  padding: $spacing-s $spacing-s $spacing-xs;
+  line-height: 1;
+
+  &:first-child {
+    padding-top: 0;
+  }
+}
+
 .atlas-tag-button {
   appearance: none;
   border: none !important;

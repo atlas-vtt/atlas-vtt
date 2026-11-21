@@ -28,7 +28,7 @@ let settings: SettingsService;
 
 beforeEach(() => {
   vi.useFakeTimers();
-  context.app = {};
+  context.app = { workspace: { on: () => ({}), offref: () => undefined } };
   context.viewType = 'atlas-vtt';
   context.isPlayerView = false;
   settings = new SettingsService(context.app as never);

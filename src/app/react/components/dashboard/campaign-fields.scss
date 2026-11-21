@@ -89,7 +89,7 @@
     box-sizing: border-box;
     width: 100%;
     min-height: calc(5lh + #{2 * $spacing-m});
-    max-height: min(60vh, 480px);
+    max-height: min(#{atlas-view-height(60)}, 480px);
     padding: $spacing-m;
     font-family: var(--font-text);
     font-size: $font-ui-medium;

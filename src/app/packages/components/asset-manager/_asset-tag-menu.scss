@@ -34,9 +34,11 @@
     flex-shrink: 0;
   }
 
-  &:hover {
-    background: var(--background-primary);
-    color: var(--text-normal);
+  @media (hover: hover) {
+    &:hover {
+      background: var(--background-primary);
+      color: var(--text-normal);
+    }
   }
 
   &:focus-visible {
@@ -70,8 +72,15 @@
     }
   }
 
-  .atlas-asset-card:hover &:active {
-    transform: scale(0.94);
+  @media (hover: hover) {
+    .atlas-asset-card:hover &:active {
+      transform: scale(0.94);
+    }
+  }
+
+  // A touch screen has no hover: the button stands on every card.
+  @include atlas-hover-reveal {
+    display: inline-flex;
   }
 }
 

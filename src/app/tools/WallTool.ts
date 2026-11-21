@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import type { WallType } from '../types/wallTypes';
 import { simplifyStroke } from '../pixi/lighting/wallEdits';
 
@@ -103,6 +103,13 @@ export class WallTool {
     if (!shiftHeld) {
       this.finishChain();
     }
+  }
+
+  /** Takes the chain's last corner back, with the wall that led to it. Its first corner stays. */
+  removeLastVertex(): void {
+    if (!this.isDrawing || this.chain.length < 2) return;
+    this.chain.pop();
+    this.eventBus.emit('wall-segment-removed', this.chain[this.chain.length - 1]);
   }
 
   /**

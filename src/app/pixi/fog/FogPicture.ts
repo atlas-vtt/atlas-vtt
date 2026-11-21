@@ -17,6 +17,7 @@ import { levelObjects } from '../../levels/levelObjects';
 import { levelMapKey } from '../../levels/sceneLevels';
 import { prefersReducedMotion } from '../../utils/motion';
 import type { LayerVisibility } from '../playerSafeFrame';
+import { deviceProfile } from '../../platform/deviceProfile';
 import { requestRender } from '../RenderScheduler';
 import { FogCanvasCompositor } from './FogCanvasCompositor';
 import { FogEdgeMesh } from './fogEdgeMesh';
@@ -69,7 +70,7 @@ export class FogPicture {
 
   constructor(private readonly deps: FogPictureDeps) {
     const bounds = this.bounds();
-    this.compositor = new FogCanvasCompositor(bounds, CANVAS_SCALE, deps.coverage, () => levelMapKey(deps.store.getState().mapPath, deps.store.getState()));
+    this.compositor = new FogCanvasCompositor(bounds, CANVAS_SCALE, deps.coverage, () => levelMapKey(deps.store.getState().mapPath, deps.store.getState()), deviceProfile().budgets.fogCanvasSide);
     this.texture = PIXI.Texture.from(this.compositor.getCanvas());
     this.sprite = new PIXI.Sprite(this.texture);
     this.sprite.position.set(bounds.x, bounds.y);
@@ -262,7 +263,7 @@ export class FogPicture {
     const box = changedFogBox(shown, next);
     if (!box) return null;
     const { width, height } = this.compositor.getCanvas();
-    return changedCanvasRect(box, { bounds: this.compositor.getBounds(), scale: CANVAS_SCALE, width, height, reach: this.edge.width, map: this.deps.mapRect() });
+    return changedCanvasRect(box, { bounds: this.compositor.getBounds(), scale: this.compositor.getScale(), width, height, reach: this.edge.width, map: this.deps.mapRect() });
   }
 
   /**

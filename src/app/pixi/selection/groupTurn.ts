@@ -39,9 +39,9 @@ export function pointerTurn(centre: Point, from: Point, to: Point): number {
   return halfTurn(((now - start) * 180) / Math.PI);
 }
 
-/** `degrees` snapped to the turn's step; never -0, never -180. */
-export function snapTurn(degrees: number, coarse: boolean): number {
-  const step = coarse ? COARSE_TURN_STEP : TURN_STEP;
+/** `degrees` snapped to the turn's step (whole degrees while `free`, unless `coarse`); never -0, never -180. */
+export function snapTurn(degrees: number, coarse: boolean, free = false): number {
+  const step = coarse ? COARSE_TURN_STEP : free ? 1 : TURN_STEP;
   return halfTurn(Math.round(degrees / step) * step) || 0;
 }
 

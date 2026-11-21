@@ -8,6 +8,7 @@ import type { MeasuresSlice } from '../../stores/measuresSlice';
 import type { UISlice } from '../../stores/uiSlice';
 import type { Point } from '../../types/visionTypes';
 import { elementOf, LIGHT_DRAG_THRESHOLD } from '../lighting/LightInteraction';
+import { dragThreshold } from '../utils/pointerReach';
 import { settleDragStep } from './dragStep';
 import { measureTurnHandlePoint, type MeasureHandlePlacer, type MeasureHandleRef, type MeasurePointerHandlers } from './measureHandle';
 import { handleDrag, sameDragChanges, type AuraDragSetting } from './measureHandleDrag';
@@ -15,13 +16,15 @@ import { MeasureHandles } from './MeasureHandles';
 import { closeStaleMeasurePopover, keptMeasure, mayEditMeasure, type MeasureEditState } from './measurePopoverGuard';
 import { trackPointer } from './pointerTrack';
 import { PopoverPressWatch } from './PopoverPressWatch';
+import { placesFreely, type ToolSwitchState } from '../../types/toolSwitches';
 
 /** The popover of a kept measurement, which a press may land in. */
 const POPOVER = '.atlas-measure-popover';
 
 type HandleState = MeasureEditState
   & Pick<UISlice, 'measurePopover' | 'openMeasurePopover' | 'closeMeasurePopover'>
-  & Pick<MeasuresSlice, 'updateMeasure' | 'deleteMeasure'>;
+  & Pick<MeasuresSlice, 'updateMeasure' | 'deleteMeasure'>
+  & ToolSwitchState;
 
 /** What the handles read of their view's state, and what they write: a measurement moved or deleted, and whose popover is open. */
 export type MeasureHandleStore = Pick<StoreApi<HandleState>, 'getState'>;
@@ -233,7 +236,7 @@ export class MeasureHandleInteraction {
 
     const onMove = (move: FederatedPointerEvent): void => {
       if (!moved) {
-        if (Math.hypot(move.global.x - start.x, move.global.y - start.y) <= LIGHT_DRAG_THRESHOLD) return;
+        if (Math.hypot(move.global.x - start.x, move.global.y - start.y) <= dragThreshold(LIGHT_DRAG_THRESHOLD, move)) return;
         moved = true;
         if (!drag) return;
         dragging = true;
@@ -243,7 +246,7 @@ export class MeasureHandleInteraction {
       if (!drag || !placed) return;
       // The handle keeps its distance to the pointer, so the measurement does not jump when grabbed off-centre.
       const at = viewport.toWorld(move.global.x, move.global.y);
-      const changes = drag.changes({ x: at.x - grabbed.x, y: at.y - grabbed.y }, move.altKey === true);
+      const changes = drag.changes({ x: at.x - grabbed.x, y: at.y - grabbed.y }, placesFreely(this.deps.store.getState(), 'measureSnap', move.altKey === true));
       // Snapped, most moves of the pointer leave it where it is: nothing is written then.
       if (sameDragChanges(changes, placed)) return;
       placed = changes;

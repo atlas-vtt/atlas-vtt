@@ -10,6 +10,7 @@ const { execSync } = require('child_process');
 const { parseVersion } = require('./release-channel');
 const { fontNoticeProblems, fontFaceCountProblems, scriptFontProblems } = require('./font-notices');
 const { rootHasProblems } = require('./root-has');
+const { hostModuleProblems, loadProblems } = require('./bundle-host');
 
 const root = path.resolve(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
@@ -90,6 +91,8 @@ if (!exists('dist/main.js')) {
   for (const [label, pattern] of Object.entries(blocking)) if (pattern.test(bundle)) errors.push(`dist/main.js contains ${label}`);
   for (const [label, pattern] of Object.entries(scorecard)) if (pattern.test(bundle)) warnings.push(`dist/main.js contains ${label}`);
   for (const problem of scriptFontProblems(bundle)) errors.push(`dist/main.js ${problem}`);
+  // Obsidian's mobile apps have no Node: the bundle names only Obsidian's modules and loads without Node's globals.
+  for (const problem of [...hostModuleProblems(bundle), ...loadProblems(bundle)]) errors.push(`dist/main.js ${problem}`);
   const hosts = [...new Set((bundle.match(/https?:\/\/[a-z0-9.-]+\.[a-z]{2,}/gi) || []))]
     .filter((host) => !/w3\.org|reactjs\.org|react\.dev|github\.com|mozilla\.org|pixijs\.(com|download|io)|radix-ui\.com|lucide\.dev|fb\.me|feross\.org|howlerjs\.com|goldfirestudios\.com|motion\.dev|example\.com|bit\.ly|stuartk\.com|stuk\.github\.io/.test(host));
   if (hosts.length) warnings.push(`dist/main.js references hosts that must be disclosed in README: ${hosts.join(', ')}`);

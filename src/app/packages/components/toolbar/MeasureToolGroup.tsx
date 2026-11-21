@@ -12,6 +12,7 @@ import { DropdownMenuItem } from "../primitives/DropdownMenuItem"
 import { SegmentedControl, type SegmentedOption } from "../primitives/SegmentedControl"
 import { ToolGroup, type ToolGroupControls } from "./ToolGroup"
 import { measureToolFace } from "./toolFaces"
+import { ToolSwitchRow } from "./ToolSwitchRow"
 
 const DRAG_DISTANCE_OPTIONS: readonly SegmentedOption<DragDistance>[] = [
   { value: 'always', label: t('toolbar.dragDistanceAlways') },
@@ -56,6 +57,9 @@ export function MeasureToolGroup({ activeTool, selectTool, menuOpen, toggleMenu,
             />
             <p className="atlas-dropdown-hint" aria-hidden="true">{t('toolbar.dragDistance')}</p>
           </div>
+        </div>
+        <div className="atlas-dropdown-section">
+          <ToolSwitchRow id="measureSnap" label={t('toolbar.snap')} />
         </div>
         {!playerView && (
           <div className="atlas-dropdown-section">

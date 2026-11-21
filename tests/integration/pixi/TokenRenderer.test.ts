@@ -12,7 +12,7 @@ import {
   type Ticker,
 } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../../src/app/utils/typedEmitter';
 import { TokenRenderer } from '../../../src/app/pixi/token-renderer';
 import { captureSceneFrame } from '../../../src/app/pixi/sceneFrameCapture';
 import { AnnotationsRenderer } from '../../../src/app/pixi/annotations/AnnotationsRenderer';

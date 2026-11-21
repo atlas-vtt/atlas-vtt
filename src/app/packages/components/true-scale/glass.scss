@@ -41,7 +41,7 @@ $chip-inset: 2px;
   gap: $chip-inset;
   padding: $chip-inset;
 
-  --atlas-bar-control-radius: #{atlas-panel-inset-radius-value($chip-inset, $button-height-s * 0.5)};
+  --atlas-bar-control-radius: #{atlas-panel-inset-radius-value($chip-inset, calc(#{$button-height-s} * 0.5))};
 
   .atlas-tool-button > span > .btn {
     width: $button-height-s;

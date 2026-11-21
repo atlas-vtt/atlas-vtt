@@ -574,36 +574,6 @@ $settings-stack-below: 520px;
   }
 }
 
-// A player's colour in initiative: a dot beside the picture, the palette under the row
-.atlas-csm-party-colour {
-  flex-shrink: 0;
-  width: $icon-m;
-  height: $icon-m;
-  padding: 0;
-  border-radius: 50%;
-  border: $border-width-m solid var(--background-modifier-border);
-
-  // No colour yet: only the ring
-  &[data-empty] {
-    background: transparent;
-  }
-}
-
-.atlas-csm-party-colours {
-  @include atlas-inset-surface;
-  padding: $spacing-s;
-}
-
-.atlas-csm-party-no-colour {
-  background: transparent;
-  color: var(--text-muted);
-
-  svg {
-    width: $icon-xs;
-    height: $icon-xs;
-  }
-}
-
 .atlas-csm-party-picture {
   display: flex;
   flex-shrink: 0;

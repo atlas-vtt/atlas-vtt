@@ -213,6 +213,7 @@ span.atlas-dice-lab__die {
   justify-content: center;
   min-width: 0;
   min-height: 1.5em;
+  overflow: hidden;
   font-size: $font-ui-smaller;
   white-space: nowrap;
 }

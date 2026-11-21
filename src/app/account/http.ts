@@ -1,7 +1,7 @@
 /** A request to Atlas's servers: never a token in the URL, only in `authorization`. */
 export interface HttpRequest {
   readonly url: string;
-  readonly method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  readonly method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   readonly authorization?: string;
   /** Further headers, such as a part's checksum; never `Authorization`, which only `authorization` sets. */
   readonly headers?: Readonly<Record<string, string>>;

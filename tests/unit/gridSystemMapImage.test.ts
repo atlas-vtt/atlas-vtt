@@ -89,6 +89,19 @@ describe('the grid over a map image', () => {
     expect(clip(grid)).toEqual({ x: 0, y: 0, width: 800, height: 600 });
   });
 
+  it('follows the same image drawn elsewhere at once, in the colour it read, without reading it again', async () => {
+    contrastColorForPixels.mockResolvedValue(0x000000);
+    const map = fakeMapImageView(400, 300);
+    const { grid } = gridOver(map);
+    await settleGridColor();
+
+    map.place({ x: 140, y: 70, width: 400, height: 300 });
+
+    expect(clip(grid)).toEqual({ x: 140, y: 70, width: 400, height: 300 });
+    expect(grid.markColor()).toEqual({ color: 0x000000, contrasting: true });
+    expect(contrastColorForPixels).toHaveBeenCalledTimes(1);
+  });
+
   it('draws white where the image has no pixels to read, without asking again on every redraw', async () => {
     contrastColorForPixels.mockResolvedValue(null);
     const { grid } = gridOver(fakeMapImageView(400, 300));

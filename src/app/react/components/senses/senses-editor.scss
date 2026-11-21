@@ -94,7 +94,7 @@ $gap: $spacing-s;
 
 // The senses to add, each with what it does: Atlas' dropdown menu, opened above the button.
 .atlas-senses-menu {
-  width: min(360px, calc(100vw - #{$spacing-l * 2}));
+  width: min(360px, calc(#{atlas-view-width()} - #{$spacing-l * 2}));
 }
 
 // A menu row of two lines: the sense's name, and what it does.

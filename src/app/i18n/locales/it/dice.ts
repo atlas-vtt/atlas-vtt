@@ -12,6 +12,7 @@ export const dice = {
   "dice.formulaError.depth": "Una formula di tiro può avere al massimo 8 livelli di parentesi annidate.",
   "dice.formulaError.modifier": "Un modificatore non è compatibile con i suoi dadi. Conserva o scarta almeno un dado e non più di quelli tirati dal termine; lascia almeno una faccia che non esploda e non faccia ritirare il dado. I dadi Fate non esplodono e non vengono ritirati.",
   "dice.formulaError.total": "Il risultato di una formula di tiro non può superare 1.000.000.000 in valore assoluto.",
+  "dice.formulaError.advantage": "adv e dis cambiano solo i tiri con i dadi del set, e solo se il set ha una regola per quel lato.",
   "dice.advantage": "Vantaggio",
   "dice.disadvantage": "Svantaggio",
   "dice.normal": "Normale",
@@ -27,7 +28,7 @@ export const dice = {
   "dice.clearSelection": "Annulla selezione",
   "dice.closeHint": "Chiudi (Invio o Esc)",
   "dice.details": "Dettagli",
-  "dice.log": "Registro dei tiri",
+  "dice.log": "Registro del tavolo",
   "dice.noRolls": "Ancora nessun tiro",
   "dice.pin": "Mantieni aperto il pannello",
   "dice.rollAgain": "Tira di nuovo",
@@ -38,5 +39,6 @@ export const dice = {
   "dice.rollFormula": "Tira {formula}",
   "dice.showRollsToPlayers": "Mostra i miei tiri ai giocatori",
   "dice.showRollsToPlayersHint": "I tuoi tiri appaiono anche nella finestra giocatori.",
-  "dice.volumeOff": "Disattivati"
+  "dice.volumeOff": "Disattivati",
+  "dice.showRollsToPlayersHint.mobile": "I tuoi tiri appaiono anche in modalità tavolo.",
 } satisfies Translation;

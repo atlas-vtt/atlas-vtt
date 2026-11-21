@@ -72,4 +72,31 @@ describe('WallDrawingSession', () => {
     expect(Object.keys(walls)).toEqual([doorId]);
     expect(walls[doorId]!.closed).toBe(false);
   });
+
+  it('takes back the wall placed last and goes on: one step for what is left, none where nothing is', () => {
+    const { store, session, steps } = setup();
+    const before = steps();
+    session.start();
+    session.add(segment(0));
+    session.add(segment(10));
+    session.removeLast();
+    expect(Object.values(store.getState().objects.walls).map((wall) => wall.p1.x)).toEqual([0]);
+    session.finish();
+    expect(steps()).toBe(before + 1);
+
+    session.start();
+    session.add(segment(20));
+    session.removeLast();
+    session.removeLast();
+    session.finish();
+    expect(Object.keys(store.getState().objects.walls)).toHaveLength(1);
+    expect(steps()).toBe(before + 1);
+    // A chain that goes on after losing its only wall begins its step anew.
+    session.start();
+    session.add(segment(30));
+    session.removeLast();
+    session.add(segment(40));
+    session.finish();
+    expect(steps()).toBe(before + 2);
+  });
 });

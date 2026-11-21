@@ -91,6 +91,34 @@ describe('where the turn banner stands', () => {
     }
   });
 
+  it('titles a fight\'s start and end between two rules on a soft shade, no capsule, clear of the toolbar, its words whole', async () => {
+    await page.viewport(1240, 800);
+    document.head.append(style);
+    leaf.style.cssText = 'position: relative; width: 1200px; height: 720px; contain: strict; background: radial-gradient(circle at 30% 70%, #9a6a3c, #6b4526)';
+    leaf.innerHTML = GM_MAP;
+    document.body.append(leaf);
+    const host = leaf.querySelector<HTMLElement>('.atlas-bottom-toolbar-row__above')!;
+    for (const kind of ['fight-start', 'fight-end'] as const) {
+      host.empty();
+      const banner = renderTurnBanner(host, { kind, key: kind, round: null, title: kind === 'fight-start' ? 'Combat has started' : 'Combat has ended', portrait: null }, () => null);
+      // Half way in, then where it comes to rest
+      await new Promise((resolve) => setTimeout(resolve, 260));
+      await page.screenshot({ path: `${SHOTS}/${kind}-entering.png`, element: leaf });
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const computed = getComputedStyle(banner);
+      expect(computed.borderTopStyle).toBe('none');
+      expect(computed.backgroundImage).toBe('none');
+      expect(getComputedStyle(banner, '::before').opacity).toBe('1');
+      const title = banner.querySelector<HTMLElement>('.atlas-fight-banner__title')!;
+      expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth);
+      expect(getComputedStyle(title).opacity).toBe('1');
+      for (const rule of banner.querySelectorAll('.atlas-fight-banner__rule')) expect(box(rule).width).toBeCloseTo(72, 0);
+      expect(overlaps(box(banner), box(leaf.querySelector('.atlas-main-toolbar')))).toBe(false);
+      await page.screenshot({ path: `${SHOTS}/${kind}.png`, element: leaf });
+    }
+    leaf.remove();
+  });
+
   it('in the player window: centred as large as set, clear of the dice rolls, the table dimmed behind it until it leaves', async () => {
     await page.viewport(1280, 720);
     document.head.append(style);

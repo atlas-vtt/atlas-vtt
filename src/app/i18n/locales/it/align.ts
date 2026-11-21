@@ -22,5 +22,6 @@ export const align = {
   "align.squares": "quadrati",
   "align.tab.freehand": "A mano libera",
   "align.tab.intersections": "Misura",
-  "align.title": "Allineamento della griglia"
+  "align.title": "Allineamento della griglia",
+  "align.waitingForTiles": "In attesa delle porzioni della mappa · {percent}%",
 } satisfies Translation;

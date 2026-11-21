@@ -3,7 +3,8 @@
 
 // Rows stand $surface-inset inside the menu's border, concentric with its corner, and their text
 // $spacing-m further in: the text edge of every Atlas menu.
-$ctx-row-height: 28px;
+// The height is a custom property a coarse pointer raises (`_coarse-pointer.scss`); the corners stay the rows' own.
+$ctx-row-height: var(--atlas-ctx-row-height, 28px);
 $ctx-inset: $surface-inset;
 
 // ── Menu container ──────────────────────────────────────────────────────────
@@ -198,10 +199,14 @@ $ctx-inset: $surface-inset;
   box-shadow: none;
   color: var(--text-muted);
   cursor: pointer;
+  // Under a finger the button stays inside its row and takes a target's hit area around it.
+  @include atlas-coarse-hit;
 
-  &:hover:not(:disabled) {
-    background: var(--background-modifier-hover);
-    color: var(--text-normal);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background: var(--background-modifier-hover);
+      color: var(--text-normal);
+    }
   }
 
   &:disabled {
@@ -274,8 +279,10 @@ $ctx-inset: $surface-inset;
     color: var(--text-error);
   }
 
-  &:hover {
-    background: color-mix(in oklch, var(--color-red) 15%, transparent);
+  @media (hover: hover) {
+    &:hover {
+      background: color-mix(in oklch, var(--color-red) 15%, transparent);
+    }
   }
 
   &:active {

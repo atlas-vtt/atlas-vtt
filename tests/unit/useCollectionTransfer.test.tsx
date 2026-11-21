@@ -3,12 +3,13 @@ import { act, cleanup, renderHook, type RenderHookResult } from '@testing-librar
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { Notice } from 'obsidian';
 import { useCollectionTransfer, type CollectionTransferActions } from '../../src/app/packages/components/asset-manager/hooks/useCollectionTransfer';
-import { openCollectionImport, type CollectionImportResult, type ImportSession } from '../../src/app/services/collectionBundle/collectionImport';
+import { openBundleImport, type BundleImport } from '../../src/app/services/itemBundle/bundleImport';
+import type { CollectionImportResult, ImportSession } from '../../src/app/services/collectionBundle/collectionImport';
 import { exportCollectionBundle, prepareCollectionExport, type ExportPreview } from '../../src/app/services/collectionBundle/collectionExport';
 import type { ImportReview } from '../../src/app/services/collectionBundle/importReview';
 
 vi.mock('obsidian', async (importOriginal) => ({ ...(await importOriginal<typeof import('obsidian')>()), Notice: vi.fn() }));
-vi.mock('../../src/app/services/collectionBundle/collectionImport', () => ({ openCollectionImport: vi.fn() }));
+vi.mock('../../src/app/services/itemBundle/bundleImport', () => ({ openBundleImport: vi.fn() }));
 vi.mock('../../src/app/services/collectionBundle/collectionExport', () => ({ prepareCollectionExport: vi.fn(), exportCollectionBundle: vi.fn() }));
 
 const review = { relation: 'newer', collectionName: 'Source', version: 2 } as ImportReview;
@@ -17,8 +18,8 @@ const updated: CollectionImportResult = {
   backupCount: 4, backupFolder: 'atlas-vtt/.atlas-data/backups/source/2026-09-23 19-30-05', switchedNotes: 0,
 };
 
-function session(apply: ImportSession['apply'] = vi.fn(async () => updated)): ImportSession {
-  return { review, apply };
+function session(apply: ImportSession['apply'] = vi.fn(async () => updated)): BundleImport {
+  return { kind: 'collection', session: { review, apply } as ImportSession };
 }
 
 function setup(): { hook: RenderHookResult<CollectionTransferActions, unknown>; onImported: ReturnType<typeof vi.fn>; assetService: Record<string, ReturnType<typeof vi.fn>> } {
@@ -36,7 +37,7 @@ async function pickFile(hook: RenderHookResult<CollectionTransferActions, unknow
   const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
   Object.defineProperty(input, 'files', { value: [new File(['zip'], 'Source v2.atlas-collection.zip')] });
   input.dispatchEvent(new Event('change'));
-  await vi.waitFor(() => expect(openCollectionImport).toHaveBeenCalled());
+  await vi.waitFor(() => expect(openBundleImport).toHaveBeenCalled());
 }
 
 beforeEach(() => { vi.clearAllMocks(); });
@@ -44,7 +45,7 @@ afterEach(cleanup);
 
 it('reviews a bundle, applies the user\'s decision and shows the result until closed', async () => {
   const apply = vi.fn(async () => updated);
-  vi.mocked(openCollectionImport).mockResolvedValue(session(apply));
+  vi.mocked(openBundleImport).mockResolvedValue(session(apply));
   const { hook, onImported } = setup();
   await pickFile(hook);
   await vi.waitFor(() => expect(hook.result.current.transfer).toEqual({ step: 'import-review', review }));
@@ -63,13 +64,13 @@ it('reviews a bundle, applies the user\'s decision and shows the result until cl
 });
 
 it('explains a bundle it cannot read and an import that failed', async () => {
-  vi.mocked(openCollectionImport).mockRejectedValueOnce(new Error('This collection export is damaged.'));
+  vi.mocked(openBundleImport).mockRejectedValueOnce(new Error('This collection export is damaged.'));
   const { hook } = setup();
   await pickFile(hook);
   await vi.waitFor(() => expect(hook.result.current.transfer).toEqual({ step: 'done', title: 'Import failed', message: 'This collection export is damaged.' }));
 
   act(() => hook.result.current.closeTransfer());
-  vi.mocked(openCollectionImport).mockResolvedValueOnce(session(vi.fn(async () => { throw new Error('The import failed: Disk full. Nothing was changed.'); })));
+  vi.mocked(openBundleImport).mockResolvedValueOnce(session(vi.fn(async () => { throw new Error('The import failed: Disk full. Nothing was changed.'); })));
   await pickFile(hook);
   await vi.waitFor(() => expect(hook.result.current.transfer?.step).toBe('import-review'));
   await act(async () => hook.result.current.confirmImport({}));
@@ -78,7 +79,7 @@ it('explains a bundle it cannot read and an import that failed', async () => {
 
 it('reports the result as a notice when the asset manager closed during the import', async () => {
   let finish: (result: CollectionImportResult) => void = () => undefined;
-  vi.mocked(openCollectionImport).mockResolvedValue(session(() => new Promise((resolve) => { finish = resolve; })));
+  vi.mocked(openBundleImport).mockResolvedValue(session(() => new Promise((resolve) => { finish = resolve; })));
   const { hook } = setup();
   await pickFile(hook);
   await vi.waitFor(() => expect(hook.result.current.transfer?.step).toBe('import-review'));
@@ -90,7 +91,7 @@ it('reports the result as a notice when the asset manager closed during the impo
 });
 
 it('says how many statblocks the import switched to the copies of their templates', async () => {
-  vi.mocked(openCollectionImport).mockResolvedValue(session(vi.fn(async () => ({ ...updated, switchedNotes: 2 }))));
+  vi.mocked(openBundleImport).mockResolvedValue(session(vi.fn(async () => ({ ...updated, switchedNotes: 2 }))));
   const { hook } = setup();
   await pickFile(hook);
   await vi.waitFor(() => expect(hook.result.current.transfer?.step).toBe('import-review'));

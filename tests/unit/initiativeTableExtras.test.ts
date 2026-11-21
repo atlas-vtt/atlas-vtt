@@ -4,18 +4,15 @@ import { collectionEnemyImage, isTokenlessEnemy, nextTokenlessEnemy } from '../.
 import { mapEnemyImage } from '../../src/app/initiative/mapParty';
 import { AssetService } from '../../src/app/services/AssetService';
 import type { App } from 'obsidian';
-import { combatantColor, turnColor } from '../../src/app/initiative/combatantColor';
+import { turnColor } from '../../src/app/initiative/turnColor';
 import { renderTurnBanner } from '../../src/app/initiative/banner/turnBannerElement';
-import { RESOURCE_COLORS } from '../../src/app/resources/resourceColors';
 import { turnEntries } from '../../src/app/initiative/turnHolders';
 import {
   initiativeScaleOf, MAX_INITIATIVE_SCALE, playerInitiativeList, playersEntryToken, renderPlayerInitiative, type PlayerInitiativeEntry,
 } from '../../src/app/services/playerInitiativeList';
 import { initiativeCardMenu } from '../../src/app/react/components/initiativeCardMenu';
-import type { ContextMenuEntry } from '../../src/app/react/root/ContextMenuContext';
 import type { InitiativeEntry } from '../../src/app/types/initiativeTypes';
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';
-import type { TokenEntity } from '../../src/app/types';
 
 vi.mock('../../src/app/utils/scrollWithin', () => ({ scrollWithin: () => undefined }));
 
@@ -32,8 +29,8 @@ describe('enemies without tokens', () => {
     const added = nextTokenlessEnemy([]);
     expect(isTokenlessEnemy(added)).toBe(true);
     expect(added.awaitingInitiative).toBe(true);
-    // In the palette's red, which the Colour menu shows ticked
-    expect(added.color).toBe(RESOURCE_COLORS.find(({ label }) => label === 'Red')?.value);
+    // No colour of its own
+    expect('color' in added).toBe(false);
     expect(isTokenlessEnemy({ partyMemberId: 'ara' })).toBe(false);
     expect(isTokenlessEnemy({ tokenId: 'goblin' })).toBe(false);
   });
@@ -69,58 +66,32 @@ describe('enemies without tokens', () => {
     expect(held).toEqual([enemy]);
   });
 
-  it('are rolled, never moved, can be hidden from the players and take a colour', () => {
+  it('are rolled, never moved, can be hidden from the players, and take no colour', () => {
     const noop = (): void => undefined;
-    const setColor = vi.fn();
     const menu = initiativeCardMenu(entry({ name: 'Enemy 1' }), undefined, { bySides: false, sides: [], cards: false, fightRuns: false, swapTargets: [] }, {
       roll: noop, moveToFront: noop, moveToBack: noop, edit: noop, updateToken: noop, setSitsOut: noop, swapCard: noop,
-      delay: noop, actNow: noop, placeOnMap: noop, remove: noop, setColor, setHiddenFromPlayers: noop,
+      delay: noop, actNow: noop, placeOnMap: noop, remove: noop, setHiddenFromPlayers: noop,
     });
     const labels = menu.flatMap((item) => (item.type === 'custom' ? [] : [item.label]));
     expect(labels).toContain('Roll Initiative');
     expect(labels).toContain('Hide from Players');
-    const colours = menu.find((item): item is Extract<ContextMenuEntry, { type: 'submenu' }> => item.type === 'submenu' && item.label === 'Colour');
-    const red = (colours?.children as ContextMenuEntry[]).find((item) => item.type === 'item' && item.label === 'Red');
-    if (red?.type !== 'item') throw new Error('no red in the colour menu');
-    void red.onClick();
-    expect(setColor).toHaveBeenCalledWith('#dc2626');
+    expect(labels).not.toContain('Colour');
   });
 });
 
-describe('combatant colours', () => {
-  it('are offered for opponents and never for the players\' side', () => {
-    const noop = (): void => undefined;
-    const actions = {
-      roll: noop, moveToFront: noop, moveToBack: noop, edit: noop, updateToken: noop, setSitsOut: noop, swapCard: noop,
-      delay: noop, actNow: noop, placeOnMap: noop, remove: noop, setColor: noop, setHiddenFromPlayers: noop,
-    };
-    const mode = { bySides: false, sides: [], cards: false, fightRuns: false, swapTargets: [] };
-    const hasColour = (target: InitiativeEntry, token?: TokenEntity): boolean =>
-      initiativeCardMenu(target, token, mode, actions).some((item) => item.type === 'submenu' && item.label === 'Colour');
-    expect(hasColour(entry({ partyMemberId: 'ara' }))).toBe(false);
-    expect(hasColour(entry({ tokenId: 'hero' }), { id: 'hero', vision: { enabled: true } } as TokenEntity)).toBe(false);
-    expect(hasColour(entry({ tokenId: 'goblin' }), { id: 'goblin' } as TokenEntity)).toBe(true);
-  });
-
-  it('give a turn its flash: the card\'s colour, else the token\'s ring, else the accent', () => {
-    expect(turnColor({ color: '#dc2626' }, { ringColor: '#22c55e' })).toBe('#dc2626');
-    expect(turnColor({}, { ringColor: '#22c55e' })).toBe('#22c55e');
-    expect(turnColor({}, undefined)).toBeNull();
+describe('turn colours', () => {
+  it('give a turn its flash: the token\'s ring, else the accent', () => {
+    expect(turnColor({ ringColor: '#22c55e' })).toBe('#22c55e');
+    expect(turnColor(undefined)).toBeNull();
     document.body.empty();
     const banner = renderTurnBanner(document.body, { key: 'k', round: null, title: 'Ara', portrait: null, color: '#22c55e' }, () => null);
     expect(banner.style.getPropertyValue('--atlas-turn-banner-flash')).toBe('#22c55e');
     expect(renderTurnBanner(document.body, { key: 'k', round: null, title: 'Ara', portrait: null }, () => null).style.getPropertyValue('--atlas-turn-banner-flash')).toBe('');
   });
-
-  it('read only as #rrggbb', () => {
-    expect(combatantColor({ color: '#DC2626' })).toBe('#DC2626');
-    expect(combatantColor({ color: 'red' })).toBeNull();
-    expect(combatantColor({})).toBeNull();
-  });
 });
 
 describe('the players\' list', () => {
-  const draw = (look: { pulse?: boolean; showNames?: boolean; turnFlash?: number }, entries: PlayerInitiativeEntry[]): HTMLElement => {
+  const draw = (look: { pulse?: boolean; showNames?: boolean; turnFlash?: number; artViewBox?: (imagePath: string, apply: (viewBox: string) => void) => void }, entries: PlayerInitiativeEntry[]): HTMLElement => {
     document.body.empty();
     const list = playerInitiativeList({ entries, isActive: true, round: 1 }, () => ({ hp: null, showRing: false, side: 'opponents', defeated: false }), TURN_ORDER, false);
     renderPlayerInitiative(document.body, list, { showNames: false, portraitSrc: () => 'art.webp', ...look });
@@ -134,11 +105,18 @@ describe('the players\' list', () => {
 
   it('flashes the border of who holds a turn that just began, taken up where a redraw left it', () => {
     const panel = draw({ turnFlash: 300 }, [entry({ tokenId: 'a', isActive: true }), entry({ tokenId: 'b', order: 1 })]);
-    const flashing = [...panel.querySelectorAll<HTMLElement>('.atlas-player-initiative__card--turn-flash')];
+    const flashing = [...panel.querySelectorAll<HTMLElement>('.atlas-initiative-card--turn-flash')];
     expect(flashing).toHaveLength(1);
-    expect(flashing[0]?.classList.contains('atlas-player-initiative__card--active')).toBe(true);
+    expect(flashing[0]?.classList.contains('atlas-initiative-card--active')).toBe(true);
     expect(flashing[0]?.style.getPropertyValue('--atlas-turn-flash-delay')).toBe('-300ms');
-    expect(draw({}, [entry({ tokenId: 'a', isActive: true })]).querySelector('.atlas-player-initiative__card--turn-flash')).toBeNull();
+    expect(draw({}, [entry({ tokenId: 'a', isActive: true })]).querySelector('.atlas-initiative-card--turn-flash')).toBeNull();
+  });
+
+  it('shows a portrait\'s art without the transparent margins its image has, as the GM\'s card does', () => {
+    const asked: string[] = [];
+    const panel = draw({ artViewBox: (imagePath, apply) => { asked.push(imagePath); apply('inset(10.00% 20.00% 10.00% 20.00%)'); } }, [entry({ tokenId: 'a', imagePath: 'a.webp' })]);
+    expect(asked).toEqual(['a.webp']);
+    expect(panel.querySelector<HTMLElement>('.atlas-initiative-card__art img')?.style.getPropertyValue('--atlas-art-view-box')).toBe('inset(10.00% 20.00% 10.00% 20.00%)');
   });
 
   it('keeps the size between 1 and the largest', () => {
@@ -148,13 +126,10 @@ describe('the players\' list', () => {
     expect(initiativeScaleOf('big')).toBe(1);
   });
 
-  it('names a card without a portrait, and colours the card the GM coloured', () => {
-    const panel = draw({}, [entry({ name: 'Enemy 1', color: '#dc2626' }), entry({ name: 'Goblin', tokenId: 'g', imagePath: 'g.webp', order: 1 })]);
-    const names = [...panel.querySelectorAll('.atlas-player-initiative__name')].map((name) => name.textContent);
+  it('names a card without a portrait, and draws no colour an older file gave it', () => {
+    const panel = draw({}, [entry({ name: 'Enemy 1', color: '#dc2626' } as never), entry({ name: 'Goblin', tokenId: 'g', imagePath: 'g.webp', order: 1 })]);
+    const names = [...panel.querySelectorAll('.atlas-initiative-card__name')].map((name) => name.textContent);
     expect(names).toEqual(['Enemy 1']);
-    const coloured = panel.querySelector<HTMLElement>('.atlas-player-initiative__card--coloured');
-    expect(coloured?.style.getPropertyValue('--atlas-combatant-color')).toBe('#dc2626');
-    // Its turn flashes in that colour
-    expect(coloured?.style.getPropertyValue('--atlas-turn-color')).toBe('#dc2626');
+    expect(panel.querySelector('.atlas-initiative-card--coloured')).toBeNull();
   });
 });

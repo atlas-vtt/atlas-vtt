@@ -59,8 +59,8 @@ export function Select<T extends string>({ value, options, onChange, labelledBy,
       const target = event.target as Node;
       if (!rootRef.current?.contains(target) && !listRef.current?.contains(target)) setIsOpen(false);
     };
-    document.addEventListener('mousedown', handlePointerDown);
-    return () => document.removeEventListener('mousedown', handlePointerDown);
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [isOpen]);
 
   const close = (): void => {

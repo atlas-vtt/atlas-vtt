@@ -337,6 +337,13 @@ $mark-size: 24px;
   }
 }
 
+// A value the share decides and shows, such as a single file's listing kind: in a field's place, not editable.
+.atlas-share-fixed {
+  @include atlas-inset-surface;
+  padding: $spacing-s;
+  color: var(--text-normal);
+}
+
 .atlas-share-field {
   @include atlas-flex-col($gap: $spacing-s);
   min-width: 0;
@@ -430,4 +437,79 @@ $mark-size: 24px;
   @include atlas-flex-col($gap: $spacing-s);
   @include atlas-inset-surface;
   padding: $spacing-m;
+}
+
+// The vault's own items of a kind, to choose the one to share: one inset list of rows, each starting at the list's
+// edge (Obsidian centres a <button>'s content), with the way on at its end.
+.atlas-modal.atlas-item-pick {
+  width: min(440px, 100%);
+}
+
+.atlas-item-pick {
+  &__list {
+    @include atlas-flex-col($gap: $spacing-xs);
+    @include atlas-inset-surface;
+    max-height: min(420px, 60vh);
+    margin: 0;
+    padding: $spacing-xs;
+    overflow-y: auto;
+    list-style: none;
+  }
+
+  &__placeholder {
+    height: 40px;
+    border-radius: $radius-m - $spacing-xs;
+  }
+
+  &__item {
+    @include atlas-flex-row($gap: $spacing-s);
+    justify-content: flex-start;
+    width: 100%;
+    height: 40px;
+    padding: $spacing-s;
+    border: none;
+    border-radius: $radius-m - $spacing-xs;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-normal);
+    text-align: start;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--background-modifier-hover);
+    }
+  }
+
+  &__icon {
+    display: flex;
+    flex-shrink: 0;
+    color: var(--text-muted);
+
+    svg {
+      width: $icon-m;
+      height: $icon-m;
+    }
+  }
+
+  &__name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-size: $font-ui-medium;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__go {
+    flex-shrink: 0;
+    width: $icon-s;
+    height: $icon-s;
+    color: var(--text-faint);
+    opacity: 0;
+    transition: opacity $transition-fast $transition-ease;
+  }
+
+  &__item:hover &__go {
+    opacity: 1;
+  }
 }

@@ -6,10 +6,18 @@ import { ExportCollectionDialog } from '../../src/app/packages/components/asset-
 import { ImportReviewDialog } from '../../src/app/packages/components/asset-manager/collection-transfer/ImportReviewDialog';
 import type { App } from 'obsidian';
 import type { ContentMedia } from '../../src/app/packages/components/asset-manager/collection-transfer/contentMedia';
+import type { ContextMenuEntry } from '../../src/app/react/root/ContextMenuContext';
 import type { Asset } from '../../src/app/services/AssetService';
 import type { ExportPreview } from '../../src/app/services/collectionBundle/collectionExport';
 import type { ImportReview } from '../../src/app/services/collectionBundle/importReview';
 import { stubLayout } from '../mocks/jsdomLayout';
+
+// The menu itself is React's; what it is opened with is the card's.
+const openContextMenuGlobal = vi.hoisted(() => vi.fn<(entries: ContextMenuEntry[], at: { x: number; y: number }) => boolean>(() => true));
+vi.mock('../../src/app/react/root/ContextMenuContext', async (original) => ({
+  ...(await original<typeof import('../../src/app/react/root/ContextMenuContext')>()),
+  openContextMenuGlobal,
+}));
 
 afterEach(cleanup);
 
@@ -329,6 +337,32 @@ describe('export options', () => {
     fireEvent.click(within(cards[1] as HTMLElement).getByRole('checkbox'));
     expect(cards[1]!.getAttribute('data-state')).toBe('excluded');
     vi.useRealTimers();
+  });
+
+  it('opens a token\'s statblock from the Preview row of its menu, for a hand that holds no key, and keeps it until a press outside', async () => {
+    openContextMenuGlobal.mockClear();
+    const goblin = { ...token, showRing: false, statblockPath: 'Bestiary/Goblin.md' } as Asset;
+    const orc = { ...token, id: 'orc', name: 'Orc', imagePath: 'atlas-vtt/assets/orc.webp' } as Asset;
+    const noteText = vi.fn(async () => '---\nstatblock: true\nname: Goblin\n---');
+    const { container } = render(<ExportCollectionDialog media={{ ...media, noteText }} preview={preview({ assets: [scene, goblin, orc] })} onExport={vi.fn(async () => null)} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Tokens/ }));
+    const cards = [...container.querySelectorAll('.atlas-transfer-token')];
+
+    // A token without a statblock has nothing to preview: the press is left alone.
+    expect(fireEvent.contextMenu(cards[1]!, { clientX: 300, clientY: 200 })).toBe(true);
+    expect(openContextMenuGlobal).not.toHaveBeenCalled();
+
+    expect(fireEvent.contextMenu(cards[0]!, { clientX: 120, clientY: 200 })).toBe(false);
+    const [entries, at] = openContextMenuGlobal.mock.calls[0]!;
+    expect(at).toEqual({ x: 120, y: 200 });
+    expect(entries.map((entry) => (entry.type === 'item' ? entry.label : entry.type))).toEqual(['Preview']);
+    const row = entries[0]!;
+    await act(async () => { if (row.type === 'item') await row.onClick?.(); });
+    expect(noteText).toHaveBeenCalledWith('Bestiary/Goblin.md');
+    expect(document.querySelector('.atlas-statblock-preview-window--over-modal')).toBeTruthy();
+
+    await act(async () => { fireEvent.pointerDown(document.body); });
+    await vi.waitFor(() => expect(document.querySelector('.atlas-statblock-preview-window')).toBeNull());
   });
 
   it('mounts only the token cards the pane shows, however many the collection holds', () => {

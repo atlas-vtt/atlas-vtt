@@ -8,6 +8,12 @@ $page-leave: 120ms;
 $page-arrive: 80ms;
 $page-shift: clamp(24px, 3cqi, 56px);
 
+// The tracks of the screen's own controls (pages, statblock scope): nearly opaque, since the blurred map lies under them.
+@mixin dm-screen-track {
+  background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
+  box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) 9%, transparent);
+}
+
 // DM screen styles
 //
 // The wrapper covers the map view: Obsidian gives every `.workspace-leaf` `contain: strict`,
@@ -133,7 +139,6 @@ $page-shift: clamp(24px, 3cqi, 56px);
   flex: 1;
   display: flex;
   gap: 16px;
-  overflow: hidden;
   padding: 12px;
   padding-top: 70px; // keeps the panes below the map's top bar row
   position: relative;
@@ -162,6 +167,7 @@ $page-shift: clamp(24px, 3cqi, 56px);
 
 // The page control stands centred near the top, closer to it than the panes are to the sides (owner, 2026-11-03).
 .atlas-dm-screen-header {
+  position: relative;
   flex-shrink: 0;
   display: flex;
   justify-content: center;
@@ -169,13 +175,21 @@ $page-shift: clamp(24px, 3cqi, 56px);
   gap: $spacing-s;
   padding: $spacing-l var(--atlas-dm-screen-inset) 0;
 
+  // Under a finger the screen closes by a button at the row's end, in line with the panes' edge;
+  // it takes no room in the row, so the page control stays centred.
+  .atlas-dm-screen-close {
+    position: absolute;
+    inset-block: $spacing-l 0;
+    inset-inline-end: var(--atlas-dm-screen-inset);
+    margin-block: auto;
+  }
+
   .atlas-segmented {
     flex-shrink: 0;
     gap: 2px;
     padding: $surface-inset;
     --atlas-segmented-radius: #{$radius-m + $surface-inset};
-    background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
-    box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) 9%, transparent);
+    @include dm-screen-track;
   }
 
   .atlas-segmented__option {
@@ -242,12 +256,14 @@ $page-shift: clamp(24px, 3cqi, 56px);
   border-radius: $radius-m;
   background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
   color: var(--text-muted);
-  font-family: var(--font-interface);
-  font-size: $font-ui-medium;
-  font-weight: $font-weight-semibold;
-  line-height: 1;
   pointer-events: none;
   user-select: none;
+
+  // An icon, not the arrow characters: fonts without them (Linux) drew them small from a fallback.
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
 }
 
 .atlas-dm-sound-page {
@@ -416,7 +432,10 @@ $page-shift: clamp(24px, 3cqi, 56px);
   }
 }
 
-// While a fight runs: the fight's statblocks or every creature's, above the feeds
-.atlas-dm-statblock-scope {
+// The fight's statblocks, the player characters' or every creature's, above the feeds
+.atlas-segmented.atlas-dm-statblock-scope {
+  @include dm-screen-track;
+  // A switch, not a heading: as wide as three short choices, not the whole pane.
+  max-width: 480px;
   margin-bottom: $spacing-s;
 }

@@ -28,6 +28,7 @@ describe('ImageDisplayService cleanup', () => {
     const service = new ImageDisplayService(app);
     const playerDoc = document.implementation.createHTMLDocument('player');
     const playerWindow = fakePlayerWindow(playerDoc);
+    const addSpy = vi.spyOn(playerDoc, 'addEventListener');
     const removeSpy = vi.spyOn(playerDoc, 'removeEventListener');
     const removeWindowSpy = vi.spyOn(playerWindow, 'removeEventListener');
     const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
@@ -36,8 +37,9 @@ describe('ImageDisplayService cleanup', () => {
     service.closeImageDisplay();
 
     // Input stops at once; the overlay itself leaves once its exit has played
-    expect(removeSpy).toHaveBeenCalledWith('mousemove', expect.any(Function));
-    expect(removeSpy).toHaveBeenCalledWith('mouseup', expect.any(Function));
+    const followed = addSpy.mock.calls.filter(([type]) => type.startsWith('pointer')).map(([type, listener]) => [type, listener]);
+    expect(followed.map(([type]) => type).sort()).toEqual(['pointercancel', 'pointermove', 'pointerup']);
+    expect(removeSpy.mock.calls.map(([type, listener]) => [type, listener])).toEqual(followed);
     expect(removeWindowSpy).toHaveBeenCalledWith('keydown', expect.any(Function), true);
     expect(playerDoc.querySelector('.atlas-image-display')?.classList.contains('is-leaving')).toBe(true);
     expect(service.isImageDisplayed()).toBe(false);

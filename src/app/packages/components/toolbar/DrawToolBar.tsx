@@ -7,9 +7,11 @@ import { useAtlasStore } from "../../../react/ViewStoreContext"
 import { MOTION_FAST_MS, easeOut } from "../../../utils/motion"
 import { TooltipProvider } from "../primitives/tooltip"
 import { DrawModeTool } from "./DrawModeTools"
+import { PlacingMenu } from "./DrawToolMenus"
 import { DRAW_MODE_CHOICES, drawModeChoice, drawModeTools, drawModeUnavailable } from "./drawToolChoices"
 import { ChoiceButtons, GroupBreak, ToolOptionsBars } from "./ToolOptionsBar"
 import { useDrawStyle } from "./useDrawStyle"
+import { shownTool } from "../../../measure/heldRuler"
 
 /** Why the bars take no choice now, or null: drawing is done in the GM's view, and the session view shows the players'. */
 function useLockedReason(): string | null {
@@ -20,7 +22,8 @@ function useLockedReason(): string | null {
 
 /**
  * The Draw tool's bars above the main toolbar while the tool is chosen: its modes, from the
- * toolbar's left edge, and after them the bar of the mode's tools. What every drawing has
+ * toolbar's left edge, with the menu of how points land (Snap, Constrain) at their end, and after
+ * them the bar of the mode's tools. What every drawing has
  * (colour, size, players, layer) comes first in every mode that has them, so those four keep
  * their place when the mode changes. With drawings or texts selected the tools show their style
  * and change it; else they show what is drawn next. In the session view the bars stay and take
@@ -28,7 +31,7 @@ function useLockedReason(): string | null {
  * while the toolbar is arranged.
  */
 export function DrawToolBar(): React.ReactElement {
-  const shown = useAtlasStore((state) => state.activeTool === 'draw' && !state.isPlayerView
+  const shown = useAtlasStore((state) => shownTool(state) === 'draw' && !state.isPlayerView
     && !state.isToolbarEditing && !state.isMapLoading)
   return <ToolOptionsBars shown={shown}><DrawBars /></ToolOptionsBars>
 }
@@ -48,6 +51,9 @@ function DrawBars(): React.ReactElement {
       <div role="toolbar" aria-label={t('draw.modes')} className="atlas-tool-bar atlas-tool-bar--modes">
         <ChoiceButtons kind="mode" locked={locked} choices={DRAW_MODE_CHOICES} value={choice.value} unavailable={(value) => drawModeUnavailable(value, grid)}
           onChange={(value) => setDrawTool({ mode: value })} />
+        {/* How points land, whatever the mode: after the modes, where no change of mode moves it. */}
+        <GroupBreak />
+        <PlacingMenu locked={locked} />
       </div>
       <ModeTools mode={choice.value} name={choice.label} locked={locked} />
     </TooltipProvider>

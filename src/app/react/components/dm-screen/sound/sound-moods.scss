@@ -40,6 +40,14 @@
   align-content: start;
 }
 
+// Room for one column only: it keeps a tile's width rather than stretch into a bar, its heading with it.
+@container atlas-sound-moods (max-width: #{2 * 190px + $card-inset - 1px}) {
+  .atlas-sound-moods__head,
+  .atlas-sound-moods__grid {
+    max-width: $sound-mood-tile-max;
+  }
+}
+
 .atlas-sound-mood {
   --atlas-sound-tone: var(--atlas-sound-tone-light);
   position: relative;
@@ -71,7 +79,8 @@
   background: var(--background-primary-alt);
   text-align: start;
   white-space: normal;
-  touch-action: none;
+  // A finger scrolls the moods by their tiles; one that rests lifts the tile (`useListDrag`'s `restBeforeDrag`).
+  touch-action: pan-y;
   transition: background-color $transition-normal $press-ease, transform $press-ms $press-ease;
   @include pressable(0.985);
 

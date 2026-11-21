@@ -126,8 +126,8 @@ describe('the show my rolls to players switch', () => {
     const clear = rect(tray.querySelector('.atlas-dice-tray__clear')!);
     expect(roll.height).toBeCloseTo(40, 0);
     expect(clear.height).toBeCloseTo(40, 0);
-    expect(roll.left).toBeCloseTo(content.left, 0);
-    expect(clear.right).toBeCloseTo(content.right, 0);
+    expect(clear.left).toBeCloseTo(content.left, 0);
+    expect(roll.right).toBeCloseTo(content.right, 0);
     // Each die is named under it, 4 px below its button, one 16 px line; the outer dice stay concentric with the panel.
     const face = rect(tray.querySelector('.atlas-dice-tray__face')!);
     const caption = rect(tray.querySelector('.atlas-dice-tray__caption')!);

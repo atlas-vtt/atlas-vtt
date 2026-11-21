@@ -82,4 +82,8 @@ export const creator: Translation = {
   'creator.savedSome': 'Сохранено {saved} из {total}. Остальные остаются здесь, чтобы можно было попробовать ещё раз.',
   'creator.scaledDown': 'Уменьшено с {from} px до наибольшего размера карты',
   'creator.statblockNotes': 'Выбрать заметки статблоков…',
+  'creator.dropAnywhere.touch': 'Выберите изображения',
+  'creator.emptyHint.touch': 'Выберите изображения на этом устройстве. Перед созданием каждое можно обрезать, масштабировать и назвать.',
+  'creator.map.browse.touch': 'Коснитесь, чтобы выбрать изображения карт',
+  'creator.token.browse.touch': 'Коснитесь, чтобы выбрать изображения токенов',
 };

@@ -3,6 +3,7 @@ import type { Transform } from '../../annotations/annotationTransform';
 import type { OffMapFlag } from '../../tokens/offMap';
 import type { DrawingStroke, TextElement } from '../../types';
 import type { ViewState } from '../../types/viewState';
+import type { ToolSwitchState } from '../../types/toolSwitches';
 
 /** What tells whether the Draw tool is in hand, and in which mode. */
 export type DrawToolState = Pick<ViewState, 'activeTool' | 'drawTool'>;
@@ -34,9 +35,11 @@ export type SelectionState = Pick<ViewState, 'levels' | 'viewedLevel' | 'selecte
 export type PlaceWriter = (places: Readonly<Record<string, AnnotationPlace>>, by?: Transform) => void;
 
 /** What selecting and reshaping read and write of a view's store. */
-export interface SelectingState extends SelectionState {
+export interface SelectingState extends SelectionState, ToolSwitchState {
   /** The view is a players' own: nothing is selected or reshaped there. Unset: it is not. */
   isPlayerView?: boolean;
+  /** A press adds to the selection or takes from it (`selectMore.ts`). Unset: only with Shift. */
+  selectMore?: boolean;
   setSelection(ids: string[]): void;
   placeAnnotations: PlaceWriter;
 }

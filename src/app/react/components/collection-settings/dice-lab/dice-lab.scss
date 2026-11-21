@@ -225,7 +225,9 @@ button.atlas-dice-lab__set {
 
 .atlas-dice-lab__set-row:hover,
 .atlas-dice-lab__set-row:focus-within,
-.atlas-dice-lab__set-row.atlas-asking {
+.atlas-dice-lab__set-row.atlas-asking,
+// A row whose menu is open keeps its actions while the pointer is in the menu.
+.atlas-dice-lab__set-row:has([data-state='open']) {
   .atlas-dice-lab__set-actions {
     opacity: 1;
     pointer-events: auto;
@@ -234,6 +236,21 @@ button.atlas-dice-lab__set {
   .atlas-dice-lab__set-detail,
   .atlas-dice-lab__lock {
     opacity: 0;
+  }
+}
+
+// A touch screen has no hover: the selected set's actions show, as a tap selects it.
+@include atlas-hover-reveal {
+  .atlas-dice-lab__set-row.atlas-selected {
+    .atlas-dice-lab__set-actions {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .atlas-dice-lab__set-detail,
+    .atlas-dice-lab__lock {
+      opacity: 0;
+    }
   }
 }
 

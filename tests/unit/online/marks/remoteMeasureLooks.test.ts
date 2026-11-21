@@ -8,6 +8,8 @@ import { RemoteMeasures, type MeasureRules, type RemoteMeasure } from '../../../
 import type { ViewPlayback } from '../../../../src/app/pixi/liquids/viewLiquids';
 import { AreaEffects } from '../../../../src/app/pixi/measure/effects/AreaEffects';
 import type { MeasureEffectOptions } from '../../../../src/app/pixi/measure/effects/MeasureEffectMesh';
+import { MEASURE_MOTION } from '../../../../src/app/pixi/measure/measurePresence';
+import { preferReducedMotion } from '../../../helpers/reducedMotion';
 
 /** The effect meshes made and not yet destroyed: the shaders themselves are the GPU tests' to draw. */
 const meshes = vi.hoisted(() => new Set<{ options: Record<string, unknown> }>());
@@ -79,6 +81,8 @@ describe('the looks of the GM\'s measurements, drawn for players', () => {
   };
 
   beforeEach(() => {
+    // What is drawn is read at its own size: growing in is the motion tests' (`remoteMeasureMotion`).
+    preferReducedMotion();
     vi.spyOn(Text.prototype, 'getLocalBounds').mockReturnValue(new Bounds(0, 0, 40, 18));
     rules = { grid: GRID, measurement: FEET };
     tokens = { [HERO]: { x: 105, y: 105, size: 1 } };
@@ -94,6 +98,7 @@ describe('the looks of the GM\'s measurements, drawn for players', () => {
     effects.destroy();
     meshes.clear();
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it('draws each measurement in its own colour, and one that names none in its sender\'s', () => {
@@ -120,15 +125,19 @@ describe('the looks of the GM\'s measurements, drawn for players', () => {
   });
 
   it('takes a look off again, and asks nothing of the host while no measurement has one', () => {
+    vi.useFakeTimers();
     measures.update([told([{ ...circle, effect: 'fire' }, { shape: 'square', pts: [0, 0, 140, 0], effect: 'mist' }])], 0);
     measures.update([told([circle, { shape: 'square', pts: [0, 0, 140, 0], effect: 'mist' }])], 10);
     expect(effectsOf().map(({ effect }) => effect)).toEqual(['mist']);
     measures.update([told([circle])], 20);
+    // The square fades out with its look before it lets go of it.
+    vi.advanceTimersByTime(MEASURE_MOTION.exit.ms + 50);
     expect(meshes.size).toBe(0);
     expect(view.listening()).toBe(false);
     measures.update([told([{ ...circle, effect: 'radiance' }])], 30);
     expect(view.listening()).toBe(true);
     measures.update([], 40);
+    vi.advanceTimersByTime(MEASURE_MOTION.exit.ms + 50);
     expect(meshes.size).toBe(0);
     expect(view.listening()).toBe(false);
   });

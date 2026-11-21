@@ -5,6 +5,7 @@ import { prefersReducedMotion } from '../../../utils/motion';
 import atlasIcon from '../assets/atlas-icon.png?inline';
 import { COPIED_MS } from './controls.ts';
 import { BAR_GAP, copyImage, detachedEl, roomAbove, rowOf, surfaceRise } from './dockDom.ts';
+import { canCopyItems } from '../../../platform/clipboardWrites';
 import { qrDrawing, qrMatrix, type QrDrawing } from './qrDrawing.ts';
 import { qrImageBlob } from './qrImage.ts';
 import { showNotice } from '../../../ui/notice';
@@ -158,6 +159,8 @@ export class InviteQr {
     foot.createDiv({ cls: 'atlas-online-qr__said', attr: { role: 'status' } });
     const copy = foot.createEl('button', { cls: 'atlas-online-icon-button atlas-online-qr__copy', attr: { type: 'button', 'aria-label': t('online.copyImage'), 'data-focus-key': 'qr-copy' } });
     setIcon(copy, 'copy');
+    // A web view whose clipboard takes no pictures offers none to copy.
+    copy.toggle(canCopyItems(card.win));
     copy.addEventListener('click', () => this.copy(card));
     this.icon = detachedEl(card, 'img', { attr: { src: atlasIcon } });
     // Over the control's end it covers the button that opened it: a press on it closes it. Not one on

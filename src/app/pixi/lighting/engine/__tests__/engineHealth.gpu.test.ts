@@ -7,6 +7,7 @@ import { ENGINE_SHADERS } from '../engineShaders';
 import { LightingEngine } from '../LightingEngine';
 import { LightingWorld } from '../LightingWorld';
 import { failedEngineShaders } from '../shaderCheck';
+import { unrenderableEngineTargets } from '../targetCheck';
 import type { EngineScene } from '../types';
 import { createTestRenderer, renderThroughEngine } from './gpuTestUtils';
 
@@ -87,6 +88,40 @@ describe('LightingEngine on a graphics device that cannot run it', () => {
     expect(message).toContain('atlas-capsule-field');
     expect(message).toContain('atlas-lighting-composite');
     expect(message).toContain('error X3511');
+    expectStopped(engine, renderer);
+  });
+
+  it('renders into every engine texture format on this device, and leaves the context\'s bindings as they were', async () => {
+    const { renderer } = await setup();
+    const { gl } = renderer;
+    const texture = gl.createTexture();
+    const framebuffer = gl.createFramebuffer();
+    cleanup.push(() => {
+      gl.deleteTexture(texture);
+      gl.deleteFramebuffer(framebuffer);
+    });
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, framebuffer);
+
+    expect(unrenderableEngineTargets(gl)).toEqual([]);
+
+    expect(gl.getParameter(gl.TEXTURE_BINDING_2D)).toBe(texture);
+    expect(gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING)).toBe(framebuffer);
+    expect(gl.getError()).toBe(gl.NO_ERROR);
+  });
+
+  it('checks its texture formats before the first build: a device that cannot render into one stops the engine with one logged error', async () => {
+    const { renderer, engine, error } = await setup();
+    const build = vi.spyOn(LightingWorld.prototype, 'update');
+    engine.setEnabled(true);
+    const { gl } = renderer;
+    vi.spyOn(gl, 'checkFramebufferStatus').mockReturnValue(gl.FRAMEBUFFER_INCOMPLETE_ATTACHMENT);
+
+    expect(() => engine.update(scene)).not.toThrow();
+
+    expect(build).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledOnce();
+    expect(String(error.mock.calls[0]![0])).toContain('rgba16float');
     expectStopped(engine, renderer);
   });
 

@@ -19,6 +19,9 @@ const STEP_NAMES: Readonly<Record<RailStep, string>> = {
   publish: t('armariumShare.step.publish'),
 };
 
+/** A single file's second step settles its version and what changed, not what a collection's export holds. */
+const ITEM_STEP_NAME = t('armariumShare.step.item');
+
 /** What a finished step settled, in a few words under its name. */
 function settled(step: RailStep, snapshot: ShareSnapshot, accountState: AccountState): string | null {
   switch (step) {
@@ -45,7 +48,7 @@ export function ShareRail({ snapshot, accountState }: { snapshot: ShareSnapshot;
           <li key={step} className="atlas-share-rail__step" data-status={status} aria-current={status === 'current' ? 'step' : undefined}>
             <span className="atlas-share-rail__mark" aria-hidden="true">{status === 'done' ? <Check /> : index + 1}</span>
             <span className="atlas-share-rail__text">
-              <span className="atlas-share-rail__name">{STEP_NAMES[step]}</span>
+              <span className="atlas-share-rail__name">{step === 'bundle' && snapshot.subject === 'item' ? ITEM_STEP_NAME : STEP_NAMES[step]}</span>
               {detail !== null && <span className="atlas-share-rail__detail">{detail}</span>}
             </span>
           </li>

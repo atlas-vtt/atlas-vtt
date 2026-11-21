@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../../utils/typedEmitter';
 import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAtlasUI } from '../../root/AtlasUIContext';
@@ -10,6 +10,8 @@ import { diceSceneToShow } from '../../../dice3d/rollPresentation';
 import { setDiceVolume, warmDiceSounds } from '../../../dice3d/audio/diceSamples';
 import { playDiceReveal } from '../../../audio/diceRevealSound';
 import { canShowDice, warmStages } from '../../../dice3d/stagePool';
+import { holdRoll } from '../../../dice3d/rollsInFlight';
+import { deviceProfile } from '../../../platform/deviceProfile';
 import type { DiceRollResult } from '../../../types/diceTypes';
 import type { DiceRollOrigin } from '../../../types/diceRollOrigin';
 import type { PreparedDiceRoll } from './diceSourcePresentation';
@@ -107,7 +109,9 @@ export function DiceRollDisplay({ container, prepare, muted: windowMuted = false
         return;
       }
       if (!muted && !options.muted) warmDiceSounds();
-      setRolls((prev) => pushRoll(prev, { ...prepared, scene, style: throwStyle(display), ...((options.muted || volume === 0) && { muted: true as const }) }));
+      // Held now, in the task that announced the roll, so no log draws its number before the dice land.
+      const release = holdRoll(raw.id);
+      setRolls((prev) => pushRoll(prev, { ...prepared, scene, style: throwStyle(display), release, ...((options.muted || volume === 0) && { muted: true as const }) }));
     };
     return (subscribe ?? busRolls(eventBus))(show);
   }, [subscribe, eventBus, addToast, prepare, display, muted, volume, cardSounds, stageDoc, container, app]);
@@ -119,7 +123,7 @@ export function DiceRollDisplay({ container, prepare, muted: windowMuted = false
 
   // Dice stages are built while nothing rolls, so that the first roll does not wait for one.
   useEffect(() => {
-    if (display !== 'card') warmStages(stageDoc);
+    if (display !== 'card') warmStages(stageDoc, undefined, deviceProfile().budgets.diceWarmStages);
   }, [display, stageDoc]);
 
   // Escape dismisses every roll on screen, unless something in front of the map

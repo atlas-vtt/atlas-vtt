@@ -6,6 +6,7 @@ import { snapshotFolderOf } from '../../snapshots/sceneSnapshotFolders';
 import { isRecord } from '../../utils/guards';
 import { localImage, statblockImageField } from '../statblockImportCandidates';
 import { linkedFilePath } from '../sceneLinks';
+import { thumbnailFiles } from '../thumbnailFiles';
 import { readLootBaseItems } from '../../loot/lootBaseItems';
 import { withTemplateFiles } from '../../statblocks/bundles/bundleTemplates';
 import { collectionStatblockRoles } from '../../statblocks/roles/collectionStatblockRoles';
@@ -120,12 +121,12 @@ export class CollectionReferenceCollector {
     this.add(this.assets.getAssetFilePath(asset), asset.type === 'token' ? 'token-image' : 'asset-file');
     switch (asset.type) {
       case 'token':
-        this.add(asset.thumbnailPath, 'thumbnail');
+        this.addThumbnail(asset.thumbnailPath);
         this.addStatblockNote(asset.statblockPath);
         break;
       case 'map':
         this.add(asset.mapFilePath, 'background');
-        this.add(asset.thumbnailPath, 'thumbnail');
+        this.addThumbnail(asset.thumbnailPath);
         break;
       case 'scene':
         await this.collectScene(asset, asset.data?.mapPath ?? await this.readSceneMapPath(asset));
@@ -216,6 +217,11 @@ export class CollectionReferenceCollector {
     if (!field || !image) return;
     this.add(image.path, 'statblock-image', entry.owners);
     entry.statblockImage = { key: field.key, path: image.path };
+  }
+
+  /** An asset's thumbnail in every format the vault holds it in (`thumbnailFiles`): a device of the other kind may have made one too. */
+  private addThumbnail(path: string | undefined): void {
+    for (const file of thumbnailFiles(path)) this.add(file, 'thumbnail');
   }
 
   /** Records `path` for the current asset (or `owners`); returns whether it was newly added. */

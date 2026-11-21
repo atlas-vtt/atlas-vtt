@@ -2,7 +2,6 @@ import type { Translation } from '../../types';
 
 export const widgets: Translation = {
   'widgets.add': '添加小组件',
-  'widgets.autoSort': '按先攻自动排序',
   'widgets.colour': '小组件颜色',
   'widgets.delete': '删除小组件',
   'widgets.deleteEverywhere': '从每个场景删除',
@@ -30,4 +29,5 @@ export const widgets: Translation = {
   'widgets.type.clock': '时钟',
   'widgets.type.counter': '计数器',
   'widgets.type.timer': '计时器',
+  'widgets.spreadStack': '显示全部 {count} 个小组件',
 };

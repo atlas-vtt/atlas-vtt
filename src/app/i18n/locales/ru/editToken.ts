@@ -10,4 +10,6 @@ export const editToken: Translation = {
   'editToken.resources': 'Ресурсы',
   'editToken.token': 'Токен',
   'editToken.resetStatblock': 'Сбросить к значению статблока',
+  'editToken.speed': 'Скорость',
+  'editToken.speedDefault': 'По умолчанию: {value}',
 };

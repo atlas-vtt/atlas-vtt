@@ -26,6 +26,7 @@ vi.mock('obsidian', () => ({
   requestUrl: () => Promise.resolve({ status: 500, json: null }),
   PluginSettingTab: class {},
   Setting: class {},
+  Platform: { isDesktopApp: true, isMobile: false, isPhone: false },
 }));
 
 vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({

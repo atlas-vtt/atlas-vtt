@@ -289,3 +289,56 @@ describe('DrawGesture, one at a time', () => {
     expect(gesture.press(at(10))).toEqual({ kind: 'none' });
   });
 });
+
+describe('DrawGesture, a press that is lost', () => {
+  it('keeps a line placed click by click, with its corners: the lost press placed none', () => {
+    const gesture = new DrawGesture();
+    click(gesture, 'line', 0);
+    click(gesture, 'line', 70);
+    // The first finger of two that move the map: its press came, its release never does.
+    gesture.press(at(300, 200));
+    expect(gesture.lose()).toEqual({ kind: 'none' });
+    expect(gesture.active).toBe(true);
+    expect(gesture.placingLine).toBe(true);
+    expect(gesture.corners).toBe(2);
+    // The next click is the line's next corner, and a release without a press places nothing.
+    expect(gesture.release(at(300, 200))).toEqual({ kind: 'none' });
+    click(gesture, 'line', 140);
+    const result = gesture.finish();
+    if (result.kind !== 'finish' || !result.made) throw new Error('Expected a line');
+    expect(result.made.points).toEqual([pt(0), pt(70), pt(140)]);
+  });
+
+  it('drops what the press held: a stroke, a dragged shape, a shape\'s first press', () => {
+    for (const mode of ['pen', 'line', 'rectangle'] as const) {
+      const gesture = new DrawGesture();
+      gesture.begin(mode, at(0));
+      gesture.move(at(90, 40));
+      expect(gesture.lose()).toEqual({ kind: 'cancel' });
+      expect(gesture.active).toBe(false);
+    }
+    const first = new DrawGesture();
+    first.begin('line', at(0));
+    expect(first.lose()).toEqual({ kind: 'cancel' });
+  });
+
+  it('drops a sweep, where the tool\'s work ending by something else ends it', () => {
+    const gesture = new DrawGesture();
+    gesture.begin('eraser', at(0));
+    gesture.move(at(50));
+    expect(gesture.lose()).toEqual({ kind: 'cancel' });
+    expect(gesture.active).toBe(false);
+  });
+
+  it('says which line waits for a corner and how many it has', () => {
+    const gesture = new DrawGesture();
+    gesture.begin('line', at(0));
+    expect(gesture.placingLine).toBe(false);
+    gesture.release(at(0));
+    expect(gesture.placingLine).toBe(true);
+    expect(gesture.corners).toBe(1);
+    const box = new DrawGesture();
+    click(box, 'rectangle', 0);
+    expect(box.placingLine).toBe(false);
+  });
+});

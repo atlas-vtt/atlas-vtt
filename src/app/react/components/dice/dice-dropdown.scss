@@ -184,8 +184,10 @@ $tray-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
 
 .atlas-dice-tray__dice {
   display: grid;
-  grid-template-columns: repeat($tray-dice, $tray-face);
-  gap: $surface-inset;
+  // The collection's row: up to ten places, seven standard dice by default, eight to a line (`ROW_COLUMNS`); more
+  // wrap into a second line, so the tray stays eight dice wide. A line's captions keep a gap above the next line.
+  grid-template-columns: repeat(var(--atlas-tray-slots, #{$tray-dice}), $tray-face);
+  gap: $spacing-s $surface-inset;
 }
 
 // Obsidian styles every <button>; the tray's own controls start from nothing.
@@ -247,12 +249,18 @@ $tray-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
   @include atlas-panel-inset-radius($surface-inset, top-left);
 }
 
-.atlas-dice-tray__die:last-child .atlas-dice-tray__face {
+// The last of the first line, whether the row stops there or wraps (eight places to a line).
+.atlas-dice-tray__die:nth-child(8) .atlas-dice-tray__face,
+.atlas-dice-tray__die:last-child:nth-child(-n + 8) .atlas-dice-tray__face {
   @include atlas-panel-inset-radius($surface-inset, top-right);
 }
 
 // What the die is, for those who do not know the bodies by sight: small, quiet, one 16 px line.
 .atlas-dice-tray__caption {
+  max-width: $tray-face;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   height: $spacing-l;
   font-size: $font-ui-smaller;
   line-height: $spacing-l;
@@ -303,6 +311,21 @@ $tray-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
   }
 }
 
+// A die without a body (`d3`), or a saved roll that is no die's pair: its name, small, in the body's place.
+.atlas-die-face--named {
+  width: 100%;
+  height: auto;
+  text-align: center;
+  padding-inline: $spacing-xs;
+  overflow: hidden;
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-medium;
+  font-variant-numeric: tabular-nums lining-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-normal);
+}
+
 // d100 has no body of its own: two offset d10s, tens behind and units in front.
 .atlas-die-face--percentile {
   position: relative;
@@ -330,7 +353,7 @@ $tray-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
 
   // As tall as every other control: the options $surface-inset inside the track.
   .atlas-segmented__option {
-    height: $tray-control - 2 * $surface-inset;
+    height: calc(#{$tray-control} - #{2 * $surface-inset});
     padding-block: 0;
   }
 }
@@ -394,7 +417,7 @@ $tray-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
   }
 }
 
-$tray-step: $tray-control - 2 * $surface-inset;
+$tray-step: calc(#{$tray-control} - #{2 * $surface-inset});
 
 .atlas-dice-tray__stepper {
   display: flex;

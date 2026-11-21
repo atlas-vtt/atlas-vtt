@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import { Howl, Howler } from 'howler';
 import { disposeDiceRevealSound, playDiceReveal } from '../audio/diceRevealSound';
 import { followOutputDevice } from '../sound/engine/outputDevice';

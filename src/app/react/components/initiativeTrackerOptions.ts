@@ -3,52 +3,24 @@ import { MENU_SEPARATOR } from './context-menu/AtlasContextMenu';
 import { confirmAction } from '../../ui/confirmDialog';
 import { runInBackground } from '../../utils/backgroundTask';
 import { t } from '../../i18n';
-import { PLAYERS_LIST_EDGES, toggledEdge, type InitiativeDock, type PlayersListEdge } from '../../initiative/initiativeLayout';
-import type { InitiativeTurnOptions } from '../../initiative/turnOptions';
 
 interface TrackerOptionsState {
-  autoSort: boolean;
-  /** By sides nothing is sorted: the switch stays in place, disabled. */
-  bySides: boolean;
   /** The tracker holds no combatant: there is nothing to clear. */
   empty: boolean;
-  /** The GM's cards show names (Atlas' setting, the same in every scene). */
-  showNames: boolean;
   /** The GM's tracker is the compact list (Atlas' setting); it always shows names. */
   compact: boolean;
-  /** During a fight the lists start at the turn (Atlas' setting, followed by the players' list). */
-  fromTurn: boolean;
-  /** The edge the players' list stands at (also across the top or bottom). */
-  dock: PlayersListEdge;
-  /**
-   * Every edge the players' list stands at, and whether each copy faces its edge, as they are now: the submenu
-   * stays open while the GM ticks several, so it reads them again on every change (`subscribeSettings`).
-   */
-  playersList: () => { edges: readonly PlayersListEdge[]; facesPlayers: boolean };
-  /** Reports a change of Atlas' settings; returns the function that stops it. */
-  subscribeSettings?: (onChange: () => void) => () => void;
-  /** The edge the GM's tracker stands at. */
-  gmDock: InitiativeDock;
-  /** What a turn change does (Atlas' settings). */
-  turn: InitiativeTurnOptions;
-  /** Online play is switched on: the switch for players' moves shows. */
-  online: boolean;
+  /** The players at the table, where the map belongs to a collection: the row adds those not in the fight yet, or opens the party to set it up. */
+  party: { label: string; onClick: () => void } | null;
+  /** Whether a turn change names itself in a banner (Atlas' setting). */
+  banner: boolean;
 }
 
 interface TrackerOptionsActions {
-  setAutoSort: (autoSort: boolean) => void;
-  setShowNames: (showNames: boolean) => void;
   setCompact: (compact: boolean) => void;
-  setFromTurn: (fromTurn: boolean) => void;
-  setEdges: (edges: PlayersListEdge[]) => void;
-  setFacesPlayers: (on: boolean) => void;
-  setGmDock: (dock: InitiativeDock) => void;
-  setTurn: (changes: Partial<InitiativeTurnOptions>) => void;
+  setBanner: (banner: boolean) => void;
   clear: () => void;
   /** Ends the fight and empties every combatant's number and conditions, keeping them in the tracker. */
   resetNumbers: () => void;
-  /** Opens the library on its tokens: opening one there adds it to the tracker beside the map. */
-  addCombatant: () => void;
   /** Adds an enemy without a token, named by number. */
   addEnemy: () => void;
 }
@@ -70,27 +42,14 @@ export async function clearInitiativeAsking(empty: boolean, clear: () => void): 
   clear();
 }
 
-/** The menu behind the tracker's options button: how it sorts, what its cards show, how the lists are laid out, what a turn change does, adding combatants and clearing it. */
+/**
+ * The menu behind the tracker's options button: its compact view, the turn banner, adding the party or an enemy,
+ * and resetting or clearing it. The list always sorts by number and starts at the turn, and the GM's view always follows
+ * the turn; how the players' list is laid out is in What players see, and whether online players move only on their turn
+ * in the player view's online play settings.
+ */
 export function initiativeTrackerOptions(state: TrackerOptionsState, actions: TrackerOptionsActions): ContextMenuEntry[] {
   return [
-    {
-      type: 'item',
-      label: t('initiative.autoSort'),
-      icon: 'arrow-down-wide-narrow',
-      checked: state.autoSort,
-      disabled: state.bySides,
-      description: t('initiative.autoSortHint'),
-      onClick: () => actions.setAutoSort(!state.autoSort),
-    },
-    {
-      type: 'item',
-      label: t('initiative.showNames'),
-      icon: 'tag',
-      checked: state.showNames,
-      description: t('initiative.showNamesHint'),
-      disabled: state.compact,
-      onClick: () => actions.setShowNames(!state.showNames),
-    },
     {
       type: 'item',
       label: t('initiative.compact'),
@@ -101,83 +60,19 @@ export function initiativeTrackerOptions(state: TrackerOptionsState, actions: Tr
     },
     {
       type: 'item',
-      label: t('initiative.fromTurn'),
-      icon: 'list-start',
-      checked: state.fromTurn,
-      description: t('initiative.fromTurnHint'),
-      onClick: () => actions.setFromTurn(!state.fromTurn),
-    },
-    {
-      type: 'item',
-      label: t('initiative.gmDockLeft'),
-      icon: 'panel-left',
-      checked: state.gmDock === 'left',
-      description: t('initiative.gmDockLeftHint'),
-      onClick: () => actions.setGmDock(state.gmDock === 'left' ? 'right' : 'left'),
-    },
-    {
-      type: 'submenu',
-      label: t('initiative.playersList'),
-      icon: 'tv',
-      // Any edges at once, for players around a table TV; the last one stays. Each tick reads the edges as they are
-      // now, since the submenu stays open
-      children: () => {
-        const { edges, facesPlayers } = state.playersList();
-        return [
-          ...PLAYERS_LIST_EDGES.map((edge): ContextMenuEntry => ({
-            type: 'item',
-            label: t(`initiative.playersList.${edge}`),
-            checked: edges.includes(edge),
-            disabled: edges.length === 1 && edges[0] === edge,
-            keepOpen: true,
-            onClick: () => actions.setEdges(toggledEdge(state.playersList().edges, edge)),
-          })),
-          MENU_SEPARATOR,
-          {
-            type: 'item',
-            label: t('initiative.playersList.faces'),
-            checked: facesPlayers,
-            description: t('initiative.playersList.facesHint'),
-            keepOpen: true,
-            onClick: () => actions.setFacesPlayers(!state.playersList().facesPlayers),
-          },
-        ];
-      },
-      ...(state.subscribeSettings && { subscribe: state.subscribeSettings }),
-    },
-    MENU_SEPARATOR,
-    {
-      type: 'item',
       label: t('initiative.turnBanner'),
       icon: 'flag',
-      checked: state.turn.banner,
+      checked: state.banner,
       description: t('initiative.turnBannerHint'),
-      onClick: () => actions.setTurn({ banner: !state.turn.banner }),
+      onClick: () => actions.setBanner(!state.banner),
     },
-    {
-      type: 'item',
-      label: t('initiative.followTurn'),
-      icon: 'locate-fixed',
-      checked: state.turn.followTurn,
-      description: t('initiative.followTurnHint'),
-      onClick: () => actions.setTurn({ followTurn: !state.turn.followTurn }),
-    },
-    ...(state.online ? [{
-      type: 'item' as const,
-      label: t('initiative.movesOnTurn'),
-      icon: 'footprints',
-      checked: state.turn.movesOnTurn,
-      description: t('initiative.movesOnTurnHint'),
-      onClick: () => actions.setTurn({ movesOnTurn: !state.turn.movesOnTurn }),
-    }] : []),
     MENU_SEPARATOR,
-    {
-      type: 'item',
-      label: t('initiative.addCombatant'),
-      icon: 'list-plus',
-      description: t('initiative.addCombatantHint'),
-      onClick: actions.addCombatant,
-    },
+    ...(state.party ? [{
+      type: 'item' as const,
+      label: state.party.label,
+      icon: 'users',
+      onClick: state.party.onClick,
+    }] : []),
     {
       type: 'item',
       label: t('initiative.addEnemy'),

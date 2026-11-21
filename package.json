@@ -1,6 +1,6 @@
 {
   "name": "atlas-vtt",
-  "version": "0.17.1-beta.0",
+  "version": "0.18.1-beta.0",
   "main": "dist/main.js",
   "scripts": {
     "dev": "cross-env COPY_ON_CHANGE=true vite build --watch",
@@ -68,6 +68,7 @@
     "zustand": "5.1.0"
   },
   "devDependencies": {
+    "@codemirror/language": "6.12.4",
     "@codemirror/state": "6.7.6",
     "@codemirror/view": "6.43.13",
     "@testing-library/react": "16.3.3",

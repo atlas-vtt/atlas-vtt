@@ -198,7 +198,7 @@ describe('MeasureToolBar', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(colours()).toBeNull();
     fireEvent.click(button('Look'));
-    fireEvent.mouseDown(document.body);
+    fireEvent.pointerDown(document.body);
     expect(colours()).toBeNull();
   });
 });

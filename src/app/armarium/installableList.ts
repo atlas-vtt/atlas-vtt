@@ -11,6 +11,8 @@ const SHA256 = /^[0-9a-f]{64}$/;
 export interface InstallableListing {
   uid: string;
   name: string;
+  /** The creator's display name; null where the list names none (their account is gone). */
+  creator: string | null;
   version: number;
   fileName: string;
   bytes: number;
@@ -31,11 +33,11 @@ const nonEmpty = (value: unknown, max: number): value is string => typeof value 
 
 function readListing(entry: unknown): InstallableListing | null {
   if (!isRecord(entry)) return null;
-  const { uid, name, version, fileName, bytes, sha256, downloadUrl } = entry;
+  const { uid, name, creator, version, fileName, bytes, sha256, downloadUrl } = entry;
   if (!isListingUid(uid) || !isReleaseVersion(version) || !nonEmpty(name, 500) || !nonEmpty(fileName, 500) || !nonEmpty(downloadUrl, 2000)) return null;
   if (typeof bytes !== 'number' || !Number.isSafeInteger(bytes) || bytes <= 0 || bytes > MAX_BUNDLE_BYTES) return null;
   if (typeof sha256 !== 'string' || !SHA256.test(sha256)) return null;
-  return { uid, name, version, fileName, bytes, sha256, downloadUrl };
+  return { uid, name, creator: nonEmpty(creator, 200) ? creator : null, version, fileName, bytes, sha256, downloadUrl };
 }
 
 /**

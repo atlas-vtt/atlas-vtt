@@ -159,7 +159,8 @@ describe("Atlas's player window rules, read from its source at the pin", () => {
     expect(ui).toContain('const forPlayers = playerSettings !== undefined || this.playersView;');
     expect(ui).toContain("const viewer: ResourceViewer = forPlayers ? 'player' : 'dm';");
     expect(ui).toContain('const hidden = forPlayers ? [] : tokenSettings?.hiddenResources ?? [];');
-    expect(ui).toContain('const showNameplate = playerSettings ? nameplateShownToPlayers(token, mapShowsNameplates, playerSettings.showTokenNameplates) : isNameplateVisible(token, mapShowsNameplates);');
+    expect(ui).toContain('const playersSeeNames = playerSettings?.showTokenNameplates ?? (this.playersView ? this.tableNameplates?.() : undefined);');
+    expect(ui).toContain('const showNameplate = playersSeeNames === undefined ? isNameplateVisible(token, mapShowsNameplates) : nameplateShownToPlayers(token, mapShowsNameplates, playersSeeNames);');
     expect(vendor('pixi/token-renderer/UIManager.ts')).toContain('ui.update(token, sprite.tokenSize || 70, settings);');
   });
 });

@@ -53,10 +53,9 @@ export function TurnAnnouncer(): React.ReactElement {
       if (change === 'started' && options.banner) display.show(fightBanner('started'), ...(banner ? [banner] : []));
       if (!banner) return;
       if (options.banner && change !== 'started') display.show(banner);
-      if (options.followTurn) {
-        const shows = (tokenId: string): boolean => (view?.renderer?.canvasShowsToken(tokenId) ?? false) || onAnotherFloor(state, tokenId);
-        followTurn(view?.renderer?.getViewportInstance(), state, shows, defeatedOnMap(app, state), (tokenId) => showLevelOfToken(state, tokenId));
-      }
+      // The GM's view always follows the turn
+      const shows = (tokenId: string): boolean => (view?.renderer?.canvasShowsToken(tokenId) ?? false) || onAnotherFloor(state, tokenId);
+      followTurn(view?.renderer?.getViewportInstance(), state, shows, defeatedOnMap(app, state), (tokenId) => showLevelOfToken(state, tokenId));
     };
     look(store.getState());
     const stop = store.subscribe(look);

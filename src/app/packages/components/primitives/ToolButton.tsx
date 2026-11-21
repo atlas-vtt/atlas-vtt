@@ -20,6 +20,8 @@ interface ToolButtonProps {
   pressed?: boolean
   /** Where the tooltip opens; above unless the bar is upright, whose buttons it would cover. */
   tooltipSide?: "top" | "left" | "right" | "bottom"
+  /** One word under the icon, where no tooltip can say what the button does (a finger): the button then has no tooltip. */
+  caption?: string
   // Dropdown support
   showChevron?: boolean
   onChevronClick?: () => void
@@ -40,6 +42,7 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
   menuExpanded,
   pressed,
   tooltipSide = "top",
+  caption,
   // dropdown props
   showChevron = false,
   onChevronClick,
@@ -47,40 +50,45 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
   isDropdownOpen = false,
   dropdownContent,
 }): React.ReactElement => {
+  const button = (
+    <span style={{ display: 'inline-flex' }}>
+      <Button
+        variant="toolbar"
+        size="icon"
+        onClick={disabled ? undefined : onClick}
+        aria-disabled={disabled || undefined}
+        {...(menuExpanded !== undefined && { "aria-haspopup": "menu" as const, "aria-expanded": menuExpanded })}
+        {...(pressed !== undefined && { "aria-pressed": pressed })}
+        className={cn(
+          "btn--toolbar",
+          isActive && "is-active",
+          disabled && "atlas-tool-button--disabled",
+          caption !== undefined && "atlas-tool-button--captioned",
+          className,
+        )}
+      >
+        <Icon />
+        {caption !== undefined && <span className="atlas-tool-button__caption" aria-hidden="true">{caption}</span>}
+        <span className="sr-only">{label}</span>
+      </Button>
+    </span>
+  )
   return (
     <div className="atlas-tool-button">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span style={{ display: 'inline-flex' }}>
-            <Button
-              variant="toolbar"
-              size="icon"
-              onClick={disabled ? undefined : onClick}
-              aria-disabled={disabled || undefined}
-              {...(menuExpanded !== undefined && { "aria-haspopup": "menu" as const, "aria-expanded": menuExpanded })}
-              {...(pressed !== undefined && { "aria-pressed": pressed })}
-              className={cn(
-                "btn--toolbar",
-                isActive && "is-active",
-                disabled && "atlas-tool-button--disabled",
-                className,
-              )}
-            >
-              <Icon />
-              <span className="sr-only">{label}</span>
-            </Button>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side={tooltipSide} sideOffset={10}>
-          <div>
-            <div className="tooltip-inner">
-              <span className="tooltip-label">{label}</span>
-              {shortcut && <kbd className="tooltip-kbd">{shortcut}</kbd>}
+      {caption !== undefined ? button : (
+        <Tooltip>
+          <TooltipTrigger asChild>{button}</TooltipTrigger>
+          <TooltipContent side={tooltipSide} sideOffset={10}>
+            <div>
+              <div className="tooltip-inner">
+                <span className="tooltip-label">{label}</span>
+                {shortcut && <kbd className="tooltip-kbd">{shortcut}</kbd>}
+              </div>
+              {subtitle && <span className="tooltip-subtitle">{subtitle}</span>}
             </div>
-            {subtitle && <span className="tooltip-subtitle">{subtitle}</span>}
-          </div>
-        </TooltipContent>
-      </Tooltip>
+          </TooltipContent>
+        </Tooltip>
+      )}
 
       {showChevron && (
         <Button

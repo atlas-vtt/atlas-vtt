@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
+import { isElementShown } from '../platform/elementShown';
 
 /** A view in a tab behind another is `display: none`; its tour waits until the tab comes to the front. */
 export function isOnScreen(root: HTMLElement): boolean {
-  return root.isConnected && root.checkVisibility();
+  return isElementShown(root);
 }
 
 /** A fact about a view's DOM that no store holds (online play mounts its controls itself), read twice a second. */

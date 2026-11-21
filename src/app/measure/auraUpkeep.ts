@@ -1,6 +1,6 @@
 /**
- * What keeps auras with their tokens in a scene's objects: an aura goes when its token goes, and
- * lies on the level its token stands on. Called by the store's own writes that delete tokens or
+ * What keeps auras and grouped measurements with their tokens in a scene's objects: they go when
+ * their token goes, and lie on the level their token stands on. Called by the store's own writes that delete tokens or
  * move them between levels, inside the same write, so undo brings back both and takes both back.
  * A copied or duplicated token gets no aura: an aura belongs to the token it was given to.
  */
@@ -15,32 +15,32 @@ export interface AuraHolder {
 }
 
 /**
- * The ids of the auras of `tokenIds`, in the order they were kept. What is an aura is the reader's
- * to say (`followedToken`): an entry that names a token and is read as a plain measurement (a
- * ruler, a circle without a reach) is none, and stays whatever becomes of that token.
+ * The ids of the auras of `tokenIds` (with `grouped`, of every measurement that follows them), in
+ * the order they were kept. What follows a token is the reader's to say (`followedToken`): an entry
+ * that names a token and is read as a plain measurement is none, and stays whatever becomes of that token.
  */
-export function aurasOf(measures: Readonly<Record<string, unknown>> | undefined, tokenIds: ReadonlySet<string>): string[] {
+export function aurasOf(measures: Readonly<Record<string, unknown>> | undefined, tokenIds: ReadonlySet<string>, grouped = false): string[] {
   if (!isRecord(measures) || tokenIds.size === 0) return [];
   return Object.keys(measures).filter((id) => {
-    const bearer = followedToken(id, measures[id]);
+    const bearer = followedToken(id, measures[id], grouped);
     return bearer !== null && tokenIds.has(bearer);
   });
 }
 
-/** Removes the auras of the tokens `tokenIds`, which are gone, from `objects` (a store draft); returns their ids. */
+/** Removes the auras and grouped measurements of the tokens `tokenIds`, which are gone, from `objects` (a store draft); returns their ids. */
 export function dropAurasOf(objects: AuraHolder, tokenIds: Iterable<string>): string[] {
   const { measures } = objects;
-  const gone = aurasOf(measures, new Set(tokenIds));
+  const gone = aurasOf(measures, new Set(tokenIds), true);
   if (measures) {
     for (const id of gone) delete measures[id];
   }
   return gone;
 }
 
-/** Puts the auras of the tokens `tokenIds` on the level each token stands on now, in `objects` (a store draft). */
+/** Puts the auras and grouped measurements of the tokens `tokenIds` on the level each token stands on now, in `objects` (a store draft). */
 export function aurasToTokenLevels(objects: AuraHolder, tokenIds: Iterable<string>): void {
   const { measures, tokens } = objects;
-  for (const id of aurasOf(measures, new Set(tokenIds))) {
+  for (const id of aurasOf(measures, new Set(tokenIds), true)) {
     const measure = measures?.[id];
     const bearer = followedToken(id, measure);
     if (!isRecord(measure) || bearer === null) continue;

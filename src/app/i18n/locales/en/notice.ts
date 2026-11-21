@@ -10,4 +10,5 @@ export const notice = {
   'notice.drawingsLeftOut': 'This map has more than {count} drawings. Only the first {count} are shown.',
   'notice.textsLeftOut': 'This map has more than {count} texts. Only the first {count} are shown.',
   'notice.restartForAtlas': 'An earlier Atlas is still loaded. Restart Obsidian to load this one.',
+  'notice.systemTooOld': 'This device\'s system is too old for Atlas.',
 } as const satisfies Record<string, Message>;

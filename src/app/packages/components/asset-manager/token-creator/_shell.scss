@@ -106,13 +106,13 @@ $creator-stack-below: 600px;
   // A narrow window puts the buttons on a line of their own before the status would break into words.
   flex-wrap: wrap;
 
+  // A status longer than the room left beside the buttons ends in an ellipsis.
   .atlas-token-creator__status {
-    @include atlas-flex-row($gap: $spacing-xs);
+    @include atlas-truncate;
     min-width: 0;
     font-size: $font-ui-small;
     color: var(--text-muted);
     font-variant-numeric: tabular-nums;
-    white-space: nowrap;
   }
 
   .atlas-token-creator__actions {

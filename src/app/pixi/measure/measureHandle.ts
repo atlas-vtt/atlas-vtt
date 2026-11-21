@@ -4,6 +4,7 @@ import type { Point } from '../../types/visionTypes';
 import { lightColorNumber, readableTint } from '../lighting/lightMarker';
 import type { CanvasBadgeTheme } from '../utils/canvasBadgeColors';
 import { mapMarkerScale } from '../utils/mapMarkerScale';
+import { pointerReach } from '../utils/pointerReach';
 
 /** Screen pixels at marker scale 1. A measurement's handle is smaller than a light's badge (14) and a note pin's (20). */
 export const MEASURE_HANDLE_RADIUS = 10;
@@ -147,7 +148,7 @@ export function sameHandleLook(a: MeasureHandleLook, b: MeasureHandleLook): bool
  * measurement's handles stand.
  */
 export function measureHandleAt(measures: readonly KeptMeasure[], point: Point, zoom: number, place: MeasureHandlePlacer = handlesAtPoints): MeasureHandleRef | null {
-  const scale = mapMarkerScale(zoom);
+  const scale = pointerReach(mapMarkerScale(zoom));
   let nearest: MeasureHandleRef | null = null;
   let best = Infinity;
   const take = (id: string, part: MeasureHandlePart, at: Point | null, reach: number): void => {

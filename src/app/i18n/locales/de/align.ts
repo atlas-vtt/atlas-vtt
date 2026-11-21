@@ -1,0 +1,27 @@
+import type { Translation } from '../../types';
+
+export const align: Translation = {
+  'align.analysing': 'Karte wird untersucht…',
+  'align.checking': '{type} gefunden. Feldgröße wird geprüft…',
+  'align.waitingForTiles': 'Warte auf die Kacheln der Karte · {percent} %',
+  'align.cornerFirst': 'Klicke auf eine Ecke eines Feldes.',
+  'align.cornerNext': 'Jetzt auf die nächste Ecke rechts davon.',
+  'align.find': 'Automatisch erkennen',
+  'align.flat': 'Flach',
+  'align.flatHexes': 'Hexfelder mit flacher Oberseite',
+  'align.freehandHint': 'Zoome, bis ein Vorschaufeld ein Feld der Karte abdeckt, und klicke dann.',
+  'align.gridType': 'Rastertyp',
+  'align.hexCornerFirst': 'Klicke auf eine Ecke eines Hexfelds.',
+  'align.hexCornerNext': 'Jetzt auf eine benachbarte Ecke desselben Hexfelds.',
+  'align.measureCount': 'Messung {done} von {total}',
+  'align.measureMore': 'Die Linien der Karte reichen nicht aus. Miss noch ein weiteres Feld.',
+  'align.noGrid': 'Kein Raster im Kartenbild gefunden. Richte es stattdessen von Hand aus.',
+  'align.orByHand': 'Oder richte es selbst aus',
+  'align.pointy': 'Spitz',
+  'align.pointyHexes': 'Hexfelder mit spitzer Oberseite',
+  'align.square': 'Quadrat',
+  'align.squares': 'Quadrate',
+  'align.tab.freehand': 'Freihand',
+  'align.tab.intersections': 'Messen',
+  'align.title': 'Rasterausrichtung',
+};

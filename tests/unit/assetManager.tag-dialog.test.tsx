@@ -63,7 +63,7 @@ function setup(): { onClose: ReturnType<typeof vi.fn>; onSetTags: ReturnType<typ
 }
 
 function clickWithMouseDown(element: Element): void {
-  fireEvent.mouseDown(element);
+  fireEvent.pointerDown(element);
   fireEvent.mouseUp(element);
   fireEvent.click(element);
 }
@@ -91,7 +91,7 @@ it.each(['Done', 'Cancel', 'Close', 'backdrop'])('%s dismisses only the tag dial
   expect(screen.queryByText('Manage tags')).toBeNull();
   expect(onClose).not.toHaveBeenCalled();
 
-  fireEvent.mouseDown(document.body);
+  fireEvent.pointerDown(document.body);
   expect(onClose).toHaveBeenCalledOnce();
 });
 

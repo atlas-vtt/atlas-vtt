@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TooltipProvider } from '../../src/app/packages/components/primitives/tooltip';

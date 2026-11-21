@@ -22,5 +22,6 @@ export const wall = {
   "wall.blocksSight": "Solo visione",
   "wall.blocksLight": "Solo luce",
   "wall.limited": "Limitato (vedi oltre il primo)",
-  "wall.deleteOne": "Elimina questo muro"
+  "wall.deleteOne": "Elimina questo muro",
+  "wall.addPoint": "Aggiungi punto",
 } satisfies Translation;

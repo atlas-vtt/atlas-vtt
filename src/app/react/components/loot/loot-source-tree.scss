@@ -75,7 +75,7 @@
   @include atlas-flex-row($spacing-s);
   flex: 1;
   min-width: 0;
-  min-height: $button-height-m - 2px;
+  min-height: calc(#{$button-height-m} - 2px);
   padding: $spacing-xs $spacing-s $spacing-xs $spacing-xs;
   cursor: pointer;
 

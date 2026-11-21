@@ -2,12 +2,12 @@
 @use '../../../styles/mixins' as *;
 
 .atlas-vtt-plugin.atlas-issue-report-modal {
-  width: min(640px, 90vw);
+  width: min(640px, #{atlas-view-width(90)});
   // The dialog may use almost the full window height. In a shorter window
   // (such as Obsidian's settings window) the fields keep their size and the
   // dialog scrolls: rows squeezed below their content let the text boxes
   // spill over the rows beneath them.
-  max-height: calc(100vh - #{$spacing-2xl});
+  max-height: calc(#{atlas-view-height()} - #{$spacing-2xl});
 
   .atlas-issue-report-intro {
     margin: 0 0 $spacing-l;

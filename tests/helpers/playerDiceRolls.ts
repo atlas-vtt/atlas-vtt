@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { act } from '@testing-library/react';
 import { vi } from 'vitest';
 import { createStore, type StoreApi } from 'zustand/vanilla';

@@ -19,6 +19,7 @@ import { prefersReducedMotion } from './utils/motion';
 import type { ViewAtlasStore } from './storeFactory';
 import { levelBackground } from './levels/levelEdits';
 import { viewedLevelId, type LevelView } from './levels/sceneLevels';
+import { deviceProfile } from './platform/deviceProfile';
 
 export interface DisplayedMap {
   mapData: MapFile;
@@ -86,12 +87,13 @@ function viewMapImage(app: App, renderer: MapRenderer): MosaicCanvas | null {
     drawAtOnce: () => !pixi.ticker.started || prefersReducedMotion(pixi.canvas),
     picture: MAP_THUMBNAIL_SIZE,
     video: vaultMapVideos(app, service, pixi.renderer, pixi.canvas),
+    textureBudget: deviceProfile().budgets.tileTextureBudget,
   });
   // Every image the view comes to show can be seen whole, also one no load brought: another
   // level's, a changed background, the map drawn with another stretch.
   mapImage.onChange((change) => {
     const rect = mapImage.worldRect;
-    if (change === 'image' && rect) fitZoomRange(viewport, rect);
+    if (change !== 'albedo' && rect) fitZoomRange(viewport, rect);
   });
   renderer.setMapImage(mapImage);
   return mapImage;

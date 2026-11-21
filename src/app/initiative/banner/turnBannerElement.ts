@@ -1,4 +1,3 @@
-import { setIcon } from 'obsidian';
 import { createTokenPortrait } from '../../packages/components/shared/tokenPortraitElement';
 import { animatePanelIn, animatePanelOutAndRemove } from '../../ui/panelMotion';
 import { t } from '../../i18n';
@@ -11,32 +10,73 @@ export const TURN_BANNER_MS = 2000;
 /** The largest the players' turn banner grows. */
 export const MAX_TURN_BANNER_SCALE = 5;
 
+/** The window, in CSS pixels, in which the players' banner is drawn at its own size; it grows with larger windows. */
+const BANNER_BASE_WINDOW = { long: 960, short: 540 } as const;
+
+/**
+ * How large the players' turn banner is drawn in a window of `width` × `height` CSS pixels: twice its own size on a
+ * 1080p TV, in step with the window and the same whichever way a table TV is turned, never smaller than its own size.
+ */
+export function turnBannerScaleFor(width: number, height: number): number {
+  const fit = Math.min(Math.max(width, height) / BANNER_BASE_WINDOW.long, Math.min(width, height) / BANNER_BASE_WINDOW.short);
+  return Number.isFinite(fit) ? Math.min(Math.max(fit, 1), MAX_TURN_BANNER_SCALE) : 1;
+}
+
 /** How a banner comes and goes: `enter` is told how long it stands, `leave` removes it once gone. */
 export interface TurnBannerMotion {
   enter(element: HTMLElement, standMs: number): void;
   leave(element: HTMLElement): void;
 }
 
-const PANEL_MOTION: TurnBannerMotion = { enter: animatePanelIn, leave: (element) => animatePanelOutAndRemove(element) };
+/** How long a fight's banner takes to dissolve (`atlas-fight-banner-out` in `turn-banner.scss`). */
+const FIGHT_BANNER_LEAVE_MS = 700;
+
+/**
+ * A fight's own banner moves by its stylesheet alone (`turn-banner.scss`): its shade widens in, its words resolve out of a
+ * blur and its rules draw outward; `--leaving` dissolves it. Keyframes of its own document, so a player window that
+ * covers the main one moves it too.
+ */
+const FIGHT_BANNER_MOTION: TurnBannerMotion = {
+  enter(element, standMs) {
+    element.style.setProperty('--atlas-turn-banner-stand', `${standMs}ms`);
+  },
+  leave(element) {
+    element.addClass('atlas-turn-banner--leaving');
+    (element.ownerDocument.defaultView ?? window).setTimeout(() => element.remove(), FIGHT_BANNER_LEAVE_MS);
+  },
+};
+
+/** Whether `element` is a fight's own banner, which keeps its own motion whoever shows it. */
+function isFightBanner(element: HTMLElement): boolean {
+  return element.hasClass('atlas-turn-banner--fight');
+}
+
+/** `motion` for a turn's banner, a fight's own motion for a fight's. */
+export function withFightBannerMotion(motion: TurnBannerMotion): TurnBannerMotion {
+  return {
+    enter: (element, standMs) => (isFightBanner(element) ? FIGHT_BANNER_MOTION : motion).enter(element, standMs),
+    leave: (element) => (isFightBanner(element) ? FIGHT_BANNER_MOTION : motion).leave(element),
+  };
+}
+
+const PANEL_MOTION: TurnBannerMotion = withFightBannerMotion({ enter: animatePanelIn, leave: (element) => animatePanelOutAndRemove(element) });
 
 /** The address of a portrait's image by its vault path, or null to draw none. */
 export type PortraitSource = (imagePath: string) => string | null;
 
-/** The icon a fight's own banner shows where a turn's shows its portrait. */
-const FIGHT_ICONS = { 'fight-start': 'swords', 'fight-end': 'flag' } as const;
-
 /**
  * Draws `banner` into `parent`: the portrait, then the round or "Turn" above the name; a fight's
- * start or end its icon and its sentence.
+ * start or end its sentence between two rules, on a shade of its own.
  */
 export function renderTurnBanner(parent: HTMLElement, banner: TurnBanner, portraitSrc: PortraitSource): HTMLElement {
   const element = parent.createDiv({ cls: 'atlas-turn-banner', attr: { role: 'status' } });
   // Its border flashes in the combatant's colour
   if (banner.color) element.style.setProperty('--atlas-turn-banner-flash', banner.color);
   if (banner.kind) {
-    element.addClass(`atlas-turn-banner--${banner.kind}`);
-    setIcon(element.createDiv({ cls: 'atlas-turn-banner__icon', attr: { 'aria-hidden': 'true' } }), FIGHT_ICONS[banner.kind]);
-    element.createDiv({ cls: 'atlas-turn-banner__text' }).createSpan({ cls: 'atlas-turn-banner__title', text: banner.title ?? '' });
+    element.addClass('atlas-turn-banner--fight', `atlas-turn-banner--${banner.kind}`);
+    element.createSpan({ cls: 'atlas-fight-banner__rule atlas-fight-banner__rule--before', attr: { 'aria-hidden': 'true' } });
+    element.createSpan({ cls: 'atlas-fight-banner__title', text: banner.title ?? '' });
+    element.createSpan({ cls: 'atlas-fight-banner__rule atlas-fight-banner__rule--after', attr: { 'aria-hidden': 'true' } });
     return element;
   }
   const src = banner.portrait ? portraitSrc(banner.portrait.imagePath) : null;

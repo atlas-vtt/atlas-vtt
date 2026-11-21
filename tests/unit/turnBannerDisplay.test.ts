@@ -4,12 +4,10 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';
 import { createDefaultInitiativeState, type InitiativeEntry, type InitiativeState } from '../../src/app/types/initiativeTypes';
-import { TURN_BANNER_MS, TurnBannerDisplay } from '../../src/app/initiative/banner/turnBannerElement';
+import { TURN_BANNER_MS, TurnBannerDisplay, turnBannerScaleFor } from '../../src/app/initiative/banner/turnBannerElement';
 import { PlayerTurnBanner } from '../../src/app/services/PlayerTurnBanner';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { initiativeTrackerOptions } from '../../src/app/react/components/initiativeTrackerOptions';
-import { DEFAULT_TURN_OPTIONS } from '../../src/app/initiative/turnOptions';
-import { DEFAULT_SETTINGS } from '../../src/app/services/atlasSettings';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { setIcon } from 'obsidian';
 
@@ -110,6 +108,19 @@ describe('the turn banner in the player window', () => {
   });
 });
 
+describe('the size of the players\' turn banner', () => {
+  it('grows with the window from its own size, twice it on a 1080p TV, the same turned on its side, up to five times', () => {
+    expect(turnBannerScaleFor(1920, 1080)).toBe(2);
+    expect(turnBannerScaleFor(1080, 1920)).toBe(2);
+    expect(turnBannerScaleFor(1280, 720)).toBeCloseTo(4 / 3, 5);
+    // An ultrawide window: its height decides
+    expect(turnBannerScaleFor(3440, 1440)).toBeCloseTo(1440 / 540, 5);
+    expect(turnBannerScaleFor(800, 450)).toBe(1);
+    expect(turnBannerScaleFor(7680, 4320)).toBe(5);
+    expect(turnBannerScaleFor(0, 0)).toBe(1);
+  });
+});
+
 describe('the banners of a fight\'s start and end', () => {
   function setup(running: boolean) {
     vi.useFakeTimers();
@@ -127,18 +138,21 @@ describe('the banners of a fight\'s start and end', () => {
     return { store, banner };
   }
 
-  it('says the fight started with crossed swords, then names its first turn', () => {
+  it('says the fight started, then names its first turn', () => {
     const { store, banner } = setup(false);
     expect(banner()).toBeNull();
     store.setState({ initiative: fight('hero') });
     expect(banner()?.classList.contains('atlas-turn-banner--fight-start')).toBe(true);
     // Its border pulses as long as it stands
-    expect((banner() as HTMLElement).style.getPropertyValue('--atlas-turn-banner-stand')).toBe(`${DEFAULT_SETTINGS.localPlayerView.turnBannerSeconds * 1000}ms`);
+    expect((banner() as HTMLElement).style.getPropertyValue('--atlas-turn-banner-stand')).toBe('4000ms');
     expect(banner()?.textContent).toBe('Combat has started');
-    expect(banner()?.querySelector('.atlas-turn-banner__icon')).not.toBeNull();
-    expect(vi.mocked(setIcon)).toHaveBeenCalledWith(banner()?.querySelector('.atlas-turn-banner__icon'), 'swords');
-    // As long as the player view sets it
-    const stand = DEFAULT_SETTINGS.localPlayerView.turnBannerSeconds * 1000;
+    // A title between two rules, without the turn's capsule look or an icon
+    expect(banner()?.classList.contains('atlas-turn-banner--fight')).toBe(true);
+    expect(banner()?.querySelectorAll('.atlas-fight-banner__rule')).toHaveLength(2);
+    expect(banner()?.querySelector('.atlas-fight-banner__title')?.textContent).toBe('Combat has started');
+    expect(vi.mocked(setIcon)).not.toHaveBeenCalled();
+    // Four seconds, long enough to read from across a table
+    const stand = 4000;
     vi.advanceTimersByTime(stand - 1);
     expect(banner()?.classList.contains('atlas-turn-banner--fight-start')).toBe(true);
     vi.advanceTimersByTime(1);
@@ -159,6 +173,20 @@ describe('the banners of a fight\'s start and end', () => {
     expect(banner()?.classList.contains('atlas-turn-banner--fight-end')).toBe(true);
   });
 
+  it('dissolves by its own motion whoever shows it, gone once the dissolve has run', () => {
+    vi.useFakeTimers();
+    const host = document.body.createDiv();
+    const display = new TurnBannerDisplay(host, () => null);
+    display.show({ kind: 'fight-end', key: 'fight-end', round: null, title: 'Combat has ended', portrait: null });
+    display.hide();
+    const leaving = host.querySelector('.atlas-turn-banner--fight');
+    expect(leaving?.classList.contains('atlas-turn-banner--leaving')).toBe(true);
+    vi.advanceTimersByTime(699);
+    expect(leaving?.isConnected).toBe(true);
+    vi.advanceTimersByTime(1);
+    expect(leaving?.isConnected).toBe(false);
+  });
+
   it('says nothing for a scene met with its fight running or not', () => {
     expect(setup(true).banner()).toBeNull();
     document.body.empty();
@@ -167,24 +195,23 @@ describe('the banners of a fight\'s start and end', () => {
 });
 
 describe('the tracker\'s turn options', () => {
-  const state = { autoSort: true, bySides: false, empty: false, showNames: false, fromTurn: true, dock: 'right' as const, edges: ['right' as const], facesPlayers: false, turn: DEFAULT_TURN_OPTIONS };
-  const actions = { setAutoSort: vi.fn(), setShowNames: vi.fn(), setFromTurn: vi.fn(), setEdges: vi.fn(), setFacesPlayers: vi.fn(), setTurn: vi.fn(), clear: vi.fn() };
-  const labels = (online: boolean): string[] => initiativeTrackerOptions({ ...state, online }, actions).flatMap((item) => (item.type === 'item' ? [item.label] : []));
-
-  it('switch the banner (on by default) and following (off), and moves on the turn only with online play', () => {
-    expect(labels(false)).toEqual(expect.arrayContaining(['Turn banner', 'Follow the turn']));
-    expect(labels(false)).not.toContain('Players move only on their turn');
-    expect(labels(true)).toContain('Players move only on their turn');
-    const banner = initiativeTrackerOptions({ ...state, online: false }, actions).find((item) => item.type === 'item' && item.label === 'Turn banner');
+  it('switch the banner (on by default); the view always follows the turn, and moving on one\'s turn is the player view\'s', () => {
+    const setBanner = vi.fn();
+    const entries = initiativeTrackerOptions({ empty: false, compact: false, party: null, banner: true }, { setCompact: vi.fn(), setBanner, clear: vi.fn(), resetNumbers: vi.fn(), addEnemy: vi.fn() });
+    const labels = entries.flatMap((item) => (item.type === 'item' ? [item.label] : []));
+    expect(labels).not.toContain('Follow the turn');
+    expect(labels).not.toContain('Players move only on their turn');
+    const banner = entries.find((item) => item.type === 'item' && item.label === 'Turn banner');
     expect(banner?.type === 'item' && banner.checked).toBe(true);
     if (banner?.type === 'item') banner.onClick?.();
-    expect(actions.setTurn).toHaveBeenCalledWith({ banner: false });
+    expect(setBanner).toHaveBeenCalledWith(false);
   });
 
-  it('are kept in Atlas\' settings: the banner on unless switched off, the others off unless switched on', () => {
+  it('are kept in Atlas\' settings: the banner on unless switched off, moving on one\'s turn off unless switched on', () => {
     const settings = new SettingsService(createInMemoryApp().app);
-    expect(settings.initiativeTurnOptions()).toEqual({ banner: true, followTurn: false, movesOnTurn: false });
-    settings.setInitiativeTurnOptions({ followTurn: true, movesOnTurn: true });
-    expect(settings.initiativeTurnOptions()).toEqual({ banner: true, followTurn: true, movesOnTurn: true });
+    expect(settings.initiativeTurnOptions()).toEqual({ banner: true, movesOnTurn: false });
+    settings.setInitiativeTurnOptions({ movesOnTurn: true });
+    expect(settings.initiativeTurnOptions()).toEqual({ banner: true, movesOnTurn: true });
   });
 });
+

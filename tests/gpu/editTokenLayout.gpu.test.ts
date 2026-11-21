@@ -8,6 +8,8 @@ import { emissionOf, lightPresetsOnMap } from '../../src/app/lighting/lightPrese
 import { openEditTokenModal } from '../../src/app/pixi/token-renderer/EditTokenModal';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { Character } from '../../src/app/types';
+import { followVisualViewport } from '../../src/app/host/visibleViewport';
+import { KEYBOARD_INSET_PROPERTY, watchKeyboard } from '../../src/app/platform/keyboardViewport';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { HP, STR } from '../mocks/resourceFixtures';
 
@@ -188,5 +190,85 @@ describe('the layout of the Edit token dialog', () => {
     expect(footer.bottom).toBeLessThanOrEqual(480);
     body().scrollTop = body().scrollHeight;
     expect(modal().querySelector('.atlas-modal-footer')!.getBoundingClientRect().bottom).toBe(footer.bottom);
+  });
+
+  it('is seen whole in a landscape tablet\'s window, 1180 × 700: what does not fit scrolls inside its body', async () => {
+    await open({ ...MIRABEL, light: TORCH }, 1180, 700);
+    const frame = modal().getBoundingClientRect();
+    expect(frame.top).toBeGreaterThanOrEqual(0);
+    expect(frame.bottom).toBeLessThanOrEqual(700);
+    const header = modal().querySelector('.atlas-modal-header')!.getBoundingClientRect();
+    const footer = modal().querySelector('.atlas-modal-footer')!.getBoundingClientRect();
+    expect(header.top).toBeGreaterThanOrEqual(frame.top);
+    expect(footer.bottom).toBeLessThanOrEqual(frame.bottom);
+    // Every field is in the body, which either shows all of itself or scrolls
+    expect(getComputedStyle(body()).overflowY).toBe('auto');
+    for (const field of body().querySelectorAll('input')) {
+      body().scrollTop = 0;
+      field.scrollIntoView({ block: 'nearest' });
+      const box = field.getBoundingClientRect();
+      const seen = body().getBoundingClientRect();
+      expect(box.top).toBeGreaterThanOrEqual(seen.top - 1);
+      expect(box.bottom).toBeLessThanOrEqual(seen.bottom + 1);
+    }
+  });
+
+  describe('with a tablet\'s keyboard up, which leaves 1180 × 380 of the window in sight', () => {
+    const KEYBOARD_TOP = 380;
+    /** The window's visual viewport as a tablet reports it while its keyboard covers the lower part. */
+    class Visual extends EventTarget {
+      offsetLeft = 0;
+      offsetTop = 0;
+      width = 1180;
+      height = 700;
+    }
+    const real = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    let visual: Visual;
+    let stop: (() => void)[] = [];
+
+    beforeEach(() => {
+      visual = new Visual();
+      Object.defineProperty(window, 'visualViewport', { configurable: true, value: visual });
+    });
+
+    afterEach(() => {
+      stop.forEach((end) => end());
+      stop = [];
+      if (real) Object.defineProperty(window, 'visualViewport', real);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    });
+
+    it('ends above the keyboard, and the field being typed into is scrolled into what is seen', async () => {
+      await open({ ...MIRABEL, light: TORCH }, 1180, 700);
+      stop = [followVisualViewport(true), watchKeyboard(document)];
+      // The lowest field of the token's column: under the keyboard once it is up
+      const fields = [...modal().querySelector('.atlas-edit-token__column')!.querySelectorAll<HTMLInputElement>('input:not([type="checkbox"])')];
+      const field = fields.at(-1)!;
+      act(() => field.focus());
+      expect(field.getBoundingClientRect().bottom).toBeGreaterThan(KEYBOARD_TOP);
+
+      visual.height = KEYBOARD_TOP;
+      act(() => { visual.dispatchEvent(new Event('resize')); });
+
+      expect(document.body.style.getPropertyValue(KEYBOARD_INSET_PROPERTY)).toBe('320px');
+      await expect.poll(() => Math.round(modal().getBoundingClientRect().bottom)).toBeLessThanOrEqual(KEYBOARD_TOP);
+      expect(modal().getBoundingClientRect().top).toBeGreaterThanOrEqual(0);
+      const footer = modal().querySelector('.atlas-modal-footer')!.getBoundingClientRect();
+      expect(footer.bottom).toBeLessThanOrEqual(KEYBOARD_TOP);
+      expect(document.activeElement).toBe(field);
+      await expect.poll(() => field.getBoundingClientRect().bottom).toBeLessThanOrEqual(KEYBOARD_TOP);
+      const seen = body().getBoundingClientRect();
+      expect(field.getBoundingClientRect().top).toBeGreaterThanOrEqual(seen.top);
+      expect(field.getBoundingClientRect().bottom).toBeLessThanOrEqual(seen.bottom);
+
+      // The keyboard goes: the dialog takes its room again
+      visual.height = 700;
+      act(() => { visual.dispatchEvent(new Event('resize')); });
+      expect(document.body.style.getPropertyValue(KEYBOARD_INSET_PROPERTY)).toBe('');
+      await expect.poll(() => {
+        const [above, below] = marginsInOverlay();
+        return Math.abs(above! - below!) <= 1;
+      }).toBe(true);
+    });
   });
 });

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { Ticker, type EventSystem } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
@@ -54,6 +54,7 @@ async function loadScene(width: number, height: number, camera: Parameters<typeo
   const manager = {
     init: vi.fn(),
     getViewport: () => viewport,
+    getGestures: () => null,
     getApp: () => ({ renderer: null, canvas: document.createElement('canvas'), ticker }),
     destroy: vi.fn(),
   };

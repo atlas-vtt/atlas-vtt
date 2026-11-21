@@ -105,6 +105,14 @@ export function headerOf(bytes: DataView): ImageHeader | null {
   return null;
 }
 
+/**
+ * The MIME type of a derived picture's bytes (a thumbnail, a small copy), read from them: such a
+ * picture is a WebP, or a PNG where the platform cannot encode WebP. Bytes it does not know read as WebP.
+ */
+export function imageMimeType(bytes: ArrayBuffer): string {
+  return `image/${headerOf(new DataView(bytes))?.format ?? 'webp'}`;
+}
+
 /** Pixel size of an encoded image, read from its header; see `imageHeader`. */
 export async function imageDimensions(blob: Blob): Promise<Size | null> {
   const header = await imageHeader(blob);

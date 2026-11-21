@@ -20,6 +20,7 @@ import type { TagsAndCollectionsState } from '../hooks/useTagsAndCollections';
 import type { StatblockLinkState } from '../hooks/useStatblockLink';
 import { useUvttImport } from '../hooks/useUvttImport';
 import { useFloorsChoice } from '../hooks/useFloorsChoice';
+import { useInstalledItemOpener } from '../hooks/useInstalledItemOpener';
 import { UvttFloorsDialog } from './UvttFloorsDialog';
 import { tagGroupOfTab } from '../utils/assetTags';
 import { newStatblockOption } from '../../../../statblocks/editor/create/entryPoints';
@@ -52,6 +53,7 @@ export function ModalLayer({
   isOpen, activeTab, selectedCollection, onClose, data, sel, crud, tags, statblock,
 }: ModalLayerProps): React.JSX.Element {
   const floors = useFloorsChoice(isOpen);
+  const itemOpener = useInstalledItemOpener({ app: data.app, selectedCollection, setSettingsModalCollectionId: crud.setSettingsModalCollectionId, closeAssetManager: onClose });
   const [dropped, setDropped] = useState<DroppedFiles | null>(null);
   const droppedFor = (creator: CreatorMode): { initialFiles?: File[] } => (dropped?.creator === creator ? { initialFiles: dropped.files } : {});
   const closeMapCreator = (): void => {
@@ -107,7 +109,9 @@ export function ModalLayer({
         transfer={crud.transfer}
         confirmExport={crud.confirmExport}
         confirmImport={crud.confirmImport}
+        confirmItemImport={crud.confirmItemImport}
         closeTransfer={crud.closeTransfer}
+        openerFor={itemOpener.openerFor}
       />
 
       {/* Token Creator */}
@@ -306,8 +310,9 @@ export function ModalLayer({
         {crud.settingsModalCollectionId && (
           <CollectionSettingsModal
             isOpen={true}
-            onClose={() => crud.setSettingsModalCollectionId(null)}
+            onClose={() => { crud.setSettingsModalCollectionId(null); itemOpener.resetSettingsTab(); }}
             collectionId={crud.settingsModalCollectionId}
+            initialTab={itemOpener.settingsTab}
             // The template opens in a tab, which the asset manager would cover.
             onEditTemplate={(templateId, collectionId) => {
               onClose();

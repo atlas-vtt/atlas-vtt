@@ -4,7 +4,7 @@ import { useAtlasSettings, useHotkeyLabels } from '../keyboard/useMapHotkeys';
 import type { MapHotkeyId } from '../keyboard/mapHotkeys';
 import { useAtlasStore } from '../react/ViewStoreContext';
 import type { SettingsService } from '../services/SettingsService';
-import { t } from '../i18n';
+import { t, tPointer } from '../i18n';
 import { isOnScreen, useWatched } from './useWatched';
 
 /** Online play's controls, added to the map by its own code once a table can be started or is running. */
@@ -50,9 +50,9 @@ export function MapTours({ root, settings: explicit }: MapToursProps): React.JSX
 /** The map tour, in the order the eye meets things: the map, the top, the toolbar left to right, then help. */
 export function mapSteps(key: (id: MapHotkeyId) => string, trackpad: boolean): TutorialStep[] {
   return [
-    { title: t('tour.map.welcomeTitle'), body: trackpad ? t('tour.map.welcomeTrackpad') : t('tour.map.welcomeMouse') },
+    { title: t('tour.map.welcomeTitle'), body: tPointer(trackpad ? 'tour.map.welcomeTrackpad' : 'tour.map.welcomeMouse') },
     { title: t('tour.map.tabsTitle'), body: t('tour.map.tabsBody'), selector: '.atlas-scene-tab-bar', keys: [key('sceneSwitcher')] },
-    { title: t('tour.map.toolsTitle'), body: t('tour.map.toolsBody'), selector: '.atlas-main-toolbar' },
+    { title: t('tour.map.toolsTitle'), body: tPointer('tour.map.toolsBody'), selector: '.atlas-main-toolbar' },
     { title: t('tour.map.gmViewTitle'), body: t('tour.map.gmViewBody'), selector: '.atlas-main-toolbar .atlas-toolbar-end', keys: [key('gmView')] },
     { title: t('tour.map.assetsTitle'), body: t('tour.map.assetsBody'), selector: '[data-toolbar-item="assets"]', keys: [key('assets')] },
     { title: t('tour.map.paletteTitle'), body: t('tour.map.paletteBody'), selector: '[data-toolbar-item="palette"]', keys: [key('palette'), key('dashboard')] },

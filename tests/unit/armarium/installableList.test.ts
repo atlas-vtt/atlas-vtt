@@ -21,7 +21,7 @@ describe('the installable list', () => {
 
   it('keeps what the plugin needs of each listing', () => {
     expect(parseInstallableList({ format: 1, builtAt: '2026-11-18T00:00:00Z', listings: [listing] })).toEqual([{
-      uid: listing.uid, name: listing.name, version: 5, fileName: listing.fileName, bytes: 1760415, sha256: listing.sha256, downloadUrl: listing.downloadUrl,
+      uid: listing.uid, name: listing.name, creator: 'Steve', version: 5, fileName: listing.fileName, bytes: 1760415, sha256: listing.sha256, downloadUrl: listing.downloadUrl,
     }]);
   });
 
@@ -38,6 +38,10 @@ describe('the installable list', () => {
       { ...listing, version: 6 },
     ];
     expect(parseInstallableList({ format: 1, listings })?.map((entry) => [entry.uid, entry.version])).toEqual([[listing.uid, 5]]);
+  });
+
+  it('reads a listing whose creator\'s account is gone as one without a creator', () => {
+    expect(parseInstallableList({ format: 1, listings: [{ ...listing, creator: null }] })?.[0]?.creator).toBeNull();
   });
 
   it('refuses another format', () => {

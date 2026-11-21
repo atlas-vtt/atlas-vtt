@@ -28,5 +28,6 @@ export const common = {
   "common.select": "Seleziona…",
   "common.confirm": "Conferma",
   "common.duplicate": "Duplica",
-  "common.copy": "Copia"
+  "common.copy": "Copia",
+  "common.valueEmpty": "Il valore non può essere vuoto",
 } satisfies Translation;

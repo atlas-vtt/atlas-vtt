@@ -4,6 +4,7 @@ import { planRecords, recordFingerprint, type PackedRecord, type PlannedRecord, 
 import { freeRecordPath, readRecordText, recordText, type RecordFolderSpec, type StoredRecord } from '../vaultRecords/recordFolder';
 import type { RecordFolderFiles } from '../vaultRecords/RecordFolderFiles';
 import { toBuffer } from './bundleContent';
+import { withoutProvenance } from '../itemBundle/itemProvenance';
 import type { BundleFile, BundleFileRole, CollectionBundleManifest } from './bundleFormat';
 import type { BundleFileReader } from './bundleReader';
 import type { ImportJournal } from './importJournal';
@@ -57,6 +58,7 @@ export async function packedRecord(kind: BundledRecordKind, content: ArrayBuffer
 /**
  * The records of the kind a bundle carries, each as `adjust` makes it (ids it names that came
  * in as copies); the first file of an id holds it, and a file that holds no record is left out.
+ * Provenance a bundle carries is dropped: only an item install writes it, for the item it installs.
  */
 async function readBundleRecords(
   kind: BundledRecordKind,
@@ -69,7 +71,7 @@ async function readBundleRecords(
     if (file.role !== kind.role) continue;
     const text = await read(file.vaultPath);
     const stored = text === null ? null : readKindText(kind, text);
-    const entry = stored && adjust(stored);
+    const entry = stored && adjust(withoutProvenance(stored));
     if (entry && !records.has(entry.id)) records.set(entry.id, { path: file.vaultPath, entry, fingerprint: await recordFingerprint(entry) });
   }
   return [...records.values()];
@@ -111,7 +113,7 @@ function copyNameFor(name: string, collectionName: string, n: number, max: numbe
 export async function planRecordImport(
   app: App,
   kind: BundledRecordKind,
-  manifest: CollectionBundleManifest,
+  manifest: Pick<CollectionBundleManifest, 'files'>,
   files: BundleFileReader,
   installed: Readonly<Record<string, InstalledRecord>> | undefined,
   collectionName: string,

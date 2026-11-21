@@ -14,10 +14,10 @@
 
   // The name keeps every pixel: the action, a glyph here, stands in the length's place while it shows.
   .atlas-sound-lib__row {
-    grid-template-columns: 32px minmax(0, 1fr) auto 44px 28px;
+    grid-template-columns: 32px minmax(0, 1fr) auto minmax(44px, auto) 28px;
 
     @media (pointer: coarse) {
-      grid-template-columns: 44px minmax(0, 1fr) auto 44px 44px;
+      grid-template-columns: 44px minmax(0, 1fr) auto minmax(44px, auto) 44px;
     }
 
     > :nth-child(4),
@@ -90,8 +90,9 @@
     }
   }
 
+  // As wide as its own length (an hour's too): every column after it is fixed, so the lengths still end in line.
   .atlas-sound-lib__length {
-    padding-right: $spacing-xs;
+    padding-inline: $spacing-s $spacing-xs;
   }
 
   .atlas-sound-lib .atlas-sound-lib__more {

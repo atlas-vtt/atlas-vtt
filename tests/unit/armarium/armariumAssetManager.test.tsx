@@ -14,10 +14,13 @@ const reviews = vi.hoisted((): ExternalImport[] => []);
 const busy = vi.hoisted(() => ({ value: false }));
 
 vi.mock('../../../src/app/ui/notice', () => ({ showNotice: vi.fn(() => ({ hide: vi.fn() })) }));
+/** Tabs whose assets are still loading. */
+const loadingTabs = vi.hoisted(() => new Set<string>());
+
 vi.mock('../../../src/app/packages/components/asset-manager/hooks/useAssetData', () => ({
-  useAssetData: () => ({
+  useAssetData: (tab: string) => ({
     shownFolderOf: (folderId: string | null) => folderId,
-    folders: [], collections: [], availableTags: [], assets: [], assetsLoading: false, assetCounts: null, app,
+    folders: [], collections: [], availableTags: [], assets: [], assetsLoading: loadingTabs.has(tab), assetCounts: null, app,
   }),
 }));
 // The transfer as far as the review: an outside bundle starts it, and the review stands until the GM answers.
@@ -45,13 +48,17 @@ vi.mock('../../../src/app/packages/components/asset-manager/hooks/useRememberedP
   useRememberedPlace: () => ({ scrollTopOf: () => 0, setScrollTop: () => {} }),
 }));
 vi.mock('../../../src/app/packages/components/asset-manager/hooks/useAssetManagerEffects', () => ({ useAssetManagerEffects: () => {} }));
-vi.mock('../../../src/app/packages/components/asset-manager/components/Content', () => ({ Content: () => <p>Library</p> }));
+vi.mock('../../../src/app/packages/components/asset-manager/components/Content', () => ({
+  Content: ({ activeTab, loading }: { activeTab: string; loading: boolean }) => <p data-tab={activeTab} data-loading={loading}>Library</p>,
+}));
 vi.mock('../../../src/app/packages/components/asset-manager/components/ModalLayer', () => ({
   ModalLayer: ({ crud }: { crud: { transfer: { step: string } | null } }) => (crud.transfer ? <div role="dialog" aria-label="Import review" /> : null),
 }));
 vi.mock('../../../src/app/packages/components/asset-manager/components/Sidebar', () => ({
-  Sidebar: ({ onSelectTag }: { onSelectTag: (id: string) => void }) => (
-    <button type="button" onClick={() => onSelectTag('forest')}>forest</button>
+  Sidebar: ({ onSelectTag, storeTags }: { onSelectTag: (id: string) => void; storeTags?: { onToggle: (id: string) => void } }) => (
+    storeTags
+      ? <button type="button" onClick={() => storeTags.onToggle('forest')}>store forest</button>
+      : <button type="button" onClick={() => onSelectTag('forest')}>forest</button>
   ),
 }));
 vi.mock('../../../src/app/packages/components/asset-manager/components/Header', () => ({
@@ -67,6 +74,11 @@ vi.mock('../../../src/app/packages/components/asset-manager/components/Header', 
 
 const FRAME = 'The Armarium, Atlas\' library of collections';
 const storeFrame = (): HTMLIFrameElement | null => screen.queryByLabelText(FRAME, { selector: 'iframe' }) as HTMLIFrameElement | null;
+/** Whether the store is shown: its frame is kept, hidden and inert, once the library is shown again. */
+const storeShown = (): boolean => {
+  const pane = storeFrame()?.closest('.atlas-armarium-pane');
+  return pane !== null && pane !== undefined && !pane.classList.contains('is-hidden') && !pane.hasAttribute('inert');
+};
 let statusListener: StatusListener | null = null;
 
 function pendingImport(): ExternalImport {
@@ -88,6 +100,7 @@ afterEach(() => {
   cleanup();
   ArmariumInstaller.release(app as unknown as App);
   reviews.length = 0;
+  loadingTabs.clear();
   busy.value = false;
   statusListener = null;
   Reflect.deleteProperty(window.navigator, 'onLine');
@@ -107,27 +120,91 @@ describe('the Armarium in the asset manager', () => {
     expect(screen.getByRole('button', { name: 'Armarium' }).getAttribute('aria-current')).toBe('page');
   });
 
-  it('is a place of the sidebar, left for the library by a tab, a tag or Back', () => {
+  it('is a place of the sidebar, left for the library by a tab or Back, which keeps the store\'s page as it was', () => {
     render(<AssetManager isOpen onClose={vi.fn()} />);
-    for (const leave of ['Maps', 'forest', 'Back to the library']) {
-      fireEvent.click(screen.getByRole('button', { name: 'Armarium' }));
-      expect(storeFrame()).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Armarium' }));
+    const frame = storeFrame();
+    for (const leave of ['Maps', 'Back to the library']) {
+      expect(storeShown()).toBe(true);
       fireEvent.click(screen.getByRole('button', { name: leave }));
-      expect(storeFrame()).toBeNull();
+      expect(storeShown()).toBe(false);
       expect(screen.getByText('Library')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Armarium' }));
+      expect(storeFrame()).toBe(frame);
     }
+  });
+
+  it('stays over the library until it shows the tab the store was left for, never the tab it held before', () => {
+    const { rerender } = render(<AssetManager isOpen onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Armarium' }));
+    loadingTabs.add('maps');
+    fireEvent.click(screen.getByRole('button', { name: 'Maps' }));
+    expect(storeFrame()!.closest('.atlas-armarium-pane')!.classList.contains('is-hidden')).toBe(false);
+    expect(screen.getByText('Library').closest('.atlas-asset-manager-library')!.hasAttribute('inert')).toBe(true);
+
+    loadingTabs.delete('maps');
+    rerender(<AssetManager isOpen onClose={vi.fn()} />);
+    expect(storeFrame()!.closest('.atlas-armarium-pane')!.classList.contains('is-hidden')).toBe(true);
+    const library = screen.getByText('Library');
+    expect(library.dataset.tab).toBe('maps');
+    expect(library.closest('.atlas-asset-manager-library')!.hasAttribute('inert')).toBe(false);
+  });
+
+  it('leaves for the outline of a tab whose assets take long to load', () => {
+    vi.useFakeTimers();
+    try {
+      render(<AssetManager isOpen onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Armarium' }));
+      act(() => { vi.advanceTimersByTime(200); });
+      loadingTabs.add('maps');
+      fireEvent.click(screen.getByRole('button', { name: 'Maps' }));
+      expect(storeFrame()!.closest('.atlas-armarium-pane')!.classList.contains('is-hidden')).toBe(false);
+      act(() => { vi.advanceTimersByTime(120); });
+      expect(storeFrame()!.closest('.atlas-armarium-pane')!.classList.contains('is-hidden')).toBe(true);
+      const library = screen.getByText('Library');
+      expect(library.dataset.tab).toBe('maps');
+      expect(library.dataset.loading).toBe('true');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps the library under the store while the store fades in over it, and lets it go after', () => {
+    vi.useFakeTimers();
+    try {
+      render(<AssetManager isOpen onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Armarium' }));
+      expect(screen.getByText('Library').closest('.atlas-asset-manager-library')!.hasAttribute('inert')).toBe(true);
+      act(() => { vi.advanceTimersByTime(200); });
+      expect(screen.queryByText('Library')).toBeNull();
+      expect(storeShown()).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('gives the sidebar the store\'s tags while it is shown: a tag press goes to the page and the store stays', () => {
+    render(<AssetManager isOpen onClose={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'forest' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Armarium' }));
+    const post = vi.spyOn(storeFrame()!.contentWindow!, 'postMessage').mockImplementation(() => undefined);
+    fireEvent.click(screen.getByRole('button', { name: 'store forest' }));
+    expect(post).toHaveBeenCalledWith({ type: 'atlas-armarium:toggle-tag', format: 1, tag: 'forest' }, 'https://atlas-vtt.dev');
+    expect(storeFrame()).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the library' }));
+    expect(screen.getByRole('button', { name: 'forest' })).toBeTruthy();
   });
 
   it('shows the store again when asked while open', () => {
     const { rerender } = render(<AssetManager isOpen onClose={vi.fn()} armariumRequest={1} />);
     fireEvent.click(screen.getByRole('button', { name: 'Maps' }));
-    expect(storeFrame()).toBeNull();
+    expect(storeShown()).toBe(false);
     rerender(<AssetManager isOpen onClose={vi.fn()} armariumRequest={2} />);
-    expect(storeFrame()).not.toBeNull();
+    expect(storeShown()).toBe(true);
 
     fireEvent.click(screen.getByRole('button', { name: 'Maps' }));
     act(() => ArmariumHosts.forApp(app as unknown as App).current()!.show());
-    expect(storeFrame()).not.toBeNull();
+    expect(storeShown()).toBe(true);
   });
 
   it('keeps the store\'s page while an install from it is reviewed, and tells it how the install stands', async () => {

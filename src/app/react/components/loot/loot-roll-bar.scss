@@ -61,7 +61,8 @@
   align-items: center;
   gap: $spacing-s;
   min-width: 0;
-  height: max(#{$button-height-s}, calc(var(--input-height) - 2 * #{$spacing-xs}));
+  overflow: hidden;
+  height: max(#{$target-min}, calc(var(--input-height) - 2 * #{$spacing-xs}));
   padding: 0 $spacing-s;
   border: none;
   border-radius: calc(#{$radius-m} - #{$spacing-xs});
@@ -166,10 +167,11 @@ $loot-stepper-inset: 2px;
   background: var(--background-secondary);
 
   .atlas-loot-stepper__button {
-    width: $button-height-m - 2 * $loot-stepper-inset;
-    height: $button-height-m - 2 * $loot-stepper-inset;
+    width: calc(#{$button-height-m} - #{2 * $loot-stepper-inset});
+    height: calc(#{$button-height-m} - #{2 * $loot-stepper-inset});
     border-radius: calc(#{$radius-m} - #{$loot-stepper-inset});
     color: var(--text-muted);
+    @include atlas-coarse-hit;
 
     svg {
       width: $icon-xs;

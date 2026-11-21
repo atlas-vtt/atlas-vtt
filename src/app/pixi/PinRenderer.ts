@@ -1,6 +1,6 @@
 import { Container, FederatedPointerEvent, Circle, Texture } from "pixi.js";
 import { Viewport } from "pixi-viewport";
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import type { NotePin } from "../types";
 import { createPinIconTexture } from "./utils/pinIconTexture";
 import { drawPinFace, type DrawnPin } from './pinFace';
@@ -15,19 +15,16 @@ import { destroyTree } from "./utils/destroyTree";
 import { hearPressesLast, isHandled } from "./utils/handledEvents";
 import { isPrimaryPress, isSecondaryPress } from "./utils/pointerButtons";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
-import { beginHistoryTransaction, endHistoryTransaction } from '../stores/history';
-import type { ContextMenuEntry } from '../react/root/ContextMenuContext';
+import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../stores/history';
 import { isPinLabelKind, nextPinLabel } from '../tools/pinLabels';
 import { dispatchPinAction } from './utils/pinActions';
-import { pinOpenLook } from './pinOpenLook';
 import { hexLayoutOfGrid, isShownAsHex, pinDisplayPoint } from '../grid/hexLinks';
 import { MAP_LAYER_Z } from './mapLayerOrder';
-import { readablePinEntry } from './pinReadableMenu';
-import { pinNameEntries } from './pinNameMenu';
+import { pinMenuEntries } from './pinMenu';
 import { openPinMenu, type PinnedSceneLevels } from './pinSceneLevelMenu';
-import { t } from '../i18n';
 import { levelObjects } from '../levels/levelObjects';
 import { pinNameBoxes } from './pinNameLayout';
+import { dragThreshold, pointerReach, ReachPick } from './utils/pointerReach';
 
 /** True when anything other than the position changed, which means the pin's graphics must be rebuilt. */
 function differsBeyondPosition(pin: NotePin, prev: NotePin | undefined): boolean {
@@ -41,6 +38,8 @@ function differsBeyondPosition(pin: NotePin, prev: NotePin | undefined): boolean
 
 /** The least radius on screen a pin answers the pointer within, also as a dot. */
 const MIN_HIT_RADIUS = 10;
+/** Screen pixels a press on a pin moves before it drags the pin. */
+const PIN_DRAG_THRESHOLD = 5;
 
 /** The pins that carry a name, with the groups their names are placed by. */
 function namedPins(faces: ReadonlyMap<string, DrawnPin>, groups: Readonly<Record<string, Container>>): Map<string, NamedPin> {
@@ -83,6 +82,7 @@ export class PinRenderer {
   /** The map's size changed (a map loaded, a stretch applied): the pins it carries are sized again. */
   private readonly mapImageUpdated = (): void => this.updatePinScales();
   private _unsubscribeFromStore?: () => void;
+  private readonly reached = new ReachPick<string>();
   private _notePinToolViewportListener: ((e: FederatedPointerEvent) => void) | null = null;
   private _viewportPinClickListener: ((e: FederatedPointerEvent) => void) | null = null;
   private isPlayerView: boolean;
@@ -379,20 +379,20 @@ export class PinRenderer {
 
     const pins = levelObjects(this.store.getState()).pins;
     const layout = hexLayoutOfGrid(this.store.getState().grid);
-    // A pin shrunk to a dot keeps a hit area a pointer can find
+    // A pin shrunk to a dot keeps a hit area a pointer can find, a finger a larger one
     const zoom = this.viewport.scale.x > 0 ? this.viewport.scale.x : 1;
-    const hitRadius = Math.max(pinSize.badgeRadius * this.getPinScale(), MIN_HIT_RADIUS / zoom);
+    const hitRadius = Math.max(pinSize.badgeRadius * this.getPinScale(), pointerReach(MIN_HIT_RADIUS) / zoom);
 
-    for (const [id, pin] of Object.entries(pins)) {
+    const pick = this.reached.begin(hitRadius * hitRadius);
+    for (const id in pins) {
+      const pin = pins[id];
       // A linked pin is part of its hex, which handles the pointer
       if (!pin || isShownAsHex(pin, layout)) continue;
       const dx = worldX - pin.x;
       const dy = worldY - pin.y;
-      if (dx * dx + dy * dy <= hitRadius * hitRadius) {
-        return id;
-      }
+      if (pick.offer(id, dx * dx + dy * dy) && pick.over) break;
     }
-    return null;
+    return pick.taken;
   }
 
   /** Handles a viewport-routed click on a pin (drag or context menu). */
@@ -409,7 +409,7 @@ export class PinRenderer {
       // Left-click: start drag (same logic as inline handler)
       let isDragging = false;
       let hasMoved = false;
-      const dragThreshold = 5;
+      const moveThreshold = dragThreshold(PIN_DRAG_THRESHOLD, e);
       const startPos = { x: e.global.x, y: e.global.y };
       const worldStartPos = this.viewport.toWorld(e.global);
       const initialPinPos = { x: pin.x, y: pin.y };
@@ -419,7 +419,7 @@ export class PinRenderer {
         const dy = moveEvent.global.y - startPos.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (!isDragging && distance > dragThreshold) {
+        if (!isDragging && distance > moveThreshold) {
           isDragging = true;
           hasMoved = true;
           this.viewport.plugins.pause('drag');
@@ -439,10 +439,25 @@ export class PinRenderer {
         }
       };
 
-      const onPointerUp = (): void => {
+      const stopListening = (): void => {
         this.viewport.off('pointermove', onPointerMove);
         this.viewport.off('pointerup', onPointerUp);
         this.viewport.off('pointerupoutside', onPointerUp);
+        this.viewport.off('pointercancel', onPointerCancel);
+      };
+
+      // The press is lost (a second finger, a touch the system took): the pin goes back, unopened, and no undo step is left
+      const onPointerCancel = (): void => {
+        stopListening();
+        if (!isDragging) return;
+        this.store.getState().updateNotePin(pinId, initialPinPos);
+        this.store.getState().setPersistenceEnabled(true);
+        abandonHistoryTransaction(this.store);
+        this.viewport.plugins.resume('drag');
+      };
+
+      const onPointerUp = (): void => {
+        stopListening();
 
         if (isDragging) {
           this.store.getState().setPersistenceEnabled(true);
@@ -460,6 +475,7 @@ export class PinRenderer {
       this.viewport.on('pointermove', onPointerMove);
       this.viewport.on('pointerup', onPointerUp);
       this.viewport.on('pointerupoutside', onPointerUp);
+      this.viewport.on('pointercancel', onPointerCancel);
     }
   }
   
@@ -495,15 +511,7 @@ export class PinRenderer {
   }
 
   private showPinContextMenu(pin: NotePin, pos: { x: number; y: number }): void {
-    const entries: ContextMenuEntry[] = [
-      { type: 'item', ...pinOpenLook(pin), onClick: () => dispatchPinAction('open', pin, this.store) },
-      { type: 'item', label: t('pinMenu.edit'), icon: 'edit', onClick: () => dispatchPinAction('edit', pin, this.store) },
-      ...[readablePinEntry(this.store, pin)].filter((entry) => entry !== null),
-      ...pinNameEntries(this.store, pin),
-      { type: 'item', label: t('common.duplicate'), icon: 'files', onClick: () => this.store.getState().duplicateMapObjects([pin.id]) },
-      { type: 'item', label: t('common.delete'), icon: 'trash', destructive: true, onClick: () => this.store.getState().deleteMapObject('pin', pin.id) },
-    ];
-    openPinMenu(this.store, pin, entries, pos, this.pinnedSceneLevels);
+    openPinMenu(this.store, pin, pinMenuEntries(this.store, pin, pos), pos, this.pinnedSceneLevels);
   }
 
   private syncPins = (

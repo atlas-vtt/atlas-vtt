@@ -6,6 +6,8 @@ import { formatDistance, resolveMeasurementSettings, type MeasurementSettings } 
 import { areaMapOf } from '../../../../src/app/measure/areaOnMap';
 import type { FullMeasure, SharedMeasure } from '../../../../src/app/online/protocol/index.ts';
 import type { WallSegment } from '../../../../src/app/types/wallTypes';
+import { MEASURE_MOTION } from '../../../../src/app/pixi/measure/measurePresence';
+import { preferReducedMotion } from '../../../helpers/reducedMotion';
 
 const INTERVAL = 33;
 const FRAME = 25 / 3;
@@ -56,6 +58,8 @@ describe('RemoteMeasures', () => {
   };
 
   beforeEach(() => {
+    // What is drawn is read at its own size: growing in is the motion tests' (`remoteMeasureMotion`).
+    preferReducedMotion();
     // jsdom cannot measure text; a label's size plays no part in where it stands.
     vi.spyOn(Text.prototype, 'getLocalBounds').mockReturnValue(new Bounds(0, 0, 40, 18));
     rules = RULES;
@@ -66,6 +70,7 @@ describe('RemoteMeasures', () => {
   afterEach(() => {
     measures.destroy();
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it('moves the end being dragged between two messages, and its label with it', () => {
@@ -158,17 +163,23 @@ describe('RemoteMeasures', () => {
     expect(labels().map((label) => label.x).sort((a, b) => a - b)).toEqual([70, 140, 350]);
   });
 
-  it('forgets a sender who has no measurements left or is not named', () => {
+  it('forgets a sender who has no measurements left or is not named, once what they drew has faded out', () => {
+    vi.useFakeTimers();
+    const faded = (): void => { vi.advanceTimersByTime(MEASURE_MOTION.exit.ms + 50); };
     measures.update([measure(line(700))], 0);
     measures.update([measure(null)], 10);
     const empty = (): boolean => labels().length === 0 && measures.container.getLocalBounds().width === 0;
+    expect(empty()).toBe(false);
+    faded();
     expect(empty()).toBe(true);
     measures.update([measure(line(700))], 20);
     measures.update([], 30);
+    faded();
     expect(empty()).toBe(true);
     measures.update([full({ shape: 'circle', pts: [0, 0, 140, 0] })], 40);
     expect(bodies()?.getLocalBounds().width).toBeGreaterThan(0);
     measures.update([full(null)], 50);
+    faded();
     expect(empty()).toBe(true);
     expect(bodies()?.getLocalBounds().width).toBe(0);
   });
@@ -228,6 +239,7 @@ describe('RemoteMeasures', () => {
     });
 
     it('stop an area at the walls the rules name, unless its sender said that walls do not stop it; without walls it is whole', () => {
+      vi.useFakeTimers();
       const circle: FullMeasure = { shape: 'circle', pts: [350, 350, 630, 350] };
       measures.update([full(null, [circle])], 0);
       expect(reach()).toEqual({ left: 70, right: 630 });
@@ -238,6 +250,8 @@ describe('RemoteMeasures', () => {
       expect(reach()).toEqual({ left: 70, right: 630 });
       // One being drawn stops at them too, wherever its end is drawn.
       measures.update([full(circle)], 20);
+      // Once the kept one it replaces has faded out.
+      vi.advanceTimersByTime(MEASURE_MOTION.exit.ms + 50);
       expect(reach()).toEqual({ left: 70, right: 490 });
     });
 

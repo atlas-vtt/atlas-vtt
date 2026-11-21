@@ -8,6 +8,9 @@ import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { dieLabel, dieStates, droppedAny, rollLine } from '../../../tools/diceLabels';
 import { AdvantageTag, listsDice, RolledDiceLine } from '../dice/RolledDiceLine';
 import { t } from '../../../i18n';
+import { useRollLanded } from '../../../dice3d/rollsInFlight';
+import { withoutConstantLabels } from '../../../tools/namedModifiers';
+import { rollName } from '../dice3d/diceRollText';
 
 interface DiceRollEntryProps {
   result: DiceRollResult;
@@ -36,15 +39,18 @@ export function DiceRollEntry({ result, isNew, onRepeat }: DiceRollEntryProps): 
     return () => window.clearInterval(interval);
   }, [result.timestamp]);
 
+  // While its dice are in the air the entry tells nothing the throw has not shown: no total, crit or dice.
+  const landed = useRollLanded(result.id);
   const dropping = droppedAny(result.rolls);
-  const isCritSuccess = result.crit === 'high';
-  const isCritFail = result.crit === 'low';
+  const isCritSuccess = landed && result.crit === 'high';
+  const isCritFail = landed && result.crit === 'low';
 
   const source = result.source;
   const sourceTokenName = source?.tokenName ?? t('dice.unknown');
   const avatar = useDiceAvatar(source);
 
   const hasSource = source?.type === 'statblock' && source.tokenName;
+  const name = rollName(result);
 
   return (
     <div
@@ -55,7 +61,7 @@ export function DiceRollEntry({ result, isNew, onRepeat }: DiceRollEntryProps): 
         isCritSuccess && 'dice-log-entry--crit-success',
         isCritFail && 'dice-log-entry--crit-fail',
       )}
-      onClick={() => setIsExpanded(prev => !prev)}
+      onClick={() => { if (landed) setIsExpanded(prev => !prev); }}
     >
       {/* Chat-style avatar */}
       {hasSource && (
@@ -82,18 +88,16 @@ export function DiceRollEntry({ result, isNew, onRepeat }: DiceRollEntryProps): 
         {hasSource && (
           <span className="dice-log-entry__token-name">{sourceTokenName}</span>
         )}
-        {source?.abilityName && (
-          <span className="dice-log-entry__ability-name">{source.abilityName}</span>
-        )}
+        {name && <span className="dice-log-entry__ability-name">{name}</span>}
         <AdvantageTag side={result.advantage} />
 
         {/* Summary: formula = total */}
         <div className="dice-log-entry__summary">
-          {listsDice(result)
+          {landed && listsDice(result)
             ? <RolledDiceLine result={result} className="dice-log-entry__formula" />
-            : <span className="dice-log-entry__formula">{rollLine(result)}</span>}
+            : <span className="dice-log-entry__formula">{landed ? rollLine(result) : withoutConstantLabels(result.formula)}</span>}
           <span className="dice-log-entry__eq">=</span>
-          <span className="dice-log-entry__total">{result.total}</span>
+          <span className="dice-log-entry__total">{landed ? result.total : '…'}</span>
         </div>
 
         {/* Footer: callout + reroll on same row */}
@@ -113,7 +117,7 @@ export function DiceRollEntry({ result, isNew, onRepeat }: DiceRollEntryProps): 
         </div>
 
         {/* Expanded dice detail */}
-        {isExpanded && (
+        {landed && isExpanded && (
           <div className="dice-log-entry__details">
             {result.rolls.map((roll, i) => (
               <span

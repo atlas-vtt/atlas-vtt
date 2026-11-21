@@ -1,29 +1,30 @@
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useId, useRef, useState } from 'react';
 import { cn } from '../../../../utils/cn';
-import { Button } from '../../../packages/components/primitives/button';
-import { ToggleSwitch } from '../../../packages/components/primitives/Toggle';
-import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { emptyTrayMemory, type DiceTrayMemory, type TrayRoll } from '../../../tools/diceTrayMemory';
+import type { DicePreset, DiceRowSlot } from '../../../types/dicePresetTypes';
+import type { AdvantageSide } from '../../../types/diceSetTypes';
 import type { DiceRollResult } from '../../../types/diceTypes';
 import { DiceTrayAdvantage, SIDE_KEYS } from './DiceTrayAdvantage';
 import { DiceTrayDice } from './DiceTrayDice';
+import { DiceRowEditor } from './DiceRowEditor';
+import { DiceTrayActions } from './DiceTrayActions';
+import { DiceTrayShare, type ShareRolls } from './DiceTrayShare';
+import { designedPreset, rowDiceCounts, slotAlone, withSlot } from './diceTraySlots';
+import { STANDARD_ROW, STANDARD_ROW_CHANGE, type DiceShelf, type ShelfChange } from './diceShelf';
 import { DiceTrayFormula } from './DiceTrayFormula';
 import { DiceTrayModifier } from './DiceTrayModifier';
 import { DiceTrayHistoryList, DiceTrayHistoryToggle, historyTitle } from './DiceTrayHistory';
-import { MAX_DICE, MAX_PER_DIE, TRAY_DICE, TRAY_SURFACE, TRAY_TOOLTIP_GAP, clampModifier, diceCounts, trayDiceCount, writeTray, type TrayDie } from './diceTrayPool';
-import { modifierOf, parseableFormula, withDie, withModifier } from './diceTrayText';
+import { clampModifier } from './diceTrayPool';
+import { modifierOf, parseableFormula, withModifier } from './diceTrayText';
 import { advantageMoot, rollSide, statusMessage, trayStatus, type TrayAdvantage, type TrayCheck } from './diceTrayStatus';
 import { stopMapKeys, useDiceTrayKeys } from './useDiceTrayKeys';
 import { useSpokenOnce } from './useSpokenOnce';
+import { ANNOUNCE_REST_MS, useTrayAnnouncement } from './useTrayAnnouncement';
 import { t } from '../../../i18n';
 
 export type { TrayAdvantage } from './diceTrayStatus';
 
-/** The GM's switch for whether players see their rolls (`useShareRolls`). */
-export interface ShareRolls {
-  shown: boolean;
-  onToggle: () => void;
-}
+export type { ShareRolls } from './DiceTrayShare';
 
 interface DiceTrayProps {
   /** What the tray held when it last closed. */
@@ -52,20 +53,18 @@ interface DiceTrayProps {
   shareRolls?: ShareRolls | undefined;
   /** Left out where the set has no rule for either side. */
   advantage?: TrayAdvantage | undefined;
+  /** The collection's saved rolls and dice row (`diceShelf.ts`); left out, the seven standard dice. */
+  shelf?: DiceShelf | undefined;
+  /** Writes a change of the row; left out where it cannot change (a scene in no collection): no edit mode then. */
+  onShelfChange?: ((change: ShelfChange) => void) | undefined;
+  /** Tells whoever holds the tray what it holds now, as it changes (the saved rolls' panel saves it). */
+  onFormula?: ((formula: string) => void) | undefined;
+  /** Rolls a saved roll whose dice are designed (`look`) at once, with the side of advantage the tray holds. */
+  onRollPreset?: ((preset: DicePreset, side: AdvantageSide | null) => void) | undefined;
+  /** The saved rolls' panel: whether it stands open, and its switch (P). Left out where there is none. */
+  presetsPanel?: { open: boolean; onToggle: () => void } | undefined;
 }
 
-/** How long clicks and keys must rest before the tray says what it holds. */
-const ANNOUNCE_REST_MS = 500;
-
-/** A timeout set on the tray's own window (a popout has its own). */
-interface WindowTimer {
-  win: Window;
-  id: number;
-}
-
-function cancelTimer(timer: WindowTimer | null): void {
-  if (timer) timer.win.clearTimeout(timer.id);
-}
 
 /**
  * Seven bodies to click, a modifier and a formula field they write into, which
@@ -75,16 +74,19 @@ function cancelTimer(timer: WindowTimer | null): void {
  * the next roll. Shift-click rolls a single die at once, and the roll history
  * (the dice log's rolls) rolls an earlier roll again.
  */
-export function DiceTray({ memory, onRemember, check, onRoll, history, onRepeat, historyOpen, onHistoryOpen, onClose, mapKeys, shareRolls, advantage }: DiceTrayProps): React.ReactElement {
+export function DiceTray({
+  memory, onRemember, check, onRoll, history, onRepeat, historyOpen, onHistoryOpen, onClose, mapKeys, shareRolls, advantage,
+  shelf, onShelfChange, onFormula, onRollPreset, presetsPanel,
+}: DiceTrayProps): React.ReactElement {
+  const row = shelf?.row ?? STANDARD_ROW;
+  const presets = shelf?.presets ?? [];
+  // The row's edit mode: its dice wiggle and can be moved, taken out and added (`DiceRowEditor`).
+  const [editing, setEditing] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLInputElement>(null);
   const messageId = useId();
   const historyId = useId();
-  const shareId = useId();
   const [held, setHeld] = useState<DiceTrayMemory>(memory);
-  // What the tray holds now, said once a burst of clicks or keys has rested (never per keypress in the field).
-  const [announced, setAnnounced] = useState('');
-  const announceTimer = useRef<WindowTimer | null>(null);
   // What Clear took away, offered back by Restore in the message line until the dice or the side change again.
   const [cleared, setCleared] = useState<DiceTrayMemory | null>(null);
 
@@ -97,29 +99,21 @@ export function DiceTray({ memory, onRemember, check, onRoll, history, onRepeat,
     if ('formula' in patch || 'side' in patch) setCleared(null);
     latest.current = next;
     onRemember(next);
+    if ('formula' in patch) onFormula?.(next.formula);
     setHeld(next);
   };
   const keep = (patch: Partial<DiceTrayMemory>): void => edit(() => patch);
 
-  /** A change made by a click or key outside the field: its new formula is announced politely once it rests. */
-  const announce = (): void => {
-    const win = rootRef.current?.ownerDocument.defaultView ?? window;
-    cancelTimer(announceTimer.current);
-    const id = win.setTimeout(() => {
-      announceTimer.current = null;
-      const now = latest.current.formula.trim();
-      setAnnounced(now === '' ? t('diceRoll.announceEmpty') : t('diceRoll.announceTray', { formula: now }));
-    }, ANNOUNCE_REST_MS);
-    announceTimer.current = { win, id };
-  };
+  // A change made by a click or key outside the field: its new formula is announced politely once it rests.
+  const { announced, announce } = useTrayAnnouncement(rootRef, () => latest.current.formula);
   const editAnnounced = (change: (before: DiceTrayMemory) => Partial<DiceTrayMemory>): void => {
     edit(change);
     announce();
   };
-  useEffect(() => () => cancelTimer(announceTimer.current), []);
 
   const { formula, side } = held;
-  const counts = diceCounts(formula);
+  // The row's dice count only their own: the dice of a saved roll in the tray belong to that roll.
+  const counts = rowDiceCounts(formula, presets);
   const status = trayStatus(formula, side, advantage, check);
   const moot = advantageMoot(formula, advantage);
   const message = statusMessage(status, counts);
@@ -147,15 +141,23 @@ export function DiceTray({ memory, onRemember, check, onRoll, history, onRepeat,
     return true;
   };
 
-  const rollNow = (sides: TrayDie): void => {
-    const single = writeTray({ pool: { [sides]: 1 }, modifier: modifierOf(formula) });
-    roll({ formula: single, advantage: rollSide(single, side, advantage) });
+  /** A designed roll in the row rolls at once, whatever the tray holds: its dice are its own set. */
+  const rolledDesigned = (slot: DiceRowSlot): boolean => {
+    const preset = designedPreset(slot, presets);
+    if (!preset) return false;
+    onRollPreset?.(preset, side === 'normal' ? null : side);
+    return true;
   };
 
-  const addDie = (sides: TrayDie): void => editAnnounced((before) => {
-    const held = diceCounts(before.formula);
-    return (held[sides] ?? 0) >= MAX_PER_DIE || trayDiceCount(held) >= MAX_DICE ? {} : { formula: withDie(before.formula, sides, 1) };
-  });
+  const rollNow = (slot: DiceRowSlot): void => {
+    if (rolledDesigned(slot)) return;
+    const single = slotAlone(formula, slot, presets);
+    if (single !== null) roll({ formula: single, advantage: rollSide(single, side, advantage) });
+  };
+  const addSlot = (slot: DiceRowSlot): void => {
+    if (!rolledDesigned(slot)) editAnnounced((before) => ({ formula: withSlot(before.formula, slot, presets, 1) }));
+  };
+  const takeBack = (slot: DiceRowSlot): void => editAnnounced((before) => ({ formula: withSlot(before.formula, slot, presets, -1) }));
 
   const step = (delta: 1 | -1): void =>
     editAnnounced((before) => ({ formula: withModifier(before.formula, clampModifier(modifierOf(before.formula) + delta)) }));
@@ -174,15 +176,22 @@ export function DiceTray({ memory, onRemember, check, onRoll, history, onRepeat,
   };
 
   /**
-   * The tray's own keys: the number keys add the dice by their place in the row (1 is the first), `/` puts
-   * the caret in the formula field, S switches showing the rolls to players, N, A and D choose the side, + and
-   * − step the modifier.
+   * The tray's own keys: the number keys add the row's dice and saved rolls by their place (1 is the first, 0
+   * the tenth), `/` puts the caret in the formula field, S switches showing the rolls to players, P the saved
+   * rolls' panel, E the row's edit mode, N, A and D choose the side, + and − step the modifier. While the row is
+   * edited only E works, Escape ends the edit and Enter rolls nothing.
    */
   const shortcut = (key: string): boolean => {
-    const place = /^[1-9]$/.test(key) ? TRAY_DICE[Number(key) - 1] : undefined;
-    if (place !== undefined) addDie(place);
+    if (key === 'e' && onShelfChange) {
+      setEditing(!editing);
+      return true;
+    }
+    if (editing) return false;
+    const place = /^[0-9]$/.test(key) ? row[(Number(key) + 9) % 10] : undefined;
+    if (place !== undefined) addSlot(place);
     else if (key === '/') fieldRef.current?.focus();
     else if (key === 's' && shareRolls) shareRolls.onToggle();
+    else if (key === 'p' && presetsPanel) presetsPanel.onToggle();
     else if (key === '+' || key === '=') step(1);
     else if (key === '-' || key === '\u2212') step(-1);
     else {
@@ -194,9 +203,9 @@ export function DiceTray({ memory, onRemember, check, onRoll, history, onRepeat,
   };
 
   useDiceTrayKeys(rootRef, {
-    onClose,
+    onClose: () => (editing ? setEditing(false) : onClose()),
     mapKeys: (event) => mapKeys?.(event) ?? false,
-    onEnter: () => throwDice(),
+    onEnter: () => !editing && throwDice(),
     onShortcut: shortcut,
   });
 
@@ -206,12 +215,9 @@ export function DiceTray({ memory, onRemember, check, onRoll, history, onRepeat,
     <div ref={rootRef} className="atlas-dice-tray__content" onKeyDown={stopMapKeys}>
       {/* In a short window this part scrolls; Roll and Clear stay at the foot, in view. */}
       <div className="atlas-dice-tray__scroll">
-        <DiceTrayDice
-          counts={counts}
-          onAdd={addDie}
-          onTakeBack={(sides) => editAnnounced((before) => ({ formula: withDie(before.formula, sides, -1) }))}
-          onRollNow={rollNow}
-        />
+        {editing && shelf && onShelfChange
+          ? <DiceRowEditor shelf={shelf} onChange={onShelfChange} />
+          : <DiceTrayDice row={row} presets={presets} formula={formula} counts={counts} onAdd={addSlot} onTakeBack={takeBack} onRollNow={rollNow} />}
 
         <div className="atlas-dice-tray__group">
           {/* What to roll and what to add, side by side: the formula takes the room, the modifier its number. */}
@@ -249,16 +255,7 @@ export function DiceTray({ memory, onRemember, check, onRoll, history, onRepeat,
           {/* The history's toggle and the share switch share one row; the list unfolds under it, above Roll. */}
           <div className="atlas-dice-tray__bar">
             <DiceTrayHistoryToggle count={history.length} open={historyOpen} onToggle={() => onHistoryOpen(!historyOpen)} listId={historyId} />
-            {shareRolls && (
-              <div className="atlas-dice-tray__share">
-                {/* Short on the row; the switch's name and tooltip say it whole. */}
-                <span className="atlas-dice-tray__share-label" aria-hidden="true" onClick={shareRolls.onToggle}>{t('diceRoll.showToPlayers')}</span>
-                <span id={shareId} hidden>{t('dice.showRollsToPlayers')}</span>
-                <LabelTooltip label={t('dice.showRollsToPlayers')} shortcut="S" outside={TRAY_SURFACE} side="right" sideOffset={TRAY_TOOLTIP_GAP}>
-                  <ToggleSwitch value={shareRolls.shown} onChange={shareRolls.onToggle} labelledBy={shareId} />
-                </LabelTooltip>
-              </div>
-            )}
+            {shareRolls && <DiceTrayShare shareRolls={shareRolls} />}
           </div>
           <DiceTrayHistoryList
             history={history}
@@ -274,16 +271,19 @@ export function DiceTray({ memory, onRemember, check, onRoll, history, onRepeat,
         <span className="atlas-dice-tray__announce" role="status" aria-live="polite">{spokenMessage}</span>
       </div>
 
-      {/* Roll carries its key on its face (↵): a tooltip over it covered the rows above. */}
-      <div className="atlas-dice-tray__actions">
-        <Button className="atlas-dice-tray__roll" onClick={throwDice} disabled={status.kind !== 'ready' && !again} aria-keyshortcuts="Enter">
-          <span className="atlas-dice-tray__roll-label">{again ? t('diceRoll.rollAgain', { formula: historyTitle(again) }) : t('diceRoll.roll')}</span>
-          <kbd className="atlas-dice-tray__roll-key" aria-hidden="true">↵</kbd>
-        </Button>
-        <Button variant="ghost" className="atlas-dice-tray__clear" onClick={clear} disabled={!canClear}>
-          {t('diceRoll.clear')}
-        </Button>
-      </div>
+      <DiceTrayActions
+        rollLabel={again ? t('diceRoll.rollAgain', { formula: historyTitle(again) }) : t('diceRoll.roll')}
+        canRoll={status.kind === 'ready' || again !== undefined}
+        onRoll={() => { throwDice(); }}
+        canClear={canClear}
+        onClear={clear}
+        presetsPanel={presetsPanel}
+        rowEdit={onShelfChange && {
+          editing,
+          onToggle: () => setEditing(!editing),
+          onStandard: shelf?.ownRow ? () => onShelfChange(STANDARD_ROW_CHANGE) : null,
+        }}
+      />
     </div>
   );
 }

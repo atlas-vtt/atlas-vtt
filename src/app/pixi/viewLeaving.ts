@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../utils/typedEmitter';
 import type { App } from 'obsidian';
 import { findAtlasLeafByViewId } from '../utils/atlasLeafLookup';
 

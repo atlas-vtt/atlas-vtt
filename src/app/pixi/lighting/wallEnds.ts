@@ -1,12 +1,13 @@
 import { wallList } from '../../vision/wallList';
 import type { Point } from '../../types/visionTypes';
 import type { WallSegment } from '../../types/wallTypes';
+import { pointerReach } from '../utils/pointerReach';
 
 /** Screen pixels: how close to a wall's end a point lands on it. */
 const WALL_END_SNAP = 10;
 
 /** World pixels: how close to a wall's end a point lands on it at viewport `zoom`. */
-export const wallEndReach = (zoom: number): number => WALL_END_SNAP / zoom;
+export const wallEndReach = (zoom: number): number => pointerReach(WALL_END_SNAP) / zoom;
 
 /** World pixels: ends this close are one joint, which moves as one. */
 export const SHARED_END_TOLERANCE = 2;

@@ -57,6 +57,8 @@ export const RULE_CODES = [
   'json-invalid', 'json-too-large', 'json-too-deep', 'json-duplicate-key', 'json-shape', 'json-unknown-property', 'json-data-url',
   'json-forbidden-key',
   'base-yaml-unsupported', 'base-shape', 'base-expression',
+  'template-code',
+  'item-file-unexpected', 'item-file-missing', 'item-id-mismatch', 'item-built-in',
 ] as const;
 
 /** What only the checker finds: in the bytes it decodes, against the Armarium's history, or about the check itself. */
@@ -64,7 +66,7 @@ export const CHECKER_CODES = [
   'upload-corrupt', 'file-missing', 'file-unlisted', 'checksum-mismatch', 'text-encoding', 'image-not-image',
   'image-type-mismatch', 'image-type-converted', 'image-too-large', 'image-animated', 'image-decode', 'video-not-video',
   'video-codec', 'video-too-large', 'link-missing-file', 'blocked-file', 'listing-not-yours', 'version-not-higher',
-  'rebuild-too-large', 'check-too-slow', 'check-internal',
+  'format-changed', 'rebuild-too-large', 'check-too-slow', 'check-internal',
 ] as const;
 
 export type FindingCode = (typeof RULE_CODES)[number] | (typeof CHECKER_CODES)[number];
@@ -85,16 +87,37 @@ export interface CheckProgress {
   total: number;
 }
 
+export const KINDS = ['adventure', 'maps', 'tokens', 'templates', 'game-system', 'dice'] as const;
+export type ListingKind = (typeof KINDS)[number];
+
+/**
+ * What a listing's bundles hold: a collection, or one Atlas file shared as an item bundle. A listing keeps its format
+ * for every version (`format-changed`); answers from before items name none and read as `collection`.
+ */
+export const LISTING_FORMATS = ['collection', 'statblock-template', 'system-preset', 'dice-set'] as const;
+export type ListingFormat = (typeof LISTING_FORMATS)[number];
+
+/** The kind of every listing of an item's format. */
+export const ITEM_LISTING_KINDS: Readonly<Record<Exclude<ListingFormat, 'collection'>, ListingKind>> = {
+  'statblock-template': 'templates',
+  'system-preset': 'game-system',
+  'dice-set': 'dice',
+};
+
+/** The kind an item listing always has (the Armarium sets it whatever is sent); null for a collection, whose creator chooses. */
+export function kindOfFormat(format: ListingFormat): ListingKind | null {
+  return format === 'collection' ? null : ITEM_LISTING_KINDS[format];
+}
+
 /** What the listing shows from the bundle's manifest: name, version and notes come from the export. */
 export interface ManifestSummary {
   uid: string;
   version: number;
   name: string;
   notes: string | null;
+  /** What the bundle is: a collection, or which single Atlas file. */
+  listingFormat: ListingFormat;
 }
-
-export const KINDS = ['adventure', 'maps', 'tokens', 'templates', 'game-system'] as const;
-export type ListingKind = (typeof KINDS)[number];
 
 export const LICENCES = ['cc0', 'cc-by-4.0', 'cc-by-sa-4.0', 'cc-by-nc-4.0', 'all-rights-reserved'] as const;
 export type LicenceId = (typeof LICENCES)[number];
@@ -102,6 +125,31 @@ export type LicenceId = (typeof LICENCES)[number];
 /** Atlas's built-in game systems by preset key, and `any`. */
 export const SYSTEMS = ['any', 'cairn', 'coc7e', 'cyberpunkred', 'daggerheart', 'dnd5e', 'drawsteel', 'ose', 'pathfinder2e', 'shadowdark'] as const;
 export type SystemId = (typeof SYSTEMS)[number];
+
+/** The names the Armarium shows the known systems under; a shared game system's name is matched against them. */
+export const SYSTEM_NAMES: Readonly<Record<SystemId, string>> = {
+  any: 'Any system',
+  cairn: 'Cairn',
+  coc7e: 'Call of Cthulhu',
+  cyberpunkred: 'Cyberpunk RED',
+  daggerheart: 'Daggerheart',
+  dnd5e: 'D&D 5e',
+  drawsteel: 'Draw Steel',
+  ose: 'Old-School Essentials',
+  pathfinder2e: 'Pathfinder 2e',
+  shadowdark: 'Shadowdark',
+};
+
+/** What two system names are compared by: letters and digits only, in lower case ("Draw-Steel" is `drawsteel`). */
+export function systemKey(value: string): string {
+  return value.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+/** The known system a name means, by its id or its name. */
+export function knownSystemOf(value: string): SystemId | null {
+  const key = systemKey(value);
+  return key === '' ? null : SYSTEMS.find((id) => key === systemKey(id) || key === systemKey(SYSTEM_NAMES[id])) ?? null;
+}
 
 /** The tags a creator ticks from, grouped as the picker shows them. Ids never change: listings store them. */
 export const TAG_GROUPS = [
@@ -179,7 +227,11 @@ export interface SubmissionView {
 export interface OwnListing {
   uid: string;
   slug: string;
+  /** What its bundles hold, the same for every version. */
+  format: ListingFormat;
   fields: ListingFields | null;
   /** The newest published version; null for a listing without one. */
   newestVersion: number | null;
+  /** The public URL of its cover at full size; null without one. An item's next version keeps it unless changed. */
+  coverUrl: string | null;
 }

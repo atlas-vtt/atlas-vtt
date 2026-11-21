@@ -285,6 +285,9 @@ export class GridSystem implements UnlitGrid {
   private follow(map: MosaicCanvasView): () => void {
     return map.onChange((change) => {
       if (change === 'image') this.mapImageChanged();
+      // The same pixels drawn elsewhere (a floor moved, a stretch): the grid is clipped to the new rect, and the colour
+      // read from those pixels stays, so the grid never waits for it (a read per step of a drag hid it meanwhile).
+      else if (change === 'placement') this.createGrid();
     });
   }
 

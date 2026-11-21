@@ -17,6 +17,7 @@ export const armarium = {
   'armarium.versionChanged': '{name} changed since the page was loaded: version {version} is offered now. Reload the Armarium and try again.',
   'armarium.downloading': 'Downloading {name}…',
   'armarium.downloadFailed': '{name} could not be downloaded. Check your connection and try again.',
+  'armarium.otherListing': 'The Armarium\'s file names another listing than the one asked for, so nothing was installed.',
   'armarium.mismatch': 'The download of {name} is not the file the Armarium lists, so nothing was installed.',
   'armarium.failed': 'Installing from the Armarium failed.',
   'armarium.badLink': 'This install link is incomplete. Open the collection in the Armarium and try again.',

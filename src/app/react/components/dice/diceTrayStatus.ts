@@ -5,7 +5,8 @@
 import { FORMULA_LIMITS, parseFormula, type FormulaError, type FormulaErrorCode } from '../../../tools/parseFormula';
 import type { AdvantageSide } from '../../../types/diceSetTypes';
 import type { TrayAdvantageChoice } from '../../../tools/diceTrayMemory';
-import { MAX_DICE, MAX_PER_DIE, TRAY_DICE, trayDiceCount, type TrayPool } from './diceTrayPool';
+import { writtenSide } from '../../../tools/writtenAdvantage';
+import { MAX_DICE, MAX_PER_DIE, trayDiceCount, type TrayPool } from './diceTrayPool';
 import { modifierOf, parseableFormula } from './diceTrayText';
 import { t } from '../../../i18n';
 
@@ -34,7 +35,8 @@ export type TrayStatus =
 export function advantageMoot(text: string, advantage: TrayAdvantage | undefined): boolean {
   if (!advantage) return false;
   const formula = parseableFormula(text);
-  const parsed = formula === '' ? null : parseFormula(formula);
+  const dice = writtenSide(formula).formula;
+  const parsed = dice === '' ? null : parseFormula(dice);
   return parsed?.ok === true && parsed.terms.some((term) => term.kind === 'dice') && !advantage.applies(formula);
 }
 
@@ -46,9 +48,12 @@ export function rollSide(text: string, choice: TrayAdvantageChoice, advantage: T
 export function trayStatus(text: string, choice: TrayAdvantageChoice, advantage: TrayAdvantage | undefined, check: TrayCheck): TrayStatus {
   const formula = parseableFormula(text);
   if (formula === '') return { kind: 'empty' };
-  const parsed = parseFormula(formula);
-  if (!parsed.ok) return { kind: 'invalid', formula, code: parsed.code, byAdvantage: false };
-  if (!parsed.terms.some((term) => term.kind === 'dice')) return { kind: 'no-dice', modifier: modifierOf(text) };
+  // A side written last (`1d20+5 adv`) is the dice tool's to read: the formula before it must parse.
+  // The word alone (`adv`) rolls the set's dice, as an empty formula does.
+  const written = writtenSide(formula);
+  const parsed = written.formula === '' ? null : parseFormula(written.formula);
+  if (parsed && !parsed.ok) return { kind: 'invalid', formula, code: parsed.code, byAdvantage: false };
+  if (!written.side && !parsed?.terms.some((term) => term.kind === 'dice')) return { kind: 'no-dice', modifier: modifierOf(text) };
   const plain = check(formula, null);
   if (plain) return { kind: 'invalid', formula, code: plain.code, byAdvantage: false };
   const side = rollSide(text, choice, advantage);
@@ -92,13 +97,14 @@ function refusal(formula: string, code: FormulaErrorCode, byAdvantage: boolean):
     case 'terms': return t('diceRoll.errorTerms', { max: FORMULA_LIMITS.terms });
     case 'depth': return t('diceRoll.errorDepth', { max: FORMULA_LIMITS.depth });
     case 'total': return t('diceRoll.errorTotal');
+    case 'advantage': return t('dice.formulaError.advantage');
   }
 }
 
 /** Why clicks put no more dice in the tray, where they do not; null while they do. */
 function limitReached(counts: TrayPool): string | null {
   if (trayDiceCount(counts) >= MAX_DICE) return t('diceRoll.limitTotal', { max: MAX_DICE });
-  const full = TRAY_DICE.find((sides) => (counts[sides] ?? 0) >= MAX_PER_DIE);
+  const full = Object.keys(counts).map(Number).find((sides) => (counts[sides] ?? 0) >= MAX_PER_DIE);
   return full ? t('diceRoll.limitDie', { max: MAX_PER_DIE, sides: full }) : null;
 }
 

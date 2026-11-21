@@ -181,6 +181,13 @@ $rt-row-height: $button-height-m;
   opacity: 1;
 }
 
+@include atlas-hover-reveal {
+  .atlas-rt-row .atlas-rt-row__remove.btn--icon,
+  .atlas-rt-rarity .atlas-rt-row__remove.btn--icon {
+    opacity: 1;
+  }
+}
+
 .atlas-rt-row__options {
   @include atlas-flex-col(0);
   padding: 0 $spacing-s $spacing-xs calc(#{$spacing-s} * 2 + #{$icon-xs});

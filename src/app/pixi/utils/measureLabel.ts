@@ -1,5 +1,6 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import { NAMEPLATE_TEXT, TOKEN_TEXT_RESOLUTION } from '../token-renderer/tokenSizing';
+import { mixColor } from '../../styles/designTokens';
 import { canvasBadgeColors, isDarkTheme } from './canvasBadgeColors';
 import { INK_SHADE } from './canvasInk';
 import { destroyTree } from './destroyTree';
@@ -8,12 +9,7 @@ import { LABEL_LOOK, labelCenter, labelScale, labelTextResolution, pillSize, typ
 /** The label's colours: the nameplate's, its rim mixed opaque from the nameplate's translucent border. */
 export function labelColors(): { readonly text: number; readonly background: number; readonly border: number } {
   const { background, stroke } = canvasBadgeColors();
-  return { text: stroke, background, border: mix(background, stroke, isDarkTheme() ? 0.4 : 0.3) };
-}
-
-function mix(from: number, to: number, share: number): number {
-  const channel = (shift: number): number => Math.round(((from >> shift) & 0xff) * (1 - share) + ((to >> shift) & 0xff) * share);
-  return (channel(16) << 16) | (channel(8) << 8) | channel(0);
+  return { text: stroke, background, border: mixColor(background, stroke, isDarkTheme() ? 0.4 : 0.3) };
 }
 
 /** The screen's pixels per CSS pixel, where there is a screen. */

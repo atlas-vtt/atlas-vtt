@@ -6,14 +6,6 @@
 import type { InitiativeSide, SideId, SideRef } from './initiativeRulesTypes';
 
 /**
- * Configuration for the initiative tracker
- */
-export interface InitiativeConfig {
-  /** Whether to auto-sort entries by initiative value after rolling */
-  autoSort: boolean;
-}
-
-/**
  * A single entry in the initiative tracker
  */
 export interface InitiativeEntry {
@@ -28,9 +20,6 @@ export interface InitiativeEntry {
 
   /** Display name */
   name: string;
-
-  /** The colour the GM gave the card, `#rrggbb`; read with `combatantColor`. Older versions ignore it. */
-  color?: string | undefined;
 
   /** Rolled initiative value (after modifiers) */
   initiative: number;
@@ -102,12 +91,6 @@ export interface InitiativeEntry {
   /** The conditions of a combatant without a token (a player at the table, an enemy added by name); a token keeps its own. */
   conditions?: string[];
   conditionValues?: Record<string, number>;
-
-  /**
-   * How many of the combatant's own turns a condition still lasts, by condition id (`combatantConditions.ts`):
-   * counted down as a turn it held ends, and the condition ends at 0. A condition not named here lasts until taken away.
-   */
-  conditionTurns?: Record<string, number>;
 }
 
 /** A fight by sides as it runs: which side has the turn, and in what order the sides act. */
@@ -155,9 +138,6 @@ export interface InitiativeState {
   /** Whether combat is currently active */
   isActive: boolean;
 
-  /** Configuration for initiative calculation */
-  config: InitiativeConfig;
-
   /**
    * Set while a fight runs by sides: the side that acts first in a round and the one whose
    * turn it is. A fight keeps the mode it was started in, whatever the collection's rules say since.
@@ -172,28 +152,7 @@ export interface InitiativeState {
    * over the start puts their marks back. Only rounds that cleared something are kept.
    */
   satOut?: Record<string, string[]>;
-
-  /**
-   * What the end of each turn counted off the conditions of whoever held it, by the turn's `turnKey`, so that stepping
-   * back to the turn gives it back (`countBackConditions`). Only turns that counted something are kept; a fight's end clears them.
-   */
-  conditionCountdowns?: Record<string, CountedDown[]>;
 }
-
-/** One condition a turn's end counted down (`countDownConditions`): a turn off it, or its end. */
-export interface CountedDown {
-  entryId: string;
-  conditionId: string;
-  /** The condition ended with this turn; its number where it had one, to give it back with. */
-  ended?: { value?: number };
-}
-
-/**
- * Default configuration for initiative
- */
-export const DEFAULT_INITIATIVE_CONFIG: InitiativeConfig = {
-  autoSort: true,
-};
 
 /**
  * Default empty initiative state
@@ -203,5 +162,4 @@ export const createDefaultInitiativeState = (): InitiativeState => ({
   currentIndex: -1,
   round: 0,
   isActive: false,
-  config: { ...DEFAULT_INITIATIVE_CONFIG },
 });

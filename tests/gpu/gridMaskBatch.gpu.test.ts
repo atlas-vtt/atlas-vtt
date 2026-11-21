@@ -1,5 +1,5 @@
 import '../setup/obsidianDom';
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { Container, EventEmitter as PixiEmitter, RenderTexture, Sprite, Texture, type Application } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { describe, expect, it } from 'vitest';

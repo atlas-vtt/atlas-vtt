@@ -11,7 +11,7 @@ import { nextSideTurn, previousSideTurn, type SideTurnInputs } from '../initiati
 import { actNow, delayTurn, endDelays, firstTurn, nextOrderTurn, previousOrderTurn } from '../initiative/turnOrder';
 import { swapCards } from '../initiative/cardDeal';
 import { fightDraws, roundChangesOf, sideInputs, startFight, type FightDraws } from './initiativeFightStart';
-import { clearCombatantConditions, countBackConditions, countDownConditions, setCombatantCondition, setCombatantConditionTurns, turnHoldersNow } from '../initiative/combatantConditions';
+import { clearCombatantConditions, setCombatantCondition } from '../initiative/combatantConditions';
 
 /** No fight runs any more: no turn, round, sides or cards, nobody sitting out or delayed. */
 function endFight(initiative: InitiativeState): void {
@@ -24,7 +24,6 @@ function endFight(initiative: InitiativeState): void {
   for (const entry of initiative.entries) delete entry.card;
   clearSittingOut(initiative);
   endDelays(initiative);
-  delete initiative.conditionCountdowns;
 }
 
 /** Entry ids whose combatant is defeated (the card's skull): turns pass them by. */
@@ -50,8 +49,6 @@ export interface InitiativeTurnActions {
   swapInitiativeCards: (id: string, withId: string) => void;
   /** Gives a combatant a condition or takes it away: on its token, or on an entry without one. */
   setCombatantCondition: (id: string, conditionId: string, on: boolean) => void;
-  /** How many of its turns a combatant's condition lasts; null, until taken away. */
-  setCombatantConditionTurns: (id: string, conditionId: string, turns: number | null) => void;
 }
 
 export interface TurnStoreState {
@@ -64,16 +61,6 @@ export interface TurnStoreState {
 type ImmerSet = (fn: (draft: TurnStoreState) => void) => void;
 
 const NOBODY: DefeatedCombatants = new Set();
-
-function step(draft: TurnStoreState, defeated: DefeatedCombatants, draws: FightDraws, forward: boolean): void {
-  const before = turnHoldersNow(draft);
-  move(draft, defeated, draws, forward);
-  const after = turnHoldersNow(draft);
-  if (before.key === after.key) return;
-  // A turn that ends counts down the conditions of whoever held it; a step back to it gives that back
-  if (forward) countDownConditions(draft, before.ids, before.key);
-  else countBackConditions(draft, after.key);
-}
 
 function move(draft: TurnStoreState, defeated: DefeatedCombatants, draws: FightDraws, forward: boolean): void {
   const { initiative } = draft;
@@ -96,12 +83,12 @@ export function createInitiativeTurnActions(set: ImmerSet, get: () => TurnStoreS
   return {
     nextTurn: (defeated = NOBODY) => {
       const draws = fightDraws(get().initiative, random);
-      set((draft) => step(draft, defeated, draws, true));
+      set((draft) => move(draft, defeated, draws, true));
     },
 
     previousTurn: (defeated = NOBODY) => {
       const draws = fightDraws(get().initiative, random);
-      set((draft) => step(draft, defeated, draws, false));
+      set((draft) => move(draft, defeated, draws, false));
     },
 
     startCombat: (rules, defeated = NOBODY) => {
@@ -155,6 +142,5 @@ export function createInitiativeTurnActions(set: ImmerSet, get: () => TurnStoreS
 
     setCombatantCondition: (id, conditionId, on) => set((draft) => setCombatantCondition(draft, id, conditionId, on)),
 
-    setCombatantConditionTurns: (id, conditionId, turns) => set((draft) => setCombatantConditionTurns(draft, id, conditionId, turns)),
   };
 }

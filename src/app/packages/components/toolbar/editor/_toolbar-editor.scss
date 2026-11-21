@@ -12,7 +12,7 @@
 $tray-inset: $surface-inset;
 $tray-control: $button-height-m;
 // The tray's controls run concentric with its corner, capped at half their height.
-$tray-end-radius: atlas-panel-inset-radius-value($tray-inset, $tray-control * 0.5);
+$tray-end-radius: atlas-panel-inset-radius-value($tray-inset, calc(#{$tray-control} * 0.5));
 
 // Over the bar's cell of the bottom row without taking a cell of its own (an absolutely
 // positioned grid child), so the row's measured space and the bar's corners stay as they are.
@@ -206,8 +206,10 @@ $tray-end-radius: atlas-panel-inset-radius-value($tray-inset, $tray-control * 0.
   cursor: grab;
   touch-action: none;
 
-  &:hover {
-    background: var(--background-modifier-hover);
+  @media (hover: hover) {
+    &:hover {
+      background: var(--background-modifier-hover);
+    }
   }
 
   &:focus,

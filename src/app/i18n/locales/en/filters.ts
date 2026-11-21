@@ -14,6 +14,7 @@ export const filters = {
   'filters.title': 'Filters',
   'filters.close': 'Close filters',
   'filters.hint': 'Click an option to require it, double-click to exclude it.',
+  'filters.hint.touch': 'Tap an option to require it, tap it again to exclude it.',
   'filters.statblock': 'Statblock',
   'filters.layout': 'Layout',
   'filters.template': 'Template',

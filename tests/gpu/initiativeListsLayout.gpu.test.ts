@@ -2,7 +2,7 @@ import '../setup/obsidianDom';
 import React from 'react';
 import { render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import css from '../../styles/main.scss?inline';
 import type { ConditionDefinition } from '../../src/app/types/collectionSettingsTypes';
 
@@ -65,8 +65,8 @@ async function showTracker({ names = false, layout = {}, sides = false, turn = 3
   await page.viewport(1200, 900);
   const { app } = createInMemoryApp({ files: {} });
   const settings = new SettingsService(app);
-  settings.setInitiativeNames(names);
-  settings.setInitiativeLayout({ fromTurn: true, dock: 'right', collapsed: false, ...layout });
+  settings.setCompactInitiative(names);
+  settings.setInitiativeLayout({ fromTurn: true, dock: 'right', ...layout });
   const store = createViewAtlasStore(app, `initiative-lists-${Math.random()}`);
   store.setState({
     persistenceEnabled: false,
@@ -107,8 +107,8 @@ const shown = (element: Element): boolean => getComputedStyle(element).display !
 /** The panel's padding on all sides and the gaps between its parts are one value. */
 function expectUniform(panel: HTMLElement, value: number): void {
   const border = parseFloat(getComputedStyle(panel).borderTopWidth);
-  // The panel's surface is a layer behind its parts, not one of them
-  const parts = [...panel.children].filter((part) => shown(part) && !part.classList.contains('atlas-player-initiative__surface')).map(box);
+  // The panel's surface is a layer behind its parts, not one of them, and the GM's bars float outside it
+  const parts = [...panel.children].filter((part) => shown(part) && !part.classList.contains('atlas-initiative-panel__surface') && !part.classList.contains('atlas-initiative-tracker__float') && !part.classList.contains('atlas-initiative-panel__surface') && !part.classList.contains('atlas-initiative-tracker__reach') && !part.classList.contains('atlas-initiative-panel__round') && !part.classList.contains('atlas-initiative-panel__top-shade')).map(box);
   const frame = box(panel);
   expect(parts[0]!.top - frame.top - border).toBeCloseTo(value, 0);
   expect(frame.bottom - border - parts.at(-1)!.bottom).toBeCloseTo(value, 0);
@@ -119,6 +119,34 @@ function expectUniform(panel: HTMLElement, value: number): void {
   for (let i = 1; i < parts.length; i++) expect(parts[i]!.top - parts[i - 1]!.bottom).toBeCloseTo(value, 0);
 }
 
+/**
+ * A row's inset and gaps are one value: its parts stand that far inside its border on every side, the names of rounds
+ * and sides that far from their cards, the cards that far apart; and every card's corner is concentric with the panel's.
+ */
+function expectRowUniform(panel: HTMLElement, value: number): void {
+  const border = parseFloat(getComputedStyle(panel).borderTopWidth);
+  const frame = box(panel);
+  // The round and the shade over the list's start lie over the cards and take no room, as in the column
+  const overlays = ['atlas-initiative-panel__surface', 'atlas-initiative-panel__round', 'atlas-initiative-panel__top-shade'];
+  const parts = [...panel.children].filter((part) => shown(part) && !overlays.some((name) => part.classList.contains(name))).map(box).sort((a, b) => a.left - b.left);
+  for (const part of parts) {
+    expect(part.top - frame.top - border).toBeCloseTo(value, 0);
+    expect(frame.bottom - border - part.bottom).toBeCloseTo(value, 0);
+  }
+  expect(parts[0]!.left - frame.left - border).toBeCloseTo(value, 0);
+  expect(frame.right - border - parts.at(-1)!.right).toBeCloseTo(value, 0);
+  // Along the row: labels, cards and the line between rounds, in the order they stand
+  const items = [...panel.querySelectorAll('.atlas-initiative-card, .atlas-initiative-side__label, .atlas-initiative-round')]
+    .map(box).sort((a, b) => a.left - b.left);
+  for (let i = 1; i < items.length; i++) {
+    const gap = items[i]!.left - items[i - 1]!.right;
+    // A round's last card and the next round's name have the slim line and its two gaps between them
+    expect(Math.abs(gap - value) < 0.5 || Math.abs(gap - (2 * value + 2)) < 0.5, `gap ${gap}`).toBe(true);
+  }
+  const radius = insetRadius(panel, value);
+  for (const card of panel.querySelectorAll('.atlas-initiative-card')) expect(parseFloat(getComputedStyle(card).borderTopLeftRadius)).toBeCloseTo(radius, 1);
+}
+
 /** Nothing a card holds reaches past the card's sides, and no card past its list. */
 function expectNoOverflow(list: HTMLElement, cardSelector: string): void {
   const frame = box(list);
@@ -127,7 +155,8 @@ function expectNoOverflow(list: HTMLElement, cardSelector: string): void {
     expect(outer.left).toBeGreaterThanOrEqual(frame.left - 0.5);
     expect(outer.right).toBeLessThanOrEqual(frame.right + 0.5);
     for (const part of card.querySelectorAll('*')) {
-      if (!shown(part)) continue;
+      // The red of the life lost slides in from past the art's edge, which clips it
+      if (!shown(part) || part.classList.contains('atlas-initiative-wound')) continue;
       expect(box(part).left).toBeGreaterThanOrEqual(outer.left - 0.5);
       expect(box(part).right).toBeLessThanOrEqual(outer.right + 0.5);
     }
@@ -145,29 +174,95 @@ function insetRadius(panel: HTMLElement, inset: number): number {
 
 describe('the GM\'s initiative tracker', () => {
   const style = document.createElement('style');
-  style.textContent = THEME + css;
+  // The bars show and hide at once, so they are measured where they come to rest
+  style.textContent = THEME + css + '.atlas-initiative-tracker__float { transition: none !important; }';
   beforeEach(() => document.head.append(style));
   afterEach(() => style.remove());
 
-  it('keeps its padding and the gaps between its parts equal, its corner controls concentric, nothing past its cards at 96 and 168 px', async () => {
+  it('keeps its padding and the gaps between its parts equal, its corner controls concentric, nothing past its cards at 96 and 216 px', async () => {
     for (const names of [false, true]) {
       const tracker = await showTracker({ names });
-      expect(box(tracker).width).toBe(names ? 168 : 96);
+      expect(box(tracker).width).toBe(names ? 216 : 96);
       // $surface-inset: its corner controls run concentric with the panel's
       expectUniform(tracker, 4);
-      expectNoOverflow(tracker.querySelector('.atlas-initiative-tracker__content')!, '.atlas-initiative-card');
+      expectNoOverflow(tracker.querySelector('.atlas-initiative-panel__list')!, '.atlas-initiative-card');
 
-      const radius = insetRadius(tracker, 4);
-      const toggle = tracker.querySelector('.atlas-initiative-tracker__collapse')!;
-      expect(parseFloat(getComputedStyle(toggle).borderTopLeftRadius)).toBeCloseTo(radius, 1);
-      expect(parseFloat(getComputedStyle(toggle).borderTopRightRadius)).toBeCloseTo(radius, 1);
-      const [previous, next] = [...tracker.querySelectorAll('.atlas-initiative-tracker__turn-controls button')];
-      expect(parseFloat(getComputedStyle(previous!).borderBottomLeftRadius)).toBeCloseTo(radius, 1);
-      expect(parseFloat(getComputedStyle(next!).borderBottomRightRadius)).toBeCloseTo(radius, 1);
-      // The controls of one row are as tall as each other
-      const heights = [...tracker.querySelectorAll('.atlas-initiative-tracker__controls button, .atlas-initiative-tracker__turn-controls button')].map((button) => box(button).height);
-      expect(new Set(heights).size).toBe(1);
+      // Without the Atlas VTT theme there is no ivy
+      expect(getComputedStyle(tracker, '::before').backgroundImage).toBe('none');
+      expect(getComputedStyle(tracker, '::after').backgroundImage).toBe('none');
+      // The round at the list's foot, in the players' words
+      expect(tracker.querySelector('.atlas-initiative-panel__round')?.textContent).toBe('Round 2');
+      // It takes no room: the list runs to the border's inset beneath it, and it lies over the list's foot
+      const round = box(tracker.querySelector('.atlas-initiative-panel__round')!);
+      const content = box(tracker.querySelector('.atlas-initiative-panel__list')!);
+      expect(box(tracker).bottom - parseFloat(getComputedStyle(tracker).borderBottomWidth) - round.bottom).toBeCloseTo(0, 0);
+      expect(round.top).toBeLessThan(content.bottom);
+      expect(getComputedStyle(tracker.querySelector('.atlas-initiative-panel__round')!).pointerEvents).toBe('none');
+
+      // The bars float $spacing-s above and below the panel, in the middle of its width: capsules whose buttons are
+      // concentric with them and as tall as each other
+      await userEvent.hover(tracker);
+      const panel = box(tracker);
+      const top = tracker.querySelector<HTMLElement>('.atlas-initiative-tracker__float--top')!;
+      const bottom = tracker.querySelector<HTMLElement>('.atlas-initiative-tracker__float--bottom')!;
+      // Within half a pixel: Chromium draws the panel's 1.5 px border 1 px wide at this pixel ratio
+      expect(Math.abs(panel.top - box(top).bottom - 8)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(box(bottom).top - panel.bottom - 8)).toBeLessThanOrEqual(0.5);
+      for (const bar of [top, bottom]) {
+        const frame = box(bar);
+        expect((frame.left + frame.right) / 2).toBeCloseTo((panel.left + panel.right) / 2, 0);
+        expect(parseFloat(getComputedStyle(bar).borderTopLeftRadius)).toBeGreaterThanOrEqual(frame.height / 2);
+        for (const button of bar.querySelectorAll('button')) {
+          expect(box(button).height).toBe(28);
+          // A capsule too: the bar's inner radius less the inset is half its height
+          expect(parseFloat(getComputedStyle(button).borderTopLeftRadius)).toBeCloseTo(14, 1);
+        }
+      }
+      expect(top.querySelectorAll('button')).toHaveLength(3);
+      expect(bottom.querySelectorAll('button')).toHaveLength(2);
       await page.screenshot({ path: `${SHOTS}/gm-${names ? 'names' : 'normal'}.png`, element: tracker });
+    }
+  });
+
+  it('fades the cards that pass under its top edge once the list is scrolled, with a shade as tall as the round\'s', async () => {
+    const tracker = await showTracker();
+    await page.viewport(1200, 330);
+    const content = tracker.querySelector<HTMLElement>('.atlas-initiative-panel__list')!;
+    const shade = tracker.querySelector<HTMLElement>('.atlas-initiative-panel__top-shade')!;
+    const opacityAt = async (scrollTop: number): Promise<number> => {
+      content.style.scrollBehavior = 'auto';
+      content.scrollTop = scrollTop;
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      return Number(getComputedStyle(shade).opacity);
+    };
+    expect(content.scrollHeight).toBeGreaterThan(content.clientHeight + 60);
+    expect(await opacityAt(0)).toBe(0);
+    expect(await opacityAt(22)).toBeCloseTo(0.5, 1);
+    expect(await opacityAt(60)).toBe(1);
+    await page.screenshot({ path: `${SHOTS}/gm-scrolled.png`, element: tracker });
+
+    // From the panel's border, as the round's shade is from its bottom border, and as tall
+    const frame = box(tracker);
+    const border = parseFloat(getComputedStyle(tracker).borderTopWidth);
+    expect(box(shade).top - frame.top - border).toBeCloseTo(0, 0);
+    expect(box(shade).height).toBeCloseTo(box(tracker.querySelector('.atlas-initiative-panel__round')!).height, 0);
+    expect(getComputedStyle(shade).pointerEvents).toBe('none');
+  });
+
+  it('keeps a card and its round in a pane shorter than its clearance, and room for its bars in a tall one', async () => {
+    const tracker = await showTracker();
+    // At most 900 px of view less the clearance above and below and a bar's room (39 px and 8 px of gap) on each side
+    expect(box(tracker).height).toBeLessThanOrEqual(486);
+
+    for (const height of [420, 330, 200]) {
+      await page.viewport(1200, height);
+      const content = box(tracker.querySelector('.atlas-initiative-panel__list')!);
+      const cards = [...tracker.querySelectorAll('.atlas-initiative-card')].map(box);
+      const whole = cards.filter((card) => card.top >= content.top - 0.5 && card.bottom <= content.bottom + 0.5);
+      expect(whole.length, `${height} px`).toBeGreaterThanOrEqual(1);
+      const round = box(tracker.querySelector('.atlas-initiative-panel__round')!);
+      expect(round.bottom, `${height} px`).toBeLessThanOrEqual(box(tracker).bottom);
+      expect(round.height, `${height} px`).toBeGreaterThan(10);
     }
   });
 
@@ -183,36 +278,35 @@ describe('the GM\'s initiative tracker', () => {
     await page.screenshot({ path: `${SHOTS}/gm-rotated.png`, element: tracker });
   });
 
-  it('draws conditions as the map does, 18 px badges inside the card, a valued one with its number', async () => {
+  it('shows only the art, the number and the look-alike\'s number: red rises in the art by the hit points lost, no bar, no conditions', async () => {
     const tracker = await showTracker();
     const card = tracker.querySelector('[aria-label="Goblin Archer of the Western Hills"]')!;
-    const badges = [...card.querySelectorAll('.atlas-condition-badge')];
-    expect(badges).toHaveLength(4);
-    for (const badge of badges) expect(box(badge).width).toBe(18);
-    const pip = card.querySelector('.atlas-condition-badge__value')!;
-    expect(pip.textContent).toBe('2');
-    // The number overhangs its badge, never into the next one
-    expect(box(pip).right).toBeLessThan(box(badges[1]!).left);
+    expect(card.querySelector('.atlas-condition-badge, .atlas-initiative-card__hp-bar, .atlas-initiative-card__resources')).toBeNull();
+    const art = card.querySelector('.atlas-initiative-card__art')!;
+    const wound = art.querySelector<HTMLElement>('.atlas-initiative-wound')!;
+    wound.style.transition = 'none';
+    // 3 of 10 left
+    expect(box(art).bottom - box(wound).top).toBeCloseTo(box(art).height * 0.7, 0);
+    await page.screenshot({ path: `${SHOTS}/gm-wounds.png`, element: tracker });
   });
 
-  it('collapses to the turn and the next two, and docks at the left edge', async () => {
-    const collapsed = await showTracker({ layout: { collapsed: true } });
-    expect(collapsed.querySelectorAll('.atlas-initiative-card')).toHaveLength(3);
-    expectUniform(collapsed, 4);
-    await page.screenshot({ path: `${SHOTS}/gm-collapsed.png`, element: collapsed });
+  it('hides its bars until the pointer comes near', async () => {
+    const tracker = await showTracker();
+    for (const bar of tracker.querySelectorAll('.atlas-initiative-tracker__float')) expect(getComputedStyle(bar).opacity).toBe('0');
+    // Above the panel, where the top bar shows: near the tracker, outside its panel
+    await userEvent.hover(tracker, { position: { x: box(tracker).width / 2, y: -20 } });
+    for (const bar of tracker.querySelectorAll('.atlas-initiative-tracker__float')) expect(getComputedStyle(bar).opacity).toBe('1');
+  });
 
-    const left = await showTracker({ layout: { dock: 'left' } });
-    expect(box(left).left).toBe(12);
-    await page.screenshot({ path: `${SHOTS}/gm-docked-left.png`, element: left });
-
-    // Beside the dice log (360 px wide, 12 px from the edge) while it is open, a gap of 8 px between them
-    expect(box(await showTracker({ layout: { dock: 'left' }, diceLog: true })).left).toBe(12 + 360 + 8);
+  it('stands at the right edge with the dice log open', async () => {
+    const tracker = await showTracker({ diceLog: true });
+    expect(1200 - box(tracker).right).toBe(12);
   });
 
   it('goes by sides as groups, the side whose turn it is on top', async () => {
     const tracker = await showTracker({ sides: true });
     expectUniform(tracker, 4);
-    expectNoOverflow(tracker.querySelector('.atlas-initiative-tracker__content')!, '.atlas-initiative-card');
+    expectNoOverflow(tracker.querySelector('.atlas-initiative-panel__list')!, '.atlas-initiative-card');
     await page.screenshot({ path: `${SHOTS}/gm-sides.png`, element: tracker });
   });
 });
@@ -228,11 +322,29 @@ describe('the players\' initiative list', () => {
     for (const names of [false, true]) {
       const panel = showPlayers({ names });
       expect(box(panel).width).toBe(96);
-      expectUniform(panel, 8);
-      expectNoOverflow(panel.querySelector('.atlas-player-initiative__list')!, '.atlas-player-initiative__card');
-      expect(panel.querySelector('.atlas-player-initiative__next-round')?.getAttribute('aria-label')).toBe('Round 3');
+      expectUniform(panel, 4);
+      expectNoOverflow(panel.querySelector('.atlas-initiative-panel__list')!, '.atlas-initiative-card');
+      expect(panel.querySelector('.atlas-initiative-round')?.getAttribute('aria-label')).toBe('Round 3');
       await page.screenshot({ path: `${SHOTS}/players-${names ? 'names' : 'normal'}.png`, element: panel });
     }
+  });
+
+  it('mirrors the column at the left edge for the far side of the table, turned around, its padding and gaps as the right one\'s', async () => {
+    const right = box(showPlayers({ dock: 'right' }));
+    const panel = showPlayers({ dock: 'left' });
+    const left = box(panel);
+    // As far from the left edge as the right column is from the right one, at its height and size
+    expect(left.left).toBeCloseTo(1000 - right.right - (1000 - 420), 0);
+    expect(left.top).toBeCloseTo(right.top, 0);
+    expect(left.width).toBeCloseTo(right.width, 0);
+    // Turned half way round: read from across the table
+    const matrix = new DOMMatrix(getComputedStyle(panel).transform);
+    expect(matrix.a).toBeCloseTo(-1, 3);
+    expect(matrix.d).toBeCloseTo(-1, 3);
+    // So its first card, the turn, stands at the bottom of the screen: the top for those across the table
+    const cards = [...panel.querySelectorAll('.atlas-initiative-card')].map(box);
+    expect(cards[0]!.top).toBeGreaterThan(cards[1]!.top);
+    await page.screenshot({ path: `${SHOTS}/players-left.png`, element: panel.parentElement! });
   });
 
   it('runs as a row across the top or the bottom, in the middle, the cards side by side inside the panel', async () => {
@@ -247,32 +359,52 @@ describe('the players\' initiative list', () => {
         if (dock === 'top') expect(frame.top - host.top).toBeCloseTo(12, 0);
         else expect(host.bottom - frame.bottom).toBeCloseTo(12, 0);
         expect(frame.width).toBeLessThanOrEqual(host.width - 320 + 0.5);
-        const cards = [...panel.querySelectorAll('.atlas-player-initiative__card')].map(box);
+        const cards = [...panel.querySelectorAll('.atlas-initiative-card')].map(box);
         expect(cards.length).toBe(5);
-        // Side by side, left to right, each inside the panel
+        // Side by side, left to right, each inside the panel, every card one height whatever round or side it is in
         for (let i = 1; i < cards.length; i++) expect(cards[i]!.left).toBeGreaterThan(cards[i - 1]!.right - 0.5);
+        expect(new Set(cards.map((card) => Math.round(card.height))).size).toBe(1);
+        // Square cards
+        for (const card of panel.querySelectorAll('.atlas-initiative-card')) {
+          expect(Math.abs(box(card).width - box(card).height)).toBeLessThan(0.5);
+          // The hit points: a capsule as far inside the card's border at its foot as at its sides, its ends concentric
+          // with the card's bottom corners
+          const hp = card.querySelector('.atlas-player-initiative__hp');
+          if (!hp) continue;
+          // Conditions sit over the hit points and peek out below the card, inside the panel's inset
+          const badges = card.querySelector('.atlas-player-initiative__conditions');
+          if (badges) {
+            expect(box(badges).top).toBeLessThan(box(hp).bottom);
+            expect(box(badges).bottom).toBeGreaterThan(box(card).bottom);
+            expect(frame.bottom - parseFloat(getComputedStyle(panel).borderBottomWidth) - box(badges).bottom).toBeGreaterThanOrEqual(4 - 0.5);
+          }
+          const border = parseFloat(getComputedStyle(card).borderTopWidth);
+          const inset = box(hp).left - box(card).left - border;
+          expect(inset).toBeCloseTo(4, 0);
+          expect(box(card).right - border - box(hp).right).toBeCloseTo(inset, 0);
+          expect(box(card).bottom - border - box(hp).bottom).toBeCloseTo(inset, 0);
+          const cardInner = parseFloat(getComputedStyle(card).borderBottomLeftRadius) - border;
+          expect(box(hp).height / 2).toBeCloseTo(cardInner - inset, 1);
+        }
         for (const card of cards) {
           expect(card.top).toBeGreaterThanOrEqual(frame.top);
           expect(card.bottom).toBeLessThanOrEqual(frame.bottom);
         }
-        expectNoOverflow(panel.querySelector('.atlas-player-initiative__list')!, '.atlas-player-initiative__card');
+        expectNoOverflow(panel.querySelector('.atlas-initiative-panel__list')!, '.atlas-initiative-card');
+        expectRowUniform(panel, 4);
         await page.screenshot({ path: `${SHOTS}/players-${dock}${sides ? '-sides' : ''}.png`, element: panel });
       }
     }
   });
 
-  it('follows the GM: docked left, in turn order, and by sides', async () => {
+  it('follows the GM: in turn order, and by sides', async () => {
     await page.viewport(1200, 1000);
-    const left = showPlayers({ dock: 'left' });
-    expect(box(left).left - box(left.parentElement!).left).toBe(12);
-    await page.screenshot({ path: `${SHOTS}/players-docked-left.png`, element: left });
-
     const plain = showPlayers({ fromTurn: false });
-    expect(plain.querySelector('.atlas-player-initiative__next-round')).toBeNull();
+    expect(plain.querySelector('.atlas-initiative-round')).toBeNull();
     await page.screenshot({ path: `${SHOTS}/players-in-order.png`, element: plain });
 
     const sides = showPlayers({ sides: true });
-    expectUniform(sides, 8);
+    expectUniform(sides, 4);
     await page.screenshot({ path: `${SHOTS}/players-sides.png`, element: sides });
   });
 
@@ -282,7 +414,7 @@ describe('the players\' initiative list', () => {
     panel.parentElement!.style.setProperty('--atlas-player-turn-banner-scale', '2');
     const host = panel.parentElement!.createDiv({ cls: 'atlas-player-turn-banner' });
     const banner = renderTurnBanner(host, { key: 'k', round: null, title: 'Goblin', portrait: null }, (src) => src);
-    const ring = parseFloat(getComputedStyle(panel.querySelector('.atlas-player-initiative__card--active')!, '::after').borderTopWidth);
+    const ring = parseFloat(getComputedStyle(panel.querySelector('.atlas-initiative-card--active')!, '::after').borderTopWidth);
     // The banner is zoomed: its flash's 2 px are drawn twice as wide
     const flash = parseFloat(getComputedStyle(banner, '::before').borderTopWidth) * parseFloat(getComputedStyle(banner).zoom);
     expect(ring).toBe(4);

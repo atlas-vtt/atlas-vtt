@@ -35,6 +35,7 @@ describe('the toolbar editor in a real layout', () => {
   afterEach(async () => {
     cleanup();
     removeStyles();
+    document.body.removeAttribute('data-atlas-pointer');
     await cdp().send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
   });
 
@@ -83,6 +84,48 @@ describe('the toolbar editor in a real layout', () => {
     await startEditing();
     expect(new Set(corners())).toEqual(new Set(['10px']));
     expect(getComputedStyle(handle('move', 'bar')).borderTopLeftRadius).toBe('10px');
+  });
+
+  /** The bar's tools, its height, and how far its controls stand inside it on each side. */
+  function barShape(): { tools: number[]; chevrons: number[]; height: number; insets: number[]; corners: Set<string>; radius: string } {
+    const bar = query('.atlas-main-toolbar');
+    const box = rectOf(bar);
+    const tools = [...bar.querySelectorAll<HTMLElement>(':scope > [data-toolbar-item]:not([hidden]) .atlas-tool-button > span > .btn')];
+    const toggle = rectOf(query('.atlas-main-toolbar > .atlas-toolbar-end > .atlas-toggle'));
+    const first = rectOf(tools[0]!);
+    return {
+      tools: [...new Set(tools.flatMap((tool) => [rectOf(tool).width, rectOf(tool).height]))],
+      chevrons: [...new Set([...bar.querySelectorAll<HTMLElement>('.atlas-tool-group__chevron')].flatMap((chevron) => [rectOf(chevron).width, rectOf(chevron).height]))],
+      height: box.height,
+      // left of the first tool, above it, below it, right of the switch at the bar's end
+      insets: [first.left - box.left, first.top - box.top, box.top + box.height - first.top - first.height, box.left + box.width - toggle.left - toggle.width],
+      corners: new Set([...tools, query('.atlas-main-toolbar > .atlas-toolbar-end > .atlas-toggle')].map((control) => getComputedStyle(control).borderTopLeftRadius)),
+      radius: getComputedStyle(bar).borderTopLeftRadius,
+    };
+  }
+
+  it('gives a fine pointer 40 px tools in a 50 px bar, 5 px inside its edge on every side', async () => {
+    await mount();
+    expect(barShape()).toEqual({ tools: [40], chevrons: [20, 40], height: 50, insets: [5, 5, 5, 5], corners: new Set(['10px']), radius: '15.5px' });
+  });
+
+  it('gives a coarse pointer 44 px tools in a 54 px bar with the same inset and the same corners', async () => {
+    document.body.setAttribute('data-atlas-pointer', 'coarse');
+    await mount();
+    // The bar's inset (4 px and its 1 px border) is the bar's rule, so the bar is 44 + 10 px tall.
+    expect(barShape()).toEqual({ tools: [44], chevrons: [32, 44], height: 54, insets: [5, 5, 5, 5], corners: new Set(['10px']), radius: '15.5px' });
+    expect(barIds()).toEqual(DEFAULT_BAR);
+    // The switch grows with the tools; its thumb stays 4 px inside it, with its own corner.
+    const toggle = query('.atlas-main-toolbar > .atlas-toolbar-end > .atlas-toggle');
+    const switchBox = rectOf(toggle.querySelector('.atlas-toggle__switch'));
+    const thumb = toggle.querySelector<HTMLElement>('.atlas-toggle__thumb')!;
+    const thumbBox = rectOf(thumb);
+    expect([switchBox.width, switchBox.height]).toEqual([66, 44]);
+    expect([thumbBox.width, thumbBox.height]).toEqual([36, 36]);
+    expect(thumbBox.top - switchBox.top).toBeCloseTo(4, 1);
+    expect(getComputedStyle(thumb).borderTopLeftRadius).toBe('6px');
+    // The undo/redo bar beside it is as tall, so the row stays level.
+    expect(rectOf(query('.atlas-side-bar[data-side-bar="undo"] .atlas-vtt-toolbar')).height).toBe(54);
   });
 
   it('leaves the bar and the undo bar where they are as editing starts', async () => {

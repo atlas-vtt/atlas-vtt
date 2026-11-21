@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { App, TFile, Component, WorkspaceLeaf } from 'obsidian';
+import { App, TFile, Component, MarkdownRenderer, WorkspaceLeaf } from 'obsidian';
 import { getActiveWorkspaceLeaf, suppressActiveLeaf } from '../../../utils/embeddedLeafFocus';
 
 interface NoteContentProps {
@@ -17,6 +17,23 @@ export const NoteContent: React.FC<NoteContentProps> = ({ notePath, app, onFocus
 
   useEffect(() => {
     if (!containerRef.current || !notePath) return;
+
+    // Where the workspace gives the note no leaf of its own (it has no tab group to make one in,
+    // or cannot on this device), the note is shown rendered: read here, edited from "Open note".
+    const showRendered = async (file: TFile): Promise<void> => {
+      const container = containerRef.current;
+      if (!container || leafRef.current?.view) return;
+      try {
+        container.empty();
+        componentRef.current?.unload();
+        const component = new Component();
+        component.load();
+        componentRef.current = component;
+        await MarkdownRenderer.render(app, await app.vault.read(file), container.createDiv({ cls: 'markdown-rendered atlas-dm-note-rendered' }), notePath, component);
+      } catch (err) {
+        console.error('[NoteContent] Could not render the note:', err);
+      }
+    };
 
     const loadNoteWithLeaf = async () => {
       const file = app.vault.getAbstractFileByPath(notePath);
@@ -99,7 +116,7 @@ export const NoteContent: React.FC<NoteContentProps> = ({ notePath, app, onFocus
         }
 
         if (!leafRef.current) {
-          // nothing to do
+          await showRendered(file);
         } else {
           try {
             await leafRef.current.openFile(file, { active: false });
@@ -120,10 +137,13 @@ export const NoteContent: React.FC<NoteContentProps> = ({ notePath, app, onFocus
 
               viewContainer.classList.add('atlas-embedded-leaf-view', 'atlas-embedded-leaf-view--fill-editor');
             }
+          } else {
+            await showRendered(file);
           }
         }
       } catch (err) {
         console.error('[NoteContent] Failed to load note with leaf:', err);
+        await showRendered(file);
       }
     };
 

@@ -8,6 +8,7 @@ import type { ViewAtlasState } from '../../src/app/storeFactory';
 import { createDefaultInitiativeState, type InitiativeEntry, type InitiativeState } from '../../src/app/types/initiativeTypes';
 import { entryTokenOf, playerInitiativeList, renderPlayerInitiative } from '../../src/app/services/playerInitiativeList';
 import { PlayerTurnBanner } from '../../src/app/services/PlayerTurnBanner';
+import { renderTurnBanner } from '../../src/app/initiative/banner/turnBannerElement';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import type { PlayersListEdge } from '../../src/app/initiative/initiativeLayout';
 import type { Character } from '../../src/app/types';
@@ -43,7 +44,7 @@ async function showAtLists(rotation: number, edges: PlayersListEdge[], faces: bo
 
   const { app } = createInMemoryApp({ files: {} });
   const settings = new SettingsService(app);
-  settings.setLocalPlayerViewSettings({ turnBannerAtLists: true, turnBannerScale: 1 });
+  settings.setLocalPlayerViewSettings({ turnBannerAtLists: true });
   settings.setInitiativeLayout({ edges, facesPlayers: faces });
   const store = createStore(() => ({
     initiative: fight(0), initiativeTrackerOpen: true, mapPath: 'a.atlasmap', isMapLoading: false,
@@ -76,22 +77,20 @@ function expectBeside(banner: HTMLElement, list: HTMLElement, towards: 'up' | 'd
 describe('the turn banner at the players\' lists', () => {
   it('stands just above each list that faces its edge, centred on it', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const { lists, banners } = await showAtLists(0, ['bottom', 'top', 'left', 'right'], true);
-    expect(banners).toHaveLength(4);
+    const { lists, banners } = await showAtLists(0, ['bottom', 'top', 'right'], true);
+    expect(banners).toHaveLength(3);
     expectBeside(banners[0]!, lists[0]!, 'up');
     expectBeside(banners[1]!, lists[1]!, 'down');
-    expectBeside(banners[2]!, lists[2]!, 'right');
-    expectBeside(banners[3]!, lists[3]!, 'left');
+    expectBeside(banners[2]!, lists[2]!, 'left');
   });
 
-  it('stands on the inner side of each upright list: below the top row, above the bottom one, beside the columns', async () => {
+  it('stands on the inner side of each upright list: below the top row, above the bottom one, beside the column', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const { lists, banners } = await showAtLists(0, ['bottom', 'top', 'left', 'right'], false);
-    expect(banners).toHaveLength(4);
+    const { lists, banners } = await showAtLists(0, ['bottom', 'top', 'right'], false);
+    expect(banners).toHaveLength(3);
     expectBeside(banners[0]!, lists[0]!, 'up');
     expectBeside(banners[1]!, lists[1]!, 'down');
-    expectBeside(banners[2]!, lists[2]!, 'right');
-    expectBeside(banners[3]!, lists[3]!, 'left');
+    expectBeside(banners[2]!, lists[2]!, 'left');
   });
 
   it('stays at its list on a table TV turned half way or sideways', async () => {
@@ -105,10 +104,29 @@ describe('the turn banner at the players\' lists', () => {
     shown = await showAtLists(90, ['bottom'], true);
     expectBeside(shown.banners[0]!, shown.lists[0]!, 'right');
     document.body.innerHTML = '';
-    // The table this was made for: lists at the left, right and bottom of a TV turned a quarter
-    shown = await showAtLists(90, ['left', 'right', 'bottom'], true);
-    expectBeside(shown.banners[0]!, shown.lists[0]!, 'down');
-    expectBeside(shown.banners[1]!, shown.lists[1]!, 'up');
-    expectBeside(shown.banners[2]!, shown.lists[2]!, 'right');
+    // A row on each long side of a TV turned a quarter
+    shown = await showAtLists(90, ['top', 'bottom'], true);
+    expectBeside(shown.banners[0]!, shown.lists[0]!, 'left');
+    expectBeside(shown.banners[1]!, shown.lists[1]!, 'right');
+  });
+});
+
+describe('a fight\'s banner at the players\' lists', () => {
+  it.each(['above', 'below', 'left'] as const)('shows its words whole, centred on its anchor, on its shade (%s)', async (side) => {
+    await page.viewport(1600, 900);
+    document.body.className = 'atlas-player-window';
+    const host = document.body.createDiv({ cls: 'atlas-player-turn-banner' });
+    const anchor = host.createDiv({ cls: 'atlas-player-turn-banner__anchor', attr: { 'data-side': side } });
+    anchor.style.setProperty('--atlas-anchor-x', '800px');
+    anchor.style.setProperty('--atlas-anchor-y', '450px');
+    const banner = renderTurnBanner(anchor, { kind: 'fight-end', key: 'fight-end', round: null, title: 'Combat has ended', portrait: null }, () => null);
+    await new Promise((resolve) => setTimeout(resolve, 1400));
+    const title = banner.querySelector<HTMLElement>('.atlas-fight-banner__title')!;
+    expect(title.getBoundingClientRect().width).toBeGreaterThan(120);
+    expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth);
+    const at = banner.getBoundingClientRect();
+    if (side === 'left') expect(Math.abs((at.top + at.bottom) / 2 - 450)).toBeLessThan(2);
+    else expect(Math.abs((at.left + at.right) / 2 - 800)).toBeLessThan(2);
+    expect(getComputedStyle(banner, '::before').opacity).toBe('1');
   });
 });

@@ -16,7 +16,7 @@ $rest-inset: $spacing-m;
     bottom: var(--atlas-sb-socket-bottom, auto);
     left: var(--atlas-sb-socket-left, 0);
     z-index: $z-popover;
-    width: min(#{$rest-panel-width}, calc(100vw - 2 * #{$spacing-s}));
+    width: min(#{$rest-panel-width}, calc(#{atlas-view-width()} - 2 * #{$spacing-s}));
     translate: var(--atlas-keep-in-view-x);
   }
 
@@ -169,6 +169,7 @@ $rest-inset: $spacing-m;
     background: transparent;
     box-shadow: none;
     color: var(--text-muted);
+    @include atlas-coarse-hit;
 
     &:hover:not(:disabled) {
       background: var(--background-modifier-hover);

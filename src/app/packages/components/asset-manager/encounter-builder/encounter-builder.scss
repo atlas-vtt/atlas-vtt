@@ -241,7 +241,7 @@ $tray-room: 72px;
   scale: 1;
 }
 
-@media (hover: none) {
+@include atlas-hover-reveal {
   .atlas-encounter-card .atlas-encounter-card__notch {
     opacity: 1;
     scale: 1;
@@ -350,7 +350,7 @@ input.atlas-encounter-stepper__count {
   opacity: 1;
 }
 
-@media (hover: none) {
+@include atlas-hover-reveal {
   .atlas-encounter-card .atlas-encounter-stepper__button.btn {
     width: 24px;
     opacity: 1;
@@ -478,7 +478,7 @@ input.atlas-encounter-tray__name-input {
 }
 
 .atlas-encounter-tray__overflow-menu {
-  max-height: min(50vh, 420px);
+  max-height: min(#{atlas-view-height(50)}, 420px);
   padding: $spacing-xs;
   overflow-y: auto;
 }

@@ -32,9 +32,11 @@
     @include ring-color-button;
     display: block;
     background: transparent;
-    &:hover {
-      transform: scale(1.12);
-      background: inherit;
+    @media (hover: hover) {
+      &:hover {
+        transform: scale(1.12);
+        background: inherit;
+      }
     }
     &:active {
       transform: scale(0.95);

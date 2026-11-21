@@ -1,0 +1,85 @@
+// Bars that show only near the pointer (Atlas' "Show toolbar on hover", useChromeAutoHide).
+// Motion is compositor-only (opacity, translate, scale), so it stays smooth while the map
+// renders; `translate` and `scale` compose with a bar's own `transform` (the level switcher's
+// centring). `visibility` takes a hidden bar out of hit testing and the tab order, its buttons
+// with it, and changes only at the end of the hide and the start of the show.
+@use '../../../../../styles/tokens' as *;
+
+// A spring with a little overshoot that starts fast: 95 % of the way at a third of its time.
+$chrome-spring: linear(
+  0, 0.108, 0.253, 0.408, 0.558, 0.691, 0.803, 0.891, 0.958, 1.004, 1.033, 1.05, 1.056,
+  1.055, 1.05, 1.043, 1.035, 1.026, 1.019, 1.012, 1.007, 1.003, 1, 0.999, 1
+);
+$chrome-show-ms: 320ms;
+$chrome-fade-in-ms: 140ms;
+$chrome-hide-ms: 180ms;
+// The pointer may leave a bar for a moment (a flick past its edge) without it going.
+$chrome-hide-grace-ms: 160ms;
+
+$chrome-units: '.atlas-bottom-toolbar-row__lead, .atlas-bottom-toolbar-row__start, .atlas-main-toolbar, .atlas-bottom-toolbar-row__options, .atlas-bottom-toolbar-row__end, .atlas-level-switcher';
+
+// A menu or panel open in a bar, whatever opened it (a hotkey too): the bar stays while it is.
+$chrome-open: "[aria-expanded='true'], [data-state='open']";
+$chrome-toolbar: '.atlas-main-toolbar, .atlas-bottom-toolbar-row__options';
+// Away from the pointer (`data-near`) and not just after a tool change (`data-peek`, the toolbar
+// alone), and nothing open in it. The toolbar and the active tool's bars above it stay together,
+// so a menu open in either keeps both.
+$chrome-hidden:
+  ":is(.atlas-bottom-toolbar-row__lead, .atlas-bottom-toolbar-row__start, .atlas-bottom-toolbar-row__end, .atlas-level-switcher):not([data-near], [data-peek]):not(:has(#{$chrome-open})), " +
+  ".atlas-bottom-toolbar-row:not(:has(> :is(#{$chrome-toolbar}) :is(#{$chrome-open}))) > :is(#{$chrome-toolbar}):not([data-near], [data-peek])";
+
+@media (any-hover: hover) {
+  .atlas-ui[data-chrome-auto-hide] {
+    :is(#{$chrome-units}) {
+      transition:
+        opacity $chrome-fade-in-ms $transition-ease-out var(--atlas-chrome-delay, 0ms),
+        translate $chrome-show-ms $chrome-spring var(--atlas-chrome-delay, 0ms),
+        scale $chrome-show-ms $chrome-spring var(--atlas-chrome-delay, 0ms),
+        visibility 0s linear var(--atlas-chrome-delay, 0ms);
+    }
+
+    // The toolbar comes first; the bars beside it follow a beat behind, from the middle outwards.
+    .atlas-bottom-toolbar-row__start,
+    .atlas-bottom-toolbar-row__end,
+    .atlas-level-switcher {
+      --atlas-chrome-delay: 24ms;
+    }
+
+    .atlas-bottom-toolbar-row__lead {
+      --atlas-chrome-delay: 48ms;
+    }
+
+    #{$chrome-hidden} {
+      opacity: 0;
+      visibility: hidden;
+      transition:
+        opacity $chrome-hide-ms $transition-ease-out $chrome-hide-grace-ms,
+        translate $chrome-hide-ms $transition-ease-out $chrome-hide-grace-ms,
+        scale $chrome-hide-ms $transition-ease-out $chrome-hide-grace-ms,
+        visibility 0s linear ($chrome-hide-grace-ms + $chrome-hide-ms);
+    }
+
+    // Bars sink a little towards the edge they stand at, and shrink into it.
+    @media (prefers-reduced-motion: no-preference) {
+      #{$chrome-hidden} {
+        translate: 0 8px;
+        scale: 0.97;
+
+        &.atlas-level-switcher {
+          translate: -8px 0;
+        }
+      }
+
+      .atlas-bottom-toolbar-row__lead,
+      .atlas-bottom-toolbar-row__start,
+      .atlas-main-toolbar,
+      .atlas-bottom-toolbar-row__end {
+        transform-origin: 50% 100%;
+      }
+
+      .atlas-level-switcher {
+        transform-origin: 0 50%;
+      }
+    }
+  }
+}

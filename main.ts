@@ -54,7 +54,8 @@ import { mapsSettingsSection } from './src/app/settings/mapsSettingsSection';
 import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSettingsSection';
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
 import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
-import { registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
+import { applyDiceBudgets, registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
+import { registerForegroundWork } from './src/app/plugin/foregroundWork';
 import { registerOverlayScrollbars } from './src/app/plugin/overlayScrollbars';
 import { registerPageListenerRelease } from './src/app/plugin/pageListenerRelease';
 import { releasePortalHosts } from './src/app/host/portalHost';
@@ -101,14 +102,25 @@ import { ChangelogService } from './src/app/changelog/ChangelogService';
 import { registerUpdateWatch } from './src/app/updates/registerUpdateWatch';
 import { AtlasErrorLog } from './src/app/support/errorLog';
 import { IssueReporter } from './src/app/support/IssueReporter';
+import { TabletDiagnosticsModal } from './src/app/support/tablet/TabletDiagnosticsModal';
 import { runInBackground } from './src/app/utils/backgroundTask';
 import { TesseraDecoderClient } from './src/app/pixi/mosaicCanvas/TesseraDecoderClient';
 import { MapProcessing } from './src/app/pixi/mosaicCanvas/mapProcessing';
 import { registerMapProcessingStatus } from './src/app/plugin/mapProcessingStatus';
 import { DungeonWorkerClient } from './src/app/dungeons/worker/DungeonWorkerClient';
 import { MosaicCanvasService } from './src/app/pixi/mosaicCanvas/MosaicCanvasService';
+import { registerNoteDiceRolling } from './src/app/noteDice/registerNoteDiceRolling';
 import { guardChildUnload, guardedCleanup } from './src/app/plugin/guardedTeardown';
 import { showNotice } from './src/app/ui/notice';
+import { isDesktopApp } from './src/app/platform/desktopOnly';
+import { registerPointerAttribute } from './src/app/platform/pointerAttribute';
+import { registerTouchContextMenus } from './src/app/plugin/touchContextMenus';
+import { FingerSettings } from './src/app/input/fingerUse';
+import { zoomButtonsRow } from './src/app/input/zoomButtons';
+import { registerLastInput } from './src/app/platform/lastInput';
+import { registerKeyboardViewport } from './src/app/platform/keyboardViewport';
+import { registerAudioUnlock } from './src/app/plugin/audioUnlock';
+import { registerUnsupportedDevice } from './src/app/plugin/unsupportedDevice';
 
 declare const __ATLAS_RELEASE_BUILD__: boolean;
 
@@ -141,15 +153,35 @@ export default class AtlasVTTPlugin extends Plugin {
    * it stops there once this is set.
    */
   private unloaded = false;
+  /** A device whose system is too old for Atlas: nothing of Atlas was started, so nothing is released. */
+  private unsupported = false;
 
   async onload(): Promise<void> {
+    // Atlas' image and map workers draw on an OffscreenCanvas, which iOS and iPadOS have since 16.4:
+    // a capability can be asked, a version would have to be read out of the user agent.
+    if (typeof OffscreenCanvas === 'undefined') {
+      this.unsupported = true;
+      registerUnsupportedDevice(this);
+      return;
+    }
     // Before anything of Atlas renders: what React and framer-motion put on the page goes with Atlas.
     registerPageListenerRelease(this);
+    // How large Atlas' controls are follows the pointer, in every window; sound starts with the first tap or key.
+    registerPointerAttribute(this);
+    registerTouchContextMenus(this);
+    registerLastInput(this);
+    registerAudioUnlock(this);
+    // A tablet's keyboard rises over the window: what is placed and typed into stays in the part still seen.
+    registerKeyboardViewport(this);
+    // Before notes render at startup: the dice in their text roll with Atlas.
+    registerNoteDiceRolling(this);
     // Record errors from the very start so startup problems can be reported too.
     const errorLog = new AtlasErrorLog();
     this.register(errorLog.attach());
     const issueReporter = new IssueReporter(this.app, this.manifest, errorLog);
     this.addCommand({ id: 'report-issue', name: t('command.reportIssue'), callback: () => issueReporter.open() });
+    // What only a device can tell about itself, for a tester to send; on the desktop too, for the bench.
+    this.addCommand({ id: 'tablet-diagnostics', name: t('tabletDiag.command'), callback: () => new TabletDiagnosticsModal(this.app, this.manifest).open() });
 
     // Capture this before migrations/services can create Atlas's storage folder.
     const existingInstallation = this.app.vault.adapter.exists('atlas-vtt');
@@ -197,6 +229,8 @@ export default class AtlasVTTPlugin extends Plugin {
     registerVaultSync(this);
     registerObsidianSyncNotice(this);
     registerDiceStageRelease(this);
+    applyDiceBudgets();
+    registerForegroundWork(this);
     registerOverlayScrollbars(this);
     registerMapProcessingStatus(this);
     registerAccentColorSync(this);
@@ -245,7 +279,7 @@ export default class AtlasVTTPlugin extends Plugin {
     const onlinePlay = registerOnlinePlay(this, this.settingsService, account);
     this.onlinePlay = onlinePlay;
     this.addSettingTab(new AtlasSettingTab(this.app, this, () => [
-      navigationSettingsSection(this.settingsService),
+      navigationSettingsSection(this.settingsService, FingerSettings.forApp(this.app), zoomButtonsRow(this.app)),
       diceSettingsSection(this.settingsService),
       soundSettingsSection(this.settingsService, soundDirector),
       mapsSettingsSection(this.settingsService),
@@ -314,6 +348,7 @@ export default class AtlasVTTPlugin extends Plugin {
 
   onunload(): void {
     this.unloaded = true;
+    if (this.unsupported) return;
     this.changelogService?.destroy();
     void this.settingsService?.saveSettingsNow();
     SystemPresetFiles.release(this.app);
@@ -368,7 +403,8 @@ export default class AtlasVTTPlugin extends Plugin {
   private registerAtlasViews(): void {
     this.registerExtensions([EXTENSION_ATLASMAP], ATLAS_VIEW_TYPE);
     this.registerView(ATLAS_VIEW_TYPE, (leaf) => new AtlasView(leaf, this));
-    this.registerView(LOCAL_PLAYER_VIEW_TYPE, (leaf) => new LocalPlayerView(leaf));
+    // The player window is a second window, which only the desktop app has
+    if (isDesktopApp()) this.registerView(LOCAL_PLAYER_VIEW_TYPE, (leaf) => new LocalPlayerView(leaf));
     this.registerView(DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this));
     this.registerView(DUNGEON_GENERATOR_VIEW_TYPE, (leaf) => new DungeonGeneratorView(leaf));
     this.registerView(SOUND_VIEW_TYPE, (leaf) => new SoundView(leaf));

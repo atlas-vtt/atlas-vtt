@@ -1,7 +1,7 @@
 import { Texture, Graphics, type CanvasSource, type ImageSource, type Application } from 'pixi.js';
 import { App as ObsidianApp, TFile } from 'obsidian';
 import type { ITextureCache } from './types';
-import { normalizeImagePath } from '../../utils/pathUtils';
+import { isResourceUrl, normalizeImagePath } from '../../utils/pathUtils';
 import { loadAsset, unloadAsset } from '../utils/assetLifecycle';
 import { decodeImage, decodedSource, imageMimeType, type DecodedImage } from '../decodedImage';
 
@@ -13,8 +13,8 @@ const MAX_TOKEN_TEXTURE_SIZE = 1024;
 /** Cache key of the placeholder used for tokens without art. */
 const DEFAULT_TOKEN_TEXTURE_KEY = 'default-token';
 
-/** Image paths PIXI's `Assets` loads by URL instead of reading them from the vault. */
-const URL_PREFIXES = ['data:', 'blob:', 'http://', 'https://', 'app://'];
+/** Image paths PIXI's `Assets` loads by URL instead of reading them from the vault, besides resource URLs (`isResourceUrl`). */
+const URL_PREFIXES = ['data:', 'blob:', 'http://', 'https://'];
 
 /**
  * Token art, decoded once per image and shared by every token that shows it.
@@ -73,7 +73,7 @@ export class TextureCache implements ITextureCache {
     const cached = this.textures.get(key);
     if (cached) return cached;
     try {
-      return URL_PREFIXES.some((prefix) => key.startsWith(prefix))
+      return isResourceUrl(key) || URL_PREFIXES.some((prefix) => key.startsWith(prefix))
         ? await this.loadUrl(key)
         : await this.loadVaultImage(key);
     } catch (error) {

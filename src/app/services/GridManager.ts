@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import { GridController, type GridMapData } from '../grid/GridController';
 import type { PixiRendererOrchestrator } from '../PixiRendererOrchestrator';
 

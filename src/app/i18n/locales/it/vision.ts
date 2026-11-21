@@ -15,5 +15,7 @@ export const vision = {
   "vision.partyMember": "Visione (membro del gruppo)",
   "vision.partyMemberHint": "I giocatori vedono la mappa attraverso questo token. Il token stesso è sempre visibile a loro.",
   "vision.carriesLight": "Trasporta una luce",
-  "vision.carriesLightHint": "Una torcia o una lanterna: la sua luce si muove insieme al token."
+  "vision.carriesLightHint": "Una torcia o una lanterna: la sua luce si muove insieme al token.",
+  "vision.noneFromStatblock": "Nessuno, dallo statblock",
+  "vision.rangeFromStatblock": "{range}, dallo statblock",
 } satisfies Translation;

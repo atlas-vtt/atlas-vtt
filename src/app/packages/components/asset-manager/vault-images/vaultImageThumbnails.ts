@@ -1,4 +1,5 @@
 import type { App, TFile } from 'obsidian';
+import { imageMimeType } from '../../../../imageProcessing/imageDimensions';
 import { renderThumbnail } from '../../../../imageProcessing/imageProcessing';
 
 /** Sharp in a card of the grid on high-density screens; cards are about 130 to 200px wide. */
@@ -38,8 +39,8 @@ export class VaultImageThumbnails {
     try {
       const bytes = await this.app.vault.readBinary(file);
       if (signal.aborted) return null;
-      const webp = await renderThumbnail(new Blob([bytes]), THUMBNAIL, { signal, background: true });
-      return signal.aborted ? null : URL.createObjectURL(new Blob([webp], { type: 'image/webp' }));
+      const thumbnail = await renderThumbnail(new Blob([bytes]), THUMBNAIL, { signal, background: true });
+      return signal.aborted ? null : URL.createObjectURL(new Blob([thumbnail], { type: imageMimeType(thumbnail) }));
     } catch {
       return null;
     }

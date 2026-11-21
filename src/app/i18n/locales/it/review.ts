@@ -4,7 +4,7 @@ export const review = {
   "review.kind.token": "Token",
   "review.kind.map": "Mappa",
   "review.kind.note": "Nota",
-  "review.kind.statblock": "Blocco statistiche",
+  "review.kind.statblock": "Statblock",
   "review.kind.character": "Personaggio",
   "review.kind.scene": "Scena",
   "review.kind.encounter": "Incontro",

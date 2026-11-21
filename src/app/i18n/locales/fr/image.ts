@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const image: Translation = {
+  'image.copy': 'Copier l\'image',
+  'image.openDefault': 'Ouvrir dans l\'application par défaut',
+  'image.openDefaultMenu': 'Ouvrir dans l\'application par défaut',
+  'image.display': 'Afficher dans la vue joueurs',
+  'image.copied': 'Image copiée dans le presse-papiers',
+  'image.copyFailed': 'Impossible de copier l\'image',
+  'image.windowClosed': 'La fenêtre joueurs n\'est pas ouverte. Ouvrez-la d\'abord.',
+  'image.windowUnavailable': 'La fenêtre joueurs n\'est pas disponible',
+  'image.displayFailed': 'Impossible d\'afficher l\'image dans la vue joueurs',
+  'image.closed': 'Affichage de l\'image fermé',
+  'image.tooLarge': 'Cette image fait {width} × {height} px, plus que ce qu\'Obsidian peut ouvrir : au plus {megapixels} mégapixels et {side} px de côté. Exportez-la plus petite et importez-la à nouveau.',
+  'image.tooLargeForDevice': 'Cette image fait {width} × {height} px, plus que ce que cet appareil peut ouvrir : au plus {megapixels} mégapixels. Exportez-la plus petite et importez-la à nouveau.',
+  'image.unsupported': 'Cette image fait {width} × {height} px, plus qu\'Obsidian n\'en ouvre d\'un coup, et Atlas ne peut lire une image aussi grande qu\'en JPEG simple ou en PNG non entrelacé. {advice}',
+  'image.unsupported.progressive': 'Enregistrez-la en JPEG simple, non progressif, et importez-la à nouveau.',
+  'image.unsupported.interlaced': 'Enregistrez le PNG sans entrelacement et importez-le à nouveau.',
+  'image.unsupported.orientation': 'Exportez-la à l\'endroit, sans la rotation indiquée dans les données de l\'appareil photo, et importez-la à nouveau.',
+  'image.unsupported.scans': 'Enregistrez-la en JPEG simple et importez-la à nouveau.',
+  'image.unsupported.coding': 'Enregistrez-la en JPEG 8 bits simple et importez-la à nouveau.',
+  'image.unsupported.components': 'Enregistrez-la en JPEG RVB et importez-la à nouveau.',
+  'image.unsupported.corrupt': 'Le fichier n\'a pas pu être lu ; exportez-le à nouveau.',
+  'image.unreadable': 'Cette image fait {width} × {height} px, plus qu\'Obsidian n\'en ouvre d\'un coup, et son fichier n\'a pas pu être lu. Exportez-la puis importez-la à nouveau.',
+};

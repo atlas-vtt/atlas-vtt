@@ -64,7 +64,7 @@ function setup(initialInputOpen = true) {
 }
 
 function clickWithMouseDown(element: Element) {
-  fireEvent.mouseDown(element);
+  fireEvent.pointerDown(element);
   fireEvent.mouseUp(element);
   fireEvent.click(element);
 }
@@ -118,7 +118,7 @@ it('backdrop clicks dismiss only the child dialog and outside clicks work afterw
   clickWithMouseDown(screen.getByRole('textbox').closest('.atlas-modal-overlay')!);
   expect(onClose).not.toHaveBeenCalled();
   await waitFor(() => expect(screen.queryByRole('textbox')).toBeNull());
-  fireEvent.mouseDown(document.body);
+  fireEvent.pointerDown(document.body);
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
@@ -141,6 +141,6 @@ it.each([
   expect(onClose).not.toHaveBeenCalled();
   expect(screen.queryByText('Delete item')).toBeNull();
 
-  fireEvent.mouseDown(document.body);
+  fireEvent.pointerDown(document.body);
   expect(onClose).toHaveBeenCalledTimes(1);
 });

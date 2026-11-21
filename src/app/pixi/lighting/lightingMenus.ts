@@ -55,6 +55,15 @@ export function showDoorMenu(store: ViewAtlasStore, wallId: string, screenX: num
 }
 
 /** The wall tool's context menu: a light under the pointer, else the wall selection. */
+/** Whether `showWallMenu` opens a menu at a world point: on a light, on a wall or its end, and anywhere while walls are selected. */
+export function wallMenuAt(context: LightingMenuContext, worldX: number, worldY: number): boolean {
+  const { walls, wallRenderer } = context;
+  return context.lightAt(worldX, worldY) !== null
+    || wallRenderer.hitTestVertices(worldX, worldY) !== null
+    || wallRenderer.hitTestWalls(worldX, worldY) !== null
+    || walls.hasSelection();
+}
+
 export function showWallMenu(context: LightingMenuContext, worldX: number, worldY: number, screenX: number, screenY: number): void {
   const { walls, wallRenderer, store } = context;
   const lightId = context.lightAt(worldX, worldY);

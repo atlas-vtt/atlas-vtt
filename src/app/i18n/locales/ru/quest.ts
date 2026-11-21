@@ -18,7 +18,7 @@ export const quest: Translation = {
   'quest.status.failed': 'Провален',
   'quest.status.hidden': 'Скрытый',
   'quest.statusOf': 'Статус квеста «{title}»',
-  'quest.experience': '{count} ед. опыта',
+  'quest.experience': '{count} опыта',
   'quest.createFailed': 'Не удалось создать заметку квеста.',
   'quest.openFailed': 'Не удалось открыть заметку квеста.',
   'quest.writeFailed': 'Не удалось изменить заметку квеста.',

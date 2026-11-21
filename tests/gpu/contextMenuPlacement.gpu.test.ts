@@ -4,12 +4,13 @@ import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import css from '../../src/app/react/components/context-menu/atlas-context-menu.scss?inline';
+import coarseCss from '../../styles/_coarse-pointer.scss?inline';
 import { closeContextMenuGlobal, ContextMenuProvider, openContextMenuGlobal, type ContextMenuEntry } from '../../src/app/react/root/ContextMenuContext';
 import { centreOf, mouse } from './realMouse';
 
 const style = document.createElement('style');
 const h = React.createElement;
-style.textContent = css + `
+style.textContent = css + coarseCss + `
   * { box-sizing: border-box; }
   body { margin: 0; overflow: hidden; font: 13px/1.5 sans-serif; --size-2-1: 2px;
     --background-primary: #202020; --background-secondary: #262626; --text-normal: #ddd;
@@ -32,7 +33,7 @@ beforeEach(async () => {
   await page.viewport(800, 600);
   document.head.append(style);
 });
-afterEach(() => { cleanup(); style.remove(); });
+afterEach(() => { cleanup(); style.remove(); document.body.removeAttribute('data-atlas-pointer'); });
 
 /** A token's global right-click menu in an Obsidian leaf smaller than the window. */
 async function open(entries: ContextMenuEntry[], height: number, y: number, leaf = true, width = 460): Promise<HTMLElement> {
@@ -189,4 +190,58 @@ it('keeps a menu opened beside the pane, over a body-level overlay, out of that 
   await frames();
   expect(menus()).toHaveLength(1);
   expect(menus()[0]!.getBoundingClientRect().left).toBeGreaterThanOrEqual(515);
+});
+
+/** A menu's rows: their heights, how far they stand inside the menu's border, their corner and where their words stand. */
+function rowShape(menu: HTMLElement): { heights: number[]; inset: number[]; corners: string[]; offCentre: number } {
+  const rows = [...menu.querySelectorAll<HTMLElement>('.atlas-ctx-item')];
+  const box = menu.getBoundingClientRect();
+  const border = parseFloat(getComputedStyle(menu).borderTopWidth);
+  const first = rows[0]!.getBoundingClientRect();
+  const last = rows.at(-1)!.getBoundingClientRect();
+  const offCentre = Math.max(...rows.map((row) => {
+    const rowBox = row.getBoundingClientRect();
+    // The words themselves, whatever element holds them.
+    const words = document.createRange();
+    words.selectNodeContents(row);
+    const label = words.getBoundingClientRect();
+    return Math.abs(label.top + label.height / 2 - (rowBox.top + rowBox.height / 2));
+  }));
+  return {
+    heights: [...new Set(rows.map((row) => row.getBoundingClientRect().height))],
+    inset: [first.left - box.left - border, first.top - box.top - border, box.right - first.right - border, box.bottom - last.bottom - border],
+    corners: [...new Set(rows.map((row) => getComputedStyle(row).borderTopLeftRadius)), getComputedStyle(menu).borderTopLeftRadius],
+    offCentre,
+  };
+}
+
+it('gives a fine pointer 28 px rows, 4 px inside the border, concentric with the menu\'s corner', async () => {
+  const shapeOfRows = rowShape(await open(items(7), 400, 200));
+  expect(shapeOfRows.heights).toEqual([28]);
+  expect(shapeOfRows.inset).toEqual([4, 4, 4, 4]);
+  expect(shapeOfRows.corners).toEqual(['10px', '15.5px']);
+  expect(shapeOfRows.offCentre).toBeLessThanOrEqual(0.5);
+});
+
+it('gives a coarse pointer 44 px rows with the same inset and corners, their words on the rows\' middle, inside the pane', async () => {
+  document.body.setAttribute('data-atlas-pointer', 'coarse');
+  const menu = await open(items(7), 400, 200);
+  const shapeOfRows = rowShape(menu);
+  expect(shapeOfRows.heights).toEqual([44]);
+  expect(shapeOfRows.inset).toEqual([4, 4, 4, 4]);
+  expect(shapeOfRows.corners).toEqual(['10px', '15.5px']);
+  expect(shapeOfRows.offCentre).toBeLessThanOrEqual(0.5);
+  inside(menu, 400);
+  expect(menu.scrollHeight).toBeLessThanOrEqual(menu.clientHeight);
+});
+
+it('keeps a coarse pointer\'s long menu on screen without scrolling: in the window, then in columns', async () => {
+  document.body.setAttribute('data-atlas-pointer', 'coarse');
+  const menu = await open(items(24), 300, 220);
+  await frames();
+  const box = menu.getBoundingClientRect();
+  expect(menu.scrollHeight).toBeLessThanOrEqual(menu.clientHeight);
+  expect(box.top).toBeGreaterThanOrEqual(7.5);
+  expect(box.bottom).toBeLessThanOrEqual(592.5);
+  expect(getComputedStyle(menu).display).toBe('grid');
 });

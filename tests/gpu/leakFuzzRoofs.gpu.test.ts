@@ -177,8 +177,8 @@ async function fuzz({ seed, trials, map = 2048, below = false, ignoreFading = fa
         lowerRule = roofRule(groundRoof, NO_STRETCH, bounds, partyPlaces(levelObjectsOn(state, 'ground').tokens), sight, everyToken, { ...state.lighting, ...model.ambient }, bounds);
       }
       const upperDrawn = (p: { x: number; y: number }): boolean => upper?.drawnAt(p) ?? false;
-      // The level below is read from its snapshot texel by texel: a pixel may show the texel whose middle lies half a texel's diagonal away.
-      const belowEdge = EDGE / scale + (stack ? stack.grid.texel * 0.02 + (snapshotGrid(stack)?.texel ?? 0) * Math.SQRT1_2 : 0);
+      // The level below is read from its snapshot filtered between the four texels around a pixel: a pixel may show texels whose middles lie a texel's diagonal away.
+      const belowEdge = EDGE / scale + (stack ? stack.grid.texel * 0.02 + (snapshotGrid(stack)?.texel ?? 0) * Math.SQRT2 : 0);
 
       // Tokens on the viewed level: the view's rule is the rule here.
       for (const entry of Object.values(levelObjects(state).tokens)) {

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { MotionConfig, motion, useReducedMotion } from 'framer-motion';
-import { Search, X, Settings, Tag, Download, Upload, CloudUpload, MoreHorizontal } from 'lucide-react';
+import { Search, X, Settings, Download, Upload, CloudUpload, MoreHorizontal } from 'lucide-react';
 import { Button } from '../../primitives/button';
 import { LabelTooltip } from '../../primitives/tooltip';
 import type { AnyAsset, CollectionOption, Tag as TagType } from '../types';
@@ -8,7 +8,8 @@ import { hasAssetTag } from '../../../../services/tagGroups';
 import type { SidebarLayout } from '../hooks/useSidebarLayout';
 import { sidebarContentVariants, sidebarMotionState, sidebarVariants, stillSidebarContentVariants, stillSidebarVariants } from './sidebarMotion';
 import { ClearTagsChip } from './ClearTagsChip';
-import { TagListSkeleton } from './TagListSkeleton';
+import { SidebarTagList, type SidebarTagItem } from './SidebarTagList';
+import type { StoreTagsState } from '../../../../armarium/storeTagFilter';
 import { CollectionPicker } from './CollectionPicker';
 import { HeaderMenu, type HeaderMenuItem } from './HeaderMenu';
 import { t } from '../../../../i18n';
@@ -31,7 +32,8 @@ export interface SidebarProps {
   /** Id of the selected collection. */
   selectedCollection: string;
   onSelectCollection: (collectionId: string) => void;
-  onManageTags: () => void;
+  /** Opens the tag manager; left out (a window choosing a map), the Manage button is too. */
+  onManageTags?: () => void;
   onEditCollectionSettings?: (collectionId: string) => void;
   onExportCollection?: () => void;
   onImportCollection?: () => void;
@@ -41,6 +43,24 @@ export interface SidebarProps {
   footer?: React.ReactNode;
   /** Floating behaviour from `useSidebarLayout`; omitted, the sidebar is docked. */
   layout?: Pick<SidebarLayout, 'isFloating' | 'isPeeking' | 'isNearEdge' | 'panelRef'>;
+  /**
+   * While the Armarium is shown: its store's tags stand in place of the collection's, a press picks them in the store,
+   * and Manage, which manages the collection's tags, is left out.
+   */
+  storeTags?: StoreTagsSidebar | undefined;
+}
+
+/** The Armarium store's tags for the sidebar: what the page last said, and where presses go. */
+export interface StoreTagsSidebar {
+  state: StoreTagsState;
+  onToggle: (tagId: string) => void;
+  onClear: () => void;
+}
+
+/** The store's tags as list items, group by group. */
+function storeTagItems(state: StoreTagsState): SidebarTagItem[] {
+  if (state.status !== 'ready') return [];
+  return state.tags.groups.flatMap((group) => group.tags.map((tag) => ({ id: tag.id, name: tag.label, count: tag.count, group: group.label })));
 }
 
 /** The selected collection's actions in its ⋯ menu, each offered only where the manager handles it. */
@@ -77,22 +97,24 @@ export function Sidebar({
   onShareCollection,
   footer,
   layout,
+  storeTags,
 }: SidebarProps): React.JSX.Element {
   const [isTagsSearchVisible, setIsTagsSearchVisible] = useState(false);
   const [tagsSearchQuery, setTagsSearchQuery] = useState('');
   const tagsSearchInputRef = useRef<HTMLInputElement>(null);
 
-  const filteredTags = tagsSearchQuery
-    ? tags.filter((t) => t.name.toLowerCase().includes(tagsSearchQuery.toLowerCase()))
-    : tags;
-
-  const tagCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const tag of tags) {
-      counts.set(tag.id, countedAssets.filter((asset) => hasAssetTag(asset.tags, tag)).length);
-    }
-    return counts;
-  }, [tags, countedAssets]);
+  const libraryItems = useMemo((): SidebarTagItem[] => tags.map((tag) => ({
+    id: tag.id,
+    name: tag.name,
+    count: countedAssets.filter((asset) => hasAssetTag(asset.tags, tag)).length,
+  })), [tags, countedAssets]);
+  const storeState = storeTags?.state;
+  const items = useMemo(() => (storeState ? storeTagItems(storeState) : libraryItems), [storeState, libraryItems]);
+  const query = tagsSearchQuery.toLowerCase();
+  const filteredItems = query ? items.filter((item) => item.name.toLowerCase().includes(query)) : items;
+  const selectedIds = storeState?.status === 'ready' ? storeState.tags.picked : selectedTagIds;
+  const selectTag = storeTags ? storeTags.onToggle : onSelectTag;
+  const clearTags = storeTags ? storeTags.onClear : onClearTags;
 
   const toggleTagSearch = (): void => {
     const next = !isTagsSearchVisible;
@@ -149,7 +171,7 @@ export function Sidebar({
             <div className="atlas-tags-header">
               <div className="atlas-tags-heading">
                 <div className="atlas-section-title">{t('am.sidebar.tags')}</div>
-                <ClearTagsChip count={selectedTagIds.length} onClear={onClearTags} />
+                <ClearTagsChip count={selectedIds.length} onClear={clearTags} />
               </div>
               <LabelTooltip label={t('am.sidebar.searchTags')}>
                 <Button
@@ -184,49 +206,32 @@ export function Sidebar({
               </div>
             )}
 
-            <div className="atlas-tags-list">
-              {tagsLoading && !tagsFailed && <TagListSkeleton />}
-              {!tagsLoading && !tagsFailed && (filteredTags.length > 0 ? (
-                filteredTags.map((tag) => {
-                  const tagCount = tagCounts.get(tag.id) ?? 0;
-                  return (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      className={`atlas-tag-button ${selectedTagIds.includes(tag.id) ? 'atlas-active' : ''}`}
-                      onClick={(e) => { e.stopPropagation(); onSelectTag(tag.id); }}
-                      aria-pressed={selectedTagIds.includes(tag.id)}
-                    >
-                      <Tag className="atlas-tag-icon" />
-                      <span className="atlas-tag-text">{tag.name}</span>
-                      {tagCount > 0 && <span className="atlas-tag-count">{tagCount}</span>}
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="atlas-tags-empty">
-                  <span className="atlas-tags-empty-text">
-                    {tagsSearchQuery ? t('am.sidebar.noMatchingTags') : t('am.sidebar.noTags')}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <SidebarTagList
+              items={filteredItems}
+              selectedIds={selectedIds}
+              onSelect={selectTag}
+              loading={storeState ? storeState.status === 'waiting' : tagsLoading}
+              failed={storeState ? false : tagsFailed}
+              emptyText={tagsSearchQuery ? t('am.sidebar.noMatchingTags') : t(storeState ? 'am.sidebar.noStoreTags' : 'am.sidebar.noTags')}
+            />
           </div>
 
           <div className="atlas-sidebar-spacer" />
 
           {footer}
 
-          <div className="atlas-sidebar-actions">
-            <Button
-              variant="ghost"
-              className="atlas-asset-manager-manage-btn"
-              onClick={(e) => { e.stopPropagation(); onManageTags(); }}
-            >
-              <Settings />
-              <span>{t('am.sidebar.manage')}</span>
-            </Button>
-          </div>
+          {!storeTags && onManageTags && (
+            <div className="atlas-sidebar-actions">
+              <Button
+                variant="ghost"
+                className="atlas-asset-manager-manage-btn"
+                onClick={(e) => { e.stopPropagation(); onManageTags(); }}
+              >
+                <Settings />
+                <span>{t('am.sidebar.manage')}</span>
+              </Button>
+            </div>
+          )}
         </motion.div>
       </motion.aside>
     </MotionConfig>

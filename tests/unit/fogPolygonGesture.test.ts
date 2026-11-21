@@ -3,6 +3,7 @@ import { Container, Point, type FederatedPointerEvent, type Graphics, type Point
 import type { Viewport } from 'pixi-viewport';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fogCoverage } from '../../src/app/fog/fogCoverage';
+import { openShapeOf } from '../../src/app/pixi/utils/openShape';
 import { FogGesture } from '../../src/app/pixi/fog/FogGesture';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';
@@ -389,6 +390,38 @@ describe('the fog tool\'s polygon', () => {
     window.dispatchEvent(new Event('blur'));
     expect(s.gesture.active).toBe(false);
     expect(s.showCommitted).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the fog tool\'s polygon under a finger', () => {
+  it('tells the view\'s open shape of itself: its buttons close it and take a corner back, as Enter and Backspace do', () => {
+    const s = polygonScene();
+    const open = openShapeOf(s.store);
+    expect(open.state).toBeNull();
+    s.click(2, 3);
+    s.click(138, 4);
+    // Two corners are no area yet: there is nothing to close.
+    expect(open.state).toEqual({ canFinish: false, canGoBack: true });
+    s.click(72, 139);
+    expect(open.state).toEqual({ canFinish: true, canGoBack: true });
+    s.click(210, 139);
+    open.back();
+    open.finish();
+    expect(open.state).toBeNull();
+    expect(s.fog()).toMatchObject([{ type: 'lasso', points: [{ x: 0, y: 0 }, { x: 140, y: 0 }, { x: 70, y: 140 }] }]);
+    expect(s.steps()).toBe(1);
+  });
+
+  it('is gone from the open shape with its only corner, and when it is dropped', () => {
+    const s = polygonScene();
+    const open = openShapeOf(s.store);
+    s.click(2, 3);
+    open.back();
+    expect(open.state).toBeNull();
+    expect(s.gesture.active).toBe(false);
+    s.click(2, 3);
+    s.key('Escape');
+    expect(open.state).toBeNull();
   });
 });
 

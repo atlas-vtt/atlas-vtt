@@ -2,6 +2,7 @@ import type { PlayerDrag, PlayerDragCancel, PlayerMove } from '../protocol/index
 import { holdTokens } from '../../lighting/sightOnDrop';
 import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
 import { placeTokens } from '../../stores/tokenStacking';
+import { countTurnMoveIn } from '../../stores/turnMovesSlice';
 import type { HeldTokens } from '../../types/viewUIState';
 import type { Point } from '../movement/index.ts';
 import { checkMove, dropPlace, landing, MoveRate, type MoveContext } from './moveCheck.ts';
@@ -193,6 +194,15 @@ export class PlayerDrags {
     const last = this.live.size === 0;
     if (outcome !== 'back') this.changed = true;
     if (outcome !== 'as-is') {
+      // What each drop moved its token from where its drag began counts in the drop's own write, so undo gives it back
+      const counted: { tokenId: string; distance: number }[] = [];
+      if (outcome !== 'back') {
+        const context = this.ports.context(this.store.getState());
+        for (const { tokenId, start } of drags) {
+          const distance = context.turnMove?.(tokenId, start, outcome) ?? null;
+          if (distance !== null) counted.push({ tokenId, distance });
+        }
+      }
       this.write((draft) => {
         if (outcome === 'back') {
           for (const { tokenId, start } of drags) {
@@ -200,7 +210,10 @@ export class PlayerDrags {
             if (token !== undefined) Object.assign(token, start);
           }
           draft._audioDirty = true;
-        } else placeTokens(draft, drags.map(({ tokenId }) => ({ id: tokenId, ...outcome })));
+        } else {
+          placeTokens(draft, drags.map(({ tokenId }) => ({ id: tokenId, ...outcome })));
+          for (const { tokenId, distance } of counted) countTurnMoveIn(draft, [tokenId], distance);
+        }
         if (last && Object.keys(draft.heldTokens).length > 0) draft.heldTokens = {};
       });
     }

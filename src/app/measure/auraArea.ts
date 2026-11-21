@@ -112,13 +112,6 @@ export function auraCellsDragged(cells: number, by: Point, direction: Point, gri
   return fitted(cells + (by.x * direction.x + by.y * direction.y) / grid.size, grid, free);
 }
 
-/** How far a circle around `token` reaches past the edge of the token's space, in cells, as the aura it becomes. */
-export function auraCellsOfCircle(points: readonly Point[], token: AuraToken, grid: TokenGrid): number {
-  const [centre, end] = points;
-  const radius = centre && end ? Math.hypot(end.x - centre.x, end.y - centre.y) : 0;
-  return fitted((radius - spaceRadius(token, grid)) / grid.size, grid, false);
-}
-
 /** An aura as it lies around its token now. */
 export interface PlacedAura {
   /** The aura placed: another object once it was edited. */

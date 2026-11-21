@@ -21,14 +21,16 @@ export const FORMER_ARMARIUM_TAB = 'atlas-armarium';
 export function registerArmarium(plugin: Plugin, assetManager: () => GlobalAssetManagerService | undefined): void {
   const { app } = plugin;
   const hosts = ArmariumHosts.forApp(app);
-  const host = (): ArmariumHost => hosts.current() ?? {
-    show: () => assetManager()?.openArmarium(),
+  const fallback: ArmariumHost = {
+    show: (page) => assetManager()?.openArmarium(page),
     review: (pending) => {
       const manager = assetManager();
       if (!manager) throw new Error('The asset manager is not ready yet.');
       manager.importBundle(pending);
     },
   };
+  plugin.register(hosts.setFallback(fallback));
+  const host = (): ArmariumHost => hosts.current() ?? fallback;
   const installer = ArmariumInstaller.open(app, { review: (pending) => host().review(pending) });
   plugin.register(() => ArmariumInstaller.release(app));
 

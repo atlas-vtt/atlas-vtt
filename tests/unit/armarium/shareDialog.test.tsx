@@ -2,7 +2,7 @@
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { App } from 'obsidian';
+import { requestUrl, type App } from 'obsidian';
 import { AtlasAccount } from '../../../src/app/account/AtlasAccount';
 import { ArmariumShareLayer } from '../../../src/app/armarium/share/ArmariumShareLayer';
 import { ArmariumHosts } from '../../../src/app/armarium/armariumHosts';
@@ -16,6 +16,7 @@ import { FakeArmarium, noSleep, settle } from './shareFakes';
 
 const confirm = vi.hoisted(() => vi.fn<() => Promise<boolean>>());
 vi.mock('../../../src/app/ui/confirmDialog', () => ({ confirmAction: confirm }));
+vi.mock('obsidian', async (original) => ({ ...(await original<typeof import('obsidian')>()), requestUrl: vi.fn() }));
 
 const PREVIEW = {
   collection: { id: 'caves', uid: 'col-uid', name: 'Blue Mouth Caves', version: 2, settings: { systemPresetId: 'builtin:cairn' } },
@@ -34,6 +35,7 @@ let account: AtlasAccount;
 beforeEach(() => {
   token = 'tok';
   confirm.mockReset();
+  vi.mocked(requestUrl).mockReset().mockResolvedValue({ status: 200 } as Awaited<ReturnType<typeof requestUrl>>);
   account = AtlasAccount.open(app, {
     http: () => Promise.resolve({ status: 200, json: { user: { id: 'u', name: 'Mara', handle: 'mara' } } }),
     timers: { now: () => 0, setTimer: () => 0, clearTimer: () => undefined },
@@ -128,17 +130,17 @@ describe('the share dialog', () => {
       await settle(100);
     });
     expect(screen.getByText('Shared')).toBeTruthy();
-    expect(screen.getByText('Blue Mouth Caves, version 3, is published.')).toBeTruthy();
+    expect(screen.getByText('Blue Mouth Caves, version 3, is uploaded.')).toBeTruthy();
     expect(commit).toHaveBeenCalledTimes(1);
     expect(api.storedListing?.tags).toEqual(['underground']);
   });
 
-  it('opens the published listing in the Armarium of the asset manager behind', async () => {
-    const api = new FakeArmarium();
-    api.own = { uid: 'col-uid', slug: 'blue-mouth-caves', fields: null, newestVersion: null };
+  it('says the version is uploaded and processing, and leads to My uploads in the Armarium behind, never to the listing\'s page', async () => {
     const show = vi.fn();
     const detach = ArmariumHosts.forApp(app).attach({ show, review: () => undefined });
-    const { session, onClose } = share(api);
+    const api = new FakeArmarium();
+    api.own = { uid: 'col-uid', slug: 'blue-mouth-caves', format: 'collection', fields: null, newestVersion: null, coverUrl: null };
+    const { session } = share(api);
     await act(async () => {
       session.start();
       await settle();
@@ -149,10 +151,12 @@ describe('the share dialog', () => {
       session.setDeclared(true);
       await session.publish();
     });
-    expect(session.snapshot().step).toBe('done');
-    fireEvent.click(button('Open in the Armarium'));
-    expect(onClose).toHaveBeenCalledTimes(1);
-    expect(show).toHaveBeenCalledWith('https://atlas-vtt.dev/armarium/blue-mouth-caves');
+    expect(screen.getByText('Blue Mouth Caves, version 3, is uploaded.')).toBeTruthy();
+    expect(screen.getByText(/processing now .* My uploads shows where it stands/)).toBeTruthy();
+    // Its page shows the new version only once the site is rebuilt: the dialog leads there by My uploads alone.
+    expect(screen.queryByRole('button', { name: /Open in the Armarium|Preparing its page/ })).toBeNull();
+    fireEvent.click(button('My uploads'));
+    expect(show).toHaveBeenCalledWith('https://atlas-vtt.dev/armarium/mine');
     detach();
   });
 

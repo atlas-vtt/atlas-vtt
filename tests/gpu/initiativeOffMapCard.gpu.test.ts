@@ -22,6 +22,9 @@ import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/ap
 import type { Character } from '../../src/app/types';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
+/** The numbers as they stand once shown (they show while the pointer is near the tracker), so they are measured at rest. */
+const SHOWN_NUMBERS = '.atlas-initiative-card__initiative, .atlas-initiative-card__dealt { opacity: 1 !important; scale: 1 !important; filter: none !important; transition: none !important; }';
+
 /** Obsidian's theme as the tracker meets it (as in `initiativeListsLayout.gpu.test.ts`). */
 const THEME = `
   body { margin: 0; font: 13px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #3a3f36; --background-primary: #1e1e1e; --background-secondary: #262626;
@@ -53,15 +56,15 @@ const entryOf = (tokenId: string, order: number, card?: number): InitiativeEntry
   isActive: order === 0, isNPC: true, order, ...(card === undefined ? {} : { card }),
 });
 
-interface View { names: boolean; dock: 'left' | 'right'; cards: boolean }
+interface View { names: boolean; dock: 'right'; cards: boolean }
 
 async function show({ names, dock, cards }: View): Promise<HTMLElement> {
   document.body.innerHTML = '';
   await page.viewport(1200, 900);
   const { app } = createInMemoryApp({ files: {} });
   const settings = new SettingsService(app);
-  settings.setInitiativeNames(names);
-  settings.setInitiativeLayout({ fromTurn: true, dock, collapsed: false });
+  settings.setCompactInitiative(names);
+  settings.setInitiativeLayout({ fromTurn: true, dock });
   const store = createViewAtlasStore(app, `off-map-card-${Math.random()}`);
   store.setState({
     persistenceEnabled: false,
@@ -84,15 +87,15 @@ const overlaps = (a: DOMRect, b: DOMRect): boolean => a.left < b.right && b.left
 
 describe('the card of a combatant kept beside the map', () => {
   const style = document.createElement('style');
-  style.textContent = THEME + css;
+  style.textContent = THEME + css + SHOWN_NUMBERS;
   beforeEach(() => document.head.append(style));
   afterEach(() => { style.remove(); document.body.innerHTML = ''; });
 
   const views: View[] = [
     { names: false, dock: 'right', cards: false },
     { names: true, dock: 'right', cards: false },
-    { names: true, dock: 'left', cards: true },
-    { names: false, dock: 'left', cards: true },
+    { names: true, dock: 'right', cards: true },
+    { names: false, dock: 'right', cards: true },
   ];
   for (const view of views) {
     const label = `${view.names ? 'names' : 'plain'}-${view.dock}${view.cards ? '-cards' : ''}`;

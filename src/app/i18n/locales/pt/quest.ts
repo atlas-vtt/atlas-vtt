@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const quest: Translation = {
+  'quest.quests': 'Missões',
+  'quest.new': 'Nova missão',
+  'quest.titleLabel': 'Título da missão',
+  'quest.kindLabel': 'Tipo de missão',
+  'quest.kind.main': 'Principal',
+  'quest.kind.side': 'Secundária',
+  'quest.mainQuests': 'Missões principais',
+  'quest.sideQuests': 'Missões secundárias',
+  'quest.over': 'Concluídas e fracassadas',
+  'quest.none': 'Nenhuma missão ainda.',
+  'quest.placeHint': 'Vincule um alfinete do mapa-múndi à nota de uma missão: os jogadores veem esse alfinete enquanto a missão estiver Ativa.',
+  'quest.status.open': 'Aberta',
+  'quest.status.active': 'Ativa',
+  'quest.status.done': 'Concluída',
+  'quest.status.failed': 'Fracassada',
+  'quest.status.hidden': 'Oculta',
+  'quest.statusOf': 'Status de {title}',
+  'quest.experience': '{count} XP',
+  'quest.createFailed': 'Não foi possível criar a nota da missão.',
+  'quest.openFailed': 'Não foi possível abrir a nota da missão.',
+  'quest.writeFailed': 'Não foi possível alterar a nota da missão.',
+};

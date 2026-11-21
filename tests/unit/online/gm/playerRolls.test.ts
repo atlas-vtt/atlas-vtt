@@ -72,6 +72,22 @@ describe('players\' rolls', () => {
     expect(JSON.stringify(sent)).not.toMatch(/hero|Hero|Player|art\//);
   });
 
+  it('are named by what they roll for, on every screen, with or without a token', async () => {
+    const gm = await table({ defaultRoll: '1d20', crit: 'natural' }, () => 0.5);
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '1d20 + 4', token: gm.alias(1), flavor: 'Longsword' });
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '1d20 + 2', token: null, flavor: 'Strength' });
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '1d20 + 1', token: gm.alias(1), mode: 'gm', flavor: 'Insight' });
+    expect(gm.rolled.map((roll) => roll.source)).toEqual([
+      { type: 'toolbar', tokenId: 'hero', tokenName: 'Hero', abilityName: 'Longsword' },
+      { type: 'toolbar', abilityName: 'Strength' },
+    ]);
+    expect(rollsSent(gm.sent).map(({ result }) => result.source)).toEqual([
+      { type: 'toolbar', abilityName: 'Longsword' },
+      { type: 'toolbar', abilityName: 'Strength' },
+      { type: 'toolbar', abilityName: 'Insight' },
+    ]);
+  });
+
   it('roll for nobody when the token is someone else\'s or unknown', async () => {
     const gm = await table({ defaultRoll: '1d20', crit: 'natural' }, () => 0.5);
     gm.share.receive(BEN, { t: 'roll', scene: gm.scene, formula: '1d8', token: gm.alias(1) });

@@ -45,6 +45,27 @@ const SHADOW_MAP = 1024;
 const SHADOW_TAPS = 12;
 
 /**
+ * **A smaller map for a device with less to spend.**
+ *
+ * The same reckoning one step further: the texels a side of the map has, where
+ * a device gives fewer than `SHADOW_MAP` (`setShadowMapSize`, told once, before
+ * the first stage is built). The blur and its taps shrink with the map, so the
+ * shadow is as soft on the table: at half the side, an eighth of the reads.
+ */
+let shadowMap = SHADOW_MAP;
+
+/** The dice's shadow map gets `texels` a side from the next stage built on, at most `SHADOW_MAP`. */
+export function setShadowMapSize(texels: number): void {
+  shadowMap = Math.min(SHADOW_MAP, Math.max(1, Math.round(texels)));
+}
+
+/** What a stage's shadow is drawn with: the map's side, the blur's taps, and what the blur radii are multiplied by. */
+export function shadowDetail(): { map: number; taps: number; blur: number } {
+  const blur = shadowMap / SHADOW_MAP;
+  return { map: shadowMap, taps: Math.max(4, Math.round(SHADOW_TAPS * blur)), blur };
+}
+
+/**
  * **The shadow follows the paper, the die does not.**
  *
  * The die keeps its colours in a dark theme, but the shadow is not a thing: it
@@ -108,6 +129,8 @@ export class StageShadow {
    * changed, or the last frame moved a body and its ghosts have yet to go.
    */
   private stale = true;
+  /** What the blur radii, counted in texels of the full map, are multiplied by on this stage's map. */
+  private readonly blur: number;
 
   /**
    * `renderer` is shared by every stage of the document (`DiceGpu`), so its
@@ -121,10 +144,12 @@ export class StageShadow {
   ) {
     this.key = new THREE.DirectionalLight(0xfff0da, KEY_INTENSITY);
     this.key.castShadow = true;
-    this.key.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
+    const detail = shadowDetail();
+    this.blur = detail.blur;
+    this.key.shadow.mapSize.set(detail.map, detail.map);
     this.key.shadow.camera.near = 0.5;
-    this.key.shadow.radius = SHADOW_SHARP.blur;
-    this.key.shadow.blurSamples = SHADOW_TAPS;
+    this.key.shadow.radius = SHADOW_SHARP.blur * this.blur;
+    this.key.shadow.blurSamples = detail.taps;
     this.key.shadow.bias = -0.0004;
     scene.add(this.key);
     this.fit(1, 0, 3.2, 3.2);
@@ -188,7 +213,7 @@ export class StageShadow {
     let height = 0;
     for (const { anim } of dice) height = Math.max(height, (anim.p[1] - anim.floor) / (anim.radius * 2.6));
     const softness = Math.min(1, Math.max(0, height));
-    this.key.shadow.radius = SHADOW_SHARP.blur + (SHADOW_SOFT.blur - SHADOW_SHARP.blur) * softness;
+    this.key.shadow.radius = (SHADOW_SHARP.blur + (SHADOW_SOFT.blur - SHADOW_SHARP.blur) * softness) * this.blur;
     // Read on every frame: the stage is pooled and outlives a theme switch.
     const night = nightSheet(this.canvas);
     const shadowGain = night ? NIGHT_SHADOW_GAIN : 1;

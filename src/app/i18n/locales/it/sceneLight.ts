@@ -36,5 +36,12 @@ export const sceneLight = {
   "sceneLight.memory.brush": "Pennello",
   "sceneLight.memory.lasso": "Lazo",
   "sceneLight.memory.rectangle": "Rettangolo",
-  "sceneLight.memory.brushSize": "Dimensione del pennello"
+  "sceneLight.memory.brushSize": "Dimensione del pennello",
+  "sceneLight.memoryNeeded": "Richiede una scena illuminata che ricordi le aree esplorate",
+  "sceneLight.settingsHint": "Visione, aree esplorate e scurovisione",
+  "sceneLight.sightOnDropOn": "Trascinare un token non mostra nulla di nuovo ai giocatori finché non lo rilasci",
+  "sceneLight.sightOnDropOff": "Visione e luce seguono un token mentre lo trascini",
+  "sceneLight.noTint": "Nessuna tonalità",
+  "sceneLight.memory.revealTip": "Contrassegna un’area come esplorata per i giocatori",
+  "sceneLight.memory.forgetTip": "Fai dimenticare un’area ai giocatori",
 } satisfies Translation;

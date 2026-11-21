@@ -14,6 +14,7 @@ export const diceLab = {
   "diceLab.newSetName": "Nuovo set di dadi",
   "diceLab.noDiceYet": "Ancora nessun dado",
   "diceLab.duplicateSet": "Duplica {name}",
+  "diceLab.moreFor": "Altre opzioni per {name}",
   "diceLab.duplicateToEdit": "Duplica per modificare",
   "diceLab.copyName": "Copia di {name}",
   "diceLab.deleteSet": "Elimina {name}",
@@ -118,5 +119,6 @@ export const diceLab = {
   "diceLab.factDisadvantageTakes": "svantaggio −{what}",
   "diceLab.default": "Predefinito",
   "diceLab.collectionDice": "Dadi della collezione",
-  "diceLab.ofCollection": "Collezione {name}"
+  "diceLab.ofCollection": "Collezione {name}",
+  "diceLab.edgeOnlySetDice.touch": "Cambiano solo i tiri dei dadi del set: un tiro per i danni resta invariato. Tocca e tieni premuto un tiro per il vantaggio o lo svantaggio.",
 } satisfies Translation;

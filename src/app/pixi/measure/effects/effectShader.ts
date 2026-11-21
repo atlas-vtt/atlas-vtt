@@ -57,6 +57,8 @@ uniform float uTime;
 uniform vec2 uSeed;
 uniform float uDetail;
 uniform float uStill;
+// PIXI's own: the mesh's tint and alpha, premultiplied. Its alpha fades the area with its measurement.
+uniform vec4 uColor;
 ${NOISE_GLSL}
 ${EFFECT_GLSL}
 ${FIRE_GLSL}
@@ -87,7 +89,7 @@ void main() {
     : uEffect < 3.5 ? mist(p, d, px)
     : uEffect < 4.5 ? radiance(p, d, px)
     : shadow(p, d, px);
-  finalColor = colour * feather;
+  finalColor = colour * (feather * uColor.a);
 }`;
 
 /** How much of its look an effect draws, by the lighting quality (`liquidDetail`): 2 at high, 1 at balanced, 0 at saver. */

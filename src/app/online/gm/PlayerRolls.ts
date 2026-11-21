@@ -9,6 +9,8 @@ import { isRollFormula } from '../../tools/textRolls';
 import type { TokenEntity } from '../../types';
 import type { DiceRollResult } from '../../types/diceTypes';
 import type { DiceSource } from './atlasDice.ts';
+import { designedRollFormula, type DesignedRoll } from './diceRowShare.ts';
+import { presetSet } from '../../react/components/dice/presetLook';
 import { tokenLabel } from './atlasView.ts';
 import type { LoggedRoll, RollRequest } from './log/TableLog.ts';
 import { rollFaceOf } from './log/logEntries.ts';
@@ -116,6 +118,8 @@ export interface PlayerRollsPorts {
   quietRoll(formula: string, set?: DiceSet, setAppearance?: true, advantage?: AdvantageSide): SharedRoll | null;
   /** The roll button of the log a roll answers, as its presser may roll it; null where there is none. */
   request(from: string, answer: RollRequestAnswer): RollRequest | null;
+  /** The designed roll pinned to the GM's dice row by this id, which players may roll; null for any other. */
+  pinnedRoll?(id: string): DesignedRoll | null;
   /** Takes a private roll into the table's log. */
   logged(roll: LoggedRoll): void;
   /** The id players know a token by. */
@@ -149,19 +153,28 @@ export class PlayerRolls {
     const asked = sent.request;
     const request = asked === undefined ? undefined : this.ports.request(from, asked);
     if (request === null) return this.refuse('formula', from);
-    const message: PlayerRoll = request === undefined ? sent : { ...sent, formula: request.formula, mode: buttonMode(request) };
+    // A designed roll of the dice row is rolled as the GM's tray rolls it: its own dice, names, colours and rules.
+    const pinned = request !== undefined || sent.preset === undefined ? undefined : this.ports.pinnedRoll?.(sent.preset) ?? null;
+    if (pinned === null) return this.refuse('formula', from);
+    const message: PlayerRoll = request !== undefined ? { ...sent, formula: request.formula, mode: buttonMode(request) }
+      : pinned !== undefined ? { ...sent, formula: designedRollFormula(pinned), setAppearance: true } : sent;
     const context = this.ports.context(from);
     const verdict = checkRoll(from, message, context);
     if (!verdict.ok) return this.refuse(verdict.reason, from);
     const { tokenId } = verdict;
     const token = tokenId === null ? undefined : context.tokens[tokenId];
-    const source: NonNullable<DiceRollResult['source']> = tokenId === null || token === undefined ? { type: 'toolbar' } : { type: 'toolbar', tokenId, tokenName: tokenLabel(token) };
     const notes: RollNotes = request !== undefined && asked !== undefined
       ? { flavor: request.label, request: { id: asked.id, label: request.label } }
       : sent.flavor === undefined ? {} : { flavor: sent.flavor };
+    // What the roll is for ("Longsword") names it wherever it shows, as a statblock's roll names its ability.
+    const source: NonNullable<DiceRollResult['source']> = {
+      type: 'toolbar',
+      ...(tokenId !== null && token !== undefined && { tokenId, tokenName: tokenLabel(token) }),
+      ...(notes.flavor !== undefined && { abilityName: notes.flavor }),
+    };
     const mode = message.mode ?? 'public';
     const dice = this.ports.dice();
-    const set = token === undefined ? undefined : dice?.setFor?.(token);
+    const set = pinned === undefined ? (token === undefined ? undefined : dice?.setFor?.(token)) : presetSet(pinned) ?? undefined;
     const setAppearance = request === undefined ? message.setAppearance : undefined;
     const rules = set ?? dice?.rules();
     const formula = rolledFormula(message.formula, rules);
@@ -180,8 +193,9 @@ export class PlayerRolls {
   /** A private roll: into the log for its audience, and thrown on the roller's page unless it is blind. */
   private rollPrivately(from: string, formula: string, mode: Exclude<RollMode, 'public'>, tokenId: string | null, source: NonNullable<DiceRollResult['source']>, context: RollContext, notes: RollNotes, how: PrivateRoll): void {
     const { whisper, set, setAppearance, advantage } = how;
-    const roll = this.ports.quietRoll(formula, set, setAppearance, advantage);
-    if (roll === null) return this.refuse('formula', from);
+    const quiet = this.ports.quietRoll(formula, set, setAppearance, advantage);
+    if (quiet === null) return this.refuse('formula', from);
+    const roll: SharedRoll = notes.flavor === undefined ? quiet : { ...quiet, source: { type: 'toolbar', abilityName: notes.flavor } };
     const token = tokenId === null ? null : this.ports.alias(tokenId);
     this.ports.logged({ who: from, roll, token, shared: true, mode, to: rollAudience(mode, from, whisper), ...notes, ...rollFaceOf(source, context.tokens) });
     if (mode !== 'blind') this.ports.send({ t: 'roll', who: from, result: roll, token }, from);

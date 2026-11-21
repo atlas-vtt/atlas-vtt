@@ -1,5 +1,6 @@
 import React from "react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import { Magnet } from "lucide-react"
 import { t } from "../../../i18n"
 import { useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
 import { hasLevels } from "../../../levels/sceneLevels"
@@ -12,6 +13,8 @@ import { MOTION_FAST_MS, easeOut } from "../../../utils/motion"
 import { TooltipProvider } from "../primitives/tooltip"
 import { DRAW_MODES, LIGHTING_MODES, MEMORY_ACTIONS, MEMORY_SHAPES, ROOM_ACTIONS, ROOM_SHAPES, lightChoices } from "./lightingToolChoices"
 import { ChoiceButtons, GroupBreak, ToolOptionsBars } from "./ToolOptionsBar"
+import { ToolSwitchButton } from "./ToolSwitchButton"
+import { shownTool } from "../../../measure/heldRuler"
 
 /** Why a mode cannot be chosen now, or null where it can. */
 export function useUnavailableModes(): (mode: WallToolSubMode) => string | null {
@@ -65,16 +68,27 @@ function useModeTools(mode: WallToolSubMode, locked: string | null): React.React
 }
 
 /**
+ * What Alt is to a keyboard, for a hand that holds no key: wall ends, zone corners and a light's
+ * handles snap, until this is switched off. A room's corners are placed freely and snap to the
+ * grid's squares only when asked, which Shift does: in the rooms mode the button is that switch.
+ */
+function SnapSwitch({ mode, locked }: { mode: WallToolSubMode; locked: string | null }): React.ReactElement {
+  const squares = useAtlasStore((state) => state.grid?.type === 'square' && state.grid.size > 0)
+  if (mode !== 'rooms') return <ToolSwitchButton id="lightingSnap" icon={Magnet} label={t('toolbar.snap')} unavailable={locked} />
+  return <ToolSwitchButton id="roomSnap" icon={Magnet} label={t('toolbar.snap')} unavailable={locked ?? (squares ? null : t('toolbar.snapNeedsSquares'))} />
+}
+
+/**
  * The lighting tool's bars above the main toolbar while the tool is chosen, with the toolbar's
- * corners and smaller buttons: its modes, from the toolbar's left edge, and after them a bar of
- * the current mode's tools, which a mode with none leaves out. The modes bar keeps its width, so
+ * corners and smaller buttons: its modes, from the toolbar's left edge, with the Snap switch at
+ * their end, and after them a bar of the current mode's tools, which a mode with none leaves out. The modes bar keeps its width, so
  * neither bar moves when the mode changes. The tool's menu keeps the sizes, the
  * light to place and the scene's lighting. In the session view the bars stay and take no choice
  * (each button says why): gone without a word, they read as broken. Hidden in the players' view
  * and while the toolbar is arranged.
  */
 export function LightingToolBar(): React.ReactElement {
-  const shown = useAtlasStore((state) => state.activeTool === 'wall' && !state.isPlayerView
+  const shown = useAtlasStore((state) => shownTool(state) === 'wall' && !state.isPlayerView
     && !state.isToolbarEditing && !state.isMapLoading)
   return <ToolOptionsBars shown={shown}><LightingBars /></ToolOptionsBars>
 }
@@ -92,6 +106,9 @@ function LightingBars(): React.ReactElement {
     <TooltipProvider delayDuration={300}>
       <div role="toolbar" aria-label={t('toolbar.lightingModes')} className="atlas-tool-bar atlas-tool-bar--modes">
         <ChoiceButtons kind="mode" locked={locked} choices={LIGHTING_MODES} value={mode} unavailable={unavailable} onChange={(value) => setLightingTool({ mode: value })} />
+        {/* After the modes, where no change of mode moves it. */}
+        <GroupBreak />
+        <SnapSwitch mode={mode} locked={locked} />
       </div>
       {/* One mode's tools leave before the next mode's come out of the modes bar's side; the modes bar never moves. */}
       <AnimatePresence mode="wait" initial={false}>
