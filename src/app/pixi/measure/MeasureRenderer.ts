@@ -98,7 +98,7 @@ export class MeasureRenderer {
       this.handles.pointer.leave();
     },
   };
-  /** The range check and the rings of the Ranges mode: marks that are no measurements, and the GM's own. */
+  /** The range check and the rings of the Ranges mode: marks that are no measurements, which players see by the measurements' rule. */
   public readonly ranges: RangeMarks;
   /** What plays the effects of the kept areas: told the map's playback mode, and asked for stills. */
   public readonly effects: AreaEffects;
@@ -136,7 +136,7 @@ export class MeasureRenderer {
       shownElsewhere: () => this.handles.placesChanged(),
     }, { effects: this.effects });
     this.pointed = new PointedMeasures((ids) => this.layer.setPointed(ids));
-    this.ranges = new RangeMarks({ viewport, store, look: () => this.look(), measuring: () => this.input.measuring, sources: () => this.rangeSources });
+    this.ranges = new RangeMarks({ viewport, store, look: () => this.look(), measuring: () => this.input.measuring, sources: () => this.rangeSources, changed: () => this.rangesChanged() });
     // Made after the layer: the handles stand above every measurement and label.
     this.handles = new MeasureHandleInteraction({
       viewport,
@@ -147,7 +147,7 @@ export class MeasureRenderer {
       place: (measure) => this.handlePlace(measure),
       aura: (measure) => this.layer.places.dragSetting(measure, this.look()),
     });
-    this.parts = new MeasurePartsVisibility(this.layer.liveParts, () => this.view, [this.handles.layer, this.layer.gmMarks, this.ranges.view]);
+    this.parts = new MeasurePartsVisibility(this.layer.liveParts, () => this.view, this.gmLayers);
     this.live = new LiveMeasuring({
       store,
       grid: gridSystem,
@@ -181,9 +181,9 @@ export class MeasureRenderer {
     this.input.setEnabled(state.activeTool === 'measure');
   }
 
-  /** The layers only the GM's view of the canvas shows: the handles of the kept measurements, the areas' unlit outlines, and the range marks. */
+  /** The layers only the GM's view of the canvas shows: the handles of the kept measurements and the areas' unlit outlines. */
   public get gmLayers(): readonly Container[] {
-    return [this.handles.layer, this.layer.gmMarks, this.ranges.view];
+    return [this.handles.layer, this.layer.gmMarks];
   }
 
   /** Where the view draws gliding tokens: auras and grouped measurements are drawn with their token on its way. */
@@ -281,7 +281,10 @@ export class MeasureRenderer {
     // The DM screen, the command palette or the asset manager opened over the map, by a key too: nothing waits for its next click under them.
     if (COVERS_MAP.some((open) => state[open] && !previous[open])) this.input.cancel();
     this.input.setEnabled(measuring);
-    if (state.measureTool.players !== previous.measureTool.players) this.live.setHidden(!state.measureTool.players);
+    if (state.measureTool.players !== previous.measureTool.players) {
+      this.live.setHidden(!state.measureTool.players);
+      this.rangesChanged();
+    }
     // Asked before the kept measurements are read, which notes the scene and level they belong to.
     const inPlace = this.inPlace(state);
     this.readKept(state, inPlace, inPlace && isHistoryTravelling(this.store));
@@ -331,6 +334,16 @@ export class MeasureRenderer {
    */
   private inPlace(state: MeasureState): boolean {
     return !state.isMapLoading && this.keptScene === sceneKey(state);
+  }
+
+  /** What the range marks show is another, or whether players may see it: the players' picture and whoever passes the marks on follow. */
+  private rangesChanged(): void {
+    const shown = this.ranges.shown;
+    const { rings, check, hidden } = shown;
+    this.parts.mark(this.ranges.ringsLayer, rings?.tokenIds ?? null, hidden);
+    this.parts.mark(this.ranges.checkLayer, check?.tokenIds ?? null, hidden);
+    const ranges = rings || check ? shown : null;
+    if (ranges !== null || (this.measurements.get().ranges ?? null) !== null) this.measurements.set({ ranges });
   }
 
   /** The live measurement is another, or gone: it is drawn at the zoom the view has now. */

@@ -66,5 +66,4 @@ export const toolbar: Translation = {
   'toolbar.ranges': 'Alcances',
   'toolbar.rangesTip': 'Haz clic en un token o un lugar para ver sus alcances',
   'toolbar.rangesNoRules': 'Este sistema de juego no tiene alcances ni tramos de movimiento',
-  'toolbar.rangesNeedGmView': 'Cambia a la vista del DJ ({key}) para ver los alcances',
 };

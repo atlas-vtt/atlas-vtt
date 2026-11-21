@@ -1,5 +1,5 @@
 import type { Point } from '../types/visionTypes';
-import { measureOriginOf, playersSeeMeasure, type MeasureAudience, type MeasureOrigin, type TokenFootprint, type TokenSeen } from '../vision/measureOrigin';
+import { measureOriginOf, originKept, playersSeeMeasure, type MeasureAudience, type MeasureOrigin, type TokenFootprint, type TokenSeen } from '../vision/measureOrigin';
 import { setLayerVisibility, type HideableLayer, type LayerVisibility } from './playerSafeFrame';
 
 /** What a measurement needs to know of the tokens to decide whether the players' picture shows it. */
@@ -68,7 +68,9 @@ interface Viewer {
  * lighting above it decides where players see it. Of the tokens an area marks while it is made, the
  * players' picture rings and counts only those the players see; the marks of a kept area the GM
  * points at are the GM's own look, and the players' picture has none of them. A ruler's distance
- * counts, for the players, the height only of the tokens they see under its ends. The pin, the kept measurements' handles and the unlit
+ * counts, for the players, the height only of the tokens they see under its ends. The marks that
+ * are no measurements (the range check, the rings of Ranges: `mark`) follow the same rule, by the
+ * tokens they stand on, and are in no picture of the scene. The pin, the kept measurements' handles and the unlit
  * outlines that let the GM read an area in the dark (`gmLayers`) are the GM's own: the pin is never
  * in a frame, and the others show on the GM's view of the canvas alone, never in a frame or a
  * picture of the scene.
@@ -79,8 +81,10 @@ export class MeasurePartsVisibility {
   /** Who sees the live measurement; null while there is none. */
   private liveAudience: MeasureAudience | null = null;
   private readonly kept = new Map<MeasureParts, MeasureAudience>();
+  /** The marks that are no measurements while they show, each with who sees it. */
+  private readonly marks = new Map<HideableLayer, MeasureAudience>();
 
-  /** `gmLayers` are the layers only the GM's view of the canvas shows: the handles of the kept measurements, the areas' unlit outlines, and the range check with the rings of Ranges. */
+  /** `gmLayers` are the layers only the GM's view of the canvas shows: the handles of the kept measurements and the areas' unlit outlines. */
   constructor(private readonly live: LiveMeasureParts, private readonly view: () => MeasurePlayersView | null, private readonly gmLayers: readonly HideableLayer[]) {
     live.pin.visible = false;
   }
@@ -145,6 +149,23 @@ export class MeasurePartsVisibility {
     this.kept.delete(parts);
   }
 
+  /**
+   * A mark that is no measurement shows in `layer`, standing on `tokenIds` (none: on a point), or
+   * shows nothing any more (null); `hidden` while the GM measures for themselves. What it stands on
+   * is recorded with whether the players see it when it first stands there, as a measurement's
+   * start is: one shown while they did not see its token stays out of their picture.
+   */
+  mark(layer: HideableLayer, tokenIds: readonly string[] | null, hidden: boolean): void {
+    if (tokenIds === null) {
+      this.marks.delete(layer);
+      return;
+    }
+    const view = this.view();
+    const audience: MeasureAudience = { hidden, origin: view && originKept(this.marks.get(layer)?.origin, tokenIds, () => view.seenAtStart()) };
+    this.marks.set(layer, audience);
+    setLayerVisibility([{ layer, visible: markShown(audience, this.onCanvas()) }]);
+  }
+
   /** The tokens the measurement in `parts` marks are others: their rings and their number show as the canvas should show them. */
   marked(parts: MeasureParts): void {
     const live = parts === this.live;
@@ -155,9 +176,9 @@ export class MeasurePartsVisibility {
   /** Shows on the canvas what it should show now: the players' sight, or whether the canvas shows it, changed. */
   refresh(): void {
     const viewer = this.onCanvas();
-    // The GM's own layers hold marks that are no measurement's (the range check, the rings of Ranges): they follow the canvas whatever is measured.
+    // The GM's own layers follow the canvas whatever is measured.
     this.showGmLayers(viewer);
-    if (!this.liveAudience && this.kept.size === 0) return;
+    if (!this.liveAudience && this.kept.size === 0 && this.marks.size === 0) return;
     setLayerVisibility(this.layers(viewer));
   }
 
@@ -193,6 +214,7 @@ export class MeasurePartsVisibility {
       // After every shape and label, so those keep their places in the list whatever is marked.
       ...markLayers(this.live.marks, this.liveAudience, viewer, true),
       ...kept.flatMap(([parts, audience]) => markLayers(parts.marks, audience, viewer, false)),
+      ...[...this.marks].map(([layer, audience]) => ({ layer, visible: markShown(audience, viewer) })),
     ];
   }
 
@@ -206,6 +228,11 @@ export class MeasurePartsVisibility {
     const visible = shownBy(audience, viewer.seen);
     return [{ layer: parts.shape, visible }, { layer: parts.label, visible }, ...(marks ? markLayers(parts.marks, audience, viewer, false) : [])];
   }
+}
+
+/** A mark that is no measurement shows as a measurement does, and in no picture of the scene. */
+function markShown(audience: MeasureAudience, { seen, picture }: Viewer): boolean {
+  return !picture && shownBy(audience, seen);
 }
 
 /** Without `seen` (the GM's view) or a measurement to ask about, a part shows. */

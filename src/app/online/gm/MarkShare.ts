@@ -103,12 +103,12 @@ const laserEntry = (who: string, { color, size, at, on }: LaserState, pts: reado
 const isDrawing = ({ live, full }: MeasureState): boolean => (full ? full.live : live) !== null;
 
 /** Whether a sender has no measurement at all. */
-const hasNone = (state: MeasureState): boolean => !isDrawing(state) && (state.full ?? state).kept.length === 0;
+const hasNone = (state: MeasureState): boolean => !isDrawing(state) && (state.full ?? state).kept.length === 0 && state.ranges === undefined;
 
 /** A sender's measurements as `marks` and the GM's overlay take them, with the time since the live one's end was last told. */
 const measureEntry = (who: string, state: MeasureState, span: number | null): MeasureEntry => {
-  const { color, live, kept, full } = state;
-  return { who, color, live, kept, ...(isDrawing(state) && span !== null && { span }), ...(full && { full }) };
+  const { color, live, kept, full, ranges } = state;
+  return { who, color, live, kept, ...(isDrawing(state) && span !== null && { span }), ...(full && { full }), ...(ranges && { ranges }) };
 };
 
 /** The time messages cover together: null once one of them told none, and no more than a message may tell. */

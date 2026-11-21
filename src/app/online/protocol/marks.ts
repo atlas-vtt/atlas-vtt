@@ -95,6 +95,39 @@ export interface FullMeasure {
   readonly aura?: MarkAura;
 }
 
+/** The most rings the GM's Ranges shows around one place. */
+export const MAX_MARK_RANGE_RINGS = 8;
+/** The farthest a ring of Ranges reaches, in cells. */
+export const MAX_RANGE_REACH = 100_000;
+/** The longest text a ring's name or the range check says. */
+export const MAX_RANGE_TEXT = 80;
+
+/** Where a range mark stands, in world pixels: a token's centre with its size in cells, or a point (no `size`). */
+export interface RangePlace {
+  readonly x: number;
+  readonly y: number;
+  readonly size?: number;
+}
+
+/** One ring of Ranges: everything within `reach` cells of its place, named by `label`, in its own colour (`#rrggbb`) or its sender's. */
+export interface RangeRingState {
+  readonly reach: number;
+  readonly label: string;
+  readonly color?: string;
+}
+
+/**
+ * The GM's range marks, which are no measurements (added later: a reader that does not know them
+ * does not look at them): the rings of Ranges around a token or a point (`rings`), and the range
+ * check, a dashed line between two tokens' edges with what it reads (`check`). `loose` says
+ * tokens stand anywhere on the map, where rings are round and never cells.
+ */
+export interface RangeMarksState {
+  readonly rings?: { readonly at: RangePlace; readonly rings: readonly RangeRingState[] };
+  readonly check?: { readonly from: RangePlace; readonly to: RangePlace; readonly text: string };
+  readonly loose?: true;
+}
+
 /** A sender's measurements in full: the one being drawn and the kept ones. */
 export interface FullMeasures {
   readonly live: FullMeasure | null;
@@ -133,6 +166,8 @@ export interface MeasureState {
   readonly kept: readonly SharedMeasure[];
   readonly span?: number;
   readonly full?: FullMeasures;
+  /** The GM's range marks (`RangeMarksState`, added later); read of the GM's measurements alone. */
+  readonly ranges?: RangeMarksState;
 }
 
 /**
@@ -298,7 +333,45 @@ function parseFullMeasures(value: unknown, maxKept: number): FullMeasures | null
   return (value.live !== null && live === null) || kept === null ? null : { live, kept };
 }
 
-function parseMeasureState(value: Record<string, unknown>, maxKept: number): MeasureState | null {
+const isRangeText = (value: unknown): value is string => typeof value === 'string' && value.length <= MAX_RANGE_TEXT;
+
+function parseRangePlace(value: unknown): RangePlace | null {
+  if (!isRecord(value) || !isCoordinate(value.x) || !isCoordinate(value.y)) return null;
+  const { size } = value;
+  if (size === undefined) return { x: value.x, y: value.y };
+  return typeof size === 'number' && Number.isFinite(size) && size > 0 && size <= MAX_RANGE_REACH ? { x: value.x, y: value.y, size } : null;
+}
+
+function parseRangeRing(value: unknown): RangeRingState | null {
+  if (!isRecord(value) || !isRangeText(value.label)) return null;
+  const { reach, color } = value;
+  if (typeof reach !== 'number' || !Number.isFinite(reach) || reach <= 0 || reach > MAX_RANGE_REACH) return null;
+  if (color !== undefined && (typeof color !== 'string' || !COLOR.test(color))) return null;
+  return { reach, label: value.label, ...(typeof color === 'string' && { color }) };
+}
+
+/** The GM's range marks, or undefined for none and for anything malformed: they are left out, and the measurements beside them still read. */
+function parseRanges(value: unknown): RangeMarksState | undefined {
+  if (!isRecord(value)) return undefined;
+  const { rings, check, loose } = value;
+  let ringsRead: RangeMarksState['rings'];
+  if (isRecord(rings) && Array.isArray(rings.rings) && rings.rings.length > 0 && rings.rings.length <= MAX_MARK_RANGE_RINGS) {
+    const at = parseRangePlace(rings.at);
+    const each = readAll(rings.rings, parseRangeRing);
+    if (at !== null && each !== null) ringsRead = { at, rings: each };
+  }
+  let checkRead: RangeMarksState['check'];
+  if (isRecord(check) && isRangeText(check.text)) {
+    const from = parseRangePlace(check.from);
+    const to = parseRangePlace(check.to);
+    if (from !== null && to !== null) checkRead = { from, to, text: check.text };
+  }
+  if (ringsRead === undefined && checkRead === undefined) return undefined;
+  return { ...(ringsRead && { rings: ringsRead }), ...(checkRead && { check: checkRead }), ...(loose === true && { loose }) };
+}
+
+/** A sender's measurements, with at most `maxKept` kept ones, or null for anything malformed; range marks only of the GM's (`gm`). */
+function parseMeasureState(value: Record<string, unknown>, maxKept: number, gm = false): MeasureState | null {
   const { color, live, kept, span, full } = value;
   if (typeof color !== 'string' || !COLOR.test(color) || !Array.isArray(kept) || kept.length > maxKept) return null;
   if (span !== undefined && !isSpan(span)) return null;
@@ -306,7 +379,8 @@ function parseMeasureState(value: Record<string, unknown>, maxKept: number): Mea
   const records = readAll(kept, parseMeasure);
   const whole = full === undefined ? undefined : parseFullMeasures(full, maxKept);
   if ((live !== null && measure === null) || records === null || whole === null) return null;
-  return { color, live: measure, kept: records, ...(span !== undefined && { span }), ...(whole !== undefined && { full: whole }) };
+  const ranges = gm ? parseRanges(value.ranges) : undefined;
+  return { color, live: measure, kept: records, ...(span !== undefined && { span }), ...(whole !== undefined && { full: whole }), ...(ranges !== undefined && { ranges }) };
 }
 
 /** A player's laser, measurements or cursor as the GM reads them, or null for anything malformed. */
@@ -342,7 +416,7 @@ export function parseMarks(value: Record<string, unknown>): MarksMessage | null 
   });
   const measuresRead = readAll(measures, (value) => {
     const entry = entryOf(value);
-    const state = entry === null ? null : parseMeasureState(entry.fields, MAX_MARK_KEPT);
+    const state = entry === null ? null : parseMeasureState(entry.fields, MAX_MARK_KEPT, entry.who === GM_MARKS);
     return entry === null || state === null ? null : { who: entry.who, ...state };
   });
   const cursorsRead = cursors === undefined ? undefined : parseCursorList(cursors);
