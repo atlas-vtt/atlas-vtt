@@ -4,7 +4,7 @@
  */
 
 import { deckSize } from '../gameSystems/initiativeCardRules';
-import { firstBuiltInSide, sidesOfRules } from '../gameSystems/initiativeSideRules';
+import { firstBuiltInSide, inSideOrder, sidesOfRules } from '../gameSystems/initiativeSideRules';
 import { cardRounds, dealCards } from '../initiative/cardDeal';
 import { dealGroupOf } from '../initiative/cardGroups';
 import { shuffledDeck } from '../initiative/initiativeDice';
@@ -59,7 +59,7 @@ export function roundChangesOf(draft: FightDraft, deck: readonly number[]): Roun
 }
 
 function startSides(draft: FightDraft, rules: InitiativeRules, draws: FightDraws, defeated: ReadonlySet<string>): void {
-  const sides = sidesOfRules(rules);
+  const sides = inSideOrder(sidesOfRules(rules), draft.initiative.sideOrder);
   const openingRolls = rules.sideRollOnce ? draws.sideRolls : undefined;
   const order = openingRolls ? sidesByRoll(sides, openingRolls) : sides;
   const first = firstBuiltInSide(order);
@@ -67,7 +67,7 @@ function startSides(draft: FightDraft, rules: InitiativeRules, draws: FightDraws
   const fight: SidesFight = {
     first,
     active: first,
-    ...((rules.sides || rules.sideRoll) && { order }),
+    ...((rules.sides || rules.sideRoll || draft.initiative.sideOrder) && { order }),
     ...(rules.sideRoll && !rules.sideRollOnce && { roll: rules.sideRoll }),
     ...(openingRolls && { rolls: { 1: openingRolls } }),
   };

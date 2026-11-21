@@ -207,3 +207,23 @@ describe('the turns of a round', () => {
     expect(roundTurns(fight, 1)).toEqual([['opponents'], ['players'], ['side-allies']]);
   });
 });
+
+describe('sides the GM dragged into an order', () => {
+  it('are listed in that order before the fight, and the fight starts with the first of them', () => {
+    const rules: InitiativeRules = { mode: 'sides', roll: '1d20', firstSide: 'players' };
+    const { actions, get } = setup(['players', 'opponents'], d6([]));
+    actions.setSideOrder(['opponents', 'players']);
+    expect(listedSides(get().initiative, rules).map((side) => side.id)).toEqual(['opponents', 'players']);
+    actions.startCombat(rules);
+    expect(turn(get(), rules)).toEqual([1, ['opponents']]);
+    expect(get().initiative.sides?.first).toBe('opponents');
+  });
+
+  it('keep the sides the order leaves out after it, as the rules have them', () => {
+    const { actions, get } = setup(['players', 'side-allies', 'opponents'], d6([]));
+    actions.setSideOrder(['opponents']);
+    expect(listedSides(get().initiative, THREE).map((side) => side.id)).toEqual(['opponents', 'players', 'side-allies']);
+    actions.startCombat(THREE);
+    expect(turn(get(), THREE)).toEqual([1, ['opponents']]);
+  });
+});

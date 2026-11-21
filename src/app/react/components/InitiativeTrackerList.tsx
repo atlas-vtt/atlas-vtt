@@ -3,12 +3,18 @@ import type { ListSegment } from '../../initiative/listSegments';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
 import { t } from '../../i18n';
 import { TURN_KEY_ATTRIBUTE } from '../../initiative/motion/turnMotion';
+import type { RowDrag } from '../hooks/useRowDrag';
+
+/** Marks a side the GM can drag by its heading (`sideDrag`); its value is the side's place among them. */
+export const DRAGGED_SIDE_ATTRIBUTE = 'data-side-place';
 
 interface InitiativeTrackerListProps {
   /** The list as it is drawn (`listSegments`). */
   segments: readonly ListSegment<InitiativeEntry>[];
   /** Draws a card of the segment `group` (its key); `inTurn` says it stands in the side whose turn it is. */
   card: (entry: InitiativeEntry, group: string, inTurn?: boolean) => React.ReactElement;
+  /** Where set, each side is dragged by its heading to change the order the sides act in. */
+  sideDrag?: RowDrag;
 }
 
 /**
@@ -18,8 +24,9 @@ interface InitiativeTrackerListProps {
  * into the next round a divider names it. The cards of the order are siblings, so the turn and the
  * next ones can be scrolled into view together (`scrollWithin`).
  */
-export const InitiativeTrackerList: React.FC<InitiativeTrackerListProps> = ({ segments, card }) => {
+export const InitiativeTrackerList: React.FC<InitiativeTrackerListProps> = ({ segments, card, sideDrag }) => {
   const labelId = useId();
+  let sidePlace = 0;
 
   return (
     <>
@@ -39,9 +46,23 @@ export const InitiativeTrackerList: React.FC<InitiativeTrackerListProps> = ({ se
           segment.active && 'atlas-initiative-side--active',
           segment.delayed && 'atlas-initiative-side--delayed',
         ].filter(Boolean).join(' ');
+        const place = sideDrag && segment.side ? sidePlace++ : null;
+        const dragged = place !== null && sideDrag ? {
+          section: {
+            style: { translate: sideDrag.offsetOf(place) },
+            'data-held': sideDrag.held === place ? '' : undefined,
+            [DRAGGED_SIDE_ATTRIBUTE]: place,
+          },
+          label: {
+            onPointerDown: (event: React.PointerEvent<HTMLElement>) => sideDrag.onPointerDown(place, event),
+            onPointerMove: sideDrag.onPointerMove,
+            onPointerUp: sideDrag.onPointerUp,
+            onPointerCancel: sideDrag.onPointerCancel,
+          },
+        } : null;
         return (
-          <section key={segment.key} className={classes} aria-labelledby={`${labelId}-${segment.key}`} aria-current={segment.active || undefined}>
-            <h4 id={`${labelId}-${segment.key}`} className="atlas-initiative-side__label" {...{ [TURN_KEY_ATTRIBUTE]: `side:${segment.key}` }}>
+          <section key={segment.key} className={classes} aria-labelledby={`${labelId}-${segment.key}`} aria-current={segment.active || undefined} {...dragged?.section}>
+            <h4 id={`${labelId}-${segment.key}`} className="atlas-initiative-side__label" {...{ [TURN_KEY_ATTRIBUTE]: `side:${segment.key}` }} {...dragged?.label}>
               {segment.side?.roll == null ? label : (
                 <>
                   <span className="atlas-initiative-side__name">{label}</span>

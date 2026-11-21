@@ -34,7 +34,7 @@ function setup(available = true): { account: AtlasAccount; server: ReturnType<ty
   const notices: string[] = [];
   const opened: string[] = [];
   const account = new AtlasAccount({
-    http: server.http,
+    http: (request) => server.http(request),
     timers,
     tokens: { get: () => tokens.value, set: (token) => (tokens.value = token), clear: () => (tokens.value = null) },
     available,
@@ -88,13 +88,28 @@ describe('the Atlas account', () => {
     expect(tokens.value).toBeNull();
   });
 
-  it('keeps the token while the service cannot be reached', async () => {
-    const { account, server, tokens } = setup();
+  it('keeps the token while the service cannot be reached, after asking once more', async () => {
+    const { account, server, timers, tokens } = setup();
     tokens.value = 'tok';
     server.session = { status: 503, json: { code: 'internal' } };
-    await account.refresh(true);
+    const asked = account.refresh(true);
+    await timers.advance(1000);
+    await asked;
     expect(account.state()).toEqual({ kind: 'signed-in', who: 'unreachable' });
+    expect(server.requests.filter((request) => request.url.endsWith('/get-session'))).toHaveLength(2);
     expect(tokens.value).toBe('tok');
+  });
+
+  it('rides out a server error that clears a moment later', async () => {
+    const { account, server, timers, tokens } = setup();
+    tokens.value = 'tok';
+    const answers: HttpResponse[] = [{ status: 500, json: { code: 'internal' } }, { status: 200, json: { session: { id: 's1' }, user: MARA } }];
+    const http = server.http;
+    server.http = (request) => (request.url.endsWith('/get-session') ? (server.requests.push(request), Promise.resolve(answers.shift() as HttpResponse)) : http(request));
+    const asked = account.refresh(true);
+    await timers.advance(1000);
+    await asked;
+    expect(account.state()).toEqual({ kind: 'signed-in', who: MARA });
   });
 
   it('runs the hooks before signing out, then signs the session out with the bearer', async () => {

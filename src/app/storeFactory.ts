@@ -15,6 +15,7 @@ import type { AudioSource, AudioInput } from './types/audioTypes';
 import type { AnyWidget, WidgetSettings } from './types/widgetTypes';
 import type { InitiativeEntry } from './types/initiativeTypes';
 import { createDefaultInitiativeState } from './types/initiativeTypes';
+import type { SideId } from './types/initiativeRulesTypes';
 import { createAtlasStorage, ATLAS_SCHEMA, ATLAS_VERSION } from './services/MapPersistence';
 import type { CameraState, GridState } from './types/gridTypes';
 import type { AtlasPersistStorage } from './services/MapPersistence';
@@ -303,6 +304,7 @@ export interface ViewAtlasState extends ViewState {
   reorderInitiative: (fromIndex: number, toIndex: number) => void;
   moveToFront: (id: string) => void;
   moveToBack: (id: string) => void;
+  setSideOrder: (order: SideId[]) => void;
   startCombat: InitiativeTurnActions['startCombat'];
   endCombat: () => void;
   resetInitiativeNumbers: InitiativeTurnActions['resetInitiativeNumbers'];

@@ -160,7 +160,7 @@ export function playersEntryToken(
 }
 
 /** The ids of the sides the players' list groups by: the running fight's, else the rules'. */
-export function sideIdsOf(initiative: Pick<InitiativeState, 'isActive' | 'round' | 'sides'>, rules: InitiativeRules): SideId[] {
+export function sideIdsOf(initiative: Pick<InitiativeState, 'isActive' | 'round' | 'sides' | 'sideOrder'>, rules: InitiativeRules): SideId[] {
   return listedSides(initiative, rules).map((side) => side.id);
 }
 
@@ -192,7 +192,7 @@ export function entryTokenOf(
  * show only where `hpVisible`.
  */
 export function playerInitiativeList(
-  initiative: Pick<InitiativeState, 'isActive' | 'round' | 'sides' | 'cards'> & { entries: readonly PlayerInitiativeEntry[] },
+  initiative: Pick<InitiativeState, 'isActive' | 'round' | 'sides' | 'sideOrder' | 'cards'> & { entries: readonly PlayerInitiativeEntry[] },
   tokenOf: (entry: PlayerInitiativeEntry, index: number) => EntryToken | null,
   rules: InitiativeRules,
   hpVisible: boolean,
