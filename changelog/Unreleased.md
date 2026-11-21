@@ -18,3 +18,5 @@
 - Players' rolls written with `adv` or `dis` (`+4 adv` on the character sheet) roll with the dice set's advantage or disadvantage instead of being refused, also when rolled privately
 - The players' dice tray takes a roll typed with `adv` or `dis` (`1d20+5 adv`), and Shift-click or the roll menu offers advantage on a sheet roll written that way
 - The players' character sheet shows a statblock's Markdown as Obsidian does: bold values in bold, links like `[Spellcasting](#Spellcasting)` as their words, and HTML tags used for styling no longer show as written
+- On some Windows laptops a lit scene could crash a player's browser even at the lowest graphics setting: Saver no longer prepares the lighting of the higher settings, and a page whose graphics crashed comes back one setting lower instead of crashing again
+- When the campaign's world map cannot reach players because its map or scene was deleted or shows no image, the GM is told so, instead of players only reading that no world map was chosen

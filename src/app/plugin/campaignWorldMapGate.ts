@@ -12,7 +12,8 @@ import { worldMapTree } from '../services/worldMapTree';
  * none while it plays none. It may be another whenever another campaign (or none) is played, a
  * campaign changes, the asset index or a scene's artwork changes, one of its scenes is saved (its
  * pins may lead elsewhere now), or a note its pins link is written (it may be a quest now, or have
- * its id).
+ * its id). A world map the campaign names that is no map or scene of the library with an image
+ * (deleted, or a scene that shows none) is `no-image`, which the GM is told.
  */
 export function campaignWorldMapGate(
   app: App,
@@ -30,6 +31,7 @@ export function campaignWorldMapGate(
       const read = assetId === undefined ? null : await worldMapTree(app, assetId, MAX_BOOK_MAPS);
       scenes = new Set(read?.scenePaths ?? []);
       notes = new Set(read?.notePaths ?? []);
+      if (assetId !== undefined && read === null) return 'no-image';
       return read?.tree ?? null;
     },
     onChange: (listener) => {

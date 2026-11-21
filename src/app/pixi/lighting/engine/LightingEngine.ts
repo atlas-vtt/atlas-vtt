@@ -1,6 +1,7 @@
 import { Container, Graphics, Matrix, Rectangle, Texture, type Renderer } from 'pixi.js';
 import { exploredMemoryOn } from '../../../lighting/sceneLightingOptions';
 import { DEFAULT_LIGHTING_QUALITY, type LightingQuality } from '../../../lighting/lightingQuality';
+import type { PictureChoice } from '../../../lighting/graphicsSettings';
 import type { UnlitGrid } from '../../../grid/gridLightingMark';
 import { destroyTree } from '../../utils/destroyTree';
 import { BackBufferHold } from './backBuffer';
@@ -8,6 +9,7 @@ import { createCompositeFilter, NO_BELOW, type BelowPictures, type CompositeFilt
 import { contextLost, glOf } from './gpu';
 import { createEngineWorld, type EngineWorld } from './engineWorld';
 import { ambientLift, darkLooks } from './senseDrawing';
+import { shadersOfPicture } from './engineShaders';
 import { describeShaderFailures, failedEngineShaders } from './shaderCheck';
 import { unrenderableEngineTargets } from './targetCheck';
 import { SceneSightLayers } from './SceneSightLayers';
@@ -71,8 +73,8 @@ export class LightingEngine {
   private grid: UnlitGrid | null = null;
   private enabled = false;
   private stopped = false;
-  /** The shaders link on the current context. */
-  private verified = false;
+  /** The picture whose shaders link on the current context; the traced one's are all of them. */
+  private verified: PictureChoice | null = null;
   /** The context was restored: the world's textures are blank until it is rebuilt. */
   private stale = false;
   private restoreUnreported = false;
@@ -325,16 +327,17 @@ export class LightingEngine {
       this.dropWorld();
       this.scene = scene;
       this.stale = false;
-      this.verified = false;
+      this.verified = null;
     }
-    if (this.verified) return true;
+    const picture = this.quality.picture ?? 'traced';
+    if (this.verified === 'traced' || this.verified === picture) return true;
     const gl = glOf(this.renderer);
     if (!gl) {
       console.error(`Atlas: dynamic lighting needs WebGL, and this view draws with PIXI's ${this.renderer.name} renderer`);
       this.stop();
       return false;
     }
-    const failures = failedEngineShaders(gl);
+    const failures = failedEngineShaders(gl, shadersOfPicture(picture));
     const unrenderable = unrenderableEngineTargets(gl);
     // Lost while compiling: the logs say nothing about the device. Wait for the restore.
     if (contextLost(this.renderer)) return false;
@@ -348,7 +351,7 @@ export class LightingEngine {
       this.stop();
       return false;
     }
-    this.verified = true;
+    this.verified = picture;
     return true;
   }
 
