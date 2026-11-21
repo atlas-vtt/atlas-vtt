@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { choiceText, optionsLeft, picksChoice, readChoice, type ChoiceShape } from '../../../../src/app/statblocks/values/choicePicks';
+import { choiceItems, choiceText, optionsLeft, picksChoice, readChoice, type ChoiceShape } from '../../../../src/app/statblocks/values/choicePicks';
 import { coerce } from '../../../../src/app/statblocks/values/valueCoercion';
 import { valueMisfit } from '../../../../src/app/statblocks/values/valueFit';
 import { sampleValueFor } from '../../../../src/app/statblocks/model/sampleValues';
@@ -25,6 +25,7 @@ describe('choice picks', () => {
 
   it('matches options in any case, writes them as the template spells them, in the template\'s order', () => {
     const read = readChoice(SENSES, 'Blindsight 30 ft., DARKVISION 120 ft.');
+    expect(choiceItems(SENSES, read)).toEqual(['darkvision 120 ft.', 'blindsight 30 ft.']);
     expect(choiceText(SENSES, read)).toBe('darkvision 120 ft., blindsight 30 ft.');
     expect(choiceText(LANGUAGES, readChoice(LANGUAGES, 'deep speech, common'))).toBe('Common, Deep Speech');
   });
