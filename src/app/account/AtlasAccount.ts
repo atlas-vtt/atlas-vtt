@@ -37,6 +37,8 @@ export interface AtlasAccountPorts {
 
 /** How long an answer of who is signed in is fresh enough that it is not asked again. */
 const FRESH_MS = 60_000;
+/** How long an unanswered session check waits before asking once more: a server error of a moment (a database hiccup) passes. */
+const RETRY_MS = 1000;
 
 /**
  * The GM's Atlas account, one per app and independent of any feature: device sign-in (RFC 8628), the token in
@@ -198,7 +200,11 @@ export class AtlasAccount {
   }
 
   private async check(token: string): Promise<void> {
-    const answer = await identityOfToken(this.ports.http, ACCOUNTS_ORIGIN, token);
+    let answer = await identityOfToken(this.ports.http, ACCOUNTS_ORIGIN, token);
+    if (answer === 'unreachable' && this.token() === token) {
+      await new Promise<void>((resolve) => this.ports.timers.setTimer(resolve, RETRY_MS));
+      if (this.token() === token) answer = await identityOfToken(this.ports.http, ACCOUNTS_ORIGIN, token);
+    }
     if (this.token() !== token) return;
     if (answer === 'signed-out') return this.signedOutByServer();
     this.who = { token, who: answer, at: this.ports.timers.now() };
