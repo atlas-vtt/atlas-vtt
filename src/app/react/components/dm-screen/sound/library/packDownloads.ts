@@ -10,7 +10,7 @@ import type { LibraryActions } from './useLibraryActions';
 
 /** The Sound page's offers, as the settings name the dismissed ones. Never change an id. */
 export const AMBIENCE_OFFER = 'starter-ambience';
-export const MUSIC_OFFER = 'vindsvept-music';
+export const MUSIC_OFFER = 'starter-music';
 
 /** The starter ambience's job; a music pack's is `music-pack:<pack id>`. */
 export const STARTER_JOB = 'starter-ambience';

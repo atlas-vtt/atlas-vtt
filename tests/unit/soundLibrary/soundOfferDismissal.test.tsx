@@ -82,7 +82,7 @@ describe('dismissing the Sound page offers', () => {
 
   it('follows a change another device saved', async () => {
     await mounted();
-    data.set({ hiddenSoundOffers: ['vindsvept-music'] });
+    data.set({ hiddenSoundOffers: ['starter-music'] });
     await act(async () => rig.settings.reload());
     await waitFor(() => expect(musicOffer()).toBeNull());
     expect(ambienceOffer()).not.toBeNull();

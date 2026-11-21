@@ -44,7 +44,7 @@ export interface AtlasSettings {
    */
   hiddenStarterOffers?: readonly string[] | undefined;
   /**
-   * Ids of the Sound page's download offers the GM dismissed (`starter-ambience`, `vindsvept-music`; ids never
+   * Ids of the Sound page's download offers the GM dismissed (`starter-ambience`, `starter-music`; ids never
    * change). Absent while none is. Read with `isSoundOfferHidden`; the root's ⋯ menu still offers them.
    */
   hiddenSoundOffers?: readonly string[] | undefined;
