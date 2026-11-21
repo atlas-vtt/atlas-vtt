@@ -19,6 +19,7 @@
 
 ## Fixed
 
+- With a light's panel open, a click on the map outside it closes the panel instead of placing another light or starting a wall
 - FLAC files no longer fail to import on the Sound page with a decoding error; about a third of FLAC music hit it
 - A Number value written with advantage or disadvantage (`+7 adv`) no longer shows "Not a number"; a value that rolls as a bonus keeps the word (`7 adv` rolls `+7 adv`)
 - A reference to such a value (`@perception` on `+2 adv`) reads its number, and a sum written with the word shows its total (`10 + @dex adv` reads `12 adv`)

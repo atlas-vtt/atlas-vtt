@@ -49,8 +49,10 @@ function setup(mode: 'rooms' | 'zones') {
   const handlers: Record<string, Handler> = {};
   const tokens = new Proxy({}, { get: (_target, name: string) => (handler: Handler) => { handlers[name] = handler; } }) as unknown as TokenRenderer;
   const wallMenu = vi.fn();
+  const dismissal = { pending: false };
+  const lights = { takeDismissal: () => { const taken = dismissal.pending; dismissal.pending = false; return taken; } };
   wireLightingPointer(tokens, {
-    lights: {} as LightInteraction,
+    lights: lights as unknown as LightInteraction,
     editor,
     modes: modes as unknown as LightingModes,
     doors: { hitTest: () => null, gmHitTest: () => null, toggle: () => undefined } as unknown as DoorIcons,
@@ -64,7 +66,7 @@ function setup(mode: 'rooms' | 'zones') {
   };
   const call = <R>(name: string, ...args: unknown[]): R => (handlers[name] as unknown as (...a: unknown[]) => R)(...args);
   return {
-    store, wall, editor, modes, rooms, wallMenu,
+    store, wall, editor, modes, rooms, wallMenu, dismissal,
     down: (x: number, y: number, k: Partial<Keys> = {}): boolean => call('setWallPointerDownHandler', x, y, keys(k)),
     move: (x: number, y: number, k: Partial<Keys> = {}): void => call('setWallPointerMoveHandler', x, y, keys(k)),
     up: (): void => call('setWallPointerUpHandler'),
@@ -127,5 +129,16 @@ describe('the walls in the lighting tool\'s rooms mode', () => {
     menu(200, 101);
     expect(modes.pointerDown).toHaveBeenCalledTimes(1);
     expect(wallMenu).not.toHaveBeenCalled();
+  });
+});
+
+describe('a press that closed a light\'s popover', () => {
+  it('only closes it: the lighting tool neither places nor draws with it, and takes the next press as usual', () => {
+    const { modes, dismissal, down } = setup('zones');
+    dismissal.pending = true;
+    expect(down(500, 500)).toBe(true);
+    expect(modes.pointerDown).not.toHaveBeenCalled();
+    expect(down(500, 500)).toBe(true);
+    expect(modes.pointerDown).toHaveBeenCalledTimes(1);
   });
 });
