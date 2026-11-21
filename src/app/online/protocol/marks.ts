@@ -429,7 +429,10 @@ export function parsePlayerKept(value: Record<string, unknown>): PlayerMeasureKe
   if (!isSceneId(value.scene)) return null;
   if (value.t === 'measure-keep') {
     const measure = parseFullMeasure(value.measure);
-    return measure === null ? null : { t: 'measure-keep', scene: value.scene, measure };
+    if (measure === null) return null;
+    // Only what a measurement measures is read of a player's: its colour, look, aura and keeper are the GM's to say.
+    const { shape, pts, width, free } = measure;
+    return { t: 'measure-keep', scene: value.scene, measure: { shape, pts, ...(width !== undefined && { width }), ...(free === true && { free }) } };
   }
   const { ids } = value;
   if (value.t !== 'measure-drop' || !Array.isArray(ids) || ids.length === 0 || ids.length > MAX_MARK_KEPT) return null;

@@ -12,6 +12,11 @@ describe('measurements a player keeps in the scene', () => {
     expect(parsePlayerMessage({ t: 'measure-drop', scene: 's1', ids: ['1', 'a9'] })).toEqual({ t: 'measure-drop', scene: 's1', ids: ['1', 'a9'] });
   });
 
+  it('read nothing of a player\'s but what the measurement measures: no keeper, id, colour or look of their saying', () => {
+    const said = { shape: 'circle', pts: [0, 0, 70, 0], free: true, by: 'b'.repeat(20), id: '7', color: '#ff0000', effect: 'fire' };
+    expect(parsePlayerMessage({ t: 'measure-keep', scene: 's1', measure: said })).toEqual({ t: 'measure-keep', scene: 's1', measure: { shape: 'circle', pts: [0, 0, 70, 0], free: true } });
+  });
+
   it('are refused where malformed: no measurement, no scene, no ids, too many, or one that is no id', () => {
     expect(parsePlayerMessage({ t: 'measure-keep', scene: 's1', measure: { shape: 'cone', pts: [0, 0] } })).toBeNull();
     expect(parsePlayerMessage({ t: 'measure-keep', scene: '', measure: cone })).toBeNull();
