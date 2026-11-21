@@ -18,7 +18,7 @@ const EMPTY_LISTING: SoundListing = { folders: [], files: [] };
 const identityOf = (name: string, size?: number): string => `${size ?? '*'}|${name}`;
 
 /** What a flat list sorts by, worked out once per file: a collator on thousands of names per report of a walk costs frames. `Track 2` before `Track 10`, `Émile` among the e. */
-const sortKey = (name: string): string => name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\d+/g, (digits) => digits.padStart(8, '0'));
+export const sortKey = (name: string): string => name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\d+/g, (digits) => digits.padStart(8, '0'));
 
 const sameListing = (a: SoundListing, b: SoundListing): boolean =>
   a.folders.length === b.folders.length && a.files.length === b.files.length

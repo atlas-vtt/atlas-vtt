@@ -36,6 +36,8 @@ export interface LibraryRigOptions {
   local?: Partial<Record<SoundKind, string>>;
   shared?: SharedSoundRoots;
   seconds?: (url: string) => number | null;
+  /** How long a file plays, answered when the test says: in place of `seconds`. */
+  probe?: (url: string) => Promise<number | null>;
   /** The GM's choice about originals for a folder on disk; none where unset, so nothing converts. */
   originals?: OriginalsChoice | null;
 }
@@ -60,7 +62,7 @@ export function fakeLibrary(app: App, options: LibraryRigOptions = {}): Pick<Lib
   const library = new SoundLibrary({
     roots,
     open: (root) => locations[root.kind],
-    probeSeconds: async (url) => options.seconds?.(url) ?? null,
+    probeSeconds: options.probe ?? (async (url) => options.seconds?.(url) ?? null),
   });
   SoundLibrary.provide(app, library);
   return { library, roots, locations, local };
