@@ -37,7 +37,8 @@ import { useTurnInView } from './useTurnInView';
 import { useStatblockHoverPreview } from './StatblockHoverPreview';
 import { InitiativeStatblockPreview, type PreviewedEntry } from './InitiativeStatblockPreview';
 import { captureRollContext } from '../../tools/diceRollOrigins';
-import { useRowDrag } from '../hooks/useRowDrag';
+import { useRowDrag, type RowDrag } from '../hooks/useRowDrag';
+import { useSidePile } from './useSidePile';
 import { TURN_KEY_ATTRIBUTE } from '../../initiative/motion/turnMotion';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
 import { t } from '../../i18n';
@@ -172,6 +173,20 @@ export const InitiativeTracker: React.FC = () => {
     },
     { axis: 'vertical', scroller: () => contentRef.current },
   );
+  // Held, a side's cards pile up behind its first, so a long side is carried like one card
+  const pile = useSidePile(sideDrag.held !== null);
+  const sideOf = (event: React.PointerEvent<HTMLElement>): HTMLElement | null => event.currentTarget.closest<HTMLElement>(`[${DRAGGED_SIDE_ATTRIBUTE}]`);
+  const pilingDrag: RowDrag = {
+    ...sideDrag,
+    onPointerDown: (index, event) => {
+      if (event.button === 0) pile(sideOf(event));
+      sideDrag.onPointerDown(index, event);
+    },
+    onPointerUp: (event) => {
+      pile(sideOf(event));
+      sideDrag.onPointerUp(event);
+    },
+  };
   const settling = drag.settling || sideDrag.settling;
 
   // Numbers typed on the cards; Tab goes on down the list as it shows
@@ -286,7 +301,7 @@ export const InitiativeTracker: React.FC = () => {
         {sortedEntries.length === 0 && (
           <div className={`atlas-initiative-card${compact ? '' : ' atlas-initiative-card--tile'} atlas-initiative-card--placeholder`} aria-hidden="true" />
         )}
-        {sortedEntries.length > 0 && <InitiativeTrackerList segments={segments} card={card} {...(arrangesSides && { sideDrag })} />}
+        {sortedEntries.length > 0 && <InitiativeTrackerList segments={segments} card={card} {...(arrangesSides && { sideDrag: pilingDrag })} />}
       </div>
 
       {/* The shade over the list's top, shown once it is scrolled */}
