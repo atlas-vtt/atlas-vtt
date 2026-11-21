@@ -1,6 +1,7 @@
 ## New
 
 - **Music packs**: get Vindsvept's fantasy music on the Sound page, 365 tracks in ten packs sorted by mood, each ready to play the moment it lands
+- **Stream Deck**: control music and ambience from a Stream Deck: press moods, stop, pause, skip and turn levels on keys and dials, with each mood's crest on its key. Switch it on in Settings → Stream Deck and pair the Atlas plugin for Stream Deck
 
 ## Improved
 
