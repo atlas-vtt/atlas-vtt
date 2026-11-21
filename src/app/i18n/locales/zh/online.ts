@@ -175,6 +175,7 @@ export const online: Translation = {
   'online.worldMap.tooLarge': 'Atlas Online 无法发送世界地图：它的图片超过 95 MB。',
   'online.worldMap.unreadable': 'Atlas Online 无法发送世界地图：它的图片不是玩家能打开的 PNG、JPEG、WebP、GIF 或 AVIF。',
   'online.worldMap.unstored': 'Atlas Online 无法发送世界地图：它的图片无法在线存储。',
+  'online.worldMap.noImage': 'Atlas Online 无法发送世界地图：战役指定的地图或场景已不在资源库中，或没有可显示的图片。请在战役页面上选择另一个。',
   'online.assetsRestricted': '此账户目前不能与玩家分享文件。',
   'online.assetsMapTooLarge': '这张地图太大，无法分享给玩家。',
   'online.mapUnreadable': '无法把这个场景的地图图片发送给玩家。',

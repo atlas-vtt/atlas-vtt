@@ -176,6 +176,7 @@ export const online = {
   'online.worldMap.tooLarge': 'Atlas Online cannot send the world map: its image is larger than 95 MB.',
   'online.worldMap.unreadable': 'Atlas Online cannot send the world map: its image is not a PNG, JPEG, WebP, GIF or AVIF that players can open.',
   'online.worldMap.unstored': 'Atlas Online cannot send the world map: its image could not be stored online.',
+  'online.worldMap.noImage': 'Atlas Online cannot send the world map: the map or scene the campaign names is no longer in the library or shows no image. Choose another on the campaign\'s page.',
   'online.assetsRestricted': 'This account cannot share files with players right now.',
   'online.assetsMapTooLarge': 'This map is too large to share with players.',
   'online.mapUnreadable': 'This scene\'s map image cannot be sent to players.',
