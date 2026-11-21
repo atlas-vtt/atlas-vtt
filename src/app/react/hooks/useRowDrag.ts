@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 /** How far a press moves before it is a drag, so a click on a place stays a click. */
 const DRAG_THRESHOLD = 4;
@@ -57,8 +57,11 @@ export interface RowDrag {
   onPointerMove: (event: React.PointerEvent<HTMLElement>) => void;
   onPointerUp: (event: React.PointerEvent<HTMLElement>) => void;
   onPointerCancel: () => void;
-  /** How far the place at `index` stands aside (or, held, follows the pointer), as a CSS `translate`. */
-  offsetOf: (index: number) => string;
+  /**
+   * How far the place at `index` stands aside (or, held, follows the pointer), as a CSS `translate`; unset while
+   * nothing is held, so a place's own stylesheet may move it then.
+   */
+  offsetOf: (index: number) => string | undefined;
   /** The place being held, or null. */
   held: number | null;
   /** True for the one render after a drop, while the row takes its new order without sliding. */
@@ -124,6 +127,26 @@ function edgeScroll(box: DOMRect, y: number, drag: Drag): number {
   if (y - box.top < SCROLL_EDGE && drag.delta.y > min.y) return -speed(y - box.top);
   if (box.bottom - y < SCROLL_EDGE && drag.delta.y < max.y) return speed(box.bottom - y);
   return 0;
+}
+
+/** The `translate` an element is drawn with now. */
+function translationOf(element: Element): Point {
+  const style = element.ownerDocument.defaultView?.getComputedStyle(element).translate ?? 'none';
+  const [x = '0', y = '0'] = style === 'none' ? [] : style.split(' ');
+  return { x: parseFloat(x) || 0, y: parseFloat(y) || 0 };
+}
+
+/**
+ * Where `element` stands in its layout, `scrolled` since the press added back: its centre as drawn (a lift's scale and
+ * a shiver's turn leave it), without its `translate`, and its layout height.
+ */
+function measure(element: Element, scrolled = 0): Box {
+  const rect = element.getBoundingClientRect();
+  const moved = translationOf(element);
+  const height = (element as HTMLElement).offsetHeight || rect.height;
+  const x = rect.left + rect.width / 2 - moved.x;
+  const y = rect.top + rect.height / 2 - moved.y + scrolled;
+  return { x, y, top: y - height / 2, bottom: y + height / 2 };
 }
 
 /** The click a drop ends in is no click on what was dropped: it is taken before anything hears it. */
@@ -195,14 +218,22 @@ export function useRowDrag(places: () => readonly Element[], onMove: (from: numb
     return () => view.cancelAnimationFrame(frame);
   }, [holding]);
 
+  // A place may change its shape as it is lifted (a side piles its cards up): the places are measured again once the
+  // lift is laid out, before it is painted
+  useLayoutEffect(() => {
+    const now = current.current;
+    if (!holding || !now) return;
+    const elements = places();
+    if (elements.length !== now.boxes.length) return;
+    setDrag(follow({ ...now, boxes: elements.map((element) => measure(element, now.scrolled)) }, now.pointer, now.scrolled));
+    // Only as the lift begins: `places` is a new function every render
+  }, [holding]);
+
   const onPointerDown = (index: number, event: React.PointerEvent<HTMLElement>): void => {
     if (event.button !== 0) return;
     const elements = places();
     if (!elements[index]) return;
-    const boxes = elements.map((element) => {
-      const rect = element.getBoundingClientRect();
-      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, top: rect.top, bottom: rect.top + rect.height };
-    });
+    const boxes = elements.map((element) => measure(element));
     const groups = elements.map((element) => element.getAttribute(DRAG_GROUP_ATTRIBUTE));
     const start = { x: event.clientX, y: event.clientY };
     setDrag({
@@ -239,8 +270,8 @@ export function useRowDrag(places: () => readonly Element[], onMove: (from: numb
 
   const onPointerCancel = (): void => setDrag(null);
 
-  const offsetOf = (index: number): string => {
-    if (!drag?.moved) return '0 0';
+  const offsetOf = (index: number): string | undefined => {
+    if (!drag?.moved) return undefined;
     const { from, to, delta, boxes } = drag;
     if (index === from) return `${delta.x}px ${delta.y}px`;
     // The places between take one step towards where the held one came from: in a column by the held one's height and

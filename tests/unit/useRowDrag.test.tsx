@@ -81,6 +81,26 @@ describe('useRowDrag', () => {
     expect(onMove).toHaveBeenCalledWith(0, 1);
   });
 
+  it('measures the places again once the held one is lifted, for a place that changes its shape as it lifts', () => {
+    // A side of three cards that piles up into one card's height when held, above a side of one card
+    let piled = false;
+    const box = (index: number): DOMRect => {
+      const tall = piled ? 40 : 120;
+      return (index === 0 ? { left: 0, top: 0, width: 40, height: tall } : { left: 0, top: tall + 8, width: 40, height: 40 }) as DOMRect;
+    };
+    const places = [0, 1].map((index) => {
+      const element = document.createElement('div');
+      element.getBoundingClientRect = () => box(index);
+      return element;
+    });
+    const { result } = renderHook(() => useRowDrag(() => places, vi.fn(), { axis: 'vertical' }));
+    act(() => result.current.onPointerDown(0, pointer(20)));
+    piled = true;
+    act(() => result.current.onPointerMove(pointer(400)));
+    expect(result.current.offsetOf(1)).toBe('0px -48px');
+    expect(result.current.offsetOf(0)).toBe('0px 48px');
+  });
+
   it('drops nothing for a click or a press let go elsewhere', () => {
     const onMove = vi.fn();
     const places = column([null, null]);
