@@ -1,3 +1,8 @@
+## New
+
+- **Music packs**: get Vindsvept's fantasy music on the Sound page, 365 tracks in ten packs sorted by mood, each ready to play the moment it lands
+- **Stream Deck**: control music and ambience from a Stream Deck: press moods, stop, pause, skip and turn levels on keys and dials, with each mood's crest on its key. Switch it on in Settings → Stream Deck and pair the Atlas plugin for Stream Deck
+
 ## Improved
 
 - What’s new in Atlas links to the Atlas website and Patreon beside GitHub, and takes the look of the other dialogs
@@ -7,6 +12,7 @@
 
 ## Fixed
 
+- FLAC files no longer fail to import on the Sound page with a decoding error; about a third of FLAC music hit it
 - A Number value written with advantage or disadvantage (`+7 adv`) no longer shows "Not a number"; a value that rolls as a bonus keeps the word (`7 adv` rolls `+7 adv`)
 - A reference to such a value (`@perception` on `+2 adv`) reads its number, and a sum written with the word shows its total (`10 + @dex adv` reads `12 adv`)
 - A saved roll written with `adv` or `dis` rolls with it from the dice row instead of being refused

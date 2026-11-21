@@ -11,7 +11,7 @@ vi.mock('../../../src/app/ui/notice', () => ({ showNotice: vi.fn(() => ({ setMes
 
 let rig: LibraryRig;
 let host: HTMLElement;
-const offer = (): HTMLButtonElement | null => host.querySelector<HTMLButtonElement>('.atlas-sound-lib__starter');
+const offer = (): HTMLButtonElement | null => host.querySelector<HTMLButtonElement>('[aria-label="Ambience"] .atlas-sound-lib__starter');
 
 beforeEach(async () => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);

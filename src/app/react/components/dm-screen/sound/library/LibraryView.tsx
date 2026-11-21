@@ -18,6 +18,7 @@ import { LibraryHead } from './LibraryHead';
 import { LibraryRail } from './LibraryRail';
 import { rowsWithTags, searchRows, shelfOf, type LibraryRow, type RootShelf } from './rowModel';
 import { LibraryRows } from './LibraryRows';
+import { MusicPacksButton } from './MusicPacks';
 import { StarterPackButton } from './StarterPack';
 import { useHeldInMix, useLibraryVersion } from './useLibrary';
 import { useLibraryActions, type LibraryActions } from './useLibraryActions';
@@ -39,6 +40,7 @@ function NoLink({ library, actions }: { library: SoundLibrary; actions: LibraryA
           <Button type="button" className="atlas-sound-lib__btn" variant="secondary" onClick={(event) => onLink('ambience', winOf(event))}>{t('audio.library.linkAmbience')}</Button>
         </div>
         <div className="atlas-sound-lib__nolink-row">
+          <MusicPacksButton library={library} className="atlas-sound-lib__btn" />
           <StarterPackButton library={library} actions={actions} className="atlas-sound-lib__btn" />
           <Button type="button" className="atlas-sound-lib__btn atlas-sound-lib__btn--quiet" variant="ghost" onClick={(event) => onImport(event.currentTarget.ownerDocument)}>{t('audio.library.importInstead')}</Button>
         </div>

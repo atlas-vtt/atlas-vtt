@@ -5,7 +5,7 @@ import { discardAssetFiles, writeAssetImage } from '../assetImageFiles';
 import { collectionFolderPath } from '../assetPaths';
 import type { AssetService } from '../AssetService';
 import { fetchStatblock, fetchStatblockManifest, writeStatblock, type StatblockSet } from './starterStatblocks';
-import { fetchBytes, fetchVerified, StockPackError, type FetchBytes, type PackedFile } from './verifiedFetch';
+import { fetchBytes, fetchVerified, inPool, StockPackError, type FetchBytes, type PackedFile } from './verifiedFetch';
 
 /**
  * Creature tokens cut from Oozejar's Illustrated Bestiary (CC BY-SA 4.0) and class tokens drawn from
@@ -73,20 +73,6 @@ export async function hasBestiaryTokens(assets: AssetService, collection: string
   return (await assets.getAssets(collection, 'token')).some((token) => token.id.startsWith(ID_PREFIX));
 }
 
-/** Runs `task` for every item, at most `PARALLEL` at a time, and returns the results in the items' order. */
-async function inPool<T, R>(items: readonly T[], task: (item: T) => Promise<R>): Promise<R[]> {
-  const results: R[] = new Array<R>(items.length);
-  let next = 0;
-  const worker = async (): Promise<void> => {
-    for (let index = next++; index < items.length; index = next++) {
-      const item = items[index];
-      if (item !== undefined) results[index] = await task(item);
-    }
-  };
-  await Promise.all(Array.from({ length: PARALLEL }, worker));
-  return results;
-}
-
 export interface InstallOptions {
   /** Hears the share of the pack's bytes fetched so far. */
   onStep?: (share: number) => void;
@@ -118,8 +104,8 @@ export async function installBestiaryTokens(app: App, assets: AssetService, coll
     onStep?.(done / total);
     return result;
   };
-  const [credits, ...images] = await inPool(files, async (file) => counted(file, await fetchVerified(HOST, file, fetch)));
-  const fetchedStatblocks = set ? await inPool(entries, async (entry) => counted(entry, await fetchStatblock(set, entry, fetch))) : [];
+  const [credits, ...images] = await inPool(files, PARALLEL, async (file) => counted(file, await fetchVerified(HOST, file, fetch)));
+  const fetchedStatblocks = set ? await inPool(entries, PARALLEL, async (entry) => counted(entry, await fetchStatblock(set, entry, fetch))) : [];
   const statblockOf = new Map(entries.map((entry, index) => [entry.token, fetchedStatblocks[index]]));
 
   const added = await assets.runExclusive(async () => {

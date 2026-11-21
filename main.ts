@@ -84,6 +84,8 @@ import { registerSoundDirector } from './src/app/plugin/soundDirector';
 import { SoundDirector } from './src/app/soundDirector/SoundDirector';
 import { SceneMoodLinks } from './src/app/soundLibrary/SceneMoodLinks';
 import { soundSettingsSection } from './src/app/settings/soundSettingsSection';
+import { soundRemoteSettingsSection } from './src/app/settings/soundRemoteSettingsSection';
+import { registerSoundRemote } from './src/app/plugin/soundRemote';
 import { registerOnlinePlay, type OnlinePlay } from './src/app/plugin/onlinePlay';
 import { registerAtlasAccount } from './src/app/plugin/atlasAccount';
 import { accountSettingsSection } from './src/app/account/accountSettingsSection';
@@ -223,6 +225,7 @@ export default class AtlasVTTPlugin extends Plugin {
     this.settingsService = new SettingsService(this.app, settingsReady, this);
     // Before the views too: every restored map view joins it, for its fights.
     const soundDirector = registerSoundDirector(this);
+    const soundRemote = registerSoundRemote(this, soundDirector);
 
     // Before the views: a restored map may start Atlas's first check of the vault,
     // whose folder renames reach map files only through these vault events.
@@ -282,6 +285,7 @@ export default class AtlasVTTPlugin extends Plugin {
       navigationSettingsSection(this.settingsService, FingerSettings.forApp(this.app), zoomButtonsRow(this.app)),
       diceSettingsSection(this.settingsService),
       soundSettingsSection(this.settingsService, soundDirector),
+      ...(isDesktopApp() ? [soundRemoteSettingsSection(soundRemote)] : []),
       mapsSettingsSection(this.settingsService),
       mapImageCacheSettingsSection(() => TesseraDecoderClient.forApp(this.app)),
       hotkeySettingsSection(this.settingsService),
