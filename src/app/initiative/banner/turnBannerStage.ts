@@ -53,7 +53,10 @@ const FIGHT_BANNER_STAND_MS = FIGHT_INTRO_HOLD_MS + LIST_EXIT_MS + 1200;
 /** How long a fight's start or end stands for the players, before the banner after it (its first turn) follows. */
 export const FIGHT_BANNER_SHOWN_MS = Math.max(PLAYER_TURN_BANNER_MS, FIGHT_BANNER_STAND_MS);
 
-/** Whether a fight starts or ends: its banner stands at the lists. */
+/** The edges a list lies along as a row: a fight's banner stands only at those. */
+const ROW_EDGES: ReadonlySet<string> = new Set<PlayersListEdge>(['top', 'bottom']);
+
+/** Whether a fight starts or ends: its banner stands at the lists that are rows. */
 export type FightMove = 'start' | 'end';
 
 /**
@@ -102,8 +105,8 @@ export interface BannerPlacement {
 
 /**
  * The players' turn banners as they stand, wherever they are shown (Atlas's player window, the online player page):
- * one in the middle of `host`, or one at each players' list, turned with it; a fight's start or end at the lists as
- * they slide in and out (`PlayerInitiativeStage`); a turn may dim the table instead of naming itself. Imports nothing
+ * one in the middle of `host`, or one at each players' list, turned with it; a fight's start or end at the lists that
+ * are rows as they slide in and out (`PlayerInitiativeStage`), in the middle where none is; a turn may dim the table instead of naming itself. Imports nothing
  * of Obsidian's or of a store's: what to announce is the caller's.
  */
 export class TurnBannerStage {
@@ -157,9 +160,12 @@ export class TurnBannerStage {
     const { fight, facesPlayers } = placement;
     // A fight starts and ends at the lists, as they slide in and out: its end at those leaving, every other banner at those staying
     const leaving = fight === 'end' ? '.atlas-player-initiative--leaving' : ':not(.atlas-player-initiative--leaving)';
-    const lists = host && (placement.atLists || fight)
+    const found = host && (placement.atLists || fight)
       ? [...host.ownerDocument.querySelectorAll<HTMLElement>(`.atlas-player-initiative[data-edge]${leaving}`)]
       : [];
+    // A fight rises and settles with a row across the table; beside a column it stood off at one side of the screen, so
+    // without a row it stands in the middle
+    const lists = fight ? found.filter((list) => ROW_EDGES.has(list.dataset.edge ?? '')) : found;
     if (!host || lists.length === 0) {
       this.display?.show(...banners);
       return;
