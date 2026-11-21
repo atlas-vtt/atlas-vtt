@@ -37,3 +37,4 @@
 - When the campaign's world map cannot reach players because its map or scene was deleted or shows no image, the GM is told so, instead of players only reading that no world map was chosen
 - A player using the laser pointer on a phone or tablet no longer leaves its dot standing on the map after lifting the finger, for themselves or for anyone else at the table
 - Pinching on a Mac trackpad in Safari zooms the players' world map as smoothly as their battle map
+- A number on the players' character sheet written with a reference (an initiative of `@dex.mod`) shows its value, as the GM's statblock does, instead of the reference as written
