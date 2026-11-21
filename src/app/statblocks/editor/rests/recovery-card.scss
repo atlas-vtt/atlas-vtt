@@ -104,8 +104,11 @@ $control-height: $input-height-s;
   width: 100%;
 }
 
+.atlas-rc-card__kinds {
+  --atlas-segmented-fit-height: #{$control-height};
+}
+
 .atlas-rc-card__kinds .atlas-segmented__option {
-  height: $control-height;
   font-size: $font-ui-smaller;
 
   svg {
