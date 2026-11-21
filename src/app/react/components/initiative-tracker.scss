@@ -238,7 +238,7 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
 // inset): cards scrolled past it while dragging fade under the shades as they do when the list is scrolled by hand.
 $held-room: $spacing-l;
 
-.atlas-initiative-panel__list:is(.atlas-initiative-tracker__list--dragging, .atlas-initiative-tracker__list--settling) {
+.atlas-initiative-panel__list:is(.atlas-initiative-tracker__list--dragging, .atlas-initiative-tracker__list--dragging-sides, .atlas-initiative-tracker__list--settling) {
   margin: calc(-1 * #{$held-room});
   padding: $held-room;
   clip-path: inset(calc(#{$held-room} - #{$surface-inset}) 0);
@@ -249,8 +249,40 @@ $held-room: $spacing-l;
   --atlas-wiggle: 0.4deg;
 }
 
-.atlas-initiative-tracker__list--settling .atlas-initiative-card {
+.atlas-initiative-tracker__list--settling :is(.atlas-initiative-card, .atlas-initiative-side) {
   transition: none;
+}
+
+// Before a fight the sides are dragged by their headings, as the cards are: the order they stand in is the order
+// they act in. Held, a side lifts on the panel's surface, its cards with it; the others shiver and slide aside.
+.atlas-initiative-tracker__list--arranges-sides [data-side-place] > .atlas-initiative-side__label {
+  cursor: grab;
+}
+
+.atlas-initiative-tracker__list--dragging-sides {
+  cursor: grabbing;
+
+  [data-side-place] {
+    // A side is tall: its ends move as far as a card's at a smaller angle
+    @include atlas-wiggle(0.3deg);
+    transition: translate $transition-fast $transition-ease-out;
+    border-radius: $radius-l;
+
+    &:nth-of-type(even) {
+      @include atlas-wiggle-shifted;
+    }
+
+    &[data-held] {
+      @include atlas-wiggle-held;
+      scale: 1.03;
+      position: relative;
+      z-index: 4;
+      background: var(--background-primary);
+      // The surface reaches past the side's cards by the gap between them, without moving anything
+      box-shadow: 0 0 0 $surface-inset var(--background-primary), $shadow-elevated;
+      transition: none;
+    }
+  }
 }
 
 // Initiative number: a slot typed in place (`InitiativeNumber`), framed while a click would edit it

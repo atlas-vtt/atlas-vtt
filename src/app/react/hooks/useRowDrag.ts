@@ -19,6 +19,12 @@ interface Point {
   y: number;
 }
 
+/** A place as it was measured at the press: its centre, and its top and bottom edge. */
+interface Box extends Point {
+  top: number;
+  bottom: number;
+}
+
 interface Drag {
   pointerId: number;
   from: number;
@@ -31,8 +37,9 @@ interface Drag {
   /** How far the held place has moved in the list's content, scrolling included. */
   delta: Point;
   moved: boolean;
-  /** The centre of each place when the drag began: the row may wrap into a grid. */
-  centres: Point[];
+  /** Each place as it was when the drag began: the row may wrap into a grid. */
+  boxes: Box[];
+  axis: RowDragOptions['axis'];
   /** The group of each place (`DRAG_GROUP_ATTRIBUTE`). */
   groups: (string | null)[];
 }
@@ -58,38 +65,52 @@ export interface RowDrag {
   settling: boolean;
 }
 
-/** The place of the held one's group whose centre lies nearest `point`. */
-function nearest(drag: Drag, point: Point): number {
+/**
+ * How far the held place moves to land at `index`: in a row or grid it takes that place's centre; in a column, whose
+ * places may differ in height (a side and its cards), its edge meets that place's far edge.
+ */
+function landing(drag: Drag, index: number): Point {
+  const held = drag.boxes[drag.from]!;
+  const at = drag.boxes[index]!;
+  if (drag.axis !== 'vertical') return { x: at.x - held.x, y: at.y - held.y };
+  return { x: 0, y: index > drag.from ? at.bottom - held.bottom : at.top - held.top };
+}
+
+/** The places of the held one's group. */
+function ownPlaces(drag: Drag): number[] {
+  return drag.boxes.flatMap((_, index) => (drag.groups[index] === drag.groups[drag.from] ? [index] : []));
+}
+
+/** The place of the held one's group whose landing lies nearest `delta`. */
+function nearest(drag: Drag, delta: Point): number {
   let best = drag.from;
   let distance = Number.POSITIVE_INFINITY;
-  drag.centres.forEach((centre, index) => {
-    if (drag.groups[index] !== drag.groups[drag.from]) return;
-    const d = (centre.x - point.x) ** 2 + (centre.y - point.y) ** 2;
+  for (const index of ownPlaces(drag)) {
+    const at = landing(drag, index);
+    const d = (at.x - delta.x) ** 2 + (at.y - delta.y) ** 2;
     if (d < distance) {
       best = index;
       distance = d;
     }
-  });
+  }
   return best;
 }
 
 /** How far the held place may move either way: as far as the first and last places of its group. */
 function groupReach(drag: Drag): { min: Point; max: Point } {
-  const held = drag.centres[drag.from]!;
-  const own = drag.centres.filter((_, index) => drag.groups[index] === drag.groups[drag.from]);
-  const xs = own.map((centre) => centre.x - held.x);
-  const ys = own.map((centre) => centre.y - held.y);
+  const reach = ownPlaces(drag).map((index) => landing(drag, index));
+  const xs = reach.map((at) => at.x);
+  const ys = reach.map((at) => at.y);
   return { min: { x: Math.min(...xs), y: Math.min(...ys) }, max: { x: Math.max(...xs), y: Math.max(...ys) } };
 }
 
 /** The drag with the pointer at `pointer` and the list scrolled `scrolled` since the press. */
-function follow(drag: Drag, pointer: Point, scrolled: number, axis: RowDragOptions['axis']): Drag {
+function follow(drag: Drag, pointer: Point, scrolled: number): Drag {
   const moved = drag.moved || Math.hypot(pointer.x - drag.start.x, pointer.y - drag.start.y) > DRAG_THRESHOLD;
   const { min, max } = groupReach(drag);
-  const pulled = { x: axis === 'vertical' ? 0 : pointer.x - drag.start.x, y: pointer.y - drag.start.y + scrolled };
+  const pulled = { x: drag.axis === 'vertical' ? 0 : pointer.x - drag.start.x, y: pointer.y - drag.start.y + scrolled };
   const delta = { x: Math.min(Math.max(pulled.x, min.x), max.x), y: Math.min(Math.max(pulled.y, min.y), max.y) };
-  const held = drag.centres[drag.from]!;
-  const to = moved ? nearest(drag, { x: held.x + delta.x, y: held.y + delta.y }) : drag.from;
+  const to = moved ? nearest(drag, delta) : drag.from;
   return { ...drag, pointer, scrolled, delta, moved, to };
 }
 
@@ -166,27 +187,27 @@ export function useRowDrag(places: () => readonly Element[], onMove: (from: numb
           carry = Math.max(-1, Math.min(1, target - box.scrollTop));
         }
         const scrolled = box.scrollTop - now.scrollStart;
-        if (scrolled !== now.scrolled) setDrag(follow(now, now.pointer, scrolled, axis));
+        if (scrolled !== now.scrolled) setDrag(follow(now, now.pointer, scrolled));
       }
       frame = view.requestAnimationFrame(tick);
     };
     let frame = view.requestAnimationFrame(tick);
     return () => view.cancelAnimationFrame(frame);
-  }, [holding, axis]);
+  }, [holding]);
 
   const onPointerDown = (index: number, event: React.PointerEvent<HTMLElement>): void => {
     if (event.button !== 0) return;
     const elements = places();
     if (!elements[index]) return;
-    const centres = elements.map((element) => {
+    const boxes = elements.map((element) => {
       const rect = element.getBoundingClientRect();
-      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, top: rect.top, bottom: rect.top + rect.height };
     });
     const groups = elements.map((element) => element.getAttribute(DRAG_GROUP_ATTRIBUTE));
     const start = { x: event.clientX, y: event.clientY };
     setDrag({
       pointerId: event.pointerId, from: index, to: index, start, pointer: start, scrolled: 0, scrollStart: scroller?.()?.scrollTop ?? 0,
-      delta: { x: 0, y: 0 }, moved: false, centres, groups,
+      delta: { x: 0, y: 0 }, moved: false, boxes, groups, axis,
     });
   };
 
@@ -198,7 +219,7 @@ export function useRowDrag(places: () => readonly Element[], onMove: (from: numb
       setDrag(null);
       return;
     }
-    const next = follow(now, { x: event.clientX, y: event.clientY }, now.scrolled, axis);
+    const next = follow(now, { x: event.clientX, y: event.clientY }, now.scrolled);
     if (next.moved && !now.moved) event.currentTarget.setPointerCapture(event.pointerId);
     setDrag(next);
   };
@@ -220,13 +241,18 @@ export function useRowDrag(places: () => readonly Element[], onMove: (from: numb
 
   const offsetOf = (index: number): string => {
     if (!drag?.moved) return '0 0';
-    const { from, to, delta, centres } = drag;
+    const { from, to, delta, boxes } = drag;
     if (index === from) return `${delta.x}px ${delta.y}px`;
-    // The places between take one step towards where the held one came from.
+    // The places between take one step towards where the held one came from: in a column by the held one's height and
+    // the gap beside it, elsewhere into their neighbour's place.
     const step = from < to && index > from && index <= to ? -1 : to < from && index >= to && index < from ? 1 : 0;
     if (step === 0) return '0 0';
-    const own = centres[index]!;
-    const into = centres[index + step]!;
+    if (drag.axis === 'vertical') {
+      const by = step < 0 ? boxes[from]!.top - boxes[from + 1]!.top : boxes[from]!.bottom - boxes[from - 1]!.bottom;
+      return `0px ${by}px`;
+    }
+    const own = boxes[index]!;
+    const into = boxes[index + step]!;
     return `${into.x - own.x}px ${into.y - own.y}px`;
   };
 

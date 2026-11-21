@@ -30,7 +30,7 @@ import { initiativeTrackerOptions } from './initiativeTrackerOptions';
 import { DEFAULT_TURN_OPTIONS } from '../../initiative/turnOptions';
 import { clearCombatants } from '../../initiative/offMapCombatants';
 import { nextTokenlessEnemy } from '../../initiative/tokenlessEnemies';
-import { InitiativeTrackerList } from './InitiativeTrackerList';
+import { DRAGGED_SIDE_ATTRIBUTE, InitiativeTrackerList } from './InitiativeTrackerList';
 import { InitiativeTrackerHeader } from './InitiativeTrackerHeader';
 import { InitiativeTurnControls } from './InitiativeTurnControls';
 import { useTurnInView } from './useTurnInView';
@@ -94,6 +94,7 @@ export const InitiativeTracker: React.FC = () => {
   const nextTurn = useAtlasStore((s) => s.nextTurn);
   const previousTurn = useAtlasStore((s) => s.previousTurn);
   const reorderInitiative = useAtlasStore((s) => s.reorderInitiative);
+  const setSideOrder = useAtlasStore((s) => s.setSideOrder);
   const endCombat = useAtlasStore((s) => s.endCombat);
   const updateInitiativeEntry = useAtlasStore((s) => s.updateInitiativeEntry);
   const addToInitiative = useAtlasStore((s) => s.addToInitiative);
@@ -154,6 +155,24 @@ export const InitiativeTracker: React.FC = () => {
     },
     { axis: 'vertical', scroller: () => contentRef.current },
   );
+
+  // Before a fight the GM drags a side by its heading to choose who acts first; the fight starts in that order. The
+  // dragged side takes the place of the one it lands on among all the sides, also those the list leaves out.
+  const arrangesSides = bySides && !initiative.isActive && sides.length > 1;
+  const drawnSides = useMemo(() => segments.flatMap((segment) => (segment.kind === 'group' && segment.side ? [segment.side.id] : [])), [segments]);
+  const sideDrag = useRowDrag(
+    () => [...(contentRef.current?.querySelectorAll(`[${DRAGGED_SIDE_ATTRIBUTE}]`) ?? [])],
+    (from, to) => {
+      const moved = drawnSides[from];
+      const target = drawnSides[to];
+      if (moved === undefined || target === undefined) return;
+      const order = sides.map((side) => side.id).filter((id) => id !== moved);
+      order.splice(order.indexOf(target) + (from < to ? 1 : 0), 0, moved);
+      setSideOrder(order);
+    },
+    { axis: 'vertical', scroller: () => contentRef.current },
+  );
+  const settling = drag.settling || sideDrag.settling;
 
   // Numbers typed on the cards; Tab goes on down the list as it shows
   const numberEditing = useNumberEditing(shownOrder, updateInitiativeEntry);
@@ -259,7 +278,7 @@ export const InitiativeTracker: React.FC = () => {
       {/* The combatants, in the order the list shows them */}
       <div
         ref={contentRef}
-        className={['atlas-initiative-panel__list', drag.held !== null && 'atlas-initiative-tracker__list--dragging', drag.settling && 'atlas-initiative-tracker__list--settling'].filter(Boolean).join(' ')}
+        className={['atlas-initiative-panel__list', drag.held !== null && 'atlas-initiative-tracker__list--dragging', sideDrag.held !== null && 'atlas-initiative-tracker__list--dragging-sides', settling && 'atlas-initiative-tracker__list--settling', arrangesSides && 'atlas-initiative-tracker__list--arranges-sides'].filter(Boolean).join(' ')}
         // The cards' art is images, which the browser would drag as files and cancel the pointer for
         onDragStart={(event) => event.preventDefault()}
       >
@@ -267,7 +286,7 @@ export const InitiativeTracker: React.FC = () => {
         {sortedEntries.length === 0 && (
           <div className={`atlas-initiative-card${compact ? '' : ' atlas-initiative-card--tile'} atlas-initiative-card--placeholder`} aria-hidden="true" />
         )}
-        {sortedEntries.length > 0 && <InitiativeTrackerList segments={segments} card={card} />}
+        {sortedEntries.length > 0 && <InitiativeTrackerList segments={segments} card={card} {...(arrangesSides && { sideDrag })} />}
       </div>
 
       {/* The shade over the list's top, shown once it is scrolled */}

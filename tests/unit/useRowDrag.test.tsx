@@ -63,6 +63,24 @@ describe('useRowDrag', () => {
     expect(result.current.offsetOf(1)).toBe('0px -40px');
   });
 
+  it('slides a column\'s places aside by the held one\'s height, and lands it edge to edge', () => {
+    // A side of three cards (120 px) above one of one card (40 px), 8 px apart
+    const heights = [120, 40];
+    const places = heights.map((height, index) => {
+      const element = document.createElement('div');
+      element.getBoundingClientRect = () => ({ left: 0, top: index * 128, width: 40, height }) as DOMRect;
+      return element;
+    });
+    const onMove = vi.fn();
+    const { result } = renderHook(() => useRowDrag(() => places, onMove, { axis: 'vertical' }));
+    act(() => result.current.onPointerDown(0, pointer(60)));
+    act(() => result.current.onPointerMove(pointer(400)));
+    expect(result.current.offsetOf(1)).toBe('0px -128px');
+    expect(result.current.offsetOf(0)).toBe('0px 48px');
+    act(() => result.current.onPointerUp(pointer(400)));
+    expect(onMove).toHaveBeenCalledWith(0, 1);
+  });
+
   it('drops nothing for a click or a press let go elsewhere', () => {
     const onMove = vi.fn();
     const places = column([null, null]);
