@@ -230,6 +230,10 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
   };
 
   app.fileManager = {
+    generateMarkdownLink: vi.fn((file: TFile, _sourcePath: string, subpath = '', alias?: string) => {
+      const target = `${file.path}${subpath}`;
+      return alias ? `[[${target}|${alias}]]` : `[[${target}]]`;
+    }),
     renameFile: vi.fn(moveFile),
     trashFile: vi.fn(async (file: TAbstractFile) => removeWithin(file.path)),
     processFrontMatter: vi.fn(async (file: TFile, fn: (frontmatter: Record<string, unknown>) => void) => {

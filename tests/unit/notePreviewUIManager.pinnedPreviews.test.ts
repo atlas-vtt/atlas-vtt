@@ -298,7 +298,7 @@ describe('NotePreviewUIManager pinned previews', () => {
 
     followPin(harness);
 
-    expect(harness.openLinkText).toHaveBeenCalledWith('notes/tavern.md', '', true);
+    expect(harness.openLinkText).toHaveBeenCalledWith('notes/tavern.md', TAVERN, true);
     expect(document.querySelector('.atlas-note-preview-window')).toBe(previewEl);
     expect(previewEl.querySelector('.atlas-note-preview-pin-btn')?.classList.contains('is-pinned')).toBe(true);
     expect(harness.store.getState().pinnedNotePreviews['pin-1']).toMatchObject(LAYOUT);
@@ -314,7 +314,7 @@ describe('NotePreviewUIManager pinned previews', () => {
 
     followPin(harness);
 
-    expect(harness.openLinkText).toHaveBeenCalledWith('notes/tavern.md', '', true);
+    expect(harness.openLinkText).toHaveBeenCalledWith('notes/tavern.md', TAVERN, true);
     expect(document.querySelector('.atlas-note-preview-window')).toBeNull();
   });
 

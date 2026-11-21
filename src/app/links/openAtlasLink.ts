@@ -6,12 +6,15 @@ import { confirmSnapshotRestore, restoreSnapshotInView } from '../snapshots/snap
 import { spawnEncounterTokens, type SpawnPlacement } from '../packages/components/asset-manager/utils/tokenSpawnService';
 import { formatServiceAsset } from '../packages/components/asset-manager/utils/assetFormatters';
 import { encounterOfFile, findSnapshot, snapshotsOfMap } from './atlasLinkAssets';
-import { snapshotNameOfSubpath } from './atlasLinkTargets';
+import { pinIdOfSubpath, snapshotNameOfSubpath } from './atlasLinkTargets';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
 import type { NotePin } from '../types';
 import { pinSceneLevel } from '../levels/pinSceneLevel';
 import { diceRandom } from '../services/offlineDiceInputs';
+import { everyLevelObjects } from '../levels/levelObjects';
+import { hasLevels, resolveLevel } from '../levels/sceneLevels';
+import { allowZoom } from '../pixi/zoomRange';
 
 /** How long a snapshot link waits for its scene to open before it gives up. */
 const SCENE_OPEN_TIMEOUT_MS = 30_000;
@@ -73,9 +76,44 @@ export async function showPinnedLevel(app: App, mapPath: string, pin: Pick<NoteP
   if (state && level !== null) state.setViewedLevel(level);
 }
 
+/**
+ * Focuses a pin named by a scene link after its scene has loaded. The pin's own level is shown
+ * first, then the camera glides to it at a useful zoom without zooming out of a closer view.
+ */
+export async function focusLinkedPin(app: App, mapPath: string, pinId: string): Promise<void> {
+  const view = await whenSceneShown(app, mapPath);
+  if (!view) return;
+  const state = view.getStore().getState();
+  const pin = everyLevelObjects(state).pins[pinId];
+  if (!pin) {
+    showNotice(t('pinMenu.linkTargetMissing'));
+    return;
+  }
+
+  if (hasLevels(state.levels)) {
+    state.setViewedLevel(resolveLevel(state.levels, pin.level));
+  }
+
+  const viewport = view.renderer?.getViewportInstance();
+  if (!viewport) return;
+  const scale = Math.max(viewport.scale.x, 2.5);
+  allowZoom(viewport, scale);
+  viewport.animate({
+    position: { x: pin.x, y: pin.y },
+    scale,
+    time: 500,
+    ease: 'easeInOutCubic',
+  });
+}
+
 /** Opens a scene in Atlas and, when the link names one of its snapshots, offers to restore it. */
 export async function openSceneLink(app: App, file: TFile, subpath: string): Promise<void> {
   await openMapInView(app, file);
+  const pinId = pinIdOfSubpath(subpath);
+  if (pinId) {
+    await focusLinkedPin(app, file.path, pinId);
+    return;
+  }
   await restoreLinkedSnapshot(app, file.path, subpath);
 }
 

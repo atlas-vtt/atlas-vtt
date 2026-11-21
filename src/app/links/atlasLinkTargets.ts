@@ -16,8 +16,21 @@ export function linkSafeName(name: string): string {
  * The snapshot name a link's subpath (`#Before the fight`) asks for, or null
  * when it asks for none (no subpath, or a block reference `#^id`).
  */
+export function pinIdOfSubpath(subpath: string): string | null {
+  if (!subpath.startsWith('#pin=')) return null;
+  const encoded = subpath.slice('#pin='.length);
+  if (!encoded) return null;
+  try {
+    const id = decodeURIComponent(encoded);
+    return id.trim() ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A snapshot name is not a pin target or a block reference. */
 export function snapshotNameOfSubpath(subpath: string): string | null {
-  if (!subpath.startsWith('#') || subpath.startsWith('#^')) return null;
+  if (!subpath.startsWith('#') || subpath.startsWith('#^') || pinIdOfSubpath(subpath) !== null) return null;
   const name = linkSafeName(subpath.slice(1));
   return name || null;
 }

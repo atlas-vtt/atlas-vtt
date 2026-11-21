@@ -12,7 +12,8 @@ import { claimWorkspaceLeafFocus } from './utils/activeLeafGuard';
 import { t } from './i18n';
 import { isScenePath } from './utils/sceneFiles';
 import { runInBackground } from './utils/backgroundTask';
-import { restoreLinkedSnapshot } from './links/openAtlasLink';
+import { focusLinkedPin, restoreLinkedSnapshot } from './links/openAtlasLink';
+import { pinIdOfSubpath } from './links/atlasLinkTargets';
 import type { ViewCamera } from './pixi/viewCamera';
 import { showNotice } from './ui/notice';
 import { observeResize } from './utils/observeResize';
@@ -190,6 +191,11 @@ export class AtlasView extends FileView {
     const subpath = isRecord(state) && typeof state.subpath === 'string' ? state.subpath : null;
     const mapPath = this.file?.path;
     if (!subpath || !mapPath) return;
+    const pinId = pinIdOfSubpath(subpath);
+    if (pinId) {
+      runInBackground(focusLinkedPin(this.app, mapPath, pinId), `Opening a link to pin ${pinId} on ${mapPath}`);
+      return;
+    }
     runInBackground(restoreLinkedSnapshot(this.app, mapPath, subpath), `Opening a link to a snapshot of ${mapPath}`, t('snapshots.restoreFailed'));
   }
 
