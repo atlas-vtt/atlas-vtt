@@ -2,15 +2,17 @@
  * Which dice set rolls a bare bonus. A collection rolls its own pick from the
  * library; a collection saved before sets existed rolls the dice rules it
  * stored, read as a set, so nothing changes for it; one without either rolls
- * its game system's; anything else the plain d20. A statblock's template may
- * name a set of its own, which then wins (`statblockDiceSet`).
+ * its game system's; anything else a plain d20. A statblock's template may
+ * name a set of its own, which then wins (`statblockDiceSet`). Advantage is
+ * offered only by a set that has a rule for it: stored dice rules never say
+ * anything about it, so a collection without a system rolls without it.
  */
 
 import type { CollectionSettings } from '../types/collectionSettingsTypes';
 import type { DiceRules } from '../types/diceRulesTypes';
 import type { DiceSet } from '../types/diceSetTypes';
 import type { SystemPreset } from '../types/systemPresetTypes';
-import { BUILT_IN_DICE_SETS, D20_DICE_SET_ID } from './builtInDiceSets';
+import { BUILT_IN_DICE_SETS, PLAIN_D20_DICE_SET_ID } from './builtInDiceSets';
 import { dressed, rollingRules, sameRolling, setRollText } from './diceSets';
 
 /**
@@ -25,19 +27,21 @@ export function findDiceSet(sets: readonly DiceSet[], id: string | undefined): D
   return sets.find((set) => set.id === id) ?? BUILT_IN_DICE_SETS.find((set) => set.id === id);
 }
 
-/** The set a collection without a system rolls. */
+/** The set a collection without a system rolls: a d20 without advantage. */
 export function defaultDiceSet(): DiceSet {
-  return findDiceSet([], D20_DICE_SET_ID)!;
+  return findDiceSet([], PLAIN_D20_DICE_SET_ID)!;
 }
 
+const offersAdvantage = (set: DiceSet): boolean => set.advantage !== undefined || set.disadvantage !== undefined;
+
 /**
- * Stored dice rules as a set: the built-in set that rolls alike, so a
- * collection that kept its system's d20 still rolls the d20 set, else a set of
+ * Stored dice rules as a set: the built-in set that rolls alike and adds
+ * nothing to them (no advantage, which dice rules cannot say), else a set of
  * the collection's own named after its dice.
  */
 export function setOfDiceRules(rules: DiceRules): DiceSet {
   const rolling = rollingRules(rules);
-  const builtIn = BUILT_IN_DICE_SETS.find((set) => !dressed(set) && sameRolling(set, rolling));
+  const builtIn = BUILT_IN_DICE_SETS.find((set) => !dressed(set) && !offersAdvantage(set) && sameRolling(set, rolling));
   return builtIn ?? { id: COLLECTION_DICE_ID, name: setRollText(rolling.dice), builtIn: false, ...rolling };
 }
 
@@ -57,9 +61,10 @@ interface DiceSettings {
 export function collectionDiceSet(settings: DiceSettings, presets: readonly SystemPreset[], sets: readonly DiceSet[]): DiceSet {
   const picked = findDiceSet(sets, settings.diceSetId);
   if (picked) return picked;
-  if (settings.dice) return setOfDiceRules(settings.dice);
   const preset = presets.find((entry) => entry.id === settings.systemPresetId);
   const systemSet = findDiceSet(sets, preset?.rules.diceSetId);
+  // A collection of a system, saved before sets, kept its system's dice: it rolls its system's set, advantage and all
+  if (settings.dice) return systemSet && sameRolling(systemSet, rollingRules(settings.dice)) ? systemSet : setOfDiceRules(settings.dice);
   if (systemSet) return systemSet;
   return preset?.rules.dice ? setOfDiceRules(preset.rules.dice) : defaultDiceSet();
 }
