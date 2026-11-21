@@ -107,6 +107,12 @@ export interface ViewState extends ViewUIState {
    */
   exploredEdits: number;
   /**
+   * How many times the GM forgot the explored memory of every level at once (Forget explored areas):
+   * online players drop what they remember of a floor whose saved memory was none already. Never
+   * saved, never undo-tracked; unset reads as none.
+   */
+  exploredForgotten?: number | undefined;
+  /**
    * The values of the played campaign's player characters, one per character and resource
    * (`campaigns/partyValues/partyKeys.ts`). Mirrored from the campaign's file, undo-tracked value by
    * value, never saved with the scene: a character's tokens show them (`PartyReconciler`).
