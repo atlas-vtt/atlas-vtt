@@ -47,7 +47,7 @@ describe('useRowDrag', () => {
 
   it('moves a vertical list\'s held place up and down only', () => {
     const places = column([null, null]);
-    const { result } = renderHook(() => useRowDrag(() => places, vi.fn(), 'vertical'));
+    const { result } = renderHook(() => useRowDrag(() => places, vi.fn(), { axis: 'vertical' }));
     act(() => result.current.onPointerDown(0, pointer(20)));
     act(() => result.current.onPointerMove({ ...pointer(60), clientX: 90 }));
     expect(result.current.offsetOf(0)).toBe('0px 40px');
@@ -55,7 +55,7 @@ describe('useRowDrag', () => {
 
   it('stops the held place at the first and last places of its group', () => {
     const places = column(['a', 'a', 'a', 'b']);
-    const { result } = renderHook(() => useRowDrag(() => places, vi.fn(), 'vertical'));
+    const { result } = renderHook(() => useRowDrag(() => places, vi.fn(), { axis: 'vertical' }));
     act(() => result.current.onPointerDown(1, pointer(60)));
     act(() => result.current.onPointerMove(pointer(400)));
     expect(result.current.offsetOf(1)).toBe('0px 40px');
@@ -73,5 +73,22 @@ describe('useRowDrag', () => {
     act(() => result.current.onPointerMove(pointer(100, 0)));
     expect(result.current.held).toBeNull();
     expect(onMove).not.toHaveBeenCalled();
+  });
+
+  it('scrolls its list on while held near the bottom edge, and the held place goes along', () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => frames.push(callback));
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined);
+    const box = document.createElement('div');
+    box.getBoundingClientRect = () => ({ top: 0, bottom: 100 }) as DOMRect;
+    box.scrollTo = ((options: ScrollToOptions) => { box.scrollTop = options.top ?? 0; }) as typeof box.scrollTo;
+    const places = column([null, null, null, null, null]);
+    const { result } = renderHook(() => useRowDrag(() => places, vi.fn(), { axis: 'vertical', scroller: () => box }));
+    act(() => result.current.onPointerDown(1, pointer(60)));
+    act(() => result.current.onPointerMove(pointer(95)));
+    act(() => frames.shift()?.(0));
+    expect(box.scrollTop).toBeGreaterThan(0);
+    expect(result.current.offsetOf(1)).toBe(`0px ${35 + box.scrollTop}px`);
+    vi.restoreAllMocks();
   });
 });

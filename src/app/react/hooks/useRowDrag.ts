@@ -3,6 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 
 /** How far a press moves before it is a drag, so a click on a place stays a click. */
 const DRAG_THRESHOLD = 4;
+/** How near its top or bottom edge the pointer scrolls a list, and how fast at most (px per frame), faster further in. */
+const SCROLL_EDGE = 56;
+const SCROLL_SPEED = 14;
 
 /** The attribute that keeps a place among its own: a held place only lands among places of the same group. */
 export const DRAG_GROUP_ATTRIBUTE = 'data-drag-group';
@@ -17,12 +20,24 @@ interface Drag {
   from: number;
   to: number;
   start: Point;
+  /** Where the pointer is now, and how far the list has scrolled since the press. */
+  pointer: Point;
+  scrolled: number;
+  scrollStart: number;
+  /** How far the held place has moved in the list's content, scrolling included. */
   delta: Point;
   moved: boolean;
   /** The centre of each place when the drag began: the row may wrap into a grid. */
   centres: Point[];
   /** The group of each place (`DRAG_GROUP_ATTRIBUTE`). */
   groups: (string | null)[];
+}
+
+export interface RowDragOptions {
+  /** A list of one column moves its held place up and down only. */
+  axis?: 'both' | 'vertical';
+  /** The element the places scroll in: held near its top or bottom edge, a place scrolls it on. */
+  scroller?: () => HTMLElement | null;
 }
 
 export interface RowDrag {
@@ -54,15 +69,33 @@ function nearest(drag: Drag, point: Point): number {
   return best;
 }
 
-/** `delta` cut so the held place goes no further than the first and last places of its group. */
-function withinGroup(drag: Drag, delta: Point): Point {
+/** How far the held place may move either way: as far as the first and last places of its group. */
+function groupReach(drag: Drag): { min: Point; max: Point } {
   const held = drag.centres[drag.from]!;
   const own = drag.centres.filter((_, index) => drag.groups[index] === drag.groups[drag.from]);
-  const clamp = (value: number, axis: 'x' | 'y'): number => {
-    const ends = own.map((centre) => centre[axis] - held[axis]);
-    return Math.min(Math.max(value, Math.min(...ends)), Math.max(...ends));
-  };
-  return { x: clamp(delta.x, 'x'), y: clamp(delta.y, 'y') };
+  const xs = own.map((centre) => centre.x - held.x);
+  const ys = own.map((centre) => centre.y - held.y);
+  return { min: { x: Math.min(...xs), y: Math.min(...ys) }, max: { x: Math.max(...xs), y: Math.max(...ys) } };
+}
+
+/** The drag with the pointer at `pointer` and the list scrolled `scrolled` since the press. */
+function follow(drag: Drag, pointer: Point, scrolled: number, axis: RowDragOptions['axis']): Drag {
+  const moved = drag.moved || Math.hypot(pointer.x - drag.start.x, pointer.y - drag.start.y) > DRAG_THRESHOLD;
+  const { min, max } = groupReach(drag);
+  const pulled = { x: axis === 'vertical' ? 0 : pointer.x - drag.start.x, y: pointer.y - drag.start.y + scrolled };
+  const delta = { x: Math.min(Math.max(pulled.x, min.x), max.x), y: Math.min(Math.max(pulled.y, min.y), max.y) };
+  const held = drag.centres[drag.from]!;
+  const to = moved ? nearest(drag, { x: held.x + delta.x, y: held.y + delta.y }) : drag.from;
+  return { ...drag, pointer, scrolled, delta, moved, to };
+}
+
+/** How far to scroll `box` this frame with the pointer at height `y`: none unless near an edge, and none past the group's end. */
+function edgeScroll(box: DOMRect, y: number, drag: Drag): number {
+  const { min, max } = groupReach(drag);
+  const share = (distance: number): number => Math.min(1, (SCROLL_EDGE - distance) / SCROLL_EDGE);
+  if (y - box.top < SCROLL_EDGE && drag.delta.y > min.y) return -SCROLL_SPEED * share(y - box.top);
+  if (box.bottom - y < SCROLL_EDGE && drag.delta.y < max.y) return SCROLL_SPEED * share(box.bottom - y);
+  return 0;
 }
 
 /** The click a drop ends in is no click on what was dropped: it is taken before anything hears it. */
@@ -82,10 +115,11 @@ function swallowNextClick(win: Window): void {
  * `places` gives the places in their order (a row that may wrap into a grid, a list split into groups). A place marked
  * with a group (`DRAG_GROUP_ATTRIBUTE`) lands only among its group, whose places follow each other. The pointer is
  * captured once the press becomes a drag, so a finger drags as the mouse does and a plain click still reaches what was
- * pressed; a cancelled pointer drops nothing. The held place stops at the first and last places of its group. A list of one column (`axis` 'vertical') moves its held place up and
- * down only.
+ * pressed; a cancelled pointer drops nothing. The held place stops at the first and last places of its group. Places
+ * that scroll (`scroller`) are measured in the list's content, and held near its top or bottom edge a place scrolls the
+ * list on until its group ends.
  */
-export function useRowDrag(places: () => readonly Element[], onMove: (from: number, to: number) => void, axis: 'both' | 'vertical' = 'both'): RowDrag {
+export function useRowDrag(places: () => readonly Element[], onMove: (from: number, to: number) => void, { axis = 'both', scroller }: RowDragOptions = {}): RowDrag {
   const [drag, setDrag] = useState<Drag | null>(null);
   const [settling, setSettling] = useState(false);
   const current = useRef<Drag | null>(null);
@@ -100,6 +134,29 @@ export function useRowDrag(places: () => readonly Element[], onMove: (from: numb
     return () => view.cancelAnimationFrame(frame);
   }, [settling]);
 
+  // While a place is held the list scrolls on near its edges, and follows a scroll the pointer made (a wheel)
+  const holding = drag?.moved === true;
+  const scrollerRef = useRef(scroller);
+  scrollerRef.current = scroller;
+  useEffect(() => {
+    const box = holding ? scrollerRef.current?.() : null;
+    if (!box) return undefined;
+    const view = box.ownerDocument.defaultView ?? window;
+    const tick = (): void => {
+      const now = current.current;
+      if (now?.moved) {
+        const speed = edgeScroll(box.getBoundingClientRect(), now.pointer.y, now);
+        // The list glides when it is scrolled (`scroll-behavior: smooth`); a drag moves it at once
+        if (speed !== 0) box.scrollTo({ top: box.scrollTop + speed, behavior: 'instant' });
+        const scrolled = box.scrollTop - now.scrollStart;
+        if (scrolled !== now.scrolled) setDrag(follow(now, now.pointer, scrolled, axis));
+      }
+      frame = view.requestAnimationFrame(tick);
+    };
+    let frame = view.requestAnimationFrame(tick);
+    return () => view.cancelAnimationFrame(frame);
+  }, [holding, axis]);
+
   const onPointerDown = (index: number, event: React.PointerEvent<HTMLElement>): void => {
     if (event.button !== 0) return;
     const elements = places();
@@ -109,7 +166,11 @@ export function useRowDrag(places: () => readonly Element[], onMove: (from: numb
       return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
     });
     const groups = elements.map((element) => element.getAttribute(DRAG_GROUP_ATTRIBUTE));
-    setDrag({ pointerId: event.pointerId, from: index, to: index, start: { x: event.clientX, y: event.clientY }, delta: { x: 0, y: 0 }, moved: false, centres, groups });
+    const start = { x: event.clientX, y: event.clientY };
+    setDrag({
+      pointerId: event.pointerId, from: index, to: index, start, pointer: start, scrolled: 0, scrollStart: scroller?.()?.scrollTop ?? 0,
+      delta: { x: 0, y: 0 }, moved: false, centres, groups,
+    });
   };
 
   const onPointerMove = (event: React.PointerEvent<HTMLElement>): void => {
@@ -120,13 +181,9 @@ export function useRowDrag(places: () => readonly Element[], onMove: (from: numb
       setDrag(null);
       return;
     }
-    const pulled = { x: axis === 'vertical' ? 0 : event.clientX - now.start.x, y: event.clientY - now.start.y };
-    const moved = now.moved || Math.hypot(pulled.x, pulled.y) > DRAG_THRESHOLD;
-    const delta = withinGroup(now, pulled);
-    if (moved && !now.moved) event.currentTarget.setPointerCapture(event.pointerId);
-    const held = now.centres[now.from]!;
-    const to = moved ? nearest(now, { x: held.x + delta.x, y: held.y + delta.y }) : now.from;
-    setDrag({ ...now, delta, moved, to });
+    const next = follow(now, { x: event.clientX, y: event.clientY }, now.scrolled, axis);
+    if (next.moved && !now.moved) event.currentTarget.setPointerCapture(event.pointerId);
+    setDrag(next);
   };
 
   const onPointerUp = (event: React.PointerEvent<HTMLElement>): void => {

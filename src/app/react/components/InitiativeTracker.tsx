@@ -152,7 +152,7 @@ export const InitiativeTracker: React.FC = () => {
       const target = placeOf.get(shownOrder[to]?.id ?? '');
       if (moved !== undefined && target !== undefined) reorderInitiative(moved, target);
     },
-    'vertical',
+    { axis: 'vertical', scroller: () => contentRef.current },
   );
 
   // Numbers typed on the cards; Tab goes on down the list as it shows
