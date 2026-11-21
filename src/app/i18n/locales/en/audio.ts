@@ -410,8 +410,10 @@ export const audio = {
   'audio.settings.crossfadeHint': 'Seconds tracks of a list overlap. 0 joins them without a gap.',
   'audio.settings.levelHint': 'What you hear of it on this table, in dB.',
   'audio.settings.musicCredit': 'Music by Vindsvept',
-  'audio.settings.musicCreditHint': 'The music packs on the Sound page are Vindsvept\'s work, released under CC BY 4.0. Each download comes with a credits file.',
+  'audio.settings.musicCreditHint': 'The music packs on the Sound page are Vindsvept\'s work, released under CC BY 4.0. Streaming or recording a game with it? Put the credit line in your video\'s description.',
   'audio.settings.musicCreditOpen': 'Visit vindsvept.se',
+  'audio.settings.musicCreditCopy': 'Copy credit line',
+  'audio.settings.musicCreditCopied': 'Credit line copied. Paste it into your video\'s description.',
 
   'audio.players.hearing': { one: '{hearing} of {total} player hearing', other: '{hearing} of {total} players hearing' },
   'audio.players.uploading': { one: '{count} track still on its way', other: '{count} tracks still on their way' },
