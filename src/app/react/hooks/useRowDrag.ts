@@ -54,6 +54,17 @@ function nearest(drag: Drag, point: Point): number {
   return best;
 }
 
+/** `delta` cut so the held place goes no further than the first and last places of its group. */
+function withinGroup(drag: Drag, delta: Point): Point {
+  const held = drag.centres[drag.from]!;
+  const own = drag.centres.filter((_, index) => drag.groups[index] === drag.groups[drag.from]);
+  const clamp = (value: number, axis: 'x' | 'y'): number => {
+    const ends = own.map((centre) => centre[axis] - held[axis]);
+    return Math.min(Math.max(value, Math.min(...ends)), Math.max(...ends));
+  };
+  return { x: clamp(delta.x, 'x'), y: clamp(delta.y, 'y') };
+}
+
 /** The click a drop ends in is no click on what was dropped: it is taken before anything hears it. */
 function swallowNextClick(win: Window): void {
   const swallow = (event: MouseEvent): void => {
@@ -71,7 +82,7 @@ function swallowNextClick(win: Window): void {
  * `places` gives the places in their order (a row that may wrap into a grid, a list split into groups). A place marked
  * with a group (`DRAG_GROUP_ATTRIBUTE`) lands only among its group, whose places follow each other. The pointer is
  * captured once the press becomes a drag, so a finger drags as the mouse does and a plain click still reaches what was
- * pressed; a cancelled pointer drops nothing. A list of one column (`axis` 'vertical') moves its held place up and
+ * pressed; a cancelled pointer drops nothing. The held place stops at the first and last places of its group. A list of one column (`axis` 'vertical') moves its held place up and
  * down only.
  */
 export function useRowDrag(places: () => readonly Element[], onMove: (from: number, to: number) => void, axis: 'both' | 'vertical' = 'both'): RowDrag {
@@ -109,8 +120,9 @@ export function useRowDrag(places: () => readonly Element[], onMove: (from: numb
       setDrag(null);
       return;
     }
-    const delta = { x: axis === 'vertical' ? 0 : event.clientX - now.start.x, y: event.clientY - now.start.y };
-    const moved = now.moved || Math.hypot(delta.x, delta.y) > DRAG_THRESHOLD;
+    const pulled = { x: axis === 'vertical' ? 0 : event.clientX - now.start.x, y: event.clientY - now.start.y };
+    const moved = now.moved || Math.hypot(pulled.x, pulled.y) > DRAG_THRESHOLD;
+    const delta = withinGroup(now, pulled);
     if (moved && !now.moved) event.currentTarget.setPointerCapture(event.pointerId);
     const held = now.centres[now.from]!;
     const to = moved ? nearest(now, { x: held.x + delta.x, y: held.y + delta.y }) : now.from;

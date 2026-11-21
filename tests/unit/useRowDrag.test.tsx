@@ -53,6 +53,16 @@ describe('useRowDrag', () => {
     expect(result.current.offsetOf(0)).toBe('0px 40px');
   });
 
+  it('stops the held place at the first and last places of its group', () => {
+    const places = column(['a', 'a', 'a', 'b']);
+    const { result } = renderHook(() => useRowDrag(() => places, vi.fn(), 'vertical'));
+    act(() => result.current.onPointerDown(1, pointer(60)));
+    act(() => result.current.onPointerMove(pointer(400)));
+    expect(result.current.offsetOf(1)).toBe('0px 40px');
+    act(() => result.current.onPointerMove(pointer(-400)));
+    expect(result.current.offsetOf(1)).toBe('0px -40px');
+  });
+
   it('drops nothing for a click or a press let go elsewhere', () => {
     const onMove = vi.fn();
     const places = column([null, null]);
