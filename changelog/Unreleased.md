@@ -1,3 +1,7 @@
+## New
+
+- **Music packs**: get Vindsvept's fantasy music on the Sound page, 365 tracks in ten packs sorted by mood, each ready to play the moment it lands
+
 ## Improved
 
 - What’s new in Atlas links to the Atlas website and Patreon beside GitHub, and takes the look of the other dialogs

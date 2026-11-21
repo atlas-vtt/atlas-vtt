@@ -37,3 +37,17 @@ export async function fetchVerified(host: string, file: PackedFile, fetch: Fetch
   if (!(await matchesFile(bytes, file))) throw new StockPackError(`${file.key} is not the file the pack names.`);
   return bytes;
 }
+
+/** Runs `task` for every item, at most `parallel` at a time, and returns the results in the items' order. */
+export async function inPool<T, R>(items: readonly T[], parallel: number, task: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array<R>(items.length);
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    for (let index = next++; index < items.length; index = next++) {
+      const item = items[index];
+      if (item !== undefined) results[index] = await task(item);
+    }
+  };
+  await Promise.all(Array.from({ length: parallel }, worker));
+  return results;
+}
