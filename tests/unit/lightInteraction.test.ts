@@ -321,6 +321,20 @@ describe('a press outside the popover', () => {
     expect(store.getState().lightPopover).toBeNull();
   });
 
+  it('tells the tool once that a press on the map closed it, and never for a press elsewhere or without a popover', () => {
+    const { store, torch, canvas, lights } = setup();
+    store.getState().openLightPopover(torch);
+    pressOn(canvas, 100, 100);
+    expect(lights.takeDismissal()).toBe(true);
+    expect(lights.takeDismissal()).toBe(false);
+    pressOn(canvas, 100, 100);
+    expect(lights.takeDismissal()).toBe(false);
+    store.getState().openLightPopover(torch);
+    pressOn(document.body);
+    pressOn(canvas, 100, 100);
+    expect(lights.takeDismissal()).toBe(false);
+  });
+
   it('keeps it for a press inside it in a popout window, whose elements are another window\'s', () => {
     const frame = document.body.appendChild(document.createElement('iframe'));
     const popout = frame.contentWindow!;

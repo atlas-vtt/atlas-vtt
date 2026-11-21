@@ -50,9 +50,14 @@ export function wireLightingPointer(tokens: TokenRenderer, { lights, editor, mod
   tokens.setWallPointerDownHandler((x, y, e) => {
     // The players' view hides the editor: the lighting tool then opens doors from the badges that view shows, as every other tool does.
     if (!editor.shown) return doorClick(x, y);
+    const ctrl = e.ctrlKey || e.metaKey;
+    // A press that closed a light's popover only closes it and lets go of the selection: it places no light and draws no wall.
+    if (lights.takeDismissal()) {
+      if (!ctrl) editor.walls.clearSelection();
+      return true;
+    }
     // In rooms mode a door's badge still opens and closes it: the doors are placed there.
     if (modes.rooms.active && doorClick(x, y)) return true;
-    const ctrl = e.ctrlKey || e.metaKey;
     if (wallsInRooms({ x, y }) && !e.shiftKey) return editor.pointerDown({ x, y }, false, ctrl, e.altKey);
     // A press beside the walls lets go of the walls selected, as in the walls mode.
     if (roomsAtRest() && !ctrl) editor.walls.clearSelection();

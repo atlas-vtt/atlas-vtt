@@ -20,6 +20,7 @@
 
 ## Fixed
 
+- With a light's panel open, a click on the map outside it closes the panel instead of placing another light or starting a wall
 - FLAC files no longer fail to import on the Sound page with a decoding error; about a third of FLAC music hit it
 - A Number value written with advantage or disadvantage (`+7 adv`) no longer shows "Not a number"; a value that rolls as a bonus keeps the word (`7 adv` rolls `+7 adv`)
 - A reference to such a value (`@perception` on `+2 adv`) reads its number, and a sum written with the word shows its total (`10 + @dex adv` reads `12 adv`)
@@ -28,6 +29,8 @@
 - Outside a fight, the initiative list shows a fade at its bottom while there is more to scroll to, as it does at its top
 - Forget explored areas forgets every floor of a scene, not only the floor you are looking at, and online players on other floors forget theirs too
 - Sharing a template, game system or dice set in the Armarium no longer stops at "The Armarium cannot be reached" when the account server stumbles for a moment: Atlas asks once more before giving up
+- Fitting the grid of a floor you moved with Position floor no longer turns the map black: while the grid panel (or a floor being dragged into place) shows the floor's map somewhere else, the map shows whole, without the floor below cutting through it
+- On a hex grid, Position floor stops a floor at the map's top or left edge where it is, instead of throwing it a row the other way
 
 ## Atlas Online
 
