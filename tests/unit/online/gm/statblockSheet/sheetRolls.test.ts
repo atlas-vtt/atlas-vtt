@@ -98,6 +98,16 @@ describe('the rolls a player\'s sheet names', () => {
     expect(parseBookStatblock(plain)).toEqual(plain);
   });
 
+  it('fill in a Metric number written as a reference, as the card shows it, and roll that number', () => {
+    const template: StatblockTemplate = { ...templateOf(FIELDS, [metric(true), BLOCKS[5]!]), players: { secret: 'hidden' } };
+    const drawn = statblockSheet({ resolved: resolvedOf(template, { ...VALUES, agility: '@dex.mod', strength: 1, finesse: '10 + @str.mod' }), definitions: [], resources: undefined })!;
+    const values = nodeOf(drawn, 'metric').values;
+    expect(values.map((value) => [value.text.opening, value.roll])).toEqual([['-1', '-1[Dex mod]'], ['1', '+1'], ['14', '+14']]);
+    // What the player edits stays as the note keeps it
+    expect(values[0]!.field).toMatchObject({ value: '@dex.mod' });
+    expect(parseBookStatblock(drawn)).toEqual(drawn);
+  });
+
   it('name the references a value\'s roll was filled in from, which its text shows as numbers', () => {
     const template: StatblockTemplate = { ...templateOf(FIELDS, BLOCKS), players: { secret: 'hidden' } };
     const values = { ...VALUES, damage: '2d8 + @agility', attack: '+4+@strength', gear: [['Sword', '1d8 + @agility'], ['Rope', '50 ft.']] };
