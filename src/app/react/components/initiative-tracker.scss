@@ -198,6 +198,13 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   }
 }
 
+/// A card lifted over others stays solid: its translucent `$fill` is laid over the panel's surface it rested on, and
+/// a faded card (defeated, sitting out) shows whole.
+@mixin solid-card($fill) {
+  opacity: 1;
+  background: linear-gradient($fill, $fill), var(--background-primary);
+}
+
 // A card dragged (`useRowDrag`), as a phone's home screen is arranged (`styles/_wiggle.scss`): the cards shiver in
 // place, the held one lifts and follows the pointer and those it passes slide aside. Let go, the list takes its new
 // order at once and the card glides home from where it was dropped (`useTurnMotion`).
@@ -219,11 +226,8 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
     // Lifted over its neighbours it stays solid: its translucent fill is laid over the panel's surface it rested on
     &[data-held] {
       @include atlas-wiggle-held;
+      @include solid-card(var(--background-modifier-active-hover));
       z-index: 4;
-      opacity: 1;
-      background:
-        linear-gradient(var(--background-modifier-active-hover), var(--background-modifier-active-hover)),
-        var(--background-primary);
       transform: none;
       transition: none;
       cursor: grabbing;
@@ -295,7 +299,9 @@ $held-room: $spacing-l;
       box-shadow: 0 0 0 $surface-inset var(--background-primary), $shadow-elevated;
       transition: none;
 
+      // Each solid, so none shows the ones under it through it
       > .atlas-initiative-card {
+        @include solid-card(var(--background-modifier-hover));
         grid-area: 2 / 1;
         z-index: 3;
       }
