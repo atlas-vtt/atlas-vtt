@@ -71,15 +71,46 @@ export function movedFloorAlignment(scene: AlignedScene, from: LevelAlignment, d
   const snapped = !free && !!grid && grid.size > 0;
   const shift = snapped ? snapToCells(delta, grid) : delta;
   const wanted = { x: from.offset.x + shift.x, y: from.offset.y + shift.y };
-  let { x, y } = wanted;
-  if (snapped) {
-    const period = gridPeriod(grid);
-    while (x < -EPSILON) x += period.x;
-    while (y < -EPSILON) y += period.y;
-  }
-  const offset = { x: Math.max(0, round(x)), y: Math.max(0, round(y)) };
+  const placed = snapped ? nearestInWorld(wanted, grid) : wanted;
+  const offset = { x: Math.max(0, round(placed.x)), y: Math.max(0, round(placed.y)) };
   const stopped = Math.abs(offset.x - wanted.x) > EPSILON || Math.abs(offset.y - wanted.y) > EPSILON;
   return { alignment: { ...from, offset }, stopped };
+}
+
+/** How many lattice steps either way the place at the world's edge is looked for, around a place known to lie in the world. */
+const EDGE_SEARCH = 4;
+
+/**
+ * The place nearest to lattice place `wanted` that lays the grid on itself and lies in the world
+ * (never left of or above its corner): `wanted` itself where it does. On a hex grid moving by a
+ * whole period along each axis alone would put a floor pushed against the top edge a row lower
+ * than it was, so the lattice around such a place is searched.
+ */
+function nearestInWorld(wanted: Point, grid: Pick<GridState, 'size' | 'type'>): Point {
+  if (wanted.x >= -EPSILON && wanted.y >= -EPSILON) return wanted;
+  const period = gridPeriod(grid);
+  // Whole periods along each axis lay the grid on itself and bring `wanted` into the world.
+  const inside = { x: intoWorld(wanted.x, period.x), y: intoWorld(wanted.y, period.y) };
+  const [a, b] = latticeSteps(grid);
+  let best = inside;
+  let bestDistance = Infinity;
+  for (let m = -EDGE_SEARCH; m <= EDGE_SEARCH; m++) {
+    for (let n = -EDGE_SEARCH; n <= EDGE_SEARCH; n++) {
+      const point = { x: inside.x + m * a.x + n * b.x, y: inside.y + m * a.y + n * b.y };
+      if (point.x < -EPSILON || point.y < -EPSILON) continue;
+      const distance = Math.hypot(point.x - wanted.x, point.y - wanted.y);
+      if (distance < bestDistance - EPSILON) {
+        best = point;
+        bestDistance = distance;
+      }
+    }
+  }
+  return best;
+}
+
+/** `value` moved by whole `period`s to 0 or above, where it lies below. */
+function intoWorld(value: number, period: number): number {
+  return value < -EPSILON ? value + Math.ceil((-value - EPSILON) / period) * period : value;
 }
 
 /**
