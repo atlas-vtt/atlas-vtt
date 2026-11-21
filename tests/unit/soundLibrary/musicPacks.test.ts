@@ -169,12 +169,14 @@ describe('the music packs', () => {
 
   it('counts a pack as there once a track lies in its folder, and knows nothing before the folder is read', async () => {
     const [first] = MUSIC_PACKS;
-    if (!first) return;
-    await library.reread('music');
+    if (!first) throw new Error('no packs');
+    expect(installedMusicPacks(library)).toBeNull();
+    library.rescan();
+    await vi.waitFor(() => expect(library.isWalked('music')).toBe(true));
     expect(installedMusicPacks(library)?.has(first.id)).toBe(false);
     fs.mkdirSync(inFolder(first.name), { recursive: true });
     fs.writeFileSync(inFolder(first.name, 'A track.opus'), 'X');
-    await library.reread('music');
+    await library.settle('music', [`${MUSIC_FOLDER}/${first.name}/A track.opus`]);
     expect(installedMusicPacks(library)?.has(first.id)).toBe(true);
   });
 
