@@ -233,12 +233,15 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
 
 // The list scrolls, so it clips: while a card is held, and the one frame its drop settles in, its box reaches past the
 // panel's edge with as much padding inside, so the lifted card and its shadow show while nothing moves. Both states
-// alike, since the drop's glide reads places from the list's padding edge (`snapshotTurn`) before and after it.
+// alike, since the drop's glide reads places from the list's padding edge (`snapshotTurn`) before and after it. Above
+// and below it still ends inside the panel, where the scroll shades lie (the lifted card's scale fits the panel's
+// inset): cards scrolled past it while dragging fade under the shades as they do when the list is scrolled by hand.
 $held-room: $spacing-l;
 
 .atlas-initiative-panel__list:is(.atlas-initiative-tracker__list--dragging, .atlas-initiative-tracker__list--settling) {
   margin: calc(-1 * #{$held-room});
   padding: $held-room;
+  clip-path: inset(calc(#{$held-room} - #{$surface-inset}) 0);
 }
 
 // The compact list's lines are long: a smaller angle moves their ends as far as a card's
