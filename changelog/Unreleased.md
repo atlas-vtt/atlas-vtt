@@ -1,3 +1,7 @@
+## New
+
+- Control music and ambience from a Stream Deck: press moods, stop, pause, skip and turn levels on keys and dials, with each mood's crest on its key. Switch it on in Settings → Stream Deck and pair the Atlas plugin for Stream Deck
+
 ## Improved
 
 - What’s new in Atlas links to the Atlas website and Patreon beside GitHub, and takes the look of the other dialogs

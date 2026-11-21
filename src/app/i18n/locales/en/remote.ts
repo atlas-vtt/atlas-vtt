@@ -1,0 +1,15 @@
+export const remote = {
+  'remote.heading': 'Stream Deck',
+  'remote.enable': 'Control sound from a Stream Deck',
+  'remote.enableHint': 'Lets the Atlas plugin for Stream Deck, or another program on this computer you pair, play moods, stop, pause, skip and change levels. Atlas listens on this computer only (127.0.0.1, port {port}); nothing leaves it.',
+  'remote.paired': 'Paired controller',
+  'remote.pairedWith': '{client}, paired on {date}.',
+  'remote.notPaired': 'None yet. Press Pair with Atlas in the plugin\'s settings on your Stream Deck while Atlas runs.',
+  'remote.revoke': 'Revoke',
+  'remote.revoked': 'The Stream Deck can no longer control sound until it is paired again.',
+  'remote.pairTitle': 'Allow {client} to control sound?',
+  'remote.pairMessage': 'A program on this computer asks to play moods, stop, pause, skip tracks and change levels in Atlas.',
+  'remote.pairHint': 'Allow it only if you just pressed Pair on your Stream Deck. You can revoke it any time in Settings → Stream Deck.',
+  'remote.allow': 'Allow',
+  'remote.portTaken': 'Atlas could not listen for the Stream Deck: port {port} is in use by another program.',
+};
