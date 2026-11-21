@@ -35,6 +35,8 @@ export interface BelowLevelsHostDeps {
   viewedRoof: () => ((point: Point) => boolean) | null;
   /** Puts the openings' eraser into the view's stage, between its grid and its tokens. */
   placeEraser: (eraser: Container) => void;
+  /** Whether the view draws its own map another way than the scene places it now (a preview). */
+  previewing: () => boolean;
 }
 
 /**
@@ -136,7 +138,7 @@ export function createRoofHost(obsApp: App, app: Application, viewport: Viewport
 }
 
 /** What a map view gives the levels below it: map images through their snapshots' cameras, token art, liquids, the levels' maps, its fog and a place for the eraser. */
-export function createBelowLevelsHost({ obsApp, app, viewport, store, viewedFog, viewedRoof, placeEraser }: BelowLevelsHostDeps): BelowLevelsHost {
+export function createBelowLevelsHost({ obsApp, app, viewport, store, viewedFog, viewedRoof, placeEraser, previewing }: BelowLevelsHostDeps): BelowLevelsHost {
   return {
     ...createRoofHost(obsApp, app, viewport),
     createArt: () => {
@@ -149,6 +151,7 @@ export function createBelowLevelsHost({ obsApp, app, viewport, store, viewedFog,
     viewedFog,
     viewedRoof,
     placeEraser,
+    previewing,
     fogCanvasSide: deviceProfile().budgets.fogCanvasSide,
   };
 }
