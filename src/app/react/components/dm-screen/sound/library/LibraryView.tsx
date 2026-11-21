@@ -18,8 +18,7 @@ import { LibraryHead } from './LibraryHead';
 import { LibraryRail } from './LibraryRail';
 import { rowsWithTags, searchRows, shelfOf, type LibraryRow, type RootShelf } from './rowModel';
 import { LibraryRows } from './LibraryRows';
-import { MusicPacksButton } from './MusicPacks';
-import { StarterPackButton } from './StarterPack';
+import { MusicPacksButton, StarterPackButton } from './PackOffers';
 import { useHeldInMix, useLibraryVersion } from './useLibrary';
 import { useLibraryActions, type LibraryActions } from './useLibraryActions';
 

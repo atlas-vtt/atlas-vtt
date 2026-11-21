@@ -1,10 +1,12 @@
 ## New
 
 - **Music packs**: get Vindsvept's fantasy music on the Sound page, 365 tracks in ten packs sorted by mood, each ready to play the moment it lands and tagged Instrumental or With vocals
+- **Downloads**: a button at the foot of the Sound page's sidebar fills as packs come in; open it to see each pack's progress, speed and time left, cancel one, try a failed one again or show a finished one in the library. A pack stopped part way offers the rest
 - **Stream Deck**: control music and ambience from a Stream Deck: press moods, stop, pause, skip and turn levels on keys and dials, with each mood's crest on its key. Switch it on in Settings → Stream Deck and pair the Atlas plugin for Stream Deck
 
 ## Improved
 
+- The starter ambience and starter music offers on the Sound page can be hidden with their ×; both stay in the ⋯ menu of Ambience and Music
 - What’s new in Atlas links to the Atlas website and Patreon beside GitHub, and takes the look of the other dialogs
 - Dragging cards in the initiative tracker works like arranging a phone's home screen: the cards wiggle, the one you hold lifts and the others make room, in the compact view too
 - A card moved in the initiative tracker glides straight to its new place in the player view

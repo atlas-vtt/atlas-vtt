@@ -3,6 +3,7 @@ import { act, screen, waitFor } from '@testing-library/react';
 import { requestUrl } from 'obsidian';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MUSIC_FOLDER, MUSIC_PACKS } from '../../../src/app/soundLibrary/musicPacks';
+import { DownloadManager } from '../../../src/app/downloads/DownloadManager';
 import { libraryRig, type LibraryRig } from '../../helpers/libraryRig';
 
 vi.mock('obsidian', async (original) => ({ ...(await original<typeof import('obsidian')>()), requestUrl: vi.fn() }));
@@ -10,7 +11,7 @@ vi.mock('../../../src/app/ui/notice', () => ({ showNotice: vi.fn(() => ({ setMes
 
 let rig: LibraryRig;
 let host: HTMLElement;
-const offer = (): HTMLButtonElement | null => [...host.querySelectorAll<HTMLButtonElement>('.atlas-sound-lib__starter')].find((button) => button.textContent?.includes('Vindsvept')) ?? null;
+const offer = (): HTMLButtonElement | null => [...host.querySelectorAll<HTMLButtonElement>('.atlas-sound-lib__starter')].find((button) => button.textContent?.includes('Get starter music')) ?? null;
 
 beforeEach(async () => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -52,5 +53,30 @@ describe('the music pack offer', () => {
     for (const path of paths) rig.locations.music.addFile(path);
     await act(async () => { await rig.library.settle('music', paths); });
     await waitFor(() => expect(offer()).toBeNull());
+  });
+
+  it('shows a pack on its way or partly there instead of starting it twice, and All packs queues one job per missing pack', async () => {
+    const [first, second] = MUSIC_PACKS;
+    if (!first || !second) throw new Error('no packs');
+    // Never answered: every job stays on its way.
+    vi.mocked(requestUrl).mockImplementation(() => new Promise(() => undefined) as ReturnType<typeof requestUrl>);
+    const paths = Array.from({ length: 3 }, (_, i) => `${MUSIC_FOLDER}/${second.name}/Instrumental/Track ${i}.opus`);
+    for (const file of paths) rig.locations.music.addFile(file);
+    await act(async () => rig.mount(host));
+    await act(async () => { await rig.library.settle('music', paths); });
+    await waitFor(() => expect(offer()).not.toBeNull());
+    await act(async () => offer()?.click());
+    expect(screen.getByRole('menuitem', { name: new RegExp(second.name) }).textContent).toContain(`Get the rest · 3 of ${second.tracks}`);
+    await act(async () => screen.getByRole('menuitem', { name: new RegExp(`^${first.name}`) }).click());
+    const manager = DownloadManager.forApp(rig.app);
+    expect(manager.job(`music-pack:${first.id}`)?.state).toBe('downloading');
+
+    await act(async () => offer()?.click());
+    const row = screen.getByRole('menuitem', { name: new RegExp(`^${first.name}`) });
+    expect(row.getAttribute('aria-disabled') ?? row.getAttribute('data-disabled')).not.toBeNull();
+    expect(row.textContent).toContain('0%');
+    await act(async () => screen.getByRole('menuitem', { name: /^All packs/ }).click());
+    expect(manager.jobs().map((job) => job.id)).toEqual(MUSIC_PACKS.map((pack) => `music-pack:${pack.id}`));
+    expect(manager.jobs().slice(1).every((job) => job.state === 'queued')).toBe(true);
   });
 });

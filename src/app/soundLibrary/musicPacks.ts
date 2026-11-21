@@ -1,4 +1,5 @@
 import { fetchBytes, fetchVerified, inPool, StockPackError, type FetchBytes, type PackedFile } from '../services/stockPacks/verifiedFetch';
+import type { DownloadProgress } from '../downloads/downloadTypes';
 import { isRecord } from '../utils/guards';
 import { importRoot } from './libraryOperations';
 import type { SoundLibrary } from './SoundLibrary';
@@ -101,8 +102,8 @@ export function mayInstallMusicPacks(library: SoundLibrary): boolean {
 }
 
 export interface MusicInstallOptions {
-  /** Hears the share of the chosen packs' bytes done so far. */
-  onStep?: (share: number) => void;
+  /** Hears each track as it lands, and stops the install once its signal aborts. */
+  progress?: DownloadProgress;
   fetch?: FetchBytes;
   /** The manifest to trust instead of the pinned one; tests only. */
   manifest?: PackedFile;
@@ -111,33 +112,53 @@ export interface MusicInstallOptions {
 /**
  * Fetches the chosen packs into the music root's Vindsvept folder. Each track is checked against its size
  * and hash before it is written, so what lands is always whole; a track already there is left alone and
- * not fetched, so an interrupted download goes on where it stopped. Returns the paths written.
+ * not fetched, so an interrupted download goes on where it stopped. A cancel starts no new track and writes
+ * none still on its way; the tracks written stay. Returns the paths written.
  */
-export async function installMusicPacks(library: SoundLibrary, ids: readonly string[], { onStep, fetch = fetchBytes, manifest = MUSIC_MANIFEST }: MusicInstallOptions = {}): Promise<string[]> {
-  onStep?.(0);
+export async function installMusicPacks(library: SoundLibrary, ids: readonly string[], { progress, fetch = fetchBytes, manifest = MUSIC_MANIFEST }: MusicInstallOptions = {}): Promise<string[]> {
+  const signal = progress?.signal;
   const catalogue = readManifest(await fetchVerified(HOST, manifest, fetch));
+  signal?.throwIfAborted();
   const packs = catalogue.packs.filter((pack) => ids.includes(pack.id));
   if (packs.length !== ids.length) throw new StockPackError('The manifest lacks a pack this version offers.');
   const location = importRoot(library, 'music');
-  if (!location) throw new StockPackError('The music folder is not linked on this device.');
+  if (!location) throw new StockPackError('The music folder is not linked on this device.', 'folder');
   await location.makeFolder(MUSIC_FOLDER);
   const creditsPath = `${MUSIC_FOLDER}/${CREDITS_NAME}`;
   if (!(await location.exists(creditsPath))) await location.write(creditsPath, new Blob([await fetchVerified(HOST, catalogue.credits, fetch)], { type: 'text/markdown' }));
 
   const jobs = packs.flatMap((pack) => pack.tracks.map((track) => ({ pack, track, path: trackPath(pack, track) })));
-  const total = jobs.reduce((sum, { track }) => sum + track.bytes, 0);
-  for (const folder of new Set(jobs.map(({ path }) => path.slice(0, path.lastIndexOf('/'))))) await location.makeFolder(folder);
+  progress?.expect({ bytes: jobs.reduce((sum, { track }) => sum + track.bytes, 0), files: jobs.length });
+  // What lies there already is counted first, so the time left reads only what is still to come.
+  const missing: typeof jobs = [];
+  for (const job of jobs) {
+    if (await location.exists(job.path)) progress?.fileDone(job.track.bytes, false);
+    else missing.push(job);
+  }
+  for (const folder of new Set(missing.map(({ path }) => path.slice(0, path.lastIndexOf('/'))))) await location.makeFolder(folder);
   const written: string[] = [];
-  let done = 0;
-  await inPool(jobs, PARALLEL, async ({ track, path }) => {
-    if (!(await location.exists(path))) {
-      await location.write(path, new Blob([await fetchVerified(HOST, track, fetch)], { type: 'audio/ogg' }));
+  // Once one track fails, the others start nothing new either: the run is over, and a retry must not meet them writing.
+  let failed = false;
+  const stopped = (): boolean => failed || signal?.aborted === true;
+  try {
+    await inPool(missing, PARALLEL, async ({ track, path }) => {
+      if (stopped()) return;
+      try {
+        const bytes = await fetchVerified(HOST, track, fetch);
+        if (stopped()) return;
+        await location.write(path, new Blob([bytes], { type: 'audio/ogg' }));
+      } catch (error) {
+        failed = true;
+        throw error;
+      }
       written.push(path);
-    }
-    done += track.bytes;
-    onStep?.(done / total);
-  });
-  await library.reread('music');
-  await library.settle('music', written);
+      progress?.fileDone(track.bytes, true);
+    });
+  } finally {
+    // What landed is listed even when a later track failed or the download was cancelled.
+    await library.reread('music');
+    await library.settle('music', written);
+  }
+  signal?.throwIfAborted();
   return written;
 }

@@ -1,4 +1,5 @@
 import { requestUrl } from 'obsidian';
+import { t } from '../../i18n';
 import { sha256 } from '../../utils/hashing';
 
 /** A file of a pack as the plugin knows it: what it must hold to be kept. */
@@ -12,17 +13,27 @@ export interface PackedFile {
 /** Fetches a file's bytes; Obsidian's `requestUrl` outside tests. Nothing about the user or the vault goes with it. */
 export type FetchBytes = (url: string) => Promise<ArrayBuffer>;
 
+/** What went wrong with a pack: the host did not serve it, what came is not what was pinned, or there is nowhere to put it. */
+export type StockPackFailure = 'unavailable' | 'damaged' | 'folder';
+
 /** A pack that could not be fetched whole, or not written, so nothing of it was kept. */
 export class StockPackError extends Error {
-  constructor(message: string) {
+  constructor(message: string, readonly failure: StockPackFailure = 'damaged') {
     super(message);
     this.name = 'StockPackError';
   }
 }
 
+/** Why a pack's download failed, in a few words. A rejection of `requestUrl` itself is the connection; one with a system code is the disk. */
+export function explainStockPackError(error: unknown): string {
+  if (error instanceof StockPackError) return t(`downloads.reason.${error.failure}`);
+  if (error instanceof Error && 'code' in error && typeof error.code === 'string') return t('downloads.reason.disk');
+  return t('downloads.reason.connection');
+}
+
 export async function fetchBytes(url: string): Promise<ArrayBuffer> {
   const response = await requestUrl({ url, throw: false });
-  if (response.status !== 200) throw new StockPackError(`${url} answered ${response.status}.`);
+  if (response.status !== 200) throw new StockPackError(`${url} answered ${response.status}.`, 'unavailable');
   return response.arrayBuffer;
 }
 

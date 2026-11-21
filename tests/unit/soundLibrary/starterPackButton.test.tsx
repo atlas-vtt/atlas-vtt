@@ -4,6 +4,7 @@ import { requestUrl } from 'obsidian';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { STARTER_FILES, STARTER_FOLDER } from '../../../src/app/soundLibrary/starterPack';
 import { showNotice } from '../../../src/app/ui/notice';
+import { DownloadManager } from '../../../src/app/downloads/DownloadManager';
 import { libraryRig, type LibraryRig } from '../../helpers/libraryRig';
 
 vi.mock('obsidian', async (original) => ({ ...(await original<typeof import('obsidian')>()), requestUrl: vi.fn() }));
@@ -42,20 +43,22 @@ describe('the starter ambience offer', () => {
     expect(offer()).toBeNull();
   });
 
-  it('says how far it got, and says on itself when the download fails, offering it again', async () => {
+  it('says how far it got instead of starting again; a failure offers it again and shows in the downloads, not in a notice', async () => {
     let fail: (error: Error) => void = () => undefined;
     vi.mocked(requestUrl).mockImplementation(() => new Promise((_, reject) => { fail = reject; }) as ReturnType<typeof requestUrl>);
     await act(async () => rig.mount(host));
     await waitFor(() => expect(offer()).not.toBeNull());
     await act(async () => offer()?.click());
     expect(offer()?.disabled).toBe(true);
-    expect(offer()?.textContent).toBe('Downloading… 0%');
+    expect(offer()?.textContent).toBe('0%');
     expect(vi.mocked(requestUrl).mock.calls[0][0]).toMatchObject({ url: `https://assets.atlas-vtt.dev/starter/ambience-1/${STARTER_FILES[0].key}` });
+    // A second press cannot queue it twice.
+    await act(async () => offer()?.click());
+    expect(DownloadManager.forApp(rig.app).jobs()).toHaveLength(1);
     await act(async () => fail(new Error('offline')));
     await waitFor(() => expect(offer()?.disabled).toBe(false));
-    // The failure stays on its button, not in a notice over the page.
-    expect(offer()?.textContent).toBe('Download failedCheck your connection, then press to try again.');
-    expect(offer()?.dataset.failed).toBe('true');
+    expect(offer()?.textContent).toMatch(/^Get starter ambience/);
+    expect(host.querySelector('.atlas-sound-dl')?.getAttribute('data-face')).toBe('failed');
     expect(showNotice).not.toHaveBeenCalled();
     expect(await rig.locations.ambience.exists(`${STARTER_FOLDER}/${STARTER_FILES[0].name}`)).toBe(false);
   });

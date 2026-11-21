@@ -6,7 +6,8 @@ import { LibraryView } from '../../src/app/react/components/dm-screen/sound/libr
 import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
 import { ContextMenuProvider } from '../../src/app/react/root/ContextMenuContext';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
-import { SettingsService } from '../../src/app/services/SettingsService';
+import { SettingsService, type PluginDataStore } from '../../src/app/services/SettingsService';
+import { DownloadManager } from '../../src/app/downloads/DownloadManager';
 import type { SoundKind } from '../../src/app/sound/soundTypes';
 import { SoundDirector } from '../../src/app/soundDirector/SoundDirector';
 import { MoodStore } from '../../src/app/soundLibrary/MoodStore';
@@ -20,6 +21,7 @@ import { FakeSoundLocation } from './fakeSoundLocation';
 
 export interface LibraryRig {
   app: App;
+  settings: SettingsService;
   library: SoundLibrary;
   director: SoundDirector;
   store: ViewAtlasStore;
@@ -38,6 +40,8 @@ export interface LibraryRigOptions {
   seconds?: (url: string) => number | null;
   /** The GM's choice about originals for a folder on disk; none where unset, so nothing converts. */
   originals?: OriginalsChoice | null;
+  /** The plugin's `data.json`, for tests that read what the settings saved. */
+  data?: PluginDataStore;
 }
 
 /** The real library over roots held in memory, provided for `app`. */
@@ -76,7 +80,8 @@ function SearchedLibrary(): React.JSX.Element | null {
 export async function libraryRig(options: LibraryRigOptions = {}): Promise<LibraryRig> {
   const { app } = createInMemoryApp({ folders: ['atlas-vtt/collections'] });
   Object.assign(app, { appId: `library-${Math.random()}` });
-  new SettingsService(app);
+  const settings = new SettingsService(app, undefined, options.data ?? null);
+  if (options.data) await settings.initialize();
   const records = SoundRecordStore.forApp(app);
   await records.whenLoaded();
 
@@ -87,7 +92,7 @@ export async function libraryRig(options: LibraryRigOptions = {}): Promise<Libra
   let root: Root | null = null;
   const value = { app, view: null, pixiApp: null, renderer: null } as AtlasUIContextValue;
   return {
-    app, library, director, store, records, roots, locations, local,
+    app, settings, library, director, store, records, roots, locations, local,
     mount: (host, page) => {
       root = createRoot(host);
       act(() => {
@@ -107,6 +112,7 @@ export async function libraryRig(options: LibraryRigOptions = {}): Promise<Libra
     unmount: () => {
       act(() => root?.unmount());
       SoundLibrary.release(app);
+      DownloadManager.release(app);
       SoundDirector.release(app);
       MoodStore.release(app);
       SoundRecordStore.release(app);

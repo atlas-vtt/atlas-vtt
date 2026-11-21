@@ -1,4 +1,5 @@
 import { fetchBytes, fetchVerified, StockPackError, type FetchBytes, type PackedFile } from '../services/stockPacks/verifiedFetch';
+import type { DownloadProgress } from '../downloads/downloadTypes';
 import { importRoot } from './libraryOperations';
 import type { SoundLibrary } from './SoundLibrary';
 
@@ -35,8 +36,8 @@ export const STARTER_SOUND_COUNT = STARTER_SOUNDS.length;
 export const STARTER_BYTES = STARTER_FILES.reduce((sum, file) => sum + file.bytes, 0);
 
 export interface InstallOptions {
-  /** Hears the share of the pack's bytes fetched so far. */
-  onStep?: (share: number) => void;
+  /** Hears each file as it is fetched, and stops the install once its signal aborts. */
+  progress?: DownloadProgress;
   fetch?: FetchBytes;
   files?: readonly StarterFile[];
 }
@@ -62,22 +63,22 @@ export function mayInstallStarterPack(library: SoundLibrary): boolean {
 
 /**
  * Fetches every file of the pack, checks each against its size and hash, and only then writes them
- * into the ambience root's starter folder, so a broken download leaves nothing behind. A file already
- * there is left alone.
+ * into the ambience root's starter folder, so a broken or cancelled download leaves nothing behind.
+ * A file already there is left alone.
  */
-export async function installStarterPack(library: SoundLibrary, { onStep, fetch = fetchBytes, files = STARTER_FILES }: InstallOptions = {}): Promise<void> {
-  const total = files.reduce((sum, file) => sum + file.bytes, 0);
+export async function installStarterPack(library: SoundLibrary, { progress, fetch = fetchBytes, files = STARTER_FILES }: InstallOptions = {}): Promise<void> {
+  const signal = progress?.signal;
+  progress?.expect({ bytes: files.reduce((sum, file) => sum + file.bytes, 0), files: files.length });
   const fetched: { file: StarterFile; bytes: ArrayBuffer }[] = [];
-  let done = 0;
-  onStep?.(0);
   for (const file of files) {
+    signal?.throwIfAborted();
     const bytes = await fetchVerified(STARTER_HOST, file, fetch);
     fetched.push({ file, bytes });
-    done += file.bytes;
-    onStep?.(done / total);
+    progress?.fileDone(file.bytes, true);
   }
+  signal?.throwIfAborted();
   const location = importRoot(library, 'ambience');
-  if (!location) throw new StockPackError('The ambience folder is not linked on this device.');
+  if (!location) throw new StockPackError('The ambience folder is not linked on this device.', 'folder');
   await location.makeFolder(STARTER_FOLDER);
   for (const { file, bytes } of fetched) {
     const filePath = pathOf(file);

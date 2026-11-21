@@ -81,6 +81,7 @@ import { recordCampaignPlay } from './src/app/campaigns/recordCampaignPlay';
 import { registerPartySync } from './src/app/plugin/partySync';
 import { registerPlayerTokens } from './src/app/plugin/playerTokens';
 import { registerSoundDirector } from './src/app/plugin/soundDirector';
+import { registerDownloads } from './src/app/plugin/downloads';
 import { SoundDirector } from './src/app/soundDirector/SoundDirector';
 import { SceneMoodLinks } from './src/app/soundLibrary/SceneMoodLinks';
 import { soundSettingsSection } from './src/app/settings/soundSettingsSection';
@@ -225,6 +226,7 @@ export default class AtlasVTTPlugin extends Plugin {
     this.settingsService = new SettingsService(this.app, settingsReady, this);
     // Before the views too: every restored map view joins it, for its fights.
     const soundDirector = registerSoundDirector(this);
+    registerDownloads(this);
     const soundRemote = registerSoundRemote(this, soundDirector);
 
     // Before the views: a restored map may start Atlas's first check of the vault,

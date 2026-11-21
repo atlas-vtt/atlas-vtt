@@ -13,6 +13,7 @@ import type { PackedFile } from '../../../src/app/services/stockPacks/verifiedFe
 import { StockPackError } from '../../../src/app/services/stockPacks/verifiedFetch';
 import { VaultLocation } from '../../../src/app/soundLibrary/vaultLocation';
 import { sha256 } from '../../../src/app/utils/hashing';
+import { recordingProgress } from '../../helpers/recordingProgress';
 import { createInMemoryApp, type InMemoryApp } from '../../mocks/inMemoryVault';
 
 let base: string;
@@ -111,8 +112,8 @@ describe('the music packs', () => {
   it('writes the chosen packs, sung and instrumental tracks in folders of their own, with the credits beside them', async () => {
     const { manifest, served } = await host([TAVERN, DREAD]);
     const fetch = serving(served);
-    const steps: number[] = [];
-    const written = await installMusicPacks(library, ['tavern'], { manifest, fetch, onStep: (share) => steps.push(share) });
+    const { progress, files, total } = recordingProgress();
+    const written = await installMusicPacks(library, ['tavern'], { manifest, fetch, progress });
     expect(fs.readFileSync(inFolder('Tavern', INSTRUMENTAL_FOLDER, 'The Old Mill.opus'), 'utf8')).toBe('MILL');
     expect(fs.readFileSync(inFolder('Tavern', VOCALS_FOLDER, 'Sung.opus'), 'utf8')).toBe('SUNG');
     expect(fs.readFileSync(inFolder('Credits.md'), 'utf8')).toBe('CREDITS');
@@ -120,8 +121,37 @@ describe('the music packs', () => {
     expect([...written].sort()).toEqual([`${MUSIC_FOLDER}/Tavern/${INSTRUMENTAL_FOLDER}/The Old Mill.opus`, `${MUSIC_FOLDER}/Tavern/${VOCALS_FOLDER}/Sung.opus`].sort());
     // Listed at once, so the library shows them without a reread by hand.
     expect(library.filesOf('music').map(({ entry }) => entry.path)).toContain(`${MUSIC_FOLDER}/Tavern/${INSTRUMENTAL_FOLDER}/The Old Mill.opus`);
-    expect(steps[0]).toBe(0);
-    expect(steps.at(-1)).toBe(1);
+    expect(total()).toEqual({ bytes: 8, files: 2 });
+    expect(files).toEqual([{ bytes: 4, fetched: true }, { bytes: 4, fetched: true }]);
+  });
+
+  it('once cancelled starts no new track and writes none still on its way, and keeps the tracks written', async () => {
+    const pack = { id: 'long', name: 'Long', tracks: Array.from({ length: 12 }, (_, i) => ({ key: `long/t${i}.opus`, name: `T${i}.opus`, text: `TRACK${i}` })) };
+    const { manifest, served } = await host([pack]);
+    const fetch = serving(served);
+    const recording = recordingProgress((count) => { if (count === 2) recording.controller.abort(); });
+    await expect(installMusicPacks(library, ['long'], { manifest, fetch, progress: recording.progress })).rejects.toThrow();
+    const kept = pack.tracks.filter((track) => fs.existsSync(inFolder('Long', INSTRUMENTAL_FOLDER, track.name)));
+    // Two landed before the cancel and the writes already under way finish (four run at a time); no track starts after.
+    expect(kept.length).toBeGreaterThanOrEqual(2);
+    expect(kept.length).toBeLessThanOrEqual(4);
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('.opus')).length).toBeLessThanOrEqual(2 + 4);
+    // What landed is listed, and a later run fetches only the rest.
+    expect(library.filesOf('music').filter(({ entry }) => entry.path.startsWith(`${MUSIC_FOLDER}/Long/`))).toHaveLength(kept.length);
+    const again = recordingProgress();
+    await installMusicPacks(library, ['long'], { manifest, fetch: serving(served), progress: again.progress });
+    expect(again.files.filter((file) => !file.fetched)).toHaveLength(kept.length);
+    expect(again.files.filter((file) => file.fetched)).toHaveLength(12 - kept.length);
+  });
+
+  it('starts no further track once one fails', async () => {
+    const pack = { id: 'long', name: 'Long', tracks: Array.from({ length: 12 }, (_, i) => ({ key: `long/t${i}.opus`, name: `T${i}.opus`, text: `TRACK${i}` })) };
+    const { manifest, served } = await host([pack]);
+    served.delete('long/t0.opus');
+    const fetch = serving(served);
+    await expect(installMusicPacks(library, ['long'], { manifest, fetch })).rejects.toThrow('404');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('.opus')).length).toBeLessThanOrEqual(4);
   });
 
   it('never writes a track that is not the one the manifest names', async () => {
