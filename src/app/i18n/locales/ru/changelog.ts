@@ -6,5 +6,7 @@ export const changelog: Translation = {
   'changelog.beta': 'Бета',
   'changelog.new': 'Новое',
   'changelog.community': 'Присоединяйтесь к сообществу Atlas в Discord',
+  'changelog.website': 'Сайт Atlas',
+  'changelog.patreon': 'Поддержать Atlas на Patreon',
   'changelog.formatFailed': 'Не удалось загрузить оформление. Описание выпуска показано ниже.',
 };

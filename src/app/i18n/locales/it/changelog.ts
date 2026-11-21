@@ -6,5 +6,7 @@ export const changelog = {
   "changelog.beta": "Beta",
   "changelog.new": "Novità",
   "changelog.community": "Unisciti alla community di Atlas su Discord",
+  "changelog.website": "Sito web di Atlas",
+  "changelog.patreon": "Sostieni Atlas su Patreon",
   "changelog.formatFailed": "Impossibile caricare la formattazione. Le note di versione sono riportate di seguito."
 } satisfies Translation;

@@ -3,7 +3,7 @@ import { Modal, type App } from 'obsidian';
 import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import { ChangelogContent } from './ChangelogContent';
-import { RepositoryLink } from './RepositoryLink';
+import { HeaderLinks } from './HeaderLinks';
 import type { ChangelogOptions } from './types';
 import atlasIcon from '../../../.github/images/atlas-vtt-icon.webp?inline';
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../ui/nativeModal';
@@ -26,12 +26,12 @@ export class ChangelogModal extends Modal {
     });
     this.titleEl.createSpan({ text: 'What’s new in Atlas' });
     this.titleEl.createSpan({ cls: 'atlas-changelog-version', text: this.options.currentVersion });
-    const repositoryLinkHost = this.titleEl.createSpan({ cls: 'atlas-changelog-title-actions' });
+    const headerLinksHost = this.titleEl.createSpan({ cls: 'atlas-changelog-title-actions' });
     this.modalEl.addClass(...ATLAS_NATIVE_MODAL_CLASSES, 'atlas-changelog-modal');
     this.root = createRoot(this.contentEl);
-    // One root renders the header link too, so both unmount together.
+    // One root renders the header links too, so both unmount together.
     this.root.render(<>
-      {createPortal(<RepositoryLink />, repositoryLinkHost)}
+      {createPortal(<HeaderLinks />, headerLinksHost)}
       <ChangelogContent {...this.options} app={this.app}
         onCurrentRendered={() => { this.rendered = true; }} onClose={() => this.close()} />
     </>);

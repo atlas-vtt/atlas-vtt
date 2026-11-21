@@ -2,8 +2,6 @@
 @use '../../../styles/mixins' as *;
 @use 'community';
 
-$changelog-scroll-fade: $spacing-xl;
-
 .atlas-vtt-plugin.atlas-changelog-modal {
   width: min(640px, #{atlas-view-width(90)});
   // Fixed height so expanding an accordion never resizes the modal; the history scrolls instead.
@@ -64,19 +62,18 @@ $changelog-scroll-fade: $spacing-xl;
 
   // Only this region scrolls; the header and footer stay fixed. It reaches
   // into the modal padding, so its overlay scrollbar lies over that padding and
-  // the cards stay flush with the header and footer on both sides. The bottom
-  // edge fades so a cut-off card reads as "more below", and the trailing
-  // padding lets the last card scroll clear of the fade.
+  // the cards stay flush with the header and footer on both sides. Its edges
+  // cast the shared scroll shadow where cards lie beyond them.
   .atlas-changelog-history {
+    @include atlas-scroll-shadow;
     flex: 1 1 0;
     display: flex;
     flex-direction: column;
     gap: $spacing-s;
     min-height: 0;
     margin-inline: -$spacing-l;
-    padding: 0 $spacing-l $changelog-scroll-fade;
+    padding: 0 $spacing-l;
     overflow-y: auto;
-    mask-image: linear-gradient(to bottom, black calc(100% - #{$changelog-scroll-fade}), transparent 100%);
   }
 
   .atlas-changelog-previous {
@@ -237,9 +234,9 @@ $changelog-scroll-fade: $spacing-xl;
     overflow: hidden;
   }
 
+  // Continues the trigger's padding, so the notes stand as far below the title as the title from the card's edge.
   .atlas-changelog-panel-body {
-    padding: $spacing-l;
-    border-top: $border-width-s solid var(--background-modifier-border);
+    padding: 0 $spacing-l $spacing-l;
     opacity: 0;
     transition: opacity $transition-press $transition-ease-out;
   }
@@ -293,8 +290,6 @@ $changelog-scroll-fade: $spacing-xl;
     justify-content: space-between;
     align-items: center;
     gap: $spacing-l;
-    padding-top: $spacing-l;
-    border-top: $border-width-s solid var(--divider-color);
 
     > .btn {
       margin-inline-start: auto;

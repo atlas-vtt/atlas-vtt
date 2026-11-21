@@ -1,7 +1,7 @@
 @use '../../../styles/tokens' as *;
 @use '../../../styles/mixins' as *;
 
-// Links from the changelog to the Atlas community on Discord and GitHub.
+// Links from the changelog to the Atlas community: Discord, the website, Patreon and GitHub.
 
 // Discord's brand colour, kept for its mark so the link is recognisable at a glance.
 $discord-blurple: #5865f2;
@@ -91,40 +91,16 @@ $discord-blurple: #5865f2;
   }
 }
 
-// The GitHub link in the title row, just left of the native close control.
+// The website, Patreon and GitHub links in the title row, beside the native close
+// control: the same size and look, and the same gap apart as the corner's controls.
 .atlas-vtt-plugin.atlas-changelog-modal .atlas-changelog-title-actions {
-  margin-inline-start: auto;
+  @include atlas-flex-row($gap: $close-button-gap);
+  margin-inline: auto calc(#{$close-button-gap} - #{$spacing-s});
 
-  .atlas-changelog-repository {
-    @include atlas-flex-row($gap: $spacing-s);
-    padding: $spacing-s;
+  .atlas-changelog-header-link {
+    @include atlas-close-button;
+    // Not in the corner, so every corner keeps the control radius.
     border-radius: $radius-m;
-    color: var(--text-muted);
-    font-size: $font-ui-small;
-    font-weight: $font-weight-medium;
-    line-height: 1;
-    text-decoration: none;
-    transition: color $transition-normal $transition-ease,
-                background-color $transition-normal $transition-ease;
-
-    @media (hover: hover) and (pointer: fine) {
-      &:hover {
-        background: var(--background-modifier-hover);
-        color: var(--text-normal);
-      }
-    }
-
-    &:active { background: var(--background-modifier-active-hover); }
-
-    &:focus-visible {
-      outline: none;
-      box-shadow: 0 0 0 2px color-mix(in oklch, var(--interactive-accent) 40%, transparent);
-    }
-  }
-
-  .atlas-changelog-repository-icon {
-    width: $icon-s;
-    height: $icon-s;
-    flex-shrink: 0;
+    align-self: center;
   }
 }
