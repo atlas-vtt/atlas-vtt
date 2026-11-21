@@ -18,6 +18,14 @@ export const CURSOR_KEEPALIVE_MS = 2000;
 export const MAX_MARK_CURSOR_NUMBERS = 64;
 /** The most measurements a player keeps on the map. */
 export const MAX_KEPT = 20;
+/**
+ * The GM level from which a measurement a player keeps is the scene's: the page asks for it (`measure-keep`), the GM
+ * keeps it as it keeps its own, and tells it with who kept it and the id they let it go by (`FullMeasure.by`, `id`,
+ * `measure-drop`). Below it a player's kept measurements are their page's own list (`MeasureState.kept`).
+ */
+export const MEASURE_KEEP_GM_LEVEL = 17;
+/** The id a player names one of the measurements they kept by: short, counted per player, and of no use to anyone else. */
+export const MEASURE_ID_PATTERN = /^[0-9a-z]{1,8}$/;
 /** The most kept measurements one sender has in a `marks` message (the GM keeps more than a player). */
 export const MAX_MARK_KEPT = 50;
 /** The most numbers (x, y pairs) a ruler's points take when it is told in full: its start, its corners and its end, 64 points. */
@@ -83,7 +91,9 @@ export interface MarkAura {
  * area's body is drawn with. `aura` is on a circle that follows a token: its reader draws it
  * around that token where the token is drawn, as far as `reach` says, and not at all while it
  * knows no such token; its `pts` are where it lay when it was last edited, and only say which way
- * it faces.
+ * it faces. `by` is on a measurement a player kept (`measure-keep`): that player, named as `who`
+ * names a sender, with `id`, what they let it go by (`measure-drop`); never one without the other,
+ * and both read as unset where either is malformed.
  */
 export interface FullMeasure {
   readonly shape: FullShape;
@@ -93,6 +103,8 @@ export interface FullMeasure {
   readonly color?: string;
   readonly effect?: MarkEffect;
   readonly aura?: MarkAura;
+  readonly by?: string;
+  readonly id?: string;
 }
 
 /** The most rings the GM's Ranges shows around one place. */
@@ -218,6 +230,18 @@ export type SharedStroke = { readonly who: string } & StrokeState;
 export type PlayerLaser = { readonly t: 'laser'; readonly scene: string } & LaserState;
 /** A player's measurements in the shared scene, whole each time. */
 export type PlayerMeasure = { readonly t: 'measure'; readonly scene: string } & MeasureState;
+/** A player keeps a measurement: the GM keeps it in the scene as its own are kept, and tells it to everyone from then on (`FullMeasure.by`). A GM below `MEASURE_KEEP_GM_LEVEL` leaves it unread. */
+export interface PlayerMeasureKeep {
+  readonly t: 'measure-keep';
+  readonly scene: string;
+  readonly measure: FullMeasure;
+}
+/** A player lets measurements they kept go, by the ids the GM told them with (`FullMeasure.id`). */
+export interface PlayerMeasureDrop {
+  readonly t: 'measure-drop';
+  readonly scene: string;
+  readonly ids: readonly string[];
+}
 
 /**
  * Everyone's marks in the scene `scene` but those players may not see: each laser and each sender's
@@ -289,9 +313,10 @@ function parseFullMeasure(value: unknown): FullMeasure | null {
   const look = MARK_EFFECTS.find((name) => name === effect);
   const aura = value.aura === undefined ? undefined : parseAura(value.aura);
   if (aura === null || (aura !== undefined && shape !== 'circle')) return null;
+  const kept = isWho(value.by) && typeof value.id === 'string' && MEASURE_ID_PATTERN.test(value.id) ? { by: value.by, id: value.id } : undefined;
   return {
     shape, pts, ...(width !== undefined && { width }), ...(free === true && { free }),
-    ...(typeof color === 'string' && { color }), ...(look !== undefined && { effect: look }), ...(aura !== undefined && { aura }),
+    ...(typeof color === 'string' && { color }), ...(look !== undefined && { effect: look }), ...(aura !== undefined && { aura }), ...kept,
   };
 }
 
@@ -397,6 +422,18 @@ export function parsePlayerMark(value: Record<string, unknown>): PlayerLaser | P
   if (value.t !== 'measure') return null;
   const measure = parseMeasureState(value, MAX_KEPT);
   return measure === null ? null : { t: 'measure', scene: value.scene, ...measure };
+}
+
+/** A measurement a player keeps, or the ones they let go, as the GM reads them, or null for anything malformed. */
+export function parsePlayerKept(value: Record<string, unknown>): PlayerMeasureKeep | PlayerMeasureDrop | null {
+  if (!isSceneId(value.scene)) return null;
+  if (value.t === 'measure-keep') {
+    const measure = parseFullMeasure(value.measure);
+    return measure === null ? null : { t: 'measure-keep', scene: value.scene, measure };
+  }
+  const { ids } = value;
+  if (value.t !== 'measure-drop' || !Array.isArray(ids) || ids.length === 0 || ids.length > MAX_MARK_KEPT) return null;
+  return ids.every((id): id is string => typeof id === 'string' && MEASURE_ID_PATTERN.test(id)) ? { t: 'measure-drop', scene: value.scene, ids } : null;
 }
 
 /** A `marks` entry's sender and fields, or null when it names nobody. */

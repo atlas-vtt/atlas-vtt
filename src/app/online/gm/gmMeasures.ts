@@ -23,6 +23,9 @@ type Point = Measurement['points'][number];
 /** The id players know a token by, or undefined for one they cannot be told of. */
 export type TokenAlias = (tokenId: string) => string | undefined;
 
+/** Who kept a measurement of the scene's, a player, and the id they let it go by; null for one of the GM's own. */
+export type KeptBy = (measure: KeptMeasure) => { readonly by: string; readonly id: string } | null;
+
 const samePoint = (a: Point, b: Point): boolean => a.x === b.x && a.y === b.y;
 
 /**
@@ -95,8 +98,11 @@ export class GmMeasures {
     this.ranges.follow(records.ranges, () => view.seen());
   }
 
-  /** What the players see of the measurements now, by `seen`; `alias` names the tokens auras lie around, and without it no aura is told. */
-  shown(seen: TokenSeen, alias?: TokenAlias): ShownMeasures {
+  /**
+   * What the players see of the measurements now, by `seen`; `alias` names the tokens auras lie around, and without
+   * it no aura is told. `keptBy` says which of them a player kept: those are told with their keeper.
+   */
+  shown(seen: TokenSeen, alias?: TokenAlias, keptBy?: KeptBy): ShownMeasures {
     const { live, kept } = this.records;
     const shownLive = live !== null && this.live !== null && playersSeeMeasure({ hidden: live.hidden, origin: this.live.origin }, seen) ? live : null;
     const shownKept = kept.filter((measure) => {
@@ -105,7 +111,8 @@ export class GmMeasures {
     });
     const inFull = (measure: KeptMeasure): FullMeasure | null => {
       const said = toldKept(measure, alias);
-      return said && measureInFull(said);
+      const full = said && measureInFull(said);
+      return full && { ...full, ...keptBy?.(measure) };
     };
     const told: FullMeasures = { live: shownLive && measureInFull(shownLive), kept: shownKept.flatMap((measure) => inFull(measure) ?? []) };
     const ranges = this.ranges.shown(seen);

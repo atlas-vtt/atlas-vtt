@@ -12,6 +12,7 @@ import { InputShare } from './InputShare.ts';
 import { LiveShare } from './LiveShare.ts';
 import { MapLayerShare } from './MapLayerShare.ts';
 import { MarkShare } from './MarkShare.ts';
+import { PlayerMeasures } from './playerMeasures.ts';
 import { sceneWalls, type MapSize } from './moveCheck.ts';
 import { ownerIn } from './seatSource.ts';
 import { PlayerDrawings } from './playerDrawings.ts';
@@ -65,6 +66,7 @@ export class FloorShare {
   readonly layers: MapLayerShare;
   private readonly rules: RulesShare;
   private readonly moves: PlayerMoves;
+  private readonly measures: PlayerMeasures;
   private readonly marks: MarkShare;
   /** The players' own drawings and texts on this floor. */
   private readonly drawings: PlayerDrawings;
@@ -139,9 +141,10 @@ export class FloorShare {
         turnMove: (tokenId, from, to) => (ports.tokenMoves?.()?.rules().countPerTurn === true ? playerMoveDistance(store.getState(), ports.measurement?.() ?? null, tokenId, from, to) : null),
       }),
     });
+    this.measures = new PlayerMeasures(store, { now: () => ports.now(), seated, scene: () => this.sceneId, map: () => this.mapSize });
     // An aura names its token by the id the token list gives it
     this.marks = new MarkShare({
-      ...ports, cursorsShown, tokenAlias: (tokenId) => this.tokens.alias(tokenId),
+      ...ports, cursorsShown, tokenAlias: (tokenId) => this.tokens.alias(tokenId), keptBy: (measure) => this.measures.told(measure),
       // A drawing under way is followed only where a request to make it would be taken.
       strokesTaken: (player, scene) => (this.drawings.refusal(player, scene) === null ? { cell: drawCell(store.getState().grid) } : null),
       fog: () => this.layers.committedFog(),
@@ -246,6 +249,7 @@ export class FloorShare {
     if (message.t === 'drag') return this.moves.drag(from, message);
     if (message.t === 'drag-cancel') return this.moves.dragCancel(from, message);
     if (message.t === 'laser' || message.t === 'measure' || message.t === 'cursor' || message.t === 'stroke') return this.marks.receive(from, message);
+    if (message.t === 'measure-keep' || message.t === 'measure-drop') return this.measures.receive(from, message);
     if (message.t === 'draw-points' || message.t === 'draw-add' || message.t === 'draw-text' || message.t === 'draw-change' || message.t === 'draw-remove' || message.t === 'draw-erase') {
       this.dealing = true;
       try {

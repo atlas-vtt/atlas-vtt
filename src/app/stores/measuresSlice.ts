@@ -48,7 +48,7 @@ function newMeasureId(): string {
 }
 
 /** Whether an entry of the record lies on `levelId`: one that is no object (a file is kept as it came) where unset objects are. */
-function isOnLevel(entry: unknown, levelId: string, draft: MeasuresDraft): boolean {
+function isOnLevel(entry: unknown, levelId: string, draft: Pick<MeasuresDraft, 'levels'>): boolean {
   return isRecord(entry) ? onLevel(entry, levelId, draft.levels) : levelId === firstLevelId(draft.levels);
 }
 
@@ -61,7 +61,7 @@ function idsOnViewedLevel(draft: MeasuresDraft): string[] {
 }
 
 /** Keeps `measure` in `draft`; false, and nothing kept, where its level holds `MAX_MEASURES`. */
-function keep(draft: MeasuresDraft, measure: KeptMeasure): boolean {
+function keep(draft: Pick<MeasuresDraft, 'levels' | 'objects'>, measure: KeptMeasure): boolean {
   // Whatever is in their place that is no record (a store filled by something else than a load) gives way.
   if (!isRecord(draft.objects.measures)) draft.objects.measures = {};
   const record = draft.objects.measures;
@@ -73,13 +73,22 @@ function keep(draft: MeasuresDraft, measure: KeptMeasure): boolean {
   return true;
 }
 
+/**
+ * Keeps a new measurement in a store draft, on the level its data names, else the level shown, and returns its id;
+ * null, and nothing kept, where that level holds `MAX_MEASURES`. What `addMeasure` does in its write, for a write
+ * that is not the view's own (a measurement an online player keeps).
+ */
+export function keepNewMeasure(draft: Pick<MeasuresDraft, 'levels' | 'viewedLevel' | 'objects'>, data: MeasureInput): string | null {
+  const measure: KeptMeasure = { id: newMeasureId(), kind: 'measure', ...placedOnViewedLevel(draft), ...data };
+  return keep(draft, measure) ? measure.id : null;
+}
+
 export function createMeasuresActions(set: ImmerSet): MeasuresSlice {
   return {
     addMeasure: (data) => {
       let id: string | null = null;
       set((draft) => {
-        const measure: KeptMeasure = { id: newMeasureId(), kind: 'measure', ...placedOnViewedLevel(draft), ...data };
-        if (keep(draft, measure)) id = measure.id;
+        id = keepNewMeasure(draft, data);
       });
       return id;
     },

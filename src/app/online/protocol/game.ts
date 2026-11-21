@@ -18,7 +18,7 @@ import { isPlayerDrawType, type DrawMine, type DrawRefused, type PlayerDrawMessa
 import { parseDrawMine, parseDrawRefused, parsePlayerDraw } from './drawParse.ts';
 import { parsePinFound, type PlayerPinFound, type SensedMark, type SharedDoor, type SharedGrid, type SharedPin } from './mapLayers.ts';
 import { parseMapPlacement, type SharedMapPlacement } from './mapPlacement.ts';
-import { parseMarks, parsePlayerMark, type MarksMessage, type PlayerCursor, type PlayerLaser, type PlayerMeasure } from './marks.ts';
+import { parseMarks, parsePlayerKept, parsePlayerMark, type MarksMessage, type PlayerCursor, type PlayerLaser, type PlayerMeasure, type PlayerMeasureDrop, type PlayerMeasureKeep } from './marks.ts';
 import { isRecord } from './shape.ts';
 import { MAX_SCENE_ID, parseDragCancel, parseMoveRefused, parsePlayerMove, parseSnapGrid, type MoveRefused, type PlayerDrag, type PlayerDragCancel, type PlayerMove, type SnapGrid } from './moves.ts';
 import { parseRules, type RulesMessage } from './rules.ts';
@@ -143,7 +143,7 @@ export interface PlayerResync {
   readonly of: DeltaOf;
 }
 
-export type PlayerMessage = PlayerResync | PlayerMove | PlayerDrag | PlayerDragCancel | PlayerRoll | PlayerLaser | PlayerMeasure | PlayerCursor | PlayerLogMessage | PlayerBookMessage | PlayerBookParts | PlayerBookCover | BookTokenMessage | BookRestMessage | PlayerPinFound | PlayerSignFound | PlayerSoundState | PlayerDrawMessage;
+export type PlayerMessage = PlayerResync | PlayerMove | PlayerDrag | PlayerDragCancel | PlayerRoll | PlayerLaser | PlayerMeasure | PlayerMeasureKeep | PlayerMeasureDrop | PlayerCursor | PlayerLogMessage | PlayerBookMessage | PlayerBookParts | PlayerBookCover | BookTokenMessage | BookRestMessage | PlayerPinFound | PlayerSignFound | PlayerSoundState | PlayerDrawMessage;
 
 const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 
@@ -251,6 +251,7 @@ export function parsePlayerMessage(value: unknown): PlayerMessage | null {
   if (value.t === 'sign-found') return parseSignFound(value);
   if (value.t === 'roll') return parsePlayerRoll(value);
   if (value.t === 'laser' || value.t === 'measure' || value.t === 'cursor') return parsePlayerMark(value);
+  if (value.t === 'measure-keep' || value.t === 'measure-drop') return parsePlayerKept(value);
   if (isPlayerDrawType(value.t)) return parsePlayerDraw(value);
   if (isPlayerLogType(value.t)) return parsePlayerLog(value);
   if (isPlayerBookType(value.t)) return parsePlayerBookMessage(value);
