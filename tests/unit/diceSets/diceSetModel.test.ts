@@ -15,7 +15,7 @@ const duality = {
 describe('built-in dice sets', () => {
   it('keep their ids, which collections, presets and templates name', () => {
     expect(BUILT_IN_DICE_SETS.map((set) => set.id)).toEqual([
-      'builtin:d20', 'builtin:d20-roll-under', 'builtin:d100-roll-under', 'builtin:d10-exploding', 'builtin:power-roll',
+      'builtin:d20', 'builtin:d20-plain', 'builtin:d20-roll-under', 'builtin:d100-roll-under', 'builtin:d10-exploding', 'builtin:power-roll',
     ]);
     expect(BUILT_IN_DICE_SETS.every((set) => set.builtIn)).toBe(true);
   });
