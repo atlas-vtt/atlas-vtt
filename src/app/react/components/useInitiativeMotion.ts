@@ -9,7 +9,7 @@ import { TURN_FLASH_MS } from '../../services/playerInitiativeList';
 
 /** What a change of the tracker's order is read by: the round, the turn and every combatant's place. */
 function orderOf(initiative: InitiativeState): string {
-  return JSON.stringify([initiative.round, initiative.sides?.active, initiative.entries.map((entry) => [entry.id, entry.order, entry.isActive, entry.delayed])]);
+  return JSON.stringify([initiative.round, initiative.sides?.active, initiative.sideOrder, initiative.entries.map((entry) => [entry.id, entry.order, entry.isActive, entry.delayed])]);
 }
 
 /**

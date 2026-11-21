@@ -56,7 +56,7 @@ interface InitiativeCardProps {
 const NOTHING = (): void => undefined;
 const NO_DRAG: RowDrag = {
   onPointerDown: NOTHING, onPointerMove: NOTHING, onPointerUp: NOTHING, onPointerCancel: NOTHING,
-  offsetOf: () => '0 0', held: null, settling: false,
+  offsetOf: () => undefined, held: null, settling: false,
 };
 
 /**
