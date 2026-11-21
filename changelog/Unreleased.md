@@ -8,6 +8,8 @@
 ## Fixed
 
 - A Number value written with advantage or disadvantage (`+7 adv`) no longer shows "Not a number"; a value that rolls as a bonus keeps the word (`7 adv` rolls `+7 adv`)
+- A reference to such a value (`@perception` on `+2 adv`) reads its number, and a sum written with the word shows its total (`10 + @dex adv` reads `12 adv`)
+- A saved roll written with `adv` or `dis` rolls with it from the dice row instead of being refused
 - "Combat has started" and "Combat has ended" show in the middle of the player view when the initiative list is vertical, instead of beside the list
 - Outside a fight, the initiative list shows a fade at its bottom while there is more to scroll to, as it does at its top
 - Forget explored areas forgets every floor of a scene, not only the floor you are looking at, and online players on other floors forget theirs too
@@ -17,6 +19,7 @@
 
 - Players' rolls written with `adv` or `dis` (`+4 adv` on the character sheet) roll with the dice set's advantage or disadvantage instead of being refused, also when rolled privately
 - The players' dice tray takes a roll typed with `adv` or `dis` (`1d20+5 adv`), and Shift-click or the roll menu offers advantage on a sheet roll written that way
+- Players can change a Number value written with `adv` or `dis` on their character sheet (`+4 adv` to `+5 adv`)
 - The players' character sheet shows a statblock's Markdown as Obsidian does: bold values in bold, links like `[Spellcasting](#Spellcasting)` as their words, and HTML tags used for styling no longer show as written
 - On some Windows laptops a lit scene could crash a player's browser even at the lowest graphics setting: Saver no longer prepares the lighting of the higher settings, and a page whose graphics crashed comes back one setting lower instead of crashing again
 - When the campaign's world map cannot reach players because its map or scene was deleted or shows no image, the GM is told so, instead of players only reading that no world map was chosen
