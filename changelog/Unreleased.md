@@ -20,3 +20,5 @@
 - The players' character sheet shows a statblock's Markdown as Obsidian does: bold values in bold, links like `[Spellcasting](#Spellcasting)` as their words, and HTML tags used for styling no longer show as written
 - On some Windows laptops a lit scene could crash a player's browser even at the lowest graphics setting: Saver no longer prepares the lighting of the higher settings, and a page whose graphics crashed comes back one setting lower instead of crashing again
 - When the campaign's world map cannot reach players because its map or scene was deleted or shows no image, the GM is told so, instead of players only reading that no world map was chosen
+- A player using the laser pointer on a phone or tablet no longer leaves its dot standing on the map after lifting the finger, for themselves or for anyone else at the table
+- Pinching on a Mac trackpad in Safari zooms the players' world map as smoothly as their battle map

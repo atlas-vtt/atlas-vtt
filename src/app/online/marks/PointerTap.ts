@@ -101,7 +101,8 @@ export class PointerTap implements LaserSource {
     viewport.on('pointermove', this.onMove);
     viewport.on('pointerup', this.onUp);
     viewport.on('pointerupoutside', this.onUpOutside);
-    canvas.addEventListener('mouseleave', this.onLeave);
+    // A pointer leaves the canvas when it moves off it, and a finger whenever it lifts: no dot stays where it was.
+    canvas.addEventListener('pointerleave', this.onLeave);
   }
 
   state(): Pick<LaserState, 'at' | 'on'> {
@@ -130,7 +131,7 @@ export class PointerTap implements LaserSource {
     this.viewport.off('pointermove', this.onMove);
     this.viewport.off('pointerup', this.onUp);
     this.viewport.off('pointerupoutside', this.onUpOutside);
-    this.canvas.removeEventListener('mouseleave', this.onLeave);
+    this.canvas.removeEventListener('pointerleave', this.onLeave);
     this.listeners.clear();
   }
 
