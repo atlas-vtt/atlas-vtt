@@ -31,13 +31,14 @@ afterEach(() => {
 });
 
 describe('the rolls of a note\'s dice', () => {
-  it('roll by the default collection\'s dice while no map is open, with advantage where asked', () => {
+  it('roll by the default collection\'s dice while no map is open, which have no advantage', () => {
     const displays = new NoteDiceDisplays({} as App);
     const rolls = displays.rollsIn(document);
     expect(rolls.document).toBe(document);
     const result = rolls.roll('+3', { type: 'statblock' }, { advantage: 'advantage' });
-    expect(result).toMatchObject({ formula: '1d20+3', advantage: 'advantage', source: { type: 'statblock' } });
-    expect(result?.rolls).toHaveLength(2);
+    expect(result).toMatchObject({ formula: '1d20+3', source: { type: 'statblock' } });
+    expect(result?.advantage).toBeUndefined();
+    expect(result?.rolls).toHaveLength(1);
     expect(rolls.rollingDice?.()).toMatchObject({ dice: [{ count: 1, sides: 20 }] });
     expect(state.collections).toEqual(['campaign', 'campaign']);
     displays.destroy();

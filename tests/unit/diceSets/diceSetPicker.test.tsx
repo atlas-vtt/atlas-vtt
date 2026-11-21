@@ -41,7 +41,8 @@ describe('a dice set\'s facts', () => {
 
   it('leave the roll out where the name says it', () => {
     expect(facts(builtIn('d20'))).toEqual(['crits on a natural 20', 'advantage keeps the best']);
-    expect(facts(builtIn('d20-roll-under'))).toEqual(['rolls under, crits on a 1', 'advantage keeps the best']);
+    expect(facts(builtIn('d20-roll-under'))).toEqual(['rolls under, crits on a 1']);
+    expect(facts(builtIn('d20-plain'))).toEqual(['crits on a natural 20']);
     expect(facts(builtIn('d10-exploding'))).toEqual(['crits on a natural 10', 'explodes on 10']);
     // A word of its own: `d100 roll-under` does not say `d10`
     expect(facts({ ...builtIn('d100-roll-under'), dice: [{ count: 1, sides: 10 }] })[0]).toBe('d10');
