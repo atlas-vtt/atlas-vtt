@@ -14,3 +14,4 @@
 ## Atlas Online
 
 - Players' rolls written with `adv` or `dis` (`+4 adv` on the character sheet) roll with the dice set's advantage or disadvantage instead of being refused, also when rolled privately
+- The players' dice tray takes a roll typed with `adv` or `dis` (`1d20+5 adv`), and Shift-click or the roll menu offers advantage on a sheet roll written that way
