@@ -87,6 +87,7 @@ describe('useRowDrag', () => {
     act(() => result.current.onPointerDown(1, pointer(60)));
     act(() => result.current.onPointerMove(pointer(95)));
     act(() => frames.shift()?.(0));
+    act(() => frames.shift()?.(16));
     expect(box.scrollTop).toBeGreaterThan(0);
     expect(result.current.offsetOf(1)).toBe(`0px ${35 + box.scrollTop}px`);
     vi.restoreAllMocks();

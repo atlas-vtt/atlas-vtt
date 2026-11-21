@@ -3,9 +3,13 @@ import { useEffect, useRef, useState } from 'react';
 
 /** How far a press moves before it is a drag, so a click on a place stays a click. */
 const DRAG_THRESHOLD = 4;
-/** How near its top or bottom edge the pointer scrolls a list, and how fast at most (px per frame), faster further in. */
-const SCROLL_EDGE = 56;
-const SCROLL_SPEED = 14;
+/** How near its top or bottom edge the pointer scrolls a list, and how fast (px per second): from the slowest at the
+ * zone's start to the fastest at the edge and past it. Measured in time, so every display scrolls alike. */
+const SCROLL_EDGE = 64;
+const SCROLL_SLOWEST = 300;
+const SCROLL_FASTEST = 2000;
+/** A frame that came late (a busy main thread) scrolls no further than one this long would. */
+const SCROLL_FRAME_MAX_MS = 50;
 
 /** The attribute that keeps a place among its own: a held place only lands among places of the same group. */
 export const DRAG_GROUP_ATTRIBUTE = 'data-drag-group';
@@ -89,12 +93,15 @@ function follow(drag: Drag, pointer: Point, scrolled: number, axis: RowDragOptio
   return { ...drag, pointer, scrolled, delta, moved, to };
 }
 
-/** How far to scroll `box` this frame with the pointer at height `y`: none unless near an edge, and none past the group's end. */
+/** How fast to scroll `box` (px per second) with the pointer at height `y`: none unless near an edge, and none past the group's end. */
 function edgeScroll(box: DOMRect, y: number, drag: Drag): number {
   const { min, max } = groupReach(drag);
-  const share = (distance: number): number => Math.min(1, (SCROLL_EDGE - distance) / SCROLL_EDGE);
-  if (y - box.top < SCROLL_EDGE && drag.delta.y > min.y) return -SCROLL_SPEED * share(y - box.top);
-  if (box.bottom - y < SCROLL_EDGE && drag.delta.y < max.y) return SCROLL_SPEED * share(box.bottom - y);
+  const speed = (distance: number): number => {
+    const depth = Math.min(1, (SCROLL_EDGE - distance) / SCROLL_EDGE);
+    return SCROLL_SLOWEST + (SCROLL_FASTEST - SCROLL_SLOWEST) * depth * depth;
+  };
+  if (y - box.top < SCROLL_EDGE && drag.delta.y > min.y) return -speed(y - box.top);
+  if (box.bottom - y < SCROLL_EDGE && drag.delta.y < max.y) return speed(box.bottom - y);
   return 0;
 }
 
@@ -142,12 +149,22 @@ export function useRowDrag(places: () => readonly Element[], onMove: (from: numb
     const box = holding ? scrollerRef.current?.() : null;
     if (!box) return undefined;
     const view = box.ownerDocument.defaultView ?? window;
-    const tick = (): void => {
+    let last: number | null = null;
+    // What a step scrolled less than asked, as the list scrolls by whole pixels on some screens
+    let carry = 0;
+    const tick = (time: number): void => {
+      const elapsed = last === null ? 0 : Math.min(time - last, SCROLL_FRAME_MAX_MS);
+      last = time;
       const now = current.current;
       if (now?.moved) {
         const speed = edgeScroll(box.getBoundingClientRect(), now.pointer.y, now);
-        // The list glides when it is scrolled (`scroll-behavior: smooth`); a drag moves it at once
-        if (speed !== 0) box.scrollTo({ top: box.scrollTop + speed, behavior: 'instant' });
+        if (speed === 0) carry = 0;
+        else {
+          const target = box.scrollTop + carry + (speed * elapsed) / 1000;
+          // The list glides when it is scrolled (`scroll-behavior: smooth`); a drag moves it at once
+          box.scrollTo({ top: target, behavior: 'instant' });
+          carry = Math.max(-1, Math.min(1, target - box.scrollTop));
+        }
         const scrolled = box.scrollTop - now.scrollStart;
         if (scrolled !== now.scrolled) setDrag(follow(now, now.pointer, scrolled, axis));
       }
