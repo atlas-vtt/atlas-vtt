@@ -33,6 +33,12 @@ export function turnKey(turn: CurrentTurn): string {
   return `${turn.round}|${holder}`;
 }
 
+/** The key of the turn now (`turnKey`), or null where nobody holds it. */
+export function currentTurnKey(initiative: TurnState | undefined): string | null {
+  const turn = currentTurn(initiative);
+  return turn ? turnKey(turn) : null;
+}
+
 /** The ids of the sides a running fight by sides knows, in acting order. */
 export function knownSideIds(initiative: Pick<InitiativeState, 'sides'>): SideId[] {
   return initiative.sides ? fightSides(initiative.sides).map((side) => side.id) : [];

@@ -1,0 +1,44 @@
+// Places being arranged, as on a phone's home screen (`useRowDrag`): they shiver in place, neighbours out of step so a
+// row shivers rather than swings, and the held one lifts. Rotation and lift use `rotate` and `scale`, which leave a
+// drag's `translate` and a press's `transform` alone.
+@use 'tokens' as *;
+
+$wiggle-ms: 280ms;
+
+@keyframes atlas-wiggle {
+  0%,
+  100% {
+    rotate: calc(-1 * var(--atlas-wiggle, 1.6deg));
+  }
+
+  50% {
+    rotate: var(--atlas-wiggle, 1.6deg);
+  }
+}
+
+/// Shivers by `$angle` either way; a long place takes a smaller angle, so its ends move as far as a small one's.
+@mixin atlas-wiggle($angle: 1.6deg) {
+  --atlas-wiggle: #{$angle};
+  animation: atlas-wiggle $wiggle-ms ease-in-out infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+/// Half a shiver out of step with its neighbour.
+@mixin atlas-wiggle-shifted {
+  animation-delay: -$wiggle-ms * 0.5;
+}
+
+/// A little slower than its neighbours.
+@mixin atlas-wiggle-slower {
+  animation-duration: $wiggle-ms + 40ms;
+}
+
+/// The held place: still, lifted above the others.
+@mixin atlas-wiggle-held {
+  animation: none;
+  scale: 1.08;
+  box-shadow: $shadow-elevated;
+}

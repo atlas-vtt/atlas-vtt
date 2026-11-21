@@ -7,8 +7,8 @@ import { TURN_KEY_ATTRIBUTE } from '../../initiative/motion/turnMotion';
 interface InitiativeTrackerListProps {
   /** The list as it is drawn (`listSegments`). */
   segments: readonly ListSegment<InitiativeEntry>[];
-  /** Draws a card; `inTurn` says it stands in the side whose turn it is. */
-  card: (entry: InitiativeEntry, inTurn?: boolean) => React.ReactElement;
+  /** Draws a card of the segment `group` (its key); `inTurn` says it stands in the side whose turn it is. */
+  card: (entry: InitiativeEntry, group: string, inTurn?: boolean) => React.ReactElement;
 }
 
 /**
@@ -33,7 +33,7 @@ export const InitiativeTrackerList: React.FC<InitiativeTrackerListProps> = ({ se
           );
         }
         const label = segment.side ? segment.side.name : segment.delayed ? t('initiative.delayed') : null;
-        if (label === null) return <React.Fragment key={segment.key}>{segment.items.map((entry) => card(entry))}</React.Fragment>;
+        if (label === null) return <React.Fragment key={segment.key}>{segment.items.map((entry) => card(entry, segment.key))}</React.Fragment>;
         const classes = [
           'atlas-initiative-side',
           segment.active && 'atlas-initiative-side--active',
@@ -49,7 +49,7 @@ export const InitiativeTrackerList: React.FC<InitiativeTrackerListProps> = ({ se
                 </>
               )}
             </h4>
-            {segment.items.map((entry) => card(entry, segment.active))}
+            {segment.items.map((entry) => card(entry, segment.key, segment.active))}
           </section>
         );
       })}

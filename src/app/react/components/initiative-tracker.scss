@@ -3,6 +3,7 @@
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/mixins' as *;
 @use '../../../../styles/initiative-cards' as *;
+@use '../../../../styles/wiggle' as *;
 
 $tracker-width: 96px;
 // The compact list's line: room for a name beside the number and a badge
@@ -166,8 +167,8 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
   font-variant-numeric: tabular-nums;
 }
 
-// What the GM does with a card: drags it, hovers it for its statblock, drops another beside it. `:where` keeps the
-// specificity of the shared card rules, which the compact list overrides
+// What the GM does with a card: drags it, hovers it for its statblock. `:where` keeps the specificity of the shared
+// card rules, which the compact list overrides
 :where(.atlas-initiative-tracker) .atlas-initiative-card {
   cursor: grab;
 
@@ -195,32 +196,43 @@ $tracker-min-height-named: $tracker-chrome-height + 140px;
     background: var(--background-modifier-active-hover);
     border-color: color-mix(in oklch, var(--mono-100) 15%, transparent);
   }
+}
 
-  // Drop indicators
-  &--drop-above::before,
-  &--drop-below::after {
-    content: '';
-    position: absolute;
-    left: 8px;
-    right: 8px;
-    height: 2px;
-    background: var(--interactive-accent);
-    border-radius: $radius-s;
-    box-shadow: 0 0 8px var(--interactive-accent);
-  }
+// A card dragged (`useRowDrag`), as a phone's home screen is arranged (`styles/_wiggle.scss`): the cards shiver in
+// place, the held one lifts and follows the pointer and those it passes slide aside. Let go, the list takes its new
+// order at once and the card glides home from where it was dropped (`useTurnMotion`).
+.atlas-initiative-tracker__list--dragging {
+  cursor: grabbing;
 
-  &--drop-above::before {
-    top: -3px;
-  }
+  .atlas-initiative-card {
+    @include atlas-wiggle;
+    transition: translate $transition-fast $transition-ease-out;
 
-  &--drop-below::after {
-    bottom: -3px;
+    &:nth-child(even) {
+      @include atlas-wiggle-shifted;
+    }
+
+    &:nth-child(3n) {
+      @include atlas-wiggle-slower;
+    }
+
+    &[data-held] {
+      @include atlas-wiggle-held;
+      z-index: 4;
+      transform: none;
+      transition: none;
+      cursor: grabbing;
+    }
   }
 }
 
-// Hide drag handle
-.atlas-initiative-card__drag-handle {
-  display: none;
+// The compact list's lines are long: a smaller angle moves their ends as far as a card's
+.atlas-initiative-tracker--compact .atlas-initiative-tracker__list--dragging .atlas-initiative-card {
+  --atlas-wiggle: 0.4deg;
+}
+
+.atlas-initiative-tracker__list--settling .atlas-initiative-card {
+  transition: none;
 }
 
 // Initiative number: a slot typed in place (`InitiativeNumber`), framed while a click would edit it
@@ -419,10 +431,9 @@ $tile-corner-radius: initiative-corner-radius($border-width-s);
 }
 
 // Hover, press, a selected token and Mod's statblock preview ring the card's edge (`--atlas-card-ring`). The art covers
-// the card's own border, fill and inset shadow, so the ring is a layer above it, `::after`, which the drop indicator
-// takes while a dragged card would land below this one. The ring stands out from the panel around the card: white on a
-// dark theme's, dark on a light theme's (the compact line is a dark surface in both and keeps white,
-// `initiative-tracker-compact.scss`)
+// the card's own border, fill and inset shadow, so the ring is a layer above it, `::after`. The ring stands out from
+// the panel around the card: white on a dark theme's, dark on a light theme's (the compact line is a dark surface in
+// both and keeps white, `initiative-tracker-compact.scss`)
 :where(.atlas-initiative-tracker) .atlas-initiative-card {
   --atlas-card-ring: transparent;
   --atlas-card-ring-hover: rgb(255 255 255 / 0.45);
@@ -447,7 +458,7 @@ $tile-corner-radius: initiative-corner-radius($border-width-s);
     --atlas-card-ring: var(--atlas-card-ring-preview);
   }
 
-  &:not(.atlas-initiative-card--drop-below)::after {
+  &::after {
     content: '';
     position: absolute;
     inset: calc(-1 * #{$border-width-s});

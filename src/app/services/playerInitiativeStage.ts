@@ -20,6 +20,8 @@ export type StandingLists = ReadonlyMap<string | undefined, { height: number; pl
 export class PlayerInitiativeStage {
   /** The turn the list last drew (`turnKey`, null for none); undefined before a scene's first draw. */
   private turnSeen: string | null | undefined = undefined;
+  /** The last drawing kept the turn it had: its cards moved because the GM reordered them, not because the turn passed. */
+  private turnKept = false;
   /** When the turn the list shows began, while its border flashes. */
   private turnBegan: number | null = null;
   /** Whether the lists were drawn, and the fight ran, at the last drawing; undefined before a scene's first. */
@@ -39,6 +41,7 @@ export class PlayerInitiativeStage {
   /** Another scene: its lists neither arrive nor leave, and its fight's turn is no turn beginning. */
   reset(): void {
     this.turnSeen = undefined;
+    this.turnKept = false;
     this.turnBegan = null;
     this.listsDrawn = undefined;
     this.fightRan = undefined;
@@ -68,6 +71,8 @@ export class PlayerInitiativeStage {
   /**
    * After a drawing: a list that stands at an edge it stood at before glides from its old height (`glideHeight`), and
    * its cards from where they stood to their new places (`playTurnMotion`), the copies still sliding out laid over it again.
+   * Where the turn stayed (`turnFlash`), each card glides straight to its new place: a card the GM dragged up or down
+   * the order moves there, rather than going round the list as the turn's holder does.
    */
   glide(before: StandingLists): void {
     for (const panel of this.drawnPanels) {
@@ -77,7 +82,7 @@ export class PlayerInitiativeStage {
       if (!this.arriving()) {
         const list = panel.querySelector<HTMLElement>('.atlas-initiative-panel__list');
         adoptGhosts(list, was.ghosts);
-        playTurnMotion(list, was.places);
+        playTurnMotion(list, was.places, { wrap: !this.turnKept });
       }
       if (typeof panel.animate === 'function') glideHeight(panel, was.height);
     }
@@ -89,6 +94,7 @@ export class PlayerInitiativeStage {
    * takes it up where it was.
    */
   turnFlash(key: string | null): number | undefined {
+    this.turnKept = key === this.turnSeen;
     if (key !== this.turnSeen) {
       this.turnBegan = this.turnSeen !== undefined && key !== null ? performance.now() : null;
       this.turnSeen = key;

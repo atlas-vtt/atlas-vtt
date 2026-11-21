@@ -35,8 +35,8 @@ const goblin = (extra: Partial<TokenEntity> = {}): TokenEntity => ({ id: 't1', k
 function renderCard(token: TokenEntity): HTMLElement {
   state.objects.tokens = { t1: token };
   return render(
-    <InitiativeCard entry={entry} index={0} isHoveredForPreview={false}
-      onDragStart={vi.fn()} onDragOver={vi.fn()} onDragEnd={vi.fn()} onContextMenu={vi.fn()} onHover={vi.fn()} />,
+    <InitiativeCard entry={entry} isHoveredForPreview={false}
+      onContextMenu={vi.fn()} onHover={vi.fn()} />,
   ).container;
 }
 
