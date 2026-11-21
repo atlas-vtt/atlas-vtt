@@ -46,24 +46,26 @@ type Region = readonly [number, number, number, number];
 const BETWEEN: Region = [84, 20, 134, 70];
 
 /**
- * The canvas shows the players' view in turn (session view, then the peek) and must show nothing
- * of the marks: `region`, where they stand clear of the tokens and the selected token's own UI,
- * is as the players' `frame` has it. Afterwards the canvas is the GM's `gm` again.
+ * The players see the marks as the GM's canvas shows them: in their `frame`, and on the canvas while
+ * it shows their view (session view, then the peek), `region`, where the marks stand clear of the
+ * tokens and the selected token's own UI, is as the GM's `gm` has it and not as it was `before`.
+ * Afterwards the canvas is the GM's `gm` again.
  */
-function expectHiddenFromPlayersOnCanvas(s: PlayerViewScene, frame: Uint8ClampedArray, gm: Uint8ClampedArray, region: Region): void {
-  expect(differingIn(gm, frame, ...region)).toBeGreaterThan(100);
+function expectShownToPlayers(s: PlayerViewScene, before: Uint8ClampedArray, gm: Uint8ClampedArray, region: Region): void {
+  expect(differingIn(gm, before, ...region)).toBeGreaterThan(100);
+  expect(differingIn(s.frame(), gm, ...region)).toBe(0);
   s.store.getState().setGMView(false);
-  expect(differingIn(s.canvas(), frame, ...region)).toBe(0);
+  expect(differingIn(s.canvas(), gm, ...region)).toBe(0);
   s.store.getState().setGMView(true);
   expect(samePixels(s.canvas(), gm)).toBe(true);
   s.peek(true);
-  expect(differingIn(s.canvas(), frame, ...region)).toBe(0);
+  expect(differingIn(s.canvas(), gm, ...region)).toBe(0);
   s.peek(false);
   expect(samePixels(s.canvas(), gm)).toBe(true);
 }
 
 describe('the range check', () => {
-  it('draws a dashed line and the distance between the two tokens on the GM\'s canvas, and nothing anywhere else', async () => {
+  it('draws a dashed line and the distance between the two tokens, for the GM and the players alike, and in no picture of the scene', async () => {
     const s = await ranged();
     const before = s.canvas();
     const frame = s.frame();
@@ -76,52 +78,73 @@ describe('the range check', () => {
     // Neither token is drawn over: the line ends at their edges.
     expect(differingIn(gm, before, 0, 0, 72, SIZE)).toBe(0);
     expect(differingIn(gm, before, 168, 0, SIZE, SIZE)).toBe(0);
-    expect(samePixels(s.frame(), frame)).toBe(true);
     expect(samePixels(s.thumbnail(), picture)).toBe(true);
     // The captures leave the GM's canvas as it was.
     expect(samePixels(s.canvas(), gm)).toBe(true);
+    expectShownToPlayers(s, frame, gm, BETWEEN);
     // Off the token the check is gone.
     s.pointer('pointermove', 120, 200);
     expect(samePixels(s.canvas(), before)).toBe(true);
   });
 
-  it('is not on the canvas while it shows the players\' view, where no token is hovered', async () => {
+  it('works while the canvas shows the players\' view', async () => {
     const s = await ranged();
-    const frame = s.frame();
-    s.pointer('pointermove', GOBLIN.x, GOBLIN.y);
-    const gm = s.canvas();
-    expectHiddenFromPlayersOnCanvas(s, frame, gm, BETWEEN);
+    const before = s.canvas();
     s.store.getState().setGMView(false);
-    s.pointer('pointermove', 120, 200);
     s.pointer('pointermove', GOBLIN.x, GOBLIN.y);
-    expect(differingIn(s.canvas(), frame, ...BETWEEN)).toBe(0);
+    expect(differingIn(s.canvas(), before, ...BETWEEN)).toBeGreaterThan(100);
+  });
+
+  it('is not in the players\' frame where it runs to a token they do not see', async () => {
+    const s = await ranged();
+    s.store.getState().updateToken('goblin', { isHidden: true });
+    await s.settle();
+    const frame = s.frame();
+    const before = s.canvas();
+    s.pointer('pointermove', GOBLIN.x + 3, GOBLIN.y - 2);
+    expect(differingIn(s.canvas(), before, ...BETWEEN)).toBeGreaterThan(100);
+    expect(samePixels(s.frame(), frame)).toBe(true);
   });
 });
 
 describe('the rings of the Ranges mode', () => {
-  it('stand around the pressed token on the GM\'s canvas alone: in no players\' frame, picture, session view or peek', async () => {
+  /** Presses the goblin in the Ranges mode, and leaves the pointer off every token. */
+  const ringGoblin = (s: PlayerViewScene): void => {
+    s.pointer('pointerdown', GOBLIN.x, GOBLIN.y);
+    s.pointer('pointerup', GOBLIN.x, GOBLIN.y);
+    s.pointer('pointermove', 240, 240);
+  };
+
+  it('stand around the pressed token for the GM and the players alike, and in no picture of the scene', async () => {
     const s = await ranged();
     s.store.getState().setMeasureTool({ mode: 'ranges' });
     const before = s.canvas();
     const frame = s.frame();
     const picture = s.thumbnail();
-    s.pointer('pointerdown', GOBLIN.x, GOBLIN.y);
-    s.pointer('pointerup', GOBLIN.x, GOBLIN.y);
-    s.pointer('pointermove', 240, 240);
+    ringGoblin(s);
     const gm = s.canvas();
     await save('range-rings', gm);
     // Two bands end somewhere: squares one and two cells past the goblin's cell (to x 120 and 160).
     expect(differingPixels(gm, before)).toBeGreaterThan(1500);
     expect(differingIn(gm, before, 116, 100, 124, 110)).toBeGreaterThan(8);
     expect(differingIn(gm, before, 156, 100, 164, 110)).toBeGreaterThan(8);
-    expect(samePixels(s.frame(), frame)).toBe(true);
     expect(samePixels(s.thumbnail(), picture)).toBe(true);
     expect(samePixels(s.canvas(), gm)).toBe(true);
-    expectHiddenFromPlayersOnCanvas(s, frame, gm, [104, 110, 170, 150]);
+    expectShownToPlayers(s, frame, gm, [104, 110, 170, 150]);
     // Pressed again, the token loses its rings.
-    s.pointer('pointerdown', GOBLIN.x, GOBLIN.y);
-    s.pointer('pointerup', GOBLIN.x, GOBLIN.y);
-    s.pointer('pointermove', 240, 240);
+    ringGoblin(s);
     expect(samePixels(s.canvas(), before)).toBe(true);
+  });
+
+  it('are not in the players\' frame around a token they do not see', async () => {
+    const s = await ranged();
+    s.store.getState().updateToken('goblin', { isHidden: true });
+    s.store.getState().setMeasureTool({ mode: 'ranges' });
+    await s.settle();
+    const before = s.canvas();
+    const frame = s.frame();
+    ringGoblin(s);
+    expect(differingIn(s.canvas(), before, 104, 110, 170, 150)).toBeGreaterThan(100);
+    expect(samePixels(s.frame(), frame)).toBe(true);
   });
 });

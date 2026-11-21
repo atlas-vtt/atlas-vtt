@@ -1,8 +1,10 @@
-import type { Container, Graphics } from 'pixi.js';
+import { Container, type Graphics } from 'pixi.js';
 import { rangeCheckLine, rangeCheckText } from '../../measure/rangeCheck';
 import type { PlacedToken, TokenGrid } from '../../measure/tokenDistance';
 import type { Point } from '../../types/visionTypes';
-import { MeasureInk, type MeasureInkLayer } from '../utils/measureInk';
+import type { HideableLayer } from '../playerSafeFrame';
+import { destroyTree } from '../utils/destroyTree';
+import { LinkedLayers, MeasureInk, type MeasureInkLayer } from '../utils/measureInk';
 import { MeasureLabel } from '../utils/measureLabel';
 import type { MeasureLook } from './DrawnMeasure';
 
@@ -38,18 +40,25 @@ function traceDashes(g: Graphics, from: Point, to: Point): void {
 /**
  * The range check as it is drawn: a dashed line in the measure ink between the two tokens'
  * nearest edges, and their distance on the measure label beside it. Tokens whose spaces touch
- * have no line; the label stands above the place where they meet.
+ * have no line; the label stands above the place where they meet. `layer` shows or hides it
+ * whole, whatever it shows.
  */
 export class RangeCheck {
+  readonly layer: HideableLayer;
   private readonly ink: MeasureInk;
   private readonly label = new MeasureLabel();
+  private readonly labelBox = new Container({ label: 'range-check-label', eventMode: 'none', interactiveChildren: false });
   private pair: CheckedPair | null = null;
+  /** What it reads where that was told (another's check), else null: worked out from the pair. */
+  private told: string | null = null;
 
   /** Its line goes onto `shapes`, its label into `labels`. */
   constructor(shapes: MeasureInkLayer, labels: Container) {
     this.ink = new MeasureInk(shapes);
     this.label.view.visible = false;
-    labels.addChild(this.label.view);
+    this.labelBox.addChild(this.label.view);
+    labels.addChild(this.labelBox);
+    this.layer = new LinkedLayers([this.ink.shape, this.labelBox]);
   }
 
   /** The pair it shows now; null while it shows none. */
@@ -62,8 +71,10 @@ export class RangeCheck {
     return this.pair ? this.label.text.text : '';
   }
 
-  show(pair: CheckedPair, grid: TokenGrid, look: MeasureLook): void {
+  /** Shows the check between `pair`, reading `text` where it is told (another's check), else the distance the map's rules give. */
+  show(pair: CheckedPair, grid: TokenGrid, look: MeasureLook, text: string | null = null): void {
     this.pair = pair;
+    this.told = text;
     this.redraw(grid, look);
   }
 
@@ -80,13 +91,14 @@ export class RangeCheck {
       this.ink.stroke((g) => traceDashes(g, start, end), look.accent);
     }
     const beside = line ? [line.from, line.to] : [{ x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 }];
-    this.label.show(rangeCheckText(from, to, grid, look.settings), { beside }, look.zoom, grid.size);
+    this.label.show(this.told ?? rangeCheckText(from, to, grid, look.settings), { beside }, look.zoom, grid.size);
     this.label.view.visible = true;
   }
 
   clear(): void {
     if (!this.pair) return;
     this.pair = null;
+    this.told = null;
     this.ink.clear();
     this.label.view.visible = false;
   }
@@ -94,5 +106,6 @@ export class RangeCheck {
   destroy(): void {
     this.ink.destroy();
     this.label.destroy();
+    destroyTree(this.labelBox);
   }
 }

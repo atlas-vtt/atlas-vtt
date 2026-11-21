@@ -54,7 +54,7 @@ export class MeasureInkLayer {
 }
 
 /** Shows or hides several display objects as one. */
-class LinkedLayers implements HideableLayer {
+export class LinkedLayers implements HideableLayer {
   constructor(private readonly layers: readonly HideableLayer[]) {}
 
   get visible(): boolean {

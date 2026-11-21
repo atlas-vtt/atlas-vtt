@@ -66,5 +66,4 @@ export const toolbar: Translation = {
   'toolbar.ranges': '范围',
   'toolbar.rangesTip': '点击指示物或某个位置查看它的范围',
   'toolbar.rangesNoRules': '这个游戏系统没有范围或移动阶段',
-  'toolbar.rangesNeedGmView': '切换到 GM 视图（{key}）来查看范围',
 };
