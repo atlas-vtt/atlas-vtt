@@ -52,12 +52,6 @@ $tone-size: 22px;
   border-radius: $radius-s 0 0;
   translate: -50% calc(-50% - #{$border-width-m} / 2);
   rotate: 45deg;
-
-  [data-side='above'] > & {
-    top: 100%;
-    rotate: 225deg;
-    translate: -50% calc(-50% + #{$border-width-m} / 2);
-  }
 }
 
 .atlas-sound-popover__name {
@@ -181,4 +175,12 @@ $tone-size: 22px;
   .theme-dark & {
     color: color-mix(in srgb, var(--text-muted) 60%, var(--text-normal));
   }
+}
+
+// Written out whole, not nested as `[…] > &`: main.scss wraps every file in .atlas-vtt-plugin, which a nested parent selector would put between the two.
+// Under a popover that opens above its anchor the caret hangs from its foot, pointing down.
+.atlas-sound-popover[data-side='above'] > .atlas-sound-popover__caret {
+  top: 100%;
+  rotate: 225deg;
+  translate: -50% calc(-50% + #{$border-width-m} / 2);
 }

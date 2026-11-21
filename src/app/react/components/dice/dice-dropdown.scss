@@ -573,10 +573,6 @@ $tray-history-row: $button-height-m;
   color: $tray-quiet-text;
   transition: transform $transition-fast $transition-ease-out;
 
-  [aria-expanded='true'] > & {
-    transform: rotate(180deg);
-  }
-
   @media (prefers-reduced-motion: reduce) {
     transition: none;
   }
@@ -896,4 +892,9 @@ $history-close: 180ms;
 // Says what the tray holds after clicks and keys, for screen readers only.
 .atlas-dice-tray__announce {
   @include atlas-visually-hidden;
+}
+
+// Written out whole, not nested as `[…] > &`: main.scss wraps every file in .atlas-vtt-plugin, which a nested parent selector would put between the two.
+[aria-expanded='true'] > .atlas-dice-tray__history-chevron {
+  transform: rotate(180deg);
 }

@@ -107,8 +107,9 @@
   font-size: $font-ui-small;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
+}
 
-  [data-state='failed'] > & {
-    color: var(--text-warning);
-  }
+// Written out whole, not nested as `[…] > &`: main.scss wraps every file in .atlas-vtt-plugin, which a nested parent selector would put between the two.
+.atlas-sound-downloads__job[data-state='failed'] .atlas-sound-downloads__line {
+  color: var(--text-warning);
 }
