@@ -154,6 +154,30 @@ describe('what a press takes, by the tool in hand', () => {
     expect(selected(s)).toEqual([ids[2]]);
   });
 
+  it('leaves a press, its mark and its menu to a linked hex over a fill on the map, and keeps them where a drawing lies above the tokens', () => {
+    let ids: Record<string, string> = {};
+    // A linked hex covers the left half of the map; the cell fill and the box above the tokens reach into it.
+    const s = scene((made) => {
+      ids = {
+        fill: made.store.getState().addDrawing(box(pt(100, 100), pt(300, 200), { type: 'line', layer: 'map', width: 0, fill: 'solid', cells: true })),
+        above: made.store.getState().addDrawing(box(pt(100, 300), pt(300, 400), { width: 0, fill: 'solid' })),
+      };
+    }, { overMap: ({ x }) => x < 200 });
+    for (const tool of ['move', 'select'] as const) {
+      s.store.getState().setActiveTool(tool);
+      s.store.getState().clearSelection();
+      expect(s.press(150, 150)).toBe(false);
+      expect(s.renderer.selecting.pointer.cursorAt(150, 150, () => false)).toBeNull();
+      expect(s.renderer.selecting.pointer.menuAt(150, 150)).toBe(false);
+      expect(selected(s)).toEqual([]);
+      // Beyond the linked hex the fill is taken as ever, and a drawing above the tokens over the hex too.
+      expect(s.pull([[250, 150]])).toBe(true);
+      expect(selected(s)).toEqual([ids.fill]);
+      expect(s.pull([[150, 350]])).toBe(true);
+      expect(selected(s)).toEqual([ids.above]);
+    }
+  });
+
   it('marks what a press would take under the pointer, and what is framed needs no second mark', () => {
     let id = '';
     const s = scene((made) => { id = made.store.getState().addDrawing(line([pt(100, 100), pt(300, 100)])); });
