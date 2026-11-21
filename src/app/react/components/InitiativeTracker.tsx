@@ -273,8 +273,10 @@ export const InitiativeTracker: React.FC = () => {
       {/* The shade over the list's top, shown once it is scrolled */}
       <div className="atlas-initiative-panel__top-shade" aria-hidden="true" />
 
-      {/* The round at the list's foot, as the players' list shows it */}
-      {initiative.isActive && <div className="atlas-initiative-panel__round">{t('playerInit.round', { round: initiative.round })}</div>}
+      {/* The round at the list's foot, as the players' list shows it; without one, a shade there while more lies below */}
+      {initiative.isActive
+        ? <div className="atlas-initiative-panel__round">{t('playerInit.round', { round: initiative.round })}</div>
+        : <div className="atlas-initiative-panel__bottom-shade" aria-hidden="true" />}
 
       <InitiativeStatblockPreview app={app} state={previewState} tokens={tokens} side={inward} />
 

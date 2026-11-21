@@ -102,6 +102,15 @@ $list-shade: scaled(44px);
   opacity: 0;
 }
 
+// Without a round at the foot (no fight runs), the same shade over the list's bottom while there is more of it below,
+// fading out over its last `$list-shade`
+.atlas-initiative-panel__bottom-shade {
+  @include list-shade(bottom);
+  bottom: 0;
+  border-radius: 0 0 var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius);
+  opacity: 0;
+}
+
 @supports (animation-timeline: --a) {
   .atlas-initiative-panel {
     timeline-scope: --atlas-initiative-list;
@@ -116,11 +125,27 @@ $list-shade: scaled(44px);
     animation-timeline: --atlas-initiative-list;
     animation-range: 0 $list-shade;
   }
+
+  .atlas-initiative-panel__bottom-shade {
+    animation: atlas-initiative-bottom-shade linear both;
+    animation-timeline: --atlas-initiative-list;
+    animation-range: calc(100% - #{$list-shade}) 100%;
+  }
 }
 
 @keyframes atlas-initiative-top-shade {
   to {
     opacity: 1;
+  }
+}
+
+@keyframes atlas-initiative-bottom-shade {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
   }
 }
 
@@ -525,6 +550,14 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
     left: 0;
     height: auto;
     border-radius: var(--atlas-panel-inner-radius) 0 0 var(--atlas-panel-inner-radius);
+  }
+
+  .atlas-initiative-panel__bottom-shade {
+    @include list-shade(right);
+    right: 0;
+    left: auto;
+    height: auto;
+    border-radius: 0 var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius) 0;
   }
 
   // A side's cards after its name

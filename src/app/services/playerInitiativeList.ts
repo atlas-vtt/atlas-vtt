@@ -277,6 +277,8 @@ export function renderPlayerInitiative(container: HTMLElement, list: PlayerIniti
       card.style.setProperty('--atlas-turn-flash-delay', `${-Math.round(look.turnFlash)}ms`);
     }
   }
+  // Without a round at the foot, a shade there while more of the list lies beyond it
+  if (!list.isActive) panel.createDiv({ cls: 'atlas-initiative-panel__bottom-shade', attr: { 'aria-hidden': 'true' } });
   if (list.isActive) {
     panel.createDiv({ cls: 'atlas-initiative-panel__round', text: t('playerInit.round', { round: list.round }) });
     // The list is drawn anew on every change: show the turn and the next two visible combatants,
