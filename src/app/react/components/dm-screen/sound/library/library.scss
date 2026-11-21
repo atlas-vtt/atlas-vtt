@@ -229,6 +229,14 @@ $root-more-inset: (40px - 28px) * 0.5;
   }
 }
 
+// The tags still to come while a root is first read: lines of the tags' own shape, in the root's column and gap.
+.atlas-sound-lib__tags-waiting {
+  --atlas-skeleton-surface: var(--background-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
 .atlas-sound-lib .atlas-sound-lib__tag--selected {
   // As the asset manager's selected tag.
   background: color-mix(in oklch, var(--interactive-accent) 14%, transparent);

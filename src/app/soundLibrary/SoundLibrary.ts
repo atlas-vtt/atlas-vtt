@@ -92,6 +92,7 @@ export class SoundLibrary {
   private readonly open = new Map<SoundKind, OpenRoot>();
   private readonly viewListeners = new Set<() => void>();
   private revision = 0;
+  private readonly hits = new WeakMap<IndexedFile, LibraryFile>();
   private readonly dropRoots: () => void;
   private readonly lengths: SoundLengths;
 
@@ -138,7 +139,17 @@ export class SoundLibrary {
     if (words.length === 0) return [];
     return KINDS.flatMap((kind) => this.filesOf(kind)
       .filter((file) => words.every((word) => file.words.includes(word)) && !this.isCopied(kind, file.entry.path))
-      .map(({ entry }) => ({ ...entry, kind })));
+      .map((file) => this.hitOf(file, kind)));
+  }
+
+  /** A file as a search finds it: the same object for every search while its listing stands, so the rows made of it do too. */
+  private hitOf(file: IndexedFile, kind: SoundKind): LibraryFile {
+    let hit = this.hits.get(file);
+    if (hit?.kind !== kind) {
+      hit = { ...file.entry, kind };
+      this.hits.set(file, hit);
+    }
+    return hit;
   }
 
   /** Whether a file of a root is a source with its own Atlas copy beside it, which the library does not list. */

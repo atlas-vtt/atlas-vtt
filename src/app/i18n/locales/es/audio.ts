@@ -364,6 +364,8 @@ export const audio: Translation = {
   'audio.library.clearSearch': 'Borrar búsqueda',
   'audio.library.linkHere': 'Vincula una carpeta para ver lo que contiene.',
   'audio.library.loading': 'Cargando la biblioteca',
+  'audio.library.loadingTags': 'Cargando las etiquetas',
+  'audio.mood.loading': 'Cargando las atmósferas',
   'audio.library.rail': 'Música y ambiente',
   'audio.library.overlap': 'Las carpetas de música y de ambiente no pueden estar una dentro de la otra.',
   'audio.library.reserved': 'Esa carpeta guarda las atmósferas y los registros de Atlas, no sonidos.',

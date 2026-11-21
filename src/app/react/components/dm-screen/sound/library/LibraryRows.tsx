@@ -139,11 +139,17 @@ export function LibraryRows({ rows, sort, reading, onSort, loading, preparing, e
     return path === null ? null : standingRecord(soundsByPath.get(path) ?? []);
   }, [audioPathOf, soundsByPath]);
 
-  const soundOfRow = useCallback((row: Row): SoundRecord | null => {
-    const path = audioPathOf(row);
-    if (row.type !== 'file' || path === null) return null;
-    const stored = recordOfRow(row);
-    return stored ? soundRecordOf(stored) : unrecordedSound(row.file, path);
+  // Worked out once per row while the records stand: a row's sound is a hash of its path, which a scroll would redo for every row in view.
+  const soundOfRow = useMemo(() => {
+    const known = new WeakMap<Row, SoundRecord | null>();
+    return (row: Row): SoundRecord | null => {
+      if (known.has(row)) return known.get(row) ?? null;
+      const path = audioPathOf(row);
+      const stored = row.type === 'file' && path !== null ? recordOfRow(row) : null;
+      const sound = row.type !== 'file' || path === null ? null : stored ? soundRecordOf(stored) : unrecordedSound(row.file, path);
+      known.set(row, sound);
+      return sound;
+    };
   }, [audioPathOf, recordOfRow]);
 
   const inHand = useCallback((row: Row): Row[] => (selected.has(row.id) ? rows.filter((one) => selected.has(one.id)) : [row]), [rows, selected]);
@@ -284,7 +290,7 @@ export function LibraryRows({ rows, sort, reading, onSort, loading, preparing, e
                 preparing={preparing}
                 previewing={previewing !== null && previewing === sound?.id}
                 conversion={sound && director.shelf.stateOf(sound)}
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, transform: `translateY(${item.start - headHeight}px)` }}
+                top={item.start - headHeight}
               />
             );
           })}

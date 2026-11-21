@@ -29,8 +29,8 @@ export interface LibraryRig {
   roots: SoundRoots;
   locations: Record<SoundKind, FakeSoundLocation>;
   local: Partial<Record<SoundKind, string>>;
-  /** Mounts the library, or `page` in its place. */
-  mount: (host: HTMLElement, page?: React.ReactNode) => void;
+  /** Mounts the library, or `page` in its place; `asTheApp` renders outside `act`, as Obsidian does, so effects and transitions take their own frames. */
+  mount: (host: HTMLElement, page?: React.ReactNode, asTheApp?: boolean) => void;
   unmount: () => void;
 }
 
@@ -95,9 +95,10 @@ export async function libraryRig(options: LibraryRigOptions = {}): Promise<Libra
   const value = { app, view: null, pixiApp: null, renderer: null } as AtlasUIContextValue;
   return {
     app, settings, library, director, store, records, roots, locations, local,
-    mount: (host, page) => {
+    mount: (host, page, asTheApp = false) => {
       root = createRoot(host);
-      act(() => {
+      const render = asTheApp ? (draw: () => void): void => draw() : act;
+      render(() => {
         root?.render(
           <AtlasUIContext.Provider value={value}>
             <ViewStoreProvider store={store}>

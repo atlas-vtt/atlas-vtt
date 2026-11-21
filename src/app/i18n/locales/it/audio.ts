@@ -380,6 +380,8 @@ export const audio = {
   "audio.library.noResults": "Niente si chiama “{query}”.",
   "audio.library.linkHere": "Collega una cartella per vederne il contenuto.",
   "audio.library.loading": "Caricamento della libreria",
+  "audio.library.loadingTags": "Caricamento delle etichette",
+  "audio.mood.loading": "Caricamento delle atmosfere",
   "audio.library.rail": "Musica e suoni d’ambiente",
   "audio.library.overlap": "Le cartelle della musica e dei suoni d’ambiente non possono trovarsi una dentro l’altra.",
   "audio.library.reserved": "Quella cartella contiene le atmosfere e i record di Atlas, non suoni.",

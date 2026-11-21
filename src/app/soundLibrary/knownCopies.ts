@@ -71,6 +71,8 @@ export class KnownCopies {
    * read at. The one named after the source comes first, then the lowest path, so every device decides alike.
    */
   copyOf(kind: SoundKind, source: string): string | null {
+    // Asked for every file of a root on every listing: nothing to look up where no copy lies beside its source.
+    if (this.bySource.size === 0) return null;
     const holders = this.bySource.get(keyOf(kind, source));
     if (!holders || holders.size === 0) return null;
     const ordered = [...holders].sort(keptFirst(stemCopyOf(source)));

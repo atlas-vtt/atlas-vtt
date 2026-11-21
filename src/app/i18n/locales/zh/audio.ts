@@ -364,6 +364,8 @@ export const audio: Translation = {
   'audio.library.clearSearch': '清除搜索',
   'audio.library.linkHere': '关联一个文件夹即可查看其中的内容。',
   'audio.library.loading': '正在加载库',
+  'audio.library.loadingTags': '正在加载标签',
+  'audio.mood.loading': '正在加载氛围',
   'audio.library.rail': '音乐与环境音',
   'audio.library.overlap': '音乐文件夹和环境音文件夹不能互相包含。',
   'audio.library.reserved': '该文件夹存放的是 Atlas 的氛围和记录，不是声音。',

@@ -11,6 +11,7 @@ import { isLinked } from '../../../../../soundLibrary/SoundRoots';
 import { SETTLE_MS } from '../../../../../soundDirector/linkedFolderWatch';
 import { tagKey, toggledTag } from '../../../../../soundLibrary/soundTags';
 import type { SoundKind } from '../../../../../sound/soundTypes';
+import { useStableCallback } from '../../../../hooks/useStableCallback';
 import { useAtlasUI } from '../../../../root/AtlasUIContext';
 import { useMoods, useSoundValue, useStoredSounds, useStoreValue } from '../useSound';
 import { moodsMatching } from '../moodSearch';
@@ -147,10 +148,19 @@ export function LibraryView({ query, onQuery: setQuery, railSlot }: LibraryViewP
     library.place.show(kind);
   }, [library, setQuery]);
 
-  const pressTag = useCallback((kind: SoundKind, tag: string): void => {
+  // One function for the life of the view: every tag of the rail is memoised on it, and a press changes what is selected.
+  const pressTag = useStableCallback((kind: SoundKind, tag: string): void => {
     setQuery('');
     library.place.show(kind, kind === place.kind ? toggledTag(selected.map(({ name }) => name), tag) : [tag]);
-  }, [library, place.kind, selected, setQuery]);
+  });
+
+  // A portal keeps the rail in this tree: its keys and drops still reach the handlers below.
+  const railKind = searching === '' ? place.kind : null;
+  // Kept while what it shows stands: typing in the search renders no tag of it.
+  const rail = useMemo(
+    () => <LibraryRail library={library} director={director} actions={actions} shelves={shelves} kind={railKind} selected={selectedKeys} onRoot={showRoot} onTag={pressTag} />,
+    [library, director, actions, shelves, railKind, selectedKeys, showRoot, pressTag, version],
+  );
 
   const noRoots = library.rootOf('music').status === 'unlinked' && library.rootOf('ambience').status === 'unlinked';
   const keep = (event: React.KeyboardEvent): void => {
@@ -172,8 +182,6 @@ export function LibraryView({ query, onQuery: setQuery, railSlot }: LibraryViewP
       : !linked ? t('audio.library.linkHere')
         : library.isMissing(place.kind) ? t('audio.library.unreachable') : t('audio.library.folderEmpty');
 
-  // A portal keeps the rail in this tree: its keys and drops still reach the handlers below.
-  const rail = <LibraryRail library={library} director={director} actions={actions} shelves={shelves} kind={searching === '' ? place.kind : null} selected={selectedKeys} onRoot={showRoot} onTag={pressTag} />;
 
   return (
     <div

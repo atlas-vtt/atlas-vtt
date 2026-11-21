@@ -364,6 +364,8 @@ export const audio: Translation = {
   'audio.library.clearSearch': 'Очистить поиск',
   'audio.library.linkHere': 'Привяжите папку, чтобы увидеть её содержимое.',
   'audio.library.loading': 'Загрузка библиотеки',
+  'audio.library.loadingTags': 'Загрузка меток',
+  'audio.mood.loading': 'Загрузка настроений',
   'audio.library.rail': 'Музыка и фон',
   'audio.library.overlap': 'Папки музыки и фона не могут лежать одна внутри другой.',
   'audio.library.reserved': 'В этой папке хранятся настроения и записи Atlas, а не звуки.',

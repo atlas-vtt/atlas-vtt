@@ -364,6 +364,8 @@ export const audio: Translation = {
   'audio.library.clearSearch': 'Effacer la recherche',
   'audio.library.linkHere': 'Liez un dossier pour voir ce qu\'il contient.',
   'audio.library.loading': 'Chargement de la bibliothèque',
+  'audio.library.loadingTags': 'Chargement des étiquettes',
+  'audio.mood.loading': 'Chargement des atmosphères',
   'audio.library.rail': 'Musique et ambiance',
   'audio.library.overlap': 'Les dossiers de musique et d\'ambiance ne peuvent pas être l\'un dans l\'autre.',
   'audio.library.reserved': 'Ce dossier contient les atmosphères et les enregistrements d\'Atlas, pas des sons.',

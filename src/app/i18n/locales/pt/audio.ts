@@ -364,6 +364,8 @@ export const audio: Translation = {
   'audio.library.clearSearch': 'Limpar busca',
   'audio.library.linkHere': 'Vincule uma pasta para ver o que há nela.',
   'audio.library.loading': 'Carregando a biblioteca',
+  'audio.library.loadingTags': 'Carregando as tags',
+  'audio.mood.loading': 'Carregando os climas',
   'audio.library.rail': 'Música e ambientação',
   'audio.library.overlap': 'As pastas de música e de ambientação não podem ficar uma dentro da outra.',
   'audio.library.reserved': 'Essa pasta guarda os climas e registros do Atlas, não sons.',

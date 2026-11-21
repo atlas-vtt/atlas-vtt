@@ -80,9 +80,24 @@ const trackPath = (pack: MusicPack, track: PackTrack): string => `${packFolder(p
 /** How many tracks of each pack lie in its folder; null until the music root has been read whole. */
 export function musicPackTrackCounts(library: SoundLibrary): ReadonlyMap<string, number> | null {
   if (!library.locationOf('music') || !library.isWalked('music')) return library.rootOf('music').status === 'unlinked' ? new Map() : null;
-  const paths = library.filesOf('music').map(({ entry }) => entry.path);
-  return new Map(MUSIC_PACKS.map((pack) => [pack.id, paths.filter((path) => path.startsWith(`${packFolder(pack.name)}/`)).length]));
+  const files = library.filesOf('music');
+  let counts = countsOfFiles.get(files);
+  if (!counts) {
+    // One pass, once per listing: the offer asks on every render of the rail, and a library may hold ten thousand files.
+    const packOf = new Map(MUSIC_PACKS.map((pack) => [packFolder(pack.name), pack.id]));
+    const found = new Map(MUSIC_PACKS.map((pack) => [pack.id, 0]));
+    for (const { entry } of files) {
+      const second = entry.path.indexOf('/', MUSIC_FOLDER.length + 1);
+      const id = second < 0 ? undefined : packOf.get(entry.path.slice(0, second));
+      if (id !== undefined) found.set(id, (found.get(id) ?? 0) + 1);
+    }
+    counts = found;
+    countsOfFiles.set(files, counts);
+  }
+  return counts;
 }
+
+const countsOfFiles = new WeakMap<object, ReadonlyMap<string, number>>();
 
 /**
  * The packs whose folder holds all their tracks; null until the music root has been read whole. A pack

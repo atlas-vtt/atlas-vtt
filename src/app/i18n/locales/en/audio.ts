@@ -380,6 +380,8 @@ export const audio = {
   'audio.library.clearSearch': 'Clear search',
   'audio.library.linkHere': 'Link a folder to see what lies in it.',
   'audio.library.loading': 'Loading the library',
+  'audio.library.loadingTags': 'Loading the tags',
+  'audio.mood.loading': 'Loading the moods',
   'audio.library.rail': 'Music and ambience',
   'audio.library.overlap': 'The music and ambience folders cannot lie inside each other.',
   'audio.library.reserved': 'That folder holds Atlas\'s moods and records, not sounds.',

@@ -364,6 +364,8 @@ export const audio: Translation = {
   'audio.library.clearSearch': 'Suche leeren',
   'audio.library.linkHere': 'Verknüpfe einen Ordner, um zu sehen, was darin liegt.',
   'audio.library.loading': 'Bibliothek wird geladen',
+  'audio.library.loadingTags': 'Tags werden geladen',
+  'audio.mood.loading': 'Stimmungen werden geladen',
   'audio.library.rail': 'Musik und Ambiente',
   'audio.library.overlap': 'Musik- und Ambiente-Ordner dürfen nicht ineinander liegen.',
   'audio.library.reserved': 'Dieser Ordner enthält die Stimmungen und Einträge von Atlas, keine Sounds.',
