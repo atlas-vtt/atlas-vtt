@@ -2,6 +2,11 @@
   "version": "0.18.1-beta.0",
   "releases": [
     {
+      "version": "0.18.1-beta.0",
+      "title": "Coming in 0.18.1",
+      "markdown": "## Fixed\n\n- A Number value written with advantage or disadvantage (`+7 adv`) no longer shows \"Not a number\"; a value that rolls as a bonus keeps the word (`7 adv` rolls `+7 adv`)\n\n## Atlas Online\n\n- Players' rolls written with `adv` or `dis` (`+4 adv` on the character sheet) roll with the dice set's advantage or disadvantage instead of being refused, also when rolled privately"
+    },
+    {
       "version": "0.18.0",
       "date": "2026-11-21",
       "title": "Initiative, dice and seven languages",
