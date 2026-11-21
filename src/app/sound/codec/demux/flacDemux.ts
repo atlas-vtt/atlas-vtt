@@ -121,10 +121,11 @@ export async function demuxFlac(window: BlobWindow): Promise<EncodedSource> {
           position += 1;
           continue;
         }
-        let next = 2;
+        const limit = bytes.length - MAX_FRAME_HEADER;
         const frameCrc = new FrameCrc(bytes);
-        while (next < bytes.length - MAX_FRAME_HEADER && !(frameHeaderAt(bytes, next, maxBlock) && frameCrc.endsAt(next))) next++;
-        const found = next < bytes.length - MAX_FRAME_HEADER;
+        let next = 2;
+        while (next < limit && !(frameHeaderAt(bytes, next, maxBlock) && frameCrc.endsAt(next))) next++;
+        const found = next < limit;
         if (!found && !atEnd) throw new SoundImportError('unreadable', 'A FLAC frame longer than any should be.');
         const end = found ? next : bytes.length;
         const packet: EncodedPacket = { data: bytes.slice(0, end), frames: block };
