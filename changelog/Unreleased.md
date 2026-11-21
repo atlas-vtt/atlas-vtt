@@ -10,6 +10,7 @@
 - "Combat has started" and "Combat has ended" show in the middle of the player view when the initiative list is vertical, instead of beside the list
 - Outside a fight, the initiative list shows a fade at its bottom while there is more to scroll to, as it does at its top
 - Forget explored areas forgets every floor of a scene, not only the floor you are looking at, and online players on other floors forget theirs too
+- Sharing a template, game system or dice set in the Armarium no longer stops at "The Armarium cannot be reached" when the account server stumbles for a moment: Atlas asks once more before giving up
 
 ## Atlas Online
 
