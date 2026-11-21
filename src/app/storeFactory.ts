@@ -238,6 +238,8 @@ export interface ViewAtlasState extends ViewState {
   applyLevelScene: SceneLevelsSlice['applyLevelScene'];
   moveTokensToLevel: SceneLevelsSlice['moveTokensToLevel'];
   alignLevel: SceneLevelsSlice['alignLevel'];
+  forgetOtherLevelsExplored: SceneLevelsSlice['forgetOtherLevelsExplored'];
+  restoreLevelsExplored: SceneLevelsSlice['restoreLevelsExplored'];
   addLevelLink: SceneLevelsSlice['addLevelLink'];
   updateLevelLink: SceneLevelsSlice['updateLevelLink'];
   deleteLevelLink: SceneLevelsSlice['deleteLevelLink'];
@@ -1542,6 +1544,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               // Counted while the scene is open: a file never brings them.
               turnMoves: current.turnMoves,
               fightsStarted: current.fightsStarted,
+              exploredForgotten: current.exploredForgotten,
             };
           },
 

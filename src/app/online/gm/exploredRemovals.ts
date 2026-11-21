@@ -6,6 +6,7 @@ interface Seen {
   readonly edits: number;
   readonly source: string | null;
   readonly memoryOn: boolean;
+  readonly forgotten: number;
 }
 
 /**
@@ -13,7 +14,9 @@ interface Seen {
  * ever adds to the memory; it loses some through an edit by hand of the floor while the GM's view
  * shows it (its undo and redo too: the count of edits moves), counted with the save that holds it;
  * through a load (a snapshot restored, the scene opened again) that ends with another memory than
- * before it; and where the memory went from some to none or was switched off. The serial never goes
+ * before it; where the memory went from some to none or was switched off; and where the GM forgot
+ * every floor's memory (`exploredForgotten`) while the view showed another floor, since players may
+ * remember one whose saved memory was none already. The serial never goes
  * back, so a player who missed a removal still holds another serial than the newest.
  */
 export class ExploredRemovals {
@@ -56,7 +59,7 @@ export class ExploredRemovals {
   observe(state: SceneState): void {
     const source = levelExploredMask(state);
     const seen = this.seen;
-    this.seen = { edits: state.exploredEdits, source, memoryOn: exploredMemoryOn(state.lighting) };
+    this.seen = { edits: state.exploredEdits, source, memoryOn: exploredMemoryOn(state.lighting), forgotten: state.exploredForgotten ?? 0 };
     if (this.beforeLoad !== undefined) {
       // The count of edits starts over with every load.
       if (source !== this.beforeLoad) this.count++;
@@ -75,6 +78,8 @@ export class ExploredRemovals {
       this.edited = false;
       this.count++;
     }
-    if ((source === null && seen.source !== null) || (seen.memoryOn && !this.seen.memoryOn)) this.count++;
+    // The floor the GM's view shows is counted by its edit, with the save that holds it.
+    const forgotten = seen.forgotten !== this.seen.forgotten && !this.shown();
+    if ((source === null && seen.source !== null) || (seen.memoryOn && !this.seen.memoryOn) || forgotten) this.count++;
   }
 }

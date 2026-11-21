@@ -161,14 +161,15 @@ export function travelledCoverage(step: { before: Uint8Array; after: Uint8Array;
 }
 
 /**
- * The edits made to a scene's explored memory by hand, each kept as the texels of its region
- * before and after, so undo and redo can put the memory back. Steps are numbered as the store
+ * The edits made to a scene's explored memory by hand, each kept as what undo and redo need to put
+ * the memory back (the texels of its region before and after, `ExploredStep`; the other floors'
+ * memories a Forget took, `ForgottenFloors`). Steps are numbered as the store
  * counts them (`exploredEdits`): step n leads from the memory after n − 1 edits to the memory
  * after n. It holds as many steps as the undo history holds (`limit`), so no step the history
  * can reach is missing here.
  */
-export class ExploredEditStack<Region> {
-  private readonly steps = new Map<number, ExploredStep<Region>>();
+export class ExploredEditStack<Step> {
+  private readonly steps = new Map<number, Step>();
 
   constructor(private readonly limit: number) {}
 
@@ -177,7 +178,7 @@ export class ExploredEditStack<Region> {
   }
 
   /** Records step `revision`; the steps after it were undone and are gone, as in the history. */
-  record(revision: number, step: ExploredStep<Region>): void {
+  record(revision: number, step: Step): void {
     for (const known of [...this.steps.keys()]) {
       if (known >= revision || known <= revision - this.limit) this.steps.delete(known);
     }
@@ -189,8 +190,8 @@ export class ExploredEditStack<Region> {
    * newest back when `to` is less, redone from the oldest on otherwise. A step that is not kept
    * is left out.
    */
-  path(from: number, to: number): ExploredStep<Region>[] {
-    const steps: ExploredStep<Region>[] = [];
+  path(from: number, to: number): Step[] {
+    const steps: Step[] = [];
     const undone = to < from;
     for (let revision = undone ? from : from + 1; undone ? revision > to : revision <= to; revision += undone ? -1 : 1) {
       const step = this.steps.get(revision);
