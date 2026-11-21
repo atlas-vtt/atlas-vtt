@@ -349,11 +349,11 @@ $tray-quiet-text: color-mix(in srgb, var(--text-muted) 70%, var(--text-normal));
 }
 
 .atlas-dice-tray__advantage {
+  // As tall as every other control: the options $surface-inset inside the track.
+  --atlas-segmented-fit-height: calc(#{$tray-control} - #{2 * $surface-inset});
   margin-inline: var(--atlas-menu-text-inset);
 
-  // As tall as every other control: the options $surface-inset inside the track.
   .atlas-segmented__option {
-    height: calc(#{$tray-control} - #{2 * $surface-inset});
     padding-block: 0;
   }
 }
@@ -877,8 +877,8 @@ $history-close: 180ms;
       height: $touch-target;
     }
 
-    .atlas-dice-tray__advantage .atlas-segmented__option {
-      min-height: $touch-target;
+    .atlas-dice-tray__advantage {
+      --atlas-segmented-fit-height: #{$touch-target};
     }
 
     .atlas-toggle::before {

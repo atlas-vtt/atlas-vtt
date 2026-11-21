@@ -21,6 +21,7 @@
 
 ## Fixed
 
+- Choices in a row of buttons wrap onto two lines when a translation is too long for them instead of running into each other, as the stairs' Up only / Down only / Both ways did in Portuguese
 - Clicking a hex linked to a note opens the note again when the hex is coloured with the Draw tool's Cells or covered by another drawing on the map; drawings above the tokens still take the click
 - With a light's panel open, a click on the map outside it closes the panel instead of placing another light or starting a wall
 - FLAC files no longer fail to import on the Sound page with a decoding error; about a third of FLAC music hit it
