@@ -45,6 +45,11 @@ $ctx-inset: $surface-inset;
   }
 }
 
+// A menu that leads with a feature row (a name and a line under it, besides its detail) takes the room to show them whole.
+.atlas-ctx-menu:has(.atlas-ctx-item--feature) {
+  max-width: min(400px, var(--radix-dropdown-menu-content-available-width, 400px));
+}
+
 // A menu too tall for its window (`useMenuFit`); `--atlas-ctx-rows` is how many rows fit
 .atlas-ctx-menu--columns {
   display: grid;
