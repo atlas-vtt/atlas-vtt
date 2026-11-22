@@ -9,6 +9,7 @@ import type { SoundSnapshot } from '../soundDirector/soundSnapshot';
 import { isPlaying } from '../soundDirector/tableSound';
 import { whatPlays } from '../soundDirector/whatPlays';
 import type { RemoteMood, RemoteMusic, RemoteState } from './remoteProtocol';
+import { remoteCombat, remotePlayer, type TableSource } from './remoteTable';
 
 /** What the remote reads of the director: its snapshot, its clock and the names of what plays. */
 export interface RemoteSource {
@@ -39,7 +40,7 @@ function remoteMusic(source: RemoteSource): RemoteMusic | null {
   };
 }
 
-export function remoteState(source: RemoteSource, moodOf: (id: string) => Mood | null): RemoteState {
+export function remoteState(source: RemoteSource, moodOf: (id: string) => Mood | null, table: TableSource): RemoteState {
   const { mix, levels } = source.snapshot();
   const now = source.now();
   const mood = mix.mood ? moodOf(mix.mood.id) : null;
@@ -55,5 +56,7 @@ export function remoteState(source: RemoteSource, moodOf: (id: string) => Mood |
     nowPlaying: source.isOn && named ? whatPlays(held, mood, source.shelf, now) : null,
     levels: { masterDb: levels.masterDb, musicDb: levels.musicDb, ambienceDb: levels.ambienceDb },
     ranges: { channel: [CHANNEL_DB_RANGE.min, CHANNEL_DB_RANGE.max], strip: [MOOD_LIMITS.minLevelDb, MOOD_LIMITS.maxLevelDb] },
+    combat: remoteCombat(table),
+    player: remotePlayer(table),
   };
 }

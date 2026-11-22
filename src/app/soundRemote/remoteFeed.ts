@@ -13,8 +13,8 @@ export interface FeedSource {
 
 /**
  * The remote's live stream (server-sent events): `moods` when the moods change, `state` when what plays
- * does. Each is sent whole, and only when its text changed, so a director that publishes often costs a
- * comparison. It looks only while a controller listens.
+ * does or the table (the GM's fight, the player window) changed. Each is sent whole, and only when its text
+ * changed, so a director that publishes often costs a comparison. It looks only while a controller listens.
  */
 export class RemoteFeed {
   private readonly clients = new Set<NodeResponse>();

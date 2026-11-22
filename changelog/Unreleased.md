@@ -4,6 +4,7 @@
 - Settings → Sound copies the credit line for the starter music, ready for the description of a stream or video
 - **Downloads**: a button at the foot of the Sound page's sidebar fills as packs come in; open it to see each pack's progress, speed and time left, cancel one, try a failed one again or show a finished one in the library. A pack stopped part way offers the rest
 - **Stream Deck**: control music and ambience from a Stream Deck: press moods, stop, pause, skip and turn levels on keys and dials, with each mood's crest on its key. Switch it on in Settings → Stream Deck and pair the Atlas plugin for Stream Deck
+- **Stream Deck combat and player view**: start and end combat, roll initiative, present the map, freeze the players' camera, hide the map, take back a handout and show players the image under the pointer from Stream Deck keys
 
 ## Improved
 

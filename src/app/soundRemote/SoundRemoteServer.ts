@@ -4,6 +4,7 @@ import { RemoteCommands, type RemoteDirector } from './remoteCommands';
 import { RemoteFeed } from './remoteFeed';
 import { MAX_REMOTE_BODY, parseClientName, parseRemoteCommand, REMOTE_API_VERSION, type RemoteHello } from './remoteProtocol';
 import type { RemoteSettingsStore } from './remoteSettings';
+import { isTableCommand, runTableCommand, type TableSource } from './remoteTable';
 import { remoteMoods, remoteState, type RemoteSource } from './remoteState';
 import type { NodeHttpModule, NodeRequest, NodeResponse, NodeServer } from './nodeHttp';
 
@@ -24,6 +25,8 @@ export interface SoundRemoteDeps {
   port: number;
   director: RemoteDirector & RemoteSource & { subscribe(listener: () => void): () => void };
   moods: MoodSource;
+  /** The fight on the GM's map and the player window, which keys act on whether sound is on or not. */
+  table: TableSource;
   settings: RemoteSettingsStore;
   askToPair(client: string): PairingPrompt;
   /** The port could not be opened (another program holds it). */
@@ -73,7 +76,8 @@ function readJson(request: NodeRequest): Promise<unknown> {
 
 /**
  * The sound remote: an HTTP server on 127.0.0.1 that lets a paired controller (the Atlas Stream Deck plugin)
- * press moods, stop, pause, skip and set levels, and pushes what plays so its keys light up. It sends the
+ * press moods, stop, pause, skip and set levels, start and end fights, roll initiative and work the player window,
+ * and pushes what plays and the table's state so its keys light up. It sends the
  * director the same intents the palette and the Sound page send, and holds no sound state of its own.
  */
 export class SoundRemoteServer {
@@ -87,7 +91,7 @@ export class SoundRemoteServer {
     this.commands = new RemoteCommands(deps.director, (id) => deps.moods.mood(id));
     this.feed = new RemoteFeed({
       moods: () => remoteMoods(deps.moods.moods()),
-      state: () => remoteState(deps.director, (id) => deps.moods.mood(id)),
+      state: () => remoteState(deps.director, (id) => deps.moods.mood(id), deps.table),
     });
   }
 
@@ -184,9 +188,15 @@ export class SoundRemoteServer {
       send(response, 400, { error: 'unknown-command' });
       return;
     }
-    const refused = this.commands.run(command);
-    if (refused) send(response, refused === 'no-mood' ? 404 : 409, { error: refused });
-    else send(response, 204);
+    const onTable = isTableCommand(command);
+    const refused = onTable ? runTableCommand(this.deps.table, command) : this.commands.run(command);
+    if (refused) {
+      send(response, refused === 'no-mood' ? 404 : 409, { error: refused });
+      return;
+    }
+    send(response, 204);
+    // The table tells nobody it changed; the next look would find it within a second
+    if (onTable) this.feed.changed();
   }
 
   /** One prompt at a time; the token is made only once the GM allowed it, and replaces the one before. */

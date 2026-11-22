@@ -4,10 +4,12 @@ import { MoodStore } from '../soundLibrary/MoodStore';
 import type { SoundDirector } from '../soundDirector/SoundDirector';
 import { nodeHttpOf } from '../soundRemote/nodeHttp';
 import { REMOTE_PORT } from '../soundRemote/remoteProtocol';
+import { HoveredElement } from '../soundRemote/hoveredElement';
 import { RemoteSettingsStore } from '../soundRemote/remoteSettings';
 import { SoundRemoteServer, type PairingPrompt } from '../soundRemote/SoundRemoteServer';
 import { showNotice } from '../ui/notice';
 import { ChoiceModal } from './ChoiceModal';
+import { remoteTableOf } from './soundRemoteTable';
 
 function askToPair(plugin: Plugin, client: string): PairingPrompt {
   const modal = new ChoiceModal<boolean>(plugin.app, {
@@ -26,36 +28,40 @@ function askToPair(plugin: Plugin, client: string): PairingPrompt {
 export function registerSoundRemote(plugin: Plugin, director: SoundDirector): RemoteSettingsStore {
   const settings = new RemoteSettingsStore(plugin.app);
   let server: SoundRemoteServer | null = null;
+  const hovered = new HoveredElement(plugin.app.workspace);
+  const stop = (): void => {
+    server?.stop();
+    server = null;
+    hovered.dispose();
+  };
   const follow = (): void => {
     const wanted = settings.get().enabled;
     if (wanted && !server) {
       const http = nodeHttpOf(window);
       if (!http) return;
+      // Only while the remote listens: nothing watches the pointer otherwise
+      hovered.start();
       server = new SoundRemoteServer({
         http,
         port: REMOTE_PORT,
         director,
         moods: MoodStore.forApp(plugin.app),
+        table: remoteTableOf(plugin.app, hovered),
         settings,
         askToPair: (client) => askToPair(plugin, client),
         onListenError: (error) => {
           console.error('[Atlas] The sound remote could not listen', error);
           showNotice(t('remote.portTaken', { port: REMOTE_PORT }));
-          server?.stop();
-          server = null;
+          stop();
         },
       });
       server.start();
     } else if (!wanted && server) {
-      server.stop();
-      server = null;
+      stop();
     }
   };
   plugin.app.workspace.onLayoutReady(follow);
   plugin.register(settings.onChange(follow));
-  plugin.register(() => {
-    server?.stop();
-    server = null;
-  });
+  plugin.register(stop);
   return settings;
 }

@@ -35,6 +35,20 @@ export type RemoteCommand =
   | { type: 'shuffle' }
   | { type: 'repeat' }
   | { type: 'muteMusic' }
+  /** Starts a fight when none runs on the GM's map, ends it when one does. */
+  | { type: 'combat' }
+  /** Rolls every combatant's initiative, as the tracker's Roll button does. */
+  | { type: 'rollInitiative' }
+  /** Presents the map the GM has in front to the players, opening the player window where it is closed. */
+  | { type: 'present' }
+  /** Freezes the players' camera, or lets it follow the GM again. */
+  | { type: 'freeze' }
+  /** Lowers the player window's curtain (players see black), or lifts it. */
+  | { type: 'curtain' }
+  /** Takes the image or loot the player window shows away from players. */
+  | { type: 'takeBackHandout' }
+  /** Shows players the vault image under the pointer anywhere in Obsidian, as its menu's "Display on player view" does. */
+  | { type: 'showHoveredImage' }
   /** `db` sets the level, `deltaDb` moves it; `reset` puts it back to 0 dB. Exactly one of them. */
   | { type: 'level'; channel: RemoteChannel; db?: number; deltaDb?: number; reset?: true };
 
@@ -56,6 +70,32 @@ export interface RemoteMusic {
   track: string | null;
 }
 
+/** The fight on the map the GM has in front (`combatView`). */
+export interface RemoteCombat {
+  /** A fight runs. */
+  active: boolean;
+  round: number;
+  /** Combatants in the tracker. */
+  combatants: number;
+  /** The map's rules roll numbers (turn order); a fight by sides or by cards rolls nothing. */
+  rolls: boolean;
+}
+
+/** The local player window, as its bar shows it. */
+export interface RemotePlayer {
+  open: boolean;
+  /** The map the GM has in front is the presented scene. */
+  presented: boolean;
+  /** Players' camera is frozen (false while TrueScale pins it, as the bar shows it). */
+  frozen: boolean;
+  /** TrueScale pins the players' camera: freezing is not offered then. */
+  trueScale: boolean;
+  /** The curtain is down: players see black. */
+  hidden: boolean;
+  /** Players are shown an image or loot. */
+  handout: boolean;
+}
+
 export interface RemoteState {
   /** Sound is switched on in Atlas' experimental features. Every command is refused while it is not. */
   soundOn: boolean;
@@ -70,6 +110,9 @@ export interface RemoteState {
   nowPlaying: string | null;
   levels: { masterDb: number; musicDb: number; ambienceDb: number };
   ranges: { channel: [number, number]; strip: [number, number] };
+  /** Null while there is no map to act on. */
+  combat: RemoteCombat | null;
+  player: RemotePlayer;
 }
 
 export interface RemoteHello {
@@ -77,7 +120,7 @@ export interface RemoteHello {
   api: number;
 }
 
-const SIMPLE = new Set(['nextMood', 'stopAll', 'pause', 'nextTrack', 'previousTrack', 'shuffle', 'repeat', 'muteMusic']);
+const SIMPLE = new Set(['nextMood', 'stopAll', 'pause', 'nextTrack', 'previousTrack', 'shuffle', 'repeat', 'muteMusic', 'combat', 'rollInitiative', 'present', 'freeze', 'curtain', 'takeBackHandout', 'showHoveredImage']);
 const MAX_ID = 200;
 /** No dial turns further in one event. */
 const MAX_STEP_DB = 60;

@@ -5,6 +5,11 @@ import { EMPTY_MIX, type SoundMix } from '@/app/soundDirector/soundMix';
 import type { SoundSnapshot } from '@/app/soundDirector/soundSnapshot';
 import { EMPTY_TABLE_SOUND } from '@/app/soundDirector/tableSound';
 import { RemoteSettingsStore } from '@/app/soundRemote/remoteSettings';
+import type { TableSource } from '@/app/soundRemote/remoteTable';
+import { DEFAULT_INITIATIVE_RULES } from '@/app/gameSystems/initiativeRules';
+import type { ViewAtlasState } from '@/app/storeFactory';
+import type { InitiativeRules } from '@/app/types/initiativeRulesTypes';
+import type { InitiativeState } from '@/app/types/initiativeTypes';
 
 export const remoteMood = (id: string, name = id): Mood => ({ id, name, order: 0, fadeSeconds: 2, music: { tracks: [], shuffle: false, levelDb: 0 }, layers: [], icon: 'inn' });
 
@@ -51,4 +56,43 @@ export function fakeRemoteDirector(mix: SoundMix = EMPTY_MIX) {
 export function memoryRemoteSettings(): RemoteSettingsStore {
   const stored = new Map<string, unknown>();
   return new RemoteSettingsStore({ loadLocalStorage: (key: string) => stored.get(key), saveLocalStorage: (key: string, value: unknown) => { stored.set(key, value); } } as never);
+}
+
+/** A table as the remote sees it: one map whose tracker holds `combatants`, and a player window; the actions are spies. */
+export function fakeTable(options: { combatants?: number; rules?: InitiativeRules; map?: boolean } = {}) {
+  const state = {
+    mapPath: 'Maps/Cave.atlasmap',
+    mapLoaded: true,
+    isMapLoading: false,
+    initiative: {
+      isActive: false,
+      round: 0,
+      entries: Array.from({ length: options.combatants ?? 2 }, (_, index) => ({ id: `e${index}`, name: `Goblin ${index}`, initiative: 0, order: index })),
+    } as unknown as InitiativeState,
+    objects: { tokens: {} } as ViewAtlasState['objects'],
+    startCombat: vi.fn((): void => { state.initiative = { ...state.initiative, isActive: true, round: 1 }; }),
+    endCombat: vi.fn((): void => { state.initiative = { ...state.initiative, isActive: false, round: 0 }; }),
+  };
+  const map = {
+    state: () => state,
+    rules: (): InitiativeRules => options.rules ?? { ...DEFAULT_INITIATIVE_RULES },
+    defeated: vi.fn((): ReadonlySet<string> => new Set(['e1'])),
+    roll: vi.fn(),
+    presented: vi.fn(() => false),
+    present: vi.fn(),
+  };
+  const window = { open: true, frozen: false, trueScale: false, curtained: false, handout: false, hoveringImage: false };
+  const player = {
+    isOpen: () => window.open,
+    isFrozen: () => window.frozen,
+    isTrueScale: () => window.trueScale,
+    isCurtained: () => window.curtained,
+    handoutShown: () => window.handout,
+    toggleFreeze: vi.fn(() => { window.frozen = !window.frozen; }),
+    setCurtain: vi.fn((down: boolean) => { window.curtained = down; }),
+    takeBackHandout: vi.fn(() => { window.handout = false; }),
+    showHoveredImage: vi.fn(() => window.hoveringImage),
+  };
+  const table: TableSource = { map: () => (options.map === false ? null : map), player };
+  return { table, state, map, player, window };
 }
