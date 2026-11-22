@@ -1,50 +1,53 @@
 ## New
 
-- **Music packs**: get Vindsvept's fantasy music on the Sound page, 365 tracks in ten packs sorted by mood, each ready to play the moment it lands and tagged Instrumental or With vocals
-- Settings → Sound copies the credit line for the starter music, ready for the description of a stream or video
-- **Downloads**: a button at the foot of the Sound page's sidebar fills as packs come in; open it to see each pack's progress, speed and time left, cancel one, try a failed one again or show a finished one in the library. A pack stopped part way offers the rest
-- **Stream Deck**: control music and ambience from a Stream Deck: press moods, stop, pause, skip and turn levels on keys and dials, with each mood's crest on its key. Switch it on in Settings → Stream Deck and pair the Atlas plugin for Stream Deck
-- **Stream Deck table keys**: start and end combat, roll initiative, roll a saved roll, show or hide your rolls, present the map, freeze the players' camera, hide the map, take back a handout and show players the image under the pointer from Stream Deck keys
+**Music packs**
+- Atlas now ships with an optional, premium music collection of over 28 hours, 365 free, beautiful fantasy tracks by Swedish artist Vindsvept on the Sound page, in ten packs sorted by mood 
+- For streaming credits: You can copy a credit line from the Sound entry in Obsidian's Atlas settings
+
+**Native Atlas Stream Deck Support**
+- start or end combat, hide or reveal the local player view, switch the shared scene, play moods, pause, skip and change volume all directly from your stream deck 
+- hover your mouse over any image in obsidian and click the stream deck button to share the handout with players. clicking again will dismiss it. works with Atlas Online and the local player view
+- Configure under Settings → Stream Deck
+
+**Downloads**
+- a button at the bottom of the Sound page shows your downloads and lets you cancel or retry them
 
 ## Improved
 
-- The starter ambience plays the moment it is downloaded, without being converted first, and is a third smaller
-- The Sound page stays smooth with thousands of tracks: the list scrolls without stutter, pressing a tag, typing a search or adding a file redraws only what changed, and tags, moods, track lengths and scene pictures show placeholders in their own shape while they load
-- The starter ambience and starter music offers on the Sound page can be hidden with their ×; both stay in the ⋯ menu of Ambience and Music
-- Sort the Sound page's library by name or by length: press a column's heading, press again to reverse. The choice applies to tags and search results too, and Play all plays in that order
-- What’s new in Atlas links to the Atlas website and Patreon beside GitHub, and takes the look of the other dialogs
-- Dragging cards in the initiative tracker works like arranging a phone's home screen: the cards wiggle, the one you hold lifts and the others make room, in the compact view too
-- A card moved in the initiative tracker glides straight to its new place in the player view
-- The initiative tracker's compact view shows twelve lines and scrolls for the rest, instead of growing to the height of the map
-- The dice tray offers advantage and disadvantage only where the collection's dice set has a rule for them: collections without a game system, Old-School Essentials, Daggerheart and Cairn roll a plain die. Pick the d20 set in the collection's Dice settings to get advantage back
-- Where combatants act by sides, drag a side by its heading before the fight to choose which side goes first: its cards pile up while you carry it, so a long side is as easy to move as one card, and spread out again where you drop it
-- The Ranges rings and the range check of the measure tool now show in the player view, and to online players, as other measurements do: not while Players see it is off, and not on a token the players cannot see. Ranges can now be used in the session view too
+- Improved performance for download of starter ambience pack
+- Improved performance of sound page with many tracks
+- You can hide the starter ambience and starter music offers
+- Sort the Sound library by name or length by clicking a column heading
+- Smoother dragging for initiative tracker entries
+- The dice tray only offers advantage and disadvantage where the collection's dice rules support it
+- When combatants act by sides, drag a side's heading to choose who goes first
+- Ranges from the measure tool now show in the player view and to online players
 
 ## Fixed
 
-- S closes the Sound page again after you start a track or press any other button on it; only while you type in a text field does S type instead
-- Choices in a row of buttons wrap onto two lines when a translation is too long for them instead of running into each other, as the stairs' Up only / Down only / Both ways did in Portuguese
-- Clicking a hex linked to a note opens the note again when the hex is coloured with the Draw tool's Cells or covered by another drawing on the map; drawings above the tokens still take the click
-- With a light's panel open, a click on the map outside it closes the panel instead of placing another light or starting a wall
-- FLAC files no longer fail to import on the Sound page with a decoding error; about a third of FLAC music hit it
-- A Number value written with advantage or disadvantage (`+7 adv`) no longer shows "Not a number"; a value that rolls as a bonus keeps the word (`7 adv` rolls `+7 adv`)
-- A reference to such a value (`@perception` on `+2 adv`) reads its number, and a sum written with the word shows its total (`10 + @dex adv` reads `12 adv`)
-- A saved roll written with `adv` or `dis` rolls with it from the dice row instead of being refused
-- "Combat has started" and "Combat has ended" show in the middle of the player view when the initiative list is vertical, instead of beside the list
-- Outside a fight, the initiative list shows a fade at its bottom while there is more to scroll to, as it does at its top
-- Forget explored areas forgets every floor of a scene, not only the floor you are looking at, and online players on other floors forget theirs too
-- Sharing a template, game system or dice set in the Armarium no longer stops at "The Armarium cannot be reached" when the account server stumbles for a moment: Atlas asks once more before giving up
-- Fitting the grid of a floor you moved with Position floor no longer turns the map black: while the grid panel (or a floor being dragged into place) shows the floor's map somewhere else, the map shows whole, without the floor below cutting through it
-- On a hex grid, Position floor stops a floor at the map's top or left edge where it is, instead of throwing it a row the other way
+- Long translations no longer overlap in rows of buttons
+- Clicking a hex linked to a note works again when a drawing covers the hex
+- Clicking the map while a light's panel is open now only closes the panel
+- FLAC files no longer fail to import on the Sound page
+- Values written with `adv` or `dis` (`+7 adv`) now work in statblocks, references, sums and saved rolls
+- "Combat has started" and "Combat has ended" now show in the middle of the player view when the initiative list is vertical
+- The initiative list shows a fade at the bottom when there is more to scroll
+- Forget explored areas now forgets every floor of a scene
+- Sharing to the Armarium no longer fails when the server has a short hiccup
+- Fitting the grid of a moved floor no longer turns the map black
+- Position floor on a hex grid no longer jumps a row at the map's edge
 
 ## Atlas Online
 
-- Players' rolls written with `adv` or `dis` (`+4 adv` on the character sheet) roll with the dice set's advantage or disadvantage instead of being refused, also when rolled privately
-- The players' dice tray takes a roll typed with `adv` or `dis` (`1d20+5 adv`), and Shift-click or the roll menu offers advantage on a sheet roll written that way
-- Players can change a Number value written with `adv` or `dis` on their character sheet (`+4 adv` to `+5 adv`)
-- The players' character sheet shows a statblock's Markdown as Obsidian does: bold values in bold, links like `[Spellcasting](#Spellcasting)` as their words, and HTML tags used for styling no longer show as written
-- On some Windows laptops a lit scene could crash a player's browser even at the lowest graphics setting: Saver no longer prepares the lighting of the higher settings, and a page whose graphics crashed comes back one setting lower instead of crashing again
-- When the campaign's world map cannot reach players because its map or scene was deleted or shows no image, the GM is told so, instead of players only reading that no world map was chosen
-- A player using the laser pointer on a phone or tablet no longer leaves its dot standing on the map after lifting the finger, for themselves or for anyone else at the table
-- Pinching on a Mac trackpad in Safari zooms the players' world map as smoothly as their battle map
-- A number on the players' character sheet written with a reference (an initiative of `@dex.mod`) shows its value, as the GM's statblock does, instead of the reference as written
+- Players can roll and edit values written with `adv` or `dis`, in the dice tray and on the character sheet
+- The character sheet shows statblock text formatted as in Obsidian: bold, links, no raw HTML
+- Improved performance of lit scenes on Windows hybrid graphics laptops
+- The laser dot no longer stays on the map after a player lifts their finger on a phone or tablet
+- Pinch-zooming the world map in Safari on a Mac is now smooth
+- Numbers with a reference (`@dex.mod`) on the character sheet show their value
+- New modern/sci-fi theme available for Atlas Online
+
+
+Thanks to my Patreon supporters Aaron, Aaron W Scott, Aiden Hatcher, Andrew, Anna B. Meyer, basilisk, Bradley Bell, Carl Corneil, Chris Del Gigante, Daniel Mensinga, Daria Ambrose, Deus Ex Minima, Dewwww, Dom Bosco, Eskil Bolsøy, George Young, Giodude, Hannes Pingel, Ionazh, Jake kulig, Josh Zindler, Joshua Herrin, Kevin Hait, Krangal, LittleBlueShyGuy, Markus Baumann, Michael Breuer, MrEhm, Nick, Pau Benazet Montobbio, SamDark, Scaradeus, ShonkyMapCo, Tim, Tim Roddick-Hull, Tobias Redlich, Voider Elf, Xethgnur, z-lf and Zack Samuels. You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
