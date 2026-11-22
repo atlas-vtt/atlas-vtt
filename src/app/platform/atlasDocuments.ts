@@ -1,10 +1,11 @@
-import type { Plugin } from 'obsidian';
+import type { Plugin, Workspace } from 'obsidian';
 
 /**
  * Runs `enter` for every document Atlas renders in: the main window's and each popout's, now and
- * as windows open. What `enter` returns runs when its window closes, or with Atlas' unload.
+ * as windows open. What `enter` returns runs when its window closes, or when the returned function
+ * is called, which stops following windows too.
  */
-export function inEveryDocument(plugin: Plugin, enter: (doc: Document) => () => void): void {
+export function followEveryDocument(workspace: Workspace, enter: (doc: Document) => () => void): () => void {
   const leaving = new Map<Document, () => void>();
   const start = (doc: Document): void => {
     if (!leaving.has(doc)) leaving.set(doc, enter(doc));
@@ -14,10 +15,17 @@ export function inEveryDocument(plugin: Plugin, enter: (doc: Document) => () => 
     leaving.delete(doc);
   };
   start(document);
-  plugin.app.workspace.iterateAllLeaves((leaf) => start(leaf.view.containerEl.doc));
-  plugin.registerEvent(plugin.app.workspace.on('window-open', (_workspaceWindow, win) => start(win.document)));
-  plugin.registerEvent(plugin.app.workspace.on('window-close', (_workspaceWindow, win) => stop(win.document)));
-  plugin.register(() => {
+  workspace.iterateAllLeaves((leaf) => start(leaf.view.containerEl.doc));
+  const opened = workspace.on('window-open', (_workspaceWindow, win) => start(win.document));
+  const closed = workspace.on('window-close', (_workspaceWindow, win) => stop(win.document));
+  return () => {
+    workspace.offref(opened);
+    workspace.offref(closed);
     for (const doc of Array.from(leaving.keys())) stop(doc);
-  });
+  };
+}
+
+/** `followEveryDocument` for as long as Atlas runs. */
+export function inEveryDocument(plugin: Plugin, enter: (doc: Document) => () => void): void {
+  plugin.register(followEveryDocument(plugin.app.workspace, enter));
 }

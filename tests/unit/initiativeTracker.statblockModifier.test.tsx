@@ -12,7 +12,7 @@ const showNotice = vi.hoisted(() => vi.fn());
 vi.mock('../../src/app/ui/notice', () => ({ showNotice }));
 vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => [] }));
 const played = vi.hoisted(() => ({ campaign: null as { campaign: { name: string } } | null }));
-vi.mock('../../src/app/campaigns/usePlayedSystemCampaign', () => ({ usePlayedSystemCampaign: () => played.campaign }));
+vi.mock('../../src/app/campaigns/playedSystemCampaignName', () => ({ playedSystemCampaignName: () => played.campaign?.campaign.name }));
 vi.mock('../../src/app/pixi/utils/tokenHighlight', () => ({ zoomToTokenWithHighlight: vi.fn() }));
 vi.mock('../../src/app/react/components/StatblockHoverPreview', () => ({
   StatblockHoverPreview: () => null,
