@@ -8,6 +8,7 @@ import { RemoteSettingsStore } from '@/app/soundRemote/remoteSettings';
 import type { TableSource } from '@/app/soundRemote/remoteTable';
 import { DEFAULT_INITIATIVE_RULES } from '@/app/gameSystems/initiativeRules';
 import type { ViewAtlasState } from '@/app/storeFactory';
+import type { DicePreset } from '@/app/types/dicePresetTypes';
 import type { InitiativeRules } from '@/app/types/initiativeRulesTypes';
 import type { InitiativeState } from '@/app/types/initiativeTypes';
 
@@ -80,6 +81,11 @@ export function fakeTable(options: { combatants?: number; rules?: InitiativeRule
     roll: vi.fn(),
     presented: vi.fn(() => false),
     present: vi.fn(),
+    savedRolls: (): readonly DicePreset[] => [
+      { id: 'attack', name: 'Attack', formula: '1d20+5' },
+      { id: 'fire', name: 'Fire bolt', formula: '+2', look: { dice: [{ count: 2, sides: 10, colour: '#ff6600' }], crit: 'natural' } },
+    ],
+    rollSaved: vi.fn(),
   };
   const window = { open: true, frozen: false, trueScale: false, curtained: false, handout: false, hoveringImage: false };
   const player = {
@@ -93,6 +99,8 @@ export function fakeTable(options: { combatants?: number; rules?: InitiativeRule
     takeBackHandout: vi.fn(() => { window.handout = false; }),
     showHoveredImage: vi.fn(() => window.hoveringImage),
   };
-  const table: TableSource = { map: () => (options.map === false ? null : map), player };
-  return { table, state, map, player, window };
+  const shared = { shown: false };
+  const shareRolls = { shown: () => shared.shown, setShown: vi.fn((shown: boolean) => { shared.shown = shown; }) };
+  const table: TableSource = { map: () => (options.map === false ? null : map), player, shareRolls };
+  return { table, state, map, player, window, shareRolls };
 }

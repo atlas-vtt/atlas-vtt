@@ -8,6 +8,8 @@ const fine = { host: `127.0.0.1:${PORT}`, [REMOTE_HEADER]: '1' };
 describe('remote commands from the wire', () => {
   it('reads every command this version knows', () => {
     expect(parseRemoteCommand({ type: 'mood', id: 'tavern' })).toEqual({ type: 'mood', id: 'tavern' });
+    expect(parseRemoteCommand({ type: 'roll', id: 'attack' })).toEqual({ type: 'roll', id: 'attack' });
+    expect(parseRemoteCommand({ type: 'shareRolls' })).toEqual({ type: 'shareRolls' });
     for (const type of ['nextMood', 'stopAll', 'pause', 'nextTrack', 'previousTrack', 'shuffle', 'repeat', 'muteMusic']) {
       expect(parseRemoteCommand({ type })).toEqual({ type });
     }
@@ -18,7 +20,7 @@ describe('remote commands from the wire', () => {
 
   it('refuses what it does not know exactly', () => {
     const refused: unknown[] = [
-      null, 'mood', [], { type: 'eval' }, { type: 'mood' }, { type: 'mood', id: '' }, { type: 'mood', id: 'x'.repeat(201) },
+      null, 'mood', [], { type: 'eval' }, { type: 'mood' }, { type: 'mood', id: '' }, { type: 'roll' }, { type: 'mood', id: 'x'.repeat(201) },
       { type: 'level', channel: 'players', deltaDb: 1 }, { type: 'level', channel: 'master' },
       { type: 'level', channel: 'master', db: 1, deltaDb: 1 }, { type: 'level', channel: 'master', deltaDb: Number.NaN },
       { type: 'level', channel: 'master', deltaDb: 1000 }, { type: 'level', channel: 'master', reset: false },

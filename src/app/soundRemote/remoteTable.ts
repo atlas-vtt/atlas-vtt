@@ -1,10 +1,11 @@
 import { startCombatByRules } from '../initiative/combatStart';
 import { listedByCards, listedBySides } from '../initiative/sides';
 import type { ViewAtlasState } from '../storeFactory';
+import type { DicePreset } from '../types/dicePresetTypes';
 import type { InitiativeRules } from '../types/initiativeRulesTypes';
 import type { RemoteCombat, RemoteCommand, RemotePlayer } from './remoteProtocol';
 
-const TABLE_COMMAND_TYPES = ['combat', 'rollInitiative', 'present', 'freeze', 'curtain', 'takeBackHandout', 'showHoveredImage'] as const;
+const TABLE_COMMAND_TYPES = ['combat', 'rollInitiative', 'present', 'freeze', 'curtain', 'takeBackHandout', 'showHoveredImage', 'roll', 'shareRolls'] as const;
 const TABLE_COMMANDS: ReadonlySet<string> = new Set(TABLE_COMMAND_TYPES);
 
 /** The commands that act on the table (the fight and the player window), not on sound. */
@@ -15,7 +16,7 @@ export function isTableCommand(command: RemoteCommand): command is TableCommand 
 }
 
 /** Why a table command did nothing. */
-export type TableRefusal = 'no-scene' | 'no-combatants' | 'no-rolls' | 'cards-short' | 'no-player-window' | 'true-scale' | 'no-handout' | 'no-image';
+export type TableRefusal = 'no-scene' | 'no-combatants' | 'no-rolls' | 'cards-short' | 'no-player-window' | 'true-scale' | 'no-handout' | 'no-image' | 'no-roll';
 
 /** The map the GM has in front (`remoteMapView`), and the tracker's and the scene tab's own actions on it. */
 export interface TableMap {
@@ -30,6 +31,10 @@ export interface TableMap {
   presented(): boolean;
   /** The eye on its scene tab, opening the player window (`presentTab`). */
   present(): void;
+  /** The saved rolls of its collection (`collectionDiceShelf`). */
+  savedRolls(): readonly DicePreset[];
+  /** Rolls one through the view's dice tool, as the tray does (`rollSavedRoll`). */
+  rollSaved(preset: DicePreset): void;
 }
 
 /** The player window as its bar reads and presses it. */
@@ -46,10 +51,17 @@ export interface TablePlayerWindow {
   showHoveredImage(): boolean;
 }
 
+/** "Show my rolls to players" (`useShareRolls`). */
+export interface TableShareRolls {
+  shown(): boolean;
+  setShown(shown: boolean): void;
+}
+
 export interface TableSource {
   /** The map the GM has in front, or null without one. */
   map(): TableMap | null;
   player: TablePlayerWindow;
+  shareRolls: TableShareRolls;
 }
 
 /** A map with a scene loaded in it; one loading or empty is none to act on. */
@@ -97,10 +109,22 @@ function runCombat(map: TableMap): TableRefusal | null {
   return startCombatByRules(state, map.rules(), () => map.defeated()) ? null : 'cards-short';
 }
 
-function runRoll(map: TableMap): TableRefusal | null {
+function runInitiativeRoll(map: TableMap): TableRefusal | null {
   if (map.state().initiative.entries.length === 0) return 'no-combatants';
   if (!rolls(map)) return 'no-rolls';
   map.roll();
+  return null;
+}
+
+/** The saved rolls of the loaded map's collection; none without one. */
+export function savedRollsOnMap(source: TableSource): readonly DicePreset[] {
+  return loadedMap(source)?.savedRolls() ?? [];
+}
+
+function runRoll(map: TableMap, id: string): TableRefusal | null {
+  const preset = map.savedRolls().find((candidate) => candidate.id === id);
+  if (!preset) return 'no-roll';
+  map.rollSaved(preset);
   return null;
 }
 
@@ -122,7 +146,7 @@ export function runTableCommand(source: TableSource, command: TableCommand): Tab
     case 'combat':
       return onMap(source, runCombat);
     case 'rollInitiative':
-      return onMap(source, runRoll);
+      return onMap(source, runInitiativeRoll);
     case 'present':
       return onMap(source, runPresent);
     case 'freeze':
@@ -140,5 +164,10 @@ export function runTableCommand(source: TableSource, command: TableCommand): Tab
       return null;
     case 'showHoveredImage':
       return player.showHoveredImage() ? null : 'no-image';
+    case 'roll':
+      return onMap(source, (map) => runRoll(map, command.id));
+    case 'shareRolls':
+      source.shareRolls.setShown(!source.shareRolls.shown());
+      return null;
   }
 }

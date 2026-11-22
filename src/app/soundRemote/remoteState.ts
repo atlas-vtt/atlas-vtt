@@ -9,7 +9,8 @@ import type { SoundSnapshot } from '../soundDirector/soundSnapshot';
 import { isPlaying } from '../soundDirector/tableSound';
 import { whatPlays } from '../soundDirector/whatPlays';
 import type { RemoteMood, RemoteMusic, RemoteState } from './remoteProtocol';
-import { remoteCombat, remotePlayer, type TableSource } from './remoteTable';
+import { remoteRolls } from './remoteRolls';
+import { remoteCombat, remotePlayer, savedRollsOnMap, type TableSource } from './remoteTable';
 
 /** What the remote reads of the director: its snapshot, its clock and the names of what plays. */
 export interface RemoteSource {
@@ -58,5 +59,7 @@ export function remoteState(source: RemoteSource, moodOf: (id: string) => Mood |
     ranges: { channel: [CHANNEL_DB_RANGE.min, CHANNEL_DB_RANGE.max], strip: [MOOD_LIMITS.minLevelDb, MOOD_LIMITS.maxLevelDb] },
     combat: remoteCombat(table),
     player: remotePlayer(table),
+    rolls: remoteRolls(savedRollsOnMap(table)),
+    rollsShown: table.shareRolls.shown(),
   };
 }
