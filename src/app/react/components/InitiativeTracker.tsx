@@ -30,13 +30,16 @@ import { initiativeTrackerOptions } from './initiativeTrackerOptions';
 import { DEFAULT_TURN_OPTIONS } from '../../initiative/turnOptions';
 import { clearCombatants } from '../../initiative/offMapCombatants';
 import { nextTokenlessEnemy } from '../../initiative/tokenlessEnemies';
-import { InitiativeTrackerList } from './InitiativeTrackerList';
+import { DRAGGED_SIDE_ATTRIBUTE, InitiativeTrackerList } from './InitiativeTrackerList';
 import { InitiativeTrackerHeader } from './InitiativeTrackerHeader';
 import { InitiativeTurnControls } from './InitiativeTurnControls';
 import { useTurnInView } from './useTurnInView';
 import { useStatblockHoverPreview } from './StatblockHoverPreview';
 import { InitiativeStatblockPreview, type PreviewedEntry } from './InitiativeStatblockPreview';
 import { captureRollContext } from '../../tools/diceRollOrigins';
+import { useRowDrag, type RowDrag } from '../hooks/useRowDrag';
+import { useSidePile } from './useSidePile';
+import { TURN_KEY_ATTRIBUTE } from '../../initiative/motion/turnMotion';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
 import { t } from '../../i18n';
 import '../../initiative/initiative-panel.scss';
@@ -92,6 +95,7 @@ export const InitiativeTracker: React.FC = () => {
   const nextTurn = useAtlasStore((s) => s.nextTurn);
   const previousTurn = useAtlasStore((s) => s.previousTurn);
   const reorderInitiative = useAtlasStore((s) => s.reorderInitiative);
+  const setSideOrder = useAtlasStore((s) => s.setSideOrder);
   const endCombat = useAtlasStore((s) => s.endCombat);
   const updateInitiativeEntry = useAtlasStore((s) => s.updateInitiativeEntry);
   const addToInitiative = useAtlasStore((s) => s.addToInitiative);
@@ -105,9 +109,6 @@ export const InitiativeTracker: React.FC = () => {
   }, [store, definitions]);
   const startCombat = useStartCombat(rules, defeated);
 
-  // Local state
-  const [dragFromIndex, setDragFromIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const { open: openEditPopup, popup: editPopup } = useEditInitiativePopup(updateInitiativeEntry, inward);
 
   // Use shared statblock hover preview hook
@@ -132,6 +133,7 @@ export const InitiativeTracker: React.FC = () => {
     [sortedEntries, tokens, bySides, sides, initiative.isActive, initiative.round, layout.fromTurn, playerTokens],
   );
   const shownOrder = useMemo(() => shownItems(segments), [segments]);
+  const shownPlaceOf = useMemo(() => new Map(shownOrder.map((entry, index) => [entry.id, index])), [shownOrder]);
   // A drag reorders by a card's place among all combatants, whatever place the list shows it at
   const placeOf = useMemo(() => new Map(sortedEntries.map((entry, index) => [entry.id, index])), [sortedEntries]);
 
@@ -143,25 +145,52 @@ export const InitiativeTracker: React.FC = () => {
   useTurnMotion(store, contentRef);
   const turnFlash = useTurnFlash(initiative);
 
+  // Cards are dragged as a phone's home screen is edited (`useRowDrag`), each within its group (a side, the delayed,
+  // this round or the next): the dragged card takes the place of the one it lands on
+  const drag = useRowDrag(
+    () => [...(contentRef.current?.querySelectorAll(`.atlas-initiative-card[${TURN_KEY_ATTRIBUTE}]`) ?? [])],
+    (from, to) => {
+      const moved = placeOf.get(shownOrder[from]?.id ?? '');
+      const target = placeOf.get(shownOrder[to]?.id ?? '');
+      if (moved !== undefined && target !== undefined) reorderInitiative(moved, target);
+    },
+    { axis: 'vertical', scroller: () => contentRef.current },
+  );
+
+  // Before a fight the GM drags a side by its heading to choose who acts first; the fight starts in that order. The
+  // dragged side takes the place of the one it lands on among all the sides, also those the list leaves out.
+  const arrangesSides = bySides && !initiative.isActive && sides.length > 1;
+  const drawnSides = useMemo(() => segments.flatMap((segment) => (segment.kind === 'group' && segment.side ? [segment.side.id] : [])), [segments]);
+  const sideDrag = useRowDrag(
+    () => [...(contentRef.current?.querySelectorAll(`[${DRAGGED_SIDE_ATTRIBUTE}]`) ?? [])],
+    (from, to) => {
+      const moved = drawnSides[from];
+      const target = drawnSides[to];
+      if (moved === undefined || target === undefined) return;
+      const order = sides.map((side) => side.id).filter((id) => id !== moved);
+      order.splice(order.indexOf(target) + (from < to ? 1 : 0), 0, moved);
+      setSideOrder(order);
+    },
+    { axis: 'vertical', scroller: () => contentRef.current },
+  );
+  // Held, a side's cards pile up behind its first, so a long side is carried like one card
+  const pile = useSidePile(sideDrag.held !== null);
+  const sideOf = (event: React.PointerEvent<HTMLElement>): HTMLElement | null => event.currentTarget.closest<HTMLElement>(`[${DRAGGED_SIDE_ATTRIBUTE}]`);
+  const pilingDrag: RowDrag = {
+    ...sideDrag,
+    onPointerDown: (index, event) => {
+      if (event.button === 0) pile(sideOf(event));
+      sideDrag.onPointerDown(index, event);
+    },
+    onPointerUp: (event) => {
+      pile(sideOf(event));
+      sideDrag.onPointerUp(event);
+    },
+  };
+  const settling = drag.settling || sideDrag.settling;
+
   // Numbers typed on the cards; Tab goes on down the list as it shows
   const numberEditing = useNumberEditing(shownOrder, updateInitiativeEntry);
-
-  // Drag and drop handlers
-  const handleDragStart = useCallback((index: number): void => {
-    setDragFromIndex(index);
-  }, []);
-
-  const handleDragOver = useCallback((index: number): void => {
-    setDragOverIndex(index);
-  }, []);
-
-  const handleDragEnd = useCallback((): void => {
-    if (dragFromIndex !== null && dragOverIndex !== null && dragFromIndex !== dragOverIndex) {
-      reorderInitiative(dragFromIndex, dragOverIndex);
-    }
-    setDragFromIndex(null);
-    setDragOverIndex(null);
-  }, [dragFromIndex, dragOverIndex, reorderInitiative]);
 
   // The card menu's Preview row: the statblock Mod shows over the card, kept until a press outside it.
   const { holdPreview } = previewActions;
@@ -214,11 +243,13 @@ export const InitiativeTracker: React.FC = () => {
   // Not drawn once closed and gone
   if (!drawn) return null;
 
-  const card = (entry: InitiativeEntry, inTurn = false): React.ReactElement => (
+  const card = (entry: InitiativeEntry, group: string, inTurn = false): React.ReactElement => (
     <InitiativeCard
       key={entry.id}
       entry={entry}
-      index={placeOf.get(entry.id) ?? 0}
+      place={shownPlaceOf.get(entry.id) ?? 0}
+      group={group}
+      drag={drag}
       bySides={bySides}
       byCards={byCards}
       showName={compact}
@@ -229,9 +260,6 @@ export const InitiativeTracker: React.FC = () => {
       onCommitNumber={numberEditing.commit}
       onCancelNumberEdit={numberEditing.cancel}
       isHoveredForPreview={previewState.hoveredEntry?.entry.id === entry.id}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
       onContextMenu={handleContextMenu}
       onHover={handleEntryHover}
       turnFlash={turnFlash && (bySides ? inTurn && !entry.sitsOut : entry.isActive && !entry.delayed)}
@@ -263,19 +291,26 @@ export const InitiativeTracker: React.FC = () => {
       />
 
       {/* The combatants, in the order the list shows them */}
-      <div ref={contentRef} className="atlas-initiative-panel__list">
+      <div
+        ref={contentRef}
+        className={['atlas-initiative-panel__list', drag.held !== null && 'atlas-initiative-tracker__list--dragging', sideDrag.held !== null && 'atlas-initiative-tracker__list--dragging-sides', settling && 'atlas-initiative-tracker__list--settling', arrangesSides && 'atlas-initiative-tracker__list--arranges-sides'].filter(Boolean).join(' ')}
+        // The cards' art is images, which the browser would drag as files and cancel the pointer for
+        onDragStart={(event) => event.preventDefault()}
+      >
         {/* Empty, the panel keeps the size it has with one combatant: an unseen card of the view's shape holds it */}
         {sortedEntries.length === 0 && (
           <div className={`atlas-initiative-card${compact ? '' : ' atlas-initiative-card--tile'} atlas-initiative-card--placeholder`} aria-hidden="true" />
         )}
-        {sortedEntries.length > 0 && <InitiativeTrackerList segments={segments} card={card} />}
+        {sortedEntries.length > 0 && <InitiativeTrackerList segments={segments} card={card} {...(arrangesSides && { sideDrag: pilingDrag })} />}
       </div>
 
       {/* The shade over the list's top, shown once it is scrolled */}
       <div className="atlas-initiative-panel__top-shade" aria-hidden="true" />
 
-      {/* The round at the list's foot, as the players' list shows it */}
-      {initiative.isActive && <div className="atlas-initiative-panel__round">{t('playerInit.round', { round: initiative.round })}</div>}
+      {/* The round at the list's foot, as the players' list shows it; without one, a shade there while more lies below */}
+      {initiative.isActive
+        ? <div className="atlas-initiative-panel__round">{t('playerInit.round', { round: initiative.round })}</div>
+        : <div className="atlas-initiative-panel__bottom-shade" aria-hidden="true" />}
 
       <InitiativeStatblockPreview app={app} state={previewState} tokens={tokens} side={inward} />
 

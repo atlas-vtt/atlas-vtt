@@ -66,5 +66,4 @@ export const toolbar: Translation = {
   'toolbar.ranges': 'Portées',
   'toolbar.rangesTip': 'Cliquez sur un jeton ou un endroit pour voir ses portées',
   'toolbar.rangesNoRules': 'Ce système de jeu n\'a ni paliers de portée ni paliers de déplacement',
-  'toolbar.rangesNeedGmView': 'Passez en vue MJ ({key}) pour voir les portées',
 };

@@ -3,6 +3,7 @@
 // ──────────────────────────────────────────────
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
+@use '../../../../../styles/wiggle' as *;
 
 $presets-width: 288px;
 $presets-gap: $spacing-s;
@@ -432,19 +433,8 @@ $item-control: calc(#{$button-height-l} + #{$spacing-s});
 }
 
 // ── The row's edit mode ─────────────────────
-// As a phone's home screen: the places wiggle, each with a × on its corner; the held one lifts and follows the
-// pointer, the others slide aside (`useRowDrag`). Rotation and lift use `rotate` and `scale`, which leave the
-// drag's `translate` and the press's `transform` alone.
-
-@keyframes atlas-dice-wiggle {
-  0%,
-  100% {
-    rotate: -1.6deg;
-  }
-  50% {
-    rotate: 1.6deg;
-  }
-}
+// As a phone's home screen (`styles/_wiggle.scss`): the places wiggle, each with a × on its corner; the held one lifts
+// and follows the pointer, the others slide aside (`useRowDrag`).
 
 .atlas-dice-tray__dice--editing {
   .atlas-dice-tray__die {
@@ -460,29 +450,22 @@ $item-control: calc(#{$button-height-l} + #{$spacing-s});
       transition: none;
 
       .atlas-dice-tray__face {
-        animation: none;
-        scale: 1.08;
-        box-shadow: $shadow-elevated;
+        @include atlas-wiggle-held;
       }
     }
   }
 
   .atlas-dice-tray__face {
     cursor: inherit;
-    animation: atlas-dice-wiggle 280ms ease-in-out infinite;
-
-    @media (prefers-reduced-motion: reduce) {
-      animation: none;
-    }
+    @include atlas-wiggle;
   }
 
-  // Neighbours out of step, so the row shivers rather than swings.
   .atlas-dice-tray__die:nth-child(even) .atlas-dice-tray__face {
-    animation-delay: -140ms;
+    @include atlas-wiggle-shifted;
   }
 
   .atlas-dice-tray__die:nth-child(3n) .atlas-dice-tray__face {
-    animation-duration: 320ms;
+    @include atlas-wiggle-slower;
   }
 }
 

@@ -160,7 +160,7 @@ export function playersEntryToken(
 }
 
 /** The ids of the sides the players' list groups by: the running fight's, else the rules'. */
-export function sideIdsOf(initiative: Pick<InitiativeState, 'isActive' | 'round' | 'sides'>, rules: InitiativeRules): SideId[] {
+export function sideIdsOf(initiative: Pick<InitiativeState, 'isActive' | 'round' | 'sides' | 'sideOrder'>, rules: InitiativeRules): SideId[] {
   return listedSides(initiative, rules).map((side) => side.id);
 }
 
@@ -192,7 +192,7 @@ export function entryTokenOf(
  * show only where `hpVisible`.
  */
 export function playerInitiativeList(
-  initiative: Pick<InitiativeState, 'isActive' | 'round' | 'sides' | 'cards'> & { entries: readonly PlayerInitiativeEntry[] },
+  initiative: Pick<InitiativeState, 'isActive' | 'round' | 'sides' | 'sideOrder' | 'cards'> & { entries: readonly PlayerInitiativeEntry[] },
   tokenOf: (entry: PlayerInitiativeEntry, index: number) => EntryToken | null,
   rules: InitiativeRules,
   hpVisible: boolean,
@@ -277,6 +277,8 @@ export function renderPlayerInitiative(container: HTMLElement, list: PlayerIniti
       card.style.setProperty('--atlas-turn-flash-delay', `${-Math.round(look.turnFlash)}ms`);
     }
   }
+  // Without a round at the foot, a shade there while more of the list lies beyond it
+  if (!list.isActive) panel.createDiv({ cls: 'atlas-initiative-panel__bottom-shade', attr: { 'aria-hidden': 'true' } });
   if (list.isActive) {
     panel.createDiv({ cls: 'atlas-initiative-panel__round', text: t('playerInit.round', { round: list.round }) });
     // The list is drawn anew on every change: show the turn and the next two visible combatants,

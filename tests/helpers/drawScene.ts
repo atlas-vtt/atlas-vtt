@@ -83,6 +83,8 @@ export interface DrawSceneOptions {
   keysBelongToMap?: (event: KeyboardEvent) => boolean;
   /** Called with the store before the drawings and texts listen to it: what subscribes here hears every change before they do, as the selection's own marks do on the map. */
   hearsFirst?: (store: ReturnType<typeof createViewAtlasStore>) => void;
+  /** Where the move and select tools give a press to something before the drawings on the map: a linked hex. */
+  overMap?: (point: { x: number; y: number }) => boolean;
 }
 
 export function drawScene(options: DrawSceneOptions = {}): DrawScene {
@@ -102,6 +104,7 @@ export function drawScene(options: DrawSceneOptions = {}): DrawScene {
   const renderer = new AnnotationsRenderer({
     viewport, store, grid: () => grid, full, showsPlayers: () => players.shown, accent: () => 0x8a5cf5, now: () => clock, dragTokens,
     ...(options.keysBelongToMap && { keysBelongToMap: options.keysBelongToMap }),
+    ...(options.overMap && { overMap: options.overMap }),
   });
   let clock = 0;
   const boundary = new EventBoundary(viewport);

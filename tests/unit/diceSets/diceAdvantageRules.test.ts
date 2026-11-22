@@ -31,7 +31,7 @@ describe('advantage rules as a set stores them', () => {
 
   it('gives the built-in sets sensible rules', () => {
     expect(builtIn('builtin:d20')).toMatchObject({ advantage: { kind: 'keep' }, disadvantage: { kind: 'keep' } });
-    expect(builtIn('builtin:d20-roll-under')).toMatchObject({ advantage: { kind: 'keep' }, disadvantage: { kind: 'keep' } });
+    expect(builtIn('builtin:d20-roll-under').advantage).toBeUndefined();
     expect(builtIn('builtin:d100-roll-under').advantage).toEqual({ kind: 'keep' });
     expect(builtIn('builtin:d10-exploding').advantage).toBeUndefined();
     expect(builtIn('builtin:d10-exploding').disadvantage).toBeUndefined();

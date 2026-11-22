@@ -35,6 +35,7 @@ import { annotationMenu } from './annotationMenu';
 import { showAnnotationsFullNotice } from './annotationNotices';
 import { AnnotationPlayersView } from './annotationPlayersView';
 import type { AnnotationPointerHandlers } from './annotationPointer';
+import type { Point } from '../../types/visionTypes';
 import { BarMenuPress } from './BarMenuPress';
 import { ClickPlacing } from './ClickPlacing';
 import { DrawInput } from './DrawInput';
@@ -69,6 +70,8 @@ export interface AnnotationsRendererOptions {
   readonly accent?: () => number;
   /** Starts the drag of the selected tokens with a press that took an annotation selected with them. */
   dragTokens?(event: FederatedPointerEvent): void;
+  /** Whether the move and select tools give a press at `point` to something before the drawings on the map (`AnnotationInteractionDeps.overMap`). */
+  overMap?(point: Point): boolean;
   /** The clock a double click is told by, milliseconds; unset, the page's. */
   readonly now?: () => number;
 }
@@ -221,6 +224,7 @@ export class AnnotationsRenderer {
       },
       closesMenu: () => this.barMenus.closesMenu,
       settled: () => this.placing.settled(),
+      overMap: (point) => options.overMap?.(point) ?? false,
     }, options.now);
     const underWay = new UnderWay();
     this.underWay = underWay;

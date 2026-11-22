@@ -24,6 +24,18 @@ interface ImageDisplay {
   imageUrl: string;
 }
 
+/** Atlas' own elements; the document's root and body carry Atlas classes too (hidden chrome, a preview shown), and are none. */
+const ATLAS_UI = ':not(body):not(html)[class*="atlas-"]';
+const NOTE_CONTENT = '.markdown-rendered, .markdown-source-view, .markdown-preview-view';
+
+/** Whether `target` lies in Atlas' own UI, whose images stay its own; a note Atlas shows (its note preview) is the GM's content. */
+function inAtlasUi(target: Element): boolean {
+  const atlas = target.closest(ATLAS_UI);
+  if (!atlas) return false;
+  const note = target.closest(NOTE_CONTENT);
+  return !(note && atlas.contains(note));
+}
+
 export class ImageDisplayService {
   private app: App;
   private static instance: ImageDisplayService | null = null;
@@ -114,11 +126,11 @@ export class ImageDisplayService {
    * Resolve a right-click target to an image file and its IMG element.
    * Handles rendered embeds (![[image.png]]) and direct IMG clicks.
    */
-  private resolveImageFromTarget(target: HTMLElement): { file: TFile; imgElement: HTMLImageElement } | null {
+  private resolveImageFromTarget(target: Element): { file: TFile; imgElement: HTMLImageElement } | null {
     if (target.closest('.modal-container')) return null;
     // Atlas' own UI keeps its images to itself, but a statblock's pictures are content.
     let imgElement = statblockImageAt(target);
-    if (!imgElement && target.closest('[class*="atlas-"]')) return null;
+    if (!imgElement && inAtlasUi(target)) return null;
 
     if (target.tagName === 'IMG') {
       imgElement = target as HTMLImageElement;
@@ -175,17 +187,23 @@ export class ImageDisplayService {
       return;
     }
 
+    const viewed = this.viewedImageAt(target);
+    if (viewed) this.openImageMenu(event, viewed.file, viewed.imgElement);
+  }
+
+  /** The image of an image file's own tab under `target` (not Atlas' UI); null anywhere else. */
+  private viewedImageAt(target: Element): { file: TFile; imgElement: HTMLImageElement } | null {
     // Atlas' own UI keeps its images to itself
-    if (target.closest('[class*="atlas-"]')) return;
+    if (inAtlasUi(target)) return null;
 
     // Only handle direct image viewing (e.g. clicking an image file in a tab)
     const viewContent = target.closest('.view-content');
-    if (!viewContent || target.closest('.atlas-vtt')) return;
+    if (!viewContent || target.closest('.atlas-vtt')) return null;
 
-    if (!viewContent.closest('.workspace-leaf')) return;
+    if (!viewContent.closest('.workspace-leaf')) return null;
 
     const imgElement = viewContent.querySelector('img');
-    if (!imgElement) return;
+    if (!imgElement) return null;
 
     // Try to resolve the image file
     let imageFile = this.imageFileOf(imgElement);
@@ -199,7 +217,17 @@ export class ImageDisplayService {
       }
     }
 
-    if (imageFile) this.openImageMenu(event, imageFile, imgElement);
+    return imageFile ? { file: imageFile, imgElement } : null;
+  }
+
+  /**
+   * The vault image under `target` that the image menus offer to show to the players: a rendered
+   * embed or picture in a note, a statblock's picture, an image file's own tab. Null for anything
+   * else, Atlas' own UI and pictures from the web included.
+   */
+  public imageFileAt(target: Element): TFile | null {
+    if (target.closest('.modal-container')) return null;
+    return (this.resolveImageFromTarget(target) ?? this.viewedImageAt(target))?.file ?? null;
   }
 
   /**

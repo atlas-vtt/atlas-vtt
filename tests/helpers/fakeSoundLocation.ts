@@ -2,10 +2,37 @@ import type { SoundFileEntry, SoundListing, SoundLocation } from '../../src/app/
 import { SoundPathTakenError, sortedListing } from '../../src/app/soundLibrary/soundLocation';
 import { isWithin, joinRelative, nameOfRelative, parentOfRelative } from '../../src/app/soundLibrary/soundPaths';
 
+/** A map that counts its changes, so a listing can be indexed once per change rather than scanned per folder. */
+class CountedMap<K, V> extends Map<K, V> {
+  changes = 0;
+  override set(key: K, value: V): this {
+    this.changes++;
+    return super.set(key, value);
+  }
+  override delete(key: K): boolean {
+    this.changes++;
+    return super.delete(key);
+  }
+}
+
+class CountedSet<T> extends Set<T> {
+  changes = 0;
+  override add(value: T): this {
+    this.changes++;
+    return super.add(value);
+  }
+  override delete(value: T): boolean {
+    this.changes++;
+    return super.delete(value);
+  }
+}
+
 /** A root held in memory: a test of what is shown, where no disk can be reached. */
 export class FakeSoundLocation implements SoundLocation {
-  readonly files = new Map<string, SoundFileEntry>();
-  readonly folders = new Set<string>(['']);
+  readonly files = new CountedMap<string, SoundFileEntry>();
+  readonly folders = new CountedSet<string>(['']);
+  /** Files and folders by the folder they lie in, as of the change counts it was made at: a walk of thousands of files reads a folder in its own time, not the whole root's. */
+  private byParent: { at: string; files: Map<string, SoundFileEntry[]>; folders: Map<string, string[]> } | null = null;
   readonly reads: string[] = [];
   /** What was written, by path: a read gives it back. */
   readonly contents = new Map<string, Blob>();
@@ -44,9 +71,9 @@ export class FakeSoundLocation implements SoundLocation {
 
   async list(folder: string): Promise<SoundListing | null> {
     if (!this.folders.has(folder)) return null;
-    const folders = [...this.folders].filter((path) => path !== '' && parentOfRelative(path) === folder).map((path) => ({ name: nameOfRelative(path), path }));
-    const files = [...this.files.values()].filter((file) => parentOfRelative(file.path) === folder);
-    return sortedListing(folders, files);
+    const index = this.index();
+    const folders = (index.folders.get(folder) ?? []).map((path) => ({ name: nameOfRelative(path), path }));
+    return sortedListing(folders, [...(index.files.get(folder) ?? [])]);
   }
 
   async stat(path: string): Promise<{ size: number; mtime: number } | null> {
@@ -145,5 +172,27 @@ export class FakeSoundLocation implements SoundLocation {
 
   private tell(path: string): void {
     for (const watcher of this.watchers) watcher(path);
+  }
+
+  private index(): { files: Map<string, SoundFileEntry[]>; folders: Map<string, string[]> } {
+    const at = `${this.files.changes}|${this.folders.changes}`;
+    if (this.byParent?.at === at) return this.byParent;
+    const files = new Map<string, SoundFileEntry[]>();
+    for (const file of this.files.values()) {
+      const parent = parentOfRelative(file.path);
+      const held = files.get(parent);
+      if (held) held.push(file);
+      else files.set(parent, [file]);
+    }
+    const folders = new Map<string, string[]>();
+    for (const path of this.folders) {
+      if (path === '') continue;
+      const parent = parentOfRelative(path);
+      const held = folders.get(parent);
+      if (held) held.push(path);
+      else folders.set(parent, [path]);
+    }
+    this.byParent = { at, files, folders };
+    return this.byParent;
   }
 }

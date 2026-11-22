@@ -58,9 +58,14 @@ export interface RootTag {
 
 /** Every tag of a root's tracks, by name. A tag no track has is none: there is no list of tags besides the tracks. */
 export function rootTags(tracks: readonly TrackTags[]): RootTag[] {
+  return tagsOfNames(tracks.map(namesOfTrack));
+}
+
+/** `rootTags` of tracks whose names (`namesOfTrack`) were worked out before. */
+export function tagsOfNames(tracks: readonly (readonly string[])[]): RootTag[] {
   const tags = new Map<string, RootTag>();
-  for (const track of tracks) {
-    for (const name of namesOfTrack(track)) {
+  for (const names of tracks) {
+    for (const name of names) {
       const key = tagKey(name);
       const held = tags.get(key);
       if (held) held.count++;

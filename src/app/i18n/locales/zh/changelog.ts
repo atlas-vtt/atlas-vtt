@@ -6,5 +6,7 @@ export const changelog: Translation = {
   'changelog.beta': '测试版',
   'changelog.new': '新',
   'changelog.community': '加入 Discord 上的 Atlas 社区',
+  'changelog.website': 'Atlas 官网',
+  'changelog.patreon': '在 Patreon 上支持 Atlas',
   'changelog.formatFailed': '无法加载排版。更新说明显示在下方。',
 };

@@ -505,11 +505,25 @@ export class SettingsService {
 
   /** Hides or shows the sidebar's starter tokens offer in one collection; the list is left out of the file once empty. */
   setStarterOfferHidden(collectionUid: string, hidden: boolean): void {
-    if (this.isStarterOfferHidden(collectionUid) === hidden) return;
-    const others = (this.settings.hiddenStarterOffers ?? []).filter((uid) => uid !== collectionUid);
-    const next = hidden ? [...others, collectionUid] : others;
+    this.setListed('hiddenStarterOffers', collectionUid, hidden);
+  }
+
+  /** Whether the GM dismissed one of the Sound page's download offers. */
+  isSoundOfferHidden(offerId: string): boolean {
+    return this.settings.hiddenSoundOffers?.includes(offerId) === true;
+  }
+
+  setSoundOfferHidden(offerId: string, hidden: boolean): void {
+    this.setListed('hiddenSoundOffers', offerId, hidden);
+  }
+
+  private setListed(key: 'hiddenStarterOffers' | 'hiddenSoundOffers', id: string, hidden: boolean): void {
+    const list = this.settings[key] ?? [];
+    if (list.includes(id) === hidden) return;
+    const others = list.filter((other) => other !== id);
+    const next = hidden ? [...others, id] : others;
     // Kept as a key while empty, so a reload while the save waits still sees this change (`reload`).
-    this.settings.hiddenStarterOffers = next.length > 0 ? next : undefined;
+    this.settings[key] = next.length > 0 ? next : undefined;
     this.commit();
   }
 

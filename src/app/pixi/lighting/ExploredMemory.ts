@@ -150,18 +150,22 @@ export class ExploredMemory {
     });
     if (!changed) return false;
     this.revision++;
+    this.deps.floors?.edited(this.revision);
     this.deps.store.getState().setExploredEdits(this.revision);
     this.saver.schedule();
     return true;
   }
 
   /**
-   * Forgets everything. An undo step like every edit while the texture is the memory; while it
-   * is not (its mask still loading or unreadable), the saved mask goes at once and for good.
+   * Forgets everything, on every floor (`floors`). An undo step like every edit while the texture
+   * is the memory; while it is not (its mask still loading or unreadable), or holds nothing to
+   * forget, there is no step and what is forgotten goes at once and for good.
    */
   reset(): void {
+    const stepped = this.edit({ mode: 'forget', area: 'everything' });
+    this.deps.floors?.forget(stepped ? this.revision : null);
     // Nothing changed although the texture is the memory: there was nothing to forget.
-    if (this.edit({ mode: 'forget', area: 'everything' }) || this.isMemory()) return;
+    if (stepped || this.isMemory()) return;
     // No undo may bring back what goes for good.
     this.forgetEdits();
     this.supersede();
@@ -251,6 +255,7 @@ export class ExploredMemory {
       this.deps.onChange();
     });
     if (!travelled) return;
+    this.deps.floors?.travel(from, count);
     this.saver.schedule();
     this.deps.onTravel(count < from);
   }
@@ -261,6 +266,7 @@ export class ExploredMemory {
    * (a restored WebGL context).
    */
   forgetEdits(): void {
+    this.deps.floors?.clear();
     if (this.steps.size === 0) return;
     this.steps.clear();
     forgetExploredEdits(this.deps.store);

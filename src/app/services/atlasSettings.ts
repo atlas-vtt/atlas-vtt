@@ -43,6 +43,11 @@ export interface AtlasSettings {
    * collection's folder. Absent while none is hidden. Read with `isStarterOfferHidden`.
    */
   hiddenStarterOffers?: readonly string[] | undefined;
+  /**
+   * Ids of the Sound page's download offers the GM dismissed (`starter-ambience`, `starter-music`; ids never
+   * change). Absent while none is. Read with `isSoundOfferHidden`; the root's ⋯ menu still offers them.
+   */
+  hiddenSoundOffers?: readonly string[] | undefined;
   /** A fact about this device, kept in its local storage and never in the plugin's data (`deviceSettings.ts`). */
   navigation: NavigationSettings;
   laserPointer: LaserPointerSettings;
@@ -203,15 +208,16 @@ export function readStoredSettings(stored: unknown, inputMode: NavigationInputMo
       experimental: isRecord(record.experimental) ? merged.experimental : {},
       toolbar: readToolbarLayout(record.toolbar),
       tableTv: readTableTvSettings(record.tableTv),
-      hiddenStarterOffers: readUidList(record.hiddenStarterOffers),
+      hiddenStarterOffers: readIdList(record.hiddenStarterOffers),
+      hiddenSoundOffers: readIdList(record.hiddenSoundOffers),
     },
     // Never rewritten on reading: the settings are shared with devices that may run another version.
     foreignHotkeys: keptHotkeys(record.hotkeys),
   };
 }
 
-/** A list of collection uids as stored; anything else reads as none. */
-function readUidList(value: unknown): readonly string[] | undefined {
+/** A list of ids as stored (collection uids, offer ids); anything else reads as none. */
+function readIdList(value: unknown): readonly string[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const uids = value.filter((uid): uid is string => typeof uid === 'string' && uid !== '');
   return uids.length > 0 ? [...new Set(uids)] : undefined;

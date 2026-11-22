@@ -4,6 +4,10 @@
 @use '../../../../styles/mixins' as *;
 
 $widget-value-size: 28px;
+// The height of the row a card's value stands in, whatever the value is: a number, a timer with its buttons or a
+// clock's face. Every card is as tall as the next; only their widths differ. A host that sets its values smaller
+// (the players' page) names the row it wants with `--atlas-widget-row`.
+$widget-row: var(--atlas-widget-row, 32px);
 $widget-bar-offset: $spacing-s;
 
 // Top right, where the DM's top row (main.scss) also places it, never wider than the window.
@@ -135,6 +139,7 @@ $widget-bar-offset: $spacing-s;
 
 .atlas-widget-value-row {
   @include atlas-flex-row($spacing-xs);
+  min-height: $widget-row;
 }
 
 // ── Value, inline editor ─────────────────────────────────────────────────────
@@ -149,7 +154,8 @@ $widget-bar-offset: $spacing-s;
   font-size: $widget-value-size;
   font-weight: $font-weight-bold;
   font-variant-numeric: tabular-nums;
-  line-height: 1.15;
+  // The row's own height, to the pixel: a share of the font's size came out a fraction taller than a clock's face
+  line-height: $widget-row;
   text-align: center;
   color: var(--text-normal);
 }
@@ -191,11 +197,12 @@ $widget-bar-offset: $spacing-s;
 
 // ── Progress clock face ──────────────────────────────────────────────────────
 
-// Same height as a counter's value, so clocks and counters line up in one bar.
+// As tall as the row every value stands in (`$widget-row`), so a clock's card is as tall as a counter's: a face
+// sized like a button grew with the buttons (a touch screen's are larger) while a counter's number did not.
 .atlas-clock-face {
   flex-shrink: 0;
-  width: $button-height-m;
-  height: $button-height-m;
+  width: $widget-row;
+  height: $widget-row;
   overflow: visible;
 }
 

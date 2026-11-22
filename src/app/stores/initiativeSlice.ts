@@ -5,6 +5,7 @@
 
 import type { TokenEntity } from '../types';
 import type { InitiativeState, InitiativeEntry } from '../types/initiativeTypes';
+import type { SideId } from '../types/initiativeRulesTypes';
 import { createDefaultInitiativeState } from '../types/initiativeTypes';
 import { DEFAULT_INITIATIVE_RULES } from '../gameSystems/initiativeRules';
 import { combatantModifier, ownModifier } from '../initiative/initiativeModifier';
@@ -42,6 +43,8 @@ export interface InitiativeSlice extends InitiativeTurnActions {
   reorderInitiative: (fromIndex: number, toIndex: number) => void;
   moveToFront: (id: string) => void;
   moveToBack: (id: string) => void;
+  /** The order the sides of this scene's fights by sides act in, as the GM dragged them (`InitiativeState.sideOrder`). */
+  setSideOrder: (order: SideId[]) => void;
   /** Removes every combatant and ends the fight. */
   resetInitiative: () => void;
 }
@@ -226,6 +229,10 @@ export function createInitiativeActions(
       if (entry.isActive) {
         draft.initiative.currentIndex = entries.length - 1;
       }
+    }),
+
+    setSideOrder: (order) => set((draft) => {
+      draft.initiative.sideOrder = order;
     }),
 
     resetInitiative: () => set((draft) => {

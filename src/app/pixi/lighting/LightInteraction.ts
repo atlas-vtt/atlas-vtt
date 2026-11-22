@@ -68,6 +68,8 @@ export class LightInteraction {
   private gesture: Gesture | null = null;
   /** A store write is being announced: a cancel in it closes its undo step only once that write is done. */
   private inStoreWrite = false;
+  /** The latest press on the map closed the popover: the lighting tool takes it for that alone (`takeDismissal`). */
+  private dismissedOnMap = false;
   private readonly doc: Document;
   private readonly unsubscribe: () => void;
   private readonly abort = (): void => this.cancel();
@@ -126,6 +128,16 @@ export class LightInteraction {
   clearHover(): void {
     this.deps.rings.setHovered(null);
     this.deps.markers.setHovered(null);
+  }
+
+  /**
+   * Whether the press being dispatched closed the popover from the map, so a tool that would
+   * place or draw there leaves it at that, as a click outside a menu only closes the menu.
+   */
+  takeDismissal(): boolean {
+    const dismissed = this.dismissedOnMap;
+    this.dismissedOnMap = false;
+    return dismissed;
   }
 
   /** Cancels a press or drag under way: what a drag changed is put back, and it leaves no undo step. */
@@ -285,6 +297,7 @@ export class LightInteraction {
    */
   private readonly onDocumentPointerDown = (event: PointerEvent): void => {
     const { store, canvas, viewport, markers, rings } = this.deps;
+    this.dismissedOnMap = false;
     if (!store.getState().lightPopover) return;
     const target = elementOf(event.target);
     if (target?.closest('.atlas-light-popover')) return;
@@ -292,6 +305,7 @@ export class LightInteraction {
       const rect = canvas.getBoundingClientRect();
       const point = viewport.toWorld(event.clientX - rect.left, event.clientY - rect.top);
       if (rings.handleAt(point.x, point.y) || markers.hitTest(point.x, point.y)) return;
+      this.dismissedOnMap = true;
     }
     store.getState().closeLightPopover();
   };

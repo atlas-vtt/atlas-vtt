@@ -106,6 +106,9 @@ if (exists('dist/styles.css')) {
   if (has) warnings.push(`styles.css uses :has() ${has} times`);
   // styles.css is the only copy of the fonts users get, so it must carry their notice and hold only the fonts the list names.
   for (const problem of [...fontNoticeProblems(css), ...fontFaceCountProblems(css)]) errors.push(`styles.css: ${problem}`);
+  // main.scss wraps every file in .atlas-vtt-plugin, so a nested `[x] > &` compiles to `[x]>.atlas-vtt-plugin .y`, which never matches.
+  const wrapped = [...new Set((css.match(/[^{},]*>\.atlas-vtt-plugin [^{,]*/g) ?? []).map((selector) => selector.split("\n").pop()?.trim() ?? selector))];
+  if (wrapped.length) errors.push(`styles.css has selectors that put .atlas-vtt-plugin behind a child combinator, which never match (write the parent out instead of \`> &\`): ${wrapped.join(' | ')}`);
   // One such rule makes Chromium restyle the whole of Obsidian for every element that comes or goes.
   for (const problem of rootHasProblems(css)) errors.push(`styles.css ${problem}`);
 } else {

@@ -175,6 +175,7 @@ export const online: Translation = {
   'online.worldMap.tooLarge': 'O Atlas Online não pode enviar o mapa-múndi: a imagem dele tem mais de 95 MB.',
   'online.worldMap.unreadable': 'O Atlas Online não pode enviar o mapa-múndi: a imagem dele não é um PNG, JPEG, WebP, GIF ou AVIF que os jogadores consigam abrir.',
   'online.worldMap.unstored': 'O Atlas Online não pode enviar o mapa-múndi: não foi possível guardar a imagem dele online.',
+  'online.worldMap.noImage': 'O Atlas Online não pode enviar o mapa-múndi: o mapa ou a cena que a campanha indica não está mais na biblioteca ou não mostra nenhuma imagem. Escolha outro na página da campanha.',
   'online.assetsRestricted': 'Esta conta não pode compartilhar arquivos com os jogadores agora.',
   'online.assetsMapTooLarge': 'Este mapa é grande demais para compartilhar com os jogadores.',
   'online.mapUnreadable': 'A imagem do mapa desta cena não pode ser enviada aos jogadores.',

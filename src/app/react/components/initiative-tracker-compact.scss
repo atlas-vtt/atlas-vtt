@@ -9,12 +9,18 @@ $line-border: $border-width-s;
 $plate-radius: initiative-corner-radius($line-border);
 // The number plate's height, which every line takes
 $plate-height: 24px;
+// A line: the plate inside the card's inset and border
+$compact-line-height: calc(#{$plate-height} + 2 * #{$surface-inset} + 2 * #{$line-border});
+// How many lines the list shows before it scrolls
+$compact-visible-lines: 12;
 
 .atlas-initiative-tracker--compact {
   gap: $spacing-xs;
 
   .atlas-initiative-panel__list {
     gap: $spacing-xs;
+    // A long fight scrolls rather than filling the pane's height
+    max-height: calc(#{$compact-visible-lines} * #{$compact-line-height} + #{$compact-visible-lines - 1} * #{$spacing-xs});
   }
 
   .atlas-initiative-card {
@@ -22,7 +28,7 @@ $plate-height: 24px;
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     // One height for every line, whatever it shows: a number or none
-    height: calc(#{$plate-height} + 2 * #{$surface-inset} + 2 * #{$line-border});
+    height: $compact-line-height;
     gap: $surface-inset;
     padding: $surface-inset;
     border-width: $line-border;

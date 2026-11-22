@@ -57,14 +57,23 @@ export interface MotionOptions {
   wrap?: boolean;
 }
 
-/** The offset of `element` from `list`'s padding box, adding up the positioned ancestors between them; null outside it. */
+/**
+ * The offset of `element` from `list`'s padding box, adding up the positioned ancestors between them and the
+ * `translate` they are drawn with (a side being dragged carries its cards); null outside it.
+ */
 function offsetIn(list: HTMLElement, element: HTMLElement): { x: number; y: number } | null {
   let x = 0;
   let y = 0;
   let node: HTMLElement | null = element;
+  const view = list.ownerDocument.defaultView;
   while (node && node !== list) {
     x += node.offsetLeft;
     y += node.offsetTop;
+    if (node !== element && view) {
+      const moved = translationOf(view.getComputedStyle(node));
+      x += moved.x;
+      y += moved.y;
+    }
     node = node.offsetParent as HTMLElement | null;
   }
   return node === list ? { x, y } : null;

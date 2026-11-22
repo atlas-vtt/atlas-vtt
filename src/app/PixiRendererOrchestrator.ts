@@ -82,7 +82,7 @@ import type { MosaicCanvasChange } from './pixi/mosaicCanvas/mosaicCanvasView';
 import type { TesseraView } from './pixi/mosaicCanvas/levelOfDetail';
 import { frameView } from './services/playerFrameDemand';
 import { MapController } from './MapController';
-import { NO_STRETCH, sameStretch, type MapStretch } from './grid/mapStretch';
+import { imageWorldRect, NO_STRETCH, sameStretch, type MapStretch } from './grid/mapStretch';
 import { levelImageOnItsOwn, viewedImagePlacement } from './levels/levelAlignment';
 import { viewedLevelId } from './levels/sceneLevels';
 import { levelObjects } from './levels/levelObjects';
@@ -462,7 +462,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.selectionManager.barsProvider = (tokenId) => this.tokenRenderer?.bars(tokenId) ?? NO_BARS;
 
     // Initialize FogOfWarRenderer after pins so it can be on top when active
-    this.fogRenderer = new FogOfWarRenderer(viewport, this.app, this.eventBus, this.store, () => this.getMapRect());
+    this.fogRenderer = new FogOfWarRenderer(viewport, this.app, this.eventBus, this.store, () => this.getSceneMapRect());
     // A polygon placed click by click holds Enter, Backspace, Escape and the undo key: only while they are this map's
     this.fogRenderer.keysBelongToMap = (event) => canRunMapHotkeys(event, this.viewId);
     this.fogRenderer.isUndoKey = (event) => matchesHotkey(event, (SettingsService.forApp(this.obsApp)?.getHotkeys() ?? DEFAULT_MAP_HOTKEYS).undo, true);
@@ -484,7 +484,7 @@ export class PixiRendererOrchestrator { // Renamed class
       store: this.store,
       obsApp: this.obsApp,
       mapSize: () => this.mapImage?.imageSize ?? null,
-      bounds: () => this.getMapRect(),
+      bounds: () => this.getSceneMapRect(),
       lighting: () => this.lighting?.renderer,
       onChange: () => this.tokenRenderer?.refreshPlayerSight(),
     });
@@ -498,7 +498,7 @@ export class PixiRendererOrchestrator { // Renamed class
         eventBus: this.eventBus,
         obsApp: this.obsApp,
         viewId: this.viewId,
-        bounds: () => this.getMapRect(),
+        bounds: () => this.getSceneMapRect(),
         albedo: () => this.mapImage?.albedoTexture() ?? null,
         grid: () => this.gridSystem ?? null,
         fogCoverage: () => this.fogRenderer!.getCommittedCoverage(),
@@ -515,6 +515,7 @@ export class PixiRendererOrchestrator { // Renamed class
             return roofs ? (point) => roofs.covers(point) : null;
           },
           placeEraser: (eraser) => this.placeAboveGrid(eraser),
+          previewing: () => this.isPreviewingStretch(),
         }),
         ...(quality && { quality }),
       });
@@ -565,6 +566,8 @@ export class PixiRendererOrchestrator { // Renamed class
       showsPlayers: () => (this.tokenRenderer ? this.tokenRenderer.playersSeeOnCanvas() !== null : null),
       requestRender: () => requestRender(this.pixiAppManager.app),
       dragTokens: (event) => this.tokenRenderer?.dragSelectedTokens(event),
+      // A linked hex opens its note from under the drawings on the map, as a token takes the press from them
+      overMap: (point) => (this.hexLinkInteraction?.hitTest(point.x, point.y) ?? null) !== null,
     });
     this.annotations = annotations;
     this.eventBusUnsubscribers.push(onLeavingView({ eventBus: this.eventBus, obsApp: this.obsApp, viewId: this.viewId }, () => annotations.leave()));
@@ -774,6 +777,18 @@ export class PixiRendererOrchestrator { // Renamed class
   public getMapRect(): MapRect | null {
     const rect = this.mapImage?.worldRect;
     return rect && rect.width > 0 ? rect : null;
+  }
+
+  /**
+   * The map as the scene places it, which what covers the map (the lighting and its explored
+   * memory, the fog, the roof) keeps while a preview draws the image another way
+   * (`isPreviewingStretch`: a grid alignment's preview, a floor fitted on its own or being placed):
+   * a store change meanwhile would otherwise size them to the preview's image.
+   */
+  public getSceneMapRect(): MapRect | null {
+    const size = this.mapImage?.imageSize;
+    if (!size || !this.isPreviewingStretch()) return this.getMapRect();
+    return { x: 0, y: 0, ...imageWorldRect(size, viewedImagePlacement(this.store.getState())) };
   }
 
   private mapImageChanged(change: MosaicCanvasChange): void {

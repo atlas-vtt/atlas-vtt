@@ -144,6 +144,12 @@ export interface InitiativeState {
    */
   sides?: SidesFight;
 
+  /**
+   * The order the GM dragged the sides into, for this scene's fights by sides: those named act first, in this order,
+   * the rest after them as the rules have them. Older versions ignore it and go by the rules.
+   */
+  sideOrder?: SideId[];
+
   /** Set while a fight runs by cards; a fight keeps the mode it was started in. */
   cards?: CardsFight;
 

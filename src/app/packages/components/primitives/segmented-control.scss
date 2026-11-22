@@ -16,13 +16,9 @@
 }
 
 .atlas-segmented__option {
-  // Override Button component defaults for segmented control
+  // Its height and padding are `.btn`'s, which comes later in the stylesheet at this specificity.
   flex: 1;
-  // A choice longer than its share of the track wraps inside its option rather than push the track past its box.
   min-width: 0;
-  height: auto;
-  padding: $spacing-xs $spacing-s;
-  white-space: normal;
   overflow-wrap: break-word;
   hyphens: auto;
   text-align: center;
@@ -44,15 +40,29 @@
 
 // Choices of unequal length (a long first label, short others) share the row by what each needs,
 // each with the same padding on every side.
-// Concentric inside the track. Written with the track, or `.btn`'s radius, which comes later in
-// the stylesheet at the same specificity, wins (it did: options had the track's 10 px).
+// Concentric inside the track, and a choice longer than its share of the track wraps inside its
+// option rather than run into its neighbour. Written with the track, or `.btn`, which comes later in
+// the stylesheet at the same specificity, wins: options had the track's 10 px, and every label stayed
+// on one line however narrow its option (Portuguese stairs choices ran into each other).
 .atlas-segmented .atlas-segmented__option {
   border-radius: calc(var(--atlas-segmented-radius) - #{$surface-inset});
+  white-space: normal;
 }
+
+// A track in a panel of fixed width (the map's popovers, the dice tray): an option is as tall as a
+// button, or as `--atlas-segmented-fit-height` where its place sets one, and grows when its choice wraps.
+$fit-height: var(--atlas-segmented-fit-height, #{$button-height-l});
 
 .atlas-segmented--fit .atlas-segmented__option {
   flex: 1 1 auto;
+  height: auto;
+  min-height: $fit-height;
   padding: $spacing-xs;
+
+  // Over the finger's minimum every option takes, which is written more specifically.
+  @include atlas-coarse-pointer {
+    min-height: $fit-height;
+  }
 }
 
 // An option with an icon: the icon before the word

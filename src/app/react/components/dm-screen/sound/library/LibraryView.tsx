@@ -11,6 +11,7 @@ import { isLinked } from '../../../../../soundLibrary/SoundRoots';
 import { SETTLE_MS } from '../../../../../soundDirector/linkedFolderWatch';
 import { tagKey, toggledTag } from '../../../../../soundLibrary/soundTags';
 import type { SoundKind } from '../../../../../sound/soundTypes';
+import { useStableCallback } from '../../../../hooks/useStableCallback';
 import { useAtlasUI } from '../../../../root/AtlasUIContext';
 import { useMoods, useSoundValue, useStoredSounds, useStoreValue } from '../useSound';
 import { moodsMatching } from '../moodSearch';
@@ -18,9 +19,10 @@ import { LibraryHead } from './LibraryHead';
 import { LibraryRail } from './LibraryRail';
 import { rowsWithTags, searchRows, shelfOf, type LibraryRow, type RootShelf } from './rowModel';
 import { LibraryRows } from './LibraryRows';
-import { StarterPackButton } from './StarterPack';
+import { MusicPacksButton, StarterPackButton } from './PackOffers';
 import { useHeldInMix, useLibraryVersion } from './useLibrary';
 import { useLibraryActions, type LibraryActions } from './useLibraryActions';
+import { useRowSort } from './useRowSort';
 
 /** Keys the library never keeps: Tab opens and closes the DM screen, and Escape closes what is open once nothing here uses it. */
 const PASSES_THROUGH: ReadonlySet<string> = new Set(['Tab', 'Escape']);
@@ -39,6 +41,7 @@ function NoLink({ library, actions }: { library: SoundLibrary; actions: LibraryA
           <Button type="button" className="atlas-sound-lib__btn" variant="secondary" onClick={(event) => onLink('ambience', winOf(event))}>{t('audio.library.linkAmbience')}</Button>
         </div>
         <div className="atlas-sound-lib__nolink-row">
+          <MusicPacksButton library={library} className="atlas-sound-lib__btn" />
           <StarterPackButton library={library} actions={actions} className="atlas-sound-lib__btn" />
           <Button type="button" className="atlas-sound-lib__btn atlas-sound-lib__btn--quiet" variant="ghost" onClick={(event) => onImport(event.currentTarget.ownerDocument)}>{t('audio.library.importInstead')}</Button>
         </div>
@@ -126,13 +129,15 @@ export function LibraryView({ query, onQuery: setQuery, railSlot }: LibraryViewP
   const found = useMemo<readonly LibraryRow[] | null>(() => (searching === '' ? null : searchRows(library.search(searching), (kind) => t(kind === 'music' ? 'audio.music' : 'audio.ambience'))), [library, searching, version]);
   // The one search narrows the moods beside the library too (by name, or by a sound they hold).
   const foundMoods = useMemo(() => moodsMatching(moods, searching, director), [moods, searching, director, version]);
+  // The order the viewer chose, for the root, its tags and a search's hits alike: what Play, Enter and a Shift range go by.
+  const order = useRowSort(library, found ?? listed);
+  const rows = order.rows;
   // Enter starts the first result: a mood where one matches, else what the first file row's Play would play.
-  const firstFound = found?.find((row) => row.type === 'file');
+  const firstFound = found ? rows.find((row) => row.type === 'file') : undefined;
   const firstMood = foundMoods[0];
   let playFirst: { name: string; play: () => void } | null = null;
   if (firstMood) playFirst = { name: firstMood.name, play: () => director.press(firstMood) };
   else if (firstFound?.type === 'file') playFirst = { name: firstFound.name, play: () => actions.toMix([firstFound.file], firstFound.file.kind === 'music' ? 'now' : 'add') };
-  const rows = found ?? listed;
 
   const linked = isLinked(library.rootOf(place.kind));
   const loading = library.locationOf(place.kind) !== null && !library.isWalked(place.kind) && listed.length === 0 && searching === '';
@@ -143,10 +148,19 @@ export function LibraryView({ query, onQuery: setQuery, railSlot }: LibraryViewP
     library.place.show(kind);
   }, [library, setQuery]);
 
-  const pressTag = useCallback((kind: SoundKind, tag: string): void => {
+  // One function for the life of the view: every tag of the rail is memoised on it, and a press changes what is selected.
+  const pressTag = useStableCallback((kind: SoundKind, tag: string): void => {
     setQuery('');
     library.place.show(kind, kind === place.kind ? toggledTag(selected.map(({ name }) => name), tag) : [tag]);
-  }, [library, place.kind, selected, setQuery]);
+  });
+
+  // A portal keeps the rail in this tree: its keys and drops still reach the handlers below.
+  const railKind = searching === '' ? place.kind : null;
+  // Kept while what it shows stands: typing in the search renders no tag of it.
+  const rail = useMemo(
+    () => <LibraryRail library={library} director={director} actions={actions} shelves={shelves} kind={railKind} selected={selectedKeys} onRoot={showRoot} onTag={pressTag} />,
+    [library, director, actions, shelves, railKind, selectedKeys, showRoot, pressTag, version],
+  );
 
   const noRoots = library.rootOf('music').status === 'unlinked' && library.rootOf('ambience').status === 'unlinked';
   const keep = (event: React.KeyboardEvent): void => {
@@ -168,8 +182,6 @@ export function LibraryView({ query, onQuery: setQuery, railSlot }: LibraryViewP
       : !linked ? t('audio.library.linkHere')
         : library.isMissing(place.kind) ? t('audio.library.unreachable') : t('audio.library.folderEmpty');
 
-  // A portal keeps the rail in this tree: its keys and drops still reach the handlers below.
-  const rail = <LibraryRail library={library} director={director} actions={actions} shelves={shelves} kind={searching === '' ? place.kind : null} selected={selectedKeys} onRoot={showRoot} onTag={pressTag} />;
 
   return (
     <div
@@ -188,9 +200,12 @@ export function LibraryView({ query, onQuery: setQuery, railSlot }: LibraryViewP
     >
       {railSlot ? createPortal(rail, railSlot) : rail}
       <div className="atlas-sound-lib__main">
-        <LibraryHead library={library} actions={actions} kind={place.kind} rows={found ?? listed} scope={found ? 'results' : selected.length > 0 ? 'tagged' : 'all'} query={query} onQuery={setQuery} shuffle={shuffle} first={playFirst} />
+        <LibraryHead library={library} actions={actions} kind={place.kind} rows={rows} scope={found ? 'results' : selected.length > 0 ? 'tagged' : 'all'} query={query} onQuery={setQuery} shuffle={shuffle} first={playFirst} />
         <LibraryRows
           rows={rows}
+          sort={order.sort}
+          reading={order.reading}
+          onSort={(by) => library.sort.press(by)}
           preparing={preparing}
           loading={loading && showSkeleton}
           emptyText={emptyText}

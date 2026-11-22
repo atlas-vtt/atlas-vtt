@@ -35,6 +35,8 @@ export class MoodStore {
   private readonly files: MoodFiles;
   private entries: readonly StoredRecord[] | null = null;
   private shown: readonly Mood[] = NO_MOODS;
+  /** Each file's mood while its record stands: a change of one mood leaves the others' objects, which their tiles are memoised on. */
+  private readonly read = new WeakMap<StoredRecord, Mood | null>();
   private started = false;
 
   private constructor(app: App) {
@@ -65,10 +67,15 @@ export class MoodStore {
     if (this.entries !== entries) {
       this.entries = entries;
       this.shown = entries
-        .flatMap((stored) => moodOf(stored) ?? [])
+        .flatMap((stored) => this.moodOfEntry(stored) ?? [])
         .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
     }
     return this.shown;
+  }
+
+  private moodOfEntry(stored: StoredRecord): Mood | null {
+    if (!this.read.has(stored)) this.read.set(stored, moodOf(stored));
+    return this.read.get(stored) ?? null;
   }
 
   mood(id: string): Mood | null {

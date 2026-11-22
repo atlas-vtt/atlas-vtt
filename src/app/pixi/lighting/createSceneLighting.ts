@@ -11,6 +11,7 @@ import type { MapBounds } from '../../vision/visibility';
 import { requestRender } from '../RenderScheduler';
 import { CanvasLightingFallback } from './CanvasLightingFallback';
 import { StoredLightingAttempt } from './lightingAttempts';
+import { ForgottenFloors } from './ForgottenFloors';
 import { LightingRenderer } from './LightingRenderer';
 import { showLightingUnavailableNotice } from './lightingNotices';
 import { LightingViewHost } from './LightingViewHost';
@@ -54,7 +55,7 @@ export function createSceneLighting({ viewport, app, store, obsApp, measurement,
   const view = { ...sight, ...(rules && { rules }) };
   return new LightingViewHost({
     store,
-    createEngineView: (onUnavailable) => new LightingRenderer({ viewport, app, store: scene, measurement, bounds, albedo, attempt, onUnavailable, ...view, ...(grid && { grid }), ...(exploredWatcher && { exploredWatcher }), ...(quality && { quality }), ...(below && { below }), ...(roofFadeMs !== undefined && { roofFadeMs }) }),
+    createEngineView: (onUnavailable) => new LightingRenderer({ viewport, app, store: scene, measurement, bounds, albedo, attempt, onUnavailable, ...view, ...(grid && { grid }), ...(exploredWatcher && { exploredWatcher }), ...(quality && { quality }), ...(below && { below }), ...(roofFadeMs !== undefined && { roofFadeMs }), floors: new ForgottenFloors(store) }),
     createFallback: () => new CanvasLightingFallback({ viewport, store: scene, measurement, bounds, requestRender: () => requestRender(app), ...view }),
     forgetAttempt: () => attempt.forget(),
     notify: showLightingUnavailableNotice,

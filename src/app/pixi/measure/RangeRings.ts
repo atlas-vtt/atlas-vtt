@@ -6,7 +6,8 @@ import type { Point } from '../../types/visionTypes';
 import { INK_SHADE_REACH } from '../utils/canvasInk';
 import { cssColorToHexNumber } from '../utils/colorUtils';
 import { destroyTree } from '../utils/destroyTree';
-import { MeasureInk, type InkTrace, type MeasureInkLayer } from '../utils/measureInk';
+import type { HideableLayer } from '../playerSafeFrame';
+import { LinkedLayers, MeasureInk, type InkTrace, type MeasureInkLayer } from '../utils/measureInk';
 import { MeasureLabel } from '../utils/measureLabel';
 import type { MeasureLook } from './DrawnMeasure';
 
@@ -66,9 +67,10 @@ function traceOf(outline: RangeOutline, screen: (point: Point) => Point): InkTra
  * The rings of Ranges around one token or point: each ring's outline in the measure ink, in its
  * step's colour or the accent, and its name on a small measure label on its line. The outlines
  * are worked out when the rings are shown (`show`); a new zoom or theme only inks them again
- * (`redraw`), so lines and labels keep their size on screen.
+ * (`redraw`), so lines and labels keep their size on screen. `layer` shows or hides them whole.
  */
 export class RangeRings {
+  readonly layer: HideableLayer;
   private readonly ink: MeasureInk;
   private readonly labelLayer = new Container({ label: 'range-ring-labels', eventMode: 'none', interactiveChildren: false });
   private readonly labels: MeasureLabel[] = [];
@@ -79,6 +81,7 @@ export class RangeRings {
   constructor(shapes: MeasureInkLayer, labels: Container) {
     this.ink = new MeasureInk(shapes);
     labels.addChild(this.labelLayer);
+    this.layer = new LinkedLayers([this.ink.shape, this.labelLayer]);
   }
 
   /** Whether rings are on the map. */

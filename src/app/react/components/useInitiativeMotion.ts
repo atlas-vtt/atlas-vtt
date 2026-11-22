@@ -2,39 +2,39 @@ import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 're
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { InitiativeState } from '../../types/initiativeTypes';
-import { currentTurn, turnKey } from '../../initiative/turnHolders';
+import { currentTurnKey } from '../../initiative/turnHolders';
 import { playTurnMotion, snapshotTurn, type TurnSnapshot } from '../../initiative/motion/turnMotion';
 import { enterList, exitList, morphList, type Outward } from '../../initiative/motion/listPresence';
 import { TURN_FLASH_MS } from '../../services/playerInitiativeList';
 
 /** What a change of the tracker's order is read by: the round, the turn and every combatant's place. */
 function orderOf(initiative: InitiativeState): string {
-  return JSON.stringify([initiative.round, initiative.sides?.active, initiative.entries.map((entry) => [entry.id, entry.order, entry.isActive, entry.delayed])]);
+  return JSON.stringify([initiative.round, initiative.sides?.active, initiative.sideOrder, initiative.entries.map((entry) => [entry.id, entry.order, entry.isActive, entry.delayed])]);
 }
 
 /**
  * The GM's cards glide to their new places when the order changes (the turn passed on or back, a reorder), as on the
  * players' list (`playTurnMotion`). Where they stood is read from the DOM as the store changes, before React draws the
- * new order, and the motion plays once it has.
+ * new order, and the motion plays once it has. A reorder keeps the turn, and its cards glide straight to their places;
+ * a dropped card glides from where it was let go, since a drag's `translate` is part of where it stood.
  */
 export function useTurnMotion(store: StoreApi<ViewAtlasState>, list: RefObject<HTMLElement | null>): void {
-  const before = useRef<TurnSnapshot | null>(null);
+  const before = useRef<{ places: TurnSnapshot; wrap: boolean } | null>(null);
   useEffect(() => store.subscribe((state, previous) => {
     if (before.current || state.initiative === previous.initiative || orderOf(state.initiative) === orderOf(previous.initiative)) return;
-    before.current = snapshotTurn(list.current);
+    before.current = { places: snapshotTurn(list.current), wrap: currentTurnKey(state.initiative) !== currentTurnKey(previous.initiative) };
   }), [store, list]);
   useLayoutEffect(() => {
     const snapshot = before.current;
     if (!snapshot) return;
     before.current = null;
-    playTurnMotion(list.current, snapshot);
+    playTurnMotion(list.current, snapshot.places, { wrap: snapshot.wrap });
   });
 }
 
 /** Whether the turn of `initiative` just began (less than `TURN_FLASH_MS` ago): who holds it lights up once. A first look flashes nothing. */
 export function useTurnFlash(initiative: InitiativeState): boolean {
-  const turn = initiative.isActive ? currentTurn(initiative) : null;
-  const key = turn ? turnKey(turn) : null;
+  const key = currentTurnKey(initiative);
   const seen = useRef(key);
   const [flashing, setFlashing] = useState<string | null>(null);
   useEffect(() => {

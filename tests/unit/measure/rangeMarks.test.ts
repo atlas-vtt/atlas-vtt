@@ -279,40 +279,109 @@ describe('the Ranges mode', () => {
 });
 
 describe('the range marks in the players\' picture', () => {
-  const players = (canvas: { players: boolean }): MeasurePlayersView => ({
+  /** Players who see the tokens in `seen` (a set a test changes in place), and the canvas while it shows their view. */
+  const players = (seen: Set<string>, canvas: { players: boolean }): MeasurePlayersView => ({
     footprints: () => [],
-    seenAtStart: () => () => true,
-    seenOnCanvas: () => (canvas.players ? (): boolean => true : null),
+    seenAtStart: () => (id) => seen.has(id),
+    seenOnCanvas: () => (canvas.players ? (id: string): boolean => seen.has(id) : null),
   });
   const shownIn = (layers: { layer: unknown; visible: boolean }[], part: unknown): boolean | undefined => layers.find((entry) => entry.layer === part)?.visible;
+  /** Whether a players' frame shows the rings and the check, by `seen`. */
+  const inFrame = (s: RangeScene, seen: Set<string>): [boolean | undefined, boolean | undefined] => {
+    const layers = s.measure.getPlayerViewLayers((id) => seen.has(id));
+    return [shownIn(layers, s.measure.ranges.ringsLayer), shownIn(layers, s.measure.ranges.checkLayer)];
+  };
 
-  it('are in no players\' frame and no picture of the scene, with nothing measured', () => {
+  it('show rings and the check on tokens the players see, as the GM view shows them, and in no picture of the scene', () => {
+    const seen = new Set(['hero', 'goblin']);
     const s = scene(BANDED);
-    const { view } = s.measure.ranges;
-    expect(shownIn(s.measure.getPlayerViewLayers(() => true), view)).toBe(false);
-    expect(shownIn(s.measure.getGmViewLayers(), view)).toBe(false);
-  });
-
-  it('hide while the canvas shows the players\' view, where nothing is hovered and no press shows rings', () => {
-    const canvas = { players: false };
-    const s = scene(BANDED);
-    s.measure.playersView = players(canvas);
+    s.measure.playersView = players(seen, { players: false });
     s.store.getState().setSelection(['hero']);
     s.store.getState().setMeasureTool({ mode: 'ranges' });
+    s.press(HERO);
+    s.hover(GOBLIN);
+    expect(inFrame(s, seen)).toEqual([true, true]);
+    const picture = s.measure.getGmViewLayers();
+    expect([shownIn(picture, s.measure.ranges.ringsLayer), shownIn(picture, s.measure.ranges.checkLayer)]).toEqual([false, false]);
+    // The GM's canvas keeps them.
+    expect([s.measure.ranges.ringsLayer.visible, s.measure.ranges.checkLayer.visible]).toEqual([true, true]);
+    // Rings around a point stand on no token: players see them.
+    s.press(cell(3, 3));
+    expect(inFrame(s, new Set())[0]).toBe(true);
+  });
+
+  it('leave with a token the players stop seeing and come back with it, and never show on one shown while unseen', () => {
+    const seen = new Set(['hero']);
+    const s = scene(BANDED);
+    s.measure.playersView = players(seen, { players: false });
+    s.store.getState().setSelection(['hero']);
+    s.store.getState().setMeasureTool({ mode: 'ranges' });
+    s.press(HERO);
+    s.hover(GOBLIN);
+    // The check runs to a goblin the players do not see.
+    expect(inFrame(s, seen)).toEqual([true, false]);
+    seen.delete('hero');
+    expect(inFrame(s, seen)).toEqual([false, false]);
+    seen.add('hero');
+    s.store.getState().updateToken('hero', { ...cell(2, 1) });
+    expect(inFrame(s, seen)[0]).toBe(true);
+    seen.add('goblin');
+    expect(inFrame(s, seen)[1]).toBe(false);
+    // Rings on the goblin, first shown while it is seen.
     s.press(GOBLIN);
-    expect(s.measure.ranges.view.visible).toBe(true);
-    canvas.players = true;
+    expect(inFrame(s, seen)[0]).toBe(true);
+  });
+
+  it('show nothing while the GM measures for themselves', () => {
+    const seen = new Set(['hero', 'goblin']);
+    const s = scene(BANDED);
+    s.measure.playersView = players(seen, { players: false });
+    s.store.getState().setSelection(['hero']);
+    s.store.getState().setMeasureTool({ mode: 'ranges', players: false });
+    s.press(GOBLIN);
+    s.hover(GOBLIN);
+    expect(inFrame(s, seen)).toEqual([false, false]);
+    expect(s.measure.measurements.get().ranges?.hidden).toBe(true);
+    s.store.getState().setMeasureTool({ players: true });
+    expect(inFrame(s, seen)).toEqual([true, true]);
+    expect(s.measure.measurements.get().ranges?.hidden).toBe(false);
+  });
+
+  it('work while the canvas shows the players\' view, and show there by the same rule', () => {
+    const seen = new Set(['hero']);
+    const canvas = { players: true };
+    const s = scene(BANDED);
+    s.measure.playersView = players(seen, canvas);
     s.measure.refreshVisibility();
-    expect(s.measure.ranges.view.visible).toBe(false);
+    s.store.getState().setSelection(['hero']);
+    s.store.getState().setMeasureTool({ mode: 'ranges' });
+    s.press(HERO);
+    expect(rings(s)).toEqual(['Melee', 'Close', 'Far']);
+    expect(s.measure.ranges.ringsLayer.visible).toBe(true);
     s.hover(OGRE);
-    expect(check(s)).toBe('');
-    s.measure.ranges.handleEscape();
-    s.press(OGRE);
-    expect(rings(s)).toEqual([]);
+    expect(check(s)).toBe('Far');
+    expect(s.measure.ranges.checkLayer.visible).toBe(false);
+    seen.delete('hero');
+    s.measure.refreshVisibility();
+    expect(s.measure.ranges.ringsLayer.visible).toBe(false);
     canvas.players = false;
     s.measure.refreshVisibility();
-    expect(s.measure.ranges.view.visible).toBe(true);
+    expect([s.measure.ranges.ringsLayer.visible, s.measure.ranges.checkLayer.visible]).toEqual([true, true]);
+  });
+
+  it('pass on what they show, and nothing once they are gone', () => {
+    const s = scene(BANDED);
+    s.store.getState().setSelection(['hero']);
+    s.store.getState().setMeasureTool({ mode: 'ranges' });
+    expect(s.measure.measurements.get().ranges ?? null).toBeNull();
+    s.press(HERO);
     s.hover(GOBLIN);
-    expect(check(s)).toBe('Far');
+    const { ranges } = s.measure.measurements.get();
+    expect(ranges?.rings).toMatchObject({ tokenIds: ['hero'], at: { x: HERO.x, y: HERO.y, size: 1 } });
+    expect(ranges?.rings?.rings.map((ring) => ring.label)).toEqual(['Melee', 'Close', 'Far']);
+    expect(ranges?.check).toEqual({ tokenIds: ['hero', 'goblin'], from: { x: HERO.x, y: HERO.y, size: 1 }, to: { x: GOBLIN.x, y: GOBLIN.y, size: 1 }, text: 'Far' });
+    expect(nothingMeasured(s)).toBe(true);
+    s.store.getState().setActiveTool('select');
+    expect(s.measure.measurements.get().ranges).toBeNull();
   });
 });

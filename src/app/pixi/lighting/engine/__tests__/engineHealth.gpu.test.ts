@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WallSegment } from '../../../../types/wallTypes';
 import { SEES_ALL } from '../../../../vision/sight';
 import { resetContext } from '../../__tests__/rendererHarness';
-import { ENGINE_SHADERS } from '../engineShaders';
+import { LIGHTING_QUALITY } from '../../../../lighting/lightingQuality';
+import { ENGINE_SHADERS, shadersOfPicture } from '../engineShaders';
+import { engineProgram } from '../gpu';
 import { LightingEngine } from '../LightingEngine';
 import { LightingWorld } from '../LightingWorld';
 import { failedEngineShaders } from '../shaderCheck';
@@ -63,6 +65,30 @@ describe('LightingEngine on a graphics device that cannot run it', () => {
   it('links every engine shader on this device', async () => {
     const { renderer } = await setup();
     expect(failedEngineShaders(renderer.gl)).toEqual([]);
+  });
+
+  it('compiles no traced program for the polygon picture, and asks about them once the picture changes to traced', async () => {
+    const renderer = await createTestRenderer(SIZE);
+    cleanup.push(() => renderer.destroy());
+    const engine = new LightingEngine(renderer, LIGHTING_QUALITY.saver);
+    cleanup.push(() => engine.destroy());
+    engine.setMode('player');
+    const shaderSource = vi.spyOn(renderer.gl, 'shaderSource');
+    engine.setEnabled(true);
+    engine.update(scene);
+    renderThroughEngine(engine, renderer, { size: SIZE, scale: 0.5, x: -22, y: -22 });
+    const compiled = (): string[] => shaderSource.mock.calls.map((call) => call[1]);
+    const allowed = shadersOfPicture('polygons');
+    const traced = Object.values(ENGINE_SHADERS).filter((source) => !allowed.includes(source));
+    expect(traced.length).toBeGreaterThan(0);
+    expect(compiled().length).toBeGreaterThan(0);
+    for (const source of traced) expect(compiled(), source.name).not.toContain(engineProgram(source).fragment);
+    expect(engine.failed).toBe(false);
+
+    shaderSource.mockClear();
+    engine.setQuality(LIGHTING_QUALITY.high);
+    expect(compiled()).toContain(engineProgram(ENGINE_SHADERS.tile).fragment);
+    expect(engine.failed).toBe(false);
   });
 
   it('names a shader that does not compile, with the driver\'s log', async () => {

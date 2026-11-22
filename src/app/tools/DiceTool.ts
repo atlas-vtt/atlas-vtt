@@ -178,6 +178,12 @@ function prepareDiceRoll(formula: string, rules: DiceRules | RollingDice, advant
   return { complete, rolling, looks, helped, side };
 }
 
+/** Why the dice tool refuses to roll `formula` by `rules` with `advantage` asked for, or null where it rolls it. Pure. */
+export function diceRollProblem(formula: string, rules: DiceRules | RollingDice, advantage?: AdvantageSide): FormulaError | null {
+  const prepared = prepareDiceRoll(formula, rules, advantage);
+  return 'code' in prepared ? prepared : null;
+}
+
 /**
  * Rolls a formula by a dice set (or a collection's dice rules), as the dice
  * tool does but without telling anyone: one without dice (`+3`) is added to

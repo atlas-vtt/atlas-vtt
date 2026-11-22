@@ -2,8 +2,9 @@ import { useMapResources } from '../../resources/useMapResources';
 import { TURN_KEY_ATTRIBUTE } from '../../initiative/motion/turnMotion';
 import { combatantDefeated } from '../../initiative/defeated';
 import { visibleResources } from '../../resources/visibleResources';
-import React, { useCallback, useRef, useState } from 'react';
-import { EyeOff, GripVertical, Skull, User, Bot } from 'lucide-react';
+import React, { useCallback, useRef } from 'react';
+import { EyeOff, Skull, User, Bot } from 'lucide-react';
+import { DRAG_GROUP_ATTRIBUTE, type RowDrag } from '../hooks/useRowDrag';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
 import { useAtlasUI } from '../root/AtlasUIContext';
 import { useAtlasStore, useViewStoreHook } from '../ViewStoreContext';
@@ -26,7 +27,10 @@ import { sideOf } from '../../initiative/sides';
 
 interface InitiativeCardProps {
   entry: InitiativeEntry;
-  index: number;
+  /** Its place in the list as it is drawn, and the group it is dragged within (`useRowDrag`); without a drag it stays put. */
+  place?: number;
+  group?: string;
+  drag?: RowDrag;
   isHoveredForPreview: boolean;
   /** The fight runs by sides: a combatant has no number there and never the turn by itself. */
   bySides?: boolean;
@@ -43,9 +47,6 @@ interface InitiativeCardProps {
   onStartNumberEdit?: (entry: InitiativeEntry) => void;
   onCommitNumber?: (entry: InitiativeEntry, text: string, step: NumberStep) => void;
   onCancelNumberEdit?: () => void;
-  onDragStart: (index: number) => void;
-  onDragOver: (index: number) => void;
-  onDragEnd: () => void;
   onContextMenu: (e: React.MouseEvent, entry: InitiativeEntry, cardElement: HTMLElement) => void;
   onHover: (entry: InitiativeEntry | null, cardElement?: HTMLElement) => void;
   /** Its turn just began: it lights up once (`initiative-turn-flash`), as on the players' list. */
@@ -53,6 +54,10 @@ interface InitiativeCardProps {
 }
 
 const NOTHING = (): void => undefined;
+const NO_DRAG: RowDrag = {
+  onPointerDown: NOTHING, onPointerMove: NOTHING, onPointerUp: NOTHING, onPointerCancel: NOTHING,
+  offsetOf: () => undefined, held: null, settling: false,
+};
 
 /**
  * A combatant in the GM's tracker, as the players' list draws it (`styles/_initiative-cards.scss`): a square card
@@ -61,7 +66,9 @@ const NOTHING = (): void => undefined;
  */
 export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   entry,
-  index,
+  place = 0,
+  group,
+  drag = NO_DRAG,
   isHoveredForPreview,
   bySides = false,
   byCards = false,
@@ -72,9 +79,6 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   onStartNumberEdit = NOTHING,
   onCommitNumber = NOTHING,
   onCancelNumberEdit = NOTHING,
-  onDragStart,
-  onDragOver,
-  onDragEnd,
   onContextMenu,
   onHover,
   turnFlash = false,
@@ -86,7 +90,6 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   const levels = useAtlasStore((s) => s.levels);
   // Its token is selected on the map (a click on the card selects it)
   const selected = useAtlasStore((s) => entry.tokenId !== undefined && s.selectedIds.includes(entry.tokenId));
-  const [dropPosition, setDropPosition] = useState<'above' | 'below' | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const hover = useCardPreviewHover(cardRef, entry, isHoveredForPreview, onHover);
 
@@ -129,40 +132,6 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
       return '';
     }
   }, [app]);
-
-  // Handle drag start
-  const handleDragStart = (e: React.DragEvent): void => {
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', String(index));
-    onDragStart(index);
-  };
-
-  // Handle drag over
-  const handleDragOver = (e: React.DragEvent): void => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-
-    // Determine if dropping above or below
-    const rect = cardRef.current?.getBoundingClientRect();
-    if (rect) {
-      const midY = rect.top + rect.height / 2;
-      setDropPosition(e.clientY < midY ? 'above' : 'below');
-    }
-
-    onDragOver(index);
-  };
-
-  // Handle drag leave
-  const handleDragLeave = (): void => {
-    setDropPosition(null);
-  };
-
-  // Handle drop
-  const handleDrop = (e: React.DragEvent): void => {
-    e.preventDefault();
-    setDropPosition(null);
-    onDragEnd();
-  };
 
   // Handle context menu
   const handleContextMenu = (e: React.MouseEvent): void => {
@@ -212,8 +181,6 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
     entry.delayed && 'atlas-initiative-card--delayed',
     isHoveredForPreview && 'atlas-initiative-card--preview-hover',
     selected && 'atlas-initiative-card--selected',
-    dropPosition === 'above' && 'atlas-initiative-card--drop-above',
-    dropPosition === 'below' && 'atlas-initiative-card--drop-below',
     turnFlash && 'atlas-initiative-card--turn-flash',
   ].filter(Boolean).join(' ');
 
@@ -221,14 +188,15 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
     <div
       ref={cardRef}
       className={cardClasses}
-      style={turn ? ({ '--atlas-turn-color': turn } as React.CSSProperties) : undefined}
-      // A field being typed in keeps its text selection to itself
-      draggable={!isEditingNumber}
+      style={{ translate: drag.offsetOf(place), ...(turn && { '--atlas-turn-color': turn }) }}
+      data-held={drag.held === place ? '' : undefined}
+      {...{ [DRAG_GROUP_ATTRIBUTE]: group }}
+      // A field being typed in keeps its pointer to itself
+      onPointerDown={(event) => { if (!isEditingNumber) drag.onPointerDown(place, event); }}
+      onPointerMove={drag.onPointerMove}
+      onPointerUp={drag.onPointerUp}
+      onPointerCancel={drag.onPointerCancel}
       onClick={handleClick}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
       onContextMenu={handleContextMenu}
       {...hover}
       role="listitem"
@@ -237,11 +205,6 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
       aria-roledescription={t('initiative.card')}
       aria-label={name}
     >
-      {/* Drag Handle */}
-      <div className="atlas-initiative-card__drag-handle">
-        <GripVertical />
-      </div>
-
       {/* The token's art filling the card, with its badge and marks in the top left; the compact list shows the marks alone, beside the name */}
       {compact ? (
         <>

@@ -3,7 +3,16 @@ import { listOutputDevices, type OutputDeviceChoice } from '../sound/engine/outp
 import type { SettingsService } from '../services/SettingsService';
 import { CHANNEL_DB_RANGE, MAX_CROSSFADE_SECONDS, MAX_FADE_SECONDS } from '../services/soundSettings';
 import type { SoundDirector } from '../soundDirector/SoundDirector';
+import { addSettingButton } from '../ui/atlasButton';
+import { showNotice } from '../ui/notice';
 import type { AtlasSettingRow, AtlasSettingSection } from './settingSections';
+
+const VINDSVEPT_URL = 'https://vindsvept.se';
+/**
+ * The credit a video using the music must carry in its description, in the composer's own wording; his
+ * channel's system claims videos whose description lacks it. Pasted content, so never translated.
+ */
+const VIDEO_CREDIT = 'Music by Vindsvept – released under CC-BY 4.0. www.youtube.com/Vindsvept';
 
 const DEFAULT_OUTPUT = 'default';
 
@@ -114,6 +123,23 @@ export function soundSettingsSection(settings: SettingsService, director: SoundD
       levelRow(settings, director, t('audio.ambience'), 'ambienceDb'),
       levelRow(settings, director, t('audio.master'), 'masterDb'),
       outputRow(director),
+      {
+        name: t('audio.settings.musicCredit'),
+        desc: t('audio.settings.musicCreditHint'),
+        aliases: ['sound', 'music', 'credits', 'licence', 'license', 'vindsvept'],
+        render: (setting) => {
+          addSettingButton(setting, {
+            text: t('audio.settings.musicCreditCopy'),
+            onClick: () => {
+              navigator.clipboard.writeText(VIDEO_CREDIT).then(
+                () => showNotice(t('audio.settings.musicCreditCopied')),
+                (error: unknown) => console.error('[Atlas] Could not copy the music credit', error),
+              );
+            },
+          });
+          addSettingButton(setting, { text: t('audio.settings.musicCreditOpen'), onClick: () => { window.open(VINDSVEPT_URL); } });
+        },
+      },
     ],
   };
 }

@@ -23,6 +23,16 @@ describe('coerce by declared type', () => {
     expect(coerce('number', '3+1*')).toMatchObject({ ok: false, raw: '3+1*' });
   });
 
+  it('keeps a number with a side written last as written, and nothing else with one', () => {
+    for (const written of ['+7 adv', '-1 dis', '3 ADV', '10 + @dex adv']) {
+      expect(coerce('number', written), written).toEqual({ ok: true, value: written });
+    }
+    expect(coerce('number', 'adv')).toEqual({ ok: false, raw: 'adv', problem: '“adv” isn\'t a number.' });
+    expect(coerce('number', '30 ft. adv')).toMatchObject({ ok: false, raw: '30 ft. adv' });
+    expect(coerce('number', '+7adv')).toMatchObject({ ok: false, raw: '+7adv' });
+    expect(coerce('number', '7 adv dis')).toMatchObject({ ok: false, raw: '7 adv dis' });
+  });
+
   it('keeps ratings as written and stores whole numbers as numbers', () => {
     expect(coerce('rating', '3')).toEqual({ ok: true, value: 3 });
     expect(coerce('rating', '-1')).toEqual({ ok: true, value: -1 });

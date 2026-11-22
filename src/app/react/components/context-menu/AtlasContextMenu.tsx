@@ -30,6 +30,8 @@ export type ContextMenuEntry =
     stepper?: MenuStepper;
     /** What choosing the row does, in a sentence or two: a tooltip beside the row while it is pointed at or focused. */
     description?: string;
+    /** A second, quieter line under the label, which makes the row the menu's feature (a collection offered whole). */
+    tagline?: string;
   }
   | {
     type: 'submenu';
@@ -145,6 +147,15 @@ function stepperKeys(stepper: MenuStepper | undefined): ((event: React.KeyboardE
 /** The label, in an element of its own where something stands beside it that it has to make room for. */
 function itemLabel(entry: ContextMenuItemEntry): React.ReactNode {
   const label = <span className="atlas-ctx-item__label">{entry.label}</span>;
+  if (entry.tagline !== undefined) {
+    return (
+      <span className="atlas-ctx-item__stack">
+        {label}
+        {/* Read out after the label, as one name: "The complete collection, 28 hours…". */}
+        <span className="atlas-ctx-item__tagline">{entry.tagline}</span>
+      </span>
+    );
+  }
   if (entry.leading) {
     return (
       <span className="atlas-ctx-item__leading">
@@ -237,7 +248,7 @@ export function renderEntries(
 
       case 'item':
       default: {
-        const className = `atlas-ctx-item${entry.destructive ? ' atlas-ctx-item--destructive' : ''}`;
+        const className = `atlas-ctx-item${entry.destructive ? ' atlas-ctx-item--destructive' : ''}${entry.tagline !== undefined ? ' atlas-ctx-item--feature' : ''}`;
         const onSelect = (event: Event): void => {
           runEntryAction(entry);
           if (entry.keepOpen) event.preventDefault();

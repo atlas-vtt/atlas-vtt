@@ -175,6 +175,7 @@ export const online: Translation = {
   'online.worldMap.tooLarge': 'Atlas Online kann die Weltkarte nicht senden: Ihr Bild ist größer als 95 MB.',
   'online.worldMap.unreadable': 'Atlas Online kann die Weltkarte nicht senden: Ihr Bild ist kein PNG, JPEG, WebP, GIF oder AVIF, das die Spieler öffnen können.',
   'online.worldMap.unstored': 'Atlas Online kann die Weltkarte nicht senden: Ihr Bild konnte nicht online gespeichert werden.',
+  'online.worldMap.noImage': 'Atlas Online kann die Weltkarte nicht senden: Die Karte oder Szene, die die Kampagne nennt, ist nicht mehr in der Bibliothek oder zeigt kein Bild. Wähle auf der Seite der Kampagne eine andere.',
   'online.assetsRestricted': 'Dieses Konto kann gerade keine Dateien mit Spielern teilen.',
   'online.assetsMapTooLarge': 'Diese Karte ist zu groß, um sie mit den Spielern zu teilen.',
   'online.mapUnreadable': 'Das Kartenbild dieser Szene kann nicht an die Spieler gesendet werden.',

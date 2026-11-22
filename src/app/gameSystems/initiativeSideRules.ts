@@ -34,6 +34,16 @@ export function sidesOfRules(rules: Pick<InitiativeRules, 'firstSide' | 'sides'>
   return rules.sides ?? defaultSides(rules.firstSide);
 }
 
+/** `sides` with those `order` names first, in its order, and the rest after them in their own. */
+export function inSideOrder(sides: readonly SideRef[], order: readonly SideId[] | undefined): SideRef[] {
+  if (!order) return [...sides];
+  const place = (side: SideRef): number => {
+    const index = order.indexOf(side.id);
+    return index < 0 ? order.length : index;
+  };
+  return [...sides].sort((a, b) => place(a) - place(b));
+}
+
 /** Of the players and the opponents, the one that comes first in `sides`. */
 export function firstBuiltInSide(sides: readonly SideRef[]): InitiativeSide {
   return (sides.find((side) => isBuiltInSide(side.id))?.id as InitiativeSide | undefined) ?? 'players';

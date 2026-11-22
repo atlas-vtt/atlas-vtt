@@ -1,0 +1,70 @@
+@use '../../../../../../../styles/tokens' as *;
+@use '../../../../../../../styles/mixins' as *;
+@use '../sound-look' as *;
+
+// The pack offers (starter ambience, starter music): under their root in the rail, and among the first screen's
+// links. Each carries a × that dismisses it; the root's ⋯ menu still offers the download.
+.atlas-sound-lib__offer {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  max-width: 100%;
+}
+
+.atlas-sound-lib .atlas-sound-lib__starter {
+  @include atlas-truncate;
+  min-width: 0;
+
+  small {
+    margin-left: $spacing-s;
+    color: var(--atlas-sound-muted);
+    font-size: $font-ui-small;
+    font-weight: $font-weight-normal;
+  }
+
+  &:disabled {
+    cursor: progress;
+    opacity: 1;
+    color: var(--atlas-sound-muted);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.atlas-sound-lib .atlas-sound-lib__offer-hide {
+  @include bare-button;
+  @include pressable;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: $control-radius;
+  color: var(--atlas-sound-muted);
+  transition: color $transition-normal $press-ease, background-color $transition-normal $press-ease, transform $press-ms $press-ease;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  &:hover {
+    background: $hairline;
+    color: var(--text-normal);
+  }
+}
+
+// In the rail the offer stands under the root's name; the rail has no room for the size, the button's name says it.
+.atlas-sound-lib__rail .atlas-sound-lib__offer {
+  align-self: flex-start;
+  margin-top: $spacing-s;
+  margin-left: 32px;
+  max-width: calc(100% - 32px);
+
+  .atlas-sound-lib__link {
+    margin-left: 0;
+  }
+
+  small {
+    display: none;
+  }
+}
