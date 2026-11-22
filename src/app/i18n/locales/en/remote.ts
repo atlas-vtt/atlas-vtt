@@ -15,4 +15,6 @@ export const remote = {
   'remote.pairHint': 'Allow it only if you just pressed Pair on your Stream Deck. You can revoke it any time in Settings → Stream Deck.',
   'remote.allow': 'Allow',
   'remote.portTaken': 'Atlas could not listen for the Stream Deck: port {port} is in use by another program.',
+  'remote.rollsShown': 'Players now see your rolls.',
+  'remote.rollsHidden': 'Your rolls are now hidden from players.',
 };

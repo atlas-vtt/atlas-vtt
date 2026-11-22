@@ -53,6 +53,14 @@ describe('the image a remote may show', () => {
     expect(service.imageFileAt(imageIn('<div class="markdown-preview-view"><div class="internal-embed image-embed" src="map.png"><img src="data:image/png;base64,AA=="></div></div>'))).toBe(map);
   });
 
+  it('is found while the body carries Atlas classes, and in a note Atlas previews', () => {
+    const note = '<div class="markdown-preview-view"><div class="internal-embed image-embed" src="map.png"><img src="data:image/png;base64,AA=="></div></div>';
+    document.body.className = 'atlas-hide-status-bar atlas-statblock-preview-shown';
+    expect(service.imageFileAt(imageIn(note))).toBe(map);
+    document.body.className = '';
+    expect(service.imageFileAt(imageIn(`<div class="atlas-note-preview-window">${note}</div>`))).toBe(map);
+  });
+
   it('is none for Atlas\' own UI, a dialog, or a picture from elsewhere', () => {
     expect(service.imageFileAt(imageIn('<div class="atlas-toolbar"><div class="internal-embed image-embed" src="map.png"><img></div></div>'))).toBeNull();
     expect(service.imageFileAt(imageIn('<div class="modal-container"><div class="internal-embed image-embed" src="map.png"><img></div></div>'))).toBeNull();

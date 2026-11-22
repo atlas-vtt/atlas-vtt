@@ -17,4 +17,6 @@ export const remote: Translation = {
   'remote.pairHint': 'Разрешайте, только если вы только что нажали «Сопряжение» на Stream Deck. Отозвать можно в любой момент в Настройки → Stream Deck.',
   'remote.allow': 'Разрешить',
   'remote.portTaken': 'Atlas не смог слушать Stream Deck: порт {port} занят другой программой.',
+  'remote.rollsShown': 'Теперь игроки видят ваши броски.',
+  'remote.rollsHidden': 'Теперь ваши броски скрыты от игроков.',
 };

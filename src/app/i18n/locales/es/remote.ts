@@ -17,4 +17,6 @@ export const remote: Translation = {
   'remote.pairHint': 'Permítelo solo si acabas de pulsar Vincular en tu Stream Deck. Puedes revocarlo cuando quieras en Ajustes → Stream Deck.',
   'remote.allow': 'Permitir',
   'remote.portTaken': 'Atlas no pudo escuchar al Stream Deck: otro programa usa el puerto {port}.',
+  'remote.rollsShown': 'Los jugadores ahora ven tus tiradas.',
+  'remote.rollsHidden': 'Tus tiradas ahora están ocultas para los jugadores.',
 };

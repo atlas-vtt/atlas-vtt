@@ -17,4 +17,6 @@ export const remote: Translation = {
   'remote.pairHint': '仅当你刚在 Stream Deck 上按下“配对”时才允许。你可以随时在 设置 → Stream Deck 中撤销。',
   'remote.allow': '允许',
   'remote.portTaken': 'Atlas 无法监听 Stream Deck：端口 {port} 已被其他程序占用。',
+  'remote.rollsShown': '玩家现在能看到你的掷骰。',
+  'remote.rollsHidden': '你的掷骰现在对玩家隐藏。',
 };

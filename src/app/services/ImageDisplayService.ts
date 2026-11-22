@@ -24,6 +24,18 @@ interface ImageDisplay {
   imageUrl: string;
 }
 
+/** Atlas' own elements; the document's root and body carry Atlas classes too (hidden chrome, a preview shown), and are none. */
+const ATLAS_UI = ':not(body):not(html)[class*="atlas-"]';
+const NOTE_CONTENT = '.markdown-rendered, .markdown-source-view, .markdown-preview-view';
+
+/** Whether `target` lies in Atlas' own UI, whose images stay its own; a note Atlas shows (its note preview) is the GM's content. */
+function inAtlasUi(target: Element): boolean {
+  const atlas = target.closest(ATLAS_UI);
+  if (!atlas) return false;
+  const note = target.closest(NOTE_CONTENT);
+  return !(note && atlas.contains(note));
+}
+
 export class ImageDisplayService {
   private app: App;
   private static instance: ImageDisplayService | null = null;
@@ -118,7 +130,7 @@ export class ImageDisplayService {
     if (target.closest('.modal-container')) return null;
     // Atlas' own UI keeps its images to itself, but a statblock's pictures are content.
     let imgElement = statblockImageAt(target);
-    if (!imgElement && target.closest('[class*="atlas-"]')) return null;
+    if (!imgElement && inAtlasUi(target)) return null;
 
     if (target.tagName === 'IMG') {
       imgElement = target as HTMLImageElement;
@@ -182,7 +194,7 @@ export class ImageDisplayService {
   /** The image of an image file's own tab under `target` (not Atlas' UI); null anywhere else. */
   private viewedImageAt(target: Element): { file: TFile; imgElement: HTMLImageElement } | null {
     // Atlas' own UI keeps its images to itself
-    if (target.closest('[class*="atlas-"]')) return null;
+    if (inAtlasUi(target)) return null;
 
     // Only handle direct image viewing (e.g. clicking an image file in a tab)
     const viewContent = target.closest('.view-content');

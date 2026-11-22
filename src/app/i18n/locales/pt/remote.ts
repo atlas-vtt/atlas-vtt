@@ -17,4 +17,6 @@ export const remote: Translation = {
   'remote.pairHint': 'Permita só se você acabou de pressionar Emparelhar no seu Stream Deck. Você pode revogar a qualquer momento em Configurações → Stream Deck.',
   'remote.allow': 'Permitir',
   'remote.portTaken': 'O Atlas não conseguiu escutar o Stream Deck: a porta {port} está em uso por outro programa.',
+  'remote.rollsShown': 'Os jogadores agora veem suas rolagens.',
+  'remote.rollsHidden': 'Suas rolagens agora estão ocultas dos jogadores.',
 };

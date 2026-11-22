@@ -1,4 +1,6 @@
 import type { App } from 'obsidian';
+import { t } from '../i18n';
+import { showNotice } from '../ui/notice';
 import type { AtlasView } from '../atlas-view';
 import { defeatedOnMap } from '../initiative/defeatedOnMap';
 import { rollInitiative } from '../initiative/rollInitiative';
@@ -46,7 +48,11 @@ function tableMap(app: App, view: AtlasView): TableMap {
 function shareRolls(app: App): TableShareRolls {
   return {
     shown: () => SettingsService.forApp(app)?.getLocalPlayerViewSettings().showDiceRolls ?? false,
-    setShown: (shown) => SettingsService.forApp(app)?.setLocalPlayerViewSettings({ showDiceRolls: shown }),
+    setShown: (shown) => {
+      SettingsService.forApp(app)?.setLocalPlayerViewSettings({ showDiceRolls: shown });
+      // The key is pressed away from Obsidian, whose switch the GM may not see: say what changed
+      showNotice(t(shown ? 'remote.rollsShown' : 'remote.rollsHidden'));
+    },
   };
 }
 

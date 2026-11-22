@@ -17,4 +17,6 @@ export const remote: Translation = {
   'remote.pairHint': 'Consenti solo se hai appena premuto Associa sul tuo Stream Deck. Puoi revocarlo quando vuoi in Impostazioni → Stream Deck.',
   'remote.allow': 'Consenti',
   'remote.portTaken': 'Atlas non è riuscito ad ascoltare lo Stream Deck: la porta {port} è usata da un altro programma.',
+  'remote.rollsShown': 'Ora i giocatori vedono i tuoi tiri.',
+  'remote.rollsHidden': 'Ora i tuoi tiri sono nascosti ai giocatori.',
 };

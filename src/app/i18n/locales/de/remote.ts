@@ -17,4 +17,6 @@ export const remote: Translation = {
   'remote.pairHint': 'Erlaube es nur, wenn du gerade auf deinem Stream Deck „Koppeln“ gedrückt hast. Du kannst es jederzeit unter Einstellungen → Stream Deck widerrufen.',
   'remote.allow': 'Erlauben',
   'remote.portTaken': 'Atlas kann nicht auf das Stream Deck hören: Port {port} wird von einem anderen Programm benutzt.',
+  'remote.rollsShown': 'Die Spieler sehen jetzt deine Würfe.',
+  'remote.rollsHidden': 'Deine Würfe sind jetzt vor den Spielern verborgen.',
 };

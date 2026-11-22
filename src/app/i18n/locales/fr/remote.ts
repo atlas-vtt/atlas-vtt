@@ -17,4 +17,6 @@ export const remote: Translation = {
   'remote.pairHint': 'N\'autorisez que si vous venez d\'appuyer sur Associer sur votre Stream Deck. Vous pouvez révoquer à tout moment dans Réglages → Stream Deck.',
   'remote.allow': 'Autoriser',
   'remote.portTaken': 'Atlas n\'a pas pu écouter le Stream Deck : le port {port} est utilisé par un autre programme.',
+  'remote.rollsShown': 'Les joueurs voient maintenant vos jets.',
+  'remote.rollsHidden': 'Vos jets sont maintenant cachés aux joueurs.',
 };
