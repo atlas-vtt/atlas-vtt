@@ -180,6 +180,8 @@ export const online = {
   "online.unmark": "Rimuovi contrassegno",
   "online.update": "Aggiorna",
   "online.updateAfter": "Aggiorna Atlas dopo questa sessione",
+  "online.sheet.templateMissing": "I giocatori non possono modificare la scheda {note}: il suo modello manca. Scegli un modello per la nota.",
+  "online.sheet.templateNewer": "I giocatori non possono modificare la scheda {note}: il suo modello dice di essere stato creato con un Atlas più recente, quindi Atlas lo legge soltanto.",
   "online.worldMap.missing": "Atlas Online non può inviare la mappa del mondo: il file dell’immagine manca.",
   "online.worldMap.tooLarge": "Atlas Online non può inviare la mappa del mondo: l’immagine supera i 95 MB.",
   "online.worldMap.unreadable": "Atlas Online non può inviare la mappa del mondo: l’immagine non è un PNG, JPEG, WebP, GIF o AVIF che i giocatori possano aprire.",
