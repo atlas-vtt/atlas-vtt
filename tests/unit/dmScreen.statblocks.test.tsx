@@ -252,6 +252,25 @@ describe('DM screen token actions', () => {
     state.dmScreenPage = 'statblocks';
   });
 
+  it('closes from the Sound page on S pressed on a control that keeps its keys, but not on S typed in a field', async () => {
+    const onClose = vi.fn();
+    state.dmScreenPage = 'sound';
+    const { container } = showDMScreen([creaturePath], onClose);
+    const screenEl = container.querySelector<HTMLElement>('.atlas-dm-screen')!;
+    const field = screenEl.appendChild(document.createElement('input'));
+    field.focus();
+    fireEvent.keyDown(field, { key: 's', code: 'KeyS' });
+    expect(onClose).not.toHaveBeenCalled();
+
+    // The library keeps every key but Tab and Escape from bubbling out of it
+    const row = screenEl.appendChild(document.createElement('button'));
+    row.addEventListener('keydown', (event) => event.stopPropagation());
+    row.focus();
+    fireEvent.keyDown(row, { key: 's', code: 'KeyS' });
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    state.dmScreenPage = 'statblocks';
+  });
+
   it('stays open on an Escape a control inside it used', async () => {
     const onClose = vi.fn();
     showDMScreen([creaturePath], onClose);

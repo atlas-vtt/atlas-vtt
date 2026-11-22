@@ -125,15 +125,28 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
       if (matchesMapHotkey(e, 'dashboard', settings)) {
         e.preventDefault();
         handleClose();
-      } else if (matchesMapHotkey(e, 'soundPage', settings)) {
-        // The Sound page's key closes the screen from that page and turns to it from the other
-        e.preventDefault();
-        if (page === 'sound') handleClose();
-        else setPage('sound');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, handleClose, isNoteFocused, app, view]);
+
+  // The Sound page's key closes the screen from that page and turns to it from the other. It is heard before
+  // the page's controls, which keep keys of their own (the library keeps all but Tab and Escape), so a button
+  // or row pressed last never holds it back; only a text field typed in does.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const handleSoundKey = (e: KeyboardEvent): void => {
+      if (isNoteFocused || !matchesMapHotkey(e, 'soundPage', SettingsService.forApp(app))) return;
+      if (!screenTakesKey(e, screenRef.current, view?.viewId)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (page === 'sound') handleClose();
+      else setPage('sound');
+    };
+    const win = screenRef.current?.ownerDocument.defaultView ?? window;
+    win.addEventListener('keydown', handleSoundKey, true);
+    return () => win.removeEventListener('keydown', handleSoundKey, true);
   }, [isOpen, handleClose, isNoteFocused, app, view, page, setPage]);
 
   // Left and right change pages, as a game's shoulder buttons do; the keycaps beside the page control say so.

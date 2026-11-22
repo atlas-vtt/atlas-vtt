@@ -21,6 +21,7 @@
 
 ## Fixed
 
+- S closes the Sound page again after you start a track or press any other button on it; only while you type in a text field does S type instead
 - Choices in a row of buttons wrap onto two lines when a translation is too long for them instead of running into each other, as the stairs' Up only / Down only / Both ways did in Portuguese
 - Clicking a hex linked to a note opens the note again when the hex is coloured with the Draw tool's Cells or covered by another drawing on the map; drawings above the tokens still take the click
 - With a light's panel open, a click on the map outside it closes the panel instead of placing another light or starting a wall
