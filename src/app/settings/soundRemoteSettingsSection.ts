@@ -5,8 +5,8 @@ import type { RemoteSettingsStore } from '../soundRemote/remoteSettings';
 import { showNotice } from '../ui/notice';
 import type { AtlasSettingSection } from './settingSections';
 
-/** Where the Atlas plugin for Stream Deck is published. */
-const STREAM_DECK_PLUGIN_URL = 'https://github.com/atlas-vtt/atlas-vtt-streamdeck/releases/latest';
+/** Where the Atlas plugin for Stream Deck is offered: its page on the website, with the download and how to set it up. */
+const STREAM_DECK_PLUGIN_URL = 'https://atlas-vtt.dev/stream-deck';
 
 function pairedText(remote: RemoteSettingsStore): string {
   const { client, pairedAt } = remote.get();
