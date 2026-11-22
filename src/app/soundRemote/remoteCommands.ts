@@ -5,6 +5,7 @@ import { MOOD_LIMITS } from '../soundLibrary/moodFile';
 import { shownMusic } from '../soundDirector/musicPause';
 import type { SoundDirector } from '../soundDirector/SoundDirector';
 import type { RemoteChannel, RemoteCommand, RemoteRepeat } from './remoteProtocol';
+import type { TableCommand } from './remoteTable';
 
 /** The part of the director a remote presses: the same intents the palette and the Sound page send. */
 export type RemoteDirector = Pick<SoundDirector, 'isOn' | 'snapshot' | 'press' | 'pressNext' | 'setChannelLevels'> & {
@@ -35,7 +36,7 @@ export class RemoteCommands {
   constructor(private readonly director: RemoteDirector, private readonly moodOf: (id: string) => Mood | null) {}
 
   /** Null where it was done. */
-  run(command: RemoteCommand): RemoteRefusal | null {
+  run(command: Exclude<RemoteCommand, TableCommand>): RemoteRefusal | null {
     const { director } = this;
     if (!director.isOn) return 'sound-off';
     const { desk } = director;

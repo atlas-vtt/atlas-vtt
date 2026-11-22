@@ -1,3 +1,4 @@
+import type { App } from 'obsidian';
 import { useCallback, useEffect, useState } from 'react';
 import { AssetService } from '../../../services/AssetService';
 import { useMapCollectionId } from '../../hooks/useMapCollectionId';
@@ -12,12 +13,17 @@ export interface DiceShelfAccess {
   change: ((change: ShelfChange) => void) | null;
 }
 
+/** The saved rolls and the tray's row of a collection; empty for a map outside every collection. */
+export function collectionDiceShelf(app: App, collectionId: string | null): DiceShelf {
+  return readDiceShelf(collectionId ? AssetService.getInstance(app).getCollectionSettings(collectionId) : null);
+}
+
 /** The saved rolls and the tray's row of the view's collection, following edits to its settings from anywhere. */
 export function useDiceShelf(): DiceShelfAccess {
   const { app } = useAtlasUI();
   const collectionId = useMapCollectionId();
   const read = useCallback(
-    (): DiceShelf => readDiceShelf(collectionId ? AssetService.getInstance(app).getCollectionSettings(collectionId) : null),
+    (): DiceShelf => collectionDiceShelf(app, collectionId),
     [app, collectionId],
   );
   const [shelf, setShelf] = useState(read);

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { NodeHttpModule } from '@/app/soundRemote/nodeHttp';
 import { REMOTE_HEADER } from '@/app/soundRemote/remoteProtocol';
 import { SoundRemoteServer, type PairingPrompt } from '@/app/soundRemote/SoundRemoteServer';
-import { fakeRemoteDirector, memoryRemoteSettings, remoteMood, withMusic } from '../../helpers/soundRemoteRig';
+import { fakeRemoteDirector, fakeTable, memoryRemoteSettings, remoteMood, withMusic } from '../../helpers/soundRemoteRig';
 
 interface Answer {
   status: number;
@@ -57,11 +57,13 @@ function start(answer: boolean | 'never' = true) {
   const tavern = remoteMood('tavern', 'Tavern');
   const prompts: Array<PairingPrompt & { client: string }> = [];
   const cancel = vi.fn();
+  const table = fakeTable();
   server = new SoundRemoteServer({
     http: http as unknown as NodeHttpModule,
     port: PORT,
     director,
     moods: { moods: () => [tavern], mood: (id) => (id === 'tavern' ? tavern : null), onChange: () => () => undefined },
+    table: table.table,
     settings,
     askToPair: (client) => {
       const prompt = { client, answer: answer === 'never' ? new Promise<boolean>(() => undefined) : Promise.resolve(answer), cancel };
@@ -71,7 +73,7 @@ function start(answer: boolean | 'never' = true) {
     onListenError: (error) => { throw error; },
   });
   server.start();
-  return { director, settings, prompts, cancel };
+  return { director, settings, prompts, cancel, table };
 }
 
 async function paired(): Promise<{ token: string } & ReturnType<typeof start>> {
@@ -149,5 +151,18 @@ describe('the sound remote over HTTP', () => {
     expect((await later)[2]).toMatchObject({ event: 'state', data: { levels: { masterDb: -12 } } });
     settings.revoke();
     expect((await call('GET', '/v1/state', { token })).status).toBe(401);
+  });
+
+  it('runs table commands while sound is off, refuses them with a reason, and pushes the fight at once', async () => {
+    const { token, director, table } = await paired();
+    director.isOn = false;
+    const stream = events(token, 3);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect((await call('POST', '/v1/command', { body: { type: 'combat' }, token })).status).toBe(204);
+    expect((await stream)[2]).toMatchObject({ event: 'state', data: { combat: { active: true, round: 1, combatants: 2, rolls: true }, player: { open: true, hidden: false } } });
+    expect(table.state.startCombat).toHaveBeenCalledOnce();
+    table.window.open = false;
+    expect(await call('POST', '/v1/command', { body: { type: 'curtain' }, token })).toEqual({ status: 409, body: JSON.stringify({ error: 'no-player-window' }) });
+    expect((await call('POST', '/v1/command', { body: { type: 'pause' }, token })).status).toBe(409);
   });
 });

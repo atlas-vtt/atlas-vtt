@@ -19,6 +19,7 @@ function fakePlugin(leafDocs: Document[] = []): { plugin: Plugin; open(doc: Docu
           listeners.set(name, listener);
           return {};
         },
+        offref: () => undefined,
       },
     },
     registerEvent: () => undefined,
