@@ -2,12 +2,22 @@ import { FIGHT_INTRO_HOLD_MS, PULSE_MS, TURN_FLASH_MS } from './playerInitiative
 import { glideHeight, outwardOf, settle } from './playerInitiativeMotion';
 import { adoptGhosts, ghostsOf, playTurnMotion, snapshotTurn } from '../initiative/motion/turnMotion';
 import { enterList, exitList, LIST_ARRIVAL_MS } from '../initiative/motion/listPresence';
+import { glideScroll } from '../initiative/motion/scrollGlide';
+import { CONDITIONS_TIP_CLASS, CONDITIONS_TIP_SHIFT } from './playerConditionsTip';
 
 /** How long the lists of a new layout wait before they come in, while the old ones have begun to leave. */
 const LAYOUT_SWAP_DELAY_MS = 120;
 
 /** What a drawing of the lists measured of those standing before it, by edge (`measure`, `glide`). */
-export type StandingLists = ReadonlyMap<string | undefined, { height: number; places: ReturnType<typeof snapshotTurn>; ghosts: ReturnType<typeof ghostsOf> }>;
+export type StandingLists = ReadonlyMap<string | undefined, {
+  height: number;
+  places: ReturnType<typeof snapshotTurn>;
+  ghosts: ReturnType<typeof ghostsOf>;
+  /** How far the list was scrolled, along its axis. */
+  scroll: number;
+  /** The combatant whose conditions it named for the GM (`showConditionsTip`), if any. */
+  conditionsShown: string | undefined;
+}>;
 
 /**
  * How the players' initiative lists come, go and move, wherever they are drawn (Atlas's player window, the online
@@ -64,7 +74,8 @@ export class PlayerInitiativeStage {
   measure(): StandingLists {
     return new Map(this.drawnPanels.map((panel) => {
       const list = panel.querySelector<HTMLElement>('.atlas-initiative-panel__list');
-      return [panel.dataset.edge, { height: panel.offsetHeight, places: snapshotTurn(list), ghosts: ghostsOf(list) }];
+      const scroll = list === null ? 0 : across(panel) ? list.scrollLeft : list.scrollTop;
+      return [panel.dataset.edge, { height: panel.offsetHeight, places: snapshotTurn(list), ghosts: ghostsOf(list), scroll, conditionsShown: panel.dataset.conditionsShown }];
     }));
   }
 
@@ -72,7 +83,8 @@ export class PlayerInitiativeStage {
    * After a drawing: a list that stands at an edge it stood at before glides from its old height (`glideHeight`), and
    * its cards from where they stood to their new places (`playTurnMotion`), the copies still sliding out laid over it again.
    * Where the turn stayed (`turnFlash`), each card glides straight to its new place: a card the GM dragged up or down
-   * the order moves there, rather than going round the list as the turn's holder does.
+   * the order moves there, rather than going round the list as the turn's holder does. Where the GM began or stopped
+   * naming a combatant's conditions, or named another's, the list glides to it or back (`glideScroll`), its tip with it.
    */
   glide(before: StandingLists): void {
     for (const panel of this.drawnPanels) {
@@ -83,6 +95,10 @@ export class PlayerInitiativeStage {
         const list = panel.querySelector<HTMLElement>('.atlas-initiative-panel__list');
         adoptGhosts(list, was.ghosts);
         playTurnMotion(list, was.places, { wrap: !this.turnKept });
+        if (list && was.conditionsShown !== panel.dataset.conditionsShown) {
+          const tip = panel.querySelector<HTMLElement>(`.${CONDITIONS_TIP_CLASS}`);
+          glideScroll(list, was.scroll, across(panel) ? 'x' : 'y', (left) => tip?.style.setProperty(CONDITIONS_TIP_SHIFT, `${left}px`));
+        }
       }
       if (typeof panel.animate === 'function') glideHeight(panel, was.height);
     }
@@ -186,4 +202,9 @@ export class PlayerInitiativeStage {
       enterList(panel, outwardOf(panel), arrival.delay - elapsed);
     });
   }
+}
+
+/** A list across the top or bottom runs as a row and scrolls sideways. */
+function across(panel: HTMLElement): boolean {
+  return panel.classList.contains('atlas-initiative-panel--row');
 }

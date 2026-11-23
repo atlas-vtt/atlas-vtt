@@ -180,7 +180,8 @@ $card-width: calc(#{scaled(96px)} - 2 * #{$border-width-m} - 2 * #{$surface-inse
 // stands beside the tracker; across the top it hangs below the row, along a row elsewhere above it. Grows with the list
 .atlas-player-initiative .atlas-player-initiative__conditions-tip {
   position: absolute;
-  top: var(--atlas-conditions-tip-at);
+  // Moved with its card while the list glides to it (`--atlas-conditions-tip-shift`, `glideScroll`)
+  top: calc(var(--atlas-conditions-tip-at) + var(--atlas-conditions-tip-shift, 0px));
   right: calc(100% + #{$spacing-m});
   z-index: 5;
   padding: scaled(8px);
@@ -193,7 +194,7 @@ $card-width: calc(#{scaled(96px)} - 2 * #{$border-width-m} - 2 * #{$surface-inse
   top: auto;
   right: auto;
   bottom: calc(100% + #{$spacing-m});
-  left: var(--atlas-conditions-tip-at);
+  left: calc(var(--atlas-conditions-tip-at) + var(--atlas-conditions-tip-shift, 0px));
   translate: -50% 0;
 }
 

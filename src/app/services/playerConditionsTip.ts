@@ -3,6 +3,11 @@ import { createConditionBadge } from '../packages/components/shared/conditionBad
 import { playerCardKey } from './playerInitiativeCard';
 import type { PlayerInitiativeList } from './playerInitiativeList';
 
+/** The tip's class, which the stage finds it by to move it with its card (`PlayerInitiativeStage.glide`). */
+export const CONDITIONS_TIP_CLASS = 'atlas-player-initiative__conditions-tip';
+/** How far the list's scroll still lies from where it ends, which the tip is moved by while the list glides there. */
+export const CONDITIONS_TIP_SHIFT = '--atlas-conditions-tip-shift';
+
 /** A badge in the tip, grown with the list. */
 const BADGE_SIZE = 'calc(18px * var(--atlas-initiative-scale, 1))';
 
@@ -18,7 +23,9 @@ export function showConditionsTip(panel: HTMLElement, entries: HTMLElement, list
   const card = [...entries.querySelectorAll<HTMLElement>(`[${TURN_KEY_ATTRIBUTE}]`)].find((candidate) => candidate.getAttribute(TURN_KEY_ATTRIBUTE) === key);
   if (!card || conditions.length === 0) return;
   scrollTo(card);
-  const tip = panel.createDiv({ cls: 'tooltip-content atlas-player-initiative__conditions-tip', attr: { role: 'tooltip' } });
+  // Which combatant it names, so the next drawing can tell the GM moved on (`PlayerInitiativeStage.glide`)
+  panel.dataset.conditionsShown = key;
+  const tip = panel.createDiv({ cls: `tooltip-content ${CONDITIONS_TIP_CLASS}`, attr: { role: 'tooltip' } });
   const rows = tip.createEl('ul', { cls: 'atlas-initiative-conditions-tip' });
   for (const condition of conditions) {
     const row = rows.createEl('li', { cls: 'atlas-initiative-conditions-tip__row' });
@@ -26,7 +33,7 @@ export function showConditionsTip(panel: HTMLElement, entries: HTMLElement, list
     row.createSpan({ cls: 'atlas-initiative-conditions-tip__name', text: condition.name });
   }
   // Where the card's middle lies along the list, in the panel's own frame (layout offsets, which a turned panel keeps)
-  const across = panel.hasClass('atlas-initiative-panel--row');
+  const across = panel.classList.contains('atlas-initiative-panel--row');
   tip.style.setProperty('--atlas-conditions-tip-at', `${middleWithin(panel, card, across)}px`);
 }
 
