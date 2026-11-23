@@ -69,36 +69,39 @@ function WelcomeWindow({ app, settings, looks, carousel, doc }: Omit<WelcomeDial
   const page = PAGES[at]!;
   return createPortal(
     <motion.div {...dialogOverlayMotion} className="atlas-vtt-plugin atlas-vtt-root atlas-welcome-overlay">
-      <motion.div
-        ref={windowRef}
-        variants={windowVariants}
-        className="atlas-welcome"
-        data-page={page}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('tour.welcome.label')}
-        onKeyDown={onKeyDown}
-      >
-        <CloseButton className="atlas-welcome__close" onClick={finish} />
-        <div className="atlas-welcome__page" key={page}>
-          {page === 'carousel' && <WelcomeFootStart.Provider value={footStart}>{carousel}</WelcomeFootStart.Provider>}
-          {page === 'help' && <HelpPage paletteKey={key('palette')} />}
-          {page === 'sidebar' && <SidebarPage app={app} />}
-          {page === 'look' && <LookPage app={app} looks={looks} />}
-        </div>
-        <div className="atlas-welcome__foot">
-          <div className="atlas-welcome__progress">
-            <span className="atlas-welcome__progress-label">{t('tour.progress', { step: at + 1, total: PAGES.length })}</span>
-            {page === 'carousel'
-              ? <div ref={setFootStart} className="atlas-welcome__foot-start" />
-              : PAGES.map((name, index) => <span key={name} aria-hidden="true" className="atlas-welcome__bar" data-done={index <= at} />)}
+      {/* The window moves as one piece and does not clip, so a look's ornament hangs from it and moves and fades with
+          it; the dialog inside clips its pages to the corners. */}
+      <motion.div variants={windowVariants} className="atlas-welcome-window">
+        <div
+          ref={windowRef}
+          className="atlas-welcome"
+          data-page={page}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('tour.welcome.label')}
+          onKeyDown={onKeyDown}
+        >
+          <CloseButton className="atlas-welcome__close" onClick={finish} />
+          <div className="atlas-welcome__page" key={page}>
+            {page === 'carousel' && <WelcomeFootStart.Provider value={footStart}>{carousel}</WelcomeFootStart.Provider>}
+            {page === 'help' && <HelpPage paletteKey={key('palette')} />}
+            {page === 'sidebar' && <SidebarPage app={app} />}
+            {page === 'look' && <LookPage app={app} looks={looks} />}
           </div>
-          {at === 0
-            ? <Button variant="ghost" onClick={finish}>{t('tour.skip')}</Button>
-            : <Button variant="ghost" onClick={back}>{t('common.back')}</Button>}
-          <Button key={last ? 'start' : 'next'} data-autofocus onClick={forward}>
-            {last ? t('tour.welcome.start') : t('tour.next')}
-          </Button>
+          <div className="atlas-welcome__foot">
+            <div className="atlas-welcome__progress">
+              <span className="atlas-welcome__progress-label">{t('tour.progress', { step: at + 1, total: PAGES.length })}</span>
+              {page === 'carousel'
+                ? <div ref={setFootStart} className="atlas-welcome__foot-start" />
+                : PAGES.map((name, index) => <span key={name} aria-hidden="true" className="atlas-welcome__bar" data-done={index <= at} />)}
+            </div>
+            {at === 0
+              ? <Button variant="ghost" onClick={finish}>{t('tour.skip')}</Button>
+              : <Button variant="ghost" onClick={back}>{t('common.back')}</Button>}
+            <Button key={last ? 'start' : 'next'} data-autofocus onClick={forward}>
+              {last ? t('tour.welcome.start') : t('tour.next')}
+            </Button>
+          </div>
         </div>
       </motion.div>
     </motion.div>,

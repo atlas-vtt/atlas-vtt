@@ -6,7 +6,19 @@
   @include atlas-modal-overlay($z-atlas-modal + $z-notification);
 }
 
-// One inset for everything inside: the page and the foot stand $spacing-2xl from the border and from each other.
+// The window as it is placed and animated. It does not clip, so a look can draw around it with its pseudo-elements
+// (`::before` below the dialog with a negative `z-index`, `::after` above it) and have that move and fade with it.
+.atlas-welcome-window {
+  position: relative;
+  isolation: isolate;
+  width: min(1080px, 92vw);
+  height: min(660px, 86vh);
+  max-width: 100%;
+  max-height: 100%;
+}
+
+// The dialog clips its pages to its corners. One inset for everything inside: the page and the foot stand
+// $spacing-2xl from the border and from each other.
 .atlas-welcome {
   @include atlas-elevated-surface;
   @include atlas-panel-radius($surface-radius);
@@ -15,10 +27,8 @@
   flex-direction: column;
   gap: $spacing-2xl;
   box-sizing: border-box;
-  width: min(1080px, 92vw);
-  height: min(660px, 86vh);
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  height: 100%;
   padding: $spacing-2xl;
   overflow: hidden;
   color: var(--text-normal);
@@ -150,7 +160,7 @@ $look-cards-min: 420px;
 // A kicker stands a little above its heading.
 .atlas-welcome-text__kicker + .atlas-welcome-text__title { margin-top: $spacing-s; }
 
-// The heading follows the look: Fantaisie in red under Mediaeval, Oxanium under Sci-fi, the interface face otherwise.
+// The heading follows the look: Fantaisie in red under Medieval, Oxanium under Sci-fi, the interface face otherwise.
 .atlas-welcome-text__title {
   margin: 0;
   font-family: var(--atlas-theme-heading-font, var(--font-interface));
@@ -162,7 +172,7 @@ $look-cards-min: 420px;
   text-wrap: balance;
 }
 
-// A status after a heading, such as a part still in beta: small capitals on a soft pill behind a dot, without a border
+// A status after a line, such as a part still in beta: small capitals on a soft pill behind a dot, without a border
 // or hover, so it reads as a label and never as a button.
 .atlas-welcome-text__tag {
   display: inline-flex;
@@ -200,6 +210,9 @@ $look-cards-min: 420px;
   color: var(--text-muted);
   text-wrap: pretty;
 }
+
+// A line of its own under the body, with its status after it.
+.atlas-welcome-text__body.atlas-welcome-text__aside { margin-top: $spacing-s; }
 
 .atlas-welcome-text__note {
   margin: $spacing-s 0 0;

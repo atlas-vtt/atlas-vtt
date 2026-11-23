@@ -154,3 +154,12 @@ it('leaves the focus on the start page tour once it is gone', async () => {
   expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Next' }));
   before.remove();
 });
+
+it('moves as a window that holds the dialog, so a look\'s ornament can hang from it and the dialog clips inside', () => {
+  const { app, settings } = appWith([]);
+  render(dialog(app, settings));
+  const shown = screen.getByRole('dialog', { name: 'Welcome' });
+  expect(shown.className).toBe('atlas-welcome');
+  expect(shown.parentElement!.className).toBe('atlas-welcome-window');
+  expect(shown.parentElement!.parentElement!.classList.contains('atlas-welcome-overlay')).toBe(true);
+});
