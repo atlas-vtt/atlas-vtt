@@ -22,9 +22,9 @@ export interface FoggedPartySource {
 }
 
 /** How far the ring stands outside the token, and its stroke, in shares of the token's diameter. */
-const OUTSET = 0.08;
-const STROKE = 0.05;
-const HALO = 0.14;
+const OUTSET = 0.04;
+const STROKE = 0.022;
+const HALO = 0.06;
 
 const parseColour = (colour: string | undefined, fallback: number): number => {
   const match = colour === undefined ? null : /^#([0-9a-f]{6})$/i.exec(colour);
@@ -63,9 +63,9 @@ export class FoggedPartyRings {
     this.graphics.clear();
     for (const { x, y, diameter, colour } of rings) {
       const radius = diameter * (0.5 + OUTSET);
-      this.graphics.circle(x, y, radius).stroke({ width: diameter * HALO, color: colour, alpha: 0.22 });
-      this.graphics.circle(x, y, radius).stroke({ width: diameter * STROKE, color: colour, alpha: 0.95 });
-      this.graphics.circle(x, y, diameter * 0.5).fill({ color: colour, alpha: 0.12 });
+      this.graphics.circle(x, y, radius).stroke({ width: diameter * HALO, color: colour, alpha: 0.14 });
+      this.graphics.circle(x, y, radius).stroke({ width: diameter * STROKE, color: colour, alpha: 0.85 });
+      this.graphics.circle(x, y, diameter * 0.5).fill({ color: colour, alpha: 0.05 });
     }
     return true;
   }
