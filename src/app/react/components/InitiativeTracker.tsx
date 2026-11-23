@@ -38,10 +38,10 @@ import { useStatblockHoverPreview } from './StatblockHoverPreview';
 import { InitiativeStatblockPreview, type PreviewedEntry } from './InitiativeStatblockPreview';
 import { captureRollContext } from '../../tools/diceRollOrigins';
 import { useRowDrag, type RowDrag } from '../hooks/useRowDrag';
+import { useTokensIgnoringPlaces } from '../hooks/useTokensIgnoringPlaces';
 import { useSidePile } from './useSidePile';
 import { TURN_KEY_ATTRIBUTE } from '../../initiative/motion/turnMotion';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
-import type { TokenEntity } from '../../types';
 import { t } from '../../i18n';
 import '../../initiative/initiative-panel.scss';
 import './initiative-tracker.scss';
@@ -57,7 +57,6 @@ import './initiative-tracker-compact.scss';
  */
 /** The tracker stands at the right edge, and comes from and leaves towards it. */
 const OUTWARD: Outward = [1, 0];
-const NO_TOKENS: Record<string, TokenEntity> = {};
 
 export const InitiativeTracker: React.FC = () => {
   const { app, view } = useAtlasUI();
@@ -77,9 +76,9 @@ export const InitiativeTracker: React.FC = () => {
   // Switching the compact view on or off glides the tracker to its new size as its cards fade in anew
   useLookMorph(root, compact);
   const initiative = useAtlasStore((s) => s.initiative);
-  // Only while drawn: closed, a token dragged on the map would render the tracker at every step (`InitiativeTokenSync`
-  // keeps the entries in step meanwhile).
-  const tokens = useAtlasStore((s) => (drawn ? s.objects?.tokens : undefined)) ?? NO_TOKENS;
+  // Only while drawn, and blind to where tokens stand: a token dragged on the map would render the tracker at every step
+  // (`InitiativeTokenSync` keeps the entries in step while it is closed).
+  const tokens = useTokensIgnoringPlaces(drawn);
   const mapPath = useAtlasStore((s) => s.mapPath);
   const mapLoaded = useAtlasStore((s) => s.mapLoaded);
   const isMapLoading = useAtlasStore((s) => s.isMapLoading);
