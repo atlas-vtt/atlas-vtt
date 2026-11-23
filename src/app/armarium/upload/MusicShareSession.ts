@@ -131,20 +131,6 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
     this.set({ tracks: this.retitled(this.state.tracks.filter((track) => track.id !== id)), problems: this.without('tracks') });
   }
 
-  /** The tracks with every title the GM did not edit worked out again from the file names of the tracks that go. */
-  private retitled(tracks: readonly MusicShareTrack[]): MusicShareTrack[] {
-    const { titles } = defaultTrackTitles(tracks.map((track) => stemOf(track.file.name)), this.state.artist, this.state.name);
-    return tracks.map((track, index) => (this.editedTitles.has(track.id) ? track : { ...track, title: titles[index] ?? track.title }));
-  }
-
-  /** A single's name the GM did not edit drops the artist they typed where its file name starts with it. */
-  private renameSingle(): void {
-    const file = this.state.tracks[0]?.file;
-    if (this.state.kind !== 'music-track' || this.nameTyped || file === undefined) return;
-    const name = defaultTrackTitles([stemOf(file.name)], this.state.artist).titles[0];
-    if (name !== undefined && name !== this.state.name) this.set({ name, problems: this.without('name') });
-  }
-
   /** Continues one of the account's music listings, or starts a new one with null. */
   chooseListing(uid: string | null): void {
     const listing = uid === null ? null : this.state.listings?.find((each) => each.uid === uid) ?? null;
@@ -225,6 +211,20 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
 
   private without(field: string): Record<string, string> {
     return Object.fromEntries(Object.entries(this.state.problems).filter(([key]) => key !== field && key !== 'tracks'));
+  }
+
+  /** The tracks with every title the GM did not edit worked out again from the file names of the tracks that go. */
+  private retitled(tracks: readonly MusicShareTrack[]): MusicShareTrack[] {
+    const { titles } = defaultTrackTitles(tracks.map((track) => stemOf(track.file.name)), this.state.artist, this.state.name);
+    return tracks.map((track, index) => (this.editedTitles.has(track.id) ? track : { ...track, title: titles[index] ?? track.title }));
+  }
+
+  /** A single's name the GM did not edit drops the artist they typed where its file name starts with it. */
+  private renameSingle(): void {
+    const file = this.state.tracks[0]?.file;
+    if (this.state.kind !== 'music-track' || this.nameTyped || file === undefined) return;
+    const name = defaultTrackTitles([stemOf(file.name)], this.state.artist).titles[0];
+    if (name !== undefined && name !== this.state.name) this.set({ name, problems: this.without('name') });
   }
 
   /** A version of a listing keeps what its published version shows: the cover and the artist. */
