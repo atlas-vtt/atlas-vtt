@@ -124,6 +124,10 @@ describe('players asking to open doors', () => {
     table.asks.receive(ANA, ask());
     expect(table.shown).toHaveLength(0);
     expect(table.sent[0]?.body).toMatchObject({ t: 'door-answer', open: true });
+    // A door away from the token is never told of, open or not
+    const far = desk(fakeStore({ door: door({ closed: false }) }, { x: 600, y: 600 }));
+    far.asks.receive(ANA, ask());
+    expect(far.sent).toHaveLength(0);
   });
 
   it('withdraws a player\'s asks when they leave or the scene stops', () => {

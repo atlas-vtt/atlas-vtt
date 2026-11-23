@@ -48,9 +48,10 @@ export interface PlayerDoorPorts {
 export function askedDoor(walls: Readonly<Record<string, WallSegment>>, ends: DoorEnds, token: Pick<TokenEntity, 'x' | 'y' | 'size'>, cell: number): WallSegment | 'none' | 'open' | 'far' {
   const wall = Object.values(walls).find((candidate) => candidate.type === 'door' && sameDoor(ends, [candidate.p1.x, candidate.p1.y, candidate.p2.x, candidate.p2.y]));
   if (wall === undefined) return 'none';
-  if (!(wall.closed ?? true)) return 'open';
+  // Reach first: nothing is told of a door away from the player's own token, open or not.
   const reach = computeTokenPixelSize(cell, token.size || 1) / 2 + ASK_REACH_CELLS * cell;
-  return distanceToSegment(token, wall.p1, wall.p2) <= reach ? wall : 'far';
+  if (distanceToSegment(token, wall.p1, wall.p2) > reach) return 'far';
+  return (wall.closed ?? true) ? wall : 'open';
 }
 
 function distanceToSegment(point: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }): number {
