@@ -28,12 +28,17 @@ export function switchToAtlasTheme(app: App): void {
   app.customCss?.setTheme?.(ATLAS_THEME_NAME);
 }
 
-/** Keeps every window's `body` in the look the settings name, and takes the class off when Atlas unloads. */
+/**
+ * Keeps every window's `body` in the look the settings name while the Atlas theme is in use (Obsidian announces a
+ * theme switch as `css-change`), and takes the class off when Atlas unloads.
+ */
 export function registerLookSync(plugin: Plugin, settings: SettingsService): void {
+  const { app } = plugin;
   inEveryDocument(plugin, (doc) => {
-    const apply = (): void => { doc.body.toggleClass(SCIFI_LOOK_CLASS, settings.getLook() === 'scifi'); };
+    const apply = (): void => { doc.body.toggleClass(SCIFI_LOOK_CLASS, settings.getLook() === 'scifi' && atlasThemeActive(app)); };
     apply();
     const stop = settings.onChange(apply);
-    return () => { stop(); doc.body.removeClass(SCIFI_LOOK_CLASS); };
+    const css = app.workspace.on('css-change', apply);
+    return () => { stop(); app.workspace.offref(css); doc.body.removeClass(SCIFI_LOOK_CLASS); };
   });
 }
