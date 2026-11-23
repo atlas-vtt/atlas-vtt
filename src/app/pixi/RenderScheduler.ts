@@ -37,6 +37,8 @@ interface Hook {
  */
 export class RenderScheduler {
   private renderRequested = true;
+  /** No stage render on ticks while a load builds a scene nobody sees (`holdRenders`). */
+  private held = false;
   /** The hooks in the order they run. */
   private hooks: Hook[] = [];
   /** The hook `setBeforeRender` holds: one at a time. */
@@ -59,12 +61,23 @@ export class RenderScheduler {
   }
 
   /**
+   * While `held`, ticks render nothing: what changes on the stage meanwhile is drawn by the first
+   * render after (PIXI keeps its render groups' changes until a render consumes them). For a map
+   * load, whose scene is built in steps behind the held last frame or the loading screen.
+   */
+  public holdRenders(held: boolean): void {
+    if (this.held === held) return;
+    this.held = held;
+    if (!held) this.renderRequested = true;
+  }
+
+  /**
    * Render now, in this task: for what clears the canvas between the frame's render and the
    * browser's paint (a resize from a `ResizeObserver`), which would otherwise show as a blank frame.
    * While the ticker is stopped (a load holding the last frame) the render waits for the next tick.
    */
   public renderNow(): void {
-    if (!this.app.ticker?.started) {
+    if (!this.app.ticker?.started || this.held) {
       this.requestRender();
       return;
     }
@@ -114,6 +127,7 @@ export class RenderScheduler {
   }
 
   private readonly renderIfChanged = (ticker: Ticker): void => {
+    if (this.held) return;
     const group = this.app.stage.renderGroup;
     if (!this.renderRequested && group && !hasPendingChanges(group)) return;
     // `lastTime` is still the previous frame's while the ticker runs its callbacks
@@ -143,6 +157,11 @@ export class RenderScheduler {
 /** Ask `app`'s scheduler for a render on the next tick. Does nothing for apps without one. */
 export function requestRender(app: Application): void {
   schedulers.get(app)?.requestRender();
+}
+
+/** Holds or releases `app`'s renders on ticks (`RenderScheduler.holdRenders`). Does nothing for apps without a scheduler. */
+export function holdRenders(app: Application, held: boolean): void {
+  schedulers.get(app)?.holdRenders(held);
 }
 
 /** Whether `app` renders only when its stage changed, through a scheduler, rather than on every tick. */
