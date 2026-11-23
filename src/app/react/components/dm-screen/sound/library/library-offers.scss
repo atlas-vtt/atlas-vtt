@@ -12,10 +12,17 @@
 }
 
 .atlas-sound-lib .atlas-sound-lib__starter {
-  @include atlas-truncate;
+  display: inline-flex;
+  align-items: center;
+  // Obsidian centres what a button holds: words wider than the button then spilled out of both its sides, and the
+  // rail cut their start ("et starter ambience"). From the start, the words cut at their end.
+  justify-content: flex-start;
   min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
 
   small {
+    flex: none;
     margin-left: $spacing-s;
     color: var(--atlas-sound-muted);
     font-size: $font-ui-small;
@@ -51,6 +58,11 @@
     background: $hairline;
     color: var(--text-normal);
   }
+}
+
+.atlas-sound-lib__offer-label {
+  @include atlas-truncate;
+  min-width: 0;
 }
 
 // In the rail the offer stands under the root's name; the rail has no room for the size, the button's name says it.
