@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { ACCENT_PRESETS, presetOfAccent } from './accentColour';
+import { IvyLeaf } from './IvyLeaf';
 import { LabelTooltip } from '../packages/components/primitives/tooltip';
 import { t } from '../i18n';
 import './accent-colour.scss';
@@ -84,6 +85,7 @@ export function ColourSwatches({ label, value, base, disabled = false, shape = '
         disabled={disabled}
         className={base.className}
         style={base.style}
+        leaf={shape === 'leaf' ? '' : undefined}
         swatchRef={swatchRef(BASE)}
         onPick={() => pick(BASE)}
       />
@@ -94,6 +96,7 @@ export function ColourSwatches({ label, value, base, disabled = false, shape = '
           chosen={chosen === preset.id}
           disabled={disabled}
           style={fill(preset.hex)}
+          leaf={shape === 'leaf' ? preset.hex : undefined}
           swatchRef={swatchRef(preset.id)}
           onPick={() => pick(preset.id)}
         />
@@ -105,6 +108,7 @@ export function ColourSwatches({ label, value, base, disabled = false, shape = '
           disabled={disabled}
           className="atlas-accent-swatch--custom"
           style={chosen === CUSTOM ? fill(value) : undefined}
+          leaf={shape === 'leaf' ? (chosen === CUSTOM ? value : 'any') : undefined}
           swatchRef={swatchRef(CUSTOM)}
           onPick={openCustom}
         />
@@ -123,7 +127,7 @@ export function ColourSwatches({ label, value, base, disabled = false, shape = '
   );
 }
 
-/** What a swatch paints: its background when round, its leaf when the ivy's. */
+/** What a round swatch paints. */
 const fill = (colour: string): React.CSSProperties => ({ '--atlas-swatch-fill': colour } as React.CSSProperties);
 
 interface SwatchProps {
@@ -132,11 +136,13 @@ interface SwatchProps {
   disabled: boolean;
   className?: string;
   style?: React.CSSProperties | undefined;
+  /** Drawn as an ivy leaf in this colour (see `IvyLeaf`) instead of a round dot. */
+  leaf?: string | undefined;
   swatchRef: (element: HTMLElement | null) => void;
   onPick: () => void;
 }
 
-function Swatch({ label, chosen, disabled, className, style, swatchRef, onPick }: SwatchProps): React.JSX.Element {
+function Swatch({ label, chosen, disabled, className, style, leaf, swatchRef, onPick }: SwatchProps): React.JSX.Element {
   return (
     <LabelTooltip label={label}>
       <button
@@ -148,9 +154,11 @@ function Swatch({ label, chosen, disabled, className, style, swatchRef, onPick }
         disabled={disabled}
         tabIndex={chosen ? 0 : -1}
         className={`atlas-accent-swatch${className ? ` ${className}` : ''}`}
-        style={style}
+        style={leaf === undefined ? style : undefined}
         onClick={onPick}
-      />
+      >
+        {leaf !== undefined && <IvyLeaf colour={leaf} chosen={chosen} />}
+      </button>
     </LabelTooltip>
   );
 }

@@ -1,13 +1,10 @@
 @use '../../../styles/tokens' as *;
 
 $swatch-size: $target-min + $spacing-xs;
-$leaf-size: $swatch-size + $spacing-xs;
-// An ivy leaf (the ivy colour's swatches): its outline alone, and with its veins left open.
-$leaf-outline: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1C13.4 3 15.2 5.4 15.6 7.4C18 6.6 20.8 7.4 22.6 8C21.4 9.8 19.6 11.6 17.6 12.4C19.4 13.8 20.4 15.6 20.2 18C17.4 19 14.4 18.4 12.7 19.2L12.7 23L11.3 23L11.3 19.2C9.6 18.4 6.6 19 3.8 18C3.6 15.6 4.6 13.8 6.4 12.4C4.4 11.6 2.6 9.8 1.4 8C3.2 7.4 6 6.6 8.4 7.4C8.8 5.4 10.6 3 12 1Z'/%3E%3C/svg%3E");
-$leaf-veined: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cmask id='v'%3E%3Cpath fill='white' d='M12 1C13.4 3 15.2 5.4 15.6 7.4C18 6.6 20.8 7.4 22.6 8C21.4 9.8 19.6 11.6 17.6 12.4C19.4 13.8 20.4 15.6 20.2 18C17.4 19 14.4 18.4 12.7 19.2L12.7 23L11.3 23L11.3 19.2C9.6 18.4 6.6 19 3.8 18C3.6 15.6 4.6 13.8 6.4 12.4C4.4 11.6 2.6 9.8 1.4 8C3.2 7.4 6 6.6 8.4 7.4C8.8 5.4 10.6 3 12 1Z'/%3E%3Cpath fill='none' stroke='black' stroke-width='.6' stroke-linecap='round' d='M12 19V5M12 13.6L19.4 9M12 13.6L4.6 9'/%3E%3C/mask%3E%3Crect width='24' height='24' mask='url(%23v)'/%3E%3C/svg%3E");
+$leaf-size: $swatch-size + $spacing-s;
 
 // A colour setting's swatches (ColourSwatches.tsx: the accent colour, the ivy colour): the base, the presets, then the
-// GM's own colour. Each swatch paints `--atlas-swatch-fill`: a round one as its background, a leaf through its shape.
+// GM's own colour. A round swatch paints `--atlas-swatch-fill`; the ivy colour's are leaves of the ivy (IvyLeaf.tsx).
 .atlas-accent-swatches {
   display: flex;
   flex-wrap: wrap;
@@ -48,33 +45,20 @@ button.atlas-accent-swatch {
   }
 }
 
-// The ivy colour: leaves instead of dots, so the two settings tell apart at a glance. The leaf is the swatch's
-// `::after`, painted through the leaf's shape; the chosen one stands on a larger leaf of the page's ink, its outline.
+// The ivy colour: leaves of the ivy instead of dots, painted as the ivy will be, so the two settings tell apart at a
+// glance. The chosen one stands on a leaf of the page's ink, its outline.
 .atlas-accent-swatches--leaf button.atlas-accent-swatch {
-  position: relative;
   width: $leaf-size;
   height: $leaf-size;
   border-radius: 0;
   background: none;
   box-shadow: none;
 
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    mask: $leaf-outline center / contain no-repeat;
-  }
-
-  &::before {
-    inset: -$border-width-l * 2;
-    background: var(--text-normal);
-    opacity: 0;
-  }
-
-  &::after {
-    inset: 0;
-    background: var(--atlas-swatch-fill);
-    mask-image: $leaf-veined;
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
   }
 
   &:hover,
@@ -84,9 +68,12 @@ button.atlas-accent-swatch {
 
   &[aria-checked='true'] {
     outline: none;
-
-    &::before { opacity: 1; }
   }
+}
+
+.atlas-ivy-leaf__rim {
+  fill: var(--text-normal);
+  stroke: var(--text-normal);
 }
 
 // A setting the current look has no use for: kept in place, so the choices do not move as the look changes.
@@ -106,10 +93,9 @@ button.atlas-accent-swatch--own {
   --atlas-swatch-fill: var(--atlas-look-accent, var(--atlas-theme-accent, var(--interactive-accent)));
 }
 
-// The ivy's own greens, leaf to highlight, as the drawings shade them.
+// The ivy's own greens, set apart from the presets like the look's own accent.
 button.atlas-accent-swatch--natural {
   margin-inline-end: $spacing-s;
-  --atlas-swatch-fill: radial-gradient(circle at 40% 30%, #94b24a, #789532 55%, #567119);
 }
 
 // The GM's theme under a picked colour, whose own accent was never seen: no colour that would be a guess.

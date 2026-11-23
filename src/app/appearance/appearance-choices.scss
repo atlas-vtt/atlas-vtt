@@ -10,7 +10,7 @@
 // The accent colour and the ivy colour side by side, one under the other where the two strips do not fit.
 .atlas-appearance-colours {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr));
   align-items: start;
   gap: $spacing-l $spacing-2xl;
 }
