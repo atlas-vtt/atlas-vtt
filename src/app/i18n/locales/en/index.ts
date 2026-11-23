@@ -28,6 +28,7 @@ import { armariumFindings } from './armariumFindings';
 import { armariumListing } from './armariumListing';
 import { armariumUpload } from './armariumUpload';
 import { armariumShare } from './armariumShare';
+import { armariumMusic } from './armariumMusic';
 import { account } from './account';
 import { diceLab } from './diceLab';
 import { diceRoll } from './diceRoll';
@@ -260,6 +261,7 @@ export const en = {
   ...armariumListing,
   ...armariumUpload,
   ...armariumShare,
+  ...armariumMusic,
   ...account,
   ...selection,
   ...itemBundle,

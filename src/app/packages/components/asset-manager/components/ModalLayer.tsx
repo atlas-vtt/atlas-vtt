@@ -110,6 +110,7 @@ export function ModalLayer({
         confirmExport={crud.confirmExport}
         confirmImport={crud.confirmImport}
         confirmItemImport={crud.confirmItemImport}
+        confirmMusicImport={crud.confirmMusicImport}
         closeTransfer={crud.closeTransfer}
         openerFor={itemOpener.openerFor}
       />

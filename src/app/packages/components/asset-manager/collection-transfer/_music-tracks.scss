@@ -1,0 +1,82 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+// The tracks of an album or a single: the music review lists them, the share step edits them
+// (`armarium/share/music-share.scss`). Rows are controls $surface-inset inside the list, so the list's
+// corner is theirs plus that inset; a long album scrolls inside the list, never the dialog.
+
+$track-row-height: 36px;
+
+.atlas-music-tracks {
+  @include atlas-flex-col($gap: 0);
+  max-height: min(50vh, 420px);
+  margin: 0;
+  padding: $surface-inset;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: $border-width-s solid var(--background-modifier-border);
+  border-radius: $surface-radius;
+  background: var(--background-secondary);
+  list-style: none;
+}
+
+.atlas-music-track {
+  @include atlas-flex-row($gap: $spacing-s);
+  flex: none;
+  min-height: $track-row-height;
+  padding: 0 $spacing-s;
+  border-radius: $radius-m;
+  color: var(--text-normal);
+
+  &__number {
+    flex: none;
+    min-width: 3ch;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  &__glyph {
+    flex: none;
+    width: $icon-s;
+    height: $icon-s;
+    color: var(--text-faint);
+  }
+
+  &__title {
+    @include atlas-truncate;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  &__state {
+    flex: none;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+// What the review says beside the tracks: what an update does, and where the music goes.
+.atlas-music-review {
+  @include atlas-flex-col($gap: $spacing-l);
+
+  &__outcome {
+    @include atlas-flex-col($gap: $spacing-xs);
+  }
+
+  &__where {
+    @include atlas-flex-row($gap: $spacing-s);
+    margin: 0;
+    color: var(--text-normal);
+    overflow-wrap: anywhere;
+
+    svg {
+      flex: none;
+      width: $icon-s;
+      height: $icon-s;
+      color: var(--text-muted);
+    }
+  }
+}
