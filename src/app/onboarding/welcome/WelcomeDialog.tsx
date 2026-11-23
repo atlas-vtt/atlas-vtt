@@ -12,6 +12,7 @@ import { portalHost } from '../../host/portalHost';
 import { useDialogFocus } from '../useDialogFocus';
 import { HelpPage, LookPage, SidebarPage } from './welcomePages';
 import { WelcomeFootStart } from './welcomeFoot';
+import { useWelcomeOwner } from './useWelcomeOwner';
 import { t } from '../../i18n';
 import './welcome.scss';
 
@@ -32,12 +33,13 @@ const PAGES: readonly WelcomePage[] = ['carousel', 'help', 'sidebar', 'look'];
 
 /**
  * The welcome wizard: a large dialog of four pages, what Atlas is, where help is, Atlas Sidebar and the look. Skip,
- * Close, Escape and Start playing all end it, and the tours follow.
+ * Close, Escape and Start playing all end it, and the tours follow. One shows per app, however many views mount it.
  */
 export function WelcomeDialog({ open = true, ...props }: WelcomeDialogProps): React.JSX.Element {
   // Subscribed, so it closes as soon as it is completed, with the dialogs' closing motion: keep it mounted after.
   useAtlasSettings(props.settings);
-  const shown = open && props.settings.shouldShowTutorial('welcome');
+  const owns = useWelcomeOwner(props.app);
+  const shown = open && owns && props.settings.shouldShowTutorial('welcome');
   return <AnimatePresence>{shown && <WelcomeWindow key="welcome" {...props} />}</AnimatePresence>;
 }
 

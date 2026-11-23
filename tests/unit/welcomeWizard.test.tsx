@@ -7,6 +7,7 @@ import { afterAll, afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { DashboardTour } from '../../src/app/onboarding/DashboardTour';
 import { MapTours } from '../../src/app/onboarding/MapTours';
+import { WelcomeWizard } from '../../src/app/onboarding/WelcomeWizard';
 import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
@@ -23,6 +24,7 @@ function appWith(plugins: string[]): { app: App; settings: SettingsService } {
   const app = {
     vault: { adapter: { exists: async () => true, write: async () => {} } },
     plugins: { plugins: {}, enabledPlugins: new Set(plugins) },
+    workspace: { on: () => ({}), offref: () => {} },
     customCss: { theme: 'Minimal', themes: { Minimal: {} }, setTheme: () => {} },
     loadLocalStorage: (key: string) => storage.get(key) ?? null,
     saveLocalStorage: (key: string, value: unknown) => { if (value) storage.set(key, value); else storage.delete(key); },
@@ -57,4 +59,13 @@ it('offers the look, and the choice is this device\'s', () => {
   act(() => { fireEvent.click(screen.getByRole('radio', { name: 'Sci-fi' })); });
   expect(LookService.forApp(app, settings).get()).toBe('scifi');
   expect(screen.getByRole('radio', { name: 'Sci-fi' }).getAttribute('aria-checked')).toBe('true');
+});
+
+it('shows one welcome for an app however many views mount it, and another view takes over when the first goes', () => {
+  const { app, settings } = appWith([]);
+  const first = render(<WelcomeWizard app={app} settings={settings} />);
+  render(<WelcomeWizard app={app} settings={settings} />);
+  expect(screen.getAllByRole('dialog')).toHaveLength(1);
+  act(() => { first.unmount(); });
+  expect(screen.getAllByRole('dialog')).toHaveLength(1);
 });

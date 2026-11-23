@@ -20,6 +20,7 @@ function appWith(plugins: string[]): { app: App; settings: SettingsService } {
   const app = {
     vault: { adapter: { exists: async () => true, write: async () => {} } },
     plugins: { plugins: {}, enabledPlugins: new Set(plugins) },
+    workspace: { on: () => ({}), offref: () => {} },
     customCss: { theme: 'Minimal', themes: { Minimal: {} }, setTheme: () => {} },
     loadLocalStorage: (key: string) => storage.get(key) ?? null,
     saveLocalStorage: (key: string, value: unknown) => { if (value) storage.set(key, value); else storage.delete(key); },
