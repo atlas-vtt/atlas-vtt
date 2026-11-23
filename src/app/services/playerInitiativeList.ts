@@ -14,6 +14,7 @@ import { entryToken } from '../initiative/party';
 import { isOffMap } from '../tokens/offMap';
 import { layoutEdges, scrollWithin } from '../utils/scrollWithin';
 import { renderPlayerCard } from './playerInitiativeCard';
+import { showConditionsTip } from './playerConditionsTip';
 import { TURN_KEY_ATTRIBUTE } from '../initiative/motion/turnMotion';
 import '../initiative/initiative-panel.scss';
 import './player-initiative.scss';
@@ -98,6 +99,8 @@ export interface PlayerInitiativeLook {
   maxCards?: number;
   /** Players see their TV at true scale (TrueScale): miniatures cover the tokens, so every card shows its conditions. */
   trueScale?: boolean;
+  /** The card (`playerCardKey`) whose conditions the GM names by hovering it in the tracker: the list scrolls to it and names them too. */
+  conditionsShown?: string | undefined;
   /** Draws one of the card's icons into `parent` (Obsidian's `setIcon` in Atlas), so the list imports nothing of Obsidian's and the player page draws it too. */
   icon?(parent: HTMLElement, name: PlayerCardIcon): void;
 }
@@ -297,6 +300,9 @@ export function renderPlayerInitiative(container: HTMLElement, list: PlayerIniti
     if (side) scrollWithin(entries, side, 'start', 0, axis, ...edgesOf);
     else if (card && fromTurn) scrollWithin(entries, card, 'start', 0, axis, ...edgesOf);
     else if (card) scrollWithin(entries, card, 'nearest', 2, axis, ...edgesOf);
+    if (look.conditionsShown !== undefined) {
+      showConditionsTip(panel, entries, list, look.conditionsShown, (shown) => scrollWithin(entries, shown, 'nearest', 0, axis, ...edgesOf));
+    }
   }
   return panel;
 }

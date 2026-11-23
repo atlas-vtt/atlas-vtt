@@ -14,6 +14,7 @@ import type { SettingsService } from './SettingsService';
 import type { InitiativeLayout } from '../initiative/initiativeLayout';
 import { portraitSrc } from '../utils/portraitSrc';
 import { withArtViewBox } from '../initiative/art/artInset';
+import { playerCardKey } from './playerInitiativeCard';
 import { PlayerInitiativeStage } from './playerInitiativeStage';
 
 /** What of the GM's layout the list is drawn by: drawn anew when it changes. */
@@ -30,6 +31,8 @@ interface InitiativeScene {
   tokens: string;
   /** The scene's Show nameplates, which says with each token's own whom the list names. */
   mapShowsNameplates: boolean;
+  /** The card (`playerCardKey`) of the combatant whose conditions the GM's tracker names while it is hovered, or null. */
+  conditionsShown: string | null;
 }
 
 /**
@@ -122,7 +125,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     this.badgeNumbers = undefined;
   }
 
-  protected select({ initiative, initiativeTrackerOpen, objects, mapPath, tokenSettings }: ViewAtlasState): InitiativeScene {
+  protected select({ initiative, initiativeTrackerOpen, objects, mapPath, tokenSettings, conditionsShownEntry }: ViewAtlasState): InitiativeScene {
     const entries = initiative?.entries ?? [];
     // Who is defeated follows the map's resources, as on the GM's cards
     const lookup = entries.length > 0 ? rulesLookup(this.app) : null;
@@ -132,7 +135,10 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     // A token's side counts where the fight or the rules know it
     const sides = entries.length > 0 && initiative ? sideIdsOf(initiative, mapInitiativeRules(this.app, mapPath ?? null)) : undefined;
     const entryTokens = JSON.stringify(entries.map((entry) => playersEntryToken(entry, objects?.tokens, definitions, conditions, sides)));
-    return { initiative, initiativeTrackerOpen, mapPath: mapPath ?? null, tokens: entryTokens, mapShowsNameplates: tokenSettings?.showNameplates ?? false };
+    // The GM hovers a combatant in the tracker: the list shows it and names its conditions (`showConditionsTip`)
+    const shownEntry = entries.find((entry) => entry.id === conditionsShownEntry);
+    const conditionsShown = shownEntry ? playerCardKey(shownEntry) : null;
+    return { initiative, initiativeTrackerOpen, mapPath: mapPath ?? null, tokens: entryTokens, mapShowsNameplates: tokenSettings?.showNameplates ?? false, conditionsShown };
   }
 
   protected render(container: HTMLElement, scene: InitiativeScene, settings: PlayerSettings): void {
@@ -185,6 +191,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
         artViewBox: (imagePath, apply) => withArtViewBox(this.app, imagePath, apply),
         icon: setIcon,
         trueScale: this.trueScale(),
+        conditionsShown: scene.conditionsShown ?? undefined,
       });
       if (panel) this.stage.add(panel);
     }

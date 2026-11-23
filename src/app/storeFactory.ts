@@ -349,6 +349,8 @@ export interface ViewAtlasState extends ViewState {
   closeDungeonGenerator: UISlice['closeDungeonGenerator'];
   setRoofsHidden: UISlice['setRoofsHidden'];
   setSelectMore: UISlice['setSelectMore'];
+  showCombatantConditions: UISlice['showCombatantConditions'];
+  hideCombatantConditions: UISlice['hideCombatantConditions'];
   setGridSettingsOpen: UISlice['setGridSettingsOpen'];
   setDMScreenOpen: UISlice['setDMScreenOpen'];
   setDMScreenPage: UISlice['setDMScreenPage'];

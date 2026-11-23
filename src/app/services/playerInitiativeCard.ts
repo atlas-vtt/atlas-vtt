@@ -6,7 +6,12 @@ import { formatList, t } from '../i18n';
 import { cardShowsConditions, SHOWN_CARD_CONDITIONS } from '../initiative/combatantConditions';
 import { createConditionBadge } from '../packages/components/shared/conditionBadgeElement';
 import type { ActiveCondition } from '../utils/activeConditions';
-import type { Combatant, PlayerCardIcon, PlayerInitiativeLook } from './playerInitiativeList';
+import type { Combatant, PlayerCardIcon, PlayerInitiativeEntry, PlayerInitiativeLook } from './playerInitiativeList';
+
+/** What tells a combatant's card apart in the players' list (`TURN_KEY_ATTRIBUTE`): its token, else its name. */
+export function playerCardKey(entry: Pick<PlayerInitiativeEntry, 'tokenId' | 'name'>): string {
+  return entry.tokenId ?? `name:${entry.name}`;
+}
 
 /**
  * One combatant of the players' list, drawn as the GM's tracker draws a tile (`InitiativeCard`, `initiative-panel.scss`)
@@ -19,7 +24,7 @@ import type { Combatant, PlayerCardIcon, PlayerInitiativeLook } from './playerIn
  */
 export function renderPlayerCard(parent: HTMLElement, { entry, token }: Combatant, look: PlayerInitiativeLook, combatActive: boolean): void {
   // Marked by its combatant, so it glides to its new place as the turn passes (`turnMotion.ts`)
-  const card = parent.createDiv({ cls: 'atlas-initiative-card atlas-initiative-card--tile', attr: { role: 'listitem', [TURN_KEY_ATTRIBUTE]: entry.tokenId ?? `name:${entry.name}` } });
+  const card = parent.createDiv({ cls: 'atlas-initiative-card atlas-initiative-card--tile', attr: { role: 'listitem', [TURN_KEY_ATTRIBUTE]: playerCardKey(entry) } });
   if (combatActive && entry.isActive) {
     card.addClass('atlas-initiative-card--active');
     card.setAttribute('aria-current', 'true');
