@@ -2,6 +2,7 @@ import React, { useId } from 'react';
 import { t } from '../../../i18n';
 import { CoverPicker } from '../../../packages/components/asset-manager/collection-transfer/CoverPicker';
 import { useObjectUrl } from '../../../packages/components/asset-manager/collection-transfer/useObjectUrl';
+import { Button } from '../../../packages/components/primitives/button';
 import { Select, type SelectOption } from '../../../packages/components/primitives/Select';
 import type { CoverChoice } from '../../../services/collectionBundle/collectionCover';
 import { MAX_MUSIC_TEXT } from '../../../services/musicBundle/musicBundleFormat';
@@ -19,10 +20,21 @@ interface StepProps {
   session: MusicShareSession;
 }
 
-/** A new listing, or the next version of one of the account's music listings: offered only where it has some. */
+/**
+ * A new listing, or the next version of one of the account's music listings: offered only where it has some. Where
+ * they could not be read, a quiet line says so and tries again; going on without them shares a new listing.
+ */
 function ListingChoice({ snapshot, session, layer }: StepProps & { layer: HTMLElement | null }): React.JSX.Element | null {
   const id = useId();
   const listings = snapshot.listings ?? [];
+  if (snapshot.listingsFailed) {
+    return (
+      <p className="atlas-share-field__hint">
+        {t('armariumMusic.listingsFailed')}{' '}
+        <Button variant="link" className="atlas-share-inline-link" onClick={() => void session.retryListings()}>{t('armariumMusic.listingsRetry')}</Button>
+      </p>
+    );
+  }
   if (listings.length === 0) return null;
   const options: SelectOption<string>[] = [
     { value: NEW_LISTING, label: t('armariumMusic.newListing') },

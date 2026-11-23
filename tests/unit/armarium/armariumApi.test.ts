@@ -126,4 +126,13 @@ describe('the Armarium API from Atlas', () => {
       { uid: 'track', slug: 'dawn', format: 'music-track', fields: null, newestVersion: null, coverUrl: null },
     ]);
   });
+  it('tells listings it could not read from none, so a share never takes a failure for an account without music', async () => {
+    for (const answer of [{ status: 500, json: { code: 'internal' } }, new Error('offline'), { status: 200, json: { submissions: [] } }]) {
+      const { client } = api(() => answer);
+      expect(await client.ownListings()).toBeNull();
+      expect(await client.ownListing('col')).toBeNull();
+    }
+    const { client } = api(() => ({ status: 200, json: { listings: [] } }));
+    expect(await client.ownListings()).toEqual([]);
+  });
 });

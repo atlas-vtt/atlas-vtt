@@ -30,9 +30,16 @@ function stateText(copy: TrackCopyState): string {
   }
 }
 
+/** Each track's number in what is uploaded: the tracks that cannot go are left out of the count, as the packer leaves them out. */
+function uploadNumbers(tracks: readonly MusicShareTrack[]): Map<string, number> {
+  const going = tracks.filter((track) => track.copy.state !== 'refused');
+  return new Map(going.map((track, index) => [track.id, index + 1]));
+}
+
 interface RowProps {
   track: MusicShareTrack;
-  number: number;
+  /** Null for a track that cannot go. */
+  number: number | null;
   /** A single's title is the share's name, edited above. */
   title: string | null;
   movable: boolean;
@@ -55,13 +62,13 @@ function TrackRow({ track, number, title, movable, removable, dragging, invalid,
           </button>
         </LabelTooltip>
       )}
-      <span className="atlas-music-track__number" aria-hidden="true">{number}</span>
+      <span className="atlas-music-track__number" aria-hidden="true">{number ?? ''}</span>
       {title === null ? (
         <input
           className="atlas-input atlas-music-track__input"
           value={track.title}
           maxLength={MAX_MUSIC_TEXT * 2}
-          aria-label={t('armariumMusic.trackTitle', { number })}
+          aria-label={number === null ? track.title : t('armariumMusic.trackTitle', { number })}
           aria-invalid={invalid || undefined}
           disabled={track.copy.state === 'refused'}
           onChange={(event) => session.setTitle(track.id, event.target.value)}
@@ -117,8 +124,9 @@ export function MusicTrackList({ snapshot, session }: { snapshot: MusicShareSnap
 
   const ready = snapshot.tracks.flatMap((track) => (track.copy.state === 'ready' ? [track.copy] : []));
   const refused = snapshot.tracks.filter((track): track is MusicShareTrack & { copy: { state: 'refused'; reason: TrackRefusal } } => track.copy.state === 'refused');
-  const titleProblem = snapshot.tracks.findIndex((track) => snapshot.problems[`title:${track.id}`] !== undefined);
-  const titleProblemTrack = snapshot.tracks[titleProblem];
+  const titleProblemTrack = snapshot.tracks.find((track) => snapshot.problems[`title:${track.id}`] !== undefined);
+  const numbers = uploadNumbers(drag.shown);
+  const problemNumber = titleProblemTrack ? uploadNumbers(snapshot.tracks).get(titleProblemTrack.id) : undefined;
   return (
     <section className="atlas-share-field atlas-music-share__tracks" aria-labelledby={labelId}>
       <div className="atlas-music-share__tracks-head">
@@ -127,11 +135,11 @@ export function MusicTrackList({ snapshot, session }: { snapshot: MusicShareSnap
       </div>
       <TooltipProvider delayDuration={300} skipDelayDuration={600}>
         <ol ref={listRef} className="atlas-music-tracks" data-dragging={drag.draggingId !== null || undefined} aria-labelledby={labelId} onKeyDown={moveByKey}>
-          {drag.shown.map((track, index) => (
+          {drag.shown.map((track) => (
             <TrackRow
               key={track.id}
               track={track}
-              number={index + 1}
+              number={numbers.get(track.id) ?? null}
               title={album ? null : snapshot.name}
               movable={movable}
               removable={removable}
@@ -145,7 +153,7 @@ export function MusicTrackList({ snapshot, session }: { snapshot: MusicShareSnap
       </TooltipProvider>
       {titleProblemTrack && (
         <p className="atlas-share-field__problem" role="alert">
-          {t('armariumMusic.problem.title', { number: titleProblem + 1, problem: musicProblemText(snapshot.problems[`title:${titleProblemTrack.id}`] ?? '', snapshot.kind) })}
+          {t('armariumMusic.problem.title', { number: problemNumber ?? 0, problem: musicProblemText(snapshot.problems[`title:${titleProblemTrack.id}`] ?? '', snapshot.kind) })}
         </p>
       )}
       <MusicProblem id={`${labelId}-problem`} field="tracks" problems={snapshot.problems} kind={snapshot.kind} />

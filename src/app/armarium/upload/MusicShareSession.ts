@@ -57,6 +57,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
   private readonly stops = new Map<string, () => void>();
   private readonly newUid: string;
   private known: OwnListing[] = [];
+  private failedToRead = false;
   private coverChosen = false;
 
   constructor(private readonly deps: MusicShareDeps) {
@@ -66,7 +67,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
     super(deps, {
       ...freshShare({ ...draftFrom(null, null), kind: 'music' }),
       subject: 'music', listingKind: 'music', kind: deps.kind, name: deps.name.trim(), artist: '', tracks, cut: deps.files.length - tracks.length,
-      listings: null, target: null, version: null, notes: '', cover: null, listedCover: null, uploadedCover: null,
+      listings: null, listingsFailed: false, target: null, version: null, notes: '', cover: null, listedCover: null, uploadedCover: null,
     });
     this.newUid = deps.newUid();
   }
@@ -149,8 +150,23 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
     void this.packAndUpload(version);
   }
 
+  /** Reads the account's music listings again, where they could not be read when the share opened. */
+  async retryListings(): Promise<void> {
+    if (!this.state.listingsFailed) return;
+    const asked = await this.readKnown();
+    this.set({ listings: this.known, listingsFailed: this.failedToRead });
+    if (asked !== null && this.state.target === null) this.chooseListing(asked);
+  }
+
   protected async listingUid(): Promise<string | null> {
-    this.known = (await this.deps.api.ownListings()).filter((listing) => listing.format === this.deps.kind);
+    return this.readKnown();
+  }
+
+  /** Reads the account's listings of this kind; the listing the page asked to continue where it is one of them. */
+  private async readKnown(): Promise<string | null> {
+    const read = await this.deps.api.ownListings();
+    this.failedToRead = read === null;
+    this.known = (read ?? []).filter((listing) => listing.format === this.deps.kind);
     return this.known.some((listing) => listing.uid === this.deps.listing) ? this.deps.listing ?? null : null;
   }
 
@@ -160,7 +176,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
 
   protected opened(ownListing: OwnListing | null): Partial<MusicShareSnapshot> {
     if (ownListing?.coverUrl) void this.keepListedCover(ownListing.uid, ownListing.coverUrl);
-    return { listings: this.known, target: ownListing?.uid ?? null, version: nextItemVersion(ownListing) };
+    return { listings: this.known, listingsFailed: this.failedToRead, target: ownListing?.uid ?? null, version: nextItemVersion(ownListing) };
   }
 
   /** What the listing holds for a new version, else an empty form; the kind is music. */

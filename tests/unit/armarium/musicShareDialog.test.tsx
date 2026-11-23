@@ -20,8 +20,8 @@ const app = {} as App;
 let token: string | null;
 
 class MusicArmarium extends FakeArmarium {
-  listings: OwnListing[] = [];
-  ownListings(): Promise<OwnListing[]> {
+  listings: OwnListing[] | null = [];
+  ownListings(): Promise<OwnListing[] | null> {
     return Promise.resolve(this.listings);
   }
 }
@@ -72,6 +72,30 @@ async function share(api: MusicArmarium, paths: string[]): Promise<{ session: Mu
 const ready: PreparedTrack = { state: 'ready', copy: new Blob(['opus']), frames: 48_000 * 185 };
 
 describe('the share dialog of music', () => {
+  it('says where the account\'s listings could not be read, and tries again on the GM\'s word', async () => {
+    const api = new MusicArmarium();
+    api.listings = null;
+    await share(api, ['01 Dawn.mp3', '02 Dusk.mp3']);
+    expect(screen.getByText(/Your music listings could not be read/)).toBeTruthy();
+    api.listings = [{ uid: 'a'.repeat(32), slug: 'old-roads', name: 'Old Roads', format: 'music-album', fields: null, newestVersion: 2, coverUrl: null }];
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      await settle();
+    });
+    expect(screen.queryByText(/Your music listings could not be read/)).toBeNull();
+    expect(screen.getAllByText('Listing')).toHaveLength(2);
+  });
+
+  it('numbers only the tracks that go up, as the upload will', async () => {
+    const { tell } = await share(new MusicArmarium(), ['01 Dawn.mp3', '02 Dusk.mp3', '03 Night.mp3']);
+    tell('01 Dawn.mp3', ready);
+    tell('02 Dusk.mp3', { state: 'refused', reason: 'gone' });
+    tell('03 Night.mp3', ready);
+    const numbers = [...document.querySelectorAll('.atlas-music-track__number')].map((number) => number.textContent);
+    expect(numbers).toEqual(['1', '', '2']);
+    expect(screen.getByRole('textbox', { name: 'Title of track 2' })).toHaveProperty('value', 'Night');
+  });
+
   it('shows the album with its tracks in order, their lengths once prepared, and waits for them before it goes on', async () => {
     const { session, tell } = await share(new MusicArmarium(), ['01 Dawn.mp3', '02 Dusk.mp3', '03 Night.mp3']);
     expect(screen.getByRole('heading', { name: 'What you share' })).toBeTruthy();

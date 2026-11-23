@@ -38,6 +38,8 @@ export interface MusicShareSnapshot extends ShareCommon {
   readonly cut: number;
   /** The account's music listings of this kind, once read; null before. */
   readonly listings: readonly OwnListing[] | null;
+  /** They could not be read: the step says so and offers to try again, and Continue shares a new listing. */
+  readonly listingsFailed: boolean;
   /** The listing this share continues; null for a new one. */
   readonly target: string | null;
   /** The version this share publishes, once the listings were read. */
