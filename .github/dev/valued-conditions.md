@@ -1,0 +1,4 @@
+# Valued conditions
+
+- A condition may carry a number on each token (`ConditionDefinition.valued`, e.g. Pathfinder's Frightened 2, D&D's Exhaustion levels). Tokens keep the numbers in `conditionValues` beside the `conditions` list; a valued condition without an entry is 1. Read and change them only through `src/app/utils/conditionValues.ts` (`conditionValue`, `setConditionValue`, `removeCondition`) or the store's `changeTokensConditionValue`, so an emptied list or map is deleted rather than left behind.
+- The canvas badge shows the number in a pip (`ConditionBadge.ts`), the hover card and labels read "Frightened 2" (`conditionLabel`), and the Conditions menu gets a stepper (`ContextMenuEntry.stepper`, also driven by the + and - keys). The condition cleanup removes stale numbers with their conditions.
