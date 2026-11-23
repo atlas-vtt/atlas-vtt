@@ -82,4 +82,8 @@ export const armariumMusic: Translation = {
   'armariumMusic.notHere': '此设备上没有关联音乐文件夹。请先在声音页面关联。',
   'armariumMusic.changedSinceReview': '你的音乐文件夹在你查看之后有了变化。请重新安装，看看现在会怎样。',
   'armariumMusic.installFailed': '无法安装这份音乐：{reason}。没有保留任何内容。',
+  'armariumMusic.stillReading': 'Atlas 仍在读取你的音乐文件夹。请稍后再试。',
+  'armariumMusic.noTrash': '此更新会替换或移除文件，而你的音乐文件夹没有可存放它们的回收站。没有做任何更改。',
+  'armariumMusic.listingsFailed': '无法读取你的音乐条目。继续将以新条目分享。',
+  'armariumMusic.listingsRetry': '重试',
 };

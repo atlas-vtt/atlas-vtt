@@ -94,7 +94,9 @@ describe('music the Armarium delivers', () => {
   });
 
   it('installs a single the website packed from an MP3 and the store made a copy of', async () => {
-    const opened = await open('site-rebuilt.atlas-track.zip');
+    const zip = await JSZip.loadAsync(fixture('site-rebuilt.atlas-track.zip'));
+    const { item } = JSON.parse(await zip.file('manifest.json')!.async('string')) as { item: { uid: string } };
+    const opened = await open('site-rebuilt.atlas-track.zip', item.uid);
     if (opened.kind !== 'music') throw new Error(`opened as ${opened.kind}`);
     expect(opened.session.review).toMatchObject({ kind: 'music-track', name: 'Mist over the Fen', artist: 'The Fen Players', cover: null });
     expect(opened.session.review.tracks[0]?.seconds).toBeCloseTo(2.5, 1);

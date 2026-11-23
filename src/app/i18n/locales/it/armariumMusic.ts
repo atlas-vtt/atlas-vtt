@@ -82,4 +82,8 @@ export const armariumMusic: Translation = {
   'armariumMusic.notHere': 'La cartella della musica non è collegata su questo dispositivo. Collegala prima nella pagina Suono.',
   'armariumMusic.changedSinceReview': 'La tua cartella della musica è cambiata da quando l’hai esaminata. Installala di nuovo per vedere cosa fa adesso.',
   'armariumMusic.installFailed': 'Non è stato possibile installare la musica: {reason}. Non è stato tenuto nulla.',
+  'armariumMusic.stillReading': 'Atlas sta ancora leggendo la tua cartella della musica. Riprova tra un momento.',
+  'armariumMusic.noTrash': 'Questo aggiornamento sostituisce o rimuove dei file, e la tua cartella della musica non ha un cestino dove tenerli. Non è cambiato nulla.',
+  'armariumMusic.listingsFailed': 'Non è stato possibile leggere le tue schede di musica. Continua la condivide come nuova scheda.',
+  'armariumMusic.listingsRetry': 'Riprova',
 };

@@ -1,4 +1,3 @@
-import { readAtlasCopy } from '../../sound/codec/atlasOpus';
 import { SOUND_RATE } from '../../sound/engine/soundMath';
 import { importRoot } from '../../soundLibrary/libraryOperations';
 import type { SoundLibrary } from '../../soundLibrary/SoundLibrary';
@@ -6,17 +5,15 @@ import type { SoundLocation } from '../../soundLibrary/soundLocation';
 import { nameOfRelative } from '../../soundLibrary/soundPaths';
 import { isLinked } from '../../soundLibrary/SoundRoots';
 import { describeError } from '../../utils/errors';
-import { sha256 } from '../../utils/hashing';
 import type { MusicKind } from '../itemBundle/itemBundleFormat';
 import type { ItemImportOptions } from '../itemBundle/itemImport';
-import { installedMusic } from './installedMusic';
+import { installedMusic, type InstalledMusic } from './installedMusic';
+import { shownText } from './musicBundleFormat';
 import type { OpenedMusicBundle } from './musicBundleReader';
-import { planMusicImport, type MusicImportPlan, type PlannedTrack } from './musicImportPlan';
+import { planMusicImport, type MusicImportPlan } from './musicImportPlan';
+import { installMusicFiles } from './musicInstallFiles';
 import { MUSIC_SIDECAR_FORMAT, sidecarText } from './musicProvenance';
 import { t } from '../../i18n';
-
-/** A file being written, beside where it goes: never listed, since it is no audio, and trashed when the install fails. */
-const PART = '.atlas-part';
 
 export interface MusicReviewTrack {
   title: string;
@@ -64,11 +61,11 @@ export interface MusicImportSession {
 
 function reviewOf(bundle: OpenedMusicBundle, plan: MusicImportPlan, rootName: string, creator: string | undefined): MusicReview {
   const { kind, name, artist, version, notes } = bundle.manifest.item;
-  const tracks = plan.tracks.map((track) => ({ title: track.title, seconds: track.source.facts.frames / SOUND_RATE, bytes: track.bytes.size }));
+  const tracks = plan.tracks.map((track) => ({ title: shownText(track.title), seconds: track.source.facts.frames / SOUND_RATE, bytes: track.bytes.size }));
   const replaced = plan.tracks.filter((track) => track.replaces).length;
   const removed = plan.removes.filter((path) => path !== plan.installed?.sidecarPath).length;
   return {
-    kind, name, artist: artist ?? null, version, notes: notes?.trim() || undefined, creator, cover: bundle.cover, tracks,
+    kind, name: shownText(name), artist: artist === undefined ? null : shownText(artist), version, notes: notes?.trim() || undefined, creator, cover: bundle.cover, tracks,
     seconds: tracks.reduce((sum, track) => sum + track.seconds, 0),
     bytes: tracks.reduce((sum, track) => sum + track.bytes, 0),
     where: [rootName, ...plan.folder.split('/').filter(Boolean)],
@@ -84,76 +81,72 @@ function samePlan(a: MusicImportPlan, b: MusicImportPlan): boolean {
     && a.removes.join('\n') === b.removes.join('\n');
 }
 
-/** Writes each track beside its place and reads it back; throws on the first that does not read as written. */
-async function writeParts(location: SoundLocation, tracks: readonly PlannedTrack[], written: string[]): Promise<void> {
-  for (const track of tracks) {
-    const part = `${track.path}${PART}`;
-    if (await location.exists(part)) await location.trash(part);
-    await location.write(part, track.bytes);
-    written.push(part);
-    const back = await location.read(part);
-    if ((await sha256(await back.arrayBuffer())) !== track.sha256 || !(await readAtlasCopy(back))) throw new Error(t('armariumMusic.verifyFailed', { title: track.title }));
-  }
+/** Whether the install takes files of the version before away: those go to the trash once it stands, never for good. */
+const takesAway = (plan: MusicImportPlan): boolean => plan.removes.length > 0 || plan.tracks.some((track) => track.replaces);
+
+/** The installs that are what the music root holds, or a sentence why they cannot be known yet. */
+async function knownInstalls(library: SoundLibrary, location: SoundLocation | null): Promise<InstalledMusic[]> {
+  const installs = location ? await installedMusic(library) : [];
+  if (installs === null) throw new Error(t('armariumMusic.stillReading'));
+  return installs;
 }
 
-/** Puts every part in its place, trashes what the version before leaves, and writes the sidecar last. */
-async function commit(location: SoundLocation, bundle: OpenedMusicBundle, plan: MusicImportPlan, moved: string[]): Promise<void> {
-  for (const track of plan.tracks) {
-    if (track.replaces) await location.trash(track.path);
-    await location.move(`${track.path}${PART}`, track.path);
-    moved.push(track.path);
-  }
-  for (const path of plan.removes) await location.trash(path);
-  const { uid, version, kind, name, artist } = bundle.manifest.item;
-  const tracks = plan.tracks.map((track) => ({ file: nameOfRelative(track.path), sha256: track.sha256 }));
-  await location.replace(plan.sidecarPath, new Blob([sidecarText({ format: MUSIC_SIDECAR_FORMAT, uid, version, kind, name, artist: artist ?? null, tracks })], { type: 'application/json' }));
+/** Refuses a plan that would take files away where the root has no trash, before anything is written. */
+function refuseWithoutTrash(location: SoundLocation | null, plan: MusicImportPlan): void {
+  if (location !== null && takesAway(plan) && !location.canTrash()) throw new Error(t('armariumMusic.noTrash'));
 }
 
-/** What an install that failed wrote goes to the trash: its parts, the tracks it put in place, and a folder it made. */
-async function rollBack(location: SoundLocation, written: readonly string[], madeFolder: string | null): Promise<void> {
-  const leftovers = madeFolder === null ? written : [madeFolder];
-  for (const path of leftovers) {
-    if (await location.exists(path).catch(() => false)) await location.trash(path).catch((error: unknown) => console.error(`[Atlas] Could not take back ${path}:`, error));
-  }
+/** One install of music at a time per library: two would plan on a folder the other is writing to. */
+const installing = new WeakMap<SoundLibrary, Promise<unknown>>();
+
+function oneAtATime<T>(library: SoundLibrary, run: () => Promise<T>): Promise<T> {
+  const before = installing.get(library) ?? Promise.resolve();
+  const turn = before.catch(() => undefined).then(run);
+  installing.set(library, turn);
+  return turn;
 }
 
 async function applyMusicImport(library: SoundLibrary, bundle: OpenedMusicBundle, reviewed: MusicImportPlan, inPlace: boolean): Promise<MusicImportResult> {
   const { kind, name, version } = bundle.manifest.item;
   const location = importRoot(library, 'music');
   if (!location) throw new Error(t('armariumMusic.notHere'));
-  const plan = await planMusicImport(location, bundle, await installedMusic(library), inPlace);
+  const plan = await planMusicImport(location, bundle, await knownInstalls(library, location), inPlace);
   if (!samePlan(plan, reviewed)) throw new Error(t('armariumMusic.changedSinceReview'));
+  refuseWithoutTrash(location, plan);
   const tags = kind === 'music-album' || plan.folder !== '' ? [nameOfRelative(plan.folder)] : [];
-  if (plan.same) return { kind, name, version, outcome: 'same', tags };
-  const madeFolder = plan.folder !== '' && !(await location.exists(plan.folder)) ? plan.folder : null;
-  const written: string[] = [];
-  const moved: string[] = [];
+  if (plan.same) return { kind, name: shownText(name), version, outcome: 'same', tags };
   try {
-    await location.makeFolder(plan.folder);
-    await writeParts(location, plan.tracks, written);
-    await commit(location, bundle, plan, moved);
+    await installMusicFiles(location, plan, plan.sidecarPath === null ? null : sidecarOf(bundle, plan));
   } catch (error) {
-    // A part already moved lies at its track's place now: both are what this install wrote.
-    await rollBack(location, [...written, ...moved], madeFolder);
     throw new Error(t('armariumMusic.installFailed', { reason: describeError(error).replace(/\.$/, '') }));
   } finally {
     await library.reread('music');
     await library.settle('music', [plan.folder, ...plan.tracks.map((track) => track.path), ...plan.removes].filter(Boolean));
   }
-  return { kind, name, version, outcome: plan.installed ? 'update' : 'new', tags };
+  return { kind, name: shownText(name), version, outcome: plan.installed ? 'update' : 'new', tags };
+}
+
+/** What the sidecar records of an install: the listing, and every file as it was written. */
+function sidecarOf(bundle: OpenedMusicBundle, plan: MusicImportPlan): Blob {
+  const { uid, version, kind, name, artist } = bundle.manifest.item;
+  const tracks = plan.tracks.map((track) => ({ file: nameOfRelative(track.path), sha256: track.sha256 }));
+  return new Blob([sidecarText({ format: MUSIC_SIDECAR_FORMAT, uid, version, kind, name, artist: artist ?? null, tracks })], { type: 'application/json' });
 }
 
 /**
  * Plans the install of a checked music bundle into the music root and shows what it would do; nothing is written,
  * not even the root's link, until `apply`. Only bytes the Armarium delivered for this listing (`listingUid`) may
- * update its install in place: a file from anywhere else names a uid anyone can read, and comes in beside.
+ * update its install in place and are recorded as its install: a file from anywhere else names a uid anyone can
+ * read, and comes in beside without a sidecar. Refused, saying why, where the root is linked on another device only,
+ * is not read whole yet, or has no trash for files an update would take away. Installs run one at a time.
  */
 export async function openMusicImport(library: SoundLibrary, bundle: OpenedMusicBundle, options: ItemImportOptions = {}): Promise<MusicImportSession> {
   const root = library.rootOf('music');
   const location = library.locationOf('music');
-  if (isLinked(root) && location === null) throw new Error(t('armariumMusic.notHere'));
+  if (root.status === 'not-linked-here' || (isLinked(root) && location === null)) throw new Error(t('armariumMusic.notHere'));
   const inPlace = options.listingUid === bundle.manifest.item.uid;
-  const plan = await planMusicImport(location, bundle, location ? await installedMusic(library) : [], inPlace);
+  const plan = await planMusicImport(location, bundle, await knownInstalls(library, location), inPlace);
+  refuseWithoutTrash(location, plan);
   const review = reviewOf(bundle, plan, t('audio.music'), options.creator?.trim() || undefined);
-  return { review, apply: () => applyMusicImport(library, bundle, plan, inPlace) };
+  return { review, apply: () => oneAtATime(library, () => applyMusicImport(library, bundle, plan, inPlace)) };
 }

@@ -15,7 +15,7 @@ export interface PlannedTrack {
   path: string;
   bytes: Blob;
   sha256: string;
-  /** An unchanged file of the version installed before lies at `path` and goes to the trash for this one. */
+  /** An unchanged file of the version installed before lies at `path`: it is set aside for this one, and goes to the trash once the install stands. */
   replaces: boolean;
 }
 
@@ -23,9 +23,10 @@ export interface PlannedTrack {
 export interface MusicImportPlan {
   /** The album's folder, or the folder a single goes in; '' is the root's top. */
   folder: string;
-  sidecarPath: string;
+  /** Where the listing's sidecar goes; null for bytes that did not come from the Armarium for this listing, which name no install. */
+  sidecarPath: string | null;
   tracks: PlannedTrack[];
-  /** Files of the version installed before that came as they are and that no track takes the place of: trashed. */
+  /** Files of the version installed before that came as they are and that no track takes the place of, and a sidecar that moved: trashed. */
   removes: string[];
   /** Files of the version installed before that the GM changed: they stay, and the new ones come beside them. */
   kept: string[];
@@ -51,6 +52,17 @@ async function freeFolder(parent: string, name: string, exists: (path: string) =
   }
 }
 
+/**
+ * The folder a single goes in: its artist's, or the root's top without one, but never an album's folder, whose sidecar
+ * would hide the single from what is installed: `Lanterns 2` where the album `Lanterns` lies in `Lanterns`.
+ */
+async function singleFolder(artistFolder: string, exists: (path: string) => Promise<boolean>): Promise<string> {
+  for (let number = 1; ; number++) {
+    const candidate = number === 1 ? artistFolder : `${artistFolder} ${number}`;
+    if (!(await exists(joinRelative(candidate, ALBUM_SIDECAR)))) return candidate;
+  }
+}
+
 /** The copy named for the file it becomes, so the library never takes another file of the folder for its source. */
 async function namedCopy(track: MusicBundleTrack, fileName: string): Promise<Blob> {
   const { key, codec, lufs, truePeakDb, peaks } = track.facts;
@@ -60,7 +72,8 @@ async function namedCopy(track: MusicBundleTrack, fileName: string): Promise<Blo
 /**
  * Plans the install of a checked music bundle into the music root: `<artist>/<album>/<NN> <title>.opus`, a single as
  * `<artist>/<title>.opus`, without the artist's folder where it names none. `inPlace` (the bytes came from the
- * Armarium for this listing) lets it update the listing's install where it lies; otherwise it comes in beside. Reads
+ * Armarium for this listing) lets it update the listing's install where it lies and record the install in a sidecar;
+ * otherwise it comes in beside and names no listing, so a file anyone can make never poses as the listing's install. Reads
  * only: `location` is null while the music root is not linked yet, which then holds nothing.
  */
 export async function planMusicImport(location: SoundLocation | null, bundle: OpenedMusicBundle, installs: readonly InstalledMusic[], inPlace: boolean): Promise<MusicImportPlan> {
@@ -75,7 +88,7 @@ export async function planMusicImport(location: SoundLocation | null, bundle: Op
     }))
     : [];
   const artistFolder = artist ? safeFileName(artist, 'Artist') : '';
-  const folder = installed?.folder ?? (kind === 'music-album' ? await freeFolder(artistFolder, safeFileName(name, 'Album'), exists) : artistFolder);
+  const folder = installed?.folder ?? (kind === 'music-album' ? await freeFolder(artistFolder, safeFileName(name, 'Album'), exists) : await singleFolder(artistFolder, exists));
   const unchanged = new Set(old.filter((file) => file.state === 'unchanged').map((file) => file.path));
   const taken = new Set<string>();
   const tracks: PlannedTrack[] = [];
@@ -91,7 +104,7 @@ export async function planMusicImport(location: SoundLocation | null, bundle: Op
     const bytes = await namedCopy(source, fileName);
     tracks.push({ title: source.title, source, path, bytes, sha256: await sha256(await bytes.arrayBuffer()), replaces: unchanged.has(path) });
   }
-  const sidecarPath = joinRelative(folder, kind === 'music-album' ? ALBUM_SIDECAR : trackSidecarName(nameOfRelative(tracks[0]?.path ?? '')));
+  const sidecarPath = inPlace ? joinRelative(folder, kind === 'music-album' ? ALBUM_SIDECAR : trackSidecarName(nameOfRelative(tracks[0]?.path ?? ''))) : null;
   const removes = [...unchanged].filter((path) => !taken.has(path));
   if (installed && installed.sidecarPath !== sidecarPath) removes.push(installed.sidecarPath);
   const kept = old.filter((file) => file.state === 'changed').map((file) => file.path);

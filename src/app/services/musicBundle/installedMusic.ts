@@ -27,6 +27,7 @@ export function musicRootWalked(library: MusicShelf, withinMs = WALK_WAIT_MS): P
   if (library.locationOf('music') === null) return Promise.resolve(false);
   if (library.isWalked('music')) return Promise.resolve(true);
   library.rescan();
+  if (withinMs <= 0) return Promise.resolve(false);
   return new Promise((resolve) => {
     const done = (walked: boolean): void => {
       window.clearTimeout(timer);
@@ -53,11 +54,13 @@ async function sidecarAt(location: SoundLocation, path: string): Promise<MusicSi
 
 /**
  * The sidecars of the music root, an album's or a single's: what the Armarium page is told is installed. Waits up to
- * `walkWaitMs` for the root's first walk; a root not read whole by then answers none.
+ * `walkWaitMs` for the root's first walk; null where the root is not read whole by then, which is not the same as none
+ * (an update planned on it would install beside its own install). A root that is not linked here holds none.
  */
-export async function installedMusic(library: MusicShelf, walkWaitMs = WALK_WAIT_MS): Promise<InstalledMusic[]> {
+export async function installedMusic(library: MusicShelf, walkWaitMs = WALK_WAIT_MS): Promise<InstalledMusic[] | null> {
   const location = library.locationOf('music');
-  if (location === null || !(await musicRootWalked(library, walkWaitMs))) return [];
+  if (location === null) return [];
+  if (!(await musicRootWalked(library, walkWaitMs))) return null;
   const paths = library.filesOf('music').map(({ entry }) => entry.path);
   const folders = [...new Set(paths.map(parentOfRelative))];
   const albums = (await inPool(folders, PARALLEL, async (folder): Promise<InstalledMusic | null> => {

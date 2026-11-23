@@ -82,4 +82,8 @@ export const armariumMusic: Translation = {
   'armariumMusic.notHere': 'Der Musikordner ist auf diesem Gerät nicht verknüpft. Verknüpfe ihn zuerst auf der Sound-Seite.',
   'armariumMusic.changedSinceReview': 'Dein Musikordner hat sich geändert, seit du sie angesehen hast. Installiere sie noch einmal, um zu sehen, was jetzt passiert.',
   'armariumMusic.installFailed': 'Die Musik konnte nicht installiert werden: {reason}. Nichts davon wurde behalten.',
+  'armariumMusic.stillReading': 'Atlas liest deinen Musikordner noch. Versuche es gleich noch einmal.',
+  'armariumMusic.noTrash': 'Dieses Update ersetzt oder entfernt Dateien, und dein Musikordner hat keinen Papierkorb für sie. Es wurde nichts geändert.',
+  'armariumMusic.listingsFailed': 'Deine Musik-Einträge konnten nicht gelesen werden. Weiter teilt dies als neuen Eintrag.',
+  'armariumMusic.listingsRetry': 'Erneut versuchen',
 };

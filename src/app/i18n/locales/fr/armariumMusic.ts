@@ -82,4 +82,8 @@ export const armariumMusic: Translation = {
   'armariumMusic.notHere': 'Le dossier de musique n\'est pas lié sur cet appareil. Liez-le d\'abord sur la page Son.',
   'armariumMusic.changedSinceReview': 'Votre dossier de musique a changé depuis que vous l\'avez examinée. Installez-la de nouveau pour voir ce qu\'elle fait maintenant.',
   'armariumMusic.installFailed': 'La musique n\'a pas pu être installée : {reason}. Rien n\'en a été gardé.',
+  'armariumMusic.stillReading': 'Atlas lit encore votre dossier de musique. Réessayez dans un instant.',
+  'armariumMusic.noTrash': 'Cette mise à jour remplace ou retire des fichiers, et votre dossier de musique n\'a pas de corbeille pour les garder. Rien n\'a été modifié.',
+  'armariumMusic.listingsFailed': 'Vos annonces de musique n\'ont pas pu être lues. Continuer partage ceci comme une nouvelle annonce.',
+  'armariumMusic.listingsRetry': 'Réessayer',
 };

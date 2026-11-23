@@ -88,4 +88,8 @@ export const armariumMusic = {
   'armariumMusic.notHere': 'The music folder is not linked on this device. Link it on the Sound page first.',
   'armariumMusic.changedSinceReview': 'Your music folder changed since the review. Install it again to see what it does now.',
   'armariumMusic.installFailed': 'The music could not be installed: {reason}. Nothing of it was kept.',
+  'armariumMusic.stillReading': 'Atlas is still reading your music folder. Try again in a moment.',
+  'armariumMusic.noTrash': 'This update replaces or removes files, and your music folder has no trash to keep them in. Nothing was changed.',
+  'armariumMusic.listingsFailed': 'Your music listings could not be read. Continue shares this as a new listing.',
+  'armariumMusic.listingsRetry': 'Try again',
 } as const satisfies Record<string, Message>;

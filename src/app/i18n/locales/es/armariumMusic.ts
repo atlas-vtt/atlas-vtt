@@ -82,4 +82,8 @@ export const armariumMusic: Translation = {
   'armariumMusic.notHere': 'La carpeta de música no está vinculada en este dispositivo. Vincúlala primero en la página Sonido.',
   'armariumMusic.changedSinceReview': 'Tu carpeta de música cambió desde que la revisaste. Instálala de nuevo para ver qué hace ahora.',
   'armariumMusic.installFailed': 'No se pudo instalar la música: {reason}. No se conservó nada.',
+  'armariumMusic.stillReading': 'Atlas aún está leyendo tu carpeta de música. Inténtalo de nuevo en un momento.',
+  'armariumMusic.noTrash': 'Esta actualización reemplaza o quita archivos, y tu carpeta de música no tiene papelera donde guardarlos. No se cambió nada.',
+  'armariumMusic.listingsFailed': 'No se pudieron leer tus fichas de música. Continuar lo comparte como una ficha nueva.',
+  'armariumMusic.listingsRetry': 'Reintentar',
 };

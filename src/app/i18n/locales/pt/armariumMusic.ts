@@ -82,4 +82,8 @@ export const armariumMusic: Translation = {
   'armariumMusic.notHere': 'A pasta de música não está vinculada neste dispositivo. Vincule-a primeiro na página Som.',
   'armariumMusic.changedSinceReview': 'Sua pasta de música mudou desde que você a analisou. Instale de novo para ver o que acontece agora.',
   'armariumMusic.installFailed': 'Não foi possível instalar a música: {reason}. Nada dela foi mantido.',
+  'armariumMusic.stillReading': 'O Atlas ainda está lendo sua pasta de música. Tente de novo em um instante.',
+  'armariumMusic.noTrash': 'Esta atualização substitui ou remove arquivos, e sua pasta de música não tem lixeira para guardá-los. Nada foi alterado.',
+  'armariumMusic.listingsFailed': 'Não foi possível ler seus anúncios de música. Continuar compartilha isto como um novo anúncio.',
+  'armariumMusic.listingsRetry': 'Tentar de novo',
 };
