@@ -81,8 +81,6 @@ export interface AtlasSettings {
   initiativeBanner: boolean;
   /** Whether online players move their tokens in a fight only on their turn. Read with `initiativeTurnOptions`. */
   initiativeMovesOnTurn: boolean;
-  /** The Atlas theme's look; unset is mediaeval. Read with `getLook`. */
-  look?: string;
   /** Experimental features the GM switched on. Read with `isExperimentalOn`. */
   experimental: Partial<Record<ExperimentalFeatureId, boolean>>;
   /** The GM's toolbar layout, only what differs from the default; read with `getToolbarLayout`. */

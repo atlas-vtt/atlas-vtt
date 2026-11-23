@@ -1,43 +1,39 @@
-import React from 'react';
-import { Button } from '../../../packages/components/primitives/button';
+import React, { useCallback, useSyncExternalStore } from 'react';
 import { SegmentedControl, type SegmentedOption } from '../../../packages/components/primitives/SegmentedControl';
 import { useAtlasSettings } from '../../../keyboard/useMapHotkeys';
 import { useAtlasUI } from '../../root/AtlasUIContext';
-import { atlasThemeActive, switchToAtlasTheme, type AtlasLook } from '../../../appearance/atlasLook';
-import { SettingChoiceRow, SettingRow } from './SettingRows';
+import { LookService, type LookChoice } from '../../../appearance/lookService';
+import { SettingChoiceRow } from './SettingRows';
 import { t } from '../../../i18n';
 
-export function lookOptions(): SegmentedOption<AtlasLook>[] {
+export function lookOptions(): SegmentedOption<LookChoice>[] {
   return [
+    { value: 'own', label: t('appearance.own') },
     { value: 'mediaeval', label: t('appearance.mediaeval') },
     { value: 'scifi', label: t('appearance.scifi') },
   ];
 }
 
-/**
- * The Appearance page of the command palette, listed while the Atlas theme is installed: the theme's look. While
- * another theme is in use the look stays in place, disabled, under a row that switches to the Atlas theme.
- */
-export function AppearancePanel(): React.ReactElement {
+/** The look of this device, followed while the component shows. */
+export function useLookChoice(looks: LookService): LookChoice {
+  const subscribe = useCallback((changed: () => void) => looks.onChange(changed), [looks]);
+  return useSyncExternalStore(subscribe, () => looks.get());
+}
+
+/** The Appearance page of the command palette: the GM's own theme or one of Atlas' looks. */
+export function AppearancePanel(): React.ReactElement | null {
   const settings = useAtlasSettings();
   const { app } = useAtlasUI();
-  const active = atlasThemeActive(app);
+  return settings ? <LookRow looks={LookService.forApp(app, settings)} /> : null;
+}
+
+function LookRow({ looks }: { looks: LookService }): React.ReactElement {
+  const look = useLookChoice(looks);
   return (
     <div className="atlas-command-palette-panel">
       <div className="atlas-command-palette-panel-column">
-        {!active && (
-          <SettingRow label={t('appearance.useTheme')} hint={t('appearance.useThemeHint')}>
-            <Button variant="secondary" onClick={() => switchToAtlasTheme(app)}>{t('appearance.useThemeButton')}</Button>
-          </SettingRow>
-        )}
         <SettingChoiceRow label={t('appearance.look')} hint={t('appearance.lookHint')}>
-          <SegmentedControl<AtlasLook>
-            value={settings?.getLook() ?? 'mediaeval'}
-            options={lookOptions()}
-            ariaLabel={t('appearance.look')}
-            disabled={!active}
-            onChange={(look) => settings?.setLook(look)}
-          />
+          <SegmentedControl<LookChoice> value={look} options={lookOptions()} ariaLabel={t('appearance.look')} onChange={(choice) => looks.set(choice)} />
         </SettingChoiceRow>
       </div>
     </div>

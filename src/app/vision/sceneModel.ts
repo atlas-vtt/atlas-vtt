@@ -169,6 +169,7 @@ export class SceneModelBuilder {
     const lights = shining.flatMap((light, i) => (out[i] ? [] : [withRule(moving.has(light.key) ? { ...light, moving: true } : light, everyReach[i]!)]));
     const reaches = everyReach.filter((_, i) => !out[i]);
     const sources = sourcesInDarkness(sightSources(tokens, scale, reach, rules, GM_SIGHT_POLICY), ambient, reaches);
+    this.sightCache.useWalls(walls);
     this.sightCache.retain(new Set(sources.map(source => source.tokenId)));
     const gmSight = sceneSight(state.lighting, sources, walls, this.sightCache, { sceneHasVision: hasVision });
     const sight = selectSight(gmSight, tokens, PLAYER_SIGHT_POLICY);

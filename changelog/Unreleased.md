@@ -1,18 +1,22 @@
 ## New
 
-- A welcome wizard greets you the first time you open Atlas, on the start page or a map: what Atlas does, where to find the guides and the Discord, and the Atlas Sidebar plugin and Atlas theme, each one click from its page in Obsidian
-- Two looks for the Atlas theme: Mediaeval and a new Sci-fi look, switched under Appearance in the command palette or in the welcome wizard. The fog's edge follows the look: crackled for Mediaeval, soft for Sci-fi
+- A welcome wizard greets you the first time you open Atlas, on the start page or a map: what Atlas does, where to find the guides and the Discord, and the Atlas Sidebar plugin, one click from its page in Obsidian
+- Atlas has looks of its own, no theme to install: Mediaeval and a new Sci-fi look, or keep your own theme. Pick one under Appearance in the command palette or in the welcome wizard; each device keeps its own. The fog's edge and the dice numerals follow the look
 - **Atlas Online: phones as remotes.** Playing together around one screen, the GM can turn every player's phone or tablet into a remote: a big pad steps their token one cell at a time on the map everyone watches, on square and hex grids. Switch it in the player window bar's What players see menu, which now also holds online play's own switches
 - The player window bar also shows while an Atlas Online table runs. Hide the map and Pause now reach online players too: behind the curtain they are sent nothing of the scene, and while play is paused nobody can move their tokens. While a table runs, the bar also opens the player window, so a TV at the table can show the scene beside online play
+- Widgets can be reordered: drag one by its grip in the command palette's Widgets page (or move it with Alt and the arrow keys), and the widget bar follows in every scene of the collection
 
 ## Improved
 
 - The Stream Deck's Music key now moves the Sound page's Music fader, and its Ambience key moves all ambience layers of the mix together, so the page shows every press at once
 - Keys set to "Music in mix" now work as the Music key
 - Statblocks shown without a template of their own no longer start with a line about Atlas' field layout
+- Atlas Online: the table log's button stands beside the player window bar instead of below it, so the GM's top left corner holds two rows, not three
 
 ## Fixed
 
+- The asset manager's scroll shadow no longer shows past the window's rounded corners
+- Fog of War no longer takes a player's token away from them: a party token under the fog stays theirs to see and move, also in Atlas Online, and everyone at the table sees a ring above the fog where it stands
 - Atlas Online: when players cannot change their character sheet because its template is missing or marked as made with a newer Atlas, the GM is now told which sheet and why
 - The Master slider in Atlas' Sound settings now follows the Sound page's Master fader and the Stream Deck at once
 - A Master volume change from a Stream Deck is no longer undone when another setting is changed right after it

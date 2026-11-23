@@ -6,7 +6,6 @@ import { availableHotkeys, canShareHotkey, type MapHotkeyId, type MapHotkeys } f
 import { hotkeyOrigin, resolveHotkeys, withHotkey, type HotkeyOrigin } from '../keyboard/hotkeyOverrides';
 import { resolveLaserPointerSettings, type LaserPointerSettings } from '../tools/laserPointerSettings';
 import { isDiceDisplay, type DiceDisplay } from '../dice3d/diceDisplay';
-import { LOOK_FOG_EDGE_STYLE, isAtlasLook, type AtlasLook } from '../appearance/atlasLook';
 import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
 import { DEFAULT_DICE_LOOK, isDiceColour, isDiceFont, type DiceLook } from '../dice3d/diceLook';
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
@@ -529,18 +528,6 @@ export class SettingsService {
   }
 
   /** Whether the GM switched an experimental feature on: off unless the file says `true`. */
-  getLook(): AtlasLook {
-    return isAtlasLook(this.settings.look) ? this.settings.look : 'mediaeval';
-  }
-
-  /** Switching the look also gives the fog the look's edge, at the width the GM set. */
-  setLook(look: AtlasLook): void {
-    if (this.getLook() === look) return;
-    this.settings.look = look;
-    this.settings.fogEdge = { ...this.getFogEdge(), style: LOOK_FOG_EDGE_STYLE[look] };
-    this.commit();
-  }
-
   isExperimentalOn(id: ExperimentalFeatureId): boolean {
     return this.settings.experimental[id] === true;
   }

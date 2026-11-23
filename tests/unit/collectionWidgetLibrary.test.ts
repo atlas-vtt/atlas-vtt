@@ -9,7 +9,7 @@ import { dropWidgetsFromJson } from '../../src/app/services/sceneWidgetFiles';
 import { sceneAdoption } from '../../src/app/services/assetTransfer/sceneAdoption';
 import type { WidgetRecord } from '../../src/app/utils/collectionWidgets';
 import { isWidgetOn } from '../../src/app/utils/widgetActivation';
-import { widgetRows } from '../../src/app/react/components/command-palette/widgetRows';
+import { movedWidgetIds, widgetRows, withWidgetOrder } from '../../src/app/react/components/command-palette/widgetRows';
 import type { CounterWidget } from '../../src/app/types/widgetTypes';
 
 const torches: CounterWidget = {
@@ -201,5 +201,26 @@ describe('switching widgets on and off in a scene', () => {
       ['lanterns', false, false],
       ['torches', true, false],
     ]);
+  });
+
+  it('moves a widget in every scene of the collection, also where it is off', async () => {
+    const lanterns = { ...torches, id: 'lanterns', order: 1 };
+    const { sync, open } = setup();
+    const cave = open('cave', 'cave');
+    const keep = open('keep', 'keep');
+    await Promise.resolve();
+    cave.getState().addWidget(torches);
+    cave.getState().addWidget(lanterns);
+    keep.getState().addWidget(sync.collectionLibrary('campaign').torches!);
+
+    const ids = movedWidgetIds(['torches', 'lanterns'], 'lanterns', -1)!;
+    keep.getState().reorderWidgets(ids);
+    sync.editCollectionWidgets('campaign', (widgets) => withWidgetOrder(widgets, ids));
+
+    expect(ids).toEqual(['lanterns', 'torches']);
+    expect(sync.collectionLibrary('campaign').lanterns?.order).toBe(0);
+    expect(sync.collectionLibrary('campaign').torches?.order).toBe(1);
+    expect(cave.getState().widgetSettings.widgets.torches?.order).toBe(1);
+    expect(movedWidgetIds(ids, 'lanterns', -1)).toBeNull();
   });
 });

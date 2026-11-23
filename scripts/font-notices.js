@@ -26,6 +26,13 @@ const BUNDLED_FONTS = [
     credit: 'Copyright 2015 The Courier Prime Project Authors',
     source: 'https://github.com/quoteunquoteapps/CourierPrime',
   },
+  // Libron's four faces: the text of a note in Atlas' Mediaeval look (styles/looks/atlas-looks.css).
+  ...['regular', 'italic', 'bold', 'bold-italic'].map((face) => ({
+    font: `src/app/assets/fonts/libron-${face}.woff2`,
+    licence: 'src/app/assets/fonts/libron-OFL.txt',
+    credit: 'Libron (c) 2026 Nico Verbruggen',
+    source: 'https://github.com/nicoverbruggen/libron',
+  })),
 ];
 
 /** Where the notice links the licence text, once for every font. */
@@ -67,7 +74,8 @@ function fontNoticeProblems(css) {
   if (!text.includes(LICENCE_REFERENCE)) problems.push(`the font licence notice does not link the licence text ${LICENCE_REFERENCE}`);
   const firstFont = css.search(FONT_FACE_RULES);
   if (firstFont !== -1 && notice.index > firstFont) problems.push('the font licence notice comes after the first @font-face rule');
-  return [...problems, ...copyrightClaimProblems(notice[1])];
+  // Libron's faces share one credit: name what is missing once.
+  return [...new Set(problems), ...copyrightClaimProblems(notice[1])];
 }
 
 /** A built stylesheet must declare exactly the fonts the list names. */

@@ -10,15 +10,19 @@ import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { LookService } from '../../src/app/appearance/lookService';
 
 vi.mock('../../src/app/onboarding/useWatched', () => ({ isOnScreen: () => true, useWatched: () => true }));
 afterEach(cleanup);
 
-function appWith(plugins: string[], theme = ''): { app: App; settings: SettingsService } {
+function appWith(plugins: string[]): { app: App; settings: SettingsService } {
+  const storage = new Map<string, unknown>();
   const app = {
     vault: { adapter: { exists: async () => true, write: async () => {} } },
     plugins: { plugins: {}, enabledPlugins: new Set(plugins) },
-    customCss: { theme },
+    customCss: { theme: 'Minimal', themes: { Minimal: {} }, setTheme: () => {} },
+    loadLocalStorage: (key: string) => storage.get(key) ?? null,
+    saveLocalStorage: (key: string, value: unknown) => { if (value) storage.set(key, value); else storage.delete(key); },
   } as unknown as App;
   return { app, settings: new SettingsService(app) };
 }
@@ -26,14 +30,14 @@ function appWith(plugins: string[], theme = ''): { app: App; settings: SettingsS
 const tour = (app: App): React.JSX.Element => <DashboardTour app={app} root={document.body} hasScene onCreateScene={() => {}} />;
 
 it('welcomes a new GM first, offers the add-ons it lacks, then hands over to the start page tour', () => {
-  const { app, settings } = appWith([], 'Atlas VTT');
+  const { app, settings } = appWith([]);
   render(tour(app));
   expect(screen.getByText('Welcome to Atlas')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Next' }));
   expect(screen.getByRole('button', { name: 'Join the Discord' })).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Next' }));
   expect(screen.getAllByRole('button', { name: 'View in Obsidian' })).toHaveLength(1);
-  expect(screen.getByText('In use')).toBeTruthy();
+  expect(screen.queryByText('In use')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Next' }));
   act(() => { fireEvent.click(screen.getByRole('button', { name: 'Got it' })); });
   expect(settings.shouldShowTutorial('welcome')).toBe(false);
@@ -63,11 +67,15 @@ it('welcomes a GM whose first sight of Atlas is a map, and the map tour follows'
   expect(settings.shouldShowTutorial('dashboard')).toBe(true);
 });
 
-it('offers the look once the Atlas theme is in use, and the choice reaches the settings', () => {
-  const { app, settings } = appWith(['atlas-sidebar'], 'Atlas VTT');
+it('offers the look, and the choice is this device\'s', () => {
+  const { app, settings } = appWith(['atlas-sidebar']);
   render(tour(app));
-  for (let page = 0; page < 3; page += 1) fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  for (let page = 0; page < 2; page += 1) fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  expect(screen.getByText('In use')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
   expect(screen.getByText('Pick a look')).toBeTruthy();
+  expect(screen.getByRole('radio', { name: 'Your theme' }).getAttribute('aria-checked')).toBe('true');
   act(() => { fireEvent.click(screen.getByRole('radio', { name: 'Sci-fi' })); });
-  expect(settings.getLook()).toBe('scifi');
+  expect(LookService.forApp(app, settings).get()).toBe('scifi');
+  expect(screen.getByRole('radio', { name: 'Sci-fi' }).getAttribute('aria-checked')).toBe('true');
 });

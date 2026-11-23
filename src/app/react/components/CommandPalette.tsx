@@ -57,7 +57,6 @@ import { searchOptions } from './command-palette/paletteSearch';
 import { DiceSettingsPanel } from './command-palette/DiceSettingsPanel';
 import { ExperimentalFeaturesPanel } from './command-palette/ExperimentalFeaturesPanel';
 import { AppearancePanel } from './command-palette/AppearancePanel';
-import { atlasThemeInstalled } from '../../appearance/atlasLook';
 import { GraphicsPanel } from './command-palette/GraphicsPanel';
 import { LightingSettingsPanel } from './command-palette/LightingSettingsPanel';
 import { SceneSnapshotsPanel } from './command-palette/SceneSnapshotsPanel';
@@ -567,7 +566,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         },
       ],
     },
-    ...(atlasThemeInstalled(app) ? [{
+    {
       id: "appearance",
       icon: <Paintbrush />,
       label: t('appearance.title'),
@@ -583,7 +582,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
           hasSubmenu: false,
         },
       ],
-    } satisfies CommandOption] : []),
+    },
     {
       id: "experimental-features",
       icon: <FlaskConical />,

@@ -46,6 +46,9 @@ body.theme-light {
  *  licensed under the SIL Open Font License, Version 1.1.
  *  Courier Prime, Copyright 2015 The Courier Prime Project Authors
  *  (https://github.com/quoteunquoteapps/CourierPrime), licensed under the SIL Open Font License, Version 1.1.
+ *  Libron, Libron (c) 2026 Nico Verbruggen (https://github.com/nicoverbruggen/libron), with Reserved Font
+ *  Name Libron, based on Readerly (c) 2026 Nico Verbruggen and Newsreader (c) 2020 The Newsreader Project
+ *  Authors, licensed under the SIL Open Font License, Version 1.1.
  *  Licence text: https://openfontlicense.org
  *  Credits: https://github.com/atlas-vtt/atlas-vtt/blob/main/THIRD_PARTY_NOTICES.md
  */
@@ -308,11 +311,16 @@ body.theme-light {
       }
     }
 
+    // The player window bar and online play's table log tab stand side by side, the tab last,
+    // so what hangs below the scene tabs is one row
     .atlas-top-bar-start__below {
       display: flex;
-      flex-direction: column;
       align-items: flex-start;
       gap: $spacing-s;
+
+      > .atlas-online-log-tab-host {
+        order: 1;
+      }
     }
 
     .atlas-scene-tab-bar + .atlas-top-bar-start__below {
