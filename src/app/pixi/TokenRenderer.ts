@@ -111,6 +111,8 @@ export class TokenRenderer {
   private statblockSync: StatblockTokenSync;
   private spriteFactory: SpriteFactory;
   private textureCache: TextureCache;
+  /** The art of the scene shown before this one, kept decoded so that switching back shows its tokens without decoding them again. */
+  private previousSceneArt: string[] = [];
   private readonly hiddenTokenIcon = new HiddenTokenIcon();
   private readonly downedTokenOverlay = new DownedTokenOverlay(
     () => {
@@ -436,6 +438,7 @@ export class TokenRenderer {
       this.tokensLoading = new Set();
       this.exit.finishAll();
 
+      this.previousSceneArt = Object.values(this.tokenSprites).flatMap((group) => (group ? [group.artPath] : []));
       // First, clear all existing token sprites (tokenSprites is an object, not a Map)
       for (const [id, tokenGroup] of Object.entries(this.tokenSprites)) {
         if (tokenGroup) this.destroyTokenGroup(id, tokenGroup);
@@ -1315,7 +1318,7 @@ export class TokenRenderer {
   /** Frees decoded art no token holds, keeping the art of every token on the map. */
   private evictUnusedArt(): void {
     const tokens = Object.values(mapTokens(levelObjects(this.store.getState())));
-    this.textureCache.evictUnused(tokens.map((token) => token.imagePath ?? ''));
+    this.textureCache.evictUnused([...tokens.map((token) => token.imagePath ?? ''), ...this.previousSceneArt]);
   }
 
   public destroy(): void {
