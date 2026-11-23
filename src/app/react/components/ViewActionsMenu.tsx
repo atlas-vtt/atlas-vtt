@@ -95,7 +95,7 @@ export const ViewActionsMenu: React.FC<ViewActionsMenuProps> = ({ app, filePath 
       onMouseLeave={() => setIsVisible(false)}
     >
       <LabelTooltip label={t('view.more')}>
-        <button
+        <button type="button"
           className={`atlas-view-actions-btn ${isVisible ? 'visible' : ''}`}
           onClick={showMenu}
         >

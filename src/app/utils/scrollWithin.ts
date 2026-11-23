@@ -51,3 +51,24 @@ export function scrollWithin(container: HTMLElement, element: Element, block: 's
   // Keep the active element visible even when the following siblings do not all fit.
   else if (pastEnd > 0) container[scroll] += Math.min(pastEnd, fromStart);
 }
+
+const SCROLLS = /^(auto|scroll)$/;
+
+function scrollsAlong(container: HTMLElement, axis: 'x' | 'y'): boolean {
+  const style = container.ownerDocument?.defaultView?.getComputedStyle(container);
+  if (axis === 'y') return SCROLLS.test(style?.overflowY ?? '') && container.scrollHeight > container.clientHeight;
+  return SCROLLS.test(style?.overflowX ?? '') && container.scrollWidth > container.clientWidth;
+}
+
+/**
+ * Brings `element` into view in the list it lies in, the nearest ancestor that scrolls, no farther than it takes
+ * and along the axes that list scrolls. Nothing around the list moves; an element in no such list stays where it is.
+ */
+export function revealInList(element: Element): void {
+  for (let list = element.parentElement; list; list = list.parentElement) {
+    const along = (['y', 'x'] as const).filter((axis) => scrollsAlong(list, axis));
+    if (along.length === 0) continue;
+    for (const axis of along) scrollWithin(list, element, 'nearest', 0, axis);
+    return;
+  }
+}

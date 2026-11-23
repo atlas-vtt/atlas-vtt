@@ -140,21 +140,21 @@ export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalPr
           <div className="atlas-grid-settings-section">
             <h3>{t('gridModal.type')}</h3>
             <div className="atlas-grid-type-options">
-              <button
+              <button type="button"
                 className={`atlas-grid-type-option ${settings.type === 'square' ? 'atlas-active' : ''}`}
                 onClick={() => updateSetting('type', 'square')}
               >
                 <Grid size={24} />
                 <span>{t('grid.type.square')}</span>
               </button>
-              <button
+              <button type="button"
                 className={`atlas-grid-type-option ${settings.type === 'hex-horizontal' ? 'atlas-active' : ''}`}
                 onClick={() => updateSetting('type', 'hex-horizontal')}
               >
                 <Hexagon size={24} />
                 <span>{t('grid.type.hexFlat')}</span>
               </button>
-              <button
+              <button type="button"
                 className={`atlas-grid-type-option ${settings.type === 'hex-vertical' ? 'atlas-active' : ''}`}
                 onClick={() => updateSetting('type', 'hex-vertical')}
               >

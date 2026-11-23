@@ -45,7 +45,7 @@ import { readExploredMask } from './lighting/exploredMaskCodec';
 import { clampLitThreshold, readSceneLighting } from './lighting/sceneLightingOptions';
 import { isPinLabelKind, nextPinLabel } from './tools/pinLabels';
 import { movedFolderPathOf, movedPathOf, rewriteMapReferences } from './services/renamedPaths';
-import { conditionValue, removeCondition, setConditionValue } from './utils/conditionValues';
+import { clearConditions, conditionValue, removeCondition, setConditionValue } from './utils/conditionValues';
 import { HydrationTracker } from './stores/hydrationTracker';
 import { isolateListeners } from './stores/isolatedListeners';
 import { firstLevelId, placedOnViewedLevel, placedOnViewedLevels, viewedLevelId } from './levels/sceneLevels';
@@ -581,7 +581,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           
           // Collection management (not persisted)
           ...(plugin && { plugin }),
-          currentCollectionId: 'default', // Default to 'default' collection
           
           // DM screen state
           dmNotePath: null,
@@ -1399,8 +1398,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               return;
             }
 
-            delete token.conditions;
-            delete token.conditionValues;
+            clearConditions(token);
           }),
 
           // Kill tokens - set HP to 0
@@ -1420,8 +1418,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               if (!token) continue;
               const resources = token.kind === 'character' ? restedResources(token, definitions) : undefined;
               if (resources) token.resources = resources;
-              delete token.conditions;
-              delete token.conditionValues;
+              clearConditions(token);
             }
           }),
 

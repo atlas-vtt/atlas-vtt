@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import type { FilterSuggestion, FilterSuggestions } from '../../search/filterSuggestions';
 import { useKeepInView } from '../../../primitives/useKeepInView';
 import { t } from '../../../../../i18n';
+import { revealInList } from '../../../../../utils/scrollWithin';
 
 interface SearchSuggestionsProps {
   id: string;
@@ -58,7 +59,8 @@ export function SearchSuggestions({ id, suggestions, highlight, onHighlight, onP
   const active = Math.min(highlight, items.length - 1);
 
   useEffect(() => {
-    listRef.current?.ownerDocument.getElementById(suggestionId(id, active))?.scrollIntoView?.({ block: 'nearest' });
+    const row = listRef.current?.ownerDocument.getElementById(suggestionId(id, active));
+    if (row) revealInList(row);
   }, [id, active]);
 
   return (

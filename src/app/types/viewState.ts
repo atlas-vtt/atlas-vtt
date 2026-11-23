@@ -161,9 +161,6 @@ export interface ViewState extends ViewUIState {
   // DM screen state
   dmNotePath: string | null;
 
-  // Collection management
-  currentCollectionId?: string;
-
   // Token settings
   tokenSettings: {
     showNameplates: boolean;

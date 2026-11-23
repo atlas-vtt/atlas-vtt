@@ -89,13 +89,13 @@ export const CONVENTIONS = [
     why: "A `title` attribute shows the browser's tooltip, and Atlas shows its own.",
     filename: 'src/app/example.tsx',
     bad: [
-      'export const close = <button title="Close" />;',
+      'export const close = <button type="button" title="Close" />;',
       "declare const el: HTMLElement;\nel.setAttribute('title', 'Close');",
       "declare const el: HTMLElement;\nel.createEl('div', { attr: { title: 'Close' } });",
       "declare const el: HTMLElement;\nel.title = 'Close';",
     ],
     good: [
-      'export const close = <button aria-label="Close" />;',
+      'export const close = <button type="button" aria-label="Close" />;',
       'declare const Panel: (props: { title: string }) => null;\nexport const panel = <Panel title="Scenes" />;',
       "document.title = 'Atlas';",
       "export class Card { title = ''; rename(title: string): void { this.title = title; } }",
@@ -300,17 +300,12 @@ export const CONVENTIONS = [
   },
   {
     name: 'translated-pieces',
-    // A translation joined with a text, another translation or a sum that ends in one. A translation
-    // followed by a value alone (a roll's modifiers after its line) is left alone.
-    selectors: [
-      "BinaryExpression[operator='+'][left.callee.name='t']:matches([right.callee.name='t'], [right.type='Literal'], [right.type='TemplateLiteral'])",
-      "BinaryExpression[operator='+'][right.callee.name='t']:matches([left.type='Literal'], [left.type='TemplateLiteral'])",
-      "BinaryExpression[operator='+'][right.callee.name='t'][left.type='BinaryExpression'][left.operator='+']",
-    ],
+    selectors: ["BinaryExpression[operator='+'] > CallExpression[callee.name='t']"],
     message: 'Write the sentence as one key with {placeholders}, and join lists with formatList (src/app/i18n/index.ts).',
     why: 'Languages order their words differently, so a sentence joined from translated pieces cannot be translated.',
     bad: [
       "import { t } from './i18n';\nexport const label = (name: string): string => t('roll.by') + ' ' + name;",
+      "import { t } from './i18n';\nexport const label = (suffix: string): string => t('roll.dice') + suffix;",
       "import { t } from './i18n';\nexport const label = (): string => t('roll.by') + t('roll.dice');",
       "import { t } from './i18n';\nexport const label = (): string => '(' + t('roll.dice');",
       "import { t } from './i18n';\nexport const label = (count: number): string => count + ' ' + t('roll.dice');",
@@ -349,6 +344,180 @@ export const CONVENTIONS = [
     good: [
       "import { DiceRenderer } from './dice3d/DiceRenderer';\nexport const renderer = DiceRenderer;",
       "import { fold } from 'threefold';\nexport const folded = fold;",
+    ],
+  },
+  {
+    name: 'pixi-asset-loads',
+    selectors: ["MemberExpression[object.name='Assets'][property.name='load']"],
+    message: 'Load the asset with loadAsset (src/app/pixi/utils/assetLifecycle.ts).',
+    why: 'An unload of the same URL may still be under way, and a load beside it gets the texture that unload is about to destroy.',
+    owners: ['src/app/pixi/utils/assetLifecycle.ts'],
+    bad: ["import { Assets, type Texture } from 'pixi.js';\nexport const ring = (url: string): Promise<Texture> => Assets.load<Texture>(url);"],
+    good: ["import type { Texture } from 'pixi.js';\nimport { loadAsset } from './pixi/utils/assetLifecycle';\nexport const ring = (url: string): Promise<Texture> => loadAsset<Texture>(url);"],
+  },
+  {
+    name: 'pixi-resource-urls',
+    selectors: ["MemberExpression[property.name='getResourcePath']", "CallExpression[callee.name='getResourcePath']"],
+    message: "Read the file's bytes with vault.readBinary and decode them with decodeImage (src/app/pixi/decodedImage.ts).",
+    why: 'PIXI fetches a URL it is given, and Obsidian answers a fetch of `app://` only from newer installers, so vault images reach PIXI as bytes.',
+    files: ['src/app/pixi/**/*.{ts,tsx}'],
+    filename: 'src/app/pixi/example.ts',
+    bad: [
+      "import type { App, TFile } from 'obsidian';\nexport const urlOf = (app: App, file: TFile): string => app.vault.getResourcePath(file);",
+      'declare function getResourcePath(path: string): string;\nexport const urlOf = (path: string): string => getResourcePath(path);',
+    ],
+    good: ["import type { App, TFile } from 'obsidian';\nimport { decodeImage, type DecodedImage } from './decodedImage';\nexport const imageOf = async (app: App, file: TFile): Promise<DecodedImage> => decodeImage(await app.vault.readBinary(file), 'image/png', 2048);"],
+  },
+  {
+    name: 'default-collection-id',
+    // A field, a default, a variable, an assignment or a comparison of a collection with the old id.
+    selectors: [
+      ":matches(Property, PropertyDefinition)[key.name=/[cC]ollection(Id)?$/][value.value='default']",
+      "AssignmentPattern[left.name=/[cC]ollection(Id)?$/][right.value='default']",
+      "VariableDeclarator[id.name=/[cC]ollection(Id)?$/][init.value='default']",
+      "AssignmentExpression[right.value='default']:matches([left.name=/[cC]ollection(Id)?$/], [left.property.name=/[cC]ollection(Id)?$/])",
+      "BinaryExpression[right.value='default']:matches([left.name=/[cC]ollection(Id)?$/], [left.property.name=/[cC]ollection(Id)?$/])",
+    ],
+    message: "Ask defaultCollectionIdOf (src/app/services/collectionRecords.ts) or the asset service's getDefaultCollectionId() for the default collection.",
+    why: "The default collection is recorded in the index and follows its folder when that is renamed, so only older vaults keep it in `default`.",
+    owners: ['src/app/services/collectionRecords.ts'],
+    bad: [
+      "export const state = { currentCollectionId: 'default' };",
+      "export class Picker { collection = 'default'; }",
+      "export const add = (name: string, collection = 'default'): string => `${collection}/${name}`;",
+      "export const collectionId = 'default';",
+      "export const reset = (asset: { collection: string }): void => { asset.collection = 'default'; };",
+      "export const isDefault = (asset: { collection: string }): boolean => asset.collection === 'default';",
+    ],
+    good: [
+      "import { defaultCollectionIdOf } from './services/collectionRecords';\nexport const collectionOf = (metadata: Parameters<typeof defaultCollectionIdOf>[0]): string => defaultCollectionIdOf(metadata);",
+      "export const options = { sort: 'default' };",
+    ],
+  },
+  {
+    name: 'dice-randomness',
+    selectors: ["MemberExpression[object.name='Math'][property.name='random']"],
+    message: 'Take the random stream as a parameter without a default; the plugin hands in diceRandom (src/app/services/offlineDiceInputs.ts).',
+    why: "Every roll draws from the one stream its caller was given at the plugin's boundary, which a table can replace and a test can fix, and a default hides the caller that forgot it.",
+    files: ['src/app/tools/{dice*,Dice*,*ormula*,rollDiceTerm}.ts', 'src/app/initiative/**/*.{ts,tsx}'],
+    filename: 'src/app/tools/diceExample.ts',
+    bad: [
+      'export const rollFace = (sides: number, random: () => number = Math.random): number => Math.floor(random() * sides) + 1;',
+      'export const rollFace = (sides: number): number => Math.floor(Math.random() * sides) + 1;',
+    ],
+    good: ['export const rollFace = (sides: number, random: () => number): number => Math.floor(random() * sides) + 1;'],
+  },
+  {
+    name: 'pointerup-button',
+    selectors: [
+      ":matches(MethodDefinition, PropertyDefinition)[key.name=/[Pp]ointerUp|^on(Mouse)?Up$/] MemberExpression[property.name='button']",
+      ":matches(FunctionDeclaration, VariableDeclarator)[id.name=/[Pp]ointerUp|^on(Pointer|Mouse)?Up$/] MemberExpression[property.name='button']",
+      "CallExpression[arguments.0.value=/^pointerup/] > :function MemberExpression[property.name='button']",
+    ],
+    message: 'Note on pointerdown which press began the gesture (isPrimaryPress, src/app/pixi/utils/pointerButtons.ts) and end it on any pointerup.',
+    why: 'A browser sends pointerup only when the last button is released, and with that button, so a stroke whose release is ignored stays open.',
+    bad: [
+      'export class Stroke { open = false; handlePointerUp(event: { button: number }): void { if (event.button === 0) this.open = false; } }',
+      'export class Stroke { open = false; onPointerUp = (event: { button: number }): void => { if (event.button === 0) this.open = false; }; }',
+      'export const listen = (end: () => void): void => { const onUp = (event: PointerEvent): void => { if (event.button === 0) end(); }; window.addEventListener("pointerup", onUp); };',
+      "export const listen = (end: () => void): void => window.addEventListener('pointerup', (event) => { if (event.button === 0) end(); });",
+    ],
+    good: [
+      'export class Stroke { open = false; handlePointerDown(event: { button: number }): void { this.open = event.button === 0; } handlePointerUp(): void { this.open = false; } }',
+    ],
+  },
+  {
+    name: 'destroy-children',
+    // An application's destroy takes its own options first, so it has two arguments and is left alone.
+    selectors: ["CallExpression[callee.property.name='destroy'][arguments.length=1] > ObjectExpression > Property[key.name='children'][value.value=true]"],
+    message: 'Destroy a display object with its children through destroyTree (src/app/pixi/utils/destroyTree.ts).',
+    why: "PIXI frees a Graphics' geometry only when destroy gets no options or `context: true`, so `{ children: true }` alone leaves it with the renderer until the application is destroyed.",
+    owners: ['src/app/pixi/utils/destroyTree.ts'],
+    ignores: [TEST_HELPERS],
+    bad: ["import type { Container } from 'pixi.js';\nexport const remove = (layer: Container): void => layer.destroy({ children: true });"],
+    good: [
+      "import type { Container } from 'pixi.js';\nimport { destroyTree } from './pixi/utils/destroyTree';\nexport const remove = (layer: Container): void => destroyTree(layer);",
+      "import type { Application } from 'pixi.js';\nexport const close = (app: Application): void => app.destroy({ removeView: true }, { children: true, texture: true });",
+    ],
+  },
+  {
+    name: 'condition-value-writes',
+    selectors: [":matches(AssignmentExpression[left.property.name='conditionValues'], UnaryExpression[operator='delete'][argument.property.name='conditionValues'])"],
+    message: "Change a token's conditions with setConditionValue, removeCondition or clearConditions (src/app/utils/conditionValues.ts).",
+    why: 'A number never outlives its condition there, and an emptied list or map is deleted rather than left behind.',
+    owners: ['src/app/utils/conditionValues.ts'],
+    bad: [
+      'export const clear = (token: { conditionValues?: Record<string, number> }): void => { delete token.conditionValues; };',
+      'export const clear = (token: { conditionValues?: Record<string, number> }): void => { token.conditionValues = {}; };',
+    ],
+    good: ["import { clearConditions, type TokenConditionState } from './utils/conditionValues';\nexport const clear = (token: TokenConditionState): void => clearConditions(token);"],
+  },
+  {
+    name: 'web-crypto',
+    selectors: ["MemberExpression[property.name='subtle']"],
+    message: 'Hash bytes with sha256, and a JSON value with hashJson (src/app/utils/hashing.ts).',
+    why: 'Hashes are stored in vault files and compared between devices and windows, so one module makes their bytes and their hex.',
+    // assetIds signs with a key, which is no content hash; the protocol is a copy of another repository's.
+    owners: ['src/app/utils/hashing.ts', 'src/app/online/gm/assets/assetIds.ts'],
+    ignores: ['src/app/online/protocol/**'],
+    bad: ["export const digest = (bytes: Uint8Array<ArrayBuffer>): Promise<ArrayBuffer> => crypto.subtle.digest('SHA-256', bytes);"],
+    good: ["import { sha256 } from './utils/hashing';\nexport const digest = (bytes: Uint8Array<ArrayBuffer>): Promise<string> => sha256(bytes);"],
+  },
+  {
+    name: 'scroll-into-view',
+    selectors: ["CallExpression[callee.property.name='scrollIntoView']"],
+    message: 'Scroll the list alone with scrollWithin, or with revealInList where the list is the nearest ancestor that scrolls (src/app/utils/scrollWithin.ts).',
+    why: '`scrollIntoView` scrolls every ancestor that can scroll, the map view around a panel included.',
+    owners: ['src/app/utils/scrollWithin.ts'],
+    // These glide to their element or centre it, which the helper does not do.
+    ignores: [
+      'src/app/packages/components/asset-manager/encounter-builder/RosterFeed.tsx',
+      'src/app/packages/components/asset-manager/statblock-link/StatblockList.tsx',
+      'src/app/react/components/loot/PlayerLootWindow.tsx',
+      'src/app/react/hooks/useTabStripOverflow.ts',
+      'src/app/statblocks/editor/rests/RuleCardLayer.tsx',
+    ],
+    bad: [
+      "export const reveal = (row: Element): void => row.scrollIntoView({ block: 'nearest' });",
+      "export const reveal = (list: Element | null): void => { list?.querySelector('[aria-selected]')?.scrollIntoView?.({ block: 'nearest' }); };",
+    ],
+    good: [
+      "import { revealInList } from './utils/scrollWithin';\nexport const reveal = (row: Element): void => revealInList(row);",
+      "import { scrollWithin } from './utils/scrollWithin';\nexport const reveal = (list: HTMLElement, row: Element): void => scrollWithin(list, row, 'nearest');",
+    ],
+  },
+  {
+    name: 'intl-locale',
+    // A value of `undefined` is written out by its node type: a selector reads a missing name as the text "undefined".
+    selectors: ["NewExpression[callee.object.name='Intl']:matches([arguments.length=0], [arguments.0.type='Identifier'][arguments.0.name='undefined'], [arguments.0.type='Literal'], [arguments.0.type='ArrayExpression'])"],
+    message: 'Give the formatter getLocale() (src/app/i18n/index.ts).',
+    why: "A formatter without a locale takes the system's, while Atlas' texts are in Obsidian's language.",
+    owners: ['src/app/i18n/index.ts'],
+    // The issue report is English whatever the language; a character is the same in every language, and a text wraps alike for the GM and the players.
+    ignores: ['src/app/support/diagnostics.ts', 'src/app/annotations/textWrap.ts'],
+    bad: [
+      "export const byName = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });",
+      'export const number = new Intl.NumberFormat();',
+      "export const date = new Intl.DateTimeFormat('en', { dateStyle: 'medium' });",
+      'export const list = new Intl.ListFormat([]);',
+    ],
+    good: [
+      "import { getLocale } from './i18n';\nexport const byName = new Intl.Collator(getLocale(), { numeric: true, sensitivity: 'base' });",
+      'export const plural = (locale: string): Intl.PluralRules => new Intl.PluralRules(locale);',
+    ],
+  },
+  {
+    name: 'button-type',
+    selectors: ["JSXOpeningElement[name.name='button']:not(:has(JSXAttribute[name.name='type'])):not(:has(JSXSpreadAttribute))"],
+    message: 'Give the button `type="button"`, or `type="submit"` where it submits its form.',
+    why: 'A button without a type submits the form it stands in.',
+    filename: 'src/app/example.tsx',
+    bad: ['export const close = <button onClick={() => undefined}>Close</button>;', 'export const close = <button />;'],
+    good: [
+      'export const close = <button type="button" onClick={() => undefined}>Close</button>;',
+      'export const save = <button type="submit">Save</button>;',
+      'export const close = (props: React.ButtonHTMLAttributes<HTMLButtonElement>): React.JSX.Element => <button {...props} />;',
+      'declare const Button: (props: { onClick: () => void }) => null;\nexport const close = <Button onClick={() => undefined} />;',
     ],
   },
   {

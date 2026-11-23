@@ -1,6 +1,7 @@
 import { Container, RenderTexture, Sprite, Texture, TexturePool, uid, WebGLRenderer, type Renderer } from 'pixi.js';
 import type { FramePiece, PlayerFrame, Size } from '../types/playerFrame';
 import { contextLost } from './lighting/engine/gpu';
+import { destroyTree } from './utils/destroyTree';
 
 /**
  * Most pieces a frame is brought across in. Each piece is a render of its own on the view's
@@ -126,7 +127,7 @@ export class PlayerFrameTexture {
   destroy(): void {
     this.renderer.runners.contextChange.remove(this.contextListener);
     this.release();
-    this.holder.destroy({ children: true });
+    destroyTree(this.holder);
   }
 
   private textureFor({ width, height, resolution, antialias }: PlayerFrame): RenderTexture {

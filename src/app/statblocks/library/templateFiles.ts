@@ -8,6 +8,7 @@ import { withHeader } from '../model/headerDuplicates';
 import { parseTemplate, type TemplateParseStatus } from '../format/parseTemplate';
 import type { LibraryTemplate } from '../model/resolvedTypes';
 import type { BuiltInTemplate, TemplateId } from '../model/templateTypes';
+import { getLocale } from '../../i18n';
 
 export const TEMPLATE_EXTENSION = 'atlastemplate';
 
@@ -31,7 +32,7 @@ export interface TemplateIndex {
   duplicates: ReadonlyMap<string, string>;
 }
 
-const BY_NAME = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+const BY_NAME = new Intl.Collator(getLocale(), { numeric: true, sensitivity: 'base' });
 
 export function isTemplatePath(path: string): boolean {
   return path.endsWith(`.${TEMPLATE_EXTENSION}`);

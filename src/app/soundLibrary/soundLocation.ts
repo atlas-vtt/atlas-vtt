@@ -1,3 +1,5 @@
+import { getLocale } from '../i18n';
+
 /** A file below a root, with what browsing needs to know of it. */
 export interface SoundFileEntry {
   name: string;
@@ -91,7 +93,7 @@ export class TrashUnavailableError extends Error {
   }
 }
 
-const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+const collator = new Intl.Collator(getLocale(), { numeric: true, sensitivity: 'base' });
 
 /** A listing in reading order: `Track 2` before `Track 10`. */
 export function sortedListing(folders: SoundFolderEntry[], files: SoundFileEntry[]): SoundListing {
