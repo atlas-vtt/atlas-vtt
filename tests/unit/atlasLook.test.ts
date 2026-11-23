@@ -13,3 +13,13 @@ it('reads an unset or unknown look as mediaeval and keeps a picked one', () => {
   expect(settings.getLook()).toBe('scifi');
   expect(readStoredSettings({ look: 'steampunk' }, 'mouse').settings.look).toBe('steampunk');
 });
+
+it('gives the fog the look\'s edge at the width the GM set', () => {
+  const settings = service();
+  settings.setFogEdge({ width: 15 });
+  settings.setLook('scifi');
+  expect(settings.getFogEdge()).toEqual({ style: 'soft', width: 15 });
+  settings.setFogEdge({ width: 40 });
+  settings.setLook('mediaeval');
+  expect(settings.getFogEdge()).toEqual({ style: 'crackle', width: 40 });
+});

@@ -1,9 +1,13 @@
 import type { App, Plugin } from 'obsidian';
 import { inEveryDocument } from '../platform/atlasDocuments';
 import type { SettingsService } from '../services/SettingsService';
+import type { FogEdgeStyle } from '../fog/fogEdge';
 
 /** The two looks of the Atlas theme: the mediaeval module page and the clean sci-fi one. */
 export type AtlasLook = 'mediaeval' | 'scifi';
+
+/** The fog's edge each look switches to: a crackled module page, a soft clean screen. */
+export const LOOK_FOG_EDGE_STYLE: Record<AtlasLook, FogEdgeStyle> = { mediaeval: 'crackle', scifi: 'soft' };
 
 /** The Atlas theme draws its Sci-fi look under this class on `body`; nothing else reads it. */
 export const SCIFI_LOOK_CLASS = 'atlas-look-scifi';
