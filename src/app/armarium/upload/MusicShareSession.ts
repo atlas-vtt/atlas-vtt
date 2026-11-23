@@ -4,7 +4,7 @@ import { MAX_ALBUM_TRACKS } from '../../services/musicBundle/musicBundleFormat';
 import type { LibraryFile } from '../../soundLibrary/SoundLibrary';
 import { describeError } from '../../utils/errors';
 import type { ArmariumApi } from './armariumApi';
-import { draftFrom, textLength, type ListingDraft } from './listingDraft';
+import { draftForKind, draftFrom, textLength, type ListingDraft } from './listingDraft';
 import { stemOf } from '../../soundLibrary/soundPaths';
 import { musicProblems } from './musicShareRules';
 import type { MusicShareSnapshot, MusicShareTrack, TrackCopyState } from './musicShareState';
@@ -207,9 +207,9 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
     return { listings: this.known, listingsFailed: this.failedToRead, target: ownListing?.uid ?? null, version: nextItemVersion(ownListing) };
   }
 
-  /** What the listing holds for a new version, else an empty form; the kind is music. */
+  /** What the listing holds for a new version, else an empty form; the kind is music, which names no system. */
   protected draftOf(stored: ListingFields | null): ListingDraft {
-    return { ...draftFrom(stored, null), kind: 'music' };
+    return draftForKind({ ...draftFrom(stored, null), kind: 'music' });
   }
 
   protected repack(): void {

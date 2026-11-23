@@ -172,6 +172,20 @@ export const TAG_GROUPS = [
 
 export type TagGroupId = (typeof TAG_GROUPS)[number]['id'];
 export type TagId = (typeof TAG_GROUPS)[number]['tags'][number];
+export type TagGroup = (typeof TAG_GROUPS)[number];
+
+/** The groups a music listing offers: genre, place (its mood) and how AI was used; no format, content or features. */
+const MUSIC_TAG_GROUPS: readonly TagGroupId[] = ['genre', 'place', 'ai'];
+
+/** The tag groups a listing of `kind` offers: music has its own few, every other kind all of them. */
+export function tagGroupsOf(kind: ListingKind | null): readonly TagGroup[] {
+  return kind === 'music' ? TAG_GROUPS.filter((group) => MUSIC_TAG_GROUPS.includes(group.id)) : TAG_GROUPS;
+}
+
+/** Whether a listing of `kind` names a game system: music belongs to none. */
+export function takesSystem(kind: ListingKind | null): boolean {
+  return kind !== 'music';
+}
 
 /** Every tag in the list's order: group by group. */
 export const TAG_IDS: readonly TagId[] = TAG_GROUPS.flatMap((group) => [...group.tags]);
