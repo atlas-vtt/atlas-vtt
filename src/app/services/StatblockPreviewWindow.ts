@@ -210,7 +210,7 @@ export class StatblockPreviewWindow {
     }
   }
 
-  setPosition(x: number, y: number) {
+  setPosition(x: number, y: number): void {
     if (!this.element) return;
 
     const { right: winWidth, bottom: winHeight } = visibleViewport(this.element.win);

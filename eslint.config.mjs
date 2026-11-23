@@ -44,6 +44,20 @@ export default defineConfig([
       }],
     },
   },
+  {
+    // TypeScript files only: a return type is written out, so a reader and a caller see it without
+    // inferring it, and a switch over a union names every member or says `default`.
+    files: ["**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/explicit-function-return-type": ["error", {
+        allowExpressions: true,
+        allowTypedFunctionExpressions: true,
+        allowHigherOrderFunctions: true,
+        allowIIFEs: true,
+      }],
+      "@typescript-eslint/switch-exhaustiveness-check": ["error", { considerDefaultExhaustiveForUnions: true }],
+    },
+  },
   // Atlas' own conventions, one named rule each (scripts/eslint/conventions.mjs). They are rules
   // of their own because a later block replaces the options of a rule for the files it matches:
   // as selectors of `no-restricted-syntax`, every block had to repeat the others'.

@@ -403,7 +403,7 @@ export class TokenRenderer {
     
     
     // Listen for player mode changes (local player view toggle)
-    const handlePlayerModeChange = (isPlayerMode: boolean) => {
+    const handlePlayerModeChange = (isPlayerMode: boolean): void => {
       this.isLocalPlayerMode = isPlayerMode;
       this.refreshPlayerSight();
     };
@@ -439,7 +439,7 @@ export class TokenRenderer {
     };
 
     // Listen for map load events to properly sync tokens
-    const handleMapLoaded = () => {
+    const handleMapLoaded = (): void => {
       // Sprites still loading belong to the previous load and are discarded when they finish
       this.mapLoadGeneration++;
       this.tokensLoading = new Set();

@@ -39,7 +39,6 @@ Turn the correction into a check: a convention with a good and a bad example, a 
 - Fix within the existing pattern. Add a new pattern only when the old one cannot do it, and remove what the new one replaces.
 - Change what was asked for and what it needs. Leave the rest.
 - No mock, stub or fake data outside test files.
-- Write every function's return type.
 - Every text a user reads goes through `t()`. The rules are in [translations](.github/dev/translations.md).
 - Style with SCSS classes, Obsidian's CSS variables and the shared mixins. No Tailwind in new code.
 - Read the current PixiJS v8 documentation before you write PIXI code. Much of what is written about PIXI is about v7.

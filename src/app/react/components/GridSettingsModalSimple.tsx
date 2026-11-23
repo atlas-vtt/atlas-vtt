@@ -30,7 +30,7 @@ interface GridSettings {
   opacity: number;
 }
 
-export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalProps) {
+export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalProps): React.JSX.Element | null {
   // Grid settings state - initialize from store when modal opens
   const [settings, setSettings] = useState<GridSettings>(() => {
     const currentGrid = view?.atlasStore?.getState()?.grid;
@@ -76,11 +76,11 @@ export function GridSettingsModal({ isOpen, onClose, view }: GridSettingsModalPr
     }
   }, [isOpen, view]);
 
-  const updateSetting = <K extends keyof GridSettings>(key: K, value: GridSettings[K]) => {
+  const updateSetting = <K extends keyof GridSettings>(key: K, value: GridSettings[K]): void => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
-  const applySettings = () => {
+  const applySettings = (): void => {
     const gridSystem = view?.renderer?.getGridSystem();
     if (gridSystem) {
       

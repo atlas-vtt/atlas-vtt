@@ -771,7 +771,7 @@ export class TokenUIRenderer {
     }
     
     // Animate the text alpha
-    const animate = () => {
+    const animate = (): void => {
       const currentAlpha = this.resources.getTextAlpha();
       const diff = targetAlpha - currentAlpha;
       
@@ -897,7 +897,7 @@ export class TokenUIRenderer {
     }
     
     // Function to get Obsidian's accent color
-    const getAccentColor = () => {
+    const getAccentColor = (): number => {
       const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-h');
       const accentS = getComputedStyle(document.documentElement).getPropertyValue('--accent-s');
       const accentL = getComputedStyle(document.documentElement).getPropertyValue('--accent-l');
@@ -924,7 +924,7 @@ export class TokenUIRenderer {
     };
     
     // Function to update both badge size and cursor position
-    const updateNameBadgeAndCursor = () => {
+    const updateNameBadgeAndCursor = (): void => {
       const isDarkMode = isDarkTheme();
       const { background: bgColor, stroke: strokeColor } = canvasBadgeColors();
       
@@ -1019,7 +1019,7 @@ export class TokenUIRenderer {
     // Event handlers will be defined and attached later
     
     // Handle saving
-    const saveEdit = () => {
+    const saveEdit = (): void => {
       if (!this.isEditingName || !this.editInput || !this.currentToken || !this.store) return;
       
       const newName = this.editInput.value.trim();
@@ -1046,12 +1046,12 @@ export class TokenUIRenderer {
     };
     
     // Handle canceling
-    const cancelEdit = () => {
+    const cancelEdit = (): void => {
       this.endNameEdit();
     };
     
     // Event handlers - be more careful about event handling
-    const keydownHandler = (e: KeyboardEvent) => {
+    const keydownHandler = (e: KeyboardEvent): void => {
       // Only handle events if we're actually editing
       if (!this.isEditingName) return;
       
@@ -1072,7 +1072,7 @@ export class TokenUIRenderer {
       }
     };
     
-    const blurHandler = () => {
+    const blurHandler = (): void => {
       // Small delay to handle click events
       window.setTimeout(() => {
         if (this.isEditingName) {
@@ -1081,17 +1081,17 @@ export class TokenUIRenderer {
       }, 100);
     };
     
-    const clickHandler = () => {
+    const clickHandler = (): void => {
       updateNameBadgeAndCursor();
     };
     
-    const keyupHandler = (e: KeyboardEvent) => {
+    const keyupHandler = (e: KeyboardEvent): void => {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' || e.key === 'End') {
         updateNameBadgeAndCursor();
       }
     };
     
-    const inputHandler = () => {
+    const inputHandler = (): void => {
       const displayText = input.value || t('token.clickToName');
       this.nameText.text = displayText;
       // Set text opacity based on whether it's a placeholder (same as normal)
