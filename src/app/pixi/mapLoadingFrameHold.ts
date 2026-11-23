@@ -1,7 +1,7 @@
 import type { Application } from 'pixi.js';
 import type { ViewAtlasStore } from '../storeFactory';
 import { captureSceneTransition, type SceneTransition } from './sceneTransition';
-import { MOTION_NORMAL_MS } from '../utils/motion';
+import { MAP_LOADING_OVERLAY_FADE_MS } from './sceneLoadMotion';
 import { holdRenders } from './RenderScheduler';
 
 /**
@@ -9,8 +9,6 @@ import { holdRenders } from './RenderScheduler';
  * (most scene switches) never show a spinner.
  */
 export const MAP_LOADING_REVEAL_DELAY_MS = 250;
-/** Fade of the loading overlay in both directions. */
-export const MAP_LOADING_OVERLAY_FADE_MS = MOTION_NORMAL_MS;
 
 /**
  * Keeps the last rendered frame on screen while a map loads, so a scene switch

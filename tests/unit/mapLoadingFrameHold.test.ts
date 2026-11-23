@@ -17,11 +17,8 @@ vi.mock('../../src/app/pixi/sceneTransition', () => ({
   }),
 }));
 
-import {
-  bindMapLoadingFrameHold,
-  MAP_LOADING_OVERLAY_FADE_MS,
-  MAP_LOADING_REVEAL_DELAY_MS,
-} from '../../src/app/pixi/mapLoadingFrameHold';
+import { bindMapLoadingFrameHold, MAP_LOADING_REVEAL_DELAY_MS } from '../../src/app/pixi/mapLoadingFrameHold';
+import { MAP_LOADING_OVERLAY_FADE_MS } from '../../src/app/pixi/sceneLoadMotion';
 
 const HAND_OVER_MS = MAP_LOADING_REVEAL_DELAY_MS + MAP_LOADING_OVERLAY_FADE_MS;
 
