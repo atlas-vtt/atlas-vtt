@@ -176,9 +176,14 @@ interface CachedSight {
 
 /** Keeps each token's regions until the token, its senses or the walls change, so only those recompute. */
 export class SightCache {
-  private readonly entries = new Map<string, CachedSight>();
+  private entries = new Map<string, CachedSight>();
+  /** The walls of the last call. */
+  private walls: readonly WallSegment[] | null = null;
+  /** The regions worked out with walls used before: a scene switched back to, or a wall edit undone, finds them again. */
+  private readonly kept = new Map<readonly WallSegment[], Map<string, CachedSight>>();
 
   get(source: SightSource, walls: readonly WallSegment[]): SightRegion[] {
+    if (walls !== this.walls) this.switchWalls(walls);
     const cached = this.entries.get(source.tokenId);
     if (cached && cached.walls === walls && sameSource(cached.source, source)) return cached.regions;
     const regions = regionsOf(source, walls);
@@ -186,11 +191,30 @@ export class SightCache {
     return regions;
   }
 
-  /** Drops tokens that no longer see. */
+  /** Drops tokens that no longer see, among the regions of the walls used last (`useWalls`). */
   retain(tokenIds: ReadonlySet<string>): void {
     for (const id of this.entries.keys()) if (!tokenIds.has(id)) this.entries.delete(id);
   }
+
+  /** Keeps the regions of the walls used before and takes up those kept for `walls`; a build calls it before `retain`. */
+  useWalls(walls: readonly WallSegment[]): void {
+    if (walls !== this.walls) this.switchWalls(walls);
+  }
+
+  private switchWalls(walls: readonly WallSegment[]): void {
+    if (this.walls) {
+      this.kept.delete(this.walls);
+      this.kept.set(this.walls, this.entries);
+      if (this.kept.size > KEPT_SIGHT_WALLS) this.kept.delete(this.kept.keys().next().value!);
+    }
+    this.walls = walls;
+    this.entries = this.kept.get(walls) ?? new Map<string, CachedSight>();
+    this.kept.delete(walls);
+  }
 }
+
+/** Wall arrays whose regions `SightCache` keeps besides the current ones. */
+const KEPT_SIGHT_WALLS = 3;
 
 function sameSource(a: SightSource, b: SightSource): boolean {
   return a.origin.x === b.origin.x && a.origin.y === b.origin.y && a.range === b.range

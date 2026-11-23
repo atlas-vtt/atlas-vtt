@@ -68,6 +68,18 @@ describe('LightReaches', () => {
     expect(cache.sync([light('a', 0)], walls)[0]).not.toHaveProperty('cone');
   });
 
+  it('finds the reaches of walls synced before again, traced as they were', () => {
+    const cache = new LightReaches();
+    const other: WallSegment[] = [{ ...walls[0]!, p1: { x: 80, y: -100 }, p2: { x: 80, y: 100 } }];
+    const reflection = { spacing: 10, clearance: 3, reach: 100 };
+    const [before] = cache.sync([light('a', 0)], walls, undefined, reflection);
+    cache.sync([light('b', 0)], other, undefined, { ...reflection, reach: 200 });
+    expect(cache.sync([light('a', 0)], walls, undefined, reflection)[0]).toBe(before);
+    // Kept with how they were traced: another reflection traces them again
+    cache.sync([light('b', 0)], other, undefined, reflection);
+    expect(cache.sync([light('a', 0)], walls, undefined, { ...reflection, reach: 300 })[0]).not.toBe(before);
+  });
+
   it('drops lights that are gone', () => {
     const cache = new LightReaches();
     cache.sync([light('a', 0), light('b', 200)], walls);

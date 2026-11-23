@@ -39,6 +39,18 @@ function isDoor(wall: WallSegment): boolean {
 
 const NO_DOORS: ReadonlySet<string> = new Set();
 
+const doorLists = new WeakMap<readonly WallSegment[], readonly WallSegment[]>();
+
+/** The doors of a wall list (`wallList`), the same array while the list stays: a pointer move asks for badges among thousands of walls. */
+function doorsOf(walls: readonly WallSegment[]): readonly WallSegment[] {
+  let doors = doorLists.get(walls);
+  if (!doors) {
+    doors = walls.filter(isDoor);
+    doorLists.set(walls, doors);
+  }
+  return doors;
+}
+
 /** What the badges read of their view's state: the doors, the cell size they are sized by, what moves the players' sight, and the door switch. */
 export type DoorIconsState = Pick<ViewState, 'grid' | 'lighting' | 'mapPath'> & {
   objects: Pick<ViewState['objects'], 'walls' | 'fog'>;
@@ -134,7 +146,8 @@ export class DoorIcons {
     const zoom = this.view.parent?.scale.x ?? 1;
     const reach = fingerReaches() ? Math.max(this.radius(state), FINGER_TARGET_RADIUS / (zoom > 0 ? zoom : 1)) : this.radius(state);
     const pick = this.reached.begin(reach);
-    for (const wall of wallList(levelObjects(state).walls)) {
+    // Both sets badge doors alone: the players' are the doors they see (`doorsInSight`)
+    for (const wall of doorsOf(wallList(levelObjects(state).walls))) {
       if (!shown(wall)) continue;
       const centre = doorMiddle(wall);
       if (pick.offer(wall.id, Math.hypot(x - centre.x, y - centre.y)) && pick.over) break;
@@ -183,8 +196,8 @@ export class DoorIcons {
     const r = this.radius(state);
     const withGlyph = new Set<string>();
     const refusal = this.refusal();
-    for (const wall of wallList(levelObjects(state).walls)) {
-      if (forPlayers ? !this.seen.has(wall.id) : !isDoor(wall)) continue;
+    for (const wall of doorsOf(wallList(levelObjects(state).walls))) {
+      if (forPlayers && !this.seen.has(wall.id)) continue;
       const refusing = refusal?.doorId === wall.id ? refusal : null;
       const centre = doorMiddle(wall);
       const x = centre.x + (refusing?.offset ?? 0);

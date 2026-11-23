@@ -25,6 +25,7 @@ import { openPinMenu, type PinnedSceneLevels } from './pinSceneLevelMenu';
 import { levelObjects } from '../levels/levelObjects';
 import { pinNameBoxes } from './pinNameLayout';
 import { dragThreshold, pointerReach, ReachPick } from './utils/pointerReach';
+import { watchDarkTheme } from './utils/canvasBadgeColors';
 
 /** True when anything other than the position changed, which means the pin's graphics must be rebuilt. */
 function differsBeyondPosition(pin: NotePin, prev: NotePin | undefined): boolean {
@@ -89,7 +90,7 @@ export class PinRenderer {
   private pinnedSceneLevels: PinnedSceneLevels | null = null;
   private store: ViewAtlasStore;
   private iconTextureCache: Map<PinIconId, Texture | null> = new Map();
-  private themeObserver: MutationObserver | null = null;
+  private stopThemeWatch: (() => void) | null = null;
   private _viewportZoomHandler?: () => void;
   private previewPin: Container | null = null;
   private previewIcon: string = 'pin';
@@ -189,21 +190,9 @@ export class PinRenderer {
     return this.iconTextureCache.get(icon) ?? null;
   }
 
+  /** A pin's face takes the light or dark theme's colours (`drawPinFace`). */
   private setupThemeObserver(): void {
-    this.themeObserver = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-          // Theme changed, redraw all pins
-          this.redrawAllPins();
-        }
-      }
-    });
-    
-    // Start observing
-    this.themeObserver.observe(document.body, {
-      attributes: true,
-      attributeFilter: ['class']
-    });
+    this.stopThemeWatch = watchDarkTheme(() => this.redrawAllPins());
   }
   
   private setupViewportListeners(): void {
@@ -655,10 +644,8 @@ export class PinRenderer {
     }
     
     // Clean up theme observer
-    if (this.themeObserver) {
-      this.themeObserver.disconnect();
-      this.themeObserver = null;
-    }
+    this.stopThemeWatch?.();
+    this.stopThemeWatch = null;
     
     // Clean up viewport listeners
     if (this._viewportZoomHandler && this.viewport) {

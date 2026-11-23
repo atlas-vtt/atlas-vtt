@@ -19,6 +19,7 @@ import { useFightStatblocks } from './dm-screen/useFightStatblocks';
 import { useNoteFocus } from './dm-screen/useNoteFocus';
 import { handledByAnotherControl } from '../../keyboard/tooltipEscape';
 import { sideOf, usePageTurn } from './dm-screen/usePageTurn';
+import type { TokenEntity } from '../../types';
 
 interface DMScreenProps {
   isOpen: boolean;
@@ -53,8 +54,11 @@ export function DMScreenFromStore(): React.JSX.Element | null {
   return <DMScreen isOpen={isOpen} onClose={close} />;
 }
 
+const NO_TOKENS: Record<string, TokenEntity> = {};
+
 export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.Element | null {
-  const tokens = useAtlasStore((state) => state.objects?.tokens || {});
+  // Closed, the screen reads no tokens: it draws nothing, and a token dragged on the map would render it at every step.
+  const tokens = useAtlasStore((state) => (isOpen ? state.objects?.tokens : undefined)) ?? NO_TOKENS;
   const mapPath = useAtlasStore((state) => state.mapPath);
   const mapLoaded = useAtlasStore((state) => state.mapLoaded);
   const isMapLoading = useAtlasStore((state) => state.isMapLoading);

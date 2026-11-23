@@ -75,6 +75,8 @@ export class TokenStatblockLinkService extends EventEmitter {
   private static instance: TokenStatblockLinkService | null = null;
   private app: App;
   private assetService: AssetService;
+  /** A read of the token assets under way, shared by whoever asks meanwhile: a map's tokens all ask at once as it loads. */
+  private tokenAssetsRead: Promise<TokenAsset[]> | null = null;
   
   private constructor(app: App) {
     super();
@@ -251,11 +253,24 @@ export class TokenStatblockLinkService extends EventEmitter {
    * Gets the statblock linked to a token.
    */
   async getStatblockLinkedToToken(tokenImagePath: string): Promise<string | null> {
-    const tokenAssets = await this.assetService.getTokenAssets();
+    const tokenAssets = await this.sharedTokenAssets();
     const linked = tokenAssets.find(asset => asset.imagePath === tokenImagePath && asset.statblockPath);
     return linked?.statblockPath ?? null;
   }
   
+  /** The token assets, read once for every caller that asks while a read is under way. */
+  private sharedTokenAssets(): Promise<TokenAsset[]> {
+    if (!this.tokenAssetsRead) {
+      const read = this.assetService.getTokenAssets();
+      const done = (): void => {
+        if (this.tokenAssetsRead === read) this.tokenAssetsRead = null;
+      };
+      this.tokenAssetsRead = read;
+      void read.then(done, done);
+    }
+    return this.tokenAssetsRead;
+  }
+
   /** The image paths of every token asset linked to a statblock, in index order. */
   async getTokensLinkedToStatblock(statblockPath: string): Promise<string[]> {
     const tokenAssets = await this.assetService.getTokenAssets();

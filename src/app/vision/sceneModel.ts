@@ -21,6 +21,7 @@ import { ambientAt } from './lightLevels';
 import { SightCache, sceneSight, sightOptionsChanged, sightSources, type AmbientLight, type LightReach, type Sight } from './sight';
 import type { MapBounds } from './visibility';
 import { wallList } from './wallList';
+import { withWallsHeld } from './wallGrid';
 import type { EngineLight, EngineZone } from '../pixi/lighting/engine/types';
 import { LightReaches } from './lightReaches';
 import { LightMotion, NO_MOVING_LIGHTS } from './lightMotion';
@@ -138,7 +139,8 @@ export class SceneModelBuilder {
     }
     const settings = measurement();
     const kept = keptLights(state, settings);
-    const model = this.build(state, tokens, bounds, reach, settings, rules, hasVision, kept);
+    // Nothing writes a wall while the scene is built: each wall array is checked against its sweep grid once.
+    const model = withWallsHeld(() => this.build(state, tokens, bounds, reach, settings, rules, hasVision, kept));
     this.built = { walls, lights, zones, measures, kept: measureLights(kept, tokens), tokens, grid, lighting, rules, hasVision, reach, model };
     return { model, rebuilt: true };
   }
@@ -167,6 +169,7 @@ export class SceneModelBuilder {
     const lights = shining.flatMap((light, i) => (out[i] ? [] : [withRule(moving.has(light.key) ? { ...light, moving: true } : light, everyReach[i]!)]));
     const reaches = everyReach.filter((_, i) => !out[i]);
     const sources = sourcesInDarkness(sightSources(tokens, scale, reach, rules, GM_SIGHT_POLICY), ambient, reaches);
+    this.sightCache.useWalls(walls);
     this.sightCache.retain(new Set(sources.map(source => source.tokenId)));
     const gmSight = sceneSight(state.lighting, sources, walls, this.sightCache, { sceneHasVision: hasVision });
     const sight = selectSight(gmSight, tokens, PLAYER_SIGHT_POLICY);

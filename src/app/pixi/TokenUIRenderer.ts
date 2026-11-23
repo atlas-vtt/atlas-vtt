@@ -22,7 +22,7 @@ import type { ResourceDefsProvider, ResourceViewer, VisibleResource } from '../r
 import { isDefeated, isSpent } from '../resources/resourceValues';
 import { shapeOf, visibleResources } from '../resources/visibleResources';
 import { destroyTree } from './utils/destroyTree';
-import { canvasBadgeColors, isDarkTheme } from './utils/canvasBadgeColors';
+import { canvasBadgeColors, isDarkTheme, watchDarkTheme } from './utils/canvasBadgeColors';
 import { computeTokenStrokeWidth, NAMEPLATE_HEIGHT, NAMEPLATE_TEXT, RESIZE_HANDLE_SIZE, restingTokenUIScale, selectedTokenUIScale, TOKEN_TEXT_RESOLUTION, tokenTextResolution, tokenUIScale } from './token-renderer/tokenSizing';
 import { getTokenRingCenterRadius } from './token-renderer/tokenRingMetrics';
 import { ValueTransition } from './utils/ValueTransition';
@@ -80,7 +80,7 @@ export class TokenUIRenderer {
   private difficultyBadge: Container;
   private difficultyText: Text;
   private defeatedOverlay: Graphics;
-  private themeObserver: MutationObserver | null = null;
+  private stopThemeWatch: (() => void) | null = null;
   private editThemeObserver: MutationObserver | null = null;
   private currentToken: (BaseToken & Partial<Character>) | null = null;
   private currentTokenSize: number = 0;
@@ -305,29 +305,13 @@ export class TokenUIRenderer {
     }
   };
   
+  /** The UI takes the light or dark theme's colours (`canvasBadgeColors`): a switch redraws it. */
   private setupThemeObserver(): void {
-    if (this.themeObserver) {
-      this.themeObserver.disconnect();
-    }
-
-    // Observe changes to the body class for theme switches
-    this.themeObserver = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-          // Theme changed, force update to redraw with new colors
-          if (this.currentToken && this.currentTokenSize > 0) {
-            // Clear the cache to force redraw
-            this.lastUpdateData = '';
-            this.update(this.currentToken, this.currentTokenSize);
-          }
-        }
-      }
-    });
-    
-    // Start observing
-    this.themeObserver.observe(document.body, {
-      attributes: true,
-      attributeFilter: ['class']
+    this.stopThemeWatch?.();
+    this.stopThemeWatch = watchDarkTheme(() => {
+      if (!this.currentToken || this.currentTokenSize <= 0) return;
+      this.lastUpdateData = '';
+      this.update(this.currentToken, this.currentTokenSize);
     });
   }
   
@@ -814,10 +798,8 @@ export class TokenUIRenderer {
     }
     
     // Clean up theme observers
-    if (this.themeObserver) {
-      this.themeObserver.disconnect();
-      this.themeObserver = null;
-    }
+    this.stopThemeWatch?.();
+    this.stopThemeWatch = null;
     if (this.editThemeObserver) {
       this.editThemeObserver.disconnect();
       this.editThemeObserver = null;
