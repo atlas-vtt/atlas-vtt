@@ -11,6 +11,7 @@ import { Skeleton, SkeletonGroup, skeletonTextWidth } from '../../../../../packa
 import { useLoadingReveal } from '../../../../../packages/components/primitives/useLoadingReveal';
 import { useStagedList } from '../useStagedList';
 import { cn } from '../../../../../../utils/cn';
+import { CutTooltip } from '../CutTooltip';
 import { ConvertingLine } from './ConvertingLine';
 import { DownloadsButton } from './DownloadsButton';
 import { MusicPacksButton, StarterPackButton } from './PackOffers';
@@ -106,7 +107,8 @@ const RailTag = memo(function RailTag({ actions, kind, name, count, selected, on
         {...drop.props}
       >
         <TagGlyph />
-        <span>{name}</span>
+        {/* Two albums may start alike ("Night of th…"): a name its row cuts shows whole on hover. */}
+        <CutTooltip><span>{name}</span></CutTooltip>
         <small>{count}</small>
       </button>
       <button

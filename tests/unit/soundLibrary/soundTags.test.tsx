@@ -260,6 +260,20 @@ describe('editing tags', () => {
       expect(rig.records.all()).toEqual([]);
     });
 
+    it('shows a tag\'s whole name on hover where its row cuts it, and none where it fits', async () => {
+      const hover = (name: string, cut: boolean): void => {
+        const label = tagRow(name).querySelector<HTMLElement>('span')!;
+        Object.defineProperty(label, 'scrollWidth', { configurable: true, value: cut ? 1400 : 10 });
+        fireEvent.pointerEnter(label, { pointerType: 'mouse' });
+        fireEvent.pointerMove(label, { pointerType: 'mouse', clientX: 5, clientY: 5 });
+      };
+      hover('Bosses', false);
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      expect(document.querySelector('.tooltip-label')).toBeNull();
+      hover('Battle', true);
+      await waitFor(() => expect(document.querySelector('.tooltip-label')?.textContent).toBe('Battle'));
+    });
+
     it('a press narrows, a second tag narrows further, and a press on the root shows all again', () => {
       fireEvent.click(tagRow('Battle'));
       expect(titles()).toEqual(['a', 'b', 'd']);
