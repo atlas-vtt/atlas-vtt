@@ -111,4 +111,10 @@ export const armariumFindings: Translation = {
   'armariumFindings.times': { other: '发现 {count} 次。' },
   'armariumFindings.showAll': '显示全部 {count} 项',
   'armariumFindings.showFewer': '收起',
+  'armariumFindings.code.item-track-count': '此文件不是 Atlas 制作的音乐包：一张专辑包含 2 到 100 首，一首单曲只有一首。请从 Atlas 重新分享。',
+  'armariumFindings.code.item-track-unlisted': '此文件不是 Atlas 制作的音乐包：其中的曲目与曲目列表不一致。请从 Atlas 重新分享。',
+  'armariumFindings.code.audio-not-audio': '这首曲目不是其名称所示的音频，或者不含音频。请重新保存为 MP3、FLAC、WAV 或 Opus。',
+  'armariumFindings.code.audio-too-long': '播放时间太长：一首曲目最多两小时，一张专辑最多十小时。',
+  'armariumFindings.detail.formatChanged.music-album': '此条目是一张专辑；新版本也必须是专辑。',
+  'armariumFindings.detail.formatChanged.music-track': '此条目是一首单曲；新版本也必须是单曲。',
 };

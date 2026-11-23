@@ -111,4 +111,10 @@ export const armariumFindings: Translation = {
   'armariumFindings.detail.formatChanged.statblock-template': 'Dieser Eintrag enthält eine Statblock-Vorlage; eine neue Version muss ebenfalls eine sein.',
   'armariumFindings.detail.formatChanged.system-preset': 'Dieser Eintrag enthält ein Spielsystem; eine neue Version muss ebenfalls eines sein.',
   'armariumFindings.detail.formatChanged.dice-set': 'Dieser Eintrag enthält ein Würfelset; eine neue Version muss ebenfalls eines sein.',
+  'armariumFindings.code.item-track-count': 'Die Datei ist kein Musikpaket, das Atlas erstellt hat: Ein Album enthält 2 bis 100 Tracks, ein einzelner Track einen. Teile es noch einmal aus Atlas.',
+  'armariumFindings.code.item-track-unlisted': 'Die Datei ist kein Musikpaket, das Atlas erstellt hat: Ihre Tracks und die Liste der Tracks passen nicht zusammen. Teile es noch einmal aus Atlas.',
+  'armariumFindings.code.audio-not-audio': 'Dieser Track ist nicht das Audio, das sein Name verspricht, oder enthält kein Audio. Speichere ihn noch einmal als MP3, FLAC, WAV oder Opus.',
+  'armariumFindings.code.audio-too-long': 'Das spielt zu lange: Ein Track darf höchstens zwei Stunden spielen, ein Album zehn.',
+  'armariumFindings.detail.formatChanged.music-album': 'Dieser Eintrag enthält ein Album; eine neue Version muss ebenfalls eines sein.',
+  'armariumFindings.detail.formatChanged.music-track': 'Dieser Eintrag enthält einen einzelnen Track; eine neue Version muss ebenfalls einer sein.',
 };
