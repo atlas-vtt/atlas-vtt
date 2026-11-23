@@ -126,6 +126,10 @@ import { registerLastInput } from './src/app/platform/lastInput';
 import { registerKeyboardViewport } from './src/app/platform/keyboardViewport';
 import { registerAudioUnlock } from './src/app/plugin/audioUnlock';
 import { registerUnsupportedDevice } from './src/app/plugin/unsupportedDevice';
+// Atlas' Mediaeval and Sci-fi looks (scoped to `body.atlas-look`) after every other stylesheet: CSS lands in
+// styles.css in import order, so where a look and a plugin rule are equally specific the look wins, as it did
+// when it was a theme loaded after the plugin's styles.
+import './styles/looks/atlas-looks.css';
 
 declare const __ATLAS_RELEASE_BUILD__: boolean;
 
