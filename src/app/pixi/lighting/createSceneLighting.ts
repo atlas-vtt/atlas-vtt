@@ -15,6 +15,7 @@ import { ForgottenFloors } from './ForgottenFloors';
 import { LightingRenderer } from './LightingRenderer';
 import { showLightingUnavailableNotice } from './lightingNotices';
 import { LightingViewHost } from './LightingViewHost';
+import { ScenePrebuildClient } from './prebuild/ScenePrebuildClient';
 import type { ExploredMemoryWatcher } from './sceneLightingView';
 import type { BelowLevelsHost } from './levels/LevelsBelow';
 
@@ -51,11 +52,12 @@ export interface SceneLightingDeps {
  */
 export function createSceneLighting({ viewport, app, store, obsApp, measurement, bounds, albedo, grid, rules, onSightChange, exploredWatcher, quality, scene = store, below, roofFadeMs }: SceneLightingDeps): LightingViewHost {
   const attempt = new StoredLightingAttempt(obsApp, () => store.getState().mapPath);
+  const prebuild = ScenePrebuildClient.forApp(obsApp);
   const sight = onSightChange ? { onSightChange } : {};
   const view = { ...sight, ...(rules && { rules }) };
   return new LightingViewHost({
     store,
-    createEngineView: (onUnavailable) => new LightingRenderer({ viewport, app, store: scene, measurement, bounds, albedo, attempt, onUnavailable, ...view, ...(grid && { grid }), ...(exploredWatcher && { exploredWatcher }), ...(quality && { quality }), ...(below && { below }), ...(roofFadeMs !== undefined && { roofFadeMs }), floors: new ForgottenFloors(store) }),
+    createEngineView: (onUnavailable) => new LightingRenderer({ viewport, app, store: scene, measurement, bounds, albedo, attempt, onUnavailable, prebuild: (request) => prebuild.compute(request), ...view, ...(grid && { grid }), ...(exploredWatcher && { exploredWatcher }), ...(quality && { quality }), ...(below && { below }), ...(roofFadeMs !== undefined && { roofFadeMs }), floors: new ForgottenFloors(store) }),
     createFallback: () => new CanvasLightingFallback({ viewport, store: scene, measurement, bounds, requestRender: () => requestRender(app), ...view }),
     forgetAttempt: () => attempt.forget(),
     notify: showLightingUnavailableNotice,

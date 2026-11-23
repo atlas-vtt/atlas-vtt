@@ -35,8 +35,6 @@ export const tour: Translation = {
   'tour.notNow': 'Agora não',
   'tour.progress': 'Passo {step} de {total}',
   'tour.replay': 'Fazer o tour',
-  'tour.dashboard.welcomeTitle': 'Boas-vindas ao Atlas',
-  'tour.dashboard.welcomeBody': 'O Atlas conduz seu jogo em mapas do seu cofre, com tokens, névoa, iniciativa e uma segunda janela que seus jogadores acompanham. Toda sessão começa nesta página.',
   'tour.dashboard.sceneTitle': 'Cenas',
   'tour.dashboard.sceneBody': 'Uma cena é um mapa pronto para jogar, com os tokens, a névoa e os alfinetes dele. Você cria uma a partir de uma imagem de mapa, e a última cena que você jogou espera por você aqui.',
   'tour.dashboard.assetsTitle': 'Gerenciador de assets',

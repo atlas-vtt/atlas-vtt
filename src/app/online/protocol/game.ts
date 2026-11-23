@@ -2,6 +2,7 @@ import { isCount, parseAsset, parseAssetProgress, parseVideoAsset, type AssetPro
 import { isBookType, isPlayerBookType, parseBookCover, parseBookParts, parseBookMessage, parseBookTokenMessage, parsePlayerBookMessage, type BookMessage, type BookTokenMessage, type PlayerBookCover, type PlayerBookMessage, type PlayerBookParts } from './book.ts';
 import { parseSignFound, type PlayerSignFound } from './bookLevels.ts';
 import { parseBookRestMessage, type BookRestMessage } from './bookRest.ts';
+import { parseBump, parseDoorAnswer, parseDoorAsk, type DoorAnswer, type PlayerBump, type PlayerDoorAsk } from './doors.ts';
 import { isDeltaOf, parseDelta, parseSeq, type DeltaMessage, type DeltaOf } from './delta.ts';
 import { parseFloor, type SharedFloor } from './floor.ts';
 import type { SharedFog, SharedFogEdge } from './fog.ts';
@@ -123,6 +124,8 @@ export type GmMessage =
   /** The widgets players see, as Atlas's player window shows them; null while it shows none. */
   | { readonly t: 'widgets'; readonly scene: string; readonly bar: SharedWidgetBar | null }
   | MoveRefused
+  /** The GM's answer to a player's ask to open a door. Added later. */
+  | DoorAnswer
   /** What the player's own tools (measure, laser) work by in scene `scene`. */
   | RulesMessage
   /** How the table plays, and whether the GM hid the map or paused play. It belongs to the table, not to a scene. */
@@ -146,7 +149,7 @@ export interface PlayerResync {
   readonly of: DeltaOf;
 }
 
-export type PlayerMessage = PlayerResync | PlayerMove | PlayerDrag | PlayerDragCancel | PlayerRoll | PlayerLaser | PlayerMeasure | PlayerMeasureKeep | PlayerMeasureDrop | PlayerCursor | PlayerLogMessage | PlayerBookMessage | PlayerBookParts | PlayerBookCover | BookTokenMessage | BookRestMessage | PlayerPinFound | PlayerSignFound | PlayerSoundState | PlayerDrawMessage;
+export type PlayerMessage = PlayerResync | PlayerMove | PlayerDrag | PlayerDragCancel | PlayerRoll | PlayerLaser | PlayerMeasure | PlayerMeasureKeep | PlayerMeasureDrop | PlayerCursor | PlayerLogMessage | PlayerBookMessage | PlayerBookParts | PlayerBookCover | BookTokenMessage | BookRestMessage | PlayerPinFound | PlayerSignFound | PlayerSoundState | PlayerDrawMessage | PlayerDoorAsk | PlayerBump;
 
 const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 
@@ -213,6 +216,8 @@ export function parseGmMessage(value: unknown): GmMessage | null {
       return { t: 'part', id: value.id, index: value.index, count: value.count, data: value.data };
     case 'move-refused':
       return parseMoveRefused(value);
+    case 'door-answer':
+      return parseDoorAnswer(value);
     case 'rules':
       return parseRules(value);
     case 'table-mode':
@@ -252,6 +257,8 @@ export function parsePlayerMessage(value: unknown): PlayerMessage | null {
   if (!isRecord(value)) return null;
   if (value.t === 'move' || value.t === 'drag') return parsePlayerMove(value, value.t);
   if (value.t === 'drag-cancel') return parseDragCancel(value);
+  if (value.t === 'door-ask') return parseDoorAsk(value);
+  if (value.t === 'bump') return parseBump(value);
   if (value.t === 'pin-found') return parsePinFound(value, isSceneId);
   if (value.t === 'sign-found') return parseSignFound(value);
   if (value.t === 'roll') return parsePlayerRoll(value);

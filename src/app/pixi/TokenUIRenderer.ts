@@ -681,7 +681,21 @@ export class TokenUIRenderer {
 
   /** The conditions card is for looking at a token: selecting, pressing or dragging it hides the card. */
   private updateConditionCard(): void {
-    this.conditionUI.setHovered(this.isPlainHover && !this.isSelected && !this.isHeld);
+    this.conditionUI.setHovered(this.showsConditionCard());
+  }
+
+  /** Whether the card naming the token's conditions shows: the token is looked at, not selected, pressed or dragged. */
+  public showsConditionCard(): boolean {
+    return this.isPlainHover && !this.isSelected && !this.isHeld;
+  }
+
+  /**
+   * Shows the conditions card or hides it whatever this UI's own hover: the players' picture shows the card the GM's
+   * canvas shows (`UIManager.getPlayerViewLayers`), and the online page the card of the token under a player's pointer.
+   * The bars' numbers and the nameplate stay at rest, as `setHoverState` would not leave them.
+   */
+  public showConditionCard(shown: boolean): void {
+    this.conditionUI.setHovered(shown);
   }
   
   public setSelectionState(selected: boolean): void {

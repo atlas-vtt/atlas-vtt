@@ -20,8 +20,6 @@ export interface TutorialStep {
   image?: TutorialImage;
   /** Keys shown as key caps under the text, in the user's own bindings. */
   keys?: readonly string[];
-  /** Controls under the text, for a step that offers something to do (the welcome's links). */
-  extra?: React.ReactNode;
 }
 interface TutorialProps {
   settings?: SettingsService | undefined;
@@ -94,7 +92,6 @@ function TutorialCard({ settings, id, steps, label = t('tour.label'), action, ro
             {step.keys && step.keys.length > 0 && (
               <div className="atlas-onboarding-keys">{step.keys.map(key => <kbd key={key}>{key}</kbd>)}</div>
             )}
-            {step.extra}
           </div>
         </div>
         <div className="atlas-onboarding-actions">

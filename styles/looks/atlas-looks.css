@@ -181,6 +181,9 @@ body.atlas-look {
   --accent-h: 0;
   --accent-s: 69%;
   --accent-l: 57%;
+  /* the look's own accent, which Atlas VTT's Appearance settings show
+     beside the colours it offers */
+  --atlas-look-accent: #dd4646;
 
   /* body text: bookish serif; a text font picked in Appearance still overrides it */
   --font-text-theme: var(--atlas-theme-body-serif);
@@ -520,6 +523,7 @@ body.atlas-look.theme-light.atlas-look-scifi {
   --accent-h: 34;
   --accent-s: 19%;
   --accent-l: 7%;
+  --atlas-look-accent: #16130f;
 }
 
 body.atlas-look.theme-dark.atlas-look-scifi {
@@ -558,6 +562,42 @@ body.atlas-look.theme-dark.atlas-look-scifi {
   --accent-h: 38;
   --accent-s: 43%;
   --accent-l: 85%;
+  --atlas-look-accent: #e9decb;
+}
+
+/* ------------------------------------------------------------
+   An accent colour picked in Atlas VTT's Appearance settings or
+   in Obsidian's: Atlas VTT sets `atlas-accent-custom` on the
+   body, and Obsidian the colour's `--accent-h/s/l`. What a look
+   writes out as its own accent (links; Sci-fi's ink on buttons
+   and checkboxes) takes the colour instead, by Obsidian's own
+   formulas, as in Obsidian's default theme.
+   ------------------------------------------------------------ */
+body.atlas-look.theme-light.atlas-accent-custom {
+  --text-accent: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
+  --text-accent-hover: hsl(calc(var(--accent-h) - 3), calc(var(--accent-s) * 1.02), calc(var(--accent-l) * 1.15));
+}
+
+body.atlas-look.theme-dark.atlas-accent-custom {
+  --text-accent: hsl(calc(var(--accent-h) - 3), calc(var(--accent-s) * 1.02), calc(var(--accent-l) * 1.15));
+  --text-accent-hover: hsl(calc(var(--accent-h) - 5), calc(var(--accent-s) * 1.05), calc(var(--accent-l) * 1.29));
+}
+
+body.atlas-look.theme-light.atlas-look-scifi.atlas-accent-custom {
+  --interactive-accent: hsl(calc(var(--accent-h) - 1), calc(var(--accent-s) * 1.01), calc(var(--accent-l) * 1.075));
+  --interactive-accent-hover: hsl(calc(var(--accent-h) - 3), calc(var(--accent-s) * 1.02), calc(var(--accent-l) * 1.15));
+}
+
+body.atlas-look.theme-dark.atlas-look-scifi.atlas-accent-custom {
+  --interactive-accent: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
+  --interactive-accent-hover: hsl(calc(var(--accent-h) - 3), calc(var(--accent-s) * 1.02), calc(var(--accent-l) * 1.15));
+}
+
+/* paper on the colour; on a light colour Obsidian's own inline
+   `--text-on-accent` stands over this and asks for the ink */
+body.atlas-look.atlas-look-scifi.atlas-accent-custom {
+  --text-on-accent: #f4eee1;
+  --text-on-accent-inverted: #16130f;
 }
 
 body.atlas-look.atlas-look-scifi {

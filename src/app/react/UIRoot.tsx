@@ -38,6 +38,7 @@ import { SceneTabBar } from './components/SceneTabBar';
 import { LevelSwitcher } from './components/levels/LevelSwitcher';
 import { ZoomCluster } from './components/ZoomCluster';
 import { LevelLinkPopoverHost } from './components/levels/LevelLinkPopover';
+import { DoorAskPopoverHost } from '../online/gm/doors/DoorAskPopover';
 import { SceneSwitcher } from './components/scene-switcher/SceneSwitcher';
 import { presentTab as presentSceneTab } from '../services/PlayerWindowPresenter';
 import { usePresentedScene } from './hooks/usePresentedScene';
@@ -272,7 +273,10 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           </BottomToolbarRow>
 
           {!isPlayerView && !isMapLoading && (
-            <PanelBoundary name="the level switcher"><LevelSwitcher /><LevelLinkPopoverHost /></PanelBoundary>
+            <>
+              <PanelBoundary name="the level switcher"><LevelSwitcher /><LevelLinkPopoverHost /></PanelBoundary>
+              <PanelBoundary name="the door asks"><DoorAskPopoverHost /></PanelBoundary>
+            </>
           )}
 
           {!isPlayerView && !isMapLoading && <PanelBoundary name="the zoom buttons"><ZoomCluster /></PanelBoundary>}

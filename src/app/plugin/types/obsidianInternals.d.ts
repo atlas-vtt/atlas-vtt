@@ -100,6 +100,15 @@ declare module 'obsidian' {
     readonly saving?: boolean;
   }
 
+  interface Vault {
+    /** A setting of the vault's `app.json` or `appearance.json` (`accentColor`: a hex colour, `''` for the theme's own). */
+    getConfig?(key: string): unknown;
+    /** Writes a setting and applies it as Obsidian's own settings do (`accentColor` recolours every window). */
+    setConfig?(key: string, value: unknown): void;
+    /** A setting changed: written by `setConfig` or read from its file after another device's sync. */
+    on(name: 'config-changed', callback: (key: string) => unknown, ctx?: unknown): EventRef;
+  }
+
   interface WorkspaceLeaf {
     containerEl: HTMLElement;
     tabHeaderEl?: HTMLElement;

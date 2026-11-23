@@ -1,0 +1,82 @@
+@use '../../../styles/tokens' as *;
+
+$swatch-size: $target-min + $spacing-xs;
+
+// The accent colour's swatches (AccentColourRow.tsx): the look's own, the presets, then the GM's own colour.
+.atlas-accent-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-s;
+  // The chosen swatch's outline stands outside it: room for it, so no parent clips it.
+  padding: $border-width-l * 2;
+}
+
+button.atlas-accent-swatch {
+  flex: none;
+  width: $swatch-size;
+  height: $swatch-size;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: $radius-full;
+  // A hairline of the page's ink, so a swatch as light or dark as the page still shows its edge.
+  box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
+  cursor: pointer;
+  transition: transform $transition-fast $transition-ease;
+
+  @media (hover: hover) {
+    &:hover {
+      box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) $border-opacity-strong, transparent);
+      transform: scale(1.08);
+    }
+  }
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
+  }
+
+  &[aria-checked='true'] {
+    outline: $border-width-l solid var(--text-normal);
+    outline-offset: $border-width-l;
+  }
+}
+
+// The look's own accent: a look publishes it, the GM's theme shows it until a colour is picked over it.
+button.atlas-accent-swatch--own {
+  // Set apart from the presets that follow it.
+  margin-inline-end: $spacing-s;
+  background: var(--atlas-look-accent, var(--atlas-theme-accent, var(--interactive-accent)));
+}
+
+// The GM's theme under a picked colour, whose own accent was never seen: no colour that would be a guess.
+body:not(.atlas-look) button.atlas-accent-swatch--unknown {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--background-secondary) 0 3px,
+    var(--background-modifier-border) 3px 6px
+  );
+}
+
+.atlas-accent-custom-wrap {
+  position: relative;
+  display: inline-flex;
+  margin-inline-start: $spacing-s;
+}
+
+// Any colour, until one is picked: then the swatch takes it (inline).
+button.atlas-accent-swatch--custom {
+  background: conic-gradient(#c0392b, #c9a227, #6b8f3a, #2a9d8f, #3b82c4, #8b5cf6, #d46a8a, #c0392b);
+}
+
+// The native picker, out of sight under its swatch so the picker opens beside it.
+.atlas-accent-picker {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  opacity: 0;
+  pointer-events: none;
+}

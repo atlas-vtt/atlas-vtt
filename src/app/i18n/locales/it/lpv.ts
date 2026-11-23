@@ -31,5 +31,7 @@ export const lpv = {
   "lpv.online": "Gioco online",
   "lpv.playersDraw": "I giocatori possono disegnare",
   "lpv.playersDrawHint": "I giocatori online ricevono un proprio strumento Disegno. Puoi modificare e cancellare ciò che disegnano.",
+  'lpv.playersOpenDoors': 'I giocatori possono chiedere di aprire le porte',
+  'lpv.playersOpenDoorsHint': 'I giocatori online davanti a una porta chiusa possono chiederti di aprirla. Ricevi un avviso e decidi sulla mappa.',
   "lpv.view4k": "Renderizza fino a 4K",
 } satisfies Translation;

@@ -16,7 +16,6 @@ import { tokenDisplayName } from '../../pixi/token-renderer/tokenDisplayName';
 import { isOffMap } from '../../tokens/offMap';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { InitiativeNumber, type NumberStep } from './InitiativeNumber';
-import { OffMapIcon } from './OffMapIcon';
 import { woundShare } from '../../initiative/woundShare';
 import { useCardPreviewHover } from './useCardPreviewHover';
 import { useArtViewBox } from './useArtViewBox';
@@ -25,6 +24,11 @@ import { DealtCard } from './DealtCard';
 import { entryToken } from '../../initiative/party';
 import { turnColor } from '../../initiative/turnColor';
 import { sideOf } from '../../initiative/sides';
+import { CardConditions } from './CardConditions';
+import { useMapConditions } from '../hooks/useMapConditions';
+import { useTrueScale } from '../hooks/useTrueScale';
+import { cardConditions, entryConditions } from '../../initiative/combatantConditions';
+import { CardConditionsTooltip } from './CardConditionsTooltip';
 
 interface InitiativeCardProps {
   entry: InitiativeEntry;
@@ -63,7 +67,8 @@ const NO_DRAG: RowDrag = {
 /**
  * A combatant in the GM's tracker, as the players' list draws it (`styles/_initiative-cards.scss`): a square card
  * filled with the token's art, red rising in it as it loses hit points (`woundShare`), its number in the top right and
- * its badge and marks in the top left. Conditions and resources show on its token, so the card leaves them out. The compact list is one line instead, over the token's art faded in from its right end.
+ * its badge and marks in the top left, its conditions fanned down its left edge where no token on the map shows them
+ * (`cardConditions`). Resources show on its token. The compact list is one line instead, over the token's art faded in from its right end.
  */
 export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   entry,
@@ -104,6 +109,12 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   const wound = token ? woundShare(visibleResources(token, definitions, 'dm').filter(({ definition }) => definition.defeatedWhenSpent)) : null;
   const woundFill = wound === null ? null : <div className="atlas-initiative-wound" style={{ '--atlas-wound': wound } as React.CSSProperties} aria-hidden="true" />;
   const defeated = combatantDefeated(token, definitions);
+  // Where no token on the map shows them, or miniatures on the TV cover the tokens (`cardConditions`)
+  const conditionDefinitions = useMapConditions();
+  const trueScale = useTrueScale();
+  const conditions = cardConditions(entry, token, conditionDefinitions, trueScale);
+  // Every condition it is under, named in the tooltip its hover opens
+  const allConditions = entryConditions(entry, token, conditionDefinitions);
   // A hidden token's entry, or one the GM hid, is left out of the players' list (`PlayerInitiativePanel`)
   const hiddenFromPlayers = token?.isHidden === true || entry.hiddenFromPlayers === true;
   // Kept beside the map: in the tracker only, until the GM places it
@@ -162,12 +173,6 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
           <span className="atlas-initiative-card__hidden-badge"><EyeOff /></span>
         </LabelTooltip>
       )}
-
-      {offMap && (
-        <LabelTooltip label={t('initiative.offMap')} side={tooltipSide}>
-          <span className="atlas-initiative-card__off-map-badge"><OffMapIcon /></span>
-        </LabelTooltip>
-      )}
     </>
   );
 
@@ -179,82 +184,89 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
     entry.isActive && !bySides && 'atlas-initiative-card--active',
     defeated && 'atlas-initiative-card--defeated',
     hiddenFromPlayers && 'atlas-initiative-card--hidden',
+    offMap && 'atlas-initiative-card--off-map',
     entry.sitsOut && 'atlas-initiative-card--sitting-out',
     entry.delayed && 'atlas-initiative-card--delayed',
     isHoveredForPreview && 'atlas-initiative-card--preview-hover',
     selected && 'atlas-initiative-card--selected',
     turnFlash && 'atlas-initiative-card--turn-flash',
+    conditions.length > 0 && 'atlas-initiative-card--conditions',
   ].filter(Boolean).join(' ');
 
   return (
-    <div
-      ref={cardRef}
-      className={cardClasses}
-      style={{ translate: drag.offsetOf(place), ...(turn && { '--atlas-turn-color': turn }) }}
-      data-held={drag.held === place ? '' : undefined}
-      {...{ [DRAG_GROUP_ATTRIBUTE]: group }}
-      // A field being typed in keeps its pointer to itself
-      onPointerDown={(event) => { if (!isEditingNumber) drag.onPointerDown(place, event); }}
-      onPointerMove={drag.onPointerMove}
-      onPointerUp={drag.onPointerUp}
-      onPointerCancel={drag.onPointerCancel}
-      onClick={handleClick}
-      onContextMenu={handleContextMenu}
-      {...hover}
-      role="listitem"
-      // It glides to its new place as the turn passes (`turnMotion.ts`)
-      {...{ [TURN_KEY_ATTRIBUTE]: entry.id }}
-      aria-roledescription={t('initiative.card')}
-      aria-label={name}
-    >
-      {/* The token's art filling the card, with its badge and marks in the top left; the compact list shows the marks alone, beside the name */}
-      {compact ? (
-        <>
-          {entry.imagePath && (
-            // The token's art faded in behind the line, from its right end
-            <div className={`atlas-initiative-card__backdrop${token?.showRing === false ? ' atlas-initiative-card__backdrop--framed' : ''}`} aria-hidden="true">
-              <img src={getImageUrl(entry.imagePath)} alt="" draggable={false} decoding="async" style={artStyle} />
-              {woundFill}
-            </div>
-          )}
-          <span className="atlas-initiative-card__marks">{defeated && <Skull className="atlas-initiative-card__defeated-mark" />}{marks}</span>
-        </>
-      ) : (
-        <>
-          {entry.imagePath ? (
-            // The card names the combatant (`aria-label`): its art is a picture no one needs read again
-            <div className={`atlas-initiative-card__art${token?.showRing === false ? ' atlas-initiative-card__art--framed' : ''}`} aria-hidden="true">
-              <img src={getImageUrl(entry.imagePath)} alt="" draggable={false} decoding="async" style={artStyle} />
-              {woundFill}
-            </div>
-          ) : (
-            <div className="atlas-initiative-card__avatar">
-              {entry.isNPC ? <Bot /> : <User />}
-            </div>
-          )}
-          {defeated && (
-            <div className="atlas-initiative-card__defeated-overlay">
-              <Skull />
-            </div>
-          )}
-          <span className="atlas-initiative-card__marks">{marks}</span>
-        </>
-      )}
+    <CardConditionsTooltip entryId={entry.id} conditions={allConditions} side={tooltipSide} suppressed={isHoveredForPreview || isEditingNumber || drag.held !== null}>
+      <div
+        ref={cardRef}
+        className={cardClasses}
+        style={{ translate: drag.offsetOf(place), ...(turn && { '--atlas-turn-color': turn }) }}
+        data-held={drag.held === place ? '' : undefined}
+        {...{ [DRAG_GROUP_ATTRIBUTE]: group }}
+        // A field being typed in keeps its pointer to itself
+        onPointerDown={(event) => { if (!isEditingNumber) drag.onPointerDown(place, event); }}
+        onPointerMove={drag.onPointerMove}
+        onPointerUp={drag.onPointerUp}
+        onPointerCancel={drag.onPointerCancel}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        {...hover}
+        role="listitem"
+        // It glides to its new place as the turn passes (`turnMotion.ts`)
+        {...{ [TURN_KEY_ATTRIBUTE]: entry.id }}
+        aria-roledescription={t('initiative.card')}
+        aria-label={name}
+        // Kept beside the map: its grey stroke says so to the eye
+        aria-description={offMap ? t('initiative.offMap') : undefined}
+      >
+        {/* The token's art filling the card, with its badge and marks in the top left; the compact list shows the marks alone, beside the name */}
+        {compact ? (
+          <>
+            {entry.imagePath && (
+              // The token's art faded in behind the line, from its right end
+              <div className={`atlas-initiative-card__backdrop${token?.showRing === false ? ' atlas-initiative-card__backdrop--framed' : ''}`} aria-hidden="true">
+                <img src={getImageUrl(entry.imagePath)} alt="" draggable={false} decoding="async" style={artStyle} />
+                {woundFill}
+              </div>
+            )}
+            <span className="atlas-initiative-card__marks">{defeated && <Skull className="atlas-initiative-card__defeated-mark" />}{marks}</span>
+          </>
+        ) : (
+          <>
+            {entry.imagePath ? (
+              // The card names the combatant (`aria-label`): its art is a picture no one needs read again
+              <div className={`atlas-initiative-card__art${token?.showRing === false ? ' atlas-initiative-card__art--framed' : ''}`} aria-hidden="true">
+                <img src={getImageUrl(entry.imagePath)} alt="" draggable={false} decoding="async" style={artStyle} />
+                {woundFill}
+              </div>
+            ) : (
+              <div className="atlas-initiative-card__avatar">
+                {entry.isNPC ? <Bot /> : <User />}
+              </div>
+            )}
+            {defeated && (
+              <div className="atlas-initiative-card__defeated-overlay">
+                <Skull />
+              </div>
+            )}
+            <span className="atlas-initiative-card__marks">{marks}</span>
+          </>
+        )}
 
-      {showName && <span className="atlas-initiative-card__name" aria-hidden="true">{name}</span>}
+        {showName && <span className="atlas-initiative-card__name" aria-hidden="true">{name}</span>}
 
-      {/* Initiative number, typed in place; in a fight by cards the card dealt, which nothing edits */}
-      {!bySides && (byCards ? <DealtCard card={entry.card} /> : (
-        <InitiativeNumber
-          value={entry.initiative}
-          empty={!hasInitiative(entry)}
-          editing={isEditingNumber}
-          onStartEdit={() => onStartNumberEdit(entry)}
-          onCommit={(text, step) => onCommitNumber(entry, text, step)}
-          onCancel={onCancelNumberEdit}
-        />
-      ))}
+        {/* Initiative number, typed in place; in a fight by cards the card dealt, which nothing edits */}
+        {!bySides && (byCards ? <DealtCard card={entry.card} /> : (
+          <InitiativeNumber
+            value={entry.initiative}
+            empty={!hasInitiative(entry)}
+            editing={isEditingNumber}
+            onStartEdit={() => onStartNumberEdit(entry)}
+            onCommit={(text, step) => onCommitNumber(entry, text, step)}
+            onCancel={onCancelNumberEdit}
+          />
+        ))}
 
-    </div>
+        <CardConditions conditions={conditions} />
+      </div>
+    </CardConditionsTooltip>
   );
 };

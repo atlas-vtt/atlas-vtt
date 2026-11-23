@@ -4,8 +4,13 @@ import type { MeasurementSettings } from '../grid/measurementFormat';
 import { sleeps } from '../lighting/lightActivity';
 import { lightZoneList, withZones } from '../lighting/lightZones';
 import { REFLECTION, wallRadius, worldTexel } from '../lighting/lightingConstants';
-import { AREA_SAMPLE_SPACING } from './areaReach';
-import { unitScaleOf } from '../lighting/lightingUnits';
+import { AREA_SAMPLE_SPACING, type AreaSampling } from './areaReach';
+import type { ReflectionSampling } from './reflectedLight';
+import type { PrebuildRequest } from './prebuild/scenePrebuild';
+import { prebuildWork, type PrebuiltScene } from './prebuild/prebuildParts';
+import { packWalls } from './prebuild/wallCodec';
+import { exploredMemoryOn, tokenVisionOn } from '../lighting/sceneLightingOptions';
+import { unitScaleOf, type UnitScale } from '../lighting/lightingUnits';
 import { sealedWalls } from '../lighting/sealWalls';
 import { SightTokens, heldForSight } from '../lighting/sightOnDrop';
 import type { HeldTokens } from '../types/viewUIState';
@@ -101,9 +106,10 @@ export class SceneModelBuilder {
    * `reflectedLight: false` builds lights without their reflection (`REFLECTION`), as before it
    * existed. With a `clock` (ms), a light that moves is built as moving (`LightMotion`): marked
    * `moving`, so the engine traces its tile cheaply; once it rests, the next update builds it
-   * whole (`restsAt`). Its reflection is there all along.
+   * whole (`restsAt`). Its reflection is there all along. `prebuildMinWork` is the work below which
+   * `prepare` leaves a scene to its build (`PREBUILD_MIN_WORK`).
    */
-  constructor(private readonly options: { reflectedLight?: boolean; clock?: () => number } = {}) {
+  constructor(private readonly options: { reflectedLight?: boolean; clock?: () => number; prebuildMinWork?: number } = {}) {
     this.motion = options.clock ? new LightMotion() : null;
   }
 
@@ -151,16 +157,49 @@ export class SceneModelBuilder {
     this.motion?.clear();
   }
 
-  private build(state: SceneState, tokens: Record<string, TokenEntity>, bounds: MapBounds, reach: MapBounds, measurement: MeasurementSettings, rules: SightRules | undefined, hasVision: boolean, kept: KeptLights): SceneModel {
+  /**
+   * Has the light reaches and sight polygons of `state` traced by `compute` (a worker, while the
+   * scene loads) and hands them to the caches the next build reads, which take them only where
+   * they still answer what that build asks: the same walls, each light where it was, each token
+   * where it stood. Whatever the build asks besides is traced as ever.
+   */
+  async prepare(state: SceneState, bounds: MapBounds, measurement: () => MeasurementSettings, sightRules: (() => SightRules) | undefined, reach: MapBounds, compute: (request: PrebuildRequest) => Promise<PrebuiltScene | null>): Promise<void> {
+    const tokens = this.sightTokens.read(state);
+    const settings = measurement();
+    const { scale, drawn, texel, shining, sampling, reflection } = this.lighting(state, tokens, bounds, settings, keptLights(state, settings));
+    // Sealed here, where the build looks for them: the walls are the very array its caches are keyed by.
+    const walls = sealedWalls(drawn, texel);
+    // A scene switched back to finds what it traced kept with its walls: the build traces only what changed since.
+    if (this.lightReaches.knows(walls) && this.sightCache.knows(walls)) return;
+    const packed = packWalls(walls);
+    if (!packed) return;
+    const sources = tokenVisionOn(state.lighting) ? sightSources(tokens, scale, reach, sightRules?.(), GM_SIGHT_POLICY) : [];
+    // A scene this light is traced by its build in a few milliseconds: the workers would cost more than they save.
+    if (prebuildWork(walls.length, shining, sources, reflection) < (this.options.prebuildMinWork ?? PREBUILD_MIN_WORK)) return;
+    const explored = sources.length > 0 && exploredMemoryOn(state.lighting);
+    const traced = await compute({ walls: packed, lights: shining, sampling, reflection, sources, explored });
+    if (!traced) return;
+    if (traced.reaches) this.lightReaches.prime(walls, sampling, reflection, shining, traced.reaches);
+    this.sightCache.prime(walls, traced.sight);
+  }
+
+  /** What the lights of `state` are traced from: the walls as drawn and their texel, the ambient light, the lights that shine and how they are sampled. */
+  private lighting(state: SceneState, tokens: Record<string, TokenEntity>, bounds: MapBounds, measurement: MeasurementSettings, kept: KeptLights): SceneLightingInputs {
     const scale = unitScaleOf(measurement, state.grid);
-    const walls = sealedWalls(wallList(levelObjects(state).walls), worldTexel(bounds));
+    const texel = worldTexel(bounds);
     const zoneList = lightZoneList(levelObjects(state).lightZones);
     const ambient = withZones(state.lighting, zoneList);
     const shining = activeLights(levelObjects(state).lights, tokens, ambient, kept).map((light) => engineLight(light, scale));
     // An area light's outline, and the edges of every light's shadows its reflection comes from,
     // are traced a quarter cell apart, clear of the capsules the picture puts around walls.
-    const sampling = { spacing: scale.cellSize * AREA_SAMPLE_SPACING, clearance: wallRadius(worldTexel(bounds)) };
+    const sampling = { spacing: scale.cellSize * AREA_SAMPLE_SPACING, clearance: wallRadius(texel) };
     const reflection = this.options.reflectedLight === false ? null : { ...sampling, reach: REFLECTION.cells * scale.cellSize };
+    return { scale, drawn: wallList(levelObjects(state).walls), texel, zoneList, ambient, shining, sampling, reflection };
+  }
+
+  private build(state: SceneState, tokens: Record<string, TokenEntity>, bounds: MapBounds, reach: MapBounds, measurement: MeasurementSettings, rules: SightRules | undefined, hasVision: boolean, kept: KeptLights): SceneModel {
+    const { scale, drawn, texel, zoneList, ambient, shining, sampling, reflection } = this.lighting(state, tokens, bounds, measurement, kept);
+    const walls = sealedWalls(drawn, texel);
     const moving = this.motion?.note(shining, this.options.clock!()) ?? NO_MOVING_LIGHTS;
     const everyReach = this.lightReaches.sync(shining, walls, sampling, reflection);
     // A light whose flame stands in magical darkness it does not outshine gives nothing: the picture and the rule both leave it out.
@@ -180,6 +219,25 @@ export class SceneModelBuilder {
 }
 
 const NO_ZONES: readonly EngineZone[] = [];
+
+/**
+ * The work (`prebuildWork`) below which a scene is not traced ahead (`prepare`): Lockwood Manor
+ * (some 300 walls, five vision tokens: about 3,000) traces in about 20 ms on the main thread; the
+ * level of the 18,649-wall cave shown (2,741 walls, area lights that reflect: about 240,000) took
+ * 190 ms, the stress scene more.
+ */
+const PREBUILD_MIN_WORK = 50_000;
+
+interface SceneLightingInputs {
+  scale: UnitScale;
+  drawn: readonly WallSegment[];
+  texel: number;
+  zoneList: ReturnType<typeof lightZoneList>;
+  ambient: AmbientLight;
+  shining: EngineLight[];
+  sampling: AreaSampling;
+  reflection: ReflectionSampling | null;
+}
 
 /** The kept areas of the level shown with what places their lights (`measureLights`). */
 function keptLights(state: SceneState, measurement: MeasurementSettings): KeptLights {

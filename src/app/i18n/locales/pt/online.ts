@@ -183,4 +183,9 @@ export const online: Translation = {
   'online.mapUnreadable': 'A imagem do mapa desta cena não pode ser enviada aos jogadores.',
   'online.fogTooMuch': 'Este mapa tem névoa demais para jogadores online. Eles o veem coberto até você limpar um pouco.',
   'online.assetsFailed': 'Não foi possível compartilhar um arquivo com os jogadores.',
+  'online.doorAsk': '{player} pede para abrir uma porta.',
+  'online.doorAskShow': 'Mostrar',
+  'online.doorAskHeading': '{player} pede para abrir esta porta',
+  'online.doorAskAllow': 'Abrir',
+  'online.doorAskDeny': 'Manter fechada',
 };

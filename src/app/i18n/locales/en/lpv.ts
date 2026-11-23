@@ -10,6 +10,8 @@ export const lpv = {
   'lpv.openWindow': 'Open player window',
   'lpv.playersDraw': 'Players may draw',
   'lpv.playersDrawHint': 'Online players get a Draw tool of their own. You can change and clear what they draw.',
+  'lpv.playersOpenDoors': 'Players may ask to open doors',
+  'lpv.playersOpenDoorsHint': 'Online players at a closed door can ask you to open it. You get a notice and decide on the map.',
   'lpv.showCursors': 'Show everyone\'s cursors',
   'lpv.showDiceRolls': 'Show dice rolls',
   'lpv.view4k': 'Render up to 4K',

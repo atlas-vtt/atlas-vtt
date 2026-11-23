@@ -17,7 +17,7 @@ import { FINGER_TARGET_RADIUS, fingerReaches, ReachPick } from '../utils/pointer
 /** Above the lighting layer and token UI, so the GM finds doors in the dark. */
 export const DOOR_ICONS_Z_INDEX = 1150;
 /** Badge radius as a share of a grid cell. */
-const BADGE_SHARE = 0.2;
+export const BADGE_SHARE = 0.2;
 /** The door glyph's edge as a share of the badge's radius: its corners stay inside the ring. */
 const GLYPH_SHARE = 1.35;
 /** Both glyphs stand on the bottom of their canvas: lifted, so they sit in the badge's middle. */

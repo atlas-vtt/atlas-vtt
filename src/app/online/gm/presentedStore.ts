@@ -39,6 +39,11 @@ export class PresentedStore implements SceneStore {
     return this.frozen !== null;
   }
 
+  /** The scene tab of the view Atlas presents, or null for none of its tabs. */
+  get presentedTabId(): string | null {
+    return this.presented?.tabId ?? null;
+  }
+
   /** The level of a scene with several that Atlas presents (the eye); unset is the first. */
   get presentedLevel(): string | undefined {
     return this.presented?.levelId;

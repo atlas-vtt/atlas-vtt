@@ -14,6 +14,7 @@ import type { SettingsService } from './SettingsService';
 import type { InitiativeLayout } from '../initiative/initiativeLayout';
 import { portraitSrc } from '../utils/portraitSrc';
 import { withArtViewBox } from '../initiative/art/artInset';
+import { playerCardKey } from './playerInitiativeCard';
 import { PlayerInitiativeStage } from './playerInitiativeStage';
 
 /** What of the GM's layout the list is drawn by: drawn anew when it changes. */
@@ -30,6 +31,8 @@ interface InitiativeScene {
   tokens: string;
   /** The scene's Show nameplates, which says with each token's own whom the list names. */
   mapShowsNameplates: boolean;
+  /** The card (`playerCardKey`) of the combatant whose conditions the GM's tracker names while it is hovered, or null. */
+  conditionsShown: string | null;
 }
 
 /**
@@ -53,16 +56,21 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
   /** How the lists come, go and move (`PlayerInitiativeStage`), as on the online player page. */
   private readonly stage = new PlayerInitiativeStage();
 
-  constructor(private readonly app: App, private readonly settings: SettingsService) {
+  /** `trueScale` says whether players see their TV at true scale (`PlayerWindowService.isTrueScale`): every card then shows its conditions. */
+  constructor(private readonly app: App, private readonly settings: SettingsService, private readonly trueScale: () => boolean = () => false) {
     super({ cls: 'atlas-player-initiative-container' }, settings);
     // The GM's layout is no player setting: the list is drawn anew when the edge or the start changes. Lists standing at
     // other edges then leave towards theirs as the new ones come in from theirs, overlapping a little
     let drawn = layoutKey(settings.initiativeLayout());
+    // TrueScale switched or a TV fitted (settings changes too) shows or takes away the cards' conditions
+    let shownTrueScale = this.trueScale();
     this.stopLayout = settings.onChange(() => {
       const next = layoutKey(settings.initiativeLayout());
-      if (next === drawn) return;
+      const nextTrueScale = this.trueScale();
+      if (next === drawn && nextTrueScale === shownTrueScale) return;
+      if (next !== drawn) this.stage.layoutChanged();
       drawn = next;
-      this.stage.layoutChanged();
+      shownTrueScale = nextTrueScale;
       this.refresh();
     });
     // Another theme, or none: the ivy comes or goes with the Atlas VTT theme
@@ -117,7 +125,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     this.badgeNumbers = undefined;
   }
 
-  protected select({ initiative, initiativeTrackerOpen, objects, mapPath, tokenSettings }: ViewAtlasState): InitiativeScene {
+  protected select({ initiative, initiativeTrackerOpen, objects, mapPath, tokenSettings, conditionsShownEntry }: ViewAtlasState): InitiativeScene {
     const entries = initiative?.entries ?? [];
     // Who is defeated follows the map's resources, as on the GM's cards
     const lookup = entries.length > 0 ? rulesLookup(this.app) : null;
@@ -127,7 +135,10 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     // A token's side counts where the fight or the rules know it
     const sides = entries.length > 0 && initiative ? sideIdsOf(initiative, mapInitiativeRules(this.app, mapPath ?? null)) : undefined;
     const entryTokens = JSON.stringify(entries.map((entry) => playersEntryToken(entry, objects?.tokens, definitions, conditions, sides)));
-    return { initiative, initiativeTrackerOpen, mapPath: mapPath ?? null, tokens: entryTokens, mapShowsNameplates: tokenSettings?.showNameplates ?? false };
+    // The GM hovers a combatant in the tracker: the list shows it and names its conditions (`showConditionsTip`)
+    const shownEntry = entries.find((entry) => entry.id === conditionsShownEntry);
+    const conditionsShown = shownEntry ? playerCardKey(shownEntry) : null;
+    return { initiative, initiativeTrackerOpen, mapPath: mapPath ?? null, tokens: entryTokens, mapShowsNameplates: tokenSettings?.showNameplates ?? false, conditionsShown };
   }
 
   protected render(container: HTMLElement, scene: InitiativeScene, settings: PlayerSettings): void {
@@ -179,6 +190,8 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
         portraitSrc: (imagePath) => portraitSrc(this.app, imagePath),
         artViewBox: (imagePath, apply) => withArtViewBox(this.app, imagePath, apply),
         icon: setIcon,
+        trueScale: this.trueScale(),
+        conditionsShown: scene.conditionsShown ?? undefined,
       });
       if (panel) this.stage.add(panel);
     }

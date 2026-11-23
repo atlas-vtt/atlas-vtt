@@ -505,7 +505,7 @@ export class PlayerWindowService {
     this.destroySceneOverlays();
     this.sceneOverlays = [
       new PlayerWidgetBar(this.settingsService),
-      new PlayerInitiativePanel(this.app, this.settingsService),
+      new PlayerInitiativePanel(this.app, this.settingsService, () => this.isTrueScale()),
       new PlayerDiceRolls(this.app, this.settingsService),
       new PlayerTurnBanner(this.app, this.settingsService),
     ];

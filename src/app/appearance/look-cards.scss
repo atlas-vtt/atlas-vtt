@@ -1,0 +1,86 @@
+@use '../../../styles/tokens' as *;
+@use '../../../styles/mixins' as *;
+
+// The looks as picture cards (LookCards.tsx): the welcome wizard's look step and the palette's Appearance page.
+.atlas-look-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: $spacing-m;
+  // The chosen card's outline stands outside it: room for it, so no parent clips it.
+  padding: $border-width-l * 2;
+
+  &--compact {
+    gap: $spacing-s;
+  }
+}
+
+// A card holds its picture $surface-inset inside, so the picture's corner runs concentric with the card's.
+button.atlas-look-card {
+  display: flex;
+  flex-direction: column;
+  // Obsidian centres a button's content; a card's runs from its start, its text cut to the card's width.
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: $surface-inset;
+  height: auto;
+  min-width: 0;
+  margin: 0;
+  padding: $surface-inset;
+  border: none;
+  box-shadow: none;
+  border-radius: $radius-m;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  text-align: start;
+  cursor: pointer;
+  transition: background-color $transition-fast;
+
+  @media (hover: hover) {
+    &:hover {
+      background: var(--background-modifier-hover);
+      box-shadow: none;
+    }
+  }
+
+  &:focus-visible {
+    box-shadow: none;
+  }
+
+  &[aria-checked='true'] {
+    outline: $border-width-l solid var(--text-normal);
+    outline-offset: $border-width-l;
+  }
+}
+
+.atlas-look-card__picture {
+  display: block;
+  width: 100%;
+  aspect-ratio: 480 / 300;
+  object-fit: cover;
+  border-radius: $control-inset-radius;
+  user-select: none;
+}
+
+.atlas-look-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  padding: $spacing-xs;
+  min-width: 0;
+}
+
+.atlas-look-card__name {
+  font-size: $font-ui-small;
+  font-weight: $font-weight-semibold;
+  line-height: 1.3;
+  @include atlas-truncate;
+}
+
+.atlas-look-card__note {
+  font-size: $font-ui-smaller;
+  line-height: 1.3;
+  color: var(--text-muted);
+  // A theme's name can be long: it wraps once (Obsidian's buttons do not wrap), then is cut.
+  white-space: normal;
+  @include atlas-line-clamp(2);
+}

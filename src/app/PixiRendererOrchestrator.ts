@@ -101,6 +101,9 @@ import { installFoggedPartyRings } from './pixi/token-renderer/FoggedPartyRings'
 import { TokenPlacer } from './pixi/tokenPlacement/TokenPlacer';
 import { PlacementHand } from './pixi/tokenPlacement/placementHand';
 
+/** How long a reveal waits at most for the lighting a load traces ahead (`scene-hydrated`), in ms. */
+const SCENE_PREPARE_WAIT_MS = 1000;
+
 export class PixiRendererOrchestrator { // Renamed class
   private _isDestroyed: boolean = false;
   private pixiAppManager: PixiAppManager;
@@ -135,6 +138,8 @@ export class PixiRendererOrchestrator { // Renamed class
   private stopFogFollowingPlayers: (() => void) | undefined;
   /** The GM view's walls, lights and sight; the player view has none. */
   private lighting?: LightingController;
+  /** The lighting's work ahead for the scene being loaded (`scene-hydrated`), until its reveal waits for it. */
+  private scenePrepared: Promise<void> | null = null;
   /** The roof of the level shown, above the lighting. */
   private roofs?: ViewRoofs;
   /** Where gliding tokens are drawn: the token renderer notes them, the lighting reads its tokens there. */
@@ -178,6 +183,8 @@ export class PixiRendererOrchestrator { // Renamed class
   private eventBusUnsubscribers: Array<() => void> = [];
   /** Screen-space overlays that exist only for the DM, such as tool previews. */
   private readonly dmScreenOverlays = new Set<Container>();
+  /** Layers of the map that only the players' frame shows (`addPlayerFrameLayer`). */
+  private readonly playerFrameOnly = new Set<Container>();
 
   private getSourceLeaf(): WorkspaceLeaf | null {
     return findAtlasLeafByViewId(this.obsApp.workspace, this.viewId);
@@ -965,6 +972,29 @@ export class PixiRendererOrchestrator { // Renamed class
     };
   }
 
+  /**
+   * Puts `layer` into the map (world space, its own `zIndex`) where only the players' frame shows it: the
+   * player window draws it, the GM's canvas and the scene's pictures never do. For what the GM sees
+   * another way already, as the players' measurements Atlas Online draws over the GM's canvas. `changed`
+   * asks for a render while a player window mirrors this view, so it takes what the layer shows now;
+   * `remove` takes it out again.
+   */
+  public addPlayerFrameLayer(layer: Container): { changed(): void; remove(): void } {
+    layer.visible = false;
+    this.pixiAppManager.getViewport()?.addChild(layer);
+    this.playerFrameOnly.add(layer);
+    return {
+      // Only a player window that mirrors this view needs the frame: the GM's own canvas shows nothing of the layer.
+      changed: () => {
+        if (PlayerWindowService.getInstance()?.mirrors(this.store) === true) requestRender(this.pixiAppManager.app);
+      },
+      remove: () => {
+        this.playerFrameOnly.delete(layer);
+        layer.parent?.removeChild(layer);
+      },
+    };
+  }
+
   public getGridOptions(): GridOptions | null {
     return this.gridSystem?.getOptions() || null;
   }
@@ -1080,6 +1110,7 @@ export class PixiRendererOrchestrator { // Renamed class
     // What only the GM sees of the drawings and texts, and the Draw tool's own marks
     layers.push(...(this.annotations?.getPlayerViewLayers() ?? []));
     for (const overlay of this.dmScreenOverlays) layers.push({ layer: overlay, visible: false });
+    for (const layer of this.playerFrameOnly) layers.push({ layer, visible: true });
     return layers;
   }
 
@@ -1553,18 +1584,26 @@ export class PixiRendererOrchestrator { // Renamed class
       this.eventBusUnsubscribers.push(() => this.eventBus.off(event, handler));
     };
 
+    on('scene-hydrated', () => {
+      const prepared = this.lighting?.prepareScene();
+      // Waited for a while at most: past that the reveal traces what is left on the main thread.
+      this.scenePrepared = prepared ? Promise.race([prepared, new Promise<void>((resolve) => window.setTimeout(resolve, SCENE_PREPARE_WAIT_MS))]) : null;
+    });
+
     on('wait-for-tokens-loaded', (callback: () => void) => {
+      // What the lighting traces ahead is waited for too: the reveal would otherwise trace it on the main thread.
+      const prepared = this.scenePrepared;
+      this.scenePrepared = null;
+      const done = (): void => {
+        if (prepared) void prepared.then(callback);
+        else callback();
+      };
       if (this.tokenRenderer) {
         // Force sync tokens before checking if they're loaded
         this.tokenRenderer.forceSyncTokens();
-
-
-        this.tokenRenderer.onWhenAllTokensLoaded(() => {
-          callback();
-        });
+        this.tokenRenderer.onWhenAllTokensLoaded(done);
       } else {
-        // No token renderer, just call the callback
-        callback();
+        done();
       }
     });
   }

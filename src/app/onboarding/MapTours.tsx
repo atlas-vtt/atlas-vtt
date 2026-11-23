@@ -34,7 +34,25 @@ export function MapTours({ root, settings: explicit }: MapToursProps): React.JSX
   const hasDock = useWatched(root, hasDockIn);
   const hasLog = useWatched(root, hasLogIn);
   if (!settings || busy || !shown) return null;
-  if (app && shouldWelcome(settings)) return <WelcomeWizard app={app} settings={settings} root={root} />;
+  // The wizard stays in the tree after it is done, in the same place, so it closes with its motion.
+  return (
+    <>
+      {app && <WelcomeWizard app={app} settings={settings} doc={root?.ownerDocument} />}
+      {!(app && shouldWelcome(settings)) && <MapTour settings={settings} root={root} keyLabel={key} hasDock={hasDock} hasLog={hasLog} />}
+    </>
+  );
+}
+
+interface MapTourProps {
+  settings: SettingsService;
+  root: HTMLElement | null;
+  keyLabel: (id: MapHotkeyId) => string;
+  hasDock: boolean;
+  hasLog: boolean;
+}
+
+/** The first of the map's tours this GM has not taken yet, if any. */
+function MapTour({ settings, root, keyLabel: key, hasDock, hasLog }: MapTourProps): React.JSX.Element | null {
   if (settings.shouldShowTutorial('map')) {
     const trackpad = settings.getNavigationSettings().inputMode === 'trackpad';
     return <Tutorial settings={settings} id="map" root={root} label={t('tour.map.label')} steps={mapSteps(key, trackpad)} />;

@@ -73,6 +73,7 @@ export class MosaicCanvas {
       renderer: deps.renderer,
       requestRender: deps.requestRender,
       ...(deps.textureBudget !== undefined && { budgetBytes: deps.textureBudget }),
+      ...(deps.uploadAtOnce && { uploadAtOnce: deps.uploadAtOnce }),
     });
     this.resident = new ResidentOverviews(this.cache);
     const camera = viewportCamera(deps.viewport, deps.renderer ?? { resolution: 1 });

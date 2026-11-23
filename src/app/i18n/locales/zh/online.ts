@@ -183,4 +183,9 @@ export const online: Translation = {
   'online.mapUnreadable': '无法把这个场景的地图图片发送给玩家。',
   'online.fogTooMuch': '这张地图的迷雾对在线玩家来说太多了。在你清除一些之前，他们看到的是全部覆盖。',
   'online.assetsFailed': '有一个文件无法分享给玩家。',
+  'online.doorAsk': '{player} 请求打开一扇门。',
+  'online.doorAskShow': '查看',
+  'online.doorAskHeading': '{player} 请求打开这扇门',
+  'online.doorAskAllow': '打开',
+  'online.doorAskDeny': '保持关闭',
 };
