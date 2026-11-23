@@ -65,6 +65,10 @@ export class RenderScheduler {
    * render after (PIXI keeps its render groups' changes until a render consumes them). For a map
    * load, whose scene is built in steps behind the held last frame or the loading screen.
    */
+  public isHeld(): boolean {
+    return this.held;
+  }
+
   public holdRenders(held: boolean): void {
     if (this.held === held) return;
     this.held = held;
@@ -162,6 +166,11 @@ export function requestRender(app: Application): void {
 /** Holds or releases `app`'s renders on ticks (`RenderScheduler.holdRenders`). Does nothing for apps without a scheduler. */
 export function holdRenders(app: Application, held: boolean): void {
   schedulers.get(app)?.holdRenders(held);
+}
+
+/** Whether `app`'s renders are held (`holdRenders`): nothing of its canvas is drawn anew meanwhile. */
+export function rendersHeld(app: Application): boolean {
+  return schedulers.get(app)?.isHeld() ?? false;
 }
 
 /** Whether `app` renders only when its stage changed, through a scheduler, rather than on every tick. */
