@@ -57,6 +57,24 @@ describe('revealInList', () => {
     expect(list.scrollTop).toBe(0);
   });
 
+  it('leaves an element that fills its list where it is, as scrollIntoView does', () => {
+    const list = box(null, { top: 0, bottom: 300, scrolls: { overflow: 'auto', hidden: 1000 } });
+    list.scrollTop = 600;
+    revealInList(box(list, { top: -360, bottom: 640 }));
+    expect(list.scrollTop).toBe(600);
+  });
+
+  it('brings the near edge of an element longer than its list to the list\'s far edge', () => {
+    const list = box(null, { top: 0, bottom: 300, scrolls: { overflow: 'auto', hidden: 1000 } });
+    list.scrollTop = 800;
+    revealInList(box(list, { top: -560, bottom: 140 }));
+    expect(list.scrollTop).toBe(640);
+
+    list.scrollTop = 0;
+    revealInList(box(list, { top: 120, bottom: 820 }));
+    expect(list.scrollTop).toBe(120);
+  });
+
   it('leaves a row that shows, and an element in no list, where they are', () => {
     const list = box(null, { top: 0, bottom: 100, scrolls: { overflow: 'auto', hidden: 200 } });
     list.scrollTop = 30;
