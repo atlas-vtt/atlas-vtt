@@ -64,8 +64,8 @@ export function resolveCssColor(cssColor: string): string {
   return resolved || '#00ffff'; // Fallback if resolution fails
 }
 
-/** Theme colours as last resolved, by their variable, each with the value it was resolved from. */
-const resolvedThemeColors = new Map<string, { raw: string; color: string }>();
+/** Theme colours as last resolved, by their variable: the value each was resolved from and the body's class and style it was read under. */
+const resolvedThemeColors = new Map<string, { raw: string; color: string; body: string }>();
 
 /** Makes the next `getObsidianAccentColor` and `getObsidianErrorColor` resolve their colour anew (`registerAccentColorSync`). */
 export function forgetObsidianAccentColor(): void {
@@ -73,17 +73,20 @@ export function forgetObsidianAccentColor(): void {
 }
 
 /**
- * The colour the theme's `variable` names, `fallback` where it names none. Resolved once per value
- * of the variable: resolving puts an element into the body, and an insertion there can make
- * Chromium restyle the whole document.
+ * The colour the theme's `variable` names, `fallback` where it names none. Read again only when the
+ * body's class or inline style changed (a theme switch, an accent Obsidian sets) or Obsidian's CSS
+ * did (`forgetObsidianAccentColor`): reading a computed style while the document is being changed
+ * makes Chromium restyle it first. Resolved once per value of the variable: resolving puts an
+ * element into the body, and an insertion there can make Chromium restyle the whole document.
  */
 function themeColor(variable: string, fallback: string): string {
-  const raw = (getComputedStyle(document.body).getPropertyValue(variable) || '').trim();
-  if (!raw) return fallback;
+  const { body } = document;
+  const read = `${body.className}|${body.getAttribute('style') ?? ''}`;
   const known = resolvedThemeColors.get(variable);
-  if (known?.raw === raw) return known.color;
-  const color = resolveCssColor(raw);
-  resolvedThemeColors.set(variable, { raw, color });
+  if (known?.body === read) return known.color;
+  const raw = (getComputedStyle(body).getPropertyValue(variable) || '').trim();
+  const color = !raw ? fallback : known?.raw === raw ? known.color : resolveCssColor(raw);
+  resolvedThemeColors.set(variable, { raw, color, body: read });
   return color;
 }
 
