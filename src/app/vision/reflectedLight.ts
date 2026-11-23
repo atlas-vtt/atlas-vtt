@@ -8,6 +8,7 @@ import type { WallSegment } from '../types/wallTypes';
 import { nearbySegments, twoWayWalls, type LightReachPart } from './areaReach';
 import { inBox, polygonBox } from './polygonBounds';
 import { computeVisibility, pointInPolygon, type Polygon } from './visibility';
+import { insidePolygon } from './polygonIndex';
 import type { VisionCone } from './visionCone';
 
 /**
@@ -123,7 +124,7 @@ function samples(reach: ReflectingReach, spacing: number): Sample[] {
   edgesOf.forEach((edges, i) => {
     const source = parts[i]!.origin;
     for (const point of along(edges, step)) {
-      if (pointInPolygon(point, polygon) || withinAnother(point, parts, i, reach.dim)) continue;
+      if (insidePolygon(point, polygon) || withinAnother(point, parts, i, reach.dim)) continue;
       found.push({ point, travelled: Math.hypot(point.x - source.x, point.y - source.y) });
     }
   });
@@ -135,7 +136,7 @@ function withinAnother(point: Point, parts: readonly LightReachPart[], own: numb
   for (let k = 1; k < parts.length; k++) {
     const j = (own + (k % 2 === 1 ? (k + 1) / 2 : parts.length - k / 2)) % parts.length;
     const part = parts[j]!;
-    if (Math.hypot(point.x - part.origin.x, point.y - part.origin.y) <= dim && pointInPolygon(point, part.polygon)) return true;
+    if (Math.hypot(point.x - part.origin.x, point.y - part.origin.y) <= dim && insidePolygon(point, part.polygon)) return true;
   }
   return false;
 }
