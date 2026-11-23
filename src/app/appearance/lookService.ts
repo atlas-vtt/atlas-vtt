@@ -1,6 +1,6 @@
 import type { App } from 'obsidian';
 import type { SettingsService } from '../services/SettingsService';
-import { LOOK_FOG_EDGE_STYLE, RETIRED_THEME_NAME, isAtlasLook, type AtlasLook } from './atlasLook';
+import { LOOK_DICE_FONT, LOOK_FOG_EDGE_STYLE, RETIRED_THEME_NAME, isAtlasLook, type AtlasLook } from './atlasLook';
 
 /** The GM's own Obsidian theme, or one of Atlas' looks drawn over Obsidian's default theme. */
 export type LookChoice = 'own' | AtlasLook;
@@ -46,7 +46,7 @@ export class LookService {
     return this.choice;
   }
 
-  /** An Atlas look switches Obsidian to its default theme and the fog to the look's edge; the GM's own puts their theme back. */
+  /** An Atlas look switches Obsidian to its default theme, the fog to the look's edge and the dice to its numerals; the GM's own puts their theme back. */
   set(choice: LookChoice): void {
     if (choice === this.choice) return;
     if (isAtlasLook(choice)) {
@@ -55,6 +55,7 @@ export class LookService {
         this.app.customCss?.setTheme?.(DEFAULT_THEME);
       }
       this.settings.setFogEdge({ style: LOOK_FOG_EDGE_STYLE[choice] });
+      this.settings.setDiceLook({ font: LOOK_DICE_FONT[choice] });
     } else {
       this.restoreTheme();
     }

@@ -1,6 +1,7 @@
 import type { Plugin } from 'obsidian';
 import { inEveryDocument } from '../platform/atlasDocuments';
 import type { FogEdgeStyle } from '../fog/fogEdge';
+import type { DiceFont } from '../dice3d/diceLook';
 import type { LookService } from './lookService';
 
 /** Atlas' two looks: the mediaeval module page and the clean sci-fi one. */
@@ -8,6 +9,9 @@ export type AtlasLook = 'mediaeval' | 'scifi';
 
 /** The fog's edge each look switches to: a crackled module page, a soft clean screen. */
 export const LOOK_FOG_EDGE_STYLE: Record<AtlasLook, FogEdgeStyle> = { mediaeval: 'crackle', scifi: 'soft' };
+
+/** The dice numerals each look switches to: drawn by hand, or Oxanium. */
+export const LOOK_DICE_FONT: Record<AtlasLook, DiceFont> = { mediaeval: 'medieval', scifi: 'scifi' };
 
 /** On `body` while one of Atlas' looks is on. */
 export const LOOK_CLASS = 'atlas-look';
