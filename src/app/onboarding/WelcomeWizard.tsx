@@ -4,11 +4,12 @@ import { Check } from 'lucide-react';
 import { Tutorial, type TutorialStep } from './Tutorial';
 import { Button } from '../packages/components/primitives/button';
 import type { SettingsService } from '../services/SettingsService';
-import { useAtlasSettings, useHotkeyLabels } from '../keyboard/useMapHotkeys';
+import { useHotkeyLabels } from '../keyboard/useMapHotkeys';
 import { ATLAS_DISCORD_URL, ATLAS_DOCS_URL } from '../support/communityLinks';
 import { COMPANION_URLS, companionInUse, type CompanionId } from './companions';
 import { SegmentedControl } from '../packages/components/primitives/SegmentedControl';
-import { lookOptions } from '../react/components/command-palette/AppearancePanel';
+import { lookOptions, useLookChoice } from '../react/components/command-palette/AppearancePanel';
+import { LookService } from '../appearance/lookService';
 import { t } from '../i18n';
 
 interface WelcomeWizardProps {
@@ -28,11 +29,7 @@ export function shouldWelcome(settings: SettingsService): boolean {
 /** The first thing a new GM sees: what Atlas is, where help is, and the add-ons made to go with it. The tours follow. */
 export function WelcomeWizard({ app, settings, root }: WelcomeWizardProps): React.JSX.Element {
   const key = useHotkeyLabels();
-  // Subscribed, so the look step shows the look just picked.
-  useAtlasSettings(settings);
-  const themeOn = useCompanionInUse(app, 'theme');
-  const steps = welcomeSteps(app, key('palette'));
-  if (themeOn) steps.push(lookStep(settings));
+  const steps = [...welcomeSteps(app, key('palette')), lookStep(LookService.forApp(app, settings))];
   return (
     <Tutorial
       settings={settings}
@@ -64,24 +61,27 @@ function welcomeSteps(app: App, paletteKey: string): TutorialStep[] {
       extra: (
         <div className="atlas-welcome-companions">
           <CompanionRow app={app} id="sidebar" />
-          <CompanionRow app={app} id="theme" />
         </div>
       ),
     },
   ];
 }
 
-/** Shown once the Atlas theme is in use, from the start or after the GM installs it from the step before. */
-function lookStep(settings: SettingsService): TutorialStep {
+function lookStep(looks: LookService): TutorialStep {
   return {
     title: t('tour.welcome.lookTitle'),
     body: t('tour.welcome.lookBody'),
     extra: (
       <div className="atlas-welcome-links">
-        <SegmentedControl options={lookOptions()} value={settings.getLook()} ariaLabel={t('appearance.look')} onChange={(look) => settings.setLook(look)} />
+        <LookPicker looks={looks} />
       </div>
     ),
   };
+}
+
+function LookPicker({ looks }: { looks: LookService }): React.JSX.Element {
+  const look = useLookChoice(looks);
+  return <SegmentedControl options={lookOptions()} value={look} ariaLabel={t('appearance.look')} onChange={(choice) => looks.set(choice)} />;
 }
 
 function CompanionRow({ app, id }: { app: App; id: CompanionId }): React.JSX.Element {

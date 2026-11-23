@@ -1,19 +1,16 @@
 import type { App } from 'obsidian';
-import { ATLAS_THEME_NAME, atlasThemeActive } from '../appearance/atlasLook';
 
 /** Atlas' companion add-ons, each listed in Obsidian's community directory. */
-export type CompanionId = 'sidebar' | 'theme';
+export type CompanionId = 'sidebar';
 
-const SIDEBAR_PLUGIN_ID = 'atlas-sidebar';
+const PLUGIN_IDS: Record<CompanionId, string> = { sidebar: 'atlas-sidebar' };
 
 /** Obsidian's own page of the add-on, where the GM installs it: Atlas never installs anything itself. */
 export const COMPANION_URLS: Record<CompanionId, string> = {
-  sidebar: `obsidian://show-plugin?id=${SIDEBAR_PLUGIN_ID}`,
-  theme: `obsidian://show-theme?name=${encodeURIComponent(ATLAS_THEME_NAME)}`,
+  sidebar: `obsidian://show-plugin?id=${PLUGIN_IDS.sidebar}`,
 };
 
-/** Whether the add-on is in use: the plugin enabled, the theme the active one. */
+/** Whether the add-on is in use: the plugin enabled. */
 export function companionInUse(app: App, id: CompanionId): boolean {
-  if (id === 'sidebar') return app.plugins?.enabledPlugins.has(SIDEBAR_PLUGIN_ID) ?? false;
-  return atlasThemeActive(app);
+  return app.plugins?.enabledPlugins.has(PLUGIN_IDS[id]) ?? false;
 }

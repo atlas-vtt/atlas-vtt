@@ -54,6 +54,7 @@ import { mapsSettingsSection } from './src/app/settings/mapsSettingsSection';
 import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSettingsSection';
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
 import { registerLookSync } from './src/app/appearance/atlasLook';
+import { LookService } from './src/app/appearance/lookService';
 import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
 import { applyDiceBudgets, registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
 import { registerForegroundWork } from './src/app/plugin/foregroundWork';
@@ -138,6 +139,7 @@ export default class AtlasVTTPlugin extends Plugin {
   public globalAssetManager!: GlobalAssetManagerService;
   private imageDisplayService!: ImageDisplayService;
   private changelogService: ChangelogService | undefined;
+  private looks: LookService | undefined;
 
   /** The scene presented to players on this device, whether or not the player window is open (read-only). */
   get presentedScene(): PresentedSceneSource {
@@ -266,7 +268,10 @@ export default class AtlasVTTPlugin extends Plugin {
     await this.settingsService.initialize();
     if (this.unloaded) return;
     registerDiceLookSync(this, this.settingsService);
-    registerLookSync(this, this.settingsService);
+    const looks = LookService.forApp(this.app, this.settingsService);
+    this.looks = looks;
+    looks.reconcileAtStart();
+    registerLookSync(this, looks);
     this.registerStatblockPanels();
     const installed = await existingInstallation;
     if (this.unloaded) return;
@@ -359,6 +364,9 @@ export default class AtlasVTTPlugin extends Plugin {
     if (this.unsupported) return;
     this.changelogService?.destroy();
     void this.settingsService?.saveSettingsNow();
+    // Disabling Atlas gives the GM their theme back; a reload or an update keeps the look.
+    this.looks?.restoreOnDisable(this.manifest.id);
+    LookService.release(this.app);
     SystemPresetFiles.release(this.app);
     PlayedRules.release(this.app);
     CampaignBooks.release(this.app);

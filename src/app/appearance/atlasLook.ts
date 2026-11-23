@@ -1,56 +1,48 @@
-import type { App, Plugin } from 'obsidian';
+import type { Plugin } from 'obsidian';
 import { inEveryDocument } from '../platform/atlasDocuments';
-import type { SettingsService } from '../services/SettingsService';
 import type { FogEdgeStyle } from '../fog/fogEdge';
+import type { LookService } from './lookService';
 
-/** The two looks of the Atlas theme: the mediaeval module page and the clean sci-fi one. */
+/** Atlas' two looks: the mediaeval module page and the clean sci-fi one. */
 export type AtlasLook = 'mediaeval' | 'scifi';
 
 /** The fog's edge each look switches to: a crackled module page, a soft clean screen. */
 export const LOOK_FOG_EDGE_STYLE: Record<AtlasLook, FogEdgeStyle> = { mediaeval: 'crackle', scifi: 'soft' };
 
-/** The Atlas theme draws its Sci-fi look under this class on `body`; nothing else reads it. */
+/** On `body` while one of Atlas' looks is on. */
+export const LOOK_CLASS = 'atlas-look';
+
+/** On `body` while the Sci-fi look is on, beside `LOOK_CLASS`. */
 export const SCIFI_LOOK_CLASS = 'atlas-look-scifi';
 
-/** The theme's name in its manifest, which is how Obsidian knows themes. */
-export const ATLAS_THEME_NAME = 'Atlas VTT';
+/** The companion theme's name in its manifest, which drew the looks before Atlas did. */
+export const RETIRED_THEME_NAME = 'Atlas VTT';
 
 export function isAtlasLook(value: unknown): value is AtlasLook {
   return value === 'mediaeval' || value === 'scifi';
 }
 
-export function atlasThemeInstalled(app: App): boolean {
-  return app.customCss?.themes?.[ATLAS_THEME_NAME] !== undefined;
-}
-
-export function atlasThemeActive(app: App): boolean {
-  return app.customCss?.theme === ATLAS_THEME_NAME;
-}
-
-/** Makes the Atlas theme the vault's theme, as picking it under Appearance does. */
-export function switchToAtlasTheme(app: App): void {
-  app.customCss?.setTheme?.(ATLAS_THEME_NAME);
-}
-
 /**
- * Keeps every window's `body` in the look the settings name while the Atlas theme is in use (Obsidian announces a
- * theme switch as `css-change`), and takes the class off when Atlas unloads. A switch of look is announced as
- * `css-change` too, since what reads the theme's CSS (the ivy Atlas lends its initiative trackers) follows that.
+ * Keeps every window's `body` in the look of this device, and takes the classes off when Atlas unloads. A switch of
+ * look is announced as `css-change`, once every window shows it, since what reads the look's CSS (the ivy Atlas lends
+ * its initiative trackers) follows that. A theme Obsidian switches to (its own `css-change`) ends an Atlas look.
  */
-export function registerLookSync(plugin: Plugin, settings: SettingsService): void {
+export function registerLookSync(plugin: Plugin, looks: LookService): void {
   const { app } = plugin;
-  const scifi = (): boolean => settings.getLook() === 'scifi' && atlasThemeActive(app);
+  const documents = new Set<Document>();
+  const apply = (doc: Document): void => {
+    const look = looks.get();
+    doc.body.toggleClass(LOOK_CLASS, isAtlasLook(look));
+    doc.body.toggleClass(SCIFI_LOOK_CLASS, look === 'scifi');
+  };
   inEveryDocument(plugin, (doc) => {
-    const apply = (): void => { doc.body.toggleClass(SCIFI_LOOK_CLASS, scifi()); };
-    apply();
-    const stop = settings.onChange(apply);
-    const css = app.workspace.on('css-change', apply);
-    return () => { stop(); app.workspace.offref(css); doc.body.removeClass(SCIFI_LOOK_CLASS); };
+    documents.add(doc);
+    apply(doc);
+    return () => { documents.delete(doc); doc.body.removeClass(LOOK_CLASS, SCIFI_LOOK_CLASS); };
   });
-  let shown = scifi();
-  plugin.register(settings.onChange(() => {
-    if (scifi() === shown) return;
-    shown = !shown;
+  plugin.register(looks.onChange(() => {
+    for (const doc of documents) apply(doc);
     app.workspace.trigger('css-change');
   }));
+  plugin.registerEvent(app.workspace.on('css-change', () => looks.followThemeChange()));
 }
