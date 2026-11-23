@@ -18,7 +18,7 @@ afterAll(() => { MotionGlobalConfig.skipAnimations = false; });
 function appWith(plugins: string[]): { app: App; settings: SettingsService } {
   const storage = new Map<string, unknown>();
   const app = {
-    vault: { adapter: { exists: async () => true, write: async () => {} } },
+    vault: { adapter: { exists: async () => true, write: async () => {} }, getConfig: () => null, setConfig: () => {}, on: () => ({}), offref: () => {} },
     plugins: { plugins: {}, enabledPlugins: new Set(plugins) },
     workspace: { on: () => ({}), offref: () => {} },
     customCss: { theme: 'Minimal', themes: { Minimal: {} }, setTheme: () => {} },
@@ -47,8 +47,9 @@ it('opens on the carousel and pages through help, the sidebar and the look', () 
   next();
   expect(screen.getByRole('heading', { name: 'Atlas Sidebar' })).toBeTruthy();
   next();
-  expect(screen.getByRole('heading', { name: 'Pick a look' })).toBeTruthy();
-  expect(screen.getAllByRole('radio')).toHaveLength(3);
+  expect(screen.getByRole('heading', { name: 'Make it yours' })).toBeTruthy();
+  expect(screen.getByRole('radiogroup', { name: 'Look' }).querySelectorAll('[role="radio"]')).toHaveLength(3);
+  expect(screen.getByRole('radiogroup', { name: 'Accent colour' })).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Next' })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   expect(screen.getByRole('heading', { name: 'Atlas Sidebar' })).toBeTruthy();

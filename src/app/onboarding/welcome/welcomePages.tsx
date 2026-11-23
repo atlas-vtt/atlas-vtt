@@ -5,22 +5,23 @@ import { Button } from '../../packages/components/primitives/button';
 import { ATLAS_DISCORD_URL, ATLAS_DOCS_URL } from '../../support/communityLinks';
 import { COMPANION_URLS, companionInUse } from '../companions';
 import type { LookService } from '../../appearance/lookService';
-import { LookCards } from '../../appearance/LookCards';
+import { AppearanceChoices } from '../../appearance/AppearanceChoices';
 import sidebarPicture from '../../assets/welcome/sidebar.webp';
 import { t } from '../../i18n';
 
 interface WelcomeTextProps {
-  kicker: string;
+  /** A small line above the heading; a page whose heading says it all has none. */
+  kicker?: string;
   title: string;
   body: string;
   children?: React.ReactNode;
 }
 
-/** A page's words: a small kicker, the heading in the look's heading face, and a line or two under it. */
+/** A page's words: a small kicker where there is one, the heading in the look's heading face, and a line or two under it. */
 export function WelcomeText({ kicker, title, body, children }: WelcomeTextProps): React.JSX.Element {
   return (
     <div className="atlas-welcome-text">
-      <span className="atlas-welcome-text__kicker">{kicker}</span>
+      {kicker && <span className="atlas-welcome-text__kicker">{kicker}</span>}
       <h2 className="atlas-welcome-text__title">{title}</h2>
       <p className="atlas-welcome-text__body">{body}</p>
       {children}
@@ -64,12 +65,12 @@ export function SidebarPage({ app }: { app: App }): React.JSX.Element {
   );
 }
 
-/** The three looks on picture cards; the choice is this device's and shows at once. */
-export function LookPage({ looks }: { looks: LookService }): React.JSX.Element {
+/** The look and the accent colour, as the palette's Appearance settings show them; the choice is this device's and shows at once. */
+export function LookPage({ app, looks }: { app: App; looks: LookService }): React.JSX.Element {
   return (
     <div className="atlas-welcome-page atlas-welcome-page--looks">
-      <WelcomeText kicker={t('tour.welcome.lookKicker')} title={t('tour.welcome.lookTitle')} body={t('tour.welcome.lookBody')} />
-      <LookCards looks={looks} size="page" />
+      <WelcomeText title={t('tour.welcome.lookTitle')} body={t('tour.welcome.lookBody')} />
+      <AppearanceChoices app={app} looks={looks} />
     </div>
   );
 }

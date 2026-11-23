@@ -38,7 +38,7 @@ const card = (name: string): HTMLElement => screen.getByRole('radio', { name });
 it('marks the chosen look', () => {
   const looks = looksOn('');
   looks.set('mediaeval');
-  render(<LookCards looks={looks} size="page" />);
+  render(<LookCards looks={looks} />);
   expect(screen.getByRole('radiogroup')).toBeTruthy();
   expect(card('Mediaeval').getAttribute('aria-checked')).toBe('true');
   expect(card('Your theme').getAttribute('aria-checked')).toBe('false');
@@ -48,15 +48,37 @@ it('marks the chosen look', () => {
 it('picks a look on a click', () => {
   const looks = looksOn('');
   const set = vi.spyOn(looks, 'set');
-  render(<LookCards looks={looks} size="compact" />);
+  render(<LookCards looks={looks} />);
   act(() => { fireEvent.click(card('Sci-fi')); });
   expect(set).toHaveBeenCalledWith('scifi');
   expect(card('Sci-fi').getAttribute('aria-checked')).toBe('true');
 });
 
+it('picks a look only on its picture: its name and note are plain text', () => {
+  const looks = looksOn('');
+  const set = vi.spyOn(looks, 'set');
+  render(<LookCards looks={looks} />);
+  act(() => { fireEvent.click(screen.getByText('Sci-fi')); });
+  act(() => { fireEvent.click(screen.getByText('Chalk and contours')); });
+  expect(set).not.toHaveBeenCalled();
+  expect(card('Sci-fi').getAttribute('aria-checked')).toBe('false');
+  expect(card('Sci-fi').contains(screen.getByText('Sci-fi'))).toBe(false);
+  expect(card('Sci-fi').querySelector('img')).toBeTruthy();
+  act(() => { fireEvent.click(card('Sci-fi')); });
+  expect(set).toHaveBeenCalledWith('scifi');
+});
+
+it('names each picture by its look and describes it by its note', () => {
+  render(<LookCards looks={looksOn('')} />);
+  const picture = card('Mediaeval');
+  expect(document.getElementById(picture.getAttribute('aria-labelledby') ?? '')?.textContent).toBe('Mediaeval');
+  expect(document.getElementById(picture.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Ink and ivy');
+  expect(screen.getByRole('radio', { name: 'Your theme', description: 'Obsidian’s default' })).toBeTruthy();
+});
+
 it('moves the choice with the arrow keys', () => {
   const looks = looksOn('');
-  render(<LookCards looks={looks} size="page" />);
+  render(<LookCards looks={looks} />);
   act(() => { fireEvent.keyDown(card('Your theme'), { key: 'ArrowRight' }); });
   expect(looks.get()).toBe('mediaeval');
   expect(document.activeElement).toBe(card('Mediaeval'));
@@ -65,30 +87,33 @@ it('moves the choice with the arrow keys', () => {
   expect(looks.get()).toBe('scifi');
   expect(card('Sci-fi').tabIndex).toBe(0);
   expect(card('Mediaeval').tabIndex).toBe(-1);
+  act(() => { fireEvent.keyDown(card('Sci-fi'), { key: 'Home' }); });
+  expect(looks.get()).toBe('own');
+  expect(document.activeElement).toBe(card('Your theme'));
 });
 
 it('names the GM\'s own theme on its card', () => {
   const looks = looksOn('Minimal');
   vi.spyOn(looks, 'previousThemeName').mockReturnValue('Minimal');
   looks.set('scifi');
-  render(<LookCards looks={looks} size="page" />);
+  render(<LookCards looks={looks} />);
   expect(screen.getByText('Minimal')).toBeTruthy();
   expect(screen.getByText('Ink and ivy')).toBeTruthy();
   expect(screen.getByText('Chalk and contours')).toBeTruthy();
 });
 
 it('names Obsidian\'s default theme where the GM has no theme of their own', () => {
-  render(<LookCards looks={looksOn('')} size="page" />);
+  render(<LookCards looks={looksOn('')} />);
   expect(screen.getByText('Obsidian’s default')).toBeTruthy();
 });
 
 it('names the theme in use while the GM keeps their own', () => {
-  render(<LookCards looks={looksOn('Minimal')} size="page" />);
+  render(<LookCards looks={looksOn('Minimal')} />);
   expect(screen.getByText('Minimal')).toBeTruthy();
 });
 
 it('renames the GM\'s own theme when they switch it in Obsidian while the cards show', () => {
-  const { unmount } = render(<LookCards looks={looksOn('Minimal')} size="page" />);
+  const { unmount } = render(<LookCards looks={looksOn('Minimal')} />);
   act(() => {
     cssOf.theme = 'Things';
     for (const listener of Array.from(cssListeners)) listener();

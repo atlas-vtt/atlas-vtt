@@ -1,44 +1,56 @@
 @use '../../../styles/tokens' as *;
 @use '../../../styles/mixins' as *;
 
-// The looks as picture cards (LookCards.tsx): the welcome wizard's look step and the palette's Appearance page.
+// The looks as picture cards (LookCards.tsx), in the appearance choices of the welcome wizard and the palette.
+// Only the picture is the choice: the name and note under it are plain text.
 .atlas-look-cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: $spacing-m;
-  // The chosen card's outline stands outside it: room for it, so no parent clips it.
+  // The chosen picture's outline stands outside it: room for it, so no parent clips it.
   padding: $border-width-l * 2;
-
-  &--compact {
-    gap: $spacing-s;
-  }
 }
 
-// A card holds its picture $surface-inset inside, so the picture's corner runs concentric with the card's.
-button.atlas-look-card {
+.atlas-look-card {
   display: flex;
   flex-direction: column;
-  // Obsidian centres a button's content; a card's runs from its start, its text cut to the card's width.
-  align-items: stretch;
-  justify-content: flex-start;
-  gap: $surface-inset;
-  height: auto;
+  gap: $spacing-s;
   min-width: 0;
+}
+
+// The picture as the radio. Its outline follows its corner, so the highlight runs concentric with the picture.
+button.atlas-look-card__choice {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
   margin: 0;
-  padding: $surface-inset;
+  padding: 0;
   border: none;
-  box-shadow: none;
   border-radius: $radius-m;
+  box-shadow: none;
   background: var(--background-secondary);
-  color: var(--text-normal);
-  text-align: start;
+  overflow: hidden;
   cursor: pointer;
-  transition: background-color $transition-fast;
+
+  // A hairline of the page's ink over the picture's edge, so a picture as light or dark as the page still shows it.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
+    pointer-events: none;
+    transition: box-shadow $transition-fast $transition-ease;
+  }
 
   @media (hover: hover) {
     &:hover {
-      background: var(--background-modifier-hover);
       box-shadow: none;
+
+      &::after {
+        box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) $border-opacity-strong, transparent);
+      }
     }
   }
 
@@ -57,7 +69,6 @@ button.atlas-look-card {
   width: 100%;
   aspect-ratio: 480 / 300;
   object-fit: cover;
-  border-radius: $control-inset-radius;
   user-select: none;
 }
 
@@ -65,7 +76,6 @@ button.atlas-look-card {
   display: flex;
   flex-direction: column;
   gap: $spacing-xs;
-  padding: $spacing-xs;
   min-width: 0;
 }
 
@@ -73,6 +83,7 @@ button.atlas-look-card {
   font-size: $font-ui-small;
   font-weight: $font-weight-semibold;
   line-height: 1.3;
+  color: var(--text-normal);
   @include atlas-truncate;
 }
 
@@ -80,7 +91,6 @@ button.atlas-look-card {
   font-size: $font-ui-smaller;
   line-height: 1.3;
   color: var(--text-muted);
-  // A theme's name can be long: it wraps once (Obsidian's buttons do not wrap), then is cut.
-  white-space: normal;
+  // A theme's name can be long: it wraps once, then is cut.
   @include atlas-line-clamp(2);
 }

@@ -84,7 +84,7 @@ function WelcomeWindow({ app, settings, looks, carousel, doc }: Omit<WelcomeDial
           {page === 'carousel' && <WelcomeFootStart.Provider value={footStart}>{carousel}</WelcomeFootStart.Provider>}
           {page === 'help' && <HelpPage paletteKey={key('palette')} />}
           {page === 'sidebar' && <SidebarPage app={app} />}
-          {page === 'look' && <LookPage looks={looks} />}
+          {page === 'look' && <LookPage app={app} looks={looks} />}
         </div>
         <div className="atlas-welcome__foot">
           <div className="atlas-welcome__progress">
