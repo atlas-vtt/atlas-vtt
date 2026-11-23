@@ -10,7 +10,7 @@ import { contextLost, glOf } from './gpu';
 import { createEngineWorld, type EngineWorld } from './engineWorld';
 import { ambientLift, darkLooks } from './senseDrawing';
 import { shadersOfPicture } from './engineShaders';
-import { describeShaderFailures, failedEngineShaders } from './shaderCheck';
+import { describeShaderFailures, shaderLinkFailures, startShaderLinks, type ShaderLinks } from './shaderCheck';
 import { unrenderableEngineTargets } from './targetCheck';
 import { SceneSightLayers } from './SceneSightLayers';
 import type { EngineScene, SceneFrame } from './types';
@@ -75,6 +75,8 @@ export class LightingEngine {
   private stopped = false;
   /** The picture whose shaders link on the current context; the traced one's are all of them. */
   private verified: PictureChoice | null = null;
+  /** The shaders of a picture handed to the driver ahead (`prepareShaders`), asked about by `ready`. */
+  private links: { picture: PictureChoice; started: ShaderLinks } | null = null;
   /** The context was restored: the world's textures are blank until it is rebuilt. */
   private stale = false;
   private restoreUnreported = false;
@@ -112,6 +114,18 @@ export class LightingEngine {
     const restored = this.restoreUnreported;
     this.restoreUnreported = false;
     return restored;
+  }
+
+  /**
+   * Hands the driver the shaders the first build checks (`ready`) to compile and link now, while
+   * a scene loads, so the browser's graphics process works on them meanwhile and the check finds
+   * them done. Nothing where they are checked on this context already, or the engine stopped.
+   */
+  prepareShaders(): void {
+    const picture = this.quality.picture ?? 'traced';
+    if (this.stopped || this.stale || this.links || this.verified === 'traced' || this.verified === picture || contextLost(this.renderer)) return;
+    const gl = glOf(this.renderer);
+    if (gl) this.links = { picture, started: startShaderLinks(gl, shadersOfPicture(picture)) };
   }
 
   /** Does nothing while disabled: the next update after `setEnabled(true)` builds everything. */
@@ -297,6 +311,8 @@ export class LightingEngine {
 
   destroy(): void {
     this.renderer.runners.contextChange.remove(this.contextListener);
+    if (this.links && !contextLost(this.renderer)) shaderLinkFailures(this.links.started);
+    this.links = null;
     this.dropWorld();
     this.sightLayers.destroy();
     destroyTree(this.layer);
@@ -328,6 +344,8 @@ export class LightingEngine {
       this.scene = scene;
       this.stale = false;
       this.verified = null;
+      // Handed to the context that was lost: nothing of them is left to ask about.
+      this.links = null;
     }
     const picture = this.quality.picture ?? 'traced';
     if (this.verified === 'traced' || this.verified === picture) return true;
@@ -337,7 +355,10 @@ export class LightingEngine {
       this.stop();
       return false;
     }
-    const failures = failedEngineShaders(gl, shadersOfPicture(picture));
+    const links = this.links?.picture === picture && this.links.started.gl === gl ? this.links.started : startShaderLinks(gl, shadersOfPicture(picture));
+    if (this.links && this.links.started !== links) shaderLinkFailures(this.links.started);
+    this.links = null;
+    const failures = shaderLinkFailures(links);
     const unrenderable = unrenderableEngineTargets(gl);
     // Lost while compiling: the logs say nothing about the device. Wait for the restore.
     if (contextLost(this.renderer)) return false;

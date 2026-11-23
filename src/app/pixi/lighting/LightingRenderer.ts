@@ -419,14 +419,16 @@ export class LightingRenderer implements SceneLightingView {
 
   /**
    * The store holds the scene a load brings, its map still hidden: its light reaches and sight are
-   * traced off the main thread, so the build that reveals it finds them. Resolves once they are
-   * handed over, or there is nothing to trace ahead.
+   * traced off the main thread, and the engine's shaders compiled in the graphics process, so the
+   * build that reveals it finds them. Resolves once the traces are handed over, or there is nothing to trace ahead.
    */
   prepareScene(): Promise<void> {
     const state = this.deps.store.getState();
     const map = this.deps.bounds();
     const { prebuild } = this.deps;
-    if (this.stopped || !prebuild || !map || !state.lighting.enabled) return Promise.resolve();
+    if (this.stopped || !map || !state.lighting.enabled) return Promise.resolve();
+    this.run(() => this.engine.prepareShaders());
+    if (!prebuild) return Promise.resolve();
     const reach = this.levelsBelow?.reach(state, map) ?? map;
     return this.model.prepare(state, map, this.deps.measurement, this.deps.rules, reach, prebuild).catch((error: unknown) => {
       console.warn('[LightingRenderer] The scene could not be traced ahead:', error);
