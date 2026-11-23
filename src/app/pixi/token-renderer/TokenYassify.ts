@@ -20,10 +20,13 @@ interface Prop {
   tilt: number;
 }
 
-/** The bow pinned on top right, the manicured hand raised bottom left, the tumbler held bottom right. */
+/**
+ * The bow pinned on top right, a manicured hand raised straight up from the bottom left as the yassified emoji holds
+ * it, and the tumbler held on the bottom right.
+ */
 const PROPS: readonly Prop[] = [
   { label: 'tokenBow', url: bowImageUrl, angle: -45, reach: 0.86, width: 0.55, tilt: 0.3 },
-  { label: 'tokenNails', url: nailsImageUrl, angle: 140, reach: 0.9, width: 0.3, tilt: -0.35 },
+  { label: 'tokenNails', url: nailsImageUrl, angle: 122, reach: 0.84, width: 0.32, tilt: -0.08 },
   { label: 'tokenCup', url: cupImageUrl, angle: 40, reach: 0.9, width: 0.36, tilt: 0.12 },
 ];
 /** Above the art, ring and glass, below the downed skull and the hidden-token marker. */
@@ -50,9 +53,9 @@ function loadPropTextures(): Promise<boolean> {
 }
 
 /**
- * Yassify (Appearance settings): every token wears a bow, shows off its nails and holds a tumbler, upright whichever
- * way the token turns and sized by its ring. The props are children of the token's group, so they move, hide and go
- * with their token, in the player window too. Every token shares the three textures.
+ * Yassify (Appearance settings): every token wears a bow, raises a hand to show off its nails and holds a tumbler,
+ * upright whichever way the token turns and sized by its ring. The props are children of the token's group, so they
+ * move, hide and go with their token, in the player window too. Every token shares the three textures.
  */
 export class TokenYassify {
   private readonly waiting = new Set<TokenGroupContainer>();
