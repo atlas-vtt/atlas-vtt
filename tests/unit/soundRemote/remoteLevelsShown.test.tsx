@@ -82,6 +82,23 @@ describe('levels a Stream Deck moves, as Atlas shows them', () => {
     sliders.close();
   });
 
+  it('keeps a step another setting is saved over before the dial rests', () => {
+    const commands = new RemoteCommands(rig.director, () => null);
+    commands.run({ type: 'level', channel: 'music', deltaDb: -6 });
+    Object.assign(rig.settings, { fadeSeconds: 8 });
+    rig.fireSettings();
+    expect(rig.director.snapshot().levels.musicDb).toBe(-6);
+    vi.advanceTimersByTime(600);
+    expect(rig.settings.musicDb).toBe(-6);
+  });
+
+  it('still takes a level the stored settings changed, as another device writes it', () => {
+    new RemoteCommands(rig.director, () => null).run({ type: 'level', channel: 'music', deltaDb: -6 });
+    Object.assign(rig.settings, { ambienceDb: -20 });
+    rig.fireSettings();
+    expect(rig.director.snapshot().levels).toMatchObject({ musicDb: -6, ambienceDb: -20 });
+  });
+
   it('moves the Sound page\'s Master fader with a master step', () => {
     render(<MasterStrip director={rig.director} />);
     const fader = screen.getByRole('slider');
