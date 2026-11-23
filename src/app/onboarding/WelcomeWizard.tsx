@@ -7,9 +7,8 @@ import type { SettingsService } from '../services/SettingsService';
 import { useHotkeyLabels } from '../keyboard/useMapHotkeys';
 import { ATLAS_DISCORD_URL, ATLAS_DOCS_URL } from '../support/communityLinks';
 import { COMPANION_URLS, companionInUse, type CompanionId } from './companions';
-import { SegmentedControl } from '../packages/components/primitives/SegmentedControl';
-import { lookOptions, useLookChoice } from '../react/components/command-palette/AppearancePanel';
 import { LookService } from '../appearance/lookService';
+import { LookCards } from '../appearance/LookCards';
 import { t } from '../i18n';
 
 interface WelcomeWizardProps {
@@ -72,16 +71,11 @@ function lookStep(looks: LookService): TutorialStep {
     title: t('tour.welcome.lookTitle'),
     body: t('tour.welcome.lookBody'),
     extra: (
-      <div className="atlas-welcome-links">
-        <LookPicker looks={looks} />
+      <div className="atlas-welcome-looks">
+        <LookCards looks={looks} size="page" />
       </div>
     ),
   };
-}
-
-function LookPicker({ looks }: { looks: LookService }): React.JSX.Element {
-  const look = useLookChoice(looks);
-  return <SegmentedControl options={lookOptions()} value={look} ariaLabel={t('appearance.look')} onChange={(choice) => looks.set(choice)} />;
 }
 
 function CompanionRow({ app, id }: { app: App; id: CompanionId }): React.JSX.Element {

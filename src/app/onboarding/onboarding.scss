@@ -108,6 +108,7 @@
 .atlas-hotkey-warning { color: var(--text-warning); }
 // The welcome wizard's links and add-ons, under a step's text.
 .atlas-welcome-links { display: flex; flex-wrap: wrap; gap: $spacing-s; margin-top: $spacing-l; }
+.atlas-welcome-looks { margin-top: $spacing-l; }
 .atlas-welcome-companions {
   display: flex;
   flex-direction: column;

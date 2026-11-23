@@ -67,6 +67,11 @@ export class LookService {
     return () => { this.listeners.delete(listener); };
   }
 
+  /** The GM's own theme: the one in use while they keep it, else the one remembered; `''` is Obsidian's default. */
+  ownThemeName(): string {
+    return this.choice === 'own' ? this.theme() : this.previousThemeName();
+  }
+
   /** The theme the GM used before their Atlas look; the default theme when none is remembered. */
   previousThemeName(): string {
     const stored = this.load(PREVIOUS_THEME_STORAGE_KEY, (value): value is string => typeof value === 'string');

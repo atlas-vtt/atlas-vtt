@@ -160,3 +160,12 @@ it('sets the look\'s classes on body', () => {
   expect(document.body.classList.contains(LOOK_CLASS)).toBe(false);
   for (const dispose of disposers) dispose();
 });
+
+it('names the GM\'s own theme: the one in use while they keep it, else the one remembered', () => {
+  const s = stub('Minimal');
+  const service = looks(s);
+  expect(service.ownThemeName()).toBe('Minimal');
+  service.set('mediaeval');
+  expect(s.css.theme).toBe('');
+  expect(service.ownThemeName()).toBe('Minimal');
+});
