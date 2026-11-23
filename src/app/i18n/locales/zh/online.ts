@@ -171,6 +171,8 @@ export const online: Translation = {
   'online.unmark': '取消标记',
   'online.update': '更新',
   'online.updateAfter': '本次游戏结束后更新 Atlas',
+  'online.sheet.templateMissing': '玩家无法更改角色卡 {note}：其模板缺失。请为该笔记选择一个模板。',
+  'online.sheet.templateNewer': '玩家无法更改角色卡 {note}：其模板标明由更新版本的 Atlas 制作，因此 Atlas 只读取它。',
   'online.worldMap.missing': 'Atlas Online 无法发送世界地图：它的图片文件缺失。',
   'online.worldMap.tooLarge': 'Atlas Online 无法发送世界地图：它的图片超过 95 MB。',
   'online.worldMap.unreadable': 'Atlas Online 无法发送世界地图：它的图片不是玩家能打开的 PNG、JPEG、WebP、GIF 或 AVIF。',

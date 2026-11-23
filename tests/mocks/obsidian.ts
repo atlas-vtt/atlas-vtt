@@ -553,6 +553,27 @@ export class ToggleComponent extends ValueComponent<boolean> {
   }
 }
 
+/** Obsidian's slider: a release reports the value (each step with `setInstant`), and `setValue` reports a change too. */
+export class SliderComponent extends ValueComponent<number> {
+  private instant = false;
+  constructor(public sliderEl: HTMLInputElement) {
+    super();
+    sliderEl.type = 'range';
+    sliderEl.addEventListener('input', () => { if (this.instant) this.changed?.(this.getValue()); });
+    sliderEl.addEventListener('change', () => { if (!this.instant) this.changed?.(this.getValue()); });
+  }
+  setInstant(instant: boolean): this { this.instant = instant; return this; }
+  setLimits(min: number, max: number, step: number): this {
+    Object.assign(this.sliderEl, { min: String(min), max: String(max), step: String(step) });
+    return this;
+  }
+  getValue(): number { return Number(this.sliderEl.value); }
+  setValue(value: number): this {
+    if (this.getValue() !== value) { this.sliderEl.value = String(value); this.changed?.(value); }
+    return this;
+  }
+}
+
 export class ButtonComponent {
   constructor(public buttonEl: HTMLButtonElement) {}
   setButtonText(text: string): this { this.buttonEl.textContent = text; return this; }
@@ -606,6 +627,7 @@ export class Setting {
   addTextArea(callback: (component: TextAreaComponent) => void): this { callback(new TextAreaComponent(this.create('textarea'))); return this; }
   addDropdown(callback: (component: DropdownComponent) => void): this { callback(new DropdownComponent(this.create('select'))); return this; }
   addToggle(callback: (component: ToggleComponent) => void): this { callback(new ToggleComponent(this.create('div'))); return this; }
+  addSlider(callback: (component: SliderComponent) => void): this { callback(new SliderComponent(this.create('input'))); return this; }
   addButton(callback: (component: ButtonComponent) => void): this { callback(new ButtonComponent(this.create('button'))); return this; }
   addExtraButton(callback: (component: ExtraButtonComponent) => void): this { callback(new ExtraButtonComponent(this.create('div'))); return this; }
 }

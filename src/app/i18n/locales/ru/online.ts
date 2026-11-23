@@ -167,6 +167,8 @@ export const online: Translation = {
   'online.unmark': 'Снять отметку',
   'online.update': 'Обновить',
   'online.updateAfter': 'Обновите Atlas после этой сессии',
+  'online.sheet.templateMissing': 'Игроки не могут изменить лист {note}: его шаблон отсутствует. Выберите шаблон для заметки.',
+  'online.sheet.templateNewer': 'Игроки не могут изменить лист {note}: его шаблон указывает, что создан в более новой версии Atlas, поэтому Atlas только читает его.',
   'online.worldMap.missing': 'Atlas Online не может отправить карту мира: файла изображения нет.',
   'online.worldMap.tooLarge': 'Atlas Online не может отправить карту мира: изображение больше 95 МБ.',
   'online.worldMap.unreadable': 'Atlas Online не может отправить карту мира: изображение не в формате PNG, JPEG, WebP, GIF или AVIF, который могут открыть игроки.',
