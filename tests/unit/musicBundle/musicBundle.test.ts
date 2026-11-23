@@ -1,6 +1,6 @@
 // JSZip needs Node's ArrayBuffer realm; jsdom's differs.
 import JSZip from 'jszip';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readAtlasCopy } from '../../../src/app/sound/codec/atlasOpus';
 import { BUNDLE_MANIFEST } from '../../../src/app/services/collectionBundle/bundleFormat';
 import { isItemManifest, isMusicManifest, itemManifestProblem } from '../../../src/app/services/itemBundle/itemBundleFormat';
@@ -22,6 +22,33 @@ const manifest = (item: Record<string, unknown> = {}, files?: Record<string, unk
     files: files ?? tracks.map((track) => ({ vaultPath: track.path, role: 'music-track', sha256: HASH })),
   };
 };
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+/** The entries a read inflates, by name: every entry of every zip shares JSZip's one prototype. */
+function spyOnInflating(): () => string[] {
+  const probe = new JSZip().file('probe', 'x').file('probe')!;
+  const inflate = vi.spyOn(Object.getPrototypeOf(probe) as { async: (type: string) => Promise<unknown> }, 'async');
+  return () => inflate.mock.contexts.map((entry) => (entry as { name: string }).name);
+}
+
+/** The zip with `size` written as the unpacked size its central directory declares for `name`. */
+function declareSize(zipBytes: Uint8Array, name: string, size: number): Uint8Array {
+  const out = zipBytes.slice();
+  const view = new DataView(out.buffer);
+  const wanted = new TextEncoder().encode(name);
+  for (let at = 0; at + 46 <= out.length; at++) {
+    if (view.getUint32(at, true) !== 0x02014b50) continue;
+    const named = out.subarray(at + 46, at + 46 + view.getUint16(at + 28, true));
+    if (named.length === wanted.length && named.every((byte, index) => byte === wanted[index])) {
+      view.setUint32(at + 24, size, true);
+      return out;
+    }
+  }
+  throw new Error(`${name} is not in the zip`);
+}
 
 describe('a music manifest', () => {
   it('is an item manifest told apart by its kind, and an older reader takes it as newer', () => {
@@ -154,6 +181,35 @@ describe('reading music from the Armarium', () => {
     const zip = await JSZip.loadAsync(await delivered.arrayBuffer());
     zip.file('files/music/Dawn.opus', new Uint8Array([1, 2, 3]));
     await expect(readMusicBundle(new Blob([await zip.generateAsync({ type: 'uint8array' })]))).rejects.toThrow();
+  });
+
+  it('inflates every file once, only after the zip\'s directory said it fits', async () => {
+    const delivered = await deliveredMusic({ kind: 'music-album', uid: UID, version: 1, name: 'Old Roads', titles: ['Dawn', 'Dusk'] });
+    const asked = spyOnInflating();
+    await readMusicBundle(delivered);
+    expect(asked().sort()).toEqual(['files/music/01 Dawn.opus', 'files/music/02 Dusk.opus', BUNDLE_MANIFEST].sort());
+  });
+
+  it('refuses a track larger than the Armarium allows, or an album larger in all, before inflating any of it', async () => {
+    const one = new Uint8Array(await (await deliveredMusic({ kind: 'music-track', uid: UID, version: 1, name: 'Dawn', titles: ['Dawn'] })).arrayBuffer());
+    const titles = Array.from({ length: 9 }, (_, index) => `Song ${index + 1}`);
+    let nine = new Uint8Array(await (await deliveredMusic({ kind: 'music-album', uid: UID, version: 1, name: 'Old Roads', titles })).arrayBuffer());
+    for (const [index, title] of titles.entries()) nine = declareSize(nine, `files/music/${trackFileName('music-album', index, 9, title)}`, 250 * 1024 * 1024);
+    for (const bytes of [declareSize(one, 'files/music/Dawn.opus', 300 * 1024 * 1024), nine]) {
+      const asked = spyOnInflating();
+      await expect(readMusicBundle(new Blob([bytes]))).rejects.toThrow(/more than the Armarium allows/);
+      expect(asked()).toEqual([BUNDLE_MANIFEST]);
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('refuses a track that is not stored as it is, before inflating it', async () => {
+    const delivered = await JSZip.loadAsync(await (await deliveredMusic({ kind: 'music-track', uid: UID, version: 1, name: 'Dawn', titles: ['Dawn'] })).arrayBuffer());
+    delivered.file('files/music/Dawn.opus', await delivered.file('files/music/Dawn.opus')!.async('uint8array'), { compression: 'DEFLATE' });
+    const deflated = new Blob([await delivered.generateAsync({ type: 'uint8array' })]);
+    const asked = spyOnInflating();
+    await expect(readMusicBundle(deflated)).rejects.toThrow(/damaged/);
+    expect(asked()).toEqual([BUNDLE_MANIFEST]);
   });
 
   it('keeps the uploaded cover', async () => {

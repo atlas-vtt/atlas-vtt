@@ -86,4 +86,5 @@ export const armariumMusic: Translation = {
   'armariumMusic.noTrash': '此更新会替换或移除文件，而你的音乐文件夹没有可存放它们的回收站。没有做任何更改。',
   'armariumMusic.listingsFailed': '无法读取你的音乐条目。继续将以新条目分享。',
   'armariumMusic.listingsRetry': '重试',
+  'armariumMusic.tooLarge': '这些音乐超出了 Armarium 允许的大小（每个文件 256 MB，总共 2 GB），因此没有安装任何内容。',
 };

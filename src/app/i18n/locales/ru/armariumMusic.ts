@@ -86,4 +86,5 @@ export const armariumMusic: Translation = {
   'armariumMusic.noTrash': 'Это обновление заменяет или удаляет файлы, а у вашей папки музыки нет корзины для них. Ничего не изменено.',
   'armariumMusic.listingsFailed': 'Не удалось прочитать ваши страницы музыки. «Продолжить» опубликует это как новую страницу.',
   'armariumMusic.listingsRetry': 'Повторить',
+  'armariumMusic.tooLarge': 'Эта музыка больше, чем допускает Armarium (256 МБ на файл, 2 ГБ всего), поэтому ничего не установлено.',
 };

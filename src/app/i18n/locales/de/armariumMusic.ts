@@ -86,4 +86,5 @@ export const armariumMusic: Translation = {
   'armariumMusic.noTrash': 'Dieses Update ersetzt oder entfernt Dateien, und dein Musikordner hat keinen Papierkorb für sie. Es wurde nichts geändert.',
   'armariumMusic.listingsFailed': 'Deine Musik-Einträge konnten nicht gelesen werden. Weiter teilt dies als neuen Eintrag.',
   'armariumMusic.listingsRetry': 'Erneut versuchen',
+  'armariumMusic.tooLarge': 'Diese Musik enthält mehr, als das Armarium erlaubt (256 MB je Datei, 2 GB insgesamt), daher wurde nichts installiert.',
 };

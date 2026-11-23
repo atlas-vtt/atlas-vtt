@@ -86,4 +86,5 @@ export const armariumMusic: Translation = {
   'armariumMusic.noTrash': 'Cette mise à jour remplace ou retire des fichiers, et votre dossier de musique n\'a pas de corbeille pour les garder. Rien n\'a été modifié.',
   'armariumMusic.listingsFailed': 'Vos annonces de musique n\'ont pas pu être lues. Continuer partage ceci comme une nouvelle annonce.',
   'armariumMusic.listingsRetry': 'Réessayer',
+  'armariumMusic.tooLarge': 'Cette musique contient plus que ce que l\'Armarium permet (256 Mo par fichier, 2 Go en tout), donc rien n\'a été installé.',
 };

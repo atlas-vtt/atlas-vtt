@@ -86,4 +86,5 @@ export const armariumMusic: Translation = {
   'armariumMusic.noTrash': 'Esta atualização substitui ou remove arquivos, e sua pasta de música não tem lixeira para guardá-los. Nada foi alterado.',
   'armariumMusic.listingsFailed': 'Não foi possível ler seus anúncios de música. Continuar compartilha isto como um novo anúncio.',
   'armariumMusic.listingsRetry': 'Tentar de novo',
+  'armariumMusic.tooLarge': 'Esta música contém mais do que o Armarium permite (256 MB por arquivo, 2 GB no total), então nada foi instalado.',
 };

@@ -92,4 +92,5 @@ export const armariumMusic = {
   'armariumMusic.noTrash': 'This update replaces or removes files, and your music folder has no trash to keep them in. Nothing was changed.',
   'armariumMusic.listingsFailed': 'Your music listings could not be read. Continue shares this as a new listing.',
   'armariumMusic.listingsRetry': 'Try again',
+  'armariumMusic.tooLarge': 'This music holds more than the Armarium allows (256 MB a file, 2 GB in all), so nothing was installed.',
 } as const satisfies Record<string, Message>;
