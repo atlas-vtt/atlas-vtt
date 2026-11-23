@@ -94,7 +94,7 @@ describe('conditions on the players\' initiative cards', () => {
     document.body.empty();
     const listed: PlayerInitiativeEntry = { name: 'Troll', initiative: 12, imagePath: '', order: 0, isActive: true, ...(token && { tokenId: 't' }) };
     const shown = { ...entryTokenOf(token, [], CONDITIONS), conditions: resolveActiveConditions(token ?? { conditions: ['prone'] }, CONDITIONS) };
-    const list = playerInitiativeList({ entries: [listed], isActive: true, round: 1 }, () => shown, { mode: 'turn-order', roll: '1d20', firstSide: 'players' }, false);
+    const list = playerInitiativeList({ entries: [listed], isActive: true, round: 1 }, () => shown, { mode: 'turn-order', roll: '1d20', firstSide: 'players' });
     renderPlayerInitiative(document.body, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null, trueScale, conditionsShown });
     return [...document.querySelectorAll('.atlas-initiative-card__conditions [role="listitem"]')].map((item) => item.getAttribute('aria-label') ?? '');
   }

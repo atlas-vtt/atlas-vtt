@@ -95,7 +95,6 @@ function showPlayers({ names = false, fromTurn = true, dock = 'right', sides = f
     { entries, isActive: true, round: 2, ...(sides ? { sides: { first: 'players' as const, active: 'opponents' as const } } : {}) },
     (_, index) => entryTokenOf(creature(index), [], CONDITIONS),
     { mode: sides ? 'sides' : 'turn-order', roll: '1d20', firstSide: 'players' },
-    true,
   );
   renderPlayerInitiative(host, list, { showNames: names, mapShowsNameplates: true, portraitSrc: (src) => src, fromTurn, dock, pulse });
   return host.querySelector<HTMLElement>('.atlas-player-initiative')!;

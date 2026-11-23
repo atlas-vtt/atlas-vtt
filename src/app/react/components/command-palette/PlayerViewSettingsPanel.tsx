@@ -7,12 +7,20 @@ import type { AtlasSettings, SettingsService } from '../../../services/SettingsS
 import { DEFAULT_SETTINGS } from '../../../services/atlasSettings';
 import { initiativeMaxCardsOf, initiativeScaleOf, MAX_INITIATIVE_CARDS, MAX_INITIATIVE_SCALE } from '../../../services/playerInitiativeList';
 import { SettingRow, SettingSliderRow, SettingToggleRow } from './SettingRows';
-import { usePlayerViewSwitches, type PlayerViewSwitch } from './playerViewSwitches';
+import { usePlayerViewSwitches, type PlayerViewSwitch, type ResourceAudienceChoice } from './playerViewSwitches';
+import { PlayerAudienceControl } from './PlayerAudienceControl';
 import { t } from '../../../i18n';
 import { isDesktopApp } from '../../../platform/desktopOnly';
 
-const renderSwitch = ({ id, label, hint, value, onToggle }: PlayerViewSwitch): React.ReactElement => (
-  <SettingToggleRow key={id} label={label} hint={hint} value={value} onToggle={onToggle} />
+const renderSwitch = ({ id, label, hint, value, onToggle, disabledReason }: PlayerViewSwitch): React.ReactElement => (
+  <SettingToggleRow key={id} label={label} hint={disabledReason ?? hint} value={value} onToggle={onToggle} disabled={disabledReason !== undefined} />
+);
+
+/** Whose tokens players see one resource on, its name beside the choice. */
+const renderAudience = ({ id, label, audience, onChange }: ResourceAudienceChoice): React.ReactElement => (
+  <SettingRow key={id} label={label}>
+    <PlayerAudienceControl name={label} audience={audience} onChange={onChange} />
+  </SettingRow>
 );
 
 /** The sliders: how large the players' initiative list is, and how many cards it shows. */
@@ -57,10 +65,8 @@ export function PlayerViewSettingsPanel(): React.ReactElement {
       <div className="atlas-command-palette-panel-column">
         <h3 className="atlas-command-palette-panel-heading">{t('lpv.shared')}</h3>
         {switches.shared.map(renderSwitch)}
-        {switches.resources.map(renderSwitch)}
         {switches.tokens.map(renderSwitch)}
-        {switches.initiative.map(renderSwitch)}
-        <InitiativeLookSliders settings={settingsService} />
+        {switches.resources.map(renderAudience)}
       </div>
 
       {(hasPlayerWindow || switches.online.length > 0) && (
@@ -74,6 +80,10 @@ export function PlayerViewSettingsPanel(): React.ReactElement {
                 value={switches.view4k.value}
                 onToggle={switches.view4k.onToggle}
               />
+              {/* How the initiative list looks on the TV: online players' pages lay it out themselves */}
+              {switches.initiativeLayout.map(renderSwitch)}
+              {switches.initiative.map(renderSwitch)}
+              <InitiativeLookSliders settings={settingsService} />
               <SettingRow label={t('lpv.notePreviews')} hint={t('lpv.notePreviewsHint')}>{null}</SettingRow>
               <Button variant="default" size="sm" className="atlas-command-palette-cta" onClick={() => void openPlayerWindow(app)}>
                 <MonitorUp />

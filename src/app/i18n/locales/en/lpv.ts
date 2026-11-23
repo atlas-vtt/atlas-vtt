@@ -1,9 +1,16 @@
 import type { Message } from '../../types';
 
 export const lpv = {
-  'lpv.shared': 'Local and online',
+  'lpv.shared': 'Player window and online',
   'lpv.playerWindow': 'Player window',
   'lpv.online': 'Online play',
+  'lpv.tokens': 'Tokens',
+  'lpv.resourcesOn': 'Players see resources on',
+  'lpv.noResources': 'No resources yet: set them in the collection\'s settings',
+  'lpv.noCollection': 'Add this scene to a collection to choose who sees its resources',
+  'lpv.initiativePanel': 'Initiative panel',
+  'lpv.duringPlay': 'During play',
+  'lpv.initiativeOff': 'Show the initiative panel to lay it out',
   'lpv.alreadyOpen': 'Player window is already open',
   'lpv.notePreviews': 'Note previews',
   'lpv.notePreviewsHint': 'Note previews are not shared with the player window.',
