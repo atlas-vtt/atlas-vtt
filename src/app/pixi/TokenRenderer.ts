@@ -56,6 +56,7 @@ import type { TokenPreview } from './tokenPlacement/PlacementGhost';
 import type { TokenInput } from '../types/viewState';
 import { setCanvasCursor } from './utils/canvasCursor';
 import { markHandled, resetHandled } from './utils/handledEvents';
+import { watchDarkTheme } from './utils/canvasBadgeColors';
 import { watchClick } from './utils/clickRelease';
 import { isCtrlClick, isPrimaryPress, isSecondaryPress } from './utils/pointerButtons';
 import { isFinger, withFineReach } from './utils/pointerReach';
@@ -149,7 +150,7 @@ export class TokenRenderer {
   private mapLoadGeneration = 0;
   private allTokensLoadedCallbacks: Array<() => void> = [];
   private viewId: string;
-  private themeObserver: MutationObserver | null = null;
+  private stopThemeWatch: (() => void) | null = null;
   private isLocalPlayerMode: boolean = false;
   private isDestroyed = false;
 
@@ -1364,11 +1365,8 @@ export class TokenRenderer {
     this.playerSight.destroy();
     this.turnMarkers.destroy();
     
-    // Clean up theme observer
-    if (this.themeObserver) {
-      this.themeObserver.disconnect();
-      this.themeObserver = null;
-    }
+    this.stopThemeWatch?.();
+    this.stopThemeWatch = null;
     
     // Clean up event listeners
     // Remove window event listeners using properly typed handlers
@@ -1436,24 +1434,11 @@ export class TokenRenderer {
     this.statblockSync.followRules();
   }
 
-  /**
-   * Setup theme observer to update UI when theme changes
-   */
+  /** The rotation and resize handles take the light or dark theme's colours. */
   private setupThemeObserver(): void {
-    this.themeObserver = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-          // Theme changed, update rotation and resize handles
-          this.uiManager.getRotationUI()?.updateTheme();
-          this.uiManager.getResizeUI()?.updateTheme();
-        }
-      }
-    });
-    
-    // Start observing
-    this.themeObserver.observe(document.body, {
-      attributes: true,
-      attributeFilter: ['class']
+    this.stopThemeWatch = watchDarkTheme(() => {
+      this.uiManager.getRotationUI()?.updateTheme();
+      this.uiManager.getResizeUI()?.updateTheme();
     });
   }
 
