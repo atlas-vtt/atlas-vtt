@@ -38,8 +38,8 @@ export function HelpPage({ paletteKey }: { paletteKey: string }): React.JSX.Elem
           <span>{t('tour.welcome.paletteKey')}</span>
         </div>
         <div className="atlas-welcome-actions">
-          <Button onClick={() => window.open(ATLAS_DISCORD_URL)}>{t('tour.welcome.discord')}</Button>
-          <Button variant="secondary" onClick={() => window.open(ATLAS_DOCS_URL)}>{t('tour.welcome.guides')}</Button>
+          <Button variant="secondary" onClick={() => window.open(ATLAS_DISCORD_URL)}>{t('tour.welcome.discord')}</Button>
+          <Button variant="ghost" onClick={() => window.open(ATLAS_DOCS_URL)}>{t('tour.welcome.guides')}</Button>
         </div>
       </WelcomeText>
     </div>

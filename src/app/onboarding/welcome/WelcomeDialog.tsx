@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import type { App } from 'obsidian';
 import { Button } from '../../packages/components/primitives/button';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
@@ -20,6 +20,10 @@ interface WelcomeDialogProps {
   looks: LookService;
   /** The first page: what Atlas is, in slides. */
   carousel: React.ReactNode;
+  /** Whether this GM is to be welcomed at all (`shouldWelcome`); completing the wizard closes it either way. */
+  open?: boolean;
+  /** The document of the view it welcomes in, a popout's included; the main window's by default. */
+  doc?: Document;
 }
 
 type WelcomePage = 'carousel' | 'help' | 'sidebar' | 'look';
@@ -29,13 +33,14 @@ const PAGES: readonly WelcomePage[] = ['carousel', 'help', 'sidebar', 'look'];
  * The welcome wizard: a large dialog of four pages, what Atlas is, where help is, Atlas Sidebar and the look. Skip,
  * Close, Escape and Start playing all end it, and the tours follow.
  */
-export function WelcomeDialog(props: WelcomeDialogProps): React.JSX.Element | null {
-  // Subscribed, so it closes as soon as it is completed.
+export function WelcomeDialog({ open = true, ...props }: WelcomeDialogProps): React.JSX.Element {
+  // Subscribed, so it closes as soon as it is completed, with the dialogs' closing motion: keep it mounted after.
   useAtlasSettings(props.settings);
-  return props.settings.shouldShowTutorial('welcome') ? <WelcomeWindow {...props} /> : null;
+  const shown = open && props.settings.shouldShowTutorial('welcome');
+  return <AnimatePresence>{shown && <WelcomeWindow key="welcome" {...props} />}</AnimatePresence>;
 }
 
-function WelcomeWindow({ app, settings, looks, carousel }: WelcomeDialogProps): React.JSX.Element {
+function WelcomeWindow({ app, settings, looks, carousel, doc }: Omit<WelcomeDialogProps, 'open'>): React.JSX.Element {
   const [at, setAt] = useState(0);
   const windowRef = useRef<HTMLDivElement>(null);
   const windowVariants = useDialogWindowVariants();
@@ -87,6 +92,6 @@ function WelcomeWindow({ app, settings, looks, carousel }: WelcomeDialogProps): 
         </div>
       </motion.div>
     </motion.div>,
-    portalHost(),
+    portalHost(doc),
   );
 }

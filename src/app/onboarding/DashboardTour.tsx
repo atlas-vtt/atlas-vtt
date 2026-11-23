@@ -22,18 +22,23 @@ export function DashboardTour({ app, root, hasScene, onCreateScene }: DashboardT
   const settings = useAtlasSettings(SettingsService.forApp(app));
   const shown = useWatched(root, isOnScreen);
   if (!shown || !settings) return null;
-  if (shouldWelcome(settings)) return <WelcomeWizard app={app} settings={settings} />;
+  // The wizard stays in the tree after it is done, in the same place, so it closes with its motion.
   return (
-    <Tutorial
-      settings={settings}
-      id="dashboard"
-      root={root}
-      steps={[
-        { title: t('tour.dashboard.sceneTitle'), body: t('tour.dashboard.sceneBody'), selector: '.continue-hero' },
-        { title: t('tour.dashboard.assetsTitle'), body: t('tour.dashboard.assetsBody'), selector: '.dashboard-topbar__action--assets' },
-        { title: t('tour.dashboard.campaignsTitle'), body: t('tour.dashboard.campaignsBody'), selector: '.dashboard-campaigns' },
-      ]}
-      action={hasScene ? undefined : { label: t('dashboard.firstScene'), onClick: onCreateScene }}
-    />
+    <>
+      <WelcomeWizard app={app} settings={settings} doc={root?.ownerDocument} />
+      {!shouldWelcome(settings) && (
+        <Tutorial
+          settings={settings}
+          id="dashboard"
+          root={root}
+          steps={[
+            { title: t('tour.dashboard.sceneTitle'), body: t('tour.dashboard.sceneBody'), selector: '.continue-hero' },
+            { title: t('tour.dashboard.assetsTitle'), body: t('tour.dashboard.assetsBody'), selector: '.dashboard-topbar__action--assets' },
+            { title: t('tour.dashboard.campaignsTitle'), body: t('tour.dashboard.campaignsBody'), selector: '.dashboard-campaigns' },
+          ]}
+          action={hasScene ? undefined : { label: t('dashboard.firstScene'), onClick: onCreateScene }}
+        />
+      )}
+    </>
   );
 }

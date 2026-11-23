@@ -9,6 +9,8 @@ import { t } from '../i18n';
 interface WelcomeWizardProps {
   app: App;
   settings: SettingsService;
+  /** The document of the view Atlas first shows in, a popout's included. */
+  doc?: Document | undefined;
 }
 
 /**
@@ -19,9 +21,21 @@ export function shouldWelcome(settings: SettingsService): boolean {
   return settings.shouldShowTutorial('welcome') && settings.shouldShowTutorial('dashboard') && settings.shouldShowTutorial('map');
 }
 
-/** The first thing a new GM sees: what Atlas is, where help is, Atlas Sidebar and the look. The tours follow. */
-export function WelcomeWizard({ app, settings }: WelcomeWizardProps): React.JSX.Element | null {
-  return <WelcomeDialog app={app} settings={settings} looks={LookService.forApp(app, settings)} carousel={<WelcomeSlide />} />;
+/**
+ * The first thing a new GM sees: what Atlas is, where help is, Atlas Sidebar and the look. The tours follow. Render it
+ * whether or not the GM is welcomed (it shows only for `shouldWelcome`), so it stays mounted to close with its motion.
+ */
+export function WelcomeWizard({ app, settings, doc }: WelcomeWizardProps): React.JSX.Element {
+  return (
+    <WelcomeDialog
+      app={app}
+      settings={settings}
+      looks={LookService.forApp(app, settings)}
+      carousel={<WelcomeSlide />}
+      open={shouldWelcome(settings)}
+      {...(doc && { doc })}
+    />
+  );
 }
 
 function WelcomeSlide(): React.JSX.Element {

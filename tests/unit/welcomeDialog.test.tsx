@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
 import type { App } from 'obsidian';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { MotionGlobalConfig } from 'framer-motion';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterAll, afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { LookService } from '../../src/app/appearance/lookService';
 import { WelcomeDialog } from '../../src/app/onboarding/welcome/WelcomeDialog';
@@ -10,6 +11,9 @@ import { DashboardTour } from '../../src/app/onboarding/DashboardTour';
 
 vi.mock('../../src/app/onboarding/useWatched', () => ({ isOnScreen: () => true, useWatched: () => true }));
 afterEach(cleanup);
+// Exit animations finish at once, so a closed dialog leaves the DOM within the test.
+beforeAll(() => { MotionGlobalConfig.skipAnimations = true; });
+afterAll(() => { MotionGlobalConfig.skipAnimations = false; });
 
 function appWith(plugins: string[]): { app: App; settings: SettingsService } {
   const storage = new Map<string, unknown>();
@@ -49,20 +53,31 @@ it('opens on the carousel and pages through help, the sidebar and the look', () 
   expect(screen.getByRole('heading', { name: 'Atlas Sidebar' })).toBeTruthy();
 });
 
-it('completes on Start playing and hands over to the start page tour', () => {
+it('completes on Start playing, closes and hands over to the start page tour', async () => {
   const { app, settings } = appWith([]);
   render(<DashboardTour app={app} root={document.body} hasScene onCreateScene={() => {}} />);
   for (let page = 0; page < 3; page += 1) next();
   act(() => { fireEvent.click(screen.getByRole('button', { name: 'Start playing' })); });
   expect(settings.shouldShowTutorial('welcome')).toBe(false);
   expect(screen.getByText('Scenes')).toBeTruthy();
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Welcome' })).toBeNull());
+  expect(screen.getByText('Scenes')).toBeTruthy();
 });
 
-it('completes on Skip', () => {
+it('completes on Skip and closes', async () => {
   const { app, settings } = appWith([]);
   render(dialog(app, settings));
   act(() => { fireEvent.click(screen.getByRole('button', { name: 'Skip' })); });
   expect(settings.shouldShowTutorial('welcome')).toBe(false);
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Welcome' })).toBeNull());
+});
+
+it('opens in the document of the view it welcomes in', () => {
+  const { app, settings } = appWith([]);
+  const popout = document.implementation.createHTMLDocument('popout');
+  render(<WelcomeDialog app={app} settings={settings} looks={LookService.forApp(app, settings)} carousel={<div>slides</div>} doc={popout} />);
+  expect(popout.querySelector('[role="dialog"]')).not.toBeNull();
+  expect(document.querySelector('.atlas-welcome')).toBeNull();
 });
 
 it('completes on Close and on Escape', () => {

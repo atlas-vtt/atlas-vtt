@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
 import type { App } from 'obsidian';
+import { MotionGlobalConfig } from 'framer-motion';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { DashboardTour } from '../../src/app/onboarding/DashboardTour';
 import { MapTours } from '../../src/app/onboarding/MapTours';
@@ -14,6 +15,8 @@ import { LookService } from '../../src/app/appearance/lookService';
 
 vi.mock('../../src/app/onboarding/useWatched', () => ({ isOnScreen: () => true, useWatched: () => true }));
 afterEach(cleanup);
+beforeAll(() => { MotionGlobalConfig.skipAnimations = true; });
+afterAll(() => { MotionGlobalConfig.skipAnimations = false; });
 
 function appWith(plugins: string[]): { app: App; settings: SettingsService } {
   const storage = new Map<string, unknown>();
