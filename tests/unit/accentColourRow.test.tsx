@@ -77,3 +77,17 @@ it('moves with the arrow keys', () => {
   expect(document.activeElement).toBe(swatch('Custom'));
   expect(app.vault.setConfig).toHaveBeenLastCalledWith('accentColor', '');
 });
+
+it('opens the colour picker on the look\'s own accent while no colour is picked', () => {
+  document.body.style.setProperty('--atlas-look-accent', '#16130f');
+  try {
+    render(<AccentColourRow app={appWithAccent()} />);
+    const picker = document.querySelector<HTMLInputElement>('input[type="color"]')!;
+    picker.showPicker = vi.fn();
+    act(() => { fireEvent.click(swatch('Custom')); });
+    expect(picker.value).toBe('#16130f');
+    expect(picker.showPicker).toHaveBeenCalled();
+  } finally {
+    document.body.style.removeProperty('--atlas-look-accent');
+  }
+});

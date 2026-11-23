@@ -9,12 +9,22 @@ import { LookCards } from '../../src/app/appearance/LookCards';
 
 afterEach(cleanup);
 
+/** Obsidian's `css-change` listeners of the latest app `looksOn` made. */
+let cssListeners = new Set<() => void>();
+let cssOf: { theme: string } = { theme: '' };
+
 /** A fresh app and its look service, on the GM's theme `theme`. */
 function looksOn(theme: string): LookService {
   const storage = new Map<string, unknown>();
-  const css = { theme, themes: { Minimal: {} } as Record<string, unknown> };
+  const css = { theme, themes: { Minimal: {}, Things: {} } as Record<string, unknown> };
+  const listeners = cssListeners = new Set<() => void>();
+  cssOf = css;
   const app = {
     vault: { adapter: { exists: async () => true, write: async () => {} } },
+    workspace: {
+      on: (_name: string, callback: () => void) => { listeners.add(callback); return callback; },
+      offref: (ref: () => void) => { listeners.delete(ref); },
+    },
     plugins: { plugins: {}, enabledPlugins: new Set(['atlas-vtt']) },
     customCss: Object.assign(css, { setTheme: (name: string) => { css.theme = name; } }),
     loadLocalStorage: (key: string) => storage.get(key) ?? null,
@@ -75,4 +85,15 @@ it('names Obsidian\'s default theme where the GM has no theme of their own', () 
 it('names the theme in use while the GM keeps their own', () => {
   render(<LookCards looks={looksOn('Minimal')} size="page" />);
   expect(screen.getByText('Minimal')).toBeTruthy();
+});
+
+it('renames the GM\'s own theme when they switch it in Obsidian while the cards show', () => {
+  const { unmount } = render(<LookCards looks={looksOn('Minimal')} size="page" />);
+  act(() => {
+    cssOf.theme = 'Things';
+    for (const listener of Array.from(cssListeners)) listener();
+  });
+  expect(screen.getByText('Things')).toBeTruthy();
+  unmount();
+  expect(cssListeners.size).toBe(0);
 });

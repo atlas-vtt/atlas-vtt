@@ -84,12 +84,20 @@ export class LookService {
     }
   }
 
+  /** Calls `listener` whenever Obsidian announces a theme switch (`css-change`), which may change the GM's own theme. */
+  onThemeChange(listener: () => void): () => void {
+    const ref = this.app.workspace.on('css-change', listener);
+    return () => this.app.workspace.offref(ref);
+  }
+
   /**
-   * At start: a GM still on the retired Atlas theme gets its look in Atlas instead, and an Atlas look whose default
+   * At start: a GM still on the retired Atlas theme gets its look in Atlas instead, once per device (while this device
+   * has never stored a look: a GM who picks the old theme again afterwards keeps it), and an Atlas look whose default
    * theme was replaced while Atlas was off (another device's sync, the GM in Obsidian's settings) gives way to it.
    */
   reconcileAtStart(): void {
-    if (this.theme() === RETIRED_THEME_NAME) {
+    const neverChosen = this.load(LOOK_STORAGE_KEY, isLookChoice) === null;
+    if (neverChosen && this.theme() === RETIRED_THEME_NAME) {
       this.save(PREVIOUS_THEME_STORAGE_KEY, JSON.stringify(DEFAULT_THEME));
       this.app.customCss?.setTheme?.(DEFAULT_THEME);
       this.choose('mediaeval');
@@ -105,7 +113,8 @@ export class LookService {
 
   /**
    * Puts the GM's theme back when Atlas is disabled, not when it only unloads (a reload, an update, Obsidian quitting).
-   * Obsidian takes a plugin out of `enabledPlugins` before it unloads it (`disablePluginAndSave`).
+   * Obsidian takes a plugin out of `enabledPlugins` before it unloads it (`disablePluginAndSave`). Restricted mode
+   * (`setEnable(false)`) unloads every plugin without touching `enabledPlugins`, so it keeps Obsidian's default theme.
    */
   restoreOnDisable(pluginId: string): void {
     if (this.app.plugins?.enabledPlugins.has(pluginId) !== false) return;

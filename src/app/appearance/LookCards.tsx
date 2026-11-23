@@ -8,8 +8,18 @@ const LOOKS: readonly LookChoice[] = ['own', 'mediaeval', 'scifi'];
 
 /** The look of this device, followed while the component shows. */
 export function useLookChoice(looks: LookService): LookChoice {
-  const subscribe = useCallback((changed: () => void) => looks.onChange(changed), [looks]);
+  const subscribe = useCallback((changed: () => void): (() => void) => looks.onChange(changed), [looks]);
   return useSyncExternalStore(subscribe, () => looks.get());
+}
+
+/** The name of the GM's own theme, followed through look changes and theme switches in Obsidian while the component shows. */
+function useOwnThemeName(looks: LookService): string {
+  const subscribe = useCallback((changed: () => void): (() => void) => {
+    const stopLook = looks.onChange(changed);
+    const stopTheme = looks.onThemeChange(changed);
+    return (): void => { stopLook(); stopTheme(); };
+  }, [looks]);
+  return useSyncExternalStore(subscribe, () => looks.ownThemeName());
 }
 
 interface LookCardsProps {
@@ -21,6 +31,7 @@ interface LookCardsProps {
 /** The three looks as picture cards, one chosen: a radio group, so the arrow keys move the choice. */
 export function LookCards({ looks, size }: LookCardsProps): React.JSX.Element {
   const look = useLookChoice(looks);
+  const ownTheme = useOwnThemeName(looks);
   const cards = useRef(new Map<LookChoice, HTMLButtonElement>());
 
   const onKeyDown = (event: React.KeyboardEvent): void => {
@@ -40,7 +51,7 @@ export function LookCards({ looks, size }: LookCardsProps): React.JSX.Element {
           key={choice}
           choice={choice}
           chosen={choice === look}
-          note={noteOf(choice, looks)}
+          note={noteOf(choice, ownTheme)}
           onPick={() => looks.set(choice)}
           cardRef={(element) => { if (element) cards.current.set(choice, element); else cards.current.delete(choice); }}
         />
@@ -80,10 +91,10 @@ function LookCard({ choice, chosen, note, onPick, cardRef }: LookCardProps): Rea
   );
 }
 
-function noteOf(choice: LookChoice, looks: LookService): string {
+function noteOf(choice: LookChoice, ownTheme: string): string {
   if (choice === 'mediaeval') return t('appearance.mediaevalNote');
   if (choice === 'scifi') return t('appearance.scifiNote');
-  return looks.ownThemeName() || t('appearance.ownDefault');
+  return ownTheme || t('appearance.ownDefault');
 }
 
 /** The look an arrow, Home or End key moves the choice to, round the ends; null for any other key. */

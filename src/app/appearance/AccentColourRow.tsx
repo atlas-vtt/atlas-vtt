@@ -1,8 +1,10 @@
-import React, { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { flushSync } from 'react-dom';
 import type { App } from 'obsidian';
 import { ACCENT_PRESETS, customAccent, onAccentChange, presetOfAccent, setAccent } from './accentColour';
 import { LOOK_CLASS } from './atlasLook';
 import { LabelTooltip } from '../packages/components/primitives/tooltip';
+import { cssColorToHexNumber, hexColorOf, resolveCssColor } from '../pixi/utils/colorUtils';
 import { SettingChoiceRow } from '../react/components/command-palette/SettingRows';
 import { t } from '../i18n';
 import './accent-colour.scss';
@@ -11,7 +13,7 @@ const OWN = 'own';
 const CUSTOM = 'custom';
 /** Every swatch in order: the look's own, the presets by id, then the GM's own colour. */
 const CHOICES: readonly string[] = [OWN, ...ACCENT_PRESETS.map((preset) => preset.id), CUSTOM];
-/** Where the colour picker opens while no colour is picked yet. */
+/** Where the colour picker opens while no colour is picked and the look's accent cannot be read. */
 const PICKER_START = '#808080';
 
 /**
@@ -27,11 +29,11 @@ interface AccentState {
 
 /** The accent setting and the theme it is shown over, followed while the row shows. */
 function useAccentState(app: App): AccentState {
-  const subscribe = useCallback((changed: () => void) => {
+  const subscribe = useCallback((changed: () => void): (() => void) => {
     const stop = onAccentChange(app, changed);
     // A theme switch, or a look switch, which Atlas announces the same way.
     const ref = app.workspace.on('css-change', changed);
-    return () => { stop(); app.workspace.offref(ref); };
+    return (): void => { stop(); app.workspace.offref(ref); };
   }, [app]);
   const snapshot = useSyncExternalStore(subscribe, () => `${customAccent(app)}\n${app.customCss?.theme ?? ''}`);
   const [accent = '', theme = ''] = snapshot.split('\n');
@@ -44,6 +46,8 @@ export function AccentColourRow({ app }: { app: App }): React.JSX.Element {
   const chosen = accent === '' ? OWN : presetOfAccent(accent)?.id ?? CUSTOM;
   const swatches = useRef(new Map<string, HTMLElement>());
   const picker = useRef<HTMLInputElement>(null);
+  // Where the picker opens while the look's own accent is in use: that accent, read as the picker opens.
+  const [pickerStart, setPickerStart] = useState(PICKER_START);
 
   // Remembers the GM's theme's accent while it shows, so the look's own swatch can show it under a picked colour too.
   useEffect(() => {
@@ -51,11 +55,18 @@ export function AccentColourRow({ app }: { app: App }): React.JSX.Element {
     if (accent !== '' || !body || body.classList.contains(LOOK_CLASS)) return;
     const shown = (body.ownerDocument.defaultView ?? window).getComputedStyle(body).getPropertyValue('--interactive-accent').trim();
     if (shown) themeAccents.set(theme, shown);
-  });
+  }, [accent, theme]);
 
   const pick = (choice: string): void => {
     if (choice === OWN) setAccent(app, '');
     else if (choice !== CUSTOM) setAccent(app, ACCENT_PRESETS.find((preset) => preset.id === choice)?.hex ?? '');
+  };
+
+  const openCustom = (): void => {
+    const input = picker.current;
+    if (!input) return;
+    if (accent === '') flushSync(() => setPickerStart(shownAccentHex(input.ownerDocument)));
+    openPicker(input);
   };
 
   const onKeyDown = (event: React.KeyboardEvent): void => {
@@ -69,7 +80,7 @@ export function AccentColourRow({ app }: { app: App }): React.JSX.Element {
     swatches.current.get(next)?.focus();
   };
 
-  const swatchRef = (choice: string) => (element: HTMLElement | null): void => {
+  const swatchRef = (choice: string): ((element: HTMLElement | null) => void) => (element: HTMLElement | null): void => {
     if (element) swatches.current.set(choice, element);
     else swatches.current.delete(choice);
   };
@@ -105,7 +116,7 @@ export function AccentColourRow({ app }: { app: App }): React.JSX.Element {
             className="atlas-accent-swatch--custom"
             style={chosen === CUSTOM ? { background: accent } : undefined}
             swatchRef={swatchRef(CUSTOM)}
-            onPick={() => openPicker(picker.current)}
+            onPick={openCustom}
           />
           <input
             ref={picker}
@@ -113,7 +124,7 @@ export function AccentColourRow({ app }: { app: App }): React.JSX.Element {
             className="atlas-accent-picker"
             tabIndex={-1}
             aria-hidden="true"
-            value={accent || PICKER_START}
+            value={accent || pickerStart}
             onChange={(event) => setAccent(app, event.target.value)}
           />
         </span>
@@ -147,6 +158,14 @@ function Swatch({ label, chosen, className, style, swatchRef, onPick }: SwatchPr
       />
     </LabelTooltip>
   );
+}
+
+/** The accent `doc` shows now as `#rrggbb`: the Atlas look's own, else the theme's; grey where none can be read. */
+function shownAccentHex(doc: Document): string {
+  const style = (doc.defaultView ?? window).getComputedStyle(doc.body);
+  const shown = style.getPropertyValue('--atlas-look-accent').trim() || style.getPropertyValue('--interactive-accent').trim();
+  if (!shown) return PICKER_START;
+  return hexColorOf(cssColorToHexNumber(shown.startsWith('#') ? shown : resolveCssColor(shown)));
 }
 
 /** Opens the colour picker of the custom swatch, as a click on it would. */

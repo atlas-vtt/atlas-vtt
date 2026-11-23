@@ -110,6 +110,22 @@ it('takes a GM on the retired theme to Mediaeval once', () => {
   expect(s.setTheme).toHaveBeenCalledWith('');
 });
 
+it('moves a GM on the retired theme once, and leaves the theme picked again afterwards', () => {
+  const storage = new Map<string, unknown>();
+  const first = stub('Atlas VTT', storage);
+  looks(first).reconcileAtStart();
+  expect(looks(first).get()).toBe('mediaeval');
+  first.css.theme = 'Atlas VTT';
+  looks(first).followThemeChange();
+  expect(looks(first).get()).toBe('own');
+  const second = stub('Atlas VTT', storage);
+  const service = looks(second);
+  service.reconcileAtStart();
+  expect(service.get()).toBe('own');
+  expect(second.setTheme).not.toHaveBeenCalled();
+  expect(second.css.theme).toBe('Atlas VTT');
+});
+
 it('takes the GM\'s own look when another theme was picked while Atlas was off', () => {
   const storage = new Map<string, unknown>();
   looks(stub('Minimal', storage)).set('scifi');
@@ -169,7 +185,7 @@ it('sets the look\'s classes on body', () => {
   for (const dispose of disposers) dispose();
 });
 
-it('marks body while a custom accent is set', () => {
+it('marks body while an Atlas look is on and a custom accent is set', () => {
   const s = stub('');
   s.app.vault.setConfig('accentColor', '#6b8f3a');
   const disposers: (() => void)[] = [];
@@ -178,11 +194,18 @@ it('marks body while a custom accent is set', () => {
     register: (dispose: () => void) => { disposers.push(dispose); },
     registerEvent: () => {},
   } as unknown as Plugin;
-  registerLookSync(plugin, looks(s));
+  const service = looks(s);
+  registerLookSync(plugin, service);
+  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(false);
+  service.set('scifi');
   expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(true);
   s.app.vault.setConfig('accentColor', '');
   expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(false);
   s.app.vault.setConfig('accentColor', '#c9a227');
+  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(true);
+  service.set('own');
+  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(false);
+  service.set('mediaeval');
   expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(true);
   for (const dispose of disposers) dispose();
   expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(false);
