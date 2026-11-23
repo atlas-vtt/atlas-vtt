@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AccountState, SignInResult } from '../../../src/app/account/AtlasAccount';
 import { MusicShareSession, type MusicPackRequest, type PreparedTrack } from '../../../src/app/armarium/upload/MusicShareSession';
-import { musicProblems, pickedKind, startingTitle } from '../../../src/app/armarium/upload/musicShareRules';
+import { musicProblems, pickedKind } from '../../../src/app/armarium/upload/musicShareRules';
 import type { OwnListing } from '../../../src/app/armarium/upload/uploadContract';
 import type { MusicKind } from '../../../src/app/services/itemBundle/itemBundleFormat';
 import type { LibraryFile } from '../../../src/app/soundLibrary/SoundLibrary';
@@ -225,13 +225,33 @@ describe('what picked music becomes', () => {
   });
 });
 
-describe('a track\'s title to begin with', () => {
-  it('is its file name without extension and without the number it starts with', () => {
-    expect(startingTitle('01 Dawn.mp3')).toBe('Dawn');
-    expect(startingTitle('02 - Dusk.flac')).toBe('Dusk');
-    expect(startingTitle('3. Night falls.opus')).toBe('Night falls');
-    expect(startingTitle('07_Gate.ogg')).toBe('Gate');
-    expect(startingTitle('1999.mp3')).toBe('1999');
-    expect(startingTitle('Track.mp3')).toBe('Track');
+describe('a share\'s default titles', () => {
+  it('drop what an album\'s file names share and their numbers, offer the artist, and leave edited titles alone', async () => {
+    const paths = ['Vindsvept - Night of the Wilds - 01 Dancing with the Wisps.mp3', 'Vindsvept - Night of the Wilds - 02 Tales of the Moonfolk.mp3', 'Vindsvept - Night of the Wilds - 03 Faerie Fire.mp3'];
+    const { session } = setup('music-album', paths, { name: 'Night of the Wilds' });
+    expect(session.snapshot().tracks.map((track) => track.title)).toEqual(['Dancing with the Wisps', 'Tales of the Moonfolk', 'Faerie Fire']);
+    expect(session.snapshot().artist).toBe('Vindsvept');
+    await toMusicStep(session);
+    session.setTitle(`music:${paths[0]}`, 'Wisps');
+    session.removeTrack(`music:${paths[2]}`);
+    expect(session.snapshot().tracks.map((track) => track.title)).toEqual(['Wisps', 'Tales of the Moonfolk']);
+  });
+
+  it('work an untouched title out again when a track goes and the rest share more', async () => {
+    const { session } = setup('music-album', ['Old Roads - Dawn.mp3', 'Old Roads - Dusk.mp3', 'Rain.mp3']);
+    expect(session.snapshot().tracks.map((track) => track.title)).toEqual(['Old Roads - Dawn', 'Old Roads - Dusk', 'Rain']);
+    await toMusicStep(session);
+    session.removeTrack('music:Rain.mp3');
+    expect(session.snapshot().tracks.map((track) => track.title)).toEqual(['Dawn', 'Dusk']);
+  });
+
+  it('give a single\'s name the artist the GM types taken off, until the GM edits the name', async () => {
+    const { session } = setup('music-track', ['Vindsvept - 04 Tricksy Sprites.mp3'], { name: 'Vindsvept - 04 Tricksy Sprites' });
+    expect(session.snapshot().artist).toBe('');
+    session.setArtist('vindsvept');
+    expect(session.snapshot().name).toBe('Tricksy Sprites');
+    session.setName('Sprites');
+    session.setArtist('Vindsvept');
+    expect(session.snapshot().name).toBe('Sprites');
   });
 });

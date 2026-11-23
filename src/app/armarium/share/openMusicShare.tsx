@@ -3,11 +3,12 @@ import type { App } from 'obsidian';
 import { t } from '../../i18n';
 import type { MusicKind } from '../../services/itemBundle/itemBundleFormat';
 import type { LibraryFile } from '../../soundLibrary/SoundLibrary';
-import { nameOfRelative, parentOfRelative } from '../../soundLibrary/soundPaths';
+import { nameOfRelative, parentOfRelative, stemOf } from '../../soundLibrary/soundPaths';
 import { showHostedDialog } from '../../statblocks/editor/hostedDialog';
 import { showNotice } from '../../ui/notice';
 import { createMusicShareSession, type MusicShareRequest } from '../upload/createShareSession';
-import { pickedKind, startingTitle } from '../upload/musicShareRules';
+import { pickedKind } from '../upload/musicShareRules';
+import { defaultTrackTitles } from '../upload/trackTitles';
 import { MusicSharePicker } from './MusicSharePicker';
 import { HOST_CLASS, HostedShare } from './openItemShare';
 
@@ -31,7 +32,7 @@ function sharedFolderName(files: readonly LibraryFile[]): string {
 
 /** A share of `files`: a track is named by its title, an album by `name` (a tag's), else by the folder its tracks share. */
 function requestFor(kind: MusicKind, files: readonly LibraryFile[], name: string, listing?: string): MusicShareRequest {
-  const named = kind === 'music-track' && files[0] ? startingTitle(files[0].name) : name || sharedFolderName(files);
+  const named = kind === 'music-track' && files[0] ? defaultTrackTitles([stemOf(files[0].name)], '').titles[0] ?? '' : name || sharedFolderName(files);
   return { kind, files, name: named, listing };
 }
 

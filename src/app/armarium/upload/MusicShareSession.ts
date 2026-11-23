@@ -5,11 +5,13 @@ import type { LibraryFile } from '../../soundLibrary/SoundLibrary';
 import { describeError } from '../../utils/errors';
 import type { ArmariumApi } from './armariumApi';
 import { draftFrom, textLength, type ListingDraft } from './listingDraft';
-import { musicProblems, startingTitle } from './musicShareRules';
+import { stemOf } from '../../soundLibrary/soundPaths';
+import { musicProblems } from './musicShareRules';
 import type { MusicShareSnapshot, MusicShareTrack, TrackCopyState } from './musicShareState';
 import { freshShare, ShareFlow, type ShareFlowDeps } from './ShareFlow';
 import { ITEM_NOTES_LIMITS, nextItemVersion } from './shareState';
 import type { ListingFields, OwnListing } from './uploadContract';
+import { defaultTrackTitles } from './trackTitles';
 
 /** A track's copy as the preparer hands it on: ready with its bytes as this device keeps them. */
 export type PreparedTrack = Exclude<TrackCopyState, { state: 'ready' }> | { readonly state: 'ready'; readonly copy: Blob; readonly frames: number };
@@ -62,14 +64,19 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
   private failedToRead = false;
   private coverChosen = false;
   private artistTyped = false;
+  private nameTyped = false;
+  /** Tracks whose title the GM edited: never worked out from the file names again. */
+  private readonly editedTitles = new Set<string>();
 
   constructor(private readonly deps: MusicShareDeps) {
-    const tracks: MusicShareTrack[] = deps.files.slice(0, deps.kind === 'music-album' ? MAX_ALBUM_TRACKS : 1).map((file) => ({
-      id: `${file.kind}:${file.path}`, file, title: startingTitle(file.name), copy: { state: 'reading' },
+    const files = deps.files.slice(0, deps.kind === 'music-album' ? MAX_ALBUM_TRACKS : 1);
+    const defaults = defaultTrackTitles(files.map((file) => stemOf(file.name)), '', deps.name);
+    const tracks: MusicShareTrack[] = files.map((file, index) => ({
+      id: `${file.kind}:${file.path}`, file, title: defaults.titles[index] ?? '', copy: { state: 'reading' },
     }));
     super(deps, {
       ...freshShare({ ...draftFrom(null, null), kind: 'music' }),
-      subject: 'music', listingKind: 'music', kind: deps.kind, name: deps.name.trim(), artist: '', tracks, cut: deps.files.length - tracks.length,
+      subject: 'music', listingKind: 'music', kind: deps.kind, name: deps.name.trim(), artist: defaults.artist ?? '', tracks, cut: deps.files.length - tracks.length,
       listings: null, listingsFailed: false, target: null, version: null, notes: '', cover: null, listedCover: null, uploadedCover: null,
     });
     this.newUid = deps.newUid();
@@ -87,15 +94,18 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
   }
 
   setName(name: string): void {
+    this.nameTyped = true;
     this.set({ name, problems: this.without('name') });
   }
 
   setArtist(artist: string): void {
     this.artistTyped = true;
     this.set({ artist, problems: this.without('artist') });
+    this.renameSingle();
   }
 
   setTitle(id: string, title: string): void {
+    this.editedTitles.add(id);
     this.set({ tracks: this.state.tracks.map((track) => (track.id === id ? { ...track, title } : track)), problems: this.without(`title:${id}`) });
   }
 
@@ -118,7 +128,21 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
     this.stops.get(id)?.();
     this.stops.delete(id);
     this.copies.delete(id);
-    this.set({ tracks: this.state.tracks.filter((track) => track.id !== id), problems: this.without('tracks') });
+    this.set({ tracks: this.retitled(this.state.tracks.filter((track) => track.id !== id)), problems: this.without('tracks') });
+  }
+
+  /** The tracks with every title the GM did not edit worked out again from the file names of the tracks that go. */
+  private retitled(tracks: readonly MusicShareTrack[]): MusicShareTrack[] {
+    const { titles } = defaultTrackTitles(tracks.map((track) => stemOf(track.file.name)), this.state.artist, this.state.name);
+    return tracks.map((track, index) => (this.editedTitles.has(track.id) ? track : { ...track, title: titles[index] ?? track.title }));
+  }
+
+  /** A single's name the GM did not edit drops the artist they typed where its file name starts with it. */
+  private renameSingle(): void {
+    const file = this.state.tracks[0]?.file;
+    if (this.state.kind !== 'music-track' || this.nameTyped || file === undefined) return;
+    const name = defaultTrackTitles([stemOf(file.name)], this.state.artist).titles[0];
+    if (name !== undefined && name !== this.state.name) this.set({ name, problems: this.without('name') });
   }
 
   /** Continues one of the account's music listings, or starts a new one with null. */
