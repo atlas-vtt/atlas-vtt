@@ -1,7 +1,6 @@
 import type { Mood } from '../sound/soundTypes';
 import type { LocalLevels } from '../sound/engine/mixerGraph';
 import { CHANNEL_DB_RANGE } from '../services/soundSettings';
-import { MOOD_LIMITS } from '../soundLibrary/moodFile';
 import { shownMusic } from '../soundDirector/musicPause';
 import type { SoundDirector } from '../soundDirector/SoundDirector';
 import type { RemoteChannel, RemoteCommand, RemoteRepeat } from './remoteProtocol';
@@ -78,7 +77,7 @@ export class RemoteCommands {
   private level(command: Extract<RemoteCommand, { type: 'level' }>, stripDb: number | null): RemoteRefusal | null {
     if (command.channel === 'musicStrip') {
       if (stripDb === null) return 'no-music';
-      this.director.desk.setMusicLevel(clamp(target(command, stripDb), MOOD_LIMITS.minLevelDb, MOOD_LIMITS.maxLevelDb));
+      this.director.desk.setMusicLevel(clamp(target(command, stripDb), CHANNEL_DB_RANGE.min, CHANNEL_DB_RANGE.max));
       return null;
     }
     const key = LEVEL_KEYS[command.channel];

@@ -1,6 +1,5 @@
 import type { Mood } from '../sound/soundTypes';
 import { moodCrestPath, moodIcon, moodTone } from '../soundLibrary/moodLook';
-import { MOOD_LIMITS } from '../soundLibrary/moodFile';
 import { CHANNEL_DB_RANGE } from '../services/soundSettings';
 import { soundingTrack } from '../soundDirector/musicList';
 import { shownMusic } from '../soundDirector/musicPause';
@@ -56,7 +55,8 @@ export function remoteState(source: RemoteSource, moodOf: (id: string) => Mood |
     music: source.isOn ? remoteMusic(source) : null,
     nowPlaying: source.isOn && named ? whatPlays(held, mood, source.shelf, now) : null,
     levels: { masterDb: levels.masterDb, musicDb: levels.musicDb, ambienceDb: levels.ambienceDb },
-    ranges: { channel: [CHANNEL_DB_RANGE.min, CHANNEL_DB_RANGE.max], strip: [MOOD_LIMITS.minLevelDb, MOOD_LIMITS.maxLevelDb] },
+    // One range for every fader; `strip` stays on the wire for controllers that read it.
+    ranges: { channel: [CHANNEL_DB_RANGE.min, CHANNEL_DB_RANGE.max], strip: [CHANNEL_DB_RANGE.min, CHANNEL_DB_RANGE.max] },
     combat: remoteCombat(table),
     player: remotePlayer(table),
     rolls: remoteRolls(savedRollsOnMap(table)),

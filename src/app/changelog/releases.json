@@ -4,7 +4,7 @@
     {
       "version": "0.19.1-beta.0",
       "title": "Coming in 0.19.1",
-      "markdown": "## Fixed\n\n- The Music, Ambience and Master sliders in Atlas' Sound settings now move at once when a Stream Deck changes those volumes\n- A volume change from a Stream Deck is no longer undone when another setting is changed right after it"
+      "markdown": "## Fixed\n\n- The Music, Ambience and Master sliders in Atlas' Sound settings now move at once when a Stream Deck changes those volumes\n- A volume change from a Stream Deck is no longer undone when another setting is changed right after it\n- \"Music in mix\" on a Stream Deck now stops at +6 dB, the top of the Sound page's Music fader"
     },
     {
       "version": "0.19.0",

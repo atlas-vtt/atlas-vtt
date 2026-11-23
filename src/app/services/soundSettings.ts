@@ -13,6 +13,7 @@ export interface SoundSettings {
 
 export const DEFAULT_SOUND_SETTINGS: SoundSettings = { musicDb: 0, ambienceDb: -6, masterDb: 0, fadeSeconds: 4, crossfadeSeconds: 4, followScenes: true };
 
+/** Every fader's range: this device's levels and the mix's own (music and layers), which moods store and a Stream Deck moves. */
 export const CHANNEL_DB_RANGE = { min: -60, max: 6 } as const;
 export const MAX_FADE_SECONDS = 30;
 export const MAX_CROSSFADE_SECONDS = 12;

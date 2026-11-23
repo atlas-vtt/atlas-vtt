@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { faderDb } from '@/app/react/components/dm-screen/sound/faderScale';
 import { RemoteCommands } from '@/app/soundRemote/remoteCommands';
 import { fakeRemoteDirector, remoteMood, withMusic } from '../../helpers/soundRemoteRig';
 
@@ -63,13 +64,15 @@ describe('remote commands as intents', () => {
     expect(director.setChannelLevels).toHaveBeenLastCalledWith({}, true);
   });
 
-  it('moves the music strip of the mix within a mood level\'s range', () => {
+  it('moves the music strip of the mix within what the Sound page\'s fader shows', () => {
     const director = fakeRemoteDirector(withMusic());
     const commands = new RemoteCommands(director, () => null);
     commands.run({ type: 'level', channel: 'musicStrip', deltaDb: 3 });
     expect(director.desk.setMusicLevel).toHaveBeenLastCalledWith(-1);
     commands.run({ type: 'level', channel: 'musicStrip', db: 40 });
-    expect(director.desk.setMusicLevel).toHaveBeenLastCalledWith(12);
+    expect(director.desk.setMusicLevel).toHaveBeenLastCalledWith(faderDb(1));
+    commands.run({ type: 'level', channel: 'musicStrip', db: -100 });
+    expect(director.desk.setMusicLevel).toHaveBeenLastCalledWith(faderDb(0));
   });
 
   it('writes levels still waiting when it is let go', () => {
