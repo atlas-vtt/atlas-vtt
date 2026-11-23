@@ -19,17 +19,17 @@ export interface WelcomeSlide {
   kicker: MessageKey;
   title: MessageKey;
   body: MessageKey;
-  /** A status beside the heading, such as a part still in beta. */
-  tag?: MessageKey;
+  /** A second line under the body with a status of its own, such as a part still in beta. */
+  aside?: { line: MessageKey; tag: MessageKey };
 }
 
 /** How long a slide shows before the next one, and how long two slides take to cross. */
 export const SLIDE_MS = 7000;
 export const CROSSFADE_MS = 900;
 
-function slide(id: WelcomeSlideId, picture: string, tag?: MessageKey): WelcomeSlide {
+function slide(id: WelcomeSlideId, picture: string, aside?: WelcomeSlide['aside']): WelcomeSlide {
   const key = `tour.welcome.slides.${id}` as const;
-  return { id, picture, chip: `${key}.chip`, kicker: `${key}.kicker`, title: `${key}.title`, body: `${key}.body`, ...(tag && { tag }) };
+  return { id, picture, chip: `${key}.chip`, kicker: `${key}.kicker`, title: `${key}.title`, body: `${key}.body`, ...(aside && { aside }) };
 }
 
 /** What Atlas does, in the order the carousel shows it. The pictures are Atlas itself, on maps Atlas made. */
@@ -40,6 +40,6 @@ export const WELCOME_SLIDES: readonly WelcomeSlide[] = [
   slide('tokens', tokensPicture),
   slide('dice', dicePicture),
   slide('sound', soundPicture),
-  slide('players', playersPicture, 'tour.welcome.slides.players.tag'),
+  slide('players', playersPicture, { line: 'tour.welcome.slides.players.online', tag: 'tour.welcome.slides.players.tag' }),
   slide('yours', yoursPicture),
 ];

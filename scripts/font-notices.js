@@ -26,7 +26,7 @@ const BUNDLED_FONTS = [
     credit: 'Copyright 2015 The Courier Prime Project Authors',
     source: 'https://github.com/quoteunquoteapps/CourierPrime',
   },
-  // Libron's four faces: the text of a note in Atlas' Mediaeval look (styles/looks/atlas-looks.css).
+  // Libron's four faces: the text of a note in Atlas' Medieval look (styles/looks/atlas-looks.css).
   ...['regular', 'italic', 'bold', 'bold-italic'].map((face) => ({
     font: `src/app/assets/fonts/libron-${face}.woff2`,
     licence: 'src/app/assets/fonts/libron-OFL.txt',

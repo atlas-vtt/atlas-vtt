@@ -41,7 +41,7 @@ it('jumps to a chip\'s slide', () => {
   render(<WelcomeCarousel />);
   wait(SLIDE_MS / 2);
   fireEvent.click(within(chips()).getByRole('button', { name: 'Dice' }));
-  expect(shown()).toBe('Dice you can hear land');
+  expect(shown()).toBe('Roll anything, any system');
   expect(within(chips()).getByRole('button', { name: 'Dice' }).getAttribute('aria-current')).toBe('true');
 });
 
@@ -49,7 +49,7 @@ it('stops for good once a slide is picked or focus enters', () => {
   const picked = render(<WelcomeCarousel />);
   fireEvent.click(within(chips()).getByRole('button', { name: 'Dice' }));
   slides(3);
-  expect(shown()).toBe('Dice you can hear land');
+  expect(shown()).toBe('Roll anything, any system');
   picked.unmount();
   render(<WelcomeCarousel />);
   wait(1000);
@@ -114,13 +114,17 @@ it('names every slide on its chip', () => {
     .toEqual(['Welcome', 'Maps', 'Generator', 'Tokens', 'Dice', 'Sound', 'Players', 'Yours']);
 });
 
-it('tags online play as a closed beta beside the players slide\'s heading, as a label and not a button', () => {
+it('tags online play as a closed beta on its own line of the players slide, as a label and not a button', () => {
   render(<WelcomeCarousel />);
   fireEvent.click(within(chips()).getByRole('button', { name: 'Players' }));
-  expect(shown()).toBe('Play at the table or online Closed beta');
+  expect(shown()).toBe('Play at the table or online');
   const tag = screen.getByText('Closed beta');
   expect(tag.closest('button')).toBeNull();
   expect(tag.className).toBe('atlas-welcome-text__tag');
+  expect(tag.closest('p')!.textContent).toBe('Or play online: players join from their desktop, tablet or phone. Closed beta');
+  expect(tag.closest('p')!.previousElementSibling!.textContent)
+    .toBe('Show your table to your players in a second window, on another monitor or a TV.');
+  expect(screen.queryAllByText('Closed beta')).toHaveLength(1);
   fireEvent.click(within(chips()).getByRole('button', { name: 'Sound' }));
   expect(shown()).toBe('A soundtrack for every scene');
 });

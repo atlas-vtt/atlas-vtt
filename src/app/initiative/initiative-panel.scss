@@ -30,7 +30,7 @@ $list-shade: scaled(44px);
   border: $border-width-m solid transparent;
   @include atlas-panel-radius($surface-radius);
 
-  // The Mediaeval look's corner ivy (`useThemeIvy`, `lendThemeIvy`): the whole vine behind the surface
+  // The Medieval look's corner ivy (`useThemeIvy`, `lendThemeIvy`): the whole vine behind the surface
   --atlas-theme-ivy-scale: #{scaled(0.2)};
   @include atlas-theme-ivy-corners(-2);
 

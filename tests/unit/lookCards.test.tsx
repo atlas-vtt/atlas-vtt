@@ -40,7 +40,7 @@ it('marks the chosen look', () => {
   looks.set('mediaeval');
   render(<LookCards looks={looks} />);
   expect(screen.getByRole('radiogroup')).toBeTruthy();
-  expect(card('Mediaeval').getAttribute('aria-checked')).toBe('true');
+  expect(card('Medieval').getAttribute('aria-checked')).toBe('true');
   expect(card('Your theme').getAttribute('aria-checked')).toBe('false');
   expect(card('Sci-fi').getAttribute('aria-checked')).toBe('false');
 });
@@ -70,8 +70,8 @@ it('picks a look only on its picture: its name and note are plain text', () => {
 
 it('names each picture by its look and describes it by its note', () => {
   render(<LookCards looks={looksOn('')} />);
-  const picture = card('Mediaeval');
-  expect(document.getElementById(picture.getAttribute('aria-labelledby') ?? '')?.textContent).toBe('Mediaeval');
+  const picture = card('Medieval');
+  expect(document.getElementById(picture.getAttribute('aria-labelledby') ?? '')?.textContent).toBe('Medieval');
   expect(document.getElementById(picture.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Ink and ivy');
   expect(screen.getByRole('radio', { name: 'Your theme', description: 'Obsidian’s default' })).toBeTruthy();
 });
@@ -81,12 +81,12 @@ it('moves the choice with the arrow keys', () => {
   render(<LookCards looks={looks} />);
   act(() => { fireEvent.keyDown(card('Your theme'), { key: 'ArrowRight' }); });
   expect(looks.get()).toBe('mediaeval');
-  expect(document.activeElement).toBe(card('Mediaeval'));
-  act(() => { fireEvent.keyDown(card('Mediaeval'), { key: 'ArrowLeft' }); });
+  expect(document.activeElement).toBe(card('Medieval'));
+  act(() => { fireEvent.keyDown(card('Medieval'), { key: 'ArrowLeft' }); });
   act(() => { fireEvent.keyDown(card('Your theme'), { key: 'ArrowLeft' }); });
   expect(looks.get()).toBe('scifi');
   expect(card('Sci-fi').tabIndex).toBe(0);
-  expect(card('Mediaeval').tabIndex).toBe(-1);
+  expect(card('Medieval').tabIndex).toBe(-1);
   act(() => { fireEvent.keyDown(card('Sci-fi'), { key: 'Home' }); });
   expect(looks.get()).toBe('own');
   expect(document.activeElement).toBe(card('Your theme'));

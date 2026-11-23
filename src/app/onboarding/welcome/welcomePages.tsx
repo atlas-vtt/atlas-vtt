@@ -13,22 +13,24 @@ interface WelcomeTextProps {
   /** A small line above the heading; a page whose heading says it all has none. */
   kicker?: string;
   title: string;
-  /** A small status after the heading, such as a part still in beta. */
-  tag?: string;
   body: string;
+  /** A second line with a small status after it, such as a part still in beta: the status belongs to that line alone. */
+  aside?: { line: string; tag: string };
   children?: React.ReactNode;
 }
 
-/** A page's words: a small kicker where there is one, the heading in the look's heading face (with a status tag where there is one), and a line or two under it. */
-export function WelcomeText({ kicker, title, tag, body, children }: WelcomeTextProps): React.JSX.Element {
+/** A page's words: a small kicker where there is one, the heading in the look's heading face, a line or two under it, and a tagged line where there is one. */
+export function WelcomeText({ kicker, title, body, aside, children }: WelcomeTextProps): React.JSX.Element {
   return (
     <div className="atlas-welcome-text">
       {kicker && <span className="atlas-welcome-text__kicker">{kicker}</span>}
-      <h2 className="atlas-welcome-text__title">
-        {title}
-        {tag && <> <span className="atlas-welcome-text__tag">{tag}</span></>}
-      </h2>
+      <h2 className="atlas-welcome-text__title">{title}</h2>
       <p className="atlas-welcome-text__body">{body}</p>
+      {aside && (
+        <p className="atlas-welcome-text__body atlas-welcome-text__aside">
+          {aside.line} <span className="atlas-welcome-text__tag">{aside.tag}</span>
+        </p>
+      )}
       {children}
     </div>
   );
