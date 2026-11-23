@@ -1,7 +1,8 @@
+import { isPart } from './copyNames';
 import { isAudioPath } from './soundFiles';
 import type { NodeFiles, NodeStat } from './nodeFiles';
 import { isListableName, joinRelative, safeRelative } from './soundPaths';
-import { SoundPathError, SoundPathTakenError, SoundVaultPathError, sortedListing, TrashUnavailableError, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
+import { SoundPathError, SoundPathNotRemovableError, SoundPathTakenError, SoundVaultPathError, sortedListing, TrashUnavailableError, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
 import { readAsBlob, readRangeOf, writeFromBlob } from './externalBytes';
 
 const isMissing = (error: unknown): boolean => {
@@ -196,6 +197,19 @@ export class ExternalLocation implements SoundLocation {
     const { trashItem } = this.deps;
     if (!trashItem) throw new TrashUnavailableError();
     await trashItem(await this.removable(path));
+  }
+
+  async removePart(path: string): Promise<void> {
+    if (!isPart(path)) throw new SoundPathNotRemovableError(path);
+    const absolute = await this.removable(path);
+    if (!(await this.fs.stat(absolute)).isFile()) throw new SoundPathNotRemovableError(path);
+    await this.fs.unlink(absolute);
+  }
+
+  /** `rmdir` itself refuses a folder that holds anything. */
+  async removeEmptyFolder(path: string): Promise<void> {
+    if (path === '') throw new SoundPathNotRemovableError(path);
+    await this.fs.rmdir(await this.removable(path));
   }
 
   /** Linux' recursive watch costs a watch per folder on older systems, and a system without one throws: the rescan on opening the library and on returning to the window covers it. */

@@ -3,8 +3,13 @@ import { joinRelative, nameOfRelative, parentOfRelative, stemOf } from './soundP
 /** How many numbered copies of one name are looked at for the copy of a kept original. */
 const MAX_TWINS = 10;
 
+const PART_SUFFIX = '.atlas-part';
+
 /** Where a copy is written before it is whole: a name the library never lists, beside its source. */
-export const partOf = (path: string): string => `${path}.atlas-part`;
+export const partOf = (path: string): string => `${path}${PART_SUFFIX}`;
+
+/** Whether a path is a part: a file Atlas was writing, which never was anyone's. */
+export const isPart = (path: string): boolean => path.endsWith(PART_SUFFIX) && path.length > PART_SUFFIX.length;
 
 /** The name a source's copy takes: its own, as an Opus file, in its own folder. */
 export const stemCopyOf = (path: string): string => joinRelative(parentOfRelative(path), `${stemOf(nameOfRelative(path))}.opus`);
