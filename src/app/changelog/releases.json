@@ -2,6 +2,11 @@
   "version": "0.19.1-beta.0",
   "releases": [
     {
+      "version": "0.19.1-beta.0",
+      "title": "Coming in 0.19.1",
+      "markdown": "## Fixed\n\n- The Music, Ambience and Master sliders in Atlas' Sound settings now move at once when a Stream Deck changes those volumes"
+    },
+    {
       "version": "0.19.0",
       "date": "2026-11-22",
       "title": "Music packs and Stream Deck",
