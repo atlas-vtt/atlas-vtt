@@ -41,27 +41,17 @@ describe('the forms of a word', () => {
   const same = (a: string, b: string): boolean => formsOf(a).some((form) => formsOf(b).includes(form));
 
   it.each([
-    ['tokens', 'token'],
-    ['Boxes', 'box'],
-    ['caches', 'cache'],
-    ['entries', 'entry'],
-    ['classes', 'class'],
-    ['creates', 'create'],
-    ['creating', 'create'],
+    ['Tokens', 'tokens'],
     ['created', 'create'],
-    ['dragging', 'drag'],
-    ['resizing', 'resize'],
     ['sorted', 'sort'],
+    ['dragged', 'drag'],
     ['identifier', 'id'],
-    ['identifiers', 'ids'],
     ['number', 'num'],
     ['configuration', 'config'],
-    ['properties', 'props'],
-    ['reference', 'ref'],
     ['function', 'fn'],
     ['callback', 'cb'],
     ['element', 'el'],
-    ['positions', 'pos'],
+    ['position', 'pos'],
     ['index', 'idx'],
     ['maximum', 'max'],
     ['minimum', 'min'],
@@ -71,14 +61,29 @@ describe('the forms of a word', () => {
 
   it.each([
     ['not', 'note'],
-    ['not', 'notes'],
     ['not', 'noted'],
     ['use', 'us'],
-    ['class', 'clas'],
-    ['status', 'statu'],
     ['hidden', 'hide'],
     ['string', 'str'],
     ['token', 'tokenize'],
+    // A plural says there are several, in either direction.
+    ['tokens', 'token'],
+    ['ids', 'id'],
+    ['boxes', 'box'],
+    ['entries', 'entry'],
+    ['classes', 'class'],
+    ['creates', 'create'],
+    ['identifiers', 'id'],
+    // A word in `ing` may be a thing of its own.
+    ['building', 'build'],
+    ['lighting', 'lights'],
+    ['lighting', 'light'],
+    ['dragging', 'drag'],
+    ['creating', 'create'],
+    // A short spelling that is a word of its own.
+    ['reference', 'ref'],
+    ['property', 'prop'],
+    ['properties', 'props'],
   ])('%s is not %s', (a, b) => {
     expect(same(a, b)).toBe(false);
   });
@@ -111,17 +116,40 @@ describe('the words of a comment', () => {
 describe('a comment that only repeats its name', () => {
   it.each([
     ['The token id.', 'tokenId'],
-    ['The identifier of the tokens', 'tokenIds'],
+    ['The identifier of the token', 'tokenId'],
+    ['The token ids.', 'tokenIds'],
     ['Get the renderer service', 'getRendererService'],
-    ['Check if a path is absolute', 'isAbsolutePath'],
+    ['Whether a path is absolute', 'isAbsolutePath'],
     ['Rooms per loop.', 'ROOMS_PER_LOOP'],
     ["The GM's colour.", 'GM_COLOUR'],
-    ['Check if currently resizing', 'isCurrentlyResizing'],
-    ['Camera state', 'camera'],
-    ['Return current options', 'getOptions'],
-    ['The maximum number of tokens.', 'maxTokenNum'],
+    ['Check whether currently resizing', 'isCurrentlyResizing'],
+    ['Return the options', 'getOptions'],
+    ['The maximum number of tokens.', 'maxTokensNum'],
+    ['The sorted token ids.', 'sortTokenIds'],
   ])('%s on %s', (text, name) => {
     expect(isRestating(text, name)).toBe(true);
+  });
+
+  // Each was deleted by the rule once and said something its name does not.
+  it.each([
+    ['The class of the token.', 'token'],
+    ['Min or max.', 'minMax'],
+    ['Max of the min values.', 'minMax'],
+    ['Returns the token if hidden.', 'hiddenToken'],
+    ['The building id.', 'buildId'],
+    ['The scene lighting.', 'sceneLights'],
+    ['Reference token.', 'tokenRef'],
+    ['Property tokens.', 'propTokens'],
+    ['The token ids.', 'tokenId'],
+    ['The token id.', 'tokenIds'],
+    ['The ids of the tokens', 'tokenIds'],
+    ['Camera state', 'camera'],
+    ['Drag state', 'isDragging'],
+    ['Return current options', 'getOptions'],
+    ['Check if a path is absolute', 'isAbsolutePath'],
+    ['Token and scene.', 'tokenScene'],
+  ])('%s is kept on %s', (text, name) => {
+    expect(isRestating(text, name)).toBe(false);
   });
 
   it.each([
@@ -144,12 +172,40 @@ describe('a comment that only repeats its name', () => {
   it('counts no word of the game as empty', () => {
     for (const word of ['map', 'item', 'field', 'list', 'kind', 'type', 'handle', 'new', 'to', 'in', 'from', 'its', 'not', 'only']) expect(STOP_WORDS.has(word), word).toBe(false);
   });
+
+  it('counts no word as empty that says how names relate, which one is meant or how many', () => {
+    for (const word of ['class', 'state', 'if', 'or', 'and', 'current', 'values', 'property']) expect(STOP_WORDS.has(word), word).toBe(false);
+  });
+});
+
+describe('a comment that may name a group', () => {
+  const kept = (code: string): void => expect(fixed(code)).toBe(code);
+
+  it('is kept as a JSDoc block above members without one', () => {
+    kept('export const view = {\n  /** Token settings */\n  tokenSettings: {},\n  tokenSize: 1,\n};\n');
+    kept('export interface View {\n  /** Token settings */\n  tokenSettings: object;\n\n  tokenSize: number;\n}\n');
+    kept('export const first = 1;\n/** Token sizes */\nexport const TOKEN_SIZES = [1, 2];\nexport const TOKEN_GAP = 4;\n');
+  });
+
+  it('is kept as a line above a member whose comment is a block, and as a block above one whose comment is a line', () => {
+    kept('export interface View {\n  // Token settings\n  tokenSettings: object;\n  /** In cells. */\n  tokenSize: number;\n}\n');
+    kept('export interface View {\n  /** Token settings */\n  tokenSettings: object;\n  // In cells.\n  tokenSize: number;\n}\n');
+  });
+
+  it('is kept as a line above members without a comment', () => {
+    kept('export interface View {\n  // Token settings\n  tokenSettings: object;\n  tokenSize: number;\n}\n');
+  });
+
+  it('is removed where the next member has a comment of its kind, or none follows', () => {
+    expect(fixed('export interface View {\n  // Token settings\n  tokenSettings: object;\n  // In cells.\n  tokenSize: number;\n}\n')).toBe('export interface View {\n  tokenSettings: object;\n  // In cells.\n  tokenSize: number;\n}\n');
+    expect(fixed('export interface View {\n  tokenSize: number;\n  /** Token settings */\n  tokenSettings: object;\n}\n')).toBe('export interface View {\n  tokenSize: number;\n  tokenSettings: object;\n}\n');
+  });
 });
 
 describe('the fix', () => {
   it('removes a comment with its line', () => {
     expect(fixed('export interface Token {\n  /** The token id. */\n  tokenId: string;\n}\n')).toBe('export interface Token {\n  tokenId: string;\n}\n');
-    expect(fixed('export interface View {\n  selectedIds: string[];\n\n  // Drag state  \n  isDragging: boolean;\n}\n')).toBe('export interface View {\n  selectedIds: string[];\n\n  isDragging: boolean;\n}\n');
+    expect(fixed('export interface View {\n  isDragging: boolean;\n\n  // Selected ids  \n  selectedIds: string[];\n}\n')).toBe('export interface View {\n  isDragging: boolean;\n\n  selectedIds: string[];\n}\n');
   });
 
   it('removes every line of a block', () => {

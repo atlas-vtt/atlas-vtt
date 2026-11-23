@@ -2,33 +2,44 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
+import { workBase } from './check-guards.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
-const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).trim();
-const known = (ref) => spawnSync('git', ['rev-parse', '--verify', '--quiet', ref], { cwd: root }).status === 0;
+const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 });
+const names = (...args) => git(...args).split('\0').filter(Boolean);
 
-const base = process.env.ATLAS_BASE || (known('refs/heads/beta') ? 'beta' : 'origin/beta');
-const mergeBase = git('merge-base', 'HEAD', base);
+const base = workBase(git);
+if (base.problem) {
+  console.error(base.problem);
+  process.exit(2);
+}
 const changed = [...new Set([
-  ...git('diff', '--name-only', '--no-renames', mergeBase).split('\n'),
-  ...git('ls-files', '--others', '--exclude-standard').split('\n'),
-])].filter((file) => file && fs.existsSync(path.join(root, file)));
-// ESLint warns about a file it is handed and ignores, which --max-warnings 0 fails.
-const lintable = changed.filter((file) => file === 'package.json' || ((file === 'main.ts' || /^src\/.+\.tsx?$/.test(file)) && !/\.test\.[^/]*$/.test(file)));
+  ...names('diff', '--name-only', '--no-renames', '-z', base.commit),
+  ...names('ls-files', '-z', '--others', '--exclude-standard'),
+])].filter((file) => fs.existsSync(path.join(root, file)));
+// Every script file by its ending: the ESLint config decides which of them it reads, not this list.
+const lintable = changed.filter((file) => file === 'package.json' || /\.[cm]?[jt]sx?$/.test(file));
+// A command line holds about 32,000 characters on Windows.
+const LINT_CHUNK = 100;
+const lintRuns = Array.from({ length: Math.ceil(lintable.length / LINT_CHUNK) }, (_, index) => lintable.slice(index * LINT_CHUNK, (index + 1) * LINT_CHUNK));
 
+// Each tool by its own entry script, run by this Node: no shell reads a file name, and none is needed to find `npx` on Windows.
+const TSC = 'node_modules/typescript/bin/tsc';
+const ESLINT = ['node_modules/eslint/bin/eslint.js', '--config', 'eslint.config.mjs', '--max-warnings', '0', '--suppressions-location', 'eslint.suppressions.json', '--pass-on-unpruned-suppressions', '--no-warn-ignored'];
 const steps = [
-  ['npx', 'tsc', '--noEmit'],
-  lintable.length > 0 && ['npx', 'eslint', '--max-warnings', '0', '--suppressions-location', 'eslint.suppressions.json', '--pass-on-unpruned-suppressions', ...lintable],
-  !process.argv.includes('--no-tests') && ['npx', 'vitest', 'run', '--project', 'unit', '--changed', mergeBase],
-  ['npm', 'run', 'check:boundaries'],
-  ['npm', 'run', 'check:sizes'],
-  ['npm', 'run', 'check:docs'],
-  ['node', 'scripts/check-guards.mjs', '--base', mergeBase],
+  [TSC, '--noEmit'],
+  ...lintRuns.map((files) => [...ESLINT, ...files]),
+  !process.argv.includes('--no-tests') && ['node_modules/vitest/vitest.mjs', 'run', '--project', 'unit', '--changed', base.commit],
+  ['scripts/check-boundaries.mjs'],
+  [TSC, '-p', 'tsconfig.shared.json'],
+  ['scripts/check-file-sizes.mjs'],
+  ['scripts/check-doc-refs.mjs'],
+  ['scripts/check-guards.mjs', '--base', base.commit],
 ].filter(Boolean);
 
-console.log(`Checking against ${base} (${mergeBase.slice(0, 9)}): ${changed.length} changed file(s), ${lintable.length} to lint`);
-for (const [command, ...args] of steps) {
-  console.log(`\n$ ${command} ${args.join(' ')}`);
-  const { status } = spawnSync(command, args, { cwd: root, stdio: 'inherit', shell: process.platform === 'win32' });
+console.log(`Checking against ${base.name} (${base.commit.slice(0, 9)}): ${changed.length} changed file(s), ${lintable.length} to lint`);
+for (const step of steps) {
+  console.log(`\n$ node ${step.join(' ')}`);
+  const { status } = spawnSync(process.execPath, step, { cwd: root, stdio: 'inherit' });
   if (status !== 0) process.exit(status ?? 1);
 }

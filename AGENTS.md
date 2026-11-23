@@ -11,7 +11,7 @@ PIXI.js v8, imported from the `pixi.js` package, never Obsidian's bundled v7. Re
 
 - `npm ci` installs. Node's version is in `.nvmrc`.
 - `npm run check` while you work: typecheck, lint of the files you changed, the unit tests your change reaches, boundaries, file sizes, documentation references, guards. It stops at the first failure.
-- `npm run verify` before a pull request: every static check CI runs, and the unit tests.
+- `npm run verify` before a pull request: typecheck, lint, release notes, boundaries, file sizes, documentation references and the unit tests. The directory scan (`npm run lint:scan`), the release channel check, the reporting service's tests, the build and its preflight run only in CI.
 - `npx vitest run --project unit <file>` runs one test file. A test that needs a DOM starts with `// @vitest-environment jsdom`.
 - `vitest.config.mts` has more projects. None runs in CI and none is run whole out of habit; run the files that cover your change:
   - `slow` (generator invariants, grid detection on drawn maps, visibility sweeps, fuzz tests): `npx vitest run --project slow <file>`.

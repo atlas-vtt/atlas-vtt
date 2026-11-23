@@ -65,15 +65,18 @@ function nodeStartingAt(sourceCode, index) {
 const textOf = (comment) => (comment.type === 'Line' ? comment.value : comment.value.slice(1).replace(/^\s*\*+/gm, ''));
 
 /**
- * Whether a `//` line can only belong to the declaration under it: what follows the declaration
- * has a comment of its own, or the block ends there. Above members without one it may name the group.
+ * Whether a comment can only belong to the declaration under it: the block ends after the
+ * declaration, or what follows has a comment of the same kind, a `//` line after a `//` line and a
+ * JSDoc block after a JSDoc block. Above members without one it may name the group.
  * @param {SourceCode} sourceCode
+ * @param {Comment} comment
  * @param {AnyNode} declaration
  * @returns {boolean}
  */
-function standsAlone(sourceCode, declaration) {
+function standsAlone(sourceCode, comment, declaration) {
   const next = sourceCode.lines.slice(declaration.loc.end.line).find((line) => line.trim() !== '');
-  return next === undefined || /^\s*([})\]]|\/\/|\/\*)/.test(next);
+  if (next === undefined || /^\s*[})\]]/.test(next)) return true;
+  return (comment.type === 'Line' ? /^\s*\/\// : /^\s*\/\*\*/).test(next);
 }
 
 /**
@@ -91,8 +94,7 @@ function declarationUnder(sourceCode, comment) {
   if (before.loc.end.line === comment.loc.start.line || after.loc.start.line > comment.loc.end.line + 1) return null;
   if ((before.type === 'Block' || before.type === 'Line') && before.loc.end.line === comment.loc.start.line - 1) return null;
   const declaration = nodeStartingAt(sourceCode, after.range[0]);
-  if (!declaration || (comment.type === 'Line' && !standsAlone(sourceCode, declaration))) return null;
-  return declaration;
+  return declaration && standsAlone(sourceCode, comment, declaration) ? declaration : null;
 }
 
 /**

@@ -8,21 +8,27 @@
 /**
  * Words that carry nothing by themselves: articles, `of` and `for`, and the nouns and verbs that
  * only name what sort of declaration follows. Left out, since beside a name they say which one is
- * meant or how: words of the game (map, item, field, list, kind, handle), pronouns, `new`, and the
- * prepositions of direction and measure (`to`, `from`, `in`: "clips to the floors", "in cells").
+ * meant or how: words of the game (map, item, field, list, kind, handle, state, class), pronouns,
+ * `new` and `current`, the prepositions of direction and measure (`to`, `from`, `in`: "clips to
+ * the floors", "in cells"), the words that say how two names relate (`and`, `or`, `if`: "min or
+ * max", "the token if hidden"), a plural (`values`: "max of the min values" is of several), and a
+ * word a name may shorten (`property`).
  */
 export const STOP_WORDS = new Set([
-  'the', 'a', 'an', 'of', 'for', 'and', 'or',
-  'is', 'are', 'be', 'whether', 'if', 'current', 'given',
-  'value', 'values', 'data', 'info', 'object', 'array', 'state',
-  'function', 'method', 'handler', 'callback', 'helper', 'component', 'hook', 'props', 'property',
-  'variable', 'constant', 'class', 'interface', 'instance',
+  'the', 'a', 'an', 'of', 'for',
+  'is', 'are', 'be', 'whether', 'given',
+  'value', 'data', 'info', 'object', 'array',
+  'function', 'method', 'handler', 'callback', 'helper', 'component', 'hook', 'props',
+  'variable', 'constant', 'interface', 'instance',
   'get', 'gets', 'return', 'returns', 'check', 'checks',
 ]);
 
-/** Short and long spellings of one word; a name says `id` where its comment says `identifier`. */
+/**
+ * Short and long spellings of one word; a name says `id` where its comment says `identifier`. None
+ * for a short spelling that is a word of its own: a `ref` and a `prop` are things of React's.
+ */
 const ALIASES = new Map(Object.entries({
-  identifier: 'id', number: 'num', configuration: 'config', property: 'prop', reference: 'ref', function: 'fn',
+  identifier: 'id', number: 'num', configuration: 'config', function: 'fn',
   callback: 'cb', element: 'el', position: 'pos', index: 'idx', maximum: 'max', minimum: 'min',
 }));
 
@@ -31,8 +37,9 @@ const MIN_WORDS = 2;
 const MAX_WORDS = 8;
 /** One plain sentence: letters, spaces, commas, hyphens and apostrophes, with at most a full stop at its end. */
 const PLAIN_SENTENCE = /^[A-Za-z][A-Za-z ,'’-]*\.?$/;
-const SUFFIXES = ['ing', 'ed'];
-/** The shortest stem a suffix is cut down to: `noted` is `note`, never `not`. */
+/** Only the past: a word in `ing` may be a thing of its own (a `building` is no `build`, `lighting` no `lights`). */
+const SUFFIX = 'ed';
+/** The shortest stem the suffix is cut down to: `noted` is `note`, never `not`. */
 const MIN_STEM = 4;
 
 /**
@@ -48,20 +55,17 @@ export function wordsOfName(name) {
 const undoubled = (word) => word.replace(/([b-df-hj-np-tv-z])\1$/, '$1');
 
 /**
- * The forms a word may stand for: itself, its singular, its verb without `ing` or `ed`, each in
- * its short spelling. Two words are the same word when their forms meet.
+ * The forms a word may stand for: itself and its verb without `ed`, each in its short spelling.
+ * Two words are the same word when their forms meet. A plural is no form of its singular: "the
+ * token ids" says of a `tokenId` that there are several.
  * @param {string} word
  * @returns {string[]}
  */
 export function formsOf(word) {
   const lower = word.toLowerCase();
   const forms = new Set([lower]);
-  if (/ies$/.test(lower)) forms.add(`${lower.slice(0, -3)}y`);
-  else if (/(ss|x|ch|sh|z)es$/.test(lower)) forms.add(lower.slice(0, -2)).add(lower.slice(0, -1));
-  else if (/[^su]s$/.test(lower) && lower.length > 2) forms.add(lower.slice(0, -1));
-  for (const suffix of SUFFIXES) {
-    if (!lower.endsWith(suffix)) continue;
-    const stem = lower.slice(0, -suffix.length);
+  if (lower.endsWith(SUFFIX)) {
+    const stem = lower.slice(0, -SUFFIX.length);
     if (stem.length >= MIN_STEM) forms.add(stem).add(undoubled(stem));
     if (stem.length >= MIN_STEM - 1) forms.add(`${stem}e`);
   }

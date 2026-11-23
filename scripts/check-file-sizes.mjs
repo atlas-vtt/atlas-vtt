@@ -13,7 +13,7 @@ export const allowanceFor = (lines) => (Math.floor(lines / STEP) + 1) * STEP;
 
 export const lineCount = (text) => (text === '' ? 0 : text.split('\n').length - (text.endsWith('\n') ? 1 : 0));
 
-export const inScope = (file) => (file === 'main.ts' || /^src\/.+\.tsx?$/.test(file)) && !/\.test\.|(^|\/)__tests__\/|\.d\.ts$/.test(file);
+export const inScope = (file) => (file === 'main.ts' || /^src\/.+\.(tsx?|jsx?|mjs)$/.test(file)) && !/\.test\.|(^|\/)__tests__\/|\.d\.ts$/.test(file);
 
 const globPattern = (glob) => new RegExp(`^${glob.split('**').map((part) => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replaceAll('*', '[^/]*')).join('.*')}$`);
 
@@ -26,9 +26,11 @@ const sorted = (entries) => Object.fromEntries([...entries].sort(([a], [b]) => (
 /** `sizes` maps every file in scope to its line count. */
 export function sizeProblems(sizes, record) {
   return Object.entries(sizes).flatMap(([file, lines]) => {
-    const allowed = record.allowances[file] ?? LIMIT;
+    const recorded = record.allowances[file];
+    const allowed = recorded ?? LIMIT;
     if (lines <= allowed || isExempt(file, record)) return [];
-    return [`${file}: ${lines} lines, allowed ${allowed}. Move a responsibility into its own module; do not raise the allowance.`];
+    const renamed = recorded === undefined ? ` If you renamed a recorded file, rename its entry in ${RECORD}.` : '';
+    return [`${file}: ${lines} lines, allowed ${allowed}. Move a responsibility into its own module; do not raise the allowance.${renamed}`];
   });
 }
 
@@ -54,28 +56,28 @@ export function recorded(sizes, record, files) {
 
 function main(args) {
   const root = path.resolve(import.meta.dirname, '..');
-  const listed = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '--', 'main.ts', 'src'], { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  const files = [...new Set(listed.split('\n'))].filter((file) => inScope(file) && fs.existsSync(path.join(root, file))).sort();
+  // Without -z git quotes and escapes a name that holds other than ASCII characters.
+  const listed = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'main.ts', 'src'], { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const files = [...new Set(listed.split('\0'))].filter((file) => inScope(file) && fs.existsSync(path.join(root, file))).sort();
   const sizes = Object.fromEntries(files.map((file) => [file, lineCount(fs.readFileSync(path.join(root, file), 'utf8'))]));
-  const record = JSON.parse(fs.readFileSync(path.join(root, RECORD), 'utf8'));
+  let current = JSON.parse(fs.readFileSync(path.join(root, RECORD), 'utf8'));
   const write = (next) => {
-    for (const file of new Set([...Object.keys(record.allowances), ...Object.keys(next.allowances)])) {
-      const [before, after] = [record.allowances[file], next.allowances[file]];
+    for (const file of new Set([...Object.keys(current.allowances), ...Object.keys(next.allowances)])) {
+      const [before, after] = [current.allowances[file], next.allowances[file]];
       if (before !== after) console.log(`${file}: ${before ?? 'not recorded'} -> ${after ?? 'not recorded'}`);
     }
     fs.writeFileSync(path.join(root, RECORD), `${JSON.stringify(next, null, 2)}\n`);
-    return next;
+    current = next;
   };
 
-  let current = record;
-  if (args.includes('--update')) current = write(lowered(sizes, record));
+  if (args.includes('--update')) write(lowered(sizes, current));
   if (args.includes('--record')) {
     const named = args.slice(args.indexOf('--record') + 1).filter((arg) => !arg.startsWith('--')).map((file) => path.relative(root, path.resolve(file)).split(path.sep).join('/'));
     for (const file of named) {
       if (sizes[file] === undefined) console.error(`${file} is no source file this check reads.`);
       else if (sizes[file] <= LIMIT) console.log(`${file}: ${sizes[file]} lines, needs no entry.`);
     }
-    current = write(recorded(sizes, record, named));
+    write(recorded(sizes, current, named));
   }
 
   const problems = sizeProblems(sizes, current);

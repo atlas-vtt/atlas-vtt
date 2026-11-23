@@ -39,11 +39,11 @@ const OUTSIDE_REPOSITORY = /^(~|\/(Users|home)\/)/u;
 
 function listed(args) {
   return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
-    .split('\n')
+    .split('\0')
     .filter(Boolean);
 }
 
-const files = listed(['ls-files', '--cached', '--others', '--exclude-standard']);
+const files = listed(['ls-files', '-z', '--cached', '--others', '--exclude-standard']);
 const fileSet = new Set(files);
 const directories = new Set();
 const baseNames = new Set();

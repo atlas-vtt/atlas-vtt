@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,6 +22,18 @@ function lint(code: string, filename: string): Linter.LintMessage[] {
 }
 
 const isPlainFile = (path: string): boolean => !/[*{]/.test(path);
+
+const TRACKED = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter(Boolean);
+
+/** The globs the conventions use: `**` over directories, `*` within a name, `{a,b}`. */
+function globPattern(glob: string): RegExp {
+  const source = glob
+    .replace(/[.+?^$()|[\]\\]/g, '\\$&')
+    .replace(/\{([^}]*)\}/g, (_braces, list: string) => `(${list.split(',').join('|')})`)
+    .replace(/\*\*\/|\*\*|\*/g, (stars) => (stars === '**/' ? '(.*/)?' : stars === '**' ? '.*' : '[^/]*'));
+  return new RegExp(`^${source}$`);
+}
+
 const pathsNamedIn = (text: string): string[] => text.match(/\bsrc\/[\w/.-]+\.tsx?\b/g) ?? [];
 
 describe('the lint conventions', () => {
@@ -60,6 +73,13 @@ describe('the lint conventions', () => {
 
     it('accepts its good examples', () => {
       for (const code of convention.good) expect(lint(code, filename), code).toEqual([]);
+    });
+
+    it('names in every glob a file the repository tracks, so a renamed folder cannot switch it off', () => {
+      for (const glob of [...(convention.files ?? []), ...(convention.owners ?? []), ...(convention.ignores ?? [])]) {
+        const pattern = globPattern(glob);
+        expect(TRACKED.some((file) => pattern.test(file)), glob).toBe(true);
+      }
     });
 
     it('leaves its owners and the files outside its scope alone', () => {

@@ -51,6 +51,9 @@ const SIGHT_POLICY = 'src/app/vision/tokenSightPolicy.ts';
 const FILE_FIELDS = '/^(maxStress|statblockResources|showHPBars|showStressBars)$/';
 const SHADER_CLASSES = '/^(Shader|GlProgram)$/';
 const UNFINISHED = /\b(TODO|FIXME|HACK|XXX)\b/;
+const EVENT_BUTTON = "MemberExpression[property.name='button']:not([object.type='ThisExpression'])";
+// A selector's pattern ends at the first slash, so each slash is written as its code point.
+const TEST_CODE = '/(\\.test(\\.|$)|\\u002F__tests__\\u002F|^tests\\u002F|\\u002Ftests\\u002F)/';
 
 /**
  * Every way a module is taken from a package: the import is flagged rather than the use, so an
@@ -85,6 +88,8 @@ export const CONVENTIONS = [
       "JSXOpeningElement[name.name=/^[a-z]/] > JSXAttribute[name.name='title']",
       "CallExpression[callee.property.name=/^(setAttribute|setAttr)$/][arguments.0.value='title']",
       "Property[key.name='attr'] > ObjectExpression > Property[key.name='title']",
+      // Obsidian's element helpers set the attribute from their options (`DomElementInfo.title`).
+      "CallExpression:matches([callee.property.name=/^(createEl|createDiv|createSpan)$/], [callee.name=/^(createEl|createDiv|createSpan)$/]) > ObjectExpression > Property[key.name='title']",
       "AssignmentExpression > MemberExpression.left[property.name='title'][object.type!='ThisExpression']:not([object.name=/^(doc|document)$/])",
     ],
     message: 'Name the control with `aria-label`, or show `LabelTooltip` (src/app/packages/components/primitives/tooltip.tsx) where a tooltip is wanted.',
@@ -94,6 +99,9 @@ export const CONVENTIONS = [
       'export const close = <button type="button" title="Close" />;',
       "declare const el: HTMLElement;\nel.setAttribute('title', 'Close');",
       "declare const el: HTMLElement;\nel.createEl('div', { attr: { title: 'Close' } });",
+      "declare const el: HTMLElement;\nel.createEl('div', { title: 'Close' });",
+      "declare const el: HTMLElement;\nexport const add = (title: string): HTMLElement => el.createDiv({ title });",
+      "export const label = createSpan({ cls: 'label', title: 'Close' });",
       "declare const el: HTMLElement;\nel.title = 'Close';",
     ],
     good: [
@@ -101,6 +109,7 @@ export const CONVENTIONS = [
       'declare const Panel: (props: { title: string }) => null;\nexport const panel = <Panel title="Scenes" />;',
       "document.title = 'Atlas';",
       "export class Card { title = ''; rename(title: string): void { this.title = title; } }",
+      "declare const el: HTMLElement;\nel.createEl('div', { text: 'Close', attr: { 'aria-label': 'Close' } });",
     ],
   },
   {
@@ -111,8 +120,7 @@ export const CONVENTIONS = [
       "ExportSpecifier[local.name='parseYaml']",
       "MemberExpression[property.name='parseYaml']",
       "ObjectPattern > Property[key.name='parseYaml']",
-      "ImportDeclaration[source.value='yaml']",
-      "CallExpression[callee.name='require'][arguments.0.value='yaml']",
+      ...importsOf("'yaml'"),
     ],
     message: 'Parse the YAML of notes, bases and bundles with parseNoteYaml (src/app/services/noteYaml.ts).',
     why: "A note is not Atlas' own text and what the parser costs depends on the text, so only the helper, which checks the text first, hands it to the parser.",
@@ -124,6 +132,9 @@ export const CONVENTIONS = [
       "import * as obsidian from 'obsidian';\nconst { parseYaml } = obsidian;\nexport const read = parseYaml;",
       "import { parse } from 'yaml';\nexport const read = parse;",
       "export const yaml: unknown = require('yaml');",
+      "export const yaml = (): Promise<unknown> => import('yaml');",
+      "export * from 'yaml';",
+      "export { parse } from 'yaml';",
     ],
     good: ["import { parseNoteYaml } from './services/noteYaml';\nexport const read = (text: string): unknown => parseNoteYaml(text);"],
   },
@@ -277,12 +288,15 @@ export const CONVENTIONS = [
     selectors: [
       "AssignmentExpression[left.property.name='pause'][left.object.property.name='viewport']",
       "AssignmentExpression[left.property.name='pause'][left.object.name='viewport']",
+      "AssignmentExpression[left.property.name='pause'][left.object.type='TSNonNullExpression']:matches([left.object.expression.property.name='viewport'], [left.object.expression.name='viewport'])",
     ],
     message: "Pause the drag plugin for the length of the gesture: viewport.plugins.pause('drag'), and resume it when the gesture ends.",
     why: 'A paused viewport stops the zoom too.',
     bad: [
       'export class Tool { viewport = { pause: false }; start(): void { this.viewport.pause = true; } }',
       'export const start = (viewport: { pause: boolean }): void => { viewport.pause = true; };',
+      'export class Tool { viewport?: { pause: boolean }; start(): void { this.viewport!.pause = true; } }',
+      'export const start = (viewport?: { pause: boolean }): void => { viewport!.pause = true; };',
     ],
     good: [
       "export const start = (viewport: { plugins: { pause(name: string): void } }): void => viewport.plugins.pause('drag');",
@@ -411,10 +425,11 @@ export const CONVENTIONS = [
   },
   {
     name: 'pointerup-button',
+    // `PointerUp` ends a word of the name, so `onPointerUpdate` is no release; `this.button` is a field, not the event's button.
     selectors: [
-      ":matches(MethodDefinition, PropertyDefinition)[key.name=/[Pp]ointerUp|^on(Mouse)?Up$/] MemberExpression[property.name='button']",
-      ":matches(FunctionDeclaration, VariableDeclarator)[id.name=/[Pp]ointerUp|^on(Pointer|Mouse)?Up$/] MemberExpression[property.name='button']",
-      "CallExpression[arguments.0.value=/^pointerup/] > :function MemberExpression[property.name='button']",
+      `:matches(MethodDefinition, PropertyDefinition)[key.name=/[Pp]ointerUp(?![a-z])|^on(Mouse)?Up$/] ${EVENT_BUTTON}`,
+      `:matches(FunctionDeclaration, VariableDeclarator)[id.name=/[Pp]ointerUp(?![a-z])|^on(Pointer|Mouse)?Up$/] ${EVENT_BUTTON}`,
+      `CallExpression[arguments.0.value=/^pointerup/] > :function ${EVENT_BUTTON}`,
     ],
     message: 'Note on pointerdown which press began the gesture (isPrimaryPress, src/app/pixi/utils/pointerButtons.ts) and end it on any pointerup.',
     why: 'A browser sends pointerup only when the last button is released, and with that button, so a stroke whose release is ignored stays open.',
@@ -426,6 +441,8 @@ export const CONVENTIONS = [
     ],
     good: [
       'export class Stroke { open = false; handlePointerDown(event: { button: number }): void { this.open = event.button === 0; } handlePointerUp(): void { this.open = false; } }',
+      'export class Stroke { moved = false; onPointerUpdate(event: { button: number }): void { this.moved = event.button === 0; } }',
+      'export class Stroke { button: HTMLElement | null = null; handlePointerUp(): void { this.button?.blur(); } }',
     ],
   },
   {
@@ -444,13 +461,21 @@ export const CONVENTIONS = [
   },
   {
     name: 'condition-value-writes',
-    selectors: [":matches(AssignmentExpression[left.property.name='conditionValues'], UnaryExpression[operator='delete'][argument.property.name='conditionValues'])"],
+    // The map itself, an entry of it, and an entry behind a non-null assertion.
+    selectors: [
+      ":matches(AssignmentExpression[left.property.name='conditionValues'], UnaryExpression[operator='delete'][argument.property.name='conditionValues'])",
+      ":matches(AssignmentExpression[left.object.property.name='conditionValues'], UnaryExpression[operator='delete'][argument.object.property.name='conditionValues'])",
+      ":matches(AssignmentExpression[left.object.expression.property.name='conditionValues'], UnaryExpression[operator='delete'][argument.object.expression.property.name='conditionValues'])",
+    ],
     message: "Change a token's conditions with setConditionValue, removeCondition or clearConditions (src/app/utils/conditionValues.ts).",
     why: 'A number never outlives its condition there, and an emptied list or map is deleted rather than left behind.',
     owners: ['src/app/utils/conditionValues.ts'],
     bad: [
       'export const clear = (token: { conditionValues?: Record<string, number> }): void => { delete token.conditionValues; };',
       'export const clear = (token: { conditionValues?: Record<string, number> }): void => { token.conditionValues = {}; };',
+      'export const set = (token: { conditionValues: Record<string, number> }, id: string): void => { token.conditionValues[id] = 2; };',
+      'export const remove = (token: { conditionValues: Record<string, number> }, id: string): void => { delete token.conditionValues[id]; };',
+      'export const set = (token: { conditionValues?: Record<string, number> }, id: string): void => { token.conditionValues![id] = 2; };',
     ],
     good: ["import { clearConditions, type TokenConditionState } from './utils/conditionValues';\nexport const clear = (token: TokenConditionState): void => clearConditions(token);"],
   },
@@ -459,7 +484,7 @@ export const CONVENTIONS = [
     selectors: ["MemberExpression[property.name='subtle']"],
     message: 'Hash bytes with sha256, and a JSON value with hashJson (src/app/utils/hashing.ts).',
     why: 'Hashes are stored in vault files and compared between devices and windows, so one module makes their bytes and their hex.',
-    // assetIds signs with a key, which is no content hash; the protocol is a copy of another repository's.
+    // assetIds signs with a key, which is no content hash. The protocol directory is changed as a whole, never file by file.
     owners: ['src/app/utils/hashing.ts', 'src/app/online/gm/assets/assetIds.ts'],
     ignores: ['src/app/online/protocol/**'],
     bad: ["export const digest = (bytes: Uint8Array<ArrayBuffer>): Promise<ArrayBuffer> => crypto.subtle.digest('SHA-256', bytes);"],
@@ -510,14 +535,20 @@ export const CONVENTIONS = [
   },
   {
     name: 'button-type',
-    selectors: ["JSXOpeningElement[name.name='button']:not(:has(JSXAttribute[name.name='type'])):not(:has(JSXSpreadAttribute))"],
+    selectors: ["JSXOpeningElement:matches([name.name='button'], [name.object.name='motion'][name.property.name='button']):not(:has(JSXAttribute[name.name='type'])):not(:has(JSXSpreadAttribute))"],
     message: 'Give the button `type="button"`, or `type="submit"` where it submits its form.',
     why: 'A button without a type submits the form it stands in.',
     filename: 'src/app/example.tsx',
-    bad: ['export const close = <button onClick={() => undefined}>Close</button>;', 'export const close = <button />;'],
+    bad: [
+      'export const close = <button onClick={() => undefined}>Close</button>;',
+      'export const close = <button />;',
+      "import { motion } from 'framer-motion';\nexport const close = <motion.button whileTap={{ scale: 0.96 }}>Close</motion.button>;",
+    ],
     good: [
       'export const close = <button type="button" onClick={() => undefined}>Close</button>;',
       'export const save = <button type="submit">Save</button>;',
+      "import { motion } from 'framer-motion';\nexport const close = <motion.button type=\"button\" />;",
+      "import { motion } from 'framer-motion';\nexport const panel = <motion.div />;",
       'export const close = (props: React.ButtonHTMLAttributes<HTMLButtonElement>): React.JSX.Element => <button {...props} />;',
       'declare const Button: (props: { onClick: () => void }) => null;\nexport const close = <Button onClick={() => undefined} />;',
     ],
@@ -528,7 +559,7 @@ export const CONVENTIONS = [
     message: 'Import isRecord from src/app/utils/guards.ts, and clamp and lerp from src/app/utils/math.ts; a helper that does something else is named after what it does.',
     why: 'A copy drifts from the others, and the next file copies the copy.',
     owners: ['src/app/utils/**'],
-    // The protocol is a copy of another repository's.
+    // The protocol directory is changed as a whole, never file by file.
     ignores: ['src/app/online/protocol/**'],
     bad: [
       "function isRecord(value: unknown): value is Record<string, unknown> {\n  return typeof value === 'object' && value !== null;\n}\nexport const read = (value: unknown): boolean => isRecord(value);",
@@ -574,6 +605,26 @@ export const CONVENTIONS = [
     ],
   },
   {
+    name: 'test-code-imports',
+    // ESLint reads no test file and nothing under `tests/`, so the rule holds for `main.ts` and the source under `src/`.
+    selectors: importsOf(TEST_CODE),
+    message: 'Move what the app needs into a source module, and let the test import it from there.',
+    why: 'Test files and test helpers are not checked as the app is, and what the app imports from them is bundled into the plugin.',
+    ignores: ['**/*.test.*', TEST_HELPERS],
+    bad: [
+      "import { seeded } from './measure/__tests__/areaTestKit';\nexport const random = seeded;",
+      "import { fixture } from './grid/hexGeometry.test';\nexport const hexes = fixture;",
+      "import { createApp } from '../../tests/mocks/obsidian';\nexport const app = createApp;",
+      "export { seeded } from './measure/__tests__/areaTestKit';",
+      "export * from './measure/__tests__/areaTestKit';",
+      "export const kit = (): Promise<unknown> => import('./measure/__tests__/areaTestKit');",
+    ],
+    good: [
+      "import { clamp } from './utils/math';\nexport const share = (value: number): number => clamp(value, 0, 1);",
+      "import { latest } from './contests/latest';\nexport const newest = latest;",
+    ],
+  },
+  {
     name: 'unfinished-markers',
     create: (context) => ({
       Program() {
@@ -599,10 +650,12 @@ export const CONVENTIONS = [
     bad: [
       'export interface Token {\n  /** The token id. */\n  tokenId: string;\n}',
       'export class Grid {\n  /** Set grid scale */\n  setGridScale(scale: number): void {\n    void scale;\n  }\n}',
-      "export const first = 1;\n\n/**\n * Check if a path is absolute\n */\nexport function isAbsolutePath(path: string): boolean {\n  return path.startsWith('/');\n}",
-      'export interface View {\n  selectedIds: string[];\n\n  // Drag state\n  isDragging: boolean;\n}',
+      "export const first = 1;\n\n/**\n * Whether a path is absolute\n */\nexport function isAbsolutePath(path: string): boolean {\n  return path.startsWith('/');\n}",
+      'export interface View {\n  isDragging: boolean;\n\n  // Selected ids\n  selectedIds: string[];\n}',
       'export const first = 1;\n/** Rooms per loop. */\nexport const ROOMS_PER_LOOP = 8;',
-      'export const settings = {\n  /** The identifier of the tokens */ tokenIds: [],\n};',
+      'export const settings = {\n  /** The identifier of the token */ tokenId: 1,\n};',
+      'export interface Token {\n  /** The token id. */\n  tokenId: string;\n  /** The token name. */\n  tokenName: string;\n}',
+      'export interface Token {\n  // The token id\n  tokenId: string;\n  // Sizes are in cells.\n  tokenSize: number;\n}',
     ],
     good: [
       // A unit, a reason, a limit: one word the name lacks is enough.
@@ -620,10 +673,19 @@ export const CONVENTIONS = [
       "/** The token id. */\nexport const tokenId = 'token';",
       "export function tokenId(): string {\n  // The token id\n  const tokenId = 'token';\n  return tokenId;\n}",
       'export interface Token {\n  /* The token id. */\n  tokenId: string;\n}',
-      // A label: one word, or a line above members that have no comment of their own.
+      // A label: one word, or a comment above members that have none of its kind.
       'export interface Item {\n  /** layout */\n  layout?: string;\n}',
       'export interface View {\n  // Token settings\n  tokenSettings: object;\n  tokenSize: number;\n}',
       'export interface View {\n  // Widget settings\n  widgetSettings: object;\n\n  widgetValues: object;\n}',
+      'export interface View {\n  // Token settings\n  tokenSettings: object;\n  /** In cells. */\n  tokenSize: number;\n}',
+      'export const view = {\n  /** Token settings */\n  tokenSettings: {},\n  tokenSize: 1,\n};',
+      // A word the name only resembles: another number, another form, a longer spelling.
+      'export interface Token {\n  /** The token ids. */\n  tokenId: string;\n}',
+      'export interface Build {\n  /** The building id. */\n  buildId: string;\n}',
+      'export interface Row {\n  /** Reference token. */\n  tokenRef: string;\n}',
+      // A word that says how the names relate.
+      'export interface Range {\n  /** Min or max. */\n  minMax: number;\n}',
+      'export interface Token {\n  /** The class of the token. */\n  token: string;\n}',
       // More than one comment: the lines belong together.
       'export interface Token {\n  // The token id\n  // as the map file holds it.\n  tokenId: string;\n}',
     ],

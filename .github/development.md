@@ -33,12 +33,15 @@ and every one of them blocks the merge, lint included.
 
 ### Tests
 
-The suite is two projects. `unit` runs in CI on every push and pull request, in four
-shards. `slow` holds the files that take a CI runner ten seconds or more each (the dungeon
-generator's invariants, the Spectral Engine on drawn maps, visibility sweeps, wall sealing,
-property and fuzz tests; the list is `SLOW_TEST_FILES` in `vitest.config.mts`) and never
-runs in CI: run `npm run test:slow` locally when the code those files cover changes, or
-one file of it with `npx vitest run --project slow <path>`.
+`vitest.config.mts` has six projects, and CI runs one of them. `unit` runs in CI on every
+push and pull request, in four shards. `slow` holds the files that take a CI runner ten
+seconds or more each (the dungeon generator's invariants, the Spectral Engine on drawn maps,
+visibility sweeps, wall sealing, property and fuzz tests; the list is `SLOW_TEST_FILES` in
+`vitest.config.mts`): run `npm run test:slow` locally when the code those files cover
+changes, or one file of it with `npx vitest run --project slow <path>`. `perf` holds the
+wall-clock budgets and runs alone on one worker (`npm run test:perf`). `gpu` runs the
+`*.gpu.test.ts` files in headless Chromium, and `sound-webkit` and `webkit` run a few of
+them in Playwright's WebKit.
 
 Unit tests run in Node. A test that needs a DOM (React, `document`, canvas
 elements) starts with `// @vitest-environment jsdom`; without it, it fails with
@@ -78,7 +81,10 @@ The gate is zero tolerance: no errors, no warnings (`--max-warnings 0`).
   gate (`--pass-on-unpruned-suppressions`); the maintainer removes such
   entries when the change lands, with `npm run lint:prune`. A rule that is
   newly switched on is baselined by the maintainer alone:
-  `npx eslint . --suppressions-location eslint.suppressions.json --suppress-rule <rule id>`.
+  `npx eslint . --config eslint.config.mjs --suppressions-location eslint.suppressions.json --suppress-rule <rule id>`.
+  Every call names the config (`--config eslint.config.mjs`): ESLint looks a
+  config up for each file, and an `eslint.config.js` nearer to a file, or one
+  beside ours, would replace it.
   The file deliberately does not use ESLint's default name: Obsidian's
   directory review runs ESLint with its own rule set, and a suppression that
   set does not use makes ESLint exit with code 2, which the review reports as
@@ -96,30 +102,44 @@ them may only shrink:
   derive a value during render instead of setting state in an effect, reset
   with a `key`, set state in the event handler, and subscribe with
   `useSyncExternalStore`.
-- **File sizes**: a source file (`main.ts` and `src/**/*.ts`, `*.tsx`, without
-  tests and declarations) has at most 300 lines. The files that were larger
+- **File sizes**: a source file (`main.ts` and `src/**/*.ts`, `*.tsx`, `*.js`,
+  `*.jsx`, `*.mjs`, without tests and declarations) has at most 300 lines. The files that were larger
   when the check came are recorded in `scripts/file-sizes.json` with an
   allowance, their size rounded up to the next 50 lines: a fix fits, a new
   responsibility does not and goes into its own module. Tables of pure data
   are exempt by glob (the translations). `npm run check:sizes` checks, and
   `node scripts/check-file-sizes.mjs --update` lowers the allowances of files
   that shrank. Adding an entry or raising one is the maintainer's alone:
-  `node scripts/check-file-sizes.mjs --record <file>`.
+  `node scripts/check-file-sizes.mjs --record <file>`. A renamed file keeps
+  its allowance: rename its entry.
 - **Bundle budget**: `scripts/bundle-budget.json` holds how many bytes
   `dist/main.js` and `dist/styles.css` may have, and `npm run preflight` fails
   a build above it. Find what grew before asking for a higher budget.
 
-`node scripts/check-guards.mjs --base <ref>` compares the three with what they
-were at `<ref>` and fails when a rule's suppressed findings, an allowance or a
-budget rose, or a rule, an entry or an exemption was added. A suppressed
-finding that moved to another file is no rise. For pull requests from forks CI
-runs the base branch's copy of it with `--strict`, which also fails when the
-checks themselves changed: the ESLint configs and rules, the check scripts,
-the TypeScript and Vitest configs, the workflows and the `scripts` of
-`package.json`. The step makes such a change loud; it does not forbid it. Say
-in the pull request why it is needed, and the maintainer labels it
-`guards-ok`, which skips the step from the next push on. On the maintainer's
-own branches `ATLAS_GUARDS_OK=1` turns the failures into notes.
+`npm run check:guards` compares the three with what they were where the branch
+left `beta` (`--base <ref>` names another commit) and fails when a rule's
+suppressed findings, an allowance or a budget rose, or a rule, an entry or an
+exemption was added. A suppressed finding that moved to another file is no
+rise, and neither is the entry of a renamed file. With `--strict` it also
+fails when the checks themselves changed: everything under `scripts/` but the
+two records there, an ESLint config in any directory, every `tsconfig*.json`,
+the Vitest config, the workflows and the `scripts` of `package.json`. On the
+maintainer's own branches `ATLAS_GUARDS_OK=1` turns the failures into notes.
+
+For pull requests from forks the `guards` workflow
+(`.github/workflows/guards.yml`) runs it with `--strict`. The workflow runs on
+`pull_request_target`: it and the script are the base branch's copies, which a
+pull request cannot edit, and the pull request's merge commit is only read
+through git (`--head <ref>`), never checked out, installed or run. `guards`
+should be a required check of `beta` and `main`; a job that is skipped counts
+as passed there. The check makes such a change loud; it does not forbid it.
+Say in the pull request why it is needed, and the maintainer labels it
+`guards-ok`, which passes the check at once. A pull request that does not
+merge cleanly has no merge commit to read and is checked once it does.
+
+When a change lands, the maintainer runs `npm run lint:prune`: a count left
+higher than the findings there are could be filled again without the guard
+seeing a rise.
 
 `npm run check` is the loop while working: typecheck, ESLint on the files
 changed since the branch left `beta`, the unit tests those changes reach, then

@@ -6,8 +6,8 @@ const sizes = { 'src/big.ts': 362, 'src/small.ts': 300, 'src/new.ts': 301, 'src/
 
 describe('the file size check', () => {
   it('reads source files and no tests or declarations', () => {
-    expect(['main.ts', 'src/app/a.ts', 'src/app/b.tsx'].every(inScope)).toBe(true);
-    expect(['src/app/a.test.ts', 'src/app/__tests__/helper.ts', 'src/assets.d.ts', 'scripts/a.ts', 'src/app/a.js'].some(inScope)).toBe(false);
+    expect(['main.ts', 'src/app/a.ts', 'src/app/b.tsx', 'src/app/a.js', 'src/app/b.jsx', 'src/app/c.mjs'].every(inScope)).toBe(true);
+    expect(['src/app/a.test.ts', 'src/app/a.test.js', 'src/app/__tests__/helper.ts', 'src/assets.d.ts', 'scripts/a.ts', 'main.js', 'src/app/a.json'].some(inScope)).toBe(false);
   });
 
   it('counts lines with or without a final newline', () => {
@@ -19,8 +19,10 @@ describe('the file size check', () => {
   });
 
   it('holds a file to its allowance, or to 300 lines without one', () => {
-    expect(sizeProblems(sizes, record)).toEqual(['src/new.ts: 301 lines, allowed 300. Move a responsibility into its own module; do not raise the allowance.']);
-    expect(sizeProblems({ 'src/big.ts': 451 }, record)).toEqual([expect.stringContaining('src/big.ts: 451 lines, allowed 450.')]);
+    expect(sizeProblems(sizes, record)).toEqual([
+      'src/new.ts: 301 lines, allowed 300. Move a responsibility into its own module; do not raise the allowance. If you renamed a recorded file, rename its entry in scripts/file-sizes.json.',
+    ]);
+    expect(sizeProblems({ 'src/big.ts': 451 }, record)).toEqual(['src/big.ts: 451 lines, allowed 450. Move a responsibility into its own module; do not raise the allowance.']);
   });
 
   it('lowers allowances and drops the ones no longer needed, and adds none', () => {
@@ -31,5 +33,10 @@ describe('the file size check', () => {
   it('records only the files it is given', () => {
     expect(recorded(sizes, record, ['src/new.ts', 'src/fits.ts', 'src/data/en/table.ts']).allowances).toEqual({ ...record.allowances, 'src/new.ts': 350 });
     expect(recorded({ 'src/big.ts': 480 }, record, ['src/big.ts']).allowances['src/big.ts']).toBe(500);
+  });
+
+  it('records on top of what an update lowered', () => {
+    const updated = lowered(sizes, record);
+    expect(recorded(sizes, updated, ['src/new.ts']).allowances).toEqual({ 'src/big.ts': 400, 'src/new.ts': 350 });
   });
 });
