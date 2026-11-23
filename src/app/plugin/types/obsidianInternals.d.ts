@@ -21,6 +21,9 @@ declare module 'obsidian' {
     /** Active theme name, empty for the default theme; the elements holding the theme's CSS and the enabled snippets'. */
     customCss?: {
       theme?: string;
+      /** Installed community themes, by name. */
+      themes?: Record<string, unknown>;
+      setTheme?(name: string): void;
       styleEl?: HTMLStyleElement | null;
       extraStyleEls?: HTMLStyleElement[];
     };

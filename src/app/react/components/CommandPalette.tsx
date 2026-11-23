@@ -26,7 +26,7 @@ import {
   UserCheck,
   History,
   Layers,
-  Replace, Gauge, SunMoon, LayoutDashboard, BoomBox, Tablet } from 'lucide-react';
+  Replace, Gauge, SunMoon, LayoutDashboard, BoomBox, Tablet, Paintbrush } from 'lucide-react';
 import { runInBackground } from '../../utils/backgroundTask';
 import { viewedLevelId } from '../../levels/sceneLevels';
 import { CoinIcon } from './CoinIcon';
@@ -54,6 +54,8 @@ import { PlayerViewSettingsPanel } from './command-palette/PlayerViewSettingsPan
 import { searchOptions } from './command-palette/paletteSearch';
 import { DiceSettingsPanel } from './command-palette/DiceSettingsPanel';
 import { ExperimentalFeaturesPanel } from './command-palette/ExperimentalFeaturesPanel';
+import { AppearancePanel } from './command-palette/AppearancePanel';
+import { atlasThemeInstalled } from '../../appearance/atlasLook';
 import { GraphicsPanel } from './command-palette/GraphicsPanel';
 import { LightingSettingsPanel } from './command-palette/LightingSettingsPanel';
 import { SceneSnapshotsPanel } from './command-palette/SceneSnapshotsPanel';
@@ -113,6 +115,7 @@ const SETTINGS_PANEL_META: Record<SettingsPanelId, { title: string; icon: React.
   'dice-settings': { title: t('diceSettings.title'), icon: <Dices /> },
   'experimental-features': { title: t('palette.panel.experimental'), icon: <FlaskConical /> },
   'graphics-settings': { title: t('graphics.title'), icon: <Gauge /> },
+  'appearance': { title: t('appearance.title'), icon: <Paintbrush /> },
   'lighting-settings': { title: t('sceneLight.settings'), icon: <SunMoon /> },
 };
 
@@ -561,6 +564,23 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         },
       ],
     },
+    ...(atlasThemeInstalled(app) ? [{
+      id: "appearance",
+      icon: <Paintbrush />,
+      label: t('appearance.title'),
+      keywords: ["theme", "look", "style", "sci-fi", "scifi", "mediaeval", "medieval", "fantasy", "modern"],
+      section: "settings",
+      hasSubmenu: true,
+      submenu: [
+        {
+          id: "appearance-look",
+          icon: null,
+          label: t('appearance.commandHint'),
+          section: "appearance",
+          hasSubmenu: false,
+        },
+      ],
+    } satisfies CommandOption] : []),
     {
       id: "experimental-features",
       icon: <FlaskConical />,
@@ -996,6 +1016,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         return <ExperimentalFeaturesPanel />;
       case 'graphics-settings':
         return <GraphicsPanel />;
+      case 'appearance':
+        return <AppearancePanel />;
       case 'lighting-settings':
         return <LightingSettingsPanel />;
     }

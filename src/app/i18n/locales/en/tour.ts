@@ -56,6 +56,8 @@ export const tour = {
   'tour.welcome.themeBody': 'Notes, menus and dialogs in Atlas’ own look.',
   'tour.welcome.view': 'View in Obsidian',
   'tour.welcome.inUse': 'In use',
+  'tour.welcome.lookTitle': 'Pick a look',
+  'tour.welcome.lookBody': 'Mediaeval or Sci-fi: notes, menus and Atlas’ panels follow it. Change it any time under Appearance in the command palette.',
   'tour.map.label': 'Your map',
   'tour.map.welcomeTitle': 'Your first scene',
   'tour.map.welcomeMouse': 'Scroll to zoom, and drag with the right mouse button to move around the map. Here is what the controls around it do.',

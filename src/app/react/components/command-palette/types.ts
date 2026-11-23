@@ -25,6 +25,7 @@ export const SETTINGS_PANEL_IDS = [
   'dice-settings',
   'experimental-features',
   'graphics-settings',
+  'appearance',
   'lighting-settings',
 ] as const;
 

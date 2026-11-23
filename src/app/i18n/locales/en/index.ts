@@ -112,6 +112,7 @@ import { validation } from './validation';
 import { issue } from './issue';
 import { changelog } from './changelog';
 import { tour } from './tour';
+import { appearance } from './appearance';
 import { creatureFilter } from './creatureFilter';
 import { encounter } from './encounter';
 import { migration } from './migration';
@@ -242,6 +243,7 @@ export const en = {
   ...issue,
   ...changelog,
   ...tour,
+  ...appearance,
   ...creatureFilter,
   ...encounter,
   ...migration,

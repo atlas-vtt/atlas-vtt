@@ -34,6 +34,7 @@ it('welcomes a new GM first, offers the add-ons it lacks, then hands over to the
   fireEvent.click(screen.getByRole('button', { name: 'Next' }));
   expect(screen.getAllByRole('button', { name: 'View in Obsidian' })).toHaveLength(1);
   expect(screen.getByText('In use')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
   act(() => { fireEvent.click(screen.getByRole('button', { name: 'Got it' })); });
   expect(settings.shouldShowTutorial('welcome')).toBe(false);
   expect(screen.getByText('Scenes')).toBeTruthy();
@@ -60,4 +61,13 @@ it('welcomes a GM whose first sight of Atlas is a map, and the map tour follows'
   act(() => { fireEvent.click(screen.getByRole('button', { name: 'Skip' })); });
   expect(screen.getByText('Your first scene')).toBeTruthy();
   expect(settings.shouldShowTutorial('dashboard')).toBe(true);
+});
+
+it('offers the look once the Atlas theme is in use, and the choice reaches the settings', () => {
+  const { app, settings } = appWith(['atlas-sidebar'], 'Atlas VTT');
+  render(tour(app));
+  for (let page = 0; page < 3; page += 1) fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  expect(screen.getByText('Pick a look')).toBeTruthy();
+  act(() => { fireEvent.click(screen.getByRole('radio', { name: 'Sci-fi' })); });
+  expect(settings.getLook()).toBe('scifi');
 });

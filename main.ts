@@ -53,6 +53,7 @@ import { experimentalSettingsSection } from './src/app/settings/experimentalSett
 import { mapsSettingsSection } from './src/app/settings/mapsSettingsSection';
 import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSettingsSection';
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
+import { registerLookSync } from './src/app/appearance/atlasLook';
 import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
 import { applyDiceBudgets, registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
 import { registerForegroundWork } from './src/app/plugin/foregroundWork';
@@ -265,6 +266,7 @@ export default class AtlasVTTPlugin extends Plugin {
     await this.settingsService.initialize();
     if (this.unloaded) return;
     registerDiceLookSync(this, this.settingsService);
+    registerLookSync(this, this.settingsService);
     this.registerStatblockPanels();
     const installed = await existingInstallation;
     if (this.unloaded) return;

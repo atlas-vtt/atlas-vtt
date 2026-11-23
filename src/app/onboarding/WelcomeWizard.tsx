@@ -4,9 +4,11 @@ import { Check } from 'lucide-react';
 import { Tutorial, type TutorialStep } from './Tutorial';
 import { Button } from '../packages/components/primitives/button';
 import type { SettingsService } from '../services/SettingsService';
-import { useHotkeyLabels } from '../keyboard/useMapHotkeys';
+import { useAtlasSettings, useHotkeyLabels } from '../keyboard/useMapHotkeys';
 import { ATLAS_DISCORD_URL, ATLAS_DOCS_URL } from '../support/communityLinks';
 import { COMPANION_URLS, companionInUse, type CompanionId } from './companions';
+import { SegmentedControl } from '../packages/components/primitives/SegmentedControl';
+import { lookOptions } from '../react/components/command-palette/AppearancePanel';
 import { t } from '../i18n';
 
 interface WelcomeWizardProps {
@@ -26,13 +28,18 @@ export function shouldWelcome(settings: SettingsService): boolean {
 /** The first thing a new GM sees: what Atlas is, where help is, and the add-ons made to go with it. The tours follow. */
 export function WelcomeWizard({ app, settings, root }: WelcomeWizardProps): React.JSX.Element {
   const key = useHotkeyLabels();
+  // Subscribed, so the look step shows the look just picked.
+  useAtlasSettings(settings);
+  const themeOn = useCompanionInUse(app, 'theme');
+  const steps = welcomeSteps(app, key('palette'));
+  if (themeOn) steps.push(lookStep(settings));
   return (
     <Tutorial
       settings={settings}
       id="welcome"
       root={root}
       label={t('tour.welcome.label')}
-      steps={welcomeSteps(app, key('palette'))}
+      steps={steps}
     />
   );
 }
@@ -62,6 +69,19 @@ function welcomeSteps(app: App, paletteKey: string): TutorialStep[] {
       ),
     },
   ];
+}
+
+/** Shown once the Atlas theme is in use, from the start or after the GM installs it from the step before. */
+function lookStep(settings: SettingsService): TutorialStep {
+  return {
+    title: t('tour.welcome.lookTitle'),
+    body: t('tour.welcome.lookBody'),
+    extra: (
+      <div className="atlas-welcome-links">
+        <SegmentedControl options={lookOptions()} value={settings.getLook()} ariaLabel={t('appearance.look')} onChange={(look) => settings.setLook(look)} />
+      </div>
+    ),
+  };
 }
 
 function CompanionRow({ app, id }: { app: App; id: CompanionId }): React.JSX.Element {
