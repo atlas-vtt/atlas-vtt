@@ -3,8 +3,7 @@ import type { App } from 'obsidian';
 import type { SettingsService } from '../services/SettingsService';
 import { LookService } from '../appearance/lookService';
 import { WelcomeDialog } from './welcome/WelcomeDialog';
-import { WelcomeText } from './welcome/welcomePages';
-import { t } from '../i18n';
+import { WelcomeCarousel } from './welcome/WelcomeCarousel';
 
 interface WelcomeWizardProps {
   app: App;
@@ -31,21 +30,9 @@ export function WelcomeWizard({ app, settings, doc }: WelcomeWizardProps): React
       app={app}
       settings={settings}
       looks={LookService.forApp(app, settings)}
-      carousel={<WelcomeSlide />}
+      carousel={<WelcomeCarousel />}
       open={shouldWelcome(settings)}
       {...(doc && { doc })}
     />
-  );
-}
-
-function WelcomeSlide(): React.JSX.Element {
-  return (
-    <div className="atlas-welcome-page atlas-welcome-page--text">
-      <WelcomeText
-        kicker={t('tour.welcome.slides.welcome.kicker')}
-        title={t('tour.welcome.slides.welcome.title')}
-        body={t('tour.welcome.slides.welcome.body')}
-      />
-    </div>
   );
 }

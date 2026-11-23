@@ -1,0 +1,260 @@
+@use 'sass:color';
+@use '../../../../styles/tokens' as *;
+
+// The welcome carousel (WelcomeCarousel.tsx): a picture across the whole dialog, darkened from the left and the foot,
+// with its words, the story bars and the chips light over it in every theme and look. Motion is transform and
+// opacity only, so it runs on the compositor.
+
+// The light the words are drawn in, and the dark that lies over the pictures.
+$slide-ink: #f4eee4;
+$slide-shade: #0a0806;
+
+@function ink($alpha) { @return color.change($slide-ink, $alpha: $alpha); }
+@function shade($alpha) { @return color.change($slide-shade, $alpha: $alpha); }
+
+// The carousel page runs to the dialog's edges: its foot and close button lie over the picture.
+.atlas-welcome[data-page='carousel'] {
+  > .atlas-welcome__page {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    animation-name: atlas-welcome-carousel-in;
+  }
+
+  > .atlas-welcome__foot {
+    position: relative;
+    z-index: 1;
+    margin-top: auto;
+    color: ink(0.78);
+  }
+
+  .atlas-welcome__foot .btn--ghost:hover,
+  .atlas-welcome__close.atlas-close-btn.btn:hover {
+    background: ink(0.12);
+    color: $slide-ink;
+  }
+
+  .atlas-welcome__close.atlas-close-btn.btn {
+    background: shade(0.45);
+    color: ink(0.9);
+  }
+}
+
+@keyframes atlas-welcome-carousel-in {
+  from { opacity: 0; }
+}
+
+.atlas-welcome__foot-start {
+  min-width: 0;
+}
+
+.atlas-welcome-carousel {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background: $slide-shade;
+  color: $slide-ink;
+}
+
+// ── Slides ──────────────────────────────────────────────────────────────────
+
+.atlas-welcome-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--atlas-crossfade-ms) $transition-ease-out;
+
+  &[data-state='on'] { opacity: 1; }
+
+  // Darkened from the left, where the words stand, from the foot, and a little from the top for the bars.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, shade(0.92) 0%, shade(0.7) 34%, shade(0) 62%),
+      linear-gradient(0deg, shade(0.85) 0%, shade(0) 38%),
+      linear-gradient(180deg, shade(0.5) 0%, shade(0) 16%);
+  }
+}
+
+.atlas-welcome-slide__picture {
+  position: absolute;
+  inset: -2%;
+  width: 104%;
+  height: 104%;
+  object-fit: cover;
+  transform: scale(1.02);
+  user-select: none;
+}
+
+// The slide that shows drifts slowly closer; the one fading out under it keeps drifting, so it never jumps back.
+// Reduced motion keeps only the crossfade (and the story bars, which show time, not decoration).
+@media (prefers-reduced-motion: no-preference) {
+  .atlas-welcome-slide:is([data-state='on'], [data-state='leaving']) .atlas-welcome-slide__picture {
+    animation: atlas-welcome-drift var(--atlas-slide-ms) linear forwards;
+  }
+}
+
+@keyframes atlas-welcome-drift {
+  from { transform: scale(1.02); }
+  to { transform: scale(1.1) translate(-1.5%, -1%); }
+}
+
+// Welcome: the map at night, darker still, under Atlas's sword (which the shade darkens too, round the bars and words).
+.atlas-welcome-slide--welcome .atlas-welcome-slide__picture {
+  filter: brightness(0.55) saturate(0.7);
+}
+
+.atlas-welcome-slide__sword {
+  position: absolute;
+  top: -8%;
+  right: 4%;
+  height: 120%;
+  width: auto;
+  opacity: 0.22;
+  filter: grayscale(1) brightness(1.6) contrast(1.1);
+  mask-image: linear-gradient(180deg, #000 45%, transparent 92%);
+  transform: rotate(9deg);
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .atlas-welcome-slide:is([data-state='on'], [data-state='leaving']) .atlas-welcome-slide__sword {
+    animation: atlas-welcome-sword-rise var(--atlas-slide-ms) ease-out forwards;
+  }
+}
+
+@keyframes atlas-welcome-sword-rise {
+  from { opacity: 0; transform: rotate(9deg) translateY(18px); }
+  15% { opacity: 0.22; }
+  to { opacity: 0.22; transform: rotate(9deg) translateY(0); }
+}
+
+// The words stand on the dialog's inset, above the foot.
+.atlas-welcome-slide__copy {
+  position: absolute;
+  z-index: 2;
+  left: $spacing-2xl;
+  right: $spacing-2xl;
+  bottom: calc(#{$spacing-2xl} * 2 + var(--input-height) + #{$spacing-l});
+  max-width: 460px;
+
+  .atlas-welcome-text__kicker { color: ink(0.7); }
+
+  // The look's heading face, drawn light: a look's dark heading colour (light mode) keeps its hue.
+  .atlas-welcome-text__title {
+    font-size: clamp(calc(#{$font-ui-large} * 1.8), 4.6vw, calc(#{$font-ui-large} * 3));
+    color: $slide-ink;
+    color: oklch(from var(--h2-color, #{$slide-ink}) max(l, 0.82) c h);
+    text-shadow: 0 2px 24px rgb(0 0 0 / 0.6);
+  }
+
+  .atlas-welcome-text__body {
+    font-size: calc(#{$font-ui-medium} * 1.15);
+    color: ink(0.86);
+  }
+}
+
+// The words rise in one after another as their slide comes.
+@media (prefers-reduced-motion: no-preference) {
+  .atlas-welcome-slide:is([data-state='on'], [data-state='leaving']) .atlas-welcome-text > * {
+    animation: atlas-welcome-rise 600ms $transition-ease-out both;
+
+    &:nth-child(2) { animation-delay: 120ms; }
+    &:nth-child(3) { animation-delay: 240ms; }
+  }
+}
+
+@keyframes atlas-welcome-rise {
+  from { opacity: 0; transform: translateY(14px); }
+}
+
+// ── Story bars and chips ────────────────────────────────────────────────────
+
+// Across the top, level with the close button and clear of it.
+.atlas-welcome-carousel__stories {
+  position: absolute;
+  z-index: 3;
+  top: $close-button-gap;
+  left: $spacing-2xl;
+  right: calc(#{$close-button-gap} + #{$close-button-size} + #{$spacing-l});
+  display: flex;
+  gap: $spacing-s;
+  height: $close-button-size;
+}
+
+.atlas-welcome-carousel .atlas-welcome-carousel__story {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  cursor: pointer;
+
+  &::before,
+  i {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(50% - 1.5px);
+    height: 3px;
+    border-radius: $radius-full;
+  }
+
+  &::before { background: ink(0.22); }
+
+  i {
+    background: $slide-ink;
+    transform: scaleX(0);
+    transform-origin: left center;
+  }
+
+  &[data-state='done'] i { transform: scaleX(1); }
+  &[data-state='on'] i { animation: atlas-welcome-story var(--atlas-slide-ms) linear forwards; }
+}
+
+@keyframes atlas-welcome-story {
+  to { transform: scaleX(1); }
+}
+
+// Pointer over the slide or its window hidden: the time stands, and so does what shows it.
+.atlas-welcome-carousel[data-paused='true'] :is(.atlas-welcome-slide__picture, .atlas-welcome-slide__sword, .atlas-welcome-carousel__story i) {
+  animation-play-state: paused;
+}
+
+.atlas-welcome-carousel__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-s;
+}
+
+.atlas-welcome-carousel__chips .atlas-welcome-carousel__chip {
+  height: auto;
+  padding: $spacing-xs $spacing-m;
+  border: $border-width-s solid ink(0.16);
+  border-radius: $radius-full;
+  background: shade(0.45);
+  box-shadow: none;
+  color: ink(0.7);
+  font-family: var(--font-interface);
+  font-size: $font-ui-smaller;
+  cursor: pointer;
+  transition: color $transition-normal $transition-ease, border-color $transition-normal $transition-ease;
+
+  &:hover,
+  &[aria-current='true'] {
+    color: $slide-ink;
+  }
+
+  &[aria-current='true'] { border-color: ink(0.5); }
+}
+
+// A narrow dialog leaves the chips out (the bars still jump), so the foot keeps one line.
+@media (max-width: 760px) {
+  .atlas-welcome-carousel__chips { display: none; }
+}

@@ -11,6 +11,7 @@ import { useAtlasSettings, useHotkeyLabels } from '../../keyboard/useMapHotkeys'
 import { portalHost } from '../../host/portalHost';
 import { useDialogFocus } from '../useDialogFocus';
 import { HelpPage, LookPage, SidebarPage } from './welcomePages';
+import { WelcomeFootStart } from './welcomeFoot';
 import { t } from '../../i18n';
 import './welcome.scss';
 
@@ -42,6 +43,8 @@ export function WelcomeDialog({ open = true, ...props }: WelcomeDialogProps): Re
 
 function WelcomeWindow({ app, settings, looks, carousel, doc }: Omit<WelcomeDialogProps, 'open'>): React.JSX.Element {
   const [at, setAt] = useState(0);
+  // Where the carousel puts its chips: the foot's start, in place of the pages' bars.
+  const [footStart, setFootStart] = useState<HTMLElement | null>(null);
   const windowRef = useRef<HTMLDivElement>(null);
   const windowVariants = useDialogWindowVariants();
   const key = useHotkeyLabels();
@@ -68,23 +71,26 @@ function WelcomeWindow({ app, settings, looks, carousel, doc }: Omit<WelcomeDial
         ref={windowRef}
         variants={windowVariants}
         className="atlas-welcome"
+        data-page={page}
         role="dialog"
         aria-modal="true"
         aria-label={t('tour.welcome.label')}
         onKeyDown={onKeyDown}
       >
         <CloseButton className="atlas-welcome__close" onClick={finish} />
-        <div className="atlas-welcome__page" key={page} data-page={page}>
-          {page === 'carousel' && carousel}
+        <div className="atlas-welcome__page" key={page}>
+          {page === 'carousel' && <WelcomeFootStart.Provider value={footStart}>{carousel}</WelcomeFootStart.Provider>}
           {page === 'help' && <HelpPage paletteKey={key('palette')} />}
           {page === 'sidebar' && <SidebarPage app={app} />}
           {page === 'look' && <LookPage looks={looks} />}
         </div>
         <div className="atlas-welcome__foot">
-          <span className="atlas-welcome__progress">
+          <div className="atlas-welcome__progress">
             <span className="atlas-welcome__progress-label">{t('tour.progress', { step: at + 1, total: PAGES.length })}</span>
-            {PAGES.map((name, index) => <span key={name} aria-hidden="true" className="atlas-welcome__bar" data-done={index <= at} />)}
-          </span>
+            {page === 'carousel'
+              ? <div ref={setFootStart} className="atlas-welcome__foot-start" />
+              : PAGES.map((name, index) => <span key={name} aria-hidden="true" className="atlas-welcome__bar" data-done={index <= at} />)}
+          </div>
           {at === 0
             ? <Button variant="ghost" onClick={finish}>{t('tour.skip')}</Button>
             : <Button variant="ghost" onClick={back}>{t('common.back')}</Button>}
