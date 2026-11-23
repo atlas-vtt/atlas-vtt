@@ -20,6 +20,7 @@ function ruleOf(convention) {
     meta: {
       type: 'problem',
       docs: { description: convention.why },
+      ...(convention.fixable && { fixable: convention.fixable }),
       schema: [],
       messages: { [MESSAGE_ID]: `${convention.message} ${convention.why}` },
     },

@@ -11,6 +11,7 @@
  * @property {string[]} [selectors] ESLint selectors; each match is a finding. Either these or `create`.
  * @property {(context: import('eslint').Rule.RuleContext) => import('eslint').Rule.RuleListener} [create]
  *   A hand-written rule, for what no selector can express. It reports with `messageId: 'convention'`.
+ * @property {'code'} [fixable] Set where the hand-written rule offers a fix.
  * @property {string} message What to do instead, with the helper and its path.
  * @property {string} why The reason, in one sentence.
  * @property {string[]} [files] Globs the rule applies to; every linted script file without them.
@@ -20,6 +21,7 @@
  * @property {string[]} good Code the rule must accept.
  * @property {string} [filename] Where the examples are linted: a path inside `files`, or a `.tsx` name for JSX.
  */
+import { create as restatingComments } from './restatingComments.mjs';
 
 const TEST_HELPERS = '**/__tests__/**';
 
@@ -584,5 +586,46 @@ export const CONVENTIONS = [
     why: 'A marker in code is copied and never done.',
     bad: ['// TODO: snap to the grid\nexport const snapped = false;', '/* FIXME */\nexport const snapped = false;', '/** HACK around the first frame. */\nexport const snapped = false;'],
     good: ['// Todo lists are widgets.\nexport const snapped = false;', "export const label = 'TODO';", '// TODOS_FOLDER holds the lists.\nexport const snapped = false;'],
+  },
+  {
+    name: 'restating-comments',
+    // Judged by words alone (restatingWords.mjs), and only where no word of the comment is new: a
+    // comment with one word the name lacks is left to its reader.
+    create: restatingComments,
+    fixable: 'code',
+    message: 'This comment says what the name already says. Delete it, or say what the name cannot: a unit, a limit, a reason.',
+    why: 'A comment that repeats its name is read every time and tells nothing, and among such comments the ones that give a reason are skipped too.',
+    ignores: ['src/app/online/protocol/**', TEST_HELPERS, '**/*.d.ts'],
+    bad: [
+      'export interface Token {\n  /** The token id. */\n  tokenId: string;\n}',
+      'export class Grid {\n  /** Set grid scale */\n  setGridScale(scale: number): void {\n    void scale;\n  }\n}',
+      "export const first = 1;\n\n/**\n * Check if a path is absolute\n */\nexport function isAbsolutePath(path: string): boolean {\n  return path.startsWith('/');\n}",
+      'export interface View {\n  selectedIds: string[];\n\n  // Drag state\n  isDragging: boolean;\n}',
+      'export const first = 1;\n/** Rooms per loop. */\nexport const ROOMS_PER_LOOP = 8;',
+      'export const settings = {\n  /** The identifier of the tokens */ tokenIds: [],\n};',
+    ],
+    good: [
+      // A unit, a reason, a limit: one word the name lacks is enough.
+      'export interface Token {\n  /** The token size in cells. */\n  tokenSize: number;\n}',
+      'export interface Token {\n  /** The token ids, sorted so that two devices write the same file. */\n  tokenIds: string[];\n}',
+      'export interface Token {\n  /** The hidden token id. */\n  tokenId: string;\n}',
+      'export interface Token {\n  /** The token id, never empty. */\n  tokenId: string;\n}',
+      'export interface Clip {\n  /** Clips to the floors. */\n  clipFloors(): void;\n}',
+      // A tag, code or a number is for a tool or says something exact.
+      'export interface Token {\n  /** @deprecated The token id. */\n  tokenId: string;\n}',
+      'export interface Token {\n  /**\n   * The token id.\n   * @see Token\n   */\n  tokenId: string;\n}',
+      'export interface Token {\n  /** The token id (`token_1`). */\n  tokenId: string;\n}',
+      // Not on a declaration: trailing, heading a file, inside a body, a plain block.
+      'export interface Token {\n  tokenId: string; // The token id\n}',
+      "/** The token id. */\nexport const tokenId = 'token';",
+      "export function tokenId(): string {\n  // The token id\n  const tokenId = 'token';\n  return tokenId;\n}",
+      'export interface Token {\n  /* The token id. */\n  tokenId: string;\n}',
+      // A label: one word, or a line above members that have no comment of their own.
+      'export interface Item {\n  /** layout */\n  layout?: string;\n}',
+      'export interface View {\n  // Token settings\n  tokenSettings: object;\n  tokenSize: number;\n}',
+      'export interface View {\n  // Widget settings\n  widgetSettings: object;\n\n  widgetValues: object;\n}',
+      // More than one comment: the lines belong together.
+      'export interface Token {\n  // The token id\n  // as the map file holds it.\n  tokenId: string;\n}',
+    ],
   },
 ];

@@ -66,9 +66,6 @@ interface InitiativeStoreState {
  */
 type ImmerSet = (fn: (draft: InitiativeStoreState) => void) => void;
 
-/**
- * Create the initial initiative state
- */
 export function createInitialInitiativeState(): Pick<InitiativeSlice, 'initiative' | 'initiativeTrackerOpen'> {
   return {
     initiative: createDefaultInitiativeState(),

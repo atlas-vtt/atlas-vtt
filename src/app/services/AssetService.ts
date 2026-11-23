@@ -1694,7 +1694,6 @@ export class AssetService {
     await this.saveMetadata();
   }
 
-  /** Update the settings for a collection */
   async updateCollectionSettings(collectionId: string, settings: Partial<CollectionSettings>): Promise<void> {
     await this.ensureLoaded();
     const collection = this.metadata!.collections[collectionId];

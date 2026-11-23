@@ -586,7 +586,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           // DM screen state
           dmNotePath: null,
           
-          // Token settings
           tokenSettings: { ...DEFAULT_TOKEN_SETTINGS },
           
           // Per-store persistence control (not persisted)
@@ -648,7 +647,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             });
           },
           
-          // Set grid units
           setGridUnits: (units) => set((draft) => {
             if (draft.grid) {
               draft.grid.unitType = units.unitType;
@@ -676,7 +674,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             }
           }),
           
-          // Set snap to grid
           setSnapToGrid: (snap) => set((draft) => {
             if (!draft.grid) {
               // Initialize grid with defaults if it doesn't exist
@@ -1037,7 +1034,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.dmNotePath = path;
           }),
 
-          // Token settings
           setTokenSettings: (settings) => set((draft) => {
             draft.tokenSettings = settings;
           }),

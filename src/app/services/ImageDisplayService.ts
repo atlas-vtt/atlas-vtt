@@ -262,9 +262,6 @@ export class ImageDisplayService {
     openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });
   }
   
-  /**
-   * Copy image to clipboard
-   */
   private async copyImageToClipboard(imgElement: HTMLImageElement): Promise<void> {
     try {
       // The clipboard is asked within the press, as WebKit demands, and takes the picture once it is drawn.
@@ -401,9 +398,6 @@ export class ImageDisplayService {
     return this.imageContainer !== null;
   }
 
-  /**
-   * Check if file is an image
-   */
   private isImageFile(file: TFile): boolean {
     const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'webp'];
     return imageExtensions.includes(file.extension.toLowerCase());

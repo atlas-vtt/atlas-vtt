@@ -86,7 +86,6 @@ export class InteractionController implements ITokenInteractionController {
   /** The resources of the map's collection, for Kill and Reset. */
   public resourceDefsProvider: ResourceDefsProvider = () => [];
   
-  // Drag state
   private dragState: DragState = {
     isDragging: false,
     dragIds: [],

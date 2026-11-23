@@ -224,7 +224,6 @@ export class SettingsService {
     this.commit();
   }
 
-  // Navigation settings
   getNavigationSettings(): NavigationSettings {
     return { ...this.settings.navigation };
   }
@@ -662,7 +661,6 @@ export class SettingsService {
     this.commit();
   }
 
-  // Get all settings
   getAllSettings(): AtlasSettings {
     return { ...this.settings };
   }
