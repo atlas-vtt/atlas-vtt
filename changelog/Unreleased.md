@@ -4,6 +4,7 @@
 - Two looks for the Atlas theme: Mediaeval and a new Sci-fi look, switched under Appearance in the command palette or in the welcome wizard. The fog's edge follows the look: crackled for Mediaeval, soft for Sci-fi
 - **Atlas Online: phones as remotes.** Playing together around one screen, the GM can turn every player's phone or tablet into a remote: a big pad steps their token one cell at a time on the map everyone watches, on square and hex grids. Switch it in the player window bar's What players see menu, which now also holds online play's own switches
 - The player window bar also shows while an Atlas Online table runs. Hide the map and Pause now reach online players too: behind the curtain they are sent nothing of the scene, and while play is paused nobody can move their tokens. While a table runs, the bar also opens the player window, so a TV at the table can show the scene beside online play
+- Widgets can be reordered: drag one by its grip in the command palette's Widgets page (or move it with Alt and the arrow keys), and the widget bar follows in every scene of the collection
 
 ## Improved
 
