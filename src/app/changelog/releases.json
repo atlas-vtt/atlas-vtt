@@ -2,6 +2,11 @@
   "version": "0.19.1-beta.0",
   "releases": [
     {
+      "version": "0.19.1-beta.0",
+      "title": "Coming in 0.19.1",
+      "markdown": "## New\n\n- A welcome wizard greets you the first time you open Atlas: what Atlas does, where to find the guides and the Discord, and the Atlas Sidebar plugin and Atlas theme, each one click from its page in Obsidian"
+    },
+    {
       "version": "0.19.0",
       "date": "2026-11-22",
       "title": "Music packs and Stream Deck",
