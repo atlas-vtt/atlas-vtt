@@ -16,6 +16,7 @@ import { ArmariumApi } from './armariumApi';
 import { ItemShareSession } from './ItemShareSession';
 import { MusicShareSession } from './MusicShareSession';
 import { prepareTrackCopy } from './musicTrackCopies';
+import { readPublishedArtist } from './publishedArtist';
 import { packMusicBundle } from '../../services/musicBundle/musicPacking';
 import type { MusicKind } from '../../services/itemBundle/itemBundleFormat';
 import { SoundDirector } from '../../soundDirector/SoundDirector';
@@ -100,6 +101,16 @@ async function fetchCover(url: string): Promise<Blob | null> {
   }
 }
 
+/** The largest public JSON file of the Armarium Atlas reads: the index of every listing is far below it. */
+const MAX_PUBLIC_JSON_BYTES = 16 * 1024 * 1024;
+
+/** A public JSON file of the Armarium; it throws where it cannot be had, is too large or is no JSON. */
+async function fetchPublicJson(url: string): Promise<unknown> {
+  const bytes = await fetchBytes(url);
+  if (bytes.byteLength > MAX_PUBLIC_JSON_BYTES) throw new Error(`${url} is too large.`);
+  return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+}
+
 /** A new music listing's uid: 32 random lowercase hex, as the contract asks. */
 function randomListingUid(): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -130,6 +141,7 @@ export function createMusicShareSession(app: App, request: MusicShareRequest): M
       return { fileName: exported.fileName, blob: exported.blob };
     },
     fetchCover,
+    publishedArtist: (listing) => readPublishedArtist(listing, fetchPublicJson),
     sha256: (bytes) => sha256(bytes),
     sleep: abortableSleep,
   });

@@ -41,6 +41,8 @@ export interface MusicShareDeps extends ShareFlowDeps {
   readonly newUid: () => string;
   readonly pack: (request: MusicPackRequest) => Promise<{ fileName: string; blob: Blob }>;
   readonly fetchCover: (url: string) => Promise<Blob | null>;
+  /** The artist a listing's published version names, which `/mine` does not; null where it cannot be read. */
+  readonly publishedArtist?: ((listing: OwnListing) => Promise<string | null>) | undefined;
 }
 
 const SAMPLE_RATE = 48_000;
@@ -59,6 +61,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
   private known: OwnListing[] = [];
   private failedToRead = false;
   private coverChosen = false;
+  private artistTyped = false;
 
   constructor(private readonly deps: MusicShareDeps) {
     const tracks: MusicShareTrack[] = deps.files.slice(0, deps.kind === 'music-album' ? MAX_ALBUM_TRACKS : 1).map((file) => ({
@@ -88,6 +91,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
   }
 
   setArtist(artist: string): void {
+    this.artistTyped = true;
     this.set({ artist, problems: this.without('artist') });
   }
 
@@ -122,7 +126,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
     const listing = uid === null ? null : this.state.listings?.find((each) => each.uid === uid) ?? null;
     this.set({ target: listing?.uid ?? null, ownListing: listing, version: nextItemVersion(listing), listedCover: null, ...(this.coverChosen ? {} : { cover: null }) });
     if (!this.touched) this.set({ draft: this.draftOf(listing?.fields ?? null) });
-    if (listing?.coverUrl) void this.keepListedCover(listing.uid, listing.coverUrl);
+    if (listing) this.keepListed(listing);
   }
 
   setNotes(notes: string): void {
@@ -175,7 +179,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
   }
 
   protected opened(ownListing: OwnListing | null): Partial<MusicShareSnapshot> {
-    if (ownListing?.coverUrl) void this.keepListedCover(ownListing.uid, ownListing.coverUrl);
+    if (ownListing) this.keepListed(ownListing);
     return { listings: this.known, listingsFailed: this.failedToRead, target: ownListing?.uid ?? null, version: nextItemVersion(ownListing) };
   }
 
@@ -197,6 +201,19 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
 
   private without(field: string): Record<string, string> {
     return Object.fromEntries(Object.entries(this.state.problems).filter(([key]) => key !== field && key !== 'tracks'));
+  }
+
+  /** A version of a listing keeps what its published version shows: the cover and the artist. */
+  private keepListed(listing: OwnListing): void {
+    if (listing.coverUrl) void this.keepListedCover(listing.uid, listing.coverUrl);
+    void this.keepPublishedArtist(listing);
+  }
+
+  /** Fills in the published artist unless the creator typed one; one that cannot be read leaves the field as it is. */
+  private async keepPublishedArtist(listing: OwnListing): Promise<void> {
+    const artist = await this.deps.publishedArtist?.(listing);
+    if (!artist || this.artistTyped || this.state.target !== listing.uid) return;
+    this.set({ artist, problems: this.without('artist') });
   }
 
   /** Offers the listing's published cover, and packs it unless the creator chose another meanwhile. */
