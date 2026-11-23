@@ -1,5 +1,6 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import obsidianmd from "eslint-plugin-obsidianmd";
+import reactHooks from "eslint-plugin-react-hooks";
 import { builtinModules } from "node:module";
 import { BOUNDARIES, PLUGIN_ONLY_SPECIFIER } from "./scripts/boundaries.mjs";
 import { conventionConfigs } from "./scripts/eslint/atlasPlugin.mjs";
@@ -62,6 +63,26 @@ export default defineConfig([
   // of their own because a later block replaces the options of a rule for the files it matches:
   // as selectors of `no-restricted-syntax`, every block had to repeat the others'.
   ...conventionConfigs(SCRIPT_FILES),
+  // React: the rules of hooks, and what a render or an effect may not do. Only `.tsx` and
+  // `use*.ts`, where components and hooks are written: in any other module `rules-of-hooks`
+  // takes a callback that happens to be named `use` for a hook.
+  // `exhaustive-deps` stays off while memos are invalidated by a revision counter in their
+  // dependency list: the rule calls that dependency unnecessary, and removing it is a bug.
+  // `refs` stays off: it also reports handlers a hook returns and ref-callback factories.
+  {
+    files: ["src/**/*.tsx", "src/**/use*.ts"],
+    plugins: { "react-hooks": reactHooks },
+    rules: {
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/set-state-in-effect": "error",
+      // No findings when they were switched on, so they stay that way.
+      "react-hooks/set-state-in-render": "error",
+      "react-hooks/use-memo": "error",
+      "react-hooks/globals": "error",
+      "react-hooks/error-boundaries": "error",
+      "react-hooks/unsupported-syntax": "error",
+    },
+  },
   // Statblocks: only the drag-and-drop wrapper may import dnd-kit, and the pure
   // core (model, format, expressions, values, the patcher, the FS layout
   // converter) imports neither Obsidian nor React. The core rule is used

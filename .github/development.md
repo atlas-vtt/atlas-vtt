@@ -89,7 +89,13 @@ The gate is zero tolerance: no errors, no warnings (`--max-warnings 0`).
 Three records say how far the code is from where it should be, and each of
 them may only shrink:
 
-- **Lint baseline**: `eslint.suppressions.json`, above.
+- **Lint baseline**: `eslint.suppressions.json`, above. Most of it is React:
+  `eslint-plugin-react-hooks` checks `src/**/*.tsx` and `src/**/use*.ts`, and
+  what `set-state-in-effect` found when it was switched on (112) is recorded
+  there; `rules-of-hooks` and five more rules found nothing. In new code,
+  derive a value during render instead of setting state in an effect, reset
+  with a `key`, set state in the event handler, and subscribe with
+  `useSyncExternalStore`.
 - **File sizes**: a source file (`main.ts` and `src/**/*.ts`, `*.tsx`, without
   tests and declarations) has at most 300 lines. The files that were larger
   when the check came are recorded in `scripts/file-sizes.json` with an
