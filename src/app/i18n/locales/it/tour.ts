@@ -35,8 +35,6 @@ export const tour = {
   "tour.notNow": "Non ora",
   "tour.progress": "Passo {step} di {total}",
   "tour.replay": "Fai la visita guidata",
-  "tour.dashboard.welcomeTitle": "Benvenuto in Atlas",
-  "tour.dashboard.welcomeBody": "Atlas gestisce la tua partita sulle mappe del tuo vault, con token, nebbia, iniziativa e una seconda finestra che guardano i tuoi giocatori. Ogni sessione inizia da questa pagina.",
   "tour.dashboard.sceneTitle": "Scene",
   "tour.dashboard.sceneBody": "Una scena è una mappa pronta per giocare, con i suoi token, la nebbia e i segnaposto. La crei da un’immagine della mappa, e l’ultima scena giocata ti aspetta qui.",
   "tour.dashboard.assetsTitle": "Gestione risorse",

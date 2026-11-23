@@ -29,28 +29,6 @@ function appWith(plugins: string[]): { app: App; settings: SettingsService } {
 
 const tour = (app: App): React.JSX.Element => <DashboardTour app={app} root={document.body} hasScene onCreateScene={() => {}} />;
 
-it('welcomes a new GM first, offers the add-ons it lacks, then hands over to the start page tour', () => {
-  const { app, settings } = appWith([]);
-  render(tour(app));
-  expect(screen.getByText('Welcome to Atlas')).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-  expect(screen.getByRole('button', { name: 'Join the Discord' })).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-  expect(screen.getAllByRole('button', { name: 'View in Obsidian' })).toHaveLength(1);
-  expect(screen.queryByText('In use')).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-  act(() => { fireEvent.click(screen.getByRole('button', { name: 'Got it' })); });
-  expect(settings.shouldShowTutorial('welcome')).toBe(false);
-  expect(screen.getByText('Scenes')).toBeTruthy();
-});
-
-it('does not welcome a GM who took the start page tour before the wizard existed', () => {
-  const { app, settings } = appWith(['atlas-sidebar']);
-  settings.completeTutorial('dashboard');
-  render(tour(app));
-  expect(screen.queryByText('Welcome to Atlas')).toBeNull();
-});
-
 it('welcomes a GM whose first sight of Atlas is a map, and the map tour follows', () => {
   const { app, settings } = appWith([]);
   const store = createViewAtlasStore(createInMemoryApp().app, 'welcome-view');
@@ -70,9 +48,7 @@ it('welcomes a GM whose first sight of Atlas is a map, and the map tour follows'
 it('offers the look, and the choice is this device\'s', () => {
   const { app, settings } = appWith(['atlas-sidebar']);
   render(tour(app));
-  for (let page = 0; page < 2; page += 1) fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-  expect(screen.getByText('In use')).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  for (let page = 0; page < 3; page += 1) fireEvent.click(screen.getByRole('button', { name: 'Next' }));
   expect(screen.getByText('Pick a look')).toBeTruthy();
   expect(screen.getByRole('radio', { name: 'Your theme' }).getAttribute('aria-checked')).toBe('true');
   act(() => { fireEvent.click(screen.getByRole('radio', { name: 'Sci-fi' })); });

@@ -22,7 +22,7 @@ export function DashboardTour({ app, root, hasScene, onCreateScene }: DashboardT
   const settings = useAtlasSettings(SettingsService.forApp(app));
   const shown = useWatched(root, isOnScreen);
   if (!shown || !settings) return null;
-  if (shouldWelcome(settings)) return <WelcomeWizard app={app} settings={settings} root={root} />;
+  if (shouldWelcome(settings)) return <WelcomeWizard app={app} settings={settings} />;
   return (
     <Tutorial
       settings={settings}

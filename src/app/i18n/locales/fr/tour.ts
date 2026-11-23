@@ -35,8 +35,6 @@ export const tour: Translation = {
   'tour.notNow': 'Pas maintenant',
   'tour.progress': 'Étape {step} sur {total}',
   'tour.replay': 'Suivre la visite',
-  'tour.dashboard.welcomeTitle': 'Bienvenue dans Atlas',
-  'tour.dashboard.welcomeBody': 'Atlas fait tourner votre partie sur des cartes de votre coffre, avec des jetons, du brouillard, l\'initiative et une seconde fenêtre que regardent vos joueurs. Chaque session commence sur cette page.',
   'tour.dashboard.sceneTitle': 'Scènes',
   'tour.dashboard.sceneBody': 'Une scène est une carte prête à jouer, avec ses jetons, son brouillard et ses épingles. Vous en créez une à partir d\'une image de carte, et la dernière scène jouée vous attend ici.',
   'tour.dashboard.assetsTitle': 'Gestionnaire de ressources',

@@ -34,8 +34,6 @@ export const tour: Translation = {
   'tour.notNow': 'Не сейчас',
   'tour.progress': 'Шаг {step} из {total}',
   'tour.replay': 'Пройти обзор',
-  'tour.dashboard.welcomeTitle': 'Добро пожаловать в Atlas',
-  'tour.dashboard.welcomeBody': 'Atlas ведёт вашу игру на картах из хранилища: токены, туман, инициатива и второе окно, которое видят игроки. Каждая сессия начинается на этой странице.',
   'tour.dashboard.sceneTitle': 'Сцены',
   'tour.dashboard.sceneBody': 'Сцена — это карта, готовая к игре, со своими токенами, туманом и метками. Её делают из изображения карты, а последняя сыгранная сцена ждёт здесь.',
   'tour.dashboard.assetsTitle': 'Менеджер ресурсов',

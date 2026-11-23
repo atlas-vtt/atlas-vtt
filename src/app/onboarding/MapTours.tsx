@@ -34,7 +34,7 @@ export function MapTours({ root, settings: explicit }: MapToursProps): React.JSX
   const hasDock = useWatched(root, hasDockIn);
   const hasLog = useWatched(root, hasLogIn);
   if (!settings || busy || !shown) return null;
-  if (app && shouldWelcome(settings)) return <WelcomeWizard app={app} settings={settings} root={root} />;
+  if (app && shouldWelcome(settings)) return <WelcomeWizard app={app} settings={settings} />;
   if (settings.shouldShowTutorial('map')) {
     const trackpad = settings.getNavigationSettings().inputMode === 'trackpad';
     return <Tutorial settings={settings} id="map" root={root} label={t('tour.map.label')} steps={mapSteps(key, trackpad)} />;
