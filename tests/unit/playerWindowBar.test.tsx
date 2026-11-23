@@ -12,10 +12,12 @@ const context = vi.hoisted(() => ({
   service: { getWindow: vi.fn<() => Window | null>(), setCurtain: vi.fn(), freezeCamera: vi.fn(), unfreezeCamera: vi.fn(), isFrozen: vi.fn(() => false), isWindowOpen: vi.fn(() => true), isTrueScale: vi.fn(() => false), destroy: vi.fn() },
   closeImageDisplay: vi.fn(),
   fullScreen: { available: false, set: vi.fn(async () => undefined) },
+  openPlayerWindow: vi.fn(async () => undefined),
 }));
 vi.mock('../../src/app/services/PlayerWindowService', () => ({ PlayerWindowService: { getInstance: () => context.service } }));
 vi.mock('../../src/app/services/ImageDisplayService', () => ({ ImageDisplayService: { getInstance: () => ({ closeImageDisplay: context.closeImageDisplay }) } }));
-vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentTab: vi.fn() }));
+vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentTab: vi.fn(), openPlayerWindow: context.openPlayerWindow }));
+vi.mock('../../src/app/platform/desktopOnly', () => ({ isDesktopApp: () => true, desktopOnly: <T,>(...items: T[]): T[] => items }));
 vi.mock('../../src/app/services/playerWindowDisplay', () => ({
   fullScreenAvailable: () => context.fullScreen.available,
   setPlayerWindowFullScreen: context.fullScreen.set,
@@ -98,6 +100,17 @@ describe('the player window bar', () => {
     expect(context.service.freezeCamera).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: /Play: the player view/ }));
     expect(tableControlsStore.getState().paused).toBe(false);
+  });
+
+  it('opens the player window for a shared screen beside online play, and drops the button once it is open', () => {
+    playerWindowStore.setState({ isOpen: false });
+    act(() => tableControlsStore.setState({ online: true }));
+    render(<PlayerWindowBar view={null} />);
+    fireEvent.click(screen.getByRole('button', { name: /Open player window/ }));
+    expect(context.openPlayerWindow).toHaveBeenCalledOnce();
+    act(() => playerWindowStore.setState({ isOpen: true }));
+    expect(screen.queryByRole('button', { name: /Open player window/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'TrueScale' })).toBeTruthy();
   });
 
   it('switches online players between their own maps and remotes for the shared screen', () => {

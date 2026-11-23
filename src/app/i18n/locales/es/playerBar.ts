@@ -15,6 +15,7 @@ export const playerBar: Translation = {
   'playerBar.unfreeze': 'Reanudar: la vista de jugadores vuelve a seguirte',
   'playerBar.freezeTrueScale': 'Con TrueScale activado, fija a los jugadores en el encuadre de tu mapa',
   'playerBar.takeBack': 'Retirar el documento',
+  'playerBar.openHint': 'Mostrar también la escena presentada en una pantalla de la mesa',
   'playerBar.freezeOnline': 'Los jugadores en línea no pueden mover sus fichas mientras está en pausa',
   'playerBar.playMode': 'Cómo juegan los jugadores',
   'playerBar.modeTable': 'Cada uno en su propio mapa',

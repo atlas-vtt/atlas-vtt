@@ -15,6 +15,7 @@ export const playerBar: Translation = {
   'playerBar.unfreeze': 'Продолжить: вид игроков снова следует за вами',
   'playerBar.freezeTrueScale': 'С включённым TrueScale закрепить игроков на кадре на вашей карте',
   'playerBar.takeBack': 'Забрать раздаточный материал',
+  'playerBar.openHint': 'Показывать представленную сцену и на экране за столом',
   'playerBar.freezeOnline': 'Онлайн-игроки не могут двигать фишки во время паузы',
   'playerBar.playMode': 'Как играют игроки',
   'playerBar.modeTable': 'Каждый на своей карте',

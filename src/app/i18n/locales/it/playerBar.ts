@@ -15,6 +15,7 @@ export const playerBar: Translation = {
   'playerBar.unfreeze': 'Riprendi: la vista giocatori torna a seguirti',
   'playerBar.freezeTrueScale': 'Con TrueScale attivo, blocca i giocatori sull’inquadratura della tua mappa',
   'playerBar.takeBack': 'Ritira il materiale',
+  'playerBar.openHint': 'Mostra la scena presentata anche su uno schermo al tavolo',
   'playerBar.freezeOnline': 'I giocatori online non possono muovere le pedine durante la pausa',
   'playerBar.playMode': 'Come giocano i giocatori',
   'playerBar.modeTable': 'Ognuno sulla propria mappa',

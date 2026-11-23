@@ -15,6 +15,7 @@ export const playerBar: Translation = {
   'playerBar.unfreeze': '继续：玩家视图重新跟随你',
   'playerBar.freezeTrueScale': '开启 TrueScale 时，把玩家固定在你地图上的画框中',
   'playerBar.takeBack': '收回资料',
+  'playerBar.openHint': '同时在桌边的屏幕上显示当前展示的场景',
   'playerBar.freezeOnline': '暂停期间，在线玩家无法移动自己的棋子',
   'playerBar.playMode': '玩家的游玩方式',
   'playerBar.modeTable': '每人使用自己的地图',
