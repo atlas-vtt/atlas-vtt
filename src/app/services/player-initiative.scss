@@ -174,3 +174,30 @@ $card-width: calc(#{scaled(96px)} - 2 * #{$border-width-m} - 2 * #{$surface-inse
     animation: none;
   }
 }
+
+// The tip naming the conditions of the combatant the GM hovers in the tracker (`playerConditionsTip.ts`): beside the
+// list's inner side, centred on the card (`--atlas-conditions-tip-at`, in the panel's frame), as the GM's tooltip
+// stands beside the tracker; across the top it hangs below the row, along a row elsewhere above it. Grows with the list
+.atlas-player-initiative .atlas-player-initiative__conditions-tip {
+  position: absolute;
+  top: var(--atlas-conditions-tip-at);
+  right: calc(100% + #{$spacing-m});
+  z-index: 5;
+  padding: scaled(8px);
+  font-size: scaled(13px);
+  // Not `transform`, which the tooltip's own entrance animates
+  translate: 0 -50%;
+}
+
+.atlas-player-initiative.atlas-initiative-panel--row .atlas-player-initiative__conditions-tip {
+  top: auto;
+  right: auto;
+  bottom: calc(100% + #{$spacing-m});
+  left: var(--atlas-conditions-tip-at);
+  translate: -50% 0;
+}
+
+.atlas-player-initiative--top.atlas-initiative-panel--row .atlas-player-initiative__conditions-tip {
+  top: calc(100% + #{$spacing-m});
+  bottom: auto;
+}

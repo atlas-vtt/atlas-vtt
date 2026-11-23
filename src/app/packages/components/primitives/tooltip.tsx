@@ -12,6 +12,11 @@ import "./tooltip.scss"
 
 const ProviderMounted = React.createContext(false)
 
+/** Whether a `TooltipProvider` stands above: a tooltip without one brings its own, as `LabelTooltip` does. */
+function useInTooltipProvider(): boolean {
+  return React.useContext(ProviderMounted)
+}
+
 function TooltipProvider(props: React.ComponentProps<typeof TooltipPrimitive.Provider>): React.ReactElement {
   return (
     <ProviderMounted.Provider value={true}>
@@ -148,7 +153,7 @@ function LabelTooltip({ label, side = "top", align = "center", describe = false,
   const labelId = React.useId()
   // Typed as the button Radix declares; asChild hands it whatever element `children` is.
   const triggerRef = React.useRef<HTMLButtonElement>(null)
-  const hasProvider = React.useContext(ProviderMounted)
+  const hasProvider = useInTooltipProvider()
   const [gatedOpen, setGatedOpen] = React.useState(false)
   // Worked out as it opens, before its content renders: the trigger may have moved, the window shrunk.
   const [placement, setPlacement] = React.useState<TooltipPlacement | null>(null)
@@ -194,4 +199,4 @@ function LabelTooltip({ label, side = "top", align = "center", describe = false,
   return hasProvider ? tooltip : <TooltipProvider delayDuration={300}>{tooltip}</TooltipProvider>
 }
 
-export { LabelTooltip, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+export { LabelTooltip, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, useInTooltipProvider }

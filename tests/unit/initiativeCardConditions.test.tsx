@@ -9,6 +9,9 @@ const state = vi.hoisted(() => ({
   objects: { tokens: {} as Record<string, unknown> },
   tokenSettings: { showInstanceBadges: true },
   selectedIds: [] as string[],
+  conditionsShownEntry: null as string | null,
+  showCombatantConditions: (): void => undefined,
+  hideCombatantConditions: (): void => undefined,
 }));
 const view = vi.hoisted(() => ({ trueScale: false }));
 
@@ -45,7 +48,7 @@ function gmCard(token: TokenEntity | undefined, cardEntry: InitiativeEntry = ent
   return names;
 }
 
-afterEach(() => { view.trueScale = false; });
+afterEach(() => { view.trueScale = false; state.conditionsShownEntry = null; document.body.empty(); });
 
 describe('conditions on the GM\'s initiative cards', () => {
   it('stay on the token of a combatant on the map, which shows them', () => {
@@ -63,14 +66,36 @@ describe('conditions on the GM\'s initiative cards', () => {
   });
 });
 
+describe('the tooltip a hovered card opens', () => {
+  it('names every condition its combatant is under, also those its card leaves to the token', () => {
+    state.conditionsShownEntry = 'e';
+    state.objects.tokens = { t: troll({ conditions: ALL }) };
+    const { unmount } = render(<InitiativeCard entry={entry} isHoveredForPreview={false} onContextMenu={vi.fn()} onHover={vi.fn()} />);
+    const rows = [...document.querySelectorAll('.tooltip-content .atlas-initiative-conditions-tip__name')].map((name) => name.textContent);
+    expect(rows).toEqual(['Blinded', 'Charmed', 'Frightened', 'Poisoned', 'Prone']);
+    unmount();
+  });
+
+  it('stays shut while the statblock preview shows, and for a combatant without conditions', () => {
+    state.conditionsShownEntry = 'e';
+    state.objects.tokens = { t: troll() };
+    const preview = render(<InitiativeCard entry={entry} isHoveredForPreview onContextMenu={vi.fn()} onHover={vi.fn()} />);
+    expect(document.querySelector('.atlas-initiative-conditions-tip')).toBeNull();
+    preview.unmount();
+    state.objects.tokens = { t: troll({ conditions: [] }) };
+    render(<InitiativeCard entry={entry} isHoveredForPreview={false} onContextMenu={vi.fn()} onHover={vi.fn()} />).unmount();
+    expect(document.querySelector('.atlas-initiative-conditions-tip')).toBeNull();
+  });
+});
+
 describe('conditions on the players\' initiative cards', () => {
   /** The names the players' card of `token` (none: an enemy added by name) shows its conditions by. */
-  function playersCard(token: TokenEntity | undefined, trueScale = false): string[] {
+  function playersCard(token: TokenEntity | undefined, trueScale = false, conditionsShown?: string): string[] {
     document.body.empty();
     const listed: PlayerInitiativeEntry = { name: 'Troll', initiative: 12, imagePath: '', order: 0, isActive: true, ...(token && { tokenId: 't' }) };
     const shown = { ...entryTokenOf(token, [], CONDITIONS), conditions: resolveActiveConditions(token ?? { conditions: ['prone'] }, CONDITIONS) };
     const list = playerInitiativeList({ entries: [listed], isActive: true, round: 1 }, () => shown, { mode: 'turn-order', roll: '1d20', firstSide: 'players' }, false);
-    renderPlayerInitiative(document.body, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null, trueScale });
+    renderPlayerInitiative(document.body, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null, trueScale, conditionsShown });
     return [...document.querySelectorAll('.atlas-initiative-card__conditions [role="listitem"]')].map((item) => item.getAttribute('aria-label') ?? '');
   }
 
@@ -79,6 +104,16 @@ describe('conditions on the players\' initiative cards', () => {
     expect(playersCard(troll(), true)).toEqual(['Blinded', 'Charmed']);
     expect(playersCard(troll({ offMap: true }))).toEqual(['Blinded', 'Charmed']);
     expect(playersCard(undefined)).toEqual(['Prone']);
+  });
+
+  it('name them all beside the list while the GM hovers the combatant in the tracker', () => {
+    const tip = (): string[] => [...document.querySelectorAll('.atlas-player-initiative__conditions-tip .atlas-initiative-conditions-tip__name')].map((name) => name.textContent ?? '');
+    playersCard(troll(), false, 't');
+    expect(tip()).toEqual(['Blinded', 'Charmed']);
+    playersCard(troll(), false, 'someone else');
+    expect(tip()).toEqual([]);
+    playersCard(troll({ conditions: [] }), false, 't');
+    expect(tip()).toEqual([]);
   });
 });
 
