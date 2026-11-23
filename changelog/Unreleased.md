@@ -12,6 +12,7 @@
 - Keys set to "Music in mix" now work as the Music key
 - Statblocks shown without a template of their own no longer start with a line about Atlas' field layout
 - Atlas Online: the table log's button stands beside the player window bar instead of below it, so the GM's top left corner holds two rows, not three
+- The initiative tracker's ring around whoever holds the turn is thinner and calmer, in turn order and when sides act together
 
 ## Fixed
 
