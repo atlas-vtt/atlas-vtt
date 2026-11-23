@@ -61,7 +61,7 @@ export const tour = {
   'tour.welcome.inUse': 'In use',
   'tour.welcome.lookKicker': 'Make it yours',
   'tour.welcome.lookTitle': 'Pick a look',
-  'tour.welcome.lookBody': 'Keep your own theme, or dress Obsidian in Mediaeval or Sci-fi. Change it any time under Appearance in the command palette.',
+  'tour.welcome.lookBody': 'Keep your own theme, or dress Obsidian in Mediaeval or Sci-fi. Change it any time under Appearance settings in the command palette.',
   'tour.map.label': 'Your map',
   'tour.map.welcomeTitle': 'Your first scene',
   'tour.map.welcomeMouse': 'Scroll to zoom, and drag with the right mouse button to move around the map. Here is what the controls around it do.',
