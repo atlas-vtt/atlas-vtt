@@ -9,6 +9,8 @@
 - **Atlas Online: players can ask to open doors.** Switch on "Players may ask to open doors" in What players see, and a player whose token stands at a closed door can ask you to open it, on their map or with their phone as a remote. You get a notice that brings you to the door, and open it or keep it shut right there on the map
 - Atlas Online: a token that walks into a wall or a closed door bumps against it, on the player's map and on the screen everyone watches, so players feel why it stops
 - Widgets can be reordered: drag one by its grip in the command palette's Widgets page (or move it with Alt and the arrow keys), and the widget bar follows in every scene of the collection
+- **Music in the Armarium.** Share a track or an album from the Sound library: from a track's menu, a selection of tracks or a tag. Give it a cover, an artist and the order the tracks play in
+- Install albums and tracks from the Armarium into your music folder. A review shows the tracks and where they go first; they play as soon as they land, and an update keeps any track you changed
 
 ## Improved
 
