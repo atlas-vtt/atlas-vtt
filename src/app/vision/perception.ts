@@ -12,7 +12,8 @@ import { computeTokenPixelSize } from '../pixi/token-renderer/tokenSizing';
 import { lightLevelAt } from './lightLevels';
 import type { AmbientLight, LightReach, Sight, SightRegion } from './sight';
 import { tokenEffects, type SightRules } from './sightRules';
-import { computeVisibility, pointInPolygon, type Polygon } from './visibility';
+import { computeVisibility, type Polygon } from './visibility';
+import { insidePolygon } from './polygonIndex';
 import { coneContains } from './visionCone';
 
 /**
@@ -53,7 +54,7 @@ function withinRadius(region: SightRegion, point: Point): boolean {
 
 /** For a point within the region's radius: whether walls and the cone leave it in reach. */
 function withinArea(region: SightRegion, point: Point): boolean {
-  if (region.polygon) return pointInPolygon(point, region.polygon);
+  if (region.polygon) return insidePolygon(point, region.polygon);
   return !region.cone || coneContains(region.cone, region.origin, point);
 }
 
