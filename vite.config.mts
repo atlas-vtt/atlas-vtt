@@ -6,6 +6,7 @@ import fs from 'fs';
 import { desktopDependencies } from './vite/desktop-dependencies.mts';
 import { changelog } from './vite/changelog.mts';
 import { motionNativeAnimation } from './vite/motion-native-animation.mts';
+import { localeTranslations } from './vite/locale-translations.mts';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const copyToTestVault = process.env.COPY_ON_CHANGE === 'true';
@@ -105,6 +106,7 @@ export default defineConfig({
     changelog(),
     desktopDependencies(),
     motionNativeAnimation(),
+    localeTranslations(),
     react(), // Enable React support
     copyFilesPlugin() // Add our custom plugin
   ],
