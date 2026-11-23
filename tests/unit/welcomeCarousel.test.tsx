@@ -3,7 +3,7 @@ import React from 'react';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { WelcomeCarousel } from '../../src/app/onboarding/welcome/WelcomeCarousel';
-import { SLIDE_MS } from '../../src/app/onboarding/welcome/welcomeSlides';
+import { CROSSFADE_MS, SLIDE_MS } from '../../src/app/onboarding/welcome/welcomeSlides';
 
 beforeEach(() => { vi.useFakeTimers(); });
 afterEach(() => {
@@ -43,11 +43,43 @@ it('jumps to a chip\'s slide', () => {
   fireEvent.click(within(chips()).getByRole('button', { name: 'Dice' }));
   expect(shown()).toBe('Dice you can hear land');
   expect(within(chips()).getByRole('button', { name: 'Dice' }).getAttribute('aria-current')).toBe('true');
-  // The chosen slide gets its whole time.
-  wait(SLIDE_MS - 1);
+});
+
+it('stops for good once a slide is picked or focus enters', () => {
+  const picked = render(<WelcomeCarousel />);
+  fireEvent.click(within(chips()).getByRole('button', { name: 'Dice' }));
+  slides(3);
   expect(shown()).toBe('Dice you can hear land');
-  wait(1);
-  expect(shown()).toBe('Every monster at hand');
+  picked.unmount();
+  render(<WelcomeCarousel />);
+  wait(1000);
+  fireEvent.focus(within(chips()).getByRole('button', { name: 'Maps' }));
+  slides(3);
+  expect(shown()).toBe('Welcome to Atlas');
+});
+
+it('shows a slide it comes back to afresh, and lets the one it left go once the crossfade ends', () => {
+  const { container } = render(<WelcomeCarousel />);
+  const picture = (id: string): Element => container.querySelector(`.atlas-welcome-slide--${id} .atlas-welcome-slide__picture`)!;
+  const first = picture('welcome');
+  wait(SLIDE_MS);
+  expect(container.querySelector('.atlas-welcome-slide--welcome')!.getAttribute('data-state')).toBe('leaving');
+  wait(CROSSFADE_MS);
+  expect(container.querySelector('.atlas-welcome-slide--welcome')!.getAttribute('data-state')).toBe('off');
+  fireEvent.click(within(chips()).getByRole('button', { name: 'Welcome' }));
+  expect(picture('welcome')).not.toBe(first);
+});
+
+it('fills the story bar from the time the slide had left after a hold', () => {
+  const { container } = render(<WelcomeCarousel />);
+  const fill = (): HTMLElement => container.querySelector<HTMLElement>('.atlas-welcome-carousel__story[data-state="on"] i')!;
+  wait(3000);
+  setHidden(true);
+  wait(10_000);
+  setHidden(false);
+  expect(fill().style.animationDelay).toBe('-3000ms');
+  wait(SLIDE_MS - 3000);
+  expect(shown()).toBe('Any map, ready in seconds');
 });
 
 it('holds while the pointer is over it', () => {

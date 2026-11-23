@@ -1,5 +1,6 @@
 @use 'sass:color';
 @use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
 
 // The welcome carousel (WelcomeCarousel.tsx): a picture across the whole dialog, darkened from the left and the foot,
 // with its words, the story bars and the chips light over it in every theme and look. Motion is transform and
@@ -59,13 +60,28 @@ $slide-shade: #0a0806;
 
 // ── Slides ──────────────────────────────────────────────────────────────────
 
+// Only the slide that comes fades, in above the one it replaces, which stays whole under it until it has: two
+// half-faded slides would let the dark behind them show through.
 .atlas-welcome-slide {
   position: absolute;
   inset: 0;
+  // Its words stay inside it, under the slide that fades in above.
+  isolation: isolate;
   opacity: 0;
-  transition: opacity var(--atlas-crossfade-ms) $transition-ease-out;
 
-  &[data-state='on'] { opacity: 1; }
+  &[data-state='leaving'] { opacity: 1; }
+
+  // The words of the slide going fade out at once, so they never stand doubled with the new ones.
+  &[data-state='leaving'] .atlas-welcome-slide__copy {
+    opacity: 0;
+    transition: opacity calc(var(--atlas-crossfade-ms) / 2) $transition-ease-out;
+  }
+
+  &[data-state='on'] {
+    z-index: 1;
+    opacity: 1;
+    transition: opacity var(--atlas-crossfade-ms) $transition-ease-out;
+  }
 
   // Darkened from the left, where the words stand, from the foot, and a little from the top for the bars.
   &::after {
@@ -222,6 +238,12 @@ $slide-shade: #0a0806;
   to { transform: scaleX(1); }
 }
 
+// Picked by the GM, the carousel stays on that slide: its bar shows where it stands, full.
+.atlas-welcome-carousel[data-stopped='true'] .atlas-welcome-carousel__story[data-state='on'] i {
+  animation: none;
+  transform: scaleX(1);
+}
+
 // Pointer over the slide or its window hidden: the time stands, and so does what shows it.
 .atlas-welcome-carousel[data-paused='true'] :is(.atlas-welcome-slide__picture, .atlas-welcome-slide__sword, .atlas-welcome-carousel__story i) {
   animation-play-state: paused;
@@ -254,7 +276,21 @@ $slide-shade: #0a0806;
   &[aria-current='true'] { border-color: ink(0.5); }
 }
 
-// A narrow dialog leaves the chips out (the bars still jump), so the foot keeps one line.
+// A narrow dialog keeps the chips as dots, so the foot keeps one line and the keyboard still reaches every slide; their
+// names stay for assistive technology.
 @media (max-width: 760px) {
-  .atlas-welcome-carousel__chips { display: none; }
+  .atlas-welcome-carousel__chips .atlas-welcome-carousel__chip {
+    width: $spacing-m;
+    height: $spacing-m;
+    padding: 0;
+    background: ink(0.3);
+    border-color: transparent;
+
+    &[aria-current='true'] {
+      background: $slide-ink;
+      border-color: transparent;
+    }
+  }
+
+  .atlas-welcome-carousel__chip-name { @include atlas-visually-hidden; }
 }
