@@ -46,6 +46,8 @@ import { PLAYER_SIGHT_POLICY } from '../vision/tokenSightPolicy';
 import { createSceneSource } from '../plugin/host/sceneSource';
 import { updateInstanceBadge } from './token-renderer/InstanceBadge';
 import { HiddenTokenIcon } from './token-renderer/HiddenTokenIcon';
+import { TokenBows } from './token-renderer/TokenBows';
+import { LookService } from '../appearance/lookService';
 import { DownedTokenOverlay } from './token-renderer/DownedTokenOverlay';
 import { isTokenDowned } from './token-renderer/isTokenDowned';
 import { requestRender } from './RenderScheduler';
@@ -112,6 +114,12 @@ export class TokenRenderer {
   private spriteFactory: SpriteFactory;
   private textureCache: TextureCache;
   private readonly hiddenTokenIcon = new HiddenTokenIcon();
+  private readonly bows = new TokenBows(() => {
+    if (this.pixiApp) requestRender(this.pixiApp);
+  });
+  /** Yassify, as last shown: every token wears a bow while it is on. */
+  private yassified = false;
+  private stopFollowingLook: (() => void) | null = null;
   private readonly downedTokenOverlay = new DownedTokenOverlay(
     () => {
       if (this.pixiApp) requestRender(this.pixiApp);
@@ -238,6 +246,11 @@ export class TokenRenderer {
       reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? document.body),
     });
     this.obsApp = obsApp;
+    const looks = LookService.existing(obsApp);
+    if (looks) {
+      this.yassified = looks.yassify();
+      this.stopFollowingLook = looks.onChange(() => this.followYassify(looks.yassify()));
+    }
     this.viewport = viewport;
     this.gridSystem = gridSystem;
     this.selectionOverlayUpdater = selectionOverlayUpdater;
@@ -643,6 +656,7 @@ export class TokenRenderer {
     const ring = this.spriteFactory.createTokenRing(tokenGroup, resolvedRingColor, sizeWithMultiplier);
     syncTokenArtwork(tokenGroup, size);
     this.downedTokenOverlay.refresh(tokenGroup);
+    this.bows.refresh(tokenGroup);
     if (ring) {
       this.tokenRings[tokenId] = ring;
     } else {
@@ -748,6 +762,14 @@ export class TokenRenderer {
     if (!prevToken || (prevToken.isHidden ?? false) !== isHidden) {
       this.reestablishTokenInteractivity(tokenGroup);
     }
+  }
+
+  /** Yassify switched: every token on the map puts its bow on or takes it off. */
+  private followYassify(on: boolean): void {
+    if (on === this.yassified) return;
+    this.yassified = on;
+    for (const group of Object.values(this.tokenSprites)) if (group) this.bows.update(group, on);
+    if (this.pixiApp) requestRender(this.pixiApp);
   }
 
   /** Greys out a token at 0 HP and marks it with a skull; killing and healing a loaded token animate. */
@@ -1067,6 +1089,7 @@ export class TokenRenderer {
         
         this.applyTokenVisibilityPolicy(token, existingTokenGroup, prevToken);
         this.applyDownedState(token, existingTokenGroup, prevToken);
+        this.bows.update(existingTokenGroup, this.yassified);
         
         // Update z-index if layer changed
         if (!prevToken || prevToken.layer !== token.layer) {
@@ -1153,6 +1176,7 @@ export class TokenRenderer {
           
           this.applyTokenVisibilityPolicy(character, tokenGroup);
           this.applyDownedState(character, tokenGroup);
+          this.bows.update(tokenGroup, this.yassified);
 
           // A token selected before its sprite existed (it took stairs to the level the view
           // followed it to) gets the frame and handles a selection change drew without it
@@ -1318,6 +1342,7 @@ export class TokenRenderer {
   /** Destroys a token group no longer listening to the pointer, with all of its children, and drops its hold on its art. */
   private freeTokenGroup(tokenGroup: TokenGroupContainer): void {
     this.downedTokenOverlay.release(tokenGroup);
+    this.bows.release(tokenGroup);
     this.spriteFactory.destroyTokenSprite(tokenGroup);
     this.textureCache.release(tokenGroup.artPath);
   }
@@ -1423,6 +1448,8 @@ export class TokenRenderer {
     this.textureCache.destroyAll();
     this.hiddenTokenIcon.destroy();
     this.downedTokenOverlay.destroy();
+    this.stopFollowingLook?.();
+    this.stopFollowingLook = null;
     
     // Clear all references
     this.tokenSprites = {};

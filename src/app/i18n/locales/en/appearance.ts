@@ -20,6 +20,8 @@ export const appearance = {
   'appearance.ivyHint': 'The leaves and vines on Medieval panels, shading kept.',
   'appearance.ivyMediaevalOnly': 'Only the Medieval look grows ivy.',
   'appearance.ivyNatural': 'Natural',
+  'appearance.yassify': 'Yassify',
+  'appearance.yassifyHint': 'Give every token some pizzazz.',
   'appearance.accentPresets.crimson': 'Crimson',
   'appearance.accentPresets.ember': 'Ember',
   'appearance.accentPresets.gold': 'Gold',

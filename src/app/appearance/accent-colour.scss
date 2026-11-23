@@ -1,7 +1,7 @@
 @use '../../../styles/tokens' as *;
 
 $swatch-size: $target-min + $spacing-xs;
-$leaf-size: $swatch-size + $spacing-s;
+$leaf-size: $swatch-size + $spacing-xs;
 
 // A colour setting's swatches (ColourSwatches.tsx: the accent colour, the ivy colour): the base, the presets, then the
 // GM's own colour. A round swatch paints `--atlas-swatch-fill`; the ivy colour's are leaves of the ivy (IvyLeaf.tsx).

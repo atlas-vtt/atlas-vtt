@@ -12,6 +12,8 @@ export const PREVIOUS_THEME_STORAGE_KEY = 'atlas-vtt:look-previous-theme';
 /** The colour the Medieval look paints its ivy in, `#rrggbb`, or `natural` for its own greens. */
 export const IVY_COLOUR_STORAGE_KEY = 'atlas-vtt:ivy-colour';
 const NATURAL_IVY = 'natural';
+/** Whether every token wears a bow (Yassify), `on` or `off`: words, as Obsidian drops falsy values. */
+export const YASSIFY_STORAGE_KEY = 'atlas-vtt:yassify';
 
 /** Obsidian's own theme, which Atlas' looks are drawn over. */
 const DEFAULT_THEME = '';
@@ -34,6 +36,11 @@ export class LookService {
     return looks;
   }
 
+  /** The app's service while Atlas runs, for what draws by the look without making one (the canvas' bows). */
+  static existing(app: App): LookService | null {
+    return byApp.get(app) ?? null;
+  }
+
   /** Forgets the app's service, whose settings go with the plugin that unloads. */
   static release(app: App): void {
     byApp.get(app)?.listeners.clear();
@@ -42,12 +49,14 @@ export class LookService {
 
   private choice: LookChoice;
   private ivy: string;
+  private yassified: boolean;
   private readonly listeners = new Set<() => void>();
 
   private constructor(private readonly app: App, private readonly settings: SettingsService) {
     this.choice = this.load(LOOK_STORAGE_KEY, isLookChoice) ?? 'own';
     const ivy = this.load(IVY_COLOUR_STORAGE_KEY, isIvyColour);
     this.ivy = ivy && ivy !== NATURAL_IVY ? ivy.toLowerCase() : '';
+    this.yassified = this.load(YASSIFY_STORAGE_KEY, (value): value is string => value === 'on') === 'on';
   }
 
   get(): LookChoice {
@@ -84,7 +93,19 @@ export class LookService {
     this.notify();
   }
 
-  /** Calls `listener` whenever the look or its ivy colour changes. */
+  /** Whether every token on the map wears a bow, on this device. */
+  yassify(): boolean {
+    return this.yassified;
+  }
+
+  setYassify(on: boolean): void {
+    if (on === this.yassified) return;
+    this.yassified = on;
+    this.save(YASSIFY_STORAGE_KEY, on ? 'on' : 'off');
+    this.notify();
+  }
+
+  /** Calls `listener` whenever the look, its ivy colour or Yassify changes. */
   onChange(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };
