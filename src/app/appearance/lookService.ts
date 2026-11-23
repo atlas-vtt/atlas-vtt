@@ -36,7 +36,7 @@ export class LookService {
     return looks;
   }
 
-  /** The app's service while Atlas runs, for what draws by the look without making one (the canvas' bows). */
+  /** The app's service while Atlas runs, for what draws by the look without making one (the canvas' Yassify props). */
   static existing(app: App): LookService | null {
     return byApp.get(app) ?? null;
   }
@@ -93,7 +93,7 @@ export class LookService {
     this.notify();
   }
 
-  /** Whether every token on the map wears a bow, on this device. */
+  /** Whether every token on the map wears its Yassify props (bow, nails, tumbler), on this device. */
   yassify(): boolean {
     return this.yassified;
   }
