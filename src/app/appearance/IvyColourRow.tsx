@@ -22,6 +22,7 @@ export function IvyColourRow({ looks }: { looks: LookService }): React.JSX.Eleme
         value={colour}
         base={{ label: t('appearance.ivyNatural'), className: 'atlas-accent-swatch--natural' }}
         disabled={!mediaeval}
+        shape="leaf"
         onChange={(hex) => looks.setIvyColour(hex)}
         pickerStart={naturalStart}
       />

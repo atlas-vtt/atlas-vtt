@@ -20,8 +20,10 @@ export function AppearanceChoices({ app, looks }: AppearanceChoicesProps): React
       <SettingChoiceRow label={t('appearance.look')} hint={t('appearance.lookHint')}>
         <LookCards looks={looks} />
       </SettingChoiceRow>
-      <AccentColourRow app={app} />
-      <IvyColourRow looks={looks} />
+      <div className="atlas-appearance-colours">
+        <AccentColourRow app={app} />
+        <IvyColourRow looks={looks} />
+      </div>
     </div>
   );
 }

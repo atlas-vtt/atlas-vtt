@@ -24,6 +24,8 @@ interface ColourSwatchesProps {
   value: string;
   base: BaseSwatch;
   disabled?: boolean;
+  /** Round dots, or ivy leaves for the ivy colour. */
+  shape?: 'round' | 'leaf';
   onChange: (hex: string) => void;
   /** Where the colour picker opens while no colour is picked, read as it opens. */
   pickerStart: (doc: Document) => string;
@@ -31,7 +33,7 @@ interface ColourSwatchesProps {
 }
 
 /** A colour setting's swatches: the base, the presets and a colour of the GM's from the system picker, as one radio group. */
-export function ColourSwatches({ label, value, base, disabled = false, onChange, pickerStart, groupRef }: ColourSwatchesProps): React.JSX.Element {
+export function ColourSwatches({ label, value, base, disabled = false, shape = 'round', onChange, pickerStart, groupRef }: ColourSwatchesProps): React.JSX.Element {
   const chosen = value === '' ? BASE : presetOfAccent(value)?.id ?? CUSTOM;
   const swatches = useRef(new Map<string, HTMLElement>());
   const picker = useRef<HTMLInputElement>(null);
@@ -70,7 +72,7 @@ export function ColourSwatches({ label, value, base, disabled = false, onChange,
   return (
     <div
       ref={groupRef}
-      className={`atlas-accent-swatches${disabled ? ' atlas-accent-swatches--disabled' : ''}`}
+      className={`atlas-accent-swatches${shape === 'leaf' ? ' atlas-accent-swatches--leaf' : ''}${disabled ? ' atlas-accent-swatches--disabled' : ''}`}
       role="radiogroup"
       aria-label={label}
       aria-disabled={disabled || undefined}
@@ -91,7 +93,7 @@ export function ColourSwatches({ label, value, base, disabled = false, onChange,
           label={t(preset.labelKey)}
           chosen={chosen === preset.id}
           disabled={disabled}
-          style={{ background: preset.hex }}
+          style={fill(preset.hex)}
           swatchRef={swatchRef(preset.id)}
           onPick={() => pick(preset.id)}
         />
@@ -102,7 +104,7 @@ export function ColourSwatches({ label, value, base, disabled = false, onChange,
           chosen={chosen === CUSTOM}
           disabled={disabled}
           className="atlas-accent-swatch--custom"
-          style={chosen === CUSTOM ? { background: value } : undefined}
+          style={chosen === CUSTOM ? fill(value) : undefined}
           swatchRef={swatchRef(CUSTOM)}
           onPick={openCustom}
         />
@@ -120,6 +122,9 @@ export function ColourSwatches({ label, value, base, disabled = false, onChange,
     </div>
   );
 }
+
+/** What a swatch paints: its background when round, its leaf when the ivy's. */
+const fill = (colour: string): React.CSSProperties => ({ '--atlas-swatch-fill': colour } as React.CSSProperties);
 
 interface SwatchProps {
   label: string;
