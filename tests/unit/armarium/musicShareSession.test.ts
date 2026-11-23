@@ -126,6 +126,8 @@ describe('sharing music in the Armarium', () => {
     expect(musicProblems({ ...album, tracks: [track(7201), track(10, 'b')] })).toEqual({ tracks: 'track-too-long' });
     expect(musicProblems({ ...album, tracks: Array.from({ length: 6 }, (_, index) => track(7000, String(index))) })).toEqual({ tracks: 'album-too-long' });
     expect(musicProblems({ ...album, name: ' ', artist: 'x'.repeat(121), tracks: [track(10), { ...track(10, 'b'), title: '' }] })).toEqual({ name: 'missing', artist: 'too-long', 'title:b': 'missing' });
+    // An emoji is two of the 120 units the Armarium's rules count, and a line separator breaks the line.
+    expect(musicProblems({ ...album, name: '🎵'.repeat(61), artist: 'Mara\u2028Quill', tracks: [track(10), track(10, 'b')] })).toEqual({ name: 'too-long', artist: 'one-line' });
   });
 
   it('continues the account\'s listing the page named, one version above its newest, with what changed and its fields', async () => {

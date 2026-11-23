@@ -16,7 +16,8 @@ export function startingTitle(fileName: string): string {
 function textProblem(text: string, required: boolean): string | null {
   const trimmed = text.trim();
   if (trimmed === '') return required ? 'missing' : null;
-  if ([...trimmed].length > MAX_MUSIC_TEXT) return 'too-long';
+  // Counted as the Armarium counts (UTF-16 units), so the share never uploads what its rules refuse.
+  if (trimmed.length > MAX_MUSIC_TEXT) return 'too-long';
   return isOneLine(trimmed) ? null : 'one-line';
 }
 

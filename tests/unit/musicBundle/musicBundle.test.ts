@@ -58,8 +58,14 @@ describe('a music manifest', () => {
       manifest({ name: 'Two\nlines' }),
       manifest({ artist: 'x'.repeat(121) }),
       manifest({ tracks: [{ path: 'music/01 Dawn.opus', title: '' }, { path: 'music/02 Dusk.opus', title: 'Dusk' }] }),
+      manifest({ artist: 'Mara\u2028Quill' }),
+      manifest({ name: '🎵'.repeat(61) }),
     ];
     for (const value of damaged) expect(musicManifestProblem(value)).toMatch(/damaged/i);
+  });
+
+  it('counts its texts as the Armarium\'s rules do, in UTF-16 units, so nothing Atlas packs is refused there for its length', () => {
+    expect(musicManifestProblem(manifest({ name: '🎵'.repeat(60), artist: 'x'.repeat(120) }))).toBeNull();
   });
 });
 

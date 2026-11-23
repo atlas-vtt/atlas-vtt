@@ -12,7 +12,7 @@ import { t } from '../../i18n';
 
 export const MUSIC_TRACK_ROLE: BundleFileRole = 'music-track';
 
-/** The longest name, artist and track title a music manifest carries. */
+/** The longest name, artist and track title a music manifest carries, in UTF-16 units (`length`), as the Armarium's rules count. */
 export const MAX_MUSIC_TEXT = 120;
 /** The tracks an album holds; a single holds one. */
 export const MIN_ALBUM_TRACKS = 2;
@@ -54,14 +54,17 @@ const UNSAFE_NAME = /[\\/:*?"<>|\p{Cc}]/gu;
 /** Names Windows keeps for devices, whatever their extension. */
 const RESERVED_NAME = /^(?:con|prn|aux|nul|com\d|lpt\d)$/i;
 
-/** One line of text, as a name, an artist or a title must be: no line break and no control character. */
+/** One line of text, as a name, an artist or a title must be: no line break of any kind (U+2028 and U+2029 too) and no control character. */
 export function isOneLine(text: string): boolean {
-  return !/\p{Cc}/u.test(text);
+  return !/[\p{Cc}\u2028\u2029]/u.test(text);
 }
 
-/** Whether a name, an artist or a title is one a manifest may carry: one line, 1 to 120 characters, not blank. */
+/**
+ * Whether a name, an artist or a title is one a manifest may carry: one line, not blank, at most 120 UTF-16 units, as
+ * the Armarium's rules count (an emoji takes two), so nothing Atlas packs is refused there for its length.
+ */
 export function isMusicText(value: unknown): value is string {
-  return typeof value === 'string' && value.trim() !== '' && [...value].length <= MAX_MUSIC_TEXT && isOneLine(value);
+  return typeof value === 'string' && value.trim() !== '' && value.length <= MAX_MUSIC_TEXT && isOneLine(value);
 }
 
 /** What a text may be called as a file or folder: what no disk holds replaced, no dot in front or blank behind. */
