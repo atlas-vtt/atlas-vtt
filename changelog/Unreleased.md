@@ -25,6 +25,7 @@
 - The card naming a token's conditions, shown while you hover the token, now shows in the player window too
 - Hovering a combatant in the initiative tracker names all its conditions in one tooltip beside the tracker. The player window's list scrolls to that combatant and shows the same, so you can show the table what a creature suffers; moving off brings the list back to the turn
 - A combatant kept beside the map shows a grey outline on its initiative card instead of an icon, which leaves the compact list more room
+- Sharing in the Armarium: until the first part of an upload is in, the upload step says what it is sending and shows a moving bar instead of "0 Bytes sent"
 
 ## Fixed
 
