@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { App } from 'obsidian';
 import type { AssetService, CollectionMetadata } from '../../../src/app/services/AssetService';
 import { installFilePath } from '../../../src/app/services/library/libraryPaths';
-import { installedListings } from '../../../src/app/armarium/installedListings';
+import { installedListings, musicWalkEnds } from '../../../src/app/armarium/installedListings';
 import { SoundLibrary } from '../../../src/app/soundLibrary/SoundLibrary';
 import { FakeSoundLocation } from '../../helpers/fakeSoundLocation';
 
@@ -97,6 +97,37 @@ describe('the Armarium listings a vault holds', () => {
       expect(await installedListings(app, assetsWith([]), new Set([LISTED, 'b-listing']))).toEqual([{ uid: LISTED, version: 3 }, { uid: 'b-listing', version: 2 }]);
     } finally {
       SoundLibrary.release(app);
+    }
+  });
+  it('tells the music it knows without waiting, asks for the first walk, and says when the music folder has been read whole', async () => {
+    const location = new FakeSoundLocation();
+    location.put('Mara/Old Roads/01 Dawn.opus', new Blob(['x']));
+    location.put('Mara/Old Roads/Armarium.json', new Blob([JSON.stringify({ format: 1, uid: LISTED, version: 3, kind: 'music-album', name: 'N', artist: null, tracks: [{ file: '01 Dawn.opus', sha256: 'a'.repeat(64) }] })]));
+    const files = [...location.files.values()].map((entry) => ({ entry }));
+    let walked = false;
+    const listeners = new Set<() => void>();
+    const rescan = vi.fn();
+    const library = {
+      locationOf: () => location, filesOf: () => (walked ? files : []), isWalked: () => walked, rescan, destroy: () => undefined,
+      onChange: (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener); },
+    } as unknown as SoundLibrary;
+    const app = vaultWith({});
+    SoundLibrary.provide(app, library);
+    vi.stubGlobal('window', globalThis);
+    try {
+      const started = Date.now();
+      expect(await installedListings(app, assetsWith([]), new Set([LISTED]))).toEqual([]);
+      expect(Date.now() - started).toBeLessThan(1000);
+      expect(rescan).toHaveBeenCalled();
+      const ends = musicWalkEnds(app);
+      walked = true;
+      for (const listener of listeners) listener();
+      expect(await ends).toBe(true);
+      expect(await installedListings(app, assetsWith([]), new Set([LISTED]))).toEqual([{ uid: LISTED, version: 3 }]);
+      expect(await musicWalkEnds(app)).toBe(false);
+    } finally {
+      SoundLibrary.release(app);
+      vi.unstubAllGlobals();
     }
   });
 });

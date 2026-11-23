@@ -29,7 +29,7 @@ function fromPage(data: unknown, source: MessageEventSource | null, origin = 'ht
 beforeEach(() => {
   Object.defineProperty(window.navigator, 'onLine', { configurable: true, get: () => true });
   statusListener = null;
-  installer = ArmariumInstaller.open(app, { review: vi.fn(), fetchList: async () => [], installed: async () => [{ uid: UID, version: 4 }] });
+  installer = ArmariumInstaller.open(app, { review: vi.fn(), fetchList: async () => [], installed: async () => [{ uid: UID, version: 4 }], musicWalked: async () => false });
   vi.spyOn(installer, 'install').mockResolvedValue(undefined);
   vi.spyOn(installer, 'installedItems').mockResolvedValue([{ uid: UID, version: 4 }]);
   const onStatus = installer.onStatus.bind(installer);
@@ -83,6 +83,20 @@ describe('the Armarium pane', () => {
     fromPage({ type: 'atlas-armarium:hello', format: 1 }, frame.contentWindow);
     await vi.waitFor(() => expect(post).toHaveBeenCalledTimes(2));
     expect(installer.installedItems).toHaveBeenCalledTimes(2);
+  });
+
+  it('tells the page what it knows at once, and again once the music folder has been read whole', async () => {
+    let walkEnded: (walked: boolean) => void = () => undefined;
+    vi.spyOn(installer, 'musicWalkEnds').mockReturnValue(new Promise((resolve) => { walkEnded = resolve; }));
+    const { frame } = renderPane();
+    const post = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => undefined);
+    fromPage({ type: 'atlas-armarium:hello', format: 1 }, frame.contentWindow);
+    await vi.waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+
+    vi.mocked(installer.installedItems).mockResolvedValue([{ uid: UID, version: 4 }, { uid: 'b-music-listing', version: 2 }]);
+    act(() => walkEnded(true));
+    await vi.waitFor(() => expect(post).toHaveBeenLastCalledWith({ type: 'atlas-armarium:installed', format: 1, items: [{ uid: UID, version: 4 }, { uid: 'b-music-listing', version: 2 }], features: ['music'] }, 'https://atlas-vtt.dev'));
+    expect(post).toHaveBeenCalledTimes(2);
   });
 
   it('hidden, keeps its page, takes no input and still tells the page where installs stand', () => {

@@ -35,11 +35,18 @@ export function useArmariumBridge(
     const frameWindow = (): Window | null => frameRef.current?.contentWindow ?? null;
     const features: ArmariumFeature[] = ['music', ...(shares ? ['share' as const, 'share-items' as const, 'share-music' as const] : []), ...(tagFilter ? ['tags' as const] : []), ...(account ? ['account' as const] : [])];
     // Read while the page loads, so its hello is answered at once: the read waits on the installable list.
+    let earlyWalk: Promise<boolean> | null = installer.musicWalkEnds();
     let early: Promise<ArmariumRequest[]> | null = installer.installedItems();
+    const post = (held: ArmariumRequest[]): void => postToFrame(frameWindow(), installedMessage(held, features));
+    // What is known is told at once; where the music root was not read whole yet, what it holds follows once it is.
     const sendInstalled = (): void => {
+      const walk = earlyWalk ?? installer.musicWalkEnds();
       const items = early ?? installer.installedItems();
       early = null;
-      void items.then((held) => postToFrame(frameWindow(), installedMessage(held, features)));
+      earlyWalk = null;
+      void items.then(post).then(() => walk).then(async (walked) => {
+        if (walked) post(await installer.installedItems());
+      });
     };
     const onMessage = (event: MessageEvent): void => {
       const message = acceptFrameMessage(event, frameWindow());
@@ -58,6 +65,7 @@ export function useArmariumBridge(
       if (state !== 'installed') return;
       // What was read early no longer holds the release just installed.
       early = null;
+      earlyWalk = null;
       sendInstalled();
     });
     win.addEventListener('message', onMessage);
