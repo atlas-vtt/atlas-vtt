@@ -24,6 +24,10 @@ import { DealtCard } from './DealtCard';
 import { entryToken } from '../../initiative/party';
 import { turnColor } from '../../initiative/turnColor';
 import { sideOf } from '../../initiative/sides';
+import { CardConditions } from './CardConditions';
+import { useMapConditions } from '../hooks/useMapConditions';
+import { useTrueScale } from '../hooks/useTrueScale';
+import { cardConditions } from '../../initiative/combatantConditions';
 
 interface InitiativeCardProps {
   entry: InitiativeEntry;
@@ -62,7 +66,8 @@ const NO_DRAG: RowDrag = {
 /**
  * A combatant in the GM's tracker, as the players' list draws it (`styles/_initiative-cards.scss`): a square card
  * filled with the token's art, red rising in it as it loses hit points (`woundShare`), its number in the top right and
- * its badge and marks in the top left. Conditions and resources show on its token, so the card leaves them out. The compact list is one line instead, over the token's art faded in from its right end.
+ * its badge and marks in the top left, its conditions fanned down its left edge where no token on the map shows them
+ * (`cardConditions`). Resources show on its token. The compact list is one line instead, over the token's art faded in from its right end.
  */
 export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   entry,
@@ -102,6 +107,10 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   const wound = token ? woundShare(visibleResources(token, definitions, 'dm').filter(({ definition }) => definition.defeatedWhenSpent)) : null;
   const woundFill = wound === null ? null : <div className="atlas-initiative-wound" style={{ '--atlas-wound': wound } as React.CSSProperties} aria-hidden="true" />;
   const defeated = combatantDefeated(token, definitions);
+  // Where no token on the map shows them, or miniatures on the TV cover the tokens (`cardConditions`)
+  const conditionDefinitions = useMapConditions();
+  const trueScale = useTrueScale();
+  const conditions = cardConditions(entry, token, conditionDefinitions, trueScale);
   // A hidden token's entry, or one the GM hid, is left out of the players' list (`PlayerInitiativePanel`)
   const hiddenFromPlayers = token?.isHidden === true || entry.hiddenFromPlayers === true;
   // Kept beside the map: in the tracker only, until the GM places it
@@ -182,6 +191,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
     isHoveredForPreview && 'atlas-initiative-card--preview-hover',
     selected && 'atlas-initiative-card--selected',
     turnFlash && 'atlas-initiative-card--turn-flash',
+    conditions.length > 0 && 'atlas-initiative-card--conditions',
   ].filter(Boolean).join(' ');
 
   return (
@@ -253,6 +263,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
         />
       ))}
 
+      <CardConditions conditions={conditions} tooltipSide={tooltipSide} />
     </div>
   );
 };

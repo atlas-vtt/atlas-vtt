@@ -11,6 +11,7 @@ import type { PlayersListEdge } from '../initiative/initiativeLayout';
 import { combatantConditions, type ActiveCondition } from '../utils/activeConditions';
 import { entryConditions } from '../initiative/combatantConditions';
 import { entryToken } from '../initiative/party';
+import { isOffMap } from '../tokens/offMap';
 import { layoutEdges, scrollWithin } from '../utils/scrollWithin';
 import { renderPlayerCard } from './playerInitiativeCard';
 import { TURN_KEY_ATTRIBUTE } from '../initiative/motion/turnMotion';
@@ -32,6 +33,8 @@ export interface EntryToken {
   conditions?: ActiveCondition[];
   /** The token's own Show nameplate, which names it where the map shows no nameplates (`nameplateShownToPlayers`). */
   showNameplate?: boolean;
+  /** Kept beside the map (`isOffMap`): no token on the map shows its conditions, so its card does. */
+  offMap?: true;
 }
 
 /** What the players' list shows of an initiative entry. */
@@ -93,6 +96,8 @@ export interface PlayerInitiativeLook {
   turnFlash?: number | undefined;
   /** The most cards the list shows, 0 for all (`initiativeMaxCardsOf`). */
   maxCards?: number;
+  /** Players see their TV at true scale (TrueScale): miniatures cover the tokens, so every card shows its conditions. */
+  trueScale?: boolean;
   /** Draws one of the card's icons into `parent` (Obsidian's `setIcon` in Atlas), so the list imports nothing of Obsidian's and the player page draws it too. */
   icon?(parent: HTMLElement, name: PlayerCardIcon): void;
 }
@@ -183,6 +188,7 @@ export function entryTokenOf(
     defeated: combatantDefeated(token, definitions),
     conditions: combatantConditions(token, conditionDefinitions),
     ...(token?.showNameplate === true ? { showNameplate: true } : {}),
+    ...(isOffMap(token) ? { offMap: true as const } : {}),
   };
 }
 

@@ -571,6 +571,8 @@ export class UIManager implements ITokenUIManager {
       ui.update(token, sprite.tokenSize || 70, settings);
       ui.getContainer().position.copyFrom(sprite.position);
       ui.getContainer().renderable = sprite.visible && !token.isHidden && isSeen(tokenId);
+      // The card the GM's hover shows names the token's conditions to the players too
+      ui.showConditionCard(this.tokenUIs[tokenId]?.showsConditionCard() ?? false);
     }
     const dmControls: Container[] = [
       ...(this.tokenControlsUI ? [this.tokenControlsUI.getContainer()] : []),

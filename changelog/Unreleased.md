@@ -13,6 +13,8 @@
 - Statblocks shown without a template of their own no longer start with a line about Atlas' field layout
 - Atlas Online: the table log's button stands beside the player window bar instead of below it, so the GM's top left corner holds two rows, not three
 - The initiative tracker's ring around whoever holds the turn is thinner and calmer, in turn order and when sides act together
+- Initiative cards show conditions again wherever no token on the map shows them: for a combatant kept beside the map or added without a token, and on every card while TrueScale shows the map on a TV at the table, where miniatures stand over the tokens. A card fans up to three badges down its left side and counts the rest; the compact list shows them beside the name. The players' list follows the GM's
+- The card naming a token's conditions, shown while you hover the token, now shows in the player window too
 
 ## Fixed
 
