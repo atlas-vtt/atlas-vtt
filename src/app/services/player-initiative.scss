@@ -180,8 +180,7 @@ $card-width: calc(#{scaled(96px)} - 2 * #{$border-width-m} - 2 * #{$surface-inse
 // stands beside the tracker; across the top it hangs below the row, along a row elsewhere above it. Grows with the list
 .atlas-player-initiative .atlas-player-initiative__conditions-tip {
   position: absolute;
-  // Moved with its card while the list glides to it (`--atlas-conditions-tip-shift`, `glideScroll`)
-  top: calc(var(--atlas-conditions-tip-at) + var(--atlas-conditions-tip-shift, 0px));
+  top: var(--atlas-conditions-tip-at);
   right: calc(100% + #{$spacing-m});
   z-index: 5;
   padding: scaled(8px);
@@ -194,11 +193,18 @@ $card-width: calc(#{scaled(96px)} - 2 * #{$border-width-m} - 2 * #{$surface-inse
   top: auto;
   right: auto;
   bottom: calc(100% + #{$spacing-m});
-  left: calc(var(--atlas-conditions-tip-at) + var(--atlas-conditions-tip-shift, 0px));
+  left: var(--atlas-conditions-tip-at);
   translate: -50% 0;
 }
 
 .atlas-player-initiative--top.atlas-initiative-panel--row .atlas-player-initiative__conditions-tip {
   top: calc(100% + #{$spacing-m});
   bottom: auto;
+}
+
+// While the list glides to the card the tip stands unseen at its card's place; once it settles, the tooltip's own
+// entrance plays (`tooltip.scss`), as on the GM's side
+.atlas-player-initiative .atlas-player-initiative__conditions-tip--waiting {
+  visibility: hidden;
+  animation: none;
 }

@@ -5,8 +5,8 @@ import type { PlayerInitiativeList } from './playerInitiativeList';
 
 /** The tip's class, which the stage finds it by to move it with its card (`PlayerInitiativeStage.glide`). */
 export const CONDITIONS_TIP_CLASS = 'atlas-player-initiative__conditions-tip';
-/** How far the list's scroll still lies from where it ends, which the tip is moved by while the list glides there. */
-export const CONDITIONS_TIP_SHIFT = '--atlas-conditions-tip-shift';
+/** The tip waits, unseen, while the list glides to its card (`PlayerInitiativeStage.glide`), and fades in once it is there. */
+export const CONDITIONS_TIP_WAITING = 'atlas-player-initiative__conditions-tip--waiting';
 
 /** A badge in the tip, grown with the list. */
 const BADGE_SIZE = 'calc(18px * var(--atlas-initiative-scale, 1))';

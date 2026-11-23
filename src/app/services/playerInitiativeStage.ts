@@ -3,7 +3,7 @@ import { glideHeight, outwardOf, settle } from './playerInitiativeMotion';
 import { adoptGhosts, ghostsOf, playTurnMotion, snapshotTurn } from '../initiative/motion/turnMotion';
 import { enterList, exitList, LIST_ARRIVAL_MS } from '../initiative/motion/listPresence';
 import { glideScroll, isGliding } from '../initiative/motion/scrollGlide';
-import { CONDITIONS_TIP_CLASS, CONDITIONS_TIP_SHIFT } from './playerConditionsTip';
+import { CONDITIONS_TIP_CLASS, CONDITIONS_TIP_WAITING } from './playerConditionsTip';
 
 /** How long the lists of a new layout wait before they come in, while the old ones have begun to leave. */
 const LAYOUT_SWAP_DELAY_MS = 120;
@@ -87,7 +87,7 @@ export class PlayerInitiativeStage {
    * its cards from where they stood to their new places (`playTurnMotion`), the copies still sliding out laid over it again.
    * Where the turn stayed (`turnFlash`), each card glides straight to its new place: a card the GM dragged up or down
    * the order moves there, rather than going round the list as the turn's holder does. Where the GM began or stopped
-   * naming a combatant's conditions, or named another's, the list glides to it or back (`glideScroll`), its tip with it;
+   * naming a combatant's conditions, or named another's, the list glides to it or back (`glideScroll`), its tip fading in once it is there;
    * a glide under way goes on through every drawing until it settles.
    */
   glide(before: StandingLists): void {
@@ -101,8 +101,10 @@ export class PlayerInitiativeStage {
         playTurnMotion(list, was.places, { wrap: !this.turnKept });
         // A drawing for anything else while the list still glides (the GM's pointer passing other cards, a value changing) carries it on
         if (list && (was.gliding || was.conditionsShown !== panel.dataset.conditionsShown)) {
+          // The tip waits until the list has arrived at its card, then fades in as the GM's tooltip does
           const tip = panel.querySelector<HTMLElement>(`.${CONDITIONS_TIP_CLASS}`);
-          glideScroll(list, was.scroll, across(panel) ? 'x' : 'y', (left) => tip?.style.setProperty(CONDITIONS_TIP_SHIFT, `${left}px`));
+          tip?.classList.add(CONDITIONS_TIP_WAITING);
+          if (!glideScroll(list, was.scroll, across(panel) ? 'x' : 'y', () => tip?.classList.remove(CONDITIONS_TIP_WAITING))) tip?.classList.remove(CONDITIONS_TIP_WAITING);
         }
       }
       if (typeof panel.animate === 'function') glideHeight(panel, was.height);
