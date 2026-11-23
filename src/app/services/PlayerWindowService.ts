@@ -5,6 +5,7 @@ import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import type { SettingsService } from './SettingsService';
 import { playerWindowStore, resetPlayerWindowStore } from '../stores/playerWindowStore';
+import { tableControlsStore } from '../stores/tableControlsStore';
 import './player-window.scss';
 import { PlayerInitiativePanel } from './PlayerInitiativePanel';
 import { PlayerTurnBanner } from './PlayerTurnBanner';
@@ -330,6 +331,8 @@ export class PlayerWindowService {
    */
   public setCurtain(down: boolean): void {
     const win = this.getWindow();
+    // The curtain is the table's: online players are curtained by the same press
+    if (tableControlsStore.getState().curtain !== down) tableControlsStore.setState({ curtain: down });
     if (!win || this.curtained === down) return;
     this.curtained = down;
     playerWindowStore.setState({ curtain: down });
@@ -490,7 +493,9 @@ export class PlayerWindowService {
     this.playerWindow = view.contentEl.win;
     this.streamSource = source;
     this.shownCamera = null;
-    this.curtained = view.getState().curtain === true;
+    // A curtain lowered for online players while the window was closed stays down here, and one a restored window had comes down for them too
+    this.curtained = view.getState().curtain === true || tableControlsStore.getState().curtain;
+    if (this.curtained) tableControlsStore.setState({ curtain: true });
     this.sceneFade.cancel();
     this.pinFrozenCamera();
     this.mirror?.markStale();
@@ -856,6 +861,8 @@ export class PlayerWindowService {
     this.shownCamera = null;
     this.glass.showSetup(null);
     resetPlayerWindowStore();
+    // With no online table the curtain and the pause were this window's alone, and close with it
+    if (!tableControlsStore.getState().online) tableControlsStore.setState({ curtain: false, paused: false });
     this.glass.cameraChanged();
     // The window is gone: drop the singleton so the next present binds to the presenting view's store.
     if (PlayerWindowService.instance === this) {

@@ -15,4 +15,9 @@ export const playerBar: Translation = {
   'playerBar.unfreeze': 'Retomar: a visão dos jogadores volta a seguir você',
   'playerBar.freezeTrueScale': 'Com o TrueScale ligado, fixa os jogadores no enquadramento do seu mapa',
   'playerBar.takeBack': 'Recolher o handout',
+  'playerBar.openHint': 'Mostrar a cena apresentada também num ecrã à mesa',
+  'playerBar.freezeOnline': 'Os jogadores online não podem mover as suas fichas enquanto estiver em pausa',
+  'playerBar.playMode': 'Como os jogadores jogam',
+  'playerBar.modeTable': 'Cada um no seu próprio mapa',
+  'playerBar.modeRemote': 'Telemóveis como comando do ecrã partilhado',
 };

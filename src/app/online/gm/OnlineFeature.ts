@@ -44,6 +44,7 @@ import { AssetSalt } from './assets/assetSalt.ts';
 import { AssetStoreClient } from './assets/storeClient.ts';
 import { RELAY_ORIGIN } from './servers.ts';
 import type { HostAccount } from './tableStart.ts';
+import { tableControlsStore } from '../../stores/tableControlsStore';
 
 /** How long a change of the table's log waits before the data file is written. */
 const LOG_SAVE_MS = 10_000;
@@ -163,6 +164,13 @@ export class OnlineFeature extends Component {
     if (!this.live) return;
     this.settings = readSettings(data);
     this.ready = true;
+    // The GM's play mode is kept with the settings, so the phones stay remotes across a reload
+    tableControlsStore.setState({ playMode: this.settings.playMode });
+    this.register(tableControlsStore.subscribe(({ playMode }) => {
+      if (playMode === this.settings.playMode) return;
+      this.settings.playMode = playMode;
+      void this.saveSettings();
+    }));
     const record = typeof data === 'object' && data !== null ? (data as Record<string, unknown>) : {};
     const campaigns = this.campaigns();
     const ownership = new Ownership(playedSeats(campaigns));

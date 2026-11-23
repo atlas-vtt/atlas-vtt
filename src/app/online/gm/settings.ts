@@ -3,18 +3,21 @@ import type { AccountControl } from './account/AccountControl.ts';
 import { accountSections } from './account/accountSettings.ts';
 import { COMPANION_REPORTS_NOTE } from './companionReports.ts';
 import { t } from '../../i18n';
+import type { PlayMode } from '../protocol/index.ts';
 
 export interface OnlineSettings {
   /** Whether this plugin's errors are reported to the server; off until the GM switches it on. */
   reportErrors: boolean;
+  /** How online players play (`tableControlsStore`), kept so a reload in the middle of a game keeps the phones as they were. */
+  playMode: PlayMode;
 }
 
-export const DEFAULT_SETTINGS: OnlineSettings = { reportErrors: false };
+export const DEFAULT_SETTINGS: OnlineSettings = { reportErrors: false, playMode: 'table' };
 
 /** Settings read from the plugin's data, each field checked. */
 export function readSettings(data: unknown): OnlineSettings {
   const record = typeof data === 'object' && data !== null ? (data as Record<string, unknown>) : {};
-  return { reportErrors: record.reportErrors === true };
+  return { reportErrors: record.reportErrors === true, playMode: record.playMode === 'remote' ? 'remote' : 'table' };
 }
 
 /** What online play's settings rows read and change. */

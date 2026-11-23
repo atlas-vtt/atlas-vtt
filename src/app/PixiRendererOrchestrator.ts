@@ -97,6 +97,7 @@ import { viewCentreInClient, worldToClient, type ClientPoint } from './pixi/util
 import { playerPointSight } from './pixi/lighting/playerLightingLayers';
 import type { Point } from './types/visionTypes';
 import { mapTokens } from './tokens/offMap';
+import { installFoggedPartyRings } from './pixi/token-renderer/FoggedPartyRings';
 import { TokenPlacer } from './pixi/tokenPlacement/TokenPlacer';
 import { PlacementHand } from './pixi/tokenPlacement/placementHand';
 
@@ -477,6 +478,8 @@ export class PixiRendererOrchestrator { // Renamed class
     
     // Set the fog container to a high z-index to ensure it's on top when visible
     fogContainer.zIndex = 1000;
+    // Where the party stands under the fog, for everyone at the table
+    this.eventBusUnsubscribers.push(installFoggedPartyRings(viewport, this.store, () => this.fogRenderer?.getCommittedCoverage() ?? null));
 
     this.roofs = new ViewRoofs({
       app: this.pixiAppManager.app,

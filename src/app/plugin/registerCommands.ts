@@ -8,6 +8,8 @@ import type { GlobalAssetManagerService } from '../services/GlobalAssetManagerSe
 import type { ImageDisplayService } from '../services/ImageDisplayService';
 import { openPlayerWindow, presentActiveTab } from '../services/PlayerWindowPresenter';
 import { PlayerWindowService } from '../services/PlayerWindowService';
+import { setTableCurtain } from '../services/tableControls';
+import { tableControlsStore } from '../stores/tableControlsStore';
 import { fullScreenAvailable, isPlayerWindowFullScreen, refreshPlayerWindowDisplay, setPlayerWindowFullScreen } from '../services/playerWindowDisplay';
 import { playerWindowStore } from '../stores/playerWindowStore';
 import { hasBestiaryFrontmatter } from '../services/statblockNoteSource';
@@ -98,9 +100,9 @@ function registerPlayerViewCommands(plugin: Plugin, imageDisplay: ImageDisplaySe
     id: 'toggle-player-window-curtain',
     name: t('playerBar.toggleCurtain'),
     checkCallback: (checking) => {
-      const service = PlayerWindowService.getInstance();
-      if (!service?.isWindowOpen()) return false;
-      if (!checking) service.setCurtain(!service.isCurtained());
+      const { curtain, online } = tableControlsStore.getState();
+      if (!online && !PlayerWindowService.getInstance()?.isWindowOpen()) return false;
+      if (!checking) setTableCurtain(!curtain);
       return true;
     },
   });
