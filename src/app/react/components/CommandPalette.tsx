@@ -570,7 +570,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       id: "appearance",
       icon: <Paintbrush />,
       label: t('appearance.title'),
-      keywords: ["theme", "look", "style", "sci-fi", "scifi", "mediaeval", "medieval", "fantasy", "modern"],
+      keywords: ["theme", "look", "style", "sci-fi", "scifi", "mediaeval", "medieval", "fantasy", "modern", "accent", "colour", "color"],
       section: "settings",
       hasSubmenu: true,
       submenu: [

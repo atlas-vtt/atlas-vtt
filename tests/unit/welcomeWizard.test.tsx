@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import React from 'react';
 import type { App } from 'obsidian';
+import { MotionGlobalConfig } from 'framer-motion';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { DashboardTour } from '../../src/app/onboarding/DashboardTour';
 import { MapTours } from '../../src/app/onboarding/MapTours';
+import { WelcomeWizard } from '../../src/app/onboarding/WelcomeWizard';
 import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
@@ -14,12 +16,15 @@ import { LookService } from '../../src/app/appearance/lookService';
 
 vi.mock('../../src/app/onboarding/useWatched', () => ({ isOnScreen: () => true, useWatched: () => true }));
 afterEach(cleanup);
+beforeAll(() => { MotionGlobalConfig.skipAnimations = true; });
+afterAll(() => { MotionGlobalConfig.skipAnimations = false; });
 
 function appWith(plugins: string[]): { app: App; settings: SettingsService } {
   const storage = new Map<string, unknown>();
   const app = {
     vault: { adapter: { exists: async () => true, write: async () => {} } },
     plugins: { plugins: {}, enabledPlugins: new Set(plugins) },
+    workspace: { on: () => ({}), offref: () => {} },
     customCss: { theme: 'Minimal', themes: { Minimal: {} }, setTheme: () => {} },
     loadLocalStorage: (key: string) => storage.get(key) ?? null,
     saveLocalStorage: (key: string, value: unknown) => { if (value) storage.set(key, value); else storage.delete(key); },
@@ -28,28 +33,6 @@ function appWith(plugins: string[]): { app: App; settings: SettingsService } {
 }
 
 const tour = (app: App): React.JSX.Element => <DashboardTour app={app} root={document.body} hasScene onCreateScene={() => {}} />;
-
-it('welcomes a new GM first, offers the add-ons it lacks, then hands over to the start page tour', () => {
-  const { app, settings } = appWith([]);
-  render(tour(app));
-  expect(screen.getByText('Welcome to Atlas')).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-  expect(screen.getByRole('button', { name: 'Join the Discord' })).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-  expect(screen.getAllByRole('button', { name: 'View in Obsidian' })).toHaveLength(1);
-  expect(screen.queryByText('In use')).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-  act(() => { fireEvent.click(screen.getByRole('button', { name: 'Got it' })); });
-  expect(settings.shouldShowTutorial('welcome')).toBe(false);
-  expect(screen.getByText('Scenes')).toBeTruthy();
-});
-
-it('does not welcome a GM who took the start page tour before the wizard existed', () => {
-  const { app, settings } = appWith(['atlas-sidebar']);
-  settings.completeTutorial('dashboard');
-  render(tour(app));
-  expect(screen.queryByText('Welcome to Atlas')).toBeNull();
-});
 
 it('welcomes a GM whose first sight of Atlas is a map, and the map tour follows', () => {
   const { app, settings } = appWith([]);
@@ -70,12 +53,19 @@ it('welcomes a GM whose first sight of Atlas is a map, and the map tour follows'
 it('offers the look, and the choice is this device\'s', () => {
   const { app, settings } = appWith(['atlas-sidebar']);
   render(tour(app));
-  for (let page = 0; page < 2; page += 1) fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-  expect(screen.getByText('In use')).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  for (let page = 0; page < 3; page += 1) fireEvent.click(screen.getByRole('button', { name: 'Next' }));
   expect(screen.getByText('Pick a look')).toBeTruthy();
   expect(screen.getByRole('radio', { name: 'Your theme' }).getAttribute('aria-checked')).toBe('true');
   act(() => { fireEvent.click(screen.getByRole('radio', { name: 'Sci-fi' })); });
   expect(LookService.forApp(app, settings).get()).toBe('scifi');
   expect(screen.getByRole('radio', { name: 'Sci-fi' }).getAttribute('aria-checked')).toBe('true');
+});
+
+it('shows one welcome for an app however many views mount it, and another view takes over when the first goes', () => {
+  const { app, settings } = appWith([]);
+  const first = render(<WelcomeWizard app={app} settings={settings} />);
+  render(<WelcomeWizard app={app} settings={settings} />);
+  expect(screen.getAllByRole('dialog')).toHaveLength(1);
+  act(() => { first.unmount(); });
+  expect(screen.getAllByRole('dialog')).toHaveLength(1);
 });

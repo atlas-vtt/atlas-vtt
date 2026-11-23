@@ -106,36 +106,3 @@
 .atlas-onboarding-actions-end { margin-left: auto; }
 .atlas-hotkey-recorder { width: 12em; }
 .atlas-hotkey-warning { color: var(--text-warning); }
-// The welcome wizard's links and add-ons, under a step's text.
-.atlas-welcome-links { display: flex; flex-wrap: wrap; gap: $spacing-s; margin-top: $spacing-l; }
-.atlas-welcome-companions {
-  display: flex;
-  flex-direction: column;
-  margin-top: $spacing-l;
-  border-top: $border-width-s solid var(--background-modifier-border);
-}
-// Rows are lines in a register, never boxes.
-.atlas-welcome-companion {
-  display: flex;
-  align-items: center;
-  gap: $spacing-m;
-  padding: $spacing-m 0;
-  border-bottom: $border-width-s solid var(--background-modifier-border);
-}
-.atlas-welcome-companion__text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: $spacing-xs;
-  min-width: 0;
-  font-size: $font-ui-small;
-
-  > span { color: var(--text-muted); }
-}
-.atlas-welcome-companion__status {
-  display: inline-flex;
-  align-items: center;
-  gap: $spacing-xs;
-  font-size: $font-ui-small;
-  color: var(--text-muted);
-}
