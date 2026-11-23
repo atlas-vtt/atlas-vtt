@@ -13,7 +13,7 @@ import { resolveSenses, tokenSenses } from './tokenSenses';
 import { computeVisibility, type MapBounds, type Polygon } from './visibility';
 import { areaParts, type AreaSampling, type LightReachPart } from './areaReach';
 import { reflectedArea, type ReflectionPart } from './reflectedLight';
-import { tokenFacing, visionCone, type VisionCone } from './visionCone';
+import { sameCone, tokenFacing, visionCone, type VisionCone } from './visionCone';
 import { computeTokenPixelSize } from '../pixi/token-renderer/tokenSizing';
 
 /**
@@ -176,21 +176,69 @@ interface CachedSight {
 
 /** Keeps each token's regions until the token, its senses or the walls change, so only those recompute. */
 export class SightCache {
-  private readonly entries = new Map<string, CachedSight>();
+  private entries = new Map<string, CachedSight>();
+  /** The walls of the last call. */
+  private walls: readonly WallSegment[] | null = null;
+  /** The regions worked out with walls used before: a scene switched back to, or a wall edit undone, finds them again. */
+  private readonly kept = new Map<readonly WallSegment[], Map<string, CachedSight>>();
+
+  /** Polygons worked out elsewhere for these walls (`prime`), each token's with where it stood and looked. */
+  private primed: { walls: readonly WallSegment[]; tokens: ReadonlyMap<string, PrimedSight> } | null = null;
 
   get(source: SightSource, walls: readonly WallSegment[]): SightRegion[] {
+    if (walls !== this.walls) this.switchWalls(walls);
     const cached = this.entries.get(source.tokenId);
     if (cached && cached.walls === walls && sameSource(cached.source, source)) return cached.regions;
-    const regions = regionsOf(source, walls);
+    const regions = regionsOf(source, walls, this.primedPolygons(source, walls));
     this.entries.set(source.tokenId, { source, walls, regions });
     return regions;
   }
 
-  /** Drops tokens that no longer see. */
+  /**
+   * Takes the polygons of `tokens` worked out for `walls` (a worker's, while the scene loads):
+   * a token asked about later with these walls, standing and looking as it did then, takes its
+   * polygons instead of sweeping them. Polygons depend on nothing else (`sightPolygons`).
+   */
+  prime(walls: readonly WallSegment[], tokens: ReadonlyMap<string, PrimedSight>): void {
+    this.primed = { walls, tokens };
+  }
+
+  private primedPolygons(source: SightSource, walls: readonly WallSegment[]): Map<string, Polygon> | undefined {
+    if (this.primed?.walls !== walls) return undefined;
+    const primed = this.primed.tokens.get(source.tokenId);
+    if (!primed || primed.origin.x !== source.origin.x || primed.origin.y !== source.origin.y || !sameCone(primed.cone, source.cone)) return undefined;
+    return new Map(primed.polygons);
+  }
+
+  /** Whether regions worked out with `walls` are held: the walls in use, or kept from before. */
+  knows(walls: readonly WallSegment[]): boolean {
+    return walls === this.walls || this.kept.has(walls);
+  }
+
+  /** Drops tokens that no longer see, among the regions of the walls used last (`useWalls`). */
   retain(tokenIds: ReadonlySet<string>): void {
     for (const id of this.entries.keys()) if (!tokenIds.has(id)) this.entries.delete(id);
   }
+
+  /** Keeps the regions of the walls used before and takes up those kept for `walls`; a build calls it before `retain`. */
+  useWalls(walls: readonly WallSegment[]): void {
+    if (walls !== this.walls) this.switchWalls(walls);
+  }
+
+  private switchWalls(walls: readonly WallSegment[]): void {
+    if (this.walls) {
+      this.kept.delete(this.walls);
+      this.kept.set(this.walls, this.entries);
+      if (this.kept.size > KEPT_SIGHT_WALLS) this.kept.delete(this.kept.keys().next().value!);
+    }
+    this.walls = walls;
+    this.entries = this.kept.get(walls) ?? new Map<string, CachedSight>();
+    this.kept.delete(walls);
+  }
 }
+
+/** Wall arrays whose regions `SightCache` keeps besides the current ones. */
+const KEPT_SIGHT_WALLS = 3;
 
 function sameSource(a: SightSource, b: SightSource): boolean {
   return a.origin.x === b.origin.x && a.origin.y === b.origin.y && a.range === b.range
@@ -204,13 +252,13 @@ function sameSource(a: SightSource, b: SightSource): boolean {
  * The regions of one token: its sight unless it is blinded, then one per sense. A sense of the
  * eyes (one that does not work while blinded) reaches no farther than the token's sight and is
  * clipped by its cone; the others reach their own distance all around. Senses that reach as far
- * with the same cone share one polygon.
+ * with the same cone share one polygon. `polygons` holds those already known, by `sightPolygonKey`,
+ * and takes in those swept.
  */
-function regionsOf(source: SightSource, walls: readonly WallSegment[]): SightRegion[] {
+function regionsOf(source: SightSource, walls: readonly WallSegment[], polygons = new Map<string, Polygon>()): SightRegion[] {
   const { tokenId, origin, cone } = source;
-  const polygons = new Map<string, Polygon>();
   const polygonOf = (radius: number, eyes: boolean): Polygon => {
-    const key = `${radius}|${eyes}`;
+    const key = sightPolygonKey(radius, eyes);
     const polygon = polygons.get(key) ?? computeVisibility(origin, radius, walls, eyes ? cone : undefined, 'sight');
     polygons.set(key, polygon);
     return polygon;
@@ -234,6 +282,26 @@ function regionsOf(source: SightSource, walls: readonly WallSegment[]): SightReg
     ...(source.blinded ? [] : [regionOf(NORMAL_SIGHT, source.range)]),
     ...source.senses.map(({ definition, range }) => regionOf(definition, range)),
   ].filter((region) => region.radius > 0);
+}
+
+/** A token's sight polygons worked out elsewhere, with where it stood and looked then (`SightCache.prime`). */
+export interface PrimedSight {
+  origin: Point;
+  cone?: VisionCone;
+  /** By `sightPolygonKey`. */
+  polygons: ReadonlyMap<string, Polygon>;
+}
+
+/** Names a token's polygon by what shapes it besides where the token stands and looks: its radius, and whether its cone clips it. */
+function sightPolygonKey(radius: number, eyes: boolean): string {
+  return `${radius}|${eyes}`;
+}
+
+/** The polygons the regions of `source` are made of, by `sightPolygonKey`: all that a token's sight sweeps. */
+export function sightPolygons(source: SightSource, walls: readonly WallSegment[]): Map<string, Polygon> {
+  const polygons = new Map<string, Polygon>();
+  regionsOf(source, walls, polygons);
+  return polygons;
 }
 
 /** What the scene holds beyond the level its sight is worked out on. */
@@ -275,7 +343,12 @@ export function computeSight(
  * shines one way, by its cone (with its own space around it). Without `bright` it has no bright part.
  */
 export function lightReach(origin: Point, dim: number, walls: readonly WallSegment[], bright = 0, kind: LightReachKind = {}): LightReach {
-  return { origin, bright, dim, polygon: computeVisibility(origin, dim, walls, kind.cone, 'light'), ...kindOf(kind) };
+  return reachOf(origin, bright, dim, computeVisibility(origin, dim, walls, kind.cone, 'light'), kind);
+}
+
+/** A light's reach from what was traced of it: its polygon (an area light's area) and an area light's parts. */
+export function reachOf(origin: Point, bright: number, dim: number, polygon: Polygon, kind: LightReachKind, parts?: readonly LightReachPart[]): LightReach {
+  return { origin, bright, dim, polygon, ...(parts && { parts }), ...kindOf(kind) };
 }
 
 /**
@@ -283,7 +356,7 @@ export function lightReach(origin: Point, dim: number, walls: readonly WallSegme
  * `dim` of its outline, what a clear line from the outline reaches. `origin` is the light's middle.
  */
 export function areaLightReach(origin: Point, area: readonly Point[], dim: number, walls: readonly WallSegment[], sampling: AreaSampling, bright = 0, kind: LightReachKind = {}): LightReach {
-  return { origin, bright, dim, polygon: area as Polygon, parts: areaParts(area, dim, walls, sampling), ...kindOf(kind) };
+  return reachOf(origin, bright, dim, area as Polygon, kind, areaParts(area, dim, walls, sampling));
 }
 
 /** Every polygon a light lights: its reach, or an area light's area and the reaches of its outline, and where its reflection reaches. */

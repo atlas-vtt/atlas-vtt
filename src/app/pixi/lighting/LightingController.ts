@@ -207,6 +207,11 @@ export class LightingController {
     };
   }
 
+  /** The store holds the scene a load brings, its map still hidden: the lighting works out ahead what it can (`SceneLightingView.prepareScene`). */
+  prepareScene(): Promise<void> {
+    return this.renderer.prepareScene?.() ?? Promise.resolve();
+  }
+
   /** What only the players' view shows of the lighting: a picture of the scene, always the GM's, leaves it out. */
   readonly playerOnlyLayers = (): HideableLayer[] => [this.doors.playerView];
 
