@@ -50,8 +50,6 @@ function monsterOf({ fields, template }: DrawnStatblock): StatblockMonster {
 /** What the card says about the template it is drawn with, above its blocks. */
 function TemplateNotice({ statblock, onChooseTemplate }: Pick<LinkedSheetProps, 'statblock' | 'onChooseTemplate'>): React.JSX.Element | null {
   switch (statblock.templateStatus) {
-    case 'auto':
-      return <p className="atlas-linked-statblock__caption">{t('statblockEditor.autoLayout')}</p>;
     case 'missing':
       return (
         <div className="atlas-linked-statblock__bar">
