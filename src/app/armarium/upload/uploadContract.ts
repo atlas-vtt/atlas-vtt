@@ -59,6 +59,7 @@ export const RULE_CODES = [
   'base-yaml-unsupported', 'base-shape', 'base-expression',
   'template-code',
   'item-file-unexpected', 'item-file-missing', 'item-id-mismatch', 'item-built-in',
+  'item-track-count', 'item-track-unlisted',
 ] as const;
 
 /** What only the checker finds: in the bytes it decodes, against the Armarium's history, or about the check itself. */
@@ -66,7 +67,7 @@ export const CHECKER_CODES = [
   'upload-corrupt', 'file-missing', 'file-unlisted', 'checksum-mismatch', 'text-encoding', 'image-not-image',
   'image-type-mismatch', 'image-type-converted', 'image-too-large', 'image-animated', 'image-decode', 'video-not-video',
   'video-codec', 'video-too-large', 'link-missing-file', 'blocked-file', 'listing-not-yours', 'version-not-higher',
-  'format-changed', 'rebuild-too-large', 'check-too-slow', 'check-internal',
+  'format-changed', 'rebuild-too-large', 'check-too-slow', 'check-internal', 'audio-not-audio', 'audio-too-long',
 ] as const;
 
 export type FindingCode = (typeof RULE_CODES)[number] | (typeof CHECKER_CODES)[number];
@@ -87,14 +88,17 @@ export interface CheckProgress {
   total: number;
 }
 
-export const KINDS = ['adventure', 'maps', 'tokens', 'templates', 'game-system', 'dice'] as const;
+export const KINDS = ['adventure', 'maps', 'tokens', 'templates', 'game-system', 'dice', 'music'] as const;
 export type ListingKind = (typeof KINDS)[number];
+
+/** The kinds a collection's creator chooses from: music is never a collection. */
+export const COLLECTION_KINDS: readonly ListingKind[] = KINDS.filter((kind) => kind !== 'music');
 
 /**
  * What a listing's bundles hold: a collection, or one Atlas file shared as an item bundle. A listing keeps its format
  * for every version (`format-changed`); answers from before items name none and read as `collection`.
  */
-export const LISTING_FORMATS = ['collection', 'statblock-template', 'system-preset', 'dice-set'] as const;
+export const LISTING_FORMATS = ['collection', 'statblock-template', 'system-preset', 'dice-set', 'music-album', 'music-track'] as const;
 export type ListingFormat = (typeof LISTING_FORMATS)[number];
 
 /** The kind of every listing of an item's format. */
@@ -102,6 +106,8 @@ export const ITEM_LISTING_KINDS: Readonly<Record<Exclude<ListingFormat, 'collect
   'statblock-template': 'templates',
   'system-preset': 'game-system',
   'dice-set': 'dice',
+  'music-album': 'music',
+  'music-track': 'music',
 };
 
 /** The kind an item listing always has (the Armarium sets it whatever is sent); null for a collection, whose creator chooses. */
@@ -227,6 +233,8 @@ export interface SubmissionView {
 export interface OwnListing {
   uid: string;
   slug: string;
+  /** Its name as published; an answer without one is named by its slug. */
+  name?: string | undefined;
   /** What its bundles hold, the same for every version. */
   format: ListingFormat;
   fields: ListingFields | null;

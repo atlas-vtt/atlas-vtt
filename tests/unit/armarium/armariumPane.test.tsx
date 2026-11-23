@@ -118,14 +118,14 @@ describe('the Armarium pane', () => {
     const post = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => undefined);
 
     fromPage({ type: 'atlas-armarium:hello', format: 1 }, frame.contentWindow);
-    await vi.waitFor(() => expect(post).toHaveBeenCalledWith({ type: 'atlas-armarium:installed', format: 1, items: [{ uid: UID, version: 4 }], features: [] }, 'https://atlas-vtt.dev'));
+    await vi.waitFor(() => expect(post).toHaveBeenCalledWith({ type: 'atlas-armarium:installed', format: 1, items: [{ uid: UID, version: 4 }], features: ['music'] }, 'https://atlas-vtt.dev'));
 
     post.mockClear();
     act(() => statusListener!({ uid: UID, version: 5 }, 'installed'));
     await vi.waitFor(() => expect(post).toHaveBeenCalledTimes(2));
     expect(post.mock.calls).toEqual([
       [{ type: 'atlas-armarium:status', format: 1, uid: UID, version: 5, state: 'installed' }, 'https://atlas-vtt.dev'],
-      [{ type: 'atlas-armarium:installed', format: 1, items: [{ uid: UID, version: 4 }], features: [] }, 'https://atlas-vtt.dev'],
+      [{ type: 'atlas-armarium:installed', format: 1, items: [{ uid: UID, version: 4 }], features: ['music'] }, 'https://atlas-vtt.dev'],
     ]);
   });
 
@@ -134,18 +134,20 @@ describe('the Armarium pane', () => {
     const { frame } = renderPane(onShare);
     const post = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => undefined);
     fromPage({ type: 'atlas-armarium:hello', format: 1 }, frame.contentWindow);
-    await vi.waitFor(() => expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: 'atlas-armarium:installed', features: ['share', 'share-items'] }), 'https://atlas-vtt.dev'));
+    await vi.waitFor(() => expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: 'atlas-armarium:installed', features: ['music', 'share', 'share-items', 'share-music'] }), 'https://atlas-vtt.dev'));
 
     fromPage({ type: 'atlas-armarium:share', format: 1 }, window);
     fromPage({ type: 'atlas-armarium:share', format: 1 }, frame.contentWindow, 'https://evil.example');
     expect(onShare).not.toHaveBeenCalled();
     fromPage({ type: 'atlas-armarium:share', format: 1 }, frame.contentWindow);
     expect(onShare).toHaveBeenCalledTimes(1);
-    expect(onShare).toHaveBeenLastCalledWith('collection');
+    expect(onShare).toHaveBeenLastCalledWith({ what: 'collection' });
     fromPage({ type: 'atlas-armarium:share', format: 1, what: 'dice-set' }, frame.contentWindow);
-    expect(onShare).toHaveBeenLastCalledWith('dice-set');
+    expect(onShare).toHaveBeenLastCalledWith({ what: 'dice-set' });
+    fromPage({ type: 'atlas-armarium:share', format: 1, what: 'music-album', listing: 'a'.repeat(32) }, frame.contentWindow);
+    expect(onShare).toHaveBeenLastCalledWith({ what: 'music-album', listing: 'a'.repeat(32) });
     fromPage({ type: 'atlas-armarium:share', format: 1, what: 'adventure-module' }, frame.contentWindow);
-    expect(onShare).toHaveBeenCalledTimes(2);
+    expect(onShare).toHaveBeenCalledTimes(3);
     expect(installer.install).not.toHaveBeenCalled();
   });
 
@@ -163,7 +165,7 @@ describe('the Armarium pane', () => {
     const { frame } = renderPane();
     const post = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => undefined);
     fromPage({ type: 'atlas-armarium:hello', format: 1 }, frame.contentWindow);
-    await vi.waitFor(() => expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: 'atlas-armarium:installed', features: ['account'] }), 'https://atlas-vtt.dev'));
+    await vi.waitFor(() => expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: 'atlas-armarium:installed', features: ['music', 'account'] }), 'https://atlas-vtt.dev'));
 
     const ask = { type: 'atlas-armarium:api', format: 1, id: 'r7', method: 'GET', path: '/v1/armarium/mine' };
     fromPage(ask, frame.contentWindow, 'https://evil.example');
@@ -199,7 +201,7 @@ describe('the Armarium pane', () => {
     expect(filter.snapshot()).toEqual({ status: 'waiting' });
 
     fromPage({ type: 'atlas-armarium:hello', format: 1 }, frame.contentWindow);
-    await vi.waitFor(() => expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: 'atlas-armarium:installed', features: ['tags'] }), 'https://atlas-vtt.dev'));
+    await vi.waitFor(() => expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: 'atlas-armarium:installed', features: ['music', 'tags'] }), 'https://atlas-vtt.dev'));
 
     const tags = { groups: [{ id: 'place', label: 'Place', tags: [{ id: 'forest', label: 'Forest', count: 2 }] }], picked: [] };
     fromPage({ type: 'atlas-armarium:tags', format: 1, ...tags }, window);

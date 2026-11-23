@@ -112,4 +112,18 @@ describe('the Armarium API from Atlas', () => {
     });
     expect(await client.ownListing('missing')).toBeNull();
   });
+
+  it('reads the account\'s listings of every format it knows, music and its names included, and leaves out what it does not', async () => {
+    const { client } = api(() => ({ status: 200, json: { listings: [
+      { uid: 'album', slug: 'old-roads', name: 'Old Roads', format: 'music-album', fields: { kind: 'music', system: null, description: 'd', tags: [], licence: 'cc0', credits: '' }, versions: [{ version: 2 }] },
+      { uid: 'track', slug: 'dawn', format: 'music-track', fields: null, versions: [] },
+      { uid: 'later', slug: 'later', format: 'video-pack', fields: null, versions: [] },
+      { uid: 'odd', slug: 'odd', format: 'collection', fields: { kind: 'holograms' }, versions: [] },
+      'not a listing',
+    ] } }));
+    expect(await client.ownListings()).toEqual([
+      { uid: 'album', slug: 'old-roads', name: 'Old Roads', format: 'music-album', fields: { kind: 'music', system: null, description: 'd', tags: [], licence: 'cc0', credits: '' }, newestVersion: 2, coverUrl: null },
+      { uid: 'track', slug: 'dawn', format: 'music-track', fields: null, newestVersion: null, coverUrl: null },
+    ]);
+  });
 });

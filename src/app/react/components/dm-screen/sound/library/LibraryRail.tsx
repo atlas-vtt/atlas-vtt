@@ -82,7 +82,7 @@ const RailTag = memo(function RailTag({ actions, kind, name, count, selected, on
     if (drag) actions.tag(drag.files, name);
   });
   const openMenu = (at: { x: number; y: number }, returnFocus: HTMLElement | null): void => {
-    menu.open(tagRowMenu(actions, name), at, { returnFocus, label: t('audio.library.tagMenu', { name }) });
+    menu.open(tagRowMenu(actions, name, kind, count), at, { returnFocus, label: t('audio.library.tagMenu', { name }) });
   };
   return (
     <div

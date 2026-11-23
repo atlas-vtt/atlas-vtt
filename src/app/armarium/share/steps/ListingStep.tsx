@@ -3,7 +3,7 @@ import { Select, type SelectOption } from '../../../packages/components/primitiv
 import { t } from '../../../i18n';
 import type { AnyShareSession } from '../../upload/anyShareSession';
 import type { ShareSnapshot } from '../../upload/shareState';
-import { KINDS, LISTING_TEXT, SYSTEMS, type ListingKind, type SystemId } from '../../upload/uploadContract';
+import { COLLECTION_KINDS, LISTING_TEXT, SYSTEMS, type ListingKind, type SystemId } from '../../upload/uploadContract';
 import { kindLabel, kindLine, systemLabel } from '../../upload/text/listingVocabulary';
 import { FindingReport } from './FindingReport';
 import { CountedText, FieldProblem, TagPicker, useOverlayLayer } from './ListingFields';
@@ -12,7 +12,7 @@ import { shareSaid } from '../shareWording';
 const NO_KIND = 'none';
 const KIND_OPTIONS: SelectOption<ListingKind | typeof NO_KIND>[] = [
   { value: NO_KIND, label: t('armariumShare.chooseKind') },
-  ...KINDS.map((kind) => ({ value: kind, label: kindLabel(kind), detail: kindLine(kind) })),
+  ...COLLECTION_KINDS.map((kind) => ({ value: kind, label: kindLabel(kind), detail: kindLine(kind) })),
 ];
 const SYSTEM_OPTIONS: SelectOption<SystemId | 'none'>[] = [
   { value: 'none', label: systemLabel(null) },
@@ -50,7 +50,7 @@ export function ListingStep({ snapshot, session }: { snapshot: ShareSnapshot; se
         </dl>
       )}
       <div className="atlas-share-row">
-        {snapshot.subject === 'item' ? <FixedKind kind={snapshot.listingKind} /> : (
+        {snapshot.subject !== 'collection' ? <FixedKind kind={snapshot.listingKind} /> : (
           <div className="atlas-share-field">
             <span id={kindId} className="atlas-share-field__label">{t('armariumShare.kind')}</span>
             <Select labelledBy={kindId} layer={layer} value={draft.kind ?? NO_KIND} options={KIND_OPTIONS} onChange={(kind) => session.setDraft({ kind: kind === NO_KIND ? null : kind })} />

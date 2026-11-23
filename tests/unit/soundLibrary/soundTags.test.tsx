@@ -203,13 +203,13 @@ describe('editing tags', () => {
     });
 
     it('a tag only folder names give cannot be renamed or removed from the rail', () => {
-      const items = itemsOf(tagRowMenu(menuActions(() => [], 0), 'Battle'));
+      const items = itemsOf(tagRowMenu(menuActions(() => [], 0), 'Battle', 'ambience', 1));
       expect(items.map((item) => [item.label, item.disabled, item.description])).toEqual([['Rename', true, 'Comes from a folder'], ['Remove', true, 'Comes from a folder']]);
     });
 
     it('a tag a record holds can', () => {
       const actions = menuActions(() => [], 2);
-      const [rename, remove] = itemsOf(tagRowMenu(actions, 'Night'));
+      const [rename, remove] = itemsOf(tagRowMenu(actions, 'Night', 'ambience', 2));
       expect(rename?.disabled).toBe(false);
       expect(remove?.disabled).toBe(false);
       remove!.onClick();
