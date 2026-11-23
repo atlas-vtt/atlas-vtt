@@ -8,7 +8,6 @@ import { Skeleton, SkeletonGroup } from '../../packages/components/primitives/Sk
 import { useDialogEscape } from '../../packages/components/primitives/useDialogEscape';
 import { useFocusTrap } from '../../packages/components/primitives/useFocusTrap';
 import type { MusicKind } from '../../services/itemBundle/itemBundleFormat';
-import { MIN_ALBUM_TRACKS } from '../../services/musicBundle/musicBundleFormat';
 import type { LibraryFile } from '../../soundLibrary/SoundLibrary';
 import { SoundLibrary } from '../../soundLibrary/SoundLibrary';
 import { SoundRecordStore } from '../../soundLibrary/SoundRecordStore';
@@ -44,7 +43,8 @@ interface MusicSharePickerProps {
 
 /**
  * The Sound library's music to choose what to share, for the Armarium's Share in Atlas: an album is one of the music
- * root's tags, or the tracks ticked in a search; a track is one found by its name or tags.
+ * root's tags, or the tracks ticked in a search, where one ticked track is shared as a track (`pickedKind`); a track is
+ * one found by its name or tags.
  */
 export function MusicSharePicker({ app, kind, onPick, onClose }: MusicSharePickerProps): React.JSX.Element {
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -146,7 +146,7 @@ export function MusicSharePicker({ app, kind, onPick, onClose }: MusicSharePicke
         <div className="atlas-modal-footer">
           <Button variant="outline" size="sm" onClick={onClose}>{t('common.cancel')}</Button>
           {album && ticked.length > 0 && (
-            <Button variant="default" size="sm" disabled={tickedFiles.length < MIN_ALBUM_TRACKS} onClick={() => onPick(tickedFiles, '')}>
+            <Button variant="default" size="sm" disabled={tickedFiles.length === 0} onClick={() => onPick(tickedFiles, '')}>
               {t('armariumMusic.pick.shareSelected', { count: tickedFiles.length })}
             </Button>
           )}

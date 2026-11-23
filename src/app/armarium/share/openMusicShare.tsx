@@ -7,7 +7,7 @@ import { nameOfRelative, parentOfRelative } from '../../soundLibrary/soundPaths'
 import { showHostedDialog } from '../../statblocks/editor/hostedDialog';
 import { showNotice } from '../../ui/notice';
 import { createMusicShareSession, type MusicShareRequest } from '../upload/createShareSession';
-import { startingTitle } from '../upload/musicShareRules';
+import { pickedKind, startingTitle } from '../upload/musicShareRules';
 import { MusicSharePicker } from './MusicSharePicker';
 import { HOST_CLASS, HostedShare } from './openItemShare';
 
@@ -46,7 +46,7 @@ export function pickMusicToShare(app: App, kind: MusicKind, listing?: string, do
   showHostedDialog(doc, HOST_CLASS, (close) => (
     <MusicSharePicker key="pick" app={app} kind={kind} onClose={close} onPick={(files, name) => {
       close();
-      openMusicShare(app, requestFor(kind, files, name, listing), doc);
+      openMusicShare(app, requestFor(pickedKind(kind, files.length), files, name, listing), doc);
     }} />
   ));
 }

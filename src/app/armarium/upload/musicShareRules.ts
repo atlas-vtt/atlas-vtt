@@ -1,3 +1,4 @@
+import type { MusicKind } from '../../services/itemBundle/itemBundleFormat';
 import { holdsTrackCount, isOneLine, MAX_MUSIC_TEXT } from '../../services/musicBundle/musicBundleFormat';
 import { stemOf } from '../../soundLibrary/soundPaths';
 import { MUSIC_TIME_LIMITS, type MusicShareSnapshot } from './musicShareState';
@@ -10,6 +11,14 @@ export function startingTitle(fileName: string): string {
   const stem = stemOf(fileName).trim();
   const title = stem.replace(LEADING_NUMBER, '').trim();
   return title === '' ? stem : title;
+}
+
+/**
+ * What music picked for a share becomes: one track is shared as a track, whatever was asked for, since the Armarium's
+ * one Music entry asks for an album and its picker offers single tracks too; two or more are an album.
+ */
+export function pickedKind(asked: MusicKind, count: number): MusicKind {
+  return count === 1 ? 'music-track' : asked;
 }
 
 /** What is wrong with a name, an artist or a title: nothing, missing (where one is needed) or too long. */

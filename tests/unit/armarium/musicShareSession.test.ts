@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AccountState, SignInResult } from '../../../src/app/account/AtlasAccount';
 import { MusicShareSession, type MusicPackRequest, type PreparedTrack } from '../../../src/app/armarium/upload/MusicShareSession';
-import { musicProblems, startingTitle } from '../../../src/app/armarium/upload/musicShareRules';
+import { musicProblems, pickedKind, startingTitle } from '../../../src/app/armarium/upload/musicShareRules';
 import type { OwnListing } from '../../../src/app/armarium/upload/uploadContract';
 import type { MusicKind } from '../../../src/app/services/itemBundle/itemBundleFormat';
 import type { LibraryFile } from '../../../src/app/soundLibrary/SoundLibrary';
@@ -175,6 +175,15 @@ describe('sharing music in the Armarium', () => {
     const { session } = setup('music-album', Array.from({ length: 103 }, (_, index) => `t${index}.mp3`));
     expect(session.snapshot().tracks).toHaveLength(100);
     expect(session.snapshot().cut).toBe(3);
+  });
+});
+
+describe('what picked music becomes', () => {
+  it('is a track for one file and an album for more, so the Armarium\'s one Music entry shares either', () => {
+    // The site's menu in Atlas asks for an album (`what: 'music-album'`) and promises an album or a single track.
+    expect(pickedKind('music-album', 1)).toBe('music-track');
+    expect(pickedKind('music-album', 2)).toBe('music-album');
+    expect(pickedKind('music-track', 1)).toBe('music-track');
   });
 });
 
