@@ -1,7 +1,7 @@
 ## New
 
-- A welcome wizard greets you the first time you open Atlas, on the start page or a map: what Atlas does, where to find the guides and the Discord, and the Atlas Sidebar plugin and Atlas theme, each one click from its page in Obsidian
-- Two looks for the Atlas theme: Mediaeval and a new Sci-fi look, switched under Appearance in the command palette or in the welcome wizard. The fog's edge follows the look: crackled for Mediaeval, soft for Sci-fi
+- A welcome wizard greets you the first time you open Atlas, on the start page or a map: what Atlas does, where to find the guides and the Discord, and the Atlas Sidebar plugin, one click from its page in Obsidian
+- Atlas has looks of its own, no theme to install: Mediaeval and a new Sci-fi look, or keep your own theme. Pick one under Appearance in the command palette or in the welcome wizard; each device keeps its own. The fog's edge and the dice numerals follow the look
 
 ## Improved
 
