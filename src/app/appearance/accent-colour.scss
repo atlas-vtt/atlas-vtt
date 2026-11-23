@@ -2,7 +2,7 @@
 
 $swatch-size: $target-min + $spacing-xs;
 
-// The accent colour's swatches (AccentColourRow.tsx): the look's own, the presets, then the GM's own colour.
+// A colour setting's swatches (ColourSwatches.tsx: the accent colour, the ivy colour): the base, the presets, then the GM's own colour.
 .atlas-accent-swatches {
   display: flex;
   flex-wrap: wrap;
@@ -10,6 +10,16 @@ $swatch-size: $target-min + $spacing-xs;
   gap: $spacing-s;
   // The chosen swatch's outline stands outside it: room for it, so no parent clips it.
   padding: $border-width-l * 2;
+}
+
+// A setting the current look has no use for: kept in place, so the choices do not move as the look changes.
+.atlas-accent-swatches--disabled {
+  opacity: 0.4;
+
+  button.atlas-accent-swatch:disabled {
+    cursor: default;
+    transform: none;
+  }
 }
 
 button.atlas-accent-swatch {
@@ -47,6 +57,12 @@ button.atlas-accent-swatch--own {
   // Set apart from the presets that follow it.
   margin-inline-end: $spacing-s;
   background: var(--atlas-look-accent, var(--atlas-theme-accent, var(--interactive-accent)));
+}
+
+// The ivy's own greens, leaf to highlight, as the drawings shade them.
+button.atlas-accent-swatch--natural {
+  margin-inline-end: $spacing-s;
+  background: radial-gradient(circle at 35% 30%, #94b24a, #789532 55%, #567119);
 }
 
 // The GM's theme under a picked colour, whose own accent was never seen: no colour that would be a guess.

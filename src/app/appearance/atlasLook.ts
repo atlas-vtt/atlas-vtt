@@ -4,6 +4,7 @@ import type { FogEdgeStyle } from '../fog/fogEdge';
 import type { DiceFont } from '../dice3d/diceLook';
 import type { LookService } from './lookService';
 import { customAccent, onAccentChange } from './accentColour';
+import { paintIvy } from './paintedIvy';
 
 /** Atlas' two looks: the mediaeval module page and the clean sci-fi one. */
 export type AtlasLook = 'mediaeval' | 'scifi';
@@ -32,7 +33,8 @@ export function isAtlasLook(value: unknown): value is AtlasLook {
  * look is announced as `css-change`, once every window shows it, since what reads the look's CSS (the ivy Atlas lends
  * its initiative trackers) follows that. A theme Obsidian switches to (its own `css-change`) ends an Atlas look.
  * An accent colour picked here or in Obsidian's settings marks every window too while an Atlas look is on, as Obsidian
- * copies its colour into each.
+ * copies its colour into each. The Medieval look's ivy is painted in the GM's ivy colour in every window; a change of
+ * it is announced as `css-change` like a switch of look, so the ivy Atlas lends follows.
  */
 export function registerLookSync(plugin: Plugin, looks: LookService): void {
   const { app } = plugin;
@@ -42,11 +44,16 @@ export function registerLookSync(plugin: Plugin, looks: LookService): void {
     doc.body.toggleClass(LOOK_CLASS, isAtlasLook(look));
     doc.body.toggleClass(SCIFI_LOOK_CLASS, look === 'scifi');
     doc.body.toggleClass(CUSTOM_ACCENT_CLASS, isAtlasLook(look) && customAccent(app) !== '');
+    paintIvy(doc, look === 'mediaeval' ? looks.ivyColour() : '');
   };
   inEveryDocument(plugin, (doc) => {
     documents.add(doc);
     apply(doc);
-    return () => { documents.delete(doc); doc.body.removeClass(LOOK_CLASS, SCIFI_LOOK_CLASS, CUSTOM_ACCENT_CLASS); };
+    return () => {
+      documents.delete(doc);
+      paintIvy(doc, '');
+      doc.body.removeClass(LOOK_CLASS, SCIFI_LOOK_CLASS, CUSTOM_ACCENT_CLASS);
+    };
   });
   plugin.register(looks.onChange(() => {
     for (const doc of documents) apply(doc);

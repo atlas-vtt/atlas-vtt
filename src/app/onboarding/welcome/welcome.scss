@@ -123,10 +123,11 @@
 }
 
 // The look page: its words over the appearance choices. The page is a size container, so the look cards can take
-// the height its words, labels and accent swatches leave: what stands around the pictures is about $look-around tall
-// (heading, two lines of words, the gaps, the row labels, the cards' names and notes, the swatches), and the cards are
+// the height its words, labels and colour swatches leave: what stands around the pictures is about $look-around tall
+// (heading, two lines of words, the gaps, the row labels, the cards' names and notes, the accent's and the ivy's
+// swatches), and the cards are
 // as wide as pictures of the rest are at their 480 : 300 ratio, three in a row. A taller translation scrolls the page.
-$look-around: 340px;
+$look-around: 410px;
 $look-cards-min: 420px;
 
 .atlas-welcome[data-page='look'] .atlas-welcome__page {

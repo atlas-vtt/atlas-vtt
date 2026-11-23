@@ -1194,6 +1194,26 @@ body.atlas-look.atlas-look-scifi :is(
   backdrop-filter: blur(8px);
 }
 
+/* an ivy colour the GM picked (Appearance settings): Atlas VTT paints the
+   drawings above in shades of it and hands them to body, so each panel
+   draws those instead (src/app/appearance/paintedIvy.ts) */
+body.atlas-look.atlas-ivy-painted :is(
+  .atlas-statblock-preview-window,
+  .statblock-hover-preview,
+  .atlas-asset-manager-modal,
+  .atlas-welcome-overlay
+) {
+  --atlas-theme-ivy-corner-back: var(--atlas-ivy-painted-corner-back);
+  --atlas-theme-ivy-corner-front: var(--atlas-ivy-painted-corner-front);
+  --atlas-theme-ivy-garland-back: var(--atlas-ivy-painted-garland-back);
+  --atlas-theme-ivy-garland-front: var(--atlas-ivy-painted-garland-front);
+}
+
+body.atlas-look.atlas-ivy-painted .atlas-command-palette-window {
+  --atlas-theme-ivy-top-back: var(--atlas-ivy-painted-top-back);
+  --atlas-theme-ivy-top-front: var(--atlas-ivy-painted-top-front);
+}
+
 /* no ivy: the drawings themselves go, so Atlas VTT lends none to its
    own panels either (the initiative trackers) */
 body.atlas-look.atlas-look-scifi :is(
