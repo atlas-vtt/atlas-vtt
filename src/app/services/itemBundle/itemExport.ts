@@ -5,7 +5,7 @@ import { showNotice } from '../../ui/notice';
 import { toBuffer } from '../collectionBundle/bundleContent';
 import { BUNDLE_MANIFEST, zipPathFor, type BundleFile } from '../collectionBundle/bundleFormat';
 import { derivedImageExtension } from '../assetImageFiles';
-import { ITEM_BUNDLE_FORMAT, ITEM_COVER_ROLE, ITEM_PREVIEW_PATHS, MAX_ITEM_NOTES, itemBundleFileName, itemCoverPath, type ItemBundleManifest, type ItemRef } from './itemBundleFormat';
+import { ITEM_BUNDLE_FORMAT, ITEM_COVER_ROLE, ITEM_PREVIEW_PATHS, cutItemNotes, itemBundleFileName, itemCoverPath, type ItemBundleManifest, type ItemRef } from './itemBundleFormat';
 import { itemListingUid } from './itemListingUid';
 import { packItem, type PackedItemFile } from './itemPacking';
 import { t } from '../../i18n';
@@ -46,7 +46,7 @@ export async function exportItemBundle(app: App, ref: ItemRef, options: ItemExpo
   for (const { file, data } of contents) {
     files.push({ vaultPath: file.vaultPath, role: file.role, sha256: await sha256(data), ...(file.linkedFrom && { linkedFrom: file.linkedFrom }) });
   }
-  const notes = options.notes?.trim().slice(0, MAX_ITEM_NOTES);
+  const notes = cutItemNotes(options.notes);
   const manifest: ItemBundleManifest = {
     format: ITEM_BUNDLE_FORMAT,
     exportedAt: Date.now(),

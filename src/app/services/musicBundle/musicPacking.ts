@@ -2,8 +2,8 @@ import { forPlayers } from '../../sound/codec/atlasOpus';
 import { sha256 } from '../../utils/hashing';
 import { derivedImageExtension } from '../assetImageFiles';
 import { BUNDLE_MANIFEST, zipPathFor, type BundleFile } from '../collectionBundle/bundleFormat';
-import { ITEM_COVER_ROLE, MAX_ITEM_NOTES, MUSIC_BUNDLE_FORMAT, itemCoverPath, type MusicKind } from '../itemBundle/itemBundleFormat';
-import { MUSIC_TRACK_ROLE, holdsTrackCount, musicBundleFileName, musicManifestProblem, trackFileName, type MusicBundleManifest, type MusicTrackEntry } from './musicBundleFormat';
+import { ITEM_COVER_ROLE, cutItemNotes, MUSIC_BUNDLE_FORMAT, itemCoverPath, type MusicKind } from '../itemBundle/itemBundleFormat';
+import { MUSIC_TRACK_ROLE, holdsTrackCount, musicBundleFileName, musicManifestProblem, shownText, trackFileName, type MusicBundleManifest, type MusicTrackEntry } from './musicBundleFormat';
 
 /** A track a share packs: its title, and its Atlas copy as this device keeps it. */
 export interface MusicTrackInput {
@@ -44,7 +44,7 @@ export async function packMusicBundle(options: MusicPackOptions): Promise<MusicE
   const contents: { file: Omit<BundleFile, 'sha256'>; data: Uint8Array<ArrayBuffer> }[] = [];
   const entries: MusicTrackEntry[] = [];
   for (const [index, track] of tracks.entries()) {
-    const title = track.title.trim();
+    const title = shownText(track.title).trim();
     const path = `music/${trackFileName(kind, index, tracks.length, title)}`;
     entries.push({ path, title });
     contents.push({ file: { vaultPath: path, role: MUSIC_TRACK_ROLE }, data: new Uint8Array(await (await forPlayers(track.copy)).arrayBuffer()) });
@@ -52,12 +52,12 @@ export async function packMusicBundle(options: MusicPackOptions): Promise<MusicE
   if (options.cover) contents.push({ file: { vaultPath: itemCoverPath(derivedImageExtension(options.cover)), role: ITEM_COVER_ROLE }, data: new Uint8Array(options.cover) });
   const files: BundleFile[] = [];
   for (const { file, data } of contents) files.push({ ...file, sha256: await sha256(data.buffer) });
-  const artist = options.artist?.trim();
-  const notes = options.notes?.trim().slice(0, MAX_ITEM_NOTES);
+  const artist = options.artist === undefined ? undefined : shownText(options.artist).trim();
+  const notes = cutItemNotes(options.notes);
   const manifest: MusicBundleManifest = {
     format: MUSIC_BUNDLE_FORMAT,
     exportedAt: Date.now(),
-    item: { kind, uid: options.uid, id: options.uid, name: options.name.trim(), version: options.version, ...(notes ? { notes } : {}), ...(artist ? { artist } : {}), tracks: entries },
+    item: { kind, uid: options.uid, id: options.uid, name: shownText(options.name).trim(), version: options.version, ...(notes ? { notes } : {}), ...(artist ? { artist } : {}), tracks: entries },
     files,
   };
   const problem = musicManifestProblem(manifest);

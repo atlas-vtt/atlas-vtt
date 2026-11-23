@@ -37,6 +37,18 @@ export interface ItemRef {
 export const MAX_ITEM_NAME = 120;
 export const MAX_ITEM_NOTES = 2000;
 
+/**
+ * Release notes as a manifest carries them: trimmed, and cut to `MAX_ITEM_NOTES` UTF-16 units, as the Armarium counts,
+ * but never between the two halves of an emoji. Undefined where nothing is left.
+ */
+export function cutItemNotes(notes: string | undefined): string | undefined {
+  const trimmed = notes?.trim() ?? '';
+  let cut = trimmed.slice(0, MAX_ITEM_NOTES);
+  // A high surrogate at the end lost the low one after it.
+  if (cut.length < trimmed.length && /[\ud800-\udbff]$/.test(cut)) cut = cut.slice(0, -1);
+  return cut === '' ? undefined : cut;
+}
+
 /** manifest.json inside an item bundle. */
 export interface ItemBundleManifest {
   format: typeof ITEM_BUNDLE_FORMAT;

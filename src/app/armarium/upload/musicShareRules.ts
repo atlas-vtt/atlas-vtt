@@ -1,5 +1,5 @@
 import type { MusicKind } from '../../services/itemBundle/itemBundleFormat';
-import { holdsTrackCount, isOneLine, MAX_MUSIC_TEXT } from '../../services/musicBundle/musicBundleFormat';
+import { holdsTrackCount, isOneLine, MAX_MUSIC_TEXT, shownText } from '../../services/musicBundle/musicBundleFormat';
 import { stemOf } from '../../soundLibrary/soundPaths';
 import { MUSIC_TIME_LIMITS, type MusicShareSnapshot } from './musicShareState';
 
@@ -24,7 +24,7 @@ export function pickedKind(asked: MusicKind, count: number): MusicKind {
 /** What is wrong with a name, an artist or a title: nothing, missing (where one is needed) or too long. */
 function textProblem(text: string, required: boolean): string | null {
   const trimmed = text.trim();
-  if (trimmed === '') return required ? 'missing' : null;
+  if (shownText(trimmed).trim() === '') return required ? 'missing' : null;
   // Counted as the Armarium counts (UTF-16 units), so the share never uploads what its rules refuse.
   if (trimmed.length > MAX_MUSIC_TEXT) return 'too-long';
   return isOneLine(trimmed) ? null : 'one-line';

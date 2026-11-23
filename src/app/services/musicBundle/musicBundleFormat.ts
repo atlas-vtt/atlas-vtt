@@ -51,29 +51,66 @@ const TRACK_PATH = /^music\/[^/]+\.opus$/;
 const COVER_PATH = /^cover\.(?:webp|png)$/;
 /** Characters no file name on any disk holds, and control characters. */
 const UNSAFE_NAME = /[\\/:*?"<>|\p{Cc}]/gu;
-/** Names Windows keeps for devices, whatever their extension. */
-const RESERVED_NAME = /^(?:con|prn|aux|nul|com\d|lpt\d)$/i;
+/** Names Windows keeps for devices, whatever follows a dot: `nul.x` is the device too. */
+const RESERVED_NAME = /^(con|prn|aux|nul|com\d|lpt\d)(?=\.|$)/i;
+/**
+ * The most bytes (UTF-8) a file or folder name of music takes before its number, suffix and extensions: ext4 and btrfs
+ * hold 255 a name, and `01 <name> 12.opus.atlas-part` or `<name>.armarium.json.atlas-part` add up to 26 more.
+ */
+export const MAX_NAME_BYTES = 200;
+/** A line break of any kind (U+2028 and U+2029 too) or a control character. */
+const BREAK_OR_CONTROL = /[\p{Cc}\u2028\u2029]/u;
+/**
+ * Format characters, which change how text reads without being seen (U+202E turns it around); the joiners (U+200C,
+ * U+200D) and emoji tag characters stay, as emoji and some scripts are written with them.
+ */
+const HIDDEN_FORMAT = /(?![\u200c\u200d\u{e0020}-\u{e007f}])\p{Cf}/gu;
+const utf8 = new TextEncoder();
 
-/** One line of text, as a name, an artist or a title must be: no line break of any kind (U+2028 and U+2029 too) and no control character. */
-export function isOneLine(text: string): boolean {
-  return !/[\p{Cc}\u2028\u2029]/u.test(text);
+/** A name, an artist or a title as Atlas shows it and names files by: its hidden format characters taken out. */
+export function shownText(text: string): string {
+  return text.replace(HIDDEN_FORMAT, '');
 }
 
 /**
- * Whether a name, an artist or a title is one a manifest may carry: one line, not blank, at most 120 UTF-16 units, as
- * the Armarium's rules count (an emoji takes two), so nothing Atlas packs is refused there for its length.
+ * The one rule for a line of music text, which shares and manifests both follow: no line break of any kind and no
+ * control character. Hidden format characters do not break it; `shownText` takes them out wherever text is shown.
  */
-export function isMusicText(value: unknown): value is string {
-  return typeof value === 'string' && value.trim() !== '' && value.length <= MAX_MUSIC_TEXT && isOneLine(value);
+export function isOneLine(text: string): boolean {
+  return !BREAK_OR_CONTROL.test(text);
 }
 
-/** What a text may be called as a file or folder: what no disk holds replaced, no dot in front or blank behind. */
+/**
+ * Whether a name, an artist or a title is one a manifest may carry: one line, something to show, at most 120 UTF-16
+ * units, as the Armarium's rules count (an emoji takes two), so nothing Atlas packs is refused there for its length.
+ */
+export function isMusicText(value: unknown): value is string {
+  return typeof value === 'string' && shownText(value).trim() !== '' && value.length <= MAX_MUSIC_TEXT && isOneLine(value);
+}
+
+/** The longest start of `text` whose UTF-8 takes at most `maxBytes`, cut between graphemes, so no emoji or accent is split. */
+export function cutToBytes(text: string, maxBytes: number): string {
+  if (utf8.encode(text).length <= maxBytes) return text;
+  let cut = '';
+  let bytes = 0;
+  for (const { segment } of new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)) {
+    bytes += utf8.encode(segment).length;
+    if (bytes > maxBytes) break;
+    cut += segment;
+  }
+  return cut;
+}
+
+/**
+ * What a text may be called as a file or folder: what no disk holds replaced, hidden format characters out, no dot in
+ * front or blank behind, at most `MAX_NAME_BYTES` of UTF-8, and a device name of Windows made a name.
+ */
 export function safeFileName(text: string, fallback: string): string {
-  const cleaned = [...text.replace(UNSAFE_NAME, '-').replace(/\s+/g, ' ').trim()].slice(0, MAX_MUSIC_TEXT).join('')
+  const cleaned = cutToBytes(shownText(text).replace(UNSAFE_NAME, '-').replace(/\s+/g, ' ').trim(), MAX_NAME_BYTES)
     .replace(/^[.\s]+/, '')
     .replace(/[.\s]+$/, '');
   if (cleaned === '') return fallback;
-  return RESERVED_NAME.test(cleaned) ? `${cleaned}_` : cleaned;
+  return cleaned.replace(RESERVED_NAME, '$1_');
 }
 
 /** A track's number in an album's file names, as wide as the album's last: `01` of twelve, `007` of a hundred. */
