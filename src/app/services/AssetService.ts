@@ -33,6 +33,7 @@ import { assetKey, emptyLibraryState, libraryClock, parseLibraryState } from './
 import { indexText, snapshotIndex } from './library/indexSnapshot';
 import { trashSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
 import { showNotice } from '../ui/notice';
+import { workSlices } from '../utils/workSlices';
 
 export interface BaseAsset {
   id: string;
@@ -873,11 +874,15 @@ export class AssetService {
         return nothing;
       }
       const check: { result?: VaultReconciliation } = {};
+      // Its reads mostly find cached data and would run on as one long task: the browser gets turns between them.
+      const pace = workSlices();
       await this.automatically(async () => {
         await this.matchFolderNames();
         // Library files first: they are the library, the index only this device's cache of them.
         const library = await this.readLibraryFiles();
+        await pace();
         const readings = await readVault(this.app, this.metadata!);
+        await pace();
         // From the listing on, nothing awaits until the index is changed, so no other edit interleaves.
         const listing = listVault(this.app, readings, deleted, this.recordedAssets());
         const result = reconcileIndex(this.metadata!, listing);
