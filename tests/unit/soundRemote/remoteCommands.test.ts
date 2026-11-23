@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { faderDb } from '@/app/react/components/dm-screen/sound/faderScale';
 import { RemoteCommands } from '@/app/soundRemote/remoteCommands';
-import { fakeRemoteDirector, remoteMood, withMusic } from '../../helpers/soundRemoteRig';
+import { fakeRemoteDirector, remoteMood, withLayers, withMusic } from '../../helpers/soundRemoteRig';
 
 describe('remote commands as intents', () => {
   beforeEach(() => vi.useFakeTimers());
@@ -49,36 +49,66 @@ describe('remote commands as intents', () => {
     expect(director.pressNext).not.toHaveBeenCalled();
   });
 
-  it('moves this device\'s levels within their range and writes them once the dial rests', () => {
+  it('moves Master, this device\'s level, within its range and writes it once the dial rests', () => {
     const director = fakeRemoteDirector(withMusic());
     const commands = new RemoteCommands(director, () => null);
-    commands.run({ type: 'level', channel: 'music', deltaDb: -2 });
-    commands.run({ type: 'level', channel: 'music', deltaDb: -2 });
-    expect(director.snapshot().levels.musicDb).toBe(-7);
+    commands.run({ type: 'level', channel: 'master', deltaDb: -2 });
+    commands.run({ type: 'level', channel: 'master', deltaDb: -2 });
+    expect(director.snapshot().levels.masterDb).toBe(-4);
     commands.run({ type: 'level', channel: 'master', deltaDb: 50 });
     expect(director.snapshot().levels.masterDb).toBe(6);
-    commands.run({ type: 'level', channel: 'ambience', reset: true });
-    expect(director.snapshot().levels.ambienceDb).toBe(0);
     expect(director.setChannelLevels).not.toHaveBeenCalledWith(expect.anything(), true);
     vi.advanceTimersByTime(1000);
     expect(director.setChannelLevels).toHaveBeenLastCalledWith({}, true);
   });
 
-  it('moves the music strip of the mix within what the Sound page\'s fader shows', () => {
+  it('moves the Sound page\'s Music fader, also for an older controller\'s Music in mix, within what the fader shows', () => {
     const director = fakeRemoteDirector(withMusic());
     const commands = new RemoteCommands(director, () => null);
-    commands.run({ type: 'level', channel: 'musicStrip', deltaDb: 3 });
+    commands.run({ type: 'level', channel: 'music', deltaDb: 3 });
     expect(director.desk.setMusicLevel).toHaveBeenLastCalledWith(-1);
-    commands.run({ type: 'level', channel: 'musicStrip', db: 40 });
+    commands.run({ type: 'level', channel: 'musicStrip', deltaDb: -2 });
+    expect(director.desk.setMusicLevel).toHaveBeenLastCalledWith(-6);
+    commands.run({ type: 'level', channel: 'music', db: 40 });
     expect(director.desk.setMusicLevel).toHaveBeenLastCalledWith(faderDb(1));
-    commands.run({ type: 'level', channel: 'musicStrip', db: -100 });
+    commands.run({ type: 'level', channel: 'music', db: -100 });
     expect(director.desk.setMusicLevel).toHaveBeenLastCalledWith(faderDb(0));
+    // This device's own music level stays where Settings put it.
+    expect(director.setChannelLevels).not.toHaveBeenCalled();
+  });
+
+  it('moves every ambience layer by one step, in one change, each within what a fader shows', () => {
+    const director = fakeRemoteDirector(withLayers({ rain: -10, wind: 2, fire: -58 }));
+    const commands = new RemoteCommands(director, () => null);
+    commands.run({ type: 'level', channel: 'ambience', deltaDb: -3 });
+    expect(director.desk.setLayerLevels).toHaveBeenCalledOnce();
+    expect(director.desk.setLayerLevels).toHaveBeenLastCalledWith(new Map([['rain', -13], ['wind', -1], ['fire', faderDb(0)]]));
+  });
+
+  it('stops ambience at the top with the loudest layer, so the others keep their distance below it', () => {
+    const director = fakeRemoteDirector(withLayers({ rain: -10, wind: 5 }));
+    const commands = new RemoteCommands(director, () => null);
+    commands.run({ type: 'level', channel: 'ambience', deltaDb: 5 });
+    expect(director.desk.setLayerLevels).toHaveBeenLastCalledWith(new Map([['rain', -9], ['wind', faderDb(1)]]));
+  });
+
+  it('puts the loudest ambience layer back to 0 dB, and the others with it', () => {
+    const director = fakeRemoteDirector(withLayers({ rain: -10, wind: 5 }));
+    new RemoteCommands(director, () => null).run({ type: 'level', channel: 'ambience', reset: true });
+    expect(director.desk.setLayerLevels).toHaveBeenLastCalledWith(new Map([['rain', -15], ['wind', 0]]));
+  });
+
+  it('does nothing to ambience while the mix has no layers', () => {
+    const director = fakeRemoteDirector(withMusic());
+    const commands = new RemoteCommands(director, () => null);
+    expect(commands.run({ type: 'level', channel: 'ambience', deltaDb: 2 })).toBe('no-ambience');
+    expect(director.desk.setLayerLevels).not.toHaveBeenCalled();
   });
 
   it('writes levels still waiting when it is let go', () => {
     const director = fakeRemoteDirector();
     const commands = new RemoteCommands(director, () => null);
-    commands.run({ type: 'level', channel: 'music', db: -10 });
+    commands.run({ type: 'level', channel: 'master', db: -10 });
     commands.dispose();
     expect(director.setChannelLevels).toHaveBeenLastCalledWith({}, true);
   });
