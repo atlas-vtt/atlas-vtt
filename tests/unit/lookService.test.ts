@@ -205,3 +205,21 @@ it('names the GM\'s own theme: the one in use while they keep it, else the one r
   expect(s.css.theme).toBe('');
   expect(service.ownThemeName()).toBe('Minimal');
 });
+
+it('keeps the ivy colour of this device, natural until one is picked', () => {
+  const storage = new Map<string, unknown>();
+  const first = stub('', storage);
+  const service = looks(first);
+  expect(service.ivyColour()).toBe('');
+  const changed = vi.fn();
+  service.onChange(changed);
+  service.setIvyColour('#C0392B');
+  expect(service.ivyColour()).toBe('#c0392b');
+  expect(changed).toHaveBeenCalledTimes(1);
+  service.setIvyColour('red');
+  expect(service.ivyColour()).toBe('#c0392b');
+  LookService.release(first.app);
+  expect(looks(stub('', storage)).ivyColour()).toBe('#c0392b');
+  looks(stub('', storage)).setIvyColour('');
+  expect(storage.get('atlas-vtt:ivy-colour')).toBe('natural');
+});

@@ -1,8 +1,16 @@
 @use '../../../styles/tokens' as *;
 @use '../../../styles/mixins' as *;
 
-// The look and the accent colour (AppearanceChoices.tsx), one under the other.
+// The look over the two colours (AppearanceChoices.tsx).
 .atlas-appearance-choices {
   @include atlas-flex-col($spacing-l);
   min-width: 0;
+}
+
+// The accent colour and the ivy colour side by side, one under the other where the two strips do not fit.
+.atlas-appearance-colours {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr));
+  align-items: start;
+  gap: $spacing-l $spacing-2xl;
 }
