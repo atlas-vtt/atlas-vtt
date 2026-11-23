@@ -13,16 +13,21 @@ interface WelcomeTextProps {
   /** A small line above the heading; a page whose heading says it all has none. */
   kicker?: string;
   title: string;
+  /** A small status after the heading, such as a part still in beta. */
+  tag?: string;
   body: string;
   children?: React.ReactNode;
 }
 
-/** A page's words: a small kicker where there is one, the heading in the look's heading face, and a line or two under it. */
-export function WelcomeText({ kicker, title, body, children }: WelcomeTextProps): React.JSX.Element {
+/** A page's words: a small kicker where there is one, the heading in the look's heading face (with a status tag where there is one), and a line or two under it. */
+export function WelcomeText({ kicker, title, tag, body, children }: WelcomeTextProps): React.JSX.Element {
   return (
     <div className="atlas-welcome-text">
       {kicker && <span className="atlas-welcome-text__kicker">{kicker}</span>}
-      <h2 className="atlas-welcome-text__title">{title}</h2>
+      <h2 className="atlas-welcome-text__title">
+        {title}
+        {tag && <> <span className="atlas-welcome-text__tag">{tag}</span></>}
+      </h2>
       <p className="atlas-welcome-text__body">{body}</p>
       {children}
     </div>

@@ -162,6 +162,35 @@ $look-cards-min: 420px;
   text-wrap: balance;
 }
 
+// A status after a heading, such as a part still in beta: small capitals on a soft pill behind a dot, without a border
+// or hover, so it reads as a label and never as a button.
+.atlas-welcome-text__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  vertical-align: middle;
+  padding: $spacing-xs $spacing-s;
+  border-radius: $radius-full;
+  background: color-mix(in oklch, var(--text-normal) 10%, transparent);
+  color: var(--text-muted);
+  font-family: var(--font-interface);
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-medium;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: none;
+  white-space: nowrap;
+
+  &::before {
+    content: '';
+    width: 0.5em;
+    height: 0.5em;
+    border-radius: $radius-full;
+    background: currentColor;
+  }
+}
+
 .atlas-welcome-text__body {
   margin: $spacing-l 0 0;
   max-width: 36em;

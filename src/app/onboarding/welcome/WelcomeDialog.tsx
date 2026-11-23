@@ -28,11 +28,11 @@ interface WelcomeDialogProps {
   doc?: Document;
 }
 
-type WelcomePage = 'carousel' | 'help' | 'sidebar' | 'look';
-const PAGES: readonly WelcomePage[] = ['carousel', 'help', 'sidebar', 'look'];
+type WelcomePage = 'carousel' | 'help' | 'look' | 'sidebar';
+const PAGES: readonly WelcomePage[] = ['carousel', 'help', 'look', 'sidebar'];
 
 /**
- * The welcome wizard: a large dialog of four pages, what Atlas is, where help is, Atlas Sidebar and the look. Skip,
+ * The welcome wizard: a large dialog of four pages, what Atlas is, where help is, the look and Atlas Sidebar. Skip,
  * Close, Escape and Start playing all end it, and the tours follow. One shows per app, however many views mount it.
  */
 export function WelcomeDialog({ open = true, ...props }: WelcomeDialogProps): React.JSX.Element {

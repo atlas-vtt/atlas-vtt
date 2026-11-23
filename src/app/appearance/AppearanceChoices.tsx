@@ -12,7 +12,7 @@ interface AppearanceChoicesProps {
   looks: LookService;
 }
 
-/** The look and the accent colour: one view, shown by the welcome wizard's last page and the palette's Appearance settings. */
+/** The look and the accent colour: one view, shown by the welcome wizard's Make it yours page and the palette's Appearance settings. */
 export function AppearanceChoices({ app, looks }: AppearanceChoicesProps): React.JSX.Element {
   return (
     <div className="atlas-appearance-choices">

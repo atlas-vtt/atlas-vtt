@@ -171,6 +171,11 @@ $slide-shade: #0a0806;
     font-size: calc(#{$font-ui-medium} * 1.15);
     color: ink(0.86);
   }
+
+  .atlas-welcome-text__tag {
+    background: ink(0.16);
+    color: ink(0.92);
+  }
 }
 
 // The words rise in one after another as their slide comes.

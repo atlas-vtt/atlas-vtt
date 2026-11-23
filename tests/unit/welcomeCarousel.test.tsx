@@ -24,15 +24,15 @@ function setHidden(hidden: boolean): void {
   act(() => { document.dispatchEvent(new Event('visibilitychange')); });
 }
 
-it('advances every 7 seconds and wraps', () => {
+it('advances every 7 seconds through all eight slides and wraps', () => {
   render(<WelcomeCarousel />);
   expect(shown()).toBe('Welcome to Atlas');
   wait(SLIDE_MS - 1);
   expect(shown()).toBe('Welcome to Atlas');
   wait(1);
   expect(shown()).toBe('Any map, ready in seconds');
-  slides(4);
-  expect(shown()).toBe('Play from anywhere');
+  slides(6);
+  expect(shown()).toBe('A VTT you truly own');
   slides(1);
   expect(shown()).toBe('Welcome to Atlas');
 });
@@ -111,5 +111,16 @@ it('holds while the document is hidden', () => {
 it('names every slide on its chip', () => {
   render(<WelcomeCarousel />);
   expect(within(chips()).getAllByRole('button').map((chip) => chip.textContent))
-    .toEqual(['Welcome', 'Maps', 'Dice', 'Statblocks', 'Players', 'Online']);
+    .toEqual(['Welcome', 'Maps', 'Generator', 'Tokens', 'Dice', 'Sound', 'Players', 'Yours']);
+});
+
+it('tags online play as a closed beta beside the players slide\'s heading, as a label and not a button', () => {
+  render(<WelcomeCarousel />);
+  fireEvent.click(within(chips()).getByRole('button', { name: 'Players' }));
+  expect(shown()).toBe('Play at the table or online Closed beta');
+  const tag = screen.getByText('Closed beta');
+  expect(tag.closest('button')).toBeNull();
+  expect(tag.className).toBe('atlas-welcome-text__tag');
+  fireEvent.click(within(chips()).getByRole('button', { name: 'Sound' }));
+  expect(shown()).toBe('A soundtrack for every scene');
 });
