@@ -223,3 +223,29 @@ it('keeps the ivy colour of this device, natural until one is picked', () => {
   looks(stub('', storage)).setIvyColour('');
   expect(storage.get('atlas-vtt:ivy-colour')).toBe('natural');
 });
+
+it('announces an accent colour change as a change of CSS, which Obsidian does not, so the dice and the canvas follow it', () => {
+  const s = stub('');
+  const trigger = vi.fn();
+  const disposers: (() => void)[] = [];
+  const plugin = {
+    app: Object.assign(s.app, { workspace: { on: () => ({}), offref: () => {}, iterateAllLeaves: () => {}, trigger } }),
+    register: (dispose: () => void) => { disposers.push(dispose); },
+    registerEvent: () => {},
+  } as unknown as Plugin;
+  const service = looks(s);
+  registerLookSync(plugin, service);
+  // With the GM's own theme as with an Atlas look: accent dice take the accent either way.
+  s.app.vault.setConfig('accentColor', '#c9a227');
+  expect(trigger).toHaveBeenLastCalledWith('css-change');
+  service.set('mediaeval');
+  trigger.mockClear();
+  s.app.vault.setConfig('accentColor', '#3b82c4');
+  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(true);
+  expect(trigger).toHaveBeenCalledWith('css-change');
+  trigger.mockClear();
+  s.app.vault.setConfig('accentColor', '');
+  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(false);
+  expect(trigger).toHaveBeenCalledWith('css-change');
+  for (const dispose of disposers) dispose();
+});

@@ -33,7 +33,7 @@ export function isAtlasLook(value: unknown): value is AtlasLook {
  * look is announced as `css-change`, once every window shows it, since what reads the look's CSS (the ivy Atlas lends
  * its initiative trackers) follows that. A theme Obsidian switches to (its own `css-change`) ends an Atlas look.
  * An accent colour picked here or in Obsidian's settings marks every window too while an Atlas look is on, as Obsidian
- * copies its colour into each. The Medieval look's ivy is painted in the GM's ivy colour in every window; a change of
+ * copies its colour into each, and is announced as `css-change`, which Obsidian leaves out for the accent. The Medieval look's ivy is painted in the GM's ivy colour in every window; a change of
  * it is announced as `css-change` like a switch of look, so the ivy Atlas lends follows.
  */
 export function registerLookSync(plugin: Plugin, looks: LookService): void {
@@ -59,8 +59,11 @@ export function registerLookSync(plugin: Plugin, looks: LookService): void {
     for (const doc of documents) apply(doc);
     app.workspace.trigger('css-change');
   }));
+  // Obsidian writes a new accent onto `body` without announcing it (`setAccentColor` triggers no `css-change`, unlike
+  // a theme or font switch), so Atlas announces it: the dice, the canvas' accent and the lent ivy re-read it then.
   plugin.register(onAccentChange(app, () => {
     for (const doc of documents) apply(doc);
+    app.workspace.trigger('css-change');
   }));
   plugin.registerEvent(app.workspace.on('css-change', () => looks.followThemeChange()));
 }
