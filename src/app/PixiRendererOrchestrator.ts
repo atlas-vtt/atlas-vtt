@@ -178,6 +178,8 @@ export class PixiRendererOrchestrator { // Renamed class
   private eventBusUnsubscribers: Array<() => void> = [];
   /** Screen-space overlays that exist only for the DM, such as tool previews. */
   private readonly dmScreenOverlays = new Set<Container>();
+  /** Layers of the map that only the players' frame shows (`addPlayerFrameLayer`). */
+  private readonly playerFrameOnly = new Set<Container>();
 
   private getSourceLeaf(): WorkspaceLeaf | null {
     return findAtlasLeafByViewId(this.obsApp.workspace, this.viewId);
@@ -965,6 +967,29 @@ export class PixiRendererOrchestrator { // Renamed class
     };
   }
 
+  /**
+   * Puts `layer` into the map (world space, its own `zIndex`) where only the players' frame shows it: the
+   * player window draws it, the GM's canvas and the scene's pictures never do. For what the GM sees
+   * another way already, as the players' measurements Atlas Online draws over the GM's canvas. `changed`
+   * asks for a render while a player window mirrors this view, so it takes what the layer shows now;
+   * `remove` takes it out again.
+   */
+  public addPlayerFrameLayer(layer: Container): { changed(): void; remove(): void } {
+    layer.visible = false;
+    this.pixiAppManager.getViewport()?.addChild(layer);
+    this.playerFrameOnly.add(layer);
+    return {
+      // Only a player window that mirrors this view needs the frame: the GM's own canvas shows nothing of the layer.
+      changed: () => {
+        if (PlayerWindowService.getInstance()?.mirrors(this.store) === true) requestRender(this.pixiAppManager.app);
+      },
+      remove: () => {
+        this.playerFrameOnly.delete(layer);
+        layer.parent?.removeChild(layer);
+      },
+    };
+  }
+
   public getGridOptions(): GridOptions | null {
     return this.gridSystem?.getOptions() || null;
   }
@@ -1080,6 +1105,7 @@ export class PixiRendererOrchestrator { // Renamed class
     // What only the GM sees of the drawings and texts, and the Draw tool's own marks
     layers.push(...(this.annotations?.getPlayerViewLayers() ?? []));
     for (const overlay of this.dmScreenOverlays) layers.push({ layer: overlay, visible: false });
+    for (const layer of this.playerFrameOnly) layers.push({ layer, visible: true });
     return layers;
   }
 

@@ -2,7 +2,10 @@ import { TURN_KEY_ATTRIBUTE } from '../initiative/motion/turnMotion';
 import { turnColor } from '../initiative/turnColor';
 import { nameShownToPlayers } from '../pixi/token-renderer/nameplateVisibility';
 import { woundShare } from '../initiative/woundShare';
-import { t } from '../i18n';
+import { formatList, t } from '../i18n';
+import { cardShowsConditions, SHOWN_CARD_CONDITIONS } from '../initiative/combatantConditions';
+import { createConditionBadge } from '../packages/components/shared/conditionBadgeElement';
+import type { ActiveCondition } from '../utils/activeConditions';
 import type { Combatant, PlayerCardIcon, PlayerInitiativeLook } from './playerInitiativeList';
 
 /**
@@ -11,7 +14,8 @@ import type { Combatant, PlayerCardIcon, PlayerInitiativeLook } from './playerIn
  * see them), and the number its badge shows players. Its initiative (number or card dealt) stays on the GM's screen:
  * players read the order from the list itself. A card without art shows its name where the players may read it, else
  * the GM's stand-in. A token whose art brings its own frame (no ring on the map) is cropped closer, so the frame falls
- * outside the card. `combatActive` marks the combatant whose turn it is.
+ * outside the card. Its conditions fan down its left edge where no token on the map shows them (`cardShowsConditions`).
+ * `combatActive` marks the combatant whose turn it is.
  */
 export function renderPlayerCard(parent: HTMLElement, { entry, token }: Combatant, look: PlayerInitiativeLook, combatActive: boolean): void {
   // Marked by its combatant, so it glides to its new place as the turn passes (`turnMotion.ts`)
@@ -37,13 +41,29 @@ export function renderPlayerCard(parent: HTMLElement, { entry, token }: Combatan
   const img = art?.querySelector('img');
   if (img) look.artViewBox?.(entry.imagePath, (viewBox) => img.style.setProperty('--atlas-art-view-box', viewBox));
   // The art says who it is; a card without art (an enemy added by name, a player without a picture) has nothing but
-  // its name to tell it apart, where the GM shows it, else the GM's stand-in. Conditions and resources show on the tokens
+  // its name to tell it apart, where the GM shows it, else the GM's stand-in. Resources show on the tokens
   const shownName = art ? null : name ?? (entry.tokenId === undefined ? entry.name : null);
   if (!art && shownName === null) drawIcon(card.createDiv({ cls: 'atlas-initiative-card__avatar' }), entry.isNPC ? 'bot' : 'user', look);
   if (token.defeated) renderDefeated(card, look);
   const badge = entry.tokenId === undefined ? null : look.badgeNumber?.(entry.tokenId) ?? null;
   if (badge !== null) card.createSpan({ cls: 'atlas-initiative-card__marks' }).createSpan({ cls: 'atlas-initiative-card__instance-badge', text: String(badge) });
   if (shownName !== null) card.createSpan({ cls: 'atlas-initiative-card__name', text: shownName });
+  const onMap = entry.tokenId !== undefined && token.offMap !== true;
+  if (token.conditions?.length && cardShowsConditions(onMap, look.trueScale === true)) renderConditions(card, token.conditions);
+}
+
+/** A badge's diameter, as the GM's cards draw them, grown with the list. */
+const CONDITION_SIZE = 'calc(18px * var(--atlas-initiative-scale, 1))';
+
+/** The GM card's `CardConditions`: the badges fanned down the card's left edge, each named for assistive tech, the rest a count. */
+function renderConditions(card: HTMLElement, conditions: readonly ActiveCondition[]): void {
+  card.addClass('atlas-initiative-card--conditions');
+  const list = card.createDiv({ cls: 'atlas-initiative-card__conditions', attr: { role: 'list', 'aria-label': t('initiative.conditions') } });
+  for (const condition of conditions.slice(0, SHOWN_CARD_CONDITIONS)) {
+    createConditionBadge(list.createSpan({ cls: 'atlas-initiative-card__condition', attr: { role: 'listitem', 'aria-label': condition.name } }), condition, CONDITION_SIZE);
+  }
+  const rest = conditions.slice(SHOWN_CARD_CONDITIONS);
+  if (rest.length > 0) list.createSpan({ cls: 'atlas-initiative-card__condition-more', text: `+${rest.length}`, attr: { role: 'listitem', 'aria-label': formatList(rest.map(({ name }) => name)) } });
 }
 
 /** The token's art filling the card and the red of the life it lost rising in it. */
