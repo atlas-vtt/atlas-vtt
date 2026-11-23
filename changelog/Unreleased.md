@@ -13,7 +13,7 @@
 - What players see is laid out in columns, like its page in the command palette: what the player window and online players see alike, then the player window's own settings and online play's
 - Widgets can be reordered: drag one by its grip in the command palette's Widgets page (or move it with Alt and the arrow keys), and the widget bar follows in every scene of the collection
 - **Music in the Armarium.** Share a track or an album from the Sound library: from a track's menu, a selection of tracks or a tag. Give it a cover, an artist and the order the tracks play in
-- Install albums and tracks from the Armarium into your music folder. A review shows the tracks and where they go first; they play as soon as they land, and an update keeps any track you changed
+- Install albums and tracks from the Armarium into your music folder. A review shows the tracks and where they go first; they are ready to play once they land, with nothing to convert, and an update keeps any track you changed
 
 ## Improved
 
@@ -26,6 +26,7 @@
 - The card naming a token's conditions, shown while you hover the token, now shows in the player window too
 - Hovering a combatant in the initiative tracker names all its conditions in one tooltip beside the tracker. The player window's list scrolls to that combatant and shows the same, so you can show the table what a creature suffers; moving off brings the list back to the turn
 - A combatant kept beside the map shows a grey outline on its initiative card instead of an icon, which leaves the compact list more room
+- Sharing in the Armarium: until the first part of an upload is in, the upload step says what it is sending and shows a moving bar instead of "0 Bytes sent"
 
 ## Fixed
 
@@ -36,4 +37,6 @@
 - The Master slider in Atlas' Sound settings now follows the Sound page's Master fader and the Stream Deck at once
 - A Master volume change from a Stream Deck is no longer undone when another setting is changed right after it
 - Stream Deck volume keys now stop at +6 dB, the top of the Sound page's faders
+- Sound: the count beside Music or Ambience in the library's rail no longer counts originals kept beside their converted copies, so it matches the list
+- Sound: a tag name the library's rail cuts short shows in full on hover, and "Get starter ambience" no longer loses its first letters in a narrow rail
 - Sound: turning up reverb no longer makes a sound louder. A full knob is as wet as before, in every room, for music and ambience, on the players' page too

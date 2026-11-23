@@ -2,7 +2,7 @@ import '../setup/obsidianDom';
 import React from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import type { App } from 'obsidian';
 import css from '../../styles/main.scss?inline';
@@ -17,6 +17,7 @@ import type { LibraryFile } from '../../src/app/soundLibrary/SoundLibrary';
 import { sha256 } from '../../src/app/utils/hashing';
 import { FakeArmarium, noSleep, settle } from '../unit/armarium/shareFakes';
 import { DASHBOARD_THEME } from './dashboardTheme';
+import { mouse } from './realMouse';
 
 /**
  * The music step of a share and the music review, laid out with the plugin's stylesheet: rows of one height with their
@@ -80,29 +81,54 @@ describe('music in the Armarium', () => {
     AtlasAccount.release(app);
   });
 
+  /** The share dialog at its music step with `titles` as an album, each track told `told(index)`. */
+  async function showMusicStep(titles: readonly string[], told: (index: number) => PreparedTrack): Promise<void> {
+    const listeners = new Map<string, (state: PreparedTrack) => void>();
+    const session = new MusicShareSession({
+      account: AtlasAccount.forApp(app)!, api: new MusicArmarium(), kind: 'music-album', files: titles.map(fileOf), name: 'Old Roads',
+      prepare: (file, listener) => {
+        listeners.set(file.path, listener);
+        return () => undefined;
+      },
+      newUid: () => 'f'.repeat(32),
+      pack: () => Promise.resolve({ fileName: 'x.zip', blob: new Blob(['zip']) }),
+      fetchCover: () => Promise.resolve(null), sha256: (bytes) => sha256(bytes), sleep: noSleep,
+    });
+    act(() => root.render(React.createElement(AtlasUIContext.Provider, { value: { app, view: null, pixiApp: null, renderer: null } },
+      React.createElement(ArmariumShareLayer, { session, onClose: () => undefined }))));
+    await act(async () => {
+      session.start();
+      await settle();
+    });
+    act(() => [...listeners.values()].forEach((tell, index) => tell(told(index))));
+  }
+
+  it('scrolls the dialog with the wheel over a track list that has nothing to scroll', async () => {
+    await page.viewport(1280, 520);
+    await showMusicStep(TITLES.slice(0, 3), () => ({ state: 'ready', copy: new Blob(['x']), frames: 48_000 * 120 }));
+    await nextFrame();
+    await nextFrame();
+    const list = document.querySelector<HTMLElement>('.atlas-music-tracks')!;
+    expect(list.scrollHeight).toBeLessThanOrEqual(list.clientHeight);
+    let scroller = list.parentElement;
+    while (scroller && !(scroller.scrollHeight > scroller.clientHeight && getComputedStyle(scroller).overflowY !== 'visible')) scroller = scroller.parentElement;
+    expect(scroller, 'the dialog has room to scroll at this height').not.toBeNull();
+    // Scrolled to its end, where the list shows; the wheel upwards over the list then scrolls the dialog back.
+    scroller!.scrollTop = scroller!.scrollHeight;
+    await nextFrame();
+    const end = scroller!.scrollTop;
+    const shown = list.getBoundingClientRect();
+    const view = scroller!.getBoundingClientRect();
+    const y = (Math.max(shown.top, view.top) + Math.min(shown.bottom, view.bottom)) / 2;
+    expect(document.elementFromPoint(shown.left + shown.width / 2, y)?.closest('.atlas-music-tracks')).toBe(list);
+    await mouse.wheel(shown.left + shown.width / 2, y, -200);
+    await vi.waitFor(() => expect(scroller!.scrollTop).toBeLessThan(end));
+  });
+
   for (const theme of ['dark', 'light'] as const) {
     it(`lays out the music step's tracks in rows of one height, scrolling inside the list (${theme})`, async () => {
       document.body.className = `theme-${theme}`;
-      const listeners = new Map<string, (state: PreparedTrack) => void>();
-      const session = new MusicShareSession({
-        account: AtlasAccount.forApp(app)!, api: new MusicArmarium(), kind: 'music-album', files: TITLES.map(fileOf), name: 'Old Roads',
-        prepare: (file, listener) => {
-          listeners.set(file.path, listener);
-          return () => undefined;
-        },
-        newUid: () => 'f'.repeat(32),
-        pack: () => Promise.resolve({ fileName: 'x.zip', blob: new Blob(['zip']) }),
-        fetchCover: () => Promise.resolve(null), sha256: (bytes) => sha256(bytes), sleep: noSleep,
-      });
-      act(() => root.render(React.createElement(AtlasUIContext.Provider, { value: { app, view: null, pixiApp: null, renderer: null } },
-        React.createElement(ArmariumShareLayer, { session, onClose: () => undefined }))));
-      await act(async () => {
-        session.start();
-        await settle();
-      });
-      act(() => {
-        [...listeners.values()].forEach((tell, index) => tell(index === 3 ? { state: 'refused', reason: 'consent' } : index === 5 ? { state: 'converting', progress: 0.42 } : { state: 'ready', copy: new Blob(['x'.repeat(3_000_000)]), frames: 48_000 * (120 + index * 17) }));
-      });
+      await showMusicStep(TITLES, (index) => (index === 3 ? { state: 'refused', reason: 'consent' } : index === 5 ? { state: 'converting', progress: 0.42 } : { state: 'ready', copy: new Blob(['x'.repeat(3_000_000)]), frames: 48_000 * (120 + index * 17) }));
       await nextFrame();
       await nextFrame();
       const dialog = box('.atlas-transfer-dialog');

@@ -11,6 +11,7 @@ import { Skeleton, SkeletonGroup, skeletonTextWidth } from '../../../../../packa
 import { useLoadingReveal } from '../../../../../packages/components/primitives/useLoadingReveal';
 import { useStagedList } from '../useStagedList';
 import { cn } from '../../../../../../utils/cn';
+import { CutTooltip } from '../CutTooltip';
 import { ConvertingLine } from './ConvertingLine';
 import { DownloadsButton } from './DownloadsButton';
 import { MusicPacksButton, StarterPackButton } from './PackOffers';
@@ -106,7 +107,8 @@ const RailTag = memo(function RailTag({ actions, kind, name, count, selected, on
         {...drop.props}
       >
         <TagGlyph />
-        <span>{name}</span>
+        {/* Two albums may start alike ("Night of th…"): a name its row cuts shows whole on hover. */}
+        <CutTooltip><span>{name}</span></CutTooltip>
         <small>{count}</small>
       </button>
       <button
@@ -163,7 +165,8 @@ function RailRoot({ library, actions, shelves, kind, selected, shown, onRoot, on
   const downloads = useDownloadManager();
   const linked = isLinked(root);
   const label = t(kind === 'music' ? 'audio.music' : 'audio.ambience');
-  const count = linked ? library.countOf(kind, '') : null;
+  // What the library lists (a kept original hidden behind its copy is not), once the root's own folder was read.
+  const count = linked && library.countOf(kind, '') !== null ? shelves[kind].rows.length : null;
   const drop = useDropTarget(mayCarryAudio, (transfer) => {
     if (transfer.files.length > 0) actions.importInto([...transfer.files], kind);
   });

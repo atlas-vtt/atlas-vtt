@@ -3,7 +3,9 @@
 
 // The tracks of an album or a single: the music review lists them, the share step edits them
 // (`armarium/share/music-share.scss`). Rows are controls $surface-inset inside the list, so the list's
-// corner is theirs plus that inset; a long album scrolls inside the list, never the dialog.
+// corner is theirs plus that inset; a long album scrolls inside the list. The wheel goes on to the dialog
+// where the list has nothing (more) to scroll: no `overscroll-behavior: contain`, which Chromium applies to
+// a list that does not overflow too, so the wheel over a short album scrolled nothing.
 
 $track-row-height: 36px;
 
@@ -13,7 +15,6 @@ $track-row-height: 36px;
   margin: 0;
   padding: $surface-inset;
   overflow-y: auto;
-  overscroll-behavior: contain;
   border: $border-width-s solid var(--background-modifier-border);
   border-radius: $surface-radius;
   background: var(--background-secondary);

@@ -61,7 +61,7 @@ export const armariumMusic: Translation = {
   'armariumMusic.review.label': '将「{name}」添加到你的音乐',
   'armariumMusic.review.eyebrow': '添加音乐',
   'armariumMusic.review.eyebrowUpdate': '更新音乐',
-  'armariumMusic.review.new': '它会放进你的音乐文件夹，到了就能播放。',
+  'armariumMusic.review.new': '它会放进你的音乐文件夹，随时可以播放。',
   'armariumMusic.review.update': '你的副本会从版本 {from} 更新到版本 {version}。',
   'armariumMusic.review.replaced': { other: '替换 {count} 首' },
   'armariumMusic.review.added': { other: '新增 {count} 首' },

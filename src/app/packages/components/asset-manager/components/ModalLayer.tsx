@@ -113,6 +113,7 @@ export function ModalLayer({
         confirmMusicImport={crud.confirmMusicImport}
         closeTransfer={crud.closeTransfer}
         openerFor={itemOpener.openerFor}
+        openSound={itemOpener.openSound}
       />
 
       {/* Token Creator */}

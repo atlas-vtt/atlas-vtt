@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AccountState, SignInResult } from '../../../src/app/account/AtlasAccount';
 import { MusicShareSession, type MusicPackRequest, type PreparedTrack } from '../../../src/app/armarium/upload/MusicShareSession';
-import { musicProblems, pickedKind, startingTitle } from '../../../src/app/armarium/upload/musicShareRules';
+import { musicProblems, pickedKind } from '../../../src/app/armarium/upload/musicShareRules';
 import type { OwnListing } from '../../../src/app/armarium/upload/uploadContract';
 import type { MusicKind } from '../../../src/app/services/itemBundle/itemBundleFormat';
 import type { LibraryFile } from '../../../src/app/soundLibrary/SoundLibrary';
@@ -43,7 +43,7 @@ function preparer(): { prepare: (file: LibraryFile, listener: (state: PreparedTr
 
 const ready = (seconds = 120): PreparedTrack => ({ state: 'ready', copy: new Blob(['opus']), frames: seconds * 48_000 });
 
-function setup(kind: MusicKind, paths: string[], options: { listing?: string; name?: string } = {}): {
+function setup(kind: MusicKind, paths: string[], options: { listing?: string; name?: string; publishedArtist?: (listing: OwnListing) => Promise<string | null> } = {}): {
   session: MusicShareSession; api: MusicArmarium; pack: ReturnType<typeof vi.fn<(request: MusicPackRequest) => Promise<{ fileName: string; blob: Blob }>>>; tracks: ReturnType<typeof preparer>;
 } {
   const api = new MusicArmarium();
@@ -60,6 +60,7 @@ function setup(kind: MusicKind, paths: string[], options: { listing?: string; na
     newUid: () => NEW_UID,
     pack,
     fetchCover: () => Promise.resolve(null),
+    publishedArtist: options.publishedArtist,
     sha256: (bytes) => sha256(bytes),
     sleep: noSleep,
   });
@@ -158,6 +159,43 @@ describe('sharing music in the Armarium', () => {
     expect(session.snapshot()).toMatchObject({ target: null, version: 1, ownListing: null });
   });
 
+  it('carries the published version\'s artist into the next version, unless the GM typed one, and never clears it', async () => {
+    const listing: OwnListing = { uid: 'a'.repeat(32), slug: 'old-roads', name: 'Old Roads', format: 'music-album', fields: STORED, newestVersion: 1, coverUrl: null };
+    const asked: string[] = [];
+    const { session, api } = setup('music-album', ['a.mp3', 'b.mp3'], { publishedArtist: (each) => { asked.push(each.uid); return Promise.resolve('Vindsvept'); } });
+    api.listings = [listing];
+    await toMusicStep(session);
+    session.chooseListing(listing.uid);
+    await vi.waitFor(() => expect(session.snapshot().artist).toBe('Vindsvept'));
+    expect(asked).toEqual([listing.uid]);
+    session.chooseListing(null);
+    expect(session.snapshot().artist).toBe('Vindsvept');
+
+    const typed = setup('music-album', ['a.mp3', 'b.mp3'], { publishedArtist: () => Promise.resolve('Vindsvept') });
+    typed.api.listings = [listing];
+    await toMusicStep(typed.session);
+    typed.session.setArtist('Mara');
+    typed.session.chooseListing(listing.uid);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(typed.session.snapshot().artist).toBe('Mara');
+
+    const unread = setup('music-album', ['a.mp3', 'b.mp3'], { listing: listing.uid, publishedArtist: () => Promise.resolve(null) });
+    unread.api.listings = [listing];
+    await toMusicStep(unread.session);
+    unread.session.setArtist('Quill');
+    unread.session.chooseListing(listing.uid);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(unread.session.snapshot()).toMatchObject({ target: listing.uid, artist: 'Quill' });
+  });
+
+  it('fills in the artist of the listing the page named as the share opens', async () => {
+    const listing: OwnListing = { uid: 'a'.repeat(32), slug: 'old-roads', name: 'Old Roads', format: 'music-album', fields: STORED, newestVersion: 2, coverUrl: null };
+    const { session, api } = setup('music-album', ['a.mp3', 'b.mp3'], { listing: listing.uid, publishedArtist: () => Promise.resolve('Vindsvept') });
+    api.listings = [listing];
+    await toMusicStep(session);
+    await vi.waitFor(() => expect(session.snapshot().artist).toBe('Vindsvept'));
+  });
+
   it('packs a single under its name as its title, and stops every preparation when it closes', async () => {
     const { session, pack, tracks } = setup('music-track', ['Dawn.mp3', 'ignored.mp3'], { name: 'Dawn' });
     await toMusicStep(session);
@@ -187,13 +225,33 @@ describe('what picked music becomes', () => {
   });
 });
 
-describe('a track\'s title to begin with', () => {
-  it('is its file name without extension and without the number it starts with', () => {
-    expect(startingTitle('01 Dawn.mp3')).toBe('Dawn');
-    expect(startingTitle('02 - Dusk.flac')).toBe('Dusk');
-    expect(startingTitle('3. Night falls.opus')).toBe('Night falls');
-    expect(startingTitle('07_Gate.ogg')).toBe('Gate');
-    expect(startingTitle('1999.mp3')).toBe('1999');
-    expect(startingTitle('Track.mp3')).toBe('Track');
+describe('a share\'s default titles', () => {
+  it('drop what an album\'s file names share and their numbers, offer the artist, and leave edited titles alone', async () => {
+    const paths = ['Vindsvept - Night of the Wilds - 01 Dancing with the Wisps.mp3', 'Vindsvept - Night of the Wilds - 02 Tales of the Moonfolk.mp3', 'Vindsvept - Night of the Wilds - 03 Faerie Fire.mp3'];
+    const { session } = setup('music-album', paths, { name: 'Night of the Wilds' });
+    expect(session.snapshot().tracks.map((track) => track.title)).toEqual(['Dancing with the Wisps', 'Tales of the Moonfolk', 'Faerie Fire']);
+    expect(session.snapshot().artist).toBe('Vindsvept');
+    await toMusicStep(session);
+    session.setTitle(`music:${paths[0]}`, 'Wisps');
+    session.removeTrack(`music:${paths[2]}`);
+    expect(session.snapshot().tracks.map((track) => track.title)).toEqual(['Wisps', 'Tales of the Moonfolk']);
+  });
+
+  it('work an untouched title out again when a track goes and the rest share more', async () => {
+    const { session } = setup('music-album', ['Old Roads - Dawn.mp3', 'Old Roads - Dusk.mp3', 'Rain.mp3']);
+    expect(session.snapshot().tracks.map((track) => track.title)).toEqual(['Old Roads - Dawn', 'Old Roads - Dusk', 'Rain']);
+    await toMusicStep(session);
+    session.removeTrack('music:Rain.mp3');
+    expect(session.snapshot().tracks.map((track) => track.title)).toEqual(['Dawn', 'Dusk']);
+  });
+
+  it('give a single\'s name the artist the GM types taken off, until the GM edits the name', async () => {
+    const { session } = setup('music-track', ['Vindsvept - 04 Tricksy Sprites.mp3'], { name: 'Vindsvept - 04 Tricksy Sprites' });
+    expect(session.snapshot().artist).toBe('');
+    session.setArtist('vindsvept');
+    expect(session.snapshot().name).toBe('Tricksy Sprites');
+    session.setName('Sprites');
+    session.setArtist('Vindsvept');
+    expect(session.snapshot().name).toBe('Sprites');
   });
 });

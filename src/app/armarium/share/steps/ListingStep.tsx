@@ -3,7 +3,7 @@ import { Select, type SelectOption } from '../../../packages/components/primitiv
 import { t } from '../../../i18n';
 import type { AnyShareSession } from '../../upload/anyShareSession';
 import type { ShareSnapshot } from '../../upload/shareState';
-import { COLLECTION_KINDS, LISTING_TEXT, SYSTEMS, type ListingKind, type SystemId } from '../../upload/uploadContract';
+import { COLLECTION_KINDS, LISTING_TEXT, SYSTEMS, tagGroupsOf, takesSystem, type ListingKind, type SystemId } from '../../upload/uploadContract';
 import { kindLabel, kindLine, systemLabel } from '../../upload/text/listingVocabulary';
 import { FindingReport } from './FindingReport';
 import { CountedText, FieldProblem, TagPicker, useOverlayLayer } from './ListingFields';
@@ -38,6 +38,7 @@ export function ListingStep({ snapshot, session }: { snapshot: ShareSnapshot; se
   const [layer, layerRef] = useOverlayLayer();
   const manifest = submission?.manifest ?? null;
   const update = ownListing !== null && manifest !== null && manifest.uid === ownListing.uid;
+  const kind = snapshot.subject === 'collection' ? draft.kind : snapshot.listingKind;
   return (
     <div ref={layerRef} className="atlas-share-form">
       <p className="atlas-share-text atlas-share-text--muted">{update ? t('armariumShare.updateIntro') : shareSaid(snapshot.subject, 'armariumShare.listingIntro')}</p>
@@ -58,12 +59,14 @@ export function ListingStep({ snapshot, session }: { snapshot: ShareSnapshot; se
             <FieldProblem id={`${kindId}-problem`} field="kind" problems={problems} />
           </div>
         )}
-        <div className="atlas-share-field">
-          <span id={systemId} className="atlas-share-field__label">{t('armariumShare.system')}</span>
-          <Select labelledBy={systemId} layer={layer} value={draft.system} options={SYSTEM_OPTIONS} onChange={(system) => session.setDraft({ system })} />
-          <span id={`${systemId}-hint`} className="atlas-share-field__hint">{t('armariumShare.systemHint')}</span>
-          <FieldProblem id={`${systemId}-problem`} field="system" problems={problems} />
-        </div>
+        {takesSystem(kind) && (
+          <div className="atlas-share-field">
+            <span id={systemId} className="atlas-share-field__label">{t('armariumShare.system')}</span>
+            <Select labelledBy={systemId} layer={layer} value={draft.system} options={SYSTEM_OPTIONS} onChange={(system) => session.setDraft({ system })} />
+            <span id={`${systemId}-hint`} className="atlas-share-field__hint">{t('armariumShare.systemHint')}</span>
+            <FieldProblem id={`${systemId}-problem`} field="system" problems={problems} />
+          </div>
+        )}
       </div>
       <CountedText
         label={t('armariumShare.description')}
@@ -75,7 +78,7 @@ export function ListingStep({ snapshot, session }: { snapshot: ShareSnapshot; se
         field="description"
         problems={problems}
       />
-      <TagPicker value={draft.tags} onToggle={(tag) => session.toggleTag(tag)} problems={problems} />
+      <TagPicker value={draft.tags} onToggle={(tag) => session.toggleTag(tag)} problems={problems} groups={tagGroupsOf(kind)} />
       {submission !== null && submission.findings.length > 0 && <FindingReport findings={submission.findings} notesOnly />}
     </div>
   );

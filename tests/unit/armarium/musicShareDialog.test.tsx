@@ -122,6 +122,23 @@ describe('the share dialog of music', () => {
     expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(false);
   });
 
+  it('asks a music listing for no game system and offers only the tags that fit music', async () => {
+    const { session, tell } = await share(new MusicArmarium(), ['01 Dawn.mp3', '02 Dusk.mp3']);
+    tell('01 Dawn.mp3', ready);
+    tell('02 Dusk.mp3', ready);
+    await act(async () => {
+      session.confirmMusic();
+      await settle();
+    });
+    await vi.waitFor(() => expect(session.snapshot().step).toBe('listing'));
+    expect(screen.queryByText('Game system')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Fantasy' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Forest' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Monsters' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Statblocks' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'One-shot' })).toBeNull();
+  });
+
   it('offers the next version of the account\'s albums where it has some', async () => {
     const api = new MusicArmarium();
     api.listings = [{ uid: 'a'.repeat(32), slug: 'old-roads', name: 'Old Roads', format: 'music-album', fields: null, newestVersion: 2, coverUrl: null }];
@@ -145,6 +162,8 @@ describe('the music review', () => {
     expect(screen.getByText('by Lio')).toBeTruthy();
     expect(screen.getByText('Music / Mara / Old Roads')).toBeTruthy();
     expect(screen.getByText('Two new songs.')).toBeTruthy();
+    // Nothing plays on install: it is ready to play.
+    expect(screen.getByText('It goes into your music folder, ready to play.')).toBeTruthy();
     expect(screen.getByText('3:05')).toBeTruthy();
     expect(screen.getByText(/^2 tracks · 4:06 · /)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Install' }));

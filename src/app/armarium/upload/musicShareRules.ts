@@ -1,17 +1,6 @@
 import type { MusicKind } from '../../services/itemBundle/itemBundleFormat';
 import { holdsTrackCount, isOneLine, MAX_MUSIC_TEXT, shownText } from '../../services/musicBundle/musicBundleFormat';
-import { stemOf } from '../../soundLibrary/soundPaths';
 import { MUSIC_TIME_LIMITS, type MusicShareSnapshot } from './musicShareState';
-
-/** A track number a file name starts with, and what sets it apart: `01 `, `01 - `, `1. `, `07_`. */
-const LEADING_NUMBER = /^\d{1,3}\s*[-–.)_]?\s+|^\d{1,3}[-–._]\s*/;
-
-/** A track's title to begin with: its file name without extension, and without the number it starts with. */
-export function startingTitle(fileName: string): string {
-  const stem = stemOf(fileName).trim();
-  const title = stem.replace(LEADING_NUMBER, '').trim();
-  return title === '' ? stem : title;
-}
 
 /**
  * What music picked for a share becomes: one track is shared as a track, whatever was asked for, since the Armarium's

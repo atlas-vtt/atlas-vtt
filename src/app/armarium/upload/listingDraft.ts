@@ -7,6 +7,8 @@ import {
   SYSTEMS,
   TAG_IDS,
   knownSystemOf,
+  tagGroupsOf,
+  takesSystem,
   type LicenceId,
   type ListingFields,
   type ListingKind,
@@ -39,6 +41,12 @@ export function systemOfSharedPreset(name: string): SystemId | null {
 export function draftFrom(fields: ListingFields | null, startSystem: SystemId | null): ListingDraft {
   if (fields !== null) return { ...fields, tags: [...fields.tags], system: fields.system ?? 'none' };
   return { kind: null, system: startSystem ?? 'none', description: '', tags: [], licence: null, credits: '' };
+}
+
+/** The draft as a listing of its kind holds it: no system where the kind takes none, only the tags its groups offer. */
+export function draftForKind(draft: ListingDraft): ListingDraft {
+  const offered = new Set<TagId>(tagGroupsOf(draft.kind).flatMap((group) => group.tags));
+  return { ...draft, system: takesSystem(draft.kind) ? draft.system : 'none', tags: draft.tags.filter((tag) => offered.has(tag)) };
 }
 
 /** Characters as the API counts them for a text's limits: code points of the text without the white space around it. */
@@ -77,7 +85,8 @@ export function fieldsOfDraft(draft: ListingDraft): ListingFields | null {
   const kind = KINDS.find((known) => known === draft.kind);
   const licence = LICENCES.find((known) => known === draft.licence);
   if (kind === undefined || licence === undefined) return null;
-  return { kind, system: draft.system === 'none' ? null : draft.system, description: draft.description, tags: TAG_IDS.filter((tag) => draft.tags.includes(tag)), licence, credits: draft.credits };
+  const { system, tags } = draftForKind(draft);
+  return { kind, system: system === 'none' ? null : system, description: draft.description, tags: TAG_IDS.filter((tag) => tags.includes(tag)), licence, credits: draft.credits };
 }
 
 /**
