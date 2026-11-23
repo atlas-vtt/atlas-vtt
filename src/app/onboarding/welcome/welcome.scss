@@ -24,6 +24,41 @@
   color: var(--text-normal);
 }
 
+// The help page stands on a picture of Atlas' guides, which fades into the dialog towards the words on the left and
+// the foot. A layer of the dialog itself, so it neither scrolls nor moves with the page's entrance.
+.atlas-welcome[data-page='help'] {
+  isolation: isolate;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      linear-gradient(to right, var(--background-primary) 44%, color-mix(in oklch, var(--background-primary) 72%, transparent) 64%, color-mix(in oklch, var(--background-primary) 40%, transparent)),
+      linear-gradient(to top, var(--background-primary), transparent 26%),
+      url('../../assets/welcome/help-dark.webp') right center / cover no-repeat;
+    animation: atlas-welcome-help-in $transition-slow $transition-ease-out;
+  }
+
+  .theme-light &::before {
+    background:
+      linear-gradient(to right, var(--background-primary) 44%, color-mix(in oklch, var(--background-primary) 72%, transparent) 64%, color-mix(in oklch, var(--background-primary) 40%, transparent)),
+      linear-gradient(to top, var(--background-primary), transparent 26%),
+      url('../../assets/welcome/help-light.webp') right center / cover no-repeat;
+  }
+}
+
+@keyframes atlas-welcome-help-in {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-welcome[data-page='help']::before { animation: none; }
+}
+
 // The dialog has no header row: its close button stands in the corner.
 .atlas-welcome__close.atlas-close-btn.btn {
   @include atlas-close-corner;
