@@ -521,6 +521,57 @@ export const CONVENTIONS = [
     ],
   },
   {
+    name: 'shared-helpers',
+    selectors: [':matches(FunctionDeclaration, VariableDeclarator)[id.name=/^(isRecord|clamp|lerp)$/]'],
+    message: 'Import isRecord from src/app/utils/guards.ts, and clamp and lerp from src/app/utils/math.ts; a helper that does something else is named after what it does.',
+    why: 'A copy drifts from the others, and the next file copies the copy.',
+    owners: ['src/app/utils/**'],
+    // The protocol is a copy of another repository's.
+    ignores: ['src/app/online/protocol/**'],
+    bad: [
+      "function isRecord(value: unknown): value is Record<string, unknown> {\n  return typeof value === 'object' && value !== null;\n}\nexport const read = (value: unknown): boolean => isRecord(value);",
+      'const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));\nexport const share = (value: number): number => clamp(value, 0, 1);',
+      'export const lerp = (from: number, to: number, t: number): number => from + (to - from) * t;',
+    ],
+    good: [
+      "import { isRecord } from './utils/guards';\nexport const read = (value: unknown): boolean => isRecord(value);",
+      "import { clamp, lerp } from './utils/math';\nexport const along = (from: number, to: number, t: number): number => lerp(from, to, clamp(t, 0, 1));",
+      'const clampIndex = (index: number, size: number): number => Math.max(0, Math.min(size - 1, index));\nexport const first = clampIndex(-1, 4);',
+    ],
+  },
+  {
+    name: 'id-pattern',
+    // The whole chain, so a hash or a counter written in base 36 passes.
+    selectors: ["CallExpression[callee.property.name='toString'][arguments.0.value=36][callee.object.type='CallExpression'][callee.object.callee.object.name='Math'][callee.object.callee.property.name='random']"],
+    message: 'Make the id with newId, or ids made together with newIds (src/app/utils/ids.ts).',
+    why: 'An id written out again differs sooner or later in a separator or a length, and the next file copies the copy.',
+    // Beside the helper, the ids of another format: other separators, a shorter random part, a time in base 36 or no prefix.
+    owners: [
+      'src/app/utils/ids.ts',
+      'src/app/atlas-view.ts',
+      'src/app/levels/levelEdits.ts',
+      'src/app/packages/components/asset-manager/token-creator/previewItems.ts',
+      'src/app/pixi/lighting/RoomEditor.ts',
+      'src/app/react/components/ResponsiveWidgetBar.tsx',
+      'src/app/react/components/dice/useDiceToasts.ts',
+      'src/app/services/AssetService.ts',
+      'src/app/services/assetImageFiles.ts',
+      'src/app/snapshots/SceneSnapshotService.ts',
+      'src/app/soundLibrary/MoodStore.ts',
+      'src/app/stores/tabMetaStore.ts',
+    ],
+    ignores: ['src/app/online/protocol/**'],
+    bad: [
+      'export const wallId = (): string => `wall_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;',
+      'export const suffix = (): string => Math.random().toString(36).substring(2, 8);',
+    ],
+    good: [
+      "import { newId } from './utils/ids';\nexport const wallId = (): string => newId('wall');",
+      "export const alias = (next: number): string => next.toString(36).padStart(4, '0');",
+      'export const roll = (sides: number): number => Math.floor(Math.random() * sides) + 1;',
+    ],
+  },
+  {
     name: 'unfinished-markers',
     create: (context) => ({
       Program() {

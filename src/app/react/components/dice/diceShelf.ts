@@ -9,6 +9,7 @@ import type { DicePreset, DiceRowSlot } from '../../../types/dicePresetTypes';
 import { FORMULA_LIMITS } from '../../../tools/parseFormula';
 import { TRAY_DICE } from './diceTrayPool';
 import { readPresetLook } from './presetLook';
+import { isRecord } from '../../../utils/guards';
 
 /** Places in the row: the number keys 1 to 9, then 0. */
 export const MAX_ROW = 10;
@@ -28,7 +29,6 @@ export interface DiceShelf {
 
 export type ShelfChange = Pick<CollectionSettings, 'dicePresets' | 'diceRow'>;
 
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 const own = (record: Record<string, unknown>, key: string): unknown => (Object.hasOwn(record, key) ? record[key] : undefined);
 
 export const isDieSize = (sides: unknown): sides is number =>

@@ -1,4 +1,5 @@
 import { PANEL_ENTER_MS, PANEL_EXIT_MS, prefersReducedMotion } from '../../utils/motion';
+import { lerp } from '../../utils/math';
 import { ValueTransition } from '../utils/ValueTransition';
 
 /** How far a measurement is on the map: its opacity, and its size as a share of its own about where it starts. */
@@ -25,7 +26,6 @@ export const MEASURE_MOTION = {
 /** The last part of a released measurement's time on the map, over which it dissolves. */
 export const LIVE_DISSOLVE_MS = 360;
 
-const lerp = (from: number, to: number, share: number): number => from + (to - from) * share;
 
 /**
  * Moves one measurement's presence from wherever it is to another, eased with the motion token of

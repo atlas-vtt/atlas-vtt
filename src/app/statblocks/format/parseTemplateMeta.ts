@@ -7,7 +7,8 @@ import {
 } from '../model/templateTypes';
 import { TRACK_COUNTS, TRACK_LOOKS } from './blockParts';
 import { DERIVED_FROM_KEYS, HEADER_KEYS, HEADER_TRACK_KEYS, IMPORTED_FROM_KEYS, SOURCE_KEYS } from './formatKeys';
-import { describeValue, isRecord } from './jsonValues';
+import { describeValue } from './jsonValues';
+import { isRecord } from '../../utils/guards';
 import { ObjectReader } from './objectReader';
 import { JSON_OBJECT, asJsonRecord, asKey, asNonNegativeInteger, asOneOf, asString, asText, choices } from './valueReads';
 

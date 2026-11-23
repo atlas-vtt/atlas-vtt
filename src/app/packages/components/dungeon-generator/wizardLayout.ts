@@ -1,3 +1,5 @@
+import { clamp } from '../../../utils/math';
+
 /** A box in the view's pixels. */
 export interface Box {
   left: number;
@@ -24,8 +26,6 @@ export const WIZARD_GAP = 12;
 const PREVIEW_MAX_WIDTH = 640;
 const PREVIEW_MIN_WIDTH = 220;
 const PREVIEW_ASPECT = 4 / 3;
-
-const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(value, Math.max(min, max)));
 
 /** `start` moved just far enough that something `length` long stays `WIZARD_MARGIN` inside `extent`. */
 const inside = (start: number, length: number, extent: number): number => clamp(start, WIZARD_MARGIN, extent - WIZARD_MARGIN - length);

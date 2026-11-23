@@ -35,7 +35,7 @@ export interface FlightEnds {
   closed: [Point, Point][];
 }
 
-function lerp(a: Point, b: Point, s: number): Point {
+function lerpPoint(a: Point, b: Point, s: number): Point {
   return { x: a.x + (b.x - a.x) * s, y: a.y + (b.y - a.y) * s };
 }
 
@@ -58,8 +58,8 @@ export function flightEnds(polygon: readonly Point[], flight: LevelLinkFlight, l
   const head: [Point, Point] = [c, d];
   const sides: [Point, Point][] = [[b, c], [d, a]];
   return lower
-    ? { open: foot, band: [lerp(a, d, 1 - row), lerp(b, c, 1 - row), c, d], closed: [...sides, head] }
-    : { open: head, band: [a, b, lerp(b, c, row), lerp(a, d, row)], closed: [foot, ...sides] };
+    ? { open: foot, band: [lerpPoint(a, d, 1 - row), lerpPoint(b, c, 1 - row), c, d], closed: [...sides, head] }
+    : { open: head, band: [a, b, lerpPoint(b, c, row), lerpPoint(a, d, row)], closed: [foot, ...sides] };
 }
 
 /**
@@ -67,8 +67,8 @@ export function flightEnds(polygon: readonly Point[], flight: LevelLinkFlight, l
  * from the foot's middle to the head's; at least 2, so that both ends have a row of their own.
  */
 export function flightRows(polygon: readonly Point[], foot: number, cell: number): number {
-  const footMiddle = lerp(cornerFromFoot(polygon, foot, 0), cornerFromFoot(polygon, foot, 1), 0.5);
-  const headMiddle = lerp(cornerFromFoot(polygon, foot, 2), cornerFromFoot(polygon, foot, 3), 0.5);
+  const footMiddle = lerpPoint(cornerFromFoot(polygon, foot, 0), cornerFromFoot(polygon, foot, 1), 0.5);
+  const headMiddle = lerpPoint(cornerFromFoot(polygon, foot, 2), cornerFromFoot(polygon, foot, 3), 0.5);
   const length = Math.hypot(headMiddle.x - footMiddle.x, headMiddle.y - footMiddle.y);
   const rows = cell > 0 && Number.isFinite(length) ? Math.round(length / cell) : 2;
   return Math.min(MAX_FLIGHT_ROWS, Math.max(2, rows));

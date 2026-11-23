@@ -18,7 +18,7 @@ import type {
   SpellsBlock,
 } from '../model/templateTypes';
 import { CONDITION_KEYS, SCORE_COLUMN_KEYS } from './formatKeys';
-import { isRecord } from './jsonValues';
+import { isRecord } from '../../utils/guards';
 import { ObjectReader } from './objectReader';
 import { asOneOf, asString, choices } from './valueReads';
 
