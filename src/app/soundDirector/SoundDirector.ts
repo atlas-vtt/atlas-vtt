@@ -62,6 +62,8 @@ export class SoundDirector {
   private readonly choice: OutputChoice;
   private readonly previews: SoundPreview;
   private readonly dropSettings: () => void;
+  /** The levels the settings held when last read or written: only what changed there since overrides a live level. */
+  private storedLevels: LocalLevels | null = null;
 
   constructor(private readonly deps: SoundDirectorDeps) {
     this.output = new SoundOutput({
@@ -195,7 +197,9 @@ export class SoundDirector {
     const levels = { ...this.current.levels, ...changes };
     this.output.setLevels(levels);
     this.publish({ levels });
-    if (save) this.deps.settings.setSoundSettings(levels);
+    if (!save) return;
+    this.storedLevels = levels;
+    this.deps.settings.setSoundSettings(levels);
   }
 
   /** The output this device plays on; null is the system's default. */
@@ -223,8 +227,12 @@ export class SoundDirector {
   }
 
   private sync(): void {
+    // Any setting's save calls this: a level moved live and not written yet (a dial at rest within its wait) stays.
     const { musicDb, ambienceDb, masterDb } = this.deps.settings.getSoundSettings();
-    this.setChannelLevels({ musicDb, ambienceDb, masterDb }, false);
+    const stored: LocalLevels = { musicDb, ambienceDb, masterDb };
+    const changed = levelsChangedSince(this.storedLevels, stored);
+    this.storedLevels = stored;
+    if (changed) this.setChannelLevels(changed, false);
     const wanted = this.deps.settings.isOn();
     if (wanted === this.on) return;
     if (wanted) this.turnOn();
@@ -305,4 +313,11 @@ export class SoundDirector {
     const { table } = this.table.mix;
     return table.music !== null || table.layers.length > 0;
   }
+}
+
+/** The stored levels that differ from those read before; all of them on the first read, null where none differ. */
+function levelsChangedSince(before: LocalLevels | null, now: LocalLevels): Partial<LocalLevels> | null {
+  if (!before) return now;
+  const changed = (Object.keys(now) as Array<keyof LocalLevels>).filter((key) => now[key] !== before[key]);
+  return changed.length > 0 ? Object.fromEntries(changed.map((key) => [key, now[key]])) : null;
 }
