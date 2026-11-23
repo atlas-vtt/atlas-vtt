@@ -1,7 +1,7 @@
 ## New
 
 - A welcome wizard greets you the first time you open Atlas, on the start page or a map: a carousel of what Atlas does, where to find the guides and the Discord, the Atlas Sidebar plugin, and your look
-- Atlas has looks of its own, no theme to install: Mediaeval and a new Sci-fi look, or keep your own theme. Pick one on picture cards under Appearance settings in the command palette or in the welcome wizard; each device keeps its own. The fog's edge and the dice numerals follow the look
+- Atlas has looks of its own, no theme to install: Medieval and a new Sci-fi look, or keep your own theme. Pick one on picture cards under Appearance settings in the command palette or in the welcome wizard; each device keeps its own. The fog's edge and the dice numerals follow the look
 - Appearance settings also pick the accent colour: the look's own, eight presets or any colour, in step with Obsidian's accent colour setting
 - **Atlas Online: phones as remotes.** Playing together around one screen, the GM can turn every player's phone or tablet into a remote: a big pad steps their token one cell at a time on the map everyone watches, on square and hex grids. Switch it in the player window bar's What players see menu, which now also holds online play's own switches. With the measure tool in hand the pad measures instead: a ruler, circle, cone, square or line grows from the player's token a cell with every press
 - The player window shows what online players measure, their rulers and areas with their distances, so everyone at the table sees them on the shared screen

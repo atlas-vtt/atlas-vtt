@@ -6,7 +6,7 @@ import { imageDimensions } from '../../src/app/imageProcessing/imageDimensions';
 // The build inlines the pictures into main.js: these are their budgets.
 const FOLDER = join(__dirname, '../../src/app/assets/welcome');
 const SWORD = join(__dirname, '../../src/app/assets/brand/sword.webp');
-const SLIDES = ['dice', 'maps', 'online', 'players', 'statblocks', 'welcome'];
+const SLIDES = ['dice', 'generator', 'maps', 'players', 'sound', 'tokens', 'welcome', 'yours'];
 // The guides behind the help page, in a dark and a light scheme.
 const HELP = ['help-dark', 'help-light'];
 

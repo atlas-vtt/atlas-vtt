@@ -18,7 +18,7 @@ afterAll(() => { MotionGlobalConfig.skipAnimations = false; });
 function appWith(plugins: string[]): { app: App; settings: SettingsService } {
   const storage = new Map<string, unknown>();
   const app = {
-    vault: { adapter: { exists: async () => true, write: async () => {} } },
+    vault: { adapter: { exists: async () => true, write: async () => {} }, getConfig: () => null, setConfig: () => {}, on: () => ({}), offref: () => {} },
     plugins: { plugins: {}, enabledPlugins: new Set(plugins) },
     workspace: { on: () => ({}), offref: () => {} },
     customCss: { theme: 'Minimal', themes: { Minimal: {} }, setTheme: () => {} },
@@ -34,7 +34,7 @@ function dialog(app: App, settings: SettingsService): React.JSX.Element {
 
 const next = (): void => { fireEvent.click(screen.getByRole('button', { name: 'Next' })); };
 
-it('opens on the carousel and pages through help, the sidebar and the look', () => {
+it('opens on the carousel and pages through help, the look and the sidebar, which starts playing', () => {
   const { app, settings } = appWith([]);
   render(dialog(app, settings));
   expect(screen.getByText('slides')).toBeTruthy();
@@ -45,13 +45,18 @@ it('opens on the carousel and pages through help, the sidebar and the look', () 
   expect(screen.getByRole('button', { name: 'Back' })).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull();
   next();
-  expect(screen.getByRole('heading', { name: 'Atlas Sidebar' })).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Make it yours' })).toBeTruthy();
+  expect(screen.getByText('Change it any time under Appearance settings in the command palette.')).toBeTruthy();
+  expect(screen.getByRole('radiogroup', { name: 'Look' }).querySelectorAll('[role="radio"]')).toHaveLength(3);
+  expect(screen.getByRole('radiogroup', { name: 'Accent colour' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Next' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Start playing' })).toBeNull();
   next();
-  expect(screen.getByRole('heading', { name: 'Pick a look' })).toBeTruthy();
-  expect(screen.getAllByRole('radio')).toHaveLength(3);
-  expect(screen.queryByRole('button', { name: 'Next' })).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   expect(screen.getByRole('heading', { name: 'Atlas Sidebar' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Next' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Start playing' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+  expect(screen.getByRole('heading', { name: 'Make it yours' })).toBeTruthy();
 });
 
 it('completes on Start playing, closes and hands over to the start page tour', async () => {
@@ -96,13 +101,13 @@ it('completes on Close and on Escape', () => {
 it('offers Atlas Sidebar until it is enabled', () => {
   const without = appWith([]);
   render(dialog(without.app, without.settings));
-  next(); next();
+  next(); next(); next();
   expect(screen.getByRole('button', { name: 'View in Obsidian' })).toBeTruthy();
   expect(screen.queryByText('In use')).toBeNull();
   cleanup();
   const enabled = appWith(['atlas-sidebar']);
   render(dialog(enabled.app, enabled.settings));
-  next(); next();
+  next(); next(); next();
   expect(screen.getByText('In use')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'View in Obsidian' })).toBeNull();
 });
@@ -148,4 +153,13 @@ it('leaves the focus on the start page tour once it is gone', async () => {
   await act(async () => { await new Promise((done) => setTimeout(done, 50)); });
   expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Next' }));
   before.remove();
+});
+
+it('moves as a window that holds the dialog, so a look\'s ornament can hang from it and the dialog clips inside', () => {
+  const { app, settings } = appWith([]);
+  render(dialog(app, settings));
+  const shown = screen.getByRole('dialog', { name: 'Welcome' });
+  expect(shown.className).toBe('atlas-welcome');
+  expect(shown.parentElement!.className).toBe('atlas-welcome-window');
+  expect(shown.parentElement!.parentElement!.classList.contains('atlas-welcome-overlay')).toBe(true);
 });

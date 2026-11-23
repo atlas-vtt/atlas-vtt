@@ -1,6 +1,6 @@
 import type { App } from 'obsidian';
 import type { SettingsService } from '../services/SettingsService';
-import { LOOK_DICE_FONT, LOOK_FOG_EDGE_STYLE, RETIRED_THEME_NAME, isAtlasLook, type AtlasLook } from './atlasLook';
+import { LOOK_DICE_FONT, LOOK_FOG_EDGE_STYLE, isAtlasLook, type AtlasLook } from './atlasLook';
 
 /** The GM's own Obsidian theme, or one of Atlas' looks drawn over Obsidian's default theme. */
 export type LookChoice = 'own' | AtlasLook;
@@ -91,19 +91,11 @@ export class LookService {
   }
 
   /**
-   * At start: a GM still on the retired Atlas theme gets its look in Atlas instead, once per device (while this device
-   * has never stored a look: a GM who picks the old theme again afterwards keeps it), and an Atlas look whose default
-   * theme was replaced while Atlas was off (another device's sync, the GM in Obsidian's settings) gives way to it.
+   * At start: an Atlas look whose default theme was replaced while Atlas was off (another device's sync, the GM in
+   * Obsidian's settings) gives way to the GM's own theme, which is also where a device that never chose a look starts.
    */
   reconcileAtStart(): void {
-    const neverChosen = this.load(LOOK_STORAGE_KEY, isLookChoice) === null;
-    if (neverChosen && this.theme() === RETIRED_THEME_NAME) {
-      this.save(PREVIOUS_THEME_STORAGE_KEY, JSON.stringify(DEFAULT_THEME));
-      this.app.customCss?.setTheme?.(DEFAULT_THEME);
-      this.choose('mediaeval');
-    } else if (isAtlasLook(this.choice) && this.theme() !== DEFAULT_THEME) {
-      this.choose('own');
-    }
+    if (isAtlasLook(this.choice) && this.theme() !== DEFAULT_THEME) this.choose('own');
   }
 
   /** Obsidian announces a theme switch as `css-change`: a theme picked while an Atlas look is on is the GM's own look. */

@@ -22,14 +22,11 @@ function useOwnThemeName(looks: LookService): string {
   return useSyncExternalStore(subscribe, () => looks.ownThemeName());
 }
 
-interface LookCardsProps {
-  looks: LookService;
-  /** `page` where the cards are the step's subject (the welcome wizard), `compact` under a setting's heading. */
-  size: 'page' | 'compact';
-}
-
-/** The three looks as picture cards, one chosen: a radio group, so the arrow keys move the choice. */
-export function LookCards({ looks, size }: LookCardsProps): React.JSX.Element {
+/**
+ * The three looks as picture cards, one chosen: a radio group of the pictures, so the arrow keys move the choice.
+ * Each card's name and note stand below its picture as plain text, which names and describes the picture's radio.
+ */
+export function LookCards({ looks }: { looks: LookService }): React.JSX.Element {
   const look = useLookChoice(looks);
   const ownTheme = useOwnThemeName(looks);
   const cards = useRef(new Map<LookChoice, HTMLButtonElement>());
@@ -45,7 +42,7 @@ export function LookCards({ looks, size }: LookCardsProps): React.JSX.Element {
   };
 
   return (
-    <div className={`atlas-look-cards atlas-look-cards--${size}`} role="radiogroup" aria-label={t('appearance.look')} onKeyDown={onKeyDown}>
+    <div className="atlas-look-cards" role="radiogroup" aria-label={t('appearance.look')} onKeyDown={onKeyDown}>
       {LOOKS.map((choice) => (
         <LookCard
           key={choice}
@@ -71,23 +68,25 @@ interface LookCardProps {
 function LookCard({ choice, chosen, note, onPick, cardRef }: LookCardProps): React.JSX.Element {
   const id = useId();
   return (
-    <button
-      ref={cardRef}
-      type="button"
-      role="radio"
-      aria-checked={chosen}
-      aria-labelledby={`${id}-name`}
-      aria-describedby={`${id}-note`}
-      tabIndex={chosen ? 0 : -1}
-      className="atlas-look-card"
-      onClick={onPick}
-    >
-      <img className="atlas-look-card__picture" src={LOOK_PICTURES[choice]} alt="" draggable={false} />
-      <span className="atlas-look-card__text">
+    <div className="atlas-look-card">
+      <button
+        ref={cardRef}
+        type="button"
+        role="radio"
+        aria-checked={chosen}
+        aria-labelledby={`${id}-name`}
+        aria-describedby={`${id}-note`}
+        tabIndex={chosen ? 0 : -1}
+        className="atlas-look-card__choice"
+        onClick={onPick}
+      >
+        <img className="atlas-look-card__picture" src={LOOK_PICTURES[choice]} alt="" draggable={false} />
+      </button>
+      <div className="atlas-look-card__text">
         <span id={`${id}-name`} className="atlas-look-card__name">{t(`appearance.${choice}`)}</span>
         <span id={`${id}-note`} className="atlas-look-card__note">{note}</span>
-      </span>
-    </button>
+      </div>
+    </div>
   );
 }
 

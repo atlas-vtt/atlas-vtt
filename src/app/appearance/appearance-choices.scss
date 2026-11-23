@@ -1,0 +1,8 @@
+@use '../../../styles/tokens' as *;
+@use '../../../styles/mixins' as *;
+
+// The look and the accent colour (AppearanceChoices.tsx), one under the other.
+.atlas-appearance-choices {
+  @include atlas-flex-col($spacing-l);
+  min-width: 0;
+}

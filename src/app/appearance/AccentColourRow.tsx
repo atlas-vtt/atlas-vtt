@@ -40,7 +40,7 @@ function useAccentState(app: App): AccentState {
   return { accent, theme };
 }
 
-/** The Appearance page's accent colour: the look's own, a preset or a colour of the GM's, one setting with Obsidian's. */
+/** The accent colour of the appearance choices: the look's own, a preset or a colour of the GM's, one setting with Obsidian's. */
 export function AccentColourRow({ app }: { app: App }): React.JSX.Element {
   const { accent, theme } = useAccentState(app);
   const chosen = accent === '' ? OWN : presetOfAccent(accent)?.id ?? CUSTOM;
@@ -75,6 +75,8 @@ export function AccentColourRow({ app }: { app: App }): React.JSX.Element {
     const next = choiceAfterKey(event.key, focused >= 0 ? focused : CHOICES.indexOf(chosen));
     if (!next) return;
     event.preventDefault();
+    // The welcome wizard pages with the same arrows; inside the swatches they move the choice.
+    event.stopPropagation();
     // Moving onto Custom only offers it: Enter or Space opens the picker.
     pick(next);
     swatches.current.get(next)?.focus();

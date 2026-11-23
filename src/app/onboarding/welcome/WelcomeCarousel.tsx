@@ -101,7 +101,12 @@ function Slide({ slide, state }: { slide: WelcomeSlide; state: SlideState }): Re
       <img key={`picture-${showing}`} className="atlas-welcome-slide__picture" src={slide.picture} alt="" draggable={false} />
       {slide.id === 'welcome' && <img key={`sword-${showing}`} className="atlas-welcome-slide__sword" src={swordPicture} alt="" draggable={false} />}
       <div key={`copy-${showing}`} className="atlas-welcome-slide__copy">
-        <WelcomeText kicker={t(slide.kicker)} title={t(slide.title)} body={t(slide.body)} />
+        <WelcomeText
+          kicker={t(slide.kicker)}
+          title={t(slide.title)}
+          body={t(slide.body)}
+          {...(slide.aside && { aside: { line: t(slide.aside.line), tag: t(slide.aside.tag) } })}
+        />
       </div>
     </div>
   );
