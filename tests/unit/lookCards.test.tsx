@@ -59,7 +59,7 @@ it('picks a look only on its picture: its name and note are plain text', () => {
   const set = vi.spyOn(looks, 'set');
   render(<LookCards looks={looks} />);
   act(() => { fireEvent.click(screen.getByText('Sci-fi')); });
-  act(() => { fireEvent.click(screen.getByText('Chalk and contours')); });
+  act(() => { fireEvent.click(screen.getByText('May the dice be with you')); });
   expect(set).not.toHaveBeenCalled();
   expect(card('Sci-fi').getAttribute('aria-checked')).toBe('false');
   expect(card('Sci-fi').contains(screen.getByText('Sci-fi'))).toBe(false);
@@ -72,7 +72,7 @@ it('names each picture by its look and describes it by its note', () => {
   render(<LookCards looks={looksOn('')} />);
   const picture = card('Medieval');
   expect(document.getElementById(picture.getAttribute('aria-labelledby') ?? '')?.textContent).toBe('Medieval');
-  expect(document.getElementById(picture.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Ink and ivy');
+  expect(document.getElementById(picture.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Like a classic fantasy rulebook');
   expect(screen.getByRole('radio', { name: 'Your theme', description: 'Obsidian’s default' })).toBeTruthy();
 });
 
@@ -98,8 +98,8 @@ it('names the GM\'s own theme on its card', () => {
   looks.set('scifi');
   render(<LookCards looks={looks} />);
   expect(screen.getByText('Minimal')).toBeTruthy();
-  expect(screen.getByText('Ink and ivy')).toBeTruthy();
-  expect(screen.getByText('Chalk and contours')).toBeTruthy();
+  expect(screen.getByText('Like a classic fantasy rulebook')).toBeTruthy();
+  expect(screen.getByText('May the dice be with you')).toBeTruthy();
 });
 
 it('names Obsidian\'s default theme where the GM has no theme of their own', () => {
