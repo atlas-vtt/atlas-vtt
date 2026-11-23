@@ -3,7 +3,7 @@ import type { App } from 'obsidian';
 import { Check } from 'lucide-react';
 import { Tutorial, type TutorialStep } from './Tutorial';
 import { Button } from '../packages/components/primitives/button';
-import { SettingsService } from '../services/SettingsService';
+import type { SettingsService } from '../services/SettingsService';
 import { useHotkeyLabels } from '../keyboard/useMapHotkeys';
 import { ATLAS_DISCORD_URL, ATLAS_DOCS_URL } from '../support/communityLinks';
 import { COMPANION_URLS, companionInUse, type CompanionId } from './companions';
@@ -11,15 +11,24 @@ import { t } from '../i18n';
 
 interface WelcomeWizardProps {
   app: App;
+  settings: SettingsService;
   root: HTMLElement | null;
 }
 
+/**
+ * A new GM is welcomed wherever Atlas first shows, the start page or a map. GMs who took the start page's or the
+ * map's tour before the wizard existed are not welcomed again.
+ */
+export function shouldWelcome(settings: SettingsService): boolean {
+  return settings.shouldShowTutorial('welcome') && settings.shouldShowTutorial('dashboard') && settings.shouldShowTutorial('map');
+}
+
 /** The first thing a new GM sees: what Atlas is, where help is, and the add-ons made to go with it. The tours follow. */
-export function WelcomeWizard({ app, root }: WelcomeWizardProps): React.JSX.Element {
+export function WelcomeWizard({ app, settings, root }: WelcomeWizardProps): React.JSX.Element {
   const key = useHotkeyLabels();
   return (
     <Tutorial
-      settings={SettingsService.forApp(app)}
+      settings={settings}
       id="welcome"
       root={root}
       label={t('tour.welcome.label')}

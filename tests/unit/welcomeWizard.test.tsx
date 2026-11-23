@@ -5,6 +5,11 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { DashboardTour } from '../../src/app/onboarding/DashboardTour';
+import { MapTours } from '../../src/app/onboarding/MapTours';
+import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
+import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
+import { createViewAtlasStore } from '../../src/app/storeFactory';
+import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 vi.mock('../../src/app/onboarding/useWatched', () => ({ isOnScreen: () => true, useWatched: () => true }));
 afterEach(cleanup);
@@ -39,4 +44,20 @@ it('does not welcome a GM who took the start page tour before the wizard existed
   settings.completeTutorial('dashboard');
   render(tour(app));
   expect(screen.queryByText('Welcome to Atlas')).toBeNull();
+});
+
+it('welcomes a GM whose first sight of Atlas is a map, and the map tour follows', () => {
+  const { app, settings } = appWith([]);
+  const store = createViewAtlasStore(createInMemoryApp().app, 'welcome-view');
+  store.getState().setPersistenceEnabled(false);
+  store.setState({ isMapLoading: false, mapLoaded: true });
+  render(
+    <AtlasUIContext.Provider value={{ app, view: null, pixiApp: null, renderer: null }}>
+      <ViewStoreProvider store={store}><MapTours root={document.body} settings={settings} /></ViewStoreProvider>
+    </AtlasUIContext.Provider>,
+  );
+  expect(screen.getByText('Welcome to Atlas')).toBeTruthy();
+  act(() => { fireEvent.click(screen.getByRole('button', { name: 'Skip' })); });
+  expect(screen.getByText('Your first scene')).toBeTruthy();
+  expect(settings.shouldShowTutorial('dashboard')).toBe(true);
 });

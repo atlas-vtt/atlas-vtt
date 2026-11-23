@@ -5,7 +5,7 @@ import { SettingsService } from '../services/SettingsService';
 import { isOnScreen, useWatched } from './useWatched';
 import { t } from '../i18n';
 import { useAtlasSettings } from '../keyboard/useMapHotkeys';
-import { WelcomeWizard } from './WelcomeWizard';
+import { WelcomeWizard, shouldWelcome } from './WelcomeWizard';
 
 interface DashboardTourProps {
   app: App;
@@ -16,16 +16,13 @@ interface DashboardTourProps {
   onCreateScene: () => void;
 }
 
-/**
- * Atlas' welcome: the first time the start page shows, the welcome wizard, then where things begin. GMs who took the
- * start page's tour before the wizard existed are not welcomed again.
- */
+/** Atlas' welcome: the first time the start page shows, the welcome wizard, then where things begin. */
 export function DashboardTour({ app, root, hasScene, onCreateScene }: DashboardTourProps): React.JSX.Element | null {
   // Subscribed, so the start page's tour follows as soon as the wizard is done.
   const settings = useAtlasSettings(SettingsService.forApp(app));
   const shown = useWatched(root, isOnScreen);
   if (!shown || !settings) return null;
-  if (settings.shouldShowTutorial('welcome') && settings.shouldShowTutorial('dashboard')) return <WelcomeWizard app={app} root={root} />;
+  if (shouldWelcome(settings)) return <WelcomeWizard app={app} settings={settings} root={root} />;
   return (
     <Tutorial
       settings={settings}
