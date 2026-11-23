@@ -13,6 +13,7 @@
 
 ## Fixed
 
+- Fog of War no longer takes a player's token away from them: a party token under the fog stays theirs to see and move, also in Atlas Online, and everyone at the table sees a ring above the fog where it stands
 - Atlas Online: when players cannot change their character sheet because its template is missing or marked as made with a newer Atlas, the GM is now told which sheet and why
 - The Master slider in Atlas' Sound settings now follows the Sound page's Master fader and the Stream Deck at once
 - A Master volume change from a Stream Deck is no longer undone when another setting is changed right after it
