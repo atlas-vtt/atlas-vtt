@@ -172,6 +172,8 @@ export const online = {
   'online.unmark': 'Unmark',
   'online.update': 'Update',
   'online.updateAfter': 'Update Atlas after this session',
+  'online.sheet.templateMissing': 'Players cannot change the sheet {note}: its template is missing. Choose a template for the note.',
+  'online.sheet.templateNewer': 'Players cannot change the sheet {note}: its template says it was made with a newer Atlas, so Atlas only reads it.',
   'online.worldMap.missing': 'Atlas Online cannot send the world map: its image file is missing.',
   'online.worldMap.tooLarge': 'Atlas Online cannot send the world map: its image is larger than 95 MB.',
   'online.worldMap.unreadable': 'Atlas Online cannot send the world map: its image is not a PNG, JPEG, WebP, GIF or AVIF that players can open.',
