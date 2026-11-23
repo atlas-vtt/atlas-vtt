@@ -75,4 +75,39 @@ describe('the players\' list gliding to the combatant whose conditions the GM na
     stage.glide(before);
     expect(list(same).scrollTop).toBe(120);
   });
+
+  it('carries a glide under way on through a drawing for anything else, to where the new drawing stands', () => {
+    const stage = new PlayerInitiativeStage();
+    const container = document.body.createDiv();
+    const draw = (shown: string | undefined, top: number): HTMLElement => {
+      stage.begin(container, true, true, () => false);
+      container.empty();
+      const panel = container.createDiv({ cls: 'atlas-initiative-panel' });
+      panel.dataset.edge = 'right';
+      if (shown !== undefined) panel.dataset.conditionsShown = shown;
+      scrollingList(panel, top);
+      stage.add(panel);
+      return panel;
+    };
+    const list = (panel: HTMLElement): HTMLElement => panel.querySelector<HTMLElement>('.atlas-initiative-panel__list')!;
+    draw('goblin', 400);
+    // The GM moved off: the list glides back to the turn
+    let before = stage.measure();
+    const back = draw(undefined, 0);
+    stage.glide(before);
+    now += 16;
+    frames.shift()!(now);
+    now += 16;
+    frames.shift()!(now);
+    const midway = list(back).scrollTop;
+    expect(midway).toBeGreaterThan(0);
+    expect(midway).toBeLessThan(400);
+    // Drawn again with nothing new to show (the pointer passing a card without conditions): no jump, it glides on
+    before = stage.measure();
+    const again = draw(undefined, 0);
+    stage.glide(before);
+    expect(list(again).scrollTop).toBe(midway);
+    flush();
+    expect(list(again).scrollTop).toBe(0);
+  });
 });

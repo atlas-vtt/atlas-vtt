@@ -28,7 +28,8 @@ export function CardConditionsTooltip({ entryId, conditions, side, suppressed, c
   const shown = useAtlasStore((state) => state.conditionsShownEntry === entryId);
   const inProvider = useInTooltipProvider();
   const onOpenChange = (open: boolean): void => {
-    if (open) store.getState().showCombatantConditions(entryId);
+    // A combatant without conditions shows nothing, so nothing is said to the players' list either
+    if (open && conditions.length > 0) store.getState().showCombatantConditions(entryId);
     else store.getState().hideCombatantConditions(entryId);
   };
   const tooltip = (
