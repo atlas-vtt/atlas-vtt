@@ -1,4 +1,5 @@
 import type { SensedMark } from '../protocol/index.ts';
+import { fogSparesToken } from '../../characters/partyTokens';
 import { FogCoverageCache } from '../../fog/FogCoverageCache';
 import type { FogCoverage } from '../../fog/fogCoverage';
 import { levelObjects } from '../../levels/levelObjects';
@@ -114,7 +115,8 @@ export class FloorSight {
     if (!fogged && !roofed) return lit;
     return (id) => {
       const token = tokens[id];
-      if (token === undefined || (fogged && (coverage === null || coverage.covers(token)))) return 'unseen';
+      // Fog never takes a token of the party's from the players (`fogSparesToken`)
+      if (token === undefined || (fogged && !fogSparesToken(token) && (coverage === null || coverage.covers(token)))) return 'unseen';
       if (roofed && !options.policy.alwaysSeen(token)) return 'unseen';
       return lit?.(id) ?? 'seen';
     };

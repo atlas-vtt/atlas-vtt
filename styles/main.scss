@@ -179,6 +179,7 @@ body.theme-light {
   @import '../src/app/react/components/documentation/docs-panel.scss';
   @import '../src/app/pixi/lighting/light-panel.scss';
   @import '../src/app/pixi/lighting/light-popover.scss';
+  @import '../src/app/online/gm/doors/door-ask-popover.scss';
   @import '../src/app/react/components/loot/loot-source-tree.scss';
   @import '../src/app/react/components/loot/loot-roll-bar.scss';
   @import '../src/app/react/components/loot/loot-lists.scss';
@@ -311,11 +312,16 @@ body.theme-light {
       }
     }
 
+    // The player window bar and online play's table log tab stand side by side, the tab last,
+    // so what hangs below the scene tabs is one row
     .atlas-top-bar-start__below {
       display: flex;
-      flex-direction: column;
       align-items: flex-start;
       gap: $spacing-s;
+
+      > .atlas-online-log-tab-host {
+        order: 1;
+      }
     }
 
     .atlas-scene-tab-bar + .atlas-top-bar-start__below {

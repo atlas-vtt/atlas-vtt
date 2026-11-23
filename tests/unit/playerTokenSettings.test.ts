@@ -11,6 +11,8 @@ vi.mock('../../src/app/pixi/TokenUIRenderer', async () => {
     container = new Container();
     update = vi.fn();
     setPlayersView = vi.fn();
+    showsConditionCard = vi.fn(() => false);
+    showConditionCard = vi.fn();
     destroy = vi.fn();
     getContainer() { return this.container; }
   } };
@@ -38,5 +40,26 @@ it('renders separate player token overlays using the player settings and restore
   expect(playerLayer.children).toHaveLength(1);
   manager.destroyTokenUI('hero');
   expect(playerLayer.children).toHaveLength(0);
+  manager.destroyAll();
+});
+
+it('shows players the conditions card the GM\'s hover shows on a token', () => {
+  const viewport = new Container();
+  const token = { id: 'hero', kind: 'character', name: 'Hero', conditions: ['prone'] };
+  const store = createStore(() => ({ grid: { size: 70 }, objects: { tokens: { hero: token } } }));
+  const manager = new UIManager(viewport as any, store as any, 'test', true);
+  const sprite = new Container();
+  manager.setTokenSpriteProvider(() => sprite);
+  manager.createTokenUI('hero', sprite, token as any);
+  const gm = manager.getTokenUIs().hero as unknown as { showsConditionCard: ReturnType<typeof vi.fn> };
+  gm.showsConditionCard.mockReturnValue(true);
+  const layers = manager.getPlayerViewLayers({ showTokenNameplates: true });
+  const player = (layers.find(entry => entry.visible)!.layer as Container).children[0]!;
+  const playerUI = Object.values((manager as unknown as { playerTokenUIs: Record<string, { getContainer(): Container; showConditionCard: ReturnType<typeof vi.fn> }> }).playerTokenUIs)[0]!;
+  expect(playerUI.getContainer()).toBe(player);
+  expect(playerUI.showConditionCard).toHaveBeenLastCalledWith(true);
+  gm.showsConditionCard.mockReturnValue(false);
+  manager.getPlayerViewLayers({ showTokenNameplates: true });
+  expect(playerUI.showConditionCard).toHaveBeenLastCalledWith(false);
   manager.destroyAll();
 });

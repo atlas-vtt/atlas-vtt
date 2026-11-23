@@ -1,11 +1,11 @@
-import type { PlayerDrag, PlayerDragCancel, PlayerMove } from '../protocol/index.ts';
+import type { MoveRefusedReason, PlayerDrag, PlayerDragCancel, PlayerMove } from '../protocol/index.ts';
 import { holdTokens } from '../../lighting/sightOnDrop';
 import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
 import { placeTokens } from '../../stores/tokenStacking';
 import { countTurnMoveIn } from '../../stores/turnMovesSlice';
 import type { HeldTokens } from '../../types/viewUIState';
 import type { Point } from '../movement/index.ts';
-import { checkMove, dropPlace, landing, MoveRate, type MoveContext } from './moveCheck.ts';
+import { checkMove, dropPlace, landing, MoveRate, refusalReason, type MoveContext } from './moveCheck.ts';
 import type { MoveState, MoveStore } from './playerMoves.ts';
 import { mapTokens, sceneTokens } from '../../tokens/offMap';
 
@@ -117,10 +117,10 @@ export class PlayerDrags {
   /**
    * The player's drop of a token: where it ended their drag (where the GM's own drop would put it
    * coming from the drop's place, or from before the first wall on the way there: `dropPlace`), false
-   * when it was refused (the token went back, or the GM had taken the drag over), `turn` when it was
-   * refused for the token's turn, and null when no drag of theirs was under way.
+   * when it was refused (the token went back, or the GM had taken the drag over), `turn` or `paused`
+   * when it was refused for the token's turn or the GM's pause, and null when no drag of theirs was under way.
    */
-  drop(from: string, move: PlayerMove): Point | false | 'turn' | null {
+  drop(from: string, move: PlayerMove): Point | false | MoveRefusedReason | null {
     const state = this.store.getState();
     const live = this.find(from, move.id);
     const context = this.context(state, live);
@@ -130,7 +130,7 @@ export class PlayerDrags {
     const verdict = checkMove(from, move, context);
     if (!verdict.ok || this.gmHolds(state)) {
       this.end([live], 'back');
-      return !verdict.ok && verdict.reason === 'turn' ? 'turn' : false;
+      return refusalReason(verdict) ?? false;
     }
     const token = mapTokens(state.objects)[live.tokenId];
     const at = token === undefined ? { x: verdict.x, y: verdict.y } : dropPlace(context, state, token, verdict);

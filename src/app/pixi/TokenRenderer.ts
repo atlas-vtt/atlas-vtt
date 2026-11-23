@@ -38,6 +38,7 @@ import { DEFAULT_DRAG_DISTANCE, showsDragDistance } from '../measure/dragDistanc
 import { SyncService } from './token-renderer/SyncService';
 import { tokenSyncState } from './token-renderer/tokenSyncState';
 import { TokenGlide, placedAtOnce, type HeldPlayout, type TokenHolder } from './token-renderer/TokenGlide';
+import { TokenBump } from './token-renderer/TokenBump';
 import type { ShownPlaces } from '../lighting/shownPlaces';
 import type { Point } from '../types/visionTypes';
 import type { ArtFloors } from '../levels/levelSurfaces';
@@ -118,6 +119,8 @@ export class TokenRenderer {
     () => this.pixiApp?.ticker ?? null,
   );
   private readonly glide: TokenGlide;
+  /** Tokens players walked into a wall with: their drawings lean and spring back. */
+  private readonly bumps: TokenBump;
   private readonly exit = new TokenExit({
     getTicker: () => this.pixiApp?.ticker ?? null,
     reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? document.body),
@@ -227,6 +230,12 @@ export class TokenRenderer {
       clearWay: (from, to) => this.glideWay?.(from, to) ?? true,
       heldPlayout: () => this.heldPlayout,
       heldBy: (tokenId) => this.heldBy(tokenId),
+    });
+    this.bumps = new TokenBump({
+      getTicker: () => this.pixiApp?.ticker ?? null,
+      getSprite: (tokenId) => this.tokenSprites[tokenId] ?? null,
+      cell: () => this.store.getState().grid?.size ?? 70,
+      reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? document.body),
     });
     this.obsApp = obsApp;
     this.viewport = viewport;
@@ -340,6 +349,7 @@ export class TokenRenderer {
     );
     this.syncService.setAnimationStartCallback((tokenId: string) => {
       this.glide.cancel(tokenId);
+      this.bumps.cancel(tokenId);
       // Could add visual feedback for animation start
     });
     this.syncService.setAnimationEndCallback((tokenId: string) => {
@@ -697,6 +707,11 @@ export class TokenRenderer {
   }
 
   /** Whether the canvas shows the token: it is on the map and neither the players' perspective nor their sight leaves it out. */
+  /** A player's token met a wall or a closed door on a step towards `(dx, dy)`: it bumps there, on this canvas and so in the player window. */
+  public bumpToken(tokenId: string, dx: number, dy: number): void {
+    this.bumps.bump(tokenId, dx, dy);
+  }
+
   public showsToken(tokenId: string): boolean {
     const token = mapTokens(levelObjects(this.store.getState()))[tokenId];
     return token !== undefined && !this.hidesToken(token);
@@ -1280,6 +1295,7 @@ export class TokenRenderer {
     for (const id of ids) {
       const tokenGroup = this.tokenSprites[id];
       this.glide.cancel(id);
+      this.bumps.cancel(id);
       this.deselect(id);
       if (tokenGroup) {
         this.interactionController.removeInteractionHandlers(id, tokenGroup);
@@ -1361,6 +1377,7 @@ export class TokenRenderer {
     this.interactionController.destroyAll();
     this.dragRuler.destroy();
     this.glide.destroy();
+    this.bumps.destroy();
     this.playerSight.destroy();
     this.turnMarkers.destroy();
     

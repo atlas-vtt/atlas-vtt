@@ -184,4 +184,9 @@ export const online = {
   'online.mapUnreadable': 'This scene\'s map image cannot be sent to players.',
   'online.fogTooMuch': 'This map has too much fog for online players. They see it covered until you clear some.',
   'online.assetsFailed': 'A file could not be shared with players.',
+  'online.doorAsk': '{player} asks to open a door.',
+  'online.doorAskShow': 'Show',
+  'online.doorAskHeading': '{player} asks to open this door',
+  'online.doorAskAllow': 'Open it',
+  'online.doorAskDeny': 'Keep it shut',
 } as const satisfies Record<string, Message>;

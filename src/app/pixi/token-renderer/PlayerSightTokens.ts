@@ -1,3 +1,4 @@
+import { fogSparesToken } from '../../characters/partyTokens';
 import type { FogCoverage } from '../../fog/fogCoverage';
 import type { TokenEntity } from '../../types';
 import type { TokenSeen } from '../../vision/measureOrigin';
@@ -96,8 +97,11 @@ export class PlayerSightTokens {
     return !!this.roof && !!point && this.roof({ x: point.x, y: point.y });
   }
 
+  /** Whether committed fog takes the token from the players: never one of the party's (`fogSparesToken`). */
   private covered(tokenId: string, coverage: FogCoverage | null): boolean {
-    const point = this.host.sprites()[tokenId] ?? this.host.tokens()[tokenId];
+    const token = this.host.tokens()[tokenId];
+    if (token && fogSparesToken(token)) return false;
+    const point = this.host.sprites()[tokenId] ?? token;
     if (!coverage || !point) return true;
     const known = this.membership.get(point);
     if (known?.coverage === coverage && known.x === point.x && known.y === point.y) return known.covered;

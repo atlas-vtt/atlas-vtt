@@ -183,4 +183,9 @@ export const online: Translation = {
   'online.mapUnreadable': 'L\'image de carte de cette scène ne peut pas être envoyée aux joueurs.',
   'online.fogTooMuch': 'Cette carte a trop de brouillard pour les joueurs en ligne. Ils la voient couverte tant que vous n\'en effacez pas une partie.',
   'online.assetsFailed': 'Un fichier n\'a pas pu être partagé avec les joueurs.',
+  'online.doorAsk': '{player} demande à ouvrir une porte.',
+  'online.doorAskShow': 'Voir',
+  'online.doorAskHeading': '{player} demande à ouvrir cette porte',
+  'online.doorAskAllow': 'L\'ouvrir',
+  'online.doorAskDeny': 'La laisser fermée',
 };

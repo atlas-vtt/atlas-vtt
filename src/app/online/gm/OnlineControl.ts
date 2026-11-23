@@ -21,6 +21,8 @@ import type { TableStatus } from './TableConnection.ts';
 import type { LostTable } from './tableEnd.ts';
 import { t } from '../../i18n';
 import type { TableAssets } from './assets/tableAssets.ts';
+import { playerWindowStore } from '../../stores/playerWindowStore';
+import { tableControlsStore } from '../../stores/tableControlsStore';
 
 /**
  * The GM's side of online play, free of any panel: start and stop a table of a campaign, which this
@@ -390,6 +392,11 @@ export class OnlineControl {
    * Atlas has a presented scene of its own, which is told again at the next change.
    */
   private syncShown(): void {
+    const online = this.current !== null;
+    // The player window bar shows while a table runs; a pause of online players ends with their table
+    if (tableControlsStore.getState().online !== online) {
+      tableControlsStore.setState(online ? { online } : { online, paused: playerWindowStore.getState().isFrozen });
+    }
     const source = this.current === null ? null : presentedSceneSource(this.app);
     if (this.shown !== null && this.shown.source !== source) {
       this.shown.stop();

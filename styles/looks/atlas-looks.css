@@ -761,6 +761,10 @@ body.atlas-look.atlas-look-scifi :is(.atlas-statblock-preview-window, .statblock
     );
   background-size: 240px 240px, 100% 100%, 640px 640px, 100% 100%;
   background-repeat: repeat, no-repeat, repeat, no-repeat;
+
+  /* the ground reaches under the border, or the corners cover the edge
+     the straight sides show and it reads as cut off there */
+  background-origin: border-box;
   backdrop-filter: blur(16px) saturate(1.2);
 }
 

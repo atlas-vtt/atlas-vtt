@@ -284,6 +284,37 @@ $list-shade: scaled(44px);
   }
 }
 
+// A combatant's conditions on its card, as its token shows them (`CardConditions`, `renderConditions`), each ringed
+// in the panel's surface so the badges read apart where they overlap; the tile and the compact line place them
+.atlas-initiative-card__conditions {
+  display: flex;
+  align-items: center;
+}
+
+.atlas-initiative-card__condition {
+  display: flex;
+  border-radius: $radius-full;
+  box-shadow: 0 0 0 scaled(1.5px) var(--background-primary);
+}
+
+// The count of the conditions the card leaves out, named for assistive tech and by the GM's tooltip
+.atlas-initiative-card__condition-more {
+  display: grid;
+  place-items: center;
+  min-width: scaled(18px);
+  height: scaled(18px);
+  padding-inline: scaled(3px);
+  box-sizing: border-box;
+  border-radius: $radius-full;
+  background: var(--background-secondary);
+  box-shadow: 0 0 0 scaled(1.5px) var(--background-primary), inset 0 0 0 1px var(--background-modifier-border);
+  color: var(--text-normal);
+  font-size: scaled(10px);
+  font-weight: $font-weight-semibold;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
 // The turn began: who holds it lights up once (`initiative-turn-flash`)
 .atlas-initiative-card--turn-flash {
   @include initiative-turn-flash('.atlas-initiative-card__art', $border-width-s);
@@ -476,6 +507,32 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
   .atlas-initiative-card__off-map-badge {
     position: static;
     border-radius: $tile-corner-radius;
+  }
+
+  // Its conditions where no token on the map shows them (`cardShowsConditions`, `--conditions`), fanned down its left edge: the stack
+  // stays in the card's middle, so one badge sits halfway down and more grow it up and down alike, each over the one
+  // before
+  .atlas-initiative-card__conditions {
+    position: absolute;
+    top: 50%;
+    left: $surface-inset;
+    z-index: 3;
+    flex-direction: column;
+    transform: translateY(-50%);
+
+    > * + * {
+      margin-block-start: scaled(-8px);
+    }
+  }
+
+  // Its left edge then holds the conditions and its top right the number, so its marks move into the free bottom right
+  // corner, in a row from it
+  &.atlas-initiative-card--conditions .atlas-initiative-card__marks {
+    top: auto;
+    left: auto;
+    right: $surface-inset;
+    bottom: $surface-inset;
+    flex-direction: row-reverse;
   }
 
   // Hidden from the players: translucent, like its token on the map

@@ -184,4 +184,9 @@ export const online: Translation = {
   'online.clearDrawings': 'Стереть рисунки',
   'online.seats.nameTaken': 'Игрок с именем {name} в этой кампании уже есть.',
   'online.fogTooMuch': 'На этой карте слишком много тумана для онлайн-игроков. Они видят её закрытой, пока вы не уберёте часть тумана.',
+  'online.doorAsk': '{player} просит открыть дверь.',
+  'online.doorAskShow': 'Показать',
+  'online.doorAskHeading': '{player} просит открыть эту дверь',
+  'online.doorAskAllow': 'Открыть',
+  'online.doorAskDeny': 'Оставить закрытой',
 };
