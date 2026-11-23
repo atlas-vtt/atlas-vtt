@@ -23,9 +23,6 @@ export const SCIFI_LOOK_CLASS = 'atlas-look-scifi';
 /** On `body` while an Atlas look is on and the GM picked an accent colour, which the look then takes instead of its own. */
 export const CUSTOM_ACCENT_CLASS = 'atlas-accent-custom';
 
-/** The companion theme's name in its manifest, which drew the looks before Atlas did. */
-export const RETIRED_THEME_NAME = 'Atlas VTT';
-
 export function isAtlasLook(value: unknown): value is AtlasLook {
   return value === 'mediaeval' || value === 'scifi';
 }

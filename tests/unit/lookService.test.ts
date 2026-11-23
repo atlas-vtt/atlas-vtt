@@ -101,29 +101,13 @@ it('remembers the default theme as the GM\'s own, though Obsidian drops an empty
   expect(service.previousThemeName()).toBe('');
 });
 
-it('takes a GM on the retired theme to Mediaeval once', () => {
+it('keeps a GM on the retired Atlas VTT theme on their own theme', () => {
   const s = stub('Atlas VTT');
   const service = looks(s);
   service.reconcileAtStart();
-  expect(service.get()).toBe('mediaeval');
-  expect(service.previousThemeName()).toBe('');
-  expect(s.setTheme).toHaveBeenCalledWith('');
-});
-
-it('moves a GM on the retired theme once, and leaves the theme picked again afterwards', () => {
-  const storage = new Map<string, unknown>();
-  const first = stub('Atlas VTT', storage);
-  looks(first).reconcileAtStart();
-  expect(looks(first).get()).toBe('mediaeval');
-  first.css.theme = 'Atlas VTT';
-  looks(first).followThemeChange();
-  expect(looks(first).get()).toBe('own');
-  const second = stub('Atlas VTT', storage);
-  const service = looks(second);
-  service.reconcileAtStart();
   expect(service.get()).toBe('own');
-  expect(second.setTheme).not.toHaveBeenCalled();
-  expect(second.css.theme).toBe('Atlas VTT');
+  expect(s.setTheme).not.toHaveBeenCalled();
+  expect(s.css.theme).toBe('Atlas VTT');
 });
 
 it('takes the GM\'s own look when another theme was picked while Atlas was off', () => {
