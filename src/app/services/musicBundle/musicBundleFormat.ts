@@ -64,7 +64,7 @@ const BREAK_OR_CONTROL = /[\p{Cc}\u2028\u2029]/u;
  * Format characters, which change how text reads without being seen (U+202E turns it around); the joiners (U+200C,
  * U+200D) and emoji tag characters stay, as emoji and some scripts are written with them.
  */
-const HIDDEN_FORMAT = /(?![\u200c\u200d\u{e0020}-\u{e007f}])\p{Cf}/gu;
+const HIDDEN_FORMAT = /(?!\u200c|\u200d|[\u{e0020}-\u{e007f}])\p{Cf}/gu;
 const utf8 = new TextEncoder();
 
 /** A name, an artist or a title as Atlas shows it and names files by: its hidden format characters taken out. */
