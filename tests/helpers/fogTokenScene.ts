@@ -1,7 +1,7 @@
 import '../setup/obsidianDom';
 import { Application, Container, RenderTexture, Sprite, Texture, Ticker } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { afterEach, expect, vi } from 'vitest';
 
 vi.mock('events', async () => import('eventemitter3'));

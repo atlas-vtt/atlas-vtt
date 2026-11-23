@@ -9,6 +9,7 @@
  */
 
 import { type App } from 'obsidian';
+import { visibleViewport } from '../../../host/visibleViewport';
 import { showNotice } from '../../../ui/notice';
 import { experimentalFeatureOn } from '../../../experimental/experimentalFeatures';
 import { AssetService } from '../../../services/AssetService';
@@ -114,7 +115,8 @@ export async function createStatblock(app: App, creation: StatblockCreation): Pr
 
 /** Where the popover of a command stands: the top middle of the window, where Obsidian's prompts open. */
 function promptPoint(win: Window): { x: number; y: number } {
-  return { x: Math.round(win.innerWidth / 2), y: Math.round(win.innerHeight * 0.15) };
+  const seen = visibleViewport(win);
+  return { x: Math.round(seen.right / 2), y: Math.round(seen.bottom * 0.15) };
 }
 
 /** The template the active leaf's template editor shows, if it shows one: "New statblock…" offers it first. */

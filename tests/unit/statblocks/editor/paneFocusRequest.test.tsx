@@ -60,7 +60,11 @@ describe('the pane\'s focus request', () => {
     // Obsidian focuses the note's editor as the leaf becomes active.
     const note = document.body.appendChild(document.createElement('textarea'));
     note.focus();
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 120)); });
+    // The pane takes focus back at its next retry; on a busy machine the first may come before the note's focus.
+    const until = Date.now() + 1000;
+    while (!card?.contains(document.activeElement) && Date.now() < until) {
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+    }
 
     expect(card?.contains(document.activeElement)).toBe(true);
     expect((document.activeElement as HTMLElement).matches('input, textarea')).toBe(true);

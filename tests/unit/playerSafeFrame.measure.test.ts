@@ -24,7 +24,7 @@ function harness(options: { tokens?: boolean; lighting?: boolean } = {}): {
   const playersSeeInFrame = vi.fn(() => seenInFrame);
   const getPlayerViewLayers = vi.fn((seen: (id: string) => boolean): LayerVisibility[] => [{ layer: part, visible: seen('goblin') }]);
   const renderer = Object.assign(Object.create(PixiRendererOrchestrator.prototype) as PixiRendererOrchestrator, {
-    pixiAppManager: { getApp: () => ({ renderer: { render: vi.fn() }, stage: {} }), getViewport: fakeViewport },
+    pixiAppManager: { getApp: () => ({ renderer: { render: vi.fn() }, stage: {} }), getViewport: fakeViewport, getGestures: () => null },
     playerFrames: fakePlayerFrames(),
     tokenRenderer: options.tokens === false ? undefined : { getPlayerViewLayers: () => [], getGmViewLayers: () => [], playersSeeInFrame },
     measureRenderer: { getPlayerViewLayers, getGmViewLayers: (): LayerVisibility[] => [{ layer: part, visible: true }], effects: { stillFor: () => () => undefined } },
@@ -75,7 +75,7 @@ describe('the measure renderer\'s wiring', () => {
       store: { getState: () => ({ objects: { tokens: {} }, tokenSettings: { tokenRingSize: 1 } }), subscribe: vi.fn(() => stopHeights) },
       gridSystem: { getOptions: () => ({ size: 70 }) },
       tokenRenderer: { onPlayersViewChange: vi.fn((listener: () => void) => { listeners.push(listener); return unsubscribe; }), setMeasureHandlers: vi.fn() },
-      measureRenderer: { refreshVisibility, rulesChanged: vi.fn(), playersView: null, handles: { pointer: {}, leave: vi.fn() }, ranges: {}, effects: { setMode: vi.fn() } },
+      measureRenderer: { refreshVisibility, rulesChanged: vi.fn(), followShown: vi.fn(), playersView: null, handles: { pointer: {}, leave: vi.fn() }, ranges: {}, effects: { setMode: vi.fn() } },
       // The popover of a kept measurement closes when the view is left
       eventBus: { on: busOn, off: busOff },
       viewId: 'view',

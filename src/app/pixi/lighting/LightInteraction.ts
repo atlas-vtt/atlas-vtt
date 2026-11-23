@@ -7,11 +7,13 @@ import { worldToGameUnits } from '../../lighting/lightingUnits';
 import { dragRange, maxLightRange, type RangeField } from '../../lighting/lightRanges';
 import type { ViewAtlasStore } from '../../storeFactory';
 import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
+import { placesFreely } from '../../types/toolSwitches';
 import type { Point } from '../../types/visionTypes';
 import type { LightMarkers } from './LightMarkers';
 import type { LightRangeRings } from './LightRangeRings';
 import { ringHandleCursor, ringRadiusAt } from './lightRingGeometry';
 import { levelObjects } from '../../levels/levelObjects';
+import { dragThreshold } from '../utils/pointerReach';
 
 /** Screen pixels the pointer may move before a press on a marker is a drag, not a click. */
 export const LIGHT_DRAG_THRESHOLD = 5;
@@ -66,6 +68,8 @@ export class LightInteraction {
   private gesture: Gesture | null = null;
   /** A store write is being announced: a cancel in it closes its undo step only once that write is done. */
   private inStoreWrite = false;
+  /** The latest press on the map closed the popover: the lighting tool takes it for that alone (`takeDismissal`). */
+  private dismissedOnMap = false;
   private readonly doc: Document;
   private readonly unsubscribe: () => void;
   private readonly abort = (): void => this.cancel();
@@ -126,6 +130,16 @@ export class LightInteraction {
     this.deps.markers.setHovered(null);
   }
 
+  /**
+   * Whether the press being dispatched closed the popover from the map, so a tool that would
+   * place or draw there leaves it at that, as a click outside a menu only closes the menu.
+   */
+  takeDismissal(): boolean {
+    const dismissed = this.dismissedOnMap;
+    this.dismissedOnMap = false;
+    return dismissed;
+  }
+
   /** Cancels a press or drag under way: what a drag changed is put back, and it leaves no undo step. */
   cancel(): void {
     this.gesture?.end(false);
@@ -147,7 +161,7 @@ export class LightInteraction {
 
     const onMove = (move: FederatedPointerEvent): void => {
       if (!dragging) {
-        if (Math.hypot(move.global.x - start.x, move.global.y - start.y) <= LIGHT_DRAG_THRESHOLD) return;
+        if (Math.hypot(move.global.x - start.x, move.global.y - start.y) <= dragThreshold(LIGHT_DRAG_THRESHOLD, move)) return;
         moved = true;
         if (!canMove) return;
         dragging = true;
@@ -189,7 +203,7 @@ export class LightInteraction {
       const at = viewport.toWorld(move.global.x, move.global.y);
       const radius = Math.max(0, ringRadiusAt(rings.geometry() ?? geometry, field, at) - offset);
       const scale = rings.unitScale();
-      const next = dragRange(light.emission, field, worldToGameUnits(radius, scale), move.altKey, maxLightRange(scale));
+      const next = dragRange(light.emission, field, worldToGameUnits(radius, scale), this.free(move), maxLightRange(scale));
       if (next !== light.emission) store.getState().updateLight(lightId, { emission: next });
     };
     this.track({
@@ -219,7 +233,7 @@ export class LightInteraction {
     const onMove = (move: FederatedPointerEvent): void => {
       const light = readLight(levelObjects(store.getState()).lights[lightId]);
       if (!light) return;
-      const next = snapDirection(directionTo(light, viewport.toWorld(move.global.x, move.global.y)) + offset, move.altKey);
+      const next = snapDirection(directionTo(light, viewport.toWorld(move.global.x, move.global.y)) + offset, this.free(move));
       if (next !== (light.rotation ?? 0)) store.getState().updateLight(lightId, { rotation: next });
     };
     this.track({
@@ -234,6 +248,11 @@ export class LightInteraction {
   }
 
   /** Closes a drag's undo step: recorded on a commit; on a cancel `restore` puts the light back and no step is left. */
+  /** Whether a ring or the beam moves in fine steps: the tool's Snap switch is off, or Alt turns it around. */
+  private free(move: { altKey?: boolean }): boolean {
+    return placesFreely(this.deps.store.getState(), 'lightingSnap', move.altKey);
+  }
+
   private settle(commit: boolean, restore: () => void, lightId: string): void {
     const { store } = this.deps;
     if (commit) {
@@ -278,6 +297,7 @@ export class LightInteraction {
    */
   private readonly onDocumentPointerDown = (event: PointerEvent): void => {
     const { store, canvas, viewport, markers, rings } = this.deps;
+    this.dismissedOnMap = false;
     if (!store.getState().lightPopover) return;
     const target = elementOf(event.target);
     if (target?.closest('.atlas-light-popover')) return;
@@ -285,6 +305,7 @@ export class LightInteraction {
       const rect = canvas.getBoundingClientRect();
       const point = viewport.toWorld(event.clientX - rect.left, event.clientY - rect.top);
       if (rings.handleAt(point.x, point.y) || markers.hitTest(point.x, point.y)) return;
+      this.dismissedOnMap = true;
     }
     store.getState().closeLightPopover();
   };

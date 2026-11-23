@@ -23,7 +23,7 @@ function mapWithGrid(enabled: boolean): { grid: GridSystem; renderer: PixiRender
   const grid = new GridSystem({ renderer: { resolution: 1 } } as never, viewport as never, mapImageViewOf(background), { size: 70, enabled, color: 0xff0000 });
   grids.push(grid);
   const renderer = Object.assign(Object.create(PixiRendererOrchestrator.prototype) as PixiRendererOrchestrator, {
-    pixiAppManager: { getApp: () => ({ renderer: { render: vi.fn() }, stage: {} }), getViewport: fakeViewport },
+    pixiAppManager: { getApp: () => ({ renderer: { render: vi.fn() }, stage: {} }), getViewport: fakeViewport, getGestures: () => null },
     playerFrames: fakePlayerFrames(),
     gridSystem: grid,
     tokenRenderer: { getPlayerViewLayers: () => [] },

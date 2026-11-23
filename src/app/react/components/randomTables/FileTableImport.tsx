@@ -4,6 +4,7 @@ import { SegmentedControl } from '../../../packages/components/primitives/Segmen
 import { ToggleLabel } from '../../../packages/components/primitives/Toggle';
 import { ProgressStatus } from '../../../packages/components/primitives/ProgressStatus';
 import { TABLE_FILE_ACCEPT } from '../../../randomTables/import/importFile';
+import { fileInputAccept } from '../../../platform/fileInputAccept';
 import { IMPORT_LIMITS } from '../../../randomTables/import/importModel';
 import { tablesOfNote } from '../../../randomTables/noteTables';
 import { tableNoteText } from '../../../randomTables/tableMarkdown';
@@ -30,7 +31,7 @@ export function FileTableImport({ folder, ...actions }: FileImportActions & { fo
   return <>
     <div className="atlas-paste-table__body atlas-file-tables__body">
       <div className="atlas-paste-table__input atlas-file-tables__input">
-        <input ref={fileInput} type="file" className="atlas-file-tables__file" accept={TABLE_FILE_ACCEPT} aria-label={t('tables.import.chooseFile')} disabled={locked}
+        <input ref={fileInput} type="file" className="atlas-file-tables__file" accept={fileInputAccept(TABLE_FILE_ACCEPT)} aria-label={t('tables.import.chooseFile')} disabled={locked}
           onChange={(event) => {
             const file = event.target.files?.[0];
             event.target.value = '';

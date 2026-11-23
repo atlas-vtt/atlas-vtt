@@ -135,7 +135,7 @@ describe('limited walls in the picture', () => {
     expect(dark).toBeGreaterThan(200);
   });
 
-  it.each([12, 40])('lights nothing past the second limited wall in the soft shadow of a solid wall that a hedge joins: flame %d', async (flame) => {
+  it.each([12, 40])('lights nothing past the second limited wall in the shadow of a solid wall that a hedge joins: flame %d', async (flame) => {
     const renderer = await createTestRenderer(64);
     cleanup.push(() => renderer.destroy());
     const engine = new LightingEngine(renderer);
@@ -154,13 +154,14 @@ describe('limited walls in the picture', () => {
       // Past the second hedge's own length (above its end at y = 60, light that crossed the first hedge alone goes by).
       if (x > 603 && y > 70) east++;
       else if (x > 603) continue;
-      // Between the wall and the second hedge, below the wall's end: the wall's soft shadow, which crossed one hedge at most.
+      // Between the wall and the second hedge, below the wall's end: the wall's shadow, which the flame's edge no longer lights (its penumbra lies inside the rule's reach).
       else if (x > 506 && x < 594 && y > 514 && y < 700) soft++;
-      // Behind the wall's far end, where the ray from the flame's middle is stopped and meets no limited wall: its soft shadow there is any wall's.
+      // Behind the wall's far end, where the ray from the flame's middle is stopped and meets no limited wall: dark, as behind any wall.
       else if (x > 506 && x < 594 && y > 904 && 512 + ((y - 512) * 100) / (x - 400) < 896) farSoft++;
       else if (x > 506 && x < 594 && y < 500) behindOne++;
     }
-    expect({ east, soft: soft > 8 ? 'soft' : soft, farSoft: farSoft > 8 ? 'soft' : farSoft, behindOne: behindOne > 5000 }).toEqual({ east: 0, soft: 'soft', farSoft: 'soft', behindOne: true });
+    // A texel or two of the smoothing past the rule's edge is allowed.
+    expect({ east, soft: soft <= 8, farSoft: farSoft <= 8, behindOne: behindOne > 5000 }).toEqual({ east: 0, soft: true, farSoft: true, behindOne: true });
   });
 
   it('gives a solid wall behind a single hedge a hard shadow: behind a limited wall a light is the rule\'s reach', async () => {

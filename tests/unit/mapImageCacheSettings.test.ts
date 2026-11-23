@@ -9,7 +9,7 @@ const MIB = 1024 ** 2;
 interface Row {
   setting: Setting;
   clear: HTMLButtonElement;
-  info: HTMLElement;
+  info: HTMLButtonElement;
   close: () => void;
 }
 
@@ -20,8 +20,8 @@ function renderRow(cache: MapImageCache): Row {
   const close = row!.render(setting) ?? ((): void => undefined);
   return {
     setting,
-    clear: setting.controlEl.querySelector('button')!,
-    info: setting.controlEl.querySelector('div')!,
+    clear: setting.controlEl.querySelector('button:not([aria-label])')!,
+    info: setting.controlEl.querySelector('button[aria-label]')!,
     close,
   };
 }
@@ -83,6 +83,7 @@ describe('the map image cache setting', () => {
 
   it('explains the cache behind an info button, never as a title', () => {
     const { info, setting } = renderRow(cacheOf(0));
+    expect(info.classList).toContain('btn');
     expect(info.getAttribute('aria-label')).toMatch(/^Keeps the tiles of each map on this device, so maps open quickly\./);
     expect(setting.settingEl.querySelector('[title]')).toBeNull();
   });

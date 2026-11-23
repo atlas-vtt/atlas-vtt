@@ -31,7 +31,7 @@ $sidebar-width: 320px;
 .atlas-encounter-builder__sidebar,
 .atlas-encounter-tray {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
 }
 
 .atlas-encounter-builder__sidebar {
@@ -93,8 +93,9 @@ $sidebar-width: 320px;
 }
 
 .atlas-encounter-tray {
-  padding: $spacing-s;
-  gap: $spacing-s;
+  // Its name field and Save stand in its corners: $surface-inset inside, concentric with them.
+  padding: $surface-inset;
+  gap: $surface-inset;
 }
 
 // ── Status: how many creatures show, and the active filters ─────────────────
@@ -240,7 +241,7 @@ $tray-room: 72px;
   scale: 1;
 }
 
-@media (hover: none) {
+@include atlas-hover-reveal {
   .atlas-encounter-card .atlas-encounter-card__notch {
     opacity: 1;
     scale: 1;
@@ -349,7 +350,7 @@ input.atlas-encounter-stepper__count {
   opacity: 1;
 }
 
-@media (hover: none) {
+@include atlas-hover-reveal {
   .atlas-encounter-card .atlas-encounter-stepper__button.btn {
     width: 24px;
     opacity: 1;
@@ -381,7 +382,7 @@ input.atlas-encounter-tray__name-input {
   min-width: 0;
   height: $tray-control;
   padding: 0 $spacing-m;
-  @include atlas-panel-inset-radius($spacing-s);
+  @include atlas-panel-inset-radius($surface-inset);
   font-size: $font-ui-small;
 }
 
@@ -412,7 +413,8 @@ input.atlas-encounter-tray__name-input {
   gap: $spacing-xs;
   height: $tray-control;
   padding: $chip-inset;
-  @include atlas-panel-inset-radius($spacing-s);
+  // A capsule: its round portrait and round − and + stand $chip-inset inside it, concentric with its ends.
+  border-radius: $radius-full;
   background: var(--background-modifier-hover);
   transition: background-color $transition-fast $transition-ease;
 
@@ -463,7 +465,8 @@ input.atlas-encounter-tray__name-input {
   flex-shrink: 0;
   height: $tray-control;
   padding: 0 $spacing-m;
-  @include atlas-panel-inset-radius($spacing-s);
+  // One more chip
+  border-radius: $radius-full;
   background: var(--background-modifier-hover);
   font-size: $font-ui-small;
   font-variant-numeric: tabular-nums;
@@ -475,7 +478,7 @@ input.atlas-encounter-tray__name-input {
 }
 
 .atlas-encounter-tray__overflow-menu {
-  max-height: min(50vh, 420px);
+  max-height: min(#{atlas-view-height(50)}, 420px);
   padding: $spacing-xs;
   overflow-y: auto;
 }
@@ -549,6 +552,6 @@ input.atlas-encounter-tray__name-input {
   // Its end control sits in the tray's corner, concentric with it.
   .btn {
     height: $tray-control;
-    @include atlas-panel-inset-radius($spacing-s);
+    @include atlas-panel-inset-radius($surface-inset);
   }
 }

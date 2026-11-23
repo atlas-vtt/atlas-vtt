@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { sceneFromRolls } from '../../../src/app/dice3d/diceScene';
-import { hasBreakdown, rollBreakdown } from '../../../src/app/react/components/dice3d/diceRollText';
+import { hasBreakdown, rollBreakdown, withSide } from '../../../src/app/react/components/dice3d/diceRollText';
 import type { RolledDie } from '../../../src/app/tools/diceFormula';
 import type { DiceRollResult } from '../../../src/app/types/diceTypes';
 
@@ -39,14 +39,18 @@ describe('a roll that dropped dice, on the stage', () => {
     expect(sceneFromRolls([{ die: 'd100', value: 47, max: 100 }, { die: 'd100', value: 83, max: 100 }])).toBeNull();
   });
 
-  it('names the side under the total and sums the kept dice only', () => {
+  it('names the side in the title and sums the kept dice only under the total', () => {
     const roll = result([{ die: 'd20', value: 4, max: 20, dropped: true }, { die: 'd20', value: 17, max: 20 }], 5, 'advantage');
     const scene = sceneFromRolls(roll.rolls)!;
-    expect(rollBreakdown(roll, scene)).toBe('Advantage · 17 + 5');
+    expect(withSide('1d20 + 5', roll)).toBe('1d20 + 5 · Advantage');
+    expect(rollBreakdown(roll, scene)).toBe('17 + 5');
     expect(hasBreakdown(roll, scene)).toBe(true);
     const bare = result([{ die: 'd20', value: 4, max: 20 }, { die: 'd20', value: 17, max: 20, dropped: true }], 0, 'disadvantage');
-    expect(rollBreakdown(bare, sceneFromRolls(bare.rolls)!)).toBe('Disadvantage');
+    expect(withSide('1d20', bare)).toBe('1d20 · Disadvantage');
+    expect(rollBreakdown(bare, sceneFromRolls(bare.rolls)!)).toBeNull();
+    // The panel lists the kept die and the dropped one under the total (RolledDiceLine), so the line is held.
+    expect(hasBreakdown(bare, sceneFromRolls(bare.rolls)!)).toBe(true);
     const percentile = result([{ die: 'd100', value: 47, max: 100, dropped: true }, { die: 'd100', value: 27, max: 100, sharedUnits: true }], 0, 'advantage');
-    expect(rollBreakdown(percentile, sceneFromRolls(percentile.rolls)!)).toBe('Advantage · Tens 20, units 7');
+    expect(rollBreakdown(percentile, sceneFromRolls(percentile.rolls)!)).toBe('Tens 20, units 7');
   });
 });

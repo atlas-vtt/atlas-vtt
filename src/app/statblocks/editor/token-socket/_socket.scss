@@ -70,7 +70,7 @@
 
   .atlas-sb-token-socket[data-shape='portrait'] > .atlas-sb-token-socket__frame {
     aspect-ratio: auto;
-    border-radius: $radius-l;
+    border-radius: $radius-m;
   }
 
   .atlas-sb-token-socket:hover .atlas-sb-token-socket__frame,
@@ -152,5 +152,12 @@
   .atlas-sb-token-socket:is(:hover, :focus-visible, [aria-expanded='true']) .atlas-sb-token-socket__badge {
     opacity: 1;
     transform: none;
+  }
+
+  @include atlas-hover-reveal {
+    .atlas-sb-token-socket .atlas-sb-token-socket__badge {
+      opacity: 1;
+      transform: none;
+    }
   }
 }

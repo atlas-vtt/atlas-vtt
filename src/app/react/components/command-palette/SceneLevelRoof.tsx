@@ -1,6 +1,7 @@
 import React from 'react';
 import { House, Trash2 } from 'lucide-react';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
+import { Button } from '../../../packages/components/primitives/button';
 import { t } from '../../../i18n';
 
 interface LevelRoofSettingsProps {
@@ -24,9 +25,9 @@ export function LevelRoofSettings({ name, foreground, onPick, onRemove }: LevelR
     <div className="atlas-scene-level__roof" onClick={(event) => event.stopPropagation()}>
       <House className="atlas-scene-level__roof-icon" aria-hidden="true" />
       <span className="atlas-scene-level__roof-file">{foreground ? fileName(foreground) : t('levels.roofNone')}</span>
-      <button type="button" className="atlas-scene-level__roof-pick" onClick={onPick}>
+      <Button type="button" variant="secondary" size="sm" className="atlas-scene-level__roof-pick" onClick={onPick}>
         {t(foreground ? 'levels.roofReplace' : 'levels.roofChoose')}
-      </button>
+      </Button>
       {foreground && (
         <LabelTooltip side="top" label={t('levels.roofRemove', { name })}>
           <button type="button" className="atlas-scene-level__button atlas-scene-level__button--destructive" onClick={onRemove}>

@@ -6,7 +6,7 @@ import { DiceDropdownMenu } from '../../src/app/react/components/dice/DiceDropdo
 import type { DiceTool } from '../../src/app/tools/DiceTool';
 
 vi.mock('../../src/app/react/root/AtlasUIContext', () => ({
-  useAtlasUI: () => ({ app: {}, view: { getViewType: () => 'atlas-vtt' } }),
+  useAtlasUI: () => ({ app: { workspace: { on: () => ({}), offref: () => undefined } }, view: { getViewType: () => 'atlas-vtt' } }),
 }));
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (state: { isPlayerView: boolean }) => unknown) => selector({ isPlayerView: false }),
@@ -14,9 +14,13 @@ vi.mock('../../src/app/react/ViewStoreContext', () => ({
 vi.mock('../../src/app/react/hooks/useDicePreviews', () => ({ useDicePreviews: () => ({}) }));
 vi.mock('../../src/app/packages/components/primitives/tooltip', () => ({
   LabelTooltip: ({ children }: { children: React.ReactNode }): React.ReactNode => children,
+  TooltipProvider: ({ children }: { children: React.ReactNode }): React.ReactNode => children,
 }));
 
-const diceTool = { rollDice: vi.fn(() => true), rollingDice: () => ({ dice: [{ count: 1, sides: 20 }], crit: 'natural' }) } as unknown as DiceTool;
+const diceTool = {
+  rollDice: vi.fn(() => true), rollingDice: () => ({ dice: [{ count: 1, sides: 20 }], crit: 'natural' }),
+  checkRoll: () => null, tray: { formula: '', side: 'normal' }, rememberTray: vi.fn(),
+} as unknown as DiceTool;
 
 afterEach(cleanup);
 
@@ -35,14 +39,14 @@ async function openInPopout(onToggle: () => void): Promise<Document> {
 it('closes on a press outside it in its own window', async () => {
   const onToggle = vi.fn();
   const popout = await openInPopout(onToggle);
-  fireEvent.mouseDown(popout.body);
+  fireEvent.pointerDown(popout.body);
   expect(onToggle).toHaveBeenCalledTimes(1);
 });
 
 it('stays open for a press inside it or in another window', async () => {
   const onToggle = vi.fn();
   const popout = await openInPopout(onToggle);
-  fireEvent.mouseDown(popout.querySelector('.atlas-dice-tray') as HTMLElement);
-  fireEvent.mouseDown(document.body);
+  fireEvent.pointerDown(popout.querySelector('.atlas-dice-tray') as HTMLElement);
+  fireEvent.pointerDown(document.body);
   expect(onToggle).not.toHaveBeenCalled();
 });

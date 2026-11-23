@@ -230,4 +230,6 @@ export const dungeon: Translation = {
   'dungeon.terrain.mosaic': 'Мозаика',
   'dungeon.terrain.pool': 'Бассейн',
   'dungeon.terrain.portalRing': 'Круг стоячих камней',
+  'dungeon.theme.forest': 'Лес',
+  'dungeon.style.crayon': 'Мелок',
 };

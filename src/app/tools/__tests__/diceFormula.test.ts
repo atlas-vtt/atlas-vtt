@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../utils/typedEmitter';
 import { rollTestFormula as rollFormula } from './rollTestFormula';
 import { parseFormula } from '../parseFormula';
 import { DiceTool } from '../DiceTool';

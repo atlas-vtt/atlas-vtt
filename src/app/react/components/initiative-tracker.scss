@@ -1,15 +1,25 @@
-// Initiative Tracker: a column of cards (portrait, number, bars, conditions) at the right
-// or left edge of the map, on the elevated surface the toolbar has
+// Initiative Tracker: the GM's initiative list (`initiative-panel.scss`, the look it shares with the players' list) at the
+// right edge of the map, with its floating bars, the numbers typed in place and what the GM does with a card
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/mixins' as *;
+@use '../../../../styles/initiative-cards' as *;
+@use '../../../../styles/wiggle' as *;
 
 $tracker-width: 96px;
-// Wide enough for a name of two short words a line, which the portrait column alone is not
-$tracker-width-named: 168px;
-// Where the tracker stands while the dice log is open at the same edge: beside it
-$dice-log-width: 360px;
-// The collapse toggle: as tall as a card's number slot
-$collapse-height: 24px;
+// The compact list's line: room for a name beside the number and a badge
+$tracker-width-named: 216px;
+// The bars floating above and below the tracker: a capsule of buttons, $float-gap from the panel
+$float-button: 28px;
+$float-height: calc(#{$float-button} + 2 * #{$surface-inset} + 2 * #{$border-width-m});
+$float-gap: $spacing-s;
+$float-room: calc(#{$float-height} + #{$float-gap});
+// How far past the panel and its bars the pointer counts as near the tracker
+$float-reach: $spacing-s;
+// What the tracker keeps of itself in a pane too short for its clearance: the round at its foot (with the panel's
+// border, padding and gap) and one card, which is taller with a name.
+$tracker-chrome-height: 40px;
+$tracker-min-height: $tracker-chrome-height + 116px;
+$tracker-min-height-named: $tracker-chrome-height + 140px;
 
 .atlas-initiative-tracker {
   position: fixed;
@@ -17,112 +27,115 @@ $collapse-height: 24px;
   right: $spacing-m;
   transform: translateY(-50%);
   width: $tracker-width;
-  // Centred panel: symmetric clearance keeps its top below the top bar row
-  // (Obsidian tab header + row offset + expanded widget bar + gap).
-  max-height: calc(100vh - 2 * 160px);
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: $spacing-s;
-  padding: $spacing-s;
+  // Centred panel: symmetric clearance keeps its top, and the bar floating above it, below the top bar row
+  // (Obsidian tab header + row offset + expanded widget bar + gap). The view is the map's pane, which
+  // may be shorter than the clearance alone: the tracker then keeps a card and its round.
+  max-height: max(#{$tracker-min-height}, calc(#{atlas-view-height()} - 2 * (160px + #{$float-room})));
   z-index: 50;
-  font-family: var(--font-interface);
   pointer-events: auto;
-  box-sizing: border-box;
 
-  // Panel background — matches toolbar
-  @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  // Near the tracker: the panel, its bars and a little around them. Its bars show while the pointer is there
+  &__reach {
+    position: absolute;
+    inset: calc(-1 * (#{$float-room} + #{$float-reach})) calc(-1 * #{$float-reach});
+    z-index: -3;
+  }
 
-  overflow: hidden;
-
-  // The GM's cards show names (the tracker's Show names)
+  // The compact list's cards show names
   &--named {
     width: $tracker-width-named;
-  }
-
-  // Docked at the left edge (the tracker's Dock on the left)
-  &--left {
-    right: auto;
-    left: $spacing-m;
-  }
-
-  // The dice log opens at the left edge: a tracker docked there moves beside it
-  &--beside-log {
-    left: calc(#{$spacing-m} + #{$dice-log-width} + #{$spacing-s});
+    max-height: max(#{$tracker-min-height-named}, calc(#{atlas-view-height()} - 2 * (160px + #{$float-room})));
   }
 }
 
-// Collapses the tracker to the turn and the next combatants; a ghost control the width of the panel,
-// in the panel's top corners
-.atlas-initiative-tracker .atlas-initiative-tracker__collapse {
+// The zoom buttons stand at the right edge at the tracker's height: while the tracker is open they stand beside it.
+.atlas-ui:has(.atlas-initiative-tracker) .atlas-zoom-cluster {
+  right: calc(#{$spacing-m} + #{$tracker-width} + #{$spacing-s});
+}
+
+.atlas-ui:has(.atlas-initiative-tracker--named) .atlas-zoom-cluster {
+  right: calc(#{$spacing-m} + #{$tracker-width-named} + #{$spacing-s});
+}
+
+// A bar of buttons floating above the tracker (Roll, Start or End combat, the options) or below it (the turns):
+// a capsule in the middle of the panel's width, shown while the pointer is near (`::before` above), while a control
+// in it has focus or a turn hotkey presses one of its buttons. It glides in from the panel and fades, over the ivy.
+.atlas-initiative-tracker__float {
+  --atlas-float-nudge: 0px;
+  position: absolute;
+  z-index: 2;
+  left: 50%;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: $spacing-xs;
-  width: 100%;
-  height: $collapse-height;
-  padding: 0;
-  flex-shrink: 0;
-  border-radius: $radius-l;
-  @include atlas-panel-inset-radius($spacing-s, top-left, top-right);
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  gap: $surface-inset;
+  padding: $surface-inset;
+  box-sizing: border-box;
+  @include atlas-elevated-surface;
+  // A capsule: the pill radius rounds it at half its height, and its buttons, which round at most to half their own
+  // height (`atlas-panel-inset-radius-value`), stay concentric with it.
+  border-radius: $radius-full;
+  --atlas-panel-inner-radius: #{$radius-full};
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, var(--atlas-float-nudge));
+  transition: opacity $transition-normal $transition-ease-out, transform $transition-normal $transition-ease-out;
 
-  svg {
-    width: 14px;
-    height: 14px;
+  &--top {
+    --atlas-float-nudge: #{$spacing-xs};
+    // From the panel's border, past which an absolute child is placed
+    bottom: calc(100% + #{$border-width-m} + #{$float-gap});
+  }
+
+  &--bottom {
+    --atlas-float-nudge: calc(-1 * #{$spacing-xs});
+    top: calc(100% + #{$border-width-m} + #{$float-gap});
+  }
+
+  .atlas-initiative-tracker:hover &,
+  .atlas-initiative-tracker:focus-within &,
+  &:has(.atlas-initiative-tracker__btn--pressed) {
+    --atlas-float-nudge: 0px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  @include atlas-hover-reveal {
+    --atlas-float-nudge: 0px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity $transition-normal $transition-ease-out;
   }
 }
 
-// Controls — fills panel width, buttons sized to fit
-.atlas-initiative-tracker__controls,
-.atlas-initiative-tracker__turn-controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-}
-
-.atlas-initiative-tracker__round {
-  flex: 1;
-  font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
-  text-align: center;
-  min-width: 0;
-}
-
-// The last row sits 8px inside the border: its outer buttons' outer corners run concentric with
-// the panel's. Each button is followed by its tooltip's hidden label, hence `of-type`.
-.atlas-initiative-tracker__turn-controls > .atlas-initiative-tracker__btn {
-  &:first-of-type { @include atlas-panel-inset-radius($spacing-s, bottom-left); }
-  &:last-of-type { @include atlas-panel-inset-radius($spacing-s, bottom-right); }
-}
-
-.atlas-initiative-tracker__btn {
-  flex: 1;
-  height: 36px;
+// A ghost icon button (`Button`) in a floating bar, above Atlas's button rules (`.atlas-vtt-plugin .btn--icon`), whose
+// size it changes; concentric with the bar's capsule
+.atlas-initiative-tracker .btn.atlas-initiative-tracker__btn {
+  flex: none;
+  width: $float-button;
+  height: $float-button;
   padding: 0;
-  border-radius: $radius-l;
+  color: var(--text-muted);
+  border-radius: atlas-panel-inset-radius-value($surface-inset, calc(#{$float-button} / 2));
   transition: all 0.15s ease;
+
+  &:hover {
+    color: var(--text-normal);
+  }
 
   &:disabled {
     opacity: 0.4;
     pointer-events: none;
   }
 
-  &--end {
+  &--end,
+  &--end:hover {
     color: var(--color-red);
   }
 
   // Pressed state for hotkey visual feedback
-  &--pressed {
+  &.atlas-initiative-tracker__btn--pressed {
     transform: scale(0.9);
     background: var(--interactive-accent);
     color: var(--text-on-accent);
@@ -134,77 +147,14 @@ $collapse-height: 24px;
   }
 }
 
-// Content area — scrollable, hidden scrollbar
-.atlas-initiative-tracker__content {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-s;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  @include atlas-scrollbar-none;
-  // The list glides to the turn it follows
-  scroll-behavior: smooth;
-
-  @media (prefers-reduced-motion: reduce) {
-    scroll-behavior: auto;
-  }
+// While it leaves it takes no pointer: what lies under it is the map's again
+.atlas-initiative-tracker--leaving {
+  pointer-events: none;
 }
 
-// Shown while the tracker has no combatants
-.atlas-initiative-tracker__empty {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-// A side of a fight by sides: its combatants under its name
-.atlas-initiative-side {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-s;
-}
-
-// Where the list runs on into the next round: the round's name between two hairlines
-.atlas-initiative-round {
-  display: flex;
-  align-items: center;
-  gap: $spacing-xs;
-  color: var(--text-muted);
-
-  &::before,
-  &::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--background-modifier-border);
-  }
-}
-
-.atlas-initiative-round__label {
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.4;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.atlas-initiative-side__label {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: $spacing-xs;
-  margin: 0;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--text-muted);
-  text-align: center;
-  overflow-wrap: anywhere;
+// Holds the size of one combatant's card while the tracker has none; nothing of it shows
+.atlas-initiative-card--placeholder {
+  visibility: hidden;
 }
 
 // This round's roll of a side, where the sides roll for their order
@@ -217,34 +167,10 @@ $collapse-height: 24px;
   font-variant-numeric: tabular-nums;
 }
 
-// The side whose turn it is: its name and its combatants take the accent
-.atlas-initiative-side--active {
-  .atlas-initiative-side__label {
-    color: var(--interactive-accent);
-  }
-
-  .atlas-initiative-card:not(.atlas-initiative-card--sitting-out) {
-    border-color: var(--interactive-accent);
-    box-shadow: inset 0 0 0 1px var(--interactive-accent);
-  }
-}
-
-// Initiative Card — inner element on panel background
-.atlas-initiative-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: $spacing-s;
-  padding: $spacing-s;
-  width: 100%;
-  flex-shrink: 0;
-  background: var(--background-modifier-hover);
-  border: 1.5px solid color-mix(in oklch, var(--mono-100) 6%, transparent);
-  border-radius: $radius-l;
+// What the GM does with a card: drags it, hovers it for its statblock. `:where` keeps the specificity of the shared
+// card rules, which the compact list overrides
+:where(.atlas-initiative-tracker) .atlas-initiative-card {
   cursor: grab;
-  transition: all 0.2s ease;
-  position: relative;
-  box-sizing: border-box;
 
   &:hover {
     background: var(--background-modifier-active-hover);
@@ -256,31 +182,8 @@ $collapse-height: 24px;
     transform: scale(0.96);
   }
 
-  // Active turn state
-  // Ring and glow are inset: the list scrolls, so anything drawn outside the
-  // card box is clipped on the straight edges and leaves ragged corners.
-  &--active {
-    border-color: var(--interactive-accent);
-    box-shadow:
-      inset 0 0 0 1px var(--interactive-accent),
-      inset 0 0 12px color-mix(in oklch, var(--interactive-accent) 25%, transparent);
-    animation: atlas-initiative-pulse 2s ease-in-out infinite;
-  }
-
-  // Defeated state
-  &--defeated {
-    opacity: 0.45;
-    filter: grayscale(70%);
-  }
-
-  // Does not act this round
-  &--sitting-out {
-    opacity: 0.45;
-  }
-
-  // Delayed its turn: waits below the order, without the card's fill until it acts
-  &--delayed {
-    background: transparent;
+  &--ally:hover {
+    border-color: initiative-side-line(var(--color-green));
   }
 
   // Hidden from the players: translucent, like its token on the map
@@ -293,148 +196,134 @@ $collapse-height: 24px;
     background: var(--background-modifier-active-hover);
     border-color: color-mix(in oklch, var(--mono-100) 15%, transparent);
   }
+}
 
-  // Drop indicators
-  &--drop-above::before,
-  &--drop-below::after {
-    content: '';
-    position: absolute;
-    left: 8px;
-    right: 8px;
-    height: 2px;
-    background: var(--interactive-accent);
-    border-radius: 1px;
-    box-shadow: 0 0 8px var(--interactive-accent);
-  }
+/// A card lifted over others stays solid: its translucent `$fill` is laid over the panel's surface it rested on, and
+/// a faded card (defeated, sitting out) shows whole.
+@mixin solid-card($fill) {
+  opacity: 1;
+  background: linear-gradient($fill, $fill), var(--background-primary);
+}
 
-  &--drop-above::before {
-    top: -3px;
-  }
+// A card dragged (`useRowDrag`), as a phone's home screen is arranged (`styles/_wiggle.scss`): the cards shiver in
+// place, the held one lifts and follows the pointer and those it passes slide aside. Let go, the list takes its new
+// order at once and the card glides home from where it was dropped (`useTurnMotion`).
+.atlas-initiative-tracker__list--dragging {
+  cursor: grabbing;
 
-  &--drop-below::after {
-    bottom: -3px;
+  .atlas-initiative-card {
+    @include atlas-wiggle;
+    transition: translate $transition-fast $transition-ease-out;
+
+    &:nth-child(even) {
+      @include atlas-wiggle-shifted;
+    }
+
+    &:nth-child(3n) {
+      @include atlas-wiggle-slower;
+    }
+
+    // Lifted over its neighbours it stays solid: its translucent fill is laid over the panel's surface it rested on
+    &[data-held] {
+      @include atlas-wiggle-held;
+      @include solid-card(var(--background-modifier-active-hover));
+      z-index: 4;
+      transform: none;
+      transition: none;
+      cursor: grabbing;
+    }
   }
 }
 
-@keyframes atlas-initiative-pulse {
-  50% {
-    box-shadow:
-      inset 0 0 0 1px var(--interactive-accent),
-      inset 0 0 16px color-mix(in oklch, var(--interactive-accent) 45%, transparent);
-  }
+// The list scrolls, so it clips: while a card is held, and the one frame its drop settles in, its box reaches past the
+// panel's edge with as much padding inside, so the lifted card and its shadow show while nothing moves. Both states
+// alike, since the drop's glide reads places from the list's padding edge (`snapshotTurn`) before and after it. Above
+// and below it still ends inside the panel, where the scroll shades lie (the lifted card's scale fits the panel's
+// inset): cards scrolled past it while dragging fade under the shades as they do when the list is scrolled by hand.
+$held-room: $spacing-l;
+
+.atlas-initiative-panel__list:is(.atlas-initiative-tracker__list--dragging, .atlas-initiative-tracker__list--dragging-sides, .atlas-initiative-tracker__list--settling) {
+  margin: calc(-1 * #{$held-room});
+  padding: $held-room;
+  clip-path: inset(calc(#{$held-room} - #{$surface-inset}) 0);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .atlas-initiative-card--active {
-    animation: none;
-  }
+// The compact list's lines are long: a smaller angle moves their ends as far as a card's
+.atlas-initiative-tracker--compact .atlas-initiative-tracker__list--dragging .atlas-initiative-card {
+  --atlas-wiggle: 0.4deg;
 }
 
-// Hide drag handle
-.atlas-initiative-card__drag-handle {
-  display: none;
+.atlas-initiative-tracker__list--settling :is(.atlas-initiative-card, .atlas-initiative-side) {
+  transition: none;
 }
 
-// Avatar wrapper (allows instance badge to overflow the circular clip)
-.atlas-initiative-card__avatar-wrapper {
+// Before a fight the sides are dragged by their headings, as the cards are: the order they stand in is the order
+// they act in. Held, a side lifts on the panel's surface, its cards with it; the others shiver and slide aside.
+.atlas-initiative-tracker__list--arranges-sides [data-side-place] {
+  // Its cards are placed within it, as they pile up and spread out again (`useSidePile`)
   position: relative;
-  flex-shrink: 0;
-}
+  --atlas-pile-turn: 2.5deg;
 
-.atlas-initiative-card__instance-badge,
-.atlas-initiative-card__hidden-badge,
-.atlas-initiative-card__off-map-badge {
-  position: absolute;
-  bottom: -2px;
-  left: -4px;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
-  background: #000;
-  border: 1.5px solid #555;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 4px;
-  box-sizing: border-box;
-  z-index: 2;
-  pointer-events: none;
-}
-
-// The instance badge's twin in the opposite corner; it takes the pointer for its tooltip
-.atlas-initiative-card__hidden-badge {
-  top: -2px;
-  right: -4px;
-  bottom: auto;
-  left: auto;
-  padding: 0;
-  pointer-events: auto;
-
-  svg {
-    width: 12px;
-    height: 12px;
+  > .atlas-initiative-side__label {
+    cursor: grab;
   }
 }
 
-// A combatant kept beside the map: the third corner, with its tooltip. Its token-beside-a-map
-// glyph has no stroke through it, unlike the hidden badge's eye, and is drawn muted: a note, not a warning.
-.atlas-initiative-card__off-map-badge {
-  top: -2px;
-  bottom: auto;
-  padding: 0;
-  pointer-events: auto;
-  color: var(--text-muted);
-
-  svg {
-    width: 12px;
-    height: 12px;
-  }
+.atlas-initiative-tracker--compact .atlas-initiative-tracker__list--arranges-sides [data-side-place] {
+  --atlas-pile-turn: 0.8deg;
 }
 
-// The token as the map shows it (`TokenPortrait`): inside its ring, or unframed
-.atlas-initiative-card__portrait {
-  width: 48px;
-}
+.atlas-initiative-tracker__list--dragging-sides {
+  cursor: grabbing;
 
-// Stands in for a token without art
-.atlas-initiative-card__avatar {
-  position: relative;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  overflow: hidden;
-  flex-shrink: 0;
-  background: var(--background-secondary);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  [data-side-place] {
+    // A side is tall: its ends move as far as a card's at a smaller angle
+    @include atlas-wiggle(0.3deg);
+    transition: translate $transition-fast $transition-ease-out;
+    border-radius: $radius-m;
 
-  svg {
-    width: 18px;
-    height: 18px;
-    color: var(--text-muted);
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-  }
-}
+    &:nth-of-type(even) {
+      @include atlas-wiggle-shifted;
+    }
 
-.atlas-initiative-card__defeated-overlay {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
-  color: var(--text-muted);
+    &[data-held] {
+      @include atlas-wiggle-held;
+      scale: 1.03;
+      z-index: 4;
+      // Its cards share one place, the first on top and two more peeking out under it, as a phone stacks what it
+      // carries: a side of twenty is carried like one card
+      display: grid;
+      padding-bottom: $spacing-s;
+      background: var(--background-primary);
+      // The surface reaches past the side's cards by the gap between them
+      box-shadow: 0 0 0 $surface-inset var(--background-primary), $shadow-elevated;
+      transition: none;
 
-  svg {
-    width: 24px;
-    height: 24px;
+      // Each solid, so none shows the ones under it through it
+      > .atlas-initiative-card {
+        @include solid-card(var(--background-modifier-hover));
+        grid-area: 2 / 1;
+        z-index: 3;
+      }
+
+      > .atlas-initiative-card:nth-child(3) {
+        z-index: 2;
+        translate: 3px 4px;
+        rotate: var(--atlas-pile-turn);
+      }
+
+      > .atlas-initiative-card:nth-child(4) {
+        z-index: 1;
+        translate: -3px 7px;
+        rotate: calc(-1.2 * var(--atlas-pile-turn));
+      }
+
+      > .atlas-initiative-card:nth-child(n + 5) {
+        z-index: 0;
+        translate: 0 7px;
+        opacity: 0;
+      }
+    }
   }
 }
 
@@ -461,9 +350,10 @@ $collapse-height: 24px;
   background: transparent;
   cursor: text;
 
+  // A click edits it: the border takes a hint of the accent the field is framed in while typed
   &:hover {
     background: var(--background-modifier-hover);
-    border-color: var(--background-modifier-border);
+    border-color: color-mix(in srgb, var(--interactive-accent) 60%, var(--background-modifier-border));
   }
 
   @include atlas-focus-ring;
@@ -476,26 +366,29 @@ $collapse-height: 24px;
   }
 }
 
+// Typed in place, the field keeps the plate's size and colours (each layout sets them for both) and only gains the
+// accent frame. The `:focus` rules outrank Obsidian's own for text inputs, which would make it a translucent form field.
 .atlas-initiative-card .atlas-initiative-card__initiative-input {
   width: 48px;
-  background: var(--background-modifier-form-field);
-  border-color: var(--interactive-accent);
-  outline: none;
-}
 
-// The combatant's name, where the GM chose to see names
-.atlas-initiative-card__name {
-  width: 100%;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.3;
-  color: var(--text-normal);
-  text-align: center;
-  overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  &,
+  &:focus {
+    background: var(--background-modifier-form-field);
+  }
+
+  @supports (field-sizing: content) {
+    width: auto;
+    field-sizing: content;
+  }
+
+  &,
+  &:hover,
+  &:focus,
+  &:focus-visible {
+    border-color: var(--interactive-accent);
+    outline: none;
+    box-shadow: 0 0 0 1px var(--interactive-accent);
+  }
 }
 
 // The card dealt in a fight by cards: a small playing card where the number stands otherwise
@@ -527,63 +420,157 @@ $collapse-height: 24px;
   @include atlas-visually-hidden;
 }
 
-// HP Bar — full width
-// One thin bar per resource of the token, in the collection's order; a click edits it
-.atlas-initiative-card__resources {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
+// The number in the top right of a tile (`initiative-panel.scss`): a plate concentric with the card's corner, typed in place
+$tile-corner-radius: initiative-corner-radius($border-width-s);
 
-// The bar is drawn 4px high inside a taller button, so it is easy to hit
-.atlas-initiative-card .atlas-initiative-card__hp-bar {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  height: 10px;
-  padding: 0;
-  border: none;
-  border-radius: 2px;
-  background: transparent;
-  box-shadow: none;
-  cursor: pointer;
-
-  &:hover .atlas-initiative-card__hp-meter {
-    background: color-mix(in oklch, var(--mono-100) 20%, transparent);
+.atlas-initiative-card--tile {
+  .atlas-initiative-card__initiative,
+  .atlas-initiative-card__initiative-input,
+  .atlas-initiative-card__dealt {
+    position: absolute;
+    top: $surface-inset;
+    right: $surface-inset;
+    z-index: 2;
   }
 
-  @include atlas-focus-ring;
+  .atlas-initiative-card__initiative,
+  .atlas-initiative-card__initiative-input {
+    min-width: 24px;
+    border-radius: $tile-corner-radius;
+  }
+
+  .atlas-initiative-card__initiative:not(.atlas-initiative-card__initiative--empty),
+  .atlas-initiative-card__initiative-input:not(.atlas-initiative-card__initiative-input--empty) {
+    &,
+    &:focus {
+      background: var(--background-primary);
+    }
+  }
+
+  .atlas-initiative-card__initiative:not(.atlas-initiative-card__initiative--empty) {
+    border-color: var(--background-modifier-border);
+
+    &:hover {
+      background: var(--background-secondary);
+      border-color: color-mix(in srgb, var(--interactive-accent) 60%, var(--background-modifier-border));
+    }
+  }
 }
 
-.atlas-initiative-card__hp-meter {
-  display: block;
-  width: 100%;
-  height: 4px;
-  background: color-mix(in oklch, var(--mono-100) 10%, transparent);
-  border-radius: 2px;
-  overflow: hidden;
+// A tile's number shows only while the GM is near the tracker, as its bars do (the panel, its bars and its reach,
+// `__reach`), or works in it: a resting tracker shows the art alone. Coming near, every number grows out of its corner
+// at once, settling with a little spring; going away, they fade quicker. The number being typed always shows, and a
+// pointer that cannot hover sees them all the time.
+
+.atlas-initiative-tracker .atlas-initiative-card--tile {
+  .atlas-initiative-card__initiative,
+  .atlas-initiative-card__dealt {
+    opacity: 0;
+    scale: 0.78;
+    filter: blur(2px);
+    transform-origin: top right;
+    pointer-events: none;
+    transition:
+      opacity 140ms $transition-ease-out,
+      scale 140ms $transition-ease-out,
+      filter 140ms $transition-ease-out;
+  }
 }
 
-.atlas-initiative-card__hp-fill {
-  display: block;
-  height: 100%;
-  border-radius: 2px;
-  // The resource's own colour, set per bar
-  background: var(--atlas-resource-color, var(--color-green));
-  transition: width 0.3s ease;
+@mixin numbers-shown {
+  opacity: 1;
+  scale: 1;
+  filter: none;
+  pointer-events: auto;
+  transition:
+    opacity 220ms $transition-ease-out,
+    scale 380ms cubic-bezier(0.34, 1.45, 0.64, 1),
+    filter 220ms $transition-ease-out;
 }
 
-// The combatant's conditions as its token shows them (`CardConditions`), each named by its tooltip
-.atlas-initiative-card__conditions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: $spacing-xs;
-  width: 100%;
+.atlas-initiative-tracker:is(:hover, :focus-within) .atlas-initiative-card--tile {
+  .atlas-initiative-card__initiative,
+  .atlas-initiative-card__dealt {
+    @include numbers-shown;
+  }
 }
 
-.atlas-initiative-card__condition {
-  display: flex;
+.atlas-initiative-tracker .atlas-initiative-card--tile {
+  .atlas-initiative-card__initiative,
+  .atlas-initiative-card__dealt {
+    @include atlas-hover-reveal {
+      @include numbers-shown;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-initiative-tracker .atlas-initiative-card--tile {
+    .atlas-initiative-card__initiative,
+    .atlas-initiative-card__dealt {
+      scale: 1;
+      filter: none;
+      transition: opacity 140ms $transition-ease-out;
+    }
+  }
+}
+
+// The card under the pointer, or whose statblock Mod shows, steps forward: its art lit a little, at once, fading back
+// when the pointer leaves
+.atlas-initiative-tracker .atlas-initiative-card--tile:is(:hover, .atlas-initiative-card--preview-hover) .atlas-initiative-card__art img {
+  filter: brightness(1.12);
+  transition-duration: 0s;
+}
+
+// Hover, press, a selected token and Mod's statblock preview ring the card's edge (`--atlas-card-ring`). The art covers
+// the card's own border, fill and inset shadow, so the ring is a layer above it, `::after`. The ring stands out from
+// the panel around the card: white on a dark theme's, dark on a light theme's (the compact line is a dark surface in
+// both and keeps white, `initiative-tracker-compact.scss`)
+:where(.atlas-initiative-tracker) .atlas-initiative-card {
+  --atlas-card-ring: transparent;
+  --atlas-card-ring-hover: rgb(255 255 255 / 0.45);
+  --atlas-card-ring-press: rgb(255 255 255 / 0.7);
+  --atlas-card-ring-preview: rgb(255 255 255 / 0.9);
+
+  &:hover {
+    --atlas-card-ring: var(--atlas-card-ring-hover);
+  }
+
+  &:active {
+    --atlas-card-ring: var(--atlas-card-ring-press);
+  }
+
+  // Its token is selected on the map: the accent, as long as it stays selected
+  &.atlas-initiative-card--selected {
+    --atlas-card-ring: var(--interactive-accent);
+  }
+
+  // Mod held over it: its statblock shows
+  &.atlas-initiative-card--preview-hover {
+    --atlas-card-ring: var(--atlas-card-ring-preview);
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: calc(-1 * #{$border-width-s});
+    z-index: 3;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 2px var(--atlas-card-ring);
+    pointer-events: none;
+    transition: box-shadow 120ms ease-out;
+  }
+
+  // A ring comes at once, so hover and press never lag the pointer, and fades when it goes
+  &:is(:hover, :active, .atlas-initiative-card--selected, .atlas-initiative-card--preview-hover)::after {
+    transition-duration: 0s;
+  }
+}
+
+.theme-light :where(.atlas-initiative-tracker) .atlas-initiative-card {
+  --atlas-card-ring-hover: rgb(0 0 0 / 0.35);
+  --atlas-card-ring-press: rgb(0 0 0 / 0.55);
+  --atlas-card-ring-preview: rgb(0 0 0 / 0.8);
 }
 
 // Note: Statblock preview styles are in statblock-hover-preview.scss (shared component)
@@ -614,7 +601,7 @@ $collapse-height: 24px;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 2px solid var(--interactive-accent);
-    border-radius: 12px;
+    border-radius: $radius-m;
     padding: 10px;
     font-size: 20px;
     font-weight: 700;
@@ -658,7 +645,7 @@ $collapse-height: 24px;
     color: var(--text-muted);
     background: color-mix(in srgb, var(--background-primary) 80%, transparent);
     padding: 4px;
-    border-radius: 4px;
+    border-radius: $radius-s;
   }
 
   // The GM's own modifier: the same field, quieter until it is focused
@@ -685,7 +672,7 @@ $collapse-height: 24px;
     color: var(--text-muted);
     background: color-mix(in srgb, var(--background-primary) 80%, transparent);
     padding: 4px;
-    border-radius: 4px;
+    border-radius: $radius-s;
     white-space: nowrap;
   }
 }
@@ -711,3 +698,4 @@ $collapse-height: 24px;
     transform: translateX(0) scale(1);
   }
 }
+

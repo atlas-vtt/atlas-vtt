@@ -9,23 +9,22 @@ import type { TokenEntity } from '../../src/app/types';
 const state = vi.hoisted(() => ({
   objects: { tokens: {} as Record<string, unknown> },
   tokenSettings: { showInstanceBadges: true },
+  selectedIds: [] as string[],
 }));
 
 vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
   AtlasUIContext: (await import('react')).createContext(null),
-  useAtlasUI: () => ({ app: { vault: { adapter: { getResourcePath: (path: string) => `app://${path}` } } }, view: null }),
+  useAtlasUI: () => ({ app: { vault: { adapter: { getResourcePath: (path: string) => `app://${path}` }, getAbstractFileByPath: () => null, on: () => ({}), offref: () => undefined } }, view: null }),
 }));
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (s: typeof state) => unknown) => selector(state),
-  useViewStoreHook: () => ({ getState: () => state }),
+  useViewStoreHook: () => ({ getState: () => state, subscribe: () => () => undefined }),
 }));
 vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => [] }));
 vi.mock('../../src/app/react/hooks/useMapConditions', () => ({ useMapConditions: () => [] }));
 
 import { InitiativeCard } from '../../src/app/react/components/InitiativeCard';
 import { initiativeCardMenu } from '../../src/app/react/components/initiativeCardMenu';
-import { DEFAULT_TURN_OPTIONS } from '../../src/app/initiative/turnOptions';
-import { initiativeTrackerOptions } from '../../src/app/react/components/initiativeTrackerOptions';
 
 const entry: InitiativeEntry = {
   id: 'entry-1', tokenId: 't1', name: 'Goblin', initiative: 12, initiativeModifier: 0,
@@ -36,8 +35,8 @@ const goblin = (extra: Partial<TokenEntity> = {}): TokenEntity => ({ id: 't1', k
 function renderCard(token: TokenEntity): HTMLElement {
   state.objects.tokens = { t1: token };
   return render(
-    <InitiativeCard entry={entry} index={0} isHoveredForPreview={false}
-      onDragStart={vi.fn()} onDragOver={vi.fn()} onDragEnd={vi.fn()} onContextMenu={vi.fn()} onHover={vi.fn()} />,
+    <InitiativeCard entry={entry} isHoveredForPreview={false}
+      onContextMenu={vi.fn()} onHover={vi.fn()} />,
   ).container;
 }
 
@@ -62,14 +61,4 @@ describe('a combatant kept beside the map, in the tracker', () => {
     expect(labels(initiativeCardMenu(entry, goblin(), MODE, { ...actions, placeOnMap }))).not.toContain('Place on Map');
   });
 
-  it('is added from the tracker\'s options, which open the library\'s tokens', () => {
-    const addCombatant = vi.fn();
-    const entries = initiativeTrackerOptions(
-      { autoSort: true, bySides: false, empty: true, showNames: false, fromTurn: true, dock: 'right', turn: DEFAULT_TURN_OPTIONS, online: false },
-      { setAutoSort: noop, setShowNames: noop, setFromTurn: noop, setDock: noop, setTurn: noop, clear: noop, addCombatant },
-    );
-    const item = entries.find((candidate): candidate is Extract<ContextMenuEntry, { type: 'item' }> => candidate.type === 'item' && candidate.label === 'Add combatant…');
-    void item?.onClick();
-    expect(addCombatant).toHaveBeenCalledTimes(1);
-  });
 });

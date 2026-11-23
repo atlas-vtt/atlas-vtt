@@ -12,6 +12,11 @@ interface PanelResizeOptions {
   onResizeEnd: (size: PanelArea) => void;
   /** Least distance kept between the panel and the edges of its area. */
   margin?: number;
+  /**
+   * Content held at its size while the pointer moves and sized once on release: the panel clips it
+   * as it shrinks. For content whose relayout costs more than a frame, such as a page in a frame.
+   */
+  held?: RefObject<HTMLElement | null>;
 }
 
 /**
@@ -22,7 +27,7 @@ interface PanelResizeOptions {
  */
 export function usePanelResize(
   panelRef: RefObject<HTMLElement | null>,
-  { min, onResizeEnd, margin = 8 }: PanelResizeOptions,
+  { min, onResizeEnd, margin = 8, held }: PanelResizeOptions,
 ): (edge: ResizeEdge) => (event: ReactPointerEvent) => void {
   const notifyResizeEnd = useStableCallback(onResizeEnd);
 
@@ -39,10 +44,18 @@ export function usePanelResize(
       height: Math.max(min.height, area.height - panel.offsetTop - margin),
     };
     const start = { x: event.clientX, y: event.clientY, width: panel.offsetWidth, height: panel.offsetHeight };
+    // The pointer that pressed resizes the panel; a second finger laid down meanwhile does not
+    const { pointerId } = event;
     let size = { width: start.width, height: start.height };
     panel.classList.add('is-resizing');
+    const content = held?.current;
+    if (content) {
+      content.style.width = `${content.offsetWidth}px`;
+      content.style.height = `${content.offsetHeight}px`;
+    }
 
     const onMove = (move: PointerEvent): void => {
+      if (move.pointerId !== pointerId) return;
       size = {
         width: edge === 'bottom' ? start.width : Math.min(max.width, Math.max(min.width, start.width + move.clientX - start.x)),
         height: edge === 'right' ? start.height : Math.min(max.height, Math.max(min.height, start.height + move.clientY - start.y)),
@@ -50,15 +63,18 @@ export function usePanelResize(
       panel.style.width = `${size.width}px`;
       panel.style.height = `${size.height}px`;
     };
-    const onUp = (): void => {
+    const onUp = (up: PointerEvent): void => {
+      if (up.pointerId !== pointerId) return;
       win.removeEventListener('pointermove', onMove);
       win.removeEventListener('pointerup', onUp);
       win.removeEventListener('pointercancel', onUp);
       panel.classList.remove('is-resizing');
+      content?.style.removeProperty('width');
+      content?.style.removeProperty('height');
       if (size.width !== start.width || size.height !== start.height) notifyResizeEnd(size);
     };
     win.addEventListener('pointermove', onMove);
     win.addEventListener('pointerup', onUp);
     win.addEventListener('pointercancel', onUp);
-  }, [panelRef, min.width, min.height, margin, notifyResizeEnd]);
+  }, [panelRef, min.width, min.height, margin, held, notifyResizeEnd]);
 }

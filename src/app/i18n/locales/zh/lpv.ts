@@ -1,6 +1,14 @@
 import type { Translation } from '../../types';
 
 export const lpv: Translation = {
+  'lpv.initiativeRows': '横向先攻',
+  'lpv.initiativeRowsHint': '玩家的先攻列表横向排成一行，而不是竖在一侧，适合平放在桌上的屏幕。',
+  'lpv.initiativeMirrored': '镜像先攻',
+  'lpv.initiativeMirroredHint': '在屏幕另一侧再显示一份翻转的先攻列表，让桌子对面的玩家也能看清。',
+  'lpv.turnDim': '调暗桌面代替回合横幅',
+  'lpv.turnDimHint': '新回合不显示横幅，而是在横幅时长内调暗桌面，先攻列表保持明亮，让移动的卡片更醒目。战斗的开始和结束仍会显示横幅。',
+  'lpv.initiativeMaxCards': '先攻中显示的卡片数',
+  'lpv.initiativeMaxCardsAll': '全部',
   'lpv.shared': '本地与在线',
   'lpv.playerWindow': '玩家窗口',
   'lpv.online': '在线游戏',
@@ -10,5 +18,16 @@ export const lpv: Translation = {
   'lpv.openWindow': '打开玩家窗口',
   'lpv.showDiceRolls': '显示骰子投掷',
   'lpv.showInitiative': '显示先攻面板',
+  'lpv.initiativePulse': '当前回合边框闪动',
+  'lpv.initiativePulseHint': '轮到行动的参战者的边框会闪动，而不是静止不变。',
+  'lpv.initiativeScale': '先攻大小',
+  'lpv.initiativeScaleValue': '{percent}%',
+  'lpv.turnBannerAtLists': '回合横幅显示在先攻列表处',
+  'lpv.turnBannerAtListsHint': '回合横幅紧贴在每个先攻列表上方，并随列表一起旋转，而不是显示在桌面中央。',
   'lpv.showWidgets': '显示小组件',
+  'lpv.playersDraw': '允许玩家绘图',
+  'lpv.playersDrawHint': '在线玩家会获得自己的绘图工具。你可以修改和清除他们画的内容。',
+  'lpv.showCursors': '显示所有人的光标',
+  'lpv.view4k': '最高渲染到 4K',
+  'lpv.view4kHint': '4K 电视或超宽屏的每个屏幕像素都能得到一个渲染像素，而不是放大的 1440p 画面；玩家视图的图形运算最多增加到 2.25 倍。仅限此设备。',
 };

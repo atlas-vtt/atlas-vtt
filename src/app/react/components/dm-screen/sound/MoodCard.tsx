@@ -1,7 +1,8 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AlertTriangle, CornerDownLeft, FileX, Hourglass, Link2, MoreHorizontal, Swords, type LucideIcon } from 'lucide-react';
 import { t } from '../../../../i18n';
 import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
+import { useImageReveal } from '../../../../packages/components/primitives/useImageReveal';
 import type { Mood } from '../../../../sound/soundTypes';
 import type { MoodProblem } from '../../../../soundDirector/moodReadiness';
 import type { PlayersCopy } from '../../../../soundDirector/tableClock';
@@ -125,6 +126,8 @@ type Backdrop = 'loading' | 'fading' | 'at-once';
 function SceneBackdrop({ src }: { src: string }): React.JSX.Element {
   const image = useRef<HTMLImageElement>(null);
   const [shown, setShown] = useState<Backdrop>('loading');
+  // A thumbnail this window has not painted yet has a breathing place held for it, in the thumbnail's own shape.
+  const reveal = useImageReveal(src);
   // The page opens still: a thumbnail that arrives as the tile first comes shows at once; one changed later fades.
   const firstSrc = useRef(src);
   useLayoutEffect(() => {
@@ -138,18 +141,32 @@ function SceneBackdrop({ src }: { src: string }): React.JSX.Element {
     const frame = view.requestAnimationFrame(() => setShown('fading'));
     return () => view.cancelAnimationFrame(frame);
   }, [shown]);
+  const { ref: revealRef, onLoad: revealLoad, onError } = reveal.imageProps;
+  const ref = useCallback((element: HTMLImageElement | null): void => {
+    image.current = element;
+    revealRef(element);
+  }, [revealRef]);
   return (
-    <img
-      ref={image}
-      className="atlas-sound-mood__scene"
-      src={src}
-      alt=""
-      aria-hidden="true"
-      draggable={false}
-      data-shown={shown !== 'loading' || undefined}
-      data-at-once={shown === 'at-once' || undefined}
-      onLoad={() => setShown((was) => (was !== 'loading' ? was : src === firstSrc.current ? 'at-once' : 'fading'))}
-    />
+    <>
+      {reveal.fresh && reveal.status !== 'failed' && (
+        <span className="atlas-image-placeholder atlas-sound-mood__scene-wait" data-settled={reveal.status === 'shown' || undefined} style={reveal.placeholderStyle} aria-hidden="true" />
+      )}
+      <img
+        ref={ref}
+        className="atlas-sound-mood__scene"
+        src={src}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        data-shown={shown !== 'loading' || undefined}
+        data-at-once={shown === 'at-once' || undefined}
+        onLoad={() => {
+          revealLoad();
+          setShown((was) => (was !== 'loading' ? was : src === firstSrc.current ? 'at-once' : 'fading'));
+        }}
+        onError={onError}
+      />
+    </>
   );
 }
 

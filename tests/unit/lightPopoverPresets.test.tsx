@@ -42,7 +42,7 @@ function renderPopover(presetName: string, emission: LightEmission, settings: Pa
       <ViewStoreProvider store={store}><LightPopoverHost /></ViewStoreProvider>
     </AtlasUIContext.Provider>,
   );
-  act(() => store.getState().openLightPopover(id));
+  act(() => { store.getState().openLightPopover(id); });
   return () => store.getState().objects.lights[id]!.emission;
 }
 

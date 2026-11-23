@@ -96,7 +96,8 @@
     min-height: $online-row;
   }
 
-  .atlas-online-prompt__input {
+  input.atlas-online-prompt__input {
+    @include atlas-text-input;
     flex: 1;
     min-width: 0;
     height: $online-control;

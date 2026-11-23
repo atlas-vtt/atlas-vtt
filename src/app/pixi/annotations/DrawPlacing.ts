@@ -28,6 +28,8 @@ export interface DrawPlacingDeps {
   readonly taken: AnnotationPointerHandlers;
   /** The grid points snap to; null without a grid or while its Snap is off. */
   snapGrid(): GridGeometry | null;
+  /** Whether a point lies where the pointer is: the tool's Snap switch, turned around while Alt is `held`. */
+  frees(held: boolean): boolean;
   /** The grid whose cells the Cells mode fills; null where the map has none, or it is switched off. */
   cellGrid(): GridGeometry | null;
   /** The map, at whose edge a filled cell ends; null without one. */
@@ -215,7 +217,7 @@ export class DrawPlacing {
       bounds: map && { minX: map.x, minY: map.y, maxX: map.x + map.width, maxY: map.y + map.height },
       zoom: this.zoom,
       pointer,
-      free,
+      free: this.deps.frees(free),
     });
   }
 

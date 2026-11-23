@@ -31,20 +31,37 @@ int stackAt(vec2 w) {
   return int(texelFetch(uStack, ivec2(local), 0).r * 255.0 + 0.5);
 }
 
-// The snapshot texel of a level below that holds w: worked out from the stack texel holding w, as
-// stackAt reads it, so it always lies in that stack texel and never shows a neighbour's.
-ivec2 snapshotTexel(vec2 w) {
-  vec2 cell = floor(w / uStackTexel);
+// What level \`shown\`'s snapshot \`snap\` holds at w, filtered between the four snapshot texels around
+// w (bilinear) but only those whose own stack texel shows that level too: a neighbour that shows
+// the viewed level or nothing is left out and the others weighted up, so a pixel never shows a
+// picture the stack does not show at that texel, and a snapshot coarser than the screen is soft,
+// not square. The texel holding w always counts (its weight is at least a quarter).
+vec3 snapshotAt(sampler2D snap, int shown, vec2 w) {
   float sub = uBelowGrid.z;
-  vec2 inside = clamp(floor((w - cell * uStackTexel) * sub / uStackTexel), vec2(0.0), vec2(sub - 1.0));
-  return ivec2((cell - uBelowGrid.xy) * sub + inside);
+  float texel = uStackTexel / sub;
+  vec2 p = w / texel - 0.5;
+  vec2 base = floor(p);
+  vec2 f = p - base;
+  ivec2 last = textureSize(snap, 0) - 1;
+  vec2 origin = uBelowGrid.xy * sub;
+  vec3 sum = vec3(0.0);
+  float total = 0.0;
+  for (int j = 0; j < 2; j++) {
+    for (int i = 0; i < 2; i++) {
+      vec2 g = base + vec2(float(i), float(j));
+      if (stackAt((g + 0.5) * texel) != shown) continue;
+      float weight = (i == 0 ? 1.0 - f.x : f.x) * (j == 0 ? 1.0 - f.y : f.y);
+      sum += texelFetch(snap, clamp(ivec2(g - origin), ivec2(0), last), 0).rgb * weight;
+      total += weight;
+    }
+  }
+  return total > 0.0 ? sum / total : vec3(0.0);
 }
 
-// What a texel that shows level \`shown\` holds of it at w: its snapshot as it holds it in this very
-// stack texel, dimmed by uBelowDim once per level down; \`nothing\` where no snapshot of it is bound.
+// What a texel that shows level \`shown\` holds of it at w: its snapshot (snapshotAt), dimmed by
+// uBelowDim once per level down; \`nothing\` where no snapshot of it is bound.
 vec3 belowAt(int shown, vec2 w, vec3 nothing) {
-  ivec2 snap = snapshotTexel(w);
-  if (shown == 1 && uBelowShown.x > 0.5) return texelFetch(uBelow1, clamp(snap, ivec2(0), textureSize(uBelow1, 0) - 1), 0).rgb * uBelowDim;
-  if (shown == 2 && uBelowShown.y > 0.5) return texelFetch(uBelow2, clamp(snap, ivec2(0), textureSize(uBelow2, 0) - 1), 0).rgb * (uBelowDim * uBelowDim);
+  if (shown == 1 && uBelowShown.x > 0.5) return snapshotAt(uBelow1, 1, w) * uBelowDim;
+  if (shown == 2 && uBelowShown.y > 0.5) return snapshotAt(uBelow2, 2, w) * (uBelowDim * uBelowDim);
   return nothing;
 }`;

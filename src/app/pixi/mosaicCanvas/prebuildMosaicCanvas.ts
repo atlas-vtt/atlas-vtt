@@ -1,6 +1,7 @@
 import { TFile, type App } from 'obsidian';
 import { TesseraDecoderClient, TesseraOpenError } from './TesseraDecoderClient';
 import { requiredMainThreadDecode } from './mainThreadDecode';
+import { deviceProfile } from '../../platform/deviceProfile';
 
 /**
  * Builds a freshly saved map image's tesserae into this device's cache, so the
@@ -10,6 +11,8 @@ import { requiredMainThreadDecode } from './mainThreadDecode';
  * the head start (the map is built when it is first opened instead).
  */
 export function prebuildMosaicCanvas(app: App, file: TFile): void {
+  // A tablet's web view may be ended for what it holds while nobody looks: there the head start waits for the map's first open.
+  if (deviceProfile().memoryClass === 'mobile' && activeDocument.visibilityState === 'hidden') return;
   const identity = { path: file.path, size: file.stat.size, mtime: file.stat.mtime };
   TesseraDecoderClient.forApp(app)
     .prebuild(() => app.vault.readBinary(file), identity, requiredMainThreadDecode(file))

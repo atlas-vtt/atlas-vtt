@@ -1,8 +1,9 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { Application, CanvasSource, Container, Matrix, RenderTexture, Sprite, Texture, type WebGLRenderer } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { imageWorldRect, NO_STRETCH, sameStretch, turnedBox, type MapStretch } from '../../src/app/grid/mapStretch';
 import type { ArtAlpha, LevelArt } from '../../src/app/levels/artRaster';
+import { viewedImagePlacement } from '../../src/app/levels/levelAlignment';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import type { SceneLevel } from '../../src/app/types/sceneLevelTypes';
 import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
@@ -180,6 +181,8 @@ export interface LevelsView {
   maps: Record<string, FakeMap>;
   /** Shows map `background` on the viewed level, placed by `placement` (as the store must place it), and lets the lighting follow its size. */
   showViewedMap(background: string, placement: MapStretch): Promise<void>;
+  /** Draws the viewed level's map with `placement` alone, the scene unchanged: a preview (grid alignment, Position floor). */
+  previewViewedMap(placement: MapStretch): void;
   /** The GM's canvas through the camera, drawn as the render scheduler draws it, read back. */
   gmCanvas(scale: number, x: number, y: number): Uint8ClampedArray;
   dispose(): void;
@@ -247,6 +250,7 @@ export async function openLevelsView({ map, pane, paneHeight = pane, resolution 
     },
     viewedFog: viewedFog ?? ((): FogCover => undefined),
     placeEraser: (eraser) => viewport.addChildAt(eraser, viewport.getChildIndex(floor) + 1),
+    previewing: () => !sameStretch(floorImage.mapStretch, viewedImagePlacement(store.getState())),
   };
   const bounds = (): MapBounds => {
     const rect = floorImage.worldRect!;
@@ -287,6 +291,7 @@ export async function openLevelsView({ map, pane, paneHeight = pane, resolution 
       await floorImage.load(background, undefined, placement);
       controller.renderer.refreshBounds();
     },
+    previewViewedMap: (placement) => floorImage.setStretch(placement),
     displayFrames: (count) => { for (let i = 0; i < count; i++) app.ticker.update(time += 16); },
     settle: async () => {
       for (let i = 0; i < 3; i++) {

@@ -95,11 +95,10 @@ describe('the keys', () => {
     expect(arrowDirection('ArrowUp')).toBe('up');
   });
 
-  it('next mood and Stop all show only while sound is switched on, and only to the GM', () => {
-    const ids = (player: boolean, on: boolean): string[] => availableHotkeys(player, () => on).map(({ id }) => id);
-    expect(ids(false, false)).not.toContain('nextMood');
-    expect(ids(false, true)).toEqual(expect.arrayContaining(['nextMood', 'silence']));
-    expect(ids(true, true)).not.toContain('silence');
+  it('next mood and Stop all show only to the GM', () => {
+    const ids = (player: boolean): string[] => availableHotkeys(player).map(({ id }) => id);
+    expect(ids(false)).toEqual(expect.arrayContaining(['nextMood', 'silence']));
+    expect(ids(true)).not.toContain('silence');
   });
 
   it('take keys no other shortcut uses', () => {
@@ -134,6 +133,17 @@ describe('the output device', () => {
     forgetOutputFollower(old);
     forgetOutputFollower(late);
     await setOutputDevice('');
+  });
+
+  it('says nothing of a context that closes while it moves', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const closing = { setSinkId: vi.fn(() => Promise.reject(new DOMException('AudioContext is going away', 'InvalidStateError'))) };
+    followOutputDevice(closing);
+    await setOutputDevice('usb');
+    expect(error).not.toHaveBeenCalled();
+    forgetOutputFollower(closing);
+    await setOutputDevice('');
+    error.mockRestore();
   });
 
   it('falls back to the default when the device is gone, and says so', async () => {

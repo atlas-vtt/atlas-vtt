@@ -17,8 +17,7 @@
   height: $button-height-s;
   padding: 0 $spacing-xs;
   border-radius: $radius-s;
-  @include atlas-corner-shape;
-  background: color-mix(in oklch, var(--interactive-accent) 16%, transparent);
+  background: var(--background-modifier-hover);
   color: var(--text-normal);
   font-size: $font-ui-small;
   font-weight: $font-weight-semibold;

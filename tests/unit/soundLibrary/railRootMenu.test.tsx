@@ -71,6 +71,7 @@ describe('a root\'s menu in the rail', () => {
     await mounted(null);
     const items = await menuItems();
     expect(items.filter((item) => item.includes('originals'))).toEqual([]);
-    expect(items).toEqual(['Prepare all', 'Change folder', 'Unlink']);
+    // The starter music stays here for a GM who dismissed its offer in the rail.
+    expect(items).toEqual(['Prepare all', 'Get starter music', 'Change folder', 'Unlink']);
   });
 });

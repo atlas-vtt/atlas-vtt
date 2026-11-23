@@ -1,7 +1,8 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../utils/typedEmitter';
 import type { Viewport } from 'pixi-viewport';
 import { strokePolygons } from '../../lighting/exploredEdits';
-import { areaOf, extended, type RoomArea } from '../../lighting/rooms';
+import { roomDoor } from '../../lighting/roomDoor';
+import { areaOf, type RoomArea } from '../../lighting/rooms';
 import { carvedWalls, filledWalls } from '../../lighting/wallCarving';
 import { wallSpaces } from '../../lighting/wallSpaces';
 import { levelObjects } from '../../levels/levelObjects';
@@ -13,6 +14,8 @@ import type { MapBounds } from '../../vision/visibility';
 import { wallList } from '../../vision/wallList';
 import { closesDraft } from '../areas/areaGeometry';
 import { RoomOverlay } from './RoomOverlay';
+import { wallEndReach } from './wallEnds';
+import { switchApplies } from '../../types/toolSwitches';
 
 export interface RoomEditorDeps {
   viewport: Viewport;
@@ -214,14 +217,15 @@ export class RoomEditor {
   }
 
   /**
-   * A closed door from `a` to `b`, its ends pushed out to the walls beside it when they are within
-   * a grid cell, so no light slips past a door drawn a little short.
+   * A closed door from `a` to `b`, in one write and one undo step (`roomDoor`): its ends reach a wall
+   * as close as a wall end snaps, and never a quarter cell away, so an end on a grid crossing a cell
+   * from a corner stays where it was drawn.
    */
   private placeDoor(a: Point, b: Point, secret: boolean): void {
     const state = this.deps.store.getState();
-    const reach = state.grid?.size ?? 70;
-    const walls = wallList(levelObjects(state).walls);
-    state.addWall({ type: secret ? 'secret-door' : 'door', p1: extended(a, b, walls, reach), p2: extended(b, a, walls, reach), closed: true });
+    const reach = Math.min(wallEndReach(this.zoom()), (state.grid?.size ?? 70) / 4);
+    const { remove, add } = roomDoor(a, b, wallList(levelObjects(state).walls), reach, secret ? 'secret-door' : 'door');
+    state.editWalls(remove, add);
   }
 
   /** Carves `area` or fills it in, as one edit of the level's walls and one undo step. */
@@ -240,7 +244,7 @@ export class RoomEditor {
   /** With Shift, a corner lands on the nearest crossing of a square grid. */
   private snapped(point: Point, { shiftKey }: RoomKeys): Point {
     const grid = this.deps.store.getState().grid;
-    if (!shiftKey || !grid || grid.type !== 'square' || !(grid.size > 0)) return point;
+    if (!switchApplies(this.deps.store.getState(), 'roomSnap', shiftKey) || !grid || grid.type !== 'square' || !(grid.size > 0)) return point;
     const snap = (v: number, offset: number): number => Math.round((v - offset) / grid.size) * grid.size + offset;
     return { x: snap(point.x, grid.offsetX), y: snap(point.y, grid.offsetY) };
   }

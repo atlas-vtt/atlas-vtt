@@ -1,5 +1,5 @@
 import '../setup/obsidianDom';
-import { act } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import css from '../../styles/main.scss?inline';
@@ -8,6 +8,8 @@ import { emissionOf, lightPresetsOnMap } from '../../src/app/lighting/lightPrese
 import { openEditTokenModal } from '../../src/app/pixi/token-renderer/EditTokenModal';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { Character } from '../../src/app/types';
+import { followVisualViewport } from '../../src/app/host/visibleViewport';
+import { KEYBOARD_INSET_PROPERTY, watchKeyboard } from '../../src/app/platform/keyboardViewport';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { HP, STR } from '../mocks/resourceFixtures';
 
@@ -44,11 +46,19 @@ async function open(token: Character, width: number, height: number): Promise<vo
   await expect.poll(() => document.activeElement?.getAttribute('placeholder')).toBe('Token name');
 }
 
-/** Where a part of the dialog lies in it: from the dialog's own corner, so a dialog that moves as a whole leaves it unchanged. */
-function placeInModal(element: Element): number[] {
-  const frame = modal().getBoundingClientRect();
+/** Where an element lies in the window, to the pixel. */
+function placeOnScreen(element: Element): number[] {
   const { left, top, width, height } = element.getBoundingClientRect();
-  return [left - frame.left, top - frame.top, width, height].map(Math.round);
+  return [left, top, width, height].map(Math.round);
+}
+
+/** The dialog's distances from the top and the bottom of the overlay's area that centres it. */
+function marginsInOverlay(): number[] {
+  const overlay = modal().parentElement!;
+  const area = overlay.getBoundingClientRect();
+  const padding = parseFloat(getComputedStyle(overlay).paddingTop);
+  const frame = modal().getBoundingClientRect();
+  return [frame.top - area.top - padding, area.bottom - padding - frame.bottom].map(Math.round);
 }
 
 describe('the layout of the Edit token dialog', () => {
@@ -120,18 +130,52 @@ describe('the layout of the Edit token dialog', () => {
     expect([...tops].sort((a, b) => a - b)).toEqual(tops);
   });
 
-  it('fits an ordinary window with a light switched on, and moves nothing in the left column when the light is switched', async () => {
+  it('opens in the middle of the window', async () => {
+    await open({ ...MIRABEL, light: TORCH }, 1280, 900);
+    const [above, below] = marginsInOverlay();
+    expect(Math.abs(above! - below!)).toBeLessThanOrEqual(1);
+  });
+
+  it('fits an ordinary window with a light switched on, and moves nothing above what changed when the light is switched', async () => {
     await open({ ...MIRABEL, light: TORCH }, 1280, 900);
     expect(body().scrollHeight).toBe(body().clientHeight);
     const left = modal().querySelector('.atlas-edit-token__column')!;
-    const parts = (): number[][] => [...left.querySelectorAll('h4, input, .atlas-toggle, button')].map(placeInModal);
-    const lit = { parts: parts(), size: placeInModal(modal()) };
+    const parts = (): number[][] => [...left.querySelectorAll('h4, input, .atlas-toggle, button')].map(placeOnScreen);
     const carried = [...modal().querySelectorAll<HTMLElement>('[role="switch"]')].find((toggle) => toggle.getAttribute('aria-checked') === 'true' && !left.contains(toggle))!;
+    const lit = { parts: parts(), carried: placeOnScreen(carried), top: Math.round(modal().getBoundingClientRect().top) };
+    // The dialog keeps the top it opened with and changes its size downward: the switch just
+    // clicked stays under the pointer, and so does the token's own column, off and on again.
     act(() => carried.click());
     expect(modal().querySelector('.atlas-edit-token__light')).toBeNull();
+    expect(Math.round(modal().getBoundingClientRect().top)).toBe(lit.top);
+    expect(placeOnScreen(carried)).toEqual(lit.carried);
     expect(parts()).toEqual(lit.parts);
-    // This token's own column is the longer one: the dialog keeps its size, with the light or without.
-    expect(placeInModal(modal())).toEqual(lit.size);
+    act(() => carried.click());
+    expect(modal().querySelector('.atlas-edit-token__light')).not.toBeNull();
+    expect(placeOnScreen(carried)).toEqual(lit.carried);
+    expect(parts()).toEqual(lit.parts);
+  });
+
+  it('keeps the vision switch under the pointer when vision is switched off and on again', async () => {
+    await open({ ...MIRABEL, light: TORCH }, 1280, 900);
+    const vision = screen.getByRole('switch', { name: 'Vision (party member)' });
+    const seen = { switch: placeOnScreen(vision), top: Math.round(modal().getBoundingClientRect().top) };
+    // Switching vision off takes its range, angle and senses away, so the token's column, the longer one, grows shorter.
+    act(() => vision.click());
+    expect(screen.queryByLabelText(/^Sight range/)).toBeNull();
+    expect(Math.round(modal().getBoundingClientRect().top)).toBe(seen.top);
+    expect(placeOnScreen(vision)).toEqual(seen.switch);
+    act(() => vision.click());
+    expect(placeOnScreen(vision)).toEqual(seen.switch);
+  });
+
+  it('takes the middle of the window again when the window changes size', async () => {
+    await open({ ...MIRABEL, light: TORCH }, 1280, 900);
+    await page.viewport(1280, 760);
+    await expect.poll(() => {
+      const [above, below] = marginsInOverlay();
+      return Math.abs(above! - below!) <= 1;
+    }).toBe(true);
   });
 
   it('scrolls only its body in a window too low for it: the header and the footer stay', async () => {
@@ -146,5 +190,85 @@ describe('the layout of the Edit token dialog', () => {
     expect(footer.bottom).toBeLessThanOrEqual(480);
     body().scrollTop = body().scrollHeight;
     expect(modal().querySelector('.atlas-modal-footer')!.getBoundingClientRect().bottom).toBe(footer.bottom);
+  });
+
+  it('is seen whole in a landscape tablet\'s window, 1180 × 700: what does not fit scrolls inside its body', async () => {
+    await open({ ...MIRABEL, light: TORCH }, 1180, 700);
+    const frame = modal().getBoundingClientRect();
+    expect(frame.top).toBeGreaterThanOrEqual(0);
+    expect(frame.bottom).toBeLessThanOrEqual(700);
+    const header = modal().querySelector('.atlas-modal-header')!.getBoundingClientRect();
+    const footer = modal().querySelector('.atlas-modal-footer')!.getBoundingClientRect();
+    expect(header.top).toBeGreaterThanOrEqual(frame.top);
+    expect(footer.bottom).toBeLessThanOrEqual(frame.bottom);
+    // Every field is in the body, which either shows all of itself or scrolls
+    expect(getComputedStyle(body()).overflowY).toBe('auto');
+    for (const field of body().querySelectorAll('input')) {
+      body().scrollTop = 0;
+      field.scrollIntoView({ block: 'nearest' });
+      const box = field.getBoundingClientRect();
+      const seen = body().getBoundingClientRect();
+      expect(box.top).toBeGreaterThanOrEqual(seen.top - 1);
+      expect(box.bottom).toBeLessThanOrEqual(seen.bottom + 1);
+    }
+  });
+
+  describe('with a tablet\'s keyboard up, which leaves 1180 × 380 of the window in sight', () => {
+    const KEYBOARD_TOP = 380;
+    /** The window's visual viewport as a tablet reports it while its keyboard covers the lower part. */
+    class Visual extends EventTarget {
+      offsetLeft = 0;
+      offsetTop = 0;
+      width = 1180;
+      height = 700;
+    }
+    const real = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    let visual: Visual;
+    let stop: (() => void)[] = [];
+
+    beforeEach(() => {
+      visual = new Visual();
+      Object.defineProperty(window, 'visualViewport', { configurable: true, value: visual });
+    });
+
+    afterEach(() => {
+      stop.forEach((end) => end());
+      stop = [];
+      if (real) Object.defineProperty(window, 'visualViewport', real);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    });
+
+    it('ends above the keyboard, and the field being typed into is scrolled into what is seen', async () => {
+      await open({ ...MIRABEL, light: TORCH }, 1180, 700);
+      stop = [followVisualViewport(true), watchKeyboard(document)];
+      // The lowest field of the token's column: under the keyboard once it is up
+      const fields = [...modal().querySelector('.atlas-edit-token__column')!.querySelectorAll<HTMLInputElement>('input:not([type="checkbox"])')];
+      const field = fields.at(-1)!;
+      act(() => field.focus());
+      expect(field.getBoundingClientRect().bottom).toBeGreaterThan(KEYBOARD_TOP);
+
+      visual.height = KEYBOARD_TOP;
+      act(() => { visual.dispatchEvent(new Event('resize')); });
+
+      expect(document.body.style.getPropertyValue(KEYBOARD_INSET_PROPERTY)).toBe('320px');
+      await expect.poll(() => Math.round(modal().getBoundingClientRect().bottom)).toBeLessThanOrEqual(KEYBOARD_TOP);
+      expect(modal().getBoundingClientRect().top).toBeGreaterThanOrEqual(0);
+      const footer = modal().querySelector('.atlas-modal-footer')!.getBoundingClientRect();
+      expect(footer.bottom).toBeLessThanOrEqual(KEYBOARD_TOP);
+      expect(document.activeElement).toBe(field);
+      await expect.poll(() => field.getBoundingClientRect().bottom).toBeLessThanOrEqual(KEYBOARD_TOP);
+      const seen = body().getBoundingClientRect();
+      expect(field.getBoundingClientRect().top).toBeGreaterThanOrEqual(seen.top);
+      expect(field.getBoundingClientRect().bottom).toBeLessThanOrEqual(seen.bottom);
+
+      // The keyboard goes: the dialog takes its room again
+      visual.height = 700;
+      act(() => { visual.dispatchEvent(new Event('resize')); });
+      expect(document.body.style.getPropertyValue(KEYBOARD_INSET_PROPERTY)).toBe('');
+      await expect.poll(() => {
+        const [above, below] = marginsInOverlay();
+        return Math.abs(above! - below!) <= 1;
+      }).toBe(true);
+    });
   });
 });

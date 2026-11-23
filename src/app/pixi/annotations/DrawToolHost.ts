@@ -4,6 +4,7 @@ import type { StoreApi } from 'zustand';
 import type { TextMeasure } from '../../annotations/annotationBounds';
 import { annotationIndex } from '../../annotations/annotationHit';
 import { annotationList, annotationRoom } from '../../annotations/annotationList';
+import { annotationsNow, putAnnotationsBack, type AnnotationsBefore } from '../../annotations/annotationsBefore';
 import { cleanFillsWritten } from '../../annotations/cleanFills';
 import type { DrawLayer, DrawMode } from '../../annotations/annotationTypes';
 import { drawCell, eraserRadius, stampSize } from '../../annotations/drawSizes';
@@ -15,7 +16,7 @@ import type { MapRect } from '../../grid/cellNumbering';
 import type { GridGeometry } from '../../grid/gridDistance';
 import { levelObjects } from '../../levels/levelObjects';
 import type { ViewAtlasState } from '../../storeFactory';
-import { beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
+import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
 import type { Point } from '../../types/visionTypes';
 import { FogCursorPreview } from '../fog/FogCursorPreview';
 import { CellsPainting } from './CellsPainting';
@@ -43,6 +44,8 @@ export interface DrawToolDeps {
   readonly chrome: Container;
   /** The grid points snap to; null without a grid or while its Snap is off. */
   snapGrid(): GridGeometry | null;
+  /** Whether a point lies where the pointer is: the tool's Snap switch, turned around while Alt is `held`. */
+  frees(held: boolean): boolean;
   /** The grid whose cells the Cells mode fills; null where the map has none, or it is switched off. */
   cellGrid(): GridGeometry | null;
   /** The map, at whose edge a filled cell ends; null without one. */
@@ -66,8 +69,9 @@ const GESTURES: readonly DrawMode[] = ['pen', 'line', 'rectangle', 'ellipse', 'c
  * corner of the last, where a handle would take the press. A stamp is selected, so it can be
  * nudged or turned at once. The
  * eraser cuts what its sweep passes (`sweepChange`), every step of it written at once and the
- * whole sweep one undo step; its ring follows the pointer. A drawing that can take no further cut
- * stays as it is, which the GM is told once a sweep. The Cells mode fills or clears the
+ * whole sweep one undo step; its ring follows the pointer. A sweep whose press is lost (a second
+ * finger came down to move the map) puts back what it cut and leaves no step. A drawing that can
+ * take no further cut stays as it is, which the GM is told once a sweep. The Cells mode fills or clears the
  * cells its sweep passes (`CellsPainting`), written when the button comes up. A level that is full
  * takes nothing more, and says so.
  */
@@ -84,6 +88,8 @@ export class DrawToolHost {
   private painting = false;
   /** An eraser's sweep is under way: its undo step is open. */
   private sweeping = false;
+  /** The drawings and texts of the scene as the sweep under way found them. */
+  private beforeSweep: AnnotationsBefore | null = null;
   /** The sweep under way was already told that the level is full. */
   private toldFull = false;
 
@@ -102,12 +108,13 @@ export class DrawToolHost {
     });
     this.gestures = {
       mode: () => this.gestureMode(),
-      point: (world, free) => snapDrawPoint(deps.snapGrid(), world, free),
+      point: (world, held) => snapDrawPoint(deps.snapGrid(), world, deps.frees(held)),
       started: (mode) => this.started(mode),
       changed: (shape) => this.changed(shape),
       swept: (path, alt) => this.swept(path, alt),
       finished: (made) => this.finished(made),
       cancelled: () => this.dropped(),
+      sweepLost: () => this.putBackSweep(),
       hovered: (world) => this.hovered(world),
     };
     this.clicks = {
@@ -165,6 +172,7 @@ export class DrawToolHost {
     if (mode !== 'eraser' || this.sweeping) return;
     this.sweeping = true;
     this.toldFull = false;
+    this.beforeSweep = annotationsNow(this.deps.store.getState());
     // One sweep cuts many drawings, a step at a time: all of it is one undo step.
     beginHistoryTransaction(this.deps.store);
   }
@@ -250,11 +258,11 @@ export class DrawToolHost {
     if (this.ring.shown) this.ring.updatePosition(world.x, world.y);
   }
 
-  private stamp(world: Point, free: boolean): void {
+  private stamp(world: Point, held: boolean): void {
     if (!this.hasRoom('drawings')) return;
     const state = this.deps.store.getState();
     const cell = drawCell(state.grid);
-    const at = snapStampPoint(this.deps.snapGrid(), world, free, stampSize(state.drawTool.size, cell));
+    const at = snapStampPoint(this.deps.snapGrid(), world, this.deps.frees(held), stampSize(state.drawTool.size, cell));
     this.select(state.addDrawing(madeStamp(at, state.drawTool, cell)));
   }
 
@@ -281,6 +289,17 @@ export class DrawToolHost {
   private endSweep(): void {
     if (!this.sweeping) return;
     this.sweeping = false;
+    this.beforeSweep = null;
     endHistoryTransaction(this.deps.store);
+  }
+
+  /** The eraser's press was lost: the drawings and texts are again what the sweep found, and its undo step is never recorded. */
+  private putBackSweep(): void {
+    const before = this.beforeSweep;
+    if (!this.sweeping || !before) return;
+    this.sweeping = false;
+    this.beforeSweep = null;
+    putAnnotationsBack(this.deps.store.getState(), before);
+    abandonHistoryTransaction(this.deps.store);
   }
 }

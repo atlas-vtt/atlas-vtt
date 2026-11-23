@@ -16,7 +16,7 @@ $rest-inset: $spacing-m;
     bottom: var(--atlas-sb-socket-bottom, auto);
     left: var(--atlas-sb-socket-left, 0);
     z-index: $z-popover;
-    width: min(#{$rest-panel-width}, calc(100vw - 2 * #{$spacing-s}));
+    width: min(#{$rest-panel-width}, calc(#{atlas-view-width()} - 2 * #{$spacing-s}));
     translate: var(--atlas-keep-in-view-x);
   }
 
@@ -30,7 +30,7 @@ $rest-inset: $spacing-m;
 
   .atlas-sb-rest-panel {
     @include atlas-elevated-surface;
-    @include atlas-panel-radius($radius-2xl);
+    @include atlas-panel-radius($surface-radius);
     display: flex;
     flex-direction: column;
     max-height: min(640px, var(--atlas-keep-in-view-max-height, 640px));
@@ -126,8 +126,7 @@ $rest-inset: $spacing-m;
   // An action is a tile; picked, it takes a quiet fill and holds whom it is for and what it spends.
   .atlas-sb-rest-action {
     padding: $spacing-s;
-    border-radius: $radius-l;
-    @include atlas-corner-shape;
+    border-radius: $radius-m;
     transition: background-color $transition-fast $transition-ease;
 
     &[data-picked] {
@@ -170,6 +169,7 @@ $rest-inset: $spacing-m;
     background: transparent;
     box-shadow: none;
     color: var(--text-muted);
+    @include atlas-coarse-hit;
 
     &:hover:not(:disabled) {
       background: var(--background-modifier-hover);

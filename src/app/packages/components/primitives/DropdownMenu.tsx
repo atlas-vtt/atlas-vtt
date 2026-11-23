@@ -66,7 +66,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    const handlePointerDown = (event: MouseEvent | TouchEvent): void => {
+    const handlePointerDown = (event: PointerEvent): void => {
       const target = event.target as Node | null;
       if (!target) return;
       if (containerRef.current?.contains(target)) return;
@@ -81,13 +81,11 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
 
     // The document the menu is in: a menu in a popout hears its presses there, never in the main one.
     const doc = containerRef.current?.ownerDocument ?? document;
-    doc.addEventListener('mousedown', handlePointerDown);
-    doc.addEventListener('touchstart', handlePointerDown);
+    doc.addEventListener('pointerdown', handlePointerDown);
     doc.addEventListener('keydown', handleEscape);
 
     return () => {
-      doc.removeEventListener('mousedown', handlePointerDown);
-      doc.removeEventListener('touchstart', handlePointerDown);
+      doc.removeEventListener('pointerdown', handlePointerDown);
       doc.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, onToggle]);
@@ -97,6 +95,8 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
       ref={containerRef}
       className={`atlas-dropdown-menu ${className || ''}`.trim()}
       style={containerCombinedStyle}
+      // Says the menu is open whatever its trigger is; a bar that hides away (Show toolbar on hover) stays while it is.
+      data-state={isOpen ? 'open' : 'closed'}
       {...rest} // Spread onClick and other HTML attributes here
     >
       {showTrigger && (
@@ -114,6 +114,8 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
             className={`atlas-dropdown-trigger btn--toolbar ${isOpen ? 'atlas-is-active' : ''} ${chevronClassName}`}
             style={chevronStyle}
             onClick={onToggle} // This onToggle is from props, for the trigger
+            aria-haspopup="menu"
+            aria-expanded={isOpen}
           >
             <ChevronDown style={{ height: '1rem', width: '1rem' }} />
             <span className="sr-only">{label}</span>

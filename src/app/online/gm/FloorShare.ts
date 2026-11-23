@@ -12,11 +12,13 @@ import { InputShare } from './InputShare.ts';
 import { LiveShare } from './LiveShare.ts';
 import { MapLayerShare } from './MapLayerShare.ts';
 import { MarkShare } from './MarkShare.ts';
+import { PlayerMeasures } from './playerMeasures.ts';
 import { sceneWalls, type MapSize } from './moveCheck.ts';
 import { ownerIn } from './seatSource.ts';
 import { PlayerDrawings } from './playerDrawings.ts';
 import { ClearedPlayers } from './playerDrawingsClear.ts';
 import { PlayerMoves } from './playerMoves.ts';
+import { playerMoveDistance } from './playerTurnMoves.ts';
 import type { SceneSharePorts } from './sceneSharePorts.ts';
 import { movesOutOfTurn } from './turnShare.ts';
 import { RulesShare } from './RulesShare.ts';
@@ -27,6 +29,7 @@ import { viewedLevelId } from '../../levels/sceneLevels';
 import { drawCell } from '../../annotations/drawSizes';
 import { isVideoMapPath, videoMimeType } from '../../pixi/mosaicCanvas/video/videoMapFiles';
 import { isHistoryTravelling } from '../../stores/history';
+import { sceneDiceShelf, sharedDiceRow } from './diceRowShare.ts';
 import { t } from '../../i18n';
 
 /** The type of an animated map's video by its path, or null for a path that is no video map. */
@@ -63,6 +66,7 @@ export class FloorShare {
   readonly layers: MapLayerShare;
   private readonly rules: RulesShare;
   private readonly moves: PlayerMoves;
+  private readonly measures: PlayerMeasures;
   private readonly marks: MarkShare;
   /** The players' own drawings and texts on this floor. */
   private readonly drawings: PlayerDrawings;
@@ -96,6 +100,7 @@ export class FloorShare {
       ...ports,
       shownTokens: () => this.tokens.shownIds(),
       tokenAlias: (id) => this.tokens.alias(id),
+      fogEdge: () => ports.atlasSettings().fogEdge,
     });
     const playersDraw = (): boolean => ports.atlasSettings().playersDraw === true;
     // The players of this floor: each sees the floor their own token stands on.
@@ -116,7 +121,9 @@ export class FloorShare {
       map: () => this.mapSize,
     });
     const draw = (): { readonly cell: number } | null => (playersDraw() ? { cell: drawCell(store.getState().grid) } : null);
-    this.rules = new RulesShare(store, { ...ports, cursorsShown, rollDice: () => mapRollDice(ports.dice?.() ?? null), draw });
+    this.rules = new RulesShare(store, {
+      ...ports, cursorsShown, rollDice: () => mapRollDice(ports.dice?.() ?? null), draw, diceRow: () => sharedDiceRow(sceneDiceShelf(ports, store)),
+    });
     this.moves = new PlayerMoves(store, {
       ...ports,
       context: () => ({
@@ -128,13 +135,16 @@ export class FloorShare {
         walls: sceneWalls(levelObjects(store.getState()).walls, this.scene?.lit === true, this.mapSize),
         outOfTurn: (tokenId) => {
           const settings = ports.atlasSettings();
-          return movesOutOfTurn(store.getState(), { movesOnTurn: settings.movesOnTurn === true, showInitiative: settings.showInitiative, definitions: ports.tokenRules?.()?.resources ?? [] }, tokenId);
+          return movesOutOfTurn(store.getState(), { movesOnTurn: settings.movesOnTurn === true, definitions: ports.tokenRules?.()?.resources ?? [] }, tokenId);
         },
+        // A player's drop counts towards the turn's movement as the GM's own drag does (`DragRuler.countDrop`)
+        turnMove: (tokenId, from, to) => (ports.tokenMoves?.()?.rules().countPerTurn === true ? playerMoveDistance(store.getState(), ports.measurement?.() ?? null, tokenId, from, to) : null),
       }),
     });
+    this.measures = new PlayerMeasures(store, { now: () => ports.now(), seated, scene: () => this.sceneId, map: () => this.mapSize });
     // An aura names its token by the id the token list gives it
     this.marks = new MarkShare({
-      ...ports, cursorsShown, tokenAlias: (tokenId) => this.tokens.alias(tokenId),
+      ...ports, cursorsShown, tokenAlias: (tokenId) => this.tokens.alias(tokenId), keptBy: (measure) => this.measures.told(measure),
       // A drawing under way is followed only where a request to make it would be taken.
       strokesTaken: (player, scene) => (this.drawings.refusal(player, scene) === null ? { cell: drawCell(store.getState().grid) } : null),
       fog: () => this.layers.committedFog(),
@@ -239,6 +249,7 @@ export class FloorShare {
     if (message.t === 'drag') return this.moves.drag(from, message);
     if (message.t === 'drag-cancel') return this.moves.dragCancel(from, message);
     if (message.t === 'laser' || message.t === 'measure' || message.t === 'cursor' || message.t === 'stroke') return this.marks.receive(from, message);
+    if (message.t === 'measure-keep' || message.t === 'measure-drop') return this.measures.receive(from, message);
     if (message.t === 'draw-points' || message.t === 'draw-add' || message.t === 'draw-text' || message.t === 'draw-change' || message.t === 'draw-remove' || message.t === 'draw-erase') {
       this.dealing = true;
       try {

@@ -4,7 +4,7 @@ import { cn } from '../../../../../utils/cn';
 import { PreviewGrid } from './PreviewGrid';
 import type { useTokenPreviews } from './useTokenPreviews';
 import type { CreatorMode } from './types';
-import { t } from '../../../../i18n';
+import { t, tPointer } from '../../../../i18n';
 
 interface CreatorPreviewPaneProps {
   mode: CreatorMode;
@@ -23,7 +23,7 @@ export function CreatorPreviewPane({ mode, previews, inert }: CreatorPreviewPane
         <div className="atlas-token-creator__empty">
           <div className="atlas-token-creator__empty-icon"><ImageIcon /></div>
           <h3>{t(`creator.${mode}.none`)}</h3>
-          <p>{t('creator.emptyHint')}</p>
+          <p>{tPointer('creator.emptyHint')}</p>
         </div>
       ) : (
         <PreviewGrid

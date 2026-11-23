@@ -8,6 +8,20 @@ export const SCROLLBAR_HOST_TAGS: ReadonlySet<string> = new Set([
   'DIV', 'SECTION', 'ARTICLE', 'ASIDE', 'NAV', 'MAIN', 'HEADER', 'FOOTER', 'SPAN', 'P', 'BLOCKQUOTE',
 ]);
 
+/** A window as far as its stylesheets can be asked: a test's has no `CSS`. */
+interface StyleWindow {
+  readonly CSS?: { supports(condition: string): boolean };
+}
+
+/**
+ * Whether the window's web view can draw the overlay at all: it is placed by an anchor and moved by a scroll
+ * timeline, and one without both (before iPadOS 26) keeps its native scrollbars, which the stylesheet then leaves
+ * alone by the same question.
+ */
+export function canDrawOverlayScrollbars(win: StyleWindow | null): boolean {
+  return win?.CSS?.supports('(anchor-name: --a) and (animation-timeline: --a)') === true;
+}
+
 export interface ScrollAxes {
   y: boolean;
   x: boolean;

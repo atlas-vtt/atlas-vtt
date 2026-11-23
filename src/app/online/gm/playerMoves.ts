@@ -1,12 +1,13 @@
 import type { GmMessage, PlayerDrag, PlayerDragCancel, PlayerMove } from '../protocol/index.ts';
 import { placeTokens, type PlacedTokensState } from '../../stores/tokenStacking';
+import { countTurnMoveIn, type TurnMovesDraft } from '../../stores/turnMovesSlice';
 import type { ViewState } from '../../types/viewState';
 import { checkMove, dropPlace, insideMap, MoveRate, samePlace, type MoveContext } from './moveCheck.ts';
 import { PlayerDrags } from './playerDrags.ts';
 import { mapTokens } from '../../tokens/offMap';
 
 /** What player moves read and write of an Atlas tab's store. */
-export type MoveState = PlacedTokensState & Pick<ViewState, 'objects' | 'grid' | 'mapLoaded' | 'isMapLoading' | 'isDragging' | 'heldTokens'>;
+export type MoveState = PlacedTokensState & TurnMovesDraft & Pick<ViewState, 'objects' | 'grid' | 'mapLoaded' | 'isMapLoading' | 'isDragging' | 'heldTokens'>;
 
 export interface MoveStore {
   getState(): MoveState;
@@ -152,11 +153,17 @@ export class PlayerMoves {
   private apply(from: string, tokenId: string, move: PlayerMove): void {
     const state = this.store.getState();
     const token = mapTokens(state.objects)[tokenId];
-    const at = token === undefined ? move : dropPlace(this.context(state), state, token, move);
+    const context = this.context(state);
+    const at = token === undefined ? move : dropPlace(context, state, token, move);
     if (at === null) return this.refuse(from, move);
     const stopped = !samePlace(at, move);
+    // Counted in the move's own write, so undoing the move gives the distance back, as the GM's own drop does
+    const moved = token === undefined ? null : context.turnMove?.(tokenId, token, at) ?? null;
     // A token put down on stairs goes to the level they lead to, and its player's picture follows it there
-    if (!stopped || at.x !== token?.x || at.y !== token.y) this.store.setState((draft) => placeTokens(draft, [{ id: tokenId, x: at.x, y: at.y }]));
+    if (!stopped || at.x !== token?.x || at.y !== token.y) this.store.setState((draft) => {
+      placeTokens(draft, [{ id: tokenId, x: at.x, y: at.y }]);
+      if (moved !== null) countTurnMoveIn(draft, [tokenId], moved);
+    });
     if (stopped) this.refuse(from, move);
   }
 

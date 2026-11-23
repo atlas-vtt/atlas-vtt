@@ -7,7 +7,7 @@ import { viewPlayback } from '../../src/app/pixi/liquids/viewLiquids';
 import { MeasureRenderer, type MeasureGrid } from '../../src/app/pixi/measure/MeasureRenderer';
 import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 import { pointInPolygon } from '../../src/app/vision/visibility';
-import { openLitView, type LitView } from '../helpers/litView';
+import { measureMotionDone, openLitView, type LitView } from '../helpers/litView';
 import { contactSheet, savePng } from './measureEffectsHarness';
 
 vi.mock('events', async () => import('eventemitter3'));
@@ -107,6 +107,7 @@ describe('effects and lights of kept areas, mounted', () => {
   it('draws an effect only inside the area as walls leave it, and nothing of it where the players do not see the floor', async () => {
     const { view, players, measure } = await open({ lamp: true });
     const id = view.store.getState().addMeasure({ ...CIRCLE, walls: false })!;
+    await measureMotionDone();
     view.displayFrames(4);
     const washed = players();
     view.store.getState().updateMeasure(id, { effect: 'fire' });
@@ -144,6 +145,7 @@ describe('effects and lights of kept areas, mounted', () => {
   it('moves while the map plays, and shows its still moment in a picture of the scene whatever the clock says', async () => {
     const { view, gm, measure } = await open({ ambient: 1 });
     view.store.getState().addMeasure({ ...CIRCLE, effect: 'mist', color: '#ffffff' });
+    await measureMotionDone();
     view.displayFrames(4);
     const first = gm();
     view.displayFrames(20);
@@ -204,6 +206,7 @@ describe('effects and lights of kept areas, mounted', () => {
     const managed = (): number => (app.renderer.texture as unknown as { managedTextures: (TextureSource | null)[] }).managedTextures.filter(Boolean).length;
     const first = store.getState().addMeasure(CIRCLE)!;
     const second = store.getState().addMeasure(CIRCLE)!;
+    await measureMotionDone();
     displayFrames(4);
     expect(measure.effects.playing).toBe(false);
     const plain = managed();
@@ -226,12 +229,15 @@ describe('effects and lights of kept areas, mounted', () => {
     expect(managed()).toBe(plain);
     expect(measure.effects.playing).toBe(false);
     store.getState().deleteMeasure(second);
+    await measureMotionDone();
     displayFrames(4);
     const withOne = managed();
     const third = store.getState().addMeasure({ ...CIRCLE, effect: 'lightning' })!;
+    await measureMotionDone();
     displayFrames(4);
     expect(measure.effects.playing).toBe(true);
     store.getState().deleteMeasure(third);
+    await measureMotionDone();
     displayFrames(4);
     expect(managed()).toBe(withOne);
     expect(measure.effects.playing).toBe(false);

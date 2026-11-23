@@ -1,4 +1,6 @@
 import { App, WorkspaceLeaf, TFile, ItemView, Keymap, MarkdownRenderer, MarkdownView, Component, setIcon } from 'obsidian';
+import { visibleViewport } from '../host/visibleViewport';
+import { followPointer, type PointerFollow } from '../utils/pointerDrag';
 import { createPinButton, showPinState, startPreviewWindowDrag, type PreviewWindowReach } from './previewWindowControls';
 import { getActiveWorkspaceLeaf, suppressActiveLeaf } from '../utils/embeddedLeafFocus';
 import { runInBackground } from '../utils/backgroundTask';
@@ -15,6 +17,8 @@ import { headingTitle } from '../utils/pathUtils';
 import { alignHeading, holdHeadingInView } from './headingScroll';
 import { isModKey } from '../keyboard/modKey';
 import { scrollOnCtrlWheel } from './previewWheel';
+import { deviceProfile } from '../platform/deviceProfile';
+import { animatePanelIn, animatePanelOutAndRemove } from '../ui/panelMotion';
 
 // Styles imported via styles/main.scss → note-preview-window.scss
 
@@ -23,6 +27,8 @@ const HEADING_FLASH_DURATION_MS = 1500;
 const PENDING_SCROLL_CLASS = 'atlas-embedded-leaf-view--pending-scroll';
 /** Scrolling and typing are saved with the map once they pause this long. */
 const STATE_SAVE_DELAY_MS = 500;
+/** Where a note pinned as a sheet opens as a window on desktop, which the sheet itself has no say in. */
+const FIRST_WINDOW_LAYOUT = { left: 10, top: 10, width: 400, height: 400 };
 
 export class NotePreviewWindow {
   private app: App;
@@ -46,6 +52,11 @@ export class NotePreviewWindow {
   private preferredActiveLeaf: WorkspaceLeaf | null = null;
   private mountRootEl: HTMLElement | null = null;
   private placement: PreviewWindowPlacement | null = null;
+  /**
+   * On mobile the preview is a sheet over the map: as tall as the view at its edge, neither moved
+   * nor resized, since a finger has no pointer to hang a small window beside.
+   */
+  private readonly sheet = deviceProfile().isMobileApp;
   /** How a reopened note was left, kept until its view is mounted and has taken it over. */
   private savedViewState: NoteViewState | null = null;
   private stateSaveTimer: number | null = null;
@@ -59,6 +70,7 @@ export class NotePreviewWindow {
   private resizeStartLeft: number = 0;
   private resizeStartTop: number = 0;
   private currentResizeHandle: string | null = null;
+  private resizePointer: PointerFollow | null = null;
 
   constructor(
     app: App,
@@ -122,6 +134,7 @@ export class NotePreviewWindow {
     this.mountRootEl = this.resolveMountRoot();
     this.wrapperEl = resolvePreviewLayer(this.mountRootEl).createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });
     this.element = this.wrapperEl.createDiv({ cls: 'atlas-note-preview-window' });
+    this.element.toggleClass('atlas-note-preview-window--sheet', this.sheet);
     this.element.setAttribute('tabindex', '-1'); // Make the main window programmatically focusable
     const placement = new PreviewWindowPlacement(this.element, this.mountRootEl);
     this.placement = placement;
@@ -135,7 +148,7 @@ export class NotePreviewWindow {
       reach: () => previewReach(controlsDiv.getBoundingClientRect(), header.getBoundingClientRect()),
       frame: () => viewFrame(element),
     };
-    header.addEventListener('mousedown', (e) => this.onDragStart(e, reach));
+    if (!this.sheet) header.addEventListener('pointerdown', (e) => this.onDragStart(e, reach));
     this.pinButton = createPinButton(controlsDiv, 'atlas-note-preview-pin-btn', () => this.togglePin());
     
     // Open File Button
@@ -217,7 +230,8 @@ export class NotePreviewWindow {
     this.element.addEventListener('keypress', stopKeyPropagation);
 
     scrollOnCtrlWheel(this.element);
-    this.createResizeHandles();
+    if (this.sheet) animatePanelIn(this.element);
+    else this.createResizeHandles();
 
   }
 
@@ -236,7 +250,7 @@ export class NotePreviewWindow {
     const handleTypes = ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se'];
     handleTypes.forEach(type => {
       const handle = this.element!.createDiv({ cls: `atlas-note-preview-resize-handle atlas-note-preview-resize-handle-${type}` });
-      handle.addEventListener('mousedown', (e) => this.onResizeStart(e, type));
+      handle.addEventListener('pointerdown', (e) => this.onResizeStart(e, handle, type));
     });
   }
 
@@ -322,10 +336,7 @@ export class NotePreviewWindow {
     }
 
     // Strategy 2: a leaf of its own, out of the workspace, for full editing.
-    this.leaf = await openDetachedNoteLeaf(this.app, file, {
-      keepActive: this.preferredActiveLeaf,
-      openState: toOpenViewState(this.savedViewState),
-    });
+    this.leaf = await this.openLeafOfItsOwn(file);
     if (this.leaf?.view) {
       contentContainer.empty();
       contentContainer.classList.add('atlas-note-preview-content--scrollable');
@@ -339,6 +350,23 @@ export class NotePreviewWindow {
 
     if (!this.leaf && contentContainer) {
       await this.renderMarkdownPreview(file, contentContainer);
+    }
+  }
+
+  /**
+   * The note in a leaf out of the workspace. A workspace that can make no such leaf closes a
+   * desktop preview, as ever; a sheet shows the note rendered instead, to be read and opened from.
+   */
+  private async openLeafOfItsOwn(file: TFile): Promise<WorkspaceLeaf | null> {
+    try {
+      return await openDetachedNoteLeaf(this.app, file, {
+        keepActive: this.preferredActiveLeaf,
+        openState: toOpenViewState(this.savedViewState),
+      });
+    } catch (error) {
+      if (!this.sheet) throw error;
+      console.error('[NotePreviewWindow] No leaf for the note; showing it rendered.', error);
+      return null;
     }
   }
 
@@ -464,7 +492,7 @@ export class NotePreviewWindow {
     this.placement?.placeNearPointer(x, y);
   }
 
-  private onDragStart(e: MouseEvent, reach: PreviewWindowReach): void {
+  private onDragStart(e: PointerEvent, reach: PreviewWindowReach): void {
     if (!this.element) return;
     this.stopDrag = startPreviewWindowDrag(this.element, e, reach, () => {
       this.stopDrag = null;
@@ -473,10 +501,10 @@ export class NotePreviewWindow {
     });
   }
 
-  // Placeholder for resize methods
-  private onResizeStart(e: MouseEvent, handleType: string) {
+  /** Resizes from a press on one of the eight handles, by a mouse, a finger or a pen, until the pointer is let go or lost. */
+  private onResizeStart(e: PointerEvent, handle: HTMLElement, handleType: string) {
     e.stopPropagation(); // Prevent triggering drag-to-move
-    if (!this.element) return;
+    if (!this.element || this.isResizing) return;
 
     this.isResizing = true;
     this.currentResizeHandle = handleType;
@@ -491,12 +519,11 @@ export class NotePreviewWindow {
     document.body.classList.add('atlas-no-select');
     // Cursor is set by individual handle's CSS
 
-    document.addEventListener('mousemove', this.onResizeMove);
-    document.addEventListener('mouseup', this.onResizeEnd);
+    this.resizePointer = followPointer(handle, e, { move: this.onResizeMove, end: this.onResizeEnd });
+    this.resizePointer.capture();
   }
 
-  private onResizeMove = (e: MouseEvent) => {
-    // To be implemented
+  private onResizeMove = (e: PointerEvent) => {
     if (!this.isResizing || !this.element || !this.currentResizeHandle) return;
 
     const dx = e.clientX - this.resizeStartX;
@@ -526,10 +553,10 @@ export class NotePreviewWindow {
     // Get min/max dimensions
     const computedStyle = getComputedStyle(this.element);
     const minWidth = parseInt(computedStyle.minWidth, 10) || 150;
-    const maxWidth = parseInt(computedStyle.maxWidth, 10) || window.innerWidth;
+    const maxWidth = parseInt(computedStyle.maxWidth, 10) || visibleViewport(window).right;
     // Use a reasonable minHeight, could also be from CSS if defined for the element directly
     const minHeight = parseInt(computedStyle.minHeight, 10) || 100; 
-    const maxHeight = parseInt(computedStyle.maxHeight, 10) || window.innerHeight;
+    const maxHeight = parseInt(computedStyle.maxHeight, 10) || visibleViewport(window).bottom;
 
     // Store pre-clamp dimensions to check if clamping occurred
     const originalNewWidth = newWidth;
@@ -558,14 +585,13 @@ export class NotePreviewWindow {
   }
 
   private onResizeEnd = () => {
-    // To be implemented
     if (!this.isResizing) return;
     this.isResizing = false;
+    this.resizePointer?.stop();
+    this.resizePointer = null;
 
     document.body.classList.remove('atlas-no-select');
 
-    document.removeEventListener('mousemove', this.onResizeMove);
-    document.removeEventListener('mouseup', this.onResizeEnd);
     this.placement?.recordCurrent();
     this.saveStateNow();
   }
@@ -576,10 +602,19 @@ export class NotePreviewWindow {
 
   private setPinned(pinned: boolean): void {
     this.isPinned = pinned;
-    if (pinned) this.placement?.recordCurrent();
+    if (pinned) this.recordPinnedLayout();
     else this.placement?.clear();
     this.updatePinButtonState();
     this.manager.handlePreviewStateChanged(this);
+  }
+
+  /**
+   * The place and size the map saves with a pinned preview are a window's. A sheet has neither:
+   * it keeps what a desktop saved, and a note first pinned as a sheet takes a window's first place.
+   */
+  private recordPinnedLayout(): void {
+    if (!this.sheet) this.placement?.recordCurrent();
+    else if (this.placement && !this.placement.getLayout()) this.placement.restore(FIRST_WINDOW_LAYOUT);
   }
 
   private scheduleStateSave(): void {
@@ -635,18 +670,28 @@ export class NotePreviewWindow {
   }
   private _forceHide() {
     this.cancelStateSave();
+    const { leaf, usesPopover } = this;
+    const leaving = this.element !== null && this.wrapperEl !== null;
     if (this.element) {
       this.stopDrag?.();
       this.stopDrag = null;
-      // Remove resize listeners if any
-      document.removeEventListener('mousemove', this.onResizeMove);
-      document.removeEventListener('mouseup', this.onResizeEnd);
-      // Remove the wrapper (which contains the element) from the DOM
-      if (this.wrapperEl) {
-        this.wrapperEl.remove();
-        this.wrapperEl = null;
+      // A resize still under way ends with its window
+      if (this.isResizing) {
+        this.isResizing = false;
+        this.resizePointer?.stop();
+        this.resizePointer = null;
+        document.body.classList.remove('atlas-no-select');
+      }
+      // Remove the wrapper (which contains the element) from the DOM; a sheet leaves as panels do
+      const wrapper = this.wrapperEl;
+      this.wrapperEl = null;
+      if (this.sheet && wrapper) {
+        animatePanelOutAndRemove(this.element, () => {
+          wrapper.remove();
+          this.closeLeaf(leaf, usesPopover);
+        });
       } else {
-        this.element.remove();
+        (wrapper ?? this.element).remove();
       }
       this.manager.handlePreviewClosed(this);
       this.element = null;
@@ -655,18 +700,20 @@ export class NotePreviewWindow {
       NotePreviewWindow.openWindows.delete(windowKey);
       this.parentComponent.unload();
     }
-    if (this.leaf) {
-      try {
-        if (!this.usesPopover && this.leaf.view && this.leaf.view.containerEl && this.leaf.view.containerEl.parentElement) {
-          this.leaf.view.containerEl.remove();
-        }
-        this.leaf.detach();
-      } catch (err) {
-        console.warn('[NotePreviewWindow] Error detaching leaf:', err);
-      }
-      this.leaf = null;
-    }
+    // A sheet still fading out keeps its note until it is gone
+    if (!(this.sheet && leaving)) this.closeLeaf(leaf, usesPopover);
+    this.leaf = null;
     this.usesPopover = false;
+  }
+
+  private closeLeaf(leaf: WorkspaceLeaf | null, usesPopover: boolean): void {
+    if (!leaf) return;
+    try {
+      if (!usesPopover && leaf.view?.containerEl?.parentElement) leaf.view.containerEl.remove();
+      leaf.detach();
+    } catch (err) {
+      console.warn('[NotePreviewWindow] Error detaching leaf:', err);
+    }
   }
   static closePreview(notePath: string, forceClosePinned: boolean = false) {
     // Look for any windows with this note path

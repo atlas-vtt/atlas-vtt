@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ChatEntry, LogEntry, RollEntry, SharedRoll } from '../../../../src/app/online/protocol/index.ts';
 import { LogState, TableLogPanel, type LogActions, type SpeakerOption } from '../../../../src/app/online/tableLog/index.ts';
+import { holdRoll } from '../../../../src/app/dice3d/rollsInFlight';
 
 afterEach(cleanup);
 
@@ -204,5 +205,17 @@ describe('rows', () => {
     expect(screen.getByText('GM only')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'for Dex save' })).toBeTruthy();
     expect(screen.getByText('Kara rolled privately')).toBeTruthy();
+  });
+
+  it('shows a roll\'s total only once its dice have landed, and released twice lets go once', () => {
+    const release = holdRoll('r17');
+    const other = holdRoll('r17');
+    setup([{ id: id(4), at: Date.now(), who: ME, name: 'Ash', kind: 'roll', token: null, roll: shared(17) }]);
+    expect(screen.queryByText('17')).toBeNull();
+    expect(screen.getByText('Rolling')).toBeTruthy();
+    act(() => { release(); release(); });
+    expect(screen.queryByText('17')).toBeNull();
+    act(other);
+    expect(screen.getByText('17')).toBeTruthy();
   });
 });

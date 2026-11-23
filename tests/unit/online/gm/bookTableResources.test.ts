@@ -10,7 +10,7 @@ import { app, FakeSocket, workspace, type FakeTab } from './fakeTable.ts';
 import { ANA, BEN, BRANNOCH, BRANNOCH_ART, cave, delivered, DOOM, MIRA, ofType, openTable, type Delivered } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 
-vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {} }));
+vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {}, Platform: { isDesktopApp: true, isMobile: false, isPhone: false } }));
 // The GM's marks draw with PIXI over Atlas's canvas, which a table of books has no use for.
 vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
   GmMarks: class {

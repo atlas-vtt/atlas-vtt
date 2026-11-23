@@ -49,6 +49,8 @@ import { toolbar } from './toolbar';
 import { hotkey } from './hotkey';
 import { pin } from './pin';
 import { laser } from './laser';
+import { remote } from './remote';
+import { downloads } from './downloads';
 import { audio } from './audio';
 import { editToken } from './editToken';
 import { hex } from './hex';
@@ -79,6 +81,53 @@ import { migration } from './migration';
 import { wall } from './wall';
 import { sceneLight } from './sceneLight';
 import { vision } from './vision';
+import { account } from './account';
+import { armarium } from './armarium';
+import { armariumFindings } from './armariumFindings';
+import { armariumListing } from './armariumListing';
+import { armariumShare } from './armariumShare';
+import { armariumUpload } from './armariumUpload';
+import { campaign } from './campaign';
+import { deviceFiles } from './deviceFiles';
+import { diceLab } from './diceLab';
+import { diceRoll } from './diceRoll';
+import { diceSettings } from './diceSettings';
+import { docs } from './docs';
+import { draw } from './draw';
+import { dungeon } from './dungeon';
+import { dungeonProp } from './dungeonProp';
+import { dungeonScene } from './dungeonScene';
+import { experimental } from './experimental';
+import { fog } from './fog';
+import { glass } from './glass';
+import { graphics } from './graphics';
+import { initRules } from './initRules';
+import { itemBundle } from './itemBundle';
+import { itemReview } from './itemReview';
+import { levels } from './levels';
+import { mapFeature } from './mapFeature';
+import { measure } from './measure';
+import { online } from './online';
+import { openings } from './openings';
+import { playerBar } from './playerBar';
+import { quest } from './quest';
+import { recoveryEditor } from './recoveryEditor';
+import { rest } from './rest';
+import { rooms } from './rooms';
+import { selection } from './selection';
+import { senses } from './senses';
+import { siteFrame } from './siteFrame';
+import { statblockEditor } from './statblockEditor';
+import { table } from './table';
+import { tableTv } from './tableTv';
+import { tables } from './tables';
+import { tabletDiag } from './tabletDiag';
+import { templateEditor } from './templateEditor';
+import { toolbarEdit } from './toolbarEdit';
+import { uvtt } from './uvtt';
+import { uvttFloors } from './uvttFloors';
+import { vaultImages } from './vaultImages';
+import { videoMap } from './videoMap';
 
 /** Simplified Chinese. Missing keys fall back to English. */
 export const zh: Translation = {
@@ -124,6 +173,7 @@ export const zh: Translation = {
   ...transfer,
   ...view,
   ...widgets,
+  ...remote,
   ...sbImport,
   ...filters,
   ...search,
@@ -132,6 +182,7 @@ export const zh: Translation = {
   ...hotkey,
   ...pin,
   ...laser,
+  ...downloads,
   ...audio,
   ...editToken,
   ...hex,
@@ -143,7 +194,7 @@ export const zh: Translation = {
   ...image,
   'index.unreadable': 'Atlas VTT 无法读取素材索引（{path}），因此没有改动它。请重启 Obsidian 再试。',
   'index.rebuilding': 'Atlas VTT 无法读取素材索引，正在根据合集文件重建。无法读取的文件已保留为 {path}。',
-  'index.folderMoved': 'Atlas 文件夹已移到「{path}」。Atlas 只在仓库顶层的「{folder}」中查找素材库：把文件夹移回那里，你的地图、场景和棋子就都回来了。',
+  'index.folderMoved': 'Atlas 文件夹已移到「{path}」。Atlas 只在仓库顶层的「{folder}」中查找素材库：把文件夹移回那里，你的地图、场景和指示物就都回来了。',
   ...link,
   ...mapPreview,
   ...names,
@@ -165,4 +216,51 @@ export const zh: Translation = {
   ...wall,
   ...sceneLight,
   ...vision,
+  ...account,
+  ...armarium,
+  ...armariumFindings,
+  ...armariumListing,
+  ...armariumShare,
+  ...armariumUpload,
+  ...campaign,
+  ...deviceFiles,
+  ...diceLab,
+  ...diceRoll,
+  ...diceSettings,
+  ...docs,
+  ...draw,
+  ...dungeon,
+  ...dungeonProp,
+  ...dungeonScene,
+  ...experimental,
+  ...fog,
+  ...glass,
+  ...graphics,
+  ...initRules,
+  ...itemBundle,
+  ...itemReview,
+  ...levels,
+  ...mapFeature,
+  ...measure,
+  ...online,
+  ...openings,
+  ...playerBar,
+  ...quest,
+  ...recoveryEditor,
+  ...rest,
+  ...rooms,
+  ...selection,
+  ...senses,
+  ...siteFrame,
+  ...statblockEditor,
+  ...table,
+  ...tableTv,
+  ...tables,
+  ...tabletDiag,
+  ...templateEditor,
+  ...toolbarEdit,
+  ...uvtt,
+  ...uvttFloors,
+  ...vaultImages,
+  ...videoMap,
 };

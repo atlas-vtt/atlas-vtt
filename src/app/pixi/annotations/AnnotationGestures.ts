@@ -9,17 +9,11 @@ import { withPointAdded, withPointMoved } from '../../annotations/linePoints';
 import { draggedWidth, placeBesideSide } from '../../annotations/textWidth';
 import type { Point } from '../../types/visionTypes';
 import { trackPointer } from '../measure/pointerTrack';
+import { dragThreshold, tokenDragDistance } from '../utils/pointerReach';
 import { AnnotationEdit, type EditLayer, type PlaceWriter } from './AnnotationEdit';
 
 /** Screen pixels the pointer travels before a press becomes a drag. */
 export const ANNOTATION_DRAG_THRESHOLD = 4;
-/**
- * World pixels the pointer travels before tokens are dragged (`InteractionController`). A move
- * that goes with tokens begins with theirs, on the same pointer move: their drag copies what is
- * selected before anything has moved.
- */
-const TOKEN_DRAG_DISTANCE = 5;
-
 /** A handle that stands on the frame or the line: what a drag of it reshapes. */
 export type GripRef = Exclude<HandleRef, { kind: 'body' | 'edge' }>;
 
@@ -44,6 +38,8 @@ export interface GestureDeps {
    * cell where the grid snaps, unless `free`. Unset: where it is dropped.
    */
   readonly snapStamp?: (at: Point, footprint: number, free: boolean) => Point;
+  /** Whether a resize keeps the shape's proportions: the tool's Constrain switch, turned around while Shift is `held`. Unset: as Shift says. */
+  readonly constrains?: (held: boolean) => boolean;
   /** A drag of annotations alone ended, whatever ended it: the pointer rests where it was let go, still with the drag's cursor. */
   readonly settled?: () => void;
 }
@@ -179,7 +175,7 @@ export class AnnotationGestures {
           this.deps.showHandles(shown ? handlesOf([shown], this.deps.measure) : handles, grip);
           return;
         }
-        const transform = this.transformOf(handles, grip, grabbed, drag, move.shiftKey === true);
+        const transform = this.transformOf(handles, grip, grabbed, drag, this.deps.constrains?.(move.shiftKey === true) ?? move.shiftKey === true);
         edit.show(transform);
         this.deps.showHandles(mapHandles(handles, transform), grip);
       },
@@ -260,7 +256,7 @@ export class AnnotationGestures {
       const at = this.world(move);
       const drag = { x: at.x - grabbed.x, y: at.y - grabbed.y };
       if (!running.dragging) {
-        const far = live ? Math.hypot(drag.x, drag.y) > TOKEN_DRAG_DISTANCE : Math.hypot(move.global.x - pressed.x, move.global.y - pressed.y) > ANNOTATION_DRAG_THRESHOLD;
+        const far = live ? Math.hypot(drag.x, drag.y) > tokenDragDistance(viewport, move) : Math.hypot(move.global.x - pressed.x, move.global.y - pressed.y) > dragThreshold(ANNOTATION_DRAG_THRESHOLD, move);
         if (!far) return;
         running.dragging = true;
         viewport.plugins.pause('drag');

@@ -1,3 +1,4 @@
+import { openShapeOf } from '../utils/openShape';
 import { Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand';
@@ -15,6 +16,11 @@ import { MAP_LAYER_Z } from '../mapLayerOrder';
 import type { TesseraView } from '../mosaicCanvas/levelOfDetail';
 import type { LayerVisibility } from '../playerSafeFrame';
 import type { Frame } from '../../annotations/annotationFrame';
+import type { Annotation } from '../../annotations/annotationTypes';
+import { deviceProfile } from '../../platform/deviceProfile';
+import { annotationActions } from '../../selection/annotationActionList';
+import type { SelectionAction } from '../../selection/selectionActions';
+import { annotationExtras } from '../../selection/wholeSelection';
 import { selectionMenuStyles } from '../../packages/components/toolbar/selectionMenuStyles';
 import { textFontReady } from '../textFonts';
 import { measureTextView, textBreaks, textLayout } from '../textLayout';
@@ -29,9 +35,11 @@ import { annotationMenu } from './annotationMenu';
 import { showAnnotationsFullNotice } from './annotationNotices';
 import { AnnotationPlayersView } from './annotationPlayersView';
 import type { AnnotationPointerHandlers } from './annotationPointer';
+import type { Point } from '../../types/visionTypes';
 import { BarMenuPress } from './BarMenuPress';
 import { ClickPlacing } from './ClickPlacing';
 import { DrawInput } from './DrawInput';
+import { placesFreely, switchApplies } from '../../types/toolSwitches';
 import { DrawPlacing } from './DrawPlacing';
 import { DrawToolHost, type FullOf } from './DrawToolHost';
 import { activeDrawMode } from './drawToolState';
@@ -62,6 +70,8 @@ export interface AnnotationsRendererOptions {
   readonly accent?: () => number;
   /** Starts the drag of the selected tokens with a press that took an annotation selected with them. */
   dragTokens?(event: FederatedPointerEvent): void;
+  /** Whether the move and select tools give a press at `point` to something before the drawings on the map (`AnnotationInteractionDeps.overMap`). */
+  overMap?(point: Point): boolean;
   /** The clock a double click is told by, milliseconds; unset, the page's. */
   readonly now?: () => number;
 }
@@ -154,12 +164,15 @@ export class AnnotationsRenderer {
     this.views = new PictureViews(viewport, (views, whole) => this.layer.setViews(views, whole));
     this.unsubscribe = store.subscribe((state, previous) => this.follow(state, previous));
     const snapGrid = (): GridGeometry | null => ((store.getState().grid?.snapToGrid ?? true) ? options.grid() : null);
+    /** Whether a point lies where the pointer is: the Snap switch of the tool in hand (Draw, else Select, which moves drawings too) is off, or Alt (`held`) turns it around. */
+    const frees = (held: boolean): boolean => placesFreely(store.getState(), store.getState().activeTool === 'draw' ? 'drawSnap' : 'selectSnap', held);
     /** What the tool's gestures and what it shows under the pointer both read of the view. */
     const tool = {
       viewport,
       store,
       chrome: this.chrome,
       snapGrid,
+      frees,
       cellGrid: () => (fillsCells(store.getState().grid) ? options.grid() : null),
       mapRect: () => options.mapRect?.() ?? null,
       gmView: () => !this.showsPlayers(),
@@ -195,8 +208,8 @@ export class AnnotationsRenderer {
       measure: this.layer.measure,
       gmView: () => !this.showsPlayers(),
       touched: () => this.sharpening.touch(),
-      snap: (world, free) => snapDrawPoint(snapGrid(), world, free),
-      snapStamp: (at, footprint, free) => snapStampPoint(snapGrid(), at, free, footprint),
+      snap: (world, held) => snapDrawPoint(snapGrid(), world, frees(held)),
+      snapStamp: (at, footprint, held) => snapStampPoint(snapGrid(), at, frees(held), footprint),
       editText: (text) => this.texts.edit(text),
       typing: () => this.texts.typing.active,
       // A text whose face is still loading is never measured: its side handle changes its width alone until the face is there.
@@ -204,13 +217,14 @@ export class AnnotationsRenderer {
       breaksAt: (text, width) => (textFontReady(text.fontFamily) ? textBreaks(text, width) : null),
       copyMoved: (ids, dx, dy) => copyAnnotationsMoved(store, ids, dx, dy, full),
       dragTokens: (event) => options.dragTokens?.(event),
-      menu: (selected, clicked, at) => {
-        const entries = annotationMenu(selected, clicked, store.getState(), (text) => this.texts.edit(text), selectionMenuStyles(selected, store));
+      menu: (selected, clicked, at, point) => {
+        const entries = annotationMenu(...this.actionsOf(selected, clicked, point));
         if (entries.length > 0) openContextMenuGlobal(entries, at);
         return entries.length > 0;
       },
       closesMenu: () => this.barMenus.closesMenu,
       settled: () => this.placing.settled(),
+      overMap: (point) => options.overMap?.(point) ?? false,
     }, options.now);
     const underWay = new UnderWay();
     this.underWay = underWay;
@@ -227,7 +241,8 @@ export class AnnotationsRenderer {
     this.input = new DrawInput(viewport, this.placing.around(this.host.gestures), {
       typed: (event) => isTextEntryTarget(event.target),
       areMaps: (event) => options.keysBelongToMap?.(event) ?? true,
-    });
+      constrains: (held) => switchApplies(store.getState(), 'drawConstrain', held),
+    }, undefined, openShapeOf(store));
     this.clicks = new ClickPlacing(viewport, this.host.clicks);
 
     const state = store.getState();
@@ -235,6 +250,29 @@ export class AnnotationsRenderer {
     this.toolChanged(state);
     this.refreshVisibility();
     this.tellLeftOut(state);
+  }
+
+  /** What the actions of the selected drawings and texts are made of (`annotationActions`), `clicked` the one a menu was opened on. */
+  private actionsOf(selected: readonly Annotation[], clicked: Annotation | null, point: { remove(): void } | null = null): Parameters<typeof annotationActions> {
+    const coarse = deviceProfile().pointer === 'coarse';
+    const extras = annotationExtras(this.store, this.viewport, selected.map(({ id }) => id), coarse);
+    // A finger has neither Delete nor a double click a touch screen reports: the point under it goes by a row of its menu.
+    const withPoint = coarse && point ? { ...extras, point } : extras;
+    return [selected, clicked, this.store.getState(), (text) => this.texts.edit(text), selectionMenuStyles(selected, this.store), withPoint];
+  }
+
+  /**
+   * What can be done with the drawings and texts selected now: the rows of their menu and the
+   * buttons of the bar above a selection. A text selected alone can be opened for typing.
+   */
+  selectionActions(): SelectionAction[] {
+    const selected = this.selecting.selected();
+    return annotationActions(...this.actionsOf(selected, selected.length === 1 ? selected[0] ?? null : null));
+  }
+
+  /** A selected drawing or text is being dragged, resized or turned. */
+  get reshaping(): boolean {
+    return this.selecting.dragging;
   }
 
   /** A gesture of the Draw tool is under way: a press belongs to it, wherever it lands. */

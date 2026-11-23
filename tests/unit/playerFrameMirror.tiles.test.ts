@@ -180,7 +180,7 @@ describe('a players\' frame of a map view', () => {
       return (): void => { events.push('draw:dm'); };
     });
     const renderer = Object.assign(Object.create(PixiRendererOrchestrator.prototype) as PixiRendererOrchestrator, {
-      pixiAppManager: { getApp: () => ({ renderer: { render: () => events.push('render:dm') }, stage: {} }), getViewport: fakeViewport },
+      pixiAppManager: { getApp: () => ({ renderer: { render: () => events.push('render:dm') }, stage: {} }), getViewport: fakeViewport, getGestures: () => null },
       playerFrames: fakePlayerFrames(() => events.push('render:player')),
       mapImage: { drawFor },
       dmScreenOverlays: new Set(),

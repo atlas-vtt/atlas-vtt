@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
+import type { Viewport } from "pixi-viewport"
 import { t } from "../../../i18n"
 import { SELECTION_BAR } from "../../../pixi/annotations/BarMenuPress"
+import { frameOnCanvas } from "../../../pixi/annotations/frameOnCanvas"
 import { useViewStoreHook } from "../../../react/ViewStoreContext"
 import { useAtlasUI } from "../../../react/root/AtlasUIContext"
 import { useAnchoredPopoverVariants } from "../primitives/dialogMotion"
@@ -54,8 +56,11 @@ function useSelectionBarShown(): boolean {
 function SelectionBar(): React.ReactElement {
   const { renderer } = useAtlasUI()
   const ref = useRef<HTMLDivElement>(null)
-  const frame = useCallback(() => renderer?.getAnnotations()?.barFrame() ?? null, [renderer])
-  const side = useSelectionBarPlace(ref, frame)
+  const shown = useCallback((viewport: Viewport) => {
+    const frame = renderer?.getAnnotations()?.barFrame() ?? null
+    return frame && frameOnCanvas(frame, viewport)
+  }, [renderer])
+  const side = useSelectionBarPlace(ref, shown)
   const access = useDrawStyle()
   const variants = useAnchoredPopoverVariants()
   // While it leaves, nothing may be selected any more: the bar keeps the tools it had.

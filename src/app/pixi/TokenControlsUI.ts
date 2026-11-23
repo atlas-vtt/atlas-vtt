@@ -4,20 +4,23 @@ import type { Character } from '../types';
 import type { ViewAtlasState } from '../storeFactory';
 import type { TokenUpdates } from '../types/viewState';
 import type { StoreApi } from 'zustand';
-import { colors, barDimensions } from '../styles/designTokens';
+import { colors } from '../styles/designTokens';
 import { toError } from '../utils/errors';
 import type { TokenGestureEventDetail } from '../types/atlasWindowEvents';
 import { openResourceEditor, type BarAnchor, type ResourceEditor, type ResourceValue } from './tokenValueEditor';
 import { ResourceBarHitArea } from './ResourceBarHitArea';
 import { destroyTree } from './utils/destroyTree';
 import { BAR_BUTTON_SIZE, type ResourceSlot } from './token-renderer/resources/ResourceStack';
-import { WHEEL_STEPPER } from './token-renderer/resources/ResourceWheels';
+import { barButtonSpan, fingerBarReach, stepperLayout, type BarReach, type StepperLayout } from './token-renderer/resources/stepperLayout';
+import { deviceProfile } from '../platform/deviceProfile';
+import { HandleHitArea } from './utils/handleHitArea';
 import { colorNumber } from './token-renderer/resources/ResourceBarView';
 import type { ResourceDefinition, ResourceDefsProvider } from '../resources/resourceTypes';
 import { resourceUpdate, withCurrent } from '../resources/resourceValues';
 import { visibleResources } from '../resources/visibleResources';
 import { levelObjects } from '../levels/levelObjects';
 import { mapTokens } from '../tokens/offMap';
+import { actsOnPress } from './input/pressTargets';
 
 type ControlIconType = 'plus' | 'minus';
 
@@ -31,6 +34,8 @@ interface ResourceControl {
 /** Round +/- button; keeps what `drawButtonState` needs to redraw it. */
 interface ControlButton extends Container {
   bg: Graphics;
+  /** Its diameter, in UI units: a bar's height for a mouse, twice that for a finger. */
+  size: number;
   iconType: ControlIconType;
   iconColor: number;
 }
@@ -58,8 +63,11 @@ export class TokenControlsUI {
   public slotsProvider: (tokenId: string) => readonly ResourceSlot[] = () => [];
   /** Where a token's right wheels hang from, from its `TokenUIRenderer` (`wheelAnchor`); the left ones hang from the mirror. */
   public wheelAnchorProvider: (tokenId: string) => { x: number; y: number } | null = () => null;
-  /** Hears which token's bars have their +/- buttons shown, null for none, so its wheels make room for them. */
-  public onBarButtonsChange: ((tokenId: string | null) => void) | null = null;
+  /** Hears which token's bars have their +/- buttons shown, null for none, and how far they stand out beyond the bars (`barButtonSpan`), so its wheels make room for them. */
+  public onBarButtonsChange: ((tokenId: string | null, span?: number) => void) | null = null;
+  /** Whether the buttons are a finger's: larger, and laid out to fit (`stepperLayout`). Follows the device's pointer. */
+  public fingerButtons: () => boolean = () => deviceProfile().pointer === 'coarse';
+  private readonly stopPointerWatch: () => void;
 
   private readonly DANGER_COLOR = colors.health.critical;
 
@@ -109,6 +117,9 @@ export class TokenControlsUI {
     // Add to viewport
     this.viewport.addChild(this.container);
     
+    // A mouse attached or taken away: the buttons take the other pointer's size and places
+    this.stopPointerWatch = deviceProfile().onPointerChange(() => this.layOutButtons());
+
     // Listen for resize events to hide/show controls
     window.addEventListener('atlas-token-resize-started', this.onResizeStarted);
     window.addEventListener('atlas-token-resize-ended', this.onResizeEnded);
@@ -153,7 +164,10 @@ export class TokenControlsUI {
 
   private createButton(iconType: ControlIconType, iconColor: number): ControlButton {
     const bg = new Graphics();
-    const button: ControlButton = Object.assign(new Container(), { bg, iconType, iconColor });
+    // Its press changes the value at once: a finger's is a tap's, so one that is the first of a pinch changes nothing
+    const button: ControlButton = actsOnPress(Object.assign(new Container(), { bg, iconType, iconColor, size: BAR_BUTTON_SIZE }));
+    // A finger takes the button as far out as a finger needs, however small the map draws it
+    button.hitArea = new HandleHitArea(button, BAR_BUTTON_SIZE / 2);
     button.eventMode = 'static';
     button.cursor = 'pointer';
     button.addChild(bg);
@@ -170,8 +184,8 @@ export class TokenControlsUI {
   }
   
   /** Wires a resource overlay so clicking it opens the popover for `value` under that resource. */
-  private bindEditor(hit: ResourceBarHitArea, slot: ResourceSlot, value: ResourceValue, resourceLabel: string, onCommit: (next: ResourceValue) => void): void {
-    hit.layout(slot);
+  private bindEditor(hit: ResourceBarHitArea, slot: ResourceSlot, reach: BarReach | null, value: ResourceValue, resourceLabel: string, onCommit: (next: ResourceValue) => void): void {
+    hit.layout(slot, reach);
     hit.on('pointerdown', (e) => {
       e.preventDefault(); // Keep the canvas's default focus from stealing the popover's focus.
       e.stopPropagation();
@@ -211,7 +225,7 @@ export class TokenControlsUI {
   }
 
   private drawButtonState(button: ControlButton, isHover: boolean): void {
-    const { bg, iconType, iconColor } = button;
+    const { bg, iconType, iconColor, size } = button;
     
     // The icon textures load asynchronously, so a redraw can arrive after destroy
     if (bg.destroyed) {
@@ -228,8 +242,8 @@ export class TokenControlsUI {
     const strokeAlpha = isDarkMode ? 0.4 : 0.3;
     
     // Draw background - circular like status badges
-    const size = BAR_BUTTON_SIZE;
     const radius = size / 2;
+    if (button.hitArea instanceof HandleHitArea) button.hitArea.radius = radius;
     
     // Background fill
     bg.fill({ color: bgColor, alpha: 1 });
@@ -279,8 +293,7 @@ export class TokenControlsUI {
     this.setScale(uiScale);
 
     // Update button visibility and handlers
-    const barButtons = this.updateButtons(token);
-    this.onBarButtonsChange?.(barButtons ? tokenId : null);
+    this.layOutButtons();
     
     // Make container visible (unless hidden during resize or rotation)
     this.container.visible = !this.isHiddenDuringResize && !this.isHiddenDuringRotation;
@@ -346,17 +359,28 @@ export class TokenControlsUI {
     return { bar: this.below, wheel: this.beside, 'wheel-left': this.leftOf }[slot.kind];
   }
 
-  /** Binds the controls of every resource `token` shows; whether a bar got +/- buttons. */
-  private updateButtons(token: Character): boolean {
+  /** Lays the shown token's controls out anew and tells how much room its bars' buttons take. */
+  private layOutButtons(): void {
+    const tokenId = this.currentTokenId;
+    const token = tokenId ? mapTokens(levelObjects(this.store.getState()))[tokenId] as Character | undefined : undefined;
+    if (!tokenId || !token) return;
+    const barButtons = this.updateButtons(token);
+    this.onBarButtonsChange?.(barButtons > 0 ? tokenId : null, barButtonSpan(barButtons, this.fingerButtons()));
+  }
+
+  /** Binds the controls of every resource `token` shows; how many bars got +/- buttons. */
+  private updateButtons(token: Character): number {
     for (const control of this.resourceControls.values()) this.hideControl(control);
-    if (!this.currentTokenId) return false;
-    let barButtons = false;
+    if (!this.currentTokenId) return 0;
+    let barButtons = 0;
+    const finger = this.fingerButtons();
 
     // Same resources and places as TokenUIRenderer drew them, so each overlay sits on its resource
     const slots = this.slotsProvider(this.currentTokenId);
-    for (const { definition, value } of visibleResources(token, this.resourceDefsProvider(), 'dm')) {
-      // A static value does not change in play: its number is set in Edit Token
-      if (definition.direction === 'static') continue;
+    // A static value does not change in play: its number is set in Edit Token
+    const edited = visibleResources(token, this.resourceDefsProvider(), 'dm').filter(({ definition }) => definition.direction !== 'static');
+    const pressed = edited.flatMap(({ definition }) => slots.filter((candidate) => candidate.key === definition.key));
+    for (const { definition, value } of edited) {
       const slot = slots.find((candidate) => candidate.key === definition.key);
       if (!slot) continue;
       // The token may have changed since the controls were shown (dashboard, Kill, Edit Token), so
@@ -368,10 +392,12 @@ export class TokenControlsUI {
         const next = change(stored);
         this.setTokenValue(resourceUpdate(live, definition.key, next, next.max !== stored.max));
       };
-      this.bindResource(this.controlFor(definition), slot, value, definition.name,
+      // A bar is half as tall as a finger needs: its overlay takes a taller band, clear of the other bars and of the buttons
+      const reach = finger && slot.kind === 'bar' ? fingerBarReach(slot, pressed) : null;
+      this.bindResource(this.controlFor(definition), slot, stepperLayout(slot, barButtons, finger), reach, value, definition.name,
         (delta) => edit((stored) => withCurrent(stored, stored.current + delta)),
         (next) => edit(() => next));
-      barButtons ||= slot.kind === 'bar';
+      if (slot.kind === 'bar') barButtons++;
     }
     return barButtons;
   }
@@ -382,7 +408,7 @@ export class TokenControlsUI {
     let control = this.resourceControls.get(definition.key);
     if (!control) {
       control = {
-        hit: new ResourceBarHitArea(color),
+        hit: actsOnPress(new ResourceBarHitArea(color)),
         minus: this.createButton('minus', this.DANGER_COLOR),
         plus: this.createButton('plus', color),
       };
@@ -394,24 +420,15 @@ export class TokenControlsUI {
 
   /** Shows one resource's +/- buttons beside it and its click-to-edit overlay on top of it. */
   private bindResource(
-    { hit, minus, plus }: ResourceControl, slot: ResourceSlot,
+    { hit, minus, plus }: ResourceControl, slot: ResourceSlot, layout: StepperLayout, reach: BarReach | null,
     value: ResourceValue, resourceLabel: string, onDelta: (delta: number) => void, onCommit: (next: ResourceValue) => void,
   ): void {
     // Reordering the collection's resources can move one between bar and wheel, so the anchor is chosen here
     this.anchorOf(slot).addChild(hit, minus, plus);
-    const centerY = slot.top + slot.height / 2;
-    const right = slot.left + slot.width;
-    // A wheel's stepper stands on its outer side, away from the token: + above -
-    const stepperX = slot.kind === 'wheel-left'
-      ? slot.left - WHEEL_STEPPER.gap - WHEEL_STEPPER.size / 2
-      : right + WHEEL_STEPPER.gap + WHEEL_STEPPER.size / 2;
-    const positions = slot.kind !== 'bar'
-      ? [[minus, -1, stepperX, centerY + (WHEEL_STEPPER.size + 1) / 2],
-        [plus, 1, stepperX, centerY - (WHEEL_STEPPER.size + 1) / 2]] as const
-      : [[minus, -1, slot.left - BAR_BUTTON_SIZE / 2 - barDimensions.token.gap, centerY],
-        [plus, 1, right + BAR_BUTTON_SIZE / 2 + barDimensions.token.gap, centerY]] as const;
+    const positions = [[minus, -1, layout.minusX, layout.minusY], [plus, 1, layout.plusX, layout.plusY]] as const;
     for (const [button, delta, x, y] of positions) {
       button.visible = true;
+      button.size = layout.size;
       this.drawButtonState(button, false);
       button.position.set(x, y);
       button.on('pointerdown', (e) => {
@@ -419,7 +436,7 @@ export class TokenControlsUI {
         onDelta(delta);
       });
     }
-    this.bindEditor(hit, slot, value, resourceLabel, onCommit);
+    this.bindEditor(hit, slot, reach, value, resourceLabel, onCommit);
   }
 
   private hideControl({ hit, minus, plus }: ResourceControl): void {
@@ -504,6 +521,7 @@ export class TokenControlsUI {
   public destroy(): void {
     // Mark as destroyed to prevent async operations
     this.isDestroyed = true;
+    this.stopPointerWatch();
     
     // Remove resize event listeners
     window.removeEventListener('atlas-token-resize-started', this.onResizeStarted);

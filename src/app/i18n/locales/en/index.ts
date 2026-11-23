@@ -19,6 +19,16 @@ import { campaign } from './campaign';
 import { quest } from './quest';
 import { dashboard } from './dashboard';
 import { dice } from './dice';
+import { docs } from './docs';
+import { siteFrame } from './siteFrame';
+import { armarium } from './armarium';
+import { itemBundle } from './itemBundle';
+import { itemReview } from './itemReview';
+import { armariumFindings } from './armariumFindings';
+import { armariumListing } from './armariumListing';
+import { armariumUpload } from './armariumUpload';
+import { armariumShare } from './armariumShare';
+import { account } from './account';
 import { diceLab } from './diceLab';
 import { diceRoll } from './diceRoll';
 import { diceSettings } from './diceSettings';
@@ -62,12 +72,15 @@ import { search } from './search';
 import { senses } from './senses';
 import { sort } from './sort';
 import { tableTv } from './tableTv';
+import { table } from './table';
 import { glass } from './glass';
 import { toolbar } from './toolbar';
 import { toolbarEdit } from './toolbarEdit';
 import { hotkey } from './hotkey';
 import { pin } from './pin';
 import { laser } from './laser';
+import { downloads } from './downloads';
+import { remote } from './remote';
 import { audio } from './audio';
 import { draw } from './draw';
 import { dungeon } from './dungeon';
@@ -105,15 +118,21 @@ import { migration } from './migration';
 import { wall } from './wall';
 import { sceneLight } from './sceneLight';
 import { graphics } from './graphics';
+import { experimental } from './experimental';
 import { vision } from './vision';
 import { videoMap } from './videoMap';
 import { uvttFloors } from './uvttFloors';
 import { uvtt } from './uvtt';
+import { deviceFiles } from './deviceFiles';
+import { tabletDiag } from './tabletDiag';
 import { fog } from './fog';
+import { selection } from './selection';
 
 /** English, the source language: every key exists here, and other languages translate a subset of it. */
 export const en = {
   ...align,
+  ...deviceFiles,
+  ...tabletDiag,
   ...atlasLinks,
   ...am,
   ...assetGrid,
@@ -134,6 +153,9 @@ export const en = {
   ...quest,
   ...dashboard,
   ...dice,
+  ...docs,
+  ...siteFrame,
+  ...armarium,
   ...diceLab,
   ...diceRoll,
   ...diceSettings,
@@ -177,12 +199,15 @@ export const en = {
   ...senses,
   ...sort,
   ...tableTv,
+  ...table,
   ...glass,
   ...toolbar,
   ...toolbarEdit,
   ...hotkey,
   ...pin,
   ...laser,
+  ...downloads,
+  ...remote,
   ...audio,
   ...draw,
   ...dungeon,
@@ -223,9 +248,18 @@ export const en = {
   ...wall,
   ...sceneLight,
   ...graphics,
+  ...experimental,
   ...vision,
   ...videoMap,
   ...uvttFloors,
   ...uvtt,
   ...fog,
+  ...armariumFindings,
+  ...armariumListing,
+  ...armariumUpload,
+  ...armariumShare,
+  ...account,
+  ...selection,
+  ...itemBundle,
+  ...itemReview,
 } as const;

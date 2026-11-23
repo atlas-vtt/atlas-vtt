@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { type App } from 'obsidian';
 import { runUvttGroupImport, type ChooseFloors } from '../../../../import/uvtt/runUvttGroupImport';
-import { formatList, t } from '../../../../i18n';
+import { formatList, tPointer } from '../../../../i18n';
 import { isUvttFileName } from '../../../../import/uvtt/uvttFileNames';
 import { openCreatedScene } from '../../../../import/openCreatedScene';
 import { isVideoMapPath } from '../../../../pixi/mosaicCanvas/video/videoMapFiles';
@@ -65,7 +65,7 @@ function overManager(event: DragEvent): DataTransfer | null {
 }
 
 function sayNotMaps(files: readonly File[]): void {
-  showNotice(t('uvtt.notMaps', { count: files.length, files: formatList(files.map((file) => file.name)) }));
+  showNotice(tPointer('uvtt.notMaps', { count: files.length, files: formatList(files.map((file) => file.name)) }));
 }
 
 /**

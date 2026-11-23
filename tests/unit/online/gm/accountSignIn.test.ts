@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { AccountControl } from '../../../../src/app/online/gm/account/AccountControl.ts';
 import { accessText, accountText, planText } from '../../../../src/app/online/gm/account/accountView.ts';
-import { DeviceSignIn } from '../../../../src/app/online/gm/account/deviceFlow.ts';
-import type { HttpRequest, HttpResponse } from '../../../../src/app/online/gm/account/http.ts';
+import { AtlasAccount } from '../../../../src/app/account/AtlasAccount';
+import { DeviceSignIn } from '../../../../src/app/account/deviceFlow.ts';
+import type { HttpRequest, HttpResponse } from '../../../../src/app/account/http.ts';
 import { ACCESS_REFUSALS } from '../../../../src/app/online/gm/account/relayAccount.ts';
 import type { Timers } from '../../../../src/app/online/gm/companionTimers.ts';
 import { ACCOUNTS_ORIGIN as ACCOUNTS, RELAY_ORIGIN as RELAY } from '../../../../src/app/online/gm/servers.ts';
@@ -82,13 +83,15 @@ function setup(): { control: AccountControl; servers: FakeServers; timers: FakeT
   const tokens = { value: null as string | null };
   const opened: string[] = [];
   const notices: string[] = [];
-  const control = new AccountControl({
+  const account = new AtlasAccount({
     http: servers.http,
     timers,
     tokens: { get: () => tokens.value, set: (token) => (tokens.value = token), clear: () => (tokens.value = null) },
+    available: true,
     openUrl: (url) => void opened.push(url),
     notify: (text) => void notices.push(text),
   });
+  const control = new AccountControl({ http: servers.http, timers, account });
   return { control, servers, timers, tokens, opened, notices };
 }
 

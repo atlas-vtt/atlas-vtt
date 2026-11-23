@@ -12,7 +12,7 @@
  * SHA-256 of `data` through Web Crypto, as lowercase hex: the fingerprint
  * bundles and install records compare content by.
  */
-export async function sha256(data: ArrayBuffer | Uint8Array): Promise<string> {
+export async function sha256(data: ArrayBuffer | Uint8Array<ArrayBuffer>): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', data);
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }

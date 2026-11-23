@@ -1,5 +1,5 @@
 import type { FogCoverage } from '../../fog/fogCoverage';
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../utils/typedEmitter';
 import type { App } from 'obsidian';
 import type { Application, Texture } from 'pixi.js';
 import type { BelowLevelsHost } from './levels/LevelsBelow';
@@ -25,7 +25,7 @@ import type { TokenRenderer } from '../TokenRenderer';
 import { createSceneLighting } from './createSceneLighting';
 import { GmSightAids } from './GmSightAids';
 import { DoorIcons } from './DoorIcons';
-import { showDoorMenu, showWallMenu, type LightingMenuContext } from './lightingMenus';
+import { showDoorMenu, showWallMenu, wallMenuAt, type LightingMenuContext } from './lightingMenus';
 import { wireLightingPointer } from './lightingPointer';
 import { listenToLightingSceneEvents } from './lightingSceneEvents';
 import { LightInteraction } from './LightInteraction';
@@ -43,6 +43,8 @@ import { SightRulesWatch } from './SightRulesWatch';
 import { WallEditor } from './WallEditor';
 import type { LightingQualitySource } from '../../lighting/lightingQuality';
 import { levelObjects } from '../../levels/levelObjects';
+import { lightingTapPlacing } from '../../lighting/lightingTool';
+import type { TapPlacing } from '../../types/tapPlacing';
 import { glideWayIsClear } from '../../lighting/glideWay';
 import type { ShownPlaces } from '../../lighting/shownPlaces';
 import { followShownPlaces } from '../../lighting/shownTokens';
@@ -184,10 +186,18 @@ export class LightingController {
     wireLightingPointer(tokens, {
       lights: this.lights, editor: this.editor, modes: this.modes, doors: this.doors,
       wallMenu: (x, y, screenX, screenY) => showWallMenu(this.menuContext(), x, y, screenX, screenY),
+      wallMenuAt: (x, y) => wallMenuAt(this.menuContext(), x, y),
       doorMenu: (doorId, screenX, screenY) => showDoorMenu(this.deps.store, doorId, screenX, screenY),
     });
     // The token renderer brings the outlines of sensed tokens, which the view now shows or hides.
     this.session.sync();
+  }
+
+  /** What a finger's tap places with the lighting tool now; null where a press is a stroke's start, or the editor does not show. */
+  tapPlacing(): TapPlacing | null {
+    if (!this.editor.shown) return null;
+    const underWay = this.editor.drawingChain || this.modes.zones.drawing || this.modes.surfaces.drawing;
+    return lightingTapPlacing(this.deps.store.getState().lightingTool, underWay);
   }
 
   gmOverlays(): GmOverlays {

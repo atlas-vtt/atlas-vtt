@@ -7,10 +7,15 @@ import { carriesSounds, readSoundDrag } from '../../../../../soundLibrary/soundD
 import { mayCarryAudio } from '../../../../../soundLibrary/soundFiles';
 import type { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { isLinked, type SoundRootState } from '../../../../../soundLibrary/SoundRoots';
+import { Skeleton, SkeletonGroup, skeletonTextWidth } from '../../../../../packages/components/primitives/Skeleton';
+import { useLoadingReveal } from '../../../../../packages/components/primitives/useLoadingReveal';
+import { useStagedList } from '../useStagedList';
 import { cn } from '../../../../../../utils/cn';
 import { ConvertingLine } from './ConvertingLine';
-import { StarterPackButton } from './StarterPack';
+import { DownloadsButton } from './DownloadsButton';
+import { MusicPacksButton, StarterPackButton } from './PackOffers';
 import { useContextMenu } from '../../../../root/ContextMenuContext';
+import { useDownloadManager } from './useDownloads';
 import { AmbienceGlyph, MusicGlyph, TagGlyph } from './libraryGlyphs';
 import { rootMenu } from './rootMenu';
 import type { RootShelf } from './rowModel';
@@ -121,9 +126,41 @@ const RailTag = memo(function RailTag({ actions, kind, name, count, selected, on
   );
 });
 
+/** Tags mounted at once: more than a rail shows; the rest follow in a transition (`useStagedList`). */
+const FIRST_TAGS = 40;
+
+/** Lines of skeleton tags under those found so far: more where none was found yet. */
+const WAITING_TAGS = { none: 5, some: 2 } as const;
+
+/**
+ * While a root's first walk runs, the tags still to come stand as skeleton lines in the tags' own shape, so the rail
+ * does not look finished and then grow. A walk that ends within the skeleton's delay never shows them.
+ */
+function RailTagsWaiting({ library, kind, found }: { library: SoundLibrary; kind: SoundKind; found: number }): React.JSX.Element | null {
+  const walking = library.locationOf(kind) !== null && !library.isWalked(kind);
+  const shown = useLoadingReveal(walking);
+  // The tags themselves take over once the walk is done: lines below them would only say more is coming.
+  if (!shown || !walking) return null;
+  const lines = found === 0 ? WAITING_TAGS.none : WAITING_TAGS.some;
+  return (
+    <SkeletonGroup label={t('audio.library.loadingTags')} className="atlas-sound-lib__tags-waiting">
+      {Array.from({ length: lines }, (_, index) => (
+        <div key={index} className="atlas-sound-lib__tag-line">
+          <div className="atlas-sound-lib__tag">
+            <Skeleton className="atlas-sound-lib__glyph" />
+            <span><Skeleton shape="text" width={skeletonTextWidth(index + found, 80)} /></span>
+            <small><Skeleton shape="text" width={14} /></small>
+          </div>
+        </div>
+      ))}
+    </SkeletonGroup>
+  );
+}
+
 function RailRoot({ library, actions, shelves, kind, selected, shown, onRoot, onTag }: Omit<RailProps, 'kind' | 'director'> & { kind: SoundKind; shown: boolean }): React.JSX.Element {
   const root = library.rootOf(kind);
   const menu = useContextMenu();
+  const downloads = useDownloadManager();
   const linked = isLinked(root);
   const label = t(kind === 'music' ? 'audio.music' : 'audio.ambience');
   const count = linked ? library.countOf(kind, '') : null;
@@ -131,6 +168,7 @@ function RailRoot({ library, actions, shelves, kind, selected, shown, onRoot, on
     if (transfer.files.length > 0) actions.importInto([...transfer.files], kind);
   });
   const whole = shown && selected.size === 0;
+  const tags = useStagedList(shelves[kind].tags, FIRST_TAGS);
   const problem = problemOf(root, library);
 
   return (
@@ -149,7 +187,7 @@ function RailRoot({ library, actions, shelves, kind, selected, shown, onRoot, on
             onClick={(event) => {
               const box = event.currentTarget.getBoundingClientRect();
               const win = event.currentTarget.ownerDocument.defaultView ?? window;
-              menu.open(rootMenu(library, actions, kind, win), { x: box.left, y: box.bottom }, { returnFocus: event.currentTarget, label: t('audio.library.rootMenu', { name: label }) });
+              menu.open(rootMenu(library, actions, kind, win, downloads), { x: box.left, y: box.bottom }, { returnFocus: event.currentTarget, label: t('audio.library.rootMenu', { name: label }) });
             }}
           >
             <MoreHorizontal aria-hidden="true" />
@@ -160,21 +198,27 @@ function RailRoot({ library, actions, shelves, kind, selected, shown, onRoot, on
       {!linked && (
         <button type="button" className="atlas-sound-lib__link" onClick={(event) => actions.link(kind, event.currentTarget.ownerDocument.defaultView ?? window)}>{t('audio.library.linkFolder')}</button>
       )}
-      {shelves[kind].tags.map((tag) => (
+      {tags.map((tag) => (
         <RailTag key={tag.key} actions={actions} kind={kind} name={tag.name} count={tag.count} selected={shown && selected.has(tag.key)} onTag={onTag} />
       ))}
+      <RailTagsWaiting library={library} kind={kind} found={shelves[kind].tags.length} />
+      {kind === 'music' && <MusicPacksButton library={library} className="atlas-sound-lib__link" />}
       {kind === 'ambience' && <StarterPackButton library={library} actions={actions} className="atlas-sound-lib__link" />}
     </section>
   );
 }
 
-/** Each root with its count and where it lies, and the tags of its tracks; under them, how far converting has come. */
+/** Each root with its count and where it lies, and the tags of its tracks; under them, the downloads and how far converting has come. */
 export function LibraryRail({ kind, director, ...props }: RailProps): React.JSX.Element {
   return (
     <nav className="atlas-sound-lib__rail" aria-label={t('audio.library.rail')}>
       <RailRoot {...props} kind="music" shown={kind === 'music'} />
       <RailRoot {...props} kind="ambience" shown={kind === 'ambience'} />
-      <ConvertingLine director={director} />
+      {/* Downloads and conversion share the foot; it is empty (and takes no room) while neither has anything to say. */}
+      <div className="atlas-sound-lib__foot">
+        <DownloadsButton />
+        <ConvertingLine director={director} />
+      </div>
     </nav>
   );
 }

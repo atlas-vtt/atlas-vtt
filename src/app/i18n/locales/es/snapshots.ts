@@ -1,0 +1,26 @@
+import type { Translation } from '../../types';
+
+export const snapshots: Translation = {
+  'snapshots.deleteBody': 'La instantánea se quita de este mapa. El mapa en sí no cambia.',
+  'snapshots.deleteFailed': 'No se pudo eliminar la instantánea',
+  'snapshots.deleteTitle': '¿Eliminar "{name}"?',
+  'snapshots.empty': 'Aún no hay instantáneas. Guarda el mapa tal como está ahora para devolverlo a este estado más tarde, por ejemplo antes de que empiece un encuentro.',
+  'snapshots.name': 'Nombre de la instantánea',
+  'snapshots.new': 'Nueva instantánea',
+  'snapshots.overwriteBody': 'La instantánea se reemplaza por el mapa tal como está ahora. Su estado anterior se pierde.',
+  'snapshots.overwriteFailed': 'No se pudo sobrescribir la instantánea',
+  'snapshots.overwriteTitle': '¿Sobrescribir "{name}"?',
+  'snapshots.overwriteWithCurrent': 'Sobrescribir con el mapa actual',
+  'snapshots.renameFailed': 'No se pudo renombrar la instantánea',
+  'snapshots.renameNamed': 'Renombrar {name}',
+  'snapshots.restoreBody': 'Los tokens, chinchetas, la niebla, los dibujos, la iniciativa y todo lo demás de este mapa vuelven a como estaban en esta instantánea.',
+  'snapshots.restoreFailed': 'No se pudo restaurar la instantánea',
+  'snapshots.restoreNamed': 'Restaurar {name}',
+  'snapshots.restoreTitle': '¿Restaurar "{name}"?',
+  'snapshots.restoreWarning': 'Los cambios hechos desde entonces se pierden y no se pueden deshacer. Guarda antes una instantánea para conservarlos.',
+  'snapshots.restored': 'Se restauró "{name}"',
+  'snapshots.saveFailed': 'No se pudo guardar la instantánea',
+  'snapshots.savedAt': 'Guardada el {date}',
+  'snapshots.updatedAt': 'Actualizada el {date}',
+  'snapshots.defaultName': 'Instantánea',
+};

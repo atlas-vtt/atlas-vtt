@@ -82,7 +82,7 @@ $open-window: 'body.atlas-asset-manager-open > .atlas-portal-host';
 
 // ── Card tooltips under the window's layers ─────────────────────────────────
 // A card's tooltip, the window, its menus and its dialogs all lie in the floating layer. The shared tooltip stands at
-// 100000, over everything; a card's stands above the window (200) and below every menu and dialog the window opens
+// `$z-atlas-tooltip`, over everything; a card's stands above the window (200) and below every menu and dialog the window opens
 // (context menu 2000, dialogs 9999 and up), so it never covers a layer opened from it (a dialog's close button once).
 // It is gone the moment it closes, with no exit to linger in over the dialog or menu that closed it. The name (shown
 // while the card cuts it) stands over the hint with the gap of the tooltip's own padding, as in every container.

@@ -52,6 +52,8 @@ export interface ContentPaneProps {
   onFolderDoubleClick: (folderId: string) => void;
   onContentContextMenu: (event: React.MouseEvent) => void;
   onClearSelection: () => void;
+  /** Selects everything in view, or clears a selection that already holds it all (`resolveSelectAll`). */
+  onSelectAll: () => void;
   onClose: () => void;
   collapsedSections: { folders: boolean; assets: boolean };
   setCollapsedSections: React.Dispatch<React.SetStateAction<{ folders: boolean; assets: boolean }>>;
@@ -84,7 +86,7 @@ const NO_IDS: ReadonlySet<string> = new Set();
 export function ContentPane(props: ContentPaneProps): React.JSX.Element {
   const {
     activeTab, assets, folders, selectedAssetIds, selectedFolderIds,
-    onFolderSelection, onFolderContextMenu, onFolderDoubleClick, onContentContextMenu, onClearSelection,
+    onFolderSelection, onFolderContextMenu, onFolderDoubleClick, onContentContextMenu, onClearSelection, onSelectAll,
     collapsedSections, setCollapsedSections, draggedItems, setDraggedItems, dropTarget, setDropTarget, onDrop,
     spawnCounts,
   } = props;
@@ -149,7 +151,7 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
   const selectedCount = selectedAssetIds.length + selectedFolderIds.length;
   const soleSelected = selectedCount === 1 ? assets.find((asset) => asset.id === selectedAssetIds[0]) : undefined;
   const selection = (
-    <SelectionInfo count={selectedCount} action={soleSelected ? selectedCardAction(soleSelected.type) : null} onClear={onClearSelection} />
+    <SelectionInfo count={selectedCount} action={soleSelected ? selectedCardAction(soleSelected.type) : null} onClear={onClearSelection} onSelectAll={onSelectAll} />
   );
 
   return (

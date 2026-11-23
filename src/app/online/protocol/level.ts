@@ -18,8 +18,10 @@
  * 13: drawings and texts as the Draw tool makes them (`DRAW_GM_LEVEL`): a drawing's shape, fill, holes, dashes and arrowheads beside its line, a stamp's turn, a text's outline and wrapped lines, the one order of both, those that lie on the map (`SharedAnnotations.onMap`), and the drawing under way (`MarksMessage.strokes`) (2026-11-13).
  * 14: players draw while the GM lets them (`SharedRules.draw`): their Draw tool's requests are taken (`draw-add`, `draw-text`, `draw-change`, `draw-remove`, `draw-erase`), each is told which drawings and texts are theirs (`draw-mine`, by the `rev` of the `annotations` message) and why a request was not taken (`draw-refused`), and the drawing a player is making is sent on in the marks (`stroke`) (2026-11-13).
  * 15: a token's move as the GM reads it: the scene's movement steps (`SharedRules.moveSteps`) and each token's speed and what it moved in the running turn (`SharedToken.move`) (2026-11-14).
+ * 16: the GM's dice row: the scene's rules name the dice and saved rolls the GM pinned to the tray (`SharedRules.diceRow`), and a player's roll may name a designed roll of it (`PlayerRoll.preset`), which the GM's Atlas rolls with that roll's own dice (2026-11-20).
+ * 17: a measurement a player keeps is the scene's (`MEASURE_KEEP_GM_LEVEL`): the page asks (`measure-keep`), the GM keeps it as its own and tells it with its keeper (`FullMeasure.by`, `id`), who lets it go by that id (`measure-drop`); the GM moves, changes and deletes it like any other (2026-11-22).
  */
-export const GM_LEVEL = 15;
+export const GM_LEVEL = 17;
 
 /** The level of a GM that names none: one from before levels, which serves level 1. */
 export const UNNAMED_GM_LEVEL = 1;

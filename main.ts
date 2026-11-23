@@ -1,5 +1,5 @@
 import './src/app/plugin/host/initializeHost';
-import { Plugin } from 'obsidian';
+import { Plugin, type Component } from 'obsidian';
 // Tailwind first, so the custom SCSS can override it.
 import './styles/index.css';
 import './styles/main.scss';
@@ -49,11 +49,13 @@ import { changelogSettingsSection } from './src/app/settings/changelogSettingsSe
 import { hotkeySettingsSection, onboardingSettingsSection } from './src/app/settings/hotkeySettingsSection';
 import { navigationSettingsSection } from './src/app/settings/navigationSettingsSection';
 import { diceSettingsSection } from './src/app/settings/diceSettingsSection';
+import { experimentalSettingsSection } from './src/app/settings/experimentalSettingsSection';
 import { mapsSettingsSection } from './src/app/settings/mapsSettingsSection';
 import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSettingsSection';
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
 import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
-import { registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
+import { applyDiceBudgets, registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
+import { registerForegroundWork } from './src/app/plugin/foregroundWork';
 import { registerOverlayScrollbars } from './src/app/plugin/overlayScrollbars';
 import { registerPageListenerRelease } from './src/app/plugin/pageListenerRelease';
 import { releasePortalHosts } from './src/app/host/portalHost';
@@ -63,7 +65,8 @@ import { EXTENSION_ATLASMAP } from './src/app/utils/sceneFiles';
 import { registerColorSwatchIcons } from './src/app/plugin/colorSwatchIcons';
 import { HeaderAutocompleteSuggest } from './src/app/plugin/HeaderAutocompleteSuggest';
 import { registerAtlasLinks } from './src/app/links/registerAtlasLinks';
-import { registerCommands } from './src/app/plugin/registerCommands';
+import { openDashboard, registerCommands } from './src/app/plugin/registerCommands';
+import { registerArmarium } from './src/app/plugin/armarium';
 import { CampaignFiles } from './src/app/campaigns/CampaignFiles';
 import { CampaignBooks } from './src/app/campaigns/players/CampaignBooks';
 import { CampaignPlayers } from './src/app/campaigns/players/CampaignPlayers';
@@ -78,10 +81,15 @@ import { recordCampaignPlay } from './src/app/campaigns/recordCampaignPlay';
 import { registerPartySync } from './src/app/plugin/partySync';
 import { registerPlayerTokens } from './src/app/plugin/playerTokens';
 import { registerSoundDirector } from './src/app/plugin/soundDirector';
+import { registerDownloads } from './src/app/plugin/downloads';
 import { SoundDirector } from './src/app/soundDirector/SoundDirector';
 import { SceneMoodLinks } from './src/app/soundLibrary/SceneMoodLinks';
 import { soundSettingsSection } from './src/app/settings/soundSettingsSection';
+import { soundRemoteSettingsSection } from './src/app/settings/soundRemoteSettingsSection';
+import { registerSoundRemote } from './src/app/plugin/soundRemote';
 import { registerOnlinePlay, type OnlinePlay } from './src/app/plugin/onlinePlay';
+import { registerAtlasAccount } from './src/app/plugin/atlasAccount';
+import { accountSettingsSection } from './src/app/account/accountSettingsSection';
 import type { TableChat } from './src/app/online/gm/tableChat';
 import { registerPlayerWindowReloadCleanup } from './src/app/plugin/playerWindowReload';
 import { registerReturnToAtlasOnClose } from './src/app/plugin/returnToAtlasOnClose';
@@ -97,12 +105,25 @@ import { ChangelogService } from './src/app/changelog/ChangelogService';
 import { registerUpdateWatch } from './src/app/updates/registerUpdateWatch';
 import { AtlasErrorLog } from './src/app/support/errorLog';
 import { IssueReporter } from './src/app/support/IssueReporter';
+import { TabletDiagnosticsModal } from './src/app/support/tablet/TabletDiagnosticsModal';
 import { runInBackground } from './src/app/utils/backgroundTask';
 import { TesseraDecoderClient } from './src/app/pixi/mosaicCanvas/TesseraDecoderClient';
 import { MapProcessing } from './src/app/pixi/mosaicCanvas/mapProcessing';
 import { registerMapProcessingStatus } from './src/app/plugin/mapProcessingStatus';
 import { DungeonWorkerClient } from './src/app/dungeons/worker/DungeonWorkerClient';
 import { MosaicCanvasService } from './src/app/pixi/mosaicCanvas/MosaicCanvasService';
+import { registerNoteDiceRolling } from './src/app/noteDice/registerNoteDiceRolling';
+import { guardChildUnload, guardedCleanup } from './src/app/plugin/guardedTeardown';
+import { showNotice } from './src/app/ui/notice';
+import { isDesktopApp } from './src/app/platform/desktopOnly';
+import { registerPointerAttribute } from './src/app/platform/pointerAttribute';
+import { registerTouchContextMenus } from './src/app/plugin/touchContextMenus';
+import { FingerSettings } from './src/app/input/fingerUse';
+import { zoomButtonsRow } from './src/app/input/zoomButtons';
+import { registerLastInput } from './src/app/platform/lastInput';
+import { registerKeyboardViewport } from './src/app/platform/keyboardViewport';
+import { registerAudioUnlock } from './src/app/plugin/audioUnlock';
+import { registerUnsupportedDevice } from './src/app/plugin/unsupportedDevice';
 
 declare const __ATLAS_RELEASE_BUILD__: boolean;
 
@@ -135,15 +156,35 @@ export default class AtlasVTTPlugin extends Plugin {
    * it stops there once this is set.
    */
   private unloaded = false;
+  /** A device whose system is too old for Atlas: nothing of Atlas was started, so nothing is released. */
+  private unsupported = false;
 
   async onload(): Promise<void> {
+    // Atlas' image and map workers draw on an OffscreenCanvas, which iOS and iPadOS have since 16.4:
+    // a capability can be asked, a version would have to be read out of the user agent.
+    if (typeof OffscreenCanvas === 'undefined') {
+      this.unsupported = true;
+      registerUnsupportedDevice(this);
+      return;
+    }
     // Before anything of Atlas renders: what React and framer-motion put on the page goes with Atlas.
     registerPageListenerRelease(this);
+    // How large Atlas' controls are follows the pointer, in every window; sound starts with the first tap or key.
+    registerPointerAttribute(this);
+    registerTouchContextMenus(this);
+    registerLastInput(this);
+    registerAudioUnlock(this);
+    // A tablet's keyboard rises over the window: what is placed and typed into stays in the part still seen.
+    registerKeyboardViewport(this);
+    // Before notes render at startup: the dice in their text roll with Atlas.
+    registerNoteDiceRolling(this);
     // Record errors from the very start so startup problems can be reported too.
     const errorLog = new AtlasErrorLog();
     this.register(errorLog.attach());
     const issueReporter = new IssueReporter(this.app, this.manifest, errorLog);
     this.addCommand({ id: 'report-issue', name: t('command.reportIssue'), callback: () => issueReporter.open() });
+    // What only a device can tell about itself, for a tester to send; on the desktop too, for the bench.
+    this.addCommand({ id: 'tablet-diagnostics', name: t('tabletDiag.command'), callback: () => new TabletDiagnosticsModal(this.app, this.manifest).open() });
 
     // Capture this before migrations/services can create Atlas's storage folder.
     const existingInstallation = this.app.vault.adapter.exists('atlas-vtt');
@@ -185,18 +226,30 @@ export default class AtlasVTTPlugin extends Plugin {
     this.settingsService = new SettingsService(this.app, settingsReady, this);
     // Before the views too: every restored map view joins it, for its fights.
     const soundDirector = registerSoundDirector(this);
+    registerDownloads(this);
+    const soundRemote = registerSoundRemote(this, soundDirector);
 
     // Before the views: a restored map may start Atlas's first check of the vault,
     // whose folder renames reach map files only through these vault events.
     registerVaultSync(this);
     registerObsidianSyncNotice(this);
     registerDiceStageRelease(this);
+    applyDiceBudgets();
+    registerForegroundWork(this);
     registerOverlayScrollbars(this);
     registerMapProcessingStatus(this);
     registerAccentColorSync(this);
     // Views first, so workspace restore can resolve persisted Atlas tabs
     // before the slower startup path finishes.
-    this.registerAtlasViews();
+    try {
+      this.registerAtlasViews();
+      // The Armarium's command, installer and install link; they reach the asset manager once it exists.
+      registerArmarium(this, () => this.globalAssetManager);
+    } catch (error) {
+      // An earlier Atlas that failed to unload still holds them; only a restart frees them.
+      showNotice(t('notice.restartForAtlas'));
+      throw error;
+    }
     // Before the first await, so notes restored at startup draw their statblock fence.
     registerStatblockFence(this, (path) => { editInStatblockPane(this.app, path, { collectionId: null, from: 'note' }); });
     // A native statblock note is frontmatter alone: its link preview shows its card.
@@ -227,18 +280,22 @@ export default class AtlasVTTPlugin extends Plugin {
     this.globalAssetManager = new GlobalAssetManagerService(this.app);
     this.imageDisplayService = new ImageDisplayService(this.app);
 
-    const onlinePlay = registerOnlinePlay(this, this.settingsService);
+    const account = registerAtlasAccount(this);
+    const onlinePlay = registerOnlinePlay(this, this.settingsService, account);
     this.onlinePlay = onlinePlay;
     this.addSettingTab(new AtlasSettingTab(this.app, this, () => [
-      navigationSettingsSection(this.settingsService),
+      navigationSettingsSection(this.settingsService, FingerSettings.forApp(this.app), zoomButtonsRow(this.app)),
       diceSettingsSection(this.settingsService),
-      ...(this.settingsService.isExperimentalOn('sound') ? [soundSettingsSection(this.settingsService, soundDirector)] : []),
+      soundSettingsSection(this.settingsService, soundDirector),
+      ...(isDesktopApp() ? [soundRemoteSettingsSection(soundRemote)] : []),
       mapsSettingsSection(this.settingsService),
       mapImageCacheSettingsSection(() => TesseraDecoderClient.forApp(this.app)),
       hotkeySettingsSection(this.settingsService),
       onboardingSettingsSection(this.settingsService),
       changelogSettingsSection(this.settingsService, changelogService, this.manifest.version, updateWatch),
+      accountSettingsSection(account),
       ...onlinePlay.settingsSections(),
+      experimentalSettingsSection(this.settingsService),
       supportSettingsSection(issueReporter),
     ]));
     this.registerEditorSuggest(new HeaderAutocompleteSuggest(this.app));
@@ -259,6 +316,8 @@ export default class AtlasVTTPlugin extends Plugin {
       this.imageDisplayService.registerContextMenu();
       registerChromeVisibility(this);
       this.changelogService?.showUpdates();
+      // A vault Atlas has never run in opens on the start page, whose tour takes it from there.
+      runInBackground(existingInstallation.then(async (existing) => { if (!existing && !this.unloaded) await openDashboard(this); }), 'Opening the start page');
       runInBackground(addStarterTokens(this.app, AssetService.getInstance(this.app), this.settingsService), 'Adding the starter tokens');
       runInBackground(this.carryOverTokenBars(), 'Carrying over the token bar settings');
       runInBackground(migrateLegacySnapshots(this.app, AssetService.getInstance(this.app)), 'Moving scene snapshots into their collections');
@@ -278,6 +337,16 @@ export default class AtlasVTTPlugin extends Plugin {
     await migratePlayerResourceVisibility(this.settingsService, assets);
   }
 
+  /** Every cleanup runs on unload, even after another one failed (see `guardedCleanup`). */
+  override register(cleanup: () => unknown): void {
+    super.register(guardedCleanup(cleanup));
+  }
+
+  override addChild<T extends Component>(component: T): T {
+    guardChildUnload(component);
+    return super.addChild(component);
+  }
+
   /** Obsidian calls this when `data.json` changed on disk, e.g. a sync brought another device's settings. */
   async onExternalSettingsChange(): Promise<void> {
     await this.settingsService?.reload();
@@ -285,6 +354,7 @@ export default class AtlasVTTPlugin extends Plugin {
 
   onunload(): void {
     this.unloaded = true;
+    if (this.unsupported) return;
     this.changelogService?.destroy();
     void this.settingsService?.saveSettingsNow();
     SystemPresetFiles.release(this.app);
@@ -339,7 +409,8 @@ export default class AtlasVTTPlugin extends Plugin {
   private registerAtlasViews(): void {
     this.registerExtensions([EXTENSION_ATLASMAP], ATLAS_VIEW_TYPE);
     this.registerView(ATLAS_VIEW_TYPE, (leaf) => new AtlasView(leaf, this));
-    this.registerView(LOCAL_PLAYER_VIEW_TYPE, (leaf) => new LocalPlayerView(leaf));
+    // The player window is a second window, which only the desktop app has
+    if (isDesktopApp()) this.registerView(LOCAL_PLAYER_VIEW_TYPE, (leaf) => new LocalPlayerView(leaf));
     this.registerView(DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this));
     this.registerView(DUNGEON_GENERATOR_VIEW_TYPE, (leaf) => new DungeonGeneratorView(leaf));
     this.registerView(SOUND_VIEW_TYPE, (leaf) => new SoundView(leaf));

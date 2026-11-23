@@ -53,6 +53,13 @@ export interface RollRequestAnswer {
   readonly index: number;
 }
 
+/** The longest id of a saved roll of the GM's dice row (`SharedRowRoll`). */
+export const MAX_ROW_ROLL_ID = 64;
+
+/** A saved roll's id as the dice row and a player's roll name it. */
+export const isRowRollId = (value: unknown): value is string =>
+  typeof value === 'string' && value !== '' && value.length <= MAX_ROW_ROLL_ID && !/[\p{Cc}\p{Cf}\s]/u.test(value);
+
 /**
  * A player rolls: `formula` as Atlas's dice tray writes it, for the token `token` (by the id players
  * know it by: their selected own token, or their only one), or for nobody (null); in a roll mode
@@ -73,6 +80,12 @@ export interface PlayerRoll {
    * side rolls plain. Added later: an older GM rolls plain, an older page never asks.
    */
   readonly advantage?: AdvantageSide;
+  /**
+   * The designed roll of the GM's dice row this is (`SharedRowRoll.id`): the GM's Atlas rolls that roll
+   * with its own dice, names and colours, and `formula` is only what a page shows. Added later: an older
+   * GM sends no row, so no page names one to it.
+   */
+  readonly preset?: string;
 }
 
 /**
@@ -115,6 +128,12 @@ export interface SharedRoll {
    * GM sends none, and an older page reads `modifiers` alone.
    */
   readonly namedModifiers?: readonly SharedNamedModifier[];
+  /**
+   * The side of advantage the roll was made with, where the GM's dice set changed it (its dropped dice
+   * are marked `dropped`), so rolling it again rolls it the same way. Added later: an older GM sends
+   * none, and an older page rolls it again plain.
+   */
+  readonly advantage?: AdvantageSide;
 }
 
 /** A constant of a roll written with a label: `+2[Proficiency]` is Proficiency, 2; a subtracted one is negative. */
@@ -173,6 +192,7 @@ export function parsePlayerRoll(value: Record<string, unknown>): PlayerRoll | nu
   if (token !== null && (typeof token !== 'string' || !TOKEN_ID_PATTERN.test(token))) return null;
   if (mode !== undefined && !isRollMode(mode)) return null;
   if (value.setAppearance !== undefined && value.setAppearance !== true) return null;
+  if (value.preset !== undefined && !isRowRollId(value.preset)) return null;
   const shownFlavor = flavor === undefined ? undefined : shownLine(flavor, MAX_FLAVOR);
   const request = value.request === undefined ? undefined : parseRequestAnswer(value.request);
   if (shownFlavor === null || request === null) return null;
@@ -183,6 +203,7 @@ export function parsePlayerRoll(value: Record<string, unknown>): PlayerRoll | nu
     ...(request !== undefined && { request }),
     ...(value.setAppearance === true && { setAppearance: true }),
     ...(isAdvantageSide(value.advantage) && { advantage: value.advantage }),
+    ...(isRowRollId(value.preset) && { preset: value.preset }),
   };
 }
 
@@ -232,7 +253,7 @@ function parseNamedModifiers(value: unknown, modifiers: number, linear: boolean)
   return Math.abs(plain) <= MAX_TOTAL ? entries : undefined;
 }
 
-/** A shared roll as the client reads it, or null for anything malformed: nothing else reaches the dice. */
+/** A shared roll as the client reads it, or null for anything malformed: nothing else reaches the dice. A side of advantage it does not know is left out. */
 export function parseSharedRoll(value: unknown): SharedRoll | null {
   if (!isRecord(value)) return null;
   const { id, timestamp, formula, modifiers, total, crit } = value;
@@ -248,6 +269,7 @@ export function parseSharedRoll(value: unknown): SharedRoll | null {
     id, timestamp, formula, rolls: rolls as SharedDie[], modifiers, total,
     ...(value.linear === false && { linear: false as const }),
     ...(namedModifiers !== undefined && { namedModifiers }),
+    ...(isAdvantageSide(value.advantage) && { advantage: value.advantage }),
     ...(crit !== undefined && { crit }),
     ...(source !== undefined && { source }),
   };

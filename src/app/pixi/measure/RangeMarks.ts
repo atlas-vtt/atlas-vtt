@@ -12,15 +12,17 @@ import type { TokenEntity } from '../../types';
 import type { ViewState } from '../../types/viewState';
 import type { Point } from '../../types/visionTypes';
 import { MAP_LAYER_Z } from '../mapLayerOrder';
+import type { HideableLayer } from '../playerSafeFrame';
 import type { TokenMovement } from '../token-renderer/tokenMovement';
 import { destroyTree } from '../utils/destroyTree';
 import { isHandled } from '../utils/handledEvents';
 import { MeasureInkLayer } from '../utils/measureInk';
 import type { MeasureLook } from './DrawnMeasure';
+import type { RangeMarksShown, ShownRangeCheck, ShownRangeRings } from './measurements';
 import { RangeCheck } from './RangeCheck';
 import { RangeRings } from './RangeRings';
 
-type RangeState = Pick<ViewState, 'activeTool' | 'grid' | 'objects' | 'levels' | 'viewedLevel' | 'measureTool' | 'mapPath' | 'selectedIds'>;
+type RangeState = Pick<ViewState, 'activeTool' | 'heldRulerFrom' | 'grid' | 'objects' | 'levels' | 'viewedLevel' | 'measureTool' | 'mapPath' | 'selectedIds'>;
 
 /** What the range marks read of their view's state; they write nothing. */
 export type RangeStore = Pick<StoreApi<RangeState>, 'getState' | 'subscribe'>;
@@ -42,11 +44,15 @@ export interface RangeMarksDeps {
   measuring: () => boolean;
   /** The tokens under the pointer and their speeds; without them nothing is hovered and movement steps have no rings. */
   sources: () => RangeSources | null;
+  /** What the marks show is another (`RangeMarks.shown`): drawn, moved or taken off. */
+  changed: () => void;
 }
 
 /** What the rings stand around: a token, by its id and as it was when they were drawn, or a point. */
 type RingTarget = { readonly token: TokenEntity } | { readonly point: Point };
 
+/** The marks belong to the measure tool when it is chosen; a press with the measure key held is a ruler's alone. */
+const marksRange = (state: RangeState): boolean => state.activeTool === 'measure' && state.heldRulerFrom === undefined;
 const shownTokens = (state: RangeState): Readonly<Record<string, TokenEntity>> => mapTokens(levelObjects(state));
 
 /**
@@ -54,10 +60,11 @@ const shownTokens = (state: RangeState): Readonly<Record<string, TokenEntity>> =
  * a dashed line and the distance to the token under the pointer) and the rings of the Ranges
  * mode (a press on a token or a point shows its bands or its movement steps around it; a press on
  * the same token, Escape, another mode, level or scene, or the tool put away takes them off).
- * Nothing here writes the store or starts a measurement, and both are the GM's own: `view` is
- * shown on the GM's view of the canvas alone (`MeasurePartsVisibility`), never in a players'
- * frame, the session view, a peek or a picture of the scene. Rings follow their token when it
- * moves and go with it; neither is drawn again while nothing changes.
+ * Nothing here writes the store or starts a measurement. Players see them as they see a
+ * measurement (`MeasurePartsVisibility`, by `checkLayer` and `ringsLayer`, and online through
+ * `shown`): not while the GM measures for themselves, and not while they do not see a token one
+ * stands on; a picture of the scene has neither. Rings follow their token when it moves and go
+ * with it; neither is drawn again while nothing changes.
  */
 export class RangeMarks {
   /** Everything the marks draw, for what shows and hides it. */
@@ -69,6 +76,9 @@ export class RangeMarks {
   private enabled = false;
   private hovered: string | null = null;
   private target: RingTarget | null = null;
+  /** The rings and the check as they stand, for `shown`. */
+  private ringsShown: ShownRangeRings | null = null;
+  private checkShown: ShownRangeCheck | null = null;
   private readonly stopStore: () => void;
 
   constructor(private readonly deps: RangeMarksDeps) {
@@ -78,12 +88,28 @@ export class RangeMarks {
     this.check = new RangeCheck(this.ink, this.labels);
     deps.viewport.addChild(this.view);
     this.stopStore = deps.store.subscribe((state, previous) => this.follow(state, previous));
-    this.setEnabled(deps.store.getState().activeTool === 'measure');
+    this.setEnabled(marksRange(deps.store.getState()));
   }
 
   /** The texts on the map now: the check's distance, and the rings' names from the innermost; for tests. */
   get texts(): { readonly check: string; readonly rings: readonly string[] } {
     return { check: this.check.text, rings: this.rings.texts };
+  }
+
+  /** What the marks show now, and how players may see it. */
+  get shown(): RangeMarksShown {
+    const { grid, measureTool } = this.deps.store.getState();
+    return { rings: this.ringsShown, check: this.checkShown, loose: grid?.snapToGrid === false, hidden: !measureTool.players };
+  }
+
+  /** Shows or hides the range check whole. */
+  get checkLayer(): HideableLayer {
+    return this.check.layer;
+  }
+
+  /** Shows or hides the rings of Ranges whole. */
+  get ringsLayer(): HideableLayer {
+    return this.rings.layer;
   }
 
   /** Escape takes the rings off; false when there were none. */
@@ -139,8 +165,7 @@ export class RangeMarks {
   }
 
   private readonly onPointerMove = (e: FederatedPointerEvent): void => {
-    // Hidden, the marks are not the GM's to see (the canvas shows the players' view): nothing is worked out.
-    if (!this.view.visible || this.deps.measuring()) {
+    if (this.deps.measuring()) {
       this.hover(null);
       return;
     }
@@ -153,7 +178,7 @@ export class RangeMarks {
     if (e.button !== 0) return;
     this.hover(null);
     // A kept measurement's handle, a pin, a door badge or a light marker may have taken the press.
-    if (isHandled(e) || !this.view.visible || this.deps.store.getState().measureTool.mode !== 'ranges') return;
+    if (isHandled(e) || this.deps.store.getState().measureTool.mode !== 'ranges') return;
     e.stopPropagation();
     this.pick(this.deps.viewport.toWorld(e.global));
   };
@@ -161,7 +186,7 @@ export class RangeMarks {
   private readonly onPointerLeave = (): void => this.hover(null);
 
   private follow(state: RangeState, previous: RangeState): void {
-    this.setEnabled(state.activeTool === 'measure');
+    this.setEnabled(marksRange(state));
     if (!this.enabled) return;
     const sameScene = state.mapPath === previous.mapPath && state.viewedLevel === previous.viewedLevel;
     if (!sameScene || state.measureTool.mode !== 'ranges') this.clearRings();
@@ -194,12 +219,21 @@ export class RangeMarks {
     const pair = this.hovered === null ? null : rangeCheckPair(state.selectedIds, this.hovered, shownTokens(state));
     if (!pair) {
       this.check.clear();
+      this.setCheckShown(null);
       return;
     }
     const shown = this.check.shown;
     if (!again && shown?.from === pair.from && shown.to === pair.to) return;
     const look = this.deps.look();
     this.check.show(pair, this.grid(look), look);
+    const { from, to } = pair;
+    this.setCheckShown({ tokenIds: [from.id, to.id], from: placeOf(from), to: placeOf(to), text: this.check.text });
+  }
+
+  private setCheckShown(check: ShownRangeCheck | null): void {
+    if (check === null && this.checkShown === null) return;
+    this.checkShown = check;
+    this.deps.changed();
   }
 
   /** A press of the Ranges mode at `world`: the token there, else the point; the token the rings already stand around loses them. */
@@ -222,7 +256,7 @@ export class RangeMarks {
     const movement = this.deps.sources()?.movement;
     const rules = movement?.rules() ?? NO_MOVEMENT_RULES;
     if ('point' in target) {
-      this.ring(target.point, rangeRings(look.settings, rules, null), look);
+      this.ring(target.point, null, rangeRings(look.settings, rules, null), look);
       return;
     }
     const token = shownTokens(this.deps.store.getState())[target.token.id];
@@ -231,22 +265,40 @@ export class RangeMarks {
       return;
     }
     this.target = { token };
-    this.ring({ x: token.x, y: token.y, size: token.size || 1 }, rangeRings(look.settings, rules, movement?.speedOf(token) ?? null), look);
+    this.ring(placeOf(token), token.id, rangeRings(look.settings, rules, movement?.speedOf(token) ?? null), look);
   }
 
-  /** Shows `rings` around `origin`; without any, nothing stays, and the next press starts anew. */
-  private ring(origin: RangeOrigin, rings: readonly RangeRing[], look: MeasureLook): void {
-    if (rings.length === 0) this.clearRings();
-    else this.rings.show(origin, rings, this.grid(look), look);
+  /** Shows `rings` around `origin` (the token `tokenId`, or a point); without any, nothing stays, and the next press starts anew. */
+  private ring(origin: RangeOrigin, tokenId: string | null, rings: readonly RangeRing[], look: MeasureLook): void {
+    if (rings.length === 0) {
+      this.clearRings();
+      return;
+    }
+    this.rings.show(origin, rings, this.grid(look), look);
+    // A ring without an outline (no reach) is not drawn: nothing is shown.
+    if (!this.rings.shown) {
+      this.clearRings();
+      return;
+    }
+    this.ringsShown = { tokenIds: tokenId === null ? [] : [tokenId], at: origin, rings };
+    this.deps.changed();
   }
 
   private clearRings(): void {
     this.target = null;
     this.rings.clear();
+    if (this.ringsShown === null) return;
+    this.ringsShown = null;
+    this.deps.changed();
   }
 
   /** The grid tokens stand on, with its Snap setting. */
   private grid(look: MeasureLook): TokenGrid {
     return { ...look.grid, snapToGrid: this.deps.store.getState().grid?.snapToGrid };
   }
+}
+
+/** Where a token stands and how large it is, as range marks are drawn around it. */
+function placeOf(token: TokenEntity): RangeOrigin {
+  return { x: token.x, y: token.y, size: token.size || 1 };
 }

@@ -28,10 +28,10 @@ $options-width: 320px;
   // its room (`data-capped`, `--atlas-te-options-max-height`) does it clip and scroll, down and never sideways.
   .atlas-te-options__panel {
     @include atlas-elevated-surface;
-    @include atlas-panel-radius($radius-2xl);
+    @include atlas-panel-radius($surface-radius);
     box-sizing: border-box;
     width: $options-width;
-    max-width: calc(100vw - #{2 * $spacing-l});
+    max-width: calc(#{atlas-view-width()} - #{2 * $spacing-l});
     box-shadow: $shadow-md;
     // It grows out of the side its tile is on.
     transform-origin: top right;

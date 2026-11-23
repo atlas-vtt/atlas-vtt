@@ -41,6 +41,7 @@ import { useEditorState } from './useEditorState';
 import { removePart } from './tileParts';
 import { useTemplateKeyboard, type KeyboardTarget, type KeyHandler } from './useTemplateKeyboard';
 import { t } from '../../../i18n';
+import { itemShareEntries } from '../../../armarium/share/openItemShare';
 import './template-editor.scss';
 
 /** What the editor asks of the view that hosts it. */
@@ -199,6 +200,7 @@ export function TemplateEditor(props: TemplateEditorProps): React.JSX.Element {
                   json: { open: json, toggle: () => (json ? closeJson() : setJson(true)) },
                   rests: snapshot.readOnly ? undefined : { open: rests, toggle: toggleRests },
                   deleteTemplate: app && snapshot.path !== null && !snapshot.readOnly ? () => setDeleting(templateUsage(app, snapshot.id)) : undefined,
+                  share: app && snapshot.path !== null && !snapshot.builtIn ? itemShareEntries(app, { kind: 'statblock-template', id: snapshot.id, name: snapshot.name }) : undefined,
                   add: room.editorWidth === 'stacked' && !snapshot.readOnly
                     ? insertItems().map((item) => ({ label: t('templateEditor.addKind', { kind: item.label.toLowerCase() }), icon: 'plus', onClick: () => context.insert(item) }))
                     : undefined,

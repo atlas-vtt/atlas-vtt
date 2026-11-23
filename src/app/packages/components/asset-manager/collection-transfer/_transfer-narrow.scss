@@ -29,16 +29,12 @@ $transfer-stack-below: 640px;
     > .atlas-transfer-dialog__aside {
       grid-row: 2;
       grid-column: 1;
-      max-height: 40dvh;
+      max-height: #{atlas-view-height(40)};
     }
 
     > .atlas-transfer-dialog__footer {
       grid-row: 3;
       grid-column: 1;
-
-      > .btn:last-child {
-        @include atlas-modal-corner-control(bottom-right);
-      }
     }
 
     // The rail's header no longer sits under the close button.

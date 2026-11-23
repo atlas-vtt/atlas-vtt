@@ -11,7 +11,7 @@ import type { LevelLink, SceneLevel } from '../../../src/app/types/sceneLevelTyp
 import type { TokenEntity } from '../../../src/app/types';
 import type { ContextMenuEntry } from '../../../src/app/react/root/ContextMenuContext';
 import { createInMemoryApp } from '../../mocks/inMemoryVault';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../../src/app/utils/typedEmitter';
 import type { App } from 'obsidian';
 import { onLeavingView } from '../../../src/app/pixi/viewLeaving';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';

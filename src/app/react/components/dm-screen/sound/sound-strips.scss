@@ -170,7 +170,6 @@
   box-shadow: 0 1px 3px color-mix(in oklch, black 65%, transparent), inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) 13%, transparent);
   cursor: grab;
   pointer-events: auto;
-  @include atlas-corner-shape;
 
   &::after {
     content: '';
@@ -266,7 +265,7 @@ $reset-shift: calc((16px + #{$spacing-xs}) / 2);
   }
 }
 
-@media (hover: none) {
+@include atlas-hover-reveal {
   .atlas-sound-fader__foot {
     .atlas-sound-fader__value,
     .atlas-sound-fader__reset {

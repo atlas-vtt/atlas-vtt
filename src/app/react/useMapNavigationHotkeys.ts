@@ -2,8 +2,7 @@ import { useEffect } from 'react';
 import type { AtlasView } from '../atlas-view';
 import { canRunMapHotkeys, matchesMapHotkey } from '../keyboard/mapHotkeys';
 import { focusToken } from '../pixi/tokenFocus';
-import { mapFit } from '../pixi/fitMapRect';
-import { allowZoom } from '../pixi/zoomRange';
+import { fitMapInView } from '../pixi/mapZoomActions';
 import { addTokenHighlight } from '../pixi/utils/tokenHighlight';
 import type { SettingsService } from '../services/SettingsService';
 import type { ViewAtlasStore } from '../storeFactory';
@@ -35,15 +34,7 @@ export function useMapNavigationHotkeys(view: AtlasView | null, store: ViewAtlas
         const rect = view?.renderer?.getMapRect?.();
         if (!vp || !rect) return;
 
-        const fit = mapFit(vp, rect);
-        allowZoom(vp, fit.scale);
-        // Use pixi-viewport's animate method for smooth transition
-        vp.animate({
-          position: { x: fit.x, y: fit.y },
-          scale: fit.scale,
-          time: 400,
-          ease: 'easeInOutCubic',
-        });
+        fitMapInView(vp, rect);
       } else if (matchesMapHotkey(e, 'fitToken', settings)) {
         // Shift+2: Zoom to selected token with smooth animation
         e.preventDefault();

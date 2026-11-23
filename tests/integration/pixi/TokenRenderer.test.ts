@@ -12,7 +12,7 @@ import {
   type Ticker,
 } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../../src/app/utils/typedEmitter';
 import { TokenRenderer } from '../../../src/app/pixi/token-renderer';
 import { captureSceneFrame } from '../../../src/app/pixi/sceneFrameCapture';
 import { AnnotationsRenderer } from '../../../src/app/pixi/annotations/AnnotationsRenderer';
@@ -31,7 +31,6 @@ import { createInMemoryApp } from '../../mocks/inMemoryVault';
 import { DEFAULT_SETTINGS } from '../../../src/app/services/atlasSettings';
 import { fogCoverage } from '../../../src/app/fog/fogCoverage';
 import { fogRectangle } from '../../helpers/fogOperations';
-import { isHandled } from '../../../src/app/pixi/utils/handledEvents';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
 import { wirePlayerMeasurements } from '../../helpers/playerMeasureWiring';
 import { captureWithLayerVisibility, type LayerVisibility } from '../../../src/app/pixi/playerSafeFrame';

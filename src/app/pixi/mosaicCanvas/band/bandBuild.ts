@@ -59,7 +59,7 @@ export class BandBuild {
   constructor(
     private readonly hash: string,
     readonly pyramid: Pyramid,
-    private readonly bytes: Uint8Array,
+    private readonly bytes: Uint8Array<ArrayBuffer>,
     private readonly decoder: BandDecoder,
     private readonly deps: BuildDeps,
   ) {}

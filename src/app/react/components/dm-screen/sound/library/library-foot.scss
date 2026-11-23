@@ -1,0 +1,196 @@
+@use '../../../../../../../styles/tokens' as *;
+@use '../../../../../../../styles/mixins' as *;
+@use '../sound-look' as *;
+
+// The rail's foot: the downloads button and how far converting the agreed folders has come, kept in view where the
+// tags make the rail scroll. Empty, it takes no room.
+.atlas-sound-lib__foot {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  background: var(--background-secondary);
+  // The rail's inset below it too, so the tags scrolling under it never show there.
+  box-shadow: 0 $spacing-s 0 var(--background-secondary);
+
+  &:empty {
+    display: none;
+  }
+}
+
+// One line and its pause. The numbers wrap rather than hide where the rail is at its narrowest.
+.atlas-sound-lib__converting {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  min-height: 28px;
+  // Inline only, as a root's row in the rail: its words start where the roots' names do and its pause ends where
+  // their ⋯ does; its height is a row's.
+  padding: 0 $spacing-s;
+  color: var(--atlas-sound-muted);
+  font-variant-numeric: tabular-nums;
+
+  span {
+    flex: 1;
+    min-width: 0;
+    text-wrap: balance;
+  }
+}
+
+// After the downloads button, the line's words start one gap after it.
+.atlas-sound-dl + .atlas-sound-lib__converting {
+  padding-left: 0;
+}
+
+// Unlike a row's ⋯ it stays shown: it is the line's one control.
+.atlas-sound-lib .atlas-sound-lib__converting .atlas-sound-lib__more {
+  flex-shrink: 0;
+  margin-left: 0;
+  opacity: 1;
+}
+
+// The downloads button: a 28 px circle, a row's height, whose ring fills with what is still to come. The ring's arc
+// moves only when the manager announces (a few times a second), without a transition: nothing paints per frame.
+.atlas-sound-lib .atlas-sound-dl {
+  @include bare-button;
+  @include pressable;
+  position: relative;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--atlas-sound-muted);
+  transition: color $transition-normal $press-ease, background-color $transition-normal $press-ease, transform $press-ms $press-ease;
+
+  &:hover,
+  &[aria-expanded='true'] {
+    background: $hairline;
+    color: var(--text-normal);
+  }
+
+  &[data-face='active'] {
+    color: var(--text-normal);
+  }
+
+  &[data-face='failed'] {
+    color: var(--text-warning);
+  }
+}
+
+.atlas-sound-dl__ring {
+  position: absolute;
+  inset: 0;
+  rotate: -90deg;
+  fill: none;
+  stroke-width: 2;
+}
+
+.atlas-sound-dl__track {
+  stroke: $hairline;
+}
+
+.atlas-sound-dl__arc {
+  stroke: var(--interactive-accent);
+  stroke-linecap: round;
+}
+
+.atlas-sound-dl__icon {
+  grid-area: 1 / 1;
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
+}
+
+// Done: the tick comes in bright with a ring that swells away, then settles into the calm tick under it. Only
+// transform and opacity move.
+.atlas-sound-dl__done {
+  display: grid;
+  place-items: center;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 2px var(--interactive-accent);
+    opacity: 0;
+    animation: atlas-sound-dl-swell 700ms $press-ease;
+  }
+}
+
+.atlas-sound-dl__icon--bright {
+  color: var(--interactive-accent);
+  opacity: 0;
+  animation: atlas-sound-dl-bright 1800ms $press-ease;
+}
+
+@keyframes atlas-sound-dl-swell {
+  from {
+    opacity: 0.6;
+    transform: scale(0.85);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+@keyframes atlas-sound-dl-bright {
+  0% {
+    opacity: 1;
+    transform: scale(0.6);
+  }
+
+  15% {
+    transform: scale(1.1);
+  }
+
+  25%,
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-sound-dl__done::after {
+    animation: none;
+  }
+
+  .atlas-sound-dl__icon--bright {
+    animation-name: atlas-sound-dl-fade;
+  }
+}
+
+@keyframes atlas-sound-dl-fade {
+  0%,
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+// Where the rail stands over the rows, its roots side by side, the foot ends their row.
+@container atlas-dm-screen (max-width: 560px) {
+  .atlas-sound-lib__foot {
+    position: static;
+    box-shadow: none;
+    margin: 0 0 0 auto;
+    align-self: flex-start;
+  }
+}

@@ -12,6 +12,11 @@ export const MAP_LAYER_Z = {
   /** Water, lava and acid moving on the map image, beneath the grid and all the lighting lights after the map. */
   liquids: -1,
   /**
+   * Another floor's map, see-through, while the GM places the floor shown over it (Position floor):
+   * above the floor's own map and liquids, below its drawings, grid and tokens.
+   */
+  floorGhost: -0.75,
+  /**
    * Drawings and texts put on the map: above the map image and its liquids, under the grid, the
    * measured areas and the tokens, so a filled room keeps its grid lines and the lighting lights
    * it like the floor.
@@ -48,6 +53,8 @@ export const MAP_LAYER_Z = {
   gridAlignment: 99,
   /** The button above a group selection that turns it: above the tokens' bars, which must not cover it. */
   groupRotate: 101,
+  /** The chevrons of tokens a Shift-drag turns (GM only): above the tokens' bars, which a token facing down points at. */
+  facing: 101,
   /** What the Draw tool shows around drawings and texts (handles, frames, the mark of what a press places, the eraser's ring): above the lighting, below the fog. */
   annotationChrome: 900,
   /**
@@ -57,4 +64,6 @@ export const MAP_LAYER_Z = {
   pinNames: 1010,
   /** Tokens being placed by hand (GM only): above everything on the map but the laser. */
   placement: 1100,
+  /** The ring that closes around a finger whose press becomes a long press (never in the players' picture). */
+  longPressRing: 1150,
 } as const;

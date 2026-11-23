@@ -46,6 +46,7 @@ describe('the names on the scene tabs', () => {
     cleanup();
     style.remove();
     document.body.className = '';
+    document.body.removeAttribute('data-atlas-pointer');
   });
 
   /** The scenes (the six, unless named) open in a map view `width` px wide; the third is the one players are shown. */
@@ -161,5 +162,50 @@ describe('the names on the scene tabs', () => {
         expect(calls, NAMES[index]).toEqual([`${kind} ${ids[index]!}`]);
       }
     }
+  });
+  it('gives a fine pointer 28 px tabs whose controls wait for the pointer', async () => {
+    await mount(1900, NAMES.slice(0, 3));
+    expect([...new Set(tabs().map((tab) => tab.getBoundingClientRect().height))]).toEqual([28]);
+    // Away from the pointer only the eye of the scene players are shown stands in its tab.
+    expect(tabs().map((tab) => actionsOf(tab).filter((action) => getComputedStyle(action).visibility === 'visible').length)).toEqual([0, 0, 1]);
+  });
+
+  it('gives a coarse pointer 40 px tabs with the eye and the close button standing in each, 40 px to press and clear of the name', async () => {
+    document.body.setAttribute('data-atlas-pointer', 'coarse');
+    await mount(1900, NAMES.slice(0, 3));
+    await page.screenshot({ path: '__screenshots__/atlas-scene-tabs-coarse.png', element: document.querySelector('.atlas-top-bar-row')! });
+    for (const tab of tabs()) {
+      const box = tab.getBoundingClientRect();
+      expect(box.height).toBe(40);
+      expect(getComputedStyle(tab).borderTopLeftRadius).toBe('10px');
+      const [eye, close] = actionsOf(tab).map((action) => action.getBoundingClientRect());
+      const name = nameOf(tab).getBoundingClientRect();
+      expect(actionsOf(tab).map((action) => getComputedStyle(action).visibility)).toEqual(['visible', 'visible']);
+      // Each control a 28 px square, the tab's one inset from its edges, with a hit area as tall as the tab.
+      for (const control of [eye!, close!]) expect([control.width, control.height, control.top - box.top, box.bottom - control.bottom]).toEqual([28, 28, INSET, INSET]);
+      expect(eye!.left - box.left).toBe(INSET);
+      expect(box.right - close!.right).toBe(INSET);
+      const hit = getComputedStyle(actionsOf(tab)[0]!, '::before');
+      expect(eye!.height - parseFloat(hit.top) - parseFloat(hit.bottom)).toBe(40);
+      expect(eye!.width - parseFloat(hit.left) - parseFloat(hit.right)).toBe(40);
+      // The name lies between them, whole, and nothing of it fades.
+      expect(name.left).toBeGreaterThanOrEqual(eye!.right);
+      expect(name.right).toBeLessThanOrEqual(close!.left);
+      expect(isCut(tab)).toBe(false);
+      expect(getComputedStyle(tab.querySelector('.atlas-scene-tab__label')!).maskImage).toBe('none');
+    }
+    // The bar's own buttons are squares as tall as the tabs, and the bar keeps its inset and corner.
+    const bar = document.querySelector('.atlas-scene-tab-bar')!;
+    const add = document.querySelector('.atlas-scene-tab-bar__add')!.getBoundingClientRect();
+    expect([add.width, add.height]).toEqual([40, 40]);
+    expect(bar.getBoundingClientRect().bottom - add.bottom).toBe(add.top - bar.getBoundingClientRect().top);
+    expect(getComputedStyle(bar).borderTopLeftRadius).toBe('15.5px');
+  });
+
+  it('lets a coarse pointer\'s tabs shrink to their controls and a short name, then scrolls', async () => {
+    document.body.setAttribute('data-atlas-pointer', 'coarse');
+    await mount(700);
+    expect(tabs().every((tab) => widthOf(tab) >= 152)).toBe(true);
+    expect(strip().scrollWidth).toBeGreaterThan(strip().clientWidth);
   });
 });

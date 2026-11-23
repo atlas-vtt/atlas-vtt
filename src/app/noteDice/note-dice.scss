@@ -1,0 +1,31 @@
+@use '../../../styles/tokens' as *;
+
+// The rolls made from a note's dice where no map on screen in its window shows them
+// (`NoteDiceDisplays`): at the window's top right, in front of what Atlas shows, as a map's are.
+// The links themselves are the statblocks' `.atlas-dice-link`.
+.atlas-note-dice-rolls {
+  position: fixed;
+  top: $spacing-s;
+  right: $spacing-s;
+  z-index: $z-atlas-dice-rolls-front;
+  width: min(21rem, calc(100vw - 2 * #{$spacing-s}));
+  pointer-events: none;
+
+  > .atlas-vtt-plugin.atlas-dice-rolls {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 100%;
+  }
+}
+
+// A roll in Live Preview (`editorDice.ts`): marked like a link in Reading view, but the cursor stays the
+// text cursor, since a plain click edits and only Ctrl/Cmd-click rolls. No padding or weight, so the
+// text keeps its place while the marks come and go as you type.
+.atlas-editor-dice {
+  color: var(--text-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in oklch, var(--text-accent) 40%, transparent);
+  text-underline-offset: 3px;
+}

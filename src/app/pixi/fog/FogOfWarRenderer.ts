@@ -7,7 +7,7 @@
 import * as PIXI from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand';
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../utils/typedEmitter';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { FogEdge } from '../../fog/fogEdge';
 import { FogCoverageCache } from '../../fog/FogCoverageCache';
@@ -146,6 +146,11 @@ export class FogOfWarRenderer {
     this.picture.followView();
     this.menuTarget.refreshVisibility();
     this.gesture.refreshVisibility();
+  }
+
+  /** The fog's layer in the viewport. */
+  get layer(): PIXI.Container {
+    return this.container;
   }
 
   /** Whether the fog is fading from the picture before an edit to the one it has now. */

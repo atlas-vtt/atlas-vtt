@@ -68,7 +68,12 @@ export class MosaicCanvas {
     this.layer.addChild(this.turned);
     this.video = new MapVideoSlot(deps.video, deps.requestRender);
     this.turned.addChild(this.video.container);
-    this.cache = new TesseraTextureCache({ ticker: deps.ticker, renderer: deps.renderer, requestRender: deps.requestRender });
+    this.cache = new TesseraTextureCache({
+      ticker: deps.ticker,
+      renderer: deps.renderer,
+      requestRender: deps.requestRender,
+      ...(deps.textureBudget !== undefined && { budgetBytes: deps.textureBudget }),
+    });
     this.resident = new ResidentOverviews(this.cache);
     const camera = viewportCamera(deps.viewport, deps.renderer ?? { resolution: 1 });
     this.camera = (): TesseraView | null => {
@@ -119,7 +124,7 @@ export class MosaicCanvas {
     if (!this.shown) return;
     this.place(this.shown);
     this.deps.requestRender();
-    this.emit('image');
+    this.emit('placement');
   }
 
   /** Whether an animated map's video plays, holds its frame, or gives way to its poster (`mapVideoMode`). */

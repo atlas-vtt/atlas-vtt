@@ -1,0 +1,602 @@
+// The look of an initiative list, the GM's tracker (`InitiativeTracker`) and the players' list (`PlayerInitiativePanel`)
+// alike: the panel on its surface, its list running under shades at both ends, the round over its foot, sides and the
+// next round's divider, and the cards. Each list adds only what is its own: the tracker its place, bars, numbers and
+// what the GM does with a card (`initiative-tracker.scss`), the players' list its places, rows, size and pulse
+// (`player-initiative.scss`). Sizes grow with `--atlas-initiative-scale` (the player view's initiative size); spacing stays.
+// A row (`--row`, the players' list across the top or bottom) is the column turned on its side: its start is the
+// column's top, its end the column's foot.
+@use '../../../styles/tokens' as *;
+@use '../../../styles/mixins' as *;
+@use '../../../styles/initiative-cards' as *;
+
+@function scaled($length) {
+  @return calc(#{$length} * var(--atlas-initiative-scale, 1));
+}
+
+// How far the shades over the list's ends reach into it: the round's at its foot, and at its top once it is scrolled
+$list-shade: scaled(44px);
+
+.atlas-initiative-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  // The cards stand $surface-inset inside the border, concentric with it, and as far apart
+  gap: $surface-inset;
+  padding: $surface-inset;
+  box-sizing: border-box;
+  font-family: var(--font-interface);
+
+  // Its look is its surface's (below); the border keeps its place, so the cards stand where they did
+  border: $border-width-m solid transparent;
+  @include atlas-panel-radius($surface-radius);
+
+  // The Atlas VTT theme's corner ivy (`useThemeIvy`, `lendThemeIvy`): the whole vine behind the surface
+  --atlas-theme-ivy-scale: #{scaled(0.2)};
+  @include atlas-theme-ivy-corners(-2);
+
+  // Its surface, the toolbar's: a layer of its own, so the theme's ivy can lie behind it
+  &__surface {
+    @include atlas-elevated-surface;
+    position: absolute;
+    inset: calc(-1 * #{$border-width-m});
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+}
+
+// A shadow over an end of the list, from the panel's border to `$list-shade` inside the list, eased over many stops so
+// it has no line where it begins. `$towards` is the end it is darkest at. A shadow is dark in light themes too (the
+// cards' own shades are): one of the panel's colour turned white there.
+@mixin list-shade($towards) {
+  position: absolute;
+  box-sizing: border-box;
+  @if $towards == top or $towards == bottom {
+    right: 0;
+    left: 0;
+    height: calc(#{$list-shade} + #{$surface-inset});
+  } @else {
+    top: 0;
+    bottom: 0;
+    width: calc(#{$list-shade} + #{$surface-inset});
+  }
+  // Over the cards' own layers (their plates and marks are at 2)
+  z-index: 4;
+  background: linear-gradient(
+    to $towards,
+    transparent,
+    rgb(0 0 0 / 0.07) 10%,
+    rgb(0 0 0 / 0.21) 24%,
+    rgb(0 0 0 / 0.43) 42%,
+    rgb(0 0 0 / 0.66) 60%,
+    rgb(0 0 0 / 0.8) 78%,
+    rgb(0 0 0 / 0.82)
+  );
+  // The cards beneath keep their clicks
+  pointer-events: none;
+}
+
+// The round at the list's foot. It takes no room: the list runs to the panel's border beneath it, and the round lies
+// over the cards that pass, on a shade rising from the bottom edge that reads it.
+.atlas-initiative-panel__round {
+  @include initiative-round-name(scaled($font-ui-small));
+  @include list-shade(bottom);
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 $surface-inset $surface-inset;
+  border-radius: 0 0 var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius);
+  // A touch lighter than the accent, so a dark accent (a light theme's) still reads on the shadow
+  color: color-mix(in oklch, #{$round-accent}, #fff 25%);
+  text-shadow: 0 0 2px rgb(0 0 0 / 0.9), 0 0 8px rgb(0 0 0 / 0.7);
+}
+
+// The same shade over the list's top, fading in over the first `$list-shade` the list is scrolled, so cards that pass
+// under the panel's top edge fade out instead of being cut off. The list's scroll drives it (a scroll timeline, run by
+// the compositor); where there is none, or the list does not scroll, it stays hidden.
+.atlas-initiative-panel__top-shade {
+  @include list-shade(top);
+  top: 0;
+  border-radius: var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius) 0 0;
+  opacity: 0;
+}
+
+// Without a round at the foot (no fight runs), the same shade over the list's bottom while there is more of it below,
+// fading out over its last `$list-shade`
+.atlas-initiative-panel__bottom-shade {
+  @include list-shade(bottom);
+  bottom: 0;
+  border-radius: 0 0 var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius);
+  opacity: 0;
+}
+
+@supports (animation-timeline: --a) {
+  .atlas-initiative-panel {
+    timeline-scope: --atlas-initiative-list;
+  }
+
+  .atlas-initiative-panel__list {
+    scroll-timeline: --atlas-initiative-list block;
+  }
+
+  .atlas-initiative-panel__top-shade {
+    animation: atlas-initiative-top-shade linear both;
+    animation-timeline: --atlas-initiative-list;
+    animation-range: 0 $list-shade;
+  }
+
+  .atlas-initiative-panel__bottom-shade {
+    animation: atlas-initiative-bottom-shade linear both;
+    animation-timeline: --atlas-initiative-list;
+    animation-range: calc(100% - #{$list-shade}) 100%;
+  }
+}
+
+@keyframes atlas-initiative-top-shade {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes atlas-initiative-bottom-shade {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+// The life a combatant lost, red rising in its art or the compact line's backdrop (`initiative-wound`)
+.atlas-initiative-wound {
+  @include initiative-wound;
+}
+
+// The combatants: scrollable, hidden scrollbar; its cards glide as the turn passes (`turnMotion.ts`)
+.atlas-initiative-panel__list {
+  @include initiative-gliding-list;
+  display: flex;
+  flex-direction: column;
+  gap: $surface-inset;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  @include atlas-scrollbar-none;
+  // What the shades cover: the list follows the turn (`scrollWithin`) to a card clear of them
+  scroll-padding-top: $list-shade;
+
+  .atlas-initiative-panel:has(.atlas-initiative-panel__round) & {
+    scroll-padding-bottom: $list-shade;
+  }
+  // The list glides to the turn it follows
+  scroll-behavior: smooth;
+
+  @media (prefers-reduced-motion: reduce) {
+    scroll-behavior: auto;
+  }
+}
+
+// A side of a fight by sides: its combatants under its name
+.atlas-initiative-side {
+  display: flex;
+  flex-direction: column;
+  gap: $surface-inset;
+}
+
+// Where the list runs on into the next round: the round's name between two hairlines
+.atlas-initiative-round {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  color: var(--text-muted);
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--background-modifier-border);
+  }
+}
+
+.atlas-initiative-round__label {
+  @include initiative-round-name(scaled($font-ui-small));
+  line-height: 1.4;
+}
+
+.atlas-initiative-side__label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-xs;
+  margin: 0;
+  font-size: scaled(11px);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-muted);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+// The side whose turn it is: its name and its combatants take the accent
+.atlas-initiative-side--active {
+  .atlas-initiative-side__label {
+    color: var(--interactive-accent);
+  }
+
+  .atlas-initiative-card:not(.atlas-initiative-card--sitting-out) {
+    border-color: var(--interactive-accent);
+    box-shadow: inset 0 0 0 1px var(--interactive-accent);
+  }
+}
+
+// A combatant's card, on the panel's surface
+.atlas-initiative-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-s;
+  padding: $spacing-s;
+  width: 100%;
+  flex-shrink: 0;
+  background: var(--background-modifier-hover);
+  border: 1.5px solid color-mix(in oklch, var(--mono-100) 6%, transparent);
+  border-radius: $radius-m;
+  transition: all 0.2s ease;
+  position: relative;
+  box-sizing: border-box;
+
+  // The players' own side, framed in green
+  &--ally {
+    border-color: initiative-side-line(var(--color-green));
+  }
+
+  // Active turn state
+  // Ring and glow are inset: the list scrolls, so anything drawn outside the
+  // card box is clipped on the straight edges and leaves ragged corners.
+  // In its token's ring colour (`--atlas-turn-color`, `turnColor`), else the accent
+  &--active {
+    border-color: var(--atlas-turn-color, var(--interactive-accent));
+    box-shadow:
+      inset 0 0 0 1px var(--atlas-turn-color, var(--interactive-accent)),
+      inset 0 0 12px color-mix(in oklch, var(--atlas-turn-color, var(--interactive-accent)) 25%, transparent);
+    animation: atlas-initiative-pulse 2s ease-in-out infinite;
+  }
+
+  // Defeated state
+  &--defeated {
+    opacity: 0.45;
+    filter: grayscale(70%);
+  }
+
+  // Does not act this round
+  &--sitting-out {
+    opacity: 0.45;
+  }
+
+  // Delayed its turn: waits below the order, without the card's fill until it acts
+  &--delayed {
+    background: transparent;
+  }
+}
+
+// The turn began: who holds it lights up once (`initiative-turn-flash`)
+.atlas-initiative-card--turn-flash {
+  @include initiative-turn-flash('.atlas-initiative-card__art', $border-width-s);
+}
+
+@keyframes atlas-initiative-pulse {
+  50% {
+    box-shadow:
+      inset 0 0 0 1px var(--atlas-turn-color, var(--interactive-accent)),
+      inset 0 0 16px color-mix(in oklch, var(--atlas-turn-color, var(--interactive-accent)) 45%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-initiative-card--active {
+    animation: none;
+  }
+}
+
+// Avatar wrapper (allows instance badge to overflow the circular clip)
+.atlas-initiative-card__avatar-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.atlas-initiative-card__instance-badge,
+.atlas-initiative-card__hidden-badge,
+.atlas-initiative-card__off-map-badge {
+  position: absolute;
+  bottom: -2px;
+  left: -4px;
+  min-width: scaled(18px);
+  height: scaled(18px);
+  border-radius: $radius-full;
+  background: #000;
+  border: 1.5px solid #555;
+  color: #fff;
+  font-size: scaled(11px);
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-sizing: border-box;
+  z-index: 2;
+  pointer-events: none;
+}
+
+// The instance badge's twin in the opposite corner; it takes the pointer for its tooltip
+.atlas-initiative-card__hidden-badge {
+  top: -2px;
+  right: -4px;
+  bottom: auto;
+  left: auto;
+  padding: 0;
+  pointer-events: auto;
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+// A combatant kept beside the map: the third corner, with its tooltip. Its token-beside-a-map
+// glyph has no stroke through it, unlike the hidden badge's eye, and is drawn muted: a note, not a warning.
+.atlas-initiative-card__off-map-badge {
+  top: -2px;
+  bottom: auto;
+  padding: 0;
+  pointer-events: auto;
+  color: var(--text-muted);
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+// The token as the map shows it (`TokenPortrait`): inside its ring, or unframed
+.atlas-initiative-card__portrait {
+  width: scaled(48px);
+}
+
+// Stands in for a token without art
+.atlas-initiative-card__avatar {
+  position: relative;
+  width: scaled(48px);
+  height: scaled(48px);
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--background-secondary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+
+  svg {
+    width: scaled(18px);
+    height: scaled(18px);
+    color: var(--text-muted);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.atlas-initiative-card__defeated-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--text-muted);
+
+  svg {
+    width: scaled(24px);
+    height: scaled(24px);
+  }
+}
+
+// The combatant's name, where the list shows names
+.atlas-initiative-card__name {
+  width: 100%;
+  font-size: scaled(12px);
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--text-normal);
+  text-align: center;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// A square card filled with the token's art (`styles/_initiative-cards.scss`), red rising in it as it loses hit points,
+// its marks in its top left; the GM's tracker sets its number in the top right. The compact list keeps its line.
+$tile-border: $border-width-s;
+$tile-corner-radius: initiative-corner-radius($tile-border);
+
+.atlas-initiative-card--tile {
+  justify-content: flex-end;
+  align-items: stretch;
+  aspect-ratio: 1;
+  // Square whatever it holds
+  min-height: 0;
+  gap: $surface-inset;
+  padding: $surface-inset;
+  // A whole pixel, which every screen draws as it is, so the corners stay concentric
+  border-width: $tile-border;
+
+  .atlas-initiative-card__art {
+    @include initiative-art($tile-border);
+  }
+
+  .atlas-initiative-card__art--framed {
+    @include initiative-art-framed;
+  }
+
+  // Stands in for a token without art, in the middle of the card
+  .atlas-initiative-card__avatar {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .atlas-initiative-card__defeated-overlay {
+    z-index: 1;
+    border-radius: calc(#{$radius-m} - #{$tile-border});
+  }
+
+  // Its look-alike's number and what the players do not see of it, down the left side from the top corner, clear of
+  // the number in the other
+  .atlas-initiative-card__marks {
+    position: absolute;
+    top: $surface-inset;
+    left: $surface-inset;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .atlas-initiative-card__instance-badge,
+  .atlas-initiative-card__hidden-badge,
+  .atlas-initiative-card__off-map-badge {
+    position: static;
+    border-radius: $tile-corner-radius;
+  }
+
+  // Hidden from the players: translucent, like its token on the map
+  &.atlas-initiative-card--hidden .atlas-initiative-card__art {
+    opacity: 0.5;
+  }
+
+  // The players' glow and the turn's ring lie on the art, which covers the card's own inset shadow; the side's line is
+  // the card's border
+  &.atlas-initiative-card--ally .atlas-initiative-card__art::after {
+    @include initiative-side-glow(var(--color-green), scaled(14px));
+  }
+
+  &.atlas-initiative-card--active .atlas-initiative-card__art::after,
+  .atlas-initiative-side--active &:not(.atlas-initiative-card--sitting-out) .atlas-initiative-card__art::after {
+    @include initiative-turn-ring(var(--atlas-turn-color, var(--interactive-accent)), scaled(14px));
+  }
+}
+
+// While someone holds the turn, everyone else's art steps back a little, so the turn stands out whatever its colour
+.atlas-initiative-panel:has(.atlas-initiative-card--active, .atlas-initiative-side--active) .atlas-initiative-card--tile:not(.atlas-initiative-card--active, :hover, .atlas-initiative-card--preview-hover) .atlas-initiative-card__art img {
+  filter: $initiative-art-dim;
+}
+
+.atlas-initiative-side--active .atlas-initiative-card--tile:not(.atlas-initiative-card--sitting-out) .atlas-initiative-card__art img {
+  filter: none;
+}
+
+.atlas-initiative-card--tile .atlas-initiative-card__art img {
+  transition: filter 120ms ease-out;
+}
+
+// A row: the column turned on its side. Its cards run along it under a shade at each end, the round over its end on
+// the one that rises from the end, the cards scrolled past its start fading under the other; the names of sides and
+// the next round read up the row's height, the dividers stand upright.
+.atlas-initiative-panel--row {
+  flex-direction: row;
+
+  .atlas-initiative-panel__list {
+    flex-direction: row;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-padding-top: 0;
+    scroll-padding-inline: $list-shade 0;
+  }
+
+  &:has(.atlas-initiative-panel__round) .atlas-initiative-panel__list {
+    scroll-padding-bottom: 0;
+    scroll-padding-inline-end: $list-shade;
+  }
+
+  // Written up the row's height: a vertical line of text turned half round, so it reads from the row's foot. Turned with
+  // it, the shade and the corners are set for the side they end up on
+  .atlas-initiative-panel__round {
+    @include list-shade(left);
+    right: 0;
+    left: auto;
+    height: auto;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    // Along the row's height in the middle, at the row's end
+    justify-content: center;
+    align-items: flex-end;
+    padding: 0 0 0 $surface-inset;
+    border-radius: var(--atlas-panel-inner-radius) 0 0 var(--atlas-panel-inner-radius);
+  }
+
+  .atlas-initiative-panel__top-shade {
+    @include list-shade(left);
+    right: auto;
+    left: 0;
+    height: auto;
+    border-radius: var(--atlas-panel-inner-radius) 0 0 var(--atlas-panel-inner-radius);
+  }
+
+  .atlas-initiative-panel__bottom-shade {
+    @include list-shade(right);
+    right: 0;
+    left: auto;
+    height: auto;
+    border-radius: 0 var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius) 0;
+  }
+
+  // A side's cards after its name
+  .atlas-initiative-side {
+    flex-flow: row nowrap;
+    flex-shrink: 0;
+    align-items: stretch;
+  }
+
+  .atlas-initiative-side__label {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    flex: 0 0 auto;
+    white-space: nowrap;
+    // Its box as wide as its letters, so the gap to the cards reads as the list's inset
+    line-height: 1;
+  }
+
+  // Where the list runs on into the next round: the name between two upright lines
+  .atlas-initiative-round {
+    flex-direction: column;
+    flex-shrink: 0;
+
+    &::before,
+    &::after {
+      width: 1px;
+      height: auto;
+    }
+  }
+
+  .atlas-initiative-round__label {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    line-height: 1;
+  }
+}
+
+@supports (animation-timeline: --a) {
+  .atlas-initiative-panel--row .atlas-initiative-panel__list {
+    scroll-timeline: --atlas-initiative-list inline;
+  }
+}

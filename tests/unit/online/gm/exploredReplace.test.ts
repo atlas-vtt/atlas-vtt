@@ -167,6 +167,21 @@ describe('an explored memory the GM saves', () => {
     expect(serials(table)).toEqual([0, 0]);
   });
 
+  it('is counted on the players\' floor when the GM forgets every floor from another one, though that floor saved no memory', async () => {
+    const levels: SceneLevel[] = [
+      { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: 'maps/cave.webp' },
+      { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: 'maps/upper.webp' },
+    ];
+    const table = shareHarness(sceneState({ ...LIT, levels, viewedLevel: 'upper', exploredMask: null }), MAP);
+    table.presented = 'ground';
+    table.share.start();
+    await table.set(table.state());
+    await table.advance(EXPLORED_INTERVAL_MS + 100);
+    await then(table, { exploredEdits: 1, exploredForgotten: 1 });
+    expect(serials(table)).toEqual([0, 1]);
+    expect(memories(table)).toEqual([null, null]);
+  });
+
   it('is refused by players where its count is no whole number', () => {
     expect(parseGmMessage({ t: 'explored', scene: 's1', serial: -1 })).toBeNull();
     expect(parseGmMessage({ t: 'explored', scene: 's1', serial: 1.5 })).toBeNull();

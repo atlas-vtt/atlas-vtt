@@ -8,6 +8,7 @@ import { auraLabelText, measureLabelText } from '../../measure/measureLabelText'
 import { tokensInArea, type AreaToken } from '../../measure/measureTokens';
 import type { Measurement } from '../../measure/measureTypes';
 import type { HeightAt } from '../../measure/tokenHeight';
+import type { Point } from '../../types/visionTypes';
 import type { TokenSeen } from '../../vision/measureOrigin';
 import type { MeasureParts } from '../measurePartsVisibility';
 import { destroyTree } from '../utils/destroyTree';
@@ -19,11 +20,14 @@ import { AreaBody, type BodyLook } from './AreaBody';
 import { AreaTokenRings, markedTokens } from './AreaTokenRings';
 import type { AreaEffects } from './effects/AreaEffects';
 import { legDistances, rulerRise } from './measureDistances';
+import { MeasureGlow } from './MeasureGlow';
+import { PRESENT, type Presence } from './measurePresence';
 import { PlayersLabel } from './PlayersLabel';
 
 /** A leg's label beside the distance's: the same pill, smaller. */
 const LEG_LABEL_SIZE = 0.8;
 const NO_TOKENS: readonly string[] = [];
+const NOWHERE: Point = { x: 0, y: 0 };
 
 /** What every measurement is drawn by: the zoom it shows at, the map's grid and rules, and the theme's accent. */
 export interface MeasureLook {
@@ -111,6 +115,11 @@ export class DrawnMeasure {
   /** The height the players' reading was last worked out for, and what it came to: asked at every frame, written at none while it stays. */
   private playersRise: { readonly rise: number; readonly text: string } | null = null;
   private drawn: Drawn | null = null;
+  /** How far it is on the map (`present`), and how far from where it lies it is drawn (`shift`). */
+  private presence: Presence = PRESENT;
+  private offset: Point = NOWHERE;
+  /** The glow it plays once pinned; made the first time. */
+  private glowing: MeasureGlow | null = null;
   /** The area as it is drawn now; null for a ruler and while nothing is drawn. */
   private inked: Inked | null = null;
   private look: MeasureLook | null = null;
@@ -141,6 +150,50 @@ export class DrawnMeasure {
         labelForPlayers: (count, seen) => this.labelForPlayers(count, seen),
       },
     };
+  }
+
+  /** The measurement drawn; null while nothing is. */
+  get measurement(): Measurement | null {
+    return this.drawn?.measurement ?? null;
+  }
+
+  /**
+   * How far it is on the map (`MeasurePresence`): every piece fades with it and grows about where
+   * it starts (an aura's token), the labels with them, the rings on tokens only fade.
+   */
+  present(presence: Presence): void {
+    this.presence = presence;
+    this.place();
+  }
+
+  /**
+   * Draws it `offset` world pixels from where it lies: with its token, drawn on its way to where
+   * the store has it. The rings stay on their tokens. True when that moved it.
+   */
+  shift(offset: Point): boolean {
+    if (offset.x === this.offset.x && offset.y === this.offset.y) return false;
+    this.offset = offset;
+    this.place();
+    return true;
+  }
+
+  /** How far from where it lies it is drawn (`shift`). */
+  get shifted(): Point {
+    return this.offset;
+  }
+
+  private place(): void {
+    const { alpha, grow } = this.presence;
+    const { offset, drawn } = this;
+    const about = drawn?.aura?.shaped.origin ?? drawn?.measurement.points[0] ?? NOWHERE;
+    this.ink.present(alpha, grow, about, offset);
+    this.rings.present(alpha);
+    for (const view of [this.body.view, this.labels]) {
+      view.alpha = alpha;
+      view.scale.set(grow);
+      view.pivot.set(about.x, about.y);
+      view.position.set(about.x + offset.x, about.y + offset.y);
+    }
   }
 
   /** The container of its labels, for what stands with them (the pin). */
@@ -242,10 +295,22 @@ export class DrawnMeasure {
     this.ink.clear();
     this.body.clear();
     this.rings.clear();
+    this.glowing?.stop();
     this.fitLegs(0);
   }
 
+  /** Glows along its outline (a ruler: its path) in its colour once: it was just pinned (`MeasureGlow`). */
+  glow(): void {
+    const { drawn, look } = this;
+    if (!drawn || !look) return;
+    const rings = this.inked?.onMap.area.rings;
+    const paths = rings ? rings.map((points) => ({ points, closed: true })) : [{ points: drawn.measurement.points, closed: false }];
+    const about = drawn.aura?.shaped.origin ?? drawn.measurement.points[0] ?? NOWHERE;
+    (this.glowing ??= new MeasureGlow(this.labels)).play(paths, drawn.color ?? look.accent, look.zoom, about);
+  }
+
   destroy(): void {
+    this.glowing?.destroy();
     this.rings.destroy();
     this.ink.destroy();
     this.body.destroy();

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { NotePinTool } from '../../src/app/tools/NotePinTool';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { canRunMapHotkeys } from '../../src/app/keyboard/mapHotkeys';
@@ -86,7 +86,7 @@ describe('The note pin picker', () => {
     await open();
 
     expect(picker()).toBeNull();
-    expect(showNotice).toHaveBeenCalledWith('Switch to GM View (D) to place pins');
+    expect(showNotice).toHaveBeenCalledWith('Switch to GM view (D) to place pins');
 
     store.getState().setGMView(true);
     await open();

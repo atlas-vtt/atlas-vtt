@@ -4,16 +4,21 @@
 // Pin icon palette of the note pin dropdown, and the place flyout of its location slot. The Draw
 // tool's Stamp mode opens the same flyout from its Symbol button, in a host of its own
 // (`.atlas-stamp-symbols`, `StampSymbolTool.tsx`), with every icon, a search and no tones.
-// Radii come from the dropdown (`--pin-btn-radius`, `--pin-inset-radius`, styles/main.scss).
+// Radii come from the dropdown (`--pin-btn-radius`, `--pin-inset-radius`, styles/main.scss): the
+// flyout is a surface like any other: its icons light up as a whole and stand $surface-inset inside
+// it, its name, search, group names and empty line stand on the menus' text edge ($spacing-m inside
+// its padding), and the icon row's buttons stand $surface-inset inside the row.
 
 $flyout-gap: $spacing-s; // matches ANCHOR_GAP_PX in pinPlaceFlyout.ts
 $flyout-columns: 8; // matches COLUMNS in pinPlaceRows.ts
 $flyout-enter: 160ms;
+// What the flyout keeps of itself in a view shorter than its clearance: its name, its search and two rows of icons.
+$flyout-min-height: 160px;
 
 // Where the Symbol button's flyout hangs: nothing itself, over the map's bars.
 .atlas-stamp-symbols {
   --pin-btn-radius: #{$radius-m};
-  --pin-inset-radius: calc(var(--pin-btn-radius) + #{$spacing-xs} + #{$border-width-s});
+  --pin-inset-radius: #{$radius-m};
 
   position: fixed;
   top: 0;
@@ -26,8 +31,7 @@ $flyout-enter: 160ms;
   // Seventy-six icons are taller than many windows: the groups scroll, the name and the search stay.
   .pin-place-flyout {
     box-sizing: border-box;
-    max-height: min(560px, calc(100vh - 150px));
-    border-radius: calc(var(--pin-inset-radius) + #{$spacing-m} + #{$border-width-m});
+    max-height: min(560px, max(#{$flyout-min-height}, calc(#{atlas-view-height()} - 150px)));
   }
 
   // As wide as its rows of icons whatever a search leaves of them, so the panel keeps its width.
@@ -38,10 +42,12 @@ $flyout-enter: 160ms;
 
 .atlas-note-pin-dropdown,
 .atlas-stamp-symbols {
+  // Its buttons stand $surface-inset inside it (padding and border), concentric with its corner.
   .pin-icon-row {
+    --pin-btn-radius: #{$control-inset-radius};
     @include atlas-inset-surface;
-    @include atlas-flex-row($gap: $spacing-xs);
-    padding: $spacing-xs;
+    @include atlas-flex-row($gap: $surface-inset);
+    padding: $surface-inset - $border-width-s;
     border-radius: var(--pin-inset-radius);
   }
 
@@ -136,12 +142,13 @@ $flyout-enter: 160ms;
 
   // ── Place flyout ───────────────────────────────────────────────
   // Positioned (fixed) by the script above the slot, or below it near the window top.
+  // Its icons stand $surface-inset inside its border, concentric with its corners.
   .pin-place-flyout {
     @include atlas-elevated-surface;
-    @include atlas-flex-col($gap: $spacing-m);
+    @include atlas-flex-col($gap: $surface-inset);
     position: fixed;
     z-index: 1;
-    padding: $spacing-m;
+    padding: $surface-inset;
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
@@ -192,7 +199,7 @@ $flyout-enter: 160ms;
   // Names the hovered or focused place, else the chosen one.
   .pin-place-caption {
     @include atlas-flex-row($gap: $spacing-s);
-    padding-bottom: $spacing-m;
+    padding: $spacing-xs $spacing-m;
     border-bottom: var(--divider-width) solid var(--divider-color);
     font-size: $font-ui-small;
     font-weight: $font-weight-semibold;
@@ -213,8 +220,9 @@ $flyout-enter: 160ms;
   .pin-place-search {
     @include atlas-text-input;
     box-sizing: border-box;
-    width: 100%;
-    border-radius: var(--pin-inset-radius);
+    width: calc(100% - #{2 * $spacing-m});
+    margin-inline: $spacing-m;
+    border-radius: $radius-m;
   }
 
   .pin-place-groups {
@@ -224,7 +232,7 @@ $flyout-enter: 160ms;
   }
 
   .pin-place-empty {
-    padding: $spacing-xs;
+    padding: $spacing-xs $spacing-m;
     color: var(--text-muted);
 
     &[hidden] {
@@ -242,7 +250,7 @@ $flyout-enter: 160ms;
   }
 
   .pin-place-group-name {
-    padding-inline: $spacing-xs;
+    padding-inline: $spacing-m;
     font-size: $font-ui-smaller;
     font-weight: $font-weight-semibold;
     letter-spacing: 0.06em;

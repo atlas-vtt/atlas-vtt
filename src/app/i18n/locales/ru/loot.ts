@@ -25,6 +25,9 @@ export const loot: Translation = {
   'loot.rarity.legendary': 'Легендарный',
   'loot.rarity.rare': 'Редкий',
   'loot.rarity.uncommon': 'Необычный',
+  'loot.rarityMenu.all': 'Все редкости',
+  'loot.rarityMenu.none': 'Ни одной редкости',
+  'loot.rarityMenu.some': 'Редкости: {on} из {total}',
   'loot.rarityOff': { one: '{count} предмет редкости «{rarity}» исключён из бросков. Нажмите, чтобы вернуть.', few: '{count} предмета редкости «{rarity}» исключены из бросков. Нажмите, чтобы вернуть.', many: '{count} предметов редкости «{rarity}» исключены из бросков. Нажмите, чтобы вернуть.', other: '{count} предмета редкости «{rarity}» исключены из бросков. Нажмите, чтобы вернуть.' },
   'loot.rarityOn': { one: '{count} предмет редкости «{rarity}» в отмеченных представлениях. Нажмите, чтобы исключить из бросков.', few: '{count} предмета редкости «{rarity}» в отмеченных представлениях. Нажмите, чтобы исключить из бросков.', many: '{count} предметов редкости «{rarity}» в отмеченных представлениях. Нажмите, чтобы исключить из бросков.', other: '{count} предмета редкости «{rarity}» в отмеченных представлениях. Нажмите, чтобы исключить из бросков.' },
   'loot.received': 'Полученная добыча',
@@ -37,7 +40,6 @@ export const loot: Translation = {
   'loot.tabs.latest': 'Последний бросок',
   'loot.tabs.latestHint': 'Последний бросок на этой карте.',
   'loot.tabs.list': 'Список добычи',
-  'loot.title': 'Случайные таблицы',
   'loot.tree.all': 'Все',
   'loot.tree.none': 'Ничего',
   'loot.tree.tickAll': 'Отметить все представления всех баз.',
@@ -57,4 +59,5 @@ export const loot: Translation = {
   'loot.give.more': 'Отдать больше',
   'loot.give.noCharacter': 'Нет персонажа',
   'loot.give.quantity': 'Количество',
+  'loot.openPlayerView.mobile': 'Запустите онлайн-стол, чтобы показать игрокам добычу.',
 };

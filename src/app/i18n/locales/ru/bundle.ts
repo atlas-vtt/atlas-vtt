@@ -8,7 +8,7 @@ export const bundle: Translation = {
   'bundle.exporting': 'Экспорт коллекции',
   'bundle.filesRemoved': { one: 'удалён {count} файл', few: 'удалено {count} файла', many: 'удалено {count} файлов', other: 'удалено {count} файла' },
   'bundle.filesWritten': { one: 'записан {count} файл', few: 'записано {count} файла', many: 'записано {count} файлов', other: 'записано {count} файла' },
-  'bundle.group.encounters': 'Стычки',
+  'bundle.group.encounters': 'Столкновения',
   'bundle.group.maps': 'Карты',
   'bundle.group.notes': 'Заметки',
   'bundle.group.scenes': 'Сцены',

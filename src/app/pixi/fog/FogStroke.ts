@@ -5,7 +5,8 @@
  * snapping guide, the wash over what a shape will reveal) and the keys that change it
  * (`FogStrokeKeys`). What it leaves is its outcome's (`FogStrokeOutcome`): fog hidden or
  * revealed. It is shown while it is under way and committed when it ends, as one undo step.
- * Which of them a press begins is the gesture's to say (`FogGesture`).
+ * Which of them a press begins is the gesture's to say (`FogGesture`). A polygon that waits for
+ * its next corner is known to the view's open shape, whose buttons do what Enter and Backspace do.
  */
 import * as PIXI from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
@@ -14,6 +15,7 @@ import type { ViewAtlasState } from '../../storeFactory';
 import type { MapRect } from '../../grid/cellNumbering';
 import type { Point } from '../../types/visionTypes';
 import type { FogShape } from '../../fog/fogToolChoices';
+import { openShapeOf, type OpenShape, type OpenShapeControls } from '../utils/openShape';
 import { DEFAULT_MAP_HOTKEYS, matchesHotkey } from '../../keyboard/mapHotkeys';
 import { STROKE_COLORS, type StrokeShape } from '../../tools/shapeStroke';
 import type { LayerVisibility } from '../playerSafeFrame';
@@ -23,7 +25,7 @@ import { FogPolygon } from './FogPolygon';
 import { FogRevealWash } from './FogRevealWash';
 import { FogRoomClick } from './FogRoomClick';
 import { FogSnapGuide } from './FogSnapGuide';
-import { FogSnapping, type PlaceKeys } from './FogSnapping';
+import { FogSnapping, placeKeysWith, type PlaceKeys } from './FogSnapping';
 import { FogStrokeKeys } from './FogStrokeKeys';
 import { FogStrokeOutcome, type FogStrokeHost } from './fogStrokeOutcome';
 import { showsGmView } from './fogVisibilityPolicy';
@@ -67,6 +69,11 @@ export class FogStroke {
   private readonly outline = new PIXI.Graphics();
   /** What a shape under way will reveal, which only the GM's own view shows. */
   private readonly wash: FogRevealWash;
+  private readonly open: OpenShape;
+  private readonly openControls: OpenShapeControls = {
+    finish: () => this.edit('Enter', false),
+    back: () => this.edit('Backspace', false),
+  };
 
   constructor(private readonly deps: FogStrokeDeps) {
     const { layer, viewport, store } = deps;
@@ -81,6 +88,7 @@ export class FogStroke {
     this.guide.view.zIndex = 1003;
     layer.addChild(this.outline, this.ring.getDisplayObject(), this.guide.view, this.wash.view);
 
+    this.open = openShapeOf(store);
     const zoom = (): number => viewport.scale.x;
     this.snapping = new FogSnapping({ store, zoom, guide: this.guide });
     this.outcome = new FogStrokeOutcome(store, deps.host, this.wash);
@@ -93,9 +101,16 @@ export class FogStroke {
     this.polygon = new FogPolygon(this.outline, this.snapping, {
       zoom,
       reveals: () => this.reveals(),
-      showOutline: (points) => this.outcome.preview(points ? [{ type: 'lasso', points }] : [], this.flipped),
+      showOutline: (points) => {
+        this.outcome.preview(points ? [{ type: 'lasso', points }] : [], this.flipped);
+        this.tellOpen();
+      },
       commit: (points) => this.commit([{ type: 'lasso', points }]),
-      underWay: (active) => (active ? this.keys.hold() : this.keys.release()),
+      underWay: (active) => {
+        if (active) this.keys.hold();
+        else this.keys.release();
+        this.tellOpen();
+      },
     });
     this.keys = new FogStrokeKeys(deps.canvas, {
       flipped: (held) => this.setFlipped(held),
@@ -103,7 +118,7 @@ export class FogStroke {
       edited: (key, repeat) => this.edit(key, repeat),
       // A key held down repeats, and is still the map's undo.
       undoes: (event) => deps.isUndoKey?.(event) ?? matchesHotkey(event, DEFAULT_MAP_HOTKEYS.undo, true),
-      rekeyed: (keys) => this.rekey(keys),
+      rekeyed: (keys) => this.rekey(placeKeysWith(store.getState(), keys)),
       // A drag holds the pointer; a polygon waits between its clicks, and must not take a dialog's keys.
       areMaps: (event) => !this.polygon.active || (deps.keysBelongToMap?.(event) ?? true),
     });
@@ -185,6 +200,17 @@ export class FogStroke {
     this.rooms.forget();
   }
 
+  /** The press of a drag is lost: the drag goes without a trace and the fog shows as the store holds it. A polygon between its clicks stays. */
+  dropDrag(): void {
+    this.rooms.forget();
+    if (!this.drag.active) return;
+    this.drag.cancel();
+    this.outcome.end();
+    this.keys.release();
+    this.snapping.clear();
+    this.deps.host.showCommitted();
+  }
+
   /** Ends what is under way without committing it; the picture is the caller's to draw. */
   cancel(): void {
     this.drag.cancel();
@@ -228,6 +254,7 @@ export class FogStroke {
 
   destroy(): void {
     this.keys.release();
+    this.open.end(this);
     this.ring.destroy();
     this.guide.destroy();
     this.wash.destroy();
@@ -258,6 +285,12 @@ export class FogStroke {
       this.deps.host.showCommitted();
     }
     return true;
+  }
+
+  /** A polygon that waits for its next corner is known to the buttons that close it and take a corner back. */
+  private tellOpen(): void {
+    if (this.polygon.active) this.open.show(this, this.openControls, { canFinish: this.polygon.closes, canGoBack: true });
+    else this.open.end(this);
   }
 
   /** Shift, Ctrl or Cmd went down or up while the pointer rests: the point under it lands as the keys now say. */

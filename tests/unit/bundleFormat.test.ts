@@ -54,6 +54,7 @@ describe('manifest checks', () => {
     ['a malformed checksum', { files: [{ vaultPath: 'atlas-vtt/a', role: 'asset-file', sha256: 'abc' }] }],
     ['linking notes that are not paths', { files: [{ vaultPath: 'Lore/Sun.md', role: 'linked-note', linkedFrom: [7] }] }],
     ['an unknown release kind', { release: { kind: 'patch' } }],
+    ['a template\'s card picture, which only an item bundle carries', { files: [{ vaultPath: 'preview-light.png', role: 'preview-light' }] }],
   ])('rejects %s', (_name, overrides) => {
     expect(manifestProblem(manifest(overrides))).toMatch(/damaged/);
   });

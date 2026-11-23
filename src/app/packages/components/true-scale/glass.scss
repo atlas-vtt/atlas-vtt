@@ -41,7 +41,7 @@ $chip-inset: 2px;
   gap: $chip-inset;
   padding: $chip-inset;
 
-  --atlas-bar-control-radius: #{atlas-panel-inset-radius-value($chip-inset, $button-height-s * 0.5)};
+  --atlas-bar-control-radius: #{atlas-panel-inset-radius-value($chip-inset, calc(#{$button-height-s} * 0.5))};
 
   .atlas-tool-button > span > .btn {
     width: $button-height-s;
@@ -55,6 +55,19 @@ $chip-inset: 2px;
   gap: $spacing-xs;
   // A bare icon stands as far from the border as the icon inside the button at the other end
   padding-inline-start: $spacing-xs;
+}
+
+.atlas-glass-chip__grip--end {
+  // Equal on both sides, like the chip's padding
+  padding-inline-end: $spacing-xs;
+}
+
+.atlas-glass-chip__grip--alone {
+  // A chip with only a grip is as tall as one with buttons: the grip is as big as a button
+  justify-content: center;
+  width: $button-height-s;
+  height: $button-height-s;
+  padding: 0;
 }
 
 .atlas-glass-chip__icon {

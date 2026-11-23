@@ -57,7 +57,7 @@ export class BandUnsupportedError extends Error {
 /** A decoder of one format: `inspect` reads the header and refuses what it cannot stream; `decode` streams the bands. */
 export interface BandDecoder {
   inspect(bytes: Uint8Array): BandImageInfo;
-  decode(bytes: Uint8Array, options: BandDecodeOptions): Promise<void>;
+  decode(bytes: Uint8Array<ArrayBuffer>, options: BandDecodeOptions): Promise<void>;
 }
 
 /** The size a reduced decode gives: each side divided by `reduce`, rounded up, as a pyramid's third level is. */

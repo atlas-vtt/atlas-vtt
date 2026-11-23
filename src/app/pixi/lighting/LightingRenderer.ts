@@ -23,6 +23,7 @@ import { LightingEngine } from './engine/LightingEngine';
 import type { EngineScene, SceneFrame } from './engine/types';
 import type { BelowShown } from './engine/LightingEngine';
 import { ExploredMemory, type ExploredMemoryState } from './ExploredMemory';
+import type { ForgottenFloors } from './ForgottenFloors';
 import type { LightingAttempt } from './lightingAttempts';
 import { PlayerView } from './PlayerView';
 import { SceneModelBuilder, SceneSpots, type SceneModel, type SceneState } from '../../vision/sceneModel';
@@ -107,6 +108,8 @@ export interface LightingRendererDeps {
   below?: BelowLevelsHost;
   /** How long a piece of a roof below takes to fade; unset, the motion of the canvas's window (none where it asks for reduced motion). */
   roofFadeMs?: number;
+  /** The scene's other floors, whose memories Forget explored areas takes along (the GM's view); without it only the floor shown is forgotten. */
+  floors?: ForgottenFloors;
   /**
    * Stamp what the tokens see into the explored memory at most every `EXPLORED_STAMP_MS` for every
    * change, not only while a drag holds tokens: for a view whose tokens are moved by something
@@ -184,6 +187,7 @@ export class LightingRenderer implements SceneLightingView {
       onChange: () => requestRender(deps.app),
       guard: (work) => this.run(work),
       stampEveryMs: EXPLORED_STAMP_MS,
+      ...(deps.floors && { floors: deps.floors }),
     });
     this.levelsBelow = deps.below ? new LevelsBelow({
       app: deps.app,

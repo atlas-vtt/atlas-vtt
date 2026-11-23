@@ -1,3 +1,4 @@
+import { openShapeOf } from '../utils/openShape';
 import type { Container } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand/vanilla';
@@ -9,7 +10,9 @@ import { rimSpots } from '../../measure/handleSpots';
 import { measureList } from '../../measure/keptMeasures';
 import type { KeptMeasure } from '../../measure/measureTypes';
 import type { HeightAt } from '../../measure/tokenHeight';
+import type { ShownPlaces } from '../../lighting/shownPlaces';
 import type { MeasuresSlice } from '../../stores/measuresSlice';
+import { isHistoryTravelling } from '../../stores/history';
 import type { ViewState } from '../../types/viewState';
 import type { Point } from '../../types/visionTypes';
 import type { TokenSeen } from '../../vision/measureOrigin';
@@ -22,6 +25,7 @@ import { watchMeasureLabelTheme } from '../utils/measureLabel';
 import type { MeasureLook } from './DrawnMeasure';
 import { AreaEffects } from './effects/AreaEffects';
 import { LiveMeasuring, type MeasureGrid } from './LiveMeasuring';
+import type { MeasureHandlePlace, MeasurePointerHandlers } from './measureHandle';
 import { MeasureHandleInteraction, type MeasureHandleStore } from './MeasureHandleInteraction';
 import { MeasureInput } from './MeasureInput';
 import { MeasureLayer } from './MeasureLayer';
@@ -33,11 +37,14 @@ import { RangeMarks, type RangeSources } from './RangeMarks';
 
 export { MEASURE_FADE_MS, type MeasureGrid } from './LiveMeasuring';
 
-type MeasureState = Pick<ViewState, 'activeTool' | 'grid' | 'objects' | 'levels' | 'viewedLevel' | 'measureTool' | 'mapPath' | 'selectedIds' | 'tokenSettings' | 'lighting' | CoversMap> & Pick<MeasuresSlice, 'addMeasure'>
+type MeasureState = Pick<ViewState, 'activeTool' | 'heldRulerFrom' | 'grid' | 'objects' | 'levels' | 'viewedLevel' | 'measureTool' | 'mapPath' | 'selectedIds' | 'tokenSettings' | 'lighting' | 'isMapLoading' | CoversMap> & Pick<MeasuresSlice, 'addMeasure'>
   & ReturnType<MeasureHandleStore['getState']>;
 
 /** What the measure tool reads of its view's state, and what it writes: a measurement to keep, and what the handles of the kept ones change. */
 export type MeasureStore = Pick<StoreApi<MeasureState>, 'getState' | 'subscribe'>;
+
+/** The scene and level a view shows. */
+const sceneKey = ({ mapPath, viewedLevel }: Pick<MeasureState, 'mapPath' | 'viewedLevel'>): string => `${mapPath ?? ''}\u0000${viewedLevel ?? ''}`;
 
 const sameList = (a: readonly KeptMeasure[], b: readonly KeptMeasure[]): boolean => a.length === b.length && a.every((measure, index) => measure === b[index]);
 
@@ -73,13 +80,33 @@ export class MeasureRenderer {
   private readonly live: LiveMeasuring;
   /** The handles of the kept measurements: the viewport's dispatch hands them the pointer (`pointer`), the map's keys Escape and Delete. */
   public readonly handles: MeasureHandleInteraction;
-  /** The range check and the rings of the Ranges mode: marks that are no measurements, and the GM's own. */
+  /**
+   * What the token renderer's dispatch hands the pointer: the pin beside a released measurement's
+   * label first (it lifts under the pointer), then the kept measurements' handles.
+   */
+  public readonly pointer: MeasurePointerHandlers = {
+    pointerDown: (x, y, event) => this.handles.pointer.pointerDown(x, y, event),
+    cursorAt: (x, y) => {
+      const onPin = !this.input.measuring && this.layer.pinAt({ x, y });
+      this.layer.hoverPin(onPin);
+      if (!onPin) return this.handles.pointer.cursorAt(x, y);
+      this.handles.pointer.leave();
+      return 'pointer';
+    },
+    leave: () => {
+      this.layer.hoverPin(false);
+      this.handles.pointer.leave();
+    },
+  };
+  /** The range check and the rings of the Ranges mode: marks that are no measurements, which players see by the measurements' rule. */
   public readonly ranges: RangeMarks;
   /** What plays the effects of the kept areas: told the map's playback mode, and asked for stills. */
   public readonly effects: AreaEffects;
   /** The record the kept measurements were last read from, and what it reads as. */
   private keptRecord: unknown = null;
   private keptList: readonly KeptMeasure[] = [];
+  /** The scene and level the kept measurements were last read from: only changes within them come and go with motion. */
+  private keptScene: string | null = null;
   /** The walls and the tokens of the level shown, which areas stop at, ring and count. */
   private readonly scene: MeasuredScene;
   /** The kept areas pointed at mark the tokens in them. */
@@ -106,9 +133,10 @@ export class MeasureRenderer {
       kept: (parts, audience) => this.parts.keep(parts, audience),
       forgotten: (parts) => this.parts.forget(parts),
       marked: (parts) => this.parts.marked(parts),
+      shownElsewhere: () => this.handles.placesChanged(),
     }, { effects: this.effects });
     this.pointed = new PointedMeasures((ids) => this.layer.setPointed(ids));
-    this.ranges = new RangeMarks({ viewport, store, look: () => this.look(), measuring: () => this.input.measuring, sources: () => this.rangeSources });
+    this.ranges = new RangeMarks({ viewport, store, look: () => this.look(), measuring: () => this.input.measuring, sources: () => this.rangeSources, changed: () => this.rangesChanged() });
     // Made after the layer: the handles stand above every measurement and label.
     this.handles = new MeasureHandleInteraction({
       viewport,
@@ -116,10 +144,10 @@ export class MeasureRenderer {
       snapGrid: () => ((this.store.getState().grid?.snapToGrid ?? true) ? this.gridSystem.getOptions() : null),
       yields: () => this.input.measuring || this.store.getState().activeTool === 'wall',
       pointedAt: (id) => this.pointed.hover(id, this.store.getState().measurePopover ?? null),
-      place: (measure) => this.layer.places.handlesOf(measure, this.rims()),
+      place: (measure) => this.handlePlace(measure),
       aura: (measure) => this.layer.places.dragSetting(measure, this.look()),
     });
-    this.parts = new MeasurePartsVisibility(this.layer.liveParts, () => this.view, [this.handles.layer, this.layer.gmMarks, this.ranges.view]);
+    this.parts = new MeasurePartsVisibility(this.layer.liveParts, () => this.view, this.gmLayers);
     this.live = new LiveMeasuring({
       store,
       grid: gridSystem,
@@ -134,7 +162,7 @@ export class MeasureRenderer {
     this.input = new MeasureInput(viewport, this.live, {
       typed: (event) => isTextEntryTarget(event.target),
       areMaps: (event) => this.keysBelongToMap?.(event) ?? true,
-    });
+    }, undefined, openShapeOf(this.store));
 
     // Shapes and labels keep their size on screen, so a new zoom draws them again; a pan changes nothing.
     const onZoom = (): void => {
@@ -148,14 +176,19 @@ export class MeasureRenderer {
     this.stops.push(this.store.subscribe((state, previous) => this.follow(state, previous)));
 
     const state = this.store.getState();
-    this.readKept(state);
-    this.readScene(state);
+    this.readKept(state, false);
+    this.readScene(state, false);
     this.input.setEnabled(state.activeTool === 'measure');
   }
 
-  /** The layers only the GM's view of the canvas shows: the handles of the kept measurements, the areas' unlit outlines, and the range marks. */
+  /** The layers only the GM's view of the canvas shows: the handles of the kept measurements and the areas' unlit outlines. */
   public get gmLayers(): readonly Container[] {
-    return [this.handles.layer, this.layer.gmMarks, this.ranges.view];
+    return [this.handles.layer, this.layer.gmMarks];
+  }
+
+  /** Where the view draws gliding tokens: auras and grouped measurements are drawn with their token on its way. */
+  public followShown(places: ShownPlaces): void {
+    this.layer.followShown(places, (tokenId) => this.scene.tokens()[tokenId]);
   }
 
   /** The map's size, by which the lighting seals its walls: areas stop at the same walls. */
@@ -241,14 +274,21 @@ export class MeasureRenderer {
     // Another mode, scene or level, or the tool put away: what was being measured belongs to none of them. Asked of the change alone.
     if (putAway || !sameScene || state.measureTool.mode !== previous.measureTool.mode) {
       this.input.cancel();
-      this.live.clear();
+      // The held ruler let go dissolves as a released measurement does, rather than vanishing.
+      if (putAway && sameScene && previous.heldRulerFrom !== undefined) this.live.dissolve();
+      else this.live.clear();
     }
     // The DM screen, the command palette or the asset manager opened over the map, by a key too: nothing waits for its next click under them.
     if (COVERS_MAP.some((open) => state[open] && !previous[open])) this.input.cancel();
     this.input.setEnabled(measuring);
-    if (state.measureTool.players !== previous.measureTool.players) this.live.setHidden(!state.measureTool.players);
-    this.readKept(state);
-    this.readScene(state);
+    if (state.measureTool.players !== previous.measureTool.players) {
+      this.live.setHidden(!state.measureTool.players);
+      this.rangesChanged();
+    }
+    // Asked before the kept measurements are read, which notes the scene and level they belong to.
+    const inPlace = this.inPlace(state);
+    this.readKept(state, inPlace, inPlace && isHistoryTravelling(this.store));
+    this.readScene(state, inPlace);
     this.handles.follow(state);
     this.pointed.follow(this.store.getState().measurePopover ?? null);
     if (state.grid === previous.grid) return;
@@ -257,14 +297,15 @@ export class MeasureRenderer {
     this.handles.placesChanged();
   }
 
-  /** Draws the kept measurements of the level shown, and tells those players may see, when their record is another. */
-  private readKept(state: MeasureState): void {
+  /** Draws the kept measurements of the level shown, and tells those players may see, when their record is another; `animate` lets them come and go with motion. */
+  private readKept(state: MeasureState, animate: boolean, travelled = false): void {
     const record = levelObjects(state).measures;
+    this.keptScene = sceneKey(state);
     if (record === this.keptRecord) return;
     this.keptRecord = record;
     const list = measureList(record);
     this.keptList = list;
-    this.layer.setKept(list);
+    this.layer.setKept(list, animate, travelled);
     this.handles.setKept(list);
     // An aura is among them as it is kept: whoever passes it on places it around its token (`isAura`), never by its points.
     const kept = list.filter((measure) => measure.hidden !== true);
@@ -272,12 +313,12 @@ export class MeasureRenderer {
   }
 
   /** Follows the walls and the tokens of the level shown, asked of their records alone: other walls cut the areas again, other tokens move the auras and are counted again. */
-  private readScene(state: MeasureState): void {
+  private readScene(state: MeasureState, animate: boolean): void {
     const changed = this.scene.follow(state);
     if (changed.walls) this.layer.wallsChanged();
     if (changed.tokens) {
       // Auras first: one that moved marks and counts its tokens where it lies now.
-      this.layer.aurasMoved();
+      this.layer.aurasMoved(animate);
       // A badge stands on the rim of the token its measurement lies on: tokens that moved, came or went place the badges anew.
       if (this.keptList.length > 0) this.handles.placesChanged();
       this.layer.tokensChanged();
@@ -286,10 +327,42 @@ export class MeasureRenderer {
     if (walled !== (this.measurements.get().walled ?? false)) this.measurements.set({ walled });
   }
 
+  /**
+   * Whether what the store holds now is an edit of the scene and level the kept measurements were
+   * read from (a measurement kept, deleted, undone): those come and go with motion. A load, another
+   * scene and another level show theirs at once.
+   */
+  private inPlace(state: MeasureState): boolean {
+    return !state.isMapLoading && this.keptScene === sceneKey(state);
+  }
+
+  /** What the range marks show is another, or whether players may see it: the players' picture and whoever passes the marks on follow. */
+  private rangesChanged(): void {
+    const shown = this.ranges.shown;
+    const { rings, check, hidden } = shown;
+    this.parts.mark(this.ranges.ringsLayer, rings?.tokenIds ?? null, hidden);
+    this.parts.mark(this.ranges.checkLayer, check?.tokenIds ?? null, hidden);
+    const ranges = rings || check ? shown : null;
+    if (ranges !== null || (this.measurements.get().ranges ?? null) !== null) this.measurements.set({ ranges });
+  }
+
   /** The live measurement is another, or gone: it is drawn at the zoom the view has now. */
   private liveChanged(live: LiveMeasure | null): void {
     this.measurements.set({ live });
     if (live) this.drawnZoom = this.viewport.scale.x;
+  }
+
+  /**
+   * Where the handles of a kept measurement stand: with it as it is drawn, so they go with it on
+   * its way (`MeasureLayer.shownWay`: an undo's morph, its token's glide).
+   */
+  private handlePlace(measure: KeptMeasure): MeasureHandlePlace | null {
+    const way = this.layer.shownWay(measure.id);
+    const at = this.layer.places.handlesOf(way?.points ? { ...measure, points: [...way.points] } : measure, this.rims());
+    if (!at || !way || (way.shift.x === 0 && way.shift.y === 0)) return at;
+    const { x, y } = way.shift;
+    const by = (point: Point): Point => ({ x: point.x + x, y: point.y + y });
+    return { origin: by(at.origin), end: at.end && by(at.end) };
   }
 
   /** Where the badges stand that lie on a token of the level shown (`rimSpots`): worked out once for the same measurements and tokens. */

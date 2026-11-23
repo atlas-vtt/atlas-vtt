@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Point, type EventSystem, type FederatedPointerEvent } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { TokenRenderer } from '../../src/app/pixi/token-renderer';
 import { isHandled, isHandledTap } from '../../src/app/pixi/utils/handledEvents';
 import { setCtrlClickIsSecondary } from '../../src/app/pixi/utils/pointerButtons';

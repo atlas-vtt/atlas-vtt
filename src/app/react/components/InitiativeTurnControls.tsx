@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
+import { Button } from '../../packages/components/primitives/button';
 import { t } from '../../i18n';
 
 interface InitiativeTurnControlsProps {
-  fightRuns: boolean;
-  round: number;
   tooltipSide: 'left' | 'right';
   onPrevious: () => void;
   onNext: () => void;
 }
 
-/** The tracker's foot: previous turn, the round, next turn. A turn hotkey presses its button for a moment. */
-export function InitiativeTurnControls({ fightRuns, round, tooltipSide, onPrevious, onNext }: InitiativeTurnControlsProps): React.ReactElement {
+/**
+ * The bar floating below the tracker during a fight: previous and next turn. It shows while the pointer is near the
+ * tracker, and for a moment when a turn hotkey presses its button.
+ */
+export function InitiativeTurnControls({ tooltipSide, onPrevious, onNext }: InitiativeTurnControlsProps): React.ReactElement {
   const [pressed, setPressed] = useState<'prev' | 'next' | null>(null);
 
   useEffect(() => {
@@ -33,20 +35,20 @@ export function InitiativeTurnControls({ fightRuns, round, tooltipSide, onPrevio
 
   const button = (which: 'prev' | 'next'): React.ReactElement => (
     <LabelTooltip label={which === 'prev' ? t('initiative.previousTurn') : t('initiative.nextTurn')} side={tooltipSide}>
-      <button
-        className={`clickable-icon atlas-initiative-tracker__btn${pressed === which ? ' atlas-initiative-tracker__btn--pressed' : ''}`}
+      <Button
+        variant="ghost"
+        size="icon"
+        className={`atlas-initiative-tracker__btn${pressed === which ? ' atlas-initiative-tracker__btn--pressed' : ''}`}
         onClick={which === 'prev' ? onPrevious : onNext}
-        disabled={!fightRuns}
       >
         {which === 'prev' ? <ChevronUp /> : <ChevronDown />}
-      </button>
+      </Button>
     </LabelTooltip>
   );
 
   return (
-    <div className="atlas-initiative-tracker__turn-controls">
+    <div className="atlas-initiative-tracker__float atlas-initiative-tracker__float--bottom">
       {button('prev')}
-      <span className="atlas-initiative-tracker__round">{fightRuns ? t('initiative.roundShort', { round }) : '—'}</span>
       {button('next')}
     </div>
   );

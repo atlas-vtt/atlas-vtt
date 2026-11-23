@@ -5,6 +5,7 @@ export const present = {
   'present.noCanvas': 'No map canvas found. Please ensure a map is loaded.',
   'present.shows': 'Player view shows {name}',
   'present.shownElsewhere': 'Players see {name}; the local player window stays closed',
+  'present.shownElsewhere.mobile': 'Players see {name}',
   'present.chosen': 'Players will see {name} when you open the player window',
   'present.sceneLevel': '{scene}: {level}',
   'present.reconnect': 'Open the presented scene and send it to the player view to reconnect.',

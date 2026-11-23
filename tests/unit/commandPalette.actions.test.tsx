@@ -97,7 +97,7 @@ describe('Atlas search actions', () => {
       const onClose = vi.fn();
       renderWithToolbar(onClose);
       const entry = screen.getByRole('button', { name: 'Widget settings' });
-      fireEvent.mouseDown(entry);
+      fireEvent.pointerDown(entry);
       fireEvent.mouseUp(entry);
       fireEvent.click(entry);
       act(() => vi.advanceTimersByTime(20));
@@ -107,7 +107,7 @@ describe('Atlas search actions', () => {
     it('closes on a press outside the palette and the toolbar', () => {
       const onClose = vi.fn();
       renderWithToolbar(onClose);
-      fireEvent.mouseDown(document.body);
+      fireEvent.pointerDown(document.body);
       act(() => vi.advanceTimersByTime(20));
       expect(onClose).toHaveBeenCalledTimes(1);
     });
@@ -115,7 +115,7 @@ describe('Atlas search actions', () => {
     it('does not close after unmounting when the press came just before', () => {
       const onClose = vi.fn();
       renderWithToolbar(onClose);
-      fireEvent.mouseDown(document.body);
+      fireEvent.pointerDown(document.body);
       cleanup();
       act(() => vi.advanceTimersByTime(20));
       expect(onClose).not.toHaveBeenCalled();
@@ -188,14 +188,14 @@ describe('Atlas search actions', () => {
     expect(fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })).toBe(true);
   });
 
-  it.each(['scene', 'asset manager', 'toggle'])('finds and opens the scene browser for "%s"', (query) => {
+  it.each(['scene', 'asset manager', 'toggle'])('finds and opens the asset manager for "%s"', (query) => {
     const setActiveTool = vi.fn();
     const onClose = vi.fn();
     const store = create(() => ({ setActiveTool }));
     render(<ViewStoreProvider store={store}><CommandPalette isOpen onClose={onClose} /></ViewStoreProvider>);
 
     fireEvent.change(screen.getByPlaceholderText('Search commands…'), { target: { value: query } });
-    fireEvent.click(screen.getByRole('button', { name: 'Open scene browser' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open asset manager' }));
 
     expect(openSceneBrowser).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalled();
@@ -215,8 +215,8 @@ describe('Atlas search actions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Tools/ }));
     const input = screen.getByPlaceholderText('Search commands…');
-    fireEvent.change(input, { target: { value: 'dice log' } });
-    const action = screen.getByRole('button', { name: /Open dice log/ });
+    fireEvent.change(input, { target: { value: 'table log' } });
+    const action = screen.getByRole('button', { name: /Open table log/ });
     expect(action.querySelector('.atlas-command-item-toggle')).toBeNull();
 
     if (activation === 'click') fireEvent.click(action);

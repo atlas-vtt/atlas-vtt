@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
-import { EventEmitter } from 'events';
+import { getHistoryStore } from '../../src/app/stores/history';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { EventSystem } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';
 import { GENERIC_LIGHT_PRESETS } from '../../src/app/gameSystems/lightPresets/generic';
 import { lightPresetsOnMap } from '../../src/app/lighting/lightPresetChoice';
+import { openShapeOf } from '../../src/app/pixi/utils/openShape';
+import { watchInput } from '../../src/app/packages/components/primitives/lastInput';
 import { WallEditor } from '../../src/app/pixi/lighting/WallEditor';
 import { showWallMenu } from '../../src/app/pixi/lighting/lightingMenus';
 import type { ContextMenuEntry } from '../../src/app/react/root/ContextMenuContext';
@@ -58,6 +61,38 @@ describe('WallEditor', () => {
     expect(store.getState().objects.walls[wall]?.p1).toEqual({ x: 140, y: 160 });
   });
 
+  it('puts a dragged wall end back when its press is lost, and leaves no undo step', () => {
+    const { editor, store, wall } = setup();
+    const steps = (): number => getHistoryStore(store)?.getState().pastStates.length ?? 0;
+    const before = steps();
+    editor.pointerDown({ x: 100, y: 100 }, false, false);
+    editor.pointerMove({ x: 140, y: 160 });
+    editor.pointerCancel();
+    expect(store.getState().objects.walls[wall]?.p1).toEqual({ x: 100, y: 100 });
+    expect(steps()).toBe(before);
+    // The end is let go of: a move after it drags nothing
+    editor.pointerMove({ x: 200, y: 200 });
+    expect(store.getState().objects.walls[wall]?.p1).toEqual({ x: 100, y: 100 });
+  });
+
+  it('drops a wall drawn freehand when its press is lost, and keeps a chain placed corner by corner', () => {
+    const { editor, store, bus } = setup();
+    const walls = (): number => Object.keys(store.getState().objects.walls).length;
+    bus.emit('wall-mode-changed', 'freeform');
+    editor.pointerDown({ x: 400, y: 400 }, false, false);
+    editor.pointerMove({ x: 440, y: 420 });
+    editor.pointerMove({ x: 480, y: 460 });
+    editor.pointerCancel();
+    editor.pointerUp();
+    expect(walls()).toBe(1);
+    // The same stroke, released: its walls are there
+    editor.pointerDown({ x: 400, y: 400 }, false, false);
+    editor.pointerMove({ x: 440, y: 420 });
+    editor.pointerMove({ x: 480, y: 460 });
+    editor.pointerUp();
+    expect(walls()).toBeGreaterThan(1);
+  });
+
   // Whoever hides the layer ends what was under way (`afterVisibilityChange`); the editor itself
   // also takes no pointer while hidden, so a drag cannot go on unseen even before that call.
   it('moves nothing from the moment its layer is hidden', () => {
@@ -104,6 +139,164 @@ function drag(editor: WallEditor, from: { x: number; y: number }, to: { x: numbe
 function others(store: ViewAtlasStore, id: string): WallSegment[] {
   return Object.values(store.getState().objects.walls).filter((wall) => wall.id !== id);
 }
+
+describe('a chain of walls under a finger', () => {
+  /** A pointer event as a device of `kind` sends it: what the map's reach goes by. */
+  function use(kind: 'mouse' | 'touch'): void {
+    const event = new Event('pointerdown', { bubbles: true });
+    Object.defineProperty(event, 'pointerType', { value: kind });
+    document.body.dispatchEvent(event);
+  }
+  /** Three corners placed with Shift, which keeps the chain going, the third on the second; then one more elsewhere. */
+  function chainThenTap(kind: 'mouse' | 'touch'): WallSegment[] {
+    const { editor, store, wall } = setup();
+    const stopWatching = watchInput(document);
+    use(kind);
+    try {
+      editor.pointerDown({ x: 500, y: 400 }, true, false);
+      editor.pointerDown({ x: 600, y: 400 }, true, false);
+      editor.pointerDown({ x: 606, y: 404 }, true, false);
+      editor.pointerDown({ x: 700, y: 500 }, true, false);
+      return others(store, wall);
+    } finally {
+      use('mouse');
+      stopWatching();
+    }
+  }
+
+  it('ends on a tap on its last corner, the second tap of a double tap: the next tap begins another', () => {
+    expect(chainThenTap('touch')).toMatchObject([{ p1: { x: 500, y: 400 }, p2: { x: 600, y: 400 } }]);
+  });
+
+  it('goes on from its last corner for a mouse, whose double click ends it', () => {
+    expect(chainThenTap('mouse')).toMatchObject([{ p1: { x: 500, y: 400 }, p2: { x: 600, y: 400 } }, { p1: { x: 600, y: 400 }, p2: { x: 700, y: 500 } }]);
+  });
+});
+
+describe('a chain of walls without Shift', () => {
+  function use(kind: 'mouse' | 'touch'): void {
+    const event = new Event('pointerdown', { bubbles: true });
+    Object.defineProperty(event, 'pointerType', { value: kind });
+    document.body.dispatchEvent(event);
+  }
+  /** Three corners placed with no key held, each press released. */
+  const buses = new WeakMap<WallEditor, EventEmitter>();
+  const busOf = (editor: WallEditor): EventEmitter => buses.get(editor)!;
+  function threeTaps(kind: 'mouse' | 'touch'): { walls: WallSegment[]; store: ViewAtlasStore; editor: WallEditor } {
+    const { editor, store, wall, bus } = setup();
+    buses.set(editor, bus);
+    const stopWatching = watchInput(document);
+    use(kind);
+    try {
+      for (const corner of [{ x: 500, y: 400 }, { x: 600, y: 400 }, { x: 600, y: 500 }]) {
+        editor.pointerDown(corner, false, false);
+        editor.pointerUp();
+      }
+      return { walls: others(store, wall), store, editor };
+    } finally {
+      use('mouse');
+      stopWatching();
+    }
+  }
+
+  it('goes on from corner to corner under a finger, which can hold no Shift, as one undo step once it ends', () => {
+    const { walls, store, editor } = threeTaps('touch');
+    expect(walls).toMatchObject([{ p1: { x: 500, y: 400 }, p2: { x: 600, y: 400 } }, { p1: { x: 600, y: 400 }, p2: { x: 600, y: 500 } }]);
+    expect(new Set(walls.map((wall) => wall.chainId)).size).toBe(1);
+    expect(editor.drawingChain).toBe(true);
+    const steps = (): number => getHistoryStore(store)?.getState().pastStates.length ?? 0;
+    const before = steps();
+    openShapeOf(store).finish();
+    expect(editor.drawingChain).toBe(false);
+    expect(steps()).toBe(before + 1);
+  });
+
+  it('keeps a finger\'s walls when the tool\'s mode or the tool is left with the chain under way, where a keyboard\'s chain is dropped', () => {
+    const touched = threeTaps('touch');
+    touched.store.getState().setLightingTool({ mode: 'place-light' });
+    // The controller hands the store's choice on as this event.
+    touched.editor.layer.visible = true;
+    const steps = (store: ViewAtlasStore): number => getHistoryStore(store)?.getState().pastStates.length ?? 0;
+    const before = steps(touched.store);
+    busOf(touched.editor).emit('wall-submode-changed', 'place-light');
+    expect(touched.editor.drawingChain).toBe(false);
+    expect(Object.keys(touched.store.getState().objects.walls)).toHaveLength(3);
+    expect(steps(touched.store)).toBe(before + 1);
+
+    // With Shift, by a mouse: Escape's kind of chain, which leaving the mode drops as before.
+    const { editor, store, wall, bus } = setup();
+    editor.pointerDown({ x: 500, y: 400 }, true, false);
+    editor.pointerDown({ x: 600, y: 400 }, true, false);
+    editor.pointerDown({ x: 600, y: 500 }, true, false);
+    expect(others(store, wall)).toHaveLength(2);
+    bus.emit('wall-submode-changed', 'place-light');
+    expect(others(store, wall)).toEqual([]);
+  });
+
+  it('ends with its second corner for a mouse, and the third click begins another', () => {
+    const { walls, editor } = threeTaps('mouse');
+    expect(walls).toMatchObject([{ p1: { x: 500, y: 400 }, p2: { x: 600, y: 400 } }]);
+    expect(editor.drawingChain).toBe(true);
+  });
+});
+
+describe('a chain of walls and the buttons of the shape under way', () => {
+  const steps = (store: ViewAtlasStore): number => getHistoryStore(store)?.getState().pastStates.length ?? 0;
+
+  it('tells of the chain while it waits for a corner, and takes its last corner back with the wall that led to it', () => {
+    const { editor, store, wall } = setup();
+    const open = openShapeOf(store);
+    expect(open.state).toBeNull();
+    editor.pointerDown({ x: 500, y: 400 }, true, false);
+    editor.pointerUp();
+    expect(open.state).toEqual({ canFinish: true, canGoBack: false });
+    editor.pointerDown({ x: 600, y: 400 }, true, false);
+    editor.pointerDown({ x: 600, y: 500 }, true, false);
+    expect(open.state).toEqual({ canFinish: true, canGoBack: true });
+    expect(others(store, wall)).toHaveLength(2);
+    open.back();
+    expect(others(store, wall)).toMatchObject([{ p1: { x: 500, y: 400 }, p2: { x: 600, y: 400 } }]);
+    // The chain goes on from the corner before.
+    editor.pointerDown({ x: 700, y: 400 }, true, false);
+    expect(others(store, wall).map((segment) => segment.p1)).toEqual([{ x: 500, y: 400 }, { x: 600, y: 400 }]);
+    open.finish();
+    expect(open.state).toBeNull();
+  });
+
+  it('leaves no undo step for a chain whose corners were all taken back', () => {
+    const { editor, store, wall } = setup();
+    const open = openShapeOf(store);
+    const before = steps(store);
+    editor.pointerDown({ x: 500, y: 400 }, true, false);
+    editor.pointerDown({ x: 600, y: 400 }, true, false);
+    open.back();
+    expect(open.state).toEqual({ canFinish: true, canGoBack: false });
+    expect(others(store, wall)).toEqual([]);
+    open.finish();
+    expect(steps(store)).toBe(before);
+    // The next chain is a step of its own.
+    editor.pointerDown({ x: 500, y: 400 }, false, false);
+    editor.pointerDown({ x: 600, y: 400 }, false, false);
+    expect(steps(store)).toBe(before + 1);
+  });
+
+  it('drops a chain whose first corner came from a press that is lost, and keeps one whose press was released', () => {
+    const { editor, store, wall } = setup();
+    const open = openShapeOf(store);
+    // The first finger of two that move the map: its press reached the editor, its release never does.
+    editor.pointerDown({ x: 500, y: 400 }, false, false);
+    expect(editor.drawingChain).toBe(true);
+    editor.pointerCancel();
+    expect(editor.drawingChain).toBe(false);
+    expect(open.state).toBeNull();
+    editor.pointerDown({ x: 500, y: 400 }, false, false);
+    editor.pointerUp();
+    editor.pointerCancel();
+    expect(editor.drawingChain).toBe(true);
+    editor.pointerDown({ x: 600, y: 400 }, false, false);
+    expect(others(store, wall)).toHaveLength(1);
+  });
+});
 
 describe('WallEditor joining walls', () => {
   it('starts a wall on a wall end clicked in place, joined to it, and leaves that end where it was', () => {

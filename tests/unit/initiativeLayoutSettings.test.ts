@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { INITIATIVE_COLLAPSED_STORAGE_KEY } from '../../src/app/services/deviceSettings';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { memoryPluginData } from '../mocks/pluginData';
@@ -16,43 +15,55 @@ async function loaded(stored: unknown = null): Promise<{ settings: SettingsServi
 describe('the initiative lists\' layout', () => {
   it('starts at the turn, at the right edge and expanded until the GM chooses otherwise', async () => {
     const { settings } = await loaded();
-    expect(settings.initiativeLayout()).toEqual({ fromTurn: true, dock: 'right', collapsed: false });
+    expect(settings.initiativeLayout()).toEqual({ fromTurn: true, dock: 'right', edges: ['right'], facesPlayers: false });
   });
 
-  it('keeps the GM\'s choices in the synced settings and reads what it does not know as the default', async () => {
+  it('lays the players\' list out as a column or a row, alone or mirrored for the far side of the table', async () => {
+    const { playersListLayout, playersListMirrored, playersListShape } = await import('../../src/app/initiative/initiativeLayout');
     const { settings, data, app } = await loaded();
-    settings.setInitiativeLayout({ fromTurn: false, dock: 'left' });
+    expect(playersListShape(settings.initiativeLayout())).toBe('vertical');
+    expect(playersListMirrored(settings.initiativeLayout())).toBe(false);
+    // A column mirrored at the left edge; a row alone at the bottom
+    settings.setInitiativeLayout(playersListLayout('vertical', true));
+    expect(settings.initiativeLayout()).toMatchObject({ edges: ['right', 'left'], dock: 'right', facesPlayers: false });
+    expect(playersListShape(settings.initiativeLayout())).toBe('vertical');
+    expect(playersListMirrored(settings.initiativeLayout())).toBe(true);
+    settings.setInitiativeLayout(playersListLayout('horizontal', false));
+    expect(settings.initiativeLayout()).toMatchObject({ edges: ['bottom'], dock: 'bottom', facesPlayers: true });
+    settings.setInitiativeLayout(playersListLayout('horizontal', true));
     await settings.saveSettingsNow();
-    expect(data.stored()).toMatchObject({ initiativeFromTurn: false, initiativeDock: 'left' });
+    expect(data.stored()).toMatchObject({ initiativeEdges: ['top', 'bottom'], initiativeDock: 'bottom', initiativeFacesPlayers: true });
+    const reopened = new SettingsService(app, undefined, data);
+    await reopened.initialize();
+    expect(reopened.initiativeLayout()).toMatchObject({ edges: ['top', 'bottom'], dock: 'bottom', facesPlayers: true });
+    expect(playersListShape(reopened.initiativeLayout())).toBe('horizontal');
+    reopened.setInitiativeLayout(playersListLayout('vertical', false));
+    expect(reopened.initiativeLayout()).toMatchObject({ edges: ['right'], dock: 'right', facesPlayers: false });
+    // A left edge an older version stored alone, and edges written by hand that are none, read as the right edge;
+    // the left one counts only beside the right, as its mirror
+    expect((await loaded({ initiativeDock: 'left', initiativeEdges: ['left', 'middle'] })).settings.initiativeLayout().edges).toEqual(['right']);
+    expect((await loaded({ initiativeDock: 'right', initiativeEdges: ['right', 'left'] })).settings.initiativeLayout().edges).toEqual(['right', 'left']);
+  });
+
+  it('keeps the GM\'s choices in the synced settings and reads what it does not know as the default; the lists always start at the turn', async () => {
+    const { settings, data, app } = await loaded();
+    settings.setInitiativeLayout({ dock: 'bottom' });
+    await settings.saveSettingsNow();
+    expect(data.stored()).toMatchObject({ initiativeDock: 'bottom' });
 
     const reopened = new SettingsService(app, undefined, data);
     await reopened.initialize();
-    expect(reopened.initiativeLayout()).toMatchObject({ fromTurn: false, dock: 'left' });
+    expect(reopened.initiativeLayout()).toMatchObject({ fromTurn: true, dock: 'bottom' });
 
-    expect((await loaded({ initiativeDock: 'top', initiativeFromTurn: 'yes' })).settings.initiativeLayout()).toMatchObject({ dock: 'right', fromTurn: true });
-  });
-
-  it('keeps a collapsed tracker on this device alone, never in the synced settings', async () => {
-    const { settings, data, app } = await loaded();
-    const listener = vi.fn();
-    settings.onChange(listener);
-    settings.setInitiativeLayout({ collapsed: true });
-    expect(listener).toHaveBeenCalledTimes(1);
-    expect(app.loadLocalStorage(INITIATIVE_COLLAPSED_STORAGE_KEY)).toBe('collapsed');
-    await settings.saveSettingsNow();
-    expect(JSON.stringify(data.stored())).not.toContain('collapsed');
-
-    // Expanded is stored as a word: Obsidian drops a falsy value instead of storing it
-    settings.setInitiativeLayout({ collapsed: false });
-    expect(app.loadLocalStorage(INITIATIVE_COLLAPSED_STORAGE_KEY)).toBe('expanded');
-    expect(settings.initiativeLayout().collapsed).toBe(false);
+    // An older version's choice not to start at the turn is no longer read
+    expect((await loaded({ initiativeDock: 'middle', initiativeFromTurn: false })).settings.initiativeLayout()).toMatchObject({ dock: 'right', fromTurn: true });
   });
 
   it('tells nobody of a change that changes nothing', async () => {
     const { settings } = await loaded();
     const listener = vi.fn();
     settings.onChange(listener);
-    settings.setInitiativeLayout({ fromTurn: true, dock: 'right', collapsed: false });
+    settings.setInitiativeLayout({ fromTurn: true, dock: 'right' });
     expect(listener).not.toHaveBeenCalled();
   });
 });

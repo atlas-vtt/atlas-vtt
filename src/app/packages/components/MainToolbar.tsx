@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo, forwardRef } from "react"
+import React, { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo, forwardRef, useId } from "react"
 import { useAtlasStore, useViewStoreHook } from "src/app/react/ViewStoreContext"
 import { AnimatePresence, MotionConfig } from "framer-motion"
 import { createPortal } from "react-dom"
@@ -6,14 +6,18 @@ import { useStore } from "zustand"
 import { Eye, EyeOff } from "lucide-react"
 
 import { TooltipProvider } from "./primitives/tooltip"
+import { Button } from "./primitives/button"
 import { useHotkeyLabels } from "../../keyboard/useMapHotkeys"
 import { useMapClipboardHotkeys } from "../../clipboard/useMapClipboardHotkeys"
 import { CommandPalette } from "../../react/components/CommandPalette"
 import AssetManager from "./asset-manager/AssetManager"
 import { useAtlasUI } from "src/app/react/root/AtlasUIContext"
 import { Toggle } from "./primitives/Toggle"
+import { PeekButton } from "./toolbar/PeekButton"
+import { useCoarsePointer } from "../../platform/useCoarsePointer"
 import { isAtlasToolAvailable } from "../../tools/toolAvailability"
-import { availableToolbarControls, DEFAULT_TOOLBAR_ORDER } from "../../toolbar/toolbarCatalog"
+import { availableToolbarControls, DEFAULT_TOOLBAR_ORDER, ONLINE_BAR, SIDE_BAR_IDS, type SideBarId } from "../../toolbar/toolbarCatalog"
+import { useOnlinePlayOn } from "../../react/hooks/useOnlinePlayOn"
 import { ResponsiveToolbar } from "./toolbar/ResponsiveToolbar"
 import { useToolbarHotkeys } from "./toolbar/useToolbarHotkeys"
 import { useToolbarLayout } from "./toolbar/useToolbarLayout"
@@ -29,21 +33,24 @@ import type { ToolbarContext, ToolMenu } from "./toolbar/toolbarContext"
 import type { ResponsiveToolbarItem } from "./toolbar/toolbarTypes"
 import { t } from '../../i18n';
 import { portalHost } from '../../host/portalHost';
+import { shownTool } from "../../measure/heldRuler"
 
 interface MainToolbarProps {
   viewId?: string;
 }
 
 export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewId }, ref) => {
-  const activeTool = useAtlasStore(state => state.activeTool)
+  const activeTool = useAtlasStore(shownTool)
   const setActiveTool = useAtlasStore(state => state.setActiveTool)
   const measureMode = useAtlasStore(state => state.measureTool.mode)
   const drawMode = useAtlasStore(state => state.drawTool.mode)
   const store = useViewStoreHook()
   const { view } = useAtlasUI()
   const isGMView = useAtlasStore(state => state.isGMView)
+  const coarse = useCoarsePointer()
   const setGMView = useAtlasStore(state => state.setGMView)
   const hotkeyLabel = useHotkeyLabels()
+  const gmViewName = useId()
   const liveLayout = useToolbarLayout()
   // During a drag the bar keeps the layout it began with; changes made elsewhere wait for the drop.
   // The bottom row shares the drag state with the undo/redo bar, which the editor arranges too.
@@ -63,6 +70,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   const setCommandPaletteOpen = useAtlasStore(s => s.setCommandPaletteOpen)
   const isAssetManagerOpen = useAtlasStore(s => s.isAssetManagerOpen)
   const assetManagerInitialTab = useAtlasStore(s => s.assetManagerInitialTab)
+  const assetManagerArmarium = useAtlasStore(s => s.assetManagerArmarium)
   const isDiceTrayOpen = useAtlasStore(s => s.isDiceTrayOpen)
   const setDiceTrayOpen = useAtlasStore(s => s.setDiceTrayOpen)
   const lootRollerOpen = useAtlasStore(s => s.lootRoller.open)
@@ -161,7 +169,10 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   const available = availableToolbarControls(!dm)
   const order = (dm ? layout.order : DEFAULT_TOOLBAR_ORDER).filter((id) => available.has(id))
   const items: ResponsiveToolbarItem[] = order.map((id) => ({ id, ...TOOLBAR_CONTROL_ITEMS[id](ctx) }))
-  const editor = useToolbarEditor({ access: layoutAccess, store: editStore, items, available, hotkeyLabel, editing, stop: stopEditing })
+  // The GM's bars beside the toolbar; online play's only while it runs.
+  const onlinePlayOn = useOnlinePlayOn()
+  const sideBars = useMemo<readonly SideBarId[]>(() => dm ? SIDE_BAR_IDS.filter((id) => id !== ONLINE_BAR.id || onlinePlayOn) : [], [dm, onlinePlayOn])
+  const editor = useToolbarEditor({ access: layoutAccess, store: editStore, items, available, sideBars, hotkeyLabel, editing, stop: stopEditing })
   const hiddenIds: ReadonlySet<string> = layout.hidden
   const publishedEdit = editing ? editor.api : null
 
@@ -182,15 +193,22 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
               editing={editing}
               {...(dm && { hiddenIds, motion: editor.motion })}
               // The GM view switch keeps the bar's last place, after "More tools".
+              // Named "GM view" whatever its state: being on says the rest.
               end={dm && (
-                <Toggle
-                  value={isGMView}
-                  onChange={toggleGMView}
-                  iconOn={Eye}
-                  iconOff={EyeOff}
-                  tooltipOn={t('toolbar.gmView', { key: hotkeyLabel('gmView') })}
-                  tooltipOff={t('toolbar.sessionView', { key: hotkeyLabel('gmView') })}
-                />
+                <>
+                  <span id={gmViewName} hidden>{t('toolbar.gmView', { key: hotkeyLabel('gmView') })}</span>
+                  {/* A finger holds no key: the peek at the players' lighting is a button to hold, before the switch that keeps the bar's corner. */}
+                  {coarse && <PeekButton />}
+                  <Toggle
+                    value={isGMView}
+                    onChange={toggleGMView}
+                    iconOn={Eye}
+                    iconOff={EyeOff}
+                    labelledBy={gmViewName}
+                    tooltipOn={t('toolbar.gmView', { key: hotkeyLabel('gmView') })}
+                    tooltipOff={t('toolbar.sessionView', { key: hotkeyLabel('gmView') })}
+                  />
+                </>
               )}
             />
             <AnimatePresence>
@@ -225,6 +243,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
             isOpen={isAssetManagerOpen}
             onClose={handleCloseAssetManager}
             {...(assetManagerInitialTab && { initialTab: assetManagerInitialTab })}
+            {...(assetManagerArmarium > 0 && { armariumRequest: assetManagerArmarium })}
           />
         </div>,
         portalHost(),
@@ -238,11 +257,11 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
           background: 'var(--background-primary)',
           padding: 'var(--atlas-spacing-xl)',
           border: '1px solid var(--background-modifier-border)',
-          borderRadius: 'var(--atlas-radius-l)',
+          borderRadius: 'var(--atlas-radius-m)',
           zIndex: 1000
         }}>
           <p>{t('toolbar.diceFailed')}</p>
-          <button onClick={() => setDiceTrayOpen(false)}>{t('common.close')}</button>
+          <Button variant="outline" size="sm" onClick={() => setDiceTrayOpen(false)}>{t('common.close')}</Button>
         </div>
       )}
     </TooltipProvider>

@@ -26,7 +26,9 @@ async function read(image: string, files: Record<string, { stat: FileStat; image
     read: () => undefined,
     stored,
   });
-  for (let round = 0; round < 5 && maps.get() === undefined; round += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+  // Hashing and storing take more than a few turns on a busy machine: wait up to two seconds.
+  const until = Date.now() + 2000;
+  while (maps.get() === undefined && Date.now() < until) await new Promise((resolve) => setTimeout(resolve, 0));
   return { map: maps.get(), problem: maps.problem() };
 }
 
@@ -63,7 +65,15 @@ describe('a world map whose image cannot be sent', () => {
     expect(problem).toBeNull();
   });
 
+  it('says so where the map or scene chosen shows no image at all', async () => {
+    const maps = new WorldMaps({ stat: () => null, readImage: () => Promise.resolve(null), source: () => Promise.resolve('no-image'), read: () => undefined, stored: fakeStoring() });
+    const until = Date.now() + 2000;
+    while (maps.get() === undefined && Date.now() < until) await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(maps.get()).toBeNull();
+    expect(maps.problem()).toBe('no-image');
+  });
+
   it('has a sentence for every reason', () => {
-    expect(Object.keys(WORLD_MAP_PROBLEM_TEXT).sort()).toEqual(['missing', 'too-large', 'unreadable', 'unstored']);
+    expect(Object.keys(WORLD_MAP_PROBLEM_TEXT).sort()).toEqual(['missing', 'no-image', 'too-large', 'unreadable', 'unstored']);
   });
 });

@@ -107,6 +107,12 @@ export interface ViewState extends ViewUIState {
    */
   exploredEdits: number;
   /**
+   * How many times the GM forgot the explored memory of every level at once (Forget explored areas):
+   * online players drop what they remember of a floor whose saved memory was none already. Never
+   * saved, never undo-tracked; unset reads as none.
+   */
+  exploredForgotten?: number | undefined;
+  /**
    * The values of the played campaign's player characters, one per character and resource
    * (`campaigns/partyValues/partyKeys.ts`). Mirrored from the campaign's file, undo-tracked value by
    * value, never saved with the scene: a character's tokens show them (`PartyReconciler`).
@@ -130,6 +136,12 @@ export interface ViewState extends ViewUIState {
 
   // Tool and selection state
   activeTool: 'move' | 'select' | 'fog' | 'draw' | 'measure' | 'eraser' | 'asset' | 'note-pin' | 'laser-pointer' | 'wall' | 'audio' | 'stairs';
+  /**
+   * The tool in use when a press with the measure key held took the map (`holdRuler`): until it
+   * is let go, `activeTool` is the measure tool, which measures with a ruler and keeps nothing,
+   * and the toolbar goes on showing this tool (`measure/heldRuler.ts`). Never saved.
+   */
+  heldRulerFrom?: ViewState['activeTool'] | undefined;
   selectionMode: 'box' | 'lasso';
   selectedIds: string[];
 

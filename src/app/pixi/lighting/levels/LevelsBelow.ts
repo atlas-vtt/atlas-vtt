@@ -54,6 +54,10 @@ export interface BelowLevelsHost extends RoofHost {
   viewedRoof(): ((point: Point) => boolean) | null;
   /** Puts the openings' eraser (and what draws the openings of an unlit scene) into the view's stage, between its grid and its tokens. */
   placeEraser(eraser: Container): void;
+  /** Whether the view draws its own level's map another way than the scene places it now (a preview: grid alignment, a floor fitted or placed). */
+  previewing(): boolean;
+  /** The longest side of a fog canvas on this device; unset, a level's size decides alone. */
+  fogCanvasSide?: number;
 }
 
 export interface LevelsBelowDeps {
@@ -182,7 +186,7 @@ export class LevelsBelow {
     }
     // Once the levels are lit: a level shows from the update that gave it its world.
     this.stack = this.drawnOf(stack);
-    this.bind(this.stack);
+    this.bind(this.shownStack());
     this.aim(snapshotGrid(this.stack));
     if (this.stack && this.mayRecord(state)) {
       for (const level of this.levels.values()) if (level.ready()) level.recordThrough(viewed.sight, this.stack, state);
@@ -224,13 +228,13 @@ export class LevelsBelow {
    * and its texels show nothing.
    */
   prepare(picture?: BelowRender): void {
-    if (picture) this.show(...this.shownFor({ key: picture.key, mode: picture.mode, view: this.viewOf(picture) }));
+    if (picture) this.present({ key: picture.key, mode: picture.mode, view: this.viewOf(picture) });
     else this.prepareCanvas();
   }
 
   /** The snapshots of the levels below for a picture of the scene (a thumbnail), drawn where they changed, without touching the canvas's. */
   drawFor(picture: BelowPicture): BelowShown {
-    const [pictures, dim] = this.shownFor(picture);
+    const [pictures, dim] = this.shownFor(picture, this.shownStack());
     return { pictures, dim };
   }
 
@@ -285,7 +289,14 @@ export class LevelsBelow {
 
   /** The canvas's own render, in the view it shows now. */
   private prepareCanvas(): void {
-    this.show(...this.shownFor({ key: 'canvas', mode: this.deps.mode(), view: this.viewOf(this.deps.app.renderer.screen) }));
+    this.present({ key: 'canvas', mode: this.deps.mode(), view: this.viewOf(this.deps.app.renderer.screen) });
+  }
+
+  /** Binds the stack `picture` draws (`shownStack`) and hands it the snapshots of the levels below it shows. */
+  private present(picture: BelowPicture): void {
+    const stack = this.shownStack();
+    this.bind(stack);
+    this.show(...this.shownFor(picture, stack));
   }
 
   /** Hands the snapshots for the render about to be drawn to what draws the openings: the view's composite, and the unlit openings. */
@@ -300,9 +311,9 @@ export class LevelsBelow {
   }
 
   /** Draws the snapshots `picture` shows that changed; the snapshots for the view's composite and their dimming. */
-  private shownFor(picture: BelowPicture): [ShownPictures, number] {
+  private shownFor(picture: BelowPicture, stack: LevelStack | null): [ShownPictures, number] {
     const dim = picture.mode === 'player' ? BELOW_PLAYER_DIM : BELOW_GM_DIM;
-    const { stack, grid } = this;
+    const { grid } = this;
     // A lit level below is drawn by its own composite, which needs the back buffer; an unlit one is drawn as it is.
     if (!stack || !grid || !BelowSnapshots.shows(stack, picture.view) || (this.lit && !this.snapshots.canBlend())) return [NO_BELOW, dim];
     const look = tokenLook(picture.mode === 'player' ? this.tokenPerception(this.deps.store.getState()) : null);
@@ -355,6 +366,7 @@ export class LevelsBelow {
       roofs: deps.host,
       ...(deps.host.createLiquids && { liquids: (changed: () => void) => deps.host.createLiquids!(id, changed) }),
       fadeMs: deps.fadeMs ?? 0,
+      ...(deps.host.fogCanvasSide !== undefined && { fogCanvasSide: deps.host.fogCanvasSide }),
       requestRender: deps.requestRender,
       onReady: deps.onReady,
       guard: deps.guard,
@@ -376,6 +388,16 @@ export class LevelsBelow {
     // The view's composite lets go of the level's snapshots before they go.
     this.snapshots.releaseLevel(id);
     level.destroy(flush);
+  }
+
+  /**
+   * The stack the picture draws: none while the view's map is drawn another way than the scene
+   * places it (a grid alignment's preview, a floor fitted on its own or being placed), since the
+   * stack holds the openings of the map where the scene has it. The view then shows its own map
+   * alone, as drawn, until it is back (or the scene follows it).
+   */
+  private shownStack(): LevelStack | null {
+    return this.deps.host.previewing() ? null : this.stack;
   }
 
   /** Hands the stack to every composite and the unlit openings, then places the openings in the view's stage the first time there is one. */

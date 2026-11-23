@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../../utils/typedEmitter';
 import type { LightingToolOptions } from '../../lighting/lightingTool';
 import type { ViewAtlasStore } from '../../storeFactory';
 

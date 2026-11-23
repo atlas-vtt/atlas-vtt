@@ -5,7 +5,7 @@ import type { DiceDisplay } from '../dice3d/diceDisplay';
 import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
 import { DEFAULT_DICE_LOOK, type DiceColour, type DiceFont } from '../dice3d/diceLook';
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
-import type { InitiativeDock } from '../initiative/initiativeLayout';
+import type { PlayersListEdge } from '../initiative/initiativeLayout';
 import { DEFAULT_DUNGEON_GENERATOR_SETTINGS, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
 import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from './soundSettings';
 import type { SharedSoundRoots } from '../soundLibrary/soundRootsStore';
@@ -25,7 +25,7 @@ export interface NavigationSettings {
 }
 
 /** Every tutorial Atlas has; the settings list those the user finished or skipped. */
-export const TUTORIAL_IDS = ['assets', 'palette', 'tokenStatblocks', 'lootSettings', 'lootRoller', 'lootResults'] as const;
+export const TUTORIAL_IDS = ['dashboard', 'map', 'online', 'tableLog', 'assets', 'palette', 'tokenStatblocks', 'lootSettings', 'lootRoller', 'lootResults', 'savedRolls'] as const;
 export type TutorialId = typeof TUTORIAL_IDS[number];
 
 export interface AtlasSettings {
@@ -43,6 +43,11 @@ export interface AtlasSettings {
    * collection's folder. Absent while none is hidden. Read with `isStarterOfferHidden`.
    */
   hiddenStarterOffers?: readonly string[] | undefined;
+  /**
+   * Ids of the Sound page's download offers the GM dismissed (`starter-ambience`, `starter-music`; ids never
+   * change). Absent while none is. Read with `isSoundOfferHidden`; the root's ⋯ menu still offers them.
+   */
+  hiddenSoundOffers?: readonly string[] | undefined;
   /** A fact about this device, kept in its local storage and never in the plugin's data (`deviceSettings.ts`). */
   navigation: NavigationSettings;
   laserPointer: LaserPointerSettings;
@@ -64,22 +69,24 @@ export interface AtlasSettings {
   diceColour: DiceColour;
   /** Face of the dice numerals and roll totals. Read with `getDiceLook`. */
   diceFont: DiceFont;
-  /** Whether the GM's initiative cards show each combatant's name. Read with `showsInitiativeNames`. */
-  initiativeNames: boolean;
-  /** Whether the initiative lists start at the turn during a fight. Read with `initiativeLayout`. */
-  initiativeFromTurn: boolean;
-  /** The edge of the map the initiative lists stand at. Read with `initiativeLayout`. */
-  initiativeDock: InitiativeDock;
+  /** The GM's tracker is a compact list without portraits. Read with `showsCompactInitiative`. */
+  initiativeCompact?: boolean;
+  /** The edge the players' list stands at; `top` and `bottom` run it as a row. Read with `initiativeLayout`. */
+  initiativeDock: PlayersListEdge;
+  /** Every edge the players' list stands at; unset, `initiativeDock` alone, which stays the first of them for older versions. */
+  initiativeEdges?: PlayersListEdge[];
+  /** Whether each copy of the players' list turns to face its edge; unset, upright. */
+  initiativeFacesPlayers?: boolean;
   /** Whether a turn change shows the turn banner. Read with `initiativeTurnOptions`. */
   initiativeBanner: boolean;
-  /** Whether the GM's view pans to the combatant whose turn begins. Read with `initiativeTurnOptions`. */
-  initiativeFollowTurn: boolean;
   /** Whether online players move their tokens in a fight only on their turn. Read with `initiativeTurnOptions`. */
   initiativeMovesOnTurn: boolean;
   /** Experimental features the GM switched on. Read with `isExperimentalOn`. */
   experimental: Partial<Record<ExperimentalFeatureId, boolean>>;
   /** The GM's toolbar layout, only what differs from the default; read with `getToolbarLayout`. */
   toolbar: StoredToolbarLayout;
+  /** Whether the bars along the bottom and the level switcher show only while the pointer is near them; unset, always shown. Read with `isToolbarAutoHide`. */
+  toolbarAutoHide?: boolean;
   /** The dungeon generator's style, view and last tags. Read with `getDungeonGenerator`. */
   dungeonGenerator: DungeonGeneratorSettings;
   localPlayerView: {
@@ -94,6 +101,16 @@ export interface AtlasSettings {
     showCommandPalette: boolean;
     /** Online play: everyone at the table sees everyone else's cursor on the shared map. */
     showCursors: boolean;
+    /** How large the initiative list is drawn, 1 to `MAX_INITIATIVE_SCALE`. Read with `initiativeScaleOf`. */
+    initiativeScale: number;
+    /** The border of the combatant whose turn it is pulses instead of standing still. */
+    initiativePulse: boolean;
+    /** The turn banner stands just above each initiative list, turned with it, instead of in the middle. */
+    turnBannerAtLists: boolean;
+    /** A turn dims the table instead of showing its banner, the initiative lists left lit. A fight's start and end keep theirs. */
+    turnDim: boolean;
+    /** The most cards each initiative list shows, 0 for all. Read with `initiativeMaxCardsOf`. */
+    initiativeMaxCards: number;
     /** Online play: players draw and write on the shared map with a Draw tool of their own. */
     playersDraw: boolean;
   };
@@ -121,11 +138,8 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
   dragDistance: DEFAULT_DRAG_DISTANCE,
   diceColour: DEFAULT_DICE_LOOK.colour,
   diceFont: DEFAULT_DICE_LOOK.font,
-  initiativeNames: false,
-  initiativeFromTurn: true,
   initiativeDock: 'right',
   initiativeBanner: true,
-  initiativeFollowTurn: false,
   initiativeMovesOnTurn: false,
   experimental: {},
   toolbar: {},
@@ -140,6 +154,11 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     showDiceRolls: false,
     showCommandPalette: false, // Hide command palette
     showCursors: false,
+    initiativeScale: 1,
+    initiativePulse: false,
+    turnBannerAtLists: false,
+    turnDim: false,
+    initiativeMaxCards: 0,
     playersDraw: false,
   },
   tableTv: DEFAULT_TABLE_TV_SETTINGS,
@@ -189,15 +208,16 @@ export function readStoredSettings(stored: unknown, inputMode: NavigationInputMo
       experimental: isRecord(record.experimental) ? merged.experimental : {},
       toolbar: readToolbarLayout(record.toolbar),
       tableTv: readTableTvSettings(record.tableTv),
-      hiddenStarterOffers: readUidList(record.hiddenStarterOffers),
+      hiddenStarterOffers: readIdList(record.hiddenStarterOffers),
+      hiddenSoundOffers: readIdList(record.hiddenSoundOffers),
     },
     // Never rewritten on reading: the settings are shared with devices that may run another version.
     foreignHotkeys: keptHotkeys(record.hotkeys),
   };
 }
 
-/** A list of collection uids as stored; anything else reads as none. */
-function readUidList(value: unknown): readonly string[] | undefined {
+/** A list of ids as stored (collection uids, offer ids); anything else reads as none. */
+function readIdList(value: unknown): readonly string[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const uids = value.filter((uid): uid is string => typeof uid === 'string' && uid !== '');
   return uids.length > 0 ? [...new Set(uids)] : undefined;

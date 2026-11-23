@@ -21,7 +21,7 @@ import { createInMemoryApp, type InMemoryApp } from '../mocks/inMemoryVault';
 
 const TOKEN_HOST = 'https://assets.atlas-vtt.dev/starter/bestiary-2/';
 const STATBLOCK_HOST = 'https://assets.atlas-vtt.dev/starter/statblocks-5e-3/';
-const SOUND_HOST = 'https://assets.atlas-vtt.dev/starter/ambience-1/';
+const SOUND_HOST = 'https://assets.atlas-vtt.dev/starter/ambience-2/';
 const INDEX_CACHE = 'atlas-vtt/.atlas-data/assets-metadata.json';
 const TAGS = ['Beasts', 'Dragons', 'Undead', 'Fiends', 'Giants', 'Class'];
 const SMALL = 20_000;

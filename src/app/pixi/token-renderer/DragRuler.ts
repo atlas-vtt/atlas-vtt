@@ -31,6 +31,7 @@ import { mapFeatureList } from '../../mapFeatures/mapFeatures';
 import { mapTokens } from '../../tokens/offMap';
 import type { TokenEntity } from '../../types';
 import type { TokenMovement } from './tokenMovement';
+import { toolSwitch } from '../../types/toolSwitches';
 
 /** What a drag ruler measures: the token and the points it runs through (its start, each waypoint, its landing). */
 export interface DragRulerPath {
@@ -208,7 +209,8 @@ export class DragRuler {
   }
 
   private snapsToGrid(): boolean {
-    return this.store.getState().grid?.snapToGrid ?? true;
+    const state = this.store.getState();
+    return (state.grid?.snapToGrid ?? true) && toolSwitch(state, 'selectSnap');
   }
 
   /** The dragged token as the store holds it now. */

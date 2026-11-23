@@ -1,6 +1,6 @@
 import { StatblockTokenImportService } from './StatblockTokenImportService';
 import { App, TFile } from 'obsidian';
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../utils/typedEmitter';
 import { AssetService, type TokenAsset } from './AssetService';
 import { difficultyLabel } from '../creatures/statblockRating';
 import { mapResources } from '../resources/collectionResources';
@@ -19,6 +19,7 @@ import type { NotePatch } from '../statblocks/notes/patchTypes';
 import type { BaseToken, Character } from '../types';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
+import { isResourceUrl, resourceUrlToFilePath, resourceUrlToVaultPath } from '../utils/pathUtils';
 
 export interface TokenStatblockLink {
   tokenImagePath: string;
@@ -433,37 +434,9 @@ export class TokenStatblockLinkService extends EventEmitter {
   private normalizeResourcePath(path: string): string {
     if (!path) return '';
     
-    // Handle resource URLs (app://) - extract the actual file path
-    if (path.startsWith('app://')) {
-      // Find the start of the actual file path (after the protocol and ID)
-      // Pattern: app://[hash]/[actual-path]?[timestamp]
-      const match = path.match(/app:\/\/[^/]+\/(.+?)(?:\?.*)?$/);
-      if (match && match[1]) {
-        const extractedPath = match[1];
-        // Check if it contains atlas-vtt path - find the LAST occurrence to handle nested paths
-        if (extractedPath.includes('/atlas-vtt/')) {
-          // Find the last atlas-vtt anchor point to handle paths like /test-vault/atlas-vtt/
-          const atlasIndex = extractedPath.lastIndexOf('/atlas-vtt/');
-          if (atlasIndex !== -1) {
-            const normalizedPath = extractedPath.substring(atlasIndex + 1); // Remove leading slash
-            return normalizedPath;
-          }
-        }
-        
-        // Also check for atlas-vtt without leading slash
-        if (extractedPath.includes('atlas-vtt/')) {
-          const atlasIndex = extractedPath.lastIndexOf('atlas-vtt/');
-          if (atlasIndex !== -1) {
-            const normalizedPath = extractedPath.substring(atlasIndex);
-            return normalizedPath;
-          }
-        }
-        
-        // If no atlas-vtt anchor, return as-is (might already be normalized)
-        return extractedPath;
-      }
-    }
-    
+    // A resource URL: the file's place under Atlas' folder, else its path as the URL names it
+    if (isResourceUrl(path)) return resourceUrlToVaultPath(path) ?? resourceUrlToFilePath(path) ?? path;
+
     // For regular paths, ensure they start with atlas-vtt/ if they don't already
     let normalized = path;
     if (normalized.startsWith('/')) {

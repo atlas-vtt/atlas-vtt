@@ -13,7 +13,7 @@
     right: var(--atlas-sb-socket-right, 0);
     bottom: var(--atlas-sb-socket-bottom, auto);
     z-index: $z-popover;
-    width: min(#{$panel-width}, calc(100vw - 2 * #{$spacing-s}));
+    width: min(#{$panel-width}, calc(#{atlas-view-width()} - 2 * #{$spacing-s}));
     translate: var(--atlas-keep-in-view-x);
   }
 
@@ -37,7 +37,7 @@
 
   .atlas-sb-token-panel {
     @include atlas-elevated-surface;
-    @include atlas-panel-radius($radius-2xl);
+    @include atlas-panel-radius($surface-radius);
     display: flex;
     flex-direction: column;
     max-height: min(880px, var(--atlas-keep-in-view-max-height, 880px));
@@ -154,6 +154,7 @@
 
   // As tall as the switch beside it.
   input.atlas-sb-token-panel__search {
+    @include atlas-text-input;
     flex: 1;
     align-self: stretch;
     min-width: 0;

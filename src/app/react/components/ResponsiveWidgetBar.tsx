@@ -9,9 +9,11 @@ import { TimerWidgetDisplay, type TimerWidgetControls } from './TimerWidgetDispl
 import { CounterWidgetDisplay } from './CounterWidgetDisplay';
 import { ClockWidgetDisplay } from './ClockWidgetDisplay';
 import { isSteppedWidget, stepCounter } from '../../utils/counterWidget';
-import { isWidgetOn } from '../../utils/widgetActivation';
 import { useWidgetStack } from './useWidgetStack';
+import { listedWidgets, useHeldWidgets, useWidgetBarMotion } from './useWidgetBarMotion';
+import { useClearOfWindowControls } from './useClearOfWindowControls';
 import { t } from '../../i18n';
+import { useCoarsePointer } from '../../platform/useCoarsePointer';
 
 interface ResponsiveWidgetBarProps {
   isPlayerView?: boolean;
@@ -41,13 +43,19 @@ export function ResponsiveWidgetBar({ isPlayerView = false, store, viewId, widge
   const [pulsingWidgets, setPulsingWidgets] = useState<Set<string>>(new Set());
   const [heldNumberKeys, setHeldNumberKeys] = useState<Set<number>>(new Set());
   
-  const visibleWidgets: AnyWidget[] = Object.values<AnyWidget>(storedWidgetSettings?.widgets ?? {})
-    .filter((widget) => isWidgetOn(storedWidgetSettings, widget) && (!isPlayerView || widget.visibleToPlayers))
-    .sort((a, b) => a.order - b.order);
+  const listed = listedWidgets(storedWidgetSettings, isPlayerView);
+  // For player view, always show widgets regardless of globalVisible setting
+  const shown = listed.length > 0 && (isPlayerView || storedWidgetSettings?.globalVisible !== false);
+  // The widgets a leaving bar still shows when the last one was switched off or deleted
+  const visibleWidgets = useHeldWidgets(listed);
   const visibleWidgetsRef = useRef(visibleWidgets);
   visibleWidgetsRef.current = visibleWidgets;
 
   const stack = useWidgetStack(visibleWidgets.map((widget) => widget.id), storedWidgetSettings);
+  const { drawn, leaving } = useWidgetBarMotion(store, isPlayerView, shown, stack);
+  // A finger has no arrival to wake the bar with, and a bar that woke under a tap would move what was tapped.
+  const awake = useCoarsePointer() || isActive || stack.state === 'open';
+  const windowControls = useClearOfWindowControls(awake);
 
   // Reset timer for active state
   const resetActiveTimer = useCallback(() => {
@@ -230,6 +238,8 @@ export function ResponsiveWidgetBar({ isPlayerView = false, store, viewId, widge
       }
       const num = ([1, 2, 3, 4, 5] as const).find(n => matchesMapHotkey(e, `widget${n}`, settings));
       if (!num) return;
+      // While the dice tray is open the number keys add its dice (by their place in its row), not hold a widget.
+      if (/^[1-9]$/.test(e.key) && store.getState().isDiceTrayOpen) return;
       e.preventDefault();
       heldKeys.current.add(String(num));
       heldCodes.current.set(e.code || e.key, num);
@@ -301,24 +311,21 @@ export function ResponsiveWidgetBar({ isPlayerView = false, store, viewId, widge
     ...(isPlayerView ? {} : { timerPlayPause: () => controlHeldTimer('togglePlay'), timerReset: () => controlHeldTimer('reset') }),
   };
 
-  // For player view, always show widgets regardless of globalVisible setting
-  if (!isPlayerView && storedWidgetSettings?.globalVisible === false) {
-    return null;
-  }
-  if (visibleWidgets.length === 0) {
-    return null;
-  }
+  if (!drawn) return null;
 
   return (
     <div
-      onMouseEnter={() => handleInteraction()}
+      onMouseEnter={(event) => {
+        handleInteraction();
+        windowControls.clear(event.currentTarget);
+      }}
       onMouseLeave={resetActiveTimer}
       ref={stack.barRef}
-      style={stack.barStyle}
-      className={`atlas-widget-bar ${isActive || stack.state === 'open' ? 'active' : 'passive'}`}
+      style={{ ...stack.barStyle, ...windowControls.style }}
+      className={`atlas-widget-bar ${awake ? 'active' : 'passive'}${leaving ? ' atlas-widget-bar--leaving' : ''}`}
       data-stack={stack.state}
     >
-      <div ref={stack.rowsRef} className="atlas-widget-container" tabIndex={-1} inert={stack.state === 'closed'} onClick={stack.raiseClicked}>
+      <div ref={stack.rowsRef} className="atlas-widget-container" tabIndex={-1} inert={leaving || stack.state === 'closed'} onClick={stack.raiseClicked}>
         {visibleWidgets.map((widget, index) => {
           const position = index < 5 ? index + 1 : null;
           const shared = {

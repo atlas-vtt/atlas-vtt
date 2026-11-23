@@ -1,5 +1,6 @@
 import type { ExploredBrushOptions } from '../lighting/exploredEdits';
 import type { LightingToolOptions } from '../lighting/lightingTool';
+import type { ToolSwitches } from './toolSwitches';
 import type { DrawToolChoices } from '../annotations/annotationTypes';
 import type { FogToolChoices } from '../fog/fogToolChoices';
 import type { MeasureToolOptions } from '../measure/measureTypes';
@@ -30,9 +31,19 @@ export interface ViewUIState {
   isDMScreenOpen: boolean;
   dmScreenPage: DMScreenPage;
   isGridAlignmentOpen: boolean;
+  /** Position floor: the GM moves the floor the view shows over another floor's see-through map. Never saved. */
+  isFloorPositioning: boolean;
   isDiceLogOpen: boolean;
+  /** The keyboard shortcuts cheat sheet: opened by its hotkey, the map's help button and the palette. Never saved. */
+  isHotkeyHelpOpen: boolean;
+  /** The documentation panel, the live atlas-vtt.dev docs in a frame. Never saved. */
+  isDocsOpen: boolean;
   isAssetManagerOpen: boolean;
   assetManagerInitialTab?: 'scenes' | 'maps' | 'encounters' | 'tokens' | 'party' | undefined;
+  /** The tracker's Add combatant opened the asset manager: a token or encounter opened there joins initiative beside the map. */
+  assetManagerAddsCombatants: boolean;
+  /** Raised by every request for the Armarium (the command palette); 0 while the asset manager opens on the library. Never saved. */
+  assetManagerArmarium: number;
   isCommandPaletteOpen: boolean;
   /** The page the palette opens on when it opens next (a menu's "Graphics settings…" row); taken when it opens. */
   commandPalettePage: string | null;
@@ -55,6 +66,8 @@ export interface ViewUIState {
   fogTool: FogToolChoices;
   /** The lighting tool's mode and choices: the bar above the toolbar sets them, the controller hands them to its editors. */
   lightingTool: LightingToolOptions;
+  /** The tools' switches that stand for a key held during a press (`toolSwitches.ts`): the tools' menus set them, the tools read them. Never saved. */
+  toolSwitches: ToolSwitches;
   /** The tokens the pointer holds (pressed or dragged), each where it stood when taken; set through `holdTokens`. */
   heldTokens: HeldTokens;
   /** What the lighting tool's explored-memory mode does with a stroke: the one place the menu and the tool read it from. */
@@ -64,6 +77,8 @@ export interface ViewUIState {
    * does not have, is the first. Kept with the tab's camera, never with the scene, and never an undo step.
    */
   viewedLevel?: string | null | undefined;
+  /** Select more is on: a press adds to the selection or takes from it, a marquee adds (`selectMore.ts`). Never saved. */
+  selectMore: boolean;
   /** The toolbar editor is open in this view: tray, hide and show, inert tools. Never saved. */
   isToolbarEditing: boolean;
   /** The dungeon generator, filling the view while it is open. */

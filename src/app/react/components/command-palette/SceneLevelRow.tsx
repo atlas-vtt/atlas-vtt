@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useState } from 'react';
-import { ArrowDown, ArrowUp, House, Image, Layers, Replace, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, House, Image, Layers, Move, Replace, Trash2 } from 'lucide-react';
 import { ToggleSwitch } from '../../../packages/components/primitives/Toggle';
 import { MAX_LEVELS_SHOWN_BELOW } from '../../../levels/levelStack';
 import { cn } from '../../../../utils/cn';
@@ -16,6 +16,8 @@ interface LevelAmongOthers {
   onShow: () => void;
   onMove: (direction: 1 | -1) => void;
   onDelete: () => void;
+  /** Shows the level and places it by hand over another floor (Position floor). */
+  onPosition: () => void;
   /** The levels below this one, nearest first, with what they are called. */
   below: readonly { id: string; name: string }[];
   /** This level sees level `id` below it through its openings, or not. */
@@ -159,6 +161,7 @@ export function SceneLevelRow(props: SceneLevelRowProps): React.ReactElement {
               <RowButton label={t('levels.moveDown', { name })} icon={<ArrowDown />} disabled={!among.canMoveDown} onClick={() => among.onMove(-1)} />
             </>
           )}
+          {among && <RowButton label={t('levels.position', { name })} icon={<Move />} onClick={among.onPosition} />}
           <RowButton label={t('levels.changeImage', { name })} icon={<Image />} onClick={props.onPickImage} />
           <RowButton label={t('levels.replaceImage', { name })} icon={<Replace />} disabled={!props.hasImage} onClick={props.onReplaceImage} />
           {among && (

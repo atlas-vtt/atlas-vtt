@@ -51,6 +51,11 @@ describe('a block that rolls as a bonus', () => {
     expect(rollable.querySelector('.atlas-sb-metric__value')?.textContent).toBe('2');
   });
 
+  it('keeps a side written after a number last in the roll', () => {
+    const rollable = blockEl(renderSheet(templateOf(FIELDS, [metric(true)]), { ...VALUES, agility: '2 adv', strength: '+1 dis' }).container, 'traits01')!;
+    expect(links(rollable)).toEqual(['+2 adv', '+1 dis', '+0']);
+  });
+
   it('leaves a Metric that does not alone', () => {
     const plain = blockEl(renderSheet(templateOf(FIELDS, [metric(false)]), VALUES, { app: fakeApp() }).container, 'traits01')!;
     // A negative number is a bonus in any text; a plain one rolls nothing.

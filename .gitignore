@@ -78,3 +78,6 @@ party/
 # GPU test failure artifacts
 **/__screenshots__/
 .vitest-attachments/
+
+# Vitest browser runs: attachments and failure screenshots
+.vitest/

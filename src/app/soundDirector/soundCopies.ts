@@ -76,13 +76,17 @@ export class SoundCopies {
     const entry = this.entryOf(record);
     if (!entry?.key) return null;
     const trim = { ...(record.trimDb !== undefined && { trimDb: record.trimDb }), ...(record.loop && { loop: record.loop }) };
-    if (entry.measure) return soundInfoOf(entry.key, entry.measure, trim);
-    return entry.growing ? growingInfo(entry.key, entry.growing, entry.toldGainDb, trim) : null;
+    const info = entry.measure ? soundInfoOf(entry.key, entry.measure, trim) : entry.growing ? growingInfo(entry.key, entry.growing, entry.toldGainDb, trim) : null;
+    // The track's own crossfade rides along on what the engine plays it by.
+    return info && { ...info, ...(record.crossfadeSeconds !== undefined && { crossfadeMs: record.crossfadeSeconds * 1000 }), ...(record.startAtLoopIn && record.loop && { startAtLoopIn: true as const }) };
   }
 
-  /** How a music sound goes over its length, as its file says; null for ambience and until it is known. */
-  peaksFor(record: SoundRecord): Uint8Array<ArrayBuffer> | null {
-    return this.entryOf(record)?.peaks ?? null;
+  /**
+   * How the music a key names goes over its length, as its copy says; null for ambience and until it is known. Read
+   * by the key, as the copy is played, never through a record and the file it names now, which may be read again.
+   */
+  peaksOfKey(key: string): Uint8Array<ArrayBuffer> | null {
+    return this.keys.peaksOf(key);
   }
 
   /** The record a copy was last made or found for. */

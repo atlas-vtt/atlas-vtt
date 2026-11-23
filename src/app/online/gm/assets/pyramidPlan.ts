@@ -10,7 +10,9 @@ export const BATCH_BYTES = 7.5 * 1024 * 1024;
 export const BATCH_TILES = 32;
 /**
  * The most a tile can take as lossless WebP, by its pixels: its raw RGBA and a margin for the
- * entropy coding of noise, plus the container. A pyramid is offered at the sum before it is cut.
+ * entropy coding of noise, plus the container. A PNG tile (a device whose canvases encode no WebP)
+ * stays within it too: deflate adds five bytes to every 64 KiB it cannot pack, and a filter byte
+ * to each row. A pyramid is offered at the sum before it is cut.
  */
 const TILE_BYTES_PER_PIXEL = 4 * 1.03;
 const TILE_BYTES_HEADER = 1024;

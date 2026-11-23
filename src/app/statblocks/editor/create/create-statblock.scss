@@ -37,9 +37,9 @@
 // field's lower corners run concentric with the popover's.
 .atlas-sb-new-popover {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   @include atlas-flex-col($gap: $spacing-s);
-  width: min(320px, calc(100vw - #{$spacing-l * 2}));
+  width: min(320px, calc(#{atlas-view-width()} - #{$spacing-l * 2}));
   padding: $spacing-s;
   transform-origin: top center;
 

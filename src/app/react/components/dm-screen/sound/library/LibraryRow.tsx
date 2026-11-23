@@ -7,6 +7,8 @@ import type { SoundConversion } from '../../../../../soundLibrary/soundConversio
 import type { LibraryFile, SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { cn } from '../../../../../../utils/cn';
 import { LabelTooltip } from '../../../../../packages/components/primitives/tooltip';
+import { Skeleton } from '../../../../../packages/components/primitives/Skeleton';
+import { useLoadingReveal } from '../../../../../packages/components/primitives/useLoadingReveal';
 import { PlayGlyph } from './libraryGlyphs';
 import { formatLength, type LibraryRow as Row } from './rowModel';
 import { useFileSeconds } from './useLibrary';
@@ -38,6 +40,8 @@ export interface RowHandlers {
 
 interface LibraryRowProps {
   row: Row;
+  /** Its place in the grid, the heads being the first. */
+  rowIndex: number;
   library: SoundLibrary;
   handlers: RowHandlers;
   selected: boolean;
@@ -51,12 +55,16 @@ interface LibraryRowProps {
   hold: SoundHold;
   preparing: boolean;
   conversion: SoundConversion | null;
-  style: React.CSSProperties;
+  /** Where it stands in the list, below the heads: a number, so a scroll that leaves it in place renders it not again. */
+  top: number;
 }
 
+/** A length read so far; a bar that breathes in its place while it is read, shown only if that takes a moment. */
 function FileLength({ library, file }: { library: SoundLibrary; file: LibraryFile }): React.JSX.Element {
   const seconds = useFileSeconds(library, () => library.secondsOf(file));
-  return <>{typeof seconds === 'number' ? formatLength(seconds) : ''}</>;
+  const reading = useLoadingReveal(seconds === undefined, { waitAtMount: true });
+  if (typeof seconds === 'number') return <>{formatLength(seconds)}</>;
+  return reading && seconds === undefined ? <Skeleton shape="text" width={32} live /> : <></>;
 }
 
 function RenameField({ name, onDone }: { name: string; onDone: (name: string | null) => void }): React.JSX.Element {
@@ -97,7 +105,7 @@ function RowTitle({ name }: { name: string }): React.JSX.Element {
 }
 
 /** One row of the library: its controls take no focus, as the list holds it and the keys act on the row in view. */
-export const LibraryRow = memo(function LibraryRow({ row, library, handlers, selected, active, renaming, held, previewing, sounding, hold, preparing, conversion, style }: LibraryRowProps): React.JSX.Element {
+export const LibraryRow = memo(function LibraryRow({ row, rowIndex, library, handlers, selected, active, renaming, held, previewing, sounding, hold, preparing, conversion, top }: LibraryRowProps): React.JSX.Element {
   const relinkable = row.type === 'waiting' && handlers.mayRelink(row.sound.kind);
   const waitsForCopy = preparing && row.type === 'file' && conversion?.state === 'not-converted' && !held;
   const missingText = row.type === 'waiting' && library.locationOf(row.sound.kind) === null ? t('audio.state.notHere') : t('audio.state.missing');
@@ -111,10 +119,11 @@ export const LibraryRow = memo(function LibraryRow({ row, library, handlers, sel
     <div
       id={`atlas-sound-row-${row.id}`}
       role="row"
+      aria-rowindex={rowIndex}
       aria-selected={selected}
       className={cn('atlas-sound-lib__row', held && 'atlas-sound-lib__row--mix', row.type === 'waiting' && 'atlas-sound-lib__row--waiting')}
       data-active={active || undefined}
-      style={style}
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, transform: `translateY(${top}px)` }}
       draggable={row.type !== 'waiting' && !renaming}
       onClick={(event) => handlers.onPress(row, event)}
       onDoubleClick={() => handlers.onPrimary(row)}

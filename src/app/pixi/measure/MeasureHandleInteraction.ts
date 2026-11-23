@@ -8,20 +8,23 @@ import type { MeasuresSlice } from '../../stores/measuresSlice';
 import type { UISlice } from '../../stores/uiSlice';
 import type { Point } from '../../types/visionTypes';
 import { elementOf, LIGHT_DRAG_THRESHOLD } from '../lighting/LightInteraction';
+import { dragThreshold } from '../utils/pointerReach';
 import { settleDragStep } from './dragStep';
-import type { MeasureHandlePlacer, MeasureHandleRef, MeasurePointerHandlers } from './measureHandle';
+import { measureTurnHandlePoint, type MeasureHandlePlacer, type MeasureHandleRef, type MeasurePointerHandlers } from './measureHandle';
 import { handleDrag, sameDragChanges, type AuraDragSetting } from './measureHandleDrag';
 import { MeasureHandles } from './MeasureHandles';
 import { closeStaleMeasurePopover, keptMeasure, mayEditMeasure, type MeasureEditState } from './measurePopoverGuard';
 import { trackPointer } from './pointerTrack';
 import { PopoverPressWatch } from './PopoverPressWatch';
+import { placesFreely, type ToolSwitchState } from '../../types/toolSwitches';
 
 /** The popover of a kept measurement, which a press may land in. */
 const POPOVER = '.atlas-measure-popover';
 
 type HandleState = MeasureEditState
   & Pick<UISlice, 'measurePopover' | 'openMeasurePopover' | 'closeMeasurePopover'>
-  & Pick<MeasuresSlice, 'updateMeasure' | 'deleteMeasure'>;
+  & Pick<MeasuresSlice, 'updateMeasure' | 'deleteMeasure'>
+  & ToolSwitchState;
 
 /** What the handles read of their view's state, and what they write: a measurement moved or deleted, and whose popover is open. */
 export type MeasureHandleStore = Pick<StoreApi<HandleState>, 'getState'>;
@@ -60,7 +63,8 @@ interface Gesture {
  * The handles of kept measurements (`MeasureHandles`) and the pointer and keys on them: a click
  * opens the measurement's popover, a drag of the handle at its origin moves the whole measurement
  * (its first point snapping as a new one's start would, freely with Alt), a drag of the handle at
- * an area's far end resizes and turns it (its size snapping as a new area's would), and Delete over
+ * an area's far end resizes and turns it (its size snapping as a new area's would), the turn handle
+ * next to it only turns it, smoothly and at the size it has, and Delete over
  * a handle deletes its measurement. An aura stays with its token: its far handle changes how far it
  * reaches, and a drag of its badge does nothing (`handleDrag`). A drag is one undo step, opened only
  * once it starts, and only the pointer's release commits it: Escape, a cancelled pointer, the
@@ -224,14 +228,15 @@ export class MeasureHandleInteraction {
     if (!measure) return;
     const start = { x: event.global.x, y: event.global.y };
     const grabbed = viewport.toWorld(start.x, start.y);
-    const drag = handleDrag(measure, part, snapGrid, this.deps.aura?.(measure) ?? null);
+    const turnFrom = part === 'turn' ? measureTurnHandlePoint(measure, viewport.scale.x) : null;
+    const drag = handleDrag(measure, part, snapGrid, this.deps.aura?.(measure) ?? null, turnFrom);
     let placed: MeasureChanges | null = drag?.restore ?? null;
     let moved = false;
     let dragging = false;
 
     const onMove = (move: FederatedPointerEvent): void => {
       if (!moved) {
-        if (Math.hypot(move.global.x - start.x, move.global.y - start.y) <= LIGHT_DRAG_THRESHOLD) return;
+        if (Math.hypot(move.global.x - start.x, move.global.y - start.y) <= dragThreshold(LIGHT_DRAG_THRESHOLD, move)) return;
         moved = true;
         if (!drag) return;
         dragging = true;
@@ -241,7 +246,7 @@ export class MeasureHandleInteraction {
       if (!drag || !placed) return;
       // The handle keeps its distance to the pointer, so the measurement does not jump when grabbed off-centre.
       const at = viewport.toWorld(move.global.x, move.global.y);
-      const changes = drag.changes({ x: at.x - grabbed.x, y: at.y - grabbed.y }, move.altKey === true);
+      const changes = drag.changes({ x: at.x - grabbed.x, y: at.y - grabbed.y }, placesFreely(this.deps.store.getState(), 'measureSnap', move.altKey === true));
       // Snapped, most moves of the pointer leave it where it is: nothing is written then.
       if (sameDragChanges(changes, placed)) return;
       placed = changes;

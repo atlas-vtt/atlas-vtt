@@ -4,7 +4,7 @@ import type { FogCoverage } from '../../fog/fogCoverage';
 import type { SceneSource } from '../../host/sceneSource';
 import type { Measurements } from '../../pixi/measure/measurements';
 import { CursorShare, type CursorSharePorts } from './CursorShare.ts';
-import { GmMeasures, type PlayersView, type TokenAlias } from './gmMeasures.ts';
+import { GmMeasures, type KeptBy, type PlayersView, type TokenAlias } from './gmMeasures.ts';
 import { GmStrokes } from './gmStrokes.ts';
 import { checkLaser, checkMeasure, markRate } from './markCheck.ts';
 import type { MapSize, MoveRate } from './moveCheck.ts';
@@ -52,6 +52,8 @@ export interface MarkSharePorts extends PacerClock, Partial<Pick<CursorSharePort
   cursorsShown?(): boolean;
   /** The id players know a token by, which an aura names the token it lies around by; without it players are told no aura. */
   tokenAlias?: TokenAlias;
+  /** Who kept a measurement of the scene's and the id they let it go by (`PlayerMeasures.told`); null for the GM's own. Without it none is told as a player's. */
+  keptBy?: KeptBy;
   /**
    * Whether the drawing `player` is making in `scene` is followed: where the GM would take the
    * drawing itself, the cell its sizes are shares of; else null. Without it no player's is.
@@ -103,12 +105,12 @@ const laserEntry = (who: string, { color, size, at, on }: LaserState, pts: reado
 const isDrawing = ({ live, full }: MeasureState): boolean => (full ? full.live : live) !== null;
 
 /** Whether a sender has no measurement at all. */
-const hasNone = (state: MeasureState): boolean => !isDrawing(state) && (state.full ?? state).kept.length === 0;
+const hasNone = (state: MeasureState): boolean => !isDrawing(state) && (state.full ?? state).kept.length === 0 && state.ranges === undefined;
 
 /** A sender's measurements as `marks` and the GM's overlay take them, with the time since the live one's end was last told. */
 const measureEntry = (who: string, state: MeasureState, span: number | null): MeasureEntry => {
-  const { color, live, kept, full } = state;
-  return { who, color, live, kept, ...(isDrawing(state) && span !== null && { span }), ...(full && { full }) };
+  const { color, live, kept, full, ranges } = state;
+  return { who, color, live, kept, ...(isDrawing(state) && span !== null && { span }), ...(full && { full }), ...(ranges && { ranges }) };
 };
 
 /** The time messages cover together: null once one of them told none, and no more than a message may tell. */
@@ -126,7 +128,8 @@ const spansAdded = (covered: number | null, span: number | undefined): number | 
  * A player's measurements told in full go on in full, and beside them in the older words, which
  * are made from them here as the GM's own are (`legacyMeasures`): whatever a page said in those
  * words beside its full ones is not sent on. Only the GM's measurements have a colour of their
- * own, an effect or an aura: a player's are taken without (`checkMeasure`).
+ * own, an effect or an aura: a player's are taken without (`checkMeasure`), and drawn in the GM's
+ * accent, as the GM's own are where they name no colour: a colour never says who measured.
  */
 export class MarkShare {
   private readonly ports: MarkSharePorts;
@@ -211,8 +214,10 @@ export class MarkShare {
       this.lasers.set(from, { state, waiting: { pts, span: spansAdded(waiting.span, state.span) }, at: now });
       this.show({ laser: from });
     } else {
-      const state = this.measureRate.take(from, now) ? checkMeasure(message, context) : null;
-      if (state === null) return;
+      const checked = this.measureRate.take(from, now) ? checkMeasure(message, context) : null;
+      if (checked === null) return;
+      // A measurement's colour says what it is for, never who made it: a player's is drawn in the colour the GM's own have.
+      const state = { ...checked, color: this.accent() };
       const covered = this.measures.get(from)?.covered;
       if (hasNone(state)) this.measures.delete(from);
       else this.measures.set(from, { state, covered: spansAdded(covered === undefined ? 0 : covered, state.span) });
@@ -369,9 +374,14 @@ export class MarkShare {
     return at === null && !on && pts.length === 0 ? [] : [{ who: GM_MARKS, ...source.laserLook(), at, pts, on, ...(span !== undefined && { span }) }];
   }
 
+  /** The colour measurements that name none are drawn in: the GM's accent. */
+  private accent(): string {
+    return this.ports.accent?.() ?? DEFAULT_ACCENT;
+  }
+
   private gmMeasures(): MarksMessage['measures'] {
     if (this.source === null) return [];
-    const state: MeasureState = { color: this.ports.accent?.() ?? DEFAULT_ACCENT, ...this.gm.shown(this.source.seen(), this.ports.tokenAlias) };
+    const state: MeasureState = { color: this.accent(), ...this.gm.shown(this.source.seen(), this.ports.tokenAlias, this.ports.keptBy) };
     const span = this.gm.takeSpan();
     return hasNone(state) ? [] : [measureEntry(GM_MARKS, state, span ?? null)];
   }

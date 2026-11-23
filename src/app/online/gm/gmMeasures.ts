@@ -1,4 +1,5 @@
 import { MAX_MARK_KEPT, type FullMeasure, type FullMeasures, type MeasureState } from '../protocol/index.ts';
+import { GmRanges } from './gmRanges.ts';
 import { keptAudience } from '../../measure/auraArea';
 import { isAura } from '../../measure/keptMeasures';
 import type { KeptMeasure, Measurement } from '../../measure/measureTypes';
@@ -12,8 +13,8 @@ export interface PlayersView {
   seen(): TokenSeen;
 }
 
-/** The GM's measurements players may see: in full, and in the words every reader knows. */
-export interface ShownMeasures extends Pick<MeasureState, 'live' | 'kept'> {
+/** The GM's measurements players may see: in full, and in the words every reader knows; with the range marks they see, where they see any. */
+export interface ShownMeasures extends Pick<MeasureState, 'live' | 'kept' | 'ranges'> {
   readonly full: FullMeasures;
 }
 
@@ -21,6 +22,9 @@ type Point = Measurement['points'][number];
 
 /** The id players know a token by, or undefined for one they cannot be told of. */
 export type TokenAlias = (tokenId: string) => string | undefined;
+
+/** Who kept a measurement of the scene's, a player, and the id they let it go by; null for one of the GM's own. */
+export type KeptBy = (measure: KeptMeasure) => { readonly by: string; readonly id: string } | null;
 
 const samePoint = (a: Point, b: Point): boolean => a.x === b.x && a.y === b.y;
 
@@ -55,7 +59,7 @@ function toldKept(measure: KeptMeasure, alias: TokenAlias | undefined): ToldMeas
  * Nothing says that an area gives light: its light is a light of the scene (`sharedSight`).
  * Beside that they go out in the words an older page knows (`legacyMeasures`), which say less: a
  * ruler leg by leg, no square, no line and no aura, and a circle or a cone that stops at walls
- * only while no wall stands on its level.
+ * only while no wall stands on its level. The range marks are told beside them by the same rule (`GmRanges`).
  */
 export class GmMeasures {
   private live: { readonly pressed: Point; readonly origin: MeasureOrigin } | null = null;
@@ -66,6 +70,7 @@ export class GmMeasures {
   private records: Measurements = { live: null, kept: [] };
   /** The time between the ends of the live measurement that players are told. */
   private readonly meter = new SpanMeter();
+  private readonly ranges = new GmRanges();
 
   /** Takes the measurements as they are at `now` (ms). */
   follow(records: Measurements, view: PlayersView, now: number): void {
@@ -90,10 +95,14 @@ export class GmMeasures {
       const last = this.last;
       this.keptFrom.set(id, last !== null && first !== undefined && samePoint(last.start, first) ? last.origin : null);
     }
+    this.ranges.follow(records.ranges, () => view.seen());
   }
 
-  /** What the players see of the measurements now, by `seen`; `alias` names the tokens auras lie around, and without it no aura is told. */
-  shown(seen: TokenSeen, alias?: TokenAlias): ShownMeasures {
+  /**
+   * What the players see of the measurements now, by `seen`; `alias` names the tokens auras lie around, and without
+   * it no aura is told. `keptBy` says which of them a player kept: those are told with their keeper.
+   */
+  shown(seen: TokenSeen, alias?: TokenAlias, keptBy?: KeptBy): ShownMeasures {
     const { live, kept } = this.records;
     const shownLive = live !== null && this.live !== null && playersSeeMeasure({ hidden: live.hidden, origin: this.live.origin }, seen) ? live : null;
     const shownKept = kept.filter((measure) => {
@@ -102,11 +111,13 @@ export class GmMeasures {
     });
     const inFull = (measure: KeptMeasure): FullMeasure | null => {
       const said = toldKept(measure, alias);
-      return said && measureInFull(said);
+      const full = said && measureInFull(said);
+      return full && { ...full, ...keptBy?.(measure) };
     };
     const told: FullMeasures = { live: shownLive && measureInFull(shownLive), kept: shownKept.flatMap((measure) => inFull(measure) ?? []) };
+    const ranges = this.ranges.shown(seen);
     // The older words are made from every measurement shown, so a page that reads them is told what it always was.
-    return { ...legacyMeasures(told, this.walled, MAX_MARK_KEPT), full: { live: told.live, kept: told.kept.slice(-MAX_MARK_KEPT) } };
+    return { ...legacyMeasures(told, this.walled, MAX_MARK_KEPT), full: { live: told.live, kept: told.kept.slice(-MAX_MARK_KEPT) }, ...(ranges && { ranges }) };
   }
 
   /** Whether walls stand on the level the GM's canvas shows, where an area that stops at them is another shape than its two points say. */
@@ -126,5 +137,6 @@ export class GmMeasures {
     this.keptFrom.clear();
     this.records = { live: null, kept: [] };
     this.meter.reset();
+    this.ranges.reset();
   }
 }

@@ -90,7 +90,7 @@ export const tables: Translation = {
   'tables.settings.addNote': 'Добавить из заметки',
   'tables.settings.addRarity': 'Добавить редкость',
   'tables.settings.addTables': { one: 'Добавить {count} таблицу', few: 'Добавить {count} таблицы', many: 'Добавить {count} таблиц', other: 'Добавить {count} таблицы' },
-  'tables.settings.bases': 'Базы лута',
+  'tables.settings.bases': 'Базы добычи',
   'tables.settings.hiddenColumns': 'Видите только вы',
   'tables.settings.label': 'Название в Atlas',
   'tables.settings.kindOf': 'Что даёт {name}',

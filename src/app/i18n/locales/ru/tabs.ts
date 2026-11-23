@@ -7,4 +7,7 @@ export const tabs: Translation = {
   'tabs.openScene': 'Открыть сцену',
   'tabs.show': 'Показать «{name}» игрокам',
   'tabs.shown': '«{name}» показана игрокам',
+  'tabs.moveLeft': 'Сдвинуть влево',
+  'tabs.moveRight': 'Сдвинуть вправо',
+  'tabs.processing': 'Обработка · {percent}%',
 };

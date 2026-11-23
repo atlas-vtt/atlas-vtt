@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi, type Mock } from 'vitest';
 import type { TokenFootprint } from '../../src/app/vision/measureOrigin';
 import type { MeasurePlayersView } from '../../src/app/pixi/measurePartsVisibility';
 import { labelScale } from '../../src/app/pixi/utils/measureLabelLayout';
-import { measureFrom, measureScene, type MeasureScene } from '../helpers/measureScene';
+import { finishMeasureExits, measureFrom, measureScene, type MeasureScene } from '../helpers/measureScene';
 
 let current: MeasureScene | undefined;
 afterEach(() => {
@@ -54,6 +54,7 @@ describe('MeasureRenderer in the GM view', () => {
     s.store.getState().setMeasureTool({ mode: 'cone' });
     steps.push(s.visible());
     s.store.getState().clearMeasures();
+    finishMeasureExits();
     steps.push(s.visible());
     s.store.getState().setActiveTool('select');
     steps.push(s.visible());
@@ -132,6 +133,7 @@ describe('MeasureRenderer and the players\' picture', () => {
   });
 
   it('keeps the origin with a kept measurement, drops it when the live one clears, and forgets kept ones that are cleared', () => {
+    vi.useFakeTimers();
     const s = scene();
     const seen = new Set(['hero']);
     s.measure.playersView = players([GOBLIN, HERO], seen, { players: false });
@@ -160,6 +162,8 @@ describe('MeasureRenderer and the players\' picture', () => {
     // The live parts were cleared with their origin.
     expect(s.measure.getPlayerViewLayers(() => false).slice(0, 2).map((entry) => entry.visible)).toEqual([true, false]);
     s.store.getState().clearMeasures();
+    // Cleared ones leave the players' picture as they leave the GM's: shown by the same rule until they are gone.
+    finishMeasureExits();
     // The live parts and the GM's own layers are left.
     expect(s.measure.getPlayerViewLayers(() => false)).toHaveLength(2 + s.measure.gmLayers.length);
   });
@@ -207,13 +211,12 @@ describe('MeasureRenderer and the players\' picture', () => {
     const seen = vi.fn(() => true);
     const footprints = vi.fn(() => []);
     const seenAtStart = vi.fn(() => seen);
-    // The GM's own layers follow the canvas whatever is measured: the range marks, which are no measurement's, are on one.
+    // The GM's own layers follow the canvas whatever is measured.
     s.measure.playersView = { footprints, seenAtStart, seenOnCanvas: () => seen };
     s.measure.refreshVisibility();
     expect(seen).not.toHaveBeenCalled();
     expect(footprints).not.toHaveBeenCalled();
     expect(seenAtStart).not.toHaveBeenCalled();
-    expect(s.measure.ranges.view.visible).toBe(false);
     expect(s.measure.handles.layer.visible).toBe(false);
   });
 });

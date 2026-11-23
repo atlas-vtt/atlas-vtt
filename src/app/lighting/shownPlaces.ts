@@ -17,6 +17,11 @@ export class ShownPlaces {
     return this.places.size;
   }
 
+  /** Where `tokenId` is drawn on its way; undefined while it is drawn where the store has it. */
+  get(tokenId: string): Point | undefined {
+    return this.places.get(tokenId);
+  }
+
   entries(): IterableIterator<[string, Point]> {
     return this.places.entries();
   }

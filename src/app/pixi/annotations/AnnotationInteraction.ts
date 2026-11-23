@@ -16,8 +16,11 @@ import type { AnnotationPointerHandlers } from './annotationPointer';
 import { readSelection, type SelectionRead } from './annotationSelection';
 import { DoubleClick } from './DoubleClick';
 import type { SelectingStore } from './drawToolState';
+import { switchApplies } from '../../types/toolSwitches';
 import { gripCursor } from './gripCursor';
+import { picksMore } from '../../annotations/selectMore';
 import { outlineOf, selectionPicture } from './selectionPicture';
+import { pointerReach } from '../utils/pointerReach';
 
 /** Screen pixels of slack around ink, so a thin line stays easy to take at any zoom. */
 const HIT_TOLERANCE = HANDLE_LOOK.edge;
@@ -50,12 +53,18 @@ export interface AnnotationInteractionDeps {
    * Opens the menu of the selected annotations at the screen point `at`, `clicked` being the one
    * under the pointer; false where there is nothing to offer. Unset: a secondary press opens none.
    */
-  menu?(selected: readonly Annotation[], clicked: Annotation | null, at: { x: number; y: number }): boolean;
+  menu?(selected: readonly Annotation[], clicked: Annotation | null, at: { x: number; y: number }, point?: { remove(): void } | null): boolean;
   /**
    * Whether the primary press now handled only closes a menu of the tool's bars: it is taken, and
    * selects, moves and lets go of nothing, so nothing is drawn by it either. Unset: no press does.
    */
   closesMenu?(): boolean;
+  /**
+   * Whether something lies at `point` that the move and select tools give the press to before the
+   * drawings on the map, as they give it to a token: a linked hex, which opens its note from under
+   * a cell fill. Drawings above the tokens still lie over it. Unset: nothing does.
+   */
+  overMap?(point: Point): boolean;
   /** A drag of annotations ended, by its release or not: the pointer rests where the drag left it, with the cursor of the drag. */
   settled?(): void;
 }
@@ -110,6 +119,7 @@ export class AnnotationInteraction {
       touched: () => deps.touched(),
       snap: (world, free) => deps.snap(world, free),
       snapStamp: (at, footprint, free) => deps.snapStamp?.(at, footprint, free) ?? at,
+      constrains: (held) => switchApplies(deps.store.getState(), 'drawConstrain', held),
       wordsBox: (text) => deps.wordsBox(text),
       breaksAt: (text, width) => deps.breaksAt(text, width),
       showHandles: (handles, held) => {
@@ -204,6 +214,11 @@ export class AnnotationInteraction {
     return read.handles !== null && read.free.length === read.framed.length ? read.handles.frame : selectionFrame(read.framed, this.deps.measure);
   }
 
+  /** The drawings and texts selected now, as their menu would change them; none where they take no pointer. */
+  selected(): readonly Annotation[] {
+    return this.works() ? this.read().selected : [];
+  }
+
   /** The ids of the annotations the handles frame now: the selection's highlights leave them out. */
   get framedIds(): ReadonlySet<string> {
     return this.read().framedIds;
@@ -241,8 +256,10 @@ export class AnnotationInteraction {
   /** The topmost annotation at `point` that the tool in hand takes: by its scope, or as one of the kind `own`. */
   private taken(point: Point, read: SelectionRead, own: OwnKind | null = null): Annotation | null {
     if (read.scope !== 'all' && read.scope !== 'move' && own === null) return null;
-    return annotationsAt(point, HIT_TOLERANCE / this.zoom, read.list, this.deps.measure)
-      .find((annotation) => takesPress(read.scope, annotation) || takesOwn(own, annotation)) ?? null;
+    let overMap: boolean | undefined;
+    const yields = (annotation: Annotation): boolean => read.scope === 'move' && annotation.layer === 'map' && (overMap ??= this.deps.overMap?.(point) ?? false);
+    return annotationsAt(point, pointerReach(HIT_TOLERANCE) / this.zoom, read.list, this.deps.measure)
+      .find((annotation) => (takesPress(read.scope, annotation) && !yields(annotation)) || takesOwn(own, annotation)) ?? null;
   }
 
   private handleUnder(point: Point, read: SelectionRead): HandleRef | null {
@@ -300,7 +317,8 @@ export class AnnotationInteraction {
     // A group is selected as one, also from the mode that takes only one kind of it.
     const group = withGroups([at.id], read.list, own ? 'all' : read.scope);
     const selected = state.selectedIds.includes(at.id);
-    if (event.shiftKey) {
+    // Shift, or Select more: the press adds it to the selection or takes it out
+    if (picksMore(state, event)) {
       state.setSelection(selected ? this.without(group) : [...this.without(group), ...group]);
       if (selected) return true;
     } else if (!selected) {
@@ -363,7 +381,7 @@ export class AnnotationInteraction {
       read = this.read();
     }
     this.gestures.cancel();
-    return this.deps.menu?.(read.selected, at, { x: event.clientX, y: event.clientY }) ?? false;
+    return this.deps.menu?.(read.selected, at, { x: event.clientX, y: event.clientY }, this.sparePointAt(point, read)) ?? false;
   }
 
   private cursorAt(point: Point, covered: () => boolean, free = false): string | null {
@@ -413,6 +431,15 @@ export class AnnotationInteraction {
   }
 
   /** Removes the point `index` of the one line whose points show, where it has one to spare; whether it went. */
+  /** The point of the selected line that lies at `point`, where the line can spare it: what a menu opened there offers to remove. */
+  private sparePointAt(point: Point, read: SelectionRead): { remove(): void } | null {
+    const grip = this.gripAt(point, read);
+    const line = read.handles?.line;
+    if (grip?.kind !== 'point' || !line || !withPointRemoved(line, grip.index)) return null;
+    const { index } = grip;
+    return { remove: () => { this.removePoint(index); } };
+  }
+
   private removePoint(index: number): boolean {
     const line = this.read().handles?.line;
     const place: AnnotationPlace | null = line ? withPointRemoved(line, index) : null;

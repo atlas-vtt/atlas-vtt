@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from '../../src/app/utils/typedEmitter';
 import { describe, expect, it } from 'vitest';
 import { followLightingTool } from '../../src/app/pixi/lighting/followLightingTool';
 import { createViewAtlasStore } from '../../src/app/storeFactory';

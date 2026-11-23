@@ -9,6 +9,7 @@ import { flushRecordEdits, packedRecord, type BundledRecordKind } from './bundle
 import type { InstalledRecord, InstalledTemplate } from './installRecord';
 import { comparedBytes } from './recordPayload';
 import { thumbnailAsNamedWebp, type NamedWebp } from './webpNamedFiles';
+import { stripProvenanceText } from '../itemBundle/itemProvenance';
 
 const RECORD_KINDS: ReadonlyArray<{ kind: BundledRecordKind; key: 'presets' | 'diceSets' }> = [
   { kind: PRESET_RECORDS, key: 'presets' },
@@ -68,6 +69,7 @@ export class BundlePacker {
       const installed = await packedRecord(record.kind, content);
       if (!installed) return null;
       this.byId[record.key][installed.localId] = installed;
+      return rewriteContent(file, comparedBytes(file.vaultPath, withoutProvenanceBytes(content)), this.names);
     }
     return rewriteContent(file, comparedBytes(file.vaultPath, content), this.names);
   }
@@ -88,4 +90,11 @@ export class BundlePacker {
     const text = await templateBodyAt(this.app, template);
     return text === null ? null : toBuffer(text);
   }
+}
+
+/** A record file's bytes without where it came from in the Armarium, which is the vault's own and never travels. */
+function withoutProvenanceBytes(content: ArrayBuffer): ArrayBuffer {
+  const text = new TextDecoder().decode(content);
+  const stripped = stripProvenanceText(text);
+  return stripped === text ? content : toBuffer(stripped);
 }

@@ -36,10 +36,18 @@
 
 .atlas-dice-lab__option-label {
   @include atlas-flex-row($spacing-xs);
-  min-width: 0;
-  white-space: nowrap;
+  @include atlas-row-label;
   font-size: $font-ui-small;
   color: var(--text-normal);
+
+  // The name wraps beside its info mark, which keeps its size.
+  > :first-child {
+    min-width: 0;
+  }
+
+  > .atlas-csm-info {
+    flex: none;
+  }
 }
 
 .atlas-dice-lab__select.atlas-setting-dropdown {

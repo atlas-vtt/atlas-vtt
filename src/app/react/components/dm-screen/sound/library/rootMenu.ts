@@ -1,8 +1,10 @@
 import { t } from '../../../../../i18n';
+import type { DownloadManager } from '../../../../../downloads/DownloadManager';
 import type { SoundKind } from '../../../../../sound/soundTypes';
 import type { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { isLinked } from '../../../../../soundLibrary/SoundRoots';
 import type { ContextMenuEntry } from '../../../context-menu/AtlasContextMenu';
+import { offerMenuEntries } from './packDownloads';
 import type { LibraryActions } from './useLibraryActions';
 
 /**
@@ -21,10 +23,11 @@ function originalsEntry(library: SoundLibrary, kind: SoundKind): ContextMenuEntr
   return [];
 }
 
-/** A root's menu in the rail. */
-export function rootMenu(library: SoundLibrary, actions: LibraryActions, kind: SoundKind, win: Window): ContextMenuEntry[] {
+/** A root's menu in the rail; its pack offer stays here after the GM dismissed it in the rail. */
+export function rootMenu(library: SoundLibrary, actions: LibraryActions, kind: SoundKind, win: Window, downloads: DownloadManager): ContextMenuEntry[] {
   return [
     { type: 'item', label: t('audio.library.prepareAll'), icon: 'hard-drive-download', disabled: library.locationOf(kind) === null, onClick: () => actions.prepare(kind) },
+    ...offerMenuEntries(downloads, library, actions, kind),
     ...originalsEntry(library, kind),
     { type: 'item', label: t('audio.library.changeFolder'), icon: 'folder-open', onClick: () => actions.link(kind, win) },
     { type: 'item', label: t('audio.library.unlink'), icon: 'unlink', onClick: () => actions.unlink(kind) },

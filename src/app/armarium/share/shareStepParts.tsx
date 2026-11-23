@@ -1,0 +1,137 @@
+import React from 'react';
+import type { App } from 'obsidian';
+import type { AccountState, AtlasAccount } from '../../account/AtlasAccount';
+import { Button } from '../../packages/components/primitives/button';
+import { formatFileSize } from '../../utils/fileSize';
+import { t } from '../../i18n';
+import { ArmariumHosts } from '../armariumHosts';
+import { ARMARIUM_MINE_URL } from '../armariumUrls';
+import type { AnyShareSession } from '../upload/anyShareSession';
+import { ItemShareSession } from '../upload/ItemShareSession';
+import type { ShareSnapshot } from '../upload/shareState';
+import { ACCOUNT_PAGE_REFUSALS } from '../upload/uploadContract';
+import { AccountStep } from './steps/AccountStep';
+import { ChecksStep } from './steps/ChecksStep';
+import { DoneStep } from './steps/DoneStep';
+import { ItemStep } from './steps/ItemStep';
+import { ListingStep } from './steps/ListingStep';
+import { PublishStep } from './steps/PublishStep';
+import { UploadStep } from './steps/UploadStep';
+import { shareSaid } from './shareWording';
+
+export interface StepParts {
+  title: string;
+  body: React.ReactNode;
+  actions: React.ReactNode;
+  summary?: string | undefined;
+}
+
+interface PartsInput {
+  app: App;
+  session: AnyShareSession;
+  snapshot: ShareSnapshot;
+  account: AtlasAccount;
+  accountState: AccountState;
+  onClose: () => void;
+}
+
+const action = (label: string, onClick: () => void, primary = false, disabled = false): React.JSX.Element => (
+  <Button key={label} variant={primary ? 'default' : 'outline'} className={primary ? 'atlas-transfer-confirm' : undefined} disabled={disabled} onClick={onClick}>{label}</Button>
+);
+
+function accountActions(account: AtlasAccount, state: AccountState, snapshot: ShareSnapshot, session: AnyShareSession): React.ReactNode {
+  if (state.kind === 'signed-out') return action(t('account.signIn'), () => void account.signIn(), true);
+  if (state.kind === 'waiting') return [action(t('account.openAgain'), () => account.reopenSignIn()), action(t('common.cancel'), () => account.cancelSignIn())];
+  const refusal = snapshot.gate?.status === 'refused' ? snapshot.gate.refusal : null;
+  if (refusal === null) return null;
+  return [
+    ...(ACCOUNT_PAGE_REFUSALS.includes(refusal.code) ? [action(t('account.openPage'), () => account.openAccountPage())] : []),
+    action(t('armariumShare.checkAgain'), () => session.recheck(), true),
+  ];
+}
+
+/** A step whose request found the GM signed out offers the sign-in before trying again. */
+function withSignIn(snapshot: ShareSnapshot, account: AtlasAccount, actions: React.ReactNode): React.ReactNode {
+  if (snapshot.refusal?.code !== 'signed-out' || account.token() !== null) return actions;
+  return action(t('account.signIn'), () => void account.signIn(), true);
+}
+
+/** A check that refused or failed starts over; an ask that stopped is asked again. */
+function checksActions({ submission, refusal, busy }: ShareSnapshot, session: AnyShareSession): React.ReactNode {
+  if (submission?.state === 'rejected' || submission?.state === 'failed') return action(t('armariumShare.startOver'), () => session.startOver(), true);
+  if (refusal !== null && !busy) return action(t('armariumShare.askAgain'), () => session.askAgain(), true);
+  return null;
+}
+
+function accountParts(snapshot: ShareSnapshot, session: AnyShareSession, account: AtlasAccount, accountState: AccountState): StepParts {
+  return {
+    title: t('armariumShare.title.account'),
+    body: <AccountStep state={accountState} gate={snapshot.gate} subject={snapshot.subject} />,
+    actions: accountActions(account, accountState, snapshot, session),
+  };
+}
+
+/** The open step's title, content and actions; the dialog lays them out. */
+export function shareStepParts({ app, session, snapshot, account, accountState, onClose }: PartsInput): StepParts {
+  const { step, busy, refusal, bundle } = snapshot;
+  switch (step) {
+    case 'bundle':
+      if (session instanceof ItemShareSession && snapshot.subject === 'item') {
+        return {
+          title: t('armariumShare.title.item'),
+          body: <ItemStep snapshot={snapshot} session={session} />,
+          actions: action(t('armariumShare.continue'), () => session.confirmItem(), true),
+        };
+      }
+      return accountParts(snapshot, session, account, accountState);
+    case 'account':
+      return accountParts(snapshot, session, account, accountState);
+    case 'upload':
+      return {
+        title: shareSaid(snapshot.subject, 'armariumShare.title.upload'),
+        body: <UploadStep snapshot={snapshot} />,
+        actions: withSignIn(snapshot, account, refusal !== null && !busy ? action(t('armariumShare.retry'), () => session.retryUpload(), true) : null),
+        summary: bundle === null ? undefined : formatFileSize(bundle.bytes),
+      };
+    case 'checks':
+      return {
+        title: t('armariumShare.title.checks'),
+        body: <ChecksStep snapshot={snapshot} />,
+        actions: withSignIn(snapshot, account, checksActions(snapshot, session)),
+      };
+    case 'listing':
+      return {
+        title: t('armariumShare.title.listing'),
+        body: <ListingStep snapshot={snapshot} session={session} />,
+        actions: action(t('armariumShare.continue'), () => session.continueToPublish(), true),
+      };
+    case 'publish':
+      return {
+        title: t('armariumShare.title.publish'),
+        body: <PublishStep snapshot={snapshot} session={session} account={account} />,
+        actions: withSignIn(snapshot, account, [
+          action(t('common.back'), () => session.backToListing(), false, busy),
+          action(busy ? t('armariumShare.publishing') : t('armariumShare.publish'), () => void session.publish(), true, busy),
+        ]),
+      };
+    case 'done':
+      // No way to the listing's page: it shows the new version only once the site is rebuilt. My uploads says where
+      // the version stands (Processing, then Published, or In review), in the Armarium behind or else in the browser.
+      return {
+        title: t('armariumShare.title.done'),
+        body: <DoneStep snapshot={snapshot} />,
+        actions: [
+          action(t('common.close'), onClose),
+          action(t('armariumShare.myUploads'), () => {
+            const host = ArmariumHosts.forApp(app).target();
+            if (host === null) {
+              window.open(ARMARIUM_MINE_URL);
+              return;
+            }
+            onClose();
+            host.show(ARMARIUM_MINE_URL);
+          }, true),
+        ],
+      };
+  }
+}

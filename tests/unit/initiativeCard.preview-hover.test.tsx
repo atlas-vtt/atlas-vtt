@@ -14,10 +14,11 @@ vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
 }));
 
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
-  useViewStoreHook: () => ({ getState: () => ({}) }),
+  useViewStoreHook: () => ({ getState: () => ({}), subscribe: () => () => undefined }),
   useAtlasStore: (selector: (state: any) => unknown) => selector({
     objects: { tokens: {} },
     tokenSettings: { showInstanceBadges: true },
+    selectedIds: [] as string[],
   }),
 }));
 
@@ -57,11 +58,8 @@ describe('InitiativeCard statblock preview hover behavior', () => {
     const { rerender, getByRole } = render(
       <InitiativeCard
         entry={entry}
-        index={0}
+       
         isHoveredForPreview={false}
-        onDragStart={vi.fn()}
-        onDragOver={vi.fn()}
-        onDragEnd={vi.fn()}
         onContextMenu={vi.fn()}
         onHover={onHover}
       />,
@@ -75,11 +73,8 @@ describe('InitiativeCard statblock preview hover behavior', () => {
     rerender(
       <InitiativeCard
         entry={entry}
-        index={0}
+       
         isHoveredForPreview={true}
-        onDragStart={vi.fn()}
-        onDragOver={vi.fn()}
-        onDragEnd={vi.fn()}
         onContextMenu={vi.fn()}
         onHover={onHover}
       />,
@@ -96,11 +91,8 @@ describe('InitiativeCard statblock preview hover behavior', () => {
     const { getByRole } = render(
       <InitiativeCard
         entry={entry}
-        index={0}
+       
         isHoveredForPreview={false}
-        onDragStart={vi.fn()}
-        onDragOver={vi.fn()}
-        onDragEnd={vi.fn()}
         onContextMenu={vi.fn()}
         onHover={onHover}
       />,
@@ -120,11 +112,8 @@ describe('InitiativeCard statblock preview hover behavior', () => {
     const { getByRole } = render(
       <InitiativeCard
         entry={createEntry()}
-        index={0}
+       
         isHoveredForPreview={false}
-        onDragStart={vi.fn()}
-        onDragOver={vi.fn()}
-        onDragEnd={vi.fn()}
         onContextMenu={vi.fn()}
         onHover={onHover}
       />,
@@ -143,11 +132,8 @@ describe('InitiativeCard statblock preview hover behavior', () => {
     const { getByRole } = render(
       <InitiativeCard
         entry={createEntry()}
-        index={0}
+       
         isHoveredForPreview={true}
-        onDragStart={vi.fn()}
-        onDragOver={vi.fn()}
-        onDragEnd={vi.fn()}
         onContextMenu={vi.fn()}
         onHover={onHover}
       />,
@@ -167,11 +153,8 @@ describe('InitiativeCard statblock preview hover behavior', () => {
     const { getByRole } = render(
       <InitiativeCard
         entry={createEntry()}
-        index={0}
+       
         isHoveredForPreview={false}
-        onDragStart={vi.fn()}
-        onDragOver={vi.fn()}
-        onDragEnd={vi.fn()}
         onContextMenu={vi.fn()}
         onHover={onHover}
       />,
@@ -190,11 +173,8 @@ describe('InitiativeCard statblock preview hover behavior', () => {
     const { getByRole } = render(
       <InitiativeCard
         entry={createEntry()}
-        index={0}
+       
         isHoveredForPreview={false}
-        onDragStart={vi.fn()}
-        onDragOver={vi.fn()}
-        onDragEnd={vi.fn()}
         onContextMenu={vi.fn()}
         onHover={onHover}
       />,

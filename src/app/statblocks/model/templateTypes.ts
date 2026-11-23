@@ -3,7 +3,8 @@
  * Pure data, no Obsidian and no React (a lint rule keeps it that way).
  */
 
-import type { RecoveryButton } from "../../recovery/recoveryTypes";
+import type { RecoveryButton } from '../../recovery/recoveryTypes';
+import type { ArmariumProvenance } from '../../types/armariumProvenance';
 
 export const TEMPLATE_FORMAT = "atlas-statblock-template";
 export const TEMPLATE_VERSION = 1;
@@ -60,11 +61,9 @@ export interface StatblockTemplate {
   /** Licence and attribution of a licensed built-in; copied with the template and kept on copies. */
   source?: TemplateSource;
   /** The FS layout it was imported from, and layout-level keys Atlas does not model. Code-bearing keys among the extras are code. */
-  importedFrom?: {
-    layoutId: string;
-    layoutName: string;
-    extras?: Record<string, unknown>;
-  };
+  importedFrom?: { layoutId: string; layoutName: string; extras?: Record<string, unknown> };
+  /** The Armarium listing it was installed from; never exported, never part of its fingerprint, dropped from copies. */
+  armarium?: ArmariumProvenance;
 }
 
 export type FieldType =

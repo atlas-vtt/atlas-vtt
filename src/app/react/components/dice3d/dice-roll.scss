@@ -7,6 +7,8 @@
 @use '../../../../../styles/mixins' as *;
 
 $dice-roll-width: 21rem;
+// The panel's and the total's arrival: an ease-out that overshoots a little, as the spring they had did.
+$dice-roll-pop: cubic-bezier(0.34, 1.36, 0.64, 1);
 $dice-roll-row-height: 3.4rem;
 // The portrait alone says who rolled, so it is large enough to recognise at a glance.
 $dice-roll-avatar: 44px;
@@ -23,7 +25,7 @@ $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%,
   top: 0;
   right: 0;
   width: $dice-roll-width;
-  max-width: calc(100vw - 2 * #{$spacing-s});
+  max-width: calc(#{atlas-view-width()} - 2 * #{$spacing-s});
   z-index: $z-atlas-dice-rolls;
   pointer-events: none;
   @include atlas-flex-col($spacing-s);
@@ -45,6 +47,11 @@ $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%,
   display: none;
 }
 
+// Where a screen reader hears each roll once (DiceRollDisplay): there before any roll, never seen.
+&.atlas-dice-status {
+  @include atlas-visually-hidden;
+}
+
 // The mark the map's rolls are placed by: the top right corner of the top bar's right end.
 // It has a size so that a ResizeObserver hears it vanish when the view is hidden.
 .atlas-dice-rolls-anchor {
@@ -58,12 +65,20 @@ $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%,
 
 .atlas-dice-roll {
   --atlas-dice-accent: var(--interactive-accent);
+  // The crit total's ink: the accent, where it reads as large text (3:1 or more).
+  --atlas-dice-crit-ink: var(--atlas-dice-accent);
+  // Muted text (the breakdown): the theme's, one step lighter in dark, where it fell short of APCA Lc 60.
+  --atlas-dice-muted-ink: var(--text-muted);
 
   width: 100%;
   @include atlas-flex-col($spacing-s);
   pointer-events: auto;
-  cursor: pointer;
   user-select: none;
+  animation: atlas-dice-roll-in 420ms $dice-roll-pop both;
+
+  &--leaving {
+    animation: atlas-dice-roll-out 400ms $transition-ease-out forwards;
+  }
 
   &--crit-success {
     --atlas-dice-accent: var(--color-yellow);
@@ -72,9 +87,18 @@ $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%,
   &--crit-fail {
     --atlas-dice-accent: var(--color-red);
   }
+
+  // On a light surface the theme's gold falls below 3:1, so the crit ink is darkened towards the text.
+  .theme-light & {
+    --atlas-dice-crit-ink: color-mix(in oklch, var(--atlas-dice-accent) 50%, var(--text-normal));
+  }
+
+  .theme-dark & {
+    --atlas-dice-muted-ink: color-mix(in oklch, var(--text-muted) 60%, var(--text-normal));
+  }
 }
 
-// The surface the dice are thrown on; the modifier chip lies below it.
+// The surface the dice are thrown on.
 .atlas-dice-roll__sheet {
   position: relative;
   isolation: isolate;
@@ -82,7 +106,7 @@ $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%,
   display: flex;
   flex-direction: column;
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
 }
 
 .atlas-dice-roll__engraving {
@@ -127,6 +151,7 @@ $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%,
   position: absolute;
   inset: 0;
   pointer-events: none;
+  animation: atlas-dice-roll-fade 600ms $transition-ease-out both;
   background: radial-gradient(ellipse at 50% 42%, color-mix(in oklch, var(--atlas-dice-accent) 28%, transparent), transparent 70%);
 }
 
@@ -188,6 +213,27 @@ $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%,
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
+
+  // A roll without an action is titled by its formula, as the tray writes it: the interface font
+  // with tabular figures (the dice font's 1 reads as l).
+  &--formula {
+    font-family: var(--font-interface);
+    font-size: $font-ui-medium;
+    font-weight: normal;
+    letter-spacing: 0;
+    text-transform: none;
+    font-variant-numeric: tabular-nums lining-nums;
+    color: var(--text-normal);
+  }
+}
+
+.atlas-dice-roll__audience {
+  flex-shrink: 0;
+}
+
+// Follows its content's height (DiceRollPanel): large to row and back, the real height, never a scale.
+.atlas-dice-roll__clip {
+  transition: height 420ms $transition-ease-out;
 }
 
 .atlas-dice-roll__content {
@@ -215,37 +261,61 @@ $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%,
 
 .atlas-dice-roll__total {
   font-family: $font-dice-display;
-  font-size: 2.8rem;
+  font-size: 44px;
   font-weight: normal;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   color: var(--text-normal);
 
   &--row {
-    font-size: 1.5rem;
+    font-size: 24px;
   }
 }
 
 // Written out: `.parent &` would put the parent before the .atlas-vtt-plugin namespace.
 .atlas-dice-roll--crit-success .atlas-dice-roll__total,
 .atlas-dice-roll--crit-fail .atlas-dice-roll__total {
-  color: var(--atlas-dice-accent);
+  color: var(--atlas-dice-crit-ink);
 }
 
 .atlas-dice-roll__count {
   display: inline-block;
+
+  // Each counted step: shorter than a step, so the next never cuts a bump off.
+  &--bump {
+    animation: atlas-dice-roll-bump calc(var(--atlas-dice-tick-ms, 260ms) - 40ms) $transition-ease-out both;
+  }
+}
+
+// The total the dice landed on rises into place (the row's total does not: a row arrives settled).
+.atlas-dice-roll__slot .atlas-dice-roll__total {
+  animation: atlas-dice-roll-total-in 300ms $dice-roll-pop both;
+}
+
+// "Critical success" / "Critical failure" under the total, centred like it (over the caption's own start).
+.atlas-dice-roll__slot .atlas-dice-roll__crit {
+  align-self: center;
 }
 
 .atlas-dice-roll__breakdown {
-  font-size: $font-ui-smaller;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
+  font-size: $font-ui-small;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--atlas-dice-muted-ink);
+  animation: atlas-dice-roll-fade 300ms $transition-ease-out 120ms both;
+}
+
+// The dice line with advantage (RolledDiceLine): in the breakdown's face, not the log's monospace.
+.atlas-dice-roll__breakdown.atlas-dice-roll__dice {
+  font-family: inherit;
+  color: var(--atlas-dice-muted-ink);
 }
 
 .atlas-dice-roll__formula {
-  font-family: $font-dice-display;
-  font-size: 1.05rem;
-  color: var(--text-faint);
+  font-family: var(--font-interface);
+  font-size: $font-ui-medium;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-muted);
+  animation: atlas-dice-roll-fade 160ms $transition-ease-out both;
 }
 
 // The stage lies over everything and lets clicks through to the panel. It
@@ -297,52 +367,12 @@ $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%,
   }
 }
 
-// A capsule under the panel, like every bar shorter than 48px, aligned with the
-// column: right for the DM, centred in the player window.
-// The modifiers' chips under the panel, right-aligned, one per step the counter clicks in.
-.atlas-dice-roll__chips {
-  align-self: flex-end;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: $spacing-s;
-}
-
-.atlas-dice-roll__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: $spacing-s;
-  // Wider at the ends: a capsule's round ends would otherwise crowd the text.
-  padding: $spacing-s $spacing-m;
-  @include atlas-elevated-surface;
-  border-radius: $radius-full;
-  @include atlas-corner-shape;
-}
-
-.atlas-dice-roll__chip-label {
-  font-size: $font-ui-smaller;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.atlas-dice-roll__chip-amount {
-  font-family: $font-dice-display;
-  font-size: 1.15rem;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
-  transition: color 0.3s;
-}
-
-.atlas-dice-roll__chip--applied .atlas-dice-roll__chip-amount {
-  color: var(--text-normal);
-}
-
 // The dice font chosen in Dice settings, for everything that shows dice numbers.
 // Also on the plugin root itself: in the player window the roll column is the root.
 &.atlas-dice-font--scifi,
 .atlas-dice-font--scifi {
   --atlas-dice-font: #{$font-dice-scifi};
 }
+
+// Its keyframes and what reduced motion leaves of them.
+@import 'dice-roll-motion';

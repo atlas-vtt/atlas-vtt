@@ -36,7 +36,7 @@ $accent-line: color-mix(in oklch, var(--interactive-accent) 45%, transparent);
 .atlas-rc-pane__empty {
   margin: 0;
   padding: $spacing-l;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: var(--background-modifier-hover);
   color: var(--text-faint);
   font-size: $font-ui-small;
@@ -117,7 +117,6 @@ $accent-line: color-mix(in oklch, var(--interactive-accent) 45%, transparent);
   padding: 0 $spacing-m;
   border: $border-width-s solid var(--background-modifier-border) !important;
   border-radius: $radius-full !important;
-  corner-shape: round;
   background: var(--background-primary) !important;
   box-shadow: none !important;
   color: var(--text-muted);
@@ -189,7 +188,6 @@ input.atlas-rc-capsule--input {
   // A quiet fill, as an empty socket has: Atlas draws no dashed lines
   border: $border-width-s solid transparent !important;
   border-radius: $radius-full !important;
-  corner-shape: round;
   background: var(--background-modifier-hover) !important;
   box-shadow: none !important;
   color: var(--text-muted);

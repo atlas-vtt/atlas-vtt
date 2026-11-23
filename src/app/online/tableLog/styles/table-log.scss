@@ -45,6 +45,19 @@
   }
 }
 
+// A roll's total, once its dice have landed.
+@keyframes atlas-online-log-total-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 // The tools fade in where they stand: nothing about a row rises or grows.
 @keyframes atlas-online-log-tools-in {
   from {

@@ -21,31 +21,34 @@
   }
 }
 
-// Place, size and motion of Atlas's dice log.
+// Place, size and motion of Atlas's dice log. A chat needs room to read: its rows, cards and message
+// field stand $log-pad inside the border and as far apart. Only the close button reaches into the
+// corner, $surface-inset inside the border and concentric with it.
 .atlas-online-log--floating {
   position: fixed;
   left: $log-edge;
   top: 50%;
   transform: translateY(-50%);
-  width: min(#{$log-width}, calc(100vw - 2 * #{$log-edge}));
-  height: 80vh;
-  padding: $spacing-s;
+  width: min(#{$log-width}, calc(#{atlas-view-width()} - 2 * #{$log-edge}));
+  height: #{atlas-view-height(80)};
+  gap: $log-pad;
+  padding: $log-pad;
   z-index: $z-dropdown;
   pointer-events: auto;
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   animation: atlas-online-log-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 // In a sheet, which has the surface, the title and the close button. Its cards and the message
 // field take the radius of a panel's inner elements.
 .atlas-online-log--embedded {
-  --atlas-panel-inner-radius: calc(#{$radius-xl} + #{$spacing-s});
+  --atlas-panel-inner-radius: calc(#{$surface-radius} - #{$border-width-m});
   height: 100%;
 }
 
 .atlas-online-log {
-  // Reaches past the panel's padding to its top-right corner, where the close button belongs.
+  // Reaches past the floating panel's padding to its top-right corner, where the close button belongs.
   .atlas-online-log__header {
     display: flex;
     flex: none;
@@ -53,12 +56,13 @@
     justify-content: space-between;
     gap: $spacing-s;
     @include atlas-close-header(0);
-    margin: calc(-1 * #{$spacing-s}) calc(-1 * #{$spacing-s}) 0 0;
+    margin: calc(-1 * #{$log-pad}) calc(-1 * #{$log-pad}) 0 0;
   }
 
+  // On the rows' text edge.
   .atlas-online-log__title {
     flex: 1;
-    padding-left: $spacing-xs;
+    padding-left: $spacing-s;
     color: var(--text-muted);
     font-size: 11px;
     font-weight: 600;
@@ -99,7 +103,7 @@
     align-items: center;
     gap: $spacing-xs;
     min-width: 0;
-    padding-left: $spacing-xs;
+    padding-left: $spacing-s;
   }
 
   .atlas-online-log__ask-text {

@@ -14,10 +14,13 @@ import { HeaderSearch } from './HeaderSearch';
 import type { FilterSearch } from '../hooks/useFilterSearch';
 import { useHeaderCompaction } from '../hooks/useHeaderCompaction';
 import { TabSwitcher } from './TabSwitcher';
+import { ArmariumActions } from './ArmariumActions';
 import { CollectionGlyph } from './collectionGlyph';
 import { TokenIcon } from '../../../../react/components/TokenIcon';
 import { tabHasFolders } from '../utils/tabKinds';
 import { t } from '../../../../i18n';
+import type { ShareWhat } from '../../../../armarium/armariumMessages';
+import type { MapPick } from '../mapPick';
 
 export interface HeaderProps {
   app: App;
@@ -45,10 +48,19 @@ export interface HeaderProps {
     SelectionState,
     'navigationHistory' | 'handleNavigateBack' | 'handleNavigateForward'
   >;
+  /**
+   * Set while the Armarium is shown: no tab is current, Back leads to the library, and the store's actions stand
+   * where the search and Create do, which belong to the library.
+   */
+  armarium?: { onBack: () => void; onReload: () => void; page: string; onShare: (what: ShareWhat) => void } | undefined;
+  /** Shows the Armarium: the last place of the tab strip, current while `armarium` is set. */
+  onShowArmarium?: (() => void) | undefined;
+  /** The window chooses a map: its purpose stands where the tabs do, and nothing is created. */
+  pick?: MapPick;
 }
 
 /**
- * One-row toolbar: navigation on the left, asset type in the
+ * One-row toolbar: navigation on the left, asset type (and the Armarium) in the
  * centre, search and create on the right. When its controls do not fit, the
  * tabs and the search fold into a menu and a button (`useHeaderCompaction`),
  * so they never overlap.
@@ -72,7 +84,11 @@ export function Header({
   sidebarToggleLabel,
   onToggleSidebar,
   sel,
+  armarium,
+  onShowArmarium,
+  pick,
 }: HeaderProps): React.JSX.Element {
+  const backLabel = armarium ? t('armarium.backToLibrary') : t('common.back');
   const toolbarRef = useRef<HTMLDivElement>(null);
   useHeaderCompaction(toolbarRef);
 
@@ -91,13 +107,13 @@ export function Header({
               <PanelLeft />
             </Button>
           </LabelTooltip>
-          <LabelTooltip label={t('common.back')}>
+          <LabelTooltip label={backLabel}>
             <Button
               variant="ghost"
               size="icon"
               className="atlas-am-icon-btn"
-              onClick={sel.handleNavigateBack}
-              disabled={!sel.navigationHistory.canGoBack()}
+              onClick={armarium ? armarium.onBack : sel.handleNavigateBack}
+              disabled={armarium === undefined && !sel.navigationHistory.canGoBack()}
             >
               <ChevronLeft />
             </Button>
@@ -108,7 +124,7 @@ export function Header({
               size="icon"
               className="atlas-am-icon-btn"
               onClick={sel.handleNavigateForward}
-              disabled={!sel.navigationHistory.canGoForward()}
+              disabled={armarium !== undefined || !sel.navigationHistory.canGoForward()}
             >
               <ChevronRight />
             </Button>
@@ -116,30 +132,42 @@ export function Header({
         </div>
 
         <div className="atlas-am-toolbar-center">
-          <TabSwitcher activeTab={activeTab} onTabChange={onTabChange} assetCounts={assetCounts} countsFailed={countsFailed} />
+          {pick
+            ? <h2 className="atlas-am-pick-title">{pick.title}</h2>
+            : <TabSwitcher activeTab={armarium ? null : activeTab} onTabChange={onTabChange} assetCounts={assetCounts} countsFailed={countsFailed} onShowArmarium={onShowArmarium} />}
         </div>
 
-        <div className="atlas-am-toolbar-right">
-          {/* Its Cmd/Ctrl+F lives in the manager's own key scope (`useAssetManagerShortcuts`), which a dialog over it lifts. */}
-          <HeaderSearch app={app} search={search} onSearch={onSearch} query={query} shortcut={false} shortcutShown />
-          <HeaderMenu
-            label={t('am.header.create')}
-            triggerClassName="atlas-asset-manager-create-btn"
-            triggerVariant="default"
-            iconTrigger
-            triggerContent={<Plus />}
-            shortcut={modShortcut('n')}
-            handle={createMenu}
-            items={[
-              { key: 'token', label: t('am.header.createToken'), icon: <TokenIcon />, onSelect: onCreateTokens },
-              { key: 'map', label: t('am.header.addMap'), icon: <MapIcon />, onSelect: onCreateMap },
-              { key: 'dungeon', label: t('am.header.generateDungeon'), icon: <Castle />, onSelect: onGenerateDungeon },
-              { key: 'encounter', label: t('am.header.createEncounter'), icon: <Swords />, onSelect: onCreateEncounter },
-              { key: 'folder', label: t('am.header.newFolder'), icon: <FolderPlus />, disabled: !tabHasFolders(activeTab), onSelect: onCreateFolder },
-              { key: 'collection', label: t('am.header.createCollection'), icon: <CollectionGlyph />, separated: true, onSelect: onCreateCollection },
-            ]}
-          />
-        </div>
+        {armarium ? (
+          <div className="atlas-am-toolbar-right atlas-am-toolbar-right--armarium">
+            <ArmariumActions onReload={armarium.onReload} page={armarium.page} onShare={armarium.onShare} />
+          </div>
+        ) : (
+          <div className="atlas-am-toolbar-right">
+            {/* Its Cmd/Ctrl+F lives in the manager's own key scope (`useAssetManagerShortcuts`), which a dialog over it lifts. */}
+            <HeaderSearch app={app} search={search} onSearch={onSearch} query={query} shortcut={false} shortcutShown />
+            {pick ? (
+              pick.noneLabel !== undefined && (
+                <Button variant="outline" className="atlas-am-pick-none" onClick={() => pick.onPick(null)}>{pick.noneLabel}</Button>
+              )
+            ) : <HeaderMenu
+              label={t('am.header.create')}
+              triggerClassName="atlas-asset-manager-create-btn"
+              triggerVariant="default"
+              iconTrigger
+              triggerContent={<Plus />}
+              shortcut={modShortcut('n')}
+              handle={createMenu}
+              items={[
+                { key: 'token', label: t('am.header.createToken'), icon: <TokenIcon />, onSelect: onCreateTokens },
+                { key: 'map', label: t('am.header.addMap'), icon: <MapIcon />, onSelect: onCreateMap },
+                { key: 'dungeon', label: t('am.header.generateDungeon'), icon: <Castle />, onSelect: onGenerateDungeon },
+                { key: 'encounter', label: t('am.header.createEncounter'), icon: <Swords />, onSelect: onCreateEncounter },
+                { key: 'folder', label: t('am.header.newFolder'), icon: <FolderPlus />, disabled: !tabHasFolders(activeTab), onSelect: onCreateFolder },
+                { key: 'collection', label: t('am.header.createCollection'), icon: <CollectionGlyph />, separated: true, onSelect: onCreateCollection },
+              ]}
+            />}
+          </div>
+        )}
       </div>
     </header>
   );

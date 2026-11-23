@@ -2,6 +2,7 @@ import { GM_AUTHOR, type RollEntry } from '../protocol/index.ts';
 import { ChevronDown, CornerDownRight, EyeOff } from 'lucide-react';
 import { memo, useId, useState, type ReactElement } from 'react';
 import { TokenPortrait } from '../../packages/components/shared/TokenPortrait';
+import { useRollLanded } from '../../dice3d/rollsInFlight';
 import { AuthorDisc } from './AuthorDisc.tsx';
 import { classes } from './classes.ts';
 import { reactionsFor, shownName } from './logAuthors.ts';
@@ -49,6 +50,10 @@ export const RollRow = memo(function RollRow({ entry, face, portrait, time, thre
   const { id, who, name, roll, flavor, request, mode } = entry;
   const [open, setOpen] = useState(false);
   const dice = useId();
+  // While its dice are in the air the row tells nothing the throw has not shown: no total, crit or dice.
+  const landed = useRollLanded(roll.id);
+  // Only a total that waited for its dice comes in; one there from the start stands still.
+  const [waited] = useState(!landed);
   const reactions = reactionsFor(entry, api.self);
   const roller = shownName(who, name, api.self);
   const ability = roll.source?.abilityName;
@@ -56,7 +61,7 @@ export const RollRow = memo(function RollRow({ entry, face, portrait, time, thre
   const badge = mode === undefined ? null : mode === 'gm' && entry.to?.includes(GM_AUTHOR) === false ? 'Whisper' : ROLL_MODE_INFO[mode].badge;
   return (
     <RowShell id={id} className="atlas-online-log__row--roll" reactions={reactions} canEdit={false} canDelete={false} api={api} editing={false} {...flags}>
-      <div className={classes('atlas-online-log__roll', critClass(roll, 'atlas-online-log__roll'), mode !== undefined && 'atlas-online-log__roll--private')}>
+      <div className={classes('atlas-online-log__roll', landed && critClass(roll, 'atlas-online-log__roll'), mode !== undefined && 'atlas-online-log__roll--private')}>
         <RollAvatar entry={entry} face={face} portrait={portrait} />
         <div className="atlas-online-log__roll-body">
           <div className="atlas-online-log__byline">
@@ -70,18 +75,24 @@ export const RollRow = memo(function RollRow({ entry, face, portrait, time, thre
               <span className="atlas-online-log__roll-request-text">{`for ${request.label}`}</span>
             </button>
           )}
-          {ability !== undefined && ability !== '' && <span className="atlas-online-log__roll-ability atlas-dice-toast__ability">{ability}</span>}
-          {flavor !== undefined && flavor !== request?.label && <span className="atlas-online-log__roll-flavor atlas-dice-toast__ability">{flavor}</span>}
+          {ability !== undefined && ability !== '' && ability !== request?.label && <span className="atlas-online-log__roll-ability atlas-dice-toast__ability">{ability}</span>}
+          {flavor !== undefined && flavor !== request?.label && flavor !== ability && <span className="atlas-online-log__roll-flavor atlas-dice-toast__ability">{flavor}</span>}
           <div className="atlas-online-log__roll-summary">
             <span className="atlas-online-log__roll-formula">{formulaLine(roll)}</span>
             <span className="atlas-online-log__roll-equals" aria-hidden="true">=</span>
-            <span className="atlas-online-log__roll-total">{roll.total}</span>
+            {landed
+              ? <span className={classes('atlas-online-log__roll-total', waited && 'is-landed')}>{roll.total}</span>
+              : <span className="atlas-online-log__roll-total is-rolling"><span aria-hidden="true">…</span><span className="atlas-online-log__sr">Rolling</span></span>}
           </div>
-          <button type="button" className="atlas-online-log__roll-toggle" aria-expanded={open} aria-controls={dice} onClick={() => setOpen(!open)}>
+          {/* Kept in its place while the dice fly, so the row does not grow when they land. */}
+          <button
+            type="button" className={classes('atlas-online-log__roll-toggle', !landed && 'is-waiting')} disabled={!landed}
+            aria-expanded={open} aria-controls={dice} onClick={() => setOpen(!open)}
+          >
             <ChevronDown className={classes('atlas-online-log__roll-chevron', open && 'is-open')} />
             Dice
           </button>
-          {open && <RollDice id={dice} roll={roll} />}
+          {landed && open && <RollDice id={dice} roll={roll} />}
           {entry.hidden === true && <span className="atlas-online-log__roll-hidden"><EyeOff />Only you see this roll</span>}
         </div>
       </div>

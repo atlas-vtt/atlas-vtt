@@ -1,15 +1,17 @@
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-// Rows are capsules; the menu's corner is set so every row runs concentric with it.
-$ctx-row-height: 28px;
-$ctx-inset: $spacing-xs;
+// Rows stand $surface-inset inside the menu's border, concentric with its corner, and their text
+// $spacing-m further in: the text edge of every Atlas menu.
+// The height is a custom property a coarse pointer raises (`_coarse-pointer.scss`); the corners stay the rows' own.
+$ctx-row-height: var(--atlas-ctx-row-height, 28px);
+$ctx-inset: $surface-inset;
 
 // ── Menu container ──────────────────────────────────────────────────────────
 
 .atlas-ctx-menu {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($ctx-row-height * 0.5 + $ctx-inset + $border-width-m);
+  @include atlas-panel-radius($surface-radius);
   box-shadow: $shadow-md;
   display: flex;
   flex-direction: column;
@@ -43,6 +45,20 @@ $ctx-inset: $spacing-xs;
   }
 }
 
+// A menu that leads with a feature row (a name and a line under it, besides its detail) takes the room to show them
+// whole, and its rows read as two columns: names, and well apart from them, what each offers.
+.atlas-ctx-menu:has(.atlas-ctx-item--feature) {
+  max-width: min(460px, var(--radix-dropdown-menu-content-available-width, 460px));
+
+  .atlas-ctx-item {
+    column-gap: $spacing-xl;
+  }
+
+  .atlas-ctx-item--feature {
+    column-gap: $spacing-2xl;
+  }
+}
+
 // A menu too tall for its window (`useMenuFit`); `--atlas-ctx-rows` is how many rows fit
 .atlas-ctx-menu--columns {
   display: grid;
@@ -71,7 +87,7 @@ $ctx-inset: $spacing-xs;
   justify-content: space-between;
   gap: $spacing-xs;
   min-height: $ctx-row-height;
-  padding: 0 $spacing-s;
+  padding: 0 $spacing-m;
   @include atlas-panel-inset-radius($ctx-inset);
   background: transparent;
   color: var(--text-normal);
@@ -116,6 +132,29 @@ $ctx-inset: $spacing-xs;
     .theme-dark & {
       --atlas-ctx-error: color-mix(in srgb, var(--text-error) 50%, white);
     }
+  }
+
+  // A row offered above the others (a whole collection): its name stronger, a line under it, the same corners.
+  &--feature {
+    padding-block: $spacing-s;
+    align-items: center;
+
+    .atlas-ctx-item__label {
+      font-size: $font-ui-medium;
+      font-weight: $font-weight-semibold;
+    }
+  }
+
+  &__stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-2-1);
+    min-width: 0;
+  }
+
+  &__tagline {
+    color: var(--text-accent);
+    font-size: var(--font-ui-smaller);
   }
 
   &__leading {
@@ -191,15 +230,20 @@ $ctx-inset: $spacing-xs;
   height: $button-height-s;
   padding: 0;
   border: none;
-  border-radius: $radius-s;
+  // As far inside its row from top and bottom as the row's corner allows: its curve runs with the row's.
+  border-radius: calc(#{$radius-m} - (#{$ctx-row-height} - #{$button-height-s}) / 2);
   background: transparent;
   box-shadow: none;
   color: var(--text-muted);
   cursor: pointer;
+  // Under a finger the button stays inside its row and takes a target's hit area around it.
+  @include atlas-coarse-hit;
 
-  &:hover:not(:disabled) {
-    background: var(--background-modifier-hover);
-    color: var(--text-normal);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background: var(--background-modifier-hover);
+      color: var(--text-normal);
+    }
   }
 
   &:disabled {
@@ -258,7 +302,7 @@ $ctx-inset: $spacing-xs;
   align-items: center;
   gap: $spacing-s;
   min-height: $ctx-row-height;
-  padding: 0 $spacing-s;
+  padding: 0 $spacing-m;
   border: none;
   @include atlas-panel-inset-radius($ctx-inset);
   background: transparent;
@@ -272,8 +316,10 @@ $ctx-inset: $spacing-xs;
     color: var(--text-error);
   }
 
-  &:hover {
-    background: color-mix(in oklch, var(--color-red) 15%, transparent);
+  @media (hover: hover) {
+    &:hover {
+      background: color-mix(in oklch, var(--color-red) 15%, transparent);
+    }
   }
 
   &:active {

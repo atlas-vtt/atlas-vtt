@@ -161,11 +161,12 @@ describe("the players' initiative list", () => {
     const container = createDiv();
     const list = playerInitiativeList({ entries, isActive: true, round: 2 }, tokenOf, TURN_ORDER, true);
     renderPlayerInitiative(container, list, { showNames: false, mapShowsNameplates: true, portraitSrc: () => null });
-    expect(container.querySelectorAll('.atlas-player-initiative__card')).toHaveLength(2);
-    expect(container.querySelector('.atlas-player-initiative__card--active')?.textContent).toContain('18');
-    expect(container.querySelector('.atlas-player-initiative__name')).toBeNull();
-    expect(container.querySelector('.atlas-player-initiative__round')?.textContent).toContain('2');
-    expect(container.querySelector('progress')?.getAttribute('value')).toBe('4');
+    expect(container.querySelectorAll('.atlas-initiative-card')).toHaveLength(2);
+    expect(container.querySelector('.atlas-initiative-card--active')).not.toBeNull();
+    // Initiative numbers stay on the GM's screen
+    expect(container.querySelector('.atlas-initiative-panel__list')?.textContent).not.toMatch(/18|12/);
+    expect(container.querySelector('.atlas-initiative-card__name')).toBeNull();
+    expect(container.querySelector('.atlas-initiative-panel__round')?.textContent).toContain('2');
     const empty = createDiv();
     renderPlayerInitiative(empty, { ...list, combatants: [] }, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null });
     expect(empty.childElementCount).toBe(0);
@@ -178,7 +179,7 @@ describe("the players' initiative list", () => {
     const list = playerInitiativeList({ entries, isActive: true, round: 1 }, ownOf, TURN_ORDER, false);
     const container = createDiv();
     renderPlayerInitiative(container, list, { showNames: true, mapShowsNameplates: false, portraitSrc: () => 'art.png' });
-    const names = [...container.querySelectorAll('.atlas-player-initiative__name')].map((name) => name.textContent);
+    const names = [...container.querySelectorAll('.atlas-initiative-card__name')].map((name) => name.textContent);
     expect(names).toEqual(['Unknown Creature', 'ogre']);
     expect(container.textContent).not.toContain('hero');
   });
@@ -193,11 +194,12 @@ describe("the players' initiative list", () => {
 
     const container = createDiv();
     renderPlayerInitiative(container, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => 'art.png' });
-    const cards = [...container.querySelectorAll('.atlas-player-initiative__card')];
-    expect(cards.map((card) => card.textContent)).toEqual(['12ogre', '18hero']);
-    expect(cards[0]!.classList.contains('atlas-player-initiative__card--defeated')).toBe(true);
-    expect(cards[0]!.querySelector('.atlas-player-initiative__defeated--over')?.getAttribute('aria-label')).toBe('Defeated');
-    expect(cards[1]!.classList.contains('atlas-player-initiative__card--delayed')).toBe(true);
+    const cards = [...container.querySelectorAll('.atlas-initiative-card')];
+    // The art names a combatant; one without art shows its name, and neither its number
+    expect(cards.map((card) => card.textContent)).toEqual(['', 'hero']);
+    expect(cards[0]!.classList.contains('atlas-initiative-card--defeated')).toBe(true);
+    expect(cards[0]!.querySelector('.atlas-initiative-card__defeated-overlay')?.getAttribute('aria-label')).toBe('Defeated');
+    expect(cards[1]!.classList.contains('atlas-initiative-card--delayed')).toBe(true);
     expect(cards[1]!.parentElement?.getAttribute('aria-label')).toBe('Delayed');
   });
 });

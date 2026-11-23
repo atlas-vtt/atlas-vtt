@@ -1,7 +1,8 @@
 import React from 'react';
-import { Dices, Minus, Plus } from 'lucide-react';
+import { ChevronDown, Dices, Minus, Plus } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
+import { HeaderMenu } from '../../../packages/components/asset-manager/components/HeaderMenu';
 import { rarityKey } from '../../../loot/lootRoller';
 import type { RarityOption } from '../../../types/randomTableTypes';
 import { LOOT_MAX_COUNT } from '../../../stores/lootRollerSlice';
@@ -16,7 +17,22 @@ interface RarityTogglesProps {
   onExcludedChange: (excluded: string[]) => void;
 }
 
-/** A toggle per rarity word of the collection, in its tone: switched-off rarities are never rolled. */
+/** A rarity's gem in its tone: filled while it is rolled, an outline while it is left out. */
+function RarityGem({ tone, on }: { tone: string | undefined; on: boolean }): React.ReactElement {
+  return <span className={`atlas-loot-rarity__gem${on ? ' is-on' : ''}`} data-rarity={tone} />;
+}
+
+/** What the folded filter's button says: all, none, or how many of the rarities are rolled. */
+function rarityMenuLabel(on: number, total: number): string {
+  if (on === total) return t('loot.rarityMenu.all');
+  if (on === 0) return t('loot.rarityMenu.none');
+  return t('loot.rarityMenu.some', { on, total });
+}
+
+/**
+ * A toggle per rarity word of the collection, in its tone: switched-off rarities are never rolled. Where the roll bar
+ * has no room for the toggles side by side (its `data-compact`), they fold into a menu of switches instead.
+ */
 export function RarityToggles({ rarities, rarityCounts, excluded, onExcludedChange }: RarityTogglesProps): React.ReactElement | null {
   if (rarityCounts.size === 0 || rarities.length === 0) return null;
   const toggle = (key: string): void => {
@@ -24,31 +40,59 @@ export function RarityToggles({ rarities, rarityCounts, excluded, onExcludedChan
     if (!next.delete(key)) next.add(key);
     onExcludedChange([...next]);
   };
+  const options = rarities.map((option) => {
+    const key = rarityKey(option);
+    return { option, key, on: !excluded.has(key), count: rarityCounts.get(key) ?? 0 };
+  });
+  const onCount = options.filter((entry) => entry.on).length;
 
   return (
-    <div className="atlas-loot-rarities" role="group" aria-label={t('loot.rarities')}>
-      {rarities.map((option) => {
-        const key = rarityKey(option);
-        const on = !excluded.has(key);
-        const count = rarityCounts.get(key) ?? 0;
-        const values = { count, rarity: option.name };
-        return (
-          <LabelTooltip key={key} describe label={on ? t('loot.rarityOn', values) : t('loot.rarityOff', values)}>
-            <button
-              type="button"
-              className={`atlas-loot-rarity${on ? ' is-on' : ''}`}
-              data-rarity={option.tone ?? undefined}
-              aria-pressed={on}
-              onClick={() => toggle(key)}
-            >
-              <span className="atlas-loot-rarity__gem" />
-              <span className="atlas-loot-rarity__label">{option.name}</span>
-              <span className="atlas-loot-rarity__count">{count}</span>
-            </button>
-          </LabelTooltip>
-        );
-      })}
-    </div>
+    <>
+      <div className="atlas-loot-rarities" role="group" aria-label={t('loot.rarities')}>
+        {options.map(({ option, key, on, count }) => {
+          const values = { count, rarity: option.name };
+          return (
+            <LabelTooltip key={key} describe label={on ? t('loot.rarityOn', values) : t('loot.rarityOff', values)}>
+              <button
+                type="button"
+                className={`atlas-loot-rarity${on ? ' is-on' : ''}`}
+                data-rarity={option.tone ?? undefined}
+                aria-pressed={on}
+                onClick={() => toggle(key)}
+              >
+                <RarityGem tone={undefined} on={on} />
+                <span className="atlas-loot-rarity__label">{option.name}</span>
+                <span className="atlas-loot-rarity__count">{count}</span>
+              </button>
+            </LabelTooltip>
+          );
+        })}
+      </div>
+      <HeaderMenu
+        className="atlas-loot-rarity-menu"
+        label={t('loot.rarities')}
+        triggerClassName="atlas-am-tab-menu-trigger atlas-loot-rarity-menu__trigger"
+        align="start"
+        multiple
+        triggerContent={
+          <>
+            <span className="atlas-loot-rarity-menu__gems">
+              {options.map(({ option, key, on }) => <RarityGem key={key} tone={option.tone ?? undefined} on={on} />)}
+            </span>
+            <span className="atlas-tab-label">{rarityMenuLabel(onCount, options.length)}</span>
+            <ChevronDown className="atlas-am-tab-menu-chevron" />
+          </>
+        }
+        items={options.map(({ option, key, on, count }) => ({
+          key,
+          label: option.name,
+          icon: <RarityGem tone={option.tone ?? undefined} on />,
+          detail: count,
+          checked: on,
+          onSelect: () => toggle(key),
+        }))}
+      />
+    </>
   );
 }
 

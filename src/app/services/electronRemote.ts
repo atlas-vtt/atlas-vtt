@@ -1,4 +1,4 @@
-import { Platform } from 'obsidian';
+import { isDesktopApp } from '../platform/desktopOnly';
 import { isRecord } from '../utils/guards';
 
 /**
@@ -65,7 +65,7 @@ function hasMethods(value: unknown, names: readonly string[]): value is object {
  * missing, or where it does not have what Atlas uses.
  */
 export function electronWindowOf(win: Window): ElectronWindowHandle | null {
-  if (!Platform.isDesktopApp) return null;
+  if (!isDesktopApp()) return null;
   try {
     const load: unknown = Reflect.get(win, 'require');
     if (typeof load !== 'function') return null;
@@ -96,7 +96,7 @@ export function webContentsOf(window: ElectronBrowserWindow): ElectronWebContent
 
 /** The window's system dialog for picking a folder; null where this Obsidian has none, or none Atlas can reach. */
 export function nativeFolderPicker(win: Window): ((title: string) => Promise<string | null>) | null {
-  if (!Platform.isDesktopApp) return null;
+  if (!isDesktopApp()) return null;
   try {
     const load: unknown = Reflect.get(win, 'require');
     if (typeof load !== 'function') return null;
@@ -117,17 +117,21 @@ export function nativeFolderPicker(win: Window): ((title: string) => Promise<str
   }
 }
 
-/** Moves a path to the system's trash, Electron's `shell.trashItem`; null where it cannot be reached. Never falls back on deleting. */
+/**
+ * Moves a path to the system's trash, Electron's `shell.trashItem`; null where it cannot be reached. Never falls back on deleting.
+ * The main process's shell comes first: on Windows the window's own rejects every item with "Failed to create FileOperation
+ * instance", since the trash is a COM object the renderer cannot create. The window's is used only where `remote` is missing.
+ */
 export function systemTrash(win: Window): ((absolute: string) => Promise<void>) | null {
-  if (!Platform.isDesktopApp) return null;
+  if (!isDesktopApp()) return null;
   try {
     const load: unknown = Reflect.get(win, 'require');
     if (typeof load !== 'function') return null;
     const electron: unknown = Reflect.apply(load, win, ['electron']);
     if (!isRecord(electron)) return null;
     const remote = electron.remote;
-    const shell: unknown = hasMethods(electron.shell, ['trashItem']) ? electron.shell
-      : (isRecord(remote) || typeof remote === 'function') ? Reflect.get(remote, 'shell') : null;
+    const remoteShell: unknown = (isRecord(remote) || typeof remote === 'function') ? Reflect.get(remote, 'shell') : null;
+    const shell: unknown = hasMethods(remoteShell, ['trashItem']) ? remoteShell : electron.shell;
     if (!hasMethods(shell, ['trashItem'])) return null;
     return async (absolute) => {
       await Reflect.apply(Reflect.get(shell, 'trashItem') as () => unknown, shell, [absolute]);

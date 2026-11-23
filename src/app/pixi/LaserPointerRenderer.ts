@@ -40,7 +40,7 @@ export class LaserPointerRenderer {
   private beam: LaserBeamView;
 
   private trailPoints: TrailPoint[] = [];
-  /** Where the pointer is on the map, or null while it is off the canvas. */
+  /** Where the pointer is on the map, or null while it is off the canvas (a finger: while it is not down). */
   private pointer: WorldPoint | null = null;
   private isToolActive: boolean = false;
   private isPointing: boolean = false;
@@ -97,6 +97,8 @@ export class LaserPointerRenderer {
     viewport.on('pointermove', this.onPointerMove);
     viewport.on('pointerup', this.onPointerUp);
     viewport.on('pointerupoutside', this.onPointerUpOutside);
+    // A press the gesture layer takes back ends the beam as a release off the map does
+    viewport.on('pointercancel', this.onPointerUpOutside);
     // Scroll-pan, pinch and decelerate move the world under a stationary pointer
     viewport.on('moved', this.onViewportMoved);
 
@@ -105,7 +107,8 @@ export class LaserPointerRenderer {
       this.pointer = null;
       this.redraw();
     };
-    this.canvasEl.addEventListener('mouseleave', this.onCanvasLeave);
+    // A pointer leaves the canvas when it moves off it, and a finger whenever it lifts: no dot stays where it was.
+    this.canvasEl.addEventListener('pointerleave', this.onCanvasLeave);
   }
 
   private setActiveTool(tool: ViewState['activeTool']): void {
@@ -306,8 +309,9 @@ export class LaserPointerRenderer {
     this.viewport.off('pointermove', this.onPointerMove);
     this.viewport.off('pointerup', this.onPointerUp);
     this.viewport.off('pointerupoutside', this.onPointerUpOutside);
+    this.viewport.off('pointercancel', this.onPointerUpOutside);
     this.viewport.off('moved', this.onViewportMoved);
-    this.canvasEl.removeEventListener('mouseleave', this.onCanvasLeave);
+    this.canvasEl.removeEventListener('pointerleave', this.onCanvasLeave);
 
     this.trailPoints = [];
     destroyTree(this.container);

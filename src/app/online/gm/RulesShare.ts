@@ -1,4 +1,4 @@
-import type { GmMessage, SharedMoveStep, SharedRollDice, SharedRules } from '../protocol/index.ts';
+import type { GmMessage, SharedMoveStep, SharedRollDice, SharedRowPlace, SharedRules } from '../protocol/index.ts';
 import { MAX_COORDINATE } from '../protocol/index.ts';
 import { areaRulesOf, readUnitName, resolveMeasurementSettings, type MeasurementSettings } from '../../grid/measurementFormat';
 import type { SceneState, SceneStore } from './atlasView.ts';
@@ -18,6 +18,8 @@ export interface RulesSharePorts {
   draw?(): { readonly cell: number } | null;
   /** How the tab's tokens move, or null while it cannot be read; without it players are sent no movement steps. */
   tokenMoves?(): TokenMoves | null;
+  /** The GM's dice row for this map, or null where it has the standard dice. */
+  diceRow?(): readonly SharedRowPlace[] | null;
 }
 
 /**
@@ -57,7 +59,7 @@ const finiteOr = (value: number | undefined, fallback: number): number => (typeo
  * the grid's own, as Atlas's ruler falls back to), accent and whether everyone's cursor shows, and
  * the map's dice where the tab has them; null for a grid players cannot use.
  */
-export function sharedRules(grid: SceneState['grid'], measurement: MeasurementSettings | null, accent: string | null, cursors = false, dice: SharedRollDice | null = null, draw: { readonly cell: number } | null = null, moveSteps: readonly SharedMoveStep[] | null = null): SharedRules | null {
+export function sharedRules(grid: SceneState['grid'], measurement: MeasurementSettings | null, accent: string | null, cursors = false, dice: SharedRollDice | null = null, draw: { readonly cell: number } | null = null, moveSteps: readonly SharedMoveStep[] | null = null, diceRow: readonly SharedRowPlace[] | null = null): SharedRules | null {
   if (grid === null || !Number.isFinite(grid.size) || !(grid.size > 0) || grid.size > MAX_COORDINATE) return null;
   const offsetX = finiteOr(grid.offsetX, 0);
   const offsetY = finiteOr(grid.offsetY, 0);
@@ -76,13 +78,15 @@ export function sharedRules(grid: SceneState['grid'], measurement: MeasurementSe
     ...(dice !== null && { dice }),
     ...(draw !== null && Number.isFinite(draw.cell) && draw.cell > 0 && draw.cell <= MAX_COORDINATE && { draw: { cell: draw.cell } }),
     ...(moveSteps !== null && { moveSteps }),
+    ...(diceRow !== null && { diceRow }),
   };
 }
 
 /**
  * The shared scene's rules (`sharedRules`), sent to all when the scene is shared, to a player who
  * joins, and again whenever they changed when `update` looks (once a second, with the scene's poll):
- * so a GM who lets players draw, or no longer, is followed by a running table within that second.
+ * so a GM who lets players draw, or no longer, or changes the dice row, is followed by a running table
+ * within that second.
  */
 export class RulesShare {
   private readonly store: SceneStore;
@@ -106,7 +110,7 @@ export class RulesShare {
   update(): void {
     if (this.scene === null) return;
     const state = this.store.getState();
-    const rules = sharedRules(state.grid, this.ports.measurement?.() ?? null, this.ports.accent?.() ?? null, this.ports.cursorsShown?.() === true, this.ports.rollDice?.() ?? null, this.ports.draw?.() ?? null, sharedMoveSteps(this.ports.tokenMoves?.()?.rules()));
+    const rules = sharedRules(state.grid, this.ports.measurement?.() ?? null, this.ports.accent?.() ?? null, this.ports.cursorsShown?.() === true, this.ports.rollDice?.() ?? null, this.ports.draw?.() ?? null, sharedMoveSteps(this.ports.tokenMoves?.()?.rules()), this.ports.diceRow?.() ?? null);
     if (rules === null) return;
     const body: GmMessage = { t: 'rules', scene: this.scene, ...rules };
     const text = JSON.stringify(body);

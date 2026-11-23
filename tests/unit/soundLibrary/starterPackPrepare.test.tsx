@@ -11,10 +11,10 @@ let rig: LibraryRig;
 vi.mock('../../../src/app/soundLibrary/starterPack', async (original) => ({
   ...(await original<typeof import('../../../src/app/soundLibrary/starterPack')>()),
   installStarterPack: vi.fn(async (library: SoundLibrary) => {
-    rig.locations.ambience.addFile(`${STARTER_FOLDER}/Cave.ogg`);
-    rig.locations.ambience.addFile(`${STARTER_FOLDER}/Campfire.ogg`);
+    rig.locations.ambience.addFile(`${STARTER_FOLDER}/Cave.opus`);
+    rig.locations.ambience.addFile(`${STARTER_FOLDER}/Campfire.opus`);
     await library.reread('ambience');
-    await library.settle('ambience', [`${STARTER_FOLDER}/Cave.ogg`, `${STARTER_FOLDER}/Campfire.ogg`]);
+    await library.settle('ambience', [`${STARTER_FOLDER}/Cave.opus`, `${STARTER_FOLDER}/Campfire.opus`]);
   }),
 }));
 vi.mock('../../../src/app/ui/notice', () => ({ showNotice: vi.fn(() => ({ setMessage: vi.fn(), hide: vi.fn() })) }));
@@ -36,10 +36,10 @@ describe('the starter ambience, once downloaded', () => {
   it('has its copies made at once, and only its own, so the first press plays without waiting', async () => {
     const request = vi.spyOn(rig.director.shelf, 'request');
     await act(async () => rig.mount(host));
-    await waitFor(() => expect(host.querySelector('.atlas-sound-lib__starter')).not.toBeNull());
-    await act(async () => host.querySelector<HTMLButtonElement>('.atlas-sound-lib__starter')?.click());
+    await waitFor(() => expect(host.querySelector('[aria-label="Ambience"] .atlas-sound-lib__starter')).not.toBeNull());
+    await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Ambience"] .atlas-sound-lib__starter')?.click());
     await waitFor(() => expect(request).toHaveBeenCalled());
     const asked = request.mock.calls.flatMap(([sounds]) => sounds.map((sound) => sound.filePath));
-    expect(asked.sort()).toEqual([`atlas-sound:ambience/${STARTER_FOLDER}/Campfire.ogg`, `atlas-sound:ambience/${STARTER_FOLDER}/Cave.ogg`]);
+    expect(asked.sort()).toEqual([`atlas-sound:ambience/${STARTER_FOLDER}/Campfire.opus`, `atlas-sound:ambience/${STARTER_FOLDER}/Cave.opus`]);
   });
 });

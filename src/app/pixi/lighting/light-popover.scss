@@ -5,13 +5,14 @@
 
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/mixins' as *;
+@use '../../packages/components/primitives/toggle' as *;
 
 // One spacing throughout: the popover's padding, and the gap between everything in it.
 $gap: $spacing-s;
 
 .atlas-light-popover {
   @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
+  @include atlas-panel-radius($surface-radius);
   // Placed with `translate` by useLightPopoverPosition, which also sets the light as its
   // transform origin, so the scale it opens and closes with grows out of the marker.
   position: absolute;
@@ -52,28 +53,12 @@ $gap: $spacing-s;
 
 // Every control at a row's end is one control high here: a field, a select, a stepper. The
 // switch is the usual one, tick and cross on its thumb, at that height instead of its own, so
-// the rows keep one rhythm. Its radii step down as in toggle.scss: thumb = switch − padding − border.
+// the rows keep one rhythm.
 .atlas-light-popover .atlas-toggle:not(.atlas-toggle--s, .atlas-toggle--xs) {
   // Obsidian's control height, which the select and the stepper beside it take too.
   $height: var(--input-height, 30px);
-  $pad: 4px;
-  $thumb: calc(#{$height} - 2 * #{$pad} - 2 * #{$border-width-s});
 
-  .atlas-toggle__switch {
-    height: $height;
-    width: calc(#{$height} * 1.5);
-    padding: $pad;
-  }
-
-  .atlas-toggle__thumb {
-    width: $thumb;
-    height: $thumb;
-    border-radius: calc(#{$radius-xl} - #{$pad} - #{$border-width-s});
-  }
-
-  .atlas-toggle__thumb--on {
-    transform: translateX(calc(#{$height} * 0.5));
-  }
+  @include atlas-toggle-size(calc(#{$height} * 1.5), $height);
 
   .atlas-toggle__icon {
     width: 14px;
@@ -100,7 +85,7 @@ $gap: $spacing-s;
 // stretch across a wide column (Edit Token).
 .atlas-light-kind {
   flex: 1;
-  max-width: $button-height-l * 1.5;
+  max-width: calc(#{$button-height-l} * 1.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -264,11 +249,7 @@ $gap: $spacing-s;
   }
 
   .atlas-segmented {
-    @include atlas-panel-inset-radius($gap);
-  }
-
-  .atlas-segmented__option {
-    @include atlas-panel-inset-radius($gap + $spacing-xs);
+    --atlas-segmented-radius: #{atlas-panel-inset-radius-value($gap)};
   }
 }
 

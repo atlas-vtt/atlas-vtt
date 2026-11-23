@@ -135,15 +135,11 @@ export function useCloseOutside(ref: React.RefObject<HTMLElement | null>, open: 
   useEffect(() => {
     const doc = ref.current?.ownerDocument;
     if (!open || !doc) return undefined;
-    const press = (event: MouseEvent | TouchEvent): void => {
+    const press = (event: PointerEvent): void => {
       if (event.target instanceof Node && ref.current?.contains(event.target)) return;
       close();
     };
-    doc.addEventListener('mousedown', press);
-    doc.addEventListener('touchstart', press);
-    return () => {
-      doc.removeEventListener('mousedown', press);
-      doc.removeEventListener('touchstart', press);
-    };
+    doc.addEventListener('pointerdown', press);
+    return () => doc.removeEventListener('pointerdown', press);
   }, [ref, open, close]);
 }

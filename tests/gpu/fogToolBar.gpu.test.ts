@@ -167,7 +167,7 @@ describe('the fog tool\'s bars above the toolbar', () => {
     expect(track.right).toBeLessThanOrEqual(size.right - 8);
 
     // A press outside the open menu closes it, as on any other control of the bar.
-    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
     await vi.waitFor(() => expect(menus()).toHaveLength(0));
     act(() => button('More').click());
     expect(menus()).toHaveLength(1);
@@ -185,9 +185,9 @@ describe('the fog tool\'s bars above the toolbar', () => {
       const [icon, label] = [action.querySelector('svg')!.getBoundingClientRect(), action.querySelector('span')!.getBoundingClientRect()];
       expect(icon.left).toBeCloseTo(edge, 1);
       expect(label.left).toBeCloseTo(icon.right + 8, 1);
-      // The row itself spans the menu, as a slider's track does.
-      expect(action.getBoundingClientRect().left).toBeCloseTo(across.left, 1);
-      expect(action.getBoundingClientRect().right).toBeCloseTo(across.right, 1);
+      // The row lights up across the menu; the slider's track stands on the text edge, as far in at either end.
+      expect(across.left).toBeCloseTo(edge, 1);
+      expect(action.getBoundingClientRect().right - across.right).toBeCloseTo(across.left - action.getBoundingClientRect().left, 1);
     }
     expect(document.querySelector(`${TOOLS} .atlas-dropdown-slider-row__value`)!.textContent).toBe('50%');
     act(() => settings.setGmFogOpacity(0.8));

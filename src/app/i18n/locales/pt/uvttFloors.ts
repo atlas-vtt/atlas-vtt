@@ -1,0 +1,27 @@
+import type { Translation } from '../../types';
+
+export const uvttFloors: Translation = {
+  'uvttFloors.fileProblem': '{file}: {problem}',
+  'uvttFloors.failed': 'Não foi possível importar os arquivos.',
+  'uvttFloors.tooMany': 'Uma cena comporta no máximo {count} andares.',
+  'uvttFloors.tooLarge': 'Juntos, os arquivos passam de {size} MB.',
+  'uvttFloors.tooManyWalls': 'Juntos, os arquivos têm mais de {count} segmentos de parede.',
+  'uvttFloors.tooManyLights': 'Juntos, os arquivos têm mais de {count} luzes.',
+  'uvttFloors.otherGrid': 'As células de {file} têm {size} pixels de largura, as de {other} {otherSize} pixels, então eles não compartilham uma grade.',
+  'uvttFloors.mapName': '{scene}, {level}',
+  'uvttFloors.reading': 'Lendo {files}…',
+  'uvttFloors.importing': 'Importando “{name}” com {count} andares…',
+  'uvttFloors.couldNot': 'Não foi possível importar “{name}”. {problem}',
+  'uvttFloors.imported': { one: '“{name}” importada com {count} andar: {contents}.', other: '“{name}” importada com {count} andares: {contents}.' },
+  'uvttFloors.walls': { one: '{count} parede', other: '{count} paredes' },
+  'uvttFloors.doors': { one: '{count} porta', other: '{count} portas' },
+  'uvttFloors.lights': { one: '{count} luz', other: '{count} luzes' },
+  'uvttFloors.lightsOff': 'As luzes cujo brilho a imagem já mostra estão desligadas.',
+  'uvttFloors.scaledDown': 'As imagens de {files} foram reduzidas ao maior tamanho que um mapa mantém.',
+  'uvttFloors.title': 'Importar {count} mapas',
+  'uvttFloors.sceneName': 'Nome da cena',
+  'uvttFloors.levels': 'Andares, do mais alto ao mais baixo',
+  'uvttFloors.asScenes': 'Importar como {count} cenas',
+  'uvttFloors.asLevels': 'Importar como uma cena',
+  'uvttFloors.separately': 'Cada arquivo virou uma cena própria. {reason}',
+};

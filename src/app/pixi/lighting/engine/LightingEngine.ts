@@ -1,6 +1,7 @@
 import { Container, Graphics, Matrix, Rectangle, Texture, type Renderer } from 'pixi.js';
 import { exploredMemoryOn } from '../../../lighting/sceneLightingOptions';
 import { DEFAULT_LIGHTING_QUALITY, type LightingQuality } from '../../../lighting/lightingQuality';
+import type { PictureChoice } from '../../../lighting/graphicsSettings';
 import type { UnlitGrid } from '../../../grid/gridLightingMark';
 import { destroyTree } from '../../utils/destroyTree';
 import { BackBufferHold } from './backBuffer';
@@ -8,7 +9,9 @@ import { createCompositeFilter, NO_BELOW, type BelowPictures, type CompositeFilt
 import { contextLost, glOf } from './gpu';
 import { createEngineWorld, type EngineWorld } from './engineWorld';
 import { ambientLift, darkLooks } from './senseDrawing';
+import { shadersOfPicture } from './engineShaders';
 import { describeShaderFailures, failedEngineShaders } from './shaderCheck';
+import { unrenderableEngineTargets } from './targetCheck';
 import { SceneSightLayers } from './SceneSightLayers';
 import type { EngineScene, SceneFrame } from './types';
 import type { Box } from '../../../vision/polygonBounds';
@@ -41,7 +44,8 @@ const NOTHING_BELOW: BelowShown = { pictures: NO_BELOW, dim: 1 };
  * only while lighting is enabled.
  *
  * The engine never takes its caller down. Before it draws on a context it asks the driver
- * whether its shaders link (`failedEngineShaders`); it draws nothing while the context is lost;
+ * whether its shaders link (`failedEngineShaders`) and whether it renders into the engine's
+ * texture formats (`unrenderableEngineTargets`); it draws nothing while the context is lost;
  * and an error thrown by a pass stops it for good (`failed`): the layer is hidden, the world and
  * the back buffer are released, and every later call does nothing. A restored context is only
  * noted in PIXI's runner; the world is rebuilt from the last scene at the engine's next call.
@@ -69,8 +73,8 @@ export class LightingEngine {
   private grid: UnlitGrid | null = null;
   private enabled = false;
   private stopped = false;
-  /** The shaders link on the current context. */
-  private verified = false;
+  /** The picture whose shaders link on the current context; the traced one's are all of them. */
+  private verified: PictureChoice | null = null;
   /** The context was restored: the world's textures are blank until it is rebuilt. */
   private stale = false;
   private restoreUnreported = false;
@@ -311,7 +315,7 @@ export class LightingEngine {
   }
 
   /**
-   * Whether the context is there and links the engine's shaders. After a restored context the
+   * Whether the context is there, links the engine's shaders and renders into its texture formats. After a restored context the
    * world goes (its textures are blank) and the shaders are checked again on the new one.
    * Another renderer than WebGL (PIXI's Canvas or WebGPU renderer, which a browser without
    * WebGL gets) has no pipe for the engine's meshes: the engine stops before it draws anything.
@@ -323,16 +327,18 @@ export class LightingEngine {
       this.dropWorld();
       this.scene = scene;
       this.stale = false;
-      this.verified = false;
+      this.verified = null;
     }
-    if (this.verified) return true;
+    const picture = this.quality.picture ?? 'traced';
+    if (this.verified === 'traced' || this.verified === picture) return true;
     const gl = glOf(this.renderer);
     if (!gl) {
       console.error(`Atlas: dynamic lighting needs WebGL, and this view draws with PIXI's ${this.renderer.name} renderer`);
       this.stop();
       return false;
     }
-    const failures = failedEngineShaders(gl);
+    const failures = failedEngineShaders(gl, shadersOfPicture(picture));
+    const unrenderable = unrenderableEngineTargets(gl);
     // Lost while compiling: the logs say nothing about the device. Wait for the restore.
     if (contextLost(this.renderer)) return false;
     if (failures.length > 0) {
@@ -340,7 +346,12 @@ export class LightingEngine {
       this.stop();
       return false;
     }
-    this.verified = true;
+    if (unrenderable.length > 0) {
+      console.error(`Atlas: dynamic lighting cannot run on this graphics device. It cannot render into these texture formats: ${unrenderable.join(', ')}`);
+      this.stop();
+      return false;
+    }
+    this.verified = picture;
     return true;
   }
 

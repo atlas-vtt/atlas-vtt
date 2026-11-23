@@ -1,4 +1,6 @@
 import { App } from 'obsidian';
+import { initiativeScaleOf } from './playerInitiativeList';
+import { turnBannerScaleFor } from '../initiative/banner/turnBannerElement';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import type { SettingsService } from './SettingsService';
@@ -26,6 +28,8 @@ import { CURTAIN_DOWN_MS, removePlayerCurtain, showPlayerCurtain } from './playe
 import { PlayerSceneFade } from './playerSceneFade';
 import { watchPlayerWindowDisplay } from './playerWindowDisplay';
 import { keepPlayerWindowAwake } from './playerWindowThrottling';
+import { PlayerMirrorFallback } from './playerMirrorFallback';
+import { isDesktopApp } from '../platform/desktopOnly';
 
 /** Scopes the rules in `player-window.scss` to the popout document. */
 const PLAYER_WINDOW_BODY_CLASS = 'atlas-player-window';
@@ -75,6 +79,8 @@ export class PlayerWindowService {
   private isCleaningUp = false;
   /** Brings frames of the presented scene into the window; exists while frames are being mirrored. */
   private mirror: PlayerFrameMirror | null = null;
+  /** Steps the mirror from the main window while the player window gets no display frames (another virtual desktop). */
+  private mirrorFallback: PlayerMirrorFallback | null = null;
   /** Identifies the running frame loop; a newer loop ends older ones. */
   private mirrorLoopId = 0;
   /** Identifies the running glide of frozen players; any other change of their camera ends it. */
@@ -170,6 +176,18 @@ export class PlayerWindowService {
     return !!tv?.trueScale && tv.setup !== null;
   }
 
+  /**
+   * Moves players to the world point (x, y) of the scene shown in `tabId` at once, pinned there:
+   * each step of the glass being dragged. The step is neither remembered nor written to the
+   * window's session; the drop (`framePlayersOn`) does both. False where players see another scene.
+   */
+  public dragPlayersTo(tabId: string, x: number, y: number): boolean {
+    const camera = this.framingCamera(tabId);
+    if (!camera) return false;
+    this.setFrozenCamera({ ...camera, centerX: x, centerY: y }, false);
+    return true;
+  }
+
   /** The glass on the map of `tabId`: what players see of it, pinned or following; null where they see another scene. */
   public glassOf(tabId: string): WorldFrame | null {
     return this.framingCamera(tabId) ? glassFrame(this.playerViewFrame(tabId), this.frozenCamera) : null;
@@ -259,14 +277,26 @@ export class PlayerWindowService {
   /** The camera players see the scene of `tabId` through, where they see it live. */
   private framingCamera(tabId: string): PlayerCameraState | null {
     if (!this.isWindowOpen() || this.heldFrame || playerWindowStore.getState().shownTabId !== tabId) return null;
-    return this.frozenCamera ?? this.cameraPlayersSee();
+    return this.outlinedCamera();
+  }
+
+  /**
+   * The camera the glass on the GM's map is placed through: pinned, the frozen one; following,
+   * the view's own, which the outline is drawn through and the next frame is rendered through
+   * (the last frame's would trail the GM's pans by a frame); else what players were shown last.
+   */
+  private outlinedCamera(): PlayerCameraState | null {
+    if (this.frozenCamera) return this.frozenCamera;
+    const source = this.streamSource;
+    const live = source && !this.heldFrame && !cannotRender(source) ? source.getCamera?.() : undefined;
+    return live ?? this.cameraPlayersSee();
   }
 
   /** The frame the mirror would render of `source` through the camera players are on: the same function, so the outline is what players get. */
   private playerFrameOf(source: PlayerFrameSource | null): PlayerFrame | null {
     const canvas = this.playerWindow?.document.getElementById('atlas-player-canvas');
     const window = canvas?.instanceOf(HTMLCanvasElement) ? this.windowScreen(canvas) : null;
-    const camera = this.isWindowOpen() ? this.frozenCamera ?? this.cameraPlayersSee() : null;
+    const camera = this.isWindowOpen() ? this.outlinedCamera() : null;
     if (!source || !window || !camera) return null;
     return tableTvPlayerFrame(window, camera, source.getScreen?.(), this.tableTv(), source.getGridSize?.(), this.pixelBudget());
   }
@@ -440,9 +470,11 @@ export class PlayerWindowService {
 
   /**
    * Opens the player window's leaf in a popout (or reuses the one there is) on `scene`; the
-   * presenter then attaches it to the view that holds the scene. Null when Obsidian gave no player view.
+   * presenter then attaches it to the view that holds the scene. Null when Obsidian gave no player view,
+   * and on mobile, which has no second window to open.
    */
   public static async openLeaf(app: App, scene: PresentedScene): Promise<LocalPlayerView | null> {
+    if (!isDesktopApp()) return null;
     const leaf = app.workspace.getLeavesOfType(LOCAL_PLAYER_VIEW_TYPE)[0] ?? app.workspace.openPopoutLeaf();
     await leaf.setViewState({ type: LOCAL_PLAYER_VIEW_TYPE, state: { tabId: scene.tabId, filePath: scene.filePath, ...(scene.levelId ? { levelId: scene.levelId } : {}), frozen: false } });
     return leaf.view instanceof LocalPlayerView ? leaf.view : null;
@@ -592,8 +624,15 @@ export class PlayerWindowService {
       const applyTurn = (): void => {
         const tv = this.tableTv();
         if (tv) applyTableTvLook(body, overlayLayer, tv);
+        // How large the initiative lists are drawn (the player view's setting), and the turn banner (the window's size)
+        const { initiativeScale } = this.settingsService.getLocalPlayerViewSettings();
+        overlayLayer.style.setProperty('--atlas-player-initiative-scale', String(initiativeScaleOf(initiativeScale)));
+        const win = this.playerWindow;
+        if (win) overlayLayer.style.setProperty('--atlas-player-turn-banner-scale', String(turnBannerScaleFor(win.innerWidth, win.innerHeight)));
       };
       applyTurn();
+      const playerWindow = this.playerWindow;
+      playerWindow.addEventListener('resize', applyTurn);
       this.sceneOverlays.forEach((overlay) => overlay.mount(overlayLayer));
       this.settingsUnsubscribe?.();
       // Player view settings decide which layers players see
@@ -609,6 +648,7 @@ export class PlayerWindowService {
       this.settingsUnsubscribe = () => {
         unsubscribeSettings();
         stopRules();
+        playerWindow.removeEventListener('resize', applyTurn);
       };
 
       // Create freeze indicator
@@ -708,18 +748,32 @@ export class PlayerWindowService {
     });
     this.mirror = mirror;
 
-    const mirrorFrame = (): void => {
-      if (loopId !== this.mirrorLoopId) return;
+    /** The player window while this loop runs; ends the loop once the window or its scene is gone. */
+    const loopWindow = (): Window | null => {
+      if (loopId !== this.mirrorLoopId) return null;
       if (!this.playerWindow || this.playerWindow.closed || !this.streamSource) {
         this.cleanup();
-        return;
+        return null;
       }
-
-      this.animationFrame = this.playerWindow.requestAnimationFrame(mirrorFrame);
+      return this.playerWindow;
+    };
+    const step = (): void => {
       this.sceneFade.expire(performance.now());
       mirror.frame();
     };
+    this.mirrorFallback?.stop();
+    const fallback = new PlayerMirrorFallback(loopWindow, step);
+    this.mirrorFallback = fallback;
 
+    const mirrorFrame = (): void => {
+      const win = loopWindow();
+      if (!win) return;
+      this.animationFrame = win.requestAnimationFrame(mirrorFrame);
+      fallback.displayFrame();
+      step();
+    };
+
+    fallback.start();
     mirrorFrame();
   }
 
@@ -769,6 +823,8 @@ export class PlayerWindowService {
     this.mirrorLoopId++;
     this.mirror?.stop();
     this.mirror = null;
+    this.mirrorFallback?.stop();
+    this.mirrorFallback = null;
 
     if (this.animationFrame) {
       this.playerWindow?.cancelAnimationFrame(this.animationFrame);

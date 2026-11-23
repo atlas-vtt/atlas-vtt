@@ -1,4 +1,4 @@
-import type { EventEmitter } from 'events';
+import type { EventEmitter } from '../utils/typedEmitter';
 import type { StoreApi } from 'zustand';
 import { shallow } from 'zustand/vanilla/shallow';
 import type { ViewAtlasState } from '../storeFactory';
@@ -82,6 +82,11 @@ export abstract class PlayerSceneOverlay<Scene extends object> implements Player
   destroy(): void {
     this.hold();
     this.unsubscribeSettings();
+  }
+
+  /** The container drawings go into, once mounted. */
+  protected containerOf(): HTMLElement | undefined {
+    return this.container;
   }
 
   /** Picks the store values this overlay shows; a shallow change triggers a re-render. */

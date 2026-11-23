@@ -54,7 +54,8 @@ describe('Atlas in Russian', () => {
   it('names commands and ribbon icons in Russian', () => {
     const { commands, ribbon } = registeredNames();
     expect(commands.find((command) => command.id === 'open-dashboard')?.name).toBe('Открыть панель');
-    expect(commands.find((command) => command.id === 'open-scene-browser')?.name).toBe('Открыть список сцен');
+    expect(commands.find((command) => command.id === 'open-scene-browser')?.name).toBe('Открыть менеджер ресурсов');
+    expect(ribbon).toContain('Открыть Atlas VTT');
     expect(ribbon).toContain('Показать изображение игрокам');
   });
 
@@ -79,7 +80,7 @@ describe('falling back to English', () => {
   afterEach(() => setLocale('en', TRANSLATIONS));
 
   it('speaks English for a language Atlas has no translation for', () => {
-    setLocale('de', TRANSLATIONS);
+    setLocale('ja', TRANSLATIONS);
     expect(getLocale()).toBe('en');
     expect(t('count.files', { count: 3 })).toBe('3 files');
     expect(registeredNames().commands.find((command) => command.id === 'open-dashboard')?.name).toBe('Open dashboard');

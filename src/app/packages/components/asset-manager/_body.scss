@@ -21,6 +21,16 @@
   }
 }
 
+// The library's rows and panes. The store lies over it (`.atlas-armarium-pane`), and it stays under the store while
+// the store fades in.
+.atlas-asset-manager-library {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
 .atlas-asset-manager-main {
   flex: 1;
   display: flex;
@@ -72,6 +82,7 @@
     // The folders between the tab and the open one give way first; the tab and the open folder keep theirs.
     flex: 0 4 auto;
     min-width: 0;
+    overflow: hidden;
 
     &:first-of-type {
       flex-shrink: 0;
@@ -265,6 +276,7 @@
   white-space: nowrap;
   // Alone on its row and still too long, its text ends in an ellipsis.
   min-width: 0;
+  overflow: hidden;
   max-width: 100%;
   opacity: 1;
   transform: translateX(0);
@@ -279,6 +291,17 @@
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  // Select all, which a coarse pointer has in Mod+A's place: text in the chip's own colour, a control's height.
+  .atlas-select-all-btn.btn {
+    flex-shrink: 0;
+    height: var(--atlas-control-height, 30px);
+    padding-inline: $spacing-s;
+    border-radius: $radius-s;
+    color: var(--text-accent);
+    font-size: $font-ui-small;
+    font-weight: $font-weight-medium;
   }
 
   .atlas-clear-selection-btn {
@@ -411,6 +434,7 @@
 .atlas-starter-choice__text {
   @include atlas-flex-col($gap: $spacing-xs);
   min-width: 0;
+  white-space: normal;
 
   small {
     color: var(--text-muted);

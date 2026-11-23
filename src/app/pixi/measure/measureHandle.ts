@@ -4,6 +4,7 @@ import type { Point } from '../../types/visionTypes';
 import { lightColorNumber, readableTint } from '../lighting/lightMarker';
 import type { CanvasBadgeTheme } from '../utils/canvasBadgeColors';
 import { mapMarkerScale } from '../utils/mapMarkerScale';
+import { pointerReach } from '../utils/pointerReach';
 
 /** Screen pixels at marker scale 1. A measurement's handle is smaller than a light's badge (14) and a note pin's (20). */
 export const MEASURE_HANDLE_RADIUS = 10;
@@ -13,15 +14,20 @@ export const MEASURE_HANDLE_HIT_RADIUS = 12;
 /** The handle at an area's far end: a plain dot, smaller than the badge at its origin. */
 export const MEASURE_END_HANDLE_RADIUS = 6;
 export const MEASURE_END_HANDLE_HIT_RADIUS = 9;
+/** The handle that only turns a kept area: the same size as the dot at its far end, which it stands next to. */
+export const MEASURE_TURN_HANDLE_RADIUS = MEASURE_END_HANDLE_RADIUS;
+export const MEASURE_TURN_HANDLE_HIT_RADIUS = MEASURE_END_HANDLE_HIT_RADIUS;
+/** Screen pixels, at marker scale 1, from the far end's dot to the turn handle: both dots and a small gap. */
+export const MEASURE_TURN_HANDLE_OFFSET = MEASURE_END_HANDLE_RADIUS + MEASURE_TURN_HANDLE_RADIUS + 4;
 
 const HOVER_LIFT = 1.12;
 const DRAG_LIFT = 1.2;
 
 /**
  * What of a kept measurement takes the pointer. Its origin moves the whole of it; an area's far
- * end resizes and turns it.
+ * end resizes and turns it; the turn handle next to its far end only turns it, whatever its size.
  */
-export type MeasureHandlePart = 'origin' | 'end';
+export type MeasureHandlePart = 'origin' | 'end' | 'turn';
 
 /** A handle on the map: which measurement's, and which of its parts. */
 export interface MeasureHandleRef {
@@ -47,6 +53,26 @@ export function measureHandlePoint(measure: Pick<KeptMeasure, 'points'>): Point 
 /** Where the handle at an area's far end stands; null for a ruler, which has none. */
 export function measureEndHandlePoint(measure: Pick<KeptMeasure, 'shape' | 'points'>): Point | null {
   return measure.shape === 'ruler' ? null : measure.points[1] ?? null;
+}
+
+/**
+ * Where the turn handle of a kept area stands at viewport `zoom`: beside its far end's dot, to the
+ * right of it as seen from the origin, a fixed distance on screen away. That is along the area's own
+ * edge there (a cone's base, a square's far side, a line's end), which stands square to the way it
+ * points, so the handle lies on the drawn outline. A circle has none, since it looks the
+ * same at any angle (an aura is a circle). A ruler has none either: its distance follows the
+ * grid's diagonal rule, so the same path would read differently turned. Nor has an area whose
+ * points lie on each other.
+ */
+export function measureTurnHandlePoint(measure: Pick<KeptMeasure, 'shape' | 'points'>, zoom: number): Point | null {
+  const first = measure.points[0];
+  const last = measure.points[measure.points.length - 1];
+  if (measure.shape === 'circle' || measure.shape === 'ruler' || !first || !last) return null;
+  const length = Math.hypot(last.x - first.x, last.y - first.y);
+  if (length === 0) return null;
+  const reach = MEASURE_TURN_HANDLE_OFFSET * mapMarkerScale(zoom);
+  // Screen y grows downward: looking from the first point to the last, the right hand is (-dy, dx).
+  return { x: last.x - ((last.y - first.y) / length) * reach, y: last.y + ((last.x - first.x) / length) * reach };
 }
 
 /** Where a kept measurement's handles stand, in world pixels. */
@@ -88,6 +114,8 @@ export interface MeasureHandleLook {
   lift: number;
   /** The same for the handle at an area's far end. */
   endLift: number;
+  /** The same for the turn handle. */
+  turnLift: number;
 }
 
 const liftOf = (state: MeasureHandleState, part: MeasureHandlePart): number => {
@@ -105,6 +133,7 @@ export function measureHandleLook(measure: Pick<KeptMeasure, 'shape' | 'color'>,
     accent: state.selected ? theme.accent : null,
     lift: liftOf(state, 'origin'),
     endLift: liftOf(state, 'end'),
+    turnLift: liftOf(state, 'turn'),
   };
 }
 
@@ -119,7 +148,7 @@ export function sameHandleLook(a: MeasureHandleLook, b: MeasureHandleLook): bool
  * measurement's handles stand.
  */
 export function measureHandleAt(measures: readonly KeptMeasure[], point: Point, zoom: number, place: MeasureHandlePlacer = handlesAtPoints): MeasureHandleRef | null {
-  const scale = mapMarkerScale(zoom);
+  const scale = pointerReach(mapMarkerScale(zoom));
   let nearest: MeasureHandleRef | null = null;
   let best = Infinity;
   const take = (id: string, part: MeasureHandlePart, at: Point | null, reach: number): void => {
@@ -135,6 +164,7 @@ export function measureHandleAt(measures: readonly KeptMeasure[], point: Point, 
     if (!at) continue;
     take(measure.id, 'origin', at.origin, MEASURE_HANDLE_HIT_RADIUS);
     take(measure.id, 'end', at.end, MEASURE_END_HANDLE_HIT_RADIUS);
+    take(measure.id, 'turn', measureTurnHandlePoint(measure, zoom), MEASURE_TURN_HANDLE_HIT_RADIUS);
   }
   return nearest;
 }

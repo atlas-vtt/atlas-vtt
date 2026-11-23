@@ -7,22 +7,24 @@
 
 .atlas-scene-levels {
   @include atlas-flex-col($spacing-s);
-  padding: 0 $spacing-l $spacing-l;
+  padding: $spacing-l;
 }
 
 .atlas-scene-levels__add {
-  @include atlas-flex-row($spacing-s);
+  @include atlas-flex-row($spacing-xs);
   @include atlas-ghost-button;
-  justify-content: center;
-  height: var(--input-height);
-  border-radius: $radius-l;
+  // A small action at the list's head, as wide as its words: the list is the page, not the button.
+  align-self: flex-start;
+  height: $button-height-s;
+  padding: 0 $spacing-s;
+  border-radius: $radius-m;
   box-shadow: none;
   font-size: $font-ui-small;
   cursor: pointer;
 
   svg {
-    width: $icon-s;
-    height: $icon-s;
+    width: $icon-xs;
+    height: $icon-xs;
   }
 }
 
@@ -39,7 +41,7 @@
 .atlas-scene-level {
   @include atlas-flex-row($spacing-xs);
   padding: $spacing-xs;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   cursor: pointer;
 
   &:hover {
@@ -90,6 +92,8 @@
   // As tall as the row's fields, as every control of a row is
   width: var(--input-height);
   height: var(--input-height);
+  // $surface-inset inside the row (a level's or a roof's): concentric with its corner at the row's end.
+  border-radius: $control-inset-radius;
   box-shadow: none;
 
   &:disabled {
@@ -116,7 +120,7 @@
   @include atlas-flex-col($spacing-xs);
   padding: $spacing-xs;
   margin-left: $spacing-l;
-  border-radius: $radius-l;
+  border-radius: $radius-m;
   background: var(--background-secondary);
 }
 

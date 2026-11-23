@@ -9,7 +9,7 @@ export const measure = {
   'measure.shape.line': 'Line',
   'measure.stopsAtWalls': 'Stops at walls',
   'measure.followsToken': 'Follows token',
-  'measure.noTokenUnder': 'Its centre is on no token',
+  'measure.noTokenUnder': 'It starts on no token',
   'measure.width': 'Width',
   'measure.narrower': 'Narrower',
   'measure.wider': 'Wider',

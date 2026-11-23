@@ -6,22 +6,17 @@
 import type { InitiativeSide, SideId, SideRef } from './initiativeRulesTypes';
 
 /**
- * Configuration for the initiative tracker
- */
-export interface InitiativeConfig {
-  /** Whether to auto-sort entries by initiative value after rolling */
-  autoSort: boolean;
-}
-
-/**
  * A single entry in the initiative tracker
  */
 export interface InitiativeEntry {
   /** Unique identifier for this entry */
   id: string;
 
-  /** Reference to the token on the map */
-  tokenId: string;
+  /** The token on the map; none for a player at the table (`partyMemberId`) or an enemy added by name (`isTokenlessEnemy`). */
+  tokenId?: string;
+
+  /** The collection's party member this entry is (`PartyMember.id`); such an entry has no token. */
+  partyMemberId?: string;
 
   /** Display name */
   name: string;
@@ -49,6 +44,12 @@ export interface InitiativeEntry {
 
   /** Path to linked statblock note (for CMD+hover preview); `undefined` clears it when patched */
   statblockPath?: string | undefined;
+
+  /**
+   * The GM hides the combatant from the players' list, whatever it is, without hiding a token on the map
+   * (`playersEntryToken`); the GM's card shows it as a hidden token's. `undefined` clears it when patched; older versions ignore it.
+   */
+  hiddenFromPlayers?: true | undefined;
 
   /** Whether this entry has the current turn */
   isActive: boolean;
@@ -86,6 +87,10 @@ export interface InitiativeEntry {
    * first, and look-alikes may share one. Older versions ignore it and read the order as it stands.
    */
   card?: number;
+
+  /** The conditions of a combatant without a token (a player at the table, an enemy added by name); a token keeps its own. */
+  conditions?: string[];
+  conditionValues?: Record<string, number>;
 }
 
 /** A fight by sides as it runs: which side has the turn, and in what order the sides act. */
@@ -95,13 +100,13 @@ export interface SidesFight {
   /** The side whose turn it is; where sides act at once (equal rolls), any one of them. */
   active: SideId;
   /**
-   * Every side in the order it acts, copied from the rules as the fight started. Unset, `first`
-   * then the other: set only where the collection names sides of its own or orders them otherwise.
+   * Every side in the fight's order, set from the rules or sorted by the opening roll.
+   * Unset, `first` then the other.
    */
   order?: SideRef[];
   /** The dice each side rolls at the start of every round for the order: the highest first, equal rolls at once. */
   roll?: string;
-  /** The rolls of each round, by round; stepping back into a round shows its rolls again. */
+  /** The rolls by round, or only round one's opening rolls in a fight that rolls once. */
   rolls?: Record<string, Record<SideId, number>>;
 }
 
@@ -133,14 +138,17 @@ export interface InitiativeState {
   /** Whether combat is currently active */
   isActive: boolean;
 
-  /** Configuration for initiative calculation */
-  config: InitiativeConfig;
-
   /**
    * Set while a fight runs by sides: the side that acts first in a round and the one whose
    * turn it is. A fight keeps the mode it was started in, whatever the collection's rules say since.
    */
   sides?: SidesFight;
+
+  /**
+   * The order the GM dragged the sides into, for this scene's fights by sides: those named act first, in this order,
+   * the rest after them as the rules have them. Older versions ignore it and go by the rules.
+   */
+  sideOrder?: SideId[];
 
   /** Set while a fight runs by cards; a fight keeps the mode it was started in. */
   cards?: CardsFight;
@@ -153,13 +161,6 @@ export interface InitiativeState {
 }
 
 /**
- * Default configuration for initiative
- */
-export const DEFAULT_INITIATIVE_CONFIG: InitiativeConfig = {
-  autoSort: true,
-};
-
-/**
  * Default empty initiative state
  */
 export const createDefaultInitiativeState = (): InitiativeState => ({
@@ -167,5 +168,4 @@ export const createDefaultInitiativeState = (): InitiativeState => ({
   currentIndex: -1,
   round: 0,
   isActive: false,
-  config: { ...DEFAULT_INITIATIVE_CONFIG },
 });

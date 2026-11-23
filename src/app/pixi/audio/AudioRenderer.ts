@@ -5,6 +5,7 @@ import type { ViewAtlasState } from '../../storeFactory';
 import type { AudioSource } from '../../types/audioTypes';
 import { destroyTree } from '../utils/destroyTree';
 import { levelObjects } from '../../levels/levelObjects';
+import { FINGER_TARGET_RADIUS, fingerReaches, ReachPick } from '../utils/pointerReach';
 
 const ICON_RADIUS = 10;
 const HIT_TOLERANCE = 12;
@@ -21,6 +22,7 @@ export class AudioRenderer {
   private iconGraphics: Graphics;
   private ringGraphics: Graphics;
   private store: StoreApi<ViewAtlasState>;
+  private readonly reached = new ReachPick<string>();
   private viewport: Viewport;
   private unsubscribers: Array<() => void> = [];
   private visible = false;
@@ -147,17 +149,20 @@ export class AudioRenderer {
   /** Hit-test world coordinates against all audio source icons. */
   hitTestAudioSources(worldX: number, worldY: number): string | null {
     const audios = levelObjects(this.store.getState()).audios;
-    const tolSq = HIT_TOLERANCE * HIT_TOLERANCE;
+    // The icons are the map's size; under a finger one is never a smaller target than a finger needs
+    const zoom = this.viewport.scale.x > 0 ? this.viewport.scale.x : 1;
+    const tolerance = fingerReaches() ? Math.max(HIT_TOLERANCE, FINGER_TARGET_RADIUS / zoom) : HIT_TOLERANCE;
+    const pick = this.reached.begin(tolerance * tolerance);
 
-    for (const source of Object.values(audios)) {
+    for (const id in audios) {
+      const source = audios[id];
+      if (!source) continue;
       const dx = worldX - source.x;
       const dy = worldY - source.y;
-      if (dx * dx + dy * dy <= tolSq) {
-        return source.id;
-      }
+      if (pick.offer(source.id, dx * dx + dy * dy) && pick.over) break;
     }
 
-    return null;
+    return pick.taken;
   }
 
   setSelectedAudio(id: string | null): void {

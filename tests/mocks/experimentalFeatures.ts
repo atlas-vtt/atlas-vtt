@@ -34,8 +34,3 @@ export function withStatblockEditor<T>(app: T): T {
 export function withOnlinePlay<T>(app: T): T {
   return withFeature(app, 'onlinePlay');
 }
-
-/** An app whose GM switched sound on. */
-export function withSound<T>(app: T): T {
-  return withFeature(app, 'sound');
-}

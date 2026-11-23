@@ -55,11 +55,6 @@ $loot-padding: $spacing-m;
   color: var(--text-faint);
   font-size: $font-ui-smaller;
   text-align: center;
-
-  svg {
-    width: $icon-m;
-    height: $icon-m;
-  }
 }
 
 // ── History ────────────────────────────────────────────────────────────────
@@ -126,6 +121,12 @@ $loot-padding: $spacing-m;
   opacity: 1;
 }
 
+@include atlas-hover-reveal {
+  .atlas-loot-history__roll .atlas-loot-history__remove.btn--icon {
+    opacity: 1;
+  }
+}
+
 // ── Empty states ───────────────────────────────────────────────────────────
 .atlas-loot-empty {
   @include atlas-flex-col($spacing-s);
@@ -138,13 +139,7 @@ $loot-padding: $spacing-m;
 
 .atlas-loot-empty__icon {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: $button-height-l;
-  height: $button-height-l;
-  border-radius: $radius-full;
-  color: var(--color-yellow);
-  background: color-mix(in oklch, var(--color-yellow) 14%, transparent);
+  color: var(--text-faint);
 
   svg {
     width: $icon-m;

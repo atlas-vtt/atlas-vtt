@@ -10,7 +10,7 @@ import { FilterSection } from './FilterSection';
 import { OptionFilter } from './OptionFilter';
 import { RangeFilter } from './RangeFilter';
 import { filterGlyph } from '../../search/filterGlyphs';
-import { t } from '../../../../../i18n';
+import { t, tPointer } from '../../../../../i18n';
 
 const STATBLOCK_CHOICES = [
   { value: 'any', label: t('filters.all') },
@@ -101,7 +101,7 @@ export function CreatureFilterControls({ panel, statblockFilter = true }: Creatu
 
   return (
     <>
-      <p className="atlas-filter-panel__hint">{t('filters.hint')}</p>
+      <p className="atlas-filter-panel__hint">{tPointer('filters.hint')}</p>
       {statblockFilter && (
         <FilterSection title={t('filters.statblock')} active={selection.statblock !== 'any'}>
           <SegmentedControl

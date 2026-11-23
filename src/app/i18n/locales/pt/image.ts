@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const image: Translation = {
+  'image.copy': 'Copiar imagem',
+  'image.openDefault': 'Abrir no app padrão',
+  'image.openDefaultMenu': 'Abrir no app padrão',
+  'image.display': 'Mostrar na visão dos jogadores',
+  'image.copied': 'Imagem copiada para a área de transferência',
+  'image.copyFailed': 'Não foi possível copiar a imagem',
+  'image.windowClosed': 'A janela dos jogadores não está aberta. Abra-a primeiro.',
+  'image.windowUnavailable': 'A janela dos jogadores não está disponível',
+  'image.displayFailed': 'Não foi possível mostrar a imagem na visão dos jogadores',
+  'image.closed': 'Exibição da imagem fechada',
+  'image.tooLarge': 'Esta imagem tem {width} × {height} px, mais do que o Obsidian consegue abrir: no máximo {megapixels} megapixels e {side} px por lado. Exporte-a menor e importe-a de novo.',
+  'image.tooLargeForDevice': 'Esta imagem tem {width} × {height} px, mais do que este dispositivo consegue abrir: no máximo {megapixels} megapixels. Exporte-a menor e importe-a de novo.',
+  'image.unsupported': 'Esta imagem tem {width} × {height} px, mais do que o Obsidian abre de uma vez, e o Atlas só consegue ler uma imagem tão grande como JPEG simples ou PNG sem entrelaçamento. {advice}',
+  'image.unsupported.progressive': 'Salve-a como JPEG simples, não progressivo, e importe-a de novo.',
+  'image.unsupported.interlaced': 'Salve o PNG sem entrelaçamento e importe-o de novo.',
+  'image.unsupported.orientation': 'Exporte-a na posição certa, sem a rotação nos dados da câmera, e importe-a de novo.',
+  'image.unsupported.scans': 'Salve-a como JPEG simples e importe-a de novo.',
+  'image.unsupported.coding': 'Salve-a como JPEG simples de 8 bits e importe-a de novo.',
+  'image.unsupported.components': 'Salve-a como JPEG RGB e importe-a de novo.',
+  'image.unsupported.corrupt': 'Não foi possível ler o arquivo; exporte-o de novo.',
+  'image.unreadable': 'Esta imagem tem {width} × {height} px, mais do que o Obsidian abre de uma vez, e não foi possível ler o arquivo dela. Exporte-a e importe-a de novo.',
+};

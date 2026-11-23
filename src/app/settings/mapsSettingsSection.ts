@@ -4,7 +4,7 @@ import type { AtlasSettingSection } from './settingSections';
 import { MAX_FOG_EDGE_WIDTH, type FogEdgeStyle } from '../fog/fogEdge';
 import { t } from '../i18n';
 
-/** How maps are shown: whether animated maps play on this device, and how the fog's edge looks. */
+/** How maps are shown: whether animated maps play on this device, whether a mouse gets the bar above a selection, and how the fog's edge looks. */
 export function mapsSettingsSection(settings: SettingsService): AtlasSettingSection {
   return {
     heading: t('settings.maps.heading'),
@@ -16,6 +16,15 @@ export function mapsSettingsSection(settings: SettingsService): AtlasSettingSect
         const reducedMotion = activeWindow.matchMedia('(prefers-reduced-motion: reduce)').matches;
         setting.addToggle((toggle) => {
           toggle.setValue(animateMapsOn(settings.getAnimateMaps(), reducedMotion)).onChange((on) => settings.setAnimateMaps(on));
+        });
+      },
+    }, {
+      name: t('settings.maps.selectionBar'),
+      desc: t('settings.maps.selectionBarHint'),
+      aliases: ['selection', 'toolbar', 'touch', 'tablet', 'duplicate', 'delete'],
+      render: (setting) => {
+        setting.addToggle((toggle) => {
+          toggle.setValue(settings.isSelectionBarShown()).onChange((shown) => settings.setSelectionBarShown(shown));
         });
       },
     }, {

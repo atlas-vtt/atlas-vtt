@@ -1,5 +1,5 @@
 import { inThreadPort, type PortFactory, type TesseraPort } from './tesseraPorts';
-import type { TesseraEvent, TesseraMessage, TesseraReply } from './tesseraProtocol';
+import type { TesseraBudgets, TesseraEvent, TesseraMessage, TesseraReply } from './tesseraProtocol';
 
 /**
  * Keeps `TesseraDecoderClient`'s port to the tessera core: starts the worker on
@@ -20,6 +20,8 @@ export class TesseraWorkerCrash extends Error {
 
 export interface TesseraPortKeeperOptions {
   appId: string | null;
+  /** What the device lets the core hold; the desktop's budgets when unset. */
+  budgets?: TesseraBudgets | undefined;
   worker: PortFactory;
   /** Used when no worker starts. */
   inThread?: PortFactory;
@@ -72,7 +74,7 @@ export class TesseraPortKeeper {
     own.port = port;
     this.port = port;
     this.ready = false;
-    port.post({ type: 'init', appId: this.options.appId }, []);
+    port.post({ type: 'init', appId: this.options.appId, ...(this.options.budgets && { budgets: this.options.budgets }) }, []);
     return port;
   }
 

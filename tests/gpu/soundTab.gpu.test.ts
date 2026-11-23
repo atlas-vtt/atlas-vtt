@@ -182,15 +182,23 @@ describe('the DM screen’s Sound page', () => {
     expect(parseFloat(getComputedStyle(document.querySelector('.atlas-sound-pane')!).borderRadius)).toBe(24);
     expect(document.querySelectorAll('.atlas-dm-screen-pages [role="radio"]')).toHaveLength(2);
 
-    // The library takes about 58 % and the moods the rest, parted by the moods' hairline, on one line.
-    const library = box('.atlas-sound-lib');
+    // Rail and library take about 58 % and the moods the rest, on one line.
+    const rail = box('.atlas-sound-side');
+    const library = box('.atlas-sound-stage > .atlas-sound-lib');
     const moods = box('.atlas-sound-moods');
-    expect(library.width / surface.width).toBeCloseTo(0.58, 1);
+    // The rail runs the surface's whole height at its left, beside the stage and the desk.
+    expect(rail.left).toBeCloseTo(surface.left, 0);
+    expect(rail.top).toBeCloseTo(surface.top, 0);
+    expect(rail.bottom).toBeCloseTo(surface.bottom, 0);
+    expect(library.left).toBeCloseTo(rail.right, 0);
+    expect(box('.atlas-sound-desk').left).toBeCloseTo(rail.right, 0);
+    expect((rail.width + library.width) / surface.width).toBeCloseTo(0.58, 1);
     expect(moods.width / surface.width).toBeCloseTo(0.42, 1);
     expect(moods.left).toBeCloseTo(library.right, 0);
     expect(moods.top).toBe(library.top);
     expect(moods.bottom).toBe(library.bottom);
-    expect(getComputedStyle(document.querySelector('.atlas-sound-moods')!).boxShadow).toContain('inset');
+    // No line between the library and the moods: the space parts them.
+    expect(getComputedStyle(document.querySelector('.atlas-sound-moods')!).boxShadow).toBe('none');
 
     // Three across, all one height, under the region's heading that holds New mood.
     const tiles = [...document.querySelectorAll('.atlas-sound-mood')].map((tile) => tile.getBoundingClientRect());
@@ -292,13 +300,14 @@ describe('the DM screen’s Sound page', () => {
     expect(columns()).toBe(3);
     viewport.style.width = '1280px';
     await act(async () => { await sleep(50); });
-    expect(columns()).toBe(2);
-    const surface = box('.atlas-sound-pane');
-    expect(box('.atlas-sound-lib').width / surface.width).toBeCloseTo(0.58, 1);
-    expect(box('.atlas-sound-moods').left).toBeCloseTo(box('.atlas-sound-lib').right, 0);
+    // The rows take their full width first; the moods keep one column of tiles that grow no wider than a tile.
+    expect(columns()).toBe(1);
+    expect(box('.atlas-sound-mood').width).toBe(240);
+    expect(box('.atlas-sound-side').width + box('.atlas-sound-stage > .atlas-sound-lib').width).toBeCloseTo(860, 0);
+    expect(box('.atlas-sound-moods').left).toBeCloseTo(box('.atlas-sound-stage > .atlas-sound-lib').right, 0);
     viewport.style.width = '700px';
     await act(async () => { await sleep(50); });
-    const library = box('.atlas-sound-lib');
+    const library = box('.atlas-sound-stage > .atlas-sound-lib');
     const moods = box('.atlas-sound-moods');
     expect(moods.top).toBeCloseTo(library.bottom, 0);
     expect(moods.left).toBe(library.left);
