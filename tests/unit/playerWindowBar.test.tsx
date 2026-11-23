@@ -5,10 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LootDraw } from '../../src/app/loot/lootRoller';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { playerWindowStore, resetPlayerWindowStore } from '../../src/app/stores/playerWindowStore';
+import { tableControlsStore } from '../../src/app/stores/tableControlsStore';
 
 const context = vi.hoisted(() => ({
   settings: null as unknown,
-  service: { getWindow: vi.fn<() => Window | null>(), setCurtain: vi.fn(), toggleCameraFreeze: vi.fn(), isTrueScale: vi.fn(() => false), destroy: vi.fn() },
+  service: { getWindow: vi.fn<() => Window | null>(), setCurtain: vi.fn(), freezeCamera: vi.fn(), unfreezeCamera: vi.fn(), isFrozen: vi.fn(() => false), isWindowOpen: vi.fn(() => true), isTrueScale: vi.fn(() => false), destroy: vi.fn() },
   closeImageDisplay: vi.fn(),
   fullScreen: { available: false, set: vi.fn(async () => undefined) },
 }));
@@ -44,6 +45,7 @@ describe('the player window bar', () => {
     act(() => PlayerLootDisplay.get().close());
     cleanup();
     resetPlayerWindowStore();
+    tableControlsStore.setState({ curtain: false, paused: false, playMode: 'table', online: false });
     vi.clearAllMocks();
     context.fullScreen.available = false;
   });
@@ -58,18 +60,19 @@ describe('the player window bar', () => {
     render(<PlayerWindowBar view={null} />);
     fireEvent.click(screen.getByRole('button', { name: 'Hide the map' }));
     expect(context.service.setCurtain).toHaveBeenCalledWith(true);
-    act(() => playerWindowStore.setState({ curtain: true }));
+    expect(tableControlsStore.getState().curtain).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Reveal the map' }));
     expect(context.service.setCurtain).toHaveBeenLastCalledWith(false);
   });
 
   it('pauses the player view and plays it again, with TrueScale off', () => {
     render(<PlayerWindowBar view={null} />);
+    context.service.freezeCamera.mockImplementation(() => context.service.isFrozen.mockReturnValue(true))
     fireEvent.click(screen.getByRole('button', { name: 'Pause the player view' }));
-    expect(context.service.toggleCameraFreeze).toHaveBeenCalledOnce();
+    expect(context.service.freezeCamera).toHaveBeenCalledOnce();
     act(() => playerWindowStore.setState({ isFrozen: true }));
     fireEvent.click(screen.getByRole('button', { name: 'Play: the player view follows you again' }));
-    expect(context.service.toggleCameraFreeze).toHaveBeenCalledTimes(2);
+    expect(context.service.unfreezeCamera).toHaveBeenCalledOnce();
   });
 
   it('keeps the pause button but disables it while TrueScale is on', () => {
@@ -78,7 +81,34 @@ describe('the player window bar', () => {
     const freeze = screen.getByRole('button', { name: 'With TrueScale on, pin the players on the frame on your map' });
     expect(freeze.getAttribute('aria-disabled')).toBe('true');
     fireEvent.click(freeze);
-    expect(context.service.toggleCameraFreeze).not.toHaveBeenCalled();
+    expect(context.service.freezeCamera).not.toHaveBeenCalled();
+  });
+
+  it('shows the table\'s controls while an online table runs, without the player window', () => {
+    playerWindowStore.setState({ isOpen: false });
+    context.service.isWindowOpen.mockReturnValue(false);
+    act(() => tableControlsStore.setState({ online: true }));
+    render(<PlayerWindowBar view={null} />);
+    expect(screen.queryByRole('button', { name: 'TrueScale' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'What players see' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Hide the map' }));
+    expect(tableControlsStore.getState().curtain).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: /Pause the player view/ }));
+    expect(tableControlsStore.getState().paused).toBe(true);
+    expect(context.service.freezeCamera).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /Play: the player view/ }));
+    expect(tableControlsStore.getState().paused).toBe(false);
+  });
+
+  it('switches online players between their own maps and remotes for the shared screen', () => {
+    act(() => tableControlsStore.setState({ online: true }));
+    render(<PlayerWindowBar view={null} />);
+    fireEvent.click(screen.getByRole('button', { name: /How players play/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Phones as remotes for the shared screen' }));
+    expect(tableControlsStore.getState().playMode).toBe('remote');
+    expect(screen.queryByRole('menu')).toBeNull();
+    act(() => tableControlsStore.setState({ online: false }));
+    expect(screen.queryByRole('button', { name: /How players play/ })).toBeNull();
   });
 
   it('offers taking back an image only while one is shown, as its last button', () => {

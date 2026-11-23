@@ -6,6 +6,8 @@ import { useAtlasSettings } from "../../../keyboard/useMapHotkeys"
 import { PlayerWindowService } from "../../../services/PlayerWindowService"
 import { refreshPlayerWindowDisplay } from "../../../services/playerWindowDisplay"
 import { playerWindowStore } from "../../../stores/playerWindowStore"
+import { tableControlsStore } from "../../../stores/tableControlsStore"
+import { isTablePaused, setTableCurtain, toggleTablePause } from "../../../services/tableControls"
 import { useKeepInView } from "../primitives/useKeepInView"
 import { ToolButton } from "../primitives/ToolButton"
 import { TooltipProvider } from "../primitives/tooltip"
@@ -14,12 +16,13 @@ import { t } from "../../../i18n"
 import { TrueScalePanel } from "../true-scale/TrueScalePanel"
 import { FullScreenButton } from "./FullScreenButton"
 import { PlayersSeeMenu } from "./PlayersSeeMenu"
+import { PlayModeMenu } from "./PlayModeMenu"
 import { takeBackHandout, useHandoutShown } from "./playerHandout"
 import "../true-scale/true-scale.scss"
 import "./player-window-bar.scss"
 
 /** The bar's menus; one is open at a time. */
-type BarMenu = "trueScale" | "playersSee"
+type BarMenu = "trueScale" | "playersSee" | "playMode"
 
 /** A press anywhere outside `root` or Escape calls `close` while `open`, before the map hears of the key. */
 function useDismiss(root: RefObject<HTMLElement | null>, open: boolean, close: () => void): void {
@@ -44,15 +47,20 @@ function useDismiss(root: RefObject<HTMLElement | null>, open: boolean, close: (
 }
 
 /**
- * The player window bar (GM only, below the scene tabs while the player window is open), with the
- * look and corners of the undo/redo bar: TrueScale, full screen on the TV, the curtain, pausing
- * the player view (disabled while TrueScale is on), what players see (and closing the window), and, while players are handed an
- * image or loot, taking it back. The handout's button comes last, so nothing moves under the pointer when it comes or goes.
+ * The player window bar (GM only, below the scene tabs while the player window is open or an online
+ * table runs), with the look and corners of the undo/redo bar. For the player window: TrueScale and
+ * full screen on the TV. For everyone at the table: the curtain and pausing play (disabled while
+ * TrueScale pins the window and no table runs). While a table runs, how online players play. Then
+ * what the player window shows (and closing it), and, while players are handed an image or loot,
+ * taking it back. The handout's button comes last, so nothing moves under the pointer when it comes or goes.
  */
 export function PlayerWindowBar({ view }: { view: AtlasView | null }): React.ReactElement | null {
   const isOpen = useStore(playerWindowStore, (s) => s.isOpen)
-  const curtain = useStore(playerWindowStore, (s) => s.curtain)
-  const frozen = useStore(playerWindowStore, (s) => s.isFrozen)
+  const curtain = useStore(tableControlsStore, (s) => s.curtain)
+  const online = useStore(tableControlsStore, (s) => s.online)
+  // Read for its changes; what the button shows is `isTablePaused`, which also counts a window frozen another way
+  useStore(tableControlsStore, (s) => s.paused)
+  useStore(playerWindowStore, (s) => s.isFrozen)
   const handoutShown = useHandoutShown()
   const settings = useAtlasSettings()
   const [menu, setMenu] = useState<BarMenu | null>(null)
@@ -61,47 +69,55 @@ export function PlayerWindowBar({ view }: { view: AtlasView | null }): React.Rea
   const keepInView = useKeepInView(panelRef, menu === "trueScale", "bottom")
   const service = PlayerWindowService.getInstance()
 
+  // A menu closes with its button: the play mode's with the table, the others with the player window
   useEffect(() => {
-    if (!isOpen) setMenu(null)
-  }, [isOpen])
+    setMenu((open) => (open === null || (open === "playMode" ? online : isOpen) ? open : null))
+  }, [isOpen, online])
 
   const closeMenu = useCallback(() => setMenu(null), [])
   useDismiss(rootRef, menu !== null, closeMenu)
 
-  if (!isOpen || !settings) return null
+  if ((!isOpen && !online) || !settings) return null
   // TrueScale freezes with the pin on its frame; the button stays, so the bar keeps its shape
-  const trueScale = service?.isTrueScale() ?? false
+  const trueScale = isOpen && (service?.isTrueScale() ?? false)
+  const paused = isTablePaused()
   const toggleMenu = (which: BarMenu) => (): void => setMenu((open) => (open === which ? null : which))
   return (
     <TooltipProvider delayDuration={300}>
       {/* A TV plugged in since the window opened goes unnoticed until the screens are read again */}
       <div ref={rootRef} className="atlas-player-window-bar" onPointerEnter={refreshPlayerWindowDisplay}>
         <div className="atlas-vtt-toolbar">
-          <ToolButton
-            icon={RulerDimensionLine}
-            label={t("tableTv.heading")}
-            isActive={menu === "trueScale"}
-            menuExpanded={menu === "trueScale"}
-            onClick={toggleMenu("trueScale")}
-            tooltipSide="bottom"
-          />
-          <FullScreenButton />
+          {isOpen && (
+            <>
+              <ToolButton
+                icon={RulerDimensionLine}
+                label={t("tableTv.heading")}
+                isActive={menu === "trueScale"}
+                menuExpanded={menu === "trueScale"}
+                onClick={toggleMenu("trueScale")}
+                tooltipSide="bottom"
+              />
+              <FullScreenButton />
+            </>
+          )}
           <ToolButton
             icon={Blinds}
             label={curtain ? t("playerBar.curtainUp") : t("playerBar.curtainDown")}
             isActive={curtain}
-            onClick={() => service?.setCurtain(!curtain)}
+            onClick={() => setTableCurtain(!curtain)}
             tooltipSide="bottom"
           />
           <ToolButton
-            icon={frozen ? Play : Pause}
-            label={trueScale ? t("playerBar.freezeTrueScale") : frozen ? t("playerBar.unfreeze") : t("playerBar.freeze")}
-            isActive={frozen && !trueScale}
-            disabled={trueScale}
-            onClick={() => service?.toggleCameraFreeze()}
+            icon={paused ? Play : Pause}
+            label={trueScale && !online ? t("playerBar.freezeTrueScale") : paused ? t("playerBar.unfreeze") : t("playerBar.freeze")}
+            {...(online && !paused && { subtitle: t("playerBar.freezeOnline") })}
+            isActive={paused}
+            disabled={trueScale && !online}
+            onClick={toggleTablePause}
             tooltipSide="bottom"
           />
-          <PlayersSeeMenu open={menu === "playersSee"} onToggle={toggleMenu("playersSee")} settings={settings} />
+          {online && <PlayModeMenu open={menu === "playMode"} onToggle={toggleMenu("playMode")} />}
+          {isOpen && <PlayersSeeMenu open={menu === "playersSee"} onToggle={toggleMenu("playersSee")} settings={settings} />}
           {handoutShown && (
             <ToolButton icon={ImageOff} label={t("playerBar.takeBack")} isActive={false} onClick={takeBackHandout} tooltipSide="bottom" />
           )}

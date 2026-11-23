@@ -29,6 +29,7 @@ import { viewedLevelId } from '../../levels/sceneLevels';
 import { drawCell } from '../../annotations/drawSizes';
 import { isVideoMapPath, videoMimeType } from '../../pixi/mosaicCanvas/video/videoMapFiles';
 import { isHistoryTravelling } from '../../stores/history';
+import { tableControlsStore } from '../../stores/tableControlsStore';
 import { sceneDiceShelf, sharedDiceRow } from './diceRowShare.ts';
 import { t } from '../../i18n';
 
@@ -133,6 +134,7 @@ export class FloorShare {
         map: this.mapSize,
         // The walls of this floor, on which every token of its list stands
         walls: sceneWalls(levelObjects(store.getState()).walls, this.scene?.lit === true, this.mapSize),
+        paused: () => tableControlsStore.getState().paused,
         outOfTurn: (tokenId) => {
           const settings = ports.atlasSettings();
           return movesOutOfTurn(store.getState(), { movesOnTurn: settings.movesOnTurn === true, definitions: ports.tokenRules?.()?.resources ?? [] }, tokenId);

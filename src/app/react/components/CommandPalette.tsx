@@ -35,6 +35,8 @@ import { useStore } from 'zustand';
 import { useAtlasStore, useViewStoreHook } from '../ViewStoreContext';
 import { useAtlasUI } from '../root/AtlasUIContext';
 import { PlayerWindowService } from '../../services/PlayerWindowService';
+import { toggleTablePause } from '../../services/tableControls';
+import { tableControlsStore } from '../../stores/tableControlsStore';
 import { openPlayerWindow, presentActiveTab } from '../../services/PlayerWindowPresenter';
 import { desktopOnly, isDesktopApp } from '../../platform/desktopOnly';
 import { toggleTableMode } from '../../tableMode/viewTableMode';
@@ -125,7 +127,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   const setActiveTool = useAtlasStore(state => state.setActiveTool);
   const ui = useAtlasUI();
   const { app, view } = ui;
-  const isPlayerWindowFrozen = useStore(playerWindowStore, (s) => s.isFrozen);
+  const isWindowFrozen = useStore(playerWindowStore, (s) => s.isFrozen);
+  const isTablePaused = useStore(tableControlsStore, (s) => s.paused);
+  const isPlayerWindowFrozen = isWindowFrozen || isTablePaused;
   const isPlayerMode = view?.isInPlayerMode?.() ?? false;
   const setPlayerMode = (mode: boolean): void => view?.setPlayerMode?.(mode);
 
@@ -402,9 +406,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       label: t('palette.freezePlayerCamera'),
       section: "mode",
       action: () => {
-        const service = PlayerWindowService.getInstance();
-        if (service?.isWindowOpen()) {
-          service.toggleCameraFreeze();
+        if (PlayerWindowService.getInstance()?.isWindowOpen() || tableControlsStore.getState().online) {
+          toggleTablePause();
         } else {
           showNotice(t('palette.noPlayerWindow'));
         }

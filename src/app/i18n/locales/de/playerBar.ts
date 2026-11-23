@@ -15,4 +15,8 @@ export const playerBar: Translation = {
   'playerBar.unfreeze': 'Fortsetzen: Die Spieleransicht folgt dir wieder',
   'playerBar.freezeTrueScale': 'Mit TrueScale die Spieler auf den Ausschnitt auf deiner Karte festsetzen',
   'playerBar.takeBack': 'Handout zurücknehmen',
+  'playerBar.freezeOnline': 'Online-Spieler können ihre Spielfiguren während der Pause nicht bewegen',
+  'playerBar.playMode': 'Wie die Spieler spielen',
+  'playerBar.modeTable': 'Jeder auf seiner eigenen Karte',
+  'playerBar.modeRemote': 'Handys als Fernbedienung für den gemeinsamen Bildschirm',
 };

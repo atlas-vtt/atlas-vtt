@@ -15,4 +15,8 @@ export const playerBar: Translation = {
   'playerBar.unfreeze': 'Riprendi: la vista giocatori torna a seguirti',
   'playerBar.freezeTrueScale': 'Con TrueScale attivo, blocca i giocatori sull’inquadratura della tua mappa',
   'playerBar.takeBack': 'Ritira il materiale',
+  'playerBar.freezeOnline': 'I giocatori online non possono muovere le pedine durante la pausa',
+  'playerBar.playMode': 'Come giocano i giocatori',
+  'playerBar.modeTable': 'Ognuno sulla propria mappa',
+  'playerBar.modeRemote': 'Telefoni come telecomandi per lo schermo condiviso',
 };

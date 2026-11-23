@@ -1,5 +1,5 @@
 import { movementWalls, reaches, stopAtWalls, type MoveWalls, type Point } from '../movement/index.ts';
-import { MAX_COORDINATE, type PlayerMove } from '../protocol/index.ts';
+import { MAX_COORDINATE, type MoveRefusedReason, type PlayerMove } from '../protocol/index.ts';
 import { snapTokenCenter } from '../../grid/gridPlacement';
 import { cellCentreAt } from '../../measure/measureGrid';
 import type { TokenEntity } from '../../types';
@@ -29,13 +29,20 @@ export interface MoveContext {
   readonly walls: MoveWalls | null;
   /** Whether a token that fights may not move now, for it does not hold the turn (`movesOutOfTurn`); none are without. */
   outOfTurn?(tokenId: string): boolean;
+  /** Whether the GM paused play (`tableControlsStore`): no player's token moves then. Unset is never. */
+  paused?(): boolean;
   /** How far a drop from `from` to `to` moves the token, in game units, where the map counts movement per turn; null (or unset) where nothing is counted. */
   turnMove?(tokenId: string, from: Point, to: Point): number | null;
 }
 
 export type MoveVerdict =
   | { readonly ok: true; readonly tokenId: string; readonly x: number; readonly y: number }
-  | { readonly ok: false; readonly reason: 'scene' | 'token' | 'owner' | 'turn' | 'place' };
+  | { readonly ok: false; readonly reason: 'scene' | 'token' | 'owner' | 'paused' | 'turn' | 'place' };
+
+/** What a page is told of a refusal: why, where it is the turn or a pause; every other refusal names no reason. */
+export function refusalReason(verdict: MoveVerdict): MoveRefusedReason | undefined {
+  return !verdict.ok && (verdict.reason === 'turn' || verdict.reason === 'paused') ? verdict.reason : undefined;
+}
 
 const within = (value: number, max: number): boolean => Number.isFinite(value) && value >= 0 && value <= max;
 
@@ -48,8 +55,8 @@ export function insideMap(x: number, y: number, map: MapSize | null): boolean {
 /**
  * Whether the GM takes a player's move: the move names the shared scene and a token of the list
  * players see (so not hidden, not under fog), the token is not hidden now, it is the sender's
- * (by the id the relay stamped), it is not out of its turn where the GM chose that players move
- * only on their turn, and its centre lands inside the map.
+ * (by the id the relay stamped), the GM has not paused play, it is not out of its turn where the GM
+ * chose that players move only on their turn, and its centre lands inside the map.
  */
 export function checkMove(from: string, move: Omit<PlayerMove, 't'>, context: MoveContext): MoveVerdict {
   if (context.scene === null || move.scene !== context.scene) return { ok: false, reason: 'scene' };
@@ -57,6 +64,7 @@ export function checkMove(from: string, move: Omit<PlayerMove, 't'>, context: Mo
   const token = tokenId === undefined ? undefined : context.tokens[tokenId];
   if (tokenId === undefined || token === undefined || token.isHidden === true) return { ok: false, reason: 'token' };
   if (context.ownerOf(tokenId) !== from) return { ok: false, reason: 'owner' };
+  if (context.paused?.() === true) return { ok: false, reason: 'paused' };
   if (context.outOfTurn?.(tokenId) === true) return { ok: false, reason: 'turn' };
   if (!insideMap(move.x, move.y, context.map)) return { ok: false, reason: 'place' };
   return { ok: true, tokenId, x: move.x, y: move.y };

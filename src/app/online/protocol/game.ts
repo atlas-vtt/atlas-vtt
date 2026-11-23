@@ -22,6 +22,7 @@ import { parseMarks, parsePlayerKept, parsePlayerMark, type MarksMessage, type P
 import { isRecord } from './shape.ts';
 import { MAX_SCENE_ID, parseDragCancel, parseMoveRefused, parsePlayerMove, parseSnapGrid, type MoveRefused, type PlayerDrag, type PlayerDragCancel, type PlayerMove, type SnapGrid } from './moves.ts';
 import { parseRules, type RulesMessage } from './rules.ts';
+import { parseTableMode, type TableModeMessage } from './tableMode.ts';
 import { isSceneId, parseSceneInput } from './sceneInput.ts';
 import { parsePlayerSoundState, parseSoundMessage, parseSoundPrepare, type PlayerSoundState, type SoundMessage, type SoundPrepare } from './sound.ts';
 import { MAX_TOKEN_SIZE, MAX_TOKENS, parseTokens, TOKEN_ID_PATTERN, type SharedToken } from './tokens.ts';
@@ -124,6 +125,8 @@ export type GmMessage =
   | MoveRefused
   /** What the player's own tools (measure, laser) work by in scene `scene`. */
   | RulesMessage
+  /** How the table plays, and whether the GM hid the map or paused play. It belongs to the table, not to a scene. */
+  | TableModeMessage
   | RollMessage
   | RollRefused
   | MarksMessage
@@ -212,6 +215,8 @@ export function parseGmMessage(value: unknown): GmMessage | null {
       return parseMoveRefused(value);
     case 'rules':
       return parseRules(value);
+    case 'table-mode':
+      return parseTableMode(value);
     case 'roll':
       return parseRoll(value);
     case 'roll-refused':
