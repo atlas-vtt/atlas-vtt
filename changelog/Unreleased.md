@@ -35,4 +35,6 @@
 - The Master slider in Atlas' Sound settings now follows the Sound page's Master fader and the Stream Deck at once
 - A Master volume change from a Stream Deck is no longer undone when another setting is changed right after it
 - Stream Deck volume keys now stop at +6 dB, the top of the Sound page's faders
+- Sound: the count beside Music or Ambience in the library's rail no longer counts originals kept beside their converted copies, so it matches the list
+- Sound: a tag name the library's rail cuts short shows in full on hover, and "Get starter ambience" no longer loses its first letters in a narrow rail
 - Sound: turning up reverb no longer makes a sound louder. A full knob is as wet as before, in every room, for music and ambience, on the players' page too

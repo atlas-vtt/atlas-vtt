@@ -165,7 +165,8 @@ function RailRoot({ library, actions, shelves, kind, selected, shown, onRoot, on
   const downloads = useDownloadManager();
   const linked = isLinked(root);
   const label = t(kind === 'music' ? 'audio.music' : 'audio.ambience');
-  const count = linked ? library.countOf(kind, '') : null;
+  // What the library lists (a kept original hidden behind its copy is not), once the root's own folder was read.
+  const count = linked && library.countOf(kind, '') !== null ? shelves[kind].rows.length : null;
   const drop = useDropTarget(mayCarryAudio, (transfer) => {
     if (transfer.files.length > 0) actions.importInto([...transfer.files], kind);
   });
