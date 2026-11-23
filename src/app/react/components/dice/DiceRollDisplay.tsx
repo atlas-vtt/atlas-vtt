@@ -9,7 +9,7 @@ import { throwStyle } from '../../../dice3d/diceDisplay';
 import { diceSceneToShow } from '../../../dice3d/rollPresentation';
 import { setDiceVolume, warmDiceSounds } from '../../../dice3d/audio/diceSamples';
 import { playDiceReveal } from '../../../audio/diceRevealSound';
-import { canShowDice, warmStages } from '../../../dice3d/stagePool';
+import { canShowDice, holdStageWarmUp, warmStages } from '../../../dice3d/stagePool';
 import { holdRoll } from '../../../dice3d/rollsInFlight';
 import { deviceProfile } from '../../../platform/deviceProfile';
 import type { DiceRollResult } from '../../../types/diceTypes';
@@ -125,6 +125,26 @@ export function DiceRollDisplay({ container, prepare, muted: windowMuted = false
   useEffect(() => {
     if (display !== 'card') warmStages(stageDoc, undefined, deviceProfile().budgets.diceWarmStages);
   }, [display, stageDoc]);
+
+  // ...and not while the view's map loads, nor right after it shows.
+  useEffect(() => {
+    const store = view?.atlasStore;
+    if (!store) return undefined;
+    let release: (() => void) | null = null;
+    const follow = (loading: boolean): void => {
+      if (loading && !release) release = holdStageWarmUp(stageDoc);
+      else if (!loading && release) {
+        release();
+        release = null;
+      }
+    };
+    follow(store.getState().isMapLoading);
+    const unsubscribe = store.subscribe((state) => follow(state.isMapLoading));
+    return (): void => {
+      unsubscribe();
+      release?.();
+    };
+  }, [view, stageDoc]);
 
   // Escape dismisses every roll on screen, unless something in front of the map
   // takes it (a modal, the palette, the dashboard) or someone is typing. The
