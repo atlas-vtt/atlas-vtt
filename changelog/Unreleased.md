@@ -9,3 +9,4 @@
 - The Master slider in Atlas' Sound settings now follows the Sound page's Master fader and the Stream Deck at once
 - A Master volume change from a Stream Deck is no longer undone when another setting is changed right after it
 - Stream Deck volume keys now stop at +6 dB, the top of the Sound page's faders
+- Sound: turning up reverb no longer makes a sound louder. A full knob is as wet as before, in every room, for music and ambience, on the players' page too

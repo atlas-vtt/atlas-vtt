@@ -49,10 +49,13 @@ export interface VoiceDeps {
 export class SoundVoice {
   private readonly node: SoundGainNode;
   private readonly gain: GainTrack;
+  /** After its own gain, what stays on the channel; the rest of its power goes to the room. */
+  private readonly dryNode: SoundGainNode;
+  private readonly dryGain: GainTrack;
   /** After its own gain, so fades, mutes and Silence reach the tail too. */
   private readonly sendNode: SoundGainNode;
   private readonly sendGain: GainTrack;
-  private sendKey: string | null = null;
+  private mixKey: string | null = null;
   private runs: SoundRun[] = [];
   private anchor: number | null = null;
   /** Nothing new sounds before this context frame while a soft restart is pending. */
@@ -64,7 +67,10 @@ export class SoundVoice {
   constructor(private readonly deps: VoiceDeps) {
     this.node = deps.context.createGain();
     this.gain = new GainTrack(this.node.gain, 0);
-    this.node.connect(deps.input);
+    this.dryNode = deps.context.createGain();
+    this.dryGain = new GainTrack(this.dryNode.gain, 1);
+    this.node.connect(this.dryNode);
+    this.dryNode.connect(deps.input);
     this.sendNode = deps.context.createGain();
     this.sendGain = new GainTrack(this.sendNode.gain, 0);
     this.node.connect(this.sendNode);
@@ -88,7 +94,7 @@ export class SoundVoice {
 
   follow(desired: DesiredVoice, map: SoundClockMap): void {
     this.followGain(desired, map);
-    this.followSend(desired, map);
+    this.followMix(desired, map);
     const expected = map.ctxFrameOf(desired.startAt);
     this.anchor ??= expected;
     this.correctDrift(expected, map);
@@ -106,18 +112,21 @@ export class SoundVoice {
     for (const run of this.runs) run.dispose();
     this.runs = [];
     this.node.disconnect();
+    this.dryNode.disconnect();
     this.sendNode.disconnect();
   }
 
-  /** Coming in or leaving, the voice's own gain carries the fade, so the send is set at once; else it moves as the level does. */
-  private followSend(desired: DesiredVoice, map: SoundClockMap): void {
-    const key = `${desired.role}|${desired.fade.at}|${desired.fade.ms}|${desired.send}`;
-    if (key === this.sendKey) return;
-    const first = this.sendKey === null;
-    this.sendKey = key;
-    if (this.sendGain.target === desired.send) return;
-    if (first || desired.role !== 'level') this.sendGain.move(desired.send, map.ctxSeconds, 0);
-    else this.sendGain.move(desired.send, Math.max(map.ctxSeconds, map.ctxSecondsOf(desired.fade.at)), desired.fade.ms / 1000);
+  /** Coming in or leaving, the voice's own gain carries the fade, so dry and send are set at once; else they move as the level does. */
+  private followMix(desired: DesiredVoice, map: SoundClockMap): void {
+    const key = `${desired.role}|${desired.fade.at}|${desired.fade.ms}|${desired.dry}|${desired.send}`;
+    if (key === this.mixKey) return;
+    const first = this.mixKey === null;
+    this.mixKey = key;
+    for (const [track, target] of [[this.dryGain, desired.dry], [this.sendGain, desired.send]] as const) {
+      if (track.target === target) continue;
+      if (first || desired.role !== 'level') track.move(target, map.ctxSeconds, 0);
+      else track.move(target, Math.max(map.ctxSeconds, map.ctxSecondsOf(desired.fade.at)), desired.fade.ms / 1000);
+    }
   }
 
   private followGain(desired: DesiredVoice, map: SoundClockMap): void {
