@@ -113,6 +113,8 @@ export interface AtlasSettings {
     initiativeMaxCards: number;
     /** Online play: players draw and write on the shared map with a Draw tool of their own. */
     playersDraw: boolean;
+    /** Online play: players at a closed door may ask the GM to open it. */
+    playersOpenDoors: boolean;
   };
   /** The player view on a TV lying on the table (TrueScale). Read with `getTableTvSettings`. */
   tableTv: TableTvSettings;
@@ -160,6 +162,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     turnDim: false,
     initiativeMaxCards: 0,
     playersDraw: false,
+    playersOpenDoors: false,
   },
   tableTv: DEFAULT_TABLE_TV_SETTINGS,
 };

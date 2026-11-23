@@ -18,6 +18,8 @@ export const lpv: Translation = {
   'lpv.openWindow': 'Abrir janela dos jogadores',
   'lpv.playersDraw': 'Jogadores podem desenhar',
   'lpv.playersDrawHint': 'Jogadores online ganham uma ferramenta de desenho própria. Você pode alterar e apagar o que eles desenham.',
+  'lpv.playersOpenDoors': 'Jogadores podem pedir para abrir portas',
+  'lpv.playersOpenDoorsHint': 'Jogadores online diante de uma porta fechada podem pedir que você a abra. Você recebe um aviso e decide no mapa.',
   'lpv.showCursors': 'Mostrar o cursor de todos',
   'lpv.showDiceRolls': 'Mostrar rolagens de dados',
   'lpv.view4k': 'Renderizar até 4K',

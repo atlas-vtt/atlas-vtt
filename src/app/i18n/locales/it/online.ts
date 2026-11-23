@@ -192,4 +192,9 @@ export const online = {
   "online.mapUnreadable": "L’immagine della mappa di questa scena non può essere inviata ai giocatori.",
   "online.fogTooMuch": "Questa mappa ha troppa nebbia per i giocatori online. La vedono coperta finché non ne rimuovi un po’.",
   "online.assetsFailed": "Impossibile condividere un file con i giocatori.",
+  'online.doorAsk': '{player} chiede di aprire una porta.',
+  'online.doorAskShow': 'Mostra',
+  'online.doorAskHeading': '{player} chiede di aprire questa porta',
+  'online.doorAskAllow': 'Aprila',
+  'online.doorAskDeny': 'Lasciala chiusa',
 } satisfies Translation;
