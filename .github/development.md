@@ -61,18 +61,68 @@ The gate is zero tolerance: no errors, no warnings (`--max-warnings 0`).
 - Inline `eslint-disable` comments are switched off (`noInlineConfig`) and fail
   the gate. `@ts-ignore`, `@ts-expect-error` and `@ts-nocheck` are errors
   (`ban-ts-comment`).
-- The one accepted exception, the `Function` constructor that runs Fantasy
-  Statblocks layout callbacks (see [PRIVACY.md](../PRIVACY.md)), is recorded in
-  `eslint.suppressions.json`. A suppression covers a rule, in a file, up to a
-  count, so a second occurrence anywhere still fails. Adding an entry is a
-  maintainer decision and needs its reason in the pull request. Obsidian's
-  scorecard does not read this file and keeps listing suppressed findings.
-- When a suppressed finding is fixed, ESLint fails until the stale entry is
-  removed: `npx eslint . --suppressions-location eslint.suppressions.json --prune-suppressions`.
+- Atlas' own conventions are named rules, `atlas/<name>`, defined in
+  `scripts/eslint/conventions.mjs`. A rule's message says what to do instead
+  and why, and every rule has examples of code it accepts and code it
+  rejects, which the unit suite runs.
+- `eslint.suppressions.json` is the baseline. It holds the one accepted
+  exception, the `Function` constructor that runs Fantasy Statblocks layout
+  callbacks (see [PRIVACY.md](../PRIVACY.md)), and the findings that existed
+  when a rule was switched on. A suppression covers a rule, in a file, up to a
+  count, so one more occurrence anywhere still fails. Counts only go down:
+  fix a baselined finding when you work on its code, and never add to the
+  file. Adding an entry is a maintainer decision and needs its reason in the
+  pull request. Obsidian's scorecard does not read this file and keeps listing
+  suppressed findings.
+- A fixed finding leaves a count that is too high, which does not fail the
+  gate (`--pass-on-unpruned-suppressions`); the maintainer removes such
+  entries when the change lands, with `npm run lint:prune`. A rule that is
+  newly switched on is baselined by the maintainer alone:
+  `npx eslint . --suppressions-location eslint.suppressions.json --suppress-rule <rule id>`.
   The file deliberately does not use ESLint's default name: Obsidian's
   directory review runs ESLint with its own rule set, and a suppression that
   set does not use makes ESLint exit with code 2, which the review reports as
   a fatal error.
+
+### Guards
+
+Three records say how far the code is from where it should be, and each of
+them may only shrink:
+
+- **Lint baseline**: `eslint.suppressions.json`, above.
+- **File sizes**: a source file (`main.ts` and `src/**/*.ts`, `*.tsx`, without
+  tests and declarations) has at most 300 lines. The files that were larger
+  when the check came are recorded in `scripts/file-sizes.json` with an
+  allowance, their size rounded up to the next 50 lines: a fix fits, a new
+  responsibility does not and goes into its own module. Tables of pure data
+  are exempt by glob (the translations). `npm run check:sizes` checks, and
+  `node scripts/check-file-sizes.mjs --update` lowers the allowances of files
+  that shrank. Adding an entry or raising one is the maintainer's alone:
+  `node scripts/check-file-sizes.mjs --record <file>`.
+- **Bundle budget**: `scripts/bundle-budget.json` holds how many bytes
+  `dist/main.js` and `dist/styles.css` may have, and `npm run preflight` fails
+  a build above it. Find what grew before asking for a higher budget.
+
+`node scripts/check-guards.mjs --base <ref>` compares the three with what they
+were at `<ref>` and fails when a rule's suppressed findings, an allowance or a
+budget rose, or a rule, an entry or an exemption was added. A suppressed
+finding that moved to another file is no rise. For pull requests from forks CI
+runs the base branch's copy of it with `--strict`, which also fails when the
+checks themselves changed: the ESLint configs and rules, the check scripts,
+the TypeScript and Vitest configs, the workflows and the `scripts` of
+`package.json`. The step makes such a change loud; it does not forbid it. Say
+in the pull request why it is needed, and the maintainer labels it
+`guards-ok`, which skips the step from the next push on. On the maintainer's
+own branches `ATLAS_GUARDS_OK=1` turns the failures into notes.
+
+`npm run check` is the loop while working: typecheck, ESLint on the files
+changed since the branch left `beta`, the unit tests those changes reach, then
+boundaries, file sizes, documentation references and the guards. It prints
+each command, stops at the first that fails, skips the tests with
+`npm run check -- --no-tests` and takes another base from `ATLAS_BASE`.
+`npm run verify` is the whole gate before a pull request: typecheck, lint,
+release notes, boundaries, file sizes, documentation references and the unit
+suite.
 
 ### Workflow conventions
 

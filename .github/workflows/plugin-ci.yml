@@ -63,6 +63,29 @@ jobs:
       - name: Check code dependencies
         run: npm run check:boundaries
 
+      - name: Check file sizes
+        run: npm run check:sizes
+
+      - name: Check documentation references
+        run: npm run check:docs
+
+      # A tripwire, not a lock: it makes a pull request from a fork loud when it
+      # raises a baseline or a budget or changes a check, until the maintainer
+      # has looked at it and labelled it `guards-ok`. The script is the base
+      # branch's copy, so a change to the script cannot switch it off; a change
+      # to this file can, which is why the workflows are among the checks.
+      # Labels are read from the event that started the run, so a label added
+      # later counts from the next push or reopening, not from a re-run.
+      - name: Check baselines, budgets and the checks themselves
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && !contains(github.event.pull_request.labels.*.name, 'guards-ok')
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --depth=1 origin "$BASE_SHA"
+          # A base without the script has nothing to guard yet.
+          git show "$BASE_SHA:scripts/check-guards.mjs" > "$RUNNER_TEMP/check-guards.mjs" || exit 0
+          node "$RUNNER_TEMP/check-guards.mjs" --base "$BASE_SHA" --strict
+
   # Obsidian's directory review lints the whole repository with its own
   # config; a file it cannot parse is a fatal review error.
   directory-scan:
