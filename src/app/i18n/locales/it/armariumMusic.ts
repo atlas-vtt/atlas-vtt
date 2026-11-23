@@ -61,7 +61,7 @@ export const armariumMusic: Translation = {
   'armariumMusic.review.label': 'Aggiungi {name} alla tua musica',
   'armariumMusic.review.eyebrow': 'Aggiungi musica',
   'armariumMusic.review.eyebrowUpdate': 'Aggiorna musica',
-  'armariumMusic.review.new': 'Va nella tua cartella della musica e si ascolta appena arriva.',
+  'armariumMusic.review.new': 'Va nella tua cartella della musica, pronta da ascoltare.',
   'armariumMusic.review.update': 'La tua copia passa dalla versione {from} alla versione {version}.',
   'armariumMusic.review.replaced': { one: '{count} brano sostituito', other: '{count} brani sostituiti' },
   'armariumMusic.review.added': { one: '{count} brano aggiunto', other: '{count} brani aggiunti' },

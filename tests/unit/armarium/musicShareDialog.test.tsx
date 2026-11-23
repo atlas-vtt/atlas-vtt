@@ -162,6 +162,8 @@ describe('the music review', () => {
     expect(screen.getByText('by Lio')).toBeTruthy();
     expect(screen.getByText('Music / Mara / Old Roads')).toBeTruthy();
     expect(screen.getByText('Two new songs.')).toBeTruthy();
+    // Nothing plays on install: it is ready to play.
+    expect(screen.getByText('It goes into your music folder, ready to play.')).toBeTruthy();
     expect(screen.getByText('3:05')).toBeTruthy();
     expect(screen.getByText(/^2 tracks · 4:06 · /)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Install' }));

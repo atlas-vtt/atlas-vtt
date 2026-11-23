@@ -65,7 +65,7 @@ export const armariumMusic = {
   'armariumMusic.review.label': 'Add {name} to your music',
   'armariumMusic.review.eyebrow': 'Add music',
   'armariumMusic.review.eyebrowUpdate': 'Update music',
-  'armariumMusic.review.new': 'It goes into your music folder, and plays as it lands.',
+  'armariumMusic.review.new': 'It goes into your music folder, ready to play.',
   'armariumMusic.review.update': 'Your copy is updated from version {from} to version {version}.',
   'armariumMusic.review.replaced': { one: '{count} track replaced', other: '{count} tracks replaced' },
   'armariumMusic.review.added': { one: '{count} track added', other: '{count} tracks added' },

@@ -12,7 +12,7 @@
 - What players see is laid out in columns, like its page in the command palette: what the player window and online players see alike, then the player window's own settings and online play's
 - Widgets can be reordered: drag one by its grip in the command palette's Widgets page (or move it with Alt and the arrow keys), and the widget bar follows in every scene of the collection
 - **Music in the Armarium.** Share a track or an album from the Sound library: from a track's menu, a selection of tracks or a tag. Give it a cover, an artist and the order the tracks play in
-- Install albums and tracks from the Armarium into your music folder. A review shows the tracks and where they go first; they play as soon as they land, and an update keeps any track you changed
+- Install albums and tracks from the Armarium into your music folder. A review shows the tracks and where they go first; they are ready to play once they land, with nothing to convert, and an update keeps any track you changed
 
 ## Improved
 
