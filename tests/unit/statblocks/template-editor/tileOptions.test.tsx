@@ -146,6 +146,25 @@ describe('an Abilities tile\'s Options', () => {
     expect(within(tileOptions()).queryByRole('switch', { name: 'Pick several' })).toBeNull();
   });
 
+  it("changes a part's position and label visibility without changing its choices", () => {
+    const { session, frame } = mountEditor(new FakeSession(template([NAME, list], [NAME_FIELD, actions])));
+    fireEvent.click(frame('actions1'));
+    fireEvent.click(within(tileOptions()).getByRole('button', { name: '+ Type' }));
+    const options = tileOptions();
+    expect(within(options).getByRole('combobox', { name: 'Position of Type' }).textContent).toContain('Position after name');
+    expect(within(options).getByRole('switch', { name: 'Hide label' }).getAttribute('aria-checked')).toBe('false');
+    choose(options, 'Position of Type', 'Position before name');
+    fireEvent.click(within(options).getByRole('switch', { name: 'Hide label' }));
+    expect(fieldOf(session, 'actions')?.entry?.extras).toEqual([
+      { key: 'type', label: 'Type', type: 'choice', position: 'before', hideLabel: true },
+    ]);
+    fireEvent.click(within(options).getByRole('switch', { name: 'Hide label' }));
+    expect(fieldOf(session, 'actions')?.entry?.extras?.[0]).toMatchObject({ position: 'before', hideLabel: false });
+    expect(fieldOf(session, 'actions')?.entry?.extras?.[0]?.several).toBeUndefined();
+    choose(options, 'Position of Type', 'Position after name');
+    expect(fieldOf(session, 'actions')?.entry?.extras?.[0]).toMatchObject({ position: 'after', hideLabel: false });
+  });
+
   it('edit the parts of every tab\'s list at once, in one step', () => {
     const level1: TemplateField = { key: 'level_1', label: 'Level 1', type: 'entries' };
     const tabs: TemplateBlock = { id: 'tabs0001', type: 'tabs', heading: 'Spellbook', blocks: [

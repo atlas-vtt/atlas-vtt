@@ -119,6 +119,30 @@ describe('field values', () => {
     expect(writtenFields(template)).toEqual([{ key: 'moves', label: 'Moves', type: 'entries', entry: { textKey: 'text', extras } }]);
   });
 
+  it('reads and writes entry part positions and label visibility', () => {
+    const extras = [
+      { key: 'type', label: 'Type', type: 'text', position: 'before', hideLabel: true },
+      { key: 'range', label: 'Range', type: 'text', position: 'after', hideLabel: false },
+      { key: 'cost', label: 'Cost', type: 'number' },
+    ];
+    const field = { key: 'moves', label: 'Moves', type: 'entries', entry: { extras } };
+    const { template, problems } = read([field]);
+    expect(problems).toEqual([]);
+    expect(template.fields).toEqual([field]);
+    const reread = read(writtenFields(template) as unknown[]);
+    expect(reread.problems).toEqual([]);
+    expect(reread.template.fields).toEqual([field]);
+  });
+
+  it('reports invalid entry part position and visibility while keeping them in the file', () => {
+    const extras = [{ key: 'type', label: 'Type', type: 'text', position: 'beside', hideLabel: 'yes' }];
+    const field = { key: 'moves', label: 'Moves', type: 'entries', entry: { extras } };
+    const { template, problems } = read([field]);
+    expect(plain(template.fields[0]?.entry?.extras)).toEqual([{ key: 'type', label: 'Type', type: 'text' }]);
+    expect(problems).toEqual([expect.stringContaining('"position"'), expect.stringContaining('"hideLabel"')]);
+    expect(writtenFields(template)).toEqual([field]);
+  });
+
   it('keeps unknown keys of fields, entry shapes and their parts', () => {
     const field = {
       key: 'moves', label: 'Moves', type: 'entries', hint: 'h',

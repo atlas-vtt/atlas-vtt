@@ -164,7 +164,12 @@ export function usePaneEditor(options: PaneEditorOptions): PaneEditor {
       const spot = neighbourSpot(spots.order, from, step);
       if (spot) {
         // Shift+Tab into a Table goes to its last cell, as it goes to a value's end.
-        setEditing(inCell({ blockId: spot.blockId, field: spot.field.key, ...(step < 0 && { cell: 'last' as const }) }, spots, readFresh));
+        setEditing(inCell({
+          blockId: spot.blockId,
+          field: spot.field.key,
+          ...(step < 0 && { cell: 'last' as const }),
+          ...(spot.field.type === 'entries' && { part: step < 0 ? 'text' as const : 'first' as const }),
+        }, spots, readFresh));
         return;
       }
       setEditing(null);

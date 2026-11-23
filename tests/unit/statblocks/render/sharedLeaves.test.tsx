@@ -65,6 +65,24 @@ describe('EntryLine', () => {
     expect(blockEl(container, 'actions1')!.querySelector('.atlas-sb-trait')?.textContent).toBe('Sling Range 30 ft. One target.');
   });
 
+  it('places extras around the name, hiding only the labels requested', () => {
+    const template = templateOf(
+      [{ key: 'actions', label: 'Actions', type: 'entries', entry: { extras: [
+        { key: 'kind', label: 'Kind', type: 'text', position: 'before', hideLabel: true },
+        { key: 'type', label: 'Type', type: 'text', position: 'before' },
+        { key: 'range', label: 'Range', type: 'text', position: 'after', hideLabel: false },
+        { key: 'cost', label: 'Cost', type: 'number', hideLabel: true },
+      ] } }],
+      [{ id: 'actions1', type: 'entries', field: 'actions' }],
+    );
+    const { container } = renderSheet(template, {
+      actions: [{ name: 'Sling', kind: 'Ranged', type: 'Attack', range: '30 ft.', cost: 2, desc: 'One target.' }],
+    });
+    const line = blockEl(container, 'actions1')!.querySelector('.atlas-sb-trait')!;
+    expect(line.textContent).toBe('RangedType Attack Sling Range 30 ft.2 One target.');
+    expect([...line.querySelectorAll('.atlas-sb-entry-extra-label')].map((label) => label.textContent?.trim())).toEqual(['Type', 'Range']);
+  });
+
   it('keeps the name as written for the Fantasy Statblocks renderer and marks hit point entries', () => {
     const { container } = render(<EntryLine name="Hit Points" text="27 (5d8 + 5)" />);
     expect(container.querySelector('.atlas-sb-trait-name')?.textContent).toBe('Hit Points');
