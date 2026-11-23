@@ -211,6 +211,11 @@ export function reflectedArea(parts: readonly ReflectionPart[]): Polygon[] {
   return area;
 }
 
+/** Notes `area` as the `reflectedArea` of `parts`, worked out elsewhere with the same code (a worker's). */
+export function knownReflectedArea(parts: readonly ReflectionPart[], area: Polygon[]): void {
+  areas.set(parts, area);
+}
+
 function signedArea(ring: Polygon): number {
   let sum = 0;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) sum += (ring[j]!.x - ring[i]!.x) * (ring[j]!.y + ring[i]!.y);
