@@ -1,11 +1,16 @@
-import { useEffect, type RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 
 /**
  * Escape belongs to the top dialog; Tab stays inside it and focus returns on dismissal. Keys are heard in the window
- * the dialog renders in, so a dialog in a popout listens there.
+ * the dialog renders in, so a dialog in a popout listens there. `enabled` false (a dialog fading out) lets go of the
+ * keys at once and hands no focus back, since what opened in its place has taken it.
  */
-export function useDialogFocus(ref: RefObject<HTMLElement | null>, onClose: () => void): void {
+export function useDialogFocus(ref: RefObject<HTMLElement | null>, onClose: () => void, enabled = true): void {
+  // Read by the cleanup, which runs after the render that switched it off.
+  const restores = useRef(enabled);
+  restores.current = enabled;
   useEffect(() => {
+    if (!enabled) return undefined;
     const doc = ref.current?.ownerDocument ?? document;
     const win = doc.defaultView ?? window;
     const previous = doc.activeElement as HTMLElement | null;
@@ -27,6 +32,6 @@ export function useDialogFocus(ref: RefObject<HTMLElement | null>, onClose: () =
       }
     };
     win.addEventListener('keydown', keydown, true);
-    return () => { win.cancelAnimationFrame(frame); win.removeEventListener('keydown', keydown, true); if (previous?.isConnected) previous.focus(); };
-  }, [ref, onClose]);
+    return () => { win.cancelAnimationFrame(frame); win.removeEventListener('keydown', keydown, true); if (restores.current && previous?.isConnected) previous.focus(); };
+  }, [ref, onClose, enabled]);
 }

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useIsPresent } from 'framer-motion';
 import type { App } from 'obsidian';
 import { Button } from '../../packages/components/primitives/button';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
@@ -50,7 +50,9 @@ function WelcomeWindow({ app, settings, looks, carousel, doc }: Omit<WelcomeDial
   const forward = (): void => { if (last) finish(); else setAt(at + 1); };
   const back = (): void => setAt(Math.max(0, at - 1));
 
-  useDialogFocus(windowRef, finish);
+  // Fading out, it leaves the keys and the focus to the tour that follows.
+  const present = useIsPresent();
+  useDialogFocus(windowRef, finish, present);
   // The page's main button keeps the focus, so Enter always goes on.
   useEffect(() => { windowRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus(); }, [at]);
 

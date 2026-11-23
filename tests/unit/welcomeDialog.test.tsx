@@ -113,3 +113,38 @@ it('does not welcome a GM who took a tour', () => {
   expect(screen.queryByText('Welcome to Atlas')).toBeNull();
   expect(screen.queryByRole('dialog', { name: 'Welcome' })).toBeNull();
 });
+
+function startPage(app: App): React.JSX.Element {
+  return <DashboardTour app={app} root={document.body} hasScene onCreateScene={() => {}} />;
+}
+
+/** Runs `test` with the dialogs' real motion, which jsdom never finishes: a closed dialog stays in its fade. */
+async function withMotion(test: () => Promise<void> | void): Promise<void> {
+  MotionGlobalConfig.skipAnimations = false;
+  try { await test(); } finally { MotionGlobalConfig.skipAnimations = true; }
+}
+
+it('fades out over the start page tour, which already shows and takes the keys', async () => {
+  await withMotion(() => {
+    const { app, settings } = appWith([]);
+    render(startPage(app));
+    act(() => { fireEvent.click(screen.getByRole('button', { name: 'Skip' })); });
+    expect(document.querySelector('.atlas-welcome-overlay')).not.toBeNull();
+    expect(screen.getByText('Scenes')).toBeTruthy();
+    act(() => { fireEvent.keyDown(window, { key: 'Escape' }); });
+    expect(settings.shouldShowTutorial('dashboard')).toBe(false);
+  });
+});
+
+it('leaves the focus on the start page tour once it is gone', async () => {
+  const { app } = appWith([]);
+  // What had the focus before Atlas welcomed the GM: closing the welcome must not hand it back over the tour.
+  const before = document.body.appendChild(document.createElement('button'));
+  before.focus();
+  render(startPage(app));
+  act(() => { fireEvent.click(screen.getByRole('button', { name: 'Skip' })); });
+  await waitFor(() => expect(document.querySelector('.atlas-welcome-overlay')).toBeNull());
+  await act(async () => { await new Promise((done) => setTimeout(done, 50)); });
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Next' }));
+  before.remove();
+});
