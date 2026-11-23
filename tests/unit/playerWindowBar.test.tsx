@@ -92,7 +92,6 @@ describe('the player window bar', () => {
     act(() => tableControlsStore.setState({ online: true }));
     render(<PlayerWindowBar view={null} />);
     expect(screen.queryByRole('button', { name: 'TrueScale' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'What players see' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Hide the map' }));
     expect(tableControlsStore.getState().curtain).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: /Pause the player view/ }));
@@ -113,15 +112,26 @@ describe('the player window bar', () => {
     expect(screen.getByRole('button', { name: 'TrueScale' })).toBeTruthy();
   });
 
-  it('switches online players between their own maps and remotes for the shared screen', () => {
+  it('says how online players play in what players see, with online play\'s own switches, and drops the window\'s rows while it is closed', () => {
+    playerWindowStore.setState({ isOpen: false });
+    vi.spyOn(context.settings as SettingsService, 'isExperimentalOn').mockReturnValue(true);
     act(() => tableControlsStore.setState({ online: true }));
     render(<PlayerWindowBar view={null} />);
-    fireEvent.click(screen.getByRole('button', { name: /How players play/ }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Phones as remotes for the shared screen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'What players see' }));
+    expect(screen.getByText('How players play')).toBeTruthy();
+    expect(screen.getByRole('switch', { name: 'Show initiative panel' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Close player window' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Phones as remotes for the shared screen' }));
     expect(tableControlsStore.getState().playMode).toBe('remote');
-    expect(screen.queryByRole('menu')).toBeNull();
     act(() => tableControlsStore.setState({ online: false }));
-    expect(screen.queryByRole('button', { name: /How players play/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'What players see' })).toBeNull();
+  });
+
+  it('keeps the play mode out of what players see while no table runs', () => {
+    render(<PlayerWindowBar view={null} />);
+    fireEvent.click(screen.getByRole('button', { name: 'What players see' }));
+    expect(screen.queryByText('How players play')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Close player window' })).toBeTruthy();
   });
 
   it('offers taking back an image only while one is shown, as its last button', () => {

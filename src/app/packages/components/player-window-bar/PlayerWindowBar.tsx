@@ -20,13 +20,12 @@ import { t } from "../../../i18n"
 import { TrueScalePanel } from "../true-scale/TrueScalePanel"
 import { FullScreenButton } from "./FullScreenButton"
 import { PlayersSeeMenu } from "./PlayersSeeMenu"
-import { PlayModeMenu } from "./PlayModeMenu"
 import { takeBackHandout, useHandoutShown } from "./playerHandout"
 import "../true-scale/true-scale.scss"
 import "./player-window-bar.scss"
 
 /** The bar's menus; one is open at a time. */
-type BarMenu = "trueScale" | "playersSee" | "playMode"
+type BarMenu = "trueScale" | "playersSee"
 
 /** A press anywhere outside `root` or Escape calls `close` while `open`, before the map hears of the key. */
 function useDismiss(root: RefObject<HTMLElement | null>, open: boolean, close: () => void): void {
@@ -54,9 +53,9 @@ function useDismiss(root: RefObject<HTMLElement | null>, open: boolean, close: (
  * The player window bar (GM only, below the scene tabs while the player window is open or an online
  * table runs), with the look and corners of the undo/redo bar. For the player window: TrueScale and
  * full screen on the TV. For everyone at the table: the curtain and pausing play (disabled while
- * TrueScale pins the window and no table runs). While a table runs, how online players play, and
- * opening the player window for a shared screen while it is closed. Then
- * what the player window shows (and closing it), and, while players are handed an image or loot,
+ * TrueScale pins the window and no table runs). While a table runs and the window is closed, opening
+ * it for a shared screen. Then what players see (with how online players play while a table runs,
+ * and closing the window), and, while players are handed an image or loot,
  * taking it back. The handout's button comes last, so nothing moves under the pointer when it comes or goes.
  */
 export function PlayerWindowBar({ view }: { view: AtlasView | null }): React.ReactElement | null {
@@ -75,9 +74,9 @@ export function PlayerWindowBar({ view }: { view: AtlasView | null }): React.Rea
   const keepInView = useKeepInView(panelRef, menu === "trueScale", "bottom")
   const service = PlayerWindowService.getInstance()
 
-  // A menu closes with its button: the play mode's with the table, the others with the player window
+  // A menu closes with its button: TrueScale's with the player window, what players see with the window and the table
   useEffect(() => {
-    setMenu((open) => (open === null || (open === "playMode" ? online : isOpen) ? open : null))
+    setMenu((open) => (open === "trueScale" ? (isOpen ? open : null) : isOpen || online ? open : null))
   }, [isOpen, online])
 
   const closeMenu = useCallback(() => setMenu(null), [])
@@ -133,8 +132,7 @@ export function PlayerWindowBar({ view }: { view: AtlasView | null }): React.Rea
             onClick={toggleTablePause}
             tooltipSide="bottom"
           />
-          {online && <PlayModeMenu open={menu === "playMode"} onToggle={toggleMenu("playMode")} />}
-          {isOpen && <PlayersSeeMenu open={menu === "playersSee"} onToggle={toggleMenu("playersSee")} settings={settings} />}
+          <PlayersSeeMenu open={menu === "playersSee"} onToggle={toggleMenu("playersSee")} settings={settings} windowOpen={isOpen} online={online} />
           {handoutShown && (
             <ToolButton icon={ImageOff} label={t("playerBar.takeBack")} isActive={false} onClick={takeBackHandout} tooltipSide="bottom" />
           )}
