@@ -2,8 +2,10 @@ import { t } from '../../i18n';
 import type { MessageKey, MessageValues } from '../../i18n/types';
 import type { ItemKind } from '../../services/itemBundle/itemBundleFormat';
 import type { Refusal, ShareSnapshot } from '../upload/shareState';
+import { findingMessage } from '../upload/text/findingMessages';
 import { stageLabel, uploadMessageFor, type UploadContext } from '../upload/text/uploadMessages';
-import { CHECK_STAGES, type CheckStage } from '../upload/uploadContract';
+import { CHECK_STAGES, type CheckFinding, type CheckStage } from '../upload/uploadContract';
+import { ITEM_FINDINGS, MUSIC_FINDINGS } from './findingWording';
 
 /**
  * The sentences of a share that name a collection, each with its wording for a single Atlas file, which says "it" and
@@ -52,8 +54,8 @@ const MUSIC_WORDING: Readonly<Record<SubjectSentence, MessageKey>> = {
 
 const WORDING: Readonly<Record<ShareSnapshot['subject'], Readonly<Partial<Record<MessageKey, MessageKey>>>>> = {
   collection: {},
-  item: ITEM_WORDING,
-  music: MUSIC_WORDING,
+  item: { ...ITEM_WORDING, ...ITEM_FINDINGS },
+  music: { ...MUSIC_WORDING, ...MUSIC_FINDINGS },
 };
 
 /** A sentence in the words of what is shared: its own where the collection's names a collection, else that one. */
@@ -69,6 +71,11 @@ export function shareSaid(subject: ShareSnapshot['subject'], key: SubjectSentenc
 /** What a refusal or error of the upload and publish routes says, in the words of what is shared. */
 export function refusalSaid(subject: ShareSnapshot['subject'], { code, until }: Refusal, context: UploadContext = 'share'): string {
   return uploadMessageFor(code, until, context, (key, values) => said(subject, key, values));
+}
+
+/** What a finding of the checks says, in the words of what is shared. */
+export function findingSaid(subject: ShareSnapshot['subject'], finding: CheckFinding): string {
+  return findingMessage(finding, (key, values) => said(subject, key, values));
 }
 
 /** A kind of item, as one of them is called: "Statblock template". */

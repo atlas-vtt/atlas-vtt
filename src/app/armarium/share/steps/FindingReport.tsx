@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Button } from '../../../packages/components/primitives/button';
 import { t } from '../../../i18n';
+import type { ShareSnapshot } from '../../upload/shareState';
 import type { CheckFinding } from '../../upload/uploadContract';
 import { findingSections, sectionLabel, showAllLabel, showFewerLabel, shownGroups, timesLabel, type FindingSection } from '../../upload/text/findingGroups';
+import { findingSaid } from '../shareWording';
 
 /** One group of findings: its first few, the rest behind Show all, each with its file, line, place and sentence. */
 function FindingGroupList({ section }: { section: FindingSection }): React.JSX.Element | null {
@@ -34,9 +36,9 @@ function FindingGroupList({ section }: { section: FindingSection }): React.JSX.E
   );
 }
 
-/** A check's findings: what refused the bundle first and apart, then the notes, which ask for nothing. */
-export function FindingReport({ findings, notesOnly = false }: { findings: readonly CheckFinding[]; notesOnly?: boolean }): React.JSX.Element {
-  const { problems, notes } = findingSections(findings);
+/** A check's findings, in the words of what is shared: what refused the bundle first and apart, then the notes, which ask for nothing. */
+export function FindingReport({ findings, subject, notesOnly = false }: { findings: readonly CheckFinding[]; subject: ShareSnapshot['subject']; notesOnly?: boolean }): React.JSX.Element {
+  const { problems, notes } = findingSections(findings, {}, (finding) => findingSaid(subject, finding));
   return (
     <div className="atlas-share-report">
       {!notesOnly && <FindingGroupList section={problems} />}

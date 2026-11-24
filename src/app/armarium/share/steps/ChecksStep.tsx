@@ -44,7 +44,7 @@ export function ChecksStep({ snapshot }: { snapshot: ShareSnapshot }): React.JSX
     return (
       <>
         <ShareNotice tone="error">{shareSaid(snapshot.subject, 'armariumShare.rejected')}</ShareNotice>
-        <FindingReport findings={submission.findings} />
+        <FindingReport findings={submission.findings} subject={snapshot.subject} />
         <p className="atlas-share-text atlas-share-text--muted">{shareSaid(snapshot.subject, 'armariumShare.fixThenShare')}</p>
       </>
     );
