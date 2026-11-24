@@ -2,7 +2,8 @@ import type { App } from 'obsidian';
 import { assemblePrebuild, splitPrebuild, type PrebuiltScene } from '../../../vision/prebuild/prebuildParts';
 import type { PrebuildReply, PrebuildRequest } from '../../../vision/prebuild/scenePrebuild';
 import type { PrebuildAnswer, PrebuildMessage } from './scenePrebuildWorker';
-import PrebuildWorker from './scenePrebuildWorker?worker&inline';
+import PrebuildWorker, { sharedWorker } from './scenePrebuildWorker?worker&inline';
+import { startNodeFreeWorker, type WorkerLink } from '../../../utils/nodeFreeWorker';
 
 /** Workers by the cores the device has: one on two cores, at most three (the main thread loads the rest of the scene meanwhile). */
 function workerCount(): number {
@@ -11,18 +12,17 @@ function workerCount(): number {
 
 /** One worker and the jobs it still owes. */
 class PrebuildPort {
-  private worker: Worker | null = null;
+  private worker: WorkerLink<PrebuildMessage, PrebuildAnswer> | null = null;
   private readonly pending = new Map<number, (reply: PrebuildReply | null) => void>();
   private nextId = 1;
 
-  constructor(private readonly create: () => Worker) {}
+  constructor(private readonly create: () => WorkerLink<PrebuildMessage, PrebuildAnswer>) {}
 
   start(): boolean {
     if (this.worker) return true;
     try {
       const worker = this.create();
-      worker.addEventListener('message', (event: MessageEvent<PrebuildAnswer>) => this.answer(event.data));
-      worker.addEventListener('error', () => this.stop());
+      worker.listen((answer) => this.answer(answer), () => this.stop());
       this.worker = worker;
       return true;
     } catch (error) {
@@ -38,13 +38,13 @@ class PrebuildPort {
     return new Promise((resolve) => {
       this.pending.set(id, resolve);
       const message: PrebuildMessage = { id, request };
-      worker.postMessage(message);
+      worker.post(message);
     });
   }
 
   /** Ends the worker and answers what it still owed with null; the next job starts another. */
   stop(): void {
-    this.worker?.terminate();
+    this.worker?.stop();
     this.worker = null;
     for (const resolve of this.pending.values()) resolve(null);
     this.pending.clear();
@@ -71,7 +71,8 @@ export class ScenePrebuildClient {
   static forApp(app: App): ScenePrebuildClient {
     let client = ScenePrebuildClient.instances.get(app);
     if (!client) {
-      client = new ScenePrebuildClient(workerCount(), () => new PrebuildWorker({ name: 'Atlas scene lighting' }));
+      const options = { name: 'Atlas scene lighting' };
+      client = new ScenePrebuildClient(workerCount(), () => startNodeFreeWorker(() => sharedWorker(options), () => new PrebuildWorker(options)));
       ScenePrebuildClient.instances.set(app, client);
     }
     return client;
@@ -86,7 +87,7 @@ export class ScenePrebuildClient {
   private readonly ports: PrebuildPort[];
   private disposed = false;
 
-  constructor(count: number, create: () => Worker) {
+  constructor(count: number, create: () => WorkerLink<PrebuildMessage, PrebuildAnswer>) {
     this.ports = Array.from({ length: count }, () => new PrebuildPort(create));
   }
 

@@ -19,15 +19,17 @@ const WRAPPER = `const jsContent = "self.onmessage = () => {};";
             }`;
 
 /** Evaluates a wrapper the way the bundle does, with a Blob and Worker that count what is made. */
-function evaluate(code: string): { made: () => number; start: () => unknown } {
+function evaluate(code: string): { made: () => number; start: () => unknown; startShared: () => unknown } {
   let blobs = 0;
   const self = {
     Blob: class { constructor() { blobs++; } },
     URL: { createObjectURL: (): string => 'blob:worker' },
   };
   class Worker { constructor(readonly url: string) {} }
-  const start = new Function('self', 'Blob', 'Worker', code.replace(/^(\s*)export default function/m, '$1return function'))(self, self.Blob, Worker) as (options?: object) => unknown;
-  return { made: () => blobs, start: () => start({}) };
+  class SharedWorker { constructor(readonly url: string, readonly options: object) {} }
+  const body = code.replace(/^(\s*)export default function WorkerWrapper/m, '$1const start = function').replace(/^export function sharedWorker/m, 'function sharedWorker');
+  const [start, shared] = new Function('self', 'Blob', 'Worker', 'SharedWorker', `${body}\nreturn [start, typeof sharedWorker === 'function' ? sharedWorker : null];`)(self, self.Blob, Worker, SharedWorker) as [(options?: object) => unknown, ((options?: object) => unknown) | null];
+  return { made: () => blobs, start: () => start({}), startShared: () => shared?.({ name: 'shared' }) };
 }
 
 describe('inline workers whose code becomes a Blob only when a worker starts', () => {
@@ -38,6 +40,13 @@ describe('inline workers whose code becomes a Blob only when a worker starts', (
     const after = evaluate(withBlobOnFirstWorker(WRAPPER));
     expect(after.made()).toBe(0);
     expect(after.start()).toMatchObject({ url: 'blob:worker' });
+    after.start();
+    expect(after.made()).toBe(1);
+  });
+
+  it('starts the same code as a SharedWorker from the same Blob', () => {
+    const after = evaluate(withBlobOnFirstWorker(WRAPPER));
+    expect(after.startShared()).toMatchObject({ url: 'blob:worker', options: { name: 'shared' } });
     after.start();
     expect(after.made()).toBe(1);
   });
