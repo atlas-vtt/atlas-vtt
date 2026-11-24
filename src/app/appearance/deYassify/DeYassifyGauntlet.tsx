@@ -8,10 +8,12 @@ import './de-yassify.scss';
 
 /** How long each pretend wait lasts: before the extra-sure ask, and the security check before it asks to go on. */
 export const DE_YASSIFY_STALL_MS = 5000;
+/** The chance that the security check gives up: turning Yassify off simply fails, and Yassify stays on. */
+export const DE_YASSIFY_FAIL_CHANCE = 0.3;
 
 type Question = 'sure' | 'extra-sure' | 'slow' | 'slow-sure';
 type Stall = 'working' | 'checking';
-type Stage = Question | Stall | 'captcha';
+type Stage = Question | Stall | 'failed' | 'captcha';
 
 /** Each pretend wait, what it says and where it leads. */
 const STALLS: Readonly<Record<Stall, { text: MessageKey; next: Stage }>> = {
@@ -43,19 +45,30 @@ interface DeYassifyGauntletProps {
 
 /**
  * What stands between a GM and turning Yassify off, annoying on purpose: are you sure (No is the big accent button),
- * a pretend wait, are you extra sure (Yes even smaller), a pretend security check that asks twice whether to go on
- * while its spinner keeps going, then the mimic captcha.
+ * a pretend wait, are you extra sure (Yes even smaller), a pretend security check that now and then just fails and
+ * otherwise asks twice whether to go on while its spinner keeps going, then the mimic captcha.
  */
-export function DeYassifyGauntlet({ footer, onDone, random, deal }: DeYassifyGauntletProps): React.JSX.Element {
+export function DeYassifyGauntlet({ footer, onDone, random = Math.random, deal }: DeYassifyGauntletProps): React.JSX.Element {
   const [stage, setStage] = useState<Stage>('sure');
 
   useEffect(() => {
     if (!isStall(stage)) return;
-    const timer = window.setTimeout(() => setStage(STALLS[stage].next), DE_YASSIFY_STALL_MS);
+    const timer = window.setTimeout(() => {
+      // Now and then the security check just gives up.
+      setStage(stage === 'checking' && random() < DE_YASSIFY_FAIL_CHANCE ? 'failed' : STALLS[stage].next);
+    }, DE_YASSIFY_STALL_MS);
     return () => window.clearTimeout(timer);
-  }, [stage]);
+  }, [stage, random]);
 
-  if (stage === 'captcha') return <MimicCaptcha onSolved={() => onDone(true)} {...(random && { random })} {...(deal && { deal })} />;
+  if (stage === 'captcha') return <MimicCaptcha onSolved={() => onDone(true)} random={random} {...(deal && { deal })} />;
+  if (stage === 'failed') {
+    return (
+      <>
+        <p className="atlas-de-yassify__question">{t('appearance.deYassify.failed')}</p>
+        {createPortal(<Button autoFocus onClick={() => onDone(false)}>{t('appearance.deYassify.ok')}</Button>, footer)}
+      </>
+    );
+  }
 
   const question = isStall(stage) ? null : QUESTIONS[stage];
   const text = question ? question.text : STALLS[stage as Stall].text;
