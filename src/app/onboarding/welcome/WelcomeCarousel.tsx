@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ArrowUpRight } from 'lucide-react';
 import { WelcomeText } from './welcomePages';
 import { CROSSFADE_MS, SLIDE_MS, WELCOME_SLIDES, type WelcomeSlide } from './welcomeSlides';
 import { useDocumentHidden, useSlideTimer } from './useSlideTimer';
@@ -96,6 +97,7 @@ function Slide({ slide, state }: { slide: WelcomeSlide; state: SlideState }): Re
       aria-roledescription="slide"
       aria-label={t(slide.chip)}
       aria-hidden={state !== 'on'}
+      inert={state !== 'on'}
       data-state={state}
     >
       <img key={`picture-${showing}`} className="atlas-welcome-slide__picture" src={slide.picture} alt="" draggable={false} />
@@ -106,7 +108,18 @@ function Slide({ slide, state }: { slide: WelcomeSlide; state: SlideState }): Re
           title={t(slide.title)}
           body={t(slide.body)}
           {...(slide.aside && { aside: { line: t(slide.aside.line), tag: t(slide.aside.tag) } })}
-        />
+        >
+          {slide.links && (
+            <div className="atlas-welcome-slide__links">
+              {slide.links.map((link) => (
+                <button key={link.url} type="button" className="atlas-welcome-slide__link" onClick={() => window.open(link.url)}>
+                  {t(link.label)}
+                  <ArrowUpRight aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+          )}
+        </WelcomeText>
       </div>
     </div>
   );

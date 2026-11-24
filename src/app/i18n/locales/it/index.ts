@@ -100,6 +100,7 @@ import { tokens } from './tokens';
 import { toolbar } from './toolbar';
 import { toolbarEdit } from './toolbarEdit';
 import { tour } from './tour';
+import { appearance } from './appearance';
 import { transfer } from './transfer';
 import { validation } from './validation';
 import { vaultImages } from './vaultImages';
@@ -236,6 +237,7 @@ export const it = {
   ...toolbar,
   ...toolbarEdit,
   ...tour,
+  ...appearance,
   ...transfer,
   ...validation,
   ...vaultImages,
