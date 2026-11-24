@@ -13,7 +13,7 @@ import { StandIn, ValueText } from '../values/ValueText';
 import { ValueEditingContext, ValueSlot } from '../valueSlot';
 import type { BlockViewProps } from './blockViewProps';
 
-/** An entry's labelled parts before its text: "Range 30 ft. Cost 2". */
+/** The labelled parts of an entry: "Range 30 ft. Cost 2". */
 function EntryExtras({ extras }: { extras: EntryExtra[] }): React.JSX.Element | null {
   const { app, sourcePath } = useSheet();
   if (!extras.length) return null;
@@ -68,8 +68,9 @@ export function EntriesView({ block, display }: BlockViewProps<EntriesBlock>): R
         {entries.map(({ item, key, index }, shown) => {
           const drawn = drawnItems[index] ?? item;
           const extras = entryExtras(drawn, shape);
-          const extrasBefore = extras.filter((extra) => extra.position === 'before');
-          const extrasAfter = extras.filter((extra) => extra.position === 'after' || extra.position === undefined);
+          const extrasBeforeName = extras.filter((extra) => extra.position === 'beforeName');
+          const extrasAfterName = extras.filter((extra) => extra.position === 'afterName' || extra.position === undefined);
+          const extrasAfterDescription = extras.filter((extra) => extra.position === 'afterDescription');
 
           const line = (
             <EntryLine
@@ -80,8 +81,9 @@ export function EntriesView({ block, display }: BlockViewProps<EntriesBlock>): R
               app={app}
               sourcePath={sourcePath}
               nameStyle={block.nameStyle ?? 'run-in'}
-              entriesBefore={<EntryExtras extras={extrasBefore} />}
-              entriesAfter={<EntryExtras extras={extrasAfter} />}
+              entriesBeforeName={<EntryExtras extras={extrasBeforeName} />}
+              entriesAfterName={<EntryExtras extras={extrasAfterName} />}
+              entriesAfterDescription={<EntryExtras extras={extrasAfterDescription} />}
             />
           );
           return <React.Fragment key={key}>{editing?.entry ? editing.entry(block, { item, key, index, shown }, line) : line}</React.Fragment>;

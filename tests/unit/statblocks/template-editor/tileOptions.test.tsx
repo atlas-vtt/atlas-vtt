@@ -156,13 +156,15 @@ describe('an Abilities tile\'s Options', () => {
     choose(options, 'Position of Type', 'Position before name');
     fireEvent.click(within(options).getByRole('switch', { name: 'Hide label' }));
     expect(fieldOf(session, 'actions')?.entry?.extras).toEqual([
-      { key: 'type', label: 'Type', type: 'choice', position: 'before', hideLabel: true },
+      { key: 'type', label: 'Type', type: 'choice', position: 'beforeName', hideLabel: true },
     ]);
     fireEvent.click(within(options).getByRole('switch', { name: 'Hide label' }));
-    expect(fieldOf(session, 'actions')?.entry?.extras?.[0]).toMatchObject({ position: 'before', hideLabel: false });
+    expect(fieldOf(session, 'actions')?.entry?.extras?.[0]).toMatchObject({ position: 'beforeName', hideLabel: false });
     expect(fieldOf(session, 'actions')?.entry?.extras?.[0]?.several).toBeUndefined();
     choose(options, 'Position of Type', 'Position after name');
-    expect(fieldOf(session, 'actions')?.entry?.extras?.[0]).toMatchObject({ position: 'after', hideLabel: false });
+    expect(fieldOf(session, 'actions')?.entry?.extras?.[0]).toMatchObject({ position: 'afterName', hideLabel: false });
+    choose(options, 'Position of Type', 'Position after description');
+    expect(fieldOf(session, 'actions')?.entry?.extras?.[0]).toMatchObject({ position: 'afterDescription', hideLabel: false });
   });
 
   it('edit the parts of every tab\'s list at once, in one step', () => {

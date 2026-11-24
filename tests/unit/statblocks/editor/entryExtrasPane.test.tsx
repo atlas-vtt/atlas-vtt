@@ -65,7 +65,7 @@ describe('an ability\'s parts in the inline editor', () => {
     const actionField: TemplateField = {
       ...ACTIONS,
       entry: { extras: [
-        { key: 'range', label: 'Range', type: 'text', position: 'before' },
+        { key: 'range', label: 'Range', type: 'text', position: 'beforeName' },
         { key: 'cost', label: 'Cost', type: 'number' },
       ] },
     };
@@ -96,20 +96,21 @@ describe('an ability\'s parts in the inline editor', () => {
     expect(document.activeElement).toBe(text());
   });
 
-  it('steps through parts in their displayed order around the name', async () => {
+  it('shows each part once in its configured position around the name and description', async () => {
     const actionField: TemplateField = {
       ...ACTIONS,
       entry: { extras: [
         { key: 'cost', label: 'Cost', type: 'number' },
-        { key: 'range', label: 'Range', type: 'text', position: 'before', hideLabel: true },
-        { key: 'type', label: 'Type', type: 'text', position: 'after' },
+        { key: 'range', label: 'Range', type: 'text', position: 'beforeName', hideLabel: true },
+        { key: 'type', label: 'Type', type: 'text', position: 'afterName' },
+        { key: 'effect', label: 'Effect', type: 'text', position: 'afterDescription' },
       ] },
     };
-    const harness = await pane([{ name: 'Bite', range: '5 ft.', cost: 2, type: 'Attack', desc: 'It bites.' }], actionField);
+    const harness = await pane([{ name: 'Bite', range: '5 ft.', cost: 2, type: 'Attack', effect: 'The target falls.', desc: 'It bites.' }], actionField);
     const name = openFirstAction(harness);
     const editor = name.closest('.atlas-sb-pane-entry-editor')!;
     const order = [...editor.querySelectorAll('[data-entry-part]')].map((part) => part.getAttribute('data-entry-extra') ?? part.getAttribute('data-entry-part'));
-    expect(order).toEqual(['range', 'name', 'cost', 'type', 'text']);
+    expect(order).toEqual(['range', 'name', 'cost', 'type', 'text', 'effect']);
     const range = screen.getByRole('textbox', { name: 'Range' });
     const cost = screen.getByRole('textbox', { name: 'Cost' });
     const type = screen.getByRole('textbox', { name: 'Type' });
@@ -123,11 +124,13 @@ describe('an ability\'s parts in the inline editor', () => {
     expect(document.activeElement).toBe(type);
     fireEvent.keyDown(type, { key: 'Enter' });
     expect(document.activeElement).toBe(text());
+    fireEvent.keyDown(text(), { key: 'Tab' });
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Effect' }));
     fireEvent.focus(range);
     expect(fireEvent.keyDown(range, { key: 'Tab', shiftKey: true })).toBe(false);
   });
 
-  it('shows a control per part between the name and the text, in the shape\'s order, Enter stepping through them', async () => {
+  it('shows a control per part after the name, in the shape\'s order, Enter stepping through them', async () => {
     const harness = await pane([{ name: 'Bite', type: 'Main action', desc: 'It bites.' }]);
     const name = openFirstAction(harness);
     const editor = name.closest('.atlas-sb-pane-entry-editor')!;

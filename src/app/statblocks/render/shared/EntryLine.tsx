@@ -21,9 +21,10 @@ export interface EntryLineProps {
   nameStyle?: 'run-in' | 'heading' | undefined;
   /** Where the name and the text are written in the note, when they can be edited in place. */
   editPaths?: { name: StatblockEditPath; text: StatblockEditPath } | undefined;
-  /** Shown between the name and the text: an entry's labelled extras. */
-  entriesBefore?: React.ReactNode;
-  entriesAfter?: React.ReactNode;
+  /** An entry's labelled extras, placed before the name, after it, or after the description. */
+  entriesBeforeName?: React.ReactNode;
+  entriesAfterName?: React.ReactNode;
+  entriesAfterDescription?: React.ReactNode;
   /** The entry's identity in its list (`values/entryKeys.ts`) and its place there: what an editor's handles and drags address. */
   itemKey?: string | undefined;
   itemIndex?: number | undefined;
@@ -41,8 +42,9 @@ export function EntryLine({
   markdown = true,
   nameStyle,
   editPaths,
-  entriesBefore,
-  entriesAfter,
+  entriesBeforeName,
+  entriesAfterName,
+  entriesAfterDescription,
   itemKey,
   itemIndex,
 }: EntryLineProps): React.JSX.Element | null {
@@ -57,7 +59,7 @@ export function EntryLine({
       data-item-index={itemIndex}
       {...hitPointsAttribute(namesHitPoints(name))}
     >
-      {entriesBefore}
+      {entriesBeforeName}
       {name && (
         <span className="atlas-sb-trait-name">
           <EditableField path={editPaths?.name ?? []} value={name} editable={editable} label={t('statblockEditor.traitName')}>
@@ -67,10 +69,12 @@ export function EntryLine({
       )}
       {/* A word space of the text's own font, which copy and screen readers read too. */}
       {name && runIn && ' '}
-      {entriesAfter}
+      {entriesAfterName}
       <EditableField path={editPaths?.text ?? []} value={text} editable={editable} label={t('statblockEditor.traitText')} multiline>
         <StatblockMarkdown text={runIn ? text.trimStart() : text} app={app} sourcePath={sourcePath} markdown={markdown} />
       </EditableField>
+      {entriesAfterDescription && ' '}
+      {entriesAfterDescription}
     </div>
   );
 }

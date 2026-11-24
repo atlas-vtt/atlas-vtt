@@ -121,8 +121,9 @@ describe('field values', () => {
 
   it('reads and writes entry part positions and label visibility', () => {
     const extras = [
-      { key: 'type', label: 'Type', type: 'text', position: 'before', hideLabel: true },
-      { key: 'range', label: 'Range', type: 'text', position: 'after', hideLabel: false },
+      { key: 'type', label: 'Type', type: 'text', position: 'beforeName', hideLabel: true },
+      { key: 'range', label: 'Range', type: 'text', position: 'afterName', hideLabel: false },
+      { key: 'effect', label: 'Effect', type: 'text', position: 'afterDescription' },
       { key: 'cost', label: 'Cost', type: 'number' },
     ];
     const field = { key: 'moves', label: 'Moves', type: 'entries', entry: { extras } };
@@ -132,6 +133,25 @@ describe('field values', () => {
     const reread = read(writtenFields(template) as unknown[]);
     expect(reread.problems).toEqual([]);
     expect(reread.template.fields).toEqual([field]);
+  });
+
+  it('reads the earlier entry part positions as their renamed equivalents', () => {
+    const extras = [
+      { key: 'type', label: 'Type', type: 'text', position: 'before' },
+      { key: 'range', label: 'Range', type: 'text', position: 'after' },
+    ];
+    const { template, problems } = read([{ key: 'moves', label: 'Moves', type: 'entries', entry: { extras } }]);
+    expect(problems).toEqual([]);
+    expect(template.fields[0]?.entry?.extras).toEqual([
+      { key: 'type', label: 'Type', type: 'text', position: 'beforeName' },
+      { key: 'range', label: 'Range', type: 'text', position: 'afterName' },
+    ]);
+    expect(writtenFields(template)).toEqual([{
+      key: 'moves', label: 'Moves', type: 'entries', entry: { extras: [
+        { key: 'type', label: 'Type', type: 'text', position: 'beforeName' },
+        { key: 'range', label: 'Range', type: 'text', position: 'afterName' },
+      ] },
+    }]);
   });
 
   it('reports invalid entry part position and visibility while keeping them in the file', () => {

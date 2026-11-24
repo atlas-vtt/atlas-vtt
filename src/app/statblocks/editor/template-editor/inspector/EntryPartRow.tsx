@@ -15,8 +15,9 @@ const EXTRA_TYPES: Array<{ value: EntryExtraType; label: string }> = [
 ];
 
 const POSITIONS: Array<{ value: EntryExtraPosition; label: string }> = [
-  { value: 'before', label: t('templateEditor.beforeName') },
-  { value: 'after', label: t('templateEditor.afterName') },
+  { value: 'beforeName', label: t('templateEditor.beforeName') },
+  { value: 'afterName', label: t('templateEditor.afterName') },
+  { value: 'afterDescription', label: t('templateEditor.afterDescription') },
 ];
 
 /** The part as another type: what only a choice has goes when it is no choice any more. */
@@ -68,7 +69,7 @@ export function EntryPartRow({ extra, index, session, disabled, onEdit, onRemove
       </div>
       <div className="atlas-te-setting__inline">
         <Select<EntryExtraPosition>
-          value={extra.position ?? 'after'}
+          value={extra.position ?? 'afterName'}
           options={POSITIONS}
           onChange={(position) => onEdit((current) => ({ ...current, position }))}
           labelledBy={positionId}

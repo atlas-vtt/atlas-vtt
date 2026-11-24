@@ -200,9 +200,12 @@ export interface EntryShape {
   nameKey?: string;
   /** Default 'desc' (FS); FS's Daggerheart notes use 'text'. */
   textKey?: string;
-  /** Short labelled parts shown before the text ("Range", "Cost"). */
+  /** Labelled parts positioned around each entry's name and description ("Range", "Cost"). */
   extras?: EntryExtraShape[];
 }
+
+/** Where an entry's labelled extra appears relative to its name and description. */
+export type EntryExtraPosition = 'beforeName' | 'afterName' | 'afterDescription';
 
 /**
  * One part every entry of a list has besides its name and text. A `choice`
@@ -210,8 +213,6 @@ export interface EntryShape {
  * "Passive"), picked per entry; with `several`, any of them at once, written
  * as one line in the order of `options`.
  */
-export type EntryExtraPosition = 'before' | 'after';
-
 export interface EntryExtraShape {
   key: string;
   label: string;

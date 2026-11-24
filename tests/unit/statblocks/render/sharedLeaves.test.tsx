@@ -65,13 +65,13 @@ describe('EntryLine', () => {
     expect(blockEl(container, 'actions1')!.querySelector('.atlas-sb-trait')?.textContent).toBe('Sling Range 30 ft. One target.');
   });
 
-  it('places extras around the name, hiding only the labels requested', () => {
+  it('places extras before the name, after it, and after the description', () => {
     const template = templateOf(
       [{ key: 'actions', label: 'Actions', type: 'entries', entry: { extras: [
-        { key: 'kind', label: 'Kind', type: 'text', position: 'before', hideLabel: true },
-        { key: 'type', label: 'Type', type: 'text', position: 'before' },
-        { key: 'range', label: 'Range', type: 'text', position: 'after', hideLabel: false },
-        { key: 'cost', label: 'Cost', type: 'number', hideLabel: true },
+        { key: 'kind', label: 'Kind', type: 'text', position: 'beforeName', hideLabel: true },
+        { key: 'type', label: 'Type', type: 'text', position: 'beforeName' },
+        { key: 'range', label: 'Range', type: 'text', position: 'afterName', hideLabel: false },
+        { key: 'cost', label: 'Cost', type: 'number', position: 'afterDescription', hideLabel: true },
       ] } }],
       [{ id: 'actions1', type: 'entries', field: 'actions' }],
     );
@@ -79,7 +79,7 @@ describe('EntryLine', () => {
       actions: [{ name: 'Sling', kind: 'Ranged', type: 'Attack', range: '30 ft.', cost: 2, desc: 'One target.' }],
     });
     const line = blockEl(container, 'actions1')!.querySelector('.atlas-sb-trait')!;
-    expect(line.textContent).toBe('RangedType Attack Sling Range 30 ft.2 One target.');
+    expect(line.textContent?.trimEnd()).toBe('RangedType Attack Sling Range 30 ft. One target. 2');
     expect([...line.querySelectorAll('.atlas-sb-entry-extra-label')].map((label) => label.textContent?.trim())).toEqual(['Type', 'Range']);
   });
 
