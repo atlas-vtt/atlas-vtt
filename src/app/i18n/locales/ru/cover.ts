@@ -9,4 +9,5 @@ export const cover: Translation = {
   'cover.upload': 'Загрузить изображение',
   'cover.uploadHint': 'Своё изображение как обложка',
   'cover.uploaded': 'Загруженное изображение',
+  'cover.unreadable': '{name} — не изображение, которое Atlas может прочитать. Выберите другой файл.',
 };

@@ -89,6 +89,11 @@ export abstract class ShareFlow<S extends ShareCommon> {
     void this.runUpload((upload) => upload.retry());
   }
 
+  /** After packing failed, back to the step that chose what is packed, where it can be changed. */
+  backFromPacking(): void {
+    if (this.state.step === 'upload' && !this.state.busy && this.state.refusal?.code === 'export-failed') this.set({ step: 'bundle', packing: null, refusal: null });
+  }
+
   /** Asks again how far the checks are, after an ask that stopped (a sign-in that ran out, no connection). */
   askAgain(): void {
     const submission = this.state.submission;

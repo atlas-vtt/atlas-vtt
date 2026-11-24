@@ -9,4 +9,5 @@ export const cover: Translation = {
   'cover.upload': 'Bild hochladen',
   'cover.uploadHint': 'Ein eigenes Bild als Titelbild verwenden',
   'cover.uploaded': 'Hochgeladenes Bild',
+  'cover.unreadable': '{name} ist kein Bild, das Atlas lesen kann. Wähle eine andere Datei.',
 };
