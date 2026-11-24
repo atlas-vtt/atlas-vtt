@@ -42,6 +42,7 @@
 
 ## Fixed
 
+- A large generated dungeon or cave is no longer saved with blank floors: its floors are drawn in pieces the graphics card can hold, and where a floor still cannot be drawn, the generator says so and you can try again instead of getting a scene with empty maps
 - The toolbar's Lighting button is named in your language, as its menu already was
 - Initiative cards show a token cut out on a transparent ground whole, instead of zooming into a small part of it such as an eye
 - Dice in the accent colour take a new accent colour at once, whether it is picked in Appearance settings or in Obsidian's settings
