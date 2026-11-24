@@ -8,7 +8,9 @@ import type { SeatSource } from '../../../../src/app/online/gm/seatSource.ts';
 import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import type { MapLayerSource } from '../../../../src/app/online/gm/atlasMapLayers.ts';
 import type { DiceSource } from '../../../../src/app/online/gm/atlasDice.ts';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { pictureBasisOf } from '../../../../src/app/online/gm/atlasMapLayers.ts';
+import { fakeAtlasTab } from './fakeAtlasTab.ts';
 import { GENERIC_SOURCE, gmPerception, PLAYER_SETTINGS } from './gmLighting.ts';
 import { sceneState, sequenced, shareHarness, token, tokenLists, type Sent, type ShareHarness } from './shareHarness.ts';
 
@@ -56,8 +58,16 @@ const partyLayers: MapLayerSource = { grid: () => null, rules: () => null, doors
 const bus = new EventEmitter();
 const dice: DiceSource = { viewId: 'view-1', rollDice: () => null, rules: () => DEFAULT_DICE_RULES, on: (event, listener) => bus.on(event, listener), off: (event, listener) => bus.off(event, listener) };
 
+/**
+ * Where players' own pictures are cut from: the floor's picture worked out on the CPU, as for a floor
+ * the GM does not look at, or the GM's renderer of the floor it shows (`pictureBasisOf`).
+ */
+type Basis = 'cpu' | 'renderer';
+let basis: Basis = 'cpu';
+
 async function started(state: SceneState, sharedVision: boolean): Promise<ShareHarness> {
   const table = shareHarness(state, IMAGES, seats);
+  if (basis === 'renderer') table.basis = pictureBasisOf(fakeAtlasTab({ state: () => table.state(), source: GENERIC_SOURCE, bounds: MAP }).renderer);
   table.settings = { ...PLAYER_SETTINGS, sharedVision, showDiceRolls: true };
   table.dice = dice;
   table.layers = partyLayers;
@@ -85,110 +95,116 @@ function rollFor(table: ShareHarness, tokenId: string): string | undefined {
 }
 const doors = (sent: readonly Sent[]): number => sent.flatMap(({ body }) => (body.t === 'doors' ? [body.doors.length] : [])).at(-1) ?? 0;
 
-describe('Shared vision off', () => {
-  it('lights each player\'s page from their own token alone and lists only what it sees', async () => {
-    const table = await started(rooms(), false);
-    const ana = toPlayer(table.sent, ANA);
-    const ben = toPlayer(table.sent, BEN);
-    expect(seers(ana)).toEqual(['200,200']);
-    expect(seers(ben)).toEqual(['800,200']);
-    expect(names(ana)).toEqual(['Ana', 'Rat']);
-    expect(names(ben)).toEqual(['Ben', 'Goblin']);
+describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %s picture', (from) => {
+  beforeEach(() => {
+    basis = from;
   });
 
-  it('never sends a player the name or place of a token only another player sees', async () => {
-    const table = await started(rooms(), false);
-    await table.set(rooms({ goblin: { x: 920 } }));
-    await table.advance(1000);
-    const ana = toPlayer(table.sent, ANA);
-    expect(JSON.stringify(ana.map(({ body }) => body))).not.toContain('Goblin');
-    const places = sequenced(ana, 'sight').flatMap((message) => message.tokens.map(({ x }) => x));
-    expect(places).not.toContain(900);
-    expect(places).not.toContain(920);
+  describe('Shared vision off', () => {
+    it('lights each player\'s page from their own token alone and lists only what it sees', async () => {
+      const table = await started(rooms(), false);
+      const ana = toPlayer(table.sent, ANA);
+      const ben = toPlayer(table.sent, BEN);
+      expect(seers(ana)).toEqual(['200,200']);
+      expect(seers(ben)).toEqual(['800,200']);
+      expect(names(ana)).toEqual(['Ana', 'Rat']);
+      expect(names(ben)).toEqual(['Ben', 'Goblin']);
+    });
+
+    it('never sends a player the name or place of a token only another player sees', async () => {
+      const table = await started(rooms(), false);
+      await table.set(rooms({ goblin: { x: 920 } }));
+      await table.advance(1000);
+      const ana = toPlayer(table.sent, ANA);
+      expect(JSON.stringify(ana.map(({ body }) => body))).not.toContain('Goblin');
+      const places = sequenced(ana, 'sight').flatMap((message) => message.tokens.map(({ x }) => x));
+      expect(places).not.toContain(900);
+      expect(places).not.toContain(920);
+    });
+
+    it('shows a player only the doors their own token sees', async () => {
+      const table = await started(rooms(), false);
+      expect(doors(toPlayer(table.sent, ANA))).toBe(0);
+      expect(doors(toPlayer(table.sent, BEN))).toBe(1);
+    });
+
+    it('sends a player without a token of their own the party\'s picture', async () => {
+      const table = await started(rooms(), false);
+      const cara = toPlayer(table.sent, CARA);
+      expect(names(cara)).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
+      expect(seers(cara)).toEqual(['200,200', '800,200']);
+      expect(doors(cara)).toBe(1);
+    });
+
+    it('sends a player whose own token does not see the party\'s picture', async () => {
+      const table = await started(rooms({ ana: { vision: { ...DARKVISION, enabled: false } } }), false);
+      expect(names(toPlayer(table.sent, ANA))).toEqual(names(toPlayer(table.sent, CARA)));
+      expect(seers(toPlayer(table.sent, ANA))).toEqual(['800,200']);
+    });
   });
 
-  it('shows a player only the doors their own token sees', async () => {
-    const table = await started(rooms(), false);
-    expect(doors(toPlayer(table.sent, ANA))).toBe(0);
-    expect(doors(toPlayer(table.sent, BEN))).toBe(1);
+  describe('rolls every player hears', () => {
+    it('name a monster only while every player sees it, and a player\'s own character always', async () => {
+      const off = await started(rooms(), false);
+      expect(rollFor(off, 'goblin')).toBeUndefined();
+      expect(rollFor(off, 'ben')).toBeDefined();
+      bus.removeAllListeners();
+      const on = await started(rooms(), true);
+      expect(rollFor(on, 'goblin')).toBeDefined();
+      bus.removeAllListeners();
+    });
   });
 
-  it('sends a player without a token of their own the party\'s picture', async () => {
-    const table = await started(rooms(), false);
-    const cara = toPlayer(table.sent, CARA);
-    expect(names(cara)).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
-    expect(seers(cara)).toEqual(['200,200', '800,200']);
-    expect(doors(cara)).toBe(1);
+  describe('readable pins with Shared vision off', () => {
+    it('reach only a player whose own token sees them, and only that player may open them', async () => {
+      const table = await started(rooms(), false);
+      const pinsOf = (player: string): Extract<GmMessage, { t: 'pins' }> | undefined => toPlayer(table.sent, player).flatMap(({ body }) => (body.t === 'pins' ? [body] : [])).at(-1);
+      expect(pinsOf(ANA)?.pins).toEqual([]);
+      const den = pinsOf(BEN)?.pins[0];
+      const scene = pinsOf(BEN)?.scene ?? '';
+      expect(den).toBeDefined();
+      expect(table.share.layers.readablePin(BEN, scene, den?.id ?? '')?.pin.id).toBe('den');
+      expect(table.share.layers.readablePin(ANA, scene, den?.id ?? '')).toBeNull();
+    });
   });
 
-  it('sends a player whose own token does not see the party\'s picture', async () => {
-    const table = await started(rooms({ ana: { vision: { ...DARKVISION, enabled: false } } }), false);
-    expect(names(toPlayer(table.sent, ANA))).toEqual(names(toPlayer(table.sent, CARA)));
-    expect(seers(toPlayer(table.sent, ANA))).toEqual(['800,200']);
+  describe('Shared vision on', () => {
+    it('sends every player the party\'s picture in one message to all, as before', async () => {
+      const table = await started(rooms(), true);
+      const sequencedTo = new Set(table.sent.filter(({ body }) => body.t === 'tokens' || body.t === 'sight' || body.t === 'delta').map(({ to }) => to));
+      expect(sequencedTo).toEqual(new Set([undefined]));
+      expect(names(table.sent)).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
+      expect(seers(table.sent)).toEqual(['200,200', '800,200']);
+    });
   });
-});
 
-describe('rolls every player hears', () => {
-  it('name a monster only while every player sees it, and a player\'s own character always', async () => {
-    const off = await started(rooms(), false);
-    expect(rollFor(off, 'goblin')).toBeUndefined();
-    expect(rollFor(off, 'ben')).toBeDefined();
-    bus.removeAllListeners();
-    const on = await started(rooms(), true);
-    expect(rollFor(on, 'goblin')).toBeDefined();
-    bus.removeAllListeners();
+  describe('a player acting on a token only others see', () => {
+    it('learns nothing of where it stands from a refused move', async () => {
+      const table = await started(rooms(), true);
+      const goblin = tokenLists(table.sent).at(-1)?.tokens.find((entry) => entry.name === 'Goblin');
+      const scene = tokenLists(table.sent).at(-1)?.scene ?? '';
+      table.settings = { ...PLAYER_SETTINGS, sharedVision: false };
+      await table.advance(1000);
+      table.share.receive(ANA, { t: 'move', scene, id: goblin?.id ?? '', x: 400, y: 400 });
+      await table.settle();
+      const refused = toPlayer(table.sent, ANA).flatMap(({ body }) => (body.t === 'move-refused' ? [body] : []));
+      expect(refused).toEqual([{ t: 'move-refused', scene, id: goblin?.id, x: null, y: null }]);
+      expect(table.state().objects.tokens.goblin).toMatchObject({ x: 900, y: 300 });
+    });
   });
-});
 
-describe('readable pins with Shared vision off', () => {
-  it('reach only a player whose own token sees them, and only that player may open them', async () => {
-    const table = await started(rooms(), false);
-    const pinsOf = (player: string): Extract<GmMessage, { t: 'pins' }> | undefined => toPlayer(table.sent, player).flatMap(({ body }) => (body.t === 'pins' ? [body] : [])).at(-1);
-    expect(pinsOf(ANA)?.pins).toEqual([]);
-    const den = pinsOf(BEN)?.pins[0];
-    const scene = pinsOf(BEN)?.scene ?? '';
-    expect(den).toBeDefined();
-    expect(table.share.layers.readablePin(BEN, scene, den?.id ?? '')?.pin.id).toBe('den');
-    expect(table.share.layers.readablePin(ANA, scene, den?.id ?? '')).toBeNull();
-  });
-});
-
-describe('Shared vision on', () => {
-  it('sends every player the party\'s picture in one message to all, as before', async () => {
-    const table = await started(rooms(), true);
-    const sequencedTo = new Set(table.sent.filter(({ body }) => body.t === 'tokens' || body.t === 'sight' || body.t === 'delta').map(({ to }) => to));
-    expect(sequencedTo).toEqual(new Set([undefined]));
-    expect(names(table.sent)).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
-    expect(seers(table.sent)).toEqual(['200,200', '800,200']);
-  });
-});
-
-describe('a player acting on a token only others see', () => {
-  it('learns nothing of where it stands from a refused move', async () => {
-    const table = await started(rooms(), true);
-    const goblin = tokenLists(table.sent).at(-1)?.tokens.find((entry) => entry.name === 'Goblin');
-    const scene = tokenLists(table.sent).at(-1)?.scene ?? '';
-    table.settings = { ...PLAYER_SETTINGS, sharedVision: false };
-    await table.advance(1000);
-    table.share.receive(ANA, { t: 'move', scene, id: goblin?.id ?? '', x: 400, y: 400 });
-    await table.settle();
-    const refused = toPlayer(table.sent, ANA).flatMap(({ body }) => (body.t === 'move-refused' ? [body] : []));
-    expect(refused).toEqual([{ t: 'move-refused', scene, id: goblin?.id, x: null, y: null }]);
-    expect(table.state().objects.tokens.goblin).toMatchObject({ x: 900, y: 300 });
-  });
-});
-
-describe('switching Shared vision during play', () => {
-  it('moves players between their own picture and the party\'s, each time sent whole', async () => {
-    const table = await started(rooms(), false);
-    table.settings = { ...PLAYER_SETTINGS, sharedVision: true };
-    await table.advance(1000);
-    expect(names(toPlayer(table.sent, ANA))).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
-    expect(seers(toPlayer(table.sent, ANA))).toEqual(['200,200', '800,200']);
-    table.settings = { ...PLAYER_SETTINGS, sharedVision: false };
-    await table.advance(1000);
-    expect(names(toPlayer(table.sent, ANA))).toEqual(['Ana', 'Rat']);
-    expect(seers(toPlayer(table.sent, ANA))).toEqual(['200,200']);
-    expect(names(toPlayer(table.sent, CARA))).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
+  describe('switching Shared vision during play', () => {
+    it('moves players between their own picture and the party\'s, each time sent whole', async () => {
+      const table = await started(rooms(), false);
+      table.settings = { ...PLAYER_SETTINGS, sharedVision: true };
+      await table.advance(1000);
+      expect(names(toPlayer(table.sent, ANA))).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
+      expect(seers(toPlayer(table.sent, ANA))).toEqual(['200,200', '800,200']);
+      table.settings = { ...PLAYER_SETTINGS, sharedVision: false };
+      await table.advance(1000);
+      expect(names(toPlayer(table.sent, ANA))).toEqual(['Ana', 'Rat']);
+      expect(seers(toPlayer(table.sent, ANA))).toEqual(['200,200']);
+      expect(names(toPlayer(table.sent, CARA))).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
+    });
   });
 });
