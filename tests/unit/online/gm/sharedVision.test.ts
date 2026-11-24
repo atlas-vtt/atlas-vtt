@@ -130,18 +130,22 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
       expect(doors(toPlayer(table.sent, BEN))).toBe(1);
     });
 
-    it('sends a player without a token of their own the party\'s picture', async () => {
+    it('shows a player without a token of their own nothing live: their page is told it is blind', async () => {
       const table = await started(rooms(), false);
       const cara = toPlayer(table.sent, CARA);
-      expect(names(cara)).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
-      expect(seers(cara)).toEqual(['200,200', '800,200']);
-      expect(doors(cara)).toBe(1);
+      expect(names(cara)).toEqual([]);
+      expect(seers(cara)).toEqual([]);
+      expect(sequenced(cara, 'sight').at(-1)?.blind).toBe(true);
+      expect(doors(cara)).toBe(0);
     });
 
-    it('sends a player whose own token does not see the party\'s picture', async () => {
+    it('shows a player whose only character is defeated or does not see nothing live', async () => {
       const table = await started(rooms({ ana: { vision: { ...DARKVISION, enabled: false } } }), false);
-      expect(names(toPlayer(table.sent, ANA))).toEqual(names(toPlayer(table.sent, CARA)));
-      expect(seers(toPlayer(table.sent, ANA))).toEqual(['800,200']);
+      const ana = toPlayer(table.sent, ANA);
+      expect(names(ana)).toEqual([]);
+      expect(seers(ana)).toEqual([]);
+      expect(sequenced(ana, 'sight').at(-1)?.blind).toBe(true);
+      expect(sequenced(toPlayer(table.sent, BEN), 'sight').at(-1)?.blind).toBeUndefined();
     });
   });
 
@@ -234,7 +238,7 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
       await table.advance(1000);
       expect(names(toPlayer(table.sent, ANA))).toEqual(['Ana', 'Rat']);
       expect(seers(toPlayer(table.sent, ANA))).toEqual(['200,200']);
-      expect(names(toPlayer(table.sent, CARA))).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
+      expect(names(toPlayer(table.sent, CARA))).toEqual([]);
     });
   });
 });

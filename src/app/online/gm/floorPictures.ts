@@ -16,8 +16,8 @@ interface OwnLook {
 
 /**
  * The pictures of one floor, one per set of eyes its players see it through (`floorEyes`): the party's,
- * which everyone shares under Shared vision and players without a seeing token of their own always do,
- * and one for each player who sees through their own characters alone. A picture's messages reach its
+ * which everyone shares under Shared vision, and one for each player who sees through their own characters
+ * alone (through none, for a player without a seeing token there). A picture's messages reach its
  * players only, and a player whose eyes change is sent their new picture whole, as a player who reaches
  * the floor is; the scene stays the same. The party's picture is always kept: what players act with is
  * looked up in its lists, which hold every token anyone's picture holds.
