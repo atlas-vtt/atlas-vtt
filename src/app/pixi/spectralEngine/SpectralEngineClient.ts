@@ -11,7 +11,6 @@ import type { MapGray, MapPicture } from './detectGrid';
 import { NO_GRID, runDetection } from './detectionJob';
 import type { DetectionEvent, DetectionJob, DetectionOutcome } from './detectionJob';
 import type { DetectionReply, DetectionRequest } from './detectionProtocol';
-import { FitHelpers } from './fitHelpers';
 
 export interface DetectOptions {
   /** The grids a measurement or placement can stand for; without them the whole map is searched. */
@@ -63,12 +62,7 @@ export class SpectralEngineClient {
   private heldKey: number | null = null;
   private nextId = 1;
 
-  /** Run fits for the worker, so a detection fits several proposals at once. */
-  private readonly helpers: FitHelpers;
-
-  constructor(private readonly createWorker: () => Worker, helperCount = 0) {
-    this.helpers = new FitHelpers(createWorker, helperCount);
-  }
+  constructor(private readonly createWorker: () => Worker) {}
 
   detect(pixels: MapPixels, options: DetectOptions = {}): Promise<DetectionOutcome> {
     if (this.disposed) return Promise.reject(detectionStopped());
@@ -85,7 +79,6 @@ export class SpectralEngineClient {
   /** Ends every detection; called when the plugin unloads. */
   dispose(): void {
     this.disposed = true;
-    this.helpers.reset();
     const stopped = detectionStopped();
     // A copy: `cancel` takes each task out of the queue it finds it in.
     for (const task of [this.running, ...this.waiting]) if (task) this.cancel(task, stopped);
@@ -107,7 +100,7 @@ export class SpectralEngineClient {
   /** Hands `task` to the worker, with the map's pixels where the worker does not hold them yet. */
   private async send(task: Task): Promise<void> {
     const key = this.keyOf(task.pixels);
-    const request: DetectionRequest = { id: task.id, imageKey: key, ink: task.onEvent !== undefined, lines: task.lines === true, helpers: this.helpers.count, share: this.helpers.count > 0 && !this.helpers.holds(key), ...(task.candidates ? { candidates: task.candidates } : {}) };
+    const request: DetectionRequest = { id: task.id, imageKey: key, ink: task.onEvent !== undefined, lines: task.lines === true, ...(task.candidates ? { candidates: task.candidates } : {}) };
     const transfer: Transferable[] = [];
     if (this.heldKey !== key) {
       if ('image' in task.pixels) {
@@ -167,27 +160,10 @@ export class SpectralEngineClient {
       task.onEvent?.(reply.event);
       return;
     }
-    if ('share' in reply || 'fit' in reply) {
-      this.helpWith(task, reply);
-      return;
-    }
     this.running = null;
     if ('outcome' in reply) task.resolve(reply.outcome);
     else task.reject(new Error(reply.error));
     this.next();
-  }
-
-  /** Hands the worker's image, or a fit it asks for, to the helpers, and their answer back to the worker. */
-  private helpWith(task: Task, reply: Extract<DetectionReply, { share: unknown } | { fit: unknown }>): void {
-    const key = this.heldKey;
-    if (key === null) return;
-    if ('share' in reply) {
-      this.helpers.share(key, reply.share);
-      return;
-    }
-    void this.helpers.run(reply.fit.ticket, key, reply.fit.request).then((answer) => {
-      if (this.running === task) this.worker?.postMessage(answer);
-    });
   }
 
   private workerFailed(message: string): void {
@@ -208,7 +184,6 @@ export class SpectralEngineClient {
     this.worker?.terminate();
     this.worker = null;
     this.heldKey = null;
-    this.helpers.reset();
   }
 
   private runInThread(task: Task): void {
