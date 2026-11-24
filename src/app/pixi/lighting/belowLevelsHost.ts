@@ -142,7 +142,8 @@ export function createBelowLevelsHost({ obsApp, app, viewport, store, viewedFog,
   return {
     ...createRoofHost(obsApp, app, viewport),
     createArt: () => {
-      const art = new TextureCache(obsApp);
+      // The levels below never evict art, so what they no longer show must be free to leave the GPU
+      const art = new TextureCache(obsApp, { idleArtOnGpu: false });
       art.setPixiApp(app);
       return art;
     },
