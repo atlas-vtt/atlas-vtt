@@ -389,13 +389,18 @@ export class MeasureRenderer {
     const state = this.store.getState();
     const settings = this.settings(state);
     const grid = this.gridSystem.getOptions();
+    const scene = this.scene;
+    let map: AreaMap | null = null;
     return {
       zoom: this.viewport.scale.x,
       grid,
       settings,
       accent: cssColorToHexNumber(getObsidianAccentColor()),
       heightAt: this.heightAt,
-      map: this.scene.areaMap(state, grid, settings),
+      // Sealed walls are dear on a large map (40 ms at 18,000 walls), and only an area drawn reads them: a load with nothing drawn seals none.
+      get map(): AreaMap {
+        return (map ??= scene.areaMap(state, grid, settings));
+      },
       tokens: () => this.scene.tokens(),
       ringScale: state.tokenSettings?.tokenRingSize ?? 1,
     };
