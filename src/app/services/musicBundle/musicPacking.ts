@@ -25,6 +25,16 @@ export interface MusicPackOptions {
   cover?: ArrayBuffer | undefined;
 }
 
+/** What of the music Atlas could not read while packing it: the cover, or a track by its title. */
+export type UnreadablePart = { readonly part: 'cover' } | { readonly part: 'track'; readonly title: string };
+
+/** Packing stopped at a part it could not read (a file moved or changed since it was chosen); `cause` holds the engine's error. */
+export class UnreadablePartError extends Error {
+  constructor(readonly unreadable: UnreadablePart, cause: unknown) {
+    super(unreadable.part === 'cover' ? 'The cover could not be read.' : `The track "${unreadable.title}" could not be read.`, { cause });
+  }
+}
+
 export interface MusicExport {
   /** `<name> v<n>.atlas-album.zip` or `<name> v<n>.atlas-track.zip`. */
   fileName: string;
@@ -47,7 +57,10 @@ export async function packMusicBundle(options: MusicPackOptions): Promise<MusicE
     const title = shownText(track.title).trim();
     const path = `music/${trackFileName(kind, index, tracks.length, title)}`;
     entries.push({ path, title });
-    contents.push({ file: { vaultPath: path, role: MUSIC_TRACK_ROLE }, data: new Uint8Array(await (await forPlayers(track.copy)).arrayBuffer()) });
+    const data = await forPlayers(track.copy).then((copy) => copy.arrayBuffer()).catch((cause: unknown) => {
+      throw new UnreadablePartError({ part: 'track', title }, cause);
+    });
+    contents.push({ file: { vaultPath: path, role: MUSIC_TRACK_ROLE }, data: new Uint8Array(data) });
   }
   if (options.cover) contents.push({ file: { vaultPath: itemCoverPath(derivedImageExtension(options.cover)), role: ITEM_COVER_ROLE }, data: new Uint8Array(options.cover) });
   const files: BundleFile[] = [];

@@ -49,6 +49,12 @@ function nextFrame(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
 
+/** A frame later, once every running animation (the dialog's opening, the art fading in) has ended. */
+async function settled(): Promise<void> {
+  await nextFrame();
+  await Promise.all(document.getAnimations().map((animation) => animation.finished));
+}
+
 describe('music in the Armarium', () => {
   const style = document.createElement('style');
   style.textContent = `${DASHBOARD_THEME}${css}`;
@@ -82,7 +88,7 @@ describe('music in the Armarium', () => {
   });
 
   /** The share dialog at its music step with `titles` as an album, each track told `told(index)`. */
-  async function showMusicStep(titles: readonly string[], told: (index: number) => PreparedTrack): Promise<void> {
+  async function showMusicStep(titles: readonly string[], told: (index: number) => PreparedTrack, artist = ''): Promise<MusicShareSession> {
     const listeners = new Map<string, (state: PreparedTrack) => void>();
     const session = new MusicShareSession({
       account: AtlasAccount.forApp(app)!, api: new MusicArmarium(), kind: 'music-album', files: titles.map(fileOf), name: 'Old Roads',
@@ -101,7 +107,41 @@ describe('music in the Armarium', () => {
       await settle();
     });
     act(() => [...listeners.values()].forEach((tell, index) => tell(told(index))));
+    if (artist) act(() => session.setArtist(artist));
+    return session;
   }
+
+  const ready = (): PreparedTrack => ({ state: 'ready', copy: new Blob(['x']), frames: 48_000 * 120 });
+
+  it('keeps the cover cards where they are while a cover or No cover is chosen', async () => {
+    const session = await showMusicStep(TITLES.slice(0, 3), ready);
+    await settled();
+    const cards = (): number => box('.atlas-transfer-covers__list').top;
+    const before = cards();
+    act(() => session.uploadCover(new Blob(['png'], { type: 'image/png' })));
+    await settled();
+    expect(cards()).toBe(before);
+    act(() => session.setCover(null));
+    await settled();
+    expect(cards()).toBe(before);
+  });
+
+  it('gives What changed the room of its rows, and ends a long artist in the hero with an ellipsis', async () => {
+    const session = await showMusicStep(TITLES.slice(0, 3), ready, 'The Very Long Name of an Ensemble That Plays Old Songs of the Road at Night');
+    await act(async () => {
+      session.chooseListing('a'.repeat(32));
+      await settle();
+    });
+    await nextFrame();
+    const notes = document.querySelector<HTMLTextAreaElement>('.atlas-share-field__text')!;
+    expect(notes.rows).toBe(4);
+    expect(notes.clientHeight).toBeGreaterThanOrEqual(4 * parseFloat(getComputedStyle(notes).lineHeight));
+    const [artist, kind] = Array.from(document.querySelectorAll<HTMLElement>('.atlas-transfer-hero__detail'));
+    expect(getComputedStyle(artist!).textOverflow).toBe('ellipsis');
+    expect(artist!.scrollWidth).toBeGreaterThan(artist!.clientWidth);
+    // The kind keeps its separator and stays on the artist's line.
+    expect(Math.abs(kind!.getBoundingClientRect().top - artist!.getBoundingClientRect().top)).toBeLessThanOrEqual(PX);
+  });
 
   it('scrolls the dialog with the wheel over a track list that has nothing to scroll', async () => {
     await page.viewport(1280, 520);

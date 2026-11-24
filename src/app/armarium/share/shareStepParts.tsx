@@ -59,6 +59,13 @@ function withSignIn(snapshot: ShareSnapshot, account: AtlasAccount, actions: Rea
   return action(t('account.signIn'), () => void account.signIn(), true);
 }
 
+/** An upload that stopped is sent again; packing that failed packs again, or goes back to what was chosen to pack. */
+function uploadActions({ refusal, busy }: ShareSnapshot, session: AnyShareSession): React.ReactNode {
+  if (refusal === null || busy) return null;
+  const retry = action(t('armariumShare.retry'), () => session.retryUpload(), true);
+  return refusal.code === 'export-failed' ? [action(t('common.back'), () => session.backFromPacking()), retry] : retry;
+}
+
 /** A check that refused or failed starts over; an ask that stopped is asked again. */
 function checksActions({ submission, refusal, busy }: ShareSnapshot, session: AnyShareSession): React.ReactNode {
   if (submission?.state === 'rejected' || submission?.state === 'failed') return action(t('armariumShare.startOver'), () => session.startOver(), true);
@@ -76,7 +83,7 @@ function accountParts(snapshot: ShareSnapshot, session: AnyShareSession, account
 
 /** The open step's title, content and actions; the dialog lays them out. */
 export function shareStepParts({ app, session, snapshot, account, accountState, onClose }: PartsInput): StepParts {
-  const { step, busy, refusal, bundle } = snapshot;
+  const { step, busy, bundle } = snapshot;
   switch (step) {
     case 'bundle':
       if (session instanceof ItemShareSession && snapshot.subject === 'item') {
@@ -101,7 +108,7 @@ export function shareStepParts({ app, session, snapshot, account, accountState, 
       return {
         title: shareSaid(snapshot.subject, 'armariumShare.title.upload'),
         body: <UploadStep snapshot={snapshot} />,
-        actions: withSignIn(snapshot, account, refusal !== null && !busy ? action(t('armariumShare.retry'), () => session.retryUpload(), true) : null),
+        actions: withSignIn(snapshot, account, uploadActions(snapshot, session)),
         summary: bundle === null ? undefined : formatFileSize(bundle.bytes),
       };
     case 'checks':

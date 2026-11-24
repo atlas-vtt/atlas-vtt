@@ -17,7 +17,7 @@ import { ItemShareSession } from './ItemShareSession';
 import { MusicShareSession } from './MusicShareSession';
 import { prepareTrackCopy } from './musicTrackCopies';
 import { readPublishedArtist } from './publishedArtist';
-import { packMusicBundle } from '../../services/musicBundle/musicPacking';
+import { packMusicBundle, UnreadablePartError } from '../../services/musicBundle/musicPacking';
 import { listingOfFiles } from '../../services/musicBundle/installedMusic';
 import type { MusicKind } from '../../services/itemBundle/itemBundleFormat';
 import { SoundDirector } from '../../soundDirector/SoundDirector';
@@ -139,7 +139,10 @@ export function createMusicShareSession(app: App, request: MusicShareRequest): M
     installedListing: () => listingOfFiles(copies.library.locationOf('music'), request.kind, request.files.filter((file) => file.kind === 'music').map((file) => file.path)),
     newUid: randomListingUid,
     pack: async ({ cover, ...rest }) => {
-      const exported = await packMusicBundle({ ...rest, cover: cover === null ? undefined : await renderCover(cover) });
+      const made = cover === null ? undefined : await renderCover(cover).catch((cause: unknown) => {
+        throw new UnreadablePartError({ part: 'cover' }, cause);
+      });
+      const exported = await packMusicBundle({ ...rest, cover: made });
       return { fileName: exported.fileName, blob: exported.blob };
     },
     fetchCover,

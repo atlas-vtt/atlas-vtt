@@ -79,7 +79,7 @@ export function ListingStep({ snapshot, session }: { snapshot: ShareSnapshot; se
         problems={problems}
       />
       <TagPicker value={draft.tags} onToggle={(tag) => session.toggleTag(tag)} problems={problems} groups={tagGroupsOf(kind)} />
-      {submission !== null && submission.findings.length > 0 && <FindingReport findings={submission.findings} notesOnly />}
+      {submission !== null && submission.findings.length > 0 && <FindingReport findings={submission.findings} subject={snapshot.subject} notesOnly />}
     </div>
   );
 }

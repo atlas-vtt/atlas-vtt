@@ -10,6 +10,7 @@ import type { OwnListing } from '../../../src/app/armarium/upload/uploadContract
 import { MusicReviewDialog } from '../../../src/app/packages/components/asset-manager/collection-transfer/MusicReviewDialog';
 import { AtlasUIContext } from '../../../src/app/react/root/AtlasUIContext';
 import type { MusicReview } from '../../../src/app/services/musicBundle/musicImport';
+import { UnreadablePartError } from '../../../src/app/services/musicBundle/musicPacking';
 import type { LibraryFile } from '../../../src/app/soundLibrary/SoundLibrary';
 import { sha256 } from '../../../src/app/utils/hashing';
 import { FakeArmarium, noSleep, settle } from './shareFakes';
@@ -44,7 +45,7 @@ afterEach(() => {
 
 const fileOf = (path: string): LibraryFile => ({ kind: 'music', path, name: path, size: 10, mtime: 1 });
 
-async function share(api: MusicArmarium, paths: string[]): Promise<{ session: MusicShareSession; tell: (path: string, state: PreparedTrack) => void }> {
+async function share(api: MusicArmarium, paths: string[], pack = (): Promise<{ fileName: string; blob: Blob }> => Promise.resolve({ fileName: 'Old Roads v1.atlas-album.zip', blob: new Blob(['zip']) })): Promise<{ session: MusicShareSession; tell: (path: string, state: PreparedTrack) => void }> {
   const listeners = new Map<string, (state: PreparedTrack) => void>();
   const session = new MusicShareSession({
     account: AtlasAccount.forApp(app)!, api, kind: 'music-album', files: paths.map(fileOf), name: 'Old Roads',
@@ -53,7 +54,7 @@ async function share(api: MusicArmarium, paths: string[]): Promise<{ session: Mu
       return () => undefined;
     },
     newUid: () => 'f'.repeat(32),
-    pack: () => Promise.resolve({ fileName: 'Old Roads v1.atlas-album.zip', blob: new Blob(['zip']) }),
+    pack,
     fetchCover: () => Promise.resolve(null),
     sha256: (bytes) => sha256(bytes), sleep: noSleep,
   });
@@ -72,6 +73,38 @@ async function share(api: MusicArmarium, paths: string[]): Promise<{ session: Mu
 const ready: PreparedTrack = { state: 'ready', copy: new Blob(['opus']), frames: 48_000 * 185 };
 
 describe('the share dialog of music', () => {
+  it('names the track that plays for less than a second, and never shows its length as a whole second', async () => {
+    const { tell } = await share(new MusicArmarium(), ['01 Blip.mp3', '02 Dawn.mp3']);
+    tell('01 Blip.mp3', { state: 'ready', copy: new Blob(['opus']), frames: 24_000 });
+    tell('02 Dawn.mp3', ready);
+    const blip = document.querySelector<HTMLElement>('[data-track="music:01 Blip.mp3"]')!;
+    expect(blip.querySelector('.atlas-music-track__state')?.textContent).toBe('0:00');
+    expect(blip.hasAttribute('data-too-short')).toBe(true);
+    act(() => fireEvent.click(screen.getByRole('button', { name: 'Continue' })));
+    expect(screen.getByRole('alert').textContent).toBe('Blip plays for less than a second. A track must play for at least one.');
+  });
+
+  it('offers the way back to the music step where the music could not be packed, as well as packing again', async () => {
+    const decoding = new Error('The source image cannot be decoded.');
+    const pack = vi.fn().mockRejectedValueOnce(new UnreadablePartError({ part: 'cover' }, decoding)).mockResolvedValue({ fileName: 'Old Roads v1.atlas-album.zip', blob: new Blob(['zip']) });
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { tell } = await share(new MusicArmarium(), ['01 Dawn.mp3', '02 Dusk.mp3'], pack);
+    tell('01 Dawn.mp3', ready);
+    tell('02 Dusk.mp3', ready);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+      await settle();
+    });
+    expect(screen.getByText('Atlas could not read the cover. Go back and choose it again, or another.')).toBeTruthy();
+    expect(screen.queryByText(/cannot be decoded/)).toBeNull();
+    expect(logged.mock.calls[0]?.[1]).toBeInstanceOf(UnreadablePartError);
+    logged.mockRestore();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
+    act(() => fireEvent.click(screen.getByRole('button', { name: 'Back' })));
+    expect(screen.getByRole('heading', { name: 'What you share' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeTruthy();
+  });
+
   it('says where the account\'s listings could not be read, and tries again on the GM\'s word', async () => {
     const api = new MusicArmarium();
     api.listings = null;

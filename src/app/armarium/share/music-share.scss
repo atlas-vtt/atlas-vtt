@@ -126,6 +126,11 @@ $title-input-height: 28px;
   color: var(--text-faint);
 }
 
+// A track too short to share: its length in the colour of what cannot go.
+.atlas-music-track[data-too-short] .atlas-music-track__state {
+  color: var(--text-error);
+}
+
 // While a track is held, the whole list shows the drag's cursor.
 .atlas-music-tracks[data-dragging] {
   cursor: grabbing;
@@ -147,6 +152,11 @@ $title-input-height: 28px;
 
   &__section {
     @include atlas-flex-col($gap: $spacing-s);
+  }
+
+  // Tags and tracks stand one above the other: each list scrolls in its half.
+  &__list--half.atlas-item-pick__list {
+    max-height: min(220px, 28vh);
   }
 
   &__names {

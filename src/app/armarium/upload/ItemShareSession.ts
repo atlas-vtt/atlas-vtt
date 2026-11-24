@@ -103,10 +103,6 @@ export class ItemShareSession extends ShareFlow<ItemShareSnapshot> {
     void this.packAndUpload(this.uid, version);
   }
 
-  protected recordPublished(): Promise<void> {
-    return Promise.resolve();
-  }
-
   private async packAndUpload(uid: string, version: number): Promise<void> {
     this.set({ busy: true });
     const notes = version > 1 && this.state.notes.trim() !== '' ? this.state.notes.trim() : undefined;

@@ -753,26 +753,38 @@ body.atlas-look.atlas-look-scifi .atlas-vtt-plugin.atlas-sb-note-panel {
   background-repeat: repeat, no-repeat, repeat;
 }
 
+/* ------------------------------------------------------------
+   Transparency (Appearance settings), for either look: Atlas sets
+   `atlas-look-glass` beside `atlas-look` while the look on lets
+   the map show through (Sci-fi does until switched off, Medieval
+   once switched on). What stands on the map, the dice, the hover
+   previews, the cheat sheet and the asset manager's sidebar are
+   smoked glass in the look's own ground; Sci-fi lays its grain
+   and lines over it. Each blurs from its own surface, which
+   nothing around it fades: a fading parent would leave the blur
+   seeing nothing until the fade ends, so these parts fade
+   themselves.
+   ------------------------------------------------------------ */
+
 /* a hover preview is glass at its head: the card blurs what lies behind
    it and its ground is see-through at the top, growing solid towards the
-   foot, so the glass melts into the card. The card paints the lines and
-   the ground, its scrolling body only the shadow at its foot */
-body.atlas-look.atlas-look-scifi :is(.atlas-statblock-preview-window, .statblock-hover-preview) .atlas-statblock {
+   foot, so the glass melts into the card. The card paints the ground
+   (Sci-fi its lines over it), its scrolling body only the shadow at its
+   foot */
+body.atlas-look.atlas-look-glass {
+  --atlas-glass-preview-ground: linear-gradient(
+    to bottom,
+    color-mix(in oklch, var(--background-primary) 55%, transparent),
+    color-mix(in oklch, var(--background-primary) 64%, transparent) 64px,
+    color-mix(in oklch, var(--background-primary) 80%, transparent) 140px,
+    color-mix(in oklch, var(--background-primary) 94%, transparent) 220px,
+    var(--background-primary) 300px
+  );
+}
+
+body.atlas-look.atlas-look-glass :is(.atlas-statblock-preview-window, .statblock-hover-preview) .atlas-statblock {
   background-color: transparent;
-  background-image:
-    var(--atlas-scifi-film),
-    linear-gradient(to bottom, transparent 30%, var(--background-primary) 88%),
-    var(--atlas-scifi-contours),
-    linear-gradient(
-      to bottom,
-      color-mix(in oklch, var(--background-primary) 55%, transparent),
-      color-mix(in oklch, var(--background-primary) 64%, transparent) 64px,
-      color-mix(in oklch, var(--background-primary) 80%, transparent) 140px,
-      color-mix(in oklch, var(--background-primary) 94%, transparent) 220px,
-      var(--background-primary) 300px
-    );
-  background-size: 240px 240px, 100% 100%, 640px 640px, 100% 100%;
-  background-repeat: repeat, no-repeat, repeat, no-repeat;
+  background-image: var(--atlas-glass-preview-ground);
 
   /* the ground reaches under the border, or the corners cover the edge
      the straight sides show and it reads as cut off there */
@@ -780,7 +792,17 @@ body.atlas-look.atlas-look-scifi :is(.atlas-statblock-preview-window, .statblock
   backdrop-filter: blur(16px) saturate(1.2);
 }
 
-body.atlas-look.atlas-look-scifi :is(.atlas-statblock-preview-window, .statblock-hover-preview) .atlas-statblock-body {
+body.atlas-look.atlas-look-scifi.atlas-look-glass :is(.atlas-statblock-preview-window, .statblock-hover-preview) .atlas-statblock {
+  background-image:
+    var(--atlas-scifi-film),
+    linear-gradient(to bottom, transparent 30%, var(--background-primary) 88%),
+    var(--atlas-scifi-contours),
+    var(--atlas-glass-preview-ground);
+  background-size: 240px 240px, 100% 100%, 640px 640px, 100% 100%;
+  background-repeat: repeat, no-repeat, repeat, no-repeat;
+}
+
+body.atlas-look.atlas-look-glass :is(.atlas-statblock-preview-window, .statblock-hover-preview) .atlas-statblock-body {
   background-color: transparent;
   background-image:
     linear-gradient(transparent, var(--background-primary) 70%),
@@ -793,19 +815,19 @@ body.atlas-look.atlas-look-scifi :is(.atlas-statblock-preview-window, .statblock
 
 /* the preview moves in and the card fades: a fade of the whole preview
    would leave the card's blur seeing nothing behind it until the end */
-body.atlas-look.atlas-look-scifi :is(.atlas-statblock-preview-window, .statblock-hover-preview) {
+body.atlas-look.atlas-look-glass :is(.atlas-statblock-preview-window, .statblock-hover-preview) {
   animation-name: atlas-scifi-preview-in;
 }
 
-body.atlas-look.atlas-look-scifi :is(.atlas-statblock-preview-window--closing, .statblock-hover-preview--closing) {
+body.atlas-look.atlas-look-glass :is(.atlas-statblock-preview-window--closing, .statblock-hover-preview--closing) {
   animation-name: atlas-scifi-preview-out;
 }
 
-body.atlas-look.atlas-look-scifi :is(.atlas-statblock-preview-window, .statblock-hover-preview) .atlas-statblock {
+body.atlas-look.atlas-look-glass :is(.atlas-statblock-preview-window, .statblock-hover-preview) .atlas-statblock {
   animation: atlas-scifi-fade-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
-body.atlas-look.atlas-look-scifi :is(.atlas-statblock-preview-window--closing, .statblock-hover-preview--closing) .atlas-statblock {
+body.atlas-look.atlas-look-glass :is(.atlas-statblock-preview-window--closing, .statblock-hover-preview--closing) .atlas-statblock {
   animation: atlas-scifi-fade-out 150ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }
 
@@ -859,23 +881,28 @@ body.atlas-look.atlas-look-scifi .atlas-dm-screen-content {
    The blur is the backdrop's, behind the window: the window fades in,
    and while it is see-through a blur of the sidebar's own would see only
    the window and come on at the end of the fade */
-body.atlas-look.atlas-look-scifi .atlas-vtt-plugin .atlas-asset-manager-backdrop {
+body.atlas-look.atlas-look-glass .atlas-vtt-plugin .atlas-asset-manager-backdrop {
   backdrop-filter: blur(20px) saturate(1.2);
 }
 
-body.atlas-look.atlas-look-scifi .atlas-vtt-plugin .atlas-asset-manager-container {
+body.atlas-look.atlas-look-glass .atlas-vtt-plugin .atlas-asset-manager-container {
   background-color: transparent;
 }
 
-body.atlas-look.atlas-look-scifi .atlas-vtt-plugin .atlas-asset-manager-container :is(.atlas-asset-manager-header, .atlas-asset-manager-body) {
+body.atlas-look.atlas-look-glass .atlas-vtt-plugin .atlas-asset-manager-container :is(.atlas-asset-manager-header, .atlas-asset-manager-body) {
   background-color: var(--background-primary);
+}
+
+body.atlas-look.atlas-look-scifi .atlas-vtt-plugin .atlas-asset-manager-container :is(.atlas-asset-manager-header, .atlas-asset-manager-body) {
   background-image: var(--atlas-scifi-film);
   background-size: 240px 240px;
 }
 
-body.atlas-look.atlas-look-scifi .atlas-vtt-plugin .atlas-asset-manager-sidebar {
+body.atlas-look.atlas-look-glass .atlas-vtt-plugin .atlas-asset-manager-sidebar {
   background-color: color-mix(in oklch, var(--background-secondary) 75%, transparent);
+}
 
+body.atlas-look.atlas-look-scifi .atlas-vtt-plugin .atlas-asset-manager-sidebar {
   /* the floating sidebar's own background would drop the lines */
   background-image: var(--atlas-scifi-film), var(--atlas-scifi-contours);
   background-size: 240px 240px, 640px 640px;
@@ -883,7 +910,7 @@ body.atlas-look.atlas-look-scifi .atlas-vtt-plugin .atlas-asset-manager-sidebar 
 
 /* the floating sidebar lies over the window's own content, which only a
    blur of its own reaches; it opens after the window has faded in */
-body.atlas-look.atlas-look-scifi .atlas-vtt-plugin .atlas-asset-manager-sidebar.atlas-floating {
+body.atlas-look.atlas-look-glass .atlas-vtt-plugin .atlas-asset-manager-sidebar.atlas-floating {
   backdrop-filter: blur(16px) saturate(1.2);
 }
 
@@ -895,7 +922,7 @@ body.atlas-look.atlas-look-scifi .atlas-vtt-plugin .atlas-asset-manager-sidebar.
    row, the scene tabs and the TrueScale bar under them): their menu
    buttons wear glass of their own, which on a glass bar reads as dark
    blots */
-body.atlas-look.atlas-look-scifi :is(
+body.atlas-look.atlas-look-glass :is(
   .atlas-vtt-toolbar:not(.atlas-main-toolbar, .atlas-undo-redo-controls, .atlas-hotkey-help-bar, .atlas-player-window-bar > *),
   .atlas-tool-bar,
   .atlas-initiative-panel__surface,
@@ -904,9 +931,19 @@ body.atlas-look.atlas-look-scifi :is(
   .atlas-level-switcher
 ) {
   background-color: color-mix(in oklch, var(--background-primary) 72%, transparent);
+  backdrop-filter: blur(16px) saturate(1.2);
+}
+
+body.atlas-look.atlas-look-scifi :is(
+  .atlas-vtt-toolbar:not(.atlas-main-toolbar, .atlas-undo-redo-controls, .atlas-hotkey-help-bar, .atlas-player-window-bar > *),
+  .atlas-tool-bar,
+  .atlas-initiative-panel__surface,
+  .atlas-initiative-tracker__float,
+  .atlas-widget,
+  .atlas-level-switcher
+) {
   background-image: var(--atlas-scifi-film), var(--atlas-scifi-contours);
   background-size: 240px 240px, 640px 640px;
-  backdrop-filter: blur(16px) saturate(1.2);
 }
 
 /* the scene tabs' strip fades its ends with a mask, past which the glass
@@ -921,33 +958,36 @@ body.atlas-look.atlas-look-scifi .atlas-scene-tab-bar__strip {
   background-size: 240px 240px, 640px 640px;
 }
 
-body.atlas-look.atlas-look-scifi .atlas-scene-tab:is(:active, [data-reorder="dragging"]) {
+body.atlas-look.atlas-look-glass .atlas-scene-tab:is(:active, [data-reorder="dragging"]) {
   backdrop-filter: blur(8px);
 }
 
 /* dice rolls are smoked glass: the sheet the dice land on and the result
    card. A roll moves in and its parts fade themselves: a fade of the
    whole roll would leave the sheet's blur seeing nothing until the end */
-body.atlas-look.atlas-look-scifi :is(.atlas-dice-roll__sheet, .atlas-dice-toast) {
+body.atlas-look.atlas-look-glass :is(.atlas-dice-roll__sheet, .atlas-dice-toast) {
   background-color: color-mix(in oklch, var(--background-primary) 72%, transparent);
-  background-image: var(--atlas-scifi-film), var(--atlas-scifi-contours);
-  background-size: 240px 240px, 640px 640px;
   backdrop-filter: blur(16px) saturate(1.2);
 }
 
-body.atlas-look.atlas-look-scifi .atlas-dice-roll {
+body.atlas-look.atlas-look-scifi :is(.atlas-dice-roll__sheet, .atlas-dice-toast) {
+  background-image: var(--atlas-scifi-film), var(--atlas-scifi-contours);
+  background-size: 240px 240px, 640px 640px;
+}
+
+body.atlas-look.atlas-look-glass .atlas-dice-roll {
   animation-name: atlas-scifi-dice-roll-in;
 }
 
-body.atlas-look.atlas-look-scifi .atlas-dice-roll--leaving {
+body.atlas-look.atlas-look-glass .atlas-dice-roll--leaving {
   animation-name: atlas-scifi-dice-roll-out;
 }
 
-body.atlas-look.atlas-look-scifi .atlas-dice-roll > * {
+body.atlas-look.atlas-look-glass .atlas-dice-roll > * {
   animation: atlas-scifi-fade-in 420ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
-body.atlas-look.atlas-look-scifi .atlas-dice-roll--leaving > * {
+body.atlas-look.atlas-look-glass .atlas-dice-roll--leaving > * {
   animation: atlas-scifi-fade-out 400ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }
 
@@ -967,12 +1007,15 @@ body.atlas-look.atlas-look-scifi .atlas-dice-roll--leaving > * {
 
 /* the cheat sheet fades in with its backdrop, so the backdrop blurs and
    the window only lets it through */
-body.atlas-look.atlas-look-scifi .atlas-hotkey-help {
+body.atlas-look.atlas-look-glass .atlas-hotkey-help {
   backdrop-filter: blur(20px) saturate(1.2);
 }
 
-body.atlas-look.atlas-look-scifi .atlas-cheat-sheet {
+body.atlas-look.atlas-look-glass .atlas-cheat-sheet {
   background-color: color-mix(in oklch, var(--background-primary) 72%, transparent);
+}
+
+body.atlas-look.atlas-look-scifi .atlas-cheat-sheet {
   background-image: var(--atlas-scifi-film), var(--atlas-scifi-contours);
   background-size: 240px 240px, 640px 640px;
 }

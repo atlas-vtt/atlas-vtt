@@ -16,15 +16,18 @@ export class OpenPlace {
     return this.place;
   }
 
+  /**
+   * Shows `kind` narrowed to `tags`, and every page clears what would hide it there (its search); told also where this
+   * place was shown already, since a search typed since may hide it now.
+   */
   show(kind: SoundKind, tags: readonly string[] = []): void {
-    if (kind === this.place.kind && tags.length === this.place.tags.length && tags.every((tag, index) => tag === this.place.tags[index])) return;
     this.place = { kind, tags };
     for (const listener of this.listeners) listener();
   }
 
   /** A tag renamed stays selected under its new name. */
   renameTag(from: string, to: string): void {
-    this.show(this.place.kind, this.place.tags.map((tag) => (tagKey(tag) === tagKey(from) ? to : tag)));
+    if (this.place.tags.some((tag) => tagKey(tag) === tagKey(from))) this.show(this.place.kind, this.place.tags.map((tag) => (tagKey(tag) === tagKey(from) ? to : tag)));
   }
 
   onChange(listener: () => void): () => void {

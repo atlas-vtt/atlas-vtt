@@ -1,6 +1,6 @@
 import type { App } from 'obsidian';
 import type { SettingsService } from '../services/SettingsService';
-import { LOOK_DICE_FONT, LOOK_FOG_EDGE_STYLE, isAtlasLook, type AtlasLook } from './atlasLook';
+import { LOOK_DICE_FONT, LOOK_FOG_EDGE_STYLE, LOOK_GLASS, isAtlasLook, type AtlasLook } from './atlasLook';
 
 /** The GM's own Obsidian theme, or one of Atlas' looks drawn over Obsidian's default theme. */
 export type LookChoice = 'own' | AtlasLook;
@@ -12,8 +12,9 @@ export const PREVIOUS_THEME_STORAGE_KEY = 'atlas-vtt:look-previous-theme';
 /** The colour the Medieval look paints its ivy in, `#rrggbb`, or `natural` for its own greens. */
 export const IVY_COLOUR_STORAGE_KEY = 'atlas-vtt:ivy-colour';
 const NATURAL_IVY = 'natural';
-/** Whether every token wears a bow (Yassify), `on` or `off`: words, as Obsidian drops falsy values. */
-export const YASSIFY_STORAGE_KEY = 'atlas-vtt:yassify';
+/** Whether a look lets the map show through, `on` or `off`, one key per look: `atlas-vtt:glass-scifi`. */
+export const glassStorageKey = (look: AtlasLook): string => `atlas-vtt:glass-${look}`;
+const isGlassWord = (value: unknown): value is 'on' | 'off' => value === 'on' || value === 'off';
 
 /** Obsidian's own theme, which Atlas' looks are drawn over. */
 const DEFAULT_THEME = '';
@@ -36,11 +37,6 @@ export class LookService {
     return looks;
   }
 
-  /** The app's service while Atlas runs, for what draws by the look without making one (the canvas' Yassify props). */
-  static existing(app: App): LookService | null {
-    return byApp.get(app) ?? null;
-  }
-
   /** Forgets the app's service, whose settings go with the plugin that unloads. */
   static release(app: App): void {
     byApp.get(app)?.listeners.clear();
@@ -49,14 +45,18 @@ export class LookService {
 
   private choice: LookChoice;
   private ivy: string;
-  private yassified: boolean;
+  private readonly glassByLook: Record<AtlasLook, boolean>;
   private readonly listeners = new Set<() => void>();
 
   private constructor(private readonly app: App, private readonly settings: SettingsService) {
     this.choice = this.load(LOOK_STORAGE_KEY, isLookChoice) ?? 'own';
     const ivy = this.load(IVY_COLOUR_STORAGE_KEY, isIvyColour);
     this.ivy = ivy && ivy !== NATURAL_IVY ? ivy.toLowerCase() : '';
-    this.yassified = this.load(YASSIFY_STORAGE_KEY, (value): value is string => value === 'on') === 'on';
+    const glassOf = (look: AtlasLook): boolean => {
+      const stored = this.load(glassStorageKey(look), isGlassWord);
+      return stored === null ? LOOK_GLASS[look] : stored === 'on';
+    };
+    this.glassByLook = { mediaeval: glassOf('mediaeval'), scifi: glassOf('scifi') };
   }
 
   get(): LookChoice {
@@ -93,19 +93,21 @@ export class LookService {
     this.notify();
   }
 
-  /** Whether every token on the map wears its Yassify props (bow, nails, tumbler), on this device. */
-  yassify(): boolean {
-    return this.yassified;
+  /** Whether the Atlas look on lets the map show through bars, widgets and dice, blurred; never under the GM's own theme. */
+  glass(): boolean {
+    return isAtlasLook(this.choice) && this.glassByLook[this.choice];
   }
 
-  setYassify(on: boolean): void {
-    if (on === this.yassified) return;
-    this.yassified = on;
-    this.save(YASSIFY_STORAGE_KEY, on ? 'on' : 'off');
+  /** Lets the map show through under the Atlas look on, or not; each look keeps its own choice, on this device. */
+  setGlass(on: boolean): void {
+    const look = this.choice;
+    if (!isAtlasLook(look) || this.glassByLook[look] === on) return;
+    this.glassByLook[look] = on;
+    this.save(glassStorageKey(look), on ? 'on' : 'off');
     this.notify();
   }
 
-  /** Calls `listener` whenever the look, its ivy colour or Yassify changes. */
+  /** Calls `listener` whenever the look, its ivy colour or its transparency changes. */
   onChange(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };

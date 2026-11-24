@@ -53,14 +53,13 @@ function rendered(close = vi.fn()): DungeonRendered {
 
 const flush = (): Promise<void> => new Promise(resolve => setTimeout(resolve, 0));
 
-function clientWith(workers: FakeWorker[], inThread?: (job: DungeonJob) => Promise<DungeonRendered>): DungeonWorkerClient {
+function clientWith(workers: FakeWorker[]): DungeonWorkerClient {
   return new DungeonWorkerClient({
     createWorker: () => {
       const worker = new FakeWorker();
       workers.push(worker);
       return worker as unknown as Worker;
     },
-    ...(inThread && { inThread }),
   });
 }
 
@@ -235,17 +234,31 @@ describe('the dungeon worker client', () => {
     await expect(next).resolves.toBe(result);
   });
 
-  it('draws in the window when no worker can start', async () => {
-    const result = rendered();
-    const inThread = vi.fn(async () => result);
+  it('fails the jobs of a worker that cannot start and tries a new one for the next', async () => {
+    const workers: FakeWorker[] = [];
+    const refused = new Error('No workers here');
+    let refusing = true;
     const client = new DungeonWorkerClient({
-      createWorker: () => { throw new Error('No workers here'); },
-      inThread,
+      createWorker: () => {
+        if (refusing) throw refused;
+        const worker = new FakeWorker();
+        workers.push(worker);
+        return worker as unknown as Worker;
+      },
     });
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    await expect(client.render(job(1))).resolves.toBe(result);
-    expect(inThread).toHaveBeenCalledOnce();
+    const lost = client.render(job(1));
+    const queued = client.preview(job(2));
+    await expect(lost).rejects.toMatchObject({ message: 'The dungeon worker could not start.', cause: refused });
+    await expect(queued).rejects.toThrow('could not start');
+    expect(workers).toHaveLength(0);
+
+    refusing = false;
+    const next = client.render(job(3));
+    expect(workers).toHaveLength(1);
+    const result = rendered();
+    workers[0]!.answer({ id: workers[0]!.lastJob(), ok: true, result });
+    await expect(next).resolves.toBe(result);
   });
 
   it('fails every job once disposed', async () => {

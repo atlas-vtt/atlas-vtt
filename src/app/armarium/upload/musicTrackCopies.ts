@@ -50,7 +50,10 @@ export function prepareTrackCopy({ library, director, records }: MusicCopiesDeps
         fetching = true;
         void director.shelf.storedBytes(info.key)
           .then(async (bytes) => tell({ state: 'ready', copy: new Blob([await bytes.read(0, bytes.byteLength)], { type: 'audio/ogg' }), frames: info.frames }))
-          .catch(() => tell({ state: 'refused', reason: 'unreadable' }));
+          .catch((error: unknown) => {
+            console.error(`[Atlas] Could not read the copy of ${file.path} for the Armarium:`, error);
+            tell({ state: 'refused', reason: 'read-failed' });
+          });
       } else tell({ state: 'converting', progress: conversion.state === 'converting' ? conversion.progress : null });
     };
     unsubscribe = director.subscribe(check);
@@ -74,7 +77,7 @@ export function prepareTrackCopy({ library, director, records }: MusicCopiesDeps
   };
   void run().catch((error: unknown) => {
     console.error(`[Atlas] Could not prepare ${file.path} for the Armarium:`, error);
-    tell({ state: 'refused', reason: 'unreadable' });
+    tell({ state: 'refused', reason: 'read-failed' });
   });
   return () => {
     live = false;

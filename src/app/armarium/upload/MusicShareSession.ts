@@ -1,8 +1,8 @@
 import type { AtlasAccount } from '../../account/AtlasAccount';
 import type { MusicKind } from '../../services/itemBundle/itemBundleFormat';
 import { MAX_ALBUM_TRACKS } from '../../services/musicBundle/musicBundleFormat';
+import { UnreadablePartError } from '../../services/musicBundle/musicPacking';
 import type { LibraryFile } from '../../soundLibrary/SoundLibrary';
-import { describeError } from '../../utils/errors';
 import type { ArmariumApi } from './armariumApi';
 import { draftForKind, draftFrom, textLength, type ListingDraft } from './listingDraft';
 import { ListingName, musicProblems } from './musicShareRules';
@@ -160,6 +160,8 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
     const { step, version } = this.state;
     if (step !== 'bundle' || version === null) return;
     const problems = musicProblems(this.state);
+    // Continue waits, disabled, until every track is prepared: there is nothing to say about it.
+    if (problems.tracks === 'preparing') return;
     if (textLength(this.state.notes) > ITEM_NOTES_LIMITS.max) problems.notes = 'too-long';
     if (Object.keys(problems).length > 0) return this.set({ problems });
     this.set({ step: 'upload', packing: { message: '', fraction: 0 }, refusal: null, problems: {} });
@@ -199,6 +201,11 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
     return { listings: this.known, listingsFailed: this.failedToRead, target: ownListing?.uid ?? null, version: nextItemVersion(ownListing), ...this.nameFor(ownListing) };
   }
 
+  /** The next version of the listing as read again, also in the list of the account's listings. */
+  protected override relisted(listing: OwnListing): Partial<MusicShareSnapshot> {
+    return { version: nextItemVersion(listing), listings: this.state.listings?.map((each) => (each.uid === listing.uid ? listing : each)) ?? null };
+  }
+
   /** What the listing holds for a new version, else an empty form; the kind is music, which names no system. */
   protected draftOf(stored: ListingFields | null): ListingDraft {
     return draftForKind({ ...draftFrom(stored, null), kind: 'music' });
@@ -209,10 +216,6 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
     if (version === null) return;
     this.set({ packing: { message: '', fraction: 0 }, refusal: null });
     void this.packAndUpload(version);
-  }
-
-  protected recordPublished(): Promise<void> {
-    return Promise.resolve();
   }
 
   /** The name a version of `listing` is shared under (`ListingName`), unless the GM typed one. */
@@ -287,7 +290,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
       packed = await this.deps.pack(request);
     } catch (error) {
       console.error('[Atlas] Packing the music for the Armarium failed:', error);
-      return this.set({ busy: false, packing: null, refusal: { code: 'export-failed', until: null, detail: describeError(error) } });
+      return this.set({ busy: false, packing: null, refusal: { code: 'export-failed', until: null, unreadable: error instanceof UnreadablePartError ? error.unreadable : null } });
     }
     await this.sendBundle(packed.blob, { fileName: packed.fileName, bytes: packed.blob.size, name: request.name, version });
   }

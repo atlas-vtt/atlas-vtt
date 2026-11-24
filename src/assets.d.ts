@@ -18,9 +18,3 @@ declare module '*?worker&inline' {
 /** Stylesheets are imported for their side effect alone: Vite bundles them into `styles.css`. */
 declare module '*.css' {}
 declare module '*.scss' {}
-
-/** A language's texts, read when the function is first called (`vite/locale-translations.mts`). */
-declare module '*?translation' {
-  const load: () => import('./app/i18n/types').Translation;
-  export default load;
-}

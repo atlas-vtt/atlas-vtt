@@ -83,6 +83,21 @@ describe('preparing a track for the Armarium', () => {
     await vi.waitFor(() => expect(gone.states.at(-1)).toEqual({ state: 'refused', reason: 'gone' }));
   });
 
+  it('says a read failed, never that the file is damaged, where its copy cannot be read, and logs why', async () => {
+    const { deps, location, conversion, changed } = rig();
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    (deps.director.shelf as { storedBytes: () => Promise<never> }).storedBytes = () => Promise.reject(new Error('EBUSY'));
+    location.put('Dawn.mp3', new Blob(['ID3 not opus']));
+    const { states, listener } = told();
+    prepareTrackCopy(deps, file('Dawn.mp3'), listener);
+    await vi.waitFor(() => expect(states.at(-1)?.state).toBe('converting'));
+    conversion.now = { state: 'ready' };
+    changed();
+    await vi.waitFor(() => expect(states.at(-1)).toEqual({ state: 'refused', reason: 'read-failed' }));
+    expect(errors).toHaveBeenCalledWith(expect.stringContaining('Dawn.mp3'), expect.any(Error));
+    errors.mockRestore();
+  });
+
   it('tells nothing more once released', async () => {
     const { deps, location } = rig();
     location.put('Dawn.opus', await taggedCopy({ key: keyOf('b') }));

@@ -34,7 +34,9 @@ export class ConversionConsentModal extends Modal {
       return;
     }
     this.setTitle(t('audio.consent.title', { folder }));
-    contentEl.createEl('p', { text: t('audio.consent.body', { folder, count: options.fileCount }) });
+    // An empty folder is asked all the same: its choice holds for the files added to it later.
+    const body = options.fileCount === 0 ? t('audio.consent.bodyEmpty', { folder }) : t('audio.consent.body', { folder, count: options.fileCount });
+    contentEl.createEl('p', { text: body });
     if (!options.canTrash) contentEl.createEl('p', { text: t('audio.consent.noTrash'), cls: 'setting-item-description' });
     const row = contentEl.createDiv({ cls: 'modal-button-container' });
     if (options.canTrash) this.choice(row, t('audio.consent.trash'), 'trash', 'default');

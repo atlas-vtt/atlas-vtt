@@ -2,12 +2,16 @@
 import React from 'react';
 import type { App } from 'obsidian';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
+import { appearanceSettings } from '../../src/app/api/extensionPoints';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { AppearancePanel } from '../../src/app/react/components/command-palette/AppearancePanel';
 import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  appearanceSettings.clear();
+});
 
 function app(): App {
   const storage = new Map<string, unknown>();
@@ -51,15 +55,35 @@ it('offers the ivy colour only while the Medieval look is on, in the same place'
   expect(violet.getAttribute('aria-checked')).toBe('true');
 });
 
-it('switches Yassify from Appearance settings', () => {
+it('shows the settings other plugins add, and lets go of them when they take them back', () => {
+  const unmounted = vi.fn();
+  const remove = appearanceSettings.add((el) => {
+    el.createEl('p', { text: 'A companion row' });
+    return unmounted;
+  });
   render(
     <AtlasUIContext.Provider value={{ app: app(), view: null, pixiApp: null, renderer: null }}>
       <AppearancePanel />
     </AtlasUIContext.Provider>,
   );
-  const yassify = screen.getByRole('switch', { name: 'Yassify' });
-  expect(yassify.getAttribute('aria-checked')).toBe('false');
-  act(() => { fireEvent.click(yassify); });
-  expect(screen.getByRole('switch', { name: 'Yassify' }).getAttribute('aria-checked')).toBe('true');
-  expect(screen.getByText('Give every token some pizzazz.')).toBeTruthy();
+  expect(screen.getByText('A companion row')).toBeTruthy();
+  act(() => remove());
+  expect(screen.queryByText('A companion row')).toBeNull();
+  expect(unmounted).toHaveBeenCalledTimes(1);
+});
+
+it('switches the look\'s transparency, which only Atlas\' looks have', () => {
+  render(
+    <AtlasUIContext.Provider value={{ app: app(), view: null, pixiApp: null, renderer: null }}>
+      <AppearancePanel />
+    </AtlasUIContext.Provider>,
+  );
+  const glass = (): HTMLElement => screen.getByRole('switch', { name: 'Transparency' });
+  expect(glass().getAttribute('aria-disabled')).toBe('true');
+  act(() => { fireEvent.click(screen.getByRole('radio', { name: 'Sci-fi' })); });
+  expect(glass().getAttribute('aria-checked')).toBe('true');
+  act(() => { fireEvent.click(screen.getByRole('radio', { name: 'Medieval' })); });
+  expect(glass().getAttribute('aria-checked')).toBe('false');
+  act(() => { fireEvent.click(glass()); });
+  expect(glass().getAttribute('aria-checked')).toBe('true');
 });

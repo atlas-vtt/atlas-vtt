@@ -1,9 +1,11 @@
 /**
- * The conventions table as an ESLint plugin: one rule per convention, so a convention can be
+ * The conventions tables as an ESLint plugin: one rule per convention, so a convention can be
  * scoped, suppressed and counted by its own name, and no config block has to repeat another's
- * selectors.
+ * selectors. The code's conventions (`conventions.mjs`) and the tests' (`testConventions.mjs`)
+ * are rules of the one plugin; a config switches on the table it names.
  */
 import { CONVENTIONS } from './conventions.mjs';
+import { TEST_CONVENTIONS } from './testConventions.mjs';
 
 /** @typedef {import('./conventions.mjs').Convention} Convention */
 
@@ -38,7 +40,7 @@ export const ruleId = (convention) => `${PLUGIN}/${convention.name}`;
 /** @type {import('eslint').ESLint.Plugin} */
 export const atlasPlugin = {
   meta: { name: PLUGIN },
-  rules: Object.fromEntries(CONVENTIONS.map((convention) => [convention.name, ruleOf(convention)])),
+  rules: Object.fromEntries([...CONVENTIONS, ...TEST_CONVENTIONS].map((convention) => [convention.name, ruleOf(convention)])),
 };
 
 /**
@@ -46,10 +48,11 @@ export const atlasPlugin = {
  * ever switched on for files that also have the plugin; `scriptFiles` keeps both away from the
  * files ESLint reads without the TypeScript parser (`package.json`).
  * @param {string[]} scriptFiles The globs of every linted script file.
+ * @param {Convention[]} [conventions] The table to switch on: the code's without one.
  * @returns {import('eslint').Linter.Config[]}
  */
-export function conventionConfigs(scriptFiles) {
-  return CONVENTIONS.map((convention) => {
+export function conventionConfigs(scriptFiles, conventions = CONVENTIONS) {
+  return conventions.map((convention) => {
     const ignores = [...(convention.owners ?? []), ...(convention.ignores ?? [])];
     return {
       name: ruleId(convention),

@@ -90,9 +90,22 @@ The gate is zero tolerance: no errors, no warnings (`--max-warnings 0`).
   set does not use makes ESLint exit with code 2, which the review reports as
   a fatal error.
 
+`npm run lint` reads no test. `npm run lint:tests` does, in about twenty
+seconds: a second lint over `tests/`, `src/**/*.test.*` and
+`src/**/__tests__/` whose config (`scripts/eslint/testsConfig.mjs`) parses
+without type information. Its rules are the test conventions,
+`atlas/test-<name>`, in `scripts/eslint/testConventions.mjs`: the other
+table's shape, with examples the unit suite runs. Each names a way a test
+stops being able to fail, such as no assertion, a mock asked for its own
+answer, or `obsidian` mocked beside `tests/mocks/obsidian.ts`. What they
+found when they were switched on is in `eslint.tests.suppressions.json`,
+apart from the other baseline because each lint's prune would delete the
+entries of files it does not read. Its counts only go down too, and the
+maintainer prunes it with `npm run lint:tests:prune`.
+
 ### Guards
 
-Three records say how far the code is from where it should be, and each of
+Four records say how far the code is from where it should be, and each of
 them may only shrink:
 
 - **Lint baseline**: `eslint.suppressions.json`, above. Most of it is React:
@@ -102,6 +115,8 @@ them may only shrink:
   derive a value during render instead of setting state in an effect, reset
   with a `key`, set state in the event handler, and subscribe with
   `useSyncExternalStore`.
+- **Test lint baseline**: `eslint.tests.suppressions.json`, above: what the
+  test conventions found when they were switched on. Most of it is mocking.
 - **File sizes**: a source file (`main.ts` and `src/**/*.ts`, `*.tsx`, `*.js`,
   `*.jsx`, `*.mjs`, without tests and declarations) has at most 300 lines. The files that were larger
   when the check came are recorded in `scripts/file-sizes.json` with an
@@ -116,7 +131,7 @@ them may only shrink:
   `dist/main.js` and `dist/styles.css` may have, and `npm run preflight` fails
   a build above it. Find what grew before asking for a higher budget.
 
-`npm run check:guards` compares the three with what they were where the branch
+`npm run check:guards` compares the four with what they were where the branch
 left `beta` (`--base <ref>` names another commit) and fails when a rule's
 suppressed findings, an allowance or a budget rose, or a rule, an entry or an
 exemption was added. A suppressed finding that moved to another file is no
@@ -137,16 +152,16 @@ Say in the pull request why it is needed, and the maintainer labels it
 `guards-ok`, which passes the check at once. A pull request that does not
 merge cleanly has no merge commit to read and is checked once it does.
 
-When a change lands, the maintainer runs `npm run lint:prune`: a count left
-higher than the findings there are could be filled again without the guard
-seeing a rise.
+When a change lands, the maintainer runs `npm run lint:prune` and
+`npm run lint:tests:prune`: a count left higher than the findings there are
+could be filled again without the guard seeing a rise.
 
-`npm run check` is the loop while working: typecheck, ESLint on the files
+`npm run check` is the loop while working: typecheck, both lints on the files
 changed since the branch left `beta`, the unit tests those changes reach, then
 boundaries, file sizes, documentation references and the guards. It prints
 each command, stops at the first that fails, skips the tests with
 `npm run check -- --no-tests` and takes another base from `ATLAS_BASE`.
-`npm run verify` is the whole gate before a pull request: typecheck, lint,
+`npm run verify` is the whole gate before a pull request: typecheck, both lints,
 release notes, boundaries, file sizes, documentation references and the unit
 suite.
 

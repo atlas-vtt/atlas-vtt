@@ -6,7 +6,7 @@ import fs from 'fs';
 import { desktopDependencies } from './vite/desktop-dependencies.mts';
 import { changelog } from './vite/changelog.mts';
 import { motionNativeAnimation } from './vite/motion-native-animation.mts';
-import { localeTranslations } from './vite/locale-translations.mts';
+import { localePack } from './vite/locale-pack.mts';
 import { lazyInlineWorkers } from './vite/lazy-inline-workers.mts';
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -107,7 +107,7 @@ export default defineConfig({
     changelog(),
     desktopDependencies(),
     motionNativeAnimation(),
-    localeTranslations(),
+    localePack(),
     lazyInlineWorkers(),
     react(), // Enable React support
     copyFilesPlugin() // Add our custom plugin
@@ -162,7 +162,6 @@ export default defineConfig({
  * Third-party components retain their own licenses:
  * https://github.com/atlas-vtt/atlas-vtt/blob/main/THIRD_PARTY_NOTICES.md
  */`,
-        dir: 'dist',
         format: 'cjs',
         exports: 'named',
         codeSplitting: false,

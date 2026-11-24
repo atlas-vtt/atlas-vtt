@@ -2,7 +2,6 @@ import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { fileURLToPath } from 'node:url';
 import { motionNativeAnimation } from './vite/motion-native-animation.mts';
-import { localeTranslations } from './vite/locale-translations.mts';
 
 const alias = {
   '@': '/src',
@@ -49,7 +48,7 @@ export default defineConfig({
   },
   resolve: { alias },
   // The browser tests run the animation library as the bundle has it (`vite/motion-native-animation.mts`).
-  plugins: [motionNativeAnimation(), localeTranslations()],
+  plugins: [motionNativeAnimation()],
   test: {
     projects: [
       {

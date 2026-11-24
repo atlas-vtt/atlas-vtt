@@ -27,6 +27,8 @@
     "version:check": "node scripts/release-channel.js",
     "lint": "cross-env NODE_OPTIONS=--max-old-space-size=8192 eslint . --config eslint.config.mjs --max-warnings 0 --suppressions-location eslint.suppressions.json --pass-on-unpruned-suppressions",
     "lint:prune": "cross-env NODE_OPTIONS=--max-old-space-size=8192 eslint . --config eslint.config.mjs --suppressions-location eslint.suppressions.json --prune-suppressions",
+    "lint:tests": "eslint tests src --config scripts/eslint/testsConfig.mjs --max-warnings 0 --suppressions-location eslint.tests.suppressions.json --pass-on-unpruned-suppressions",
+    "lint:tests:prune": "eslint tests src --config scripts/eslint/testsConfig.mjs --suppressions-location eslint.tests.suppressions.json --prune-suppressions",
     "lint:scan": "node scripts/lint-scan.js",
     "preflight": "node scripts/preflight.js",
     "check": "node scripts/check.mjs",
@@ -34,7 +36,7 @@
     "check:sizes": "node scripts/check-file-sizes.mjs",
     "check:docs": "node scripts/check-doc-refs.mjs",
     "check:guards": "node scripts/check-guards.mjs",
-    "verify": "tsc --noEmit && npm run lint && npm run changelog:check && npm run check:boundaries && npm run check:sizes && npm run check:docs && vitest run --project unit"
+    "verify": "tsc --noEmit && npm run lint && npm run lint:tests && npm run changelog:check && npm run check:boundaries && npm run check:sizes && npm run check:docs && vitest run --project unit"
   },
   "keywords": [
     "obsidian",

@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 const SUPPRESSIONS = 'eslint.suppressions.json';
+const TEST_SUPPRESSIONS = 'eslint.tests.suppressions.json';
 const SIZES = 'scripts/file-sizes.json';
 const BUDGET = 'scripts/bundle-budget.json';
 const ENDING = 'Fix the finding instead; only the maintainer changes a baseline or a check.';
@@ -14,7 +15,7 @@ const USAGE = 'Usage: node scripts/check-guards.mjs [--base <git ref>] [--head <
 const NO_BASE = 'Neither beta nor origin/beta exists here: set ATLAS_BASE to the branch your work started from, as in `ATLAS_BASE=origin/main npm run check`.';
 
 /** Their own comparisons catch every rise and addition, and a change must be able to lower them. */
-const BASELINES = new Set([SUPPRESSIONS, SIZES, BUDGET]);
+const BASELINES = new Set([SUPPRESSIONS, TEST_SUPPRESSIONS, SIZES, BUDGET]);
 const GUARD_FILES = [
   /(^|\/)eslint\.config\.[cm]?[jt]s$/,
   /^eslint\.scanner\.mjs$/,
@@ -37,11 +38,12 @@ export function suppressedTotals(suppressions) {
   return totals;
 }
 
-export function suppressionProblems(base, head) {
+/** `file` names the baseline in the findings: the code's, or the tests' (`npm run lint:tests`). */
+export function suppressionProblems(base, head, file = SUPPRESSIONS) {
   const before = suppressedTotals(base);
   return [...suppressedTotals(head)].flatMap(([rule, total]) => {
-    if (!before.has(rule)) return [failure(`${SUPPRESSIONS}: ${rule} is suppressed (${total}) and was not before.`)];
-    if (total > before.get(rule)) return [failure(`${SUPPRESSIONS}: suppressed findings of ${rule} rose from ${before.get(rule)} to ${total}.`)];
+    if (!before.has(rule)) return [failure(`${file}: ${rule} is suppressed (${total}) and was not before.`)];
+    if (total > before.get(rule)) return [failure(`${file}: suppressed findings of ${rule} rose from ${before.get(rule)} to ${total}.`)];
     return [];
   });
 }
@@ -177,6 +179,7 @@ function main(args) {
 
   const problems = [
     ...suppressionProblems(atBase(SUPPRESSIONS), atHead(SUPPRESSIONS)),
+    ...suppressionProblems(atBase(TEST_SUPPRESSIONS), atHead(TEST_SUPPRESSIONS), TEST_SUPPRESSIONS),
     ...sizeProblems(atBase(SIZES), atHead(SIZES)),
     ...budgetProblems(atBase(BUDGET), atHead(BUDGET)),
   ];

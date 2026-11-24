@@ -4,7 +4,7 @@
 - Atlas has looks of its own, no theme to install: Medieval and a new Sci-fi look, or keep your own theme. Pick one on picture cards under Appearance settings in the command palette or in the welcome wizard; each device keeps its own. The fog's edge and the dice numerals follow the look
 - Appearance settings also pick the accent colour: the look's own, eight presets or any colour, in step with Obsidian's accent colour setting
 - The Medieval look's ivy takes any colour you like, shading and all: pick Natural, a preset or your own under Appearance settings
-- Yassify, under Appearance settings: give every token some pizzazz. Each one wears a hand-painted bow, shows off its nails and holds a big tumbler, on the map and in the player window. Turning it off again takes some convincing
+- Both looks can let the map show through: with Transparency under Appearance settings, bars, widgets, dice and hover previews turn to smoked glass. Sci-fi starts with it on, Medieval with it off, and each look keeps your choice
 - **Atlas Online: phones as remotes.** Playing together around one screen, the GM can turn every player's phone or tablet into a remote: a big pad steps their token one cell at a time on the map everyone watches, on square and hex grids. Switch between Token control and Remote control under Play mode in the player window bar's What players see menu, which now also holds online play's own switches, before a table starts too. A table starts with Remote control while the player window is open, and with Token control while it is not, unless you chose otherwise. With the measure tool in hand the pad measures instead: a ruler, circle, cone, square or line grows from the player's token a cell with every press
 - The player window shows what online players measure, their rulers and areas with their distances, so everyone at the table sees them on the shared screen
 - The player window bar also shows while an Atlas Online table runs. Hide the map and Pause now reach online players too: behind the curtain they are sent nothing of the scene, and while play is paused nobody can move their tokens. While a table runs, the bar also opens the player window, so a TV at the table can show the scene beside online play
@@ -32,6 +32,7 @@
 
 ## Fixed
 
+- The toolbar's Lighting button is named in your language, as its menu already was
 - Dice in the accent colour take a new accent colour at once, whether it is picked in Appearance settings or in Obsidian's settings
 - The asset manager's scroll shadow no longer shows past the window's rounded corners
 - Fog of War no longer takes a player's token away from them: a party token under the fog stays theirs to see and move, also in Atlas Online, and everyone at the table sees a ring above the fog where it stands
@@ -43,3 +44,5 @@
 - Sound: a tag name the library's rail cuts short shows in full on hover, and "Get starter ambience" no longer loses its first letters in a narrow rail
 - Sound: turning up reverb no longer makes a sound louder. A full knob is as wet as before, in every room, for music and ambience, on the players' page too
 - Sound: the mix desk shows a track's length as the library does, to the nearest second
+- Sound: cancelling the question about a new music or ambience folder, after Change folder, keeps the folder you had, with your choice for its originals, instead of leaving none linked
+- Sound: linking an empty music or ambience folder no longer asks to convert "all 0 sounds": the question says the folder holds no sounds yet and that Atlas converts the sounds you add to it
