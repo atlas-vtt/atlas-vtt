@@ -34,6 +34,23 @@ describe('the suppression baseline', () => {
     expect(suppressionProblems(base, added)).toEqual([expect.stringMatching(/atlas\/three is suppressed \(1\) and was not before/)]);
     expect(suppressionProblems(null, added)).toHaveLength(2);
   });
+
+  it('holds the baseline of the tests to the same comparison, and names it', () => {
+    const tests = 'eslint.tests.suppressions.json';
+    const before = suppressed({ 'tests/unit/a.test.ts': { 'atlas/test-mock-count': 2 }, 'tests/unit/b.test.ts': { 'atlas/test-mock-count': 1 } });
+    const moved = suppressed({ 'tests/unit/c.test.ts': { 'atlas/test-mock-count': 3 } });
+    const raised = suppressed({ 'tests/unit/a.test.ts': { 'atlas/test-mock-count': 3 }, 'tests/unit/b.test.ts': { 'atlas/test-mock-count': 1 } });
+    const added = suppressed({ 'tests/unit/a.test.ts': { 'atlas/test-mock-count': 2, 'atlas/test-asserts': 1 } });
+    expect(suppressionProblems(before, moved, tests)).toEqual([]);
+    expect(suppressionProblems(before, raised, tests)).toEqual([expect.stringMatching(/^eslint\.tests\.suppressions\.json: suppressed findings of atlas\/test-mock-count rose from 3 to 4/)]);
+    expect(suppressionProblems(before, added, tests)).toEqual([expect.stringMatching(/^eslint\.tests\.suppressions\.json: atlas\/test-asserts is suppressed \(1\) and was not before/)]);
+    expect(suppressionProblems(before, raised)).toEqual([expect.stringMatching(/^eslint\.suppressions\.json: /)]);
+  });
+
+  it('passes a base and a head that both have no such file, and lists every rule of a file the base lacks', () => {
+    expect(suppressionProblems(null, null, 'eslint.tests.suppressions.json')).toEqual([]);
+    expect(suppressionProblems(null, base, 'eslint.tests.suppressions.json')).toHaveLength(2);
+  });
 });
 
 describe('the file size record', () => {
@@ -97,13 +114,13 @@ describe('the checks themselves, for pull requests from forks', () => {
   });
 
   it('passes the baselines, which their own comparisons hold and a change may lower', () => {
-    const changed = ['eslint.suppressions.json', 'scripts/file-sizes.json', 'scripts/bundle-budget.json'];
+    const changed = ['eslint.suppressions.json', 'eslint.tests.suppressions.json', 'scripts/file-sizes.json', 'scripts/bundle-budget.json'];
     expect(guardFileProblems(changed, { base: scripts, head: scripts })).toEqual([]);
   });
 
   it('fails a changed script, config or workflow', () => {
     const changed = [
-      'eslint.config.mjs', 'eslint.scanner.mjs', 'scripts/eslint/conventions.mjs', 'scripts/check-guards.mjs', 'scripts/check.mjs',
+      'eslint.config.mjs', 'eslint.scanner.mjs', 'scripts/eslint/conventions.mjs', 'scripts/eslint/testConventions.mjs', 'scripts/eslint/testsConfig.mjs', 'scripts/check-guards.mjs', 'scripts/check.mjs',
       'scripts/check-old.js', 'scripts/preflight.js', 'scripts/lint-scan.js', 'scripts/boundaries.mjs', 'scripts/boundaries/graph.mjs', 'scripts/changelog.js',
       'scripts/new-baseline.json', 'tsconfig.json', 'tsconfig.shared.json', 'src/tsconfig.json', 'tests/tsconfig.json', 'vitest.config.mts',
       '.github/workflows/plugin-ci.yml', '.github/workflows/guards.yml',

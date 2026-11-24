@@ -6,20 +6,29 @@ import { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
 import { conventionConfigs, ruleId } from '../../scripts/eslint/atlasPlugin.mjs';
-import { CONVENTIONS } from '../../scripts/eslint/conventions.mjs';
+import { CONVENTIONS, type Convention } from '../../scripts/eslint/conventions.mjs';
+import { TEST_CONVENTIONS } from '../../scripts/eslint/testConventions.mjs';
+import testsConfig, { TEST_FILES } from '../../scripts/eslint/testsConfig.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const SCRIPT_FILES = ['**/*.{ts,tsx}'];
-/** Where an example is linted unless its convention names a file: in no convention's own scope. */
-const ANYWHERE = 'src/app/example.ts';
 
 // Without type information: the conventions are selectors over the syntax, and a parse is fast.
 const linter = new Linter({ cwd: ROOT });
-const config: Linter.Config[] = [{ files: SCRIPT_FILES, languageOptions: { parser: tseslint.parser } }, ...conventionConfigs(SCRIPT_FILES)];
 
-function lint(code: string, filename: string): Linter.LintMessage[] {
-  return linter.verify(code, config, { filename: join(ROOT, filename) });
+interface Table {
+  conventions: Convention[];
+  config: Linter.Config[];
+  /** Where an example is linted unless its convention names a file: in no convention's own scope. */
+  anywhere: string;
 }
+const CODE: Table = {
+  conventions: CONVENTIONS,
+  config: [{ files: SCRIPT_FILES, languageOptions: { parser: tseslint.parser } }, ...conventionConfigs(SCRIPT_FILES)],
+  anywhere: 'src/app/example.ts',
+};
+/** The tests' table is linted with the config `npm run lint:tests` runs. */
+const TESTS: Table = { conventions: TEST_CONVENTIONS, config: testsConfig, anywhere: 'tests/unit/example.test.ts' };
 
 const isPlainFile = (path: string): boolean => !/[*{]/.test(path);
 
@@ -37,14 +46,18 @@ function globPattern(glob: string): RegExp {
 const pathsNamedIn = (text: string): string[] => text.match(/\bsrc\/[\w/.-]+\.tsx?\b/g) ?? [];
 
 describe('the lint conventions', () => {
-  it('have names of their own, in kebab-case', () => {
-    const names = CONVENTIONS.map((convention) => convention.name);
+  it('have names of their own, in kebab-case, over both tables', () => {
+    const names = [...CONVENTIONS, ...TEST_CONVENTIONS].map((convention) => convention.name);
     expect(new Set(names).size).toBe(names.length);
     for (const name of names) expect(name).toMatch(/^[a-z]+(-[a-z0-9]+)*$/);
   });
+});
 
-  describe.each(CONVENTIONS)('atlas/$name', (convention) => {
-    const filename = convention.filename ?? ANYWHERE;
+describe.each([['the lint conventions', CODE], ['the lint conventions of tests', TESTS]])('%s', (_title, { conventions, config, anywhere }) => {
+  const lint = (code: string, filename: string): Linter.LintMessage[] => linter.verify(code, config, { filename: join(ROOT, filename) });
+
+  describe.each(conventions)('atlas/$name', (convention) => {
+    const filename = convention.filename ?? anywhere;
 
     it('says what to do instead and why, with examples of both', () => {
       expect(convention.message.trim()).not.toBe('');
@@ -87,5 +100,22 @@ describe('the lint conventions', () => {
       const elsewhere = convention.files ? [filename.replace(/^.*(\.tsx?)$/, 'src/app/example$1')] : [];
       for (const path of [...(convention.owners ?? []).filter(isPlainFile), ...elsewhere]) expect(lint(code, path), path).toEqual([]);
     });
+  });
+});
+
+describe('the lint of tests', () => {
+  const lintsAsTest = (file: string): boolean => linter.verify("it.only('runs', () => {});", testsConfig, { filename: join(ROOT, file) }).some((message) => message.ruleId === 'atlas/test-focused');
+
+  it('reads every kind of test file, and no file of the app', () => {
+    for (const file of ['tests/unit/a.test.ts', 'tests/helpers/scene.ts', 'tests/gpu/a.gpu.test.ts', 'src/app/a.test.tsx', 'src/app/grid/__tests__/a.test.ts', 'src/app/grid/__tests__/kit.ts']) expect(lintsAsTest(file), file).toBe(true);
+    for (const file of ['src/app/a.ts', 'main.ts', 'scripts/check.mjs']) expect(lintsAsTest(file), file).toBe(false);
+  });
+
+  it('names in its globs files the repository tracks', () => {
+    for (const glob of TEST_FILES) expect(TRACKED.some((file) => globPattern(glob).test(file)), glob).toBe(true);
+  });
+
+  it('gives every test convention a rule id of its own kind', () => {
+    for (const convention of TEST_CONVENTIONS) expect(ruleId(convention)).toMatch(/^atlas\/test-/);
   });
 });
