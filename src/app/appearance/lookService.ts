@@ -14,7 +14,9 @@ export const IVY_COLOUR_STORAGE_KEY = 'atlas-vtt:ivy-colour';
 const NATURAL_IVY = 'natural';
 /** Whether a look lets the map show through, `on` or `off`, one key per look: `atlas-vtt:glass-scifi`. */
 export const glassStorageKey = (look: AtlasLook): string => `atlas-vtt:glass-${look}`;
-const isGlassWord = (value: unknown): value is 'on' | 'off' => value === 'on' || value === 'off';
+const isOnOffWord = (value: unknown): value is 'on' | 'off' => value === 'on' || value === 'off';
+/** Whether no corner in Atlas is rounded, `on` or `off`; unset, Atlas rounds them. */
+export const SQUARE_CORNERS_STORAGE_KEY = 'atlas-vtt:square-corners';
 
 /** Obsidian's own theme, which Atlas' looks are drawn over. */
 const DEFAULT_THEME = '';
@@ -46,6 +48,7 @@ export class LookService {
   private choice: LookChoice;
   private ivy: string;
   private readonly glassByLook: Record<AtlasLook, boolean>;
+  private square: boolean;
   private readonly listeners = new Set<() => void>();
 
   private constructor(private readonly app: App, private readonly settings: SettingsService) {
@@ -53,10 +56,11 @@ export class LookService {
     const ivy = this.load(IVY_COLOUR_STORAGE_KEY, isIvyColour);
     this.ivy = ivy && ivy !== NATURAL_IVY ? ivy.toLowerCase() : '';
     const glassOf = (look: AtlasLook): boolean => {
-      const stored = this.load(glassStorageKey(look), isGlassWord);
+      const stored = this.load(glassStorageKey(look), isOnOffWord);
       return stored === null ? LOOK_GLASS[look] : stored === 'on';
     };
     this.glassByLook = { mediaeval: glassOf('mediaeval'), scifi: glassOf('scifi') };
+    this.square = this.load(SQUARE_CORNERS_STORAGE_KEY, isOnOffWord) === 'on';
   }
 
   get(): LookChoice {
@@ -107,7 +111,19 @@ export class LookService {
     this.notify();
   }
 
-  /** Calls `listener` whenever the look, its ivy colour or its transparency changes. */
+  /** Whether Atlas draws every corner square, for a retro look, under any look and the GM's own theme; on this device. */
+  squareCorners(): boolean {
+    return this.square;
+  }
+
+  setSquareCorners(on: boolean): void {
+    if (on === this.square) return;
+    this.square = on;
+    this.save(SQUARE_CORNERS_STORAGE_KEY, on ? 'on' : 'off');
+    this.notify();
+  }
+
+  /** Calls `listener` whenever the look, its ivy colour, its transparency or the corners change. */
   onChange(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };

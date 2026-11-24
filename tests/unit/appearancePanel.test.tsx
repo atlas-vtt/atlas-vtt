@@ -87,3 +87,20 @@ it('switches the look\'s transparency, which only Atlas\' looks have', () => {
   act(() => { fireEvent.click(glass()); });
   expect(glass().getAttribute('aria-checked')).toBe('true');
 });
+
+it('switches square corners and the toolbar shown on hover from Appearance settings', () => {
+  const created = app();
+  render(
+    <AtlasUIContext.Provider value={{ app: created, view: null, pixiApp: null, renderer: null }}>
+      <AppearancePanel />
+    </AtlasUIContext.Provider>,
+  );
+  const square = (): HTMLElement => screen.getByRole('switch', { name: 'Square corners' });
+  act(() => { fireEvent.click(square()); });
+  expect(square().getAttribute('aria-checked')).toBe('true');
+  const onHover = (): HTMLElement => screen.getByRole('switch', { name: 'Show toolbar on hover' });
+  expect(onHover().getAttribute('aria-checked')).toBe('false');
+  act(() => { fireEvent.click(onHover()); });
+  expect(onHover().getAttribute('aria-checked')).toBe('true');
+  expect(SettingsService.forApp(created)?.isToolbarAutoHide()).toBe(true);
+});

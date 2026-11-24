@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { App, Plugin } from 'obsidian';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { LookService } from '../../src/app/appearance/lookService';
-import { CUSTOM_ACCENT_CLASS, GLASS_LOOK_CLASS, LOOK_CLASS, SCIFI_LOOK_CLASS, registerLookSync } from '../../src/app/appearance/atlasLook';
+import { CUSTOM_ACCENT_CLASS, GLASS_LOOK_CLASS, LOOK_CLASS, SCIFI_LOOK_CLASS, SQUARE_CORNERS_CLASS, registerLookSync } from '../../src/app/appearance/atlasLook';
 
 const ATLAS_ID = 'atlas-vtt';
 
@@ -171,6 +171,8 @@ it('sets the look\'s classes on body', () => {
   service.set('own');
   expect(document.body.classList.contains(LOOK_CLASS)).toBe(false);
   expect(document.body.classList.contains(GLASS_LOOK_CLASS)).toBe(false);
+  service.setSquareCorners(true);
+  expect(document.body.classList.contains(SQUARE_CORNERS_CLASS)).toBe(true);
   for (const dispose of disposers) dispose();
 });
 
@@ -222,6 +224,19 @@ it('lets the map show through under Sci-fi and not under Medieval until switched
   again.set('mediaeval');
   expect(again.glass()).toBe(true);
   expect(storage.get('atlas-vtt:glass-scifi')).toBe('off');
+});
+
+it('keeps square corners on this device, off until switched on, under any look', () => {
+  const storage = new Map<string, unknown>();
+  const first = stub('', storage);
+  const service = looks(first);
+  expect(service.squareCorners()).toBe(false);
+  service.setSquareCorners(true);
+  LookService.release(first.app);
+  const again = looks(stub('', storage));
+  expect(again.squareCorners()).toBe(true);
+  again.set('scifi');
+  expect(again.squareCorners()).toBe(true);
 });
 
 it('names the GM\'s own theme: the one in use while they keep it, else the one remembered', () => {

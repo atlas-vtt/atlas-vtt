@@ -12,7 +12,7 @@ export function GlassRow({ looks }: { looks: LookService }): React.JSX.Element {
   const on = useSyncExternalStore(subscribe, () => looks.glass());
   const atlasLook = useSyncExternalStore(subscribe, () => looks.get() !== 'own');
   return (
-    <div className="atlas-appearance-glass">
+    <div className="atlas-appearance-toggle">
       <SettingToggleRow
         label={t('appearance.glass')}
         hint={t(atlasLook ? 'appearance.glassHint' : 'appearance.glassLooksOnly')}

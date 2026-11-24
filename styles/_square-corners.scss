@@ -1,0 +1,15 @@
+// Square corners (Appearance settings, `LookService.squareCorners`): no corner Atlas draws is rounded, under any look.
+// Atlas' radii are literals across hundreds of rules, Tailwind's and the looks' among them, so one rule outranks them
+// all. It names Atlas' scopes by class, which the browser rules out fast for everything else on the page.
+$atlas-scopes: '.atlas-vtt-plugin', '.atlas-portal-host', '.atlas-notice', '.atlas-statblock', '.statblock-hover-preview';
+
+@each $scope in $atlas-scopes {
+  body.atlas-square-corners #{$scope},
+  body.atlas-square-corners #{$scope}::before,
+  body.atlas-square-corners #{$scope}::after,
+  body.atlas-square-corners #{$scope} *,
+  body.atlas-square-corners #{$scope} *::before,
+  body.atlas-square-corners #{$scope} *::after {
+    border-radius: 0 !important;
+  }
+}
