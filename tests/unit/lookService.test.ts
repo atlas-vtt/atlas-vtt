@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { App, Plugin } from 'obsidian';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { LookService } from '../../src/app/appearance/lookService';
-import { CUSTOM_ACCENT_CLASS, LOOK_CLASS, SCIFI_LOOK_CLASS, registerLookSync } from '../../src/app/appearance/atlasLook';
+import { CUSTOM_ACCENT_CLASS, GLASS_LOOK_CLASS, LOOK_CLASS, SCIFI_LOOK_CLASS, registerLookSync } from '../../src/app/appearance/atlasLook';
 
 const ATLAS_ID = 'atlas-vtt';
 
@@ -160,12 +160,17 @@ it('sets the look\'s classes on body', () => {
   service.set('scifi');
   expect(document.body.classList.contains(LOOK_CLASS)).toBe(true);
   expect(document.body.classList.contains(SCIFI_LOOK_CLASS)).toBe(true);
+  expect(document.body.classList.contains(GLASS_LOOK_CLASS)).toBe(true);
   expect(trigger).toHaveBeenCalledWith('css-change');
   service.set('mediaeval');
   expect(document.body.classList.contains(LOOK_CLASS)).toBe(true);
   expect(document.body.classList.contains(SCIFI_LOOK_CLASS)).toBe(false);
+  expect(document.body.classList.contains(GLASS_LOOK_CLASS)).toBe(false);
+  service.setGlass(true);
+  expect(document.body.classList.contains(GLASS_LOOK_CLASS)).toBe(true);
   service.set('own');
   expect(document.body.classList.contains(LOOK_CLASS)).toBe(false);
+  expect(document.body.classList.contains(GLASS_LOOK_CLASS)).toBe(false);
   for (const dispose of disposers) dispose();
 });
 
@@ -195,6 +200,28 @@ it('marks body while an Atlas look is on and a custom accent is set', () => {
   expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(false);
   s.app.vault.setConfig('accentColor', '#2a9d8f');
   expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(false);
+});
+
+it('lets the map show through under Sci-fi and not under Medieval until switched, each look keeping its own choice on this device', () => {
+  const storage = new Map<string, unknown>();
+  const first = stub('', storage);
+  const service = looks(first);
+  expect(service.glass()).toBe(false);
+  service.setGlass(true);
+  expect(service.glass()).toBe(false);
+  service.set('scifi');
+  expect(service.glass()).toBe(true);
+  service.set('mediaeval');
+  expect(service.glass()).toBe(false);
+  service.setGlass(true);
+  service.set('scifi');
+  service.setGlass(false);
+  LookService.release(first.app);
+  const again = looks(stub('', storage));
+  expect(again.glass()).toBe(false);
+  again.set('mediaeval');
+  expect(again.glass()).toBe(true);
+  expect(storage.get('atlas-vtt:glass-scifi')).toBe('off');
 });
 
 it('names the GM\'s own theme: the one in use while they keep it, else the one remembered', () => {

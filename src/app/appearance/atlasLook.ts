@@ -15,11 +15,17 @@ export const LOOK_FOG_EDGE_STYLE: Record<AtlasLook, FogEdgeStyle> = { mediaeval:
 /** The dice numerals each look switches to: drawn by hand, or Oxanium. */
 export const LOOK_DICE_FONT: Record<AtlasLook, DiceFont> = { mediaeval: 'medieval', scifi: 'scifi' };
 
+/** Whether each look lets the map show through what stands on it (bars, widgets, dice) until the GM switches it. */
+export const LOOK_GLASS: Record<AtlasLook, boolean> = { mediaeval: false, scifi: true };
+
 /** On `body` while one of Atlas' looks is on. */
 export const LOOK_CLASS = 'atlas-look';
 
 /** On `body` while the Sci-fi look is on, beside `LOOK_CLASS`. */
 export const SCIFI_LOOK_CLASS = 'atlas-look-scifi';
+
+/** On `body` while the Atlas look on lets the map show through (`LookService.glass`), beside `LOOK_CLASS`. */
+export const GLASS_LOOK_CLASS = 'atlas-look-glass';
 
 /** On `body` while an Atlas look is on and the GM picked an accent colour, which the look then takes instead of its own. */
 export const CUSTOM_ACCENT_CLASS = 'atlas-accent-custom';
@@ -46,6 +52,7 @@ export function registerLookSync(plugin: Plugin, looks: LookService): void {
     const look = looks.get();
     doc.body.toggleClass(LOOK_CLASS, isAtlasLook(look));
     doc.body.toggleClass(SCIFI_LOOK_CLASS, look === 'scifi');
+    doc.body.toggleClass(GLASS_LOOK_CLASS, looks.glass());
     doc.body.toggleClass(CUSTOM_ACCENT_CLASS, isAtlasLook(look) && customAccent(app) !== '');
     waiting.get(doc)?.();
     waiting.delete(doc);
@@ -65,7 +72,7 @@ export function registerLookSync(plugin: Plugin, looks: LookService): void {
       waiting.get(doc)?.();
       waiting.delete(doc);
       paintIvy(doc, '');
-      doc.body.removeClass(LOOK_CLASS, SCIFI_LOOK_CLASS, CUSTOM_ACCENT_CLASS);
+      doc.body.removeClass(LOOK_CLASS, SCIFI_LOOK_CLASS, GLASS_LOOK_CLASS, CUSTOM_ACCENT_CLASS);
     };
   });
   plugin.register(looks.onChange(() => {

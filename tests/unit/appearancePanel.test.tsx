@@ -71,3 +71,19 @@ it('shows the settings other plugins add, and lets go of them when they take the
   expect(screen.queryByText('A companion row')).toBeNull();
   expect(unmounted).toHaveBeenCalledTimes(1);
 });
+
+it('switches the look\'s transparency, which only Atlas\' looks have', () => {
+  render(
+    <AtlasUIContext.Provider value={{ app: app(), view: null, pixiApp: null, renderer: null }}>
+      <AppearancePanel />
+    </AtlasUIContext.Provider>,
+  );
+  const glass = (): HTMLElement => screen.getByRole('switch', { name: 'Transparency' });
+  expect(glass().getAttribute('aria-disabled')).toBe('true');
+  act(() => { fireEvent.click(screen.getByRole('radio', { name: 'Sci-fi' })); });
+  expect(glass().getAttribute('aria-checked')).toBe('true');
+  act(() => { fireEvent.click(screen.getByRole('radio', { name: 'Medieval' })); });
+  expect(glass().getAttribute('aria-checked')).toBe('false');
+  act(() => { fireEvent.click(glass()); });
+  expect(glass().getAttribute('aria-checked')).toBe('true');
+});
