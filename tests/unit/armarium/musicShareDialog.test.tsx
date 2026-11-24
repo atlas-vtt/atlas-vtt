@@ -10,6 +10,7 @@ import type { OwnListing } from '../../../src/app/armarium/upload/uploadContract
 import { MusicReviewDialog } from '../../../src/app/packages/components/asset-manager/collection-transfer/MusicReviewDialog';
 import { AtlasUIContext } from '../../../src/app/react/root/AtlasUIContext';
 import type { MusicReview } from '../../../src/app/services/musicBundle/musicImport';
+import { UnreadablePartError } from '../../../src/app/services/musicBundle/musicPacking';
 import type { LibraryFile } from '../../../src/app/soundLibrary/SoundLibrary';
 import { sha256 } from '../../../src/app/utils/hashing';
 import { FakeArmarium, noSleep, settle } from './shareFakes';
@@ -84,7 +85,9 @@ describe('the share dialog of music', () => {
   });
 
   it('offers the way back to the music step where the music could not be packed, as well as packing again', async () => {
-    const pack = vi.fn().mockRejectedValueOnce(new Error('The source image cannot be decoded.')).mockResolvedValue({ fileName: 'Old Roads v1.atlas-album.zip', blob: new Blob(['zip']) });
+    const decoding = new Error('The source image cannot be decoded.');
+    const pack = vi.fn().mockRejectedValueOnce(new UnreadablePartError({ part: 'cover' }, decoding)).mockResolvedValue({ fileName: 'Old Roads v1.atlas-album.zip', blob: new Blob(['zip']) });
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { tell } = await share(new MusicArmarium(), ['01 Dawn.mp3', '02 Dusk.mp3'], pack);
     tell('01 Dawn.mp3', ready);
     tell('02 Dusk.mp3', ready);
@@ -92,7 +95,10 @@ describe('the share dialog of music', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
       await settle();
     });
-    expect(screen.getByText(/It could not be packed: The source image cannot be decoded/)).toBeTruthy();
+    expect(screen.getByText('Atlas could not read the cover. Go back and choose it again, or another.')).toBeTruthy();
+    expect(screen.queryByText(/cannot be decoded/)).toBeNull();
+    expect(logged.mock.calls[0]?.[1]).toBeInstanceOf(UnreadablePartError);
+    logged.mockRestore();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
     act(() => fireEvent.click(screen.getByRole('button', { name: 'Back' })));
     expect(screen.getByRole('heading', { name: 'What you share' })).toBeTruthy();

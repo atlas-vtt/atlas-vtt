@@ -51,6 +51,9 @@ export const armariumMusic = {
   'armariumMusic.rejected': 'The checks refused this music. No person looked at it. If a finding is wrong, write to support@atlas-vtt.dev and a person will look.',
   'armariumMusic.fixThenShare': 'Change what the findings name, then start over to share it again.',
   'armariumMusic.declarationMissing': 'Confirm that you may share this music.',
+  'armariumMusic.packFailed.cover': 'Atlas could not read the cover. Go back and choose it again, or another.',
+  'armariumMusic.packFailed.track': 'Atlas could not read the track {title}. Try again.',
+  'armariumMusic.packFailed.other': 'Atlas could not pack the music. Try again.',
   'armariumMusic.stage.images': 'Tracks and cover',
   'armariumMusic.listingIntro': 'The name, the artist and the version come from the music, and its kind is music. What you choose here is shown on its page in the Armarium.',
 

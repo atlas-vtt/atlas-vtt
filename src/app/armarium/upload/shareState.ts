@@ -1,6 +1,7 @@
 import type { BundleProgress } from '../../services/collectionBundle/bundleProgress';
 import type { ExportChoice, ExportPreview } from '../../services/collectionBundle/collectionExport';
 import { MAX_ITEM_NOTES, type ItemRef } from '../../services/itemBundle/itemBundleFormat';
+import type { UnreadablePart } from '../../services/musicBundle/musicPacking';
 import type { UploadProgress } from './BundleUpload';
 import type { ListingDraft } from './listingDraft';
 import type { ListingKind, OwnListing, SubmissionView, TextLimits } from './uploadContract';
@@ -16,6 +17,8 @@ export interface Refusal {
   readonly until: string | null;
   /** What went wrong in Atlas itself (packing the collection), in the error's own words. */
   readonly detail?: string;
+  /** What packing music could not read; null where it cannot tell. Music says it in Atlas' words, never the engine's. */
+  readonly unreadable?: UnreadablePart | null;
 }
 
 /** Whether the account may share now, as the eligibility route said. */

@@ -1,8 +1,8 @@
 import type { AtlasAccount } from '../../account/AtlasAccount';
 import type { MusicKind } from '../../services/itemBundle/itemBundleFormat';
 import { MAX_ALBUM_TRACKS } from '../../services/musicBundle/musicBundleFormat';
+import { UnreadablePartError } from '../../services/musicBundle/musicPacking';
 import type { LibraryFile } from '../../soundLibrary/SoundLibrary';
-import { describeError } from '../../utils/errors';
 import type { ArmariumApi } from './armariumApi';
 import { draftForKind, draftFrom, textLength, type ListingDraft } from './listingDraft';
 import { ListingName, musicProblems } from './musicShareRules';
@@ -290,7 +290,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
       packed = await this.deps.pack(request);
     } catch (error) {
       console.error('[Atlas] Packing the music for the Armarium failed:', error);
-      return this.set({ busy: false, packing: null, refusal: { code: 'export-failed', until: null, detail: describeError(error) } });
+      return this.set({ busy: false, packing: null, refusal: { code: 'export-failed', until: null, unreadable: error instanceof UnreadablePartError ? error.unreadable : null } });
     }
     await this.sendBundle(packed.blob, { fileName: packed.fileName, bytes: packed.blob.size, name: request.name, version });
   }

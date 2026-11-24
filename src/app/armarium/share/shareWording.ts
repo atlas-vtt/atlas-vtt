@@ -73,6 +73,14 @@ export function refusalSaid(subject: ShareSnapshot['subject'], { code, until }: 
   return uploadMessageFor(code, until, context, (key, values) => said(subject, key, values));
 }
 
+/** Why packing failed: for music what Atlas could not read in its own words (the engine's are in the console), else the error's. */
+export function packingFailureSaid(subject: ShareSnapshot['subject'], { detail, unreadable }: Refusal): string {
+  if (subject !== 'music') return shareSaid(subject, 'armariumShare.exportFailed', { error: detail ?? '' });
+  if (unreadable?.part === 'cover') return t('armariumMusic.packFailed.cover');
+  if (unreadable?.part === 'track') return t('armariumMusic.packFailed.track', { title: unreadable.title });
+  return t('armariumMusic.packFailed.other');
+}
+
 /** What a finding of the checks says, in the words of what is shared. */
 export function findingSaid(subject: ShareSnapshot['subject'], finding: CheckFinding): string {
   return findingMessage(finding, (key, values) => said(subject, key, values));
