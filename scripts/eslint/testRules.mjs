@@ -3,7 +3,7 @@
  * say, because it needs the file's name, a count, or everything a test's function holds.
  */
 import path from 'node:path';
-import { asserts, calleeChain, holds, mockedSpecifier, repositoryPath, resolvedSpecifier, testCallback } from './testSyntax.mjs';
+import { asksEnvironment, asserts, assertingImports, calleeChain, captures, holds, mockedSpecifier, repositoryPath, resolvedSpecifier, runConditions, testCallback } from './testSyntax.mjs';
 
 /** @typedef {import('eslint').Rule.RuleContext} Context */
 /** @typedef {import('eslint').Rule.RuleListener} Listener */
@@ -31,42 +31,57 @@ function helperName(node) {
   return null;
 }
 
+/** @typedef {{ outcome: boolean, calls: Set<string> }} Body What a helper or a test holds: an outcome of its own, and the names it calls. */
+
 /**
- * The names of the file's helpers that assert, themselves or through another helper of the file.
- * @param {Map<string, { asserts: boolean, calls: Set<string> }>} helpers
+ * The names of the file's helpers that have an outcome, themselves or through another helper of the file.
+ * @param {Map<string, Body>} helpers
  * @returns {Set<string>}
  */
-function assertingHelpers(helpers) {
-  const asserting = new Set([...helpers].filter(([, helper]) => helper.asserts).map(([name]) => name));
+function helpersWithOutcome(helpers) {
+  const settled = new Set([...helpers].filter(([, helper]) => helper.outcome).map(([name]) => name));
   for (let grew = true; grew;) {
     grew = false;
     for (const [name, helper] of helpers) {
-      if (asserting.has(name) || ![...helper.calls].some((called) => asserting.has(called))) continue;
-      asserting.add(name);
+      if (settled.has(name) || ![...helper.calls].some((called) => settled.has(called))) continue;
+      settled.add(name);
       grew = true;
     }
   }
-  return asserting;
+  return settled;
 }
 
 /**
- * A test without an assertion. A call of a helper the file defines counts where that helper
- * asserts, itself or through another helper of the file, so the file is judged once it is read.
+ * A test without an outcome: it asserts nothing, and writes no picture or record for a person to
+ * judge. A call of a helper the file defines counts where that helper has an outcome, itself or
+ * through another helper of the file, so the file is judged once it is read. What is declared
+ * only where the environment asks for it is a tool, run by hand for what it prints, and no test.
  * @param {Context} context
  * @returns {Listener}
  */
 export function testAsserts(context) {
-  /** @type {Map<string, { asserts: boolean, calls: Set<string> }>} */
+  const file = repositoryPath(context);
+  /** @type {Map<string, Body>} */
   const helpers = new Map();
-  /** @type {{ call: import('estree').CallExpression, asserts: boolean, calls: Set<string> }[]} */
+  /** @type {(Body & { call: import('estree').CallExpression })[]} */
   const tests = [];
-  /** @type {{ node: Node, record: { asserts: boolean, calls: Set<string> } }[]} */
+  /** @type {{ node: Node, record: Body }[]} */
   const open = [];
+  /** @type {Set<string>} The file's names for the imported helpers that assert. */
+  const imported = new Set();
+  /** @type {Set<string>} The file's constants that hold only where the environment asks. */
+  const asking = new Set();
   return {
+    ImportDeclaration(node) {
+      for (const name of assertingImports(node, file)) imported.add(name);
+    },
+    VariableDeclarator(node) {
+      if (node.parent.kind === 'const' && node.id.type === 'Identifier' && node.init && asksEnvironment(node.init, asking)) asking.add(node.id.name);
+    },
     ':function'(/** @type {Node} */ node) {
       const name = helperName(node);
       if (name === null) return;
-      const record = helpers.get(name) ?? { asserts: false, calls: new Set() };
+      const record = helpers.get(name) ?? { outcome: false, calls: new Set() };
       helpers.set(name, record);
       open.push({ node, record });
     },
@@ -74,15 +89,15 @@ export function testAsserts(context) {
       if (open.at(-1)?.node === node) open.pop();
     },
     CallExpression(node) {
-      const asserting = asserts(node);
+      const outcome = asserts(node, imported) || captures(node);
       const { root, names } = calleeChain(node.callee);
       const called = node.callee.type === 'Identifier' ? root : names.at(-1);
       for (const { record } of open) {
-        if (asserting) record.asserts = true;
+        if (outcome) record.outcome = true;
         else if (called) record.calls.add(called);
       }
-      if (!testCallback(node)) return;
-      const test = { call: node, asserts: false, calls: new Set() };
+      if (!testCallback(node) || runConditions(node).some((condition) => asksEnvironment(condition, asking))) return;
+      const test = { call: node, outcome: false, calls: new Set() };
       tests.push(test);
       open.push({ node, record: test });
     },
@@ -90,9 +105,9 @@ export function testAsserts(context) {
       if (open.at(-1)?.node === node) open.pop();
     },
     'Program:exit'() {
-      const asserting = assertingHelpers(helpers);
+      const settled = helpersWithOutcome(helpers);
       for (const test of tests) {
-        if (!test.asserts && ![...test.calls].some((called) => asserting.has(called))) context.report({ node: test.call.callee, ...MESSAGE });
+        if (!test.outcome && ![...test.calls].some((called) => settled.has(called))) context.report({ node: test.call.callee, ...MESSAGE });
       }
     },
   };
