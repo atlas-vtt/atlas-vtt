@@ -56,6 +56,14 @@ export async function decodeImage(buffer: ArrayBuffer, mimeType: string, maxSize
   });
 }
 
+/** An already decoded image scaled down to fit `maxSize` a side, as `decodeImage` scales; null where it fits already. */
+export async function scaledToFit(image: ImageBitmap | HTMLImageElement | HTMLCanvasElement, maxSize: number): Promise<ImageBitmap | null> {
+  const size = image instanceof HTMLImageElement ? { width: image.naturalWidth, height: image.naturalHeight } : image;
+  const target = fitWithin(size, maxSize, maxSize);
+  if (target.width === size.width && target.height === size.height) return null;
+  return createImageBitmap(image, { resizeWidth: target.width, resizeHeight: target.height, resizeQuality: 'high' });
+}
+
 /** The texture source of a decoded image. */
 export function decodedSource(image: DecodedImage, options: TextureSourceOptions): ImageSource | CanvasSource {
   return image instanceof ImageBitmap
