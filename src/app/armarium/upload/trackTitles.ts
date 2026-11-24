@@ -1,13 +1,21 @@
 /**
  * Default track titles from file names, the rule `docs/plans/2026-11-23-armarium-music.md` ("Default track titles")
- * writes down for Atlas and the Armarium's composer alike. Pure.
+ * writes down for Atlas and the Armarium's composer alike, and in Atlas a file's folder tags before it. Pure.
  */
+
+import { stemOf } from '../../soundLibrary/soundPaths';
+import { folderTagsOf } from '../../soundLibrary/soundTags';
 
 /** What sets parts of a file name apart: a dash between spaces (`-`, `–`, `—`) or an underscore. */
 const SEPARATOR = /\s+[-–—]\s+|_/gu;
 /** A track number at the start and what sets it apart: `01 `, `1. `, `02 - `, `07_`, `3) `; never a decimal (`3.5`). */
 const LEADING_NUMBER = /^[0-9]{1,3}(?:\s*[-–—)_]\s*|\.(?![0-9])\s*|\s+)/u;
 const ONLY_DIGITS = /^[0-9]+$/u;
+/** The first separator of a text. */
+const FIRST_SEPARATOR = /\s+[-–—]\s+|_/u;
+
+/** What two names are compared by: without case, NFC, trimmed. */
+const nameKey = (text: string): string => text.normalize('NFC').trim().toLowerCase();
 
 export interface DefaultTitles {
   /** One title per stem, in their order; none is empty. */
@@ -44,6 +52,24 @@ function separators(text: string): { ends: number[]; firstStart: number } {
   return { ends, firstStart };
 }
 
+/**
+ * `stem` without its leading parts that are one of `folders` (the file's folder tags), each dropped only where
+ * something is left after it, and the first part dropped; null where none was.
+ */
+function withoutFolderParts(stem: string, folders: readonly string[]): { rest: string; first: string | null } {
+  const keys = new Set(folders.map(nameKey));
+  let rest = stem;
+  let first: string | null = null;
+  for (let separator = FIRST_SEPARATOR.exec(rest); separator && keys.size > 0; separator = FIRST_SEPARATOR.exec(rest)) {
+    const part = rest.slice(0, separator.index).trim();
+    const after = rest.slice(separator.index + separator[0].length).trim();
+    if (after === '' || !keys.has(nameKey(part))) break;
+    first ??= part;
+    rest = after;
+  }
+  return { rest, first };
+}
+
 /** How long the start of `text` is that is `artist` and a separator, compared without case; 0 where it has none. */
 function artistPrefixLength(text: string, artist: string): number {
   if (artist === '' || text.slice(0, artist.length).toLowerCase() !== artist.toLowerCase()) return 0;
@@ -53,27 +79,44 @@ function artistPrefixLength(text: string, artist: string): number {
 }
 
 /**
- * The titles a share starts its tracks with, from their file names without extension (`stems`). Two or more: what they
- * all share at the start up to and with its last separator goes, then each title's track number. One: an artist prefix
- * equal to `artist` goes, then the track number. A title that would be empty is its stem. Where the stems share a
- * first part, `artist` is empty and that part is neither a number nor the album's `name`, it is offered as the artist.
+ * The titles a share starts its tracks with, from their file names without extension (`stems`). In Atlas, each stem
+ * first loses its leading parts that are its file's folder tags (`folders`, one list per stem; the website has none).
+ * Two or more: what they all share at the start up to and with its last separator goes, then each title's track
+ * number. One: an artist prefix equal to `artist` goes, then the track number. A title that would be empty is its
+ * stem. Where `artist` is empty, the first folder tag a stem lost is offered as the artist, else the first part the
+ * stems share; neither where it is only digits or the album's `name`.
  */
-export function defaultTrackTitles(stems: readonly string[], artist: string, name = ''): DefaultTitles {
+export function defaultTrackTitles(stems: readonly string[], artist: string, name = '', folders: readonly (readonly string[])[] = []): DefaultTitles {
   const clean = stems.map((stem) => stem.normalize('NFC').trim());
   const typed = artist.normalize('NFC').trim();
+  const dropped = clean.map((stem, index) => withoutFolderParts(stem, folders[index] ?? []));
+  const rests = dropped.map(({ rest }) => rest);
+  const fromFolder = dropped.find(({ first }) => first !== null)?.first ?? null;
+  const offer = (part: string): string | null => (typed === '' && part !== '' && !ONLY_DIGITS.test(part) && nameKey(part) !== nameKey(name) ? part : null);
   if (clean.length < 2) {
     const stem = clean[0];
+    const rest = rests[0] ?? '';
     if (stem === undefined) return { titles: [], artist: null };
-    const title = withoutNumber(stem.slice(artistPrefixLength(stem, typed)).trim());
-    return { titles: [title === '' ? stem : title], artist: null };
+    const title = withoutNumber(rest.slice(artistPrefixLength(rest, typed)).trim());
+    return { titles: [title === '' ? stem : title], artist: fromFolder === null ? null : offer(fromFolder) };
   }
-  const { ends, firstStart } = separators(commonStart(clean));
+  const { ends, firstStart } = separators(commonStart(rests));
   const cut = ends.at(-1) ?? 0;
-  const titles = clean.map((stem) => {
-    const title = withoutNumber(stem.slice(cut).trim());
-    return title === '' ? stem : title;
+  const titles = rests.map((rest, index) => {
+    const title = withoutNumber(rest.slice(cut).trim());
+    return title === '' ? clean[index] ?? rest : title;
   });
-  const first = cut > 0 ? (clean[0] ?? '').slice(0, firstStart).trim() : '';
-  const offered = typed === '' && first !== '' && !ONLY_DIGITS.test(first) && first.toLowerCase() !== name.normalize('NFC').trim().toLowerCase();
-  return { titles, artist: offered ? first : null };
+  const shared = cut > 0 ? (rests[0] ?? '').slice(0, firstStart).trim() : '';
+  return { titles, artist: offer(fromFolder ?? shared) };
+}
+
+/** A file of the Sound library as titles read it: its name, and its path below the root, whose folders are its folder tags. */
+export interface TitledFile {
+  readonly name: string;
+  readonly path: string;
+}
+
+/** `defaultTrackTitles` of files of the Sound library, with their folder tags. */
+export function libraryTrackTitles(files: readonly TitledFile[], artist: string, name = ''): DefaultTitles {
+  return defaultTrackTitles(files.map((file) => stemOf(file.name)), artist, name, files.map((file) => folderTagsOf(file.path)));
 }

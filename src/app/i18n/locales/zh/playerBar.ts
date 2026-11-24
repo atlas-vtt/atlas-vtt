@@ -17,7 +17,9 @@ export const playerBar: Translation = {
   'playerBar.takeBack': '收回资料',
   'playerBar.openHint': '同时在桌边的屏幕上显示当前展示的场景',
   'playerBar.freezeOnline': '暂停期间，在线玩家无法移动自己的棋子',
-  'playerBar.playMode': '玩家的游玩方式',
-  'playerBar.modeTable': '每人使用自己的地图',
-  'playerBar.modeRemote': '手机作为共享屏幕的遥控器',
+  'playerBar.playMode': '游戏模式',
+  'playerBar.modeTable': '棋子控制',
+  'playerBar.modeRemote': '遥控',
+  'playerBar.modeTableHint': '每位玩家在自己的地图上移动自己的棋子',
+  'playerBar.modeRemoteHint': '手机作为共享屏幕的遥控器',
 };

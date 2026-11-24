@@ -5,7 +5,7 @@
 
 import { draftResourceKey, isDraftResourceKey, resourceKey } from '../../resources/resourceDefinitions';
 import type { StatblockRole, StatblockRoleFolders } from '../model/roleTypes';
-import { isRecord } from '../format/jsonValues';
+import { isRecord } from '../../utils/guards';
 import { isValidTemplateId } from '../model/templateIds';
 import { t } from '../../i18n';
 

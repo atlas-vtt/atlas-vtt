@@ -4,7 +4,8 @@
  * rules per button. Pure.
  */
 
-import { isRecord, own } from '../statblocks/format/jsonValues';
+import { own } from '../statblocks/format/jsonValues';
+import { isRecord } from '../utils/guards';
 import { FORMULA_LIMITS } from '../tools/formulaTypes';
 import {
   MAX_ACTION_PICKS,

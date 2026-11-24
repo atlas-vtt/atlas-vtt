@@ -269,7 +269,7 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
 
           {/* The three ways to a grid stay where they are in every state: another one is one click away. */}
           {/* A detection at work shows in its own button, as light passing through it; its words are for screen readers. */}
-          <button
+          <button type="button"
             className={`atlas-grid-alignment-btn atlas-grid-alignment-btn--wide atlas-grid-alignment-detect ${!autoDetecting && (ManualTab || detected) ? 'atlas-grid-alignment-btn--secondary' : 'atlas-grid-alignment-btn--primary'}`}
             data-working={autoDetecting || undefined}
             aria-busy={autoDetecting || undefined}
@@ -286,7 +286,7 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
           <GridTypePicker value={gridType} onChange={handleGridTypeChange} disabled={!ManualTab || busy} />
           {detected && <DetectedGridPreview controller={controllerRef.current} detected={detected} setResult={setResult} />}
 
-          <button className="atlas-grid-alignment-btn atlas-grid-alignment-btn--primary atlas-grid-alignment-btn--wide" disabled={!result || busy} onClick={handleApply}>
+          <button type="button" className="atlas-grid-alignment-btn atlas-grid-alignment-btn--primary atlas-grid-alignment-btn--wide" disabled={!result || busy} onClick={handleApply}>
             {t('common.apply')}
           </button>
         </div>

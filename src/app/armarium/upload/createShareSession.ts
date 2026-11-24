@@ -18,6 +18,7 @@ import { MusicShareSession } from './MusicShareSession';
 import { prepareTrackCopy } from './musicTrackCopies';
 import { readPublishedArtist } from './publishedArtist';
 import { packMusicBundle } from '../../services/musicBundle/musicPacking';
+import { listingOfFiles } from '../../services/musicBundle/installedMusic';
 import type { MusicKind } from '../../services/itemBundle/itemBundleFormat';
 import { SoundDirector } from '../../soundDirector/SoundDirector';
 import type { LibraryFile } from '../../soundLibrary/SoundLibrary';
@@ -135,6 +136,7 @@ export function createMusicShareSession(app: App, request: MusicShareRequest): M
     api,
     ...request,
     prepare: (file, listener) => prepareTrackCopy(copies, file, listener),
+    installedListing: () => listingOfFiles(copies.library.locationOf('music'), request.kind, request.files.filter((file) => file.kind === 'music').map((file) => file.path)),
     newUid: randomListingUid,
     pack: async ({ cover, ...rest }) => {
       const exported = await packMusicBundle({ ...rest, cover: cover === null ? undefined : await renderCover(cover) });

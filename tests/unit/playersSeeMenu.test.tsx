@@ -17,7 +17,7 @@ afterEach(() => { cleanup(); context.resources = []; context.updateCollectionSet
 const menu = (props: { windowOpen: boolean; online: boolean }): void => {
   const settings = new SettingsService({} as never);
   settings.setExperimental('onlinePlay', props.online);
-  render(<TooltipProvider><PlayersSeeMenu open onToggle={() => {}} settings={settings} {...props} /></TooltipProvider>);
+  render(<TooltipProvider><PlayersSeeMenu open onToggle={() => {}} settings={settings} windowOpen={props.windowOpen} /></TooltipProvider>);
 };
 const group = (name: string): HTMLElement => screen.getByRole('region', { name });
 
@@ -25,27 +25,24 @@ it('groups what players see by where they see it: alike, the player window, onli
   menu({ windowOpen: true, online: true });
   expect(screen.getAllByRole('heading').map((heading) => heading.textContent)).toEqual(['Player window and online', 'Player window', 'Online play']);
   expect(within(group('Player window')).getByRole('switch', { name: 'Render up to 4K' })).toBeTruthy();
-  // The menu's end action, after every group
-  expect(screen.getByRole('button', { name: 'Close player window' })).toBeTruthy();
   expect(within(group('Online play')).getByRole('switch', { name: 'Show everyone\'s cursors' })).toBeTruthy();
-  const modes = within(group('Online play')).getByRole('radiogroup', { name: 'How players play' });
-  expect(within(modes).getByRole('radio', { name: 'Each on their own map' }).getAttribute('aria-checked')).toBe('true');
-  expect(within(modes).getByRole('radio', { name: 'Phones as remotes for the shared screen' }).getAttribute('aria-checked')).toBe('false');
+  const modes = within(group('Online play')).getByRole('radiogroup', { name: 'Play mode' });
+  expect(within(modes).getByRole('radio', { name: 'Token control' }).getAttribute('aria-checked')).toBe('true');
+  expect(within(modes).getByRole('radio', { name: 'Remote control' }).getAttribute('aria-checked')).toBe('false');
 });
 
-it('shows the player window\'s group only while it is open, and online play\'s only while a table runs', () => {
+it('shows the player window\'s group only while it is open, and online play\'s only while it is switched on', () => {
   menu({ windowOpen: false, online: false });
   expect(screen.queryByRole('region', { name: 'Player window' })).toBeNull();
   expect(screen.queryByRole('region', { name: 'Online play' })).toBeNull();
   expect(screen.queryByRole('switch', { name: 'Show everyone\'s cursors' })).toBeNull();
-  expect(screen.queryByRole('button', { name: 'Close player window' })).toBeNull();
   expect(screen.queryByRole('switch', { name: 'Horizontal initiative' })).toBeNull();
 });
 
 it('lays the initiative list out on the player window only, its switches disabled while players see no list', () => {
   const settings = new SettingsService({} as never);
   settings.setLocalPlayerViewSettings({ showInitiative: false });
-  render(<TooltipProvider><PlayersSeeMenu open onToggle={() => {}} settings={settings} windowOpen online={false} /></TooltipProvider>);
+  render(<TooltipProvider><PlayersSeeMenu open onToggle={() => {}} settings={settings} windowOpen /></TooltipProvider>);
   expect(within(group('Player window')).getByRole('switch', { name: 'Horizontal initiative' })).toBeTruthy();
   expect(within(group('Player window and online')).queryByRole('switch', { name: 'Horizontal initiative' })).toBeNull();
   expect(within(group('Player window and online')).getByRole('switch', { name: 'Show initiative panel' })).toBeTruthy();

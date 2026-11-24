@@ -4,14 +4,14 @@ import { ESLint } from 'eslint';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
-const RULE = 'no-restricted-syntax';
+const RULE = 'atlas/map-token-reads';
 // Real files of each part: type-aware linting reads the text given, but only for a file its project holds
 
 /** The messages of the map-token rule for `code` written in `filePath`. */
 async function mapTokenFindings(code: string, filePath: string): Promise<string[]> {
   const eslint = new ESLint({ cwd: ROOT });
   const [result] = await eslint.lintText(code, { filePath });
-  return (result?.messages ?? []).filter((message) => message.ruleId === RULE && message.message.includes('mapTokens')).map((message) => message.message);
+  return (result?.messages ?? []).filter((message) => message.ruleId === RULE).map((message) => message.message);
 }
 
 const READS = `

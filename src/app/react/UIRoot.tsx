@@ -127,7 +127,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
 
   // Handle keyboard shortcuts for DM view
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
       if (!canRunMapHotkeys(e, view?.viewId)) return;
       if (matchesMapHotkey(e, 'help', settings)) {
         e.preventDefault(); store.getState().setHotkeyHelpOpen(true); return;

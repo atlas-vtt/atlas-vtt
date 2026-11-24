@@ -36,7 +36,6 @@ export function reactionsFor(entry: LogEntry, self: string | null): readonly Sho
 
 /** Obsidian's colour variables a player's colour is picked from: the table's player colours. */
 export const AUTHOR_COLOURS = PLAYER_COLOURS;
-/** The GM's colour. */
 export const GM_COLOUR = '--interactive-accent';
 
 /** Which of `AUTHOR_COLOURS` an author has (`'gm'` for the GM): the player's colour everywhere at the table (`playerTone`). */

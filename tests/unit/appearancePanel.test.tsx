@@ -50,3 +50,16 @@ it('offers the ivy colour only while the Medieval look is on, in the same place'
   act(() => { fireEvent.click(violet); });
   expect(violet.getAttribute('aria-checked')).toBe('true');
 });
+
+it('switches Yassify from Appearance settings', () => {
+  render(
+    <AtlasUIContext.Provider value={{ app: app(), view: null, pixiApp: null, renderer: null }}>
+      <AppearancePanel />
+    </AtlasUIContext.Provider>,
+  );
+  const yassify = screen.getByRole('switch', { name: 'Yassify' });
+  expect(yassify.getAttribute('aria-checked')).toBe('false');
+  act(() => { fireEvent.click(yassify); });
+  expect(screen.getByRole('switch', { name: 'Yassify' }).getAttribute('aria-checked')).toBe('true');
+  expect(screen.getByText('Give every token some pizzazz.')).toBeTruthy();
+});

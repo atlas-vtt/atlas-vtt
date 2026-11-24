@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultTrackTitles } from '../../../src/app/armarium/upload/trackTitles';
+import { defaultTrackTitles, libraryTrackTitles } from '../../../src/app/armarium/upload/trackTitles';
 
 describe('default track titles of an album', () => {
   it.each([
@@ -53,5 +53,28 @@ describe('the default title of a single track', () => {
 
   it('has no titles for no stems', () => {
     expect(defaultTrackTitles([], '')).toEqual({ titles: [], artist: null });
+  });
+});
+
+describe('in Atlas, a file\'s folder tags', () => {
+  const wilds = ['Vindsvept', 'Night of the Wilds'];
+  it.each([
+    ['a single loses the folders it lies in, and its first is offered as the artist', ['Vindsvept - Night of the Wilds - 05 Tending the Flames'], [wilds], '', '', ['Tending the Flames'], 'Vindsvept'],
+    ['compared without case and composed alike', ['vindsvept_NIGHT OF THE WILDS_05 Tending the Flames'], [['Vindsvept', 'Night of the Wilds']], '', '', ['Tending the Flames'], 'vindsvept'],
+    ['only leading parts go, each where something is left', ['Night of the Wilds - Vindsvept'], [wilds], '', '', ['Vindsvept'], 'Night of the Wilds'],
+    ['a part that is no folder tag stops it', ['Mara - Vindsvept - Dawn'], [wilds], '', '', ['Mara - Vindsvept - Dawn'], null],
+    ['a stem that is only its folder\'s name stays', ['Night of the Wilds'], [wilds], '', '', ['Night of the Wilds'], null],
+    ['no artist is offered where one is typed', ['Vindsvept - 05 Tending the Flames'], [wilds], 'Mara', '', ['Tending the Flames'], null],
+    ['an album loses them before what its names share', ['Vindsvept - Night of the Wilds - 01 Dawn', 'Vindsvept - Night of the Wilds - 02 Dusk'], [wilds, wilds], '', 'Night of the Wilds', ['Dawn', 'Dusk'], 'Vindsvept'],
+    ['the album\'s name is not offered as the artist', ['Night of the Wilds - 01 Dawn', 'Night of the Wilds - 02 Dusk'], [wilds, wilds], '', 'Night of the Wilds', ['Dawn', 'Dusk'], null],
+    ['without folder tags the rule is the website\'s', ['Vindsvept - 05 Tending the Flames'], [[]], '', '', ['Vindsvept - 05 Tending the Flames'], null],
+  ] as const)('%s', (_, stems, folders, artist, name, titles, offered) => {
+    expect(defaultTrackTitles(stems, artist, name, folders)).toEqual({ titles, artist: offered });
+  });
+
+  it('are the folders a file of the Sound library lies in below its root', () => {
+    const file = { name: 'Vindsvept - Night of the Wilds - 05 Tending the Flames.mp3', path: 'Vindsvept/Night of the Wilds/Vindsvept - Night of the Wilds - 05 Tending the Flames.mp3' };
+    expect(libraryTrackTitles([file], '')).toEqual({ titles: ['Tending the Flames'], artist: 'Vindsvept' });
+    expect(libraryTrackTitles([{ ...file, path: file.name }], '')).toEqual({ titles: ['Vindsvept - Night of the Wilds - 05 Tending the Flames'], artist: null });
   });
 });

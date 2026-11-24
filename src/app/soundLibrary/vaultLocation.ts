@@ -5,7 +5,7 @@ import { nodeFilesOf } from './nodeFiles';
 import { isPart } from './copyNames';
 import { isAtlasOwn, isAudioPath } from './soundFiles';
 import { isListableName, joinRelative, relativeBelow, safeRelative } from './soundPaths';
-import { SoundPathError, SoundPathNotRemovableError, SoundPathReservedError, SoundPathTakenError, sortedListing, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
+import { SoundPathError, SoundPathNotRemovableError, SoundPathReservedError, SoundPathTakenError, sortedListing, TrashNotTakenError, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
 
 /** A linked folder in the vault. Moves go through `fileManager`, so whatever names a file follows it, and deleting goes where the GM's trash setting says. */
 export class VaultLocation implements SoundLocation {
@@ -130,10 +130,13 @@ export class VaultLocation implements SoundLocation {
     return Promise.resolve(true);
   }
 
+  /** Asks the disk afterwards: Obsidian's `trashFile` can resolve and leave the file where it was. */
   async trash(path: string): Promise<void> {
-    this.changeable(path);
+    const full = this.changeable(path);
     const file = this.entry(path);
-    if (file) await this.app.fileManager.trashFile(file);
+    if (!file) return;
+    await this.app.fileManager.trashFile(file);
+    if (await this.app.vault.adapter.exists(full)) throw new TrashNotTakenError(path);
   }
 
   /** Through the adapter: `Vault.delete` would follow no setting, and `trashFile` follows the GM's, which a part needs none of. */

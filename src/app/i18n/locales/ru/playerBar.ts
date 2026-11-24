@@ -17,7 +17,9 @@ export const playerBar: Translation = {
   'playerBar.takeBack': 'Забрать раздаточный материал',
   'playerBar.openHint': 'Показывать представленную сцену и на экране за столом',
   'playerBar.freezeOnline': 'Онлайн-игроки не могут двигать фишки во время паузы',
-  'playerBar.playMode': 'Как играют игроки',
-  'playerBar.modeTable': 'Каждый на своей карте',
-  'playerBar.modeRemote': 'Телефоны как пульты для общего экрана',
+  'playerBar.playMode': 'Режим игры',
+  'playerBar.modeTable': 'Управление фишками',
+  'playerBar.modeRemote': 'Пульт',
+  'playerBar.modeTableHint': 'Каждый игрок двигает свои фишки на своей карте',
+  'playerBar.modeRemoteHint': 'Телефоны служат пультами для общего экрана',
 };

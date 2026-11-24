@@ -8,7 +8,7 @@ import { VaultLocation } from '../../../src/app/soundLibrary/vaultLocation';
 import { sha256 } from '../../../src/app/utils/hashing';
 import { FakeSoundLocation } from '../../helpers/fakeSoundLocation';
 import { deliveredMusic } from '../../helpers/musicBundles';
-import { deliveredAlbum as album, MUSIC_UID as UID, musicLibraryOn, openInstall } from '../../helpers/musicImportRig';
+import { deliveredAlbum as album, MUSIC_UID as UID, musicLibraryOn, NO_RECORDS, openInstall } from '../../helpers/musicImportRig';
 import { createInMemoryApp } from '../../mocks/inMemoryVault';
 
 let location: FakeSoundLocation;
@@ -26,8 +26,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const single = (version: number, name = 'Dawn', artist?: string, uid = UID): Promise<Blob> =>
-  deliveredMusic({ kind: 'music-track', uid, version, name, artist, titles: [name] });
+const single = (version: number, name = 'Dawn', artist?: string, uid = UID, sound = '1'): Promise<Blob> =>
+  deliveredMusic({ kind: 'music-track', uid, version, name, artist, titles: [name], sounds: [sound] });
 
 /** Every file with a hash of its bytes, and every folder: what "as it was" means. */
 async function stateOf(fake: FakeSoundLocation): Promise<string[]> {
@@ -49,11 +49,15 @@ describe('an update of music that fails', () => {
   it('leaves the folder exactly as it was at every stage, and trashes nothing', async () => {
     await (await openInstall(library, await album(1, ['Dawn', 'Dusk', 'Night']))).apply();
     const before = await stateOf(location);
-    const update = await album(2, ['Dawn', 'Dusk', 'Day']);
+    const night = await location.contents.get('Mara/Old Roads/03 Night.opus')!.arrayBuffer();
+    // Dawn is new audio, Night moves up a place, Dusk goes and Day comes.
+    const update = await album(2, ['Dawn', 'Night', 'Day'], 'Mara', ['5', '3', '4']);
     const stages = [
       'write Mara/Old Roads/03 Day.opus.atlas-part',
+      'move Mara/Old Roads/02 Dusk.opus Mara/Old Roads/02 Dusk.opus.atlas-old',
       'move Mara/Old Roads/03 Night.opus Mara/Old Roads/03 Night.opus.atlas-old',
-      'move Mara/Old Roads/02 Dusk.opus.atlas-part Mara/Old Roads/02 Dusk.opus',
+      'move Mara/Old Roads/01 Dawn.opus.atlas-part Mara/Old Roads/01 Dawn.opus',
+      'move Mara/Old Roads/03 Night.opus.atlas-old Mara/Old Roads/02 Night.opus',
       'replace Mara/Old Roads/Armarium.json',
     ];
     for (const stage of stages) {
@@ -68,7 +72,8 @@ describe('an update of music that fails', () => {
     location.failing = () => null;
     await library.reread('music');
     expect(await (await openInstall(library, update)).apply()).toMatchObject({ outcome: 'update', version: 2 });
-    expect([...location.files.keys()].sort()).toEqual(['Mara/Old Roads/01 Dawn.opus', 'Mara/Old Roads/02 Dusk.opus', 'Mara/Old Roads/03 Day.opus', 'Mara/Old Roads/Armarium.json']);
+    expect([...location.files.keys()].sort()).toEqual(['Mara/Old Roads/01 Dawn.opus', 'Mara/Old Roads/02 Night.opus', 'Mara/Old Roads/03 Day.opus', 'Mara/Old Roads/Armarium.json']);
+    expect(await sha256(await location.contents.get('Mara/Old Roads/02 Night.opus')!.arrayBuffer())).toBe(await sha256(night));
   });
 });
 
@@ -93,7 +98,7 @@ describe('a music folder without a trash', () => {
     await library.reread('music');
     location.trashable = false;
     const changes = location.changes.length;
-    await expect(openInstall(library, await single(2))).rejects.toThrow(/no trash/);
+    await expect(openInstall(library, await single(2, 'Dawn', undefined, UID, '2'))).rejects.toThrow(/no trash/);
     expect(location.changes.length).toBe(changes);
   });
 
@@ -106,7 +111,7 @@ describe('a music folder without a trash', () => {
       expect([...files.keys()].filter((path) => path.startsWith('Music/')).sort()).toEqual(['Music/Dawn.armarium.json', 'Music/Dawn.opus']);
       await vault.reread('music');
       await vault.settle('music', ['Dawn.opus']);
-      await expect(openInstall(vault, await single(2))).rejects.toThrow(/no trash/);
+      await expect(openInstall(vault, await single(2, 'Dawn', undefined, UID, '2'))).rejects.toThrow(/no trash/);
       expect(app.fileManager.trashFile).not.toHaveBeenCalled();
       expect(files.has('Music/Dawn.opus')).toBe(true);
     } finally {
@@ -135,7 +140,7 @@ describe('where music cannot be installed yet', () => {
     const bundle = await readMusicBundle(await single(2));
     vi.useFakeTimers();
     try {
-      const opening = openMusicImport(slow, bundle, { listingUid: UID });
+      const opening = openMusicImport({ library: slow, records: NO_RECORDS }, bundle, { listingUid: UID });
       const refused = expect(opening).rejects.toThrow(/still reading your music folder/);
       await vi.advanceTimersByTimeAsync(16_000);
       await refused;

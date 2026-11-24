@@ -107,6 +107,11 @@ export class FileReferenceService {
         case 'note':
           changed = follow(asset, 'notePath') || changed;
           break;
+        // A scene's map path is followed in updateScenes; statblocks and characters name no other file.
+        case 'scene':
+        case 'statblock':
+        case 'character':
+          break;
       }
       return changed;
     });

@@ -17,6 +17,7 @@ describe('TokenRenderer ring updates', () => {
     const harness = Object.assign(Object.create(TokenRenderer.prototype) as object, {
       spriteFactory: { createTokenRing },
       downedTokenOverlay: { refresh: vi.fn() },
+      yassifyProps: { refresh: vi.fn() },
       store: {
         getState: () => ({
           tokenSettings: {

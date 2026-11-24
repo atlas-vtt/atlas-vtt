@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ExternalLocation } from '../../../src/app/soundLibrary/externalLocation';
 import type { NodeFsModule } from '../../../src/app/soundLibrary/nodeFiles';
-import { SoundPathError, SoundPathNotRemovableError, SoundPathTakenError, TrashUnavailableError } from '../../../src/app/soundLibrary/soundLocation';
+import { SoundPathError, SoundPathNotRemovableError, SoundPathTakenError, TrashNotTakenError, TrashUnavailableError } from '../../../src/app/soundLibrary/soundLocation';
 
 let base: string;
 let root: string;
@@ -145,6 +145,13 @@ describe('deleting', () => {
     write('a.mp3');
     await location().trash('a.mp3');
     expect(trashed).toEqual([path.join(root, 'a.mp3')]);
+  });
+
+  it('says so where the trash answered and left the file where it was', async () => {
+    write('a.mp3');
+    const silent = new ExternalLocation(root, { files: { fs: fs as unknown as NodeFsModule, sep: path.sep, home: os.homedir() }, trashItem: async () => undefined, resourceUrl: null, vaultFolder: null });
+    await expect(silent.trash('a.mp3')).rejects.toBeInstanceOf(TrashNotTakenError);
+    expect(fs.existsSync(path.join(root, 'a.mp3'))).toBe(true);
   });
 
   it('is refused plainly without one, and the file stays', async () => {

@@ -43,7 +43,7 @@ function preparer(): { prepare: (file: LibraryFile, listener: (state: PreparedTr
 
 const ready = (seconds = 120): PreparedTrack => ({ state: 'ready', copy: new Blob(['opus']), frames: seconds * 48_000 });
 
-function setup(kind: MusicKind, paths: string[], options: { listing?: string; name?: string; publishedArtist?: (listing: OwnListing) => Promise<string | null> } = {}): {
+function setup(kind: MusicKind, paths: string[], options: { listing?: string; name?: string; installed?: string | null; publishedArtist?: (listing: OwnListing) => Promise<string | null> } = {}): {
   session: MusicShareSession; api: MusicArmarium; pack: ReturnType<typeof vi.fn<(request: MusicPackRequest) => Promise<{ fileName: string; blob: Blob }>>>; tracks: ReturnType<typeof preparer>;
 } {
   const api = new MusicArmarium();
@@ -56,6 +56,7 @@ function setup(kind: MusicKind, paths: string[], options: { listing?: string; na
     files: paths.map(fileOf),
     name: options.name ?? 'Old Roads',
     listing: options.listing,
+    installedListing: () => Promise.resolve(options.installed ?? null),
     prepare: tracks.prepare,
     newUid: () => NEW_UID,
     pack,
@@ -159,6 +160,41 @@ describe('sharing music in the Armarium', () => {
     expect(session.snapshot()).toMatchObject({ target: null, version: 1, ownListing: null });
   });
 
+  it('shares a next version under the listing\'s name unless the GM typed one, and New listing brings back what was there', async () => {
+    const listing: OwnListing = { uid: 'a'.repeat(32), slug: 'night-of-the-wilds', name: 'Night of the Wilds', format: 'music-album', fields: STORED, newestVersion: 1, coverUrl: null };
+    const { session, api } = setup('music-album', ['Night of the Wilds 2/a.opus', 'Night of the Wilds 2/b.opus'], { name: 'Night of the Wilds 2' });
+    api.listings = [listing];
+    await toMusicStep(session);
+    session.chooseListing(listing.uid);
+    expect(session.snapshot().name).toBe('Night of the Wilds');
+    session.chooseListing(null);
+    expect(session.snapshot().name).toBe('Night of the Wilds 2');
+
+    session.setName('Wilder Nights');
+    session.chooseListing(listing.uid);
+    expect(session.snapshot().name).toBe('Wilder Nights');
+
+    const asked = setup('music-album', ['a.mp3', 'b.mp3'], { name: 'Night of the Wilds 2', listing: listing.uid });
+    asked.api.listings = [listing];
+    await toMusicStep(asked.session);
+    expect(asked.session.snapshot()).toMatchObject({ target: listing.uid, name: 'Night of the Wilds' });
+  });
+
+  it('continues the account\'s listing the shared folder was installed from, and none another account\'s sidecar names', async () => {
+    const listing: OwnListing = { uid: 'a'.repeat(32), slug: 'night-of-the-wilds', name: 'Night of the Wilds', format: 'music-album', fields: STORED, newestVersion: 2, coverUrl: null };
+    const { session, api } = setup('music-album', ['a.opus', 'b.opus'], { installed: listing.uid });
+    api.listings = [listing];
+    await toMusicStep(session);
+    expect(session.snapshot()).toMatchObject({ target: listing.uid, version: 3 });
+    session.chooseListing(null);
+    expect(session.snapshot()).toMatchObject({ target: null, version: 1 });
+
+    const theirs = setup('music-album', ['a.opus', 'b.opus'], { installed: 'e'.repeat(32) });
+    theirs.api.listings = [listing];
+    await toMusicStep(theirs.session);
+    expect(theirs.session.snapshot()).toMatchObject({ target: null, version: 1 });
+  });
+
   it('carries the published version\'s artist into the next version, unless the GM typed one, and never clears it', async () => {
     const listing: OwnListing = { uid: 'a'.repeat(32), slug: 'old-roads', name: 'Old Roads', format: 'music-album', fields: STORED, newestVersion: 1, coverUrl: null };
     const asked: string[] = [];
@@ -243,6 +279,14 @@ describe('a share\'s default titles', () => {
     await toMusicStep(session);
     session.removeTrack('music:Rain.mp3');
     expect(session.snapshot().tracks.map((track) => track.title)).toEqual(['Dawn', 'Dusk']);
+  });
+
+  it('drop a file\'s folder tags from its title and offer the first as the artist', () => {
+    const path = 'Vindsvept/Night of the Wilds/Vindsvept - Night of the Wilds - 05 Tending the Flames.mp3';
+    const { session } = setup('music-track', [path], { name: 'Tending the Flames' });
+    expect(session.snapshot()).toMatchObject({ name: 'Tending the Flames', artist: 'Vindsvept' });
+    session.setArtist('');
+    expect(session.snapshot().name).toBe('Tending the Flames');
   });
 
   it('give a single\'s name the artist the GM types taken off, until the GM edits the name', async () => {

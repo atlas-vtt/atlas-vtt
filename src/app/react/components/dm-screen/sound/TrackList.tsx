@@ -6,7 +6,7 @@ import type { SoundInfo } from '../../../../sound/soundTypes';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { scrollWithin } from '../../../../utils/scrollWithin';
 import { IconAction } from './IconAction';
-import { clock } from './musicClock';
+import { lengthOfFrames } from './musicClock';
 import { useListDrag } from './useListDrag';
 import { useListView } from './useListView';
 import { useSoundValue } from './useSound';
@@ -53,7 +53,7 @@ const TrackRow = React.memo(function TrackRow({ director, track, current, movabl
         ? <span className="atlas-sound-track__mark" role="img" aria-label={t('audio.playingTag')}><AudioLines aria-hidden="true" /></span>
         : <IconAction label={t('audio.playTrack', { name })} icon={Play} onClick={() => director.desk.playTrack(track.key)} />}
       <span className="atlas-sound-track__name">{name}</span>
-      <span className="atlas-sound-track__length">{clock(track.frames)}</span>
+      <span className="atlas-sound-track__length">{lengthOfFrames(track.frames)}</span>
       {/* Move up and down without a drag (WCAG 2.5.7), and from the keyboard: the row's own menu. */}
       <IconAction label={t('audio.trackMenu', { name })} icon={MoreHorizontal} className="atlas-sound-track__menu" onClick={(event) => onMenu(track, event.currentTarget)} />
       <IconAction label={t('audio.remove', { name })} icon={X} className="atlas-sound-track__remove" onClick={() => director.desk.removeTrack(track.key)} />

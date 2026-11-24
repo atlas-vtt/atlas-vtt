@@ -1,13 +1,12 @@
 import React, { useId, useRef } from "react"
 import { useStore } from "zustand"
-import { Eye, Gamepad2, Map as MapIcon, MonitorOff } from "lucide-react"
+import { Eye } from "lucide-react"
 import { usePlayerViewSwitches, type PlayerViewSwitch, type ResourceAudienceChoice } from "../../../react/components/command-palette/playerViewSwitches"
 import { PlayerAudienceControl } from "../../../react/components/command-palette/PlayerAudienceControl"
-import { PlayerWindowService } from "../../../services/PlayerWindowService"
 import { setPlayMode } from "../../../services/tableControls"
 import { tableControlsStore, type PlayMode } from "../../../stores/tableControlsStore"
 import type { SettingsService } from "../../../services/SettingsService"
-import { DropdownMenuItem } from "../primitives/DropdownMenuItem"
+import { SegmentedControl, type SegmentedOption } from "../primitives/SegmentedControl"
 import { DropdownToggleRow } from "../primitives/DropdownToggleRow"
 import { ToolButton } from "../primitives/ToolButton"
 import { useKeepInView } from "../primitives/useKeepInView"
@@ -19,15 +18,13 @@ interface PlayersSeeMenuProps {
   open: boolean
   onToggle: () => void
   settings: SettingsService
-  /** The player window is open: its own rows (4K, closing it) show. */
+  /** The player window is open: its own rows (4K, how its initiative list is laid out) show. */
   windowOpen: boolean
-  /** An online table runs: how online players play, and online play's own switches, show. */
-  online: boolean
 }
 
-const PLAY_MODES: readonly { readonly mode: PlayMode; readonly icon: typeof MapIcon; readonly label: string }[] = [
-  { mode: "table", icon: MapIcon, label: t("playerBar.modeTable") },
-  { mode: "remote", icon: Gamepad2, label: t("playerBar.modeRemote") },
+const PLAY_MODES: readonly SegmentedOption<PlayMode>[] = [
+  { value: "table", label: t("playerBar.modeTable"), hint: t("playerBar.modeTableHint") },
+  { value: "remote", label: t("playerBar.modeRemote"), hint: t("playerBar.modeRemoteHint") },
 ]
 
 /** The menu's surface: its options' tooltips stand outside it. */
@@ -61,16 +58,15 @@ function Group({ heading, children }: { heading: string; children: React.ReactNo
   )
 }
 
-/** How online players play: one of two, as a radio group under its label. */
-function PlayModes(): React.ReactElement {
+/** How online players play, one of two, in the same row and control as a resource's audience. */
+function PlayModes({ stack }: { stack: boolean }): React.ReactElement {
   const playMode = useStore(tableControlsStore, (s) => s.playMode)
-  const labelId = useId()
   return (
-    <div className="atlas-players-see-menu__part atlas-players-see-menu__modes" role="radiogroup" aria-labelledby={labelId}>
-      <span id={labelId} className="atlas-dropdown-label atlas-players-see-menu__label">{t("playerBar.playMode")}</span>
-      {PLAY_MODES.map(({ mode, icon, label }) => (
-        <DropdownMenuItem key={mode} role="radio" icon={icon} label={label} isActive={playMode === mode} onClick={() => setPlayMode(mode)} />
-      ))}
+    <div className="atlas-players-see-menu__part">
+      <div className={cn("atlas-dropdown-choice-row", stack && "atlas-dropdown-choice-row--stack")}>
+        <span className="atlas-dropdown-choice-row__label">{t("playerBar.playMode")}</span>
+        <SegmentedControl pill value={playMode} options={PLAY_MODES} onChange={setPlayMode} ariaLabel={t("playerBar.playMode")} roving tooltipOutside={MENU} />
+      </div>
     </div>
   )
 }
@@ -80,12 +76,13 @@ function PlayModes(): React.ReactElement {
  * button. Its columns follow the palette's: what the player window and online players see alike (the
  * widgets, the initiative list, dice rolls, and what the tokens show, each resource on whose tokens), then
  * what belongs to one of them: while the player window is open its own settings (4K, how the initiative
- * list is laid out on the TV) and closing it, and while an online table runs how online players play and
- * online play's own switches. Closing the player window is its end
- * action, in its bottom right corner. Columns stack where the view is narrow.
+ * list is laid out on the TV), and while online play is switched on how online players play and online
+ * play's own switches. Columns stack where the view is narrow.
  */
-export function PlayersSeeMenu({ open, onToggle, settings, windowOpen, online }: PlayersSeeMenuProps): React.ReactElement {
+export function PlayersSeeMenu({ open, onToggle, settings, windowOpen }: PlayersSeeMenuProps): React.ReactElement {
   const switches = usePlayerViewSwitches(settings)
+  // Online play's group shows while it is switched on, so the GM sets it up before a table runs
+  const online = switches.online.length > 0
   const menuRef = useRef<HTMLDivElement>(null)
   const keepInView = useKeepInView(menuRef, open, "bottom")
   const stack = keepInView.maxWidth !== null && keepInView.maxWidth < STACK_BELOW
@@ -141,26 +138,12 @@ export function PlayersSeeMenu({ open, onToggle, settings, windowOpen, online }:
                 )}
                 {online && (
                   <Group heading={t("lpv.online")}>
-                    <PlayModes />
-                    {switches.online.length > 0 && (
+                    <PlayModes stack={stack} />
                     <div className="atlas-players-see-menu__part">
                       <span className="atlas-dropdown-label atlas-players-see-menu__label">{t("lpv.duringPlay")}</span>
                       {switches.online.map(row)}
                     </div>
-                  )}
                   </Group>
-                )}
-                {/* The menu's end action, in its bottom right corner */}
-                {windowOpen && (
-                  <div className="atlas-players-see-menu__close">
-                    <DropdownMenuItem
-                      icon={MonitorOff}
-                      label={t("playerBar.close")}
-                      destructive
-                      flush
-                      onClick={() => PlayerWindowService.getInstance()?.destroy()}
-                    />
-                  </div>
                 )}
               </div>
             )}

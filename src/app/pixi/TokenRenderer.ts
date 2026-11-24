@@ -46,6 +46,8 @@ import { PLAYER_SIGHT_POLICY } from '../vision/tokenSightPolicy';
 import { createSceneSource } from '../plugin/host/sceneSource';
 import { updateInstanceBadge } from './token-renderer/InstanceBadge';
 import { HiddenTokenIcon } from './token-renderer/HiddenTokenIcon';
+import { TokenYassify } from './token-renderer/TokenYassify';
+import { LookService } from '../appearance/lookService';
 import { DownedTokenOverlay } from './token-renderer/DownedTokenOverlay';
 import { isTokenDowned } from './token-renderer/isTokenDowned';
 import { requestRender } from './RenderScheduler';
@@ -115,6 +117,12 @@ export class TokenRenderer {
   /** The art of the scene shown before this one, kept decoded so that switching back shows its tokens without decoding them again. */
   private previousSceneArt: string[] = [];
   private readonly hiddenTokenIcon = new HiddenTokenIcon();
+  private readonly yassifyProps = new TokenYassify(() => {
+    if (this.pixiApp) requestRender(this.pixiApp);
+  });
+  /** Yassify, as last shown: every token wears its props while it is on. */
+  private yassified = false;
+  private stopFollowingLook: (() => void) | null = null;
   private readonly downedTokenOverlay = new DownedTokenOverlay(
     () => {
       if (this.pixiApp) requestRender(this.pixiApp);
@@ -241,6 +249,11 @@ export class TokenRenderer {
       reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? document.body),
     });
     this.obsApp = obsApp;
+    const looks = LookService.existing(obsApp);
+    if (looks) {
+      this.yassified = looks.yassify();
+      this.stopFollowingLook = looks.onChange(() => this.followYassify(looks.yassify()));
+    }
     this.viewport = viewport;
     this.gridSystem = gridSystem;
     this.selectionOverlayUpdater = selectionOverlayUpdater;
@@ -406,7 +419,7 @@ export class TokenRenderer {
     
     
     // Listen for player mode changes (local player view toggle)
-    const handlePlayerModeChange = (isPlayerMode: boolean) => {
+    const handlePlayerModeChange = (isPlayerMode: boolean): void => {
       this.isLocalPlayerMode = isPlayerMode;
       this.refreshPlayerSight();
     };
@@ -442,7 +455,7 @@ export class TokenRenderer {
     };
 
     // Listen for map load events to properly sync tokens
-    const handleMapLoaded = () => {
+    const handleMapLoaded = (): void => {
       // Sprites still loading belong to the previous load and are discarded when they finish
       this.mapLoadGeneration++;
       this.tokensLoading = new Set();
@@ -647,6 +660,7 @@ export class TokenRenderer {
     const ring = this.spriteFactory.createTokenRing(tokenGroup, resolvedRingColor, sizeWithMultiplier);
     syncTokenArtwork(tokenGroup, size);
     this.downedTokenOverlay.refresh(tokenGroup);
+    this.yassifyProps.refresh(tokenGroup);
     if (ring) {
       this.tokenRings[tokenId] = ring;
     } else {
@@ -752,6 +766,14 @@ export class TokenRenderer {
     if (!prevToken || (prevToken.isHidden ?? false) !== isHidden) {
       this.reestablishTokenInteractivity(tokenGroup);
     }
+  }
+
+  /** Yassify switched: every token on the map puts its props on or takes them off. */
+  private followYassify(on: boolean): void {
+    if (on === this.yassified) return;
+    this.yassified = on;
+    for (const group of Object.values(this.tokenSprites)) if (group) this.yassifyProps.update(group, on);
+    if (this.pixiApp) requestRender(this.pixiApp);
   }
 
   /** Greys out a token at 0 HP and marks it with a skull; killing and healing a loaded token animate. */
@@ -1071,6 +1093,7 @@ export class TokenRenderer {
         
         this.applyTokenVisibilityPolicy(token, existingTokenGroup, prevToken);
         this.applyDownedState(token, existingTokenGroup, prevToken);
+        this.yassifyProps.update(existingTokenGroup, this.yassified);
         
         // Update z-index if layer changed
         if (!prevToken || prevToken.layer !== token.layer) {
@@ -1157,6 +1180,7 @@ export class TokenRenderer {
           
           this.applyTokenVisibilityPolicy(character, tokenGroup);
           this.applyDownedState(character, tokenGroup);
+          this.yassifyProps.update(tokenGroup, this.yassified);
 
           // A token selected before its sprite existed (it took stairs to the level the view
           // followed it to) gets the frame and handles a selection change drew without it
@@ -1322,6 +1346,7 @@ export class TokenRenderer {
   /** Destroys a token group no longer listening to the pointer, with all of its children, and drops its hold on its art. */
   private freeTokenGroup(tokenGroup: TokenGroupContainer): void {
     this.downedTokenOverlay.release(tokenGroup);
+    this.yassifyProps.release(tokenGroup);
     this.spriteFactory.destroyTokenSprite(tokenGroup);
     this.textureCache.release(tokenGroup.artPath);
   }
@@ -1424,6 +1449,8 @@ export class TokenRenderer {
     this.textureCache.destroyAll();
     this.hiddenTokenIcon.destroy();
     this.downedTokenOverlay.destroy();
+    this.stopFollowingLook?.();
+    this.stopFollowingLook = null;
     
     // Clear all references
     this.tokenSprites = {};

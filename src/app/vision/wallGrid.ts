@@ -67,7 +67,7 @@ export interface WallGrid {
 export function forCellRows(grid: Pick<WallGrid, 'minX' | 'minY' | 'cell' | 'cols' | 'rows'>, x1: number, y1: number, x2: number, y2: number, margin: number, each: (row: number, first: number, last: number) => void): void {
   const { minX, minY, cell, cols, rows } = grid;
   const lo = Math.min(y1, y2), hi = Math.max(y1, y2);
-  const firstRow = clamp(Math.floor((lo - margin - minY) / cell), rows), lastRow = clamp(Math.floor((hi + margin - minY) / cell), rows);
+  const firstRow = clampIndex(Math.floor((lo - margin - minY) / cell), rows), lastRow = clampIndex(Math.floor((hi + margin - minY) / cell), rows);
   for (let r = firstRow; r <= lastRow; r++) {
     const top = minY + r * cell;
     const ya = Math.min(hi, Math.max(lo, top - margin)), yb = Math.max(lo, Math.min(hi, top + cell + margin));
@@ -79,11 +79,11 @@ export function forCellRows(grid: Pick<WallGrid, 'minX' | 'minY' | 'cell' | 'col
       xa = x1 + (x2 - x1) * Math.min(1, Math.max(0, (ya - y1) / (y2 - y1)));
       xb = x1 + (x2 - x1) * Math.min(1, Math.max(0, (yb - y1) / (y2 - y1)));
     }
-    each(r, clamp(Math.floor((Math.min(xa, xb) - margin - minX) / cell), cols), clamp(Math.floor((Math.max(xa, xb) + margin - minX) / cell), cols));
+    each(r, clampIndex(Math.floor((Math.min(xa, xb) - margin - minX) / cell), cols), clampIndex(Math.floor((Math.max(xa, xb) + margin - minX) / cell), cols));
   }
 }
 
-function clamp(index: number, size: number): number {
+function clampIndex(index: number, size: number): number {
   return index < 0 ? 0 : index >= size ? size - 1 : index;
 }
 

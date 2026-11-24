@@ -35,7 +35,7 @@ export const NoteContent: React.FC<NoteContentProps> = ({ notePath, app, onFocus
       }
     };
 
-    const loadNoteWithLeaf = async () => {
+    const loadNoteWithLeaf = async (): Promise<void> => {
       const file = app.vault.getAbstractFileByPath(notePath);
       if (!(file instanceof TFile)) return;
 

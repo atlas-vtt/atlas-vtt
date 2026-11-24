@@ -1,3 +1,5 @@
+import { getLocale } from '../i18n';
+
 /** A file below a root, with what browsing needs to know of it. */
 export interface SoundFileEntry {
   name: string;
@@ -45,7 +47,10 @@ export interface SoundLocation {
   canTrash(): boolean;
   /** Whether Atlas may write into the folder now. */
   canWrite(): Promise<boolean>;
-  /** Moves a file or folder to the system's trash. Refused with `TrashUnavailableError` where there is none. */
+  /**
+   * Moves a file or folder to the system's trash. Refused with `TrashUnavailableError` where there is none, and with
+   * `TrashNotTakenError` where the trash answered but the file is still there.
+   */
   trash(path: string): Promise<void>;
   /** Deletes for good a part (`isPart`): a file Atlas was writing, which never was anyone's, so no trash is needed. Refuses any other path. */
   removePart(path: string): Promise<void>;
@@ -103,7 +108,15 @@ export class TrashUnavailableError extends Error {
   }
 }
 
-const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+/** The trash answered, but the file is still where it was: some systems' trash does nothing without saying so. */
+export class TrashNotTakenError extends Error {
+  constructor(path: string) {
+    super(`The trash did not take ${path}.`);
+    this.name = 'TrashNotTakenError';
+  }
+}
+
+const collator = new Intl.Collator(getLocale(), { numeric: true, sensitivity: 'base' });
 
 /** A listing in reading order: `Track 2` before `Track 10`. */
 export function sortedListing(folders: SoundFolderEntry[], files: SoundFileEntry[]): SoundListing {

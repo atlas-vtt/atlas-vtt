@@ -11,7 +11,6 @@ export type LevelScene = Pick<ViewState, 'levels' | 'background' | 'objects' | '
 /** Game units a level spans when nothing says otherwise: Foundry's and the importers' default storey. */
 export const LEVEL_HEIGHT = 10;
 
-/** A new level's id. */
 export function newLevelId(): string {
   return `level_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }

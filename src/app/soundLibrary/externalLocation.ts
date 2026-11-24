@@ -2,7 +2,7 @@ import { isPart } from './copyNames';
 import { isAudioPath } from './soundFiles';
 import type { NodeFiles, NodeStat } from './nodeFiles';
 import { isListableName, joinRelative, safeRelative } from './soundPaths';
-import { SoundPathError, SoundPathNotRemovableError, SoundPathTakenError, SoundVaultPathError, sortedListing, TrashUnavailableError, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
+import { SoundPathError, SoundPathNotRemovableError, SoundPathTakenError, SoundVaultPathError, sortedListing, TrashNotTakenError, TrashUnavailableError, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
 import { readAsBlob, readRangeOf, writeFromBlob } from './externalBytes';
 
 const isMissing = (error: unknown): boolean => {
@@ -197,6 +197,7 @@ export class ExternalLocation implements SoundLocation {
     const { trashItem } = this.deps;
     if (!trashItem) throw new TrashUnavailableError();
     await trashItem(await this.removable(path));
+    if (await this.exists(path)) throw new TrashNotTakenError(path);
   }
 
   async removePart(path: string): Promise<void> {

@@ -23,7 +23,6 @@ import { REGULAR_ZONE, type WorkLayout, type WorkRoom, doorMayOpen, floorOf, isN
 const MIN_LOOP_COST = 5;
 /** The loop through the main way may be shorter, but no tighter than three rooms round. */
 const MIN_MAIN_LOOP_COST = 3;
-/** Rooms per loop. */
 const ROOMS_PER_LOOP = 8;
 /** Floors this small may have no loop at all. */
 const SMALL_FLOOR = 5;

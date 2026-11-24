@@ -68,6 +68,8 @@ export const armariumMusic = {
   'armariumMusic.review.new': 'It goes into your music folder, ready to play.',
   'armariumMusic.review.update': 'Your copy is updated from version {from} to version {version}.',
   'armariumMusic.review.replaced': { one: '{count} track replaced', other: '{count} tracks replaced' },
+  'armariumMusic.review.renamed': { one: '{count} track renamed', other: '{count} tracks renamed' },
+  'armariumMusic.review.unchanged': { one: '{count} track stays as it is', other: '{count} tracks stay as they are' },
   'armariumMusic.review.added': { one: '{count} track added', other: '{count} tracks added' },
   'armariumMusic.review.removed': { one: '{count} track taken out', other: '{count} tracks taken out' },
   'armariumMusic.review.kept': { one: 'You changed {count} track, so it stays and the new one comes beside it.', other: 'You changed {count} tracks, so they stay and the new ones come beside them.' },
@@ -82,6 +84,7 @@ export const armariumMusic = {
   'armariumMusic.done.updated': '{name} is updated to v{version}.',
   'armariumMusic.done.same': '{name} v{version} was in your music folder already.',
   'armariumMusic.done.show': 'Show in Sound',
+  'armariumMusic.done.putBack': { one: 'The trash did not take the old file {files}, so it is back in the music folder for you to delete.', other: 'The trash did not take the old files {files}, so they are back in the music folder for you to delete.' },
 
   'armariumMusic.notCopies': '{title} is not a track Atlas plays as it comes, so nothing was installed.',
   'armariumMusic.verifyFailed': '{title} did not read back as it was written',

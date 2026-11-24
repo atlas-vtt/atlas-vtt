@@ -5,13 +5,12 @@ import type { LibraryFile } from '../../soundLibrary/SoundLibrary';
 import { describeError } from '../../utils/errors';
 import type { ArmariumApi } from './armariumApi';
 import { draftForKind, draftFrom, textLength, type ListingDraft } from './listingDraft';
-import { stemOf } from '../../soundLibrary/soundPaths';
-import { musicProblems } from './musicShareRules';
+import { ListingName, musicProblems } from './musicShareRules';
 import type { MusicShareSnapshot, MusicShareTrack, TrackCopyState } from './musicShareState';
 import { freshShare, ShareFlow, type ShareFlowDeps } from './ShareFlow';
 import { ITEM_NOTES_LIMITS, nextItemVersion } from './shareState';
 import type { ListingFields, OwnListing } from './uploadContract';
-import { defaultTrackTitles } from './trackTitles';
+import { libraryTrackTitles } from './trackTitles';
 
 /** A track's copy as the preparer hands it on: ready with its bytes as this device keeps them. */
 export type PreparedTrack = Exclude<TrackCopyState, { state: 'ready' }> | { readonly state: 'ready'; readonly copy: Blob; readonly frames: number };
@@ -37,6 +36,8 @@ export interface MusicShareDeps extends ShareFlowDeps {
   readonly name: string;
   /** A listing of the account's to continue, as the Armarium page asked; one that is not its music is not taken. */
   readonly listing?: string | undefined;
+  /** The listing the shared files were installed from, as their sidecar says (null where none can be read); continued where it is the account's music. */
+  readonly installedListing?: (() => Promise<string | null>) | undefined;
   /** Prepares a track's Atlas copy, telling each step; the result stops it. */
   readonly prepare: (file: LibraryFile, listener: (state: PreparedTrack) => void) => () => void;
   /** A new listing's uid: 32 random lowercase hex. */
@@ -65,12 +66,13 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
   private coverChosen = false;
   private artistTyped = false;
   private nameTyped = false;
+  private readonly listingName = new ListingName();
   /** Tracks whose title the GM edited: never worked out from the file names again. */
   private readonly editedTitles = new Set<string>();
 
   constructor(private readonly deps: MusicShareDeps) {
     const files = deps.files.slice(0, deps.kind === 'music-album' ? MAX_ALBUM_TRACKS : 1);
-    const defaults = defaultTrackTitles(files.map((file) => stemOf(file.name)), '', deps.name);
+    const defaults = libraryTrackTitles(files, '', deps.name);
     const tracks: MusicShareTrack[] = files.map((file, index) => ({
       id: `${file.kind}:${file.path}`, file, title: defaults.titles[index] ?? '', copy: { state: 'reading' },
     }));
@@ -134,7 +136,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
   /** Continues one of the account's music listings, or starts a new one with null. */
   chooseListing(uid: string | null): void {
     const listing = uid === null ? null : this.state.listings?.find((each) => each.uid === uid) ?? null;
-    this.set({ target: listing?.uid ?? null, ownListing: listing, version: nextItemVersion(listing), listedCover: null, ...(this.coverChosen ? {} : { cover: null }) });
+    this.set({ target: listing?.uid ?? null, ownListing: listing, version: nextItemVersion(listing), listedCover: null, ...(this.coverChosen ? {} : { cover: null }), ...this.nameFor(listing) });
     if (!this.touched) this.set({ draft: this.draftOf(listing?.fields ?? null) });
     if (listing) this.keepListed(listing);
   }
@@ -176,12 +178,16 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
     return this.readKnown();
   }
 
-  /** Reads the account's listings of this kind; the listing the page asked to continue where it is one of them. */
+  /**
+   * Reads the account's listings of this kind; the listing the page asked to continue, else the one the files were
+   * installed from, where it is one of them.
+   */
   private async readKnown(): Promise<string | null> {
-    const read = await this.deps.api.ownListings();
+    const [read, installed] = await Promise.all([this.deps.api.ownListings(), this.deps.installedListing?.() ?? null]);
     this.failedToRead = read === null;
     this.known = (read ?? []).filter((listing) => listing.format === this.deps.kind);
-    return this.known.some((listing) => listing.uid === this.deps.listing) ? this.deps.listing ?? null : null;
+    const asked = this.deps.listing ?? installed;
+    return this.known.some((listing) => listing.uid === asked) ? asked : null;
   }
 
   protected override readOwnListing(uid: string): Promise<OwnListing | null> {
@@ -190,7 +196,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
 
   protected opened(ownListing: OwnListing | null): Partial<MusicShareSnapshot> {
     if (ownListing) this.keepListed(ownListing);
-    return { listings: this.known, listingsFailed: this.failedToRead, target: ownListing?.uid ?? null, version: nextItemVersion(ownListing) };
+    return { listings: this.known, listingsFailed: this.failedToRead, target: ownListing?.uid ?? null, version: nextItemVersion(ownListing), ...this.nameFor(ownListing) };
   }
 
   /** What the listing holds for a new version, else an empty form; the kind is music, which names no system. */
@@ -209,13 +215,19 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
     return Promise.resolve();
   }
 
+  /** The name a version of `listing` is shared under (`ListingName`), unless the GM typed one. */
+  private nameFor(listing: OwnListing | null): Partial<MusicShareSnapshot> {
+    const name = this.nameTyped ? null : this.listingName.after(this.state.name, listing);
+    return name === null ? {} : { name, problems: this.without('name') };
+  }
+
   private without(field: string): Record<string, string> {
     return Object.fromEntries(Object.entries(this.state.problems).filter(([key]) => key !== field && key !== 'tracks'));
   }
 
   /** The tracks with every title the GM did not edit worked out again from the file names of the tracks that go. */
   private retitled(tracks: readonly MusicShareTrack[]): MusicShareTrack[] {
-    const { titles } = defaultTrackTitles(tracks.map((track) => stemOf(track.file.name)), this.state.artist, this.state.name);
+    const { titles } = libraryTrackTitles(tracks.map((track) => track.file), this.state.artist, this.state.name);
     return tracks.map((track, index) => (this.editedTitles.has(track.id) ? track : { ...track, title: titles[index] ?? track.title }));
   }
 
@@ -223,7 +235,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
   private renameSingle(): void {
     const file = this.state.tracks[0]?.file;
     if (this.state.kind !== 'music-track' || this.nameTyped || file === undefined) return;
-    const name = defaultTrackTitles([stemOf(file.name)], this.state.artist).titles[0];
+    const name = libraryTrackTitles([file], this.state.artist).titles[0];
     if (name !== undefined && name !== this.state.name) this.set({ name, problems: this.without('name') });
   }
 

@@ -12,7 +12,8 @@ import {
   SPELL_LOOKS, STAT_LOOKS, TAG_LOOKS, TITLE_LEVELS, TRACK_COUNTS, TRACK_LOOKS, WHEN_EMPTY, readCondition, readScoreColumn,
 } from './blockParts';
 import { LAYOUT_KEYS, blockKeys, isFileBlockType, type BlockKey, type FileBlockType } from './formatKeys';
-import { describeValue, isRecord, jsonRecordCopy, own } from './jsonValues';
+import { describeValue, jsonRecordCopy, own } from './jsonValues';
+import { isRecord } from '../../utils/guards';
 import { ObjectReader } from './objectReader';
 import { JSON_OBJECT, asJsonRecord, asOneOf, asPositiveInteger, asPositiveNumber, asString, asTrue, choices } from './valueReads';
 

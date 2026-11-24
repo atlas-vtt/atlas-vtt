@@ -249,3 +249,22 @@ it('announces an accent colour change as a change of CSS, which Obsidian does no
   expect(trigger).toHaveBeenCalledWith('css-change');
   for (const dispose of disposers) dispose();
 });
+
+it('keeps Yassify on this device, off until switched on', () => {
+  const storage = new Map<string, unknown>();
+  const first = stub('', storage);
+  const service = looks(first);
+  expect(service.yassify()).toBe(false);
+  const changed = vi.fn();
+  service.onChange(changed);
+  service.setYassify(true);
+  service.setYassify(true);
+  expect(changed).toHaveBeenCalledTimes(1);
+  expect(LookService.existing(first.app)).toBe(service);
+  LookService.release(first.app);
+  expect(LookService.existing(first.app)).toBeNull();
+  const again = looks(stub('', storage));
+  expect(again.yassify()).toBe(true);
+  again.setYassify(false);
+  expect(storage.get('atlas-vtt:yassify')).toBe('off');
+});

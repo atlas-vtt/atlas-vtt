@@ -161,7 +161,7 @@ describe('music in the Armarium', () => {
       const review: MusicReview = {
         kind: 'music-album', name: 'Old Roads', artist: 'Mara', version: 3, creator: 'Lio', cover: null, notes: 'Two new songs, and Lanterns plays a little slower.',
         tracks: TITLES.map((title, index) => ({ title, seconds: 120 + index * 17, bytes: 3_000_000 })),
-        seconds: 3000, bytes: 36_000_000, where: ['Music', 'Mara', 'Old Roads'], update: { from: 2, replaced: 9, added: 3, removed: 1, kept: 1 }, same: false,
+        seconds: 3000, bytes: 36_000_000, where: ['Music', 'Mara', 'Old Roads'], update: { from: 2, replaced: 9, renamed: 0, unchanged: 0, added: 3, removed: 1, kept: 1 }, same: false,
       };
       act(() => root.render(React.createElement(MusicReviewDialog, { review, onConfirm: () => undefined, onCancel: () => undefined })));
       await nextFrame();

@@ -21,6 +21,7 @@ import { hasPicks, LAYOUT_FACET, optionState, STATBLOCK_FACET, TEXT_FACET } from
 import { statblockText } from './statblockText';
 import { pickedOptionLabel, templateOptions } from './templateFacet';
 import { ALIGNMENT_PARTS, optionKey } from './creatureValues';
+import { getLocale } from '../i18n';
 
 export interface FacetOption extends OptionValue {
   /** Tokens it would show, given the other filters. */
@@ -73,7 +74,7 @@ const fieldCheckId = (definitionId: string): string => `field:${definitionId}`;
 const outcome = (passes: boolean): Outcome => (passes ? 'pass' : 'fail');
 
 /** "Level 2" before "Level 10"; case and accents do not matter. */
-const LABEL_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+const LABEL_ORDER = new Intl.Collator(getLocale(), { numeric: true, sensitivity: 'base' });
 
 const optionValues = (definition: CreatureOptionsFilter) => (facts: TokenFacts): readonly OptionValue[] =>
   facts.options.get(definition.id) ?? [];

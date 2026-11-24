@@ -28,16 +28,31 @@ let lastPainted: { colour: string; drawings: ReadonlyMap<DrawingName, string> } 
 /**
  * Paints the ivy of `doc` in `colour` (`#rrggbb`), or gives it its own greens back for `''`. Call it only while the
  * Medieval look is on in `doc`, since the drawings are read off its panels; `''` may be given at any time.
+ * False when a colour could not be painted because the drawings are not in the document yet: Obsidian adds a
+ * plugin's stylesheet only after its `onload` (`Plugin.loadCSS`).
  */
-export function paintIvy(doc: Document, colour: string): void {
+export function paintIvy(doc: Document, colour: string): boolean {
   const drawings = colour === '' ? null : paintedDrawings(doc, colour);
   if (!drawings) {
     doc.body.removeClass(PAINTED_IVY_CLASS);
     for (const [name] of DRAWINGS) doc.body.style.removeProperty(paintedProperty(name));
-    return;
+    return colour === '';
   }
   doc.body.setCssProps(Object.fromEntries(Array.from(drawings, ([name, drawing]) => [paintedProperty(name), drawing])));
   doc.body.addClass(PAINTED_IVY_CLASS);
+  return true;
+}
+
+/**
+ * Calls `retry` whenever a stylesheet is added to `doc` until it returns true, or until the returned function stops
+ * it. Obsidian puts a plugin's `styles.css` into the document after the plugin's `onload` and announces nothing.
+ */
+export function untilStylesheetAdded(doc: Document, retry: () => boolean): () => void {
+  const observer = new (doc.defaultView ?? window).MutationObserver(() => {
+    if (retry()) observer.disconnect();
+  });
+  observer.observe(doc.head, { childList: true });
+  return () => observer.disconnect();
 }
 
 function paintedDrawings(doc: Document, colour: string): ReadonlyMap<DrawingName, string> | null {

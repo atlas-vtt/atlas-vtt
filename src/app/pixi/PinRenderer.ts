@@ -506,7 +506,7 @@ export class PinRenderer {
   private syncPins = (
     pinsRecord: Record<string, NotePin>,
     prevPinsRecord: Record<string, NotePin> | undefined
-  ) => {
+  ): void => {
     if (!this.pinContainer) {
         console.error('[PinRenderer] syncPins called but pinContainer is null!');
         return;

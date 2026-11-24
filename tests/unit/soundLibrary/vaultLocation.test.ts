@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { TrashNotTakenError } from '../../../src/app/soundLibrary/soundLocation';
 import { VaultLocation } from '../../../src/app/soundLibrary/vaultLocation';
 import { createInMemoryApp } from '../../mocks/inMemoryVault';
 
@@ -19,6 +20,18 @@ describe('a vault folder\'s trash', () => {
     expect(withTrashOption(undefined).canTrash()).toBe(false);
     expect(withTrashOption('later').canTrash()).toBe(false);
     expect(withTrashOption('system', false).canTrash()).toBe(false);
+  });
+});
+
+describe('trashing a vault file', () => {
+  it('says so where Obsidian\'s trash resolved and left the file where it was', async () => {
+    const { app, files } = createInMemoryApp({ files: { 'Audio/a.opus': 'x', 'Audio/b.opus': 'y' } });
+    const location = new VaultLocation(app, 'Audio');
+    await location.trash('a.opus');
+    expect(files.has('Audio/a.opus')).toBe(false);
+    vi.mocked(app.fileManager.trashFile).mockImplementation(async () => undefined);
+    await expect(location.trash('b.opus')).rejects.toBeInstanceOf(TrashNotTakenError);
+    expect(files.get('Audio/b.opus')).toBe('y');
   });
 });
 

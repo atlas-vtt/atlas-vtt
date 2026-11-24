@@ -1,7 +1,7 @@
 import type { CollectionImportResult } from '../../../../services/collectionBundle/collectionImport';
 import type { ItemImportResult } from '../../../../services/itemBundle/itemImport';
 import type { MusicImportResult } from '../../../../services/musicBundle/musicImport';
-import { t } from '../../../../i18n';
+import { formatList, t } from '../../../../i18n';
 
 /** What a collection import did, in a sentence or two. */
 export function describeImport(result: CollectionImportResult): string {
@@ -36,9 +36,10 @@ export function musicImportTitle(result: MusicImportResult): string {
   return result.outcome === 'update' ? t('armariumMusic.done.updatedTitle') : t('armariumMusic.done.addedTitle');
 }
 
-/** What a music install did, in a sentence. */
+/** What a music install did, in a sentence, and the old files the trash did not take, which are back in the folder. */
 export function describeMusicImport(result: MusicImportResult): string {
   const values = { name: result.name, version: result.version };
-  if (result.outcome === 'update') return t('armariumMusic.done.updated', values);
-  return t(result.outcome === 'same' ? 'armariumMusic.done.same' : 'armariumMusic.done.added', values);
+  const done = result.outcome === 'update' ? t('armariumMusic.done.updated', values) : t(result.outcome === 'same' ? 'armariumMusic.done.same' : 'armariumMusic.done.added', values);
+  if (result.putBack.length === 0) return done;
+  return `${done} ${t('armariumMusic.done.putBack', { count: result.putBack.length, files: formatList(result.putBack) })}`;
 }

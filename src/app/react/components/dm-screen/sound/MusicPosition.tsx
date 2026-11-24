@@ -6,7 +6,7 @@ import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { observeResize } from '../../../../utils/observeResize';
 import { prefersReducedMotion } from '../../../../utils/motion';
 import { useAtlasUI } from '../../../root/AtlasUIContext';
-import { clock, POSITION_MS, REDUCED_POSITION_MS, writeText } from './musicClock';
+import { clock, lengthOfFrames, POSITION_MS, REDUCED_POSITION_MS, writeText } from './musicClock';
 import { MusicWave } from './musicWave';
 import { CutTooltip } from './CutTooltip';
 import { WaveHover } from './waveHover';
@@ -101,11 +101,11 @@ export function MusicPosition({ director }: { director: SoundDirector }): React.
       shownFrames = frames;
       placeHover.current();
       writeText(timeRef.current, position ? clock(frame) : '');
-      writeText(totalRef.current, position ? t('audio.ofLength', { length: clock(frames) }) : '');
+      writeText(totalRef.current, position ? t('audio.ofLength', { length: lengthOfFrames(frames) }) : '');
       wave.show(position ? director.shelf.peaksOfKey(position.track.key) : null, frame / Math.max(1, frames));
       waveRef.current?.setAttribute('aria-valuemax', String(Math.floor(frames / SOUND_RATE)));
       waveRef.current?.setAttribute('aria-valuenow', String(Math.floor(frame / SOUND_RATE)));
-      waveRef.current?.setAttribute('aria-valuetext', t('audio.positionOf', { at: clock(frame), length: clock(frames) }));
+      waveRef.current?.setAttribute('aria-valuetext', t('audio.positionOf', { at: clock(frame), length: lengthOfFrames(frames) }));
     };
     writeNow.current = write;
     // Under reduced motion the played part moves once a second, with the clock's seconds, not four times.

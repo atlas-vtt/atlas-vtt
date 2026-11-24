@@ -1249,7 +1249,7 @@ export class PixiRendererOrchestrator { // Renamed class
   private setupKeyboardHandlers(): void {
     this.unbindKeyboard?.();
 
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
       if (!canRunMapHotkeys(e, this.viewId)) return;
       const settings = SettingsService.forApp(this.obsApp);
       // Escape key

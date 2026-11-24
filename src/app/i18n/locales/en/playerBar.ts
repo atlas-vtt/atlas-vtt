@@ -18,7 +18,9 @@ export const playerBar = {
   'playerBar.takeBack': 'Take back the handout',
   'playerBar.openHint': 'Show the presented scene on a screen at the table too',
   'playerBar.freezeOnline': "Online players can't move their tokens while paused",
-  'playerBar.playMode': 'How players play',
-  'playerBar.modeTable': 'Each on their own map',
-  'playerBar.modeRemote': 'Phones as remotes for the shared screen',
+  'playerBar.playMode': 'Play mode',
+  'playerBar.modeTable': 'Token control',
+  'playerBar.modeRemote': 'Remote control',
+  'playerBar.modeTableHint': 'Each player moves their tokens on their own map',
+  'playerBar.modeRemoteHint': 'Phones are remotes for the shared screen',
 } as const satisfies Record<string, Message>;

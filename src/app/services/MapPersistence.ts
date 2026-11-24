@@ -32,6 +32,7 @@ import { LEVELS_FILE_VERSION, readSceneLevels, sceneFileVersion } from '../level
 
 import type { FogOperation } from '../types/fogTypes';
 import type { SavedPlayerFrame } from '../stores/playerFramesSlice';
+import { isRecord } from '../utils/guards';
 
 // Placeholder types until properly defined elsewhere
 export type FogPatch = FogOperation;
@@ -125,10 +126,6 @@ export interface PersistedMapEnvelope {
     initiative?: { entries?: Array<Record<string, unknown>> } | null;
     widgetValues?: Record<string, number>;
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /** The kinds of objects a scene in memory always holds a record of (`ViewState['objects']`). */

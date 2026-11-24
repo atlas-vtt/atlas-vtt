@@ -1,3 +1,5 @@
+import { clamp } from '../utils/math';
+
 /**
  * The Medieval look's ivy in a colour of the GM's: its drawings (styles/looks/atlas-looks.css) are painted with four
  * greens, from the ink of the outlines to the leaves' highlights, and a picked colour takes the leaves' green with the
@@ -42,8 +44,6 @@ export function repaintDrawing(drawing: string, palette: ReadonlyMap<string, str
     return painted ? `%23${painted.slice(1)}` : written;
   });
 }
-
-const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
 function toOklch(hex: string): Oklch {
   const [r, g, b] = [1, 3, 5].map((at) => toLinear(parseInt(hex.slice(at, at + 2), 16) / 255)) as [number, number, number];

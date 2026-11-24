@@ -32,7 +32,7 @@ export interface RenderedImageRect {
   height: number;
 }
 
-function clamp(value: number, limit: number): number {
+function clampToLimit(value: number, limit: number): number {
   return Math.max(-limit, Math.min(limit, value));
 }
 
@@ -49,7 +49,7 @@ export function renderedImageRect(scale: number, position: ImagePosition, aspect
  */
 export function clampImagePosition(position: ImagePosition, scale: number, aspect: ImageAspect | null, fit?: FramePlacement['fit']): ImagePosition {
   const { width, height } = renderedImageRect(scale, position, aspect, fit);
-  return { x: clamp(position.x, width / 2), y: clamp(position.y, height / 2) };
+  return { x: clampToLimit(position.x, width / 2), y: clampToLimit(position.y, height / 2) };
 }
 
 /**

@@ -15,11 +15,8 @@ export interface DropdownMenuItemProps {
   flush?: boolean
   /** Shown, but not to be chosen right now. */
   disabled?: boolean
-  /**
-   * `menuitem` inside a `role="menu"` container, which arrow keys move through; `radio` for one choice of a
-   * `role="radiogroup"`, which then says whether it is the chosen one (`isActive`).
-   */
-  role?: "menuitem" | "radio"
+  /** Set inside a `role="menu"` container, which arrow keys move through. */
+  role?: "menuitem"
   onClick: () => void
 }
 
@@ -55,7 +52,6 @@ export const DropdownMenuItem: FC<DropdownMenuItemProps> = ({
       size="sm"
       className={`atlas-dropdown-menu-item${flush ? ' atlas-dropdown-menu-item--flush' : ''}${destructive ? ' atlas-dropdown-btn--destructive' : ''}`}
       role={role}
-      aria-checked={role === "radio" ? isActive : undefined}
       disabled={disabled}
       onClick={onClick}
     >

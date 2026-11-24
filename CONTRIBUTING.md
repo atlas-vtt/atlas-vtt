@@ -1,13 +1,13 @@
 # Contributing
 
 1. Create a branch from `beta`. Changes reach `main` only through beta promotion, see [`.github/development.md`](.github/development.md).
-2. Make your change. Coding conventions are described in [`CLAUDE.md`](CLAUDE.md); the short version: PIXI.js v8 (not the v7 Obsidian bundles), SCSS with Obsidian CSS variables, explicit return types, files under roughly 300 lines.
-3. Run `npx tsc --noEmit`, `npm run lint`, `npm test` and `npm run build`. Lint must be clean; see [`.github/development.md`](.github/development.md#lint).
+2. Make your change. Coding conventions are described in [`AGENTS.md`](AGENTS.md), and what was learned about each part of the code in the topic files under [`.github/dev/`](.github/dev/); the short version: PIXI.js v8 (not the v7 Obsidian bundles), SCSS with Obsidian CSS variables, explicit return types, files of at most 300 lines.
+3. Run `npm run check` while you work and `npm run verify` before you open the pull request, then `npm run build` and try the change in Obsidian. Lint must be clean; see [`.github/development.md`](.github/development.md#lint).
 4. Open a pull request against `beta` that describes what changed and how you tested it.
 
 ## Text and translations
 
-Write every text a user reads or hears with a key: add it to `src/app/i18n/locales/en/` and show it with `t('file.key')`, instead of writing the English into the component. You do not have to translate it; a language that lacks a key shows the English, and translations come as their own pull requests. Keep each sentence one whole text with `{placeholders}`, rather than joining words in code, so it can be worded in languages that decline and order words differently. The rules are in the Translations section of [`CLAUDE.md`](CLAUDE.md#translations).
+Write every text a user reads or hears with a key: add it to `src/app/i18n/locales/en/` and show it with `t('file.key')`, instead of writing the English into the component. You do not have to translate it; a language that lacks a key shows the English, and translations come as their own pull requests. Keep each sentence one whole text with `{placeholders}`, rather than joining words in code, so it can be worded in languages that decline and order words differently. The rules are in [`.github/dev/translations.md`](.github/dev/translations.md).
 
 ## Release notes
 

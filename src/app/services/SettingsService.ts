@@ -11,7 +11,6 @@ import { DEFAULT_DICE_LOOK, isDiceColour, isDiceFont, type DiceLook } from '../d
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
 import {
   DEFAULT_SETTINGS,
-  isRecord,
   defaultInputMode,
   readStoredSettings,
   storedSettings,
@@ -21,6 +20,7 @@ import {
   type TutorialId,
   TUTORIAL_IDS,
 } from './atlasSettings';
+import { isRecord } from '../utils/guards';
 import {
   loadAnimateMaps, loadGmFogOpacity, loadGraphicsChoice, loadInputMode, loadLightingQuality, loadPickedLightingQuality, loadPlayerView4k,
   loadSelectionBarShown,
@@ -224,7 +224,6 @@ export class SettingsService {
     this.commit();
   }
 
-  // Navigation settings
   getNavigationSettings(): NavigationSettings {
     return { ...this.settings.navigation };
   }
@@ -662,7 +661,6 @@ export class SettingsService {
     this.commit();
   }
 
-  // Get all settings
   getAllSettings(): AtlasSettings {
     return { ...this.settings };
   }

@@ -52,7 +52,7 @@ describe('what players see, as a menu', () => {
     render(h('div', { className: 'workspace-leaf', style: { width: leafWidth } },
       h('div', { className: 'atlas-vtt-plugin' },
         h('div', { className: 'atlas-player-window-bar', style: { position: 'absolute', left: 16, top: 16 } },
-          h(TooltipProvider, null, h(PlayersSeeMenu, { open: true, onToggle: () => undefined, settings, windowOpen: true, online: true }))))));
+          h(TooltipProvider, null, h(PlayersSeeMenu, { open: true, onToggle: () => undefined, settings, windowOpen: true }))))));
     return document.querySelector<HTMLElement>('.atlas-players-see-menu')!;
   };
   const columns = (): DOMRect[] => [...document.querySelectorAll('.atlas-players-see-menu__column')].map((column) => column.getBoundingClientRect());
@@ -77,14 +77,17 @@ describe('what players see, as a menu', () => {
     expect(menu.scrollWidth).toBeLessThanOrEqual(menu.clientWidth);
   });
 
-  it('puts each resource\'s name on the text edge and its choice at the row\'s end, the four choices on one line', async () => {
+  it('puts each resource\'s name and the play mode on the text edge and its choice at the row\'s end, its options on one line', async () => {
     open(1200);
     await new Promise((resolve) => requestAnimationFrame(resolve));
     const rows = [...document.querySelectorAll<HTMLElement>('.atlas-dropdown-choice-row')];
-    expect(rows).toHaveLength(6);
-    const toggleLabel = document.querySelector('.atlas-dropdown-toggle-row__label')!.getBoundingClientRect();
-    const toggle = document.querySelector('.atlas-dropdown-toggle-row .atlas-toggle')!.getBoundingClientRect();
+    // Six resources, then the play mode
+    expect(rows).toHaveLength(7);
     for (const row of rows) {
+      // Against a switch of its own column
+      const column = row.closest('.atlas-players-see-menu__column')!;
+      const toggleLabel = column.querySelector('.atlas-dropdown-toggle-row__label')!.getBoundingClientRect();
+      const toggle = column.querySelector('.atlas-dropdown-toggle-row .atlas-toggle')!.getBoundingClientRect();
       const label = row.querySelector('.atlas-dropdown-choice-row__label')!.getBoundingClientRect();
       const control = row.querySelector('.atlas-segmented')!.getBoundingClientRect();
       expect(label.left).toBeCloseTo(toggleLabel.left, 0);
@@ -92,6 +95,7 @@ describe('what players see, as a menu', () => {
       const options = [...row.querySelectorAll('.atlas-segmented__option')].map((option) => option.getBoundingClientRect());
       expect(new Set(options.map((option) => Math.round(option.top))).size).toBe(1);
       expect(new Set(options.map((option) => Math.round(option.height))).size).toBe(1);
+      expect(new Set(options.map((option) => Math.round(option.width))).size).toBe(1);
     }
   });
 });

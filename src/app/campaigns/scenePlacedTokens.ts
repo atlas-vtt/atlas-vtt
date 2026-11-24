@@ -1,5 +1,6 @@
 import { TFile, type App } from 'obsidian';
 import type { PlacedFace } from './campaignParty';
+import { isRecord } from '../utils/guards';
 
 /** The most tokens read from one scene file. */
 const MAX_TOKENS = 2000;
@@ -14,7 +15,6 @@ interface CachedTokens {
 
 const caches = new WeakMap<App, Map<string, CachedTokens>>();
 
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 const text = (value: unknown): string | undefined => (typeof value === 'string' && value !== '' && value.length <= MAX_TEXT ? value : undefined);
 
 function readToken(value: unknown): PlacedFace[] {

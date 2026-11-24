@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
 import JSZip from 'jszip';
-import type { App } from 'obsidian';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AssetService } from '../../../src/app/services/AssetService';
 import { openBundleImport } from '../../../src/app/services/itemBundle/bundleImport';
@@ -11,6 +10,7 @@ import { SoundLibrary } from '../../../src/app/soundLibrary/SoundLibrary';
 import { SoundRoots } from '../../../src/app/soundLibrary/SoundRoots';
 import { sha256 } from '../../../src/app/utils/hashing';
 import { FakeSoundLocation } from '../../helpers/fakeSoundLocation';
+import { createInMemoryApp } from '../../mocks/inMemoryVault';
 
 /**
  * Music as the Armarium really delivers it, made by the other two halves: `atlas-upload` is an album Atlas packed for
@@ -65,7 +65,7 @@ afterEach(() => {
 });
 
 const open = (name: string, listingUid?: string): ReturnType<typeof openBundleImport> =>
-  openBundleImport({} as App, {} as AssetService, new Blob([fixture(name)]), undefined, { listingUid, creator: 'Mara' });
+  openBundleImport(createInMemoryApp().app, {} as AssetService, new Blob([fixture(name)]), undefined, { listingUid, creator: 'Mara' });
 
 const bytesAt = async (path: string): Promise<Uint8Array> => new Uint8Array(await location.contents.get(path)!.arrayBuffer());
 
