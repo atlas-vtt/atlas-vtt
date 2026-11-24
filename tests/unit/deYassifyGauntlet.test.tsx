@@ -57,7 +57,7 @@ it('keeps Yassify on when the dialog is closed with Escape', async () => {
   await expect(result).resolves.toBe(false);
 });
 
-it('turns Yassify off only after a wait, the extra-sure ask, another wait and a captcha that fails twice whatever is picked', async () => {
+it('turns Yassify off only after a wait, the extra-sure ask, a security check that asks twice to go on, and a captcha that fails twice whatever is picked', async () => {
   vi.useFakeTimers();
   const result = confirmDeYassify({ random: seeded(3), deal: chestsOnly });
   await act(async () => {});
@@ -71,8 +71,17 @@ it('turns Yassify off only after a wait, the extra-sure ask, another wait and a 
   await press('Yes');
   expect(screen.getByText('Checking security…')).toBeTruthy();
   await act(async () => { vi.advanceTimersByTime(DE_YASSIFY_STALL_MS - 1); });
-  expect(screen.queryByText('Select all squares with a mimic')).toBeNull();
+  expect(screen.queryByText('Hey, this is taking quite a while. Do you want to continue?')).toBeNull();
   await act(async () => { vi.advanceTimersByTime(1); });
+  // The check asks twice whether to go on, its spinner still turning, No still the accent button.
+  expect(screen.getByText('Hey, this is taking quite a while. Do you want to continue?')).toBeTruthy();
+  expect(document.querySelector('.atlas-spinner')).not.toBeNull();
+  expect(button('No').className).toContain('btn--default');
+  await press('Yes');
+  expect(screen.getByText('Are you sure you want to continue?')).toBeTruthy();
+  expect(document.querySelector('.atlas-spinner')).not.toBeNull();
+  expect(button('Yes').className).toContain('atlas-de-yassify__yes--tiny');
+  await press('Yes');
   expect(screen.getByText('Select all squares with a mimic')).toBeTruthy();
 
   // Right twice, and still wrong.
@@ -92,4 +101,16 @@ it('turns Yassify off only after a wait, the extra-sure ask, another wait and a 
   await clearMimics();
   await press('Verify');
   await expect(result).resolves.toBe(true);
+});
+
+it('keeps Yassify on when the GM stops at the slow security check', async () => {
+  vi.useFakeTimers();
+  const result = confirmDeYassify({ random: seeded(4), deal: chestsOnly });
+  await act(async () => {});
+  await press('Yes');
+  await act(async () => { vi.advanceTimersByTime(DE_YASSIFY_STALL_MS); });
+  await press('Yes');
+  await act(async () => { vi.advanceTimersByTime(DE_YASSIFY_STALL_MS); });
+  await press('No');
+  await expect(result).resolves.toBe(false);
 });
