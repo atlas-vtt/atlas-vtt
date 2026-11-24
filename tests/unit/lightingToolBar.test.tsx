@@ -55,6 +55,18 @@ const MODES = ['Draw rooms', 'Draw walls', 'Place lights', 'Light zones', 'Openi
 const MODES_BAR = [...MODES, 'Snap'];
 
 describe('LightingToolBar', () => {
+  it('sizes the rooms brush in the More menu, disabled while doors are placed, and has no bucket while it is switched off', async () => {
+    const store = renderBar();
+    await toolsOf('Draw rooms');
+    fireEvent.click(button('More'));
+    act(() => { store.getState().setRoomTool({ shape: 'brush' }); });
+    fireEvent.keyDown(screen.getByRole('slider', { name: 'Brush size' }), { key: 'ArrowRight' });
+    expect(store.getState().roomSizes?.brushSize).toBeGreaterThan(32);
+    expect(screen.queryByText('Bucket radius')).toBeNull();
+    act(() => { store.getState().setRoomTool({ action: 'door' }); });
+    expect(document.querySelector('.atlas-dropdown-slider-row--disabled')).not.toBeNull();
+  });
+
   it('shows while the lighting tool is chosen, and not while the toolbar is arranged or in the players\' view', async () => {
     const store = renderBar();
     const gone = (): Promise<void> => waitFor(() => expect(screen.queryByRole('toolbar')).toBeNull());
@@ -112,7 +124,7 @@ describe('LightingToolBar', () => {
     expect(names(modesBar())).toEqual(MODES_BAR);
     // The tool opens on rooms, the first of its modes; single walls come second.
     expect(store.getState().lightingTool.mode).toBe('rooms');
-    expect(names(toolsBar('Draw rooms'))).toEqual(['Carve', 'Fill in', 'Door', 'Rectangle', 'Points', 'Lasso', 'Brush']);
+    expect(names(toolsBar('Draw rooms'))).toEqual(['Carve', 'Fill in', 'Door', 'Rectangle', 'Points', 'Lasso', 'Brush', 'More']);
     fireEvent.click(button('Draw walls'));
     expect(names(await toolsOf('Draw walls'))).toEqual(['Point to point', 'Freehand']);
     expect(names(modesBar())).toEqual(MODES_BAR);
@@ -177,7 +189,7 @@ describe('LightingToolBar', () => {
     fireEvent.click(button('Lasso'));
     expect(store.getState().roomTool.shape).toBe('polygon');
     // Groups are set apart by space, never a line.
-    expect(toolsBar('Draw rooms').querySelectorAll('.atlas-tool-bar__break')).toHaveLength(1);
+    expect(toolsBar('Draw rooms').querySelectorAll('.atlas-tool-bar__break')).toHaveLength(2);
     expect(toolsBar('Draw rooms').querySelector('hr, [role="separator"]')).toBeNull();
   });
 

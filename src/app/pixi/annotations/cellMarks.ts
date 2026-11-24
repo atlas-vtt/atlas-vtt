@@ -3,6 +3,7 @@ import { CELL_FILL_OPACITY } from '../../annotations/cellFill';
 import type { FilledPart } from '../../annotations/quantized';
 import { contrastOf } from '../../annotations/textLook';
 import type { Point } from '../../types/visionTypes';
+import { fillWithHoles } from '../utils/fillWithHoles';
 
 /** The marks over cells an unfill will clear: a light veil in a dark and a light line, which read on any map. */
 const CLEARING = { veil: 0.28, dark: 0x000000, light: 0xffffff, line: 1.5 } as const;
@@ -23,8 +24,7 @@ function rings(graphics: Graphics, parts: readonly FilledPart[]): void {
 function fills(graphics: Graphics, parts: readonly FilledPart[], color: string | number, alpha: number): void {
   for (const { outline, holes } of parts) {
     if (outline.length < 3) continue;
-    graphics.poly(flat(outline), true).fill({ color, alpha });
-    for (const hole of holes) graphics.poly(flat(hole), true).cut();
+    fillWithHoles(graphics, flat(outline), holes.map(flat), { color, alpha });
   }
 }
 

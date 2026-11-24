@@ -18,6 +18,7 @@
 - Widgets can be reordered: drag one by its grip in the command palette's Widgets page (or move it with Alt and the arrow keys), and the widget bar follows in every scene of the collection
 - **Music in the Armarium.** Share a track or an album from the Sound library: from a track's menu, a selection of tracks or a tag. Give it a cover, an artist and the order the tracks play in
 - Install albums and tracks from the Armarium into your music folder. A review shows the tracks and where they go first; they are ready to play once they land, with nothing to convert, and an update keeps any track you changed, leaves tracks whose music did not change as they are, and your moods keep playing the new version
+- An experimental Bucket in the rooms mode, under Experimental features: click or drag inside a room on a painted map and its floor is carved up to the walls the art draws. Contributed by ThatMattLatt
 
 ## Improved
 
@@ -33,6 +34,7 @@
 - A combatant kept beside the map shows a grey outline on its initiative card instead of an icon, which leaves the compact list more room
 - Sharing in the Armarium: until the first part of an upload is in, the upload step says what it is sending and shows a moving bar instead of "0 Bytes sent"
 - Atlas tells you when it is only partly updated on a device, as happens when a sync tool skips large files and brings the new version number and look but not the new Atlas itself, and says which file to copy over
+- The rooms bar has a menu of its own with the brush's size and Stabilization, which keeps a shaky stroke steady. Shift keeps a brush stroke straight, and the brush starts a little narrower than a grid cell. With a contribution by ThatMattLatt
 
 ## Fixed
 

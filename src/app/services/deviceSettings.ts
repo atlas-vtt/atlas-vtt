@@ -30,7 +30,7 @@ export const GM_FOG_OPACITY_STORAGE_KEY = 'atlas-vtt:gm-fog-opacity';
  * The vault's local storage. Obsidian stores a value only when it is truthy: `false`, `0` and `''`
  * remove the key, and read back as never chosen. Store every fact as a value that is never falsy.
  */
-type DeviceStorage = Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>;
+export type DeviceStorage = Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>;
 
 export const isInputMode = (value: unknown): value is NavigationInputMode => value === 'mouse' || value === 'trackpad';
 
