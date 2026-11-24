@@ -26,7 +26,7 @@ export const toolbar: Translation = {
   'toolbar.notePin': 'Herramienta de chincheta de nota',
   'toolbar.pinOptions': 'Opciones de chincheta',
   'toolbar.stairs': 'Escaleras',
-  'toolbar.stairsNeedLevels': 'Las escaleras unen las plantas de una escena. Primero añade una planta en la página Plantas de la escena de la paleta de comandos.',
+  'toolbar.stairsNeedLevels': 'Las escaleras necesitan una segunda planta. Añádela en Plantas de la escena',
   'toolbar.rollDice': 'Bandeja de dados',
   'toolbar.optionsOf': 'Opciones de {label}',
   'toolbar.moveSelect': 'Mover/seleccionar',

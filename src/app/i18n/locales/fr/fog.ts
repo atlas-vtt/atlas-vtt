@@ -5,7 +5,7 @@ export const fog: Translation = {
   'fog.modes': 'Brouillard',
   'fog.tools': 'Formes et actions du brouillard',
   'fog.fog': 'Brouillard',
-  'fog.fogTip': 'Maintenez Alt pour effacer à la place. Clic droit sur le brouillard pour le révéler ou le supprimer',
+  'fog.fogTip': 'Maintenez Alt pour effacer. Clic droit sur le brouillard pour le révéler ou le supprimer',
   'fog.eraser': 'Gomme',
   'fog.eraserTip': 'Maintenez Alt pour ajouter du brouillard à la place',
   'fog.reveal': 'Révéler',
