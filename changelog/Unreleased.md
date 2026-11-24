@@ -21,6 +21,7 @@
 
 ## Improved
 
+- The pin tool's menu is back to icons and the search: Show name is no longer a switch there. Right-click a pin to show or hide its name
 - The Stream Deck's Music key now moves the Sound page's Music fader, and its Ambience key moves all ambience layers of the mix together, so the page shows every press at once
 - Keys set to "Music in mix" now work as the Music key
 - Statblocks shown without a template of their own no longer start with a line about Atlas' field layout

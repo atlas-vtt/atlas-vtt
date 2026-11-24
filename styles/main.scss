@@ -1109,19 +1109,8 @@ body {
     visibility: hidden;
   }
 
-  // ── Show name: Atlas' switch and its text, on the menus' text edge ($spacing-m inside the padding) ──
-  .pin-name-row {
-    @include atlas-flex-row($gap: $spacing-s);
-    padding: 0 $spacing-m;
-  }
-
-  .pin-name-row__text {
-    cursor: pointer;
-    user-select: none;
-  }
-
   // ── Search ─────────────────────────────────────────────────────
-  // Between the icon row and the results, on the text edge like the switch above it.
+  // Between the icon row and the results, on the menus' text edge ($spacing-m inside the padding).
   .pin-search-wrapper {
     position: relative;
     flex-shrink: 0;
