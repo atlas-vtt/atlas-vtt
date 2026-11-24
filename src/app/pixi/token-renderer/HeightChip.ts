@@ -3,6 +3,7 @@ import { canvasBadgeColors, isDarkTheme } from '../utils/canvasBadgeColors';
 import { destroyTree } from '../utils/destroyTree';
 import { NAMEPLATE_HEIGHT, NAMEPLATE_TEXT, TOKEN_TEXT_RESOLUTION } from './tokenSizing';
 import { uiCorner } from '../utils/squareCorners';
+import { nameplateStyle } from './nameplateStyle';
 
 /** Screen pixels per UI unit: its text is as large as the condition card's (13 px). */
 const SCREEN_SIZE = 13 / (NAMEPLATE_TEXT.fontSize * NAMEPLATE_TEXT.textScale);
@@ -23,7 +24,7 @@ export class HeightChip {
     text: '',
     anchor: 0.5,
     resolution: TOKEN_TEXT_RESOLUTION,
-    style: { fontFamily: NAMEPLATE_TEXT.fontFamily, fontSize: NAMEPLATE_TEXT.fontSize, fontWeight: NAMEPLATE_TEXT.fontWeight, fill: 0xffffff },
+    style: nameplateStyle(0xffffff),
   });
   /** The text and theme the pill was last drawn for. */
   private drawn = '';
@@ -45,7 +46,8 @@ export class HeightChip {
     this.text.text = text;
     if (text === '') return;
     const { background, stroke } = canvasBadgeColors();
-    if (this.text.style.fill !== stroke) this.text.style.fill = stroke;
+    const style = nameplateStyle(stroke);
+    if (this.text.style !== style) this.text.style = style;
     const height = NAMEPLATE_HEIGHT;
     const width = Math.max(height, this.text.getLocalBounds().width * NAMEPLATE_TEXT.textScale + NAMEPLATE_TEXT.padding * 2);
     this.pill
