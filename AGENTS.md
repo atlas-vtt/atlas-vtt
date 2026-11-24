@@ -56,7 +56,7 @@ Write a comment only for a constraint or a reason the code cannot say. None that
 
 ## Never without the maintainer
 
-- Rename a stored id. Vault files point at them: built-in preset and condition ids, sense ids, light preset ids, pin icon ids, experimental feature ids, creature filter ids, a resource's `key`, the field keys of built-in statblock templates (`tests/unit/statblocks/presets/builtInSnapshot.test.ts`).
+- Rename or remove a stored id. Files in users' vaults name them. Tests hold the lists (`tests/unit/storedIds/`, and beside their subject for senses, light presets, dice sets and statblock templates); a failing one says what to do.
 - Raise `ATLAS_VERSION` (`src/app/services/MapPersistence.ts`). An older Atlas loads a map with a higher version empty and saves that over the file.
 - Add a network request. The plugin works offline, and every request it makes is disclosed in `README.md` and `PRIVACY.md`.
 - Edit a generated file: `CHANGELOG.md`, `src/app/changelog/releases.json`. `npm run changelog:generate` writes them.

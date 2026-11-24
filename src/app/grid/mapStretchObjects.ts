@@ -18,6 +18,16 @@ type SceneObjects = ViewState['objects'];
 /** Which objects move with the map; without one, all of them. */
 export type MovesWithMap = (object: object) => boolean;
 
+/** The kinds of object a scene holds that `T` gives no move. */
+type Unmoved<T> = Exclude<keyof SceneObjects, keyof T>;
+
+/**
+ * `moved` itself, once it names every kind of object a scene holds. A kind added to the scene's
+ * objects does not compile here until it is given its move: left out, it would stay where it
+ * was while the map under it is drawn another way.
+ */
+const everyKind = <T>(moved: T & ([Unmoved<T>] extends [never] ? unknown : { unmoved: Unmoved<T> })): T => moved;
+
 /** A record a scene from an older version lacks stays missing; an entry `moves` leaves out (or that is no object) stays as it is. */
 function mapRecord<T>(record: Record<string, T>, change: (value: T) => T, moves?: MovesWithMap): Record<string, T> {
   if (!record) return record;
@@ -50,8 +60,7 @@ function movedFog(operation: FogOperation, move: MapMove): FogOperation {
  * objects it names follow the map: in a scene with levels, those on the level whose image changed.
  */
 export function objectsMovedWithMap(objects: SceneObjects, move: MapMove, moves?: MovesWithMap): SceneObjects {
-  return {
-    ...objects,
+  return { ...objects, ...everyKind({
     // A combatant kept beside the map has no place on its image and stays where it waits
     tokens: mapRecord(sceneTokens(objects), (token) => (isOffMap(token) ? token : placed<typeof token>(move)(token)), moves),
     pins: mapRecord(objects.pins, placed(move), moves),
@@ -69,5 +78,5 @@ export function objectsMovedWithMap(objects: SceneObjects, move: MapMove, moves?
     ...(objects.mapFeatures ? { mapFeatures: mapRecord(objects.mapFeatures, (feature) => (Array.isArray(feature.polygon) ? { ...feature, polygon: feature.polygon.map(move) } : feature), moves) } : {}),
     ...(objects.liquids ? { liquids: mapRecord(objects.liquids, (surface) => liquidMovedWithMap(surface, move), moves) } : {}),
     ...(objects.measures ? { measures: mapRecord(objects.measures, (measure) => measureMovedWithMap(measure, move), moves) } : {}),
-  };
+  }) };
 }
