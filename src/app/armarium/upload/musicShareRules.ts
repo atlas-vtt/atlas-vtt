@@ -1,6 +1,7 @@
 import type { MusicKind } from '../../services/itemBundle/itemBundleFormat';
 import { holdsTrackCount, isOneLine, MAX_MUSIC_TEXT, shownText } from '../../services/musicBundle/musicBundleFormat';
 import { MUSIC_TIME_LIMITS, type MusicShareSnapshot } from './musicShareState';
+import type { OwnListing } from './uploadContract';
 
 /**
  * What music picked for a share becomes: one track is shared as a track, whatever was asked for, since the Armarium's
@@ -40,4 +41,24 @@ export function musicProblems(state: Pick<MusicShareSnapshot, 'kind' | 'name' | 
   else if (seconds.some((each) => each > MUSIC_TIME_LIMITS.maxTrackSeconds)) problems.tracks = 'track-too-long';
   else if (seconds.reduce((sum, each) => sum + each, 0) > MUSIC_TIME_LIMITS.maxAlbumSeconds) problems.tracks = 'album-too-long';
   return problems;
+}
+
+/**
+ * The name a share has while it continues a listing: the listing's own, so publishing never renames it; New listing
+ * brings back the name there was before the first listing was chosen.
+ */
+export class ListingName {
+  private before: string | null = null;
+
+  /** The share's name once `listing` is chosen while it is called `current`; null where it stays as it is. */
+  after(current: string, listing: OwnListing | null): string | null {
+    if (listing?.name) {
+      this.before ??= current;
+      return listing.name;
+    }
+    if (listing !== null || this.before === null) return null;
+    const name = this.before;
+    this.before = null;
+    return name;
+  }
 }

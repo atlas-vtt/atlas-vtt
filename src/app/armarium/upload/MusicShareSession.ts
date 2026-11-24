@@ -5,7 +5,7 @@ import type { LibraryFile } from '../../soundLibrary/SoundLibrary';
 import { describeError } from '../../utils/errors';
 import type { ArmariumApi } from './armariumApi';
 import { draftForKind, draftFrom, textLength, type ListingDraft } from './listingDraft';
-import { musicProblems } from './musicShareRules';
+import { ListingName, musicProblems } from './musicShareRules';
 import type { MusicShareSnapshot, MusicShareTrack, TrackCopyState } from './musicShareState';
 import { freshShare, ShareFlow, type ShareFlowDeps } from './ShareFlow';
 import { ITEM_NOTES_LIMITS, nextItemVersion } from './shareState';
@@ -36,7 +36,7 @@ export interface MusicShareDeps extends ShareFlowDeps {
   readonly name: string;
   /** A listing of the account's to continue, as the Armarium page asked; one that is not its music is not taken. */
   readonly listing?: string | undefined;
-  /** The listing the shared files were installed from, as their sidecar says; continued where it is the account's music. */
+  /** The listing the shared files were installed from, as their sidecar says (null where none can be read); continued where it is the account's music. */
   readonly installedListing?: (() => Promise<string | null>) | undefined;
   /** Prepares a track's Atlas copy, telling each step; the result stops it. */
   readonly prepare: (file: LibraryFile, listener: (state: PreparedTrack) => void) => () => void;
@@ -66,8 +66,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
   private coverChosen = false;
   private artistTyped = false;
   private nameTyped = false;
-  /** The name the share had before a listing's name took its place, to come back with New listing. */
-  private nameBeforeListing: string | null = null;
+  private readonly listingName = new ListingName();
   /** Tracks whose title the GM edited: never worked out from the file names again. */
   private readonly editedTitles = new Set<string>();
 
@@ -184,21 +183,11 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
    * installed from, where it is one of them.
    */
   private async readKnown(): Promise<string | null> {
-    const [read, installed] = await Promise.all([this.deps.api.ownListings(), this.installedListing()]);
+    const [read, installed] = await Promise.all([this.deps.api.ownListings(), this.deps.installedListing?.() ?? null]);
     this.failedToRead = read === null;
     this.known = (read ?? []).filter((listing) => listing.format === this.deps.kind);
     const asked = this.deps.listing ?? installed;
     return this.known.some((listing) => listing.uid === asked) ? asked : null;
-  }
-
-  /** The listing the files were installed from; a sidecar that cannot be read names none. */
-  private async installedListing(): Promise<string | null> {
-    try {
-      return (await this.deps.installedListing?.()) ?? null;
-    } catch (error) {
-      console.warn('[Atlas] The music\'s Armarium sidecar could not be read:', error);
-      return null;
-    }
   }
 
   protected override readOwnListing(uid: string): Promise<OwnListing | null> {
@@ -226,20 +215,10 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
     return Promise.resolve();
   }
 
-  /**
-   * The name a version of `listing` is shared under: the listing's own, so publishing never renames it, unless the GM
-   * typed one; New listing brings back what was there before.
-   */
+  /** The name a version of `listing` is shared under (`ListingName`), unless the GM typed one. */
   private nameFor(listing: OwnListing | null): Partial<MusicShareSnapshot> {
-    if (this.nameTyped) return {};
-    if (listing?.name) {
-      this.nameBeforeListing ??= this.state.name;
-      return { name: listing.name, problems: this.without('name') };
-    }
-    if (listing !== null || this.nameBeforeListing === null) return {};
-    const name = this.nameBeforeListing;
-    this.nameBeforeListing = null;
-    return { name };
+    const name = this.nameTyped ? null : this.listingName.after(this.state.name, listing);
+    return name === null ? {} : { name, problems: this.without('name') };
   }
 
   private without(field: string): Record<string, string> {

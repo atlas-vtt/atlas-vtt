@@ -83,7 +83,8 @@ export async function installedMusic(library: MusicShelf, walkWaitMs = WALK_WAIT
 
 /**
  * The listing music at `paths` was installed from, as its sidecar says, where the sidecar is of `kind`: an album's in
- * the one folder they all lie in, a single's beside it. Null otherwise; whose listing it names is not checked here.
+ * the one folder they all lie in, a single's beside it. Null otherwise, also where the sidecar cannot be read (it never
+ * rejects); whose listing it names is not checked here.
  */
 export async function listingOfFiles(location: SoundLocation | null, kind: MusicKind, paths: readonly string[]): Promise<string | null> {
   const folders = new Set(paths.map(parentOfRelative));
