@@ -1209,7 +1209,8 @@ body.atlas-look.atlas-look-scifi .atlas-sb-sheet .atlas-sb-score-group:last-chil
 /* frosted glass: whatever is see-through on a surface with lines or
    grain blurs what lies behind it, so the lines melt away there and the
    text stands clear. Always for what has a fill of its own (a field, a
-   dropdown, a chip, a secondary button, a table, a block of values) and
+   search box, a dropdown, a chip, a secondary button, a toggle's box, an
+   empty token socket, a table, a block of values) and
    for whatever is chosen (the open scene's tab, a picked row, the row the
    keyboard points at in a list or menu); for a row
    or a plain button, which is clear until pointed at or chosen, while it
@@ -1240,6 +1241,11 @@ body.atlas-look.atlas-look-scifi :is(
   [class*="chip"]:not([class*="chips"], [class*="chip__"]),
   kbd,
   .btn--secondary,
+  .atlas-command-palette-search-inner,
+  .atlas-asset-manager-search,
+  .atlas-tables-search,
+  .atlas-command-item-checkbox,
+  .atlas-sb-token-socket--empty .atlas-sb-token-socket__frame,
   .atlas-active,
   .atlas-is-active,
   .atlas-selected,
