@@ -53,3 +53,4 @@
 - Sound: linking an empty music or ambience folder no longer asks to convert "all 0 sounds": the question says the folder holds no sounds yet and that Atlas converts the sounds you add to it
 - When the dungeon generator cannot draw its map or the pictures on its cards, the preview says so and offers Try again, instead of leaving the cards empty
 - The asset manager's collection picker opens with its search ready: type a name or use the arrow keys at once, without clicking into the field first
+- DM screen: in the list of notes to link to a map, the arrow keys move the highlight and Enter links the note after a click in the list too
