@@ -44,3 +44,4 @@
 - Sound: turning up reverb no longer makes a sound louder. A full knob is as wet as before, in every room, for music and ambience, on the players' page too
 - Sound: the mix desk shows a track's length as the library does, to the nearest second
 - Sound: cancelling the question about a new music or ambience folder, after Change folder, keeps the folder you had, with your choice for its originals, instead of leaving none linked
+- Sound: linking an empty music or ambience folder no longer asks to convert "all 0 sounds": the question says the folder holds no sounds yet and that Atlas converts the sounds you add to it

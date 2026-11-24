@@ -206,6 +206,14 @@ describe('ConversionConsentModal', () => {
     expect(modal.contentEl.textContent).toContain('no trash');
   });
 
+  it('words an empty folder\'s question for the files added later, never as all 0 sounds', () => {
+    const { modal } = open({ fileCount: 0 });
+    expect(modal.contentEl.textContent).toContain('Music holds no sounds yet. Atlas converts the sounds you add to it to Opus, in this folder.');
+    expect(modal.contentEl.textContent).not.toMatch(/\b0 sounds/);
+    expect(buttons(modal)).toEqual(['Convert and move originals to the trash', 'Convert and keep originals', 'Cancel']);
+    expect(open({ fileCount: 3 }).modal.contentEl.textContent).toContain('Atlas converts all 3 sounds in Music to Opus');
+  });
+
   it('shows only OK where it cannot write', () => {
     const { modal } = open({ canWrite: false });
     expect(buttons(modal)).toEqual(['OK']);
