@@ -48,6 +48,19 @@ describe('MapProcessing', () => {
     expect(processing.busy()).toBe(false);
   });
 
+  it('answers whenReadable at once unless the map is cut in bands, then once its build ends', async () => {
+    source.emit(progress(10, CRYPT));
+    await expect(processing.whenReadable(CRYPT)).resolves.toBeUndefined();
+    source.emit({ ...progress(20, 'maps/World.png', 'b'), inBands: true });
+    let done = false;
+    const waited = processing.whenReadable('maps/World.png').then(() => { done = true; });
+    await Promise.resolve();
+    expect(done).toBe(false);
+    source.emit({ type: 'complete', hash: 'b' });
+    await waited;
+    expect(done).toBe(true);
+  });
+
   it('answers whenDone at once for a map not being processed, once its build ends otherwise, and never after an abort', async () => {
     await expect(processing.whenDone(CRYPT)).resolves.toBeUndefined();
     source.emit(progress(10, CRYPT));
