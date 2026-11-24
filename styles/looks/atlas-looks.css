@@ -191,6 +191,11 @@ body.atlas-look {
      beside the colours it offers */
   --atlas-look-accent: #dd4646;
 
+  /* what a note colours (headings, bold lead-ins, quote rules, table
+     heads): the look's own red or ink, or an accent colour picked in
+     Appearance (below) */
+  --atlas-note-accent: var(--atlas-theme-red);
+
   /* body text: bookish serif; a text font picked in Appearance still overrides it */
   --font-text-theme: var(--atlas-theme-body-serif);
 
@@ -202,12 +207,12 @@ body.atlas-look {
   --h4-font: var(--atlas-theme-heading-font);
   --h5-font: var(--atlas-theme-heading-font);
   --h6-font: var(--atlas-theme-heading-font);
-  --h1-color: var(--atlas-theme-red);
-  --h2-color: var(--atlas-theme-red);
-  --h3-color: var(--atlas-theme-red);
-  --h4-color: var(--atlas-theme-red);
-  --h5-color: var(--atlas-theme-red);
-  --h6-color: var(--atlas-theme-red);
+  --h1-color: var(--atlas-note-accent);
+  --h2-color: var(--atlas-note-accent);
+  --h3-color: var(--atlas-note-accent);
+  --h4-color: var(--atlas-note-accent);
+  --h5-color: var(--atlas-note-accent);
+  --h6-color: var(--atlas-note-accent);
   --h1-weight: 400;
   --h2-weight: 400;
   --h3-weight: 400;
@@ -233,7 +238,7 @@ body.atlas-look {
   /* read-aloud boxed text (plain `>` quotes, not callouts);
      Live Preview reads --blockquote-style */
   --blockquote-background-color: var(--background-secondary);
-  --blockquote-border-color: var(--atlas-theme-red);
+  --blockquote-border-color: var(--atlas-note-accent);
   --blockquote-border-thickness: 4px;
   --blockquote-font-style: italic;
   --blockquote-style: italic;
@@ -247,7 +252,7 @@ body.atlas-look {
   --table-header-font: var(--atlas-theme-heading-font);
   --table-header-weight: 400;
   --table-header-size: 1.1em;
-  --table-header-color: var(--atlas-theme-red);
+  --table-header-color: var(--atlas-note-accent);
 
   /* callout titles */
   --callout-title-weight: 400;
@@ -351,7 +356,7 @@ body.atlas-look .markdown-rendered li > .list-bullet + strong:not(.statblock *),
 body.atlas-look .markdown-rendered li > p > strong:first-child:not(.statblock *) {
   font-family: var(--atlas-theme-heading-font);
   font-weight: normal;
-  color: var(--atlas-theme-red);
+  color: var(--atlas-note-accent);
   font-size: 1.12em;
   letter-spacing: var(--atlas-theme-heading-tracking);
 }
@@ -364,7 +369,7 @@ body.atlas-look .markdown-source-view.mod-cm6 .cm-line > .cm-strong:nth-child(-n
 body.atlas-look .markdown-source-view.mod-cm6 .cm-line > .cm-formatting-quote ~ .cm-strong:nth-child(-n+8) {
   font-family: var(--atlas-theme-heading-font);
   font-weight: normal;
-  color: var(--atlas-theme-red);
+  color: var(--atlas-note-accent);
   font-size: 1.12em;
   letter-spacing: var(--atlas-theme-heading-tracking);
 }
@@ -581,10 +586,15 @@ body.atlas-look.theme-dark.atlas-look-scifi {
    An accent colour picked in Atlas VTT's Appearance settings or
    in Obsidian's: Atlas VTT sets `atlas-accent-custom` on the
    body, and Obsidian the colour's `--accent-h/s/l`. What a look
-   writes out as its own accent (links; Sci-fi's ink on buttons
+   writes out as its own accent (links; a note's headings, bold
+   lead-ins, quote rules and table heads; Sci-fi's ink on buttons
    and checkboxes) takes the colour instead, by Obsidian's own
    formulas, as in Obsidian's default theme.
    ------------------------------------------------------------ */
+body.atlas-look.atlas-accent-custom {
+  --atlas-note-accent: var(--text-accent);
+}
+
 body.atlas-look.theme-light.atlas-accent-custom {
   --text-accent: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
   --text-accent-hover: hsl(calc(var(--accent-h) - 3), calc(var(--accent-s) * 1.02), calc(var(--accent-l) * 1.15));
