@@ -20,7 +20,8 @@ const pictureOf = (size: ThumbnailSize): string => `${size.width}x${size.height}
  * The style cards of the sample dungeon, one set per app for as long as it runs: drawn once per
  * card size (the newest two sizes kept, `ThumbnailCache`) and shown together once all are back.
  * The first card asked for makes the sample in the worker; the others draw the dungeon it made,
- * so it is generated once. A card that could not be drawn is never asked for again.
+ * so it is generated once. A card that could not be drawn is asked for again only when the cards
+ * are next wanted, never by itself: a worker that cannot draw is not asked over and over.
  */
 export class SampleStyleCards {
   private readonly cache = new ThumbnailCache<DungeonStyleId>(DUNGEON_STYLES.map((entry) => entry.id));
@@ -46,7 +47,12 @@ export class SampleStyleCards {
     return this.cache.shown(pictureOf(size));
   }
 
-  /** Asks for the cards of `size` that are neither drawn nor on their way, `first` first. */
+  /** Whether a card of `size` could not be drawn. */
+  failed(size: ThumbnailSize): boolean {
+    return this.cache.hasFailed(pictureOf(size));
+  }
+
+  /** Asks for the cards of `size` that are neither drawn nor on their way, `first` first, and again for those that could not be drawn. */
   want(size: ThumbnailSize, first: DungeonStyleId): void {
     const picture = pictureOf(size);
     if (this.wanted && this.wanted.picture !== picture) {
@@ -54,6 +60,8 @@ export class SampleStyleCards {
       this.renderer.dropThumbnails(GROUP);
     }
     this.wanted = { picture, size, first };
+    const asked = this.asked.get(picture);
+    for (const id of this.cache.retry(picture)) asked?.delete(id);
     this.askWanted();
   }
 

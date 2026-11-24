@@ -391,6 +391,24 @@ describe('the theme pictures', () => {
     await waitFor(() => expect(lastJob().request.tags).toEqual(['medium', 'overgrown']));
     expect(thumbnailJobs('themes')).toHaveLength(4);
   });
+
+  it('says that nothing could be drawn while the worker cannot start, and draws map and cards with Try again', async () => {
+    const refused = (): Promise<never> => Promise.reject(new Error('The dungeon worker could not start.'));
+    worker.preview.mockImplementation(refused);
+    worker.thumbnail.mockImplementation(refused);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    renderPanel();
+    const retry = await within(preview()).findByRole('button', { name: 'Try again' });
+    expect(within(preview()).getByRole('alert').textContent).toContain('The preview could not be drawn.');
+    expect(document.querySelectorAll('.atlas-dungeon-theme canvas:not([hidden])')).toHaveLength(0);
+
+    worker.preview.mockImplementation(answer);
+    worker.thumbnail.mockImplementation(answer);
+    fireEvent.click(retry);
+    await waitFor(() => expect(document.querySelectorAll('.atlas-dungeon-theme canvas:not([hidden])')).toHaveLength(8));
+    await waitFor(() => expect(within(preview()).queryByRole('alert')).toBeNull());
+    expect(preview().querySelector('.atlas-dungeon-preview__canvas')).not.toBeNull();
+  });
 });
 
 describe('floors, the boss room and five-room dungeons', () => {
@@ -561,6 +579,19 @@ describe('the style gallery', () => {
     await act(async () => { await Promise.resolve(); });
     expect(thumbnailJobs('styles')).toHaveLength(DUNGEON_STYLES.length);
     expect(worker.dropThumbnails).not.toHaveBeenCalledWith('styles');
+  });
+
+  it('says which cards could not be drawn, and draws them with Try again', async () => {
+    worker.thumbnail.mockImplementation(() => Promise.reject(new Error('The dungeon worker could not start.')));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    renderPanel(vi.fn(), 'Sunken Vault', 'Style');
+    const retry = await within(preview()).findByRole('button', { name: 'Try again' });
+    expect(within(preview()).getByRole('alert').textContent).toContain('Some pictures could not be drawn.');
+
+    worker.thumbnail.mockImplementation(answer);
+    fireEvent.click(retry);
+    await waitFor(() => expect(document.querySelectorAll('.atlas-dungeon-style-card canvas:not([hidden])')).toHaveLength(DUNGEON_STYLES.length));
+    expect(within(preview()).queryByRole('alert')).toBeNull();
   });
 });
 

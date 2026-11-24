@@ -29,6 +29,10 @@ export interface Wizard {
   preview: MapPreview;
   thumbnails: ReadonlyMap<DungeonStyleId, ImageBitmap>;
   themePreviews: ReadonlyMap<ThemeId, ImageBitmap>;
+  /** A theme or style card in sight could not be drawn. */
+  cardsFailed: boolean;
+  /** Draws again what could not be drawn: the map and the cards. */
+  retry: () => void;
   step: number;
   direction: 1 | -1;
   goTo: (step: number) => void;
@@ -56,6 +60,8 @@ export function useWizard({ app, collectionId, initialName, onCreated, onBusyCha
   const [themeArt, setThemeArt] = useState<HTMLSpanElement | null>(null);
   const [panel, setPanel] = useState<HTMLElement | null>(null);
   const titleId = useId();
+  const [attempt, setAttempt] = useState(0);
+  const retry = (): void => setAttempt((now) => now + 1);
   const { settings } = state;
 
   const preview = useMapPreview(client, {
@@ -66,14 +72,17 @@ export function useWizard({ app, collectionId, initialName, onCreated, onBusyCha
     view: settings.view,
     floor: state.floor,
     size: usePreviewSize(frame),
+    attempt,
   }, state.setGenerated);
   // Drawn only while the Theme step is shown: every change of the dungeon asks for three of them.
   const themeSize = useThumbnailSize(themeArt);
-  const themePreviews = useThemePreviews(client, { request: state.request, style: settings.style, view: settings.view, size: step === 0 ? themeSize : null });
+  const themes = useThemePreviews(client, { request: state.request, style: settings.style, view: settings.view, size: step === 0 ? themeSize : null, attempt });
   // Drawn once the theme cards are in (or the GM went on), so those wait for none of them. Theme and
   // style cards share one grid: the theme card measured on the first step gives the style cards' size.
   const styleCardSize = useThumbnailSize(art);
-  const thumbnails = useStyleThumbnails(client, styleCardSize ?? (step > 0 || themePreviews.size > 0 ? themeSize : null), settings.style);
+  const styles = useStyleThumbnails(client, styleCardSize ?? (step > 0 || themes.pictures.size > 0 ? themeSize : null), settings.style, attempt);
+  // The style cards are drawn ahead of their step: one that failed is said once they are shown.
+  const cardsFailed = themes.failed || (styleCardSize !== null && styles.failed);
   const actions = useGeneratorActions({ app, client, state, collectionId, onCreated, onBusyChange });
 
   // Opens on the chosen theme, so the arrows run through the themes at once.
@@ -81,5 +90,5 @@ export function useWizard({ app, collectionId, initialName, onCreated, onBusyCha
     panel?.querySelector<HTMLElement>('[role="radio"][tabindex="0"]')?.focus({ preventScroll: true });
   }, [panel]);
 
-  return { state, actions, preview, thumbnails, themePreviews, step, direction, goTo, titleId, setFrame, setArt, setThemeArt, setPanel };
+  return { state, actions, preview, thumbnails: styles.pictures, themePreviews: themes.pictures, cardsFailed, retry, step, direction, goTo, titleId, setFrame, setArt, setThemeArt, setPanel };
 }

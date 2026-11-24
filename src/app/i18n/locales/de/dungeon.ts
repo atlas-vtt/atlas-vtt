@@ -18,6 +18,8 @@ export const dungeon: Translation = {
   'dungeon.back': 'Zurück',
   'dungeon.preview.label': 'Dungeon-Vorschau',
   'dungeon.preview.failed': 'Die Vorschau konnte nicht gezeichnet werden.',
+  'dungeon.preview.cardsFailed': 'Einige Bilder konnten nicht gezeichnet werden.',
+  'dungeon.preview.retry': 'Erneut versuchen',
   'dungeon.preview.floor': 'Angezeigte Ebene',
   'dungeon.name': 'Name',
   'dungeon.collection': 'Sammlung',

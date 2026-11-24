@@ -18,6 +18,8 @@ export const dungeon: Translation = {
   'dungeon.back': 'Atrás',
   'dungeon.preview.label': 'Vista previa de la mazmorra',
   'dungeon.preview.failed': 'No se pudo dibujar la vista previa.',
+  'dungeon.preview.cardsFailed': 'No se pudieron dibujar algunas imágenes.',
+  'dungeon.preview.retry': 'Reintentar',
   'dungeon.preview.floor': 'Planta mostrada',
   'dungeon.name': 'Nombre',
   'dungeon.collection': 'Colección',

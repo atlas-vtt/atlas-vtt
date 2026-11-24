@@ -20,6 +20,8 @@ export const dungeon = {
 
   'dungeon.preview.label': 'Dungeon preview',
   'dungeon.preview.failed': 'The preview could not be drawn.',
+  'dungeon.preview.cardsFailed': 'Some pictures could not be drawn.',
+  'dungeon.preview.retry': 'Try again',
   'dungeon.preview.floor': 'Floor shown',
 
   'dungeon.name': 'Name',
