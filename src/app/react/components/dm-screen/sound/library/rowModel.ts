@@ -123,15 +123,6 @@ export const searchRows = (hits: readonly LibraryFile[], rootName: (kind: SoundK
 
 export const entryOfRow = (row: LibraryRow): LibraryEntry | null => (row.type === 'file' ? { kind: row.file.kind, path: row.file.path } : null);
 
-/** Minutes and seconds, as a track's length is read. */
-export function formatLength(seconds: number): string {
-  const whole = Math.round(seconds);
-  const hours = Math.floor(whole / 3600);
-  const minutes = Math.floor((whole % 3600) / 60);
-  const rest = String(whole % 60).padStart(2, '0');
-  return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${rest}` : `${minutes}:${rest}`;
-}
-
 /** The selection after a press on a row: a plain press takes it, Cmd or Ctrl adds or takes away, Shift reaches from the anchor. */
 export function selectionAfter(rows: readonly LibraryRow[], selected: ReadonlySet<string>, anchor: string | null, id: string, mode: { toggle: boolean; range: boolean }): { selected: Set<string>; anchor: string } {
   if (mode.range && anchor !== null) {

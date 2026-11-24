@@ -110,6 +110,7 @@ import { armarium } from './armarium';
 import { armariumFindings } from './armariumFindings';
 import { armariumListing } from './armariumListing';
 import { armariumShare } from './armariumShare';
+import { armariumMusic } from './armariumMusic';
 import { armariumUpload } from './armariumUpload';
 import { deviceFiles } from './deviceFiles';
 import { docs } from './docs';
@@ -244,6 +245,7 @@ export const ru: Translation = {
   ...armariumFindings,
   ...armariumListing,
   ...armariumShare,
+  ...armariumMusic,
   ...armariumUpload,
   ...deviceFiles,
   ...docs,

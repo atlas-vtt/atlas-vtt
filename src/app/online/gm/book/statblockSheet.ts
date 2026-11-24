@@ -35,14 +35,14 @@ export interface StatblockSheetInput {
 const DEFAULT_COLUMN_WIDTH_EM = 22;
 
 /** A number within its range; `fallback` where it is none (a template or setting a newer Atlas wrote), so a card is never refused whole. */
-const clamp = (value: number, min: number, max: number, fallback = min): number => (Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback);
+const clampOr = (value: number, min: number, max: number, fallback = min): number => (Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback);
 
 /** The GM's card as the note panel lays it out: its width, the template's columns, and whether the header's description leads the sheet. */
 function sheetCard(template: StatblockTemplate, panelWidth: number | undefined, description: boolean): SheetCard {
-  const maxColumns = Math.round(clamp(template.layout.maxColumns, 1, MAX_CARD_COLUMNS, 1));
+  const maxColumns = Math.round(clampOr(template.layout.maxColumns, 1, MAX_CARD_COLUMNS, 1));
   return {
-    width: clamp(paneCardWidth(Number.isFinite(panelWidth) ? panelWidth ?? FALLBACK_PANEL_WIDTH : FALLBACK_PANEL_WIDTH, maxColumns), MIN_CARD_WIDTH, MAX_CARD_WIDTH, paneCardWidth(FALLBACK_PANEL_WIDTH, maxColumns)),
-    columnWidth: clamp(template.layout.columnWidth ?? DEFAULT_COLUMN_WIDTH_EM, MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH, DEFAULT_COLUMN_WIDTH_EM),
+    width: clampOr(paneCardWidth(Number.isFinite(panelWidth) ? panelWidth ?? FALLBACK_PANEL_WIDTH : FALLBACK_PANEL_WIDTH, maxColumns), MIN_CARD_WIDTH, MAX_CARD_WIDTH, paneCardWidth(FALLBACK_PANEL_WIDTH, maxColumns)),
+    columnWidth: clampOr(template.layout.columnWidth ?? DEFAULT_COLUMN_WIDTH_EM, MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH, DEFAULT_COLUMN_WIDTH_EM),
     maxColumns,
     description,
   };

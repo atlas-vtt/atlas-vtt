@@ -86,6 +86,7 @@ import { armarium } from './armarium';
 import { armariumFindings } from './armariumFindings';
 import { armariumListing } from './armariumListing';
 import { armariumShare } from './armariumShare';
+import { armariumMusic } from './armariumMusic';
 import { armariumUpload } from './armariumUpload';
 import { campaign } from './campaign';
 import { deviceFiles } from './deviceFiles';
@@ -221,6 +222,7 @@ export const zh: Translation = {
   ...armariumFindings,
   ...armariumListing,
   ...armariumShare,
+  ...armariumMusic,
   ...armariumUpload,
   ...campaign,
   ...deviceFiles,

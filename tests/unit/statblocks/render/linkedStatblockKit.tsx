@@ -45,8 +45,5 @@ export const fantasyCardOf = (container: HTMLElement): Element | null => contain
 export const barOf = (container: HTMLElement): string | null =>
   container.querySelector('.atlas-linked-statblock__bar')?.textContent ?? null;
 
-export const captionOf = (container: HTMLElement): string | null =>
-  container.querySelector('.atlas-linked-statblock__caption')?.textContent ?? null;
-
 export const hintOf = (container: HTMLElement): string | null =>
   container.querySelector('.atlas-statblock-missing-hint')?.textContent ?? null;

@@ -11,6 +11,7 @@ import { bestMatch, findItems, insertItems, itemKey, type InsertItem } from './i
 import { ItemPreview } from './ItemPreview';
 import type { ChromeStyle } from './LabelEditor';
 import { t } from '../../../i18n';
+import { revealInList } from '../../../utils/scrollWithin';
 
 export interface InsertMenuProps {
   /** The layer the menu is drawn in, and where it hangs from in that layer's coordinates. */
@@ -95,7 +96,8 @@ export function InsertMenu({ layer, anchor, app, onInsert, onClose }: InsertMenu
   }, [layer, onClose]);
 
   useEffect(() => {
-    if (current) ref.current?.querySelector(`[data-item="${itemKey(current)}"]`)?.scrollIntoView({ block: 'nearest' });
+    const row = current ? ref.current?.querySelector(`[data-item="${itemKey(current)}"]`) : null;
+    if (row) revealInList(row);
   }, [current]);
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>): void => {

@@ -1,6 +1,6 @@
 import type { CreatureRating } from '../../../../creatures/creatureFacts';
 import type { AnyAsset, EncounterAsset, SortOption, SortOrder, Tab } from '../types';
-import { t } from '../../../../i18n';
+import { getLocale, t } from '../../../../i18n';
 import { isCharacterTab } from './tabKinds';
 
 export const SORT_LABELS: Record<SortOption, string> = {
@@ -30,7 +30,7 @@ export function resolveSortOption(requested: SortOption, tab: Tab): SortOption {
 type AssetComparator = (a: AnyAsset, b: AnyAsset) => number;
 
 // Numeric so "Goblin 2" sorts before "Goblin 10"; base sensitivity ignores case and accents.
-const nameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+const nameCollator = new Intl.Collator(getLocale(), { numeric: true, sensitivity: 'base' });
 
 const DIFFICULTY_RANK: Record<NonNullable<EncounterAsset['difficulty']>, number> = {
   easy: 0, medium: 1, hard: 2, deadly: 3,

@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Point } from '../../types/visionTypes';
 import type { DrawingAnnotation } from '../annotationTypes';
 import { drawingInk, type DrawingInk } from '../drawingInk';
-import { cleanFillAffordable, evenInkAffordable } from '../inkWork';
-import { strokeCurve } from '../penStroke';
+import { cleanFillAffordable } from '../inkWork';
 import { drawing, seeded, wandering } from './annotationKit';
 
 const TOLERANCE = 0.2;
@@ -113,18 +112,6 @@ describe('the budget of a drawing\'s ink', () => {
     const ragged = buildTime({ type: 'line', points: closed(ring(3000)), width: 0, fill: 'solid' });
     const large = buildTime({ type: 'line', points: closed(ring(15_000)), width: 0, fill: 'solid' });
     console.log(`fills: 1,999 crossing corners, filled as they lie: ${wild.ms.toFixed(2)} ms; a clean outline of 3,000 corners, cleaned: ${ragged.ms.toFixed(1)} ms; one of 15,000, filled as it lies: ${large.ms.toFixed(2)} ms`);
-  });
-
-  it('asks little to tell', () => {
-    const random = seeded(9);
-    const scribble = strokeCurve(Array.from({ length: 2000 }, () => ({ x: random() * 800, y: random() * 600 })), TOLERANCE);
-    const long = wandering(random, 1500, 8);
-    const start = performance.now();
-    for (let i = 0; i < 20; i++) {
-      evenInkAffordable(scribble, [scribble]);
-      evenInkAffordable(long, [long]);
-    }
-    console.log(`telling whether a line is within the budget: ${((performance.now() - start) / 40).toFixed(3)} ms a line`);
   });
 });
 

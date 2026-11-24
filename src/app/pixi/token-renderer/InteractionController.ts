@@ -86,7 +86,6 @@ export class InteractionController implements ITokenInteractionController {
   /** The resources of the map's collection, for Kill and Reset. */
   public resourceDefsProvider: ResourceDefsProvider = () => [];
   
-  // Drag state
   private dragState: DragState = {
     isDragging: false,
     dragIds: [],
@@ -385,7 +384,7 @@ export class InteractionController implements ITokenInteractionController {
     this.reportHeld([]);
   }
 
-  private onPointerMove = (e: FederatedPointerEvent) => {
+  private onPointerMove = (e: FederatedPointerEvent): void => {
     if (!this.dragState.isDragging) return;
     
     const worldPos = this.viewport.toWorld(e.global);
@@ -504,7 +503,7 @@ export class InteractionController implements ITokenInteractionController {
     this.dragRuler?.begin(tokenId, origin);
   }
 
-  private throttledUIUpdate = () => {
+  private throttledUIUpdate = (): void => {
     if (!this.dragState.pendingUpdate) return;
     this.dragState.pendingUpdate = false;
     delete this.dragState.animationFrameId;

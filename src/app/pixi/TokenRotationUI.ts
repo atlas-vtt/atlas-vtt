@@ -77,9 +77,6 @@ export class TokenRotationUI {
     this.tokenResizeUI = resizeUI;
   }
   
-  /**
-   * Check if currently rotating
-   */
   public get isCurrentlyRotating(): boolean {
     return this.isRotating;
   }
@@ -385,9 +382,6 @@ export class TokenRotationUI {
     }
   };
   
-  /**
-   * End rotation
-   */
   private onRotationEnd = (e: FederatedPointerEvent): void => {
     if (!this.isRotating) return;
     

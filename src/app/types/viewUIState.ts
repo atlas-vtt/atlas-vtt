@@ -79,6 +79,11 @@ export interface ViewUIState {
   viewedLevel?: string | null | undefined;
   /** Select more is on: a press adds to the selection or takes from it, a marquee adds (`selectMore.ts`). Never saved. */
   selectMore: boolean;
+  /**
+   * The initiative entry whose conditions the GM's tracker names in a tooltip while it is hovered: the players' list
+   * scrolls to it and shows the same (`CardConditionsTooltip`, `playerConditionsTip.ts`). Never saved.
+   */
+  conditionsShownEntry: string | null;
   /** The toolbar editor is open in this view: tray, hide and show, inert tools. Never saved. */
   isToolbarEditing: boolean;
   /** The dungeon generator, filling the view while it is open. */

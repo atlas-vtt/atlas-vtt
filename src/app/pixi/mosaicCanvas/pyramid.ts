@@ -4,7 +4,8 @@
  * Level 0 is the decoded image; level n is `ceil(size / 2ⁿ)` of it. Every level is cut into tesserae of
  * `TESSERA_CONTENT` px of content, each bitmap carrying `TESSERA_OVERLAP` px of its neighbours on every inner
  * side, so bilinear filtering at a seam reads the neighbour's real pixel. World units are the source's
- * natural pixels, whatever size it was decoded at.
+ * natural pixels, whatever size it was decoded at. A map of any size is drawn from tesserae, never as
+ * one texture: a texture with a side over the GPU's `MAX_TEXTURE_SIZE` is drawn black.
  */
 
 /** Content pixels per tessera side; with the overlap on both sides a bitmap is at most 512 px. */

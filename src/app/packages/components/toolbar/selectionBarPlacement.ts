@@ -72,7 +72,7 @@ export function placeSelectionBar({ shown, size, area, inset, current, prefer = 
   const standsOther = current === other ? fits[other] || !fits[prefer] : fits[other] && !fits[prefer]
   const side: BarPlaceSide = standsOther ? other : prefer
   // Where neither side has the room (a selection as tall as the view), the bar stays inside the view, over the selection.
-  const y = clamp(at[side], top, Math.max(top, bottom - size.height))
+  const y = clampMaxWins(at[side], top, Math.max(top, bottom - size.height))
   let left = BAR_MARGIN
   let right = area.width - BAR_MARGIN
   for (const panel of sides) {
@@ -81,10 +81,11 @@ export function placeSelectionBar({ shown, size, area, inset, current, prefer = 
     else right = Math.min(right, panel.left - BAR_MARGIN)
   }
   const middle = (minX + maxX) / 2
-  const x = clamp(middle - centred / 2, left, Math.max(left, right - size.width))
-  return { x, y, side, origin: { x: clamp(middle - x, 0, size.width), y: side === "below" ? 0 : size.height } }
+  const x = clampMaxWins(middle - centred / 2, left, Math.max(left, right - size.width))
+  return { x, y, side, origin: { x: clampMaxWins(middle - x, 0, size.width), y: side === "below" ? 0 : size.height } }
 }
 
-function clamp(value: number, min: number, max: number): number {
+/** `value` within `min` and `max`; where the two cross, `max` (the shared clamp gives `min`). */
+function clampMaxWins(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }

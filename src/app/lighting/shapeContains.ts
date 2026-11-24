@@ -39,6 +39,8 @@ const ON_EDGE = 2;
 
 /** What the edge from a to b adds to the winding number round a point, or `ON_EDGE` where the point lies on it. */
 function edgeTurn(ax: number, ay: number, bx: number, by: number, x: number, y: number): number {
+  // An edge wholly above or below the point neither holds it nor crosses its row.
+  if ((y < ay && y < by) || (y > ay && y > by)) return 0;
   const cross = orientation(ax, ay, bx, by, x, y);
   if (cross === 0 && x >= Math.min(ax, bx) && x <= Math.max(ax, bx) && y >= Math.min(ay, by) && y <= Math.max(ay, by)) return ON_EDGE;
   if (ay <= y) return by > y && cross > 0 ? 1 : 0;

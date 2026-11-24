@@ -28,6 +28,7 @@ import { armariumFindings } from './armariumFindings';
 import { armariumListing } from './armariumListing';
 import { armariumUpload } from './armariumUpload';
 import { armariumShare } from './armariumShare';
+import { armariumMusic } from './armariumMusic';
 import { account } from './account';
 import { diceLab } from './diceLab';
 import { diceRoll } from './diceRoll';
@@ -112,6 +113,7 @@ import { validation } from './validation';
 import { issue } from './issue';
 import { changelog } from './changelog';
 import { tour } from './tour';
+import { appearance } from './appearance';
 import { creatureFilter } from './creatureFilter';
 import { encounter } from './encounter';
 import { migration } from './migration';
@@ -242,6 +244,7 @@ export const en = {
   ...issue,
   ...changelog,
   ...tour,
+  ...appearance,
   ...creatureFilter,
   ...encounter,
   ...migration,
@@ -258,6 +261,7 @@ export const en = {
   ...armariumListing,
   ...armariumUpload,
   ...armariumShare,
+  ...armariumMusic,
   ...account,
   ...selection,
   ...itemBundle,

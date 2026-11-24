@@ -1,9 +1,9 @@
 import type { Point } from '../../types/visionTypes';
 import { prefersReducedMotion } from '../../utils/motion';
+import { lerp } from '../../utils/math';
 import { ValueTransition } from '../utils/ValueTransition';
 import { MEASURE_MOTION } from './measurePresence';
 
-const lerp = (from: number, to: number, share: number): number => from + (to - from) * share;
 
 /** Whether `from` can become `to` point by point: the same number of points, and somewhere one of them differs. */
 export function morphs(from: readonly Point[], to: readonly Point[]): boolean {

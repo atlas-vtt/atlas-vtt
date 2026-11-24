@@ -1,5 +1,6 @@
 import type { App } from 'obsidian';
 import { sortOptions, tabs, type SortOption, type SortOrder, type Tab } from './types';
+import { isRecord } from '../../../utils/guards';
 
 const STORAGE_KEY = 'atlas-vtt:asset-manager';
 /** Scroll positions kept, most recent first; older folders start at the top again. */
@@ -31,8 +32,6 @@ const isString = (value: unknown): value is string => typeof value === 'string';
 const isNullableString = (value: unknown): value is string | null => value === null || isString(value);
 const isTab = (value: unknown): value is Tab => tabs.some((tab) => tab === value);
 const isSortOption = (value: unknown): value is SortOption => sortOptions.some((option) => option === value);
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** Trust boundary: local storage may hold data from another Atlas version, or nothing. */
 function readPlace(value: unknown): AssetManagerPlace | null {

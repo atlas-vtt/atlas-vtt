@@ -1,0 +1,123 @@
+@use '../../../styles/tokens' as *;
+
+$swatch-size: $target-min + $spacing-xs;
+$leaf-size: $swatch-size + $spacing-xs;
+
+// A colour setting's swatches (ColourSwatches.tsx: the accent colour, the ivy colour): the base, the presets, then the
+// GM's own colour, evenly spaced. A round swatch paints `--atlas-swatch-fill`; the ivy colour's are leaves of the ivy (IvyLeaf.tsx).
+.atlas-accent-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-s;
+  // The chosen swatch's outline stands outside it: room for it, so no parent clips it.
+  padding: $border-width-l * 2;
+}
+
+button.atlas-accent-swatch {
+  flex: none;
+  width: $swatch-size;
+  height: $swatch-size;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: $radius-full;
+  background: var(--atlas-swatch-fill);
+  // A hairline of the page's ink, so a swatch as light or dark as the page still shows its edge.
+  box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
+  cursor: pointer;
+  transition: transform $transition-fast $transition-ease;
+
+  @media (hover: hover) {
+    &:hover {
+      box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) $border-opacity-strong, transparent);
+      transform: scale(1.08);
+    }
+  }
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
+  }
+
+  &[aria-checked='true'] {
+    outline: $border-width-l solid var(--text-normal);
+    outline-offset: $border-width-l;
+  }
+}
+
+// The ivy colour: leaves of the ivy instead of dots, painted as the ivy will be, so the two settings tell apart at a
+// glance. The chosen one stands on a leaf of the page's ink, its outline.
+.atlas-accent-swatches--leaf button.atlas-accent-swatch {
+  width: $leaf-size;
+  height: $leaf-size;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  &:hover,
+  &:focus-visible {
+    box-shadow: none;
+  }
+
+  &[aria-checked='true'] {
+    outline: none;
+  }
+}
+
+.atlas-ivy-leaf__rim {
+  fill: var(--text-normal);
+  stroke: var(--text-normal);
+}
+
+// A setting the current look has no use for: kept in place, so the choices do not move as the look changes.
+.atlas-accent-swatches--disabled {
+  opacity: 0.4;
+
+  button.atlas-accent-swatch:disabled {
+    cursor: default;
+    transform: none;
+  }
+}
+
+// The look's own accent: a look publishes it, the GM's theme shows it until a colour is picked over it.
+button.atlas-accent-swatch--own {
+  --atlas-swatch-fill: var(--atlas-look-accent, var(--atlas-theme-accent, var(--interactive-accent)));
+}
+
+// The GM's theme under a picked colour, whose own accent was never seen: no colour that would be a guess.
+body:not(.atlas-look) button.atlas-accent-swatch--unknown {
+  --atlas-swatch-fill: repeating-linear-gradient(
+    -45deg,
+    var(--background-secondary) 0 3px,
+    var(--background-modifier-border) 3px 6px
+  );
+}
+
+.atlas-accent-custom-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+// Any colour, until one is picked: then the swatch takes it (inline).
+button.atlas-accent-swatch--custom {
+  --atlas-swatch-fill: conic-gradient(#c0392b, #c9a227, #6b8f3a, #2a9d8f, #3b82c4, #8b5cf6, #d46a8a, #c0392b);
+}
+
+// The native picker, out of sight under its swatch so the picker opens beside it.
+.atlas-accent-picker {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  opacity: 0;
+  pointer-events: none;
+}

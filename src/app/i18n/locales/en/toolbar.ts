@@ -9,6 +9,7 @@ export const toolbar = {
   'toolbar.cone': 'Cone',
   'toolbar.fogEraser': 'Fog Eraser',
   'toolbar.fogTool': 'Fog Tool',
+  'toolbar.lighting': 'Lighting',
   'toolbar.laser': 'Laser Pointer',
   'toolbar.lassoSelection': 'Lasso Selection',
   'toolbar.peek': 'Hold to see what the players see',

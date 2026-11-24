@@ -1,5 +1,6 @@
-import { Assets, Texture } from 'pixi.js';
+import { Texture } from 'pixi.js';
 import tokenRingImageUrl from '../../assets/token-ring.webp';
+import { loadAsset } from '../utils/assetLifecycle';
 
 // Loaded once per app session and shared by every token and preview that draws a ring.
 let loadedTexture: Texture | null = null;
@@ -16,7 +17,7 @@ export function loadTokenRingTexture(): Promise<Texture | null> {
 
   pendingLoad ??= (async (): Promise<Texture | null> => {
     try {
-      const texture = await Assets.load<Texture>({
+      const texture = await loadAsset<Texture>({
         src: tokenRingImageUrl,
         parser: 'texture',
         data: {

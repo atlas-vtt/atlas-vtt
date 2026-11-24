@@ -34,6 +34,7 @@ export const audio: Translation = {
   'audio.state.convertingPercent': 'Wird umgewandelt {percent} %',
   'audio.consent.title': '{folder} in Opus umwandeln?',
   'audio.consent.body': { one: 'Atlas wandelt den Sound in {folder} in Opus um, in diesem Ordner, und macht dasselbe mit später hinzugefügten Dateien.', other: 'Atlas wandelt alle {count} Sounds in {folder} in Opus um, in diesem Ordner, und macht dasselbe mit später hinzugefügten Dateien.' },
+  'audio.consent.bodyEmpty': '{folder} enthält noch keine Sounds. Atlas wandelt die Sounds, die du hinzufügst, in diesem Ordner in Opus um.',
   'audio.consent.trash': 'Umwandeln und Originale in den Papierkorb verschieben',
   'audio.consent.keep': 'Umwandeln und Originale behalten',
   'audio.consent.noTrash': 'Dieser Ordner hat keinen Papierkorb, daher bleiben die Originale.',

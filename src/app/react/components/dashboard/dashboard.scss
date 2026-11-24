@@ -113,6 +113,9 @@ $dashboard-narrow: 720px;
   line-height: 1;
   color: var(--text-normal);
 
+  // The Atlas theme's Sci-fi look (`appearance/atlasLook.ts`).
+  body.atlas-look-scifi & { font-family: $font-dice-scifi; font-weight: $font-weight-semibold; }
+
   span {
     color: var(--text-accent);
   }

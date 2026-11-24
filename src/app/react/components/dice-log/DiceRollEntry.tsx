@@ -107,7 +107,7 @@ export function DiceRollEntry({ result, isNew, onRepeat }: DiceRollEntryProps): 
             <span className="dice-log-entry__callout-label">{t('dice.details')}</span>
           </div>
           <LabelTooltip label={t('dice.rollAgain')}>
-            <button
+            <button type="button"
               className="btn btn--ghost btn--icon dice-log-entry__repeat"
               onClick={(e) => { e.stopPropagation(); onRepeat(); }}
             >

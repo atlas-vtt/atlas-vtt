@@ -49,6 +49,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # The test files, which the lint above leaves out: their own conventions,
+      # read from the syntax. Accepted findings live in eslint.tests.suppressions.json.
+      - name: Lint tests
+        run: npm run lint:tests
+
       - name: Verify release channel (main and release/* = stable x.y.z, beta = x.y.z-beta.N)
         env:
           TARGET_BRANCH: ${{ github.base_ref || github.ref_name }}
@@ -62,6 +67,12 @@ jobs:
 
       - name: Check code dependencies
         run: npm run check:boundaries
+
+      - name: Check file sizes
+        run: npm run check:sizes
+
+      - name: Check documentation references
+        run: npm run check:docs
 
   # Obsidian's directory review lints the whole repository with its own
   # config; a file it cannot parse is a fatal review error.

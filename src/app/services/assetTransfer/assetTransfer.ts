@@ -179,6 +179,7 @@ async function carryOut(app: App, files: TransferFiles, steps: readonly Transfer
 /**
  * Takes the pins that open a scene about to move away off the scenes staying
  * behind (maps and snapshots), before it moves: links never cross collections.
+ * Once it has moved, the rename has carried those pins along to its new path.
  */
 async function unlinkStayingScenes(app: App, files: TransferFiles, sourceCollectionId: string, steps: readonly TransferStep[]): Promise<void> {
   const leavingMaps = steps.filter((step) => step.op === 'move' && step.file.role === 'scene-map');

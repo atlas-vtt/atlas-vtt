@@ -129,7 +129,7 @@ export class NotePreviewWindow {
     this.parentComponent.load();
   }
 
-  private render() {
+  private render(): void {
     // Wrap in .atlas-vtt-plugin so SCSS scoped under that selector applies
     this.mountRootEl = this.resolveMountRoot();
     this.wrapperEl = resolvePreviewLayer(this.mountRootEl).createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });
@@ -203,7 +203,7 @@ export class NotePreviewWindow {
     // canvas-level hotkeys are never triggered while editing or interacting
     // with the preview. We only call stopPropagation (not preventDefault)
     // so that the underlying editor (CodeMirror etc.) still receives the event.
-    const stopKeyPropagation = (e: KeyboardEvent) => {
+    const stopKeyPropagation = (e: KeyboardEvent): void => {
         // The Mod key alone runs no hotkey, and whatever shows while it is held (statblock and note
         // previews) must hear it released: a pinned note that kept it left them open for good.
         if (isModKey(e)) return;
@@ -245,7 +245,7 @@ export class NotePreviewWindow {
     return preferredLeafRoot ?? document.body;
   }
 
-  private createResizeHandles() {
+  private createResizeHandles(): void {
     if (!this.element) return;
     const handleTypes = ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se'];
     handleTypes.forEach(type => {
@@ -254,7 +254,7 @@ export class NotePreviewWindow {
     });
   }
 
-  private async openNoteInLeaf() {
+  private async openNoteInLeaf(): Promise<void> {
     const file = this.app.vault.getAbstractFileByPath(this.notePath);
     if (!(file instanceof TFile)) {
       if (this.titleElement) this.titleElement.setText(t('preview.notFound'));
@@ -431,11 +431,11 @@ export class NotePreviewWindow {
     window.setTimeout(() => element.classList.remove('atlas-highlighted-header'), HEADING_FLASH_DURATION_MS);
   }
 
-  private interceptLinkClicks(container: HTMLElement) {
+  private interceptLinkClicks(container: HTMLElement): void {
     // Track processed links to avoid infinite loops
     const processedLinks = new WeakSet<HTMLElement>();
     
-    const processLink = (link: HTMLElement) => {
+    const processLink = (link: HTMLElement): void => {
       // Skip if already processed
       if (processedLinks.has(link)) return;
       processedLinks.add(link);
@@ -502,7 +502,7 @@ export class NotePreviewWindow {
   }
 
   /** Resizes from a press on one of the eight handles, by a mouse, a finger or a pen, until the pointer is let go or lost. */
-  private onResizeStart(e: PointerEvent, handle: HTMLElement, handleType: string) {
+  private onResizeStart(e: PointerEvent, handle: HTMLElement, handleType: string): void {
     e.stopPropagation(); // Prevent triggering drag-to-move
     if (!this.element || this.isResizing) return;
 
@@ -523,7 +523,7 @@ export class NotePreviewWindow {
     this.resizePointer.capture();
   }
 
-  private onResizeMove = (e: PointerEvent) => {
+  private onResizeMove = (e: PointerEvent): void => {
     if (!this.isResizing || !this.element || !this.currentResizeHandle) return;
 
     const dx = e.clientX - this.resizeStartX;
@@ -584,7 +584,7 @@ export class NotePreviewWindow {
     this.element.style.top = `${newTop}px`;
   }
 
-  private onResizeEnd = () => {
+  private onResizeEnd = (): void => {
     if (!this.isResizing) return;
     this.isResizing = false;
     this.resizePointer?.stop();
@@ -596,7 +596,7 @@ export class NotePreviewWindow {
     this.saveStateNow();
   }
 
-  private togglePin() {
+  private togglePin(): void {
     this.setPinned(!this.isPinned);
   }
 
@@ -668,7 +668,7 @@ export class NotePreviewWindow {
     if (this.element) this.manager.handlePreviewDismissed(this);
     this._forceHide();
   }
-  private _forceHide() {
+  private _forceHide(): void {
     this.cancelStateSave();
     const { leaf, usesPopover } = this;
     const leaving = this.element !== null && this.wrapperEl !== null;
@@ -715,7 +715,7 @@ export class NotePreviewWindow {
       console.warn('[NotePreviewWindow] Error detaching leaf:', err);
     }
   }
-  static closePreview(notePath: string, forceClosePinned: boolean = false) {
+  static closePreview(notePath: string, forceClosePinned: boolean = false): void {
     // Look for any windows with this note path
     for (const [, windowInstance] of NotePreviewWindow.openWindows.entries()) {
       if (windowInstance.notePath === notePath) {
@@ -727,7 +727,7 @@ export class NotePreviewWindow {
       }
     }
   }
-  static closeAllPreviews() {
+  static closeAllPreviews(): void {
     NotePreviewWindow.openWindows.forEach((instance) => {
       instance.hide();
     });
@@ -760,7 +760,7 @@ export class NotePreviewWindow {
       let attempts = 0;
       const maxAttempts = 50; // 5 seconds max
       
-      const checkReady = () => {
+      const checkReady = (): void => {
         attempts++;
         
         if (!this.leaf?.view) {

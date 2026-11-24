@@ -51,7 +51,10 @@ export interface InitiativeEntry {
    */
   hiddenFromPlayers?: true | undefined;
 
-  /** Whether this entry has the current turn */
+  /**
+   * Whether this entry has the current turn. A fight by sides gives the turn to a side
+   * (`InitiativeState.sides`): there the turn is never this entry's, though one may still carry the mark.
+   */
   isActive: boolean;
 
   /** Whether this is an NPC (vs player character) */

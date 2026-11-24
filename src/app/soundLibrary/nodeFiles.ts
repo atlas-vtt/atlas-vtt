@@ -33,6 +33,8 @@ export interface NodeFsModule {
     realpath(path: string): Promise<string>;
     mkdir(path: string, options: { recursive: boolean }): Promise<unknown>;
     rename(from: string, to: string): Promise<void>;
+    unlink(path: string): Promise<void>;
+    rmdir(path: string): Promise<void>;
     open(path: string, flags: string): Promise<NodeFileHandle>;
     access(path: string, mode?: number): Promise<void>;
   };

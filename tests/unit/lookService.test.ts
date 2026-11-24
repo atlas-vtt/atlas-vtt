@@ -1,0 +1,294 @@
+// @vitest-environment jsdom
+import { afterEach, expect, it, vi } from 'vitest';
+import type { App, Plugin } from 'obsidian';
+import { SettingsService } from '../../src/app/services/SettingsService';
+import { LookService } from '../../src/app/appearance/lookService';
+import { CUSTOM_ACCENT_CLASS, GLASS_LOOK_CLASS, LOOK_CLASS, SCIFI_LOOK_CLASS, registerLookSync } from '../../src/app/appearance/atlasLook';
+import { SQUARE_CORNERS_CLASS } from '../../src/app/pixi/utils/squareCorners';
+
+const ATLAS_ID = 'atlas-vtt';
+
+interface Stub {
+  app: App;
+  settings: SettingsService;
+  setTheme: ReturnType<typeof vi.fn>;
+  css: { theme: string; themes: Record<string, unknown> };
+}
+
+/** An app whose local storage drops falsy values, as Obsidian's does. */
+function stub(theme = '', storage = new Map<string, unknown>()): Stub {
+  const css = { theme, themes: { Minimal: {}, Things: {}, 'Atlas VTT': {} } as Record<string, unknown> };
+  const setTheme = vi.fn((name: string) => { css.theme = name; });
+  const config = new Map<string, unknown>();
+  const configListeners = new Set<(key: string) => void>();
+  const app = {
+    vault: {
+      adapter: { exists: async () => true, write: async () => {} },
+      getConfig: (key: string) => config.get(key) ?? null,
+      setConfig: (key: string, value: unknown) => { config.set(key, value); configListeners.forEach((listener) => listener(key)); },
+      on: (_name: string, callback: (key: string) => void) => { configListeners.add(callback); return callback; },
+      offref: (ref: (key: string) => void) => { configListeners.delete(ref); },
+    },
+    loadLocalStorage: (key: string) => storage.get(key) ?? null,
+    saveLocalStorage: (key: string, value: unknown) => { if (value) storage.set(key, value); else storage.delete(key); },
+    customCss: Object.assign(css, { setTheme }),
+    plugins: { enabledPlugins: new Set([ATLAS_ID]) },
+  } as unknown as App;
+  return { app, settings: new SettingsService(app), setTheme, css };
+}
+
+const looks = ({ app, settings }: Stub): LookService => LookService.forApp(app, settings);
+
+afterEach(() => { document.body.className = ''; });
+
+it('starts on the GM\'s own theme', () => {
+  expect(looks(stub('Minimal')).get()).toBe('own');
+});
+
+it('switches Obsidian to its default theme for an Atlas look and remembers the GM\'s', () => {
+  const s = stub('Minimal');
+  const service = looks(s);
+  service.set('scifi');
+  expect(s.setTheme).toHaveBeenCalledWith('');
+  expect(service.previousThemeName()).toBe('Minimal');
+  expect(service.get()).toBe('scifi');
+  expect(s.settings.getFogEdge().style).toBe('soft');
+});
+
+it('gives the dice the numerals of the look picked', () => {
+  const s = stub('Minimal');
+  const service = looks(s);
+  service.set('scifi');
+  expect(s.settings.getDiceLook().font).toBe('scifi');
+  service.set('mediaeval');
+  expect(s.settings.getDiceLook().font).toBe('medieval');
+});
+
+it('puts the GM\'s theme back for their own look', () => {
+  const s = stub('Minimal');
+  const service = looks(s);
+  service.set('scifi');
+  service.set('own');
+  expect(s.setTheme).toHaveBeenLastCalledWith('Minimal');
+  expect(s.css.theme).toBe('Minimal');
+});
+
+it('falls back to the default theme when the remembered one is gone', () => {
+  const s = stub('Minimal');
+  const service = looks(s);
+  service.set('mediaeval');
+  delete s.css.themes.Minimal;
+  service.set('own');
+  expect(s.setTheme).not.toHaveBeenCalledWith('Minimal');
+  expect(s.css.theme).toBe('');
+});
+
+it('keeps the Atlas look across a reload', () => {
+  const storage = new Map<string, unknown>();
+  const first = stub('Minimal', storage);
+  looks(first).set('scifi');
+  const second = stub('', storage);
+  const service = looks(second);
+  service.reconcileAtStart();
+  expect(service.get()).toBe('scifi');
+  expect(service.previousThemeName()).toBe('Minimal');
+  expect(second.setTheme).not.toHaveBeenCalled();
+});
+
+it('remembers the default theme as the GM\'s own, though Obsidian drops an empty value', () => {
+  const storage = new Map<string, unknown>();
+  looks(stub('', storage)).set('mediaeval');
+  const service = looks(stub('', storage));
+  expect(service.previousThemeName()).toBe('');
+});
+
+it('keeps a GM on the retired Atlas VTT theme on their own theme', () => {
+  const s = stub('Atlas VTT');
+  const service = looks(s);
+  service.reconcileAtStart();
+  expect(service.get()).toBe('own');
+  expect(s.setTheme).not.toHaveBeenCalled();
+  expect(s.css.theme).toBe('Atlas VTT');
+});
+
+it('takes the GM\'s own look when another theme was picked while Atlas was off', () => {
+  const storage = new Map<string, unknown>();
+  looks(stub('Minimal', storage)).set('scifi');
+  const second = stub('Things', storage);
+  const service = looks(second);
+  service.reconcileAtStart();
+  expect(service.get()).toBe('own');
+  expect(second.setTheme).not.toHaveBeenCalled();
+});
+
+it('steps aside when another theme is picked', () => {
+  const s = stub('Minimal');
+  const service = looks(s);
+  service.set('scifi');
+  const heard = vi.fn();
+  service.onChange(heard);
+  s.css.theme = 'Things';
+  service.followThemeChange();
+  expect(service.get()).toBe('own');
+  expect(heard).toHaveBeenCalled();
+  expect(s.css.theme).toBe('Things');
+});
+
+it('restores the theme only when Atlas is disabled', () => {
+  const s = stub('Minimal');
+  const service = looks(s);
+  service.set('scifi');
+  s.setTheme.mockClear();
+  service.restoreOnDisable(ATLAS_ID);
+  expect(s.setTheme).not.toHaveBeenCalled();
+  (s.app.plugins as unknown as { enabledPlugins: Set<string> }).enabledPlugins.delete(ATLAS_ID);
+  service.restoreOnDisable(ATLAS_ID);
+  expect(s.setTheme).toHaveBeenCalledWith('Minimal');
+});
+
+it('sets the look\'s classes on body', () => {
+  const s = stub('Minimal');
+  const service = looks(s);
+  const disposers: (() => void)[] = [];
+  const trigger = vi.fn();
+  const plugin = {
+    app: Object.assign(s.app, { workspace: { on: () => ({}), offref: () => {}, iterateAllLeaves: () => {}, trigger } }),
+    register: (dispose: () => void) => { disposers.push(dispose); },
+    registerEvent: () => {},
+  } as unknown as Plugin;
+  registerLookSync(plugin, service);
+  expect(document.body.classList.contains(LOOK_CLASS)).toBe(false);
+  service.set('scifi');
+  expect(document.body.classList.contains(LOOK_CLASS)).toBe(true);
+  expect(document.body.classList.contains(SCIFI_LOOK_CLASS)).toBe(true);
+  expect(document.body.classList.contains(GLASS_LOOK_CLASS)).toBe(true);
+  expect(trigger).toHaveBeenCalledWith('css-change');
+  service.set('mediaeval');
+  expect(document.body.classList.contains(LOOK_CLASS)).toBe(true);
+  expect(document.body.classList.contains(SCIFI_LOOK_CLASS)).toBe(false);
+  expect(document.body.classList.contains(GLASS_LOOK_CLASS)).toBe(false);
+  service.setGlass(true);
+  expect(document.body.classList.contains(GLASS_LOOK_CLASS)).toBe(true);
+  service.set('own');
+  expect(document.body.classList.contains(LOOK_CLASS)).toBe(false);
+  expect(document.body.classList.contains(GLASS_LOOK_CLASS)).toBe(false);
+  service.setSquareCorners(true);
+  expect(document.body.classList.contains(SQUARE_CORNERS_CLASS)).toBe(true);
+  for (const dispose of disposers) dispose();
+});
+
+it('marks body while an Atlas look is on and a custom accent is set', () => {
+  const s = stub('');
+  s.app.vault.setConfig('accentColor', '#6b8f3a');
+  const disposers: (() => void)[] = [];
+  const plugin = {
+    app: Object.assign(s.app, { workspace: { on: () => ({}), offref: () => {}, iterateAllLeaves: () => {}, trigger: () => {} } }),
+    register: (dispose: () => void) => { disposers.push(dispose); },
+    registerEvent: () => {},
+  } as unknown as Plugin;
+  const service = looks(s);
+  registerLookSync(plugin, service);
+  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(false);
+  service.set('scifi');
+  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(true);
+  s.app.vault.setConfig('accentColor', '');
+  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(false);
+  s.app.vault.setConfig('accentColor', '#c9a227');
+  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(true);
+  service.set('own');
+  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(false);
+  service.set('mediaeval');
+  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(true);
+  for (const dispose of disposers) dispose();
+  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(false);
+  s.app.vault.setConfig('accentColor', '#2a9d8f');
+  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(false);
+});
+
+it('lets the map show through under Sci-fi and not under Medieval until switched, each look keeping its own choice on this device', () => {
+  const storage = new Map<string, unknown>();
+  const first = stub('', storage);
+  const service = looks(first);
+  expect(service.glass()).toBe(false);
+  service.setGlass(true);
+  expect(service.glass()).toBe(false);
+  service.set('scifi');
+  expect(service.glass()).toBe(true);
+  service.set('mediaeval');
+  expect(service.glass()).toBe(false);
+  service.setGlass(true);
+  service.set('scifi');
+  service.setGlass(false);
+  LookService.release(first.app);
+  const again = looks(stub('', storage));
+  expect(again.glass()).toBe(false);
+  again.set('mediaeval');
+  expect(again.glass()).toBe(true);
+  expect(storage.get('atlas-vtt:glass-scifi')).toBe('off');
+});
+
+it('keeps square corners on this device, off until switched on, under any look', () => {
+  const storage = new Map<string, unknown>();
+  const first = stub('', storage);
+  const service = looks(first);
+  expect(service.squareCorners()).toBe(false);
+  service.setSquareCorners(true);
+  LookService.release(first.app);
+  const again = looks(stub('', storage));
+  expect(again.squareCorners()).toBe(true);
+  again.set('scifi');
+  expect(again.squareCorners()).toBe(true);
+});
+
+it('names the GM\'s own theme: the one in use while they keep it, else the one remembered', () => {
+  const s = stub('Minimal');
+  const service = looks(s);
+  expect(service.ownThemeName()).toBe('Minimal');
+  service.set('mediaeval');
+  expect(s.css.theme).toBe('');
+  expect(service.ownThemeName()).toBe('Minimal');
+});
+
+it('keeps the ivy colour of this device, natural until one is picked', () => {
+  const storage = new Map<string, unknown>();
+  const first = stub('', storage);
+  const service = looks(first);
+  expect(service.ivyColour()).toBe('');
+  const changed = vi.fn();
+  service.onChange(changed);
+  service.setIvyColour('#C0392B');
+  expect(service.ivyColour()).toBe('#c0392b');
+  expect(changed).toHaveBeenCalledTimes(1);
+  service.setIvyColour('red');
+  expect(service.ivyColour()).toBe('#c0392b');
+  LookService.release(first.app);
+  expect(looks(stub('', storage)).ivyColour()).toBe('#c0392b');
+  looks(stub('', storage)).setIvyColour('');
+  expect(storage.get('atlas-vtt:ivy-colour')).toBe('natural');
+});
+
+it('announces an accent colour change as a change of CSS, which Obsidian does not, so the dice and the canvas follow it', () => {
+  const s = stub('');
+  const trigger = vi.fn();
+  const disposers: (() => void)[] = [];
+  const plugin = {
+    app: Object.assign(s.app, { workspace: { on: () => ({}), offref: () => {}, iterateAllLeaves: () => {}, trigger } }),
+    register: (dispose: () => void) => { disposers.push(dispose); },
+    registerEvent: () => {},
+  } as unknown as Plugin;
+  const service = looks(s);
+  registerLookSync(plugin, service);
+  // With the GM's own theme as with an Atlas look: accent dice take the accent either way.
+  s.app.vault.setConfig('accentColor', '#c9a227');
+  expect(trigger).toHaveBeenLastCalledWith('css-change');
+  service.set('mediaeval');
+  trigger.mockClear();
+  s.app.vault.setConfig('accentColor', '#3b82c4');
+  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(true);
+  expect(trigger).toHaveBeenCalledWith('css-change');
+  trigger.mockClear();
+  s.app.vault.setConfig('accentColor', '');
+  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(false);
+  expect(trigger).toHaveBeenCalledWith('css-change');
+  for (const dispose of disposers) dispose();
+});

@@ -26,6 +26,7 @@
 @use '../src/app/packages/components/asset-manager/open-window';
 @use './scroll-lock';
 @use './portal-host';
+@use './square-corners';
 // At the root too: Atlas' scroll areas are found by class, in every window and floating layer.
 @use './overlay-scrollbars';
 @use './touch';
@@ -46,6 +47,9 @@ body.theme-light {
  *  licensed under the SIL Open Font License, Version 1.1.
  *  Courier Prime, Copyright 2015 The Courier Prime Project Authors
  *  (https://github.com/quoteunquoteapps/CourierPrime), licensed under the SIL Open Font License, Version 1.1.
+ *  Libron, Libron (c) 2026 Nico Verbruggen (https://github.com/nicoverbruggen/libron), with Reserved Font
+ *  Name Libron, based on Readerly (c) 2026 Nico Verbruggen and Newsreader (c) 2020 The Newsreader Project
+ *  Authors, licensed under the SIL Open Font License, Version 1.1.
  *  Licence text: https://openfontlicense.org
  *  Credits: https://github.com/atlas-vtt/atlas-vtt/blob/main/THIRD_PARTY_NOTICES.md
  */
@@ -173,9 +177,11 @@ body.theme-light {
   @import '../src/app/react/components/siteFrame/site-frame.scss';
   @import '../src/app/armarium/armarium-pane.scss';
   @import '../src/app/armarium/share/share-dialog.scss';
+  @import '../src/app/armarium/share/music-share.scss';
   @import '../src/app/react/components/documentation/docs-panel.scss';
   @import '../src/app/pixi/lighting/light-panel.scss';
   @import '../src/app/pixi/lighting/light-popover.scss';
+  @import '../src/app/online/gm/doors/door-ask-popover.scss';
   @import '../src/app/react/components/loot/loot-source-tree.scss';
   @import '../src/app/react/components/loot/loot-roll-bar.scss';
   @import '../src/app/react/components/loot/loot-lists.scss';
@@ -308,11 +314,16 @@ body.theme-light {
       }
     }
 
+    // The player window bar and online play's table log tab stand side by side, the tab last,
+    // so what hangs below the scene tabs is one row
     .atlas-top-bar-start__below {
       display: flex;
-      flex-direction: column;
       align-items: flex-start;
       gap: $spacing-s;
+
+      > .atlas-online-log-tab-host {
+        order: 1;
+      }
     }
 
     .atlas-scene-tab-bar + .atlas-top-bar-start__below {
@@ -817,9 +828,11 @@ body.theme-light {
     transition: color $transition-normal $transition-ease,
                 background-color $transition-normal $transition-ease;
 
+    // No focus ring, Obsidian's own included: Atlas is played with hotkeys and shows no keyboard highlights. A
+    // clicked button would otherwise light up at the next key pressed while it holds the focus.
     &:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 2px var(--background-modifier-border-focus), 0 0 0 4px var(--background-primary);
+      box-shadow: none;
     }
 
     &:disabled {
@@ -1098,19 +1111,8 @@ body {
     visibility: hidden;
   }
 
-  // ── Show name: Atlas' switch and its text, on the menus' text edge ($spacing-m inside the padding) ──
-  .pin-name-row {
-    @include atlas-flex-row($gap: $spacing-s);
-    padding: 0 $spacing-m;
-  }
-
-  .pin-name-row__text {
-    cursor: pointer;
-    user-select: none;
-  }
-
   // ── Search ─────────────────────────────────────────────────────
-  // Between the icon row and the results, on the text edge like the switch above it.
+  // Between the icon row and the results, on the menus' text edge ($spacing-m inside the padding).
   .pin-search-wrapper {
     position: relative;
     flex-shrink: 0;

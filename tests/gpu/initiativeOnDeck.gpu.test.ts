@@ -29,7 +29,6 @@ function draw(active: number, hidden: number[] = []): { list: HTMLElement; cards
     { entries, isActive: true, round: 1 },
     (_, index) => hidden.includes(index) ? null : { hp: null, showRing: false, side: 'opponents' },
     { mode: 'turn-order', roll: '1d20', firstSide: 'players' },
-    false,
   );
   renderPlayerInitiative(host, list, { showNames: true, mapShowsNameplates: true, portraitSrc: (src) => src });
   return {

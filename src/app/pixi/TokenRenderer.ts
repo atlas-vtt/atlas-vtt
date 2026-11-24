@@ -38,6 +38,7 @@ import { DEFAULT_DRAG_DISTANCE, showsDragDistance } from '../measure/dragDistanc
 import { SyncService } from './token-renderer/SyncService';
 import { tokenSyncState } from './token-renderer/tokenSyncState';
 import { TokenGlide, placedAtOnce, type HeldPlayout, type TokenHolder } from './token-renderer/TokenGlide';
+import { TokenBump } from './token-renderer/TokenBump';
 import type { ShownPlaces } from '../lighting/shownPlaces';
 import type { Point } from '../types/visionTypes';
 import type { ArtFloors } from '../levels/levelSurfaces';
@@ -45,6 +46,9 @@ import { PLAYER_SIGHT_POLICY } from '../vision/tokenSightPolicy';
 import { createSceneSource } from '../plugin/host/sceneSource';
 import { updateInstanceBadge } from './token-renderer/InstanceBadge';
 import { HiddenTokenIcon } from './token-renderer/HiddenTokenIcon';
+import { TokenOverlays } from './token-renderer/TokenOverlays';
+import { tokenOverlays } from '../api/extensionPoints';
+import { watchSquareCorners } from './utils/squareCorners';
 import { DownedTokenOverlay } from './token-renderer/DownedTokenOverlay';
 import { isTokenDowned } from './token-renderer/isTokenDowned';
 import { requestRender } from './RenderScheduler';
@@ -111,6 +115,13 @@ export class TokenRenderer {
   private spriteFactory: SpriteFactory;
   private textureCache: TextureCache;
   private readonly hiddenTokenIcon = new HiddenTokenIcon();
+  private readonly overlays = new TokenOverlays(() => this.redrawOverlays());
+  private readonly stopFollowingOverlays = tokenOverlays.subscribe(() => this.redrawOverlays());
+  /** Square corners (Appearance settings) switched: the bars and badges every token draws take the new corners. */
+  private readonly stopWatchingCorners = watchSquareCorners(() => {
+    this.uiManager.refreshResources();
+    if (this.pixiApp) requestRender(this.pixiApp);
+  });
   private readonly downedTokenOverlay = new DownedTokenOverlay(
     () => {
       if (this.pixiApp) requestRender(this.pixiApp);
@@ -118,6 +129,8 @@ export class TokenRenderer {
     () => this.pixiApp?.ticker ?? null,
   );
   private readonly glide: TokenGlide;
+  /** Tokens players walked into a wall with: their drawings lean and spring back. */
+  private readonly bumps: TokenBump;
   private readonly exit = new TokenExit({
     getTicker: () => this.pixiApp?.ticker ?? null,
     reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? document.body),
@@ -227,6 +240,12 @@ export class TokenRenderer {
       clearWay: (from, to) => this.glideWay?.(from, to) ?? true,
       heldPlayout: () => this.heldPlayout,
       heldBy: (tokenId) => this.heldBy(tokenId),
+    });
+    this.bumps = new TokenBump({
+      getTicker: () => this.pixiApp?.ticker ?? null,
+      getSprite: (tokenId) => this.tokenSprites[tokenId] ?? null,
+      cell: () => this.store.getState().grid?.size ?? 70,
+      reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? document.body),
     });
     this.obsApp = obsApp;
     this.viewport = viewport;
@@ -340,6 +359,7 @@ export class TokenRenderer {
     );
     this.syncService.setAnimationStartCallback((tokenId: string) => {
       this.glide.cancel(tokenId);
+      this.bumps.cancel(tokenId);
       // Could add visual feedback for animation start
     });
     this.syncService.setAnimationEndCallback((tokenId: string) => {
@@ -393,7 +413,7 @@ export class TokenRenderer {
     
     
     // Listen for player mode changes (local player view toggle)
-    const handlePlayerModeChange = (isPlayerMode: boolean) => {
+    const handlePlayerModeChange = (isPlayerMode: boolean): void => {
       this.isLocalPlayerMode = isPlayerMode;
       this.refreshPlayerSight();
     };
@@ -429,7 +449,7 @@ export class TokenRenderer {
     };
 
     // Listen for map load events to properly sync tokens
-    const handleMapLoaded = () => {
+    const handleMapLoaded = (): void => {
       // Sprites still loading belong to the previous load and are discarded when they finish
       this.mapLoadGeneration++;
       this.tokensLoading = new Set();
@@ -633,6 +653,7 @@ export class TokenRenderer {
     const ring = this.spriteFactory.createTokenRing(tokenGroup, resolvedRingColor, sizeWithMultiplier);
     syncTokenArtwork(tokenGroup, size);
     this.downedTokenOverlay.refresh(tokenGroup);
+    this.overlays.refresh(tokenGroup);
     if (ring) {
       this.tokenRings[tokenId] = ring;
     } else {
@@ -697,6 +718,11 @@ export class TokenRenderer {
   }
 
   /** Whether the canvas shows the token: it is on the map and neither the players' perspective nor their sight leaves it out. */
+  /** A player's token met a wall or a closed door on a step towards `(dx, dy)`: it bumps there, on this canvas and so in the player window. */
+  public bumpToken(tokenId: string, dx: number, dy: number): void {
+    this.bumps.bump(tokenId, dx, dy);
+  }
+
   public showsToken(tokenId: string): boolean {
     const token = mapTokens(levelObjects(this.store.getState()))[tokenId];
     return token !== undefined && !this.hidesToken(token);
@@ -733,6 +759,12 @@ export class TokenRenderer {
     if (!prevToken || (prevToken.isHidden ?? false) !== isHidden) {
       this.reestablishTokenInteractivity(tokenGroup);
     }
+  }
+
+  /** Another plugin added or took back an overlay, or its picture arrived: every token draws the overlays anew. */
+  private redrawOverlays(): void {
+    for (const group of Object.values(this.tokenSprites)) if (group && !group.destroyed) this.overlays.update(group);
+    if (this.pixiApp) requestRender(this.pixiApp);
   }
 
   /** Greys out a token at 0 HP and marks it with a skull; killing and healing a loaded token animate. */
@@ -1052,6 +1084,7 @@ export class TokenRenderer {
         
         this.applyTokenVisibilityPolicy(token, existingTokenGroup, prevToken);
         this.applyDownedState(token, existingTokenGroup, prevToken);
+        this.overlays.update(existingTokenGroup);
         
         // Update z-index if layer changed
         if (!prevToken || prevToken.layer !== token.layer) {
@@ -1138,6 +1171,7 @@ export class TokenRenderer {
           
           this.applyTokenVisibilityPolicy(character, tokenGroup);
           this.applyDownedState(character, tokenGroup);
+          this.overlays.update(tokenGroup);
 
           // A token selected before its sprite existed (it took stairs to the level the view
           // followed it to) gets the frame and handles a selection change drew without it
@@ -1280,6 +1314,7 @@ export class TokenRenderer {
     for (const id of ids) {
       const tokenGroup = this.tokenSprites[id];
       this.glide.cancel(id);
+      this.bumps.cancel(id);
       this.deselect(id);
       if (tokenGroup) {
         this.interactionController.removeInteractionHandlers(id, tokenGroup);
@@ -1361,6 +1396,7 @@ export class TokenRenderer {
     this.interactionController.destroyAll();
     this.dragRuler.destroy();
     this.glide.destroy();
+    this.bumps.destroy();
     this.playerSight.destroy();
     this.turnMarkers.destroy();
     
@@ -1406,6 +1442,8 @@ export class TokenRenderer {
     this.textureCache.destroyAll();
     this.hiddenTokenIcon.destroy();
     this.downedTokenOverlay.destroy();
+    this.stopFollowingOverlays();
+    this.stopWatchingCorners();
     
     // Clear all references
     this.tokenSprites = {};

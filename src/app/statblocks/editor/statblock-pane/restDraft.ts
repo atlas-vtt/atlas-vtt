@@ -24,12 +24,12 @@ export function emptyDraft(offer: RestOffer): RestDraft {
   return { spends: offer.spends.map(() => 0), steps: offer.choices.map(() => []) };
 }
 
-const clamp = (value: number, max: number): number => Math.max(0, Math.min(max, value));
+const clampFromZero = (value: number, max: number): number => Math.max(0, Math.min(max, value));
 
 /** The button's own Spend rule `index` set to `units`, within 0 and what the offer allows. */
 export function withSpend(draft: RestDraft, offer: RestOffer, index: number, units: number): RestDraft {
   const max = offer.spends[index]?.max ?? 0;
-  return { ...draft, spends: draft.spends.map((value, at) => (at === index ? clamp(units, max) : value)) };
+  return { ...draft, spends: draft.spends.map((value, at) => (at === index ? clampFromZero(units, max) : value)) };
 }
 
 function withStep(draft: RestDraft, step: number, picks: readonly PickDraft[]): RestDraft {
@@ -83,7 +83,7 @@ export function withPickSpend(draft: RestDraft, step: number, choice: ChoiceOffe
   return withStep(draft, step, picks.map((pick, at) => {
     if (at !== index) return pick;
     const max = choice.actions.find((each) => each.id === pick.action)?.spends[spend]?.max ?? 0;
-    return { ...pick, spends: pick.spends.map((value, which) => (which === spend ? clamp(units, max) : value)) };
+    return { ...pick, spends: pick.spends.map((value, which) => (which === spend ? clampFromZero(units, max) : value)) };
   }));
 }
 

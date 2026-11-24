@@ -1,7 +1,9 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import obsidianmd from "eslint-plugin-obsidianmd";
+import reactHooks from "eslint-plugin-react-hooks";
 import { builtinModules } from "node:module";
 import { BOUNDARIES, PLUGIN_ONLY_SPECIFIER } from "./scripts/boundaries.mjs";
+import { conventionConfigs } from "./scripts/eslint/atlasPlugin.mjs";
 
 // Keep the directory rules and add the restrictions for shared helpers.
 const restrictedGlobals = new Map();
@@ -26,86 +28,6 @@ const nodeNames = builtinModules.map(name => name.replace(/^node:/, "").replace(
 // Obsidian's whole-repository scan runs into.
 const SCRIPT_FILES = ["**/*.{ts,cts,mts,tsx,js,cjs,mjs,jsx}"];
 
-// A `title` attribute shows the browser's tooltip. Atlas shows its own
-// (`LabelTooltip`) where one is wanted and names controls with `aria-label`.
-const TITLE_MESSAGE = "`title` shows the browser tooltip. Use `aria-label`, or `LabelTooltip` for a visible tooltip.";
-const NO_NATIVE_TITLE = [
-  { selector: "JSXOpeningElement[name.name=/^[a-z]/] > JSXAttribute[name.name='title']", message: TITLE_MESSAGE },
-  { selector: "CallExpression[callee.property.name=/^(setAttribute|setAttr)$/][arguments.0.value='title']", message: TITLE_MESSAGE },
-  { selector: "Property[key.name='attr'] > ObjectExpression > Property[key.name='title']", message: TITLE_MESSAGE },
-  { selector: "AssignmentExpression > MemberExpression.left[property.name='title'][object.type!='ThisExpression']:not([object.name=/^(doc|document)$/])", message: TITLE_MESSAGE },
-];
-
-// Sight rules read a token's vision switch only through the sight policies.
-const VISION_FIELD_MESSAGE = "Which tokens give sight or are always seen is decided in vision/tokenSightPolicy.ts.";
-const VISION_FIELD_READS = [
-  { selector: "MemberExpression[property.name='enabled'][object.property.name='vision']", message: VISION_FIELD_MESSAGE },
-  { selector: "MemberExpression[property.name='enabled'][object.name='vision']", message: VISION_FIELD_MESSAGE },
-];
-// The import is flagged rather than the call, so an alias cannot pass; the member selector
-// catches a namespace import, the export selector a re-export.
-const VISION_ON_MESSAGE = "Only sightSources and selectSight ask visionOn; elsewhere ask the picture's SightPolicy (vision/tokenSightPolicy.ts).";
-const VISION_ON_USES = [
-  { selector: "ImportSpecifier[imported.name='visionOn']", message: VISION_ON_MESSAGE },
-  { selector: "ExportSpecifier[local.name='visionOn']", message: VISION_ON_MESSAGE },
-  { selector: "MemberExpression[property.name='visionOn']", message: VISION_ON_MESSAGE },
-];
-// What draws, hit-tests, sees or selects reads the objects of the level its view shows, through
-// `levelObjects` (levels/levelObjects.ts); a raw read would show every floor's tokens and walls at once.
-// The destructuring selectors catch `const { objects } = state` and `({ objects }) =>`.
-const LEVEL_OBJECTS_MESSAGE = "Read a view's objects with levelObjects(state) (levels/levelObjects.ts): only those on the level it shows.";
-const LEVEL_OBJECT_READS = [
-  { selector: "MemberExpression[property.name='objects']", message: LEVEL_OBJECTS_MESSAGE },
-  { selector: "ObjectPattern > Property[key.name='objects']", message: LEVEL_OBJECTS_MESSAGE },
-];
-const LEVEL_OBJECT_READERS = ["src/app/pixi/**/*.{ts,tsx}", "src/app/vision/**/*.{ts,tsx}", "src/app/lighting/**/*.{ts,tsx}", "src/app/fog/**/*.{ts,tsx}", "src/app/audio/**/*.{ts,tsx}"];
-
-// A note's text reaches the YAML parser only through the helper that checks it first. The import
-// is flagged rather than the call, so an alias cannot pass; the member selector catches a
-// namespace import, the export selector a re-export, the pattern selector a destructuring.
-const PARSE_YAML_MESSAGE = "Parse the YAML of notes, bases and bundles with parseNoteYaml (services/noteYaml.ts), which checks the text first.";
-const PARSE_YAML_USES = [
-  { selector: "ImportSpecifier[imported.name='parseYaml']", message: PARSE_YAML_MESSAGE },
-  { selector: "ExportSpecifier[local.name='parseYaml']", message: PARSE_YAML_MESSAGE },
-  { selector: "MemberExpression[property.name='parseYaml']", message: PARSE_YAML_MESSAGE },
-  { selector: "ObjectPattern > Property[key.name='parseYaml']", message: PARSE_YAML_MESSAGE },
-  { selector: "ImportDeclaration[source.value='yaml']", message: PARSE_YAML_MESSAGE },
-  { selector: "CallExpression[callee.name='require'][arguments.0.value='yaml']", message: PARSE_YAML_MESSAGE },
-];
-const NOTE_YAML_PARSER = "src/app/services/noteYaml.ts";
-// Atlas' messages are Obsidian's notices in Atlas' look, which only the helper gives them.
-const NATIVE_NOTICE = [
-  { selector: "NewExpression[callee.name='Notice']", message: "Show a message with showNotice (src/app/ui/notice.ts), which gives it Atlas' look." },
-];
-const ATLAS_NOTICE = "src/app/ui/notice.ts";
-
-// The map holds only the tokens that are not kept beside it (`tokens/offMap.ts`): code that draws,
-// hit-tests, selects, sees, lights, hears, measures, moves with the map or shares the map with
-// players reads them through `mapTokens`, and says so with `sceneTokens` where it means every token.
-const MAP_TOKEN_MESSAGE = "Read the map's tokens with mapTokens, or every token of the scene with sceneTokens (tokens/offMap.ts): tokens kept beside the map are no part of it.";
-const MAP_TOKEN_READS = [
-  { selector: "MemberExpression[property.name='tokens'][object.property.name='objects']", message: MAP_TOKEN_MESSAGE },
-  { selector: "MemberExpression[property.name='tokens'][object.name='objects']", message: MAP_TOKEN_MESSAGE },
-  { selector: "VariableDeclarator[init.property.name='objects'] > ObjectPattern > Property[key.name='tokens']", message: MAP_TOKEN_MESSAGE },
-  { selector: "VariableDeclarator[init.name='objects'] > ObjectPattern > Property[key.name='tokens']", message: MAP_TOKEN_MESSAGE },
-];
-const MAP_TOKEN_READERS = [
-  "src/app/pixi/**/*.{ts,tsx}",
-  "src/app/vision/**/*.{ts,tsx}",
-  "src/app/lighting/**/*.{ts,tsx}",
-  "src/app/audio/**/*.{ts,tsx}",
-  "src/app/fog/**/*.{ts,tsx}",
-  "src/app/grid/**/*.{ts,tsx}",
-  "src/app/clipboard/**/*.{ts,tsx}",
-  "src/app/PixiRendererOrchestrator.ts",
-  "src/app/react/useMapNavigationHotkeys.ts",
-  "src/app/online/gm/{TokenShare,sceneInputs,gmMarks,dragRulers,MapLayerShare,LiveShare,playerMoves,playerDrags,playerTokenVision}.ts",
-];
-
-// The two files that may ask `visionOn`: no source without vision on, whatever a policy says,
-// and the selection's check of every token.
-const VISION_ON_ASKERS = ["src/app/vision/sight.ts", "src/app/vision/selectSight.ts"];
-
 export default defineConfig([
   globalIgnores(["atlas-website/", "token-ui-examples/", "party/", "logs/", "benchmarks/", "release/", "dist/", "node_modules/", "test-vault/", "networking-test-vault/", "tests/", "scripts/", "docs/", "vite/", "**/*.test.*", "*.js", "*.cjs", "*.mjs", "*.mts", "*.config.ts"]),
   ...obsidianmd.configs.recommended,
@@ -121,50 +43,44 @@ export default defineConfig([
         "ts-nocheck": true,
         "ts-expect-error": true,
       }],
-      "no-restricted-syntax": ["error", ...NATIVE_NOTICE, ...NO_NATIVE_TITLE, ...PARSE_YAML_USES],
     },
   },
   {
-    files: MAP_TOKEN_READERS,
-    ignores: ["**/__tests__/**"],
+    // TypeScript files only: a return type is written out, so a reader and a caller see it without
+    // inferring it, and a switch over a union names every member or says `default`.
+    files: ["**/*.{ts,tsx}"],
     rules: {
-      "no-restricted-syntax": ["error", ...NATIVE_NOTICE, ...NO_NATIVE_TITLE, ...PARSE_YAML_USES, ...MAP_TOKEN_READS],
+      "@typescript-eslint/explicit-function-return-type": ["error", {
+        allowExpressions: true,
+        allowTypedFunctionExpressions: true,
+        allowHigherOrderFunctions: true,
+        allowIIFEs: true,
+      }],
+      "@typescript-eslint/switch-exhaustiveness-check": ["error", { considerDefaultExhaustiveForUnions: true }],
     },
   },
-  // A later block replaces the rule's options for the files it matches, so the level readers repeat the map's token reads.
+  // Atlas' own conventions, one named rule each (scripts/eslint/conventions.mjs). They are rules
+  // of their own because a later block replaces the options of a rule for the files it matches:
+  // as selectors of `no-restricted-syntax`, every block had to repeat the others'.
+  ...conventionConfigs(SCRIPT_FILES),
+  // React: the rules of hooks, and what a render or an effect may not do. Only `.tsx` and
+  // `use*.ts`, where components and hooks are written: in any other module `rules-of-hooks`
+  // takes a callback that happens to be named `use` for a hook.
+  // `exhaustive-deps` stays off while memos are invalidated by a revision counter in their
+  // dependency list: the rule calls that dependency unnecessary, and removing it is a bug.
+  // `refs` stays off: it also reports handlers a hook returns and ref-callback factories.
   {
-    files: LEVEL_OBJECT_READERS,
-    ignores: ["**/__tests__/**"],
+    files: ["src/**/*.tsx", "src/**/use*.ts"],
+    plugins: { "react-hooks": reactHooks },
     rules: {
-      "no-restricted-syntax": ["error", ...NATIVE_NOTICE, ...NO_NATIVE_TITLE, ...PARSE_YAML_USES, ...MAP_TOKEN_READS, ...LEVEL_OBJECT_READS],
-    },
-  },
-  // Which tokens give sight and which a picture always shows is decided in one place,
-  // `vision/tokenSightPolicy.ts`. A later block replaces the rule's options for the files it
-  // matches, so both blocks repeat the `title` selectors.
-  {
-    files: ["src/app/vision/**/*.{ts,tsx}", "src/app/pixi/lighting/**/*.{ts,tsx}"],
-    ignores: ["src/app/vision/tokenSightPolicy.ts", ...VISION_ON_ASKERS, "**/__tests__/**"],
-    rules: {
-      "no-restricted-syntax": ["error", ...NATIVE_NOTICE, ...NO_NATIVE_TITLE, ...PARSE_YAML_USES, ...VISION_FIELD_READS, ...VISION_ON_USES, ...MAP_TOKEN_READS, ...LEVEL_OBJECT_READS],
-    },
-  },
-  {
-    files: VISION_ON_ASKERS,
-    rules: {
-      "no-restricted-syntax": ["error", ...NATIVE_NOTICE, ...NO_NATIVE_TITLE, ...PARSE_YAML_USES, ...VISION_FIELD_READS, ...MAP_TOKEN_READS, ...LEVEL_OBJECT_READS],
-    },
-  },
-  {
-    files: [NOTE_YAML_PARSER],
-    rules: {
-      "no-restricted-syntax": ["error", ...NATIVE_NOTICE, ...NO_NATIVE_TITLE],
-    },
-  },
-  {
-    files: [ATLAS_NOTICE],
-    rules: {
-      "no-restricted-syntax": ["error", ...NO_NATIVE_TITLE, ...PARSE_YAML_USES],
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/set-state-in-effect": "error",
+      // No findings when they were switched on, so they stay that way.
+      "react-hooks/set-state-in-render": "error",
+      "react-hooks/use-memo": "error",
+      "react-hooks/globals": "error",
+      "react-hooks/error-boundaries": "error",
+      "react-hooks/unsupported-syntax": "error",
     },
   },
   // Statblocks: only the drag-and-drop wrapper may import dnd-kit, and the pure

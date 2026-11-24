@@ -1,4 +1,5 @@
 import { useEffect, useState, type RefObject } from 'react';
+import { isWithin } from './screenKeys';
 
 /**
  * Whether the linked note holds the keys: while it does, nothing it types reaches the canvas's hotkeys,
@@ -18,9 +19,12 @@ export function useNoteFocus(isOpen: boolean, screenRef: RefObject<HTMLDivElemen
     if (!notesSection) return;
 
     const stopKeyPropagation = (e: KeyboardEvent): void => {
-      e.stopPropagation();
+      const isEscape = e.type === 'keydown' && e.key === 'Escape';
+      // The note's editor is Obsidian's and has taken its keys below this section. The picker shown while no note
+      // is linked is React's, which hears keys at its root above: its arrows and Enter must get there.
+      if (isEscape || !isWithin(e.target, '.atlas-linked-note-picker')) e.stopPropagation();
 
-      if (e.type === 'keydown' && e.key === 'Escape') {
+      if (isEscape) {
         e.preventDefault();
 
         // Give CodeMirror time to finish processing before unfocusing

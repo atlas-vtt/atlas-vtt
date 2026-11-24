@@ -43,3 +43,9 @@ export function removeCondition(token: TokenConditionState, conditionId: string)
   if (Object.keys(values).length > 0) token.conditionValues = values;
   else delete token.conditionValues;
 }
+
+/** Takes every condition and number off the token in place. */
+export function clearConditions(token: TokenConditionState): void {
+  delete token.conditions;
+  delete token.conditionValues;
+}

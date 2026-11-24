@@ -114,16 +114,10 @@ export function isAppUrl(path: string): boolean {
   return isResourceUrl(path);
 }
 
-/**
- * Check if a path is absolute
- */
 export function isAbsolutePath(path: string): boolean {
   return path?.startsWith('/') || false;
 }
 
-/**
- * Check if a path needs normalization
- */
 export function needsPathNormalization(path: string): boolean {
   return isAppUrl(path) || isAbsolutePath(path);
 }

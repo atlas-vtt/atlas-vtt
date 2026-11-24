@@ -8,6 +8,7 @@ import { t } from '../../../../i18n';
 import { portalHost } from '../../../../host/portalHost';
 import { usePickerPlacement } from './usePickerPlacement';
 import { useFocusTrap } from '../../primitives/useFocusTrap';
+import { revealInList } from '../../../../utils/scrollWithin';
 
 export interface CollectionPickerProps {
   collections: CollectionOption[];
@@ -52,6 +53,12 @@ export function CollectionPicker({ collections, selectedCollection, onSelectColl
   // Tab stays in the open list's search, never moving on to the window's tabs behind it.
   useFocusTrap(popoverRef, isOpen);
   const placement = usePickerPlacement(isOpen ? trigger : null, popover);
+  const searchRef = useRef<HTMLInputElement>(null);
+  // Once it has its place: what is not shown yet takes no focus.
+  const placed = placement !== undefined;
+  useEffect(() => {
+    if (placed) searchRef.current?.focus({ preventScroll: true });
+  }, [placed]);
   const listId = useId();
 
   const filtered = collections.filter((c) => c.name.toLowerCase().includes(query.toLowerCase()));
@@ -87,7 +94,8 @@ export function CollectionPicker({ collections, selectedCollection, onSelectColl
 
   // The highlighted row stays in view as the arrows move it.
   useEffect(() => {
-    if (isOpen && active >= 0) listRef.current?.querySelector(`[id="${optionId(active)}"]`)?.scrollIntoView?.({ block: 'nearest' });
+    const row = isOpen && active >= 0 ? listRef.current?.querySelector(`[id="${optionId(active)}"]`) : null;
+    if (row) revealInList(row);
   }, [isOpen, active]);
 
   const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>): void => {
@@ -127,10 +135,11 @@ export function CollectionPicker({ collections, selectedCollection, onSelectColl
       </button>
 
       {isOpen && createPortal(
-        <div ref={attachPopover} className="atlas-collection-dropdown-content atlas-collection-dropdown-content--anchored" style={placement} data-placed={placement ? '' : undefined}>
+        <div ref={attachPopover} className="atlas-collection-dropdown-content atlas-collection-dropdown-content--anchored" style={placement} data-placed={placed ? '' : undefined}>
           <div className="atlas-collection-search">
             <Search className="atlas-collection-search-icon" />
             <input
+              ref={searchRef}
               type="text"
               role="combobox"
               aria-label={t('creator.searchCollections')}
@@ -143,7 +152,6 @@ export function CollectionPicker({ collections, selectedCollection, onSelectColl
               onChange={(e) => { setQuery(e.target.value); setHighlight(0); }}
               onKeyDown={handleSearchKeyDown}
               className="atlas-collection-search-input"
-              autoFocus
             />
           </div>
           {filtered.length > 0 && <div ref={listRef} id={listId} className="atlas-collection-options" role="listbox" aria-label={t('assetGrid.collections')}>

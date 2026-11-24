@@ -64,6 +64,7 @@ export const settings = {
   "settings.updates.checking": "Controllo in corso…",
   "settings.updates.notice": "Atlas {version} è pronto per l’installazione.",
   "settings.updates.noticeTitle": "Aggiornamento disponibile",
+  "settings.updates.partUpdate": "Atlas è aggiornato solo in parte su questo dispositivo: è in esecuzione la versione {running}, il resto è della {installed}. Uno strumento di sincronizzazione ha saltato il suo grande file main.js; copia quel file dal tuo altro dispositivo, o dalla versione {installed} di Atlas su GitHub, nella cartella del plugin di questo vault.",
   "settings.updates.upToDate": "Atlas è aggiornato",
   "settings.updates.update": "Aggiorna",
   "settings.updates.whatsNew": "Novità",

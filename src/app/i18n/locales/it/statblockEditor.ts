@@ -5,7 +5,6 @@ export const statblockEditor = {
   "statblockEditor.aliases": "Alias",
   "statblockEditor.allTemplates": "Tutti i modelli",
   "statblockEditor.apply": "Applica",
-  "statblockEditor.autoLayout": "Mostrato con l’impaginazione dei campi di Atlas",
   "statblockEditor.builtIn": "Incluso",
   "statblockEditor.cancel": "Annulla",
   "statblockEditor.changeFailed": "Impossibile modificare lo statblock.",

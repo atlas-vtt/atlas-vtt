@@ -25,10 +25,18 @@
     "release:validate": "node scripts/prepare-release-assets.js --validate-only",
     "version": "node scripts/sync-version.js && git add manifest.json versions.json CHANGELOG.md src/app/changelog/releases.json",
     "version:check": "node scripts/release-channel.js",
-    "lint": "eslint . --max-warnings 0 --suppressions-location eslint.suppressions.json",
+    "lint": "cross-env NODE_OPTIONS=--max-old-space-size=8192 eslint . --config eslint.config.mjs --max-warnings 0 --suppressions-location eslint.suppressions.json --pass-on-unpruned-suppressions",
+    "lint:prune": "cross-env NODE_OPTIONS=--max-old-space-size=8192 eslint . --config eslint.config.mjs --suppressions-location eslint.suppressions.json --prune-suppressions",
+    "lint:tests": "eslint tests src --config scripts/eslint/testsConfig.mjs --max-warnings 0 --suppressions-location eslint.tests.suppressions.json --pass-on-unpruned-suppressions",
+    "lint:tests:prune": "eslint tests src --config scripts/eslint/testsConfig.mjs --suppressions-location eslint.tests.suppressions.json --prune-suppressions",
     "lint:scan": "node scripts/lint-scan.js",
     "preflight": "node scripts/preflight.js",
-    "check:boundaries": "node scripts/check-boundaries.mjs && tsc -p tsconfig.shared.json"
+    "check": "node scripts/check.mjs",
+    "check:boundaries": "node scripts/check-boundaries.mjs && tsc -p tsconfig.shared.json",
+    "check:sizes": "node scripts/check-file-sizes.mjs",
+    "check:docs": "node scripts/check-doc-refs.mjs",
+    "check:guards": "node scripts/check-guards.mjs",
+    "verify": "tsc --noEmit && npm run lint && npm run lint:tests && npm run changelog:check && npm run check:boundaries && npm run check:sizes && npm run check:docs && vitest run --project unit"
   },
   "keywords": [
     "obsidian",
@@ -84,6 +92,7 @@
     "esbuild": "0.28.2",
     "eslint": "^10.15.0",
     "eslint-plugin-obsidianmd": "^0.4.2",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "fast-check": "4.10.2",
     "jsdom": "^26.1.0",
     "obsidian": "^1.14.4",
@@ -99,7 +108,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ByteMirror/atlas-vtt.git"
+    "url": "https://github.com/atlas-vtt/atlas-vtt.git"
   },
   "engines": {
     "node": ">=22"

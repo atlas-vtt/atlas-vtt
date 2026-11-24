@@ -34,8 +34,6 @@ export const tour: Translation = {
   'tour.notNow': '以后再说',
   'tour.progress': '第 {step} 步，共 {total} 步',
   'tour.replay': '查看导览',
-  'tour.dashboard.welcomeTitle': '欢迎使用 Atlas',
-  'tour.dashboard.welcomeBody': 'Atlas 用你仓库里的地图来跑团：指示物、迷雾、先攻，还有一个给玩家看的第二窗口。每次跑团都从这个页面开始。',
   'tour.dashboard.sceneTitle': '场景',
   'tour.dashboard.sceneBody': '场景是一张可以直接开玩的地图，带有自己的指示物、迷雾和标记。场景由地图图片创建，上次玩过的场景会在这里等你。',
   'tour.dashboard.assetsTitle': '素材库',

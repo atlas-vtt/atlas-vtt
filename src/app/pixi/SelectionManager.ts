@@ -24,6 +24,7 @@ import { GROUP_ROTATE_REACH } from './selection/GroupRotateButton';
 import type { Box } from './selection/selectionGeometry';
 import { marqueeSelection, selectMoreAfter } from '../annotations/selectMore';
 import { mapTokens } from '../tokens/offMap';
+import { uiCorner } from './utils/squareCorners';
 
 /** What the drawings and texts of a view tell the selection (`AnnotationsRenderer`). */
 export interface AnnotationSelectionHost {
@@ -308,7 +309,7 @@ export class SelectionManager {
       const sw = Math.abs(worldPos.x - this.selectionStart.x);
       const sh = Math.abs(worldPos.y - this.selectionStart.y);
       
-      this.marqueeGraphics.roundRect(sx, sy, sw, sh, 4 / this.zoom());
+      this.marqueeGraphics.roundRect(sx, sy, sw, sh, uiCorner(4 / this.zoom()));
       this.paintMarquee(accentHex);
     }
   }

@@ -1,0 +1,91 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// What players see (PlayersSeeMenu.tsx): columns side by side, as the palette's player view settings
+// lay them out, each as wide as its rows. Where the view leaves no room for them side by side, the
+// second column wraps below the first (`useKeepInView` gives the widest the menu can be).
+//
+// Its content stands 16 px inside the border on every side: the menu's padding and text edge across,
+// the same twelve above and below in each column. One rhythm inside: rows 4 px apart, the parts of a
+// group 12 px, groups 24 px, which is also what stands between two columns stacked. Headings and part
+// labels tell the parts apart, so there is no rule between them.
+//
+// Every rule is scoped as the menu's own are (`.atlas-vtt-plugin .atlas-dropdown-content`, whose column
+// direction would otherwise win): the primitives are imported into `main.scss` inside that scope.
+.atlas-vtt-plugin .atlas-dropdown-content.atlas-players-see-menu {
+  width: max-content;
+  max-width: var(--atlas-keep-in-view-max-width, none);
+
+  // Capped to its room, the menu leaves the scrolling to its body, which gives way (the cap keeps
+  // every other menu's children their size)
+  &.atlas-keep-in-view--capped {
+    overflow: hidden;
+
+    > .atlas-players-see-menu__body {
+      flex-shrink: 1;
+    }
+  }
+}
+
+// The columns. A menu taller than its room scrolls here, and a shadow says that more lies above or
+// below (the shadow is anchored to this area, so it cannot be the positioned menu itself).
+.atlas-vtt-plugin .atlas-players-see-menu__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0 $surface-inset;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  @include atlas-scroll-shadow;
+}
+
+.atlas-vtt-plugin .atlas-players-see-menu__column {
+  @include atlas-flex-col($spacing-xl);
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-block: $spacing-m;
+}
+
+.atlas-vtt-plugin .atlas-players-see-menu__group {
+  @include atlas-flex-col($spacing-xs);
+}
+
+.atlas-vtt-plugin .atlas-players-see-menu__parts {
+  @include atlas-flex-col($spacing-m);
+}
+
+.atlas-vtt-plugin .atlas-players-see-menu__part {
+  @include atlas-flex-col($spacing-xs);
+}
+
+// A group's name, on the menu's text edge: larger and heavier than the rows' words, a step quieter in
+// colour, and readable at a glance.
+.atlas-vtt-plugin .atlas-players-see-menu__heading {
+  margin: 0;
+  padding-inline: var(--atlas-menu-text-inset);
+  color: color-mix(in oklch, var(--text-normal) 80%, var(--text-muted));
+  font-size: $font-ui-medium;
+  font-weight: $font-weight-semibold;
+  line-height: var(--line-height-tight);
+}
+
+// A part of a group (the tokens, how online players play): the rows below it are what it names,
+// set apart from them by weight and a step of colour, and as readable (APCA Lc 60 and more).
+.atlas-vtt-plugin .atlas-dropdown-label.atlas-players-see-menu__label {
+  color: color-mix(in oklch, var(--text-normal) 60%, var(--text-muted));
+  font-weight: $font-weight-semibold;
+}
+
+// The line that says why switches are greyed out keeps its room while they are not, so the menu keeps
+// its shape when the switch is pressed (standing in the gap below instead crowded the next heading)
+.atlas-vtt-plugin .atlas-players-see-menu__part .atlas-players-see-menu__reason[aria-hidden='true'] {
+  visibility: hidden;
+}
+
+// A line in a part (nothing to show, why switches are greyed out): the part labels' colour at the rows'
+// size and weight, so it reads as a remark, not as another label
+.atlas-vtt-plugin .atlas-players-see-menu__part .atlas-dropdown-hint {
+  font-size: $font-ui-small;
+  color: color-mix(in oklch, var(--text-normal) 60%, var(--text-muted));
+}

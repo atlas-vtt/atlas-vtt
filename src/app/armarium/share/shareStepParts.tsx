@@ -8,12 +8,15 @@ import { ArmariumHosts } from '../armariumHosts';
 import { ARMARIUM_MINE_URL } from '../armariumUrls';
 import type { AnyShareSession } from '../upload/anyShareSession';
 import { ItemShareSession } from '../upload/ItemShareSession';
+import { MusicShareSession } from '../upload/MusicShareSession';
+import { musicProblems } from '../upload/musicShareRules';
 import type { ShareSnapshot } from '../upload/shareState';
 import { ACCOUNT_PAGE_REFUSALS } from '../upload/uploadContract';
 import { AccountStep } from './steps/AccountStep';
 import { ChecksStep } from './steps/ChecksStep';
 import { DoneStep } from './steps/DoneStep';
 import { ItemStep } from './steps/ItemStep';
+import { MusicStep } from './steps/MusicStep';
 import { ListingStep } from './steps/ListingStep';
 import { PublishStep } from './steps/PublishStep';
 import { UploadStep } from './steps/UploadStep';
@@ -56,6 +59,13 @@ function withSignIn(snapshot: ShareSnapshot, account: AtlasAccount, actions: Rea
   return action(t('account.signIn'), () => void account.signIn(), true);
 }
 
+/** An upload that stopped is sent again; packing that failed packs again, or goes back to what was chosen to pack. */
+function uploadActions({ refusal, busy }: ShareSnapshot, session: AnyShareSession): React.ReactNode {
+  if (refusal === null || busy) return null;
+  const retry = action(t('armariumShare.retry'), () => session.retryUpload(), true);
+  return refusal.code === 'export-failed' ? [action(t('common.back'), () => session.backFromPacking()), retry] : retry;
+}
+
 /** A check that refused or failed starts over; an ask that stopped is asked again. */
 function checksActions({ submission, refusal, busy }: ShareSnapshot, session: AnyShareSession): React.ReactNode {
   if (submission?.state === 'rejected' || submission?.state === 'failed') return action(t('armariumShare.startOver'), () => session.startOver(), true);
@@ -73,7 +83,7 @@ function accountParts(snapshot: ShareSnapshot, session: AnyShareSession, account
 
 /** The open step's title, content and actions; the dialog lays them out. */
 export function shareStepParts({ app, session, snapshot, account, accountState, onClose }: PartsInput): StepParts {
-  const { step, busy, refusal, bundle } = snapshot;
+  const { step, busy, bundle } = snapshot;
   switch (step) {
     case 'bundle':
       if (session instanceof ItemShareSession && snapshot.subject === 'item') {
@@ -83,6 +93,14 @@ export function shareStepParts({ app, session, snapshot, account, accountState, 
           actions: action(t('armariumShare.continue'), () => session.confirmItem(), true),
         };
       }
+      if (session instanceof MusicShareSession && snapshot.subject === 'music') {
+        const preparing = musicProblems(snapshot).tracks === 'preparing';
+        return {
+          title: t('armariumShare.title.item'),
+          body: <MusicStep snapshot={snapshot} session={session} />,
+          actions: action(preparing ? t('armariumMusic.preparing') : t('armariumShare.continue'), () => session.confirmMusic(), true, preparing || snapshot.version === null),
+        };
+      }
       return accountParts(snapshot, session, account, accountState);
     case 'account':
       return accountParts(snapshot, session, account, accountState);
@@ -90,7 +108,7 @@ export function shareStepParts({ app, session, snapshot, account, accountState, 
       return {
         title: shareSaid(snapshot.subject, 'armariumShare.title.upload'),
         body: <UploadStep snapshot={snapshot} />,
-        actions: withSignIn(snapshot, account, refusal !== null && !busy ? action(t('armariumShare.retry'), () => session.retryUpload(), true) : null),
+        actions: withSignIn(snapshot, account, uploadActions(snapshot, session)),
         summary: bundle === null ? undefined : formatFileSize(bundle.bytes),
       };
     case 'checks':

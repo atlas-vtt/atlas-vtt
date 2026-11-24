@@ -16,6 +16,7 @@ import { clearSittingOut } from '../initiative/rounds';
 import { createInitiativeTurnActions, type InitiativeTurnActions } from './initiativeTurnActions';
 import { fightDraws, roundChangesOf } from './initiativeFightStart';
 import { setInitiative } from '../initiative/awaitingInitiative';
+import { newId } from '../utils/ids';
 
 /**
  * Initiative slice state interface
@@ -65,21 +66,11 @@ interface InitiativeStoreState {
  */
 type ImmerSet = (fn: (draft: InitiativeStoreState) => void) => void;
 
-/**
- * Create the initial initiative state
- */
 export function createInitialInitiativeState(): Pick<InitiativeSlice, 'initiative' | 'initiativeTrackerOpen'> {
   return {
     initiative: createDefaultInitiativeState(),
     initiativeTrackerOpen: false,
   };
-}
-
-/**
- * Generate a unique initiative entry ID
- */
-function generateInitiativeId(): string {
-  return `init_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 }
 
 /** A combatant's roll: the total and the modifier it added. */
@@ -118,7 +109,7 @@ export function createInitiativeActions(
     }),
 
     addToInitiative: (entry) => {
-      const id = generateInitiativeId();
+      const id = newId('init');
       set((draft) => {
         const order = draft.initiative.entries.length;
         const newEntry: InitiativeEntry = {

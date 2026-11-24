@@ -174,6 +174,18 @@
   overflow-y: auto;
   overflow-x: hidden;
   @include atlas-scroll-shadow(fixed);
+
+  // Fixed shadows lie outside the window's rounded clip: they fade out before its corners rather than stand past them.
+  &::before,
+  &::after {
+    mask-image: linear-gradient(
+      to right,
+      transparent var(--atlas-am-window-radius),
+      #000 calc(2 * var(--atlas-am-window-radius)),
+      #000 calc(100% - 2 * var(--atlas-am-window-radius)),
+      transparent calc(100% - var(--atlas-am-window-radius))
+    );
+  }
   padding: $spacing-l;
   display: flex;
   flex-direction: column;

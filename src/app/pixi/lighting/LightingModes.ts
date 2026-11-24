@@ -3,7 +3,7 @@ import type { Point } from '../../types/visionTypes';
 import type { LayerVisibility } from '../playerSafeFrame';
 import { ExploredBrush, type ExploredBrushDeps } from './ExploredBrush';
 import { LightZoneEditor, type LightZoneEditorDeps } from './LightZoneEditor';
-import { RoomEditor } from './RoomEditor';
+import { RoomEditor, type RoomEditorDeps } from './RoomEditor';
 import { LevelSurfaceEditor } from '../levelSurfaces/LevelSurfaceEditor';
 
 /** What a press needs of the pointer event (`LightZoneEditor`). */
@@ -21,7 +21,7 @@ export class LightingModes {
   readonly memory: ExploredBrush;
   readonly rooms: RoomEditor;
 
-  constructor(deps: LightZoneEditorDeps & Pick<ExploredBrushDeps, 'bounds' | 'edit' | 'announce'> & { onSurfacesFull: () => void }) {
+  constructor(deps: LightZoneEditorDeps & Pick<ExploredBrushDeps, 'bounds' | 'edit' | 'announce'> & Pick<RoomEditorDeps, 'mapImage'> & { onSurfacesFull: () => void }) {
     this.zones = new LightZoneEditor(deps);
     this.surfaces = new LevelSurfaceEditor({ ...deps, onFull: deps.onSurfacesFull });
     this.memory = new ExploredBrush(deps);

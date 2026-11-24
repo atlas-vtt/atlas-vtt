@@ -15,6 +15,7 @@ import { destroyTree } from '../utils/destroyTree';
 import { senseRings, type SenseRing, type SenseRings } from './senseRings';
 import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
+import { uiCorner } from '../utils/squareCorners';
 
 /** Screen pixels. */
 const LINE_WIDTH = 1.25;
@@ -244,8 +245,8 @@ function drawLabel(text: string): Container {
   badge.addChild(
     new Graphics()
       // A dark hairline keeps the badge's edge on a map as light as the badge.
-      .roundRect(-width / 2 - 0.5, -height / 2 - 0.5, width + 1, height + 1, LABEL_RADIUS + 0.5).stroke({ width: 1, color: 0x000000, alpha: 0.35 })
-      .roundRect(-width / 2, -height / 2, width, height, LABEL_RADIUS).fill({ color: colors.background, alpha: 0.94 }),
+      .roundRect(-width / 2 - 0.5, -height / 2 - 0.5, width + 1, height + 1, uiCorner(LABEL_RADIUS + 0.5)).stroke({ width: 1, color: 0x000000, alpha: 0.35 })
+      .roundRect(-width / 2, -height / 2, width, height, uiCorner(LABEL_RADIUS)).fill({ color: colors.background, alpha: 0.94 }),
     label,
   );
   label.position.set(-label.width / 2, -label.height / 2);

@@ -161,6 +161,7 @@ export class MosaicCanvasLayer {
     for (const waiter of [...this.waiters]) waiter.settle();
   }
 
+  // The camera is read on every tick: pixi-viewport's `moveCenter` and `setZoom` emit no event to wait for.
   private readonly tick = (): void => {
     const camera = this.camera?.() ?? null;
     if (!sameView(camera, this.lastCamera)) {

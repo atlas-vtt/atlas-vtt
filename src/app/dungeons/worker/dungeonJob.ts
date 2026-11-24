@@ -12,7 +12,7 @@ import { drawingCanvas, learnCanvasLimit, nextCanvasStep } from '../../imageProc
 
 /**
  * What the dungeon worker does: generate a dungeon (or take one as it is) and draw its floor plan
- * on an `OffscreenCanvas`. Runs in the worker, or in the window where no worker can start.
+ * on an `OffscreenCanvas`.
  */
 
 /** The picture size sizes of a map's strokes are judged against (`legibleStyle`). */

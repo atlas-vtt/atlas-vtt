@@ -8,9 +8,11 @@
 }
 
 .atlas-token-ring {
-  // Declared here, not inline: the ring is a 230 KB data URI, which every card
+  // Declared here, not inline: the ring is a 75 KB data URI, which every card
   // that set it inline made the browser parse again (#137).
-  --atlas-token-ring-image: url('../../../assets/token-ring.webp');
+  // The canvas' ring at half its size: no portrait is wider than 256 px (an asset
+  // card in a one-column grid), and the 1024 px ring would be inlined here a second time.
+  --atlas-token-ring-image: url('../../../assets/token-ring-small.webp');
   position: absolute;
   inset: 0;
   // Multiplying the ring image with a colour reproduces the canvas sprite

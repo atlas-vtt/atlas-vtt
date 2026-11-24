@@ -11,6 +11,7 @@ import { placeClearOf, type OptionsPlacement } from '../options/optionsPlacement
 import { OUTLINE_OFFSET, TOOLBAR_GAP } from '../toolbar/toolbarBelow';
 import type { NamePrompt } from './useBlockNaming';
 import { t } from '../../../../i18n';
+import { revealInList } from '../../../../utils/scrollWithin';
 import './name-popover.scss';
 
 export interface NamePopoverProps {
@@ -51,7 +52,8 @@ export function NamePopover({ layer, stage, prompt, revision }: NamePopoverProps
 
   // The tile comes into view once, then the popover follows it as the card scrolls or changes size.
   useLayoutEffect(() => {
-    blockFrame(stage, blockId)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    const frame = blockFrame(stage, blockId);
+    if (frame) revealInList(frame);
   }, [stage, blockId]);
 
   useLayoutEffect(() => {

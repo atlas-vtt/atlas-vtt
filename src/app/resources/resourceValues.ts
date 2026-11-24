@@ -52,7 +52,10 @@ export function isKillable(token: ResourceHolder, definitions: readonly Resource
   return definitions.some((definition) => definition.defeatedWhenSpent === true && token.resources?.[definition.key] !== undefined);
 }
 
-/** The token update that sets one resource; a hand-set maximum is remembered in `overriddenMax`. */
+/**
+ * The token update that sets one resource; a hand-set maximum is remembered in `overriddenMax`. It carries the
+ * whole `resources` record, so `token` is the one the store holds now: one read earlier writes its other values back.
+ */
 export function resourceUpdate(
   token: ResourceHolder,
   key: string,

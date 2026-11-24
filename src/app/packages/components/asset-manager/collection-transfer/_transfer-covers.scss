@@ -19,6 +19,12 @@
     font-size: $font-ui-smaller;
   }
 
+  &__problem {
+    @include atlas-error-text;
+    margin: 0;
+    font-size: $font-ui-smaller;
+  }
+
   &__list {
     @include atlas-flex-col($gap: $spacing-m);
     flex: 1;
@@ -45,6 +51,18 @@
 
     .atlas-transfer-cover-card[data-variant='action'] {
       aspect-ratio: 16 / 9;
+    }
+  }
+
+  // A record's sleeve: every card square, smaller, so a form keeps them beside its fields.
+  &[data-layout='row'][data-shape='square'] {
+    .atlas-transfer-covers__list {
+      grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+    }
+
+    .atlas-transfer-cover-card,
+    .atlas-transfer-cover-card[data-variant='action'] {
+      aspect-ratio: 1;
     }
   }
 }

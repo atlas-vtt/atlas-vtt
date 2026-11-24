@@ -9,6 +9,7 @@ import type { AdvantageRule, DiceSet, DiceSetDie } from '../types/diceSetTypes';
 import { BUILT_IN_DICE_SET_PREFIX } from './builtInDiceSets';
 import { CRIT_RULES, parseExplodeRule } from './diceRules';
 import { MAX_SET_DICE, MAX_SET_GROUPS, MAX_SET_SIDES, isDieColour } from './diceSets';
+import { isRecord } from '../utils/guards';
 
 /** The format of a dice set file; a set of a later one is read and never written. */
 export const DICE_SET_FORMAT = 1;
@@ -16,9 +17,6 @@ export const DICE_SET_FORMAT = 1;
 export const MAX_DICE_NAME_LENGTH = 40;
 /** The largest number advantage adds (or disadvantage subtracts). */
 export const MAX_ADVANTAGE_NUMBER = 99;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 function isWhole(value: unknown, least: number, most: number): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= least && value <= most;

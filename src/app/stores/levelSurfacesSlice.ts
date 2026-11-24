@@ -4,6 +4,7 @@ import { placedOnViewedLevel } from '../levels/sceneLevels';
 import type { LevelSurfaceChanges, LevelSurfaceInput } from '../types/sceneLevelTypes';
 import type { ViewState } from '../types/viewState';
 import { isRecord } from '../utils/guards';
+import { newId } from '../utils/ids';
 
 export interface LevelSurfacesSlice {
   /** Adds a surface on the level shown, in one undo step, and returns its id. */
@@ -20,7 +21,7 @@ type ImmerSet = (fn: (draft: SurfacesDraft) => void) => void;
 export function createLevelSurfacesActions(set: ImmerSet): LevelSurfacesSlice {
   return {
     addLevelSurface: (data) => {
-      const id = `surface_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+      const id = newId('surface');
       set((draft) => {
         // Whatever is in their place that is no record (a store filled by something else than a load) gives way.
         if (!isRecord(draft.objects.levelSurfaces)) draft.objects.levelSurfaces = {};

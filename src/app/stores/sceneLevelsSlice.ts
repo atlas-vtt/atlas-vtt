@@ -7,6 +7,7 @@ import type { LevelScene } from '../levels/levelEdits';
 import { exploredMaskOf, firstLevelId, isLevelOf, movesWithLevel, otherLevelsExplored, viewedLevelId } from '../levels/sceneLevels';
 import type { LevelAlignment, LevelLinkChanges, LevelLinkInput, SceneLevel } from '../types/sceneLevelTypes';
 import { isRecord } from '../utils/guards';
+import { newId } from '../utils/ids';
 import type { MapMove } from '../grid/mapStretch';
 import { objectsMovedWithMap } from '../grid/mapStretchObjects';
 import { aurasToTokenLevels } from '../measure/auraUpkeep';
@@ -112,7 +113,7 @@ export function createSceneLevelsActions(set: ImmerSet, get: () => LevelsDraft):
     }),
 
     addLevelLink: (data) => {
-      const id = `levellink_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+      const id = newId('levellink');
       set((draft) => {
         // Whatever is in their place that is no record (a store filled by something else than a load) gives way.
         if (!isRecord(draft.objects.levelLinks)) draft.objects.levelLinks = {};

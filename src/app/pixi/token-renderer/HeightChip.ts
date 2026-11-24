@@ -2,6 +2,7 @@ import { Container, Graphics, Text } from 'pixi.js';
 import { canvasBadgeColors, isDarkTheme } from '../utils/canvasBadgeColors';
 import { destroyTree } from '../utils/destroyTree';
 import { NAMEPLATE_HEIGHT, NAMEPLATE_TEXT, TOKEN_TEXT_RESOLUTION } from './tokenSizing';
+import { uiCorner } from '../utils/squareCorners';
 
 /** Screen pixels per UI unit: its text is as large as the condition card's (13 px). */
 const SCREEN_SIZE = 13 / (NAMEPLATE_TEXT.fontSize * NAMEPLATE_TEXT.textScale);
@@ -48,9 +49,9 @@ export class HeightChip {
     const height = NAMEPLATE_HEIGHT;
     const width = Math.max(height, this.text.getLocalBounds().width * NAMEPLATE_TEXT.textScale + NAMEPLATE_TEXT.padding * 2);
     this.pill
-      .roundRect(-width / 2, -height / 2, width, height, height / 2)
+      .roundRect(-width / 2, -height / 2, width, height, uiCorner(height / 2))
       .fill({ color: background })
-      .roundRect(-width / 2, -height / 2, width, height, height / 2)
+      .roundRect(-width / 2, -height / 2, width, height, uiCorner(height / 2))
       .stroke({ width: 0.5, color: stroke, alpha: dark ? 0.4 : 0.3 });
   }
 

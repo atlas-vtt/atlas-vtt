@@ -6,7 +6,9 @@ import { exportCollectionBundle, prepareCollectionExport, type ExportChoice, typ
 import type { CollectionImportResult, ImportDecision, ImportSession } from '../../../../services/collectionBundle/collectionImport';
 import { openBundleImport } from '../../../../services/itemBundle/bundleImport';
 import type { ItemImportResult, ItemImportSession, ItemReview } from '../../../../services/itemBundle/itemImport';
-import { describeItemImport, itemImportTitle } from './itemImportText';
+import type { MusicImportResult, MusicImportSession, MusicReview } from '../../../../services/musicBundle/musicImport';
+import { SoundLibrary } from '../../../../soundLibrary/SoundLibrary';
+import { describeImport, describeItemImport, describeMusicImport, itemImportTitle, musicImportTitle } from './importResultText';
 import type { BundleFileReader } from '../../../../services/collectionBundle/bundleReader';
 import type { ImportReview } from '../../../../services/collectionBundle/importReview';
 import type { ExternalImport, ExternalImportOutcome } from '../../../../services/collectionBundle/externalImport';
@@ -25,9 +27,10 @@ export type CollectionTransfer =
   | { step: 'export-options'; preview: ExportPreview }
   | { step: 'import-review'; review: ImportReview; files: BundleFileReader }
   | { step: 'item-review'; review: ItemReview }
+  | { step: 'music-review'; review: MusicReview }
   | { step: 'share'; session: ShareSession }
-  /** `installed`: the single item an import put in the vault, which the result offers to open. */
-  | { step: 'done'; title: string; message: string; installed?: ItemImportResult | undefined };
+  /** `installed`: the single item an import put in the vault, which the result offers to open; `music`: the music it installed. */
+  | { step: 'done'; title: string; message: string; installed?: ItemImportResult | undefined; music?: MusicImportResult | undefined };
 
 export interface CollectionTransferActions {
   transfer: CollectionTransfer | null;
@@ -41,6 +44,8 @@ export interface CollectionTransferActions {
   confirmImport: (decision: ImportDecision) => Promise<void>;
   /** Installs the single item under review. */
   confirmItemImport: () => Promise<void>;
+  /** Installs the music under review. */
+  confirmMusicImport: () => Promise<void>;
   closeTransfer: () => void;
 }
 
@@ -56,15 +61,6 @@ const EXPORTING = t('bundle.exporting');
 const SHARING = t('exportDialog.shareInArmarium');
 const IMPORTING = t('bundle.importing');
 
-function describeImport(result: CollectionImportResult): string {
-  const name = t('bundle.nameVersion', { name: result.collectionName, version: result.version });
-  const switched = result.switchedNotes > 0 ? ` ${t('bundle.switchedNotes', { count: result.switchedNotes })}` : '';
-  if (result.created) return `${t('bundle.imported', { name })}${switched}`;
-  const parts = [t('bundle.filesWritten', { count: result.written }), t('bundle.filesRemoved', { count: result.removed })];
-  if (result.keptLocal > 0) parts.push(t('bundle.keptLocal', { count: result.keptLocal }));
-  const backup = result.backupCount > 0 ? t('bundle.backedUp', { folder: result.backupFolder }) : '';
-  return `${t('bundle.updated', { name, parts: parts.join(', '), backup })}${switched}`;
-}
 
 /**
  * Drives exporting the selected collection and importing bundles: progress,
@@ -74,6 +70,7 @@ export function useCollectionTransfer({ app, assetService, selectedCollection, o
   const [transfer, setTransfer] = useState<CollectionTransfer | null>(null);
   const session = useRef<ImportSession | null>(null);
   const itemSession = useRef<ItemImportSession | null>(null);
+  const musicSession = useRef<MusicImportSession | null>(null);
   /** The outside bundle under review, told how its import ended. */
   const external = useRef<ExternalImport | null>(null);
   const settleExternal = (outcome: ExternalImportOutcome): void => {
@@ -100,21 +97,23 @@ export function useCollectionTransfer({ app, assetService, selectedCollection, o
   const closeTransfer = (): void => {
     session.current = null;
     itemSession.current = null;
+    musicSession.current = null;
     setTransfer(null);
     // Only a review still waits for the GM here; a finished import told its outcome already.
     settleExternal({ kind: 'cancelled' });
   };
 
   // The dialog stays open with the result: a fast transfer would otherwise only flash.
-  const finish = (title: string, message: string, installed?: ItemImportResult): void => {
+  const finish = (title: string, message: string, installed?: ItemImportResult, music?: MusicImportResult): void => {
     session.current = null;
     itemSession.current = null;
+    musicSession.current = null;
     // An update can close the map view hosting this asset manager; the result must still reach the user.
     if (!isMounted.current) {
       showNotice(message);
       return;
     }
-    setTransfer({ step: 'done', title, message, installed });
+    setTransfer({ step: 'done', title, message, installed, music });
   };
 
   const handleExportCollection = async (): Promise<void> => {
@@ -186,6 +185,9 @@ export function useCollectionTransfer({ app, assetService, selectedCollection, o
       if (opened.kind === 'item') {
         itemSession.current = opened.session;
         setTransfer({ step: 'item-review', review: opened.session.review });
+      } else if (opened.kind === 'music') {
+        musicSession.current = opened.session;
+        setTransfer({ step: 'music-review', review: opened.session.review });
       } else {
         session.current = opened.session;
         setTransfer({ step: 'import-review', review: opened.session.review, files: opened.session.files });
@@ -251,6 +253,27 @@ export function useCollectionTransfer({ app, assetService, selectedCollection, o
     finish(itemImportTitle(result), describeItemImport(result), result);
   };
 
+  const confirmMusicImport = async (): Promise<void> => {
+    const current = musicSession.current;
+    if (!current) return;
+    const from = external.current;
+    external.current = null;
+    setTransfer({ step: 'working', title: IMPORTING, progress: { message: t('bundle.writing'), fraction: 0.5 } });
+    let result: MusicImportResult;
+    try {
+      result = await current.apply();
+    } catch (error) {
+      console.error('[useCollectionTransfer] Installing the music failed:', error);
+      from?.onSettled({ kind: 'failed' });
+      finish(t('bundle.importFailed'), describeError(error));
+      return;
+    }
+    from?.onSettled({ kind: 'installed' });
+    // The library opens on what came in, on the Sound page and its tab alike.
+    SoundLibrary.opened(app)?.place.show('music', result.tags);
+    finish(musicImportTitle(result), describeMusicImport(result), undefined, result);
+  };
+
   const handleImportCollection = (): void => {
     if (transfer) return;
     const input = document.body.createEl('input', {
@@ -267,5 +290,5 @@ export function useCollectionTransfer({ app, assetService, selectedCollection, o
     input.click();
   };
 
-  return { transfer, handleExportCollection, handleImportCollection, handleShareCollection, startExternalImport, confirmExport, confirmImport, confirmItemImport, closeTransfer };
+  return { transfer, handleExportCollection, handleImportCollection, handleShareCollection, startExternalImport, confirmExport, confirmImport, confirmItemImport, confirmMusicImport, closeTransfer };
 }

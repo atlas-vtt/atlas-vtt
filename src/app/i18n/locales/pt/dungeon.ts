@@ -18,6 +18,8 @@ export const dungeon: Translation = {
   'dungeon.back': 'Voltar',
   'dungeon.preview.label': 'Prévia da masmorra',
   'dungeon.preview.failed': 'Não foi possível desenhar a prévia.',
+  'dungeon.preview.cardsFailed': 'Não foi possível desenhar algumas imagens.',
+  'dungeon.preview.retry': 'Tentar de novo',
   'dungeon.preview.floor': 'Andar exibido',
   'dungeon.name': 'Nome',
   'dungeon.collection': 'Coleção',

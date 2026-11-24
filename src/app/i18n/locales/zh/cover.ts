@@ -9,4 +9,5 @@ export const cover: Translation = {
   'cover.upload': '上传图片',
   'cover.uploadHint': '用你自己的图片作为封面',
   'cover.uploaded': '已上传的图片',
+  'cover.unreadable': '{name} 不是 Atlas 能读取的图片。请选择其他文件。',
 };

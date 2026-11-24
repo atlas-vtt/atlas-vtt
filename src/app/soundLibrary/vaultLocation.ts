@@ -2,9 +2,10 @@ import { FileSystemAdapter, normalizePath, TFile, TFolder, type App, type EventR
 import { ensureFolder, isPathTaken } from '../plugin/vaultFolders';
 import { readRangeOf } from './externalBytes';
 import { nodeFilesOf } from './nodeFiles';
+import { isPart } from './copyNames';
 import { isAtlasOwn, isAudioPath } from './soundFiles';
 import { isListableName, joinRelative, relativeBelow, safeRelative } from './soundPaths';
-import { SoundPathError, SoundPathReservedError, SoundPathTakenError, sortedListing, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
+import { SoundPathError, SoundPathNotRemovableError, SoundPathReservedError, SoundPathTakenError, sortedListing, TrashNotTakenError, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
 
 /** A linked folder in the vault. Moves go through `fileManager`, so whatever names a file follows it, and deleting goes where the GM's trash setting says. */
 export class VaultLocation implements SoundLocation {
@@ -129,10 +130,31 @@ export class VaultLocation implements SoundLocation {
     return Promise.resolve(true);
   }
 
+  /** Asks the disk afterwards: Obsidian's `trashFile` can resolve and leave the file where it was. */
   async trash(path: string): Promise<void> {
-    this.changeable(path);
+    const full = this.changeable(path);
     const file = this.entry(path);
-    if (file) await this.app.fileManager.trashFile(file);
+    if (!file) return;
+    await this.app.fileManager.trashFile(file);
+    if (await this.app.vault.adapter.exists(full)) throw new TrashNotTakenError(path);
+  }
+
+  /** Through the adapter: `Vault.delete` would follow no setting, and `trashFile` follows the GM's, which a part needs none of. */
+  async removePart(path: string): Promise<void> {
+    const full = this.changeable(path);
+    if (!isPart(path) || !(this.entry(path) instanceof TFile)) throw new SoundPathNotRemovableError(path);
+    await this.app.vault.adapter.remove(full);
+  }
+
+  /** Obsidian's desktop adapter removes no folder without `recursive`, so the folder is asked on disk, too, to hold nothing. */
+  async removeEmptyFolder(path: string): Promise<void> {
+    const full = this.changeable(path);
+    const folder = this.entry(path);
+    if (path === '' || !(folder instanceof TFolder) || folder.children.length > 0) throw new SoundPathNotRemovableError(path);
+    const { adapter } = this.app.vault;
+    const held = await adapter.list(full);
+    if (held.files.length > 0 || held.folders.length > 0) throw new SoundPathNotRemovableError(path);
+    await adapter.rmdir(full, true);
   }
 
   watch(onChange: (path: string | null) => void): () => void {

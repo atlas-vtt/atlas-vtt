@@ -172,6 +172,8 @@ export const online = {
   'online.unmark': 'Unmark',
   'online.update': 'Update',
   'online.updateAfter': 'Update Atlas after this session',
+  'online.sheet.templateMissing': 'Players cannot change the sheet {note}: its template is missing. Choose a template for the note.',
+  'online.sheet.templateNewer': 'Players cannot change the sheet {note}: its template says it was made with a newer Atlas, so Atlas only reads it.',
   'online.worldMap.missing': 'Atlas Online cannot send the world map: its image file is missing.',
   'online.worldMap.tooLarge': 'Atlas Online cannot send the world map: its image is larger than 95 MB.',
   'online.worldMap.unreadable': 'Atlas Online cannot send the world map: its image is not a PNG, JPEG, WebP, GIF or AVIF that players can open.',
@@ -182,4 +184,9 @@ export const online = {
   'online.mapUnreadable': 'This scene\'s map image cannot be sent to players.',
   'online.fogTooMuch': 'This map has too much fog for online players. They see it covered until you clear some.',
   'online.assetsFailed': 'A file could not be shared with players.',
+  'online.doorAsk': '{player} asks to open a door.',
+  'online.doorAskShow': 'Show',
+  'online.doorAskHeading': '{player} asks to open this door',
+  'online.doorAskAllow': 'Open it',
+  'online.doorAskDeny': 'Keep it shut',
 } as const satisfies Record<string, Message>;

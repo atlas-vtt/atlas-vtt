@@ -1,6 +1,7 @@
 import { CAMPAIGN_FORMAT } from './campaignPaths';
 import type { CampaignUsage, StoredCampaign, UsedSpan } from './campaignTypes';
-import { isAssetId, isRecord, isTime } from './campaignValues';
+import { isAssetId, isTime } from './campaignValues';
+import { isRecord } from '../utils/guards';
 
 /** The most scenes a campaign remembers; past it the one used longest ago is forgotten. */
 export const MAX_USED_SCENES = 5000;
