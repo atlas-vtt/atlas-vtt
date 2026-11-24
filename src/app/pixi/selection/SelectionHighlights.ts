@@ -10,6 +10,7 @@ import {
 } from './selectionGeometry';
 import { drawGroupFrame, drawHighlight } from './selectionInk';
 import type { FrameTurn } from './GroupRotation';
+import { batched } from '../utils/batchedGraphics';
 
 /** One selected thing as the highlights see it, in world units. */
 export interface SelectionTarget {
@@ -49,7 +50,7 @@ function fadeIn(transition: ValueTransition, animate: boolean): void {
  */
 class Highlight {
   readonly view = new Container({ label: 'selectionHighlight', eventMode: 'none' });
-  private readonly ink = new Graphics();
+  private readonly ink = batched(new Graphics());
   private drawn = '';
   private zoom = 1;
   private appearance = 1;
