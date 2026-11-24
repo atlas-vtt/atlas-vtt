@@ -8,12 +8,15 @@ import { ArmariumHosts } from '../armariumHosts';
 import { ARMARIUM_MINE_URL } from '../armariumUrls';
 import type { AnyShareSession } from '../upload/anyShareSession';
 import { ItemShareSession } from '../upload/ItemShareSession';
+import { MusicShareSession } from '../upload/MusicShareSession';
+import { musicProblems } from '../upload/musicShareRules';
 import type { ShareSnapshot } from '../upload/shareState';
 import { ACCOUNT_PAGE_REFUSALS } from '../upload/uploadContract';
 import { AccountStep } from './steps/AccountStep';
 import { ChecksStep } from './steps/ChecksStep';
 import { DoneStep } from './steps/DoneStep';
 import { ItemStep } from './steps/ItemStep';
+import { MusicStep } from './steps/MusicStep';
 import { ListingStep } from './steps/ListingStep';
 import { PublishStep } from './steps/PublishStep';
 import { UploadStep } from './steps/UploadStep';
@@ -81,6 +84,14 @@ export function shareStepParts({ app, session, snapshot, account, accountState, 
           title: t('armariumShare.title.item'),
           body: <ItemStep snapshot={snapshot} session={session} />,
           actions: action(t('armariumShare.continue'), () => session.confirmItem(), true),
+        };
+      }
+      if (session instanceof MusicShareSession && snapshot.subject === 'music') {
+        const preparing = musicProblems(snapshot).tracks === 'preparing';
+        return {
+          title: t('armariumShare.title.item'),
+          body: <MusicStep snapshot={snapshot} session={session} />,
+          actions: action(preparing ? t('armariumMusic.preparing') : t('armariumShare.continue'), () => session.confirmMusic(), true, preparing || snapshot.version === null),
         };
       }
       return accountParts(snapshot, session, account, accountState);

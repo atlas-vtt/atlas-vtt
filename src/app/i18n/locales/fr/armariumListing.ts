@@ -109,4 +109,6 @@ export const armariumListing: Translation = {
   'armariumListing.problem.tagsExclusive': 'Utilisez une seule étiquette parmi {tags}.',
   'armariumListing.kind.dice': 'Sets de dés',
   'armariumListing.kindLine.dice': 'Des dés pour le plateau de dés, avec leurs couleurs et leurs règles.',
+  'armariumListing.kind.music': 'Musique',
+  'armariumListing.kindLine.music': 'Des albums et des morceaux pour la page Son.',
 };

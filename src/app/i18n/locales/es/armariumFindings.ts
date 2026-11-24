@@ -111,4 +111,10 @@ export const armariumFindings: Translation = {
   'armariumFindings.times': { one: 'Aparece una vez.', other: 'Aparece {count} veces.' },
   'armariumFindings.showAll': 'Mostrar los {count}',
   'armariumFindings.showFewer': 'Mostrar menos',
+  'armariumFindings.code.item-track-count': 'El archivo no es un paquete de música hecho por Atlas: un álbum lleva de 2 a 100 pistas, una pista suelta una. Compártelo de nuevo desde Atlas.',
+  'armariumFindings.code.item-track-unlisted': 'El archivo no es un paquete de música hecho por Atlas: sus pistas y su lista de pistas no coinciden. Compártelo de nuevo desde Atlas.',
+  'armariumFindings.code.audio-not-audio': 'Esta pista no es el audio que dice su nombre, o no tiene audio. Guárdala de nuevo como MP3, FLAC, WAV u Opus.',
+  'armariumFindings.code.audio-too-long': 'Esto suena demasiado: una pista puede sonar como mucho dos horas, un álbum diez.',
+  'armariumFindings.detail.formatChanged.music-album': 'Esta ficha contiene un álbum; una versión nueva también debe serlo.',
+  'armariumFindings.detail.formatChanged.music-track': 'Esta ficha contiene una pista suelta; una versión nueva también debe serlo.',
 };

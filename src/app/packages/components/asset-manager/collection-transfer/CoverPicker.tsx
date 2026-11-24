@@ -15,18 +15,20 @@ interface CoverPickerProps {
   onChange: (choice: CoverChoice) => void;
   /** `rail` stacks the cards in a dialog's side column; `row` lays them side by side in a form. */
   layout?: 'rail' | 'row';
+  /** The cover's shape: a banner's (16:9), or a record sleeve's. */
+  shape?: 'wide' | 'square';
   /** What the header and "No cover" say where the cover is not an export's. */
   hint?: string;
   noneHint?: string;
 }
 
 /** Large cover cards: upload an image, keep the current cover, use a map's or scene's artwork, or none. */
-export function CoverPicker({ value, current, candidates, upload, onUpload, onChange, layout = 'rail', hint = t('cover.hint'), noneHint = t('cover.noneHint') }: CoverPickerProps): React.JSX.Element {
+export function CoverPicker({ value, current, candidates, upload, onUpload, onChange, layout = 'rail', shape = 'wide', hint = t('cover.hint'), noneHint = t('cover.noneHint') }: CoverPickerProps): React.JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null);
   const titleId = useId();
   const isArtwork = (path: string): boolean => value.kind === 'artwork' && value.path === path;
   return (
-    <section className="atlas-transfer-covers" data-layout={layout} aria-labelledby={titleId}>
+    <section className="atlas-transfer-covers" data-layout={layout} data-shape={shape} aria-labelledby={titleId}>
       <div className="atlas-transfer-covers__header">
         <span id={titleId} className="atlas-transfer-eyebrow">{t('cover.title')}</span>
         <span className="atlas-transfer-covers__hint">{hint}</span>

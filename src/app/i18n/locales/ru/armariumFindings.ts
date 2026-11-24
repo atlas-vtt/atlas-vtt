@@ -111,4 +111,10 @@ export const armariumFindings: Translation = {
   'armariumFindings.times': { one: 'Найдено {count} раз.', few: 'Найдено {count} раза.', many: 'Найдено {count} раз.', other: 'Найдено {count} раза.' },
   'armariumFindings.showAll': 'Показать все ({count})',
   'armariumFindings.showFewer': 'Показать меньше',
+  'armariumFindings.code.item-track-count': 'Это не музыкальный пакет, созданный Atlas: в альбоме от 2 до 100 треков, в отдельном треке — один. Опубликуйте его заново из Atlas.',
+  'armariumFindings.code.item-track-unlisted': 'Это не музыкальный пакет, созданный Atlas: его треки не совпадают со списком треков. Опубликуйте его заново из Atlas.',
+  'armariumFindings.code.audio-not-audio': 'Этот трек — не тот звук, который обещает его название, или в нём нет звука. Сохраните его заново как MP3, FLAC, WAV или Opus.',
+  'armariumFindings.code.audio-too-long': 'Это звучит слишком долго: трек может звучать не больше двух часов, альбом — десяти.',
+  'armariumFindings.detail.formatChanged.music-album': 'На этой странице альбом; новая версия тоже должна быть альбомом.',
+  'armariumFindings.detail.formatChanged.music-track': 'На этой странице отдельный трек; новая версия тоже должна быть треком.',
 };

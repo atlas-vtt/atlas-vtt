@@ -31,7 +31,11 @@ export function UploadStep({ snapshot }: { snapshot: ShareSnapshot }): React.JSX
   const failure = refusal === null ? null : refusal.code === 'export-failed'
     ? shareSaid(subject, 'armariumShare.exportFailed', { error: refusal.detail ?? '' })
     : uploadMessageFor(refusal.code, refusal.until);
-  const sentText = upload === null ? '' : t('armariumShare.sentOf', { sent: formatFileSize(upload.sentBytes), total: formatFileSize(upload.totalBytes) });
+  // Bytes count once a whole part is in: until then nothing is counted, so no "0 of" is shown, only that it is on its way.
+  const counting = upload !== null && (upload.sentBytes > 0 || upload.failure !== null);
+  const sentText = upload === null ? '' : counting
+    ? t('armariumShare.sentOf', { sent: formatFileSize(upload.sentBytes), total: formatFileSize(upload.totalBytes) })
+    : t('armariumShare.sending', { total: formatFileSize(upload.totalBytes) });
   return (
     <>
       {packing !== null && (
@@ -46,7 +50,7 @@ export function UploadStep({ snapshot }: { snapshot: ShareSnapshot }): React.JSX
       {upload !== null && (
         <div className="atlas-share-progress">
           <span className="atlas-share-progress__line">{sentText}</span>
-          <ProgressBar value={upload.sentBytes} max={upload.totalBytes} label={t('armariumShare.step.upload')} valueText={sentText} />
+          <ProgressBar value={upload.sentBytes} max={upload.totalBytes} label={t('armariumShare.step.upload')} valueText={sentText} indeterminate={!counting} />
           {upload.parts.length > 1 && (
             <ol className="atlas-share-parts" aria-label={t('armariumShare.parts')}>
               {upload.parts.map((status, index) => (

@@ -72,7 +72,7 @@ export function SidebarPage({ app }: { app: App }): React.JSX.Element {
   );
 }
 
-/** The look and the accent colour, as the palette's Appearance settings show them; the choice is this device's and shows at once. */
+/** The look, the accent colour and the ivy colour, as the palette's Appearance settings show them; the choice is this device's and shows at once. */
 export function LookPage({ app, looks }: { app: App; looks: LookService }): React.JSX.Element {
   return (
     <div className="atlas-welcome-page atlas-welcome-page--looks">

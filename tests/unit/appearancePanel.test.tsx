@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import type { App } from 'obsidian';
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it } from 'vitest';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { AppearancePanel } from '../../src/app/react/components/command-palette/AppearancePanel';
@@ -32,4 +32,34 @@ it('shows the look cards and the accent colour, as the welcome wizard\'s last pa
   expect(screen.getByRole('radiogroup', { name: 'Look' }).querySelectorAll('[role="radio"]')).toHaveLength(3);
   expect(screen.getByRole('radio', { name: 'Your theme', description: 'Minimal' }).getAttribute('aria-checked')).toBe('true');
   expect(screen.getByRole('radiogroup', { name: 'Accent colour' })).toBeTruthy();
+});
+
+it('offers the ivy colour only while the Medieval look is on, in the same place', () => {
+  const host = app();
+  render(
+    <AtlasUIContext.Provider value={{ app: host, view: null, pixiApp: null, renderer: null }}>
+      <AppearancePanel />
+    </AtlasUIContext.Provider>,
+  );
+  const ivy = screen.getByRole('radiogroup', { name: 'Ivy colour' });
+  expect(ivy.getAttribute('aria-disabled')).toBe('true');
+  expect(screen.getByRole('radio', { name: 'Natural' }).getAttribute('aria-checked')).toBe('true');
+  act(() => { fireEvent.click(screen.getByRole('radio', { name: 'Medieval' })); });
+  expect(ivy.getAttribute('aria-disabled')).toBeNull();
+  const violet = ivy.querySelector<HTMLElement>('[aria-label="Violet"]')!;
+  act(() => { fireEvent.click(violet); });
+  expect(violet.getAttribute('aria-checked')).toBe('true');
+});
+
+it('switches Yassify from Appearance settings', () => {
+  render(
+    <AtlasUIContext.Provider value={{ app: app(), view: null, pixiApp: null, renderer: null }}>
+      <AppearancePanel />
+    </AtlasUIContext.Provider>,
+  );
+  const yassify = screen.getByRole('switch', { name: 'Yassify' });
+  expect(yassify.getAttribute('aria-checked')).toBe('false');
+  act(() => { fireEvent.click(yassify); });
+  expect(screen.getByRole('switch', { name: 'Yassify' }).getAttribute('aria-checked')).toBe('true');
+  expect(screen.getByText('Give every token some pizzazz.')).toBeTruthy();
 });

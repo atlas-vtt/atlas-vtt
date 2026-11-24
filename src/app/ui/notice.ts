@@ -16,6 +16,8 @@ export function showNotice(message: string | DocumentFragment, duration?: number
   const el = notice.containerEl as HTMLElement | undefined;
   if (el) {
     el.classList.add(ATLAS_NOTICE_CLASS);
+    // Read out by screen readers when it appears, without taking the focus
+    el.setAttribute('role', 'status');
     animateNotice(notice);
   }
   return notice;

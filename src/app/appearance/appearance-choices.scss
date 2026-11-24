@@ -1,8 +1,32 @@
 @use '../../../styles/tokens' as *;
 @use '../../../styles/mixins' as *;
 
-// The look and the accent colour (AppearanceChoices.tsx), one under the other.
+// The look over the two colours (AppearanceChoices.tsx).
 .atlas-appearance-choices {
   @include atlas-flex-col($spacing-l);
   min-width: 0;
+}
+
+// The accent colour, the ivy colour and Yassify side by side, each as wide as its choices, going on to a new line
+// where the next does not fit. A row's hint wraps at its swatches' width rather than widening the row.
+.atlas-appearance-colours {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: $spacing-l $spacing-xl;
+
+  > .atlas-setting-group {
+    width: min-content;
+    max-width: 100%;
+  }
+
+  .atlas-accent-swatches {
+    width: max-content;
+    max-width: 100%;
+  }
+}
+
+.atlas-appearance-yassify {
+  flex: 1 1 15rem;
+  max-width: 24rem;
 }

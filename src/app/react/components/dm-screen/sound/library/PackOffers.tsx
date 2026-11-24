@@ -7,11 +7,17 @@ import { installedMusicPacks, mayInstallMusicPacks, MUSIC_PACKS } from '../../..
 import type { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { hasStarterPack, mayInstallStarterPack, STARTER_BYTES, STARTER_SOUND_COUNT } from '../../../../../soundLibrary/starterPack';
 import { cn } from '../../../../../../utils/cn';
+import { CutTooltip } from '../CutTooltip';
 import { useContextMenu } from '../../../../root/ContextMenuContext';
 import { activeLabel, AMBIENCE_OFFER, MUSIC_OFFER, musicPackMenu, queueStarterAmbience, STARTER_JOB } from './packDownloads';
 import { useDownloadJob, useDownloadManager, useOfferDismissal } from './useDownloads';
 import { useLibraryVersion } from './useLibrary';
 import type { LibraryActions } from './useLibraryActions';
+
+/** An offer's words, cut at their end where the rail is too narrow for them, and shown whole on hover then. */
+function OfferLabel({ children }: { children: React.ReactNode }): React.JSX.Element {
+  return <CutTooltip><span className="atlas-sound-lib__offer-label">{children}</span></CutTooltip>;
+}
 
 /** An offer and the × that dismisses it; the root's ⋯ menu still offers the download. */
 function Offer({ dismiss, children }: { dismiss: (() => void) | undefined; children: React.ReactNode }): React.JSX.Element {
@@ -67,7 +73,7 @@ export function StarterPackButton({ library, actions, className }: { library: So
         aria-label={running ? undefined : t('audio.library.starterLabel', { count: STARTER_SOUND_COUNT, size })}
         onClick={() => queueStarterAmbience(manager, library, actions)}
       >
-        {running ? activeLabel(running) : <>{t('audio.library.starter')}<small>{t('audio.library.starterSize', { size })}</small></>}
+        {running ? <OfferLabel>{activeLabel(running)}</OfferLabel> : <><OfferLabel>{t('audio.library.starter')}</OfferLabel><small>{t('audio.library.starterSize', { size })}</small></>}
       </button>
     </Offer>
   );
@@ -92,7 +98,7 @@ export function MusicPacksButton({ library, className }: { library: SoundLibrary
           menu.open(musicPackMenu(manager, library), { x: box.left, y: box.bottom }, { returnFocus: event.currentTarget, label: t('audio.library.musicPacks') });
         }}
       >
-        {t('audio.library.musicPacks')}
+        <OfferLabel>{t('audio.library.musicPacks')}</OfferLabel>
       </button>
     </Offer>
   );

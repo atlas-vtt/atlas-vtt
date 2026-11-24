@@ -111,4 +111,10 @@ export const armariumFindings: Translation = {
   'armariumFindings.detail.formatChanged.statblock-template': 'Cette annonce contient un modèle de fiche ; une nouvelle version doit en être un aussi.',
   'armariumFindings.detail.formatChanged.system-preset': 'Cette annonce contient un système de jeu ; une nouvelle version doit en être un aussi.',
   'armariumFindings.detail.formatChanged.dice-set': 'Cette annonce contient un set de dés ; une nouvelle version doit en être un aussi.',
+  'armariumFindings.code.item-track-count': 'Le fichier n\'est pas un paquet de musique créé par Atlas : un album contient de 2 à 100 morceaux, un morceau seul un seul. Partagez-le de nouveau depuis Atlas.',
+  'armariumFindings.code.item-track-unlisted': 'Le fichier n\'est pas un paquet de musique créé par Atlas : ses morceaux et leur liste ne correspondent pas. Partagez-le de nouveau depuis Atlas.',
+  'armariumFindings.code.audio-not-audio': 'Ce morceau n\'est pas l\'audio que son nom annonce, ou ne contient pas d\'audio. Enregistrez-le de nouveau en MP3, FLAC, WAV ou Opus.',
+  'armariumFindings.code.audio-too-long': 'Cela dure trop longtemps : un morceau peut durer au plus deux heures, un album dix.',
+  'armariumFindings.detail.formatChanged.music-album': 'Cette annonce contient un album ; une nouvelle version doit en être un aussi.',
+  'armariumFindings.detail.formatChanged.music-track': 'Cette annonce contient un morceau seul ; une nouvelle version doit en être un aussi.',
 };

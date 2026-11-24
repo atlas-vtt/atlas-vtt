@@ -9,6 +9,11 @@ export type LookChoice = 'own' | AtlasLook;
 export const LOOK_STORAGE_KEY = 'atlas-vtt:look';
 /** The theme the GM used before picking an Atlas look, as JSON, so the default theme `''` is stored as `'""'`. */
 export const PREVIOUS_THEME_STORAGE_KEY = 'atlas-vtt:look-previous-theme';
+/** The colour the Medieval look paints its ivy in, `#rrggbb`, or `natural` for its own greens. */
+export const IVY_COLOUR_STORAGE_KEY = 'atlas-vtt:ivy-colour';
+const NATURAL_IVY = 'natural';
+/** Whether every token wears a bow (Yassify), `on` or `off`: words, as Obsidian drops falsy values. */
+export const YASSIFY_STORAGE_KEY = 'atlas-vtt:yassify';
 
 /** Obsidian's own theme, which Atlas' looks are drawn over. */
 const DEFAULT_THEME = '';
@@ -16,6 +21,8 @@ const DEFAULT_THEME = '';
 const byApp = new WeakMap<App, LookService>();
 
 const isLookChoice = (value: unknown): value is LookChoice => value === 'own' || isAtlasLook(value);
+const isIvyColour = (value: unknown): value is string =>
+  typeof value === 'string' && (value === NATURAL_IVY || /^#[0-9a-f]{6}$/i.test(value));
 
 /**
  * Which look Atlas shows on this device. A look is a fact of the device (a laptop and the table's screen may differ),
@@ -29,6 +36,11 @@ export class LookService {
     return looks;
   }
 
+  /** The app's service while Atlas runs, for what draws by the look without making one (the canvas' Yassify props). */
+  static existing(app: App): LookService | null {
+    return byApp.get(app) ?? null;
+  }
+
   /** Forgets the app's service, whose settings go with the plugin that unloads. */
   static release(app: App): void {
     byApp.get(app)?.listeners.clear();
@@ -36,10 +48,15 @@ export class LookService {
   }
 
   private choice: LookChoice;
+  private ivy: string;
+  private yassified: boolean;
   private readonly listeners = new Set<() => void>();
 
   private constructor(private readonly app: App, private readonly settings: SettingsService) {
     this.choice = this.load(LOOK_STORAGE_KEY, isLookChoice) ?? 'own';
+    const ivy = this.load(IVY_COLOUR_STORAGE_KEY, isIvyColour);
+    this.ivy = ivy && ivy !== NATURAL_IVY ? ivy.toLowerCase() : '';
+    this.yassified = this.load(YASSIFY_STORAGE_KEY, (value): value is string => value === 'on') === 'on';
   }
 
   get(): LookChoice {
@@ -62,6 +79,33 @@ export class LookService {
     this.choose(choice);
   }
 
+  /** The colour the Medieval look paints its ivy in, `#rrggbb`; `''` while it keeps its own greens. */
+  ivyColour(): string {
+    return this.ivy;
+  }
+
+  /** Paints the Medieval look's ivy in `hex` (`#rrggbb`) on this device, or gives it its own greens back with `''`. */
+  setIvyColour(hex: string): void {
+    const colour = hex.toLowerCase();
+    if (colour === this.ivy || (colour !== '' && !isIvyColour(colour))) return;
+    this.ivy = colour;
+    this.save(IVY_COLOUR_STORAGE_KEY, colour || NATURAL_IVY);
+    this.notify();
+  }
+
+  /** Whether every token on the map wears its Yassify props (bow, nails, tumbler), on this device. */
+  yassify(): boolean {
+    return this.yassified;
+  }
+
+  setYassify(on: boolean): void {
+    if (on === this.yassified) return;
+    this.yassified = on;
+    this.save(YASSIFY_STORAGE_KEY, on ? 'on' : 'off');
+    this.notify();
+  }
+
+  /** Calls `listener` whenever the look, its ivy colour or Yassify changes. */
   onChange(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };
@@ -123,6 +167,10 @@ export class LookService {
     if (choice === this.choice) return;
     this.choice = choice;
     this.save(LOOK_STORAGE_KEY, choice);
+    this.notify();
+  }
+
+  private notify(): void {
     for (const listener of Array.from(this.listeners)) listener();
   }
 

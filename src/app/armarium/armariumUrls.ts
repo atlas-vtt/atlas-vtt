@@ -26,6 +26,8 @@ export function isArmariumPageUrl(url: string): boolean {
 export const ARMARIUM_LIST_URL = `${ARMARIUM_ORIGIN}/api/armarium/v1`;
 /** Counts the download, then answers with a redirect to the file. */
 export const ARMARIUM_DOWNLOAD_ROUTE = 'https://api.atlas-vtt.dev/v1/armarium/download';
+/** The files domain, which serves the public index, every version's contents and its media. */
+export const ARMARIUM_FILES_ORIGIN = 'https://atlasvttusercontent.com';
 /** Hosts a listing's own `downloadUrl` may point at, used only when the counting route fails. */
 export const ARMARIUM_FILE_HOSTS: readonly string[] = ['atlasvttusercontent.com', 'raw.githubusercontent.com'];
 

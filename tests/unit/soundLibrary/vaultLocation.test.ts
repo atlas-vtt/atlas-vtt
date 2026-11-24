@@ -31,3 +31,18 @@ describe('reading a vault file in part', () => {
     expect(await location.stat('gone.opus')).toBeNull();
   });
 });
+
+describe('removing what Atlas wrote', () => {
+  it('deletes a part for good whatever the trash setting, never another file, and a folder only while it holds nothing', async () => {
+    const { app, files, folders } = createInMemoryApp({ files: { 'Audio/A/01 Dawn.opus.atlas-part': 'half', 'Audio/A/01 Dawn.opus': 'whole' }, folders: ['Audio', 'Audio/A', 'Audio/Empty'] });
+    const location = new VaultLocation(app, 'Audio');
+    await location.removePart('A/01 Dawn.opus.atlas-part');
+    expect(files.has('Audio/A/01 Dawn.opus.atlas-part')).toBe(false);
+    await expect(location.removePart('A/01 Dawn.opus')).rejects.toThrow(/not Atlas' own/);
+    await expect(location.removeEmptyFolder('A')).rejects.toThrow(/not Atlas' own/);
+    await location.removeEmptyFolder('Empty');
+    expect(folders.has('Audio/Empty')).toBe(false);
+    expect(files.get('Audio/A/01 Dawn.opus')).toBe('whole');
+    expect(app.fileManager.trashFile).not.toHaveBeenCalled();
+  });
+});

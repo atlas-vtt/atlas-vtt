@@ -105,6 +105,12 @@ body.atlas-look.theme-light {
   --shadow-l: 0 2px 6px rgb(60 40 15 / 14%), 0 10px 28px rgb(60 40 15 / 18%), 0 28px 64px rgb(60 40 15 / 22%);
 }
 
+/* Mediaeval on parchment: errors and destructive actions in the module red, which reads on the
+   page (7.3:1); Obsidian's light red (3.6:1 here) is too pale for parchment. Sci-fi keeps its own. */
+body.atlas-look.theme-light:not(.atlas-look-scifi) {
+  --text-error: var(--atlas-theme-red);
+}
+
 body.atlas-look.theme-dark {
   --atlas-theme-red: #d4756b;
   --atlas-theme-rule: #5c503c;
@@ -1186,6 +1192,26 @@ body.atlas-look.atlas-look-scifi :is(
   .clickable-icon:hover
 ):not(:where(.campaign-page[data-backdrop] .campaign-page__back)) {
   backdrop-filter: blur(8px);
+}
+
+/* an ivy colour the GM picked (Appearance settings): Atlas VTT paints the
+   drawings above in shades of it and hands them to body, so each panel
+   draws those instead (src/app/appearance/paintedIvy.ts) */
+body.atlas-look.atlas-ivy-painted :is(
+  .atlas-statblock-preview-window,
+  .statblock-hover-preview,
+  .atlas-asset-manager-modal,
+  .atlas-welcome-overlay
+) {
+  --atlas-theme-ivy-corner-back: var(--atlas-ivy-painted-corner-back);
+  --atlas-theme-ivy-corner-front: var(--atlas-ivy-painted-corner-front);
+  --atlas-theme-ivy-garland-back: var(--atlas-ivy-painted-garland-back);
+  --atlas-theme-ivy-garland-front: var(--atlas-ivy-painted-garland-front);
+}
+
+body.atlas-look.atlas-ivy-painted .atlas-command-palette-window {
+  --atlas-theme-ivy-top-back: var(--atlas-ivy-painted-top-back);
+  --atlas-theme-ivy-top-front: var(--atlas-ivy-painted-top-front);
 }
 
 /* no ivy: the drawings themselves go, so Atlas VTT lends none to its

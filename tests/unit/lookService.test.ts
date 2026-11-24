@@ -205,3 +205,66 @@ it('names the GM\'s own theme: the one in use while they keep it, else the one r
   expect(s.css.theme).toBe('');
   expect(service.ownThemeName()).toBe('Minimal');
 });
+
+it('keeps the ivy colour of this device, natural until one is picked', () => {
+  const storage = new Map<string, unknown>();
+  const first = stub('', storage);
+  const service = looks(first);
+  expect(service.ivyColour()).toBe('');
+  const changed = vi.fn();
+  service.onChange(changed);
+  service.setIvyColour('#C0392B');
+  expect(service.ivyColour()).toBe('#c0392b');
+  expect(changed).toHaveBeenCalledTimes(1);
+  service.setIvyColour('red');
+  expect(service.ivyColour()).toBe('#c0392b');
+  LookService.release(first.app);
+  expect(looks(stub('', storage)).ivyColour()).toBe('#c0392b');
+  looks(stub('', storage)).setIvyColour('');
+  expect(storage.get('atlas-vtt:ivy-colour')).toBe('natural');
+});
+
+it('announces an accent colour change as a change of CSS, which Obsidian does not, so the dice and the canvas follow it', () => {
+  const s = stub('');
+  const trigger = vi.fn();
+  const disposers: (() => void)[] = [];
+  const plugin = {
+    app: Object.assign(s.app, { workspace: { on: () => ({}), offref: () => {}, iterateAllLeaves: () => {}, trigger } }),
+    register: (dispose: () => void) => { disposers.push(dispose); },
+    registerEvent: () => {},
+  } as unknown as Plugin;
+  const service = looks(s);
+  registerLookSync(plugin, service);
+  // With the GM's own theme as with an Atlas look: accent dice take the accent either way.
+  s.app.vault.setConfig('accentColor', '#c9a227');
+  expect(trigger).toHaveBeenLastCalledWith('css-change');
+  service.set('mediaeval');
+  trigger.mockClear();
+  s.app.vault.setConfig('accentColor', '#3b82c4');
+  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(true);
+  expect(trigger).toHaveBeenCalledWith('css-change');
+  trigger.mockClear();
+  s.app.vault.setConfig('accentColor', '');
+  expect(document.body.classList.contains(CUSTOM_ACCENT_CLASS)).toBe(false);
+  expect(trigger).toHaveBeenCalledWith('css-change');
+  for (const dispose of disposers) dispose();
+});
+
+it('keeps Yassify on this device, off until switched on', () => {
+  const storage = new Map<string, unknown>();
+  const first = stub('', storage);
+  const service = looks(first);
+  expect(service.yassify()).toBe(false);
+  const changed = vi.fn();
+  service.onChange(changed);
+  service.setYassify(true);
+  service.setYassify(true);
+  expect(changed).toHaveBeenCalledTimes(1);
+  expect(LookService.existing(first.app)).toBe(service);
+  LookService.release(first.app);
+  expect(LookService.existing(first.app)).toBeNull();
+  const again = looks(stub('', storage));
+  expect(again.yassify()).toBe(true);
+  again.setYassify(false);
+  expect(storage.get('atlas-vtt:yassify')).toBe('off');
+});

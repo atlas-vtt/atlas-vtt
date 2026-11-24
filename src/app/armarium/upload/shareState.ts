@@ -4,6 +4,7 @@ import { MAX_ITEM_NOTES, type ItemRef } from '../../services/itemBundle/itemBund
 import type { UploadProgress } from './BundleUpload';
 import type { ListingDraft } from './listingDraft';
 import type { ListingKind, OwnListing, SubmissionView, TextLimits } from './uploadContract';
+import type { MusicShareSnapshot } from './musicShareState';
 
 /** The steps of a share as the dialog's rail lists them. */
 export const SHARE_STEPS = ['account', 'bundle', 'upload', 'checks', 'listing', 'publish'] as const;
@@ -85,7 +86,7 @@ export interface ItemShareSnapshot extends ShareCommon {
 }
 
 /** Everything the share dialog shows. */
-export type ShareSnapshot = CollectionShareSnapshot | ItemShareSnapshot;
+export type ShareSnapshot = CollectionShareSnapshot | ItemShareSnapshot | MusicShareSnapshot;
 
 /** How long an item's release notes may be, as its manifest carries them. */
 export const ITEM_NOTES_LIMITS: TextLimits = { min: 0, max: MAX_ITEM_NOTES, maxLines: 40, maxLinks: 5 };

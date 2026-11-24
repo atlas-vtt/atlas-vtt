@@ -14,6 +14,15 @@ import { sha256 } from '../../utils/hashing';
 import { t } from '../../i18n';
 import { ArmariumApi } from './armariumApi';
 import { ItemShareSession } from './ItemShareSession';
+import { MusicShareSession } from './MusicShareSession';
+import { prepareTrackCopy } from './musicTrackCopies';
+import { readPublishedArtist } from './publishedArtist';
+import { packMusicBundle } from '../../services/musicBundle/musicPacking';
+import type { MusicKind } from '../../services/itemBundle/itemBundleFormat';
+import { SoundDirector } from '../../soundDirector/SoundDirector';
+import type { LibraryFile } from '../../soundLibrary/SoundLibrary';
+import { SoundLibrary } from '../../soundLibrary/SoundLibrary';
+import { SoundRecordStore } from '../../soundLibrary/SoundRecordStore';
 import { systemOfPreset, systemOfSharedPreset } from './listingDraft';
 import { ShareSession } from './ShareSession';
 import type { SharedItem } from './shareState';
@@ -82,6 +91,62 @@ async function cardPicturesOf(app: App, id: string): Promise<CardPictures | unde
   }
 }
 
+/** The image at a listing's cover URL; null where it cannot be had. */
+async function fetchCover(url: string): Promise<Blob | null> {
+  try {
+    return new Blob([await fetchBytes(url)]);
+  } catch (error) {
+    console.warn('[Atlas] The listing\'s cover could not be fetched:', error);
+    return null;
+  }
+}
+
+/** The largest public JSON file of the Armarium Atlas reads: the index of every listing is far below it. */
+const MAX_PUBLIC_JSON_BYTES = 16 * 1024 * 1024;
+
+/** A public JSON file of the Armarium; it throws where it cannot be had, is too large or is no JSON. */
+async function fetchPublicJson(url: string): Promise<unknown> {
+  const bytes = await fetchBytes(url);
+  if (bytes.byteLength > MAX_PUBLIC_JSON_BYTES) throw new Error(`${url} is too large.`);
+  return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+}
+
+/** A new music listing's uid: 32 random lowercase hex, as the contract asks. */
+function randomListingUid(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/** What a music share begins with: an album or a single, its files in order, its name, and a listing the page named. */
+export interface MusicShareRequest {
+  kind: MusicKind;
+  files: readonly LibraryFile[];
+  name: string;
+  listing?: string | undefined;
+}
+
+/** A share of music from the Sound library with this app's account and the Armarium's API; null when the account is not set up. */
+export function createMusicShareSession(app: App, request: MusicShareRequest): MusicShareSession | null {
+  const account = AtlasAccount.forApp(app);
+  if (account === null) return null;
+  const api = new ArmariumApi({ http: obsidianHttp, token: () => account.token(), signedOut: () => account.signedOutByServer() });
+  const copies = { library: SoundLibrary.forApp(app), director: SoundDirector.forApp(app), records: SoundRecordStore.forApp(app) };
+  return new MusicShareSession({
+    account,
+    api,
+    ...request,
+    prepare: (file, listener) => prepareTrackCopy(copies, file, listener),
+    newUid: randomListingUid,
+    pack: async ({ cover, ...rest }) => {
+      const exported = await packMusicBundle({ ...rest, cover: cover === null ? undefined : await renderCover(cover) });
+      return { fileName: exported.fileName, blob: exported.blob };
+    },
+    fetchCover,
+    publishedArtist: (listing) => readPublishedArtist(listing, fetchPublicJson),
+    sha256: (bytes) => sha256(bytes),
+    sleep: abortableSleep,
+  });
+}
+
 /**
  * A share of one vault item with this app's account and the Armarium's API; null when the account is not set up. A
  * template's own description starts a new listing's.
@@ -102,14 +167,7 @@ export function createItemShareSession(app: App, item: SharedItem): ItemShareSes
       const exported = await exportItemBundle(app, item, { uid, version, notes, cover: cover === null ? undefined : await renderCover(cover), previews });
       return { fileName: exported.fileName, bytes: exported.bytes, name: exported.manifest.item.name };
     },
-    fetchCover: async (url) => {
-      try {
-        return new Blob([await fetchBytes(url)]);
-      } catch (error) {
-        console.warn('[Atlas] The listing\'s cover could not be fetched:', error);
-        return null;
-      }
-    },
+    fetchCover,
     sha256: (bytes) => sha256(bytes),
     sleep: abortableSleep,
   });
