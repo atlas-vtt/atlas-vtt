@@ -15,9 +15,8 @@ import { createInMemoryApp } from '../../mocks/inMemoryVault';
 /**
  * Music as the Armarium really delivers it, made by the other two halves: `atlas-upload` is an album Atlas packed for
  * the store (`packMusicBundle`, copies of real Opus packets stripped with `forPlayers`), `atlas-rebuilt` what the
- * store's checker 0.5.0 (atlas-services 1c431d9) rebuilt of it, and `site-rebuilt` its rebuild of a single the
- * website's composer (atlas-vtt-website 498e1e5) packed from an MP3. Made again by the scripts in
- * `~/.cache/armarium-music-integration/`, which run all three halves on audio ffmpeg makes.
+ * store's checker 0.5.0 rebuilt of it, and `site-rebuilt` its rebuild of a single the website's composer packed
+ * from an MP3. All three halves ran on audio ffmpeg makes.
  */
 const fixture = (name: string): Uint8Array => new Uint8Array(readFileSync(`tests/fixtures/armariumMusic/${name}`));
 const UID = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
