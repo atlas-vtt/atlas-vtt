@@ -929,23 +929,6 @@ body.atlas-look.atlas-look-glass .atlas-vtt-plugin .atlas-asset-manager-sidebar.
   backdrop-filter: blur(16px) saturate(1.2);
 }
 
-/* the Loot Roller's sidebar is smoked glass over the map, as the
-   asset manager's is over the workspace: the window lays no ground
-   of its own under it, and its main column keeps the look's. The
-   window has no backdrop, so the sidebar blurs from its own surface */
-body.atlas-look.atlas-look-glass .atlas-loot-roller:has(> .atlas-loot-roller__body > .atlas-loot-roller__sidebar) {
-  background-color: transparent;
-}
-
-body.atlas-look.atlas-look-glass .atlas-loot-roller__main {
-  background-color: var(--background-primary);
-}
-
-body.atlas-look.atlas-look-glass .atlas-loot-roller__sidebar {
-  background-color: color-mix(in oklch, var(--background-secondary) 75%, transparent);
-  backdrop-filter: blur(16px) saturate(1.2);
-}
-
 /* the Sound page's library rail too: the DM screen's backdrop blurs
    the map as the asset manager's does, the pane lays no ground under
    the rail, and its stage keeps the look's (the desk has its own) */
