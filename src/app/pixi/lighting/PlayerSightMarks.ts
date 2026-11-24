@@ -4,6 +4,7 @@ import { canvasBadgeColors, type CanvasBadgeColors } from '../utils/canvasBadgeC
 import { destroyTree } from '../utils/destroyTree';
 import { createLucideIconTexture } from '../utils/lucideIconTexture';
 import type { SightMark } from './sightMarks';
+import { batched } from '../utils/batchedGraphics';
 
 /** UI units (a medium token on a 70 px grid is 62 across): a small badge on the token's edge. */
 const SIGHT_MARK_RADIUS = 11;
@@ -77,7 +78,7 @@ export class PlayerSightMarks {
 
   private drawBadge(kind: SightMark['kind'], colors: CanvasBadgeColors): Container {
     const view = new Container();
-    const badge = view.addChild(new Graphics());
+    const badge = view.addChild(batched(new Graphics()));
     badge.scale.set(1 / DRAW_SCALE);
     const radius = SIGHT_MARK_RADIUS * DRAW_SCALE;
     // A dark hairline keeps the badge's edge on a map as light as the badge.

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { TRANSLATIONS } from '../../src/app/i18n/languages';
 import { en } from '../../src/app/i18n/locales/en';
-import { packLocales, unpackLocales, type PackedLocales } from '../../src/app/i18n/packedLocale';
+import { lazyLocales, packLocales, unpackLocales, type PackedLocales, type StoredLocales } from '../../src/app/i18n/packedLocale';
 import { isRegistry, localePack, packedRegistry } from '../../vite/locale-pack.mts';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
@@ -26,10 +26,15 @@ function hooks({ root = ROOT, production = true, watch = false }: Build = {}): {
   };
 }
 
-/** What a registry module written by the plugin hands to `unpackLocales`. */
+/** What a registry module written by the plugin hands to `lazyLocales`: every packed table as JSON text of its own. */
+function storedIn(code: string): StoredLocales {
+  return JSON.parse(/lazyLocales\(en, (\{.*\})\);\n$/s.exec(code)?.[1] ?? 'null') as StoredLocales;
+}
+
+/** The tables of that registry module, packed. */
 function packedIn(code: string): PackedLocales {
-  const literal = /JSON\.parse\((".*")\)\);\n$/s.exec(code)?.[1] ?? '""';
-  return JSON.parse(JSON.parse(literal) as string) as PackedLocales;
+  const stored = storedIn(code);
+  return { ...stored, languages: stored.languages.map(([language, table]) => [language, table === null ? null : (JSON.parse(table) as never)]) };
 }
 
 /** Every property name anywhere in `value`. */
@@ -71,7 +76,17 @@ describe('the languages as a production build packs them', () => {
 
     expect(Object.keys(unpacked)).toEqual(Object.keys(TRANSLATIONS));
     expect(unpacked).toEqual(TRANSLATIONS);
-    expect(code.split('\n').slice(0, 2)).toEqual(["import { en } from './locales/en';", "import { unpackLocales } from './packedLocale';"]);
+    expect(code.split('\n').slice(0, 2)).toEqual(["import { en } from './locales/en';", "import { lazyLocales } from './packedLocale';"]);
+  });
+
+  it('writes a registry whose languages unpack when they are read, to the same tables', () => {
+    const read = lazyLocales(en, storedIn(code));
+
+    expect(Object.keys(read)).toEqual(Object.keys(TRANSLATIONS));
+    expect(read.en).toBe(en);
+    const german = read.de;
+    expect(read.de).toBe(german);
+    expect(Object.fromEntries(Object.entries(read))).toEqual(TRANSLATIONS);
   });
 
   it('holds what the same pack function makes of the source, and reports it where it is asked to', () => {

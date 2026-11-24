@@ -5,7 +5,7 @@ import { canvasBadgeColors, isDarkTheme } from './canvasBadgeColors';
 import { INK_SHADE } from './canvasInk';
 import { destroyTree } from './destroyTree';
 import { LABEL_LOOK, labelCenter, labelScale, labelTextResolution, pillSize, type LabelTarget, type Size } from './measureLabelLayout';
-import { squareCorners, uiCorner } from './squareCorners';
+import { uiCorner } from './squareCorners';
 
 /** The label's colours: the nameplate's, its rim mixed opaque from the nameplate's translucent border. */
 export function labelColors(): { readonly text: number; readonly background: number; readonly border: number } {
@@ -102,18 +102,4 @@ export function drawLabelPill(g: Graphics, { width, height, radius: rounded }: S
   const inset = LABEL_LOOK.border;
   g.roundRect(-width / 2, -height / 2, width, height, radius).fill(colors.border);
   g.roundRect(-width / 2 + inset, -height / 2 + inset, width - 2 * inset, height - 2 * inset, Math.max(0, radius - inset)).fill(colors.background);
-}
-
-/** Calls `redraw` whenever Obsidian switches between its light and dark theme, or corners turn square or round; returns what stops it. */
-export function watchMeasureLabelTheme(redraw: () => void): () => void {
-  let dark = isDarkTheme();
-  let square = squareCorners();
-  const observer = new MutationObserver(() => {
-    if (isDarkTheme() === dark && squareCorners() === square) return;
-    dark = isDarkTheme();
-    square = squareCorners();
-    redraw();
-  });
-  observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-  return () => observer.disconnect();
 }

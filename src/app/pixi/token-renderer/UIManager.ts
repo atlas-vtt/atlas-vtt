@@ -78,8 +78,8 @@ export class UIManager implements ITokenUIManager {
     this.viewId = viewId;
     this.isPlayerView = isPlayerView;
     
-    // Create UI container for non-rotating elements
-    this.uiContainer = new Container();
+    // Create UI container for non-rotating elements: a render group, as the tokens' (`TokenRenderer`)
+    this.uiContainer = new Container({ isRenderGroup: true });
     this.uiContainer.sortableChildren = true;
     this.uiContainer.eventMode = 'passive'; // UI should not block token interactions
     this.uiContainer.interactiveChildren = true;
