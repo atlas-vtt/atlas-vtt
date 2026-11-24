@@ -105,6 +105,17 @@ describe('SoundRecordStore', () => {
     expect(stored(vault, 'c')).toMatchObject({ audioPath: 'Audios/Rain.mp3' });
   });
 
+  it('follows no rename to a name that is no sound: a file set aside by an update keeps its record in its place', async () => {
+    const { vault, store } = await open({ [pathOf('a')]: file('a', 'Audio/01 Dawn.opus', { name: '01 Dawn' }) });
+    vault.emit('rename', fileAt('Audio/01 Dawn.opus.atlas-old'), 'Audio/01 Dawn.opus');
+    vault.emit('rename', fileAt('Audio/01 Dawn.txt'), 'Audio/01 Dawn.opus');
+    expect(store.all().find((sound) => sound.id === 'a')).toMatchObject({ audioPath: 'Audio/01 Dawn.opus', name: '01 Dawn' });
+    // Put back from where it was set aside, it is the file the record names.
+    vault.emit('rename', fileAt('Audio/01 Dawn.opus'), 'Audio/01 Dawn.opus.atlas-old');
+    await store.flush();
+    expect(stored(vault, 'a')).toMatchObject({ audioPath: 'Audio/01 Dawn.opus', name: '01 Dawn' });
+  });
+
   it('leaves a record of a file on a disk alone when the vault renames what is named alike', async () => {
     const { vault, store } = await open({ [pathOf('a')]: file('a', 'atlas-sound:music/Rain.mp3') });
     vault.emit('rename', fileAt('Storm.mp3'), 'music/Rain.mp3');
