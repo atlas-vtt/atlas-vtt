@@ -1,9 +1,4 @@
 {
-  "src/app/imageProcessing/__tests__/pngBandDecoder.gpu.test.ts": {
-    "atlas/test-asserts": {
-      "count": 1
-    }
-  },
   "src/app/pixi/lighting/__tests__/lightingUnavailableNotice.test.ts": {
     "atlas/test-obsidian-mock": {
       "count": 1
@@ -44,33 +39,8 @@
       "count": 1
     }
   },
-  "tests/gpu/annotationCells.gpu.test.ts": {
-    "atlas/test-asserts": {
-      "count": 2
-    }
-  },
-  "tests/gpu/caveVerticalCrops.gpu.test.ts": {
-    "atlas/test-asserts": {
-      "count": 2
-    }
-  },
   "tests/gpu/ctrlWheelPreview.gpu.test.ts": {
     "atlas/test-mock-count": {
-      "count": 1
-    }
-  },
-  "tests/gpu/dungeonArt.gpu.test.ts": {
-    "atlas/test-asserts": {
-      "count": 6
-    }
-  },
-  "tests/gpu/dungeonCaveNecks.gpu.test.ts": {
-    "atlas/test-asserts": {
-      "count": 1
-    }
-  },
-  "tests/gpu/dungeonFireLights.gpu.test.ts": {
-    "atlas/test-asserts": {
       "count": 1
     }
   },
@@ -79,39 +49,9 @@
       "count": 1
     }
   },
-  "tests/gpu/glyphSheets/caveGround.ts": {
-    "atlas/test-asserts": {
-      "count": 1
-    }
-  },
-  "tests/gpu/liquidWaterArt.gpu.test.ts": {
-    "atlas/test-asserts": {
-      "count": 1
-    }
-  },
-  "tests/gpu/measureEffectsLook.gpu.test.ts": {
-    "atlas/test-asserts": {
-      "count": 4
-    }
-  },
-  "tests/gpu/measureEffectsMounted.gpu.test.ts": {
-    "atlas/test-asserts": {
-      "count": 1
-    }
-  },
-  "tests/gpu/soundTab.gpu.test.ts": {
-    "atlas/test-asserts": {
-      "count": 1
-    }
-  },
   "tests/gpu/statblockTokenPanel.gpu.test.ts": {
     "atlas/test-mock-count": {
       "count": 1
-    }
-  },
-  "tests/gpu/textField.gpu.test.ts": {
-    "atlas/test-asserts": {
-      "count": 2
     }
   },
   "tests/gpu/textFitMapTools.gpu.test.ts": {
@@ -141,11 +81,6 @@
   },
   "tests/gpu/toolbarEditorUndoBar.gpu.test.ts": {
     "atlas/test-mock-count": {
-      "count": 1
-    }
-  },
-  "tests/gpu/veinsCaveSamples.gpu.test.ts": {
-    "atlas/test-asserts": {
       "count": 1
     }
   },
@@ -271,16 +206,6 @@
   },
   "tests/unit/dungeons/cave/greatChambers.test.ts": {
     "atlas/test-mocks-its-subject": {
-      "count": 1
-    }
-  },
-  "tests/unit/dungeons/house/houseChimneys.test.ts": {
-    "atlas/test-asserts": {
-      "count": 1
-    }
-  },
-  "tests/unit/dungeons/house/houseWindows.test.ts": {
-    "atlas/test-asserts": {
       "count": 1
     }
   },
@@ -781,11 +706,6 @@
   },
   "tests/unit/vaultSyncSnapshots.test.ts": {
     "atlas/test-obsidian-mock": {
-      "count": 1
-    }
-  },
-  "tests/unit/visibilityCulling.test.ts": {
-    "atlas/test-asserts": {
       "count": 1
     }
   }

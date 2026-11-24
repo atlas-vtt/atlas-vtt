@@ -21,13 +21,27 @@ export const TEST_CONVENTIONS = [
   {
     name: 'test-asserts',
     create: testAsserts,
-    message: 'Assert what the code did: `expect(…)`, or `expect(() => …).not.toThrow()` where not throwing is the point.',
+    message: "Assert what the code did: `expect(…)`, or `expect(() => …).not.toThrow()` where not throwing is the point. Two things need none, and show it: a test that writes its picture or record for a person to judge (`savePng(…)`, `page.screenshot(…)`, `commands.writeFile(…)`), and a tool declared only where the environment asks for it (`it.runIf(import.meta.env.VITE_…)`, `if (import.meta.env.VITE_… === 'print') { … }`).",
     why: 'A test without an assertion passes whatever the code does, short of throwing.',
     bad: [
       "it('loads the scene', async () => {\n  await loadScene('a');\n});",
       "test.each([1, 2])('rounds %d', (value) => {\n  round(value);\n});",
       "it.concurrent('saves', async function () {\n  await save();\n});",
       "const opened = (id: string): Promise<void> => loadScene(id);\nit('loads the scene', async () => {\n  await opened('a');\n});",
+      // What a test prints is no outcome: nobody reads the log of a run that passed.
+      "it('measures the draw', () => {\n  console.log(`${cost(draw)} ms`);\n});",
+      // A capture is told by its whole callee: writing a note is none, nor is a method that happens to share the name.
+      "it('writes the note', async () => {\n  await vault.adapter.writeFile('a.md', text);\n});",
+      "it('draws the toolbar', async () => {\n  await toolbar.screenshot();\n});",
+      // `floor` asserts where it comes from tests/helpers/visibilityTrials, and under no other object.
+      "import { floor } from '../helpers/rounding';\nit('rounds down', () => {\n  floor(scale(3));\n});",
+      "import { floor } from '../helpers/visibilityTrials';\nit('rounds down', () => {\n  Math.floor(scale(3));\n});",
+      // No tools: Vite sets `DEV` in every run, a negated variable and one compared with its fallback hold where nothing is set, and the `else` is what runs unasked.
+      "it.runIf(import.meta.env.DEV)('prints the speed', () => {\n  console.log(speed());\n});",
+      "it.runIf(!import.meta.env.VITE_QUICK)('prints the speed', () => {\n  console.log(speed());\n});",
+      "const MEGAPIXELS = Number(import.meta.env.VITE_BENCH_MP ?? 0);\nit.runIf(MEGAPIXELS === 0)('prints the speed', () => {\n  console.log(speed());\n});",
+      "it.skipIf(process.platform === 'win32')('prints the speed', () => {\n  console.log(speed());\n});",
+      "if (import.meta.env.VITE_STATS === 'print') {\n  it('prints the numbers', () => {\n    console.log(stats());\n  });\n} else {\n  it('keeps the rule', () => {\n    problems();\n  });\n}",
     ],
     good: [
       "it('loads the scene', async () => {\n  expect(await loadScene('a')).toEqual({ id: 'a' });\n});",
@@ -36,8 +50,18 @@ export const TEST_CONVENTIONS = [
       "it('keeps the grid', () => {\n  harness.checkInvariants();\n});",
       // A helper of the file that asserts, itself or through another, is an assertion where it is called.
       "it('adds', () => {\n  bothNear(add(0.1, 0.2), 0.3);\n});\nconst near = (a: number, b: number): void => {\n  expect(Math.abs(a - b)).toBeLessThan(1e-6);\n};\nfunction bothNear(a: number, b: number): void {\n  near(a, b);\n  near(b, a);\n}",
+      "import { floor } from '../helpers/visibilityTrials';\nit('meets every reason to cast again', () => {\n  floor(tally, 'passing runs', 0.2);\n});",
       "it.todo('moves the token');",
       "it.each(cases)('reads %s', readsCase);",
+      // A picture or a record written for a person to judge is the outcome of the test that writes it, also through a helper of the file.
+      "it('draws the cave', async () => {\n  await savePng(drawCave(), 'cave');\n});",
+      "it('shows the empty page', async () => {\n  await page.screenshot({ path: 'sound-empty.png' });\n});",
+      "it('records the cost of the ground', async () => {\n  await commands.writeFile('out/cost.txt', costs().join('\\n'));\n});",
+      "async function savePixels(pixels: Uint8ClampedArray, name: string): Promise<void> {\n  await savePng(canvasOf(pixels), name);\n}\nit('lights the room', async () => {\n  await savePixels(frame(), 'room');\n});",
+      // A tool, declared only where the environment asks for it: run by hand for what it prints.
+      "it.runIf(import.meta.env.VITE_BENCH === '1')('prints the speed', () => {\n  console.log(speed());\n});",
+      "const MEGAPIXELS = Number(import.meta.env.VITE_BENCH_MP ?? 0);\nit.runIf(MEGAPIXELS > 0)('prints the speed', () => {\n  console.log(speed(MEGAPIXELS));\n});",
+      "describe('the chimneys', () => {\n  if (import.meta.env.VITE_CHIMNEY_STATS === 'print') {\n    it('prints their numbers', () => {\n      console.log(stats());\n    });\n    return;\n  }\n  it('keep the rule', () => {\n    expect(problems()).toEqual([]);\n  });\n});",
     ],
   },
   {
