@@ -11,6 +11,7 @@ import { maskBytes } from './exploredMaskAlpha.ts';
 import { ExploredRemovals } from './exploredRemovals.ts';
 import { levelObjects } from '../../levels/levelObjects';
 import { levelExploredMask } from '../../levels/sceneLevels';
+import type { SightPolicy } from '../../vision/tokenSightPolicy';
 import { t } from '../../i18n';
 
 export interface InputSharePorts extends PacerClock {
@@ -28,6 +29,8 @@ export interface InputSharePorts extends PacerClock {
   notice?(text: string): void;
   /** How the GM's fog edge looks; unset or undefined, players draw it hard. */
   fogEdge?(): SharedFogEdge | undefined;
+  /** Whose tokens players light the scene from (one player's own, `narrowPolicy`); unset, every token's that sees. */
+  sightPolicy?(): SightPolicy;
 }
 
 /** The shortest time between two sends of the scene's inputs, as for the token list. */
@@ -189,7 +192,10 @@ export class InputShare {
       this.publish({ t: 'lighting', scene: scene.id, ...lighting });
       if (this.lighting !== null) this.lighting.sent = lighting;
     }
-    this.sight.publish(scene.id, sharedSight({ state, rules, shown, tokenAlias: (id) => this.ports.tokenAlias(id), lightAlias: (id) => this.lightAlias(id), measurement: source.measurement() }));
+    const policy = this.ports.sightPolicy?.();
+    this.sight.publish(scene.id, sharedSight({
+      state, rules, shown, tokenAlias: (id) => this.ports.tokenAlias(id), lightAlias: (id) => this.lightAlias(id), measurement: source.measurement(), ...(policy !== undefined && { policy }),
+    }));
   }
 
   /** The walls, zones and senses, worked out again only when what they are made of changed. */

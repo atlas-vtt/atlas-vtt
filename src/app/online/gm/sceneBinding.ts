@@ -7,7 +7,7 @@ import { difficultCells } from '../../mapFeatures/featureIndex';
 import { mapFeatureList } from '../../mapFeatures/mapFeatures';
 import { diceSourceOf } from './atlasDice.ts';
 import { accentColour, atlasPlayerSettings, lightingSourceOf, measurementOf, tabAreaMap } from './atlasLighting.ts';
-import { mapLayerSourceOf, rulesLookupOf, showsViewedLevel } from './atlasMapLayers.ts';
+import { mapLayerSourceOf, pictureBasisOf, rulesLookupOf, showsViewedLevel } from './atlasMapLayers.ts';
 import { asTokenSource, call, drawnTokenPlaces, tokenRulesOf, type PlayerTokenSource, type SceneStore } from './atlasView.ts';
 import { bookSceneOf, type BookScene } from './book/bookScene.ts';
 import { ResourceWrites } from './book/resourceWrites.ts';
@@ -122,6 +122,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     atlasSettings: () => atlasPlayerSettings(ports.app),
     dice: () => (shown() ? diceSourceOf(leaf) : null),
     mapLayers: () => (shown() ? mapLayerSourceOf(renderer, leaf.view) : null),
+    pictureBasis: () => (shown() ? pictureBasisOf(renderer) : null),
     showNames: () => atlasPlayerSettings(ports.app).showNames,
     tokenRules: () => tokenRulesOf(shownRenderer()),
     tokenMoves: () => tokenMovesOf(shownRenderer()),

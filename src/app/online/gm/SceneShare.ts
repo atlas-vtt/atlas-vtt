@@ -7,7 +7,6 @@ import { FloorAudience } from './floorAudience.ts';
 import { floorMaps } from './floorMaps.ts';
 import { floorPorts, noticeOnce } from './floorPorts.ts';
 import { FloorShare } from './FloorShare.ts';
-import { FloorSight } from './floorSight.ts';
 import { FloorStore } from './floorStore.ts';
 import { floorKey as keyOf, FloorTokens } from './floorTokens.ts';
 import type { ListedPin } from './pins/ReadablePins.ts';
@@ -57,7 +56,7 @@ export class SceneShare {
   /** The shared scene's rolls and speakers in the log. */
   readonly dice: SceneDice;
   /** The readable pins players see now, on whichever floor they are. */
-  readonly layers: { readablePin(sceneId: string, alias: string): (ListedPin & { readonly map: string }) | null; update(): void };
+  readonly layers: { readablePin(player: string, sceneId: string, alias: string): (ListedPin & { readonly map: string }) | null; update(): void };
 
   constructor(store: SceneStore, ports: SceneSharePorts) {
     this.store = store;
@@ -66,9 +65,9 @@ export class SceneShare {
     this.tokens = new FloorTokens({ store, ports, floors: this.floors, shareOf: (player) => this.shareOf(player), together: () => this.audience.allTogether });
     this.dice = new SceneDice(store, ports, this.tokens.diceParts());
     this.layers = {
-      readablePin: (sceneId, alias) => this.tokens.shareOfScene(sceneId)?.layers.readablePin(sceneId, alias) ?? null,
+      readablePin: (player, sceneId, alias) => this.tokens.shareOfScene(sceneId)?.readablePin(player, sceneId, alias) ?? null,
       update: () => {
-        for (const share of this.floors.values()) share.layers.update();
+        for (const share of this.floors.values()) share.layersChanged();
       },
     };
   }
@@ -278,7 +277,7 @@ export class SceneShare {
     share = new FloorShare(store, floorPorts(this.ports, {
       // The GM's renderer is this floor's picture while the GM looks at it and it has drawn it
       viewed: () => !this.split() || (viewedLevelId(this.store.getState()) === floor && this.ports.rendererCurrent?.() !== false),
-      sight: new FloorSight({ state: () => store.getState(), map: () => share?.mapBounds ?? null, lightingSource: () => this.ports.lightingSource() }),
+      state: () => store.getState(), map: () => share?.mapBounds ?? null,
       cell: () => this.ports.tokenSource()?.getGridOptions()?.size ?? this.store.getState().grid?.size ?? DEFAULT_CELL,
       aliases: this.tokens.aliases,
       send: (body, to) => route(to, (player) => this.ports.send(body, player)),
