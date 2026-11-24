@@ -82,7 +82,7 @@ Download `main.js`, `manifest.json`, and `styles.css` from a [GitHub release](ht
 
 ## Privacy and network use
 
-Atlas works offline with files in your vault. It has no telemetry or ads, and you need no account to use it. Scenes are saved as `.atlasmap` files, and the rest of your library (tokens, encounters, collection settings, game system presets) as JSON files in the `atlas-vtt` folder, so it syncs with your vault. With Obsidian Sync, turn on "Sync all other types".
+Atlas works offline with files in your vault. It has no telemetry or ads, and you need no account to use it. Scenes are saved as `.atlasmap` files, and the rest of your library (tokens, encounters, collection settings, game system presets) as JSON files in the `atlas-vtt` folder, so it syncs with your vault. With Obsidian Sync, turn on "Sync all other types". On its Standard plan Obsidian Sync does not carry files over 5 MB, so Atlas's `main.js` does not reach your other devices, and Obsidian offers no update there because the synced manifest already names the new version. After an update, copy `main.js` to the other device by hand (see **Manual installation** under [Install](#install)), or switch off **Installed community plugins** in Obsidian Sync's settings and install and update Atlas on each device itself.
 
 ### Network use
 
