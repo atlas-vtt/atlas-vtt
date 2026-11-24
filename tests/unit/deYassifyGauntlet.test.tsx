@@ -2,7 +2,11 @@
 import { act, fireEvent, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { confirmDeYassify } from '../../src/app/appearance/deYassify/confirmDeYassify';
-import { DE_YASSIFY_STALL_MS } from '../../src/app/appearance/deYassify/DeYassifyGauntlet';
+import { DE_YASSIFY_FAIL_CHANCE, DE_YASSIFY_STALL_MS } from '../../src/app/appearance/deYassify/DeYassifyGauntlet';
+import { dealRound } from '../../src/app/appearance/deYassify/mimicCaptcha';
+
+/** Chest rounds only: street squares draw on a canvas, which jsdom has not (tests/gpu/streetSquares.gpu.test.ts). */
+const chestsOnly = (random: () => number, nextId: number, trickling: boolean) => dealRound(random, nextId, trickling);
 
 afterEach(() => {
   vi.useRealTimers();
@@ -15,6 +19,17 @@ function seeded(seed: number): () => number {
   return () => {
     state = (state * 1664525 + 1013904223) % 4294967296;
     return state / 4294967296;
+  };
+}
+
+/** `seed`'s randomness, after a first draw of `check` for the security check, the flow's first draw (0.99 lets it pass). */
+function afterCheck(check: number, seed: number): () => number {
+  const rest = seeded(seed);
+  let first = true;
+  return () => {
+    if (!first) return rest();
+    first = false;
+    return check;
   };
 }
 
@@ -36,7 +51,7 @@ async function clearMimics(): Promise<void> {
 }
 
 it('keeps Yassify on at the first No, which is the accent button', async () => {
-  const result = confirmDeYassify(seeded(1));
+  const result = confirmDeYassify({ random: seeded(1), deal: chestsOnly });
   await act(async () => {});
   expect(screen.getByText('Are you sure you want to de-Yassify Atlas?')).toBeTruthy();
   expect(button('No').className).toContain('btn--default');
@@ -47,15 +62,15 @@ it('keeps Yassify on at the first No, which is the accent button', async () => {
 });
 
 it('keeps Yassify on when the dialog is closed with Escape', async () => {
-  const result = confirmDeYassify(seeded(2));
+  const result = confirmDeYassify({ random: seeded(2), deal: chestsOnly });
   await act(async () => {});
   await act(async () => { fireEvent.keyDown(document.querySelector('.atlas-text-dialog')!, { key: 'Escape' }); });
   await expect(result).resolves.toBe(false);
 });
 
-it('turns Yassify off only after a wait, the extra-sure ask, another wait and a captcha that fails twice whatever is picked', async () => {
+it('turns Yassify off only after a wait, the extra-sure ask, a security check that asks twice to go on, and a captcha that fails twice whatever is picked', async () => {
   vi.useFakeTimers();
-  const result = confirmDeYassify(seeded(3));
+  const result = confirmDeYassify({ random: afterCheck(0.99, 3), deal: chestsOnly });
   await act(async () => {});
   await press('Yes');
   expect(screen.getByText('De-yassifying…')).toBeTruthy();
@@ -65,10 +80,19 @@ it('turns Yassify off only after a wait, the extra-sure ask, another wait and a 
   expect(button('Yes').className).toContain('atlas-de-yassify__yes--tiny');
   expect(button('No').className).toContain('atlas-de-yassify__no--huge');
   await press('Yes');
-  expect(screen.getByText('Summoning a captcha…')).toBeTruthy();
+  expect(screen.getByText('Checking security…')).toBeTruthy();
   await act(async () => { vi.advanceTimersByTime(DE_YASSIFY_STALL_MS - 1); });
-  expect(screen.queryByText('Select all squares with a mimic')).toBeNull();
+  expect(screen.queryByText('Hey, this is taking quite a while. Do you want to continue?')).toBeNull();
   await act(async () => { vi.advanceTimersByTime(1); });
+  // The check asks twice whether to go on, its spinner still turning, No still the accent button.
+  expect(screen.getByText('Hey, this is taking quite a while. Do you want to continue?')).toBeTruthy();
+  expect(document.querySelector('.atlas-spinner')).not.toBeNull();
+  expect(button('No').className).toContain('btn--default');
+  await press('Yes');
+  expect(screen.getByText('Are you sure you want to continue?')).toBeTruthy();
+  expect(document.querySelector('.atlas-spinner')).not.toBeNull();
+  expect(button('Yes').className).toContain('atlas-de-yassify__yes--tiny');
+  await press('Yes');
   expect(screen.getByText('Select all squares with a mimic')).toBeTruthy();
 
   // Right twice, and still wrong.
@@ -88,4 +112,30 @@ it('turns Yassify off only after a wait, the extra-sure ask, another wait and a 
   await clearMimics();
   await press('Verify');
   await expect(result).resolves.toBe(true);
+});
+
+it('keeps Yassify on when the GM stops at the slow security check', async () => {
+  vi.useFakeTimers();
+  const result = confirmDeYassify({ random: afterCheck(0.99, 4), deal: chestsOnly });
+  await act(async () => {});
+  await press('Yes');
+  await act(async () => { vi.advanceTimersByTime(DE_YASSIFY_STALL_MS); });
+  await press('Yes');
+  await act(async () => { vi.advanceTimersByTime(DE_YASSIFY_STALL_MS); });
+  await press('No');
+  await expect(result).resolves.toBe(false);
+});
+
+it('now and then just fails at the security check, and Yassify stays on', async () => {
+  vi.useFakeTimers();
+  const result = confirmDeYassify({ random: afterCheck(DE_YASSIFY_FAIL_CHANCE / 2, 5), deal: chestsOnly });
+  await act(async () => {});
+  await press('Yes');
+  await act(async () => { vi.advanceTimersByTime(DE_YASSIFY_STALL_MS); });
+  await press('Yes');
+  await act(async () => { vi.advanceTimersByTime(DE_YASSIFY_STALL_MS); });
+  expect(screen.getByText('Turning it off failed.')).toBeTruthy();
+  expect(screen.queryByText('Hey, this is taking quite a while. Do you want to continue?')).toBeNull();
+  await press('OK');
+  await expect(result).resolves.toBe(false);
 });

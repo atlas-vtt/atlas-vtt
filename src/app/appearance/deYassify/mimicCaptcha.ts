@@ -2,11 +2,16 @@ import chestA from '../../assets/yassify/chest-a.webp';
 import chestB from '../../assets/yassify/chest-b.webp';
 import mimicA from '../../assets/yassify/mimic-a.webp';
 import mimicB from '../../assets/yassify/mimic-b.webp';
+import { dealScene, type StreetScene } from './streetScenes';
 
 /**
  * The mimic captcha that stands between a GM and turning Yassify off: a parody of reCAPTCHA's "select all
- * squares" on purpose hard to read (tiny chests and mimics drawn blocky, darkened, turned and cropped) and rigged.
+ * squares" on purpose hard to read and rigged. A round is all chest squares (tiny chests and yassified mimics,
+ * with lashes, bow, nails and tumbler, drawn blocky, darkened, turned and cropped) or all street squares (street photos with a mimic glued on badly, `streetScenes.ts`).
  */
+
+/** What a round's squares show. */
+export type RoundStyle = 'chests' | 'streets';
 
 export type TileKind = 'chest' | 'mimic';
 
@@ -25,10 +30,12 @@ export interface Arrival {
 export interface CaptchaTile {
   id: number;
   kind: TileKind;
+  /** A chest square's picture; a street square draws its `scene` instead. */
   picture: string;
+  scene?: StreetScene;
   /** Quarter turns, in degrees. */
   turn: 0 | 90 | 180 | 270;
-  /** CSS brightness: some squares are too dark to tell. */
+  /** CSS brightness: some squares are a little dark, never too dark to tell. */
   brightness: number;
   /** How far the picture is blown up past its square, so part of it is cut off. */
   zoom: number;
@@ -40,6 +47,7 @@ export interface CaptchaTile {
 }
 
 export interface CaptchaRound {
+  style: RoundStyle;
   tiles: CaptchaTile[];
   /** A chest was clicked as a mimic this round: the round fails, whatever is left. */
   clickedChest: boolean;
@@ -76,14 +84,17 @@ function pick<T>(items: readonly T[], random: () => number): T {
   return items[Math.floor(random() * items.length) % items.length]!;
 }
 
-function dealTile(id: number, kind: TileKind, random: () => number): CaptchaTile {
+function dealTile(id: number, kind: TileKind, style: RoundStyle, random: () => number): CaptchaTile {
   const zoom = 1 + random() * 0.6;
+  const street = style === 'streets';
   return {
     id,
     kind,
-    picture: pick(PICTURES[kind], random),
-    turn: pick(TURNS, random),
-    brightness: 0.45 + random() * 0.7,
+    picture: street ? '' : pick(PICTURES[kind], random),
+    ...(street && { scene: dealScene(kind === 'mimic', random) }),
+    // A street photo stays upright; a chest may lie any way round.
+    turn: street ? 0 : pick(TURNS, random),
+    brightness: 0.7 + random() * 0.45,
     zoom,
     shiftX: (random() - 0.5) * (zoom - 1),
     shiftY: (random() - 0.5) * (zoom - 1),
@@ -91,7 +102,7 @@ function dealTile(id: number, kind: TileKind, random: () => number): CaptchaTile
 }
 
 /** A fresh grid: nine squares, two to five of them mimics, in no order; `trickling` squares arrive one by one. */
-export function dealRound(random: () => number, firstId = 0, trickling = false): CaptchaRound {
+export function dealRound(random: () => number, firstId = 0, trickling = false, style: RoundStyle = 'chests'): CaptchaRound {
   const mimics = FIRST_MIMICS.min + Math.floor(random() * (FIRST_MIMICS.max - FIRST_MIMICS.min + 1));
   const kinds: TileKind[] = Array.from({ length: GRID_TILES }, (_, at) => (at < mimics ? 'mimic' : 'chest'));
   for (let at = kinds.length - 1; at > 0; at -= 1) {
@@ -99,18 +110,19 @@ export function dealRound(random: () => number, firstId = 0, trickling = false):
     [kinds[at], kinds[other]] = [kinds[other]!, kinds[at]!];
   }
   const tiles = kinds.map((kind, at) => {
-    const tile = dealTile(firstId + at, kind, random);
+    const tile = dealTile(firstId + at, kind, style, random);
     return trickling ? { ...tile, arrival: arrivalAfter(null, random) } : tile;
   });
-  return { tiles, clickedChest: false, nextId: firstId + GRID_TILES };
+  return { style, tiles, clickedChest: false, nextId: firstId + GRID_TILES };
 }
 
 /** A square clicked as a mimic is taken away and another dealt in its place, as reCAPTCHA does; a chest taken counts. */
 export function clickTile(round: CaptchaRound, id: number, random: () => number): CaptchaRound {
   const clicked = round.tiles.find((tile) => tile.id === id);
   if (!clicked || clicked.arrival) return round;
-  const replacement = { ...dealTile(round.nextId, random() < REPLACEMENT_MIMIC ? 'mimic' : 'chest', random), arrival: arrivalAfter(clicked, random) };
+  const replacement = { ...dealTile(round.nextId, random() < REPLACEMENT_MIMIC ? 'mimic' : 'chest', round.style, random), arrival: arrivalAfter(clicked, random) };
   return {
+    style: round.style,
     tiles: round.tiles.map((tile) => (tile.id === id ? replacement : tile)),
     clickedChest: round.clickedChest || clicked.kind === 'chest',
     nextId: round.nextId + 1,
@@ -140,4 +152,12 @@ export function verdict(round: CaptchaRound, attempt: number): Verdict {
   if (round.clickedChest) return 'chest-clicked';
   if (round.tiles.some((tile) => tile.kind === 'mimic')) return 'mimic-left';
   return 'pass';
+}
+
+/** The chance that a round is street squares rather than chest squares. */
+const STREET_SHARE = 0.5;
+
+/** The next round, in either style at random. */
+export function dealAnyRound(random: () => number, nextId = 0, trickling = false): CaptchaRound {
+  return dealRound(random, nextId, trickling, random() < STREET_SHARE ? 'streets' : 'chests');
 }
