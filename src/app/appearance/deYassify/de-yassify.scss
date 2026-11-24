@@ -1,0 +1,122 @@
+@use '../../../../styles/tokens' as *;
+
+// The de-yassify gauntlet (DeYassifyGauntlet.tsx) in Atlas' dialog frame: its questions, the pretend wait and the
+// mimic captcha. Annoying on purpose: No is the accent button, Yes a ghost one that shrinks on the second ask.
+.atlas-de-yassify__question {
+  margin: 0;
+  font-size: $font-ui-medium;
+  line-height: var(--line-height-normal);
+  text-wrap: pretty;
+}
+
+.atlas-de-yassify__stall {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-m;
+  padding: $spacing-m;
+}
+
+.atlas-text-dialog__footer button.atlas-de-yassify__yes {
+  color: var(--text-faint);
+}
+
+// The second ask: Yes barely there, No as big as a button gets.
+.atlas-text-dialog__footer button.atlas-de-yassify__yes--tiny {
+  height: auto;
+  padding: 0 $spacing-xs;
+  font-size: $font-ui-smaller;
+  opacity: 0.6;
+}
+
+.atlas-text-dialog__footer button.atlas-de-yassify__no--huge {
+  height: auto;
+  padding: $spacing-l $spacing-2xl * 2;
+  font-size: calc(#{$font-ui-large} * 1.4);
+  font-weight: $font-weight-semibold;
+}
+
+// "Select all squares with a mimic", after reCAPTCHA: an accent banner over a 3 × 3 grid of blurry squares.
+.atlas-mimic-captcha {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-s;
+}
+
+.atlas-mimic-captcha__banner {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  padding: $spacing-m;
+  border-radius: $radius-s;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.atlas-mimic-captcha__title {
+  font-size: $font-ui-medium;
+  font-weight: $font-weight-semibold;
+}
+
+.atlas-mimic-captcha__hint {
+  font-size: $font-ui-smaller;
+}
+
+.atlas-mimic-captcha__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: $spacing-xs;
+}
+
+button.atlas-mimic-captcha__square {
+  position: relative;
+  aspect-ratio: 1;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+  border-radius: 0;
+  background: #556b41;
+  box-shadow: none;
+  cursor: pointer;
+
+  img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    // Drawn blocky from a tiny picture, as a captcha's squares are: hard to tell a chest from a mimic.
+    image-rendering: pixelated;
+    filter: brightness(var(--atlas-mimic-brightness, 1));
+    transform: translate(var(--atlas-mimic-shift-x, 0), var(--atlas-mimic-shift-y, 0)) scale(var(--atlas-mimic-zoom, 1)) rotate(var(--atlas-mimic-turn, 0deg));
+    user-select: none;
+    // A new square fades in where a clicked one was taken away.
+    animation: atlas-mimic-square-in 600ms ease-out;
+  }
+}
+
+@keyframes atlas-mimic-square-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button.atlas-mimic-captcha__square img {
+    animation: none;
+  }
+}
+
+.atlas-mimic-captcha__complaint {
+  min-height: 1.4em;
+  margin: 0;
+  color: var(--text-error);
+  font-size: $font-ui-smaller;
+}
+
+.atlas-mimic-captcha__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-s;
+}
