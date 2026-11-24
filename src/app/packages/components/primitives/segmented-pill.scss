@@ -1,0 +1,73 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// A segmented control's pill look (`SegmentedControl`'s `pill`): short choices of one width that never
+// wrap, so the control keeps its options' width wherever it stands (a menu row, a settings row) and a
+// long name beside it wraps instead. Scoped and through both classes: the options' own rules
+// (`.atlas-vtt-plugin .atlas-segmented .atlas-segmented__option`) let them wrap and draw the chosen one
+// in the surface's colour.
+//
+// The selection is one pill under the options, tinted with the accent and ringed in it, the chosen
+// word in the text colour: it stands out from the track and from a hovered option in every look,
+// theme and accent, and its text never sits on the accent itself. It glides to the option chosen
+// (`--atlas-pill-at`, the option's index, of `--atlas-pill-count`), and keeps the others' weight, so
+// choosing never changes the control's width and controls of the same choices stand the same.
+$pill-gap: $surface-inset;
+
+.atlas-vtt-plugin .atlas-segmented.atlas-segmented--pill {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--atlas-pill-count), 1fr);
+  gap: $pill-gap;
+  flex-shrink: 0;
+  isolation: isolate;
+
+  &::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+    top: $surface-inset;
+    bottom: $surface-inset;
+    left: $surface-inset;
+    width: calc((100% - 2 * #{$surface-inset} - (var(--atlas-pill-count) - 1) * #{$pill-gap}) / var(--atlas-pill-count));
+    translate: calc(var(--atlas-pill-at, 0) * (100% + #{$pill-gap})) 0;
+    border-radius: calc(var(--atlas-segmented-radius) - #{$surface-inset});
+    background: color-mix(in oklch, var(--interactive-accent) 22%, var(--background-primary));
+    // The accent itself, a switch's "on"; on a light surface a darker shade of the same hue, so the
+    // ring stands out from the pale track there too
+    box-shadow: inset 0 0 0 $border-width-l var(--atlas-pill-ring, var(--interactive-accent));
+    transition: translate $transition-normal $transition-ease-out, background-color $transition-fast $transition-ease-out;
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
+
+  .theme-light & {
+    --atlas-pill-ring: oklch(from var(--interactive-accent) calc(l - 0.14) c h);
+  }
+
+  // The chosen option answers the pointer too: its pill lights up a little
+  @media (hover: hover) {
+    &:has(.atlas-active:hover)::before {
+      background: color-mix(in oklch, var(--interactive-accent) 32%, var(--background-primary));
+    }
+  }
+
+  .atlas-segmented__option {
+    padding-inline: $spacing-s;
+    white-space: nowrap;
+
+    // Under a finger every option is a full touch target
+    @include atlas-coarse-pointer {
+      min-height: $touch-target;
+    }
+  }
+
+  .atlas-segmented__option.atlas-active {
+    background: transparent !important;
+    box-shadow: none;
+    color: var(--text-normal);
+  }
+}

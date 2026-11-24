@@ -17,7 +17,9 @@ export const playerBar: Translation = {
   'playerBar.takeBack': 'Handout zurücknehmen',
   'playerBar.openHint': 'Die gezeigte Szene auch auf einem Bildschirm am Tisch zeigen',
   'playerBar.freezeOnline': 'Online-Spieler können ihre Spielfiguren während der Pause nicht bewegen',
-  'playerBar.playMode': 'Wie die Spieler spielen',
-  'playerBar.modeTable': 'Jeder auf seiner eigenen Karte',
-  'playerBar.modeRemote': 'Handys als Fernbedienung für den gemeinsamen Bildschirm',
+  'playerBar.playMode': 'Spielmodus',
+  'playerBar.modeTable': 'Token-Steuerung',
+  'playerBar.modeRemote': 'Fernbedienung',
+  'playerBar.modeTableHint': 'Jeder Spieler bewegt seine Tokens auf seiner eigenen Karte',
+  'playerBar.modeRemoteHint': 'Handys sind Fernbedienungen für den gemeinsamen Bildschirm',
 };

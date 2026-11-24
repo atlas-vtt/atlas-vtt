@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { useStore } from "zustand"
-import { Blinds, ImageOff, MonitorUp, Pause, Play, RulerDimensionLine } from "lucide-react"
+import { Blinds, ImageOff, MonitorOff, MonitorUp, Pause, Play, RulerDimensionLine } from "lucide-react"
 import type { AtlasView } from "../../../atlas-view"
 import { useAtlasSettings } from "../../../keyboard/useMapHotkeys"
 import { PlayerWindowService } from "../../../services/PlayerWindowService"
@@ -51,12 +51,11 @@ function useDismiss(root: RefObject<HTMLElement | null>, open: boolean, close: (
 
 /**
  * The player window bar (GM only, below the scene tabs while the player window is open or an online
- * table runs), with the look and corners of the undo/redo bar. For the player window: TrueScale and
- * full screen on the TV. For everyone at the table: the curtain and pausing play (disabled while
- * TrueScale pins the window and no table runs). While a table runs and the window is closed, opening
- * it for a shared screen. Then what players see (with how online players play while a table runs,
- * and closing the window), and, while players are handed an image or loot,
- * taking it back. The handout's button comes last, so nothing moves under the pointer when it comes or goes.
+ * table runs), with the look and corners of the undo/redo bar. First the button that opens the player
+ * window (for a shared screen beside online play) and closes it once it is open; then, for the player
+ * window, TrueScale and full screen on the TV. For everyone at the table: the curtain and pausing play
+ * (disabled while TrueScale pins the window and no table runs). Then what players see (with how online
+ * players play while a table runs), and, while players are handed an image or loot, taking it back. The handout's button comes last, so nothing moves under the pointer when it comes or goes.
  */
 export function PlayerWindowBar({ view }: { view: AtlasView | null }): React.ReactElement | null {
   const isOpen = useStore(playerWindowStore, (s) => s.isOpen)
@@ -92,16 +91,21 @@ export function PlayerWindowBar({ view }: { view: AtlasView | null }): React.Rea
       {/* A TV plugged in since the window opened goes unnoticed until the screens are read again */}
       <div ref={rootRef} className="atlas-player-window-bar" onPointerEnter={refreshPlayerWindowDisplay}>
         <div className="atlas-vtt-toolbar">
-          {/* Online play first: the eye then moves the table, so this is the way to a shared screen beside it. In TrueScale's place, which it takes once open */}
-          {!isOpen && isDesktopApp() && (
-            <ToolButton
-              icon={MonitorUp}
-              label={t("lpv.openWindow")}
-              subtitle={t("playerBar.openHint")}
-              isActive={false}
-              onClick={() => runInBackground(openPlayerWindow(app), "Opening the player window")}
-              tooltipSide="bottom"
-            />
+          {/* Opens the player window and, once it is open, closes it, in the same place. Opening matters while online play
+              runs: the eye then moves the table, so this is the way to a shared screen beside it */}
+          {isOpen ? (
+            <ToolButton icon={MonitorOff} label={t("playerBar.close")} isActive={false} onClick={() => service?.destroy()} tooltipSide="bottom" />
+          ) : (
+            isDesktopApp() && (
+              <ToolButton
+                icon={MonitorUp}
+                label={t("lpv.openWindow")}
+                subtitle={t("playerBar.openHint")}
+                isActive={false}
+                onClick={() => runInBackground(openPlayerWindow(app), "Opening the player window")}
+                tooltipSide="bottom"
+              />
+            )
           )}
           {isOpen && (
             <>
@@ -132,7 +136,7 @@ export function PlayerWindowBar({ view }: { view: AtlasView | null }): React.Rea
             onClick={toggleTablePause}
             tooltipSide="bottom"
           />
-          <PlayersSeeMenu open={menu === "playersSee"} onToggle={toggleMenu("playersSee")} settings={settings} windowOpen={isOpen} online={online} />
+          <PlayersSeeMenu open={menu === "playersSee"} onToggle={toggleMenu("playersSee")} settings={settings} windowOpen={isOpen} />
           {handoutShown && (
             <ToolButton icon={ImageOff} label={t("playerBar.takeBack")} isActive={false} onClick={takeBackHandout} tooltipSide="bottom" />
           )}

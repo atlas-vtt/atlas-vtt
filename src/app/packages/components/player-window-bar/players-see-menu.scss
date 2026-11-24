@@ -8,9 +8,7 @@
 // Its content stands 16 px inside the border on every side: the menu's padding and text edge across,
 // the same twelve above and below in each column. One rhythm inside: rows 4 px apart, the parts of a
 // group 12 px, groups 24 px, which is also what stands between two columns stacked. Headings and part
-// labels tell the parts apart, so there is no rule between them. Closing the player window is the
-// menu's end action, in the bottom right corner, as far from the border on both sides and concentric
-// with it, as every row is.
+// labels tell the parts apart, so there is no rule between them.
 //
 // Every rule is scoped as the menu's own are (`.atlas-vtt-plugin .atlas-dropdown-content`, whose column
 // direction would otherwise win): the primitives are imported into `main.scss` inside that scope.
@@ -47,11 +45,6 @@
   flex: 1 1 auto;
   min-width: 0;
   padding-block: $spacing-m;
-
-  // The end action stands in the corner, $surface-inset from the border like every row's edge
-  &:has(> .atlas-players-see-menu__close) {
-    padding-bottom: 0;
-  }
 }
 
 .atlas-vtt-plugin .atlas-players-see-menu__group {
@@ -66,8 +59,8 @@
   @include atlas-flex-col($spacing-xs);
 }
 
-// A group's name, on the menu's text edge: larger, in capitals and the look's heading face, a step
-// quieter than the rows' words in colour, and readable at a glance.
+// A group's name, on the menu's text edge: larger and heavier than the rows' words, a step quieter in
+// colour, and readable at a glance.
 .atlas-vtt-plugin .atlas-players-see-menu__heading {
   margin: 0;
   padding-inline: var(--atlas-menu-text-inset);
@@ -75,8 +68,6 @@
   font-size: $font-ui-medium;
   font-weight: $font-weight-semibold;
   line-height: var(--line-height-tight);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 // A part of a group (the tokens, how online players play): the rows below it are what it names,
@@ -84,14 +75,6 @@
 .atlas-vtt-plugin .atlas-dropdown-label.atlas-players-see-menu__label {
   color: color-mix(in oklch, var(--text-normal) 60%, var(--text-muted));
   font-weight: $font-weight-semibold;
-}
-
-// The chosen way to play reads at a glance: its tick in the accent
-.atlas-vtt-plugin .atlas-players-see-menu__modes {
-  [role='radio'][aria-checked='true'] .atlas-dropdown-menu-item__check {
-    color: var(--interactive-accent);
-  }
-
 }
 
 // The line that says why switches are greyed out keeps its room while they are not, so the menu keeps
@@ -105,27 +88,4 @@
 .atlas-vtt-plugin .atlas-players-see-menu__part .atlas-dropdown-hint {
   font-size: $font-ui-small;
   color: color-mix(in oklch, var(--text-normal) 60%, var(--text-muted));
-}
-
-// Pushed to the bottom of its column, right-aligned, as wide as its icon and words
-.atlas-vtt-plugin .atlas-players-see-menu__close {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: auto;
-
-  // As wide as its icon and words, its content 12 px from either end of its box (the rows' shortcut
-  // column and its gap left out), so its words end on the text edge; its outer corner concentric with
-  // the menu's, where the bar's menus otherwise give rows the control radius
-  .atlas-dropdown-menu-item.atlas-dropdown-menu-item--flush {
-    width: auto;
-    grid-template-columns: $icon-s auto;
-    font-weight: $font-weight-semibold;
-    @include atlas-panel-inset-radius($surface-inset);
-  }
-
-  // A saturated red on a dark surface reads dim: lightened with white, which keeps its hue (oklch).
-  // As specific as the bars' rule for destructive menu buttons, which it must outweigh.
-  .theme-dark & button.btn.atlas-dropdown-menu-item.atlas-dropdown-btn--destructive {
-    color: color-mix(in oklch, var(--text-error) 72%, white) !important;
-  }
 }

@@ -17,7 +17,9 @@ export const playerBar: Translation = {
   'playerBar.takeBack': 'Ritira il materiale',
   'playerBar.openHint': 'Mostra la scena presentata anche su uno schermo al tavolo',
   'playerBar.freezeOnline': 'I giocatori online non possono muovere le pedine durante la pausa',
-  'playerBar.playMode': 'Come giocano i giocatori',
-  'playerBar.modeTable': 'Ognuno sulla propria mappa',
-  'playerBar.modeRemote': 'Telefoni come telecomandi per lo schermo condiviso',
+  'playerBar.playMode': 'Modalità di gioco',
+  'playerBar.modeTable': 'Controllo pedine',
+  'playerBar.modeRemote': 'Telecomando',
+  'playerBar.modeTableHint': 'Ogni giocatore muove le sue pedine sulla propria mappa',
+  'playerBar.modeRemoteHint': 'I telefoni fanno da telecomandi per lo schermo condiviso',
 };

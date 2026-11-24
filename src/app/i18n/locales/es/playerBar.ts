@@ -17,7 +17,9 @@ export const playerBar: Translation = {
   'playerBar.takeBack': 'Retirar el documento',
   'playerBar.openHint': 'Mostrar también la escena presentada en una pantalla de la mesa',
   'playerBar.freezeOnline': 'Los jugadores en línea no pueden mover sus fichas mientras está en pausa',
-  'playerBar.playMode': 'Cómo juegan los jugadores',
-  'playerBar.modeTable': 'Cada uno en su propio mapa',
-  'playerBar.modeRemote': 'Móviles como mando para la pantalla compartida',
+  'playerBar.playMode': 'Modo de juego',
+  'playerBar.modeTable': 'Control de fichas',
+  'playerBar.modeRemote': 'Mando a distancia',
+  'playerBar.modeTableHint': 'Cada jugador mueve sus fichas en su propio mapa',
+  'playerBar.modeRemoteHint': 'Los móviles son mandos para la pantalla compartida',
 };

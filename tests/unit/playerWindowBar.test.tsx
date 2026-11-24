@@ -101,7 +101,7 @@ describe('the player window bar', () => {
     expect(tableControlsStore.getState().paused).toBe(false);
   });
 
-  it('opens the player window for a shared screen beside online play, and drops the button once it is open', () => {
+  it('opens the player window for a shared screen beside online play, and closes it from the same button once it is open', () => {
     playerWindowStore.setState({ isOpen: false });
     act(() => tableControlsStore.setState({ online: true }));
     render(<PlayerWindowBar view={null} />);
@@ -109,6 +109,7 @@ describe('the player window bar', () => {
     expect(context.openPlayerWindow).toHaveBeenCalledOnce();
     act(() => playerWindowStore.setState({ isOpen: true }));
     expect(screen.queryByRole('button', { name: /Open player window/ })).toBeNull();
+    expect(screen.getAllByRole('button')[0]).toBe(screen.getByRole('button', { name: 'Close player window' }));
     expect(screen.getByRole('button', { name: 'TrueScale' })).toBeTruthy();
   });
 
@@ -118,20 +119,26 @@ describe('the player window bar', () => {
     act(() => tableControlsStore.setState({ online: true }));
     render(<PlayerWindowBar view={null} />);
     fireEvent.click(screen.getByRole('button', { name: 'What players see' }));
-    expect(screen.getByText('How players play')).toBeTruthy();
+    expect(screen.getByRole('radiogroup', { name: 'Play mode' })).toBeTruthy();
     expect(screen.getByRole('switch', { name: 'Show initiative panel' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Close player window' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Phones as remotes for the shared screen' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Remote control' }));
     expect(tableControlsStore.getState().playMode).toBe('remote');
     act(() => tableControlsStore.setState({ online: false }));
     expect(screen.queryByRole('button', { name: 'What players see' })).toBeNull();
   });
 
-  it('keeps the play mode out of what players see while no table runs', () => {
+  it('lets the GM set the play mode before a table runs, while online play is switched on', () => {
+    vi.spyOn(context.settings as SettingsService, 'isExperimentalOn').mockReturnValue(true);
     render(<PlayerWindowBar view={null} />);
     fireEvent.click(screen.getByRole('button', { name: 'What players see' }));
-    expect(screen.queryByText('How players play')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Close player window' })).toBeTruthy();
+    expect(screen.getByRole('radiogroup', { name: 'Play mode' })).toBeTruthy();
+  });
+
+  it('keeps the play mode out of what players see while online play is switched off', () => {
+    render(<PlayerWindowBar view={null} />);
+    fireEvent.click(screen.getByRole('button', { name: 'What players see' }));
+    expect(screen.queryByRole('radiogroup', { name: 'Play mode' })).toBeNull();
   });
 
   it('offers taking back an image only while one is shown, as its last button', () => {
@@ -155,7 +162,7 @@ describe('the player window bar', () => {
     expect(takeBack()).toBeNull();
   });
 
-  it('switches what players see from its menu and closes the window from its last row', () => {
+  it('switches what players see from its menu, and closes the window from its own button', () => {
     render(<PlayerWindowBar view={null} />);
     fireEvent.click(screen.getByRole('button', { name: 'What players see' }));
     const settings = context.settings as SettingsService;
@@ -163,6 +170,7 @@ describe('the player window bar', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Show initiative panel' }));
     expect(settings.getLocalPlayerViewSettings().showInitiative).toBe(!before);
 
+    fireEvent.keyDown(document, { key: 'Escape' });
     fireEvent.click(screen.getByRole('button', { name: 'Close player window' }));
     expect(context.service.destroy).toHaveBeenCalledTimes(1);
   });

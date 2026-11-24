@@ -57,12 +57,10 @@ export function PlayerAudienceControl({ name, audience, onChange, tooltipOutside
       refusal.current = window.setTimeout(() => setRefused(false), REFUSED_MS);
     });
   };
-  // The selection is drawn once under the options and glides to the chosen one
-  const at = { '--atlas-audience-at': PLAYER_AUDIENCES.indexOf(shown) } as React.CSSProperties;
   return (
-    <div className={refused ? 'atlas-audience atlas-audience--refused' : 'atlas-audience'} style={at}>
+    <div className={refused ? 'atlas-audience atlas-audience--refused' : 'atlas-audience'}>
       <SegmentedControl
-        className="atlas-audience-control"
+        pill
         value={shown}
         options={OPTIONS}
         onChange={choose}
