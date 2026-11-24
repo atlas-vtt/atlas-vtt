@@ -26,7 +26,7 @@ interface Prop {
  */
 const PROPS: readonly Prop[] = [
   { label: 'tokenBow', url: bowImageUrl, angle: -45, reach: 0.86, width: 0.55, tilt: 0.3 },
-  { label: 'tokenNails', url: nailsImageUrl, angle: 124, reach: 0.84, width: 0.38, tilt: 0 },
+  { label: 'tokenNails', url: nailsImageUrl, angle: 126, reach: 0.84, width: 0.36, tilt: 0 },
   { label: 'tokenCup', url: cupImageUrl, angle: 40, reach: 0.9, width: 0.36, tilt: 0.12 },
 ];
 /** Above the art, ring and glass, below the downed skull and the hidden-token marker. */
