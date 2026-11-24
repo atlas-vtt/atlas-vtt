@@ -1,0 +1,80 @@
+@use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
+
+// The welcome's opening (welcomeIntro.ts): the first slide comes up out of the dark, its heading rises letter by
+// letter and sharpens, then its line and the foot follow. When each part starts comes from the custom properties the
+// dialog sets (`--atlas-intro-*`), all in ms after it mounted. `data-opening` stays on for as long as the dialog and
+// the first slide's first showing last, so nothing animated here starts again when the opening ends.
+
+$intro-ease: cubic-bezier(0.16, 1, 0.3, 1);
+$slide-shade: #0a0806;
+
+.atlas-welcome-letters__text { @include atlas-visually-hidden; }
+
+.atlas-welcome-letters__word,
+.atlas-welcome-letters__letter {
+  display: inline-block;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  // The dark the map comes up out of, between the picture and the words.
+  .atlas-welcome[data-opening] .atlas-welcome-slide[data-opening]::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: $slide-shade;
+    pointer-events: none;
+    animation: atlas-intro-fade-out 2400ms cubic-bezier(0.45, 0, 0.2, 1) 150ms both;
+  }
+
+  // The map keeps drifting through the opening and the slide's whole time after it.
+  .atlas-welcome[data-opening] .atlas-welcome-slide[data-opening] .atlas-welcome-slide__picture {
+    animation-duration: calc(var(--atlas-slide-ms) + var(--atlas-intro-end));
+  }
+
+  .atlas-welcome[data-opening] .atlas-welcome-slide[data-opening] .atlas-welcome-text > .atlas-welcome-text__kicker {
+    animation: atlas-intro-kicker 1400ms $intro-ease 550ms both;
+  }
+
+  .atlas-welcome[data-opening] .atlas-welcome-slide[data-opening] .atlas-welcome-text > .atlas-welcome-text__title {
+    animation: none;
+  }
+
+  .atlas-welcome[data-opening] .atlas-welcome-slide[data-opening] .atlas-welcome-letters__letter {
+    animation:
+      atlas-intro-letter-rise 900ms $transition-spring both,
+      atlas-intro-letter-clear 700ms $intro-ease both;
+    animation-delay: calc(var(--atlas-intro-letters-at) + var(--atlas-letter) * var(--atlas-intro-letter-stagger));
+  }
+
+  .atlas-welcome[data-opening] .atlas-welcome-slide[data-opening] .atlas-welcome-text > .atlas-welcome-text__body {
+    animation: atlas-intro-rise 900ms $intro-ease var(--atlas-intro-body-at) both;
+  }
+
+  .atlas-welcome[data-opening] > :is(.atlas-welcome__foot, .atlas-welcome__close),
+  .atlas-welcome[data-opening] .atlas-welcome-carousel[data-opening] .atlas-welcome-carousel__stories {
+    animation: atlas-intro-rise 800ms $intro-ease var(--atlas-intro-foot-at) both;
+  }
+}
+
+@keyframes atlas-intro-fade-out {
+  to { opacity: 0; }
+}
+
+// The name above the heading draws together from wide, as a title card's does.
+@keyframes atlas-intro-kicker {
+  from { opacity: 0; letter-spacing: 0.6em; filter: blur(4px); }
+}
+
+@keyframes atlas-intro-letter-rise {
+  from { transform: translateY(0.55em); }
+}
+
+@keyframes atlas-intro-letter-clear {
+  from { opacity: 0; filter: blur(10px); }
+}
+
+@keyframes atlas-intro-rise {
+  from { opacity: 0; transform: translateY(14px); filter: blur(6px); }
+}
