@@ -116,6 +116,8 @@ export interface AtlasSettings {
     playersDraw: boolean;
     /** Online play: players at a closed door may ask the GM to open it. */
     playersOpenDoors: boolean;
+    /** Online play: every player sees through every player character's vision; off, each through their own characters' alone. */
+    sharedVision: boolean;
   };
   /** The player view on a TV lying on the table (TrueScale). Read with `getTableTvSettings`. */
   tableTv: TableTvSettings;
@@ -164,6 +166,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     initiativeMaxCards: 0,
     playersDraw: false,
     playersOpenDoors: false,
+    sharedVision: false,
   },
   tableTv: DEFAULT_TABLE_TV_SETTINGS,
 };

@@ -9,7 +9,7 @@ export const playerBar: Translation = {
   'playerBar.curtainDown': 'Скрыть карту',
   'playerBar.curtainUp': 'Открыть карту',
   'playerBar.toggleCurtain': 'Скрыть или открыть карту в окне игроков',
-  'playerBar.playersSee': 'Что видят игроки',
+  'playerBar.playersSee': 'Настройки стола',
   'playerBar.close': 'Закрыть окно игроков',
   'playerBar.freeze': 'Приостановить вид игроков',
   'playerBar.unfreeze': 'Продолжить: вид игроков снова следует за вами',

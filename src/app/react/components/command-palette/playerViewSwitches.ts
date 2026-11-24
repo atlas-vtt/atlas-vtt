@@ -37,6 +37,7 @@ const ONLINE_SWITCHES: ReadonlyArray<SwitchText> = [
   { key: 'showCursors', label: t('lpv.showCursors') },
   { key: 'playersDraw', label: t('lpv.playersDraw'), hint: t('lpv.playersDrawHint') },
   { key: 'playersOpenDoors', label: t('lpv.playersOpenDoors'), hint: t('lpv.playersOpenDoorsHint') },
+  { key: 'sharedVision', label: t('lpv.sharedVision'), hint: t('lpv.sharedVisionHint') },
 ];
 
 /** How the initiative list looks to the players. */
@@ -78,7 +79,7 @@ export interface PlayerViewSwitches {
   shared: PlayerViewSwitch[];
   /** Whether the initiative list runs as a row, and is mirrored for the far side of the table: the player window only. */
   initiativeLayout: PlayerViewSwitch[];
-  /** The players' cursors, whether players may draw or ask to open doors, and whether they move only on their turn: online play only, none while it is switched off. */
+  /** The players' cursors, whether players may draw or ask to open doors, whether they share vision, and whether they move only on their turn: online play only, none while it is switched off. */
   online: PlayerViewSwitch[];
   /** The initiative list's pulse and turn banner in the player window. */
   initiative: PlayerViewSwitch[];

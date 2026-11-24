@@ -23,6 +23,8 @@ export const lpv: Translation = {
   'lpv.playersDrawHint': 'Online-Spieler bekommen ein eigenes Zeichenwerkzeug. Du kannst ändern und löschen, was sie zeichnen.',
   'lpv.playersOpenDoors': 'Spieler dürfen Türen öffnen lassen',
   'lpv.playersOpenDoorsHint': 'Online-Spieler an einer geschlossenen Tür können dich bitten, sie zu öffnen. Du bekommst eine Meldung und entscheidest auf der Karte.',
+  'lpv.sharedVision': 'Geteilte Sicht',
+  'lpv.sharedVisionHint': 'Online-Spieler sehen auch, was die anderen Spielercharaktere sehen.',
   'lpv.showCursors': 'Mauszeiger aller zeigen',
   'lpv.showDiceRolls': 'Würfe zeigen',
   'lpv.view4k': 'Bis zu 4K rendern',

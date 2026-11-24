@@ -36,6 +36,8 @@ export const lpv: Translation = {
   'lpv.playersDrawHint': '在线玩家会获得自己的绘图工具。你可以修改和清除他们画的内容。',
   'lpv.playersOpenDoors': '玩家可以请求开门',
   'lpv.playersOpenDoorsHint': '站在关闭的门前的在线玩家可以请你开门。你会收到通知，并在地图上决定。',
+  'lpv.sharedVision': '共享视野',
+  'lpv.sharedVisionHint': '在线玩家也能看到其他玩家角色看到的内容。',
   'lpv.showCursors': '显示所有人的光标',
   'lpv.view4k': '最高渲染到 4K',
   'lpv.view4kHint': '4K 电视或超宽屏的每个屏幕像素都能得到一个渲染像素，而不是放大的 1440p 画面；玩家视图的图形运算最多增加到 2.25 倍。仅限此设备。',
