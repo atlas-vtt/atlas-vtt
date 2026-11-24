@@ -115,9 +115,11 @@ export abstract class ShareFlow<S extends ShareCommon> {
     this.set({ step: 'bundle', submission: null, upload: null, bundle: null, packing: null, refusal: null });
   }
 
+  /** Changes the listing's form; what was wrong with the fields it changes is said again at the next step only. */
   setDraft(change: Partial<ListingDraft>): void {
     this.touched = true;
-    this.set({ draft: { ...this.state.draft, ...change } });
+    const problems = Object.fromEntries(Object.entries(this.state.problems).filter(([field]) => !Object.hasOwn(change, field)));
+    this.set({ draft: { ...this.state.draft, ...change }, problems });
   }
 
   toggleTag(tag: TagId): void {
