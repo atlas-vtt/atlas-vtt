@@ -38,6 +38,7 @@ export const appearance = {
   'appearance.deYassify.rigged2': 'Please also check the new images.',
   'appearance.deYassify.chestClicked': 'That was a chest. Clearly a chest. Again.',
   'appearance.deYassify.mimicLeft': 'A mimic got away. Do it again.',
+  'appearance.deYassify.stillLoading': 'Please wait for the new images.',
   'appearance.accentPresets.crimson': 'Crimson',
   'appearance.accentPresets.ember': 'Ember',
   'appearance.accentPresets.gold': 'Gold',

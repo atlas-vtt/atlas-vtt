@@ -91,20 +91,32 @@ button.atlas-mimic-captcha__square {
     filter: brightness(var(--atlas-mimic-brightness, 1));
     transform: translate(var(--atlas-mimic-shift-x, 0), var(--atlas-mimic-shift-y, 0)) scale(var(--atlas-mimic-zoom, 1)) rotate(var(--atlas-mimic-turn, 0deg));
     user-select: none;
-    // A new square fades in where a clicked one was taken away.
-    animation: atlas-mimic-square-in 600ms ease-out;
+  }
+
+  // On its way in: no clicks, and the waiting cursor while the GM waits.
+  &:disabled {
+    cursor: progress;
   }
 }
 
-@keyframes atlas-mimic-square-in {
+// reCAPTCHA's timing: the clicked square fades out, the gap stays empty, the new picture fades in, each at the
+// square's own random pace. Opacity alone, so it plays with reduced motion too: the wait is the joke.
+.atlas-mimic-captcha__leaving {
+  animation: atlas-mimic-fade-out var(--atlas-mimic-out, 600ms) ease-in forwards;
+}
+
+.atlas-mimic-captcha__arriving {
+  animation: atlas-mimic-fade-in var(--atlas-mimic-in, 600ms) ease-out var(--atlas-mimic-in-delay, 0ms) both;
+}
+
+@keyframes atlas-mimic-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes atlas-mimic-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  button.atlas-mimic-captcha__square img {
-    animation: none;
-  }
 }
 
 .atlas-mimic-captcha__complaint {

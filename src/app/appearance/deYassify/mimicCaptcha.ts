@@ -10,6 +10,18 @@ import mimicB from '../../assets/yassify/mimic-b.webp';
 
 export type TileKind = 'chest' | 'mimic';
 
+/**
+ * How a square arrives, with reCAPTCHA's maddening timing: the square it replaces fades out, the gap stays empty for a
+ * while (now and then far too long), then the new picture fades in. Gone once the new picture is shown (`settleTile`).
+ */
+export interface Arrival {
+  /** The square being replaced, faded out first; none for a square dealt into a fresh grid. */
+  leaving: CaptchaTile | null;
+  outMs: number;
+  gapMs: number;
+  inMs: number;
+}
+
 export interface CaptchaTile {
   id: number;
   kind: TileKind;
@@ -23,6 +35,8 @@ export interface CaptchaTile {
   /** Where the blown-up picture sits, in shares of the square. */
   shiftX: number;
   shiftY: number;
+  /** Still on its way in: it cannot be clicked, and Verify waits for it. */
+  arrival?: Arrival;
 }
 
 export interface CaptchaRound {
@@ -33,7 +47,7 @@ export interface CaptchaRound {
   nextId: number;
 }
 
-export type Verdict = 'pass' | 'rigged' | 'chest-clicked' | 'mimic-left';
+export type Verdict = 'pass' | 'still-loading' | 'rigged' | 'chest-clicked' | 'mimic-left';
 
 const PICTURES: Readonly<Record<TileKind, readonly string[]>> = { chest: [chestA, chestB], mimic: [mimicA, mimicB] };
 export const GRID_TILES = 9;
@@ -43,6 +57,20 @@ const FIRST_MIMICS = { min: 2, max: 5 } as const;
 /** The chance that a clicked square comes back as another mimic. */
 const REPLACEMENT_MIMIC = 0.3;
 const TURNS = [0, 90, 180, 270] as const;
+/** The chance that a gap stays empty far too long. */
+const SLOW_GAP_SHARE = 0.3;
+
+/** Random timing for a square on its way in, after `leaving` (or into a fresh grid, a little quicker). */
+function arrivalAfter(leaving: CaptchaTile | null, random: () => number): Arrival {
+  const slow = random() < SLOW_GAP_SHARE;
+  const gapMs = slow ? 2500 + random() * 3500 : 200 + random() * 1300;
+  return {
+    leaving,
+    outMs: leaving ? 300 + random() * 900 : 0,
+    gapMs: leaving ? gapMs : gapMs / 2,
+    inMs: 400 + random() * 2100,
+  };
+}
 
 function pick<T>(items: readonly T[], random: () => number): T {
   return items[Math.floor(random() * items.length) % items.length]!;
@@ -62,22 +90,26 @@ function dealTile(id: number, kind: TileKind, random: () => number): CaptchaTile
   };
 }
 
-/** A fresh grid: nine squares, two to five of them mimics, in no order. */
-export function dealRound(random: () => number, firstId = 0): CaptchaRound {
+/** A fresh grid: nine squares, two to five of them mimics, in no order; `trickling` squares arrive one by one. */
+export function dealRound(random: () => number, firstId = 0, trickling = false): CaptchaRound {
   const mimics = FIRST_MIMICS.min + Math.floor(random() * (FIRST_MIMICS.max - FIRST_MIMICS.min + 1));
   const kinds: TileKind[] = Array.from({ length: GRID_TILES }, (_, at) => (at < mimics ? 'mimic' : 'chest'));
   for (let at = kinds.length - 1; at > 0; at -= 1) {
     const other = Math.floor(random() * (at + 1));
     [kinds[at], kinds[other]] = [kinds[other]!, kinds[at]!];
   }
-  return { tiles: kinds.map((kind, at) => dealTile(firstId + at, kind, random)), clickedChest: false, nextId: firstId + GRID_TILES };
+  const tiles = kinds.map((kind, at) => {
+    const tile = dealTile(firstId + at, kind, random);
+    return trickling ? { ...tile, arrival: arrivalAfter(null, random) } : tile;
+  });
+  return { tiles, clickedChest: false, nextId: firstId + GRID_TILES };
 }
 
 /** A square clicked as a mimic is taken away and another dealt in its place, as reCAPTCHA does; a chest taken counts. */
 export function clickTile(round: CaptchaRound, id: number, random: () => number): CaptchaRound {
   const clicked = round.tiles.find((tile) => tile.id === id);
-  if (!clicked) return round;
-  const replacement = dealTile(round.nextId, random() < REPLACEMENT_MIMIC ? 'mimic' : 'chest', random);
+  if (!clicked || clicked.arrival) return round;
+  const replacement = { ...dealTile(round.nextId, random() < REPLACEMENT_MIMIC ? 'mimic' : 'chest', random), arrival: arrivalAfter(clicked, random) };
   return {
     tiles: round.tiles.map((tile) => (tile.id === id ? replacement : tile)),
     clickedChest: round.clickedChest || clicked.kind === 'chest',
@@ -85,11 +117,25 @@ export function clickTile(round: CaptchaRound, id: number, random: () => number)
   };
 }
 
+/** `tile` as it stands once it has arrived. */
+function shown(tile: CaptchaTile): CaptchaTile {
+  const copy = { ...tile };
+  delete copy.arrival;
+  return copy;
+}
+
+/** The square `id` has arrived: its new picture is shown. */
+export function settleTile(round: CaptchaRound, id: number): CaptchaRound {
+  if (!round.tiles.some((tile) => tile.id === id && tile.arrival)) return round;
+  return { ...round, tiles: round.tiles.map((tile) => (tile.id === id ? shown(tile) : tile)) };
+}
+
 /**
- * Whether the GM may go on: never on the first `RIGGED_ATTEMPTS` submissions (`attempt` counts from 0), then only
- * once no mimic is left and no chest was taken for one.
+ * Whether the GM may go on: not while a square is still on its way in (which costs no attempt), never on the first
+ * `RIGGED_ATTEMPTS` submissions (`attempt` counts from 0), then only once no mimic is left and no chest was taken.
  */
 export function verdict(round: CaptchaRound, attempt: number): Verdict {
+  if (round.tiles.some((tile) => tile.arrival)) return 'still-loading';
   if (attempt < RIGGED_ATTEMPTS) return 'rigged';
   if (round.clickedChest) return 'chest-clicked';
   if (round.tiles.some((tile) => tile.kind === 'mimic')) return 'mimic-left';

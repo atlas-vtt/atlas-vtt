@@ -21,12 +21,17 @@ function seeded(seed: number): () => number {
 const button = (name: string): HTMLElement => screen.getByRole('button', { name });
 const press = async (name: string): Promise<void> => { await act(async () => { fireEvent.click(button(name)); }); };
 
-/** Clicks every square showing a mimic until none is left, as a GM who reads the blurry squares right would. */
+/** Waits out every square on its way in: the longest arrival is under ten seconds. */
+const waitForSquares = async (): Promise<void> => { await act(async () => { vi.advanceTimersByTime(10_000); }); };
+
+/** Clicks every square showing a mimic until none is left, waiting for each new one, as a patient GM would. */
 async function clearMimics(): Promise<void> {
+  await waitForSquares();
   for (let guard = 0; guard < 200; guard += 1) {
-    const mimic = [...document.querySelectorAll<HTMLImageElement>('.atlas-mimic-captcha__square img')].find((img) => img.src.includes('mimic'));
+    const mimic = [...document.querySelectorAll<HTMLImageElement>('.atlas-mimic-captcha__square img:not(.atlas-mimic-captcha__leaving)')].find((img) => img.src.includes('mimic'));
     if (!mimic) return;
     await act(async () => { fireEvent.click(mimic.closest('button')!); });
+    await waitForSquares();
   }
 }
 
@@ -73,7 +78,11 @@ it('turns Yassify off only after a wait, the extra-sure ask, another wait and a 
   await clearMimics();
   await press('Verify');
   expect(screen.getByRole('alert').textContent).toBe('Please also check the new images.');
+  // The new grid trickles in: Verify waits for it, at no cost.
+  await press('Verify');
+  expect(screen.getByRole('alert').textContent).toBe('Please wait for the new images.');
   // A mimic left over is caught.
+  await waitForSquares();
   await press('Verify');
   expect(screen.getByRole('alert').textContent).toBe('A mimic got away. Do it again.');
   await clearMimics();
