@@ -27,6 +27,9 @@ export const SCIFI_LOOK_CLASS = 'atlas-look-scifi';
 /** On `body` while the Atlas look on lets the map show through (`LookService.glass`), beside `LOOK_CLASS`. */
 export const GLASS_LOOK_CLASS = 'atlas-look-glass';
 
+/** On `body` while the GM wants no rounded corners in Atlas (`LookService.squareCorners`), under any look. */
+export const SQUARE_CORNERS_CLASS = 'atlas-square-corners';
+
 /** On `body` while an Atlas look is on and the GM picked an accent colour, which the look then takes instead of its own. */
 export const CUSTOM_ACCENT_CLASS = 'atlas-accent-custom';
 
@@ -53,6 +56,7 @@ export function registerLookSync(plugin: Plugin, looks: LookService): void {
     doc.body.toggleClass(LOOK_CLASS, isAtlasLook(look));
     doc.body.toggleClass(SCIFI_LOOK_CLASS, look === 'scifi');
     doc.body.toggleClass(GLASS_LOOK_CLASS, looks.glass());
+    doc.body.toggleClass(SQUARE_CORNERS_CLASS, looks.squareCorners());
     doc.body.toggleClass(CUSTOM_ACCENT_CLASS, isAtlasLook(look) && customAccent(app) !== '');
     waiting.get(doc)?.();
     waiting.delete(doc);
@@ -72,7 +76,7 @@ export function registerLookSync(plugin: Plugin, looks: LookService): void {
       waiting.get(doc)?.();
       waiting.delete(doc);
       paintIvy(doc, '');
-      doc.body.removeClass(LOOK_CLASS, SCIFI_LOOK_CLASS, GLASS_LOOK_CLASS, CUSTOM_ACCENT_CLASS);
+      doc.body.removeClass(LOOK_CLASS, SCIFI_LOOK_CLASS, GLASS_LOOK_CLASS, SQUARE_CORNERS_CLASS, CUSTOM_ACCENT_CLASS);
     };
   });
   plugin.register(looks.onChange(() => {

@@ -26,6 +26,7 @@
 @use '../src/app/packages/components/asset-manager/open-window';
 @use './scroll-lock';
 @use './portal-host';
+@use './square-corners';
 // At the root too: Atlas' scroll areas are found by class, in every window and floating layer.
 @use './overlay-scrollbars';
 @use './touch';
