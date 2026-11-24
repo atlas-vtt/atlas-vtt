@@ -9,6 +9,7 @@ export const toolbar: Translation = {
   'toolbar.cone': 'Cone',
   'toolbar.fogEraser': 'Borracha de névoa',
   'toolbar.fogTool': 'Ferramenta de névoa',
+  'toolbar.lighting': 'Iluminação',
   'toolbar.laser': 'Ponteiro laser',
   'toolbar.lassoSelection': 'Seleção por laço',
   'toolbar.peek': 'Segure para ver o que os jogadores veem',

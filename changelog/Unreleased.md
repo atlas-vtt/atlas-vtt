@@ -31,6 +31,7 @@
 
 ## Fixed
 
+- The toolbar's Lighting button is named in your language, as its menu already was
 - Dice in the accent colour take a new accent colour at once, whether it is picked in Appearance settings or in Obsidian's settings
 - The asset manager's scroll shadow no longer shows past the window's rounded corners
 - Fog of War no longer takes a player's token away from them: a party token under the fog stays theirs to see and move, also in Atlas Online, and everyone at the table sees a ring above the fog where it stands
