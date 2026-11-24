@@ -32,6 +32,7 @@ export const armariumMusic: Translation = {
   'armariumMusic.state.refused': 'Fuera',
   'armariumMusic.refused.consent': 'Su carpeta aún no está convertida. Elige en la página Sonido qué hace Atlas con los originales.',
   'armariumMusic.refused.gone': 'El archivo ya no está',
+  'armariumMusic.refused.read-failed': 'Atlas no pudo leer el archivo',
   'armariumMusic.leftOut': { one: 'Esta pista no puede ir y se deja fuera:', other: 'Estas {count} pistas no pueden ir y se dejan fuera:' },
   'armariumMusic.leftOutLine': '{title}: {reason}',
   'armariumMusic.cut': 'Un álbum lleva como mucho {max} pistas. Van las primeras {max}.',

@@ -32,6 +32,7 @@ export const armariumMusic: Translation = {
   'armariumMusic.state.refused': '已去掉',
   'armariumMusic.refused.consent': '它所在的文件夹还未转换。请在声音页面选择 Atlas 如何处理原始文件。',
   'armariumMusic.refused.gone': '文件已不在',
+  'armariumMusic.refused.read-failed': 'Atlas 无法读取该文件',
   'armariumMusic.leftOut': { other: '这 {count} 首无法加入，已去掉：' },
   'armariumMusic.leftOutLine': '{title}：{reason}',
   'armariumMusic.cut': '一张专辑最多 {max} 首。只加入前 {max} 首。',

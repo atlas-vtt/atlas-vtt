@@ -16,7 +16,7 @@ const idOf = (track: MusicShareTrack): string => track.id;
 
 /** Why a track cannot go, in a few words. */
 export function trackRefusalText(reason: TrackRefusal): string {
-  if (reason === 'consent' || reason === 'gone') return t(`armariumMusic.refused.${reason}`);
+  if (reason === 'consent' || reason === 'gone' || reason === 'read-failed') return t(`armariumMusic.refused.${reason}`);
   return t(`audio.refused.${reason}`);
 }
 

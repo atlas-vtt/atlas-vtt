@@ -4,8 +4,11 @@ import type { LibraryFile } from '../../soundLibrary/SoundLibrary';
 import type { ShareCommon } from './shareState';
 import type { OwnListing } from './uploadContract';
 
-/** Why a track cannot go: what a conversion refused, the GM's choice for the folder still to make, or the file gone. */
-export type TrackRefusal = SoundRefusal | 'consent' | 'gone';
+/**
+ * Why a track cannot go: what its conversion refused, the GM's choice for the folder still to make, the file gone, or
+ * a read of the file or its copy that failed (which says nothing of the file being damaged).
+ */
+export type TrackRefusal = SoundRefusal | 'consent' | 'gone' | 'read-failed';
 
 /** How far a track's Atlas copy is, as the share step shows it. */
 export type TrackCopyState =

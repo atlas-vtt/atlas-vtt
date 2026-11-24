@@ -32,6 +32,7 @@ export const armariumMusic: Translation = {
   'armariumMusic.state.refused': 'Убран',
   'armariumMusic.refused.consent': 'Его папка ещё не преобразована. Выберите на странице «Звук», что Atlas делает с оригиналами.',
   'armariumMusic.refused.gone': 'Файла больше нет',
+  'armariumMusic.refused.read-failed': 'Atlas не смог прочитать файл',
   'armariumMusic.leftOut': { one: 'Этот трек не может войти и убран:', few: 'Эти {count} трека не могут войти и убраны:', many: 'Эти {count} треков не могут войти и убраны:', other: 'Эти {count} трека не могут войти и убраны:' },
   'armariumMusic.leftOutLine': '{title}: {reason}',
   'armariumMusic.cut': 'В альбоме не больше {max} треков. Войдут первые {max}.',

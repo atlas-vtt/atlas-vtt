@@ -32,6 +32,7 @@ export const armariumMusic: Translation = {
   'armariumMusic.state.refused': 'Weggelassen',
   'armariumMusic.refused.consent': 'Sein Ordner ist noch nicht umgewandelt. Leg auf der Sound-Seite fest, was Atlas mit den Originalen macht.',
   'armariumMusic.refused.gone': 'Die Datei ist weg',
+  'armariumMusic.refused.read-failed': 'Atlas konnte die Datei nicht lesen',
   'armariumMusic.leftOut': { one: 'Dieser Track kann nicht mit und wird weggelassen:', other: 'Diese {count} Tracks können nicht mit und werden weggelassen:' },
   'armariumMusic.leftOutLine': '{title}: {reason}',
   'armariumMusic.cut': 'Ein Album fasst höchstens {max} Tracks. Die ersten {max} kommen mit.',

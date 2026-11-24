@@ -34,6 +34,7 @@ export const armariumMusic = {
   'armariumMusic.state.refused': 'Left out',
   'armariumMusic.refused.consent': 'Its folder is not converted yet. Choose what Atlas does with originals on the Sound page.',
   'armariumMusic.refused.gone': 'The file is gone',
+  'armariumMusic.refused.read-failed': 'Atlas could not read the file',
   'armariumMusic.leftOut': { one: 'This track cannot go and is left out:', other: 'These {count} tracks cannot go and are left out:' },
   'armariumMusic.leftOutLine': '{title}: {reason}',
   'armariumMusic.cut': 'An album holds at most {max} tracks. The first {max} go.',
