@@ -1214,8 +1214,8 @@ body.atlas-look.atlas-look-scifi .atlas-sb-sheet .atlas-sb-score-group:last-chil
    for whatever is chosen (the open scene's tab, a picked row, the row the
    keyboard points at in a list or menu); for a row
    or a plain button, which is clear until pointed at or chosen, while it
-   is under the pointer: only the row itself, never a list item or a
-   focusable box that holds rows of its own (a base and its views). The campaign page's way back over its world map
+   is under the pointer: only the row itself, never a bare list item that
+   holds rows of its own (a base and its views; rows carry a class). The campaign page's way back over its world map
    keeps its own frost */
 body.atlas-look.atlas-look-scifi :is(
   .atlas-asset-manager-sidebar,
@@ -1270,12 +1270,12 @@ body.atlas-look.atlas-look-scifi :is(
   .atlas-sb-scores,
   button:hover,
   a:hover,
-  li:not(:has(li)):hover,
+  li[class*="atlas-"]:hover,
   [role="button"]:hover,
   [role="option"]:hover,
   [role="menuitem"]:hover,
   [role="tab"]:hover,
-  [tabindex]:not(:has(button, li, [tabindex])):hover,
+  [tabindex]:hover,
   .clickable-icon:hover
 ):not(:where(.campaign-page[data-backdrop] .campaign-page__back)) {
   backdrop-filter: blur(8px);
