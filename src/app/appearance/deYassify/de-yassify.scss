@@ -11,10 +11,11 @@
 
 .atlas-de-yassify__bow {
   position: absolute;
-  top: -42px;
-  left: -52px;
+  // The knot (about the middle of the picture, a little above) lands on the rounded corner's curve.
+  top: -19px;
+  left: -31px;
   z-index: 1;
-  width: 96px;
+  width: 84px;
   transform: rotate(-18deg);
   pointer-events: none;
   user-select: none;
