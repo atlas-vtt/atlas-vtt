@@ -34,6 +34,16 @@
     pointer-events: none;
   }
 
+  // Where the entrance starts (`noticeMotion.ts`), for the frame before Motion takes the notice and holds it inline.
+  &.atlas-notice-entering {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.94);
+
+    @media (prefers-reduced-motion: reduce) {
+      transform: none;
+    }
+  }
+
   a {
     color: var(--text-accent);
 

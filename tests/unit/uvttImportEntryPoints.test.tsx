@@ -113,7 +113,7 @@ describe('importing maps in the asset manager', () => {
     const onSceneOpened = vi.fn();
     const onCreatorFiles = vi.fn();
     let current = initial;
-    const { result, rerender } = renderHook((props: Props) => useUvttImport({ app, assetService: assets, collectionId: 'Dungeons', onSceneOpened, onCreatorFiles, ...props }), { initialProps: initial });
+    const { result, rerender } = renderHook((props: Props) => useUvttImport({ app, assetService: assets, collectionId: 'Dungeons', onSceneOpened, onCreatorFiles, windowRef: { current: null }, ...props }), { initialProps: initial });
     return { importMaps: () => result.current, onSceneOpened, onCreatorFiles, set: (props) => { current = { ...current, ...props }; rerender(current); } };
   }
 

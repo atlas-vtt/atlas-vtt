@@ -1,3 +1,4 @@
+import { getDomHost } from '../../host/dom';
 import { cssColorToHexNumber, getObsidianAccentColor } from './colorUtils';
 
 export interface CanvasBadgeColors {
@@ -7,7 +8,7 @@ export interface CanvasBadgeColors {
 }
 
 export function isDarkTheme(): boolean {
-  return document.body.classList.contains('theme-dark');
+  return getDomHost().activeDocument().body.classList.contains('theme-dark');
 }
 
 /** Colours of canvas badges such as pins and hex labels; they match the token UI badges (HP bar background). */

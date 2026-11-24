@@ -3,6 +3,7 @@ import type { Viewport } from 'pixi-viewport';
 import { MOTION_NORMAL_MS } from '../../utils/motion';
 import { destroyTree } from '../utils/destroyTree';
 import { ValueTransition } from '../utils/ValueTransition';
+import { viewportDocument } from '../utils/viewportDocument';
 import { MAP_LAYER_Z } from '../mapLayerOrder';
 import {
   SELECTION_LOOK, groupFrame, highlightBox, highlightPath, roundedBoxContains, unionBox,
@@ -124,7 +125,7 @@ export class SelectionHighlights {
     deps.viewport.on('zoomed-end', this.onViewChange);
     deps.viewport.on('moved', this.onViewChange);
     this.themeObserver = typeof MutationObserver === 'function' ? new MutationObserver(() => this.refreshTheme()) : null;
-    this.themeObserver?.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    this.themeObserver?.observe(viewportDocument(deps.viewport).body, { attributes: true, attributeFilter: ['class'] });
   }
 
   /** Shows `targets` selected: new ones land, gone ones leave at once, the others follow their things. */

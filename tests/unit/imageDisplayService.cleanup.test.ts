@@ -107,7 +107,7 @@ describe('ImageDisplayService cleanup', () => {
       .mockReturnValueOnce(editorMenuRef);
     const offref = vi.fn();
     const app = {
-      workspace: { on, offref },
+      workspace: { on, offref, containerEl: document.body, iterateAllLeaves: vi.fn() },
       metadataCache: {},
       vault: {},
     } as any;

@@ -52,8 +52,9 @@ function JavaScriptBlock({ item, monster, replaceVitals }: BlockViewProps): Reac
 
     el.replaceChildren();
     let removedVitals = false;
-    const node = runCallback<Node | null>(item.code, { monster }, null);
-    if (node instanceof Node) {
+    // The layout's own code may hand back anything, not only a node.
+    const node = runCallback<Partial<Node> | null>(item.code, { monster }, null);
+    if (typeof node?.instanceOf === 'function' && node.instanceOf(Node)) {
       el.append(node);
       if (replaceVitals) {
         // Remove only the known Daggerheart resource DOM, retaining other JS content.

@@ -11,7 +11,7 @@ export function useTutorialTarget(selector: string | undefined, root?: ParentNod
     let frame = 0;
     let last: DOMRect | null = null;
     const measure = (): void => {
-      const target = selector ? (root ?? document).querySelector(selector) : null;
+      const target = selector ? (root ?? activeDocument).querySelector(selector) : null;
       const bounds = target?.getBoundingClientRect();
       const next = bounds && bounds.width && bounds.height ? bounds : null;
       if (!sameRect(last, next)) { last = next; setRect(next); }

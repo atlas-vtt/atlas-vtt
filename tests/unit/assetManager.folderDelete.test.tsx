@@ -163,7 +163,7 @@ describe('the open folder, Back and Forward after a folder was deleted', () => {
   const visible = { current: { assets: [], folders: [] } as VisibleIds };
 
   it('show its parent folder where the deleted folder was open', () => {
-    const { result } = renderHook(() => useSelectionHandlers(visible, [], 'tokens', true));
+    const { result } = renderHook(() => useSelectionHandlers(visible, [], 'tokens', true, { current: null }));
     act(() => result.current.handleNavigateToFolder(VILLAINS));
     act(() => result.current.handleNavigateToFolder(BOSSES));
 
@@ -173,7 +173,7 @@ describe('the open folder, Back and Forward after a folder was deleted', () => {
   });
 
   it('never lead to the deleted folder', () => {
-    const { result } = renderHook(() => useSelectionHandlers(visible, [], 'tokens', true));
+    const { result } = renderHook(() => useSelectionHandlers(visible, [], 'tokens', true, { current: null }));
     act(() => result.current.resetForTab());
     act(() => result.current.handleNavigateToFolder(VILLAINS));
     act(() => result.current.handleNavigateToFolder(BOSSES));

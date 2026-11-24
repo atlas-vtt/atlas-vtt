@@ -30,7 +30,7 @@ export interface SaveDevice {
 
 function downloadBlob(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob);
-  const link = document.body.createEl('a', { href: url, attr: { download: fileName } });
+  const link = activeDocument.body.createEl('a', { href: url, attr: { download: fileName } });
   link.click();
   link.remove();
   URL.revokeObjectURL(url);

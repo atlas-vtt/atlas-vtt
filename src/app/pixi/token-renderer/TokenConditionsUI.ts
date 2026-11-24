@@ -61,6 +61,6 @@ export class TokenConditionsUI {
   }
 
   private canAnimate(): boolean {
-    return !prefersReducedMotion(document.body);
+    return !prefersReducedMotion(activeDocument.body);
   }
 }

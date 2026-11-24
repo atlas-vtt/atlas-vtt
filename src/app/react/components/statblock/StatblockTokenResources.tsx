@@ -100,7 +100,7 @@ export function StatblockTokenResources({ monster, layout, look, definitions, to
     const measure = (): void => {
       const first = list.children[0];
       const third = list.children[2];
-      if (!(first instanceof HTMLElement) || !(third instanceof HTMLElement)) return;
+      if (!first?.instanceOf(HTMLElement) || !third?.instanceOf(HTMLElement)) return;
       // Layout offsets exclude the DM screen entrance animation’s scale transform.
       const height = third.offsetTop + third.offsetHeight - first.offsetTop;
       if (height > 0) list.style.maxHeight = `${height}px`;

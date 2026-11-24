@@ -55,7 +55,7 @@ export function useSlideTimer(count: number, paused: boolean): SlideTimer {
 export function useDocumentHidden(element: RefObject<HTMLElement | null>): boolean {
   const [hidden, setHidden] = useState(false);
   useEffect(() => {
-    const doc = element.current?.ownerDocument ?? document;
+    const doc = element.current?.ownerDocument ?? activeDocument;
     const follow = (): void => setHidden(doc.hidden);
     follow();
     doc.addEventListener('visibilitychange', follow);

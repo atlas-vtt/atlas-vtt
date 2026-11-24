@@ -87,9 +87,9 @@ export class StatblockPreviewWindow {
     originContext?: TokenRollContext,
     /**
      * Where the window joins the page: a map's note preview layer, so overlays of the map (the DM screen, its
-     * sound page) and dialogs stand above it, else the portal host of the hovered window's document.
+     * sound page) and dialogs stand above it, else the portal host of the focused window's document.
      */
-    host: HTMLElement = portalHost(document),
+    host: HTMLElement = portalHost(),
   ) {
     this.notePath = notePath;
     this.originatingPin = 'type' in originatingToken ? originatingToken : null;
