@@ -11,6 +11,8 @@ import type { DiceSource } from '../../../../src/app/online/gm/atlasDice.ts';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { pictureBasisOf } from '../../../../src/app/online/gm/atlasMapLayers.ts';
 import { fakeAtlasTab } from './fakeAtlasTab.ts';
+import { FakeLaser } from './markHarness.ts';
+import type { Measurements } from '../../../../src/app/pixi/measure/measurements';
 import { GENERIC_SOURCE, gmPerception, PLAYER_SETTINGS } from './gmLighting.ts';
 import { sceneState, sequenced, shareHarness, token, tokenLists, type Sent, type ShareHarness } from './shareHarness.ts';
 
@@ -165,6 +167,34 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
       expect(den).toBeDefined();
       expect(table.share.layers.readablePin(BEN, scene, den?.id ?? '')?.pin.id).toBe('den');
       expect(table.share.layers.readablePin(ANA, scene, den?.id ?? '')).toBeNull();
+    });
+  });
+
+  describe('the GM\'s aura around a token', () => {
+    /** The GM keeps an aura around the goblin and an area in Ana's room, which players may see. */
+    const auraAroundGoblin = (table: ShareHarness): void => {
+      const records = { live: null, kept: [
+        { id: 'aura', kind: 'measure', shape: 'circle', points: [{ x: 900, y: 300 }, { x: 1000, y: 300 }], follows: 'goblin', aura: 10 },
+        { id: 'pool', kind: 'measure', shape: 'circle', points: [{ x: 250, y: 250 }, { x: 300, y: 250 }] },
+      ] } as unknown as Measurements;
+      table.marks = {
+        measurements: { get: () => records, subscribe: () => () => undefined }, laser: new FakeLaser(), laserLook: () => ({ color: '#ff0059', size: 16 }), footprints: () => [],
+        seen: () => (tokenId) => table.perception?.(tokenId) === 'seen',
+      };
+    };
+    /** The areas the players were last told of, an aura by `aura`. */
+    const kept = (table: ShareHarness): string[] => (table.sent.flatMap(({ body }) => (body.t === 'marks' ? [body] : [])).at(-1)?.measures ?? [])
+      .flatMap((entry) => entry.full?.kept ?? []).map((area) => (area.aura === undefined ? 'area' : 'aura'));
+
+    it('is told only where every player sees that token, with Shared vision off', async () => {
+      const off = await started(rooms(), false);
+      auraAroundGoblin(off);
+      await off.advance(2000);
+      expect(kept(off)).toEqual(['area']);
+      const on = await started(rooms(), true);
+      auraAroundGoblin(on);
+      await on.advance(2000);
+      expect(kept(on)).toEqual(['aura', 'area']);
     });
   });
 

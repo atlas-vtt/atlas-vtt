@@ -136,6 +136,7 @@ export class FloorShare {
     // An aura names its token by the id the token list gives it
     this.marks = new MarkShare({
       ...ports, cursorsShown, tokenAlias: (tokenId) => this.tokens.alias(tokenId), keptBy: (measure) => this.measures.told(measure),
+      gmMarks: () => this.pictures.marks(ports.gmMarks?.() ?? null),
       // A drawing under way is followed only where a request to make it would be taken.
       strokesTaken: (player, scene) => (this.drawings.refusal(player, scene) === null ? { cell: drawCell(store.getState().grid) } : null),
       fog: () => this.pictures.party.layers.committedFog(),

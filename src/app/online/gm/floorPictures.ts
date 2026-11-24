@@ -5,6 +5,7 @@ import type { SceneStore } from './atlasView.ts';
 import { eyesKey, floorEyes, PARTY_EYES, type Eyes } from './floorEyes.ts';
 import { FloorPicture, type PictureFloor } from './floorPicture.ts';
 import type { FloorSharePorts, PictureSources } from './floorPorts.ts';
+import type { GmMarkSource } from './MarkShare.ts';
 
 /** What a player's own picture reads by: the tokens they see through, as a key, their policy and the sources cut by it. */
 interface OwnLook {
@@ -25,6 +26,7 @@ export class FloorPictures {
   readonly party: FloorPicture;
   private readonly pictures = new Map<string, FloorPicture>();
   private readonly looks = new Map<string, OwnLook>();
+  private readonly narrowed = new WeakMap<GmMarkSource, GmMarkSource>();
   /** The key of each player's eyes, as last worked out. */
   private eyes = new Map<string, string>();
   private scene: SharedScene | null = null;
@@ -111,6 +113,26 @@ export class FloorPictures {
   seenByEveryone(mapPath: string, party: ReadonlyMap<string, ShownRollToken>): ReadonlyMap<string, ShownRollToken> {
     const own = [...this.looks.values()].map(({ sources }) => sources.tokenSource()?.playerRollTokens(mapPath, [...party.keys()]) ?? new Map<string, ShownRollToken>());
     return new Map([...party].filter(([tokenId]) => own.every((shown) => shown.has(tokenId))));
+  }
+
+  /**
+   * The GM's marks as every player of the floor is told them: a measurement from a token, an aura
+   * around one or a range mark only where each player's own picture lists that token too. The same
+   * object for the same source, which the marks follow by identity.
+   */
+  marks(source: GmMarkSource | null): GmMarkSource | null {
+    if (source === null) return null;
+    let narrowed = this.narrowed.get(source);
+    if (narrowed === undefined) {
+      const own = (): FloorPicture[] => [...this.pictures].flatMap(([key, picture]) => (key === eyesKey(PARTY_EYES) ? [] : [picture]));
+      narrowed = { ...source, seen: () => {
+        const party = source.seen();
+        const pictures = own();
+        return (tokenId) => party(tokenId) && pictures.every((picture) => picture.tokens.listedAlias(tokenId) !== undefined);
+      } };
+      this.narrowed.set(source, narrowed);
+    }
+    return narrowed;
   }
 
   /** What players see of the map beside its tokens may have changed. */
