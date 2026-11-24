@@ -52,3 +52,4 @@
 - Sound: cancelling the question about a new music or ambience folder, after Change folder, keeps the folder you had, with your choice for its originals, instead of leaving none linked
 - Sound: linking an empty music or ambience folder no longer asks to convert "all 0 sounds": the question says the folder holds no sounds yet and that Atlas converts the sounds you add to it
 - When the dungeon generator cannot draw its map or the pictures on its cards, the preview says so and offers Try again, instead of leaving the cards empty
+- The asset manager's collection picker opens with its search ready: type a name or use the arrow keys at once, without clicking into the field first
