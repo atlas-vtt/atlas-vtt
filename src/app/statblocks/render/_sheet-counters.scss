@@ -73,6 +73,33 @@ $cell-min: 5.5em;
     gap: $spacing-xs;
     min-height: $pip-hit;
   }
+
+  .atlas-sb-counter__max {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+
+  input.atlas-sb-counter__max-input {
+    box-sizing: border-box;
+    width: 4.5em;
+    min-width: 0;
+    min-height: $pip-hit;
+    padding: $spacing-xs;
+    border: $border-width-s solid var(--background-modifier-border);
+    border-radius: $radius-s;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+
+    &[aria-invalid='true'] {
+      border-color: var(--text-error);
+    }
+  }
 }
 
 // Buttons in the card take none of the theme's button look: the pips are the control. A linked statblock (a hover

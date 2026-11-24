@@ -23,6 +23,8 @@ export const statblock: Translation = {
   'statblock.addToNextRoll': 'Прибавить {name} к следующему броску',
   'statblock.addsToRolls': 'Прибавить к следующему броску',
   'statblock.counterAdd': 'Добавить строку, например Ки',
+  'statblock.counterMax': 'Максимум использований: {name}',
+  'statblock.counterMaxLabel': 'Макс.',
   'statblock.counterMoveDown': 'Переместить {name} вниз',
   'statblock.counterMoveUp': 'Переместить {name} вверх',
   'statblock.counterRegain': 'Сколько использований {name} восстанавливает',

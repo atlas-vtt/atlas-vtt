@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { FieldValue, TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
 import { restoreCounters, restoresRow, type RegainRoll } from '../../../../src/app/statblocks/values/counterRestore';
-import { readCounterRows, shownCounterRows, withCounterReset, withCountersSet, withCounterUsed } from '../../../../src/app/statblocks/values/counterValues';
+import { readCounterRows, shownCounterRows, withCounterMax, withCounterReset, withCountersSet, withCounterUsed } from '../../../../src/app/statblocks/values/counterValues';
 import { valueMisfit } from '../../../../src/app/statblocks/values/valueFit';
 
 const FIELD: TemplateField = {
@@ -127,6 +127,18 @@ describe('a Counters row and its template\'s maximum', () => {
     expect(own).toEqual([{ name: 'Ki', max: 4, used: 1 }]);
     expect(drawn(ki(5), own)).toEqual([{ name: 'Ki', max: 4, used: 1 }]);
     expect(withCountersSet(ki(5), own ?? undefined, [{ max: 5, used: 1 }])).toEqual([{ name: 'Ki', max: 5, used: 1, templateMax: 5 }]);
+  });
+
+  it('sets a per-character maximum, clamps uses when lowering it, and resumes following the template when matched', () => {
+    const field = ki(3);
+    const spent = [{ name: 'Ki', max: 3, used: 3, templateMax: 3, colour: 'red' }];
+    const lowered = withCounterMax(field, spent, 0, 2);
+    expect(lowered).toEqual([{ name: 'Ki', max: 2, used: 2, colour: 'red' }]);
+    expect(withCounterMax(field, lowered ?? undefined, 0, 3)).toEqual([{ name: 'Ki', max: 3, used: 2, templateMax: 3, colour: 'red' }]);
+    expect(withCounterMax(field, spent, 0, 3)).toBeNull();
+    expect(withCounterMax(field, spent, 0, 0)).toBeNull();
+    expect(withCounterMax(field, spent, 0, 2.5)).toBeNull();
+    expect(withCounterMax(field, spent, 0, Number.MAX_SAFE_INTEGER + 1)).toBeNull();
   });
 });
 

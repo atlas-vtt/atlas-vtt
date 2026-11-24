@@ -3,7 +3,7 @@ import type { DicePreset } from '../../../types/dicePresetTypes';
 import { DieStill } from '../collection-settings/dice-lab/DieStill';
 import { useDieImages } from '../collection-settings/dice-lab/useDieImages';
 import { presetFaceFormula } from './presetLook';
-import { presetFaceParts } from './presetFace';
+import { presetFaceParts } from './presetFaceParts';
 
 /** The height a designed roll's die is drawn at on its place, as the row's pencil dice are. */
 const STILL_HEIGHT = 32;

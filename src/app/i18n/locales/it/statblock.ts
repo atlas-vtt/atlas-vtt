@@ -22,6 +22,8 @@ export const statblock = {
   "statblock.addsToRolls": "Aggiungi al prossimo tiro",
   "statblock.counterAdd": "Aggiungi una riga, come Ki",
   "statblock.counterLeft": "{name}: {n} di {max} rimasti",
+  "statblock.counterMax": "Usi massimi per {name}",
+  "statblock.counterMaxLabel": "Max",
   "statblock.counterMoveDown": "Sposta {name} giù",
   "statblock.counterMoveUp": "Sposta {name} su",
   "statblock.counterRegain": "Usi di {name} recuperati",

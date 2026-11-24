@@ -185,6 +185,16 @@ export function withCounterUsed(field: Pick<TemplateField, 'counterRows'>, value
   return changedRows(field, value, (each, at) => (at === index ? { ...each, used: next } : each));
 }
 
+/** Sets a row's per-character maximum (at least one), clamping its spent uses to the new maximum. */
+export function withCounterMax(field: Pick<TemplateField, 'counterRows'>, value: FieldValue | undefined, index: number, max: number): FieldValue | null {
+  const rows = shownCounterRows(field, value);
+  const row = rows?.[index];
+  if (!row || !Number.isSafeInteger(max) || max < 1) return null;
+  const next = max;
+  if (next === row.max) return null;
+  return changedRows(field, value, (each, at) => (at === index ? { ...each, max: next, used: Math.min(each.used, next) } : each));
+}
+
 /**
  * The value with each row at the uses `uses` names for it, in the stored order; null where the value is no list
  * of counters or `uses` names another number of rows. Uses are taken as given: the caller checks them.

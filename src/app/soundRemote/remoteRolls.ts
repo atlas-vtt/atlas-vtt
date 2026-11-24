@@ -1,4 +1,4 @@
-import { presetFaceParts } from '../react/components/dice/presetFace';
+import { presetFaceParts } from '../react/components/dice/presetFaceParts';
 import { presetFaceFormula, presetText } from '../react/components/dice/presetLook';
 import type { DicePreset } from '../types/dicePresetTypes';
 import type { RemoteRoll } from './remoteProtocol';

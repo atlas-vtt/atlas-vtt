@@ -102,7 +102,40 @@ describe('Counters in the statblock pane', () => {
 
   it('steps a row of many uses with − and +', async () => {
     const harness = await pane({ slots: [{ name: 'Sorcery points', max: 10, used: 3 }] });
-    await press(within(block(harness)).getByRole('button', { name: 'Decrease Sorcery points' }));
+    const row = within(block(harness));
+    expect(row.getByRole('spinbutton', { name: 'Maximum uses for Sorcery points' })).toBeTruthy();
+    await press(row.getByRole('button', { name: 'Decrease Sorcery points' }));
     expect(harness.writer.patches().at(-1)).toMatchObject({ next: [{ name: 'Sorcery points', max: 10, used: 4 }, { name: '2nd level', max: 1, used: 0 }] });
+  });
+
+  it('commits a changed maximum once when its input is left', async () => {
+    const slots = [{ name: '1st level', max: 2, used: 1 }, { name: '2nd level', max: 1, used: 0 }];
+    const harness = await pane({ slots });
+    const max = within(block(harness)).getByRole('spinbutton', { name: 'Maximum uses for 1st level' });
+
+    await act(async () => {
+      fireEvent.change(max, { target: { value: '4' } });
+      expect(harness.writer.patches()).toEqual([]);
+      fireEvent.blur(max);
+    });
+
+    expect(harness.writer.patches()).toEqual([{
+      op: 'set', path: ['slots'], base: slots,
+      next: [{ name: '1st level', max: 4, used: 1 }, { name: '2nd level', max: 1, used: 0, templateMax: 1 }],
+    }]);
+  });
+
+  it('discards an uncommitted maximum when Escape is pressed', async () => {
+    const harness = await pane({});
+    const max = within(block(harness)).getByRole('spinbutton', { name: 'Maximum uses for 1st level' });
+
+    await act(async () => {
+      fireEvent.focus(max);
+      fireEvent.change(max, { target: { value: '4' } });
+      fireEvent.keyDown(max, { key: 'Escape' });
+    });
+
+    expect(harness.writer.patches()).toEqual([]);
+    expect((max as HTMLInputElement).value).toBe('2');
   });
 });

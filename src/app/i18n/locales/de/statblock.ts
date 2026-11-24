@@ -8,6 +8,8 @@ export const statblock: Translation = {
   'statblock.changeToken': 'Token dieses Statblocks ändern',
   'statblock.counterAdd': 'Zeile hinzufügen, etwa Ki',
   'statblock.counterLeft': '{name}: noch {n} von {max}',
+  'statblock.counterMax': 'Maximale Anwendungen für {name}',
+  'statblock.counterMaxLabel': 'Max.',
   'statblock.counterMoveDown': '{name} nach unten',
   'statblock.counterMoveUp': '{name} nach oben',
   'statblock.counterRegain': 'Anwendungen, die {name} zurückerhält',
