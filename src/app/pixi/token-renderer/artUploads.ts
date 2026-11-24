@@ -53,6 +53,8 @@ interface Waiting {
  */
 export class ArtUploads {
   private waiting: Waiting[] = [];
+  /** Sources this queue put on the GPU and that are still there. */
+  private readonly uploaded = new WeakSet<TextureSource>();
   private ticking = false;
   private readonly now: () => number;
 
@@ -63,6 +65,9 @@ export class ArtUploads {
   /** Resolves once `source` is on the GPU and the token may go on; `distance` (from the view's centre) orders them, nearest first. */
   whenUploaded(source: TextureSource, distance: number): Promise<void> {
     if (!this.options.renderer() || source.destroyed) return Promise.resolve();
+    // During a load nothing is drawn, so art already on the GPU holds back no token: a scene switched back to
+    // gets its tokens before the reveal, as it did before uploads were paced, not a frame later in the reveal
+    if (this.uploaded.has(source) && this.options.held()) return Promise.resolve();
     return new Promise((resolve) => {
       this.waiting.push({ source, distance, resolve });
       this.tick(true);
@@ -102,7 +107,11 @@ export class ArtUploads {
       done++;
       try {
         // Uploads once; a texture already on the GPU is only bound
-        if (!source.destroyed) renderer.texture.initSource(source);
+        if (!source.destroyed && !this.uploaded.has(source)) {
+          renderer.texture.initSource(source);
+          this.uploaded.add(source);
+          source.once('unload', () => this.uploaded.delete(source));
+        }
       } catch (error) {
         // The frame that draws it tries again; an error must not reach the ticker, which stops at one
         console.warn('[ArtUploads] Token art could not be uploaded ahead:', error);
