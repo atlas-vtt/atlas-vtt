@@ -26,7 +26,7 @@ export const toolbar: Translation = {
   'toolbar.notePin': 'Notiz-Pin-Werkzeug',
   'toolbar.pinOptions': 'Pin-Optionen',
   'toolbar.stairs': 'Treppe',
-  'toolbar.stairsNeedLevels': 'Treppen verbinden die Ebenen einer Szene. Füge zuerst auf der Seite Ebenen der Szene in der Befehlspalette eine Ebene hinzu.',
+  'toolbar.stairsNeedLevels': 'Treppen brauchen eine zweite Ebene. Füge sie unter Ebenen der Szene hinzu',
   'toolbar.rollDice': 'Würfelablage',
   'toolbar.optionsOf': 'Optionen: {label}',
   'toolbar.moveSelect': 'Bewegen/Auswählen',

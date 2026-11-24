@@ -510,6 +510,7 @@ export class PixiRendererOrchestrator { // Renamed class
         viewId: this.viewId,
         bounds: () => this.getSceneMapRect(),
         albedo: () => this.mapImage?.albedoTexture() ?? null,
+        mapImage: () => this.mapImage,
         grid: () => this.gridSystem ?? null,
         fogCoverage: () => this.fogRenderer!.getCommittedCoverage(),
         shown: this.shownPlaces,

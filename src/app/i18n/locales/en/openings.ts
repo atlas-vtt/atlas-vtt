@@ -2,7 +2,7 @@ import type { Message } from '../../types';
 
 export const openings = {
   'openings.mode': 'Openings',
-  'openings.needsLevels': 'Openings look down to the level below: add a level to the scene first',
+  'openings.needsLevels': 'Add a level to the scene first',
   'openings.title': 'Opening',
   'openings.kind': 'What this area is',
   'openings.open': 'Open to below',

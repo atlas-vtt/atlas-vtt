@@ -18,6 +18,11 @@ export const EXPERIMENTAL_FEATURES = [
     label: t('experimental.onlinePlay'),
     hint: t('experimental.onlinePlayHint'),
   },
+  {
+    id: 'roomBucket',
+    label: t('rooms.experimental.label'),
+    hint: t('rooms.experimental.hint'),
+  },
 ] as const;
 
 export type ExperimentalFeatureId = (typeof EXPERIMENTAL_FEATURES)[number]['id'];

@@ -32,6 +32,7 @@ import { LightInteraction } from './LightInteraction';
 import { LightMarkers } from './LightMarkers';
 import { LightRangeRings } from './LightRangeRings';
 import { LightingModes } from './LightingModes';
+import type { RoomEditorDeps } from './RoomEditor';
 import { followLightingTool } from './followLightingTool';
 import { showExploredTravelNotice, showSurfacesFullNotice, showZonesFullNotice } from './lightingNotices';
 import { closeStalePopovers } from './popoverGuards';
@@ -60,6 +61,8 @@ export interface LightingControllerDeps {
   bounds: () => MapBounds | null;
   /** The map image, for the colours light bounces off. */
   albedo: () => Texture | null;
+  /** The map image itself, whose art the rooms mode's bucket pours over. */
+  mapImage: RoomEditorDeps['mapImage'];
   /** The grid the composite draws unlit, while there is one (`UnlitGrid`). */
   grid?: () => UnlitGrid | null;
   /** How each token perceives; unset, by its own vision and its linked statblock (`tokenSensesResolver`). */
@@ -124,7 +127,7 @@ export class LightingController {
       onChange: () => this.renderer.refreshBounds(),
     });
     this.modes = new LightingModes({
-      viewport, canvas: app.canvas, store, eventBus, bounds: deps.bounds, edit: (edit) => this.renderer.editExplored(edit),
+      viewport, canvas: app.canvas, store, eventBus, bounds: deps.bounds, mapImage: deps.mapImage, edit: (edit) => this.renderer.editExplored(edit),
       onActiveChange: () => this.session.sync(), onFull: showZonesFullNotice, onSurfacesFull: showSurfacesFullNotice, announce: showExploredTravelNotice,
     });
     this.renderer = createSceneLighting({

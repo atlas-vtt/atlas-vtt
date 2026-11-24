@@ -26,7 +26,7 @@ export const toolbar: Translation = {
   'toolbar.notePin': 'Outil d\'épingle de note',
   'toolbar.pinOptions': 'Options des épingles',
   'toolbar.stairs': 'Escaliers',
-  'toolbar.stairsNeedLevels': 'Les escaliers relient les niveaux d\'une scène. Ajoutez d\'abord un niveau depuis la page Niveaux de la scène de la palette de commandes.',
+  'toolbar.stairsNeedLevels': 'Les escaliers demandent un deuxième niveau. Ajoutez-le dans Niveaux de la scène',
   'toolbar.rollDice': 'Plateau de dés',
   'toolbar.optionsOf': 'Options : {label}',
   'toolbar.moveSelect': 'Déplacer / sélectionner',

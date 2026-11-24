@@ -38,7 +38,7 @@ export const toolbar: Translation = {
   'toolbar.moreTools': 'Другие инструменты',
   'toolbar.pinOptions': 'Настройки пинов',
   'toolbar.stairs': 'Лестницы',
-  'toolbar.stairsNeedLevels': 'Лестницы соединяют уровни сцены. Сначала добавьте уровень на странице «Уровни сцены» в палитре команд.',
+  'toolbar.stairsNeedLevels': 'Лестнице нужен второй уровень. Добавьте его в «Уровнях сцены»',
   'toolbar.peek': 'Удерживайте, чтобы увидеть то, что видят игроки',
   'toolbar.snap': 'Привязка',
   'toolbar.openShape': 'Фигура в работе',

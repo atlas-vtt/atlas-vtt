@@ -96,6 +96,11 @@ export class MosaicCanvas {
     return this.shown ? { width: this.shown.width, height: this.shown.height } : null;
   }
 
+  /** Which picture is shown: its pyramid's key, the same for the same picture shown again (a scene switched back to); null without one. */
+  get imageKey(): string | null {
+    return this.shown?.tesserae?.source.key ?? null;
+  }
+
   /** The corners of an image that lies turned, or placed in from the origin, in its world rect, which then holds more than the image; null for one that fills it. */
   get outline(): Array<{ x: number; y: number }> | null {
     const { shown, stretch } = this;

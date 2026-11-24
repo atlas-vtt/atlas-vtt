@@ -295,7 +295,7 @@ describe('the glass chip', () => {
 
   it('says on its icon what a drag does and that Alt frees it', () => {
     render(<GlassChip view={fakeView()} />);
-    const hint = screen.getByText('Drag to move. Snaps to a square grid unless you hold Alt.');
+    const hint = screen.getByText('Drag to move. Hold Alt to skip the grid');
     const grip = screen.getByRole('group', { name: 'Players · following you' }).querySelector('.atlas-glass-chip__grip')!;
     expect(grip.getAttribute('aria-describedby')).toBe(hint.id);
   });

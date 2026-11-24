@@ -2,7 +2,7 @@ import type { Translation } from '../../types';
 
 export const openings: Translation = {
   'openings.mode': 'Öffnungen',
-  'openings.needsLevels': 'Öffnungen blicken auf die Ebene darunter: Füge der Szene zuerst eine Ebene hinzu',
+  'openings.needsLevels': 'Füge der Szene zuerst eine Ebene hinzu',
   'openings.title': 'Öffnung',
   'openings.kind': 'Was dieser Bereich ist',
   'openings.open': 'Nach unten offen',
