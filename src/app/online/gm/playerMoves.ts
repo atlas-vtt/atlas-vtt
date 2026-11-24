@@ -17,8 +17,8 @@ export interface MoveStore {
 }
 
 export interface PlayerMovePorts {
-  /** The shared scene, its list and owners, and the map's size, as they are now. */
-  context(): Omit<MoveContext, 'tokens'>;
+  /** The shared scene, the token list of the picture player `from` sees, the owners and the map's size, as they are now. */
+  context(from: string): Omit<MoveContext, 'tokens'>;
   send(body: GmMessage, to: string): void;
   now(): number;
   setTimer(run: () => void, ms: number): number;
@@ -56,7 +56,7 @@ export class PlayerMoves {
   constructor(store: MoveStore, ports: PlayerMovePorts) {
     this.store = store;
     this.ports = ports;
-    this.drags = new PlayerDrags(store, { ...ports, context: (state) => this.context(state) });
+    this.drags = new PlayerDrags(store, { ...ports, context: (state, from) => this.context(state, from) });
   }
 
   start(): void {
@@ -111,7 +111,7 @@ export class PlayerMoves {
     const dropped = this.drags.drop(from, move);
     if (dropped === 'turn' || dropped === 'paused') return this.refuse(from, move, dropped);
     if (dropped !== null) return dropped !== false && samePlace(dropped, move) ? undefined : this.refuse(from, move);
-    const verdict = checkMove(from, move, this.context(state));
+    const verdict = checkMove(from, move, this.context(state, from));
     if (!verdict.ok) return this.refuse(from, move, refusalReason(verdict));
     if (!this.drags.gmHolds(state)) return this.apply(from, verdict.tokenId, move);
     const earlier = this.waiting.get(verdict.tokenId);
@@ -136,7 +136,7 @@ export class PlayerMoves {
     this.waiting.clear();
     for (const { from, move, x, y } of waiting) {
       const now = this.store.getState();
-      const verdict = now.mapLoaded && !now.isMapLoading ? checkMove(from, move, this.context(now)) : null;
+      const verdict = now.mapLoaded && !now.isMapLoading ? checkMove(from, move, this.context(now, from)) : null;
       const token = verdict?.ok === true ? mapTokens(now.objects)[verdict.tokenId] : undefined;
       if (verdict?.ok !== true || token === undefined || token.x !== x || token.y !== y) this.refuse(from, move, verdict === null ? undefined : refusalReason(verdict));
       else this.apply(from, verdict.tokenId, move);
@@ -152,7 +152,7 @@ export class PlayerMoves {
   private apply(from: string, tokenId: string, move: PlayerMove): void {
     const state = this.store.getState();
     const token = mapTokens(state.objects)[tokenId];
-    const context = this.context(state);
+    const context = this.context(state, from);
     const at = token === undefined ? move : dropPlace(context, state, token, move);
     if (at === null) return this.refuse(from, move);
     const stopped = !samePlace(at, move);
@@ -167,20 +167,20 @@ export class PlayerMoves {
   }
 
   /**
-   * Tells the sender the move was not taken, with the token's place where the players see it, and
+   * Tells the sender the move was not taken, with the token's place where their picture lists it, and
    * `turn` where the token may move only on its turn and `paused` while the GM paused play; every
    * other refusal names no reason.
    */
   private refuse(from: string, move: PlayerMove, reason?: MoveRefusedReason): void {
     const state = this.store.getState();
-    const context = this.context(state);
+    const context = this.context(state, from);
     const tokenId = context.scene === move.scene ? context.listedToken(move.id) : undefined;
     const token = tokenId === undefined ? undefined : mapTokens(state.objects)[tokenId];
     const seen = token !== undefined && token.isHidden !== true && insideMap(token.x, token.y, null);
     this.ports.send({ t: 'move-refused', scene: move.scene, id: move.id, x: seen ? token.x : null, y: seen ? token.y : null, ...(reason ? { reason } : {}) }, from);
   }
 
-  private context(state: MoveState): MoveContext {
-    return { ...this.ports.context(), tokens: mapTokens(state.objects) };
+  private context(state: MoveState, from: string): MoveContext {
+    return { ...this.ports.context(from), tokens: mapTokens(state.objects) };
   }
 }

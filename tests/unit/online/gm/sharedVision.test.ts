@@ -163,6 +163,21 @@ describe('Shared vision on', () => {
   });
 });
 
+describe('a player acting on a token only others see', () => {
+  it('learns nothing of where it stands from a refused move', async () => {
+    const table = await started(rooms(), true);
+    const goblin = tokenLists(table.sent).at(-1)?.tokens.find((entry) => entry.name === 'Goblin');
+    const scene = tokenLists(table.sent).at(-1)?.scene ?? '';
+    table.settings = { ...PLAYER_SETTINGS, sharedVision: false };
+    await table.advance(1000);
+    table.share.receive(ANA, { t: 'move', scene, id: goblin?.id ?? '', x: 400, y: 400 });
+    await table.settle();
+    const refused = toPlayer(table.sent, ANA).flatMap(({ body }) => (body.t === 'move-refused' ? [body] : []));
+    expect(refused).toEqual([{ t: 'move-refused', scene, id: goblin?.id, x: null, y: null }]);
+    expect(table.state().objects.tokens.goblin).toMatchObject({ x: 900, y: 300 });
+  });
+});
+
 describe('switching Shared vision during play', () => {
   it('moves players between their own picture and the party\'s, each time sent whole', async () => {
     const table = await started(rooms(), false);

@@ -104,9 +104,10 @@ export class FloorShare {
     });
     this.moves = new PlayerMoves(store, {
       ...ports,
-      context: () => ({
-        scene: this.tokens.listedScene,
-        listedToken: (alias) => this.tokens.listedToken(alias),
+      // A player acts on tokens their own picture lists: a refusal tells where a token stands only to someone who sees it
+      context: (from) => ({
+        scene: this.pictures.of(from).tokens.listedScene,
+        listedToken: (alias) => this.pictures.of(from).tokens.listedToken(alias),
         ownerOf,
         map: this.mapSize,
         // The walls of this floor, on which every token of its list stands
