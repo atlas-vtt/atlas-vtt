@@ -170,13 +170,13 @@ describe('the music review', () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
-  it('says what an update replaces and keeps, and that the same version is there already', () => {
-    const { rerender } = render(<MusicReviewDialog review={review({ update: { from: 1, replaced: 1, added: 1, removed: 2, kept: 1 } })} onConfirm={vi.fn()} onCancel={vi.fn()} />);
+  it('says what an update replaces, renames and keeps, how many tracks stay as they are, and that the same version is there already', () => {
+    const { rerender } = render(<MusicReviewDialog review={review({ update: { from: 1, replaced: 1, renamed: 1, unchanged: 3, added: 1, removed: 2, kept: 1 } })} onConfirm={vi.fn()} onCancel={vi.fn()} />);
     expect(screen.getByText('Your copy is updated from version 1 to version 2.')).toBeTruthy();
-    expect(screen.getByText('1 track replaced, 1 track added, and 2 tracks taken out')).toBeTruthy();
+    expect(screen.getByText('1 track replaced, 1 track renamed, 1 track added, 2 tracks taken out, and 3 tracks stay as they are')).toBeTruthy();
     expect(screen.getByText('You changed 1 track, so it stays and the new one comes beside it.')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Update' })).toBeTruthy();
-    rerender(<MusicReviewDialog review={review({ update: { from: 2, replaced: 2, added: 0, removed: 0, kept: 0 }, same: true })} onConfirm={vi.fn()} onCancel={vi.fn()} />);
+    rerender(<MusicReviewDialog review={review({ update: { from: 2, replaced: 0, renamed: 0, unchanged: 2, added: 0, removed: 0, kept: 0 }, same: true })} onConfirm={vi.fn()} onCancel={vi.fn()} />);
     expect(screen.getByText('This version is in your music folder already.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Done' })).toBeTruthy();

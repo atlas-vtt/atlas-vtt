@@ -1,4 +1,4 @@
-import { tagCopy } from '../../sound/codec/atlasOpus';
+import { readAtlasCopy, tagCopy } from '../../sound/codec/atlasOpus';
 import type { SoundLocation } from '../../soundLibrary/soundLocation';
 import { freeName, joinRelative, nameOfRelative } from '../../soundLibrary/soundPaths';
 import { sha256 } from '../../utils/hashing';
@@ -7,16 +7,24 @@ import { safeFileName, trackFileName } from './musicBundleFormat';
 import type { MusicBundleTrack, OpenedMusicBundle } from './musicBundleReader';
 import { ALBUM_SIDECAR, trackSidecarName } from './musicProvenance';
 
-/** A track as the install writes it: where, its bytes (named for their own file), and whether it takes the place of the version before. */
+/** A track as the install leaves it: where, its bytes (named for their own file), and what becomes of the version before. */
 export interface PlannedTrack {
   title: string;
   source: MusicBundleTrack;
   /** Below the music root. */
   path: string;
+  /** What the install writes; nothing is written where `from` is set. */
   bytes: Blob;
+  /** Of the file at `path` once installed: the bytes written, or those of the file kept (`from`). */
   sha256: string;
   /** An unchanged file of the version installed before lies at `path`: it is set aside for this one, and goes to the trash once the install stands. */
   replaces: boolean;
+  /**
+   * An unchanged file of the version installed before that holds this track's audio: it stays as it is where it lies at
+   * `path`, and is renamed to `path` where only the track's number or title changed. Nothing is written for it. Null
+   * where the track is written.
+   */
+  from: string | null;
 }
 
 /** What installing a music bundle does in the music root. Nothing is written to work it out. */
@@ -36,12 +44,51 @@ export interface MusicImportPlan {
   same: boolean;
 }
 
-type FileState = 'missing' | 'unchanged' | 'changed';
+/** A file of the version installed before: as the sidecar says it was written, changed since, or gone; and the audio it holds while unchanged. */
+interface OldFile {
+  path: string;
+  written: string;
+  state: 'missing' | 'unchanged' | 'changed';
+  /** What tells its audio apart, whatever its tags say (`audioOf`); null unless unchanged. */
+  audio: string | null;
+}
 
-/** Reads only what decides anything: a file as the sidecar says it was written, changed since, or gone. */
-async function fileState(location: SoundLocation, path: string, written: string): Promise<FileState> {
-  if (!(await location.exists(path))) return 'missing';
-  return (await sha256(await (await location.read(path)).arrayBuffer())) === written ? 'unchanged' : 'changed';
+/**
+ * What tells a copy's audio apart: the key the Armarium gave it (the hash of the audio uploaded) and its length. The
+ * bytes cannot, as every installed copy is tagged with its own file name.
+ */
+const audioOf = (facts: { key: string; frames: number }): string => `${facts.key}\n${facts.frames}`;
+
+/** Reads only what decides anything. */
+async function oldFile(location: SoundLocation, path: string, written: string): Promise<OldFile> {
+  if (!(await location.exists(path))) return { path, written, state: 'missing', audio: null };
+  const bytes = await location.read(path);
+  if ((await sha256(await bytes.arrayBuffer())) !== written) return { path, written, state: 'changed', audio: null };
+  const facts = await readAtlasCopy(bytes);
+  return { path, written, state: 'unchanged', audio: facts ? audioOf(facts) : null };
+}
+
+/**
+ * Which unchanged file of the version before each track keeps instead of being written: the one at its own path
+ * holding its audio, else another holding it whose path no track takes (a renamed copy keeps the name it was tagged
+ * with, which must name no other track's file beside it). Each file is kept once.
+ */
+function keptFiles(tracks: readonly { path: string; source: MusicBundleTrack }[], old: readonly OldFile[]): (string | null)[] {
+  const unchanged = old.filter((file) => file.state === 'unchanged' && file.audio !== null);
+  const targets = new Set(tracks.map((track) => track.path));
+  const used = new Set<string>();
+  const kept: (string | null)[] = tracks.map((track) => {
+    const here = unchanged.find((file) => file.path === track.path && file.audio === audioOf(track.source.facts));
+    if (here) used.add(here.path);
+    return here?.path ?? null;
+  });
+  return kept.map((path, index) => {
+    const track = tracks[index];
+    if (path !== null || !track) return path;
+    const moved = unchanged.find((file) => !used.has(file.path) && !targets.has(file.path) && file.audio === audioOf(track.source.facts));
+    if (moved) used.add(moved.path);
+    return moved?.path ?? null;
+  });
 }
 
 /** The folder a new album goes in: `<artist>/<album>`, numbered where something of that name lies there already. */
@@ -82,16 +129,13 @@ export async function planMusicImport(location: SoundLocation | null, bundle: Op
   const found = inPlace ? installOf(installs, uid) : null;
   const installed = found?.sidecar.kind === kind ? found : null;
   const old = installed && location
-    ? await Promise.all(installed.sidecar.tracks.map(async ({ file, sha256: written }) => {
-      const path = joinRelative(installed.folder, file);
-      return { path, written, state: await fileState(location, path, written) };
-    }))
+    ? await Promise.all(installed.sidecar.tracks.map(({ file, sha256: written }) => oldFile(location, joinRelative(installed.folder, file), written)))
     : [];
   const artistFolder = artist ? safeFileName(artist, 'Artist') : '';
   const folder = installed?.folder ?? (kind === 'music-album' ? await freeFolder(artistFolder, safeFileName(name, 'Album'), exists) : await singleFolder(artistFolder, exists));
   const unchanged = new Set(old.filter((file) => file.state === 'unchanged').map((file) => file.path));
   const taken = new Set<string>();
-  const tracks: PlannedTrack[] = [];
+  const placed: Omit<PlannedTrack, 'replaces' | 'from'>[] = [];
   for (const [index, source] of bundle.tracks.entries()) {
     const wanted = trackFileName(kind, index, bundle.tracks.length, source.title);
     const free = async (candidate: string): Promise<boolean> => {
@@ -102,14 +146,19 @@ export async function planMusicImport(location: SoundLocation | null, bundle: Op
     const path = joinRelative(folder, fileName);
     taken.add(path);
     const bytes = await namedCopy(source, fileName);
-    tracks.push({ title: source.title, source, path, bytes, sha256: await sha256(await bytes.arrayBuffer()), replaces: unchanged.has(path) });
+    placed.push({ title: source.title, source, path, bytes, sha256: await sha256(await bytes.arrayBuffer()) });
   }
+  const keeps = keptFiles(placed, old);
+  const keptPaths = new Set(keeps.filter((path): path is string => path !== null));
+  const writtenBefore = new Map(old.map((file) => [file.path, file.written]));
+  const tracks: PlannedTrack[] = placed.map((track, index) => {
+    const from = keeps[index] ?? null;
+    return { ...track, sha256: from === null ? track.sha256 : writtenBefore.get(from) ?? track.sha256, replaces: unchanged.has(track.path) && !keptPaths.has(track.path), from };
+  });
   const sidecarPath = inPlace ? joinRelative(folder, kind === 'music-album' ? ALBUM_SIDECAR : trackSidecarName(nameOfRelative(tracks[0]?.path ?? ''))) : null;
-  const removes = [...unchanged].filter((path) => !taken.has(path));
+  const removes = [...unchanged].filter((path) => !taken.has(path) && !keptPaths.has(path));
   if (installed && installed.sidecarPath !== sidecarPath) removes.push(installed.sidecarPath);
   const kept = old.filter((file) => file.state === 'changed').map((file) => file.path);
-  const writtenBefore = new Map(old.map((file) => [file.path, file.written]));
-  const same = installed?.sidecar.version === version && removes.length === 0 && kept.length === 0
-    && tracks.every((track) => track.replaces && writtenBefore.get(track.path) === track.sha256);
+  const same = installed?.sidecar.version === version && removes.length === 0 && kept.length === 0 && tracks.every((track) => track.from === track.path);
   return { folder, sidecarPath, tracks, removes, kept, installed, same };
 }

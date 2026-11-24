@@ -61,8 +61,9 @@ describe('installing music from the Armarium', () => {
     await (await install(await album(1, ['Dawn', 'Dusk', 'Night']))).apply();
     await library.reread('music');
     location.put('Mara/Old Roads/02 Dusk.opus', new Blob(['the GM trimmed this']));
-    const session = await install(await album(2, ['Dawn', 'Dusk']));
-    expect(session.review.update).toEqual({ from: 1, replaced: 1, added: 1, removed: 1, kept: 1 });
+    // Dawn comes as new audio.
+    const session = await install(await album(2, ['Dawn', 'Dusk'], 'Mara', ['4', '2']));
+    expect(session.review.update).toEqual({ from: 1, replaced: 1, renamed: 0, unchanged: 0, added: 1, removed: 1, kept: 1 });
     expect(session.review.notes).toBe('New songs');
 
     expect(await session.apply()).toMatchObject({ outcome: 'update', version: 2 });

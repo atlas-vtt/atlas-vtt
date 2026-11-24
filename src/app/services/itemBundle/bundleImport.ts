@@ -6,6 +6,7 @@ import type { BundleProgressListener } from '../collectionBundle/bundleProgress'
 import { readBundleArchive } from '../collectionBundle/bundleReader';
 import { openCollectionImport, type ImportSession } from '../collectionBundle/collectionImport';
 import { SoundLibrary } from '../../soundLibrary/SoundLibrary';
+import { SoundRecordStore } from '../../soundLibrary/SoundRecordStore';
 import { checkedMusicBundle } from '../musicBundle/musicBundleReader';
 import { openMusicImport, type MusicImportSession } from '../musicBundle/musicImport';
 import { isItemManifest, isMusicManifest } from './itemBundleFormat';
@@ -40,7 +41,7 @@ export async function openBundleImport(
   if (options.listingUid !== undefined && listingUidOf(archive.manifest) !== options.listingUid) throw new Error(t('armarium.otherListing'));
   if (isMusicManifest(archive.manifest)) {
     const bundle = await checkedMusicBundle(archive, onProgress);
-    return { kind: 'music', session: await openMusicImport(SoundLibrary.forApp(app), bundle, options) };
+    return { kind: 'music', session: await openMusicImport({ library: SoundLibrary.forApp(app), records: SoundRecordStore.forApp(app) }, bundle, options) };
   }
   if (isItemManifest(archive.manifest)) {
     const bundle = await checkedItemBundle(archive, onProgress);

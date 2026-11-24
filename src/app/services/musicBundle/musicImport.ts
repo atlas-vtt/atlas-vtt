@@ -11,7 +11,8 @@ import { installedMusic, type InstalledMusic } from './installedMusic';
 import { shownText } from './musicBundleFormat';
 import type { OpenedMusicBundle } from './musicBundleReader';
 import { planMusicImport, type MusicImportPlan } from './musicImportPlan';
-import { installMusicFiles } from './musicInstallFiles';
+import { installMusicFiles, type LetGoFiles } from './musicInstallFiles';
+import { followInstall, type MusicRecords } from './musicInstallRecords';
 import { MUSIC_SIDECAR_FORMAT, sidecarText } from './musicProvenance';
 import { t } from '../../i18n';
 
@@ -36,8 +37,11 @@ export interface MusicReview {
   bytes: number;
   /** Where it goes: the music root, then the folders below it. */
   where: string[];
-  /** What an update of the listing's install does; null for a new install. */
-  update: { from: number; replaced: number; added: number; removed: number; kept: number } | null;
+  /**
+   * What an update of the listing's install does; null for a new install. `unchanged` tracks stay as they are, `renamed`
+   * ones only take a new name; `kept` counts files the GM changed, which stay beside the new ones.
+   */
+  update: { from: number; replaced: number; renamed: number; unchanged: number; added: number; removed: number; kept: number } | null;
   /** This version lies there already, as it came. */
   same: boolean;
 }
@@ -50,6 +54,14 @@ export interface MusicImportResult {
   outcome: 'new' | 'update' | 'same';
   /** The tags of the music root that show what was installed: its folder's name. */
   tags: string[];
+  /** Names of old files the trash did not take, back in the music folder for the GM to delete. */
+  putBack: string[];
+}
+
+/** The Sound library an install goes into, and the records that name its files. */
+export interface MusicLibrary {
+  library: SoundLibrary;
+  records: MusicRecords;
 }
 
 /** A read and checked music bundle, planned against the music root, waiting for the GM's decision. */
@@ -63,13 +75,15 @@ function reviewOf(bundle: OpenedMusicBundle, plan: MusicImportPlan, rootName: st
   const { kind, name, artist, version, notes } = bundle.manifest.item;
   const tracks = plan.tracks.map((track) => ({ title: shownText(track.title), seconds: track.source.facts.frames / SOUND_RATE, bytes: track.bytes.size }));
   const replaced = plan.tracks.filter((track) => track.replaces).length;
+  const unchanged = plan.tracks.filter((track) => track.from === track.path).length;
+  const renamed = plan.tracks.filter((track) => track.from !== null && track.from !== track.path).length;
   const removed = plan.removes.filter((path) => path !== plan.installed?.sidecarPath).length;
   return {
     kind, name: shownText(name), artist: artist === undefined ? null : shownText(artist), version, notes: notes?.trim() || undefined, creator, cover: bundle.cover, tracks,
     seconds: tracks.reduce((sum, track) => sum + track.seconds, 0),
     bytes: tracks.reduce((sum, track) => sum + track.bytes, 0),
     where: [rootName, ...plan.folder.split('/').filter(Boolean)],
-    update: plan.installed ? { from: plan.installed.sidecar.version, replaced, added: plan.tracks.length - replaced, removed, kept: plan.kept.length } : null,
+    update: plan.installed ? { from: plan.installed.sidecar.version, replaced, renamed, unchanged, added: plan.tracks.length - replaced - renamed - unchanged, removed, kept: plan.kept.length } : null,
     same: plan.same,
   };
 }
@@ -77,7 +91,7 @@ function reviewOf(bundle: OpenedMusicBundle, plan: MusicImportPlan, rootName: st
 /** Whether the plan made at the review still holds: the same folder, the same files, the same install updated. */
 function samePlan(a: MusicImportPlan, b: MusicImportPlan): boolean {
   return a.folder === b.folder && a.sidecarPath === b.sidecarPath && a.installed?.sidecar.version === b.installed?.sidecar.version
-    && a.tracks.length === b.tracks.length && a.tracks.every((track, index) => track.path === b.tracks[index]?.path && track.replaces === b.tracks[index]?.replaces)
+    && a.tracks.length === b.tracks.length && a.tracks.every((track, index) => track.path === b.tracks[index]?.path && track.replaces === b.tracks[index]?.replaces && track.from === b.tracks[index]?.from)
     && a.removes.join('\n') === b.removes.join('\n');
 }
 
@@ -106,7 +120,7 @@ function oneAtATime<T>(library: SoundLibrary, run: () => Promise<T>): Promise<T>
   return turn;
 }
 
-async function applyMusicImport(library: SoundLibrary, bundle: OpenedMusicBundle, reviewed: MusicImportPlan, inPlace: boolean): Promise<MusicImportResult> {
+async function applyMusicImport({ library, records }: MusicLibrary, bundle: OpenedMusicBundle, reviewed: MusicImportPlan, inPlace: boolean): Promise<MusicImportResult> {
   const { kind, name, version } = bundle.manifest.item;
   const location = importRoot(library, 'music');
   if (!location) throw new Error(t('armariumMusic.notHere'));
@@ -114,16 +128,19 @@ async function applyMusicImport(library: SoundLibrary, bundle: OpenedMusicBundle
   if (!samePlan(plan, reviewed)) throw new Error(t('armariumMusic.changedSinceReview'));
   refuseWithoutTrash(location, plan);
   const tags = kind === 'music-album' || plan.folder !== '' ? [nameOfRelative(plan.folder)] : [];
-  if (plan.same) return { kind, name: shownText(name), version, outcome: 'same', tags };
+  if (plan.same) return { kind, name: shownText(name), version, outcome: 'same', tags, putBack: [] };
+  let letGo: LetGoFiles;
   try {
-    await installMusicFiles(location, plan, plan.sidecarPath === null ? null : sidecarOf(bundle, plan));
+    letGo = await installMusicFiles(location, plan, plan.sidecarPath === null ? null : sidecarOf(bundle, plan));
   } catch (error) {
     throw new Error(t('armariumMusic.installFailed', { reason: describeError(error).replace(/\.$/, '') }));
   } finally {
     await library.reread('music');
-    await library.settle('music', [plan.folder, ...plan.tracks.map((track) => track.path), ...plan.removes].filter(Boolean));
+    await library.settle('music', [plan.folder, ...plan.tracks.flatMap((track) => [track.path, track.from ?? '']), ...plan.removes].filter(Boolean));
   }
-  return { kind, name: shownText(name), version, outcome: plan.installed ? 'update' : 'new', tags };
+  await followInstall(records, library, plan, letGo).catch((error: unknown) => console.error('[Atlas] The sound records could not follow the music install:', error));
+  const putBack = [...letGo.putBack.values(), ...letGo.strays].map(nameOfRelative);
+  return { kind, name: shownText(name), version, outcome: plan.installed ? 'update' : 'new', tags, putBack };
 }
 
 /** What the sidecar records of an install: the listing, and every file as it was written. */
@@ -140,7 +157,8 @@ function sidecarOf(bundle: OpenedMusicBundle, plan: MusicImportPlan): Blob {
  * read, and comes in beside without a sidecar. Refused, saying why, where the root is linked on another device only,
  * is not read whole yet, or has no trash for files an update would take away. Installs run one at a time.
  */
-export async function openMusicImport(library: SoundLibrary, bundle: OpenedMusicBundle, options: ItemImportOptions = {}): Promise<MusicImportSession> {
+export async function openMusicImport(music: MusicLibrary, bundle: OpenedMusicBundle, options: ItemImportOptions = {}): Promise<MusicImportSession> {
+  const { library } = music;
   const root = library.rootOf('music');
   const location = library.locationOf('music');
   if (root.status === 'not-linked-here' || (isLinked(root) && location === null)) throw new Error(t('armariumMusic.notHere'));
@@ -148,5 +166,5 @@ export async function openMusicImport(library: SoundLibrary, bundle: OpenedMusic
   const plan = await planMusicImport(location, bundle, await knownInstalls(library, location), inPlace);
   refuseWithoutTrash(location, plan);
   const review = reviewOf(bundle, plan, t('audio.music'), options.creator?.trim() || undefined);
-  return { review, apply: () => oneAtATime(library, () => applyMusicImport(library, bundle, plan, inPlace)) };
+  return { review, apply: () => oneAtATime(library, () => applyMusicImport(music, bundle, plan, inPlace)) };
 }

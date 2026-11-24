@@ -7,8 +7,11 @@ import { sha256 } from '../../src/app/utils/hashing';
 import { nameOfRelative } from '../../src/app/soundLibrary/soundPaths';
 import { keyOf, taggedCopy } from './atlasCopies';
 
-/** A 3 s Atlas copy, one key per digit, as the Sound library keeps it. */
-export const copyOf = (digit: string): Promise<Blob> => taggedCopy({ key: keyOf(digit), from: `Song ${digit}.mp3` });
+/**
+ * A 3 s Atlas copy, one key per digit, as the Sound library keeps it. Each digit is other audio (a little shorter), so
+ * the Armarium's key for it, the hash of what was uploaded, differs too.
+ */
+export const copyOf = (digit: string): Promise<Blob> => taggedCopy({ key: keyOf(digit), from: `Song ${digit}.mp3` }, Number(digit) * 480);
 
 /**
  * What the Armarium does with an upload from Atlas, as far as Atlas can tell: every track tagged again with its own
@@ -34,9 +37,12 @@ export async function rebuiltAsTheStoreDoes(upload: Blob): Promise<Blob> {
   return new Blob([await out.generateAsync({ type: 'uint8array' })]);
 }
 
-/** An album or single as the Armarium delivers it: packed by Atlas, rebuilt by the store. */
-export async function deliveredMusic(options: Omit<MusicPackOptions, 'tracks'> & { titles: string[] }): Promise<Blob> {
-  const tracks = await Promise.all(options.titles.map(async (title, index) => ({ title, copy: await copyOf(String((index % 9) + 1)) })));
+/**
+ * An album or single as the Armarium delivers it: packed by Atlas, rebuilt by the store. Each track's audio is `sounds`'
+ * digit at its place, else the digit of its place, so a title shared by two versions is the same audio only where they say so.
+ */
+export async function deliveredMusic(options: Omit<MusicPackOptions, 'tracks'> & { titles: string[]; sounds?: string[] }): Promise<Blob> {
+  const tracks = await Promise.all(options.titles.map(async (title, index) => ({ title, copy: await copyOf(options.sounds?.[index] ?? String((index % 9) + 1)) })));
   const packed = await packMusicBundle({ ...options, tracks });
   return rebuiltAsTheStoreDoes(packed.blob);
 }

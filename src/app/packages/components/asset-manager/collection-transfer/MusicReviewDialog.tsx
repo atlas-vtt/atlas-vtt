@@ -15,12 +15,14 @@ interface MusicReviewDialogProps {
   onCancel: () => void;
 }
 
-/** What an update does to the install before it, in one line: tracks replaced, added and taken out. */
+/** What an update does to the install before it, in one line: tracks replaced, renamed, added and taken out, and those that stay as they are. */
 function updateLine(update: NonNullable<MusicReview['update']>): string {
   const parts = [
     update.replaced > 0 ? t('armariumMusic.review.replaced', { count: update.replaced }) : '',
+    update.renamed > 0 ? t('armariumMusic.review.renamed', { count: update.renamed }) : '',
     update.added > 0 ? t('armariumMusic.review.added', { count: update.added }) : '',
     update.removed > 0 ? t('armariumMusic.review.removed', { count: update.removed }) : '',
+    update.unchanged > 0 ? t('armariumMusic.review.unchanged', { count: update.unchanged }) : '',
   ].filter(Boolean);
   return formatList(parts);
 }

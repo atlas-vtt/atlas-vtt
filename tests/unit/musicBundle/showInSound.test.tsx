@@ -22,7 +22,7 @@ afterEach(() => {
   calls.length = 0;
 });
 
-const music: MusicImportResult = { kind: 'music-album', name: 'Night of the Wilds', version: 1, outcome: 'new', tags: ['Night of the Wilds'] };
+const music: MusicImportResult = { kind: 'music-album', name: 'Night of the Wilds', version: 1, outcome: 'new', tags: ['Night of the Wilds'], putBack: [] };
 
 describe('Show in Sound after a music install', () => {
   it('closes the asset manager before it opens the Sound tab, so the tab is not covered', () => {
