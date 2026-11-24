@@ -204,7 +204,13 @@ export class LibraryCopyFolder implements CopyFolder {
     if (!same(heldFacts) || !same(pathFacts) || !location.canTrash()) return path;
     const [kept = path] = [held, path].sort(keptFirst(stemCopyOf(joinRelative(parentOfRelative(path), facts.from))));
     const loser = kept === held ? path : held;
-    await location.trash(loser);
+    try {
+      await location.trash(loser);
+    } catch (error) {
+      // Both stay, as where the folder has no trash: each still plays the one sound.
+      console.error(`[Atlas] Could not move ${loser} to the trash`, error);
+      return path;
+    }
     const library = this.library();
     const from = library?.audioPathOf(kind, loser);
     const to = library?.audioPathOf(kind, kept);
