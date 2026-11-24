@@ -160,6 +160,8 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
     const { step, version } = this.state;
     if (step !== 'bundle' || version === null) return;
     const problems = musicProblems(this.state);
+    // Continue waits, disabled, until every track is prepared: there is nothing to say about it.
+    if (problems.tracks === 'preparing') return;
     if (textLength(this.state.notes) > ITEM_NOTES_LIMITS.max) problems.notes = 'too-long';
     if (Object.keys(problems).length > 0) return this.set({ problems });
     this.set({ step: 'upload', packing: { message: '', fraction: 0 }, refusal: null, problems: {} });

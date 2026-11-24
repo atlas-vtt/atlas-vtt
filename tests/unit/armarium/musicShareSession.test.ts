@@ -80,8 +80,10 @@ describe('sharing music in the Armarium', () => {
     expect(session.snapshot()).toMatchObject({ subject: 'music', kind: 'music-album', version: 1, target: null, listings: [] });
     expect(session.snapshot().tracks.map((track) => track.title)).toEqual(['Dawn', 'Dusk', 'Night']);
 
+    // Continue is disabled meanwhile; called anyway, it neither goes on nor raises a problem no one could see.
     session.confirmMusic();
-    expect(session.snapshot().problems).toEqual({ tracks: 'preparing' });
+    expect(session.snapshot().step).toBe('bundle');
+    expect(session.snapshot().problems).toEqual({});
     tracks.tell('Old Roads/01 Dawn.mp3', { state: 'converting', progress: 0.5 });
     expect(session.snapshot().tracks[0]?.copy).toEqual({ state: 'converting', progress: 0.5 });
     for (const path of ['Old Roads/01 Dawn.mp3', 'Old Roads/02 - Dusk.flac', 'Old Roads/Night.opus']) tracks.tell(path, ready());

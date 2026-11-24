@@ -1,13 +1,13 @@
 import React, { useCallback, useId, useLayoutEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { GripVertical, X } from 'lucide-react';
-import { getLocale, t } from '../../../i18n';
+import { formatList, getLocale, t } from '../../../i18n';
 import { musicTotals } from '../../../packages/components/asset-manager/collection-transfer/MusicReviewDialog';
 import { LabelTooltip, TooltipProvider } from '../../../packages/components/primitives/tooltip';
 import { formatLength } from '../../../react/components/dm-screen/sound/musicClock';
 import { useListDrag } from '../../../react/components/dm-screen/sound/useListDrag';
 import { MAX_ALBUM_TRACKS, MAX_MUSIC_TEXT } from '../../../services/musicBundle/musicBundleFormat';
 import type { MusicShareSession } from '../../upload/MusicShareSession';
-import type { MusicShareSnapshot, MusicShareTrack, TrackCopyState, TrackRefusal } from '../../upload/musicShareState';
+import { MUSIC_TIME_LIMITS, type MusicShareSnapshot, type MusicShareTrack, type TrackCopyState, type TrackRefusal } from '../../upload/musicShareState';
 import { MusicProblem, musicProblemText } from './MusicProblem';
 import { ShareNotice } from './ShareNotice';
 
@@ -20,12 +20,15 @@ export function trackRefusalText(reason: TrackRefusal): string {
   return t(`audio.refused.${reason}`);
 }
 
-/** Where a track's copy stands, as its row says it. */
+/** Whether a track plays for less than the Armarium takes. */
+const tooShort = (copy: TrackCopyState): boolean => copy.state === 'ready' && copy.seconds < MUSIC_TIME_LIMITS.minTrackSeconds;
+
+/** Where a track's copy stands, as its row says it; a track too short never reads as a whole second. */
 function stateText(copy: TrackCopyState): string {
   switch (copy.state) {
     case 'reading': return t('armariumMusic.state.reading');
     case 'converting': return copy.progress === null ? t('armariumMusic.state.waiting') : t('armariumMusic.state.converting', { percent: percent.format(copy.progress) });
-    case 'ready': return formatLength(copy.seconds);
+    case 'ready': return formatLength(tooShort(copy) ? Math.floor(copy.seconds) : copy.seconds);
     case 'refused': return t('armariumMusic.state.refused');
   }
 }
@@ -54,7 +57,7 @@ function TrackRow({ track, number, title, movable, removable, dragging, invalid,
   const shown = title ?? track.title;
   const state = <span className="atlas-music-track__state">{stateText(track.copy)}</span>;
   return (
-    <li className="atlas-music-track" data-track={track.id} data-state={track.copy.state} data-dragging={dragging || undefined}>
+    <li className="atlas-music-track" data-track={track.id} data-state={track.copy.state} data-dragging={dragging || undefined} data-too-short={tooShort(track.copy) || undefined}>
       {movable && (
         <LabelTooltip label={t('armariumMusic.move')} hint={t('armariumMusic.moveHint')} suppressed={dragging} describe>
           <button type="button" className="atlas-music-track__grip" aria-label={t('armariumMusic.moveTrack', { title: shown })} onPointerDown={(event) => onDragStart(track, event)}>
@@ -124,6 +127,7 @@ export function MusicTrackList({ snapshot, session }: { snapshot: MusicShareSnap
 
   const ready = snapshot.tracks.flatMap((track) => (track.copy.state === 'ready' ? [track.copy] : []));
   const refused = snapshot.tracks.filter((track): track is MusicShareTrack & { copy: { state: 'refused'; reason: TrackRefusal } } => track.copy.state === 'refused');
+  const short = snapshot.tracks.filter((track) => tooShort(track.copy));
   const titleProblemTrack = snapshot.tracks.find((track) => snapshot.problems[`title:${track.id}`] !== undefined);
   const numbers = uploadNumbers(drag.shown);
   const problemNumber = titleProblemTrack ? uploadNumbers(snapshot.tracks).get(titleProblemTrack.id) : undefined;
@@ -156,7 +160,11 @@ export function MusicTrackList({ snapshot, session }: { snapshot: MusicShareSnap
           {t('armariumMusic.problem.title', { number: problemNumber ?? 0, problem: musicProblemText(snapshot.problems[`title:${titleProblemTrack.id}`] ?? '', snapshot.kind) })}
         </p>
       )}
-      <MusicProblem id={`${labelId}-problem`} field="tracks" problems={snapshot.problems} kind={snapshot.kind} />
+      {snapshot.problems.tracks === 'too-short' ? (
+        <p className="atlas-share-field__problem" role="alert">
+          {t('armariumMusic.problem.tooShort', { count: short.length, titles: formatList(short.map((track) => (album ? track.title : snapshot.name))) })}
+        </p>
+      ) : <MusicProblem id={`${labelId}-problem`} field="tracks" problems={snapshot.problems} kind={snapshot.kind} />}
       {snapshot.cut > 0 && <ShareNotice tone="info">{t('armariumMusic.cut', { max: MAX_ALBUM_TRACKS })}</ShareNotice>}
       {refused.length > 0 && (
         <ShareNotice tone="info">

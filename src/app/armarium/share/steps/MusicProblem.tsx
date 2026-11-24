@@ -9,9 +9,7 @@ export function musicProblemText(problem: string, kind: MusicKind | null): strin
     case 'missing': return t('armariumMusic.problem.missing');
     case 'too-long': return t('armariumMusic.problem.too-long', { count: MAX_MUSIC_TEXT });
     case 'one-line': return t('armariumMusic.problem.one-line');
-    case 'preparing': return t('armariumMusic.problem.preparing');
     case 'too-few': return t(kind === 'music-track' ? 'armariumMusic.problem.too-few.music-track' : 'armariumMusic.problem.too-few.music-album');
-    case 'too-short': return t('armariumMusic.problem.too-short');
     case 'track-too-long': return t('armariumMusic.problem.track-too-long');
     case 'album-too-long': return t('armariumMusic.problem.album-too-long');
     default: return t('armariumListing.problem.notRight');

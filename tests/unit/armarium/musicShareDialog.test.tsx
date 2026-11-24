@@ -72,6 +72,17 @@ async function share(api: MusicArmarium, paths: string[], pack = (): Promise<{ f
 const ready: PreparedTrack = { state: 'ready', copy: new Blob(['opus']), frames: 48_000 * 185 };
 
 describe('the share dialog of music', () => {
+  it('names the track that plays for less than a second, and never shows its length as a whole second', async () => {
+    const { tell } = await share(new MusicArmarium(), ['01 Blip.mp3', '02 Dawn.mp3']);
+    tell('01 Blip.mp3', { state: 'ready', copy: new Blob(['opus']), frames: 24_000 });
+    tell('02 Dawn.mp3', ready);
+    const blip = document.querySelector<HTMLElement>('[data-track="music:01 Blip.mp3"]')!;
+    expect(blip.querySelector('.atlas-music-track__state')?.textContent).toBe('0:00');
+    expect(blip.hasAttribute('data-too-short')).toBe(true);
+    act(() => fireEvent.click(screen.getByRole('button', { name: 'Continue' })));
+    expect(screen.getByRole('alert').textContent).toBe('Blip plays for less than a second. A track must play for at least one.');
+  });
+
   it('offers the way back to the music step where the music could not be packed, as well as packing again', async () => {
     const pack = vi.fn().mockRejectedValueOnce(new Error('The source image cannot be decoded.')).mockResolvedValue({ fileName: 'Old Roads v1.atlas-album.zip', blob: new Blob(['zip']) });
     const { tell } = await share(new MusicArmarium(), ['01 Dawn.mp3', '02 Dusk.mp3'], pack);
