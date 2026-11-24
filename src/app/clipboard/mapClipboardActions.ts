@@ -16,9 +16,9 @@ import { withoutOffMap } from '../tokens/offMap';
 
 type ClipboardStore = Pick<StoreApi<ViewAtlasState>, 'getState'>;
 
-/** Players never edit the map, and walls keep their own selection, so the wall tool opts out too. */
+/** Players never edit the map; the wall tool's selected lights are copied through its own selection. */
 function canEditMapObjects(state: ViewAtlasState): boolean {
-  return !state.isPlayerView && state.activeTool !== 'wall';
+  return !state.isPlayerView;
 }
 
 /**
@@ -27,6 +27,7 @@ function canEditMapObjects(state: ViewAtlasState): boolean {
  */
 function editableSelection(state: ViewAtlasState): string[] {
   if (!canEditMapObjects(state)) return [];
+  if (state.activeTool === 'wall') return state.selectedIds.filter((id) => !!levelObjects(state).lights[id]);
   if (state.activeTool === 'stairs') return state.levelLinkPopover ? [state.levelLinkPopover] : [];
   return withoutOffMap(state.objects, state.selectedIds);
 }
@@ -44,7 +45,7 @@ function tellStairsLeftOut(state: ViewAtlasState, content: MapObjectContent): vo
   else if (count > MAX_LEVEL_LINKS - levelLinkList(state.objects.levelLinks).length) showNotice(t('levels.stairsFull', { count: MAX_LEVEL_LINKS }));
 }
 
-/** Puts the tokens, drawings, texts, pins and stairs with the given ids on the clipboard. Returns whether anything was copied. */
+/** Puts selected map objects, including lights, on the clipboard. Returns whether anything was copied. */
 export async function copyMapObjects(store: ClipboardStore, ids: readonly string[]): Promise<boolean> {
   const content = copyableContent(store.getState(), ids);
   if (!content) return false;

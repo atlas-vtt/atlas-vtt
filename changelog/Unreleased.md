@@ -1,5 +1,7 @@
 ## New
 
+- Copy, cut, paste and duplicate placed lights with the map's clipboard shortcuts, keeping their lighting settings, direction and area shape
+
 - A welcome wizard greets you the first time you open Atlas, on the start page or a map: a carousel of what Atlas does, where to find the guides and the Discord, the Atlas Sidebar plugin, and your look
 - Atlas has looks of its own, no theme to install: Medieval and a new Sci-fi look, or keep your own theme. Pick one on picture cards under Appearance settings in the command palette or in the welcome wizard; each device keeps its own. The fog's edge and the dice numerals follow the look
 - Appearance settings also pick the accent colour: the look's own, eight presets or any colour, in step with Obsidian's accent colour setting. Under Atlas' looks it colours your notes' headings, bold lead-ins, quotes and table headings too

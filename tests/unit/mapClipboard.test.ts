@@ -243,3 +243,46 @@ describe('map copy, paste and duplicate', () => {
     expect(saved.state.objects.tokens[pasted!]).toMatchObject({ x: 325, y: 325, name: 'Goblin', instanceNumber: 2 });
   });
 });
+
+
+describe('map clipboard lights', () => {
+  function addLight(store: ReturnType<typeof createStore>['store'], x: number, y: number): string {
+    return store.getState().addLight({ x, y, rotation: 35, hidden: true, activeBelowAmbient: 0.4,
+      emission: { bright: 15, dim: 35, color: '#ffbb66', intensity: 0.8, animation: 'torch', kind: 'torch' },
+      area: [{ x: x - 10, y: y - 10 }, { x: x + 10, y: y - 10 }, { x: x + 10, y: y + 10 }, { x: x - 10, y: y + 10 }] });
+  }
+  it('copies and pastes a light with its settings and translated area geometry', async () => {
+    const { store } = createStore(NO_GRID);
+    const original = addLight(store, 25, 25);
+    store.getState().setSelection([original]);
+    expect(await copySelection(store)).toBe(true);
+    const copies = await pasteClipboard(store, { x: 125, y: 125 });
+    expect(copies).toHaveLength(1);
+    const copy = store.getState().objects.lights[copies[0]!]!;
+    expect(copy.id).not.toBe(original);
+    expect(copy).toMatchObject({ x: 125, y: 125, rotation: 35, hidden: true, activeBelowAmbient: 0.4,
+      emission: { bright: 15, dim: 35, color: '#ffbb66', intensity: 0.8, animation: 'torch', kind: 'torch' },
+      area: [{ x: 115, y: 115 }, { x: 135, y: 115 }, { x: 135, y: 135 }, { x: 115, y: 135 }] });
+  });
+  it('duplicates selected lights with fresh ids in one undoable placement', () => {
+    const { store } = createStore(NO_GRID);
+    const original = addLight(store, 25, 25);
+    store.getState().setSelection([original]);
+    const before = undoSteps(store);
+    const copies = duplicateSelection(store);
+    expect(copies).toHaveLength(1);
+    expect(copies[0]).not.toBe(original);
+    expect(store.getState().objects.lights[copies[0]!]!).toMatchObject({ x: 45, y: 45, emission: { color: '#ffbb66' } });
+    expect(undoSteps(store)).toBe(before + 1);
+  });
+  it('cuts selected lights and pastes them back under fresh ids', async () => {
+    const { store } = createStore(NO_GRID);
+    const original = addLight(store, 25, 25);
+    store.getState().setSelection([original]);
+    expect(await cutSelection(store)).toBe(true);
+    expect(store.getState().objects.lights[original]).toBeUndefined();
+    const copies = await pasteClipboard(store, { x: 125, y: 125 });
+    expect(copies).toHaveLength(1);
+    expect(store.getState().objects.lights[copies[0]!]!.x).toBe(125);
+  });
+});

@@ -35,7 +35,7 @@ export interface MapObjectsSlice {
   insertMapObjects: (content: MapObjectContent) => string[];
   /** Copies the objects one grid cell down and to the right, selects the copies and returns their ids. */
   duplicateMapObjects: (ids: string[]) => string[];
-  /** Removes tokens, drawings, texts, pins and stairs with the given ids; other ids stay selected. */
+  /** Removes tokens, drawings, texts, pins, lights and stairs with the given ids; other ids stay selected. */
   removeMapObjects: (ids: string[]) => void;
   /** Puts a token kept beside the map (`offMap`) on it at (x, y), on top of every other token, and selects it. */
   placeOffMapToken: (id: string, x: number, y: number) => void;
@@ -50,6 +50,7 @@ interface MapObjectsStoreState {
   viewedLevel?: string | null | undefined;
   activeTool: string;
   levelLinkPopover: string | null;
+  lightPopover?: string | null;
   measurePopover: string | null;
 }
 
@@ -78,6 +79,12 @@ function addCopies(draft: MapObjectsStoreState, content: MapObjectContent, linkR
   // Copies land on the level the view shows, as new objects do.
   const level = placedOnViewedLevel(draft);
   const ids: string[] = [];
+  for (const light of content.lights ?? []) {
+    objects.lights ??= {};
+    const id = newId('light');
+    objects.lights[id] = { ...light, id, ...level };
+    ids.push(id);
+  }
   for (const token of content.tokens) {
     const id = newId('tok');
     objects.tokens[id] = { ...token, id, instanceNumber: computeNextInstanceNumber(objects.tokens, token.imagePath), ...level };
@@ -149,21 +156,23 @@ export function createMapObjectsActions(set: ImmerSet, get: () => MapObjectsStor
     }),
 
     removeMapObjects: (ids) => set((draft) => {
-      const { tokens, drawings, texts, pins, levelLinks } = draft.objects;
+      const { tokens, drawings, texts, pins, lights, levelLinks } = draft.objects;
       const links = isRecord(levelLinks) ? levelLinks : {};
       // A locked drawing or text stays, and stays selected: Delete and cut are changes of it.
-      const removed = new Set(unlockedIds(ids, draft.objects).filter((id) => tokens[id] || drawings[id] || texts[id] || pins[id] || links[id]));
+      const removed = new Set(unlockedIds(ids, draft.objects).filter((id) => tokens[id] || drawings[id] || texts[id] || pins[id] || lights?.[id] || links[id]));
       const removedToken = [...removed].some((id) => tokens[id]);
       for (const id of removed) {
         delete tokens[id];
         delete drawings[id];
         delete texts[id];
         delete pins[id];
+        if (lights) delete lights[id];
         delete links[id];
       }
       // A token's auras go with it, in this write: undo brings back both.
       dropTokenAuras(draft, removed);
       if (draft.levelLinkPopover !== null && removed.has(draft.levelLinkPopover)) draft.levelLinkPopover = null;
+      if (draft.lightPopover && removed.has(draft.lightPopover)) draft.lightPopover = null;
       draft.selectedIds = draft.selectedIds.filter((id) => !removed.has(id));
       if (removedToken) {
         draft._audioDirty = true;

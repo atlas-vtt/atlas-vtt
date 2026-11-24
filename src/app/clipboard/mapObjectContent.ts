@@ -1,6 +1,8 @@
 import type { DrawingStroke, NotePin, TextElement, TokenEntity } from '../types';
 import type { KeptMeasure } from '../measure/measureTypes';
 import type { LevelLink } from '../types/sceneLevelTypes';
+import type { LightSource } from '../types/lightingTypes';
+import { lightMovedTo } from '../lighting/lightArea';
 import { copiedLevelLink, type CopiedLevelLink } from '../levels/levelLinkCopies';
 import { levelLinkList } from '../levels/levelLinks';
 import { viewedLevelId, type LevelView } from '../levels/sceneLevels';
@@ -18,6 +20,8 @@ export interface CopyableCollections {
   drawings: Record<string, DrawingStroke>;
   texts: Record<string, TextElement>;
   pins: Record<string, NotePin>;
+  /** Placed lights; optional for older callers and scenes. */
+  lights?: Record<string, LightSource> | undefined;
   /** Stairs, which the stairs tool copies; a scene from an older version has none. */
   levelLinks?: Record<string, LevelLink> | undefined;
   /** Kept measurements: never copied, but a token's aura goes with the token that is removed. */
@@ -30,6 +34,8 @@ export interface MapObjectContent {
   drawings: DrawingStroke[];
   texts: TextElement[];
   pins: NotePin[];
+  /** Placed lights, including their emission, direction, hidden state and area geometry. */
+  lights?: LightSource[];
   levelLinks: CopiedLevelLink[];
 }
 
@@ -48,6 +54,7 @@ export function collectMapObjects(objects: CopyableCollections, ids: readonly st
     drawings: pick(objects.drawings),
     texts: pick(objects.texts),
     pins: pick(objects.pins),
+    lights: pick(objects.lights ?? {}),
     levelLinks: ids.flatMap((id) => {
       const link = links.find((candidate) => candidate.id === id);
       const copy = link && copiedLevelLink(link, from, view?.levels);
@@ -57,7 +64,7 @@ export function collectMapObjects(objects: CopyableCollections, ids: readonly st
 }
 
 export function countMapObjects(content: MapObjectContent): number {
-  return content.tokens.length + content.drawings.length + content.texts.length + content.pins.length + content.levelLinks.length;
+  return content.tokens.length + content.drawings.length + content.texts.length + content.pins.length + (content.lights?.length ?? 0) + content.levelLinks.length;
 }
 
 /** Every position that defines where the content sits on the map. */
@@ -66,6 +73,7 @@ function referencePoints(content: MapObjectContent): Point[] {
     ...content.tokens,
     ...content.texts,
     ...content.pins,
+    ...(content.lights ?? []).flatMap((light) => [light, ...(light.area ?? [])]),
     ...content.drawings.flatMap((drawing) => drawing.points),
     ...content.levelLinks.flatMap((link) => link.polygon),
   ].map(({ x, y }) => ({ x, y }));
@@ -107,6 +115,7 @@ export function translateMapObjects(
     })),
     texts: content.texts.map(move),
     pins: content.pins.map(move),
+    lights: (content.lights ?? []).map((light) => ({ ...structuredClone(light), ...lightMovedTo(light, light.x + offset.x, light.y + offset.y) })),
     levelLinks: content.levelLinks.map((link) => ({ ...structuredClone(link), polygon: link.polygon.map(shift) })),
   };
 }
@@ -128,7 +137,7 @@ function isCopiedContent(source: CopyableCollections | MapObjectContent): source
   return Array.isArray(source.tokens);
 }
 
-/** The anchor of every object: tokens by image, texts and pins by position, drawings and stairs by their first point. */
+/** The anchor of every object: tokens by image, lights by source, annotations by position, drawings and stairs by their first point. */
 export function objectAnchors(source: CopyableCollections | MapObjectContent): ObjectAnchor[] {
   const values = <T>(collection: Record<string, T> | T[]): T[] => (Array.isArray(collection) ? collection : Object.values(collection));
   const anchors: ObjectAnchor[] = [];
@@ -143,5 +152,7 @@ export function objectAnchors(source: CopyableCollections | MapObjectContent): O
   values(source.drawings).forEach((drawing) => add('drawing', drawing.points[0]));
   const links = Array.isArray(source.levelLinks) ? source.levelLinks : levelLinkList(source.levelLinks);
   links.forEach((link) => add('stairs', link.polygon[0]));
+  const lights = isCopiedContent(source) ? (source.lights ?? []) : Object.values(source.lights ?? {});
+  lights.forEach((light) => add('light', light));
   return anchors;
 }

@@ -6,12 +6,11 @@ import type { Point } from '../../types/visionTypes';
 import type { WallSegment, WallType } from '../../types/wallTypes';
 import { connectedChain, endsAt, snapToWallEnd, type WallEnd } from '../lighting/wallEnds';
 import type { WallEdit } from '../lighting/wallJoints';
+import { WallLightClipboardSelection } from './WallLightClipboardSelection';
 import { levelObjects } from '../../levels/levelObjects';
 import { dragThreshold } from '../utils/pointerReach';
-
 /** Screen pixels a pressed wall end must travel before it follows the pointer: less is a click. */
 const DRAG_THRESHOLD = 3;
-
 /** A joint held by the pointer: every wall end there moves as one. */
 interface JointDrag {
   joint: Point;
@@ -24,7 +23,6 @@ interface JointDrag {
   /** Pressed without adding to the selection, so a release in place is a click on the joint. */
   plain: boolean;
 }
-
 /**
  * Handles wall interaction: multi-selection, joint dragging, door toggling, bulk type changes
  * and deletion. Lights join the selection through `selectLight` (their markers take the pointer
@@ -39,13 +37,16 @@ export class WallInteraction {
   private drag: JointDrag | null = null;
   private selectedWallIds: Set<string> = new Set();
   private selectedLightIds: Set<string> = new Set();
-
+  private readonly clipboardSelection: WallLightClipboardSelection;
   /** `onLightSelection` shows which lights are selected, on their markers. */
   constructor(store: StoreApi<ViewAtlasState>, wallRenderer: WallRenderer, private readonly onLightSelection: (lightIds: string[]) => void = () => undefined) {
     this.store = store;
     this.wallRenderer = wallRenderer;
+    this.clipboardSelection = new WallLightClipboardSelection(store, (ids) => {
+      this.selectedLightIds = new Set(ids);
+      this.onLightSelection(ids);
+    });
   }
-
   /** Handle pointer down. Returns true if something was hit. */
   handlePointerDown(worldX: number, worldY: number, addToSelection: boolean = false): boolean {
     // 1. Check vertex handles first (for dragging)
@@ -215,6 +216,7 @@ export class WallInteraction {
       }
     } else {
       // Replace selection with this chain
+      this.clipboardSelection.clear([...this.selectedLightIds]);
       this.selectedWallIds = new Set(chainIds);
       this.selectedLightIds.clear();
     }
@@ -224,6 +226,7 @@ export class WallInteraction {
 
   /** Selects one wall alone, not its chain: the wall a door is placed in. */
   selectSegment(wallId: string): void {
+    this.clipboardSelection.clear([...this.selectedLightIds]);
     this.selectedWallIds = new Set([wallId]);
     this.selectedLightIds.clear();
     this.syncRendererSelection();
@@ -242,6 +245,7 @@ export class WallInteraction {
       this.selectedWallIds.clear();
     }
 
+    this.clipboardSelection.set([...this.selectedLightIds]);
     this.syncRendererSelection();
   }
 
@@ -266,6 +270,7 @@ export class WallInteraction {
   }
 
   clearSelection(): void {
+    this.clipboardSelection.clear([...this.selectedLightIds]);
     this.selectedWallIds.clear();
     this.selectedLightIds.clear();
     this.syncRendererSelection();
@@ -289,5 +294,6 @@ export class WallInteraction {
 
   destroy(): void {
     this.endDrag();
+    this.clipboardSelection.destroy();
   }
 }
