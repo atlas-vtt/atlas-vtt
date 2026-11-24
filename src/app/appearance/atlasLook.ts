@@ -5,6 +5,7 @@ import type { DiceFont } from '../dice3d/diceLook';
 import type { LookService } from './lookService';
 import { customAccent, onAccentChange } from './accentColour';
 import { paintIvy, untilStylesheetAdded } from './paintedIvy';
+import { SQUARE_CORNERS_CLASS } from '../pixi/utils/squareCorners';
 
 /** Atlas' two looks: the mediaeval module page and the clean sci-fi one. */
 export type AtlasLook = 'mediaeval' | 'scifi';
@@ -26,9 +27,6 @@ export const SCIFI_LOOK_CLASS = 'atlas-look-scifi';
 
 /** On `body` while the Atlas look on lets the map show through (`LookService.glass`), beside `LOOK_CLASS`. */
 export const GLASS_LOOK_CLASS = 'atlas-look-glass';
-
-/** On `body` while the GM wants no rounded corners in Atlas (`LookService.squareCorners`), under any look. */
-export const SQUARE_CORNERS_CLASS = 'atlas-square-corners';
 
 /** On `body` while an Atlas look is on and the GM picked an accent colour, which the look then takes instead of its own. */
 export const CUSTOM_ACCENT_CLASS = 'atlas-accent-custom';

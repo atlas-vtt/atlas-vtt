@@ -48,6 +48,7 @@ import { updateInstanceBadge } from './token-renderer/InstanceBadge';
 import { HiddenTokenIcon } from './token-renderer/HiddenTokenIcon';
 import { TokenOverlays } from './token-renderer/TokenOverlays';
 import { tokenOverlays } from '../api/extensionPoints';
+import { watchSquareCorners } from './utils/squareCorners';
 import { DownedTokenOverlay } from './token-renderer/DownedTokenOverlay';
 import { isTokenDowned } from './token-renderer/isTokenDowned';
 import { requestRender } from './RenderScheduler';
@@ -116,6 +117,11 @@ export class TokenRenderer {
   private readonly hiddenTokenIcon = new HiddenTokenIcon();
   private readonly overlays = new TokenOverlays(() => this.redrawOverlays());
   private readonly stopFollowingOverlays = tokenOverlays.subscribe(() => this.redrawOverlays());
+  /** Square corners (Appearance settings) switched: the bars and badges every token draws take the new corners. */
+  private readonly stopWatchingCorners = watchSquareCorners(() => {
+    this.uiManager.refreshResources();
+    if (this.pixiApp) requestRender(this.pixiApp);
+  });
   private readonly downedTokenOverlay = new DownedTokenOverlay(
     () => {
       if (this.pixiApp) requestRender(this.pixiApp);
@@ -1437,6 +1443,7 @@ export class TokenRenderer {
     this.hiddenTokenIcon.destroy();
     this.downedTokenOverlay.destroy();
     this.stopFollowingOverlays();
+    this.stopWatchingCorners();
     
     // Clear all references
     this.tokenSprites = {};

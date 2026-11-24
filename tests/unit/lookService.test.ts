@@ -3,7 +3,8 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { App, Plugin } from 'obsidian';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { LookService } from '../../src/app/appearance/lookService';
-import { CUSTOM_ACCENT_CLASS, GLASS_LOOK_CLASS, LOOK_CLASS, SCIFI_LOOK_CLASS, SQUARE_CORNERS_CLASS, registerLookSync } from '../../src/app/appearance/atlasLook';
+import { CUSTOM_ACCENT_CLASS, GLASS_LOOK_CLASS, LOOK_CLASS, SCIFI_LOOK_CLASS, registerLookSync } from '../../src/app/appearance/atlasLook';
+import { SQUARE_CORNERS_CLASS } from '../../src/app/pixi/utils/squareCorners';
 
 const ATLAS_ID = 'atlas-vtt';
 

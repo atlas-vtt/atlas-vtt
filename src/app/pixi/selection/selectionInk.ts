@@ -1,6 +1,7 @@
 import type { Graphics } from 'pixi.js';
 import { CANVAS_INK, INK_SHADE } from '../utils/canvasInk';
 import { HIGHLIGHT_EDGE, SELECTION_LOOK, grownPath, openRuns, outlinePoints, type HighlightPath, type Notch, type RoundedBox } from './selectionGeometry';
+import { uiCorner } from '../utils/squareCorners';
 
 /** The group frame's accent opacity: present, never louder than a highlight. */
 const GROUP_ALPHA = 0.55;
@@ -46,7 +47,7 @@ export function drawHighlight(graphics: Graphics, path: HighlightPath, handles: 
 /** The quiet frame around a selection of two or more: one thin accent line, no fill. */
 export function drawGroupFrame(graphics: Graphics, frame: RoundedBox, accent: number): void {
   graphics
-    .roundRect(frame.x, frame.y, frame.width, frame.height, frame.radius)
+    .roundRect(frame.x, frame.y, frame.width, frame.height, uiCorner(frame.radius))
     .stroke({ width: SELECTION_LOOK.groupStroke, color: accent, alpha: GROUP_ALPHA });
 }
 

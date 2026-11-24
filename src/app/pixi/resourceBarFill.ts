@@ -1,8 +1,10 @@
 import type { Graphics } from 'pixi.js';
+import { squareCorners } from './utils/squareCorners';
 
 /** Keep the leading cap's curvature when a fill is narrower than the bar height. */
 export function resourceBarFill(graphics: Graphics, x: number, y: number, width: number, height: number): Graphics {
   if (width <= 0 || height <= 0) return graphics;
+  if (squareCorners()) return graphics.rect(x, y, width, height);
   const radius = height / 2;
   if (width >= height) return graphics.roundRect(x, y, width, height, radius);
 
