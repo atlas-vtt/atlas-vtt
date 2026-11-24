@@ -2,6 +2,14 @@ import { exploredMemoryOn } from '../../lighting/sceneLightingOptions';
 import { levelExploredMask } from '../../levels/sceneLevels';
 import type { SceneState } from './atlasView.ts';
 
+/**
+ * What the GM took away from the party's explored memory: what one floor's memory lost from one saved
+ * memory to the next (data URLs; null for none), or every floor of the scene (Forget explored areas).
+ */
+export type Removal = { readonly kind: 'lost'; readonly before: string | null; readonly after: string | null } | { readonly kind: 'forgotten' };
+
+const NO_REMOVALS: readonly Removal[] = Object.freeze([]);
+
 interface Seen {
   readonly edits: number;
   readonly source: string | null;
@@ -57,31 +65,45 @@ export class ExploredRemovals {
     if (this.beforeLoad === undefined && this.seen !== null) this.beforeLoad = this.seen.source;
   }
 
-  /** The scene as it is now, its map loaded. */
-  observe(state: SceneState): void {
+  /**
+   * The scene as it is now, its map loaded; what the GM took away since it was last looked at, which each
+   * player's own memory of the floor loses too: what the party's memory lost (`lost`, a load or an edit by
+   * hand, both saved), and every floor of the scene where Forget explored areas forgot them (`forgotten`).
+   */
+  observe(state: SceneState): readonly Removal[] {
     const source = levelExploredMask(state);
     const seen = this.seen;
     this.seen = { edits: state.exploredEdits, source, memoryOn: exploredMemoryOn(state.lighting), forgotten: state.exploredForgotten ?? 0 };
     if (this.beforeLoad !== undefined) {
-      // The count of edits starts over with every load.
-      if (source !== this.beforeLoad) this.count++;
+      const before = this.beforeLoad;
       this.beforeLoad = undefined;
       this.edited = false;
-      return;
+      // The count of edits starts over with every load.
+      if (source === before) return NO_REMOVALS;
+      this.count++;
+      return [{ kind: 'lost', before, after: source }];
     }
-    if (seen === null) return;
+    if (seen === null) return NO_REMOVALS;
+    let saved = false;
     if (state.exploredEdits !== seen.edits) {
       // An edit's save comes after it; a count and a memory changed at once are a load nobody saw begin.
       if (source !== seen.source) {
         this.count++;
         this.edited = false;
+        saved = true;
       } else if (this.shown()) this.edited = true;
     } else if (this.edited && source !== seen.source) {
       this.edited = false;
       this.count++;
+      saved = true;
     }
+    const gone = source === null && seen.source !== null;
     // The floor the GM's view shows is counted by its edit, with the save that holds it.
-    const forgotten = seen.forgotten !== this.seen.forgotten && !this.shown();
-    if ((source === null && seen.source !== null) || (seen.memoryOn && !this.seen.memoryOn) || forgotten) this.count++;
+    const forgotten = seen.forgotten !== this.seen.forgotten;
+    if (gone || (seen.memoryOn && !this.seen.memoryOn) || (forgotten && !this.shown())) this.count++;
+    const removals: Removal[] = [];
+    if (saved || gone) removals.push({ kind: 'lost', before: seen.source, after: source });
+    if (this.seen.forgotten > seen.forgotten) removals.push({ kind: 'forgotten' });
+    return removals;
   }
 }

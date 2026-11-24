@@ -13,6 +13,7 @@ import type { TokenSharePorts } from './TokenShare.ts';
 import type { NotePin } from '../../types';
 import type { DoorAskShown } from './doors/PlayerDoorAsks.ts';
 import type { PictureBasis } from './eyesSight.ts';
+import type { MemoryPorts } from './memory/memoryPorts.ts';
 
 /** What the shared scene of an Atlas tab reads of the tab and the table, and how it reaches players. */
 export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<MarkSharePorts, 'gmMarks' | 'showPlayerMarks' | 'showPlayerCursors' | 'showPlayerStrokes' | 'nameOf'> {
@@ -37,6 +38,8 @@ export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<
   mapLayers?(): MapLayerSource | null;
   /** Reads a saved explored memory, by which players know what lies on the map of rooms they remember; without it they know it by sight alone. */
   decodeMask?: MaskDecoder | undefined;
+  /** What each player's own explored memory is stamped on and kept in; without it a player remembers only what their page saw. */
+  playerMemory?: MemoryPorts | undefined;
   /** Takes a roll of the shared tab into the table's log. */
   logRoll?(roll: LoggedRoll): void;
   /** The roll button of the log a player's roll answers, as they may roll it. */

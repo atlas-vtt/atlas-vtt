@@ -19,6 +19,7 @@ import { settled } from './settled.ts';
 import { isVideoMapPath } from '../../../../src/app/pixi/mosaicCanvas/video/videoMapFiles';
 import type { AssetStoring } from '../../../../src/app/online/gm/assets/assetUses.ts';
 import type { PictureBasis } from '../../../../src/app/online/gm/eyesSight.ts';
+import type { MemoryPorts } from '../../../../src/app/online/gm/memory/memoryPorts.ts';
 import { fakeStoring } from './fakeStoring.ts';
 
 export const GRID_SIZE = 70;
@@ -97,9 +98,10 @@ const counterId = (count: number): string => count.toString(16).padStart(24, '0'
  * A SceneShare over a fake store, renderer (`fakeTokenSource`), vault and clock; `images` are the
  * vault's image files by path; `seats` tells who plays, owns which token and may claim which; `real`
  * (Atlas's own view store) replaces the fake store, and is written through its own actions, not `set`;
- * `stored` hands players assets the store keeps (by default all of them, `fakeStoring`).
+ * `stored` hands players assets the store keeps (by default all of them, `fakeStoring`); `memory` keeps each
+ * player's own explored memory (none by default).
  */
-export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Uint8Array<ArrayBuffer>>, seats?: SeatSource, real?: SceneStore, stored?: AssetStoring): ShareHarness {
+export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Uint8Array<ArrayBuffer>>, seats?: SeatSource, real?: SceneStore, stored?: AssetStoring, memory?: MemoryPorts): ShareHarness {
   let current = initial;
   const listeners: ((next: SceneState) => void)[] = [];
   const store: SceneStore = real ?? {
@@ -169,6 +171,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       },
       clearTimer: (timer) => void timers.delete(timer),
       seats,
+      playerMemory: memory,
       stored: stored ?? fakeStoring(undefined, (path) => {
         const bytes = harness.videos.get(path);
         if (bytes !== undefined) harness.videoReads += 1;

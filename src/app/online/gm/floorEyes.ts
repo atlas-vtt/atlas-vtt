@@ -16,8 +16,11 @@ export type Eyes = { readonly kind: 'party' } | { readonly kind: 'player'; reado
 
 export const PARTY_EYES: Eyes = Object.freeze({ kind: 'party' });
 
+/** The key of a player's own eyes among a floor's pictures. */
+export const playerEyesKey = (player: string): string => `player:${player}`;
+
 /** The key of a set of eyes among a floor's pictures. */
-export const eyesKey = (eyes: Eyes): string => (eyes.kind === 'party' ? '' : `player:${eyes.player}`);
+export const eyesKey = (eyes: Eyes): string => (eyes.kind === 'party' ? '' : playerEyesKey(eyes.player));
 
 export interface EyesInputs {
   /** The floor's state: the shared scene with this floor shown. */

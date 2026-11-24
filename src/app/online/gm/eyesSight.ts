@@ -105,6 +105,12 @@ export class EyesSight {
     };
   }
 
+  /** What these eyes see of the floor now, in the party's light: what their own memory records; null while the basis has no lighting. */
+  seen(basis: PictureBasis): PartyLighting | null {
+    const party = basis.lighting();
+    return party === null ? null : { ...party, sight: this.sightOf(party.sight) };
+  }
+
   /** How these eyes perceive each token of the floor: by its lighting where lit, as the basis's frame shows it. */
   perception(basis: PictureBasis): TokenPerception | undefined {
     const state = this.context.state();

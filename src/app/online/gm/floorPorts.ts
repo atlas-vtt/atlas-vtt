@@ -2,15 +2,17 @@ import type { GmMessage, SharedFloor } from '../protocol/index.ts';
 import { PLAYER_SIGHT_POLICY, type SightPolicy } from '../../vision/tokenSightPolicy';
 import type { MapLayerSource } from './atlasMapLayers.ts';
 import type { PlayerTokenSource, SceneState } from './atlasView.ts';
-import { EyesSight, type EyesContext, type PictureBasis } from './eyesSight.ts';
+import { EyesSight, type EyesContext, type PartyLighting, type PictureBasis } from './eyesSight.ts';
 import { FloorSight } from './floorSight.ts';
 import type { MapSize } from './moveCheck.ts';
 import type { SceneSharePorts } from './sceneSharePorts.ts';
 
-/** A picture's token source and map layers, as one set of eyes reads them. */
+/** A picture's token source, map layers and sight, as one set of eyes reads them. */
 export interface PictureSources {
   tokenSource(): PlayerTokenSource | null;
   mapLayers(): MapLayerSource | null;
+  /** What the eyes see of the floor now, which their memory records; null while it cannot be worked out. */
+  seen(): PartyLighting | null;
 }
 
 export interface FloorSharePorts extends SceneSharePorts {
@@ -60,6 +62,7 @@ export function floorPorts(ports: SceneSharePorts, deps: FloorPortsDeps): FloorS
       const base = ports.mapLayers?.() ?? null;
       return base === null ? null : eyes.layers(basis(), base);
     },
+    seen: () => eyes.seen(basis()),
   });
   const party = sources(new EyesSight(PLAYER_SIGHT_POLICY, context), () => sight);
   const seats = ports.seats;

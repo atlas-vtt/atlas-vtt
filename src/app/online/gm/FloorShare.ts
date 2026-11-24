@@ -171,7 +171,7 @@ export class FloorShare {
     this.unsubscribe = null;
     if (this.poll !== undefined) this.ports.clearTimer(this.poll);
     this.poll = undefined;
-    this.pictures.stop();
+    void this.pictures.stop();
     this.moves.stop();
     this.doors.stop();
     this.marks.stop();

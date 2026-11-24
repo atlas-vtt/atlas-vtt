@@ -33,6 +33,8 @@ export interface FloorPicturePorts extends FloorSharePorts {
   sightPolicy?(): SightPolicy;
   /** The explored memory the picture's players remember; undefined while it cannot be said. */
   memory(): SavedMemory | undefined;
+  /** That memory as a data URL, or null for none; unset, the memory the GM saved of the floor. */
+  memoryMask?: (() => string | null) | undefined;
 }
 
 /**
@@ -122,6 +124,12 @@ export class FloorPicture {
   ownersChanged(): void {
     this.tokens.update();
     this.mine?.update();
+  }
+
+  /** The memory the picture's players remember changed: it goes out, and what they know by it is told again. */
+  memoryChanged(): void {
+    this.explored.update();
+    this.layers.update();
   }
 
   /** Looks again at what changes without a store change: whether players may draw, a character's dice set. */
