@@ -2,10 +2,12 @@ import type { GmMessage, PlayerResync, SharedScene } from '../protocol/index.ts'
 import type { ShownRollToken } from '../../services/playerRollSource';
 import { narrowPolicy, PLAYER_SIGHT_POLICY, type SightPolicy } from '../../vision/tokenSightPolicy';
 import type { SceneStore } from './atlasView.ts';
+import { ExploredRemovals } from './exploredRemovals.ts';
 import { eyesKey, floorEyes, PARTY_EYES, type Eyes } from './floorEyes.ts';
 import { FloorPicture, type PictureFloor } from './floorPicture.ts';
 import type { FloorSharePorts, PictureSources } from './floorPorts.ts';
 import type { GmMarkSource } from './MarkShare.ts';
+import { partyMemory } from './partyMemory.ts';
 
 /** What a player's own picture reads by: the tokens they see through, as a key, their policy and the sources cut by it. */
 interface OwnLook {
@@ -31,8 +33,11 @@ export class FloorPictures {
   private eyes = new Map<string, string>();
   private scene: SharedScene | null = null;
   private assigning = false;
+  /** The times the GM took explored memory away from this floor. */
+  private readonly removals: ExploredRemovals;
 
   constructor(private readonly store: SceneStore, private readonly ports: FloorSharePorts, private readonly floor: PictureFloor) {
+    this.removals = new ExploredRemovals(() => store.shown?.() ?? true);
     this.party = this.open(PARTY_EYES);
     this.pictures.set(eyesKey(PARTY_EYES), this.party);
   }
@@ -75,7 +80,9 @@ export class FloorPictures {
   }
 
   setScene(scene: SharedScene | null): void {
+    if (scene !== null && scene.id !== this.scene?.id) this.removals.shared(scene.id);
     this.scene = scene;
+    this.observeRemovals();
     for (const picture of this.pictures.values()) picture.setScene(scene);
   }
 
@@ -87,7 +94,16 @@ export class FloorPictures {
 
   update(): void {
     this.assign();
+    this.observeRemovals();
     for (const picture of this.pictures.values()) picture.update();
+  }
+
+  /** Counts what the GM took away from a lit floor's memory since it last looked; a load is compared once it is done. */
+  private observeRemovals(): void {
+    if (this.scene?.lit !== true) return;
+    const state = this.store.getState();
+    if (!state.mapLoaded || state.isMapLoading) this.removals.loading();
+    else this.removals.observe(state);
   }
 
   /** Each picture again, whole, to its players; or to one player, the picture they see. */
@@ -140,8 +156,9 @@ export class FloorPictures {
     for (const picture of this.pictures.values()) picture.layers.update();
   }
 
+  /** The floor's map is loading: what the load ends with is compared with the memory before it. */
   mapLoading(): void {
-    for (const picture of this.pictures.values()) picture.mapLoading();
+    this.removals.loading();
   }
 
   poll(): void {
@@ -204,6 +221,7 @@ export class FloorPictures {
     const picture = new FloorPicture(this.store, {
       ...this.ports,
       ...own,
+      memory: () => partyMemory(this.store.getState(), this.removals.serial),
       members: () => (eyes.kind === 'party' && !this.split ? seats?.onlinePlayers() ?? [] : members()),
       send: (body, to) => route(to, (player) => this.ports.send(body, player)),
       ...(this.ports.sendLive !== undefined && { sendLive: (body: GmMessage, live: string, to?: string) => route(to, (player) => this.ports.sendLive?.(body, live, player)) }),

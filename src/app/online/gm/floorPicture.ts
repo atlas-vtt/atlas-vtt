@@ -2,6 +2,7 @@ import type { DrawMine, PlayerResync, SharedScene } from '../protocol/index.ts';
 import type { SightPolicy } from '../../vision/tokenSightPolicy';
 import type { SceneStore } from './atlasView.ts';
 import type { RulerPaths } from './dragRulers.ts';
+import { ExploredShare, type SavedMemory } from './ExploredShare.ts';
 import type { FloorSharePorts } from './floorPorts.ts';
 import { InputShare } from './InputShare.ts';
 import { LiveShare } from './LiveShare.ts';
@@ -30,18 +31,21 @@ export interface FloorPicturePorts extends FloorSharePorts {
   members(): readonly string[];
   /** Whose tokens give sight in the players' sight inputs (`sharedSight`); unset, every one's. */
   sightPolicy?(): SightPolicy;
+  /** The explored memory the picture's players remember; undefined while it cannot be said. */
+  memory(): SavedMemory | undefined;
 }
 
 /**
  * What the players who see a floor through one set of eyes are sent of it beside its scene: the tokens
- * they see, the inputs their fog and lighting are drawn from, the map's layers, the live places of
- * dragged tokens and which tokens are theirs. Its ports reach those players alone and read that picture.
+ * they see, the inputs their fog and lighting are drawn from, what they remember, the map's layers, the
+ * live places of dragged tokens and which tokens are theirs. Its ports reach those players alone and read that picture.
  */
 export class FloorPicture {
   readonly tokens: TokenShare;
   /** What players see of the map beside its tokens, the readable pins among it. */
   readonly layers: MapLayerShare;
   private readonly inputs: InputShare;
+  private readonly explored: ExploredShare;
   private readonly live: LiveShare | null;
   private readonly mine: MineShare | null;
 
@@ -57,6 +61,7 @@ export class FloorPicture {
       ...ports, sendLive: (body, key) => ports.sendLive?.(body, key), rulers: () => floor.rulers(), holder: (tokenId) => floor.holder(tokenId),
     }, () => ({ scene: this.tokens.listedScene, alias: (tokenId) => this.tokens.listedAlias(tokenId) }));
     this.inputs = new InputShare(store, { ...ports, shownTokens: () => this.tokens.shownIds(), tokenAlias: (id) => this.tokens.alias(id), fogEdge: () => ports.atlasSettings().fogEdge });
+    this.explored = new ExploredShare(ports);
     this.layers = new MapLayerShare(store, {
       ...ports, mapLayers: () => ports.mapLayers?.() ?? null, badgeOf: (tokenId) => this.tokens.badgeOf(tokenId), tokenAlias: (tokenId) => this.tokens.listedAlias(tokenId),
       // Each player of the picture is told what is theirs after each change, so a page knows which message its own are counted in.
@@ -73,6 +78,7 @@ export class FloorPicture {
     this.tokens.setScene(scene?.id ?? null);
     this.live?.setScene(scene);
     this.inputs.setScene(scene);
+    this.explored.setScene(scene);
     this.layers.setScene(scene);
   }
 
@@ -80,6 +86,7 @@ export class FloorPicture {
   clear(): void {
     this.tokens.setScene(null);
     this.inputs.setScene(null);
+    this.explored.setScene(null);
     this.layers.setScene(null);
   }
 
@@ -88,12 +95,14 @@ export class FloorPicture {
     this.live?.update();
     this.layers.update();
     this.inputs.update();
+    this.explored.update();
   }
 
   /** The tokens, inputs, layers and owned tokens again, whole, to one player or to all of the picture's. */
   resend(to?: string): void {
     this.tokens.resend(to);
     this.inputs.resend(to);
+    this.explored.resend(to);
     this.layers.resend(to);
     this.mine?.resend(to);
   }
@@ -106,17 +115,13 @@ export class FloorPicture {
   refreshAssets(): void {
     this.tokens.refreshArt();
     this.layers.refreshArt();
-    this.inputs.refreshAssets();
+    this.explored.refreshAssets();
   }
 
   /** Who owns which token changed: which tokens are each player's is told again. */
   ownersChanged(): void {
     this.tokens.update();
     this.mine?.update();
-  }
-
-  mapLoading(): void {
-    this.inputs.mapLoading();
   }
 
   /** Looks again at what changes without a store change: whether players may draw, a character's dice set. */
@@ -129,6 +134,7 @@ export class FloorPicture {
     this.tokens.stop();
     this.live?.stop();
     this.inputs.stop();
+    this.explored.stop();
     this.layers.stop();
   }
 }

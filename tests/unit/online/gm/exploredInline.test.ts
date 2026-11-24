@@ -1,6 +1,6 @@
 import { EXPLORED_INLINE_BYTES, parseGmMessage, type GmMessage } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
-import { EXPLORED_INTERVAL_MS } from '../../../../src/app/online/gm/InputShare.ts';
+import { EXPLORED_INTERVAL_MS } from '../../../../src/app/online/gm/ExploredShare.ts';
 import { sha256Hex, toBase64 } from '../../../../src/app/online/gm/assetServe.ts';
 import { assetIdOf } from '../../../../src/app/online/gm/assets/assetIds.ts';
 import { bytesOf, publisherHarness, SALT } from './fakeAssetStore.ts';

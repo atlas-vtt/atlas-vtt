@@ -26,6 +26,8 @@ export class ExploredRemovals {
   private edited = false;
   /** The memory before the load under way; undefined while none is. */
   private beforeLoad: string | null | undefined = undefined;
+  /** The id of the scene last shared, which stays while none is. */
+  private sharedId: string | null = null;
 
   /** `shown`: whether the GM's view shows this floor now. */
   constructor(private readonly shown: () => boolean) {}
@@ -35,19 +37,19 @@ export class ExploredRemovals {
   }
 
   /**
-   * The scene last shared comes back under its id (`refreshAssets`), and players keep what they drew of
-   * it. They may have missed a removal meanwhile, since nothing was sent: it counts as one. What was
-   * under way stays under way: a save still to come may hold an edit made before.
+   * A scene is shared. The one last shared may come back under its id (`refreshAssets`), and players
+   * keep what they drew of it; they may have missed a removal meanwhile, since nothing was sent: it
+   * counts as one, and what was under way stays under way (a save still to come may hold an edit made
+   * before). Of another scene nothing of the one before compares.
    */
-  sharedAgain(): void {
-    this.count++;
-  }
-
-  /** Another scene is shared: nothing of the one before compares. */
-  reset(): void {
-    this.seen = null;
-    this.edited = false;
-    this.beforeLoad = undefined;
+  shared(sceneId: string): void {
+    if (sceneId === this.sharedId) this.count++;
+    else {
+      this.seen = null;
+      this.edited = false;
+      this.beforeLoad = undefined;
+    }
+    this.sharedId = sceneId;
   }
 
   /** The scene's map is loading; what the load ends with is compared with the memory before it. */
