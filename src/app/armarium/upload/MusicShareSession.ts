@@ -5,13 +5,12 @@ import type { LibraryFile } from '../../soundLibrary/SoundLibrary';
 import { describeError } from '../../utils/errors';
 import type { ArmariumApi } from './armariumApi';
 import { draftForKind, draftFrom, textLength, type ListingDraft } from './listingDraft';
-import { stemOf } from '../../soundLibrary/soundPaths';
 import { musicProblems } from './musicShareRules';
 import type { MusicShareSnapshot, MusicShareTrack, TrackCopyState } from './musicShareState';
 import { freshShare, ShareFlow, type ShareFlowDeps } from './ShareFlow';
 import { ITEM_NOTES_LIMITS, nextItemVersion } from './shareState';
 import type { ListingFields, OwnListing } from './uploadContract';
-import { defaultTrackTitles } from './trackTitles';
+import { libraryTrackTitles } from './trackTitles';
 
 /** A track's copy as the preparer hands it on: ready with its bytes as this device keeps them. */
 export type PreparedTrack = Exclude<TrackCopyState, { state: 'ready' }> | { readonly state: 'ready'; readonly copy: Blob; readonly frames: number };
@@ -70,7 +69,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
 
   constructor(private readonly deps: MusicShareDeps) {
     const files = deps.files.slice(0, deps.kind === 'music-album' ? MAX_ALBUM_TRACKS : 1);
-    const defaults = defaultTrackTitles(files.map((file) => stemOf(file.name)), '', deps.name);
+    const defaults = libraryTrackTitles(files, '', deps.name);
     const tracks: MusicShareTrack[] = files.map((file, index) => ({
       id: `${file.kind}:${file.path}`, file, title: defaults.titles[index] ?? '', copy: { state: 'reading' },
     }));
@@ -215,7 +214,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
 
   /** The tracks with every title the GM did not edit worked out again from the file names of the tracks that go. */
   private retitled(tracks: readonly MusicShareTrack[]): MusicShareTrack[] {
-    const { titles } = defaultTrackTitles(tracks.map((track) => stemOf(track.file.name)), this.state.artist, this.state.name);
+    const { titles } = libraryTrackTitles(tracks.map((track) => track.file), this.state.artist, this.state.name);
     return tracks.map((track, index) => (this.editedTitles.has(track.id) ? track : { ...track, title: titles[index] ?? track.title }));
   }
 
@@ -223,7 +222,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
   private renameSingle(): void {
     const file = this.state.tracks[0]?.file;
     if (this.state.kind !== 'music-track' || this.nameTyped || file === undefined) return;
-    const name = defaultTrackTitles([stemOf(file.name)], this.state.artist).titles[0];
+    const name = libraryTrackTitles([file], this.state.artist).titles[0];
     if (name !== undefined && name !== this.state.name) this.set({ name, problems: this.without('name') });
   }
 

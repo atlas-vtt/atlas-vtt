@@ -29,9 +29,14 @@ export interface TrackTags {
   folders: readonly string[];
 }
 
-export function tagsOfTrack(path: string, records: readonly StoredSound[]): TrackTags {
+/** The names of the folders a file lies in below its root: its folder tags. */
+export function folderTagsOf(path: string): string[] {
   const folder = parentOfRelative(path);
-  return { own: records.flatMap(tagsOfRecord), folders: folder === '' ? [] : folder.split('/') };
+  return folder === '' ? [] : folder.split('/');
+}
+
+export function tagsOfTrack(path: string, records: readonly StoredSound[]): TrackTags {
+  return { own: records.flatMap(tagsOfRecord), folders: folderTagsOf(path) };
 }
 
 const holds = (tags: readonly string[], key: string): boolean => tags.some((tag) => tagKey(tag) === key);

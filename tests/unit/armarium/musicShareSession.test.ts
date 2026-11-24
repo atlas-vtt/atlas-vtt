@@ -245,6 +245,14 @@ describe('a share\'s default titles', () => {
     expect(session.snapshot().tracks.map((track) => track.title)).toEqual(['Dawn', 'Dusk']);
   });
 
+  it('drop a file\'s folder tags from its title and offer the first as the artist', () => {
+    const path = 'Vindsvept/Night of the Wilds/Vindsvept - Night of the Wilds - 05 Tending the Flames.mp3';
+    const { session } = setup('music-track', [path], { name: 'Tending the Flames' });
+    expect(session.snapshot()).toMatchObject({ name: 'Tending the Flames', artist: 'Vindsvept' });
+    session.setArtist('');
+    expect(session.snapshot().name).toBe('Tending the Flames');
+  });
+
   it('give a single\'s name the artist the GM types taken off, until the GM edits the name', async () => {
     const { session } = setup('music-track', ['Vindsvept - 04 Tricksy Sprites.mp3'], { name: 'Vindsvept - 04 Tricksy Sprites' });
     expect(session.snapshot().artist).toBe('');
