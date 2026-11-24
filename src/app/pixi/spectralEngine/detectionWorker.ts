@@ -1,4 +1,4 @@
-/** Entry of the grid detection worker that `SpectralEngineClient` runs. Bundled inline into main.js by Vite. */
+/** Entry of the grid detection workers that `SpectralEngineClient` runs. Bundled inline into main.js by Vite. */
 
 import { grayOfBitmap } from './detectGrid';
 import type { MapGray } from './detectGrid';
@@ -14,7 +14,7 @@ function post(reply: DetectionReply, transfer: Transferable[] = []): void {
 }
 
 self.addEventListener('message', ({ data }: MessageEvent<DetectionRequest>) => {
-  const { id, imageKey, gray, picture, candidates, ink, lines } = data;
+  const { id, imageKey, gray, picture, candidates, ink, linesOnly } = data;
   try {
     if (gray) held = { key: imageKey, gray };
     if (picture) {
@@ -27,7 +27,7 @@ self.addEventListener('message', ({ data }: MessageEvent<DetectionRequest>) => {
       }
     }
     if (held?.key !== imageKey) throw new Error('The map image of this detection was never sent.');
-    const outcome = runDetection({ gray: held.gray, ink, lines, ...(candidates ? { candidates } : {}) }, (event) => {
+    const outcome = runDetection({ gray: held.gray, ink, linesOnly, ...(candidates ? { candidates } : {}) }, (event) => {
       post({ id, event }, event.type === 'ink' ? [event.ink.data.buffer] : []);
     });
     post({ id, outcome }, [...(outcome.hits ? [outcome.hits.buffer] : []), ...(outcome.lines ? [outcome.lines.data.buffer] : [])]);

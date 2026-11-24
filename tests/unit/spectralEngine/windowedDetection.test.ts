@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { DetectionOutcome, LineEnergy } from '../../../src/app/pixi/spectralEngine/detectionJob';
 import { chooseWindows, detectGridInWindows, MAX_WINDOWS, searchedInWindows, WINDOW_SIDE, windowOutcomeOnMap } from '../../../src/app/pixi/spectralEngine/windowedDetection';
 import type { DetectableMap } from '../../../src/app/pixi/spectralEngine/detectGrid';
-import type { MapPixels } from '../../../src/app/pixi/spectralEngine/SpectralEngineClient';
+import type { DetectOptions, MapPixels } from '../../../src/app/pixi/spectralEngine/SpectralEngineClient';
 
 /** Line energy over `cols` × `rows` blocks, `strong` naming the blocks (row-major index) that hold lines. */
 function energy(cols: number, rows: number, strong: Record<number, number>): LineEnergy {
@@ -56,7 +56,7 @@ describe('windows a huge map is searched in', () => {
     expect(windowOutcomeOnMap({ result: null, hits: null }, rect)).toBeNull();
   });
 
-  it('search the whole map first, then each window, and take the window the lines support best', async () => {
+  it('read where the lines lie first, then search the whole map and every window at once, and take the window the lines support best', async () => {
     const size = { width: 32000, height: 32000 };
     const map: DetectableMap = {
       worldRect: { x: 0, y: 0, ...size },
@@ -64,29 +64,90 @@ describe('windows a huge map is searched in', () => {
       overview: () => Promise.resolve(null),
       window: () => Promise.resolve(null),
     };
-    const asked: Array<{ size: { width: number; height: number }; lines: boolean | undefined }> = [];
-    const detect = (pixels: MapPixels, options: { lines?: boolean }): Promise<DetectionOutcome> => {
+    const asked: Array<{ size: { width: number; height: number }; linesOnly: boolean | undefined }> = [];
+    const pending: Array<() => void> = [];
+    const detect = (pixels: MapPixels, options: DetectOptions): Promise<DetectionOutcome> => {
       const picture = pixels as { size: { width: number; height: number } };
-      asked.push({ size: picture.size, lines: options.lines });
-      if (options.lines) return Promise.resolve({ result: { cellSize: 9, offsetX: 1, offsetY: 1, confidence: 0.3 }, hits: null, lines: energy(16, 16, { [15 * 16 + 15]: 100, [0]: 60 }) });
+      asked.push({ size: picture.size, linesOnly: options.linesOnly });
+      if (options.linesOnly) return Promise.resolve({ result: null, hits: null, lines: energy(16, 16, { [15 * 16 + 15]: 100, [0]: 60 }) });
+      if (picture.size.width === size.width) return new Promise((resolve) => pending.push(() => resolve({ result: { cellSize: 9, offsetX: 1, offsetY: 1, confidence: 0.3 }, hits: null })));
       // The corner window finds the grid; the top-left one finds a weaker fit.
-      const corner = asked.length === 2;
-      return Promise.resolve({ result: { cellSize: 70, offsetX: corner ? 30 : 7, offsetY: 30, confidence: corner ? 0.95 : 0.5 }, hits: null });
+      const corner = asked.length === 3;
+      return new Promise((resolve) => pending.push(() => resolve({ result: { cellSize: 70, offsetX: corner ? 30 : 7, offsetY: 30, confidence: corner ? 0.95 : 0.5 }, hits: null })));
     };
 
-    const outcome = await detectGridInWindows(map, {}, detect);
+    const detection = detectGridInWindows(map, {}, detect);
+    await settled();
 
-    expect(asked.map((a) => [a.size.width, a.lines])).toEqual([[32000, true], [4096, undefined], [4096, undefined]]);
-    expect(outcome.result).toEqual({ cellSize: 70, offsetX: 32000 - 4096 + 30, offsetY: 32000 - 4096 + 30, confidence: 0.95 });
+    // Nothing has answered but the lines, and every search is under way.
+    expect(asked.map((a) => [a.size.width, a.linesOnly])).toEqual([[32000, true], [32000, undefined], [4096, undefined], [4096, undefined]]);
+    for (const answer of pending) answer();
+    expect((await detection).result).toEqual({ cellSize: 70, offsetX: 32000 - 4096 + 30, offsetY: 32000 - 4096 + 30, confidence: 0.95 });
+  });
+
+  it('take the same window whichever order the searches answer in', async () => {
+    const size = { width: 40000, height: 40000 };
+    const map: DetectableMap = { worldRect: null, imageSize: size, overview: () => Promise.resolve(null), window: () => Promise.resolve(null) };
+    // Six blocks far apart: six windows.
+    const lines = energy(16, 16, { 0: 100, 7: 99, 15: 98, [8 * 16]: 97, [8 * 16 + 8]: 96, [15 * 16 + 15]: 95 });
+    // Per window in the order they are chosen: ties at 0.9 (the first of them wins), no grid, and a stretched grid that does not count.
+    const found: Array<DetectionOutcome> = [
+      { result: { cellSize: 70, offsetX: 1, offsetY: 0, confidence: 0.5 }, hits: null },
+      { result: { cellSize: 70, offsetX: 2, offsetY: 0, confidence: 0.9 }, hits: null },
+      { result: null, hits: null },
+      { result: { cellSize: 70, offsetX: 4, offsetY: 0, confidence: 0.9 }, hits: null },
+      { result: { cellSize: 70, offsetX: 5, offsetY: 0, confidence: 0.99, mapStretch: { x: 1.02, y: 1 } }, hits: null },
+      { result: { cellSize: 70, offsetX: 6, offsetY: 0, confidence: 0.9 }, hits: null },
+    ];
+    const whole: DetectionOutcome = { result: { cellSize: 200, offsetX: 0, offsetY: 0, confidence: 0.2 }, hits: null };
+
+    /** Runs the detection with its searches answering in `order` (0 the whole map, 1 to 6 the windows). */
+    async function answeredIn(order: number[]): Promise<DetectionOutcome> {
+      const answers: Array<() => void> = [];
+      let searches = 0;
+      const detection = detectGridInWindows(map, {}, (_pixels, options) => {
+        if (options.linesOnly) return Promise.resolve({ result: null, hits: null, lines });
+        const at = searches++;
+        return new Promise((resolve) => answers[at] = () => resolve(at === 0 ? whole : found[at - 1]!));
+      });
+      await settled();
+      for (const at of order) {
+        answers[at]!();
+        await settled();
+      }
+      return detection;
+    }
+
+    const inTurn = await answeredIn([0, 1, 2, 3, 4, 5, 6]);
+    expect(inTurn.result?.offsetX).toBe(2 + chooseWindows(lines, size)[1]!.x);
+    let seed = 7;
+    const random = (): number => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let round = 0; round < 24; round++) {
+      const order = [0, 1, 2, 3, 4, 5, 6].map((at) => ({ at, key: random() })).sort((a, b) => a.key - b.key).map(({ at }) => at);
+      expect(await answeredIn(order), order.join()).toEqual(inTurn);
+    }
   });
 
   it('keep the whole-map answer where no window finds a grid, and search a small map once', async () => {
     const big: DetectableMap = { worldRect: null, imageSize: { width: 32000, height: 32000 }, overview: () => Promise.resolve(null), window: () => Promise.resolve(null) };
-    const coarse: DetectionOutcome = { result: { cellSize: 9, offsetX: 1, offsetY: 1 }, hits: null, lines: energy(16, 16, { 0: 1 }) };
-    expect(await detectGridInWindows(big, {}, (_p, o) => Promise.resolve(o.lines ? coarse : { result: null, hits: null }))).toEqual({ result: coarse.result, hits: null });
+    const coarse: DetectionOutcome = { result: { cellSize: 9, offsetX: 1, offsetY: 1 }, hits: null };
+    const lines = energy(16, 16, { 0: 1 });
+    expect(await detectGridInWindows(big, {}, (pixels, o) => Promise.resolve(o.linesOnly ? { result: null, hits: null, lines } : pixels.size.width === 32000 ? coarse : { result: null, hits: null }))).toEqual(coarse);
     const small: DetectableMap = { worldRect: null, imageSize: { width: 4000, height: 3000 }, overview: () => Promise.resolve(null), window: () => Promise.resolve(null) };
     let calls = 0;
     await detectGridInWindows(small, {}, () => { calls += 1; return Promise.resolve({ result: null, hits: null }); });
     expect(calls).toBe(1);
   });
+
+  it('find no grid where the map\'s picture cannot be read', async () => {
+    const big: DetectableMap = { worldRect: null, imageSize: { width: 32000, height: 32000 }, overview: () => Promise.resolve(null), window: () => Promise.resolve(null) };
+    let calls = 0;
+    expect(await detectGridInWindows(big, {}, () => { calls += 1; return Promise.resolve({ result: null, hits: null }); })).toEqual({ result: null, hits: null });
+    expect(calls).toBe(1);
+  });
 });
+
+/** Lets every answered promise run on. */
+async function settled(): Promise<void> {
+  for (let i = 0; i < 10; i++) await Promise.resolve();
+}
