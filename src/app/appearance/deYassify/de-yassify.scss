@@ -2,6 +2,24 @@
 
 // The de-yassify gauntlet (DeYassifyGauntlet.tsx) in Atlas' dialog frame: its questions, the pretend wait and the
 // mimic captcha. Annoying on purpose: No is the accent button, Yes a ghost one that shrinks on the second ask.
+// The dialog wears the tokens' bow on its top left corner, reaching past its edge: the frame shows what lies past
+// it (its body still scrolls on its own) and the bow takes no pointer.
+.atlas-text-dialog-backdrop .atlas-text-dialog.atlas-de-yassify-dialog {
+  position: relative;
+  overflow: visible;
+}
+
+.atlas-de-yassify__bow {
+  position: absolute;
+  top: -42px;
+  left: -52px;
+  z-index: 1;
+  width: 96px;
+  transform: rotate(-18deg);
+  pointer-events: none;
+  user-select: none;
+}
+
 .atlas-de-yassify__question {
   margin: 0;
   font-size: $font-ui-medium;
