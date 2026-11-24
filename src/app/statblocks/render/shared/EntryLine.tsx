@@ -1,12 +1,12 @@
-import React from "react";
-import type { App } from "obsidian";
-import { cn } from "../../../../utils/cn";
-import { EditableField } from "./EditableField";
-import { hitPointsAttribute, namesHitPoints } from "./hitPoints";
-import { InlineText } from "./InlineText";
-import { StatblockMarkdown } from "./StatblockMarkdown";
-import type { StatblockEditPath } from "./statblockEditContext";
-import { t } from "../../../i18n";
+import React from 'react';
+import type { App } from 'obsidian';
+import { cn } from '../../../../utils/cn';
+import { EditableField } from './EditableField';
+import { hitPointsAttribute, namesHitPoints } from './hitPoints';
+import { InlineText } from './InlineText';
+import { StatblockMarkdown } from './StatblockMarkdown';
+import type { StatblockEditPath } from './statblockEditContext';
+import { t } from '../../../i18n';
 
 export interface EntryLineProps {
   name: string | undefined;
@@ -18,7 +18,7 @@ export interface EntryLineProps {
    * `run-in`: "Claws" in front of the text, as written, as the native card writes entries;
    * `heading`: the name on a line of its own; unset: the name as Fantasy Statblocks writes it.
    */
-  nameStyle?: "run-in" | "heading" | undefined;
+  nameStyle?: 'run-in' | 'heading' | undefined;
   /** Where the name and the text are written in the note, when they can be edited in place. */
   editPaths?: { name: StatblockEditPath; text: StatblockEditPath } | undefined;
   /** Shown between the name and the text: an entry's labelled extras. */
@@ -48,14 +48,11 @@ export function EntryLine({
 }: EntryLineProps): React.JSX.Element | null {
   if (!name && !text) return null;
   const editable = editPaths !== undefined;
-  const runIn = nameStyle === "run-in";
+  const runIn = nameStyle === 'run-in';
 
   return (
     <div
-      className={cn(
-        "atlas-sb-trait",
-        nameStyle && `atlas-sb-trait--${nameStyle}`,
-      )}
+      className={cn('atlas-sb-trait', nameStyle && `atlas-sb-trait--${nameStyle}`)}
       data-item-key={itemKey}
       data-item-index={itemIndex}
       {...hitPointsAttribute(namesHitPoints(name))}
@@ -63,38 +60,16 @@ export function EntryLine({
       {entriesBefore}
       {name && (
         <span className="atlas-sb-trait-name">
-          <EditableField
-            path={editPaths?.name ?? []}
-            value={name}
-            editable={editable}
-            label={t("statblockEditor.traitName")}
-          >
-            <InlineText
-              text={runIn ? name.trim() : name}
-              app={app}
-              sourcePath={sourcePath}
-              markdown={markdown}
-              dice={false}
-            />
+          <EditableField path={editPaths?.name ?? []} value={name} editable={editable} label={t('statblockEditor.traitName')}>
+            <InlineText text={runIn ? name.trim() : name} app={app} sourcePath={sourcePath} markdown={markdown} dice={false} />
           </EditableField>
         </span>
       )}
       {/* A word space of the text's own font, which copy and screen readers read too. */}
-      {name && runIn && " "}
+      {name && runIn && ' '}
       {entriesAfter}
-      <EditableField
-        path={editPaths?.text ?? []}
-        value={text}
-        editable={editable}
-        label={t("statblockEditor.traitText")}
-        multiline
-      >
-        <StatblockMarkdown
-          text={runIn ? text.trimStart() : text}
-          app={app}
-          sourcePath={sourcePath}
-          markdown={markdown}
-        />
+      <EditableField path={editPaths?.text ?? []} value={text} editable={editable} label={t('statblockEditor.traitText')} multiline>
+        <StatblockMarkdown text={runIn ? text.trimStart() : text} app={app} sourcePath={sourcePath} markdown={markdown} />
       </EditableField>
     </div>
   );

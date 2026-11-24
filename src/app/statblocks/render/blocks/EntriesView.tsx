@@ -1,33 +1,20 @@
-import React, { useContext, useMemo } from "react";
-import type {
-  EntriesBlock,
-  EntryShape,
-  FieldValue,
-} from "../../model/templateTypes";
-import { keyedEntryItems } from "../../values/entryKeys";
-import { readField } from "../../values/fieldValues";
-import {
-  EntryExtra,
-  entryExtras,
-  entryName,
-  entryText,
-} from "../../values/entryValues";
-import { singular } from "../../values/entryNoun";
-import { valueText } from "../../values/valueText";
-import { EntryLine } from "../shared/EntryLine";
-import { InlineText } from "../shared/InlineText";
-import { useSheet } from "../sheetContext";
-import { SheetHeading } from "../values/SheetHeading";
-import { StandIn, ValueText } from "../values/ValueText";
-import { ValueEditingContext, ValueSlot } from "../valueSlot";
-import type { BlockViewProps } from "./blockViewProps";
+import React, { useContext, useMemo } from 'react';
+import type { EntriesBlock, EntryShape, FieldValue } from '../../model/templateTypes';
+import { keyedEntryItems } from '../../values/entryKeys';
+import { readField } from '../../values/fieldValues';
+import { EntryExtra, entryExtras, entryName, entryText } from '../../values/entryValues';
+import { singular } from '../../values/entryNoun';
+import { valueText } from '../../values/valueText';
+import { EntryLine } from '../shared/EntryLine';
+import { InlineText } from '../shared/InlineText';
+import { useSheet } from '../sheetContext';
+import { SheetHeading } from '../values/SheetHeading';
+import { StandIn, ValueText } from '../values/ValueText';
+import { ValueEditingContext, ValueSlot } from '../valueSlot';
+import type { BlockViewProps } from './blockViewProps';
 
 /** An entry's labelled parts before its text: "Range 30 ft. Cost 2". */
-function EntryExtras({
-  extras,
-}: {
-  extras: EntryExtra[];
-}): React.JSX.Element | null {
+function EntryExtras({ extras }: { extras: EntryExtra[] }): React.JSX.Element | null {
   const { app, sourcePath } = useSheet();
   if (!extras.length) return null;
   return (
@@ -38,15 +25,10 @@ function EntryExtras({
             {!extra.hideLabel && (
               <span className="atlas-sb-entry-extra-label">{extra.label} </span>
             )}
-            <InlineText
-              text={valueText(extra.value)}
-              app={app}
-              sourcePath={sourcePath}
-              dice
-            />
+            <InlineText text={valueText(extra.value)} app={app} sourcePath={sourcePath} dice />
           </span>
         ))}
-      </span>{" "}
+      </span>{' '}
     </>
   );
 }
@@ -58,82 +40,51 @@ function listOf(value: FieldValue | undefined): readonly FieldValue[] {
 }
 
 /** A list of traits or actions under its heading: "***Claws.*** Melee Attack Roll: +5…". */
-export function EntriesView({
-  block,
-  display,
-}: BlockViewProps<EntriesBlock>): React.JSX.Element {
+export function EntriesView({ block, display }: BlockViewProps<EntriesBlock>): React.JSX.Element {
   const { state, app, sourcePath } = useSheet();
   const editing = useContext(ValueEditingContext);
   const field = state.fields.get(block.field);
   const shape = field?.entry;
   // Keys and the items editors change are the note's as written; what is drawn has its references filled in
-  const entries =
-    display.state === "value" && field
-      ? keyedEntryItems(readField(state.record, field).value)
-      : [];
-  const drawnItems = useMemo(
-    () => listOf(state.reader(block.field)),
-    [state, block.field],
-  );
-  const intro =
-    block.introField && display.state === "value"
-      ? valueText(state.reader(block.introField))
-      : "";
-  const label =
-    block.addLabel?.trim() ||
-    `Add ${singular(state.fields.get(block.field)?.label ?? "").toLowerCase() || "entry"}`;
+  const entries = display.state === 'value' && field ? keyedEntryItems(readField(state.record, field).value) : [];
+  const drawnItems = useMemo(() => listOf(state.reader(block.field)), [state, block.field]);
+  const intro = block.introField && display.state === 'value' ? valueText(state.reader(block.introField)) : '';
+  const label = block.addLabel?.trim() || `Add ${singular(state.fields.get(block.field)?.label ?? '').toLowerCase() || 'entry'}`;
   const named = block.heading?.trim();
   const heading = named || state.provisional?.label;
   const hasHeading = Boolean(heading);
-  const add =
-    entries.length > 0 ? editing?.addEntry?.(block, label, hasHeading) : null;
+  const add = entries.length > 0 ? editing?.addEntry?.(block, label, hasHeading) : null;
 
   return (
     <div className="atlas-sb-entries">
-      {hasHeading && (
-        <SheetHeading action={add} placeholder={!named}>
-          {heading}
-        </SheetHeading>
-      )}
+      {hasHeading && <SheetHeading action={add} placeholder={!named}>{heading}</SheetHeading>}
       {intro.trim() && (
         <div className="atlas-sb-entries-intro">
           <ValueText shown={{ text: intro, problems: [] }} />
         </div>
       )}
       <ValueSlot block={block}>
-        {display.state !== "value" && <StandIn display={display} />}
+        {display.state !== 'value' && <StandIn display={display} />}
         {entries.map(({ item, key, index }, shown) => {
           const drawn = drawnItems[index] ?? item;
-
           const extras = entryExtras(drawn, shape);
-          const extrasBefore = extras.filter(
-            (extra) => extra.position === "before",
-          );
-          const extrasAfter = extras.filter(
-            (extra) =>
-              extra.position === "after" || extra.position === undefined,
-          );
+          const extrasBefore = extras.filter((extra) => extra.position === 'before');
+          const extrasAfter = extras.filter((extra) => extra.position === 'after' || extra.position === undefined);
 
           const line = (
             <EntryLine
               itemKey={key}
               itemIndex={index}
               name={entryName(drawn, shape)}
-              text={entryText(drawn, shape) ?? ""}
+              text={entryText(drawn, shape) ?? ''}
               app={app}
               sourcePath={sourcePath}
-              nameStyle={block.nameStyle ?? "run-in"}
+              nameStyle={block.nameStyle ?? 'run-in'}
               entriesBefore={<EntryExtras extras={extrasBefore} />}
               entriesAfter={<EntryExtras extras={extrasAfter} />}
             />
           );
-          return (
-            <React.Fragment key={key}>
-              {editing?.entry
-                ? editing.entry(block, { item, key, index, shown }, line)
-                : line}
-            </React.Fragment>
-          );
+          return <React.Fragment key={key}>{editing?.entry ? editing.entry(block, { item, key, index, shown }, line) : line}</React.Fragment>;
         })}
       </ValueSlot>
       {!hasHeading && add}

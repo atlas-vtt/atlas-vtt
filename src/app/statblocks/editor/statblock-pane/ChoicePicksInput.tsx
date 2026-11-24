@@ -83,8 +83,7 @@ export function ChoicePicksInput({ field, autoFocus, placeholder }: ValueInputPr
     const now = pane.read(field);
     const items = choiceItems(field, next);
     const value: FieldValue | undefined = items.length === 0
-      ? undefined
-      : field.several ? items : choiceText(field, next);
+      ? undefined : field.several ? items : choiceText(field, next);
     void pane.write(field, fieldPatches(field.key, now, value), { base: now.value, mine: value });
   };
 
