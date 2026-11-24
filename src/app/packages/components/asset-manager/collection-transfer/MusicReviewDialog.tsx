@@ -1,7 +1,7 @@
 import React, { useId } from 'react';
 import { Folder, Music } from 'lucide-react';
 import type { MusicReview } from '../../../../services/musicBundle/musicImport';
-import { formatLength } from '../../../../react/components/dm-screen/sound/library/rowModel';
+import { formatLength } from '../../../../react/components/dm-screen/sound/musicClock';
 import { formatFileSize } from '../../../../utils/fileSize';
 import { formatList, t } from '../../../../i18n';
 import { Button } from '../../primitives/button';

@@ -3,7 +3,7 @@ import { GripVertical, X } from 'lucide-react';
 import { getLocale, t } from '../../../i18n';
 import { musicTotals } from '../../../packages/components/asset-manager/collection-transfer/MusicReviewDialog';
 import { LabelTooltip, TooltipProvider } from '../../../packages/components/primitives/tooltip';
-import { formatLength } from '../../../react/components/dm-screen/sound/library/rowModel';
+import { formatLength } from '../../../react/components/dm-screen/sound/musicClock';
 import { useListDrag } from '../../../react/components/dm-screen/sound/useListDrag';
 import { MAX_ALBUM_TRACKS, MAX_MUSIC_TEXT } from '../../../services/musicBundle/musicBundleFormat';
 import type { MusicShareSession } from '../../upload/MusicShareSession';
