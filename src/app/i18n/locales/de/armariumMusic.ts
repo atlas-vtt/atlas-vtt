@@ -50,6 +50,7 @@ export const armariumMusic: Translation = {
   'armariumMusic.rejected': 'Die Prüfungen haben diese Musik abgelehnt. Kein Mensch hat sie angesehen. Falls ein Befund falsch ist, schreib an support@atlas-vtt.dev, dann sieht sich ein Mensch das an.',
   'armariumMusic.fixThenShare': 'Ändere, was die Befunde nennen, und beginne dann von vorn, um sie erneut zu teilen.',
   'armariumMusic.declarationMissing': 'Bestätige, dass du diese Musik teilen darfst.',
+  'armariumMusic.stage.images': 'Tracks und Titelbild',
   'armariumMusic.listingIntro': 'Name, Künstler und Version kommen aus der Musik, und ihre Art ist Musik. Was du hier wählst, erscheint auf ihrer Seite im Armarium.',
   'armariumMusic.pick.title.music-album': 'Album teilen',
   'armariumMusic.pick.title.music-track': 'Track teilen',

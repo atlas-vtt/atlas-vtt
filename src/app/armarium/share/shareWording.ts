@@ -2,7 +2,8 @@ import { t } from '../../i18n';
 import type { MessageKey, MessageValues } from '../../i18n/types';
 import type { ItemKind } from '../../services/itemBundle/itemBundleFormat';
 import type { Refusal, ShareSnapshot } from '../upload/shareState';
-import { uploadMessageFor, type UploadContext } from '../upload/text/uploadMessages';
+import { stageLabel, uploadMessageFor, type UploadContext } from '../upload/text/uploadMessages';
+import { CHECK_STAGES, type CheckStage } from '../upload/uploadContract';
 
 /**
  * The sentences of a share that name a collection, each with its wording for a single Atlas file, which says "it" and
@@ -73,4 +74,17 @@ export function refusalSaid(subject: ShareSnapshot['subject'], { code, until }: 
 /** A kind of item, as one of them is called: "Statblock template". */
 export function itemKindLabel(kind: ItemKind): string {
   return t(`armariumShare.itemKind.${kind}`);
+}
+
+/** The stages of a check that do something for music: it brings no scenes, notes, loot bases or links between files. */
+const MUSIC_STAGES: readonly CheckStage[] = ['archive', 'manifest', 'images', 'rebuild', 'outputs'];
+
+/** The stages of a check a share lists, in their order: those that apply to what it shares. */
+export function stagesOf(subject: ShareSnapshot['subject']): readonly CheckStage[] {
+  return subject === 'music' ? MUSIC_STAGES : CHECK_STAGES;
+}
+
+/** A stage of a check as the share names it: for music, the pictures' stage reads its tracks too. */
+export function stageSaid(subject: ShareSnapshot['subject'], stage: CheckStage): string {
+  return subject === 'music' && stage === 'images' ? t('armariumMusic.stage.images') : stageLabel(stage);
 }

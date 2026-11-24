@@ -50,6 +50,7 @@ export const armariumMusic: Translation = {
   'armariumMusic.rejected': 'Les vérifications ont refusé cette musique. Personne ne l\'a examinée. Si un résultat est erroné, écrivez à support@atlas-vtt.dev et une personne l\'examinera.',
   'armariumMusic.fixThenShare': 'Corrigez ce que signalent les résultats, puis recommencez pour la partager à nouveau.',
   'armariumMusic.declarationMissing': 'Confirmez que vous avez le droit de partager cette musique.',
+  'armariumMusic.stage.images': 'Morceaux et couverture',
   'armariumMusic.listingIntro': 'Le nom, l\'artiste et la version viennent de la musique, et son type est la musique. Ce que vous choisissez ici s\'affiche sur sa page dans l\'Armarium.',
   'armariumMusic.pick.title.music-album': 'Partager un album',
   'armariumMusic.pick.title.music-track': 'Partager un morceau',
