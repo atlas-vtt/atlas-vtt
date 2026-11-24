@@ -1,6 +1,6 @@
 /**
- * Default track titles from file names, the rule `docs/plans/2026-11-23-armarium-music.md` ("Default track titles")
- * writes down for Atlas and the Armarium's composer alike, and in Atlas a file's folder tags before it. Pure.
+ * Default track titles from file names, by the one rule Atlas and the Armarium's composer share, and in Atlas a
+ * file's folder tags before it. Pure.
  */
 
 import { stemOf } from '../../soundLibrary/soundPaths';

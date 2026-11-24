@@ -12,8 +12,8 @@ import type { PressClock } from '../../input/longPress';
  *   finger that lands while the first rests finds nothing placed;
  * - `'direct'`: something took the press before the map's tools could (tokens being placed), so
  *   nothing is held back or sent again;
- * - `'look'` (Table mode): the map is only looked at. It pans, a double tap zooms, and no press,
- *   tap or long press reaches the tools; two fingers held still end the looking (`pairHeld`).
+ * - `'look'` (Table mode, a grid being aligned): the map is only looked at. It pans, a double tap zooms, and no
+ *   press, tap or long press reaches the tools; two fingers held still end Table mode (`pairHeld`).
  *
  * In every mode but the last two, a finger on what acts as it is pressed (`pressActsAt`) presses it
  * only by a tap, and pans when it moves away.

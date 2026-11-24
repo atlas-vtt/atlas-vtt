@@ -42,6 +42,7 @@
 
 ## Fixed
 
+- A large generated dungeon or cave is no longer saved with blank floors: its floors are drawn in pieces the graphics card can hold, and where a floor still cannot be drawn, the generator says so and you can try again instead of getting a scene with empty maps
 - The toolbar's Lighting button is named in your language, as its menu already was
 - Initiative cards show a token cut out on a transparent ground whole, instead of zooming into a small part of it such as an eye
 - Dice in the accent colour take a new accent colour at once, whether it is picked in Appearance settings or in Obsidian's settings
@@ -58,3 +59,6 @@
 - Sound: cancelling the question about a new music or ambience folder, after Change folder, keeps the folder you had, with your choice for its originals, instead of leaving none linked
 - Sound: linking an empty music or ambience folder no longer asks to convert "all 0 sounds": the question says the folder holds no sounds yet and that Atlas converts the sounds you add to it
 - When the dungeon generator cannot draw its map or the pictures on its cards, the preview says so and offers Try again, instead of leaving the cards empty
+- The asset manager's collection picker opens with its search ready: type a name or use the arrow keys at once, without clicking into the field first
+- DM screen: in the list of notes to link to a map, the arrow keys move the highlight and Enter links the note after a click in the list too
+- While you align the grid, a click on the map only places the alignment's mark, whatever tool is in hand: it no longer opens the pin picker, paints fog, draws or moves a token as well, and a drag pans the map

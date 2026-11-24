@@ -2,7 +2,7 @@
  * Music bundles: an album or a single track shared in the Armarium, in the zip every item travels in
  * (`manifest.json` first, the files under `files/<vaultPath>`), with an item manifest of format 11.
  * Every track lies at `music/<file name>` and is an Atlas copy (48 kHz Ogg Opus that `readAtlasCopy`
- * reads), the cover at the bundle's root. Plan: `docs/plans/2026-11-23-armarium-music.md`. Pure.
+ * reads), the cover at the bundle's root. Pure.
  */
 
 import { isRecord } from '../../utils/guards';

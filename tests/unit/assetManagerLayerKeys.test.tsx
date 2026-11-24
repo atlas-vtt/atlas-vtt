@@ -57,6 +57,29 @@ describe('the collection picker', () => {
     expect(document.activeElement).toBe(trigger);
     expect(heard).not.toHaveBeenCalledWith('Escape');
   });
+
+  it('has its search field in focus once it is open, though the list is hidden until it has its place', () => {
+    // jsdom reads no stylesheet: a browser gives no focus to what `:not([data-placed])` hides (`_collections.scss`).
+    const focus = HTMLElement.prototype.focus;
+    const hiddenTakesNoFocus = vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+      if (!this.closest('.atlas-collection-dropdown-content:not([data-placed])')) focus.call(this, options);
+    });
+    try {
+      render(<TooltipProvider><CollectionPicker collections={collections} selectedCollection="demo" onSelectCollection={vi.fn()} /></TooltipProvider>);
+      const trigger = screen.getByRole('button', { name: 'Demo' });
+      trigger.focus();
+      fireEvent.click(trigger);
+      const search = screen.getByRole('combobox');
+      expect(search.closest('.atlas-collection-dropdown-content')?.hasAttribute('data-placed')).toBe(true);
+      expect(document.activeElement).toBe(search);
+
+      fireEvent.keyDown(search, { key: 'Escape' });
+      fireEvent.click(trigger);
+      expect(document.activeElement).toBe(screen.getByRole('combobox'));
+    } finally {
+      hiddenTakesNoFocus.mockRestore();
+    }
+  });
 });
 
 describe('the + menu', () => {
