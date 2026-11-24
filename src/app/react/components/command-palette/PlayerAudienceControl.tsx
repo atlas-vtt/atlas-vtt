@@ -42,7 +42,11 @@ export function PlayerAudienceControl({ name, audience, onChange, tooltipOutside
   // A save that failed marks the control itself for a moment, beside the notice at the window's edge
   const [refused, setRefused] = useState(false);
   const refusal = useRef<number | undefined>(undefined);
-  useEffect(() => setShown(audience), [audience]);
+  const [saved, setSaved] = useState(audience);
+  if (saved !== audience) {
+    setSaved(audience);
+    setShown(audience);
+  }
   useEffect(() => () => window.clearTimeout(refusal.current), []);
   const choose = (next: PlayerAudience): void => {
     setShown(next);

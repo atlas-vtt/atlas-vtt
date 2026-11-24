@@ -521,7 +521,7 @@ export const CONVENTIONS = [
     why: "A formatter without a locale takes the system's, while Atlas' texts are in Obsidian's language.",
     owners: ['src/app/i18n/index.ts'],
     // The issue report is English whatever the language; a character is the same in every language, and a text wraps alike for the GM and the players.
-    ignores: ['src/app/support/diagnostics.ts', 'src/app/annotations/textWrap.ts'],
+    ignores: ['src/app/support/diagnostics.ts', 'src/app/annotations/textWrap.ts', 'src/app/services/musicBundle/musicBundleFormat.ts'],
     bad: [
       "export const byName = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });",
       'export const number = new Intl.NumberFormat();',

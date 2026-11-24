@@ -1,7 +1,8 @@
-import { Assets, Sprite, Texture, type Container } from 'pixi.js';
+import { Sprite, Texture, type Container } from 'pixi.js';
 import bowImageUrl from '../../assets/token-bow.webp';
 import nailsImageUrl from '../../assets/token-nails.webp';
 import cupImageUrl from '../../assets/token-cup.webp';
+import { loadAsset } from '../utils/assetLifecycle';
 import { destroyTree } from '../utils/destroyTree';
 import { getTokenRingOuterDiameter } from './tokenRingMetrics';
 import type { TokenGroupContainer } from './types';
@@ -40,7 +41,7 @@ let pendingLoad: Promise<boolean> | null = null;
 function loadPropTextures(): Promise<boolean> {
   if (loaded.size === PROPS.length) return Promise.resolve(true);
   pendingLoad ??= Promise.all(PROPS.map(async ({ url }) => {
-    const texture = await Assets.load<Texture>({ src: url, parser: 'texture', data: { autoGenerateMipmaps: true, scaleMode: 'linear' } });
+    const texture = await loadAsset<Texture>({ src: url, parser: 'texture', data: { autoGenerateMipmaps: true, scaleMode: 'linear' } });
     if (texture instanceof Texture && texture !== Texture.EMPTY) loaded.set(url, texture);
   }))
     .then(() => loaded.size === PROPS.length)
