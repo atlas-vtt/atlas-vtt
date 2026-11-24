@@ -4,7 +4,7 @@ import { ArtUploads, ART_UPLOAD_BUDGET_MS, ART_UPLOAD_HELD_BUDGET_MS, TOKENS_PER
 import { manualTicker } from '../mocks/manualTicker';
 
 /** A renderer whose uploads each take `costMs` of a clock the queue reads; a source already uploaded costs nothing. */
-function setup(costMs: number, held = false) {
+function setup(costMs: number, held = false, othersLoading?: (waiting: number) => boolean) {
   const { ticker, advance } = manualTicker();
   let clock = 0;
   const uploaded: TextureSource[] = [];
@@ -19,7 +19,7 @@ function setup(costMs: number, held = false) {
   };
   let current: ArtUploader | null = renderer;
   let isHeld = held;
-  const uploads = new ArtUploads({ ticker, renderer: () => current, held: () => isHeld, now: () => clock });
+  const uploads = new ArtUploads({ ticker, renderer: () => current, held: () => isHeld, now: () => clock, ...(othersLoading && { othersLoading }) });
   const frame = async (): Promise<void> => {
     advance(16);
     await Promise.resolve();
@@ -53,6 +53,26 @@ describe('ArtUploads', () => {
     for (const source of sources(20)) void uploads.whenUploaded(source, 0);
     await frame();
     expect(uploaded).toHaveLength(ART_UPLOAD_HELD_BUDGET_MS / ART_UPLOAD_BUDGET_MS);
+  });
+
+  it('waits while a load holds the canvas and other tokens are still being prepared, never outside a load', async () => {
+    let preparing = 3;
+    const { uploads, uploaded, frame, setHeld } = setup(1, true, (waiting) => preparing > waiting);
+    const [a, b] = sources(2);
+    void uploads.whenUploaded(a!, 0);
+    void uploads.whenUploaded(b!, 1);
+    await frame();
+    expect(uploaded).toEqual([]);
+    preparing = 2;
+    await frame();
+    expect(uploaded).toEqual([a, b]);
+
+    const [c] = sources(1);
+    preparing = 5;
+    setHeld(false);
+    void uploads.whenUploaded(c!, 0);
+    await frame();
+    expect(uploaded).toEqual([a, b, c]);
   });
 
   it('uploads at least one texture a frame, however long one takes', async () => {

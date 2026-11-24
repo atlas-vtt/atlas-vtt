@@ -2,8 +2,11 @@ import { UPDATE_PRIORITY, type TextureSource, type Ticker } from 'pixi.js';
 
 /** CPU milliseconds of art uploads a frame that draws the map may take. */
 export const ART_UPLOAD_BUDGET_MS = 4;
-/** CPU milliseconds of art uploads a frame may take while a load holds the canvas: nothing is drawn whose frames they would slow. */
-export const ART_UPLOAD_HELD_BUDGET_MS = 12;
+/**
+ * CPU milliseconds of art uploads a frame may take while a load holds the canvas: nothing is drawn whose
+ * frames they would slow, and the reveal waits for them (at 12 ms a frame a scene of 300 tokens showed later).
+ */
+export const ART_UPLOAD_HELD_BUDGET_MS = 48;
 /**
  * Tokens that go on to the map in one frame that draws it. A token's first draw also rasterises its
  * name and numbers, about 0.6 ms of main thread each: a floor of 300 tokens switched back to, whose
@@ -26,6 +29,11 @@ export interface ArtUploadsOptions {
   renderer: () => ArtUploader | null;
   /** Whether a load holds the canvas (`rendersHeld`): no frame is drawn, so uploads take more of each and every token goes on. */
   held: () => boolean;
+  /**
+   * Whether tokens are still being prepared beyond the `waiting` ones that wait here. While a load holds
+   * the canvas, uploads wait for them: uploads beside the decodes of a scene's art slowed the decodes.
+   */
+  othersLoading?: (waiting: number) => boolean;
   now?: () => number;
 }
 
@@ -83,6 +91,7 @@ export class ArtUploads {
       return;
     }
     const held = this.options.held();
+    if (held && this.options.othersLoading?.(this.waiting.length)) return;
     const budget = held ? ART_UPLOAD_HELD_BUDGET_MS : ART_UPLOAD_BUDGET_MS;
     const tokens = held ? Infinity : TOKENS_PER_FRAME;
     const order = this.waiting.sort((a, b) => a.distance - b.distance);

@@ -163,6 +163,7 @@ export class TokenRenderer {
     ticker: Ticker.shared,
     renderer: () => this.pixiApp?.renderer ?? null,
     held: () => this.pixiApp !== null && rendersHeld(this.pixiApp),
+    othersLoading: (waiting) => this.tokensLoading.size > waiting,
   });
   
   // Track loading tokens
