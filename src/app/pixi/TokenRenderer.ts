@@ -13,7 +13,7 @@ import { PlayersViewWatch } from './token-renderer/PlayersViewWatch';
 import { TurnMarkers } from './token-renderer/turnMarker/TurnMarkers';
 import { ShownBadgeNumbers, type PlayerBadgeNumbers } from './token-renderer/PlayerBadgeNumbers';
 import type { TokenSeen } from '../vision/measureOrigin';
-import { Sprite, Container, Graphics, Application, FederatedPointerEvent } from "pixi.js";
+import { Sprite, Container, Graphics, Application, FederatedPointerEvent, Ticker } from "pixi.js";
 import { Viewport } from "pixi-viewport";
 import { App as ObsidianApp } from 'obsidian';
 import type { TokenEntity } from "../types";
@@ -29,6 +29,7 @@ import { TokenStatblockLinkService } from '../services/TokenStatblockLinkService
 import { SpriteFactory } from './token-renderer/SpriteFactory';
 import { computeTokenPixelSize } from './token-renderer/tokenSizing';
 import { TextureCache } from './token-renderer/TextureCache';
+import { ArtUploads } from './token-renderer/artUploads';
 import { UIManager } from './token-renderer/UIManager';
 import { InteractionController } from './token-renderer/InteractionController';
 import { DragRuler, type DragRulerPath } from './token-renderer/DragRuler';
@@ -51,7 +52,7 @@ import { tokenOverlays } from '../api/extensionPoints';
 import { watchSquareCorners } from './utils/squareCorners';
 import { DownedTokenOverlay } from './token-renderer/DownedTokenOverlay';
 import { isTokenDowned } from './token-renderer/isTokenDowned';
-import { requestRender } from './RenderScheduler';
+import { rendersHeld, requestRender } from './RenderScheduler';
 import { normalizeImagePath } from '../utils/pathUtils';
 import { prefersReducedMotion } from '../utils/motion';
 import { destroyTree } from './utils/destroyTree';
@@ -158,6 +159,12 @@ export class TokenRenderer {
   
   // Store reference to PIXI app for renderer access
   private pixiApp: Application | null = null;
+  private readonly artUploads = new ArtUploads({
+    ticker: Ticker.shared,
+    renderer: () => this.pixiApp?.renderer ?? null,
+    held: () => this.pixiApp !== null && rendersHeld(this.pixiApp),
+    othersLoading: (waiting) => this.tokensLoading.size > waiting,
+  });
   
   // Track loading tokens
   private tokensLoading: Set<string> = new Set();
@@ -1133,6 +1140,9 @@ export class TokenRenderer {
           
           // Create sprite through factory
           tokenGroup = await this.spriteFactory.createTokenSprite(character, texture);
+          // On the GPU before the token is added: the frame that first draws it, often a scene's reveal, uploads nothing.
+          // Outside a load, tokens are added a few a frame.
+          await this.artUploads.whenUploaded(texture.source, this.distanceFromView(token));
 
           // Another map loaded meanwhile (possibly this one again, with its own load of this
           // token), so this sprite must neither show nor touch the new load's state.
@@ -1352,15 +1362,25 @@ export class TokenRenderer {
     return this.isDestroyed || generation !== this.mapLoadGeneration;
   }
 
-  /** Frees decoded art no token holds, keeping the art of every token on the map. */
+  /**
+   * Frees decoded art no token holds, keeping the art of every token on the map, on every level: a
+   * floor switched back to decodes and uploads none of its art again.
+   */
   private evictUnusedArt(): void {
-    const tokens = Object.values(mapTokens(levelObjects(this.store.getState())));
+    const tokens = Object.values(mapTokens(everyLevelObjects(this.store.getState())));
     this.textureCache.evictUnused([...tokens.map((token) => token.imagePath ?? ''), ...this.previousSceneArt]);
+  }
+
+  /** World distance of `token` from the centre of the view, which orders art uploads. */
+  private distanceFromView(token: TokenEntity): number {
+    const center = this.viewport.center;
+    return Math.hypot(token.x - center.x, token.y - center.y);
   }
 
   public destroy(): void {
     this.isDestroyed = true;
     this.exit.finishAll();
+    this.artUploads.destroy();
 
     // Unsubscribe from store
     this._unsubscribeFromStore?.();

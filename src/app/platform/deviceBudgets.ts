@@ -29,6 +29,11 @@ export interface DeviceBudgets {
   readonly tileCacheQuotaShare: number;
   /** Graphics memory the tile textures of one renderer may take beyond the pinned ones, in bytes. */
   readonly tileTextureBudget: number;
+  /**
+   * Whether token art no token shows (the scene before's, kept for a switch back) stays on the GPU until
+   * the art cache lets it go. Without it, PIXI's garbage collection unloads it a minute after its last draw.
+   */
+  readonly idleTokenArtOnGpu: boolean;
   /** The finest lighting quality Atlas picks for the device by itself; the GM's own choice always wins. */
   readonly lightingQualityDefault: LightingQualityLevel;
   /** Dice stages a document builds ahead of the first roll. */
@@ -68,6 +73,7 @@ export const DESKTOP_BUDGETS: DeviceBudgets = {
   tileCacheMax: 4 * GIB,
   tileCacheQuotaShare: 0.1,
   tileTextureBudget: 160 * MIB,
+  idleTokenArtOnGpu: true,
   lightingQualityDefault: 'high',
   // As many as rolls stand at once and one for the roll that fades out as the next arrives.
   diceWarmStages: 4,
@@ -98,6 +104,8 @@ export const MOBILE_BUDGETS: DeviceBudgets = {
   tileCacheMax: 512 * MIB,
   tileCacheQuotaShare: 0.05,
   tileTextureBudget: 96 * MIB,
+  // Two scenes' art at once would not fit beside the tiles; what the map shows stays.
+  idleTokenArtOnGpu: false,
   lightingQualityDefault: 'balanced',
   diceWarmStages: 1,
   diceShadowMap: 512,
