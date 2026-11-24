@@ -745,7 +745,7 @@ body.atlas-look.atlas-look-scifi .atlas-dice-toast .atlas-dice-toast__ability {
    Atlas VTT's layout moves */
 body.atlas-look.atlas-look-scifi .atlas-asset-manager-sidebar,
 body.atlas-look.atlas-look-scifi .atlas-collection-settings-sidebar,
-body.atlas-look.atlas-look-scifi .atlas-tables-sidebar,
+body.atlas-look.atlas-look-scifi .atlas-loot-roller__sidebar,
 body.atlas-look.atlas-look-scifi .atlas-sound-side,
 body.atlas-look.atlas-look-scifi .atlas-vtt-toolbar,
 body.atlas-look.atlas-look-scifi .atlas-scene-tab-bar,
@@ -922,6 +922,42 @@ body.atlas-look.atlas-look-scifi .atlas-vtt-plugin .atlas-asset-manager-sidebar 
    blur of its own reaches; it opens after the window has faded in */
 body.atlas-look.atlas-look-glass .atlas-vtt-plugin .atlas-asset-manager-sidebar.atlas-floating {
   backdrop-filter: blur(16px) saturate(1.2);
+}
+
+/* the Loot Roller's sidebar is smoked glass over the map, as the
+   asset manager's is over the workspace: the window lays no ground
+   of its own under it, and its main column keeps the look's. The
+   window has no backdrop, so the sidebar blurs from its own surface */
+body.atlas-look.atlas-look-glass .atlas-loot-roller:has(> .atlas-loot-roller__body > .atlas-loot-roller__sidebar) {
+  background-color: transparent;
+}
+
+body.atlas-look.atlas-look-glass .atlas-loot-roller__main {
+  background-color: var(--background-primary);
+}
+
+body.atlas-look.atlas-look-glass .atlas-loot-roller__sidebar {
+  background-color: color-mix(in oklch, var(--background-secondary) 75%, transparent);
+  backdrop-filter: blur(16px) saturate(1.2);
+}
+
+/* the Sound page's library rail too: the DM screen's backdrop blurs
+   the map as the asset manager's does, the pane lays no ground under
+   the rail, and its stage keeps the look's (the desk has its own) */
+body.atlas-look.atlas-look-glass .atlas-dm-screen-wrapper:has(.atlas-dm-sound-page:not([hidden])) .atlas-dm-screen-backdrop {
+  backdrop-filter: blur(20px) saturate(1.2);
+}
+
+body.atlas-look.atlas-look-glass .atlas-sound-pane {
+  background-color: transparent;
+}
+
+body.atlas-look.atlas-look-glass .atlas-sound-stage {
+  background-color: var(--background-primary);
+}
+
+body.atlas-look.atlas-look-glass .atlas-sound-lib.atlas-sound-side {
+  background-color: color-mix(in oklch, var(--background-secondary) 75%, transparent);
 }
 
 /* what stands on the map is smoked glass too: the bars, the initiative
@@ -1194,7 +1230,7 @@ body.atlas-look.atlas-look-scifi :is(
   .atlas-asset-manager-sidebar,
   .atlas-asset-manager-container,
   .atlas-collection-settings-sidebar,
-  .atlas-tables-sidebar,
+  .atlas-loot-roller__sidebar,
   .atlas-sound-side,
   .atlas-vtt-toolbar,
   .atlas-scene-tab-bar,
