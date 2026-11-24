@@ -5,7 +5,7 @@ import { confirmDeYassify } from '../../src/app/appearance/deYassify/confirmDeYa
 import { DE_YASSIFY_STALL_MS } from '../../src/app/appearance/deYassify/DeYassifyGauntlet';
 import { dealRound } from '../../src/app/appearance/deYassify/mimicCaptcha';
 
-/** Chest rounds only: the photo rounds draw on a canvas, which jsdom has not (tests/gpu/photoCaptcha.gpu.test.ts). */
+/** Chest rounds only: street squares draw on a canvas, which jsdom has not (tests/gpu/streetSquares.gpu.test.ts). */
 const chestsOnly = (random: () => number, nextId: number, trickling: boolean) => dealRound(random, nextId, trickling);
 
 afterEach(() => {

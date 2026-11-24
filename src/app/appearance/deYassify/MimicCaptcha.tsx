@@ -1,25 +1,21 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '../../packages/components/primitives/button';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { t, type MessageKey } from '../../i18n';
-import { RIGGED_ATTEMPTS, clickTile, dealAnyRound, settleTile, verdict, type AnyRound, type Verdict } from './mimicCaptcha';
-import { photoVerdict, togglePick, type PhotoVerdict } from './photoCaptcha';
-import { ChestGrid } from './ChestGrid';
-import { PhotoGrid } from './PhotoGrid';
+import { clickTile, dealAnyRound, settleTile, verdict, type CaptchaRound, type Verdict } from './mimicCaptcha';
+import { loadScenePictures, type ScenePictures } from './streetScenes';
+import { SquareGrid } from './SquareGrid';
 
-/** Deals the next round: of either kind at random, unless a test deals its own. */
-export type DealRound = (random: () => number, nextId: number, trickling: boolean) => AnyRound;
-
-type Complaint = Exclude<Verdict | PhotoVerdict, 'pass' | 'rigged'>;
+/** Deals the next round: in either style at random, unless a test deals its own. */
+export type DealRound = (random: () => number, nextId: number, trickling: boolean) => CaptchaRound;
 
 /** What the captcha says to a failed submission; the rigged ones in turn. */
 const RIGGED_LINES: readonly MessageKey[] = ['appearance.deYassify.rigged1', 'appearance.deYassify.rigged2'];
-const FAIL_LINES: Readonly<Record<Complaint, MessageKey>> = {
+const FAIL_LINES: Readonly<Record<Exclude<Verdict, 'pass' | 'rigged'>, MessageKey>> = {
   'still-loading': 'appearance.deYassify.stillLoading',
   'chest-clicked': 'appearance.deYassify.chestClicked',
   'mimic-left': 'appearance.deYassify.mimicLeft',
-  'wrong-squares': 'appearance.deYassify.wrongSquares',
 };
 
 interface MimicCaptchaProps {
@@ -28,42 +24,43 @@ interface MimicCaptchaProps {
   deal?: DealRound;
 }
 
+/** The street photos and stickers, once loaded; null until then, or for good where they cannot load. */
+function useScenePictures(): ScenePictures | null {
+  const [pictures, setPictures] = useState<ScenePictures | null>(null);
+  useEffect(() => {
+    let current = true;
+    loadScenePictures().then(
+      (loaded) => { if (current) setPictures(loaded); },
+      (error: unknown) => { console.error('[MimicCaptcha] Could not load the street photos:', error); },
+    );
+    return () => { current = false; };
+  }, []);
+  return pictures;
+}
+
 /**
- * "Select all squares with a mimic": rounds of blocky chest squares or of a street photo with a mimic glued on,
- * rigged to fail twice; chest squares arrive slowly, a photo waits until it is drawn.
+ * "Select all squares with a mimic": rounds of blocky chest squares or of street photos with mimics glued on badly,
+ * rigged to fail twice; every new square arrives slowly.
  */
 export function MimicCaptcha({ onSolved, random = Math.random, deal = dealAnyRound }: MimicCaptchaProps): React.JSX.Element {
-  const [round, setRound] = useState<AnyRound>(() => deal(random, 0, false));
-  const [photoReady, setPhotoReady] = useState(false);
+  const [round, setRound] = useState<CaptchaRound>(() => deal(random, 0, false));
   const [attempt, setAttempt] = useState(0);
   const [complaint, setComplaint] = useState<MessageKey | null>(null);
+  const pictures = useScenePictures();
 
-  // Stable, so an arriving square's timer and a photo's drawing are not restarted by each render.
-  const settle = useCallback((id: number): void => setRound((current) => (current.kind === 'chests' ? settleTile(current, id) : current)), []);
-  const click = (id: number): void => setRound((current) => (current.kind === 'chests' ? clickTile(current, id, random) : current));
-  const pick = (square: number): void => setRound((current) => (current.kind === 'photo' ? togglePick(current, square) : current));
-
-  const judge = (): Verdict | PhotoVerdict => {
-    if (round.kind === 'chests') return verdict(round, attempt);
-    return photoReady ? photoVerdict(round, attempt, RIGGED_ATTEMPTS) : 'still-loading';
-  };
+  // Stable, so an arriving square's timer is not restarted by each render.
+  const settle = useCallback((id: number): void => setRound((current) => settleTile(current, id)), []);
 
   const verify = (): void => {
-    const result = judge();
+    const result = round.style === 'streets' && !pictures ? 'still-loading' : verdict(round, attempt);
     if (result === 'pass') {
       onSolved();
       return;
     }
     setComplaint(result === 'rigged' ? RIGGED_LINES[attempt % RIGGED_LINES.length]! : FAIL_LINES[result]);
-    // Pressed too early: the round stays, and it costs no attempt.
+    // Pressed too early: the squares stay, and it costs no attempt.
     if (result === 'still-loading') return;
     setAttempt(attempt + 1);
-    dealNext();
-  };
-
-  /** A new round; a photo of it is not drawn yet. */
-  const dealNext = (): void => {
-    setPhotoReady(false);
     setRound(deal(random, round.nextId, true));
   };
 
@@ -71,15 +68,13 @@ export function MimicCaptcha({ onSolved, random = Math.random, deal = dealAnyRou
     <div className="atlas-mimic-captcha">
       <div className="atlas-mimic-captcha__banner">
         <span className="atlas-mimic-captcha__title">{t('appearance.deYassify.captcha')}</span>
-        <span className="atlas-mimic-captcha__hint">{t(round.kind === 'chests' ? 'appearance.deYassify.captchaHint' : 'appearance.deYassify.photoHint')}</span>
+        <span className="atlas-mimic-captcha__hint">{t(round.style === 'streets' ? 'appearance.deYassify.photoHint' : 'appearance.deYassify.captchaHint')}</span>
       </div>
-      {round.kind === 'chests'
-        ? <ChestGrid round={round} onClick={click} onArrived={settle} />
-        : <PhotoGrid key={round.nextId} round={round} onPick={pick} onReady={setPhotoReady} />}
+      <SquareGrid round={round} pictures={pictures} onClick={(id) => setRound((current) => clickTile(current, id, random))} onArrived={settle} />
       <p className="atlas-mimic-captcha__complaint" role="alert">{complaint ? t(complaint) : ''}</p>
       <div className="atlas-mimic-captcha__foot">
         <LabelTooltip label={t('appearance.deYassify.newSquares')}>
-          <Button variant="ghost" size="icon" aria-label={t('appearance.deYassify.newSquares')} onClick={dealNext}>
+          <Button variant="ghost" size="icon" aria-label={t('appearance.deYassify.newSquares')} onClick={() => setRound(deal(random, round.nextId, true))}>
             <RefreshCw aria-hidden="true" />
           </Button>
         </LabelTooltip>
