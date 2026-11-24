@@ -12,7 +12,9 @@ import { BEYOND_SPEED, type MoveColor } from '../../measure/dragMovement';
 import { cssColorToHexNumber, getObsidianAccentColor, getObsidianErrorColor } from '../utils/colorUtils';
 import { drawMeasurePath, drawMeasurePoint } from '../utils/measureDrawing';
 import { MeasureInk, MeasureInkLayer } from '../utils/measureInk';
-import { MeasureLabel, watchMeasureLabelTheme } from '../utils/measureLabel';
+import { MeasureLabel } from '../utils/measureLabel';
+import { watchDarkTheme } from '../utils/canvasBadgeColors';
+import { watchSquareCorners } from '../utils/squareCorners';
 
 /** Above token UI (100) and text (500), below drawings, vision and fog. */
 const LABEL_Z_INDEX = 800;
@@ -84,7 +86,8 @@ export class DragRulerView {
   /** What the ruler shows; a zoom or theme change draws it again. */
   private drawn: Drawn | null = null;
   private drawnZoom = 1;
-  private readonly stopThemeWatch = watchMeasureLabelTheme(() => this.redraw());
+  private readonly stopThemeWatch = watchDarkTheme(() => this.redraw());
+  private readonly stopCornerWatch = watchSquareCorners(() => this.redraw());
   private readonly onZoom = (): void => {
     if (this.drawn && this.viewport.scale.x !== this.drawnZoom) this.redraw();
   };
@@ -120,6 +123,7 @@ export class DragRulerView {
 
   destroy(): void {
     this.stopThemeWatch();
+    this.stopCornerWatch();
     this.viewport.off('zoomed', this.onZoom);
     this.viewport.off('zoomed-end', this.onZoom);
     this.own.destroy();

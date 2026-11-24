@@ -164,25 +164,39 @@ export class ReflectionTiles {
 
 /** Every part's polygon as a triangle fan from its point, which each corner carries with the part's reach and strength (`aPart`, read by `reflectionVertex`). */
 export function reflectionFans(parts: readonly ReflectionPart[]): Geometry {
-  const corners = parts.reduce((sum, part) => sum + part.polygon.length + 1, 0);
+  let corners = 0, triangles = 0;
+  for (const part of parts) {
+    corners += part.polygon.length + 1;
+    triangles += part.polygon.length;
+  }
   const positions = new Float32Array(corners * 2);
   const info = new Float32Array(corners * 4);
-  const indices: number[] = [];
-  let base = 0;
+  const indices = new Uint32Array(triangles * 3);
+  let base = 0, index = 0;
   for (const { origin, reach, strength, polygon } of parts) {
-    const points = [origin, ...polygon];
-    points.forEach((p, i) => {
-      positions.set([p.x, p.y], (base + i) * 2);
-      info.set([origin.x, origin.y, reach, strength], (base + i) * 4);
-    });
-    for (let i = 1; i <= polygon.length; i++) indices.push(base, base + i, base + (i % polygon.length) + 1);
-    base += points.length;
+    const n = polygon.length;
+    for (let i = 0; i <= n; i++) {
+      const p = i === 0 ? origin : polygon[i - 1]!;
+      const v = base + i;
+      positions[v * 2] = p.x;
+      positions[v * 2 + 1] = p.y;
+      info[v * 4] = origin.x;
+      info[v * 4 + 1] = origin.y;
+      info[v * 4 + 2] = reach;
+      info[v * 4 + 3] = strength;
+    }
+    for (let i = 1; i <= n; i++) {
+      indices[index++] = base;
+      indices[index++] = base + i;
+      indices[index++] = base + (i % n) + 1;
+    }
+    base += n + 1;
   }
   return new Geometry({
     attributes: {
       aPosition: { buffer: new Buffer({ data: positions, usage: BufferUsage.VERTEX }), format: 'float32x2' },
       aPart: { buffer: new Buffer({ data: info, usage: BufferUsage.VERTEX }), format: 'float32x4' },
     },
-    indexBuffer: new Buffer({ data: new Uint32Array(indices), usage: BufferUsage.INDEX }),
+    indexBuffer: new Buffer({ data: indices, usage: BufferUsage.INDEX }),
   });
 }

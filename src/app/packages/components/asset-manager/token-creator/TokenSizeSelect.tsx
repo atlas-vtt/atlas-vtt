@@ -1,6 +1,6 @@
 import React from 'react';
 import { ObsidianMenuDropdown } from '../../shared/ObsidianMenuDropdown';
-import { TOKEN_SIZE_OPTIONS } from '../../../../pixi/token-renderer/tokenSizing';
+import { TOKEN_SIZE_OPTIONS } from '../../../../pixi/token-renderer/tokenSizeOptions';
 
 // Prefix numeric keys so JavaScript preserves the size order rather than sorting integer keys first.
 const OPTION_PREFIX = 'size:';

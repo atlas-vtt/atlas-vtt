@@ -1,7 +1,8 @@
 import type { BandDecoder } from '../../../imageProcessing/band/bandTypes';
+import { encodeInOrder } from '../encodeInOrder';
 import type { BuildDeps, BuildOutcome } from '../pyramidBuilder';
-import { TESSERA_BATCH } from '../pyramidBuilder';
 import { tesseraKey, tesseraSourceRect, type Pyramid, type TesseraRef } from '../pyramid';
+import { localEncoder } from '../tesseraEncoderPool';
 import type { StoredTessera } from '../tesseraStore';
 import { BandPyramid, type LevelBand } from './bandPyramid';
 
@@ -140,20 +141,24 @@ export class BandBuild {
     }
     if (refs.length === 0) return;
     const bitmap = await this.deps.graphics.fromPixels(band.data, band.width, band.rows);
+    const encoder = this.deps.encoder ?? localEncoder(this.deps.graphics);
     try {
-      let batch: StoredTessera[] = [];
-      for (const ref of refs) {
-        await this.deps.yieldToRequests();
-        this.controller.signal.throwIfAborted();
-        const rect = tesseraSourceRect(this.pyramid, ref);
-        const bytes = await this.deps.graphics.encodeTessera(bitmap, { ...rect, y: rect.y - band.y });
-        batch.push({ ref, bytes });
-        if (batch.length >= TESSERA_BATCH) {
+      await encodeInOrder(refs, {
+        slots: encoder.slots,
+        proceed: async () => {
+          await this.deps.yieldToRequests();
+          this.controller.signal.throwIfAborted();
+          return true;
+        },
+        encode: (ref) => {
+          const rect = tesseraSourceRect(this.pyramid, ref);
+          return encoder.encode(bitmap, { ...rect, y: rect.y - band.y });
+        },
+        write: async (batch) => {
           await this.write(batch);
-          batch = [];
-        }
-      }
-      await this.write(batch);
+          return true;
+        },
+      });
     } finally {
       bitmap.close();
     }
@@ -167,7 +172,7 @@ export class BandBuild {
       this.settle(tesseraKey(ref));
     }
     this.done += batch.length;
-    this.deps.emit({ type: 'progress', hash: this.hash, done: this.done, total: this.total });
+    this.deps.emit({ type: 'progress', hash: this.hash, done: this.done, total: this.total, inBands: true });
   }
 
   private settle(key: string): void {

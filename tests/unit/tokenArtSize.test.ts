@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Container, Graphics, Sprite, Texture, TextureSource } from 'pixi.js';
+import { Container, Sprite, Texture, TextureSource } from 'pixi.js';
 import { syncTokenArtwork } from '../../src/app/pixi/token-renderer/tokenArtwork';
 import { getTokenRingOuterDiameter, tokenArtBox } from '../../src/app/pixi/token-renderer/tokenRingMetrics';
 import { computeTokenPixelSize, computeTokenStrokeWidth } from '../../src/app/pixi/token-renderer/tokenSizing';
@@ -23,9 +23,7 @@ function tokenGroup(showRing: boolean, gridSize: number, size: number, texture: 
   }) as TokenGroupContainer;
   const art = new Sprite(texture);
   art.label = 'tokenSprite';
-  const mask = new Graphics();
-  mask.label = 'tokenArtMask';
-  group.addChild(mask, art);
+  group.addChild(art);
   syncTokenArtwork(group, tokenSize);
   return { group, art };
 }

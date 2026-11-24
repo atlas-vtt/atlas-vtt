@@ -15,6 +15,8 @@ interface Recorded {
   canvases: Array<[number, number]>;
   /** The `ImageData` sizes bitmaps were made of. */
   pixels: Array<[number, number, number]>;
+  /** What each 2D context was asked with. */
+  contexts: unknown[];
 }
 
 interface Options {
@@ -25,7 +27,7 @@ interface Options {
 }
 
 function primitives({ webpAs = 'image/webp', maxPictureSide = Infinity }: Options = {}): { graphics: ReturnType<typeof createTesseraGraphics>; recorded: Recorded } {
-  const recorded: Recorded = { calls: [], draws: [], encodes: [], canvases: [], pixels: [] };
+  const recorded: Recorded = { calls: [], draws: [], encodes: [], canvases: [], pixels: [], contexts: [] };
   const createImageBitmap = ((...args: unknown[]) => {
     recorded.calls.push(args);
     return Promise.resolve(new FakeBitmap(1, 1, 'crop'));
@@ -39,7 +41,10 @@ function primitives({ webpAs = 'image/webp', maxPictureSide = Infinity }: Option
     return {
       width,
       height,
-      getContext: () => context,
+      getContext: (_id, options) => {
+        recorded.contexts.push(options);
+        return context;
+      },
       convertToBlob: (options) => {
         recorded.encodes.push(options);
         return Promise.resolve(new Blob(['x'], { type: options?.type === 'image/webp' ? webpAs : options?.type ?? 'image/png' }));
@@ -67,12 +72,13 @@ describe('createTesseraGraphics', () => {
     ]);
   });
 
-  it('encodes a tessera from its rect as lossless WebP', async () => {
+  it('encodes a tessera from its rect as lossless WebP, on a canvas in memory', async () => {
     const { graphics, recorded } = primitives();
     const source = new FakeBitmap(1000, 1000, 'source');
     const blob = await graphics.encodeTessera(source, { x: 509, y: 0, width: 512, height: 511 });
     expect(blob.type).toBe('image/webp');
     expect(recorded.draws).toEqual([[source, 509, 0, 512, 511, 0, 0, 512, 511]]);
+    expect(recorded.contexts).toEqual([{ willReadFrequently: true }]);
     expect(recorded.encodes).toEqual([{ type: 'image/webp', quality: TESSERA_QUALITY }]);
     expect(TESSERA_QUALITY).toBe(1);
   });

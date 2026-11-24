@@ -158,6 +158,10 @@ export class PixiAppManager {
       ticker: this.app.ticker,
     });
 
+    // A render group from the start: a pan or zoom then moves one matrix instead of updating and
+    // repacking every token, badge and marker below it. `renderer.render` makes it one for good at
+    // the first scene thumbnail anyway, so before this the camera behaved differently until then.
+    this.viewport.enableRenderGroup();
     this.app.stage.addChild(this.viewport);
     window.requestAnimationFrame(() => {
     });

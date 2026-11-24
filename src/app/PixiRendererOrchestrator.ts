@@ -101,6 +101,9 @@ import { installFoggedPartyRings } from './pixi/token-renderer/FoggedPartyRings'
 import { TokenPlacer } from './pixi/tokenPlacement/TokenPlacer';
 import { PlacementHand } from './pixi/tokenPlacement/placementHand';
 
+/** How long a reveal waits at most for the lighting a load traces ahead (`scene-hydrated`), in ms. */
+const SCENE_PREPARE_WAIT_MS = 1000;
+
 export class PixiRendererOrchestrator { // Renamed class
   private _isDestroyed: boolean = false;
   private pixiAppManager: PixiAppManager;
@@ -135,6 +138,8 @@ export class PixiRendererOrchestrator { // Renamed class
   private stopFogFollowingPlayers: (() => void) | undefined;
   /** The GM view's walls, lights and sight; the player view has none. */
   private lighting?: LightingController;
+  /** The lighting's work ahead for the scene being loaded (`scene-hydrated`), until its reveal waits for it. */
+  private scenePrepared: Promise<void> | null = null;
   /** The roof of the level shown, above the lighting. */
   private roofs?: ViewRoofs;
   /** Where gliding tokens are drawn: the token renderer notes them, the lighting reads its tokens there. */
@@ -1580,18 +1585,26 @@ export class PixiRendererOrchestrator { // Renamed class
       this.eventBusUnsubscribers.push(() => this.eventBus.off(event, handler));
     };
 
+    on('scene-hydrated', () => {
+      const prepared = this.lighting?.prepareScene();
+      // Waited for a while at most: past that the reveal traces what is left on the main thread.
+      this.scenePrepared = prepared ? Promise.race([prepared, new Promise<void>((resolve) => window.setTimeout(resolve, SCENE_PREPARE_WAIT_MS))]) : null;
+    });
+
     on('wait-for-tokens-loaded', (callback: () => void) => {
+      // What the lighting traces ahead is waited for too: the reveal would otherwise trace it on the main thread.
+      const prepared = this.scenePrepared;
+      this.scenePrepared = null;
+      const done = (): void => {
+        if (prepared) void prepared.then(callback);
+        else callback();
+      };
       if (this.tokenRenderer) {
         // Force sync tokens before checking if they're loaded
         this.tokenRenderer.forceSyncTokens();
-
-
-        this.tokenRenderer.onWhenAllTokensLoaded(() => {
-          callback();
-        });
+        this.tokenRenderer.onWhenAllTokensLoaded(done);
       } else {
-        // No token renderer, just call the callback
-        callback();
+        done();
       }
     });
   }

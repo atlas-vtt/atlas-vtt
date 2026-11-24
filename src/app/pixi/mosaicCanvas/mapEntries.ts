@@ -7,6 +7,7 @@ import { DecodeBudget } from './decodeBudget';
 import { checkDecodable, DecodedLevels, decodeSource, decodedLevelsCost, decodedSizeCost, OpenError } from './decodedLevels';
 import { PyramidBuild, type BuildOutcome } from './pyramidBuilder';
 import { pyramidOf, type Pyramid } from './pyramid';
+import type { TesseraEncoder } from './tesseraEncoderPool';
 import type { TesseraGraphics } from './tesseraGraphics';
 import type { TesseraEvent } from './tesseraProtocol';
 import type { MapSource } from './tesseraServer';
@@ -45,6 +46,8 @@ export class NeedBytes extends Error {}
 export interface MapEntriesDeps {
   store: TesseraStore;
   graphics: TesseraGraphics;
+  /** Encodes the builds' tesserae; one by one with `graphics` where unset. */
+  encoder?: TesseraEncoder | undefined;
   emit: (event: TesseraEvent) => void;
   /** Resolves once pending requests had their turn. */
   yieldToRequests: () => Promise<void>;
@@ -213,6 +216,7 @@ export class MapEntries {
     const build = new BandBuild(entry.hash, pyramid, source, decoder, {
       store: this.deps.store,
       graphics: this.deps.graphics,
+      encoder: this.deps.encoder,
       yieldToRequests: this.deps.yieldToRequests,
       emit: (event) => this.emitFor(entry, event),
     });
@@ -258,6 +262,7 @@ export class MapEntries {
     const build = new PyramidBuild(entry.hash, entry.pyramid, levels, {
       store: this.deps.store,
       graphics: this.deps.graphics,
+      encoder: this.deps.encoder,
       yieldToRequests: this.deps.yieldToRequests,
       emit: (event) => this.emitFor(entry, event),
     });

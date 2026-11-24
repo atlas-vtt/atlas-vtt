@@ -13,7 +13,7 @@ import { PlayersViewWatch } from './token-renderer/PlayersViewWatch';
 import { TurnMarkers } from './token-renderer/turnMarker/TurnMarkers';
 import { ShownBadgeNumbers, type PlayerBadgeNumbers } from './token-renderer/PlayerBadgeNumbers';
 import type { TokenSeen } from '../vision/measureOrigin';
-import { Sprite, Container, Graphics, Application, FederatedPointerEvent } from "pixi.js";
+import { Sprite, Container, Graphics, Application, FederatedPointerEvent, Ticker } from "pixi.js";
 import { Viewport } from "pixi-viewport";
 import { App as ObsidianApp } from 'obsidian';
 import type { TokenEntity } from "../types";
@@ -29,6 +29,7 @@ import { TokenStatblockLinkService } from '../services/TokenStatblockLinkService
 import { SpriteFactory } from './token-renderer/SpriteFactory';
 import { computeTokenPixelSize } from './token-renderer/tokenSizing';
 import { TextureCache } from './token-renderer/TextureCache';
+import { ArtUploads } from './token-renderer/artUploads';
 import { UIManager } from './token-renderer/UIManager';
 import { InteractionController } from './token-renderer/InteractionController';
 import { DragRuler, type DragRulerPath } from './token-renderer/DragRuler';
@@ -51,7 +52,7 @@ import { tokenOverlays } from '../api/extensionPoints';
 import { watchSquareCorners } from './utils/squareCorners';
 import { DownedTokenOverlay } from './token-renderer/DownedTokenOverlay';
 import { isTokenDowned } from './token-renderer/isTokenDowned';
-import { requestRender } from './RenderScheduler';
+import { rendersHeld, requestRender } from './RenderScheduler';
 import { normalizeImagePath } from '../utils/pathUtils';
 import { prefersReducedMotion } from '../utils/motion';
 import { destroyTree } from './utils/destroyTree';
@@ -60,6 +61,7 @@ import type { TokenPreview } from './tokenPlacement/PlacementGhost';
 import type { TokenInput } from '../types/viewState';
 import { setCanvasCursor } from './utils/canvasCursor';
 import { markHandled, resetHandled } from './utils/handledEvents';
+import { watchDarkTheme } from './utils/canvasBadgeColors';
 import { watchClick } from './utils/clickRelease';
 import { isCtrlClick, isPrimaryPress, isSecondaryPress } from './utils/pointerButtons';
 import { isFinger, withFineReach } from './utils/pointerReach';
@@ -114,6 +116,8 @@ export class TokenRenderer {
   private statblockSync: StatblockTokenSync;
   private spriteFactory: SpriteFactory;
   private textureCache: TextureCache;
+  /** The art of the scene shown before this one, kept decoded so that switching back shows its tokens without decoding them again. */
+  private previousSceneArt: string[] = [];
   private readonly hiddenTokenIcon = new HiddenTokenIcon();
   private readonly overlays = new TokenOverlays(() => this.redrawOverlays());
   private readonly stopFollowingOverlays = tokenOverlays.subscribe(() => this.redrawOverlays());
@@ -155,6 +159,12 @@ export class TokenRenderer {
   
   // Store reference to PIXI app for renderer access
   private pixiApp: Application | null = null;
+  private readonly artUploads = new ArtUploads({
+    ticker: Ticker.shared,
+    renderer: () => this.pixiApp?.renderer ?? null,
+    held: () => this.pixiApp !== null && rendersHeld(this.pixiApp),
+    othersLoading: (waiting) => this.tokensLoading.size > waiting,
+  });
   
   // Track loading tokens
   private tokensLoading: Set<string> = new Set();
@@ -162,7 +172,7 @@ export class TokenRenderer {
   private mapLoadGeneration = 0;
   private allTokensLoadedCallbacks: Array<() => void> = [];
   private viewId: string;
-  private themeObserver: MutationObserver | null = null;
+  private stopThemeWatch: (() => void) | null = null;
   private isLocalPlayerMode: boolean = false;
   private isDestroyed = false;
 
@@ -366,7 +376,9 @@ export class TokenRenderer {
       // Could add visual feedback for animation end
     });
 
-    this.tokenContainer = new Container();
+    // A render group: a change elsewhere in the viewport (a ruler drawn anew, a layer hidden for
+    // the players' frame) then makes PIXI rebuild none of the tokens' draw list
+    this.tokenContainer = new Container({ isRenderGroup: true });
     this.tokenContainer.label = 'tokenContainer';
     this.tokenContainer.sortableChildren = true;
     this.tokenContainer.eventMode = 'passive';
@@ -455,6 +467,7 @@ export class TokenRenderer {
       this.tokensLoading = new Set();
       this.exit.finishAll();
 
+      this.previousSceneArt = Object.values(this.tokenSprites).flatMap((group) => (group ? [group.artPath] : []));
       // First, clear all existing token sprites (tokenSprites is an object, not a Map)
       for (const [id, tokenGroup] of Object.entries(this.tokenSprites)) {
         if (tokenGroup) this.destroyTokenGroup(id, tokenGroup);
@@ -1127,6 +1140,9 @@ export class TokenRenderer {
           
           // Create sprite through factory
           tokenGroup = await this.spriteFactory.createTokenSprite(character, texture);
+          // On the GPU before the token is added: the frame that first draws it, often a scene's reveal, uploads nothing.
+          // Outside a load, tokens are added a few a frame.
+          await this.artUploads.whenUploaded(texture.source, this.distanceFromView(token));
 
           // Another map loaded meanwhile (possibly this one again, with its own load of this
           // token), so this sprite must neither show nor touch the new load's state.
@@ -1346,15 +1362,25 @@ export class TokenRenderer {
     return this.isDestroyed || generation !== this.mapLoadGeneration;
   }
 
-  /** Frees decoded art no token holds, keeping the art of every token on the map. */
+  /**
+   * Frees decoded art no token holds, keeping the art of every token on the map, on every level: a
+   * floor switched back to decodes and uploads none of its art again.
+   */
   private evictUnusedArt(): void {
-    const tokens = Object.values(mapTokens(levelObjects(this.store.getState())));
-    this.textureCache.evictUnused(tokens.map((token) => token.imagePath ?? ''));
+    const tokens = Object.values(mapTokens(everyLevelObjects(this.store.getState())));
+    this.textureCache.evictUnused([...tokens.map((token) => token.imagePath ?? ''), ...this.previousSceneArt]);
+  }
+
+  /** World distance of `token` from the centre of the view, which orders art uploads. */
+  private distanceFromView(token: TokenEntity): number {
+    const center = this.viewport.center;
+    return Math.hypot(token.x - center.x, token.y - center.y);
   }
 
   public destroy(): void {
     this.isDestroyed = true;
     this.exit.finishAll();
+    this.artUploads.destroy();
 
     // Unsubscribe from store
     this._unsubscribeFromStore?.();
@@ -1400,11 +1426,8 @@ export class TokenRenderer {
     this.playerSight.destroy();
     this.turnMarkers.destroy();
     
-    // Clean up theme observer
-    if (this.themeObserver) {
-      this.themeObserver.disconnect();
-      this.themeObserver = null;
-    }
+    this.stopThemeWatch?.();
+    this.stopThemeWatch = null;
     
     // Clean up event listeners
     // Remove window event listeners using properly typed handlers
@@ -1474,24 +1497,11 @@ export class TokenRenderer {
     this.statblockSync.followRules();
   }
 
-  /**
-   * Setup theme observer to update UI when theme changes
-   */
+  /** The rotation and resize handles take the light or dark theme's colours. */
   private setupThemeObserver(): void {
-    this.themeObserver = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-          // Theme changed, update rotation and resize handles
-          this.uiManager.getRotationUI()?.updateTheme();
-          this.uiManager.getResizeUI()?.updateTheme();
-        }
-      }
-    });
-    
-    // Start observing
-    this.themeObserver.observe(document.body, {
-      attributes: true,
-      attributeFilter: ['class']
+    this.stopThemeWatch = watchDarkTheme(() => {
+      this.uiManager.getRotationUI()?.updateTheme();
+      this.uiManager.getResizeUI()?.updateTheme();
     });
   }
 

@@ -42,16 +42,16 @@ export function BottomToolbarRow({ lead, start, end, above, options, children }:
     if (!row || !startSlot || !endSlot || !optionsSlot) return undefined;
 
     const measure = (): void => {
-      // The turn banner is lifted over the tool's bars; menus and the dice tray open over them.
-      row.style.setProperty('--atlas-toolbar-lift', `${optionsSlot.getBoundingClientRect().height}px`);
+      // Everything is read before the lift is written: a read after the write is a second style and layout pass.
+      const lift = `${optionsSlot.getBoundingClientRect().height}px`;
+      const width = row.clientWidth;
+      const room = width === 0 ? null : Math.max(0, width - startSlot.offsetWidth - endSlot.offsetWidth
+        - 2 * (parseFloat(row.win.getComputedStyle(row).columnGap) || 0));
+      // The turn banner is lifted over the tool's bars; menus and the dice tray open over them. An unchanged value is
+      // not written again, since the row's whole subtree inherits the custom property.
+      if (row.style.getPropertyValue('--atlas-toolbar-lift') !== lift) row.style.setProperty('--atlas-toolbar-lift', lift);
       // A row that is not laid out (hidden leaf, tests) constrains nothing.
-      if (row.clientWidth === 0) {
-        setSpace(null);
-        return;
-      }
-      const gap = parseFloat(row.win.getComputedStyle(row).columnGap) || 0;
-      const next = Math.max(0, row.clientWidth - startSlot.offsetWidth - endSlot.offsetWidth - 2 * gap);
-      setSpace(next);
+      setSpace(room);
     };
     measure();
     return observeResize([row, startSlot, endSlot, optionsSlot], measure);

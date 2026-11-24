@@ -16,6 +16,11 @@ export interface DeviceBudgets {
    * a job larger than the budget runs alone.
    */
   readonly imageWorkerBudget: number;
+  /**
+   * Workers that encode map tesserae for the tessera worker's builds, at most. Each holds one
+   * tessera; 0 encodes on the tessera worker itself, one at a time.
+   */
+  readonly tesseraEncoders: number;
   /** Decoded pyramid levels all builds of the tessera worker may hold together, in bytes. */
   readonly decodedLevelsBudget: number;
   /** The map tile cache never grows past this many bytes, whatever the quota. */
@@ -24,6 +29,11 @@ export interface DeviceBudgets {
   readonly tileCacheQuotaShare: number;
   /** Graphics memory the tile textures of one renderer may take beyond the pinned ones, in bytes. */
   readonly tileTextureBudget: number;
+  /**
+   * Whether token art no token shows (the scene before's, kept for a switch back) stays on the GPU until
+   * the art cache lets it go. Without it, PIXI's garbage collection unloads it a minute after its last draw.
+   */
+  readonly idleTokenArtOnGpu: boolean;
   /** The finest lighting quality Atlas picks for the device by itself; the GM's own choice always wins. */
   readonly lightingQualityDefault: LightingQualityLevel;
   /** Dice stages a document builds ahead of the first roll. */
@@ -57,11 +67,13 @@ export const DESKTOP_BUDGETS: DeviceBudgets = {
   imageWorkers: 6,
   // A huge map (150 megapixels hold 1.2 GB while converting, the largest 2.1 GB) runs alone.
   imageWorkerBudget: GIB,
+  tesseraEncoders: 6,
   decodedLevelsBudget: GIB,
   // Room for a few gigapixel maps' lossless tesserae (about 1.3 GB each).
   tileCacheMax: 4 * GIB,
   tileCacheQuotaShare: 0.1,
   tileTextureBudget: 160 * MIB,
+  idleTokenArtOnGpu: true,
   lightingQualityDefault: 'high',
   // As many as rolls stand at once and one for the roll that fades out as the next arrives.
   diceWarmStages: 4,
@@ -86,10 +98,14 @@ export const DESKTOP_BUDGETS: DeviceBudgets = {
 export const MOBILE_BUDGETS: DeviceBudgets = {
   imageWorkers: 2,
   imageWorkerBudget: 256 * MIB,
+  // Not tried on a tablet's web view yet: its builds encode one tessera at a time as before.
+  tesseraEncoders: 0,
   decodedLevelsBudget: 256 * MIB,
   tileCacheMax: 512 * MIB,
   tileCacheQuotaShare: 0.05,
   tileTextureBudget: 96 * MIB,
+  // Two scenes' art at once would not fit beside the tiles; what the map shows stays.
+  idleTokenArtOnGpu: false,
   lightingQualityDefault: 'balanced',
   diceWarmStages: 1,
   diceShadowMap: 512,
@@ -112,4 +128,12 @@ export function budgetsFor(memoryClass: MemoryClass): DeviceBudgets {
 /** Image workers on a device with `cores` logical processors: one core stays free for Obsidian itself. */
 export function imageWorkerCount(budgets: DeviceBudgets, cores: number): number {
   return Math.min(budgets.imageWorkers, Math.max(1, cores - 1));
+}
+
+/**
+ * Tessera encoders on a device with `cores` logical processors: half of them, so the window, the
+ * tessera worker and grid detection on a new map keep theirs.
+ */
+export function tesseraEncoderCount(budgets: DeviceBudgets, cores: number): number {
+  return Math.min(budgets.tesseraEncoders, Math.floor(cores / 2));
 }
