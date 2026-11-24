@@ -104,8 +104,8 @@ export function drawLabelPill(g: Graphics, { width, height, radius: rounded }: S
   g.roundRect(-width / 2 + inset, -height / 2 + inset, width - 2 * inset, height - 2 * inset, Math.max(0, radius - inset)).fill(colors.background);
 }
 
-/** Calls `redraw` whenever Obsidian switches between its light and dark theme, or corners turn square or round; returns what stops it. */
-export function watchMeasureLabelTheme(redraw: () => void): () => void {
+/** Calls `redraw` whenever Obsidian switches between its light and dark theme, or corners turn square or round, in `body`'s window; returns what stops it. */
+export function watchMeasureLabelTheme(body: HTMLElement, redraw: () => void): () => void {
   let dark = isDarkTheme();
   let square = squareCorners();
   const observer = new MutationObserver(() => {
@@ -114,6 +114,6 @@ export function watchMeasureLabelTheme(redraw: () => void): () => void {
     square = squareCorners();
     redraw();
   });
-  observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  observer.observe(body, { attributes: true, attributeFilter: ['class'] });
   return () => observer.disconnect();
 }

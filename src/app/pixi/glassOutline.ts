@@ -2,6 +2,7 @@ import { Container, Graphics, Text, type Application } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { requestRender } from './RenderScheduler';
 import { destroyTree } from './utils/destroyTree';
+import { viewportDocument } from './utils/viewportDocument';
 import { canvasBadgeTheme, type CanvasBadgeTheme } from './utils/canvasBadgeColors';
 import type { WorldFrame } from '../types/playerFrame';
 
@@ -83,7 +84,7 @@ export class GlassOutline {
     viewport.on('zoomed', this.redraw);
     // A theme switch toggles the body's classes; the accent is read again at every draw
     this.themeObserver = typeof MutationObserver === 'function' ? new MutationObserver(this.redraw) : null;
-    this.themeObserver?.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    this.themeObserver?.observe(viewportDocument(viewport).body, { attributes: true, attributeFilter: ['class'] });
   }
 
   setGlass(frame: WorldFrame | null, look: GlassLook = 'live'): void {

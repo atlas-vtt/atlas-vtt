@@ -8,6 +8,7 @@ import type { ViewAtlasState } from '../../storeFactory';
 import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds } from '../../vision/visibility';
 import { destroyTree } from '../utils/destroyTree';
+import { viewportDocument } from '../utils/viewportDocument';
 import type { TokenPerception } from '../../vision/tokenPerception';
 import { PlayerSightMarks } from './PlayerSightMarks';
 import { SenseRangeRings } from './SenseRangeRings';
@@ -61,7 +62,7 @@ export class GmSightAids {
     }));
     // The badges take the theme's colours, like the pins.
     const theme = new MutationObserver(() => this.schedule());
-    theme.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    theme.observe(viewportDocument(viewport).body, { attributes: true, attributeFilter: ['class'] });
     this.cleanups.push(() => theme.disconnect());
     this.schedule();
   }

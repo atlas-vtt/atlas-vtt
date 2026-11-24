@@ -23,6 +23,8 @@ const FADE: AnimationOptions = { duration: 0.12 };
  * an element not Atlas' own).
  */
 const HOST_CLASS = 'atlas-notice-host';
+/** Where the entrance starts from (`styles/_notices.scss`), in place of the frame before it runs. */
+const ENTERING_CLASS = 'atlas-notice-entering';
 
 /**
  * Gives `notice` Atlas' entrance now and its exit whenever it is hidden: by its timer, a click,
@@ -33,8 +35,8 @@ export function animateNotice(notice: Notice): void {
   if (windowIsGone(el)) return;
   el.parentElement?.addClass(HOST_CLASS);
   const reduce = prefersReducedMotion(el);
-  // Motion starts on the next frame; until then the notice would show at rest.
-  el.setCssStyles({ opacity: '0', transform: reduce ? AT_REST : ENTER_FROM });
+  // Motion starts on the next frame; until then the notice would show at rest. Its styles then hold it.
+  el.addClass(ENTERING_CLASS);
   void animate(el, { opacity: [0, 1], transform: reduce ? AT_REST : [ENTER_FROM, AT_REST] }, reduce ? FADE : ENTER);
 
   let leaving = false;

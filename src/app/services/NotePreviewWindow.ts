@@ -192,7 +192,7 @@ export class NotePreviewWindow {
 
             // If the click isn't on something that naturally handles its own focus (like an input or CM editor),
             // and the main preview window isn't already focused, focus the main preview window.
-            if (!isTargetDirectlyFocusable && !isTargetInsideCodeMirror && document.activeElement !== this.element) {
+            if (!isTargetDirectlyFocusable && !isTargetInsideCodeMirror && this.element.doc.activeElement !== this.element) {
                 this.element.focus({ preventScroll: true });
             }
         }
@@ -242,7 +242,7 @@ export class NotePreviewWindow {
       preferredLeafContainer ??
       null;
 
-    return preferredLeafRoot ?? document.body;
+    return preferredLeafRoot ?? activeDocument.body;
   }
 
   private createResizeHandles(): void {
@@ -516,7 +516,7 @@ export class NotePreviewWindow {
     this.resizeStartTop = this.element.offsetTop;
 
     // Prevent text selection during resize
-    document.body.classList.add('atlas-no-select');
+    this.element.doc.body.addClass('atlas-no-select');
     // Cursor is set by individual handle's CSS
 
     this.resizePointer = followPointer(handle, e, { move: this.onResizeMove, end: this.onResizeEnd });
@@ -590,7 +590,7 @@ export class NotePreviewWindow {
     this.resizePointer?.stop();
     this.resizePointer = null;
 
-    document.body.classList.remove('atlas-no-select');
+    this.element?.doc.body.removeClass('atlas-no-select');
 
     this.placement?.recordCurrent();
     this.saveStateNow();
@@ -680,7 +680,7 @@ export class NotePreviewWindow {
         this.isResizing = false;
         this.resizePointer?.stop();
         this.resizePointer = null;
-        document.body.classList.remove('atlas-no-select');
+        this.element.doc.body.removeClass('atlas-no-select');
       }
       // Remove the wrapper (which contains the element) from the DOM; a sheet leaves as panels do
       const wrapper = this.wrapperEl;

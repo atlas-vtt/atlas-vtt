@@ -34,7 +34,7 @@ export interface DraggablePosition {
 /** The area a panel moves in: its offset parent, or the window for a fixed panel. */
 export function areaOf(panel: HTMLElement): PanelArea {
   const parent = panel.offsetParent;
-  if (parent instanceof HTMLElement) return { width: parent.clientWidth, height: parent.clientHeight };
+  if (parent?.instanceOf(HTMLElement)) return { width: parent.clientWidth, height: parent.clientHeight };
   const seen = visibleViewport(panel.win);
   return { width: seen.right, height: seen.bottom };
 }
@@ -98,7 +98,8 @@ export function useDraggablePosition(initial: InitialPanelPosition, { onDragEnd,
   const startDrag = useCallback((event: ReactPointerEvent): void => {
     const panel = panelRef.current;
     if (!panel || event.button !== 0) return;
-    if (event.target instanceof Element && event.target.closest('button, input, select, textarea')) return;
+    const target = event.nativeEvent.targetNode;
+    if (target?.instanceOf(Element) && target.closest('button, input, select, textarea')) return;
     event.preventDefault();
 
     const win = panel.win;

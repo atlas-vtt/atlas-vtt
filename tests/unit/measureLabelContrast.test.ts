@@ -75,7 +75,7 @@ describe('measure label contrast', () => {
   it('redraws when the theme switches', async () => {
     setTheme(true);
     let redraws = 0;
-    const stop = watchMeasureLabelTheme(() => { redraws++; });
+    const stop = watchMeasureLabelTheme(document.body, () => { redraws++; });
     setTheme(false);
     await Promise.resolve();
     document.body.classList.add('is-focused');

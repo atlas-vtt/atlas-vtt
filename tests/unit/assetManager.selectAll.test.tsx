@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 it('selects every visible asset with Mod+A', () => {
-  const { result } = renderHook(() => useSelectionHandlers(visible, [], 'tokens', true));
+  const { result } = renderHook(() => useSelectionHandlers(visible, [], 'tokens', true, { current: null }));
 
   const event = pressSelectAll(document.body);
 
@@ -30,7 +30,7 @@ it.each([
   ['a text area', (): HTMLElement => document.body.createEl('textarea')],
   ['an editable element', (): HTMLElement => document.body.createDiv({ attr: { contenteditable: 'true' } }).createSpan()],
 ])('leaves Mod+A to %s, which selects its own text', (_, field) => {
-  const { result } = renderHook(() => useSelectionHandlers(visible, [], 'tokens', true));
+  const { result } = renderHook(() => useSelectionHandlers(visible, [], 'tokens', true, { current: null }));
 
   const event = pressSelectAll(field());
 

@@ -13,6 +13,7 @@ import { cssColorToHexNumber, getObsidianAccentColor, getObsidianErrorColor } fr
 import { drawMeasurePath, drawMeasurePoint } from '../utils/measureDrawing';
 import { MeasureInk, MeasureInkLayer } from '../utils/measureInk';
 import { MeasureLabel, watchMeasureLabelTheme } from '../utils/measureLabel';
+import { viewportDocument } from '../utils/viewportDocument';
 
 /** Above token UI (100) and text (500), below drawings, vision and fog. */
 const LABEL_Z_INDEX = 800;
@@ -84,13 +85,14 @@ export class DragRulerView {
   /** What the ruler shows; a zoom or theme change draws it again. */
   private drawn: Drawn | null = null;
   private drawnZoom = 1;
-  private readonly stopThemeWatch = watchMeasureLabelTheme(() => this.redraw());
+  private readonly stopThemeWatch: () => void;
   private readonly onZoom = (): void => {
     if (this.drawn && this.viewport.scale.x !== this.drawnZoom) this.redraw();
   };
 
   constructor(private readonly viewport: Viewport, tokenLayer: Container) {
     this.own = new RulerInk(viewport, tokenLayer, 'drag-ruler-path');
+    this.stopThemeWatch = watchMeasureLabelTheme(viewportDocument(viewport).body, () => this.redraw());
     this.viewport.on('zoomed', this.onZoom);
     this.viewport.on('zoomed-end', this.onZoom);
     this.clear();

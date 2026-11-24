@@ -136,7 +136,7 @@ export function useCloseOutside(ref: React.RefObject<HTMLElement | null>, open: 
     const doc = ref.current?.ownerDocument;
     if (!open || !doc) return undefined;
     const press = (event: PointerEvent): void => {
-      if (event.target instanceof Node && ref.current?.contains(event.target)) return;
+      if (event.targetNode && ref.current?.contains(event.targetNode)) return;
       close();
     };
     doc.addEventListener('pointerdown', press);

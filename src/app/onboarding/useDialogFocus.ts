@@ -11,7 +11,7 @@ export function useDialogFocus(ref: RefObject<HTMLElement | null>, onClose: () =
   restores.current = enabled;
   useEffect(() => {
     if (!enabled) return undefined;
-    const doc = ref.current?.ownerDocument ?? document;
+    const doc = ref.current?.ownerDocument ?? activeDocument;
     const win = doc.defaultView ?? window;
     const previous = doc.activeElement as HTMLElement | null;
     const focus = (): void => {

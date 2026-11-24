@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { type App } from 'obsidian';
 import { runUvttGroupImport, type ChooseFloors } from '../../../../import/uvtt/runUvttGroupImport';
 import { formatList, tPointer } from '../../../../i18n';
@@ -21,6 +21,8 @@ export interface UvttImportOptions {
   assetService: AssetService | null;
   /** The asset manager is open; map files dropped on its window are imported while it is. */
   isOpen: boolean;
+  /** An element of the asset manager: drops are listened for in its document. */
+  windowRef: RefObject<HTMLElement | null>;
   isMapCreatorOpen: boolean;
   /** Another dialog of the asset manager is open, which opening a scene would close with it. */
   isBusy: boolean;
@@ -129,11 +131,12 @@ export function useUvttImport(options: UvttImportOptions): ImportMaps {
       const uvttFiles = maps.filter((file) => !isVideoMapPath(file.name));
       if (uvttFiles.length > 0) void importMaps(uvttFiles, latest.current.collectionId);
     };
-    document.addEventListener('dragover', onDragOver, true);
-    document.addEventListener('drop', onDrop, true);
+    const doc = options.windowRef.current?.doc ?? activeDocument;
+    doc.addEventListener('dragover', onDragOver, true);
+    doc.addEventListener('drop', onDrop, true);
     return () => {
-      document.removeEventListener('dragover', onDragOver, true);
-      document.removeEventListener('drop', onDrop, true);
+      doc.removeEventListener('dragover', onDragOver, true);
+      doc.removeEventListener('drop', onDrop, true);
     };
   }, [options.isOpen, importMaps]);
 

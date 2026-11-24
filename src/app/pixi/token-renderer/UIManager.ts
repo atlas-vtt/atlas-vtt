@@ -20,6 +20,7 @@ import { TokenResizeUI } from '../TokenResizeUI';
 import type { ConditionDefinition } from '../../types/collectionSettingsTypes';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import { destroyTree } from '../utils/destroyTree';
+import { viewportDocument } from '../utils/viewportDocument';
 import { restingTokenUIScale } from './tokenSizing';
 import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
@@ -144,7 +145,7 @@ export class UIManager implements ITokenUIManager {
       return null;
     }
     
-    const ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker);
+    const ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker, viewportDocument(this.viewport));
     ui.conditionDefsProvider = this.conditionDefsProvider;
     ui.resourceDefsProvider = () => this.resourceDefsProvider();
     ui.measurementProvider = this.measurementProvider;
@@ -561,7 +562,7 @@ export class UIManager implements ITokenUIManager {
       if (!token || token.kind !== 'character' || !sprite) continue;
       let ui = this.playerTokenUIs[tokenId];
       if (!ui) {
-        ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker);
+        ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker, viewportDocument(this.viewport));
         this.playerTokenUIs[tokenId] = ui;
         this.playerUIContainer.addChild(ui.getContainer());
       }

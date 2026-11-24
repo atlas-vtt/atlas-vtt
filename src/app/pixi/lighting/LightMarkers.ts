@@ -11,6 +11,7 @@ import { destroyTree } from '../utils/destroyTree';
 import { mapMarkerScale } from '../utils/mapMarkerScale';
 import { createGlyphTexture } from '../utils/pinIconTexture';
 import { ValueTransition } from '../utils/ValueTransition';
+import { viewportDocument } from '../utils/viewportDocument';
 import {
   LIGHT_MARKER_GLYPH_SIZE,
   LIGHT_MARKER_RADIUS,
@@ -127,7 +128,7 @@ export class LightMarkers {
       this.theme = theme;
       this.sync();
     });
-    this.themeObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    this.themeObserver.observe(viewportDocument(viewport).body, { attributes: true, attributeFilter: ['class'] });
     this.sync();
   }
 
@@ -245,7 +246,7 @@ export class LightMarkers {
     marker.lift ??= new ValueTransition(1, MOTION_NORMAL_MS, () => {
       if (!marker.view.destroyed) this.applyScale(marker);
     });
-    if (prefersReducedMotion(document.body)) marker.lift.jumpTo(lift);
+    if (prefersReducedMotion(viewportDocument(this.viewport).body)) marker.lift.jumpTo(lift);
     else marker.lift.animateTo(lift);
   }
 

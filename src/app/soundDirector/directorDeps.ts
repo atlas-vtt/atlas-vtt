@@ -46,6 +46,8 @@ export interface SoundDirectorDeps {
   onLibraryChange(listener: () => void): () => void;
   /** Calls back when an audio file arrived or changed in the vault. */
   onAudioFileChange(listener: () => void): () => void;
+  /** Calls back when the window the context plays in is hidden or shown again: a window coming back is when a context turns out to have stopped. */
+  onVisibilityChange(listener: () => void): () => void;
   /** Lets go of the library while sound is off: its listeners and its watch on the disk. It comes back with `onAudioFileChange`. */
   releaseLibrary(): void;
   readSceneSound(path: string): Promise<SceneSound | null>;
@@ -118,6 +120,12 @@ export function realDirectorDeps(app: App): SoundDirectorDeps {
         refs.forEach((ref) => app.vault.offref(ref));
         dropLibrary();
       };
+    },
+    onVisibilityChange: (listener) => {
+      // The context is the main window's, which holds the workspace.
+      const doc = app.workspace.containerEl.doc;
+      doc.addEventListener('visibilitychange', listener);
+      return () => doc.removeEventListener('visibilitychange', listener);
     },
     releaseLibrary: () => SoundLibrary.release(app),
     readSceneSound: (path) => sceneSoundInFile(app, path),

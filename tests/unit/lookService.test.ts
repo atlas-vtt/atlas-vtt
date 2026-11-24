@@ -152,7 +152,7 @@ it('sets the look\'s classes on body', () => {
   const disposers: (() => void)[] = [];
   const trigger = vi.fn();
   const plugin = {
-    app: Object.assign(s.app, { workspace: { on: () => ({}), offref: () => {}, iterateAllLeaves: () => {}, trigger } }),
+    app: Object.assign(s.app, { workspace: { on: () => ({}), offref: () => {}, containerEl: document.body, iterateAllLeaves: () => {}, trigger } }),
     register: (dispose: () => void) => { disposers.push(dispose); },
     registerEvent: () => {},
   } as unknown as Plugin;
@@ -182,7 +182,7 @@ it('marks body while an Atlas look is on and a custom accent is set', () => {
   s.app.vault.setConfig('accentColor', '#6b8f3a');
   const disposers: (() => void)[] = [];
   const plugin = {
-    app: Object.assign(s.app, { workspace: { on: () => ({}), offref: () => {}, iterateAllLeaves: () => {}, trigger: () => {} } }),
+    app: Object.assign(s.app, { workspace: { on: () => ({}), offref: () => {}, containerEl: document.body, iterateAllLeaves: () => {}, trigger: () => {} } }),
     register: (dispose: () => void) => { disposers.push(dispose); },
     registerEvent: () => {},
   } as unknown as Plugin;
@@ -272,7 +272,7 @@ it('announces an accent colour change as a change of CSS, which Obsidian does no
   const trigger = vi.fn();
   const disposers: (() => void)[] = [];
   const plugin = {
-    app: Object.assign(s.app, { workspace: { on: () => ({}), offref: () => {}, iterateAllLeaves: () => {}, trigger } }),
+    app: Object.assign(s.app, { workspace: { on: () => ({}), offref: () => {}, containerEl: document.body, iterateAllLeaves: () => {}, trigger } }),
     register: (dispose: () => void) => { disposers.push(dispose); },
     registerEvent: () => {},
   } as unknown as Plugin;

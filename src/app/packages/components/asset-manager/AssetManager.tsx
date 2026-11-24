@@ -71,7 +71,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
   const storeTagsState = useStoreTags(storeTagFilter);
 
   const visibleIds = useRef<VisibleIds>({ assets: [], folders: [] });
-  const sel = useSelectionHandlers(visibleIds, data.folders, activeTab, isOpen);
+  const sel = useSelectionHandlers(visibleIds, data.folders, activeTab, isOpen, modalRef);
   useLeaveHiddenFolder(data, sel);
 
   // Another tab or collection renders the whole window again: as a transition, in slices between frames. Either leads
@@ -322,6 +322,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
         crud={crud}
         tags={tags}
         statblock={statblock}
+        windowRef={modalRef}
       />}
     </MapPickContext.Provider>
   );

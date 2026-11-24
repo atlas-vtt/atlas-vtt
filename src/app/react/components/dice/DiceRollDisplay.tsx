@@ -89,7 +89,7 @@ export function DiceRollDisplay({ container, prepare, muted: windowMuted = false
   /** The latest roll as a screen reader hears it; a new id is a new announcement, even of the same words. */
   const [announcement, setAnnouncement] = useState<{ id: string; text: string } | null>(null);
   /** Where the dice stages live: a canvas and its context belong to one document. */
-  const stageDoc = container?.ownerDocument ?? view?.containerEl.doc ?? document;
+  const stageDoc = container?.ownerDocument ?? view?.containerEl.doc ?? activeDocument;
   const layer = useMapRollLayer();
 
   useEffect(() => {

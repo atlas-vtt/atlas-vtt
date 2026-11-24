@@ -35,10 +35,11 @@ export function registerChromeVisibility(plugin: Plugin): void {
   const bodies = new Set<HTMLElement>();
   const update = (): void => {
     if (!active) return;
-    document.body.toggleClass(HIDE_STATUS_BAR_CLASS, coversStatusBar(active.view));
-    // Each window has buttons of its own, which follow the view last active there.
+    // Each window follows the view last active there: its own buttons, and in the main window, the only one
+    // with a status bar, that bar. A view in a popout leaves the main window's bar alone.
     const body = active.view.containerEl.doc.body;
     bodies.add(body);
+    body.toggleClass(HIDE_STATUS_BAR_CLASS, coversStatusBar(active.view));
     body.toggleClass(HIDE_WINDOW_CONTROLS_CLASS, coversWindowControls(active.view));
   };
 
@@ -48,10 +49,7 @@ export function registerChromeVisibility(plugin: Plugin): void {
     update();
   }));
   plugin.registerEvent(plugin.app.workspace.on('atlas-vtt:statblock-panel-changed', update));
-  plugin.register(() => {
-    document.body.removeClass(HIDE_STATUS_BAR_CLASS);
-    bodies.forEach((body) => body.removeClass(HIDE_WINDOW_CONTROLS_CLASS));
-  });
+  plugin.register(() => bodies.forEach((body) => body.removeClass(HIDE_STATUS_BAR_CLASS, HIDE_WINDOW_CONTROLS_CLASS)));
 
   update();
 }

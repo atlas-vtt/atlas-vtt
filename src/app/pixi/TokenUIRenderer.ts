@@ -125,8 +125,8 @@ export class TokenUIRenderer {
   public onScaleChange: ((scale: number) => void) | null = null;
   
 
-  /** Bar value changes animate on `ticker`, in step with the frames it renders. */
-  constructor(store?: StoreApi<ViewAtlasState>, ticker: Ticker | null = null) {
+  /** Bar value changes animate on `ticker`, in step with the frames it renders; `doc` is the document of the canvas it is drawn on. */
+  constructor(store?: StoreApi<ViewAtlasState>, ticker: Ticker | null = null, private readonly doc: Document = activeDocument) {
     this.store = store;
 
     // The container sits at the token centre in world units; the UI itself lives in
@@ -325,8 +325,7 @@ export class TokenUIRenderer {
       }
     });
     
-    // Start observing
-    this.themeObserver.observe(document.body, {
+    this.themeObserver.observe(this.doc.body, {
       attributes: true,
       attributeFilter: ['class']
     });
@@ -550,7 +549,7 @@ export class TokenUIRenderer {
   }
 
   private canAnimateValues(): boolean {
-    return !prefersReducedMotion(document.body);
+    return !prefersReducedMotion(this.doc.body);
   }
 
   public getContainer(): Container {
@@ -625,7 +624,7 @@ export class TokenUIRenderer {
   private updateEmphasis(): void {
     const target = this.isSelected && !this.isHeld ? 1 : 0;
     if (target === this.emphasis.targetValue) return;
-    if (prefersReducedMotion(document.body)) this.emphasis.jumpTo(target);
+    if (prefersReducedMotion(this.doc.body)) this.emphasis.jumpTo(target);
     else this.emphasis.animateTo(target);
   }
 
@@ -743,7 +742,7 @@ export class TokenUIRenderer {
   public setBarButtonsShown(shown: boolean, span?: number): void {
     // The span is kept while the room is given back, so the wheels close in from where they stood
     if (shown) this.barButtonSpan = span;
-    if (shown || prefersReducedMotion(document.body)) this.barButtonRoom.jumpTo(shown ? 1 : 0);
+    if (shown || prefersReducedMotion(this.doc.body)) this.barButtonRoom.jumpTo(shown ? 1 : 0);
     else this.barButtonRoom.animateTo(0);
   }
 
@@ -857,7 +856,7 @@ export class TokenUIRenderer {
     this.nameText.visible = true;
     
     // Create a hidden HTML input to capture keyboard events
-    const input = document.body.createEl('input');
+    const input = this.doc.body.createEl('input');
     input.type = 'text';
     input.value = this.originalName || '';
     input.className = 'atlas-offscreen-input';
@@ -887,11 +886,11 @@ export class TokenUIRenderer {
       });
       
       // Observe changes to document root and body for theme changes
-      this.editThemeObserver.observe(document.documentElement, {
+      this.editThemeObserver.observe(this.doc.documentElement, {
         attributes: true,
         attributeFilter: ['class', 'style']
       });
-      this.editThemeObserver.observe(document.body, {
+      this.editThemeObserver.observe(this.doc.body, {
         attributes: true,
         attributeFilter: ['class', 'style']
       });
@@ -899,18 +898,18 @@ export class TokenUIRenderer {
     
     // Function to get Obsidian's accent color
     const getAccentColor = (): number => {
-      const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-h');
-      const accentS = getComputedStyle(document.documentElement).getPropertyValue('--accent-s');
-      const accentL = getComputedStyle(document.documentElement).getPropertyValue('--accent-l');
+      const accentColor = getComputedStyle(this.doc.documentElement).getPropertyValue('--accent-h');
+      const accentS = getComputedStyle(this.doc.documentElement).getPropertyValue('--accent-s');
+      const accentL = getComputedStyle(this.doc.documentElement).getPropertyValue('--accent-l');
       
       let hexColor = 0x6366f1; // Default purple if CSS vars not available
       if (accentColor && accentS && accentL) {
         // Create HSL color string and convert to hex
         const hsl = `hsl(${accentColor}, ${accentS}, ${accentL})`;
-        const tempDiv = document.body.createDiv();
+        const tempDiv = this.doc.body.createDiv();
         tempDiv.style.color = hsl;
         const computedColor = getComputedStyle(tempDiv).color;
-        document.body.removeChild(tempDiv);
+        tempDiv.remove();
         
         // Parse rgb() to hex
         const rgbMatch = computedColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);

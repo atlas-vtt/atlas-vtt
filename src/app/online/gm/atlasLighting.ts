@@ -131,8 +131,7 @@ export function tabAreaMap(renderer: unknown): AreaMap | null {
 
 /** The theme's accent colour as `#rrggbb`, resolved by the document itself; null when it gives none. */
 export function accentColour(doc: Document): string | null {
-  const probe = doc.body.createSpan();
-  probe.setCssProps({ color: 'var(--interactive-accent)' });
+  const probe = doc.body.createSpan({ cls: 'atlas-color-probe atlas-color-probe--accent' });
   const resolved = doc.defaultView?.getComputedStyle(probe).color ?? '';
   probe.remove();
   const channels = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(resolved)?.slice(1, 4);
