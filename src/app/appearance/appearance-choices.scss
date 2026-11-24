@@ -18,7 +18,11 @@
   gap: $spacing-l $spacing-xl;
 }
 
+// The accent colour against the left edge and the ivy colour against the right, the space between them, so the panel's
+// padding is the same on both sides.
 .atlas-appearance-colours {
+  justify-content: space-between;
+
   > .atlas-setting-group {
     width: min-content;
     max-width: 100%;
