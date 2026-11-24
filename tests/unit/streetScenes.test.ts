@@ -19,7 +19,7 @@ it('glues a mimic into a mimic\'s square, and a plain chest or nothing into a ch
   }
 });
 
-it('shows a part of a photo that lies within it, at a size from blocky to almost sharp', () => {
+it('shows a part of a photo that lies within it, slightly blocky at most', () => {
   const random = seeded(6);
   const pixels = new Set<number>();
   for (let at = 0; at < 60; at += 1) {
@@ -28,8 +28,8 @@ it('shows a part of a photo that lies within it, at a size from blocky to almost
     expect(scene.cropY + scene.cropSide).toBeLessThanOrEqual(1);
     pixels.add(scene.pixels);
   }
-  expect(Math.min(...pixels)).toBeLessThanOrEqual(18);
-  expect(Math.max(...pixels)).toBeGreaterThanOrEqual(70);
+  expect(Math.min(...pixels)).toBeGreaterThanOrEqual(80);
+  expect(Math.max(...pixels)).toBeGreaterThanOrEqual(160);
 });
 
 it('deals street rounds whose every square is its own upright scene, and keeps the style for new squares', () => {

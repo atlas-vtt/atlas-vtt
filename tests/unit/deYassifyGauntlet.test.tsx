@@ -2,7 +2,7 @@
 import { act, fireEvent, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { confirmDeYassify } from '../../src/app/appearance/deYassify/confirmDeYassify';
-import { DE_YASSIFY_STALL_MS } from '../../src/app/appearance/deYassify/DeYassifyGauntlet';
+import { DE_YASSIFY_FAIL_CHANCE, DE_YASSIFY_STALL_MS } from '../../src/app/appearance/deYassify/DeYassifyGauntlet';
 import { dealRound } from '../../src/app/appearance/deYassify/mimicCaptcha';
 
 /** Chest rounds only: street squares draw on a canvas, which jsdom has not (tests/gpu/streetSquares.gpu.test.ts). */
@@ -19,6 +19,17 @@ function seeded(seed: number): () => number {
   return () => {
     state = (state * 1664525 + 1013904223) % 4294967296;
     return state / 4294967296;
+  };
+}
+
+/** `seed`'s randomness, after a first draw of `check` for the security check, the flow's first draw (0.99 lets it pass). */
+function afterCheck(check: number, seed: number): () => number {
+  const rest = seeded(seed);
+  let first = true;
+  return () => {
+    if (!first) return rest();
+    first = false;
+    return check;
   };
 }
 
@@ -59,7 +70,7 @@ it('keeps Yassify on when the dialog is closed with Escape', async () => {
 
 it('turns Yassify off only after a wait, the extra-sure ask, a security check that asks twice to go on, and a captcha that fails twice whatever is picked', async () => {
   vi.useFakeTimers();
-  const result = confirmDeYassify({ random: seeded(3), deal: chestsOnly });
+  const result = confirmDeYassify({ random: afterCheck(0.99, 3), deal: chestsOnly });
   await act(async () => {});
   await press('Yes');
   expect(screen.getByText('De-yassifying…')).toBeTruthy();
@@ -105,12 +116,26 @@ it('turns Yassify off only after a wait, the extra-sure ask, a security check th
 
 it('keeps Yassify on when the GM stops at the slow security check', async () => {
   vi.useFakeTimers();
-  const result = confirmDeYassify({ random: seeded(4), deal: chestsOnly });
+  const result = confirmDeYassify({ random: afterCheck(0.99, 4), deal: chestsOnly });
   await act(async () => {});
   await press('Yes');
   await act(async () => { vi.advanceTimersByTime(DE_YASSIFY_STALL_MS); });
   await press('Yes');
   await act(async () => { vi.advanceTimersByTime(DE_YASSIFY_STALL_MS); });
   await press('No');
+  await expect(result).resolves.toBe(false);
+});
+
+it('now and then just fails at the security check, and Yassify stays on', async () => {
+  vi.useFakeTimers();
+  const result = confirmDeYassify({ random: afterCheck(DE_YASSIFY_FAIL_CHANCE / 2, 5), deal: chestsOnly });
+  await act(async () => {});
+  await press('Yes');
+  await act(async () => { vi.advanceTimersByTime(DE_YASSIFY_STALL_MS); });
+  await press('Yes');
+  await act(async () => { vi.advanceTimersByTime(DE_YASSIFY_STALL_MS); });
+  expect(screen.getByText('Turning it off failed.')).toBeTruthy();
+  expect(screen.queryByText('Hey, this is taking quite a while. Do you want to continue?')).toBeNull();
+  await press('OK');
   await expect(result).resolves.toBe(false);
 });

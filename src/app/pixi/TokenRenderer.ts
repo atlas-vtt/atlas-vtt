@@ -372,7 +372,9 @@ export class TokenRenderer {
       // Could add visual feedback for animation end
     });
 
-    this.tokenContainer = new Container();
+    // A render group: a change elsewhere in the viewport (a ruler drawn anew, a layer hidden for
+    // the players' frame) then makes PIXI rebuild none of the tokens' draw list
+    this.tokenContainer = new Container({ isRenderGroup: true });
     this.tokenContainer.label = 'tokenContainer';
     this.tokenContainer.sortableChildren = true;
     this.tokenContainer.eventMode = 'passive';

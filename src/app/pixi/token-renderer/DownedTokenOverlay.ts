@@ -5,6 +5,7 @@ import { addFilter, removeFilter } from '../utils/filterList';
 import { animateOnTicker } from '../utils/tickerMotion';
 import { EASE_OUT_CONTROL_POINTS } from '../../utils/motion';
 import { createDownedEmblemTexture, DOWNED_EMBLEM_TEXTURE_SIZE } from './downedEmblemTexture';
+import { TOKEN_ART_DISC_LABEL } from './tokenArtwork';
 import type { TokenGroupContainer } from './types';
 
 const MARKER_LABEL = 'downedMarker';
@@ -17,7 +18,7 @@ const MARKER_OPACITY = 0.72;
 const ENTER_DURATION_S = 0.5;
 const EXIT_DURATION_S = 0.35;
 /** Token parts that turn grey; the ring is rebuilt on resize, so `refresh` re-applies it. */
-const GREYED_PARTS = ['tokenSprite', 'tokenRing'] as const;
+const GREYED_PARTS = ['tokenSprite', TOKEN_ART_DISC_LABEL, 'tokenRing'] as const;
 
 /** Luminance greyscale, dimmed and cooled slightly so the creature reads as lifeless. */
 const LIFELESS_MATRIX: ColorMatrix = [

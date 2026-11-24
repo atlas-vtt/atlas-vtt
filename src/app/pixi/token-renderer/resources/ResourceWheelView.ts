@@ -5,6 +5,7 @@ import { RESOURCE_NUMBER_SCALE, RESOURCE_NUMBER_STYLE } from '../../ResourceBarL
 import { destroyTree } from '../../utils/destroyTree';
 import { BAR_LOOK, colorNumber } from './ResourceBarView';
 import { WHEEL_SIZE, WHEEL_START, wheelGauge, type WheelGauge } from './wheelGeometry';
+import { batched } from '../../utils/batchedGraphics';
 
 /** Width of the ring gauge, in UI units. */
 const RING_WIDTH = 3;
@@ -27,7 +28,7 @@ const FULL_SIZE_CHARACTERS = 2;
  */
 export class ResourceWheelView {
   readonly view = new Container();
-  private readonly ring = new Graphics();
+  private readonly ring = batched(new Graphics());
   private readonly text = new Text({ text: '', resolution: 3, style: RESOURCE_NUMBER_STYLE });
   private drawn = '';
 

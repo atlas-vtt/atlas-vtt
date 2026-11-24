@@ -31,6 +31,8 @@ export const appearance = {
   'appearance.deYassify.checking': 'Checking security…',
   'appearance.deYassify.slow': 'Hey, this is taking quite a while. Do you want to continue?',
   'appearance.deYassify.slowSure': 'Are you sure you want to continue?',
+  'appearance.deYassify.failed': 'Turning it off failed.',
+  'appearance.deYassify.ok': 'OK',
   'appearance.deYassify.captcha': 'Select all squares with a mimic',
   'appearance.deYassify.captchaHint': 'Click verify once there are none left',
   'appearance.deYassify.photoHint': 'If there are none, click skip. There are always some.',

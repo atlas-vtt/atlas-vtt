@@ -2,6 +2,25 @@
 
 // The de-yassify gauntlet (DeYassifyGauntlet.tsx) in Atlas' dialog frame: its questions, the pretend wait and the
 // mimic captcha. Annoying on purpose: No is the accent button, Yes a ghost one that shrinks on the second ask.
+// The dialog wears the tokens' bow on its top left corner, reaching past its edge: the frame shows what lies past
+// it (its body still scrolls on its own) and the bow takes no pointer.
+.atlas-text-dialog-backdrop .atlas-text-dialog.atlas-de-yassify-dialog {
+  position: relative;
+  overflow: visible;
+}
+
+.atlas-de-yassify__bow {
+  position: absolute;
+  // The knot (about the middle of the picture, a little above) lands on the rounded corner's curve.
+  top: -19px;
+  left: -31px;
+  z-index: 1;
+  width: 84px;
+  transform: rotate(-18deg);
+  pointer-events: none;
+  user-select: none;
+}
+
 .atlas-de-yassify__question {
   margin: 0;
   font-size: $font-ui-medium;
@@ -87,7 +106,7 @@ button.atlas-mimic-captcha__square {
     inset: 0;
     width: 100%;
     height: 100%;
-    // Drawn blocky from a tiny picture, as a captcha's squares are: hard to tell a chest from a mimic.
+    // Drawn a little blocky from a small picture, as a captcha's squares are, never too blocky to tell.
     image-rendering: pixelated;
     filter: brightness(var(--atlas-mimic-brightness, 1));
     transform: translate(var(--atlas-mimic-shift-x, 0), var(--atlas-mimic-shift-y, 0)) scale(var(--atlas-mimic-zoom, 1)) rotate(var(--atlas-mimic-turn, 0deg));

@@ -4,6 +4,7 @@ import { createDialogShell } from '../../ui/dialogShell';
 import { t } from '../../i18n';
 import { DeYassifyGauntlet } from './DeYassifyGauntlet';
 import type { DealRound } from './MimicCaptcha';
+import bowPicture from '../../assets/yassify/bow.webp';
 
 /**
  * Runs the de-yassify gauntlet in an Atlas dialog. True only once the GM got through all of it; any No, the close
@@ -13,6 +14,10 @@ export function confirmDeYassify({ random, deal }: { random?: () => number; deal
   return new Promise((resolve) => {
     let done = false;
     const shell = createDialogShell(t('appearance.deYassify.title'), { icon: 'sparkles', onDismiss: () => close(false) });
+    // The dialog is yassified too: the tokens' bow pinned on its top left corner.
+    const frame = shell.dialog.parentElement;
+    frame?.addClass('atlas-de-yassify-dialog');
+    frame?.createEl('img', { cls: 'atlas-de-yassify__bow', attr: { src: bowPicture, alt: '', draggable: 'false' } });
     const root = createRoot(shell.dialog);
     function close(deYassify: boolean): void {
       if (done) return;
