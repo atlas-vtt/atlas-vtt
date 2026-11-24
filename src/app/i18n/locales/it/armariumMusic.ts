@@ -58,6 +58,8 @@ export const armariumMusic: Translation = {
   'armariumMusic.pick.title.music-track': 'Condividi un brano',
   'armariumMusic.pick.albums': 'Album',
   'armariumMusic.pick.albumsHint': 'Ogni etichetta della tua musica è un album.',
+  'armariumMusic.pick.tracks': 'Brani',
+  'armariumMusic.pick.tracksHint': 'Oppure spunta i brani che compongono l\'album.',
   'armariumMusic.pick.search': 'Cerca nella tua musica',
   'armariumMusic.pick.noMatch': 'Nessun brano corrisponde.',
   'armariumMusic.pick.loading': 'Lettura della tua musica',

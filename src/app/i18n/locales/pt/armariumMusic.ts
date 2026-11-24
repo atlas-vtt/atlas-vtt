@@ -58,6 +58,8 @@ export const armariumMusic: Translation = {
   'armariumMusic.pick.title.music-track': 'Compartilhar uma faixa',
   'armariumMusic.pick.albums': 'Álbuns',
   'armariumMusic.pick.albumsHint': 'Cada tag da sua música é um álbum.',
+  'armariumMusic.pick.tracks': 'Faixas',
+  'armariumMusic.pick.tracksHint': 'Ou marque as faixas que compõem o álbum.',
   'armariumMusic.pick.search': 'Buscar na sua música',
   'armariumMusic.pick.noMatch': 'Nenhuma faixa corresponde.',
   'armariumMusic.pick.loading': 'Lendo sua música',

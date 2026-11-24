@@ -58,6 +58,8 @@ export const armariumMusic: Translation = {
   'armariumMusic.pick.title.music-track': 'Опубликовать трек',
   'armariumMusic.pick.albums': 'Альбомы',
   'armariumMusic.pick.albumsHint': 'Каждый тег вашей музыки — это альбом.',
+  'armariumMusic.pick.tracks': 'Треки',
+  'armariumMusic.pick.tracksHint': 'Или отметьте треки, из которых состоит альбом.',
   'armariumMusic.pick.search': 'Поиск по вашей музыке',
   'armariumMusic.pick.noMatch': 'Ни один трек не подходит.',
   'armariumMusic.pick.loading': 'Чтение вашей музыки',

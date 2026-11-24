@@ -81,6 +81,7 @@ export function MusicSharePicker({ app, kind, onPick, onClose }: MusicSharePicke
   const searchRef = useRef<HTMLInputElement>(null);
   const titleId = useId();
   const albumsId = useId();
+  const tracksId = useId();
   const reading = useMusicChoices(app);
   const [query, setQuery] = useState('');
   const [ticked, setTicked] = useState<readonly string[]>([]);
@@ -94,6 +95,32 @@ export function MusicSharePicker({ app, kind, onPick, onClose }: MusicSharePicke
   const showAlbums = album && query.trim() === '' && (choices?.albums.length ?? 0) > 0;
   const tickedFiles = (choices?.tracks ?? []).filter((track) => ticked.includes(track.file.path)).map((track) => track.file);
   const toggle = (path: string): void => setTicked((held) => (held.includes(path) ? held.filter((each) => each !== path) : [...held, path]));
+
+  /** The tracks found, to tick for an album or to choose as the track. */
+  const trackList = (listClass: string, label: { 'aria-label': string } | { 'aria-labelledby': string }): React.ReactNode => (
+    <ul className={listClass} {...label}>
+      {found.map((track) => {
+        const on = ticked.includes(track.file.path);
+        return (
+          <li key={track.file.path}>
+            <button
+              type="button"
+              className="atlas-item-pick__item"
+              {...(album ? { 'aria-pressed': on } : {})}
+              onClick={() => (album ? toggle(track.file.path) : onPick([track.file], track.name))}
+            >
+              <span className="atlas-item-pick__icon">{album && on ? <Check aria-hidden /> : <Music aria-hidden />}</span>
+              <span className="atlas-music-pick__names">
+                <span className="atlas-item-pick__name">{track.name}</span>
+                {track.where !== '' && <span className="atlas-music-pick__where">{track.where}</span>}
+              </span>
+              {!album && <ChevronRight className="atlas-item-pick__go" aria-hidden />}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
 
   const body = ((): React.ReactNode => {
     if (reading.status === 'reading') {
@@ -110,49 +137,33 @@ export function MusicSharePicker({ app, kind, onPick, onClose }: MusicSharePicke
     if (choices.tracks.length === 0) return <p className="atlas-transfer-text">{t('armariumMusic.pick.empty')}</p>;
     if (showAlbums) {
       return (
-        <section className="atlas-music-pick__section" aria-labelledby={albumsId}>
-          <span id={albumsId} className="atlas-transfer-section__title">{t('armariumMusic.pick.albums')}</span>
-          <ul className="atlas-item-pick__list">
-            {choices.albums.map((each) => (
-              <li key={each.key}>
-                <button type="button" className="atlas-item-pick__item" onClick={() => onPick(each.files, each.name)}>
-                  <span className="atlas-item-pick__icon"><Tag aria-hidden /></span>
-                  <span className="atlas-item-pick__name">{each.name}</span>
-                  <span className="atlas-music-pick__count">{t('armariumMusic.trackCount', { count: each.files.length })}</span>
-                  <ChevronRight className="atlas-item-pick__go" aria-hidden />
-                </button>
-              </li>
-            ))}
-          </ul>
-          <span className="atlas-transfer-hint">{t('armariumMusic.pick.albumsHint')}</span>
-        </section>
+        <>
+          <section className="atlas-music-pick__section" aria-labelledby={albumsId}>
+            <span id={albumsId} className="atlas-transfer-section__title">{t('armariumMusic.pick.albums')}</span>
+            <ul className="atlas-item-pick__list atlas-music-pick__list--half">
+              {choices.albums.map((each) => (
+                <li key={each.key}>
+                  <button type="button" className="atlas-item-pick__item" onClick={() => onPick(each.files, each.name)}>
+                    <span className="atlas-item-pick__icon"><Tag aria-hidden /></span>
+                    <span className="atlas-item-pick__name">{each.name}</span>
+                    <span className="atlas-music-pick__count">{t('armariumMusic.trackCount', { count: each.files.length })}</span>
+                    <ChevronRight className="atlas-item-pick__go" aria-hidden />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <span className="atlas-transfer-hint">{t('armariumMusic.pick.albumsHint')}</span>
+          </section>
+          <section className="atlas-music-pick__section" aria-labelledby={tracksId}>
+            <span id={tracksId} className="atlas-transfer-section__title">{t('armariumMusic.pick.tracks')}</span>
+            {trackList('atlas-item-pick__list atlas-music-pick__list--half', { 'aria-labelledby': tracksId })}
+            <span className="atlas-transfer-hint">{t('armariumMusic.pick.tracksHint')}</span>
+          </section>
+        </>
       );
     }
     if (found.length === 0) return <p className="atlas-transfer-text atlas-transfer-text--muted">{t('armariumMusic.pick.noMatch')}</p>;
-    return (
-      <ul className="atlas-item-pick__list" aria-label={t(`armariumMusic.pick.title.${kind}`)}>
-        {found.map((track) => {
-          const on = ticked.includes(track.file.path);
-          return (
-            <li key={track.file.path}>
-              <button
-                type="button"
-                className="atlas-item-pick__item"
-                {...(album ? { 'aria-pressed': on } : {})}
-                onClick={() => (album ? toggle(track.file.path) : onPick([track.file], track.name))}
-              >
-                <span className="atlas-item-pick__icon">{album && on ? <Check aria-hidden /> : <Music aria-hidden />}</span>
-                <span className="atlas-music-pick__names">
-                  <span className="atlas-item-pick__name">{track.name}</span>
-                  {track.where !== '' && <span className="atlas-music-pick__where">{track.where}</span>}
-                </span>
-                {!album && <ChevronRight className="atlas-item-pick__go" aria-hidden />}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    );
+    return trackList('atlas-item-pick__list', { 'aria-label': t(`armariumMusic.pick.title.${kind}`) });
   })();
 
   return (

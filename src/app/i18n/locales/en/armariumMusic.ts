@@ -61,6 +61,8 @@ export const armariumMusic = {
   'armariumMusic.pick.title.music-track': 'Share a track',
   'armariumMusic.pick.albums': 'Albums',
   'armariumMusic.pick.albumsHint': 'Each tag of your music is an album.',
+  'armariumMusic.pick.tracks': 'Tracks',
+  'armariumMusic.pick.tracksHint': 'Or tick the tracks that make the album.',
   'armariumMusic.pick.search': 'Search your music',
   'armariumMusic.pick.noMatch': 'No track matches.',
   'armariumMusic.pick.loading': 'Reading your music',

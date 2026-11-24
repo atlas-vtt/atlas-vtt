@@ -58,6 +58,8 @@ export const armariumMusic: Translation = {
   'armariumMusic.pick.title.music-track': '分享单曲',
   'armariumMusic.pick.albums': '专辑',
   'armariumMusic.pick.albumsHint': '你音乐中的每个标签都是一张专辑。',
+  'armariumMusic.pick.tracks': '曲目',
+  'armariumMusic.pick.tracksHint': '或者勾选组成专辑的曲目。',
   'armariumMusic.pick.search': '搜索你的音乐',
   'armariumMusic.pick.noMatch': '没有匹配的曲目。',
   'armariumMusic.pick.loading': '正在读取你的音乐',

@@ -154,6 +154,11 @@ $title-input-height: 28px;
     @include atlas-flex-col($gap: $spacing-s);
   }
 
+  // Tags and tracks stand one above the other: each list scrolls in its half.
+  &__list--half.atlas-item-pick__list {
+    max-height: min(220px, 28vh);
+  }
+
   &__names {
     @include atlas-flex-col($gap: 0);
     flex: 1;
