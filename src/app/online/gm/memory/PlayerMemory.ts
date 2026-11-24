@@ -117,7 +117,10 @@ export class PlayerMemory {
     return true;
   }
 
-  /** Makes the memory what `change` gives of it as it is now, with what was stamped since: what remains of a removal by the GM. */
+  /**
+   * Makes the memory what `change` gives of it as it is now, with what was stamped since: what remains of a
+   * removal by the GM. What the player sees then is recorded again at the next stamp.
+   */
   async change(change: (png: MemoryPng | null) => Promise<MemoryPng | null>): Promise<void> {
     if (this.raster !== null && this.dirty) {
       this.dirty = false;
@@ -126,6 +129,7 @@ export class PlayerMemory {
     const next = await change(this.savedPng);
     await this.raster?.replace(next);
     this.savedPng = next;
+    this.stamped = null;
   }
 
   /** The store was given `png`. */

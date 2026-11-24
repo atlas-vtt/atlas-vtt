@@ -108,6 +108,7 @@ export class FloorMemories {
       } finally {
         this.removing--;
         for (const player of this.memories.keys()) this.ports.changed(player);
+        if (this.memories.size > 0) this.stamps.request();
       }
     });
   }
