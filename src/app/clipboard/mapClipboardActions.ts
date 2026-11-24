@@ -17,8 +17,10 @@ import { withoutOffMap } from '../tokens/offMap';
 type ClipboardStore = Pick<StoreApi<ViewAtlasState>, 'getState'>;
 
 /** Players never edit the map; the wall tool's selected lights are copied through its own selection. */
-function canEditMapObjects(state: ViewAtlasState): boolean {
-  return !state.isPlayerView;
+function canEditMapObjects(state: ViewAtlasState, content?: MapObjectContent): boolean {
+  if (state.isPlayerView) return false;
+  if (state.activeTool !== 'wall') return true;
+  return state.selectedIds.some((id) => !!levelObjects(state).lights[id]) || (content?.lights?.length ?? 0) > 0;
 }
 
 /**
@@ -76,7 +78,7 @@ export async function cutSelection(store: ClipboardStore): Promise<boolean> {
 export async function pasteClipboard(store: ClipboardStore, target: Point): Promise<string[]> {
   const copied = await readMapClipboard();
   const state = store.getState();
-  if (!copied || !canEditMapObjects(state)) return [];
+  if (!copied || !canEditMapObjects(state, copied)) return [];
   const content = { ...copied, pins: copied.pins.filter((pin) => mayLinkFromScene(state.mapPath, pin.notePath)) };
   if (countMapObjects(content) === 0) return [];
   const placed = placeMapObjects(content, pasteOffset(content, target, state.grid), state.grid, levelObjects(state));

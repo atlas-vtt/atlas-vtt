@@ -254,6 +254,7 @@ describe('map clipboard lights', () => {
   it('copies and pastes a light with its settings and translated area geometry', async () => {
     const { store } = createStore(NO_GRID);
     const original = addLight(store, 25, 25);
+    store.setState({ activeTool: 'wall' });
     store.getState().setSelection([original]);
     expect(await copySelection(store)).toBe(true);
     const copies = await pasteClipboard(store, { x: 125, y: 125 });
