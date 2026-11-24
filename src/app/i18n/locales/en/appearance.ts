@@ -28,6 +28,7 @@ export const appearance = {
   'appearance.deYassify.yes': 'Yes',
   'appearance.deYassify.no': 'No',
   'appearance.deYassify.working': 'De-yassifying…',
+  'appearance.deYassify.summoning': 'Summoning a captcha…',
   'appearance.deYassify.captcha': 'Select all squares with a mimic',
   'appearance.deYassify.captchaHint': 'Click verify once there are none left',
   'appearance.deYassify.square': 'Square {number}',

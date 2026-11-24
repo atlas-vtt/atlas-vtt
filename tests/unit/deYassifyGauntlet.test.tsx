@@ -48,7 +48,7 @@ it('keeps Yassify on when the dialog is closed with Escape', async () => {
   await expect(result).resolves.toBe(false);
 });
 
-it('turns Yassify off only after the wait, the extra-sure ask and a captcha that fails twice whatever is picked', async () => {
+it('turns Yassify off only after a wait, the extra-sure ask, another wait and a captcha that fails twice whatever is picked', async () => {
   vi.useFakeTimers();
   const result = confirmDeYassify(seeded(3));
   await act(async () => {});
@@ -60,6 +60,10 @@ it('turns Yassify off only after the wait, the extra-sure ask and a captcha that
   expect(button('Yes').className).toContain('atlas-de-yassify__yes--tiny');
   expect(button('No').className).toContain('atlas-de-yassify__no--huge');
   await press('Yes');
+  expect(screen.getByText('Summoning a captcha…')).toBeTruthy();
+  await act(async () => { vi.advanceTimersByTime(DE_YASSIFY_STALL_MS - 1); });
+  expect(screen.queryByText('Select all squares with a mimic')).toBeNull();
+  await act(async () => { vi.advanceTimersByTime(1); });
   expect(screen.getByText('Select all squares with a mimic')).toBeTruthy();
 
   // Right twice, and still wrong.
