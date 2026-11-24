@@ -130,7 +130,8 @@ export class TesseraEncoderPool implements TesseraEncoder {
   }
 
   private answered(reply: EncoderReply): void {
-    this.settle(reply.id, 'error' in reply ? FAILED : reply.blob);
+    if ('error' in reply) this.settle(reply.id, FAILED);
+    else this.settle(reply.id, reply.encoded && new Blob([reply.encoded.bytes], { type: reply.encoded.type }));
   }
 
   private settle(id: number, answer: Answer): void {

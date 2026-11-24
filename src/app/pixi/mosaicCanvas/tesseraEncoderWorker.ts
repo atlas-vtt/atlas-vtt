@@ -31,11 +31,12 @@ function serve(port: MessagePort): void {
     const { id, bitmap } = event.data;
     let reply: EncoderReply;
     try {
-      reply = { id, blob: bitmap ? await encode(bitmap) : null };
+      const blob = bitmap ? await encode(bitmap) : null;
+      reply = { id, encoded: blob ? { bytes: await blob.arrayBuffer(), type: blob.type } : null };
     } catch (error) {
       reply = { id, error: error instanceof Error ? error.message : String(error) };
     }
-    port.postMessage(reply);
+    port.postMessage(reply, 'encoded' in reply && reply.encoded ? [reply.encoded.bytes] : []);
   };
 }
 

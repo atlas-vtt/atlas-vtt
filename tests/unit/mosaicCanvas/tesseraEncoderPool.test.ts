@@ -29,7 +29,8 @@ class FakeEncoderPort extends EventTarget {
   start(): void {}
 }
 
-const encodes: Answer = ({ id, bitmap }) => ({ id, blob: bitmap ? new Blob(['remote'], { type: 'image/webp' }) : null });
+const encoded = (text: string, type: string): { bytes: ArrayBuffer; type: string } => ({ bytes: new TextEncoder().encode(text).buffer, type });
+const encodes: Answer = ({ id, bitmap }) => ({ id, encoded: bitmap ? encoded('remote', 'image/webp') : null });
 const asPorts = (ports: FakeEncoderPort[]): MessagePort[] => ports.map((port) => port as unknown as MessagePort);
 const rect = { x: 510, y: 0, width: 512, height: 300 };
 const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 5));
@@ -78,7 +79,7 @@ describe('TesseraEncoderPool', () => {
     const graphics = new FakeTesseraGraphics();
     const pool = new TesseraEncoderPool(graphics);
     const silent = new FakeEncoderPort(() => null);
-    const failing = new FakeEncoderPort(({ id, bitmap }) => (bitmap ? { id, error: 'out of memory' } : { id, blob: null }));
+    const failing = new FakeEncoderPort(({ id, bitmap }) => (bitmap ? { id, error: 'out of memory' } : { id, encoded: null }));
     pool.attach(asPorts([silent, failing]));
     await settle();
     const source = new FakeBitmap(1024, 300, 'resized');
@@ -93,7 +94,7 @@ describe('TesseraEncoderPool', () => {
   it('takes an encoder that writes another format than this thread for one it cannot use', async () => {
     const graphics = new FakeTesseraGraphics();
     const pool = new TesseraEncoderPool(graphics);
-    pool.attach(asPorts([new FakeEncoderPort(({ id, bitmap }) => ({ id, blob: bitmap ? new Blob(['png'], { type: 'image/png' }) : null }))]));
+    pool.attach(asPorts([new FakeEncoderPort(({ id, bitmap }) => ({ id, encoded: bitmap ? encoded('png', 'image/png') : null }))]));
     await settle();
     const blob = await pool.encode(new FakeBitmap(1024, 300, 'resized'), rect);
     expect(blob.type).toBe('image/webp');
