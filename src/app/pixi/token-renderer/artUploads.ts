@@ -4,6 +4,12 @@ import { UPDATE_PRIORITY, type TextureSource, type Ticker } from 'pixi.js';
 export const ART_UPLOAD_BUDGET_MS = 4;
 /** CPU milliseconds of art uploads a frame may take while a load holds the canvas: nothing is drawn whose frames they would slow. */
 export const ART_UPLOAD_HELD_BUDGET_MS = 12;
+/**
+ * Tokens that go on to the map in one frame that draws it. A token's first draw also rasterises its
+ * name and numbers, about 0.6 ms of main thread each: a floor of 300 tokens switched back to, whose
+ * art was all on the GPU, drew them in one frame of 200 ms.
+ */
+export const TOKENS_PER_FRAME = 12;
 
 /** The part of a renderer the uploads use. */
 export interface ArtUploader {
@@ -18,14 +24,15 @@ export interface ArtUploadsOptions {
   ticker: Ticker;
   /** The renderer that draws the art; null uploads nothing ahead (the art then uploads in the frame that first draws it). */
   renderer: () => ArtUploader | null;
-  /** CPU milliseconds the uploads of one frame may take; at least one texture is uploaded per frame. */
-  budgetMs: () => number;
+  /** Whether a load holds the canvas (`rendersHeld`): no frame is drawn, so uploads take more of each and every token goes on. */
+  held: () => boolean;
   now?: () => number;
 }
 
 interface Waiting {
+  source: TextureSource;
   distance: number;
-  resolve: Array<() => void>;
+  resolve: () => void;
 }
 
 /**
@@ -33,10 +40,11 @@ interface Waiting {
  * the art of tokens nearest the view first. A texture the renderer meets first in a frame it draws is
  * uploaded there and its mipmaps built, about 1.5 ms of main thread for a 1024 px image and more on the
  * GPU, so a scene of 300 tokens drew its first frame in 670 ms. The token renderer adds a token to the
- * map once its art is uploaded, so a scene's reveal, which waits for its tokens, uploads no art.
+ * map once its art is uploaded, so a scene's reveal, which waits for its tokens, uploads no art; outside
+ * a load, tokens go on a few a frame (`TOKENS_PER_FRAME`).
  */
 export class ArtUploads {
-  private readonly waiting = new Map<TextureSource, Waiting>();
+  private waiting: Waiting[] = [];
   private ticking = false;
   private readonly now: () => number;
 
@@ -44,17 +52,11 @@ export class ArtUploads {
     this.now = options.now ?? ((): number => performance.now());
   }
 
-  /** Resolves once `source` is on the GPU; `distance` (from the view's centre) orders the uploads, nearest first. */
+  /** Resolves once `source` is on the GPU and the token may go on; `distance` (from the view's centre) orders them, nearest first. */
   whenUploaded(source: TextureSource, distance: number): Promise<void> {
     if (!this.options.renderer() || source.destroyed) return Promise.resolve();
     return new Promise((resolve) => {
-      const waiting = this.waiting.get(source);
-      if (waiting) {
-        waiting.distance = Math.min(waiting.distance, distance);
-        waiting.resolve.push(resolve);
-      } else {
-        this.waiting.set(source, { distance, resolve: [resolve] });
-      }
+      this.waiting.push({ source, distance, resolve });
       this.tick(true);
     });
   }
@@ -62,9 +64,9 @@ export class ArtUploads {
   /** Lets every waiting token go on; their art uploads when first drawn. */
   destroy(): void {
     this.tick(false);
-    const waiting = [...this.waiting.values()];
-    this.waiting.clear();
-    for (const { resolve } of waiting) for (const done of resolve) done();
+    const waiting = this.waiting;
+    this.waiting = [];
+    for (const { resolve } of waiting) resolve();
   }
 
   private tick(on: boolean): void {
@@ -80,12 +82,15 @@ export class ArtUploads {
       this.destroy();
       return;
     }
-    const order = [...this.waiting.entries()].sort((a, b) => a[1].distance - b[1].distance);
+    const held = this.options.held();
+    const budget = held ? ART_UPLOAD_HELD_BUDGET_MS : ART_UPLOAD_BUDGET_MS;
+    const tokens = held ? Infinity : TOKENS_PER_FRAME;
+    const order = this.waiting.sort((a, b) => a.distance - b.distance);
     const start = this.now();
-    const budget = this.options.budgetMs();
-    for (const [source, waiting] of order) {
-      if (this.now() - start >= budget && this.waiting.size < order.length) break;
-      this.waiting.delete(source);
+    let done = 0;
+    while (done < order.length && done < tokens && (done === 0 || this.now() - start < budget)) {
+      const { source, resolve } = order[done]!;
+      done++;
       try {
         // Uploads once; a texture already on the GPU is only bound
         if (!source.destroyed) renderer.texture.initSource(source);
@@ -93,8 +98,9 @@ export class ArtUploads {
         // The frame that draws it tries again; an error must not reach the ticker, which stops at one
         console.warn('[ArtUploads] Token art could not be uploaded ahead:', error);
       }
-      for (const done of waiting.resolve) done();
+      resolve();
     }
-    if (this.waiting.size === 0) this.tick(false);
+    this.waiting = order.slice(done);
+    if (this.waiting.length === 0) this.tick(false);
   };
 }

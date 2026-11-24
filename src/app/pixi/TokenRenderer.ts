@@ -29,7 +29,7 @@ import { TokenStatblockLinkService } from '../services/TokenStatblockLinkService
 import { SpriteFactory } from './token-renderer/SpriteFactory';
 import { computeTokenPixelSize } from './token-renderer/tokenSizing';
 import { TextureCache } from './token-renderer/TextureCache';
-import { ArtUploads, ART_UPLOAD_BUDGET_MS, ART_UPLOAD_HELD_BUDGET_MS } from './token-renderer/artUploads';
+import { ArtUploads } from './token-renderer/artUploads';
 import { UIManager } from './token-renderer/UIManager';
 import { InteractionController } from './token-renderer/InteractionController';
 import { DragRuler, type DragRulerPath } from './token-renderer/DragRuler';
@@ -162,7 +162,7 @@ export class TokenRenderer {
   private readonly artUploads = new ArtUploads({
     ticker: Ticker.shared,
     renderer: () => this.pixiApp?.renderer ?? null,
-    budgetMs: () => (this.pixiApp && rendersHeld(this.pixiApp) ? ART_UPLOAD_HELD_BUDGET_MS : ART_UPLOAD_BUDGET_MS),
+    held: () => this.pixiApp !== null && rendersHeld(this.pixiApp),
   });
   
   // Track loading tokens
@@ -1139,7 +1139,8 @@ export class TokenRenderer {
           
           // Create sprite through factory
           tokenGroup = await this.spriteFactory.createTokenSprite(character, texture);
-          // On the GPU before the token is added: the frame that first draws it, often a scene's reveal, uploads nothing
+          // On the GPU before the token is added: the frame that first draws it, often a scene's reveal, uploads nothing.
+          // Outside a load, tokens are added a few a frame.
           await this.artUploads.whenUploaded(texture.source, this.distanceFromView(token));
 
           // Another map loaded meanwhile (possibly this one again, with its own load of this
@@ -1360,9 +1361,12 @@ export class TokenRenderer {
     return this.isDestroyed || generation !== this.mapLoadGeneration;
   }
 
-  /** Frees decoded art no token holds, keeping the art of every token on the map. */
+  /**
+   * Frees decoded art no token holds, keeping the art of every token on the map, on every level: a
+   * floor switched back to decodes and uploads none of its art again.
+   */
   private evictUnusedArt(): void {
-    const tokens = Object.values(mapTokens(levelObjects(this.store.getState())));
+    const tokens = Object.values(mapTokens(everyLevelObjects(this.store.getState())));
     this.textureCache.evictUnused([...tokens.map((token) => token.imagePath ?? ''), ...this.previousSceneArt]);
   }
 
