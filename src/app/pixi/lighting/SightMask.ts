@@ -25,7 +25,11 @@ export interface SightMaskShapes {
   closed?: LevelStack | null;
 }
 
-/** The longest side of the mask in texels: a larger map gets texels of more than one world pixel. */
+/**
+ * The longest side of the mask in texels: a larger map gets texels of more than one world pixel.
+ * A longer side hides less of what is shown and costs by its square: a composition reads the
+ * canvas back and uploads it, 27 to 56 ms at this size.
+ */
 export const MASK_MAX_SIDE = 2048;
 const BLACK = 'rgba(0, 0, 0, 1)';
 /**
@@ -86,7 +90,9 @@ function assertLive(context: CanvasRenderingContext2D): void {
  * Nothing works the hidden area out: the canvas is filled black and every shown polygon is
  * erased from it, so a place no polygon covers stays black whatever the polygons' corners do.
  * A magical darkness is filled black on a second canvas, what sees into it erased there, and
- * the rest drawn over the first.
+ * the rest drawn over the first. Drawn polygons cannot stand in for the canvas: PIXI's `cut()`
+ * draws a hole right only where it lies inside its fill and apart from the other holes, and a
+ * hidden area worked out with the clipping library loses to rounding a pocket nobody sees.
  *
  * A canvas blends the texels an edge passes through, so after composing a texel is open only if
  * it was erased completely and so were the eight around it; every other texel is opaque black.

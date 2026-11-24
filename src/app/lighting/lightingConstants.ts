@@ -176,6 +176,7 @@ export const BOUNCE = {
   cascades: 4,
   emitTexel: 4,
   spread: 250,
+  /** Low enough that past a light's dim radius, where the rules count no light, its bounce stays under a fiftieth of its bright level on a mid-grey floor. */
   floorGain: 0.001,
   wallGain: 0.6,
   gain: 1,

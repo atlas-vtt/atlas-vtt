@@ -31,7 +31,8 @@ const OPAQUE_BLACK: [number, number, number, number] = [0, 0, 0, 1];
  * there in pieces of the canvas' size, texel on pixel, and hands each piece out to be copied
  * with `drawImage` before the next is drawn. Reading the texture back instead would stall the
  * main thread for as long as the pixels take (22 ms for 3840 × 2160), and a canvas resized for
- * the copy allocates its drawing buffer twice a frame.
+ * the copy allocates its drawing buffer twice a frame. PIXI's `multiView` is no way to the
+ * second canvas either: it draws nothing through the back buffer the view renders with.
  *
  * `copy` leaves the last piece on the canvas: whoever calls it renders the canvas' own frame in
  * the same task, before the browser shows it.

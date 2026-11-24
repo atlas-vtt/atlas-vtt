@@ -109,6 +109,7 @@ export default defineConfig({
           browser: {
             enabled: true,
             headless: true,
+            // Scrollbars are shown: a hidden one takes no room, so a layout shift it causes could not be measured.
             provider: playwright({ launchOptions: { channel: 'chromium', ignoreDefaultArgs: ['--hide-scrollbars'] } }),
             instances: [{ browser: 'chromium' }],
           },
