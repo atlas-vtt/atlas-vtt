@@ -30,7 +30,7 @@ $list-shade: scaled(44px);
   border: $border-width-m solid transparent;
   @include atlas-panel-radius($surface-radius);
 
-  // The Atlas VTT theme's corner ivy (`useThemeIvy`, `lendThemeIvy`): the whole vine behind the surface
+  // The Medieval look's corner ivy (`useThemeIvy`, `lendThemeIvy`): the whole vine behind the surface
   --atlas-theme-ivy-scale: #{scaled(0.2)};
   @include atlas-theme-ivy-corners(-2);
 
@@ -255,6 +255,12 @@ $list-shade: scaled(44px);
     border-color: initiative-side-line(var(--color-green));
   }
 
+  // Kept beside the map, so no token stands for it there: a plain grey stroke, over the side's green; the turn's colour
+  // and the side with the turn still win
+  &--off-map {
+    border-color: color-mix(in oklch, var(--mono-100) 38%, transparent);
+  }
+
   // Active turn state
   // Ring and glow are inset: the list scrolls, so anything drawn outside the
   // card box is clipped on the straight edges and leaves ragged corners.
@@ -284,6 +290,56 @@ $list-shade: scaled(44px);
   }
 }
 
+// A combatant's conditions on its card, as its token shows them (`CardConditions`, `renderConditions`), each ringed
+// in the panel's surface so the badges read apart where they overlap; the tile and the compact line place them
+.atlas-initiative-card__conditions {
+  display: flex;
+  align-items: center;
+}
+
+.atlas-initiative-card__condition {
+  display: flex;
+  border-radius: $radius-full;
+  box-shadow: 0 0 0 scaled(1.5px) var(--background-primary);
+}
+
+// The count of the conditions the card leaves out, named for assistive tech and by the GM's tooltip
+.atlas-initiative-card__condition-more {
+  display: grid;
+  place-items: center;
+  min-width: scaled(18px);
+  height: scaled(18px);
+  padding-inline: scaled(3px);
+  box-sizing: border-box;
+  border-radius: $radius-full;
+  background: var(--background-secondary);
+  box-shadow: 0 0 0 scaled(1.5px) var(--background-primary), inset 0 0 0 1px var(--background-modifier-border);
+  color: var(--text-normal);
+  font-size: scaled(10px);
+  font-weight: $font-weight-semibold;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+// Every condition a combatant is under, named in the tooltip its hover opens: in the GM's tooltip beside the tracker
+// and the players' tip beside their list, a row each, badge and name, as uniform as the tooltip's own padding
+.atlas-initiative-conditions-tip {
+  display: flex;
+  flex-direction: column;
+  gap: scaled(6px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atlas-initiative-conditions-tip__row {
+  display: flex;
+  align-items: center;
+  gap: scaled(8px);
+  font-weight: $font-weight-medium;
+  white-space: nowrap;
+}
+
 // The turn began: who holds it lights up once (`initiative-turn-flash`)
 .atlas-initiative-card--turn-flash {
   @include initiative-turn-flash('.atlas-initiative-card__art', $border-width-s);
@@ -310,8 +366,7 @@ $list-shade: scaled(44px);
 }
 
 .atlas-initiative-card__instance-badge,
-.atlas-initiative-card__hidden-badge,
-.atlas-initiative-card__off-map-badge {
+.atlas-initiative-card__hidden-badge {
   position: absolute;
   bottom: -2px;
   left: -4px;
@@ -341,21 +396,6 @@ $list-shade: scaled(44px);
   left: auto;
   padding: 0;
   pointer-events: auto;
-
-  svg {
-    width: 12px;
-    height: 12px;
-  }
-}
-
-// A combatant kept beside the map: the third corner, with its tooltip. Its token-beside-a-map
-// glyph has no stroke through it, unlike the hidden badge's eye, and is drawn muted: a note, not a warning.
-.atlas-initiative-card__off-map-badge {
-  top: -2px;
-  bottom: auto;
-  padding: 0;
-  pointer-events: auto;
-  color: var(--text-muted);
 
   svg {
     width: 12px;
@@ -472,10 +512,35 @@ $tile-corner-radius: initiative-corner-radius($tile-border);
   }
 
   .atlas-initiative-card__instance-badge,
-  .atlas-initiative-card__hidden-badge,
-  .atlas-initiative-card__off-map-badge {
+  .atlas-initiative-card__hidden-badge {
     position: static;
     border-radius: $tile-corner-radius;
+  }
+
+  // Its conditions where no token on the map shows them (`cardShowsConditions`, `--conditions`), fanned down its left edge: the stack
+  // stays in the card's middle, so one badge sits halfway down and more grow it up and down alike, each over the one
+  // before
+  .atlas-initiative-card__conditions {
+    position: absolute;
+    top: 50%;
+    left: $surface-inset;
+    z-index: 3;
+    flex-direction: column;
+    transform: translateY(-50%);
+
+    > * + * {
+      margin-block-start: scaled(-8px);
+    }
+  }
+
+  // Its left edge then holds the conditions and its top right the number, so its marks move into the free bottom right
+  // corner, in a row from it
+  &.atlas-initiative-card--conditions .atlas-initiative-card__marks {
+    top: auto;
+    left: auto;
+    right: $surface-inset;
+    bottom: $surface-inset;
+    flex-direction: row-reverse;
   }
 
   // Hidden from the players: translucent, like its token on the map

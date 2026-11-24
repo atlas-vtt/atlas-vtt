@@ -36,6 +36,8 @@ export interface DesiredVoice {
   fadeGain: number;
   /** What should reach the channel: level, sound gain, fade and silence together. */
   gain: number;
+  /** What of it reaches the channel itself, linear, of what passes its own gain: less the more goes to the room. */
+  dry: number;
   /** What it sends to the room, linear, of what passes its own gain. */
   send: number;
 }
@@ -57,13 +59,32 @@ export interface DesiredSound {
 
 const NO_ROOM_FADE: SoundFade = { at: 0, ms: 0 };
 
+/** At a full knob the room's tail is this many times as loud as what stays dry (about 3 dB over it). */
+const WET_SHARE_AT_FULL = 2;
+
+export interface ReverbMix {
+  /** What stays on the channel, linear. */
+  dry: number;
+  /** What goes to the room, linear. */
+  wet: number;
+}
+
 /**
- * A play's reverb amount as what it sends: squared, so the knob's lower half, where reverb is mostly
- * wanted, has the finer steps, as a fader's dB do. Anything from the wire that is no amount is dry.
+ * A play's reverb amount as how it splits between the channel and the room. The two keep their power
+ * together, and every room's tail is as loud as what goes in (`roomImpulse`), so turning the knob changes
+ * how wet a sound is, never how loud. The tail's share of the power grows with the amount to the fourth,
+ * so the knob's lower half, where reverb is mostly wanted, has the finer steps, as a fader's dB do.
+ * Anything from the wire that is no amount is dry.
  */
-export function reverbSend(amount: number | undefined): number {
-  if (amount === undefined || !Number.isFinite(amount) || amount <= 0) return 0;
-  return Math.min(1, amount) ** 2;
+export function reverbMix(amount: number | undefined): ReverbMix {
+  if (amount === undefined || !Number.isFinite(amount) || amount <= 0) return { dry: 1, wet: 0 };
+  const share = WET_SHARE_AT_FULL * Math.min(1, amount) ** 4;
+  return { dry: Math.sqrt(1 / (1 + share)), wet: Math.sqrt(share / (1 + share)) };
+}
+
+function mixOf(amount: number | undefined): Pick<DesiredVoice, 'dry' | 'send'> {
+  const { dry, wet } = reverbMix(amount);
+  return { dry, send: wet };
 }
 
 function silenceGain(state: TableSound, tableMs: number): number {
@@ -118,7 +139,7 @@ function voiceOf(
     soundGain,
     fadeGain,
     gain: level * soundGain * fadeGain * silence,
-    send: reverbSend(play.reverb),
+    ...mixOf(play.reverb),
   };
 }
 

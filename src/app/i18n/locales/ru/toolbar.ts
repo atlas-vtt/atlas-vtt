@@ -9,6 +9,7 @@ export const toolbar: Translation = {
   'toolbar.cone': 'Конус',
   'toolbar.fogEraser': 'Ластик тумана',
   'toolbar.fogTool': 'Туман',
+  'toolbar.lighting': 'Освещение',
   'toolbar.laser': 'Лазерная указка',
   'toolbar.lassoSelection': 'Выделение лассо',
   'toolbar.lootRoller': 'Случайные таблицы',

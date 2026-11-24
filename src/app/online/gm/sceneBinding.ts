@@ -26,6 +26,7 @@ import type { AtlasTab, TabBinding } from './sharedTab.ts';
 import type { VaultImage } from './TokenShare.ts';
 import type { AssetStoring } from './assets/assetUses.ts';
 import { showNotice } from '../../ui/notice';
+import { bumpOnTab, showDoorAsk } from './doors/doorAskDesk.ts';
 import type { NotePin } from '../../types';
 
 /** A shared view's scene and the GM's marks on it. */
@@ -139,6 +140,8 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     presentedLevel: () => store.presentedLevel,
     rendererCurrent: () => shown() && showsViewedLevel(renderer, tab.store.getState()),
     rollRequest: (from, answer) => (shown() ? ports.rollRequest(from, answer) : null),
+    askDoor: (asked) => (live() ? showDoorAsk({ app: ports.app, leaf, view: tab.view, renderer, store: tab.store, presented: store }, asked) : () => undefined),
+    bumpToken: (tokenId, dx, dy) => shown() && bumpOnTab(renderer, tokenId, dx, dy),
     now: () => timers.now(),
     setTimer: (run, ms) => timers.setTimer(() => live() && run(), ms),
     clearTimer: (timer) => timers.clearTimer(timer),

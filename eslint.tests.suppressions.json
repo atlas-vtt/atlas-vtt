@@ -1,0 +1,712 @@
+{
+  "src/app/pixi/lighting/__tests__/lightingUnavailableNotice.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "src/app/pixi/lighting/__tests__/playerDoorBadges.gpu.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "src/app/pixi/lighting/__tests__/playerMirrorLoad.gpu.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "src/app/pixi/lighting/__tests__/sceneLightingFallback.gpu.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "src/app/pixi/lighting/__tests__/sceneSightCurrent.gpu.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "src/app/pixi/lighting/__tests__/sceneSwitching.gpu.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "src/app/react/components/__tests__/rankNotes.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "src/app/services/__tests__/litSceneThumbnail.gpu.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/gpu/ctrlWheelPreview.gpu.test.ts": {
+    "atlas/test-mock-count": {
+      "count": 1
+    }
+  },
+  "tests/gpu/fogTextureLife.gpu.test.ts": {
+    "atlas/test-asserts": {
+      "count": 1
+    }
+  },
+  "tests/gpu/statblockTokenPanel.gpu.test.ts": {
+    "atlas/test-mock-count": {
+      "count": 1
+    }
+  },
+  "tests/gpu/textFitMapTools.gpu.test.ts": {
+    "atlas/test-mock-count": {
+      "count": 2
+    }
+  },
+  "tests/gpu/toolbarEditor.gpu.test.ts": {
+    "atlas/test-mock-count": {
+      "count": 1
+    }
+  },
+  "tests/gpu/toolbarEditorCard.gpu.test.ts": {
+    "atlas/test-mock-count": {
+      "count": 1
+    }
+  },
+  "tests/gpu/toolbarEditorDrag.gpu.test.ts": {
+    "atlas/test-mock-count": {
+      "count": 1
+    }
+  },
+  "tests/gpu/toolbarEditorKeys.gpu.test.ts": {
+    "atlas/test-mock-count": {
+      "count": 1
+    }
+  },
+  "tests/gpu/toolbarEditorUndoBar.gpu.test.ts": {
+    "atlas/test-mock-count": {
+      "count": 1
+    }
+  },
+  "tests/unit/account/obsidianHttp.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/armarium/armariumAssetManager.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 6
+    }
+  },
+  "tests/unit/armarium/armariumInstaller.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/armarium/installableList.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/armarium/shareDialog.test.tsx": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/assetFolderRenameSync.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/assetManager.counts.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 4
+    }
+  },
+  "tests/unit/assetManager.emptyStates.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 4
+    }
+  },
+  "tests/unit/assetManager.filterSearch.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 2
+    }
+  },
+  "tests/unit/assetManager.generateDungeon.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 6
+    }
+  },
+  "tests/unit/assetManager.mapPick.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 5
+    }
+  },
+  "tests/unit/assetManager.party.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 5
+    }
+  },
+  "tests/unit/assetManager.tab-switch.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 5
+    }
+  },
+  "tests/unit/assetManager.tag-filter.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 4
+    }
+  },
+  "tests/unit/assetService.collections.test.ts": {
+    "atlas/test-private-access": {
+      "count": 1
+    }
+  },
+  "tests/unit/assetService.deleteTokenReferences.test.ts": {
+    "atlas/test-private-access": {
+      "count": 1
+    }
+  },
+  "tests/unit/assetService.hidden-metadata.test.ts": {
+    "atlas/test-private-access": {
+      "count": 3
+    }
+  },
+  "tests/unit/assetService.loadOnce.test.ts": {
+    "atlas/test-private-access": {
+      "count": 1
+    }
+  },
+  "tests/unit/assetService.tags.test.ts": {
+    "atlas/test-private-access": {
+      "count": 1
+    }
+  },
+  "tests/unit/assetThumbnailService.test.ts": {
+    "atlas/test-private-access": {
+      "count": 1
+    }
+  },
+  "tests/unit/atlasView.reloadDuringLoad.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/atlasView.sceneFilesOnly.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/commandPalette.actions.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 4
+    }
+  },
+  "tests/unit/commandPalette.panelToggles.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 1
+    }
+  },
+  "tests/unit/dungeons/cave/greatChambers.test.ts": {
+    "atlas/test-mocks-its-subject": {
+      "count": 1
+    }
+  },
+  "tests/unit/grid.test.ts": {
+    "atlas/test-private-access": {
+      "count": 1
+    }
+  },
+  "tests/unit/gridAlignmentNotice.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/hostInitialization.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/hotkeyHelpOpening.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 10
+    }
+  },
+  "tests/unit/i18nItalian.test.tsx": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/imageDisplayService.cleanup.test.ts": {
+    "atlas/test-private-access": {
+      "count": 6
+    }
+  },
+  "tests/unit/initiativeTracker.layout.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 4
+    }
+  },
+  "tests/unit/initiativeTracker.sides.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 4
+    }
+  },
+  "tests/unit/initiativeTracker.statblock-sync.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 2
+    }
+  },
+  "tests/unit/laserPointerRenderer.viewportMoved.test.ts": {
+    "atlas/test-private-access": {
+      "count": 2
+    }
+  },
+  "tests/unit/levels/levelEditFailures.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/levels/levelHistoryFollow.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/levels/sceneLevelsPersistence.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/library/movedLibraryFolder.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/library/saveCost.test.ts": {
+    "atlas/test-pure-module-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/mainToolbar.draw-tool.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 9
+    }
+  },
+  "tests/unit/mapPersistence.flush.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/mapService.failedLoad.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/mapService.firstGridDetection.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/mapService.sceneLoads.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/mapService.unloadableFile.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/mosaicCanvas/mosaicCanvasService.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/noteYaml.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/noticeRole.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/offlineDiceInputs.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/assetStoreClient.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/bookAssets.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/bookEquip.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/bookFollowsToken.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/bookHiddenReload.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/bookItemRemoval.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/bookNestedMaps.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/bookQuests.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/bookRefillRefused.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/bookRestPicks.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/bookRests.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/bookStatblockEdits.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/bookStatblockGrant.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/bookStatblocks.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/bookTable.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/bookTableResources.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/bookWritings.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/campaignSeats.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/campaignTable.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/companionDiagnostics.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/coveredTable.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/gmLevel.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/nextTableLink.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/presentedScene.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/restingDrag.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/shownImageTable.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/statblockSheet/readOnlyNotice.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/survivesReloads.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/tableControls.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/online/gm/tableRoster.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/onlineInitiativeLists.test.ts": {
+    "atlas/test-pure-module-mock": {
+      "count": 2
+    }
+  },
+  "tests/unit/onlineInitiativeSystems.test.ts": {
+    "atlas/test-pure-module-mock": {
+      "count": 2
+    }
+  },
+  "tests/unit/onlineInitiativeTurns.test.ts": {
+    "atlas/test-pure-module-mock": {
+      "count": 2
+    }
+  },
+  "tests/unit/onlineInitiativeUnnumbered.test.ts": {
+    "atlas/test-pure-module-mock": {
+      "count": 2
+    }
+  },
+  "tests/unit/orphanedSnapshots.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/panelBoundary.test.tsx": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/pixiAppManager.hiddenPane.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/pixiRendererOrchestrator.cleanup.test.ts": {
+    "atlas/test-private-access": {
+      "count": 5
+    }
+  },
+  "tests/unit/playerInitiativeBadges.test.ts": {
+    "atlas/test-pure-module-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/playerWindowBar.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 3
+    }
+  },
+  "tests/unit/playerWindowFreeze.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/playerWindowInitiative.test.ts": {
+    "atlas/test-pure-module-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/playerWindowPresenter.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/playerWindowService.mirror.test.ts": {
+    "atlas/test-private-access": {
+      "count": 8
+    }
+  },
+  "tests/unit/playerWindowService.settings.test.ts": {
+    "atlas/test-private-access": {
+      "count": 3
+    }
+  },
+  "tests/unit/resnapTokensToGrid.test.ts": {
+    "atlas/test-private-access": {
+      "count": 1
+    }
+  },
+  "tests/unit/soundLibrary/musicPacksButton.test.tsx": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/soundLibrary/soundOfferDismissal.test.tsx": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/soundLibrary/starterPackButton.test.tsx": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/spriteFactory.tokenRingFallback.test.ts": {
+    "atlas/test-private-access": {
+      "count": 1
+    }
+  },
+  "tests/unit/statblockCombatant.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/statblockReaders.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/statblockRoutes.test.tsx": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/tokenImport.onboarding.test.ts": {
+    "atlas/test-private-access": {
+      "count": 1
+    }
+  },
+  "tests/unit/tokenNameplateTheme.test.ts": {
+    "atlas/test-private-access": {
+      "count": 1
+    }
+  },
+  "tests/unit/tokenPlacementSpawn.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/tokenRenderer.ring-update.test.ts": {
+    "atlas/test-private-access": {
+      "count": 4
+    }
+  },
+  "tests/unit/tokenRendererApiCompat.test.ts": {
+    "atlas/test-private-access": {
+      "count": 1
+    }
+  },
+  "tests/unit/tokenResizeUI.commit.test.ts": {
+    "atlas/test-private-access": {
+      "count": 1
+    }
+  },
+  "tests/unit/tokenSettingsPanel.test.tsx": {
+    "atlas/test-pure-module-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/tokenSpawnService.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/tokenUIRenderer.playerSettings.test.ts": {
+    "atlas/test-private-access": {
+      "count": 3
+    }
+  },
+  "tests/unit/toolbarAssetManagerMount.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 1
+    }
+  },
+  "tests/unit/toolbarEditTooltip.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 2
+    }
+  },
+  "tests/unit/toolbarEditor.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 2
+    }
+  },
+  "tests/unit/toolbarEditorFocus.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 2
+    }
+  },
+  "tests/unit/toolbarEditorSideBars.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 2
+    }
+  },
+  "tests/unit/toolbarEditorUndoBar.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 2
+    }
+  },
+  "tests/unit/turnBannerDisplay.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/uiRoot.panelBoundaries.test.tsx": {
+    "atlas/test-mock-count": {
+      "count": 11
+    }
+  },
+  "tests/unit/useCollectionTransfer.test.tsx": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/uvttFloorsFlow.test.tsx": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/uvttImportEntryPoints.test.tsx": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/uvttImportFlow.test.tsx": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  },
+  "tests/unit/vaultSyncSnapshots.test.ts": {
+    "atlas/test-obsidian-mock": {
+      "count": 1
+    }
+  }
+}

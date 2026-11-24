@@ -1,6 +1,5 @@
 import type { Point } from '../types/visionTypes';
 
-/** The sides of a plug. */
 const PLUG_SIDES = 16;
 /** Wall ends closed off whole share a plug where they lie in the same square of this size. */
 const PLUG_CELL = 0.125;

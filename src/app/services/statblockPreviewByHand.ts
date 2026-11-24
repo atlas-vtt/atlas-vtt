@@ -2,6 +2,7 @@ import type { App } from 'obsidian';
 import { StatblockPreviewWindow, type OutsideNote } from './StatblockPreviewWindow';
 import type { TokenVitals } from './statblockVitalsSync';
 import { watchPressOutside } from './previewByHand';
+import { portalHost } from '../host/portalHost';
 
 /** The class that lifts a preview window over a dialog (the asset manager). */
 const OVER_MODAL = 'atlas-statblock-preview-window--over-modal';
@@ -23,7 +24,7 @@ function close(): void {
 export function previewStatblockByHand(app: App, notePath: string, token: TokenVitals, outsideNote?: OutsideNote): void {
   close();
   const win = activeWindow;
-  const preview = new StatblockPreviewWindow(app, notePath, token, null, { x: win.innerWidth / 2, y: win.innerHeight / 3 }, outsideNote, undefined, undefined, win.document);
+  const preview = new StatblockPreviewWindow(app, notePath, token, null, { x: win.innerWidth / 2, y: win.innerHeight / 3 }, outsideNote, undefined, undefined, portalHost(win.document));
   preview.element?.addClass(OVER_MODAL);
   const stop = watchPressOutside(win.document, (target) => preview.element?.contains(target) === true, close);
   open = { preview, stop };

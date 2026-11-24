@@ -2,6 +2,7 @@ import type { GlassLook, ScreenRect } from '../../../pixi/glassOutline';
 import type { PlayerWindowService } from '../../../services/PlayerWindowService';
 import { playerWindowStore } from '../../../stores/playerWindowStore';
 import type { Size, WorldFrame } from '../../../types/playerFrame';
+import { clamp } from '../../../utils/math';
 
 /** The glass as the GM's map shows it. */
 export interface Glass {
@@ -108,10 +109,6 @@ export function savedChipPlace(rect: ScreenRect, chip: Size, room: ChipRoom): { 
     x: clamp(x, MARGIN, Math.min(right, room.width) - chip.width - MARGIN),
     y: clamp(y, room.topStart + MARGIN, Math.min(bottom, paneBottom) - chip.height - MARGIN),
   };
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(Math.max(min, max), value));
 }
 
 function inRoom(x: number, y: number, chip: Size, room: ChipRoom): { x: number; y: number } {

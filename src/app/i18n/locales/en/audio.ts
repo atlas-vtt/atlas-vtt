@@ -42,6 +42,7 @@ export const audio = {
     one: 'Atlas converts the sound in {folder} to Opus, in this folder, and does the same for files added later.',
     other: 'Atlas converts all {count} sounds in {folder} to Opus, in this folder, and does the same for files added later.',
   },
+  'audio.consent.bodyEmpty': '{folder} holds no sounds yet. Atlas converts the sounds you add to it to Opus, in this folder.',
   'audio.consent.trash': 'Convert and move originals to the trash',
   'audio.consent.keep': 'Convert and keep originals',
   'audio.consent.noTrash': 'This folder has no trash, so originals stay.',

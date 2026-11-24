@@ -46,6 +46,26 @@ describe('seenByPlayers', () => {
   });
 });
 
+describe('the party under committed fog', () => {
+  const fog = fogCoverage({ paint: fogRectangle({ x: 150, y: 0, width: 100, height: 100 }) });
+  const vision = { enabled: true } as TokenEntity['vision'];
+
+  it('stays in the players\' picture: a vision token under fog is seen, a hidden one and a creature are not', () => {
+    const all = { hero: token('hero', 200, { vision }), ogre: token('ogre', 210), sneak: token('sneak', 220, { vision, isHidden: true }) };
+    const sight = sightOf(all, () => fog);
+    const seen = seenByPlayers(all, sight.framePerception());
+    expect(['hero', 'ogre', 'sneak'].map(seen)).toEqual([true, false, false]);
+    expect(sight.hides('hero', sight.framePerception())).toBe(false);
+    expect(sight.hides('ogre', sight.framePerception())).toBe(true);
+  });
+
+  it('stays theirs while the fog cannot be read, where every other token is left out', () => {
+    const all = { hero: token('hero', 200, { vision }), ogre: token('ogre', 10) };
+    const seen = seenByPlayers(all, sightOf(all, () => null).framePerception());
+    expect(['hero', 'ogre'].map(seen)).toEqual([true, false]);
+  });
+});
+
 describe('PlayerSightTokens.showsPlayers', () => {
   it('is on while the canvas shows the players\' view: session view, or the peek', () => {
     const players = { active: false, playerView: false };

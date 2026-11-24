@@ -8,7 +8,11 @@ export class FogCoverageCache {
   private observed = new WeakSet<object>();
   private mapKey: string | null | undefined;
 
-  /** Invalid committed geometry is null; an empty, valid record has empty coverage. */
+  /**
+   * Invalid committed geometry is null; an empty, valid record has empty coverage. Every lookup
+   * names its map: a listener that runs before the renderer has cleared the last map's fog then
+   * reads the new map's coverage, never the old one's.
+   */
   get(operations: Readonly<Record<string, FogOperation>>, mapKey: string | null = null): FogCoverage | null {
     if (mapKey !== this.mapKey) {
       this.reset();

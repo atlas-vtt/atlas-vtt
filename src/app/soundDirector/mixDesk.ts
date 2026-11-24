@@ -165,7 +165,15 @@ export class MixDesk {
   }
 
   setLayerLevel(key: string, db: number): void {
-    this.table.commit({ ...this.table.mix, table: setLayerLevel(this.table.mix.table, key, db, this.table.now()) });
+    this.setLayerLevels(new Map([[key, db]]));
+  }
+
+  /** Several layers' faders in one change of the mix, as a Stream Deck's Ambience key moves them all. */
+  setLayerLevels(levels: ReadonlyMap<string, number>): void {
+    const now = this.table.now();
+    let { table } = this.table.mix;
+    for (const [key, db] of levels) table = setLayerLevel(table, key, db, now);
+    this.table.commit({ ...this.table.mix, table });
   }
 
   setLayerMuted(key: string, muted: boolean): void {

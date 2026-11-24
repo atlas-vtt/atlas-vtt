@@ -31,6 +31,7 @@ export const armariumShare: Translation = {
   'armariumShare.checkAgain': 'Verifica di nuovo',
   'armariumShare.packing': 'Compressione della collezione…',
   'armariumShare.exportFailed': 'Impossibile comprimere la collezione: {error}',
+  'armariumShare.sending': 'Invio di {total}…',
   'armariumShare.sentOf': '{sent} di {total} inviati',
   'armariumShare.parts': 'Parti del caricamento',
   'armariumShare.partOf': 'Parte {n} di {total}',

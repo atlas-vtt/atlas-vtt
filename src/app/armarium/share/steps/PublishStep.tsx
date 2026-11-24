@@ -8,12 +8,11 @@ import type { AnyShareSession } from '../../upload/anyShareSession';
 import type { ShareSnapshot } from '../../upload/shareState';
 import { ACCOUNT_PAGE_REFUSALS, DECLARATION, LICENCES, LISTING_TEXT, type LicenceId } from '../../upload/uploadContract';
 import { LICENCE_URLS, licenceLabel, licenceLine } from '../../upload/text/listingVocabulary';
-import { uploadMessageFor } from '../../upload/text/uploadMessages';
 import { ARMARIUM_RULES_URL } from '../../armariumUrls';
 import { useAccountState } from '../useShare';
 import { CountedText, FieldProblem, useOverlayLayer } from './ListingFields';
 import { ShareNotice } from './ShareNotice';
-import { shareSaid } from '../shareWording';
+import { refusalSaid, shareSaid } from '../shareWording';
 
 const NO_LICENCE = 'none';
 const LICENCE_OPTIONS: SelectOption<LicenceId | typeof NO_LICENCE>[] = [
@@ -71,7 +70,7 @@ export function PublishStep({ snapshot, session, account }: { snapshot: ShareSna
       )}
       {refusal !== null && !reapproving && (
         <ShareNotice tone="error">
-          {uploadMessageFor(refusal.code, refusal.until, 'publish')}
+          {refusalSaid(snapshot.subject, refusal, 'publish')}
           {ACCOUNT_PAGE_REFUSALS.includes(refusal.code) && (
             <Button variant="link" className="atlas-share-inline-link" onClick={() => account.openAccountPage()}>{t('account.openPage')}</Button>
           )}

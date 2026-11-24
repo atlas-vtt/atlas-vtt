@@ -10,6 +10,7 @@ import { SceneSwitcherFooter } from './SceneSwitcherFooter';
 import './scene-switcher.scss';
 import { STANDING_LIST } from '../../../keyboard/tooltipEscape';
 import { t } from '../../../i18n';
+import { revealInList } from '../../../utils/scrollWithin';
 
 interface SceneSwitcherProps {
   isOpen: boolean;
@@ -70,7 +71,8 @@ function SceneSwitcherPanel({ onSwitchTab, onPresentTab, onClose }: SceneSwitche
   useLayoutEffect(updateHasMapsBelow, [results, updateHasMapsBelow]);
 
   useEffect(() => {
-    listRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
+    const row = listRef.current?.querySelector('[aria-selected="true"]');
+    if (row) revealInList(row);
   }, [selectedIndex, results]);
 
   /** With `showPlayers` the player view shows the map as well. */

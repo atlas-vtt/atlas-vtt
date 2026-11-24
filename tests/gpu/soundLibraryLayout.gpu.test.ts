@@ -286,8 +286,10 @@ describe('the sound library', () => {
 
   it('offers the starter ambience under the ambience root, inside the rail', async () => {
     await open();
-    await expect.poll(() => document.querySelector('.atlas-sound-lib__rail .atlas-sound-lib__starter')).not.toBeNull();
-    const offer = document.querySelector<HTMLElement>('.atlas-sound-lib__rail .atlas-sound-lib__starter')!;
+    // The music packs' offer shares the class and stands first, under Music.
+    const ambience = '.atlas-sound-lib__rail [aria-label="Ambience"] .atlas-sound-lib__starter';
+    await expect.poll(() => document.querySelector(ambience)).not.toBeNull();
+    const offer = document.querySelector<HTMLElement>(ambience)!;
     offer.scrollIntoView({ block: 'center' });
     await settled();
     const starter = offer.getBoundingClientRect();
@@ -296,6 +298,16 @@ describe('the sound library', () => {
     expect(starter.left).toBeGreaterThanOrEqual(rail.left);
     expect(starter.right).toBeLessThanOrEqual(rail.right);
     expect(offer.scrollWidth).toBeLessThanOrEqual(offer.clientWidth + 1);
+    // Words longer than the rail holds (Russian) start at the button's start and are cut at their end.
+    const words = offer.querySelector<HTMLElement>('.atlas-sound-lib__offer-label')!;
+    const shown = words.textContent;
+    words.textContent = 'Получить стартовые фоновые звуки';
+    await settled();
+    expect(words.scrollWidth).toBeGreaterThan(words.clientWidth + 1);
+    expect(words.getBoundingClientRect().left).toBeGreaterThanOrEqual(offer.getBoundingClientRect().left);
+    expect(offer.getBoundingClientRect().right).toBeLessThanOrEqual(rail.right);
+    expect(offer.scrollWidth).toBeLessThanOrEqual(offer.clientWidth + 1);
+    words.textContent = shown;
     await writeMeasure(`starter offer ${starter.width.toFixed(1)} × ${starter.height.toFixed(1)} in a rail of ${rail.width.toFixed(1)}`);
     await page.screenshot({ path: `${SHOTS}/library-starter.png`, element: LIBRARY_SHOT(frame!.host) });
   });

@@ -11,6 +11,7 @@ import type { RulesSharePorts } from './RulesShare.ts';
 import type { SeatSource } from './seatSource.ts';
 import type { TokenSharePorts } from './TokenShare.ts';
 import type { NotePin } from '../../types';
+import type { DoorAskShown } from './doors/PlayerDoorAsks.ts';
 
 /** What the shared scene of an Atlas tab reads of the tab and the table, and how it reaches players. */
 export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<MarkSharePorts, 'gmMarks' | 'showPlayerMarks' | 'showPlayerCursors' | 'showPlayerStrokes' | 'nameOf'> {
@@ -47,4 +48,8 @@ export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<
   rendererCurrent?(): boolean;
   /** The level of a scene with several that Atlas presents to its player view (the eye); unset is the first. Players without a token on the map see it. */
   presentedLevel?(): string | undefined;
+  /** Shows the GM a player's ask to open a door; returns what withdraws it. Without it players' asks are not taken. */
+  askDoor?(shown: DoorAskShown): () => void;
+  /** Shows a player's token bump against a wall on the GM's map (and so on the shared screen). */
+  bumpToken?(tokenId: string, dx: number, dy: number): void;
 }

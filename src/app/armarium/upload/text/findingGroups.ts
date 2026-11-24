@@ -49,11 +49,14 @@ export interface FindingGroup {
   count: number;
 }
 
+/** What a finding says: `findingMessage`, or in the words of what is shared (`findingSaid`). */
+export type FindingSay = (finding: CheckFinding) => string;
+
 /** The findings in their order, each once: findings with the same file, line, place and sentence are one, with their number. */
-export function groupedFindings(findings: readonly CheckFinding[]): FindingGroup[] {
+export function groupedFindings(findings: readonly CheckFinding[], message: FindingSay = (finding) => findingMessage(finding)): FindingGroup[] {
   const groups = new Map<string, FindingGroup>();
   for (const finding of findings) {
-    const group = { finding, message: findingMessage(finding), line: findingLine(finding), place: findingPlace(finding), count: 1 };
+    const group = { finding, message: message(finding), line: findingLine(finding), place: findingPlace(finding), count: 1 };
     const key = JSON.stringify([finding.level, finding.code, finding.path ?? null, group.line, group.place, group.message]);
     const known = groups.get(key);
     if (known === undefined) groups.set(key, group);
@@ -93,11 +96,11 @@ function beyondListed(findings: readonly CheckFinding[], counts: Readonly<Record
 }
 
 /** The findings as two groups. `counts` are the report's own counts by code, where Atlas was given them. */
-export function findingSections(findings: readonly CheckFinding[], counts: Readonly<Record<string, number>> = {}): FindingSections {
+export function findingSections(findings: readonly CheckFinding[], counts: Readonly<Record<string, number>> = {}, message?: FindingSay): FindingSections {
   const beyond = beyondListed(findings, counts);
   const section = (level: Level): FindingSection => {
     const listed = findings.filter((finding) => finding.level === level);
-    return { level, groups: groupedFindings(listed), listed: listed.length, total: listed.length + beyond[level] };
+    return { level, groups: groupedFindings(listed, message), listed: listed.length, total: listed.length + beyond[level] };
   };
   return { problems: section('error'), notes: section('warning') };
 }

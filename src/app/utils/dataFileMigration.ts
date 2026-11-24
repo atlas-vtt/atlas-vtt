@@ -103,9 +103,6 @@ export class DataFileMigration {
         this.app = app;
     }
 
-    /**
-     * Check if migration is needed
-     */
     async needsMigration(): Promise<boolean> {
         // Check if the migration has already been completed
         const migrationFlag = 'atlas-vtt/.atlas-data/migration-completed.json';

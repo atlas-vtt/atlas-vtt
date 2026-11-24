@@ -10,7 +10,8 @@
 import { isEmptyBook, readStoredBook, type StoredBook } from '../../online/gm/book/bookStore';
 import type { RecordLayout, StoredRecord } from '../../services/recordFiles/recordLayout';
 import { campaignFileLayout } from '../campaignFileLayout';
-import { isAssetId, isRecord } from '../campaignValues';
+import { isAssetId } from '../campaignValues';
+import { isRecord } from '../../utils/guards';
 
 export const BOOKS_FILE = 'books.json';
 /** The format this Atlas writes; a file of a later one is read and never written. */

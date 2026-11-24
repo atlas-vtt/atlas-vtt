@@ -5,6 +5,7 @@ import { destroyTree } from '../utils/destroyTree';
 import { ValueTransition } from '../utils/ValueTransition';
 import { createConditionBadge } from './ConditionBadge';
 import type { ActiveCondition } from './ConditionBadgeRing';
+import { uiCorner } from '../utils/squareCorners';
 
 /** Card metrics in screen pixels, matching Atlas tooltips (`atlas-elevated-surface`). */
 const PADDING = 8;
@@ -139,11 +140,11 @@ function drawCard(width: number, height: number, theme: CardTheme): Graphics {
   for (let layer = 3; layer >= 1; layer--) {
     const spread = layer * 2;
     card
-      .roundRect(-spread, -spread + 3, width + spread * 2, height + spread * 2, CORNER_RADIUS + spread)
+      .roundRect(-spread, -spread + 3, width + spread * 2, height + spread * 2, uiCorner(CORNER_RADIUS + spread))
       .fill({ color: 0x000000, alpha: 0.05 });
   }
   return card
-    .roundRect(0, 0, width, height, CORNER_RADIUS)
+    .roundRect(0, 0, width, height, uiCorner(CORNER_RADIUS))
     .fill({ color: theme.background, alpha: 0.97 })
     .stroke({ width: BORDER_WIDTH, color: theme.text, alpha: BORDER_ALPHA, alignment: 1 });
 }

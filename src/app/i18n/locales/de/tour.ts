@@ -35,8 +35,6 @@ export const tour: Translation = {
   'tour.notNow': 'Nicht jetzt',
   'tour.progress': 'Schritt {step} von {total}',
   'tour.replay': 'Tour starten',
-  'tour.dashboard.welcomeTitle': 'Willkommen bei Atlas',
-  'tour.dashboard.welcomeBody': 'Atlas leitet dein Spiel auf Karten aus deinem Tresor, mit Tokens, Nebel, Initiative und einem zweiten Fenster, das deine Spieler sehen. Jede Sitzung beginnt auf dieser Seite.',
   'tour.dashboard.sceneTitle': 'Szenen',
   'tour.dashboard.sceneBody': 'Eine Szene ist eine spielbereite Karte mit ihren Tokens, ihrem Nebel und ihren Pins. Du erstellst sie aus einem Kartenbild, und die zuletzt gespielte Szene wartet hier auf dich.',
   'tour.dashboard.assetsTitle': 'Asset-Manager',

@@ -1,0 +1,290 @@
+@use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
+
+// The welcome wizard (WelcomeDialog.tsx): a large dialog over the workspace, above Atlas' other layers as the tours are.
+.atlas-welcome-overlay {
+  @include atlas-modal-overlay($z-atlas-modal + $z-notification);
+}
+
+// The window as it is placed and animated. It does not clip, so a look can draw around it with its pseudo-elements
+// (`::before` below the dialog with a negative `z-index`, `::after` above it) and have that move and fade with it.
+.atlas-welcome-window {
+  position: relative;
+  isolation: isolate;
+  width: min(1080px, 92vw);
+  height: min(660px, 86vh);
+  max-width: 100%;
+  max-height: 100%;
+}
+
+// The dialog clips its pages to its corners. One inset for everything inside: the page and the foot stand
+// $spacing-2xl from the border and from each other.
+.atlas-welcome {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($surface-radius);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-2xl;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: $spacing-2xl;
+  overflow: hidden;
+  color: var(--text-normal);
+}
+
+// The help page stands on a picture of Atlas' guides, which fades into the dialog towards the words on the left and
+// the foot. A layer of the dialog itself, so it neither scrolls nor moves with the page's entrance.
+.atlas-welcome[data-page='help'] {
+  isolation: isolate;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      linear-gradient(to right, var(--background-primary) 44%, color-mix(in oklch, var(--background-primary) 72%, transparent) 64%, color-mix(in oklch, var(--background-primary) 40%, transparent)),
+      linear-gradient(to top, var(--background-primary), transparent 26%),
+      url('../../assets/welcome/help-dark.webp') right center / cover no-repeat;
+    animation: atlas-welcome-help-in $transition-slow $transition-ease-out;
+  }
+
+  .theme-light &::before {
+    background:
+      linear-gradient(to right, var(--background-primary) 44%, color-mix(in oklch, var(--background-primary) 72%, transparent) 64%, color-mix(in oklch, var(--background-primary) 40%, transparent)),
+      linear-gradient(to top, var(--background-primary), transparent 26%),
+      url('../../assets/welcome/help-light.webp') right center / cover no-repeat;
+  }
+}
+
+@keyframes atlas-welcome-help-in {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-welcome[data-page='help']::before { animation: none; }
+}
+
+// The dialog has no header row: its close button stands in the corner.
+.atlas-welcome__close.atlas-close-btn.btn {
+  @include atlas-close-corner;
+}
+
+.atlas-welcome__page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  animation: atlas-welcome-page-in $transition-slow $transition-ease-out;
+}
+
+@keyframes atlas-welcome-page-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-welcome__page { animation: none; }
+}
+
+// ── Pages ───────────────────────────────────────────────────────────────────
+
+.atlas-welcome-page {
+  box-sizing: border-box;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: $spacing-2xl;
+}
+
+.atlas-welcome-page--text > .atlas-welcome-text { max-width: 34em; }
+
+// Atlas Sidebar: its picture on the left, the words beside it.
+.atlas-welcome-page--split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  align-items: center;
+}
+
+.atlas-welcome-picture {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 960 / 600;
+  object-fit: cover;
+  box-sizing: border-box;
+  border: $border-width-s solid color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
+  border-radius: $radius-m;
+  box-shadow: $shadow-elevated;
+  user-select: none;
+}
+
+// The look page: its words over the appearance choices. The page is a size container, so the look cards can take
+// the height its words, labels and colour swatches leave: what stands around the pictures is about $look-around tall
+// (heading, two lines of words, the gaps, the row labels, the cards' names and notes, the accent's and the ivy's
+// swatches side by side), and the cards are
+// as wide as pictures of the rest are at their 480 : 300 ratio, three in a row. A taller translation scrolls the page.
+$look-around: 380px;
+$look-cards-min: 420px;
+
+.atlas-welcome[data-page='look'] .atlas-welcome__page {
+  container-type: size;
+}
+
+.atlas-welcome-page--looks {
+  justify-content: flex-start;
+
+  .atlas-welcome-text__body { max-width: 46em; }
+
+  .atlas-look-cards {
+    max-width: max(#{$look-cards-min}, calc((100cqh - #{$look-around}) * #{3 * 480 / 300} + #{2 * $spacing-m + 4 * $border-width-l}));
+  }
+}
+
+.atlas-welcome-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.atlas-welcome-text__kicker {
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-medium;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+// A kicker stands a little above its heading.
+.atlas-welcome-text__kicker + .atlas-welcome-text__title { margin-top: $spacing-s; }
+
+// The heading follows the look: Fantaisie in red under Medieval, Oxanium under Sci-fi, the interface face otherwise.
+.atlas-welcome-text__title {
+  margin: 0;
+  font-family: var(--atlas-theme-heading-font, var(--font-interface));
+  font-size: calc(#{$font-ui-large} * 2);
+  font-weight: var(--h2-weight, #{$font-weight-semibold});
+  letter-spacing: var(--atlas-theme-heading-tracking, normal);
+  line-height: 1.05;
+  color: var(--h2-color, var(--text-normal));
+  text-wrap: balance;
+}
+
+// A status after a line, such as a part still in beta: small capitals on a soft pill behind a dot, without a border
+// or hover, so it reads as a label and never as a button.
+.atlas-welcome-text__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  vertical-align: middle;
+  padding: $spacing-xs $spacing-s;
+  border-radius: $radius-full;
+  background: color-mix(in oklch, var(--text-normal) 10%, transparent);
+  color: var(--text-muted);
+  font-family: var(--font-interface);
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-medium;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: none;
+  white-space: nowrap;
+
+  &::before {
+    content: '';
+    width: 0.5em;
+    height: 0.5em;
+    border-radius: $radius-full;
+    background: currentColor;
+  }
+}
+
+.atlas-welcome-text__body {
+  margin: $spacing-l 0 0;
+  max-width: 36em;
+  font-family: var(--font-text);
+  font-size: $font-ui-medium;
+  line-height: 1.55;
+  color: var(--text-muted);
+  text-wrap: pretty;
+}
+
+// A line of its own under the body, with its status after it.
+.atlas-welcome-text__body.atlas-welcome-text__aside { margin-top: $spacing-s; }
+
+.atlas-welcome-text__note {
+  margin: $spacing-s 0 0;
+  font-size: $font-ui-smaller;
+  color: var(--text-faint);
+}
+
+.atlas-welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-s;
+  margin-top: $spacing-xl;
+}
+
+.atlas-welcome-key {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  margin-top: $spacing-l;
+  font-size: $font-ui-small;
+  color: var(--text-muted);
+
+  kbd { @include atlas-keycap(24px); }
+}
+
+.atlas-welcome-status {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  font-size: $font-ui-small;
+  color: var(--text-muted);
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+// ── Foot ────────────────────────────────────────────────────────────────────
+
+.atlas-welcome__foot {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: $spacing-s;
+}
+
+// One bar per page, the pages seen filled in.
+.atlas-welcome__progress {
+  display: flex;
+  gap: $spacing-xs;
+  margin-inline-end: auto;
+}
+
+.atlas-welcome__bar {
+  width: 28px;
+  height: 3px;
+  border-radius: $radius-full;
+  background: color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
+  transition: background-color $transition-normal $transition-ease;
+
+  &[data-done='true'] { background: var(--text-normal); }
+}
+
+.atlas-welcome__progress-label { @include atlas-visually-hidden; }
+
+// Focus moves to the page's main button by itself; Atlas draws no keyboard focus rings.
+.atlas-vtt-plugin .atlas-welcome .btn:focus-visible { box-shadow: none; }
+
+// A window too narrow for the split stacks the picture above the words.
+@media (max-width: 760px) {
+  .atlas-welcome-page--split { grid-template-columns: minmax(0, 1fr); }
+}

@@ -36,6 +36,7 @@ export const armariumShare = {
 
   'armariumShare.packing': 'Packing the collection…',
   'armariumShare.exportFailed': 'The collection could not be packed: {error}',
+  'armariumShare.sending': 'Sending {total}…',
   'armariumShare.sentOf': '{sent} of {total} sent',
   'armariumShare.parts': 'Parts of the upload',
   'armariumShare.partOf': 'Part {n} of {total}',

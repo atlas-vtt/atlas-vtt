@@ -33,7 +33,8 @@ interface Hook {
  *
  * Changes PIXI cannot see must call {@link requestRender}: pixels uploaded into an
  * existing texture (`source.update()`), hand-animated filter properties and renderer
- * settings such as the background colour.
+ * settings such as the background colour. So must whoever renders the stage off screen
+ * (`generateTexture`, a captured frame): that render consumes the pending changes read here.
  */
 export class RenderScheduler {
   private renderRequested = true;

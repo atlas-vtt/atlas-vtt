@@ -53,6 +53,10 @@ import { experimentalSettingsSection } from './src/app/settings/experimentalSett
 import { mapsSettingsSection } from './src/app/settings/mapsSettingsSection';
 import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSettingsSection';
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
+import { registerLookSync } from './src/app/appearance/atlasLook';
+import { LookService } from './src/app/appearance/lookService';
+import { registerAtlasApi } from './src/app/api/atlasApi';
+import type { AtlasApi } from './src/app/api/apiTypes';
 import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
 import { applyDiceBudgets, registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
 import { registerForegroundWork } from './src/app/plugin/foregroundWork';
@@ -103,6 +107,7 @@ import { registerObsidianSyncNotice } from './src/app/plugin/obsidianSyncNotice'
 import { registerVaultSync } from './src/app/plugin/vaultSync';
 import { ChangelogService } from './src/app/changelog/ChangelogService';
 import { registerUpdateWatch } from './src/app/updates/registerUpdateWatch';
+import { warnOfPartUpdate } from './src/app/updates/updateNotice';
 import { AtlasErrorLog } from './src/app/support/errorLog';
 import { IssueReporter } from './src/app/support/IssueReporter';
 import { TabletDiagnosticsModal } from './src/app/support/tablet/TabletDiagnosticsModal';
@@ -124,6 +129,10 @@ import { registerLastInput } from './src/app/platform/lastInput';
 import { registerKeyboardViewport } from './src/app/platform/keyboardViewport';
 import { registerAudioUnlock } from './src/app/plugin/audioUnlock';
 import { registerUnsupportedDevice } from './src/app/plugin/unsupportedDevice';
+// Atlas' Mediaeval and Sci-fi looks (scoped to `body.atlas-look`) after every other stylesheet: CSS lands in
+// styles.css in import order, so where a look and a plugin rule are equally specific the look wins, as it did
+// when it was a theme loaded after the plugin's styles.
+import './styles/looks/atlas-looks.css';
 
 declare const __ATLAS_RELEASE_BUILD__: boolean;
 
@@ -137,6 +146,9 @@ export default class AtlasVTTPlugin extends Plugin {
   public globalAssetManager!: GlobalAssetManagerService;
   private imageDisplayService!: ImageDisplayService;
   private changelogService: ChangelogService | undefined;
+  private looks: LookService | undefined;
+  /** What other plugins may call (`src/app/api`), while Atlas runs. */
+  public api: AtlasApi | undefined;
 
   /** The scene presented to players on this device, whether or not the player window is open (read-only). */
   get presentedScene(): PresentedSceneSource {
@@ -265,6 +277,11 @@ export default class AtlasVTTPlugin extends Plugin {
     await this.settingsService.initialize();
     if (this.unloaded) return;
     registerDiceLookSync(this, this.settingsService);
+    const looks = LookService.forApp(this.app, this.settingsService);
+    this.looks = looks;
+    looks.reconcileAtStart();
+    registerLookSync(this, looks);
+    registerAtlasApi(this);
     this.registerStatblockPanels();
     const installed = await existingInstallation;
     if (this.unloaded) return;
@@ -316,6 +333,7 @@ export default class AtlasVTTPlugin extends Plugin {
       this.imageDisplayService.registerContextMenu();
       registerChromeVisibility(this);
       this.changelogService?.showUpdates();
+      warnOfPartUpdate(this.manifest.version);
       // A vault Atlas has never run in opens on the start page, whose tour takes it from there.
       runInBackground(existingInstallation.then(async (existing) => { if (!existing && !this.unloaded) await openDashboard(this); }), 'Opening the start page');
       runInBackground(addStarterTokens(this.app, AssetService.getInstance(this.app), this.settingsService), 'Adding the starter tokens');
@@ -357,6 +375,9 @@ export default class AtlasVTTPlugin extends Plugin {
     if (this.unsupported) return;
     this.changelogService?.destroy();
     void this.settingsService?.saveSettingsNow();
+    // Disabling Atlas gives the GM their theme back; a reload or an update keeps the look.
+    this.looks?.restoreOnDisable(this.manifest.id);
+    LookService.release(this.app);
     SystemPresetFiles.release(this.app);
     PlayedRules.release(this.app);
     CampaignBooks.release(this.app);

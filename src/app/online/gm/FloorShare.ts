@@ -18,6 +18,7 @@ import { ownerIn } from './seatSource.ts';
 import { PlayerDrawings } from './playerDrawings.ts';
 import { ClearedPlayers } from './playerDrawingsClear.ts';
 import { PlayerMoves } from './playerMoves.ts';
+import { PlayerDoorAsks, type DoorAskShown } from './doors/PlayerDoorAsks.ts';
 import { playerMoveDistance } from './playerTurnMoves.ts';
 import type { SceneSharePorts } from './sceneSharePorts.ts';
 import { movesOutOfTurn } from './turnShare.ts';
@@ -29,6 +30,7 @@ import { viewedLevelId } from '../../levels/sceneLevels';
 import { drawCell } from '../../annotations/drawSizes';
 import { isVideoMapPath, videoMimeType } from '../../pixi/mosaicCanvas/video/videoMapFiles';
 import { isHistoryTravelling } from '../../stores/history';
+import { tableControlsStore } from '../../stores/tableControlsStore';
 import { sceneDiceShelf, sharedDiceRow } from './diceRowShare.ts';
 import { t } from '../../i18n';
 
@@ -66,6 +68,8 @@ export class FloorShare {
   readonly layers: MapLayerShare;
   private readonly rules: RulesShare;
   private readonly moves: PlayerMoves;
+  /** Players' asks to open this floor's doors, and their tokens' bumps. */
+  private readonly doors: PlayerDoorAsks;
   private readonly measures: PlayerMeasures;
   private readonly marks: MarkShare;
   /** The players' own drawings and texts on this floor. */
@@ -121,8 +125,9 @@ export class FloorShare {
       map: () => this.mapSize,
     });
     const draw = (): { readonly cell: number } | null => (playersDraw() ? { cell: drawCell(store.getState().grid) } : null);
+    const doorsAllowed = (): boolean => ports.atlasSettings().playersOpenDoors === true;
     this.rules = new RulesShare(store, {
-      ...ports, cursorsShown, rollDice: () => mapRollDice(ports.dice?.() ?? null), draw, diceRow: () => sharedDiceRow(sceneDiceShelf(ports, store)),
+      ...ports, cursorsShown, doors: doorsAllowed, rollDice: () => mapRollDice(ports.dice?.() ?? null), draw, diceRow: () => sharedDiceRow(sceneDiceShelf(ports, store)),
     });
     this.moves = new PlayerMoves(store, {
       ...ports,
@@ -133,6 +138,7 @@ export class FloorShare {
         map: this.mapSize,
         // The walls of this floor, on which every token of its list stands
         walls: sceneWalls(levelObjects(store.getState()).walls, this.scene?.lit === true, this.mapSize),
+        paused: () => tableControlsStore.getState().paused,
         outOfTurn: (tokenId) => {
           const settings = ports.atlasSettings();
           return movesOutOfTurn(store.getState(), { movesOnTurn: settings.movesOnTurn === true, definitions: ports.tokenRules?.()?.resources ?? [] }, tokenId);
@@ -140,6 +146,17 @@ export class FloorShare {
         // A player's drop counts towards the turn's movement as the GM's own drag does (`DragRuler.countDrop`)
         turnMove: (tokenId, from, to) => (ports.tokenMoves?.()?.rules().countPerTurn === true ? playerMoveDistance(store.getState(), ports.measurement?.() ?? null, tokenId, from, to) : null),
       }),
+    });
+    this.doors = new PlayerDoorAsks(store, {
+      allowed: doorsAllowed,
+      scene: () => this.tokens.listedScene,
+      listedToken: (alias) => this.tokens.listedToken(alias),
+      ownerOf,
+      nameOf: (player) => ports.nameOf?.(player) ?? null,
+      send: (body, to) => ports.send(body, to),
+      now: () => ports.now(),
+      ...(ports.askDoor !== undefined && { ask: (shown: DoorAskShown) => ports.askDoor?.(shown) ?? (() => undefined) }),
+      bump: (tokenId, dx, dy) => ports.bumpToken?.(tokenId, dx, dy),
     });
     this.measures = new PlayerMeasures(store, { now: () => ports.now(), seated, scene: () => this.sceneId, map: () => this.mapSize });
     // An aura names its token by the id the token list gives it
@@ -179,6 +196,7 @@ export class FloorShare {
     this.inputs.stop();
     this.layers.stop();
     this.moves.stop();
+    this.doors.stop();
     this.marks.stop();
     this.dragRulers.clear();
   }
@@ -213,6 +231,7 @@ export class FloorShare {
   /** A player left the table or this floor: their drags end where their tokens are, and their marks go. */
   playerLeft(player: string): void {
     this.moves.playerLeft(player);
+    this.doors.playerLeft(player);
     this.marks.playerLeft(player);
     this.drawings.playerLeft(player);
   }
@@ -248,6 +267,7 @@ export class FloorShare {
     if (message.t === 'move') return this.moves.receive(from, message);
     if (message.t === 'drag') return this.moves.drag(from, message);
     if (message.t === 'drag-cancel') return this.moves.dragCancel(from, message);
+    if (message.t === 'door-ask' || message.t === 'bump') return this.doors.receive(from, message);
     if (message.t === 'laser' || message.t === 'measure' || message.t === 'cursor' || message.t === 'stroke') return this.marks.receive(from, message);
     if (message.t === 'measure-keep' || message.t === 'measure-drop') return this.measures.receive(from, message);
     if (message.t === 'draw-points' || message.t === 'draw-add' || message.t === 'draw-text' || message.t === 'draw-change' || message.t === 'draw-remove' || message.t === 'draw-erase') {
@@ -344,6 +364,7 @@ export class FloorShare {
     this.scene = scene;
     this.mapSize = size;
     this.moves.sceneChanged();
+    this.doors.stop();
     this.dragRulers.clear();
     this.tokens.setScene(null);
     this.inputs.setScene(null);

@@ -20,6 +20,8 @@ import { findAtlasLeafByViewId } from '../utils/atlasLeafLookup';
 import { readPinnedNotePreviews } from '../stores/pinnedNotePreviewSlice';
 import { isModHeld } from '../keyboard/modKey';
 import { OPEN_PREVIEW_EVENT, watchPressOutside } from './previewByHand';
+import { NOTE_PREVIEW_LAYER_CLASS } from './uiLayers';
+import { portalHost } from '../host/portalHost';
 import type { ViewAtlasStore } from '../storeFactory';
 import type { TokenRollContext } from '../types/diceRollOrigin';
 import { captureRollContext } from '../tools/diceRollOrigins';
@@ -409,7 +411,7 @@ export class NotePreviewUIManager {
           undefined,
           this.viewId,
           originContext,
-          this.previewDocument(sourceLeaf),
+          this.statblockHost(sourceLeaf),
         );
         
         if (statblockPreview.element) {
@@ -552,6 +554,15 @@ export class NotePreviewUIManager {
   /** The document a preview opens in: that of the leaf it was hovered in (a note in a popout has its own), else the map view's. */
   private previewDocument(sourceLeaf: WorkspaceLeaf | null | undefined): Document {
     return (sourceLeaf?.view.containerEl ?? this.viewEl)?.doc ?? document;
+  }
+
+  /**
+   * Where a statblock preview joins the page: the note preview layer of the map it was hovered on, below the map's
+   * overlays (the DM screen and its sound page) and the dialogs over the map, else the portal host of the leaf's document.
+   */
+  private statblockHost(sourceLeaf: WorkspaceLeaf | null | undefined): HTMLElement {
+    const root = sourceLeaf?.view.containerEl ?? this.viewEl;
+    return root?.querySelector<HTMLElement>(`.${NOTE_PREVIEW_LAYER_CLASS}`) ?? portalHost(this.previewDocument(sourceLeaf));
   }
 
   public destroy(): void {

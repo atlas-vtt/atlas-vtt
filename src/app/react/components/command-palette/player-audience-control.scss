@@ -1,0 +1,28 @@
+@use '../../../../../styles/tokens' as *;
+
+// A resource's audience is a pill segmented control (`segmented-pill.scss`).
+.atlas-vtt-plugin .atlas-audience {
+  display: contents;
+}
+
+// A save that failed: the control shakes its head once and its selection, back on the saved choice, is
+// ringed in the error colour for a moment, where the GM is looking (the notice says what happened).
+// Without motion the tint and ring alone say it.
+@keyframes atlas-audience-refused {
+  0%, 100% { translate: 0; }
+  20%, 60% { translate: -3px 0; }
+  40%, 80% { translate: 3px 0; }
+}
+
+.atlas-vtt-plugin .atlas-audience--refused .atlas-segmented.atlas-segmented--pill {
+  background: color-mix(in oklch, var(--text-error) 12%, transparent);
+  animation: atlas-audience-refused 320ms $transition-ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+
+  &::before {
+    box-shadow: inset 0 0 0 $border-width-l var(--text-error);
+  }
+}

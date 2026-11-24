@@ -55,7 +55,7 @@ const InputModal: React.FC<InputModalProps> = ({
   }, [isOpen, defaultValue]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
       if (!isOpen) return;
       
       if (e.key === 'Escape') {
@@ -69,12 +69,12 @@ const InputModal: React.FC<InputModalProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  const handleCancel = () => {
+  const handleCancel = (): void => {
     setError(null);
     onClose();
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = (): void => {
     const trimmedValue = value.trim();
     
     if (!trimmedValue) {
@@ -95,7 +95,7 @@ const InputModal: React.FC<InputModalProps> = ({
     onClose();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent): void => {
     if (e.key === 'Enter') {
       e.preventDefault();
       handleConfirm();

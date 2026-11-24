@@ -42,6 +42,7 @@ import { useSidePile } from './useSidePile';
 import { TURN_KEY_ATTRIBUTE } from '../../initiative/motion/turnMotion';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
 import { t } from '../../i18n';
+import { TooltipProvider } from '../../packages/components/primitives/tooltip';
 import '../../initiative/initiative-panel.scss';
 import './initiative-tracker.scss';
 import './initiative-tracker-compact.scss';
@@ -301,7 +302,12 @@ export const InitiativeTracker: React.FC = () => {
         {sortedEntries.length === 0 && (
           <div className={`atlas-initiative-card${compact ? '' : ' atlas-initiative-card--tile'} atlas-initiative-card--placeholder`} aria-hidden="true" />
         )}
-        {sortedEntries.length > 0 && <InitiativeTrackerList segments={segments} card={card} {...(arrangesSides && { sideDrag: pilingDrag })} />}
+        {/* One provider for the cards' tooltips: moving between cards, the next opens without the delay */}
+        {sortedEntries.length > 0 && (
+          <TooltipProvider delayDuration={300}>
+            <InitiativeTrackerList segments={segments} card={card} {...(arrangesSides && { sideDrag: pilingDrag })} />
+          </TooltipProvider>
+        )}
       </div>
 
       {/* The shade over the list's top, shown once it is scrolled */}

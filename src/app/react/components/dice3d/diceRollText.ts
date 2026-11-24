@@ -111,14 +111,14 @@ export function rollBreakdown(result: DiceRollResult, scene: DiceScene): string 
 
   if (scene.plan[0]?.role === 'tens') {
     const value = kept[0]?.value ?? 0;
-    return t('diceRoll.tensUnits', { tens: String(Math.floor((value % 100) / 10) * 10).padStart(2, '0'), units: String(value % 10) }) + suffix;
+    return t('diceRoll.tensUnits', { tens: String(Math.floor((value % 100) / 10) * 10).padStart(2, '0'), units: String(value % 10), modifier: suffix });
   }
   const named = namedDiceLine(result.rolls, result);
   if (named !== null && kept.length <= 6) return named;
-  if (thrown > 6) return t('diceRoll.manyDice', { number: String(thrown), total: String(diceTotal) }) + suffix;
+  if (thrown > 6) return t('diceRoll.manyDice', { number: String(thrown), total: String(diceTotal), modifier: suffix });
   if (scene.plan.some((die) => die.fold !== undefined) && (plain || result.advantage)) {
     const faces = scene.faces.filter((_, i) => !scene.plan[i]?.dropped);
-    return t('diceRoll.folded', { faces: faces.join(' + '), sides: String(scene.plan[0]!.sides), values: kept.map((roll) => roll.value).join(' + ') }) + suffix;
+    return t('diceRoll.folded', { faces: faces.join(' + '), sides: String(scene.plan[0]!.sides), values: kept.map((roll) => roll.value).join(' + '), modifier: suffix });
   }
   return shown.length > 1 || suffix !== '' ? `${diceSum(shown)}${suffix}` : null;
 }

@@ -4,6 +4,8 @@ import { Tutorial } from './Tutorial';
 import { SettingsService } from '../services/SettingsService';
 import { isOnScreen, useWatched } from './useWatched';
 import { t } from '../i18n';
+import { useAtlasSettings } from '../keyboard/useMapHotkeys';
+import { WelcomeWizard, shouldWelcome } from './WelcomeWizard';
 
 interface DashboardTourProps {
   app: App;
@@ -14,22 +16,29 @@ interface DashboardTourProps {
   onCreateScene: () => void;
 }
 
-/** Atlas' welcome: the first time the start page shows, what Atlas is and where things begin. */
+/** Atlas' welcome: the first time the start page shows, the welcome wizard, then where things begin. */
 export function DashboardTour({ app, root, hasScene, onCreateScene }: DashboardTourProps): React.JSX.Element | null {
+  // Subscribed, so the start page's tour follows as soon as the wizard is done.
+  const settings = useAtlasSettings(SettingsService.forApp(app));
   const shown = useWatched(root, isOnScreen);
-  if (!shown) return null;
+  if (!shown || !settings) return null;
+  // The wizard stays in the tree after it is done, in the same place, so it closes with its motion.
   return (
-    <Tutorial
-      settings={SettingsService.forApp(app)}
-      id="dashboard"
-      root={root}
-      steps={[
-        { title: t('tour.dashboard.welcomeTitle'), body: t('tour.dashboard.welcomeBody') },
-        { title: t('tour.dashboard.sceneTitle'), body: t('tour.dashboard.sceneBody'), selector: '.continue-hero' },
-        { title: t('tour.dashboard.assetsTitle'), body: t('tour.dashboard.assetsBody'), selector: '.dashboard-topbar__action--assets' },
-        { title: t('tour.dashboard.campaignsTitle'), body: t('tour.dashboard.campaignsBody'), selector: '.dashboard-campaigns' },
-      ]}
-      action={hasScene ? undefined : { label: t('dashboard.firstScene'), onClick: onCreateScene }}
-    />
+    <>
+      <WelcomeWizard app={app} settings={settings} doc={root?.ownerDocument} />
+      {!shouldWelcome(settings) && (
+        <Tutorial
+          settings={settings}
+          id="dashboard"
+          root={root}
+          steps={[
+            { title: t('tour.dashboard.sceneTitle'), body: t('tour.dashboard.sceneBody'), selector: '.continue-hero' },
+            { title: t('tour.dashboard.assetsTitle'), body: t('tour.dashboard.assetsBody'), selector: '.dashboard-topbar__action--assets' },
+            { title: t('tour.dashboard.campaignsTitle'), body: t('tour.dashboard.campaignsBody'), selector: '.dashboard-campaigns' },
+          ]}
+          action={hasScene ? undefined : { label: t('dashboard.firstScene'), onClick: onCreateScene }}
+        />
+      )}
+    </>
   );
 }

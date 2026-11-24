@@ -42,7 +42,7 @@ export function explodingFaces(sides: number, highFaces: number, lowFaces: numbe
  * The dice rolled because `die` exploded, in the order they were rolled; none
  * when it did not.
  */
-export function rollExplosions(die: RolledDie, explosion: Explosion, random: () => number = Math.random): RolledDie[] {
+export function rollExplosions(die: RolledDie, explosion: Explosion, random: () => number): RolledDie[] {
   const { high, low } = explodingFaces(die.max, explosion.highFaces, explosion.lowFaces);
   const isHigh = (value: number): boolean => value > die.max - high;
 

@@ -24,4 +24,5 @@ export const LOST_NOTICES: Readonly<Record<LostReason, string | null>> = {
   closed: t('online.event.closed'),
   gone: null,
   unpresented: t('online.event.unpresented'),
+  curtain: null,
 };

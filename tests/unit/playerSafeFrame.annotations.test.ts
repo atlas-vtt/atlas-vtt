@@ -40,6 +40,7 @@ function harness(): { renderer: PixiRendererOrchestrator; s: DrawScene; shown():
     playerFrames: fakePlayerFrames(),
     annotations: s.renderer,
     dmScreenOverlays: new Set(),
+    playerFrameOnly: new Set(),
   });
   /** Whether a render now would draw each annotation: its node is there and shown, and so is every layer above it. */
   const shown = (): Record<string, boolean> => Object.fromEntries(

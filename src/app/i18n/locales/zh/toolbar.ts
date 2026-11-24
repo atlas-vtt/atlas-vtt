@@ -9,6 +9,7 @@ export const toolbar: Translation = {
   'toolbar.cone': '锥形',
   'toolbar.fogEraser': '迷雾橡皮',
   'toolbar.fogTool': '迷雾工具',
+  'toolbar.lighting': '光照',
   'toolbar.laser': '激光笔',
   'toolbar.lassoSelection': '套索选择',
   'toolbar.lootRoller': '随机表',

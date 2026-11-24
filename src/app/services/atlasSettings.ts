@@ -12,6 +12,7 @@ import type { SharedSoundRoots } from '../soundLibrary/soundRootsStore';
 import { DEFAULT_TABLE_TV_SETTINGS, readTableTvSettings, type TableTvSettings } from './tableTvSettings';
 import { DEFAULT_FOG_EDGE, type FogEdge } from '../fog/fogEdge';
 import { DEFAULT_DRAG_DISTANCE, type DragDistance } from '../measure/dragDistance';
+import { isRecord } from '../utils/guards';
 
 /**
  * How wheel events drive the map viewport.
@@ -25,7 +26,7 @@ export interface NavigationSettings {
 }
 
 /** Every tutorial Atlas has; the settings list those the user finished or skipped. */
-export const TUTORIAL_IDS = ['dashboard', 'map', 'online', 'tableLog', 'assets', 'palette', 'tokenStatblocks', 'lootSettings', 'lootRoller', 'lootResults', 'savedRolls'] as const;
+export const TUTORIAL_IDS = ['welcome', 'dashboard', 'map', 'online', 'tableLog', 'assets', 'palette', 'tokenStatblocks', 'lootSettings', 'lootRoller', 'lootResults', 'savedRolls'] as const;
 export type TutorialId = typeof TUTORIAL_IDS[number];
 
 export interface AtlasSettings {
@@ -113,6 +114,8 @@ export interface AtlasSettings {
     initiativeMaxCards: number;
     /** Online play: players draw and write on the shared map with a Draw tool of their own. */
     playersDraw: boolean;
+    /** Online play: players at a closed door may ask the GM to open it. */
+    playersOpenDoors: boolean;
   };
   /** The player view on a TV lying on the table (TrueScale). Read with `getTableTvSettings`. */
   tableTv: TableTvSettings;
@@ -160,6 +163,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     turnDim: false,
     initiativeMaxCards: 0,
     playersDraw: false,
+    playersOpenDoors: false,
   },
   tableTv: DEFAULT_TABLE_TV_SETTINGS,
 };
@@ -169,10 +173,6 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
  * is the device's (local storage), the user's game system presets are vault files.
  */
 const NOT_PREFERENCES = ['navigation', 'systemPresets'] as const;
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 /** `target` with `source`'s values on top, records merged key by key; keys only `source` has are kept. */
 function deepMerge<T extends object>(target: T, source: Partial<T>): T {

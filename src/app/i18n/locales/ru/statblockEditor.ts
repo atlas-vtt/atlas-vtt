@@ -8,7 +8,6 @@ export const statblockEditor: Translation = {
   'statblockEditor.aliases': 'Алиасы',
   'statblockEditor.allTemplates': 'Все шаблоны',
   'statblockEditor.apply': 'Применить',
-  'statblockEditor.autoLayout': 'Показано полями Atlas',
   'statblockEditor.beingSaved': 'Шаблон сохраняется.',
   'statblockEditor.blank': 'С нуля',
   'statblockEditor.builtInDetail': 'Встроенный',

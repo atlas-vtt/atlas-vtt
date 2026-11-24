@@ -105,8 +105,8 @@ describe('a statblock preview kept open from the initiative tracker', () => {
     act(() => document.querySelector<HTMLElement>('.statblock-hover-preview .atlas-dice-link')!.click());
     expect(origins).toEqual([{ viewId: 'view-1', mapPath: MAP_A, tokenId: 'wolf' }]);
 
+    await waitFor(() => expect(lastCard(player.doc)?.textContent).toMatch(/\d/));
     const card = lastCard(player.doc);
-    expect(card?.textContent).toMatch(/\d/);
     expect(card?.textContent).not.toMatch(/Wolf|Bone Hound|Bite/);
     expect(card?.querySelector('img')).toBeNull();
   });

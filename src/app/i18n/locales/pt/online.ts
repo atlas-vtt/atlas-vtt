@@ -171,6 +171,8 @@ export const online: Translation = {
   'online.unmark': 'Desmarcar',
   'online.update': 'Atualizar',
   'online.updateAfter': 'Atualizar o Atlas depois desta sessão',
+  'online.sheet.templateMissing': 'Os jogadores não podem alterar a ficha {note}: o modelo dela está faltando. Escolha um modelo para a nota.',
+  'online.sheet.templateNewer': 'Os jogadores não podem alterar a ficha {note}: o modelo dela diz que foi feito com um Atlas mais novo, então o Atlas apenas o lê.',
   'online.worldMap.missing': 'O Atlas Online não pode enviar o mapa-múndi: o arquivo de imagem dele está faltando.',
   'online.worldMap.tooLarge': 'O Atlas Online não pode enviar o mapa-múndi: a imagem dele tem mais de 95 MB.',
   'online.worldMap.unreadable': 'O Atlas Online não pode enviar o mapa-múndi: a imagem dele não é um PNG, JPEG, WebP, GIF ou AVIF que os jogadores consigam abrir.',
@@ -181,4 +183,9 @@ export const online: Translation = {
   'online.mapUnreadable': 'A imagem do mapa desta cena não pode ser enviada aos jogadores.',
   'online.fogTooMuch': 'Este mapa tem névoa demais para jogadores online. Eles o veem coberto até você limpar um pouco.',
   'online.assetsFailed': 'Não foi possível compartilhar um arquivo com os jogadores.',
+  'online.doorAsk': '{player} pede para abrir uma porta.',
+  'online.doorAskShow': 'Mostrar',
+  'online.doorAskHeading': '{player} pede para abrir esta porta',
+  'online.doorAskAllow': 'Abrir',
+  'online.doorAskDeny': 'Manter fechada',
 };

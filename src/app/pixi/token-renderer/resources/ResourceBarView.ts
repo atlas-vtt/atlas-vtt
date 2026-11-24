@@ -5,6 +5,7 @@ import type { VisibleResource } from '../../../resources/resourceTypes';
 import { ResourceBarLabel } from '../../ResourceBarLabel';
 import { destroyTree } from '../../utils/destroyTree';
 import { AnimatedBarFill } from '../AnimatedBarFill';
+import { squareCorners, uiCorner } from '../../utils/squareCorners';
 
 /** The look every resource shares, bar or wheel: a thin grey border, a dark track, a fill set in from the border, faint ticks. */
 export const BAR_LOOK = {
@@ -33,6 +34,8 @@ export class ResourceBarView {
   private color = 0xffffff;
   /** Top the track was last drawn at; the track is static, so it is only redrawn when it moves. */
   private drawnTop: number | null = null;
+  /** Whether the track was drawn with square corners: it is drawn again when they turn. */
+  private drawnSquare = false;
 
   constructor(ticker: Ticker | null) {
     this.fill = new AnimatedBarFill(() => this.color, ticker);
@@ -45,8 +48,10 @@ export class ResourceBarView {
     const { width, height } = barDimensions.token;
     this.color = colorNumber(resourceColor(definition, value));
     const inner = { x: -width / 2 + BORDER / 2, y: top + BORDER / 2, width: width - BORDER, height: height - BORDER };
-    if (this.drawnTop !== top) {
+    const square = squareCorners();
+    if (this.drawnTop !== top || this.drawnSquare !== square) {
       this.drawnTop = top;
+      this.drawnSquare = square;
       this.drawTrack(top, inner);
     }
     // A static value fills its bar: there is no share of it to show
@@ -83,9 +88,9 @@ export class ResourceBarView {
   private drawTrack(top: number, inner: { x: number; y: number; width: number; height: number }): void {
     const { width, height } = barDimensions.token;
     this.track.clear()
-      .roundRect(-width / 2, top, width, height, height / 2)
+      .roundRect(-width / 2, top, width, height, uiCorner(height / 2))
       .stroke({ width: BORDER, color: BAR_LOOK.borderColor, alpha: 1 })
-      .roundRect(inner.x, inner.y, inner.width, inner.height, inner.height / 2)
+      .roundRect(inner.x, inner.y, inner.width, inner.height, uiCorner(inner.height / 2))
       .fill({ color: BAR_LOOK.trackColor, alpha: 1 });
     const tick = inner.width / 10;
     for (let i = 1; i < 10; i++) {

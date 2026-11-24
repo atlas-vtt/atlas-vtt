@@ -41,6 +41,8 @@ export interface AtlasPlayerSettings {
   readonly movesOnTurn?: boolean;
   /** Whether players may draw on the map (the player view's setting); off when it cannot be read. */
   readonly playersDraw?: boolean;
+  /** Whether players may ask to open doors (the player view's setting); off when it cannot be read. */
+  readonly playersOpenDoors?: boolean;
   /** How the fog's edge looks (the Maps setting), for players as for the GM; unset when it cannot be read, which players see as a hard edge. */
   readonly fogEdge?: FogEdge;
 }
@@ -87,6 +89,7 @@ export function atlasPlayerSettings(app: App): AtlasPlayerSettings {
     turnBanner: field(turn, 'banner') !== false,
     movesOnTurn: field(turn, 'movesOnTurn') === true,
     playersDraw: field(view, 'playersDraw') === true,
+    playersOpenDoors: field(view, 'playersOpenDoors') === true,
     ...(fogEdge !== undefined && { fogEdge }),
   };
 }

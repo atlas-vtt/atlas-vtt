@@ -71,6 +71,7 @@ export const settings: Translation = {
   'settings.updates.heading': 'Actualizaciones',
   'settings.updates.notice': 'Atlas {version} está listo para instalarse.',
   'settings.updates.noticeTitle': 'Actualización disponible',
+  'settings.updates.partUpdate': 'Atlas solo está actualizado en parte en este dispositivo: funciona la versión {running} y el resto es de la {installed}. Una herramienta de sincronización ha dejado fuera su archivo grande main.js; copia ese archivo desde tu otro dispositivo, o desde la versión {installed} de Atlas en GitHub, a la carpeta del plugin en esta bóveda.',
   'settings.updates.showAfterUpdates': 'Mostrar el registro de cambios tras actualizar',
   'settings.updates.showAfterUpdatesDesc': 'Abrir las notas de la versión una vez después de actualizar Atlas. Siempre puedes ver el registro de cambios aquí.',
   'settings.updates.upToDate': 'Atlas está actualizado',

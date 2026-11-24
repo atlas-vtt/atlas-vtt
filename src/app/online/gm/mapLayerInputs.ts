@@ -18,7 +18,7 @@ import { SentOrders } from './sentOrders.ts';
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 /** A place players may be sent: finite and within the protocol's reach. */
 const onMap = (value: unknown): value is number => finite(value) && Math.abs(value) <= MAX_COORDINATE;
-const clamp = (value: number | undefined, min: number, max: number, fallback: number): number => (finite(value) ? Math.min(max, Math.max(min, value)) : fallback);
+const clampOr = (value: number | undefined, min: number, max: number, fallback: number): number => (finite(value) ? Math.min(max, Math.max(min, value)) : fallback);
 const hex = (colour: number): string => `#${(colour & 0xffffff).toString(16).padStart(6, '0')}`;
 
 /** A font family players are sent: the GM's, when it is only names, quotes, commas and spaces. */
@@ -32,13 +32,13 @@ export function sharedGrid(options: Readonly<GridOptions> | null): SharedGrid | 
   return {
     type: options.type ?? 'square',
     size: options.size,
-    offsetX: clamp(options.offsetX, -1e6, 1e6, 0),
-    offsetY: clamp(options.offsetY, -1e6, 1e6, 0),
+    offsetX: clampOr(options.offsetX, -1e6, 1e6, 0),
+    offsetY: clampOr(options.offsetY, -1e6, 1e6, 0),
     colour: finite(options.color) ? hex(options.color) : null,
-    alpha: clamp(options.alpha, 0, 1, 0.7),
-    lineWidth: clamp(options.lineWidth, 0, 100, 1),
+    alpha: clampOr(options.alpha, 0, 1, 0.7),
+    lineWidth: clampOr(options.lineWidth, 0, 100, 1),
     lineType: options.lineType ?? 'solid',
-    numbers: numbers ? { format: numbers.format, opacity: clamp(numbers.opacity, 0, 1, 0.8) } : null,
+    numbers: numbers ? { format: numbers.format, opacity: clampOr(numbers.opacity, 0, 1, 0.8) } : null,
   };
 }
 
@@ -77,7 +77,7 @@ function boxOf(points: readonly { x: number; y: number }[], reach: number): Box 
 
 /** A place in the one order of drawings and texts as it is sent, as a field to spread; none for 0, which is what a reader takes for none. */
 function orderField(order: number): { order?: number } {
-  const sent = clamp(order, -MAX_ANNOTATION_ORDER, MAX_ANNOTATION_ORDER, 0);
+  const sent = clampOr(order, -MAX_ANNOTATION_ORDER, MAX_ANNOTATION_ORDER, 0);
   return sent === 0 ? {} : { order: sent };
 }
 
@@ -96,7 +96,7 @@ const SHAPES = { pen: undefined, line: 'line', free: 'line', rectangle: 'rectang
  * is told beside it, by a number of the audience's own (`SentOrders`), never the GM's.
  */
 function sharedDrawing(drawing: DrawingAnnotation): SharedDrawing | null {
-  const width = clamp(drawing.width, 0, 100_000, 4);
+  const width = clampOr(drawing.width, 0, 100_000, 4);
   const colour = ringColour(drawing.color);
   const { opacity, points } = drawing;
   if (drawing.shape === 'stamp') {
@@ -123,28 +123,28 @@ function sharedDrawing(drawing: DrawingAnnotation): SharedDrawing | null {
 function textBox(text: TextAnnotation): Box | null {
   if (!onMap(text.x) || !onMap(text.y)) return null;
   const typed = text.text.split('\n');
-  const size = clamp(text.fontSize, 1, 10_000, 16);
+  const size = clampOr(text.fontSize, 1, 10_000, 16);
   const padding = text.padding * 2;
   const longest = typed.reduce((most, line) => Math.max(most, line.length), 0);
   // A text with a width is no wider than it (or than one letter), and has a line more for every place it wraps at.
   const width = (text.width === null ? longest * size : Math.max(text.width, size)) + padding;
   const lines = typed.length + (text.width === null ? 0 : (text.breaks?.length ?? text.text.length));
   const height = lines * size * 1.5 + padding;
-  const reach = (Math.hypot(width, height) / 2) * clamp(text.scale, 0.001, 1_000, 1);
+  const reach = (Math.hypot(width, height) / 2) * clampOr(text.scale, 0.001, 1_000, 1);
   return { minX: text.x - reach, minY: text.y - reach, maxX: text.x + reach, maxY: text.y + reach };
 }
 
 function sharedText(text: TextAnnotation): SharedText {
   const font = text.fontFamily.slice(0, MAX_FONT_NAME);
   const words = text.text.slice(0, MAX_TEXT_LENGTH);
-  const wrap = text.width === null ? undefined : clamp(text.width, Number.MIN_VALUE, 100_000, 0);
+  const wrap = text.width === null ? undefined : clampOr(text.width, Number.MIN_VALUE, 100_000, 0);
   // The places its lines break at go with the width they were measured for, and only those within the words sent.
   const breaks = wrap === undefined ? undefined : text.breaks?.filter((index) => index <= words.length);
   return {
-    x: text.x, y: text.y, text: words, fontSize: clamp(text.fontSize, 1, 10_000, 16), fontFamily: FONT.test(font) ? font : FALLBACK_FONT,
-    colour: ringColour(text.color), background: text.backgroundColor ? ringColour(text.backgroundColor) : null, padding: clamp(text.padding, 0, 10_000, 8),
-    radius: clamp(text.borderRadius, 0, 10_000, 0), opacity: text.opacity, align: text.align, bold: text.bold, italic: text.italic,
-    rotation: Math.abs(text.rotation) <= 360 ? text.rotation : turnOf(text.rotation), scale: clamp(text.scale, 0.001, 1_000, 1),
+    x: text.x, y: text.y, text: words, fontSize: clampOr(text.fontSize, 1, 10_000, 16), fontFamily: FONT.test(font) ? font : FALLBACK_FONT,
+    colour: ringColour(text.color), background: text.backgroundColor ? ringColour(text.backgroundColor) : null, padding: clampOr(text.padding, 0, 10_000, 8),
+    radius: clampOr(text.borderRadius, 0, 10_000, 0), opacity: text.opacity, align: text.align, bold: text.bold, italic: text.italic,
+    rotation: Math.abs(text.rotation) <= 360 ? text.rotation : turnOf(text.rotation), scale: clampOr(text.scale, 0.001, 1_000, 1),
     ...(text.look === 'outline' && { outline: true as const }),
     ...(wrap !== undefined && wrap > 0 && { wrap }),
     ...(wrap !== undefined && wrap > 0 && breaks !== undefined && { breaks }),
@@ -163,7 +163,7 @@ const pointsOf = (drawing: SharedDrawing): number => (drawing.points.length + (d
 function toldDrawing(drawing: DrawingAnnotation, fog: FogCoverage | null): SharedDrawing | null {
   if (drawing.hidden || fog === null) return null;
   const reached = drawing.shape === 'stamp' ? drawing.points.slice(0, 1) : drawing.points;
-  const box = boxOf(reached, Math.max(1, clamp(drawing.width, 0, 100_000, 4) / 2));
+  const box = boxOf(reached, Math.max(1, clampOr(drawing.width, 0, 100_000, 4) / 2));
   return box === null || underFog(box, fog) ? null : sharedDrawing(drawing);
 }
 

@@ -3,7 +3,11 @@ import { recordFilePath } from '../vault-sync/assetFiles';
 
 export { recordFilePath };
 
-/** Library-wide facts every device shares: the default collection, the vault's publisher id. */
+/**
+ * Library-wide facts every device shares: the default collection, the vault's publisher id.
+ * Library files lie in no dot folder, which Obsidian Sync, Remotely Save and Self-hosted LiveSync
+ * skip, and Atlas gives none a name that begins with `_`, which Remotely Save skips too.
+ */
 export const LIBRARY_FILE = `${ATLAS_VTT_DIR}/library.json`;
 
 /**

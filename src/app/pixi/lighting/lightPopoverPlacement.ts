@@ -1,4 +1,5 @@
 import type { Point } from '../../types/visionTypes';
+import { clamp } from '../../utils/math';
 
 export type PopoverSide = 'right' | 'left' | 'below' | 'above';
 
@@ -55,7 +56,6 @@ interface Candidate {
 }
 
 const HANDLE_REACH = 12;
-const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(Math.max(min, max), value));
 const sameChoice = (a: PopoverChoice, b: PopoverChoice): boolean => a.side === b.side && a.outside === b.outside;
 
 /** How much of the box lies over the disc, in tenths of the box, from a grid of sample points. */

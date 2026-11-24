@@ -10,6 +10,7 @@ import {
   MAX_TABLE_COLUMNS, MAX_TABLE_ROWS, emptyRow, fitRow, isEmptyCell, type TableColumn, type TableGrid,
 } from './tableGrid';
 import type { TableAlign, TableCell } from './templateTypes';
+import { getLocale } from '../../i18n';
 
 const UNNAMED: TableColumn = { name: '', key: '', align: null };
 
@@ -153,7 +154,7 @@ export function alignColumns(grid: TableGrid, cols: readonly number[], align: Ta
   return { ...grid, columns: grid.columns.map((column, at) => (cols.includes(at) ? { ...column, align: value } : column)) };
 }
 
-const COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+const COLLATOR = new Intl.Collator(getLocale(), { numeric: true, sensitivity: 'base' });
 
 /** Cells compared as Obsidian sorts a column: numbers by size before text, text naturally ("2" before "10"), empty cells last. */
 function compareCells(a: TableCell, b: TableCell): number {

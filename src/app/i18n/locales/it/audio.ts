@@ -99,6 +99,7 @@ export const audio = {
   "audio.state.convertingPercent": "Conversione {percent}%",
   "audio.consent.title": "Convertire {folder} in Opus?",
   "audio.consent.body": { one: "Atlas converte in Opus il suono in {folder}, in questa cartella, e fa lo stesso con i file aggiunti in seguito.", other: "Atlas converte in Opus tutti i {count} suoni in {folder}, in questa cartella, e fa lo stesso con i file aggiunti in seguito." },
+  "audio.consent.bodyEmpty": "{folder} non contiene ancora suoni. Atlas converte in Opus i suoni che aggiungi, in questa cartella.",
   "audio.consent.trash": "Converti e sposta gli originali nel cestino",
   "audio.consent.keep": "Converti e mantieni gli originali",
   "audio.consent.noTrash": "Questa cartella non ha un cestino, quindi gli originali restano.",

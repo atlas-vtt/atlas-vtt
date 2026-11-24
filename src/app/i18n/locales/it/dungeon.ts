@@ -38,6 +38,8 @@ export const dungeon = {
   "dungeon.steps": "Passi",
   "dungeon.preview.label": "Anteprima del dungeon",
   "dungeon.preview.failed": "Impossibile disegnare l’anteprima.",
+  "dungeon.preview.cardsFailed": "Impossibile disegnare alcune immagini.",
+  "dungeon.preview.retry": "Riprova",
   "dungeon.preview.floor": "Piano mostrato",
   "dungeon.namePlaceholder": "Dagli un nome per creare la scena",
   "dungeon.new": "Nuova pianta",

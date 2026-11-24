@@ -28,6 +28,7 @@ import { loadStabilizer, saveStabilizer } from './services/roomToolMemory';
 import { createPinnedNotePreviewActions, type PinnedNotePreviewSlice } from './stores/pinnedNotePreviewSlice';
 import { createInitialLootRollerState, createLootRollerActions, readLootRollerState, type LootRollerSlice } from './stores/lootRollerSlice';
 import { isRecord } from './utils/guards';
+import { newId, newIds } from './utils/ids';
 import { withHistory } from './stores/history';
 import { withoutCollectionWidgets } from './utils/collectionWidgets';
 import { withWidgetOff } from './utils/widgetActivation';
@@ -46,7 +47,7 @@ import { readExploredMask } from './lighting/exploredMaskCodec';
 import { clampLitThreshold, readSceneLighting } from './lighting/sceneLightingOptions';
 import { isPinLabelKind, nextPinLabel } from './tools/pinLabels';
 import { movedFolderPathOf, movedPathOf, rewriteMapReferences } from './services/renamedPaths';
-import { conditionValue, removeCondition, setConditionValue } from './utils/conditionValues';
+import { clearConditions, conditionValue, removeCondition, setConditionValue } from './utils/conditionValues';
 import { HydrationTracker } from './stores/hydrationTracker';
 import { isolateListeners } from './stores/isolatedListeners';
 import { firstLevelId, placedOnViewedLevel, placedOnViewedLevels, viewedLevelId } from './levels/sceneLevels';
@@ -352,6 +353,8 @@ export interface ViewAtlasState extends ViewState {
   closeDungeonGenerator: UISlice['closeDungeonGenerator'];
   setRoofsHidden: UISlice['setRoofsHidden'];
   setSelectMore: UISlice['setSelectMore'];
+  showCombatantConditions: UISlice['showCombatantConditions'];
+  hideCombatantConditions: UISlice['hideCombatantConditions'];
   setGridSettingsOpen: UISlice['setGridSettingsOpen'];
   setDMScreenOpen: UISlice['setDMScreenOpen'];
   setDMScreenPage: UISlice['setDMScreenPage'];
@@ -485,7 +488,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
   // Keep a reference to the delayed storage so we can expose flush() on the store
   let delayedStorageRef: ReturnType<typeof createDelayedStorage> | null = null;
 
-  const createDelayedStorage = () => {
+  const createDelayedStorage = (): AtlasPersistStorage<PersistedViewState> => {
     // Create storage lazily but only ONCE to preserve debounce state
     let currentStorage: AtlasPersistStorage<PersistedViewState> | null = null;
 
@@ -582,12 +585,10 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           
           // Collection management (not persisted)
           ...(plugin && { plugin }),
-          currentCollectionId: 'default', // Default to 'default' collection
           
           // DM screen state
           dmNotePath: null,
           
-          // Token settings
           tokenSettings: { ...DEFAULT_TOKEN_SETTINGS },
           
           // Per-store persistence control (not persisted)
@@ -649,7 +650,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             });
           },
           
-          // Set grid units
           setGridUnits: (units) => set((draft) => {
             if (draft.grid) {
               draft.grid.unitType = units.unitType;
@@ -677,7 +677,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             }
           }),
           
-          // Set snap to grid
           setSnapToGrid: (snap) => set((draft) => {
             if (!draft.grid) {
               // Initialize grid with defaults if it doesn't exist
@@ -704,7 +703,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             const ids: string[] = [];
             set((draft) => {
               for (const data of entries) {
-                const id = data.id ?? `tok_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+                const id = data.id ?? newId('tok');
                 // Normalize the image path to prevent app:// URLs
                 const imagePath = normalizeImagePath(data.imagePath);
                 const instanceNumber = computeNextInstanceNumber(draft.objects.tokens, imagePath);
@@ -718,7 +717,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
 
           // Add a new character and return its ID
           addCharacter: (data) => {
-            const id = `char_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+            const id = newId('char');
             const normalizedImagePath = normalizeImagePath(data.imagePath);
 
             const instanceNumber = computeNextInstanceNumber(get().objects.tokens, normalizedImagePath);
@@ -1038,14 +1037,13 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.dmNotePath = path;
           }),
 
-          // Token settings
           setTokenSettings: (settings) => set((draft) => {
             draft.tokenSettings = settings;
           }),
 
           // Note Pin actions
           addNotePin: (x, y, notePath, icon, options) => {
-            const id = `pin_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+            const id = newId('pin');
             set((draft) => {
               const newPin: NotePin = { 
                 id, 
@@ -1144,7 +1142,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           // Wall actions
           // A wall, light, zone or sound is on the level the view shows, unless it names its levels (a piece of a split wall).
           addWall: (data) => {
-            const id = `wall_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+            const id = newId('wall');
             set((draft) => {
               draft.objects.walls[id] = { id, kind: 'wall', ...placedOnViewedLevels(draft), ...data };
               draft._audioDirty = true;
@@ -1177,8 +1175,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           }),
 
           editWalls: (remove, add) => {
-            const stamp = Date.now();
-            const ids = add.map(() => `wall_${stamp}_${Math.random().toString(36).slice(2, 11)}`);
+            const ids = newIds('wall', add.length);
             if (remove.length === 0 && add.length === 0) return ids;
             set((draft) => {
               for (const id of remove) delete draft.objects.walls[id];
@@ -1220,7 +1217,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
 
           // Light actions
           addLight: (data) => {
-            const id = `light_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+            const id = newId('light');
             set((draft) => {
               draft.objects.lights[id] = { id, kind: 'light', ...placedOnViewedLevels(draft), ...data };
             });
@@ -1244,7 +1241,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
 
           // Light zones: map geometry like walls, in the order they were drawn
           addLightZone: (data) => {
-            const id = `zone_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+            const id = newId('zone');
             set((draft) => {
               // Whatever is in their place that is no record (a store filled by something else than a load) gives way.
               if (!isRecord(draft.objects.lightZones)) draft.objects.lightZones = {};
@@ -1269,7 +1266,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
 
           // Audio actions
           addAudio: (data) => {
-            const id = `audio_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+            const id = newId('audio');
             set((draft) => {
               draft.objects.audios[id] = { id, kind: 'audio', ...placedOnViewedLevels(draft), ...data };
               draft._audioDirty = true;
@@ -1401,8 +1398,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               return;
             }
 
-            delete token.conditions;
-            delete token.conditionValues;
+            clearConditions(token);
           }),
 
           // Kill tokens - set HP to 0
@@ -1422,8 +1418,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               if (!token) continue;
               const resources = token.kind === 'character' ? restedResources(token, definitions) : undefined;
               if (resources) token.resources = resources;
-              delete token.conditions;
-              delete token.conditionValues;
+              clearConditions(token);
             }
           }),
 

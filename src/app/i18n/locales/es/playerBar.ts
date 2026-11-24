@@ -15,4 +15,11 @@ export const playerBar: Translation = {
   'playerBar.unfreeze': 'Reanudar: la vista de jugadores vuelve a seguirte',
   'playerBar.freezeTrueScale': 'Con TrueScale activado, fija a los jugadores en el encuadre de tu mapa',
   'playerBar.takeBack': 'Retirar el documento',
+  'playerBar.openHint': 'Mostrar también la escena presentada en una pantalla de la mesa',
+  'playerBar.freezeOnline': 'Los jugadores en línea no pueden mover sus fichas mientras está en pausa',
+  'playerBar.playMode': 'Modo de juego',
+  'playerBar.modeTable': 'Control de fichas',
+  'playerBar.modeRemote': 'Mando a distancia',
+  'playerBar.modeTableHint': 'Cada jugador mueve sus fichas en su propio mapa',
+  'playerBar.modeRemoteHint': 'Los móviles son mandos para la pantalla compartida',
 };

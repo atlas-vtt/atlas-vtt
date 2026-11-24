@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { draftFrom, fieldsOfDraft, listingProblems, rightsProblems, systemOfPreset, systemOfSharedPreset, toggledTags } from '../../../src/app/armarium/upload/listingDraft';
+import { draftForKind, draftFrom, fieldsOfDraft, listingProblems, rightsProblems, systemOfPreset, systemOfSharedPreset, toggledTags } from '../../../src/app/armarium/upload/listingDraft';
 import { withPublishedFloor } from '../../../src/app/armarium/upload/shareState';
+import { TAG_GROUPS, tagGroupsOf, takesSystem } from '../../../src/app/armarium/upload/uploadContract';
 import type { ExportPreview } from '../../../src/app/services/collectionBundle/collectionExport';
 
 describe('the listing form', () => {
@@ -38,6 +39,19 @@ describe('the listing form', () => {
     expect(rightsProblems({ ...draft, licence: 'cc0', credits: 'x'.repeat(2001) })).toEqual({ credits: 'too-long' });
     expect(fieldsOfDraft(draft)).toBeNull();
     expect(fieldsOfDraft({ ...draft, licence: 'cc0', tags: ['one-shot', 'forest'] })).toEqual({ kind: 'maps', system: null, description: 'Twenty characters at least.', tags: ['forest', 'one-shot'], licence: 'cc0', credits: '' });
+  });
+
+  it('gives music no game system and only the genre, place and AI tags, whatever a stored listing held', () => {
+    expect(tagGroupsOf('music').map((group) => group.id)).toEqual(['genre', 'place', 'ai']);
+    expect(tagGroupsOf('maps')).toBe(TAG_GROUPS);
+    expect(tagGroupsOf(null)).toBe(TAG_GROUPS);
+    expect(takesSystem('music')).toBe(false);
+    expect(takesSystem('adventure')).toBe(true);
+    const stored = { kind: 'music' as const, system: 'cairn' as const, description: 'Six tracks of dark forest music.', tags: ['fantasy', 'monsters', 'forest', 'one-shot', 'statblocks', 'no-ai'] as const, licence: 'cc-by-4.0' as const, credits: '' };
+    const draft = draftFrom({ ...stored, tags: [...stored.tags] }, null);
+    expect(draftForKind(draft)).toMatchObject({ system: 'none', tags: ['fantasy', 'forest', 'no-ai'] });
+    expect(fieldsOfDraft(draft)).toMatchObject({ kind: 'music', system: null, tags: ['fantasy', 'forest', 'no-ai'] });
+    expect(fieldsOfDraft({ ...draft, kind: 'adventure' })).toMatchObject({ system: 'cairn', tags: ['fantasy', 'forest', 'one-shot', 'monsters', 'statblocks', 'no-ai'] });
   });
 
   it('ticks tags in the list\'s order, one AI tag at most and eight in all', () => {

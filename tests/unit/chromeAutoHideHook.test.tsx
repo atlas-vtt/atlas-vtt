@@ -20,6 +20,7 @@ afterEach(() => { cleanup(); vi.useRealTimers(); });
 describe('useChromeAutoHide', () => {
   // UIRoot calls it outside the view's context, which it provides itself: the switch must reach it all the same.
   it('follows the setting without the view context around it', () => {
+    vi.useFakeTimers();
     const { app } = createInMemoryApp({ files: {} });
     const settings = new SettingsService(app);
     const store = createViewAtlasStore(app, `chrome-auto-hide-${Math.random()}`);
@@ -31,8 +32,13 @@ describe('useChromeAutoHide', () => {
     act(() => { settings.setToolbarAutoHide(true); });
     expect(root.hasAttribute('data-chrome-auto-hide')).toBe(true);
 
+    // Switched off, the bars show as they would near the pointer, and stop hiding once they stand
     act(() => { store.getState().setToolbarEditing(true); });
+    expect(root.hasAttribute('data-chrome-auto-hide')).toBe(true);
+    expect(root.querySelector('.atlas-main-toolbar')?.hasAttribute('data-near')).toBe(true);
+    act(() => { vi.advanceTimersByTime(400); });
     expect(root.hasAttribute('data-chrome-auto-hide')).toBe(false);
+    expect(root.querySelector('.atlas-main-toolbar')?.hasAttribute('data-near')).toBe(false);
   });
 
   it('shows the toolbar for a moment when the tool or its mode changes', () => {

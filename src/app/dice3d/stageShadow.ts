@@ -40,6 +40,9 @@ const SHADOW_SOFT = { blur: 17, opacity: 0.14 };
  * spans eight: 1024 texels still put more than one on every pixel. The blur
  * above is counted in texels, so half the map takes half the radius for the
  * same softness on the table, and half the taps keep their spacing.
+ *
+ * Blurring only the texels the dice cover saves nothing: the floor is drawn
+ * into the map too, so no texel of it is empty.
  */
 const SHADOW_MAP = 1024;
 const SHADOW_TAPS = 12;

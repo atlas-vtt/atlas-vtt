@@ -102,17 +102,26 @@
   border-radius: $radius-m;
 }
 
+// Centred by its margins rather than from the middle, so its line may be as wide as the map.
 .atlas-dungeon-preview__failed {
   position: absolute;
+  right: $spacing-s;
   bottom: $spacing-s;
-  left: 50%;
-  margin: 0;
+  left: $spacing-s;
+  width: fit-content;
+  margin: 0 auto;
   padding: $spacing-xs $spacing-s;
-  transform: translateX(-50%);
   border-radius: $radius-m;
   background: var(--background-primary);
   color: var(--text-error);
   font-size: $font-ui-smaller;
+  text-align: center;
+}
+
+.atlas-dungeon-preview__retry.btn {
+  height: auto;
+  padding: 0;
+  font-size: inherit;
 }
 
 // ── On the map ──────────────────────────────────────────────────────────────
