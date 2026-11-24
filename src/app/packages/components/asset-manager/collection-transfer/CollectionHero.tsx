@@ -12,13 +12,15 @@ interface CollectionHeroProps {
   /** Further facts after the version: author, export date, … */
   details: readonly string[];
   description?: string | undefined;
+  /** Keeps the banner's room without a cover, where the cover is chosen below it: choosing one moves nothing. */
+  keepsRoom?: boolean | undefined;
 }
 
 /** Key-art banner: the collection as people who install it see it, its name over its cover; just the name without one. */
-export function CollectionHero({ eyebrow, imageUrl, name, version, details, description }: CollectionHeroProps): React.JSX.Element {
+export function CollectionHero({ eyebrow, imageUrl, name, version, details, description, keepsRoom = false }: CollectionHeroProps): React.JSX.Element {
   return (
     // Not a <header>: inside the dialog it would be a second banner beside the asset manager's.
-    <div className="atlas-transfer-hero" data-empty={!imageUrl || undefined}>
+    <div className="atlas-transfer-hero" data-empty={(!imageUrl && !keepsRoom) || undefined}>
       {imageUrl && (
         <div className="atlas-transfer-hero__art">
           <img key={imageUrl} src={imageUrl} alt="" draggable={false} decoding="async" />
