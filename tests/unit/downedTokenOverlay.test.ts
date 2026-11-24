@@ -98,7 +98,7 @@ describe('DownedTokenOverlay', () => {
     expect(greyFilters(group, 'tokenRing')).toHaveLength(0);
   });
 
-  it('fades the skull in and out on the ticker, removing it once the heal finished', () => {
+  it('fades the skull in and out on the ticker, removing it once the heal finished', async () => {
     const { ticker, advance } = manualTicker();
     const requestRender = vi.fn();
     const overlay = new DownedTokenOverlay(requestRender, () => ticker);
@@ -115,7 +115,8 @@ describe('DownedTokenOverlay', () => {
     overlay.update(group, false, true);
     expect(marker(group)).not.toBeNull();
     advance(600);
-    expect(marker(group)).toBeNull();
+    // Motion calls onComplete from a promise after the last frame
+    await vi.waitFor(() => expect(marker(group)).toBeNull());
     expect(greyFilters(group, 'tokenSprite')).toHaveLength(0);
     expect(requestRender).toHaveBeenCalled();
   });

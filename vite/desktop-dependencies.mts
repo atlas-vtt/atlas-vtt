@@ -23,14 +23,13 @@ const zipScheduling = `var setImmediate = (function () {
 })();`;
 // JSZip asks for Node's streams only to offer `generateNodeStream`, which Atlas never calls.
 const NO_NODE_STREAMS = '\0atlas-no-node-streams';
-const optionalPropFilter = 'loadExternalIsValidProp(require("@emotion/is-prop-valid").default);';
 
 /**
  * Atlas renders local UI and never loads executable scripts through React.
  * Remove that capability from the bundled React DOM runtime, and use the
  * browser's own APIs instead of JSZip's IE-era script/Function-based scheduling.
  * The bundle also has to load where there is no Node (Obsidian's mobile apps):
- * JSZip's Node streams and framer-motion's optional `require` are left out.
+ * JSZip's Node streams are left out.
  * These are behavioral restrictions, applied before bundling, not scan filters.
  */
 export function desktopDependencies(): Plugin {
@@ -48,14 +47,6 @@ export function desktopDependencies(): Plugin {
     transform(code, id) {
       if (id.startsWith('\0')) return;
       const file = id.replaceAll('\\', '/').split('?')[0];
-      if (file?.endsWith('/framer-motion/dist/es/render/dom/utils/filter-props.mjs')) {
-        if (code.split(optionalPropFilter).length !== 2) {
-          throw new Error('framer-motion loads its optional prop filter another way now; review the desktop dependency adapter');
-        }
-        // The package is not part of Atlas, so the lookup only ever failed; where Obsidian
-        // emulates its mobile app, each such lookup shows the user a notice.
-        return { code: code.replace(optionalPropFilter, ''), map: null };
-      }
       if (file?.endsWith('/jszip/lib/external.js')) {
         // All supported Obsidian versions have native Promise support.
         return { code: 'module.exports = { Promise: Promise };', map: null };

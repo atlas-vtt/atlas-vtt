@@ -5,7 +5,6 @@ import path from 'path';
 import fs from 'fs';
 import { desktopDependencies } from './vite/desktop-dependencies.mts';
 import { changelog } from './vite/changelog.mts';
-import { motionNativeAnimation } from './vite/motion-native-animation.mts';
 import { localePack } from './vite/locale-pack.mts';
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -105,7 +104,6 @@ export default defineConfig({
   plugins: [
     changelog(),
     desktopDependencies(),
-    motionNativeAnimation(),
     localePack(),
     react(), // Enable React support
     copyFilesPlugin() // Add our custom plugin
