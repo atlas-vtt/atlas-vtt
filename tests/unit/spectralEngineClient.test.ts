@@ -2,9 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MapGray } from '../../src/app/pixi/spectralEngine/detectGrid';
 import type { DetectionOutcome } from '../../src/app/pixi/spectralEngine/detectionJob';
-import type { DetectionReply, DetectionRequest, FitAnswer, FitTask } from '../../src/app/pixi/spectralEngine/detectionProtocol';
-import type { FitRequest } from '../../src/app/pixi/spectralEngine/proposalFits';
-import type { RefinedGrid } from '../../src/app/pixi/spectralEngine/refineGrid';
+import type { DetectionReply, DetectionRequest } from '../../src/app/pixi/spectralEngine/detectionProtocol';
 
 const runDetection = vi.fn<() => DetectionOutcome>();
 vi.mock('../../src/app/pixi/spectralEngine/detectionJob', () => ({ runDetection: () => runDetection(), NO_GRID: { result: null, hits: null } }));
@@ -30,7 +28,7 @@ class FakeWorker extends EventTarget {
     this.terminated = true;
   }
 
-  reply(reply: DetectionReply | FitAnswer): void {
+  reply(reply: DetectionReply): void {
     this.dispatchEvent(new MessageEvent('message', { data: reply }));
   }
 
@@ -39,21 +37,14 @@ class FakeWorker extends EventTarget {
   }
 }
 
-function clientWithWorkers(helpers = 0): { client: SpectralEngineClient; workers: FakeWorker[] } {
+function clientWithWorkers(): { client: SpectralEngineClient; workers: FakeWorker[] } {
   const workers: FakeWorker[] = [];
   const client = new SpectralEngineClient(() => {
     const worker = new FakeWorker();
     workers.push(worker);
     return worker as unknown as Worker;
-  }, helpers);
+  });
   return { client, workers };
-}
-
-const FIT_REQUEST: FitRequest = { proposal: { gridType: 'square', size: 40, aspect: 1, harmonicsLeft: 0 }, minFactor: 1, maxSquareAspect: 1.1 };
-const FITTED: RefinedGrid = { gridType: 'square', cellSize: 40.2, offsetX: 1, offsetY: 2, aspect: 1, rotation: 0, support: 0.9 };
-
-function taskOf(worker: FakeWorker, at: number): FitTask {
-  return worker.requests[at] as unknown as FitTask;
 }
 
 describe('SpectralEngineClient', () => {
@@ -177,58 +168,5 @@ describe('SpectralEngineClient', () => {
     await expect(waiting).rejects.toThrow('stopped');
     expect(workers[0]!.terminated).toBe(true);
     await expect(client.detect(gray())).rejects.toThrow('stopped');
-  });
-
-  it('hands the image and the fits the worker asks for to helpers, and their answers back to the worker', async () => {
-    const { client, workers } = clientWithWorkers(2);
-    const map = gray();
-    const detection = client.detect(map);
-    const lead = workers[0]!;
-    const { id, helpers, share } = lead.requests[0]!;
-    expect([helpers, share]).toEqual([2, true]);
-
-    lead.reply({ id, share: map.image });
-    lead.reply({ id, fit: { ticket: 7, request: FIT_REQUEST } });
-    lead.reply({ id, fit: { ticket: 8, request: FIT_REQUEST } });
-    const [first, second] = workers.slice(1);
-    expect([taskOf(first!, 0), taskOf(second!, 0)]).toEqual([
-      { ticket: 7, imageKey: lead.requests[0]!.imageKey, image: map.image, request: FIT_REQUEST },
-      { ticket: 8, imageKey: lead.requests[0]!.imageKey, image: map.image, request: FIT_REQUEST },
-    ]);
-
-    second!.reply({ ticket: 8, fitted: FITTED });
-    await Promise.resolve();
-    expect(lead.requests.at(-1)).toEqual({ ticket: 8, fitted: FITTED });
-    // A helper that holds the image gets the next fit without it.
-    lead.reply({ id, fit: { ticket: 9, request: FIT_REQUEST } });
-    expect(taskOf(second!, 1).image).toBeUndefined();
-
-    lead.reply({ id, outcome: FOUND });
-    await expect(detection).resolves.toBe(FOUND);
-    void client.detect(map);
-    expect(lead.requests.at(-1)!.share).toBe(false);
-
-    // Helpers left idle end, and give up the image they hold.
-    first!.reply({ ticket: 7, fitted: FITTED });
-    second!.reply({ ticket: 9, fitted: null });
-    vi.advanceTimersByTime(30_000);
-    expect([first!.terminated, second!.terminated]).toEqual([true, true]);
-  });
-
-  it('ends the helpers with an ended detection, and answers the worker for a helper that fails', async () => {
-    const { client, workers } = clientWithWorkers(1);
-    const asked = new AbortController();
-    const detection = client.detect(gray(), { signal: asked.signal });
-    const lead = workers[0]!;
-    const { id } = lead.requests[0]!;
-    lead.reply({ id, fit: { ticket: 1, request: FIT_REQUEST } });
-    workers[1]!.fail();
-    await Promise.resolve();
-    expect(lead.requests.at(-1)).toMatchObject({ ticket: 1, error: expect.stringContaining('helper failed') });
-
-    lead.reply({ id, fit: { ticket: 2, request: FIT_REQUEST } });
-    asked.abort();
-    await expect(detection).rejects.toMatchObject({ name: 'AbortError' });
-    expect(workers.slice(1).map((worker) => worker.terminated)).toEqual([true, true]);
   });
 });

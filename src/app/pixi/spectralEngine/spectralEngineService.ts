@@ -1,8 +1,6 @@
 /** The app's one Spectral Engine client: every map and panel asks it, and it is gone with the plugin. */
 
 import { detectionStopped, SpectralEngineClient } from './SpectralEngineClient';
-import { fitHelperCount } from './fitHelpers';
-import { isDesktopApp } from '../../platform/desktopOnly';
 import type { DetectOptions, MapPixels } from './SpectralEngineClient';
 import { pictureOf } from './detectGrid';
 import type { DetectableMap } from './detectGrid';
@@ -21,7 +19,7 @@ let disposed = false;
  */
 export function detectGridInGray(pixels: MapPixels, options?: DetectOptions): Promise<DetectionOutcome> {
   if (disposed) return Promise.reject(detectionStopped());
-  client ??= new SpectralEngineClient(() => new DetectionWorker({ name: 'Atlas grid detection' }), fitHelperCount(navigator.hardwareConcurrency || 2, isDesktopApp()));
+  client ??= new SpectralEngineClient(() => new DetectionWorker({ name: 'Atlas grid detection' }));
   return client.detect(pixels, options);
 }
 
