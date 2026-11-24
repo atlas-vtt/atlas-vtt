@@ -2,7 +2,6 @@ import type { DrawingStroke, NotePin, TextElement, TokenEntity } from '../types'
 import type { KeptMeasure } from '../measure/measureTypes';
 import type { LevelLink } from '../types/sceneLevelTypes';
 import type { LightSource } from '../types/lightingTypes';
-import { lightMovedTo } from '../lighting/lightArea';
 import { copiedLevelLink, type CopiedLevelLink } from '../levels/levelLinkCopies';
 import { levelLinkList } from '../levels/levelLinks';
 import { viewedLevelId, type LevelView } from '../levels/sceneLevels';
@@ -115,7 +114,12 @@ export function translateMapObjects(
     })),
     texts: content.texts.map(move),
     pins: content.pins.map(move),
-    lights: (content.lights ?? []).map((light) => ({ ...structuredClone(light), ...lightMovedTo(light, light.x + offset.x, light.y + offset.y) })),
+    lights: (content.lights ?? []).map((light) => ({
+      ...structuredClone(light),
+      x: light.x + offset.x,
+      y: light.y + offset.y,
+      ...(light.area && { area: light.area.map(shift) }),
+    })),
     levelLinks: content.levelLinks.map((link) => ({ ...structuredClone(link), polygon: link.polygon.map(shift) })),
   };
 }
