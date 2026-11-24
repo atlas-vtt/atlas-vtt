@@ -73,7 +73,7 @@ export async function pouredFloor(map: BucketMap, points: readonly Point[], { ra
   // The window is a cut of one level of the map's pyramid (`rectAtLevel`): halved `factor` times, its corner rounded down to that level's pixels.
   const factor = 2 ** Math.max(0, Math.round(Math.log2(rect.width / image.width)));
   const origin = { x: Math.floor(rect.x / factor) * factor, y: Math.floor(rect.y / factor) * factor };
-  // ponytail: runs on the main thread (tens of ms at 8 cells, more for a long drag); move to the image workers if it stutters
+  // On the main thread: tens of ms at 8 cells, more for a long drag.
   const outline = pourBucket({
     image,
     seeds: seeds.map((seed) => ({ x: (seed.x - origin.x) / factor, y: (seed.y - origin.y) / factor })),
