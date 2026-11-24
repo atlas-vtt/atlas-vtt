@@ -8,10 +8,12 @@ import type { WallToolSubMode } from "../../../lighting/lightingTool"
 import { chosenLightPreset } from "../../../lighting/lightPresetChoice"
 import { exploredMemoryEditable } from "../../../lighting/sceneLightingOptions"
 import { useMapLightPresets } from "../../../react/hooks/useMapLightPresets"
+import { useExperimentalFeature } from "../../../react/hooks/useExperimentalFeature"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
 import { MOTION_FAST_MS, easeOut } from "../../../utils/motion"
 import { TooltipProvider } from "../primitives/tooltip"
 import { DRAW_MODES, LIGHTING_MODES, MEMORY_ACTIONS, MEMORY_SHAPES, ROOM_ACTIONS, ROOM_SHAPES, lightChoices } from "./lightingToolChoices"
+import { RoomMoreMenu } from "./RoomMoreMenu"
 import { ChoiceButtons, GroupBreak, ToolOptionsBars } from "./ToolOptionsBar"
 import { ToolSwitchButton } from "./ToolSwitchButton"
 import { shownTool } from "../../../measure/heldRuler"
@@ -45,6 +47,11 @@ function useModeTools(mode: WallToolSubMode, locked: string | null): React.React
   const setRoomTool = useAtlasStore((state) => state.setRoomTool)
   const brush = useAtlasStore((state) => state.exploredBrush)
   const setBrush = useAtlasStore((state) => state.setExploredBrush)
+  const bucketOn = useExperimentalFeature('roomBucket')
+  // The bucket switched off while chosen: the rooms mode takes its first shape again.
+  React.useEffect(() => {
+    if (!bucketOn && roomTool.shape === 'bucket') setRoomTool({ shape: 'rectangle' })
+  }, [bucketOn, roomTool.shape, setRoomTool])
 
   if (mode === 'draw') return [
     <ChoiceButtons key="draw" kind="choice" locked={locked} choices={DRAW_MODES} value={drawMode} onChange={(value) => setLightingTool({ drawMode: value })} />,
@@ -52,8 +59,9 @@ function useModeTools(mode: WallToolSubMode, locked: string | null): React.React
   if (mode === 'rooms') return [
     <ChoiceButtons key="action" kind="choice" locked={locked} choices={ROOM_ACTIONS} value={roomTool.action} onChange={(action) => setRoomTool({ action })} />,
     // A door is dragged across an opening and has no shape: the shapes stay, disabled, so the bar keeps its width.
-    <ChoiceButtons key="shape" kind="choice" locked={locked} choices={ROOM_SHAPES} value={roomTool.shape} onChange={(shape) => setRoomTool({ shape })}
+    <ChoiceButtons key="shape" kind="choice" locked={locked} choices={bucketOn ? ROOM_SHAPES : ROOM_SHAPES.filter((choice) => choice.value !== 'bucket')} value={roomTool.shape} onChange={(shape) => setRoomTool({ shape })}
       unavailable={() => (roomTool.action === 'door' ? t('rooms.doorHint') : null)} />,
+    <RoomMoreMenu key="more" locked={locked} bucketOn={bucketOn} />,
   ]
   if (mode === 'explored-memory') return [
     <ChoiceButtons key="action" kind="choice" locked={locked} choices={MEMORY_ACTIONS} value={brush.mode} onChange={(value) => setBrush({ mode: value })} />,

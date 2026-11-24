@@ -6,7 +6,7 @@ import { inflatePolyline, inflateShape, normalizePolygon, subtractShapes, unionS
 import { quantizeCoordinate } from './quantizedPoint';
 import { outlinesWithHoles, type RoomArea } from './rooms';
 import { sealedWalls } from './sealWalls';
-import { boxAround, segmentGrid, type SegmentGrid } from './segmentGrid';
+import { boxAround, boxOf, segmentGrid, type SegmentGrid } from './segmentGrid';
 import { shapeContainment, shapeContains } from './shapeContains';
 import { along, beside, distanceTo, edgesWithShapeOnLeft, lengthOf, sideOf, type Segment as Line } from './wallSides';
 
@@ -149,11 +149,12 @@ export function openingClosures(walls: readonly WallSegment[], closed: readonly 
   if (open.length === 0 || open.length > MOST_OPEN_ENDS) return [];
   const closures = new Map<string, Line>();
   const key = (point: { x: number; y: number }): string => `${Math.round(point.x * 8)},${Math.round(point.y * 8)}`;
+  const keys = new Map(ends.map(({ point }) => [point, key(point)]));
   for (const end of open) {
-    const from = key(end.point);
+    const from = keys.get(end.point)!;
     const near = (among: typeof ends, most: number): void => {
       const others = among
-        .map((other) => ({ other, to: key(other.point), distance: Math.hypot(other.point.x - end.point.x, other.point.y - end.point.y) }))
+        .map((other) => ({ other, to: keys.get(other.point)!, distance: Math.hypot(other.point.x - end.point.x, other.point.y - end.point.y) }))
         .filter(({ to }) => to !== from)
         .sort((a, b) => a.distance - b.distance);
       const seen = new Set<string>();
@@ -161,8 +162,8 @@ export function openingClosures(walls: readonly WallSegment[], closed: readonly 
         if (seen.size >= most) break;
         if (seen.has(to)) continue;
         const line = { p1: end.point, p2: other.point };
-        // A line along a wall closes nothing, and one across a wall is no opening.
-        if (real.some((wall) => cross(line, wall) || distanceTo(wall, along(line, 0.5)) <= 0.5)) continue;
+        // A line along a wall closes nothing, and one across a wall is no opening: only walls whose box comes near the line's can be either.
+        if (joined.touching(boxOf(line)).some((wall) => cross(line, wall) || distanceTo(wall, along(line, 0.5)) <= 0.5)) continue;
         seen.add(to);
         closures.set(from < to ? `${from}|${to}` : `${to}|${from}`, line);
       }
@@ -223,21 +224,38 @@ function deepPoint(space: RoomArea, outline: readonly Line[]): { x: number; y: n
  * rooms, most do not.
  */
 function seenFrom(point: { x: number; y: number }, walls: readonly WallSegment[]): { floor: number; rock: number } {
-  let [floor, rock] = [0, 0];
-  for (let index = 0; index < DIRECTIONS; index++) {
-    // Off the axes, so a look never runs along a wall drawn on the grid.
-    const angle = ((index + 0.37) / DIRECTIONS) * 2 * Math.PI;
-    const [dx, dy] = [Math.cos(angle), Math.sin(angle)];
-    let nearest = Infinity;
-    let hit: WallSegment | null = null;
-    for (const wall of walls) {
+  const nearest = new Float64Array(DIRECTIONS).fill(Infinity);
+  const hits = new Array<WallSegment | null>(DIRECTIONS).fill(null);
+  // Each wall is asked only by the directions within the angle it spans from the point, and a
+  // direction beside it each way; every direction still asks its walls in their order.
+  const toIndex = (x: number, y: number): number => (Math.atan2(y, x) / (2 * Math.PI)) * DIRECTIONS - 0.37;
+  for (const wall of walls) {
+    const [ax, ay, bx, by] = [wall.p1.x - point.x, wall.p1.y - point.y, wall.p2.x - point.x, wall.p2.y - point.y];
+    let from = toIndex(ax, ay);
+    let to = toIndex(bx, by);
+    if (to < from) [from, to] = [to, from];
+    // The short way round, unless the wall passes so near the point that it spans about half a turn.
+    if (to - from > DIRECTIONS / 2) [from, to] = [to, from + DIRECTIONS];
+    const all = Math.abs(ax * by - ay * bx) < 1e-9 * (ax * ax + ay * ay + bx * bx + by * by) || to - from > DIRECTIONS / 2 - 1;
+    const [first, last] = all ? [0, DIRECTIONS - 1] : [Math.floor(from) - 1, Math.ceil(to) + 1];
+    for (let k = first; k <= last; k++) {
+      const index = ((k % DIRECTIONS) + DIRECTIONS) % DIRECTIONS;
+      // Off the axes, so a look never runs along a wall drawn on the grid.
+      const angle = ((index + 0.37) / DIRECTIONS) * 2 * Math.PI;
+      const [dx, dy] = [Math.cos(angle), Math.sin(angle)];
       const [ex, ey] = [wall.p2.x - wall.p1.x, wall.p2.y - wall.p1.y];
       const denominator = dx * ey - dy * ex;
       if (Math.abs(denominator) < 1e-12) continue;
       const t = ((wall.p1.x - point.x) * ey - (wall.p1.y - point.y) * ex) / denominator;
       const u = ((wall.p1.x - point.x) * dy - (wall.p1.y - point.y) * dx) / denominator;
-      if (t > 0 && t < nearest && u >= 0 && u <= 1) [nearest, hit] = [t, wall];
+      if (t > 0 && t < nearest[index]! && u >= 0 && u <= 1) {
+        nearest[index] = t;
+        hits[index] = wall;
+      }
     }
+  }
+  let [floor, rock] = [0, 0];
+  for (const hit of hits) {
     if (!hit) rock++;
     else if (knowsFloor(hit)) {
       if (sideOf(hit, point) === hit.floor) floor++;
