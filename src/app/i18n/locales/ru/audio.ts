@@ -34,6 +34,7 @@ export const audio: Translation = {
   'audio.state.convertingPercent': 'Конвертация {percent}%',
   'audio.consent.title': 'Конвертировать {folder} в Opus?',
   'audio.consent.body': { one: 'Atlas конвертирует {count} звук в {folder} в Opus, в этой же папке, и так же поступит с файлами, добавленными позже.', few: 'Atlas конвертирует все {count} звука в {folder} в Opus, в этой же папке, и так же поступит с файлами, добавленными позже.', many: 'Atlas конвертирует все {count} звуков в {folder} в Opus, в этой же папке, и так же поступит с файлами, добавленными позже.', other: 'Atlas конвертирует все {count} звука в {folder} в Opus, в этой же папке, и так же поступит с файлами, добавленными позже.' },
+  'audio.consent.bodyEmpty': 'В {folder} пока нет звуков. Atlas конвертирует в Opus звуки, которые вы добавите, в этой же папке.',
   'audio.consent.trash': 'Конвертировать и переместить оригиналы в корзину',
   'audio.consent.keep': 'Конвертировать и сохранить оригиналы',
   'audio.consent.noTrash': 'У этой папки нет корзины, поэтому оригиналы останутся.',

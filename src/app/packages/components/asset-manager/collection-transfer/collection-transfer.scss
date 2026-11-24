@@ -1,4 +1,6 @@
 // Export and import dialogs of collection bundles.
+// The hero first: the dialog's reduced-motion rule after it must win over the hero art's transition.
+@use 'transfer-hero';
 @use 'transfer-dialog';
 @use 'transfer-content';
 @use 'transfer-tokens';

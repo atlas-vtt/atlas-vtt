@@ -1,0 +1,130 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+// Key-art hero of the transfer dialogs: the cover as a full-bleed banner with the name over it.
+
+$hero-height: 288px;
+
+.atlas-transfer-hero {
+  position: relative;
+  flex-shrink: 0;
+  height: $hero-height;
+
+  // The art dissolves into the tinted surface below instead of ending at an edge.
+  &__art {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    mask-image: linear-gradient(to bottom, #000 35%, transparent 100%);
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      // Routine motion: the art settles with the dialog, no slower than it.
+      transition: opacity $transition-normal $transition-ease-out, transform $transition-normal $transition-ease-out;
+
+      @starting-style {
+        opacity: 0;
+        transform: scale(1.04);
+      }
+    }
+  }
+
+  // A soft shade behind the name keeps it readable on bright art in any theme.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(90% 80% at 0% 85%, color-mix(in oklch, var(--background-primary) 75%, transparent), transparent 70%);
+    mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
+    pointer-events: none;
+  }
+
+  &__identity {
+    @include atlas-flex-col($gap: $spacing-s);
+    position: absolute;
+    left: $spacing-xl;
+    right: $spacing-xl;
+    bottom: $spacing-l;
+    z-index: 1;
+  }
+
+  // Without a cover there is no banner: the name simply opens the dialog.
+  &[data-empty] {
+    height: auto;
+
+    &::after {
+      content: none;
+    }
+
+    .atlas-transfer-hero__identity {
+      position: static;
+      padding: $spacing-xl $spacing-xl 0;
+      // Clears the close button when it sits over the main pane.
+      padding-right: calc(#{$spacing-xl} + #{$button-height-l});
+    }
+  }
+
+  .atlas-transfer-eyebrow {
+    @include atlas-accent-text;
+  }
+
+  &__name {
+    margin: 0;
+    font-size: calc(var(--font-ui-large) * 1.6);
+    // Large enough to lead at semibold; a fourth weight would be one too many in this dialog.
+    font-weight: $font-weight-semibold;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    overflow-wrap: anywhere;
+    text-shadow: 0 2px 16px color-mix(in oklch, var(--background-primary) 60%, transparent);
+  }
+
+  &__name-input {
+    width: 100%;
+    padding: 0;
+    border: none;
+    border-bottom: $border-width-m solid var(--background-modifier-border);
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    box-shadow: none;
+
+    &:focus {
+      outline: none;
+      border-bottom-color: var(--interactive-accent);
+      box-shadow: none;
+    }
+  }
+
+  &__meta {
+    @include atlas-flex-row($gap: $spacing-s);
+    flex-wrap: wrap;
+    color: var(--text-muted);
+    font-size: $font-ui-small;
+  }
+
+  // A long detail (an artist's name) ends in an ellipsis, its separator kept with it; the tooltip shows it whole.
+  &__detail {
+    @include atlas-truncate;
+    max-width: min(32ch, 100%);
+  }
+
+  &__detail + &__detail::before {
+    content: '·';
+    margin-right: $spacing-s;
+  }
+
+  &__description {
+    @include atlas-help-text;
+    max-width: 64ch;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}

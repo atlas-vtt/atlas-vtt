@@ -56,7 +56,7 @@ export function ShareDialog({ session, snapshot, account, onClose }: ShareDialog
       label={t('armariumShare.dialogLabel', { name: shown.name })}
       onClose={onClose}
       ambientUrl={shown.imageUrl}
-      hero={<CollectionHero eyebrow={t('exportDialog.shareInArmarium')} imageUrl={shown.imageUrl} name={shown.name} version={shown.version} details={shown.details} />}
+      hero={<CollectionHero eyebrow={t('exportDialog.shareInArmarium')} imageUrl={shown.imageUrl} name={shown.name} version={shown.version} details={shown.details} keepsRoom={snapshot.subject !== 'collection'} />}
       aside={<ShareRail snapshot={snapshot} accountState={accountState} />}
       summary={parts.summary}
       actions={parts.actions}
