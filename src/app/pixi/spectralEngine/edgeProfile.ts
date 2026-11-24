@@ -7,6 +7,7 @@
  */
 
 import type { GridType } from '../../grid/GridSystem';
+import { addStraightEdgeSamples } from './edgeSampling';
 import { sampleBilinear } from './grayImage';
 import type { GrayImage } from './grayImage';
 import { gridLineSegments } from './gridTemplate';
@@ -141,6 +142,15 @@ const EDGE_PIECES = 5;
 /** Samples a piece needs for its average to mean anything. */
 const MIN_PIECE_SAMPLES = 3;
 
+/** The rows `edgeResponse` sums into, kept between calls: an edge is measured millions of times in one detection. */
+let profileRows = new Float32Array(0);
+
+function scratchProfiles(length: number): Float32Array {
+  if (profileRows.length < length) profileRows = new Float32Array(length);
+  profileRows.fill(0, 0, length);
+  return profileRows;
+}
+
 /**
  * Line response at every `step` across an edge, from `-reach` to `+reach` along its
  * normal (index `reach / step` is the edge itself). The response is the contrast
@@ -154,7 +164,6 @@ const MIN_PIECE_SAMPLES = 3;
  * otherwise set the whole edge's answer, while a line shows in most pieces.
  */
 export function edgeResponse(image: GrayImage, edge: LatticeEdge, reach: number, step: number, frame: LatticeFrame = PLAIN_FRAME): Float32Array {
-  const { aspect, cos, sin, centerX, centerY } = frame;
   const probe = Math.round(lineProbe(edge.cellSize) / step);
   const half = Math.round(reach / step);
   const width = 2 * (half + probe) + 1;
@@ -163,22 +172,27 @@ export function edgeResponse(image: GrayImage, edge: LatticeEdge, reach: number,
   const count = Math.max(2, Math.floor((Math.hypot(dx, dy) * (1 - 2 * EDGE_TRIM)) / ALONG_STEP));
   const pieces = count >= EDGE_PIECES * MIN_PIECE_SAMPLES ? EDGE_PIECES : 1;
   // One row of sums per piece.
-  const profiles = new Float32Array(pieces * width);
+  const profiles = scratchProfiles(pieces * width);
   const samples = new Float32Array(pieces);
   for (let i = 0; i < count; i++) {
-    const t = EDGE_TRIM + ((1 - 2 * EDGE_TRIM) * (i + 0.5)) / count;
-    const px = edge.x1 + dx * t;
-    const py = edge.y1 + dy * t;
     const piece = Math.floor((i * pieces) / count);
-    const row = piece * width;
     samples[piece] = samples[piece]! + 1;
-    for (let j = 0; j < width; j++) {
-      const d = (j - half - probe) * step;
-      const x = px + edge.nx * d;
-      const y = (py + edge.ny * d) * aspect;
-      profiles[row + j] = profiles[row + j]! + (sin === 0
-        ? sampleBilinear(image, x, y)
-        : sampleBilinear(image, centerX + cos * (x - centerX) - sin * (y - centerY), centerY + sin * (x - centerX) + cos * (y - centerY)));
+  }
+  if (!addStraightEdgeSamples(image, edge, frame, { width, first: half + probe, step, count, trim: EDGE_TRIM, pieces }, profiles)) {
+    const { aspect, cos, sin, centerX, centerY } = frame;
+    for (let i = 0; i < count; i++) {
+      const t = EDGE_TRIM + ((1 - 2 * EDGE_TRIM) * (i + 0.5)) / count;
+      const px = edge.x1 + dx * t;
+      const py = edge.y1 + dy * t;
+      const row = Math.floor((i * pieces) / count) * width;
+      for (let j = 0; j < width; j++) {
+        const d = (j - half - probe) * step;
+        const x = px + edge.nx * d;
+        const y = (py + edge.ny * d) * aspect;
+        profiles[row + j] = profiles[row + j]! + (sin === 0
+          ? sampleBilinear(image, x, y)
+          : sampleBilinear(image, centerX + cos * (x - centerX) - sin * (y - centerY), centerY + sin * (x - centerX) + cos * (y - centerY)));
+      }
     }
   }
 
