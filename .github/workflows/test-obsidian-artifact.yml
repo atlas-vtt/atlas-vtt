@@ -28,25 +28,29 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Typecheck
+        run: npx tsc --noEmit
+
       - name: Run the light clipboard tests
         run: npx vitest run --project unit tests/unit/mapClipboard.test.ts
 
       - name: Build Atlas for Obsidian
         run: npm run build:ci
 
-      - name: Check Obsidian plugin files
+      - name: Stage Obsidian plugin files
         run: |
-          test -s dist/main.js
-          test -s dist/styles.css
-          test -s manifest.json
+          mkdir -p obsidian-plugin
+          cp dist/main.js obsidian-plugin/main.js
+          cp dist/styles.css obsidian-plugin/styles.css
+          cp manifest.json obsidian-plugin/manifest.json
+          test -s obsidian-plugin/main.js
+          test -s obsidian-plugin/styles.css
+          test -s obsidian-plugin/manifest.json
 
       - name: Upload installable Obsidian plugin files
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: atlas-vtt-copy-paste-lights-${{ github.sha }}
-          path: |
-            dist/main.js
-            dist/styles.css
-            manifest.json
+          path: obsidian-plugin/*
           if-no-files-found: error
           retention-days: 7
