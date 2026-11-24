@@ -760,9 +760,9 @@ body.atlas-look.atlas-look-scifi .atlas-dashboard {
 }
 
 /* statblocks: the lines start at the top and run out towards the foot,
-   standing still behind the text, as on Atlas Online's tall panels */
-body.atlas-look.atlas-look-scifi .atlas-statblock,
-body.atlas-look.atlas-look-scifi .atlas-vtt-plugin.atlas-sb-note-panel {
+   standing still behind the text, as on Atlas Online's tall panels; the
+   card only, never the panel beside a note that holds it */
+body.atlas-look.atlas-look-scifi .atlas-statblock {
   background-image: var(--atlas-scifi-film), linear-gradient(to bottom, transparent 30%, var(--background-primary) 88%), var(--atlas-scifi-contours);
   background-size: 240px 240px, 100% 100%, 640px 640px;
   background-repeat: repeat, no-repeat, repeat;
