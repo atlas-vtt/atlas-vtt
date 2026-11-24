@@ -6,8 +6,8 @@ import { dealScene, type StreetScene } from './streetScenes';
 
 /**
  * The mimic captcha that stands between a GM and turning Yassify off: a parody of reCAPTCHA's "select all
- * squares" on purpose hard to read and rigged. A round is all chest squares (tiny chests and mimics drawn blocky,
- * darkened, turned and cropped) or all street squares (street photos with a mimic glued on badly, `streetScenes.ts`).
+ * squares" on purpose hard to read and rigged. A round is all chest squares (tiny chests and yassified mimics,
+ * with lashes, bow, nails and tumbler, drawn blocky, darkened, turned and cropped) or all street squares (street photos with a mimic glued on badly, `streetScenes.ts`).
  */
 
 /** What a round's squares show. */
