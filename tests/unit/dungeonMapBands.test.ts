@@ -77,6 +77,7 @@ beforeEach(() => {
   vi.stubGlobal('OffscreenCanvas', StandInCanvas);
   vi.stubGlobal('OffscreenCanvasRenderingContext2D', StandInContext);
   vi.stubGlobal('ImageData', StandInImageData);
+  vi.stubGlobal('self', globalThis);
 });
 
 afterEach(() => {
