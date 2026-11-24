@@ -828,9 +828,11 @@ body.theme-light {
     transition: color $transition-normal $transition-ease,
                 background-color $transition-normal $transition-ease;
 
+    // No focus ring, Obsidian's own included: Atlas is played with hotkeys and shows no keyboard highlights. A
+    // clicked button would otherwise light up at the next key pressed while it holds the focus.
     &:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 2px var(--background-modifier-border-focus), 0 0 0 4px var(--background-primary);
+      box-shadow: none;
     }
 
     &:disabled {
