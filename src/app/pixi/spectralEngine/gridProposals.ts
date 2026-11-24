@@ -63,6 +63,8 @@ export interface Spectra {
   contrast: Float32Array[];
   /** Made when the second round asks for it: of line evidence that ignores edges, so the blocks of a JPEG and painted areas propose nothing. */
   lines?: Float32Array;
+  /** `image` reduced, by the factor it was reduced by. */
+  reduced: Map<number, GrayImage>;
 }
 
 /** The spectra of an image are the same for every grid looked for in it (a manual alignment asks several times). */
@@ -76,7 +78,7 @@ export function spectraOf(image: GrayImage): Spectra {
   let spectra = knownSpectra.get(image);
   if (!spectra) {
     const factor = spectrumFactor(image);
-    spectra = { contrast: [downsampleGray(localContrast(image, 1), factor), localContrast(downsampleGray(image, factor), 1)].map(spectrumOf) };
+    spectra = { contrast: [downsampleGray(localContrast(image, 1), factor), localContrast(downsampleGray(image, factor), 1)].map(spectrumOf), reduced: new Map() };
     knownSpectra.set(image, spectra);
   }
   return spectra;
@@ -149,21 +151,13 @@ export function secondRoundFactor(image: GrayImage): number {
   return Math.ceil(Math.max(image.width, image.height) / SECOND_ROUND_SIDE);
 }
 
-/** Reductions of an image, by the factor each was reduced by. */
-const knownReductions = new WeakMap<GrayImage, Map<number, GrayImage>>();
-
 /** `image` reduced `factor` times, made once for every grid looked for at that scale. */
-export function reducedImage(image: GrayImage, factor: number): GrayImage {
+export function reducedImage(image: GrayImage, spectra: Spectra, factor: number): GrayImage {
   if (factor <= 1) return image;
-  let reductions = knownReductions.get(image);
-  if (!reductions) {
-    reductions = new Map();
-    knownReductions.set(image, reductions);
-  }
-  let reduced = reductions.get(factor);
+  let reduced = spectra.reduced.get(factor);
   if (!reduced) {
     reduced = downsampleGray(image, factor);
-    reductions.set(factor, reduced);
+    spectra.reduced.set(factor, reduced);
   }
   return reduced;
 }

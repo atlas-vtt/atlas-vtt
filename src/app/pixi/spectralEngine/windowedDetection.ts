@@ -72,11 +72,19 @@ function windowPicture(map: MapReader, rect: PixelRect): MapPicture {
   return { size: { width: rect.width, height: rect.height }, bitmap: () => map.window(rect, WINDOW_SIDE) };
 }
 
+/** The window whose grid the lines support best, of equals the first: the same whichever window answered first. */
+export function strongestWindow(found: ReadonlyArray<DetectionOutcome | null>): DetectionOutcome | null {
+  let best: DetectionOutcome | null = null;
+  for (const each of found) if (each && (!best || (each.result!.confidence ?? 0) > (best.result!.confidence ?? 0))) best = each;
+  return best;
+}
+
 /**
- * Detects a map's grid, in windows where the map is too large to see whole: the whole-map pass
- * first (its events show the search), then each window the line evidence chooses, and the window
- * whose grid the lines support best wins; the whole-map answer stands where no window finds one.
- * `detect` runs one detection on one picture.
+ * Detects a map's grid, in windows where the map is too large to see whole. Where the whole map's
+ * lines lie chooses the windows, so the whole-map pass (its events show the search) and every
+ * window run at once, as many as `detect` runs together; the window whose grid the lines support
+ * best wins, and the whole-map answer stands where no window finds one. `detect` runs one
+ * detection on one picture.
  */
 export async function detectGridInWindows(
   map: DetectableMap,
@@ -86,14 +94,12 @@ export async function detectGridInWindows(
   const picture = pictureOf(map);
   if (!picture) return NO_GRID;
   if (!searchedInWindows(picture.size)) return detect(picture, options);
-  const coarse = await detect(picture, { ...options, lines: true });
-  if (!coarse.lines) return coarse;
-  const windows = chooseWindows(coarse.lines, picture.size);
-  let best: DetectionOutcome | null = null;
-  for (const rect of windows) {
-    options.signal?.throwIfAborted();
-    const found = windowOutcomeOnMap(await detect(windowPicture(map, rect), { ...(options.signal ? { signal: options.signal } : {}) }), rect);
-    if (found && (!best || (found.result!.confidence ?? 0) > (best.result!.confidence ?? 0))) best = found;
-  }
-  return best ?? { result: coarse.result, hits: coarse.hits };
+  const signal = options.signal ? { signal: options.signal } : {};
+  const { lines } = await detect(picture, { ...signal, linesOnly: true });
+  if (!lines) return NO_GRID;
+  const [whole, ...windows] = await Promise.all([
+    detect(picture, options),
+    ...chooseWindows(lines, picture.size).map(async (rect) => windowOutcomeOnMap(await detect(windowPicture(map, rect), signal), rect)),
+  ]);
+  return strongestWindow(windows) ?? whole;
 }
