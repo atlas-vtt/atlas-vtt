@@ -63,6 +63,12 @@ jobs:
       - name: Check code dependencies
         run: npm run check:boundaries
 
+      - name: Check file sizes
+        run: npm run check:sizes
+
+      - name: Check documentation references
+        run: npm run check:docs
+
   # Obsidian's directory review lints the whole repository with its own
   # config; a file it cannot parse is a fatal review error.
   directory-scan:

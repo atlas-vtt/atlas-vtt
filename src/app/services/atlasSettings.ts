@@ -12,6 +12,7 @@ import type { SharedSoundRoots } from '../soundLibrary/soundRootsStore';
 import { DEFAULT_TABLE_TV_SETTINGS, readTableTvSettings, type TableTvSettings } from './tableTvSettings';
 import { DEFAULT_FOG_EDGE, type FogEdge } from '../fog/fogEdge';
 import { DEFAULT_DRAG_DISTANCE, type DragDistance } from '../measure/dragDistance';
+import { isRecord } from '../utils/guards';
 
 /**
  * How wheel events drive the map viewport.
@@ -172,10 +173,6 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
  * is the device's (local storage), the user's game system presets are vault files.
  */
 const NOT_PREFERENCES = ['navigation', 'systemPresets'] as const;
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 /** `target` with `source`'s values on top, records merged key by key; keys only `source` has are kept. */
 function deepMerge<T extends object>(target: T, source: Partial<T>): T {

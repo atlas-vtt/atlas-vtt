@@ -3,6 +3,7 @@ import { REFLECTION } from '../../../lighting/lightingConstants';
 import type { Rect } from '../../../lighting/segments';
 import type { ReflectionPart } from '../../../vision/reflectedLight';
 import type { MapBounds } from '../../../vision/visibility';
+import { destroyTree } from '../../utils/destroyTree';
 import type { CapsuleField } from './CapsuleField';
 import { ENGINE_SHADERS } from './engineShaders';
 import { createPlaceholder, createQuad, createShader, createTarget, destroyQuad, quadGeometry, renderInto, type Quad } from './gpu';
@@ -82,7 +83,7 @@ export class ReflectionTiles {
     this.shader?.shader.destroy();
     this.blur?.mesh.shader?.destroy();
     this.blur?.mesh.destroy();
-    this.scene.destroy({ children: true });
+    destroyTree(this.scene);
     this.quadGeometry.destroy();
     destroyQuad(this.quad);
     this.placeholder.destroy(true);

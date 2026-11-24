@@ -51,3 +51,43 @@ export function scrollWithin(container: HTMLElement, element: Element, block: 's
   // Keep the active element visible even when the following siblings do not all fit.
   else if (pastEnd > 0) container[scroll] += Math.min(pastEnd, fromStart);
 }
+
+const SCROLLS = /^(auto|scroll)$/;
+
+function scrollsAlong(container: HTMLElement, axis: 'x' | 'y'): boolean {
+  const style = container.ownerDocument?.defaultView?.getComputedStyle(container);
+  if (axis === 'y') return SCROLLS.test(style?.overflowY ?? '') && container.scrollHeight > container.clientHeight;
+  return SCROLLS.test(style?.overflowX ?? '') && container.scrollWidth > container.clientWidth;
+}
+
+/**
+ * Brings `element` into view in the list it lies in, the nearest ancestor that scrolls, no farther than it takes
+ * and along the axes that list scrolls. Nothing around the list moves; an element in no such list stays where it is.
+ */
+export function revealInList(element: Element): void {
+  for (let list = element.parentElement; list; list = list.parentElement) {
+    const along = (['y', 'x'] as const).filter((axis) => scrollsAlong(list, axis));
+    if (along.length === 0) continue;
+    for (const axis of along) {
+      if (!revealLonger(list, element, axis)) scrollWithin(list, element, 'nearest', 0, axis);
+    }
+    return;
+  }
+}
+
+/**
+ * An element longer than its list, as `scrollIntoView` takes it: one that fills the list stays where it is, and
+ * otherwise the edge that lies inside the list goes to the list's far edge, so as much of it shows as fits.
+ */
+function revealLonger(list: HTMLElement, element: Element, axis: 'x' | 'y'): boolean {
+  const [start, end] = axis === 'y' ? (['top', 'bottom'] as const) : (['left', 'right'] as const);
+  const box = list.getBoundingClientRect();
+  const rect = element.getBoundingClientRect();
+  if (rect[end] - rect[start] <= box[end] - box[start]) return false;
+  const before = rect[start] - box[start];
+  const after = rect[end] - box[end];
+  const scroll = axis === 'y' ? 'scrollTop' : 'scrollLeft';
+  if (before < 0 && after <= 0) list[scroll] += after;
+  else if (after > 0 && before >= 0) list[scroll] += before;
+  return true;
+}

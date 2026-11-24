@@ -2,6 +2,7 @@ import type { SharedDrawing, SharedStroke } from '../protocol/index.ts';
 import type { Container } from 'pixi.js';
 import type { LiveDrawing } from '../../annotations/madeDrawing';
 import { LiveStroke } from '../../pixi/annotations/LiveStroke';
+import { lerp } from '../../utils/math';
 import { liveDrawingOf } from './toldAnnotations.ts';
 
 type Point = LiveDrawing['points'][number];
@@ -67,7 +68,6 @@ export interface RemoteStrokesOptions {
   readonly interval: number;
 }
 
-const lerp = (a: number, b: number, share: number): number => a + (b - a) * share;
 const alike = (a: readonly Point[], b: readonly Point[]): boolean => a.length === b.length;
 
 /** `to` on its way from `from`: every point a `share` of the way, where the two have the same points to move; else `to`. */

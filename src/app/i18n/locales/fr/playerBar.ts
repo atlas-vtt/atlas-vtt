@@ -17,7 +17,9 @@ export const playerBar: Translation = {
   'playerBar.takeBack': 'Reprendre l\'aide de jeu',
   'playerBar.openHint': 'Afficher aussi la scène présentée sur un écran à la table',
   'playerBar.freezeOnline': 'Les joueurs en ligne ne peuvent pas déplacer leurs pions pendant la pause',
-  'playerBar.playMode': 'Comment jouent les joueurs',
-  'playerBar.modeTable': 'Chacun sur sa propre carte',
-  'playerBar.modeRemote': 'Téléphones comme télécommandes de l’écran partagé',
+  'playerBar.playMode': 'Mode de jeu',
+  'playerBar.modeTable': 'Contrôle des pions',
+  'playerBar.modeRemote': 'Télécommande',
+  'playerBar.modeTableHint': 'Chaque joueur déplace ses pions sur sa propre carte',
+  'playerBar.modeRemoteHint': 'Les téléphones servent de télécommandes pour l’écran partagé',
 };

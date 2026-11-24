@@ -1,12 +1,10 @@
 import type { App } from 'obsidian';
 import { AssetService } from './AssetService';
+import { isRecord } from '../utils/guards';
 
 const STORAGE_KEY = 'atlas-vtt:scene-opens';
 /** Opens kept, the most recent ones; a scene dropped from them sorts by its record's date again. */
 const MAX_SCENES = 50;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** Trust boundary: local storage may hold data from another Atlas version, or nothing. */
 function readOpens(value: unknown): Map<string, number> {

@@ -22,9 +22,9 @@ export class LayerManager {
       return c;
     }
   
-    all() { return Array.from(this.layers.values()); }
+    all(): Container[] { return Array.from(this.layers.values()); }
   
-    destroy() {                   // called from React unmount
+    destroy(): void {                 // called from React unmount
       this.layers.forEach(l => destroyTree(l));
       this.layers.clear();
     }

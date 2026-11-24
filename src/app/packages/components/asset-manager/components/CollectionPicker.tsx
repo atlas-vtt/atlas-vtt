@@ -8,6 +8,7 @@ import { t } from '../../../../i18n';
 import { portalHost } from '../../../../host/portalHost';
 import { usePickerPlacement } from './usePickerPlacement';
 import { useFocusTrap } from '../../primitives/useFocusTrap';
+import { revealInList } from '../../../../utils/scrollWithin';
 
 export interface CollectionPickerProps {
   collections: CollectionOption[];
@@ -87,7 +88,8 @@ export function CollectionPicker({ collections, selectedCollection, onSelectColl
 
   // The highlighted row stays in view as the arrows move it.
   useEffect(() => {
-    if (isOpen && active >= 0) listRef.current?.querySelector(`[id="${optionId(active)}"]`)?.scrollIntoView?.({ block: 'nearest' });
+    const row = isOpen && active >= 0 ? listRef.current?.querySelector(`[id="${optionId(active)}"]`) : null;
+    if (row) revealInList(row);
   }, [isOpen, active]);
 
   const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>): void => {

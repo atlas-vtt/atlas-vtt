@@ -247,9 +247,6 @@ export class TokenStatblockLinkService extends EventEmitter {
     else await this.updateStatblockImage(statblockPath, tokenImagePath, false);
   }
   
-  /**
-   * Gets the statblock linked to a token.
-   */
   async getStatblockLinkedToToken(tokenImagePath: string): Promise<string | null> {
     const tokenAssets = await this.assetService.getTokenAssets();
     const linked = tokenAssets.find(asset => asset.imagePath === tokenImagePath && asset.statblockPath);

@@ -6,6 +6,7 @@ import { MAX_MEASURES, type KeptMeasure, type MeasureChanges, type MeasureInput 
 import type { ViewState } from '../types/viewState';
 import type { Point } from '../types/visionTypes';
 import { isRecord } from '../utils/guards';
+import { newId } from '../utils/ids';
 
 /** The aura a token is to have: how far it reaches (game units; 0 for none) and the points it then holds (`auraPoints`). */
 export interface TokenAura {
@@ -43,10 +44,6 @@ export function dropTokenAuras(draft: { objects: AuraHolder; measurePopover: str
 
 type ImmerSet = (fn: (draft: MeasuresDraft) => void) => void;
 
-function newMeasureId(): string {
-  return `measure_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-}
-
 /** Whether an entry of the record lies on `levelId`: one that is no object (a file is kept as it came) where unset objects are. */
 function isOnLevel(entry: unknown, levelId: string, draft: Pick<MeasuresDraft, 'levels'>): boolean {
   return isRecord(entry) ? onLevel(entry, levelId, draft.levels) : levelId === firstLevelId(draft.levels);
@@ -79,7 +76,7 @@ function keep(draft: Pick<MeasuresDraft, 'levels' | 'objects'>, measure: KeptMea
  * that is not the view's own (a measurement an online player keeps).
  */
 export function keepNewMeasure(draft: Pick<MeasuresDraft, 'levels' | 'viewedLevel' | 'objects'>, data: MeasureInput): string | null {
-  const measure: KeptMeasure = { id: newMeasureId(), kind: 'measure', ...placedOnViewedLevel(draft), ...data };
+  const measure: KeptMeasure = { id: newId('measure'), kind: 'measure', ...placedOnViewedLevel(draft), ...data };
   return keep(draft, measure) ? measure.id : null;
 }
 
@@ -129,7 +126,7 @@ export function createMeasuresActions(set: ImmerSet): MeasuresSlice {
           } else if (known) {
             Object.assign(known, { aura, points });
           } else {
-            const measure: KeptMeasure = { id: newMeasureId(), kind: 'measure', shape: 'circle', points, follows: tokenId, aura, ...(token.level !== undefined && { level: token.level }), ...look };
+            const measure: KeptMeasure = { id: newId('measure'), kind: 'measure', shape: 'circle', points, follows: tokenId, aura, ...(token.level !== undefined && { level: token.level }), ...look };
             if (!keep(draft, measure)) all = false;
           }
         }

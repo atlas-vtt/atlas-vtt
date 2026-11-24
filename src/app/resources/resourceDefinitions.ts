@@ -1,4 +1,4 @@
-import { playerAudience, withPlayerAudience } from './playerAudience';
+import { playerAudience, withPlayerAudience } from './playerAudienceFields';
 import { isSocket, slottedResources } from './resourceSlots';
 import { MAX_RESOURCES, type ResourceDefinition } from './resourceTypes';
 

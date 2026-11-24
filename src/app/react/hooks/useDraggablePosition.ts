@@ -73,7 +73,7 @@ export function useDraggablePosition(initial: InitialPanelPosition, { onDragEnd,
     setPositionState(next);
   }, []);
 
-  const clamp = useCallback((): void => {
+  const keepInArea = useCallback((): void => {
     const panel = panelRef.current;
     if (!panel) return;
     const clamped = clampToArea(panel, positionRef.current, margin);
@@ -86,14 +86,14 @@ export function useDraggablePosition(initial: InitialPanelPosition, { onDragEnd,
     if (panel && typeof start === 'function') {
       setPosition(start(areaOf(panel), { width: panel.offsetWidth, height: panel.offsetHeight }));
     }
-    clamp();
-  }, [clamp, setPosition]);
+    keepInArea();
+  }, [keepInArea, setPosition]);
 
   useEffect(() => {
     const win = panelRef.current?.win ?? window;
-    win.addEventListener('resize', clamp);
-    return () => win.removeEventListener('resize', clamp);
-  }, [clamp]);
+    win.addEventListener('resize', keepInArea);
+    return () => win.removeEventListener('resize', keepInArea);
+  }, [keepInArea]);
 
   const startDrag = useCallback((event: ReactPointerEvent): void => {
     const panel = panelRef.current;

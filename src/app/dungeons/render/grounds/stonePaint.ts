@@ -22,7 +22,7 @@ import { grainTile, tileTexels } from '../stone/textures';
 import { paintCrown } from './stoneCrown';
 import { scatter, withClip, type GroundsPaint, type Scattered } from './paint';
 
-const lerp = (a: Rgb, b: Rgb, t: number): Rgb => [0, 1, 2].map((i) => a[i]! + (b[i]! - a[i]!) * t) as Rgb;
+const lerpRgb = (a: Rgb, b: Rgb, t: number): Rgb => [0, 1, 2].map((i) => a[i]! + (b[i]! - a[i]!) * t) as Rgb;
 
 export function stoneGroundsPaint(hand: Hand, c: StoneColours): GroundsPaint {
   const { scene } = hand;
@@ -32,7 +32,7 @@ export function stoneGroundsPaint(hand: Hand, c: StoneColours): GroundsPaint {
   const grass = plants.leaves.grass;
   const floor = parseHex(c.floor);
   // A lawn a little paler than the grass itself, drawn towards the paper as the look's plants are.
-  const lawn = hex(lerp(grass[1], floor, c.dark ? 0.45 : 0.42));
+  const lawn = hex(lerpRgb(grass[1], floor, c.dark ? 0.45 : 0.42));
   const gravel = c.mono ? mixColours(c.floor, c.line, 0.1) : c.dark ? mixColours(c.floor, c.line, 0.12) : mixColours(c.floor, c.rock, 0.5);
   const clipped = (path: PathFn, draw: () => void): void => withClip(ctx, path, draw);
   /** A disc at every point, moved `shift` along `towards`, of the radius `size` gives its value. */

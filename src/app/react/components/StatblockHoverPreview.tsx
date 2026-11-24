@@ -227,7 +227,6 @@ export interface StatblockHoverPreviewState<TEntry> {
   isClosing: boolean;
   /** Vault path of the statblock note to preview */
   notePath: string | null;
-  /** The statblock file */
   statblockFile: TFile | null;
   /** The current hovered entry (whatever the caller previews: a token, an initiative entry, ...) */
   hoveredEntry: TEntry | null;

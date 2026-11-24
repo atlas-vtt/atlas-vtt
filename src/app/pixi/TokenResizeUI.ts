@@ -71,9 +71,6 @@ export class TokenResizeUI {
     return this.temporarySizes[tokenId];
   }
   
-  /**
-   * Check if currently resizing
-   */
   public get isCurrentlyResizing(): boolean {
     return this.isResizing;
   }
@@ -417,9 +414,6 @@ export class TokenResizeUI {
     }));
   };
   
-  /**
-   * End resize
-   */
   private onResizeEnd = (e: FederatedPointerEvent): void => {
     if (!this.isResizing) return;
     

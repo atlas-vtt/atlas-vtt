@@ -1,98 +1,72 @@
-import { Assets, Sprite, Texture, type Container } from 'pixi.js';
-import bowImageUrl from '../../assets/token-bow.webp';
-import nailsImageUrl from '../../assets/token-nails.webp';
-import cupImageUrl from '../../assets/token-cup.webp';
+import { Sprite, Texture, type Container } from 'pixi.js';
+import yassifyImageUrl from '../../assets/token-yassify.webp';
+import { loadAsset } from '../utils/assetLifecycle';
 import { destroyTree } from '../utils/destroyTree';
 import { getTokenRingOuterDiameter } from './tokenRingMetrics';
 import type { TokenGroupContainer } from './types';
 
-/** A hand-painted prop every yassified token wears, placed on its ring. */
-interface Prop {
-  label: string;
-  url: string;
-  /** Where on the ring it sits, in degrees: 0 is the right, 90 the bottom. */
-  angle: number;
-  /** How far out, as a share of the ring's radius. */
-  reach: number;
-  /** Its width as a share of the ring's outer diameter. */
-  width: number;
-  /** Its tilt in radians. */
-  tilt: number;
-}
-
-/** The bow pinned on top right, the manicured hand raised bottom left, the tumbler held bottom right. */
-const PROPS: readonly Prop[] = [
-  { label: 'tokenBow', url: bowImageUrl, angle: -45, reach: 0.86, width: 0.55, tilt: 0.3 },
-  { label: 'tokenNails', url: nailsImageUrl, angle: 140, reach: 0.9, width: 0.3, tilt: -0.35 },
-  { label: 'tokenCup', url: cupImageUrl, angle: 40, reach: 0.9, width: 0.36, tilt: 0.12 },
-];
+export const YASSIFY_LABEL = 'tokenYassify';
+/**
+ * The overlay is one picture of the props around a ring (the bow on top right, the manicured hand raised on the
+ * bottom left, the tumbler on the bottom right), drawn for a ring this many times smaller than the picture is wide,
+ * since the props reach out past the ring: it spans 1.3 ring radii from the middle each way.
+ */
+export const OVERLAY_SPAN = 1.3;
 /** Above the art, ring and glass, below the downed skull and the hidden-token marker. */
-const PROP_Z_INDEX = 4;
+const YASSIFY_Z_INDEX = 4;
 
 // Loaded once per app session and shared by every token, like the ring's texture.
-const loaded = new Map<string, Texture>();
-let pendingLoad: Promise<boolean> | null = null;
+let loadedTexture: Texture | null = null;
+let pendingLoad: Promise<Texture | null> | null = null;
 
-/** Loads every prop's texture; true once all are there. */
-function loadPropTextures(): Promise<boolean> {
-  if (loaded.size === PROPS.length) return Promise.resolve(true);
-  pendingLoad ??= Promise.all(PROPS.map(async ({ url }) => {
-    const texture = await Assets.load<Texture>({ src: url, parser: 'texture', data: { autoGenerateMipmaps: true, scaleMode: 'linear' } });
-    if (texture instanceof Texture && texture !== Texture.EMPTY) loaded.set(url, texture);
-  }))
-    .then(() => loaded.size === PROPS.length)
+function loadOverlayTexture(): Promise<Texture | null> {
+  if (loadedTexture) return Promise.resolve(loadedTexture);
+  pendingLoad ??= loadAsset<Texture>({ src: yassifyImageUrl, parser: 'texture', data: { autoGenerateMipmaps: true, scaleMode: 'linear' } })
+    .then((texture) => (texture instanceof Texture && texture !== Texture.EMPTY ? (loadedTexture = texture) : null))
     .catch((error: unknown) => {
-      console.error('[TokenYassify] Failed to load the props\' textures:', error);
-      return false;
+      console.error('[TokenYassify] Failed to load the overlay texture:', error);
+      return null;
     })
     .finally(() => { pendingLoad = null; });
   return pendingLoad;
 }
 
 /**
- * Yassify (Appearance settings): every token wears a bow, shows off its nails and holds a tumbler, upright whichever
- * way the token turns and sized by its ring. The props are children of the token's group, so they move, hide and go
- * with their token, in the player window too. Every token shares the three textures.
+ * Yassify (Appearance settings): every token wears a bow, raises a hand to show off its nails and holds a tumbler.
+ * One sprite per token over its ring, sized by the ring and turned with the art as the ring is
+ * (`SpriteFactory.updateTokenRotation`); a child of the token's group, so it moves, hides and goes with its token,
+ * in the player window too. Every token shares the one texture.
  */
 export class TokenYassify {
   private readonly waiting = new Set<TokenGroupContainer>();
 
-  /** `requestRender` must draw a frame: textures arriving after their tokens are invisible to the render scheduler. */
+  /** `requestRender` must draw a frame: a texture arriving after its tokens is invisible to the render scheduler. */
   constructor(private readonly requestRender: () => void) {}
 
-  /** Dresses `tokenGroup` while `on`, takes the props off otherwise. */
+  /** Dresses `tokenGroup` while `on`, takes the overlay off otherwise. */
   public update(tokenGroup: TokenGroupContainer, on: boolean): void {
+    const existing = tokenGroup.getChildByLabel(YASSIFY_LABEL);
     if (!on) {
       this.waiting.delete(tokenGroup);
-      for (const { label } of PROPS) {
-        const prop = tokenGroup.getChildByLabel(label);
-        if (prop) destroyTree(prop);
-      }
+      if (existing) destroyTree(existing);
       return;
     }
-    if (tokenGroup.getChildByLabel(PROPS[0]!.label)) return;
-    if (loaded.size < PROPS.length) {
-      this.waitForTextures(tokenGroup);
+    if (existing) return;
+    if (!loadedTexture) {
+      this.waitForTexture(tokenGroup);
       return;
     }
-    for (const { label, url } of PROPS) {
-      tokenGroup.addChild(new Sprite({ texture: loaded.get(url)!, anchor: 0.5, label, zIndex: PROP_Z_INDEX, eventMode: 'none' }));
-    }
+    tokenGroup.addChild(new Sprite({ texture: loadedTexture, anchor: 0.5, label: YASSIFY_LABEL, zIndex: YASSIFY_Z_INDEX, eventMode: 'none' }));
     tokenGroup.sortChildren();
     this.refresh(tokenGroup);
   }
 
-  /** Places the props again for the ring's size, after the ring was rebuilt. */
+  /** Sizes and turns the overlay again with the ring, after the ring was rebuilt. */
   public refresh(tokenGroup: TokenGroupContainer): void {
-    const radius = ringDiameter(tokenGroup) / 2;
-    for (const { label, angle, reach, width, tilt } of PROPS) {
-      const prop = tokenGroup.getChildByLabel(label) as Sprite | null;
-      if (!prop) continue;
-      const radians = (angle * Math.PI) / 180;
-      prop.position.set(Math.cos(radians) * radius * reach, Math.sin(radians) * radius * reach);
-      prop.rotation = tilt;
-      prop.scale.set((2 * radius * width) / prop.texture.width);
-    }
+    const overlay = tokenGroup.getChildByLabel(YASSIFY_LABEL) as Sprite | null;
+    if (!overlay) return;
+    overlay.scale.set((ringDiameter(tokenGroup) * OVERLAY_SPAN) / overlay.texture.width);
+    overlay.rotation = tokenGroup.getChildByLabel('tokenSprite')?.rotation ?? 0;
   }
 
   /** Forgets a token group that is going away. */
@@ -100,14 +74,14 @@ export class TokenYassify {
     this.waiting.delete(tokenGroup);
   }
 
-  private waitForTextures(tokenGroup: TokenGroupContainer): void {
+  private waitForTexture(tokenGroup: TokenGroupContainer): void {
     const first = this.waiting.size === 0;
     this.waiting.add(tokenGroup);
     if (!first) return;
-    void loadPropTextures().then((ready) => {
+    void loadOverlayTexture().then((texture) => {
       const groups = Array.from(this.waiting);
       this.waiting.clear();
-      if (!ready) return;
+      if (!texture) return;
       for (const group of groups) if (!group.destroyed) this.update(group, true);
       this.requestRender();
     });
