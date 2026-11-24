@@ -71,6 +71,7 @@ import { restingToolbarBox, toolbarMoveDelay, toolbarWillBeHidden } from './comm
 import { useCoarsePointer } from '../../platform/useCoarsePointer';
 import { visibleViewport } from '../../host/visibleViewport';
 import { customizeToolbarCommand } from './command-palette/customizeToolbarCommand';
+import { AppearanceShortcuts } from './command-palette/AppearanceShortcuts';
 import { hotkeyHelpCommand } from './command-palette/hotkeyHelpCommand';
 import { mapTourCommand } from './command-palette/mapTourCommand';
 import { SettingsService } from '../../services/SettingsService';
@@ -1109,6 +1110,14 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
                               <Move />
                               {t('palette.enterAlignment')}
                             </Button>
+                          ) : activePanel === 'appearance' ? (
+                            <AppearanceShortcuts
+                              onCustomizeToolbar={onCustomizeToolbar && (() => {
+                                onCustomizeToolbar(choosingByKeyboard.current);
+                                onClose();
+                              })}
+                              onDiceSettings={() => setActiveSubmenu('dice-settings')}
+                            />
                           ) : activePanel === 'lighting-settings' ? (
                             // How much the picture may cost this device is the Graphics page's.
                             <Button variant="ghost" size="sm" onClick={() => setActiveSubmenu('graphics-settings')}>
