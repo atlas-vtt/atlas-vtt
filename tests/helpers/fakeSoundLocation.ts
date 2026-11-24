@@ -1,5 +1,6 @@
 import type { SoundFileEntry, SoundListing, SoundLocation } from '../../src/app/soundLibrary/soundLocation';
-import { SoundPathTakenError, sortedListing } from '../../src/app/soundLibrary/soundLocation';
+import { SoundPathNotRemovableError, SoundPathTakenError, sortedListing, TrashUnavailableError } from '../../src/app/soundLibrary/soundLocation';
+import { isPart } from '../../src/app/soundLibrary/copyNames';
 import { isWithin, joinRelative, nameOfRelative, parentOfRelative } from '../../src/app/soundLibrary/soundPaths';
 
 /** A map that counts its changes, so a listing can be indexed once per change rather than scanned per folder. */
@@ -157,11 +158,29 @@ export class FakeSoundLocation implements SoundLocation {
     return Promise.resolve(true);
   }
 
+  /** Refused where `trashable` is off, as a real root without a trash does. */
   async trash(path: string): Promise<void> {
+    if (!this.trashable) throw new TrashUnavailableError();
     this.change(`trash ${path}`);
     for (const file of [...this.files.keys()]) if (isWithin(path, file)) this.files.delete(file);
     for (const file of [...this.contents.keys()]) if (isWithin(path, file)) this.contents.delete(file);
     for (const folder of [...this.folders]) if (folder !== '' && isWithin(path, folder)) this.folders.delete(folder);
+    this.tell(path);
+  }
+
+  async removePart(path: string): Promise<void> {
+    if (!isPart(path) || !this.files.has(path)) throw new SoundPathNotRemovableError(path);
+    this.change(`remove ${path}`);
+    this.files.delete(path);
+    this.contents.delete(path);
+    this.tell(path);
+  }
+
+  async removeEmptyFolder(path: string): Promise<void> {
+    const holds = [...this.files.keys(), ...this.folders].some((other) => other !== path && isWithin(path, other));
+    if (path === '' || !this.folders.has(path) || holds) throw new SoundPathNotRemovableError(path);
+    this.change(`rmdir ${path}`);
+    this.folders.delete(path);
     this.tell(path);
   }
 

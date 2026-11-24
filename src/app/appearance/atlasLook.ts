@@ -4,6 +4,7 @@ import type { FogEdgeStyle } from '../fog/fogEdge';
 import type { DiceFont } from '../dice3d/diceLook';
 import type { LookService } from './lookService';
 import { customAccent, onAccentChange } from './accentColour';
+import { paintIvy } from './paintedIvy';
 
 /** Atlas' two looks: the mediaeval module page and the clean sci-fi one. */
 export type AtlasLook = 'mediaeval' | 'scifi';
@@ -23,9 +24,6 @@ export const SCIFI_LOOK_CLASS = 'atlas-look-scifi';
 /** On `body` while an Atlas look is on and the GM picked an accent colour, which the look then takes instead of its own. */
 export const CUSTOM_ACCENT_CLASS = 'atlas-accent-custom';
 
-/** The companion theme's name in its manifest, which drew the looks before Atlas did. */
-export const RETIRED_THEME_NAME = 'Atlas VTT';
-
 export function isAtlasLook(value: unknown): value is AtlasLook {
   return value === 'mediaeval' || value === 'scifi';
 }
@@ -35,7 +33,8 @@ export function isAtlasLook(value: unknown): value is AtlasLook {
  * look is announced as `css-change`, once every window shows it, since what reads the look's CSS (the ivy Atlas lends
  * its initiative trackers) follows that. A theme Obsidian switches to (its own `css-change`) ends an Atlas look.
  * An accent colour picked here or in Obsidian's settings marks every window too while an Atlas look is on, as Obsidian
- * copies its colour into each.
+ * copies its colour into each, and is announced as `css-change`, which Obsidian leaves out for the accent. The Medieval look's ivy is painted in the GM's ivy colour in every window; a change of
+ * it is announced as `css-change` like a switch of look, so the ivy Atlas lends follows.
  */
 export function registerLookSync(plugin: Plugin, looks: LookService): void {
   const { app } = plugin;
@@ -45,18 +44,26 @@ export function registerLookSync(plugin: Plugin, looks: LookService): void {
     doc.body.toggleClass(LOOK_CLASS, isAtlasLook(look));
     doc.body.toggleClass(SCIFI_LOOK_CLASS, look === 'scifi');
     doc.body.toggleClass(CUSTOM_ACCENT_CLASS, isAtlasLook(look) && customAccent(app) !== '');
+    paintIvy(doc, look === 'mediaeval' ? looks.ivyColour() : '');
   };
   inEveryDocument(plugin, (doc) => {
     documents.add(doc);
     apply(doc);
-    return () => { documents.delete(doc); doc.body.removeClass(LOOK_CLASS, SCIFI_LOOK_CLASS, CUSTOM_ACCENT_CLASS); };
+    return () => {
+      documents.delete(doc);
+      paintIvy(doc, '');
+      doc.body.removeClass(LOOK_CLASS, SCIFI_LOOK_CLASS, CUSTOM_ACCENT_CLASS);
+    };
   });
   plugin.register(looks.onChange(() => {
     for (const doc of documents) apply(doc);
     app.workspace.trigger('css-change');
   }));
+  // Obsidian writes a new accent onto `body` without announcing it (`setAccentColor` triggers no `css-change`, unlike
+  // a theme or font switch), so Atlas announces it: the dice, the canvas' accent and the lent ivy re-read it then.
   plugin.register(onAccentChange(app, () => {
     for (const doc of documents) apply(doc);
+    app.workspace.trigger('css-change');
   }));
   plugin.registerEvent(app.workspace.on('css-change', () => looks.followThemeChange()));
 }

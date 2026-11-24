@@ -109,4 +109,6 @@ export const armariumListing: Translation = {
   'armariumListing.problem.tooManyTags': 'Максимум меток: {count}.',
   'armariumListing.problem.tagTwice': 'Используйте каждую метку один раз.',
   'armariumListing.problem.tagsExclusive': 'Используйте только одну из меток: {tags}.',
+  'armariumListing.kind.music': 'Музыка',
+  'armariumListing.kindLine.music': 'Альбомы и треки для страницы «Звук».',
 };

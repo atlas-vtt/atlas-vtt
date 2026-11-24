@@ -1,5 +1,5 @@
 import { mapResources } from '../resources/collectionResources';
-import { rulesLookup } from './mapRules';
+import { onMapRulesChange, rulesLookup } from './mapRules';
 import { setIcon, type App } from 'obsidian';
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
@@ -51,6 +51,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
   private redrawQueued = false;
   private readonly stopLayout: () => void;
   private readonly stopTheme: () => void;
+  private readonly stopRules: () => void;
   /** The theme's ivy was lent to the lists' container; read again with each scene presented and when the theme changes. */
   private ivyLent = false;
   /** How the lists come, go and move (`PlayerInitiativeStage`), as on the online player page. */
@@ -79,6 +80,8 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
       this.refresh();
     });
     this.stopTheme = () => app.workspace.offref(themeRef);
+    // Who is defeated and whose hit points players see follow the map's resources
+    this.stopRules = onMapRulesChange(app, 'any', () => this.reselect());
   }
 
   /** Draws anew, the lists gliding from where they stood (`PlayerInitiativeStage.glide`). */
@@ -91,6 +94,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
   override destroy(): void {
     this.stopLayout();
     this.stopTheme();
+    this.stopRules();
     super.destroy();
   }
 
@@ -150,13 +154,10 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     this.stage.begin(container, drawn, initiative?.isActive === true, () => this.settings.initiativeTurnOptions().banner);
     if (!drawn) return;
     const tokenOf = JSON.parse(scene.tokens) as (EntryToken | null)[];
-    // Players see HP where the map's rules show it to them
-    const hpVisible = mapResources(rulesLookup(this.app), scene.mapPath).some((definition) => definition.key === 'hp' && definition.visibleToPlayers);
     const list = playerInitiativeList(
       initiative,
       (_entry, index) => tokenOf[index] ?? null,
       mapInitiativeRules(this.app, scene.mapPath),
-      hpVisible,
     );
     const live = this.badgeNumbers;
     const held = this.shownNumbers;

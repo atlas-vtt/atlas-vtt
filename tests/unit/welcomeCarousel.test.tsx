@@ -24,15 +24,15 @@ function setHidden(hidden: boolean): void {
   act(() => { document.dispatchEvent(new Event('visibilitychange')); });
 }
 
-it('advances every 7 seconds and wraps', () => {
+it('advances every 7 seconds through all eight slides and wraps', () => {
   render(<WelcomeCarousel />);
   expect(shown()).toBe('Welcome to Atlas');
   wait(SLIDE_MS - 1);
   expect(shown()).toBe('Welcome to Atlas');
   wait(1);
   expect(shown()).toBe('Any map, ready in seconds');
-  slides(4);
-  expect(shown()).toBe('Play from anywhere');
+  slides(6);
+  expect(shown()).toBe('A VTT you truly own');
   slides(1);
   expect(shown()).toBe('Welcome to Atlas');
 });
@@ -41,7 +41,7 @@ it('jumps to a chip\'s slide', () => {
   render(<WelcomeCarousel />);
   wait(SLIDE_MS / 2);
   fireEvent.click(within(chips()).getByRole('button', { name: 'Dice' }));
-  expect(shown()).toBe('Dice you can hear land');
+  expect(shown()).toBe('Roll anything, any system');
   expect(within(chips()).getByRole('button', { name: 'Dice' }).getAttribute('aria-current')).toBe('true');
 });
 
@@ -49,7 +49,7 @@ it('stops for good once a slide is picked or focus enters', () => {
   const picked = render(<WelcomeCarousel />);
   fireEvent.click(within(chips()).getByRole('button', { name: 'Dice' }));
   slides(3);
-  expect(shown()).toBe('Dice you can hear land');
+  expect(shown()).toBe('Roll anything, any system');
   picked.unmount();
   render(<WelcomeCarousel />);
   wait(1000);
@@ -111,5 +111,20 @@ it('holds while the document is hidden', () => {
 it('names every slide on its chip', () => {
   render(<WelcomeCarousel />);
   expect(within(chips()).getAllByRole('button').map((chip) => chip.textContent))
-    .toEqual(['Welcome', 'Maps', 'Dice', 'Statblocks', 'Players', 'Online']);
+    .toEqual(['Welcome', 'Maps', 'Generator', 'Tokens', 'Dice', 'Sound', 'Players', 'Yours']);
+});
+
+it('tags online play as a closed beta on its own line of the players slide, as a label and not a button', () => {
+  render(<WelcomeCarousel />);
+  fireEvent.click(within(chips()).getByRole('button', { name: 'Players' }));
+  expect(shown()).toBe('Play at the table or online');
+  const tag = screen.getByText('Closed beta');
+  expect(tag.closest('button')).toBeNull();
+  expect(tag.className).toBe('atlas-welcome-text__tag');
+  expect(tag.closest('p')!.textContent).toBe('Or play online: players join from their desktop, tablet or phone. Closed beta');
+  expect(tag.closest('p')!.previousElementSibling!.textContent)
+    .toBe('Show your table to your players in a second window, on another monitor or a TV.');
+  expect(screen.queryAllByText('Closed beta')).toHaveLength(1);
+  fireEvent.click(within(chips()).getByRole('button', { name: 'Sound' }));
+  expect(shown()).toBe('A soundtrack for every scene');
 });

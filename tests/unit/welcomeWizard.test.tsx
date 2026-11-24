@@ -22,7 +22,7 @@ afterAll(() => { MotionGlobalConfig.skipAnimations = false; });
 function appWith(plugins: string[]): { app: App; settings: SettingsService } {
   const storage = new Map<string, unknown>();
   const app = {
-    vault: { adapter: { exists: async () => true, write: async () => {} } },
+    vault: { adapter: { exists: async () => true, write: async () => {} }, getConfig: () => null, setConfig: () => {}, on: () => ({}), offref: () => {} },
     plugins: { plugins: {}, enabledPlugins: new Set(plugins) },
     workspace: { on: () => ({}), offref: () => {} },
     customCss: { theme: 'Minimal', themes: { Minimal: {} }, setTheme: () => {} },
@@ -53,8 +53,9 @@ it('welcomes a GM whose first sight of Atlas is a map, and the map tour follows'
 it('offers the look, and the choice is this device\'s', () => {
   const { app, settings } = appWith(['atlas-sidebar']);
   render(tour(app));
-  for (let page = 0; page < 3; page += 1) fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-  expect(screen.getByText('Pick a look')).toBeTruthy();
+  for (let page = 0; page < 2; page += 1) fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  expect(screen.getByRole('heading', { name: 'Make it yours' })).toBeTruthy();
+  expect(screen.getByRole('radiogroup', { name: 'Accent colour' })).toBeTruthy();
   expect(screen.getByRole('radio', { name: 'Your theme' }).getAttribute('aria-checked')).toBe('true');
   act(() => { fireEvent.click(screen.getByRole('radio', { name: 'Sci-fi' })); });
   expect(LookService.forApp(app, settings).get()).toBe('scifi');

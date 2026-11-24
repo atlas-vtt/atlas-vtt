@@ -1,4 +1,5 @@
 import { t } from '../../../../../i18n';
+import type { SoundKind } from '../../../../../sound/soundTypes';
 import type { LibraryFile } from '../../../../../soundLibrary/SoundLibrary';
 import { holdsTag, type RootTag } from '../../../../../soundLibrary/soundTags';
 import { MENU_SEPARATOR, type ContextMenuEntry } from '../../../context-menu/AtlasContextMenu';
@@ -28,12 +29,16 @@ export function tagsSubmenu(actions: LibraryActions, files: readonly LibraryFile
   return { type: 'submenu', label: t('audio.library.tags'), icon: 'tag', children, subscribe: actions.onRecords };
 }
 
-/** A tag's menu in the rail. Both act on every record holding it, in both roots; where none does, only folder names give it, which are never written. */
-export function tagRowMenu(actions: LibraryActions, name: string): ContextMenuEntry[] {
+/**
+ * A tag's menu in the rail. Rename and Remove act on every record holding it, in both roots; where none does, only
+ * folder names give it, which are never written. A music tag of two tracks or more shares as an album.
+ */
+export function tagRowMenu(actions: LibraryActions, name: string, kind: SoundKind, count: number): ContextMenuEntry[] {
   const fixed = actions.tracksWithTag(name) === 0;
   const why = fixed ? { description: t('audio.library.tagFromFolder') } : {};
   return [
     { type: 'item', label: t('audio.library.rename'), icon: 'pencil', disabled: fixed, ...why, onClick: () => actions.askRenameTag(name) },
+    ...(kind === 'music' ? [{ type: 'item' as const, label: t('armariumMusic.shareAlbum'), icon: 'cloud-upload', disabled: count < 2, onClick: () => actions.shareTag(name) }, MENU_SEPARATOR] : []),
     { type: 'item', label: t('audio.library.removeTag'), icon: 'trash-2', destructive: true, disabled: fixed, ...why, onClick: () => actions.askRemoveTag(name) },
   ];
 }

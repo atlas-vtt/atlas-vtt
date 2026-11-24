@@ -2,10 +2,7 @@ import React from 'react';
 import { useAtlasSettings } from '../../../keyboard/useMapHotkeys';
 import { useAtlasUI } from '../../root/AtlasUIContext';
 import { LookService } from '../../../appearance/lookService';
-import { LookCards } from '../../../appearance/LookCards';
-import { AccentColourRow } from '../../../appearance/AccentColourRow';
-import { SettingChoiceRow } from './SettingRows';
-import { t } from '../../../i18n';
+import { AppearanceChoices } from '../../../appearance/AppearanceChoices';
 
 /** The Appearance settings page of the command palette: the GM's own theme or one of Atlas' looks, and the accent colour. */
 export function AppearancePanel(): React.ReactElement | null {
@@ -15,10 +12,7 @@ export function AppearancePanel(): React.ReactElement | null {
   return (
     <div className="atlas-command-palette-panel">
       <div className="atlas-command-palette-panel-column">
-        <SettingChoiceRow label={t('appearance.look')} hint={t('appearance.lookHint')}>
-          <LookCards looks={LookService.forApp(app, settings)} size="compact" />
-        </SettingChoiceRow>
-        <AccentColourRow app={app} />
+        <AppearanceChoices app={app} looks={LookService.forApp(app, settings)} />
       </div>
     </div>
   );

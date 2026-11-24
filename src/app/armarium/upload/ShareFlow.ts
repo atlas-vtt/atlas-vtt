@@ -57,6 +57,11 @@ export abstract class ShareFlow<S extends ShareCommon> {
   /** Records the publish in the vault, where the subject keeps a record of it. */
   protected abstract recordPublished(): Promise<void>;
 
+  /** The account's listing `uid`, from My uploads; a share that read them already answers from what it read. */
+  protected readOwnListing(uid: string): Promise<OwnListing | null> {
+    return this.flow.api.ownListing(uid);
+  }
+
   snapshot(): S {
     return this.state;
   }
@@ -193,7 +198,7 @@ export abstract class ShareFlow<S extends ShareCommon> {
   private async checkGate(): Promise<void> {
     this.set({ gate: { status: 'checking' }, refusal: null });
     try {
-      const listing = this.listingUid().then((uid) => (uid ? this.flow.api.ownListing(uid) : null));
+      const listing = this.listingUid().then((uid) => (uid ? this.readOwnListing(uid) : null));
       const [gate, ownListing] = await Promise.all([this.flow.api.eligibility(), listing]);
       if (gate.may) {
         this.set({ ...this.opened(ownListing), gate: { status: 'open' }, ownListing, step: 'bundle' });

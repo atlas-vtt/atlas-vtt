@@ -1,6 +1,6 @@
 import type { App } from 'obsidian';
 import type { SettingsService } from '../services/SettingsService';
-import { LOOK_DICE_FONT, LOOK_FOG_EDGE_STYLE, RETIRED_THEME_NAME, isAtlasLook, type AtlasLook } from './atlasLook';
+import { LOOK_DICE_FONT, LOOK_FOG_EDGE_STYLE, isAtlasLook, type AtlasLook } from './atlasLook';
 
 /** The GM's own Obsidian theme, or one of Atlas' looks drawn over Obsidian's default theme. */
 export type LookChoice = 'own' | AtlasLook;
@@ -9,6 +9,9 @@ export type LookChoice = 'own' | AtlasLook;
 export const LOOK_STORAGE_KEY = 'atlas-vtt:look';
 /** The theme the GM used before picking an Atlas look, as JSON, so the default theme `''` is stored as `'""'`. */
 export const PREVIOUS_THEME_STORAGE_KEY = 'atlas-vtt:look-previous-theme';
+/** The colour the Medieval look paints its ivy in, `#rrggbb`, or `natural` for its own greens. */
+export const IVY_COLOUR_STORAGE_KEY = 'atlas-vtt:ivy-colour';
+const NATURAL_IVY = 'natural';
 
 /** Obsidian's own theme, which Atlas' looks are drawn over. */
 const DEFAULT_THEME = '';
@@ -16,6 +19,8 @@ const DEFAULT_THEME = '';
 const byApp = new WeakMap<App, LookService>();
 
 const isLookChoice = (value: unknown): value is LookChoice => value === 'own' || isAtlasLook(value);
+const isIvyColour = (value: unknown): value is string =>
+  typeof value === 'string' && (value === NATURAL_IVY || /^#[0-9a-f]{6}$/i.test(value));
 
 /**
  * Which look Atlas shows on this device. A look is a fact of the device (a laptop and the table's screen may differ),
@@ -36,10 +41,13 @@ export class LookService {
   }
 
   private choice: LookChoice;
+  private ivy: string;
   private readonly listeners = new Set<() => void>();
 
   private constructor(private readonly app: App, private readonly settings: SettingsService) {
     this.choice = this.load(LOOK_STORAGE_KEY, isLookChoice) ?? 'own';
+    const ivy = this.load(IVY_COLOUR_STORAGE_KEY, isIvyColour);
+    this.ivy = ivy && ivy !== NATURAL_IVY ? ivy.toLowerCase() : '';
   }
 
   get(): LookChoice {
@@ -62,6 +70,21 @@ export class LookService {
     this.choose(choice);
   }
 
+  /** The colour the Medieval look paints its ivy in, `#rrggbb`; `''` while it keeps its own greens. */
+  ivyColour(): string {
+    return this.ivy;
+  }
+
+  /** Paints the Medieval look's ivy in `hex` (`#rrggbb`) on this device, or gives it its own greens back with `''`. */
+  setIvyColour(hex: string): void {
+    const colour = hex.toLowerCase();
+    if (colour === this.ivy || (colour !== '' && !isIvyColour(colour))) return;
+    this.ivy = colour;
+    this.save(IVY_COLOUR_STORAGE_KEY, colour || NATURAL_IVY);
+    this.notify();
+  }
+
+  /** Calls `listener` whenever the look or its ivy colour changes. */
   onChange(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };
@@ -91,19 +114,11 @@ export class LookService {
   }
 
   /**
-   * At start: a GM still on the retired Atlas theme gets its look in Atlas instead, once per device (while this device
-   * has never stored a look: a GM who picks the old theme again afterwards keeps it), and an Atlas look whose default
-   * theme was replaced while Atlas was off (another device's sync, the GM in Obsidian's settings) gives way to it.
+   * At start: an Atlas look whose default theme was replaced while Atlas was off (another device's sync, the GM in
+   * Obsidian's settings) gives way to the GM's own theme, which is also where a device that never chose a look starts.
    */
   reconcileAtStart(): void {
-    const neverChosen = this.load(LOOK_STORAGE_KEY, isLookChoice) === null;
-    if (neverChosen && this.theme() === RETIRED_THEME_NAME) {
-      this.save(PREVIOUS_THEME_STORAGE_KEY, JSON.stringify(DEFAULT_THEME));
-      this.app.customCss?.setTheme?.(DEFAULT_THEME);
-      this.choose('mediaeval');
-    } else if (isAtlasLook(this.choice) && this.theme() !== DEFAULT_THEME) {
-      this.choose('own');
-    }
+    if (isAtlasLook(this.choice) && this.theme() !== DEFAULT_THEME) this.choose('own');
   }
 
   /** Obsidian announces a theme switch as `css-change`: a theme picked while an Atlas look is on is the GM's own look. */
@@ -131,6 +146,10 @@ export class LookService {
     if (choice === this.choice) return;
     this.choice = choice;
     this.save(LOOK_STORAGE_KEY, choice);
+    this.notify();
+  }
+
+  private notify(): void {
     for (const listener of Array.from(this.listeners)) listener();
   }
 

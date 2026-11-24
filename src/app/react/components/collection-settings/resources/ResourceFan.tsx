@@ -1,14 +1,17 @@
 import React from 'react';
-import { ArrowDown, ArrowUp, Eye, EyeOff, Hash, Skull, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Eye, EyeOff, Hash, Shield, Skull, Swords, Trash2 } from 'lucide-react';
 import { t } from '../../../../i18n';
+import { PLAYER_AUDIENCES, playerAudience, withPlayerAudience, type PlayerAudience } from '../../../../resources/playerAudience';
 import type { ResourceDefinition, ResourceDirection } from '../../../../resources/resourceTypes';
+import { audienceHint } from '../../command-palette/PlayerAudienceControl';
 import { RadialFan, type FanButton } from '../fan/RadialFan';
 import { fanOffsets, type SocketPlace } from './resourceSockets';
 
 interface ResourceFanProps {
   place: SocketPlace;
   resource: ResourceDefinition;
-  onChange: (partial: Partial<ResourceDefinition>) => void;
+  /** The fields given, or what the function makes of the resource (which may remove fields). */
+  onChange: (edit: Partial<ResourceDefinition> | ((resource: ResourceDefinition) => ResourceDefinition)) => void;
   onRemove: () => void;
 }
 
@@ -19,9 +22,17 @@ const DIRECTIONS: ReadonlyArray<{ direction: ResourceDirection; label: string; i
   { direction: 'static', label: t('resource.fan.static'), icon: <Hash /> },
 ];
 
+/** What the players' button shows for each audience it steps through. */
+const AUDIENCE_ICONS: Readonly<Record<PlayerAudience, React.ReactNode>> = {
+  hidden: <EyeOff />,
+  party: <Shield />,
+  opponents: <Swords />,
+  everyone: <Eye />,
+};
+
 /**
  * The round buttons that fan out of a selected socket: how the resource counts (drains,
- * fills, or a static value), whether it defeats its token, whether players see it, and remove. They leave the socket
+ * fills, or a static value), whether it defeats its token, whose tokens players see it on, and remove. They leave the socket
  * one after the other along an arc on its outer side.
  */
 export function ResourceFan({ place, resource, onChange, onRemove }: ResourceFanProps): React.ReactElement {
@@ -30,6 +41,8 @@ export function ResourceFan({ place, resource, onChange, onRemove }: ResourceFan
   const next = DIRECTIONS[(step + 1) % DIRECTIONS.length]!.direction;
   const fixed = resource.direction === 'static';
   const defeats = resource.defeatedWhenSpent === true && !fixed;
+  const audience = playerAudience(resource);
+  const nextAudience = PLAYER_AUDIENCES[(PLAYER_AUDIENCES.indexOf(audience) + 1) % PLAYER_AUDIENCES.length]!;
   const buttons: FanButton[] = [
     {
       label: counting.label,
@@ -43,9 +56,10 @@ export function ResourceFan({ place, resource, onChange, onRemove }: ResourceFan
       onClick: () => onChange({ defeatedWhenSpent: !defeats }),
     },
     {
-      label: resource.visibleToPlayers ? t('resource.fan.playersSee') : t('resource.fan.hiddenFromPlayers'),
-      icon: resource.visibleToPlayers ? <Eye /> : <EyeOff />, pressed: resource.visibleToPlayers,
-      onClick: () => onChange({ visibleToPlayers: !resource.visibleToPlayers }),
+      // Steps from hidden through the party's tokens and everyone else's to every token
+      label: audienceHint(audience),
+      icon: AUDIENCE_ICONS[audience], pressed: audience !== 'hidden',
+      onClick: () => onChange((current) => withPlayerAudience(current, nextAudience)),
     },
     { label: t('common.remove'), icon: <Trash2 />, danger: true, onClick: onRemove },
   ];

@@ -1,0 +1,184 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Share music in the Armarium — the music step and the picker of the Armarium's Share
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss. The track list's frame and rows are shared with
+// the music review (`collection-transfer/_music-tracks.scss`); here what the step adds to them.
+
+@use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
+
+$grip-size: 24px;
+$title-input-height: 28px;
+
+.atlas-music-share {
+  // Name and artist beside the cover; below each other where the dialog is narrow.
+  &__identity {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: $spacing-l;
+    align-items: start;
+  }
+
+  &__fields {
+    @include atlas-flex-col($gap: $spacing-l);
+    min-width: 0;
+  }
+
+  &__tracks-head {
+    @include atlas-flex-row($gap: $spacing-s);
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+
+    .atlas-share-field__hint {
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  &__left-out {
+    @include atlas-flex-col($gap: $spacing-xs);
+    margin: 0;
+    padding-inline-start: $spacing-l;
+  }
+}
+
+.atlas-music-track {
+  &__grip,
+  &__remove {
+    @include atlas-icon-button('s');
+    width: $grip-size;
+    height: $grip-size;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-faint);
+
+    svg {
+      width: $icon-s;
+      height: $icon-s;
+    }
+  }
+
+  &__grip {
+    cursor: grab;
+    // The press is the drag's: the list must not scroll or select under it.
+    touch-action: none;
+    user-select: none;
+
+    @include atlas-hover {
+      color: var(--text-muted);
+    }
+  }
+
+  &__remove {
+    @include atlas-hover {
+      background: color-mix(in oklch, var(--text-error) 12%, transparent);
+      color: var(--text-error);
+    }
+  }
+
+  &__input.atlas-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: $title-input-height;
+    padding: 0 $spacing-s;
+    border-color: transparent;
+    background: transparent;
+
+    @include atlas-hover {
+      border-color: var(--background-modifier-border);
+    }
+
+    &:focus {
+      border-color: var(--background-modifier-border-focus);
+      background: var(--background-primary);
+    }
+
+    &[aria-invalid='true'] {
+      border-color: var(--text-error);
+    }
+  }
+
+  &[data-dragging] {
+    background: var(--background-modifier-hover);
+    box-shadow: $shadow-md;
+
+    .atlas-music-track__grip {
+      cursor: grabbing;
+    }
+  }
+
+  &[data-state='refused'] {
+    .atlas-music-track__state {
+      color: var(--text-error);
+    }
+
+    .atlas-music-track__input,
+    .atlas-music-track__title {
+      color: var(--text-faint);
+      text-decoration: line-through;
+    }
+  }
+}
+
+// Written out: a second `&` after a combinator would repeat the plugin's scope in the selector.
+.atlas-music-track[data-state='reading'] .atlas-music-track__state,
+.atlas-music-track[data-state='converting'] .atlas-music-track__state {
+  color: var(--text-faint);
+}
+
+// While a track is held, the whole list shows the drag's cursor.
+.atlas-music-tracks[data-dragging] {
+  cursor: grabbing;
+}
+
+// The Armarium's Share of music: albums from the library's tags, tracks by search.
+.atlas-modal.atlas-music-pick {
+  width: min(480px, 100%);
+}
+
+.atlas-music-pick {
+  &__body {
+    @include atlas-flex-col($gap: $spacing-m);
+  }
+
+  &__search.atlas-input {
+    width: 100%;
+  }
+
+  &__section {
+    @include atlas-flex-col($gap: $spacing-s);
+  }
+
+  &__names {
+    @include atlas-flex-col($gap: 0);
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__where {
+    @include atlas-truncate;
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+  }
+
+  &__count {
+    flex: none;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    font-variant-numeric: tabular-nums;
+  }
+
+  // A track with where it lies takes two lines.
+  .atlas-item-pick__item {
+    height: auto;
+    min-height: 40px;
+  }
+
+  .atlas-item-pick__item[aria-pressed='true'] {
+    background: var(--background-modifier-hover);
+
+    .atlas-item-pick__icon {
+      color: var(--interactive-accent);
+    }
+  }
+}

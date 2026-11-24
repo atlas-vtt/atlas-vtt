@@ -1,4 +1,5 @@
 import type { ResourceDefinition, ResourceValue } from '../resources/resourceTypes';
+import { visibleResources } from '../resources/visibleResources';
 import type { TokenEntity } from '../types';
 import type { ConditionDefinition } from '../types/collectionSettingsTypes';
 import type { InitiativeEntry, InitiativeState } from '../types/initiativeTypes';
@@ -174,7 +175,7 @@ export function sideIdsOf(initiative: Pick<InitiativeState, 'isActive' | 'round'
 
 /**
  * What the players' list reads of a combatant's token; `definitions` are the map's resources, which
- * say who is defeated, `conditionDefinitions` its conditions, drawn as the map draws them, and
+ * say who is defeated and whether players see its hit points, as on the map, `conditionDefinitions` its conditions, drawn as the map draws them, and
  * `sides` the ids of the sides the list knows (`sideIdsOf`).
  */
 export function entryTokenOf(
@@ -184,7 +185,7 @@ export function entryTokenOf(
   sides?: readonly SideId[],
 ): EntryToken {
   return {
-    hp: token?.resources?.hp ?? null,
+    hp: (token && visibleResources(token, definitions, 'player').find(({ definition }) => definition.key === 'hp')?.value) ?? null,
     showRing: token?.showRing !== false,
     ringColor: token?.ringColor,
     side: sideOf(token, sides),
@@ -197,19 +198,17 @@ export function entryTokenOf(
 
 /**
  * The list players see of a fight: every entry `tokenOf` answers for (those whose token they may
- * see), in turn order, grouped by side as the fight runs or the collection's rules say. Hit points
- * show only where `hpVisible`.
+ * see), in turn order, grouped by side as the fight runs or the collection's rules say.
  */
 export function playerInitiativeList(
   initiative: Pick<InitiativeState, 'isActive' | 'round' | 'sides' | 'sideOrder' | 'cards'> & { entries: readonly PlayerInitiativeEntry[] },
   tokenOf: (entry: PlayerInitiativeEntry, index: number) => EntryToken | null,
   rules: InitiativeRules,
-  hpVisible: boolean,
 ): PlayerInitiativeList {
   const combatants = initiative.entries
     .flatMap((entry, index): Combatant[] => {
       const token = tokenOf(entry, index);
-      return token ? [{ entry, token: hpVisible ? token : { ...token, hp: null } }] : [];
+      return token ? [{ entry, token }] : [];
     })
     .sort((a, b) => a.entry.order - b.entry.order);
   const bySides = listedBySides(initiative, rules);

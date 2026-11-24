@@ -31,6 +31,7 @@ export const armariumShare: Translation = {
   'armariumShare.checkAgain': '再次检查',
   'armariumShare.packing': '正在打包合集…',
   'armariumShare.exportFailed': '无法打包合集：{error}',
+  'armariumShare.sending': '正在发送 {total}…',
   'armariumShare.sentOf': '已发送 {sent} / {total}',
   'armariumShare.parts': '上传的分块',
   'armariumShare.partOf': '第 {n} 块，共 {total} 块',

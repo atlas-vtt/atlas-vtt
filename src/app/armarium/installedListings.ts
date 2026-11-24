@@ -2,6 +2,8 @@ import type { App } from 'obsidian';
 import type { AssetService } from '../services/AssetService';
 import { readInstallRecord } from '../services/collectionBundle/installRecord';
 import { installedItems } from '../services/itemBundle/installedItems';
+import { installedMusic, musicRootWalked } from '../services/musicBundle/installedMusic';
+import { SoundLibrary } from '../soundLibrary/SoundLibrary';
 import type { ArmariumRequest } from './armariumRequest';
 
 /**
@@ -34,13 +36,51 @@ async function installedItemListings(app: App, listed: ReadonlySet<string>): Pro
   }
 }
 
+/** How long the page waits, at most, to hear what the music root holds once its first walk ends. */
+const MUSIC_WALK_WAIT_MS = 120_000;
+
+/** The library the music installs lie in: opened if it was not, since an install from the page opens it too. Null where none can be. */
+function musicLibrary(app: App): SoundLibrary | null {
+  try {
+    return SoundLibrary.forApp(app);
+  } catch (error) {
+    console.error('[Atlas] The sound library could not be opened:', error);
+    return null;
+  }
+}
+
+/**
+ * The versions of the listings the music root's albums and tracks came from, by their sidecars, as far as the root has
+ * been read: waits for nothing, and asks for the first walk where it was not made yet (`musicWalkEnds` says when).
+ */
+async function installedMusicListings(app: App, listed: ReadonlySet<string>): Promise<ArmariumRequest[]> {
+  const library = musicLibrary(app);
+  if (library === null) return [];
+  try {
+    return ((await installedMusic(library, 0)) ?? []).filter(({ sidecar }) => listed.has(sidecar.uid)).map(({ sidecar }) => ({ uid: sidecar.uid, version: sidecar.version }));
+  } catch (error) {
+    console.error('[Atlas] Reading the music installed from the Armarium failed:', error);
+    return [];
+  }
+}
+
+/**
+ * Settles true once the music root's first walk ends, where it had not when asked, so the page hears what is installed
+ * again; false where it was walked already or cannot be (nothing more will come). Asked with the installed listings.
+ */
+export function musicWalkEnds(app: App): Promise<boolean> {
+  const library = musicLibrary(app);
+  if (library === null || library.locationOf('music') === null || library.isWalked('music')) return Promise.resolve(false);
+  return musicRootWalked(library, MUSIC_WALK_WAIT_MS);
+}
+
 /**
  * The releases of Armarium listings the vault holds, the newest of each: collections by their install records,
- * statblock templates, game systems and dice sets by the provenance in their files. Only uids in `listed` are told:
- * the page learns nothing of what is not the Armarium's.
+ * statblock templates, game systems and dice sets by the provenance in their files, music by the sidecars beside it.
+ * Only uids in `listed` are told: the page learns nothing of what is not the Armarium's.
  */
 export async function installedListings(app: App, assets: AssetService, listed: ReadonlySet<string>): Promise<ArmariumRequest[]> {
-  const found = await Promise.all([installedCollections(app, assets, listed), installedItemListings(app, listed)]);
+  const found = await Promise.all([installedCollections(app, assets, listed), installedItemListings(app, listed), installedMusicListings(app, listed)]);
   const versions = new Map<string, number>();
   for (const { uid, version } of found.flat()) versions.set(uid, Math.max(version, versions.get(uid) ?? 0));
   return [...versions].map(([uid, version]) => ({ uid, version }));

@@ -6,7 +6,19 @@
   @include atlas-modal-overlay($z-atlas-modal + $z-notification);
 }
 
-// One inset for everything inside: the page and the foot stand $spacing-2xl from the border and from each other.
+// The window as it is placed and animated. It does not clip, so a look can draw around it with its pseudo-elements
+// (`::before` below the dialog with a negative `z-index`, `::after` above it) and have that move and fade with it.
+.atlas-welcome-window {
+  position: relative;
+  isolation: isolate;
+  width: min(1080px, 92vw);
+  height: min(660px, 86vh);
+  max-width: 100%;
+  max-height: 100%;
+}
+
+// The dialog clips its pages to its corners. One inset for everything inside: the page and the foot stand
+// $spacing-2xl from the border and from each other.
 .atlas-welcome {
   @include atlas-elevated-surface;
   @include atlas-panel-radius($surface-radius);
@@ -15,10 +27,8 @@
   flex-direction: column;
   gap: $spacing-2xl;
   box-sizing: border-box;
-  width: min(1080px, 92vw);
-  height: min(660px, 86vh);
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  height: 100%;
   padding: $spacing-2xl;
   overflow: hidden;
   color: var(--text-normal);
@@ -112,9 +122,26 @@
   user-select: none;
 }
 
-// The look page: its words over the cards, which take the page's width.
+// The look page: its words over the appearance choices. The page is a size container, so the look cards can take
+// the height its words, labels and colour swatches leave: what stands around the pictures is about $look-around tall
+// (heading, two lines of words, the gaps, the row labels, the cards' names and notes, the accent's and the ivy's
+// swatches side by side), and the cards are
+// as wide as pictures of the rest are at their 480 : 300 ratio, three in a row. A taller translation scrolls the page.
+$look-around: 350px;
+$look-cards-min: 420px;
+
+.atlas-welcome[data-page='look'] .atlas-welcome__page {
+  container-type: size;
+}
+
 .atlas-welcome-page--looks {
   justify-content: flex-start;
+
+  .atlas-welcome-text__body { max-width: 46em; }
+
+  .atlas-look-cards {
+    max-width: max(#{$look-cards-min}, calc((100cqh - #{$look-around}) * #{3 * 480 / 300} + #{2 * $spacing-m + 4 * $border-width-l}));
+  }
 }
 
 .atlas-welcome-text {
@@ -131,9 +158,12 @@
   color: var(--text-muted);
 }
 
-// The heading follows the look: Fantaisie in red under Mediaeval, Oxanium under Sci-fi, the interface face otherwise.
+// A kicker stands a little above its heading.
+.atlas-welcome-text__kicker + .atlas-welcome-text__title { margin-top: $spacing-s; }
+
+// The heading follows the look: Fantaisie in red under Medieval, Oxanium under Sci-fi, the interface face otherwise.
 .atlas-welcome-text__title {
-  margin: $spacing-s 0 0;
+  margin: 0;
   font-family: var(--atlas-theme-heading-font, var(--font-interface));
   font-size: calc(#{$font-ui-large} * 2);
   font-weight: var(--h2-weight, #{$font-weight-semibold});
@@ -141,6 +171,35 @@
   line-height: 1.05;
   color: var(--h2-color, var(--text-normal));
   text-wrap: balance;
+}
+
+// A status after a line, such as a part still in beta: small capitals on a soft pill behind a dot, without a border
+// or hover, so it reads as a label and never as a button.
+.atlas-welcome-text__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  vertical-align: middle;
+  padding: $spacing-xs $spacing-s;
+  border-radius: $radius-full;
+  background: color-mix(in oklch, var(--text-normal) 10%, transparent);
+  color: var(--text-muted);
+  font-family: var(--font-interface);
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-medium;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: none;
+  white-space: nowrap;
+
+  &::before {
+    content: '';
+    width: 0.5em;
+    height: 0.5em;
+    border-radius: $radius-full;
+    background: currentColor;
+  }
 }
 
 .atlas-welcome-text__body {
@@ -152,6 +211,9 @@
   color: var(--text-muted);
   text-wrap: pretty;
 }
+
+// A line of its own under the body, with its status after it.
+.atlas-welcome-text__body.atlas-welcome-text__aside { margin-top: $spacing-s; }
 
 .atlas-welcome-text__note {
   margin: $spacing-s 0 0;

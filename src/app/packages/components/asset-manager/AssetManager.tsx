@@ -39,7 +39,9 @@ import { showDungeonGenerator } from '../dungeon-generator/openDungeonGenerator'
 import { runInBackground } from '../../../utils/backgroundTask';
 import { useArmariumPlace, useStoreOnTop } from './hooks/useArmariumPlace';
 import { ArmariumPane } from '../../../armarium/ArmariumPane';
-import type { ShareWhat } from '../../../armarium/armariumMessages';
+import type { ShareRequest } from '../../../armarium/armariumMessages';
+import { pickMusicToShare } from '../../../armarium/share/openMusicShare';
+import { isMusicKind } from '../../../services/itemBundle/itemBundleFormat';
 import { pickItemToShare } from '../../../armarium/share/openItemShare';
 import { useStoreTagFilter, useStoreTags } from '../../../armarium/storeTagFilter';
 import { MapPickContext } from './mapPick';
@@ -129,9 +131,10 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
     draggedItems, setDraggedItems, setDropTarget, data.setAssets, reveal.inFolder, sel,
   );
   useExternalImport(armarium.pendingImport, isOpen, crud);
-  // The Armarium's Share: the selected collection, or one of the vault's own items of the kind it names.
-  const shareInArmarium = (what: ShareWhat): void => {
+  // The Armarium's Share: the selected collection, one of the vault's own items of the kind it names, or music.
+  const shareInArmarium = ({ what, listing }: ShareRequest): void => {
     if (what === 'collection') void crud.handleShareCollection();
+    else if (isMusicKind(what)) pickMusicToShare(data.app, what, listing);
     else pickItemToShare(data.app, what);
   };
   // The library's selection stays behind: Escape over the store closes the window, never clears what is not shown.
@@ -229,7 +232,7 @@ export default function AssetManager({ isOpen: isOpenProp, onClose, initialTab, 
             onToggleSidebar={sidebar.toggle}
             sel={sel}
             {...(pick ? { pick } : { onShowArmarium: () => armarium.show() })}
-            armarium={armarium.shown ? { onBack: armarium.leave, onReload: armarium.reload, page: armarium.page, onShare: shareInArmarium } : undefined}
+            armarium={armarium.shown ? { onBack: armarium.leave, onReload: armarium.reload, page: armarium.page, onShare: (what) => shareInArmarium({ what }) } : undefined}
           />
           <div
             className="atlas-asset-manager-body"

@@ -16,8 +16,13 @@ import {
 import type { DerivedFormat } from '../../imageProcessing/imageEncoder';
 import { t } from '../../i18n';
 
-/** The newest item bundle format this version reads and the one it writes. */
+/** The item bundle format of the three kinds above, which this version reads and writes. */
 export const ITEM_BUNDLE_FORMAT = 10;
+
+/** Music shared in the Armarium (`services/musicBundle`): an album or a single track, item bundles of format 11. */
+export const MUSIC_BUNDLE_FORMAT = 11;
+export const MUSIC_KINDS = ['music-album', 'music-track'] as const;
+export type MusicKind = typeof MUSIC_KINDS[number];
 
 export const ITEM_KINDS = ['statblock-template', 'system-preset', 'dice-set'] as const;
 export type ItemKind = typeof ITEM_KINDS[number];
@@ -31,6 +36,18 @@ export interface ItemRef {
 /** The longest name and release notes an item manifest carries. */
 export const MAX_ITEM_NAME = 120;
 export const MAX_ITEM_NOTES = 2000;
+
+/**
+ * Release notes as a manifest carries them: trimmed, and cut to `MAX_ITEM_NOTES` UTF-16 units, as the Armarium counts,
+ * but never between the two halves of an emoji. Undefined where nothing is left.
+ */
+export function cutItemNotes(notes: string | undefined): string | undefined {
+  const trimmed = notes?.trim() ?? '';
+  let cut = trimmed.slice(0, MAX_ITEM_NOTES);
+  // A high surrogate at the end lost the low one after it.
+  if (cut.length < trimmed.length && /[\ud800-\udbff]$/.test(cut)) cut = cut.slice(0, -1);
+  return cut === '' ? undefined : cut;
+}
 
 /** manifest.json inside an item bundle. */
 export interface ItemBundleManifest {
@@ -88,9 +105,18 @@ export function isItemKind(value: unknown): value is ItemKind {
   return typeof value === 'string' && (ITEM_KINDS as readonly string[]).includes(value);
 }
 
+export function isMusicKind(value: unknown): value is MusicKind {
+  return typeof value === 'string' && (MUSIC_KINDS as readonly string[]).includes(value);
+}
+
 /** Whether a parsed manifest is an item manifest rather than a collection manifest. */
 export function isItemManifest(value: unknown): value is Record<string, unknown> & { item: unknown } {
   return isRecord(value) && Object.hasOwn(value, 'item');
+}
+
+/** Whether a parsed manifest is a music bundle's: an item manifest naming an album or a track. */
+export function isMusicManifest(value: unknown): value is Record<string, unknown> & { item: Record<string, unknown> } {
+  return isItemManifest(value) && isRecord(value.item) && isMusicKind(value.item.kind);
 }
 
 /** `<name> v<n>.atlas-template.zip`, and the like for the other kinds. */
@@ -135,7 +161,8 @@ function holdsItsFiles(kind: ItemKind, files: readonly BundleFile[]): boolean {
 /** Why an item bundle cannot be imported, or null when its manifest is sound. Its files' contents are checked on reading. */
 export function itemManifestProblem(value: unknown): string | null {
   if (!isRecord(value) || typeof value.format !== 'number') return t('itemBundle.notItem');
-  if (value.format > ITEM_BUNDLE_FORMAT) return t('itemBundle.tooNew');
+  // Format 11 is music's, which `openBundleImport` reads before this; another kind under it is damaged.
+  if (value.format > MUSIC_BUNDLE_FORMAT) return t('itemBundle.tooNew');
   const { item, files } = value;
   const isSound = value.format === ITEM_BUNDLE_FORMAT
     && typeof value.exportedAt === 'number'

@@ -47,6 +47,10 @@ export interface SoundLocation {
   canWrite(): Promise<boolean>;
   /** Moves a file or folder to the system's trash. Refused with `TrashUnavailableError` where there is none. */
   trash(path: string): Promise<void>;
+  /** Deletes for good a part (`isPart`): a file Atlas was writing, which never was anyone's, so no trash is needed. Refuses any other path. */
+  removePart(path: string): Promise<void>;
+  /** Removes a folder that holds nothing; refused where it holds anything. */
+  removeEmptyFolder(path: string): Promise<void>;
   /** Calls back with the path that changed, or null where anything may have. Returns the release. */
   watch(onChange: (path: string | null) => void): () => void;
 }
@@ -80,6 +84,14 @@ export class SoundPathTakenError extends Error {
   constructor(path: string) {
     super(`${path} already exists.`);
     this.name = 'SoundPathTakenError';
+  }
+}
+
+/** A path asked to be removed for good that is no part, or a folder asked to be removed that is not empty. */
+export class SoundPathNotRemovableError extends Error {
+  constructor(path: string) {
+    super(`${path} is not Atlas' own to remove.`);
+    this.name = 'SoundPathNotRemovableError';
   }
 }
 
