@@ -27,6 +27,15 @@ describe('the upload step', () => {
     expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe(String(16 * MB));
   });
 
+  it('says in Atlas\' words what packing music could not read, and never the engine\'s', () => {
+    const failed = (unreadable: { part: 'track'; title: string } | null): ShareSnapshot =>
+      ({ packing: null, upload: null, refusal: { code: 'export-failed', until: null, unreadable }, subject: 'music' }) as unknown as ShareSnapshot;
+    const { rerender } = render(<UploadStep snapshot={failed({ part: 'track', title: 'Dusk' })} />);
+    expect(screen.getByText('Atlas could not read the track Dusk. Try again.')).toBeTruthy();
+    rerender(<UploadStep snapshot={failed(null)} />);
+    expect(screen.getByText('Atlas could not pack the music. Try again.')).toBeTruthy();
+  });
+
   it('counts what was sent once an upload stopped, with nothing in yet', () => {
     render(<UploadStep snapshot={during({ parts: ['failed'], sentBytes: 0, totalBytes: 2 * MB, failure: { code: 'network', until: null } })} />);
     expect(screen.getByText('0 Bytes of 2 MB sent')).toBeTruthy();

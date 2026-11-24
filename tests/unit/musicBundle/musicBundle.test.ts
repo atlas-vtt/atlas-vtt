@@ -6,7 +6,7 @@ import { BUNDLE_MANIFEST } from '../../../src/app/services/collectionBundle/bund
 import { isItemManifest, isMusicManifest, itemManifestProblem } from '../../../src/app/services/itemBundle/itemBundleFormat';
 import { isMusicText, musicBundleFileName, musicManifestProblem, safeFileName, shownText, trackFileName, trackNumber } from '../../../src/app/services/musicBundle/musicBundleFormat';
 import { readMusicBundle } from '../../../src/app/services/musicBundle/musicBundleReader';
-import { packMusicBundle } from '../../../src/app/services/musicBundle/musicPacking';
+import { packMusicBundle, UnreadablePartError } from '../../../src/app/services/musicBundle/musicPacking';
 import { trackSidecarName } from '../../../src/app/services/musicBundle/musicProvenance';
 import { copyOf, deliveredMusic, rebuiltAsTheStoreDoes } from '../../helpers/musicBundles';
 
@@ -156,6 +156,15 @@ describe('packing music for the Armarium', () => {
     const packed = await packMusicBundle({ kind: 'music-track', uid: UID, version: 2, name: 'Da\u202Ewn', notes: `${'a'.repeat(1999)}🎵 and more`, tracks: [{ title: 'Dawn', copy: await copyOf('1') }] });
     expect(packed.manifest.item.notes).toBe('a'.repeat(1999));
     expect(packed.manifest.item.name).toBe('Dawn');
+  });
+
+  it('names the track it could not read, keeping the engine\'s error as the cause', async () => {
+    const gone = new Blob(['not opus']);
+    const packing = packMusicBundle({ kind: 'music-album', uid: UID, version: 1, name: 'Old Roads', tracks: [{ title: 'Dawn', copy: await copyOf('1') }, { title: 'Dusk', copy: gone }] });
+    const error: unknown = await packing.catch((failure: unknown) => failure);
+    expect(error).toBeInstanceOf(UnreadablePartError);
+    expect((error as UnreadablePartError).unreadable).toEqual({ part: 'track', title: 'Dusk' });
+    expect((error as UnreadablePartError).cause).toBeInstanceOf(Error);
   });
 
   it('refuses a count of tracks its kind does not hold', async () => {
