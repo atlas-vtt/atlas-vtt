@@ -40,6 +40,13 @@ export type OriginalsChoice = 'trash' | 'keep';
 
 export type LinkOutcome = 'linked' | 'overlap' | 'reserved';
 
+/** What a root's link is, as its facts hold it. */
+interface LinkFacts {
+  local: string | null;
+  localOriginals: OriginalsChoice | null;
+  shared: SharedSoundRoot | undefined;
+}
+
 const OTHER: Readonly<Record<SoundKind, SoundKind>> = { music: 'ambience', ambience: 'music' };
 
 /**
@@ -49,6 +56,8 @@ const OTHER: Readonly<Record<SoundKind, SoundKind>> = { music: 'ambience', ambie
 export class SoundRoots {
   private readonly listeners = new Set<() => void>();
   private readonly dropShared: () => void;
+  /** The folder a root had, with its choice, while the folder linked over it waits for the GM's choice. */
+  private readonly before = new Map<SoundKind, LinkFacts>();
 
   constructor(private readonly facts: SoundRootFacts) {
     this.dropShared = facts.onSharedChange(() => this.changed());
@@ -71,6 +80,7 @@ export class SoundRoots {
   }
 
   setOriginals(kind: SoundKind, choice: OriginalsChoice): void {
+    this.before.delete(kind);
     const state = this.stateOf(kind);
     if (state.status === 'external') {
       this.facts.setLocalOriginals(kind, choice);
@@ -90,6 +100,7 @@ export class SoundRoots {
     if (isAtlasOwn(path)) return 'reserved';
     const other = this.stateOf(OTHER[kind]);
     if (other.status === 'vault' && (isWithin(other.path, path) || isWithin(path, other.path))) return 'overlap';
+    this.remember(kind);
     this.facts.setLocal(kind, null);
     this.facts.setLocalOriginals(kind, null);
     this.write(kind, { type: 'vault', path });
@@ -99,6 +110,7 @@ export class SoundRoots {
   private linkExternal(kind: SoundKind, path: string): LinkOutcome {
     const other = this.stateOf(OTHER[kind]);
     if (other.status === 'external' && (relativeBelow(other.path, path) !== null || relativeBelow(path, other.path) !== null)) return 'overlap';
+    this.remember(kind);
     this.facts.setLocal(kind, path);
     this.facts.setLocalOriginals(kind, null);
     this.write(kind, { type: 'external' });
@@ -114,8 +126,22 @@ export class SoundRoots {
     }
   }
 
+  /**
+   * Takes back the folder linked last, before the GM chose what Atlas does with its originals (consent is per folder):
+   * the folder linked before it comes back with its choice, where there was one; else the root is unlinked.
+   */
+  takeBack(kind: SoundKind): void {
+    const before = this.before.get(kind);
+    if (!before) return this.unlink(kind);
+    this.before.delete(kind);
+    this.facts.setLocal(kind, before.local);
+    this.facts.setLocalOriginals(kind, before.localOriginals);
+    this.write(kind, before.shared ?? null);
+  }
+
   /** Forgets the link on this device and for the devices that share its settings. A device with a folder of its own keeps that. */
   unlink(kind: SoundKind): void {
+    this.before.delete(kind);
     this.facts.setLocal(kind, null);
     this.facts.setLocalOriginals(kind, null);
     this.write(kind, null);
@@ -129,6 +155,12 @@ export class SoundRoots {
   dispose(): void {
     this.dropShared();
     this.listeners.clear();
+  }
+
+  /** The link a new folder replaces, where the GM chose for it; a folder linked over one still waiting keeps the one before that. */
+  private remember(kind: SoundKind): void {
+    if (this.before.has(kind) || !isLinked(this.stateOf(kind)) || this.originalsOf(kind) === null) return;
+    this.before.set(kind, { local: this.facts.local(kind), localOriginals: this.facts.localOriginals(kind), shared: this.facts.shared()[kind] });
   }
 
   private write(kind: SoundKind, root: SharedSoundRoot | null): void {

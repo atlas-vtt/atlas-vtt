@@ -43,3 +43,4 @@
 - Sound: a tag name the library's rail cuts short shows in full on hover, and "Get starter ambience" no longer loses its first letters in a narrow rail
 - Sound: turning up reverb no longer makes a sound louder. A full knob is as wet as before, in every room, for music and ambience, on the players' page too
 - Sound: the mix desk shows a track's length as the library does, to the nearest second
+- Sound: cancelling the question about a new music or ambience folder, after Change folder, keeps the folder you had, with your choice for its originals, instead of leaving none linked
