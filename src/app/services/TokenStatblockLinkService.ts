@@ -19,7 +19,7 @@ import type { NotePatch } from '../statblocks/notes/patchTypes';
 import type { BaseToken, Character } from '../types';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
-import { isResourceUrl, resourceUrlToFilePath, resourceUrlToVaultPath } from '../utils/pathUtils';
+import { sameTokenImage, tokenImageKey } from './tokenImagePaths';
 
 export interface TokenStatblockLink {
   tokenImagePath: string;
@@ -243,7 +243,7 @@ export class TokenStatblockLinkService extends EventEmitter {
     if (!(statblockFile instanceof TFile)) return;
     const currentImage = this.readStatblockImage(statblockFile);
     // Path comparison handles differing formats (app:// URLs, relative paths).
-    if (!currentImage || !this.arePathsEquivalent(currentImage, tokenImagePath)) return;
+    if (!currentImage || !sameTokenImage(currentImage, tokenImagePath)) return;
     const [remaining] = await this.getTokensLinkedToStatblock(statblockPath);
     if (remaining) await this.updateStatblockImage(statblockPath, remaining);
     else await this.updateStatblockImage(statblockPath, tokenImagePath, false);
@@ -338,7 +338,7 @@ export class TokenStatblockLinkService extends EventEmitter {
         return value === undefined ? [] : [{ op: 'delete', path: [key], base: value }];
       });
       const token = frontmatter?.token;
-      return typeof token === 'string' && this.arePathsEquivalent(token, tokenImagePath)
+      return typeof token === 'string' && sameTokenImage(token, tokenImagePath)
         ? [...cleared, { op: 'delete', path: ['token'], base: token }]
         : cleared;
     });
@@ -441,48 +441,16 @@ export class TokenStatblockLinkService extends EventEmitter {
   }
   
   /**
-   * Normalizes a resource path for comparison by extracting the essential file path.
-   */
-  private normalizeResourcePath(path: string): string {
-    if (!path) return '';
-    
-    // A resource URL: the file's place under Atlas' folder, else its path as the URL names it
-    if (isResourceUrl(path)) return resourceUrlToVaultPath(path) ?? resourceUrlToFilePath(path) ?? path;
-
-    // For regular paths, ensure they start with atlas-vtt/ if they don't already
-    let normalized = path;
-    if (normalized.startsWith('/')) {
-      normalized = normalized.substring(1);
-    }
-    
-    return normalized;
-  }
-  
-  /**
-   * Compares two paths to determine if they reference the same file.
-   * Handles resource URLs vs file paths and timestamp differences.
-   */
-  public arePathsEquivalent(path1: string, path2: string): boolean {
-    if (!path1 || !path2) return path1 === path2;
-    
-    const normalized1 = this.normalizeResourcePath(path1);
-    const normalized2 = this.normalizeResourcePath(path2);
-    
-    const result = normalized1 === normalized2;
-    return result;
-  }
-  
-  /**
    * The token asset an image path names, in any path format (resource URL or
    * file path); null when the image is no token's art.
    */
   async findAssetByAnyPath(path: string): Promise<TokenAsset | null> {
     const tokenAssets = await this.assetService.getTokenAssets();
-    const normalizedSearchPath = this.normalizeResourcePath(path);
+    const normalizedSearchPath = tokenImageKey(path);
     
     for (const tokenAsset of tokenAssets) {
       if (tokenAsset.imagePath) {
-        const assetNormalized = this.normalizeResourcePath(tokenAsset.imagePath);
+        const assetNormalized = tokenImageKey(tokenAsset.imagePath);
         // Try both direct path match and normalized path match
         if (tokenAsset.imagePath === path || assetNormalized === normalizedSearchPath) {
           return tokenAsset;
