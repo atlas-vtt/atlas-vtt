@@ -87,7 +87,7 @@ button.atlas-mimic-captcha__square {
     inset: 0;
     width: 100%;
     height: 100%;
-    // Drawn blocky from a tiny picture, as a captcha's squares are: hard to tell a chest from a mimic.
+    // Drawn a little blocky from a small picture, as a captcha's squares are, never too blocky to tell.
     image-rendering: pixelated;
     filter: brightness(var(--atlas-mimic-brightness, 1));
     transform: translate(var(--atlas-mimic-shift-x, 0), var(--atlas-mimic-shift-y, 0)) scale(var(--atlas-mimic-zoom, 1)) rotate(var(--atlas-mimic-turn, 0deg));

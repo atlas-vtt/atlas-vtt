@@ -35,7 +35,7 @@ export interface CaptchaTile {
   scene?: StreetScene;
   /** Quarter turns, in degrees. */
   turn: 0 | 90 | 180 | 270;
-  /** CSS brightness: some squares are too dark to tell. */
+  /** CSS brightness: some squares are a little dark, never too dark to tell. */
   brightness: number;
   /** How far the picture is blown up past its square, so part of it is cut off. */
   zoom: number;
@@ -94,7 +94,7 @@ function dealTile(id: number, kind: TileKind, style: RoundStyle, random: () => n
     ...(street && { scene: dealScene(kind === 'mimic', random) }),
     // A street photo stays upright; a chest may lie any way round.
     turn: street ? 0 : pick(TURNS, random),
-    brightness: 0.45 + random() * 0.7,
+    brightness: 0.7 + random() * 0.45,
     zoom,
     shiftX: (random() - 0.5) * (zoom - 1),
     shiftY: (random() - 0.5) * (zoom - 1),
