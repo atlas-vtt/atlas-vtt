@@ -54,8 +54,10 @@ export abstract class ShareFlow<S extends ShareCommon> {
   protected abstract draftOf(stored: ListingFields | null): ListingDraft;
   /** Packs again after packing failed, and uploads. */
   protected abstract repack(): void;
-  /** Records the publish in the vault, where the subject keeps a record of it. */
-  protected abstract recordPublished(): Promise<void>;
+  /** Records the publish in the vault, where the subject keeps a record of it; a share of what keeps none records nothing. */
+  protected recordPublished(): Promise<void> {
+    return Promise.resolve();
+  }
 
   /** The account's listing `uid`, from My uploads; a share that read them already answers from what it read. */
   protected readOwnListing(uid: string): Promise<OwnListing | null> {
@@ -113,6 +115,19 @@ export abstract class ShareFlow<S extends ShareCommon> {
     if (id !== undefined) void this.flow.api.discard(id).catch(() => undefined);
     this.upload = null;
     this.set({ step: 'bundle', submission: null, upload: null, bundle: null, packing: null, refusal: null });
+    void this.readListingAgain();
+  }
+
+  /** The continued listing read again: a version published meanwhile (the website's, a refused `version-not-higher`) moves the next one on. */
+  private async readListingAgain(): Promise<void> {
+    const uid = this.state.ownListing?.uid;
+    const listing = uid === undefined ? null : await this.flow.api.ownListing(uid).catch(() => null);
+    if (listing !== null && this.state.step === 'bundle' && this.state.ownListing?.uid === uid) this.set({ ...this.relisted(listing), ownListing: listing });
+  }
+
+  /** What the snapshot takes from its listing read again after a start over: what it took from it when the share opened. */
+  protected relisted(listing: OwnListing): Partial<S> {
+    return this.opened(listing);
   }
 
   /** Changes the listing's form; what was wrong with the fields it changes is said again at the next step only. */

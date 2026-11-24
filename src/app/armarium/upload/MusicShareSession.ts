@@ -201,6 +201,11 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
     return { listings: this.known, listingsFailed: this.failedToRead, target: ownListing?.uid ?? null, version: nextItemVersion(ownListing), ...this.nameFor(ownListing) };
   }
 
+  /** The next version of the listing as read again, also in the list of the account's listings. */
+  protected override relisted(listing: OwnListing): Partial<MusicShareSnapshot> {
+    return { version: nextItemVersion(listing), listings: this.state.listings?.map((each) => (each.uid === listing.uid ? listing : each)) ?? null };
+  }
+
   /** What the listing holds for a new version, else an empty form; the kind is music, which names no system. */
   protected draftOf(stored: ListingFields | null): ListingDraft {
     return draftForKind({ ...draftFrom(stored, null), kind: 'music' });
@@ -211,10 +216,6 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
     if (version === null) return;
     this.set({ packing: { message: '', fraction: 0 }, refusal: null });
     void this.packAndUpload(version);
-  }
-
-  protected recordPublished(): Promise<void> {
-    return Promise.resolve();
   }
 
   /** The name a version of `listing` is shared under (`ListingName`), unless the GM typed one. */

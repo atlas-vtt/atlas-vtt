@@ -25,6 +25,10 @@ class MusicArmarium extends FakeArmarium {
   ownListings(): Promise<OwnListing[]> {
     return Promise.resolve(this.listings);
   }
+
+  override ownListing(uid: string): Promise<OwnListing | null> {
+    return Promise.resolve(this.listings.find((listing) => listing.uid === uid) ?? null);
+  }
 }
 
 /** A preparer the test answers by hand, track by track. */
@@ -195,6 +199,31 @@ describe('sharing music in the Armarium', () => {
     theirs.api.listings = [listing];
     await toMusicStep(theirs.session);
     expect(theirs.session.snapshot()).toMatchObject({ target: null, version: 1 });
+  });
+
+  it('offers the version after the newest again once a start over follows a version published meanwhile', async () => {
+    const listing: OwnListing = { uid: 'a'.repeat(32), slug: 'ragnarok', name: 'Ragnarök', format: 'music-album', fields: STORED, newestVersion: 1, coverUrl: null };
+    const { session, api, pack, tracks } = setup('music-album', ['a.opus', 'b.opus'], { listing: listing.uid });
+    api.listings = [listing];
+    await toMusicStep(session);
+    tracks.tell('a.opus', ready());
+    tracks.tell('b.opus', ready());
+    api.checkedAs = 'rejected';
+    api.findings = [{ code: 'version-not-higher', level: 'error' }];
+    session.confirmMusic();
+    await vi.waitFor(() => expect(session.snapshot().submission?.state).toBe('rejected'));
+    expect(pack.mock.calls[0]?.[0]).toMatchObject({ uid: listing.uid, version: 2 });
+
+    // Version 2 went up from the website while Atlas packed its own.
+    const published = { ...listing, newestVersion: 2 };
+    api.listings = [published];
+    session.startOver();
+    await vi.waitFor(() => expect(session.snapshot().version).toBe(3));
+    expect(session.snapshot()).toMatchObject({ step: 'bundle', target: listing.uid, ownListing: published, listings: [published] });
+    api.checkedAs = 'checked';
+    session.confirmMusic();
+    await vi.waitFor(() => expect(session.snapshot().step).toBe('listing'));
+    expect(pack.mock.calls[1]?.[0]).toMatchObject({ uid: listing.uid, version: 3 });
   });
 
   it('carries the published version\'s artist into the next version, unless the GM typed one, and never clears it', async () => {
