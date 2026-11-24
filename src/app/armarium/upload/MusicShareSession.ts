@@ -36,6 +36,8 @@ export interface MusicShareDeps extends ShareFlowDeps {
   readonly name: string;
   /** A listing of the account's to continue, as the Armarium page asked; one that is not its music is not taken. */
   readonly listing?: string | undefined;
+  /** The listing the shared files were installed from, as their sidecar says; continued where it is the account's music. */
+  readonly installedListing?: (() => Promise<string | null>) | undefined;
   /** Prepares a track's Atlas copy, telling each step; the result stops it. */
   readonly prepare: (file: LibraryFile, listener: (state: PreparedTrack) => void) => () => void;
   /** A new listing's uid: 32 random lowercase hex. */
@@ -177,12 +179,26 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
     return this.readKnown();
   }
 
-  /** Reads the account's listings of this kind; the listing the page asked to continue where it is one of them. */
+  /**
+   * Reads the account's listings of this kind; the listing the page asked to continue, else the one the files were
+   * installed from, where it is one of them.
+   */
   private async readKnown(): Promise<string | null> {
-    const read = await this.deps.api.ownListings();
+    const [read, installed] = await Promise.all([this.deps.api.ownListings(), this.installedListing()]);
     this.failedToRead = read === null;
     this.known = (read ?? []).filter((listing) => listing.format === this.deps.kind);
-    return this.known.some((listing) => listing.uid === this.deps.listing) ? this.deps.listing ?? null : null;
+    const asked = this.deps.listing ?? installed;
+    return this.known.some((listing) => listing.uid === asked) ? asked : null;
+  }
+
+  /** The listing the files were installed from; a sidecar that cannot be read names none. */
+  private async installedListing(): Promise<string | null> {
+    try {
+      return (await this.deps.installedListing?.()) ?? null;
+    } catch (error) {
+      console.warn('[Atlas] The music\'s Armarium sidecar could not be read:', error);
+      return null;
+    }
   }
 
   protected override readOwnListing(uid: string): Promise<OwnListing | null> {

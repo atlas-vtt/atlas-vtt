@@ -43,7 +43,7 @@ function preparer(): { prepare: (file: LibraryFile, listener: (state: PreparedTr
 
 const ready = (seconds = 120): PreparedTrack => ({ state: 'ready', copy: new Blob(['opus']), frames: seconds * 48_000 });
 
-function setup(kind: MusicKind, paths: string[], options: { listing?: string; name?: string; publishedArtist?: (listing: OwnListing) => Promise<string | null> } = {}): {
+function setup(kind: MusicKind, paths: string[], options: { listing?: string; name?: string; installed?: string | null; publishedArtist?: (listing: OwnListing) => Promise<string | null> } = {}): {
   session: MusicShareSession; api: MusicArmarium; pack: ReturnType<typeof vi.fn<(request: MusicPackRequest) => Promise<{ fileName: string; blob: Blob }>>>; tracks: ReturnType<typeof preparer>;
 } {
   const api = new MusicArmarium();
@@ -56,6 +56,7 @@ function setup(kind: MusicKind, paths: string[], options: { listing?: string; na
     files: paths.map(fileOf),
     name: options.name ?? 'Old Roads',
     listing: options.listing,
+    installedListing: () => Promise.resolve(options.installed ?? null),
     prepare: tracks.prepare,
     newUid: () => NEW_UID,
     pack,
@@ -177,6 +178,21 @@ describe('sharing music in the Armarium', () => {
     asked.api.listings = [listing];
     await toMusicStep(asked.session);
     expect(asked.session.snapshot()).toMatchObject({ target: listing.uid, name: 'Night of the Wilds' });
+  });
+
+  it('continues the account\'s listing the shared folder was installed from, and none another account\'s sidecar names', async () => {
+    const listing: OwnListing = { uid: 'a'.repeat(32), slug: 'night-of-the-wilds', name: 'Night of the Wilds', format: 'music-album', fields: STORED, newestVersion: 2, coverUrl: null };
+    const { session, api } = setup('music-album', ['a.opus', 'b.opus'], { installed: listing.uid });
+    api.listings = [listing];
+    await toMusicStep(session);
+    expect(session.snapshot()).toMatchObject({ target: listing.uid, version: 3 });
+    session.chooseListing(null);
+    expect(session.snapshot()).toMatchObject({ target: null, version: 1 });
+
+    const theirs = setup('music-album', ['a.opus', 'b.opus'], { installed: 'e'.repeat(32) });
+    theirs.api.listings = [listing];
+    await toMusicStep(theirs.session);
+    expect(theirs.session.snapshot()).toMatchObject({ target: null, version: 1 });
   });
 
   it('carries the published version\'s artist into the next version, unless the GM typed one, and never clears it', async () => {

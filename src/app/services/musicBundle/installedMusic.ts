@@ -6,6 +6,7 @@
 import type { SoundLibrary } from '../../soundLibrary/SoundLibrary';
 import type { SoundLocation } from '../../soundLibrary/soundLocation';
 import { joinRelative, nameOfRelative, parentOfRelative } from '../../soundLibrary/soundPaths';
+import type { MusicKind } from '../itemBundle/itemBundleFormat';
 import { inPool } from '../stockPacks/verifiedFetch';
 import { ALBUM_SIDECAR, readSidecar, trackSidecarName, type MusicSidecar } from './musicProvenance';
 
@@ -78,6 +79,19 @@ export async function installedMusic(library: MusicShelf, walkWaitMs = WALK_WAIT
     return sidecar?.kind === 'music-track' ? { sidecarPath, folder, sidecar } : null;
   })).filter((found): found is InstalledMusic => found !== null);
   return [...albums.filter((album) => album.sidecar.kind === 'music-album'), ...tracks];
+}
+
+/**
+ * The listing music at `paths` was installed from, as its sidecar says, where the sidecar is of `kind`: an album's in
+ * the one folder they all lie in, a single's beside it. Null otherwise; whose listing it names is not checked here.
+ */
+export async function listingOfFiles(location: SoundLocation | null, kind: MusicKind, paths: readonly string[]): Promise<string | null> {
+  const folders = new Set(paths.map(parentOfRelative));
+  const [folder] = folders;
+  const [first] = paths;
+  if (location === null || folders.size !== 1 || folder === undefined || first === undefined) return null;
+  const sidecar = await sidecarAt(location, joinRelative(folder, kind === 'music-album' ? ALBUM_SIDECAR : trackSidecarName(nameOfRelative(first))));
+  return sidecar?.kind === kind ? sidecar.uid : null;
 }
 
 /** The install of the listing `uid`: where several name it, the newest version's, which took the listing's updates. */

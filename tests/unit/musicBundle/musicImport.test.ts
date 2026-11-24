@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readAtlasCopy } from '../../../src/app/sound/codec/atlasOpus';
-import { installedMusic } from '../../../src/app/services/musicBundle/installedMusic';
+import { installedMusic, listingOfFiles } from '../../../src/app/services/musicBundle/installedMusic';
 import { readSidecar } from '../../../src/app/services/musicBundle/musicProvenance';
 import type { SoundLibrary } from '../../../src/app/soundLibrary/SoundLibrary';
 import { sha256 } from '../../../src/app/utils/hashing';
@@ -135,5 +135,18 @@ describe('installing music from the Armarium', () => {
     await library.settle('music', ['Elsewhere/song.opus']);
     const found = await installedMusic(library);
     expect(found.map(({ sidecar }) => [sidecar.uid, sidecar.version, sidecar.kind]).sort()).toEqual([[UID, 1, 'music-album'], ['fedcba9876543210fedcba9876543210', 3, 'music-track']].sort());
+  });
+});
+
+describe('the listing a folder was installed from', () => {
+  it('is the one its sidecar names, for an album shared from its folder and a single beside its own', async () => {
+    await (await install(await album(1, ['Dawn', 'Dusk']))).apply();
+    const other = 'fedcba9876543210fedcba9876543210';
+    await (await install(await deliveredMusic({ kind: 'music-track', uid: other, version: 1, name: 'Glow', titles: ['Glow'] }), other)).apply();
+    expect(await listingOfFiles(location, 'music-album', ['Mara/Old Roads/01 Dawn.opus', 'Mara/Old Roads/02 Dusk.opus'])).toBe(UID);
+    expect(await listingOfFiles(location, 'music-track', ['Glow.opus'])).toBe(other);
+    expect(await listingOfFiles(location, 'music-track', ['Mara/Old Roads/01 Dawn.opus'])).toBeNull();
+    expect(await listingOfFiles(location, 'music-album', ['Mara/Old Roads/01 Dawn.opus', 'Glow.opus'])).toBeNull();
+    expect(await listingOfFiles(null, 'music-album', ['Mara/Old Roads/01 Dawn.opus'])).toBeNull();
   });
 });
