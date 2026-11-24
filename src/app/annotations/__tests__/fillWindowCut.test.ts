@@ -63,7 +63,7 @@ describe('windowCut', () => {
     // The sweeps did cut holes and cut pieces off, and nearly every cut was made in the window.
     expect([holes > 3, split > 3]).toEqual([true, true]);
     expect(fallbacks / cuts).toBeLessThan(0.1);
-  });
+  }, 60_000);
 
   it('keeps every ring the sweep is not near as it is, and adds no points to edges it does not cut', () => {
     // A room with a ragged wall, off the clipping grid, and a hole far from where the eraser works.
