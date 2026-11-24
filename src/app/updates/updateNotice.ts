@@ -3,6 +3,7 @@ import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
 import atlasIconUrl from '../assets/brand/atlas-icon.webp';
 import { createAtlasButton } from '../ui/atlasButton';
+import { BUILT_VERSION, isPartUpdate } from './partUpdate';
 
 /** Obsidian's page of Atlas, which reads the published manifest afresh and offers Update at once. */
 const PLUGIN_PAGE_URL = 'obsidian://show-plugin?id=atlas-vtt';
@@ -43,4 +44,9 @@ export function announceUpdate(version: string, acted: () => void = () => undefi
     notice.hide();
     window.open(releaseNotesUrl(version));
   });
+}
+
+/** Says that this device runs another Atlas than its manifest names; it stays until it is clicked. */
+export function warnOfPartUpdate(installed: string, built: string = BUILT_VERSION): void {
+  if (isPartUpdate(installed, built)) showNotice(t('settings.updates.partUpdate', { running: built, installed }), 0);
 }

@@ -40,12 +40,14 @@ function roll(icon: SVGSVGElement | null): void {
 /**
  * The live map of the dungeon the wizard makes, floating beside the panel on its own (or filling
  * the generator's tab beside it), as large as its box allows: New layout and Export on its top
- * right, the floor switcher at its foot for a dungeon of several floors.
+ * right, the floor switcher at its foot for a dungeon of several floors. Where the map or a card
+ * of the wizard could not be drawn, a line at its foot says so and draws them again.
  */
 export function WizardPreview({ wizard, box, side = 1 }: WizardPreviewProps): React.JSX.Element {
   const { preview, state, actions, setFrame } = wizard;
   const reduced = useReducedMotion() ?? false;
   const dice = useRef<SVGSVGElement>(null);
+  const failed = preview.failed ? t('dungeon.preview.failed') : wizard.cardsFailed ? t('dungeon.preview.cardsFailed') : null;
   return (
     <motion.div
       className={cn('atlas-dungeon-wizard-preview', side < 0 && 'atlas-dungeon-wizard-preview--left', !box && 'atlas-dungeon-wizard-preview--page')}
@@ -80,6 +82,12 @@ export function WizardPreview({ wizard, box, side = 1 }: WizardPreviewProps): Re
           </LabelTooltip>
         </div>
         <FloorSwitcher floors={state.floors} floor={state.floor} onFloor={state.setFloor} model={state.model} />
+        {failed && (
+          <p className="atlas-dungeon-preview__failed" role="alert">
+            {failed}{' '}
+            <Button variant="link" className="atlas-dungeon-preview__retry" onClick={wizard.retry}>{t('dungeon.preview.retry')}</Button>
+          </p>
+        )}
       </MapPreview>
     </motion.div>
   );

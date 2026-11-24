@@ -18,6 +18,8 @@ export const dungeon: Translation = {
   'dungeon.back': '返回',
   'dungeon.preview.label': '地下城预览',
   'dungeon.preview.failed': '无法绘制预览。',
+  'dungeon.preview.cardsFailed': '部分图片无法绘制。',
+  'dungeon.preview.retry': '重试',
   'dungeon.preview.floor': '显示的楼层',
   'dungeon.name': '名称',
   'dungeon.collection': '合集',

@@ -107,6 +107,7 @@ import { registerObsidianSyncNotice } from './src/app/plugin/obsidianSyncNotice'
 import { registerVaultSync } from './src/app/plugin/vaultSync';
 import { ChangelogService } from './src/app/changelog/ChangelogService';
 import { registerUpdateWatch } from './src/app/updates/registerUpdateWatch';
+import { warnOfPartUpdate } from './src/app/updates/updateNotice';
 import { AtlasErrorLog } from './src/app/support/errorLog';
 import { IssueReporter } from './src/app/support/IssueReporter';
 import { TabletDiagnosticsModal } from './src/app/support/tablet/TabletDiagnosticsModal';
@@ -333,6 +334,7 @@ export default class AtlasVTTPlugin extends Plugin {
       this.imageDisplayService.registerContextMenu();
       registerChromeVisibility(this);
       this.changelogService?.showUpdates();
+      warnOfPartUpdate(this.manifest.version);
       // A vault Atlas has never run in opens on the start page, whose tour takes it from there.
       runInBackground(existingInstallation.then(async (existing) => { if (!existing && !this.unloaded) await openDashboard(this); }), 'Opening the start page');
       runInBackground(addStarterTokens(this.app, AssetService.getInstance(this.app), this.settingsService), 'Adding the starter tokens');

@@ -71,6 +71,7 @@ export const settings = {
   'settings.updates.heading': 'Updates',
   'settings.updates.notice': 'Atlas {version} is ready to install.',
   'settings.updates.noticeTitle': 'Update available',
+  'settings.updates.partUpdate': 'Atlas is only partly updated on this device: it runs version {running}, the rest is {installed}. A sync tool left out its large main.js; copy that file from your other device, or from Atlas\'s {installed} release on GitHub, into this vault\'s plugin folder.',
   'settings.updates.showAfterUpdates': 'Show changelog after updates',
   'settings.updates.showAfterUpdatesDesc': 'Open release notes once after updating Atlas. You can always view the changelog here.',
   'settings.updates.upToDate': 'Atlas is up to date',
