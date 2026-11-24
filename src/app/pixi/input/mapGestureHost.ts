@@ -15,7 +15,8 @@ import type { MapGestureHost } from './installTouchGestures';
  *   there too while fingers are set to pan, and its tap is still the tool's click;
  * - a tool that places by taps (`TapPlacing`): a second finger must never find a point placed;
  * - while tokens are being placed, the placement has every press, whatever the tool;
- * - in Table mode (`looking`) the map is only looked at, whatever else holds.
+ * - in Table mode, and while the grid is being aligned (`looking`), the map is only looked at,
+ *   whatever else holds: an alignment hears its clicks on the window, and no tool may hear them too.
  */
 export function fingerModeOf(activeTool: string, placing: boolean, fingers: FingerUse, taps: TapPlacing | null = null, looking = false): FingerMode {
   if (looking) return 'look';
@@ -75,7 +76,7 @@ export function mapGestureHost({ store, viewport, placing, marqueePending, menuA
   return {
     fingerMode: () => {
       const state = store.getState();
-      return fingerModeOf(state.activeTool, placing(), fingers.use, tapPlacingOf(state, lightingTapPlacing), state.tableMode !== null);
+      return fingerModeOf(state.activeTool, placing(), fingers.use, tapPlacingOf(state, lightingTapPlacing), state.tableMode !== null || state.isGridAlignmentOpen);
     },
     endLooking: () => store.getState().leaveTableMode(),
     pressedEmptyMap: marqueePending,
