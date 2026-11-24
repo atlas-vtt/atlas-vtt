@@ -79,7 +79,7 @@ const HINT_SIZE_RANGE = 0.13;
 /** Sizes fitted for the hint itself: the lattice search reaches 3 % to either side of each. */
 const HINT_SIZE_STEPS = [0, -0.05, 0.05, -0.1, 0.1];
 
-function sameSize(a: number, b: number): boolean {
+export function sameSize(a: number, b: number): boolean {
   return Math.abs(a - b) < SAME_SIZE_TOLERANCE * b;
 }
 

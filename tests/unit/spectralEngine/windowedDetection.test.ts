@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DetectionOutcome, LineEnergy } from '../../../src/app/pixi/spectralEngine/detectionJob';
-import { chooseWindows, detectGridInWindows, MAX_WINDOWS, searchedInWindows, WINDOW_SIDE, windowOutcomeOnMap } from '../../../src/app/pixi/spectralEngine/windowedDetection';
+import { chooseWindows, detectGridInWindows, MAX_WINDOWS, searchedInWindows, WINDOW_SIDE, windowOutcomeOnMap, windowsAnswer } from '../../../src/app/pixi/spectralEngine/windowedDetection';
 import type { DetectableMap } from '../../../src/app/pixi/spectralEngine/detectGrid';
 import type { DetectOptions, MapPixels } from '../../../src/app/pixi/spectralEngine/SpectralEngineClient';
 
@@ -70,7 +70,7 @@ describe('windows a huge map is searched in', () => {
       const picture = pixels as { size: { width: number; height: number } };
       asked.push({ size: picture.size, linesOnly: options.linesOnly });
       if (options.linesOnly) return Promise.resolve({ result: null, hits: null, lines: energy(16, 16, { [15 * 16 + 15]: 100, [0]: 60 }) });
-      if (picture.size.width === size.width) return new Promise((resolve) => pending.push(() => resolve({ result: { cellSize: 9, offsetX: 1, offsetY: 1, confidence: 0.3 }, hits: null })));
+      if (picture.size.width === size.width) return new Promise((resolve) => pending.push(() => resolve({ result: { cellSize: 70.4, offsetX: 1, offsetY: 1, confidence: 0.3 }, hits: null })));
       // The corner window finds the grid; the top-left one finds a weaker fit.
       const corner = asked.length === 3;
       return new Promise((resolve) => pending.push(() => resolve({ result: { cellSize: 70, offsetX: corner ? 30 : 7, offsetY: 30, confidence: corner ? 0.95 : 0.5 }, hits: null })));
@@ -99,7 +99,7 @@ describe('windows a huge map is searched in', () => {
       { result: { cellSize: 70, offsetX: 5, offsetY: 0, confidence: 0.99, mapStretch: { x: 1.02, y: 1 } }, hits: null },
       { result: { cellSize: 70, offsetX: 6, offsetY: 0, confidence: 0.9 }, hits: null },
     ];
-    const whole: DetectionOutcome = { result: { cellSize: 200, offsetX: 0, offsetY: 0, confidence: 0.2 }, hits: null };
+    const whole: DetectionOutcome = { result: { cellSize: 70.3, offsetX: 0, offsetY: 0, confidence: 0.2 }, hits: null };
 
     /** Runs the detection with its searches answering in `order` (0 the whole map, 1 to 6 the windows). */
     async function answeredIn(order: number[]): Promise<DetectionOutcome> {
@@ -126,6 +126,25 @@ describe('windows a huge map is searched in', () => {
       const order = [0, 1, 2, 3, 4, 5, 6].map((at) => ({ at, key: random() })).sort((a, b) => a.key - b.key).map(({ at }) => at);
       expect(await answeredIn(order), order.join()).toEqual(inTurn);
     }
+  });
+
+  it('make the whole map\'s grid precise, and never trade it for another grid one part of the map holds better', () => {
+    const whole: DetectionOutcome = { result: { gridType: 'square', cellSize: 200.01, offsetX: 99.5, offsetY: 99.5, confidence: 0.11 }, hits: null };
+    const square = (cellSize: number, confidence: number): DetectionOutcome => ({ result: { gridType: 'square', cellSize, offsetX: 3, offsetY: 4, confidence }, hits: null });
+
+    // A dungeon's windows held lattices of 160 and 100 px better than its 200 px grid, drawn on the floors alone.
+    expect(windowsAnswer(whole, [square(160, 0.27), square(100, 0.16), null])).toBe(whole);
+    const precise = square(200, 0.15);
+    expect(windowsAnswer(whole, [square(160, 0.27), precise, square(199.99, 0.12)])).toBe(precise);
+    // Hexes of the whole map's size are another grid.
+    expect(windowsAnswer(whole, [{ result: { ...precise.result!, gridType: 'hex-vertical' }, hits: null }])).toBe(whole);
+  });
+
+  it('take the window the lines support best where the whole map found no grid', () => {
+    const square = (cellSize: number, confidence: number): DetectionOutcome => ({ result: { gridType: 'square', cellSize, offsetX: 3, offsetY: 4, confidence }, hits: null });
+    const best = square(70, 0.6);
+
+    expect(windowsAnswer({ result: null, hits: null }, [square(175, 0.4), null, best, square(70, 0.6)])).toBe(best);
   });
 
   it('keep the whole-map answer where no window finds a grid, and search a small map once', async () => {
