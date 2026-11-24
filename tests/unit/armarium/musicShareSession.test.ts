@@ -159,6 +159,26 @@ describe('sharing music in the Armarium', () => {
     expect(session.snapshot()).toMatchObject({ target: null, version: 1, ownListing: null });
   });
 
+  it('shares a next version under the listing\'s name unless the GM typed one, and New listing brings back what was there', async () => {
+    const listing: OwnListing = { uid: 'a'.repeat(32), slug: 'night-of-the-wilds', name: 'Night of the Wilds', format: 'music-album', fields: STORED, newestVersion: 1, coverUrl: null };
+    const { session, api } = setup('music-album', ['Night of the Wilds 2/a.opus', 'Night of the Wilds 2/b.opus'], { name: 'Night of the Wilds 2' });
+    api.listings = [listing];
+    await toMusicStep(session);
+    session.chooseListing(listing.uid);
+    expect(session.snapshot().name).toBe('Night of the Wilds');
+    session.chooseListing(null);
+    expect(session.snapshot().name).toBe('Night of the Wilds 2');
+
+    session.setName('Wilder Nights');
+    session.chooseListing(listing.uid);
+    expect(session.snapshot().name).toBe('Wilder Nights');
+
+    const asked = setup('music-album', ['a.mp3', 'b.mp3'], { name: 'Night of the Wilds 2', listing: listing.uid });
+    asked.api.listings = [listing];
+    await toMusicStep(asked.session);
+    expect(asked.session.snapshot()).toMatchObject({ target: listing.uid, name: 'Night of the Wilds' });
+  });
+
   it('carries the published version\'s artist into the next version, unless the GM typed one, and never clears it', async () => {
     const listing: OwnListing = { uid: 'a'.repeat(32), slug: 'old-roads', name: 'Old Roads', format: 'music-album', fields: STORED, newestVersion: 1, coverUrl: null };
     const asked: string[] = [];

@@ -64,6 +64,8 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
   private coverChosen = false;
   private artistTyped = false;
   private nameTyped = false;
+  /** The name the share had before a listing's name took its place, to come back with New listing. */
+  private nameBeforeListing: string | null = null;
   /** Tracks whose title the GM edited: never worked out from the file names again. */
   private readonly editedTitles = new Set<string>();
 
@@ -133,7 +135,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
   /** Continues one of the account's music listings, or starts a new one with null. */
   chooseListing(uid: string | null): void {
     const listing = uid === null ? null : this.state.listings?.find((each) => each.uid === uid) ?? null;
-    this.set({ target: listing?.uid ?? null, ownListing: listing, version: nextItemVersion(listing), listedCover: null, ...(this.coverChosen ? {} : { cover: null }) });
+    this.set({ target: listing?.uid ?? null, ownListing: listing, version: nextItemVersion(listing), listedCover: null, ...(this.coverChosen ? {} : { cover: null }), ...this.nameFor(listing) });
     if (!this.touched) this.set({ draft: this.draftOf(listing?.fields ?? null) });
     if (listing) this.keepListed(listing);
   }
@@ -189,7 +191,7 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
 
   protected opened(ownListing: OwnListing | null): Partial<MusicShareSnapshot> {
     if (ownListing) this.keepListed(ownListing);
-    return { listings: this.known, listingsFailed: this.failedToRead, target: ownListing?.uid ?? null, version: nextItemVersion(ownListing) };
+    return { listings: this.known, listingsFailed: this.failedToRead, target: ownListing?.uid ?? null, version: nextItemVersion(ownListing), ...this.nameFor(ownListing) };
   }
 
   /** What the listing holds for a new version, else an empty form; the kind is music, which names no system. */
@@ -206,6 +208,22 @@ export class MusicShareSession extends ShareFlow<MusicShareSnapshot> {
 
   protected recordPublished(): Promise<void> {
     return Promise.resolve();
+  }
+
+  /**
+   * The name a version of `listing` is shared under: the listing's own, so publishing never renames it, unless the GM
+   * typed one; New listing brings back what was there before.
+   */
+  private nameFor(listing: OwnListing | null): Partial<MusicShareSnapshot> {
+    if (this.nameTyped) return {};
+    if (listing?.name) {
+      this.nameBeforeListing ??= this.state.name;
+      return { name: listing.name, problems: this.without('name') };
+    }
+    if (listing !== null || this.nameBeforeListing === null) return {};
+    const name = this.nameBeforeListing;
+    this.nameBeforeListing = null;
+    return { name };
   }
 
   private without(field: string): Record<string, string> {
