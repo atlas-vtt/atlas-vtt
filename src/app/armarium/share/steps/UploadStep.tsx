@@ -6,9 +6,8 @@ import { formatFileSize } from '../../../utils/fileSize';
 import { t } from '../../../i18n';
 import type { PartStatus } from '../../upload/BundleUpload';
 import type { ShareSnapshot } from '../../upload/shareState';
-import { uploadMessageFor } from '../../upload/text/uploadMessages';
 import { ShareNotice } from './ShareNotice';
-import { shareSaid } from '../shareWording';
+import { refusalSaid, shareSaid } from '../shareWording';
 
 function PartMark({ status }: { status: PartStatus }): React.JSX.Element {
   if (status === 'sent') return <Check className="atlas-share-part__icon" aria-hidden="true" />;
@@ -30,7 +29,7 @@ export function UploadStep({ snapshot }: { snapshot: ShareSnapshot }): React.JSX
   const packingText = shareSaid(subject, 'armariumShare.packing');
   const failure = refusal === null ? null : refusal.code === 'export-failed'
     ? shareSaid(subject, 'armariumShare.exportFailed', { error: refusal.detail ?? '' })
-    : uploadMessageFor(refusal.code, refusal.until);
+    : refusalSaid(subject, refusal);
   // Bytes count once a whole part is in: until then nothing is counted, so no "0 of" is shown, only that it is on its way.
   const counting = upload !== null && (upload.sentBytes > 0 || upload.failure !== null);
   const sentText = upload === null ? '' : counting

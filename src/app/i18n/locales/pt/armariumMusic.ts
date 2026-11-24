@@ -48,6 +48,8 @@ export const armariumMusic: Translation = {
   'armariumMusic.problem.album-too-long': 'Um álbum pode tocar no máximo dez horas.',
   'armariumMusic.problem.title': 'Faixa {number}: {problem}',
   'armariumMusic.rejected': 'As verificações recusaram esta música. Nenhuma pessoa a analisou. Se algum resultado estiver errado, escreva para support@atlas-vtt.dev e uma pessoa vai analisar.',
+  'armariumMusic.fixThenShare': 'Corrija o que os resultados apontam e recomece para compartilhá-la de novo.',
+  'armariumMusic.declarationMissing': 'Confirme que você pode compartilhar esta música.',
   'armariumMusic.listingIntro': 'O nome, o artista e a versão vêm da música, e o tipo dela é música. O que você escolher aqui aparece na página dela no Armarium.',
   'armariumMusic.pick.title.music-album': 'Compartilhar um álbum',
   'armariumMusic.pick.title.music-track': 'Compartilhar uma faixa',

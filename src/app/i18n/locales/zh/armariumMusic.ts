@@ -48,6 +48,8 @@ export const armariumMusic: Translation = {
   'armariumMusic.problem.album-too-long': '一张专辑最多播放十小时。',
   'armariumMusic.problem.title': '第 {number} 首：{problem}',
   'armariumMusic.rejected': '检查拒绝了这份音乐，过程中没有人工查看。如果某项检查结果有误，请写信到 support@atlas-vtt.dev，会有人来查看。',
+  'armariumMusic.fixThenShare': '修改检查结果指出的内容，然后重新开始分享。',
+  'armariumMusic.declarationMissing': '请确认你有权分享这份音乐。',
   'armariumMusic.listingIntro': '名称、艺术家和版本来自音乐本身，它的类型是音乐。你在这里选择的内容会显示在它的 Armarium 页面上。',
   'armariumMusic.pick.title.music-album': '分享专辑',
   'armariumMusic.pick.title.music-track': '分享单曲',

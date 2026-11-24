@@ -4,10 +4,10 @@ import { ProgressBar } from '../../../packages/components/primitives/ProgressBar
 import { t } from '../../../i18n';
 import type { ShareSnapshot } from '../../upload/shareState';
 import { CHECK_STAGES, type SubmissionView } from '../../upload/uploadContract';
-import { stageLabel, stateMessage, uploadMessageFor } from '../../upload/text/uploadMessages';
+import { stageLabel, stateMessage } from '../../upload/text/uploadMessages';
 import { FindingReport } from './FindingReport';
 import { ShareNotice } from './ShareNotice';
-import { shareSaid } from '../shareWording';
+import { refusalSaid, shareSaid } from '../shareWording';
 
 /** The stages in their order, each ticked once the check is past it; the one that runs shows how far it is. */
 function Stages({ submission }: { submission: SubmissionView }): React.JSX.Element {
@@ -50,7 +50,7 @@ export function ChecksStep({ snapshot }: { snapshot: ShareSnapshot }): React.JSX
     <>
       <p className="atlas-share-text" role="status">{stateMessage(submission.state)}</p>
       <Stages submission={submission} />
-      {refusal !== null && <ShareNotice tone="error">{uploadMessageFor(refusal.code, refusal.until)}</ShareNotice>}
+      {refusal !== null && <ShareNotice tone="error">{refusalSaid(snapshot.subject, refusal)}</ShareNotice>}
     </>
   );
 }

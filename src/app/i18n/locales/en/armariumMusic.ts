@@ -50,6 +50,8 @@ export const armariumMusic = {
   'armariumMusic.problem.album-too-long': 'An album may play for at most ten hours.',
   'armariumMusic.problem.title': 'Track {number}: {problem}',
   'armariumMusic.rejected': 'The checks refused this music. No person looked at it. If a finding is wrong, write to support@atlas-vtt.dev and a person will look.',
+  'armariumMusic.fixThenShare': 'Change what the findings name, then start over to share it again.',
+  'armariumMusic.declarationMissing': 'Confirm that you may share this music.',
   'armariumMusic.listingIntro': 'The name, the artist and the version come from the music, and its kind is music. What you choose here is shown on its page in the Armarium.',
 
   'armariumMusic.pick.title.music-album': 'Share an album',
