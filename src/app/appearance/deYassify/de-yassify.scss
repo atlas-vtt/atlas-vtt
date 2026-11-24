@@ -119,6 +119,37 @@ button.atlas-mimic-captcha__square {
   to { opacity: 1; }
 }
 
+// The photo round: one picture in pieces, 3 × 3 or 4 × 4, each blown up blocky from the small drawing.
+.atlas-mimic-captcha__grid--photo {
+  grid-template-columns: repeat(var(--atlas-mimic-side, 3), minmax(0, 1fr));
+  gap: $spacing-xs;
+}
+
+.atlas-mimic-captcha__piece-picture {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  transition: inset $transition-fast $transition-ease;
+}
+
+// Picked, as reCAPTCHA shows it: the picture shrinks into its square and a tick sits on its corner.
+button.atlas-mimic-captcha__piece[aria-pressed='true'] .atlas-mimic-captcha__piece-picture {
+  inset: 12%;
+}
+
+.atlas-mimic-captcha__tick {
+  position: absolute;
+  top: $spacing-xs;
+  left: $spacing-xs;
+  width: 20px;
+  height: 20px;
+  padding: 2px;
+  border-radius: $radius-full;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
 .atlas-mimic-captcha__complaint {
   min-height: 1.4em;
   margin: 0;

@@ -2,6 +2,7 @@ import chestA from '../../assets/yassify/chest-a.webp';
 import chestB from '../../assets/yassify/chest-b.webp';
 import mimicA from '../../assets/yassify/mimic-a.webp';
 import mimicB from '../../assets/yassify/mimic-b.webp';
+import { dealPhotoRound, type PhotoRound } from './photoCaptcha';
 
 /**
  * The mimic captcha that stands between a GM and turning Yassify off: a parody of reCAPTCHA's "select all
@@ -40,6 +41,7 @@ export interface CaptchaTile {
 }
 
 export interface CaptchaRound {
+  kind: 'chests';
   tiles: CaptchaTile[];
   /** A chest was clicked as a mimic this round: the round fails, whatever is left. */
   clickedChest: boolean;
@@ -102,7 +104,7 @@ export function dealRound(random: () => number, firstId = 0, trickling = false):
     const tile = dealTile(firstId + at, kind, random);
     return trickling ? { ...tile, arrival: arrivalAfter(null, random) } : tile;
   });
-  return { tiles, clickedChest: false, nextId: firstId + GRID_TILES };
+  return { kind: 'chests', tiles, clickedChest: false, nextId: firstId + GRID_TILES };
 }
 
 /** A square clicked as a mimic is taken away and another dealt in its place, as reCAPTCHA does; a chest taken counts. */
@@ -111,6 +113,7 @@ export function clickTile(round: CaptchaRound, id: number, random: () => number)
   if (!clicked || clicked.arrival) return round;
   const replacement = { ...dealTile(round.nextId, random() < REPLACEMENT_MIMIC ? 'mimic' : 'chest', random), arrival: arrivalAfter(clicked, random) };
   return {
+    kind: 'chests',
     tiles: round.tiles.map((tile) => (tile.id === id ? replacement : tile)),
     clickedChest: round.clickedChest || clicked.kind === 'chest',
     nextId: round.nextId + 1,
@@ -140,4 +143,15 @@ export function verdict(round: CaptchaRound, attempt: number): Verdict {
   if (round.clickedChest) return 'chest-clicked';
   if (round.tiles.some((tile) => tile.kind === 'mimic')) return 'mimic-left';
   return 'pass';
+}
+
+/** Either kind of round: chest squares or a street photo. */
+export type AnyRound = CaptchaRound | PhotoRound;
+
+/** The chance that a round is a street photo rather than chest squares. */
+const PHOTO_SHARE = 0.5;
+
+/** The next round, of either kind at random; chest squares of a later round trickle in. */
+export function dealAnyRound(random: () => number, nextId = 0, trickling = false): AnyRound {
+  return random() < PHOTO_SHARE ? dealPhotoRound(random, nextId) : dealRound(random, nextId, trickling);
 }

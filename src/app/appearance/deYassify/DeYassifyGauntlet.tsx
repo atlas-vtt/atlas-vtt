@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Button } from '../../packages/components/primitives/button';
 import { LoadingSpinner } from '../../packages/components/primitives/LoadingSpinner';
 import { t, type MessageKey } from '../../i18n';
-import { MimicCaptcha } from './MimicCaptcha';
+import { MimicCaptcha, type DealRound } from './MimicCaptcha';
 import './de-yassify.scss';
 
 /** How long each pretend wait lasts: before the extra-sure ask, and again before the captcha. */
@@ -14,7 +14,7 @@ type Stage = 'sure' | 'stalling' | 'extra-sure' | 'summoning' | 'captcha';
 /** Each pretend wait, what it says and where it leads. */
 const STALLS = {
   stalling: { text: 'appearance.deYassify.working', next: 'extra-sure' },
-  summoning: { text: 'appearance.deYassify.summoning', next: 'captcha' },
+  summoning: { text: 'appearance.deYassify.checking', next: 'captcha' },
 } as const satisfies Partial<Record<Stage, { text: MessageKey; next: Stage }>>;
 
 interface DeYassifyGauntletProps {
@@ -23,13 +23,14 @@ interface DeYassifyGauntletProps {
   /** True once the GM got through it all, false for any No. */
   onDone: (deYassify: boolean) => void;
   random?: () => number;
+  deal?: DealRound;
 }
 
 /**
  * What stands between a GM and turning Yassify off, annoying on purpose: are you sure (No is the big accent button),
- * a pretend wait, are you extra sure (Yes even smaller), another pretend wait, then the mimic captcha.
+ * a pretend wait, are you extra sure (Yes even smaller), a pretend security check, then the mimic captcha.
  */
-export function DeYassifyGauntlet({ footer, onDone, random }: DeYassifyGauntletProps): React.JSX.Element {
+export function DeYassifyGauntlet({ footer, onDone, random, deal }: DeYassifyGauntletProps): React.JSX.Element {
   const [stage, setStage] = useState<Stage>('sure');
 
   useEffect(() => {
@@ -46,7 +47,7 @@ export function DeYassifyGauntlet({ footer, onDone, random }: DeYassifyGauntletP
       </div>
     );
   }
-  if (stage === 'captcha') return <MimicCaptcha onSolved={() => onDone(true)} {...(random && { random })} />;
+  if (stage === 'captcha') return <MimicCaptcha onSolved={() => onDone(true)} {...(random && { random })} {...(deal && { deal })} />;
 
   const extra = stage === 'extra-sure';
   return (
