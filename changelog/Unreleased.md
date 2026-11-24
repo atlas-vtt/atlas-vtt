@@ -26,6 +26,7 @@
 - Atlas takes less time to start when Obsidian opens or reloads
 - The dungeon generator draws the floors of a dungeon or cave at the same time, so a scene with several floors is made much sooner
 - A new map's grid is looked for as soon as its image is in, without waiting for the whole map to be prepared
+- A large new map is prepared about three times as fast: Atlas cuts it into tiles on several cores at once, so a dungeon or an image you add is ready to zoom into sooner
 - The pin tool's menu is back to icons and the search: Show name is no longer a switch there. Right-click a pin to show or hide its name
 - The Stream Deck's Music key now moves the Sound page's Music fader, and its Ambience key moves all ambience layers of the mix together, so the page shows every press at once
 - Keys set to "Music in mix" now work as the Music key
