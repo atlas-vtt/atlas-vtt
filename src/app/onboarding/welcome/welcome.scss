@@ -4,6 +4,28 @@
 // The welcome wizard (WelcomeDialog.tsx): a large dialog over the workspace, above Atlas' other layers as the tours are.
 .atlas-welcome-overlay {
   @include atlas-modal-overlay($z-atlas-modal + $z-notification);
+  // Deeper than other dialogs' scrim: the workspace blurs away and darkens, most at the edges, until the welcome is all
+  // there is. The dark is a layer under the window, so it can come up without fading the window with it.
+  background: none;
+  backdrop-filter: blur(16px) saturate(0.8);
+  animation: atlas-welcome-sink 900ms $transition-ease-out both;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, color-mix(in oklch, #{$shadow-color} 35%, transparent), color-mix(in oklch, #{$shadow-color} 72%, transparent));
+    animation: atlas-welcome-dark 900ms $transition-ease-out both;
+  }
+}
+
+@keyframes atlas-welcome-sink {
+  from { backdrop-filter: blur(0px) saturate(1); }
+}
+
+@keyframes atlas-welcome-dark {
+  from { opacity: 0; }
 }
 
 // The window as it is placed and animated. It does not clip, so a look can draw around it with its pseudo-elements

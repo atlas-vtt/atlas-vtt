@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useIsPresent } from 'framer-motion';
 import type { App } from 'obsidian';
 import { Button } from '../../packages/components/primitives/button';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
-import { dialogOverlayMotion, useDialogWindowVariants } from '../../packages/components/primitives/dialogMotion';
+import { useDialogWindowVariants, usePrefersReducedMotion } from '../../packages/components/primitives/dialogMotion';
 import type { SettingsService } from '../../services/SettingsService';
 import type { LookService } from '../../appearance/lookService';
 import { useAtlasSettings, useHotkeyLabels } from '../../keyboard/useMapHotkeys';
@@ -12,9 +12,12 @@ import { portalHost } from '../../host/portalHost';
 import { useDialogFocus } from '../useDialogFocus';
 import { HelpPage, LookPage, SidebarPage } from './welcomePages';
 import { WelcomeFootStart } from './welcomeFoot';
+import { useWelcomeIntro, WelcomeIntro } from './welcomeIntro';
+import { welcomeOverlayMotion, welcomeWindowVariants } from './welcomeMotion';
 import { useWelcomeOwner } from './useWelcomeOwner';
 import { t } from '../../i18n';
 import './welcome.scss';
+import './intro.scss';
 
 interface WelcomeDialogProps {
   app: App;
@@ -48,7 +51,10 @@ function WelcomeWindow({ app, settings, looks, carousel, doc }: Omit<WelcomeDial
   // Where the carousel puts its chips: the foot's start, in place of the pages' bars.
   const [footStart, setFootStart] = useState<HTMLElement | null>(null);
   const windowRef = useRef<HTMLDivElement>(null);
-  const windowVariants = useDialogWindowVariants();
+  const reducedMotion = usePrefersReducedMotion();
+  const fadingVariants = useDialogWindowVariants();
+  const windowVariants = reducedMotion ? fadingVariants : welcomeWindowVariants;
+  const intro = useWelcomeIntro(reducedMotion);
   const key = useHotkeyLabels();
   const finish = useCallback(() => settings.completeTutorial('welcome'), [settings]);
   const last = at === PAGES.length - 1;
@@ -68,7 +74,7 @@ function WelcomeWindow({ app, settings, looks, carousel, doc }: Omit<WelcomeDial
 
   const page = PAGES[at]!;
   return createPortal(
-    <motion.div {...dialogOverlayMotion} className="atlas-vtt-plugin atlas-vtt-root atlas-welcome-overlay">
+    <motion.div {...welcomeOverlayMotion} className="atlas-vtt-plugin atlas-vtt-root atlas-welcome-overlay">
       {/* The window moves as one piece and does not clip, so a look's ornament hangs from it and moves and fades with
           it; the dialog inside clips its pages to the corners. */}
       <motion.div variants={windowVariants} className="atlas-welcome-window">
@@ -76,6 +82,8 @@ function WelcomeWindow({ app, settings, looks, carousel, doc }: Omit<WelcomeDial
           ref={windowRef}
           className="atlas-welcome"
           data-page={page}
+          data-opening={intro.opening || undefined}
+          style={intro.style}
           role="dialog"
           aria-modal="true"
           aria-label={t('tour.welcome.label')}
@@ -83,7 +91,11 @@ function WelcomeWindow({ app, settings, looks, carousel, doc }: Omit<WelcomeDial
         >
           <CloseButton className="atlas-welcome__close" onClick={finish} />
           <div className="atlas-welcome__page" key={page}>
-            {page === 'carousel' && <WelcomeFootStart.Provider value={footStart}>{carousel}</WelcomeFootStart.Provider>}
+            {page === 'carousel' && (
+              <WelcomeIntro.Provider value={intro.state}>
+                <WelcomeFootStart.Provider value={footStart}>{carousel}</WelcomeFootStart.Provider>
+              </WelcomeIntro.Provider>
+            )}
             {page === 'help' && <HelpPage paletteKey={key('palette')} />}
             {page === 'sidebar' && <SidebarPage app={app} />}
             {page === 'look' && <LookPage app={app} looks={looks} />}

@@ -5,6 +5,8 @@ import { WelcomeText } from './welcomePages';
 import { CROSSFADE_MS, SLIDE_MS, WELCOME_SLIDES, type WelcomeSlide } from './welcomeSlides';
 import { useDocumentHidden, useSlideTimer } from './useSlideTimer';
 import { WelcomeFootStart } from './welcomeFoot';
+import { WelcomeIntro } from './welcomeIntro';
+import { LetterTitle } from './LetterTitle';
 import swordPicture from '../../assets/brand/sword.webp';
 import { t } from '../../i18n';
 import './carousel.scss';
@@ -16,15 +18,21 @@ type SlideState = 'on' | 'leaving' | 'off';
  * The welcome wizard's first page: what Atlas does, one picture at a time across the whole dialog. A slide shows for
  * `SLIDE_MS`, then the next fades in over it; the story bars at the top and the chips at the foot jump to a slide. It
  * holds while the pointer is over it or its window is hidden, and stops for good once the GM picks a slide or moves
- * the focus into it (a chip), so the keyboard can stop it too.
+ * the focus into it (a chip), so the keyboard can stop it too. While the dialog's opening plays, the first slide is
+ * that opening and its time has not begun.
  */
 export function WelcomeCarousel(): React.JSX.Element {
   const root = useRef<HTMLDivElement>(null);
   const [pointerOver, setPointerOver] = useState(false);
   const [stopped, setStopped] = useState(false);
   const hidden = useDocumentHidden(root);
-  const paused = pointerOver || hidden || stopped;
-  const { index, go, elapsed, run } = useSlideTimer(WELCOME_SLIDES.length, paused);
+  const intro = useContext(WelcomeIntro);
+  // Whether this carousel opened with the dialog's opening: the first slide's first showing is drawn as that opening.
+  const [opening] = useState(intro.playing);
+  // The pointer over the opening does not hold it: it plays out, and the clock it delays waits for it.
+  const held = pointerOver || hidden || stopped;
+  const paused = held && !intro.playing;
+  const { index, go, elapsed, run } = useSlideTimer(WELCOME_SLIDES.length, held || intro.playing);
   const leaving = useLeaving(index);
   const pick = (at: number): void => {
     setStopped(true);
@@ -52,13 +60,14 @@ export function WelcomeCarousel(): React.JSX.Element {
       aria-label={t('tour.welcome.carouselLabel')}
       data-paused={paused}
       data-stopped={stopped}
+      data-opening={opening || undefined}
       style={timing}
       onFocus={() => setStopped(true)}
       onPointerEnter={() => setPointerOver(true)}
       onPointerLeave={() => setPointerOver(false)}
     >
       {WELCOME_SLIDES.map((slide, at) => (
-        <Slide key={slide.id} slide={slide} state={at === index ? 'on' : at === leaving ? 'leaving' : 'off'} />
+        <Slide key={slide.id} slide={slide} state={at === index ? 'on' : at === leaving ? 'leaving' : 'off'} opening={opening && at === 0} />
       ))}
       {/* The chips name the slides for assistive technology; the bars are the same jumps for the pointer. */}
       <div className="atlas-welcome-carousel__stories" aria-hidden="true">
@@ -71,8 +80,11 @@ export function WelcomeCarousel(): React.JSX.Element {
             data-state={at < index ? 'done' : at === index ? 'on' : 'next'}
             onClick={() => pick(at)}
           >
-            {/* A new fill for every run of the showing slide's time, started from the time already gone. */}
-            {at === index ? <i key={`run-${run}`} style={{ animationDelay: `-${elapsed}ms` }} /> : <i key="still" />}
+            {/* A new fill for every run of the showing slide's time, started from the time already gone; the first
+                waits for the opening. */}
+            {at === index
+              ? <i key={`run-${run}`} style={{ animationDelay: opening && run === 0 ? `${intro.endMs}ms` : `-${elapsed}ms` }} />
+              : <i key="still" />}
           </button>
         ))}
       </div>
@@ -81,7 +93,7 @@ export function WelcomeCarousel(): React.JSX.Element {
   );
 }
 
-function Slide({ slide, state }: { slide: WelcomeSlide; state: SlideState }): React.JSX.Element {
+function Slide({ slide, state, opening }: { slide: WelcomeSlide; state: SlideState; opening: boolean }): React.JSX.Element {
   // Counted each time the slide comes to show, so its picture drifts and its words rise afresh, also when it comes
   // back while still fading out.
   const [showing, setShowing] = useState(0);
@@ -90,9 +102,12 @@ function Slide({ slide, state }: { slide: WelcomeSlide; state: SlideState }): Re
     setWasOn(state === 'on');
     if (state === 'on') setShowing(showing + 1);
   }
+  // Only its first showing is the opening; when it comes round again it shows as every slide does.
+  const opens = opening && showing === 0;
   return (
     <div
       className={`atlas-welcome-slide atlas-welcome-slide--${slide.id}`}
+      data-opening={opens || undefined}
       role="group"
       aria-roledescription="slide"
       aria-label={t(slide.chip)}
@@ -105,7 +120,7 @@ function Slide({ slide, state }: { slide: WelcomeSlide; state: SlideState }): Re
       <div key={`copy-${showing}`} className="atlas-welcome-slide__copy">
         <WelcomeText
           kicker={t(slide.kicker)}
-          title={t(slide.title)}
+          title={opens ? <LetterTitle text={t(slide.title)} /> : t(slide.title)}
           body={t(slide.body)}
           {...(slide.aside && { aside: { line: t(slide.aside.line), tag: t(slide.aside.tag) } })}
         >

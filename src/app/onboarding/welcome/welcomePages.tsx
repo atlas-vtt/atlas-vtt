@@ -12,7 +12,7 @@ import { t } from '../../i18n';
 interface WelcomeTextProps {
   /** A small line above the heading; a page whose heading says it all has none. */
   kicker?: string;
-  title: string;
+  title: React.ReactNode;
   body: string;
   /** A second line with a small status after it, such as a part still in beta: the status belongs to that line alone. */
   aside?: { line: string; tag: string };
