@@ -191,6 +191,11 @@ body.atlas-look {
      beside the colours it offers */
   --atlas-look-accent: #dd4646;
 
+  /* what a note colours (headings, bold lead-ins, quote rules, table
+     heads): the look's own red or ink, or an accent colour picked in
+     Appearance (below) */
+  --atlas-note-accent: var(--atlas-theme-red);
+
   /* body text: bookish serif; a text font picked in Appearance still overrides it */
   --font-text-theme: var(--atlas-theme-body-serif);
 
@@ -202,12 +207,12 @@ body.atlas-look {
   --h4-font: var(--atlas-theme-heading-font);
   --h5-font: var(--atlas-theme-heading-font);
   --h6-font: var(--atlas-theme-heading-font);
-  --h1-color: var(--atlas-theme-red);
-  --h2-color: var(--atlas-theme-red);
-  --h3-color: var(--atlas-theme-red);
-  --h4-color: var(--atlas-theme-red);
-  --h5-color: var(--atlas-theme-red);
-  --h6-color: var(--atlas-theme-red);
+  --h1-color: var(--atlas-note-accent);
+  --h2-color: var(--atlas-note-accent);
+  --h3-color: var(--atlas-note-accent);
+  --h4-color: var(--atlas-note-accent);
+  --h5-color: var(--atlas-note-accent);
+  --h6-color: var(--atlas-note-accent);
   --h1-weight: 400;
   --h2-weight: 400;
   --h3-weight: 400;
@@ -233,7 +238,7 @@ body.atlas-look {
   /* read-aloud boxed text (plain `>` quotes, not callouts);
      Live Preview reads --blockquote-style */
   --blockquote-background-color: var(--background-secondary);
-  --blockquote-border-color: var(--atlas-theme-red);
+  --blockquote-border-color: var(--atlas-note-accent);
   --blockquote-border-thickness: 4px;
   --blockquote-font-style: italic;
   --blockquote-style: italic;
@@ -247,7 +252,7 @@ body.atlas-look {
   --table-header-font: var(--atlas-theme-heading-font);
   --table-header-weight: 400;
   --table-header-size: 1.1em;
-  --table-header-color: var(--atlas-theme-red);
+  --table-header-color: var(--atlas-note-accent);
 
   /* callout titles */
   --callout-title-weight: 400;
@@ -351,7 +356,7 @@ body.atlas-look .markdown-rendered li > .list-bullet + strong:not(.statblock *),
 body.atlas-look .markdown-rendered li > p > strong:first-child:not(.statblock *) {
   font-family: var(--atlas-theme-heading-font);
   font-weight: normal;
-  color: var(--atlas-theme-red);
+  color: var(--atlas-note-accent);
   font-size: 1.12em;
   letter-spacing: var(--atlas-theme-heading-tracking);
 }
@@ -364,7 +369,7 @@ body.atlas-look .markdown-source-view.mod-cm6 .cm-line > .cm-strong:nth-child(-n
 body.atlas-look .markdown-source-view.mod-cm6 .cm-line > .cm-formatting-quote ~ .cm-strong:nth-child(-n+8) {
   font-family: var(--atlas-theme-heading-font);
   font-weight: normal;
-  color: var(--atlas-theme-red);
+  color: var(--atlas-note-accent);
   font-size: 1.12em;
   letter-spacing: var(--atlas-theme-heading-tracking);
 }
@@ -501,6 +506,8 @@ body.atlas-look .atlas-command-palette-window::before {
    note's title. No ivy.
    ------------------------------------------------------------ */
 body.atlas-look.theme-light.atlas-look-scifi {
+  /* on parchment the dark half of the grain carries it: a little less */
+  --atlas-scifi-film: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.33 0.33 0.33 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='3.0' intercept='-1.0000'/%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer result='n'/%3E%3CfeComponentTransfer in='n' result='light'%3E%3CfeFuncR type='linear' slope='0' intercept='1'/%3E%3CfeFuncG type='linear' slope='0' intercept='1'/%3E%3CfeFuncB type='linear' slope='0' intercept='1'/%3E%3CfeFuncA type='table' tableValues='0 0 1'/%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer in='n' result='dark'%3E%3CfeFuncA type='table' tableValues='1 0 0'/%3E%3C/feComponentTransfer%3E%3CfeMerge%3E%3CfeMergeNode in='dark'/%3E%3CfeMergeNode in='light'/%3E%3C/feMerge%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.07'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23f)'/%3E%3C/svg%3E");
   --atlas-theme-red: #16130f; /* the ink */
   --atlas-theme-rule: #c9c2b2;
   --atlas-theme-paper: #fdfbf6;
@@ -581,10 +588,15 @@ body.atlas-look.theme-dark.atlas-look-scifi {
    An accent colour picked in Atlas VTT's Appearance settings or
    in Obsidian's: Atlas VTT sets `atlas-accent-custom` on the
    body, and Obsidian the colour's `--accent-h/s/l`. What a look
-   writes out as its own accent (links; Sci-fi's ink on buttons
+   writes out as its own accent (links; a note's headings, bold
+   lead-ins, quote rules and table heads; Sci-fi's ink on buttons
    and checkboxes) takes the colour instead, by Obsidian's own
    formulas, as in Obsidian's default theme.
    ------------------------------------------------------------ */
+body.atlas-look.atlas-accent-custom {
+  --atlas-note-accent: var(--text-accent);
+}
+
 body.atlas-look.theme-light.atlas-accent-custom {
   --text-accent: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
   --text-accent-hover: hsl(calc(var(--accent-h) - 3), calc(var(--accent-s) * 1.02), calc(var(--accent-l) * 1.15));
@@ -616,7 +628,10 @@ body.atlas-look.atlas-look-scifi {
   --atlas-theme-heading-font: "Atlas Oxanium", ui-sans-serif, system-ui, sans-serif;
   --atlas-theme-heading-tracking: 0.03em;
   --font-text-theme: ui-sans-serif, -apple-system, "BlinkMacSystemFont", system-ui, "Segoe UI", "Roboto", sans-serif;
-  --atlas-scifi-film: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='2' intercept='-0.5'/%3E%3CfeFuncG type='linear' slope='2' intercept='-0.5'/%3E%3CfeFuncB type='linear' slope='2' intercept='-0.5'/%3E%3CfeFuncA type='linear' slope='2' intercept='-0.5'/%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncR type='discrete' tableValues='0 1'/%3E%3CfeFuncG type='discrete' tableValues='0 1'/%3E%3CfeFuncB type='discrete' tableValues='0 1'/%3E%3CfeFuncA type='table' tableValues='1 0 1'/%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.055'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23f)'/%3E%3C/svg%3E");
+  /* film grain: fine, soft specks of light and dark, colourless and
+     see-through at the middle, so it lies on any ground (fractal noise,
+     its contrast stretched; the light scheme's above) */
+  --atlas-scifi-film: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.33 0.33 0.33 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='3.0' intercept='-1.0000'/%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer result='n'/%3E%3CfeComponentTransfer in='n' result='light'%3E%3CfeFuncR type='linear' slope='0' intercept='1'/%3E%3CfeFuncG type='linear' slope='0' intercept='1'/%3E%3CfeFuncB type='linear' slope='0' intercept='1'/%3E%3CfeFuncA type='table' tableValues='0 0 1'/%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer in='n' result='dark'%3E%3CfeFuncA type='table' tableValues='1 0 0'/%3E%3C/feComponentTransfer%3E%3CfeMerge%3E%3CfeMergeNode in='dark'/%3E%3CfeMergeNode in='light'/%3E%3C/feMerge%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.09'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23f)'/%3E%3C/svg%3E");
 
   /* the numbers of a roll in the same face */
   --atlas-dice-font: "Atlas Oxanium", ui-sans-serif, sans-serif;
@@ -735,7 +750,7 @@ body.atlas-look.atlas-look-scifi .atlas-dice-toast .atlas-dice-toast__ability {
    Atlas VTT's layout moves */
 body.atlas-look.atlas-look-scifi .atlas-asset-manager-sidebar,
 body.atlas-look.atlas-look-scifi .atlas-collection-settings-sidebar,
-body.atlas-look.atlas-look-scifi .atlas-tables-sidebar,
+body.atlas-look.atlas-look-scifi .atlas-loot-roller__sidebar,
 body.atlas-look.atlas-look-scifi .atlas-sound-side,
 body.atlas-look.atlas-look-scifi .atlas-vtt-toolbar,
 body.atlas-look.atlas-look-scifi .atlas-scene-tab-bar,
@@ -745,9 +760,9 @@ body.atlas-look.atlas-look-scifi .atlas-dashboard {
 }
 
 /* statblocks: the lines start at the top and run out towards the foot,
-   standing still behind the text, as on Atlas Online's tall panels */
-body.atlas-look.atlas-look-scifi .atlas-statblock,
-body.atlas-look.atlas-look-scifi .atlas-vtt-plugin.atlas-sb-note-panel {
+   standing still behind the text, as on Atlas Online's tall panels; the
+   card only, never the panel beside a note that holds it */
+body.atlas-look.atlas-look-scifi .atlas-statblock {
   background-image: var(--atlas-scifi-film), linear-gradient(to bottom, transparent 30%, var(--background-primary) 88%), var(--atlas-scifi-contours);
   background-size: 240px 240px, 100% 100%, 640px 640px;
   background-repeat: repeat, no-repeat, repeat;
@@ -912,6 +927,25 @@ body.atlas-look.atlas-look-scifi .atlas-vtt-plugin .atlas-asset-manager-sidebar 
    blur of its own reaches; it opens after the window has faded in */
 body.atlas-look.atlas-look-glass .atlas-vtt-plugin .atlas-asset-manager-sidebar.atlas-floating {
   backdrop-filter: blur(16px) saturate(1.2);
+}
+
+/* the Sound page's library rail too: the DM screen's backdrop blurs
+   the map as the asset manager's does, the pane lays no ground under
+   the rail, and its stage keeps the look's (the desk has its own) */
+body.atlas-look.atlas-look-glass .atlas-dm-screen-wrapper:has(.atlas-dm-sound-page:not([hidden])) .atlas-dm-screen-backdrop {
+  backdrop-filter: blur(20px) saturate(1.2);
+}
+
+body.atlas-look.atlas-look-glass .atlas-sound-pane {
+  background-color: transparent;
+}
+
+body.atlas-look.atlas-look-glass .atlas-sound-stage {
+  background-color: var(--background-primary);
+}
+
+body.atlas-look.atlas-look-glass .atlas-sound-lib.atlas-sound-side {
+  background-color: color-mix(in oklch, var(--background-secondary) 75%, transparent);
 }
 
 /* what stands on the map is smoked glass too: the bars, the initiative
@@ -1175,16 +1209,19 @@ body.atlas-look.atlas-look-scifi .atlas-sb-sheet .atlas-sb-score-group:last-chil
 /* frosted glass: whatever is see-through on a surface with lines or
    grain blurs what lies behind it, so the lines melt away there and the
    text stands clear. Always for what has a fill of its own (a field, a
-   dropdown, a chip, a secondary button, a table, a block of values) and
-   for whatever is chosen (the open scene's tab, a picked row); for a row
+   search box, a dropdown, a chip, a secondary button, a toggle's box, an
+   empty token socket, a table, a block of values) and
+   for whatever is chosen (the open scene's tab, a picked row, the row the
+   keyboard points at in a list or menu); for a row
    or a plain button, which is clear until pointed at or chosen, while it
-   is under the pointer. The campaign page's way back over its world map
+   is under the pointer: only the row itself, never a bare list item that
+   holds rows of its own (a base and its views; rows carry a class). The campaign page's way back over its world map
    keeps its own frost */
 body.atlas-look.atlas-look-scifi :is(
   .atlas-asset-manager-sidebar,
   .atlas-asset-manager-container,
   .atlas-collection-settings-sidebar,
-  .atlas-tables-sidebar,
+  .atlas-loot-roller__sidebar,
   .atlas-sound-side,
   .atlas-vtt-toolbar,
   .atlas-scene-tab-bar,
@@ -1204,6 +1241,11 @@ body.atlas-look.atlas-look-scifi :is(
   [class*="chip"]:not([class*="chips"], [class*="chip__"]),
   kbd,
   .btn--secondary,
+  .atlas-command-palette-search-inner,
+  .atlas-asset-manager-search,
+  .atlas-tables-search,
+  .atlas-command-item-checkbox,
+  .atlas-sb-token-socket--empty .atlas-sb-token-socket__frame,
   .atlas-active,
   .atlas-is-active,
   .atlas-selected,
@@ -1211,6 +1253,8 @@ body.atlas-look.atlas-look-scifi :is(
   .is-chosen,
   .is-selected,
   .is-highlighted,
+  .atlas-focused,
+  [data-highlighted],
   [class*="--active"],
   [class*="--selected"],
   [class*="--current"],
@@ -1226,7 +1270,7 @@ body.atlas-look.atlas-look-scifi :is(
   .atlas-sb-scores,
   button:hover,
   a:hover,
-  li:hover,
+  li[class*="atlas-"]:hover,
   [role="button"]:hover,
   [role="option"]:hover,
   [role="menuitem"]:hover,

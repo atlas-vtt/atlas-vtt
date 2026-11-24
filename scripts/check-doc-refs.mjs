@@ -1,13 +1,12 @@
-// Every file and directory that AGENTS.md and the topic files in .github/dev name must exist,
-// and every topic file must be linked from AGENTS.md. Run by `npm run check` and `npm run verify`.
+// Every file and directory that AGENTS.md names must exist.
+// Run by `npm run check` and `npm run verify`.
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { dirname, join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const TOPIC_DIR = '.github/dev';
-const INDEX = 'AGENTS.md';
+const DOCUMENTS = ['AGENTS.md'];
 
 const SOURCE_EXTENSIONS = ['ts', 'tsx', 'mts', 'mjs', 'js', 'cjs', 'scss', 'json', 'md', 'yml'];
 
@@ -110,21 +109,11 @@ function checkDocument(document) {
   });
 }
 
-const topics = readdirSync(join(ROOT, TOPIC_DIR))
-  .filter((name) => name.endsWith('.md'))
-  .sort()
-  .map((name) => `${TOPIC_DIR}/${name}`);
+for (const document of DOCUMENTS) checkDocument(document);
 
-for (const document of [INDEX, ...topics]) checkDocument(document);
-
-const index = readFileSync(join(ROOT, INDEX), 'utf8');
-for (const topic of topics) {
-  if (!index.includes(`](${topic})`)) problems.push(`${INDEX}:1: \`${topic}\` is not linked from ${INDEX}`);
-}
-
-for (const problem of problems) console.error(problem);
 if (problems.length > 0) {
-  console.error(`\n${problems.length} reference${problems.length === 1 ? '' : 's'} to fix in ${INDEX} and ${TOPIC_DIR}.`);
+  console.error(problems.join('\n'));
+  console.error(`\n${problems.length} reference${problems.length === 1 ? '' : 's'} to fix in ${DOCUMENTS.join(', ')}.`);
   process.exit(1);
 }
-console.log(`${INDEX} and ${topics.length} topic files: every path they name exists.`);
+console.log(`${DOCUMENTS.join(', ')}: every path it names exists.`);

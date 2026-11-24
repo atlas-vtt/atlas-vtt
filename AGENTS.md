@@ -1,6 +1,6 @@
 # Atlas VTT
 
-Rules for working in this repository, for people and for coding tools. This file stays short. What a check can hold belongs in a check; what one part of the code needs belongs in its topic file under `.github/dev/`.
+Rules for working in this repository, for people and for coding tools. This file stays short. What a check can hold belongs in a check, and the reason for a piece of code belongs in a comment on that code. There is no other description of the code: where you need to know how a part works, read it.
 
 ## What this is
 
@@ -39,7 +39,7 @@ Turn the correction into a check: a convention with a good and a bad example, a 
 - Fix within the existing pattern. Add a new pattern only when the old one cannot do it, and remove what the new one replaces.
 - Change what was asked for and what it needs. Leave the rest.
 - No mock, stub or fake data outside test files.
-- Every text a user reads goes through `t()`. The rules are in [translations](.github/dev/translations.md).
+- Every text a user reads goes through `t()`. The rules are in [`CONTRIBUTING.md`](CONTRIBUTING.md#text-and-translations).
 - Style with SCSS classes, Obsidian's CSS variables and the shared mixins. No Tailwind in new code.
 - Read the current PixiJS v8 documentation before you write PIXI code. Much of what is written about PIXI is about v7.
 - No script files for something that runs once.
@@ -56,7 +56,7 @@ Write a comment only for a constraint or a reason the code cannot say. None that
 
 ## Never without the maintainer
 
-- Rename a stored id. Vault files point at them: built-in preset and condition ids, sense ids, light preset ids, pin icon ids, experimental feature ids, creature filter ids, a resource's `key`, the field keys of built-in statblock templates (`tests/unit/statblocks/presets/builtInSnapshot.test.ts`).
+- Rename or remove a stored id. Files in users' vaults name them. Tests hold the lists (`tests/unit/storedIds/`, and beside their subject for senses, light presets, dice sets and statblock templates); a failing one says what to do.
 - Raise `ATLAS_VERSION` (`src/app/services/MapPersistence.ts`). An older Atlas loads a map with a higher version empty and saves that over the file.
 - Add a network request. The plugin works offline, and every request it makes is disclosed in `README.md` and `PRIVACY.md`.
 - Edit a generated file: `CHANGELOG.md`, `src/app/changelog/releases.json`. `npm run changelog:generate` writes them.
@@ -73,36 +73,3 @@ Write a comment only for a constraint or a reason the code cannot say. None that
 ### Contributions written with coding assistants
 
 They are welcome, under the same rules. You understand every line and have tested it. When a tool wrote a large part, say so in the pull request.
-
-## Read before you touch
-
-Each topic file holds what was learned about one part: its rules, the reasons, the mistakes already made. Read the file before you change that part. `npm run check:docs` holds every path these files name to the repository; it cannot check a number or a behaviour. Where a file and the code disagree, the code is right: correct the file in the same change.
-
-| Topic file | Read before touching |
-| --- | --- |
-| [ui-design](.github/dev/ui-design.md) | any UI: `styles/`, `src/app/packages/components/`, `src/app/toolbar/` |
-| [loading-and-skeletons](.github/dev/loading-and-skeletons.md) | loading states, the asset grid, thumbnails: `src/app/packages/components/asset-manager/`, `src/app/packages/components/primitives/` |
-| [translations](.github/dev/translations.md) | any text a user reads: `src/app/i18n/` |
-| [rendering-and-teardown](.github/dev/rendering-and-teardown.md) | any PIXI code, fog coverage, the player window: `src/app/pixi/`, `src/app/fog/`, `src/app/services/PlayerFrameMirror.ts` |
-| [panning](.github/dev/panning.md) | pointer buttons and right-click menus on the canvas: `src/app/pixi/`, `src/app/tools/` |
-| [map-images](.github/dev/map-images.md) | map backgrounds, their tiles and cache, the zoom range: `src/app/pixi/mosaicCanvas/` |
-| [image-imports](.github/dev/image-imports.md) | converting and importing images: `src/app/imageProcessing/` |
-| [universal-vtt-import](.github/dev/universal-vtt-import.md) | `.dd2vtt`, `.uvtt` and `.df2vtt` imports: `src/app/import/uvtt/` |
-| [hexagonal-grids](.github/dev/hexagonal-grids.md) | grids, alignment, map stretch, auto-detect: `src/app/grid/`, `src/app/pixi/gridAlignment/`, `src/app/pixi/spectralEngine/` |
-| [cell-numbering](.github/dev/cell-numbering.md) | cell numbers and their lattices: `src/app/grid/` |
-| [dynamic-lighting](.github/dev/dynamic-lighting.md) | walls, lights, sight, senses, explored memory: `src/app/vision/`, `src/app/lighting/`, `src/app/pixi/lighting/` |
-| [experimental-features](.github/dev/experimental-features.md) | feature switches: `src/app/experimental/` |
-| [undo-redo-history](.github/dev/undo-redo-history.md) | anything that writes scene state: `src/app/stores/` |
-| [token-stacking](.github/dev/token-stacking.md) | the order tokens lie in, drops: `src/app/stores/tokenStacking.ts` |
-| [token-resources](.github/dev/token-resources.md) | resources, bars and wheels, the token format on disk: `src/app/resources/`, `src/app/pixi/token-renderer/` |
-| [valued-conditions](.github/dev/valued-conditions.md) | conditions that carry a number: `src/app/utils/conditionValues.ts` |
-| [initiative](.github/dev/initiative.md) | the tracker, sides, what players see of it: `src/app/initiative/` |
-| [3d-dice](.github/dev/3d-dice.md) | 3D dice, their stages, look and cost: `src/app/dice3d/`, `src/app/react/components/dice/` |
-| [game-system-presets](.github/dev/game-system-presets.md) | system presets, dice rules and events, collection creation: `src/app/gameSystems/`, `src/app/tools/` |
-| [widgets](.github/dev/widgets.md) | widgets and their library: `src/app/services/WidgetSyncService.ts`, `src/app/utils/collectionWidgets.ts` |
-| [pin-icons](.github/dev/pin-icons.md) | pin icons: `src/app/types/pinIcons.ts` |
-| [creature-filters](.github/dev/creature-filters.md) | the Characters tab, statblock values and limits, search syntax: `src/app/creatures/`, `src/app/search/` |
-| [vault-files-and-the-asset-index](.github/dev/vault-files-and-the-asset-index.md) | library files, the asset index, sync, bundles, hashes: `src/app/services/library/`, `src/app/services/vault-sync/`, `src/app/services/collectionBundle/` |
-| [moving-and-copying-assets-between-collections](.github/dev/moving-and-copying-assets-between-collections.md) | transfers between collections, scene links: `src/app/services/assetTransfer/` |
-| [links-to-atlas-files-in-notes](.github/dev/links-to-atlas-files-in-notes.md) | embeds and links in notes: `src/app/links/` |
-| [note-preview-tabs](.github/dev/note-preview-tabs.md) | the note preview window: `src/app/services/detachedNoteLeaf.ts` |

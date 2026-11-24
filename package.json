@@ -108,7 +108,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ByteMirror/atlas-vtt.git"
+    "url": "https://github.com/atlas-vtt/atlas-vtt.git"
   },
   "engines": {
     "node": ">=22"

@@ -68,7 +68,7 @@ The imports stay on your device. The XLSX reader uses the `http://schemas.openxm
 <details>
 <summary>Manual installation</summary>
 
-Download `main.js`, `manifest.json`, and `styles.css` from a [GitHub release](https://github.com/ByteMirror/atlas-vtt/releases). Place them in `<your vault>/.obsidian/plugins/atlas-vtt/`, then enable Atlas VTT under **Settings → Community plugins**.
+Download `main.js`, `manifest.json`, and `styles.css` from a [GitHub release](https://github.com/atlas-vtt/atlas-vtt/releases). Place them in `<your vault>/.obsidian/plugins/atlas-vtt/`, then enable Atlas VTT under **Settings → Community plugins**.
 
 </details>
 

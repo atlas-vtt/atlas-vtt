@@ -81,7 +81,8 @@ function keysPackedFor(source: Translation, packed: Pick<PackedLocales, 'keyCoun
 /**
  * The tables `packLocales` packed, read against the keys of `source` as it is now. Texts are matched to
  * keys by position alone, so a source table with other keys, or the same keys in another order, throws
- * instead of showing a text under the wrong key.
+ * instead of showing a text under the wrong key. A language's keys come back in the source table's
+ * order, not its own, so nothing may go by the order of a table's keys.
  */
 export function unpackLocales(source: Translation, packed: PackedLocales): Translations {
   const keys = keysPackedFor(source, packed);

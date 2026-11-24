@@ -141,7 +141,10 @@ export function initiativeMaxCardsOf(count: unknown): number {
   return typeof count === 'number' && Number.isFinite(count) ? Math.min(MAX_INITIATIVE_CARDS, Math.max(0, Math.round(count))) : 0;
 }
 
-/** Whether players see a combatant: its token is on the map and not hidden. */
+/**
+ * Whether players see a combatant: its token is on the map and not hidden. Sight and light never
+ * decide: the list would change as tokens move, and the GM could not tell what it shows.
+ */
 export function listedForPlayers(token: Pick<TokenEntity, 'isHidden'> | undefined): boolean {
   return !!token && !token.isHidden;
 }

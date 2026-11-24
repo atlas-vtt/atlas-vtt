@@ -38,6 +38,21 @@ $loot-padding: $spacing-m; // loot-lists.scss keeps a copy
     box-shadow: $shadow-elevated, 0 18px 48px rgba(0, 0, 0, 0.28);
     user-select: none;
   }
+
+  // Transparency (Appearance settings): the sidebar is smoked glass over the map. The window is the glass, not the
+  // sidebar: a blur inside the window would see nothing while the window fades in, and would not follow its rounded
+  // corners. The main column's ground is a layer of the window's background from the sidebar's edge on, under the
+  // border too, so neither a stroke nor a seam shows where the two meet.
+  body.atlas-look.atlas-look-glass &:has(> .atlas-loot-roller__body > .atlas-loot-roller__sidebar) {
+    background-color: color-mix(in oklch, var(--background-secondary) 75%, transparent);
+    background-image: linear-gradient(to right, transparent calc(#{$loot-sidebar-width} + #{$border-width-m}), var(--background-primary) 0);
+    background-origin: border-box;
+    backdrop-filter: blur(16px) saturate(1.2);
+
+    .atlas-loot-roller__sidebar {
+      background-color: transparent;
+    }
+  }
 }
 
 // ── Resize handles ─────────────────────────────────────────────────────────

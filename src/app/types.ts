@@ -92,7 +92,10 @@ export interface BaseToken extends OnOneLevel {
   rotation?: number;
   /** Stored size multiplier (default 1): diameter = 2*size-1 cells; Tiny=.75, Small=.875, Medium=1, Large=1.5. */
   size?: number;
-  /** Layer for z-ordering (higher values appear on top) */
+  /**
+   * Layer for z-ordering (higher values appear on top). Only `raiseTokens` writes it, and every write
+   * that puts tokens on the map calls it, so the token placed last lies on top.
+   */
   layer?: number;
   /** Instance number for distinguishing multiple tokens of the same type (same imagePath) */
   instanceNumber?: number;

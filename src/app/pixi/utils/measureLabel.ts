@@ -5,6 +5,7 @@ import { canvasBadgeColors, isDarkTheme } from './canvasBadgeColors';
 import { INK_SHADE } from './canvasInk';
 import { destroyTree } from './destroyTree';
 import { LABEL_LOOK, labelCenter, labelScale, labelTextResolution, pillSize, type LabelTarget, type Size } from './measureLabelLayout';
+import { uiCorner } from './squareCorners';
 
 /** The label's colours: the nameplate's, its rim mixed opaque from the nameplate's translucent border. */
 export function labelColors(): { readonly text: number; readonly background: number; readonly border: number } {
@@ -87,17 +88,18 @@ export class MeasureLabel {
  * Draws a label's pill on `g` in UI units, opaque, with the ink's soft shade beside it in screen
  * pixels (`onScreen` per UI unit): no translucent piece lies over another.
  */
-export function drawLabelPill(g: Graphics, { width, height, radius }: Size & { radius: number }, colors: ReturnType<typeof labelColors>, onScreen: number): void {
+export function drawLabelPill(g: Graphics, { width, height, radius: rounded }: Size & { radius: number }, colors: ReturnType<typeof labelColors>, onScreen: number): void {
+  const radius = uiCorner(rounded);
   g.clear();
   let edge = 0;
   for (const band of INK_SHADE) {
     const bandWidth = band.width / onScreen;
     const grow = edge + bandWidth / 2;
-    g.roundRect(-width / 2 - grow, -height / 2 - grow, width + 2 * grow, height + 2 * grow, radius + grow)
+    g.roundRect(-width / 2 - grow, -height / 2 - grow, width + 2 * grow, height + 2 * grow, radius > 0 ? radius + grow : 0)
       .stroke({ width: bandWidth, color: 0x000000, alpha: band.alpha });
     edge += bandWidth;
   }
   const inset = LABEL_LOOK.border;
   g.roundRect(-width / 2, -height / 2, width, height, radius).fill(colors.border);
-  g.roundRect(-width / 2 + inset, -height / 2 + inset, width - 2 * inset, height - 2 * inset, radius - inset).fill(colors.background);
+  g.roundRect(-width / 2 + inset, -height / 2 + inset, width - 2 * inset, height - 2 * inset, Math.max(0, radius - inset)).fill(colors.background);
 }

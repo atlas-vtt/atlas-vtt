@@ -1,9 +1,4 @@
 {
-  "src/app/annotations/__tests__/inkWork.test.ts": {
-    "atlas/test-asserts": {
-      "count": 1
-    }
-  },
   "src/app/imageProcessing/__tests__/pngBandDecoder.gpu.test.ts": {
     "atlas/test-asserts": {
       "count": 1
@@ -150,11 +145,6 @@
     }
   },
   "tests/gpu/veinsCaveSamples.gpu.test.ts": {
-    "atlas/test-asserts": {
-      "count": 1
-    }
-  },
-  "tests/gpu/zzOptionsShot.gpu.test.ts": {
     "atlas/test-asserts": {
       "count": 1
     }

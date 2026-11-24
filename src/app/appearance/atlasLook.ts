@@ -5,6 +5,7 @@ import type { DiceFont } from '../dice3d/diceLook';
 import type { LookService } from './lookService';
 import { customAccent, onAccentChange } from './accentColour';
 import { paintIvy, untilStylesheetAdded } from './paintedIvy';
+import { SQUARE_CORNERS_CLASS } from '../pixi/utils/squareCorners';
 
 /** Atlas' two looks: the mediaeval module page and the clean sci-fi one. */
 export type AtlasLook = 'mediaeval' | 'scifi';
@@ -53,6 +54,7 @@ export function registerLookSync(plugin: Plugin, looks: LookService): void {
     doc.body.toggleClass(LOOK_CLASS, isAtlasLook(look));
     doc.body.toggleClass(SCIFI_LOOK_CLASS, look === 'scifi');
     doc.body.toggleClass(GLASS_LOOK_CLASS, looks.glass());
+    doc.body.toggleClass(SQUARE_CORNERS_CLASS, looks.squareCorners());
     doc.body.toggleClass(CUSTOM_ACCENT_CLASS, isAtlasLook(look) && customAccent(app) !== '');
     waiting.get(doc)?.();
     waiting.delete(doc);
@@ -72,7 +74,7 @@ export function registerLookSync(plugin: Plugin, looks: LookService): void {
       waiting.get(doc)?.();
       waiting.delete(doc);
       paintIvy(doc, '');
-      doc.body.removeClass(LOOK_CLASS, SCIFI_LOOK_CLASS, GLASS_LOOK_CLASS, CUSTOM_ACCENT_CLASS);
+      doc.body.removeClass(LOOK_CLASS, SCIFI_LOOK_CLASS, GLASS_LOOK_CLASS, SQUARE_CORNERS_CLASS, CUSTOM_ACCENT_CLASS);
     };
   });
   plugin.register(looks.onChange(() => {

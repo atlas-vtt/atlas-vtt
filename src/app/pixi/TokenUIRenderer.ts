@@ -29,6 +29,7 @@ import { ValueTransition } from './utils/ValueTransition';
 import { MOTION_SLOW_MS, prefersReducedMotion } from '../utils/motion';
 import { t } from '../i18n';
 import { actsOnPress } from './input/pressTargets';
+import { squareCorners, uiCorner } from './utils/squareCorners';
 
 /** Above the bars, whose views stand at 10. */
 const RESOURCE_MARK_Z_INDEX = 11;
@@ -345,7 +346,7 @@ export class TokenUIRenderer {
     const defeated = isDefeated(token, definitions);
     // The ring's size setting moves the resize buttons, and with them the wheels
     const ringScale = tokenSettings?.tokenRingSize ?? 1;
-    const updateKey = `${resourcesKey}_${forPlayers}_${defeated}_${spriteWidth}_${ringScale}_${this.isHovered}_${this.isSelected}_${token.name || ''}_${showNameplate}_${token.statblockName || ''}_${conditionsKey}_${heightText}`;
+    const updateKey = `${resourcesKey}_${forPlayers}_${defeated}_${spriteWidth}_${ringScale}_${this.isHovered}_${this.isSelected}_${token.name || ''}_${showNameplate}_${token.statblockName || ''}_${conditionsKey}_${heightText}_${squareCorners()}`;
 
     // Skip update if nothing has changed
     if (this.lastUpdateData === updateKey) {
@@ -396,7 +397,7 @@ export class TokenUIRenderer {
     // A defeated token's first defeating bar is darkened
     const defeatedSlot = defeated ? this.defeatedSlot(shown) : undefined;
     if (defeatedSlot) {
-      this.defeatedOverlay.roundRect(defeatedSlot.left, defeatedSlot.top, defeatedSlot.width, defeatedSlot.height, barDimensions.token.radius)
+      this.defeatedOverlay.roundRect(defeatedSlot.left, defeatedSlot.top, defeatedSlot.width, defeatedSlot.height, uiCorner(barDimensions.token.radius))
         .fill({ color: 0x000000, alpha: 0.4 });
     }
 
@@ -421,7 +422,7 @@ export class TokenUIRenderer {
       const badgeWidth = Math.max(scaledWidth + padding * 2, 40); // Fixed min width
       const badgeHeight = NAMEPLATE_HEIGHT;
       this.nameplateHalfWidth = badgeWidth / 2;
-      const badgeRadius = badgeHeight / 2;
+      const badgeRadius = uiCorner(badgeHeight / 2);
       
       // Position the name badge so its bottom edge aligns with the token's bottom edge
       const nameY = -badgeHeight / 2;
@@ -919,7 +920,7 @@ export class TokenUIRenderer {
       const padding = NAMEPLATE_TEXT.padding;
       const badgeWidth = Math.max(scaledTextWidth + padding * 2, 40); // Fixed min width
       const badgeHeight = 14; // Fixed height
-      const badgeRadius = badgeHeight / 2;
+      const badgeRadius = uiCorner(badgeHeight / 2);
       // A longer name pushes the wheels out, and their controls with them
       this.nameplateHalfWidth = badgeWidth / 2;
       this.layoutUIScale();

@@ -22,6 +22,7 @@ import type { LayerVisibility } from '../playerSafeFrame';
 import type { ViewPlayback } from '../liquids/viewLiquids';
 import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils';
 import { watchDarkTheme } from '../utils/canvasBadgeColors';
+import { watchSquareCorners } from '../utils/squareCorners';
 import type { MeasureLook } from './DrawnMeasure';
 import { AreaEffects } from './effects/AreaEffects';
 import { LiveMeasuring, type MeasureGrid } from './LiveMeasuring';
@@ -173,6 +174,7 @@ export class MeasureRenderer {
       this.stops.push(() => this.viewport.off(event, onZoom));
     }
     this.stops.push(watchDarkTheme(() => this.redraw()));
+    this.stops.push(watchSquareCorners(() => this.redraw()));
     this.stops.push(this.store.subscribe((state, previous) => this.follow(state, previous)));
 
     const state = this.store.getState();

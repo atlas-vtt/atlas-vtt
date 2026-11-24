@@ -201,8 +201,9 @@
     transform: scale(0.97);
   }
 
+  // The chosen tab takes the neutral highlight of menus and lists, never the accent.
   &.atlas-active {
-    background: color-mix(in oklch, var(--interactive-accent) 14%, transparent);
+    background: var(--background-modifier-hover);
     color: var(--text-normal);
   }
 }

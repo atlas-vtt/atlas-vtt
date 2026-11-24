@@ -424,6 +424,21 @@ export const CONVENTIONS = [
     good: ['export const rollFace = (sides: number, random: () => number): number => Math.floor(random() * sides) + 1;'],
   },
   {
+    name: 'dice-crit',
+    // The import is flagged rather than the call, so an alias cannot pass; the member selector
+    // catches a namespace import, the export selector a re-export.
+    selectors: ["ImportSpecifier[imported.name='getDiceCrit']", "ExportSpecifier[local.name='getDiceCrit']", "MemberExpression[property.name='getDiceCrit']"],
+    message: "Read the roll's own `crit` (DiceRollResult, src/app/types/diceTypes.ts).",
+    why: 'The dice tool decides a critical once, by the dice the roll was made with, and stores it on the result; worked out again where the roll is shown, it follows whatever dice that place has at hand.',
+    owners: ['src/app/tools/DiceTool.ts'],
+    bad: [
+      "import { getDiceCrit } from './tools/diceCrit';\nexport const critOf = getDiceCrit;",
+      "export { getDiceCrit } from './tools/diceCrit';",
+      "import * as crit from './tools/diceCrit';\nexport const critOf = crit.getDiceCrit;",
+    ],
+    good: ["import type { DiceRollResult } from './types/diceTypes';\nexport const isCritical = (result: DiceRollResult): boolean => result.crit === 'high';"],
+  },
+  {
     name: 'pointerup-button',
     // `PointerUp` ends a word of the name, so `onPointerUpdate` is no release; `this.button` is a field, not the event's button.
     selectors: [
@@ -457,6 +472,25 @@ export const CONVENTIONS = [
     good: [
       "import type { Container } from 'pixi.js';\nimport { destroyTree } from './pixi/utils/destroyTree';\nexport const remove = (layer: Container): void => destroyTree(layer);",
       "import type { Application } from 'pixi.js';\nexport const close = (app: Application): void => app.destroy({ removeView: true }, { children: true, texture: true });",
+    ],
+  },
+  {
+    name: 'texture-pool-clear',
+    // The second selector catches the pool behind a namespace import.
+    selectors: [
+      "CallExpression[callee.property.name='clear'][callee.object.name='TexturePool']",
+      "CallExpression[callee.property.name='clear'][callee.object.property.name='TexturePool']",
+    ],
+    message: "Give back only your own textures: a frame's with TexturePool.removeScreen, as release does in src/app/pixi/PlayerFrameTexture.ts, or one texture with TexturePool.returnTexture.",
+    why: "PIXI's texture pool is shared by every view, and clearing it destroys the idle textures a view's filter still holds.",
+    bad: [
+      "import { TexturePool } from 'pixi.js';\nexport const release = (): void => TexturePool.clear();",
+      "import * as PIXI from 'pixi.js';\nexport const release = (): void => PIXI.TexturePool.clear();",
+    ],
+    good: [
+      "import { TexturePool } from 'pixi.js';\nexport const release = (screenId: number): void => TexturePool.removeScreen(screenId);",
+      "import { TexturePool, type Texture } from 'pixi.js';\nexport const giveBack = (texture: Texture): void => TexturePool.returnTexture(texture);",
+      'export const forget = (seen: Set<string>): void => seen.clear();',
     ],
   },
   {

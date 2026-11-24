@@ -6,7 +6,10 @@ import { entryToken } from './party';
 import { initiativeEntryForToken } from '../stores/initiativeEntries';
 import { offMapWithoutEntry } from './offMapCombatants';
 
-/** Keeps the tracker's entries in step with their tokens while the tracker is mounted. */
+/**
+ * Keeps the tracker's entries in step with their tokens while the tracker is mounted. A token on
+ * the map is never given an entry here: the GM chooses the combatants.
+ */
 export function useInitiativeTokenSync(tokens: Record<string, TokenEntity>, entries: InitiativeEntry[]): void {
   const removeFromInitiative = useAtlasStore((s) => s.removeFromInitiative);
   const updateInitiativeEntry = useAtlasStore((s) => s.updateInitiativeEntry);

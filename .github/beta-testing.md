@@ -10,7 +10,7 @@ Atlas data in ways an older stable release cannot read.
 1. Install the community plugin **BRAT** (Beta Reviewer's Auto-update Tool) and
    enable it.
 2. Open **Settings → BRAT → Add beta plugin**.
-3. Enter `ByteMirror/atlas-vtt`. Leave the version on *latest* to follow the
+3. Enter `atlas-vtt/atlas-vtt`. Leave the version on *latest* to follow the
    newest build, or pick a specific `x.y.z-beta.N` to freeze on it.
 4. Enable **Atlas VTT** under **Settings → Community plugins**.
 

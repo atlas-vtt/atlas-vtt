@@ -67,9 +67,11 @@ import { startFloorPositioning } from './levels/levelEditing';
 import { pickMapImage } from './levels/mapImagePicker';
 import { scrollWithin } from '../../utils/scrollWithin';
 import { placePalette, placePaletteAtTop, type PalettePosition } from './command-palette/palettePlacement';
+import { restingToolbarBox, toolbarMoveDelay, toolbarWillBeHidden } from './command-palette/toolbarRest';
 import { useCoarsePointer } from '../../platform/useCoarsePointer';
 import { visibleViewport } from '../../host/visibleViewport';
 import { customizeToolbarCommand } from './command-palette/customizeToolbarCommand';
+import { AppearanceShortcuts } from './command-palette/AppearanceShortcuts';
 import { hotkeyHelpCommand } from './command-palette/hotkeyHelpCommand';
 import { mapTourCommand } from './command-palette/mapTourCommand';
 import { SettingsService } from '../../services/SettingsService';
@@ -629,7 +631,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     const frame = overlay.getBoundingClientRect();
     const toolbar = toolbarRef?.current;
     const aboveToolbar: PalettePosition = toolbar
-      ? placePalette(toolbar.getBoundingClientRect(), frame, toolbar.win.getComputedStyle(toolbar).visibility === 'hidden')
+      ? placePalette(restingToolbarBox(toolbar), frame, toolbarWillBeHidden(toolbar))
       : { width: DEFAULT_PALETTE_WIDTH, left: (frame.width - DEFAULT_PALETTE_WIDTH) / 2, bottom: 100, reserved: 100 };
     const placed = atTop ? placePaletteAtTop(aboveToolbar, frame, visibleViewport(overlay.win).bottom) : aboveToolbar;
     setPosition({ ...placed, frameWidth: frame.width });
@@ -912,11 +914,20 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     window.addEventListener("scroll", handleScroll);
 
     const positionInterval = window.setInterval(updatePosition, 200);
+    // The toolbar starting to show or hide moves the palette now, not at the next poll.
+    const toolbar = toolbarRef?.current;
+    const watch = new MutationObserver(updatePosition);
+    if (toolbar) {
+      watch.observe(toolbar, { attributes: true, attributeFilter: ['data-near', 'data-peek'] });
+      const ui = toolbar.closest('.atlas-ui');
+      if (ui) watch.observe(ui, { attributes: true, attributeFilter: ['data-chrome-auto-hide'] });
+    }
 
     return () => {
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("scroll", handleScroll);
       window.clearInterval(positionInterval);
+      watch.disconnect();
     };
   }, [isOpen, isTemporarilyHidden, toolbarRef, hasCalculatedInitialPosition, updatePosition]);
 
@@ -943,6 +954,21 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     if (morph) animate(anchorShift, shift, PALETTE_MORPH);
     else anchorShift.jump(shift);
   }, [anchorShift, shift, pageKey, hasCalculatedInitialPosition]);
+
+  // The toolbar showing or hiding (Show toolbar on hover) gives the palette a new place: it stands there at once and
+  // is lifted back from where it stood, gliding on the surface's spring as the toolbar starts to move.
+  const anchorLift = useMotionValue(0);
+  const liftedFrom = useRef<number | null>(null);
+  const bottom = position?.top === undefined ? position?.bottom : undefined;
+  useLayoutEffect(() => {
+    const from = liftedFrom.current;
+    liftedFrom.current = bottom ?? null;
+    const overlay = overlayRef.current;
+    const toolbar = toolbarRef?.current;
+    if (bottom === undefined || from === null || from === bottom || !hasCalculatedInitialPosition || !overlay || prefersReducedMotion(overlay)) return;
+    anchorLift.jump(anchorLift.get() + bottom - from);
+    animate(anchorLift, 0, { ...PALETTE_MORPH, delay: toolbar ? toolbarMoveDelay(toolbar) : 0 });
+  }, [anchorLift, bottom, hasCalculatedInitialPosition, toolbarRef]);
 
   const sections = [
     { id: 'tools', title: t('palette.tab.tools') },
@@ -1060,7 +1086,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
                 position?.top !== undefined && 'atlas-command-palette-anchor--top',
                 (isTemporarilyHidden || !position) && 'atlas-command-palette-anchor--hidden',
               )}
-              style={{ ...anchorStyle, x: anchorShift }}
+              style={{ ...anchorStyle, x: anchorShift, y: anchorLift }}
             >
               <motion.div className="atlas-command-palette-window" variants={paletteVariants}>
                 <PaletteSurface depth={activePanel ? 1 : -1} surfaceRef={containerRef}>
@@ -1084,6 +1110,14 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
                               <Move />
                               {t('palette.enterAlignment')}
                             </Button>
+                          ) : activePanel === 'appearance' ? (
+                            <AppearanceShortcuts
+                              onCustomizeToolbar={onCustomizeToolbar && (() => {
+                                onCustomizeToolbar(choosingByKeyboard.current);
+                                onClose();
+                              })}
+                              onDiceSettings={() => setActiveSubmenu('dice-settings')}
+                            />
                           ) : activePanel === 'lighting-settings' ? (
                             // How much the picture may cost this device is the Graphics page's.
                             <Button variant="ghost" size="sm" onClick={() => setActiveSubmenu('graphics-settings')}>

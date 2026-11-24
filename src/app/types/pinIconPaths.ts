@@ -1,6 +1,8 @@
 /**
  * Pin icon set: silhouettes from game-icons.net (CC BY 3.0, see README credits).
  * Path data on the same 512×512 canvas as the widget icons (`WIDGET_ICON_VIEW_BOX`).
+ * Pins store these ids, so none is ever renamed: an id that must go keeps opening its
+ * pins through a mapping in `LEGACY_PIN_ICONS`.
  */
 export const PIN_ICON_PATHS = {
   'pin':
