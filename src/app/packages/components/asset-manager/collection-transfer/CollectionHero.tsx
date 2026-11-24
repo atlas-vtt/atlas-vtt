@@ -1,4 +1,5 @@
 import React from 'react';
+import { CutTooltip } from '../../../../react/components/dm-screen/sound/CutTooltip';
 
 interface CollectionHeroProps {
   /** What is happening to the collection, e.g. "Export collection" or "Update". */
@@ -28,7 +29,11 @@ export function CollectionHero({ eyebrow, imageUrl, name, version, details, desc
         <h2 className="atlas-transfer-hero__name">{name}</h2>
         <div className="atlas-transfer-hero__meta">
           <span className="atlas-transfer-chip">{version}</span>
-          {details.filter(Boolean).map((detail) => <span key={detail} className="atlas-transfer-hero__detail">{detail}</span>)}
+          {details.filter(Boolean).map((detail) => (
+            <CutTooltip key={detail}>
+              <span className="atlas-transfer-hero__detail">{detail}</span>
+            </CutTooltip>
+          ))}
         </div>
         {description && <p className="atlas-transfer-hero__description">{description}</p>}
       </div>
