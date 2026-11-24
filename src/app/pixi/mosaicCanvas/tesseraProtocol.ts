@@ -95,7 +95,8 @@ export type TesseraReply =
 
 /** Unrequested news from the worker; `path` names the file the map was opened or prebuilt from, where one was. */
 export type TesseraEvent =
-  | { type: 'progress'; hash: string; done: number; total: number; path?: string }
+  /** `inBands`: a build of an image read in bands, whose tesserae are served from the cache once written, not cut from decoded levels. */
+  | { type: 'progress'; hash: string; done: number; total: number; path?: string; inBands?: true }
   | { type: 'complete'; hash: string; path?: string }
   /** A build stopped writing the cache (storage full, encoding unsupported); the open map keeps showing. */
   | { type: 'build-failed'; hash: string; message: string; path?: string };

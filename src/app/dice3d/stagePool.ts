@@ -46,6 +46,9 @@ interface DocumentDice {
   lent: number;
   /** Whether its stages are being built ahead. */
   warming: boolean;
+  /** Map loads under way in the document (`holdStageWarmUp`), and when the last one let go. */
+  holds: number;
+  heldUntil: number;
   /**
    * Whether its context is lost. The browser blocks WebGL for a page whose
    * contexts keep getting lost, so the stages would stay blank (white on some
@@ -59,7 +62,7 @@ const documents = new Map<Document, DocumentDice>();
 function diceOf(doc: Document): DocumentDice {
   let dice = documents.get(doc);
   if (dice === undefined) {
-    dice = { gpu: undefined, idle: [], lent: 0, warming: false, lost: false };
+    dice = { gpu: undefined, idle: [], lent: 0, warming: false, lost: false, holds: 0, heldUntil: 0 };
     documents.set(doc, dice);
   }
   return dice;
@@ -181,12 +184,32 @@ function warmUp(renderer: DiceRenderer, win: Window): void {
   renderer.reset();
 }
 
+/** How long a stage build waits after a map load let go: the reveal's fade and what follows it have the frames first. */
+const AFTER_LOAD_MS = 2000;
+
+/**
+ * Holds the warm-up of `doc` while a map loads there; the returned function lets go. Building
+ * the document's first stage is a long task (its context, the mirror world, the shaders) that
+ * an idle moment between a load's reads would otherwise put in front of the map.
+ */
+export function holdStageWarmUp(doc: Document): () => void {
+  const dice = diceOf(doc);
+  dice.holds++;
+  let held = true;
+  return (): void => {
+    if (!held) return;
+    held = false;
+    dice.holds--;
+    dice.heldUntil = Date.now() + AFTER_LOAD_MS;
+  };
+}
+
 function warmNext(doc: Document, dice: DocumentDice, count: number): void {
   // The pool was given back meanwhile: nothing is built for it any more.
   if (documents.get(doc) !== dice) return;
   if (dice.idle.length + dice.lent >= count) return;
-  // Dice are on a stage: building now would be the freeze this is here to avoid.
-  if (dice.lent === 0) {
+  // Dice are on a stage, or a map is loading: building now would be the freeze this is here to avoid.
+  if (dice.lent === 0 && dice.holds === 0 && Date.now() >= dice.heldUntil) {
     const stage = buildStage(doc, dice);
     if (stage.renderer && doc.defaultView) warmUp(stage.renderer, doc.defaultView);
     dice.idle.push(stage);

@@ -49,6 +49,18 @@ describe('the accent colour the canvas draws with', () => {
     expect(changes).toBe(0);
   });
 
+  it('reads no computed style again while the body keeps its classes and style', () => {
+    getObsidianAccentColor();
+    const styles = vi.spyOn(window, 'getComputedStyle');
+    for (let move = 0; move < 100; move++) getObsidianAccentColor();
+    expect(styles).not.toHaveBeenCalled();
+    document.body.classList.add('theme-dark');
+    getObsidianAccentColor();
+    expect(styles).toHaveBeenCalledTimes(1);
+    styles.mockRestore();
+    document.body.classList.remove('theme-dark');
+  });
+
   it('follows a new accent at once', () => {
     expect(getObsidianAccentColor()).toBe('rgb(10, 20, 30)');
     document.body.style.setProperty('--interactive-accent', 'rgb(200, 100, 0)');

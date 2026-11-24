@@ -101,15 +101,3 @@ export function drawLabelPill(g: Graphics, { width, height, radius }: Size & { r
   g.roundRect(-width / 2, -height / 2, width, height, radius).fill(colors.border);
   g.roundRect(-width / 2 + inset, -height / 2 + inset, width - 2 * inset, height - 2 * inset, radius - inset).fill(colors.background);
 }
-
-/** Calls `redraw` whenever Obsidian switches between its light and dark theme; returns what stops it. */
-export function watchMeasureLabelTheme(redraw: () => void): () => void {
-  let dark = isDarkTheme();
-  const observer = new MutationObserver(() => {
-    if (isDarkTheme() === dark) return;
-    dark = isDarkTheme();
-    redraw();
-  });
-  observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-  return () => observer.disconnect();
-}

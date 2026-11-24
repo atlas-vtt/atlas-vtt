@@ -225,6 +225,29 @@ describe('creating a dungeon scene', () => {
     expect(await recordsOf(b)).toEqual([]);
   });
 
+  it('asks for every floor of a given dungeon at once, the floors after the first through renderFloor', async () => {
+    const b = await bench();
+    const asked: { floor: number; through: string }[] = [];
+    let release = (): void => {};
+    const firstHeld = new Promise<void>((resolve) => { release = resolve; });
+    b.deps.render = async (job) => {
+      asked.push({ floor: job.output.kind === 'map' ? job.output.floor ?? 0 : -1, through: 'render' });
+      await firstHeld;
+      return drawn(job);
+    };
+    b.deps.renderFloor = async (job) => {
+      asked.push({ floor: job.output.kind === 'map' ? job.output.floor ?? 0 : -1, through: 'renderFloor' });
+      return drawn(job);
+    };
+
+    const pending = createDungeonSceneWith(b.deps, options(generateDungeon({ seed: 7, tags: ['medium'], floors: 3 })));
+    await vi.waitFor(() => expect(asked).toHaveLength(3));
+    release();
+
+    expect(asked).toEqual([{ floor: 0, through: 'render' }, { floor: 1, through: 'renderFloor' }, { floor: 2, through: 'renderFloor' }]);
+    expect(created(await pending).entryLevel).toBeDefined();
+  });
+
   it('numbers the scene where its note\'s name is taken', async () => {
     const b = await bench();
     await b.vault.app.vault.create(`atlas-vtt/collections/${COLLECTION}/notes/${TITLE}.md`, 'my own');

@@ -25,6 +25,7 @@ import { sceneFromFile, sceneToFile, tokenFromFile } from '../resources/resource
 import { pausedTimers } from '../utils/timerWidget';
 import { preserveDamagedSceneFile, SceneFileError } from './sceneFileProblems';
 import { SceneFileWriter } from './sceneFileWriter';
+import { asKeptWalls, keepSceneWalls } from './keptSceneWalls';
 import type { LevelLink, LevelSurface, SceneLevel } from '../types/sceneLevelTypes';
 import type { SceneSound } from '../sound/soundTypes';
 import { LEVELS_FILE_VERSION, readSceneLevels, sceneFileVersion } from '../levels/levelFile';
@@ -191,7 +192,7 @@ export type AtlasPersistStorage<S> = PersistStorage<S> & { flush: () => Promise<
  * inside the debounced save, so frequent store writes (drags, selection)
  * never pay for a full-map JSON.stringify.
  */
-export function createAtlasStorage<T extends { mapPath: string | null; mapLoaded?: boolean }, S = unknown>(
+export function createAtlasStorage<T extends { mapPath: string | null; mapLoaded?: boolean; objects?: { walls?: Record<string, WallSegment> } }, S = unknown>(
   app: App, 
   store: { getState: () => T },
   plugin?: AtlasVTTPlugin
@@ -279,6 +280,8 @@ export function createAtlasStorage<T extends { mapPath: string | null; mapLoaded
       // file was moved or renamed is only outdated. Rejecting the data would
       // load the map without fog, walls and lights and save that over the file.
       if (state && state.mapPath !== mapPath) state.mapPath = mapPath;
+      // Walls as the scene was left with them come back as the very record, and with it what was worked out from them
+      if (state?.objects?.walls) state.objects.walls = asKeptWalls(mapPath, state.objects.walls);
 
       // Validated above; `S` is the caller's view of the same persisted envelope.
       return parsed as StorageValue<S>;
@@ -300,6 +303,8 @@ export function createAtlasStorage<T extends { mapPath: string | null; mapLoaded
       if (mapLoaded === false) {
         return;
       }
+      const walls = store.getState().objects?.walls;
+      if (walls) keepSceneWalls(mapPath, walls);
 
       // Skip persistence for streamed maps
       if (mapPath.startsWith('streamed_')) {

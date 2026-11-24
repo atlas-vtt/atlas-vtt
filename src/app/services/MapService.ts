@@ -179,6 +179,8 @@ export class MapService {
         // Combatants an older version moved from beside the map onto it are on the map
         const worldRect = mapImage?.worldRect;
         if (worldRect) takePlacedCombatants(this.store, worldRect);
+        // The store holds the scene: what can be worked out of it ahead starts while the rest loads.
+        this.eventBus.emit('scene-hydrated');
       } else {
         // Failed to load map data, re-enable persistence anyway
         storeState.setPersistenceEnabled(true);

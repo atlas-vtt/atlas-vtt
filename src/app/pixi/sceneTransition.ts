@@ -1,5 +1,6 @@
 import type { Application } from 'pixi.js';
-import { MOTION_EASE_OUT, MOTION_SLOW_MS, prefersReducedMotion } from '../utils/motion';
+import { MOTION_EASE_OUT, prefersReducedMotion } from '../utils/motion';
+import { SCENE_CROSSFADE_MS } from './sceneLoadMotion';
 import './scene-transition.scss';
 
 /** The incoming map starts this much larger and settles in: reads as depth, not as a zoom. */
@@ -86,7 +87,7 @@ function freezeCanvasFrame(
 
 /** The frame fades out while the new map settles in from a little closer. */
 const crossfade: FrameMotion = (frame, target, done) => {
-  const timing: KeyframeAnimationOptions = { duration: MOTION_SLOW_MS, easing: MOTION_EASE_OUT };
+  const timing: KeyframeAnimationOptions = { duration: SCENE_CROSSFADE_MS, easing: MOTION_EASE_OUT };
   const fade = frame.animate([{ opacity: 1 }, { opacity: 0 }], { ...timing, fill: 'forwards' });
   fade.onfinish = done;
   const settle = prefersReducedMotion(target)
