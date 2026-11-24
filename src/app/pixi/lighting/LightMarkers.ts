@@ -21,6 +21,7 @@ import {
   type LightMarkerTheme,
 } from './lightMarker';
 import { levelObjects } from '../../levels/levelObjects';
+import { batched } from '../utils/batchedGraphics';
 
 /** Above the lighting layer (90), so the GM finds lights in the dark; below token UI (100). */
 export const LIGHT_MARKERS_Z_INDEX = 95;
@@ -207,7 +208,7 @@ export class LightMarkers {
 
   private create(light: LightSource, look: LightMarkerLook): Marker {
     const view = this.view.addChild(new Container());
-    const marker: Marker = { view, badge: view.addChild(new Graphics()), glyph: null, light, look, theme: this.theme, lift: null };
+    const marker: Marker = { view, badge: view.addChild(batched(new Graphics())), glyph: null, light, look, theme: this.theme, lift: null };
     this.markers.set(light.id, marker);
     this.applyScale(marker);
     return marker;

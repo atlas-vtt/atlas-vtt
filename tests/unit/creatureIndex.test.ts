@@ -58,6 +58,26 @@ describe('CreatureIndex', () => {
     expect(turns).toBeGreaterThan(5);
   });
 
+  it('resolves a note asked for during a large batch before the rest of the batch', async () => {
+    const paths = Array.from({ length: 400 }, (_, number) => `Bestiary/Creature ${number}.md`);
+    for (const path of paths) current.bestiary.push({ name: path, path });
+    let now = 0;
+    const clock = vi.spyOn(performance, 'now').mockImplementation(() => (now += 1));
+    const index = CreatureIndex.forApp(current.app);
+    index.request(paths);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const announced = vi.fn(() => index.get('Bestiary/Goblin.md') !== undefined && index.get(paths[399]!) === undefined);
+    index.subscribe(() => { announced(); });
+
+    index.request(['Bestiary/Goblin.md']);
+    await settled(index);
+    clock.mockRestore();
+    // Announced with the goblin while the batch's last creature was still unread
+    expect(announced.mock.results.some((result) => result.value === true)).toBe(true);
+    expect(index.get('Bestiary/Goblin.md')).toMatchObject({ fields: { name: 'Goblin' } });
+    expect(index.get(paths[399]!)).not.toBeUndefined();
+  });
+
   it('does not resolve a note twice', async () => {
     const index = CreatureIndex.forApp(current.app);
     const read = vi.spyOn(current.app.vault, 'cachedRead');

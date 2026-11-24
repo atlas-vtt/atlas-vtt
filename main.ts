@@ -113,6 +113,7 @@ import { IssueReporter } from './src/app/support/IssueReporter';
 import { TabletDiagnosticsModal } from './src/app/support/tablet/TabletDiagnosticsModal';
 import { runInBackground } from './src/app/utils/backgroundTask';
 import { TesseraDecoderClient } from './src/app/pixi/mosaicCanvas/TesseraDecoderClient';
+import { ScenePrebuildClient } from './src/app/pixi/lighting/prebuild/ScenePrebuildClient';
 import { MapProcessing } from './src/app/pixi/mosaicCanvas/mapProcessing';
 import { registerMapProcessingStatus } from './src/app/plugin/mapProcessingStatus';
 import { DungeonWorkerClient } from './src/app/dungeons/worker/DungeonWorkerClient';
@@ -405,6 +406,7 @@ export default class AtlasVTTPlugin extends Plugin {
     TemplateLibrary.release(this.app);
     MapProcessing.release(this.app);
     TesseraDecoderClient.release(this.app);
+    ScenePrebuildClient.release(this.app);
     DungeonWorkerClient.release(this.app);
     MosaicCanvasService.release(this.app);
     disposeImageProcessing();

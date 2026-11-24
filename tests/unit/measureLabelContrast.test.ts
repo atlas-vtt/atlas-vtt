@@ -2,7 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Bounds, Graphics, Text, type FillInstruction } from 'pixi.js';
 import { contrast } from '../../src/app/pixi/lighting/lightMarker';
-import { MeasureLabel, watchMeasureLabelTheme } from '../../src/app/pixi/utils/measureLabel';
+import { MeasureLabel } from '../../src/app/pixi/utils/measureLabel';
+import { watchDarkTheme } from '../../src/app/pixi/utils/canvasBadgeColors';
 import { forgetObsidianAccentColor } from '../../src/app/pixi/utils/colorUtils';
 
 /** WCAG AA for normal text. */
@@ -75,7 +76,7 @@ describe('measure label contrast', () => {
   it('redraws when the theme switches', async () => {
     setTheme(true);
     let redraws = 0;
-    const stop = watchMeasureLabelTheme(() => { redraws++; });
+    const stop = watchDarkTheme(() => { redraws++; });
     setTheme(false);
     await Promise.resolve();
     document.body.classList.add('is-focused');

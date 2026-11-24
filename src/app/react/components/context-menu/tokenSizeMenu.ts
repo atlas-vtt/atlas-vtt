@@ -1,5 +1,5 @@
 import type { ContextMenuEntry } from './AtlasContextMenu';
-import { TOKEN_SIZE_OPTIONS } from '../../../pixi/token-renderer/tokenSizing';
+import { TOKEN_SIZE_OPTIONS } from '../../../pixi/token-renderer/tokenSizeOptions';
 import { t } from '../../../i18n';
 
 /** "Size" submenu shared by the map token menu and the asset manager; `currentSize` undefined means 1×1. */

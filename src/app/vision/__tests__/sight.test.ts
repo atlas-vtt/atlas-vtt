@@ -207,6 +207,19 @@ describe('SightCache', () => {
     expect(computeSight([source({ origin: { x: 110, y: 100 } })], walls, cache).regions[0]).not.toBe(first);
   });
 
+  it('finds the regions of walls used before again, with the tokens of their own build', () => {
+    const cache = new SightCache();
+    const walls = [wall];
+    const other = [{ ...wall, p1: { x: 300, y: 0 }, p2: { x: 300, y: 600 } }];
+    const first = computeSight([source()], walls, cache).regions[0];
+    cache.useWalls(other);
+    cache.retain(new Set(['elsewhere']));
+    computeSight([source({ tokenId: 'elsewhere' })], other, cache);
+    cache.useWalls(walls);
+    cache.retain(new Set([source().tokenId]));
+    expect(computeSight([source()], walls, cache).regions[0]).toBe(first);
+  });
+
   it('recomputes for each change of a token\'s senses', () => {
     const walls = [wall];
     const base = source({ senses: [darkvision(300)] });

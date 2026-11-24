@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Translations } from '../../src/app/i18n';
 import { TRANSLATIONS } from '../../src/app/i18n/languages';
 import { en } from '../../src/app/i18n/locales/en';
-import { MISSING, packLocales, unpackLocales, type PackedLocales } from '../../src/app/i18n/packedLocale';
+import { lazyLocales, MISSING, packLocales, storeLocales, unpackLocales, type PackedLocales } from '../../src/app/i18n/packedLocale';
 import type { Translation } from '../../src/app/i18n/types';
 
 /** A table with keys of its own, as the real ones have English's. */
@@ -110,6 +110,28 @@ describe('packed languages', () => {
 
   it('refuses to pack against a language that is not registered', () => {
     expect(() => packLocales({ de: source }, 'en')).toThrow('"en" is not among the languages');
+  });
+
+  it('unpacks a stored language when it is first read, and only that one', () => {
+    const broken = '{"values":';
+    const held = storeLocales(stored(packLocales({ en: source, xx: table({ 'a.one': 'Eins' }), yy: table({ 'b.last': 'Letzte' }) }, 'en')));
+    const read = lazyLocales(source, { ...held, languages: held.languages.map(([code, text]) => [code, code === 'yy' ? broken : text]) });
+
+    expect(Object.keys(read)).toEqual(['en', 'xx', 'yy']);
+    expect(read.en).toBe(source);
+    expect(read.xx).toEqual({ 'a.one': 'Eins' });
+    const first = read.xx;
+    expect(read.xx).toBe(first);
+    expect(() => read.yy).toThrow(SyntaxError);
+  });
+
+  it('refuses a stored language at its first read when the source has other keys, and never touches the source language', () => {
+    const held = storeLocales(stored(packLocales({ en: source, xx: table({ 'a.one': 'Eins' }) }, 'en')));
+    const longer = table({ ...source, 'c.new': 'New' });
+    const read = lazyLocales(longer, held);
+
+    expect(read.en).toBe(longer);
+    expect(() => read.xx).toThrow(/^Atlas' translations were packed for 4 source texts \(\w+\), but this build holds 5 /);
   });
 
   it('refuses to unpack against other keys than it was packed for, rather than show a text under the wrong key', () => {

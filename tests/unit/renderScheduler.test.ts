@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { BEFORE_RENDER_ORDER, RenderScheduler, addBeforeRender, hasPendingChanges, rendersOnChange, requestRender, setBeforeRender } from '../../src/app/pixi/RenderScheduler';
+import { BEFORE_RENDER_ORDER, RenderScheduler, addBeforeRender, hasPendingChanges, holdRenders, rendersOnChange, requestRender, setBeforeRender } from '../../src/app/pixi/RenderScheduler';
 import { fakeApp, fakeGroup, type GroupState } from '../mocks/schedulerApp';
 
 describe('hasPendingChanges', () => {
@@ -46,6 +46,27 @@ describe('RenderScheduler', () => {
     ticker.update(32);
     ticker.update(48);
 
+    expect(render).toHaveBeenCalledTimes(1);
+    scheduler.destroy();
+  });
+
+  it('renders nothing while held and the changes held back once released', () => {
+    const group = fakeGroup();
+    const { app, render, ticker } = fakeApp(group);
+    const scheduler = new RenderScheduler(app);
+    ticker.update(16);
+    vi.mocked(render).mockClear();
+
+    holdRenders(app, true);
+    group.structureDidChange = true;
+    requestRender(app);
+    ticker.started = true;
+    scheduler.renderNow();
+    ticker.update(32);
+    expect(render).not.toHaveBeenCalled();
+
+    holdRenders(app, false);
+    ticker.update(48);
     expect(render).toHaveBeenCalledTimes(1);
     scheduler.destroy();
   });
