@@ -84,7 +84,8 @@ describe('the languages as a production build packs them', () => {
 
     expect(Object.keys(read)).toEqual(Object.keys(TRANSLATIONS));
     expect(read.en).toBe(en);
-    expect(read.de).toBe(read.de);
+    const german = read.de;
+    expect(read.de).toBe(german);
     expect(Object.fromEntries(Object.entries(read))).toEqual(TRANSLATIONS);
   });
 

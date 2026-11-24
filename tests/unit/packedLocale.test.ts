@@ -120,7 +120,8 @@ describe('packed languages', () => {
     expect(Object.keys(read)).toEqual(['en', 'xx', 'yy']);
     expect(read.en).toBe(source);
     expect(read.xx).toEqual({ 'a.one': 'Eins' });
-    expect(read.xx).toBe(read.xx);
+    const first = read.xx;
+    expect(read.xx).toBe(first);
     expect(() => read.yy).toThrow(SyntaxError);
   });
 
