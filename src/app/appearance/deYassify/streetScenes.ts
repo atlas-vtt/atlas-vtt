@@ -13,7 +13,7 @@ import { loadImage } from '../../dice3d/dieNumerals';
 /**
  * The captcha's street squares, after reCAPTCHA's "select all images with a bus": every square its own street photo
  * (a random part of a public-domain photo, sources in THIRD_PARTY_NOTICES.md), with a mimic glued on badly in some
- * (yassified too: lashes, bow, nails, tumbler) and a plain chest in others, each drawn at its own random size from nearly sharp to hopelessly blocky.
+ * (yassified too: lashes, bow, nails, tumbler) and a plain chest in others, each drawn at its own random size from nearly sharp to coarse.
  */
 
 /** A cut-out glued onto a square: where its middle sits and how wide it is, in shares of the square; its tilt. */
@@ -44,8 +44,8 @@ export interface StreetScene {
 const PHOTOS = [busShelterCity, busShelterField, busStopBench, crossingButton, crossingIntersection, crossingLane, storefront] as const;
 const MIMIC = { picture: mimicSticker, aspect: 169 / 260 } as const;
 const CHEST = { picture: chestSticker, aspect: 90 / 148 } as const;
-/** From nearly sharp to hopeless: a third of the squares are drawn 12 or 18 pixels wide. */
-const PIXEL_WIDTHS = [12, 18, 28, 44, 70, 120] as const;
+/** From nearly sharp to coarse: even the blockiest squares (32 pixels wide) still show what is in them, roughly. */
+const PIXEL_WIDTHS = [32, 40, 52, 70, 96, 140] as const;
 /** The share of chest squares that get a plain chest as a decoy. */
 const DECOY_SHARE = 0.35;
 
