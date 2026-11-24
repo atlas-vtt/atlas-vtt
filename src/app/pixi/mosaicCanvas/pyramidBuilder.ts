@@ -1,5 +1,7 @@
 import type { DecodedLevels } from './decodedLevels';
+import { encodeInOrder } from './encodeInOrder';
 import { tesseraKey, tesseraSourceRect, type Pyramid, type TesseraRef } from './pyramid';
+import { localEncoder, type TesseraEncoder } from './tesseraEncoderPool';
 import type { TesseraGraphics } from './tesseraGraphics';
 import type { TesseraEvent } from './tesseraProtocol';
 import type { StoredTessera, TesseraStore } from './tesseraStore';
@@ -9,13 +11,10 @@ import type { StoredTessera, TesseraStore } from './tesseraStore';
  * 7 and 10 of the tiled map images plan): every tessera cut from its decoded
  * level and encoded as WebP, coarsest level first so a reopen soon has its
  * overview, in batches, yielding before each tessera so requests for the open
- * map are answered first. Tesserae already stored are skipped, so a build left by
- * a crash or a reload resumes. Each level is released once its tesserae are
- * written.
+ * map are answered first, several at once where encoder workers take them.
+ * Tesserae already stored are skipped, so a build left by a crash or a reload
+ * resumes. Each level is released once its tesserae are written.
  */
-
-/** Tesserae per write transaction. */
-export const TESSERA_BATCH = 16;
 
 /**
  * `complete`: every tessera written and the pyramid marked complete, every level released.
@@ -28,6 +27,8 @@ export type BuildOutcome = 'complete' | 'stopped' | 'lost' | 'failed';
 export interface BuildDeps {
   store: TesseraStore;
   graphics: TesseraGraphics;
+  /** Encodes tesserae, several at once where it has workers; one by one with `graphics` where unset. */
+  encoder?: TesseraEncoder | undefined;
   /** Resolves once pending requests had their turn. */
   yieldToRequests: () => Promise<void>;
   emit: (event: TesseraEvent) => void;
@@ -91,19 +92,17 @@ export class PyramidBuild {
 
   /** Writes one level's missing tesserae; answers how the build ended, or null to go on. */
   private async writeLevel(tesserae: readonly TesseraRef[]): Promise<BuildOutcome | null> {
-    let batch: StoredTessera[] = [];
-    for (const ref of tesserae) {
-      await this.deps.yieldToRequests();
-      if (this.stopRequested) return 'stopped';
-      const bytes = await this.levels.use(ref.level, (bitmap) => this.deps.graphics.encodeTessera(bitmap, tesseraSourceRect(this.pyramid, ref)));
-      if (!bytes) return 'stopped';
-      batch.push({ ref, bytes });
-      if (batch.length >= TESSERA_BATCH) {
-        if (!(await this.write(batch))) return 'lost';
-        batch = [];
-      }
-    }
-    return (await this.write(batch)) ? null : 'lost';
+    const encoder = this.deps.encoder ?? localEncoder(this.deps.graphics);
+    const run = await encodeInOrder(tesserae, {
+      slots: encoder.slots,
+      proceed: async () => {
+        await this.deps.yieldToRequests();
+        return !this.stopRequested;
+      },
+      encode: (ref) => this.levels.use(ref.level, (bitmap) => encoder.encode(bitmap, tesseraSourceRect(this.pyramid, ref))),
+      write: (batch) => this.write(batch),
+    });
+    return run === 'done' ? null : run;
   }
 
   private async write(batch: StoredTessera[]): Promise<boolean> {
