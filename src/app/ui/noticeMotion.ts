@@ -23,7 +23,7 @@ const FADE: AnimationOptions = { duration: 0.12 };
  * an element not Atlas' own).
  */
 const HOST_CLASS = 'atlas-notice-host';
-/** Where the entrance starts from (`styles/_notices.scss`), in place of the frame before it runs. */
+/** Holds the notice where its entrance starts until Motion runs it, as `styles/_notices.scss` says. */
 const ENTERING_CLASS = 'atlas-notice-entering';
 
 /**
