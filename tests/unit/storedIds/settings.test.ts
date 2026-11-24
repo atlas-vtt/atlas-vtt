@@ -14,6 +14,7 @@ import { expectStoredIds } from './storedIdList';
 const EXPERIMENTAL_FEATURE_IDS = [
   'onlinePlay',
   'statblockEditor',
+  'roomBucket',
 ];
 
 const CATALOG_CREATURE_FILTER_IDS = [

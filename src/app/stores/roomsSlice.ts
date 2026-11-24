@@ -1,5 +1,6 @@
 import { BUCKET_RADIUS, BUCKET_SENSITIVITY } from '../lighting/bucketFill/bucketFill';
 import { isRecord } from '../utils/guards';
+import { clamp } from '../utils/math';
 
 /** The rooms mode's choices in the view store. A room is its walls: nothing of it is kept but them. */
 
@@ -30,8 +31,6 @@ export const BRUSH_SIZE = { min: 10, max: 300 } as const;
 const BRUSH_CELL_SHARE = 0.9 / 2;
 const BUCKET_BRUSHES = 7;
 
-const clamp = (value: number, { min, max }: { min: number; max: number }): number => Math.min(max, Math.max(min, value));
-
 export const DEFAULT_ROOM_TOOL: RoomToolOptions = {
   action: 'carve', shape: 'rectangle', bucketSensitivity: BUCKET_SENSITIVITY.default, stabilize: false,
 };
@@ -49,8 +48,8 @@ export interface RoomsSlice {
 export function roomSizesOf(state: { roomSizes?: RoomSizes | undefined; grid?: { size: number } | null | undefined }): RoomSizes {
   if (state.roomSizes) return state.roomSizes;
   const cell = state.grid?.size ?? 0;
-  const brushSize = clamp(Math.round(BRUSH_CELL_SHARE * (Number.isFinite(cell) && cell > 0 ? cell : 70)), BRUSH_SIZE);
-  return { brushSize, bucketRadius: clamp(BUCKET_BRUSHES * brushSize, BUCKET_RADIUS) };
+  const brushSize = clamp(Math.round(BRUSH_CELL_SHARE * (Number.isFinite(cell) && cell > 0 ? cell : 70)), BRUSH_SIZE.min, BRUSH_SIZE.max);
+  return { brushSize, bucketRadius: clamp(BUCKET_BRUSHES * brushSize, BUCKET_RADIUS.min, BUCKET_RADIUS.max) };
 }
 
 /** A map file's sizes, or none where they cannot be read. */
@@ -58,7 +57,7 @@ export function readRoomSizes(saved: unknown): RoomSizes | undefined {
   if (!isRecord(saved)) return undefined;
   const { brushSize, bucketRadius } = saved;
   if (typeof brushSize !== 'number' || !Number.isFinite(brushSize) || typeof bucketRadius !== 'number' || !Number.isFinite(bucketRadius)) return undefined;
-  return nestedRings({ brushSize: clamp(brushSize, BRUSH_SIZE), bucketRadius: clamp(bucketRadius, BUCKET_RADIUS) }, false);
+  return nestedRings({ brushSize: clamp(brushSize, BRUSH_SIZE.min, BRUSH_SIZE.max), bucketRadius: clamp(bucketRadius, BUCKET_RADIUS.min, BUCKET_RADIUS.max) }, false);
 }
 
 /** The bucket's rings stay nested, brush within reach: the ring just set pushes the other. */
