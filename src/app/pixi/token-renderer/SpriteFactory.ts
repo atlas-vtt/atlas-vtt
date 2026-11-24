@@ -12,7 +12,7 @@ import type { GridSystem } from '../../grid/GridSystem';
 import { destroyTree } from '../utils/destroyTree';
 import { getTokenRingOuterDiameter } from './tokenRingMetrics';
 import { loadedTokenRingTexture, loadTokenRingTexture } from './tokenRingTexture';
-import { YASSIFY_LABEL } from './TokenYassify';
+import { OVERLAYS_LABEL } from './TokenOverlays';
 import { computeTokenPixelSize, computeTokenStrokeWidth } from './tokenSizing';
 
 // Cached textures - generated once, reused for all tokens
@@ -148,10 +148,10 @@ export class SpriteFactory implements ITokenSpriteFactory {
     container.position.set(x, y);
   }
 
-  /** Turns the token's art, its ring and what Yassify dresses it in, never the container: its UI and glass stay upright. */
+  /** Turns the token's art, its ring and the overlays other plugins draw on it, never the container: its UI and glass stay upright. */
   updateTokenRotation(container: Container, rotation: number): void {
     const radians = (rotation * Math.PI) / 180;
-    for (const label of ['tokenSprite', 'tokenRing', YASSIFY_LABEL]) {
+    for (const label of ['tokenSprite', 'tokenRing', OVERLAYS_LABEL]) {
       const part = container.getChildByLabel(label);
       if (part) part.rotation = radians;
     }

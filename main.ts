@@ -55,6 +55,8 @@ import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSe
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
 import { registerLookSync } from './src/app/appearance/atlasLook';
 import { LookService } from './src/app/appearance/lookService';
+import { registerAtlasApi } from './src/app/api/atlasApi';
+import type { AtlasApi } from './src/app/api/apiTypes';
 import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
 import { applyDiceBudgets, registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
 import { registerForegroundWork } from './src/app/plugin/foregroundWork';
@@ -144,6 +146,8 @@ export default class AtlasVTTPlugin extends Plugin {
   private imageDisplayService!: ImageDisplayService;
   private changelogService: ChangelogService | undefined;
   private looks: LookService | undefined;
+  /** What other plugins may call (`src/app/api`), while Atlas runs. */
+  public api: AtlasApi | undefined;
 
   /** The scene presented to players on this device, whether or not the player window is open (read-only). */
   get presentedScene(): PresentedSceneSource {
@@ -276,6 +280,7 @@ export default class AtlasVTTPlugin extends Plugin {
     this.looks = looks;
     looks.reconcileAtStart();
     registerLookSync(this, looks);
+    registerAtlasApi(this);
     this.registerStatblockPanels();
     const installed = await existingInstallation;
     if (this.unloaded) return;

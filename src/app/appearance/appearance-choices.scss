@@ -7,7 +7,7 @@
   min-width: 0;
 }
 
-// The accent colour, the ivy colour and Yassify side by side, each as wide as its choices, going on to a new line
+// The accent colour, the ivy colour and other plugins' settings side by side, each as wide as its choices, going on to a new line
 // where the next does not fit. A row's hint wraps at its swatches' width rather than widening the row.
 .atlas-appearance-colours {
   display: flex;
@@ -26,7 +26,7 @@
   }
 }
 
-.atlas-appearance-yassify {
+.atlas-appearance-companion {
   flex: 1 1 15rem;
   max-width: 24rem;
 }
