@@ -4,7 +4,7 @@ import type { FogEdgeStyle } from '../fog/fogEdge';
 import type { DiceFont } from '../dice3d/diceLook';
 import type { LookService } from './lookService';
 import { customAccent, onAccentChange } from './accentColour';
-import { paintIvy } from './paintedIvy';
+import { paintIvy, untilStylesheetAdded } from './paintedIvy';
 
 /** Atlas' two looks: the mediaeval module page and the clean sci-fi one. */
 export type AtlasLook = 'mediaeval' | 'scifi';
@@ -39,18 +39,31 @@ export function isAtlasLook(value: unknown): value is AtlasLook {
 export function registerLookSync(plugin: Plugin, looks: LookService): void {
   const { app } = plugin;
   const documents = new Set<Document>();
+  /** Documents waiting for Atlas' stylesheet before their ivy can be painted, with what stops the wait. */
+  const waiting = new Map<Document, () => void>();
+  const paint = (doc: Document): boolean => paintIvy(doc, looks.get() === 'mediaeval' ? looks.ivyColour() : '');
   const apply = (doc: Document): void => {
     const look = looks.get();
     doc.body.toggleClass(LOOK_CLASS, isAtlasLook(look));
     doc.body.toggleClass(SCIFI_LOOK_CLASS, look === 'scifi');
     doc.body.toggleClass(CUSTOM_ACCENT_CLASS, isAtlasLook(look) && customAccent(app) !== '');
-    paintIvy(doc, look === 'mediaeval' ? looks.ivyColour() : '');
+    waiting.get(doc)?.();
+    waiting.delete(doc);
+    if (paint(doc)) return;
+    // At start the drawings are not readable yet: Obsidian adds Atlas' stylesheet after onload.
+    waiting.set(doc, untilStylesheetAdded(doc, () => {
+      const painted = paint(doc);
+      if (painted) waiting.delete(doc);
+      return painted;
+    }));
   };
   inEveryDocument(plugin, (doc) => {
     documents.add(doc);
     apply(doc);
     return () => {
       documents.delete(doc);
+      waiting.get(doc)?.();
+      waiting.delete(doc);
       paintIvy(doc, '');
       doc.body.removeClass(LOOK_CLASS, SCIFI_LOOK_CLASS, CUSTOM_ACCENT_CLASS);
     };
