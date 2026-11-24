@@ -35,6 +35,9 @@
 - Sharing in the Armarium: until the first part of an upload is in, the upload step says what it is sending and shows a moving bar instead of "0 Bytes sent"
 - Atlas tells you when it is only partly updated on a device, as happens when a sync tool skips large files and brings the new version number and look but not the new Atlas itself, and says which file to copy over
 - The rooms bar has a menu of its own with the brush's size and Stabilization, which keeps a shaky stroke steady. Shift keeps a brush stroke straight, and the brush starts a little narrower than a grid cell. With a contribution by ThatMattLatt
+- Statblocks Choices blocks now formats several choices in the expected YAML format. This allows existing "showWhen" conditional formatting to work with several choices.
+- You can now determine the positioning of entries extras fields to appear before the entry's or after the entry's description, including after the name which is the current default behaviour. This behaviour can be set via the template editor.
+- You can now toggle if entries extras fields' labels are shown or hidden.  This behaviour can be set via the template editor.
 
 ## Fixed
 
