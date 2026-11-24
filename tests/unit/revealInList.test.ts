@@ -75,6 +75,17 @@ describe('revealInList', () => {
     expect(list.scrollTop).toBe(120);
   });
 
+  it('scrolls by the list\'s own pixels while its panel is drawn scaled', () => {
+    // Laid out 100 px tall and drawn at 0.5: on the screen the row lies 35 px past the end, in the list's pixels 70.
+    const list = box(null, { top: 0, bottom: 50, scrolls: { overflow: 'auto', hidden: 200 } });
+    Object.defineProperty(list, 'offsetHeight', { value: 100 });
+    const row = box(list, { top: 75, bottom: 85 });
+
+    revealInList(row);
+
+    expect(list.scrollTop).toBe(70);
+  });
+
   it('leaves a row that shows, and an element in no list, where they are', () => {
     const list = box(null, { top: 0, bottom: 100, scrolls: { overflow: 'auto', hidden: 200 } });
     list.scrollTop = 30;
