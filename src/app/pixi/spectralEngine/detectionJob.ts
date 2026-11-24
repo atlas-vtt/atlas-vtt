@@ -5,10 +5,8 @@
  */
 
 import type { AlignmentResult } from '../gridAlignmentMath';
-import { detectionSteps, gridInWorld, snapSteps, worldPlaceOf } from './detectGrid';
+import { detectGridInImage, gridInWorld, snapGridInMapGray, worldPlaceOf } from './detectGrid';
 import type { DetectionWatch, MapGray } from './detectGrid';
-import { runFits } from './fitDrivers';
-import type { FitSteps } from './proposalFits';
 import { downsampleGray, lineContrast } from './grayImage';
 import type { GrayImage } from './grayImage';
 import { edgesOnLines } from './latticeFit';
@@ -132,12 +130,7 @@ function hitsOf(grid: RefinedGrid, { image, size }: MapGray): Float32Array {
 }
 
 /** Fits `candidates` to the map's lines, or searches the whole map without them; `emit` hears what turns up on the way. */
-export function runDetection(job: DetectionJob, emit: (event: DetectionEvent) => void): DetectionOutcome {
-  return runFits(job.gray.image, detectionJobSteps(job, emit));
-}
-
-/** `runDetection` as the fits it needs (`FitSteps`), for running them on several threads. */
-export function* detectionJobSteps({ gray, candidates, ink, lines }: DetectionJob, emit: (event: DetectionEvent) => void): FitSteps<DetectionOutcome> {
+export function runDetection({ gray, candidates, ink, lines }: DetectionJob, emit: (event: DetectionEvent) => void): DetectionOutcome {
   if (ink) emit({ type: 'ink', ink: inkOf(gray.image) });
   const energy = lines ? { lines: lineEnergyOf(gray.image) } : {};
   const inWorld = (grid: RefinedGrid): AlignmentResult => gridInWorld(grid, gray.image, gray.size);
@@ -145,6 +138,6 @@ export function* detectionJobSteps({ gray, candidates, ink, lines }: DetectionJo
     tried: ({ gridType, size, aspect, rotation = 0 }) => emit({ type: 'trial', trial: inWorld({ gridType, cellSize: size, offsetX: 0, offsetY: 0, aspect, rotation, support: 0 }) }),
     fitted: (fit) => emit({ type: 'fit', fit: inWorld(fit) }),
   };
-  const grid = candidates ? yield* snapSteps(gray, candidates, watch) : yield* detectionSteps(gray.image, undefined, watch);
+  const grid = candidates ? snapGridInMapGray(gray, candidates, watch) : detectGridInImage(gray.image, undefined, watch);
   return grid ? { result: gridInWorld(grid, gray.image, gray.size), hits: hitsOf(grid, gray), ...energy } : { ...NO_GRID, ...energy };
 }
