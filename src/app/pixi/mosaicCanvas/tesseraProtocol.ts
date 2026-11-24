@@ -66,6 +66,8 @@ export type TesseraRequest =
   | { type: 'cancel'; id: number }
   /** Ends an open; its pending requests are answered with an `error`. */
   | { type: 'close'; handle: number }
+  /** Ports of tessera encoder workers the builds hand their tesserae to (`TesseraEncoderPool`); nothing is answered. */
+  | { type: 'encoders'; ports: MessagePort[] }
   /** Holds the builds before their next tessera (`held`), or lets them go on; nothing is answered. */
   | { type: 'builds'; held: boolean }
   | { type: 'cache-size'; id: number }
@@ -106,7 +108,12 @@ export interface TesseraReady {
   type: 'ready';
 }
 
-export type TesseraMessage = TesseraReply | TesseraEvent | TesseraReady;
+/** A build is about to encode and the core has no encoder workers: the page starts them and sends `encoders`. */
+export interface TesseraWantsEncoders {
+  type: 'want-encoders';
+}
+
+export type TesseraMessage = TesseraReply | TesseraEvent | TesseraReady | TesseraWantsEncoders;
 
 export function isTesseraEvent(message: TesseraMessage): message is TesseraEvent {
   return message.type === 'progress' || message.type === 'complete' || message.type === 'build-failed';

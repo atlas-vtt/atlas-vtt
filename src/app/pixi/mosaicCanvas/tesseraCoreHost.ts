@@ -14,7 +14,12 @@ import { TesseraStore, type TesseraStoreBackend } from './tesseraStore';
  */
 
 export type PostMessage = (message: TesseraMessage, transfer: Transferable[]) => void;
-export type CoreFactory = (appId: string | null, emit: (event: TesseraEvent) => void, budgets?: TesseraBudgets) => Promise<TesseraDecoderCore>;
+export type CoreFactory = (
+  appId: string | null,
+  emit: (event: TesseraEvent) => void,
+  budgets?: TesseraBudgets,
+  wantEncoders?: () => void,
+) => Promise<TesseraDecoderCore>;
 
 /** A macrotask, so messages queued meanwhile run first. `self`: in the worker there is no `window`. */
 function nextTask(): Promise<void> {
@@ -40,7 +45,7 @@ async function openBackend(appId: string | null): Promise<TesseraStoreBackend> {
 }
 
 /** A core over this global scope's IndexedDB, image decoding and canvases. */
-export const browserTesseraCore: CoreFactory = async (appId, emit, budgets) => {
+export const browserTesseraCore: CoreFactory = async (appId, emit, budgets, wantEncoders) => {
   await learnCanvasLimit();
   const graphics = createTesseraGraphics(browserGraphicsPrimitives(), realmImageEncoder);
   const store = new TesseraStore({
@@ -55,6 +60,7 @@ export const browserTesseraCore: CoreFactory = async (appId, emit, budgets) => {
     sha256,
     yieldToMessages: nextTask,
     emit,
+    ...(wantEncoders && { wantEncoders }),
     ...(budgets && { decodedBudget: budgets.decodedLevels }),
     ...(budgets?.sourcePixels !== undefined && { maxSourcePixels: budgets.sourcePixels }),
   });
@@ -136,6 +142,9 @@ export function hostTesseraCore(createCore: CoreFactory, post: PostMessage): Tes
       case 'builds':
         ready.holdBuilds(request.held);
         return;
+      case 'encoders':
+        ready.useEncoders(request.ports);
+        return;
       case 'cache-size':
         reply({ type: 'cache-size', id: request.id, bytes: await ready.cacheSize() });
         return;
@@ -160,7 +169,7 @@ export function hostTesseraCore(createCore: CoreFactory, post: PostMessage): Tes
   };
 
   const start = (appId: string | null, budgets?: TesseraBudgets): Promise<TesseraDecoderCore> => {
-    const started = createCore(appId, (event) => post(event, []), budgets);
+    const started = createCore(appId, (event) => post(event, []), budgets, () => post({ type: 'want-encoders' }, []));
     // Before any reply: the client counts a worker that fails before this as one that never started.
     void started.then(() => post({ type: 'ready' }, []), () => undefined);
     return started;

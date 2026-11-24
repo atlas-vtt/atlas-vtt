@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DESKTOP_BUDGETS, MOBILE_BUDGETS, budgetsFor, imageWorkerCount } from '../../../src/app/platform/deviceBudgets';
+import { DESKTOP_BUDGETS, MOBILE_BUDGETS, budgetsFor, imageWorkerCount, tesseraEncoderCount } from '../../../src/app/platform/deviceBudgets';
 import { COARSE_POINTER_SCALE, createDeviceProfile, mediaPointerSource, pointerKindOf, type PointerSource } from '../../../src/app/platform/deviceProfile';
 import { WARM_STAGES } from '../../../src/app/dice3d/stagePool';
 import { DEFAULT_LIGHTING_QUALITY, LIGHTING_QUALITY } from '../../../src/app/lighting/lightingQuality';
@@ -34,6 +34,7 @@ describe('the budgets of a desktop', () => {
     expect(DESKTOP_BUDGETS).toEqual({
       imageWorkers: 6,
       imageWorkerBudget: GIB,
+      tesseraEncoders: 6,
       decodedLevelsBudget: GIB,
       tileCacheMax: 4 * GIB,
       tileCacheQuotaShare: 0.1,
@@ -59,6 +60,10 @@ describe('the budgets of a desktop', () => {
   it.each([[1, 1], [2, 1], [4, 3], [7, 6], [8, 6], [32, 6]])('with %i cores run %i image workers: one core stays free, six at most', (cores, workers) => {
     expect(imageWorkerCount(DESKTOP_BUDGETS, cores)).toBe(workers);
   });
+
+  it.each([[1, 0], [2, 1], [4, 2], [8, 4], [12, 6], [32, 6]])('with %i cores run %i tessera encoders: half the cores, six at most', (cores, encoders) => {
+    expect(tesseraEncoderCount(DESKTOP_BUDGETS, cores)).toBe(encoders);
+  });
 });
 
 describe('the budgets of a tablet', () => {
@@ -66,6 +71,7 @@ describe('the budgets of a tablet', () => {
     expect(MOBILE_BUDGETS).toEqual({
       imageWorkers: 2,
       imageWorkerBudget: 256 * MIB,
+      tesseraEncoders: 0,
       decodedLevelsBudget: 256 * MIB,
       tileCacheMax: 512 * MIB,
       tileCacheQuotaShare: 0.05,
@@ -85,6 +91,10 @@ describe('the budgets of a tablet', () => {
 
   it.each([[1, 1], [2, 1], [3, 2], [8, 2]])('with %i cores run %i image workers', (cores, workers) => {
     expect(imageWorkerCount(MOBILE_BUDGETS, cores)).toBe(workers);
+  });
+
+  it('encode tesserae on the tessera worker alone', () => {
+    expect(tesseraEncoderCount(MOBILE_BUDGETS, 8)).toBe(0);
   });
 });
 

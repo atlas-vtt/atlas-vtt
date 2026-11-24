@@ -13,11 +13,15 @@ import {
   type OpenedPyramid,
   type TesseraBudgets,
   type TesseraEvent,
+  type TesseraMessage,
+  type TesseraReady,
   type TesseraReply,
   type TesseraRequest,
 } from './tesseraProtocol';
 import TesseraWorker from './tesseraWorker?worker&inline';
 import { deviceProfile } from '../../platform/deviceProfile';
+import { tesseraEncoderCount } from '../../platform/deviceBudgets';
+import { EncoderSupply, startTesseraEncoders, type EncoderSet } from './tesseraEncoders';
 import { maxSourcePixelsFor } from './decodedLevels';
 
 /**
@@ -42,6 +46,8 @@ export interface TesseraDecoderClientOptions {
   worker: PortFactory;
   /** Used when the worker cannot start. */
   inThread?: PortFactory;
+  /** Starts the encoder workers a core builds with; none where unset. */
+  encoders?: () => EncoderSet;
 }
 
 interface Pending {
@@ -64,6 +70,7 @@ export class TesseraDecoderClient {
     let client = TesseraDecoderClient.instances.get(app);
     if (!client) {
       const { budgets } = deviceProfile();
+      const encoders = tesseraEncoderCount(budgets, navigator.hardwareConcurrency || 1);
       client = new TesseraDecoderClient({
         appId: app.appId,
         budgets: {
@@ -73,6 +80,7 @@ export class TesseraDecoderClient {
           sourcePixels: maxSourcePixelsFor(budgets.imageSourceBytes),
         },
         worker: workerPort(() => new TesseraWorker({ name: 'Atlas map tesserae' })),
+        ...(encoders > 0 && { encoders: () => startTesseraEncoders(encoders) }),
       });
       TesseraDecoderClient.instances.set(app, client);
     }
@@ -97,6 +105,7 @@ export class TesseraDecoderClient {
   private buildsHeld = false;
   /** The port that was told `buildsHeld`: a worker started later is told before its first request. */
   private toldBuilds: TesseraPort | null = null;
+  private readonly encoders: EncoderSupply;
 
   constructor(options: TesseraDecoderClientOptions) {
     this.ports = new TesseraPortKeeper({
@@ -104,6 +113,7 @@ export class TesseraDecoderClient {
       receive: (message) => this.receive(message),
       lost: (crash) => this.lost(crash),
     });
+    this.encoders = new EncoderSupply(options.encoders ?? null);
   }
 
   /**
@@ -254,6 +264,7 @@ export class TesseraDecoderClient {
     this.listeners.clear();
     this.restartListeners.clear();
     this.ports.terminate();
+    this.encoders.stop();
     this.fail(new Error(STOPPED));
   }
 
@@ -315,7 +326,12 @@ export class TesseraDecoderClient {
     });
   }
 
-  private receive(message: TesseraReply | TesseraEvent): void {
+  private receive(message: Exclude<TesseraMessage, TesseraReady>): void {
+    if (message.type === 'want-encoders') {
+      const port = this.ports.running;
+      if (port) this.encoders.tell(port);
+      return;
+    }
     if (isTesseraEvent(message)) {
       for (const listener of this.listeners) listener(message);
       return;
@@ -333,6 +349,7 @@ export class TesseraDecoderClient {
   /** The worker ended: its maps and pending requests went with it; whoever shows a map opens it again. */
   private lost(crash: TesseraWorkerCrash): void {
     const hadMaps = this.handles.size > 0;
+    this.encoders.stop();
     this.fail(crash);
     if (!hadMaps) return;
     for (const listener of [...this.restartListeners]) {

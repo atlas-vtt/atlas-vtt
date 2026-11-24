@@ -156,6 +156,8 @@ export interface CoreHarnessOptions {
   forward?: (event: TesseraEvent) => void;
   /** The band decoder for a source the browser cannot decode; the real lookup by default. */
   bandDecoderOf?: TesseraCoreDeps['bandDecoderOf'];
+  /** Called when a build asks for encoder workers. */
+  wantEncoders?: () => void;
 }
 
 export function coreHarness(options: CoreHarnessOptions = {}): CoreHarness {
@@ -178,6 +180,7 @@ export function coreHarness(options: CoreHarnessOptions = {}): CoreHarness {
     ...(options.decodedBudget === undefined ? {} : { decodedBudget: options.decodedBudget }),
     ...(options.maxSourcePixels === undefined ? {} : { maxSourcePixels: options.maxSourcePixels }),
     ...(options.bandDecoderOf === undefined ? {} : { bandDecoderOf: options.bandDecoderOf }),
+    ...(options.wantEncoders === undefined ? {} : { wantEncoders: options.wantEncoders }),
   });
   const completed = (hash: string): Promise<void> => new Promise((resolve) => {
     if (events.some((event) => event.type === 'complete' && event.hash === hash)) resolve();
