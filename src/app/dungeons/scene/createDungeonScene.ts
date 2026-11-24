@@ -12,6 +12,7 @@ import { MAP_THUMBNAIL_SIZE, MapThumbnailService } from '../../services/MapThumb
 import { t } from '../../i18n';
 import { INVALID_NAME_CHARACTERS } from '../../services/assetPaths';
 import { generatedMapLimits, type GeneratedMapLimits } from '../../platform/generatedMapLimits';
+import { deviceProfile } from '../../platform/deviceProfile';
 import type { DungeonModel, DungeonRequest } from '../model';
 import { DEFAULT_PX_PER_CELL, SCENE_MAP_PIXELS, SCENE_MAP_QUALITY, type MapLayout } from '../render/layoutSize';
 import type { Vec } from '../render/geometry';
@@ -29,6 +30,8 @@ import type { DungeonPlacement } from './toWalls';
 export interface DungeonSceneDeps extends MapSceneDeps {
   /** Generates and draws the dungeon: the dungeon worker. */
   render: (job: DungeonJob) => Promise<DungeonRendered>;
+  /** Draws a floor after the first, beside the others where the device has room for that; unset, `render`. */
+  renderFloor?: (job: DungeonJob) => Promise<DungeonRendered>;
   /** The map image as a map stores it, with its thumbnail: the image workers, which take the bitmap over. */
   convertImage: (image: ImageBitmap) => Promise<ProcessedImage>;
   /** What this device draws of a map on one canvas, where that is less than a scene's map has (`deviceBudgets.ts`). */
@@ -103,10 +106,11 @@ interface DrawnFloors {
 class NotDrawn extends Error {}
 
 /**
- * Every floor's map at the same layout, each converted as a map stores it. Every job is asked for
- * at once: a floor's map goes to the image workers as a bitmap as soon as it is drawn, so its
- * conversion runs while the next floor is drawn. The first job generates the dungeon where no
- * model was given; the others draw that one. Null where a floor could not be drawn.
+ * Every floor's map at the same layout, each converted as a map stores it. A floor's map goes to
+ * the image workers as a bitmap as soon as it is drawn, so its conversion runs while other floors
+ * are drawn. With a model given every floor is asked for at once; otherwise the first job
+ * generates the dungeon and the others, asked for then, draw that one. Null where a floor could
+ * not be drawn.
  */
 async function drawFloors(deps: DungeonSceneDeps, options: DungeonSceneOptions): Promise<DrawnFloors | null> {
   const limits = deps.mapLimits;
@@ -129,14 +133,17 @@ async function drawFloors(deps: DungeonSceneDeps, options: DungeonSceneOptions):
     if (image.type !== 'bitmap') throw new NotDrawn();
     return deps.convertImage(image.bitmap);
   });
+  const renderFloor = deps.renderFloor ?? deps.render;
+  const otherFloors = (model: DungeonModel): Promise<ProcessedImage>[] => model.floors.slice(1).map((_, i) => converted(renderFloor(job(model, mapOf(i + 1)))));
   const first = deps.render(job(options.model, mapOf(0)));
   const firstImage = converted(first);
-  const pending: Promise<unknown>[] = [firstImage];
+  const early = options.model ? otherFloors(options.model) : null;
+  const pending: Promise<unknown>[] = [firstImage, ...(early ?? [])];
   try {
     const { model, map: layout, treeLine } = await first;
-    const images = [firstImage, ...model.floors.slice(1).map((_, i) => converted(deps.render(job(model, mapOf(i + 1)))))];
-    pending.push(...images.slice(1));
-    return { model, layout, images: await Promise.all(images), ...(treeLine && { treeLine }) };
+    const others = early ?? otherFloors(model);
+    if (!early) pending.push(...others);
+    return { model, layout, images: await Promise.all([firstImage, ...others]), ...(treeLine && { treeLine }) };
   } catch (error) {
     if (error instanceof NotDrawn) return null;
     throw error;
@@ -231,6 +238,8 @@ export async function createDungeonScene(app: App, assetService: AssetService, o
       app,
       assetService,
       render: (job) => client.render(job),
+      // Each floor holds a canvas of the whole map while it is drawn: only a desktop has room for several at once
+      ...(deviceProfile().memoryClass === 'desktop' && { renderFloor: (job: DungeonJob) => client.renderAside(job) }),
       // A generated map is all fine grain, which a PNG cannot pack: stored as WebP, a thirtieth of the size
       convertImage: (image) => optimizeBitmap(image, { ...IMAGE_PRESETS.map, quality: SCENE_MAP_QUALITY }, { thumbnail: THUMBNAIL_SPEC }),
       thumbnails: AssetThumbnailService.getInstance(app, assetService),

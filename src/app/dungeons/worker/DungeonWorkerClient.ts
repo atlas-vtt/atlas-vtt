@@ -10,7 +10,7 @@ export interface DungeonWorkerClientOptions {
   /** Used when the worker cannot start. */
   inThread?: InThreadRunner;
   jobTimeoutMs?: number;
-  /** Workers beside this one that draw thumbnails only, so a gallery is drawn in parallel. */
+  /** Workers beside this one that draw thumbnails and renders asked for aside, so a gallery or a map's floors are drawn in parallel. */
   helpers?: number;
   /** Stops the worker once it has been idle this long; the next job starts a new one. */
   idleMs?: number;
@@ -100,6 +100,16 @@ export class DungeonWorkerClient {
     return result;
   }
 
+  /**
+   * Draws a dungeon on whichever of this worker and its helpers has the least to do, so renders
+   * asked for together are drawn at once (a map's floors); never dropped.
+   */
+  async renderAside(job: DungeonJob): Promise<DungeonRendered> {
+    const result = await this.leastLoaded().enqueue(job, 'render');
+    if (!result) throw new Error(STOPPED);
+    return result;
+  }
+
   /** Draws a preview, or answers null once a newer preview has replaced it. */
   preview(job: DungeonJob): Promise<DungeonRendered | null> {
     this.drop('preview');
@@ -108,10 +118,13 @@ export class DungeonWorkerClient {
 
   /** Draws a thumbnail of `group` once no render or preview waits, or answers null once dropped. */
   thumbnail(job: DungeonJob, group?: string): Promise<DungeonRendered | null> {
+    return this.leastLoaded().enqueue(job, 'thumbnail', group);
+  }
+
+  private leastLoaded(): DungeonWorkerClient {
     // Helpers first, so a tie leaves this worker free for the next preview
     const drawers = [...this.thumbnailHelpers(), this];
-    const least = drawers.reduce((best, drawer) => (drawer.load() < best.load() ? drawer : best));
-    return least.enqueue(job, 'thumbnail', group);
+    return drawers.reduce((best, drawer) => (drawer.load() < best.load() ? drawer : best));
   }
 
   /** Drops the thumbnails of `group` (every one without it) asked for and not yet answered: they answer null. */

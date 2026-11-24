@@ -11,7 +11,7 @@ import { createGridScan } from './gridScan';
 export interface FirstGridDetection {
   store: ViewAtlasStore;
   renderer: PixiRendererOrchestrator;
-  /** Which map images are still being cut into tesserae: the search waits for the scene's. */
+  /** Which map images are still being cut into tesserae: the search waits for the scene's where it is read in bands. */
   processing: MapProcessing;
   /** False once another scene is being loaded: nothing of this detection may show or be written then. */
   isCurrent: () => boolean;
@@ -27,10 +27,11 @@ export interface FirstGridDetection {
 export function detectGridOfNewScene({ store, renderer, processing, isCurrent, refitCamera }: FirstGridDetection): () => void {
   const asked = new AbortController();
   let endScan: (() => void) | null = null;
-  // A window of a map whose tesserae are still being cut waits for the build to reach its rows, the finest
-  // level's last: the search would stand still for minutes. It begins once the tesserae are there.
+  // A window of a map read in bands waits for the build to reach its rows, the finest level's last: the
+  // search would stand still for minutes, so it begins once the tesserae are there. Any other build holds
+  // the image decoded and cuts what is asked for at once.
   const { background } = store.getState();
-  const tilesReady = background ? processing.whenDone(background, asked.signal) : Promise.resolve();
+  const tilesReady = background ? processing.whenReadable(background, asked.signal) : Promise.resolve();
   void tilesReady.then(() => {
     if (!isCurrent() || asked.signal.aborted) return;
     endScan = searchForGrid({ store, renderer, isCurrent, refitCamera }, asked.signal);

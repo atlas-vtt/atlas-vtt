@@ -167,7 +167,7 @@ export class BandBuild {
       this.settle(tesseraKey(ref));
     }
     this.done += batch.length;
-    this.deps.emit({ type: 'progress', hash: this.hash, done: this.done, total: this.total });
+    this.deps.emit({ type: 'progress', hash: this.hash, done: this.done, total: this.total, inBands: true });
   }
 
   private settle(key: string): void {
