@@ -10,16 +10,20 @@ import { TESSERA_QUALITY } from './tesseraGraphics';
 
 const encoder = createImageEncoder();
 
+/**
+ * The crop is handed to the canvas, not drawn: nothing is rastered on the graphics card, whose
+ * process may restart meanwhile (it runs out of memory on a large canvas elsewhere in the window), and
+ * a canvas drawn there before such a restart encodes as an empty picture without a word.
+ */
 async function encode(bitmap: ImageBitmap): Promise<Blob> {
-  try {
-    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('Could not create a drawing surface for a map tessera.');
-    context.drawImage(bitmap, 0, 0);
-    return await encoder.encode(canvas, TESSERA_QUALITY);
-  } finally {
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const renderer = canvas.getContext('bitmaprenderer');
+  if (!renderer) {
     bitmap.close();
+    throw new Error('Could not create a drawing surface for a map tessera.');
   }
+  renderer.transferFromImageBitmap(bitmap);
+  return encoder.encode(canvas, TESSERA_QUALITY);
 }
 
 function serve(port: MessagePort): void {
