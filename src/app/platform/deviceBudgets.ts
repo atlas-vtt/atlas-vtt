@@ -16,6 +16,11 @@ export interface DeviceBudgets {
    * a job larger than the budget runs alone.
    */
   readonly imageWorkerBudget: number;
+  /**
+   * Workers that encode map tesserae for the tessera worker's builds, at most. Each holds one
+   * tessera; 0 encodes on the tessera worker itself, one at a time.
+   */
+  readonly tesseraEncoders: number;
   /** Decoded pyramid levels all builds of the tessera worker may hold together, in bytes. */
   readonly decodedLevelsBudget: number;
   /** The map tile cache never grows past this many bytes, whatever the quota. */
@@ -57,6 +62,7 @@ export const DESKTOP_BUDGETS: DeviceBudgets = {
   imageWorkers: 6,
   // A huge map (150 megapixels hold 1.2 GB while converting, the largest 2.1 GB) runs alone.
   imageWorkerBudget: GIB,
+  tesseraEncoders: 6,
   decodedLevelsBudget: GIB,
   // Room for a few gigapixel maps' lossless tesserae (about 1.3 GB each).
   tileCacheMax: 4 * GIB,
@@ -86,6 +92,8 @@ export const DESKTOP_BUDGETS: DeviceBudgets = {
 export const MOBILE_BUDGETS: DeviceBudgets = {
   imageWorkers: 2,
   imageWorkerBudget: 256 * MIB,
+  // Not tried on a tablet's web view yet: its builds encode one tessera at a time as before.
+  tesseraEncoders: 0,
   decodedLevelsBudget: 256 * MIB,
   tileCacheMax: 512 * MIB,
   tileCacheQuotaShare: 0.05,
@@ -112,4 +120,12 @@ export function budgetsFor(memoryClass: MemoryClass): DeviceBudgets {
 /** Image workers on a device with `cores` logical processors: one core stays free for Obsidian itself. */
 export function imageWorkerCount(budgets: DeviceBudgets, cores: number): number {
   return Math.min(budgets.imageWorkers, Math.max(1, cores - 1));
+}
+
+/**
+ * Tessera encoders on a device with `cores` logical processors: half of them, so the window, the
+ * tessera worker and grid detection on a new map keep theirs.
+ */
+export function tesseraEncoderCount(budgets: DeviceBudgets, cores: number): number {
+  return Math.min(budgets.tesseraEncoders, Math.floor(cores / 2));
 }

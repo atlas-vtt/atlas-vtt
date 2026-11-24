@@ -31,7 +31,7 @@ export interface TesseraContext {
 export interface TesseraCanvas {
   width: number;
   height: number;
-  getContext(contextId: '2d'): TesseraContext | null;
+  getContext(contextId: '2d', options?: { willReadFrequently?: boolean }): TesseraContext | null;
   convertToBlob(options?: ImageEncodeOptions): Promise<Blob>;
   transferToImageBitmap(): ImageBitmap;
 }
@@ -118,7 +118,10 @@ export function createTesseraGraphics(primitives: GraphicsPrimitives, encoder: I
     fromPixels: (data, width, height) => bitmapOf(createImageData(data, width, height)),
     async encodeTessera(source, rect) {
       const canvas = createCanvas(rect.width, rect.height);
-      context(canvas).drawImage(source, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
+      // In memory, not on the graphics card: one drawn there before its process restarts encodes as an empty picture.
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) throw new Error('Could not create a drawing surface for a map tessera.');
+      ctx.drawImage(source, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
       return encoder.encode(canvas, TESSERA_QUALITY);
     },
     tesseraFormat: () => encoder.format(createCanvas),
