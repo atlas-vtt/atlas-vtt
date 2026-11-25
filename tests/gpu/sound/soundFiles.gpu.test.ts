@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { openOggOpus, readPacketRange } from '@/app/sound/codec/oggOpusReader';
-import { webCodecsWindowDecode, wholeFileWindowDecode, PRE_ROLL_FRAMES } from '@/app/sound/engine/windowDecoder';
+import { wholeFileWindowDecode, PRE_ROLL_FRAMES } from '@/app/sound/engine/windowDecoder';
 import tone220Long from '../../fixtures/sound/tone220-61s.ogg?url';
 import { FIXTURE_FRAMES, loadFixtures, memoryBytes, type Fixtures } from './soundHarness';
 
@@ -60,13 +60,9 @@ describe('the file a long sound is', () => {
     expect(Math.abs(withTable - without)).toBeLessThan(0.1);
   });
 
-  it.each([
-    ['AudioDecoder', webCodecsWindowDecode],
-    ['whole-file windows', wholeFileWindowDecode],
-  ])('gets the same audio through %s as a whole decode, anywhere in the file', async (name, decodeOf) => {
-    if (name === 'AudioDecoder' && typeof AudioDecoder === 'undefined') return;
+  it('gets the same audio through a window as a whole decode, anywhere in the file', async () => {
     const context = new OfflineAudioContext(2, 48000, 48000);
-    const decode = decodeOf(context);
+    const decode = wholeFileWindowDecode(context);
     const source = memoryBytes(bytes);
     const sound = await openOggOpus(source);
     const reports: string[] = [];
@@ -82,8 +78,8 @@ describe('the file a long sound is', () => {
       reports.push(`${frame}: ${quality.toFixed(1)} dB (best lag ${lagged.lag}: ${lagged.quality.toFixed(1)} dB)`);
       qualities.push(quality);
     }
-    console.log(`window against whole decode, ${name}: ${reports.join(', ')}`);
-    const knownDifference = name !== 'AudioDecoder' && !navigator.userAgent.includes('Chrome');
+    console.log(`window against whole decode: ${reports.join(', ')}`);
+    const knownDifference = !navigator.userAgent.includes('Chrome');
     for (const quality of qualities) expect(quality).toBeGreaterThan(knownDifference ? 20 : 100);
   });
 });
