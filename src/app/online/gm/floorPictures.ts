@@ -1,9 +1,8 @@
 import type { GmMessage, PlayerResync, SharedScene } from '../protocol/index.ts';
-import { viewedLevelId } from '../../levels/sceneLevels';
 import { tableControlsStore } from '../../stores/tableControlsStore';
 import type { TokenSeen } from '../../vision/measureOrigin';
 import { narrowPolicy, PLAYER_SIGHT_POLICY, type SightPolicy } from '../../vision/tokenSightPolicy';
-import type { SceneState, SceneStore } from './atlasView.ts';
+import type { SceneStore } from './atlasView.ts';
 import type { SavedMemory } from './ExploredShare.ts';
 import { ExploredRemovals } from './exploredRemovals.ts';
 import { eyesKey, floorEyes, PARTY_EYES, playerEyesKey, sightHides, type Eyes } from './floorEyes.ts';
@@ -11,7 +10,7 @@ import { FloorPicture, type PictureFloor } from './floorPicture.ts';
 import type { FloorSharePorts, PictureSources } from './floorPorts.ts';
 import type { MarkAudience } from './gmMeasureAudiences.ts';
 import { FloorMemories } from './memory/FloorMemories.ts';
-import type { MemoryFloor } from './memory/memoryPorts.ts';
+import { memoryFloorOf } from './memory/PlayerMemoryEdits.ts';
 import { partyMemory } from './partyMemory.ts';
 
 /** What a player's own picture reads by: the tokens they see through, as a key, their policy and the sources cut by it. */
@@ -20,9 +19,6 @@ interface OwnLook {
   readonly policy: SightPolicy;
   readonly sources: PictureSources;
 }
-
-/** The floor `state` shows, whose memory each player keeps apart; null without a map. */
-const memoryFloorOf = (state: SceneState): MemoryFloor | null => (state.mapPath === null ? null : { mapPath: state.mapPath, level: viewedLevelId(state) });
 
 /**
  * The pictures of one floor, one per set of eyes its players see it through (`floorEyes`): the party's,
