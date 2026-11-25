@@ -17,6 +17,7 @@ export const appearance: Translation = {
   'appearance.ivy': 'Couleur du lierre',
   'appearance.ivyHint': 'Les feuilles et les lianes des panneaux Médiéval, ombres conservées.',
   'appearance.ivyMediaevalOnly': 'Seul le style Médiéval fait pousser du lierre.',
+  'appearance.diceHint': "Vos dés suivent la couleur d'accent ou prennent une couleur à eux.",
   'appearance.ivyNatural': 'Naturelle',
   'appearance.glass': 'Transparence',
   'appearance.glassHint': 'Barres, widgets et dés laissent voir la carte, floutée.',

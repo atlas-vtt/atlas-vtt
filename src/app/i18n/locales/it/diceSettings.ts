@@ -26,7 +26,7 @@ export const diceSettings = {
   "diceSettings.colour.light": "Chiaro",
   "diceSettings.colour.dark": "Scuro",
   "diceSettings.colour.accent": "Colore di risalto",
-  "diceSettings.colourHint": "Chiaro, scuro con numeri chiari oppure con il tuo colore di risalto. Le impostazioni dei dadi nel riquadro comandi mostrano ogni opzione.",
+  "diceSettings.colourHint": "Chiaro, scuro con numeri chiari, il tuo colore di risalto oppure un colore a scelta. Le impostazioni dei dadi nel riquadro comandi mostrano ogni opzione.",
   "diceSettings.numbers": "Numeri",
   "diceSettings.diceNumbers": "Numeri sui dadi",
   "diceSettings.font.medieval": "Medievale",

@@ -4,6 +4,7 @@
 - Atlas has looks of its own, no theme to install: Medieval and a new Sci-fi look, or keep your own theme. Pick one on picture cards under Appearance settings in the command palette or in the welcome wizard; each device keeps its own. The fog's edge and the dice numerals follow the look
 - Appearance settings also pick the accent colour: the look's own, eight presets or any colour, in step with Obsidian's accent colour setting. Under Atlas' looks it colours your notes' headings, bold lead-ins, quotes and table headings too
 - The Medieval look's ivy takes any colour you like, shading and all: pick Natural, a preset or your own under Appearance settings
+- Your dice can take any of the accent colour's eight presets, besides Light, Dark and following the accent colour. Pick one on a row of d20s under Appearance settings or in Dice settings
 - Both looks can let the map show through: with Transparency under Appearance settings, bars, widgets, dice, hover previews and Atlas' sidebars (the asset manager, Collection Settings and its other dialogs, the Loot Roller, the Sound page) turn to smoked glass. Sci-fi starts with it on, Medieval with it off, and each look keeps your choice
 - Square corners, under Appearance settings: no rounded corners anywhere in Atlas, for a retro look, under any look
 - Show toolbar on hover moved from the toolbar editor to Appearance settings, whose header also leads to Customize toolbar and to Dice settings
@@ -43,6 +44,7 @@
 - Sharing in the Armarium: until the first part of an upload is in, the upload step says what it is sending and shows a moving bar instead of "0 Bytes sent"
 - Atlas tells you when it is only partly updated on a device, as happens when a sync tool skips large files and brings the new version number and look but not the new Atlas itself, and says which file to copy over
 - The rooms bar has a menu of its own with the brush's size and Stabilization, which keeps a shaky stroke steady. Shift keeps a brush stroke straight, and the brush starts a little narrower than a grid cell. With a contribution by ThatMattLatt
+- The distance a dragged token shows fades in and, once you let the token go, fades out where it lies, as measurements do, instead of appearing and vanishing at once
 
 ## Fixed
 
@@ -69,3 +71,4 @@
 - The asset manager's collection picker opens with its search ready: type a name or use the arrow keys at once, without clicking into the field first
 - DM screen: in the list of notes to link to a map, the arrow keys move the highlight and Enter links the note after a click in the list too
 - While you align the grid, a click on the map only places the alignment's mark, whatever tool is in hand: it no longer opens the pin picker, paints fog, draws or moves a token as well, and a drag pans the map
+- The Open map button on the preview of a link to another map stays readable with a light accent colour: its text turns dark while the pointer is on it or it is pressed

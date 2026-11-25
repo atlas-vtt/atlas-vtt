@@ -4,21 +4,22 @@
 // ── Dice colour strip ─────────────────────────
 // A d20 per colour, rendered by the dice renderer, to click.
 
-$dice-preview: 72px;
+$dice-preview: 52px;
 
+// As many to a line as fit, the last line centred under the others.
 .atlas-dice-colour-strip {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: $spacing-s;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: $spacing-xs;
 }
 
 // Obsidian styles every <button>; the options start from nothing.
 .atlas-dice-colour-strip__option {
-  @include atlas-flex-col($spacing-s);
-  align-items: center;
+  display: flex;
   height: auto;
   margin: 0;
-  padding: $spacing-s;
+  padding: $spacing-xs;
   background: transparent;
   border: $border-width-m solid transparent;
   border-radius: $radius-m;
@@ -45,13 +46,4 @@ $dice-preview: 72px;
     border-radius: $radius-full;
     background: var(--background-modifier-hover);
   }
-}
-
-.atlas-dice-colour-strip__label {
-  font-size: $font-ui-smaller;
-  color: var(--text-muted);
-}
-
-.atlas-dice-colour-strip__option.atlas-active > .atlas-dice-colour-strip__label {
-  color: var(--text-normal);
 }

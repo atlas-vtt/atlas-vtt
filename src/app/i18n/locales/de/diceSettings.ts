@@ -16,7 +16,7 @@ export const diceSettings: Translation = {
   'diceSettings.colour.light': 'Hell',
   'diceSettings.colour.dark': 'Dunkel',
   'diceSettings.colour.accent': 'Akzent',
-  'diceSettings.colourHint': 'Helle Karte, dunkel mit hellen Zahlen oder deine Akzentfarbe. Die Würfeleinstellungen der Befehlspalette zeigen jede davon.',
+  'diceSettings.colourHint': 'Helle Karte, dunkel mit hellen Zahlen, deine Akzentfarbe oder eine eigene Farbe. Die Würfeleinstellungen der Befehlspalette zeigen jede davon.',
   'diceSettings.numbers': 'Zahlen',
   'diceSettings.diceNumbers': 'Würfelzahlen',
   'diceSettings.font.medieval': 'Mittelalterlich',

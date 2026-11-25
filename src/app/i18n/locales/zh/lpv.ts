@@ -13,7 +13,7 @@ export const lpv: Translation = {
   'lpv.playerWindow': '玩家窗口',
   'lpv.online': '在线游戏',
   'lpv.tokens': '标记',
-  'lpv.resourcesOn': '玩家看到资源的标记',
+  'lpv.resourceVisibility': '资源可见性',
   'lpv.noResources': '尚无资源：请在合集设置中设置',
   'lpv.noCollection': '将此场景加入合集，即可选择谁能看到其资源',
   'lpv.initiativePanel': '先攻面板',

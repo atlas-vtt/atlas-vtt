@@ -5,7 +5,7 @@ export const lpv = {
   'lpv.playerWindow': 'Player window',
   'lpv.online': 'Online play',
   'lpv.tokens': 'Tokens',
-  'lpv.resourcesOn': 'Players see resources on',
+  'lpv.resourceVisibility': 'Resource visibility',
   'lpv.noResources': 'No resources yet: set them in the collection\'s settings',
   'lpv.noCollection': 'Add this scene to a collection to choose who sees its resources',
   'lpv.initiativePanel': 'Initiative panel',

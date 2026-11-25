@@ -1215,7 +1215,9 @@ body.atlas-look.atlas-look-scifi .atlas-sb-sheet .atlas-sb-score-group:last-chil
    keyboard points at in a list or menu); for a row
    or a plain button, which is clear until pointed at or chosen, while it
    is under the pointer: only the row itself, never a bare list item that
-   holds rows of its own (a base and its views; rows carry a class). The campaign page's way back over its world map
+   holds rows of its own (a base and its views; rows carry a class), and the
+   whole row where a button fills only a part of it (a root of the sound
+   library, with its count beside its name). The campaign page's way back over its world map
    keeps its own frost */
 body.atlas-look.atlas-look-scifi :is(
   .atlas-asset-manager-sidebar,
@@ -1244,6 +1246,7 @@ body.atlas-look.atlas-look-scifi :is(
   .atlas-command-palette-search-inner,
   .atlas-asset-manager-search,
   .atlas-tables-search,
+  .atlas-sound-lib__root:hover,
   .atlas-command-item-checkbox,
   .atlas-sb-token-socket--empty .atlas-sb-token-socket__frame,
   .atlas-active,
@@ -1278,7 +1281,18 @@ body.atlas-look.atlas-look-scifi :is(
   [tabindex]:hover,
   .clickable-icon:hover
 ):not(:where(.campaign-page[data-backdrop] .campaign-page__back)) {
-  backdrop-filter: blur(8px);
+  backdrop-filter: var(--atlas-scifi-frost, blur(8px));
+  --atlas-scifi-frosted: 1;
+}
+
+/* one frost per part: a frosted part is the backdrop of what it holds, so
+   a second frost inside it (a search box's own field, the button in a
+   chosen row) would see only that part's fill and lay it on once more, a
+   lighter box inside the part */
+@container style(--atlas-scifi-frosted: 1) {
+  body.atlas-look.atlas-look-scifi * {
+    --atlas-scifi-frost: none;
+  }
 }
 
 /* an ivy colour the GM picked (Appearance settings): Atlas VTT paints the

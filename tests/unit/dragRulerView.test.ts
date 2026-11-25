@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Bounds, Container, Graphics, Text } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { DragRulerView } from '../../src/app/pixi/token-renderer/DragRulerView';
 import { BEYOND_SPEED } from '../../src/app/measure/dragMovement';
+import { LIVE_DISSOLVE_MS, MEASURE_MOTION } from '../../src/app/pixi/measure/measurePresence';
 import { forgetObsidianAccentColor } from '../../src/app/pixi/utils/colorUtils';
 import { shortenPathEnd } from '../../src/app/pixi/utils/measureDrawing';
 import { labelScale, pathMiddle } from '../../src/app/pixi/utils/measureLabelLayout';
@@ -35,7 +36,7 @@ describe('DragRulerView', () => {
   it('keeps its label beside the path and off the dragged token, at its size on screen as the zoom changes', () => {
     vi.spyOn(Text.prototype, 'getLocalBounds').mockReturnValue(new Bounds(0, 0, 40, 16));
     const { viewport, view } = makeScene();
-    const [, label] = view.layers as Container[];
+    const label = (view.layers[1] as Container).getChildByLabel('measure-label');
     view.draw([{ x: 0, y: 0 }, { x: 70, y: 0 }], '5 ft', 35, 70);
     const clearOfToken = (): number => {
       const { x, y } = label!.position;
@@ -87,6 +88,103 @@ describe('DragRulerView', () => {
   it('stays hidden until a drag draws it', () => {
     const { view } = makeScene();
     expect(view.layers.every(layer => !layer.visible)).toBe(true);
+  });
+
+  describe('coming and going', () => {
+    const POINTS = [{ x: 140, y: 70 }, { x: 350, y: 70 }];
+    /** How far the ruler is on the map: the opacity of its path and of its label, and the label's growth about the drag's start. */
+    const presence = (view: DragRulerView): { path: number; label: number; grow: number; about: { x: number; y: number } } => {
+      const [path, label] = view.layers as Container[];
+      const line = path!.getChildByLabel('measure-line', true)!;
+      return { path: line.alpha, label: label!.alpha, grow: label!.scale.x, about: { x: label!.pivot.x, y: label!.pivot.y } };
+    };
+    const scene = (): ReturnType<typeof makeScene> => {
+      vi.useFakeTimers();
+      vi.spyOn(Text.prototype, 'getLocalBounds').mockReturnValue(new Bounds(0, 0, 40, 16));
+      return makeScene();
+    };
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+
+    it('fades its first drawing in as a measurement being made does, and not the drawings that follow', () => {
+      const { view } = scene();
+      view.draw(POINTS, '15 ft', 35, 70);
+      expect(presence(view)).toMatchObject({ path: 0, label: 0 });
+      vi.advanceTimersByTime(MEASURE_MOTION.live.ms / 2);
+      const midway = presence(view).path;
+      expect(midway).toBeGreaterThan(0);
+      expect(midway).toBeLessThan(1);
+      view.draw([POINTS[0]!, { x: 420, y: 70 }], '20 ft', 35, 70);
+      expect(presence(view).path).toBe(midway);
+      vi.advanceTimersByTime(MEASURE_MOTION.live.ms);
+      expect(presence(view)).toMatchObject({ path: 1, label: 1, grow: 1 });
+      view.draw(POINTS, '15 ft', 35, 70);
+      expect(presence(view)).toMatchObject({ path: 1, label: 1 });
+      view.destroy();
+    });
+
+    it('dissolves where it lies once the drag is over, shrinking about its start, and is gone only then', () => {
+      const { view } = scene();
+      const gone = vi.fn();
+      view.draw(POINTS, '15 ft', 35, 70);
+      vi.advanceTimersByTime(MEASURE_MOTION.live.ms + 50);
+      view.dissolve(gone);
+      expect(view.layers.every((layer) => layer.visible)).toBe(true);
+      vi.advanceTimersByTime(LIVE_DISSOLVE_MS / 2);
+      const leaving = presence(view);
+      expect(leaving.path).toBeGreaterThan(0);
+      expect(leaving.path).toBeLessThan(1);
+      expect(leaving.label).toBe(leaving.path);
+      expect(leaving.grow).toBeLessThan(1);
+      expect(leaving.about).toEqual(POINTS[0]);
+      expect(gone).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(LIVE_DISSOLVE_MS);
+      expect(gone).toHaveBeenCalledTimes(1);
+      expect(view.layers.every((layer) => !layer.visible)).toBe(true);
+      // Ready for the next drag, drawn in full.
+      expect(presence(view)).toMatchObject({ path: 1, label: 1, grow: 1 });
+      view.destroy();
+    });
+
+    it('is gone at once where no ruler was drawn', () => {
+      const { view } = scene();
+      const gone = vi.fn();
+      view.dissolve(gone);
+      expect(gone).toHaveBeenCalledTimes(1);
+      view.destroy();
+    });
+
+    it('fades the next drag in over one that still dissolves, which never ends it', () => {
+      const { view } = scene();
+      const gone = vi.fn();
+      view.draw(POINTS, '15 ft', 35, 70);
+      vi.advanceTimersByTime(MEASURE_MOTION.live.ms + 50);
+      view.dissolve(gone);
+      vi.advanceTimersByTime(LIVE_DISSOLVE_MS / 2);
+      view.draw([{ x: 70, y: 70 }, { x: 70, y: 280 }], '15 ft', 35, 70);
+      expect(presence(view)).toMatchObject({ path: 0, grow: 1 });
+      vi.advanceTimersByTime(LIVE_DISSOLVE_MS + 50);
+      expect(gone).not.toHaveBeenCalled();
+      expect(presence(view)).toMatchObject({ path: 1, label: 1, grow: 1 });
+      expect(view.layers.every((layer) => layer.visible)).toBe(true);
+      view.destroy();
+    });
+
+    it('keeps the fade and drops the growth where reduced motion is asked for', () => {
+      const { view } = scene();
+      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+      view.draw(POINTS, '15 ft', 35, 70);
+      vi.advanceTimersByTime(MEASURE_MOTION.live.ms + 50);
+      view.dissolve(() => undefined);
+      vi.advanceTimersByTime(LIVE_DISSOLVE_MS / 2);
+      const leaving = presence(view);
+      expect(leaving.path).toBeLessThan(1);
+      expect(leaving.grow).toBe(1);
+      view.destroy();
+    });
   });
 });
 

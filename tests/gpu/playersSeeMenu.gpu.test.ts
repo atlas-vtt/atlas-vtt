@@ -6,6 +6,7 @@ import { page } from 'vitest/browser';
 import css from '../../styles/main.scss?inline';
 import { TooltipProvider } from '../../src/app/packages/components/primitives/tooltip';
 import { PlayersSeeMenu } from '../../src/app/packages/components/player-window-bar/PlayersSeeMenu';
+import { SegmentedControl } from '../../src/app/packages/components/primitives/SegmentedControl';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { withPlayerAudience } from '../../src/app/resources/playerAudience';
 import { AMMO, HP, STR, STRESS } from '../mocks/resourceFixtures';
@@ -96,6 +97,26 @@ describe('what players see, as a menu', () => {
       expect(new Set(options.map((option) => Math.round(option.top))).size).toBe(1);
       expect(new Set(options.map((option) => Math.round(option.height))).size).toBe(1);
       expect(new Set(options.map((option) => Math.round(option.width))).size).toBe(1);
+    }
+  });
+
+  it('marks the chosen option of every choice as any segmented control does, never in the accent', async () => {
+    open(1200);
+    render(h('div', { className: 'atlas-vtt-plugin' },
+      h(SegmentedControl, { className: 'plain-choice', value: 'a', options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }], onChange: () => undefined, ariaLabel: 'Plain' })));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const chosen = getComputedStyle(document.querySelector('.plain-choice .atlas-active')!);
+    const pills = [...document.querySelectorAll<HTMLElement>('.atlas-players-see-menu .atlas-segmented--pill')];
+    // Six resources and the play mode
+    expect(pills).toHaveLength(7);
+    for (const pill of pills) {
+      const selection = getComputedStyle(pill, '::before');
+      expect(selection.backgroundColor).toBe(chosen.backgroundColor);
+      expect(selection.boxShadow).toBe(chosen.boxShadow);
+      // The chosen word in the text colour, on the selection alone
+      const word = getComputedStyle(pill.querySelector('.atlas-active')!);
+      expect(word.color).toBe(chosen.color);
+      expect(word.backgroundColor).toBe('rgba(0, 0, 0, 0)');
     }
   });
 });

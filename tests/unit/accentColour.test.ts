@@ -1,6 +1,7 @@
 import { expect, it, vi } from 'vitest';
 import type { App } from 'obsidian';
-import { ACCENT_PRESETS, customAccent, onAccentChange, setAccent } from '../../src/app/appearance/accentColour';
+import { customAccent, onAccentChange, setAccent } from '../../src/app/appearance/accentColour';
+import { COLOUR_PRESETS } from '../../src/app/appearance/colourPresets';
 
 /** An app whose vault keeps its settings as Obsidian's does and announces each change. */
 function appWithAccent(accent?: string): App {
@@ -37,8 +38,8 @@ it('writes it and restores the look\'s own with an empty value', () => {
 });
 
 it('lists eight presets with valid hex colours', () => {
-  expect(ACCENT_PRESETS.map((preset) => preset.id)).toEqual(['crimson', 'ember', 'gold', 'moss', 'teal', 'azure', 'violet', 'rose']);
-  for (const preset of ACCENT_PRESETS) {
+  expect(COLOUR_PRESETS.map((preset) => preset.id)).toEqual(['crimson', 'ember', 'gold', 'moss', 'teal', 'azure', 'violet', 'rose']);
+  for (const preset of COLOUR_PRESETS) {
     expect(preset.hex).toMatch(/^#[0-9a-f]{6}$/);
     expect(preset.labelKey).toBe(`appearance.accentPresets.${preset.id}`);
   }

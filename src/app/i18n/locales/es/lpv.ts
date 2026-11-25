@@ -13,7 +13,7 @@ export const lpv: Translation = {
   'lpv.playerWindow': 'Ventana de jugadores',
   'lpv.online': 'Juego en línea',
   'lpv.tokens': 'Fichas',
-  'lpv.resourcesOn': 'Los jugadores ven los recursos en',
+  'lpv.resourceVisibility': 'Visibilidad de los recursos',
   'lpv.noResources': 'Aún no hay recursos: configúralos en los ajustes de la colección',
   'lpv.noCollection': 'Añade esta escena a una colección para elegir quién ve sus recursos',
   'lpv.initiativePanel': 'Panel de iniciativa',

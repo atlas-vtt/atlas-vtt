@@ -17,6 +17,7 @@ export const appearance: Translation = {
   'appearance.ivy': 'Color de la hiedra',
   'appearance.ivyHint': 'Las hojas y enredaderas de los paneles Medieval, sin perder el sombreado.',
   'appearance.ivyMediaevalOnly': 'La hiedra solo crece en el estilo Medieval.',
+  'appearance.diceHint': 'Tus dados siguen el color de acento o llevan un color propio.',
   'appearance.ivyNatural': 'Natural',
   'appearance.glass': 'Transparencia',
   'appearance.glassHint': 'Las barras, los widgets y los dados dejan ver el mapa, desenfocado.',
