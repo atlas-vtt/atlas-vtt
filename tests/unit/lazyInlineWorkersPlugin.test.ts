@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { withBlobOnFirstWorker } from '../../vite/lazy-inline-workers.mts';
+import { withBlobOnFirstWorker, withSharedWorkerWhenServed } from '../../vite/lazy-inline-workers.mts';
 
 /** Vite 8's wrapper of a classic inline worker (`vite:worker`'s load hook), as it reaches the transform. */
 const WRAPPER = `const jsContent = "self.onmessage = () => {};";
@@ -61,5 +61,28 @@ describe('inline workers whose code becomes a Blob only when a worker starts', (
 
   it('refuses a wrapper it does not know', () => {
     expect(() => withBlobOnFirstWorker(WRAPPER.replace('const blob =', 'const theBlob ='))).toThrow(/review vite\/lazy-inline-workers/);
+  });
+});
+
+/** Vite 8's wrapper of an inline worker where nothing is bundled, as the tests are served it. */
+const SERVED = `export default function WorkerWrapper(options) {
+            return new Worker(
+              "/src/app/worker.ts?worker_file&type=module",
+              {
+          type: "module",
+          name: options?.name
+        }
+            );
+          }`;
+
+describe('inline workers as the tests are served them', () => {
+  it('exports a SharedWorker of the same URL beside the dedicated worker', () => {
+    const served = evaluate(withSharedWorkerWhenServed(SERVED));
+    expect(served.start()).toMatchObject({ url: '/src/app/worker.ts?worker_file&type=module' });
+    expect(served.startShared()).toMatchObject({ url: '/src/app/worker.ts?worker_file&type=module', options: { type: 'module', name: 'shared' } });
+  });
+
+  it('refuses a served wrapper it does not know', () => {
+    expect(() => withSharedWorkerWhenServed(SERVED.replace('return new Worker(', 'return start('))).toThrow(/review vite\/lazy-inline-workers/);
   });
 });
