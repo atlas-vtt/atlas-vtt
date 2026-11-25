@@ -9,20 +9,20 @@ import type { FieldKey, StatblockTemplate, TemplateField } from '../../model/tem
 import { NoteFieldWriter } from '../../notes/NoteFieldWriter';
 import { NoteSource } from '../../notes/noteSource';
 import { readAfterOwnWrite, sendOwnWrite, type OwnWrite } from '../../notes/ownFieldWrites';
-import { withCounterUsed } from '../../values/counterValues';
+import { withCounterPressed, type CounterPress } from '../../values/counterValues';
 import { readField } from '../../values/fieldValues';
 import { ValueEditingContext, type ValueEditing } from '../valueSlot';
 import { CountersGrid } from './CountersGrid';
 
 /**
- * Sets row `index` of the Counters field to `used` uses in the note, as the statblock pane does:
- * one patch of the whole value with the value it changes as its base, built on the last press
- * where the note does not hold it yet.
+ * Presses row `index` of the Counters field in the note, as the statblock pane does: one patch of
+ * the whole value with the value it changes as its base, built on the last press where the note
+ * does not hold it yet.
  */
-async function writeCounterUse(app: App, path: string, field: TemplateField, index: number, used: number, own: Map<FieldKey, OwnWrite>): Promise<void> {
+async function writeCounterPress(app: App, path: string, field: TemplateField, index: number, press: CounterPress, own: Map<FieldKey, OwnWrite>): Promise<void> {
   const record = NoteSource.forApp(app).read(path).frontmatter ?? {};
   const read = readAfterOwnWrite(readField(record, field), field.key, own);
-  const next = withCounterUsed(field, read.value, index, used);
+  const next = withCounterPressed(field, read.value, index, press);
   if (next === null) return;
   await sendOwnWrite(own, field.key, { base: read.value, mine: next }, () => NoteFieldWriter.forApp(app).write(path, fieldPatches(field.key, read, next)));
 }
@@ -36,7 +36,7 @@ function useNoteCounters(app: App, path: string, template: StatblockTemplate, on
       slot: (_block, values) => values,
       counters: (block, shown) => {
         const field = fieldByKey(template.fields, block.field);
-        const use = field ? (index: number, used: number): void => void writeCounterUse(app, path, field, index, used, own) : undefined;
+        const use = field ? (index: number, press: CounterPress): void => void writeCounterPress(app, path, field, index, press, own) : undefined;
         return <CountersGrid {...shown} controls={use ? { use } : undefined} />;
       },
     };
