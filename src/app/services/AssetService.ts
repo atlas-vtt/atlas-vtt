@@ -1174,16 +1174,7 @@ export class AssetService {
           // Delete the map file
           const mapFile = this.app.vault.getAbstractFileByPath(mapPath);
           if (mapFile instanceof TFile) {
-            // Close any leaves showing this file
-            const leaves = this.app.workspace.getLeavesOfType('atlas-view');
-            for (const leaf of leaves) {
-              const state = leaf.view?.getState?.();
-              if (state?.file === mapPath) {
-                leaf.detach();
-              }
-            }
-            
-            // Also check markdown leaves in case the .atlasmap file is open there
+            // Atlas closes the scene's tab when the vault reports the deletion (`vaultSync`); a markdown leaf showing the file goes here.
             const markdownLeaves = this.app.workspace.getLeavesOfType('markdown');
             for (const leaf of markdownLeaves) {
               const state = leaf.view?.getState?.();
