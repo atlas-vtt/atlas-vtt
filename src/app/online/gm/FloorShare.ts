@@ -70,6 +70,7 @@ export class FloorShare {
   private dealing = false;
   private readonly dragRulers: PlayerDragRulers;
   private unsubscribe: (() => void) | null = null;
+  private stopSight: (() => void) | null = null;
   private poll: number | undefined;
 
   constructor(store: SceneStore, ports: FloorSharePorts) {
@@ -162,6 +163,7 @@ export class FloorShare {
 
   start(): void {
     this.unsubscribe = this.store.subscribe((state) => void this.update(state));
+    this.stopSight = this.ports.onSightChange?.(() => void this.update(this.store.getState())) ?? null;
     void this.update(this.store.getState());
     this.schedulePoll();
     this.moves.start();
@@ -170,6 +172,8 @@ export class FloorShare {
   stop(): void {
     this.unsubscribe?.();
     this.unsubscribe = null;
+    this.stopSight?.();
+    this.stopSight = null;
     if (this.poll !== undefined) this.ports.clearTimer(this.poll);
     this.poll = undefined;
     void this.pictures.stop();

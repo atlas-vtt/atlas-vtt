@@ -72,6 +72,8 @@ export function floorPorts(ports: SceneSharePorts, deps: FloorPortsDeps): FloorS
     send: (body, to) => deps.send(body, to),
     ...(ports.sendLive !== undefined && { sendLive: (body: GmMessage, key: string, to?: string) => deps.sendLive(body, key, to) }),
     tokenSource: () => (viewed() ? ports.tokenSource() : party.tokenSource()),
+    // Only the floor the GM's view shows is read from its renderer: the CPU's picture of another follows the store alone.
+    onSightChange: (listener) => ports.onSightChange?.(() => viewed() && listener()) ?? (() => undefined),
     mapLayers: () => (viewed() ? ports.mapLayers?.() ?? null : party.mapLayers()),
     eyes: (policy: SightPolicy) => sources(new EyesSight(policy, context), () => (viewed() ? ports.pictureBasis?.() ?? sight : sight)),
     gmMarks: () => (viewed() ? ports.gmMarks?.() ?? null : null),

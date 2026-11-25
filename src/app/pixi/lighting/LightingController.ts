@@ -79,6 +79,8 @@ export interface LightingControllerDeps {
   roofs?: { readonly modeLayer: HideableLayer; covers(point: Point): boolean };
   /** How long a piece of a roof below takes to fade; unset, the window's motion decides. */
   roofFadeMs?: number;
+  /** Hears every change of the players' sight once the view has followed it, a gliding token's steps too. */
+  onSightChange?: () => void;
 }
 
 /**
@@ -311,6 +313,7 @@ export class LightingController {
     this.doors.refreshPlayers();
     if (this.tokens && this.session.active) this.tokens.refreshPlayerSight();
     else this.sightAids.schedule();
+    this.deps.onSightChange?.();
   }
 
   private listen(): void {

@@ -50,6 +50,8 @@ export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<
   pinsChanged?(mapPath: string, pins: Readonly<Record<string, NotePin>>): void;
   /** The GM's renderer as the basis a player's own picture of the floor it shows is cut from, or null while it cannot be read; without it, that picture is worked out on the CPU. */
   pictureBasis?(): PictureBasis | null;
+  /** Hears each change of what the GM's renderer shows the players that comes without a store change (a token gliding to its place); without it that is read at the next poll. Returns what stops it. */
+  onSightChange?(listener: () => void): () => void;
   /** Whether the GM's renderer draws the level its view shows now (its map and sight); without it, it always does. */
   rendererCurrent?(): boolean;
   /** The level of a scene with several that Atlas presents to its player view (the eye); unset is the first. Players without a token on the map see it. */

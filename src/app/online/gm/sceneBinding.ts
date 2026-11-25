@@ -8,7 +8,7 @@ import { mapFeatureList } from '../../mapFeatures/mapFeatures';
 import { diceSourceOf } from './atlasDice.ts';
 import { accentColour, atlasPlayerSettings, lightingSourceOf, measurementOf, tabAreaMap } from './atlasLighting.ts';
 import { mapLayerSourceOf, pictureBasisOf, rulesLookupOf, showsViewedLevel } from './atlasMapLayers.ts';
-import { asTokenSource, call, drawnTokenPlaces, tokenRulesOf, type PlayerTokenSource, type SceneStore } from './atlasView.ts';
+import { asTokenSource, call, drawnTokenPlaces, followPlayerSight, tokenRulesOf, type PlayerTokenSource, type SceneStore } from './atlasView.ts';
 import { bookSceneOf, type BookScene } from './book/bookScene.ts';
 import { ResourceWrites } from './book/resourceWrites.ts';
 import { companionTimers } from './companionTimers.ts';
@@ -114,6 +114,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
   });
   const share: SceneShare = new SceneShare(store, {
     tokenSource: () => asTokenSource(shownRenderer()),
+    onSightChange: (listener) => followPlayerSight(renderer, () => shown() && listener()),
     lightingSource: () => lightingSourceOf(shownRenderer()),
     measurement,
     gmMarks: () => (shown() ? marks.source() : null),
