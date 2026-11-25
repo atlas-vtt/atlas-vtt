@@ -24,7 +24,8 @@ $blueprint-shade: #040e20;
     pointer-events: none;
     background:
       linear-gradient(90deg, #{blueprint(0.6)} 0%, #{blueprint(0.15)} 46%, #{blueprint(0.05)} 100%),
-      linear-gradient(0deg, #{blueprint(0.85)} 0%, #{blueprint(0)} 42%),
+      // Black rising softly from the foot and gone a third of the way up, eased so it shows no band.
+      linear-gradient(0deg, rgb(0 0 0 / 0.62) 0%, rgb(0 0 0 / 0.44) 6%, rgb(0 0 0 / 0.27) 13%, rgb(0 0 0 / 0.14) 20%, rgb(0 0 0 / 0.05) 27%, rgb(0 0 0 / 0) 34%),
       url('../../assets/welcome/join.webp') center / cover no-repeat,
       $blueprint-shade;
     animation: atlas-welcome-join-in 900ms $transition-ease-out both;
