@@ -119,6 +119,7 @@ import { tokens } from './tokens';
 import { toolbar } from './toolbar';
 import { toolbarEdit } from './toolbarEdit';
 import { tour } from './tour';
+import { appearance } from './appearance';
 import { transfer } from './transfer';
 import { uvtt } from './uvtt';
 import { uvttFloors } from './uvttFloors';
@@ -254,6 +255,7 @@ export const de: Translation = {
   ...toolbar,
   ...toolbarEdit,
   ...tour,
+  ...appearance,
   ...transfer,
   ...uvtt,
   ...uvttFloors,

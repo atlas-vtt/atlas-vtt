@@ -23,6 +23,8 @@ export const lpv: Translation = {
   'lpv.playersDrawHint': 'Les joueurs en ligne ont leur propre outil Dessin. Vous pouvez modifier et effacer ce qu\'ils dessinent.',
   'lpv.playersOpenDoors': 'Les joueurs peuvent demander d\'ouvrir les portes',
   'lpv.playersOpenDoorsHint': 'Les joueurs en ligne devant une porte fermée peuvent vous demander de l\'ouvrir. Vous recevez un avis et décidez sur la carte.',
+  'lpv.sharedVision': 'Vision partagée',
+  'lpv.sharedVisionHint': 'Les joueurs en ligne voient aussi ce que voient les autres personnages joueurs.',
   'lpv.showCursors': 'Afficher les curseurs de tous',
   'lpv.showDiceRolls': 'Afficher les jets de dés',
   'lpv.view4k': 'Rendu jusqu\'en 4K',

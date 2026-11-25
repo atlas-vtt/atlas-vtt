@@ -118,26 +118,26 @@ describe('the player window bar', () => {
     vi.spyOn(context.settings as SettingsService, 'isExperimentalOn').mockReturnValue(true);
     act(() => tableControlsStore.setState({ online: true }));
     render(<PlayerWindowBar view={null} />);
-    fireEvent.click(screen.getByRole('button', { name: 'What players see' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Table settings' }));
     expect(screen.getByRole('radiogroup', { name: 'Play mode' })).toBeTruthy();
     expect(screen.getByRole('switch', { name: 'Show initiative panel' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Close player window' })).toBeNull();
     fireEvent.click(screen.getByRole('radio', { name: 'Remote control' }));
     expect(tableControlsStore.getState().playMode).toBe('remote');
     act(() => tableControlsStore.setState({ online: false }));
-    expect(screen.queryByRole('button', { name: 'What players see' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Table settings' })).toBeNull();
   });
 
   it('lets the GM set the play mode before a table runs, while online play is switched on', () => {
     vi.spyOn(context.settings as SettingsService, 'isExperimentalOn').mockReturnValue(true);
     render(<PlayerWindowBar view={null} />);
-    fireEvent.click(screen.getByRole('button', { name: 'What players see' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Table settings' }));
     expect(screen.getByRole('radiogroup', { name: 'Play mode' })).toBeTruthy();
   });
 
   it('keeps the play mode out of what players see while online play is switched off', () => {
     render(<PlayerWindowBar view={null} />);
-    fireEvent.click(screen.getByRole('button', { name: 'What players see' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Table settings' }));
     expect(screen.queryByRole('radiogroup', { name: 'Play mode' })).toBeNull();
   });
 
@@ -164,7 +164,7 @@ describe('the player window bar', () => {
 
   it('switches what players see from its menu, and closes the window from its own button', () => {
     render(<PlayerWindowBar view={null} />);
-    fireEvent.click(screen.getByRole('button', { name: 'What players see' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Table settings' }));
     const settings = context.settings as SettingsService;
     const before = settings.getLocalPlayerViewSettings().showInitiative;
     fireEvent.click(screen.getByRole('switch', { name: 'Show initiative panel' }));
@@ -177,10 +177,10 @@ describe('the player window bar', () => {
 
   it('closes its menu on Escape', () => {
     render(<PlayerWindowBar view={null} />);
-    fireEvent.click(screen.getByRole('button', { name: 'What players see' }));
-    expect(screen.getByRole('dialog', { name: 'What players see' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Table settings' }));
+    expect(screen.getByRole('dialog', { name: 'Table settings' })).toBeTruthy();
     fireEvent.keyDown(document, { key: 'Escape' });
-    expect(screen.queryByRole('dialog', { name: 'What players see' })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Table settings' })).toBeNull();
   });
 
   it('offers full screen only where the window can be reached, and asks for a second screen', () => {

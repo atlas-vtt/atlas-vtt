@@ -39,6 +39,14 @@ export const GM_SIGHT_POLICY: SightPolicy = Object.freeze({ givesSight: visionOn
 type TokenRule = (token: TokenEntity) => boolean;
 type DefeatTest = NonNullable<SightRules['defeated']>;
 
+/**
+ * `policy` for the tokens `keeps` keeps alone: one player's own picture, which sees through their own characters
+ * and always shows only those. A new object at each call, and memos are kept per policy: hold on to it.
+ */
+export function narrowPolicy(policy: SightPolicy, keeps: TokenRule): SightPolicy {
+  return Object.freeze({ givesSight: (token: TokenEntity) => policy.givesSight(token) && keeps(token), alwaysSeen: (token: TokenEntity) => policy.alwaysSeen(token) && keeps(token) });
+}
+
 const undefeatedRules = new WeakMap<TokenRule, WeakMap<DefeatTest, TokenRule>>();
 const undefeatedPolicies = new WeakMap<SightPolicy, WeakMap<DefeatTest, SightPolicy>>();
 

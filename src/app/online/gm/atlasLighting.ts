@@ -43,6 +43,8 @@ export interface AtlasPlayerSettings {
   readonly playersDraw?: boolean;
   /** Whether players may ask to open doors (the player view's setting); off when it cannot be read. */
   readonly playersOpenDoors?: boolean;
+  /** Whether every player sees through every player character's vision (the player view's setting); off, each through their own characters' alone, and off when it cannot be read. */
+  readonly sharedVision?: boolean;
   /** How the fog's edge looks (the Maps setting), for players as for the GM; unset when it cannot be read, which players see as a hard edge. */
   readonly fogEdge?: FogEdge;
 }
@@ -90,6 +92,7 @@ export function atlasPlayerSettings(app: App): AtlasPlayerSettings {
     movesOnTurn: field(turn, 'movesOnTurn') === true,
     playersDraw: field(view, 'playersDraw') === true,
     playersOpenDoors: field(view, 'playersOpenDoors') === true,
+    sharedVision: field(view, 'sharedVision') === true,
     ...(fogEdge !== undefined && { fogEdge }),
   };
 }

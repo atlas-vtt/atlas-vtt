@@ -121,6 +121,14 @@ describe('i18n', () => {
     }
   });
 
+  // The English fallback keeps a missing text readable at run time; it is no way to ship new UI in one language.
+  it('has every English text in every language', () => {
+    for (const [language, translation] of Object.entries(TRANSLATIONS)) {
+      const missing = Object.keys(en).filter((key) => !(key in translation));
+      expect(missing, language).toEqual([]);
+    }
+  });
+
   it('keeps the placeholders of the English text in every translation', () => {
     for (const [language, translation] of Object.entries(TRANSLATIONS)) {
       for (const [key, message] of Object.entries(translation) as [MessageKey, Message][]) {

@@ -68,15 +68,18 @@ export class FloorTokens {
 
   /**
    * A token as the players' frame shows it, for a roll that names it. Every player hears a roll, so
-   * while players stand on several floors only a player's own token is named (the party knows its own).
+   * while players stand on several floors only a player's own token is named (the party knows its own),
+   * and another token only where every player of its floor sees it (each may see by their own eyes).
    */
   private shownToken(mapPath: string, tokenId: string): ReturnType<RollSceneLookup['shownToken']> {
     const token = this.deps.store.getState().objects.tokens[tokenId];
     const key = this.floorKeyOf(tokenId);
-    if (token === undefined || key === null || (!this.deps.together() && this.deps.ports.seats?.ownerOf(tokenId, token) === undefined)) return null;
+    const owned = token !== undefined && this.deps.ports.seats?.ownerOf(tokenId, token) !== undefined;
+    if (token === undefined || key === null || (!this.deps.together() && !owned)) return null;
     const share = this.deps.floors.get(key);
     // Only a token of a list players were sent
-    return share?.tokens.listedScene === null ? null : share?.shown(mapPath, [tokenId]).get(tokenId) ?? null;
+    if (share === undefined || share.tokens.listedScene === null) return null;
+    return (owned ? share.shown(mapPath, [tokenId]) : share.shownToAll(mapPath, [tokenId])).get(tokenId) ?? null;
   }
 
   /** The key of the floor a token stands on, or null for a token the scene does not have. */

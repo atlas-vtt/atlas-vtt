@@ -35,6 +35,8 @@ import { TableModeShare } from './tableModeShare.ts';
 
 export type { OnlineTableEvents };
 import { FoundShare } from './pins/FoundShare.ts';
+import { CANVAS_MEMORY_IMAGES } from './memory/canvasMemoryImages.ts';
+import { VaultMemoryStore } from './memory/VaultMemoryStore.ts';
 
 /** How often the presented tab is looked for, and the shared one checked. */
 const WATCH_MS = 1_000;
@@ -185,6 +187,7 @@ export class OnlineTable {
         sendLive: (body, key, to) => this.covers.sendLive(body, key, to),
         readImage: (path) => readVaultImage(app, path),
         stored,
+        memory: { store: new VaultMemoryStore(app, seats.campaignId), images: CANVAS_MEMORY_IMAGES },
         isLive: (binding) => this.watch.isLive(binding),
         randomId: () => randomHex(12),
         logRoll: (roll) => this.log.rolled(roll),

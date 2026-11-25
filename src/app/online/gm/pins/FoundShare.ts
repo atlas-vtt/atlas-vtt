@@ -3,7 +3,7 @@ import { isRecord, parsePlayerMessage, type GmMessage, type PlayerPinFound, type
 import { viewOf } from '../log/logEntries.ts';
 import type { TableLog } from '../log/TableLog.ts';
 import { MoveRate } from '../moveCheck.ts';
-import type { MapLayerShare } from '../MapLayerShare.ts';
+import type { SceneShare } from '../SceneShare.ts';
 import { FoundTexts } from './FoundTexts.ts';
 import type { AssetStoring } from '../assets/assetUses.ts';
 import type { NotePin } from '../../../types';
@@ -23,8 +23,8 @@ export interface FoundSharePorts {
   nameOf(player: string): string | null;
   /** How players are handed a found note's text and images the store keeps for them. */
   readonly stored?: AssetStoring | undefined;
-  /** The shared scene's map layers, while one is shared; null otherwise. */
-  layers(): Pick<MapLayerShare, 'readablePin' | 'update'> | null;
+  /** The shared scene's map layers, while one is shared; null otherwise. A pin is looked up in the picture of the player who opens it. */
+  layers(): SceneShare['layers'] | null;
   /** The readable pin of the world map players know as `alias` (`WorldMapSigns.sign`), or null. */
   sign?(alias: string): WorldMapSign | null;
   /** A pin was found: who shows found pins shows it so. */
@@ -106,15 +106,15 @@ export class FoundShare {
     return true;
   }
 
-  /** The pin a player opens, while they may open it; null for any other. */
-  private opened(message: PlayerPinFound | PlayerSignFound): OpenedPin | null {
+  /** The pin a player opens, while they may open it (a pin while they see it); null for any other. */
+  private opened(from: string, message: PlayerPinFound | PlayerSignFound): OpenedPin | null {
     if (message.t === 'sign-found') return this.ports.sign?.(message.sign) ?? null;
-    const listed = this.ports.layers()?.readablePin(message.scene, message.pin) ?? null;
+    const listed = this.ports.layers()?.readablePin(from, message.scene, message.pin) ?? null;
     return listed === null ? null : { map: listed.map, pin: listed.pin.id, link: listed.pin.notePath };
   }
 
   private async find(from: string, message: PlayerPinFound | PlayerSignFound): Promise<void> {
-    const opened = this.opened(message);
+    const opened = this.opened(from, message);
     if (opened === null) return;
     const { map, pin, link } = opened;
     const known = this.entryOf(map, pin);

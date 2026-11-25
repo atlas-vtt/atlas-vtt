@@ -133,6 +133,11 @@ $transition-ease: cubic-bezier(0.4, 0, 0.2, 1);           // hover / colour chan
 $transition-ease-out: cubic-bezier(0.23, 1, 0.32, 1);     // entering elements, press release
 $transition-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); // on-screen movement
 $transition-ease-in: cubic-bezier(0.4, 0, 1, 1);          // avoid for UI; exits should still ease-out
+// A spring with a little overshoot that starts fast: 95 % of the way at a third of its time.
+$transition-spring: linear(
+  0, 0.108, 0.253, 0.408, 0.558, 0.691, 0.803, 0.891, 0.958, 1.004, 1.033, 1.05, 1.056,
+  1.055, 1.05, 1.043, 1.035, 1.026, 1.019, 1.012, 1.007, 1.003, 1, 0.999, 1
+);
 $transition-press: 160ms;                                  // button press feedback
 
 // ── Icon Sizes ───────────────────────────────────────────────────────────────

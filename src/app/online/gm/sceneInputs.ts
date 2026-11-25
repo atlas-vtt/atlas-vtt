@@ -100,6 +100,8 @@ export interface SightInputs {
   lightAlias(id: string): string;
   /** The map's measurement rules, which place the lights of its kept areas; without them those lights are left out. */
   readonly measurement?: Pick<MeasurementSettings, 'unitDistance' | 'coneAngle'>;
+  /** Whose tokens go out with their vision: unset, every token's that sees (`GM_SIGHT_POLICY`); one player's own (`narrowPolicy`), and their page lights the scene from those alone. */
+  readonly policy?: SightPolicy;
 }
 
 /**
@@ -167,7 +169,7 @@ function sharedMeasureLights(inputs: SightInputs, sent: ReadonlySet<string>): Sh
 /** The parts of a lit scene that change while it is played: its lighting, its lights that are switched on (those of kept areas among them), its tokens and the held ones. */
 export function sharedSight(inputs: SightInputs): SharedSight {
   const { state } = inputs;
-  const { givesSight } = sightPolicyFor(GM_SIGHT_POLICY, inputs.rules);
+  const { givesSight } = sightPolicyFor(inputs.policy ?? GM_SIGHT_POLICY, inputs.rules);
   const every = Object.values(mapTokens(levelObjects(state))).flatMap((token) => {
     const entry = sightToken(token, inputs, givesSight);
     return entry === null ? [] : [{ entry, id: token.id }];
