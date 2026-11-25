@@ -75,6 +75,7 @@ import { AppearanceShortcuts } from './command-palette/AppearanceShortcuts';
 import { hotkeyHelpCommand } from './command-palette/hotkeyHelpCommand';
 import { mapTourCommand } from './command-palette/mapTourCommand';
 import { SettingsService } from '../../services/SettingsService';
+import { useDicePreviewWarmUp } from '../hooks/useDicePreviews';
 import { docsCommand } from './command-palette/docsCommand';
 import { armariumCommand } from './command-palette/armariumCommand';
 import { isSettingsPanelId, type CommandOption, type SettingsPanelId } from './command-palette/types';
@@ -128,6 +129,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   const setActiveTool = useAtlasStore(state => state.setActiveTool);
   const ui = useAtlasUI();
   const { app, view } = ui;
+  useDicePreviewWarmUp(app ?? undefined, isOpen);
   const isWindowFrozen = useStore(playerWindowStore, (s) => s.isFrozen);
   const isTablePaused = useStore(tableControlsStore, (s) => s.paused);
   const isPlayerWindowFrozen = isWindowFrozen || isTablePaused;

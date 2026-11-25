@@ -1,7 +1,7 @@
 import '../setup/obsidianDom';
 import { describe, expect, it } from 'vitest';
 import { DICE_COLOUR_OPTIONS } from '../../src/app/dice3d/diceLook';
-import { renderDicePreviews } from '../../src/app/dice3d/diceLookRuntime';
+import { cachedDicePreviews, fillDicePreviews } from '../../src/app/dice3d/dicePreviews';
 
 async function pixelsOf(url: string): Promise<{ data: Uint8ClampedArray; size: number }> {
   const image = new Image();
@@ -17,7 +17,8 @@ async function pixelsOf(url: string): Promise<{ data: Uint8ClampedArray; size: n
 
 describe('the ring round the chosen dice colour', () => {
   it('is smooth, closed all round the die, and leaves the die itself uncovered', async () => {
-    const previews = await renderDicePreviews('medieval');
+    await fillDicePreviews('medieval', true);
+    const previews = cachedDicePreviews('medieval');
     expect(Object.keys(previews.images)).toEqual(DICE_COLOUR_OPTIONS.map((option) => option.value));
     expect(previews.ring).not.toBeNull();
     const { data, size } = await pixelsOf(previews.ring!);

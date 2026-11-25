@@ -112,6 +112,11 @@ export function borrowStage(doc: Document): StageLease {
   return dice.idle.pop() ?? buildStage(doc, dice);
 }
 
+/** Whether a stage of `doc` waits for a roll: borrowing one then builds nothing. */
+export function hasIdleStage(doc: Document): boolean {
+  return (documents.get(doc)?.idle.length ?? 0) > 0;
+}
+
 export function returnStage(lease: StageLease): void {
   lease.canvas.remove();
   // A stage of a pool that was given back has nothing to return to.

@@ -3,7 +3,7 @@ import { Link2 } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
 import { t } from '../../../i18n';
 import { DICE_COLOUR_OPTIONS, type DiceColour } from '../../../dice3d/diceLook';
-import type { DicePreviews } from '../../../dice3d/diceLookRuntime';
+import type { DicePreviews } from '../../../dice3d/dicePreviews';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 
 interface DiceColourStripProps {

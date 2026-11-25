@@ -74,6 +74,7 @@ export const BOUNDARIES = {
       "src/app/utils/motion.ts",
       "src/app/utils/numberInput.ts",
       "src/app/utils/observeResize.ts",
+      "src/app/utils/serialLock.ts",
       "src/utils/cn.ts",
       "src/app/tools/parseFormula.ts",
       "src/app/tools/diceComparison.ts",

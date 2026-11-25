@@ -40,6 +40,7 @@
 - Atlas' share of Obsidian's start-up time: cut in half
 - Opening a scene for the first time: about 25% faster
 - Panning and zooming: about 70% less processor load
+- Opening Dice settings and Appearance settings: about 8x faster
 
 **General Improvements**
 - Initiative cards show conditions for combatants without tokens
