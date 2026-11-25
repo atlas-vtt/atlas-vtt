@@ -15,8 +15,8 @@ import { colourOf, contrast, hex, over, type Rgba } from '../helpers/cssColour';
 
 const LOOKS = fileURLToPath(new URL('../../styles/looks/atlas-looks.css', import.meta.url));
 const MAIN = fileURLToPath(new URL('../../styles/main.scss', import.meta.url));
-/** The roots Atlas draws its interface in, where it may set inks of its own over the theme's. */
-const ATLAS_ROOTS = ' :is(.atlas-vtt-plugin, .atlas-portal-host, .atlas-linked-statblock)';
+/** A rule on the roots Atlas draws its interface in, where it may set inks of its own over the theme's: `body… X`. */
+const ATLAS_ROOTS = / (?::is\([^)]*\.atlas-vtt-plugin\b[^)]*\)|\.atlas-vtt-plugin)$/;
 
 type Mode = 'light' | 'dark';
 
@@ -26,14 +26,16 @@ const OBSIDIAN_BASE: Record<Mode, Record<string, string>> = {
     '--color-base-00': '#ffffff', '--color-base-05': '#fcfcfc', '--color-base-10': '#fafafa', '--color-base-20': '#f6f6f6',
     '--color-base-25': '#efefef', '--color-base-30': '#e4e4e4', '--color-base-35': '#dadada', '--color-base-40': '#bdbdbd',
     '--color-base-50': '#ababab', '--color-base-60': '#707070', '--color-base-70': '#5c5c5c', '--color-base-100': '#222222',
-    '--mono-100': 'black', '--color-red': '#e93147', '--background-secondary-alt': 'var(--color-base-05)',
+    '--mono-100': 'black', '--color-red': '#e93147', '--color-accent': '#8a5cf5', '--text-accent': 'var(--color-accent)',
+    '--background-secondary-alt': 'var(--color-base-05)',
     '--background-modifier-form-field': 'var(--color-base-00)', '--interactive-normal': 'var(--color-base-00)',
   },
   dark: {
     '--color-base-00': '#1c1c1c', '--color-base-05': '#212121', '--color-base-10': '#232323', '--color-base-20': '#282828',
     '--color-base-25': '#2e2e2e', '--color-base-30': '#333333', '--color-base-35': '#3f3f3f', '--color-base-40': '#555555',
     '--color-base-50': '#666666', '--color-base-60': '#999999', '--color-base-70': '#b3b3b3', '--color-base-100': '#dadada',
-    '--mono-100': 'white', '--color-red': '#fb464c', '--background-secondary-alt': 'var(--color-base-30)',
+    '--mono-100': 'white', '--color-red': '#fb464c', '--color-accent': '#8a5cf5', '--text-accent': '#a68af9',
+    '--background-secondary-alt': 'var(--color-base-30)',
     '--background-modifier-form-field': 'var(--color-base-25)', '--interactive-normal': 'var(--color-base-30)',
   },
 };
@@ -46,6 +48,8 @@ const OBSIDIAN_BODY: Record<string, string> = {
   '--background-secondary': 'var(--color-base-20)',
   '--background-modifier-hover': 'color-mix(in oklch, var(--mono-100) 6.7%, transparent)',
   '--text-error': 'var(--color-red)',
+  '--table-header-background': 'transparent',
+  '--table-header-color': 'var(--text-normal)',
 };
 
 const SCHEMES: Record<string, { mode: Mode; classes: string[] }> = {
@@ -67,13 +71,14 @@ function bodyCompound(selector: string): { needs: string[]; refuses: string[] } 
   };
 }
 
-/** The custom properties `css` sets on a body with `classes`, by the cascade: specificity, then order. */
-function bodyVariables(css: string, classes: string[], suffix = ''): [string, string][] {
+/** The custom properties `css` sets on a body with `classes` (or on what `under` names inside it), by the cascade. */
+function bodyVariables(css: string, classes: string[], under?: RegExp): [string, string][] {
   const found: { specificity: number; order: number; decls: [string, string][] }[] = [];
   postcss.parse(css).walkRules((rule) => {
     for (const selector of rule.selectors) {
-      if (!selector.endsWith(suffix)) continue;
-      const compound = bodyCompound(selector.slice(0, selector.length - suffix.length));
+      const inside = under ? under.exec(selector) : null;
+      if (under && !inside) continue;
+      const compound = bodyCompound(inside ? selector.slice(0, inside.index) : selector);
       if (!compound || !compound.needs.every((c) => classes.includes(c)) || compound.refuses.some((c) => classes.includes(c))) continue;
       const decls: [string, string][] = [];
       rule.walkDecls(/^--/, (decl) => { decls.push([decl.prop, decl.value]); });
@@ -99,15 +104,17 @@ const NORMAL = '--text-normal';
 const MUTED = '--text-muted';
 const FAINT = '--text-faint';
 const ERROR = '--text-error';
+const LINK = '--text-accent';
 
 /** The grounds Atlas sets text on, and the inks it sets on each: the pairs the QA bench's contrast scan found. */
 const GROUNDS: { name: string; ground: (c: (v: string) => Rgba) => Rgba; inks: string[] }[] = [
-  { name: 'the page', ground: (c) => c('var(--background-primary)'), inks: [NORMAL, MUTED, FAINT, ERROR] },
+  { name: 'the page', ground: (c) => c('var(--background-primary)'), inks: [NORMAL, MUTED, FAINT, ERROR, LINK] },
   { name: 'a sidebar or menu', ground: (c) => c('var(--background-secondary)'), inks: [NORMAL, MUTED, FAINT] },
   { name: 'a field', ground: (c) => over(c('var(--background-modifier-form-field)'), c('var(--background-primary)')), inks: [NORMAL, FAINT] },
   { name: 'a field on a sidebar', ground: (c) => over(c('var(--background-modifier-form-field)'), c('var(--background-secondary)')), inks: [NORMAL, FAINT] },
   { name: 'a hovered row', ground: (c) => over(c('var(--background-modifier-hover)'), c('var(--background-primary)')), inks: [NORMAL, MUTED, FAINT] },
   { name: 'a button', ground: (c) => over(c('var(--interactive-normal)'), c('var(--background-primary)')), inks: [NORMAL, MUTED] },
+  { name: 'a table head', ground: (c) => over(c('var(--table-header-background)'), c('var(--background-primary)')), inks: ['--table-header-color'] },
 ];
 
 /** Looks whose faint ink reaches 4.5:1 only as dark as their muted one, so the two would read as one. */
