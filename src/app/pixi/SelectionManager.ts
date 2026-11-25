@@ -416,11 +416,7 @@ export class SelectionManager {
     return [this.highlights.layer, this.marqueeGraphics, this.groupRotation.layer].map(layer => ({ layer, visible: false }));
   }
 
-  /**
-   * Asks for the selection to be drawn again once the canvas has changed: before the next render
-   * (`drawAskedOverlay`), or when something reads it first. A drag moves every selected token, each
-   * asking, and the selection is drawn once for all of them.
-   */
+  /** Asks for the selection to be drawn again before the next render, or when read first: a drag moves every selected token, each asking. */
   public requestSelectionOverlay(): void {
     this.overlayAsked = true;
   }
