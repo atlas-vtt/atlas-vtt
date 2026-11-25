@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { userEvent } from 'vitest/browser';
+import { cdp, userEvent } from 'vitest/browser';
 import type { SoundContext } from '@/app/sound/engine/audioNodes';
 import { SOUND_CONTEXT_OPTIONS } from '@/app/sound/engine/soundMath';
 import { SoundPlayer } from '@/app/sound/engine/soundPlayer';
@@ -62,28 +62,63 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
+type Captured = Awaited<ReturnType<typeof capturedContext>>;
+
+/** A captured context started by a press, as a player's page starts one; null where this browser never runs it. */
+async function runningContext(): Promise<Captured | null> {
+  const captured = await capturedContext();
+  let unlocked = false;
+  const button = document.body.appendChild(document.createElement('button'));
+  button.textContent = 'join';
+  button.onclick = (): void => {
+    unlockInGesture(captured.context);
+    unlocked = true;
+  };
+  await userEvent.click(button);
+  button.remove();
+  expect(unlocked).toBe(true);
+  await wait(1500);
+  if (captured.context.currentTime > 0) return captured;
+  // A headless engine may have no audio output to run on; only a real window can say more.
+  console.log('real time: this browser never starts a context here');
+  await captured.context.close().catch(() => undefined);
+  return null;
+}
+
+/**
+ * A page redrawn every frame, as the Sound page's meters redraw it: boxes whose transform moves each frame, so
+ * styles and layers are worked out again every frame. A long sound's windows decode between its frames.
+ */
+function redrawnEveryFrame(boxes: number): () => void {
+  const host = document.body.appendChild(document.createElement('div'));
+  host.style.cssText = 'position: fixed; inset: 0; overflow: hidden; pointer-events: none';
+  const moving = Array.from({ length: boxes }, (_, index) => {
+    const box = host.appendChild(document.createElement('div'));
+    box.style.cssText = `position: absolute; left: ${(index * 7) % 1200}px; top: ${(index * 13) % 800}px; width: 30px; height: 30px; border-radius: 6px; background: linear-gradient(red, blue); box-shadow: 0 2px 8px black`;
+    return box;
+  });
+  let frame = 0;
+  let count = 0;
+  const draw = (): void => {
+    count++;
+    moving.forEach((box, index) => {
+      box.style.transform = `scaleY(${(0.5 + 0.5 * Math.sin(count / 10 + index)).toFixed(3)})`;
+    });
+    frame = requestAnimationFrame(draw);
+  };
+  frame = requestAnimationFrame(draw);
+  return () => {
+    cancelAnimationFrame(frame);
+    host.remove();
+  };
+}
+
 describe('in real time', () => {
   it('keeps window joins and the wrap as clean as in a render, and the watchdog says playing', async ({ skip }) => {
     const fixtures = await loadFixtures();
-    const { context, through, samples } = await capturedContext();
-    // Needs a press to run in a browser, as a player's page does.
-    let unlocked = false;
-    const button = document.body.appendChild(document.createElement('button'));
-    button.textContent = 'join';
-    button.onclick = (): void => {
-      unlockInGesture(context);
-      unlocked = true;
-    };
-    await userEvent.click(button);
-    button.remove();
-    expect(unlocked).toBe(true);
-    await wait(1500);
-    if (context.currentTime === 0) {
-      // A headless engine may have no audio output to run on; only a real window can say more.
-      console.log('real time: this browser never starts a context here');
-      await context.close().catch(() => undefined);
-      skip();
-    }
+    const running = await runningContext();
+    if (!running) return skip();
+    const { context, through, samples } = running;
     const dog = new SoundWatchdog({ context: () => context, rebuild: () => undefined, wait });
     dog.start();
     const started = performance.now();
@@ -116,5 +151,40 @@ describe('in real time', () => {
     expect(silence).toBeLessThanOrEqual(1);
     expect(step).toBeLessThanOrEqual(2 * NORMAL_STEP);
     expect(state).toBe('playing');
+  });
+
+  it('plays a long sound on without a hole beside a page redrawn every frame on a slow machine', async ({ skip }) => {
+    const fixtures = await loadFixtures();
+    const running = await runningContext();
+    if (!running) return skip();
+    const { context, through, samples } = running;
+    const session = cdp();
+    await session.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+    const stopDrawing = redrawnEveryFrame(3000);
+    const started = performance.now();
+    const player = new SoundPlayer({
+      context: through,
+      // From the start: windows join at 2, 7, 12 ... s, each decoded while the frames take the thread.
+      tableNow: () => performance.now() - started,
+      resolve: (key) => memoryBytes(fixtures.files.get(key) ?? new Uint8Array()),
+    });
+    player.setState(tableOf({ layers: [layerOf(fixtures.long)] }));
+    const end = started + 25_000;
+    while (performance.now() < end) {
+      await wait(250);
+      player.tick();
+    }
+    stopDrawing();
+    await session.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    player.dispose();
+    await context.close();
+    const captured = samples();
+    // From a second after the first sound: nothing sounds before the first window is decoded.
+    const first = captured.findIndex((sample) => sample !== 0);
+    const from = Math.max(0, first) + 48_000;
+    const silence = longestSilence(captured, from, captured.length);
+    console.log(`real time beside a redrawn page: ${(captured.length / 48000).toFixed(1)} s captured, first sound at ${first < 0 ? 'never' : `${(first / 48000).toFixed(2)} s`}, longest silence after it ${silence} frames`);
+    expect(captured.length - from).toBeGreaterThan(15 * 48000);
+    expect(silence).toBeLessThanOrEqual(1);
   });
 });
