@@ -10,9 +10,10 @@ import type { SceneState } from './atlasView.ts';
 /**
  * Whose sight a player sees a floor through: the whole party's, or only that of `tokens`, their own characters
  * there that see. A player whose `tokens` are none sees nothing live, as Foundry shows a user without a vision
- * source nothing: only what they remember.
+ * source nothing: only what they remember. `owns` are all their tokens there that are not hidden, seeing or not,
+ * which their picture always shows, as an owner always sees their own token.
  */
-export type Eyes = { readonly kind: 'party' } | { readonly kind: 'player'; readonly player: string; readonly tokens: readonly string[] };
+export type Eyes = { readonly kind: 'party' } | { readonly kind: 'player'; readonly player: string; readonly tokens: readonly string[]; readonly owns: readonly string[] };
 
 export const PARTY_EYES: Eyes = Object.freeze({ kind: 'party' });
 
@@ -46,9 +47,12 @@ export function floorEyes(inputs: EyesInputs, players: readonly string[]): Map<s
   if (inputs.sharedVision || !sightHides(state)) return new Map(players.map((player) => [player, PARTY_EYES]));
   const { givesSight } = sightPolicyFor(PLAYER_SIGHT_POLICY, inputs.rules);
   const seeing = new Map<string, string[]>();
+  const owning = new Map<string, string[]>();
   for (const [id, token] of Object.entries(mapTokens(levelObjects(state)))) {
-    const owner = givesSight(token) ? inputs.ownerOf(id, token) : undefined;
-    if (owner !== undefined) seeing.set(owner, [...(seeing.get(owner) ?? []), id]);
+    const owner = token.isHidden === true ? undefined : inputs.ownerOf(id, token);
+    if (owner === undefined) continue;
+    owning.set(owner, [...(owning.get(owner) ?? []), id]);
+    if (givesSight(token)) seeing.set(owner, [...(seeing.get(owner) ?? []), id]);
   }
-  return new Map(players.map((player) => [player, { kind: 'player', player, tokens: seeing.get(player) ?? [] }]));
+  return new Map(players.map((player) => [player, { kind: 'player', player, tokens: seeing.get(player) ?? [], owns: owning.get(player) ?? [] }]));
 }

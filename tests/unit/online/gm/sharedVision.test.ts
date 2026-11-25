@@ -145,13 +145,21 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
       expect(doors(cara)).toBe(0);
     });
 
-    it('shows a player whose only character is defeated or does not see nothing live', async () => {
+    it('shows a player whose only character does not see that character alone, seeing nothing by it', async () => {
       const table = await started(rooms({ ana: { vision: { ...DARKVISION, enabled: false } } }), false);
       const ana = toPlayer(table.sent, ANA);
-      expect(names(ana)).toEqual([]);
-      expect(seers(ana)).toEqual([]);
-      expect(sequenced(ana, 'sight').at(-1)?.blind).toBe(true);
+      expect(names(ana)).toEqual(['Ana']);
+      expect(sequenced(ana, 'sight').at(-1)?.tokens.flatMap(({ x, vision }) => (vision === undefined ? [] : [{ x, vision }]))).toEqual([{ x: 200, vision: { senses: [], sightRange: 0 } }]);
       expect(sequenced(toPlayer(table.sent, BEN), 'sight').at(-1)?.blind).toBeUndefined();
+    });
+
+    it('lets a player move their own character that does not see, as an owner always may', async () => {
+      const table = await started(rooms({ ana: { vision: { ...DARKVISION, enabled: false } } }), false);
+      const listed = tokenLists(toPlayer(table.sent, ANA)).at(-1);
+      const ana = listed?.tokens.find((entry) => entry.name === 'Ana');
+      table.share.receive(ANA, { t: 'move', scene: listed?.scene ?? '', id: ana?.id ?? '', x: 260, y: 200 });
+      await table.settle();
+      expect(table.state().objects.tokens.ana).toMatchObject({ x: 260, y: 200 });
     });
   });
 

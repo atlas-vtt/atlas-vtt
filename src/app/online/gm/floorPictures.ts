@@ -1,7 +1,7 @@
 import type { GmMessage, PlayerResync, SharedScene } from '../protocol/index.ts';
 import { tableControlsStore } from '../../stores/tableControlsStore';
 import type { TokenSeen } from '../../vision/measureOrigin';
-import { narrowPolicy, PLAYER_SIGHT_POLICY, type SightPolicy } from '../../vision/tokenSightPolicy';
+import { ownPolicy, PLAYER_SIGHT_POLICY, type SightPolicy } from '../../vision/tokenSightPolicy';
 import type { SceneStore } from './atlasView.ts';
 import type { SavedMemory } from './ExploredShare.ts';
 import { ExploredRemovals } from './exploredRemovals.ts';
@@ -224,10 +224,11 @@ export class FloorPictures {
   private look(eyes: Eyes): boolean {
     const key = eyesKey(eyes);
     if (eyes.kind === 'player') {
-      const tokens = eyes.tokens.join('\n');
+      const tokens = `${eyes.tokens.join('\n')}|${eyes.owns.join('\n')}`;
       if (this.looks.get(key)?.tokens !== tokens) {
-        const owned = new Set(eyes.tokens);
-        const policy = narrowPolicy(PLAYER_SIGHT_POLICY, (token) => owned.has(token.id));
+        const seeing = new Set(eyes.tokens);
+        const owned = new Set(eyes.owns);
+        const policy = ownPolicy((token) => seeing.has(token.id), (token) => owned.has(token.id));
         this.looks.set(key, { tokens, policy, sources: this.ports.eyes(policy) });
         this.pictures.get(key)?.update();
       }

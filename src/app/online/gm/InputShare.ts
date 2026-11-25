@@ -22,7 +22,7 @@ export interface InputSharePorts extends PacerClock {
   notice?(text: string): void;
   /** How the GM's fog edge looks; unset or undefined, players draw it hard. */
   fogEdge?(): SharedFogEdge | undefined;
-  /** Whose tokens players light the scene from (one player's own, `narrowPolicy`); unset, every token's that sees. */
+  /** Whose tokens players light the scene from (one player's own, `ownPolicy`); unset, every token's that sees. */
   sightPolicy?(): SightPolicy;
 }
 

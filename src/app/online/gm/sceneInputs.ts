@@ -100,20 +100,27 @@ export interface SightInputs {
   lightAlias(id: string): string;
   /** The map's measurement rules, which place the lights of its kept areas; without them those lights are left out. */
   readonly measurement?: Pick<MeasurementSettings, 'unitDistance' | 'coneAngle'>;
-  /** Whose tokens go out with their vision: unset, every token's that sees (`GM_SIGHT_POLICY`); one player's own (`narrowPolicy`), and their page lights the scene from those alone. */
+  /** Whose tokens go out with their vision: unset, every token's that sees (`GM_SIGHT_POLICY`); one player's own (`ownPolicy`), and their page lights the scene from those alone. */
   readonly policy?: SightPolicy;
 }
 
 /**
+ * The vision a player's own token that sees nothing goes out with (vision off, or defeated): no sense and no normal
+ * sight, so their page shows it where it stands, as the players' picture shows a vision token, and sees nothing by it.
+ */
+const SEES_NOTHING: SharedVision = Object.freeze({ senses: [], sightRange: 0 });
+
+/**
  * One token as sight and light read it, or null for one players get nothing of: a hidden token,
  * or an unseen one that neither sees nor shines. A defeated token goes out without vision (`givesSight`, `sightPolicyFor`):
- * it sees nothing and is not the party's. An unseen token goes out with its place, size,
+ * it sees nothing and is not the party's; a player's own one goes to them seeing nothing (`SEES_NOTHING`), so they still
+ * see where it stands. An unseen token goes out with its place, size,
  * vision, light and blindness only.
  */
-function sightToken(token: TokenEntity, inputs: SightInputs, givesSight: SightPolicy['givesSight']): SightToken | null {
+function sightToken(token: TokenEntity, inputs: SightInputs, policy: SightPolicy): SightToken | null {
   if (token.isHidden === true || !finite(token.x) || !finite(token.y)) return null;
   const seen = inputs.shown.has(token.id);
-  const vision = givesSight(token) ? token.vision : undefined;
+  const vision = policy.givesSight(token) ? token.vision : undefined;
   const light = readEmission(token.light);
   if (!seen && vision === undefined && light === null) return null;
   const effects: SharedEffect[] = [...tokenEffects(token, inputs.rules.conditions)].filter((effect) => seen || effect === 'blinded');
@@ -123,7 +130,7 @@ function sightToken(token: TokenEntity, inputs: SightInputs, givesSight: SightPo
     y: roundPlace(token.y),
     size: finite(token.size) && token.size > 0 ? token.size : 1,
     ...(finite(token.rotation) && { rotation: token.rotation }),
-    ...(vision && { vision: sharedVision({ ...token, vision }, inputs.rules) }),
+    ...(vision ? { vision: sharedVision({ ...token, vision }, inputs.rules) } : policy.owned?.(token) === true && { vision: SEES_NOTHING }),
     ...(light && { light: sharedEmission(light) }),
     ...(effects.length > 0 && { effects }),
   };
@@ -169,9 +176,9 @@ function sharedMeasureLights(inputs: SightInputs, sent: ReadonlySet<string>): Sh
 /** The parts of a lit scene that change while it is played: its lighting, its lights that are switched on (those of kept areas among them), its tokens and the held ones. */
 export function sharedSight(inputs: SightInputs): SharedSight {
   const { state } = inputs;
-  const { givesSight } = sightPolicyFor(inputs.policy ?? GM_SIGHT_POLICY, inputs.rules);
+  const policy = sightPolicyFor(inputs.policy ?? GM_SIGHT_POLICY, inputs.rules);
   const every = Object.values(mapTokens(levelObjects(state))).flatMap((token) => {
-    const entry = sightToken(token, inputs, givesSight);
+    const entry = sightToken(token, inputs, policy);
     return entry === null ? [] : [{ entry, id: token.id }];
   });
   // In the store's order, which sight keeps; past the limit those that see come first.
