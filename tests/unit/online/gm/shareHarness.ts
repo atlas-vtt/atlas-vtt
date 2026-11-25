@@ -160,7 +160,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
         return Promise.resolve(bytes === undefined || mime === null ? null : { bytes, mime });
       },
       send: (body, to) => harness.sent.push({ body, to }),
-      sendLive: (body) => harness.sent.push({ body, to: undefined }),
+      sendLive: (body, _key, to) => harness.sent.push({ body, to }),
       notice: (text) => harness.notices.push(text),
       randomId: () => counterId((ids += 1)),
       now: () => now,

@@ -1,17 +1,10 @@
-@use 'sass:color';
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/mixins' as *;
+@use 'picture-ink' as *;
 
 // The welcome carousel (WelcomeCarousel.tsx): a picture across the whole dialog, darkened from the left and the foot,
 // with its words, the story bars and the chips light over it in every theme and look. Motion is transform and
 // opacity only, so it runs on the compositor.
-
-// The light the words are drawn in, and the dark that lies over the pictures.
-$slide-ink: #f4eee4;
-$slide-shade: #0a0806;
-
-@function ink($alpha) { @return color.change($slide-ink, $alpha: $alpha); }
-@function shade($alpha) { @return color.change($slide-shade, $alpha: $alpha); }
 
 // The carousel page runs to the dialog's edges: its foot and close button lie over the picture.
 .atlas-welcome[data-page='carousel'] {
@@ -26,19 +19,9 @@ $slide-shade: #0a0806;
     position: relative;
     z-index: 1;
     margin-top: auto;
-    color: ink(0.78);
   }
 
-  .atlas-welcome__foot .btn--ghost:hover,
-  .atlas-welcome__close.atlas-close-btn.btn:hover {
-    background: ink(0.12);
-    color: $slide-ink;
-  }
-
-  .atlas-welcome__close.atlas-close-btn.btn {
-    background: shade(0.45);
-    color: ink(0.9);
-  }
+  @include on-picture-chrome;
 }
 
 @keyframes atlas-welcome-carousel-in {
@@ -157,25 +140,10 @@ $slide-shade: #0a0806;
   bottom: calc(#{$spacing-2xl} * 2 + var(--input-height) + #{$spacing-l});
   max-width: 460px;
 
-  .atlas-welcome-text__kicker { color: ink(0.7); }
+  @include on-picture-text;
 
-  // The look's heading face, drawn light: a look's dark heading colour (light mode) keeps its hue.
-  .atlas-welcome-text__title {
-    font-size: clamp(calc(#{$font-ui-large} * 1.8), 4.6vw, calc(#{$font-ui-large} * 3));
-    color: $slide-ink;
-    color: oklch(from var(--h2-color, #{$slide-ink}) max(l, 0.82) c h);
-    text-shadow: 0 2px 24px rgb(0 0 0 / 0.6);
-  }
-
-  .atlas-welcome-text__body {
-    font-size: calc(#{$font-ui-medium} * 1.15);
-    color: ink(0.86);
-  }
-
-  .atlas-welcome-text__tag {
-    background: ink(0.16);
-    color: ink(0.92);
-  }
+  .atlas-welcome-text__title { font-size: clamp(calc(#{$font-ui-large} * 1.8), 4.6vw, calc(#{$font-ui-large} * 3)); }
+  .atlas-welcome-text__body { font-size: calc(#{$font-ui-medium} * 1.15); }
 }
 
 // Where to read more: small pills under the words, drawn like the chips so they stay quiet beside the heading.
@@ -232,13 +200,13 @@ $slide-shade: #0a0806;
 
 // ── Story bars and chips ────────────────────────────────────────────────────
 
-// Across the top, level with the close button and clear of it.
+// Across the top, from inset to inset.
 .atlas-welcome-carousel__stories {
   position: absolute;
   z-index: 3;
   top: $close-button-gap;
   left: $spacing-2xl;
-  right: calc(#{$close-button-gap} + #{$close-button-size} + #{$spacing-l});
+  right: $spacing-2xl;
   display: flex;
   gap: $spacing-s;
   height: $close-button-size;

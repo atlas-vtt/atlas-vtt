@@ -6,8 +6,11 @@ import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import { describe, expect, it } from 'vitest';
 import { EXPLORED_INTERVAL_MS } from '../../../../src/app/online/gm/ExploredShare.ts';
 import { MEMORY_STORE_MS } from '../../../../src/app/online/gm/memory/FloorMemories.ts';
+import { KeptMemories } from '../../../../src/app/online/gm/memory/KeptMemories.ts';
+import { PlayerMemoryEdits } from '../../../../src/app/online/gm/memory/PlayerMemoryEdits.ts';
+import type { Point } from '../../../../src/app/types/visionTypes';
 import { pngOf } from './fakeTileCache.ts';
-import { FakeMemoryStore, fakeMask, fakeMemory, fakePng, rememberedCells } from './fakeMemory.ts';
+import { FAKE_IMAGES, fakeFiles, FakeMemoryStore, fakeMask, fakeMemory, fakePng, rememberedCells } from './fakeMemory.ts';
 import { PLAYER_SETTINGS } from './gmLighting.ts';
 import { sceneState, sequenced, shareHarness, token, type Sent, type ShareHarness } from './shareHarness.ts';
 
@@ -47,8 +50,19 @@ const seats: SeatSource = { onlinePlayers: () => [ANA, BEN, CARA], ownerOf: (id)
 /** The party's memory as the GM saved it: all three rooms. */
 const PARTY_MASK = fakeMask(MAP, () => true);
 
-async function started(state: SceneState, store: FakeMemoryStore, sharedVision = false): Promise<ShareHarness> {
-  const table = shareHarness(state, IMAGES, seats, undefined, undefined, fakeMemory(store));
+/** The GM's edits by hand of the floor, reaching every player's memory in `store`, held by a running table where it holds them. */
+const editsOf = (store: FakeMemoryStore): { readonly kept: KeptMemories; readonly edits: PlayerMemoryEdits } => {
+  const kept = new KeptMemories(fakeFiles(store), FAKE_IMAGES);
+  return { kept, edits: new PlayerMemoryEdits(kept, () => FLOOR) };
+};
+
+/** A rectangle of the map, as the GM erases one by hand. */
+const area = (x: number, width: number): { readonly shapes: { readonly polygons: Point[][]; readonly clip: null }; readonly bounds: typeof MAP } => ({
+  shapes: { polygons: [[{ x, y: 0 }, { x: x + width, y: 0 }, { x: x + width, y: MAP.height }, { x, y: MAP.height }]], clip: null }, bounds: MAP,
+});
+
+async function started(state: SceneState, store: FakeMemoryStore, sharedVision = false, kept?: KeptMemories): Promise<ShareHarness> {
+  const table = shareHarness(state, IMAGES, seats, undefined, undefined, fakeMemory(store, kept));
   table.settings = { ...PLAYER_SETTINGS, sharedVision };
   table.share.start();
   await table.set(state);
@@ -123,48 +137,91 @@ describe('each player\'s own explored memory, with Shared vision off', () => {
     expect(store.writes).toBe(written);
   });
 
-  it('loses everything when the GM forgets the explored areas, kept in the campaign too for a player who is away', async () => {
+  it('loses everything when the GM forgets the explored areas, of every floor, kept in the campaign too for a player who is away', async () => {
     const store = new FakeMemoryStore();
+    const cellar = { ...FLOOR, level: 'cellar' };
     store.files.set(FakeMemoryStore.key(FLOOR, DAN), fakePng(new Uint8Array(30 * 30).fill(255)));
-    const table = await started(rooms({}, { exploredMask: PARTY_MASK }), store);
+    store.files.set(FakeMemoryStore.key(cellar, ANA), fakePng(new Uint8Array(30 * 30).fill(255)));
+    const { kept, edits } = editsOf(store);
+    const table = await started(rooms({}, { exploredMask: PARTY_MASK }), store, false, kept);
     // Ana walks over to the middle room: she remembers both rooms.
     await table.set(rooms({ ana: { x: 750, y: 600 } }, { exploredMask: PARTY_MASK }));
     await table.advance(2 * EXPLORED_INTERVAL_MS);
     expect(cells(exploredTo(table.sent, ANA).at(-1)).some(({ x }) => westRoom(x))).toBe(true);
-    // Forget explored areas: an edit by hand, then the save of the memory it left, none.
+    // Forget explored areas: the edit by hand of the floor shown, every floor, then the save of the memory it left, none.
+    edits.edited(1, area(0, MAP.width));
+    edits.forgot(1);
     await table.set({ ...table.state(), exploredEdits: 1 });
     await table.set({ ...table.state(), exploredMask: fakeMask(MAP, () => false) });
     await table.advance(2 * EXPLORED_INTERVAL_MS);
-    expect(store.files.has(FakeMemoryStore.key(FLOOR, DAN))).toBe(false);
+    expect([...store.files.keys()].filter((key) => key !== FakeMemoryStore.key(FLOOR, ANA) && key !== FakeMemoryStore.key(FLOOR, BEN))).toEqual([]);
     expect(rememberedCells(MAP, store.files.get(FakeMemoryStore.key(FLOOR, ANA)) ?? null).some(({ x }) => westRoom(x))).toBe(false);
     const ana = exploredTo(table.sent, ANA);
     expect(cells(ana.at(-1)).some(({ x }) => westRoom(x))).toBe(false);
     expect(ana.at(-1)?.serial).not.toBe(ana.at(-3)?.serial);
   });
 
-  it('loses what the GM erased from the party\'s memory, and keeps the rest', async () => {
+  it('loses what the GM erased by hand, also where the party never explored, and keeps the rest', async () => {
     const store = new FakeMemoryStore();
-    const table = await started(rooms({}, { exploredMask: PARTY_MASK }), store);
-    await table.set(rooms({ ana: { x: 750, y: 600 } }, { exploredMask: PARTY_MASK }));
+    const { kept, edits } = editsOf(store);
+    // The party remembers only the middle room: the GM's view never saw the west room explored.
+    const table = await started(rooms({}, { exploredMask: fakeMask(MAP, middleRoom) }), store, false, kept);
+    await table.set(rooms({ ana: { x: 750, y: 600 } }, { exploredMask: fakeMask(MAP, middleRoom) }));
     await table.advance(2 * EXPLORED_INTERVAL_MS);
+    expect(cells(exploredTo(table.sent, ANA).at(-1)).some(({ x }) => westRoom(x))).toBe(true);
     // The GM erases the west room by hand.
+    edits.edited(1, area(0, 500));
     await table.set({ ...table.state(), exploredEdits: 1 });
-    await table.set({ ...table.state(), exploredMask: fakeMask(MAP, (x) => !westRoom(x)) });
     await table.advance(2 * EXPLORED_INTERVAL_MS);
     const remembered = cells(exploredTo(table.sent, ANA).at(-1));
     expect(remembered.some(({ x }) => westRoom(x))).toBe(false);
     expect(remembered.some(({ x }) => middleRoom(x))).toBe(true);
   });
+
+  it('gets back what the GM erased when the erase is undone, and loses it again when it is redone', async () => {
+    const store = new FakeMemoryStore();
+    store.files.set(FakeMemoryStore.key(FLOOR, DAN), fakePng(new Uint8Array(30 * 30).fill(255)));
+    const { kept, edits } = editsOf(store);
+    const table = await started(rooms({}, { exploredMask: PARTY_MASK }), store, false, kept);
+    const dan = (): { readonly x: number; readonly y: number }[] => rememberedCells(MAP, store.files.get(FakeMemoryStore.key(FLOOR, DAN)) ?? null);
+    // Ana walks over to the middle room, out of sight of the west room she remembers.
+    await table.set(rooms({ ana: { x: 750, y: 600 } }, { exploredMask: PARTY_MASK }));
+    await table.advance(2 * EXPLORED_INTERVAL_MS);
+    edits.edited(1, area(0, 500));
+    await table.advance(2 * EXPLORED_INTERVAL_MS);
+    expect(dan().some(({ x }) => westRoom(x))).toBe(false);
+    expect(cells(exploredTo(table.sent, ANA).at(-1)).some(({ x }) => westRoom(x))).toBe(false);
+    edits.travel(1, 0);
+    await table.advance(2 * EXPLORED_INTERVAL_MS);
+    expect(dan()).toHaveLength(30 * 30);
+    expect(cells(exploredTo(table.sent, ANA).at(-1)).some(({ x }) => westRoom(x))).toBe(true);
+    edits.travel(0, 1);
+    await table.advance(2 * EXPLORED_INTERVAL_MS);
+    expect(dan().some(({ x }) => westRoom(x))).toBe(false);
+  });
 });
 
 describe('explored memory with Shared vision on', () => {
-  it('is the party\'s for every player, as before, and keeps nothing of its own', async () => {
-    const store = new FakeMemoryStore();
-    const table = await started(rooms({}, { exploredMask: PARTY_MASK }), store, true);
+  it('is the party\'s for every player, in one message to all, as before', async () => {
+    const table = await started(rooms({}, { exploredMask: PARTY_MASK }), new FakeMemoryStore(), true);
     const party = PARTY_MASK.slice('data:image/png;base64,'.length);
     const explored = table.sent.filter(({ body }) => body.t === 'explored');
     expect(explored.map(({ to }) => to)).toEqual([undefined]);
     expect(explored.every(({ body }) => body.t === 'explored' && body.png === party && body.serial === 0)).toBe(true);
-    expect(store.writes).toBe(0);
+  });
+
+  it('leaves each player what the party\'s picture showed them once it is switched off, kept in the campaign', async () => {
+    const store = new FakeMemoryStore();
+    const table = await started(rooms(), store, true);
+    table.settings = { ...PLAYER_SETTINGS, sharedVision: false };
+    await table.advance(2 * EXPLORED_INTERVAL_MS + 100);
+    // Ana's own eyes never saw Ben's room; the party's picture she was shown did.
+    const ana = cells(exploredTo(table.sent, ANA).at(-1));
+    expect(ana.some(({ x }) => westRoom(x))).toBe(true);
+    expect(ana.some(({ x }) => middleRoom(x))).toBe(true);
+    expect(cells(exploredTo(table.sent, CARA).at(-1)).some(({ x }) => middleRoom(x))).toBe(true);
+    table.share.stop();
+    await table.settle();
+    expect(rememberedCells(MAP, store.files.get(FakeMemoryStore.key(FLOOR, ANA)) ?? null).some(({ x }) => middleRoom(x))).toBe(true);
   });
 });

@@ -2,11 +2,11 @@ import { exploredMemoryOn } from '../../lighting/sceneLightingOptions';
 import { levelExploredMask } from '../../levels/sceneLevels';
 import type { SceneState } from './atlasView.ts';
 
-/**
- * What the GM took away from the party's explored memory: what one floor's memory lost from one saved
- * memory to the next (data URLs; null for none), or every floor of the scene (Forget explored areas).
- */
-export type Removal = { readonly kind: 'lost'; readonly before: string | null; readonly after: string | null } | { readonly kind: 'forgotten' };
+/** What a load took away from one floor's party memory: the saved memory before it and after it (data URLs; null for none). */
+export interface Removal {
+  readonly before: string | null;
+  readonly after: string | null;
+}
 
 const NO_REMOVALS: readonly Removal[] = Object.freeze([]);
 
@@ -25,7 +25,8 @@ interface Seen {
  * before it; where the memory went from some to none or was switched off; and where the GM forgot
  * every floor's memory (`exploredForgotten`) while the view showed another floor, since players may
  * remember one whose saved memory was none already. The serial never goes
- * back, so a player who missed a removal still holds another serial than the newest.
+ * back, so a player who missed a removal still holds another serial than the newest. Only what a load
+ * took is told for each player's own memory: the GM's edits by hand reach those where they are made (`KeptMemories`).
  */
 export class ExploredRemovals {
   private count = 0;
@@ -65,11 +66,7 @@ export class ExploredRemovals {
     if (this.beforeLoad === undefined && this.seen !== null) this.beforeLoad = this.seen.source;
   }
 
-  /**
-   * The scene as it is now, its map loaded; what the GM took away since it was last looked at, which each
-   * player's own memory of the floor loses too: what the party's memory lost (`lost`, a load or an edit by
-   * hand, both saved), and every floor of the scene where Forget explored areas forgot them (`forgotten`).
-   */
+  /** The scene as it is now, its map loaded; what a load took from the floor's memory since it was last looked at, which each player's own memory of the floor loses too. */
   observe(state: SceneState): readonly Removal[] {
     const source = levelExploredMask(state);
     const seen = this.seen;
@@ -81,29 +78,23 @@ export class ExploredRemovals {
       // The count of edits starts over with every load.
       if (source === before) return NO_REMOVALS;
       this.count++;
-      return [{ kind: 'lost', before, after: source }];
+      return [{ before, after: source }];
     }
     if (seen === null) return NO_REMOVALS;
-    let saved = false;
     if (state.exploredEdits !== seen.edits) {
       // An edit's save comes after it; a count and a memory changed at once are a load nobody saw begin.
       if (source !== seen.source) {
         this.count++;
         this.edited = false;
-        saved = true;
       } else if (this.shown()) this.edited = true;
     } else if (this.edited && source !== seen.source) {
       this.edited = false;
       this.count++;
-      saved = true;
     }
     const gone = source === null && seen.source !== null;
     // The floor the GM's view shows is counted by its edit, with the save that holds it.
     const forgotten = seen.forgotten !== this.seen.forgotten;
     if (gone || (seen.memoryOn && !this.seen.memoryOn) || (forgotten && !this.shown())) this.count++;
-    const removals: Removal[] = [];
-    if (saved || gone) removals.push({ kind: 'lost', before: seen.source, after: source });
-    if (this.seen.forgotten > seen.forgotten) removals.push({ kind: 'forgotten' });
-    return removals;
+    return NO_REMOVALS;
   }
 }

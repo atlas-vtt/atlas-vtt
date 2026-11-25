@@ -18,7 +18,7 @@ export interface PictureSources {
 export interface FloorSharePorts extends SceneSharePorts {
   /** Which floor of its map this scene is, for players to tell; none for a map of one floor. */
   floor?(): SharedFloor | undefined;
-  /** The picture of eyes that see by `policy` (one player's own, `narrowPolicy`), cut from the party's picture of this floor. */
+  /** The picture of eyes that see by `policy` (one player's own, `ownPolicy`), cut from the party's picture of this floor. */
   eyes(policy: SightPolicy): PictureSources;
 }
 

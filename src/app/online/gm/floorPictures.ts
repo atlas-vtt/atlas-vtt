@@ -1,16 +1,16 @@
 import type { GmMessage, PlayerResync, SharedScene } from '../protocol/index.ts';
-import { viewedLevelId } from '../../levels/sceneLevels';
-import type { ShownRollToken } from '../../services/playerRollSource';
-import { narrowPolicy, PLAYER_SIGHT_POLICY, type SightPolicy } from '../../vision/tokenSightPolicy';
-import type { SceneState, SceneStore } from './atlasView.ts';
+import { tableControlsStore } from '../../stores/tableControlsStore';
+import type { TokenSeen } from '../../vision/measureOrigin';
+import { ownPolicy, PLAYER_SIGHT_POLICY, type SightPolicy } from '../../vision/tokenSightPolicy';
+import type { SceneStore } from './atlasView.ts';
 import type { SavedMemory } from './ExploredShare.ts';
 import { ExploredRemovals } from './exploredRemovals.ts';
-import { eyesKey, floorEyes, PARTY_EYES, playerEyesKey, type Eyes } from './floorEyes.ts';
+import { eyesKey, floorEyes, PARTY_EYES, playerEyesKey, sightHides, type Eyes } from './floorEyes.ts';
 import { FloorPicture, type PictureFloor } from './floorPicture.ts';
 import type { FloorSharePorts, PictureSources } from './floorPorts.ts';
-import type { GmMarkSource } from './MarkShare.ts';
+import type { MarkAudience } from './gmMeasureAudiences.ts';
 import { FloorMemories } from './memory/FloorMemories.ts';
-import type { MemoryFloor } from './memory/memoryPorts.ts';
+import { memoryFloorOf } from './memory/PlayerMemoryEdits.ts';
 import { partyMemory } from './partyMemory.ts';
 
 /** What a player's own picture reads by: the tokens they see through, as a key, their policy and the sources cut by it. */
@@ -20,9 +20,6 @@ interface OwnLook {
   readonly sources: PictureSources;
 }
 
-/** The floor `state` shows, whose memory each player keeps apart; null without a map. */
-const memoryFloorOf = (state: SceneState): MemoryFloor | null => (state.mapPath === null ? null : { mapPath: state.mapPath, level: viewedLevelId(state) });
-
 /**
  * The pictures of one floor, one per set of eyes its players see it through (`floorEyes`): the party's,
  * which everyone shares under Shared vision, and one for each player who sees through their own characters
@@ -31,13 +28,13 @@ const memoryFloorOf = (state: SceneState): MemoryFloor | null => (state.mapPath 
  * the floor is; the scene stays the same. The party's picture is always kept: what players act with is
  * looked up in its lists, which hold every token anyone's picture holds. The party's picture sends the
  * memory the GM saved; a player's own picture sends that player's own memory (`FloorMemories`), which
- * the GM's removals reach too.
+ * the GM's removals reach too. Each player remembers what they are shown, the party's picture as well,
+ * so what they saw under Shared vision stays theirs once it is switched off.
  */
 export class FloorPictures {
   readonly party: FloorPicture;
   private readonly pictures = new Map<string, FloorPicture>();
   private readonly looks = new Map<string, OwnLook>();
-  private readonly narrowed = new WeakMap<GmMarkSource, GmMarkSource>();
   /** The key of each player's eyes, as last worked out. */
   private eyes = new Map<string, string>();
   private scene: SharedScene | null = null;
@@ -48,6 +45,10 @@ export class FloorPictures {
   private readonly memories: FloorMemories | null;
   /** How many of the players' own pictures were opened: each sends its memory with a count of removals of its own. */
   private opened = 0;
+  /** Whether sight hides anything of the floor, so its players remember what they are shown. */
+  private remembering = false;
+  /** The party's eyes, which a player shown the party's picture remembers by. */
+  private partySources: PictureSources | null = null;
 
   constructor(private readonly store: SceneStore, private readonly ports: FloorSharePorts, private readonly floor: PictureFloor) {
     this.removals = new ExploredRemovals(() => store.shown?.() ?? true);
@@ -55,8 +56,9 @@ export class FloorPictures {
     this.memories = memory === undefined ? null : new FloorMemories({
       now: () => ports.now(), setTimer: (run, ms) => ports.setTimer(run, ms), clearTimer: (timer) => ports.clearTimer(timer),
       memory,
-      players: () => [...this.eyes].flatMap(([player, key]) => (key === eyesKey(PARTY_EYES) ? [] : [player])),
-      seenBy: (player) => this.looks.get(playerEyesKey(player))?.sources.seen() ?? null,
+      // Where sight hides something, what each player is shown is theirs to remember, the party's picture under Shared vision too.
+      players: () => (this.remembering ? [...this.eyes.keys()] : []),
+      seenBy: (player) => (this.eyes.get(player) === eyesKey(PARTY_EYES) ? this.partyEyes().seen() : this.looks.get(playerEyesKey(player))?.sources.seen() ?? null),
       lighting: () => store.getState().lighting,
       changed: (player) => this.pictures.get(playerEyesKey(player))?.memoryChanged(),
     });
@@ -84,8 +86,11 @@ export class FloorPictures {
     try {
       const seats = this.ports.seats;
       const players = [...new Set([...(seats?.onlinePlayers() ?? []), ...extra])];
-      const inputs = { state: this.store.getState(), sharedVision: this.ports.atlasSettings().sharedVision === true, rules: this.ports.lightingSource()?.rules() };
+      // In remote mode everyone watches one screen, which shows the party's picture: their phones are remotes.
+      const sharedVision = this.ports.atlasSettings().sharedVision === true || tableControlsStore.getState().playMode === 'remote';
+      const inputs = { state: this.store.getState(), sharedVision, rules: this.ports.lightingSource()?.rules() };
       const eyes = floorEyes({ ...inputs, ownerOf: (id, token) => seats?.ownerOf(id, token) }, players);
+      this.remembering = sightHides(inputs.state);
       const before = this.eyes;
       this.eyes = new Map([...eyes].map(([player, seen]) => [player, eyesKey(seen)]));
       for (const [key, picture] of this.pictures) {
@@ -122,13 +127,13 @@ export class FloorPictures {
     for (const picture of this.pictures.values()) picture.update();
   }
 
-  /** Counts what the GM took away from a lit floor's memory since it last looked; a load is compared once it is done. */
+  /** Counts what the GM took away from a lit floor's memory since it last looked; what a load took reaches each player's own memory too. */
   private observeRemovals(): void {
     if (this.scene?.lit !== true) return;
     const state = this.store.getState();
     if (!state.mapLoaded || state.isMapLoading) return this.removals.loading();
     const removals = this.removals.observe(state);
-    if (removals.length > 0) this.memories?.removed(removals, state.levels?.map((level) => level.id) ?? [null]);
+    if (removals.length > 0) this.memories?.removed(removals);
   }
 
   /** Each picture again, whole, to its players; or to one player, the picture they see. */
@@ -150,30 +155,23 @@ export class FloorPictures {
     for (const picture of this.pictures.values()) picture.ownersChanged();
   }
 
-  /** The tokens of `party` (what the party sees) that each player's own picture shows too. */
-  seenByEveryone(mapPath: string, party: ReadonlyMap<string, ShownRollToken>): ReadonlyMap<string, ShownRollToken> {
-    const own = [...this.looks.values()].map(({ sources }) => sources.tokenSource()?.playerRollTokens(mapPath, [...party.keys()]) ?? new Map<string, ShownRollToken>());
-    return new Map([...party].filter(([tokenId]) => own.every((shown) => shown.has(tokenId))));
+  /** The players of the floor whose picture shows `tokenId` now: every player while all see the party's, which shows it. */
+  seers(mapPath: string, tokenId: string): string[] {
+    if (!this.split) return [...(this.ports.seats?.onlinePlayers() ?? [])];
+    return [...this.looks].flatMap(([key, { sources }]) => (sources.tokenSource()?.playerRollTokens(mapPath, [tokenId]).has(tokenId) === true ? this.members(key) : []));
   }
 
   /**
-   * The GM's marks as every player of the floor is told them: a measurement from a token, an aura
-   * around one or a range mark only where each player's own picture lists that token too. The same
-   * object for the same source, which the marks follow by identity.
+   * Who is told the GM's measurements alike, given the tokens the party sees (`seen`): everyone, by the
+   * party's picture, while all share it; else the players of each picture, a measurement from a token, an
+   * aura around one or a range mark only where their own picture lists that token.
    */
-  marks(source: GmMarkSource | null): GmMarkSource | null {
-    if (source === null) return null;
-    let narrowed = this.narrowed.get(source);
-    if (narrowed === undefined) {
-      const own = (): FloorPicture[] => [...this.pictures].flatMap(([key, picture]) => (key === eyesKey(PARTY_EYES) ? [] : [picture]));
-      narrowed = { ...source, seen: () => {
-        const party = source.seen();
-        const pictures = own();
-        return (tokenId) => party(tokenId) && pictures.every((picture) => picture.tokens.listedAlias(tokenId) !== undefined);
-      } };
-      this.narrowed.set(source, narrowed);
-    }
-    return narrowed;
+  markAudiences(seen: TokenSeen): MarkAudience[] {
+    if (!this.split) return [{ key: eyesKey(PARTY_EYES), seen }];
+    return [...this.pictures].flatMap(([key, picture]) => {
+      const players = this.members(key);
+      return players.length === 0 ? [] : [{ key, players, seen: (tokenId: string) => seen(tokenId) && picture.tokens.listedAlias(tokenId) !== undefined }];
+    });
   }
 
   /** What players see of the map beside its tokens may have changed. */
@@ -202,6 +200,16 @@ export class FloorPictures {
     return this.memories?.stop() ?? Promise.resolve();
   }
 
+  /** The players who see the floor through the eyes of `key` now. */
+  private members(key: string): string[] {
+    return [...this.eyes].flatMap(([player, seen]) => (seen === key ? [player] : []));
+  }
+
+  private partyEyes(): PictureSources {
+    this.partySources ??= this.ports.eyes(PLAYER_SIGHT_POLICY);
+    return this.partySources;
+  }
+
   /** The key of a player's eyes, worked out now for a player not yet placed; the party's while that cannot be. */
   private keyOf(player: string): string {
     if (!this.eyes.has(player)) this.assign([player]);
@@ -216,10 +224,11 @@ export class FloorPictures {
   private look(eyes: Eyes): boolean {
     const key = eyesKey(eyes);
     if (eyes.kind === 'player') {
-      const tokens = eyes.tokens.join('\n');
+      const tokens = `${eyes.tokens.join('\n')}|${eyes.owns.join('\n')}`;
       if (this.looks.get(key)?.tokens !== tokens) {
-        const owned = new Set(eyes.tokens);
-        const policy = narrowPolicy(PLAYER_SIGHT_POLICY, (token) => owned.has(token.id));
+        const seeing = new Set(eyes.tokens);
+        const owned = new Set(eyes.owns);
+        const policy = ownPolicy((token) => seeing.has(token.id), (token) => owned.has(token.id));
         this.looks.set(key, { tokens, policy, sources: this.ports.eyes(policy) });
         this.pictures.get(key)?.update();
       }
@@ -232,7 +241,7 @@ export class FloorPictures {
   private open(eyes: Eyes): FloorPicture {
     const key = eyesKey(eyes);
     const epoch = ++this.opened;
-    const members = (): string[] => [...this.eyes].flatMap(([player, seen]) => (seen === key ? [player] : []));
+    const members = (): string[] => this.members(key);
     // The party's picture goes to all at once while nobody sees by their own eyes: a player who joins meanwhile sees it too.
     const route = (to: string | undefined, send: (to?: string) => void): void => {
       if (to !== undefined) return void (this.keyOf(to) === key && send(to));

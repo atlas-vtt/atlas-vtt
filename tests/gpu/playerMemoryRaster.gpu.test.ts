@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { CANVAS_MEMORY_IMAGES } from '../../src/app/online/gm/memory/canvasMemoryImages';
 import type { MemoryPng, MemoryRaster } from '../../src/app/online/gm/memory/memoryPorts';
 import { TextureRasters } from '../../src/app/online/gm/memory/TextureRasters';
-import { exploredGrid, type ExploredTexture } from '../../src/app/pixi/lighting/ExploredTexture';
+import { KeptMemories } from '../../src/app/online/gm/memory/KeptMemories';
+import { ExploredTexture, exploredGrid } from '../../src/app/pixi/lighting/ExploredTexture';
 import { createTestRenderer } from '../../src/app/pixi/lighting/engine/__tests__/gpuTestUtils';
 import type { WallSegment } from '../../src/app/types/wallTypes';
 import type { ExploredShapes } from '../../src/app/vision/exploredShapes';
@@ -81,6 +82,52 @@ describe('a player\'s explored memory on the GM\'s renderer', () => {
     expect(await coverageOf(await raster.encode())).toEqual(before);
   });
 
+  it('stamps every player\'s memory through one scratch, each holding only what was stamped into it', async () => {
+    const { renderer, make } = await rasters();
+    const [ana, ben] = [make(), make()];
+    ana.add(sight(300, 300));
+    ben.add(sight(2700, 2700));
+    ana.add(sight(400, 300));
+    const alone = new ExploredTexture(renderer, MAP);
+    cleanup.unshift(() => alone.destroy());
+    alone.add(sight(300, 300));
+    alone.add(sight(400, 300));
+    const [own, theirs, expected] = await Promise.all([coverageOf(await ana.encode()), coverageOf(await ben.encode()), CANVAS_MEMORY_IMAGES.coverage(new Uint8Array(await (await new Promise<Blob>((resolve) => alone.toCanvas().toBlob((blob) => resolve(blob ?? new Blob()), 'image/png'))).arrayBuffer()), GRID.columns, GRID.rows)]);
+    expect(own).toEqual(expected);
+    expect(covered(theirs)).toBeGreaterThan(50_000);
+    expect(own?.some((share, index) => share > 0 && (theirs?.[index] ?? 0) > 0)).toBe(false);
+  });
+
+  it('loses what an erase by hand covers, and gets it back whole when the erase is undone', async () => {
+    const { make } = await rasters();
+    const raster = make();
+    raster.add(sight(300, 300));
+    const files = new Map<string, MemoryPng>();
+    const saved = await raster.encode();
+    if (saved === null) throw new Error('no memory');
+    files.set('ana.png', saved);
+    const kept = new KeptMemories({
+      list: () => Promise.resolve([...files.keys()]),
+      read: (path) => Promise.resolve(files.get(path) ?? null),
+      write: (path, png) => Promise.resolve(void files.set(path, png)),
+      remove: (path) => Promise.resolve(void files.delete(path)),
+    }, CANVAS_MEMORY_IMAGES);
+    const before = await coverageOf(saved);
+    // The west half of what Ana saw: up to x 300.
+    const taken = kept.erase('Scenes/Cave.atlasmap', null, [[{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: MAP.height }, { x: 0, y: MAP.height }]], GRID);
+    expect((await taken).map(({ path }) => path)).toEqual(['ana.png']);
+    const erased = await coverageOf(files.get('ana.png') ?? null);
+    // The column the edge crosses keeps the share of it the erase does not cover, as the party's own erase leaves it.
+    const covered = (coverage: Uint8Array | null, columns: (column: number) => boolean): number => coverage?.reduce((count, share, index) => count + (share > 0 && columns(index % GRID.columns) ? 1 : 0), 0) ?? -1;
+    const west = (column: number): boolean => column < Math.floor(300 * GRID.scale);
+    const east = (column: number): boolean => column >= Math.ceil(300 * GRID.scale);
+    expect(covered(before, west)).toBeGreaterThan(50_000);
+    expect(covered(erased, west)).toBe(0);
+    expect(covered(erased, east)).toBe(covered(before, east));
+    await kept.restore('Scenes/Cave.atlasmap', taken);
+    expect(await coverageOf(files.get('ana.png') ?? null)).toEqual(before);
+  });
+
   it('costs the GM a stamp and a read-back per player that moved', async () => {
     const { renderer, make } = await rasters();
     const memories = Array.from({ length: PLAYERS }, () => make());
@@ -115,7 +162,19 @@ describe('a player\'s explored memory on the GM\'s renderer', () => {
         encodes.push(performance.now() - start);
       }
     }
-    const report = `[player memory] ${device}, ${GRID.columns}×${GRID.rows} texels, per player: stamp ${median(drawn).toFixed(2)} ms on the main thread, ${median(stamps).toFixed(2)} ms drawn (max ${Math.max(...stamps).toFixed(2)}); read-back ${median(readBacks).toFixed(2)} ms on the main thread, ${median(encodes).toFixed(2)} ms with its PNG`;
+    // Under Shared vision every player is stamped with the party's sight: the same shapes, built once in the scratch they share.
+    const party: number[] = [];
+    for (let round = 0; round < 12; round += 1) {
+      const shapes = sight(1500 + round * 35, 900);
+      for (const raster of memories) {
+        const start = performance.now();
+        raster.add(shapes);
+        gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+        party.push(performance.now() - start);
+      }
+    }
+    const textures = renderer.texture.managedTextures.length;
+    const report = `[player memory] ${device}, ${GRID.columns}×${GRID.rows} texels, ${PLAYERS} players hold ${textures} GPU textures; per player: stamp ${median(drawn).toFixed(2)} ms on the main thread, ${median(stamps).toFixed(2)} ms drawn (max ${Math.max(...stamps).toFixed(2)}), ${median(party).toFixed(2)} ms drawn for the party's shapes; read-back ${median(readBacks).toFixed(2)} ms on the main thread, ${median(encodes).toFixed(2)} ms with its PNG`;
     console.info(report);
     // Bounds for a software renderer (headless Chromium's SwiftShader); a graphics card does far less.
     expect(median(stamps), report).toBeLessThan(60);

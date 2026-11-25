@@ -52,7 +52,7 @@ $slide-shade: #0a0806;
     animation: atlas-intro-rise 900ms $intro-ease var(--atlas-intro-body-at) both;
   }
 
-  .atlas-welcome[data-opening] > :is(.atlas-welcome__foot, .atlas-welcome__close),
+  .atlas-welcome[data-opening] > .atlas-welcome__foot,
   .atlas-welcome[data-opening] .atlas-welcome-carousel[data-opening] .atlas-welcome-carousel__stories {
     animation: atlas-intro-rise 800ms $intro-ease var(--atlas-intro-foot-at) both;
   }

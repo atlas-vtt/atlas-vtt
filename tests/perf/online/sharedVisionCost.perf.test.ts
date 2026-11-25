@@ -139,8 +139,8 @@ class CountingRaster implements MemoryRaster {
   }
 }
 
-/** How players see: the party's picture (Shared vision on), their own, or their own with an explored memory each. */
-type Mode = 'shared' | 'own' | 'own memory';
+/** How players see: the party's picture (Shared vision on) or their own, each with or without an explored memory per player. */
+type Mode = 'shared' | 'shared memory' | 'own' | 'own memory';
 
 /** Who was sent which kinds of message: to each player alone, or to all (''). */
 function addressees(table: ShareHarness): Map<string, Set<string>> {
@@ -151,10 +151,10 @@ function addressees(table: ShareHarness): Map<string, Set<string>> {
 
 /** One table playing STEPS moves, each followed by one tick of the shares' pace; the share's work per tick, in ms, and who was sent what. */
 async function play(mode: Mode): Promise<{ readonly ticks: number[]; readonly sent: Map<string, Set<string>> }> {
-  const memory = mode === 'own memory' ? { rasters: { create: (): MemoryRaster => new CountingRaster() }, store: new FakeMemoryStore(), images: { coverage: () => Promise.resolve(null), png: () => Promise.resolve(new Uint8Array(0)) } } : undefined;
+  const memory = mode.endsWith('memory') ? { rasters: { create: (): MemoryRaster => new CountingRaster() }, store: new FakeMemoryStore(), images: { coverage: () => Promise.resolve(null), png: () => Promise.resolve(new Uint8Array(0)) } } : undefined;
   const table = shareHarness(scene(0), new Map([['maps/cave.png', pngOf(MAP.width, MAP.height)]]), seats, undefined, undefined, memory);
   const gm = new GmRenderer();
-  table.settings = { ...PLAYER_SETTINGS, sharedVision: mode === 'shared' };
+  table.settings = { ...PLAYER_SETTINGS, sharedVision: mode.startsWith('shared') };
   gm.draw(table, scene(0));
   table.share.start();
   await table.set(scene(0));
@@ -178,34 +178,42 @@ const median = (values: readonly number[]): number => [...values].sort((a, b) =>
  * What Atlas Online costs the GM per tick (one store change, then the 66 ms pace of the token list,
  * inputs and layers) on a floor of six players, 40 tokens, 320 walls with 40 doors, eight readable pins
  * and four lights, a monster and a character moving each tick: one picture with Shared vision on, the
- * party's and six of the players' own with it off, and those with each player's own explored memory
+ * party's and six of the players' own with it off, and each of those with every player's explored memory
  * stamped at its pace (`MEMORY_STAMP_MS`: the main thread's part of it; the stamps and read-backs on the
  * graphics card are measured in `playerMemoryRaster.gpu.test.ts`). The GM's renderer's own model is
  * worked out outside the timed part, as Atlas draws it with or without a table. Measured on 2026-11-25:
- * 0.66 ms a tick shared, 2.1 ms with own pictures, with or without their memories: only a player whose own
- * sight changed is stamped, and that sight is cut from the party's without tracing.
+ * 0.62 ms a tick shared, 1.9 ms with own pictures, with or without their memories: only a player whose own
+ * sight changed is stamped, and that sight is cut from the party's without tracing. Under Shared vision every
+ * player is stamped with the party's sight whenever it changes, its shapes made once for all of them.
  * Run alone (`npm run test:perf`).
  */
 describe('six players\' own pictures', () => {
-  it('cost the GM under 6 ms a tick, their own explored memories included', async () => {
-    const ticks: Record<Mode, number[]> = { shared: [], own: [], 'own memory': [] };
+  it('cost the GM under 6 ms a tick, every player\'s explored memory included', async () => {
+    const ticks: Record<Mode, number[]> = { shared: [], 'shared memory': [], own: [], 'own memory': [] };
     for (let run = 0; run < RUNS; run += 1) {
       const on = await play('shared');
+      CountingRaster.stamps = 0;
+      const onRemembered = await play('shared memory');
+      const sharedStamps = CountingRaster.stamps;
       const off = await play('own');
       CountingRaster.stamps = 0;
       const remembered = await play('own memory');
       // The work timed is the work meant: one picture to all, else each player's own lists, doors and pins, and their memory.
       for (const player of PLAYERS) expect([...(on.sent.get(player) ?? [])]).toEqual(['mine']);
+      for (const player of PLAYERS) expect([...(onRemembered.sent.get(player) ?? [])]).toEqual(['mine']);
       for (const player of PLAYERS) expect([...(off.sent.get(player) ?? [])]).toEqual(expect.arrayContaining(['tokens', 'sight', 'doors', 'pins', 'mine']));
       for (const player of PLAYERS) expect([...(remembered.sent.get(player) ?? [])]).toEqual(expect.arrayContaining(['explored']));
+      expect(sharedStamps).toBeGreaterThan(PLAYERS.length * (STEPS / 2));
       expect(CountingRaster.stamps).toBeGreaterThan(STEPS / 2);
       ticks.shared.push(median(on.ticks));
+      ticks['shared memory'].push(median(onRemembered.ticks));
       ticks.own.push(median(off.ticks));
       ticks['own memory'].push(median(remembered.ticks));
     }
     const range = (values: number[]): string => `${Math.min(...values).toFixed(2)}–${Math.max(...values).toFixed(2)}`;
     const line = (mode: Mode): string => `${mode} ${median(ticks[mode]).toFixed(2)} ms (${range(ticks[mode])})`;
-    console.info(`[shared vision] per tick, median of ${RUNS} runs of ${STEPS}: ${line('shared')}, ${line('own')}, ${line('own memory')}`);
+    console.info(`[shared vision] per tick, median of ${RUNS} runs of ${STEPS}: ${line('shared')}, ${line('shared memory')}, ${line('own')}, ${line('own memory')}`);
     expect(median(ticks['own memory'])).toBeLessThan(timeBound(6));
+    expect(median(ticks['shared memory'])).toBeLessThan(timeBound(6));
   }, 300_000);
 });

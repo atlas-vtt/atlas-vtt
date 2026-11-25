@@ -1,9 +1,19 @@
 import { MAX_ABILITY_NAME, type GmMessage, type SharedRoll } from '../protocol/index.ts';
-import { rollForPlayers, type RollSceneLookup } from '../../services/playerRollSource';
+import { rollForPlayers, type ShownRollToken } from '../../services/playerRollSource';
 import type { DiceRollOrigin } from '../../types/diceRollOrigin';
 import type { DiceRollResult } from '../../types/diceTypes';
 import type { DiceSource } from './atlasDice.ts';
+import { unnamedRoll } from './log/logEntries.ts';
 import type { LoggedRoll } from './log/TableLog.ts';
+
+/** A token a roll names, as the players' picture shows it, and to whom: everyone (null), or the players whose own picture shows it. */
+export interface NamedToken {
+  readonly shown: ShownRollToken;
+  readonly to: readonly string[] | null;
+}
+
+/** How a roll is prepared for players: no names or pictures of the GM's vault, which they are sent apart. */
+const PLAYERS_VIEW = { showNames: false, imageSrc: (): null => null };
 
 /** What a roll carries into the log beside its result: a flavor, the token it is said by, the roll button it answers. */
 export type RollNotes = Pick<LoggedRoll, 'flavor' | 'speaker' | 'request'>;
@@ -12,8 +22,10 @@ export interface RollSharePorts {
   send(body: GmMessage, to?: string): void;
   /** Whether players see the GM's rolls made without a roll mode: the player view's "show dice rolls" setting. */
   showGmRolls(): boolean;
-  /** Which token of the shared scene the players see a roll's origin as, as the local player window asks. */
-  scene(): RollSceneLookup | null;
+  /** The token of the shared scene a roll's origin names, as players see it and who does; null where none does. */
+  named(origin: DiceRollOrigin): NamedToken | null;
+  /** The players at the table now, who all hear every roll. */
+  players(): readonly string[];
   /** The id players know a token of the shared scene by. */
   alias(tokenId: string): string;
   /** Takes the roll into the table's log, with the token Atlas rolled it for (`source`), which only the GM's log names. */
@@ -43,8 +55,8 @@ export function sharedRoll(result: DiceRollResult): SharedRoll {
  * Every roll of the shared tab, as its bus announces it, to the players: players' rolls always, the
  * GM's public rolls from the log always, the GM's other rolls only while the player view shows dice
  * rolls. Each is prepared as the local player window prepares it (`rollForPlayers`): it names its
- * token only when the players see that token, and only by the id they know it by; who rolled it is a
- * relay id or `'gm'`.
+ * token only to the players whose picture shows that token (`unnamedRoll` for the others: once to all
+ * where everyone is told alike), and only by the id they know it by; who rolled it is a relay id or `'gm'`.
  */
 export class RollShare {
   private readonly ports: RollSharePorts;
@@ -87,14 +99,22 @@ export class RollShare {
     const { who, notes, chosenPublic } = this.making ?? { who: 'gm', notes: {}, chosenPublic: false };
     // A GM's roll the players are not shown is in the GM's own log only.
     if (who === 'gm' && !chosenPublic && !this.ports.showGmRolls()) return void this.ports.logged?.({ who, roll: sharedRoll(result), token: null, shared: false, ...notes }, result.source);
-    const dice = this.dice;
-    const scene = this.ports.scene();
     // Only an origin in this tab can name a token the shared scene shows.
-    const local = origin !== undefined && origin.viewId === dice?.viewId ? origin : undefined;
-    const prepared = rollForPlayers(result, local, scene, { showNames: false, imageSrc: () => null });
+    const local = origin !== undefined && origin.viewId === this.dice?.viewId ? origin : undefined;
+    const named = local === undefined ? null : this.ports.named(local);
+    const prepared = rollForPlayers(result, local, named && { shownToken: () => named.shown }, PLAYERS_VIEW);
     const token = prepared.sourcePresentation && local !== undefined ? this.ports.alias(local.tokenId) : null;
     const roll = sharedRoll(prepared.result);
-    this.ports.send({ t: 'roll', who, result: roll, token });
-    this.ports.logged?.({ who, roll, token, shared: true, ...notes }, result.source);
+    const players = this.ports.players();
+    const seeing = token === null || named?.to == null ? players : players.filter((player) => named.to?.includes(player));
+    const everyone = seeing.length === players.length;
+    if (everyone || seeing.length === 0) {
+      const told = everyone ? { roll, token } : { roll: unnamedRoll(roll), token: null };
+      this.ports.send({ t: 'roll', who, result: told.roll, token: told.token });
+      this.ports.logged?.({ who, ...told, shared: true, ...notes }, result.source);
+      return;
+    }
+    for (const player of players) this.ports.send(seeing.includes(player) ? { t: 'roll', who, result: roll, token } : { t: 'roll', who, result: unnamedRoll(roll), token: null }, player);
+    this.ports.logged?.({ who, roll, token, namedFor: seeing, shared: true, ...notes }, result.source);
   };
 }

@@ -136,7 +136,8 @@ export class FloorShare {
     // An aura names its token by the id the token list gives it
     this.marks = new MarkShare({
       ...ports, cursorsShown, tokenAlias: (tokenId) => this.tokens.alias(tokenId), keptBy: (measure) => this.measures.told(measure),
-      gmMarks: () => this.pictures.marks(ports.gmMarks?.() ?? null),
+      gmMarks: () => ports.gmMarks?.() ?? null,
+      audiences: (seen) => this.pictures.markAudiences(seen),
       // A drawing under way is followed only where a request to make it would be taken.
       strokesTaken: (player, scene) => (this.drawings.refusal(player, scene) === null ? { cell: drawCell(store.getState().grid) } : null),
       fog: () => this.pictures.party.layers.committedFog(),
@@ -274,9 +275,9 @@ export class FloorShare {
     return this.ports.tokenSource()?.playerRollTokens(mapPath, tokenIds) ?? new Map();
   }
 
-  /** The tokens among `tokenIds` every player of this floor sees now, by whoever's eyes, while it shows `mapPath`. */
-  shownToAll(mapPath: string, tokenIds: readonly string[]): ReadonlyMap<string, ShownRollToken> {
-    return this.pictures.seenByEveryone(mapPath, this.shown(mapPath, tokenIds));
+  /** The players of this floor whose picture shows `tokenId` now, while it shows `mapPath`. */
+  seers(mapPath: string, tokenId: string): string[] {
+    return this.store.getState().mapPath === mapPath ? this.pictures.seers(mapPath, tokenId) : [];
   }
 
   /** Looks again every `TOKEN_POLL_MS`: the map's measurement may change without a store change. */

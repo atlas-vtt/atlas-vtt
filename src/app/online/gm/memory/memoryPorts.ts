@@ -1,5 +1,5 @@
 import type { ExploredShapes } from '../../../vision/exploredShapes';
-import type { MapBounds } from '../../../vision/visibility';
+import type { MapBounds, Polygon } from '../../../vision/visibility';
 
 /** PNG bytes of an explored memory: white, its coverage as alpha, at the memory's own size (`exploredGrid`). */
 export type MemoryPng = Uint8Array<ArrayBuffer>;
@@ -43,12 +43,35 @@ export interface MemoryStore {
   remove(floor: MemoryFloor, player: string): Promise<void>;
 }
 
+/** A memory's size in texels, and how many of them a world pixel is (`exploredGrid`). */
+export interface MemoryGrid {
+  readonly columns: number;
+  readonly rows: number;
+  readonly scale: number;
+}
+
 /** Memories as coverage, one byte per texel row by row, for taking away what the GM took from the party's. */
 export interface MemoryImages {
   /** The coverage of a PNG at `width` × `height` texels; null for one that cannot be read. */
   coverage(png: MemoryPng, width: number, height: number): Promise<Uint8Array | null>;
   /** A PNG of `coverage`, `width` × `height` texels. */
   png(coverage: Uint8Array, width: number, height: number): Promise<MemoryPng>;
+  /** The coverage of `polygons` (world pixels, together) on a memory of `grid`, edges smoothed. */
+  drawn(polygons: readonly Polygon[], grid: MemoryGrid): Promise<Uint8Array>;
+}
+
+/** A floor's players' memories a running table holds, which the store's files of that floor must not be changed under. */
+export interface MemoryHolder {
+  /** The path of the map whose floor it holds; null while it holds none. */
+  mapPath(): string | null;
+  /** Writes every memory it holds and sends none until `done` settles, then reads them again; settles once they are written. */
+  yieldTo(done: Promise<void>): Promise<void>;
+}
+
+/** The memories running tables hold, which the GM's edits by hand let go of while they change the store's files. */
+export interface LiveMemories {
+  /** Takes in `holder`; returns the function that lets it go. */
+  hold(holder: MemoryHolder): () => void;
 }
 
 /** What players' own explored memories are kept with; without it a player remembers only what their page saw. */
@@ -56,4 +79,6 @@ export interface MemoryPorts {
   readonly rasters: MemoryRasters;
   readonly store: MemoryStore;
   readonly images: MemoryImages;
+  /** Where the floor's memories are held while they are read here, so the GM's edits by hand reach them. */
+  readonly live?: LiveMemories;
 }
