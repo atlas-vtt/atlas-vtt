@@ -285,11 +285,25 @@ function densestSupported(image: GrayImage, gridType: GridType, rivals: RefinedG
 /**
  * Of the sizes that are multiples of each other, the densest that is no finer copy of the map's
  * grid (`isFinerCopy`). Counting edges cannot choose here: a grid drawn on a dungeon's floors alone
- * has most edges of any size on blank paper.
+ * has most edges of any size on blank paper. Where every size of the strongest fit is a finer copy,
+ * none is the map's grid: on lines dotted every fifth of a cell, a lattice of three or six fifths has
+ * a dot under each of its long edges and outscores the grid, though only every fifth of its lines is
+ * the map's. The grid is then the strongest fit that is no finer copy, at its densest such size.
  */
 function densestSquareGrid(image: GrayImage, best: RefinedGrid, rivals: RefinedGrid[]): RefinedGrid {
-  const sizes = rivals.filter((fit) => fit === best || areMultiples(best, fit)).sort((a, b) => a.cellSize - b.cellSize);
-  return sizes.find((fit) => isFinerCopy(image, fit) === false) ?? best;
+  const verdicts = new Map<RefinedGrid, boolean | null>();
+  const verdict = (fit: RefinedGrid): boolean | null => {
+    if (!verdicts.has(fit)) verdicts.set(fit, isFinerCopy(image, fit));
+    return verdicts.get(fit)!;
+  };
+  const sizesOf = (anchor: RefinedGrid): RefinedGrid[] => rivals.filter((fit) => fit === anchor || areMultiples(anchor, fit)).sort((a, b) => a.cellSize - b.cellSize);
+  const own = (fit: RefinedGrid): boolean => verdict(fit) === false;
+  const sizes = sizesOf(best);
+  const found = sizes.find(own);
+  if (found) return found;
+  if (!sizes.every((fit) => verdict(fit) === true)) return best;
+  const grid = rivals.filter(own).reduce<RefinedGrid | null>((strongest, fit) => (!strongest || fit.support > strongest.support ? fit : strongest), null);
+  return grid ? (sizesOf(grid).find(own) ?? grid) : best;
 }
 
 /**
