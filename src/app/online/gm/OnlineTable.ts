@@ -37,6 +37,7 @@ export type { OnlineTableEvents };
 import { FoundShare } from './pins/FoundShare.ts';
 import { CANVAS_MEMORY_IMAGES } from './memory/canvasMemoryImages.ts';
 import { VaultMemoryStore } from './memory/VaultMemoryStore.ts';
+import { runInBackground } from '../../utils/backgroundTask';
 
 /** How often the presented tab is looked for, and the shared one checked. */
 const WATCH_MS = 1_000;
@@ -125,6 +126,7 @@ export class OnlineTable {
     });
     this.openScenes = this.assets === null ? null : new OpenScenes(app, this.assets.storing);
     const stored = this.assets?.storing;
+    const memories = new VaultMemoryStore(app, seats.campaignId, (player) => seats.codeOf(player) !== null);
     this.log = new TableLog({
       send: (body, to) => this.connection.send(body, to),
       clock: () => Date.now(),
@@ -187,7 +189,7 @@ export class OnlineTable {
         sendLive: (body, key, to) => this.covers.sendLive(body, key, to),
         readImage: (path) => readVaultImage(app, path),
         stored,
-        memory: { store: new VaultMemoryStore(app, seats.campaignId), images: CANVAS_MEMORY_IMAGES },
+        memory: { store: memories, images: CANVAS_MEMORY_IMAGES },
         isLive: (binding) => this.watch.isLive(binding),
         randomId: () => randomHex(12),
         logRoll: (roll) => this.log.rolled(roll),
@@ -241,7 +243,7 @@ export class OnlineTable {
     }, this.gate);
     // Each player hears only how far the assets they were sent references of have come.
     this.connection.onSent = (text, to) => this.assets?.sent(text, to);
-    this.roster = new TableRoster(seats, this.connection, { kick: (player) => this.kick(player), turnAway: (player) => this.connection.kick(player), joinCode: () => this.gate.settings.code });
+    this.roster = new TableRoster(seats, this.connection, { kick: (player) => this.kick(player), turnAway: (player) => this.connection.kick(player), joinCode: () => this.gate.settings.code, removed: (player) => runInBackground(memories.forget(player), 'Removing what a player explored') });
     this.stopOwnership = ownership.onChange(() => this.bound()?.share.ownersChanged());
   }
 

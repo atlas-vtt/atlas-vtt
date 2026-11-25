@@ -1,7 +1,7 @@
 import { TFile, type App } from 'obsidian';
 import { campaignFolderOf } from '../../../campaigns/campaignPaths';
 import { CampaignFiles } from '../../../campaigns/CampaignFiles';
-import { currentMapPath, floorMemoryFolder } from '../../../campaigns/exploredFolders';
+import { currentMapPath, floorMemoryFolder, trashPlayerMemories } from '../../../campaigns/exploredFolders';
 import { ensureFolder } from '../../../plugin/vaultFolders';
 import type { MemoryFloor, MemoryPng, MemoryStore } from './memoryPorts.ts';
 
@@ -14,10 +14,11 @@ const ownBuffer = (png: MemoryPng): ArrayBuffer => (png.byteOffset === 0 && png.
 /**
  * Players' explored memories in the played campaign's folder, beside its `players.json` (`floorMemoryFolder`).
  * The files follow the campaign's folder and the map's path when either is renamed, go with the campaign or
- * the scene when it is deleted, and sync like the campaign's other files. A campaign without a folder keeps nothing.
+ * the scene when it is deleted, and sync like the campaign's other files. A campaign without a folder keeps nothing,
+ * and nothing is written for a player who is no longer one of its players (`isPlayer`): their files went with them.
  */
 export class VaultMemoryStore implements MemoryStore {
-  constructor(private readonly app: App, private readonly campaignId: string) {}
+  constructor(private readonly app: App, private readonly campaignId: string, private readonly isPlayer: (player: string) => boolean) {}
 
   async read(floor: MemoryFloor, player: string): Promise<MemoryPng | null> {
     const file = this.fileOf(floor, player);
@@ -31,7 +32,7 @@ export class VaultMemoryStore implements MemoryStore {
 
   async write(floor: MemoryFloor, player: string, png: MemoryPng): Promise<void> {
     const folder = this.folderOf(floor);
-    if (folder === null || !PLAYER_ID.test(player)) return;
+    if (folder === null || !PLAYER_ID.test(player) || !this.isPlayer(player)) return;
     const file = this.fileOf(floor, player);
     if (file !== null) return this.app.vault.modifyBinary(file, ownBuffer(png));
     await ensureFolder(this.app, folder);
@@ -49,10 +50,21 @@ export class VaultMemoryStore implements MemoryStore {
     if (file !== null) await this.app.fileManager.trashFile(file);
   }
 
+  /** Trashes everything `player` explored, of every map, in the campaign: they were removed from it. */
+  async forget(player: string): Promise<void> {
+    const campaign = this.campaignFolder();
+    if (campaign !== null && PLAYER_ID.test(player)) await trashPlayerMemories(this.app, campaign, player);
+  }
+
   /** The folder of `floor`'s memories in the campaign's folder; null while the campaign has none. */
   private folderOf(floor: MemoryFloor): string | null {
+    const campaign = this.campaignFolder();
+    return campaign === null ? null : floorMemoryFolder(campaign, currentMapPath(this.app, floor.mapPath), floor.level);
+  }
+
+  private campaignFolder(): string | null {
     const campaignFile = CampaignFiles.forApp(this.app)?.pathOf(this.campaignId);
-    return campaignFile == null ? null : floorMemoryFolder(campaignFolderOf(campaignFile), currentMapPath(this.app, floor.mapPath), floor.level);
+    return campaignFile == null ? null : campaignFolderOf(campaignFile);
   }
 
   private fileOf(floor: MemoryFloor, player: string): TFile | null {
