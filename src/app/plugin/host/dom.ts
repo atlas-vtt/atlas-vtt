@@ -10,4 +10,6 @@ export const pluginDomHost: DomHost = {
   createVideo: (doc) => doc.adoptNode(createEl('video')),
   ownerWindow: node => node.win,
   activeDocument: () => activeDocument,
+  // Plugin code runs in the main window, so its `window` is that window whichever window has focus.
+  mainDocument: () => window.document,
 };

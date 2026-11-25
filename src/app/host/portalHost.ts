@@ -11,9 +11,10 @@ const hosts = new Set<HTMLElement>();
  * keeps them in the order they were opened. React listens for events on every element it renders into
  * and never lets go: rendered into `<body>`, each copy of Atlas a reload left behind stayed attached to the
  * page, and in memory, for good. It has `display: contents`, so it adds no box, no stacking context and no
- * containing block (`styles/_portal-host.scss`). Without `doc`, the document of the window that has focus.
+ * containing block (`styles/_portal-host.scss`). Without `doc`, the main window's: Atlas' views stay there
+ * (`keepAtlasInMainWindow`), so what they open must not follow the focus into a popout such as the player window.
  */
-export function portalHost(doc: Document = getDomHost().activeDocument()): HTMLElement {
+export function portalHost(doc: Document = getDomHost().mainDocument()): HTMLElement {
   for (const host of hosts) {
     if (!host.isConnected) hosts.delete(host);
     else if (host.ownerDocument === doc) return host;

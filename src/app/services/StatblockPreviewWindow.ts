@@ -87,7 +87,7 @@ export class StatblockPreviewWindow {
     originContext?: TokenRollContext,
     /**
      * Where the window joins the page: a map's note preview layer, so overlays of the map (the DM screen, its
-     * sound page) and dialogs stand above it, else the portal host of the focused window's document.
+     * sound page) and dialogs stand above it, else the main window's portal host.
      */
     host: HTMLElement = portalHost(),
   ) {
