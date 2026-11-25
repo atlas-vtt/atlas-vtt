@@ -32,9 +32,15 @@ $dice-gap: $spacing-xs;
   border: none;
   box-shadow: none;
   cursor: pointer;
+  transition: transform $transition-fast $transition-ease;
 
   &:hover {
     background: transparent;
+  }
+
+  // Pressed in, as the colour swatches are, instead of tinted.
+  &:active {
+    transform: scale(0.94);
   }
 }
 
