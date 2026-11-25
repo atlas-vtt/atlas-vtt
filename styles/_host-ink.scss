@@ -1,0 +1,18 @@
+// The inks of Atlas' own text while the GM keeps their own theme. WCAG 2.1 AA asks 4.5:1 of text (1.4.3); Obsidian's
+// default faint ink, in which Atlas sets placeholders, counts, hints and keys, is 2.3:1 on white and 3.0:1 on its dark
+// page, its light red 4.2:1 and its light accent, of links, 4.3:1 on white. Inside Atlas each is drawn from the
+// theme's own colours, the faint ink part of the way to the muted one, the red and the accent a little darker, just
+// far enough to reach 4.5:1 on a field, a sidebar and a hovered row under Obsidian's default theme
+// (tests/unit/interfaceContrast.test.ts). Atlas' looks set their inks themselves (styles/looks/atlas-looks.css). The
+// portal host holds Atlas' menus, dialogs and tooltips; linked statblocks stand in notes, notices in Obsidian's layer.
+$atlas-roots: ':is(.atlas-vtt-plugin, .atlas-portal-host, .atlas-linked-statblock, .atlas-notice)';
+
+body.theme-dark:not(.atlas-look) #{$atlas-roots} {
+  --text-faint: color-mix(in srgb, var(--color-base-50), var(--color-base-70) 61%);
+}
+
+body.theme-light:not(.atlas-look) #{$atlas-roots} {
+  --text-faint: color-mix(in srgb, var(--color-base-50), var(--color-base-70) 80%);
+  --text-error: color-mix(in srgb, var(--color-red), black 5%);
+  --text-accent: color-mix(in oklch, var(--color-accent) 96%, black);
+}

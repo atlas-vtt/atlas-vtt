@@ -74,7 +74,7 @@ body.atlas-look.theme-light {
   --color-base-40: #a38d66;
   --color-base-50: #8d7c5f;
   --color-base-60: #7a694b;
-  --color-base-70: #6d5c40;
+  --color-base-70: #67563b; /* muted ink: 4.5:1 on a button and the Sound page's keys */
   --color-base-100: #3a2c1a;
 
   /* overlays, hover tints and hairlines are mixed from ink and paper,
@@ -112,7 +112,7 @@ body.atlas-look.theme-light:not(.atlas-look-scifi) {
 }
 
 body.atlas-look.theme-dark {
-  --atlas-theme-red: #d4756b;
+  --atlas-theme-red: #d6776c; /* 4.5:1 on a table's head */
   --atlas-theme-rule: #5c503c;
   --atlas-theme-paper: #e9dfc8;
 
@@ -145,7 +145,7 @@ body.atlas-look.theme-dark {
   --code-background: #2a241c;
 
   /* links */
-  --text-accent: #d4756b;
+  --text-accent: #d6776c;
   --text-accent-hover: #e08a80;
 
   /* buttons and dropdowns: one step above the page */
@@ -540,6 +540,7 @@ body.atlas-look.theme-light.atlas-look-scifi {
   --interactive-hover: var(--color-base-25);
   --interactive-accent: #16130f;
   --interactive-accent-hover: #3a342b;
+  --text-error: #da1c3b; /* Obsidian's light red, dark enough for 4.5:1 on the page */
 
   /* the accent is the ink, as on a plate of Atlas Online: #16130f */
   --accent-h: 34;
@@ -571,6 +572,7 @@ body.atlas-look.theme-dark.atlas-look-scifi {
   --mono-rgb-0: 18, 16, 13;
   --mono-100: #e9decb;
   --mono-rgb-100: 233, 222, 203;
+  --text-faint: #aaa190; /* 4.5:1 on a field on a sidebar */
   --text-accent: #e9decb;
   --text-accent-hover: #f4ecdd;
   --text-on-accent: #12100d;
@@ -579,6 +581,8 @@ body.atlas-look.theme-dark.atlas-look-scifi {
   --interactive-accent: #e9decb;
   --interactive-accent-hover: #f4ecdd;
   --menu-background: var(--color-base-20);
+  /* selected text in a field keeps 4.5:1: Obsidian's 33 % of a chalk accent leaves 4.1:1 */
+  --text-selection: color-mix(in oklch, var(--interactive-accent) 26%, transparent);
 
   /* the accent is the ink, chalk at night: #e9decb */
   --accent-h: 38;
