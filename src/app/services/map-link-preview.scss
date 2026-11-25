@@ -45,21 +45,26 @@
   border-radius: 0 0 var(--atlas-panel-inner-radius) var(--atlas-panel-inner-radius);
 }
 
-.atlas-map-link-preview__button {
+// Under the card's class too: Obsidian's own button rule outranks a single class and would keep its colours.
+.atlas-map-link-preview .atlas-map-link-preview__button {
   pointer-events: auto;
   padding: $spacing-s $spacing-l;
   border: none;
   border-radius: $radius-m;
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
+  background: var(--interactive-normal);
+  color: var(--text-normal);
   font-size: var(--font-ui-small);
   font-weight: 500;
   cursor: pointer;
   transition: background-color $transition-fast $transition-ease,
+              color $transition-fast $transition-ease,
               transform $transition-fast $transition-ease;
 
-  &:hover {
+  // On the accent the text is the accent's own: dark on a light accent, light on a dark one.
+  &:hover,
+  &:active {
     background: var(--interactive-accent-hover);
+    color: var(--text-on-accent);
   }
 
   &:active {

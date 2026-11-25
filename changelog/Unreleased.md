@@ -70,3 +70,4 @@
 - The asset manager's collection picker opens with its search ready: type a name or use the arrow keys at once, without clicking into the field first
 - DM screen: in the list of notes to link to a map, the arrow keys move the highlight and Enter links the note after a click in the list too
 - While you align the grid, a click on the map only places the alignment's mark, whatever tool is in hand: it no longer opens the pin picker, paints fog, draws or moves a token as well, and a drag pans the map
+- The Open map button on the preview of a link to another map stays readable with a light accent colour: its text turns dark while the pointer is on it or it is pressed
