@@ -71,7 +71,7 @@ import { SpatialAudioEngine } from './audio/SpatialAudioEngine';
 import { mapMeasurementSettings } from './services/mapMeasurementSettings';
 import { onMapRulesChange, rulesLookup } from './services/mapRules';
 import { findAtlasLeafByViewId } from './utils/atlasLeafLookup';
-import { requestRender } from './pixi/RenderScheduler';
+import { addBeforeRender, BEFORE_RENDER_ORDER, requestRender } from './pixi/RenderScheduler';
 import { MAP_LAYER_Z } from './pixi/mapLayerOrder';
 import { shownRollTokens } from './pixi/playerRollTokens';
 import type { PlayerBadgeNumbers } from './pixi/token-renderer/PlayerBadgeNumbers';
@@ -460,6 +460,8 @@ export class PixiRendererOrchestrator { // Renamed class
         this.eventBus
     );
     this.selectionManager.barsProvider = (tokenId) => this.tokenRenderer?.bars(tokenId) ?? NO_BARS;
+    const selection = this.selectionManager;
+    this.eventBusUnsubscribers.push(addBeforeRender(this.pixiAppManager.app, () => selection.drawAskedOverlay(), BEFORE_RENDER_ORDER.selection));
 
     // Initialize FogOfWarRenderer after pins so it can be on top when active
     this.fogRenderer = new FogOfWarRenderer(viewport, this.app, this.eventBus, this.store, () => this.getSceneMapRect());
@@ -1309,7 +1311,7 @@ export class PixiRendererOrchestrator { // Renamed class
   }
 
   private makeTokenRenderer(viewport: Viewport, grid: GridSystem): TokenRenderer {
-    const tokens = new TokenRenderer(this.obsApp, viewport, grid, () => this.selectionManager?.updateSelectionOverlay(), this.store, this.eventBus, this.viewId, this.shownPlaces, this.tokenArt);
+    const tokens = new TokenRenderer(this.obsApp, viewport, grid, () => { this.selectionManager?.requestSelectionOverlay(); requestRender(this.pixiAppManager.app); }, this.store, this.eventBus, this.viewId, this.shownPlaces, this.tokenArt);
     tokens.setPixiApp(this.pixiAppManager.app);
     return tokens;
   }
