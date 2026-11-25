@@ -11,7 +11,7 @@ import type { MosaicCanvasViewport } from '../mosaicCanvas/mosaicCanvasTypes';
 import type { PixelRect } from '../mosaicCanvas/pyramid';
 import type { MapStretch } from '../../grid/mapStretch';
 import { requestRender } from '../RenderScheduler';
-import { TextureCache } from '../token-renderer/TextureCache';
+import type { TokenArt } from './levels/BelowTokens';
 import type { FogCover } from '../../vision/throughSight';
 import type { BelowMapImage } from './levels/BelowLevel';
 import type { BelowLevelsHost, BelowLiquids } from './levels/LevelsBelow';
@@ -37,6 +37,8 @@ export interface BelowLevelsHostDeps {
   placeEraser: (eraser: Container) => void;
   /** Whether the view draws its own map another way than the scene places it now (a preview). */
   previewing: () => boolean;
+  /** The view's token art (`TextureCache`). */
+  art: TokenArt;
 }
 
 /**
@@ -138,15 +140,10 @@ export function createRoofHost(obsApp: App, app: Application, viewport: Viewport
 }
 
 /** What a map view gives the levels below it: map images through their snapshots' cameras, token art, liquids, the levels' maps, its fog and a place for the eraser. */
-export function createBelowLevelsHost({ obsApp, app, viewport, store, viewedFog, viewedRoof, placeEraser, previewing }: BelowLevelsHostDeps): BelowLevelsHost {
+export function createBelowLevelsHost({ obsApp, app, viewport, store, viewedFog, viewedRoof, placeEraser, previewing, art }: BelowLevelsHostDeps): BelowLevelsHost {
   return {
     ...createRoofHost(obsApp, app, viewport),
-    createArt: () => {
-      // The levels below never evict art, so what they no longer show must be free to leave the GPU
-      const art = new TextureCache(obsApp, { idleArtOnGpu: false });
-      art.setPixiApp(app);
-      return art;
-    },
+    art,
     levelArt: (background, gridSize) => readLevelArt(obsApp, background, gridSize),
     createLiquids: (level, changed) => createLevelLiquids(app, store, level, changed),
     viewedFog,

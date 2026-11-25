@@ -10,7 +10,7 @@ vi.mock('../../../src/app/pixi/token-renderer/tokenRingTexture', () => ({
   loadTokenRingTexture: (): Promise<Texture> => Promise.resolve(Texture.WHITE),
 }));
 
-const art = { acquire: (): Promise<Texture> => Promise.resolve(Texture.WHITE), release: (): void => {}, destroyAll: (): void => {} };
+const art = { acquire: (): Promise<Texture> => Promise.resolve(Texture.WHITE), release: (): void => {} };
 
 function token(changes: Partial<TokenEntity>): TokenEntity {
   return { id: 't', x: 100, y: 100, size: 1, imagePath: 'goblin.png', ...changes } as TokenEntity;

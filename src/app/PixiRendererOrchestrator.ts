@@ -21,6 +21,7 @@ import type { ViewAtlasState, ViewAtlasStore } from './storeFactory';
 import { EventEmitter } from './utils/typedEmitter';
 import { PixiAppManager } from "./pixi/PixiAppManager"; // Import the new manager
 import { TokenRenderer } from "./pixi/token-renderer"; // Import TokenRenderer
+import { TextureCache } from "./pixi/token-renderer/TextureCache";
 // Import color utils
 import { PinRenderer } from "./pixi/PinRenderer"; // Import PinRenderer
 import { HexLinkRenderer } from "./pixi/hexLinks/HexLinkRenderer";
@@ -108,6 +109,7 @@ export class PixiRendererOrchestrator { // Renamed class
   private _isDestroyed: boolean = false;
   private pixiAppManager: PixiAppManager;
   private tokenRenderer?: TokenRenderer; // Add TokenRenderer instance
+  private readonly tokenArt: TextureCache;
   private pinRenderer?: PinRenderer; // Add PinRenderer instance
   private hexLinkRenderer?: HexLinkRenderer;
   private tokenPlacer?: TokenPlacer;
@@ -213,6 +215,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.eventBus = eventBus; 
     this.store = store;
     this.viewId = viewId;
+    this.tokenArt = new TextureCache(obsApp);
     this.setupEventBusListeners(); // Call this to set up other listeners if any
   }
 
@@ -418,6 +421,7 @@ export class PixiRendererOrchestrator { // Renamed class
             this.eventBus,
             this.viewId,
             this.shownPlaces,
+            this.tokenArt,
         );
         // Set PIXI app reference for renderer access
         this.tokenRenderer.setPixiApp(this.pixiAppManager.app);
@@ -527,6 +531,7 @@ export class PixiRendererOrchestrator { // Renamed class
           },
           placeEraser: (eraser) => this.placeAboveGrid(eraser),
           previewing: () => this.isPreviewingStretch(),
+          art: this.tokenArt,
         }),
         ...(quality && { quality }),
       });
@@ -635,6 +640,7 @@ export class PixiRendererOrchestrator { // Renamed class
             this.eventBus,
             this.viewId,
             this.shownPlaces,
+            this.tokenArt,
         );
         // Set PIXI app reference for renderer access
         this.tokenRenderer.setPixiApp(this.pixiAppManager.app);
@@ -1558,6 +1564,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.stopFogFollowingPlayers?.();
     this.annotations?.destroy();
     this.lighting?.destroy();
+    this.tokenArt.destroyAll();
     this.roofs?.destroy();
     this.playerFrames?.destroy();
     delete this.playerFrames;
