@@ -33,23 +33,35 @@ function pluginWith(): { plugin: Plugin; settings: SettingsService; setViewState
 
 it('welcomes a new GM at once, over Obsidian, with no start page opened behind the wizard', () => {
   const { plugin, settings, setViewState } = pluginWith();
-  act(() => { startFirstRun(plugin, settings, false); });
+  act(() => { startFirstRun(plugin, settings, false, () => {}); });
   expect(screen.getByRole('dialog', { name: 'Welcome' })).toBeTruthy();
   expect(setViewState).not.toHaveBeenCalled();
 });
 
-it('opens the start page once the GM skips the welcome', async () => {
+it('opens the start page and then the release notes once the GM is welcomed', async () => {
   const { plugin, settings, setViewState } = pluginWith();
-  act(() => { startFirstRun(plugin, settings, false); });
+  const releaseNotes = vi.fn();
+  act(() => { startFirstRun(plugin, settings, false, releaseNotes); });
+  expect(releaseNotes).not.toHaveBeenCalled();
   await act(async () => { screen.getByRole('button', { name: 'Skip' }).click(); });
-  expect(settings.shouldShowTutorial('welcome')).toBe(false);
+  await act(async () => { screen.getByRole('button', { name: 'Open Atlas' }).click(); });
+  expect(settings.hasBeenWelcomed()).toBe(true);
   expect(setViewState).toHaveBeenCalledWith({ type: 'atlas-vtt-dashboard', state: {} });
+  expect(releaseNotes).toHaveBeenCalledTimes(1);
+});
+
+it('shows the release notes at once to a GM welcomed before', () => {
+  const { plugin, settings } = pluginWith();
+  const releaseNotes = vi.fn();
+  settings.completeTutorial('welcome');
+  act(() => { startFirstRun(plugin, settings, true, releaseNotes); });
+  expect(releaseNotes).toHaveBeenCalledTimes(1);
 });
 
 it('opens the start page of a vault Atlas never ran in when its GM was welcomed before', () => {
   const { plugin, settings, setViewState } = pluginWith();
   settings.completeTutorial('welcome');
-  act(() => { startFirstRun(plugin, settings, false); });
+  act(() => { startFirstRun(plugin, settings, false, () => {}); });
   expect(screen.queryByRole('dialog')).toBeNull();
   expect(setViewState).toHaveBeenCalledTimes(1);
 });
@@ -57,14 +69,14 @@ it('opens the start page of a vault Atlas never ran in when its GM was welcomed 
 it('opens nothing in a vault Atlas ran in before when its GM was welcomed', () => {
   const { plugin, settings, setViewState } = pluginWith();
   settings.completeTutorial('welcome');
-  act(() => { startFirstRun(plugin, settings, true); });
+  act(() => { startFirstRun(plugin, settings, true, () => {}); });
   expect(screen.queryByRole('dialog')).toBeNull();
   expect(setViewState).not.toHaveBeenCalled();
 });
 
 it('takes the wizard away when Atlas unloads', () => {
   const { plugin, settings } = pluginWith();
-  act(() => { startFirstRun(plugin, settings, true); });
+  act(() => { startFirstRun(plugin, settings, true, () => {}); });
   expect(screen.getByRole('dialog', { name: 'Welcome' })).toBeTruthy();
   act(() => { for (const cleanup of cleanups.splice(0)) cleanup(); });
   expect(screen.queryByRole('dialog')).toBeNull();

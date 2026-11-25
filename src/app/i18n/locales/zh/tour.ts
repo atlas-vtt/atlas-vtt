@@ -88,6 +88,7 @@ export const tour: Translation = {
   'tour.welcome.paletteKey': '命令面板',
   'tour.welcome.discord': '加入 Discord',
   'tour.welcome.guides': '查看所有指南',
+  'tour.welcome.guidesBody': '每个工具都有分步说明。',
   'tour.welcome.joinKicker': '社区',
   'tour.welcome.joinTitle': 'Atlas 与玩家一同成长',
   'tour.welcome.joinBody': 'Atlas 免费且开源。来打个招呼、帮助它持续发展，或者和我们一起打造它。',

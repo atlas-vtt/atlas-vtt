@@ -88,6 +88,7 @@ export const tour: Translation = {
   'tour.welcome.paletteKey': 'Палитра команд',
   'tour.welcome.discord': 'Присоединиться к Discord',
   'tour.welcome.guides': 'Читать руководства',
+  'tour.welcome.guidesBody': 'Все инструменты с пошаговыми объяснениями.',
   'tour.welcome.joinKicker': 'Сообщество',
   'tour.welcome.joinTitle': 'Atlas растёт вместе с игроками',
   'tour.welcome.joinBody': 'Atlas бесплатный и с открытым исходным кодом. Заходите поздороваться, помогите ему развиваться или создавайте его вместе с нами.',

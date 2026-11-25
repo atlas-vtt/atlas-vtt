@@ -91,11 +91,6 @@
   .atlas-welcome[data-page='help']::before { animation: none; }
 }
 
-// The dialog has no header row: its close button stands in the corner.
-.atlas-welcome__close.atlas-close-btn.btn {
-  @include atlas-close-corner;
-}
-
 .atlas-welcome__page {
   flex: 1;
   min-height: 0;

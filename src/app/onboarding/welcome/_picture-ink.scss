@@ -10,22 +10,16 @@ $slide-shade: #0a0806;
 @function ink($alpha) { @return color.change($slide-ink, $alpha: $alpha); }
 @function shade($alpha) { @return color.change($slide-shade, $alpha: $alpha); }
 
-/// The dialog's own controls over a picture: the foot's words, bars and ghost buttons, and the close button, light.
+/// The dialog's own controls over a picture: the foot's words, bars and ghost buttons, light.
 @mixin on-picture-chrome {
   > .atlas-welcome__foot { color: ink(0.78); }
 
   .atlas-welcome__bar { background: ink(0.24); }
   .atlas-welcome__bar[data-done='true'] { background: $slide-ink; }
 
-  .atlas-welcome__foot .btn--ghost:hover,
-  .atlas-welcome__close.atlas-close-btn.btn:hover {
+  .atlas-welcome__foot .btn--ghost:hover {
     background: ink(0.12);
     color: $slide-ink;
-  }
-
-  .atlas-welcome__close.atlas-close-btn.btn {
-    background: shade(0.45);
-    color: ink(0.9);
   }
 }
 

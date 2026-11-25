@@ -89,6 +89,7 @@ export const tour = {
   'tour.welcome.paletteKey': 'Command palette',
   'tour.welcome.discord': 'Join the Discord',
   'tour.welcome.guides': 'Read the guides',
+  'tour.welcome.guidesBody': 'Every tool explained, step by step.',
   'tour.welcome.joinKicker': 'Community',
   'tour.welcome.joinTitle': 'Atlas grows with its players',
   'tour.welcome.joinBody': 'Atlas is free and open source. Come and say hello, help keep it going, or build it with us.',

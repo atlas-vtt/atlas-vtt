@@ -12,9 +12,9 @@ interface WelcomeWizardProps {
   onOpenAtlas: () => void;
 }
 
-/** A new GM is welcomed once. GMs who took the start page's or the map's tour before the wizard existed are not welcomed. */
+/** Every GM is welcomed once: a new one, and one updating from an Atlas that had no wizard yet. */
 export function shouldWelcome(settings: SettingsService): boolean {
-  return settings.shouldShowTutorial('welcome') && settings.shouldShowTutorial('dashboard') && settings.shouldShowTutorial('map');
+  return !settings.hasBeenWelcomed();
 }
 
 /**
