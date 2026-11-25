@@ -13,6 +13,7 @@ import { showNotice } from '../ui/notice';
 import { statblockImageAt } from './statblockImageTarget';
 import { playerWindowStore } from '../stores/playerWindowStore';
 import { isResourceUrl, resourceUrlToFilePath, resourceUrlToVaultPath } from '../utils/pathUtils';
+import { followEveryDocument } from '../platform/atlasDocuments';
 import { canCopyItems } from '../platform/clipboardWrites';
 import { desktopOnly, isDesktopApp } from '../platform/desktopOnly';
 import { vaultBasePath } from '../platform/vaultBasePath';
@@ -51,6 +52,7 @@ export class ImageDisplayService {
   private lastContextMenuTarget: HTMLElement | null = null;
   private contextMenuEventRefs: EventRef[] = [];
   private contextMenuRegistered = false;
+  private stopFollowingDocuments: (() => void) | null = null;
 
   constructor(app: App) {
     this.app = app;
@@ -90,9 +92,6 @@ export class ImageDisplayService {
     });
     this.contextMenuEventRefs.push(linkMenuRef);
 
-    // Capture-phase listener to track right-click target (runs before Obsidian's handlers)
-    document.addEventListener('contextmenu', this.boundStoreContextMenuTarget, true);
-
     // Register for editor context menu (fires on right-click in markdown views)
     // This adds our item to Obsidian's native menu for rendered image embeds (![[image.png]])
     const editorMenuRef = this.app.workspace.on('editor-menu', (menu: Menu) => {
@@ -117,8 +116,16 @@ export class ImageDisplayService {
     });
     this.contextMenuEventRefs.push(editorMenuRef);
 
-    // Fallback: listen for context menu events on direct image views (non-editor contexts)
-    document.addEventListener('contextmenu', this.boundHandleContextMenu, false);
+    // In every window: a capture-phase listener tracks the right-click target ahead of Obsidian's handlers, and a
+    // fallback answers context menus on direct image views (non-editor contexts).
+    this.stopFollowingDocuments = followEveryDocument(this.app.workspace, (doc) => {
+      doc.addEventListener('contextmenu', this.boundStoreContextMenuTarget, true);
+      doc.addEventListener('contextmenu', this.boundHandleContextMenu, false);
+      return () => {
+        doc.removeEventListener('contextmenu', this.boundStoreContextMenuTarget, true);
+        doc.removeEventListener('contextmenu', this.boundHandleContextMenu, false);
+      };
+    });
   }
 
 
@@ -212,7 +219,7 @@ export class ImageDisplayService {
       const activeFile = this.app.workspace.getActiveFile();
       if (activeFile && this.isImageFile(activeFile)) {
         const leafEl = target.closest('.workspace-leaf');
-        const activeLeafEl = document.querySelector('.workspace-leaf.mod-active');
+        const activeLeafEl = target.doc.querySelector('.workspace-leaf.mod-active');
         if (leafEl === activeLeafEl) imageFile = activeFile;
       }
     }
@@ -469,8 +476,8 @@ export class ImageDisplayService {
   public destroy(): void {
     this.disposeImageDisplay();
 
-    document.removeEventListener('contextmenu', this.boundStoreContextMenuTarget, true);
-    document.removeEventListener('contextmenu', this.boundHandleContextMenu, false);
+    this.stopFollowingDocuments?.();
+    this.stopFollowingDocuments = null;
     this.lastContextMenuTarget = null;
 
     this.contextMenuEventRefs.forEach((eventRef) => {

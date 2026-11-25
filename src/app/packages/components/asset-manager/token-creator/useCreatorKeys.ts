@@ -10,7 +10,7 @@ export function useCreatorKeys(windowRef: RefObject<HTMLElement | null>, isOpen:
       // Let an open menu consume Escape before the importer handles it.
       if (e.key === 'Escape' && windowRef.current?.querySelector('[aria-haspopup="menu"][aria-expanded="true"]')) return;
       // A dialog or list inside the window (a note being edited) takes its own Escape.
-      if (e.key === 'Escape' && e.target instanceof Element && e.target.closest('[role="dialog"] [role="dialog"], [role="listbox"], .atlas-ctx-menu')) return;
+      if (e.key === 'Escape' && e.targetNode?.instanceOf(Element) && e.targetNode.closest('[role="dialog"] [role="dialog"], [role="listbox"], .atlas-ctx-menu')) return;
       if (e.key === 'Escape' && !isSubmitting) {
         e.preventDefault();
         e.stopPropagation();

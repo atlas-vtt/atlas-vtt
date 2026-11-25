@@ -5,7 +5,6 @@ import path from 'path';
 import fs from 'fs';
 import { desktopDependencies } from './vite/desktop-dependencies.mts';
 import { changelog } from './vite/changelog.mts';
-import { motionNativeAnimation } from './vite/motion-native-animation.mts';
 import { localePack } from './vite/locale-pack.mts';
 import { lazyInlineWorkers } from './vite/lazy-inline-workers.mts';
 
@@ -106,7 +105,6 @@ export default defineConfig({
   plugins: [
     changelog(),
     desktopDependencies(),
-    motionNativeAnimation(),
     localePack(),
     lazyInlineWorkers(),
     react(), // Enable React support

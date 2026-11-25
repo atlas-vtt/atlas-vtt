@@ -94,7 +94,7 @@ export class TextField {
     this.root = host.createDiv({ cls: 'atlas-vtt-plugin atlas-map-text-field' });
     this.plate = this.root.createDiv({ cls: 'atlas-map-text-field__plate' });
     this.input = this.root.createEl('textarea', { cls: 'atlas-map-text-field__input', attr: { rows: '1', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off', maxlength: String(MAX_TEXT_LENGTH) } });
-    this.probe = host.createDiv({ cls: 'atlas-vtt-plugin atlas-map-text-probe', text: 'x', attr: { 'aria-hidden': 'true' } });
+    this.probe = host.createDiv({ cls: 'atlas-vtt-plugin atlas-map-text-probe', text: 'X', attr: { 'aria-hidden': 'true' } });
     this.mark = this.probe.createSpan({ cls: 'atlas-map-text-probe__mark' });
     this.input.addEventListener('input', () => handlers.input());
     this.input.addEventListener('blur', () => handlers.blurred());

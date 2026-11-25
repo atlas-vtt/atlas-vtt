@@ -57,7 +57,7 @@ export function cssColorToHexNumber(color: string): number {
 
 export function resolveCssColor(cssColor: string): string {
   if (typeof window === 'undefined') return '#00ffff'; // Fallback for non-browser env
-  const probe = getDomHost().createDiv(document.body, 'atlas-color-probe');
+  const probe = getDomHost().createDiv(getDomHost().activeDocument().body, 'atlas-color-probe');
   probe.style.color = cssColor;
   const resolved = getComputedStyle(probe).color;
   probe.remove();
@@ -80,7 +80,7 @@ export function forgetObsidianAccentColor(): void {
  * element into the body, and an insertion there can make Chromium restyle the whole document.
  */
 function themeColor(variable: string, fallback: string): string {
-  const { body } = document;
+  const { body } = getDomHost().activeDocument();
   const read = `${body.className}|${body.getAttribute('style') ?? ''}`;
   const known = resolvedThemeColors.get(variable);
   if (known?.body === read) return known.color;

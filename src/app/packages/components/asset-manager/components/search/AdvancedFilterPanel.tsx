@@ -38,7 +38,7 @@ export function AdvancedFilterPanel({ panel, onClose, onReset, anchorRef }: Adva
   useFocusTrap(rootRef);
 
   useEffect(() => {
-    const doc = rootRef.current?.ownerDocument ?? document;
+    const doc = rootRef.current?.ownerDocument ?? activeDocument;
     const onPointerDown = (event: PointerEvent): void => {
       const target = event.target as Node;
       if (!rootRef.current?.contains(target) && !anchorRef.current?.contains(target)) onClose();

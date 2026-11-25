@@ -15,6 +15,7 @@ import { MeasureInk, MeasureInkLayer } from '../utils/measureInk';
 import { MeasureLabel } from '../utils/measureLabel';
 import { watchDarkTheme } from '../utils/canvasBadgeColors';
 import { watchSquareCorners } from '../utils/squareCorners';
+import { viewportDocument } from '../utils/viewportDocument';
 
 /** Above token UI (100) and text (500), below drawings, vision and fog. */
 const LABEL_Z_INDEX = 800;
@@ -86,14 +87,17 @@ export class DragRulerView {
   /** What the ruler shows; a zoom or theme change draws it again. */
   private drawn: Drawn | null = null;
   private drawnZoom = 1;
-  private readonly stopThemeWatch = watchDarkTheme(() => this.redraw());
-  private readonly stopCornerWatch = watchSquareCorners(() => this.redraw());
+  private readonly stopThemeWatch: () => void;
+  private readonly stopCornerWatch: () => void;
   private readonly onZoom = (): void => {
     if (this.drawn && this.viewport.scale.x !== this.drawnZoom) this.redraw();
   };
 
   constructor(private readonly viewport: Viewport, tokenLayer: Container) {
     this.own = new RulerInk(viewport, tokenLayer, 'drag-ruler-path');
+    const { body } = viewportDocument(viewport);
+    this.stopThemeWatch = watchDarkTheme(body, () => this.redraw());
+    this.stopCornerWatch = watchSquareCorners(body, () => this.redraw());
     this.viewport.on('zoomed', this.onZoom);
     this.viewport.on('zoomed-end', this.onZoom);
     this.clear();

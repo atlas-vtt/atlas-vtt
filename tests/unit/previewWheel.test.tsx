@@ -180,7 +180,7 @@ describe('every preview that Mod+hover opens keeps Ctrl+wheel inside itself', ()
 
   it('a linked scene\'s card', () => {
     const app = { vault: { getAbstractFileByPath: (): null => null, adapter: { exists: async (): Promise<boolean> => false } } };
-    new MapLinkPreview(app as never, new TFile('Tavern.atlasmap'), pin, manager as never, { x: 0, y: 0 });
+    new MapLinkPreview(app as never, new TFile('Tavern.atlasmap'), pin, manager as never, { x: 0, y: 0 }, document);
     expect(swallowed('.atlas-map-link-preview')).toBe(true);
   });
 

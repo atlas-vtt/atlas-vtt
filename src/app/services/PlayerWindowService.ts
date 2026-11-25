@@ -575,7 +575,7 @@ export class PlayerWindowService {
     const existing = new Set(
       Array.from(doc.head.querySelectorAll('link[rel="stylesheet"], style')).map(getStyleNodeKey),
     );
-    document.head.querySelectorAll('link[rel="stylesheet"], style').forEach((node) => {
+    this.app.workspace.containerEl.doc.head.querySelectorAll('link[rel="stylesheet"], style').forEach((node) => {
       if (existing.has(getStyleNodeKey(node))) return;
       doc.head.appendChild(doc.importNode(node, true));
     });

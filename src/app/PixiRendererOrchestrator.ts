@@ -1284,8 +1284,10 @@ export class PixiRendererOrchestrator { // Renamed class
       }
     };
     
-    document.addEventListener('keydown', handleKeyDown);
-    this.unbindKeyboard = (): void => document.removeEventListener('keydown', handleKeyDown);
+    // The map's own window, which may be a popout.
+    const doc = this.pixiAppManager.getCanvasElement().doc;
+    doc.addEventListener('keydown', handleKeyDown);
+    this.unbindKeyboard = (): void => doc.removeEventListener('keydown', handleKeyDown);
   }
   
 

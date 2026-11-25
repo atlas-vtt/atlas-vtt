@@ -64,8 +64,9 @@ export function WorldMapPicker({ choices, value, onChange, labelledBy, disabled,
     const onPointerDown = (event: MouseEvent): void => {
       if (!rootRef.current?.contains(event.target as Node)) setIsOpen(false);
     };
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => document.removeEventListener('pointerdown', onPointerDown);
+    const doc = rootRef.current?.doc ?? activeDocument;
+    doc.addEventListener('pointerdown', onPointerDown);
+    return () => doc.removeEventListener('pointerdown', onPointerDown);
   }, [isOpen]);
 
   const close = (): void => {
@@ -81,7 +82,7 @@ export function WorldMapPicker({ choices, value, onChange, labelledBy, disabled,
 
   const onListKeyDown = (event: React.KeyboardEvent): void => {
     const options = [...(rootRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [])];
-    const current = options.indexOf(document.activeElement as HTMLButtonElement);
+    const current = options.indexOf(event.currentTarget.doc.activeElement as HTMLButtonElement);
     const step = STEP[event.key];
     if (step !== undefined) {
       event.preventDefault();

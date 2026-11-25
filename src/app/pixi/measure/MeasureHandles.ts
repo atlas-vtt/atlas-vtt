@@ -298,7 +298,7 @@ export class MeasureHandles {
     grip.lift ??= new ValueTransition(1, MOTION_NORMAL_MS, () => {
       if (!grip.view.destroyed) this.applyScale(grip);
     });
-    if (prefersReducedMotion(document.body)) grip.lift.jumpTo(lift);
+    if (prefersReducedMotion(activeDocument.body)) grip.lift.jumpTo(lift);
     else grip.lift.animateTo(lift);
   }
 }

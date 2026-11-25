@@ -14,6 +14,7 @@ function fakePlugin(leafDocs: Document[] = []): { plugin: Plugin; open(doc: Docu
   const plugin = {
     app: {
       workspace: {
+        containerEl: document.body,
         iterateAllLeaves: (visit: (leaf: { view: { containerEl: { doc: Document } } }) => void) => leafDocs.forEach((doc) => visit({ view: { containerEl: { doc } } })),
         on: (name: string, listener: WindowListener) => {
           listeners.set(name, listener);

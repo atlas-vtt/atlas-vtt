@@ -128,7 +128,8 @@ export function CreateCollectionModal({ existingNames, onClose, onCreated }: Cre
         aria-labelledby="atlas-create-collection-title"
         onKeyDown={(e) => {
           e.stopPropagation();
-          if (e.key === 'Enter' && e.target instanceof HTMLInputElement && e.target.type === 'text' && !isCustomStep) {
+          const target = e.nativeEvent.targetNode;
+          if (e.key === 'Enter' && target?.instanceOf(HTMLInputElement) && target.type === 'text' && !isCustomStep) {
             e.preventDefault();
             primary();
           }

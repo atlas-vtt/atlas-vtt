@@ -14,7 +14,8 @@ export function followEveryDocument(workspace: Workspace, enter: (doc: Document)
     leaving.get(doc)?.();
     leaving.delete(doc);
   };
-  start(document);
+  // The workspace's own element is in the main window, which is open as long as Obsidian is.
+  start(workspace.containerEl.doc);
   workspace.iterateAllLeaves((leaf) => start(leaf.view.containerEl.doc));
   const opened = workspace.on('window-open', (_workspaceWindow, win) => start(win.document));
   const closed = workspace.on('window-close', (_workspaceWindow, win) => stop(win.document));

@@ -1,3 +1,4 @@
+import { getDomHost } from '../../host/dom';
 import { cssColorToHexNumber, getObsidianAccentColor } from './colorUtils';
 
 export interface CanvasBadgeColors {
@@ -7,21 +8,21 @@ export interface CanvasBadgeColors {
 }
 
 export function isDarkTheme(): boolean {
-  return document.body.classList.contains('theme-dark');
+  return getDomHost().activeDocument().body.classList.contains('theme-dark');
 }
 
 /**
- * Calls `redraw` whenever Obsidian switches between its light and dark theme; returns what stops it.
- * The body's classes change for much else (focus, panels, Atlas' own), which must not redraw.
+ * Calls `redraw` whenever Obsidian switches between its light and dark theme in `body`'s window; returns
+ * what stops it. The body's classes change for much else (focus, panels, Atlas' own), which must not redraw.
  */
-export function watchDarkTheme(redraw: () => void): () => void {
+export function watchDarkTheme(body: HTMLElement, redraw: () => void): () => void {
   let dark = isDarkTheme();
   const observer = new MutationObserver(() => {
     if (isDarkTheme() === dark) return;
     dark = isDarkTheme();
     redraw();
   });
-  observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  observer.observe(body, { attributes: true, attributeFilter: ['class'] });
   return () => observer.disconnect();
 }
 

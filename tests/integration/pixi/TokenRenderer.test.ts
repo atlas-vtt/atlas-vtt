@@ -270,7 +270,8 @@ describe('TokenRenderer Integration Tests', () => {
       expect(group.scale.x).toBeLessThan(1);
 
       ticker.advance(400);
-      expect(group.destroyed).toBe(true);
+      // Motion calls onComplete from a promise after the last frame
+      await vi.waitFor(() => expect(group.destroyed).toBe(true));
       expect(tokenRenderer.getTokenContainer().children).not.toContain(group);
     });
 

@@ -15,7 +15,7 @@ const ALL_TYPES: BlockType[] = [
 ];
 
 const lucideIcon = (name: string): boolean =>
-  existsSync(resolve(__dirname, '../../../../node_modules/lucide-react/dist/esm/icons', `${name}.js`));
+  existsSync(resolve(__dirname, '../../../../node_modules/lucide-react/dist/esm/icons', `${name}.mjs`));
 
 describe('block catalogue', () => {
   it('describes every block type, labelled in sentence case with a lucide icon', () => {

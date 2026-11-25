@@ -237,6 +237,7 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
       fileListeners.add(listener);
       return () => fileListeners.delete(listener);
     },
+    onVisibilityChange: () => () => undefined,
     releaseLibrary: () => { library.released++; },
     readSceneSound: (path) => Promise.resolve(scenes.get(path) ?? null),
     notify: (message) => notices.push(message),

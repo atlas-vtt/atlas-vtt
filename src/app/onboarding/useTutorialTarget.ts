@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getDomHost } from '../host/dom';
 
 /**
  * Where a tour step's target stands on screen, or null while it is absent, hidden or of no size.
@@ -11,7 +12,7 @@ export function useTutorialTarget(selector: string | undefined, root?: ParentNod
     let frame = 0;
     let last: DOMRect | null = null;
     const measure = (): void => {
-      const target = selector ? (root ?? document).querySelector(selector) : null;
+      const target = selector ? (root ?? getDomHost().mainDocument()).querySelector(selector) : null;
       const bounds = target?.getBoundingClientRect();
       const next = bounds && bounds.width && bounds.height ? bounds : null;
       if (!sameRect(last, next)) { last = next; setRect(next); }

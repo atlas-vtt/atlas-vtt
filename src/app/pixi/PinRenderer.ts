@@ -12,6 +12,7 @@ import { pinGroupScale, pinScreenDiameter, type MapSize } from './pinSizing';
 import { pinSize } from '../styles/designTokens';
 import type { PinIconId } from '../types/pinIcons';
 import { destroyTree } from "./utils/destroyTree";
+import { viewportDocument } from './utils/viewportDocument';
 import { hearPressesLast, isHandled } from "./utils/handledEvents";
 import { isPrimaryPress, isSecondaryPress } from "./utils/pointerButtons";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
@@ -192,7 +193,7 @@ export class PinRenderer {
 
   /** A pin's face takes the light or dark theme's colours (`drawPinFace`). */
   private setupThemeObserver(): void {
-    this.stopThemeWatch = watchDarkTheme(() => this.redrawAllPins());
+    this.stopThemeWatch = watchDarkTheme(viewportDocument(this.viewport).body, () => this.redrawAllPins());
   }
   
   private setupViewportListeners(): void {
