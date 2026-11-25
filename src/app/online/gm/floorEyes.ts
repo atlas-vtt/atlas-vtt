@@ -32,16 +32,18 @@ export interface EyesInputs {
   ownerOf(tokenId: string, token: TokenEntity): string | undefined;
 }
 
+/** Whether sight hides anything of the floor: not in an unlit scene, one without token vision or one where no token has vision at all. */
+export const sightHides = (state: SceneState): boolean => isLit(state) && tokenVisionOn(state.lighting) && sceneHasVision(mapTokens(everyLevelObjects(state)));
+
 /**
  * Whose sight each of `players` sees the floor through. Without Shared vision every player sees through their
  * own tokens on the floor that give sight (`sightPolicyFor`: not hidden, not defeated, vision on), and one
- * with none there (a spectator, a fallen character) through none. Sight hides nothing in an unlit scene, one
- * without token vision or one where no token has vision at all, so all of its players share the party's picture.
+ * with none there (a spectator, a fallen character) through none. Where sight hides nothing (`sightHides`)
+ * all of its players share the party's picture.
  */
 export function floorEyes(inputs: EyesInputs, players: readonly string[]): Map<string, Eyes> {
   const { state } = inputs;
-  const hides = isLit(state) && tokenVisionOn(state.lighting) && sceneHasVision(mapTokens(everyLevelObjects(state)));
-  if (inputs.sharedVision || !hides) return new Map(players.map((player) => [player, PARTY_EYES]));
+  if (inputs.sharedVision || !sightHides(state)) return new Map(players.map((player) => [player, PARTY_EYES]));
   const { givesSight } = sightPolicyFor(PLAYER_SIGHT_POLICY, inputs.rules);
   const seeing = new Map<string, string[]>();
   for (const [id, token] of Object.entries(mapTokens(levelObjects(state)))) {

@@ -131,8 +131,19 @@ describe('a player\'s explored memory on the GM\'s renderer', () => {
         encodes.push(performance.now() - start);
       }
     }
+    // Under Shared vision every player is stamped with the party's sight: the same shapes, built once in the scratch they share.
+    const party: number[] = [];
+    for (let round = 0; round < 12; round += 1) {
+      const shapes = sight(1500 + round * 35, 900);
+      for (const raster of memories) {
+        const start = performance.now();
+        raster.add(shapes);
+        gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+        party.push(performance.now() - start);
+      }
+    }
     const textures = renderer.texture.managedTextures.length;
-    const report = `[player memory] ${device}, ${GRID.columns}×${GRID.rows} texels, ${PLAYERS} players hold ${textures} GPU textures; per player: stamp ${median(drawn).toFixed(2)} ms on the main thread, ${median(stamps).toFixed(2)} ms drawn (max ${Math.max(...stamps).toFixed(2)}); read-back ${median(readBacks).toFixed(2)} ms on the main thread, ${median(encodes).toFixed(2)} ms with its PNG`;
+    const report = `[player memory] ${device}, ${GRID.columns}×${GRID.rows} texels, ${PLAYERS} players hold ${textures} GPU textures; per player: stamp ${median(drawn).toFixed(2)} ms on the main thread, ${median(stamps).toFixed(2)} ms drawn (max ${Math.max(...stamps).toFixed(2)}), ${median(party).toFixed(2)} ms drawn for the party's shapes; read-back ${median(readBacks).toFixed(2)} ms on the main thread, ${median(encodes).toFixed(2)} ms with its PNG`;
     console.info(report);
     // Bounds for a software renderer (headless Chromium's SwiftShader); a graphics card does far less.
     expect(median(stamps), report).toBeLessThan(60);

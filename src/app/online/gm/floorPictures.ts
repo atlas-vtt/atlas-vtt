@@ -5,7 +5,7 @@ import { narrowPolicy, PLAYER_SIGHT_POLICY, type SightPolicy } from '../../visio
 import type { SceneState, SceneStore } from './atlasView.ts';
 import type { SavedMemory } from './ExploredShare.ts';
 import { ExploredRemovals } from './exploredRemovals.ts';
-import { eyesKey, floorEyes, PARTY_EYES, playerEyesKey, type Eyes } from './floorEyes.ts';
+import { eyesKey, floorEyes, PARTY_EYES, playerEyesKey, sightHides, type Eyes } from './floorEyes.ts';
 import { FloorPicture, type PictureFloor } from './floorPicture.ts';
 import type { FloorSharePorts, PictureSources } from './floorPorts.ts';
 import type { GmMarkSource } from './MarkShare.ts';
@@ -31,7 +31,8 @@ const memoryFloorOf = (state: SceneState): MemoryFloor | null => (state.mapPath 
  * the floor is; the scene stays the same. The party's picture is always kept: what players act with is
  * looked up in its lists, which hold every token anyone's picture holds. The party's picture sends the
  * memory the GM saved; a player's own picture sends that player's own memory (`FloorMemories`), which
- * the GM's removals reach too.
+ * the GM's removals reach too. Each player remembers what they are shown, the party's picture as well,
+ * so what they saw under Shared vision stays theirs once it is switched off.
  */
 export class FloorPictures {
   readonly party: FloorPicture;
@@ -48,6 +49,10 @@ export class FloorPictures {
   private readonly memories: FloorMemories | null;
   /** How many of the players' own pictures were opened: each sends its memory with a count of removals of its own. */
   private opened = 0;
+  /** Whether sight hides anything of the floor, so its players remember what they are shown. */
+  private remembering = false;
+  /** The party's eyes, which a player shown the party's picture remembers by. */
+  private partySources: PictureSources | null = null;
 
   constructor(private readonly store: SceneStore, private readonly ports: FloorSharePorts, private readonly floor: PictureFloor) {
     this.removals = new ExploredRemovals(() => store.shown?.() ?? true);
@@ -55,8 +60,9 @@ export class FloorPictures {
     this.memories = memory === undefined ? null : new FloorMemories({
       now: () => ports.now(), setTimer: (run, ms) => ports.setTimer(run, ms), clearTimer: (timer) => ports.clearTimer(timer),
       memory,
-      players: () => [...this.eyes].flatMap(([player, key]) => (key === eyesKey(PARTY_EYES) ? [] : [player])),
-      seenBy: (player) => this.looks.get(playerEyesKey(player))?.sources.seen() ?? null,
+      // Where sight hides something, what each player is shown is theirs to remember, the party's picture under Shared vision too.
+      players: () => (this.remembering ? [...this.eyes.keys()] : []),
+      seenBy: (player) => (this.eyes.get(player) === eyesKey(PARTY_EYES) ? this.partyEyes().seen() : this.looks.get(playerEyesKey(player))?.sources.seen() ?? null),
       lighting: () => store.getState().lighting,
       changed: (player) => this.pictures.get(playerEyesKey(player))?.memoryChanged(),
     });
@@ -86,6 +92,7 @@ export class FloorPictures {
       const players = [...new Set([...(seats?.onlinePlayers() ?? []), ...extra])];
       const inputs = { state: this.store.getState(), sharedVision: this.ports.atlasSettings().sharedVision === true, rules: this.ports.lightingSource()?.rules() };
       const eyes = floorEyes({ ...inputs, ownerOf: (id, token) => seats?.ownerOf(id, token) }, players);
+      this.remembering = sightHides(inputs.state);
       const before = this.eyes;
       this.eyes = new Map([...eyes].map(([player, seen]) => [player, eyesKey(seen)]));
       for (const [key, picture] of this.pictures) {
@@ -200,6 +207,11 @@ export class FloorPictures {
   stop(): Promise<void> {
     for (const picture of this.pictures.values()) picture.stop();
     return this.memories?.stop() ?? Promise.resolve();
+  }
+
+  private partyEyes(): PictureSources {
+    this.partySources ??= this.ports.eyes(PLAYER_SIGHT_POLICY);
+    return this.partySources;
   }
 
   /** The key of a player's eyes, worked out now for a player not yet placed; the party's while that cannot be. */

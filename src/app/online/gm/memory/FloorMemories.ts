@@ -1,5 +1,7 @@
 import { exploredGrid } from '../../../pixi/lighting/ExploredTexture';
 import type { SceneLighting } from '../../../types/lightingTypes';
+import type { ExploredShapes } from '../../../vision/exploredShapes';
+import type { Sight } from '../../../vision/sight';
 import type { MapBounds } from '../../../vision/visibility';
 import { Pacer, type PacerClock } from '../../marks/index.ts';
 import type { PartyLighting } from '../eyesSight.ts';
@@ -7,7 +9,7 @@ import { EXPLORED_INTERVAL_MS, type SavedMemory } from '../ExploredShare.ts';
 import type { Removal } from '../exploredRemovals.ts';
 import type { MemoryFloor, MemoryPng, MemoryPorts } from './memoryPorts.ts';
 import { afterLoss, lossOf, type Loss, type MemoryGrid } from './memoryRemovals.ts';
-import { PlayerMemory } from './PlayerMemory.ts';
+import { PlayerMemory, recordedShapes, type ShapesOf } from './PlayerMemory.ts';
 
 /** The shortest time between two stamps of the players' sight, as the GM's own memory stamps during a drag. */
 export const MEMORY_STAMP_MS = 100;
@@ -18,9 +20,9 @@ const ALL: Loss = { kind: 'all' };
 
 export interface FloorMemoriesPorts extends PacerClock {
   readonly memory: MemoryPorts;
-  /** The players who see the floor through their own eyes now. */
+  /** The players whose memory of the floor is kept now. */
   players(): readonly string[];
-  /** What `player`'s own eyes see of the floor now, with its light; null while it cannot be worked out. */
+  /** What `player` is shown of the floor now (their own eyes' sight, or the party's), with its light; null while it cannot be worked out. */
   seenBy(player: string): PartyLighting | null;
   /** The floor's lighting options, which say whether it remembers at all. */
   lighting(): Pick<SceneLighting, 'exploredMemory'>;
@@ -38,8 +40,8 @@ const sameFloor = (a: Floor | null, b: Floor | null): boolean => a === b || (a !
   && a.key.mapPath === b.key.mapPath && a.key.level === b.key.level && a.bounds.width === b.bounds.width && a.bounds.height === b.bounds.height);
 
 /**
- * The explored memories of one floor's players who see it through their own eyes (`PlayerMemory`):
- * each read from the store when the player comes to the floor, stamped from what their eyes see at most
+ * The explored memories of one floor's players (`PlayerMemory`), whichever picture they are shown:
+ * each read from the store when the player comes to the floor, stamped from what they are shown at most
  * every `MEMORY_STAMP_MS`, read back at the GM's explored pace (`EXPLORED_INTERVAL_MS`) and written to
  * the store at most every `MEMORY_STORE_MS` and when the player leaves. What the GM takes from the
  * party's memory each player's memory of the floor loses too, the memories only the store keeps as
@@ -148,12 +150,21 @@ export class FloorMemories {
     });
   }
 
+  /** Stamps each memory with what its player is shown; players shown the same sight share the shapes made of it. */
   private stamp(): void {
     const lighting = this.ports.lighting();
+    const made = new Map<Sight, { readonly seen: PartyLighting; readonly shapes: ExploredShapes | null }>();
+    const shapesOf: ShapesOf = (seen) => {
+      const known = made.get(seen.sight);
+      if (known !== undefined && known.seen.ambient === seen.ambient && known.seen.reaches === seen.reaches) return known.shapes;
+      const shapes = recordedShapes(seen, lighting);
+      made.set(seen.sight, { seen, shapes });
+      return shapes;
+    };
     let stamped = false;
     for (const [player, memory] of this.memories) {
       const seen = this.ports.seenBy(player);
-      if (seen !== null) memory.record(seen, lighting);
+      if (seen !== null) memory.record(seen, lighting, shapesOf);
       stamped ||= memory.stale;
     }
     if (stamped) this.readings.request();

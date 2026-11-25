@@ -158,13 +158,26 @@ describe('each player\'s own explored memory, with Shared vision off', () => {
 });
 
 describe('explored memory with Shared vision on', () => {
-  it('is the party\'s for every player, as before, and keeps nothing of its own', async () => {
-    const store = new FakeMemoryStore();
-    const table = await started(rooms({}, { exploredMask: PARTY_MASK }), store, true);
+  it('is the party\'s for every player, in one message to all, as before', async () => {
+    const table = await started(rooms({}, { exploredMask: PARTY_MASK }), new FakeMemoryStore(), true);
     const party = PARTY_MASK.slice('data:image/png;base64,'.length);
     const explored = table.sent.filter(({ body }) => body.t === 'explored');
     expect(explored.map(({ to }) => to)).toEqual([undefined]);
     expect(explored.every(({ body }) => body.t === 'explored' && body.png === party && body.serial === 0)).toBe(true);
-    expect(store.writes).toBe(0);
+  });
+
+  it('leaves each player what the party\'s picture showed them once it is switched off, kept in the campaign', async () => {
+    const store = new FakeMemoryStore();
+    const table = await started(rooms(), store, true);
+    table.settings = { ...PLAYER_SETTINGS, sharedVision: false };
+    await table.advance(2 * EXPLORED_INTERVAL_MS + 100);
+    // Ana's own eyes never saw Ben's room; the party's picture she was shown did.
+    const ana = cells(exploredTo(table.sent, ANA).at(-1));
+    expect(ana.some(({ x }) => westRoom(x))).toBe(true);
+    expect(ana.some(({ x }) => middleRoom(x))).toBe(true);
+    expect(cells(exploredTo(table.sent, CARA).at(-1)).some(({ x }) => middleRoom(x))).toBe(true);
+    table.share.stop();
+    await table.settle();
+    expect(rememberedCells(MAP, store.files.get(FakeMemoryStore.key(FLOOR, ANA)) ?? null).some(({ x }) => middleRoom(x))).toBe(true);
   });
 });

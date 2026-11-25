@@ -1,5 +1,5 @@
 import type { SceneLighting } from '../../../types/lightingTypes';
-import { exploredShapes } from '../../../vision/exploredShapes';
+import { exploredShapes, type ExploredShapes } from '../../../vision/exploredShapes';
 import type { AmbientLight, LightReach, SightRegion } from '../../../vision/sight';
 import { toBase64 } from '../assetServe.ts';
 import type { PartyLighting } from '../eyesSight.ts';
@@ -18,6 +18,13 @@ const sameItems = <T>(a: readonly T[], b: readonly T[]): boolean => a.length ===
 
 const sameAmbient = (a: AmbientLight, b: AmbientLight): boolean => a === b
   || (a.ambient === b.ambient && a.litThreshold === b.litThreshold && a.brightThreshold === b.brightThreshold && sameItems(a.zones ?? [], b.zones ?? []));
+
+/** What a player's memory records of what they see now (`seen`): the shapes `exploredShapes` makes of it, or null for none. */
+export type ShapesOf = (seen: PartyLighting, lighting: Pick<SceneLighting, 'exploredMemory'>) => ExploredShapes | null;
+
+/** The shapes the party's own memory records of the same sight. */
+export const recordedShapes: ShapesOf = ({ sight, ambient, reaches }, lighting) =>
+  exploredShapes(sight, { ...ambient, ...(lighting.exploredMemory !== undefined && { exploredMemory: lighting.exploredMemory }) }, reaches);
 
 const sameInputs = (a: StampInputs, b: StampInputs): boolean => a.all === b.all && a.memoryOn === b.memoryOn && sameAmbient(a.ambient, b.ambient)
   && sameItems(a.regions, b.regions) && sameItems(a.reaches, b.reaches);
@@ -67,14 +74,14 @@ export class PlayerMemory {
     return this.dirty;
   }
 
-  /** Records what the player's own eyes see now (`seen`), unless it is what the last stamp was worked out from. */
-  record(seen: PartyLighting, lighting: Pick<SceneLighting, 'exploredMemory'>): void {
+  /** Records what the player sees now (`seen`, as `shapesOf` makes it shapes), unless it is what the last stamp was worked out from. */
+  record(seen: PartyLighting, lighting: Pick<SceneLighting, 'exploredMemory'>, shapesOf: ShapesOf = recordedShapes): void {
     if (this.raster === null) return;
     const { sight, ambient, reaches } = seen;
     const inputs: StampInputs = { all: sight.all, regions: sight.regions, reaches, ambient, memoryOn: lighting.exploredMemory };
     if (this.stamped !== null && sameInputs(this.stamped, inputs)) return;
     this.stamped = inputs;
-    const shapes = exploredShapes(sight, { ...ambient, ...(lighting.exploredMemory !== undefined && { exploredMemory: lighting.exploredMemory }) }, reaches);
+    const shapes = shapesOf(seen, lighting);
     if (shapes === null) return;
     try {
       this.raster.add(shapes);
