@@ -4,7 +4,6 @@ export const appearance: Translation = {
   'appearance.title': 'Настройки внешнего вида',
   'appearance.commandHint': 'Ваша тема, Средневековье или Фантастика и цвет акцента',
   'appearance.look': 'Стиль',
-  'appearance.lookHint': 'Оставьте свою тему Obsidian или оденьте заметки, меню и панели в один из стилей Atlas.',
   'appearance.own': 'Ваша тема',
   'appearance.ownDefault': 'Тема Obsidian по умолчанию',
   'appearance.mediaeval': 'Средневековье',
