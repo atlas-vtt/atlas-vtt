@@ -62,6 +62,18 @@ describe('SelectionManager highlights', () => {
     expect(accentRadius()).toBeCloseTo(39 * 3 + ACCENT_OFFSET, 0);
   });
 
+  it('builds the highlight of things of one shape once for all of them, again at each zoom', () => {
+    const { viewport, highlights } = setup(['goblin', 'orc']);
+    const drawings = (): Set<unknown> => new Set(highlights().map((view) => (view.children[0] as Graphics).context));
+    expect(drawings().size).toBe(1);
+    const [before] = drawings() as Set<Graphics['context']>;
+    viewport.scale.set(2);
+    viewport.emit('zoomed', {});
+    expect(drawings().size).toBe(1);
+    expect(drawings().has(before)).toBe(false);
+    expect(before!.destroyed).toBe(true);
+  });
+
   it('frames two or more together around their highlights and bars', () => {
     const { highlights, group } = setup(['goblin', 'orc']);
     expect(highlights()).toHaveLength(2);

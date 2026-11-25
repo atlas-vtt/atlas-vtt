@@ -1,4 +1,4 @@
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, GraphicsContext } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { MOTION_NORMAL_MS } from '../../utils/motion';
 import { destroyTree } from '../utils/destroyTree';
@@ -11,7 +11,7 @@ import {
 } from './selectionGeometry';
 import { drawGroupFrame, drawHighlight } from './selectionInk';
 import type { FrameTurn } from './GroupRotation';
-import { batched } from '../utils/batchedGraphics';
+import { SharedGraphicsContexts } from '../utils/sharedGraphicsContexts';
 
 /** One selected thing as the highlights see it, in world units. */
 export interface SelectionTarget {
@@ -47,11 +47,14 @@ function fadeIn(transition: ValueTransition, animate: boolean): void {
 
 /**
  * Drawn in screen pixels inside a container scaled back to the world, so the line keeps its width at
- * every zoom and PIXI builds its curves from as many pieces as the circle has on screen.
+ * every zoom and PIXI builds its curves from as many pieces as the circle has on screen. Highlights
+ * of one shape show one drawing (`inks`): a zoom step with hundreds selected builds a few, not hundreds.
  */
 class Highlight {
   readonly view = new Container({ label: 'selectionHighlight', eventMode: 'none' });
-  private readonly ink = batched(new Graphics());
+  /** The ink's own context, which it holds while it shows no drawing and is destroyed with. */
+  private readonly own = new GraphicsContext();
+  private readonly ink = new Graphics(this.own);
   private drawn = '';
   private zoom = 1;
   private appearance = 1;
@@ -61,7 +64,7 @@ class Highlight {
     this.applyScale();
   });
 
-  constructor() {
+  constructor(private readonly inks: SharedGraphicsContexts) {
     this.view.addChild(this.ink);
   }
 
@@ -75,9 +78,9 @@ class Highlight {
   draw(path: HighlightPath, handles: readonly Notch[], accent: number): void {
     const key = `${JSON.stringify(path)}|${JSON.stringify(handles)}|${accent}`;
     if (key === this.drawn) return;
+    this.ink.context = this.inks.acquire(key, (context) => drawHighlight(context, path, handles, accent));
+    if (this.drawn) this.inks.release(this.drawn);
     this.drawn = key;
-    this.ink.clear();
-    drawHighlight(this.ink, path, handles, accent);
   }
 
   /** Lands on its thing from a little larger as it fades in, or shows at once. */
@@ -87,6 +90,8 @@ class Highlight {
 
   destroy(): void {
     this.appear.cancel();
+    this.ink.context = this.own;
+    if (this.drawn) this.inks.release(this.drawn);
     destroyTree(this.view);
   }
 
@@ -106,6 +111,7 @@ export class SelectionHighlights {
   /** Its own render group: frames redrawn at every step of a drag would otherwise make PIXI rebuild the viewport's whole group. */
   readonly layer = new Container({ label: 'selectionHighlights', eventMode: 'none', interactiveChildren: false, zIndex: MAP_LAYER_Z.selection, isRenderGroup: true });
   private readonly highlights = new Map<string, Highlight>();
+  private readonly inks = new SharedGraphicsContexts();
   private readonly group = new Graphics({ label: 'selectionGroupFrame' });
   private readonly groupFade = new ValueTransition(1, MOTION_NORMAL_MS, (value) => { this.group.alpha = value; });
   private groupDrawn = '';
@@ -150,7 +156,7 @@ export class SelectionHighlights {
       let highlight = this.highlights.get(target.id);
       const isNew = highlight === undefined;
       if (!highlight) {
-        highlight = new Highlight();
+        highlight = new Highlight(this.inks);
         this.highlights.set(target.id, highlight);
         this.layer.addChild(highlight.view);
       }
@@ -219,6 +225,7 @@ export class SelectionHighlights {
     this.groupFade.cancel();
     for (const highlight of this.highlights.values()) highlight.destroy();
     this.highlights.clear();
+    this.inks.destroy();
     destroyTree(this.layer);
   }
 
