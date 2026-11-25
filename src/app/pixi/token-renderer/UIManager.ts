@@ -35,6 +35,8 @@ export class UIManager implements ITokenUIManager {
   private playerUIContainer: Container | null = null;
   private playerTokenUIs: Record<string, TokenUIRenderer> = {};
   private tokenUIs: Record<string, TokenUIRenderer> = {};
+  /** Each token's place in the pile (`TokenRenderer`), which its UIs, the GM's and the players', follow. */
+  private readonly pilePlaces = new Map<string, number>();
   /** The canvas shows the players' view (session view, the peek): token UIs draw what players see. */
   private playersView = false;
   private tokenControlsUI?: TokenControlsUI;
@@ -153,6 +155,7 @@ export class UIManager implements ITokenUIManager {
     ui.onScaleChange = (scale) => this.tokenControlsUI?.setScaleFor(tokenId, scale);
     ui.setPlayersView(this.playersView);
     this.tokenUIs[tokenId] = ui;
+    ui.setPilePlace(this.pilePlaces.get(tokenId) ?? 0);
     
     const uiElement = ui.getContainer();
     this.uiContainer.addChild(uiElement);
@@ -286,7 +289,14 @@ export class UIManager implements ITokenUIManager {
     this.tokenResizeUI?.hide();
   }
 
+  setPilePlace(tokenId: string, place: number): void {
+    this.pilePlaces.set(tokenId, place);
+    this.tokenUIs[tokenId]?.setPilePlace(place);
+    this.playerTokenUIs[tokenId]?.setPilePlace(place);
+  }
+
   destroyTokenUI(tokenId: string): void {
+    this.pilePlaces.delete(tokenId);
     const playerUI = this.playerTokenUIs[tokenId];
     if (playerUI) {
       playerUI.getContainer().removeFromParent();
@@ -550,6 +560,7 @@ export class UIManager implements ITokenUIManager {
     if (!this.playerUIContainer) {
       this.playerUIContainer = new Container();
       this.playerUIContainer.zIndex = this.uiContainer.zIndex;
+      this.playerUIContainer.sortableChildren = true;
       this.playerUIContainer.eventMode = 'none';
       this.playerUIContainer.visible = false;
       this.viewport.addChild(this.playerUIContainer);
@@ -563,6 +574,7 @@ export class UIManager implements ITokenUIManager {
       if (!ui) {
         ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker);
         this.playerTokenUIs[tokenId] = ui;
+        ui.setPilePlace(this.pilePlaces.get(tokenId) ?? 0);
         this.playerUIContainer.addChild(ui.getContainer());
       }
       ui.conditionDefsProvider = this.conditionDefsProvider;

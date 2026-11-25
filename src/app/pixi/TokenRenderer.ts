@@ -8,6 +8,7 @@ import { SettingsService, type AtlasSettings } from '../services/SettingsService
 import { HIDDEN_TOKEN_ALPHA, gmTokenLayers, type HideableLayer, type LayerVisibility } from './playerSafeFrame';
 import type { TokenPerception } from '../vision/tokenPerception';
 import { TokenExit } from './token-renderer/TokenExit';
+import { TokenPile } from './token-renderer/TokenPile';
 import { NOTHING_SEEN, PlayerSightTokens, seenByPlayers, seenTokens } from './token-renderer/PlayerSightTokens';
 import { PlayersViewWatch } from './token-renderer/PlayersViewWatch';
 import { TurnMarkers } from './token-renderer/turnMarker/TurnMarkers';
@@ -153,6 +154,8 @@ export class TokenRenderer {
   private syncService: SyncService;
   
   
+  /** Where each token lies; its art and its UI take that place whenever their art arrives. */
+  private readonly pile = new TokenPile();
   // Batch sorting optimization
   private sortPending: boolean = false;
   private sortTimeout: number | null = null;
@@ -615,6 +618,17 @@ export class TokenRenderer {
     for (const callback of callbacks) callback();
   }
   
+  private restack(): void {
+    for (const [id, group] of Object.entries(this.tokenSprites)) if (group) this.placeInPile(id, group);
+    this.requestSort();
+  }
+
+  private placeInPile(id: string, group: TokenGroupContainer): void {
+    const place = this.pile.placeOf(id);
+    group.zIndex = place;
+    this.uiManager.setPilePlace(id, place);
+  }
+
   private requestSort(): void {
     if (this.sortPending) return;
     
@@ -995,6 +1009,7 @@ export class TokenRenderer {
     }
 
     const totalChanges = changedTokenIds.size + newTokenIds.size + deletedTokenIds.size;
+    if (this.pile.update(tokensRecord)) this.restack();
 
     // Deleted tokens leave the renderer at once and play out on their own
     const leaving = this.releaseLeavingTokens(deletedTokenIds);
@@ -1100,12 +1115,6 @@ export class TokenRenderer {
         this.applyDownedState(token, existingTokenGroup, prevToken);
         this.overlays.update(existingTokenGroup);
         
-        // Update z-index if layer changed
-        if (!prevToken || prevToken.layer !== token.layer) {
-          existingTokenGroup.zIndex = token.layer || 0;
-          this.requestSort();
-        }
-        
         // Update ring color if it changed
         const newRingColor = token.ringColor;
         const prevRingColor = prevToken?.ringColor;
@@ -1185,6 +1194,7 @@ export class TokenRenderer {
           
           // Create UI elements
           this.uiManager.createTokenUI(token.id, tokenGroup, character);
+          this.placeInPile(token.id, tokenGroup);
           
           this.applyTokenVisibilityPolicy(character, tokenGroup);
           this.applyDownedState(character, tokenGroup);

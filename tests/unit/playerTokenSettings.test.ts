@@ -11,6 +11,7 @@ vi.mock('../../src/app/pixi/TokenUIRenderer', async () => {
     container = new Container();
     update = vi.fn();
     setPlayersView = vi.fn();
+    setPilePlace = vi.fn();
     showsConditionCard = vi.fn(() => false);
     showConditionCard = vi.fn();
     destroy = vi.fn();

@@ -9,6 +9,16 @@ import type { LevelLink, LevelSurface } from '../types/sceneLevelTypes';
 const layerOf = (token: TokenEntity): number => token.layer ?? 0;
 
 /**
+ * Each token's place in the pile, 0 at the bottom: by `layer`, tokens of one layer in the order the
+ * map lists them. A token's art and everything it shows around itself take this place, so a pile
+ * looks the same however its art arrived.
+ */
+export function pilePlaces(tokens: Readonly<Record<string, TokenEntity>>): Map<string, number> {
+  const pile = Object.values(tokens).sort((a, b) => layerOf(a) - layerOf(b));
+  return new Map(pile.map((token, place) => [token.id, place]));
+}
+
+/**
  * Puts the tokens on top of every other token of the map, in the order they lie in among
  * themselves: the token put on a square last covers the ones that were there. Tokens that
  * already lie above all others stay as they are. Changes `tokens` in place (a store draft).
