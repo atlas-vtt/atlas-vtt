@@ -62,7 +62,7 @@ export class SceneShare {
     this.store = store;
     this.ports = ports;
     this.notice = noticeOnce(ports);
-    this.tokens = new FloorTokens({ store, ports, floors: this.floors, shareOf: (player) => this.shareOf(player), together: () => this.audience.allTogether });
+    this.tokens = new FloorTokens({ store, ports, floors: this.floors, shareOf: (player) => this.shareOf(player) });
     this.dice = new SceneDice(store, ports, this.tokens.diceParts());
     this.layers = {
       readablePin: (player, sceneId, alias) => this.tokens.shareOfScene(sceneId)?.readablePin(player, sceneId, alias) ?? null,

@@ -85,16 +85,21 @@ const toPlayer = (sent: readonly Sent[], player: string): Sent[] => sent.filter(
 const names = (sent: readonly Sent[]): string[] => (tokenLists(sent).at(-1)?.tokens ?? []).map((entry) => entry.name ?? '?').sort();
 /** Where the tokens stand that a player's page lights the scene from. */
 const seers = (sent: readonly Sent[]): string[] => (sequenced(sent, 'sight').at(-1)?.tokens ?? []).filter((entry) => entry.vision !== undefined).map(({ x, y }) => `${x},${y}`).sort();
-/** The GM rolls for a token's statblock, which every player hears; the alias the roll names it by, if any. */
-function rollFor(table: ShareHarness, tokenId: string): string | undefined {
+type RollTold = Extract<GmMessage, { t: 'roll' }>;
+
+/** The GM rolls for a token's statblock, which every player hears; the roll as each player was told it, and how many messages told it. */
+function rollFor(table: ShareHarness, tokenId: string): { readonly to: (player: string) => RollTold | undefined; readonly messages: number } {
   const roll: DiceRollResult = {
     id: `roll_${tokenId}`, timestamp: 1, formula: '1d20', rolls: [{ die: 'd20', value: 13, max: 20 }], modifiers: 0, total: 13, crit: null, player: 'Player',
     source: { type: 'statblock', tokenId, statblockPath: `Bestiary/${tokenId}.md`, tokenName: tokenId, tokenImagePath: `art/${tokenId}.webp`, abilityName: 'Bite' },
   };
+  const from = table.sent.length;
   bus.emit('dice-rolled', roll, { viewId: 'view-1', mapPath: table.state().mapPath ?? '', tokenId });
-  const sent = table.sent.flatMap(({ body }): Extract<GmMessage, { t: 'roll' }>[] => (body.t === 'roll' ? [body] : [])).at(-1);
-  return sent?.token ?? undefined;
+  const told = table.sent.slice(from).filter(({ body }) => body.t === 'roll');
+  const to = (player: string): RollTold | undefined => told.flatMap(({ body, to: who }) => (body.t === 'roll' && (who === player || who === undefined) ? [body] : [])).at(-1);
+  return { to, messages: told.length };
 }
+const namesToken = (told: RollTold | undefined): boolean => told?.token != null && told.result.source?.abilityName === 'Bite';
 const doors = (sent: readonly Sent[]): number => sent.flatMap(({ body }) => (body.t === 'doors' ? [body.doors.length] : [])).at(-1) ?? 0;
 
 describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %s picture', (from) => {
@@ -150,13 +155,26 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
   });
 
   describe('rolls every player hears', () => {
-    it('name a monster only while every player sees it, and a player\'s own character always', async () => {
+    it('name a monster, with what it rolled for, only to the players whose own picture shows it', async () => {
       const off = await started(rooms(), false);
-      expect(rollFor(off, 'goblin')).toBeUndefined();
-      expect(rollFor(off, 'ben')).toBeDefined();
+      const goblin = rollFor(off, 'goblin');
+      expect(namesToken(goblin.to(BEN))).toBe(true);
+      expect(goblin.to(ANA)).toMatchObject({ token: null, result: { source: { type: 'statblock' } } });
+      expect(goblin.to(ANA)?.result.source?.abilityName).toBeUndefined();
+      expect(goblin.to(CARA)?.token).toBeNull();
+      bus.removeAllListeners();
+    });
+
+    it('name a player\'s own character, and a monster everyone sees, to all in one message', async () => {
+      const off = await started(rooms(), false);
+      const ben = rollFor(off, 'ben');
+      expect(ben.messages).toBe(1);
+      expect([ANA, BEN, CARA].every((player) => namesToken(ben.to(player)))).toBe(true);
       bus.removeAllListeners();
       const on = await started(rooms(), true);
-      expect(rollFor(on, 'goblin')).toBeDefined();
+      const goblin = rollFor(on, 'goblin');
+      expect(goblin.messages).toBe(1);
+      expect(namesToken(goblin.to(CARA))).toBe(true);
       bus.removeAllListeners();
     });
   });
@@ -186,19 +204,33 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
         seen: () => (tokenId) => table.perception?.(tokenId) === 'seen',
       };
     };
-    /** The areas the players were last told of, an aura by `aura`. */
-    const kept = (table: ShareHarness): string[] => (table.sent.flatMap(({ body }) => (body.t === 'marks' ? [body] : [])).at(-1)?.measures ?? [])
+    /** The areas `player` was last told of, an aura by `aura`. */
+    const kept = (table: ShareHarness, player: string): string[] => (toPlayer(table.sent, player).flatMap(({ body }) => (body.t === 'marks' ? [body] : [])).at(-1)?.measures ?? [])
       .flatMap((entry) => entry.full?.kept ?? []).map((area) => (area.aura === undefined ? 'area' : 'aura'));
+    const marksTo = (table: ShareHarness): (string | undefined)[] => [...new Set(table.sent.filter(({ body }) => body.t === 'marks').map(({ to }) => to))];
 
-    it('is told only where every player sees that token, with Shared vision off', async () => {
+    it('is told, with Shared vision off, to each player whose own picture shows that token, and to nobody else', async () => {
       const off = await started(rooms(), false);
       auraAroundGoblin(off);
       await off.advance(2000);
-      expect(kept(off)).toEqual(['area']);
+      expect(kept(off, BEN)).toEqual(['aura', 'area']);
+      expect(kept(off, ANA)).toEqual(['area']);
+      expect(kept(off, CARA)).toEqual(['area']);
+      expect(marksTo(off)).not.toContain(undefined);
+    });
+
+    it('is told to all in one message where every picture agrees', async () => {
       const on = await started(rooms(), true);
       auraAroundGoblin(on);
       await on.advance(2000);
-      expect(kept(on)).toEqual(['aura', 'area']);
+      expect(kept(on, ANA)).toEqual(['aura', 'area']);
+      expect(marksTo(on)).toEqual([undefined]);
+      // The goblin walks into the dark beyond Ben's door: with Shared vision off nobody sees it, and the area goes to all at once.
+      const off = await started(rooms({ goblin: { x: 2500, y: 2500 } }), false);
+      auraAroundGoblin(off);
+      await off.advance(2000);
+      expect(marksTo(off)).toEqual([undefined]);
+      expect(kept(off, BEN)).toEqual(['area']);
     });
   });
 

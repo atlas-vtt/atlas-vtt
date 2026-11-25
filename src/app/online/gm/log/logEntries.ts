@@ -1,4 +1,4 @@
-import { GM_AUTHOR, isRecord, MAX_LOG_ENTRIES, MAX_PLAYERS, parseLogEntry, PLAYER_ID_PATTERN, quoting, type LogEntry, type RestChange, type RestEntry } from '../../protocol/index.ts';
+import { GM_AUTHOR, isRecord, MAX_LOG_ENTRIES, MAX_PLAYERS, parseLogEntry, PLAYER_ID_PATTERN, quoting, type LogEntry, type RestChange, type RestEntry, type SharedRoll } from '../../protocol/index.ts';
 import type { TokenEntity } from '../../../types';
 import type { DiceRollResult } from '../../../types/diceTypes';
 
@@ -35,6 +35,7 @@ export interface FoundPin {
  * `restPlayers`: the players of a rest's character, who alone are sent all it changed.
  * `changePlayers`: beside each change of a rest, the players of the other character it was made to
  * (an action taken for them), who are sent that change; none for a change to the character resting.
+ * `namedFor`: the players whose picture shows a roll's token, who alone are sent it named (`unnamedRoll` for the rest).
  */
 export type GmLogEntry = LogEntry & {
   readonly hidden?: true;
@@ -44,7 +45,13 @@ export type GmLogEntry = LogEntry & {
   readonly pin?: FoundPin;
   readonly restPlayers?: readonly string[];
   readonly changePlayers?: readonly (readonly string[])[];
+  readonly namedFor?: readonly string[];
 };
+
+/** A roll as a player who does not see its token is told it: without what it was rolled for, unless its roller wrote that for the table (a toolbar roll's name). */
+export function unnamedRoll(roll: SharedRoll): SharedRoll {
+  return roll.source === undefined || roll.source.type === 'toolbar' ? roll : { ...roll, source: { type: roll.source.type } };
+}
 
 /** The token the GM's log names for an entry, when it holds one. */
 export function faceOf(entry: LogEntry): RollFace | undefined {
@@ -53,13 +60,13 @@ export function faceOf(entry: LogEntry): RollFace | undefined {
 
 /** An entry as players are sent it: without what only the GM's log has. */
 export function sharedEntry(entry: GmLogEntry): LogEntry {
-  const { hidden: _hidden, face: _face, speakerArt: _art, imageFile: _file, pin: _pin, restPlayers: _players, changePlayers: _changePlayers, ...shared } = entry;
+  const { hidden: _hidden, face: _face, speakerArt: _art, imageFile: _file, pin: _pin, restPlayers: _players, changePlayers: _changePlayers, namedFor: _namedFor, ...shared } = entry;
   return shared;
 }
 
-/** Whether an entry goes to everyone alike: no whisper, no private roll, no rest (whose changes only its character's players see), nothing only the GM has. */
+/** Whether an entry goes to everyone alike: no whisper, no private roll, no roll whose token only some players see, no rest (whose changes only its character's players see), nothing only the GM has. */
 export function isOpen(entry: GmLogEntry): boolean {
-  return entry.hidden !== true && entry.kind !== 'rest' && !('to' in entry && entry.to !== undefined);
+  return entry.hidden !== true && entry.kind !== 'rest' && entry.namedFor === undefined && !('to' in entry && entry.to !== undefined);
 }
 
 /** Whether `viewer` is shown what a rest changed: the GM, and the players of the character who rested. */
@@ -83,11 +90,19 @@ function changesFor(entry: GmLogEntry, changes: RestEntry['changes'], viewer: st
 
 /**
  * An entry as one viewer is sent it (`'gm'` or a player's id): whole, a line that a roll was made
- * in private, a rest without what it changed (to anyone but its character's players: a player of a
- * character an action was taken for gets the changes made to that character alone), or nothing (a
- * whisper to others, a GM's roll players are not shown).
+ * in private, a roll without its token to a player whose picture does not show it (`namedFor`), a rest
+ * without what it changed (to anyone but its character's players: a player of a character an action was
+ * taken for gets the changes made to that character alone), or nothing (a whisper to others, a GM's roll
+ * players are not shown).
  */
 export function viewOf(entry: GmLogEntry, viewer: string): LogEntry | null {
+  const view = wholeViewOf(entry, viewer);
+  if (view?.kind !== 'roll' || entry.namedFor === undefined || viewer === GM_AUTHOR || entry.namedFor.includes(viewer)) return view;
+  return { ...view, token: null, roll: unnamedRoll(view.roll) };
+}
+
+/** An entry as one viewer is sent it, by its audience alone (`viewOf`). */
+function wholeViewOf(entry: GmLogEntry, viewer: string): LogEntry | null {
   if (entry.hidden === true) return viewer === GM_AUTHOR ? sharedEntry(entry) : null;
   const shared = sharedEntry(entry);
   if (shared.kind === 'rest' && !seesRestChanges(entry, viewer)) {
@@ -163,6 +178,8 @@ function readLogEntries(saved: unknown): GmLogEntry[] {
     const pin = entry.kind === 'found' ? readFoundPin(value.pin) : undefined;
     const restPlayers = entry.kind === 'rest' ? readPlayerIds(value.restPlayers) : undefined;
     const changePlayers = readChangePlayers(value.changePlayers, entry);
+    // A roll kept as named to some players is never read as named to all.
+    const namedFor = entry.kind === 'roll' && Array.isArray(value.namedFor) ? readPlayerIds(value.namedFor) ?? [] : undefined;
     entries.push({
       ...entry,
       ...(value.hidden === true && { hidden: true as const }),
@@ -172,6 +189,7 @@ function readLogEntries(saved: unknown): GmLogEntry[] {
       ...(pin !== undefined && { pin }),
       ...(restPlayers !== undefined && { restPlayers }),
       ...(changePlayers !== undefined && { changePlayers }),
+      ...(namedFor !== undefined && { namedFor }),
     });
   }
   return entries;
