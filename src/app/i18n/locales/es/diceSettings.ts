@@ -16,7 +16,7 @@ export const diceSettings: Translation = {
   'diceSettings.colour.light': 'Claro',
   'diceSettings.colour.dark': 'Oscuro',
   'diceSettings.colour.accent': 'Acento',
-  'diceSettings.colourHint': 'Tarjeta clara, oscura con números claros o tu color de acento. Los ajustes de dados de la paleta de comandos muestran cada uno.',
+  'diceSettings.colourHint': 'Tarjeta clara, oscura con números claros, tu color de acento o un color propio. Los ajustes de dados de la paleta de comandos muestran cada uno.',
   'diceSettings.numbers': 'Números',
   'diceSettings.diceNumbers': 'Números de los dados',
   'diceSettings.font.medieval': 'Medieval',

@@ -66,7 +66,7 @@ export interface AtlasSettings {
   fogEdge: FogEdge;
   /** When a dragged token shows how far it has moved: always, only while a fight runs, or never. Read with `getDragDistance`. */
   dragDistance: DragDistance;
-  /** Colour of the dice: card stock, dark or the accent colour. Read with `getDiceLook`. */
+  /** Colour of the dice: card stock, dark, the accent colour or a colour of the Appearance page. Read with `getDiceLook`. */
   diceColour: DiceColour;
   /** Face of the dice numerals and roll totals. Read with `getDiceLook`. */
   diceFont: DiceFont;

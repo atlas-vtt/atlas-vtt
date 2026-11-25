@@ -17,6 +17,7 @@ export const appearance: Translation = {
   'appearance.ivy': '常春藤颜色',
   'appearance.ivyHint': '中世纪面板上的叶子和藤蔓，保留明暗。',
   'appearance.ivyMediaevalOnly': '只有中世纪风格才会长出常春藤。',
+  'appearance.diceHint': '骰子跟随强调色，或使用单独的颜色。',
   'appearance.ivyNatural': '自然',
   'appearance.glass': '透明',
   'appearance.glassHint': '工具栏、小组件和骰子会透出模糊的地图。',

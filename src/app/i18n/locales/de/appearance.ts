@@ -17,6 +17,7 @@ export const appearance: Translation = {
   'appearance.ivy': 'Efeufarbe',
   'appearance.ivyHint': 'Die Blätter und Ranken auf den Mittelalter-Panels, die Schattierung bleibt.',
   'appearance.ivyMediaevalOnly': 'Nur im Mittelalter-Stil wächst Efeu.',
+  'appearance.diceHint': 'Deine Würfel folgen der Akzentfarbe oder bekommen eine eigene Farbe.',
   'appearance.ivyNatural': 'Natürlich',
   'appearance.glass': 'Transparenz',
   'appearance.glassHint': 'Leisten, Widgets und Würfel lassen die Karte verschwommen durchscheinen.',

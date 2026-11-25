@@ -16,7 +16,7 @@ export const diceSettings: Translation = {
   'diceSettings.colour.light': 'Clair',
   'diceSettings.colour.dark': 'Sombre',
   'diceSettings.colour.accent': 'Accent',
-  'diceSettings.colourHint': 'Carton clair, sombre aux chiffres clairs, ou votre couleur d\'accent. Les paramètres des dés de la palette de commandes les montrent tous.',
+  'diceSettings.colourHint': "Carton clair, sombre aux chiffres clairs, votre couleur d'accent ou une couleur à part. Les paramètres des dés de la palette de commandes les montrent tous.",
   'diceSettings.numbers': 'Chiffres',
   'diceSettings.diceNumbers': 'Chiffres des dés',
   'diceSettings.font.medieval': 'Médiéval',

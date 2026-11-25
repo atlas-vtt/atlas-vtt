@@ -17,6 +17,7 @@ export const appearance = {
   "appearance.ivy": "Colore dell’edera",
   "appearance.ivyHint": "Foglie e rampicanti dei pannelli Medievale, con le loro ombreggiature.",
   "appearance.ivyMediaevalOnly": "L’edera cresce solo nello stile Medievale.",
+  "appearance.diceHint": "I tuoi dadi seguono il colore di risalto oppure ne hanno uno tutto loro.",
   "appearance.ivyNatural": "Naturale",
   "appearance.glass": "Trasparenza",
   "appearance.glassHint": "Barre, widget e dadi lasciano intravedere la mappa, sfocata.",

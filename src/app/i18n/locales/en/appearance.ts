@@ -18,6 +18,7 @@ export const appearance = {
   'appearance.ivy': 'Ivy colour',
   'appearance.ivyHint': 'The leaves and vines on Medieval panels, shading kept.',
   'appearance.ivyMediaevalOnly': 'Only the Medieval look grows ivy.',
+  'appearance.diceHint': 'Your dice follow the accent colour, or take a colour of their own.',
   'appearance.ivyNatural': 'Natural',
   'appearance.glass': 'Transparency',
   'appearance.glassHint': 'Bars, widgets and dice let the map show through, blurred.',

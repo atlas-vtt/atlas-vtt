@@ -29,6 +29,7 @@ export const BOUNDARIES = {
       "src/app/sound/**/*.ts",
       "src/app/dice3d/**/*.ts",
       "src/app/dice3d/**/*.tsx",
+      "src/app/appearance/colourPresets.ts",
       "src/app/packages/components/primitives/**/*.ts",
       "src/app/packages/components/primitives/**/*.tsx",
       "src/app/host/**/*.ts",
