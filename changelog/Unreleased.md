@@ -59,6 +59,7 @@
 - Sound: long tag names show in full on hover
 - Sound: turning up reverb no longer makes a sound louder
 - Stream Deck: the Music and Ambience keys now move the Sound page's faders correctly
+- Deleting a scene stops showing it to players: a new scene made later with the same name no longer appears on the player view by itself
 
 ## Atlas Online
 
@@ -67,6 +68,7 @@
 - Opening a local player view is now easier during an online session
 - Better error messages
 - Party tokens under Fog of War stay visible and movable for their players
+- Letting in several waiting players at once no longer removes all but the first
 
 
 Thanks to my Patreon supporters Aaron, Aaron W Scott, Aiden Hatcher, Andrew, Anna B. Meyer, basilisk, Bradley Bell, Carl Corneil, Chris Del Gigante, Daniel Mensinga, Daria Ambrose, Deus Ex Minima, Dewwww, Dom Bosco, Eskil Bolsøy, George Young, Giodude, Hannes Pingel, Ionazh, James, Joe Wehr, Josh Zindler, Joshua Herrin, Justin Wright, Kevin Hait, Krangal, LittleBlueShyGuy, lmc, Markus Baumann, Michael Breuer, MrEhm, Nick, Pau Benazet Montobbio, SamDark, Scaradeus, ShonkyMapCo, Tim, Tim Roddick-Hull, Tobias Redlich, Venivici, Voider Elf, Xethgnur, z-lf and Zack Samuels. You mean everything to me :heart:
