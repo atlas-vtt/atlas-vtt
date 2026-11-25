@@ -1,6 +1,6 @@
 import { holdsPixels, releaseCanvas } from '../../imageProcessing/canvasLimit';
 import type { DerivedFormat } from '../../imageProcessing/imageEncoder';
-import { failedEngineShaders } from '../../pixi/lighting/engine/shaderCheck';
+import { contextAnswers, failedEngineShaders } from '../../pixi/lighting/engine/shaderCheck';
 import { unrenderableEngineTargets } from '../../pixi/lighting/engine/targetCheck';
 import { section, yesNo, type ReportRow, type ReportSection } from './reportModel';
 
@@ -85,7 +85,7 @@ export function webglSection(canvas: HTMLCanvasElement): ReportSection {
       ['Extensions missing', missing.join(', ') || 'none'],
       ['Lighting targets that cannot be rendered into', targets.join(', ') || 'none'],
       ['Lighting shaders that do not link', shaders.map(({ name }) => name).join(', ') || 'none'],
-      ['Context lost while asked', yesNo(gl.isContextLost())],
+      ['Context lost while asked', yesNo(gl.isContextLost() || ((targets.length > 0 || shaders.length > 0) && !contextAnswers(gl)))],
     ]);
   } catch (error) {
     return section('WebGL 2', [['Context', `failed while asked: ${error instanceof Error ? error.name : 'unknown error'}`]]);
