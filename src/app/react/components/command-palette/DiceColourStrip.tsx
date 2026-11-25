@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link2 } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
 import { t } from '../../../i18n';
 import { DICE_COLOUR_OPTIONS, type DiceColour } from '../../../dice3d/diceLook';
@@ -34,6 +35,10 @@ export function DiceColourStrip({ value, previews, onChange }: DiceColourStripPr
                 ? <img className="atlas-dice-colour-strip__die" src={preview} alt="" draggable={false} />
                 : <span className="atlas-dice-colour-strip__die atlas-dice-colour-strip__die--pending" aria-hidden="true" />}
               {active && preview && ring && <span className="atlas-dice-colour-strip__ring" aria-hidden="true" />}
+              {option.value === 'accent' && (
+                // The accent die shares its colour with one of the others; the link says it is the accent's, and follows it.
+                <span className="atlas-dice-colour-strip__follows" aria-hidden="true"><Link2 /></span>
+              )}
             </button>
           </LabelTooltip>
         );

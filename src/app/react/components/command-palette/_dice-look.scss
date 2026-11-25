@@ -74,3 +74,25 @@ $dice-gap: $spacing-xs;
   mask: var(--atlas-dice-ring) center / 100% 100% no-repeat;
   pointer-events: none;
 }
+
+// The accent die's mark at its lower right: a link, as on a mood tied to its scene, on a disc of the panel's ground.
+.atlas-dice-colour-strip__follows {
+  position: absolute;
+  right: 2%;
+  bottom: 2%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30%;
+  aspect-ratio: 1;
+  border: $border-width-s solid var(--background-modifier-border);
+  border-radius: $radius-full;
+  background: var(--background-primary);
+  color: var(--text-muted);
+  pointer-events: none;
+
+  svg {
+    width: 62%;
+    height: 62%;
+  }
+}

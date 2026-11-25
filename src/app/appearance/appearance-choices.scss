@@ -40,14 +40,8 @@
   max-width: 24rem;
 }
 
-// The dice colours on one line, centred, name and hint centred above them.
-.atlas-appearance-dice {
-  align-items: center;
-  text-align: center;
-
-  > .atlas-dice-colour-strip {
-    --atlas-dice-columns: 11;
-    flex-wrap: nowrap;
-    width: 100%;
-  }
+// The dice colours on one line, centred.
+.atlas-appearance-dice > .atlas-dice-colour-strip {
+  --atlas-dice-columns: 11;
+  flex-wrap: nowrap;
 }
