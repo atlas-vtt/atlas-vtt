@@ -48,7 +48,7 @@ export const tour = {
   'tour.welcome.slides.welcome.chip': 'Welcome',
   'tour.welcome.slides.welcome.kicker': 'Atlas VTT',
   'tour.welcome.slides.welcome.title': 'Welcome to Atlas',
-  'tour.welcome.slides.welcome.body': 'A virtual tabletop inside your vault. Any game system, free and open source.',
+  'tour.welcome.slides.welcome.body': 'A free, open-source and customisable virtual tabletop. Your worlds in your hands, forever.',
   'tour.welcome.slides.maps.chip': 'Maps',
   'tour.welcome.slides.maps.kicker': 'Maps & scenes',
   'tour.welcome.slides.maps.title': 'Any map, ready in seconds',

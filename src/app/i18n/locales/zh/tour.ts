@@ -47,7 +47,7 @@ export const tour: Translation = {
   'tour.welcome.slides.welcome.chip': '欢迎',
   'tour.welcome.slides.welcome.kicker': 'Atlas VTT',
   'tour.welcome.slides.welcome.title': '欢迎使用 Atlas',
-  'tour.welcome.slides.welcome.body': '就在你仓库里的虚拟桌面。支持任何游戏系统，免费且开源。',
+  'tour.welcome.slides.welcome.body': '免费、开源、可自定义的虚拟桌面。你的世界，永远在你手中。',
   'tour.welcome.slides.maps.chip': '地图',
   'tour.welcome.slides.maps.kicker': '地图与场景',
   'tour.welcome.slides.maps.title': '任何地图，几秒就绪',

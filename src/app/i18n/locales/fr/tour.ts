@@ -48,7 +48,7 @@ export const tour: Translation = {
   'tour.welcome.slides.welcome.chip': 'Bienvenue',
   'tour.welcome.slides.welcome.kicker': 'Atlas VTT',
   'tour.welcome.slides.welcome.title': 'Bienvenue dans Atlas',
-  'tour.welcome.slides.welcome.body': 'Une table virtuelle dans votre coffre. Pour tous les systèmes de jeu, gratuite et open source.',
+  'tour.welcome.slides.welcome.body': 'Une table virtuelle gratuite, open source et personnalisable. Vos mondes entre vos mains, pour toujours.',
   'tour.welcome.slides.maps.chip': 'Cartes',
   'tour.welcome.slides.maps.kicker': 'Cartes et scènes',
   'tour.welcome.slides.maps.title': 'Toute carte prête en quelques secondes',
