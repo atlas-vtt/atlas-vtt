@@ -288,9 +288,10 @@ $page-shift: clamp(24px, 3cqi, 56px);
   display: grid;
   grid-template: minmax(0, 1fr) / minmax(0, 1fr);
 
-  // Only while turning: at rest nothing of a page is clipped, its shadows and popovers least of all.
+  // Only while turning, and only along the axis the pages slide on: at rest nothing of a page is clipped, its
+  // popovers least of all, and a turn never cuts the shadows the panes cast up over the page control.
   &[data-turning] {
-    overflow: clip;
+    overflow-x: clip;
   }
 }
 
