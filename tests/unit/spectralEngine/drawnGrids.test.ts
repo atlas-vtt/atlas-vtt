@@ -68,6 +68,17 @@ describe('grids a program drew, whose lines are all alike', () => {
     expect(found.result!.cellSize).toBeCloseTo(200, 0);
   }, 600000);
 
+  // A dot sits on every crossing, so lattices of three and six fifths of the cell find one under each long edge and outscore the grid.
+  it('finds a grid dotted every fifth of a cell in the reduced picture of the whole map', () => {
+    const size = { width: 4800, height: 4000 };
+    const picture = dashedDungeon(size.width, size.height, 200, 40, 'dots')({ x: 0, y: 0, ...size }, 0.5);
+
+    const detected = detectGridInImage(picture)!;
+
+    expect(detected).toMatchObject({ gridType: 'square', aspect: 1 });
+    expect(detected.cellSize).toBeCloseTo(100, 0);
+  }, 120000);
+
   // Rows 3 % off on a map this size are found by no proposal: a grid of nearly the measured size shares every eighth line with the map's.
   it('keeps a measurement as it is where only a grid that shares some lines with the map\'s fits', () => {
     const [width, height] = [1600, 1200];

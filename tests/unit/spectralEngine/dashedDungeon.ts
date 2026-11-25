@@ -8,10 +8,6 @@ export type MapDrawing = (rect: PixelRect, scale: number) => GrayImage;
 const FLOOR = 223;
 const ROCK = 165;
 const WALL = 40;
-/** Wall strokes outside the floors, in map pixels. */
-const WALL_WIDTH = 22;
-/** How far the walls' shadow reaches onto the floor. */
-const SHADOW = 40;
 const DASH_INK = 140;
 const DASH_LENGTH = 16;
 const DASH_WIDTH = 10;
@@ -27,13 +23,23 @@ function offPeriod(value: number, period: number): number {
   return Math.min(m, period - m);
 }
 
+/** How a grid line is drawn: short dashes along it, or round dots a quarter of their spacing wide. */
+export type LineMarks = 'dashes' | 'dots';
+
 /**
  * A dungeon as Atlas' generator draws it: rooms of pale floor in thick walls on grainy rock, and on
- * the floors alone a grid of `cell` px whose lines are short dashes every `pitch` px. Rooms are whole
- * cells, their walls outside the grid's lines, and the walls cast a shadow onto the floor.
+ * the floors alone a grid of `cell` px whose lines are short dashes (or dots) every `pitch` px. Rooms
+ * are whole cells, their walls outside the grid's lines, and the walls cast a shadow onto the floor.
  */
-export function dashedDungeon(width: number, height: number, cell: number, pitch: number): MapDrawing {
+export function dashedDungeon(width: number, height: number, cell: number, pitch: number, marks: LineMarks = 'dashes'): MapDrawing {
   const random = rng(5);
+  // Wall strokes outside the floors, and how far their shadow reaches onto the floor.
+  const wallWidth = (cell * 11) / 100;
+  const shadowReach = cell / 5;
+  const mark = (across: number, along: number): number =>
+    marks === 'dots'
+      ? cover(Math.hypot(offPeriod(across, cell), offPeriod(along, pitch)), pitch / 8)
+      : cover(offPeriod(across, cell), DASH_WIDTH / 2) * cover(offPeriod(along, pitch), DASH_LENGTH / 2);
   const cols = Math.ceil(width / cell);
   const rows = Math.ceil(height / cell);
   const floor = new Uint8Array(cols * rows);
@@ -54,18 +60,15 @@ export function dashedDungeon(width: number, height: number, cell: number, pitch
     const top = y - r * cell;
     const sides: Array<[number, number, number]> = [[-1, 0, left], [1, 0, cell - left], [0, -1, top], [0, 1, cell - top]];
     if (isFloor(c, r)) {
-      const shadow = Math.max(0, ...sides.filter(([dc, dr]) => !isFloor(c + dc, r + dr)).map(([, , d]) => 1 - d / SHADOW));
-      const dash = Math.max(
-        cover(offPeriod(x, cell), DASH_WIDTH / 2) * cover(offPeriod(y, pitch), DASH_LENGTH / 2),
-        cover(offPeriod(y, cell), DASH_WIDTH / 2) * cover(offPeriod(x, pitch), DASH_LENGTH / 2),
-      );
+      const shadow = Math.max(0, ...sides.filter(([dc, dr]) => !isFloor(c + dc, r + dr)).map(([, , d]) => 1 - d / shadowReach));
+      const dash = Math.max(mark(x, y), mark(y, x));
       return (FLOOR - 30 * shadow) * (1 - dash) + DASH_INK * dash;
     }
     // How far the cell `step` cells over lies along one axis, from a point `along` into this cell.
     const away = (step: number, along: number): number => (step < 0 ? along : step > 0 ? cell - along : 0);
     for (let dr = -1; dr <= 1; dr++) {
       for (let dc = -1; dc <= 1; dc++) {
-        if (isFloor(c + dc, r + dr) && Math.max(away(dc, left), away(dr, top)) < WALL_WIDTH) return WALL;
+        if (isFloor(c + dc, r + dr) && Math.max(away(dc, left), away(dr, top)) < wallWidth) return WALL;
       }
     }
     // The rock's dither: every other row alternates by a grey level or two, pixel by pixel. A reduced picture averages it away.
