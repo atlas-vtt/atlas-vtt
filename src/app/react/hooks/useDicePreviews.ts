@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
 import type { App } from 'obsidian';
-import type { DiceColour, DiceFont } from '../../dice3d/diceLook';
-import { renderDicePreviews } from '../../dice3d/diceLookRuntime';
+import type { DiceFont } from '../../dice3d/diceLook';
+import { renderDicePreviews, type DicePreviews } from '../../dice3d/diceLookRuntime';
 
 /**
- * A d20 in each colour and `font`, as image URLs, rendered by the dice renderer
- * itself. Rendered again when Obsidian's CSS changes, since the accent die takes
- * the accent colour.
+ * A d20 in each colour and `font`, as image URLs, and the ring of the chosen one,
+ * rendered by the dice renderer itself. Rendered again when Obsidian's CSS
+ * changes, since the accent die takes the accent colour.
  */
-export function useDicePreviews(app: App | undefined, font: DiceFont): Partial<Record<DiceColour, string>> {
-  const [previews, setPreviews] = useState<Partial<Record<DiceColour, string>>>({});
+export function useDicePreviews(app: App | undefined, font: DiceFont): DicePreviews {
+  const [previews, setPreviews] = useState<DicePreviews>({ images: {}, ring: null });
   const [cssVersion, setCssVersion] = useState(0);
 
   useEffect(() => {

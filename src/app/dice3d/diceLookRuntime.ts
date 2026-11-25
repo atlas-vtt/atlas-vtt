@@ -9,6 +9,7 @@ import { layoutDice, restingFrame } from './diceScene';
 import { loadDiceArtwork } from './dieArtwork';
 import { dieGeometry, faceIndexForValue, lyingHeight, REST_YAW, restingQuaternion } from './dieGeometry';
 import { refreshDieArtwork } from './dieMesh';
+import { copyCanvas, outlineRing } from './dieOutline';
 import { makeDie, restImmediately } from './dieMotion';
 import { activeLook, resolveLook, setActiveLook } from './dieSkin';
 import { borrowStage, returnStage } from './stagePool';
@@ -36,17 +37,26 @@ export async function applyDiceLook(look: DiceLook, doc: Document = getDomHost()
 }
 
 /** Pixel size of a preview; shown at half that. */
-const PREVIEW_PX = 144;
+const PREVIEW_PX = 192;
+/** The chosen die's ring, in preview pixels: how far off the die's edge it stands, and how wide it is. */
+const RING_GAP = 4;
+const RING_WIDTH = 3;
+
+/** A d20 per colour as image URLs, and the ring that marks the chosen one (the same die in every colour). */
+export interface DicePreviews {
+  images: Partial<Record<DiceColour, string>>;
+  ring: string | null;
+}
 
 /**
  * A d20 with its 20 up in each colour and the given font, as image URLs. One
- * pooled stage renders all three; the look is swapped and restored within one
+ * pooled stage renders all of them; the look is swapped and restored within one
  * task, so no panel ever draws a frame in the wrong colour.
  */
-export async function renderDicePreviews(font: DiceFont, doc: Document = getDomHost().activeDocument()): Promise<Partial<Record<DiceColour, string>>> {
+export async function renderDicePreviews(font: DiceFont, doc: Document = getDomHost().activeDocument()): Promise<DicePreviews> {
   await loadDiceArtwork(font);
   const accent = readAccent(doc);
-  const previews: Partial<Record<DiceColour, string>> = {};
+  const previews: DicePreviews = { images: {}, ring: null };
   const lease = borrowStage(doc);
   const previous = activeLook();
   try {
@@ -58,14 +68,20 @@ export async function renderDicePreviews(font: DiceFont, doc: Document = getDomH
     const geometry = dieGeometry(20);
     const anim = makeDie(Math.random, offsets[0], radius, renderer.stage(), lyingHeight(geometry));
     restImmediately(anim, restingQuaternion(geometry, faceIndexForValue(geometry, 20), REST_YAW / 2));
+    // The die alone, without its shadow on the table: its outline is the ring's.
+    renderer.setShadowShown(false);
+    renderer.render([{ anim, sides: 20 }], 1);
+    previews.ring = outlineRing(copyCanvas(lease.canvas), RING_GAP, RING_WIDTH);
+    renderer.setShadowShown(true);
     for (const { value: colour } of DICE_COLOUR_OPTIONS) {
       setActiveLook(resolveLook({ colour, font }, accent));
       refreshDieArtwork(20);
       renderer.render([{ anim, sides: 20 }], 1);
       // Read back in the same task as the render: the drawing buffer is not kept.
-      previews[colour] = lease.canvas.toDataURL('image/png');
+      previews.images[colour] = lease.canvas.toDataURL('image/png');
     }
   } finally {
+    lease.renderer?.setShadowShown(true);
     setActiveLook(previous);
     // Only the d20 was repainted for the previews.
     refreshDieArtwork(20);

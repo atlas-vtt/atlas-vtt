@@ -5,7 +5,7 @@
 // A d20 per colour, rendered by the dice renderer, to click.
 
 // A die's slot; the preview image is a third larger, its empty border reaching into the neighbours' room, so the die's
-// body (95 of the image's 144 px) and the chosen die's ring fill the slot.
+// body (about two thirds of the image) and the chosen die's ring fill the slot.
 $dice-slot: 72px;
 $dice-gap: $spacing-xs;
 
@@ -21,6 +21,7 @@ $dice-gap: $spacing-xs;
 
 // Obsidian styles every <button>; the options start from nothing.
 .atlas-dice-colour-strip__option {
+  position: relative;
   display: block;
   flex: 0 0 min(#{$dice-slot}, calc((100% - (var(--atlas-dice-columns) - 1) * #{$dice-gap}) / var(--atlas-dice-columns)));
   aspect-ratio: 1;
@@ -65,14 +66,11 @@ $dice-gap: $spacing-xs;
   filter: brightness(1.12);
 }
 
-// Holds the chosen die's outline filter (DiceColourStrip.tsx), taking no room.
-.atlas-dice-colour-strip__trace {
+// The chosen die's ring (`renderDicePreviews`), laid over its image in the page's ink, as the chosen swatch's outline.
+.atlas-dice-colour-strip__ring {
   position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-}
-
-.atlas-dice-colour-strip__trace-colour {
-  flood-color: var(--text-normal);
+  inset: -16.667%;
+  background: var(--text-normal);
+  mask: var(--atlas-dice-ring) center / 100% 100% no-repeat;
+  pointer-events: none;
 }
