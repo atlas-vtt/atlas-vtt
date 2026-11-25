@@ -4,30 +4,27 @@
 // ── Dice colour strip ─────────────────────────
 // A d20 per colour, rendered by the dice renderer, to click.
 
-// The preview image is drawn at 144 px with the die's body 95 px across; at this size the body is 90 px, as large as a
-// single rolled d20. Measured on a resting 1d20 roll and on the preview, both at a device pixel ratio of 1.
-$dice-preview: 136px;
-// The image's empty border, which reaches into its neighbours' room: the die takes the slot left inside it.
-$dice-preview-trim: 20px;
-$dice-slot: $dice-preview - 2 * $dice-preview-trim;
-$dice-columns: 6;
+// A die's slot; the preview image is a third larger, its empty border reaching into the neighbours' room, so the die's
+// body (95 of the image's 144 px) and the chosen die's ring fill the slot.
+$dice-slot: 72px;
+$dice-gap: $spacing-xs;
 
-// Six to a line where they fit (eleven colours: six over five), centred. The row gap leaves room for each die's shadow.
+// `--atlas-dice-columns` dice to a line, each slot shrinking below $dice-slot where the line is narrower, centred.
 .atlas-dice-colour-strip {
+  --atlas-dice-columns: 6;
   position: relative;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: $spacing-m $spacing-xs;
-  max-width: $dice-columns * $dice-slot + ($dice-columns - 1) * $spacing-xs;
-  margin-inline: auto;
+  gap: $spacing-s $dice-gap;
 }
 
 // Obsidian styles every <button>; the options start from nothing.
 .atlas-dice-colour-strip__option {
   display: block;
-  width: $dice-slot;
-  height: $dice-slot;
+  flex: 0 0 min(#{$dice-slot}, calc((100% - (var(--atlas-dice-columns) - 1) * #{$dice-gap}) / var(--atlas-dice-columns)));
+  aspect-ratio: 1;
+  height: auto;
   margin: 0;
   padding: 0;
   background: transparent;
@@ -42,15 +39,16 @@ $dice-columns: 6;
 
 .atlas-dice-colour-strip__die {
   display: block;
-  width: $dice-preview;
-  height: $dice-preview;
-  margin: -$dice-preview-trim;
+  width: 133.333%;
+  aspect-ratio: 1;
+  height: auto;
+  // A percentage margin is of the slot's width: a sixth of the slot each side.
+  margin: -16.667%;
   pointer-events: none;
   transition: filter $transition-fast $transition-ease;
 
   &--pending {
-    width: $dice-slot;
-    height: $dice-slot;
+    width: 100%;
     margin: 0;
     border-radius: $radius-full;
     background: var(--background-modifier-hover);

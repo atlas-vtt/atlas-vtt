@@ -132,8 +132,7 @@
 // the accent's and the ivy's swatches side by side; measured at 1440 x 900), and the cards are as wide as pictures of
 // the rest are at their 480 : 300 ratio, three in a row. From about 1200 x 800 up they fill the page's width; a
 // smaller window gets smaller cards instead of a scrolling page. A taller translation scrolls the page. The dice
-// colours' row under the swatches is left out on purpose: the cards keep the size they have in Appearance settings,
-// and the page scrolls to the dice.
+// colours' row is left out on purpose: the cards keep the size they have in Appearance settings, and the page scrolls.
 $look-around: 360px;
 $look-cards-min: 420px;
 
