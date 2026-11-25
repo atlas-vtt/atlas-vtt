@@ -10,7 +10,8 @@ import { LabelTooltip } from '../../../../../packages/components/primitives/tool
 import { Skeleton } from '../../../../../packages/components/primitives/Skeleton';
 import { useLoadingReveal } from '../../../../../packages/components/primitives/useLoadingReveal';
 import { PlayGlyph } from './libraryGlyphs';
-import { formatLength, type LibraryRow as Row } from './rowModel';
+import type { LibraryRow as Row } from './rowModel';
+import { formatLength } from '../musicClock';
 import { useFileSeconds } from './useLibrary';
 import { holdWord, type SoundHold } from '../soundHold';
 import { CutTooltip } from '../CutTooltip';

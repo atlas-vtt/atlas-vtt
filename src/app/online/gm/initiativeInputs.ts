@@ -85,7 +85,7 @@ function initiativeRulesOf(rules: RulesLookup | null, mapPath: string | null): I
  * for being sent before a fight too: only
  * while the GM's tracker is open and the player view shows it; every entry whose token is on the
  * map and not hidden, in turn order or by sides; names only where players see the nameplate, hit points only where
- * the map's rules show them to players. Nothing of a hidden token's entry is read.
+ * the map's rules show them to players on that token. Nothing of a hidden token's entry is read.
  */
 export function sharedInitiative(inputs: InitiativeInputs): SharedInitiative | null {
   const { state, rules } = inputs;
@@ -94,14 +94,12 @@ export function sharedInitiative(inputs: InitiativeInputs): SharedInitiative | n
   const tokens = state.objects.tokens;
   const definitions = rules !== null ? mapResources(rules, state.mapPath) : [];
   const conditions = rules !== null ? mapConditions(rules, state.mapPath) : [];
-  const hpVisible = definitions.some((definition) => definition.key === 'hp' && definition.visibleToPlayers);
   const initiativeRules = initiativeRulesOf(rules, state.mapPath);
   const sides = sideIdsOf(initiative, initiativeRules);
   const list = playerInitiativeList(
     initiative,
     (entry) => playersEntryToken(entry, tokens, definitions, conditions, sides),
     initiativeRules,
-    hpVisible,
   );
   const shownNumber = (entry: (typeof list.combatants)[number]['entry']): number => {
     // A dealt card stands where the number does, so older pages show it too

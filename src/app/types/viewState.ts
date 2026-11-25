@@ -86,7 +86,6 @@ export interface ViewState extends ViewUIState {
     measures?: Record<string, KeptMeasure>;
   };
 
-  // Camera state
   camera: CameraState;
 
   /** Dynamic lighting of the scene; saved with the map, never undo-tracked. */
@@ -145,14 +144,12 @@ export interface ViewState extends ViewUIState {
   selectionMode: 'box' | 'lasso';
   selectedIds: string[];
 
-  // Drag state
   isDragging: boolean;
 
   // Widget settings
   widgetSettings: WidgetSettings;
   widgetValues: Record<string, number>; // Widget values separate from definitions
 
-  // Player view state
   isPlayerView: boolean;
 
   // GM view toggle (semi-transparent fog vs fully opaque)
@@ -161,10 +158,6 @@ export interface ViewState extends ViewUIState {
   // DM screen state
   dmNotePath: string | null;
 
-  // Collection management
-  currentCollectionId?: string;
-
-  // Token settings
   tokenSettings: {
     showNameplates: boolean;
     /** Keys of the collection's resources this map does not show to the GM; see `resources/sceneVisibility.ts`. */

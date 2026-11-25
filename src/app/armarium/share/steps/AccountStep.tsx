@@ -4,9 +4,8 @@ import type { AccountState } from '../../../account/AtlasAccount';
 import { Skeleton, SkeletonGroup } from '../../../packages/components/primitives/Skeleton';
 import { t } from '../../../i18n';
 import type { Gate, ShareSnapshot } from '../../upload/shareState';
-import { uploadMessageFor } from '../../upload/text/uploadMessages';
 import { ShareNotice } from './ShareNotice';
-import { shareSaid } from '../shareWording';
+import { refusalSaid, shareSaid } from '../shareWording';
 
 /** The account step: sign in on this device, then whether the account may share now. */
 export function AccountStep({ state, gate, subject }: { state: AccountState; gate: Gate | null; subject: ShareSnapshot['subject'] }): React.JSX.Element {
@@ -36,7 +35,7 @@ export function AccountStep({ state, gate, subject }: { state: AccountState; gat
         </div>
       );
     case 'signed-in':
-      if (gate?.status === 'refused') return <ShareNotice tone="error">{uploadMessageFor(gate.refusal.code, gate.refusal.until)}</ShareNotice>;
+      if (gate?.status === 'refused') return <ShareNotice tone="error">{refusalSaid(subject, gate.refusal)}</ShareNotice>;
       return (
         <SkeletonGroup className="atlas-share-checking" label={t('armariumShare.checkingAccount')}>
           <Skeleton shape="text" width="80%" />

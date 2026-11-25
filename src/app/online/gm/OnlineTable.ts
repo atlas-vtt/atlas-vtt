@@ -30,9 +30,15 @@ import type { AssetPublisher } from './assets/AssetPublisher.ts';
 import { OpenScenes, tablePublisher, viewFocus, type TableAssets } from './assets/tableAssets.ts';
 import type { TableSoundShare } from './sound/TableSoundShare.ts';
 import { tableSoundShare } from './sound/tableSoundPorts.ts';
+import { tableControlsStore } from '../../stores/tableControlsStore';
+import { TableModeShare } from './tableModeShare.ts';
 
 export type { OnlineTableEvents };
 import { FoundShare } from './pins/FoundShare.ts';
+import { CANVAS_MEMORY_IMAGES } from './memory/canvasMemoryImages.ts';
+import { VaultMemoryStore } from './memory/VaultMemoryStore.ts';
+import { keptMemoriesOf } from './memory/vaultMemoryFiles.ts';
+import { runInBackground } from '../../utils/backgroundTask';
 
 /** How often the presented tab is looked for, and the shared one checked. */
 const WATCH_MS = 1_000;
@@ -79,6 +85,8 @@ export class OnlineTable {
   private readonly openScenes: OpenScenes | null;
   /** The table's sound for its players; null where nothing can be stored for them. */
   private readonly sound: TableSoundShare | null;
+  /** How the table plays, and the GM's curtain and pause, for every player. */
+  private readonly mode: TableModeShare;
   /** The join link players open. */
   readonly link: string;
   private readonly stopOwnership: () => void;
@@ -119,6 +127,7 @@ export class OnlineTable {
     });
     this.openScenes = this.assets === null ? null : new OpenScenes(app, this.assets.storing);
     const stored = this.assets?.storing;
+    const memories = new VaultMemoryStore(app, seats.campaignId, (player) => seats.codeOf(player) !== null);
     this.log = new TableLog({
       send: (body, to) => this.connection.send(body, to),
       clock: () => Date.now(),
@@ -166,6 +175,11 @@ export class OnlineTable {
       connected: () => this.connection.connected,
       uncovered: (player) => this.bound()?.share.catchUpMarks(player),
     });
+    this.mode = new TableModeShare(tableControlsStore, {
+      send: (body, to) => this.connection.send(body, to),
+      // Down: the shared tab is let go (players are sent no scene); up: the presented scene is shared again
+      curtainChanged: () => this.watch.check(),
+    });
     this.watch = new TabWatch<SceneBinding>({
       leaves: () => app.workspace.getLeavesOfType(ATLAS_VIEW_TYPE),
       presented: () => presentedScene(app),
@@ -176,6 +190,7 @@ export class OnlineTable {
         sendLive: (body, key, to) => this.covers.sendLive(body, key, to),
         readImage: (path) => readVaultImage(app, path),
         stored,
+        memory: { store: memories, images: CANVAS_MEMORY_IMAGES, live: keptMemoriesOf(app) },
         isLive: (binding) => this.watch.isLive(binding),
         randomId: () => randomHex(12),
         logRoll: (roll) => this.log.rolled(roll),
@@ -190,6 +205,7 @@ export class OnlineTable {
         if (notice !== null) showNotice(notice);
       },
       mapPath: (path) => events.mapPath(path),
+      curtained: () => this.mode.curtained,
     }, mapPath);
     this.connection = new TableConnection(origin, table.code, table.secret, {
       status: (status) => this.setStatus(status),
@@ -228,7 +244,7 @@ export class OnlineTable {
     }, this.gate);
     // Each player hears only how far the assets they were sent references of have come.
     this.connection.onSent = (text, to) => this.assets?.sent(text, to);
-    this.roster = new TableRoster(seats, this.connection, { kick: (player) => this.kick(player), turnAway: (player) => this.connection.kick(player), joinCode: () => this.gate.settings.code });
+    this.roster = new TableRoster(seats, this.connection, { kick: (player) => this.kick(player), turnAway: (player) => this.connection.kick(player), joinCode: () => this.gate.settings.code, removed: (player) => runInBackground(memories.forget(player), 'Removing what a player explored') });
     this.stopOwnership = ownership.onChange(() => this.bound()?.share.ownersChanged());
   }
 
@@ -296,6 +312,7 @@ export class OnlineTable {
     this.books.start();
     this.found.start();
     this.sound?.start();
+    this.mode.start();
     // Every rest that reaches a character of this table the GM's Atlas takes while it runs is logged: approved requests and the GM's own.
     this.stopLoggingRests = gatedRests.onRested((rest) => {
       const players = this.playersOfCharacter(rest.characterId);
@@ -395,6 +412,7 @@ export class OnlineTable {
   }
 
   private stopWatch(): void {
+    this.mode.stop();
     this.sound?.stop();
     this.assets?.stop();
     this.stopLoggingRests();
@@ -410,8 +428,10 @@ export class OnlineTable {
     return binding !== null && this.watch.isLive(binding) ? binding : null;
   }
 
-  /** The scene, tokens and the rest to one player or to all, or no scene while the shared tab is gone; then the log, the shown image and the books. */
+  /** The table's mode, then the scene, tokens and the rest to one player or to all, or no scene while the shared tab is gone; then the log, the shown image and the books. */
   private resend(to?: string): void {
+    // First, so a page shows the remote or the curtain before the scene comes, never the map for a moment
+    this.mode.resend(to);
     const binding = this.bound();
     if (binding === null) this.connection.send({ t: 'scene', scene: null }, to);
     else binding.share.resend(to);

@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { ChangelogContent } from './ChangelogContent';
 import { HeaderLinks } from './HeaderLinks';
 import type { ChangelogOptions } from './types';
-import atlasIcon from '../../../.github/images/atlas-vtt-icon.webp?inline';
+import atlasIcon from '../assets/brand/atlas-icon.webp';
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../ui/nativeModal';
 
 /** The service targets the main window; Obsidian owns focus and Escape handling. */

@@ -3,11 +3,12 @@ import { recordsByFile, recordsForFiles, type RecordsSeam } from './libraryRecor
 import { parentOfRelative } from './soundPaths';
 import { withChanges, type StoredSound } from './soundRecords';
 import type { SoundRecordStore } from './SoundRecordStore';
+import { getLocale } from '../i18n';
 
 /** Longer is no row of the rail, and no tag anyone chose. */
 const MAX_TAG_LENGTH = 48;
 
-const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+const collator = new Intl.Collator(getLocale(), { numeric: true, sensitivity: 'base' });
 
 /** What two tags are compared by: never the locale's, or two devices would read one list differently. */
 export const tagKey = (tag: string): string => tag.trim().toLowerCase();
@@ -29,9 +30,14 @@ export interface TrackTags {
   folders: readonly string[];
 }
 
-export function tagsOfTrack(path: string, records: readonly StoredSound[]): TrackTags {
+/** The names of the folders a file lies in below its root: its folder tags. */
+export function folderTagsOf(path: string): string[] {
   const folder = parentOfRelative(path);
-  return { own: records.flatMap(tagsOfRecord), folders: folder === '' ? [] : folder.split('/') };
+  return folder === '' ? [] : folder.split('/');
+}
+
+export function tagsOfTrack(path: string, records: readonly StoredSound[]): TrackTags {
+  return { own: records.flatMap(tagsOfRecord), folders: folderTagsOf(path) };
 }
 
 const holds = (tags: readonly string[], key: string): boolean => tags.some((tag) => tagKey(tag) === key);

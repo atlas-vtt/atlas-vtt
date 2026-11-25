@@ -5,7 +5,7 @@ export const fog: Translation = {
   'fog.modes': '迷雾',
   'fog.tools': '迷雾形状与操作',
   'fog.fog': '迷雾',
-  'fog.fogTip': '按住 Alt 改为擦除。右键点击迷雾可揭示或删除它',
+  'fog.fogTip': '按住 Alt 擦除。右键点击迷雾可揭示或删除',
   'fog.eraser': '橡皮擦',
   'fog.eraserTip': '按住 Alt 改为添加迷雾',
   'fog.reveal': '揭示',

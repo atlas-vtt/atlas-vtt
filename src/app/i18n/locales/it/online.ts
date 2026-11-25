@@ -180,6 +180,8 @@ export const online = {
   "online.unmark": "Rimuovi contrassegno",
   "online.update": "Aggiorna",
   "online.updateAfter": "Aggiorna Atlas dopo questa sessione",
+  "online.sheet.templateMissing": "I giocatori non possono modificare la scheda {note}: il suo modello manca. Scegli un modello per la nota.",
+  "online.sheet.templateNewer": "I giocatori non possono modificare la scheda {note}: il suo modello dice di essere stato creato con un Atlas più recente, quindi Atlas lo legge soltanto.",
   "online.worldMap.missing": "Atlas Online non può inviare la mappa del mondo: il file dell’immagine manca.",
   "online.worldMap.tooLarge": "Atlas Online non può inviare la mappa del mondo: l’immagine supera i 95 MB.",
   "online.worldMap.unreadable": "Atlas Online non può inviare la mappa del mondo: l’immagine non è un PNG, JPEG, WebP, GIF o AVIF che i giocatori possano aprire.",
@@ -190,4 +192,9 @@ export const online = {
   "online.mapUnreadable": "L’immagine della mappa di questa scena non può essere inviata ai giocatori.",
   "online.fogTooMuch": "Questa mappa ha troppa nebbia per i giocatori online. La vedono coperta finché non ne rimuovi un po’.",
   "online.assetsFailed": "Impossibile condividere un file con i giocatori.",
+  'online.doorAsk': '{player} chiede di aprire una porta.',
+  'online.doorAskShow': 'Mostra',
+  'online.doorAskHeading': '{player} chiede di aprire questa porta',
+  'online.doorAskAllow': 'Aprila',
+  'online.doorAskDeny': 'Lasciala chiusa',
 } satisfies Translation;

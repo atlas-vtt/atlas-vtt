@@ -2,7 +2,7 @@ import type { WallSegment } from '../types/wallTypes';
 import { areaLightReach, kindOf, lightReach, type LightReach } from './sight';
 import { sameCone } from './visionCone';
 import type { AreaSampling } from './areaReach';
-import { reflectionParts, type ReflectionSampling } from './reflectedLight';
+import { reflectionParts, type ReflectionPart, type ReflectionSampling } from './reflectedLight';
 import type { EngineLight } from '../pixi/lighting/engine/types';
 
 interface Entry {
@@ -15,6 +15,15 @@ interface Entry {
   /** It was worked out with its reflection. */
   reflected: boolean;
 }
+
+interface KeptReaches {
+  entries: Map<string, Entry>;
+  sampling: AreaSampling;
+  reflection: ReflectionSampling | null;
+}
+
+/** Wall arrays whose reaches are kept besides the current ones. */
+const KEPT_WALLS = 3;
 
 /** How the outline of an area light is sampled when no map says more: a quarter of a 70 px cell apart, clear of 3 px capsules. */
 const DEFAULT_SAMPLING: AreaSampling = { spacing: 17.5, clearance: 3 };
@@ -32,6 +41,13 @@ export class LightReaches {
   private entries = new Map<string, Entry>();
   private sampling: AreaSampling = DEFAULT_SAMPLING;
   private reflection: ReflectionSampling | null = null;
+  /** The walls of the last sync. */
+  private walls: readonly WallSegment[] | null = null;
+  /**
+   * The reaches of the walls synced before, each with how it was traced: a scene left for another
+   * and switched back to, or a wall edit undone, finds its reaches again instead of tracing them.
+   */
+  private readonly kept = new Map<readonly WallSegment[], KeptReaches>();
 
   /**
    * `sampling` says how area lights' outlines are traced (`areaSamples`), `reflection` how the
@@ -39,6 +55,7 @@ export class LightReaches {
    * them.
    */
   sync(lights: readonly EngineLight[], walls: readonly WallSegment[], sampling: AreaSampling = DEFAULT_SAMPLING, reflection: ReflectionSampling | null = null): LightReach[] {
+    if (walls !== this.walls) this.switchWalls(walls);
     const resampled = sampling.spacing !== this.sampling.spacing || sampling.clearance !== this.sampling.clearance;
     const reflectionChanged = !sameReflection(reflection, this.reflection);
     this.sampling = sampling;
@@ -50,7 +67,7 @@ export class LightReaches {
       // A darkness gives nothing back.
       const reflects = !!this.reflection && !light.darkness;
       const traced = cached && cached.walls === walls && cached.x === x && cached.y === y && cached.dim === dim && sameCone(cached.reach.cone, light.cone)
-        && cached.surface === surface && !(surface && resampled) && !reflectionChanged;
+        && sameSurface(cached.surface, surface) && !(surface && resampled) && !reflectionChanged;
       if (!traced) next.set(key, { x, y, dim, surface, walls, reach: this.trace(light, walls, reflects), reflected: reflects });
       else if (cached.reach.bright === bright && sameKind(cached.reach, light) && cached.reflected === reflects) next.set(key, cached);
       else {
@@ -63,15 +80,67 @@ export class LightReaches {
     return [...next.values()].map((entry) => entry.reach);
   }
 
-  private trace(light: EngineLight, walls: readonly WallSegment[], reflects: boolean): LightReach {
-    const { x, y, bright, dim, surface } = light;
-    const reach = surface ? areaLightReach({ x, y }, surface, dim, walls, this.sampling, bright, light) : lightReach({ x, y }, dim, walls, bright, light);
-    return reflects ? { ...reach, reflection: reflectionParts(reach, walls, this.reflection!) } : reach;
+  /** Whether reaches traced with `walls` are held: the walls in use, or kept from before. */
+  knows(walls: readonly WallSegment[]): boolean {
+    return walls === this.walls || this.kept.has(walls);
   }
+
+  /**
+   * Takes the reaches of `lights` traced for `walls` with `sampling` and `reflection` elsewhere (a
+   * worker's, while the scene loads), as if traced here and then left for other walls: the next
+   * sync with these walls finds them, each still checked against its light. Nothing is taken
+   * while these walls are the ones in use, whose reaches are this object's own.
+   */
+  prime(walls: readonly WallSegment[], sampling: AreaSampling, reflection: ReflectionSampling | null, lights: readonly EngineLight[], reaches: readonly LightReach[]): void {
+    if (walls === this.walls) return;
+    const entries = new Map<string, Entry>();
+    lights.forEach((light, i) => {
+      const { key, x, y, dim, surface } = light;
+      entries.set(key, { x, y, dim, surface, walls, reach: reaches[i]!, reflected: !!reflection && !light.darkness });
+    });
+    this.kept.delete(walls);
+    this.kept.set(walls, { entries, sampling, reflection });
+    if (this.kept.size > KEPT_WALLS) this.kept.delete(this.kept.keys().next().value!);
+  }
+
+  /** Keeps the reaches of the walls before and takes up those kept for `walls`, if any. */
+  private switchWalls(walls: readonly WallSegment[]): void {
+    if (this.walls) {
+      this.kept.delete(this.walls);
+      this.kept.set(this.walls, { entries: this.entries, sampling: this.sampling, reflection: this.reflection });
+      if (this.kept.size > KEPT_WALLS) this.kept.delete(this.kept.keys().next().value!);
+    }
+    this.walls = walls;
+    const kept = this.kept.get(walls);
+    if (!kept) return;
+    this.kept.delete(walls);
+    ({ entries: this.entries, sampling: this.sampling, reflection: this.reflection } = kept);
+  }
+
+  private trace(light: EngineLight, walls: readonly WallSegment[], reflects: boolean): LightReach {
+    return traceReach(light, walls, this.sampling, reflects ? this.reflection : null);
+  }
+}
+
+/** Where `light` reaches past `walls`, with its reflection where `reflection` says how it is sampled. */
+export function traceReach(light: EngineLight, walls: readonly WallSegment[], sampling: AreaSampling, reflection: ReflectionSampling | null): LightReach {
+  const { x, y, bright, dim, surface } = light;
+  const reach = surface ? areaLightReach({ x, y }, surface, dim, walls, sampling, bright, light) : lightReach({ x, y }, dim, walls, bright, light);
+  return reflection ? withReflection(reach, reflectionParts(reach, walls, reflection)) : reach;
+}
+
+/** `reach` with where its lit floor gives light back. */
+export function withReflection(reach: LightReach, reflection: readonly ReflectionPart[]): LightReach {
+  return { ...reach, reflection };
 }
 
 function sameReflection(a: ReflectionSampling | null, b: ReflectionSampling | null): boolean {
   return a === b || (!!a && !!b && a.spacing === b.spacing && a.clearance === b.clearance && a.reach === b.reach);
+}
+
+/** The same area, by its corners: a scene read again from its file gives its area lights new arrays of the same points. */
+function sameSurface(a: EngineLight['surface'], b: EngineLight['surface']): boolean {
+  return a === b || (!!a && !!b && a.length === b.length && a.every((point, i) => point.x === b[i]!.x && point.y === b[i]!.y));
 }
 
 function sameKind(reach: LightReach, light: EngineLight): boolean {

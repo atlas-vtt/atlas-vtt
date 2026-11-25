@@ -2,7 +2,7 @@ import type { Translation } from '../../types';
 
 export const openings: Translation = {
   'openings.mode': 'Aberturas',
-  'openings.needsLevels': 'Las aberturas miran a la planta de abajo: añade primero una planta a la escena',
+  'openings.needsLevels': 'Añade primero una planta a la escena',
   'openings.title': 'Abertura',
   'openings.kind': 'Qué es esta zona',
   'openings.open': 'Abierta hacia abajo',

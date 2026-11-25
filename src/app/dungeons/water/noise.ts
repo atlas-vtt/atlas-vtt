@@ -1,6 +1,7 @@
 /** Gradient noise of our own: a seeded permutation, eight gradients, quintic fade, octaves summed. */
 
 import { type Rng, shuffled } from '../rng';
+import { lerp } from '../../utils/math';
 
 export type Noise2 = (x: number, y: number) => number;
 
@@ -17,10 +18,6 @@ const GRADIENTS: readonly (readonly [number, number])[] = [
 
 function fade(t: number): number {
   return t * t * t * (t * (t * 6 - 15) + 10);
-}
-
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
 }
 
 /** One octave of gradient noise, about −0.7..0.7. */

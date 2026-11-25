@@ -77,6 +77,15 @@ class KWeighting {
   }
 }
 
+/** The energy of a signal after K-weighting, the frequency weighting loudness is measured through. */
+export function kWeightedEnergy(samples: Float32Array): number {
+  const energy = new Float64Array(samples.length);
+  new KWeighting().accumulate(samples, energy);
+  let sum = 0;
+  for (const value of energy) sum += value;
+  return sum;
+}
+
 /** Sample peaks are lower than what the converter draws between samples: this finds those, per channel. */
 class TruePeak {
   /** The last samples of the previous piece, so a piece's start has its filter history. */

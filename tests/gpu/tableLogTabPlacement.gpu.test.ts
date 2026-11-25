@@ -155,7 +155,7 @@ describe('the table log\'s tab on the GM\'s map', () => {
   }
 
   for (const width of [1280, 640]) {
-    it(`hangs below the full player window bar, which stays clear of the tabs, widgets and dice rolls, in a view ${width} px wide`, async () => {
+    it(`stands beside the full player window bar, which stays clear of the tabs, widgets and dice rolls, in a view ${width} px wide`, async () => {
       const { tab } = await mount(width, 600, { tabs: true, widgets: LABELS.length, levels: true, bar: true });
       await page.screenshot({ path: `__screenshots__/atlas-player-window-bar-${width}.png`, element: leaf });
       const tabs = boxOf('.atlas-scene-tab-bar');
@@ -164,8 +164,8 @@ describe('the table log\'s tab on the GM\'s map', () => {
       expect(bar.width).toBeCloseTo(166, -1);
       expect(bar.left).toBeCloseTo(tabs.left, 0);
       expect(bar.top).toBeCloseTo(tabs.bottom + INSET, 0);
-      expect(tab.left).toBeCloseTo(bar.left, 0);
-      expect(tab.top).toBeCloseTo(bar.bottom + INSET, 0);
+      expect(tab.left).toBeCloseTo(bar.right + INSET, 0);
+      expect(tab.top).toBeCloseTo(bar.top, 0);
       for (const selector of ['.atlas-scene-tab-bar', '.atlas-widget', '.atlas-dice-roll__sheet', '.atlas-level-switcher']) {
         for (const [index, box] of boxesOf(selector).entries()) expect.soft(overlaps(bar, box), `bar and ${selector} ${index}`).toBe(false);
       }

@@ -68,21 +68,22 @@ export function useAssetManagerEffects({
 
   useEffect(() => {
     if (!isOpen || isAnySubModalOpen) return;
+    const doc = modalRef.current?.doc ?? activeDocument;
     const handler = (e: KeyboardEvent): void => {
-      if (document.querySelector('.atlas-onboarding-overlay')) return;
+      if (doc.querySelector('.atlas-onboarding-overlay')) return;
       if (!isShortcutScopeActive(modalRef.current)) return;
       // Map shortcuts are suspended while this modal is open, so it owns closing
       // via the asset-manager binding. Consume the event before it reaches the map.
       if (!e.defaultPrevented && matchesMapHotkey(e, 'assets', SettingsService.forApp(data.app))) {
         if (isTextEntryTarget(e.target)) return;
-        if (document.querySelector('.modal-container, .prompt, .suggestion-container, .menu, .atlas-ctx-menu')) return;
+        if (doc.querySelector('.modal-container, .prompt, .suggestion-container, .menu, .atlas-ctx-menu')) return;
         e.preventDefault();
         onClose();
         return;
       }
       if (e.key === 'Escape') {
         // A menu, picker or dialog over the manager took this Escape for itself.
-        if (handledByAnotherControl(e) || document.querySelector(OPEN_LAYERS)) return;
+        if (handledByAnotherControl(e) || doc.querySelector(OPEN_LAYERS)) return;
         e.preventDefault();
         if (sel.selectedAssetIds.length > 0) {
           sel.setSelectedAssetIds([]);
@@ -100,7 +101,7 @@ export function useAssetManagerEffects({
       if (e.key === 'Tab' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         // A menu, picker or panel that is open keeps the key; the one it was pressed in may be gone already.
         const target = e.target as Partial<Element> | null;
-        if (e.defaultPrevented || target?.closest?.(OWNS_TAB) || document.querySelector(OPEN_LAYERS)) return;
+        if (e.defaultPrevented || target?.closest?.(OWNS_TAB) || doc.querySelector(OPEN_LAYERS)) return;
         e.preventDefault();
         const direction = e.shiftKey ? -1 : 1;
         changeTab(tabs[(tabs.indexOf(activeTab) + direction + tabs.length) % tabs.length]!);
@@ -108,8 +109,8 @@ export function useAssetManagerEffects({
       }
       typeToSearch(e, modalRef.current, setSearch);
     };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    doc.addEventListener('keydown', handler);
+    return () => doc.removeEventListener('keydown', handler);
   }, [isOpen, onClose, sel.selectedAssetIds, isAnySubModalOpen, data.app, activeTab, changeTab, setSearch]);
 
   useEffect(() => {
@@ -124,8 +125,9 @@ export function useAssetManagerEffects({
         crud.setEditingToken(null);
       }
     };
-    document.addEventListener('pointerdown', handler);
-    return () => document.removeEventListener('pointerdown', handler);
+    const doc = containerRef.current?.doc ?? activeDocument;
+    doc.addEventListener('pointerdown', handler);
+    return () => doc.removeEventListener('pointerdown', handler);
   }, [isOpen, onClose, isAnySubModalOpen]);
 
   useEffect(() => {

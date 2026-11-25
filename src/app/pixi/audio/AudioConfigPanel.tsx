@@ -133,7 +133,7 @@ function AudioConfigPanelInner({
           <Select labelledBy={soundLabelId} value={soundId} options={soundOptions} onChange={setSoundId} />
           {onPreview && (
             <LabelTooltip label={t('audio.preview')}>
-              <button
+              <button type="button"
                 className="atlas-audio-config__preview-btn"
                 onClick={() => onPreview(soundId)}
               >
@@ -217,7 +217,7 @@ function AudioConfigPanelInner({
         </div>
 
         {/* Delete */}
-        <button className="atlas-audio-config__delete-btn" onClick={handleDelete}>
+        <button type="button" className="atlas-audio-config__delete-btn" onClick={handleDelete}>
           Delete Sound Source
         </button>
       </div>

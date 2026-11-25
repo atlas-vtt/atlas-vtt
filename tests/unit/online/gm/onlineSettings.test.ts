@@ -10,20 +10,25 @@ const MARA = { id: 'acc_mara', handle: 'mara', name: 'Mara' };
 
 describe('online play\'s settings data', () => {
   it('reports no errors until the GM switches it on', () => {
-    expect(DEFAULT_SETTINGS).toEqual({ reportErrors: false });
+    expect(DEFAULT_SETTINGS).toEqual({ reportErrors: false, playMode: 'table' });
     expect(readSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(readSettings({ reportErrors: 'yes' })).toEqual(DEFAULT_SETTINGS);
-    expect(readSettings({ reportErrors: true })).toEqual({ reportErrors: true });
+    expect(readSettings({ reportErrors: true })).toEqual({ reportErrors: true, playMode: 'table' });
+  });
+
+  it('keeps phones as remotes across a reload, and reads any other play mode as each on their own map', () => {
+    expect(readSettings({ playMode: 'remote' }).playMode).toBe('remote');
+    expect(readSettings({ playMode: 'hologram' }).playMode).toBe('table');
   });
 
   it('reads nothing of the switch that once deleted the players\' copies on sign-out', () => {
-    expect(readSettings({ deleteCopiesOnSignOut: true, reportErrors: true })).toEqual({ reportErrors: true });
+    expect(readSettings({ deleteCopiesOnSignOut: true, reportErrors: true })).toEqual({ reportErrors: true, playMode: 'table' });
   });
 
   it('keeps nothing of a key that made tables without an account', () => {
     const read = readSettings({ createKey: 'owner-key', reportErrors: false });
     expect(read).toEqual(DEFAULT_SETTINGS);
-    expect(Object.keys(read)).toEqual(['reportErrors']);
+    expect(Object.keys(read)).toEqual(['reportErrors', 'playMode']);
   });
 });
 

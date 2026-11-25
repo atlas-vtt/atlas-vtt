@@ -362,9 +362,12 @@ $mark-size: 24px;
     line-height: 1.5;
   }
 
+  // A text area takes the room of its rows: the mixin's one-line height would cut them to one.
   &__text.atlas-input {
     @include atlas-text-input;
+    height: auto;
     min-height: 0;
+    padding-block: $spacing-xs;
     resize: vertical;
     font-family: inherit;
     line-height: 1.5;

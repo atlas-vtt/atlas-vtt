@@ -31,6 +31,7 @@ export const armariumShare: Translation = {
   'armariumShare.checkAgain': 'Проверить снова',
   'armariumShare.packing': 'Упаковка коллекции…',
   'armariumShare.exportFailed': 'Не удалось упаковать коллекцию: {error}',
+  'armariumShare.sending': 'Отправка {total}…',
   'armariumShare.sentOf': 'Отправлено {sent} из {total}',
   'armariumShare.parts': 'Части загрузки',
   'armariumShare.partOf': 'Часть {n} из {total}',

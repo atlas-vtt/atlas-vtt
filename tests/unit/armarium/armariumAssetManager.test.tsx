@@ -87,7 +87,7 @@ function pendingImport(): ExternalImport {
 
 beforeEach(() => {
   Object.defineProperty(window.navigator, 'onLine', { configurable: true, get: () => true });
-  const installer = ArmariumInstaller.open(app as unknown as App, { review: vi.fn(), fetchList: async () => [], installed: async () => [] });
+  const installer = ArmariumInstaller.open(app as unknown as App, { review: vi.fn(), fetchList: async () => [], installed: async () => [], musicWalked: async () => false });
   vi.spyOn(installer, 'installedItems').mockResolvedValue([]);
   const onStatus = installer.onStatus.bind(installer);
   vi.spyOn(installer, 'onStatus').mockImplementation((listener) => {

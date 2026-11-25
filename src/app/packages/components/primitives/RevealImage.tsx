@@ -6,7 +6,10 @@ import './skeleton.scss';
 interface RevealImageProps {
   src: string;
   alt: string;
-  /** Defer loading until the image nears the viewport, for long lists. */
+  /**
+   * Defer loading until the image nears the viewport, for long lists. Not for a virtual list's
+   * cards: its rows mount ahead of the view so that their art is there when they scroll in.
+   */
   lazy?: boolean | undefined;
   className?: string | undefined;
   /** Shown in place of an image that could not be loaded. */

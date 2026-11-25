@@ -39,7 +39,7 @@ async function showAtLists(rotation: number, edges: PlayersListEdge[], faces: bo
   const overlays = document.body.createDiv({ cls: 'atlas-player-overlays' });
   overlays.toggleClass('atlas-player-overlays--sideways', rotation === 90 || rotation === 270);
   const container = overlays.createDiv({ cls: 'atlas-player-initiative-container' });
-  const list = playerInitiativeList(fight(1), (_, index) => entryTokenOf(creature(index), [], []), { mode: 'turn-order', roll: '1d20', firstSide: 'players' }, false);
+  const list = playerInitiativeList(fight(1), (_, index) => entryTokenOf(creature(index), [], []), { mode: 'turn-order', roll: '1d20', firstSide: 'players' });
   for (const dock of edges) renderPlayerInitiative(container, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null, dock, faces });
 
   const { app } = createInMemoryApp({ files: {} });

@@ -131,7 +131,6 @@ export class DiceTool {
     this.state.quickDice = this.state.quickDice.filter(d => d !== die);
   }
 
-  // Get current state
   public getState(): DiceToolState {
     return { ...this.state };
   }

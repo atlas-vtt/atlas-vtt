@@ -46,7 +46,10 @@ function setHeldPlayout(tokens: unknown, playout: HeldPlayout | null): void {
  * and canvas. Measurement records came later than the rest (public PR 345): without them the laser
  * and the players' marks still work, and the GM's measurements stay with the GM.
  */
-function rendererParts(renderer: unknown): { readonly measurements: SceneSource<Measurements> | null; readonly viewport: Viewport; readonly canvas: HTMLCanvasElement; readonly tokens: unknown; readonly layBodies: LayBodies | null } | null {
+/** Shows a layer to the players' frame alone (`PixiRendererOrchestrator.addPlayerFrameLayer`). */
+type PlayerFrameLayer = NonNullable<OverlayHost['playerFrame']>;
+
+function rendererParts(renderer: unknown): { readonly measurements: SceneSource<Measurements> | null; readonly viewport: Viewport; readonly canvas: HTMLCanvasElement; readonly tokens: unknown; readonly layBodies: LayBodies | null; readonly playerFrame: PlayerFrameLayer | null } | null {
   const viewport = call(renderer, 'getViewportInstance');
   const canvas = call(renderer, 'getCanvasElement');
   if (!hasMethods(viewport, ['on', 'off', 'toWorld']) || !hasMethods(canvas, ['addEventListener', 'getContext'])) return null;
@@ -54,7 +57,10 @@ function rendererParts(renderer: unknown): { readonly measurements: SceneSource<
   if (measurements === null) console.warn('Atlas Online: this Atlas build keeps no measurement records, so players do not see the GM\'s measurements. Update Atlas.');
   // The bodies of the areas players measure lie in the map itself, where Atlas's own lie: under its tokens and its lighting.
   const layBodies: LayBodies | null = isContainer(viewport) ? (layer) => placeUnderTokens(viewport, layer) : null;
-  return { measurements, viewport: viewport as Viewport, canvas: canvas as HTMLCanvasElement, tokens: call(renderer, 'getTokenRenderer'), layBodies };
+  // The players' measurements in the player window too, where this Atlas build can show a layer to its players' frame alone.
+  const addLayer = field(renderer, 'addPlayerFrameLayer');
+  const playerFrame: PlayerFrameLayer | null = isFunction(addLayer) ? (layer) => (addLayer as PlayerFrameLayer).call(renderer, layer) : null;
+  return { measurements, viewport: viewport as Viewport, canvas: canvas as HTMLCanvasElement, tokens: call(renderer, 'getTokenRenderer'), layBodies, playerFrame };
 }
 
 /**
@@ -131,7 +137,7 @@ export class GmMarks {
       },
     };
     setHeldPlayout(parts.tokens, this.playout);
-    const host: OverlayHost = { canvas: parts.canvas, viewport: parts.viewport, ...(parts.layBodies && { layBodies: parts.layBodies }) };
+    const host: OverlayHost = { canvas: parts.canvas, viewport: parts.viewport, ...(parts.layBodies && { layBodies: parts.layBodies }), ...(parts.playerFrame && { playerFrame: parts.playerFrame }) };
     this.built = { renderer, source, taps: [tap, cursor], host, tokens: parts.tokens };
     return source;
   }

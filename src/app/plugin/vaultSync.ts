@@ -11,6 +11,7 @@ import { runInBackground } from '../utils/backgroundTask';
 import { isLibraryFile } from '../services/library/libraryPaths';
 import { EXTENSION_ATLASMAP, isScenePath } from '../utils/sceneFiles';
 import { closeMapTab, getLoadedAtlasView } from './atlasLeaves';
+import { presentedSceneOf } from '../services/presentedScene';
 import { showNotice } from '../ui/notice';
 import { t } from '../i18n';
 
@@ -73,6 +74,7 @@ export function registerVaultSync(plugin: Plugin): void {
     for (const map of maps) {
       if (moved.has(map) || app.vault.getFileByPath(map)) continue;
       await sceneThumbnails.trashThumbnail(map);
+      presentedSceneOf(app).mapDeleted(map);
     }
   };
   const scheduleCheck = debounce(() => runInBackground(check(), 'Checking Atlas files against the vault'), SETTLE_MS, true);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { computeTokenPixelSize, resizedTokenSize, TOKEN_SIZE_OPTIONS, tokenDiameterInCells, tokenSizeFromCreatureSize } from '../../src/app/pixi/token-renderer/tokenSizing';
+import { computeTokenPixelSize, resizedTokenSize, tokenDiameterInCells, tokenSizeFromCreatureSize } from '../../src/app/pixi/token-renderer/tokenSizing';
+import { TOKEN_SIZE_OPTIONS } from '../../src/app/pixi/token-renderer/tokenSizeOptions';
 
 describe('token size options', () => {
   it('names the footprint each stored multiplier renders', () => {

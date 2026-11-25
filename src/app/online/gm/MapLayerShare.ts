@@ -49,6 +49,8 @@ export interface MapLayerSharePorts extends PacerClock {
   map?(): MapSize | null;
   /** Reads a saved explored memory; without it nothing on the map is known by memory, only by sight. */
   decodeMask?: MaskDecoder | undefined;
+  /** The explored memory these players remember (a data URL), or null for none; without it, the memory the GM saved of the floor. */
+  memoryMask?: (() => string | null) | undefined;
 }
 
 const NO_PINS: Readonly<Record<string, NotePin>> = Object.freeze({});
@@ -110,7 +112,7 @@ export class MapLayerShare {
     this.store = store;
     this.ports = ports;
     this.pacer = new Pacer(ports, MAP_LAYER_INTERVAL_MS, () => this.flush());
-    this.annotations = new AnnotationTelling({ now: () => ports.now(), map: () => ports.map?.() ?? null, decodeMask: ports.decodeMask, changed: () => this.update() });
+    this.annotations = new AnnotationTelling({ now: () => ports.now(), map: () => ports.map?.() ?? null, decodeMask: ports.decodeMask, memory: ports.memoryMask, changed: () => this.update() });
     this.art = new ArtRefs((path) => ports.readImage(path), () => this.update(), ports.stored);
     this.pins = new ReadablePins(() => ports.randomId());
     this.liquids = new SharedLiquids(() => ports.randomId());

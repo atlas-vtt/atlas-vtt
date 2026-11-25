@@ -146,6 +146,7 @@ export function parseOwnListing(value: unknown): OwnListing | null {
     return {
       uid: text(fields.uid, 'mine.listing.uid'),
       slug: text(fields.slug, 'mine.listing.slug'),
+      ...(typeof fields.name === 'string' && fields.name.trim() !== '' ? { name: fields.name } : {}),
       format: formatOf(fields.format, 'mine.listing.format'),
       fields: fields.fields === null || fields.fields === undefined ? null : parseListingFields(fields.fields, 'mine.listing.fields'),
       newestVersion: numbers.length === 0 ? null : Math.max(...numbers),

@@ -18,6 +18,7 @@ import { levelObjects } from '../levels/levelObjects';
 import { levelLinkList, MAX_LEVEL_LINKS } from '../levels/levelLinks';
 import { placedLevelLink } from '../levels/levelLinkCopies';
 import { isRecord } from '../utils/guards';
+import { newId } from '../utils/ids';
 import { placedAnnotationCopies } from '../annotations/annotationCopies';
 import { annotationRoom } from '../annotations/annotationList';
 import { unlockedIds } from '../annotations/annotationLock';
@@ -54,10 +55,6 @@ interface MapObjectsStoreState {
 
 type ImmerSet = (fn: (draft: MapObjectsStoreState) => void) => void;
 
-function createObjectId(prefix: string): string {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-}
-
 /** Adds copied stairs on the level shown, at most `room` of them; returns their ids. */
 function addLinkCopies(draft: MapObjectsStoreState, content: MapObjectContent, room: number): string[] {
   const at = viewedLevelId(draft);
@@ -67,7 +64,7 @@ function addLinkCopies(draft: MapObjectsStoreState, content: MapObjectContent, r
     if (!placed) continue;
     // Whatever is in their place that is no record (a store filled by something else than a load) gives way.
     if (!isRecord(draft.objects.levelLinks)) draft.objects.levelLinks = {};
-    const id = createObjectId('levellink');
+    const id = newId('levellink');
     draft.objects.levelLinks[id] = { id, kind: 'level-link', ...placed };
     ids.push(id);
   }
@@ -82,7 +79,7 @@ function addCopies(draft: MapObjectsStoreState, content: MapObjectContent, linkR
   const level = placedOnViewedLevel(draft);
   const ids: string[] = [];
   for (const token of content.tokens) {
-    const id = createObjectId('tok');
+    const id = newId('tok');
     objects.tokens[id] = { ...token, id, instanceNumber: computeNextInstanceNumber(objects.tokens, token.imagePath), ...level };
     ids.push(id);
   }
@@ -91,17 +88,17 @@ function addCopies(draft: MapObjectsStoreState, content: MapObjectContent, linkR
   // Copied drawings and texts lie above every other one of the level, in a group of their own.
   const annotations = placedAnnotationCopies(content.drawings, content.texts, top);
   for (const drawing of annotations.drawings) {
-    const id = createObjectId('drawing');
+    const id = newId('drawing');
     objects.drawings[id] = { ...drawing, id, timestamp: Date.now(), ...level };
     ids.push(id);
   }
   for (const text of annotations.texts) {
-    const id = createObjectId('text');
+    const id = newId('text');
     objects.texts[id] = { ...text, id, ...level };
     ids.push(id);
   }
   for (const pin of content.pins) {
-    const id = createObjectId('pin');
+    const id = newId('pin');
     objects.pins[id] = isPinLabelKind(pin.icon) ? { ...pin, id, label: nextPinLabel(objects.pins, pin.icon), ...level } : { ...pin, id, ...level };
     ids.push(id);
   }

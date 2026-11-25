@@ -9,4 +9,5 @@ export const cover: Translation = {
   'cover.upload': 'Subir imagen',
   'cover.uploadHint': 'Usa una imagen propia como portada',
   'cover.uploaded': 'Imagen subida',
+  'cover.unreadable': '{name} no es una imagen que Atlas pueda leer. Elige otro archivo.',
 };

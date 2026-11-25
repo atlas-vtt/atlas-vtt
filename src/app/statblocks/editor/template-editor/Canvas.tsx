@@ -16,6 +16,7 @@ import { tabAt, withoutClosedTab } from './tabClicks';
 import { labelPartAt, type LabelPart } from './labelTargets';
 import { LIVE_TABLE_ATTRIBUTE } from '../table/EditableTable';
 import { t } from '../../../i18n';
+import { revealInList } from '../../../utils/scrollWithin';
 
 /** Marks the elements whose focus the block keys act on: the canvas. */
 export const BLOCK_KEYS_SELECTOR = '[data-te-blocks]';
@@ -80,7 +81,7 @@ export function Canvas(props: CanvasProps): React.JSX.Element {
     const stage = stageRef.current;
     const target = stage && focusRequest.id ? blockFrame(stage, focusRequest.id) : stage;
     target?.focus({ preventScroll: true });
-    target?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (target) revealInList(target);
   }, [stageRef, focusRequest]);
 
   useEffect(() => {

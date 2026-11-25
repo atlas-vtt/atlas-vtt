@@ -116,8 +116,12 @@ export class LibraryCopyFolder implements CopyFolder {
     return copyAudio;
   }
 
+  /**
+   * A copy's bytes at the path it was stored or found under. Never looked up through the listing: a copy just stored
+   * is not listed yet, and the listing's twin rule then names its source.
+   */
   async blob(audioPath: string): Promise<Blob> {
-    const place = this.placeOf(audioPath);
+    const place = this.placeOf(audioPath, undefined, false);
     if (!place || place === 'outside') throw new Error(`${audioPath} is not reachable on this device.`);
     return place.location.read(place.path);
   }
@@ -204,7 +208,13 @@ export class LibraryCopyFolder implements CopyFolder {
     if (!same(heldFacts) || !same(pathFacts) || !location.canTrash()) return path;
     const [kept = path] = [held, path].sort(keptFirst(stemCopyOf(joinRelative(parentOfRelative(path), facts.from))));
     const loser = kept === held ? path : held;
-    await location.trash(loser);
+    try {
+      await location.trash(loser);
+    } catch (error) {
+      // Both stay, as where the folder has no trash: each still plays the one sound.
+      console.error(`[Atlas] Could not move ${loser} to the trash`, error);
+      return path;
+    }
     const library = this.library();
     const from = library?.audioPathOf(kind, loser);
     const to = library?.audioPathOf(kind, kept);
@@ -213,11 +223,11 @@ export class LibraryCopyFolder implements CopyFolder {
   }
 
   /** A record's file on this device: in a linked root (an external path only in a root on disk), outside every root, or not reachable now. */
-  private placeOf(audioPath: string, audioSize?: number): Place | 'outside' | null {
+  private placeOf(audioPath: string, audioSize?: number, followListing = true): Place | 'outside' | null {
     const library = this.library();
     if (!library) return null;
     // The source's own name: a source beside its copy is converted and stored as itself, never as its copy.
-    const now = library.pathNow(audioPath, audioSize, false);
+    const now = followListing ? library.pathNow(audioPath, audioSize, false) : audioPath;
     const file = library.fileOfAudioPath(now);
     if (!file) return isExternalAudioPath(now) ? null : 'outside';
     if (isExternalAudioPath(now) && library.rootOf(file.kind).status !== 'external') return null;

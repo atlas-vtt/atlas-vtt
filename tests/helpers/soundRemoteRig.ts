@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import type { Mood } from '@/app/sound/soundTypes';
-import { startMusic } from '@/app/soundDirector/liveEdits';
+import { addLayer, startMusic } from '@/app/soundDirector/liveEdits';
 import { EMPTY_MIX, type SoundMix } from '@/app/soundDirector/soundMix';
 import type { SoundSnapshot } from '@/app/soundDirector/soundSnapshot';
 import { EMPTY_TABLE_SOUND } from '@/app/soundDirector/tableSound';
@@ -17,6 +17,12 @@ export const remoteMood = (id: string, name = id): Mood => ({ id, name, order: 0
 export const withMusic = (mix: SoundMix = EMPTY_MIX): SoundMix => ({
   ...mix,
   table: startMusic(EMPTY_TABLE_SOUND, [{ key: 'a', frames: 48_000 * 60, gainDb: 0 }], false, -4, 7, 0, 0, 0),
+});
+
+/** Ambience layers at these levels, by key, over what the mix plays. */
+export const withLayers = (levels: Record<string, number>, mix: SoundMix = EMPTY_MIX): SoundMix => ({
+  ...mix,
+  table: Object.entries(levels).reduce((table, [key, db]) => addLayer(table, { key, frames: 48_000 * 30, gainDb: 0 }, db, 0, 0, 0), mix.table),
 });
 
 /** A director as the remote sees it: its intents are spies, its snapshot what a test sets. */
@@ -50,6 +56,7 @@ export function fakeRemoteDirector(mix: SoundMix = EMPTY_MIX) {
       setRepeat: vi.fn(),
       setMusicMuted: vi.fn(),
       setMusicLevel: vi.fn(),
+      setLayerLevels: vi.fn(),
     },
   };
 }

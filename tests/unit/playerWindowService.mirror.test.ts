@@ -10,7 +10,7 @@ import { frameSource, framePiece, sizePlayerWindow } from '../mocks/playerFrameS
 
 const app = {
   vault: { adapter: { exists: async () => true, write: async () => {} } },
-  workspace: { on: vi.fn(() => ({})), offref: vi.fn() },
+  workspace: { containerEl: document.body, on: vi.fn(() => ({})), offref: vi.fn() },
 } as any;
 afterEach(() => { PlayerWindowService.getInstance()?.destroy(); vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.useRealTimers(); });
 

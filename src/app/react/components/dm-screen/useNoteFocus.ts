@@ -1,4 +1,5 @@
 import { useEffect, useState, type RefObject } from 'react';
+import { isWithin } from './screenKeys';
 
 /**
  * Whether the linked note holds the keys: while it does, nothing it types reaches the canvas's hotkeys,
@@ -14,13 +15,16 @@ export function useNoteFocus(isOpen: boolean, screenRef: RefObject<HTMLDivElemen
   useEffect(() => {
     if (!isOpen || !isNoteFocused) return;
 
-    const notesSection = document.querySelector('.atlas-dm-notes-section');
+    const notesSection = screenRef.current?.querySelector('.atlas-dm-notes-section');
     if (!notesSection) return;
 
     const stopKeyPropagation = (e: KeyboardEvent): void => {
-      e.stopPropagation();
+      const isEscape = e.type === 'keydown' && e.key === 'Escape';
+      // The note's editor is Obsidian's and has taken its keys below this section. The picker shown while no note
+      // is linked is React's, which hears keys at its root above: its arrows and Enter must get there.
+      if (isEscape || !isWithin(e.target, '.atlas-linked-note-picker')) e.stopPropagation();
 
-      if (e.type === 'keydown' && e.key === 'Escape') {
+      if (isEscape) {
         e.preventDefault();
 
         // Give CodeMirror time to finish processing before unfocusing
@@ -51,8 +55,8 @@ export function useNoteFocus(isOpen: boolean, screenRef: RefObject<HTMLDivElemen
       // Clicks on statblocks leave the focus as it is, and render nothing
       if (target.closest('.compact-statblock')) return;
 
-      const notesSection = document.querySelector('.atlas-dm-notes-section');
-      const noteContent = document.querySelector('.atlas-dm-note-content');
+      const notesSection = screenRef.current?.querySelector('.atlas-dm-notes-section');
+      const noteContent = screenRef.current?.querySelector('.atlas-dm-note-content');
 
       if (notesSection?.contains(target) || noteContent?.contains(target)) {
         setIsNoteFocused(true);
@@ -62,8 +66,9 @@ export function useNoteFocus(isOpen: boolean, screenRef: RefObject<HTMLDivElemen
     };
 
     // Capture, so this runs before other handlers
-    document.addEventListener('click', handleClick, true);
-    return () => document.removeEventListener('click', handleClick, true);
+    const doc = screenRef.current?.doc ?? activeDocument;
+    doc.addEventListener('click', handleClick, true);
+    return () => doc.removeEventListener('click', handleClick, true);
   }, [isOpen, screenRef]);
 
   return [isNoteFocused, setIsNoteFocused];

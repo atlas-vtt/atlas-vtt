@@ -140,16 +140,11 @@ describe('LightingToolGroup', () => {
     expect(screen.queryByText('Brush size')).toBeNull();
   });
 
-  it('sizes the rooms brush, disabled while doors are placed', () => {
+  it('leaves the rooms\' sizes to the rooms bar', () => {
     const { store } = renderGroup('wall');
     mode(store, 'rooms');
-    expect(screen.queryByText('Brush size')).toBeNull();
     act(() => { store.getState().setRoomTool({ shape: 'brush' }); });
-    const slider = screen.getByRole('slider', { name: 'Brush size' });
-    fireEvent.keyDown(slider, { key: 'ArrowRight' });
-    expect(store.getState().roomTool.brushSize).toBeGreaterThan(0);
-    act(() => { store.getState().setRoomTool({ action: 'door' }); });
-    expect(document.querySelector('.atlas-dropdown-slider-row--disabled')).not.toBeNull();
+    expect(screen.queryByText('Brush size')).toBeNull();
     expect(screen.queryByText('Join all rooms')).toBeNull();
   });
 

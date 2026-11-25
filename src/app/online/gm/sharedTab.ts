@@ -46,8 +46,8 @@ export interface TabBinding {
   readonly showing: boolean;
 }
 
-/** Why a shared tab was let go: its leaf was closed, its view or renderer went (Atlas reloads), or Atlas presents nothing. */
-export type LostReason = 'closed' | 'gone' | 'unpresented';
+/** Why a shared tab was let go: its leaf was closed, its view or renderer went (Atlas reloads), Atlas presents nothing, or the GM lowered the curtain. */
+export type LostReason = 'closed' | 'gone' | 'unpresented' | 'curtain';
 
 export interface TabWatchPorts<B extends TabBinding> {
   /** The open Atlas leaves. */
@@ -60,6 +60,8 @@ export interface TabWatchPorts<B extends TabBinding> {
   lost(reason: LostReason): void;
   /** The shared tab shows this presented map file now. */
   mapPath(path: string): void;
+  /** Whether the GM's curtain is down: no tab is shared then, so players are sent nothing of any scene. */
+  curtained?(): boolean;
 }
 
 /**
@@ -67,7 +69,8 @@ export interface TabWatchPorts<B extends TabBinding> {
  * switches. A view is bound once it shows the presented scene, and stays bound while its view, store and
  * renderer are the same objects; while the GM works on another tab its binding holds (players keep what
  * they saw). Once Atlas presents a tab of another view, that view is bound as soon as it shows it. A
- * binding whose tab is gone, or while Atlas presents nothing, is stopped at once.
+ * binding whose tab is gone, while Atlas presents nothing, or while the GM's curtain is down, is
+ * stopped at once, and none is made until the curtain is lifted.
  */
 export class TabWatch<B extends TabBinding> {
   private readonly ports: TabWatchPorts<B>;
@@ -123,6 +126,10 @@ export class TabWatch<B extends TabBinding> {
       if (this.tab !== null && !isSameTab(this.tab, open)) this.release(open.includes(this.tab.leaf) ? 'gone' : 'closed');
       const target = findPresentedTab(open, this.ports.presented());
       this.target = target;
+      if (this.ports.curtained?.() === true) {
+        if (this.shared !== null) this.release('curtain');
+        return;
+      }
       if (this.shared !== null && target === null) this.release('unpresented');
       this.shared?.present(target !== null && target.leaf === this.tab?.leaf ? target : null);
       if (target !== null && target.leaf !== this.tab?.leaf) this.bindShowing(target);

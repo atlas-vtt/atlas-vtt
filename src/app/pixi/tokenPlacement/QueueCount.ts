@@ -2,6 +2,7 @@ import { Container, Graphics, Text } from 'pixi.js';
 import { destroyTree } from '../utils/destroyTree';
 import { Spring, type SpringFeel } from './placementSpring';
 import type { Point } from './placementLayout';
+import { uiCorner } from '../utils/squareCorners';
 
 const FOLLOW: SpringFeel = { frequency: 30, damping: 0.9 };
 const FADE: SpringFeel = { frequency: 22, damping: 1 };
@@ -54,7 +55,7 @@ export class QueueCount {
       this.count = count;
       this.label.text = `+${count}`;
       const width = this.label.width + PAD_X * 2;
-      this.pill.clear().roundRect(0, -HEIGHT_PX / 2, width, HEIGHT_PX, HEIGHT_PX / 2).fill({ color: 0x000000, alpha: 0.7 });
+      this.pill.clear().roundRect(0, -HEIGHT_PX / 2, width, HEIGHT_PX, uiCorner(HEIGHT_PX / 2)).fill({ color: 0x000000, alpha: 0.7 });
     }
   }
 

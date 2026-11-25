@@ -15,6 +15,18 @@
 @use 'tokens' as *;
 @use 'mixins' as *;
 
+// Transparency (Appearance settings, `atlas-look-glass` on body): the window lays no ground of its own, the parts
+// beside the sidebar lay it, and the sidebar is smoked glass over what the dialog's overlay blurs behind the window,
+// as the asset manager's sidebar is.
+$_glass: 'body.atlas-look.atlas-look-glass';
+
+/// The ground of a part beside the sidebar while the window lays none (Transparency).
+@mixin _glass-ground {
+  #{$_glass} & {
+    background-color: var(--background-primary);
+  }
+}
+
 // The row of each part while the window stacks its parts in one column.
 $_stacked-rows: (header: 1, top: 2, side: 2, body: 3, footer: 4);
 
@@ -30,6 +42,10 @@ $_stacked-rows: (header: 1, top: 2, side: 2, body: 3, footer: 4);
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   overflow: hidden;
   container: #{$container} / inline-size;
+
+  #{$_glass} & {
+    background-color: transparent;
+  }
 
   @if $side == start {
     grid-template-columns: $side-track $main-track;
@@ -68,6 +84,10 @@ $_stacked-rows: (header: 1, top: 2, side: 2, body: 3, footer: 4);
   @include atlas-sidebar-dialog-area(side, $stack-below, $container);
   min-height: 0;
   background: var(--background-secondary);
+
+  #{$_glass} & {
+    background-color: color-mix(in oklch, var(--background-secondary) 75%, transparent);
+  }
 }
 
 /// The title row of the column beside the sidebar: title and meta, the close button in the window's corner (with the
@@ -75,11 +95,13 @@ $_stacked-rows: (header: 1, top: 2, side: 2, body: 3, footer: 4);
 @mixin atlas-sidebar-dialog-header($stack-below: null, $container: atlas-sidebar-dialog) {
   @include atlas-modal-header;
   @include atlas-sidebar-dialog-area(header, $stack-below, $container);
+  @include _glass-ground;
 }
 
 /// The row under the title that only a stacked window fills (with what stands in for its sidebar).
 @mixin atlas-sidebar-dialog-top($stack-below: null, $container: atlas-sidebar-dialog) {
   @include atlas-sidebar-dialog-area(top, $stack-below, $container);
+  @include _glass-ground;
 }
 
 /// The page: scrolls on its own, casting the shared dark scroll shadow at an edge where more lies beyond.
@@ -89,12 +111,14 @@ $_stacked-rows: (header: 1, top: 2, side: 2, body: 3, footer: 4);
   min-height: 0;
   overflow-y: auto;
   @include atlas-scroll-shadow($layer);
+  @include _glass-ground;
 }
 
 /// The actions at the foot of the column beside the sidebar.
 @mixin atlas-sidebar-dialog-footer($stack-below: null, $container: atlas-sidebar-dialog) {
   @include atlas-modal-footer;
   @include atlas-sidebar-dialog-area(footer, $stack-below, $container);
+  @include _glass-ground;
 }
 
 /// The close button where the sidebar stands at the window's end: in the window's corner over the sidebar, out of

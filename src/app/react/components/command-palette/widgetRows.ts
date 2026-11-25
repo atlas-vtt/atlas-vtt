@@ -25,3 +25,32 @@ export function widgetRows(
     ...elsewhere.map((widget) => ({ widget, inScene: false, active: false })),
   ].sort((a, b) => a.widget.order - b.widget.order);
 }
+
+/** The rows in the order `ids` gives; rows it does not name follow in their own order. */
+export function rowsInOrder(rows: readonly WidgetRow[], ids: readonly string[]): WidgetRow[] {
+  const place = new Map(ids.map((id, index) => [id, index]));
+  const rank = (row: WidgetRow): number => place.get(row.widget.id) ?? ids.length;
+  return [...rows].sort((a, b) => rank(a) - rank(b));
+}
+
+/** `ids` with `id` moved `step` places, or null where that leaves the list. */
+export function movedWidgetIds(ids: readonly string[], id: string, step: number): string[] | null {
+  const from = ids.indexOf(id);
+  const to = from + step;
+  if (from < 0 || to < 0 || to >= ids.length) return null;
+  const next = [...ids];
+  next.splice(from, 1);
+  next.splice(to, 0, id);
+  return next;
+}
+
+/** The library with every widget `ids` names placed at its index; the same record where nothing moves. */
+export function withWidgetOrder(widgets: WidgetRecord, ids: readonly string[]): WidgetRecord {
+  let next = widgets;
+  ids.forEach((id, order) => {
+    const widget = next[id];
+    if (!widget || widget.order === order) return;
+    next = { ...next, [id]: { ...widget, order } };
+  });
+  return next;
+}

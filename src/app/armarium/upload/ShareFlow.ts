@@ -54,8 +54,15 @@ export abstract class ShareFlow<S extends ShareCommon> {
   protected abstract draftOf(stored: ListingFields | null): ListingDraft;
   /** Packs again after packing failed, and uploads. */
   protected abstract repack(): void;
-  /** Records the publish in the vault, where the subject keeps a record of it. */
-  protected abstract recordPublished(): Promise<void>;
+  /** Records the publish in the vault, where the subject keeps a record of it; a share of what keeps none records nothing. */
+  protected recordPublished(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  /** The account's listing `uid`, from My uploads; a share that read them already answers from what it read. */
+  protected readOwnListing(uid: string): Promise<OwnListing | null> {
+    return this.flow.api.ownListing(uid);
+  }
 
   snapshot(): S {
     return this.state;
@@ -84,6 +91,11 @@ export abstract class ShareFlow<S extends ShareCommon> {
     void this.runUpload((upload) => upload.retry());
   }
 
+  /** After packing failed, back to the step that chose what is packed, where it can be changed. */
+  backFromPacking(): void {
+    if (this.state.step === 'upload' && !this.state.busy && this.state.refusal?.code === 'export-failed') this.set({ step: 'bundle', packing: null, refusal: null });
+  }
+
   /** Asks again how far the checks are, after an ask that stopped (a sign-in that ran out, no connection). */
   askAgain(): void {
     const submission = this.state.submission;
@@ -103,11 +115,26 @@ export abstract class ShareFlow<S extends ShareCommon> {
     if (id !== undefined) void this.flow.api.discard(id).catch(() => undefined);
     this.upload = null;
     this.set({ step: 'bundle', submission: null, upload: null, bundle: null, packing: null, refusal: null });
+    void this.readListingAgain();
   }
 
+  /** The continued listing read again: a version published meanwhile (the website's, a refused `version-not-higher`) moves the next one on. */
+  private async readListingAgain(): Promise<void> {
+    const uid = this.state.ownListing?.uid;
+    const listing = uid === undefined ? null : await this.flow.api.ownListing(uid).catch(() => null);
+    if (listing !== null && this.state.step === 'bundle' && this.state.ownListing?.uid === uid) this.set({ ...this.relisted(listing), ownListing: listing });
+  }
+
+  /** What the snapshot takes from its listing read again after a start over: what it took from it when the share opened. */
+  protected relisted(listing: OwnListing): Partial<S> {
+    return this.opened(listing);
+  }
+
+  /** Changes the listing's form; what was wrong with the fields it changes is said again at the next step only. */
   setDraft(change: Partial<ListingDraft>): void {
     this.touched = true;
-    this.set({ draft: { ...this.state.draft, ...change } });
+    const problems = Object.fromEntries(Object.entries(this.state.problems).filter(([field]) => !Object.hasOwn(change, field)));
+    this.set({ draft: { ...this.state.draft, ...change }, problems });
   }
 
   toggleTag(tag: TagId): void {
@@ -193,7 +220,7 @@ export abstract class ShareFlow<S extends ShareCommon> {
   private async checkGate(): Promise<void> {
     this.set({ gate: { status: 'checking' }, refusal: null });
     try {
-      const listing = this.listingUid().then((uid) => (uid ? this.flow.api.ownListing(uid) : null));
+      const listing = this.listingUid().then((uid) => (uid ? this.readOwnListing(uid) : null));
       const [gate, ownListing] = await Promise.all([this.flow.api.eligibility(), listing]);
       if (gate.may) {
         this.set({ ...this.opened(ownListing), gate: { status: 'open' }, ownListing, step: 'bundle' });

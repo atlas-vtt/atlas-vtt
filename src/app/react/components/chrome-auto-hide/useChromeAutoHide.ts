@@ -23,6 +23,10 @@ const UNITS: readonly (readonly string[])[] = [
 
 const NEAR = 'data-near';
 const AUTO_HIDE = 'data-chrome-auto-hide';
+/** How long the bars take to show (`$chrome-show-ms` and the last bar's delay in `chrome-auto-hide.scss`), and a frame. */
+const SHOW_MS = 400;
+/** Roots whose bars are showing for the last time, after the setting went off: the auto-hide goes once they stand. */
+const leaving = new WeakMap<HTMLElement, number>();
 
 type Box = Pick<DOMRectReadOnly, 'left' | 'top' | 'right' | 'bottom' | 'width' | 'height'>;
 
@@ -72,6 +76,12 @@ export function useChromeAutoHide(rootRef: RefObject<HTMLElement | null>, player
     const root = rootRef.current;
     if (!root || !on) return undefined;
     const { doc, win } = root;
+    const pending = leaving.get(root);
+    if (pending !== undefined) {
+      win.clearTimeout(pending);
+      leaving.delete(root);
+      for (const element of unitsIn(root).flat()) element.removeAttribute(NEAR);
+    }
     const pointer: Pointer = { x: -Infinity, y: -Infinity, pressed: false };
     let frame = 0;
 
@@ -111,8 +121,13 @@ export function useChromeAutoHide(rootRef: RefObject<HTMLElement | null>, player
       doc.removeEventListener('pointermove', onPointer, { capture: true });
       doc.removeEventListener('pointerdown', onPointer, { capture: true });
       doc.documentElement.removeEventListener('pointerleave', onLeave);
-      root.removeAttribute(AUTO_HIDE);
-      for (const element of unitsIn(root).flat()) element.removeAttribute(NEAR);
+      // The bars show as they do near the pointer, and only then stop hiding: a hidden bar would otherwise appear at once.
+      for (const element of unitsIn(root).flat()) element.setAttribute(NEAR, '');
+      leaving.set(root, win.setTimeout(() => {
+        leaving.delete(root);
+        root.removeAttribute(AUTO_HIDE);
+        for (const element of unitsIn(root).flat()) element.removeAttribute(NEAR);
+      }, SHOW_MS));
     };
   }, [rootRef, on]);
 }

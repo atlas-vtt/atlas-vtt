@@ -1,4 +1,6 @@
+import { getDomHost } from '../../host/dom';
 import { PANEL_ENTER_MS, PANEL_EXIT_MS, prefersReducedMotion } from '../../utils/motion';
+import { lerp } from '../../utils/math';
 import { ValueTransition } from '../utils/ValueTransition';
 
 /** How far a measurement is on the map: its opacity, and its size as a share of its own about where it starts. */
@@ -25,7 +27,6 @@ export const MEASURE_MOTION = {
 /** The last part of a released measurement's time on the map, over which it dissolves. */
 export const LIVE_DISSOLVE_MS = 360;
 
-const lerp = (from: number, to: number, share: number): number => from + (to - from) * share;
 
 /**
  * Moves one measurement's presence from wherever it is to another, eased with the motion token of
@@ -73,7 +74,7 @@ export class MeasurePresence {
 
   private to(target: Presence, ms: number, done?: () => void): void {
     this.stop();
-    const still = prefersReducedMotion(document.body);
+    const still = prefersReducedMotion(getDomHost().activeDocument().body);
     const goal: Presence = still ? { alpha: target.alpha, grow: 1 } : target;
     if (still && this.now.grow !== 1) this.set({ alpha: this.now.alpha, grow: 1 });
     const start = this.now;

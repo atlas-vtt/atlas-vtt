@@ -203,13 +203,13 @@ describe('editing tags', () => {
     });
 
     it('a tag only folder names give cannot be renamed or removed from the rail', () => {
-      const items = itemsOf(tagRowMenu(menuActions(() => [], 0), 'Battle'));
+      const items = itemsOf(tagRowMenu(menuActions(() => [], 0), 'Battle', 'ambience', 1));
       expect(items.map((item) => [item.label, item.disabled, item.description])).toEqual([['Rename', true, 'Comes from a folder'], ['Remove', true, 'Comes from a folder']]);
     });
 
     it('a tag a record holds can', () => {
       const actions = menuActions(() => [], 2);
-      const [rename, remove] = itemsOf(tagRowMenu(actions, 'Night'));
+      const [rename, remove] = itemsOf(tagRowMenu(actions, 'Night', 'ambience', 2));
       expect(rename?.disabled).toBe(false);
       expect(remove?.disabled).toBe(false);
       remove!.onClick();
@@ -258,6 +258,20 @@ describe('editing tags', () => {
       fireEvent.click(tagRow('Bosses'));
       fireEvent.click(host.querySelector<HTMLElement>('.atlas-sound-lib__root-name')!);
       expect(rig.records.all()).toEqual([]);
+    });
+
+    it('shows a tag\'s whole name on hover where its row cuts it, and none where it fits', async () => {
+      const hover = (name: string, cut: boolean): void => {
+        const label = tagRow(name).querySelector<HTMLElement>('span')!;
+        Object.defineProperty(label, 'scrollWidth', { configurable: true, value: cut ? 1400 : 10 });
+        fireEvent.pointerEnter(label, { pointerType: 'mouse' });
+        fireEvent.pointerMove(label, { pointerType: 'mouse', clientX: 5, clientY: 5 });
+      };
+      hover('Bosses', false);
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      expect(document.querySelector('.tooltip-label')).toBeNull();
+      hover('Battle', true);
+      await waitFor(() => expect(document.querySelector('.tooltip-label')?.textContent).toBe('Battle'));
     });
 
     it('a press narrows, a second tag narrows further, and a press on the root shows all again', () => {

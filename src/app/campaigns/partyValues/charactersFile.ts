@@ -7,7 +7,7 @@
 
 import type { RecordLayout, StoredRecord } from '../../services/recordFiles/recordLayout';
 import { campaignFileLayout } from '../campaignFileLayout';
-import { isRecord } from '../campaignValues';
+import { isRecord } from '../../utils/guards';
 import { partyKey, readPartyKey, readPartyValue, type PartyValue, type PartyValues } from './partyKeys';
 
 export const CHARACTERS_FILE = 'characters.json';

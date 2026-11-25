@@ -10,7 +10,7 @@ const CONDITIONS: ConditionDefinition[] = [{ id: 'prone', name: 'Prone', color: 
 function draw(host: HTMLElement, withCondition: boolean, faces: boolean): HTMLElement {
   host.empty();
   const entries: PlayerInitiativeEntry[] = [0, 1, 2].map((index) => ({ tokenId: `t${index}`, name: `N${index}`, initiative: 20 - index, imagePath: '', isActive: index === 0, order: index }));
-  const list = playerInitiativeList({ entries, isActive: true, round: 1 }, (_, index) => entryTokenOf({ id: `t${index}`, kind: 'character', name: `N${index}`, imagePath: '', x: 0, y: 0, ...(withCondition && index === 1 ? { conditions: ['prone'] } : {}) } as never, [], CONDITIONS), { mode: 'turn-order', roll: '1d20', firstSide: 'players' }, false);
+  const list = playerInitiativeList({ entries, isActive: true, round: 1 }, (_, index) => entryTokenOf({ id: `t${index}`, kind: 'character', name: `N${index}`, imagePath: '', x: 0, y: 0, ...(withCondition && index === 1 ? { conditions: ['prone'] } : {}) } as never, [], CONDITIONS), { mode: 'turn-order', roll: '1d20', firstSide: 'players' });
   return renderPlayerInitiative(host, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null, fromTurn: true, dock: faces ? 'top' : 'bottom', faces })!;
 }
 

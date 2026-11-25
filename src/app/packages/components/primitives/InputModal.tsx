@@ -4,6 +4,7 @@ import { CloseButton } from './CloseButton';
 import { Button } from './button';
 import { dialogOverlayMotion, useDialogWindowVariants } from './dialogMotion';
 import { useFocusTrap } from './useFocusTrap';
+import { getDomHost } from '../../../host/dom';
 import { t } from '../../../i18n';
 
 interface InputModalProps {
@@ -55,7 +56,7 @@ const InputModal: React.FC<InputModalProps> = ({
   }, [isOpen, defaultValue]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
       if (!isOpen) return;
       
       if (e.key === 'Escape') {
@@ -65,16 +66,17 @@ const InputModal: React.FC<InputModalProps> = ({
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    const doc = windowRef.current?.ownerDocument ?? getDomHost().activeDocument();
+    doc.addEventListener('keydown', handleKeyDown);
+    return () => doc.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  const handleCancel = () => {
+  const handleCancel = (): void => {
     setError(null);
     onClose();
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = (): void => {
     const trimmedValue = value.trim();
     
     if (!trimmedValue) {
@@ -95,7 +97,7 @@ const InputModal: React.FC<InputModalProps> = ({
     onClose();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent): void => {
     if (e.key === 'Enter') {
       e.preventDefault();
       handleConfirm();

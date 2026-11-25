@@ -28,6 +28,8 @@ const state = vi.hoisted(() => ({
   endCombat: vi.fn(),
   updateInitiativeEntry: vi.fn(),
   updateTokens: vi.fn(),
+  showCombatantConditions: vi.fn(),
+  hideCombatantConditions: vi.fn(),
 }));
 const settings = vi.hoisted(() => ({ compact: false, setCompactInitiative: vi.fn() }));
 

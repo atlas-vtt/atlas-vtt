@@ -9,6 +9,7 @@ import { toError } from '../utils/errors';
 import type { TokenGestureEventDetail } from '../types/atlasWindowEvents';
 import { openResourceEditor, type BarAnchor, type ResourceEditor, type ResourceValue } from './tokenValueEditor';
 import { ResourceBarHitArea } from './ResourceBarHitArea';
+import { isDarkTheme } from './utils/canvasBadgeColors';
 import { destroyTree } from './utils/destroyTree';
 import { BAR_BUTTON_SIZE, type ResourceSlot } from './token-renderer/resources/ResourceStack';
 import { barButtonSpan, fingerBarReach, stepperLayout, type BarReach, type StepperLayout } from './token-renderer/resources/stepperLayout';
@@ -236,7 +237,7 @@ export class TokenControlsUI {
     bg.clear();
     
     // Get theme colors
-    const isDarkMode = document.body.classList.contains('theme-dark');
+    const isDarkMode = isDarkTheme();
     const bgColor = isDarkMode ? 0x2a2a2a : 0xe3e3e3;
     const strokeColor = isDarkMode ? 0xffffff : 0x000000;
     const strokeAlpha = isDarkMode ? 0.4 : 0.3;

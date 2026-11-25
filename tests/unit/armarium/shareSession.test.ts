@@ -88,6 +88,8 @@ describe('sharing a collection in the Armarium', () => {
     await session.publish();
     expect(session.snapshot().problems).toEqual({ licence: 'missing' });
     session.setDraft({ licence: 'cc-by-sa-4.0' });
+    // A licence chosen takes its "Choose a licence." away at once, not at the next Publish.
+    expect(session.snapshot().problems).toEqual({});
     await session.publish();
     expect(session.snapshot().refusal).toEqual({ code: 'declaration-missing', until: null });
     expect(commit).not.toHaveBeenCalled();

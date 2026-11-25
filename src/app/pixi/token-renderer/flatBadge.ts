@@ -1,4 +1,5 @@
 import { FillGradient, Graphics } from 'pixi.js';
+import { batched } from '../utils/batchedGraphics';
 
 /**
  * The flat disc every round badge on a token is drawn on (conditions, the instance number,
@@ -32,7 +33,7 @@ const shadowFills = new Map<number, FillGradient>();
 export function drawFlatDisc(color: number, outer: number, light: boolean, badge: boolean): Graphics {
   const s = DRAW_SCALE;
   const disc = outer - BADGE_KEYLINE;
-  const drawn = new Graphics();
+  const drawn = batched(new Graphics());
   if (badge) {
     const reach = outer + SHADOW_REACH;
     drawn.circle(0, 0, reach * s).fill(shadowFill(outer / reach));

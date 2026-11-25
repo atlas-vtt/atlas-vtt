@@ -9,4 +9,5 @@ export const cover = {
   'cover.upload': 'Upload image',
   'cover.uploadHint': 'Use an image of your own as the cover',
   'cover.uploaded': 'Uploaded image',
+  'cover.unreadable': '{name} is not an image Atlas can read. Choose another file.',
 } as const satisfies Record<string, Message>;

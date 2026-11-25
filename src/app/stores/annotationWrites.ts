@@ -5,6 +5,7 @@ import { placedOnViewedLevel, type LevelView } from '../levels/sceneLevels';
 import type { DrawingStroke, TextElement } from '../types';
 import type { Point } from '../types/visionTypes';
 import { isRecord } from '../utils/guards';
+import { newId } from '../utils/ids';
 
 /** The part of a draft the annotation writes reach. */
 export interface AnnotationsDraft extends LevelView {
@@ -17,7 +18,7 @@ const DRAWING_NEEDS = new Set<string>(['type', 'points', 'color', 'width', 'opac
 /** Nor any text without these. Its `width` and `opacity` are its own to lose: a text without a width is as wide as its words. */
 const TEXT_NEEDS = new Set<string>(['x', 'y', 'text', 'fontSize', 'fontFamily', 'color']);
 
-export const newAnnotationId = (prefix: 'drawing' | 'text'): string => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+export const newAnnotationId = (prefix: 'drawing' | 'text'): string => newId(prefix);
 
 /** A copy of a list of points: what a caller hands in may be frozen, and the store's own must not be shared. */
 export const copiedPoints = (points: ReadonlyArray<Point>): Point[] => points.map(({ x, y }) => ({ x, y }));

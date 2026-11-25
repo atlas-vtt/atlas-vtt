@@ -76,7 +76,7 @@ export function useSidebarLayout(containerRef: React.RefObject<HTMLElement | nul
   // Captured, so Escape closes the sidebar before it could close the whole asset manager.
   useEffect(() => {
     if (!isPeeking) return;
-    const doc = panelRef.current?.ownerDocument ?? document;
+    const doc = panelRef.current?.ownerDocument ?? activeDocument;
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return;
       event.preventDefault();

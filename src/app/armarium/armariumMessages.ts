@@ -7,9 +7,15 @@ import { readPageRequest, type PageRequest } from './myUploadsRequests';
 /** Where an install stands, as the Armarium page is told. */
 export type InstallState = 'downloading' | 'reviewing' | 'installed' | 'cancelled' | 'failed';
 
-/** What the page's Share asks Atlas to share: a collection, or a single Atlas file of one of these kinds. */
-export const SHARE_WHATS = ['collection', 'statblock-template', 'system-preset', 'dice-set'] as const;
+/** What the page's Share asks Atlas to share: a collection, a single Atlas file of one of these kinds, or music. */
+export const SHARE_WHATS = ['collection', 'statblock-template', 'system-preset', 'dice-set', 'music-album', 'music-track'] as const;
 export type ShareWhat = (typeof SHARE_WHATS)[number];
+
+/** What the page asks to share, and the account's listing it continues (My uploads' New version of music). */
+export interface ShareRequest {
+  what: ShareWhat;
+  listing?: string | undefined;
+}
 
 /** What the Armarium page may ask of Atlas. */
 export type FrameMessage =
@@ -17,9 +23,9 @@ export type FrameMessage =
   | ({ type: 'atlas-armarium:install' } & ArmariumRequest)
   /**
    * Share something of the vault in the Armarium: the page's Share, in Atlas. Without `what` (pages from before items)
-   * it is a collection.
+   * it is a collection; `listing` names one of the account's listings to continue.
    */
-  | { type: 'atlas-armarium:share'; what?: ShareWhat }
+  | { type: 'atlas-armarium:share'; what?: ShareWhat; listing?: string }
   /** The store's tags and what its filter holds, sent whenever either changes, once Atlas named `tags`. */
   | ({ type: 'atlas-armarium:tags' } & StoreTags)
   /** One of My uploads' requests, which Atlas sends with its account once it named `account` (`myUploadsRequests.ts`). */
@@ -29,12 +35,14 @@ export type FrameMessage =
 
 /**
  * What Atlas does for the page beyond installing, named in its `installed` message so the page offers only that.
- * `share`: Atlas shares a collection; `share-items`: also a statblock template, game system or dice set (`what`).
+ * `share`: Atlas shares a collection; `share-items`: also a statblock template, game system or dice set (`what`);
+ * `share-music`: also an album or a track from the Sound library, with an optional `listing` to continue.
+ * `music`: Atlas installs albums and tracks into its music folder.
  * `tags`: the asset manager's sidebar shows the store's tags and picks them (`toggle-tag`, `clear-tags`).
  * `account`: Atlas sends My uploads' requests with its account (`api`, answered by `api-result`), signs in when asked
  * (`sign-in`) and says when it signed in or out (`account`).
  */
-export type ArmariumFeature = 'share' | 'share-items' | 'tags' | 'account';
+export type ArmariumFeature = 'share' | 'share-items' | 'share-music' | 'music' | 'tags' | 'account';
 
 /** What Atlas tells the Armarium page. */
 export type AtlasMessage =
@@ -59,7 +67,9 @@ export function readFrameMessage(data: unknown): FrameMessage | null {
     if (data.what === undefined) return { type: 'atlas-armarium:share' };
     // A kind of thing a later page shares and this Atlas does not know is not shared as something else.
     const what = SHARE_WHATS.find((known) => known === data.what);
-    return what === undefined ? null : { type: 'atlas-armarium:share', what };
+    if (what === undefined) return null;
+    // A listing that is no uid continues nothing: the share starts a new one.
+    return isListingUid(data.listing) ? { type: 'atlas-armarium:share', what, listing: data.listing } : { type: 'atlas-armarium:share', what };
   }
   if (data.type === 'atlas-armarium:sign-in') return { type: 'atlas-armarium:sign-in' };
   if (data.type === 'atlas-armarium:api') {

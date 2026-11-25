@@ -4,6 +4,7 @@ import type { ExplodeRule } from '../../types/diceRulesTypes';
 import type { AdvantageRule, AdvantageSide, DiceSet, DiceSetDie, RollingDice } from '../../types/diceSetTypes';
 import type { RecordStorage, StoredRecord } from '../vaultRecords/recordFolder';
 import { t } from '../../i18n';
+import { isRecord } from '../../utils/guards';
 
 /** What an edit may change of a set; an `explode`, `advantage` or `disadvantage` given as undefined switches it off. */
 export type DiceSetChanges = Partial<Pick<DiceSet, 'name' | 'dice' | 'crit'>> & {
@@ -15,9 +16,6 @@ export type DiceSetChanges = Partial<Pick<DiceSet, 'name' | 'dice' | 'crit'>> & 
 const SIDES: readonly AdvantageSide[] = ['advantage', 'disadvantage'];
 /** The fields this Atlas writes of an advantage rule; any other the file holds is a newer Atlas' and stays. */
 const RULE_FIELDS = new Set(['kind', 'tensOnly', 'sides', 'name', 'colour', 'value']);
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** A group as stored: what this Atlas sets, over what the file held at its place (fields of a newer Atlas). */
 function storedDie(group: DiceSetDie, before: unknown): Record<string, unknown> {

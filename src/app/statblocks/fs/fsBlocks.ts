@@ -8,7 +8,8 @@
  * after its block. What each FS block became is tallied for the report.
  */
 
-import { describeValue, isRecord, own } from '../format/jsonValues';
+import { describeValue, own } from '../format/jsonValues';
+import { isRecord } from '../../utils/guards';
 import { isCodeKey } from '../model/fsCodeKeys';
 import type { TemplateBlock } from '../model/templateTypes';
 import type { ImportContext } from './fsImportState';

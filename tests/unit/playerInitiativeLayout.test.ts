@@ -19,7 +19,7 @@ const entry = (name: string, order: number, extra: Partial<PlayerInitiativeEntry
 /** Draws the players' list of `entries` (those in `hidden` left out, as their tokens are) and reads it back as words. */
 function draw(entries: PlayerInitiativeEntry[], look: { fromTurn?: boolean; dock?: PlayersListEdge; faces?: boolean } = {}, hidden: string[] = []): { panel: HTMLElement; words: string[] } {
   document.body.empty();
-  const list = playerInitiativeList({ entries, isActive: true, round: 4 }, (listed) => (hidden.includes(listed.tokenId) ? null : VISIBLE), TURN_ORDER, false);
+  const list = playerInitiativeList({ entries, isActive: true, round: 4 }, (listed) => (hidden.includes(listed.tokenId) ? null : VISIBLE), TURN_ORDER);
   renderPlayerInitiative(document.body, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null, ...look });
   const panel = document.querySelector<HTMLElement>('.atlas-player-initiative')!;
   const words = [...panel.querySelectorAll('.atlas-initiative-card__name, .atlas-initiative-round')].map((element) =>
@@ -82,7 +82,7 @@ describe('conditions in the players\' list', () => {
   it('draws no badges on the card: the token shows them on the map', () => {
     document.body.empty();
     const token = entryTokenOf(creature(), [], definitions);
-    const list = playerInitiativeList({ entries: [entry('a', 0)], isActive: false, round: 0 }, () => token, TURN_ORDER, false);
+    const list = playerInitiativeList({ entries: [entry('a', 0)], isActive: false, round: 0 }, () => token, TURN_ORDER);
     renderPlayerInitiative(document.body, list, { showNames: false, mapShowsNameplates: true, portraitSrc: () => null });
     expect(document.querySelector('.atlas-condition-badge')).toBeNull();
   });
@@ -98,7 +98,7 @@ describe('the sides and the room on the players\' list', () => {
     document.body.empty();
     const entries = [entry('a', 0, { isActive: true }), entry('b', 1, { color: '#dc2626' } as never), entry('c', 2), entry('d', 3)];
     const side = (id: string): EntryToken => ({ hp: null, showRing: true, side: id === 'a' || id === 'c' ? 'players' : 'opponents', defeated: false });
-    const list = playerInitiativeList({ entries, isActive: true, round: 1 }, (current) => side(current.tokenId!), TURN_ORDER, false);
+    const list = playerInitiativeList({ entries, isActive: true, round: 1 }, (current) => side(current.tokenId!), TURN_ORDER);
     const panel = renderPlayerInitiative(document.body, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null, maxCards: 2 })!;
     const cards = [...panel.querySelectorAll('.atlas-initiative-card')];
     expect(cards.map((card) => card.classList.contains('atlas-initiative-card--ally'))).toEqual([true, false]);

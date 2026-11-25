@@ -11,6 +11,7 @@ import type { FogOperation, FogOperationInput } from '../types/fogTypes';
 import type { QShape } from '../types/shapeTypes';
 import type { Point } from '../types/visionTypes';
 import type { ViewState } from '../types/viewState';
+import { newId } from '../utils/ids';
 import { wallList } from '../vision/wallList';
 
 /** What hiding a level's rooms came to (the store's `hideRooms`). */
@@ -81,10 +82,6 @@ function unmarked(area: FogArea): FogOperation {
   return plain;
 }
 
-function newFogId(): string {
-  return `fog_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-}
-
 /**
  * A time after every operation's, so what is written now acts last whatever the clock says. An
  * entry that is no object (a map file is kept as it came) has no time.
@@ -103,7 +100,7 @@ function timeAfterAll(fog: Readonly<Record<string, FogOperation>>): number {
 function append(draft: FogDraft, data: readonly FogOperationInput[]): string[] {
   const start = timeAfterAll(draft.objects.fog);
   return data.map((input, index) => {
-    const id = newFogId();
+    const id = newId('fog');
     draft.objects.fog[id] = { id, kind: 'fog', timestamp: start + index, ...input, ...placedOnViewedLevel(draft) };
     return id;
   });

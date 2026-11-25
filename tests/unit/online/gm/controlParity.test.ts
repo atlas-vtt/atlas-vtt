@@ -116,7 +116,7 @@ describe('the rest of a token, as the scene holds it', () => {
     await settle();
     const ogre = tokens().get('ogre1');
     expect(ogre).toMatchObject({ cells: 2, rotation: 90, ring: { colour: '#336699' } });
-    expect(ogre?.ui?.conditions).toEqual([{ colour: '#a855f7', glyph: { kind: 'text', text: 'F' }, value: 3 }]);
+    expect(ogre?.ui?.conditions).toEqual([{ colour: '#a855f7', glyph: { kind: 'text', text: 'F' }, value: 3, name: 'Frightened' }]);
     expect(ogre?.ui?.bars[0]).toMatchObject({ current: 5, max: 31 });
     store.getState().updateTokens([{ id: 'ogre1', changes: { showRing: false } }]);
     await settle();

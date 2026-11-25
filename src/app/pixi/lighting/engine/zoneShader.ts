@@ -46,6 +46,9 @@ float zoneOutline(vec2 p, out bool inside, out vec2 nearest) {
  * face the ambient light of the floor in front of it. A second draw (`uOnWalls`) fills the
  * capsules alone, with the zones darker than the scene: there a zone has no soft edge and lies
  * up to `uWallReach` past its outline, so the wall a dark zone ends at is dark through and through.
+ * The whole capsule, not only its half inside the polygon: sight's filtering shows half a screen
+ * pixel past the centre line and bilinear reads carry the scene's light a texel inward, so a token
+ * in the dark room would see a lit line along its walls.
  */
 export const zoneFragment = `${GLSL_VERSION}
 in vec2 vWorld;

@@ -60,7 +60,7 @@ function drawPlayers(host: HTMLElement, turn: number, edge: PlayersListEdge): HT
   const ghosts = ghostsOf(old);
   host.empty();
   const entries: PlayerInitiativeEntry[] = [0, 1, 2, 3, 4].map((index) => entryOf(index, turn));
-  const list = playerInitiativeList({ entries, isActive: true, round: 2 }, (_, index) => entryTokenOf(creature(index), [], []), { mode: 'turn-order', roll: '1d20', firstSide: 'players' }, true);
+  const list = playerInitiativeList({ entries, isActive: true, round: 2 }, (_, index) => entryTokenOf(creature(index), [], []), { mode: 'turn-order', roll: '1d20', firstSide: 'players' });
   renderPlayerInitiative(host, list, { showNames: false, mapShowsNameplates: true, portraitSrc: (src) => src, fromTurn: true, dock: edge });
   const fresh = host.querySelector<HTMLElement>('.atlas-initiative-panel__list')!;
   adoptGhosts(fresh, ghosts);

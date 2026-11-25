@@ -13,6 +13,8 @@ import { SettingsService } from '../services/SettingsService';
 import { presentTab } from '../services/PlayerWindowPresenter';
 import { ImageDisplayService } from '../services/ImageDisplayService';
 import { PlayerWindowService } from '../services/PlayerWindowService';
+import { setTableCurtain, toggleTablePause } from '../services/tableControls';
+import { tableControlsStore } from '../stores/tableControlsStore';
 import { presentedSceneOf } from '../services/presentedScene';
 import type { HoveredElement } from '../soundRemote/hoveredElement';
 import { remoteMapView } from '../soundRemote/remoteMapView';
@@ -62,10 +64,11 @@ function playerWindow(hovered: HoveredElement): TablePlayerWindow {
     isOpen: () => PlayerWindowService.getInstance()?.isWindowOpen() ?? false,
     isFrozen: () => playerWindowStore.getState().isFrozen,
     isTrueScale: () => PlayerWindowService.getInstance()?.isTrueScale() ?? false,
-    isCurtained: () => PlayerWindowService.getInstance()?.isCurtained() ?? false,
+    isCurtained: () => tableControlsStore.getState().curtain,
     handoutShown,
-    toggleFreeze: () => { PlayerWindowService.getInstance()?.toggleCameraFreeze(); },
-    setCurtain: (down) => PlayerWindowService.getInstance()?.setCurtain(down),
+    // The table's own: online players are paused and curtained with the player window
+    toggleFreeze: toggleTablePause,
+    setCurtain: setTableCurtain,
     takeBackHandout,
     showHoveredImage: () => {
       const images = ImageDisplayService.getInstance();

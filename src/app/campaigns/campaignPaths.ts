@@ -8,6 +8,7 @@ import { ATLAS_VTT_DIR } from '../services/assetPaths';
 import { readRecordText, recordText, type RecordLayout } from '../services/recordFiles/recordLayout';
 import { freeNamedPath, isNamedAfterStem, nameStem } from '../services/recordFiles/recordNames';
 import type { StoredCampaign } from './campaignTypes';
+import { isRecord } from '../utils/guards';
 
 export const CAMPAIGNS_FOLDER = `${ATLAS_VTT_DIR}/campaigns`;
 export const CAMPAIGN_FILE = 'campaign.json';
@@ -15,8 +16,6 @@ export const CAMPAIGN_FILE = 'campaign.json';
 export const CAMPAIGN_FORMAT = 1;
 
 const FALLBACK_NAME = 'Campaign';
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** Whether `entry` is something a campaign file may hold: a record with an id. */
 export function isStoredCampaign(entry: unknown): entry is StoredCampaign {

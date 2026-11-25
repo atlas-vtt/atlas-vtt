@@ -1,6 +1,6 @@
 import type { GmMessage, PlayerMove } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
-import { checkMove, MOVE_BURST, MOVES_PER_SECOND, MoveRate, type MoveContext } from '../../../../src/app/online/gm/moveCheck.ts';
+import { checkMove, MOVE_BURST, MOVES_PER_SECOND, MoveRate, refusalReason, type MoveContext } from '../../../../src/app/online/gm/moveCheck.ts';
 import { Ownership } from '../../../../src/app/online/gm/ownership.ts';
 import { boundOwnership } from './fakeSeats.ts';
 import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
@@ -34,6 +34,15 @@ describe('checking a player\'s move', () => {
     expect(checkMove(ANA, move(), context({ tokens: {} }))).toEqual({ ok: false, reason: 'token' });
     expect(checkMove(ANA, move({ scene: 'old' }), context())).toEqual({ ok: false, reason: 'scene' });
     expect(checkMove(ANA, move(), context({ scene: null }))).toEqual({ ok: false, reason: 'scene' });
+  });
+
+  it('refuses every move of the owner while the GM paused play, and names the pause', () => {
+    const verdict = checkMove(ANA, move(), context({ paused: () => true }));
+    expect(verdict).toEqual({ ok: false, reason: 'paused' });
+    expect(refusalReason(verdict)).toBe('paused');
+    expect(refusalReason({ ok: false, reason: 'place' })).toBeUndefined();
+    expect(checkMove(BEN, move(), context({ paused: () => true }))).toEqual({ ok: false, reason: 'owner' });
+    expect(checkMove(ANA, move(), context({ paused: () => false })).ok).toBe(true);
   });
 
   it('refuses a place that is no finite number or lies outside the map', () => {

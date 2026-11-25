@@ -68,7 +68,7 @@ export type HeldWidgetHotkeyId = Extract<MapHotkey, { whileWidgetHeld: true }>['
 export type MapHotkeys = Record<MapHotkeyId, string>;
 export const DEFAULT_MAP_HOTKEYS = Object.fromEntries(MAP_HOTKEYS.map(h => [h.id, h.defaultKey])) as MapHotkeys;
 /** The shortcuts on offer: those of the build (`enabled`), and only the players' in the player view. */
-export const availableHotkeys = (player = false) => MAP_HOTKEYS.filter(h =>
+export const availableHotkeys = (player = false): MapHotkey[] => MAP_HOTKEYS.filter(h =>
   !('enabled' in h && !h.enabled) && !(player && 'dmOnly' in h && h.dmOnly));
 
 export const hotkeyAction = (id: MapHotkeyId): MapHotkey => MAP_HOTKEYS.find(action => action.id === id)!;

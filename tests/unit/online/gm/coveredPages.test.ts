@@ -51,14 +51,16 @@ describe('pages whose book covers their map', () => {
     expect(pages().covers.receive(ANA, { t: 'book-parts' })).toBe(false);
   });
 
-  it('leaves a covered page out of the marks only: drags and everything else still reach it', () => {
+  it('leaves a covered page out of the marks only, to all or to it alone: drags and everything else still reach it', () => {
     const { covers, sent } = pages();
     covers.sendLive(MARKS, 'marks');
     expect(covers.receive(ANA, COVER)).toBe(true);
     covers.sendLive(MARKS, 'marks');
     covers.sendLive(DRAG, 's');
     covers.sendLive(MARKS, 'marks', ANA);
-    expect(sent).toEqual([{ body: MARKS, to: '*' }, { body: MARKS, to: BEN }, { body: DRAG, to: '*' }, { body: MARKS, to: ANA }]);
+    covers.sendLive(MARKS, 'marks', BEN);
+    covers.sendLive(DRAG, 's', ANA);
+    expect(sent).toEqual([{ body: MARKS, to: '*' }, { body: MARKS, to: BEN }, { body: DRAG, to: '*' }, { body: MARKS, to: BEN }, { body: DRAG, to: ANA }]);
   });
 
   it('catches an uncovered page up once a second at most, however often it flicks between screens', () => {

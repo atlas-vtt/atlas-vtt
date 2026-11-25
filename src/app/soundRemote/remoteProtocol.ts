@@ -20,7 +20,10 @@ export const MAX_REMOTE_BODY = 4096;
 export const MAX_CLIENT_NAME = 64;
 
 export const REMOTE_CHANNELS = ['master', 'music', 'ambience', 'musicStrip'] as const;
-/** `master`, `music` and `ambience` are this device's levels (Settings); `musicStrip` is the music's fader in the mix, which players hear too. */
+/**
+ * `master` is this device's level; `music` is the Sound page's Music fader and `ambience` moves every layer's fader alike
+ * (both heard by players too). `musicStrip` is what controllers before 2026-11-23 sent for the Music fader: it is `music`.
+ */
 export type RemoteChannel = (typeof REMOTE_CHANNELS)[number];
 
 export type RemoteRepeat = 'all' | 'one' | 'off';
@@ -137,7 +140,8 @@ export interface RemoteState {
   music: RemoteMusic | null;
   /** What the status bar names: the mood, else the track, else the first layer. */
   nowPlaying: string | null;
-  levels: { masterDb: number; musicDb: number; ambienceDb: number };
+  /** What the level keys show: Master, the Music fader, the loudest ambience layer; null where the mix has none. */
+  levels: { masterDb: number; musicDb: number | null; ambienceDb: number | null };
   ranges: { channel: [number, number]; strip: [number, number] };
   /** Null while there is no map to act on. */
   combat: RemoteCombat | null;

@@ -18,7 +18,7 @@ vi.mock('../../src/app/react/root/AtlasUIContext', () => ({
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (state: { isPlayerView: boolean; diceLog: unknown[] }) => unknown) => selector({ isPlayerView: false, diceLog: context.diceLog }),
 }));
-vi.mock('../../src/app/react/hooks/useDicePreviews', () => ({ useDicePreviews: () => ({}) }));
+vi.mock('../../src/app/react/hooks/useDicePreviews', () => ({ useDicePreviews: () => null }));
 
 /** The dice tray and the dice settings page with the "Show my rolls to players" switch, styled by the real stylesheet. */
 const THEME = `

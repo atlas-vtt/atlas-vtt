@@ -85,7 +85,7 @@ function ruledExplosion({ repeats, highFaces, lowFaces }: ExplodeRule): Explosio
  */
 export function rollFormula(
   formula: ParsedFormula,
-  random: () => number = Math.random,
+  random: () => number,
   rules?: Pick<DiceRules, 'defaultRoll' | 'explode'> | Pick<RollingDice, 'dice' | 'explode'>,
   looks: readonly (DieLook | undefined)[] = [],
 ): RolledFormula {

@@ -5,6 +5,7 @@
  */
 
 import type { FieldValue } from '../model/templateTypes';
+import { isRecord } from '../../utils/guards';
 
 /** Deeper than this a value is not kept: `JSON.stringify` recurses and would overflow. */
 const MAX_DEPTH = 100;
@@ -24,10 +25,6 @@ export function parseJsonText(text: string): { value: unknown } | { error: strin
   } catch (error) {
     return { error: error instanceof Error ? error.message : 'unreadable' };
   }
-}
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /** A key's value as the object itself holds it; what an object inherits is not the file's. */

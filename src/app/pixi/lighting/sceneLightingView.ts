@@ -46,6 +46,11 @@ export interface SceneLightingView {
    * now. False when nothing changed, and where the view keeps no memory (the fallback).
    */
   editExplored(edit: ExploredEdit): boolean;
+  /**
+   * The store holds the scene a load brings, before its map is shown: what the view can work out
+   * of it ahead, it starts now. Resolves once that is done; at once where there is nothing to do.
+   */
+  prepareScene?(): Promise<void>;
   /** The view's map is about to unload: finish pending saves for it. */
   beforeMapUnload(): void;
   /**

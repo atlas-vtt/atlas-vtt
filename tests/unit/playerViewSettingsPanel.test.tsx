@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { PlayerViewSettingsPanel } from '../../src/app/react/components/command-palette/PlayerViewSettingsPanel';
@@ -42,7 +42,7 @@ it('offers the cursor switch only while online play is switched on, in a section
   const settings = context.settings as SettingsService;
   const { unmount } = render(<PlayerViewSettingsPanel />);
   expect(screen.queryByRole('switch', { name: 'Show everyone\'s cursors' })).toBeNull();
-  expect(screen.getByRole('heading', { name: 'Local and online' })).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Player window and online' })).toBeTruthy();
   expect(screen.getByRole('heading', { name: 'Player window' })).toBeTruthy();
   expect(screen.queryByRole('heading', { name: 'Online play' })).toBeNull();
   unmount();
@@ -71,28 +71,33 @@ it('offers Players may draw only while online play is switched on, off until the
   expect(screen.getByRole('switch', { name: 'Players may draw' }).getAttribute('aria-checked')).toBe('true');
 });
 
-it('offers a switch for every resource of the open scene\'s collection, bars and wheels alike', () => {
+const audienceOf = (name: string): HTMLElement => screen.getByRole('radiogroup', { name: `Who players see ${name} on` });
+const chosen = (name: string): string | null | undefined =>
+  within(audienceOf(name)).getAllByRole('radio').find((radio) => radio.getAttribute('aria-checked') === 'true')?.textContent;
+
+it('offers whose tokens players see each resource of the open scene\'s collection on, bars and wheels alike', () => {
   context.settings = new SettingsService({} as never);
-  context.resources = [{ ...HP, visibleToPlayers: true }, STRESS, AMMO];
+  context.resources = [{ ...HP, visibleToPlayers: true }, STRESS, { ...AMMO, visibleToPlayers: false, visibleOnSide: 'opponents' }];
   render(<PlayerViewSettingsPanel />);
 
-  expect(screen.getByRole('switch', { name: 'Show HP bars' }).getAttribute('aria-checked')).toBe('true');
-  expect(screen.getByRole('switch', { name: 'Show Stress bars' }).getAttribute('aria-checked')).toBe('false');
-  const ammo = screen.getByRole('switch', { name: 'Show Ammo wheels' });
-  expect(ammo.getAttribute('aria-checked')).toBe('false');
+  expect([chosen('HP'), chosen('Stress'), chosen('Ammo')]).toEqual(['All', 'None', 'Foes']);
 
-  fireEvent.click(ammo);
+  fireEvent.click(within(audienceOf('Stress')).getByRole('radio', { name: 'Party' }));
   expect(context.updateCollectionSettings).toHaveBeenCalledWith('Own', {
+    resources: [{ ...HP, visibleToPlayers: true }, { ...STRESS, visibleToPlayers: false, visibleOnSide: 'players' }, { ...AMMO, visibleToPlayers: false, visibleOnSide: 'opponents' }],
+  });
+  fireEvent.click(within(audienceOf('Ammo')).getByRole('radio', { name: 'All' }));
+  expect(context.updateCollectionSettings).toHaveBeenLastCalledWith('Own', {
     resources: [{ ...HP, visibleToPlayers: true }, STRESS, { ...AMMO, visibleToPlayers: true }],
   });
 });
 
-it('offers no resource switches for a scene outside every collection', () => {
+it('offers no resource choices for a scene outside every collection', () => {
   context.settings = new SettingsService({} as never);
   context.resources = [HP];
   context.collection = null;
   render(<PlayerViewSettingsPanel />);
-  expect(screen.queryByRole('switch', { name: 'Show HP bars' })).toBeNull();
+  expect(screen.queryByRole('radiogroup', { name: 'Who players see HP on' })).toBeNull();
 });
 
 it('lists all six sockets in their order, whatever the order of the list', () => {
@@ -100,9 +105,8 @@ it('lists all six sockets in their order, whatever the order of the list', () =>
   const named = (name: string, slot: number) => ({ ...AMMO, key: name.toLowerCase(), name, slot });
   context.resources = [named('Grit', 5), { ...AMMO, slot: 3 }, { ...STRESS, slot: 1 }, { ...HP, slot: 4 }, named('Luck', 2), named('Mana', 0)];
   render(<PlayerViewSettingsPanel />);
-  const names = ['Show Mana bars', 'Show Stress bars', 'Show Luck wheels', 'Show Ammo wheels', 'Show HP wheels', 'Show Grit wheels'];
-  const toggles = names.map((name) => screen.getByRole('switch', { name }));
-  expect(screen.getAllByRole('switch', { name: /bars|wheels/ })).toEqual(toggles);
+  const groups = ['Mana', 'Stress', 'Luck', 'Ammo', 'HP', 'Grit'].map(audienceOf);
+  expect(screen.getAllByRole('radiogroup', { name: /^Who players see/ })).toEqual(groups);
 });
 
 it('lays the players\' initiative list out across the table from its switch, as a row at the top and at the bottom', () => {

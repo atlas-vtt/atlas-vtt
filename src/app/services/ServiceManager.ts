@@ -112,37 +112,22 @@ export class ServiceManager {
     
   }
   
-  /**
-   * Get the renderer service
-   */
   public getRendererService(): RendererService {
     return this.rendererService;
   }
   
-  /**
-   * Get the layer graph
-   */
   public getLayerGraph(): LayerGraph {
     return this.layerGraph;
   }
   
-  /**
-   * Get the UI overlay
-   */
   public getUIOverlay(): UIOverlay {
     return this.uiOverlay;
   }
   
-  /**
-   * Get the map service
-   */
   public getMapService(): MapService {
     return this.mapService;
   }
   
-  /**
-   * Get the tool controller
-   */
   public getToolController(): ToolController {
     return this.toolController;
   }
@@ -154,9 +139,6 @@ export class ServiceManager {
     return this.gridManager;
   }
 
-  /**
-   * Get the note preview UI manager
-   */
   public getNotePreviewUIManager(): NotePreviewUIManager {
     return this.notePreviewUIManager;
   }
@@ -168,16 +150,10 @@ export class ServiceManager {
     return this.assetService;
   }
 
-  /**
-   * Get the settings service
-   */
   public getSettingsService(): SettingsService {
     return this.settingsService;
   }
   
-  /**
-   * Get the sound effect service
-   */
   public getSoundEffectService(): SoundEffectService {
     return this.soundEffectService;
   }

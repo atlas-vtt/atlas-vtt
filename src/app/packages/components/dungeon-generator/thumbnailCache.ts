@@ -61,6 +61,18 @@ export class ThumbnailCache<Card extends string = string> {
     return true;
   }
 
+  /** Whether a card of the picture could not be drawn. */
+  hasFailed(picture: string): boolean {
+    return this.failed.has(picture);
+  }
+
+  /** Forgets the cards of a picture that could not be drawn and names them: they are asked for again. */
+  retry(picture: string): ReadonlySet<Card> {
+    const failed = this.failed.get(picture);
+    this.failed.delete(picture);
+    return failed ?? new Set();
+  }
+
   clear(): void {
     for (const thumbnails of this.pictures.values()) this.close(thumbnails);
     this.pictures.clear();

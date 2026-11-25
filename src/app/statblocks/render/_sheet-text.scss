@@ -5,12 +5,12 @@
 // come from Obsidian's interface ramp, so the card follows the user's font size.
 
 // ── Headings ────────────────────────────────────────────────────────────────
-// The companion theme sets its heading face on `.atlas-statblock .atlas-sb-heading`
-// and `.atlas-sb-section-heading` (two classes). The sheet's own heading rules
-// stay below that (one class and an element), so the theme keeps the face,
-// size and weight of a name; they still win over statblock.scss's one-class
-// rules. Only a level 2 or 3 title's smaller size outranks the theme, so it
-// stays below the name in the theme's face.
+// The Medieval look sets its heading face on `body.atlas-look .atlas-statblock
+// .atlas-sb-heading` and `.atlas-sb-section-heading` (styles/looks/atlas-looks.css).
+// The sheet's own heading rules stay below that (one class and an element), so the
+// look keeps the face, size and weight of a name; they still win over statblock.scss's
+// one-class rules. The look leaves a level 2 or 3 title's smaller size to these rules,
+// so it stays below the name in the look's face.
 :where(.atlas-sb-sheet) :is(h1, h2, h3).atlas-sb-heading {
   margin: 0;
   font-weight: $font-weight-semibold;

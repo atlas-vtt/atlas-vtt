@@ -27,6 +27,7 @@ function harness(lighting: boolean): Harness {
     playerFrames: fakePlayerFrames(render),
     tokenRenderer: { getPlayerViewLayers },
     dmScreenOverlays: new Set(),
+    playerFrameOnly: new Set(),
     lighting: lighting ? {
       renderer: {},
       playerSight: () => isSeen,

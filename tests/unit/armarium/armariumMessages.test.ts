@@ -62,6 +62,15 @@ describe('messages from the Armarium page', () => {
     expect(readFrameMessage({ type: 'atlas-armarium:share', format: 1, what: 'map' })).toBeNull();
     expect(readFrameMessage({ type: 'atlas-armarium:share', format: 1, what: 3 })).toBeNull();
   });
+
+  it('reads music to share with the listing it continues, and drops a listing that is no uid', () => {
+    expect(installedMessage([], ['music', 'share-music'])).toMatchObject({ features: ['music', 'share-music'] });
+    const listing = '0123456789abcdef0123456789abcdef';
+    expect(readFrameMessage({ type: 'atlas-armarium:share', format: 1, what: 'music-track' })).toEqual({ type: 'atlas-armarium:share', what: 'music-track' });
+    expect(readFrameMessage({ type: 'atlas-armarium:share', format: 1, what: 'music-album', listing })).toEqual({ type: 'atlas-armarium:share', what: 'music-album', listing });
+    expect(readFrameMessage({ type: 'atlas-armarium:share', format: 1, what: 'music-album', listing: '../../x' })).toEqual({ type: 'atlas-armarium:share', what: 'music-album' });
+    expect(readFrameMessage({ type: 'atlas-armarium:share', format: 1, what: 'music-album', listing: 42 })).toEqual({ type: 'atlas-armarium:share', what: 'music-album' });
+  });
 });
 
 describe('the store\'s tags from the Armarium page', () => {

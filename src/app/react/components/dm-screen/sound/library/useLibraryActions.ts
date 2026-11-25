@@ -26,6 +26,9 @@ import { baseName } from '../../../../../utils/pathUtils';
 import { promptForText } from '../../../../../ui/textInputDialog';
 import { showNotice } from '../../../../../ui/notice';
 import { runInBackground } from '../../../../../utils/backgroundTask';
+import { shareMusicFiles } from '../../../../../armarium/share/openMusicShare';
+import { filesOfRows, rowsWithTags, shelfOf } from './rowModel';
+import { tagKey } from '../../../../../soundLibrary/soundTags';
 
 /** Tells why an operation on the library's files failed, in the GM's terms. */
 function failure(error: unknown): string {
@@ -71,6 +74,10 @@ export interface LibraryActions {
   tracksWithTag: (tag: string) => number;
   askRenameTag: (tag: string) => void;
   askRemoveTag: (tag: string) => void;
+  /** Shares music files in the Armarium: one as a track, several as an album named `name`. */
+  share: (files: readonly LibraryFile[], name?: string) => void;
+  /** Shares the music root's tracks with a tag in the Armarium, as an album named after it. */
+  shareTag: (tag: string) => void;
 }
 
 function pickFiles(doc: Document, then: (files: File[]) => void): void {
@@ -194,6 +201,12 @@ export function useLibraryActions(app: App, library: SoundLibrary, director: Sou
           renameTag(records, from, to);
           library.place.renameTag(from, to);
         }), 'Renaming a tag');
+      },
+      share: (files, name) => shareMusicFiles(app, files.filter((file) => file.kind === 'music'), name),
+      shareTag: (tag) => {
+        const sounds = records.all();
+        const { rows } = shelfOf(library, sounds, recordsByFile(sounds, library), 'music');
+        shareMusicFiles(app, filesOfRows(rowsWithTags(rows, [tagKey(tag)])), tag);
       },
       askRemoveTag: (tag) => {
         const count = tracksHolding(records.all(), library, tag);

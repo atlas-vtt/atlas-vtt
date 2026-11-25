@@ -150,7 +150,7 @@ export class ExploredMemory {
     });
     if (!changed) return false;
     this.revision++;
-    this.deps.floors?.edited(this.revision);
+    this.deps.floors?.edited(this.revision, edit.mode === 'forget' ? { shapes, bounds: this.bounds } : null);
     this.deps.store.getState().setExploredEdits(this.revision);
     this.saver.schedule();
     return true;

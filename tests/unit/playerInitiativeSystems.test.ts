@@ -16,7 +16,7 @@ const entry = (tokenId: string, order: number, extra: Partial<InitiativeEntry> =
 
 function draw(initiative: InitiativeState, rules: InitiativeRules, tokens: Record<string, TokenEntity>): HTMLElement {
   const sides = sideIdsOf(initiative, rules);
-  const list = playerInitiativeList(initiative, (e) => entryTokenOf(tokens[e.tokenId], [], [], sides), rules, false);
+  const list = playerInitiativeList(initiative, (e) => entryTokenOf(tokens[e.tokenId], [], [], sides), rules);
   const container = document.body.createDiv();
   renderPlayerInitiative(container, list, LOOK);
   return container;

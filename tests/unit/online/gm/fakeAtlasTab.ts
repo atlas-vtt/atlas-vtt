@@ -2,7 +2,8 @@ import { cellNumberStyleOfGrid } from '../../../../src/app/grid/cellNumbering';
 import { parseGridColor } from '../../../../src/app/grid/gridContrastColor';
 import { heldForSight } from '../../../../src/app/lighting/sightOnDrop';
 import type { CollectionLookup } from '../../../../src/app/gameSystems/mapRules';
-import { tokenPerception } from '../../../../src/app/vision/tokenPerception';
+import { fogCoverage } from '../../../../src/app/fog/fogCoverage';
+import { tokenPerception, type TokenPerception } from '../../../../src/app/vision/tokenPerception';
 import type { MapBounds } from '../../../../src/app/vision/visibility';
 import type { LightingSource } from '../../../../src/app/online/gm/atlasLighting.ts';
 import { mapLayerSourceOf, type MapLayerSource } from '../../../../src/app/online/gm/atlasMapLayers.ts';
@@ -37,7 +38,8 @@ export interface FakeTabOptions {
  * An Atlas map tab's renderer and view as the companion's duck-typed readers find them (`view.serviceManager`, the
  * renderer's `lighting` controller and token renderer), answering with Atlas's own rules: the
  * players' sight, ambient light and light reaches of the scene model, the token perception with
- * committed fog of `gmPerception`, and token sprites where the tokens stand.
+ * committed fog of `gmPerception` (the players' frame of another perception: committed fog over it),
+ * and token sprites where the tokens stand.
  */
 export function fakeAtlasTab(options: FakeTabOptions): { readonly renderer: object; readonly view: object } {
   const model = (): ReturnType<typeof gmModel>['model'] => gmModel(options.state(), options.source, options.bounds).model;
@@ -58,9 +60,15 @@ export function fakeAtlasTab(options: FakeTabOptions): { readonly renderer: obje
     },
   };
   const tokenRenderer = {
-    playerFramePerception: () => {
+    playerFramePerception: (lit?: TokenPerception): TokenPerception | undefined => {
       const state = options.state();
-      return state.lighting.enabled ? gmPerception(state, options.source, options.bounds) : undefined;
+      if (!state.lighting.enabled) return undefined;
+      if (lit === undefined) return gmPerception(state, options.source, options.bounds);
+      const fog = fogCoverage(state.objects.fog);
+      return (id) => {
+        const token = state.objects.tokens[id];
+        return token === undefined || fog.covers(token) ? 'unseen' : lit(id);
+      };
     },
     getTokenSprites: () => Object.fromEntries(Object.values(options.state().objects.tokens).map((token) => [token.id, { x: token.x, y: token.y, tokenSize: options.tokenSize ?? 70 }])),
   };

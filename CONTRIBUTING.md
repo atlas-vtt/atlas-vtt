@@ -1,13 +1,20 @@
 # Contributing
 
 1. Create a branch from `beta`. Changes reach `main` only through beta promotion, see [`.github/development.md`](.github/development.md).
-2. Make your change. Coding conventions are described in [`CLAUDE.md`](CLAUDE.md); the short version: PIXI.js v8 (not the v7 Obsidian bundles), SCSS with Obsidian CSS variables, explicit return types, files under roughly 300 lines.
-3. Run `npx tsc --noEmit`, `npm run lint`, `npm test` and `npm run build`. Lint must be clean; see [`.github/development.md`](.github/development.md#lint).
+2. Make your change. Coding conventions are described in [`AGENTS.md`](AGENTS.md); the short version: PIXI.js v8 (not the v7 Obsidian bundles), SCSS with Obsidian CSS variables, explicit return types, files of at most 300 lines.
+3. Run `npm run check` while you work and `npm run verify` before you open the pull request, then `npm run build` and try the change in Obsidian. Lint must be clean; see [`.github/development.md`](.github/development.md#lint).
 4. Open a pull request against `beta` that describes what changed and how you tested it.
 
 ## Text and translations
 
-Write every text a user reads or hears with a key: add it to `src/app/i18n/locales/en/` and show it with `t('file.key')`, instead of writing the English into the component. You do not have to translate it; a language that lacks a key shows the English, and translations come as their own pull requests. Keep each sentence one whole text with `{placeholders}`, rather than joining words in code, so it can be worded in languages that decline and order words differently. The rules are in the Translations section of [`CLAUDE.md`](CLAUDE.md#translations).
+Write every text a user reads or hears with a key: add it to `src/app/i18n/locales/en/` and show it with `t('file.key')`, instead of writing the English into the component. You do not have to translate it; a language that lacks a key shows the English, and translations come as their own pull requests.
+
+- A key's first segment names its file: `palette.moveTool` lives in `palette.ts` of each language's folder. The segment must be a valid identifier and no reserved word (`exportDialog`, not `export`).
+- `{name}` in a text takes a value: `t('file.key', { name })`. A translation keeps the placeholders of the English text; a test checks this.
+- A text that changes with a number has plural forms, `{ one: '{count} file', other: '{count} files' }` (the categories of `Intl.PluralRules`), and the value `count` picks one.
+- Keep each sentence one whole text, never joined from translated pieces: languages decline and order their words differently. Join lists with `formatList`. The lint catches `t(…) + …` (`atlas/translated-pieces`) and an `Intl` formatter that is not given `getLocale()` (`atlas/intl-locale`).
+- Only what is shown is translated, never keys, ids or stored data. Game system presets, the issue report and log messages stay English.
+- A new language is a folder beside `locales/en/` with the same files, registered in `src/app/i18n/languages.ts` under Obsidian's language code.
 
 ## Release notes
 

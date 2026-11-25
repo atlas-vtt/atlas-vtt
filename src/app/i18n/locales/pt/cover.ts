@@ -9,4 +9,5 @@ export const cover: Translation = {
   'cover.upload': 'Enviar imagem',
   'cover.uploadHint': 'Usar uma imagem sua como capa',
   'cover.uploaded': 'Imagem enviada',
+  'cover.unreadable': '{name} não é uma imagem que o Atlas consiga ler. Escolha outro arquivo.',
 };

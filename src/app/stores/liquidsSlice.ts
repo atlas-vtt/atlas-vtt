@@ -5,6 +5,7 @@ import { MAX_LIQUIDS } from '../liquids/liquids';
 import type { LiquidSurface, LiquidSurfaceInput } from '../types/liquidTypes';
 import type { ViewState } from '../types/viewState';
 import { isRecord } from '../utils/guards';
+import { newId } from '../utils/ids';
 
 export interface LiquidsSlice {
   /**
@@ -18,10 +19,6 @@ export interface LiquidsSlice {
 type LiquidsDraft = Pick<ViewState, 'levels' | 'viewedLevel' | 'objects'>;
 
 type ImmerSet = (fn: (draft: LiquidsDraft) => void) => void;
-
-function newLiquidId(): string {
-  return `liquid_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-}
 
 /** The level a surface counts on for the limit: the one it stands on ('' in a scene without levels). */
 function levelKey(surface: object, draft: LiquidsDraft): string {
@@ -48,7 +45,7 @@ export function createLiquidsActions(set: ImmerSet): LiquidsSlice {
         }
         const placed = placedOnViewedLevel(draft);
         for (const input of data) {
-          const surface: LiquidSurface = { id: newLiquidId(), kind: 'liquid', ...placed, ...input };
+          const surface: LiquidSurface = { id: newId('liquid'), kind: 'liquid', ...placed, ...input };
           const level = levelKey(surface, draft);
           const count = counts.get(level) ?? 0;
           if (count >= MAX_LIQUIDS) continue;

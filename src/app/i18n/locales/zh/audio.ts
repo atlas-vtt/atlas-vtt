@@ -34,6 +34,7 @@ export const audio: Translation = {
   'audio.state.convertingPercent': '正在转换 {percent}%',
   'audio.consent.title': '把 {folder} 转换为 Opus？',
   'audio.consent.body': { other: 'Atlas 会把 {folder} 中的全部 {count} 个声音在此文件夹内转换为 Opus，之后添加的文件也会同样处理。' },
+  'audio.consent.bodyEmpty': '{folder} 中还没有声音。之后添加的声音，Atlas 会在此文件夹内转换为 Opus。',
   'audio.consent.trash': '转换并把原文件移到回收站',
   'audio.consent.keep': '转换并保留原文件',
   'audio.consent.noTrash': '此文件夹没有回收站，因此原文件会保留。',

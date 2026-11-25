@@ -85,11 +85,20 @@ export class ArmariumApi {
    * page is. Optional: whatever stops it answers null, and a refusal here never signs the GM out.
    */
   async ownListing(uid: string): Promise<OwnListing | null> {
+    return (await this.ownListings())?.find((listing) => listing.uid === uid) ?? null;
+  }
+
+  /**
+   * The account's listings from My uploads, those Atlas can read: an entry of a shape or format a later Armarium added
+   * is left out, never a reason to fail. Null where they could not be read (no answer, a refusal, no list in it), which
+   * is not the same as none: a share that took it for none would start a second listing of what the GM shared before.
+   */
+  async ownListings(): Promise<OwnListing[] | null> {
     try {
       const mine = await this.json({ method: 'GET', path: '/mine' }, { optional: true });
       const listings = field(mine, 'listings');
       if (!Array.isArray(listings)) return null;
-      return listings.map(parseOwnListing).find((listing) => listing?.uid === uid) ?? null;
+      return listings.map(parseOwnListing).filter((listing): listing is OwnListing => listing !== null);
     } catch {
       return null;
     }

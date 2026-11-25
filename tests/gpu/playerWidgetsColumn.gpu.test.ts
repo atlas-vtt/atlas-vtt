@@ -46,7 +46,6 @@ function showPlayerView(edges: PlayersListEdge[], labels: string[], combatants: 
     { entries: Array.from({ length: combatants }, (_, index) => entryOf(index)), isActive: true, round: 1 },
     (_, index) => entryTokenOf(creature(index), [], []),
     { mode: 'turn-order', roll: '1d20', firstSide: 'players' },
-    true,
   );
   for (const dock of edges) renderPlayerInitiative(layer, list, { showNames: false, mapShowsNameplates: false, portraitSrc: (src) => src, fromTurn: true, dock });
   return { layer, bar };

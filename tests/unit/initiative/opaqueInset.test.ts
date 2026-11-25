@@ -35,6 +35,18 @@ describe('opaqueInset', () => {
     for (const [x, y] of [[left + 1, top + 1], [right - 1, top + 1], [left + 1, bottom - 1], [right - 1, bottom - 1]]) expect(inside(x!, y!)).toBe(true);
   });
 
+  it('frames a round token by the square inside its circle', () => {
+    const inset = opaqueInset(image(100, (x, y) => (x - 49.5) ** 2 + (y - 49.5) ** 2 <= 40 ** 2), 100, 100)!;
+    expect(inset.top).toBeGreaterThan(0.2);
+    expect(inset.top).toBeLessThan(0.25);
+  });
+
+  it('keeps a cut-out figure on a transparent ground as drawn instead of zooming into its body', () => {
+    const figure = (x: number, y: number): boolean =>
+      (x - 50) ** 2 + (y - 18) ** 2 <= 15 ** 2 || (x >= 32 && x < 68 && y >= 30 && y < 96) || (x >= 4 && x < 96 && y >= 38 && y < 52);
+    expect(opaqueInset(image(100, figure), 100, 100)).toBeNull();
+  });
+
   it('keeps art too sparse for a solid box, and an empty image, as drawn', () => {
     expect(opaqueInset(image(50, (x, y) => (x + y) % 3 === 0), 50, 50)).toBeNull();
     expect(opaqueInset(image(50, () => false), 50, 50)).toBeNull();

@@ -84,8 +84,7 @@ export class PointerTap implements LaserSource {
   private press: Press | null = null;
   private readonly onDown = (event: TapEvent): void => this.down(event);
   private readonly onMove = (event: TapEvent): void => this.move(event);
-  private readonly onUp = (event: TapEvent): void => this.up(event.button);
-  private readonly onUpOutside = (): void => this.up(null);
+  private readonly onUp = (): void => this.up();
   private readonly onLeave = (): void => {
     this.pointer = null;
     this.changed();
@@ -100,7 +99,7 @@ export class PointerTap implements LaserSource {
     viewport.on('pointerdown', this.onDown);
     viewport.on('pointermove', this.onMove);
     viewport.on('pointerup', this.onUp);
-    viewport.on('pointerupoutside', this.onUpOutside);
+    viewport.on('pointerupoutside', this.onUp);
     // A pointer leaves the canvas when it moves off it, and a finger whenever it lifts: no dot stays where it was.
     canvas.addEventListener('pointerleave', this.onLeave);
   }
@@ -130,7 +129,7 @@ export class PointerTap implements LaserSource {
     this.viewport.off('pointerdown', this.onDown);
     this.viewport.off('pointermove', this.onMove);
     this.viewport.off('pointerup', this.onUp);
-    this.viewport.off('pointerupoutside', this.onUpOutside);
+    this.viewport.off('pointerupoutside', this.onUp);
     this.canvas.removeEventListener('pointerleave', this.onLeave);
     this.listeners.clear();
   }
@@ -154,11 +153,11 @@ export class PointerTap implements LaserSource {
     if (this.pointing || this.quick || this.isLaser()) this.changed();
   }
 
-  /** The middle button ends quick pointing, the primary button the Laser tool's; `null` (released off the canvas) ends both. */
-  private up(button: number | null): void {
-    if (button === null || (button === 1 && this.quick)) this.quick = false;
-    else if (!(button === 0 && this.pointing && this.isLaser())) return;
-    this.pointing = this.quick;
+  /** A release ends the laser whichever button it names: it comes only once the last button is up, on the canvas or off it. */
+  private up(): void {
+    if (!this.pointing && !this.quick) return;
+    this.quick = false;
+    this.pointing = false;
     this.changed();
   }
 

@@ -32,7 +32,7 @@ export default function CreateSceneModal({
   onSceneCreated,
   backgroundPath,
   defaultName
-}: CreateSceneModalProps) {
+}: CreateSceneModalProps): React.JSX.Element | null {
   const [sceneName, setSceneName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -68,21 +68,22 @@ export default function CreateSceneModal({
 
   // Handle Escape key globally
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
+    const handleEscape = (e: KeyboardEvent): void => {
       if (e.key === 'Escape' && isOpen) {
         onClose();
       }
     };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
+      const doc = inputRef.current?.doc ?? activeDocument;
+      doc.addEventListener('keydown', handleEscape);
       return () => {
-        document.removeEventListener('keydown', handleEscape);
+        doc.removeEventListener('keydown', handleEscape);
       };
     }
   }, [isOpen, onClose]);
 
-  const handleCreate = async () => {
+  const handleCreate = async (): Promise<void> => {
     if (!sceneName.trim() || !assetService || isCreating || isCreatingTag) return;
 
     setIsCreating(true);
@@ -114,7 +115,7 @@ export default function CreateSceneModal({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent): void => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       void handleCreate();

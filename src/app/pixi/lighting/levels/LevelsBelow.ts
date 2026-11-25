@@ -44,8 +44,8 @@ export interface BelowLevelsHost extends RoofHost {
   createMapImage(camera?: SnapshotView): BelowMapImage;
   /** The liquids of a level below, held still, asking for its snapshot anew through `changed`; without it none are drawn below. */
   createLiquids?(level: string, changed: () => void): BelowLiquids;
-  /** Token art for the tokens of a level below. */
-  createArt(): TokenArt;
+  /** The view's token art, which the tokens of the levels below show too: one decode, one upload, one eviction. */
+  art: TokenArt;
   /** A level's map as the level stack reads it: its size and its transparent parts (a video's poster's). */
   levelArt: LevelArtSource;
   /** The committed fog of the level the view shows (null: unreadable, which hides all). */
@@ -362,7 +362,7 @@ export class LevelsBelow {
       quality: belowQuality(deps.quality()),
       lit: this.lit,
       image: (camera) => deps.host.createMapImage(camera),
-      art: deps.host.createArt(),
+      art: deps.host.art,
       roofs: deps.host,
       ...(deps.host.createLiquids && { liquids: (changed: () => void) => deps.host.createLiquids!(id, changed) }),
       fadeMs: deps.fadeMs ?? 0,

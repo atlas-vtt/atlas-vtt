@@ -171,6 +171,8 @@ export const online: Translation = {
   'online.unmark': 'Desmarcar',
   'online.update': 'Actualizar',
   'online.updateAfter': 'Actualizar Atlas después de esta sesión',
+  'online.sheet.templateMissing': 'Los jugadores no pueden cambiar la hoja {note}: falta su plantilla. Elige una plantilla para la nota.',
+  'online.sheet.templateNewer': 'Los jugadores no pueden cambiar la hoja {note}: su plantilla indica que se hizo con un Atlas más nuevo, así que Atlas solo la lee.',
   'online.worldMap.missing': 'Atlas Online no puede enviar el mapa del mundo: falta su archivo de imagen.',
   'online.worldMap.tooLarge': 'Atlas Online no puede enviar el mapa del mundo: su imagen ocupa más de 95 MB.',
   'online.worldMap.unreadable': 'Atlas Online no puede enviar el mapa del mundo: su imagen no es un PNG, JPEG, WebP, GIF o AVIF que los jugadores puedan abrir.',
@@ -181,4 +183,9 @@ export const online: Translation = {
   'online.mapUnreadable': 'La imagen del mapa de esta escena no se puede enviar a los jugadores.',
   'online.fogTooMuch': 'Este mapa tiene demasiada niebla para los jugadores en línea. Lo ven cubierto hasta que borres parte.',
   'online.assetsFailed': 'No se pudo compartir un archivo con los jugadores.',
+  'online.doorAsk': '{player} pide abrir una puerta.',
+  'online.doorAskShow': 'Mostrar',
+  'online.doorAskHeading': '{player} pide abrir esta puerta',
+  'online.doorAskAllow': 'Abrirla',
+  'online.doorAskDeny': 'Dejarla cerrada',
 };

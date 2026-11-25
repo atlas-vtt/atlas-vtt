@@ -171,6 +171,8 @@ export const online: Translation = {
   'online.unmark': '取消标记',
   'online.update': '更新',
   'online.updateAfter': '本次游戏结束后更新 Atlas',
+  'online.sheet.templateMissing': '玩家无法更改角色卡 {note}：其模板缺失。请为该笔记选择一个模板。',
+  'online.sheet.templateNewer': '玩家无法更改角色卡 {note}：其模板标明由更新版本的 Atlas 制作，因此 Atlas 只读取它。',
   'online.worldMap.missing': 'Atlas Online 无法发送世界地图：它的图片文件缺失。',
   'online.worldMap.tooLarge': 'Atlas Online 无法发送世界地图：它的图片超过 95 MB。',
   'online.worldMap.unreadable': 'Atlas Online 无法发送世界地图：它的图片不是玩家能打开的 PNG、JPEG、WebP、GIF 或 AVIF。',
@@ -181,4 +183,9 @@ export const online: Translation = {
   'online.mapUnreadable': '无法把这个场景的地图图片发送给玩家。',
   'online.fogTooMuch': '这张地图的迷雾对在线玩家来说太多了。在你清除一些之前，他们看到的是全部覆盖。',
   'online.assetsFailed': '有一个文件无法分享给玩家。',
+  'online.doorAsk': '{player} 请求打开一扇门。',
+  'online.doorAskShow': '查看',
+  'online.doorAskHeading': '{player} 请求打开这扇门',
+  'online.doorAskAllow': '打开',
+  'online.doorAskDeny': '保持关闭',
 };

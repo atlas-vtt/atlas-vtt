@@ -27,6 +27,8 @@ import type { ForgottenFloors } from './ForgottenFloors';
 import type { LightingAttempt } from './lightingAttempts';
 import { PlayerView } from './PlayerView';
 import { SceneModelBuilder, SceneSpots, type SceneModel, type SceneState } from '../../vision/sceneModel';
+import type { PrebuildRequest } from '../../vision/prebuild/scenePrebuild';
+import type { PrebuiltScene } from '../../vision/prebuild/prebuildParts';
 import type { ExploredMemoryWatcher, SceneLightingView } from './sceneLightingView';
 import { levelExploredMask, viewedLevelId } from '../../levels/sceneLevels';
 import { MOTION_SLOW_MS, prefersReducedMotion } from '../../utils/motion';
@@ -118,6 +120,8 @@ export interface LightingRendererDeps {
    * never lost: the stamp still due is made on the next frame.
    */
   paceStamps?: boolean;
+  /** Traces a loading scene's light reaches and sight off the main thread (`SceneModelBuilder.prepare`); without it the reveal traces them. */
+  prebuild?: (request: PrebuildRequest) => Promise<PrebuiltScene | null>;
 }
 
 type SceneWithoutLook = Omit<EngineScene, keyof SceneLook | 'albedo'>;
@@ -411,6 +415,24 @@ export class LightingRenderer implements SceneLightingView {
     this.levelsBelow?.update(state, bounds, { sight: model.sight, gmSight });
     if (this.levelsBelow?.failed()) this.engine.fail(new Error('The lighting of a level below stopped'));
     requestRender(this.deps.app);
+  }
+
+  /**
+   * The store holds the scene a load brings, its map still hidden: its light reaches and sight are
+   * traced off the main thread, and the engine's shaders compiled in the graphics process, so the
+   * build that reveals it finds them. Resolves once the traces are handed over, or there is nothing to trace ahead.
+   */
+  prepareScene(): Promise<void> {
+    const state = this.deps.store.getState();
+    const map = this.deps.bounds();
+    const { prebuild } = this.deps;
+    if (this.stopped || !map || !state.lighting.enabled) return Promise.resolve();
+    this.run(() => this.engine.prepareShaders());
+    if (!prebuild) return Promise.resolve();
+    const reach = this.levelsBelow?.reach(state, map) ?? map;
+    return this.model.prepare(state, map, this.deps.measurement, this.deps.rules, reach, prebuild).catch((error: unknown) => {
+      console.warn('[LightingRenderer] The scene could not be traced ahead:', error);
+    });
   }
 
   /**

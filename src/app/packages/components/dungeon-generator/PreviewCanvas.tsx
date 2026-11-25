@@ -43,7 +43,6 @@ export function usePreviewSize(frame: HTMLElement | null): PreviewSize | null {
 interface PreviewCanvasProps {
   picture: MapPicture | null;
   drawing: boolean;
-  failed: boolean;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   className?: string;
   /** Laid over the map, inside its edges (its tools, the floor switcher). */
@@ -119,7 +118,7 @@ function PictureCanvas({ bitmap, canvasRef, labelId }: { bitmap: ImageBitmap; ca
  * surface of its own shape while the last fades out on its own (never one surface resizing under
  * pictures that swap). While a drawing takes a moment, the picture shown dims a little.
  */
-export function PreviewCanvas({ picture, drawing, failed, canvasRef, className, children }: PreviewCanvasProps): React.JSX.Element {
+export function PreviewCanvas({ picture, drawing, canvasRef, className, children }: PreviewCanvasProps): React.JSX.Element {
   const [waiting, setWaiting] = useState(false);
   const [stage, setStage] = useState<HTMLDivElement | null>(null);
   const room = useCssSize(stage);
@@ -156,7 +155,6 @@ export function PreviewCanvas({ picture, drawing, failed, canvasRef, className, 
       {/* One layer over the surface shown, kept across pictures, so its controls keep focus and menus. */}
       <div className="atlas-dungeon-preview__chrome" style={box ?? undefined} hidden={!box}>
         {children}
-        {failed && <p className="atlas-dungeon-preview__failed" role="alert">{t('dungeon.preview.failed')}</p>}
       </div>
     </div>
   );

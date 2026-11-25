@@ -10,6 +10,7 @@
  * takes the colour of the step the move lies in and the label sets the distance against how far
  * that step reaches; the drop counts what each token moved in the running turn (`countDrop`).
  * The players' picture shows the same reading as the GM's, of every token they see.
+ * Once the drag is over the ruler dissolves where it lies (`DragRulerView.dissolve`).
  */
 
 import type { StoreApi } from 'zustand';
@@ -53,6 +54,8 @@ export class DragRuler {
   private landing: Point | null = null;
   /** Where the dragged token is drawn now: the line ends under its centre, wherever it snaps to. */
   private tip: Point | null = null;
+  /** The token whose ruler dissolves after its drag, until it is gone: players who did not see that ruler do not see it leave. */
+  private leftTokenId: string | null = null;
   private keyWindow: Window | null = null;
 
   constructor(
@@ -68,6 +71,7 @@ export class DragRuler {
   /** Starts measuring a drag of `tokenId`, which started at `origin`. */
   begin(tokenId: string, origin: Point): void {
     this.end();
+    this.leftTokenId = null;
     this.tokenId = tokenId;
     this.waypoints = [this.snap(origin)];
     this.keyWindow = activeWindow;
@@ -82,14 +86,20 @@ export class DragRuler {
     this.redraw();
   }
 
+  /** The drag is over: its ruler dissolves. Nothing outside a drag, so a ruler on its way out is left to it. */
   end(): void {
     this.keyWindow?.removeEventListener('keydown', this.onKeyDown, true);
     this.keyWindow = null;
+    const left = this.tokenId;
+    if (left === null) return;
     this.tokenId = null;
     this.waypoints = [];
     this.landing = null;
     this.tip = null;
-    this.view.clear();
+    this.leftTokenId = left;
+    this.view.dissolve(() => {
+      if (this.leftTokenId === left) this.leftTokenId = null;
+    });
   }
 
   /** The path the ruler shows now, or null while it shows none (no drag, one that has not left its start, or distances switched off). */
@@ -126,9 +136,9 @@ export class DragRuler {
     for (const [distance, tokenIds] of moved) this.store.getState().countTurnMove(tokenIds, distance);
   }
 
-  /** Players never see the ruler of a token hidden from them, or of one they do not see (`isSeen`, with dynamic lighting). */
+  /** Players never see the ruler of a token hidden from them, or of one they do not see (`isSeen`, with dynamic lighting), nor see it leave. */
   getPlayerViewLayers(isSeen: (tokenId: string) => boolean = () => true): LayerVisibility[] {
-    const token = this.token();
+    const token = this.token(this.tokenId ?? this.leftTokenId);
     const shown = !token || (!token.isHidden && isSeen(token.id));
     return shown ? [] : this.view.layers.map(layer => ({ layer, visible: false }));
   }
@@ -214,8 +224,8 @@ export class DragRuler {
   }
 
   /** The dragged token as the store holds it now. */
-  private token(): TokenEntity | undefined {
-    return this.tokenId ? mapTokens(levelObjects(this.store.getState()))[this.tokenId] : undefined;
+  private token(tokenId: string | null = this.tokenId): TokenEntity | undefined {
+    return tokenId ? mapTokens(levelObjects(this.store.getState()))[tokenId] : undefined;
   }
 
   private tokenSize(tokenId: string | null = this.tokenId): number {

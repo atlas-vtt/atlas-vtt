@@ -1,6 +1,7 @@
 import { Buffer, BufferUsage, Container, Geometry, Mesh, UniformGroup, type Renderer, type RenderTexture, type Shader, type TextureSource } from 'pixi.js';
 import { FIELD_MAX, fieldMargin } from '../../../lighting/lightingConstants';
 import type { Rect, Seg } from '../../../lighting/segments';
+import { destroyTree } from '../../utils/destroyTree';
 import { ENGINE_SHADERS } from './engineShaders';
 import { createQuad, createShader, createTarget, destroyQuad, quadGeometry, renderInto, type Quad } from './gpu';
 
@@ -111,7 +112,7 @@ export class CapsuleField {
   }
 
   destroy(): void {
-    this.scene.destroy({ children: true });
+    destroyTree(this.scene);
     this.empty.destroy();
     this.releaseBuilt();
     this.initialGeometry.destroy();

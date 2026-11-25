@@ -17,20 +17,26 @@ export interface ThumbnailSize {
   ratio: number;
 }
 
-const NONE: ReadonlyMap<DungeonStyleId, ImageBitmap> = new Map();
+/** The pictures of a set of cards, and whether one of them could not be drawn. */
+export interface CardPictures<Card extends string> {
+  pictures: ReadonlyMap<Card, ImageBitmap>;
+  failed: boolean;
+}
+
+const NONE: CardPictures<DungeonStyleId> = { pictures: new Map(), failed: false };
 
 /**
  * The style gallery's cards: each style drawn on one sample dungeon (`sampleStyleCards.ts`), the
  * same in every wizard of the app and drawn once per card size, `first` (the chosen style) first.
- * None while `size` is null.
+ * None while `size` is null. A higher `attempt` asks again for those that could not be drawn.
  */
-export function useStyleThumbnails(renderer: ThumbnailRenderer, size: ThumbnailSize | null, first: DungeonStyleId): ReadonlyMap<DungeonStyleId, ImageBitmap> {
+export function useStyleThumbnails(renderer: ThumbnailRenderer, size: ThumbnailSize | null, first: DungeonStyleId, attempt: number): CardPictures<DungeonStyleId> {
   const cards = sampleStyleCardsFor(renderer);
   useSyncExternalStore(cards.subscribe, () => cards.version);
   const firstRef = useRef(first);
   firstRef.current = first;
   useEffect(() => {
     if (size) cards.want(size, firstRef.current);
-  }, [cards, size]);
-  return size ? cards.shown(size) : NONE;
+  }, [cards, size, attempt]);
+  return size ? { pictures: cards.shown(size), failed: cards.failed(size) } : NONE;
 }

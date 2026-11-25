@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import { Reorder } from 'framer-motion';
 import { ChevronDown, Plus, Swords } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
 import { Button } from '../../../packages/components/primitives/button';
@@ -17,7 +18,7 @@ import { isWidgetOn } from '../../../utils/widgetActivation';
 import { SettingToggleRow } from './SettingRows';
 import { WidgetEditorForm, type WidgetDraft } from './WidgetEditorForm';
 import { WidgetListItem } from './WidgetListItem';
-import { widgetRows, type WidgetRow } from './widgetRows';
+import { movedWidgetIds, rowsInOrder, widgetRows, withWidgetOrder, type WidgetRow } from './widgetRows';
 import { t } from '../../../i18n';
 
 interface WidgetSettingsPanelProps {
@@ -54,6 +55,10 @@ export const WidgetSettingsPanel = React.memo(function WidgetSettingsPanel({
     () => widgetRows(sortedWidgets, (widget) => isWidgetOn(widgetSettings, widget), library),
     [sortedWidgets, widgetSettings, library],
   );
+  // The order shown while a row is dragged; written once the row is let go.
+  const [dragOrder, setDragOrder] = useState<readonly string[] | null>(null);
+  const dragOrderRef = useRef<readonly string[] | null>(null);
+  const shownRows = dragOrder ? rowsInOrder(rows, dragOrder) : rows;
 
   // Persisted state from older maps can lack this field; it defaults to on.
   const globalVisible = widgetSettings?.globalVisible !== false;
@@ -92,6 +97,31 @@ export const WidgetSettingsPanel = React.memo(function WidgetSettingsPanel({
     }
     updateWidget(row.widget.id, { scope });
     if (scope === 'collection') store.getState().setWidgetOn(row.widget.id, true);
+  };
+
+  /** The scene's widgets take their places in the store, the others in the library. */
+  const commitOrder = (ids: readonly string[]): void => {
+    store.getState().reorderWidgets([...ids]);
+    if (collectionId && rows.some((row) => !row.inScene)) {
+      WidgetSyncService.forApp(app)?.editCollectionWidgets(collectionId, (widgets) => withWidgetOrder(widgets, ids));
+    }
+  };
+
+  const dragTo = (ids: string[]): void => {
+    dragOrderRef.current = ids;
+    setDragOrder(ids);
+  };
+
+  const endDrag = (): void => {
+    const ids = dragOrderRef.current;
+    dragOrderRef.current = null;
+    setDragOrder(null);
+    if (ids) commitOrder(ids);
+  };
+
+  const moveWidget = (id: string, step: number): void => {
+    const ids = movedWidgetIds(rows.map((row) => row.widget.id), id, step);
+    if (ids) commitOrder(ids);
   };
 
   const deleteWidget = ({ widget }: WidgetRow): void => {
@@ -198,10 +228,18 @@ export const WidgetSettingsPanel = React.memo(function WidgetSettingsPanel({
           {rows.length === 0 && (
             <span className="atlas-setting-hint">{t('widgets.empty')}</span>
           )}
-          <div className="atlas-command-palette-widget-list">
-            {rows.map((row) => (
+          <Reorder.Group
+            as="div"
+            axis="y"
+            className="atlas-command-palette-widget-list"
+            values={shownRows.map((row) => row.widget.id)}
+            onReorder={dragTo}
+          >
+            {shownRows.map((row) => (
               <WidgetListItem
                 key={row.widget.id}
+                onDragEnd={endDrag}
+                onMove={(step) => moveWidget(row.widget.id, step)}
                 widget={row.widget}
                 active={row.active}
                 inCollection={collectionId !== null}
@@ -212,7 +250,7 @@ export const WidgetSettingsPanel = React.memo(function WidgetSettingsPanel({
                 onDelete={() => deleteWidget(row)}
               />
             ))}
-          </div>
+          </Reorder.Group>
 
         </div>
         )}

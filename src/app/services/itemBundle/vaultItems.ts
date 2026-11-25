@@ -17,6 +17,7 @@ import type { BundledRecordKind } from '../collectionBundle/bundleRecordFiles';
 import type { RecordFolderFiles } from '../vaultRecords/RecordFolderFiles';
 import type { StoredRecord } from '../vaultRecords/recordFolder';
 import type { ItemKind, ItemRef } from './itemBundleFormat';
+import { getLocale } from '../../i18n';
 
 /** An item of the vault that may be shared, with the name it is shown and shared under. */
 export interface ShareableItem extends ItemRef {
@@ -46,7 +47,7 @@ export async function loadedRecordFiles(app: App, kind: BundledRecordKind): Prom
   return store;
 }
 
-const BY_NAME = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+const BY_NAME = new Intl.Collator(getLocale(), { numeric: true, sensitivity: 'base' });
 const byName = (a: ShareableItem, b: ShareableItem): number => BY_NAME.compare(a.name, b.name);
 
 async function shareableTemplates(app: App): Promise<ShareableItem[]> {

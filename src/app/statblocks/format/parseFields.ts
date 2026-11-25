@@ -10,7 +10,8 @@ import {
   type TemplateField,
 } from '../model/templateTypes';
 import { COUNTER_PRESET_KEYS, ENTRY_EXTRA_KEYS, ENTRY_SHAPE_KEYS, FIELD_KEYS, FIELD_TRACKING_KEYS } from './formatKeys';
-import { describeValue, isRecord, own } from './jsonValues';
+import { describeValue, own } from './jsonValues';
+import { isRecord } from '../../utils/guards';
 import { ObjectReader } from './objectReader';
 import { asBoolean, asKey, asNonNegativeInteger, asOneOf, asString, choices } from './valueReads';
 

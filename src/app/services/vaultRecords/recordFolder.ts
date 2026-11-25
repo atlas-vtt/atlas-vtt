@@ -9,6 +9,7 @@
 
 import { readRecordText as readRecord, recordText as recordTextOf, type StoredRecord } from '../recordFiles/recordLayout';
 import { freeNamedPath, isNamedAfterStem, nameStem } from '../recordFiles/recordNames';
+import { isRecord } from '../../utils/guards';
 
 export type { StoredRecord } from '../recordFiles/recordLayout';
 export { isWithin } from '../recordFiles/recordLayout';
@@ -40,9 +41,6 @@ export interface RecordStorage {
 
 const EXTENSION = 'json';
 const SUFFIX = `.${EXTENSION}`;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** Whether `path` is a record file of `spec`: a JSON file in its folder or a folder below it. */
 export function isRecordPath(spec: Pick<RecordFolderSpec, 'folder'>, path: string): boolean {

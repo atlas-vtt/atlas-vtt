@@ -1,4 +1,5 @@
 import type { ResourceDefinition, ResourceValue } from '../resources/resourceTypes';
+import { visibleResources } from '../resources/visibleResources';
 import type { TokenEntity } from '../types';
 import type { ConditionDefinition } from '../types/collectionSettingsTypes';
 import type { InitiativeEntry, InitiativeState } from '../types/initiativeTypes';
@@ -11,8 +12,10 @@ import type { PlayersListEdge } from '../initiative/initiativeLayout';
 import { combatantConditions, type ActiveCondition } from '../utils/activeConditions';
 import { entryConditions } from '../initiative/combatantConditions';
 import { entryToken } from '../initiative/party';
+import { isOffMap } from '../tokens/offMap';
 import { layoutEdges, scrollWithin } from '../utils/scrollWithin';
 import { renderPlayerCard } from './playerInitiativeCard';
+import { showConditionsTip } from './playerConditionsTip';
 import { TURN_KEY_ATTRIBUTE } from '../initiative/motion/turnMotion';
 import '../initiative/initiative-panel.scss';
 import './player-initiative.scss';
@@ -32,6 +35,8 @@ export interface EntryToken {
   conditions?: ActiveCondition[];
   /** The token's own Show nameplate, which names it where the map shows no nameplates (`nameplateShownToPlayers`). */
   showNameplate?: boolean;
+  /** Kept beside the map (`isOffMap`): no token on the map shows its conditions, so its card does. */
+  offMap?: true;
 }
 
 /** What the players' list shows of an initiative entry. */
@@ -93,6 +98,10 @@ export interface PlayerInitiativeLook {
   turnFlash?: number | undefined;
   /** The most cards the list shows, 0 for all (`initiativeMaxCardsOf`). */
   maxCards?: number;
+  /** Players see their TV at true scale (TrueScale): miniatures cover the tokens, so every card shows its conditions. */
+  trueScale?: boolean;
+  /** The card (`playerCardKey`) whose conditions the GM names by hovering it in the tracker: the list scrolls to it and names them too. */
+  conditionsShown?: string | undefined;
   /** Draws one of the card's icons into `parent` (Obsidian's `setIcon` in Atlas), so the list imports nothing of Obsidian's and the player page draws it too. */
   icon?(parent: HTMLElement, name: PlayerCardIcon): void;
 }
@@ -132,7 +141,10 @@ export function initiativeMaxCardsOf(count: unknown): number {
   return typeof count === 'number' && Number.isFinite(count) ? Math.min(MAX_INITIATIVE_CARDS, Math.max(0, Math.round(count))) : 0;
 }
 
-/** Whether players see a combatant: its token is on the map and not hidden. */
+/**
+ * Whether players see a combatant: its token is on the map and not hidden. Sight and light never
+ * decide: the list would change as tokens move, and the GM could not tell what it shows.
+ */
 export function listedForPlayers(token: Pick<TokenEntity, 'isHidden'> | undefined): boolean {
   return !!token && !token.isHidden;
 }
@@ -166,7 +178,7 @@ export function sideIdsOf(initiative: Pick<InitiativeState, 'isActive' | 'round'
 
 /**
  * What the players' list reads of a combatant's token; `definitions` are the map's resources, which
- * say who is defeated, `conditionDefinitions` its conditions, drawn as the map draws them, and
+ * say who is defeated and whether players see its hit points, as on the map, `conditionDefinitions` its conditions, drawn as the map draws them, and
  * `sides` the ids of the sides the list knows (`sideIdsOf`).
  */
 export function entryTokenOf(
@@ -176,31 +188,30 @@ export function entryTokenOf(
   sides?: readonly SideId[],
 ): EntryToken {
   return {
-    hp: token?.resources?.hp ?? null,
+    hp: (token && visibleResources(token, definitions, 'player').find(({ definition }) => definition.key === 'hp')?.value) ?? null,
     showRing: token?.showRing !== false,
     ringColor: token?.ringColor,
     side: sideOf(token, sides),
     defeated: combatantDefeated(token, definitions),
     conditions: combatantConditions(token, conditionDefinitions),
     ...(token?.showNameplate === true ? { showNameplate: true } : {}),
+    ...(isOffMap(token) ? { offMap: true as const } : {}),
   };
 }
 
 /**
  * The list players see of a fight: every entry `tokenOf` answers for (those whose token they may
- * see), in turn order, grouped by side as the fight runs or the collection's rules say. Hit points
- * show only where `hpVisible`.
+ * see), in turn order, grouped by side as the fight runs or the collection's rules say.
  */
 export function playerInitiativeList(
   initiative: Pick<InitiativeState, 'isActive' | 'round' | 'sides' | 'sideOrder' | 'cards'> & { entries: readonly PlayerInitiativeEntry[] },
   tokenOf: (entry: PlayerInitiativeEntry, index: number) => EntryToken | null,
   rules: InitiativeRules,
-  hpVisible: boolean,
 ): PlayerInitiativeList {
   const combatants = initiative.entries
     .flatMap((entry, index): Combatant[] => {
       const token = tokenOf(entry, index);
-      return token ? [{ entry, token: hpVisible ? token : { ...token, hp: null } }] : [];
+      return token ? [{ entry, token }] : [];
     })
     .sort((a, b) => a.entry.order - b.entry.order);
   const bySides = listedBySides(initiative, rules);
@@ -291,6 +302,9 @@ export function renderPlayerInitiative(container: HTMLElement, list: PlayerIniti
     if (side) scrollWithin(entries, side, 'start', 0, axis, ...edgesOf);
     else if (card && fromTurn) scrollWithin(entries, card, 'start', 0, axis, ...edgesOf);
     else if (card) scrollWithin(entries, card, 'nearest', 2, axis, ...edgesOf);
+    if (look.conditionsShown !== undefined) {
+      showConditionsTip(panel, entries, list, look.conditionsShown, (shown) => scrollWithin(entries, shown, 'nearest', 0, axis, ...edgesOf));
+    }
   }
   return panel;
 }
