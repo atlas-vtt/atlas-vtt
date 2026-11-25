@@ -1,27 +1,20 @@
 import { TFile, type App } from 'obsidian';
 import { campaignFolderOf } from '../../../campaigns/campaignPaths';
 import { CampaignFiles } from '../../../campaigns/CampaignFiles';
+import { currentMapPath, floorMemoryFolder } from '../../../campaigns/exploredFolders';
 import { ensureFolder } from '../../../plugin/vaultFolders';
-import { hashText } from '../../../utils/hashing';
 import type { MemoryFloor, MemoryPng, MemoryStore } from './memoryPorts.ts';
-
-/** The folder in a campaign's folder that keeps what each of its players explored. */
-export const EXPLORED_FOLDER = 'explored';
 
 /** A player id as the campaign's players file names them, which makes a file name. */
 const PLAYER_ID = /^[A-Za-z0-9_-]{1,64}$/;
-
-/** The name of a floor's folder: the same for a map path and level on every device. */
-export const floorFolderName = (floor: MemoryFloor): string => hashText(`${floor.mapPath}\n${floor.level ?? ''}`);
 
 /** The bytes as a buffer of their own, which Obsidian writes whole. */
 const ownBuffer = (png: MemoryPng): ArrayBuffer => (png.byteOffset === 0 && png.byteLength === png.buffer.byteLength ? png.buffer : png.slice().buffer);
 
 /**
- * Players' explored memories in the played campaign's folder, beside its `players.json`, as Foundry keeps
- * a fog exploration per user and scene: `explored/<floor>/<player id>.png`, a folder per map path and level
- * (`floorFolderName`). The files follow the campaign's folder when it is renamed, go with it when it is
- * deleted, and sync like its other files. A campaign without a folder keeps nothing.
+ * Players' explored memories in the played campaign's folder, beside its `players.json` (`floorMemoryFolder`).
+ * The files follow the campaign's folder and the map's path when either is renamed, go with the campaign or
+ * the scene when it is deleted, and sync like the campaign's other files. A campaign without a folder keeps nothing.
  */
 export class VaultMemoryStore implements MemoryStore {
   constructor(private readonly app: App, private readonly campaignId: string) {}
@@ -59,7 +52,7 @@ export class VaultMemoryStore implements MemoryStore {
   /** The folder of `floor`'s memories in the campaign's folder; null while the campaign has none. */
   private folderOf(floor: MemoryFloor): string | null {
     const campaignFile = CampaignFiles.forApp(this.app)?.pathOf(this.campaignId);
-    return campaignFile == null ? null : `${campaignFolderOf(campaignFile)}/${EXPLORED_FOLDER}/${floorFolderName(floor)}`;
+    return campaignFile == null ? null : floorMemoryFolder(campaignFolderOf(campaignFile), currentMapPath(this.app, floor.mapPath), floor.level);
   }
 
   private fileOf(floor: MemoryFloor, player: string): TFile | null {

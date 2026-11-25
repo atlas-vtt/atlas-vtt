@@ -31,7 +31,7 @@ import { LEGACY_INDEX_FILE, LIBRARY_FILE, recordFilePath } from './library/libra
 import { isKnownAssetType, isPayloadUnread, serializeRecord } from './library/recordFile';
 import { assetKey, emptyLibraryState, libraryClock, parseLibraryState } from './library/libraryState';
 import { indexText, snapshotIndex } from './library/indexSnapshot';
-import { trashSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
+import { trashSceneBelongings } from './sceneBelongings';
 import { showNotice } from '../ui/notice';
 import { workSlices } from '../utils/workSlices';
 
@@ -1199,7 +1199,7 @@ export class AssetService {
         }
       }
       try {
-        await trashSceneSnapshots(this.app, asset);
+        await trashSceneBelongings(this.app, asset, mapPath);
       } catch (error) {
         console.error('[AssetService] Error deleting scene snapshots:', error);
       }
