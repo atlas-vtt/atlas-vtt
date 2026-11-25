@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { CANVAS_MEMORY_IMAGES } from '../../src/app/online/gm/memory/canvasMemoryImages';
 import type { MemoryPng, MemoryRaster } from '../../src/app/online/gm/memory/memoryPorts';
 import { TextureRasters } from '../../src/app/online/gm/memory/TextureRasters';
-import { exploredGrid, type ExploredTexture } from '../../src/app/pixi/lighting/ExploredTexture';
+import { ExploredTexture, exploredGrid } from '../../src/app/pixi/lighting/ExploredTexture';
 import { createTestRenderer } from '../../src/app/pixi/lighting/engine/__tests__/gpuTestUtils';
 import type { WallSegment } from '../../src/app/types/wallTypes';
 import type { ExploredShapes } from '../../src/app/vision/exploredShapes';
@@ -81,6 +81,22 @@ describe('a player\'s explored memory on the GM\'s renderer', () => {
     expect(await coverageOf(await raster.encode())).toEqual(before);
   });
 
+  it('stamps every player\'s memory through one scratch, each holding only what was stamped into it', async () => {
+    const { renderer, make } = await rasters();
+    const [ana, ben] = [make(), make()];
+    ana.add(sight(300, 300));
+    ben.add(sight(2700, 2700));
+    ana.add(sight(400, 300));
+    const alone = new ExploredTexture(renderer, MAP);
+    cleanup.unshift(() => alone.destroy());
+    alone.add(sight(300, 300));
+    alone.add(sight(400, 300));
+    const [own, theirs, expected] = await Promise.all([coverageOf(await ana.encode()), coverageOf(await ben.encode()), CANVAS_MEMORY_IMAGES.coverage(new Uint8Array(await (await new Promise<Blob>((resolve) => alone.toCanvas().toBlob((blob) => resolve(blob ?? new Blob()), 'image/png'))).arrayBuffer()), GRID.columns, GRID.rows)]);
+    expect(own).toEqual(expected);
+    expect(covered(theirs)).toBeGreaterThan(50_000);
+    expect(own?.some((share, index) => share > 0 && (theirs?.[index] ?? 0) > 0)).toBe(false);
+  });
+
   it('costs the GM a stamp and a read-back per player that moved', async () => {
     const { renderer, make } = await rasters();
     const memories = Array.from({ length: PLAYERS }, () => make());
@@ -115,7 +131,8 @@ describe('a player\'s explored memory on the GM\'s renderer', () => {
         encodes.push(performance.now() - start);
       }
     }
-    const report = `[player memory] ${device}, ${GRID.columns}×${GRID.rows} texels, per player: stamp ${median(drawn).toFixed(2)} ms on the main thread, ${median(stamps).toFixed(2)} ms drawn (max ${Math.max(...stamps).toFixed(2)}); read-back ${median(readBacks).toFixed(2)} ms on the main thread, ${median(encodes).toFixed(2)} ms with its PNG`;
+    const textures = renderer.texture.managedTextures.length;
+    const report = `[player memory] ${device}, ${GRID.columns}×${GRID.rows} texels, ${PLAYERS} players hold ${textures} GPU textures; per player: stamp ${median(drawn).toFixed(2)} ms on the main thread, ${median(stamps).toFixed(2)} ms drawn (max ${Math.max(...stamps).toFixed(2)}); read-back ${median(readBacks).toFixed(2)} ms on the main thread, ${median(encodes).toFixed(2)} ms with its PNG`;
     console.info(report);
     // Bounds for a software renderer (headless Chromium's SwiftShader); a graphics card does far less.
     expect(median(stamps), report).toBeLessThan(60);

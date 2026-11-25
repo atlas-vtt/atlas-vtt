@@ -1,5 +1,6 @@
 import type { Renderer } from 'pixi.js';
 import { ExploredTexture } from '../../../pixi/lighting/ExploredTexture';
+import { StampScratch } from '../../../pixi/lighting/StampScratch';
 import type { ExploredShapes } from '../../../vision/exploredShapes';
 import type { MapBounds } from '../../../vision/visibility';
 import { toBase64 } from '../assetServe.ts';
@@ -25,6 +26,8 @@ interface Device {
   /** Bumped by every lost context: a texture made before it is blank. */
   readonly generation: number;
   readonly lost: boolean;
+  /** The scratch every memory on the renderer stamps through in this context. */
+  scratch(): StampScratch;
 }
 
 /**
@@ -42,7 +45,7 @@ class TextureRaster implements MemoryRaster {
   /** The memories a texture made anew is being given back: it is not read back before. */
   private restoring: Promise<void> = Promise.resolve();
 
-  constructor(private readonly device: () => Device, private readonly bounds: MapBounds) {}
+  constructor(private readonly device: () => Device, private readonly bounds: MapBounds, private readonly released: () => void) {}
 
   add(shapes: ExploredShapes): void {
     this.current()?.add(shapes);
@@ -82,6 +85,7 @@ class TextureRaster implements MemoryRaster {
   destroy(): void {
     this.texture?.destroy();
     this.texture = null;
+    this.released();
   }
 
   private async drawOver(texture: ExploredTexture, png: MemoryPng): Promise<void> {
@@ -96,7 +100,7 @@ class TextureRaster implements MemoryRaster {
     if (device.lost) return null;
     if (this.texture !== null && this.generation === device.generation) return this.texture;
     this.texture?.destroy();
-    const texture = new ExploredTexture(device.renderer, this.bounds);
+    const texture = new ExploredTexture(device.renderer, this.bounds, device.scratch());
     this.texture = texture;
     this.generation = device.generation;
     const restore = [...(this.kept === null ? [] : [this.kept]), ...this.waiting];
@@ -115,12 +119,17 @@ export function pixiRendererOf(tabRenderer: unknown): Renderer | null {
 
 /**
  * Players' memory textures on the renderer of the GM's tab, found anew at each texture made (null while
- * the tab has none). It follows the renderer's canvas for lost contexts; `dispose` stops that.
+ * the tab has none). It follows the renderer's canvas for lost contexts; `dispose` stops that. Their stamps
+ * are drawn one after another, so they share one multisampled scratch (`StampScratch`), made for the
+ * renderer and context it draws in and let go with the last memory.
  */
 export class TextureRasters implements MemoryRasters {
   private bound: Renderer | null = null;
   private generation = 0;
   private lost = false;
+  private shared: { readonly renderer: Renderer; readonly generation: number; readonly scratch: StampScratch } | null = null;
+  /** The memories made and not destroyed yet. */
+  private live = 0;
   private readonly onLost = (): void => {
     this.lost = true;
     this.generation++;
@@ -135,13 +144,30 @@ export class TextureRasters implements MemoryRasters {
     const renderer = this.renderer();
     if (renderer === null) return null;
     if (renderer !== this.bound) this.bind(renderer);
-    return new TextureRaster(() => ({ renderer, generation: this.generation, lost: this.lost }), bounds);
+    this.live++;
+    const device = (): Device => ({ renderer, generation: this.generation, lost: this.lost, scratch: () => this.scratchOf(renderer) });
+    return new TextureRaster(device, bounds, () => {
+      if (--this.live === 0) this.releaseScratch();
+    });
   }
 
   dispose(): void {
     this.bound?.canvas.removeEventListener('webglcontextlost', this.onLost);
     this.bound?.canvas.removeEventListener('webglcontextrestored', this.onRestored);
     this.bound = null;
+  }
+
+  /** The scratch of `renderer` in the context it draws in now; one made in a context lost since is let go. */
+  private scratchOf(renderer: Renderer): StampScratch {
+    if (this.shared?.renderer === renderer && this.shared.generation === this.generation) return this.shared.scratch;
+    this.releaseScratch();
+    this.shared = { renderer, generation: this.generation, scratch: new StampScratch(renderer) };
+    return this.shared.scratch;
+  }
+
+  private releaseScratch(): void {
+    this.shared?.scratch.destroy();
+    this.shared = null;
   }
 
   private bind(renderer: Renderer): void {
