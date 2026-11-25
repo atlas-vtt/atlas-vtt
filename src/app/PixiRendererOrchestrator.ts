@@ -21,6 +21,7 @@ import type { ViewAtlasState, ViewAtlasStore } from './storeFactory';
 import { EventEmitter } from './utils/typedEmitter';
 import { PixiAppManager } from "./pixi/PixiAppManager"; // Import the new manager
 import { TokenRenderer } from "./pixi/token-renderer"; // Import TokenRenderer
+import { TextureCache } from "./pixi/token-renderer/TextureCache";
 // Import color utils
 import { PinRenderer } from "./pixi/PinRenderer"; // Import PinRenderer
 import { HexLinkRenderer } from "./pixi/hexLinks/HexLinkRenderer";
@@ -108,6 +109,7 @@ export class PixiRendererOrchestrator { // Renamed class
   private _isDestroyed: boolean = false;
   private pixiAppManager: PixiAppManager;
   private tokenRenderer?: TokenRenderer; // Add TokenRenderer instance
+  private readonly tokenArt: TextureCache;
   private pinRenderer?: PinRenderer; // Add PinRenderer instance
   private hexLinkRenderer?: HexLinkRenderer;
   private tokenPlacer?: TokenPlacer;
@@ -213,6 +215,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.eventBus = eventBus; 
     this.store = store;
     this.viewId = viewId;
+    this.tokenArt = new TextureCache(obsApp);
     this.setupEventBusListeners(); // Call this to set up other listeners if any
   }
 
@@ -409,18 +412,7 @@ export class PixiRendererOrchestrator { // Renamed class
     // Initialize TokenRenderer first if GridSystem is ready
     // This also means tokenContainer will be added to viewport earlier
     if (this.gridSystem) {
-        this.tokenRenderer = new TokenRenderer(
-            this.obsApp,
-            viewport,
-            this.gridSystem,
-            () => this.selectionManager?.updateSelectionOverlay(),
-            this.store,
-            this.eventBus,
-            this.viewId,
-            this.shownPlaces,
-        );
-        // Set PIXI app reference for renderer access
-        this.tokenRenderer.setPixiApp(this.pixiAppManager.app);
+        this.tokenRenderer = this.makeTokenRenderer(viewport, this.gridSystem);
     } else {
         // GridSystem not ready yet - TokenRenderer will be initialized later in initGrid()
     }
@@ -527,6 +519,7 @@ export class PixiRendererOrchestrator { // Renamed class
           },
           placeEraser: (eraser) => this.placeAboveGrid(eraser),
           previewing: () => this.isPreviewingStretch(),
+          art: this.tokenArt,
         }),
         ...(quality && { quality }),
       });
@@ -626,18 +619,7 @@ export class PixiRendererOrchestrator { // Renamed class
     
     // Ensure TokenRenderer is initialized or updated if gridSystem was just created/updated
     if (!this.tokenRenderer && this.gridSystem && currentViewport) {
-        this.tokenRenderer = new TokenRenderer(
-            this.obsApp,
-            currentViewport,
-            this.gridSystem,
-            () => this.selectionManager?.updateSelectionOverlay(), // Pass callback to SelectionManager
-            this.store,
-            this.eventBus,
-            this.viewId,
-            this.shownPlaces,
-        );
-        // Set PIXI app reference for renderer access
-        this.tokenRenderer.setPixiApp(this.pixiAppManager.app);
+        this.tokenRenderer = this.makeTokenRenderer(currentViewport, this.gridSystem);
         // Wire viewport-level dispatch providers (pins, selection hit-testing)
         this.wireViewportDispatchProviders();
         // Re-order SelectionManager listeners so they fire after TokenRenderer's viewport handlers
@@ -1324,6 +1306,12 @@ export class PixiRendererOrchestrator { // Renamed class
     });
   }
 
+  private makeTokenRenderer(viewport: Viewport, grid: GridSystem): TokenRenderer {
+    const tokens = new TokenRenderer(this.obsApp, viewport, grid, () => this.selectionManager?.updateSelectionOverlay(), this.store, this.eventBus, this.viewId, this.shownPlaces, this.tokenArt);
+    tokens.setPixiApp(this.pixiAppManager.app);
+    return tokens;
+  }
+
   /** Wires viewport-level event dispatch providers between TokenRenderer and other renderers.
    *  Must be called after TokenRenderer is available (either from setupRenderersAndManagers or initGrid). */
   private wireViewportDispatchProviders(): void {
@@ -1558,6 +1546,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.stopFogFollowingPlayers?.();
     this.annotations?.destroy();
     this.lighting?.destroy();
+    this.tokenArt.destroyAll();
     this.roofs?.destroy();
     this.playerFrames?.destroy();
     delete this.playerFrames;

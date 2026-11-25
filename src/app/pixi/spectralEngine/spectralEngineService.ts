@@ -2,6 +2,8 @@
 
 import { detectionStopped, SpectralEngineClient } from './SpectralEngineClient';
 import type { DetectOptions, MapPixels } from './SpectralEngineClient';
+import { gridDetectionCount } from '../../platform/deviceBudgets';
+import { deviceProfile } from '../../platform/deviceProfile';
 import { pictureOf } from './detectGrid';
 import type { DetectableMap } from './detectGrid';
 import { NO_GRID } from './detectionJob';
@@ -19,7 +21,7 @@ let disposed = false;
  */
 export function detectGridInGray(pixels: MapPixels, options?: DetectOptions): Promise<DetectionOutcome> {
   if (disposed) return Promise.reject(detectionStopped());
-  client ??= new SpectralEngineClient(() => new DetectionWorker({ name: 'Atlas grid detection' }));
+  client ??= new SpectralEngineClient(() => new DetectionWorker({ name: 'Atlas grid detection' }), gridDetectionCount(deviceProfile().budgets, navigator.hardwareConcurrency || 1));
   return client.detect(pixels, options);
 }
 

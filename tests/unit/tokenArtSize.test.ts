@@ -53,7 +53,7 @@ describe('token art size with and without a ring', () => {
 
   it('draws the tokens of a level below at the same size as the map: framed in their circle, unframed whole', async () => {
     const texture = artOf(200, 100);
-    const shared = { acquire: (): Promise<Texture> => Promise.resolve(texture), release: (): void => {}, destroyAll: (): void => {} };
+    const shared = { acquire: (): Promise<Texture> => Promise.resolve(texture), release: (): void => {} };
     let loaded = 0;
     const below = new BelowTokens(shared, () => { loaded++; });
     const token = (id: string, showRing: boolean): TokenEntity => ({ id, x: 0, y: 0, size: 1, imagePath: `${id}.png`, showRing } as TokenEntity);

@@ -3,7 +3,7 @@ import { App as ObsidianApp, TFile } from 'obsidian';
 import type { ITextureCache } from './types';
 import { isResourceUrl, normalizeImagePath } from '../../utils/pathUtils';
 import { loadAsset, unloadAsset } from '../utils/assetLifecycle';
-import { decodeImage, decodedSource, imageMimeType, type DecodedImage } from '../decodedImage';
+import { decodeImage, decodedSource, imageMimeType, scaledToFit, type DecodedImage } from '../decodedImage';
 import { deviceProfile } from '../../platform/deviceProfile';
 
 /**
@@ -110,12 +110,28 @@ export class TextureCache implements ITextureCache {
   }
 
   private async loadUrl(url: string): Promise<Texture> {
-    const texture = await loadAsset<Texture>({
+    const asset = await loadAsset<Texture>({
       src: url,
       parser: 'texture',
       data: { autoGenerateMipmaps: true, scaleMode: 'linear' },
     });
-    this.assetUrlByKey.set(url, url);
+    const resource: unknown = asset.source.resource;
+    const capped = resource instanceof ImageBitmap || resource instanceof HTMLImageElement || resource instanceof HTMLCanvasElement
+      ? await scaledToFit(resource, MAX_TOKEN_TEXTURE_SIZE)
+      : null;
+    if (!capped) {
+      this.assetUrlByKey.set(url, url);
+      this.textures.set(url, asset);
+      return asset;
+    }
+    // Larger than any token shows: the vault's cap, on a texture of the cache's own
+    void unloadAsset(url);
+    const existing = this.textures.get(url);
+    if (existing) {
+      capped.close();
+      return existing;
+    }
+    const texture = new Texture({ source: this.createSource(url, capped), label: url });
     this.textures.set(url, texture);
     return texture;
   }

@@ -1,6 +1,6 @@
 import type { AlignmentResult } from '../gridAlignmentMath';
 import type { PixelRect } from '../mosaicCanvas/pyramid';
-import { MAX_ANALYSIS_SIDE, pictureOf, type DetectableMap, type ImageSize, type MapPicture } from './detectGrid';
+import { MAX_ANALYSIS_SIDE, pictureOf, sameSize, type DetectableMap, type ImageSize, type MapPicture } from './detectGrid';
 import { NO_GRID, type DetectionOutcome, type LineEnergy } from './detectionJob';
 import type { MapPixels as MapReader } from '../mosaicCanvas/mosaicCanvasView';
 import type { DetectOptions, MapPixels } from './SpectralEngineClient';
@@ -73,9 +73,34 @@ function windowPicture(map: MapReader, rect: PixelRect): MapPicture {
 }
 
 /**
- * Detects a map's grid, in windows where the map is too large to see whole: the whole-map pass
- * first (its events show the search), then each window the line evidence chooses, and the window
- * whose grid the lines support best wins; the whole-map answer stands where no window finds one.
+ * Whether a window's grid may stand for the map. A window sees one part of the map, where a lattice
+ * may draw its support from what that part shows: on a dungeon whose grid is drawn on the floors
+ * alone, a 160 px lattice took most of its hits from the rock around them and outscored the drawn
+ * 200 px grid. The whole-map picture sees every line, so its grid is the map's, and a window makes it
+ * precise; a window answers on its own only where the whole map found no grid.
+ */
+function speaksForMap(found: AlignmentResult, whole: AlignmentResult | null): boolean {
+  return !whole || (found.gridType === whole.gridType && sameSize(found.cellSize, whole.cellSize));
+}
+
+/**
+ * The answer for a map searched as a whole and in windows: of the windows whose grid may
+ * stand for the map, the one the lines support best, of equals the first (the same whichever window
+ * answered first); the whole map's answer where there is none.
+ */
+export function windowsAnswer(whole: DetectionOutcome, windows: ReadonlyArray<DetectionOutcome | null>): DetectionOutcome {
+  let best: DetectionOutcome | null = null;
+  for (const each of windows) {
+    if (!each || !speaksForMap(each.result!, whole.result)) continue;
+    if (!best || (each.result!.confidence ?? 0) > (best.result!.confidence ?? 0)) best = each;
+  }
+  return best ?? whole;
+}
+
+/**
+ * Detects a map's grid, in windows where the map is too large to see whole. Where the whole map's
+ * lines lie chooses the windows, so the whole-map pass (its events show the search) and every
+ * window run at once, as many as `detect` runs together (`windowsAnswer` says which stands).
  * `detect` runs one detection on one picture.
  */
 export async function detectGridInWindows(
@@ -86,14 +111,12 @@ export async function detectGridInWindows(
   const picture = pictureOf(map);
   if (!picture) return NO_GRID;
   if (!searchedInWindows(picture.size)) return detect(picture, options);
-  const coarse = await detect(picture, { ...options, lines: true });
-  if (!coarse.lines) return coarse;
-  const windows = chooseWindows(coarse.lines, picture.size);
-  let best: DetectionOutcome | null = null;
-  for (const rect of windows) {
-    options.signal?.throwIfAborted();
-    const found = windowOutcomeOnMap(await detect(windowPicture(map, rect), { ...(options.signal ? { signal: options.signal } : {}) }), rect);
-    if (found && (!best || (found.result!.confidence ?? 0) > (best.result!.confidence ?? 0))) best = found;
-  }
-  return best ?? { result: coarse.result, hits: coarse.hits };
+  const signal = options.signal ? { signal: options.signal } : {};
+  const { lines } = await detect(picture, { ...signal, linesOnly: true });
+  if (!lines) return NO_GRID;
+  const [whole, ...windows] = await Promise.all([
+    detect(picture, options),
+    ...chooseWindows(lines, picture.size).map(async (rect) => windowOutcomeOnMap(await detect(windowPicture(map, rect), signal), rect)),
+  ]);
+  return windowsAnswer(whole, windows);
 }

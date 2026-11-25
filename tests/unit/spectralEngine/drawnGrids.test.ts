@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { detectGridInImage, snapGridToMapGray } from '../../../src/app/pixi/spectralEngine/detectGrid';
+import { detectGridInImage, MAX_ANALYSIS_SIDE, snapGridToMapGray } from '../../../src/app/pixi/spectralEngine/detectGrid';
+import type { DetectableMap } from '../../../src/app/pixi/spectralEngine/detectGrid';
+import { runDetection } from '../../../src/app/pixi/spectralEngine/detectionJob';
+import { chooseWindows, detectGridInWindows } from '../../../src/app/pixi/spectralEngine/windowedDetection';
+import { dashedDungeon } from './dashedDungeon';
 import { drawnGrid } from './fixtures';
 
 describe('grids a program drew, whose lines are all alike', () => {
@@ -43,6 +47,26 @@ describe('grids a program drew, whose lines are all alike', () => {
     expect(snapped.cellSize).toBeCloseTo(82.4, 1);
     expect(snapped.confidence).toBeGreaterThan(0.9);
   }, 60000);
+
+  // A generator's dungeon too large to see whole: in a window, lattices that sit on the rock's dither outscore the grid on the floors.
+  it('finds the dashed grid of a huge dungeon drawn on its floors alone', async () => {
+    const size = { width: 8400, height: 6800 };
+    const draw = dashedDungeon(size.width, size.height, 200, 40);
+    const map: DetectableMap = { worldRect: { x: 0, y: 0, ...size }, imageSize: size, overview: () => Promise.resolve(null), window: () => Promise.resolve(null) };
+    const whole = { x: 0, y: 0, ...size };
+    const scale = MAX_ANALYSIS_SIDE / Math.max(size.width, size.height);
+    // A window's picture names its size only: windows are read in the order they were chosen.
+    const windows = chooseWindows(runDetection({ gray: { image: draw(whole, scale), size }, ink: false, linesOnly: true }, () => {}).lines!, size);
+
+    const found = await detectGridInWindows(map, {}, (pixels, options) => {
+      const rect = pixels.size.width === size.width && pixels.size.height === size.height ? whole : windows.shift()!;
+      const image = rect === whole ? draw(whole, scale) : draw(rect, 1);
+      return Promise.resolve(runDetection({ gray: { image, size: pixels.size }, ink: false, linesOnly: options.linesOnly }, () => {}));
+    });
+
+    expect(found.result).toMatchObject({ gridType: 'square' });
+    expect(found.result!.cellSize).toBeCloseTo(200, 0);
+  }, 600000);
 
   // Rows 3 % off on a map this size are found by no proposal: a grid of nearly the measured size shares every eighth line with the map's.
   it('keeps a measurement as it is where only a grid that shares some lines with the map\'s fits', () => {

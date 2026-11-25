@@ -23,6 +23,12 @@ export interface DeviceBudgets {
   readonly tesseraEncoders: number;
   /** Decoded pyramid levels all builds of the tessera worker may hold together, in bytes. */
   readonly decodedLevelsBudget: number;
+  /**
+   * Grid detections run at once, each on a worker of its own that holds a picture of up to 4096 px
+   * a side and some 300 MB while it searches: a huge map's whole picture and its windows. One runs
+   * them one after the other.
+   */
+  readonly gridDetections: number;
   /** The map tile cache never grows past this many bytes, whatever the quota. */
   readonly tileCacheMax: number;
   /** Share of the origin's storage quota the map tile cache may take. */
@@ -69,6 +75,8 @@ export const DESKTOP_BUDGETS: DeviceBudgets = {
   imageWorkerBudget: GIB,
   tesseraEncoders: 6,
   decodedLevelsBudget: GIB,
+  // A huge map's whole picture and its six windows (`MAX_WINDOWS`) at once.
+  gridDetections: 7,
   // Room for a few gigapixel maps' lossless tesserae (about 1.3 GB each).
   tileCacheMax: 4 * GIB,
   tileCacheQuotaShare: 0.1,
@@ -101,6 +109,7 @@ export const MOBILE_BUDGETS: DeviceBudgets = {
   // Not tried on a tablet's web view yet: its builds encode one tessera at a time as before.
   tesseraEncoders: 0,
   decodedLevelsBudget: 256 * MIB,
+  gridDetections: 1,
   tileCacheMax: 512 * MIB,
   tileCacheQuotaShare: 0.05,
   tileTextureBudget: 96 * MIB,
@@ -136,4 +145,12 @@ export function imageWorkerCount(budgets: DeviceBudgets, cores: number): number 
  */
 export function tesseraEncoderCount(budgets: DeviceBudgets, cores: number): number {
   return Math.min(budgets.tesseraEncoders, Math.floor(cores / 2));
+}
+
+/**
+ * Grid detections at once on a device with `cores` logical processors: one core stays free for
+ * Obsidian itself, and four or fewer run them one after the other.
+ */
+export function gridDetectionCount(budgets: DeviceBudgets, cores: number): number {
+  return cores <= 4 ? 1 : Math.min(budgets.gridDetections, cores - 1);
 }

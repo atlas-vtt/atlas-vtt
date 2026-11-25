@@ -1,7 +1,7 @@
 import { ResourceBarHitArea } from './ResourceBarHitArea';
 import { colorNumber } from './token-renderer/resources/ResourceBarView';
 import type { AtlasSettings } from '../services/SettingsService';
-import { Container, Graphics, Text, TextStyle, type Ticker } from 'pixi.js';
+import { Container, Graphics, Text, type Ticker } from 'pixi.js';
 import type { Character, BaseToken } from '../types';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
@@ -13,6 +13,7 @@ import { heightChipText, tokenHeight } from '../measure/tokenHeight';
 import type { MeasurementSettings } from '../grid/measurementFormat';
 import { isNameplateVisible, nameplateShownToPlayers } from './token-renderer/nameplateVisibility';
 import { tokenDisplayName } from './token-renderer/tokenDisplayName';
+import { nameplateStyle } from './token-renderer/nameplateStyle';
 import type { ConditionDefinition } from '../types/collectionSettingsTypes';
 import type { TokenGestureEventDetail } from '../types/atlasWindowEvents';
 import { ResourceStack, type ResourceSlot } from './token-renderer/resources/ResourceStack';
@@ -79,7 +80,6 @@ export class TokenUIRenderer {
   /** Half the width of the nameplate shown, in UI units; 0 without one. The wheels stand clear of it. */
   private nameplateHalfWidth = 0;
   private difficultyBadge: Container;
-  private difficultyText: Text;
   private defeatedOverlay: Graphics;
   private stopThemeWatch: (() => void) | null = null;
   private editThemeObserver: MutationObserver | null = null;
@@ -151,17 +151,6 @@ export class TokenUIRenderer {
     this.difficultyBadge = new Container();
     this.difficultyBadge.zIndex = 5; // Not used anymore but keeping for compatibility
     // Event mode not set - let events propagate naturally
-    this.difficultyText = new Text({
-      text: '',
-      style: new TextStyle({
-        fontFamily: 'Arial',
-        fontSize: 10,
-        fill: 0xffffff,
-        fontWeight: 'bold'
-      }),
-      resolution: TOKEN_TEXT_RESOLUTION,
-    });
-    // Event mode not set - let events propagate naturally
     
     // Create defeated overlay
     this.defeatedOverlay = new Graphics();
@@ -174,16 +163,7 @@ export class TokenUIRenderer {
     this.nameBadge.eventMode = 'static'; // Make it interactive
     this.nameBadge.cursor = 'text'; // Show text cursor on hover
     
-    this.nameText = new Text({
-      text: '',
-      style: new TextStyle({
-        fontFamily: NAMEPLATE_TEXT.fontFamily,
-        fontSize: NAMEPLATE_TEXT.fontSize,
-        fill: 0xffffff,
-        fontWeight: NAMEPLATE_TEXT.fontWeight
-        // No stroke for cleaner look in the badge.
-      })
-    });
+    this.nameText = new Text({ text: '', style: nameplateStyle(0xffffff) });
     this.nameText.scale.set(NAMEPLATE_TEXT.textScale);
     this.nameText.resolution = TOKEN_TEXT_RESOLUTION;
     this.nameText.zIndex = 2; // Name text above name badge background
@@ -205,7 +185,6 @@ export class TokenUIRenderer {
     this.belowToken.addChild(this.editCursor); // z: 3 - edit cursor
     this.belowToken.addChild(this.resources.view); // z: 10
     this.belowToken.addChild(this.difficultyBadge); // z: 20
-    this.belowToken.addChild(this.difficultyText); // z: 21
     this.belowToken.addChild(this.defeatedOverlay); // z: 30 - on top
     
     // Initially visible
@@ -408,7 +387,8 @@ export class TokenUIRenderer {
     if (showNameplate && displayName) {
       const isDarkMode = isDarkTheme();
       const { background: bgColor, stroke: strokeColor } = canvasBadgeColors();
-      if (this.nameText.style.fill !== strokeColor) this.nameText.style.fill = strokeColor;
+      const style = nameplateStyle(strokeColor);
+      if (this.nameText.style !== style) this.nameText.style = style;
       this.nameText.text = displayName;
       // In PIXI v8, text updates automatically when setting the text property
       const textBounds = this.nameText.getLocalBounds();

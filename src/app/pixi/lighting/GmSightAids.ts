@@ -39,7 +39,8 @@ export interface GmSightAidsDeps {
  * a picture.
  */
 export class GmSightAids {
-  readonly view = new Container({ label: 'gm-sight-aids', zIndex: SIGHT_AIDS_Z_INDEX, eventMode: 'none', interactiveChildren: false });
+  /** Its own render group: rings redrawn and marks added at every step of a drag would otherwise rebuild the viewport's whole group. */
+  readonly view = new Container({ label: 'gm-sight-aids', zIndex: SIGHT_AIDS_Z_INDEX, eventMode: 'none', interactiveChildren: false, isRenderGroup: true });
   readonly rings: SenseRangeRings;
   readonly marks = new PlayerSightMarks();
   private suppressed = false;

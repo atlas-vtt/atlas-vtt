@@ -42,7 +42,8 @@ export class MeasureInkLayer {
   private readonly composite = new AlphaFilter({ alpha: 1, resolution: 'inherit', antialias: 'inherit' });
 
   constructor(label = 'measures') {
-    this.view = new Container({ label, eventMode: 'none', interactiveChildren: false });
+    // Its own render group: a measurement redrawn at every pointer move would otherwise make PIXI rebuild the viewport's whole group.
+    this.view = new Container({ label, eventMode: 'none', interactiveChildren: false, isRenderGroup: true });
     this.lines.filters = [this.composite];
     this.view.addChild(this.areas, this.lines);
   }
