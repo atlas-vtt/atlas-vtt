@@ -785,7 +785,10 @@ body.atlas-look.atlas-look-scifi .atlas-statblock {
    it and its ground is see-through at the top, growing solid towards the
    foot, so the glass melts into the card. The card paints the ground
    (Sci-fi its lines over it), its scrolling body only the shadow at its
-   foot */
+   foot. The DM screen's statblocks wear the same ground over the
+   screen's own backdrop, which does their blurring (below): the screen
+   and its pages fade, and under a fading parent a blur of the card's own
+   would see nothing until the fade ends */
 body.atlas-look.atlas-look-glass {
   --atlas-glass-preview-ground: linear-gradient(
     to bottom,
@@ -797,17 +800,20 @@ body.atlas-look.atlas-look-glass {
   );
 }
 
-body.atlas-look.atlas-look-glass :is(.atlas-statblock-preview-window, .statblock-hover-preview) .atlas-statblock {
+body.atlas-look.atlas-look-glass :is(.atlas-statblock-preview-window, .statblock-hover-preview, .atlas-dm-screen) .atlas-statblock {
   background-color: transparent;
   background-image: var(--atlas-glass-preview-ground);
 
   /* the ground reaches under the border, or the corners cover the edge
      the straight sides show and it reads as cut off there */
   background-origin: border-box;
+}
+
+body.atlas-look.atlas-look-glass :is(.atlas-statblock-preview-window, .statblock-hover-preview) .atlas-statblock {
   backdrop-filter: blur(16px) saturate(1.2);
 }
 
-body.atlas-look.atlas-look-scifi.atlas-look-glass :is(.atlas-statblock-preview-window, .statblock-hover-preview) .atlas-statblock {
+body.atlas-look.atlas-look-scifi.atlas-look-glass :is(.atlas-statblock-preview-window, .statblock-hover-preview, .atlas-dm-screen) .atlas-statblock {
   background-image:
     var(--atlas-scifi-film),
     linear-gradient(to bottom, transparent 30%, var(--background-primary) 88%),
@@ -929,10 +935,11 @@ body.atlas-look.atlas-look-glass .atlas-vtt-plugin .atlas-asset-manager-sidebar.
   backdrop-filter: blur(16px) saturate(1.2);
 }
 
-/* the Sound page's library rail too: the DM screen's backdrop blurs
-   the map as the asset manager's does, the pane lays no ground under
-   the rail, and its stage keeps the look's (the desk has its own) */
-body.atlas-look.atlas-look-glass .atlas-dm-screen-wrapper:has(.atlas-dm-sound-page:not([hidden])) .atlas-dm-screen-backdrop {
+/* the DM screen's glass, on either page: its backdrop blurs the map as
+   the asset manager's does, for the statblocks (above) and for the Sound
+   page's library rail, under which the pane lays no ground; the Sound
+   page's stage keeps the look's (the desk has its own) */
+body.atlas-look.atlas-look-glass .atlas-dm-screen-wrapper .atlas-dm-screen-backdrop {
   backdrop-filter: blur(20px) saturate(1.2);
 }
 
@@ -976,6 +983,44 @@ body.atlas-look.atlas-look-scifi :is(
   .atlas-widget,
   .atlas-level-switcher
 ) {
+  background-image: var(--atlas-scifi-film), var(--atlas-scifi-contours);
+  background-size: 240px 240px, 640px 640px;
+}
+
+/* a menu that hangs from a glass bar (a colour's swatches, a size) is
+   glass too. It is the bar's child, and a blurred element is the backdrop
+   of what it holds: the menu's blur would see the bar alone, which paints
+   nothing where the menu stands, and the map would show through sharp. So
+   while a menu is open the bar's glass lies on a layer of the bar's own
+   (its padding box, under what it holds), which is no parent of the menu;
+   the bar looks as it did. Only then: a bar fades in, and under a fading
+   parent that layer would see nothing until the fade ends */
+body.atlas-look.atlas-look-glass .atlas-vtt-plugin .atlas-tool-bar:has(.atlas-dropdown-menu[data-state="open"]) {
+  position: relative;
+  isolation: isolate;
+  background-color: transparent;
+  background-image: none;
+  backdrop-filter: none;
+}
+
+body.atlas-look.atlas-look-glass .atlas-vtt-plugin .atlas-tool-bar:has(.atlas-dropdown-menu[data-state="open"])::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--atlas-panel-inner-radius);
+  corner-shape: inherit;
+  pointer-events: none;
+}
+
+body.atlas-look.atlas-look-glass .atlas-vtt-plugin .atlas-tool-bar:has(.atlas-dropdown-menu[data-state="open"])::before,
+body.atlas-look.atlas-look-glass .atlas-vtt-plugin .atlas-tool-bar .atlas-dropdown-content {
+  background-color: color-mix(in oklch, var(--background-primary) 72%, transparent);
+  backdrop-filter: blur(16px) saturate(1.2);
+}
+
+body.atlas-look.atlas-look-scifi.atlas-look-glass .atlas-vtt-plugin .atlas-tool-bar:has(.atlas-dropdown-menu[data-state="open"])::before,
+body.atlas-look.atlas-look-scifi.atlas-look-glass .atlas-vtt-plugin .atlas-tool-bar .atlas-dropdown-content {
   background-image: var(--atlas-scifi-film), var(--atlas-scifi-contours);
   background-size: 240px 240px, 640px 640px;
 }
