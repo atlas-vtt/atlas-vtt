@@ -63,11 +63,11 @@ const SCHEMES: Record<string, { mode: Mode; classes: string[] }> = {
 
 /** A selector's `body` compound: the classes it needs and those it must not have, or null for any other selector. */
 function bodyCompound(selector: string): { needs: string[]; refuses: string[] } | null {
-  const m = /^body((?:\.[\w-]+|:not\(\.[\w-]+\))*)$/.exec(selector.trim());
-  if (!m) return null;
+  const classes = /^body((?:\.[\w-]+|:not\(\.[\w-]+\))*)$/.exec(selector.trim())?.[1];
+  if (classes === undefined) return null;
   return {
-    needs: [...m[1].matchAll(/(?<!:not\()\.([\w-]+)/g)].map((x) => x[1]),
-    refuses: [...m[1].matchAll(/:not\(\.([\w-]+)\)/g)].map((x) => x[1]),
+    needs: [...classes.matchAll(/(?<!:not\()\.([\w-]+)/g)].map(([, name = '']) => name),
+    refuses: [...classes.matchAll(/:not\(\.([\w-]+)\)/g)].map(([, name = '']) => name),
   };
 }
 

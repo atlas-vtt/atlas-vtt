@@ -6,7 +6,7 @@
 export type Rgba = readonly [number, number, number, number];
 export type Variables = ReadonlyMap<string, string>;
 
-const NAMED: Record<string, Rgba> = { black: [0, 0, 0, 1], white: [255, 255, 255, 1], transparent: [0, 0, 0, 0] };
+const NAMED: Partial<Record<string, Rgba>> = { black: [0, 0, 0, 1], white: [255, 255, 255, 1], transparent: [0, 0, 0, 0] };
 
 function linear(channel: number): number {
   const c = channel / 255;
@@ -25,8 +25,8 @@ function luminance([r, g, b]: Rgba): number {
 
 /** WCAG 2.1 contrast ratio of two opaque colours. */
 export function contrast(a: Rgba, b: Rgba): number {
-  const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (high + 0.05) / (low + 0.05);
+  const [la, lb] = [luminance(a), luminance(b)];
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
 
 /** `top` painted over an opaque `ground`. */
@@ -82,8 +82,8 @@ function args(text: string): string[] {
 
 function mix(space: string, first: string, second: string, vars: Variables): Rgba {
   const part = (text: string): { colour: Rgba; share: number | null } => {
-    const m = /^(.*?)(?:\s+([\d.]+)%)?$/s.exec(text.trim());
-    return { colour: colourOf(m![1], vars), share: m![2] === undefined ? null : Number(m![2]) / 100 };
+    const [, colour = text, share] = /^(.*?)(?:\s+([\d.]+)%)?$/s.exec(text.trim()) ?? [];
+    return { colour: colourOf(colour, vars), share: share === undefined ? null : Number(share) / 100 };
   };
   const a = part(first);
   const b = part(second);
@@ -91,7 +91,8 @@ function mix(space: string, first: string, second: string, vars: Variables): Rgb
   // A mix with transparent keeps the other colour and takes the share as its alpha (premultiplied interpolation).
   if (b.colour[3] === 0) return [a.colour[0], a.colour[1], a.colour[2], a.colour[3] * pa];
   if (a.colour[3] === 0) return [b.colour[0], b.colour[1], b.colour[2], b.colour[3] * (1 - pa)];
-  if (space === 'srgb') return [0, 1, 2, 3].map((i) => a.colour[i] * pa + b.colour[i] * (1 - pa)) as unknown as Rgba;
+  const lerp = (x: number, y: number): number => x * pa + y * (1 - pa);
+  if (space === 'srgb') return [lerp(a.colour[0], b.colour[0]), lerp(a.colour[1], b.colour[1]), lerp(a.colour[2], b.colour[2]), lerp(a.colour[3], b.colour[3])];
   const la = toOklab(a.colour);
   const lb = toOklab(b.colour);
   if (space === 'oklab') return fromOklab([la[0] * pa + lb[0] * (1 - pa), la[1] * pa + lb[1] * (1 - pa), la[2] * pa + lb[2] * (1 - pa)], 1);
@@ -119,24 +120,34 @@ export function colourOf(value: string, vars: Variables): Rgba {
   const text = value.trim();
   const variable = /^var\(\s*(--[\w-]+)\s*(?:,\s*(.*))?\)$/s.exec(text);
   if (variable) {
-    const defined = vars.get(variable[1]) ?? variable[2];
-    if (defined === undefined) throw new Error(`${variable[1]} is not defined`);
+    const [, name = '', fallback] = variable;
+    const defined = vars.get(name) ?? fallback;
+    if (defined === undefined) throw new Error(`${name} is not defined`);
     return colourOf(defined, vars);
   }
-  if (text in NAMED) return NAMED[text];
+  const named = NAMED[text];
+  if (named) return named;
   const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(text);
-  if (short) return [parseInt(short[1] + short[1], 16), parseInt(short[2] + short[2], 16), parseInt(short[3] + short[3], 16), 1];
+  if (short) {
+    const [, r = '', g = '', b = ''] = short;
+    return [parseInt(r + r, 16), parseInt(g + g, 16), parseInt(b + b, 16), 1];
+  }
   const long = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(text);
-  if (long) return [parseInt(long[1], 16), parseInt(long[2], 16), parseInt(long[3], 16), 1];
+  if (long) {
+    const [, r = '', g = '', b = ''] = long;
+    return [parseInt(r, 16), parseInt(g, 16), parseInt(b, 16), 1];
+  }
   const rgb = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:\s*[/,]\s*([\d.]+)(%?))?\s*\)$/.exec(text);
   if (rgb) {
-    const alpha = rgb[4] === undefined ? 1 : Number(rgb[4]) / (rgb[5] ? 100 : 1);
-    return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3]), alpha];
+    const [, r, g, b, alpha, percent] = rgb;
+    return [Number(r), Number(g), Number(b), alpha === undefined ? 1 : Number(alpha) / (percent ? 100 : 1)];
   }
   const colorMix = /^color-mix\(\s*in\s+([\w-]+)\s*,(.*)\)$/s.exec(text);
   if (colorMix) {
-    const [first, second] = args(colorMix[2]);
-    return mix(colorMix[1], first, second, vars);
+    const [, space = '', parts = ''] = colorMix;
+    const [first, second] = args(parts);
+    if (first === undefined || second === undefined) throw new Error(`color-mix needs two colours: "${text}"`);
+    return mix(space, first, second, vars);
   }
   throw new Error(`no colour in "${text}"`);
 }
