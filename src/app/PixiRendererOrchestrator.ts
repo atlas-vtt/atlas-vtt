@@ -146,6 +146,8 @@ export class PixiRendererOrchestrator { // Renamed class
   private roofs?: ViewRoofs;
   /** Where gliding tokens are drawn: the token renderer notes them, the lighting reads its tokens there. */
   private readonly shownPlaces = new ShownPlaces();
+  /** Who follows what the players see beyond the store (`onPlayerSightChange`). */
+  private readonly sightListeners = new Set<() => void>();
   /** The players' frame, rendered at the player window's size; made when this view is first presented. */
   private playerFrames?: Pick<PlayerFrameTexture, 'canRender' | 'render' | 'copy' | 'release' | 'destroy'>;
   private audioRenderer?: AudioRenderer;
@@ -490,7 +492,7 @@ export class PixiRendererOrchestrator { // Renamed class
       mapSize: () => this.mapImage?.imageSize ?? null,
       bounds: () => this.getSceneMapRect(),
       lighting: () => this.lighting?.renderer,
-      onChange: () => this.tokenRenderer?.refreshPlayerSight(),
+      onChange: () => { this.tokenRenderer?.refreshPlayerSight(); this.tellPlayerSight(); },
     });
 
     if (!isPlayerView) {
@@ -524,6 +526,7 @@ export class PixiRendererOrchestrator { // Renamed class
           art: this.tokenArt,
         }),
         ...(quality && { quality }),
+        onSightChange: () => this.tellPlayerSight(),
       });
     }
 
@@ -1097,6 +1100,16 @@ export class PixiRendererOrchestrator { // Renamed class
     for (const overlay of this.dmScreenOverlays) layers.push({ layer: overlay, visible: false });
     for (const layer of this.playerFrameOnly) layers.push({ layer, visible: true });
     return layers;
+  }
+
+  /** Calls `listener` whenever the players' sight or the roof changes what they see, also with no store change (a token gliding to its place). */
+  public onPlayerSightChange(listener: () => void): () => void {
+    this.sightListeners.add(listener);
+    return () => void this.sightListeners.delete(listener);
+  }
+
+  private tellPlayerSight(): void {
+    for (const listener of this.sightListeners) listener();
   }
 
   /**

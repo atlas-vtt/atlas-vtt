@@ -73,7 +73,8 @@ export function event(x: number, y: number, keys: { shift?: boolean } = {}): Fed
   return { global: { x, y }, shiftKey: !!keys.shift, ctrlKey: false, metaKey: false, altKey: false } as FederatedPointerEvent;
 }
 
-export function setup(): Setup {
+/** `onSightChange` hears the players' sight changes the controller passes on. */
+export function setup(onSightChange?: () => void): Setup {
   const restoreGraphics = stubJsdomGraphics();
   window.matchMedia = (() => ({ matches: true })) as never;
   const canvas = document.body.appendChild(document.createElement('canvas'));
@@ -87,7 +88,7 @@ export function setup(): Setup {
   const eventBus = new EventEmitter();
   const controller = new LightingController({
     viewport, app: { canvas } as unknown as Application, store, eventBus, obsApp, viewId: 'popover-view',
-    bounds: () => ({ width: 1000, height: 1000 }), albedo: () => null,
+    bounds: () => ({ width: 1000, height: 1000 }), albedo: () => null, ...(onSightChange && { onSightChange }),
   });
   const wired = {} as Pick<Setup, 'light' | 'wallDown' | 'contextMenu' | 'wallMove'>;
   const ignore = (): void => undefined;

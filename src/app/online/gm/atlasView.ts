@@ -50,6 +50,13 @@ export function call(target: unknown, method: string): unknown {
   return typeof fn === 'function' ? (fn as () => unknown).call(target) : undefined;
 }
 
+/** Hears each change of what the players see that comes without a store change (`onPlayerSightChange`); a renderer without it tells nothing. Returns what stops it. */
+export function followPlayerSight(renderer: unknown, listener: () => void): () => void {
+  const follow: unknown = typeof renderer === 'object' && renderer !== null && 'onPlayerSightChange' in renderer ? renderer.onPlayerSightChange : undefined;
+  const stop: unknown = typeof follow === 'function' ? (follow as (listener: () => void) => unknown).call(renderer, listener) : undefined;
+  return typeof stop === 'function' ? () => void (stop as () => unknown)() : () => undefined;
+}
+
 /** A renderer (`view.serviceManager.getRendererService().getRenderer()`) as the players' token source, or null when it is none. */
 export function asTokenSource(renderer: unknown): PlayerTokenSource | null {
   return isTokenSource(renderer) ? renderer : null;
