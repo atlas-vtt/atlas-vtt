@@ -50,11 +50,6 @@
     &:hover {
       color: var(--text-accent-hover);
     }
-
-    // Obsidian's light accent is 4.3:1 on white; a shade darker reads at 4.5:1. Atlas' looks set their own.
-    body.theme-light:not(.atlas-look) &:not(:hover) {
-      color: color-mix(in oklch, var(--text-accent) 96%, black);
-    }
   }
 }
 

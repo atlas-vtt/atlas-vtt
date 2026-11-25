@@ -112,7 +112,7 @@ body.atlas-look.theme-light:not(.atlas-look-scifi) {
 }
 
 body.atlas-look.theme-dark {
-  --atlas-theme-red: #d4756b;
+  --atlas-theme-red: #d6776c; /* 4.5:1 on a table's head */
   --atlas-theme-rule: #5c503c;
   --atlas-theme-paper: #e9dfc8;
 
@@ -145,7 +145,7 @@ body.atlas-look.theme-dark {
   --code-background: #2a241c;
 
   /* links */
-  --text-accent: #d4756b;
+  --text-accent: #d6776c;
   --text-accent-hover: #e08a80;
 
   /* buttons and dropdowns: one step above the page */
@@ -578,6 +578,8 @@ body.atlas-look.theme-dark.atlas-look-scifi {
   --interactive-accent: #e9decb;
   --interactive-accent-hover: #f4ecdd;
   --menu-background: var(--color-base-20);
+  /* selected text in a field keeps 4.5:1: Obsidian's 33 % of a chalk accent leaves 4.1:1 */
+  --text-selection: color-mix(in oklch, var(--interactive-accent) 26%, transparent);
 
   /* the accent is the ink, chalk at night: #e9decb */
   --accent-h: 38;
