@@ -43,6 +43,7 @@
 - Sharing in the Armarium: until the first part of an upload is in, the upload step says what it is sending and shows a moving bar instead of "0 Bytes sent"
 - Atlas tells you when it is only partly updated on a device, as happens when a sync tool skips large files and brings the new version number and look but not the new Atlas itself, and says which file to copy over
 - The rooms bar has a menu of its own with the brush's size and Stabilization, which keeps a shaky stroke steady. Shift keeps a brush stroke straight, and the brush starts a little narrower than a grid cell. With a contribution by ThatMattLatt
+- The distance a dragged token shows fades in and, once you let the token go, fades out where it lies, as measurements do, instead of appearing and vanishing at once
 
 ## Fixed
 

@@ -27,11 +27,23 @@ interface FakeLayer { visible: boolean }
 interface FakeView {
   draw: ReturnType<typeof vi.fn>;
   clear: ReturnType<typeof vi.fn>;
+  /** Keeps what to call once the ruler has dissolved, for `gone` to run. */
+  dissolve: ReturnType<typeof vi.fn<(gone: () => void) => void>>;
+  /** The ruler has dissolved. */
+  gone: () => void;
   layers: FakeLayer[];
 }
 
 function fakeView(): FakeView & { destroy: ReturnType<typeof vi.fn> } {
-  return { draw: vi.fn(), clear: vi.fn(), destroy: vi.fn(), layers: [{ visible: true }, { visible: true }] };
+  let done: (() => void) | null = null;
+  return {
+    draw: vi.fn(),
+    clear: vi.fn(),
+    dissolve: vi.fn((gone: () => void) => { done = gone; }),
+    gone: () => done?.(),
+    destroy: vi.fn(),
+    layers: [{ visible: true }, { visible: true }],
+  };
 }
 
 /** A ruler for the token `t1`, by default one that sees. */
@@ -129,7 +141,21 @@ describe('DragRuler', () => {
     ruler.update(center(1, 0));
     ruler.end();
     expect(pressSpace().defaultPrevented).toBe(false);
-    expect(view.clear).toHaveBeenCalled();
+  });
+
+  it('lets its ruler dissolve once the drag ends, and leaves one on its way out alone', () => {
+    const { ruler, view } = makeRuler();
+    ruler.begin('t1', center(0, 0));
+    ruler.update(center(2, 0));
+    view.clear.mockClear();
+    ruler.end();
+    expect(view.dissolve).toHaveBeenCalledTimes(1);
+    expect(view.clear).not.toHaveBeenCalled();
+    expect(ruler.path()).toBeNull();
+    // The drag's clean-up ends it once more.
+    ruler.end();
+    expect(view.dissolve).toHaveBeenCalledTimes(1);
+    expect(view.clear).not.toHaveBeenCalled();
   });
 
   it('shows no distance while the GM has them switched off, and follows the switch in the middle of a drag', () => {
@@ -173,7 +199,20 @@ describe('DragRuler', () => {
     expect(ruler.getPlayerViewLayers((id) => id !== 't1')).toEqual(view.layers.map(layer => ({ layer, visible: false })));
     expect(ruler.getPlayerViewLayers(() => true)).toEqual([]);
     ruler.end();
+    // While it dissolves it is still that token's ruler.
+    expect(ruler.getPlayerViewLayers((id) => id !== 't1')).toEqual(view.layers.map(layer => ({ layer, visible: false })));
+    view.gone();
     expect(ruler.getPlayerViewLayers(() => false)).toEqual([]);
+  });
+
+  it('hides the next drag by its own token, not by the one whose ruler was leaving', () => {
+    const { ruler, view } = makeRuler({}, () => true, { state: { objects: { tokens: { t1: { id: 't1', size: 1, isHidden: true }, t2: { id: 't2', size: 1 } } } } });
+    ruler.begin('t1', center(0, 0));
+    ruler.end();
+    ruler.begin('t2', center(0, 0));
+    expect(ruler.getPlayerViewLayers()).toEqual([]);
+    ruler.end();
+    expect(view.dissolve).toHaveBeenCalledTimes(2);
   });
 
   describe('under movement rules', () => {
