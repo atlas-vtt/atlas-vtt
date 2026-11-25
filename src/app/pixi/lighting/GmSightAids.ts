@@ -93,7 +93,8 @@ export class GmSightAids {
     const state = store.getState();
     const perceived = this.shown() ? perception() : undefined;
     const { cellSize } = unitScaleOf(measurement(), state.grid);
-    this.marks.sync(perceived ? sightMarks(mapTokens(levelObjects(state)), perceived, cellSize) : []);
+    const tokens = mapTokens(levelObjects(state));
+    this.marks.sync(perceived ? sightMarks(tokens, perceived, cellSize) : [], (id) => id in tokens);
     this.rings.draw();
   }
 

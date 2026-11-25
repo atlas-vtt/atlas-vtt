@@ -37,6 +37,11 @@ export class TokenConditionsUI {
     if (this.isHovered) this.card.show(this.conditions, false);
   }
 
+  /** Whether the card shows, or fades out. */
+  get cardShown(): boolean {
+    return this.card.container.visible;
+  }
+
   /** Keeps the card at a constant screen size while the viewport zooms. */
   setCardScale(ringRadius: number, cardScale: number): void {
     this.card.place(ringRadius, cardScale);

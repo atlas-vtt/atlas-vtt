@@ -7,6 +7,8 @@ const schedulers = new WeakMap<Application, RenderScheduler>();
 
 /** Where a before-render hook runs among the others: lower first. */
 export const BEFORE_RENDER_ORDER = {
+  /** The GM's selection, drawn once for whatever moved since the last render (`SelectionManager.drawAskedOverlay`). */
+  selection: -2,
   /** The roof of the level a view shows takes in the lighting's sight before anything is drawn (`ViewRoofs`). */
   roofs: -1,
   /** The player window's frame (`PlayerFrameMirror`), rendered on the canvas before the GM's own. */

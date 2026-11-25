@@ -38,12 +38,20 @@ export class PlayerSightMarks {
   private readonly badges = new Map<string, Badge>();
   private eye: Promise<Texture> | null = null;
 
-  /** Shows exactly `marks`, each badge at its mark's scale. */
-  sync(marks: readonly SightMark[]): void {
+  /**
+   * Shows exactly `marks`, each badge at its mark's scale. A badge whose token loses its mark is kept,
+   * transparent, while the token is on the map (`onMap`): tokens step in and out of the players' sight
+   * at every step of a drag, and a badge added or taken away makes PIXI pack every badge again.
+   */
+  sync(marks: readonly SightMark[], onMap: (tokenId: string) => boolean = () => false): void {
     const colors = canvasBadgeColors();
     const wanted = new Set(marks.map((mark) => mark.tokenId));
     for (const [id, badge] of this.badges) {
       if (wanted.has(id)) continue;
+      if (onMap(id)) {
+        badge.view.alpha = 0;
+        continue;
+      }
       destroyTree(badge.view);
       this.badges.delete(id);
     }
@@ -58,6 +66,7 @@ export class PlayerSightMarks {
         badge = { view: this.view.addChild(this.drawBadge(mark.kind, colors)), kind: mark.kind, background: colors.background };
         this.badges.set(mark.tokenId, badge);
       }
+      badge.view.alpha = 1;
       badge.view.position.set(mark.x, mark.y);
       badge.view.scale.set(mark.scale);
     }
@@ -66,7 +75,7 @@ export class PlayerSightMarks {
 
   /** The tokens marked now, with the kind of each mark. */
   shown(): Array<[string, SightMark['kind']]> {
-    return [...this.badges].map(([id, badge]) => [id, badge.kind]);
+    return [...this.badges].filter(([, badge]) => badge.view.alpha > 0).map(([id, badge]) => [id, badge.kind]);
   }
 
   destroy(): void {
