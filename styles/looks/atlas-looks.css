@@ -364,9 +364,12 @@ body.atlas-look .markdown-rendered li > p > strong:first-child:not(.statblock *)
 /* Live Preview: inactive lines wrap widgets (list bullets etc.) in
    invisible img.cm-widgetBuffer elements that break `+` selectors,
    so a positional window stands in for "first on the line".
-   Covers plain, bullet (active and inactive) and quoted lines. */
-body.atlas-look .markdown-source-view.mod-cm6 .cm-line > .cm-strong:nth-child(-n+6),
-body.atlas-look .markdown-source-view.mod-cm6 .cm-line > .cm-formatting-quote ~ .cm-strong:nth-child(-n+8) {
+   Covers plain, bullet (active and inactive) and quoted lines.
+   Where the `**` show (source mode, the line being edited), the window
+   ends at the first closing `**`: reading view takes only the first
+   bold, and never a table cell's. */
+body.atlas-look .markdown-source-view.mod-cm6 .cm-line:not(.HyperMD-table-row) > .cm-strong:nth-child(-n+6):not(.cm-formatting-strong-end ~ *),
+body.atlas-look .markdown-source-view.mod-cm6 .cm-line > .cm-formatting-quote ~ .cm-strong:nth-child(-n+8):not(.cm-formatting-strong-end ~ *) {
   font-family: var(--atlas-theme-heading-font);
   font-weight: normal;
   color: var(--atlas-note-accent);
@@ -722,8 +725,8 @@ body.atlas-look.atlas-look-scifi .markdown-rendered br + strong:not(.statblock *
 body.atlas-look.atlas-look-scifi .markdown-rendered p > strong:first-child:not(.statblock *),
 body.atlas-look.atlas-look-scifi .markdown-rendered li > .list-bullet + strong:not(.statblock *),
 body.atlas-look.atlas-look-scifi .markdown-rendered li > p > strong:first-child:not(.statblock *),
-body.atlas-look.atlas-look-scifi .markdown-source-view.mod-cm6 .cm-line > .cm-strong:nth-child(-n+6),
-body.atlas-look.atlas-look-scifi .markdown-source-view.mod-cm6 .cm-line > .cm-formatting-quote ~ .cm-strong:nth-child(-n+8) {
+body.atlas-look.atlas-look-scifi .markdown-source-view.mod-cm6 .cm-line:not(.HyperMD-table-row) > .cm-strong:nth-child(-n+6):not(.cm-formatting-strong-end ~ *),
+body.atlas-look.atlas-look-scifi .markdown-source-view.mod-cm6 .cm-line > .cm-formatting-quote ~ .cm-strong:nth-child(-n+8):not(.cm-formatting-strong-end ~ *) {
   font-size: 1em;
   font-weight: 600;
 }
