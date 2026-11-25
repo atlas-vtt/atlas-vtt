@@ -77,13 +77,26 @@ const heading = (text: string): SheetNode[] => {
   return line === null ? [] : [{ k: 'heading', text: line, minor: false }];
 };
 
-/** The Sections of a Tabs block that show, each with what it holds. */
-function tabsOf(build: SheetBuild, block: Extract<TemplateBlock, { type: 'tabs' }>, depth: number, walk: SheetWalk): { label: string; nodes: SheetNode[] }[] {
-  return block.blocks.flatMap((tab, index) => {
+interface ShownTab {
+  readonly section: SectionBlock;
+  readonly label: string;
+  readonly nodes: SheetNode[];
+}
+
+/** The Sections of a Tabs block that show, each with what it holds, and whether a tab went to the Abilities tab whole. */
+function tabsOf(build: SheetBuild, block: Extract<TemplateBlock, { type: 'tabs' }>, depth: number, walk: SheetWalk): { tabs: ShownTab[]; moved: boolean } {
+  let moved = false;
+  const tabs = block.blocks.flatMap((tab, index): ShownTab[] => {
     if (tab.type !== 'section' || !build.holds(tab)) return [];
+    const listed = walk.abilities.length;
     const nodes = sheetNodes(build, tab.blocks, depth, { section: tab, row: false }, walk);
-    return nodes.length === 0 ? [] : [{ label: clippedLine(sectionHeading(tab, build.shown), MAX_BOOK_TITLE) ?? tabLabel(index + 1), nodes }];
+    if (nodes.length === 0) {
+      moved ||= walk.abilities.length > listed;
+      return [];
+    }
+    return [{ section: tab, label: clippedLine(sectionHeading(tab, build.shown), MAX_BOOK_TITLE) ?? tabLabel(index + 1), nodes }];
   }).slice(0, MAX_ABILITY_TABS);
+  return { tabs, moved };
 }
 
 /** One block as the sheet draws it: nodes in its place (none, or a container's flattened where the sheet would nest too deep). */
@@ -115,10 +128,13 @@ function blockNodes(build: SheetBuild, block: TemplateBlock, depth: number, plac
       return nodes.length === 0 ? [] : flat ? nodes : [framed({ k: 'row', nodes }, block, place)];
     }
     case 'tabs': {
-      const tabs = tabsOf(build, block, flat ? depth : depth + 1, walk);
-      if (tabs.length === 0) return [];
+      const { tabs, moved } = tabsOf(build, block, flat ? depth : depth + 1, walk);
+      const [first] = tabs;
+      if (!first) return [];
       if (flat) return tabs.flatMap((tab) => [...heading(tab.label), ...tab.nodes]);
-      return [framed({ k: 'tabs', heading: clippedLine(block.heading, MAX_BOOK_TITLE), tabs }, block, place)];
+      // The group's heading names tabs now on the Abilities tab (often its first): the one tab left stands under its own
+      if (moved && tabs.length === 1) return [framed({ k: 'section', heading: first.label, nodes: first.nodes }, first.section, place)];
+      return [framed({ k: 'tabs', heading: clippedLine(block.heading, MAX_BOOK_TITLE), tabs: tabs.map(({ label, nodes }) => ({ label, nodes })) }, block, place)];
     }
     default: {
       const display = sheetDisplay(build, block);
