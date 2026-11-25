@@ -21,7 +21,7 @@ interface AppearanceChoicesProps {
 export function AppearanceChoices({ app, looks }: AppearanceChoicesProps): React.JSX.Element {
   return (
     <div className="atlas-appearance-choices">
-      <SettingChoiceRow label={t('appearance.look')} hint={t('appearance.lookHint')}>
+      <SettingChoiceRow label={t('appearance.look')}>
         <LookCards looks={looks} />
       </SettingChoiceRow>
       <div className="atlas-appearance-switches">
