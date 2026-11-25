@@ -4,36 +4,39 @@
 // ── Dice colour strip ─────────────────────────
 // A d20 per colour, rendered by the dice renderer, to click.
 
-$dice-preview: 52px;
+// The preview image is drawn at 144 px with the die's body 95 px across; at this size the body is 90 px, as large as a
+// single rolled d20. Measured on a resting 1d20 roll and on the preview, both at a device pixel ratio of 1.
+$dice-preview: 136px;
+// The image's empty border, which reaches into its neighbours' room: the die takes the slot left inside it.
+$dice-preview-trim: 20px;
+$dice-slot: $dice-preview - 2 * $dice-preview-trim;
+$dice-columns: 6;
 
-// As many to a line as fit, the last line centred under the others.
+// Six to a line where they fit (eleven colours: six over five), centred. The row gap leaves room for each die's shadow.
 .atlas-dice-colour-strip {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: $spacing-xs;
+  gap: $spacing-m $spacing-xs;
+  max-width: $dice-columns * $dice-slot + ($dice-columns - 1) * $spacing-xs;
+  margin-inline: auto;
 }
 
 // Obsidian styles every <button>; the options start from nothing.
 .atlas-dice-colour-strip__option {
-  display: flex;
-  height: auto;
+  display: block;
+  width: $dice-slot;
+  height: $dice-slot;
   margin: 0;
-  padding: $spacing-xs;
+  padding: 0;
   background: transparent;
-  border: $border-width-m solid transparent;
-  border-radius: $radius-m;
+  border: none;
   box-shadow: none;
   cursor: pointer;
-  transition: background-color $transition-fast $transition-ease, border-color $transition-fast $transition-ease;
 
   &:hover {
-    background: var(--background-modifier-hover);
-  }
-
-  &.atlas-active {
-    border-color: var(--interactive-accent);
-    background: color-mix(in oklch, var(--interactive-accent) 10%, transparent);
+    background: transparent;
   }
 }
 
@@ -41,9 +44,37 @@ $dice-preview: 52px;
   display: block;
   width: $dice-preview;
   height: $dice-preview;
+  margin: -$dice-preview-trim;
+  pointer-events: none;
+  transition: filter $transition-fast $transition-ease;
 
   &--pending {
+    width: $dice-slot;
+    height: $dice-slot;
+    margin: 0;
     border-radius: $radius-full;
     background: var(--background-modifier-hover);
   }
+}
+
+// Obsidian caps images in a leaf at their box's width (`.workspace-leaf-content img:not([width])`), which here is the
+// slot inside the image: the option in the selector outranks it.
+.atlas-dice-colour-strip__option > .atlas-dice-colour-strip__die {
+  max-width: none;
+}
+
+.atlas-dice-colour-strip__option:hover > .atlas-dice-colour-strip__die {
+  filter: brightness(1.12);
+}
+
+// Holds the chosen die's outline filter (DiceColourStrip.tsx), taking no room.
+.atlas-dice-colour-strip__trace {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.atlas-dice-colour-strip__trace-colour {
+  flood-color: var(--text-normal);
 }
