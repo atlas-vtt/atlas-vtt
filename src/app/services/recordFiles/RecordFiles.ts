@@ -17,13 +17,16 @@ const parentOf = (path: string): string => path.slice(0, path.lastIndexOf('/'));
  * recognises its own writes by their text and tells its listeners about every change. Where two
  * files hold one id (a conflict copy) the lower path holds it. Edits are taken in at once and
  * written in order in the background (`flush`); a file is changed by applying the edit to what it
- * holds then, so a field another device wrote survives. A renamed record's file (or folder) takes
+ * holds then, so a field another device wrote survives, and what it holds is not taken back while
+ * edits of its record wait to be written, which memory has and the file does not yet. A renamed record's file (or folder) takes
  * the new name.
  */
 export class RecordFiles<Stored extends StoredRecord> {
   private readonly files = new Map<string, RecordFile<Stored>>();
   /** Raised for a path whenever an event makes a read of it under way stale. */
   private readonly versions = new Map<string, number>();
+  /** How many edits of each record (by id) wait to be written. */
+  private readonly unwritten = new Map<string, number>();
   private readonly listeners = new Set<() => void>();
   private readonly refs: EventRef[] = [];
   private cache: Stored[] | null = null;
@@ -99,7 +102,7 @@ export class RecordFiles<Stored extends StoredRecord> {
     this.bump(path);
     this.files.set(path, { text: this.layout.text(record), record });
     this.changed();
-    this.enqueue(() => this.writeAt(path, change));
+    this.enqueueEdit(record.id, () => this.writeAt(path, change));
   }
 
   /** Changes the record; on disk the change is applied to what the file holds then. */
@@ -111,7 +114,7 @@ export class RecordFiles<Stored extends StoredRecord> {
     this.bump(path);
     this.files.set(path, { text: this.layout.text(next), record: next });
     this.changed();
-    this.enqueue(() => this.writeChange(id, change));
+    this.enqueueEdit(id, () => this.writeChange(id, change));
   }
 
   /** Removes every file (or folder) that holds the record, conflict copies included, so none brings it back. */
@@ -169,6 +172,19 @@ export class RecordFiles<Stored extends StoredRecord> {
     });
   }
 
+  private enqueueEdit(id: string, write: () => Promise<void>): void {
+    this.unwritten.set(id, (this.unwritten.get(id) ?? 0) + 1);
+    this.enqueue(async () => {
+      try {
+        await write();
+      } finally {
+        const left = (this.unwritten.get(id) ?? 1) - 1;
+        if (left > 0) this.unwritten.set(id, left);
+        else this.unwritten.delete(id);
+      }
+    });
+  }
+
   private async writeNew(id: string): Promise<void> {
     let path = this.pathOf(id);
     const entry = path ? this.files.get(path) : undefined;
@@ -210,7 +226,9 @@ export class RecordFiles<Stored extends StoredRecord> {
       written = onDisk?.id === id ? this.layout.text(change(onDisk)) : text;
       return written;
     });
-    if (this.files.get(path)?.text !== written) {
+    // An edit taken in meanwhile is written after this one; memory holds it already.
+    const last = (this.unwritten.get(id) ?? 0) <= 1;
+    if (last && this.files.get(path)?.text !== written) {
       this.files.set(path, { text: written, record: this.layout.read(written) });
       this.changed();
     }
@@ -261,6 +279,8 @@ export class RecordFiles<Stored extends StoredRecord> {
       return;
     }
     if (this.versions.get(path) !== version || this.files.get(path)?.text === read) return;
+    const id = this.files.get(path)?.record?.id;
+    if (id !== undefined && this.unwritten.has(id)) return;
     this.files.set(path, { text: read, record: this.layout.read(read) });
     this.changed();
   }
