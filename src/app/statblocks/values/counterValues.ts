@@ -185,6 +185,25 @@ export function withCounterUsed(field: Pick<TemplateField, 'counterRows'>, value
   return changedRows(field, value, (each, at) => (at === index ? { ...each, used: next } : each));
 }
 
+/** A press on a row's controls: the pip at `pip` (left ones first), or − and + (`step`: the change of the uses left). */
+export type CounterPress = { pip: number } | { step: 1 | -1 };
+
+/** The uses a press leaves the row with: a pip takes it down to that pip where it is still left, else up to it. */
+function usedAfterPress(row: CounterRow, press: CounterPress): number {
+  if ('step' in press) return row.used - press.step;
+  const left = row.max - row.used;
+  return row.max - (press.pip < left ? press.pip : press.pip + 1);
+}
+
+/**
+ * The value with a press on row `index`, taken from the row as the value holds it: a card can still
+ * show the row before the presses that went just before; null where nothing changes.
+ */
+export function withCounterPressed(field: Pick<TemplateField, 'counterRows'>, value: FieldValue | undefined, index: number, press: CounterPress): FieldValue | null {
+  const row = shownCounterRows(field, value)?.[index];
+  return row ? withCounterUsed(field, value, index, usedAfterPress(row, press)) : null;
+}
+
 /**
  * The value with each row at the uses `uses` names for it, in the stored order; null where the value is no list
  * of counters or `uses` names another number of rows. Uses are taken as given: the caller checks them.

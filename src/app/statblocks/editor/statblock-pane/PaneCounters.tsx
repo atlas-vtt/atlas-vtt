@@ -2,7 +2,7 @@ import React from 'react';
 import type { CountersBlock, FieldValue, TemplateField } from '../../model/templateTypes';
 import type { ShownCounters } from '../../render/blocks/CountersView';
 import { CountersGrid, type CounterControls } from '../../render/shared/CountersGrid';
-import { withCounterReset, withCounterUsed } from '../../values/counterValues';
+import { withCounterPressed, withCounterReset } from '../../values/counterValues';
 import { CounterResetPicker } from './CounterResetPicker';
 import { usePaneEdit, type PaneEditController } from './paneEditContext';
 import { usePaneRecoveryContext } from './usePaneRecovery';
@@ -29,7 +29,7 @@ function PaneCounters({ block, shown }: { block: CountersBlock; shown: ShownCoun
   const field = pane.sheet.fields.get(block.field);
   if (!field || !pane.writable) return <CountersGrid {...shown} />;
   const controls: CounterControls = {
-    use: (index, used) => void writeCounters(pane, field, (value) => withCounterUsed(field, value, index, used)),
+    use: (index, press) => void writeCounters(pane, field, (value) => withCounterPressed(field, value, index, press)),
     after: recovery ? ({ row, index }) => (
       <CounterResetPicker row={row} buttons={recovery.buttons} disabled={!pane.writable}
         onPick={(reset) => void writeCounters(pane, field, (value) => withCounterReset(field, value, index, reset))} />
