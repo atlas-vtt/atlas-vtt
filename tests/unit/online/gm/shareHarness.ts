@@ -96,7 +96,8 @@ const counterId = (count: number): string => count.toString(16).padStart(24, '0'
 
 /**
  * A SceneShare over a fake store, renderer (`fakeTokenSource`), vault and clock; `images` are the
- * vault's image files by path; `seats` tells who plays, owns which token and may claim which; `real`
+ * vault's image files by path; `seats` tells who plays, owns which token and may claim which (without them, a table
+ * where everyone shares the party's picture: Shared vision is on, so what it sends reaches every page); `real`
  * (Atlas's own view store) replaces the fake store, and is written through its own actions, not `set`;
  * `stored` hands players assets the store keeps (by default all of them, `fakeStoring`); `memory` keeps each
  * player's own explored memory (none by default).
@@ -121,7 +122,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
     perception: undefined,
     rendered: true,
     lighting: GENERIC_SOURCE,
-    settings: PLAYER_SETTINGS,
+    settings: { ...PLAYER_SETTINGS, sharedVision: seats === undefined },
     dice: null,
     layers: null,
     basis: null,

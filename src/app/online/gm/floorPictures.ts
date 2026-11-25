@@ -66,9 +66,18 @@ export class FloorPictures {
     this.pictures.set(eyesKey(PARTY_EYES), this.party);
   }
 
-  /** Whether a player of the floor sees it through their own eyes. */
-  private get split(): boolean {
-    return this.pictures.size > 1;
+  /**
+   * Whether every page of the floor is sent the party's picture, one the GM has not placed yet too: while nobody sees by
+   * their own eyes and the floor gives everyone the party's. Nobody does either before the GM has placed its players, as
+   * when it comes back to a running table, and a message without an addressee reaches every connected page.
+   */
+  private get sharedByAll(): boolean {
+    return this.pictures.size === 1 && (this.sharedVision() || !sightHides(this.store.getState()));
+  }
+
+  /** In remote mode everyone watches one screen, which shows the party's picture: their phones are remotes. */
+  private sharedVision(): boolean {
+    return this.ports.atlasSettings().sharedVision === true || tableControlsStore.getState().playMode === 'remote';
   }
 
   /** The picture `player` sees, worked out now for a player not yet placed. */
@@ -86,9 +95,7 @@ export class FloorPictures {
     try {
       const seats = this.ports.seats;
       const players = [...new Set([...(seats?.onlinePlayers() ?? []), ...extra])];
-      // In remote mode everyone watches one screen, which shows the party's picture: their phones are remotes.
-      const sharedVision = this.ports.atlasSettings().sharedVision === true || tableControlsStore.getState().playMode === 'remote';
-      const inputs = { state: this.store.getState(), sharedVision, rules: this.ports.lightingSource()?.rules() };
+      const inputs = { state: this.store.getState(), sharedVision: this.sharedVision(), rules: this.ports.lightingSource()?.rules() };
       const eyes = floorEyes({ ...inputs, ownerOf: (id, token) => seats?.ownerOf(id, token) }, players);
       this.remembering = sightHides(inputs.state);
       const before = this.eyes;
@@ -157,7 +164,7 @@ export class FloorPictures {
 
   /** The players of the floor whose picture shows `tokenId` now: every player while all see the party's, which shows it. */
   seers(mapPath: string, tokenId: string): string[] {
-    if (!this.split) return [...(this.ports.seats?.onlinePlayers() ?? [])];
+    if (this.sharedByAll) return [...(this.ports.seats?.onlinePlayers() ?? [])];
     return [...this.looks].flatMap(([key, { sources }]) => (sources.tokenSource()?.playerRollTokens(mapPath, [tokenId]).has(tokenId) === true ? this.members(key) : []));
   }
 
@@ -167,7 +174,7 @@ export class FloorPictures {
    * aura around one or a range mark only where their own picture lists that token.
    */
   markAudiences(seen: TokenSeen): MarkAudience[] {
-    if (!this.split) return [{ key: eyesKey(PARTY_EYES), seen }];
+    if (this.sharedByAll) return [{ key: eyesKey(PARTY_EYES), seen }];
     return [...this.pictures].flatMap(([key, picture]) => {
       const players = this.members(key);
       return players.length === 0 ? [] : [{ key, players, seen: (tokenId: string) => seen(tokenId) && picture.tokens.listedAlias(tokenId) !== undefined }];
@@ -242,10 +249,10 @@ export class FloorPictures {
     const key = eyesKey(eyes);
     const epoch = ++this.opened;
     const members = (): string[] => this.members(key);
-    // The party's picture goes to all at once while nobody sees by their own eyes: a player who joins meanwhile sees it too.
+    // The party's picture goes to all at once while everyone shares it (`sharedByAll`): a player who joins meanwhile sees it too.
     const route = (to: string | undefined, send: (to?: string) => void): void => {
       if (to !== undefined) return void (this.keyOf(to) === key && send(to));
-      if (eyes.kind === 'party' && !this.split) return send();
+      if (eyes.kind === 'party' && this.sharedByAll) return send();
       for (const player of members()) send(player);
     };
     const own = eyes.kind === 'player' ? {
@@ -265,7 +272,7 @@ export class FloorPictures {
     const picture = new FloorPicture(this.store, {
       ...this.ports,
       ...own,
-      members: () => (eyes.kind === 'party' && !this.split ? seats?.onlinePlayers() ?? [] : members()),
+      members: () => (eyes.kind === 'party' && this.sharedByAll ? seats?.onlinePlayers() ?? [] : members()),
       send: (body, to) => route(to, (player) => this.ports.send(body, player)),
       ...(this.ports.sendLive !== undefined && { sendLive: (body: GmMessage, live: string, to?: string) => route(to, (player) => this.ports.sendLive?.(body, live, player)) }),
     }, this.floor);
