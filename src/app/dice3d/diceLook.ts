@@ -50,23 +50,6 @@ export const LIGHT_INK = '#e2e8f0';
 /** Numerals on a light body, where no pencil drawing supplies its own tone. */
 export const DARK_INK = '#1c1714';
 
-/**
- * Perceived brightness (the YIQ weighting), 0 to 255. Chosen over the WCAG
- * contrast ratio, which prefers black on every saturated mid-tone: it would
- * write black numerals on Obsidian's own purple, where Obsidian writes white.
- */
-function brightness([r, g, b]: Rgb): number {
-  return (r * 299 + g * 587 + b * 114) / 1000;
-}
-
-/** Above this a body reads as light and takes dark numerals. */
-const LIGHT_BODY = 150;
-
-/** The numeral colour that reads best on a body of this colour: dark ink on light bodies, light ink otherwise. */
-export function readableInk(body: Rgb): string {
-  return brightness(body) > LIGHT_BODY ? DARK_INK : LIGHT_INK;
-}
-
 /** `#rrggbb` to channels; null for anything else. */
 export function parseHex(hex: string): Rgb | null {
   const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());

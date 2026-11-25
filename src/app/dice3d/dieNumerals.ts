@@ -196,6 +196,9 @@ export function numeralSource(sheet: NumeralSheet, cell: number, ink: string | n
   if (!ctx) return { image: sheet.image, sx, sy };
   ctx.globalCompositeOperation = 'source-over';
   ctx.clearRect(0, 0, SHEET_CELL, SHEET_CELL);
+  // Twice: the pencil strokes are a fifth transparent, and an ink laid in at that
+  // alpha let a fifth of the face through every stroke; twice covers all but 4 %.
+  ctx.drawImage(sheet.image, sx, sy, SHEET_CELL, SHEET_CELL, 0, 0, SHEET_CELL, SHEET_CELL);
   ctx.drawImage(sheet.image, sx, sy, SHEET_CELL, SHEET_CELL, 0, 0, SHEET_CELL, SHEET_CELL);
   ctx.globalCompositeOperation = 'source-in';
   ctx.fillStyle = ink;
