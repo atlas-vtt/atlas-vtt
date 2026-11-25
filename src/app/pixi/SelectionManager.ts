@@ -67,6 +67,8 @@ export class SelectionManager {
   private mapLoadedHandler: (() => void) | null = null;
   private lassoPoints: { x: number; y: number }[] = [];
   private shown: Box | null = null;
+  /** A redraw was asked for (`requestSelectionOverlay`) and is not drawn yet. */
+  private overlayAsked = false;
 
   private _unsubscribeFromSelectionChanges?: () => void;
   private _unsubscribeFromToolChanges?: () => void;
@@ -394,6 +396,7 @@ export class SelectionManager {
    * The same object until the selection is drawn again, so whoever follows it can tell by it.
    */
   public shownBox(): Box | null {
+    this.drawAskedOverlay();
     return this.shown;
   }
 
@@ -404,6 +407,7 @@ export class SelectionManager {
 
   /** Whether a press at the world point lands inside the frame drawn around a selection of two or more. */
   public groupFrameContains(worldX: number, worldY: number): boolean {
+    this.drawAskedOverlay();
     return this.highlights.groupFrameContains(worldX, worldY);
   }
 
@@ -412,8 +416,23 @@ export class SelectionManager {
     return [this.highlights.layer, this.marqueeGraphics, this.groupRotation.layer].map(layer => ({ layer, visible: false }));
   }
 
+  /**
+   * Asks for the selection to be drawn again once the canvas has changed: before the next render
+   * (`drawAskedOverlay`), or when something reads it first. A drag moves every selected token, each
+   * asking, and the selection is drawn once for all of them.
+   */
+  public requestSelectionOverlay(): void {
+    this.overlayAsked = true;
+  }
+
+  /** Draws the selection if a redraw was asked for since it was last drawn. */
+  public drawAskedOverlay(): void {
+    if (this.overlayAsked) this.updateSelectionOverlay();
+  }
+
   /** Draws the selection as the canvas shows it now: called when it or a selected thing changes. */
   public updateSelectionOverlay(): void {
+    this.overlayAsked = false;
     if (this.highlights.layer.destroyed) return;
     const state = this.store.getState();
     const { selectedIds } = state;
