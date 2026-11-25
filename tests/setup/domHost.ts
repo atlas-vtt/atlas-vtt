@@ -33,4 +33,5 @@ installDomHost({
     return doc.defaultView ?? window;
   },
   activeDocument: () => document,
+  mainDocument: () => document,
 });
