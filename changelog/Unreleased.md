@@ -11,4 +11,5 @@
 
 ## Atlas Online
 
+- With dynamic lighting, tokens appear the moment your sight reaches them and vanish the moment it leaves them, instead of up to a second later
 - On a phone, a sheet's tab group whose other tabs moved to Abilities shows the remaining tab under its own name, so Bonus Actions no longer looks like an empty Actions section
