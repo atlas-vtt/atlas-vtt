@@ -1,9 +1,11 @@
-import type { MemoryImages, MemoryPng } from './memoryPorts.ts';
+import type { Polygon } from '../../../vision/visibility';
+import type { MemoryGrid, MemoryImages, MemoryPng } from './memoryPorts.ts';
 
 /**
  * Memories as coverage through a canvas off the page: read as `decodeMaskAlpha` reads the party's, at the
  * memory's own size, and written as the GM's memory is saved (`ExploredTexture.toCanvas`): white, the
- * coverage as alpha.
+ * coverage as alpha. Shapes are drawn there too, each polygon by itself so their union is filled whatever
+ * way each winds.
  */
 export const CANVAS_MEMORY_IMAGES: MemoryImages = {
   async coverage(png: MemoryPng, width: number, height: number): Promise<Uint8Array | null> {
@@ -40,5 +42,25 @@ export const CANVAS_MEMORY_IMAGES: MemoryImages = {
     }
     context.putImageData(image, 0, 0);
     return new Uint8Array(await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer());
+  },
+
+  drawn(polygons: readonly Polygon[], { columns, rows, scale }: MemoryGrid): Promise<Uint8Array> {
+    const context = new OffscreenCanvas(columns, rows).getContext('2d', { willReadFrequently: true });
+    if (context === null) return Promise.reject(new Error('No 2D canvas to draw an explored memory\'s shapes on'));
+    context.setTransform(scale, 0, 0, scale, 0, 0);
+    context.fillStyle = '#fff';
+    for (const polygon of polygons) {
+      const [first, ...rest] = polygon;
+      if (first === undefined || rest.length < 2) continue;
+      context.beginPath();
+      context.moveTo(first.x, first.y);
+      for (const point of rest) context.lineTo(point.x, point.y);
+      context.closePath();
+      context.fill();
+    }
+    const { data } = context.getImageData(0, 0, columns, rows);
+    const coverage = new Uint8Array(columns * rows);
+    for (let index = 0; index < coverage.length; index += 1) coverage[index] = data[index * 4 + 3]!;
+    return Promise.resolve(coverage);
   },
 };

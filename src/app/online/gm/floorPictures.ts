@@ -128,13 +128,13 @@ export class FloorPictures {
     for (const picture of this.pictures.values()) picture.update();
   }
 
-  /** Counts what the GM took away from a lit floor's memory since it last looked; a load is compared once it is done. */
+  /** Counts what the GM took away from a lit floor's memory since it last looked; what a load took reaches each player's own memory too. */
   private observeRemovals(): void {
     if (this.scene?.lit !== true) return;
     const state = this.store.getState();
     if (!state.mapLoaded || state.isMapLoading) return this.removals.loading();
     const removals = this.removals.observe(state);
-    if (removals.length > 0) this.memories?.removed(removals, state.levels?.map((level) => level.id) ?? [null]);
+    if (removals.length > 0) this.memories?.removed(removals);
   }
 
   /** Each picture again, whole, to its players; or to one player, the picture they see. */

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { CANVAS_MEMORY_IMAGES } from '../../src/app/online/gm/memory/canvasMemoryImages';
 import type { MemoryPng, MemoryRaster } from '../../src/app/online/gm/memory/memoryPorts';
 import { TextureRasters } from '../../src/app/online/gm/memory/TextureRasters';
+import { KeptMemories } from '../../src/app/online/gm/memory/KeptMemories';
 import { ExploredTexture, exploredGrid } from '../../src/app/pixi/lighting/ExploredTexture';
 import { createTestRenderer } from '../../src/app/pixi/lighting/engine/__tests__/gpuTestUtils';
 import type { WallSegment } from '../../src/app/types/wallTypes';
@@ -95,6 +96,36 @@ describe('a player\'s explored memory on the GM\'s renderer', () => {
     expect(own).toEqual(expected);
     expect(covered(theirs)).toBeGreaterThan(50_000);
     expect(own?.some((share, index) => share > 0 && (theirs?.[index] ?? 0) > 0)).toBe(false);
+  });
+
+  it('loses what an erase by hand covers, and gets it back whole when the erase is undone', async () => {
+    const { make } = await rasters();
+    const raster = make();
+    raster.add(sight(300, 300));
+    const files = new Map<string, MemoryPng>();
+    const saved = await raster.encode();
+    if (saved === null) throw new Error('no memory');
+    files.set('ana.png', saved);
+    const kept = new KeptMemories({
+      list: () => Promise.resolve([...files.keys()]),
+      read: (path) => Promise.resolve(files.get(path) ?? null),
+      write: (path, png) => Promise.resolve(void files.set(path, png)),
+      remove: (path) => Promise.resolve(void files.delete(path)),
+    }, CANVAS_MEMORY_IMAGES);
+    const before = await coverageOf(saved);
+    // The west half of what Ana saw: up to x 300.
+    const taken = kept.erase('Scenes/Cave.atlasmap', null, [[{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: MAP.height }, { x: 0, y: MAP.height }]], GRID);
+    expect((await taken).map(({ path }) => path)).toEqual(['ana.png']);
+    const erased = await coverageOf(files.get('ana.png') ?? null);
+    // The column the edge crosses keeps the share of it the erase does not cover, as the party's own erase leaves it.
+    const covered = (coverage: Uint8Array | null, columns: (column: number) => boolean): number => coverage?.reduce((count, share, index) => count + (share > 0 && columns(index % GRID.columns) ? 1 : 0), 0) ?? -1;
+    const west = (column: number): boolean => column < Math.floor(300 * GRID.scale);
+    const east = (column: number): boolean => column >= Math.ceil(300 * GRID.scale);
+    expect(covered(before, west)).toBeGreaterThan(50_000);
+    expect(covered(erased, west)).toBe(0);
+    expect(covered(erased, east)).toBe(covered(before, east));
+    await kept.restore('Scenes/Cave.atlasmap', taken);
+    expect(await coverageOf(files.get('ana.png') ?? null)).toEqual(before);
   });
 
   it('costs the GM a stamp and a read-back per player that moved', async () => {

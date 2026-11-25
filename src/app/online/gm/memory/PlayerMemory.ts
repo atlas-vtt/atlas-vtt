@@ -139,6 +139,21 @@ export class PlayerMemory {
     this.stamped = null;
   }
 
+  /** Takes what the store holds now in place of what the texture held (`png`, null: none): the store's files were changed elsewhere. */
+  async reload(png: MemoryPng | null): Promise<void> {
+    let kept = png;
+    try {
+      await this.raster?.replace(kept);
+    } catch {
+      kept = null;
+      await this.raster?.replace(null);
+    }
+    this.savedPng = kept;
+    this.written = kept;
+    this.stamped = null;
+    this.dirty = false;
+  }
+
   /** The store was given `png`. */
   wrote(png: MemoryPng | null): void {
     this.written = png;

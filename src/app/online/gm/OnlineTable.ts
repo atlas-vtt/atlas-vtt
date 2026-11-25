@@ -37,6 +37,7 @@ export type { OnlineTableEvents };
 import { FoundShare } from './pins/FoundShare.ts';
 import { CANVAS_MEMORY_IMAGES } from './memory/canvasMemoryImages.ts';
 import { VaultMemoryStore } from './memory/VaultMemoryStore.ts';
+import { keptMemoriesOf } from './memory/vaultMemoryFiles.ts';
 import { runInBackground } from '../../utils/backgroundTask';
 
 /** How often the presented tab is looked for, and the shared one checked. */
@@ -189,7 +190,7 @@ export class OnlineTable {
         sendLive: (body, key, to) => this.covers.sendLive(body, key, to),
         readImage: (path) => readVaultImage(app, path),
         stored,
-        memory: { store: memories, images: CANVAS_MEMORY_IMAGES },
+        memory: { store: memories, images: CANVAS_MEMORY_IMAGES, live: keptMemoriesOf(app) },
         isLive: (binding) => this.watch.isLive(binding),
         randomId: () => randomHex(12),
         logRoll: (roll) => this.log.rolled(roll),

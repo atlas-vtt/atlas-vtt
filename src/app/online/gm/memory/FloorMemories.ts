@@ -7,16 +7,14 @@ import { Pacer, type PacerClock } from '../../marks/index.ts';
 import type { PartyLighting } from '../eyesSight.ts';
 import { EXPLORED_INTERVAL_MS, type SavedMemory } from '../ExploredShare.ts';
 import type { Removal } from '../exploredRemovals.ts';
-import type { MemoryFloor, MemoryPng, MemoryPorts } from './memoryPorts.ts';
-import { afterLoss, lossOf, type Loss, type MemoryGrid } from './memoryRemovals.ts';
+import type { MemoryFloor, MemoryGrid, MemoryPng, MemoryPorts } from './memoryPorts.ts';
+import { afterLoss, lossOf, type Loss } from './memoryRemovals.ts';
 import { PlayerMemory, recordedShapes, type ShapesOf } from './PlayerMemory.ts';
 
 /** The shortest time between two stamps of the players' sight, as the GM's own memory stamps during a drag. */
 export const MEMORY_STAMP_MS = 100;
 /** The shortest time between two writes of a player's memory into the campaign: only a memory that changed is written. */
 export const MEMORY_STORE_MS = 30_000;
-
-const ALL: Loss = { kind: 'all' };
 
 export interface FloorMemoriesPorts extends PacerClock {
   readonly memory: MemoryPorts;
@@ -43,9 +41,11 @@ const sameFloor = (a: Floor | null, b: Floor | null): boolean => a === b || (a !
  * The explored memories of one floor's players (`PlayerMemory`), whichever picture they are shown:
  * each read from the store when the player comes to the floor, stamped from what they are shown at most
  * every `MEMORY_STAMP_MS`, read back at the GM's explored pace (`EXPLORED_INTERVAL_MS`) and written to
- * the store at most every `MEMORY_STORE_MS` and when the player leaves. What the GM takes from the
- * party's memory each player's memory of the floor loses too, the memories only the store keeps as
- * well. Reads, writes and removals run one after another, in the order they were asked for.
+ * the store at most every `MEMORY_STORE_MS` and when the player leaves. The GM's edits by hand change the
+ * store's files of every player (`KeptMemories`): meanwhile the memories are written there, sent to nobody
+ * and read again after (`yieldTo`). What a load takes from the party's memory each player's memory of the
+ * floor loses too, the memories only the store keeps as well. Reads, writes and removals run one after
+ * another, in the order they were asked for.
  */
 export class FloorMemories {
   private floor: Floor | null = null;
@@ -56,6 +56,8 @@ export class FloorMemories {
   private readonly stamps: Pacer;
   private readonly readings: Pacer;
   private readonly writings: Pacer;
+  /** Lets go of the place where the GM's edits by hand find these memories; set while a floor is held. */
+  private release: (() => void) | null = null;
 
   constructor(private readonly ports: FloorMemoriesPorts) {
     this.stamps = new Pacer(ports, MEMORY_STAMP_MS, () => this.stamp());
@@ -69,6 +71,8 @@ export class FloorMemories {
     if (sameFloor(next, this.floor)) return;
     for (const player of [...this.memories.keys()]) this.retire(player);
     this.floor = next;
+    this.release?.();
+    this.release = next === null ? null : this.ports.memory.live?.hold({ mapPath: () => this.floor?.key.mapPath ?? null, yieldTo: (done) => this.yieldTo(done) }) ?? null;
     this.update();
   }
 
@@ -96,22 +100,31 @@ export class FloorMemories {
     return memory?.ready === true && this.removing === 0 ? memory.dataUrl() : null;
   }
 
-  /** What the GM took from the party's memory (`ExploredRemovals.observe`); `levels`: every level of the scene, which Forget explored areas forgets. */
-  removed(removals: readonly Removal[], levels: readonly (string | null)[]): void {
+  /** What a load took from the party's memory (`ExploredRemovals.observe`). */
+  removed(removals: readonly Removal[]): void {
     const floor = this.floor;
     if (floor === null || removals.length === 0) return;
-    this.removing++;
-    this.run(async () => {
-      try {
-        for (const removal of removals) {
-          if (removal.kind === 'forgotten') await this.forget(floor, levels);
-          else await this.lose(floor, await lossOf(removal, this.ports.memory.images, floor.grid));
+    this.setAside(async () => {
+      for (const removal of removals) await this.lose(floor, await lossOf(removal, this.ports.memory.images, floor.grid));
+    });
+  }
+
+  /**
+   * Lets the store's files of this floor be changed elsewhere until `done` settles: every memory is written
+   * first, and read again from the store after; settles once they are written.
+   */
+  yieldTo(done: Promise<void>): Promise<void> {
+    return new Promise((written) => {
+      this.setAside(async () => {
+        try {
+          await this.writeAll(true);
+        } finally {
+          written();
         }
-      } finally {
-        this.removing--;
-        for (const player of this.memories.keys()) this.ports.changed(player);
-        if (this.memories.size > 0) this.stamps.request();
-      }
+        await done;
+        const floor = this.floor;
+        if (floor !== null) for (const [player, memory] of [...this.memories]) await memory.reload(await this.ports.memory.store.read(floor.key, player).catch(() => null));
+      });
     });
   }
 
@@ -126,6 +139,20 @@ export class FloorMemories {
 
   private run(job: () => Promise<void>): void {
     this.queue = this.queue.then(job).catch((error: unknown) => console.error('Atlas: a player\'s explored areas could not be kept', error));
+  }
+
+  /** Runs `job` in turn with no memory sent meanwhile; then each is sent as it is now. */
+  private setAside(job: () => Promise<void>): void {
+    this.removing++;
+    this.run(async () => {
+      try {
+        await job();
+      } finally {
+        this.removing--;
+        for (const player of this.memories.keys()) this.ports.changed(player);
+        if (this.memories.size > 0) this.stamps.request();
+      }
+    });
   }
 
   private open(floor: Floor, player: string): void {
@@ -178,9 +205,14 @@ export class FloorMemories {
     }
   }
 
-  private async writeAll(): Promise<void> {
+  /** Writes every memory that changed; `encoded`: what was stamped since the last read-back too. */
+  private async writeAll(encoded = false): Promise<void> {
     const floor = this.floor;
-    if (floor !== null) for (const [player, memory] of [...this.memories]) await this.write(floor, player, memory);
+    if (floor === null) return;
+    for (const [player, memory] of [...this.memories]) {
+      if (encoded) await memory.encode();
+      await this.write(floor, player, memory);
+    }
   }
 
   private async write(floor: Floor, player: string, memory: PlayerMemory): Promise<void> {
@@ -212,17 +244,6 @@ export class FloorMemories {
       const png = await store.read(floor.key, player);
       const left = await change(png);
       if (left !== png) await this.keep(floor.key, player, left);
-    }
-  }
-
-  /** Forget explored areas: nothing is left of any player's memory of any floor of the scene. */
-  private async forget(floor: Floor, levels: readonly (string | null)[]): Promise<void> {
-    await this.lose(floor, ALL);
-    const { store } = this.ports.memory;
-    for (const level of levels) {
-      if (level === floor.key.level) continue;
-      const other: MemoryFloor = { mapPath: floor.key.mapPath, level };
-      for (const player of await store.players(other)) await store.remove(other, player);
     }
   }
 }

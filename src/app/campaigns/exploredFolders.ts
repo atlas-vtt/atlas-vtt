@@ -63,6 +63,16 @@ export async function followMapMemories(app: App, moves: readonly { readonly fro
   }
 }
 
+/** The files of every player's memory of the map at `mapPath` in every campaign: of the floor `level` where it is given, else of every floor. */
+export function mapMemoryFiles(app: App, mapPath: string, level?: string | null): TFile[] {
+  return foldersIn(app.vault.getFolderByPath(CAMPAIGNS_FOLDER)).flatMap((campaign) => {
+    const floors = level === undefined
+      ? foldersIn(app.vault.getFolderByPath(mapMemoryFolder(campaign.path, mapPath)))
+      : [app.vault.getFolderByPath(floorMemoryFolder(campaign.path, mapPath, level))].filter((folder): folder is TFolder => folder !== null);
+    return floors.flatMap((floor) => floor.children.filter((child): child is TFile => child instanceof TFile && child.extension === 'png'));
+  });
+}
+
 /** Trashes what players explored of the map at `mapPath`, in every campaign: its scene was deleted. */
 export async function trashMapMemories(app: App, mapPath: string): Promise<void> {
   for (const campaign of foldersIn(app.vault.getFolderByPath(CAMPAIGNS_FOLDER))) {
