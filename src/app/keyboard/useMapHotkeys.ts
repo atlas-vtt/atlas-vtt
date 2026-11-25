@@ -17,8 +17,7 @@ export function useHotkeyLabels(): (id: MapHotkeyId) => string {
 }
 /** Text selected on the page, e.g. in the dice log, which the browser's own copy should handle. */
 function hasTextSelection(event: KeyboardEvent): boolean {
-  const target = event.target instanceof Node ? event.target : null;
-  const selection = (target?.ownerDocument ?? document).getSelection();
+  const selection = (event.targetNode?.ownerDocument ?? activeDocument).getSelection();
   return !!selection && !selection.isCollapsed && selection.toString().trim() !== '';
 }
 type HotkeyHandlers = Partial<Record<MapHotkeyId, (event: KeyboardEvent) => void>>;

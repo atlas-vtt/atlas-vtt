@@ -167,7 +167,7 @@ describe('registerKeyboardViewport', () => {
   function fakePlugin(): { plugin: Plugin; unload(): void } {
     const cleanups: (() => void)[] = [];
     const plugin = {
-      app: { workspace: { iterateAllLeaves: () => undefined, on: () => ({}), offref: () => undefined } },
+      app: { workspace: { containerEl: document.body, iterateAllLeaves: () => undefined, on: () => ({}), offref: () => undefined } },
       registerEvent: () => undefined,
       register: (cleanup: () => void) => { cleanups.push(cleanup); },
     };

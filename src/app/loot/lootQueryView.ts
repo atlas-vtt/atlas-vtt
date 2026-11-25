@@ -186,7 +186,8 @@ export class LootBaseQuery {
   async start(): Promise<void> {
     this.stop();
     routes.set(this.id, { onSnapshot: this.listener.onSnapshot, onUnreadable: this.listener.onUnreadable, onAttach: () => { this.attached = true; } });
-    const host = document.body.createDiv({
+    // In the main window, which holds the workspace: a popout may close while the query still runs.
+    const host = this.app.workspace.containerEl.doc.body.createDiv({
       cls: 'atlas-loot-query-host',
       attr: { [HOST_ATTRIBUTE]: this.id, 'aria-hidden': 'true' },
     });

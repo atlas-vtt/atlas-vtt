@@ -51,6 +51,7 @@ import { HiddenTokenIcon } from './token-renderer/HiddenTokenIcon';
 import { TokenOverlays } from './token-renderer/TokenOverlays';
 import { tokenOverlays } from '../api/extensionPoints';
 import { watchSquareCorners } from './utils/squareCorners';
+import { viewportDocument } from './utils/viewportDocument';
 import { DownedTokenOverlay } from './token-renderer/DownedTokenOverlay';
 import { isTokenDowned } from './token-renderer/isTokenDowned';
 import { rendersHeld, requestRender } from './RenderScheduler';
@@ -123,10 +124,7 @@ export class TokenRenderer {
   private readonly overlays = new TokenOverlays(() => this.redrawOverlays());
   private readonly stopFollowingOverlays = tokenOverlays.subscribe(() => this.redrawOverlays());
   /** Square corners (Appearance settings) switched: the bars and badges every token draws take the new corners. */
-  private readonly stopWatchingCorners = watchSquareCorners(() => {
-    this.uiManager.refreshResources();
-    if (this.pixiApp) requestRender(this.pixiApp);
-  });
+  private readonly stopWatchingCorners: () => void;
   private readonly downedTokenOverlay = new DownedTokenOverlay(
     () => {
       if (this.pixiApp) requestRender(this.pixiApp);
@@ -138,7 +136,7 @@ export class TokenRenderer {
   private readonly bumps: TokenBump;
   private readonly exit = new TokenExit({
     getTicker: () => this.pixiApp?.ticker ?? null,
-    reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? document.body),
+    reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? activeDocument.body),
     requestRender: () => {
       if (this.pixiApp) requestRender(this.pixiApp);
     },
@@ -249,7 +247,7 @@ export class TokenRenderer {
       getTicker: () => this.pixiApp?.ticker ?? null,
       getSprite: (tokenId) => this.tokenSprites[tokenId] ?? null,
       onMove: (tokenId, x, y) => this.followToken(tokenId, x, y),
-      reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? document.body),
+      reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? activeDocument.body),
       ...(shownPlaces && { shown: shownPlaces }),
       clearWay: (from, to) => this.glideWay?.(from, to) ?? true,
       heldPlayout: () => this.heldPlayout,
@@ -259,10 +257,14 @@ export class TokenRenderer {
       getTicker: () => this.pixiApp?.ticker ?? null,
       getSprite: (tokenId) => this.tokenSprites[tokenId] ?? null,
       cell: () => this.store.getState().grid?.size ?? 70,
-      reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? document.body),
+      reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? activeDocument.body),
     });
     this.obsApp = obsApp;
     this.viewport = viewport;
+    this.stopWatchingCorners = watchSquareCorners(viewportDocument(viewport).body, () => {
+      this.uiManager.refreshResources();
+      if (this.pixiApp) requestRender(this.pixiApp);
+    });
     this.gridSystem = gridSystem;
     this.selectionOverlayUpdater = selectionOverlayUpdater;
     this.store = store;
@@ -333,7 +335,7 @@ export class TokenRenderer {
       subscribe: (listener) => this.store.subscribe(listener),
       spriteOf: (tokenId) => this.tokenSprites[tokenId] ?? null,
       ticker: () => this.pixiApp?.ticker ?? null,
-      reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? document.body),
+      reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? activeDocument.body),
       defeated: (state) => defeatedCombatants(state.initiative.entries, sceneTokens(everyLevelObjects(state)), this.resourceDefsProvider()),
     });
     this.collectionSync = new TokenCollectionSync(obsApp, store.getState, {
@@ -1510,7 +1512,7 @@ export class TokenRenderer {
 
   /** The rotation and resize handles take the light or dark theme's colours. */
   private setupThemeObserver(): void {
-    this.stopThemeWatch = watchDarkTheme(() => {
+    this.stopThemeWatch = watchDarkTheme(viewportDocument(this.viewport).body, () => {
       this.uiManager.getRotationUI()?.updateTheme();
       this.uiManager.getResizeUI()?.updateTheme();
     });

@@ -98,7 +98,7 @@ export class SelectionManager {
 
     this.highlights = new SelectionHighlights({
       viewport,
-      reducedMotion: () => typeof window === 'undefined' || prefersReducedMotion(viewport.options?.events?.domElement ?? document.body),
+      reducedMotion: () => typeof window === 'undefined' || prefersReducedMotion(viewport.options?.events?.domElement ?? activeDocument.body),
       accent: () => cssColorToHexNumber(getObsidianAccentColor()),
       refresh: () => this.updateSelectionOverlay(),
     });
@@ -113,7 +113,7 @@ export class SelectionManager {
       annotations: (ids) => this.annotationHost?.turnAlong(ids) ?? null,
       refresh: () => this.updateSelectionOverlay(),
       accent: () => cssColorToHexNumber(getObsidianAccentColor()),
-      reducedMotion: () => typeof window === 'undefined' || prefersReducedMotion(viewport.options?.events?.domElement ?? document.body),
+      reducedMotion: () => typeof window === 'undefined' || prefersReducedMotion(viewport.options?.events?.domElement ?? activeDocument.body),
     });
     this.viewport.addChild(this.groupRotation.layer);
 

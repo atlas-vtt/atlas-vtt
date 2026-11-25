@@ -1,7 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { fileURLToPath } from 'node:url';
-import { motionNativeAnimation } from './vite/motion-native-animation.mts';
 import { lazyInlineWorkers } from './vite/lazy-inline-workers.mts';
 
 const alias = {
@@ -48,9 +47,8 @@ export default defineConfig({
   define: {
   },
   resolve: { alias },
-  // The tests run the animation library as the bundle has it (`vite/motion-native-animation.mts`), and inline
-  // workers with the bundle's `sharedWorker` export (`vite/lazy-inline-workers.mts`).
-  plugins: [motionNativeAnimation(), lazyInlineWorkers()],
+  // The tests run inline workers with the bundle's `sharedWorker` export (`vite/lazy-inline-workers.mts`).
+  plugins: [lazyInlineWorkers()],
   test: {
     projects: [
       {

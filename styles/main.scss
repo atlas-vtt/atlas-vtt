@@ -1389,3 +1389,8 @@ input.atlas-offscreen-input {
   position: absolute;
   opacity: 0;
 }
+
+// The theme's accent, as the document a scene is shared from resolves it (`accentColour`).
+.atlas-color-probe--accent {
+  color: var(--interactive-accent);
+}

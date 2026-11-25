@@ -63,13 +63,14 @@ export function DiceRollLog({ isOpen, onClose }: DiceRollLogProps): React.ReactE
       }
     };
 
+    const doc = panelRef.current?.doc ?? activeDocument;
     const timer = window.setTimeout(() => {
-      document.addEventListener('pointerdown', handleClickOutside);
+      doc.addEventListener('pointerdown', handleClickOutside);
     }, 0);
 
     return () => {
       window.clearTimeout(timer);
-      document.removeEventListener('pointerdown', handleClickOutside);
+      doc.removeEventListener('pointerdown', handleClickOutside);
     };
   }, [isOpen, isPinned, onClose]);
 
