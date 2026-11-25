@@ -25,6 +25,14 @@
   &[data-rarity='rare'] { --atlas-loot-tone: var(--color-blue); }
   &[data-rarity='epic'] { --atlas-loot-tone: var(--color-purple); }
   &[data-rarity='legendary'] { --atlas-loot-tone: var(--color-orange); }
+
+  // The tone as the ink of a name, on the card: its hue, its lightness only as far from the card's as 4.5:1 needs
+  // (WCAG 2.1 AA). Obsidian's light green is 2.4:1 on its light card and 2:1 on Medieval's; its dark blue 3.7:1.
+  --atlas-loot-ink: oklch(from var(--atlas-loot-tone) max(l, 0.68) c h);
+
+  body.theme-light & {
+    --atlas-loot-ink: oklch(from var(--atlas-loot-tone) min(l, 0.46) c h);
+  }
 }
 
 .atlas-loot-card__title {
@@ -34,7 +42,7 @@
 }
 
 .atlas-loot-card[data-rarity]:not([data-rarity='common']) .atlas-loot-card__name {
-  color: var(--atlas-loot-tone);
+  color: var(--atlas-loot-ink);
 }
 
 .atlas-loot-card__kind {
@@ -44,7 +52,7 @@
 }
 
 .atlas-loot-card__kind__rarity {
-  color: var(--atlas-loot-tone);
+  color: var(--atlas-loot-ink);
   font-weight: $font-weight-semibold;
 }
 

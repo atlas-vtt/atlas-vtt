@@ -31,9 +31,20 @@
   min-width: 0;
 }
 
-// A collection widget that is switched off in this scene
-.atlas-command-palette-widget-item--off > :not(.atlas-command-palette-widget-controls) {
-  opacity: 0.5;
+// A collection widget that is switched off in this scene: its icon dims, its words read a step quieter by ink (half
+// opacity took them under 4.5:1, WCAG 2.1 AA), and its handle keeps its own ink.
+.atlas-command-palette-widget-item--off {
+  > :not(.atlas-command-palette-widget-controls, .atlas-command-palette-widget-grip, .atlas-command-palette-widget-info) {
+    opacity: 0.5;
+  }
+
+  .atlas-command-palette-widget-name {
+    color: var(--text-muted);
+  }
+
+  .atlas-command-palette-widget-type {
+    color: var(--text-faint);
+  }
 }
 
 .atlas-command-palette-widget-name {

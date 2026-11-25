@@ -112,8 +112,10 @@ $tab-radius: atlas-panel-inset-radius-value($tab-bar-inset, $tab-height * 0.5);
     font-weight: 500;
   }
 
+  // A scene not in memory reads a step quieter than the others, in the faint ink: half opacity took its name under
+  // 4.5:1 (WCAG 2.1 AA) in every look.
   &--sleeping {
-    opacity: 0.5;
+    color: var(--text-faint);
   }
 
   // The name and what follows it (the processing ring, the unsaved dot) have the whole tab:

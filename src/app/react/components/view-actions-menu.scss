@@ -15,7 +15,8 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: $radius-m;
   box-shadow: none;
-  color: var(--text-normal);
+  // Light on its dark glass in every theme: the theme's ink is dark in a light one (1.2:1).
+  color: white;
   cursor: pointer;
   transition: all 0.2s ease;
   backdrop-filter: blur(10px);
