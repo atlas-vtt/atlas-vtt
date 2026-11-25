@@ -412,19 +412,7 @@ export class PixiRendererOrchestrator { // Renamed class
     // Initialize TokenRenderer first if GridSystem is ready
     // This also means tokenContainer will be added to viewport earlier
     if (this.gridSystem) {
-        this.tokenRenderer = new TokenRenderer(
-            this.obsApp,
-            viewport,
-            this.gridSystem,
-            () => this.selectionManager?.updateSelectionOverlay(),
-            this.store,
-            this.eventBus,
-            this.viewId,
-            this.shownPlaces,
-            this.tokenArt,
-        );
-        // Set PIXI app reference for renderer access
-        this.tokenRenderer.setPixiApp(this.pixiAppManager.app);
+        this.tokenRenderer = this.makeTokenRenderer(viewport, this.gridSystem);
     } else {
         // GridSystem not ready yet - TokenRenderer will be initialized later in initGrid()
     }
@@ -631,19 +619,7 @@ export class PixiRendererOrchestrator { // Renamed class
     
     // Ensure TokenRenderer is initialized or updated if gridSystem was just created/updated
     if (!this.tokenRenderer && this.gridSystem && currentViewport) {
-        this.tokenRenderer = new TokenRenderer(
-            this.obsApp,
-            currentViewport,
-            this.gridSystem,
-            () => this.selectionManager?.updateSelectionOverlay(), // Pass callback to SelectionManager
-            this.store,
-            this.eventBus,
-            this.viewId,
-            this.shownPlaces,
-            this.tokenArt,
-        );
-        // Set PIXI app reference for renderer access
-        this.tokenRenderer.setPixiApp(this.pixiAppManager.app);
+        this.tokenRenderer = this.makeTokenRenderer(currentViewport, this.gridSystem);
         // Wire viewport-level dispatch providers (pins, selection hit-testing)
         this.wireViewportDispatchProviders();
         // Re-order SelectionManager listeners so they fire after TokenRenderer's viewport handlers
@@ -1328,6 +1304,12 @@ export class PixiRendererOrchestrator { // Renamed class
       pixiEvent: e,
       sourceLeaf: this.getSourceLeaf(),
     });
+  }
+
+  private makeTokenRenderer(viewport: Viewport, grid: GridSystem): TokenRenderer {
+    const tokens = new TokenRenderer(this.obsApp, viewport, grid, () => this.selectionManager?.updateSelectionOverlay(), this.store, this.eventBus, this.viewId, this.shownPlaces, this.tokenArt);
+    tokens.setPixiApp(this.pixiAppManager.app);
+    return tokens;
   }
 
   /** Wires viewport-level event dispatch providers between TokenRenderer and other renderers.
