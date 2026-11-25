@@ -36,11 +36,11 @@ import { squareCorners, uiCorner } from './utils/squareCorners';
 const RESOURCE_MARK_Z_INDEX = 11;
 
 /**
- * Every token's UI lies in one layer. A selected token's lies above the others,
- * so a neighbour never covers the bars and wheels being edited.
+ * Every token's UI lies in one layer, whole, in the order of the tokens' pile (`pilePlaces`). A selected
+ * token's lies above all of them, so a neighbour never covers the bars and wheels being edited: it is
+ * raised by more places than a map holds tokens.
  */
-const RESTING_Z_INDEX = 10;
-const SELECTED_Z_INDEX = 11;
+const SELECTED_RAISE = 1_000_000;
 
 export class TokenUIRenderer {
   private container: Container;
@@ -87,6 +87,7 @@ export class TokenUIRenderer {
   private currentTokenSize: number = 0;
   private isHovered: boolean = false;
   private isSelected: boolean = false;
+  private pilePlace = 0;
   /** The pointer is down on this token (a press or drag), which keeps its UI at rest. */
   private isHeld = false;
   /** Hovered without Cmd/Ctrl, which is reserved for the statblock preview. */
@@ -132,7 +133,6 @@ export class TokenUIRenderer {
     // The container sits at the token centre in world units; the UI itself lives in
     // anchors on the token's edges, laid out in UI units and scaled with the token.
     this.container = new Container();
-    this.container.zIndex = RESTING_Z_INDEX;
     this.belowToken = new Container();
     this.belowToken.sortableChildren = true;
     this.besideToken = new Container();
@@ -679,10 +679,20 @@ export class TokenUIRenderer {
     this.conditionUI.setHovered(shown);
   }
   
+  /** Where the token lies in the pile, which this UI follows. */
+  public setPilePlace(place: number): void {
+    this.pilePlace = place;
+    this.restack();
+  }
+
+  private restack(): void {
+    this.container.zIndex = this.pilePlace + (this.isSelected ? SELECTED_RAISE : 0);
+  }
+
   public setSelectionState(selected: boolean): void {
     if (this.isSelected === selected) return;
     this.isSelected = selected;
-    this.container.zIndex = selected ? SELECTED_Z_INDEX : RESTING_Z_INDEX;
+    this.restack();
     this.updateEmphasis();
     this.updateConditionCard();
     this.updateTextVisibility();
