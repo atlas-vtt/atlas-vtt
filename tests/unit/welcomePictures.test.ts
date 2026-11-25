@@ -13,8 +13,8 @@ const HELP = ['help-dark', 'help-light'];
 const dimensions = (file: string): Promise<{ width: number; height: number }> => imageDimensions(new Blob([readFileSync(file)]));
 
 describe('the welcome wizard\'s pictures', () => {
-  it('holds a picture for every slide, the help page and Atlas Sidebar, and no other file', () => {
-    expect(readdirSync(FOLDER).sort()).toEqual([...SLIDES, ...HELP, 'sidebar'].sort().map((name) => `${name}.webp`));
+  it('holds a picture for every slide and the help page, and no other file', () => {
+    expect(readdirSync(FOLDER).sort()).toEqual([...SLIDES, ...HELP].sort().map((name) => `${name}.webp`));
   });
 
   it.each(SLIDES)('keeps the %s slide at 1280 × 800 px within 80 KB', async (name) => {
@@ -27,12 +27,6 @@ describe('the welcome wizard\'s pictures', () => {
     const file = join(FOLDER, `${name}.webp`);
     expect(statSync(file).size).toBeLessThanOrEqual(80 * 1024);
     expect(await dimensions(file)).toEqual({ width: 1280, height: 800 });
-  });
-
-  it('keeps the Atlas Sidebar picture at 960 × 600 px within 60 KB', async () => {
-    const file = join(FOLDER, 'sidebar.webp');
-    expect(statSync(file).size).toBeLessThanOrEqual(60 * 1024);
-    expect(await dimensions(file)).toEqual({ width: 960, height: 600 });
   });
 
   it('keeps the sword on the welcome slide within 60 KB', () => {

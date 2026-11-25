@@ -10,11 +10,10 @@ import type { LookService } from '../../appearance/lookService';
 import { useAtlasSettings, useHotkeyLabels } from '../../keyboard/useMapHotkeys';
 import { portalHost } from '../../host/portalHost';
 import { useDialogFocus } from '../useDialogFocus';
-import { HelpPage, LookPage, SidebarPage } from './welcomePages';
+import { HelpPage, JoinPage, LookPage } from './welcomePages';
 import { WelcomeFootStart } from './welcomeFoot';
 import { useWelcomeIntro, WelcomeIntro } from './welcomeIntro';
 import { welcomeOverlayMotion, welcomeWindowVariants } from './welcomeMotion';
-import { useWelcomeOwner } from './useWelcomeOwner';
 import { t } from '../../i18n';
 import './welcome.scss';
 import './intro.scss';
@@ -27,26 +26,27 @@ interface WelcomeDialogProps {
   carousel: React.ReactNode;
   /** Whether this GM is to be welcomed at all (`shouldWelcome`); completing the wizard closes it either way. */
   open?: boolean;
-  /** The document of the view it welcomes in, a popout's included; the main window's by default. */
+  /** Opens Atlas' start page, where Open Atlas and Skip lead; Close and Escape only end the wizard. */
+  onOpenAtlas: () => void;
+  /** The document it opens in; the main window's by default. */
   doc?: Document;
 }
 
-type WelcomePage = 'carousel' | 'help' | 'look' | 'sidebar';
-const PAGES: readonly WelcomePage[] = ['carousel', 'help', 'look', 'sidebar'];
+type WelcomePage = 'carousel' | 'help' | 'look' | 'join';
+const PAGES: readonly WelcomePage[] = ['carousel', 'help', 'look', 'join'];
 
 /**
- * The welcome wizard: a large dialog of four pages, what Atlas is, where help is, the look and Atlas Sidebar. Skip,
- * Close, Escape and Start playing all end it, and the tours follow. One shows per app, however many views mount it.
+ * The welcome wizard: a large dialog of four pages, what Atlas is, where help is, the look, and the community around
+ * Atlas. Skip, Close, Escape and Open Atlas all end it; Skip and Open Atlas then open the start page, whose tour follows.
  */
 export function WelcomeDialog({ open = true, ...props }: WelcomeDialogProps): React.JSX.Element {
   // Subscribed, so it closes as soon as it is completed, with the dialogs' closing motion: keep it mounted after.
   useAtlasSettings(props.settings);
-  const owns = useWelcomeOwner(props.app);
-  const shown = open && owns && props.settings.shouldShowTutorial('welcome');
+  const shown = open && props.settings.shouldShowTutorial('welcome');
   return <AnimatePresence>{shown && <WelcomeWindow key="welcome" {...props} />}</AnimatePresence>;
 }
 
-function WelcomeWindow({ app, settings, looks, carousel, doc }: Omit<WelcomeDialogProps, 'open'>): React.JSX.Element {
+function WelcomeWindow({ app, settings, looks, carousel, onOpenAtlas, doc }: Omit<WelcomeDialogProps, 'open'>): React.JSX.Element {
   const [at, setAt] = useState(0);
   // Where the carousel puts its chips: the foot's start, in place of the pages' bars.
   const [footStart, setFootStart] = useState<HTMLElement | null>(null);
@@ -57,8 +57,12 @@ function WelcomeWindow({ app, settings, looks, carousel, doc }: Omit<WelcomeDial
   const intro = useWelcomeIntro(reducedMotion);
   const key = useHotkeyLabels();
   const finish = useCallback(() => settings.completeTutorial('welcome'), [settings]);
+  const openAtlas = (): void => {
+    finish();
+    onOpenAtlas();
+  };
   const last = at === PAGES.length - 1;
-  const forward = (): void => { if (last) finish(); else setAt(at + 1); };
+  const forward = (): void => { if (last) openAtlas(); else setAt(at + 1); };
   const back = (): void => setAt(Math.max(0, at - 1));
 
   // Fading out, it leaves the keys and the focus to the tour that follows.
@@ -97,8 +101,8 @@ function WelcomeWindow({ app, settings, looks, carousel, doc }: Omit<WelcomeDial
               </WelcomeIntro.Provider>
             )}
             {page === 'help' && <HelpPage paletteKey={key('palette')} />}
-            {page === 'sidebar' && <SidebarPage app={app} />}
             {page === 'look' && <LookPage app={app} looks={looks} />}
+            {page === 'join' && <JoinPage />}
           </div>
           <div className="atlas-welcome__foot">
             <div className="atlas-welcome__progress">
@@ -108,7 +112,7 @@ function WelcomeWindow({ app, settings, looks, carousel, doc }: Omit<WelcomeDial
                 : PAGES.map((name, index) => <span key={name} aria-hidden="true" className="atlas-welcome__bar" data-done={index <= at} />)}
             </div>
             {at === 0
-              ? <Button variant="ghost" onClick={finish}>{t('tour.skip')}</Button>
+              ? <Button variant="ghost" onClick={openAtlas}>{t('tour.skip')}</Button>
               : <Button variant="ghost" onClick={back}>{t('common.back')}</Button>}
             <Button key={last ? 'start' : 'next'} data-autofocus onClick={forward}>
               {last ? t('tour.welcome.start') : t('tour.next')}

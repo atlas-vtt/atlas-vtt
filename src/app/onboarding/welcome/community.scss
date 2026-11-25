@@ -1,0 +1,85 @@
+@use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
+
+// The welcome wizard's community page (JoinPage in welcomePages.tsx).
+
+// One card per place, each a link that opens in the browser: the place's mark in its own colour, its name and a line.
+.atlas-welcome-community {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-m;
+}
+
+.atlas-welcome-community .atlas-welcome-community__link {
+  --atlas-brand: var(--text-normal);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: $spacing-l;
+  width: 100%;
+  height: auto;
+  padding: $spacing-l;
+  border: $border-width-s solid color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
+  border-radius: $radius-m;
+  background: color-mix(in oklch, var(--background-secondary) 70%, transparent);
+  box-shadow: none;
+  color: var(--text-normal);
+  text-align: start;
+  cursor: pointer;
+  transition: border-color $transition-normal $transition-ease, background-color $transition-normal $transition-ease;
+
+  &[data-brand='discord'] { --atlas-brand: #5865f2; }
+  &[data-brand='patreon'] { --atlas-brand: #ff424d; }
+
+  @include atlas-hover {
+    border-color: color-mix(in oklch, var(--mono-100) $border-opacity-strong, transparent);
+    background: var(--background-modifier-hover);
+
+    .atlas-welcome-community__arrow {
+      color: var(--text-normal);
+      transform: translate(2px, -2px);
+    }
+  }
+}
+
+.atlas-welcome-community__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: $radius-m;
+  background: color-mix(in oklch, var(--atlas-brand) 16%, transparent);
+  color: var(--atlas-brand);
+
+  svg {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+.atlas-welcome-community__words {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  min-width: 0;
+}
+
+.atlas-welcome-community__title {
+  font-size: $font-ui-medium;
+  font-weight: $font-weight-semibold;
+  line-height: 1.3;
+}
+
+.atlas-welcome-community__body {
+  font-size: $font-ui-small;
+  line-height: 1.4;
+  color: var(--text-muted);
+  text-wrap: pretty;
+}
+
+.atlas-welcome-community__arrow {
+  width: $icon-s;
+  height: $icon-s;
+  color: var(--text-faint);
+  transition: color $transition-normal $transition-ease, transform $transition-normal $transition-ease-out;
+}

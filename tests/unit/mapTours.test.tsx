@@ -11,7 +11,12 @@ import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFa
 
 afterEach(() => { cleanup(); document.body.innerHTML = ''; vi.useRealTimers(); });
 
-const settings = (): SettingsService => new SettingsService({ vault: { adapter: { exists: async () => true, write: async () => {} } } } as never);
+/** A GM the welcome wizard has greeted already: the map's tours wait for it. */
+function settings(): SettingsService {
+  const service = new SettingsService({ vault: { adapter: { exists: async () => true, write: async () => {} } } } as never);
+  service.completeTutorial('welcome');
+  return service;
+}
 
 function loadedMap(): ViewAtlasStore {
   const { app } = createInMemoryApp();
