@@ -80,10 +80,10 @@ const COMMUNITY: readonly CommunityLink[] = [
   { id: 'github', url: ATLAS_GITHUB_URL, Icon: GitHubIcon, title: 'tour.welcome.github', body: 'tour.welcome.githubBody' },
 ];
 
-/** The people around Atlas: its Discord, its Patreon and its code, each a card that opens in the browser. */
+/** The people around Atlas, on a blueprint of a dungeon: its Discord, its Patreon and its code, each a card that opens in the browser. */
 export function JoinPage(): React.JSX.Element {
   return (
-    <div className="atlas-welcome-page atlas-welcome-page--split">
+    <div className="atlas-welcome-page atlas-welcome-page--split atlas-welcome-page--join">
       <WelcomeText kicker={t('tour.welcome.joinKicker')} title={t('tour.welcome.joinTitle')} body={t('tour.welcome.joinBody')} />
       <div className="atlas-welcome-community">
         {COMMUNITY.map(({ id, url, Icon, title, body }) => (

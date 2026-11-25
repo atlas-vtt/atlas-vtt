@@ -1,9 +1,66 @@
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/mixins' as *;
+@use 'picture-ink' as *;
 
-// The welcome wizard's community page (JoinPage in welcomePages.tsx).
+// The welcome wizard's community page (JoinPage in welcomePages.tsx): a blueprint across the whole dialog, a dungeon
+// from Atlas' generator in its Cyanotype look with the sword drawn in the same ink, its words light at the bottom left
+// as the slides' are, and the places to go as glass cards over the map.
 
-// One card per place, each a link that opens in the browser: the place's mark in its own colour, its name and a line.
+// The blueprint's own night blue, so the shade deepens the paper instead of browning it.
+$blueprint-shade: #040e20;
+
+@function blueprint($alpha) { @return color-mix(in oklch, #{$blueprint-shade} #{$alpha * 100%}, transparent); }
+
+.atlas-welcome[data-page='join'] {
+  isolation: isolate;
+  @include on-picture-chrome;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, #{blueprint(0.6)} 0%, #{blueprint(0.15)} 46%, #{blueprint(0.05)} 100%),
+      linear-gradient(0deg, #{blueprint(0.85)} 0%, #{blueprint(0)} 42%),
+      url('../../assets/welcome/join.webp') center / cover no-repeat,
+      $blueprint-shade;
+    animation: atlas-welcome-join-in 900ms $transition-ease-out both;
+  }
+
+  // The page does not fade in as the others do: glass inside a fading page sees only the page, and its blur would jump
+  // once the fade ends. Its words and cards rise in themselves instead.
+  > .atlas-welcome__page { animation: none; }
+}
+
+@keyframes atlas-welcome-join-in {
+  from { opacity: 0; }
+}
+
+// The blueprint drifts slowly closer while the page shows, as the slides' pictures do.
+@media (prefers-reduced-motion: no-preference) {
+  .atlas-welcome[data-page='join']::before {
+    animation:
+      atlas-welcome-join-in 900ms $transition-ease-out both,
+      atlas-welcome-join-drift 24s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes atlas-welcome-join-drift {
+  from { transform: scale(1); }
+  to { transform: scale(1.06) translate(-1%, -0.6%); }
+}
+
+.atlas-welcome-page--join {
+  @include on-picture-text;
+
+  // The words stand at the foot of the page, as the slides' do, under the sword; the cards in the middle of the map.
+  > .atlas-welcome-text { align-self: end; }
+  > .atlas-welcome-community { align-self: center; }
+}
+
 .atlas-welcome-community {
   display: flex;
   flex-direction: column;
@@ -11,7 +68,7 @@
 }
 
 .atlas-welcome-community .atlas-welcome-community__link {
-  --atlas-brand: var(--text-normal);
+  --atlas-brand: #{$slide-ink};
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -19,24 +76,25 @@
   width: 100%;
   height: auto;
   padding: $spacing-l;
-  border: $border-width-s solid color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
+  border: $border-width-s solid ink(0.16);
   border-radius: $radius-m;
-  background: color-mix(in oklch, var(--background-secondary) 70%, transparent);
-  box-shadow: none;
-  color: var(--text-normal);
+  background: blueprint(0.55);
+  backdrop-filter: blur(10px) saturate(1.2);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.25);
+  color: $slide-ink;
   text-align: start;
   cursor: pointer;
   transition: border-color $transition-normal $transition-ease, background-color $transition-normal $transition-ease;
 
-  &[data-brand='discord'] { --atlas-brand: #5865f2; }
-  &[data-brand='patreon'] { --atlas-brand: #ff424d; }
+  &[data-brand='discord'] { --atlas-brand: #7984f5; }
+  &[data-brand='patreon'] { --atlas-brand: #ff5a63; }
 
   @include atlas-hover {
-    border-color: color-mix(in oklch, var(--mono-100) $border-opacity-strong, transparent);
-    background: var(--background-modifier-hover);
+    border-color: ink(0.34);
+    background: blueprint(0.72);
 
     .atlas-welcome-community__arrow {
-      color: var(--text-normal);
+      color: $slide-ink;
       transform: translate(2px, -2px);
     }
   }
@@ -48,7 +106,7 @@
   width: 40px;
   height: 40px;
   border-radius: $radius-m;
-  background: color-mix(in oklch, var(--atlas-brand) 16%, transparent);
+  background: color-mix(in oklch, var(--atlas-brand) 18%, transparent);
   color: var(--atlas-brand);
 
   svg {
@@ -73,13 +131,30 @@
 .atlas-welcome-community__body {
   font-size: $font-ui-small;
   line-height: 1.4;
-  color: var(--text-muted);
+  color: ink(0.72);
   text-wrap: pretty;
 }
 
 .atlas-welcome-community__arrow {
   width: $icon-s;
   height: $icon-s;
-  color: var(--text-faint);
+  color: ink(0.5);
   transition: color $transition-normal $transition-ease, transform $transition-normal $transition-ease-out;
+}
+
+// The words, then the cards one after another, rise in as the page comes; the words with the slides' own rise.
+@media (prefers-reduced-motion: no-preference) {
+  .atlas-welcome-page--join > .atlas-welcome-text,
+  .atlas-welcome-community__link {
+    animation: atlas-welcome-join-rise 700ms $transition-ease-out both;
+  }
+
+  .atlas-welcome-page--join > .atlas-welcome-text { animation-delay: 150ms; }
+  .atlas-welcome-community__link:nth-child(1) { animation-delay: 250ms; }
+  .atlas-welcome-community__link:nth-child(2) { animation-delay: 330ms; }
+  .atlas-welcome-community__link:nth-child(3) { animation-delay: 410ms; }
+}
+
+@keyframes atlas-welcome-join-rise {
+  from { opacity: 0; transform: translateY(12px); }
 }

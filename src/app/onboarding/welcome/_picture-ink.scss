@@ -1,0 +1,49 @@
+@use 'sass:color';
+
+// The welcome wizard's pages that stand on a picture (the carousel, the community page) draw their words light over a
+// dark shade, the same in every theme and look.
+
+// The light the words are drawn in, and the dark that lies over the pictures.
+$slide-ink: #f4eee4;
+$slide-shade: #0a0806;
+
+@function ink($alpha) { @return color.change($slide-ink, $alpha: $alpha); }
+@function shade($alpha) { @return color.change($slide-shade, $alpha: $alpha); }
+
+/// The dialog's own controls over a picture: the foot's words, bars and ghost buttons, and the close button, light.
+@mixin on-picture-chrome {
+  > .atlas-welcome__foot { color: ink(0.78); }
+
+  .atlas-welcome__bar { background: ink(0.24); }
+  .atlas-welcome__bar[data-done='true'] { background: $slide-ink; }
+
+  .atlas-welcome__foot .btn--ghost:hover,
+  .atlas-welcome__close.atlas-close-btn.btn:hover {
+    background: ink(0.12);
+    color: $slide-ink;
+  }
+
+  .atlas-welcome__close.atlas-close-btn.btn {
+    background: shade(0.45);
+    color: ink(0.9);
+  }
+}
+
+/// A page's words over a picture: the look's heading face drawn light (a look's dark heading colour, in light mode,
+/// keeps its hue), the lines under it a little dimmer.
+@mixin on-picture-text {
+  .atlas-welcome-text__kicker { color: ink(0.7); }
+
+  .atlas-welcome-text__title {
+    color: $slide-ink;
+    color: oklch(from var(--h2-color, #{$slide-ink}) max(l, 0.82) c h);
+    text-shadow: 0 2px 24px rgb(0 0 0 / 0.6);
+  }
+
+  .atlas-welcome-text__body { color: ink(0.86); }
+
+  .atlas-welcome-text__tag {
+    background: ink(0.16);
+    color: ink(0.92);
+  }
+}
