@@ -1,4 +1,7 @@
 import { Container, Matrix, RenderTexture, Sprite, Texture, WebGLRenderer } from 'pixi.js';
+import { vi } from 'vitest';
+import { ENGINE_SHADERS } from '../engineShaders';
+import { engineProgram } from '../gpu';
 import type { LightingEngine } from '../LightingEngine';
 
 /**
@@ -9,6 +12,29 @@ export async function createTestRenderer(size = 512, resolution = 1, antialias =
   const renderer = new WebGLRenderer();
   await renderer.init({ width: size, height: size, antialias, backgroundAlpha: 1, resolution });
   return renderer;
+}
+
+/**
+ * From now on the driver links no program of the lighting engine's, as a driver that rejects its
+ * shaders. It links any other program, as such a driver does, so the context is not taken for lost.
+ */
+export function rejectEngineShaders(renderer: WebGLRenderer): void {
+  const { gl } = renderer;
+  const engine = new Set(Object.values(ENGINE_SHADERS).map((source) => engineProgram(source).fragment));
+  const sources = new Map<WebGLShader, string>();
+  const rejected = new Set<WebGLProgram>();
+  const shaderSource = gl.shaderSource.bind(gl);
+  const attachShader = gl.attachShader.bind(gl);
+  const getProgramParameter = gl.getProgramParameter.bind(gl);
+  vi.spyOn(gl, 'shaderSource').mockImplementation((shader: WebGLShader, source: string): void => {
+    sources.set(shader, source);
+    shaderSource(shader, source);
+  });
+  vi.spyOn(gl, 'attachShader').mockImplementation((program: WebGLProgram, shader: WebGLShader): void => {
+    if (engine.has(sources.get(shader) ?? '')) rejected.add(program);
+    attachShader(program, shader);
+  });
+  vi.spyOn(gl, 'getProgramParameter').mockImplementation((program: WebGLProgram, name: number): unknown => (name === gl.LINK_STATUS && rejected.has(program) ? false : getProgramParameter(program, name)));
 }
 
 /** What a 2D copy of `canvas` shows at device pixel (x, y), read in the task that rendered it. */

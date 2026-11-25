@@ -1,17 +1,10 @@
-import type { WebGLRenderer } from 'pixi.js';
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { rejectEngineShaders } from '../engine/__tests__/gpuTestUtils';
 import { LightingWorld } from '../engine/LightingWorld';
 import { ExploredTexture } from '../ExploredTexture';
 import type { LightingAttempt } from '../lightingAttempts';
 import type { LightingUnavailable } from '../LightingRenderer';
 import { SAVE_DELAY, createHarness, resetContext, tokens, visionToken, type Harness } from './rendererHarness';
-
-/** Every program link fails from now on, as on a driver that rejects the shaders. */
-function breakLinking(renderer: WebGLRenderer): void {
-  const { gl } = renderer;
-  const original = gl.getProgramParameter.bind(gl);
-  vi.spyOn(gl, 'getProgramParameter').mockImplementation((program: WebGLProgram, name: number): unknown => (name === gl.LINK_STATUS ? false : original(program, name)));
-}
 
 describe('LightingRenderer on a graphics device that cannot run the lighting', () => {
   let harness: Harness | null = null;
@@ -54,7 +47,7 @@ describe('LightingRenderer on a graphics device that cannot run the lighting', (
 
   it('reports itself unavailable, once, when the shaders do not link, and the store change does not throw', async () => {
     const h = await setup();
-    breakLinking(h.renderer);
+    rejectEngineShaders(h.renderer);
 
     expect(() => switchOn(h)).not.toThrow();
 
