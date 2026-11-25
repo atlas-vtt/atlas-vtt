@@ -1,6 +1,4 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { webCodecsWindowDecode, wholeFileWindowDecode, type WindowDecode } from '@/app/sound/engine/windowDecoder';
-import type { SoundContext } from '@/app/sound/engine/audioNodes';
 import crossfadedDrone from '../../fixtures/sound/loops/converted/drone-crossfaded.ogg?url';
 import foundRain from '../../fixtures/sound/loops/converted/rain-found-ends.ogg?url';
 import { OggOpusWriter } from '@/app/sound/codec/oggOpusWriter';
@@ -90,24 +88,17 @@ describe('seams', () => {
     expectClean(samples, secondsToFrames(0.5), samples.length, 'buffer loop on loop frames');
   });
 
-  describe.each<[string, (context: SoundContext) => WindowDecode]>([
-    ['AudioDecoder', webCodecsWindowDecode],
-    ['whole-file windows', wholeFileWindowDecode],
-  ])('long sounds through %s', (name, windowDecode) => {
-    const supported = (): boolean => name !== 'AudioDecoder' || typeof AudioDecoder !== 'undefined';
-
-    it('joins windows and wraps its end without a mark', async ({ skip }) => {
-      if (!supported()) skip();
+  describe('long sounds', () => {
+    it('joins windows and wraps its end without a mark', async () => {
       // 44 s in: windows at 49, 54 and 59 s, the wrap at 61 s and more windows behind it.
-      const samples = await render(tableOf({ layers: [layerOf(fixtures.long, { startAt: -44_000 })] }), fixtures, { seconds: 30, options: { windowDecode } });
-      expectClean(samples, secondsToFrames(0.5), samples.length, `${name}, windows and wrap`);
+      const samples = await render(tableOf({ layers: [layerOf(fixtures.long, { startAt: -44_000 })] }), fixtures, { seconds: 30 });
+      expectClean(samples, secondsToFrames(0.5), samples.length, 'windows and wrap');
     });
 
-    it('wraps at loop frames, across windows', async ({ skip }) => {
-      if (!supported()) skip();
+    it('wraps at loop frames, across windows', async () => {
       const sound = { ...fixtures.long, loop: { startFrame: 10 * 48000, endFrame: 22 * 48000 } };
-      const samples = await render(tableOf({ layers: [layerOf(sound, { startAt: -18_000 })] }), fixtures, { seconds: 20, options: { windowDecode } });
-      expectClean(samples, secondsToFrames(0.5), samples.length, `${name}, loop frames`);
+      const samples = await render(tableOf({ layers: [layerOf(sound, { startAt: -18_000 })] }), fixtures, { seconds: 20 });
+      expectClean(samples, secondsToFrames(0.5), samples.length, 'loop frames');
     });
   });
 
@@ -140,22 +131,16 @@ describe('seams', () => {
       expectClean(samples, secondsToFrames(0.5), samples.length, 'a second under the pre-skip, buffer loop');
     });
 
-    describe.each<[string, (context: SoundContext) => WindowDecode]>([
-      ['AudioDecoder', webCodecsWindowDecode],
-      ['whole-file windows', wholeFileWindowDecode],
-    ])('through %s', (name, windowDecode) => {
-      it('a long pre-skip over 60 s joins its windows and wraps', async ({ skip }) => {
-        if (name === 'AudioDecoder' && typeof AudioDecoder === 'undefined') skip();
-        const bytes = fixtures.files.get('long');
-        if (!bytes) throw new Error('missing');
-        // A second under the pre-skip, and no whole-decode limit in reach: 60 s of whole cycles, plus what runs on.
-        const frames = 60 * 48_000 + 1;
-        const long = await withLongerPreSkip(bytes, frames - 1 + 48_000 * 0, 48_000);
-        const files = new Map([['long2', long]]);
-        const sound = { key: 'long2', frames: frames - 1, gainDb: 0, loop: { startFrame: 0, endFrame: frames - 1 } };
-        const samples = await render(tableOf({ layers: [layerOf({ ...sound }, { startAt: -44_000 })] }), { files }, { seconds: 24, options: { windowDecode } });
-        expectClean(samples, secondsToFrames(0.5), samples.length, `${name}, a second under the pre-skip`);
-      });
+    it('a long pre-skip over 60 s joins its windows and wraps', async () => {
+      const bytes = fixtures.files.get('long');
+      if (!bytes) throw new Error('missing');
+      // A second under the pre-skip, and no whole-decode limit in reach: 60 s of whole cycles, plus what runs on.
+      const frames = 60 * 48_000 + 1;
+      const long = await withLongerPreSkip(bytes, frames - 1 + 48_000 * 0, 48_000);
+      const files = new Map([['long2', long]]);
+      const sound = { key: 'long2', frames: frames - 1, gainDb: 0, loop: { startFrame: 0, endFrame: frames - 1 } };
+      const samples = await render(tableOf({ layers: [layerOf({ ...sound }, { startAt: -44_000 })] }), { files }, { seconds: 24 });
+      expectClean(samples, secondsToFrames(0.5), samples.length, 'windows, a second under the pre-skip');
     });
   });
 });
