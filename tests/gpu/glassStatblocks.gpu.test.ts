@@ -2,7 +2,7 @@ import '../setup/obsidianDom';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import looks from '../../styles/looks/atlas-looks.css?inline';
 
-/** The DM screen's backdrop as `dm-screen.scss` blurs it under any theme: the looks must leave it alone. */
+/** The DM screen's backdrop as `dm-screen.scss` blurs it under any theme. */
 const THEME = `
   body { margin: 0; background: #1e1e1e; --background-primary: #1e1e1e; --background-secondary: #262626; --mono-100: #fff; }
   .atlas-dm-screen-backdrop { backdrop-filter: blur(4px); }
@@ -15,13 +15,6 @@ function backdropRootsBetween(element: Element, until: Element): string[] {
     if (getComputedStyle(parent).backdropFilter !== 'none') roots.push(parent.className);
   }
   return roots;
-}
-
-/** The opacity of the first colour of an element's see-through ground, the one at its head. */
-function headAlpha(element: Element): number {
-  const ground = getComputedStyle(element).backgroundImage;
-  const gradient = ground.slice(ground.lastIndexOf('linear-gradient('));
-  return Number(/^linear-gradient\((?:to bottom, )?[a-z]+\([^)]*\/\s*([\d.]+)\)/.exec(gradient)?.[1]);
 }
 
 describe('the DM screen under Transparency', () => {
@@ -53,48 +46,44 @@ describe('the DM screen under Transparency', () => {
     document.body.className = '';
   });
 
-  it('leaves the screen\'s backdrop as light on either page as without it', () => {
-    expect(backdropBlur()).toBe('blur(4px)');
+  it('blurs the map behind the whole screen as a hover preview blurs it, on either page alike', () => {
+    // One backdrop for both pages, whichever is shown: turning a page changes nothing behind the panes.
+    expect(wrapper.querySelectorAll('.atlas-dm-screen-backdrop')).toHaveLength(1);
+    expect(backdropBlur()).toBe('blur(20px) saturate(1.2)');
+    wrapper.querySelector('.atlas-dm-sound-page')!.setAttribute('hidden', '');
+    expect(backdropBlur()).toBe('blur(20px) saturate(1.2)');
     document.body.className = 'theme-dark atlas-look atlas-look-scifi';
     expect(backdropBlur()).toBe('blur(4px)');
   });
 
-  it('has a statblock wear a see-through ground at its head, denser than a hover preview\'s, in either look', () => {
+  it('has a statblock wear the hover preview\'s see-through ground, in either look', () => {
     for (const look of ['', 'atlas-look-scifi']) {
       document.body.className = `theme-dark atlas-look atlas-look-glass ${look}`;
-      const shown = getComputedStyle(card);
+      const [shown, hovered] = [getComputedStyle(card), getComputedStyle(preview)];
       expect(shown.backgroundColor).toBe('rgba(0, 0, 0, 0)');
-      expect(shown.backgroundSize).toBe(getComputedStyle(preview).backgroundSize);
-      expect(headAlpha(card)).toBeLessThan(1);
-      expect(headAlpha(card)).toBeGreaterThan(headAlpha(preview));
+      expect(shown.backgroundImage).toContain('linear-gradient');
+      expect(shown.backgroundImage).toBe(hovered.backgroundImage);
+      expect(shown.backgroundSize).toBe(hovered.backgroundSize);
     }
   });
 
-  it('gives a statblock no blur of its own, which its masked grid would leave blind', () => {
+  it('leaves the blurring to the backdrop: a statblock and the Sound page\'s rail have none of their own, which a fading screen or page would leave blind', () => {
     expect(getComputedStyle(preview).backdropFilter).toContain('blur(16px)');
-    expect(getComputedStyle(card).backdropFilter).toBe('none');
-  });
-
-  it('blurs the Sound page\'s rail from the rail\'s own surface, once the screen and its page have faded in', () => {
-    expect(backdropRootsBetween(rail, wrapper)).toEqual([]);
-    const settle = rail.getAnimations()[0]!;
-    const timing = settle.effect!.getComputedTiming();
-    // The screen fades in over 250 ms and a page over 340 ms: under a fading parent the blur would see nothing.
-    expect(timing.delay).toBeGreaterThanOrEqual(340);
-    expect(getComputedStyle(rail).backdropFilter).toBe('blur(0px) saturate(1)');
-    settle.finish();
-    expect(getComputedStyle(rail).backdropFilter).toBe('blur(16px) saturate(1.2)');
+    for (const part of [card, rail]) {
+      expect(getComputedStyle(part).backdropFilter).toBe('none');
+      expect(part.getAnimations()).toEqual([]);
+      expect(backdropRootsBetween(part, wrapper)).toEqual([]);
+    }
     expect(Number(/\/\s*([\d.]+)\)$/.exec(getComputedStyle(rail).backgroundColor)?.[1])).toBeLessThan(1);
   });
 
-  it('keeps the ground of any statblock card and a rail without a blur where Transparency is off', () => {
+  it('keeps the ground of any statblock card where Transparency is off', () => {
     const plain = document.body.createDiv({ cls: 'atlas-statblock' });
     const ground = (element: Element): string => getComputedStyle(element).backgroundImage;
     expect(ground(card)).not.toBe(ground(plain));
     document.body.className = 'theme-dark atlas-look atlas-look-scifi';
     expect(ground(plain)).not.toBe('none');
     expect(ground(card)).toBe(ground(plain));
-    expect(getComputedStyle(rail).backdropFilter).toBe('none');
     plain.remove();
   });
 });
