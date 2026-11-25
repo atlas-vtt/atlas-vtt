@@ -1,5 +1,6 @@
 import type { GmMessage, PlayerResync, SharedScene } from '../protocol/index.ts';
 import { viewedLevelId } from '../../levels/sceneLevels';
+import { tableControlsStore } from '../../stores/tableControlsStore';
 import type { TokenSeen } from '../../vision/measureOrigin';
 import { narrowPolicy, PLAYER_SIGHT_POLICY, type SightPolicy } from '../../vision/tokenSightPolicy';
 import type { SceneState, SceneStore } from './atlasView.ts';
@@ -89,7 +90,9 @@ export class FloorPictures {
     try {
       const seats = this.ports.seats;
       const players = [...new Set([...(seats?.onlinePlayers() ?? []), ...extra])];
-      const inputs = { state: this.store.getState(), sharedVision: this.ports.atlasSettings().sharedVision === true, rules: this.ports.lightingSource()?.rules() };
+      // In remote mode everyone watches one screen, which shows the party's picture: their phones are remotes.
+      const sharedVision = this.ports.atlasSettings().sharedVision === true || tableControlsStore.getState().playMode === 'remote';
+      const inputs = { state: this.store.getState(), sharedVision, rules: this.ports.lightingSource()?.rules() };
       const eyes = floorEyes({ ...inputs, ownerOf: (id, token) => seats?.ownerOf(id, token) }, players);
       this.remembering = sightHides(inputs.state);
       const before = this.eyes;

@@ -10,6 +10,7 @@ import type { MapLayerSource } from '../../../../src/app/online/gm/atlasMapLayer
 import type { DiceSource } from '../../../../src/app/online/gm/atlasDice.ts';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { pictureBasisOf } from '../../../../src/app/online/gm/atlasMapLayers.ts';
+import { tableControlsStore } from '../../../../src/app/stores/tableControlsStore';
 import { fakeAtlasTab } from './fakeAtlasTab.ts';
 import { FakeLaser } from './markHarness.ts';
 import type { Measurements } from '../../../../src/app/pixi/measure/measurements';
@@ -256,6 +257,20 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
       const refused = toPlayer(table.sent, ANA).flatMap(({ body }) => (body.t === 'move-refused' ? [body] : []));
       expect(refused).toEqual([{ t: 'move-refused', scene, id: goblin?.id, x: null, y: null }]);
       expect(table.state().objects.tokens.goblin).toMatchObject({ x: 900, y: 300 });
+    });
+  });
+
+  describe('remote mode, where everyone watches one screen and the phones are remotes', () => {
+    it('sends every player the party\'s picture in one message to all, as the screen shows it', async () => {
+      tableControlsStore.setState({ playMode: 'remote' });
+      try {
+        const table = await started(rooms(), false);
+        const sequencedTo = new Set(table.sent.filter(({ body }) => body.t === 'tokens' || body.t === 'sight' || body.t === 'delta').map(({ to }) => to));
+        expect(sequencedTo).toEqual(new Set([undefined]));
+        expect(names(table.sent)).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
+      } finally {
+        tableControlsStore.setState({ playMode: 'table' });
+      }
     });
   });
 
