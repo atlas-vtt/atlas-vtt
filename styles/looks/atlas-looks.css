@@ -785,10 +785,11 @@ body.atlas-look.atlas-look-scifi .atlas-statblock {
    it and its ground is see-through at the top, growing solid towards the
    foot, so the glass melts into the card. The card paints the ground
    (Sci-fi its lines over it), its scrolling body only the shadow at its
-   foot. The DM screen's statblocks wear the same ground over the
-   screen's own backdrop, which does their blurring (below): the screen
-   and its pages fade, and under a fading parent a blur of the card's own
-   would see nothing until the fade ends */
+   foot. The DM screen's statblocks are glass at their head too, with no
+   blur of their own (their scrolling grid is masked at its foot, past
+   which no blur sees, and a blur for every card of a long feed would
+   cost a frame's time): the screen's backdrop blurs the map lightly, so
+   their ground is denser, to keep their words clear */
 body.atlas-look.atlas-look-glass {
   --atlas-glass-preview-ground: linear-gradient(
     to bottom,
@@ -796,6 +797,17 @@ body.atlas-look.atlas-look-glass {
     color-mix(in oklch, var(--background-primary) 64%, transparent) 64px,
     color-mix(in oklch, var(--background-primary) 80%, transparent) 140px,
     color-mix(in oklch, var(--background-primary) 94%, transparent) 220px,
+    var(--background-primary) 300px
+  );
+}
+
+body.atlas-look.atlas-look-glass .atlas-dm-screen {
+  --atlas-glass-preview-ground: linear-gradient(
+    to bottom,
+    color-mix(in oklch, var(--background-primary) 68%, transparent),
+    color-mix(in oklch, var(--background-primary) 76%, transparent) 64px,
+    color-mix(in oklch, var(--background-primary) 86%, transparent) 140px,
+    color-mix(in oklch, var(--background-primary) 95%, transparent) 220px,
     var(--background-primary) 300px
   );
 }
@@ -935,14 +947,13 @@ body.atlas-look.atlas-look-glass .atlas-vtt-plugin .atlas-asset-manager-sidebar.
   backdrop-filter: blur(16px) saturate(1.2);
 }
 
-/* the DM screen's glass, on either page: its backdrop blurs the map as
-   the asset manager's does, for the statblocks (above) and for the Sound
-   page's library rail, under which the pane lays no ground; the Sound
-   page's stage keeps the look's (the desk has its own) */
-body.atlas-look.atlas-look-glass .atlas-dm-screen-wrapper .atlas-dm-screen-backdrop {
-  backdrop-filter: blur(20px) saturate(1.2);
-}
-
+/* the Sound page's library rail too: the pane lays no ground under it,
+   its stage keeps the look's (the desk has its own), and the rail blurs
+   from its own surface; the DM screen's backdrop stays as light on this
+   page as on the other (owner, 2026-11-25). The screen fades in and its
+   pages fade as they turn, and under a fading parent the rail's blur sees
+   nothing: it comes on once those fades are over (340 ms at the longest),
+   eased, where it would otherwise snap on at their end */
 body.atlas-look.atlas-look-glass .atlas-sound-pane {
   background-color: transparent;
 }
@@ -953,6 +964,20 @@ body.atlas-look.atlas-look-glass .atlas-sound-stage {
 
 body.atlas-look.atlas-look-glass .atlas-sound-lib.atlas-sound-side {
   background-color: color-mix(in oklch, var(--background-secondary) 75%, transparent);
+  backdrop-filter: blur(16px) saturate(1.2);
+  animation: atlas-glass-settle 240ms cubic-bezier(0.23, 1, 0.32, 1) 340ms backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.atlas-look.atlas-look-glass .atlas-sound-lib.atlas-sound-side {
+    animation: none;
+  }
+}
+
+@keyframes atlas-glass-settle {
+  from {
+    backdrop-filter: blur(0) saturate(1);
+  }
 }
 
 /* what stands on the map is smoked glass too: the bars, the initiative
