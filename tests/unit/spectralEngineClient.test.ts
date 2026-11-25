@@ -37,14 +37,18 @@ class FakeWorker extends EventTarget {
   }
 }
 
-function clientWithWorkers(): { client: SpectralEngineClient; workers: FakeWorker[] } {
+function clientWithWorkers(lanes = 1): { client: SpectralEngineClient; workers: FakeWorker[] } {
   const workers: FakeWorker[] = [];
   const client = new SpectralEngineClient(() => {
     const worker = new FakeWorker();
     workers.push(worker);
     return worker as unknown as Worker;
-  });
+  }, lanes);
   return { client, workers };
+}
+
+function answer(worker: FakeWorker, outcome: DetectionOutcome = FOUND): void {
+  worker.reply({ id: worker.requests.at(-1)!.id, outcome });
 }
 
 describe('SpectralEngineClient', () => {
@@ -157,6 +161,60 @@ describe('SpectralEngineClient', () => {
     await expect(crashed).rejects.toThrow('Grid detection failed');
     workers[1]!.reply({ id: workers[1]!.requests[0]!.id, outcome: FOUND });
     await expect(next).resolves.toBe(FOUND);
+  });
+
+  it('runs as many detections at once as it has lanes, each on its own worker, and the rest as workers come free', async () => {
+    const { client, workers } = clientWithWorkers(3);
+    const detections = [gray(), gray(), gray(), gray()].map((map) => client.detect(map));
+
+    expect(workers).toHaveLength(3);
+    expect(workers.map((worker) => worker.requests.length)).toEqual([1, 1, 1]);
+    answer(workers[1]!);
+    await expect(detections[1]).resolves.toBe(FOUND);
+    expect(workers[1]!.requests).toHaveLength(2);
+    expect(workers[1]!.requests[1]!.gray).toBeDefined();
+    for (const worker of workers) answer(worker);
+    await expect(Promise.all(detections)).resolves.toEqual([FOUND, FOUND, FOUND, FOUND]);
+  });
+
+  it('finds the image of a huge map\'s lines on the worker that read them, for the whole-map search after them', async () => {
+    const { client, workers } = clientWithWorkers(3);
+    const map = gray();
+    const lines = client.detect(map, { linesOnly: true });
+    expect(workers[0]!.requests[0]!.linesOnly).toBe(true);
+    answer(workers[0]!);
+    await lines;
+
+    const searches = [client.detect(map), client.detect(gray()), client.detect(gray())];
+    expect(workers[0]!.requests[1]!.gray).toBeUndefined();
+    expect(workers[0]!.requests[1]!.linesOnly).toBe(false);
+    expect(workers.slice(1).map((worker) => worker.requests[0]!.gray)).toEqual([expect.anything(), expect.anything()]);
+    for (const worker of workers) answer(worker);
+    await Promise.all(searches);
+  });
+
+  it('ends the workers beyond the first once nothing waits, and keeps the first with its image', async () => {
+    const { client, workers } = clientWithWorkers(3);
+    const detections = [gray(), gray(), gray()].map((map) => client.detect(map));
+    answer(workers[2]!);
+    expect(workers[2]!.terminated).toBe(true);
+    answer(workers[0]!);
+    expect(workers[0]!.terminated).toBe(false);
+    answer(workers[1]!);
+    await Promise.all(detections);
+    expect(workers.map((worker) => worker.terminated)).toEqual([false, true, true]);
+  });
+
+  it('ends only the worker of a cancelled detection, and those beside it run on', async () => {
+    const { client, workers } = clientWithWorkers(2);
+    const asked = new AbortController();
+    const stale = client.detect(gray(), { signal: asked.signal });
+    const other = client.detect(gray());
+    asked.abort();
+    await expect(stale).rejects.toMatchObject({ name: 'AbortError' });
+    expect(workers.map((worker) => worker.terminated)).toEqual([true, false]);
+    answer(workers[1]!);
+    await expect(other).resolves.toBe(FOUND);
   });
 
   it('rejects everything once disposed, what waits as well as what runs', async () => {

@@ -1,8 +1,9 @@
 /**
- * Runs grid detections off the main thread, one at a time, and hands on what each has to show
- * while it runs. A detection is one synchronous computation of up to several seconds, so the only
- * way to end one is to end its worker: cancelling does, and the next detection starts another.
- * Where no worker can start, detections run on the main thread as they did before there was one.
+ * Runs grid detections off the main thread, each on a worker of its own and up to `lanes` at once,
+ * and hands on what each has to show while it runs. A detection is one synchronous computation of
+ * up to several seconds, so the only way to end one is to end its worker: cancelling does, and the
+ * next detection starts another. Where no worker can start, detections run on the main thread one
+ * after the other, as they did before there was one.
  */
 
 import type { AlignmentResult } from '../gridAlignmentMath';
@@ -15,8 +16,8 @@ import type { DetectionReply, DetectionRequest } from './detectionProtocol';
 export interface DetectOptions {
   /** The grids a measurement or placement can stand for; without them the whole map is searched. */
   candidates?: AlignmentResult[];
-  /** Whether the outcome should say where the map's lines lie (`DetectionOutcome.lines`). */
-  lines?: boolean;
+  /** Only where the map's lines lie (`DetectionOutcome.lines`), without searching it. */
+  linesOnly?: boolean;
   /** Hears what the detection finds on its way. Asking makes it read the map's line evidence first. */
   onEvent?: (event: DetectionEvent) => void;
   /** Ends the detection: its promise rejects with the signal's reason. */
@@ -35,6 +36,14 @@ interface Task extends DetectOptions {
   timer?: number;
 }
 
+/** One worker and the detection it runs. */
+interface Lane {
+  worker: Worker;
+  /** The image the worker holds. */
+  heldKey: number | null;
+  task: Task | null;
+}
+
 /** Lets a status paint before a detection holds the main thread. */
 const PAINT_DELAY_MS = 30;
 
@@ -48,21 +57,21 @@ export function detectionStopped(): Error {
 }
 
 export class SpectralEngineClient {
-  private worker: Worker | null = null;
-  /** The worker has answered once: an error after that is a crash, before it a worker that cannot run here. */
+  private readonly lanes: Lane[] = [];
+  /** A worker has answered once: an error after that is a crash, before it a worker that cannot run here. */
   private proven = false;
   private inThread = false;
   private disposed = false;
-  private running: Task | null = null;
+  /** The detection running on the main thread, where no worker runs. */
+  private here: Task | null = null;
   private readonly waiting: Task[] = [];
   private readonly imageKeys = new WeakMap<MapPixels, number>();
   /** Pictures read on the main thread, where no worker runs. */
   private readonly readHere = new WeakMap<MapPicture, MapGray | null>();
-  /** The image the running worker holds. */
-  private heldKey: number | null = null;
   private nextId = 1;
 
-  constructor(private readonly createWorker: () => Worker) {}
+  /** `lanes`: detections run at once, each on its own worker; with one they run one after the other. */
+  constructor(private readonly createWorker: () => Worker, private readonly laneCount = 1) {}
 
   detect(pixels: MapPixels, options: DetectOptions = {}): Promise<DetectionOutcome> {
     if (this.disposed) return Promise.reject(detectionStopped());
@@ -80,40 +89,50 @@ export class SpectralEngineClient {
   dispose(): void {
     this.disposed = true;
     const stopped = detectionStopped();
-    // A copy: `cancel` takes each task out of the queue it finds it in.
-    for (const task of [this.running, ...this.waiting]) if (task) this.cancel(task, stopped);
+    // A copy: `cancel` takes each task out of the place it finds it in.
+    for (const task of [this.here, ...this.lanes.map((lane) => lane.task), ...this.waiting]) if (task) this.cancel(task, stopped);
   }
 
   private next(): void {
-    if (this.running || this.disposed) return;
-    const task = this.waiting.shift();
-    if (!task) return;
-    this.running = task;
-    if (this.inThread || !this.startedWorker()) {
-      this.runInThread(task);
-      return;
+    while (!this.disposed && this.waiting.length > 0) {
+      if (this.inThread) {
+        if (this.here) return;
+        this.here = this.waiting.shift()!;
+        this.runInThread(this.here);
+        return;
+      }
+      const lane = this.lanes.find((each) => !each.task) ?? (this.lanes.length < this.laneCount ? this.startedLane() : null);
+      if (!lane) {
+        // None could start: the main thread takes over.
+        if (this.inThread) continue;
+        return;
+      }
+      const task = this.waiting.shift()!;
+      lane.task = task;
+      void this.send(lane, task);
     }
-
-    void this.send(task);
+    // Workers beyond the first end once nothing waits for them, with the image each holds: a huge map's windows are asked about
+    // once. The first keeps its image, which the whole-map search after a huge map's lines and a panel's next fit find there.
+    for (const lane of this.lanes.slice(1)) if (!lane.task) this.drop(lane);
   }
 
-  /** Hands `task` to the worker, with the map's pixels where the worker does not hold them yet. */
-  private async send(task: Task): Promise<void> {
+  /** Hands `task` to `lane`'s worker, with the map's pixels where the worker does not hold them yet. */
+  private async send(lane: Lane, task: Task): Promise<void> {
     const key = this.keyOf(task.pixels);
-    const request: DetectionRequest = { id: task.id, imageKey: key, ink: task.onEvent !== undefined, lines: task.lines === true, ...(task.candidates ? { candidates: task.candidates } : {}) };
+    const request: DetectionRequest = { id: task.id, imageKey: key, ink: task.onEvent !== undefined, linesOnly: task.linesOnly === true, ...(task.candidates ? { candidates: task.candidates } : {}) };
     const transfer: Transferable[] = [];
-    if (this.heldKey !== key) {
+    if (lane.heldKey !== key) {
       if ('image' in task.pixels) {
         request.gray = task.pixels;
       } else {
         const bitmap = await task.pixels.bitmap().catch((): null => null);
         // Ended while the picture was fetched: nobody waits for it.
-        if (this.running !== task) {
+        if (lane.task !== task) {
           bitmap?.close();
           return;
         }
         if (!bitmap) {
-          this.running = null;
+          lane.task = null;
           task.resolve(NO_GRID);
           this.next();
           return;
@@ -122,8 +141,8 @@ export class SpectralEngineClient {
         transfer.push(bitmap);
       }
     }
-    this.heldKey = key;
-    this.worker?.postMessage(request, transfer);
+    lane.heldKey = key;
+    lane.worker.postMessage(request, transfer);
   }
 
   private keyOf(pixels: MapPixels): number {
@@ -135,41 +154,40 @@ export class SpectralEngineClient {
     return key;
   }
 
-  private startedWorker(): boolean {
-    if (this.worker) return true;
+  /** A new worker; null where none can start, and where not even the first could, detections run on the main thread. */
+  private startedLane(): Lane | null {
     try {
-      const worker = this.createWorker();
-      worker.addEventListener('message', ({ data }: MessageEvent<DetectionReply>) => this.receive(data));
-      worker.addEventListener('error', (event) => {
+      const lane: Lane = { worker: this.createWorker(), heldKey: null, task: null };
+      lane.worker.addEventListener('message', ({ data }: MessageEvent<DetectionReply>) => this.receive(lane, data));
+      lane.worker.addEventListener('error', (event) => {
         event.preventDefault();
-        this.workerFailed(event.message);
+        this.workerFailed(lane, event.message);
       });
-      this.worker = worker;
-      return true;
+      this.lanes.push(lane);
+      return lane;
     } catch {
-      this.inThread = true;
-      return false;
+      if (this.lanes.length === 0) this.inThread = true;
+      return null;
     }
   }
 
-  private receive(reply: DetectionReply): void {
+  private receive(lane: Lane, reply: DetectionReply): void {
     this.proven = true;
-    const task = this.running;
+    const task = lane.task;
     if (task?.id !== reply.id) return;
     if ('event' in reply) {
       task.onEvent?.(reply.event);
       return;
     }
-    this.running = null;
+    lane.task = null;
     if ('outcome' in reply) task.resolve(reply.outcome);
     else task.reject(new Error(reply.error));
     this.next();
   }
 
-  private workerFailed(message: string): void {
-    this.dropWorker();
-    const task = this.running;
-    this.running = null;
+  private workerFailed(lane: Lane, message: string): void {
+    const task = lane.task;
+    this.drop(lane);
     if (!this.proven) {
       // A worker that never ran will not run next time either: the main thread takes over, this task first.
       this.inThread = true;
@@ -180,10 +198,11 @@ export class SpectralEngineClient {
     this.next();
   }
 
-  private dropWorker(): void {
-    this.worker?.terminate();
-    this.worker = null;
-    this.heldKey = null;
+  private drop(lane: Lane): void {
+    lane.worker.terminate();
+    lane.task = null;
+    const at = this.lanes.indexOf(lane);
+    if (at >= 0) this.lanes.splice(at, 1);
   }
 
   private runInThread(task: Task): void {
@@ -191,17 +210,17 @@ export class SpectralEngineClient {
   }
 
   private async detectHere(task: Task): Promise<void> {
-    const { candidates, onEvent, lines } = task;
+    const { candidates, onEvent, linesOnly } = task;
     try {
       const gray = await this.grayHere(task.pixels);
-      if (this.running !== task) return;
-      const job: DetectionJob | null = gray && { gray, ink: onEvent !== undefined, lines: lines === true, ...(candidates ? { candidates } : {}) };
+      if (this.here !== task) return;
+      const job: DetectionJob | null = gray && { gray, ink: onEvent !== undefined, linesOnly: linesOnly === true, ...(candidates ? { candidates } : {}) };
       task.resolve(job ? runDetection(job, (event) => onEvent?.(event)) : NO_GRID);
     } catch (error) {
-      if (this.running !== task) return;
+      if (this.here !== task) return;
       task.reject(error instanceof Error ? error : new Error(String(error)));
     }
-    this.running = null;
+    this.here = null;
     this.next();
   }
 
@@ -218,13 +237,15 @@ export class SpectralEngineClient {
 
   private cancel(task: Task, reason: Error): void {
     const waitingAt = this.waiting.indexOf(task);
+    const lane = this.lanes.find((each) => each.task === task);
     if (waitingAt >= 0) {
       this.waiting.splice(waitingAt, 1);
-    } else if (this.running === task) {
-      this.running = null;
+    } else if (this.here === task) {
+      this.here = null;
       window.clearTimeout(task.timer);
+    } else if (lane) {
       // The worker is in the middle of this task and hears nothing until it is through.
-      if (!this.inThread) this.dropWorker();
+      this.drop(lane);
     } else {
       // Already answered, or ended before.
       return;

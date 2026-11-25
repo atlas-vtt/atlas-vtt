@@ -38,6 +38,11 @@ export class MeasureLabel {
   private gridSize = 70;
   /** The pill as it was last drawn, in UI units. */
   private size: Size = { width: 0, height: 0 };
+  /**
+   * What the pill was last drawn from: a pill drawn again the same is left alone, since any
+   * redrawn Graphics makes PIXI rebuild the whole render group it lies in (the viewport's).
+   */
+  private drawn = '';
 
   constructor(private readonly relative = 1) {
     this.text.scale.set(NAMEPLATE_TEXT.textScale);
@@ -66,7 +71,11 @@ export class MeasureLabel {
     const bounds = this.text.getLocalBounds();
     const size = pillSize({ width: bounds.width * NAMEPLATE_TEXT.textScale, height: bounds.height * NAMEPLATE_TEXT.textScale });
     this.size = size;
-    drawLabelPill(this.pill, size, colors, onScreen);
+    const drawn = `${size.width}|${size.height}|${uiCorner(size.radius)}|${colors.border}|${colors.background}|${onScreen}`;
+    if (drawn !== this.drawn) {
+      this.drawn = drawn;
+      drawLabelPill(this.pill, size, colors, onScreen);
+    }
     const screenSize = { width: size.width * onScreen, height: size.height * onScreen };
     const center = this.target && labelCenter(this.target, screenSize, viewZoom, LABEL_LOOK.gap * onScreen);
     if (!center) return;

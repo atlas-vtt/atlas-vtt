@@ -34,7 +34,7 @@
   position: relative;
   isolation: isolate;
   width: min(1080px, 92vw);
-  height: min(660px, 86vh);
+  height: min(720px, 88vh);
   max-width: 100%;
   max-height: 100%;
 }
@@ -124,32 +124,20 @@
 
 .atlas-welcome-page--text > .atlas-welcome-text { max-width: 34em; }
 
-// Atlas Sidebar: its picture on the left, the words beside it.
+// The community page: its words on the left, the cards beside them.
 .atlas-welcome-page--split {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
 }
 
-.atlas-welcome-picture {
-  display: block;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 960 / 600;
-  object-fit: cover;
-  box-sizing: border-box;
-  border: $border-width-s solid color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
-  border-radius: $radius-m;
-  box-shadow: $shadow-elevated;
-  user-select: none;
-}
-
-// The look page: its words over the appearance choices. The page is a size container, so the look cards can take
-// the height its words, labels and colour swatches leave: what stands around the pictures is about $look-around tall
-// (heading, two lines of words, the gaps, the row labels, the cards' names and notes, the accent's and the ivy's
-// swatches side by side), and the cards are
-// as wide as pictures of the rest are at their 480 : 300 ratio, three in a row. A taller translation scrolls the page.
-$look-around: 380px;
+// The look page: its words over the appearance choices, laid out as Appearance settings lay them out. The page is a
+// size container, so the look cards can take the height the rest leaves: what stands around the pictures is about
+// $look-around tall (heading and its line, the gaps, the Look label, the cards' names and notes, the row of switches,
+// the accent's and the ivy's swatches side by side; measured at 1440 x 900), and the cards are as wide as pictures of
+// the rest are at their 480 : 300 ratio, three in a row. From about 1200 x 800 up they fill the page's width; a
+// smaller window gets smaller cards instead of a scrolling page. A taller translation scrolls the page.
+$look-around: 360px;
 $look-cards-min: 420px;
 
 .atlas-welcome[data-page='look'] .atlas-welcome__page {
@@ -237,12 +225,6 @@ $look-cards-min: 420px;
 // A line of its own under the body, with its status after it.
 .atlas-welcome-text__body.atlas-welcome-text__aside { margin-top: $spacing-s; }
 
-.atlas-welcome-text__note {
-  margin: $spacing-s 0 0;
-  font-size: $font-ui-smaller;
-  color: var(--text-faint);
-}
-
 .atlas-welcome-actions {
   display: flex;
   flex-wrap: wrap;
@@ -260,19 +242,6 @@ $look-cards-min: 420px;
   color: var(--text-muted);
 
   kbd { @include atlas-keycap(24px); }
-}
-
-.atlas-welcome-status {
-  display: inline-flex;
-  align-items: center;
-  gap: $spacing-xs;
-  font-size: $font-ui-small;
-  color: var(--text-muted);
-
-  svg {
-    width: $icon-s;
-    height: $icon-s;
-  }
 }
 
 // ── Foot ────────────────────────────────────────────────────────────────────
@@ -306,7 +275,7 @@ $look-cards-min: 420px;
 // Focus moves to the page's main button by itself; Atlas draws no keyboard focus rings.
 .atlas-vtt-plugin .atlas-welcome .btn:focus-visible { box-shadow: none; }
 
-// A window too narrow for the split stacks the picture above the words.
+// A window too narrow for the split stacks the cards under the words.
 @media (max-width: 760px) {
   .atlas-welcome-page--split { grid-template-columns: minmax(0, 1fr); }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DESKTOP_BUDGETS, MOBILE_BUDGETS, budgetsFor, imageWorkerCount, tesseraEncoderCount } from '../../../src/app/platform/deviceBudgets';
+import { DESKTOP_BUDGETS, MOBILE_BUDGETS, budgetsFor, gridDetectionCount, imageWorkerCount, tesseraEncoderCount } from '../../../src/app/platform/deviceBudgets';
 import { COARSE_POINTER_SCALE, createDeviceProfile, mediaPointerSource, pointerKindOf, type PointerSource } from '../../../src/app/platform/deviceProfile';
 import { WARM_STAGES } from '../../../src/app/dice3d/stagePool';
 import { DEFAULT_LIGHTING_QUALITY, LIGHTING_QUALITY } from '../../../src/app/lighting/lightingQuality';
@@ -36,6 +36,7 @@ describe('the budgets of a desktop', () => {
       imageWorkerBudget: GIB,
       tesseraEncoders: 6,
       decodedLevelsBudget: GIB,
+      gridDetections: 7,
       tileCacheMax: 4 * GIB,
       tileCacheQuotaShare: 0.1,
       tileTextureBudget: 160 * MIB,
@@ -65,6 +66,10 @@ describe('the budgets of a desktop', () => {
   it.each([[1, 0], [2, 1], [4, 2], [8, 4], [12, 6], [32, 6]])('with %i cores run %i tessera encoders: half the cores, six at most', (cores, encoders) => {
     expect(tesseraEncoderCount(DESKTOP_BUDGETS, cores)).toBe(encoders);
   });
+
+  it.each([[2, 1], [4, 1], [6, 5], [8, 7], [12, 7], [32, 7]])('with %i cores run %i grid detections at once: one after the other on four or fewer', (cores, detections) => {
+    expect(gridDetectionCount(DESKTOP_BUDGETS, cores)).toBe(detections);
+  });
 });
 
 describe('the budgets of a tablet', () => {
@@ -74,6 +79,7 @@ describe('the budgets of a tablet', () => {
       imageWorkerBudget: 256 * MIB,
       tesseraEncoders: 0,
       decodedLevelsBudget: 256 * MIB,
+      gridDetections: 1,
       tileCacheMax: 512 * MIB,
       tileCacheQuotaShare: 0.05,
       tileTextureBudget: 96 * MIB,
@@ -97,6 +103,10 @@ describe('the budgets of a tablet', () => {
 
   it('encode tesserae on the tessera worker alone', () => {
     expect(tesseraEncoderCount(MOBILE_BUDGETS, 8)).toBe(0);
+  });
+
+  it('run grid detections one after the other', () => {
+    expect(gridDetectionCount(MOBILE_BUDGETS, 8)).toBe(1);
   });
 });
 

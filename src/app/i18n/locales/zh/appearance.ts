@@ -4,7 +4,6 @@ export const appearance: Translation = {
   'appearance.title': '外观设置',
   'appearance.commandHint': '你的主题、中世纪或科幻，以及强调色',
   'appearance.look': '风格',
-  'appearance.lookHint': '保留你的 Obsidian 主题，或给笔记、菜单和面板换上 Atlas 的一种风格。',
   'appearance.own': '你的主题',
   'appearance.ownDefault': 'Obsidian 默认主题',
   'appearance.mediaeval': '中世纪',

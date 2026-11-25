@@ -12,6 +12,9 @@ export function sharedWorker(options) {
   return new SharedWorker((self.URL || self.webkitURL).createObjectURL(madeBlob()), options);
 }
 `;
+/** The wrapper of a served worker: its code is fetched from a URL, so there is no Blob to make late. */
+const SERVED_START = 'export default function WorkerWrapper(';
+const SERVED_WORKER = 'return new Worker(';
 /** The worker's own code, one line of JSON: a worker that starts another holds that one's wrapper in it. */
 const CONTENT = 'const jsContent = ';
 
@@ -39,13 +42,28 @@ export function withBlobOnFirstWorker(code: string): string {
     .replace(READ, 'objURL = madeBlob() && (self.URL') + SHARED;
 }
 
+/**
+ * The wrapper Vite serves where nothing is bundled (the tests), with `sharedWorker` beside it: a
+ * browser refuses to link a module that imports a name the wrapper does not export.
+ */
+export function withSharedWorkerWhenServed(code: string): string {
+  if (occurrences(code, SERVED_START) !== 1 || occurrences(code, SERVED_WORKER) !== 1) {
+    throw new Error('Vite serves inline workers another way now; review vite/lazy-inline-workers.mts');
+  }
+  return `${code}\n${code.replace(SERVED_START, 'export function sharedWorker(').replace(SERVED_WORKER, 'return new SharedWorker(')}`;
+}
+
 export function lazyInlineWorkers(): Plugin {
+  let served = false;
   return {
     name: 'atlas-lazy-inline-workers',
     enforce: 'post',
+    configResolved(config) {
+      served = config.command === 'serve';
+    },
     transform(code, id) {
       if (!INLINE_WORKER.test(id)) return null;
-      return { code: withBlobOnFirstWorker(code), map: null };
+      return { code: served ? withSharedWorkerWhenServed(code) : withBlobOnFirstWorker(code), map: null };
     },
   };
 }

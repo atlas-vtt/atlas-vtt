@@ -102,7 +102,8 @@ class Highlight {
  * thing, the zoom or the theme changes; a newly selected thing lands with a short motion.
  */
 export class SelectionHighlights {
-  readonly layer = new Container({ label: 'selectionHighlights', eventMode: 'none', interactiveChildren: false, zIndex: MAP_LAYER_Z.selection });
+  /** Its own render group: frames redrawn at every step of a drag would otherwise make PIXI rebuild the viewport's whole group. */
+  readonly layer = new Container({ label: 'selectionHighlights', eventMode: 'none', interactiveChildren: false, zIndex: MAP_LAYER_Z.selection, isRenderGroup: true });
   private readonly highlights = new Map<string, Highlight>();
   private readonly group = new Graphics({ label: 'selectionGroupFrame' });
   private readonly groupFade = new ValueTransition(1, MOTION_NORMAL_MS, (value) => { this.group.alpha = value; });

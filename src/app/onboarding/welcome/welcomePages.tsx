@@ -1,13 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import type { App } from 'obsidian';
-import { Check } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { Button } from '../../packages/components/primitives/button';
-import { ATLAS_DISCORD_URL, ATLAS_DOCS_URL } from '../../support/communityLinks';
-import { COMPANION_URLS, companionInUse } from '../companions';
+import { ATLAS_DISCORD_URL, ATLAS_DOCS_URL, ATLAS_GITHUB_URL, ATLAS_PATREON_URL } from '../../support/communityLinks';
 import type { LookService } from '../../appearance/lookService';
 import { AppearanceChoices } from '../../appearance/AppearanceChoices';
-import sidebarPicture from '../../assets/welcome/sidebar.webp';
+import { DiscordIcon } from '../../changelog/DiscordIcon';
+import { GitHubIcon } from '../../changelog/GitHubIcon';
+import { PatreonIcon } from '../../changelog/PatreonIcon';
+import type { MessageKey } from '../../i18n/types';
 import { t } from '../../i18n';
+import './community.scss';
 
 interface WelcomeTextProps {
   /** A small line above the heading; a page whose heading says it all has none. */
@@ -36,7 +39,7 @@ export function WelcomeText({ kicker, title, body, aside, children }: WelcomeTex
   );
 }
 
-/** Where help is: the guides, Discord, and the palette's key. */
+/** Where help is: the guides and the palette's key. */
 export function HelpPage({ paletteKey }: { paletteKey: string }): React.JSX.Element {
   return (
     <div className="atlas-welcome-page atlas-welcome-page--text">
@@ -46,27 +49,8 @@ export function HelpPage({ paletteKey }: { paletteKey: string }): React.JSX.Elem
           <span>{t('tour.welcome.paletteKey')}</span>
         </div>
         <div className="atlas-welcome-actions">
-          <Button variant="secondary" onClick={() => window.open(ATLAS_DISCORD_URL)}>{t('tour.welcome.discord')}</Button>
-          <Button variant="ghost" onClick={() => window.open(ATLAS_DOCS_URL)}>{t('tour.welcome.guides')}</Button>
+          <Button variant="secondary" onClick={() => window.open(ATLAS_DOCS_URL)}>{t('tour.welcome.guides')}</Button>
         </div>
-      </WelcomeText>
-    </div>
-  );
-}
-
-/** Atlas Sidebar, pictured beside a map, offered until it is enabled. */
-export function SidebarPage({ app }: { app: App }): React.JSX.Element {
-  const inUse = useSidebarInUse(app);
-  return (
-    <div className="atlas-welcome-page atlas-welcome-page--split">
-      <img className="atlas-welcome-picture" src={sidebarPicture} alt={t('tour.welcome.sidebarPicture')} draggable={false} />
-      <WelcomeText kicker={t('tour.welcome.sidebarKicker')} title={t('tour.welcome.sidebarName')} body={t('tour.welcome.sidebarBody')}>
-        <div className="atlas-welcome-actions">
-          {inUse
-            ? <span className="atlas-welcome-status"><Check aria-hidden="true" />{t('tour.welcome.inUse')}</span>
-            : <Button onClick={() => window.open(COMPANION_URLS.sidebar)}>{t('tour.welcome.view')}</Button>}
-        </div>
-        {!inUse && <p className="atlas-welcome-text__note">{t('tour.welcome.sidebarNote')}</p>}
       </WelcomeText>
     </div>
   );
@@ -82,13 +66,37 @@ export function LookPage({ app, looks }: { app: App; looks: LookService }): Reac
   );
 }
 
-/** Follows the add-on while its page shows, so a GM back from installing it sees it ticked. */
-function useSidebarInUse(app: App): boolean {
-  const [inUse, setInUse] = useState(() => companionInUse(app, 'sidebar'));
-  useEffect(() => {
-    // ponytail: polls once a second while the page shows; Obsidian announces no plugin being enabled.
-    const timer = window.setInterval(() => setInUse(companionInUse(app, 'sidebar')), 1000);
-    return () => window.clearInterval(timer);
-  }, [app]);
-  return inUse;
+interface CommunityLink {
+  id: 'discord' | 'patreon' | 'github';
+  url: string;
+  Icon: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
+  title: MessageKey;
+  body: MessageKey;
+}
+
+const COMMUNITY: readonly CommunityLink[] = [
+  { id: 'discord', url: ATLAS_DISCORD_URL, Icon: DiscordIcon, title: 'tour.welcome.discord', body: 'tour.welcome.discordBody' },
+  { id: 'patreon', url: ATLAS_PATREON_URL, Icon: PatreonIcon, title: 'tour.welcome.patreon', body: 'tour.welcome.patreonBody' },
+  { id: 'github', url: ATLAS_GITHUB_URL, Icon: GitHubIcon, title: 'tour.welcome.github', body: 'tour.welcome.githubBody' },
+];
+
+/** The people around Atlas, on a blueprint of a dungeon: its Discord, its Patreon and its code, each a card that opens in the browser. */
+export function JoinPage(): React.JSX.Element {
+  return (
+    <div className="atlas-welcome-page atlas-welcome-page--split atlas-welcome-page--join">
+      <WelcomeText kicker={t('tour.welcome.joinKicker')} title={t('tour.welcome.joinTitle')} body={t('tour.welcome.joinBody')} />
+      <div className="atlas-welcome-community">
+        {COMMUNITY.map(({ id, url, Icon, title, body }) => (
+          <button key={id} type="button" className="atlas-welcome-community__link" data-brand={id} onClick={() => window.open(url)}>
+            <span className="atlas-welcome-community__icon"><Icon /></span>
+            <span className="atlas-welcome-community__words">
+              <span className="atlas-welcome-community__title">{t(title)}</span>
+              <span className="atlas-welcome-community__body">{t(body)}</span>
+            </span>
+            <ArrowUpRight className="atlas-welcome-community__arrow" aria-hidden="true" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }

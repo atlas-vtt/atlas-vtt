@@ -7,11 +7,10 @@ import { loadedTokenRingTexture, loadTokenRingTexture } from '../../token-render
 import { computeTokenPixelSize, computeTokenStrokeWidth } from '../../token-renderer/tokenSizing';
 import { destroyTree } from '../../utils/destroyTree';
 
-/** Token art, shared by the tokens that show it: each holds what it shows (`TextureCache`). */
+/** The view's token art, shared by every token that shows it, on the map and below: each holds what it shows (`TextureCache`). */
 export interface TokenArt {
   acquire(imagePath: string): Promise<Texture>;
   release(imagePath: string): void;
-  destroyAll(): void;
 }
 
 interface Shown {
@@ -88,11 +87,10 @@ export class BelowTokens {
     }
   }
 
-  /** Lets go of every token, and of the art: it is this level's own. */
+  /** Lets go of every token and of the art each holds. */
   destroy(): void {
     for (const [id, shown] of this.shown) this.remove(id, shown);
     destroyTree(this.view);
-    this.art.destroyAll();
   }
 
   private add(token: TokenEntity): Shown {

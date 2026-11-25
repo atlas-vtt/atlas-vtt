@@ -240,6 +240,7 @@ export class TokenRenderer {
     eventBus: EventEmitter,
     viewId?: string,
     shownPlaces?: ShownPlaces,
+    textureCache?: TextureCache,
   ) {
     this.glide = new TokenGlide({
       getTicker: () => this.pixiApp?.ticker ?? null,
@@ -277,8 +278,8 @@ export class TokenRenderer {
     });
     void this.spriteFactory.preloadTokenRingTexture();
 
-    // Initialize texture cache
-    this.textureCache = new TextureCache(this.obsApp);
+    // The view's token art, which the levels below it show too
+    this.textureCache = textureCache ?? new TextureCache(this.obsApp);
 
     // Initialize UI manager
     this.uiManager = new UIManager(this.viewport, this.store, this.viewId, isPlayerView);

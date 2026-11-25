@@ -8,6 +8,7 @@ import { SettingsService } from '../../src/app/services/SettingsService';
 import { LookService } from '../../src/app/appearance/lookService';
 import { WelcomeDialog } from '../../src/app/onboarding/welcome/WelcomeDialog';
 import { DashboardTour } from '../../src/app/onboarding/DashboardTour';
+import { WelcomeWizard } from '../../src/app/onboarding/WelcomeWizard';
 
 vi.mock('../../src/app/onboarding/useWatched', () => ({ isOnScreen: () => true, useWatched: () => true }));
 afterEach(cleanup);
@@ -28,20 +29,21 @@ function appWith(plugins: string[]): { app: App; settings: SettingsService } {
   return { app, settings: new SettingsService(app) };
 }
 
-function dialog(app: App, settings: SettingsService): React.JSX.Element {
-  return <WelcomeDialog app={app} settings={settings} looks={LookService.forApp(app, settings)} carousel={<div>slides</div>} />;
+function dialog(app: App, settings: SettingsService, onOpenAtlas: () => void = () => {}): React.JSX.Element {
+  return <WelcomeDialog app={app} settings={settings} looks={LookService.forApp(app, settings)} carousel={<div>slides</div>} onOpenAtlas={onOpenAtlas} />;
 }
 
 const next = (): void => { fireEvent.click(screen.getByRole('button', { name: 'Next' })); };
 
-it('opens on the carousel and pages through help, the look and the sidebar, which starts playing', () => {
+it('opens on the carousel and pages through help, the look and the community, which opens Atlas', () => {
   const { app, settings } = appWith([]);
   render(dialog(app, settings));
   expect(screen.getByText('slides')).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Skip' })).toBeTruthy();
   next();
   expect(screen.queryByText('slides')).toBeNull();
-  expect(screen.getByRole('button', { name: 'Join the Discord' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Read the guides' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: /Join the Discord/ })).toBeNull();
   expect(screen.getByRole('button', { name: 'Back' })).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull();
   next();
@@ -50,72 +52,79 @@ it('opens on the carousel and pages through help, the look and the sidebar, whic
   expect(screen.getByRole('radiogroup', { name: 'Look' }).querySelectorAll('[role="radio"]')).toHaveLength(3);
   expect(screen.getByRole('radiogroup', { name: 'Accent colour' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Next' })).toBeTruthy();
-  expect(screen.queryByRole('button', { name: 'Start playing' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Open Atlas' })).toBeNull();
   next();
-  expect(screen.getByRole('heading', { name: 'Atlas Sidebar' })).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Atlas grows with its players' })).toBeTruthy();
+  for (const name of [/Join the Discord/, /Support on Patreon/, /Help on GitHub/]) expect(screen.getByRole('button', { name })).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Next' })).toBeNull();
-  expect(screen.getByRole('button', { name: 'Start playing' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Open Atlas' })).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   expect(screen.getByRole('heading', { name: 'Make it yours' })).toBeTruthy();
 });
 
-it('completes on Start playing, closes and hands over to the start page tour', async () => {
+it('opens the community\'s pages in the browser', () => {
   const { app, settings } = appWith([]);
-  render(<DashboardTour app={app} root={document.body} hasScene onCreateScene={() => {}} />);
-  for (let page = 0; page < 3; page += 1) next();
-  act(() => { fireEvent.click(screen.getByRole('button', { name: 'Start playing' })); });
-  expect(settings.shouldShowTutorial('welcome')).toBe(false);
-  expect(screen.getByText('Scenes')).toBeTruthy();
-  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Welcome' })).toBeNull());
-  expect(screen.getByText('Scenes')).toBeTruthy();
+  const open = vi.spyOn(window, 'open').mockReturnValue(null);
+  render(dialog(app, settings));
+  next(); next(); next();
+  fireEvent.click(screen.getByRole('button', { name: /Join the Discord/ }));
+  fireEvent.click(screen.getByRole('button', { name: /Support on Patreon/ }));
+  fireEvent.click(screen.getByRole('button', { name: /Help on GitHub/ }));
+  expect(open.mock.calls.map(([url]) => String(url))).toEqual([
+    'https://discord.gg/p8unR7zQVr', 'https://www.patreon.com/cw/atlas_vtt', 'https://github.com/atlas-vtt/atlas-vtt',
+  ]);
+  open.mockRestore();
 });
 
-it('completes on Skip and closes', async () => {
+it('completes on Open Atlas, opens Atlas, closes and hands over to the start page tour', async () => {
   const { app, settings } = appWith([]);
-  render(dialog(app, settings));
+  const openAtlas = vi.fn();
+  render(<>{dialog(app, settings, openAtlas)}{startPage(app)}</>);
+  expect(screen.queryByText('Scenes')).toBeNull();
+  for (let page = 0; page < 3; page += 1) next();
+  act(() => { fireEvent.click(screen.getByRole('button', { name: 'Open Atlas' })); });
+  expect(settings.shouldShowTutorial('welcome')).toBe(false);
+  expect(openAtlas).toHaveBeenCalledTimes(1);
+  expect(screen.getByText('Scenes')).toBeTruthy();
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Welcome' })).toBeNull());
+});
+
+it('completes on Skip, opens Atlas and closes', async () => {
+  const { app, settings } = appWith([]);
+  const openAtlas = vi.fn();
+  render(dialog(app, settings, openAtlas));
   act(() => { fireEvent.click(screen.getByRole('button', { name: 'Skip' })); });
   expect(settings.shouldShowTutorial('welcome')).toBe(false);
+  expect(openAtlas).toHaveBeenCalledTimes(1);
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Welcome' })).toBeNull());
 });
 
 it('opens in the document of the view it welcomes in', () => {
   const { app, settings } = appWith([]);
   const popout = document.implementation.createHTMLDocument('popout');
-  render(<WelcomeDialog app={app} settings={settings} looks={LookService.forApp(app, settings)} carousel={<div>slides</div>} doc={popout} />);
+  render(<WelcomeDialog app={app} settings={settings} looks={LookService.forApp(app, settings)} carousel={<div>slides</div>} onOpenAtlas={() => {}} doc={popout} />);
   expect(popout.querySelector('[role="dialog"]')).not.toBeNull();
   expect(document.querySelector('.atlas-welcome')).toBeNull();
 });
 
-it('completes on Close and on Escape', () => {
+it('completes on Close and on Escape without opening Atlas', () => {
+  const openAtlas = vi.fn();
   const closed = appWith([]);
-  render(dialog(closed.app, closed.settings));
+  render(dialog(closed.app, closed.settings, openAtlas));
   act(() => { fireEvent.click(screen.getByRole('button', { name: 'Close' })); });
   expect(closed.settings.shouldShowTutorial('welcome')).toBe(false);
   cleanup();
   const escaped = appWith([]);
-  render(dialog(escaped.app, escaped.settings));
+  render(dialog(escaped.app, escaped.settings, openAtlas));
   act(() => { fireEvent.keyDown(window, { key: 'Escape' }); });
   expect(escaped.settings.shouldShowTutorial('welcome')).toBe(false);
-});
-
-it('offers Atlas Sidebar until it is enabled', () => {
-  const without = appWith([]);
-  render(dialog(without.app, without.settings));
-  next(); next(); next();
-  expect(screen.getByRole('button', { name: 'View in Obsidian' })).toBeTruthy();
-  expect(screen.queryByText('In use')).toBeNull();
-  cleanup();
-  const enabled = appWith(['atlas-sidebar']);
-  render(dialog(enabled.app, enabled.settings));
-  next(); next(); next();
-  expect(screen.getByText('In use')).toBeTruthy();
-  expect(screen.queryByRole('button', { name: 'View in Obsidian' })).toBeNull();
+  expect(openAtlas).not.toHaveBeenCalled();
 });
 
 it('does not welcome a GM who took a tour', () => {
-  const { app, settings } = appWith(['atlas-sidebar']);
+  const { app, settings } = appWith([]);
   settings.completeTutorial('dashboard');
-  render(<DashboardTour app={app} root={document.body} hasScene onCreateScene={() => {}} />);
+  render(<WelcomeWizard app={app} settings={settings} onOpenAtlas={() => {}} />);
   expect(screen.queryByText('Welcome to Atlas')).toBeNull();
   expect(screen.queryByRole('dialog', { name: 'Welcome' })).toBeNull();
 });
@@ -133,7 +142,7 @@ async function withMotion(test: () => Promise<void> | void): Promise<void> {
 it('fades out over the start page tour, which already shows and takes the keys', async () => {
   await withMotion(() => {
     const { app, settings } = appWith([]);
-    render(startPage(app));
+    render(<>{dialog(app, settings)}{startPage(app)}</>);
     act(() => { fireEvent.click(screen.getByRole('button', { name: 'Skip' })); });
     expect(document.querySelector('.atlas-welcome-overlay')).not.toBeNull();
     expect(screen.getByText('Scenes')).toBeTruthy();
@@ -143,11 +152,11 @@ it('fades out over the start page tour, which already shows and takes the keys',
 });
 
 it('leaves the focus on the start page tour once it is gone', async () => {
-  const { app } = appWith([]);
+  const { app, settings } = appWith([]);
   // What had the focus before Atlas welcomed the GM: closing the welcome must not hand it back over the tour.
   const before = document.body.appendChild(document.createElement('button'));
   before.focus();
-  render(startPage(app));
+  render(<>{dialog(app, settings)}{startPage(app)}</>);
   act(() => { fireEvent.click(screen.getByRole('button', { name: 'Skip' })); });
   await waitFor(() => expect(document.querySelector('.atlas-welcome-overlay')).toBeNull());
   await act(async () => { await new Promise((done) => setTimeout(done, 50)); });
