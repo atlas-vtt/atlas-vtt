@@ -47,6 +47,7 @@
 ## Fixed
 
 - The grid of a very large map is no longer found at the wrong size where it is drawn on part of the map only, such as a big generated dungeon with dashed lines on its floors
+- A grid drawn in dotted lines is no longer found at the wrong size, as happened to a big generated dungeon added as a new map
 - A large generated dungeon or cave is no longer saved with blank floors: its floors are drawn in pieces the graphics card can hold, and where a floor still cannot be drawn, the generator says so and you can try again instead of getting a scene with empty maps
 - The toolbar's Lighting button is named in your language, as its menu already was
 - Initiative cards show a token cut out on a transparent ground whole, instead of zooming into a small part of it such as an eye
