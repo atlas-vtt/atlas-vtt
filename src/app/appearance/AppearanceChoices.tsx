@@ -9,8 +9,6 @@ import { GlassRow } from './GlassRow';
 import { SquareCornersRow } from './SquareCornersRow';
 import { ToolbarOnHoverRow } from './ToolbarOnHoverRow';
 import { CompanionSettings } from './CompanionSettings';
-import { SettingChoiceRow } from '../react/components/command-palette/SettingRows';
-import { t } from '../i18n';
 import './appearance-choices.scss';
 
 interface AppearanceChoicesProps {
@@ -22,9 +20,7 @@ interface AppearanceChoicesProps {
 export function AppearanceChoices({ app, looks }: AppearanceChoicesProps): React.JSX.Element {
   return (
     <div className="atlas-appearance-choices">
-      <SettingChoiceRow label={t('appearance.look')}>
-        <LookCards looks={looks} />
-      </SettingChoiceRow>
+      <LookCards looks={looks} />
       <DiceColourRow app={app} />
       <div className="atlas-appearance-switches">
         <GlassRow looks={looks} />

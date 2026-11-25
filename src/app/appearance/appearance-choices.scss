@@ -40,7 +40,13 @@
   max-width: 24rem;
 }
 
-// The dice colours on one line, centred.
+// The dice colours on one line, centred. Each die's image starts with an empty border above the die and casts a shadow
+// below it: the row moves up by that border and keeps room below for the shadow, so the die stands as far from the
+// look cards' text as from the switches' (measured on the d20 previews: 4.5 px above, 14.5 px of shadow below).
+.atlas-appearance-dice {
+  margin-block: (-$spacing-xs) $spacing-s;
+}
+
 .atlas-appearance-dice > .atlas-dice-colour-strip {
   --atlas-dice-columns: 11;
   flex-wrap: nowrap;
