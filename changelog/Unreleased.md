@@ -46,6 +46,7 @@
 
 ## Fixed
 
+- Where tokens overlap, their bars, condition badges, nameplates and height chips lie in the same order as the tokens themselves, every time the scene opens: the token put down last shows its own on top, instead of an order that changed with how fast each token's picture loaded
 - The grid of a very large map is no longer found at the wrong size where it is drawn on part of the map only, such as a big generated dungeon with dashed lines on its floors
 - A large generated dungeon or cave is no longer saved with blank floors: its floors are drawn in pieces the graphics card can hold, and where a floor still cannot be drawn, the generator says so and you can try again instead of getting a scene with empty maps
 - The toolbar's Lighting button is named in your language, as its menu already was
