@@ -113,6 +113,8 @@ export class SelectionHighlights {
   private readonly highlights = new Map<string, Highlight>();
   private readonly inks = new SharedGraphicsContexts();
   private readonly group = new Graphics({ label: 'selectionGroupFrame' });
+  /** The group frame, redrawn at every step of a drag, in a render group of its own: a redraw then never makes PIXI pack every highlight again. */
+  private readonly groupLayer = new Container({ label: 'selectionGroupFrameLayer', isRenderGroup: true });
   private readonly groupFade = new ValueTransition(1, MOTION_NORMAL_MS, (value) => { this.group.alpha = value; });
   private groupDrawn = '';
   /** The group frame as drawn, in screen pixels at `frameZoom`; null while there is none. */
@@ -128,7 +130,8 @@ export class SelectionHighlights {
   private readonly themeObserver: MutationObserver | null;
 
   constructor(private readonly deps: SelectionHighlightDeps) {
-    this.layer.addChild(this.group);
+    this.groupLayer.addChild(this.group);
+    this.layer.addChild(this.groupLayer);
     deps.viewport.on('zoomed', this.onViewChange);
     deps.viewport.on('zoomed-end', this.onViewChange);
     deps.viewport.on('moved', this.onViewChange);
