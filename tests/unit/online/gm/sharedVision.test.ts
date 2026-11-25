@@ -297,3 +297,21 @@ describe.each<Basis>(['cpu', 'renderer'])('players\' own pictures cut from the %
     });
   });
 });
+
+describe('a player\'s own picture cut from the GM\'s renderer', () => {
+  it('follows the sight the renderer draws as it tells of each change, long before the next poll', async () => {
+    // The renderer draws Ben gliding: his sight is still where he stood while the store already has him in his room.
+    let drawn: SceneState | null = rooms({ ben: { x: 800, y: 900 } });
+    const table = shareHarness(rooms(), IMAGES, seats);
+    table.basis = pictureBasisOf(fakeAtlasTab({ state: () => drawn ?? table.state(), source: GENERIC_SOURCE, bounds: MAP }).renderer);
+    table.settings = { ...PLAYER_SETTINGS, sharedVision: false };
+    table.share.start();
+    await table.set(rooms());
+    await table.advance(100);
+    expect(names(toPlayer(table.sent, BEN))).toEqual(['Ben']);
+    drawn = null;
+    table.sightChanged();
+    await table.advance(100);
+    expect(names(toPlayer(table.sent, BEN))).toEqual(['Ben', 'Goblin']);
+  });
+});

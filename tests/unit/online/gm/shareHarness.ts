@@ -84,6 +84,8 @@ export interface ShareHarness {
   /** How often the store was handed a video to keep. */
   videoReads: number;
   set(next: SceneState): Promise<void>;
+  /** The GM's view tells that the players' sight changed without a store change (a token gliding to its place). */
+  sightChanged(): void;
   /** The store's state now, as the share's own writes (players' moves) leave it. */
   state(): SceneState;
   /** Moves the clock on, running the timers that fall due, and lets reads settle. */
@@ -105,6 +107,7 @@ const counterId = (count: number): string => count.toString(16).padStart(24, '0'
 export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Uint8Array<ArrayBuffer>>, seats?: SeatSource, real?: SceneStore, stored?: AssetStoring, memory?: MemoryPorts): ShareHarness {
   let current = initial;
   const listeners: ((next: SceneState) => void)[] = [];
+  const sightListeners = new Set<() => void>();
   const store: SceneStore = real ?? {
     getState: () => current,
     setState: (recipe) => void harness.set(produce(current, recipe)),
@@ -151,6 +154,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       showNames: () => harness.settings.showNames,
       tokenRules: () => harness.rules,
       tokenSource: () => (harness.rendered ? source : null),
+      onSightChange: (listener) => (sightListeners.add(listener), () => void sightListeners.delete(listener)),
       gmDragRuler: () => harness.gmRuler,
       gmMarks: () => harness.marks,
       showPlayerDrags: (drags) => harness.playerDrags.push(drags),
@@ -180,6 +184,9 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       }),
     }),
     state: () => store.getState(),
+    sightChanged: () => {
+      for (const listener of sightListeners) listener();
+    },
     set: async (next) => {
       current = next;
       for (const listener of listeners) listener(next);

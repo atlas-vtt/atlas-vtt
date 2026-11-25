@@ -50,6 +50,18 @@ describe('the tokens players see', () => {
     expect(lastList(table)?.tokens).toEqual([]);
   });
 
+  it('follow the players\' sight as the GM\'s view tells of each change, long before the next poll', async () => {
+    const table = await started();
+    table.perception = (id) => (id === 'b' ? 'unseen' : 'seen');
+    table.sightChanged();
+    await table.advance(TOKEN_INTERVAL_MS);
+    expect(lastList(table)?.tokens).toHaveLength(1);
+    table.perception = undefined;
+    table.sightChanged();
+    await table.advance(TOKEN_INTERVAL_MS);
+    expect(lastList(table)?.tokens).toHaveLength(2);
+  });
+
   it('follow a drag at most every interval, and the last place always goes out', async () => {
     const table = await started();
     const before = tokenLists(table.sent).length;
