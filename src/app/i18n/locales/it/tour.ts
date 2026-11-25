@@ -89,6 +89,7 @@ export const tour = {
   "tour.welcome.paletteKey": "Riquadro comandi",
   "tour.welcome.discord": "Unisciti al Discord",
   "tour.welcome.guides": "Leggi le guide",
+  "tour.welcome.guidesBody": "Ogni strumento spiegato passo dopo passo.",
   "tour.welcome.joinKicker": "Community",
   "tour.welcome.joinTitle": "Atlas cresce con chi ci gioca",
   "tour.welcome.joinBody": "Atlas è gratuito e open source. Passa a salutare, aiutaci a mandarlo avanti o costruiscilo con noi.",

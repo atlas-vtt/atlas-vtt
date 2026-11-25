@@ -200,13 +200,13 @@
 
 // ── Story bars and chips ────────────────────────────────────────────────────
 
-// Across the top, level with the close button and clear of it.
+// Across the top, from inset to inset.
 .atlas-welcome-carousel__stories {
   position: absolute;
   z-index: 3;
   top: $close-button-gap;
   left: $spacing-2xl;
-  right: calc(#{$close-button-gap} + #{$close-button-size} + #{$spacing-l});
+  right: $spacing-2xl;
   display: flex;
   gap: $spacing-s;
   height: $close-button-size;

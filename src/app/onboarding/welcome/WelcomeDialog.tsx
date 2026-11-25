@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useIsPresent } from 'framer-motion';
 import type { App } from 'obsidian';
 import { Button } from '../../packages/components/primitives/button';
-import { CloseButton } from '../../packages/components/primitives/CloseButton';
 import { useDialogWindowVariants, usePrefersReducedMotion } from '../../packages/components/primitives/dialogMotion';
 import type { SettingsService } from '../../services/SettingsService';
 import type { LookService } from '../../appearance/lookService';
@@ -26,7 +25,7 @@ interface WelcomeDialogProps {
   carousel: React.ReactNode;
   /** Whether this GM is to be welcomed at all (`shouldWelcome`); completing the wizard closes it either way. */
   open?: boolean;
-  /** Opens Atlas' start page, where Open Atlas and Skip lead; Close and Escape only end the wizard. */
+  /** Opens Atlas' start page, once the GM ends the wizard with Open Atlas. */
   onOpenAtlas: () => void;
   /** The document it opens in; the main window's by default. */
   doc?: Document;
@@ -37,12 +36,13 @@ const PAGES: readonly WelcomePage[] = ['carousel', 'help', 'look', 'join'];
 
 /**
  * The welcome wizard: a large dialog of four pages, what Atlas is, where help is, the look, and the community around
- * Atlas. Skip, Close, Escape and Open Atlas all end it; Skip and Open Atlas then open the start page, whose tour follows.
+ * Atlas. Every GM is to see the last page: Skip and Escape lead there, and only its Open Atlas ends the wizard and opens
+ * the start page, whose tour follows.
  */
 export function WelcomeDialog({ open = true, ...props }: WelcomeDialogProps): React.JSX.Element {
   // Subscribed, so it closes as soon as it is completed, with the dialogs' closing motion: keep it mounted after.
   useAtlasSettings(props.settings);
-  const shown = open && props.settings.shouldShowTutorial('welcome');
+  const shown = open && !props.settings.hasBeenWelcomed();
   return <AnimatePresence>{shown && <WelcomeWindow key="welcome" {...props} />}</AnimatePresence>;
 }
 
@@ -61,13 +61,14 @@ function WelcomeWindow({ app, settings, looks, carousel, onOpenAtlas, doc }: Omi
     finish();
     onOpenAtlas();
   };
+  const toEnd = useCallback(() => setAt(PAGES.length - 1), []);
   const last = at === PAGES.length - 1;
   const forward = (): void => { if (last) openAtlas(); else setAt(at + 1); };
   const back = (): void => setAt(Math.max(0, at - 1));
 
   // Fading out, it leaves the keys and the focus to the tour that follows.
   const present = useIsPresent();
-  useDialogFocus(windowRef, finish, present);
+  useDialogFocus(windowRef, toEnd, present);
   // The page's main button keeps the focus, so Enter always goes on.
   useEffect(() => { windowRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus(); }, [at]);
 
@@ -93,7 +94,6 @@ function WelcomeWindow({ app, settings, looks, carousel, onOpenAtlas, doc }: Omi
           aria-label={t('tour.welcome.label')}
           onKeyDown={onKeyDown}
         >
-          <CloseButton className="atlas-welcome__close" onClick={finish} />
           <div className="atlas-welcome__page" key={page}>
             {page === 'carousel' && (
               <WelcomeIntro.Provider value={intro.state}>
@@ -112,7 +112,7 @@ function WelcomeWindow({ app, settings, looks, carousel, onOpenAtlas, doc }: Omi
                 : PAGES.map((name, index) => <span key={name} aria-hidden="true" className="atlas-welcome__bar" data-done={index <= at} />)}
             </div>
             {at === 0
-              ? <Button variant="ghost" onClick={openAtlas}>{t('tour.skip')}</Button>
+              ? <Button variant="ghost" onClick={toEnd}>{t('tour.skip')}</Button>
               : <Button variant="ghost" onClick={back}>{t('common.back')}</Button>}
             <Button key={last ? 'start' : 'next'} data-autofocus onClick={forward}>
               {last ? t('tour.welcome.start') : t('tour.next')}

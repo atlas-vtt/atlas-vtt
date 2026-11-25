@@ -334,9 +334,8 @@ export default class AtlasVTTPlugin extends Plugin {
       registerColorSwatchIcons();
       this.imageDisplayService.registerContextMenu();
       registerChromeVisibility(this);
-      this.changelogService?.showUpdates();
       warnOfPartUpdate(this.manifest.version);
-      runInBackground(existingInstallation.then((existing) => { if (!this.unloaded) startFirstRun(this, this.settingsService, existing); }), 'Welcoming the GM');
+      runInBackground(existingInstallation.then((existing) => { if (!this.unloaded) startFirstRun(this, this.settingsService, existing, () => this.changelogService?.showUpdates()); }), 'Welcoming the GM');
       runInBackground(addStarterTokens(this.app, AssetService.getInstance(this.app), this.settingsService), 'Adding the starter tokens');
       runInBackground(this.carryOverTokenBars(), 'Carrying over the token bar settings');
       runInBackground(migrateLegacySnapshots(this.app, AssetService.getInstance(this.app)), 'Moving scene snapshots into their collections');

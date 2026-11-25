@@ -85,18 +85,24 @@ $blueprint-shade: #040e20;
   color: $slide-ink;
   text-align: start;
   cursor: pointer;
-  transition: border-color $transition-normal $transition-ease, background-color $transition-normal $transition-ease;
+  // Leaving lets go softly; the hover below comes at once.
+  transition: border-color 180ms $transition-ease, background-color 180ms $transition-ease;
 
   &[data-brand='discord'] { --atlas-brand: #7984f5; }
   &[data-brand='patreon'] { --atlas-brand: #ff5a63; }
 
+  // A clearly lighter glass the moment the pointer arrives, so even a quick pass over the cards shows.
   @include atlas-hover {
-    border-color: ink(0.34);
-    background: blueprint(0.72);
+    border-color: ink(0.42);
+    background: color-mix(in oklch, #2c5aa6 42%, transparent);
+    transition-duration: 60ms;
+
+    .atlas-welcome-community__icon { background: color-mix(in oklch, var(--atlas-brand) 30%, transparent); }
 
     .atlas-welcome-community__arrow {
       color: $slide-ink;
       transform: translate(2px, -2px);
+      transition-duration: 60ms;
     }
   }
 }
@@ -109,6 +115,7 @@ $blueprint-shade: #040e20;
   border-radius: $radius-m;
   background: color-mix(in oklch, var(--atlas-brand) 18%, transparent);
   color: var(--atlas-brand);
+  transition: background-color 180ms $transition-ease;
 
   svg {
     width: 22px;
@@ -140,22 +147,27 @@ $blueprint-shade: #040e20;
   width: $icon-s;
   height: $icon-s;
   color: ink(0.5);
-  transition: color $transition-normal $transition-ease, transform $transition-normal $transition-ease-out;
+  transition: color 180ms $transition-ease, transform 180ms $transition-ease-out;
 }
 
-// The words, then the cards one after another, rise in as the page comes; the words with the slides' own rise.
+// The words, then the cards one after another, grow in as the page comes. They grow from a little smaller rather than
+// rise from below: a moved element counts towards the page's scroll height, and the page is full, so a rise showed a
+// scrollbar while it ran. Filled backwards only, so the end of the entrance holds no transform over the hover's.
 @media (prefers-reduced-motion: no-preference) {
   .atlas-welcome-page--join > .atlas-welcome-text,
   .atlas-welcome-community__link {
-    animation: atlas-welcome-join-rise 700ms $transition-ease-out both;
+    animation: atlas-welcome-join-rise 700ms $transition-ease-out backwards;
   }
+
+  .atlas-welcome-page--join > .atlas-welcome-text { transform-origin: left bottom; }
 
   .atlas-welcome-page--join > .atlas-welcome-text { animation-delay: 150ms; }
   .atlas-welcome-community__link:nth-child(1) { animation-delay: 250ms; }
   .atlas-welcome-community__link:nth-child(2) { animation-delay: 330ms; }
   .atlas-welcome-community__link:nth-child(3) { animation-delay: 410ms; }
+  .atlas-welcome-community__link:nth-child(4) { animation-delay: 490ms; }
 }
 
 @keyframes atlas-welcome-join-rise {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: scale(0.97); }
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import type { App } from 'obsidian';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, BookOpen } from 'lucide-react';
 import { Button } from '../../packages/components/primitives/button';
 import { ATLAS_DISCORD_URL, ATLAS_DOCS_URL, ATLAS_GITHUB_URL, ATLAS_PATREON_URL } from '../../support/communityLinks';
 import type { LookService } from '../../appearance/lookService';
@@ -67,20 +67,21 @@ export function LookPage({ app, looks }: { app: App; looks: LookService }): Reac
 }
 
 interface CommunityLink {
-  id: 'discord' | 'patreon' | 'github';
+  id: 'guides' | 'discord' | 'patreon' | 'github';
   url: string;
-  Icon: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
+  Icon: React.ComponentType;
   title: MessageKey;
   body: MessageKey;
 }
 
 const COMMUNITY: readonly CommunityLink[] = [
+  { id: 'guides', url: ATLAS_DOCS_URL, Icon: BookOpen, title: 'tour.welcome.guides', body: 'tour.welcome.guidesBody' },
   { id: 'discord', url: ATLAS_DISCORD_URL, Icon: DiscordIcon, title: 'tour.welcome.discord', body: 'tour.welcome.discordBody' },
   { id: 'patreon', url: ATLAS_PATREON_URL, Icon: PatreonIcon, title: 'tour.welcome.patreon', body: 'tour.welcome.patreonBody' },
   { id: 'github', url: ATLAS_GITHUB_URL, Icon: GitHubIcon, title: 'tour.welcome.github', body: 'tour.welcome.githubBody' },
 ];
 
-/** The people around Atlas, on a blueprint of a dungeon: its Discord, its Patreon and its code, each a card that opens in the browser. */
+/** Where to go from here, on a blueprint of a dungeon: the guides, the Discord, the Patreon and the code, each a card that opens in the browser. */
 export function JoinPage(): React.JSX.Element {
   return (
     <div className="atlas-welcome-page atlas-welcome-page--split atlas-welcome-page--join">

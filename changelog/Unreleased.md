@@ -1,6 +1,6 @@
 ## New
 
-- A welcome wizard greets you as soon as you install Atlas: what Atlas does, with links to its guides and to the Stream Deck plugin, where help is, your look, and where to meet other GMs on Discord, support Atlas on Patreon or help build it on GitHub. Open Atlas takes you to the start page
+- A welcome wizard greets you once, as soon as you install or update Atlas: what Atlas does, with links to its guides and to the Stream Deck plugin, where help is, your look, and where to read the guides, meet other GMs on Discord, support Atlas on Patreon or help build it on GitHub. Open Atlas takes you to the start page, and the release notes follow
 - Atlas has looks of its own, no theme to install: Medieval and a new Sci-fi look, or keep your own theme. Pick one on picture cards under Appearance settings in the command palette or in the welcome wizard; each device keeps its own. The fog's edge and the dice numerals follow the look
 - Appearance settings also pick the accent colour: the look's own, eight presets or any colour, in step with Obsidian's accent colour setting. Under Atlas' looks it colours your notes' headings, bold lead-ins, quotes and table headings too
 - The Medieval look's ivy takes any colour you like, shading and all: pick Natural, a preset or your own under Appearance settings
