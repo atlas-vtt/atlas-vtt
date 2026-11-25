@@ -129,11 +129,12 @@
 // The look page: its words over the appearance choices, laid out as Appearance settings lay them out. The page is a
 // size container, so the look cards can take the height the rest leaves: what stands around the pictures is about
 // $look-around tall (heading and its line, the gaps, the Look label, the cards' names and notes, the row of switches,
-// the accent's and the ivy's swatches side by side, the dice colours' row of d20s; measured at 1440 x 900), and the
-// cards are as wide as pictures of the rest are at their 480 : 300 ratio, three in a row. From about 1200 x 800 up they
-// fill the page's width; a smaller window gets smaller cards instead of a scrolling page. A taller translation scrolls
-// the page.
-$look-around: 480px;
+// the accent's and the ivy's swatches side by side; measured at 1440 x 900), and the cards are as wide as pictures of
+// the rest are at their 480 : 300 ratio, three in a row. From about 1200 x 800 up they fill the page's width; a
+// smaller window gets smaller cards instead of a scrolling page. A taller translation scrolls the page. The dice
+// colours' row under the swatches is left out on purpose: the cards keep the size they have in Appearance settings,
+// and the page scrolls to the dice.
+$look-around: 360px;
 $look-cards-min: 420px;
 
 .atlas-welcome[data-page='look'] .atlas-welcome__page {

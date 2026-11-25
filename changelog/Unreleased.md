@@ -4,7 +4,7 @@
 - Atlas has looks of its own, no theme to install: Medieval and a new Sci-fi look, or keep your own theme. Pick one on picture cards under Appearance settings in the command palette or in the welcome wizard; each device keeps its own. The fog's edge and the dice numerals follow the look
 - Appearance settings also pick the accent colour: the look's own, eight presets or any colour, in step with Obsidian's accent colour setting. Under Atlas' looks it colours your notes' headings, bold lead-ins, quotes and table headings too
 - The Medieval look's ivy takes any colour you like, shading and all: pick Natural, a preset or your own under Appearance settings
-- Your dice can take any of the accent colour's eight presets, besides Light, Dark and following the accent colour. Pick one on a row of d20s under Appearance settings or in Dice settings
+- Your dice can take any of the accent colour's eight presets, besides following the accent colour and the light and dark dice, now called Wood and Charcoal. Pick one from the d20s under Appearance settings or in Dice settings
 - Both looks can let the map show through: with Transparency under Appearance settings, bars, widgets, dice, hover previews and Atlas' sidebars (the asset manager, Collection Settings and its other dialogs, the Loot Roller, the Sound page) turn to smoked glass. Sci-fi starts with it on, Medieval with it off, and each look keeps your choice
 - Square corners, under Appearance settings: no rounded corners anywhere in Atlas, for a retro look, under any look
 - Show toolbar on hover moved from the toolbar editor to Appearance settings, whose header also leads to Customize toolbar and to Dice settings
@@ -26,6 +26,7 @@
 
 - **Atlas is faster.** Scenes with many walls, tokens and lights open and switch sooner, and a scene you had open a moment ago comes back sooner still
 - Maps with many tokens are drawn in far fewer steps, so panning, zooming and dragging tokens stay smooth on weaker computers too
+- Zooming and dragging stay smooth with many tokens selected: with 300 tokens selected, zooming no longer stutters, and dragging them all at once is several times faster
 - Atlas takes less time to start when Obsidian opens or reloads
 - The dungeon generator draws the floors of a dungeon or cave at the same time, so a scene with several floors is made much sooner
 - A new map's grid is looked for as soon as its image is in, without waiting for the whole map to be prepared

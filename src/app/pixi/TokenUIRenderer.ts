@@ -97,6 +97,8 @@ export class TokenUIRenderer {
   private lastUpdateData: string = ''; // Cache for checking if update is needed
   private isHiddenDuringResize: boolean = false;
   private isHiddenDuringRotation: boolean = false;
+  /** The zoom changed while nothing this UI shows followed it (`refreshScale`). */
+  private zoomMissed = false;
 
   // Name badge elements
   private nameBadge: Graphics;
@@ -526,12 +528,27 @@ export class TokenUIRenderer {
     return this.belowToken.scale.x;
   }
 
-  /** Re-applies the UI scale after the viewport zoomed. */
+  /**
+   * Re-applies the UI scale after the viewport zoomed. A resting UI keeps its scale at every zoom:
+   * only its height chip and conditions card follow the zoom, and they are placed once they show.
+   */
   public refreshScale(): void {
     if (this.currentTokenSize <= 0) return;
+    this.zoomMissed = !this.followsZoom();
+    if (this.zoomMissed) return;
     this.layoutUIScale();
     const { ringRadius, cardScale } = this.conditionsLayout();
     this.conditionUI.setCardScale(ringRadius, cardScale);
+  }
+
+  /** Whether something this UI shows follows the zoom: a selected token's size, the height chip, the conditions card. */
+  private followsZoom(): boolean {
+    return this.emphasis.value > 0 || this.emphasis.targetValue > 0 || this.heightChip.view.visible || this.conditionUI.cardShown;
+  }
+
+  /** Places what follows the zoom, if the zoom changed while nothing of it showed. */
+  private catchUpZoom(): void {
+    if (this.zoomMissed) this.refreshScale();
   }
 
   /** Redraws the condition badges from the current definitions, e.g. after an icon or colour was edited. */
@@ -583,6 +600,7 @@ export class TokenUIRenderer {
   /** The chip steps aside while its token is resized, turned, pressed or dragged, as the conditions card does. */
   private updateHeightChipVisibility(): void {
     this.heightChip.view.visible = this.heightText !== '' && !this.isHiddenDuringResize && !this.isHiddenDuringRotation && !this.isHeld;
+    this.catchUpZoom();
   }
 
   /** Eases the UI to a selected token's on-screen size, or back to rest while unselected or held. */
@@ -591,6 +609,7 @@ export class TokenUIRenderer {
     if (target === this.emphasis.targetValue) return;
     if (prefersReducedMotion(this.doc.body)) this.emphasis.jumpTo(target);
     else this.emphasis.animateTo(target);
+    this.catchUpZoom();
   }
 
   /** The scale of a selected token's UI: its constant size on screen, never below the resting size. */
@@ -663,6 +682,7 @@ export class TokenUIRenderer {
   /** The conditions card is for looking at a token: selecting, pressing or dragging it hides the card. */
   private updateConditionCard(): void {
     this.conditionUI.setHovered(this.showsConditionCard());
+    this.catchUpZoom();
   }
 
   /** Whether the card naming the token's conditions shows: the token is looked at, not selected, pressed or dragged. */
@@ -677,6 +697,7 @@ export class TokenUIRenderer {
    */
   public showConditionCard(shown: boolean): void {
     this.conditionUI.setHovered(shown);
+    this.catchUpZoom();
   }
   
   /** Where the token lies in the pile, which this UI follows. */
