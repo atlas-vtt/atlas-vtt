@@ -59,6 +59,8 @@
   > .atlas-sound-lib__rail {
     flex: 1;
     width: auto;
+    // The column is the rail's ground: one of the rail's own would cover what a look lays on the column.
+    background: none;
   }
 }
 
