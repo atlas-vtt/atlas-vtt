@@ -154,7 +154,9 @@ export class LightInteraction {
     const origin = { x: light.x, y: light.y };
     const add = event.ctrlKey || event.metaKey;
     const editing = this.deps.canMove();
-    if (editing) this.deps.select(lightId, add);
+    // Keep a clicked light in the shared selection for clipboard shortcuts with every tool.
+    // Whether it can be moved remains governed by the active tool below.
+    this.deps.select(lightId, add);
     const canMove = (editing || this.deps.movesThings()) && !light.area;
     let dragging = false;
     let moved = false;
