@@ -9,6 +9,7 @@ import type { LookService } from '../../appearance/lookService';
 import { useAtlasSettings, useHotkeyLabels } from '../../keyboard/useMapHotkeys';
 import { portalHost } from '../../host/portalHost';
 import { useDialogFocus } from '../useDialogFocus';
+import { useDicePreviewWarmUp } from '../../react/hooks/useDicePreviews';
 import { HelpPage, JoinPage, LookPage } from './welcomePages';
 import { WelcomeFootStart } from './welcomeFoot';
 import { useWelcomeIntro, WelcomeIntro } from './welcomeIntro';
@@ -48,6 +49,8 @@ export function WelcomeDialog({ open = true, ...props }: WelcomeDialogProps): Re
 
 function WelcomeWindow({ app, settings, looks, carousel, onOpenAtlas, doc }: Omit<WelcomeDialogProps, 'open'>): React.JSX.Element {
   const [at, setAt] = useState(0);
+  // From the second page on, the dice colours of the look page render ahead: it then shows them whole, at once.
+  useDicePreviewWarmUp(app, at >= 1, 'soon');
   // Where the carousel puts its chips: the foot's start, in place of the pages' bars.
   const [footStart, setFootStart] = useState<HTMLElement | null>(null);
   const windowRef = useRef<HTMLDivElement>(null);

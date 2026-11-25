@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link2 } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
 import { t } from '../../../i18n';
@@ -8,18 +8,31 @@ import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 
 interface DiceColourStripProps {
   value: DiceColour;
-  /** Rendered d20s per colour; a colour without one shows an empty well while it renders. */
-  previews: DicePreviews;
+  /** The rendered d20s, a whole set; null shows empty wells while the first set renders. */
+  previews: DicePreviews | null;
   onChange: (colour: DiceColour) => void;
 }
 
 /** The dice colours side by side, each as the d20 it gives and named by its tooltip, to click; the chosen one ringed. */
 export function DiceColourStrip({ value, previews, onChange }: DiceColourStripProps): React.ReactElement {
-  const ring = previews.ring ? { '--atlas-dice-ring': `url("${previews.ring}")` } as React.CSSProperties : undefined;
+  // Dice there when the strip opens just show; a set that arrives after fades in, all of it at once, and only then.
+  const [waiting, setWaiting] = useState(previews === null);
+  const [arriving, setArriving] = useState(false);
+  if (waiting && previews) {
+    setWaiting(false);
+    setArriving(true);
+  }
+  const ring = previews ? { '--atlas-dice-ring': `url("${previews.ring}")` } as React.CSSProperties : undefined;
   return (
-    <div className="atlas-dice-colour-strip" role="radiogroup" aria-label={t('diceSettings.colour')} style={ring}>
+    <div
+      className={cn('atlas-dice-colour-strip', arriving && 'atlas-dice-colour-strip--arriving')}
+      onAnimationEnd={() => setArriving(false)}
+      role="radiogroup"
+      aria-label={t('diceSettings.colour')}
+      style={ring}
+    >
       {DICE_COLOUR_OPTIONS.map((option) => {
-        const preview = previews.images[option.value];
+        const preview = previews?.images[option.value];
         const active = option.value === value;
         return (
           <LabelTooltip key={option.value} label={option.label}>

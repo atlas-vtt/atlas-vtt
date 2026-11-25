@@ -72,7 +72,30 @@ $dice-gap: $spacing-xs;
   filter: brightness(1.12);
 }
 
-// The chosen die's ring (`renderDicePreviews`), laid over its image in the page's ink, as the chosen swatch's outline.
+// A set that arrives while the strip is open comes in as one, every die and the ring together, settling into place.
+.atlas-dice-colour-strip--arriving .atlas-dice-colour-strip__die,
+.atlas-dice-colour-strip--arriving .atlas-dice-colour-strip__ring {
+  animation: atlas-dice-arrive $transition-normal $transition-ease-out both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: atlas-dice-arrive-fade;
+  }
+}
+
+@keyframes atlas-dice-arrive {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
+@keyframes atlas-dice-arrive-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+// The chosen die's ring (`dicePreviews`), laid over its image in the page's ink, as the chosen swatch's outline.
 .atlas-dice-colour-strip__ring {
   position: absolute;
   inset: -16.667%;

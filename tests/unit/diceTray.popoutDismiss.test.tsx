@@ -11,7 +11,7 @@ vi.mock('../../src/app/react/root/AtlasUIContext', () => ({
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (state: { isPlayerView: boolean }) => unknown) => selector({ isPlayerView: false }),
 }));
-vi.mock('../../src/app/react/hooks/useDicePreviews', () => ({ useDicePreviews: () => ({ images: {}, ring: null }) }));
+vi.mock('../../src/app/react/hooks/useDicePreviews', () => ({ useDicePreviews: () => null }));
 vi.mock('../../src/app/packages/components/primitives/tooltip', () => ({
   LabelTooltip: ({ children }: { children: React.ReactNode }): React.ReactNode => children,
   TooltipProvider: ({ children }: { children: React.ReactNode }): React.ReactNode => children,

@@ -17,11 +17,10 @@ async function pixelsOf(url: string): Promise<{ data: Uint8ClampedArray; size: n
 
 describe('the ring round the chosen dice colour', () => {
   it('is smooth, closed all round the die, and leaves the die itself uncovered', async () => {
-    await fillDicePreviews('medieval', true);
+    await fillDicePreviews('medieval', 'shown');
     const previews = cachedDicePreviews('medieval');
-    expect(Object.keys(previews.images)).toEqual(DICE_COLOUR_OPTIONS.map((option) => option.value));
-    expect(previews.ring).not.toBeNull();
-    const { data, size } = await pixelsOf(previews.ring!);
+    expect(Object.keys(previews?.images ?? {})).toEqual(DICE_COLOUR_OPTIONS.map((option) => option.value));
+    const { data, size } = await pixelsOf(previews!.ring);
     const alpha = (x: number, y: number): number => data[(Math.round(y) * size + Math.round(x)) * 4 + 3]!;
 
     let partial = 0;
