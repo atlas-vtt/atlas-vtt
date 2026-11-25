@@ -66,12 +66,11 @@ $wide: 8px;
 }
 
 // An area that is that containing block (positioned, transformed, contained): the frame lies in its scrolled content
-// and is moved back by what the area scrolled, on the compositor, so it holds still in the area's view.
+// and is moved back by what the area scrolled. What moves the frame and the thumbs is in the shadow root's own
+// stylesheet (`overlay-scrollbar-motion.scss`).
 [data-atlas-scrollbar]::part(frame contained) {
   position-anchor: none;
   inset: 0;
-  animation: atlas-scrollbar-hold-y linear both, atlas-scrollbar-hold-x linear both;
-  animation-timeline: --atlas-scrollbar-y, --atlas-scrollbar-x;
 }
 
 [data-atlas-scrollbar]::part(thumb) {
@@ -92,8 +91,6 @@ $wide: 8px;
   width: $band;
   height: var(--atlas-scrollbar-thumb-y);
   border-left-width: $band - $edge - $thin;
-  animation: atlas-scrollbar-travel-y linear both;
-  animation-timeline: --atlas-scrollbar-y;
 }
 
 [data-atlas-scrollbar]::part(thumb-x) {
@@ -102,8 +99,6 @@ $wide: 8px;
   width: var(--atlas-scrollbar-thumb-x);
   height: $band;
   border-top-width: $band - $edge - $thin;
-  animation: atlas-scrollbar-travel-x linear both;
-  animation-timeline: --atlas-scrollbar-x;
 }
 
 [data-atlas-scrollbar]::part(thumb-y):hover,
@@ -116,26 +111,6 @@ $wide: 8px;
 [data-atlas-scrollbar]::part(thumb-x dragging) {
   border-top-width: $band - $edge - $wide;
   background-color: var(--scrollbar-active-thumb-bg);
-}
-
-@keyframes atlas-scrollbar-hold-y {
-  from { translate: 0 0; }
-  to { translate: 0 var(--atlas-scrollbar-range-y); }
-}
-
-@keyframes atlas-scrollbar-hold-x {
-  from { transform: none; }
-  to { transform: translateX(var(--atlas-scrollbar-range-x)); }
-}
-
-@keyframes atlas-scrollbar-travel-y {
-  from { translate: 0 0; }
-  to { translate: 0 var(--atlas-scrollbar-travel-y); }
-}
-
-@keyframes atlas-scrollbar-travel-x {
-  from { translate: 0 0; }
-  to { translate: var(--atlas-scrollbar-travel-x) 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

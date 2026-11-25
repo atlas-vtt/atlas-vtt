@@ -1,3 +1,4 @@
+import motion from './overlay-scrollbar-motion.scss?inline';
 import { containsItsPositioned, scrollAxes } from './scrollAreas';
 import { thumbGeometry } from './thumbGeometry';
 
@@ -21,10 +22,11 @@ export interface OverlayScrollbarHost {
 /**
  * The scrollbar of one scroll area, drawn over its content in the area's shadow root (the area's children are
  * slotted as they are, so no selector or layout of theirs changes) and styled by `styles/_overlay-scrollbars.scss`
- * through `::part()`. The thumbs move with a scroll-driven animation, so scrolling runs no script; this only
- * sizes them, shows them for a moment and lets them be dragged.
+ * through `::part()`. The thumbs move with a scroll-driven animation (`overlay-scrollbar-motion.scss`, in the shadow
+ * root), so scrolling runs no script; this only sizes them, shows them for a moment and lets them be dragged.
  */
 export class OverlayScrollbar {
+  private readonly motion: HTMLStyleElement;
   private readonly frame: HTMLElement;
   private readonly thumbs: Record<Axis, HTMLElement>;
   private readonly travel: Record<Axis, number> = { y: 0, x: 0 };
@@ -47,6 +49,7 @@ export class OverlayScrollbar {
   }
 
   constructor(readonly area: HTMLElement, root: ShadowRoot, private readonly host: OverlayScrollbarHost) {
+    this.motion = root.createEl('style', { text: motion });
     this.frame = root.createDiv({ attr: { part: 'frame', 'aria-hidden': 'true' } });
     this.thumbs = {
       y: this.frame.createDiv({ attr: { part: 'thumb thumb-y', hidden: '' } }),
@@ -125,6 +128,7 @@ export class OverlayScrollbar {
 
   destroy(): void {
     this.area.win.clearTimeout(this.hideTimer);
+    this.motion.remove();
     this.frame.remove();
     this.area.removeAttribute('data-atlas-scrollbar');
   }
