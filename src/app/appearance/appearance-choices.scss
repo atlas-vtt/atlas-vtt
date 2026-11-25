@@ -1,7 +1,7 @@
 @use '../../../styles/tokens' as *;
 @use '../../../styles/mixins' as *;
 
-// The look over the switches over the two colours over the dice (AppearanceChoices.tsx).
+// The look over the switches over the dice over the two colours (AppearanceChoices.tsx).
 .atlas-appearance-choices {
   @include atlas-flex-col($spacing-l);
   min-width: 0;
@@ -40,8 +40,14 @@
   max-width: 24rem;
 }
 
-// The dice colours centred under the two colours, name and hint centred above them.
+// The dice colours on one line, centred, name and hint centred above them.
 .atlas-appearance-dice {
   align-items: center;
   text-align: center;
+
+  > .atlas-dice-colour-strip {
+    --atlas-dice-columns: 11;
+    flex-wrap: nowrap;
+    width: 100%;
+  }
 }
