@@ -17,6 +17,7 @@ export const appearance: Translation = {
   'appearance.ivy': 'Цвет плюща',
   'appearance.ivyHint': 'Листья и лозы на панелях стиля «Средневековье», тени сохраняются.',
   'appearance.ivyMediaevalOnly': 'Плющ растёт только в стиле «Средневековье».',
+  'appearance.diceHint': 'Кубики следуют цвету акцента или получают свой цвет.',
   'appearance.ivyNatural': 'Природный',
   'appearance.glass': 'Прозрачность',
   'appearance.glassHint': 'Сквозь панели, виджеты и кубики размыто просвечивает карта.',

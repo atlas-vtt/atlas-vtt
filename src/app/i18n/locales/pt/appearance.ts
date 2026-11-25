@@ -17,6 +17,7 @@ export const appearance: Translation = {
   'appearance.ivy': 'Cor da hera',
   'appearance.ivyHint': 'As folhas e trepadeiras dos painéis Medieval, mantendo o sombreado.',
   'appearance.ivyMediaevalOnly': 'A hera só cresce no visual Medieval.',
+  'appearance.diceHint': 'Os seus dados seguem a cor de destaque ou têm uma cor própria.',
   'appearance.ivyNatural': 'Natural',
   'appearance.glass': 'Transparência',
   'appearance.glassHint': 'Barras, widgets e dados deixam o mapa aparecer por trás, desfocado.',

@@ -1,9 +1,13 @@
 /** How the dice look: the colour of their body and the face of their numerals. */
 
+import { COLOUR_PRESETS, type ColourPresetId } from '../appearance/colourPresets';
 import { t } from '../i18n';
 
-/** `light` is card stock with graphite numerals, `dark` the reverse, `accent` Obsidian's accent colour. */
-export type DiceColour = 'light' | 'dark' | 'accent';
+/**
+ * `light` is card stock with graphite numerals, `dark` the reverse, `accent` Obsidian's accent colour, and a preset's
+ * id the card dyed in that colour of the Appearance page.
+ */
+export type DiceColour = 'light' | 'dark' | 'accent' | ColourPresetId;
 /** `medieval` is the pencil-drawn numeral sheet, `scifi` numerals set in Oxanium. */
 export type DiceFont = 'medieval' | 'scifi';
 
@@ -18,7 +22,13 @@ export const DICE_COLOUR_OPTIONS: readonly { value: DiceColour; label: string }[
   { value: 'light', label: t('diceSettings.colour.light') },
   { value: 'dark', label: t('diceSettings.colour.dark') },
   { value: 'accent', label: t('diceSettings.colour.accent') },
+  ...COLOUR_PRESETS.map((preset) => ({ value: preset.id, label: t(preset.labelKey) })),
 ];
+
+/** The body colour of a preset's dice. */
+export function presetDiceHex(colour: ColourPresetId): string {
+  return COLOUR_PRESETS.find((preset) => preset.id === colour)?.hex ?? COLOUR_PRESETS[0].hex;
+}
 
 export const DICE_FONT_OPTIONS: readonly { value: DiceFont; label: string }[] = [
   { value: 'medieval', label: t('diceSettings.font.medieval') },

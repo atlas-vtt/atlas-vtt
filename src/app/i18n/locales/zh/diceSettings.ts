@@ -16,7 +16,7 @@ export const diceSettings: Translation = {
   'diceSettings.colour.light': '浅色',
   'diceSettings.colour.dark': '深色',
   'diceSettings.colour.accent': '强调色',
-  'diceSettings.colourHint': '浅色卡面、带浅色数字的深色，或你的强调色。命令面板的「骰子设置」会展示每一种。',
+  'diceSettings.colourHint': '浅色卡面、带浅色数字的深色、你的强调色，或一种单独的颜色。命令面板的「骰子设置」会展示每一种。',
   'diceSettings.numbers': '数字',
   'diceSettings.diceNumbers': '骰子数字',
   'diceSettings.font.medieval': '中世纪',

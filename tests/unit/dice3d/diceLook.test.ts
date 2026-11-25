@@ -29,9 +29,15 @@ describe('dice look', () => {
     expect(resolveLook({ colour: 'accent', font: 'medieval' }, null).body).toBe('#8a5cf5');
   });
 
+  it('dyes preset dice in the Appearance colour, whatever the accent', () => {
+    expect(resolveLook({ colour: 'gold', font: 'medieval' }, [0x1e, 0x3a, 0x8a])).toMatchObject({ body: '#c9a227', ink: DARK_INK });
+    expect(resolveLook({ colour: 'azure', font: 'scifi' }, null)).toMatchObject({ body: '#3b82c4', ink: LIGHT_INK });
+  });
+
   it('knows its options', () => {
     expect(isDiceColour('accent')).toBe(true);
-    expect(isDiceColour('gold')).toBe(false);
+    expect(isDiceColour('gold')).toBe(true);
+    expect(isDiceColour('#c9a227')).toBe(false);
     expect(isDiceFont('scifi')).toBe(true);
   });
 });

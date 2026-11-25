@@ -16,7 +16,7 @@ export const diceSettings: Translation = {
   'diceSettings.colour.light': 'Светлые',
   'diceSettings.colour.dark': 'Тёмные',
   'diceSettings.colour.accent': 'Акцентные',
-  'diceSettings.colourHint': 'Светлые, тёмные со светлыми цифрами или цвета вашего акцента. Настройки кубиков в палитре команд показывают каждый вариант.',
+  'diceSettings.colourHint': 'Светлые, тёмные со светлыми цифрами, цвета вашего акцента или своего цвета. Настройки кубиков в палитре команд показывают каждый вариант.',
   'diceSettings.numbers': 'Цифры',
   'diceSettings.diceNumbers': 'Цифры на кубиках',
   'diceSettings.font.medieval': 'Средневековые',

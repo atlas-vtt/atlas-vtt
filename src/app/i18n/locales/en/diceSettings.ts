@@ -16,7 +16,7 @@ export const diceSettings = {
   'diceSettings.colour.light': 'Light',
   'diceSettings.colour.dark': 'Dark',
   'diceSettings.colour.accent': 'Accent',
-  'diceSettings.colourHint': "Light card, dark with light numbers, or your accent colour. The command palette's Dice settings show each one.",
+  'diceSettings.colourHint': "Light card, dark with light numbers, your accent colour or a colour of their own. The command palette's Dice settings show each one.",
   'diceSettings.numbers': 'Numbers',
   'diceSettings.diceNumbers': 'Dice numbers',
   'diceSettings.font.medieval': 'Medieval',

@@ -1,23 +1,5 @@
 import type { App } from 'obsidian';
-import type { MessageKey } from '../i18n';
-
-/** A colour the Appearance page offers for the accent, named in the GM's language. */
-export interface AccentPreset {
-  id: string;
-  hex: string;
-  labelKey: MessageKey;
-}
-
-export const ACCENT_PRESETS: readonly AccentPreset[] = [
-  { id: 'crimson', hex: '#c0392b', labelKey: 'appearance.accentPresets.crimson' },
-  { id: 'ember', hex: '#d9822b', labelKey: 'appearance.accentPresets.ember' },
-  { id: 'gold', hex: '#c9a227', labelKey: 'appearance.accentPresets.gold' },
-  { id: 'moss', hex: '#6b8f3a', labelKey: 'appearance.accentPresets.moss' },
-  { id: 'teal', hex: '#2a9d8f', labelKey: 'appearance.accentPresets.teal' },
-  { id: 'azure', hex: '#3b82c4', labelKey: 'appearance.accentPresets.azure' },
-  { id: 'violet', hex: '#8b5cf6', labelKey: 'appearance.accentPresets.violet' },
-  { id: 'rose', hex: '#d46a8a', labelKey: 'appearance.accentPresets.rose' },
-];
+import { COLOUR_PRESETS, type ColourPreset } from './colourPresets';
 
 /** Obsidian's own accent setting, which Atlas shares rather than keeping one of its own. */
 const ACCENT_CONFIG_KEY = 'accentColor';
@@ -37,9 +19,9 @@ export function setAccent(app: App, hex: string): void {
 }
 
 /** The preset a stored colour is, whatever its case; none for the look's own or a colour of the GM's. */
-export function presetOfAccent(hex: string): AccentPreset | undefined {
+export function presetOfAccent(hex: string): ColourPreset | undefined {
   const wanted = hex.toLowerCase();
-  return ACCENT_PRESETS.find((preset) => preset.hex === wanted);
+  return COLOUR_PRESETS.find((preset) => preset.hex === wanted);
 }
 
 /**
