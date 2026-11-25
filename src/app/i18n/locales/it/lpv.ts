@@ -30,7 +30,7 @@ export const lpv = {
   "lpv.playerWindow": "Finestra giocatori",
   "lpv.online": "Gioco online",
   "lpv.tokens": "Pedine",
-  "lpv.resourcesOn": "I giocatori vedono le risorse su",
+  "lpv.resourceVisibility": "Visibilità delle risorse",
   "lpv.noResources": "Ancora nessuna risorsa: impostale nelle impostazioni della collezione",
   "lpv.noCollection": "Aggiungi questa scena a una collezione per scegliere chi vede le sue risorse",
   "lpv.initiativePanel": "Pannello dell’iniziativa",

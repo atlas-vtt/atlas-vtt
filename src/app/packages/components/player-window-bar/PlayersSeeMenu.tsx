@@ -116,7 +116,7 @@ export function PlayersSeeMenu({ open, onToggle, settings, windowOpen }: Players
                   {switches.tokens.map(row)}
                 </div>
                 <div className="atlas-players-see-menu__part">
-                  <span className="atlas-dropdown-label atlas-players-see-menu__label">{t("lpv.resourcesOn")}</span>
+                  <span className="atlas-dropdown-label atlas-players-see-menu__label">{t("lpv.resourceVisibility")}</span>
                   {switches.resources.length > 0
                     ? switches.resources.map((choice) => <AudienceRow key={choice.id} {...choice} stack={stack} />)
                     : <p className="atlas-dropdown-hint">{t(switches.hasRules ? "lpv.noResources" : "lpv.noCollection")}</p>}

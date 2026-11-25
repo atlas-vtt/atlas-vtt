@@ -9,7 +9,7 @@ export const lpv: Translation = {
   'lpv.playerWindow': 'Spielerfenster',
   'lpv.online': 'Online-Spiel',
   'lpv.tokens': 'Token',
-  'lpv.resourcesOn': 'Spieler sehen Ressourcen auf',
+  'lpv.resourceVisibility': 'Sichtbarkeit der Ressourcen',
   'lpv.noResources': 'Noch keine Ressourcen: lege sie in den Einstellungen der Sammlung fest',
   'lpv.noCollection': 'Füge diese Szene einer Sammlung hinzu, um festzulegen, wer ihre Ressourcen sieht',
   'lpv.initiativePanel': 'Initiativeleiste',
