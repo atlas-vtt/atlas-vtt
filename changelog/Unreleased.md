@@ -25,6 +25,7 @@
 
 - **Atlas is faster.** Scenes with many walls, tokens and lights open and switch sooner, and a scene you had open a moment ago comes back sooner still
 - Maps with many tokens are drawn in far fewer steps, so panning, zooming and dragging tokens stay smooth on weaker computers too
+- Zooming and dragging stay smooth with many tokens selected: with 300 tokens selected, zooming no longer stutters, and dragging them all at once is several times faster
 - Atlas takes less time to start when Obsidian opens or reloads
 - The dungeon generator draws the floors of a dungeon or cave at the same time, so a scene with several floors is made much sooner
 - A new map's grid is looked for as soon as its image is in, without waiting for the whole map to be prepared
