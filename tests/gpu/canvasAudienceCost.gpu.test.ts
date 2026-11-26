@@ -27,11 +27,11 @@ async function dungeon(): Promise<MapView> {
     for (let link = 0; link < 6; link++) {
       const [angle, length] = [rand() * Math.PI * 2, 20 + rand() * 60];
       const [nx, ny] = [x + Math.cos(angle) * length, y + Math.sin(angle) * length];
-      store.getState().addWall({ type: 'solid', p1: { x, y }, p2: { x: nx, y: ny }, closed: true });
+      store.getState().addObject('walls', { type: 'solid', p1: { x, y }, p2: { x: nx, y: ny }, closed: true });
       [x, y] = [nx, ny];
     }
   }
-  for (let lamp = 0; lamp < 8; lamp++) store.getState().addLight({ x: rand() * SIZE, y: rand() * SIZE, emission: TORCH });
+  for (let lamp = 0; lamp < 8; lamp++) store.getState().addObject('lights', { x: rand() * SIZE, y: rand() * SIZE, emission: TORCH });
   const tokens: Record<string, TokenEntity> = {};
   const token = (id: string, more: Partial<TokenEntity>): void => {
     tokens[id] = { id, kind: 'token', imagePath: '', size: 1, x: 16 + Math.floor(rand() * 15) * 32, y: 16 + Math.floor(rand() * 15) * 32, ...more } as TokenEntity;
