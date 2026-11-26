@@ -330,6 +330,27 @@ describe('screens plugged into the session', () => {
     expect(tablet.heard.some((message) => message.t === 'press-answer')).toBe(false);
   });
 
+  it('keep serving a device when another screen fails, and say in the console that one failed', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const rig = await started();
+    const opened: string[] = [];
+    const pressed: DeviceMessage[] = [];
+    rig.session.plug({ takes: ['statblock-view'], opened: () => { throw new Error('no map'); }, message: () => Promise.reject(new Error('no drawing')) });
+    rig.session.plug({ takes: ['press'], opened: (device) => void opened.push(device), message: (_from, message) => void pressed.push(message) });
+    const phone = await allowed(rig, PHONE);
+    await phone.say({ t: 'statblock-view', id: 'secret-goblin' });
+    await phone.say({ t: 'press', id: 1, command: { type: 'stopAll' } });
+    await rig.settle();
+    expect(opened).toEqual([PHONE]);
+    expect(phone.heard.some((message) => message.t === 'your-code')).toBe(true);
+    expect(pressed).toEqual([{ t: 'press', id: 1, command: { type: 'stopAll' } }]);
+    expect(errors).toHaveBeenCalledTimes(2);
+    const logged = JSON.stringify(errors.mock.calls.map((call) => call.map(String)));
+    expect(logged).toContain('statblock-view');
+    const record = rig.saved.at(-1);
+    for (const secret of [record?.link.key, record?.link.code, record?.secret, 'secret-goblin', PHONE]) expect(logged).not.toContain(secret);
+  });
+
   it('may not read a kind another screen reads', () => {
     const rig = sessionRig();
     rig.session.plug({ takes: ['press'], opened: () => undefined, message: () => undefined });

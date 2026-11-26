@@ -42,14 +42,30 @@ export class ScreenRouter {
   }
 
   opened(device: string): void {
-    for (const screen of [...this.screens]) screen.opened(device);
+    for (const screen of [...this.screens]) guarded(screen, 'opening a device', () => screen.opened(device));
   }
 
   message(device: string, message: DeviceMessage): void {
-    this.screens.find((screen) => screen.takes.includes(message.t))?.message(device, message);
+    const screen = this.screens.find((each) => each.takes.includes(message.t));
+    if (screen !== undefined) guarded(screen, 'reading a device\'s message', () => screen.message(device, message));
   }
 
   closed(device: string): void {
-    for (const screen of [...this.screens]) screen.closed?.(device);
+    for (const screen of [...this.screens]) guarded(screen, 'letting a device go', () => screen.closed?.(device));
+  }
+}
+
+/**
+ * Runs one screen's part, so a screen that throws or rejects leaves the other screens and devices served.
+ * What failed is said in the console by the screen's kinds and the step alone: never a device, a message or a key.
+ */
+function guarded(screen: GmScreen, step: string, part: () => unknown): void {
+  const failed = (error: unknown): void => console.error(`[Atlas] A GM screen (${screen.takes.join(', ')}) failed ${step}:`, error);
+  try {
+    const result = part();
+    // A screen may do its part asynchronously, though the session never waits for it.
+    if (result instanceof Promise) result.catch(failed);
+  } catch (error) {
+    failed(error);
   }
 }
