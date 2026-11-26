@@ -1,3 +1,7 @@
+## New
+
+- Atlas Online: Sidekick puts the DM screen on your phone or tablet. Start it on the DM screen, open its link or QR code on the device and allow it with the number both show. It has three screens: your Stream Deck keys, the sound controls and the statblocks of the map in front
+
 ## Improved
 
 - Atlas Online: players see your changes at once instead of up to a second later, such as Shared vision, remote mode, letting players draw, a character's dice and what your lighting shows them
