@@ -12,13 +12,12 @@ import { isRecord } from './shape.ts';
  * them: the page keeps its long list of keys.
  */
 
-declare const parsed: unique symbol;
 /**
  * A slot named by its places: the place in the device's grid, then the place in each folder below it. In a
  * folder a place counts the slots after Back, so its first slot is 0. Only `parseLayoutEdit` makes one, and
  * every place lies inside its grid; whether the slots it passes are folders is for Atlas to find.
  */
-export type SlotPath = readonly number[] & { readonly [parsed]: true };
+export type SlotPath = readonly number[] & { readonly '~parsed': true };
 
 /** What a device asks to put into a slot; Atlas makes the key, with the names of its own library and an empty folder. */
 export type KeyChoice =

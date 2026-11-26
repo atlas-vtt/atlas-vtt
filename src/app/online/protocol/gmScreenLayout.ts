@@ -85,9 +85,11 @@ export interface FolderKey {
 
 export type LayoutKey = CommandKey | MoodKey | RollKey | DiceKey | AllMoodsKey | FolderKey;
 
-declare const foreign: unique symbol;
-/** A key of a kind a newer version made, kept field for field as it came; only the reader makes one. */
-export type ForeignKey = Readonly<Record<string, unknown>> & { readonly k: string; readonly [foreign]: true };
+/**
+ * A key of a kind a newer version made, kept field for field as it came; only the reader makes one. Its brand
+ * is a property name, not a unique symbol, so the type compares by its shape wherever this file is compiled.
+ */
+export type ForeignKey = Readonly<Record<string, unknown>> & { readonly k: string; readonly '~foreign': true };
 
 export type LayoutSlot = LayoutKey | ForeignKey | null;
 
