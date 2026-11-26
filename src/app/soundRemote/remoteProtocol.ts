@@ -29,9 +29,9 @@ export type RemoteCommand =
   | { type: 'rollInitiative' }
   /** Presents the map the GM has in front to the players, opening the player window where it is closed. */
   | { type: 'present' }
-  /** Freezes the players' camera, or lets it follow the GM again. */
+  /** Pauses play (the player window's camera freezes, online players' moves wait), or lets it go on. */
   | { type: 'freeze' }
-  /** Lowers the player window's curtain (players see black), or lifts it. */
+  /** Lowers the curtain (players see black, in the player window and online), or lifts it. */
   | { type: 'curtain' }
   /** Takes the image or loot the player window shows away from players. */
   | { type: 'takeBackHandout' }
@@ -73,12 +73,12 @@ export interface RemoteCombat {
   rolls: boolean;
 }
 
-/** The local player window, as its bar shows it. */
+/** The local player window and the online table, as the player window's bar shows them. */
 export interface RemotePlayer {
   open: boolean;
   /** The map the GM has in front is the presented scene. */
   presented: boolean;
-  /** Players' camera is frozen (false while TrueScale pins it, as the bar shows it). */
+  /** Play is paused for the player window or online players (false while TrueScale pins the window and no table runs, as the bar shows it). */
   frozen: boolean;
   /** TrueScale pins the players' camera: freezing is not offered then. */
   trueScale: boolean;

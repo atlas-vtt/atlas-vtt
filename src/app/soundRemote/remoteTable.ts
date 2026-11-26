@@ -37,10 +37,13 @@ export interface TableMap {
   rollSaved(preset: DicePreset): void;
 }
 
-/** The player window as its bar reads and presses it. */
+/** The player window and the online table, as the player window's bar reads and presses them. */
 export interface TablePlayerWindow {
   isOpen(): boolean;
-  isFrozen(): boolean;
+  /** An online table runs: the curtain and the pause reach its players without a player window. */
+  isOnline(): boolean;
+  /** Play is paused for everyone at the table (`isTablePaused`). */
+  isPaused(): boolean;
   isTrueScale(): boolean;
   isCurtained(): boolean;
   handoutShown(): boolean;
@@ -85,16 +88,22 @@ export function remoteCombat(source: TableSource): RemoteCombat | null {
   return { active: initiative.isActive, round: initiative.round, combatants: initiative.entries.length, rolls: rolls(map) };
 }
 
+/** Whom the curtain and the pause reach: the player window while it is open, online players while a table runs. */
+const reachesPlayers = (player: TablePlayerWindow): boolean => player.isOpen() || player.isOnline();
+
+/** TrueScale pins the player window's camera and no table runs: the bar offers no pause then. */
+const pinnedByTrueScale = (player: TablePlayerWindow): boolean => player.isOpen() && player.isTrueScale() && !player.isOnline();
+
 export function remotePlayer(source: TableSource): RemotePlayer {
   const { player } = source;
   const open = player.isOpen();
-  const trueScale = open && player.isTrueScale();
+  const reached = reachesPlayers(player);
   return {
     open,
     presented: loadedMap(source)?.presented() ?? false,
-    frozen: open && player.isFrozen() && !trueScale,
-    trueScale,
-    hidden: open && player.isCurtained(),
+    frozen: reached && player.isPaused() && !pinnedByTrueScale(player),
+    trueScale: open && player.isTrueScale(),
+    hidden: reached && player.isCurtained(),
     handout: player.handoutShown(),
   };
 }
@@ -150,12 +159,12 @@ export function runTableCommand(source: TableSource, command: TableCommand): Tab
     case 'present':
       return onMap(source, runPresent);
     case 'freeze':
-      if (!player.isOpen()) return 'no-player-window';
-      if (player.isTrueScale()) return 'true-scale';
+      if (!reachesPlayers(player)) return 'no-player-window';
+      if (pinnedByTrueScale(player)) return 'true-scale';
       player.toggleFreeze();
       return null;
     case 'curtain':
-      if (!player.isOpen()) return 'no-player-window';
+      if (!reachesPlayers(player)) return 'no-player-window';
       player.setCurtain(!player.isCurtained());
       return null;
     case 'takeBackHandout':

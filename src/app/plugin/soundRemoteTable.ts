@@ -13,13 +13,12 @@ import { SettingsService } from '../services/SettingsService';
 import { presentTab } from '../services/PlayerWindowPresenter';
 import { ImageDisplayService } from '../services/ImageDisplayService';
 import { PlayerWindowService } from '../services/PlayerWindowService';
-import { setTableCurtain, toggleTablePause } from '../services/tableControls';
+import { isTablePaused, setTableCurtain, toggleTablePause } from '../services/tableControls';
 import { tableControlsStore } from '../stores/tableControlsStore';
 import { presentedSceneOf } from '../services/presentedScene';
 import type { HoveredElement } from '../soundRemote/hoveredElement';
 import { remoteMapView } from '../soundRemote/remoteMapView';
 import type { TableMap, TablePlayerWindow, TableShareRolls, TableSource } from '../soundRemote/remoteTable';
-import { playerWindowStore } from '../stores/playerWindowStore';
 import type { InitiativeRules } from '../types/initiativeRulesTypes';
 
 /** The map a remote acts on, with the tracker's and the scene tab's own functions bound to it. */
@@ -58,11 +57,12 @@ function shareRolls(app: App): TableShareRolls {
   };
 }
 
-/** The player window as its bar reads it (`PlayerWindowBar`) and presses it, and the image menus' "Display on player view". */
+/** The player window and the online table as the bar reads them (`PlayerWindowBar`) and presses them, and the image menus' "Display on player view". */
 function playerWindow(hovered: HoveredElement): TablePlayerWindow {
   return {
     isOpen: () => PlayerWindowService.getInstance()?.isWindowOpen() ?? false,
-    isFrozen: () => playerWindowStore.getState().isFrozen,
+    isOnline: () => tableControlsStore.getState().online,
+    isPaused: isTablePaused,
     isTrueScale: () => PlayerWindowService.getInstance()?.isTrueScale() ?? false,
     isCurtained: () => tableControlsStore.getState().curtain,
     handoutShown,

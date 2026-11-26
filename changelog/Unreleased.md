@@ -5,4 +5,5 @@
 ## Fixed
 
 - Atlas Online: on a map that plays by a game system preset you made, players see initiative grouped by that preset's sides, as on your tracker and the player window
+- Stream Deck: Freeze and Curtain keys work at an online table without a player window, pausing and curtaining online players, and light up while they are on
 - Initiative: taking the combatant whose turn it is out of the initiative, or deleting its token, now passes the turn by defeated combatants, as Next turn does
