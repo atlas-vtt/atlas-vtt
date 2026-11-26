@@ -16,7 +16,7 @@ const named = (id: string, x: number, changes: Partial<TokenEntity> = {}): Token
 const TOKENS = [named('hero', 1, { vision: { enabled: true } }), named('ogre', 2), named('spy', 3, { vision: { enabled: true }, isHidden: true })];
 const withTokens = (tokens = TOKENS): ReturnType<typeof sceneState> => sceneState({ objects: { ...sceneState().objects, tokens: Object.fromEntries(tokens.map((entry) => [entry.id, entry])) } });
 
-const mineTo = (table: ShareHarness, player: string): readonly string[] | undefined => table.sent.flatMap(({ body, to }) => (body.t === 'mine' && to === player ? [body] : [])).at(-1)?.tokens;
+const mineTo = (table: ShareHarness, player: string): readonly string[] | undefined => table.pages.of(player).last('mine')?.tokens;
 /** A GM token in the last list, found by its place (names are not always sent). */
 const listed = (table: ShareHarness, id: string): SharedToken | undefined => tokenLists(table.sent).at(-1)?.tokens.find((entry) => entry.x === TOKENS.find((gm) => gm.id === id)?.x);
 
@@ -24,6 +24,7 @@ async function table(showNames = false): Promise<{ readonly share: ShareHarness;
   const owners = boundOwnership([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
   owners.welcome([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
   const share = shareHarness(withTokens(), ART, owners);
+  share.pages.join(ANA, BEN);
   share.settings = { ...share.settings, showNames };
   owners.onChange(() => share.share.ownersChanged());
   share.share.start();

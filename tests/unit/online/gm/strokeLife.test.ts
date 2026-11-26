@@ -32,6 +32,7 @@ const strokes = (table: ShareHarness): readonly SharedStroke[] => lastMarks(tabl
 async function started(): Promise<ShareHarness> {
   const state = sceneState({ grid: GRID });
   const table = shareHarness(state, IMAGES, SEATS);
+  table.pages.join(ANA, BEN);
   table.settings = DRAWING;
   table.layers = fakeLayers({ state: () => table.state(), source: GENERIC_SOURCE, bounds: { width: 2000, height: 2000 }, grid: () => null, collections: null });
   table.share.start();
@@ -97,7 +98,7 @@ describe('how long a drawing a player is making is shown', () => {
     await table.advance(MARKS_INTERVAL_MS);
     expect(strokes(table).map(({ who }) => who)).toEqual([BEN]);
     // Ben takes his own drawing off the map: what he is drawing stays.
-    const mine = ofKind(table.sent, 'draw-mine').filter(({ to }) => to === BEN).at(-1)?.body.drawings[0]?.id ?? '';
+    const mine = table.pages.of(BEN).last('draw-mine')?.drawings[0]?.id ?? '';
     table.share.receive(BEN, { t: 'draw-remove', scene, n: next(), ids: [mine] });
     await table.advance(MARKS_INTERVAL_MS);
     expect(Object.values(table.state().objects.drawings)).toHaveLength(0);
