@@ -94,7 +94,8 @@ describe('each page follows what its player may see', () => {
     const seen = table.perception;
     table.perception = (id) => (id === 'goblin' ? 'unseen' : seen?.(id) ?? 'seen');
     table.layers = { ...partyLayers, doorsSeen: () => new Set() };
-    await table.advance(1000);
+    table.sightChanged();
+    await table.settle();
     for (const player of everyone) {
       expect(names(page(table, player))).toEqual(['Ana', 'Ben', 'Rat']);
       expect(page(table, player).last('doors')?.doors).toEqual([]);
@@ -104,11 +105,11 @@ describe('each page follows what its player may see', () => {
   it('as Shared vision is switched on and off: every page moves between the party\'s picture and its own', async () => {
     const table = await started(false);
     table.settings = { ...PLAYER_SETTINGS, sharedVision: true };
-    await table.advance(1000);
+    await table.settle();
     expect(names(page(table, ANA))).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
     expect(names(page(table, CARA))).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
     table.settings = { ...PLAYER_SETTINGS, sharedVision: false };
-    await table.advance(1000);
+    await table.settle();
     expect(names(page(table, ANA))).toEqual(['Ana', 'Rat']);
     expect(names(page(table, CARA))).toEqual([]);
   });
@@ -116,10 +117,10 @@ describe('each page follows what its player may see', () => {
   it('as the table turns to remote mode and back: every page shows the party\'s picture, as the one screen does, then its own again', async () => {
     const table = await started(false);
     tableControlsStore.setState({ playMode: 'remote' });
-    await table.advance(1000);
+    await table.settle();
     for (const player of everyone) expect(names(page(table, player))).toEqual(['Ana', 'Ben', 'Goblin', 'Rat']);
     tableControlsStore.setState({ playMode: 'table' });
-    await table.advance(1000);
+    await table.settle();
     expect(names(page(table, BEN))).toEqual(['Ben', 'Goblin']);
   });
 
@@ -137,10 +138,10 @@ describe('each page follows what its player may see', () => {
     const table = await started(false);
     for (const player of everyone) expect(page(table, player).last('rules')).not.toHaveProperty('draw');
     table.settings = { ...PLAYER_SETTINGS, playersDraw: true };
-    await table.advance(1000);
+    await table.settle();
     for (const player of everyone) expect(page(table, player).last('rules')?.draw).toEqual({ cell: expect.any(Number) as number });
     table.settings = { ...PLAYER_SETTINGS, playersDraw: false };
-    await table.advance(1000);
+    await table.settle();
     for (const player of everyone) expect(page(table, player).last('rules')).not.toHaveProperty('draw');
   });
 
@@ -151,7 +152,9 @@ describe('each page follows what its player may see', () => {
     await table.advance(1000);
     const before = table.pages.mark();
     set = HOPE;
-    await table.advance(1000);
+    // The character's template changed: Atlas's statblocks tell of it.
+    table.atlasChanged();
+    await table.settle();
     const told = table.pages.since(before, 'mine');
     expect(Object.keys(told)).toEqual([ANA]);
     expect(Object.values(told[ANA]?.at(-1)?.dice ?? {})).toEqual([{ dice: [{ count: 1, sides: 12 }, { count: 1, sides: 12 }], sides: ['advantage', 'disadvantage'] }]);

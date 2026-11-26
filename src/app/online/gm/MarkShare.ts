@@ -254,6 +254,11 @@ export class MarkShare {
     this.rearm();
   }
 
+  /** What the players see of the tokens changed: the GM's measurements are told again by it. */
+  seenChanged(): void {
+    if (this.scene !== null) this.pacer.request();
+  }
+
   /** The last marks again, to one player or to all. */
   resend(to?: string): void {
     this.out.resend(to);

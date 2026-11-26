@@ -2,7 +2,7 @@ import type { WorkspaceLeaf } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import { create } from 'zustand';
 import { createStore } from 'zustand/vanilla';
-import { ATLAS_VIEW_TYPE, sceneStoreOf } from '../../../../src/app/online/gm/atlasView.ts';
+import { ATLAS_VIEW_TYPE, followPlayerSight, sceneStoreOf } from '../../../../src/app/online/gm/atlasView.ts';
 
 function leafWith(atlasStore: unknown, viewType = ATLAS_VIEW_TYPE): WorkspaceLeaf {
   return { view: { getViewType: () => viewType, atlasStore } } as unknown as WorkspaceLeaf;
@@ -24,5 +24,23 @@ describe('sceneStoreOf', () => {
     expect(sceneStoreOf(leafWith(create(() => ({})), 'markdown'))).toBeNull();
     expect(sceneStoreOf(leafWith(() => undefined))).toBeNull();
     expect(sceneStoreOf(leafWith(null))).toBeNull();
+  });
+});
+
+describe('followPlayerSight', () => {
+  it('hears the renderer tell of each change of what players see, until stopped', () => {
+    const listeners = new Set<() => void>();
+    const renderer = { onPlayerSightChange: (listener: () => void) => (listeners.add(listener), () => void listeners.delete(listener)) };
+    let heard = 0;
+    const stop = followPlayerSight(renderer, () => (heard += 1));
+    listeners.forEach((listener) => listener());
+    stop();
+    listeners.forEach((listener) => listener());
+    expect(heard).toBe(1);
+  });
+
+  it('hears nothing of a renderer that tells nothing, and stops without fault', () => {
+    expect(() => followPlayerSight({}, () => undefined)()).not.toThrow();
+    expect(() => followPlayerSight(null, () => undefined)()).not.toThrow();
   });
 });

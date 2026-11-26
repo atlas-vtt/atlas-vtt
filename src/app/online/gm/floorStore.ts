@@ -28,10 +28,6 @@ export class FloorStore implements SceneStore {
     this.real.setState(recipe);
   }
 
-  subscribe(listener: (state: SceneState) => void): () => void {
-    return this.real.subscribe((state) => listener(this.onFloor(state)));
-  }
-
   /** Whether the GM's view shows this floor. */
   shown(): boolean {
     const state = this.real.getState();

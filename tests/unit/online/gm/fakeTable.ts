@@ -164,7 +164,11 @@ export const app = {
     },
     offref: (ref: { name: string; listener: (...args: unknown[]) => void }) => void workspaceListeners.get(ref.name)?.delete(ref.listener),
   },
+  // The vault and the metadata cache tell of no change in these tests.
+  metadataCache: { on: () => ({}), offref: () => undefined },
   vault: {
+    on: () => ({}),
+    offref: () => undefined,
     getFileByPath: (path: string) => {
       const bytes = workspace.files.get(path);
       return bytes === undefined ? null : { path, stat: { mtime: 0, size: bytes.length } };

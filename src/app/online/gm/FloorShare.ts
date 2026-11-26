@@ -1,7 +1,7 @@
 import { GM_MARKS, parseImageSize, type PlayerMessage, type SharedScene } from '../protocol/index.ts';
 import type { ShownRollToken } from '../../services/playerRollSource';
-import { isLit, LIGHTING_REFUSAL } from './atlasLighting.ts';
-import type { SceneState, SceneStore } from './atlasView.ts';
+import { isLit, LIGHTING_REFUSAL, type AtlasPlayerSettings } from './atlasLighting.ts';
+import type { SceneState } from './atlasView.ts';
 import { dragRulerPaths, PlayerDragRulers, type RulerPaths } from './dragRulers.ts';
 import { readFloorImages } from './floorImages.ts';
 import { readFloorVideo } from './floorVideo.ts';
@@ -9,6 +9,8 @@ import { floorPlacement, floorWorldSize } from './floorPlacement.ts';
 import { mapRollDice } from './rollAdvantage.ts';
 import { FloorPictures } from './floorPictures.ts';
 import type { FloorSharePorts } from './floorPorts.ts';
+import type { FloorStore } from './floorStore.ts';
+import type { SceneChange } from './sceneSignal.ts';
 import type { ListedPin } from './pins/ReadablePins.ts';
 import { MarkShare } from './MarkShare.ts';
 import { PlayerMeasures } from './playerMeasures.ts';
@@ -21,14 +23,13 @@ import { PlayerDoorAsks, type DoorAskShown } from './doors/PlayerDoorAsks.ts';
 import { playerMoveDistance } from './playerTurnMoves.ts';
 import { movesOutOfTurn } from './turnShare.ts';
 import { RulesShare } from './RulesShare.ts';
-import { TOKEN_POLL_MS, type TokenShare } from './TokenShare.ts';
+import type { TokenShare } from './TokenShare.ts';
 import { levelObjects } from '../../levels/levelObjects';
 import { levelBackground } from '../../levels/levelEdits';
 import { viewedLevelId } from '../../levels/sceneLevels';
 import { drawCell } from '../../annotations/drawSizes';
 import { isVideoMapPath, videoMimeType } from '../../pixi/mosaicCanvas/video/videoMapFiles';
 import { isHistoryTravelling } from '../../stores/history';
-import { tableControlsStore } from '../../stores/tableControlsStore';
 import { sceneDiceShelf, sharedDiceRow } from './diceRowShare.ts';
 import { t } from '../../i18n';
 
@@ -41,10 +42,10 @@ const videoMimeOf = (path: string): string | null => (isVideoMapPath(path) ? vid
  * with what each sees of it (`FloorPictures`: the tokens, fog and lighting inputs, layers). Its store
  * shows the floor (`FloorStore`), so every share it holds reads that floor's objects. Nothing goes out
  * while the scene loads; a scene this step cannot share is withdrawn. Assets go only to a player whose
- * current picture holds them.
+ * current picture holds them. It hears of every change of what players see from its scene (`changed`).
  */
 export class FloorShare {
-  private readonly store: SceneStore;
+  private readonly store: FloorStore;
   private readonly ports: FloorSharePorts;
   private scene: SharedScene | null = null;
   /** The floor map's size in world pixels (its image as Atlas draws it), by which players' moves are kept on it; null when it is unknown. */
@@ -69,16 +70,16 @@ export class FloorShare {
   /** Whether a player's own request is being written now: what it removes is no clearing by the GM. */
   private dealing = false;
   private readonly dragRulers: PlayerDragRulers;
-  private unsubscribe: (() => void) | null = null;
-  private poll: number | undefined;
 
-  constructor(store: SceneStore, ports: FloorSharePorts) {
+  constructor(store: FloorStore, ports: FloorSharePorts) {
     this.store = store;
     this.ports = ports;
     const seats = ports.seats;
     const ownerOf = ownerIn(seats, store);
-    const cursorsShown = (): boolean => ports.atlasSettings().showCursors;
-    const playersDraw = (): boolean => ports.atlasSettings().playersDraw === true;
+    const settings = (): AtlasPlayerSettings => ports.atlas().settings;
+    const cursorsShown = (): boolean => settings().showCursors;
+    const playersDraw = (): boolean => settings().playersDraw === true;
+    const accent = (): string | null => ports.atlas().accent;
     this.pictures = new FloorPictures(store, ports, {
       rulers: (): RulerPaths => dragRulerPaths(store.getState(), ports.gmDragRuler?.() ?? null, this.moves.dragStarts()),
       // A held token no player drags is held by the GM's own pointer
@@ -98,9 +99,9 @@ export class FloorShare {
       strokeEnded: (player, n, made) => this.marks.strokeEnded(player, n, made),
     });
     const draw = (): { readonly cell: number } | null => (playersDraw() ? { cell: drawCell(store.getState().grid) } : null);
-    const doorsAllowed = (): boolean => ports.atlasSettings().playersOpenDoors === true;
+    const doorsAllowed = (): boolean => settings().playersOpenDoors === true;
     this.rules = new RulesShare(store, {
-      ...ports, cursorsShown, doors: doorsAllowed, rollDice: () => mapRollDice(ports.dice?.() ?? null), draw, diceRow: () => sharedDiceRow(sceneDiceShelf(ports, store)),
+      ...ports, accent, cursorsShown, doors: doorsAllowed, rollDice: () => mapRollDice(ports.dice?.() ?? null), draw, diceRow: () => sharedDiceRow(sceneDiceShelf(ports, store)),
     });
     this.moves = new PlayerMoves(store, {
       ...ports,
@@ -112,11 +113,8 @@ export class FloorShare {
         map: this.mapSize,
         // The walls of this floor, on which every token of its list stands
         walls: sceneWalls(levelObjects(store.getState()).walls, this.scene?.lit === true, this.mapSize),
-        paused: () => tableControlsStore.getState().paused,
-        outOfTurn: (tokenId) => {
-          const settings = ports.atlasSettings();
-          return movesOutOfTurn(store.getState(), { movesOnTurn: settings.movesOnTurn === true, definitions: ports.tokenRules?.()?.resources ?? [] }, tokenId);
-        },
+        paused: () => ports.atlas().paused,
+        outOfTurn: (tokenId) => movesOutOfTurn(store.getState(), { movesOnTurn: settings().movesOnTurn === true, definitions: ports.tokenRules?.()?.resources ?? [] }, tokenId),
         // A player's drop counts towards the turn's movement as the GM's own drag does (`DragRuler.countDrop`)
         turnMove: (tokenId, from, to) => (ports.tokenMoves?.()?.rules().countPerTurn === true ? playerMoveDistance(store.getState(), ports.measurement?.() ?? null, tokenId, from, to) : null),
       }),
@@ -135,7 +133,7 @@ export class FloorShare {
     this.measures = new PlayerMeasures(store, { now: () => ports.now(), seated, scene: () => this.sceneId, map: () => this.mapSize });
     // An aura names its token by the id the token list gives it
     this.marks = new MarkShare({
-      ...ports, cursorsShown, tokenAlias: (tokenId) => this.tokens.alias(tokenId), keptBy: (measure) => this.measures.told(measure),
+      ...ports, accent, cursorsShown, tokenAlias: (tokenId) => this.tokens.alias(tokenId), keptBy: (measure) => this.measures.told(measure),
       gmMarks: () => ports.gmMarks?.() ?? null,
       audiences: (seen) => this.pictures.markAudiences(seen),
       // A drawing under way is followed only where a request to make it would be taken.
@@ -161,22 +159,37 @@ export class FloorShare {
   }
 
   start(): void {
-    this.unsubscribe = this.store.subscribe((state) => void this.update(state));
-    void this.update(this.store.getState());
-    this.schedulePoll();
-    this.moves.start();
+    void this.update(this.store.getState(), 'atlas');
   }
 
   stop(): void {
-    this.unsubscribe?.();
-    this.unsubscribe = null;
-    if (this.poll !== undefined) this.ports.clearTimer(this.poll);
-    this.poll = undefined;
     void this.pictures.stop();
     this.moves.stop();
     this.doors.stop();
     this.marks.stop();
     this.dragRulers.clear();
+  }
+
+  /**
+   * Something players see changed (`SceneSignal`), `scene` being the store's state: the GM's marks follow it,
+   * then the scene and each picture; players' drags and door asks follow the store, and the rules the grid,
+   * the map and Atlas. The GM's sight is the picture of the floor the renderer draws alone, and changes no more
+   * than what each picture shows and to whom the GM's measurements are told.
+   */
+  changed(change: SceneChange, scene: SceneState): void {
+    const state = this.store.onFloor(scene);
+    if (change === 'sight') {
+      if (!this.ports.viewed() || !state.mapLoaded || state.isMapLoading) return;
+      this.marks.seenChanged();
+      return this.pictures.changed(change);
+    }
+    this.marks.update();
+    void this.update(state, change);
+    if (change === 'store') {
+      this.moves.storeChanged(state);
+      this.doors.storeChanged(state);
+      this.rules.storeChanged(state);
+    } else if (change === 'atlas') this.rules.update();
   }
 
   /** The scene, its tokens and its inputs again, to one player or to all. */
@@ -217,7 +230,7 @@ export class FloorShare {
     this.keepId = this.scene?.id ?? null;
     this.key = null;
     this.pictures.refreshAssets();
-    void this.update(this.store.getState());
+    void this.update(this.store.getState(), 'atlas');
   }
 
   /** Withdraws the scene: players see none until a scene is shared again. */
@@ -280,20 +293,7 @@ export class FloorShare {
     return this.store.getState().mapPath === mapPath ? this.pictures.seers(mapPath, tokenId) : [];
   }
 
-  /** Looks again every `TOKEN_POLL_MS`: the map's measurement may change without a store change. */
-  private schedulePoll(): void {
-    this.poll = this.ports.setTimer(() => {
-      this.poll = undefined;
-      void this.update(this.store.getState());
-      this.rules.update();
-      // Who may draw, a character's dice set and Shared vision change at any time: who is told what follows.
-      this.pictures.poll();
-      this.marks.update();
-      this.schedulePoll();
-    }, TOKEN_POLL_MS);
-  }
-
-  private async update(state: SceneState): Promise<void> {
+  private async update(state: SceneState, change: SceneChange): Promise<void> {
     if (!state.mapLoaded || state.isMapLoading) return this.pictures.mapLoading();
     const cleared = this.cleared.look(state);
     // Not what a player's own request removed, and not what an undo took back.
@@ -315,9 +315,8 @@ export class FloorShare {
     const placement = floorPlacement(state, level, background);
     const key = JSON.stringify([state.mapPath, level, background, lit, floor ?? null, placement]);
     if (key === this.key) {
-      this.marks.update();
       this.dragRulers.update(state, this.moves.dragStarts());
-      return this.pictures.update();
+      return this.pictures.changed(change);
     }
     this.key = key;
     this.pictures.clear();

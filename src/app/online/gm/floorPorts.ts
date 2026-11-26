@@ -16,6 +16,8 @@ export interface PictureSources {
 }
 
 export interface FloorSharePorts extends SceneSharePorts {
+  /** Whether the GM's renderer is this floor's picture now: its view shows the floor and has drawn it. */
+  viewed(): boolean;
   /** Which floor of its map this scene is, for players to tell; none for a map of one floor. */
   floor?(): SharedFloor | undefined;
   /** The picture of eyes that see by `policy` (one player's own, `ownPolicy`), cut from the party's picture of this floor. */
@@ -68,6 +70,7 @@ export function floorPorts(ports: SceneSharePorts, deps: FloorPortsDeps): FloorS
   const seats = ports.seats;
   return {
     ...ports,
+    viewed,
     aliases: deps.aliases,
     send: (body, to) => deps.send(body, to),
     ...(ports.sendLive !== undefined && { sendLive: (body: GmMessage, key: string, to?: string) => deps.sendLive(body, key, to) }),

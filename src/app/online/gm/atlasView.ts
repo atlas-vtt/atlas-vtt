@@ -22,18 +22,22 @@ export interface PlayerTokenSource {
   getGridOptions(): { readonly size: number } | null;
 }
 
-/** An Atlas map tab's store, as far as the companion uses it. */
+/** An Atlas map tab's store, as far as the shares use it: what it holds, and writes. */
 export interface SceneStore {
   getState(): SceneState;
   /** A write through Atlas's own middleware (immer and history): one undo step. */
   setState(recipe: (draft: SceneState) => void): void;
-  subscribe(listener: (state: SceneState) => void): () => void;
   /** Whether the GM's view shows what this store holds (a floor's store: that floor); unset, it does. */
   shown?(): boolean;
 }
 
+/** A store that tells of its changes: Atlas's own, and the presented scene's (`PresentedStore`). */
+export interface ObservedStore extends SceneStore {
+  subscribe(listener: (state: SceneState) => void): () => void;
+}
+
 /** Atlas's store is zustand's `create` result: a function with the store methods on it. */
-function isStore(value: unknown): value is SceneStore {
+function isStore(value: unknown): value is ObservedStore {
   return (typeof value === 'object' || typeof value === 'function') && value !== null && 'getState' in value && typeof value.getState === 'function' && 'subscribe' in value && typeof value.subscribe === 'function'
     && 'setState' in value && typeof value.setState === 'function';
 }
@@ -50,6 +54,13 @@ export function call(target: unknown, method: string): unknown {
   return typeof fn === 'function' ? (fn as () => unknown).call(target) : undefined;
 }
 
+/** Hears each change of what players see that comes without a store change (`onPlayerSightChange`); a renderer without it tells nothing. Returns what stops it. */
+export function followPlayerSight(renderer: unknown, listener: () => void): () => void {
+  const follow: unknown = typeof renderer === 'object' && renderer !== null && 'onPlayerSightChange' in renderer ? renderer.onPlayerSightChange : undefined;
+  const stop: unknown = typeof follow === 'function' ? (follow as (listener: () => void) => unknown).call(renderer, listener) : undefined;
+  return typeof stop === 'function' ? () => void (stop as () => unknown)() : () => undefined;
+}
+
 /** A renderer (`view.serviceManager.getRendererService().getRenderer()`) as the players' token source, or null when it is none. */
 export function asTokenSource(renderer: unknown): PlayerTokenSource | null {
   return isTokenSource(renderer) ? renderer : null;
@@ -63,7 +74,7 @@ export function rendererOf(leaf: WorkspaceLeaf): unknown {
 }
 
 /** The store of an Atlas map tab, or null for any other leaf. */
-export function sceneStoreOf(leaf: WorkspaceLeaf): SceneStore | null {
+export function sceneStoreOf(leaf: WorkspaceLeaf): ObservedStore | null {
   const view: unknown = leaf.view;
   if (leaf.view.getViewType() !== ATLAS_VIEW_TYPE || typeof view !== 'object' || view === null || !('atlasStore' in view)) return null;
   return isStore(view.atlasStore) ? view.atlasStore : null;
