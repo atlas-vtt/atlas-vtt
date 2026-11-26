@@ -3,7 +3,7 @@ import { ExploredTexture } from '../../../pixi/lighting/ExploredTexture';
 import { StampScratch } from '../../../pixi/lighting/StampScratch';
 import type { ExploredShapes } from '../../../vision/exploredShapes';
 import type { MapBounds } from '../../../vision/visibility';
-import { toBase64 } from '../assetServe.ts';
+import { toBase64 } from '../../../utils/base64';
 import { field } from '../atlasLighting.ts';
 import { call } from '../atlasView.ts';
 import type { MemoryPng, MemoryRaster, MemoryRasters } from './memoryPorts.ts';

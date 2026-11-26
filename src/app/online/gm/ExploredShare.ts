@@ -1,6 +1,6 @@
 import { EXPLORED_INLINE_BYTES, type AssetRef, type GmMessage } from '../protocol/index.ts';
 import { Pacer, type PacerClock } from '../marks/index.ts';
-import { toBase64 } from './assetServe.ts';
+import { toBase64 } from '../../utils/base64';
 import { ASSET_USES, type AssetStoring } from './assets/assetUses.ts';
 
 /** The shortest time between two explored memories: the GM saves one every few seconds while tokens explore. */

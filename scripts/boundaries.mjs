@@ -86,6 +86,7 @@ export const BOUNDARIES = {
       "src/app/pixi/LaserPointerRenderer.ts",
       "src/app/tools/laserPointerSettings.ts",
       "src/app/utils/guards.ts",
+      "src/app/utils/base64.ts",
       "src/app/utils/hashing.ts",
       "src/app/utils/ids.ts",
       "src/app/utils/indexedDbPromises.ts",
