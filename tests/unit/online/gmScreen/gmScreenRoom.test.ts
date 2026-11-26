@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { HttpRequest, HttpResponse } from '../../../../src/app/account/http.ts';
 import type { TableOutbox } from '../../../../src/app/online/gm/tableOutbox.ts';
 import { relayRooms, type RoomAccount } from '../../../../src/app/online/gmScreen/index.ts';
-import { fakeTimers } from './sessionRig.ts';
+import { fakeTimers } from './fakeTimers.ts';
 
 const CODE = 'g'.repeat(26);
 const SECRET = 'room-secret-0123456789abcdef0123456789';

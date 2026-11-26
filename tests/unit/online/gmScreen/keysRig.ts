@@ -9,7 +9,8 @@ import { setLayerLevel, setMusicLevel } from '../../../../src/app/soundDirector/
 import { RemoteControl, type MoodSource } from '../../../../src/app/soundRemote/remoteControl';
 import type { TableSource } from '../../../../src/app/soundRemote/remoteTable';
 import { fakeRemoteDirector, fakeTable, remoteMood, withLayers, withMusic } from '../../../helpers/soundRemoteRig';
-import { fakeTimers, sessionRig, type Device, type Frame, type Rig, type RelaySocket } from './sessionRig.ts';
+import { fakeTimers } from './fakeTimers.ts';
+import { sessionRig, type Device, type Frame, type Rig, type RelaySocket } from './sessionRig.ts';
 
 /**
  * Atlas's sound and table as the sound remote sees them, with intents that change what they show: a pressed

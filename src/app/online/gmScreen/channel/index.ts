@@ -7,3 +7,4 @@ export { channelCryptoOf, checkNumber, linkKey, newLinkKey, type ChannelCrypto }
 export type { ChannelEvents } from './channelCodec';
 export { DeviceChannel } from './DeviceChannel';
 export { GmChannel } from './GmChannel';
+export type { ChannelTimers } from './openingPace';

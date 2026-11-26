@@ -167,7 +167,7 @@ export class GmScreenSession implements GmScreenOutlet {
     if (run !== this.run) return;
     if (record?.secret == null || key === null) return this.halt(t('gmScreen.end.refused', { name: NAME }));
     this.key = key;
-    this.channels = new DeviceChannels(this.ports.crypto, key, (device, body) => this.connection?.send(body, device), {
+    this.channels = new DeviceChannels(this.ports.crypto, key, this.ports.timers, (device, body) => this.connection?.send(body, device), {
       opened: (device) => this.opened(device),
       message: (device, message: DeviceMessage) => this.router.message(device, message),
     });

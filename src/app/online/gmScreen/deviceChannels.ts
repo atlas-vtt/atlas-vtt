@@ -1,5 +1,5 @@
 import type { DeviceMessage, GmScreenMessage, GmScreenWire } from '../protocol/index.ts';
-import { GmChannel, type ChannelCrypto } from './channel/index.ts';
+import { GmChannel, type ChannelCrypto, type ChannelTimers } from './channel/index.ts';
 
 /** What the channels tell the session. */
 export interface DeviceChannelEvents {
@@ -19,6 +19,7 @@ export class DeviceChannels {
   constructor(
     private readonly crypto: ChannelCrypto,
     private readonly link: CryptoKey,
+    private readonly timers: ChannelTimers,
     private readonly transport: (device: string, body: GmScreenWire) => void,
     private readonly events: DeviceChannelEvents,
   ) {}
@@ -32,7 +33,7 @@ export class DeviceChannels {
   connect(device: string): void {
     let channel = this.channels.get(device);
     if (channel === undefined) {
-      const made = new GmChannel(this.crypto, this.link, (body) => this.transport(device, body), {
+      const made = new GmChannel(this.crypto, this.link, this.timers, (body) => this.transport(device, body), {
         opened: () => {
           if (this.channels.get(device) === made) this.events.opened(device);
         },
@@ -47,10 +48,12 @@ export class DeviceChannels {
   }
 
   drop(device: string): void {
+    this.channels.get(device)?.close();
     this.channels.delete(device);
   }
 
   clear(): void {
+    for (const channel of this.channels.values()) channel.close();
     this.channels.clear();
   }
 

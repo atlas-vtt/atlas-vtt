@@ -2,6 +2,7 @@ import { webcrypto } from 'node:crypto';
 import { DeviceChannel, GmChannel, linkKey, type ChannelCrypto } from '../../../../src/app/online/gmScreen/channel/index.ts';
 import type { DeviceMessage, DeviceWire, GmScreenMessage, GmScreenWire } from '../../../../src/app/online/protocol/index.ts';
 import { fromBase64 } from '../../../../src/app/utils/base64';
+import { fakeTimers } from './fakeTimers.ts';
 
 /** Node's Web Crypto, with random bytes from its source, or from `script` while it has some. */
 export function nodeCrypto(script: string[] = []): ChannelCrypto {
@@ -27,8 +28,12 @@ export interface ChannelPair {
   readonly deviceHeard: GmScreenMessage[];
   readonly opened: { gm: number; device: number };
   readonly versions: { gm: number[]; device: number[] };
+  /** Atlas's clock. */
+  readonly timers: ReturnType<typeof fakeTimers>;
   /** Hands on everything either end sent, both ways, until neither has anything more to say. */
   deliver(): Promise<void>;
+  /** Lets `ms` pass on Atlas's clock, then delivers what that made either end send. */
+  elapse(ms: number): Promise<void>;
 }
 
 /** Text through JSON, as the relay carries it. */
@@ -47,7 +52,8 @@ export async function channelPair(key: string, gmRandom: string[] = [], deviceRa
   const deviceHeard: GmScreenMessage[] = [];
   const opened = { gm: 0, device: 0 };
   const versions = { gm: [] as number[], device: [] as number[] };
-  const gm = new GmChannel(gmCrypto, gmLink, (body) => {
+  const timers = fakeTimers();
+  const gm = new GmChannel(gmCrypto, gmLink, timers, (body) => {
     wire.push(JSON.stringify(body));
     toDevice.push(body);
   }, { opened: () => (opened.gm += 1), message: (message) => gmHeard.push(message), otherVersion: (version) => versions.gm.push(version) });
@@ -63,5 +69,11 @@ export async function channelPair(key: string, gmRandom: string[] = [], deviceRa
       if (up !== undefined) await gm.receive(overWire(up));
     }
   };
-  return { gm, device, toDevice, toGm, wire, gmHeard, deviceHeard, opened, versions, deliver };
+  const elapse = async (ms: number): Promise<void> => {
+    timers.advance(ms);
+    // What a timer started runs in its turn: let it run before delivering.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await deliver();
+  };
+  return { gm, device, toDevice, toGm, wire, gmHeard, deviceHeard, opened, versions, timers, deliver, elapse };
 }
