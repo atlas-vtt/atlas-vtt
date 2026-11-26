@@ -7,7 +7,7 @@ export interface TokenGestureEventDetail {
 
 /** A pin interaction the note pin tool should act on. */
 export interface PinActionEventDetail {
-  action: 'open' | 'edit' | 'preview';
+  action: 'open' | 'edit' | 'preview' | 'copy-link';
   pin: NotePin;
   /** Where a preview opens, in client pixels (`preview`). */
   at?: { x: number; y: number };
