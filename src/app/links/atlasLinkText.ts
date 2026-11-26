@@ -32,7 +32,8 @@ export async function copyAtlasLink(app: App, path: string, options: AtlasLinkOp
     showNotice(t('atlasLinks.fileMissing'));
     return;
   }
-  await navigator.clipboard.writeText(atlasLink(app, file, '', options));
+  const link = atlasLink(app, file, '', options);
+  await navigator.clipboard.writeText(options.pinId ? `!${link}` : link);
   showNotice(t('atlasLinks.copied'));
 }
 
