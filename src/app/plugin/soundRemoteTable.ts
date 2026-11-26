@@ -62,7 +62,8 @@ function playerWindow(hovered: HoveredElement): TablePlayerWindow {
   return {
     isOpen: () => PlayerWindowService.getInstance()?.isWindowOpen() ?? false,
     isOnline: () => tableControlsStore.getState().online,
-    isPaused: isTablePaused,
+    // Without an online table the key shows the window's own freeze, as it always did
+    isPaused: () => (tableControlsStore.getState().online ? isTablePaused() : PlayerWindowService.getInstance()?.isFrozen() ?? false),
     isTrueScale: () => PlayerWindowService.getInstance()?.isTrueScale() ?? false,
     isCurtained: () => tableControlsStore.getState().curtain,
     handoutShown,
