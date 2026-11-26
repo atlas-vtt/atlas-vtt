@@ -11,6 +11,7 @@ import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFa
 import { SEES_ALL } from '../../src/app/vision/sight';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
+import { viewAudience } from '../helpers/viewAudience';
 
 const memory = vi.hoisted(() => ({ edits: [] as unknown[], resets: 0, watcher: null as SceneLightingDeps['exploredWatcher'] | null }));
 
@@ -97,12 +98,12 @@ export function setup(prepare?: (store: ViewAtlasStore) => void): Setup {
     eventBus,
     obsApp,
     viewId: 'memory-view',
+    audience: viewAudience(store, eventBus).audience,
     bounds: () => ({ width: 1000, height: 1000 }),
     albedo: () => null,
   });
   controller.wire({
     setPlayerSightProvider: vi.fn(), setGlideWay: vi.fn(), setArtFloors: vi.fn(),
-    refreshPlayerSight: vi.fn(),
     getSensedOutlineLayer: () => ({ visible: false }),
   } as unknown as TokenRenderer);
   const { lights, walls } = controller.pointerLayers();

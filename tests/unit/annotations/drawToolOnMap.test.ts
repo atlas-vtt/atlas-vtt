@@ -470,8 +470,7 @@ describe('the Draw tool on the map: limits and views', () => {
     s.click(0, 0);
     s.pointer('pointermove', 140, 0);
     expect(s.renderer.drawing).toBe(true);
-    s.players.shown = true;
-    s.renderer.refreshVisibility();
+    s.peek(true);
     expect(s.renderer.drawing).toBe(false);
     s.click(140, 0);
     expect(s.drawings()).toEqual([]);

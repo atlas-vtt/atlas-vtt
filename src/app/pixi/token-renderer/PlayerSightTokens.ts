@@ -13,22 +13,22 @@ export interface PlayerSightHost {
   sprites: () => Record<string, TokenGroupContainer | null>;
   /** The tokens the pointer holds or drags. */
   held: () => ReadonlySet<string>;
+  /** Whether the canvas shows the players' picture now (`CanvasAudience.showsPlayers`). */
+  showsPlayers: () => boolean;
 }
 
 /**
  * The tokens as the players' sight shows them: which the canvas leaves out while it shows the
- * players' view of a lit scene (session view, the peek key), which a players' frame leaves out,
+ * players' picture (`CanvasAudience`), which a players' frame leaves out,
  * and the outlines of those the players only sense (`SensedOutlines`).
  */
 export class PlayerSightTokens {
   private readonly outlines = new SensedOutlines();
   private provider?: () => TokenPerception | undefined;
-  private active?: (() => boolean) | undefined;
   private current?: (() => boolean) | undefined;
   private fog?: () => FogCoverage | null;
   /** Whether the roof of the level shown covers a point in the players' picture. */
   private roof?: (point: { x: number; y: number }) => boolean;
-  private playerView?: () => boolean;
   /** The immutable shape and displayed centre fully determine fog membership. */
   private readonly membership = new WeakMap<object, { coverage: FogCoverage; x: number; y: number; covered: boolean }>();
 
@@ -46,35 +46,27 @@ export class PlayerSightTokens {
    * of its own, worked out by its own store listener (the lighting), says through `current`
    * whether that sight is of the scene the store holds.
    */
-  setProvider(provider: () => TokenPerception | undefined, active?: () => boolean, current?: () => boolean): void {
+  setProvider(provider: () => TokenPerception | undefined, current?: () => boolean): void {
     this.provider = provider;
-    this.active = active;
     this.current = current;
   }
 
   /** A lighting controller is attached, so on a lit scene the players see a token only where their sight finds it. */
   hasLighting(): boolean {
-    return this.active !== undefined;
+    return this.provider !== undefined;
   }
 
   /** Committed fog remains available when the optional lighting controller is removed. */
-  setFogProvider(provider: () => FogCoverage | null, playerView: () => boolean): void {
+  setFogProvider(provider: () => FogCoverage | null): void {
     this.fog = provider;
-    this.playerView = playerView;
   }
 
   /**
    * The roof drawn over the players' picture (`ViewRoofs.covers`): a token whose centre it covers is
-   * not seen, as under committed fog, lit scene or not. `playerView` says when the canvas shows their view.
+   * not seen, as under committed fog, lit scene or not.
    */
-  setRoofProvider(covers: (point: { x: number; y: number }) => boolean, playerView: () => boolean): void {
+  setRoofProvider(covers: (point: { x: number; y: number }) => boolean): void {
     this.roof = covers;
-    this.playerView ??= playerView;
-  }
-
-  /** Whether the canvas shows the players' view: session view, or the peek of a lit scene. */
-  showsPlayers(): boolean {
-    return !!this.active?.() || !!this.playerView?.();
   }
 
   /**
@@ -88,7 +80,7 @@ export class PlayerSightTokens {
   }
 
   private fogActive(perception?: TokenPerception): boolean {
-    return !!perception || this.showsPlayers();
+    return !!perception || this.host.showsPlayers();
   }
 
   /** Whether the roof covers the token, at its displayed centre (the stored place before it has a sprite). */

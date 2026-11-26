@@ -10,6 +10,7 @@ import type { GridSystem } from '../../../src/app/grid/GridSystem';
 import type { Character } from '../../../src/app/types';
 import { createInMemoryApp } from '../../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
+import { viewAudience } from '../../helpers/viewAudience';
 
 // jsdom has no 2D canvas, so SVG icons cannot be rasterised here.
 vi.mock('../../../src/app/pixi/utils/lucideIconTexture', () => ({
@@ -45,7 +46,8 @@ async function pileWithLateArt(late: string): Promise<{ art: string[]; ui: strin
   store.getState().setMapPath('maps/pile.atlasmap');
   const snap = (x: number, y: number): { x: number; y: number } => ({ x, y });
   const grid = { getOptions: () => ({ type: 'square', size: GRID, offsetX: 0, offsetY: 0 }), snapToCellCenter: snap, snapTokenCenter: snap } as unknown as GridSystem;
-  const renderer = new TokenRenderer(app, viewport, grid, () => {}, store, new EventEmitter(), `token-pile-${late}`);
+  const eventBus = new EventEmitter();
+  const renderer = new TokenRenderer(app, viewport, grid, () => {}, store, eventBus, viewAudience(store, eventBus).audience, `token-pile-${late}`);
   renderer.setPixiApp({ ticker: { add: () => {}, remove: () => {} }, canvas: document.createElement('canvas'), renderer: { generateTexture: () => new Texture() } } as unknown as Application);
   cleanups.push(() => {
     renderer.destroy();

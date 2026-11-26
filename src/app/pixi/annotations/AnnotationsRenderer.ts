@@ -45,6 +45,7 @@ import { DrawToolHost, type FullOf } from './DrawToolHost';
 import { activeDrawMode } from './drawToolState';
 import { MapTexts } from './MapTexts';
 import { PictureViews } from './PictureViews';
+import type { CanvasAudience } from '../audience/CanvasAudience';
 
 export interface AnnotationsRendererOptions {
   readonly viewport: Viewport;
@@ -57,11 +58,8 @@ export interface AnnotationsRendererOptions {
   readonly sharpness?: TextSharpnessHost;
   /** Whether a key pressed now is this map's to take (`canRunMapHotkeys`); unset, every key outside a text field is. */
   keysBelongToMap?(event: KeyboardEvent): boolean;
-  /**
-   * Whether the canvas shows the players' picture now (session view, a peek, the palette's player
-   * mode); null where nobody can say yet, and unset: then the store's own view switches say it.
-   */
-  showsPlayers?(): boolean | null;
+  /** Whom the canvas is drawn for: in the players' picture what only the GM sees is hidden and the tool does not work. */
+  readonly audience: Pick<CanvasAudience, 'showsPlayers' | 'onChange'>;
   /** The picture changed in a way PIXI does not see (a stamp's symbol came in). */
   requestRender?(): void;
   /** Tells the GM that the level shown is full; unset, a notice. */
@@ -130,6 +128,7 @@ export class AnnotationsRenderer {
   private readonly barMenus: BarMenuPress;
   private readonly texts: MapTexts;
   private readonly unsubscribe: () => void;
+  private readonly stopFollowingAudience: () => void;
   /** The records the list was last read from. */
   private drawingsRecord: unknown = null;
   private textsRecord: unknown = null;
@@ -175,7 +174,7 @@ export class AnnotationsRenderer {
       frees,
       cellGrid: () => (fillsCells(store.getState().grid) ? options.grid() : null),
       mapRect: () => options.mapRect?.() ?? null,
-      gmView: () => !this.showsPlayers(),
+      gmView: () => !options.audience.showsPlayers(),
     };
     const full = options.full ?? showAnnotationsFullNotice;
     this.full = full;
@@ -186,7 +185,7 @@ export class AnnotationsRenderer {
       store,
       chrome: this.chrome,
       node: (id) => this.layer.node('text', id),
-      gmView: () => !this.showsPlayers(),
+      gmView: () => !options.audience.showsPlayers(),
       mode: () => activeDrawMode(store.getState()),
       full: () => full('texts'),
       accent,
@@ -206,7 +205,7 @@ export class AnnotationsRenderer {
       layer: this.layer.previews,
       handles: this.handles,
       measure: this.layer.measure,
-      gmView: () => !this.showsPlayers(),
+      gmView: () => !options.audience.showsPlayers(),
       touched: () => this.sharpening.touch(),
       snap: (world, held) => snapDrawPoint(snapGrid(), world, frees(held)),
       snapStamp: (at, footprint, held) => snapStampPoint(snapGrid(), at, frees(held), footprint),
@@ -248,6 +247,7 @@ export class AnnotationsRenderer {
     const state = store.getState();
     this.read(state);
     this.toolChanged(state);
+    this.stopFollowingAudience = options.audience.onChange(() => this.refreshVisibility());
     this.refreshVisibility();
     this.tellLeftOut(state);
   }
@@ -307,7 +307,7 @@ export class AnnotationsRenderer {
    * nothing stands around a place where the players see nothing.
    */
   refreshVisibility(): void {
-    const players = this.showsPlayers();
+    const players = this.options.audience.showsPlayers();
     this.players.showOnCanvas(players);
     if (players) {
       this.input.stop();
@@ -351,6 +351,7 @@ export class AnnotationsRenderer {
     // First: what is typed is written while the store still hears.
     this.texts.destroy();
     this.unsubscribe();
+    this.stopFollowingAudience();
     this.watch(false);
     this.input.destroy();
     this.clicks.destroy();
@@ -373,11 +374,6 @@ export class AnnotationsRenderer {
     if (state.selectedIds.some((id) => hidden.has(id))) state.setSelection(state.selectedIds.filter((id) => !hidden.has(id)));
   }
 
-  private showsPlayers(): boolean {
-    const { isGMView, isPlayerView } = this.store.getState();
-    return this.options.showsPlayers?.() ?? (!isGMView || isPlayerView === true);
-  }
-
   private follow(state: ViewAtlasState, previous: ViewAtlasState): void {
     const mode = activeDrawMode(state);
     const before = activeDrawMode(previous);
@@ -386,7 +382,6 @@ export class AnnotationsRenderer {
     const left = mode !== before || !sameScene || COVERS_MAP.some((open) => state[open] && !previous[open]);
     if (left) this.input.stop();
     this.texts.follow(state, previous, left);
-    if (state.isGMView !== previous.isGMView || state.isPlayerView !== previous.isPlayerView) this.refreshVisibility();
     if (mode !== before) this.toolChanged(state);
     else if (state.drawTool.size !== previous.drawTool.size || state.grid !== previous.grid) this.host.toolChanged();
     this.read(state);

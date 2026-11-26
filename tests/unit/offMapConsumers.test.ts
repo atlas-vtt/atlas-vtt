@@ -41,7 +41,7 @@ describe('a combatant kept beside the map is no part of it', () => {
     const harness = {
       store: { getState: () => ({ objects: { tokens }, isPlayerView: false, isGMView: true }) },
       playerSight: { perception: () => undefined, hides: () => false },
-      isInPlayerMode: () => false,
+      audience: { takesPlayersPerspective: () => false },
       hidesToken: Reflect.get(TokenRenderer.prototype, 'hidesToken') as unknown,
     };
     expect(TokenRenderer.prototype.showsToken.call(harness, 'beside')).toBe(false);

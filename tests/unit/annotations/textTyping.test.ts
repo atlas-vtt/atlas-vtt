@@ -222,9 +222,8 @@ describe('typing a text on the map', () => {
     typed('three');
     s.renderer.leave();
     typed('four');
-    s.players.shown = true;
-    s.renderer.refreshVisibility();
-    s.players.shown = null;
+    s.peek(true);
+    s.peek(false);
     expect(s.field()).toBeNull();
     expect(s.texts().map((text) => text.text)).toEqual(['one', 'two', 'three', 'four']);
     // Another scene has no place for it.

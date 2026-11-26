@@ -130,7 +130,7 @@ export class FogGesture {
   /** The canvas shows the players' picture for a moment (the peek key is held) while the view stays the GM's. */
   private peeking(): boolean {
     const { isGMView, isPlayerView } = this.deps.store.getState();
-    return isGMView && isPlayerView !== true && this.deps.showsPlayers?.() === true;
+    return isGMView && isPlayerView !== true && this.deps.showsPlayers();
   }
 
   private pointerDown(event: PIXI.FederatedPointerEvent): void {

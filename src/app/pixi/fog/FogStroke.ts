@@ -28,7 +28,6 @@ import { FogSnapGuide } from './FogSnapGuide';
 import { FogSnapping, placeKeysWith, type PlaceKeys } from './FogSnapping';
 import { FogStrokeKeys } from './FogStrokeKeys';
 import { FogStrokeOutcome, type FogStrokeHost } from './fogStrokeOutcome';
-import { showsGmView } from './fogVisibilityPolicy';
 
 export interface FogStrokeDeps {
   /** The fog's layer, which the stroke's marks join: its outline, the brush's ring, the snapping guide, the wash. */
@@ -44,8 +43,8 @@ export interface FogStrokeDeps {
   readonly keysBelongToMap?: (event: KeyboardEvent) => boolean;
   /** Whether a key is the map's undo as the GM has bound it; unset or undefined, the key it has by default. */
   readonly isUndoKey?: (event: KeyboardEvent) => boolean | undefined;
-  /** Whether the canvas shows the players' view though the store's view switches say the GM's (a peek). */
-  readonly showsPlayers?: () => boolean | null;
+  /** Whether the canvas shows the players' picture now (`CanvasAudience.showsPlayers`). */
+  readonly showsPlayers: () => boolean;
 }
 
 /** The shapes that are drawn on the map; a room is clicked in. */
@@ -79,7 +78,7 @@ export class FogStroke {
     const { layer, viewport, store } = deps;
     this.outline.eventMode = 'none';
     this.outline.zIndex = 1001;
-    this.wash = new FogRevealWash(() => showsGmView(store.getState(), deps.showsPlayers));
+    this.wash = new FogRevealWash(() => !deps.showsPlayers());
     // Over the fog (999), under the mark of what the fog's menu acts on (1000) and the outline of the shape it fills.
     this.wash.view.zIndex = 999.5;
     this.ring = new FogCursorPreview(viewport);
