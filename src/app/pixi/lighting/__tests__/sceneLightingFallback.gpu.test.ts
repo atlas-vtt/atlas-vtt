@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { rejectEngineShaders } from '../engine/__tests__/gpuTestUtils';
+import { loseContextInEngineChecks, rejectEngineShaders } from '../engine/__tests__/gpuTestUtils';
 import { watchGl } from '../engine/__tests__/strictGl';
 import { LightingWorld } from '../engine/LightingWorld';
 import { SAVE_DELAY } from './rendererHarness';
@@ -134,6 +134,45 @@ describe('scene lighting on a graphics device that cannot run the engine', () =>
     expect(engineLayer(scene.viewport)).toBeUndefined();
     expect(scene.noted()).toEqual([CAVE]);
     expect(notices).toHaveLength(1);
+  });
+
+  it('lights the map by itself once the context is back, when the graphics process died while the lighting checked the device', async () => {
+    const scene = await setup({ enabled: false });
+    const losses = loseContextInEngineChecks(scene.renderer);
+
+    losses.arm();
+    scene.switchLighting(true);
+    await losses.restore();
+    scene.tick();
+
+    expect(notices).toEqual([]);
+    expect(engineLayer(scene.viewport)?.filters).toHaveLength(1);
+    expect(scene.noted()).toEqual([CAVE]);
+    scene.renderStage();
+    scene.tick();
+    scene.tick();
+    expect(scene.noted()).toBeNull();
+  });
+
+  it('stops a graphics process that dies at every start of the lighting: line of sight, and the note kept for the next open', async () => {
+    const scene = await setup({ enabled: false });
+    const losses = loseContextInEngineChecks(scene.renderer);
+
+    losses.arm();
+    scene.switchLighting(true);
+    await losses.restore();
+    losses.arm();
+    scene.tick();
+    await losses.restore();
+    scene.tick();
+
+    expect(notices).toEqual(['Dynamic lighting could not run on this graphics device. Atlas shows line of sight without light and shadow. Switch dynamic lighting off and on to try again.']);
+    expect(engineLayer(scene.viewport)).toBeUndefined();
+    expect(darkness(scene.viewport)).toBeDefined();
+    expect(scene.noted()).toEqual([CAVE]);
+    scene.loadMap(CAVE, litScene(100, 128), { width: 256, height: 256 });
+    expect(engineLayer(scene.viewport)).toBeUndefined();
+    expect(scene.noted()).toEqual([CAVE]);
   });
 
   it('notes the map only until the engine drew its first frame', async () => {
