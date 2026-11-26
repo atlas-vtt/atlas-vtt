@@ -13,7 +13,8 @@ import { pinSize } from '../styles/designTokens';
 import type { PinIconId } from '../types/pinIcons';
 import { destroyTree } from "./utils/destroyTree";
 import { viewportDocument } from './utils/viewportDocument';
-import { hearPressesLast, isHandled } from "./utils/handledEvents";
+import { isHandled } from "./utils/handledEvents";
+import type { PinPointer } from "./pointer/mapLayers";
 import { isPrimaryPress, isSecondaryPress } from "./utils/pointerButtons";
 import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
 import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../stores/history';
@@ -23,7 +24,7 @@ import { hexLayoutOfGrid, isShownAsHex, pinDisplayPoint } from '../grid/hexLinks
 import { MAP_LAYER_Z } from './mapLayerOrder';
 import { pinMenuEntries } from './pinMenu';
 import { openPinMenu, type PinnedSceneLevels } from './pinSceneLevelMenu';
-import { levelObjects } from '../levels/levelObjects';
+import { everyLevelObjects, levelObjects } from '../levels/levelObjects';
 import { pinNameBoxes } from './pinNameLayout';
 import { dragThreshold, pointerReach, ReachPick } from './utils/pointerReach';
 import { watchDarkTheme } from './utils/canvasBadgeColors';
@@ -313,9 +314,24 @@ export class PinRenderer {
     return this.pinContainer;
   }
 
-  /** The note pin tool hears presses after the dispatch that claims them; called once that dispatch listens. */
-  public reorderViewportListeners(): void {
-    if (this._notePinToolViewportListener) hearPressesLast(this.viewport, this._notePinToolViewportListener);
+  /** The pins as the map's pointer asks them (`MapPointer`); `hover` hears when the pointer comes onto a pin and when it leaves it. */
+  public pointerLayer(hover: (type: 'over' | 'out', pin: NotePin, e?: FederatedPointerEvent) => void): PinPointer {
+    let hovered: string | null = null;
+    const tell = (type: 'over' | 'out', pinId: string, e?: FederatedPointerEvent): void => {
+      // Of every level: a pin hovered on the level shown before is still left
+      const pin = everyLevelObjects(this.store.getState()).pins[pinId];
+      if (pin) hover(type, pin, e);
+    };
+    return {
+      hitTest: (x, y) => this.hitTestPins(x, y),
+      press: (pinId, e) => this.handleViewportPinPointerDown(pinId, e),
+      hover: (pinId, e) => {
+        if (pinId === hovered) return;
+        if (hovered) tell('out', hovered, e);
+        if (pinId) tell('over', pinId, e);
+        hovered = pinId;
+      },
+    };
   }
 
   /** How large the map is in world pixels, which pins and names are sized by; set by the view. */

@@ -136,7 +136,7 @@ describe('what players are told of the map by what they remember', () => {
       },
     });
     // Nobody sees anything now: the hero is elsewhere.
-    const source: MapLayerSource = { grid: () => null, doorsSeen: () => new Set(), pointsSeen: (points) => points.map(() => false), sensed: () => [], rules: () => null, sightParts: () => [] };
+    const source: MapLayerSource = { grid: () => null, doorsSeen: () => new Set(), pointsSeen: (points) => points.map(() => false), sensed: () => [], rules: () => null, presets: () => [], sightParts: () => [] };
     const drawings = { old: line('old', { x: 100, y: 100 }, { x: 200, y: 100 }), unseen: line('unseen', { x: 1700, y: 100 }, { x: 1800, y: 100 }, { color: '#ab1234' }) };
     const texts = { name: label('name', { x: 300, y: 300 }, 'Old Mill') };
     const state = sceneState({ lighting: { enabled: true, ambient: 0.2 }, exploredMask: 'data:image/png;base64,AAAA', objects: { ...sceneState().objects, drawings, texts } });
@@ -165,7 +165,7 @@ describe('what players are told of the map by what they remember', () => {
   it('tells what lies above the tokens by the same rule: only what players have seen, and what a player drew at any time', () => {
     const telling = new AnnotationTelling({ now: () => 0, map: () => MAP, changed: () => undefined });
     let edge = 1000;
-    const source: MapLayerSource = { grid: () => null, doorsSeen: () => new Set(), pointsSeen: (points) => points.map(({ x }) => x < edge), sensed: () => [], rules: () => null };
+    const source: MapLayerSource = { grid: () => null, doorsSeen: () => new Set(), pointsSeen: (points) => points.map(({ x }) => x < edge), sensed: () => [], rules: () => null, presets: () => [] };
     const above = { layer: 'above' } as const;
     const drawings = {
       near: line('near', { x: 100, y: 100 }, { x: 200, y: 100 }, above),
@@ -193,7 +193,7 @@ describe('what players are told of the map by what they remember', () => {
   it('keeps what players know of a scene that is shared again, and knows nothing of another', () => {
     const telling = new AnnotationTelling({ now: () => 0, map: () => MAP, changed: () => undefined });
     let seen = true;
-    const source: MapLayerSource = { grid: () => null, doorsSeen: () => new Set(), pointsSeen: (points) => points.map(() => seen), sensed: () => [], rules: () => null };
+    const source: MapLayerSource = { grid: () => null, doorsSeen: () => new Set(), pointsSeen: (points) => points.map(() => seen), sensed: () => [], rules: () => null, presets: () => [] };
     const drawings = { old: line('old', { x: 100, y: 100 }, { x: 200, y: 100 }) };
     const state = sceneState({ lighting: { enabled: true, ambient: 0.2 }, objects: { ...sceneState().objects, drawings } });
     telling.setScene('first');
@@ -209,7 +209,7 @@ describe('what players are told of the map by what they remember', () => {
 
   it('tells all that lies on the map where players do not see by their tokens\' sight, and nothing while a scene keeps no memory', async () => {
     const telling = new AnnotationTelling({ now: () => 0, map: () => MAP, changed: () => undefined, decodeMask: () => Promise.resolve(half) });
-    const source: MapLayerSource = { grid: () => null, doorsSeen: () => new Set(), pointsSeen: (points) => points.map(() => false), sensed: () => [], rules: () => null };
+    const source: MapLayerSource = { grid: () => null, doorsSeen: () => new Set(), pointsSeen: (points) => points.map(() => false), sensed: () => [], rules: () => null, presets: () => [] };
     const drawings = { old: line('old', { x: 100, y: 100 }, { x: 200, y: 100 }) };
     const lit = sceneState({ lighting: { enabled: true, ambient: 0.2, exploredMemory: false }, exploredMask: 'data:image/png;base64,AAAA', objects: { ...sceneState().objects, drawings } });
     telling.lists(lit, NO_FOG, true, source);

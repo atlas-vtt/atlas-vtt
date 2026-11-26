@@ -30,7 +30,8 @@ describe('sceneStoreOf', () => {
 describe('followPlayerSight', () => {
   it('hears the renderer tell of each change of what players see, until stopped', () => {
     const listeners = new Set<() => void>();
-    const renderer = { onPlayerSightChange: (listener: () => void) => (listeners.add(listener), () => void listeners.delete(listener)) };
+    const audience = { onSightChange: (listener: () => void) => (listeners.add(listener), () => void listeners.delete(listener)) };
+    const renderer = { getCanvasAudience: () => audience };
     let heard = 0;
     const stop = followPlayerSight(renderer, () => (heard += 1));
     listeners.forEach((listener) => listener());
@@ -41,6 +42,7 @@ describe('followPlayerSight', () => {
 
   it('hears nothing of a renderer that tells nothing, and stops without fault', () => {
     expect(() => followPlayerSight({}, () => undefined)()).not.toThrow();
+    expect(() => followPlayerSight({ getCanvasAudience: () => null }, () => undefined)()).not.toThrow();
     expect(() => followPlayerSight(null, () => undefined)()).not.toThrow();
   });
 });

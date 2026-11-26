@@ -7,7 +7,7 @@ import type * as PIXI from 'pixi.js';
 import type { Point } from '../../types/visionTypes';
 import { isFogTool, type FogShape, type FogToolChoices } from '../../fog/fogToolChoices';
 import type { LayerVisibility } from '../playerSafeFrame';
-import { hearPressesLast, isHandled } from '../utils/handledEvents';
+import { isHandled } from '../utils/handledEvents';
 import { isPrimaryPress } from '../utils/pointerButtons';
 import { placeKeysOf, placeKeysWith } from './FogSnapping';
 import { FogStroke, type FogStrokeDeps } from './FogStroke';
@@ -89,11 +89,6 @@ export class FogGesture {
     else this.stroke.hideRing();
   }
 
-  /** The gesture hears presses after the dispatch that claims them; called once that dispatch listens. */
-  hearPressesLast(): void {
-    hearPressesLast(this.deps.viewport, this.onPointerDown);
-  }
-
   /**
    * The canvas shows another view (the GM's, or the players'): the ring, the outline and the
    * guide are the GM's alone, and a peek hides them for as long as it lasts.
@@ -135,7 +130,7 @@ export class FogGesture {
   /** The canvas shows the players' picture for a moment (the peek key is held) while the view stays the GM's. */
   private peeking(): boolean {
     const { isGMView, isPlayerView } = this.deps.store.getState();
-    return isGMView && isPlayerView !== true && this.deps.showsPlayers?.() === true;
+    return isGMView && isPlayerView !== true && this.deps.showsPlayers();
   }
 
   private pointerDown(event: PIXI.FederatedPointerEvent): void {

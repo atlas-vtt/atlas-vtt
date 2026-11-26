@@ -1,7 +1,7 @@
 import type { Point } from '../types/visionTypes';
 
 /**
- * Where tokens are drawn while they glide to the place the store gives them (`TokenGlide`). Sight
+ * Where tokens are drawn while they glide to the place the store gives them (`TokenPlaces`). Sight
  * and light read a gliding token there (`followShownPlaces`), so what it sees, its footprint and the
  * light it carries move with its sprite instead of arriving before it. A token that does not glide
  * is not listed: it is drawn where the store has it.

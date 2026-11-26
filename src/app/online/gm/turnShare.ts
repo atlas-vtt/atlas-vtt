@@ -1,5 +1,6 @@
 import { defeatedCombatants } from '../../initiative/defeated';
 import { currentTurn, inFight, turnEntries } from '../../initiative/turnHolders';
+import { initiativeShown } from '../../services/playerInitiativeList';
 import type { ResourceDefinition } from '../../resources/resourceTypes';
 import type { TokenEntity } from '../../types';
 import type { InitiativeState } from '../../types/initiativeTypes';
@@ -21,13 +22,13 @@ function holders(state: TurnShareState, definitions: readonly ResourceDefinition
 
 /**
  * The GM ids of the tokens players are told hold the turn (the page's turn marker): those of the
- * running fight's turn (`turnEntries`), and none while players are not shown the initiative list
- * (the player view's switch off, or the GM's tracker closed). By sides a defeated combatant (by the
+ * running fight's turn (`turnEntries`), and none while online players are given no initiative list
+ * (`initiativeShown`: the player view's switch off, or the GM's tracker closed). By sides a defeated combatant (by the
  * map's resource `definitions`) holds none. Which of them a player is sent at all is the token
  * list's business: only tokens they see.
  */
 export function sharedTurnTokens(state: TurnShareState, showInitiative: boolean, definitions: readonly ResourceDefinition[] = []): ReadonlySet<string> {
-  if (!showInitiative || state.initiativeTrackerOpen !== true) return new Set();
+  if (!initiativeShown(state, { showInitiative, beforeFight: true })) return new Set();
   return new Set(holders(state, definitions));
 }
 

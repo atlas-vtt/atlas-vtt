@@ -54,10 +54,11 @@ export function call(target: unknown, method: string): unknown {
   return typeof fn === 'function' ? (fn as () => unknown).call(target) : undefined;
 }
 
-/** Hears each change of what players see that comes without a store change (`onPlayerSightChange`); a renderer without it tells nothing. Returns what stops it. */
+/** Hears each change of what players see that comes without a store change (the renderer's `CanvasAudience.onSightChange`); a renderer without one tells nothing. Returns what stops it. */
 export function followPlayerSight(renderer: unknown, listener: () => void): () => void {
-  const follow: unknown = typeof renderer === 'object' && renderer !== null && 'onPlayerSightChange' in renderer ? renderer.onPlayerSightChange : undefined;
-  const stop: unknown = typeof follow === 'function' ? (follow as (listener: () => void) => unknown).call(renderer, listener) : undefined;
+  const audience = call(renderer, 'getCanvasAudience');
+  const follow: unknown = typeof audience === 'object' && audience !== null && 'onSightChange' in audience ? audience.onSightChange : undefined;
+  const stop: unknown = typeof follow === 'function' ? (follow as (listener: () => void) => unknown).call(audience, listener) : undefined;
   return typeof stop === 'function' ? () => void (stop as () => unknown)() : () => undefined;
 }
 

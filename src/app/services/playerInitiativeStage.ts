@@ -1,4 +1,4 @@
-import { FIGHT_INTRO_HOLD_MS, PULSE_MS, TURN_FLASH_MS } from './playerInitiativeList';
+import { FIGHT_INTRO_HOLD_MS, PULSE_MS, TURN_FLASH_MS } from './playerInitiativeView';
 import { glideHeight, outwardOf, settle } from './playerInitiativeMotion';
 import { adoptGhosts, ghostsOf, playTurnMotion, snapshotTurn } from '../initiative/motion/turnMotion';
 import { enterList, exitList, LIST_ARRIVAL_MS } from '../initiative/motion/listPresence';

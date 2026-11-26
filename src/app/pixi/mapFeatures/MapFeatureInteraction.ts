@@ -10,7 +10,7 @@ import { MapFeatureLabel } from './MapFeatureLabel';
 import { mapFeatureMenuEntries } from './mapFeatureMenu';
 import { doorText, featureText, type HoverText } from './mapFeatureText';
 
-/** Where the pointer is, as the token renderer's dispatch hands it on. */
+/** Where the pointer is, as the map's pointer (`MapPointer`) hands it on. */
 export interface FeaturePointer {
   readonly clientX: number;
   readonly clientY: number;
@@ -18,7 +18,7 @@ export interface FeaturePointer {
   readonly buttons: number;
 }
 
-/** What the token renderer asks of the map features while the GM's canvas shows the GM's view. */
+/** What the map's pointer asks of the map features while the GM's canvas shows the GM's view. */
 export interface MapFeaturePointerHandlers {
   /** The pointer moved with a token tool: labels the door badge `doorId` names, else the feature at `world`. */
   hover(world: Point, doorId: string | null, pointer: FeaturePointer): void;
@@ -32,7 +32,7 @@ export interface MapFeaturePointerHandlers {
 const describeDoor = (wall: WallSegment): HoverText => doorText(wall)!;
 
 /**
- * The GM's hover label of map features and door badges, and a feature's menu. The token renderer
+ * The GM's hover label of map features and door badges, and a feature's menu. The map's pointer
  * calls it only with the select and move tools, while nothing above features is under the pointer,
  * nothing is dragged and the canvas shows the GM's view; anything that ends that hides the label.
  */

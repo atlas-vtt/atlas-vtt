@@ -55,7 +55,7 @@ function rooms(tokens: Record<string, Partial<TokenEntity>> = {}): SceneState {
 const seats: SeatSource = { onlinePlayers: () => [ANA, BEN, CARA], ownerOf: (id) => OWNERS[id], claimOf: (_map, id) => (OWNERS[id] === undefined ? null : 'taken') };
 
 /** The party's map layers as the GM's renderer tells them: it sees the door. */
-const partyLayers: MapLayerSource = { grid: () => null, rules: () => null, doorsSeen: () => new Set(['door']), pointsSeen: (points) => points.map(() => true), sensed: () => [] };
+const partyLayers: MapLayerSource = { grid: () => null, rules: () => null, presets: () => [], doorsSeen: () => new Set(['door']), pointsSeen: (points) => points.map(() => true), sensed: () => [] };
 
 /** A table of Ana, Ben and Cara on the two rooms, every page settled after the scene was shared. */
 async function started(sharedVision: boolean, state = rooms()): Promise<ShareHarness> {

@@ -26,6 +26,7 @@ import { sceneSight, sightSources, type Sight } from '../../src/app/vision/sight
 import { wallList } from '../../src/app/vision/wallList';
 import { creatureVault, type CreatureVault } from '../mocks/creatureVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
+import { viewAudience } from '../helpers/viewAudience';
 
 // The line-of-sight fallback is the whole lighting view here: real sight, real cache, no GPU. The
 // engine's view gives up as it is made, as one whose shaders do not compile does.
@@ -80,13 +81,12 @@ function world(): World {
     eventBus: new EventEmitter(),
     obsApp: current.app,
     viewId: 'stale',
+    audience: viewAudience(store).audience,
     bounds: () => BOUNDS,
     albedo: () => null,
   });
   controller.wire({
-    setWallPointerDownHandler: vi.fn(), setWallPointerMoveHandler: vi.fn(), setWallPointerUpHandler: vi.fn(), setWallDoubleClickHandler: vi.fn(),
-    setWallContextMenuHandler: vi.fn(), setWallCursorProvider: vi.fn(), setDoorMenuHandlers: () => undefined, setDoorClickHandler: vi.fn(), setLightHandlers: vi.fn(),
-    setPlayerSightProvider: vi.fn(), setGlideWay: vi.fn(), setArtFloors: vi.fn(), refreshPlayerSight: vi.fn(), getSensedOutlineLayer: () => ({ visible: false }),
+    setPlayerSightProvider: vi.fn(), setGlideWay: vi.fn(), setArtFloors: vi.fn(), getSensedOutlineLayer: () => ({ visible: false }),
   } as unknown as TokenRenderer);
   cleanup = () => {
     controller.destroy();

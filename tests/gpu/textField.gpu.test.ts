@@ -14,6 +14,7 @@ import { textLayout } from '../../src/app/pixi/textLayout';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import type { TextElement } from '../../src/app/types';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { viewAudience } from '../helpers/viewAudience';
 
 vi.mock('events', async () => import('eventemitter3'));
 
@@ -95,7 +96,7 @@ async function open(background = 0x000000): Promise<Scene> {
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/text.atlasmap');
   let clock = 0;
-  const annotations = new AnnotationsRenderer({ viewport, store, grid: () => null, now: () => clock, sharpness: { resolution: () => 1, maxTextureSide: () => 8192 } });
+  const annotations = new AnnotationsRenderer({ viewport, store, audience: viewAudience(store).audience, grid: () => null, now: () => clock, sharpness: { resolution: () => 1, maxTextureSide: () => 8192 } });
   cleanup.push(() => {
     annotations.destroy();
     viewport.destroy();

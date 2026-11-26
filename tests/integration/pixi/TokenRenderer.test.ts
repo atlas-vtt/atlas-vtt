@@ -20,6 +20,9 @@ import { auraBadgePoint } from '../../../src/app/measure/auraArea';
 import { MeasureRenderer } from '../../../src/app/pixi/measure/MeasureRenderer';
 import { PinRenderer } from '../../../src/app/pixi/PinRenderer';
 import { isHandled } from '../../../src/app/pixi/utils/handledEvents';
+import { MapPointer } from '../../../src/app/pixi/pointer/MapPointer';
+import { listenToViewport } from '../../../src/app/pixi/pointer/viewportPointer';
+import type { DoorPointer, WallToolPointer } from '../../../src/app/pixi/pointer/mapLayers';
 import { FogOfWarRenderer } from '../../../src/app/pixi/fog/FogOfWarRenderer';
 import { TokenStatblockLinkService } from '../../../src/app/services/TokenStatblockLinkService';
 import { AssetService } from '../../../src/app/services/AssetService';
@@ -33,6 +36,7 @@ import { fogCoverage } from '../../../src/app/fog/fogCoverage';
 import { fogRectangle } from '../../helpers/fogOperations';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
 import { wirePlayerMeasurements } from '../../helpers/playerMeasureWiring';
+import { viewAudience, type ViewAudience } from '../../helpers/viewAudience';
 import { captureWithLayerVisibility, type LayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
 import type { TokenEntity } from '../../../src/app/types';
 
@@ -86,6 +90,14 @@ const pointerEvent = (x: number, y: number): FederatedPointerEvent =>
     preventDefault: vi.fn(),
   }) as unknown as FederatedPointerEvent;
 
+/** The lighting tool, taking nothing unless told otherwise. */
+const wallTool = (parts: Partial<WallToolPointer> = {}): WallToolPointer => ({
+  pointerDown: () => false, pointerMove: () => undefined, pointerUp: () => undefined, pointerCancel: () => undefined, doubleClick: () => undefined,
+  menuAt: () => true, openMenu: () => undefined, cursorAt: () => 'crosshair', ...parts,
+});
+/** Door badges that open where `click` says. */
+const doorBadges = (click: (x: number, y: number) => boolean): DoorPointer => ({ click, pressActsAt: () => false, menuHitTest: () => null, openMenu: () => undefined });
+
 const token = (overrides: Partial<TokenInput> & { id: string }): TokenInput => ({
   x: 100,
   y: 100,
@@ -102,6 +114,8 @@ describe('TokenRenderer Integration Tests', () => {
   let viewport: Viewport;
   let store: ViewStore;
   let eventBus: EventEmitter;
+  /** Whom the canvas is drawn for, with the peek key in the test's hand. */
+  let view: ViewAudience;
   let ticker: FakeTicker;
   let gridSize: number;
   let selectionOverlayUpdater: ReturnType<typeof vi.fn>;
@@ -109,6 +123,8 @@ describe('TokenRenderer Integration Tests', () => {
   let restoreGraphics: () => void;
   let emitVault: ReturnType<typeof createInMemoryApp>['emit'];
   let viewportPointerDownListeners: number;
+  let pointer: MapPointer;
+  let stopPointer: () => void;
   let isRendererDestroyed: boolean;
   let canvas: HTMLCanvasElement;
 
@@ -122,17 +138,18 @@ describe('TokenRenderer Integration Tests', () => {
     snapTokenCenter: snapToCellCenter,
   } as unknown as GridSystem;
 
-  const createRenderer = (viewStore: ViewStore = store): TokenRenderer => {
+  const createRenderer = (): TokenRenderer => {
     const renderer = new TokenRenderer(
       obsidianApp,
       viewport,
       gridSystem,
       selectionOverlayUpdater,
-      viewStore,
+      store,
       eventBus,
+      view.audience,
       'test-view-id',
     );
-    canvas = document.createElement('canvas');
+    pointer.attach('tokens', renderer.pointer);
     renderer.setPixiApp({
       ticker,
       canvas,
@@ -158,11 +175,16 @@ describe('TokenRenderer Integration Tests', () => {
     // The viewport only needs the event system's DOM element to bind wheel/pointer listeners.
     const events = { domElement: document.createElement('canvas') } as unknown as EventSystem;
     viewport = new Viewport({ screenWidth: 800, screenHeight: 600, worldWidth: 2000, worldHeight: 2000, events });
-    viewportPointerDownListeners = viewport.listenerCount('pointerdown');
     store = createViewAtlasStore(obsidianApp, 'test-view-id');
+    // The map's pointer listens before every renderer, as the orchestrator builds it
+    canvas = document.createElement('canvas');
+    eventBus = new EventEmitter();
+    view = viewAudience(store, eventBus);
+    pointer = new MapPointer({ store, gmView: () => !view.audience.showsPlayers(), placing: () => false });
+    stopPointer = listenToViewport(pointer, viewport, canvas);
+    viewportPointerDownListeners = viewport.listenerCount('pointerdown');
     store.getState().setPersistenceEnabled(false);
     store.getState().setMapPath('maps/test.atlasmap');
-    eventBus = new EventEmitter();
     ticker = new FakeTicker();
     gridSize = 70;
     selectionOverlayUpdater = vi.fn();
@@ -179,6 +201,7 @@ describe('TokenRenderer Integration Tests', () => {
 
   afterEach(() => {
     destroyRenderer();
+    stopPointer();
     viewport.destroy();
     restoreGraphics();
   });
@@ -477,16 +500,14 @@ describe('TokenRenderer Integration Tests', () => {
       setFog();
       store.getState().addToken(token({ id: 'covered', x: 200 }));
       await waitForTokens('covered');
-      let peeking = true;
-      tokenRenderer.setPlayerSightProvider(() => undefined, () => peeking);
-      tokenRenderer.refreshPlayerSight();
+      tokenRenderer.setPlayerSightProvider(() => undefined);
+      view.peek(true);
       expect(tokenGroup('covered').visible).toBe(false);
-      peeking = false;
-      tokenRenderer.refreshPlayerSight();
+      view.peek(false);
       expect(tokenGroup('covered').visible).toBe(true);
       store.getState().setGMView(false);
       tokenRenderer.setPlayerSightProvider(() => undefined);
-      tokenRenderer.refreshPlayerSight();
+      view.audience.refresh();
       expect(tokenGroup('covered').visible).toBe(false);
     });
 
@@ -539,7 +560,7 @@ describe('TokenRenderer Integration Tests', () => {
       expect(tokenGroup('moving').visible).toBe(true);
     });
 
-    it('updates only the moving token outline during animation', async () => {
+    it('updates only the moving token outline while it glides', async () => {
       wireFog();
       setFog();
       const perceive = vi.fn((_id: string) => 'sensed' as const);
@@ -547,37 +568,34 @@ describe('TokenRenderer Integration Tests', () => {
       store.getState().addToken(token({ id: 'moving', x: 100 }));
       store.getState().addToken(token({ id: 'stationary', x: 350 }));
       await waitForTokens('moving', 'stationary');
-      tokenRenderer.refreshPlayerSight();
+      view.audience.refresh();
+      store.getState().moveToken('moving', 120, 100);
       perceive.mockClear();
-      eventBus.emit('animate-token-to-position', { tokenId: 'moving', targetX: 120, targetY: 100 });
       ticker.advance(10);
       expect(perceive).toHaveBeenCalled();
       expect(perceive.mock.calls.every(([id]) => id === 'moving')).toBe(true);
     });
 
-    it('uses the displayed centre during path animation and keeps the animation running', async () => {
+    it('uses the displayed centre while a token glides through fog and keeps the glide running', async () => {
       wireFog();
       setFog();
       store.getState().setGMView(false);
       store.getState().addToken(token({ id: 'moving' }));
       await waitForTokens('moving');
-      eventBus.emit('animate-token-path', {
-        tokenId: 'moving', finalX: 300, finalY: 100,
-        path: [{ x: 150, y: 100, timestamp: 0 }, { x: 250, y: 100, timestamp: 500 }], duration: 1000,
-      });
-      ticker.advance(200);
+      store.getState().moveToken('moving', 300, 100);
+      ticker.advance(30);
       expect(tokenGroup('moving').x).toBeGreaterThan(150);
       expect(tokenGroup('moving').x).toBeLessThan(250);
-      expect(store.getState().objects.tokens['moving']?.x).toBe(100);
+      expect(store.getState().objects.tokens['moving']?.x).toBe(300);
       expect(tokenGroup('moving').visible).toBe(false);
-      ticker.advance(600);
+      ticker.advance(1000);
       expect(tokenGroup('moving').x).toBe(300);
       expect(tokenGroup('moving').visible).toBe(true);
       expect(ticker.size).toBe(0);
     });
   });
 
-  describe('Movement & Path Animation', () => {
+  describe('Movement', () => {
     it('should move the sprite when the token position changes in the store', async () => {
       store.getState().addToken(token({ id: 'token-1' }));
       await waitForTokens('token-1');
@@ -593,40 +611,12 @@ describe('TokenRenderer Integration Tests', () => {
       expect(tokenGroup('token-1').position).toMatchObject({ x: 200, y: 240 });
       expect(ticker.size).toBe(0);
     });
-
-    it('should play back a recorded path and commit the final position to the store', async () => {
-      store.getState().addToken(token({ id: 'token-1' }));
-      await waitForTokens('token-1');
-
-      eventBus.emit('animate-token-path', {
-        tokenId: 'token-1',
-        finalX: 300,
-        finalY: 300,
-        path: [
-          { x: 150, y: 150, timestamp: 0 },
-          { x: 250, y: 250, timestamp: 500 },
-        ],
-        duration: 1000,
-      });
-      expect(ticker.size).toBe(1);
-
-      ticker.advance(400);
-      const midway = tokenGroup('token-1').position;
-      expect(midway.x).toBeGreaterThan(100);
-      expect(midway.x).toBeLessThan(300);
-      expect(store.getState().objects.tokens['token-1']).toMatchObject({ x: 100, y: 100 });
-
-      ticker.advance(400);
-      expect(tokenGroup('token-1').position).toMatchObject({ x: 300, y: 300 });
-      expect(store.getState().objects.tokens['token-1']).toMatchObject({ x: 300, y: 300 });
-      expect(ticker.size).toBe(0);
-    });
   });
 
   describe('Glides on a lit scene', () => {
     const lit = (): void => {
       store.getState().setSceneLighting({ enabled: true });
-      tokenRenderer.setPlayerSightProvider(() => undefined, () => false);
+      tokenRenderer.setPlayerSightProvider(() => undefined);
     };
 
     it('puts a token the players may not have seen in its place at once, so its way there shows nothing', async () => {
@@ -697,7 +687,7 @@ describe('TokenRenderer Integration Tests', () => {
       store.getState().addToken(token({ id: 'token-2', x: 315, y: 105 }));
       await waitForTokens('token-1', 'token-2');
       const drawingDrag = vi.fn();
-      tokenRenderer.setAnnotationHandlers({ gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: drawingDrag, cursorAt: () => null, leave: () => undefined });
+      pointer.attach('annotations', { gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: drawingDrag, cursorAt: () => null, leave: () => undefined });
 
       viewport.emit('pointerdown', pointerEvent(315, 105));
       expect(store.getState().selectedIds).toEqual([]);
@@ -731,7 +721,7 @@ describe('TokenRenderer Integration Tests', () => {
 
     beforeEach(async () => {
       Object.assign(answers, { grip: false, press: true, menu: true });
-      tokenRenderer.setAnnotationHandlers({
+      pointer.attach('annotations', {
         gripDown: () => { asked.push('grip'); return answers.grip; },
         pointerDown: () => { asked.push('press'); return answers.press; },
         menuAt: () => { asked.push('menu?'); return answers.menu; },
@@ -778,7 +768,7 @@ describe('TokenRenderer Integration Tests', () => {
     it('asks them for the cursor of every move with the Draw tool, with Alt as it is held, and shows what they answer', () => {
       const asked: boolean[] = [];
       let answer: string | null = 'none';
-      tokenRenderer.setAnnotationHandlers({
+      pointer.attach('annotations', {
         gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: () => undefined, leave: () => undefined,
         cursorAt: (_x, _y, _covered, free) => { asked.push(free === true); return answer; },
       });
@@ -820,7 +810,7 @@ describe('TokenRenderer Integration Tests', () => {
       store.getState().addToken(token({ id: 'token-1', x: 105, y: 105 }));
       await waitForTokens('token-1');
       const lights = lightHandlers(true);
-      tokenRenderer.setLightHandlers(lights);
+      pointer.attach('lights', lights);
 
       viewport.emit('pointerdown', pointerEvent(105, 105));
       viewport.emit('pointerup', pointerEvent(105, 105));
@@ -832,7 +822,7 @@ describe('TokenRenderer Integration Tests', () => {
     it('lets the press through to the token where no marker takes it', async () => {
       store.getState().addToken(token({ id: 'token-1', x: 105, y: 105 }));
       await waitForTokens('token-1');
-      tokenRenderer.setLightHandlers(lightHandlers(false));
+      pointer.attach('lights', lightHandlers(false));
 
       viewport.emit('pointerdown', pointerEvent(105, 105));
       viewport.emit('pointerup', pointerEvent(105, 105));
@@ -842,11 +832,10 @@ describe('TokenRenderer Integration Tests', () => {
 
     it('asks pins and door badges first', () => {
       const lights = lightHandlers(true);
-      tokenRenderer.setLightHandlers(lights);
+      pointer.attach('lights', lights);
       const pinClick = vi.fn();
-      tokenRenderer.setPinHitTestProvider((x) => (x < 50 ? 'pin-1' : null));
-      tokenRenderer.setPinClickHandler(pinClick);
-      tokenRenderer.setDoorClickHandler((x) => x > 500);
+      pointer.attach('pins', { hitTest: (x) => (x < 50 ? 'pin-1' : null), press: pinClick, hover: () => undefined });
+      pointer.attach('doors', doorBadges((x) => x > 500));
 
       viewport.emit('pointerdown', pointerEvent(20, 20));
       viewport.emit('pointerdown', pointerEvent(600, 20));
@@ -859,14 +848,14 @@ describe('TokenRenderer Integration Tests', () => {
 
     it('leaves a right press to the menus', () => {
       const lights = lightHandlers(true);
-      tokenRenderer.setLightHandlers(lights);
+      pointer.attach('lights', lights);
       viewport.emit('pointerdown', { ...pointerEvent(300, 20), button: 2 } as unknown as FederatedPointerEvent);
       expect(lights.pointerDown).not.toHaveBeenCalled();
     });
 
     it('shows the marker\'s cursor on hover and clears the hover when the pointer leaves the canvas', () => {
       const lights = lightHandlers(true);
-      tokenRenderer.setLightHandlers(lights);
+      pointer.attach('lights', lights);
       viewport.emit('pointermove', { ...pointerEvent(300, 20), clientX: 300, clientY: 20 });
       expect(lights.cursorAt).toHaveBeenCalledWith(300, 20);
       expect(viewport.cursor).toBe('pointer');
@@ -881,10 +870,9 @@ describe('TokenRenderer Integration Tests', () => {
     const OFF_MARKERS = 700;
 
     beforeEach(() => {
-      tokenRenderer.setPinHitTestProvider((x) => (x < 50 ? 'pin-1' : null));
-      tokenRenderer.setPinClickHandler(vi.fn());
-      tokenRenderer.setDoorClickHandler((x) => x > 500 && x < 560);
-      tokenRenderer.setLightHandlers({ pointerDown: (x) => x > 290 && x < 310, cursorAt: () => null, leave: () => undefined });
+      pointer.attach('pins', { hitTest: (x) => (x < 50 ? 'pin-1' : null), press: vi.fn(), hover: () => undefined });
+      pointer.attach('doors', doorBadges((x) => x > 500 && x < 560));
+      pointer.attach('lights', { pointerDown: (x) => x > 290 && x < 310, cursorAt: () => null, leave: () => undefined });
     });
 
     const click = (x: number): void => {
@@ -894,7 +882,7 @@ describe('TokenRenderer Integration Tests', () => {
     };
 
     it.each(MARKERS)('draws no stroke and stamps no icon on %s', (_marker, x) => {
-      const drawing = new AnnotationsRenderer({ viewport, store, grid: () => null });
+      const drawing = new AnnotationsRenderer({ viewport, store, grid: () => null, audience: view.audience });
       try {
         store.getState().setActiveTool('draw');
         for (const mode of ['pen', 'stamp'] as const) {
@@ -926,7 +914,7 @@ describe('TokenRenderer Integration Tests', () => {
 
     it.each(MARKERS)('paints no fog on %s', (_marker, x) => {
       vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(new Proxy({}, { get: () => (): void => undefined }) as never);
-      const fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null);
+      const fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null, view.audience);
       try {
         store.getState().setActiveTool('fog');
         click(x);
@@ -943,7 +931,7 @@ describe('TokenRenderer Integration Tests', () => {
       // The field a text is typed in lies over the canvas, in what holds it.
       const host = document.body.appendChild(document.createElement('div'));
       host.append(viewport.options.events.domElement);
-      const drawing = new AnnotationsRenderer({ viewport, store, grid: () => null });
+      const drawing = new AnnotationsRenderer({ viewport, store, grid: () => null, audience: view.audience });
       try {
         store.getState().setDrawTool({ mode: 'text' });
         store.getState().setActiveTool('draw');
@@ -979,9 +967,8 @@ describe('TokenRenderer Integration Tests', () => {
 
     beforeEach(() => {
       vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(new Proxy({}, { get: () => (): void => undefined }) as never);
-      fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null);
+      fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null, view.audience);
       viewport.addChild(fog.getContainer());
-      fog.reorderViewportListeners();
       store.setState((state) => ({ objects: { ...state.objects, fog: { paint: fogRectangle({ x: 0, y: 0, width: 2000, height: 2000 }) } } }));
       openContextMenuGlobal.mockClear();
     });
@@ -1049,7 +1036,7 @@ describe('TokenRenderer Integration Tests', () => {
 
     it('leaves a right press with the wall tool to the pan and opens the wall menu only when it is released in place', () => {
       const wallMenu = vi.fn();
-      tokenRenderer.setWallContextMenuHandler(wallMenu);
+      pointer.attach('walls', wallTool({ openMenu: wallMenu }));
       store.setState({ activeTool: 'wall' }); // the tool is behind a feature flag
 
       viewport.emit('pointerdown', rightClick(900, 900));
@@ -1085,14 +1072,13 @@ describe('TokenRenderer Integration Tests', () => {
       await waitForTokens('token-1');
       store.setState({ activeTool: tool });
       // Each tool takes the move with a cursor of its own, as it does on the map
-      tokenRenderer.setWallPointerMoveHandler(() => undefined);
-      tokenRenderer.setWallCursorProvider(() => 'crosshair');
-      tokenRenderer.setAudioPointerMoveHandler(() => undefined);
-      tokenRenderer.setStairsTool({ pointerDown: () => true, pointerMove: () => undefined, pointerUp: () => undefined, doubleClick: () => undefined, cursorAt: () => 'crosshair' });
-      tokenRenderer.setAnnotationHandlers({ gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: () => undefined, cursorAt: () => (tool === 'draw' ? 'crosshair' : null), leave: () => undefined });
+      pointer.attach('walls', wallTool());
+      pointer.attach('sounds', { pointerDown: () => false });
+      pointer.attach('stairs', { pointerDown: () => true, pointerMove: () => undefined, pointerUp: () => undefined, doubleClick: () => undefined, cursorAt: () => 'crosshair' });
+      pointer.attach('annotations', { gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: () => undefined, cursorAt: () => (tool === 'draw' ? 'crosshair' : null), leave: () => undefined });
       // The fog tool's own brush, ring and guide listen to the same moves
       vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(new Proxy({}, { get: () => (): void => undefined }) as never);
-      const fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null);
+      const fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null, view.audience);
       onTestFinished(() => {
         fog.destroy();
         vi.restoreAllMocks();
@@ -1133,7 +1119,7 @@ describe('TokenRenderer Integration Tests', () => {
   describe('Canvas Listeners', () => {
     it('should forward a double-click to the wall tool', () => {
       const doubleClicked = vi.fn();
-      tokenRenderer.setWallDoubleClickHandler(doubleClicked);
+      pointer.attach('walls', wallTool({ doubleClick: doubleClicked }));
       store.setState({ activeTool: 'wall' }); // the tool is behind a feature flag
 
       canvas.dispatchEvent(new MouseEvent('dblclick'));
@@ -1213,13 +1199,13 @@ describe('TokenRenderer Integration Tests', () => {
           expect(tokenGroup('token-1').visible).toBe(false);
 
           seen = true;
-          tokenRenderer.refreshPlayerSight();
+          view.audience.refresh();
           expect(tokenGroup('token-1').visible).toBe(true);
           expect(tokenGroup('token-1').alpha).toBe(1);
           expect(tokenUi('token-1').visible).toBe(true);
 
           seen = false;
-          tokenRenderer.refreshPlayerSight();
+          view.audience.refresh();
           expect(tokenGroup('token-1').visible).toBe(false);
           expect(tokenUi('token-1').visible).toBe(false);
         });
@@ -1246,7 +1232,7 @@ describe('TokenRenderer Integration Tests', () => {
           await new Promise((resolve) => setTimeout(resolve, 20));
 
           seen = true;
-          tokenRenderer.refreshPlayerSight();
+          view.audience.refresh();
           expect(tokenUi('token-1').visible).toBe(true);
         });
 
@@ -1260,7 +1246,7 @@ describe('TokenRenderer Integration Tests', () => {
 
           seen = false;
           tokenRenderer.setPlayerSightProvider(() => (id) => (id === 'token-2' ? 'seen' : 'unseen'));
-          tokenRenderer.refreshPlayerSight();
+          view.audience.refresh();
 
           expect(store.getState().selectedIds).toEqual(['token-2']);
         });
@@ -1283,7 +1269,7 @@ describe('TokenRenderer Integration Tests', () => {
           viewport.emit('pointerdown', pointerEvent(105, 105));
           viewport.emit('pointermove', pointerEvent(180, 105));
           seen = false;
-          tokenRenderer.refreshPlayerSight();
+          view.audience.refresh();
           expect(tokenGroup('token-1').visible).toBe(true);
 
           viewport.emit('pointerup', pointerEvent(180, 105));
@@ -1328,7 +1314,7 @@ describe('TokenRenderer Integration Tests', () => {
             store.getState().addToken(token({ id: 'token-2', x: 300 }));
             store.getState().addToken(token({ id: 'token-3', x: 500 }));
             await waitForTokens('token-1', 'token-2', 'token-3');
-            tokenRenderer.refreshPlayerSight();
+            view.audience.refresh();
           };
 
           it('should show as an outline of its footprint, without art, nameplate or bars, and take no pointer', async () => {
@@ -1353,16 +1339,16 @@ describe('TokenRenderer Integration Tests', () => {
             tokenRenderer.setPlayerSightProvider(() => () => perceived);
             store.getState().addToken(token({ id: 'token-1' }));
             await waitForTokens('token-1');
-            tokenRenderer.refreshPlayerSight();
+            view.audience.refresh();
             expect(outlines().children).toHaveLength(1);
 
             perceived = 'seen';
-            tokenRenderer.refreshPlayerSight();
+            view.audience.refresh();
             expect(tokenGroup('token-1').visible).toBe(true);
             expect(outlines().children).toHaveLength(0);
 
             perceived = 'unseen';
-            tokenRenderer.refreshPlayerSight();
+            view.audience.refresh();
             expect(tokenGroup('token-1').visible).toBe(false);
             expect(outlines().children).toHaveLength(0);
           });
@@ -1371,14 +1357,14 @@ describe('TokenRenderer Integration Tests', () => {
             tokenRenderer.setPlayerSightProvider(() => () => 'sensed');
             store.getState().addToken(token({ id: 'token-1', isHidden: true }));
             await waitForTokens('token-1');
-            tokenRenderer.refreshPlayerSight();
+            view.audience.refresh();
             expect(outlines().children).toHaveLength(0);
           });
 
           it('should draw no outline once the canvas shows the GM\'s view again', async () => {
             await sensedSetup();
             tokenRenderer.setPlayerSightProvider(() => undefined);
-            tokenRenderer.refreshPlayerSight();
+            view.audience.refresh();
             expect(outlines().children).toHaveLength(0);
             expect(tokenGroup('token-1').visible).toBe(true);
           });
@@ -1465,22 +1451,19 @@ describe('TokenRenderer Integration Tests', () => {
     });
 
     it('answers for the canvas only while it shows the players\' view: session view or the peek', async () => {
-      let peeking = false;
-      tokenRenderer.setPlayerSightProvider(() => (peeking ? () => 'unseen' : undefined), () => peeking);
+      tokenRenderer.setPlayerSightProvider(() => (view.peeking() ? () => 'unseen' : undefined));
       store.getState().addToken(token({ id: 'goblin' }));
       await waitForTokens('goblin');
-      expect(tokenRenderer.playersSeeOnCanvas()).toBeNull();
+      expect(view.audience.seenOnCanvas()).toBeNull();
       store.getState().setGMView(false);
-      expect(tokenRenderer.playersSeeOnCanvas()?.('goblin')).toBe(true);
+      expect(view.audience.seenOnCanvas()?.('goblin')).toBe(true);
       store.getState().setGMView(true);
-      peeking = true;
-      tokenRenderer.refreshPlayerSight();
-      expect(tokenRenderer.playersSeeOnCanvas()?.('goblin')).toBe(false);
+      view.peek(true);
+      expect(view.audience.seenOnCanvas()?.('goblin')).toBe(false);
     });
 
     it('draws the token UI as the players see it while the canvas shows their view: session view or the peek', async () => {
-      let peeking = false;
-      tokenRenderer.setPlayerSightProvider(() => undefined, () => peeking);
+      tokenRenderer.setPlayerSightProvider(() => undefined);
       store.getState().addToken(token({ id: 'goblin', kind: 'character' }));
       await waitForTokens('goblin');
       const drawsForPlayers = (): boolean =>
@@ -1490,8 +1473,7 @@ describe('TokenRenderer Integration Tests', () => {
       expect(drawsForPlayers()).toBe(true);
       store.getState().setGMView(true);
       expect(drawsForPlayers()).toBe(false);
-      peeking = true;
-      tokenRenderer.refreshPlayerSight();
+      view.peek(true);
       expect(drawsForPlayers()).toBe(true);
       // A token placed meanwhile is drawn the same way
       store.getState().addToken(token({ id: 'orc', kind: 'character', x: 300 }));
@@ -1499,9 +1481,9 @@ describe('TokenRenderer Integration Tests', () => {
       expect((tokenRenderer as unknown as { uiManager: { getTokenUIs(): Record<string, { playersView: boolean }> } }).uiManager.getTokenUIs().orc!.playersView).toBe(true);
     });
 
-    it('tells who follows drawn tokens of each token drawn once its art has loaded, and no more once stopped', async () => {
+    it('tells who follows what the players see of each token drawn once its art has loaded, in the GM\'s view too, and no more once stopped', async () => {
       const drawn = vi.fn();
-      const stop = tokenRenderer.onTokenDrawn(drawn);
+      const stop = view.audience.onSightChange(drawn);
       store.getState().addToken(token({ id: 'goblin' }));
       expect(drawn).not.toHaveBeenCalled();
       await waitForTokens('goblin');
@@ -1514,7 +1496,7 @@ describe('TokenRenderer Integration Tests', () => {
 
     it('tells its listeners after every pass over the players\' sight and every change of the tokens', async () => {
       const listener = vi.fn();
-      const stop = tokenRenderer.onPlayersViewChange(listener);
+      const stop = view.audience.onChange(listener);
       store.getState().addToken(token({ id: 'goblin' }));
       await waitForTokens('goblin');
       listener.mockClear();
@@ -1539,7 +1521,7 @@ describe('TokenRenderer Integration Tests', () => {
       store.getState().addToken(token({ id: 'moving', x: 105, y: 105 }));
       await waitForTokens('moving');
       const listener = vi.fn();
-      tokenRenderer.onPlayersViewChange(listener);
+      view.audience.onChange(listener);
       viewport.emit('pointerdown', pointerEvent(105, 105));
       viewport.emit('pointermove', pointerEvent(120, 105));
       const calls: number[] = [];
@@ -1557,11 +1539,11 @@ describe('TokenRenderer Integration Tests', () => {
       const coverage = vi.fn(() => fogCoverage(store.getState().objects.fog));
       tokenRenderer.setFogCoverageProvider(coverage);
       setFog();
-      tokenRenderer.setPlayerSightProvider(() => undefined, () => false);
+      tokenRenderer.setPlayerSightProvider(() => undefined);
       store.getState().addToken(token({ id: 'moving', x: 105, y: 105 }));
       await waitForTokens('moving');
       const listener = vi.fn();
-      tokenRenderer.onPlayersViewChange(listener);
+      view.audience.onChange(listener);
       viewport.emit('pointerdown', pointerEvent(105, 105));
       coverage.mockClear();
       listener.mockClear();
@@ -1576,16 +1558,14 @@ describe('TokenRenderer Integration Tests', () => {
     let measure: MeasureRenderer;
     let unwire: () => void;
     let perception: ((id: string) => 'seen' | 'unseen') | undefined;
-    let peeking: boolean;
 
     beforeEach(() => {
       perception = undefined;
-      peeking = false;
-      const active = (): boolean => peeking || !store.getState().isGMView;
-      tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined), active);
+      const active = (): boolean => view.peeking() || !store.getState().isGMView;
+      tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined));
       tokenRenderer.setFogCoverageProvider(() => fogCoverage(store.getState().objects.fog));
       measure = new MeasureRenderer(viewport, store, gridSystem);
-      unwire = wirePlayerMeasurements({ measure, tokens: tokenRenderer, store, grid: gridSystem, lighting: () => perception });
+      unwire = wirePlayerMeasurements({ measure, tokens: tokenRenderer, audience: view.audience, pointer, store, grid: gridSystem, lighting: () => perception });
     });
 
     afterEach(() => {
@@ -1631,14 +1611,12 @@ describe('TokenRenderer Integration Tests', () => {
       keepRuler(105);
       perception = () => 'unseen';
       expect(onCanvas()).toEqual([true, false, true, true]);
-      peeking = true;
-      tokenRenderer.refreshPlayerSight();
+      view.peek(true);
       expect(onCanvas()).toEqual([true, false, false, false]);
       perception = () => 'seen';
-      tokenRenderer.refreshPlayerSight();
+      view.audience.refresh();
       expect(onCanvas()).toEqual([true, false, true, true]);
-      peeking = false;
-      tokenRenderer.refreshPlayerSight();
+      view.peek(false);
     });
 
     it('hides a kept ruler in session view once its token is deleted, or the map reloads without it', async () => {
@@ -1700,7 +1678,7 @@ describe('TokenRenderer Integration Tests', () => {
     beforeEach(() => {
       perception = undefined;
       const active = (): boolean => !store.getState().isGMView;
-      tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined), active);
+      tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined));
       tokenRenderer.setFogCoverageProvider(() => fogCoverage(store.getState().objects.fog));
     });
 
@@ -1771,10 +1749,10 @@ describe('TokenRenderer Integration Tests', () => {
       await goblins({ id: 'A' }, { id: 'B' });
       store.getState().setGMView(false);
       perception = (id) => (id === 'B' ? 'sensed' : 'seen');
-      tokenRenderer.refreshPlayerSight();
+      view.audience.refresh();
       await expectLooks(['A', 'B'], ['gm 1', 'none']);
       perception = undefined;
-      tokenRenderer.refreshPlayerSight();
+      view.audience.refresh();
       await expectLooks(['A', 'B'], ['gm 1', 'gm 2']);
       store.setState((state) => ({ objects: { ...state.objects, fog: { paint: fogRectangle({ x: 200, y: 50, width: 100, height: 100 }) } } }));
       await expectLooks(['A', 'B'], ['gm 1', 'none']);
@@ -1806,7 +1784,7 @@ describe('TokenRenderer Integration Tests', () => {
       await goblins({ id: 'A' }, { id: 'B' });
       let current = true;
       const active = (): boolean => !store.getState().isGMView;
-      tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined), active, () => current);
+      tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined), () => current);
       frameLooks('A', 'B');
       expect(listNumbers('A', 'B')).toEqual([1, 2]);
       current = false;
@@ -1837,7 +1815,8 @@ describe('TokenRenderer Integration Tests', () => {
       const group = tokenGroup('token-1');
       const container = tokenRenderer.getTokenContainer();
 
-      expect(viewport.listenerCount('pointerdown')).toBeGreaterThan(viewportPointerDownListeners);
+      // Presses reach the tokens through the map's pointer: the renderer listens to none itself
+      expect(viewport.listenerCount('pointerdown')).toBe(viewportPointerDownListeners);
 
       destroyRenderer();
 

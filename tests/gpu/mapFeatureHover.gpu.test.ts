@@ -15,7 +15,10 @@ async function sceneWithStatue(): Promise<{ scene: PlayerViewScene; hover: MapFe
   const scene = await createScene();
   scene.store.setState((state) => ({ activeTool: 'select', objects: { ...state.objects, mapFeatures: { statue } } }));
   const hover = new MapFeatureInteraction(scene.store, scene.app.canvas);
-  scene.tokens.setMapFeatureHandlers(hover);
+  scene.mapPointer.attach('mapFeatures', hover);
+  scene.audience.onChange(() => {
+    if (scene.audience.showsPlayers()) hover.leave();
+  });
   return { scene, hover };
 }
 

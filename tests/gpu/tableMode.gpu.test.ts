@@ -83,7 +83,7 @@ async function table(): Promise<Table> {
   Object.assign(floating.style, { position: 'fixed', left: '300px', top: '300px', width: '160px', height: '120px' });
 
   const lighting = new LightingController({
-    viewport: m.viewport, app: m.app, store: m.store, eventBus: new EventEmitter(), obsApp: m.obsidian, viewId: 'table-mode',
+    viewport: m.viewport, app: m.app, store: m.store, eventBus: new EventEmitter(), obsApp: m.obsidian, viewId: 'table-mode', audience: m.audience,
     bounds: () => ({ x: 0, y: 0, ...TABLET }), albedo: () => null,
   });
   lighting.wire(m.tokens);

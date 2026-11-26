@@ -7,6 +7,7 @@ import { DEFAULT_FOG_TOOL, type FogToolChoices } from '../../src/app/fog/fogTool
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import type { MapRect } from '../../src/app/grid/cellNumbering';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
+import { viewAudience } from '../helpers/viewAudience';
 
 interface SceneState {
   mapPath: string;
@@ -34,7 +35,7 @@ function fogOverMap(isMapLoading: boolean): { store: StoreApi<SceneState>; show:
   let shown: MapRect | null = null;
   const renderer = new FogOfWarRenderer(
     Object.assign(new Container(), { options: {} }) as never, { canvas: createEl('canvas') } as never, events as never,
-    store as unknown as StoreApi<ViewAtlasState>, () => shown,
+    store as unknown as StoreApi<ViewAtlasState>, () => shown, viewAudience(store as never).audience,
   );
   const preview = renderer.getContainer().children.find((child) => child instanceof Sprite && child.zIndex === 999)!;
   return {

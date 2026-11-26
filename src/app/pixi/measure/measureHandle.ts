@@ -35,7 +35,7 @@ export interface MeasureHandleRef {
   readonly part: MeasureHandlePart;
 }
 
-/** What the token renderer's viewport dispatch asks about the handles of kept measurements, with any tool. */
+/** What the map's pointer (`MapPointer`) asks about the handles of kept measurements, with any tool. */
 export interface MeasurePointerHandlers {
   /** A left press at a world point; true when a handle took it. */
   pointerDown(worldX: number, worldY: number, event: FederatedPointerEvent): boolean;

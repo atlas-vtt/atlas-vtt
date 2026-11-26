@@ -22,9 +22,9 @@ import { FogGesture } from './FogGesture';
 import { fogMenuOffered, showFogMenu } from './fogMenu';
 import { FogMenuTarget } from './FogMenuTarget';
 import { FogPicture, viewedFog } from './FogPicture';
-import { showsGmView } from './fogVisibilityPolicy';
+import type { CanvasAudience } from '../audience/CanvasAudience';
 
-/** What the viewport's dispatch (`TokenRenderer`) asks about the fog's menu, in the GM's view. */
+/** What the map's pointer (`MapPointer`) asks about the fog's menu, in the GM's view. */
 export interface FogMenuPointerHandlers {
   /** Whether a right-click at the world point has the fog's menu: none while the canvas shows the players' view, or a shape is under way. */
   menuAt(worldX: number, worldY: number): boolean;
@@ -40,8 +40,7 @@ export class FogOfWarRenderer {
   private readonly gesture: FogGesture;
   private readonly menuTarget: FogMenuTarget;
   private unsubscribe?: () => void;
-  /** Whether the canvas shows the players' view where the store's view switches do not say so (a peek); unset or null, they alone say it. */
-  public showsPlayers: (() => boolean | null) | null = null;
+  private readonly stopFollowingAudience: () => void;
   /** Whether a key pressed now is this map's to take (`canRunMapHotkeys`); unset, every key outside a text field is. */
   public keysBelongToMap: ((event: KeyboardEvent) => boolean) | null = null;
   /** Whether a key is the map's undo as the GM has bound it; unset, the key it has by default. */
@@ -52,7 +51,8 @@ export class FogOfWarRenderer {
   /**
    * @param mapRect the map image in world space, read whenever the fog sizes its canvas, so a
    * renamed scene or a load keeps the bounds of the image that is shown; `map-image-updated`
-   * only says that it changed.
+   * only says that it changed. `audience` says whom the canvas is drawn for: the fog takes the
+   * players' opacity and leaves its menu and the tool's marks to the GM's view.
    */
   constructor(
     viewport: Viewport,
@@ -60,6 +60,7 @@ export class FogOfWarRenderer {
     private readonly eventBus: EventEmitter,
     private readonly store: StoreApi<ViewAtlasState>,
     mapRect: () => MapRect | null,
+    private readonly audience: Pick<CanvasAudience, 'showsPlayers' | 'onChange'>,
   ) {
     this.container = new PIXI.Container();
     this.container.label = 'fogLayer';
@@ -70,7 +71,7 @@ export class FogOfWarRenderer {
 
     this.picture = new FogPicture({
       layer: this.container, app: pixiApp, store, mapRect, coverage: this.coverageCache,
-      showsPlayers: () => this.showsPlayers?.() ?? null,
+      showsPlayers: () => audience.showsPlayers(),
       onFadeEnd: () => this.syncShown(),
     });
     this.gesture = new FogGesture({
@@ -85,14 +86,16 @@ export class FogOfWarRenderer {
       mapRect,
       keysBelongToMap: (event) => this.keysBelongToMap?.(event) ?? true,
       isUndoKey: (event) => this.isUndoKey?.(event),
-      showsPlayers: () => this.showsPlayers?.() ?? null,
+      showsPlayers: () => audience.showsPlayers(),
     });
 
-    this.menuTarget = new FogMenuTarget({ viewport, store, showsPlayers: () => this.showsPlayers?.() ?? null });
+    this.menuTarget = new FogMenuTarget({ viewport, store, showsPlayers: () => audience.showsPlayers() });
     this.container.addChild(this.menuTarget.view);
 
     this.eventBus.on('map-image-updated', this.mapImageUpdatedHandler);
     this.followStore();
+    this.stopFollowingAudience = audience.onChange(() => this.refreshVisibility());
+    this.refreshVisibility();
 
     // The scene as the store holds it now: preloaded fog shows though no change of it follows.
     if (this.store.getState().isMapLoading) this.container.visible = false;
@@ -163,11 +166,6 @@ export class FogOfWarRenderer {
     this.picture.setGmOpacity(opacity);
   }
 
-  /** The fog tool hears presses after the dispatch that claims them; called once that dispatch listens. */
-  reorderViewportListeners(): void {
-    this.gesture.hearPressesLast();
-  }
-
   /** The fog tool was taken up, or changed between hiding and revealing. */
   enableFogMode(): void {
     if (this.store.getState().isMapLoading) return;
@@ -187,6 +185,7 @@ export class FogOfWarRenderer {
 
   destroy(): void {
     this.unsubscribe?.();
+    this.stopFollowingAudience();
     this.eventBus.off('map-image-updated', this.mapImageUpdatedHandler);
     this.gesture.destroy();
     this.menuTarget.destroy();
@@ -219,7 +218,7 @@ export class FogOfWarRenderer {
   /** Whether a right-click may open the fog's menu: the canvas shows the GM's view of a loaded scene, and no shape is under way. */
   private offersMenu(): boolean {
     const state = this.store.getState();
-    return !state.isMapLoading && showsGmView(state, this.showsPlayers ?? undefined) && !this.gesture.active;
+    return !state.isMapLoading && !this.audience.showsPlayers() && !this.gesture.active;
   }
 
   private followStore(): void {
@@ -284,9 +283,6 @@ export class FogOfWarRenderer {
           this.showCommitted();
         }
       }
-
-      // The GM view switch: the fog takes the other view's opacity
-      if (viewChanged) this.picture.followView();
     });
   }
 }

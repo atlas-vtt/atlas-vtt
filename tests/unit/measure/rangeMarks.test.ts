@@ -284,6 +284,7 @@ describe('the range marks in the players\' picture', () => {
     footprints: () => [],
     seenAtStart: () => (id) => seen.has(id),
     seenOnCanvas: () => (canvas.players ? (id: string): boolean => seen.has(id) : null),
+    onChange: () => () => undefined,
   });
   const shownIn = (layers: { layer: unknown; visible: boolean }[], part: unknown): boolean | undefined => layers.find((entry) => entry.layer === part)?.visible;
   /** Whether a players' frame shows the rings and the check, by `seen`. */

@@ -9,6 +9,7 @@ import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFa
 import { getHistoryStore } from '../../src/app/stores/history';
 import type { FogOperation } from '../../src/app/types/fogTypes';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { viewAudience } from '../helpers/viewAudience';
 
 /** A camera that shows the map unscaled, as the gesture reads a viewport. */
 class Camera extends Container {
@@ -67,8 +68,9 @@ function polygonScene(keysBelongToMap?: (event: KeyboardEvent) => boolean): Poly
   const showStroke = vi.fn();
   const showCommitted = vi.fn();
   const layer = new Container();
+  const { audience } = viewAudience(store);
   const gesture = new FogGesture({
-    layer, viewport: viewport as unknown as Viewport, canvas: () => canvas, store,
+    layer, viewport: viewport as unknown as Viewport, canvas: () => canvas, store, showsPlayers: () => audience.showsPlayers(),
     host: { showStroke, showCommitted },
     ...(keysBelongToMap && { keysBelongToMap }),
   });
@@ -270,8 +272,9 @@ describe('the fog tool\'s polygon', () => {
     store.getState().setFogTool({ shape: 'polygon' });
     const viewport = new Camera();
     const canvas = document.body.createEl('canvas');
+    const { audience } = viewAudience(store);
     const gesture = new FogGesture({
-      layer: new Container(), viewport: viewport as unknown as Viewport, canvas: () => canvas, store,
+      layer: new Container(), viewport: viewport as unknown as Viewport, canvas: () => canvas, store, showsPlayers: () => audience.showsPlayers(),
       host: { showStroke: vi.fn(), showCommitted: vi.fn() },
       isUndoKey: (event) => event.key === 'u',
     });

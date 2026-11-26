@@ -7,12 +7,13 @@ import { LightingController } from '../../src/app/pixi/lighting/LightingControll
 import type { LightPointerHandlers } from '../../src/app/pixi/lighting/LightInteraction';
 import type { SceneLightingDeps } from '../../src/app/pixi/lighting/createSceneLighting';
 import type { SceneLightingView } from '../../src/app/pixi/lighting/sceneLightingView';
-import type { DoorMenuHandlers, TokenRenderer } from '../../src/app/pixi/TokenRenderer';
+import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';
 import { SEES_ALL } from '../../src/app/vision/sight';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
+import { viewAudience } from '../helpers/viewAudience';
 
 vi.mock('../../src/app/pixi/lighting/createSceneLighting', () => ({
   createSceneLighting: (deps: SceneLightingDeps): SceneLightingView => {
@@ -44,7 +45,7 @@ vi.mock('../../src/app/react/root/ContextMenuContext', () => ({ openContextMenuG
 /** The context menu the controller opens. */
 export const contextMenuOpened = openContextMenuGlobal;
 
-/** A lighting controller on a store with two lights, wired as `TokenRenderer` wires it. Import this module first: it mocks what the controller imports. */
+/** A lighting controller on a store with two lights, its pointer layers as the map's pointer asks them. Import this module first: it mocks what the controller imports. */
 export interface Setup {
   controller: LightingController;
   store: ViewAtlasStore;
@@ -61,7 +62,6 @@ export interface Setup {
   click: (x: number, y: number, keys?: { shift?: boolean }) => boolean;
 }
 
-const doorMenu: { current: DoorMenuHandlers | null } = { current: null };
 let cleanup: (() => void) | null = null;
 afterEach(() => {
   cleanup?.();
@@ -86,22 +86,19 @@ export function setup(): Setup {
   store.getState().setSceneLighting({ enabled: true });
   const eventBus = new EventEmitter();
   const controller = new LightingController({
-    viewport, app: { canvas } as unknown as Application, store, eventBus, obsApp, viewId: 'popover-view',
+    viewport, app: { canvas } as unknown as Application, store, eventBus, obsApp, viewId: 'popover-view', audience: viewAudience(store, eventBus).audience,
     bounds: () => ({ width: 1000, height: 1000 }), albedo: () => null,
   });
-  const wired = {} as Pick<Setup, 'light' | 'wallDown' | 'contextMenu' | 'wallMove'>;
   const ignore = (): void => undefined;
   const sensedOutlines = { visible: false };
   controller.wire({
-    setLightHandlers: (handlers: LightPointerHandlers) => { wired.light = handlers; },
-    setWallPointerDownHandler: (fn: Setup['wallDown']) => { wired.wallDown = fn; },
-    setWallContextMenuHandler: (fn: Setup['contextMenu']) => { wired.contextMenu = fn; },
-    setWallPointerMoveHandler: (fn: Setup['wallMove']) => { wired.wallMove = fn; },
-    setWallPointerUpHandler: ignore, setWallDoubleClickHandler: ignore, setWallCursorProvider: ignore,
-    setDoorMenuHandlers: (handlers: DoorMenuHandlers) => { doorMenu.current = handlers; },
-    setDoorClickHandler: ignore, setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, refreshPlayerSight: ignore,
+    setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore,
     getSensedOutlineLayer: () => sensedOutlines,
   } as unknown as TokenRenderer);
+  const { lights, walls } = controller.pointerLayers();
+  const wired: Pick<Setup, 'light' | 'wallDown' | 'contextMenu' | 'wallMove'> = {
+    light: lights, wallDown: walls.pointerDown, contextMenu: walls.openMenu, wallMove: walls.pointerMove,
+  };
   const torch = store.getState().addLight({ x: 400, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });
   const lantern = store.getState().addLight({ x: 600, y: 300, emission: { ...genericLight('lantern'), kind: 'lantern' } });
   getHistoryStore(store)!.getState().clear();

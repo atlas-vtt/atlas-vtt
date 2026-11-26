@@ -12,7 +12,7 @@ vi.mock('obsidian', () => ({
   normalizePath: (path: string) => path,
   requestUrl: () => Promise.resolve({ status: 201, json: null }),
   PluginSettingTab: class {},
-  Setting: class {},
+  Setting: class {}, Platform: { isMacOS: false },
 }));
 
 const ANA = 'anaanaanaanaanaanaan';

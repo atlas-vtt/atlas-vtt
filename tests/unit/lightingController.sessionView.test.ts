@@ -12,7 +12,7 @@ import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 import type { LightPointerHandlers } from '../../src/app/pixi/lighting/LightInteraction';
 import type { SceneLightingDeps } from '../../src/app/pixi/lighting/createSceneLighting';
 import type { SceneLightingView } from '../../src/app/pixi/lighting/sceneLightingView';
-import type { DoorMenuHandlers, TokenRenderer } from '../../src/app/pixi/TokenRenderer';
+import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';
 import { SEES_ALL, computeSight, type Sight } from '../../src/app/vision/sight';
@@ -59,7 +59,7 @@ vi.mock('../../src/app/utils/activeLeafGuard', () => ({ isActiveAtlasLeaf: () =>
 const openContextMenuGlobal = vi.hoisted(() => vi.fn());
 vi.mock('../../src/app/react/root/ContextMenuContext', () => ({ openContextMenuGlobal, closeContextMenuGlobal: vi.fn() }));
 
-/** What `LightingController.wire` hands the token renderer's viewport dispatch. */
+/** What the controller hands the token renderer (`wire`) and the map's pointer (`pointerLayers`). */
 interface Wired {
   pointerDown: (x: number, y: number, e: FederatedPointerEvent) => boolean;
   pointerMove: (x: number, y: number, e: FederatedPointerEvent) => void;
@@ -70,10 +70,12 @@ interface Wired {
   cursor: (x: number, y: number) => string;
   doorClick: (x: number, y: number) => boolean;
   playerSight: () => ((tokenId: string) => string) | undefined;
-  playerViewActive?: (() => boolean) | undefined;
   /** Whether the sight `playerSight` answers by is that of the scene the store holds. */
   sightIsCurrent?: (() => boolean) | undefined;
-  refreshPlayerSight: ReturnType<typeof vi.fn>;
+  /** The view's audience, told whenever the players' lighting or sight on the canvas changed. */
+  refreshAudience: ReturnType<typeof vi.fn>;
+  /** What the view's audience was told of the players' sight (`CanvasAudience.sightChanged`). */
+  audienceSight: ReturnType<typeof vi.fn>;
   /** The layer of the sensed tokens' outlines, as the token renderer gives it. */
   sensedOutlines: { visible: boolean };
 }
@@ -89,7 +91,8 @@ interface Setup {
   click: (x: number, y: number, keys?: { shift?: boolean }) => boolean;
 }
 
-const doorMenu: { current: DoorMenuHandlers | null } = { current: null };
+/** The menu of a door's badge, as the map's pointer opens it. */
+const doorMenu: { current: { hitTest: (x: number, y: number) => string | null; open: (doorId: string, screenX: number, screenY: number) => void } | null } = { current: null };
 let cleanup: (() => void) | null = null;
 
 afterEach(() => {
@@ -110,6 +113,8 @@ function setup(extra: Partial<ConstructorParameters<typeof LightingController>[0
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/session.atlasmap');
   const eventBus = new EventEmitter();
+  const refreshAudience = vi.fn();
+  const audienceSight = vi.fn();
   const controller = new LightingController({
     viewport,
     app: { canvas: document.createElement('canvas') } as unknown as Application,
@@ -117,29 +122,25 @@ function setup(extra: Partial<ConstructorParameters<typeof LightingController>[0
     eventBus,
     obsApp,
     viewId: 'session-view',
+    audience: { refresh: refreshAudience, sightChanged: audienceSight },
     bounds: () => ({ width: 1000, height: 1000 }),
     albedo: () => null,
     ...extra,
   });
-  const wired = { refreshPlayerSight: vi.fn(), sensedOutlines: { visible: false } } as Wired;
+  const wired = { refreshAudience, audienceSight, sensedOutlines: { visible: false } } as Wired;
+  const { lights, walls, doors } = controller.pointerLayers();
+  Object.assign(wired, {
+    pointerDown: walls.pointerDown, pointerMove: walls.pointerMove, pointerUp: walls.pointerUp, doubleClick: walls.doubleClick,
+    contextMenu: walls.openMenu, cursor: walls.cursorAt, doorClick: doors.click, light: lights,
+  });
+  doorMenu.current = { hitTest: doors.menuHitTest, open: doors.openMenu };
   controller.wire({
-    setWallPointerDownHandler: (fn: Wired['pointerDown']) => { wired.pointerDown = fn; },
-    setWallPointerMoveHandler: (fn: Wired['pointerMove']) => { wired.pointerMove = fn; },
-    setWallPointerUpHandler: (fn: Wired['pointerUp']) => { wired.pointerUp = fn; },
-    setWallDoubleClickHandler: (fn: Wired['doubleClick']) => { wired.doubleClick = fn; },
-    setWallContextMenuHandler: (fn: Wired['contextMenu']) => { wired.contextMenu = fn; },
-    setWallCursorProvider: (fn: Wired['cursor']) => { wired.cursor = fn; },
-    setDoorMenuHandlers: (handlers: DoorMenuHandlers) => { doorMenu.current = handlers; },
-    setDoorClickHandler: (fn: Wired['doorClick']) => { wired.doorClick = fn; },
-    setLightHandlers: (handlers: LightPointerHandlers) => { wired.light = handlers; },
-    setPlayerSightProvider: (fn: Wired['playerSight'], active?: () => boolean, current?: () => boolean) => {
+    setPlayerSightProvider: (fn: Wired['playerSight'], current?: () => boolean) => {
       wired.playerSight = fn;
-      wired.playerViewActive = active;
       wired.sightIsCurrent = current;
     },
     setGlideWay: () => undefined,
     setArtFloors: () => undefined,
-    refreshPlayerSight: wired.refreshPlayerSight,
     getSensedOutlineLayer: () => wired.sensedOutlines,
   } as unknown as TokenRenderer);
   cleanup = () => {
@@ -165,18 +166,19 @@ function pressPeek(type: 'keydown' | 'keyup'): void {
 }
 
 describe('LightingController in session view', () => {
-  it('reports existing session and peek activity even on an unlit scene', () => {
-    const { store, wired } = setup();
+  it('reports the peek even on an unlit scene, and tells the view\'s audience of it', () => {
+    const { store, wired, controller } = setup();
     store.getState().setSceneLighting({ enabled: false });
-    expect(wired.playerViewActive?.()).toBe(false);
+    wired.refreshAudience.mockClear();
+    expect(controller.peeking()).toBe(false);
     expect(wired.playerSight()).toBeUndefined();
     pressPeek('keydown');
-    expect(wired.playerViewActive?.()).toBe(true);
+    expect(controller.peeking()).toBe(true);
     expect(wired.playerSight()).toBeUndefined();
+    expect(wired.refreshAudience).toHaveBeenCalledTimes(1);
     pressPeek('keyup');
-    expect(wired.playerViewActive?.()).toBe(false);
-    store.getState().setGMView(false);
-    expect(wired.playerViewActive?.()).toBe(true);
+    expect(controller.peeking()).toBe(false);
+    expect(wired.refreshAudience).toHaveBeenCalledTimes(2);
   });
 
   it('tells the token renderer whether the sight it answers by is the scene\'s, as the lighting view says', () => {
@@ -611,14 +613,14 @@ describe('tokens in session view', () => {
     collection.mockRestore();
   });
 
-  it('tells who follows what the players see of each change of their sight, as it does the GM\'s sight aids', () => {
-    const told = vi.fn();
-    setup({ onSightChange: told });
+  it('tells the view\'s audience of each change of the players\' sight, in GM view as in session view', () => {
+    const { store, wired } = setup();
     const { onSightChange } = lighting.deps as SceneLightingDeps;
-    told.mockClear();
+    wired.audienceSight.mockClear();
     onSightChange?.();
+    store.getState().setGMView(false);
     onSightChange?.();
-    expect(told).toHaveBeenCalledTimes(2);
+    expect(wired.audienceSight.mock.calls.map(([change]) => change)).toEqual([{ kind: 'lighting', shown: false }, { kind: 'lighting', shown: true }]);
   });
 
   it('marks for the GM the tokens the players do not see, follows their sight, and shows none of it in the players\' view', async () => {
@@ -710,17 +712,17 @@ describe('tokens in session view', () => {
   it('shows and hides tokens again whenever sight changes or the view is switched', () => {
     const { store, wired } = scene();
     const { onSightChange } = lighting.deps as SceneLightingDeps;
-    wired.refreshPlayerSight.mockClear();
-    // In GM view sight hides no token, so its changes are not followed.
+    wired.refreshAudience.mockClear();
+    // In GM view sight hides no token: the audience hears of it as sight the canvas does not show.
     onSightChange?.();
-    expect(wired.refreshPlayerSight).not.toHaveBeenCalled();
+    expect(wired.audienceSight).toHaveBeenLastCalledWith({ kind: 'lighting', shown: false });
     store.getState().setGMView(false);
-    expect(wired.refreshPlayerSight).toHaveBeenCalledTimes(1);
+    expect(wired.refreshAudience).toHaveBeenCalledTimes(1);
     onSightChange?.();
-    expect(wired.refreshPlayerSight).toHaveBeenCalledTimes(2);
+    expect(wired.audienceSight).toHaveBeenLastCalledWith({ kind: 'lighting', shown: true });
     pressPeek('keydown');
     pressPeek('keyup');
     store.getState().setGMView(true);
-    expect(wired.refreshPlayerSight).toHaveBeenCalledTimes(5);
+    expect(wired.refreshAudience).toHaveBeenCalledTimes(4);
   });
 });
