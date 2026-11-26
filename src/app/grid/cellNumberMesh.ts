@@ -59,17 +59,22 @@ export class CellNumberMesh {
       }
     }
     for (const [texture, mesh] of this.meshes) {
-      if (!pages.has(texture)) mesh.visible = false;
+      if (pages.has(texture)) continue;
+      mesh.visible = false;
+      // A page of a font that was destroyed is never drawn again
+      if (texture.destroyed) this.remove(texture, mesh);
     }
     for (const [texture, page] of pages) this.draw(texture, page);
   }
 
   destroy(): void {
-    for (const mesh of this.meshes.values()) {
-      mesh.geometry.destroy();
-      mesh.destroy();
-    }
-    this.meshes.clear();
+    for (const [texture, mesh] of this.meshes) this.remove(texture, mesh);
+  }
+
+  private remove(texture: Texture, mesh: Mesh): void {
+    this.meshes.delete(texture);
+    mesh.geometry.destroy();
+    mesh.destroy();
   }
 
   private draw(texture: Texture, { positions, uvs }: PageQuads): void {

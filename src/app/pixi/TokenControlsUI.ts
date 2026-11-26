@@ -11,6 +11,7 @@ import { openResourceEditor, type BarAnchor, type ResourceEditor, type ResourceV
 import { ResourceBarHitArea } from './ResourceBarHitArea';
 import { isDarkTheme } from './utils/canvasBadgeColors';
 import { destroyTree } from './utils/destroyTree';
+import { textureCanvas } from './utils/textureCanvas';
 import { BAR_BUTTON_SIZE, type ResourceSlot } from './token-renderer/resources/ResourceStack';
 import { barButtonSpan, fingerBarReach, stepperLayout, type BarReach, type StepperLayout } from './token-renderer/resources/stepperLayout';
 import { deviceProfile } from '../platform/deviceProfile';
@@ -136,11 +137,9 @@ export class TokenControlsUI {
 
     for (const [iconType, svgTemplate] of Object.entries(this.ICON_SVGS)) {
       const svg = svgTemplate.replace(/currentColor/g, '#ffffff');
-      const canvas = createEl('canvas');
-      canvas.width = svgSize;
-      canvas.height = svgSize;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) continue;
+      const drawn = textureCanvas(svgSize, svgSize);
+      if (!drawn) continue;
+      const { canvas, context: ctx } = drawn;
 
       const img = new Image();
       await new Promise<void>((resolve, reject) => {

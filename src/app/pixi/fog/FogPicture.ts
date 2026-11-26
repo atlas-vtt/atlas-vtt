@@ -72,6 +72,7 @@ export class FogPicture {
     const bounds = this.bounds();
     this.compositor = new FogCanvasCompositor(bounds, CANVAS_SCALE, deps.coverage, () => levelMapKey(deps.store.getState().mapPath, deps.store.getState()), deviceProfile().budgets.fogCanvasSide);
     this.texture = PIXI.Texture.from(this.compositor.getCanvas());
+    this.compositor.getCanvas().addEventListener('contextrestored', this.drawAgain);
     this.sprite = new PIXI.Sprite(this.texture);
     this.sprite.position.set(bounds.x, bounds.y);
     this.sprite.width = bounds.width;
@@ -225,6 +226,7 @@ export class FogPicture {
   }
 
   destroy(): void {
+    this.compositor.getCanvas().removeEventListener('contextrestored', this.drawAgain);
     this.fade.end();
     this.edgeMesh?.destroy();
     this.edgeMesh = null;
@@ -298,6 +300,17 @@ export class FogPicture {
   private bounds(): FogBounds {
     return fogCanvasBounds(this.deps.mapRect(), levelObjects(this.deps.store.getState())?.fog);
   }
+
+  /**
+   * The canvas came back blank after the GPU process died: Chromium keeps an accelerated canvas's
+   * pixels there, and this one stays on the GPU for the blur a composite on every brush move runs.
+   * The fog it showed is drawn again, and the fade's picture, lost with it, ends.
+   */
+  private readonly drawAgain = (): void => {
+    if (!this.shown) return;
+    this.fade.end();
+    this.drawCommitted();
+  };
 
   private textureChanged(): void {
     if (this.texture.destroyed) return;
