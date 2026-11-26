@@ -1,5 +1,5 @@
 import type { Timers } from '../../gm/companionTimers.ts';
-import { parseLayoutEdit, type DeviceMessage, type GmScreenDevice, type GmScreenLayout } from '../../protocol/index.ts';
+import { parseLayoutEdit, shownLayout, type DeviceMessage, type GmScreenDevice, type GmScreenLayout } from '../../protocol/index.ts';
 import type { GmScreen, GmScreenOutlet } from '../screens.ts';
 import { applyLayoutEdit, type EditResult, type KeyLibrary } from './layoutEdits.ts';
 
@@ -113,7 +113,7 @@ export class LayoutScreen implements GmScreen {
   private send(device: string): boolean {
     const kind = this.kinds.get(device);
     if (kind === undefined) return false;
-    const layout = this.deps.store.layout(kind);
+    const layout = shownLayout(this.deps.store.layout(kind));
     const json = JSON.stringify(layout);
     if (this.shown.get(device) === json) return false;
     this.shown.set(device, json);
