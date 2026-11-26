@@ -69,7 +69,7 @@ describe('the fog on the canvas at the GM\'s opacity', () => {
   /** The fog's picture without its canvas, in the GM's view or the session view. */
   function picture(isGMView: boolean): PictureHarness {
     return Object.assign(Object.create(FogPicture.prototype) as FogPicture, {
-      deps: { store: { getState: () => ({ isPlayerView: false, isGMView }) }, app: {} },
+      deps: { store: { getState: () => ({ isPlayerView: false, isGMView }) }, app: {}, showsPlayers: () => !isGMView },
       gmOpacity: DEFAULT_GM_FOG_OPACITY,
       fade: { running: false },
       sprite: { alpha: isGMView ? DEFAULT_GM_FOG_OPACITY : 1, visible: true },

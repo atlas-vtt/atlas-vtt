@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ALL_PLAYERS, type GmMessage } from '../../../../src/app/online/protocol/index.ts';
 import { AssetProgress, PROGRESS_HEARTBEAT_MS, PROGRESS_INTERVAL_MS } from '../../../../src/app/online/gm/assets/assetProgress.ts';
 import type { Timers } from '../../../../src/app/online/gm/companionTimers.ts';
+import { PlayerPages } from './playerPages.ts';
 
 const ID_A = 'a'.repeat(64);
 const ID_B = 'b'.repeat(64);
@@ -36,13 +37,15 @@ function fakeTimers(): Timers & { advance(ms: number): void } {
 function harness(connected: string[] = ['p1', 'p2']) {
   const timers = fakeTimers();
   const out: { body: GmMessage; to: string | undefined; live: boolean }[] = [];
+  const pages = new PlayerPages();
+  pages.join(...connected);
   const progress = new AssetProgress({
-    send: (body, to) => out.push({ body, to, live: false }),
-    sendLive: (body, _key, to) => out.push({ body, to, live: true }),
+    send: (body, to) => void (out.push({ body, to, live: false }), pages.deliver(body, to)),
+    sendLive: (body, _key, to) => void (out.push({ body, to, live: true }), pages.deliver(body, to)),
     connected: () => connected,
     timers,
   });
-  const sharesSent = (to: string): Record<string, number>[] => out.filter((m) => m.to === to && m.body.t === 'asset-progress').map((m) => (m.body as { shares: Record<string, number> }).shares);
+  const sharesSent = (player: string): Record<string, number>[] => pages.of(player).all('asset-progress').map(({ shares }) => ({ ...shares }));
   return { timers, out, progress, sharesSent };
 }
 

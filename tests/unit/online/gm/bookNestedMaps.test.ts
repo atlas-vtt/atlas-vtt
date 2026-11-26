@@ -3,10 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
 import type { WorldMapTree } from '../../../../src/app/online/gm/book/worldMapGate.ts';
 import { NO_STRETCH } from '../../../../src/app/grid/mapStretch';
-import { FakeSocket, png, workspace } from './fakeTable.ts';
+import { png, workspace } from './fakeTable.ts';
 import { storedRef } from './fakeStoring.ts';
-import { ANA, ANA_OWN, BEN, delivered, nameWorldMapTree, ofType, openTable, WORLD_MAP, type Delivered } from './bookTableHarness.ts';
+import { ANA, ANA_OWN, BEN, nameWorldMapTree, openTable, WORLD_MAP } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
+import type { PageMessage } from './playerPages.ts';
 
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {}, Platform: { isDesktopApp: true, isMobile: false, isPhone: false } }));
 vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
@@ -40,9 +41,9 @@ const TREE: WorldMapTree = {
   ],
 };
 
-function lastBook(messages: readonly Delivered[], player: string): PlayerBook | undefined {
-  return ofType(messages, 'book').filter(({ to }) => to === player).map(({ body }) => {
-    const read = parseGmMessage(JSON.parse(JSON.stringify(body)));
+function lastBook(messages: readonly PageMessage[]): PlayerBook | undefined {
+  return messages.filter(({ t }) => t === 'book').map((body) => {
+    const read = parseGmMessage(body);
     if (read?.t !== 'book') throw new Error('a book the page would not read');
     return read.book;
   }).at(-1);
@@ -52,8 +53,6 @@ describe('the maps the world map leads into', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
     vi.stubGlobal('window', globalThis);
-    vi.stubGlobal('WebSocket', FakeSocket);
-    FakeSocket.all = [];
     workspace.leaves = [];
     workspace.presented = null;
   });
@@ -65,14 +64,14 @@ describe('the maps the world map leads into', () => {
   });
 
   it('go to every player as entrances on their images, each map once, without a path or an asset id, and none into a map without an image', async () => {
-    const { online, socket } = await openTable(new BookShelf(), PLAYERS);
+    const { online, pages } = await openTable(new BookShelf(), PLAYERS);
     workspace.files.set(TOWN, png(400, 200));
     workspace.files.set(INN, png(100, 100));
-    const since = delivered(socket).length;
+    const since = pages.mark();
     nameWorldMapTree(TREE);
     await advance(200);
-    const sent = delivered(socket).slice(since);
-    const map = lastBook(sent, BEN)?.worldMap as BookWorldMap;
+    const sent = pages.since(since);
+    const map = lastBook(sent[BEN] ?? [])?.worldMap as BookWorldMap;
     const [town, inn] = map.maps ?? [];
     expect(map.maps?.map((each) => each.title)).toEqual(['Lowmoor', 'The Inn']);
     // On the world map 600 of 1200 is the middle; one pin beyond the image is no entrance.
@@ -82,35 +81,35 @@ describe('the maps the world map leads into', () => {
     expect(town?.entrances).toEqual([{ x: 0.5, y: 0.5, to: inn?.id, title: 'The Inn' }, { x: 0.05, y: 0.15, to: map.id, title: 'The Wide World' }]);
     // The cellar has no image: neither it nor the way into it is sent.
     expect(inn?.entrances).toEqual([]);
-    expect(lastBook(sent, ANA)?.worldMap).toEqual(map);
+    expect(lastBook(sent[ANA] ?? [])?.worldMap).toEqual(map);
     const text = JSON.stringify(sent);
     for (const secret of ['world"', 'town"', 'inn"', 'collections/', 'Lowmoor.png']) expect(text).not.toContain(secret);
     online.stop();
   });
 
   it('carry the readable pins of each map as signs, by alias, to every player', async () => {
-    const { online, socket } = await openTable(new BookShelf(), PLAYERS);
+    const { online, pages } = await openTable(new BookShelf(), PLAYERS);
     workspace.files.set(TOWN, png(400, 200));
     workspace.files.set(INN, png(100, 100));
     const sign = { map: 'atlas-vtt/collections/Cairn/scenes/Lowmoor.atlasmap', pin: 'well', link: 'Places/Well.md', icon: 'castle' };
     nameWorldMapTree({ ...TREE, levels: TREE.levels.map((level) => (level.key === 'town' ? { ...level, signs: [{ x: 150, y: 50, ...sign }] } : level)) });
     await advance(200);
-    const sent = delivered(socket);
-    const town = lastBook(sent, BEN)?.worldMap?.maps?.[0];
+    const sent = pages.heard();
+    const town = lastBook(sent[BEN] ?? [])?.worldMap?.maps?.[0];
     expect(town?.signs).toEqual([{ id: expect.stringMatching(/^[0-9a-f]{24}$/), x: 0.25, y: 0.25, icon: 'castle', found: null }]);
-    expect(lastBook(sent, ANA)?.worldMap?.maps?.[0]?.signs).toEqual(town?.signs);
+    expect(lastBook(sent[ANA] ?? [])?.worldMap?.maps?.[0]?.signs).toEqual(town?.signs);
     for (const secret of ['Well', 'well"', 'Lowmoor.atlasmap']) expect(JSON.stringify(sent)).not.toContain(secret);
     online.stop();
   });
 
   it('name their images by the ids the store keeps them under, and leave out a map no pin leads to', async () => {
-    const { online, socket } = await openTable(new BookShelf(), PLAYERS);
+    const { online, pages } = await openTable(new BookShelf(), PLAYERS);
     workspace.files.set(TOWN, png(400, 200));
     workspace.files.set(INN, png(100, 100));
     workspace.files.set(SECRET, png(50, 50));
     nameWorldMapTree(TREE);
     await advance(200);
-    const images = (lastBook(delivered(socket), ANA)?.worldMap?.maps ?? []).map((map) => map.image);
+    const images = (lastBook(pages.of(ANA).read)?.worldMap?.maps ?? []).map((map) => map.image);
     const [town, inn] = await Promise.all([TOWN, INN].map((path) => storedRef(workspace.files.get(path) as Uint8Array<ArrayBuffer>, 'image/png')));
     expect(images).toEqual([town, inn]);
     online.stop();
@@ -118,12 +117,12 @@ describe('the maps the world map leads into', () => {
 
   it('keep the pins a player sets on them, each on its own map', async () => {
     const shelf = new BookShelf();
-    const { online, socket, from } = await openTable(shelf, PLAYERS);
+    const { online, pages, from } = await openTable(shelf, PLAYERS);
     workspace.files.set(TOWN, png(400, 200));
     workspace.files.set(INN, png(100, 100));
     nameWorldMapTree(TREE);
     await advance(200);
-    const town = lastBook(delivered(socket), ANA)?.worldMap?.maps?.[0]?.id;
+    const town = lastBook(pages.of(ANA).read)?.worldMap?.maps?.[0]?.id;
     from(ANA, { t: 'book-pin', pin: { id: 'a'.repeat(24), map: town, x: 0.2, y: 0.3, kind: 'treasure', title: 'Well', body: '' } });
     from(ANA, { t: 'book-pin', pin: { id: 'b'.repeat(24), x: 0.4, y: 0.6, kind: 'note', title: 'Road', body: '' } });
     from(ANA, { t: 'book-pin', pin: { id: 'c'.repeat(24), map: 'not a map', x: 0.4, y: 0.6, kind: 'note', title: 'Bad', body: '' } });

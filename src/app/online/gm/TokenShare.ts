@@ -9,7 +9,7 @@ import { sharedTokens, snapGridOf } from './scenePicture.ts';
 import { SequencedList } from './sequencedList.ts';
 import { NO_TOKEN_RULES, shownBadgeNumbers, type TokenRules } from './tokenUI.ts';
 import { levelObjects } from '../../levels/levelObjects';
-import type { AtlasPlayerSettings } from './atlasLighting.ts';
+import type { AtlasInputs } from './sceneSignal.ts';
 import { movesOutOfTurn, sharedTurnTokens, type TurnShareState } from './turnShare.ts';
 import { isOffMap, mapTokens, sceneTokens } from '../../tokens/offMap';
 
@@ -27,16 +27,14 @@ export interface TokenSharePorts {
   /** How players are handed assets the store keeps for them; without it they are handed none. */
   stored?: AssetStoring | undefined;
   send(body: GmMessage, to?: string): void;
-  /** Whether players see token names (Atlas's nameplate setting for the player view). */
-  showNames(): boolean;
+  /** Atlas as of its last change: whether players see token names (its nameplate setting for the player view), the initiative list and so the turn. */
+  atlas(): Pick<AtlasInputs, 'settings'>;
   /** The map's resource and condition definitions as the GM's token renderer reads them, or null while they cannot be read: then no bar or condition is sent. */
   tokenRules?(): TokenRules | null;
   /** How the tab's tokens move, or null while it cannot be read; without it players read a drag as its distance alone. */
   tokenMoves?(): TokenMoves | null;
   /** Which tokens are player tokens; without it every token is the GM's. */
   seats?: Pick<SeatSource, 'claimOf'> | undefined;
-  /** Atlas's settings for the players' view: whether they are shown the initiative list, and so the turn. */
-  atlasSettings?(): Pick<AtlasPlayerSettings, 'showInitiative' | 'movesOnTurn'>;
   /** The look-alike numbers players are shown changed (`badgeOf`): what shows them besides the token list is worked out again. */
   numbersChanged?(): void;
   /** Until when the live lane carries a held token's place, by the id players know it by (`LiveShare.carriedUntil`); without it every place goes in the list. */
@@ -54,11 +52,6 @@ export interface TokenSharePorts {
  * A drag's motion goes through the faster live lane (`LiveShare`), so drags do not send lists faster.
  */
 export const TOKEN_INTERVAL_MS = 66;
-/**
- * How often the list is worked out again without a store change: a token's sprite appears after its
- * store write, and the players' sight may change without one.
- */
-export const TOKEN_POLL_MS = 1000;
 
 /**
  * The tokens the players see in the shared scene, sent to all whenever they change (as deltas from
@@ -78,7 +71,6 @@ export class TokenShare {
   private listedAliases: ReadonlyMap<string, string> = new Map();
   private lastAt = Number.NEGATIVE_INFINITY;
   private timer: number | undefined;
-  private poll: number | undefined;
   private readonly aliases: Map<string, string>;
   private readonly art: ArtRefs;
   /** The GM's look-alike numbers of the tokens players see, as the last list read them. */
@@ -89,6 +81,10 @@ export class TokenShare {
   private kept: ReadonlySet<string> = new Set();
   /** Looks again once the lane stops carrying a kept token. */
   private recheck: number | undefined;
+  /** Looks again after the GM's sight changed, unless a list is worked out sooner (`sightChanged`). */
+  private sight: number | undefined;
+  /** When the list was last worked out, sent or not. */
+  private builtAt = Number.NEGATIVE_INFINITY;
 
   /** `listed` hears of each list sent with the ids players know its tokens by, and of null when none is shared. */
   constructor(store: SceneStore, ports: TokenSharePorts, listed: (listed: ListedTokens | null) => void = () => undefined) {
@@ -113,12 +109,11 @@ export class TokenShare {
     this.numbers = new Map();
     this.art.clear();
     this.cancel();
-    this.cancelPoll();
     this.cancelRecheck();
+    this.cancelSight();
     this.listed(null);
     if (scene === null) return;
     this.update();
-    this.schedulePoll();
   }
 
   /**
@@ -141,6 +136,21 @@ export class TokenShare {
       return;
     }
     this.flush();
+  }
+
+  /**
+   * The GM's sight changed, which comes with every frame of a token gliding or a lit drag: the list is worked
+   * out at once where none was for `TOKEN_INTERVAL_MS`, else once that has passed, unless the store's next
+   * change works it out before.
+   */
+  sightChanged(): void {
+    if (this.scene === null || this.timer !== undefined || this.sight !== undefined) return;
+    const wait = this.builtAt + TOKEN_INTERVAL_MS - this.ports.now();
+    if (wait <= 0) return this.update();
+    this.sight = this.ports.setTimer(() => {
+      this.sight = undefined;
+      this.update();
+    }, wait);
   }
 
   /** The last list again, whole, to one player or to all. */
@@ -206,6 +216,8 @@ export class TokenShare {
   }
 
   private flush(): void {
+    this.cancelSight();
+    this.builtAt = this.ports.now();
     const scene = this.scene;
     const built = this.build();
     if (scene === null || built === null) return;
@@ -245,11 +257,11 @@ export class TokenShare {
     // The store holds the fight too: the scene's type names only what every share reads
     const turnState: TurnShareState = state;
     const rules = this.ports.tokenRules?.() ?? NO_TOKEN_RULES;
-    const settings = this.ports.atlasSettings?.();
-    const showInitiative = settings?.showInitiative === true;
+    const { settings } = this.ports.atlas();
+    const showInitiative = settings.showInitiative === true;
     const turn = sharedTurnTokens(turnState, showInitiative, rules.resources);
     // The GM decides which tokens wait for their turn: the page never works it out itself
-    const moveRules = { movesOnTurn: settings?.movesOnTurn === true, definitions: rules.resources };
+    const moveRules = { movesOnTurn: settings.movesOnTurn === true, definitions: rules.resources };
     const held = new Set([...shown.keys()].filter((id) => movesOutOfTurn(turnState, moveRules, id)));
     const moves = this.ports.tokenMoves?.() ?? null;
     const everyToken = mapTokens(levelObjects(state));
@@ -259,7 +271,7 @@ export class TokenShare {
       tokens: everyToken,
       shown,
       gridSize,
-      showNames: this.ports.showNames(),
+      showNames: settings.showNames,
       mapShowsNameplates: state.tokenSettings?.showNameplates ?? false,
       claimOf: (id, token) => seats?.claimOf(mapPath, id, token) ?? null,
       rules,
@@ -318,26 +330,18 @@ export class TokenShare {
     return [...this.kept].some((id) => !Object.hasOwn(held, id));
   }
 
+  private cancelSight(): void {
+    if (this.sight !== undefined) this.ports.clearTimer(this.sight);
+    this.sight = undefined;
+  }
+
   private cancelRecheck(): void {
     if (this.recheck !== undefined) this.ports.clearTimer(this.recheck);
     this.recheck = undefined;
   }
 
-  private schedulePoll(): void {
-    this.poll = this.ports.setTimer(() => {
-      this.poll = undefined;
-      this.update();
-      this.schedulePoll();
-    }, TOKEN_POLL_MS);
-  }
-
   private cancel(): void {
     if (this.timer !== undefined) this.ports.clearTimer(this.timer);
     this.timer = undefined;
-  }
-
-  private cancelPoll(): void {
-    if (this.poll !== undefined) this.ports.clearTimer(this.poll);
-    this.poll = undefined;
   }
 }

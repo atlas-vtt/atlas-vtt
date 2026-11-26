@@ -35,7 +35,6 @@ export class WidgetShare {
   private bar: ListedBar | null = null;
   /** What the last message said, with each running timer's end in place of its age; a scene starts with none shown. */
   private sentKey = NONE;
-  private unsubscribe: (() => void) | null = null;
 
   constructor(store: SceneStore, ports: WidgetSharePorts) {
     this.store = store;
@@ -46,14 +45,11 @@ export class WidgetShare {
   /** The shared scene the widgets belong to; null sends none. */
   setScene(scene: string | null): void {
     if (scene === this.scene) return;
-    this.unsubscribe?.();
-    this.unsubscribe = null;
     this.scene = scene;
     this.bar = null;
     this.sentKey = NONE;
     this.pacer.cancel();
     if (scene === null) return;
-    this.unsubscribe = this.store.subscribe(() => this.update());
     this.update();
   }
 

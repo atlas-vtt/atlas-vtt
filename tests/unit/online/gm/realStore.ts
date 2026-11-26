@@ -70,6 +70,7 @@ export function table(createViewAtlasStore: StoreFactory, walls: () => MoveWalls
     setTimer: (run, ms) => setTimeout(run, ms) as unknown as number,
     clearTimer: (timer) => clearTimeout(timer),
   });
-  moves.start();
+  // As the floor's share hands it every change of the store.
+  store.subscribe((state) => moves.storeChanged(state));
   return { store, history, moves, sent };
 }

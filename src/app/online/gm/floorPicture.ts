@@ -10,7 +10,8 @@ import type { ToldAbove } from './mapLayerInputs.ts';
 import { MapLayerShare } from './MapLayerShare.ts';
 import { MineShare } from './mineShare.ts';
 import type { MapSize } from './moveCheck.ts';
-import { tokenRollDice } from './rollAdvantage.ts';
+import { diceKey, tokenRollDice } from './rollAdvantage.ts';
+import type { SceneChange } from './sceneSignal.ts';
 import { ownerIn } from './seatSource.ts';
 import { TokenShare } from './TokenShare.ts';
 
@@ -50,11 +51,20 @@ export class FloorPicture {
   private readonly explored: ExploredShare;
   private readonly live: LiveShare | null;
   private readonly mine: MineShare | null;
+  /** Each character's own dice by what they are read by (`diceKey`), until Atlas changes. */
+  private readonly dice = new Map<string, ReturnType<typeof tokenRollDice>>();
 
   constructor(store: SceneStore, ports: FloorPicturePorts, floor: PictureFloor) {
     const seats = ports.seats;
     const ownerOf = ownerIn(seats, store);
-    const diceOf = (tokenId: string): ReturnType<typeof tokenRollDice> => tokenRollDice(ports.dice?.() ?? null, store.getState().objects.tokens[tokenId]);
+    // Reading a set looks the library and the template up: done once a token's statblock or art is another, not at every move.
+    const diceOf = (tokenId: string): ReturnType<typeof tokenRollDice> => {
+      const token = store.getState().objects.tokens[tokenId];
+      if (token === undefined) return undefined;
+      const key = diceKey(token);
+      if (!this.dice.has(key)) this.dice.set(key, tokenRollDice(ports.dice?.() ?? null, token));
+      return this.dice.get(key);
+    };
     const mine = seats === undefined ? null : new MineShare({ onlinePlayers: () => ports.members(), ownerOf, diceOf }, (body, to) => ports.send(body, to));
     this.mine = mine;
     // The initiative list shows the players' look-alike numbers too: it follows them as they change
@@ -62,7 +72,7 @@ export class FloorPicture {
     this.live = ports.sendLive === undefined ? null : new LiveShare(store, {
       ...ports, sendLive: (body, key) => ports.sendLive?.(body, key), rulers: () => floor.rulers(), holder: (tokenId) => floor.holder(tokenId),
     }, () => ({ scene: this.tokens.listedScene, alias: (tokenId) => this.tokens.listedAlias(tokenId) }));
-    this.inputs = new InputShare(store, { ...ports, shownTokens: () => this.tokens.shownIds(), tokenAlias: (id) => this.tokens.alias(id), fogEdge: () => ports.atlasSettings().fogEdge });
+    this.inputs = new InputShare(store, { ...ports, shownTokens: () => this.tokens.shownIds(), tokenAlias: (id) => this.tokens.alias(id), fogEdge: () => ports.atlas().settings.fogEdge });
     this.explored = new ExploredShare(ports);
     this.layers = new MapLayerShare(store, {
       ...ports, mapLayers: () => ports.mapLayers?.() ?? null, badgeOf: (tokenId) => this.tokens.badgeOf(tokenId), tokenAlias: (tokenId) => this.tokens.listedAlias(tokenId),
@@ -92,12 +102,27 @@ export class FloorPicture {
     this.layers.setScene(null);
   }
 
-  update(): void {
+  /**
+   * Something the picture is made of changed: its scene, the GM's sight, or Atlas. The GM's sight changes which
+   * tokens players see, the map's layers and the sight inputs alone; which tokens are a player's and their dice
+   * follow the scene and Atlas.
+   */
+  changed(change: SceneChange): void {
+    if (change === 'sight') {
+      this.tokens.sightChanged();
+      this.live?.update();
+      this.layers.update();
+      this.inputs.update();
+      return;
+    }
+    if (change === 'atlas') this.dice.clear();
     this.tokens.update();
     this.live?.update();
     this.layers.update();
     this.inputs.update();
     this.explored.update();
+    if (change === 'atlas') this.mine?.update();
+    else this.mine?.diceChanged();
   }
 
   /** The tokens, inputs, layers and owned tokens again, whole, to one player or to all of the picture's. */
@@ -130,12 +155,6 @@ export class FloorPicture {
   memoryChanged(): void {
     this.explored.update();
     this.layers.update();
-  }
-
-  /** Looks again at what changes without a store change: whether players may draw, a character's dice set. */
-  poll(): void {
-    this.layers.update();
-    this.mine?.update();
   }
 
   stop(): void {

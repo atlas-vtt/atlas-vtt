@@ -4,11 +4,13 @@ export interface MarksOutPorts {
   send(body: GmMessage, to?: string): void;
   /** The live lane, where there is one: a newer message under the same key takes the place of one not sent yet. */
   sendLive?(body: GmMessage, key: string, to?: string): void;
+  /** The players who see the picture of `key` (`FloorRoutes.members`); without it nobody is told marks of their own. */
+  playersOf?(key: string): readonly string[];
 }
 
-/** A marks message for its players: every player where unset. */
+/** A marks message for the players of a picture, by its key. */
 export interface MarksFor {
-  readonly players?: readonly string[];
+  readonly key: string;
   readonly body: MarksMessage;
 }
 
@@ -26,7 +28,7 @@ const toldOf = (body: MarksMessage): Told => ({ body, text: JSON.stringify(body)
 
 /**
  * The marks as each player was last told them, sent through the live lane only where they changed: once to
- * all where every player is told the same, else to each player whose own changed, in one go so the
+ * all where every picture's players are told the same, else to each player whose own changed, in one go so the
  * connection batches them into one frame. Nothing goes before anyone made a mark, and cursors that show
  * go out now and then while nothing changes, so a page can tell a GM that went silent.
  */
@@ -41,15 +43,15 @@ export class MarksOut {
 
   /** Tells `marks` at `now` (ms): one message to all, or one per audience. */
   tell(marks: readonly MarksFor[], now: number): void {
-    const told = marks.map(({ players, body }) => ({ players, told: toldOf(body) }));
+    const told = marks.map(({ key, body }) => ({ key, told: toldOf(body) }));
     const keepAlive = marks.some(({ body }) => (body.cursors?.length ?? 0) > 0) && now - this.sentAt >= CURSOR_KEEPALIVE_MS;
     const first = told[0];
     if (first === undefined) return;
     if (told.every(({ told: { text } }) => text === first.told.text)) return this.tellAll(first.told, keepAlive, now);
     const each = new Map<string, Told>();
     let sent = false;
-    for (const { players, told: own } of told) {
-      for (const player of players ?? []) {
+    for (const { key, told: own } of told) {
+      for (const player of this.ports.playersOf?.(key) ?? []) {
         const before = this.lastOf(player);
         each.set(player, own);
         if ((own.text === before?.text && !keepAlive) || (before === null && isEmptyMarks(own.body))) continue;
@@ -59,6 +61,12 @@ export class MarksOut {
     }
     this.each = each;
     if (sent) this.sentAt = now;
+  }
+
+  /** When the cursors told last are due to go out again though nothing changed; undefined while none were told. */
+  keepAliveAt(): number | undefined {
+    const told = [this.all, ...this.each.values()];
+    return told.some((each) => (each?.body.cursors?.length ?? 0) > 0) ? this.sentAt + CURSOR_KEEPALIVE_MS : undefined;
   }
 
   /** The last marks again, to one player or to all; nothing where they hold none. */

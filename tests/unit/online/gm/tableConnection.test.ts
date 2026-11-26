@@ -1,9 +1,10 @@
-import { CLOSE, KEEPALIVE_MS, KEEPALIVE_PING, KEEPALIVE_PONG } from '../../../../src/app/online/protocol/index.ts';
+import { CLOSE, GM_LEVEL, KEEPALIVE_MS, KEEPALIVE_PING, KEEPALIVE_PONG, PART_BYTES, type GmMessage, type SharedScene } from '../../../../src/app/online/protocol/index.ts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Timers } from '../../../../src/app/online/gm/companionTimers.ts';
 import { BATCH_MS, BURST } from '../../../../src/app/online/gm/sendQueue.ts';
 import { FLUSH_LOOK_MS, LATE_MS, OPEN_TIMEOUT_MS, PULSE_DEADLINE_MS, SETTLE_MS, WELCOME_TIMEOUT_MS } from '../../../../src/app/online/gm/socketWatch.ts';
 import { TableConnection, type TableStatus } from '../../../../src/app/online/gm/TableConnection.ts';
+import { relayOutbox } from '../../../../src/app/online/gm/tableOutbox.ts';
 
 /** A WebSocket the test opens, feeds and closes; `bufferedAmount` is what it holds unsent. */
 class FakeSocket extends EventTarget {
@@ -477,5 +478,58 @@ describe('the campaign\'s players the relay is told', () => {
     // Nobody else is there to hear one.
     connection.sendCode({ t: 'your-code', code: BEN.code, first: false }, BEN.id);
     expect(frames().filter((frame) => frame.t === 'send')).toEqual([{ v: 1, t: 'send', to: ANA.id, body: { t: 'your-code', code: ANA.code, first: true } }]);
+  });
+});
+
+describe('what goes out to players', () => {
+  const ANA = { id: 'a'.repeat(20), name: 'Ana' };
+  const BEN = { id: 'b'.repeat(20), name: 'Ben' };
+  type Sent = { readonly t: string; readonly to?: string; readonly body?: { readonly t: string; readonly index?: number; readonly data?: string } };
+  const sends = (from: number): Sent[] => last().sent.slice(from).filter((text) => text !== KEEPALIVE_PING).map((text) => JSON.parse(text) as Sent);
+
+  it('sends a message too large for one frame in parts, each to whom it is for, and is heard as the whole message', () => {
+    const { connection } = table();
+    const heard: [string, string][] = [];
+    connection.onSent = (text, to) => void heard.push([text, to]);
+    last().welcome([ANA, BEN]);
+    const from = last().sent.length;
+    const big: GmMessage = { t: 'scene', scene: { id: 's', map: null, lit: false, note: 'ß'.repeat(PART_BYTES) } as unknown as SharedScene };
+    connection.send(big, ANA.id);
+    const parts = sends(from);
+    expect(parts.length).toBeGreaterThan(1);
+    expect(parts.every((frame) => frame.t === 'send' && frame.to === ANA.id && frame.body?.t === 'part')).toBe(true);
+    const whole = Buffer.concat(parts.map((frame) => Buffer.from(frame.body?.data ?? '', 'base64'))).toString('utf8');
+    expect(JSON.parse(whole)).toEqual(big);
+    expect(heard).toEqual([[JSON.stringify(big), ANA.id]]);
+  });
+
+  it('is heard as each game message went out, with whom it went to, and not for the live lane', () => {
+    const { connection } = table();
+    const heard: [string, string][] = [];
+    connection.onSent = (text, to) => void heard.push([text, to]);
+    last().welcome([ANA]);
+    connection.send({ t: 'scene', scene: null });
+    connection.sendLive({ t: 'scene', scene: null }, 'key');
+    // Nobody is there to hear what goes to Ben.
+    connection.send({ t: 'scene', scene: null }, BEN.id);
+    expect(heard).toEqual([[JSON.stringify({ to: '*', body: { t: 'scene', scene: null } }), '*']]);
+  });
+});
+
+describe('the socket to Atlas\'s relay', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal('window', globalThis);
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('opens a table on Atlas\'s table server and says hello with its secret alone', () => {
+    const ignore = (): void => undefined;
+    const outbox = relayOutbox({ code: 'k'.repeat(26), secret: 's'.repeat(43), maxPlayers: 12 }, { status: ignore, welcome: ignore, joined: ignore, left: ignore, message: ignore, access: ignore }, null);
+    outbox.start();
+    expect(FakeSocket.all.map(({ url }) => url)).toEqual([`wss://play.atlas-vtt.dev/api/tables/${'k'.repeat(26)}/socket`]);
+    last().open();
+    expect(last().sent).toEqual([JSON.stringify({ v: 1, t: 'hello', role: 'gm', secret: 's'.repeat(43), level: GM_LEVEL })]);
+    outbox.stop();
   });
 });

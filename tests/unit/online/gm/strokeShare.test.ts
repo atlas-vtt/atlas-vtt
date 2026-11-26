@@ -93,9 +93,10 @@ describe('the drawing the GM is making, as players are told it', () => {
     table.advance(MARKS_INTERVAL_MS);
     table.stroke.begin();
     table.stroke.show([pen([P(0, 0), P(9, 9)])], true);
-    expect(last(table)?.n).toBe(2);
     table.advance(MARKS_INTERVAL_MS);
+    expect(last(table)?.n).toBe(2);
     table.stroke.drop();
+    table.advance(MARKS_INTERVAL_MS);
     expect(table.sent.at(-1)?.body.strokes).toBeUndefined();
   });
 

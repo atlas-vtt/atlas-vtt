@@ -1,6 +1,7 @@
 import { DeltaReader, parseGmMessage, type GmMessage, type SharedSight, type SharedToken, type SightToken } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import { SequencedList } from '../../../../src/app/online/gm/sequencedList.ts';
+import type { PageMessage } from './playerPages.ts';
 import { sceneState, shareHarness, token, tokenLists } from './shareHarness.ts';
 
 /** A seeded generator (mulberry32), so a failing trial can be replayed by its seed. */
@@ -137,40 +138,42 @@ describe('a player that misses a delta', () => {
   it('asks for the whole list, gets it alone at most once a second, and follows on from there', async () => {
     const tokens = { a: token('a', { x: 10 }), b: token('b', { x: 20 }) };
     const table = shareHarness(sceneState({ objects: { ...sceneState().objects, tokens } }), new Map([['maps/cave.webp', new Uint8Array([1])]]));
+    table.pages.join('ana', 'ben');
+    const ana = table.pages.of('ana');
+    const ben = table.pages.of('ben');
+    /** What each page heard after it had heard `ana` and `ben` messages: Ana's page reads past its gap here on purpose. */
+    const heard = ([anas, bens]: readonly number[]): string[][] => [ana.inbox.slice(anas).map(({ t }) => t), ben.inbox.slice(bens).map(({ t }) => t)];
+    const mark = (): number[] => [ana.inbox.length, ben.inbox.length];
     table.share.start();
     // The scene goes out once its map is read and hashed, which a busy machine may take a while for.
-    for (let wait = 0; wait < 100 && tokenLists(table.sent).length === 0; wait += 1) await table.advance(100);
-    const reader = new DeltaReader();
-    const listOf = (body: GmMessage): GmMessage | null | 'gap' => reader.read(asRead(body) ?? body);
-    const broadcast = (): GmMessage[] => table.sent.filter(({ to, body }) => to === undefined && (body.t === 'tokens' || body.t === 'delta')).map(({ body }) => body);
-    for (const body of broadcast()) listOf(body);
+    for (let wait = 0; wait < 100 && ana.all('tokens').length === 0; wait += 1) await table.advance(100);
     const moveTo = async (x: number): Promise<void> => {
       await table.set(sceneState({ objects: { ...sceneState().objects, tokens: { ...tokens, a: token('a', { x }) } } }));
       await table.advance(100);
     };
-    // One delta lost on the way: the next does not follow on.
-    const seen = broadcast().length;
+    const xs = (message: PageMessage | undefined): number[] | null => (message?.t === 'tokens' ? message.tokens.map(({ x }) => x).sort() : null);
+    // One delta lost on the way to Ana: the next does not follow on.
+    table.pages.leave('ana');
     await moveTo(11);
+    table.pages.join('ana');
     await moveTo(12);
-    const [lost, next] = broadcast().slice(seen);
-    expect([lost?.t, next?.t]).toEqual(['delta', 'delta']);
-    expect(listOf(next as GmMessage)).toBe('gap');
+    expect(ana.gaps.map(({ t }) => t)).toEqual(['delta']);
+    expect(ben.gaps).toEqual([]);
 
-    const scene = tokenLists(table.sent).at(-1)?.scene ?? '';
-    table.sent.length = 0;
+    const scene = ana.read.filter((message) => message.t === 'tokens').at(-1)?.scene ?? '';
+    const asked = mark();
     table.share.receive('ana', { t: 'resync', scene, of: 'tokens' });
     table.share.receive('ana', { t: 'resync', scene, of: 'tokens' });
     table.share.receive('ana', { t: 'resync', scene: 'another', of: 'tokens' });
-    expect(table.sent.map(({ body, to }) => [body.t, to])).toEqual([['tokens', 'ana']]);
-    const whole = listOf(table.sent[0]?.body as GmMessage);
-    expect(whole !== null && whole !== 'gap' && whole.t === 'tokens' ? whole.tokens.map(({ x }) => x).sort() : null).toEqual([12, 20]);
+    expect(heard(asked)).toEqual([['tokens'], []]);
+    expect(xs(ana.read.at(-1))).toEqual([12, 20]);
 
     await moveTo(13);
-    const after = listOf(broadcast().at(-1) as GmMessage);
-    expect(after !== null && after !== 'gap' && after.t === 'tokens' ? after.tokens.map(({ x }) => x).sort() : null).toEqual([13, 20]);
+    expect(xs(ana.read.at(-1))).toEqual([13, 20]);
     await table.advance(1_000);
+    const again = mark();
     table.share.receive('ana', { t: 'resync', scene, of: 'tokens' });
-    expect(table.sent.filter(({ to }) => to === 'ana')).toHaveLength(2);
+    expect(heard(again)).toEqual([['tokens'], []]);
   });
 });
 

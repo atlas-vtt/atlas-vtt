@@ -1,6 +1,6 @@
 import type { WorkspaceLeaf } from 'obsidian';
 import { handledByAnotherControl } from '../../../keyboard/tooltipEscape';
-import { sceneStoreOf, selectedTokenIds, type SceneStore } from '../atlasView.ts';
+import { sceneStoreOf, selectedTokenIds, type ObservedStore } from '../atlasView.ts';
 import { accountActions, MENU_WIDTH, renderMenu, type MenuActions } from './ConnectionMenu.ts';
 import { campaignPick, type CampaignPick } from './campaignPicker.ts';
 import { DockButton } from './dockButton.ts';
@@ -31,7 +31,7 @@ export class Dock {
   readonly spacer: HTMLElement;
   private readonly leaf: WorkspaceLeaf;
   private readonly container: HTMLElement;
-  private readonly store: SceneStore;
+  private readonly store: ObservedStore;
   private readonly deps: DockDeps;
   private readonly button: DockButton;
   private readonly tooltip: DockTooltip;
@@ -56,7 +56,7 @@ export class Dock {
   private readonly feedback: FeedbackDraft;
   private readonly cleanups: (() => void)[] = [];
 
-  constructor(leaf: WorkspaceLeaf, container: HTMLElement, store: SceneStore, deps: DockDeps) {
+  constructor(leaf: WorkspaceLeaf, container: HTMLElement, store: ObservedStore, deps: DockDeps) {
     this.leaf = leaf;
     this.container = container;
     this.store = store;
