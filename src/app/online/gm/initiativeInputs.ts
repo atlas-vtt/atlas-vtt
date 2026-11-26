@@ -1,12 +1,11 @@
 import { MAX_COMBATANTS, MAX_INSTANCE_NUMBER, MAX_NAME, type AssetRef, type SharedCombatant, type SharedInitiative, type SharedSide, type SharedSideTurn } from '../protocol/index.ts';
 import { isBuiltInSide } from '../../gameSystems/initiativeSideRules';
-import { collectionInitiativeRules, DEFAULT_INITIATIVE_RULES } from '../../gameSystems/initiativeRules';
-import { mapConditions, rulesForMap, type RulesLookup } from '../../gameSystems/mapRules';
+import { initiativeRulesForMap } from '../../gameSystems/initiativeRules';
+import { mapConditions, type RulesLookup } from '../../gameSystems/mapRules';
 import { mapResources } from '../../resources/collectionResources';
 import { playerInitiativeList, playerSegments, playersEntryToken, sideIdsOf, type PlayerInitiativeList } from '../../services/playerInitiativeList';
 import { sharedConditions } from './tokenUI.ts';
 import type { TokenEntity } from '../../types';
-import type { InitiativeRules } from '../../types/initiativeRulesTypes';
 import type { SystemPreset } from '../../types/systemPresetTypes';
 import type { ViewState } from '../../types/viewState';
 import { ringColour } from './scenePicture.ts';
@@ -73,12 +72,6 @@ function legacyActiveSide(list: PlayerInitiativeList): SharedSide | null {
   return active ? legacySide(active.id) : null;
 }
 
-/** The initiative rules the map plays by (`rulesForMap`): their own, else their preset's, else the default. */
-function initiativeRulesOf(rules: RulesLookup | null, presets: readonly SystemPreset[], mapPath: string | null): InitiativeRules {
-  const settings = rules !== null && mapPath !== null ? rulesForMap(rules, mapPath).settings : null;
-  return settings === null ? { ...DEFAULT_INITIATIVE_RULES } : collectionInitiativeRules(settings, presets);
-}
-
 /**
  * The players' initiative list as Atlas's player window shows it (`PlayerInitiativePanel`), but
  * for being sent before a fight too: only
@@ -93,7 +86,7 @@ export function sharedInitiative(inputs: InitiativeInputs): SharedInitiative | n
   const tokens = state.objects.tokens;
   const definitions = rules !== null ? mapResources(rules, state.mapPath) : [];
   const conditions = rules !== null ? mapConditions(rules, state.mapPath) : [];
-  const initiativeRules = initiativeRulesOf(rules, inputs.presets, state.mapPath);
+  const initiativeRules = initiativeRulesForMap(rules, inputs.presets, state.mapPath);
   const sides = sideIdsOf(initiative, initiativeRules);
   const list = playerInitiativeList(
     initiative,
