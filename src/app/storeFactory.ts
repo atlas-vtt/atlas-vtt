@@ -36,6 +36,7 @@ import type { TimerState } from './utils/timerWidget';
 import { createMapObjectsActions, type MapObjectsSlice } from './stores/mapObjectsSlice';
 import { withoutOffMap } from './tokens/offMap';
 import { diceRandom } from './services/offlineDiceInputs';
+import { rulesLookup } from './services/mapRules';
 import type { MapMove } from './grid/mapStretch';
 import { objectsMovedWithMap } from './grid/mapStretchObjects';
 import { computeNextInstanceNumber } from './stores/tokenInstanceNumbers';
@@ -299,7 +300,7 @@ export interface ViewAtlasState extends ViewState {
   setTokenSettings: (settings: ViewAtlasState['tokenSettings']) => void;
   setInitiativeTrackerOpen: (open: boolean) => void;
   addToInitiative: (entry: Omit<InitiativeEntry, 'id' | 'order' | 'isActive'>) => string;
-  removeFromInitiative: (id: string, defeated?: ReadonlySet<string>) => void;
+  removeFromInitiative: InitiativeTurnActions['removeFromInitiative'];
   updateInitiativeEntry: (id: string, updates: Partial<InitiativeEntry>) => void;
   rollAllInitiative: (roll?: string, fromStatblocks?: ReadonlyMap<string, number>) => void;
   rollEntryInitiative: (id: string, roll?: string, fromStatblock?: number | null) => void;
@@ -1425,7 +1426,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           // --- Initiative Tracker State & Actions (from initiativeSlice.ts) ---
           initiative: createDefaultInitiativeState(),
           initiativeTrackerOpen: false,
-          ...createInitiativeActions(set, viewId, get, diceRandom),
+          ...createInitiativeActions(set, get, { rules: rulesLookup(app), random: diceRandom }),
 
           // --- Dice Roll Log (persisted per map) ---
           diceLog: [],

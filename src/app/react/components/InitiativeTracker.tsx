@@ -7,11 +7,10 @@ import { useNumberEditing } from './useNumberEditing';
 import { listedByCards, listedBySides, listedSides } from '../../initiative/sides';
 import { playerTokensRevision, subscribePlayerTokens } from '../../characters/playerTokens';
 import { useStartCombat } from './useStartCombat';
-import { defeatedCombatants } from '../../initiative/defeated';
 import { shownItems } from '../../initiative/listSegments';
 import { trackerSegments } from '../../initiative/trackerSegments';
+import { currentTurn, turnKey } from '../../initiative/turnHolders';
 import { useInitiativeLayout } from '../../initiative/useInitiativeLayout';
-import { useMapResources } from '../../resources/useMapResources';
 import { InitiativeTokenSync } from '../../initiative/useInitiativeTokenSync';
 import { missingPartyEntries } from '../../initiative/party';
 import { mapEnemyImage } from '../../initiative/mapParty';
@@ -104,14 +103,8 @@ export const InitiativeTracker: React.FC = () => {
   const updateInitiativeEntry = useAtlasStore((s) => s.updateInitiativeEntry);
   const addToInitiative = useAtlasStore((s) => s.addToInitiative);
 
-  // Turns pass defeated combatants by, as their cards show them now
   const store = useViewStoreHook();
-  const definitions = useMapResources();
-  const defeated = useCallback((): ReadonlySet<string> => {
-    const { initiative: current, objects } = store.getState();
-    return defeatedCombatants(current.entries, objects.tokens, definitions);
-  }, [store, definitions]);
-  const startCombat = useStartCombat(rules, defeated);
+  const startCombat = useStartCombat(rules);
 
   const { open: openEditPopup, popup: editPopup } = useEditInitiativePopup(updateInitiativeEntry, inward);
 
@@ -127,13 +120,15 @@ export const InitiativeTracker: React.FC = () => {
     return [...initiative.entries].sort((a, b) => a.order - b.order);
   }, [initiative.entries]);
 
+  const turn = currentTurn(initiative);
+  const holder = turn?.kind === 'combatant' ? turn.entry.id : undefined;
   // The list as it is drawn: from the turn on where the GM chose so
   const segments = useMemo(
     () => trackerSegments(sortedEntries, tokens, {
-      bySides, sides, fightRuns: initiative.isActive, round: initiative.round,
+      bySides, sides, fightRuns: initiative.isActive, holder, round: initiative.round,
       fromTurn: layout.fromTurn,
     }),
-    [sortedEntries, tokens, bySides, sides, initiative.isActive, initiative.round, layout.fromTurn, playerTokens],
+    [sortedEntries, tokens, bySides, sides, initiative.isActive, holder, initiative.round, layout.fromTurn, playerTokens],
   );
   const shownOrder = useMemo(() => shownItems(segments), [segments]);
   const shownPlaceOf = useMemo(() => new Map(shownOrder.map((entry, index) => [entry.id, index])), [shownOrder]);
@@ -142,8 +137,7 @@ export const InitiativeTracker: React.FC = () => {
 
   // The turn stays in view as it moves
   const contentRef = useRef<HTMLDivElement>(null);
-  const turnOf = initiative.sides?.active ?? initiative.entries.find((entry) => entry.isActive)?.id;
-  useTurnInView(contentRef, { fightRuns: initiative.isActive, turnOf, round: initiative.round, fromTurn: layout.fromTurn });
+  useTurnInView(contentRef, { fightRuns: initiative.isActive, turnOf: turn ? turnKey(turn) : undefined, round: initiative.round, fromTurn: layout.fromTurn });
   // The cards glide as the turn passes on or back, and who holds it lights up, as on the players' list
   useTurnMotion(store, contentRef);
   const turnFlash = useTurnFlash(initiative);
@@ -203,7 +197,7 @@ export const InitiativeTracker: React.FC = () => {
     holdPreview({ entry, originContext }, entry.statblockPath, cardElement);
   }, [holdPreview, view, mapPath, mapLoaded, isMapLoading, tokens]);
 
-  const handleContextMenu = useInitiativeCardMenu({ tokens, bySides, sides, cards: initiative.cards !== undefined, fightRuns: initiative.isActive, roll, defeated, edit: openEditPopup, preview: previewFromMenu });
+  const handleContextMenu = useInitiativeCardMenu({ tokens, bySides, sides, cards: initiative.cards !== undefined, fightRuns: initiative.isActive, roll, edit: openEditPopup, preview: previewFromMenu });
 
   const openOptions = (event: React.MouseEvent<HTMLButtonElement>): void => {
     const button = event.currentTarget;
@@ -244,7 +238,7 @@ export const InitiativeTracker: React.FC = () => {
   );
 
   // Not drawn once closed and gone
-  if (!drawn) return <><InitiativeTokenSync defeated={defeated} />{null}</>;
+  if (!drawn) return <><InitiativeTokenSync />{null}</>;
 
   const card = (entry: InitiativeEntry, group: string, inTurn = false): React.ReactElement => (
     <InitiativeCard
@@ -265,7 +259,7 @@ export const InitiativeTracker: React.FC = () => {
       isHoveredForPreview={previewState.hoveredEntry?.entry.id === entry.id}
       onContextMenu={handleContextMenu}
       onHover={handleEntryHover}
-      turnFlash={turnFlash && (bySides ? inTurn && !entry.sitsOut : entry.isActive && !entry.delayed)}
+      turnFlash={turnFlash && (bySides ? inTurn && !entry.sitsOut : entry.id === holder)}
     />
   );
 
@@ -278,7 +272,7 @@ export const InitiativeTracker: React.FC = () => {
 
   return (
     <>
-    <InitiativeTokenSync defeated={defeated} />
+    <InitiativeTokenSync />
     <div ref={setRoot} className={trackerClasses}>
       {/* Its surface is a layer of its own, so the theme's ivy can lie behind it; near it, its bars show */}
       <div className="atlas-initiative-panel__surface" aria-hidden="true" />
@@ -327,8 +321,8 @@ export const InitiativeTracker: React.FC = () => {
       {initiative.isActive && (
         <InitiativeTurnControls
           tooltipSide={inward}
-          onPrevious={() => previousTurn(defeated())}
-          onNext={() => nextTurn(defeated())}
+          onPrevious={() => previousTurn()}
+          onNext={() => nextTurn()}
         />
       )}
 

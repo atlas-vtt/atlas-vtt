@@ -41,9 +41,9 @@ export function addOffMapCombatants(store: CombatStore, inputs: readonly TokenIn
 }
 
 /** Takes a combatant out of the tracker; one kept beside the map goes with its token (an undo step), since nothing else shows it. */
-export function removeCombatant(store: CombatStore, entry: Pick<InitiativeEntry, 'id' | 'tokenId'>, defeated: ReadonlySet<string>): void {
+export function removeCombatant(store: CombatStore, entry: Pick<InitiativeEntry, 'id' | 'tokenId'>): void {
   const { objects, removeFromInitiative, removeMapObjects } = store.getState();
-  removeFromInitiative(entry.id, defeated);
+  removeFromInitiative(entry.id);
   if (entry.tokenId !== undefined && isOffMap(sceneTokens(objects)[entry.tokenId])) removeMapObjects([entry.tokenId]);
 }
 

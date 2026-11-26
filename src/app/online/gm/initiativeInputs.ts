@@ -93,7 +93,7 @@ export function sharedInitiative(inputs: InitiativeInputs): SharedInitiative | n
     return {
       initiative: shownNumber(entry),
       name: nameplateShownToPlayers(token, mapShowsNameplates, inputs.showNames) && typeof entry.name === 'string' ? entry.name.slice(0, MAX_NAME) : null,
-      turn: list.isActive && !list.bySides && entry.isActive === true,
+      turn: entry.order === list.turnOrder,
       sitsOut: entry.sitsOut === true,
       ...(entry.delayed === true ? { delayed: true } : {}),
       ...(token.defeated ? { defeated: true } : {}),

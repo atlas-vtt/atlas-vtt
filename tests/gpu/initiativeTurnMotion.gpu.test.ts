@@ -157,7 +157,7 @@ describe('the turn passing on and back', () => {
       persistenceEnabled: false,
       initiativeTrackerOpen: true,
       objects: { ...store.getState().objects, tokens: Object.fromEntries([0, 1, 2, 3, 4].map((index) => [`t${index}`, creature(index)])) },
-      initiative: { ...createDefaultInitiativeState(), isActive: true, round: 2, currentIndex: 1, entries: [0, 1, 2, 3, 4].map((index) => entryOf(index, 1)) },
+      initiative: { ...createDefaultInitiativeState(), isActive: true, round: 2, entries: [0, 1, 2, 3, 4].map((index) => entryOf(index, 1)) },
     });
     const ui = { app, view: null, pixiApp: null, renderer: null } as never;
     render(React.createElement(AtlasUIContext.Provider, { value: ui }, React.createElement(ViewStoreProvider, { store }, React.createElement(InitiativeTracker))));
@@ -167,7 +167,7 @@ describe('the turn passing on and back', () => {
     const card = (id: string): HTMLElement => tracker.querySelector<HTMLElement>(`[data-turn-key="${id}"]`)!;
     const rest = { mira: box(card('e1')), rat: box(card('e2')) };
 
-    await act(async () => store.getState().nextTurn(new Set()));
+    await act(async () => store.getState().nextTurn());
     expect(card('e2').classList.contains('atlas-initiative-card--turn-flash')).toBe(true);
     holdAt(0);
     expect(box(card('e2')).top).toBeCloseTo(rest.rat.top, 0);
@@ -178,7 +178,7 @@ describe('the turn passing on and back', () => {
     expect(box(card('e2')).top).toBeCloseTo(rest.mira.top, 0);
     finishAll();
 
-    await act(async () => store.getState().previousTurn(new Set()));
+    await act(async () => store.getState().previousTurn());
     holdAt(0);
     expect(box(card('e2')).top).toBeCloseTo(rest.mira.top, 0);
     holdAt(TURN_MOVE_MS + 200);
@@ -219,7 +219,7 @@ describe('the turn passing on and back', () => {
       persistenceEnabled: false,
       initiativeTrackerOpen: true,
       objects: { ...store.getState().objects, tokens: Object.fromEntries([0, 1, 2, 3, 4].map((index) => [`t${index}`, creature(index)])) },
-      initiative: { ...createDefaultInitiativeState(), isActive: true, round: 2, currentIndex: 1, entries: [0, 1, 2, 3, 4].map((index) => entryOf(index, 1)) },
+      initiative: { ...createDefaultInitiativeState(), isActive: true, round: 2, entries: [0, 1, 2, 3, 4].map((index) => entryOf(index, 1)) },
     });
     const ui = { app, view: null, pixiApp: null, renderer: null } as never;
     render(React.createElement(AtlasUIContext.Provider, { value: ui }, React.createElement(ViewStoreProvider, { store }, React.createElement(InitiativeTracker))));

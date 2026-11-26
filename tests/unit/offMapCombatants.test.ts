@@ -52,8 +52,8 @@ describe('combatants kept beside the map', () => {
     joinInitiative(store, ['wolf']);
     const [id] = addOffMapCombatants(store, [goblin()]);
     const entries = store.getState().initiative.entries;
-    removeCombatant(store, entries.find((entry) => entry.tokenId === id)!, new Set());
-    removeCombatant(store, entries.find((entry) => entry.tokenId === 'wolf')!, new Set());
+    removeCombatant(store, entries.find((entry) => entry.tokenId === id)!);
+    removeCombatant(store, entries.find((entry) => entry.tokenId === 'wolf')!);
     expect(Object.keys(store.getState().objects.tokens)).toEqual(['wolf']);
     expect(store.getState().initiative.entries).toEqual([]);
     // Undo brings the token back; the tracker lists it again (`offMapWithoutEntry`)

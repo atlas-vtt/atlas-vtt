@@ -13,7 +13,6 @@ import { cardsShort } from './cardGroups';
 export function startCombatByRules(
   state: Pick<ViewAtlasState, 'initiative' | 'objects' | 'startCombat'>,
   rules: InitiativeRules,
-  defeated: () => ReadonlySet<string>,
 ): boolean {
   if (rules.mode === 'cards') {
     const short = cardsShort({ deck: deckSize(rules), ...(rules.lookAlikesShare && { share: true }) }, state.initiative.entries, state.objects.tokens);
@@ -22,6 +21,6 @@ export function startCombatByRules(
       return false;
     }
   }
-  state.startCombat(rules, defeated());
+  state.startCombat(rules);
   return true;
 }

@@ -25,7 +25,7 @@ type State = ReturnType<typeof sceneState> & Partial<Pick<ViewState, 'initiative
 
 const fight = (tokens: Record<string, TokenEntity>): State => ({
   ...sceneState({ objects: { ...sceneState().objects, tokens } }),
-  initiative: { entries: Object.keys(tokens).map(entry), currentIndex: 0, round: 1, isActive: true, config: { autoSort: true } },
+  initiative: { entries: Object.keys(tokens).map(entry), round: 1, isActive: true, config: { autoSort: true } },
   initiativeTrackerOpen: true,
 });
 
