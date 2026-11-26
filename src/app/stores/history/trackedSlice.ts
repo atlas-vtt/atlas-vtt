@@ -1,21 +1,10 @@
+import { UNDO_DEPTHS, type UndoBranch } from '../stateBranches';
+
 /** Maximum number of undo steps kept per map. */
 export const HISTORY_LIMIT = 50;
 
-/** The tracked state: `objects`, `grid`, `background`, `widgetValues`, `exploredEdits`, `partyValues`, `levelAlignments`, `turnMoves` (references). */
-export type HistorySnapshot = {
-  objects: unknown;
-  grid: unknown;
-  background: unknown;
-  widgetValues: unknown;
-  /** How many edits of the explored memory led to the state (`ViewAtlasState.exploredEdits`); stores without one leave it out. */
-  exploredEdits?: unknown;
-  /** The played campaign's values of its player characters (`ViewAtlasState.partyValues`); stores without them leave it out. */
-  partyValues?: unknown;
-  /** How each level's image is fitted to the scene's grid (`ViewAtlasState.levelAlignments`); scenes without them leave it out. */
-  levelAlignments?: unknown;
-  /** What each token has moved in its turn (`ViewAtlasState.turnMoves`); stores without it leave it out. */
-  turnMoves?: unknown;
-};
+/** The tracked state: the branches the store declares undoable (`stateBranches.ts`), by reference; a store without one leaves it out. */
+export type HistorySnapshot = { readonly [K in UndoBranch]?: unknown };
 
 /**
  * One undo step: the tracked state before and after one GM write or one outermost transaction.
@@ -26,38 +15,13 @@ export interface HistoryStep {
   readonly after: HistorySnapshot;
 }
 
-export type TrackedBranch = keyof HistorySnapshot;
-
-export const TRACKED_BRANCHES: readonly TrackedBranch[] = ['objects', 'grid', 'background', 'widgetValues', 'exploredEdits', 'partyValues', 'levelAlignments', 'turnMoves'];
-
-/**
- * How deep undo looks into each branch for the entities a step changed: `objects` holds
- * collections of entities, `widgetValues` one value per widget, `partyValues` one value per
- * character's resource, `turnMoves` one distance per token, the rest are written whole.
- */
-export const BRANCH_DEPTH: Readonly<Record<TrackedBranch, number>> = {
-  objects: 2,
-  grid: 0,
-  background: 0,
-  widgetValues: 1,
-  exploredEdits: 0,
-  partyValues: 1,
-  levelAlignments: 1,
-  turnMoves: 1,
-};
+export const TRACKED_BRANCHES = Object.keys(UNDO_DEPTHS) as readonly UndoBranch[];
 
 /** The tracked branches of a state, by reference. */
 export function trackedSliceOf(state: HistorySnapshot): HistorySnapshot {
-  return {
-    objects: state.objects,
-    grid: state.grid,
-    background: state.background,
-    widgetValues: state.widgetValues,
-    exploredEdits: state.exploredEdits,
-    partyValues: state.partyValues,
-    levelAlignments: state.levelAlignments,
-    turnMoves: state.turnMoves,
-  };
+  const slice: Partial<Record<UndoBranch, unknown>> = {};
+  for (const branch of TRACKED_BRANCHES) slice[branch] = state[branch];
+  return slice;
 }
 
 /**
@@ -65,14 +29,6 @@ export function trackedSliceOf(state: HistorySnapshot): HistorySnapshot {
  * unchanged branches, so this tells a write that changed tracked state from one that did not.
  */
 export function sameTrackedSlice(a: HistorySnapshot, b: HistorySnapshot): boolean {
-  return (
-    a.objects === b.objects &&
-    a.grid === b.grid &&
-    a.background === b.background &&
-    a.widgetValues === b.widgetValues &&
-    a.exploredEdits === b.exploredEdits &&
-    a.partyValues === b.partyValues &&
-    a.levelAlignments === b.levelAlignments &&
-    a.turnMoves === b.turnMoves
-  );
+  for (const branch of TRACKED_BRANCHES) if (a[branch] !== b[branch]) return false;
+  return true;
 }

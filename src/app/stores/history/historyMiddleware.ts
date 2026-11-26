@@ -37,8 +37,8 @@ const historyMiddleware = (config: Creator): Creator => (set, get, api) => {
 };
 
 /**
- * Atlas's undo history, outermost on a store whose state holds the tracked branches
- * (`objects`, `grid`, `background`, `widgetValues`, `exploredEdits`, `partyValues`, `levelAlignments`, `turnMoves`). Adds `store.temporal`.
+ * Atlas's undo history, outermost on a store whose state holds the branches `stateBranches.ts`
+ * declares undoable. Adds `store.temporal`.
  * The cast is zustand's pattern for a middleware that adds a mutator: the implementation
  * is typed for any state, the export for the state of the store it is given.
  */

@@ -159,6 +159,20 @@ describe('what a scene file holds', () => {
   });
 });
 
+describe('reading a scene file', () => {
+  it('takes nothing from it but the saved branches', async () => {
+    const harness = await opened(RICH_SCENE_PATH);
+    harness.files.set(RICH_SCENE_PATH, JSON.stringify({ version: 5, state: { ...richSceneFile().state, fogStyle: 'parchment', isGMView: false, selectedIds: ['tok_rogue'] } }));
+
+    await harness.store.rehydrateFromFile();
+
+    const state = stateOf(harness.store);
+    expect(state).not.toHaveProperty('fogStyle');
+    expect(state.isGMView).toBe(true);
+    expect(state.selectedIds).toEqual([]);
+  });
+});
+
 describe('a map switch', () => {
   it('puts back the branches of the scene and keeps every other as it was', async () => {
     const { store } = await opened(RICH_SCENE_PATH);

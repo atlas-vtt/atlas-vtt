@@ -2,7 +2,7 @@ import type { App } from 'obsidian';
 import type { AtlasView } from '../atlas-view';
 import { showResourcesInJson } from '../resources/sceneVisibility';
 import { rewriteCollectionSnapshots } from '../snapshots/sceneSnapshotFolders';
-import { DEFAULT_TOKEN_SETTINGS } from '../storeFactory';
+import { DEFAULT_TOKEN_SETTINGS } from '../types/viewState';
 import { updateCollectionScenes } from './collectionScenes';
 
 function showInOpenView(view: AtlasView, keys: readonly string[]): void {

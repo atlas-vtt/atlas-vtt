@@ -1,8 +1,9 @@
 import { getHistoryStore, type HistorySnapshot, type HistoryState, type HistoryStep } from './history';
+import { TRACKED_BRANCHES } from './history/trackedSlice';
 
 type Timeline = Pick<HistoryState, 'pastStates' | 'futureStates'>;
 
-const OTHER_BRANCHES = ['objects', 'grid', 'background', 'widgetValues', 'partyValues', 'levelAlignments', 'turnMoves'] as const;
+const OTHER_BRANCHES = TRACKED_BRANCHES.filter((branch) => branch !== 'exploredEdits');
 
 const sameButForEdits = (a: HistorySnapshot, b: HistorySnapshot): boolean => OTHER_BRANCHES.every((branch) => a[branch] === b[branch]);
 

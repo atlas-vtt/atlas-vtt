@@ -6,7 +6,7 @@ import { slottedResources } from '../../../resources/resourceSlots';
 import { toggleHidden } from '../../../resources/sceneVisibility';
 import { useResourcesOfMap } from '../../../resources/useMapResources';
 import { resourceToggleLabel } from './resourceToggleLabel';
-import { DEFAULT_TOKEN_SETTINGS } from '../../../storeFactory';
+import { DEFAULT_TOKEN_SETTINGS } from '../../../types/viewState';
 import { t } from '../../../i18n';
 
 type TokenToggleKey = 'showNameplates' | 'showInstanceBadges';
