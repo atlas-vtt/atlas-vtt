@@ -101,7 +101,7 @@ export class FloorShare {
     const draw = (): { readonly cell: number } | null => (playersDraw() ? { cell: drawCell(store.getState().grid) } : null);
     const doorsAllowed = (): boolean => settings().playersOpenDoors === true;
     this.rules = new RulesShare(store, {
-      ...ports, accent, cursorsShown, doors: doorsAllowed, rollDice: () => mapRollDice(ports.dice?.() ?? null), draw, diceRow: () => sharedDiceRow(sceneDiceShelf(ports, store)),
+      ...ports, accent, cursorsShown, doors: doorsAllowed, rollDice: () => mapRollDice(ports.dice?.() ?? null), draw, diceRow: () => sharedDiceRow(sceneDiceShelf(ports.mapLayers(), store)),
     });
     this.moves = new PlayerMoves(store, {
       ...ports,
@@ -180,7 +180,7 @@ export class FloorShare {
   changed(change: SceneChange, scene: SceneState): void {
     const state = this.store.onFloor(scene);
     if (change === 'sight') {
-      if (!this.ports.viewed() || !state.mapLoaded || state.isMapLoading) return;
+      if (!this.ports.source().followsSight || !state.mapLoaded || state.isMapLoading) return;
       this.marks.seenChanged();
       return this.pictures.changed(change);
     }
