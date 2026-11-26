@@ -21,6 +21,7 @@ import type { AssetStoring } from '../../../../src/app/online/gm/assets/assetUse
 import type { PictureBasis } from '../../../../src/app/online/gm/eyesSight.ts';
 import type { MemoryPorts } from '../../../../src/app/online/gm/memory/memoryPorts.ts';
 import { fakeStoring } from './fakeStoring.ts';
+import { PlayerPages } from './playerPages.ts';
 
 export const GRID_SIZE = 70;
 
@@ -47,6 +48,8 @@ export interface Sent {
 export interface ShareHarness {
   readonly share: SceneShare;
   readonly sent: Sent[];
+  /** The pages of the players a test joins (none by default), each with what reached it. */
+  readonly pages: PlayerPages;
   readonly notices: string[];
   /** The players' frame's perception of each token (the lighting with fog); unset sees all that are not hidden. */
   perception: TokenPerception | undefined;
@@ -116,8 +119,14 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
   let ids = 0;
   const settle = settled;
   const source = fakeTokenSource(() => store.getState(), () => harness.perception, () => GRID_SIZE);
+  const pages = new PlayerPages();
+  const sent = (body: GmMessage, to: string | undefined): void => {
+    harness.sent.push({ body, to });
+    pages.deliver(body, to);
+  };
   const harness: ShareHarness = {
     sent: [],
+    pages,
     notices: [],
     perception: undefined,
     rendered: true,
@@ -160,8 +169,8 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
         const mime = isVideoMapPath(path) ? 'image/png' : imageMimeType(path);
         return Promise.resolve(bytes === undefined || mime === null ? null : { bytes, mime });
       },
-      send: (body, to) => harness.sent.push({ body, to }),
-      sendLive: (body, _key, to) => harness.sent.push({ body, to }),
+      send: (body, to) => sent(body, to),
+      sendLive: (body, _key, to) => sent(body, to),
       notice: (text) => harness.notices.push(text),
       randomId: () => counterId((ids += 1)),
       now: () => now,
