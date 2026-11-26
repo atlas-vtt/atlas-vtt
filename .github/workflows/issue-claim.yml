@@ -1,0 +1,62 @@
+name: Issue Claim
+
+# Lets anyone take an open issue by commenting `/take` and give it back with
+# `/drop`, so the board shows who works on what without granting anyone a role.
+# GitHub lets an issue be assigned to anyone who commented on it. The comment is
+# only compared with the two commands, never run, and the job can do nothing but
+# assign, unassign and comment on issues.
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: issue-claim-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  claim:
+    if: >-
+      !github.event.issue.pull_request &&
+      github.event.comment.user.type == 'User' &&
+      (startsWith(github.event.comment.body, '/take') || startsWith(github.event.comment.body, '/drop'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Assign or unassign the commenter
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            // At most this many open issues per person, so nobody holds work they cannot get to.
+            const MAX_CLAIMS = 3;
+            const { owner, repo } = context.repo;
+            const issue = context.payload.issue;
+            const login = context.payload.comment.user.login;
+            const command = context.payload.comment.body.trim().split(/\s/)[0];
+            const reply = (body) => github.rest.issues.createComment({ owner, repo, issue_number: issue.number, body });
+            const holders = issue.assignees.map((assignee) => assignee.login);
+
+            if (command === '/drop') {
+              if (!holders.includes(login)) return;
+              await github.rest.issues.removeAssignees({ owner, repo, issue_number: issue.number, assignees: [login] });
+              await reply(`@${login} gave this issue back; it is free for anyone to \`/take\`.`);
+              return;
+            }
+            if (command !== '/take') return;
+            if (issue.state !== 'open') return reply(`@${login} this issue is closed, so there is nothing to take.`);
+            if (holders.includes(login)) return;
+            if (holders.length > 0) {
+              return reply(`@${login} ${holders.map((holder) => `@${holder}`).join(', ')} already works on this. Ask here if you want to help or take it over.`);
+            }
+            const held = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${owner}/${repo} is:issue is:open assignee:${login}`,
+              per_page: 1,
+            });
+            if (held.data.total_count >= MAX_CLAIMS) {
+              return reply(`@${login} you already hold ${held.data.total_count} open issues. Finish or \`/drop\` one of them first.`);
+            }
+            await github.rest.issues.addAssignees({ owner, repo, issue_number: issue.number, assignees: [login] });
+            await reply(`@${login} this issue is yours. Open a draft pull request that says \`Fixes #${issue.number}\` early, so others can follow along, and comment \`/drop\` if you stop.`);

@@ -1,5 +1,18 @@
 # Contributing
 
+## Pick something to work on
+
+Every open issue is on the [issue board](https://github.com/orgs/atlas-vtt/projects/1), so you can see what is free and who works on what.
+
+- Comment `/take` on an issue to claim it; it is assigned to you. You can hold three open issues at a time. Comment `/drop` to give one back.
+- An issue someone already holds is theirs: ask in the issue if you want to help.
+- Open a draft pull request early and write `Fixes #<number>` in its description. The board then shows the issue as in review and closes it when the pull request is merged.
+- Issues labelled `good first issue` are a good start. For anything not on the board yet, open an issue first, so nobody else starts the same work.
+
+After your first merged pull request you are invited to the `contributors` team. Its members also label, assign and close issues, move them on the board and review pull requests.
+
+## Making a change
+
 1. Create a branch from `beta`. Changes reach `main` only through beta promotion, see [`.github/development.md`](.github/development.md).
 2. Make your change. Coding conventions are described in [`AGENTS.md`](AGENTS.md); the short version: PIXI.js v8 (not the v7 Obsidian bundles), SCSS with Obsidian CSS variables, explicit return types, files of at most 300 lines.
 3. Run `npm run check` while you work and `npm run verify` before you open the pull request, then `npm run build` and try the change in Obsidian. Lint must be clean; see [`.github/development.md`](.github/development.md#lint).
