@@ -70,6 +70,8 @@ export interface ShareHarness {
   layers: MapLayerSource | null;
   /** The GM's renderer as the basis players' own pictures are cut from; none by default, so they are worked out on the CPU. */
   basis: PictureBasis | null;
+  /** Whether the GM's renderer has drawn the level its view shows (on by default); until it has, a scene of several floors works that floor out on the CPU. */
+  drawn: boolean;
   /** The map's resource and condition definitions, or null while they cannot be read (the default). */
   rules: TokenRules | null;
   /** What the GM's own drag ruler measures; none by default. */
@@ -159,6 +161,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
     dice: null,
     layers: null,
     basis: null,
+    drawn: true,
     rules: null,
     gmRuler: null,
     marks: null,
@@ -185,6 +188,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       pinsChanged: (mapPath, pins) => harness.pinsChanged(mapPath, pins),
       mapLayers: () => harness.layers,
       pictureBasis: () => harness.basis,
+      rendererCurrent: () => harness.drawn,
       lightingSource: () => harness.lighting,
       atlas: () => signal.inputs.atlas,
       dice: () => harness.dice,
