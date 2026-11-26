@@ -7,7 +7,7 @@ import { CursorShare, type CursorSharePorts } from './CursorShare.ts';
 import type { TokenSeen } from '../../vision/measureOrigin';
 import { GmMeasureAudiences, hasNone, measureEntry, type MarkAudience } from './gmMeasureAudiences.ts';
 import type { KeptBy, PlayersView, TokenAlias } from './gmMeasures.ts';
-import { MarksOut, type MarksFor } from './marksOut.ts';
+import { MarksOut, type MarksFor, type MarksOutPorts } from './marksOut.ts';
 import { GmStrokes } from './gmStrokes.ts';
 import { checkLaser, checkMeasure, markRate } from './markCheck.ts';
 import type { MapSize, MoveRate } from './moveCheck.ts';
@@ -34,7 +34,7 @@ export interface GmMarkSource extends PlayersView {
 /** Players' marks, for the GM to see over the map. */
 export type PlayerMarks = Pick<MarksMessage, 'lasers' | 'measures'>;
 
-export interface MarkSharePorts extends PacerClock, Partial<Pick<CursorSharePorts, 'nameOf' | 'showPlayerCursors'>> {
+export interface MarkSharePorts extends PacerClock, Partial<Pick<CursorSharePorts, 'nameOf' | 'showPlayerCursors'>>, Pick<MarksOutPorts, 'playersOf'> {
   send(body: GmMessage, to?: string): void;
   /**
    * Sends to all through the live lane, where there is one: before any game message that waits, and
@@ -332,8 +332,8 @@ export class MarkShare {
     const strokes = [...(stroke === undefined ? [] : [{ who: GM_MARKS, ...stroke }]), ...playerStrokes];
     const scene = this.scene;
     const lasers = [...this.gmLaser(), ...playerLasers.filter((laser) => laser.at !== null || laser.on || laser.pts.length > 0)];
-    const marks = this.gmMeasures(now).map(({ players, entries }): MarksFor => ({
-      ...(players !== undefined && { players }),
+    const marks = this.gmMeasures(now).map(({ key, entries }): MarksFor => ({
+      key,
       body: { t: 'marks', scene, lasers, measures: [...entries, ...playerMeasures], ...(cursors !== undefined && { cursors }), ...(strokes.length > 0 && { strokes }) },
     }));
     this.out.tell(marks, now);
@@ -383,7 +383,7 @@ export class MarkShare {
   /** The GM's measurements as each audience is told them; one audience told none without the GM's marks. */
   private gmMeasures(now: number): ReturnType<GmMeasureAudiences['told']> {
     const source = this.source;
-    if (source === null) return [{ entries: [] }];
+    if (source === null) return [{ key: '', entries: [] }];
     return this.gm.told(this.audiences(source), this.accent(), now, this.ports.tokenAlias, this.ports.keptBy);
   }
 

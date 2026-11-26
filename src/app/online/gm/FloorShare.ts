@@ -105,10 +105,10 @@ export class FloorShare {
     });
     this.moves = new PlayerMoves(store, {
       ...ports,
-      // A player acts on tokens their own picture lists: a refusal tells where a token stands only to someone who sees it
+      // A player acts on tokens their own picture lists, and on none where they are not placed on this floor: a refusal tells where a token stands only to someone who sees it
       context: (from) => ({
-        scene: this.pictures.of(from).tokens.listedScene,
-        listedToken: (alias) => this.pictures.of(from).tokens.listedToken(alias),
+        scene: this.pictures.of(from)?.tokens.listedScene ?? null,
+        listedToken: (alias) => this.pictures.of(from)?.tokens.listedToken(alias),
         ownerOf,
         map: this.mapSize,
         // The walls of this floor, on which every token of its list stands
@@ -136,6 +136,7 @@ export class FloorShare {
       ...ports, accent, cursorsShown, tokenAlias: (tokenId) => this.tokens.alias(tokenId), keptBy: (measure) => this.measures.told(measure),
       gmMarks: () => ports.gmMarks?.() ?? null,
       audiences: (seen) => this.pictures.markAudiences(seen),
+      playersOf: (key) => ports.routes.members(key),
       // A drawing under way is followed only where a request to make it would be taken.
       strokesTaken: (player, scene) => (this.drawings.refusal(player, scene) === null ? { cell: drawCell(store.getState().grid) } : null),
       fog: () => this.pictures.party.layers.committedFog(),
@@ -250,6 +251,8 @@ export class FloorShare {
    * measurement or cursor, a request of their Draw tool or the drawing they are making, or a resync.
    */
   receive(from: string, message: PlayerMessage): void {
+    // What a player does with tokens is read by their picture: a player who reached the floor while it read its map is placed first.
+    if (message.t === 'move' || message.t === 'drag' || message.t === 'drag-cancel') this.pictures.seat(from);
     if (message.t === 'move') return this.moves.receive(from, message);
     if (message.t === 'drag') return this.moves.drag(from, message);
     if (message.t === 'drag-cancel') return this.moves.dragCancel(from, message);
@@ -272,9 +275,10 @@ export class FloorShare {
     return scene === this.tokens.listedScene ? this.tokens.listedToken(alias) : undefined;
   }
 
-  /** The readable pin `player` knows as `alias` in the scene `sceneId`, while they see it now; null for any other. */
+  /** The readable pin `player` knows as `alias` in the scene `sceneId`, while they see it now (a player who asks is placed first); null for any other. */
   readablePin(player: string, sceneId: string, alias: string): (ListedPin & { readonly map: string }) | null {
-    return this.pictures.of(player).layers.readablePin(sceneId, alias);
+    this.pictures.seat(player);
+    return this.pictures.of(player)?.layers.readablePin(sceneId, alias) ?? null;
   }
 
   /** What players see of the map beside its tokens may have changed. */

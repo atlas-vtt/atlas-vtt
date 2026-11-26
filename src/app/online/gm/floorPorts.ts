@@ -3,6 +3,7 @@ import { PLAYER_SIGHT_POLICY, type SightPolicy } from '../../vision/tokenSightPo
 import type { MapLayerSource } from './atlasMapLayers.ts';
 import type { PlayerTokenSource, SceneState } from './atlasView.ts';
 import { EyesSight, type EyesContext, type PartyLighting, type PictureBasis } from './eyesSight.ts';
+import type { FloorRoutes } from './floorRoutes.ts';
 import { FloorSight } from './floorSight.ts';
 import type { MapSize } from './moveCheck.ts';
 import type { SceneSharePorts } from './sceneSharePorts.ts';
@@ -22,6 +23,8 @@ export interface FloorSharePorts extends SceneSharePorts {
   floor?(): SharedFloor | undefined;
   /** The picture of eyes that see by `policy` (one player's own, `ownPolicy`), cut from the party's picture of this floor. */
   eyes(policy: SightPolicy): PictureSources;
+  /** Whose eyes the floor's players see it through, and who hears each of its messages. */
+  readonly routes: FloorRoutes;
 }
 
 /** What makes a floor's ports out of the scene's. */
@@ -36,17 +39,15 @@ export interface FloorPortsDeps {
   cell(): number;
   /** The ids players know tokens by, the same on every floor. */
   readonly aliases: Map<string, string>;
-  send(body: GmMessage, to?: string): void;
-  sendLive(body: GmMessage, key: string, to?: string): void;
-  /** The connected players on the floor, or null where everyone is (a scene of one floor). */
-  playersOn(): readonly string[] | null;
+  /** Who hears the floor's messages. */
+  readonly routes: FloorRoutes;
   notice(text: string): void;
   /** Which floor of its map this is, for players to tell; none for a scene of one floor. */
   describe(): SharedFloor | undefined;
 }
 
 /**
- * The ports of one floor's share: the scene's, with messages going to the floor's players, the GM's
+ * The ports of one floor's share: the scene's, with messages going to the floor's players (`FloorRoutes`), the GM's
  * renderer as the party's picture only while the GM's view shows the floor (else the picture worked
  * out here, `FloorSight`), a player's own picture cut from whichever of the two, and the GM's marks,
  * rulers and the players' marks on the GM's canvas only for that floor.
@@ -67,13 +68,15 @@ export function floorPorts(ports: SceneSharePorts, deps: FloorPortsDeps): FloorS
     seen: () => eyes.seen(basis()),
   });
   const party = sources(new EyesSight(PLAYER_SIGHT_POLICY, context), () => sight);
+  const { routes } = deps;
   const seats = ports.seats;
   return {
     ...ports,
     viewed,
     aliases: deps.aliases,
-    send: (body, to) => deps.send(body, to),
-    ...(ports.sendLive !== undefined && { sendLive: (body: GmMessage, key: string, to?: string) => deps.sendLive(body, key, to) }),
+    routes,
+    send: (body, to) => routes.send(body, to),
+    ...(ports.sendLive !== undefined && { sendLive: (body: GmMessage, key: string, to?: string) => routes.sendLive(body, key, to) }),
     tokenSource: () => (viewed() ? ports.tokenSource() : party.tokenSource()),
     mapLayers: () => (viewed() ? ports.mapLayers?.() ?? null : party.mapLayers()),
     eyes: (policy: SightPolicy) => sources(new EyesSight(policy, context), () => (viewed() ? ports.pictureBasis?.() ?? sight : sight)),
@@ -93,7 +96,7 @@ export function floorPorts(ports: SceneSharePorts, deps: FloorPortsDeps): FloorS
       if (viewed()) ports.showPlayerStrokes?.(strokes);
     },
     seats: seats === undefined ? undefined : {
-      onlinePlayers: () => deps.playersOn() ?? seats.onlinePlayers(),
+      onlinePlayers: () => routes.playersOn(),
       ownerOf: (tokenId, token) => seats.ownerOf(tokenId, token),
       claimOf: (mapPath, tokenId, token) => seats.claimOf(mapPath, tokenId, token),
     },

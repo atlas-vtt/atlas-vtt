@@ -15,6 +15,7 @@ import type { DoorAskShown } from './doors/PlayerDoorAsks.ts';
 import type { PictureBasis } from './eyesSight.ts';
 import type { AtlasInputs } from './sceneSignal.ts';
 import type { MemoryPorts } from './memory/memoryPorts.ts';
+import type { PageCovers } from './coveredPages.ts';
 
 /** What the shared scene of an Atlas tab reads of the tab and the table, and how it reaches players. */
 export interface SceneSharePorts extends TokenSharePorts, Omit<RulesSharePorts, 'accent'>, Pick<MarkSharePorts, 'gmMarks' | 'showPlayerMarks' | 'showPlayerCursors' | 'showPlayerStrokes' | 'nameOf'> {
@@ -23,6 +24,8 @@ export interface SceneSharePorts extends TokenSharePorts, Omit<RulesSharePorts, 
   atlas(): AtlasInputs;
   /** Sends a live message (where dragged tokens are now) ahead of other frames, the latest of a key winning; without it drags reach players through the token list only. */
   sendLive?(body: GmMessage, key: string, to?: string): void;
+  /** The pages live marks leave out (their book covers the map); without it, none. */
+  readonly covers?: PageCovers | undefined;
   /** What the GM's own drag ruler measures now, or null while it shows none; without it players see none of the GM's. */
   gmDragRuler?(): GmRuler | null;
   /** Draws the rulers of the players' drags for the GM. */

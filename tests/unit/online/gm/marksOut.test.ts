@@ -18,6 +18,8 @@ function outbox(): { readonly out: MarksOut; readonly sent: { readonly to: strin
   const out = new MarksOut({
     send: (body, to) => void sent.push({ to, areas: areasOf(body), live: false }),
     sendLive: (body, _key, to) => void sent.push({ to, areas: areasOf(body), live: true }),
+    // Each player sees a picture of their own, named by them; the party's (`''`) is everyone's.
+    playersOf: (key) => (key === '' ? [ANA, BEN] : [key]),
   });
   return { out, sent };
 }
@@ -25,25 +27,25 @@ function outbox(): { readonly out: MarksOut; readonly sent: { readonly to: strin
 describe('the marks as each player is told them', () => {
   it('go once to all while every player is told the same, and not again while nothing changed', () => {
     const { out, sent } = outbox();
-    out.tell([{ body: marks(0) }], 0);
-    out.tell([{ body: marks(1) }], 10);
-    out.tell([{ players: [ANA], body: marks(1) }, { players: [BEN], body: marks(1) }], 20);
-    out.tell([{ body: marks(1) }], 30);
+    out.tell([{ key: '', body: marks(0) }], 0);
+    out.tell([{ key: '', body: marks(1) }], 10);
+    out.tell([{ key: ANA, body: marks(1) }, { key: BEN, body: marks(1) }], 20);
+    out.tell([{ key: '', body: marks(1) }], 30);
     expect(sent).toEqual([{ to: undefined, areas: 1, live: true }]);
   });
 
   it('go to each player whose own changed where they differ, then once to all when they agree again', () => {
     const { out, sent } = outbox();
-    out.tell([{ body: marks(1) }], 0);
-    out.tell([{ players: [ANA], body: marks(1) }, { players: [BEN], body: marks(2) }], 10);
-    out.tell([{ players: [ANA], body: marks(1) }, { players: [BEN], body: marks(2) }], 20);
-    out.tell([{ players: [ANA], body: marks(2) }, { players: [BEN], body: marks(2) }], 30);
+    out.tell([{ key: '', body: marks(1) }], 0);
+    out.tell([{ key: ANA, body: marks(1) }, { key: BEN, body: marks(2) }], 10);
+    out.tell([{ key: ANA, body: marks(1) }, { key: BEN, body: marks(2) }], 20);
+    out.tell([{ key: ANA, body: marks(2) }, { key: BEN, body: marks(2) }], 30);
     expect(sent).toEqual([{ to: undefined, areas: 1, live: true }, { to: BEN, areas: 2, live: true }, { to: undefined, areas: 2, live: true }]);
   });
 
   it('give a player their own on a catch-up or a resend, and nothing to a player told nothing yet', () => {
     const { out, sent } = outbox();
-    out.tell([{ players: [ANA], body: marks(1) }, { players: [BEN], body: marks(2) }], 0);
+    out.tell([{ key: ANA, body: marks(1) }, { key: BEN, body: marks(2) }], 0);
     sent.length = 0;
     out.catchUp(ANA);
     out.resend(BEN);
@@ -54,9 +56,9 @@ describe('the marks as each player is told them', () => {
 
   it('keep a showing cursor alive for every player while nothing changes', () => {
     const { out, sent } = outbox();
-    out.tell([{ players: [ANA], body: marks(1, true) }, { players: [BEN], body: marks(2, true) }], 0);
-    out.tell([{ players: [ANA], body: marks(1, true) }, { players: [BEN], body: marks(2, true) }], CURSOR_KEEPALIVE_MS - 1);
-    out.tell([{ players: [ANA], body: marks(1, true) }, { players: [BEN], body: marks(2, true) }], CURSOR_KEEPALIVE_MS);
+    out.tell([{ key: ANA, body: marks(1, true) }, { key: BEN, body: marks(2, true) }], 0);
+    out.tell([{ key: ANA, body: marks(1, true) }, { key: BEN, body: marks(2, true) }], CURSOR_KEEPALIVE_MS - 1);
+    out.tell([{ key: ANA, body: marks(1, true) }, { key: BEN, body: marks(2, true) }], CURSOR_KEEPALIVE_MS);
     expect(sent.map(({ to }) => to)).toEqual([ANA, BEN, ANA, BEN]);
   });
 });
