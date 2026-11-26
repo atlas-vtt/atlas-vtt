@@ -2,7 +2,7 @@
  * Token Interaction Controller
  * 
  * Handles all pointer interactions with tokens including drag & drop,
- * hover effects, context menus, and path recording for smooth animations.
+ * hover effects and context menus.
  */
 
 import type { ResourceDefsProvider } from '../../resources/resourceTypes';
@@ -11,7 +11,7 @@ import { Viewport } from 'pixi-viewport';
 import { App } from 'obsidian';
 import { openEditTokenModal } from './EditTokenModal';
 import { openContextMenuGlobal, closeContextMenuGlobal } from '../../react/root/ContextMenuContext';
-import type { ITokenInteractionController, TokenGroupContainer } from './types';
+import type { TokenGroupContainer } from './types';
 import type { TokenEntity } from '../../types';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { StoreApi } from 'zustand';
@@ -73,7 +73,7 @@ interface DragState {
   current?: Record<string, { x: number; y: number }>;
 }
 
-export class InteractionController implements ITokenInteractionController {
+export class InteractionController {
   private viewport: Viewport;
   private store: StoreApi<ViewAtlasState>;
   private gridSystem: GridSystem;
@@ -103,7 +103,6 @@ export class InteractionController implements ITokenInteractionController {
   
   // Callbacks for external systems
   private onSelectionUpdate?: () => void;
-  private onTokenMove?: (tokenId: string, x: number, y: number) => void;
   private getTokenSprite?: (tokenId: string) => TokenGroupContainer | null;
   private updateUIPosition?: (tokenId: string, x: number, y: number) => void;
   private settleToken?: (tokenId: string, x: number, y: number) => void;
@@ -139,24 +138,6 @@ export class InteractionController implements ITokenInteractionController {
     this.obsApp = obsApp;
     this.isPlayerView = isPlayerView;
   }
-
-  attachInteractionHandlers(_tokenId: string, _container: Container, _token: TokenEntity): void {
-    // No-op: sprites are non-interactive. Viewport-level dispatch handles all pointer events.
-  }
-
-  removeInteractionHandlers(_tokenId: string, _container: Container): void {
-    // No-op: sprites are non-interactive. Viewport-level dispatch handles all pointer events.
-  }
-
-  setupHoverHandlers(
-    _tokenId: string, 
-    _container: Container,
-    _onHover: (tokenId: string) => void,
-    _onHoverEnd: (tokenId: string) => void
-  ): void {
-    // No-op: sprites are non-interactive. Viewport-level dispatch drives hover state.
-  }
-
 
   /** Called by TokenRenderer when viewport pointerdown hits a token. */
   public handleViewportTokenPointerDown(tokenId: string, e: FederatedPointerEvent): void {
@@ -696,21 +677,6 @@ export class InteractionController implements ITokenInteractionController {
   private showContextMenu(token: TokenEntity, e: FederatedPointerEvent): void {
     const at = { x: e.clientX, y: e.clientY };
     openContextMenuGlobal(selectionMenu(tokenActions(this.actionHost(), token, at), closeContextMenuGlobal), at);
-  }
-
-  handleDrag(
-    tokenId: string,
-    startX: number,
-    startY: number,
-    onMove: (x: number, y: number) => void,
-    onEnd: (finalX: number, finalY: number, path: Array<{x: number, y: number, timestamp: number}>) => void
-  ): void {
-    // This method is part of the interface but drag is handled internally
-    // Could be used for programmatic drag operations
-  }
-
-  emitContextMenu(tokenId: string, x: number, y: number): void {
-    this.eventBus.emit('token-context-menu', { tokenId, x, y });
   }
 
   // Callbacks setup

@@ -32,7 +32,7 @@ function scene(tokens: Record<string, TokenEntity>): SceneState {
 describe('a combatant kept beside the map is no part of it', () => {
   it('gets no sprite: the token sprites, and so hit tests, controls and pictures of the scene, follow the map\'s tokens', () => {
     const tokens = tokensOf(torchBearer('on', false), torchBearer('beside', true));
-    const synced = tokenSyncState({ objects: { tokens } as ViewAtlasState['objects'], isMapLoading: false, selectedIds: [] });
+    const synced = tokenSyncState({ objects: { tokens } as ViewAtlasState['objects'], isMapLoading: false });
     expect(Object.keys(synced.tokens)).toEqual(['on']);
   });
 

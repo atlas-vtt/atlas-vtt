@@ -355,32 +355,10 @@ export class TokenRenderer {
     this.statblockSync = new StatblockTokenSync(obsApp, store, tokenStatblockLinkService, this.resourceDefsProvider);
 
     // Initialize sync service
-    this.syncService = new SyncService(
-      createSceneSource(this.store, tokenSyncState),
-      (tokenId, x, y) => this.store.getState().moveToken(tokenId, x, y),
-      this.eventBus,
-    );
-    
-    // Set up sync service callbacks
-    this.syncService.setTokenSpriteProvider((tokenId: string) => this.tokenSprites[tokenId] || null);
-    this.syncService.setUIPositionUpdater((tokenId: string, x: number, y: number) => {
-      this.uiManager.syncUIPosition(tokenId, x, y);
-      this.refreshDisplayedToken(tokenId);
-    });
-    this.syncService.setControlsPositionUpdater((x: number, y: number, tokenSize: number) =>
-      this.uiManager.updateControlsPosition(x, y, tokenSize)
-    );
+    this.syncService = new SyncService(createSceneSource(this.store, tokenSyncState));
     this.syncService.setTokensChangedCallback((newTokens, prevTokens) =>
       runInBackground(this.syncTokens(newTokens, prevTokens), 'Token sync')
     );
-    this.syncService.setAnimationStartCallback((tokenId: string) => {
-      this.glide.cancel(tokenId);
-      this.bumps.cancel(tokenId);
-      // Could add visual feedback for animation start
-    });
-    this.syncService.setAnimationEndCallback((tokenId: string) => {
-      // Could add visual feedback for animation end
-    });
 
     // A render group: a change elsewhere in the viewport (a ruler drawn anew, a layer hidden for
     // the players' frame) then makes PIXI rebuild none of the tokens' draw list
@@ -475,8 +453,8 @@ export class TokenRenderer {
 
       this.previousSceneArt = Object.values(this.tokenSprites).flatMap((group) => (group ? [group.artPath] : []));
       // First, clear all existing token sprites (tokenSprites is an object, not a Map)
-      for (const [id, tokenGroup] of Object.entries(this.tokenSprites)) {
-        if (tokenGroup) this.destroyTokenGroup(id, tokenGroup);
+      for (const tokenGroup of Object.values(this.tokenSprites)) {
+        if (tokenGroup) this.freeTokenGroup(tokenGroup);
       }
       this.tokenSprites = {};
       this.playerBadges.reset();
@@ -653,10 +631,6 @@ export class TokenRenderer {
       this.sortPending = false;
       this.sortTimeout = null;
     });
-  }
-
-  private syncUIPosition(tokenId: string, x: number, y: number): void {
-    this.uiManager.syncUIPosition(tokenId, x, y);
   }
 
   private reestablishTokenInteractivity(tokenGroup: Container): void {
@@ -1042,22 +1016,17 @@ export class TokenRenderer {
 
         // Only update position if it changed
         if (!prevToken || prevToken.x !== token.x || prevToken.y !== token.y) {
-          // Don't update position if token is animating - let animation complete naturally
-          if (!this.syncService.isTokenAnimating(token.id)) {
-            // Cancel any ongoing animation for this token to ensure store position takes precedence
-            this.syncService.cancelAnimation(token.id);
-            const { heldTokens, isMapLoading } = this.store.getState();
-            // A dropped token is already gliding from the pointer, where it showed, to this place
-            const mayGlide = this.glide.headsTo(token.id, token.x, token.y) || this.mayGlide(token, prevToken);
-            const pointerDrags = this.interactionController.isDraggingTokens();
-            const held = !!heldTokens[token.id];
-            if (placedAtOnce({ held, pointerDrags, loading: isMapLoading, mayGlide })) {
-              this.glide.jump(token.id, token.x, token.y);
-            } else if (held) {
-              this.glide.follow(token.id, token.x, token.y);
-            } else {
-              this.glide.to(token.id, token.x, token.y);
-            }
+          const { heldTokens, isMapLoading } = this.store.getState();
+          // A dropped token is already gliding from the pointer, where it showed, to this place
+          const mayGlide = this.glide.headsTo(token.id, token.x, token.y) || this.mayGlide(token, prevToken);
+          const pointerDrags = this.interactionController.isDraggingTokens();
+          const held = !!heldTokens[token.id];
+          if (placedAtOnce({ held, pointerDrags, loading: isMapLoading, mayGlide })) {
+            this.glide.jump(token.id, token.x, token.y);
+          } else if (held) {
+            this.glide.follow(token.id, token.x, token.y);
+          } else {
+            this.glide.to(token.id, token.x, token.y);
           }
           
           // Update rotation handle positions when token moves
@@ -1159,7 +1128,7 @@ export class TokenRenderer {
           // Another map loaded meanwhile (possibly this one again, with its own load of this
           // token), so this sprite must neither show nor touch the new load's state.
           if (this.isStaleLoad(generation)) {
-            this.destroyTokenGroup(token.id, tokenGroup);
+            this.freeTokenGroup(tokenGroup);
             this.evictUnusedArt();
             return;
           }
@@ -1168,7 +1137,7 @@ export class TokenRenderer {
           const latest = mapTokens(levelObjects(this.store.getState()))[token.id];
           if (!latest) {
             // Removed while loading, e.g. a paste undone straight away: never show it.
-            this.destroyTokenGroup(token.id, tokenGroup);
+            this.freeTokenGroup(tokenGroup);
             this.evictUnusedArt();
             delete this.tokenSprites[token.id];
             this.tokensLoading.delete(token.id);
@@ -1176,9 +1145,6 @@ export class TokenRenderer {
             return;
           }
 
-          // Set up interaction handlers
-          this.interactionController.attachInteractionHandlers(token.id, tokenGroup, token);
-          
           // Add to container
           container.addChild(tokenGroup);
           
@@ -1225,7 +1191,7 @@ export class TokenRenderer {
         } catch (error) {
           console.error(`[TokenRenderer] Failed to create sprite for token ${token.id}:`, error);
           // Undo what this load built: its group, which holds the art, or just the hold
-          if (tokenGroup) this.destroyTokenGroup(token.id, tokenGroup);
+          if (tokenGroup) this.freeTokenGroup(tokenGroup);
           else if (heldArt !== null) this.textureCache.release(heldArt);
           if (this.isStaleLoad(generation)) return;
           delete this.tokenSprites[token.id];
@@ -1346,7 +1312,6 @@ export class TokenRenderer {
       this.bumps.cancel(id);
       this.deselect(id);
       if (tokenGroup) {
-        this.interactionController.removeInteractionHandlers(id, tokenGroup);
         delete this.tokenSprites[id];
         // Clean up ring tracking (ring is destroyed with tokenGroup)
         delete this.tokenRings[id];
@@ -1357,13 +1322,7 @@ export class TokenRenderer {
     return leaving;
   }
 
-  /** Detaches a token group's pointer handlers, destroys it with all of its children and drops its hold on its art. */
-  private destroyTokenGroup(id: string, tokenGroup: TokenGroupContainer): void {
-    this.interactionController.removeInteractionHandlers(id, tokenGroup);
-    this.freeTokenGroup(tokenGroup);
-  }
-
-  /** Destroys a token group no longer listening to the pointer, with all of its children, and drops its hold on its art. */
+  /** Destroys a token group with all of its children and drops its hold on its art. */
   private freeTokenGroup(tokenGroup: TokenGroupContainer): void {
     this.downedTokenOverlay.release(tokenGroup);
     this.spriteFactory.destroyTokenSprite(tokenGroup);
@@ -1410,14 +1369,9 @@ export class TokenRenderer {
     }
     
     // Clean up all sprites first
-    for (const [id, tokenGroup] of Object.entries(this.tokenSprites)) {
-      if (tokenGroup && tokenGroup !== null) {
-        // Remove interaction handlers through InteractionController
-        this.interactionController.removeInteractionHandlers(id, tokenGroup);
-        
-        // Remove all event listeners from the tokenGroup
-        tokenGroup.removeAllListeners();
-      }
+    for (const tokenGroup of Object.values(this.tokenSprites)) {
+      // Remove all event listeners from the tokenGroup
+      tokenGroup?.removeAllListeners();
     }
     
     // Remove viewport handlers owned by TokenRenderer.
@@ -1558,14 +1512,11 @@ export class TokenRenderer {
     }
   }
 
-  /**
-   * Provides PIXI app reference to sync service when available
-   */
+  /** The app whose ticker, canvas and renderer the tokens use. */
   public setPixiApp(app: Application | null): void {
     this.setCanvasListeners(false);
     this.pixiApp = app;
     this.setCanvasListeners(true);
-    this.syncService.setPixiApp(app);
     this.turnMarkers.followTicker();
     if (app) {
       this.textureCache.setPixiApp(app);

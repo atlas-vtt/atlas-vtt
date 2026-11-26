@@ -10,7 +10,7 @@ import type { LayerVisibility } from '../playerSafeFrame';
 
 import { Container } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
-import type { BarsSpan, ITokenUIManager, TokenGroupContainer } from './types';
+import type { BarsSpan, TokenGroupContainer } from './types';
 import type { TokenEntity } from '../../types';
 import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
 import { TokenUIRenderer } from '../TokenUIRenderer';
@@ -25,7 +25,7 @@ import { restingTokenUIScale } from './tokenSizing';
 import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
 
-export class UIManager implements ITokenUIManager {
+export class UIManager {
   private viewport: Viewport;
   private store: ViewAtlasStore;
   private viewId: string;
@@ -259,35 +259,6 @@ export class UIManager implements ITokenUIManager {
     if (selectedIds.length > 0) {
       this.updateSelectionUI(selectedIds);
     }
-  }
-
-  showTokenControls(tokenId: string, container: Container): void {
-    const sprite = container.getChildByLabel('tokenSprite');
-    const tokenSize = sprite?.width || 70;
-    
-    if (this.tokenControlsUI) {
-      this.tokenControlsUI.show(
-        tokenId,
-        container.position.x,
-        container.position.y,
-        tokenSize,
-        this.barScale(tokenId)
-      );
-    }
-    
-    if (this.tokenRotationUI) {
-      this.tokenRotationUI.show(tokenId, tokenSize);
-    }
-    
-    if (this.tokenResizeUI) {
-      this.tokenResizeUI.show(tokenId, tokenSize);
-    }
-  }
-
-  hideTokenControls(): void {
-    this.tokenControlsUI?.hide();
-    this.tokenRotationUI?.hide();
-    this.tokenResizeUI?.hide();
   }
 
   setPilePlace(tokenId: string, place: number): void {

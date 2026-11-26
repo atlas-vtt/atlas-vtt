@@ -39,7 +39,6 @@ describe('a combatant that went beside the map again by an undone Place on Map',
       tokenRings: {},
       glide: { cancel: vi.fn() },
       bumps: { cancel: vi.fn() },
-      interactionController: { removeInteractionHandlers: vi.fn() },
       uiManager: { destroyTokenUI: vi.fn() },
       deselect: Reflect.get(TokenRenderer.prototype, 'deselect') as unknown,
     };
