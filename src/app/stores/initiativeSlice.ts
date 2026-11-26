@@ -93,11 +93,9 @@ const DEFAULT_ROLL = DEFAULT_INITIATIVE_RULES.roll;
  * Creates the initiative actions for the store
  * These are spread into the main store's immer state creator
  * @param set - The immer set function from the store
- * @param viewId - The view ID for logging purposes
  */
 export function createInitiativeActions(
   set: ImmerSet,
-  viewId: string,
   get: () => InitiativeStoreState,
   random: () => number,
 ): Omit<InitiativeSlice, 'initiative' | 'initiativeTrackerOpen'> {

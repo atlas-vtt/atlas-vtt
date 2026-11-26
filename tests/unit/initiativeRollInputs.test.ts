@@ -21,7 +21,7 @@ function setup(entries = [entry('a', 2), entry('b', -1)], values = [0, 0.99, 0.5
     try { state = produce(state, recipe); } finally { insideRecipe = false; }
   });
   const get = (): typeof state => state;
-  const actions = createInitiativeActions(set, 'initiative-inputs', get, random);
+  const actions = createInitiativeActions(set, get, random);
   const ambient = vi.spyOn(Math, 'random');
   return { actions, random, set, get, ambient };
 }

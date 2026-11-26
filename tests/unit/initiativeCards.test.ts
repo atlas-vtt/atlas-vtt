@@ -27,7 +27,7 @@ function setup(tokens: TokenEntity[], random: () => number = inOrder) {
     initiativeTrackerOpen: true,
     objects: { tokens: Object.fromEntries(tokens.map((t) => [t.id, t])) as Record<string, TokenEntity> },
   };
-  const actions = createInitiativeActions((recipe) => { state = produce(state, recipe); }, 'cards', () => state, random);
+  const actions = createInitiativeActions((recipe) => { state = produce(state, recipe); }, () => state, random);
   const get = (): typeof state => state;
   return { actions, get };
 }

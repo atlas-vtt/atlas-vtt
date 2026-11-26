@@ -1425,7 +1425,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           // --- Initiative Tracker State & Actions (from initiativeSlice.ts) ---
           initiative: createDefaultInitiativeState(),
           initiativeTrackerOpen: false,
-          ...createInitiativeActions(set, viewId, get, diceRandom),
+          ...createInitiativeActions(set, get, diceRandom),
 
           // --- Dice Roll Log (persisted per map) ---
           diceLog: [],

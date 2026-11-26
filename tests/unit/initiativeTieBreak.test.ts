@@ -12,7 +12,7 @@ function entry(id: string, extra: Partial<InitiativeEntry> = {}): InitiativeEntr
 /** Initiative actions over `entries` whose dice always show `face` on a d20. */
 function setup(entries: InitiativeEntry[], face = 10) {
   let state = { initiative: { ...createDefaultInitiativeState(), entries }, initiativeTrackerOpen: false, objects: { tokens: {} as Record<string, TokenEntity> } };
-  const actions = createInitiativeActions((recipe) => { state = produce(state, recipe); }, 'tie-break', () => state, () => (face - 1) / 20);
+  const actions = createInitiativeActions((recipe) => { state = produce(state, recipe); }, () => state, () => (face - 1) / 20);
   return { actions, get: () => state };
 }
 

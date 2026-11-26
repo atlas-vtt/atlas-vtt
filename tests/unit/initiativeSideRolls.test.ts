@@ -22,7 +22,7 @@ function setup(sides: string[], random: () => number, restored?: InitiativeState
   const tokens = Object.fromEntries(sides.map((side) => [side, { id: side, kind: 'token', x: 0, y: 0, imagePath: '', side } as TokenEntity]));
   const entries = sides.map((side, order): InitiativeEntry => ({ id: side, tokenId: side, name: side, initiative: 0, initiativeModifier: 0, imagePath: '', isNPC: true, order, isActive: false }));
   let state = { initiative: restored ?? { ...createDefaultInitiativeState(), entries }, initiativeTrackerOpen: true, objects: { tokens } };
-  const actions = createInitiativeActions((recipe) => { state = produce(state, recipe); }, 'sides', () => state, random);
+  const actions = createInitiativeActions((recipe) => { state = produce(state, recipe); }, () => state, random);
   return { actions, get: () => state };
 }
 
