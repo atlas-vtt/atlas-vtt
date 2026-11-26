@@ -36,7 +36,9 @@ Online play lets you host a table that your players join from their web browsers
 
 **Sound at a table.** While a table runs with sound switched on, Atlas also sends your players a small description of what plays: which stored copy, how loud, and when, without the names of sounds or moods. Their pages and your Atlas ask the table server for the time now and then so that everyone hears the same moment; the server keeps nothing of it. Players' volume settings stay on their devices. **Send sound to players** on the Sound page switches all of this off on this device.
 
-**On this device.** The running table, its log and your players' sheets are kept in `atlas-vtt/.atlas-data/online.json`, a folder sync tools do not carry.
+**Sidekick.** Sidekick shows parts of the DM screen on your own phone or tablet. Nothing is sent for it until you press **Start Sidekick** on the DM screen, and nothing after **Stop Sidekick**; it needs no table. While it runs, Atlas connects to `https://play.atlas-vtt.dev` over an encrypted WebSocket, in a room of its own that players never join, and asks for it with your account's sign-in token as for a table. A device gets in only once you allow it in Atlas. Everything between Atlas and your devices is encrypted with a key from the Sidekick link, which the server never receives, so the server passes it on without reading it. The server holds the name each device gives while it is connected or waiting, and for the room the same records as for a table. **New link** makes a new key and ends every device.
+
+**On this device.** The running table, its log, your players' sheets, and the Sidekick link with its key and the devices you allowed are kept in `atlas-vtt/.atlas-data/online.json`, a folder sync tools do not carry.
 
 **Error reports and feedback.** **Send error reports** (Settings → Atlas VTT, off by default) sends online play's own errors to `https://play.atlas-vtt.dev`, without the table's code, secret, join code or the players' names. They are kept for 30 days. Feedback you send from the online panel goes there too, with diagnostics only if you include them, and is kept for 180 days.
 

@@ -45,6 +45,8 @@ import { AssetStoreClient } from './assets/storeClient.ts';
 import { RELAY_ORIGIN } from './servers.ts';
 import type { HostAccount } from './tableStart.ts';
 import { tableControlsStore } from '../../stores/tableControlsStore';
+import { AtlasGmScreen } from '../gmScreen/AtlasGmScreen.ts';
+import { readGmScreenRecord } from '../gmScreen/index.ts';
 import { followPlayerWindowWithPlayMode, restorePlayMode } from '../../services/tableControls';
 
 /** How long a change of the table's log waits before the data file is written. */
@@ -89,6 +91,8 @@ export class OnlineFeature extends Component {
   /** True once this device's data was read: before that there is nothing to show in the settings, or to save. */
   private ready = false;
   private readonly commands = new Map<OnlineCommandId, (checking: boolean) => boolean>();
+  /** The GM screen on a phone or tablet: a room of its own beside any table, its link and devices kept in this device's data. */
+  private gmScreen: AtlasGmScreen | null = null;
 
   constructor(private readonly plugin: Plugin, private readonly data: OnlineDataFile, private readonly atlasAccount: AtlasAccount) {
     super();
@@ -166,6 +170,7 @@ export class OnlineFeature extends Component {
     this.settings = readSettings(data);
     this.ready = true;
     const record = typeof data === 'object' && data !== null ? (data as Record<string, unknown>) : {};
+    this.gmScreen = new AtlasGmScreen(readGmScreenRecord(record.gmScreen), this.host(), () => void this.saveSettings());
     const campaigns = this.campaigns();
     const ownership = new Ownership(playedSeats(campaigns));
     this.legacyAssignments = readLegacyAssignments(record.ownership);
@@ -284,8 +289,9 @@ export class OnlineFeature extends Component {
     // A change of the log that still waits to be saved is saved now, and so are the books still waiting for the campaign's file.
     if (this.logSave !== null) void this.saveSettings();
     this.bookSource.flush();
-    // Unloading closes the connection only: the table stays on the server and comes back on the next load.
+    // Unloading closes the connections only: the table and the GM screen's room stay on the server and come back on the next load.
     this.online.close();
+    this.gmScreen?.dispose();
     stopCompanionTimers();
   }
 
@@ -299,6 +305,7 @@ export class OnlineFeature extends Component {
       ...(this.savedLog !== undefined && { tableLog: this.savedLog }),
       ...(Object.keys(this.legacyBooks).length > 0 && { books: this.legacyBooks }),
       ...(this.legacyAssignments !== NO_ASSIGNMENTS && { ownership: this.legacyAssignments }),
+      ...(this.gmScreen?.saved != null && { gmScreen: this.gmScreen.saved }),
     });
   }
 

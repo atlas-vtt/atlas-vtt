@@ -20,6 +20,7 @@ import { useNoteFocus } from './dm-screen/useNoteFocus';
 import { handledByAnotherControl } from '../../keyboard/tooltipEscape';
 import { sideOf, usePageTurn } from './dm-screen/usePageTurn';
 import type { TokenEntity } from '../../types';
+import { GmScreenControl } from '../../online/gmScreen/ui/GmScreenControl';
 
 interface DMScreenProps {
   isOpen: boolean;
@@ -184,6 +185,7 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
 
       <div className={`atlas-dm-screen atlas-dm-screen--pages ${closing ? 'is-closing' : contentReady ? 'is-visible' : ''}`}>
         <div className="atlas-dm-screen-header">
+          <GmScreenControl />
           <kbd className="atlas-dm-screen-key" aria-hidden="true"><ArrowLeft /></kbd>
           <SegmentedControl className="atlas-dm-screen-pages" value={page} options={PAGES} onChange={setPage} ariaLabel={t('audio.screen.pages')} roving />
           <kbd className="atlas-dm-screen-key" aria-hidden="true"><ArrowRight /></kbd>

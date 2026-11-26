@@ -1,0 +1,219 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// The GM screen's control stands at the start of the DM screen's header, out of its flow, so the page
+// control stays centred; its panel hangs below it.
+.atlas-gm-screen-control {
+  position: absolute;
+  inset-block: $spacing-l 0;
+  inset-inline-start: var(--atlas-dm-screen-inset);
+  display: flex;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.atlas-gm-screen-control__button {
+  position: relative;
+  gap: $spacing-s;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+.atlas-gm-screen-control__count {
+  min-width: 20px;
+  padding: 0 $spacing-xs;
+  border-radius: $radius-full;
+  background: var(--background-modifier-success);
+  color: var(--text-normal);
+  font-size: $font-ui-smaller;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.atlas-gm-screen-control__waiting {
+  position: absolute;
+  inset-block-start: $spacing-xs;
+  inset-inline-end: $spacing-xs;
+  width: 8px;
+  height: 8px;
+  border-radius: $radius-full;
+  background: var(--interactive-accent);
+}
+
+.atlas-gm-screen-panel {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($surface-radius);
+  position: absolute;
+  inset-block-start: calc(100% + #{$spacing-s});
+  inset-inline-start: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(340px, calc(100cqi - 2 * var(--atlas-dm-screen-inset)));
+  max-height: calc(100cqb - 120px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.atlas-gm-screen-panel__header {
+  @include atlas-close-header;
+  display: flex;
+  justify-content: space-between;
+  gap: $spacing-s;
+}
+
+.atlas-gm-screen-panel__title {
+  margin: 0;
+  font-size: $font-ui-medium;
+  font-weight: $font-weight-semibold;
+}
+
+.atlas-gm-screen-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-m;
+  padding: 0 $spacing-m $spacing-m;
+}
+
+.atlas-gm-screen-help {
+  @include atlas-help-text;
+  margin: 0;
+}
+
+.atlas-gm-screen-problem {
+  @include atlas-error-text;
+  margin: 0;
+  font-size: $font-ui-small;
+}
+
+.atlas-gm-screen-section-label {
+  @include atlas-section-label;
+  margin: 0;
+}
+
+// Dark on white in both themes: cameras read an inverted code badly.
+.atlas-gm-screen-qr {
+  align-self: center;
+  width: 220px;
+  max-width: 100%;
+  padding: $spacing-s;
+  border-radius: $radius-m;
+  background: #fff;
+  color: #000;
+
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    fill: currentColor;
+  }
+}
+
+.atlas-gm-screen-link {
+  display: flex;
+  gap: $spacing-s;
+}
+
+.atlas-gm-screen-link__field {
+  @include atlas-text-input;
+  flex: 1;
+  min-width: 0;
+}
+
+.atlas-gm-screen-devices {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-s;
+}
+
+.atlas-gm-screen-devices__list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atlas-gm-screen-device {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  padding: $spacing-s;
+  border-radius: $radius-m;
+  background: var(--background-secondary);
+}
+
+.atlas-gm-screen-device__dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: $radius-full;
+  background: var(--text-faint);
+}
+
+.atlas-gm-screen-device[data-connected='true'] .atlas-gm-screen-device__dot {
+  background: var(--color-green);
+}
+
+.atlas-gm-screen-device__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.atlas-gm-screen-device__name {
+  @include atlas-truncate;
+  font-size: $font-ui-small;
+}
+
+.atlas-gm-screen-device__state {
+  font-size: $font-ui-smaller;
+  color: var(--text-muted);
+}
+
+.atlas-gm-screen-panel__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: $spacing-s;
+}
+
+.atlas-gm-screen-allow {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-s;
+  padding: $spacing-m;
+  border: $border-width-m solid color-mix(in oklch, var(--interactive-accent) 50%, transparent);
+  border-radius: $radius-m;
+  background: color-mix(in srgb, var(--interactive-accent) 8%, var(--background-primary));
+}
+
+.atlas-gm-screen-allow__title {
+  margin: 0;
+  font-size: $font-ui-small;
+  font-weight: $font-weight-semibold;
+}
+
+.atlas-gm-screen-allow__body,
+.atlas-gm-screen-allow__more {
+  @include atlas-help-text;
+  margin: 0;
+}
+
+.atlas-gm-screen-allow__check {
+  align-self: center;
+  font-size: 32px;
+  font-weight: $font-weight-semibold;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2em;
+}
+
+.atlas-gm-screen-allow__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: $spacing-s;
+}
