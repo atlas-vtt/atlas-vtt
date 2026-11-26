@@ -49,15 +49,27 @@ export interface MapLayerSource {
 
 const isFunction = (value: unknown): value is (...args: never[]) => unknown => typeof value === 'function';
 
+/** A renderer's lighting controller (`lighting`, private) and the controller's view of the scene (`renderer`), unchecked. */
+function lightingOf(renderer: unknown): { readonly controller: unknown; readonly view: unknown } {
+  const controller = field(renderer, 'lighting');
+  return { controller, view: field(controller, 'renderer') };
+}
+
 /** The lighting controller of a renderer (the GM's view): its view of the scene and the players' sight. */
 function controllerOf(renderer: unknown): { view: SceneLightingView; playerSight: () => TokenPerception | undefined } | null {
-  const controller = field(renderer, 'lighting');
-  const view = field(controller, 'renderer');
+  const { controller, view } = lightingOf(renderer);
   const playerSight = field(controller, 'playerSight');
   if (!isFunction(playerSight) || !isFunction(field(view, 'currentSight')) || !isFunction(field(view, 'sightIsCurrent'))) return null;
   const lighting = view as SceneLightingView;
   if (!lighting.isEnabled() || !lighting.sightIsCurrent()) return null;
   return { view: lighting, playerSight: () => (playerSight as () => TokenPerception | undefined).call(controller) };
+}
+
+/** The players' frame of a renderer (its token renderer's `playerFramePerception`: committed fog, the roof drawn) and that token renderer, or null without the frame. */
+function playerFrameOf(renderer: unknown): { readonly frame: (lit?: TokenPerception) => TokenPerception | undefined; readonly tokens: unknown } | null {
+  const tokens = call(renderer, 'getTokenRenderer');
+  const perception = field(tokens, 'playerFramePerception');
+  return isFunction(perception) ? { frame: (lit) => (perception as (sight?: TokenPerception) => TokenPerception | undefined).call(tokens, lit), tokens } : null;
 }
 
 /** A sprite's place and diameter as the token renderer holds it. */
@@ -92,11 +104,10 @@ export function mapLayerSourceOf(renderer: unknown, view: unknown): MapLayerSour
     },
     sensed: (tokens) => {
       const lighting = controllerOf(renderer);
-      const tokenRenderer = call(renderer, 'getTokenRenderer');
-      const framePerception = field(tokenRenderer, 'playerFramePerception');
-      const sprites = call(tokenRenderer, 'getTokenSprites');
-      if (lighting === null || !isFunction(framePerception) || typeof sprites !== 'object' || sprites === null) return null;
-      const perception = (framePerception as (sight?: TokenPerception) => TokenPerception | undefined).call(tokenRenderer, lighting.playerSight());
+      const players = playerFrameOf(renderer);
+      const sprites = call(players?.tokens, 'getTokenSprites');
+      if (lighting === null || players === null || typeof sprites !== 'object' || sprites === null) return null;
+      const perception = players.frame(lighting.playerSight());
       if (perception === undefined) return [];
       return Object.entries(tokens).flatMap(([id, token]) => {
         if (token.isHidden === true || perception(id) !== 'sensed') return [];
@@ -122,18 +133,17 @@ function spritesOf(tokenRenderer: unknown): Readonly<Record<string, object | nul
  * that frame.
  */
 export function pictureBasisOf(renderer: unknown): PictureBasis | null {
-  const tokenRenderer = call(renderer, 'getTokenRenderer');
-  const framePerception = field(tokenRenderer, 'playerFramePerception');
-  if (!isFunction(framePerception)) return null;
+  const players = playerFrameOf(renderer);
+  if (players === null) return null;
   return {
     lighting: () => {
       const lighting = controllerOf(renderer);
       return lighting === null ? null : { sight: lighting.view.currentSight(), ambient: lighting.view.ambientLight(), reaches: lighting.view.lightReaches() };
     },
-    frame: (lit) => (framePerception as (sight?: TokenPerception) => TokenPerception | undefined).call(tokenRenderer, lit),
+    frame: (lit) => players.frame(lit),
     roofed: () => false,
-    drawn: () => spritesOf(tokenRenderer),
-    outline: (tokenId) => spritePlace(field(spritesOf(tokenRenderer), tokenId)),
+    drawn: () => spritesOf(players.tokens),
+    outline: (tokenId) => spritePlace(field(spritesOf(players.tokens), tokenId)),
   };
 }
 
@@ -165,7 +175,7 @@ function presetsOf(view: unknown): readonly SystemPreset[] {
  * take a moment; until then the players' picture of that level is worked out without the renderer.
  */
 export function showsViewedLevel(renderer: unknown, state: SceneState): boolean {
-  const lighting = field(field(renderer, 'lighting'), 'renderer');
+  const lighting = lightingOf(renderer).view;
   const current = field(lighting, 'sightIsCurrent');
   if (typeof current === 'function' && (current as () => boolean).call(lighting) !== true) return false;
   const mapImage = call(renderer, 'getMapImage');
