@@ -31,7 +31,7 @@ function setup(): Setup {
   const store = createViewAtlasStore(app, `locked-doors-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/doors.atlasmap');
-  const door = store.getState().addWall({ type: 'door', p1: { x: 0, y: 100 }, p2: { x: 100, y: 100 }, closed: true });
+  const door = store.getState().addObject('walls', { type: 'door', p1: { x: 0, y: 100 }, p2: { x: 100, y: 100 }, closed: true });
   const history = getHistoryStore(store)!;
   history.getState().clear();
   return { store, door, wall: () => store.getState().objects.walls[door]!, steps: () => history.getState().pastStates.length, undo: () => history.getState().undo() };
@@ -76,7 +76,7 @@ describe('a locked door', () => {
 
   it('is no lock on a wall that is no door', () => {
     const { store } = setup();
-    const solid = store.getState().addWall({ type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 10, y: 0 }, closed: true });
+    const solid = store.getState().addObject('walls', { type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 10, y: 0 }, closed: true });
     store.getState().setDoorLocked(solid, true);
     expect('locked' in store.getState().objects.walls[solid]!).toBe(false);
   });
@@ -159,7 +159,7 @@ describe('a door\'s menu', () => {
 
   it('has nothing for a wall that is no door', () => {
     const { store } = setup();
-    const solid = store.getState().addWall({ type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 10, y: 0 }, closed: true });
+    const solid = store.getState().addObject('walls', { type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 10, y: 0 }, closed: true });
     expect(doorMenuEntries(store, solid)).toEqual([]);
   });
 });

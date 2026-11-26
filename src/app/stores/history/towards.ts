@@ -1,5 +1,5 @@
 import { changedKeys, EntryList, isKey, isPlainRecord, orderChanged, type Entries } from './keyOrder';
-import { BRANCH_DEPTH, TRACKED_BRANCHES, type HistorySnapshot } from './trackedSlice';
+import type { HistorySnapshot, UndoDepths } from './trackedSlice';
 
 /** Depth of `objects`, whose keys are collections: one absent there counts as empty. */
 const COLLECTIONS = 2;
@@ -63,13 +63,13 @@ function onlyMoved(from: Entries, to: Entries, key: string): boolean {
   return isKey(from, key) && from[key] === to[key];
 }
 
-/** The tracked state moved towards `to` by what changed between `from` and `to`, branch by branch. */
-export function restore(current: HistorySnapshot, from: HistorySnapshot, to: HistorySnapshot): HistorySnapshot {
-  const result: HistorySnapshot = { ...current };
-  for (const branch of TRACKED_BRANCHES) {
+/** The tracked state moved towards `to` by what changed between `from` and `to`, branch by branch, each as deep as `depths` says. */
+export function restore(current: HistorySnapshot, from: HistorySnapshot, to: HistorySnapshot, depths: UndoDepths): HistorySnapshot {
+  const result: Record<string, unknown> = { ...current };
+  for (const [branch, depth] of Object.entries(depths)) {
     // A branch the store does not keep stays out of the slice it is written with.
     if (current[branch] === undefined && from[branch] === undefined && to[branch] === undefined) continue;
-    result[branch] = towards(current[branch], from[branch], to[branch], BRANCH_DEPTH[branch]);
+    result[branch] = towards(current[branch], from[branch], to[branch], depth);
   }
   return result;
 }

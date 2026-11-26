@@ -27,7 +27,7 @@ import {
   blockKeys,
   type KeyOrder,
 } from './formatKeys';
-import { isRecord } from './jsonValues';
+import { isRecord } from '../../utils/guards';
 import { writtenValue } from './keptValues';
 
 type Writer = (value: unknown) => unknown;

@@ -24,9 +24,9 @@ function cores(): { createCore: CoreFactory; harnesses: CoreHarness[]; appIds: A
   const backend = new MemoryTesseraBackend();
   const harnesses: CoreHarness[] = [];
   const appIds: Array<string | null> = [];
-  const createCore: CoreFactory = (appId, emit) => {
+  const createCore: CoreFactory = (appId, emit, _budgets, wantEncoders) => {
     appIds.push(appId);
-    const harness = coreHarness({ backend, forward: emit });
+    const harness = coreHarness({ backend, forward: emit, ...(wantEncoders && { wantEncoders }) });
     harnesses.push(harness);
     return Promise.resolve(harness.core);
   };
@@ -67,6 +67,35 @@ function whenComplete(client: TesseraDecoderClient, hash: string): Promise<void>
 
 describe('TesseraDecoderClient', () => {
   useReadableBlobs();
+
+  it('starts encoders for a core once its first build asks for them, and new ones for the core after a crash', async () => {
+    const { createCore } = cores();
+    const { worker, crash } = crashableWorkers(createCore);
+    const sets: Array<{ stopped: boolean }> = [];
+    const client = new TesseraDecoderClient({
+      appId: 'vault-1',
+      worker,
+      encoders: () => {
+        const set = { stopped: false };
+        sets.push(set);
+        return { ports: [], stop: () => { set.stopped = true; } };
+      },
+    });
+    const bytes = (): Promise<ArrayBuffer> => Promise.resolve(fakePng(3000, 2000));
+    const map = await client.open(bytes, identity);
+    await whenComplete(client, map.hash);
+    // Served from the cache: nothing is built, no encoder started.
+    await client.open(bytes, identity);
+    await client.open(bytes, { ...identity, path: 'maps/same-bytes.png' });
+    expect(sets).toEqual([{ stopped: false }]);
+    crash('gone');
+    expect(sets).toEqual([{ stopped: true }]);
+    expect(await client.prebuild(() => Promise.resolve(fakePng(3000, 2000, { salt: 1 })), { path: 'maps/other.png', size: 32, mtime: 1 })).toBe(true);
+    await client.prebuild(() => Promise.resolve(fakePng(3000, 2000, { salt: 2 })), { path: 'maps/third.png', size: 32, mtime: 1 });
+    expect(sets).toEqual([{ stopped: true }, { stopped: false }]);
+    client.dispose();
+    expect(sets).toEqual([{ stopped: true }, { stopped: true }]);
+  });
 
   it('tells the core the budgets of its device at its start, and none where it has none to tell', async () => {
     const told: unknown[] = [];

@@ -34,7 +34,7 @@ export interface DraggablePosition {
 /** The area a panel moves in: its offset parent, or the window for a fixed panel. */
 export function areaOf(panel: HTMLElement): PanelArea {
   const parent = panel.offsetParent;
-  if (parent instanceof HTMLElement) return { width: parent.clientWidth, height: parent.clientHeight };
+  if (parent?.instanceOf(HTMLElement)) return { width: parent.clientWidth, height: parent.clientHeight };
   const seen = visibleViewport(panel.win);
   return { width: seen.right, height: seen.bottom };
 }
@@ -73,7 +73,7 @@ export function useDraggablePosition(initial: InitialPanelPosition, { onDragEnd,
     setPositionState(next);
   }, []);
 
-  const clamp = useCallback((): void => {
+  const keepInArea = useCallback((): void => {
     const panel = panelRef.current;
     if (!panel) return;
     const clamped = clampToArea(panel, positionRef.current, margin);
@@ -86,19 +86,20 @@ export function useDraggablePosition(initial: InitialPanelPosition, { onDragEnd,
     if (panel && typeof start === 'function') {
       setPosition(start(areaOf(panel), { width: panel.offsetWidth, height: panel.offsetHeight }));
     }
-    clamp();
-  }, [clamp, setPosition]);
+    keepInArea();
+  }, [keepInArea, setPosition]);
 
   useEffect(() => {
     const win = panelRef.current?.win ?? window;
-    win.addEventListener('resize', clamp);
-    return () => win.removeEventListener('resize', clamp);
-  }, [clamp]);
+    win.addEventListener('resize', keepInArea);
+    return () => win.removeEventListener('resize', keepInArea);
+  }, [keepInArea]);
 
   const startDrag = useCallback((event: ReactPointerEvent): void => {
     const panel = panelRef.current;
     if (!panel || event.button !== 0) return;
-    if (event.target instanceof Element && event.target.closest('button, input, select, textarea')) return;
+    const target = event.nativeEvent.targetNode;
+    if (target?.instanceOf(Element) && target.closest('button, input, select, textarea')) return;
     event.preventDefault();
 
     const win = panel.win;

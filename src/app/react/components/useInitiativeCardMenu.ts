@@ -23,8 +23,6 @@ interface CardMenuInputs {
   fightRuns: boolean;
   /** Rolls one combatant with its statblock's modifier (`useInitiativeRolls`). */
   roll: (entryId: string) => void;
-  /** The defeated combatants as their cards show them now; a delay passes the turn by them. */
-  defeated: () => ReadonlySet<string>;
   /** Opens the edit popup of `entry` beside its card. */
   edit: (entry: InitiativeEntry, cardElement: HTMLElement) => void;
   /** Shows the statblock of `entry` beside its card until a press outside it. */
@@ -43,7 +41,7 @@ function swapTargets(entries: readonly InitiativeEntry[], entry: InitiativeEntry
 
 /** Opens the menu of a combatant's card (`initiativeCardMenu`) with the store's actions. */
 export function useInitiativeCardMenu(inputs: CardMenuInputs): (event: React.MouseEvent, entry: InitiativeEntry, cardElement: HTMLElement) => void {
-  const { tokens, bySides, sides, cards, fightRuns, roll, defeated, edit, preview } = inputs;
+  const { tokens, bySides, sides, cards, fightRuns, roll, edit, preview } = inputs;
   const { view } = useAtlasUI();
   const store = useViewStoreHook();
   const swapInitiativeCards = useAtlasStore((s) => s.swapInitiativeCards);
@@ -66,13 +64,13 @@ export function useInitiativeCardMenu(inputs: CardMenuInputs): (event: React.Mou
       updateToken: (changes) => { if (entry.tokenId !== undefined) updateTokens([{ id: entry.tokenId, changes }]); },
       setSitsOut: (sitsOut) => setInitiativeSitsOut(entry.id, sitsOut),
       swapCard: (withId) => swapInitiativeCards(entry.id, withId),
-      delay: () => delayInitiativeTurn(entry.id, defeated()),
+      delay: () => delayInitiativeTurn(entry.id),
       actNow: () => actNowInInitiative(entry.id),
       placeOnMap: () => { if (view && entry.tokenId !== undefined) placeCombatantOnMap(view, entry.tokenId); },
       ...(entry.statblockPath && preview && { preview: () => preview(entry, cardElement) }),
-      remove: () => removeCombatant(store, entry, defeated()),
+      remove: () => removeCombatant(store, entry),
       setHiddenFromPlayers: (hidden) => updateInitiativeEntry(entry.id, { hiddenFromPlayers: hidden ? true : undefined }),
     }, conditionDefinitions.length > 0 ? combatantConditionsMenu(store, conditionDefinitions, entry.id) : null);
     openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });
-  }, [store, view, tokens, bySides, sides, cards, fightRuns, roll, defeated, edit, preview, swapInitiativeCards, moveToFront, moveToBack, updateTokens, setInitiativeSitsOut, delayInitiativeTurn, actNowInInitiative, updateInitiativeEntry, conditionDefinitions]);
+  }, [store, view, tokens, bySides, sides, cards, fightRuns, roll, edit, preview, swapInitiativeCards, moveToFront, moveToBack, updateTokens, setInitiativeSitsOut, delayInitiativeTurn, actNowInInitiative, updateInitiativeEntry, conditionDefinitions]);
 }

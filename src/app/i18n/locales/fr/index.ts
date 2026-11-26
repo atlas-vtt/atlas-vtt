@@ -6,6 +6,7 @@ import { armarium } from './armarium';
 import { armariumFindings } from './armariumFindings';
 import { armariumListing } from './armariumListing';
 import { armariumShare } from './armariumShare';
+import { armariumMusic } from './armariumMusic';
 import { armariumUpload } from './armariumUpload';
 import { assetGrid } from './assetGrid';
 import { atlasLinks } from './atlasLinks';
@@ -118,6 +119,7 @@ import { tokens } from './tokens';
 import { toolbar } from './toolbar';
 import { toolbarEdit } from './toolbarEdit';
 import { tour } from './tour';
+import { appearance } from './appearance';
 import { transfer } from './transfer';
 import { uvtt } from './uvtt';
 import { uvttFloors } from './uvttFloors';
@@ -140,6 +142,7 @@ export const fr: Translation = {
   ...armariumFindings,
   ...armariumListing,
   ...armariumShare,
+  ...armariumMusic,
   ...armariumUpload,
   ...assetGrid,
   ...atlasLinks,
@@ -251,6 +254,7 @@ export const fr: Translation = {
   ...toolbar,
   ...toolbarEdit,
   ...tour,
+  ...appearance,
   ...transfer,
   ...uvtt,
   ...uvttFloors,

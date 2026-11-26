@@ -13,5 +13,9 @@ declare module 'obsidian' {
     on(name: 'atlas-vtt:collection-settings-changed', callback: (collectionId: string) => unknown, ctx?: unknown): EventRef;
     /** Triggered by Atlas VTT when the statblock beside a note appeared or went (`NoteStatblockPanel`). */
     on(name: 'atlas-vtt:statblock-panel-changed', callback: () => unknown, ctx?: unknown): EventRef;
+    /** Triggered by Atlas VTT when its API (`src/app/api`) is ready for other plugins, with the API; again after every load. */
+    on(name: 'atlas-vtt:api-ready', callback: (api: unknown) => unknown, ctx?: unknown): EventRef;
+    /** Triggered by Atlas VTT when it unloads: what other plugins added to it is gone. */
+    on(name: 'atlas-vtt:api-unload', callback: () => unknown, ctx?: unknown): EventRef;
   }
 }

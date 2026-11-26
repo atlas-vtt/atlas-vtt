@@ -15,6 +15,17 @@
   padding: $spacing-s;
 }
 
+.atlas-command-palette-widget-grip {
+  flex-shrink: 0;
+  color: var(--text-faint);
+  cursor: grab;
+  touch-action: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
 .atlas-command-palette-widget-info {
   flex: 1;
   min-width: 0;

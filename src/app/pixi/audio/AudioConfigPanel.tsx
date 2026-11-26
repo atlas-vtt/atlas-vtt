@@ -85,7 +85,7 @@ function AudioConfigPanelInner({
 
   // Apply changes live
   useEffect(() => {
-    store.getState().updateAudio(audio.id, {
+    store.getState().patchObject('audios', audio.id, {
       soundId,
       volume: volume / 100,
       innerRadius: unitsToPixels(innerUnits, gridSize, unitDistance),
@@ -109,7 +109,7 @@ function AudioConfigPanelInner({
   }, [onClose]);
 
   const handleDelete = useCallback(() => {
-    store.getState().deleteAudio(audio.id);
+    store.getState().removeObjects([audio.id]);
     onClose();
   }, [audio.id, store, onClose]);
 
@@ -133,7 +133,7 @@ function AudioConfigPanelInner({
           <Select labelledBy={soundLabelId} value={soundId} options={soundOptions} onChange={setSoundId} />
           {onPreview && (
             <LabelTooltip label={t('audio.preview')}>
-              <button
+              <button type="button"
                 className="atlas-audio-config__preview-btn"
                 onClick={() => onPreview(soundId)}
               >
@@ -217,7 +217,7 @@ function AudioConfigPanelInner({
         </div>
 
         {/* Delete */}
-        <button className="atlas-audio-config__delete-btn" onClick={handleDelete}>
+        <button type="button" className="atlas-audio-config__delete-btn" onClick={handleDelete}>
           Delete Sound Source
         </button>
       </div>

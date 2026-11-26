@@ -2,7 +2,6 @@ import type { App } from 'obsidian';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
 import type { AtlasView } from '../atlas-view';
-import { defeatedOnMap } from '../initiative/defeatedOnMap';
 import { rollInitiative } from '../initiative/rollInitiative';
 import { handoutShown, takeBackHandout } from '../packages/components/player-window-bar/playerHandout';
 import { collectionDiceShelf } from '../react/components/dice/useDiceShelf';
@@ -13,6 +12,8 @@ import { SettingsService } from '../services/SettingsService';
 import { presentTab } from '../services/PlayerWindowPresenter';
 import { ImageDisplayService } from '../services/ImageDisplayService';
 import { PlayerWindowService } from '../services/PlayerWindowService';
+import { setTableCurtain, toggleTablePause } from '../services/tableControls';
+import { tableControlsStore } from '../stores/tableControlsStore';
 import { presentedSceneOf } from '../services/presentedScene';
 import type { HoveredElement } from '../soundRemote/hoveredElement';
 import { remoteMapView } from '../soundRemote/remoteMapView';
@@ -28,7 +29,6 @@ function tableMap(app: App, view: AtlasView): TableMap {
   return {
     state: () => store.getState(),
     rules,
-    defeated: () => defeatedOnMap(app, store.getState()),
     roll: () => { void rollInitiative(app, store, rules()); },
     presented: () => activeTab() !== null && presentedSceneOf(app).get()?.tabId === activeTab(),
     present: (): void => {
@@ -62,10 +62,11 @@ function playerWindow(hovered: HoveredElement): TablePlayerWindow {
     isOpen: () => PlayerWindowService.getInstance()?.isWindowOpen() ?? false,
     isFrozen: () => playerWindowStore.getState().isFrozen,
     isTrueScale: () => PlayerWindowService.getInstance()?.isTrueScale() ?? false,
-    isCurtained: () => PlayerWindowService.getInstance()?.isCurtained() ?? false,
+    isCurtained: () => tableControlsStore.getState().curtain,
     handoutShown,
-    toggleFreeze: () => { PlayerWindowService.getInstance()?.toggleCameraFreeze(); },
-    setCurtain: (down) => PlayerWindowService.getInstance()?.setCurtain(down),
+    // The table's own: online players are paused and curtained with the player window
+    toggleFreeze: toggleTablePause,
+    setCurtain: setTableCurtain,
     takeBackHandout,
     showHoveredImage: () => {
       const images = ImageDisplayService.getInstance();

@@ -1,14 +1,14 @@
 /**
  * The colour of the dice, as painted into their face atlas: the ground of each
  * cell, its worn rim and the colour of the numerals. The light dice are the
- * card stock as it is; dark, accent and set-coloured dice are the card stock
+ * card stock as it is; dark, accent, preset and set-coloured dice are the card stock
  * dyed in their colour (`dyedCard.ts`), so the faces keep their paper texture
  * in any colour.
  */
 
 import { CELL, seededRandom } from './atlasCell';
 import {
-  DARK_INK, DEFAULT_DICE_LOOK, LIGHT_INK, parseHex, readableInk, type DiceColour, type DiceFont, type DiceLook, type Rgb,
+  DARK_INK, DEFAULT_DICE_LOOK, LIGHT_INK, parseHex, presetDiceHex, readableInk, type DiceColour, type DiceFont, type DiceLook, type Rgb,
 } from './diceLook';
 import { dyeCard } from './dyedCard';
 
@@ -51,13 +51,11 @@ function hex(rgb: Rgb): string {
 
 /** The colours of a look; `accent` is Obsidian's accent colour where the look needs it. */
 export function resolveLook(look: DiceLook, accent: Rgb | null): ResolvedLook {
-  if (look.colour === 'dark') return { ...look, body: DARK_BODY, ink: LIGHT_INK };
-  if (look.colour === 'accent') {
-    const colour = accent ?? FALLBACK_ACCENT;
-    return { ...look, body: hex(colour), ink: readableInk(colour) };
-  }
   // Light dice keep the pencil drawing's graphite; set numerals need a colour of their own.
-  return { ...look, body: null, ink: look.font === 'medieval' ? null : DARK_INK };
+  if (look.colour === 'light') return { ...look, body: null, ink: look.font === 'medieval' ? null : DARK_INK };
+  if (look.colour === 'dark') return { ...look, body: DARK_BODY, ink: LIGHT_INK };
+  const colour = look.colour === 'accent' ? accent ?? FALLBACK_ACCENT : parseHex(presetDiceHex(look.colour)) ?? FALLBACK_ACCENT;
+  return { ...look, body: hex(colour), ink: readableInk(colour) };
 }
 
 /** What a face's ground is cut from: the card image, or the card dyed on a canvas. */

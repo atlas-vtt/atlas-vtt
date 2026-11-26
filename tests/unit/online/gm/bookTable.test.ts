@@ -1,11 +1,12 @@
-import { ALL_PLAYERS, MAX_ITEM_TEXT, parseGmMessage, type BookItem, type PlayerBook } from '../../../../src/app/online/protocol/index.ts';
+import { MAX_ITEM_TEXT, parseGmMessage, type BookItem, type PlayerBook } from '../../../../src/app/online/protocol/index.ts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { giveLoot, lootRecipients } from '../../../../src/app/loot/lootRecipients';
 import type { LootDraw } from '../../../../src/app/loot/lootRoller';
 import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
 import { ownBookOf } from '../../../../src/app/online/gm/book/playerWritings.ts';
-import { FakeSocket, workspace } from './fakeTable.ts';
-import { ANA, ANA_OWN, BEN, BEN_OWN, BRANNOCH, BRANNOCH_BOOK, BRANNOCH_ART, CAL, cave, delivered, DOOM, keptBooks, MAP, MIRA_BOOK, MIRA_ART, MIRA_DOOM, ofType, openTable, traffic, WORLD_MAP, type Delivered } from './bookTableHarness.ts';
+import { workspace } from './fakeTable.ts';
+import { ANA, ANA_OWN, BEN, BEN_OWN, BRANNOCH, BRANNOCH_BOOK, BRANNOCH_ART, CAL, cave, DOOM, keptBooks, MAP, MIRA_BOOK, MIRA_ART, MIRA_DOOM, openTable, traffic, WORLD_MAP } from './bookTableHarness.ts';
+import { toAll, type PageMessage, type PlayerPage } from './playerPages.ts';
 import { advanceSettled as advance } from './settled.ts';
 
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {}, Platform: { isDesktopApp: true, isMobile: false, isPhone: false } }));
@@ -32,19 +33,19 @@ const DRAW: LootDraw = {
   description: `Glows under the moon. ${'x'.repeat(MAX_ITEM_TEXT * 2)}`, properties: [{ label: 'Damage', value: '1d8' }],
 };
 
-/** The books a player was sent whole, each checked as the page reads it. */
-function books(messages: readonly Delivered[], player: string): PlayerBook[] {
-  return ofType(messages, 'book').filter(({ to }) => to === player).map(({ body }) => {
-    const read = parseGmMessage(JSON.parse(JSON.stringify(body)));
+/** The books among a page's messages, each checked as the page reads it. */
+function books(messages: readonly PageMessage[]): PlayerBook[] {
+  return messages.filter(({ t }) => t === 'book').map((body) => {
+    const read = parseGmMessage(body);
     if (read?.t !== 'book') throw new Error('a book the page would not read');
     return read.book;
   });
 }
 
-/** The book a player holds after everything they were sent: the last whole one, with the sheets and items that followed it. */
-function held(messages: readonly Delivered[], player: string): PlayerBook | null {
-  return messages.filter(({ to }) => to === player).reduce<PlayerBook | null>((book, { body }) => {
-    const read = parseGmMessage(JSON.parse(JSON.stringify(body)));
+/** The book a page holds after everything it read: the last whole one, with the sheets and items that followed it. */
+function held(page: PlayerPage): PlayerBook | null {
+  return page.read.reduce<PlayerBook | null>((book, body) => {
+    const read = parseGmMessage(body);
     if (read?.t === 'book') return read.book;
     if (read?.t === 'book-sheet' && book !== null) return { ...book, character: read.character };
     return read?.t === 'book-item' && book !== null ? { ...book, items: [...book.items, read.item] } : book;
@@ -58,8 +59,6 @@ describe('the players\' books at a running table', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
     vi.stubGlobal('window', globalThis);
-    vi.stubGlobal('WebSocket', FakeSocket);
-    FakeSocket.all = [];
     workspace.leaves = [];
     workspace.presented = null;
   });
@@ -72,11 +71,11 @@ describe('the players\' books at a running table', () => {
 
   it('sends each player their own book and nobody another\'s: sheet, notes, items, no path, and a hidden resource to its own player alone', async () => {
     const shelf = new BookShelf();
-    const { online, socket, from } = await openTable(shelf, PLAYERS);
+    const { online, relay, pages, from } = await openTable(shelf, PLAYERS);
 
     // Each player has their character's sheet, with its resources, also the one hidden from players, and the world map.
-    const ana = held(delivered(socket), ANA);
-    const ben = held(delivered(socket), BEN);
+    const ana = held(pages.of(ANA));
+    const ben = held(pages.of(BEN));
     expect(ana?.character).toMatchObject({ name: 'Brannoch', ring: '#aabbcc', art: { mime: 'image/png' }, resources: [{ name: 'Hit Points', colour: '#cc3333', direction: 'drains', current: 7, max: 12 }, { name: 'Doom Track', current: DOOM }] });
     expect(ben?.character).toMatchObject({ name: 'Mira', resources: [{ name: 'Hit Points', current: 4, max: 12 }, { name: 'Doom Track', current: MIRA_DOOM }] });
     expect(ana?.worldMap).toMatchObject({ width: 1200, height: 800, image: { mime: 'image/png' } });
@@ -92,9 +91,10 @@ describe('the players\' books at a running table', () => {
     expect(giveLoot(ANA, DRAW)).toBe(1);
     expect(giveLoot(CAL, DRAW)).toBe(0);
     await advance(1_000);
-    const items = ofType(delivered(socket), 'book-item');
-    expect(items.map(({ to }) => to)).toEqual([ANA]);
-    const item = parseGmMessage(JSON.parse(JSON.stringify(items[0]?.body)));
+    const items = pages.heard('book-item');
+    expect(Object.keys(items)).toEqual([ANA]);
+    expect(items[ANA]).toHaveLength(1);
+    const item = parseGmMessage(items[ANA]?.[0]);
     expect(item).toMatchObject({ t: 'book-item', item: { name: 'Moon Blade', tone: 'rare', price: '500 thorns', properties: [{ label: 'Damage', value: '1d8' }] } });
     expect([...((item as { item: BookItem }).item.description ?? '')]).toHaveLength(MAX_ITEM_TEXT);
     expect(shelf.of(ANA_OWN)).toMatchObject({ notes: [{ id: NOTE, body: SECRET_NOTE, at: Date.now() - 1_000 }], pins: [{ kind: 'treasure' }] });
@@ -103,26 +103,26 @@ describe('the players\' books at a running table', () => {
     expect(shelf.of(MIRA_BOOK).items).toEqual([]);
 
     // Ana leaves and comes back: her book holds what she wrote and was given.
-    socket.relay({ t: 'player-left', id: ANA });
+    relay.outbox.leave(ANA);
     await advance(100);
     expect(lootRecipients().map(({ id }) => id)).toEqual([BEN]);
-    socket.relay({ t: 'player-joined', id: ANA, name: 'Ana' });
+    relay.outbox.join({ id: ANA, name: 'Ana' });
     await advance(1_000);
-    const back = books(delivered(socket), ANA).at(-1);
+    const back = books(pages.of(ANA).read).at(-1);
     expect(back).toMatchObject({ character: { name: 'Brannoch' }, notes: [{ id: NOTE, title: 'The idol', body: SECRET_NOTE }], pins: [{ title: 'Dig here' }], purse: [{ name: 'Thorns', amount: 40 }], items: [{ name: 'Moon Blade' }] });
 
     // Nothing of a book ever went to everyone, and nothing of Ana's to Ben.
-    const all = delivered(socket);
-    expect(ofType(all, 'book', 'book-sheet', 'book-item').filter(({ to }) => to === ALL_PLAYERS || (to !== ANA && to !== BEN))).toEqual([]);
-    const toBen = traffic(all.filter(({ to }) => to === BEN));
+    const all = relay.sent();
+    expect(toAll(all.filter(({ body }) => ['book', 'book-sheet', 'book-item'].includes(body.t)))).toEqual([]);
+    const toBen = traffic(pages.of(BEN).inbox);
     for (const hers of [SECRET_NOTE, 'Dig here', 'Thorns', 'Moon Blade', NOTE, String(DOOM)]) expect(toBen).not.toContain(hers);
-    expect(traffic(all.filter(({ to }) => to === ANA))).not.toContain(String(MIRA_DOOM));
-    expect(books(all, BEN).every((book) => book.character?.name === 'Mira' && book.notes.length + book.items.length + book.pins.length + book.purse.length === 0)).toBe(true);
+    expect(traffic(pages.of(ANA).inbox)).not.toContain(String(MIRA_DOOM));
+    expect(books(pages.of(BEN).read).every((book) => book.character?.name === 'Mira' && book.notes.length + book.items.length + book.pins.length + book.purse.length === 0)).toBe(true);
     // No vault path, no note path, no base to anyone, and nothing of the resource hidden from players to all of them.
-    const sent = traffic(all);
+    const sent = traffic(all.map(({ body }) => body));
     for (const secret of [BRANNOCH_ART, MIRA_ART, WORLD_MAP, 'The Wide World', MAP, 'collections/', 'Items/', 'Vault of Secrets', 'Hidden Hoard', 'draw-7']) expect(sent).not.toContain(secret);
-    const toAll = traffic(all.filter(({ to }) => to === ALL_PLAYERS));
-    for (const secret of ['Doom', String(DOOM), String(MIRA_DOOM)]) expect(toAll).not.toContain(secret);
+    const everyone = traffic(toAll(all).map(({ body }) => body));
+    for (const secret of ['Doom', String(DOOM), String(MIRA_DOOM)]) expect(everyone).not.toContain(secret);
     online.stop();
     expect(lootRecipients()).toEqual([]);
   });
@@ -130,35 +130,38 @@ describe('the players\' books at a running table', () => {
   it('follows the token with the sheet alone, and takes a book away at once when the GM gives its character to someone else', async () => {
     const source = keptBooks();
     const shelf = new BookShelf(source);
-    const { online, ownership, socket, tab, from } = await openTable(shelf, PLAYERS);
+    const { online, ownership, pages, tab, from } = await openTable(shelf, PLAYERS);
     from(ANA, { t: 'book-note', note: { id: NOTE, title: '', body: SECRET_NOTE } });
     await advance(100);
 
     // Brannoch is hurt: Ana hears it as a sheet, Ben hears nothing of a book.
-    let since = delivered(socket).length;
+    let since = pages.mark();
     tab.store.set(cave({ brannoch: { resources: { hp: { current: 2, max: 12 }, doom: { current: DOOM, max: 99999 } } } }));
     await advance(1_000);
-    const sheets = ofType(delivered(socket).slice(since), 'book', 'book-sheet', 'book-item');
-    expect(sheets).toMatchObject([{ to: ANA, body: { t: 'book-sheet', character: { name: 'Brannoch', resources: [{ current: 2, max: 12 }, { key: 'doom' }] } } }]);
+    const sheets = pages.since(since, 'book', 'book-sheet', 'book-item');
+    expect(Object.keys(sheets)).toEqual([ANA]);
+    expect(sheets[ANA]).toMatchObject([{ t: 'book-sheet', character: { name: 'Brannoch', resources: [{ current: 2, max: 12 }, { key: 'doom' }] } }]);
 
     // Hidden by the GM, the character stays Ana's and her sheet follows it: the map hides the token from the others, not her character from her.
-    since = delivered(socket).length;
+    since = pages.mark();
     tab.store.set(cave({ brannoch: { isHidden: true, name: 'Brannoch the Betrayer', resources: { hp: { current: 1, max: 12 } } } }));
     await advance(1_000);
-    expect(ofType(delivered(socket).slice(since), 'book', 'book-sheet')).toMatchObject([{ to: ANA, body: { t: 'book-sheet', character: { name: 'Brannoch the Betrayer', resources: [{ current: 1, max: 12 }] } } }]);
-    expect(traffic(delivered(socket).filter(({ to }) => to !== ANA))).not.toContain('Betrayer');
+    const hidden = pages.since(since, 'book', 'book-sheet');
+    expect(Object.keys(hidden)).toEqual([ANA]);
+    expect(hidden[ANA]).toMatchObject([{ t: 'book-sheet', character: { name: 'Brannoch the Betrayer', resources: [{ current: 1, max: 12 }] } }]);
+    expect(traffic(pages.of(BEN).inbox)).not.toContain('Betrayer');
     expect(lootRecipients()[0]).toEqual({ id: ANA, name: 'Ana', character: 'Brannoch the Betrayer' });
 
     // The GM gives Brannoch to Ben: Ana keeps what she wrote and has no sheet, and nothing goes into a character's book from her.
     tab.store.set(cave());
     await advance(1_000);
-    since = delivered(socket).length;
+    since = pages.mark();
     ownership.give([BRANNOCH], {}, BEN);
     await advance(0);
-    expect(books(delivered(socket).slice(since), ANA)).toMatchObject([{ character: null, notes: [{ body: SECRET_NOTE }], items: [], pins: [], purse: [] }]);
-    expect(books(delivered(socket).slice(since), ANA)[0]?.worldMap).not.toBeNull();
+    expect(books(pages.of(ANA).since(since))).toMatchObject([{ character: null, notes: [{ body: SECRET_NOTE }], items: [], pins: [], purse: [] }]);
+    expect(books(pages.of(ANA).since(since))[0]?.worldMap).not.toBeNull();
     // Brannoch is the first token Ben has now: its book is his, and what Ana wrote herself stays hers.
-    expect(books(delivered(socket).slice(since), BEN)).toMatchObject([{ character: { name: 'Brannoch' }, notes: [] }]);
+    expect(books(pages.of(BEN).since(since))).toMatchObject([{ character: { name: 'Brannoch' }, notes: [] }]);
     from(ANA, { t: 'book-purse', purse: [{ name: 'Stolen', amount: 9 }] });
     await advance(3_000);
     expect(source.dump()).not.toContain('Stolen');
@@ -178,11 +181,11 @@ describe('the players\' books at a running table', () => {
     // The campaign's file is all that is left; Cal joins a new table and is given Brannoch.
     const kept = new BookShelf(source);
     const second = await openTable(kept, [{ id: CAL, name: 'Cal' }], {}, undefined, LIBRARY_HEROES);
-    expect(books(delivered(second.socket), CAL).at(-1)).toMatchObject({ character: null, notes: [], items: [] });
+    expect(books(second.pages.of(CAL).read).at(-1)).toMatchObject({ character: null, notes: [], items: [] });
     second.ownership.give([BRANNOCH], {}, CAL);
     await advance(100);
     // What is the character's goes with it; what Ana wrote is hers.
-    expect(books(delivered(second.socket), CAL).at(-1)).toMatchObject({ character: { name: 'Brannoch' }, notes: [], items: [{ name: 'Moon Blade' }] });
+    expect(books(second.pages.of(CAL).read).at(-1)).toMatchObject({ character: { name: 'Brannoch' }, notes: [], items: [{ name: 'Moon Blade' }] });
     expect(kept.of(ownBookOf(ANA)).notes).toMatchObject([{ id: NOTE, title: 'Kept', body: SECRET_NOTE }]);
     second.online.stop();
   });

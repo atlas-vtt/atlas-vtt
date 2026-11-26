@@ -71,7 +71,8 @@ interface Arrival {
   readonly late: number;
 }
 
-const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+/** `value` within `min` and `max`; where the two cross, `max` (the shared clamp gives `min`). */
+const clampMaxWins = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
 /** The span a sender said, or null when it said none. */
 function saidSpan(span: number | undefined): number | null {
@@ -128,7 +129,7 @@ export class PointerTrack {
   lag(now: number): number {
     this.advance(now);
     const behind = now - this.lead - this.playhead;
-    return this.passed < this.samples.length && Number.isFinite(behind) ? clamp(behind, 0, TRACK_MAX_DELAY_MS) : this.wait;
+    return this.passed < this.samples.length && Number.isFinite(behind) ? clampMaxWins(behind, 0, TRACK_MAX_DELAY_MS) : this.wait;
   }
 
   /** How many samples are held. */
@@ -180,7 +181,7 @@ export class PointerTrack {
     if (a === undefined || b?.start === true) return null;
     if (b === undefined) return this.ended ? null : { x: a.x, y: a.y, trail: a.trail };
     const length = b.t - a.t;
-    const share = length > 0 ? clamp((this.playhead - a.t) / length, 0, 1) : 1;
+    const share = length > 0 ? clampMaxWins((this.playhead - a.t) / length, 0, 1) : 1;
     return { x: a.x + (b.x - a.x) * share, y: a.y + (b.y - a.y) * share, trail: b.trail };
   }
 
@@ -209,7 +210,7 @@ export class PointerTrack {
   /** One interval plus the most any recent message was late, and no less than the `least` delay. */
   private target(now: number): number {
     const late = this.arrivals.reduce((max, arrival) => Math.max(max, arrival.late), 0);
-    return clamp(Math.max(this.interval + late, this.least?.(now) ?? 0), this.interval, TRACK_MAX_DELAY_MS);
+    return clampMaxWins(Math.max(this.interval + late, this.least?.(now) ?? 0), this.interval, TRACK_MAX_DELAY_MS);
   }
 
   private advance(now: number): void {
@@ -226,13 +227,13 @@ export class PointerTrack {
     if (!Number.isFinite(this.playhead)) return;
     const due = now - this.lead - this.wait;
     const behind = due - this.playhead;
-    const run = this.playhead + passes * (1 + clamp(behind / CATCH_UP_MS, -SLOWEST, FASTEST));
+    const run = this.playhead + passes * (1 + clampMaxWins(behind / CATCH_UP_MS, -SLOWEST, FASTEST));
     const followed = behind >= 0 ? Math.min(run, due) : Math.max(run, due);
     const from = this.playhead;
     this.playhead = Math.max(from, Math.min(this.head, Math.max(followed, now - this.lead - TRACK_MAX_DELAY_MS)));
     const moved = this.playhead - from;
     for (let sample = this.samples[this.passed]; sample !== undefined && sample.t <= this.playhead; sample = this.samples[this.passed]) {
-      sample.at = moved > 0 ? before + clamp((sample.t - from) / moved, 0, 1) * passes : now;
+      sample.at = moved > 0 ? before + clampMaxWins((sample.t - from) / moved, 0, 1) * passes : now;
       this.passed += 1;
     }
     this.forget(now);

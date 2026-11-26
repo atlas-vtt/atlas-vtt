@@ -13,6 +13,7 @@ import type { FogLassoFill, FogOperation } from '../../src/app/types/fogTypes';
 import type { WallInput } from '../../src/app/types/wallTypes';
 import { showNotice } from '../../src/app/ui/notice';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { viewAudience } from '../helpers/viewAudience';
 
 /** A camera that shows the map unscaled, as the gesture reads a viewport. */
 class Camera extends Container {
@@ -64,12 +65,13 @@ function roomScene(what: 'hide' | 'reveal' = 'hide', mapRect: MapRect | null = M
   store.getState().setPersistenceEnabled(false);
   store.setState({ activeTool: what === 'reveal' ? 'eraser' : 'fog', isMapLoading: false, isGMView: true });
   store.getState().setFogTool({ shape: 'room' });
-  for (const wall of WALLS) store.getState().addWall(wall);
+  for (const wall of WALLS) store.getState().addObject('walls', wall);
   store.temporal.getState().clear();
   const viewport = new Camera();
   const layer = new Container();
+  const { audience } = viewAudience(store);
   const gesture = new FogGesture({
-    layer, viewport: viewport as unknown as Viewport, canvas: () => document.body.createEl('canvas'), store,
+    layer, viewport: viewport as unknown as Viewport, canvas: () => document.body.createEl('canvas'), store, showsPlayers: () => audience.showsPlayers(),
     host: { showStroke: vi.fn(), showCommitted: vi.fn() },
     mapRect: () => mapRect,
   });

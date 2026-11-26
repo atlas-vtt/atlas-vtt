@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown } from 'lucide-react';
+import { getDomHost } from '../../../host/dom';
 import { cn } from '../../../../utils/cn';
 import { useListPlacement } from './selectListPlacement';
 
@@ -59,8 +60,9 @@ export function Select<T extends string>({ value, options, onChange, labelledBy,
       const target = event.target as Node;
       if (!rootRef.current?.contains(target) && !listRef.current?.contains(target)) setIsOpen(false);
     };
-    document.addEventListener('pointerdown', handlePointerDown);
-    return () => document.removeEventListener('pointerdown', handlePointerDown);
+    const doc = rootRef.current?.ownerDocument ?? getDomHost().activeDocument();
+    doc.addEventListener('pointerdown', handlePointerDown);
+    return () => doc.removeEventListener('pointerdown', handlePointerDown);
   }, [isOpen]);
 
   const close = (): void => {
@@ -85,7 +87,7 @@ export function Select<T extends string>({ value, options, onChange, labelledBy,
 
   const onListKeyDown = (event: React.KeyboardEvent): void => {
     const buttons = [...(listRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [])];
-    const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    const current = buttons.indexOf(event.currentTarget.ownerDocument.activeElement as HTMLButtonElement);
     const step = STEP[event.key];
     if (step !== undefined) {
       event.preventDefault();

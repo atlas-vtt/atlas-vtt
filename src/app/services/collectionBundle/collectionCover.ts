@@ -95,6 +95,11 @@ export async function renderCover(image: Blob): Promise<ArrayBuffer> {
   return cover.arrayBuffer();
 }
 
+/** Whether a cover can be made of `image`: what packing does with it succeeds. */
+export function makesCover(image: Blob): Promise<boolean> {
+  return renderCover(image).then(() => true, () => false);
+}
+
 /** The cover file an export of `collection` carries for `choice`, or null for none. */
 export async function coverFileFor(app: App, collection: CollectionMetadata, choice: CoverChoice): Promise<CoverFile | null> {
   switch (choice.kind) {

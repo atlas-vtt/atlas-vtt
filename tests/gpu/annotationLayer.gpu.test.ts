@@ -14,6 +14,7 @@ import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFa
 import type { DrawingStroke } from '../../src/app/types';
 import { openLitView } from '../helpers/litView';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { viewAudience } from '../helpers/viewAudience';
 
 vi.mock('events', async () => import('eventemitter3'));
 
@@ -62,7 +63,7 @@ async function open(width = WIDTH, height = HEIGHT): Promise<Scene> {
   const store = createViewAtlasStore(createInMemoryApp().app, `annotations-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/drawn.atlasmap');
-  const annotations = new AnnotationsRenderer({ viewport, store, grid: () => null });
+  const annotations = new AnnotationsRenderer({ viewport, store, audience: viewAudience(store).audience, grid: () => null });
   const boundary = new EventBoundary(viewport);
   cleanup.push(() => {
     annotations.destroy();
@@ -336,13 +337,13 @@ describe('the drawings on the map, under the lighting', () => {
     second.tint = 0x3050d0;
     second.setSize(24, 24);
     second.position.set(60, 168);
-    const annotations = new AnnotationsRenderer({ viewport, store, grid: () => null });
+    const annotations = new AnnotationsRenderer({ viewport, store, audience: viewAudience(store).audience, grid: () => null });
     cleanup.push(() => { annotations.destroy(); view.dispose(); });
     const state = store.getState();
     // Two rooms parted by a wall down the middle, a lamp in the left one, no light of the scene's own.
     state.setSceneLighting({ enabled: true, ambient: 0 });
-    state.addWall({ type: 'solid', p1: { x: 128, y: -64 }, p2: { x: 128, y: 320 } });
-    state.addLight({ x: 64, y: 128, emission: { bright: 10, dim: 20, color: '#ffffff', intensity: 1, animation: 'none' } });
+    state.addObject('walls', { type: 'solid', p1: { x: 128, y: -64 }, p2: { x: 128, y: 320 } });
+    state.addObject('lights', { x: 64, y: 128, emission: { bright: 10, dim: 20, color: '#ffffff', intensity: 1, animation: 'none' } });
     state.addDrawing(pen([[20, 80], [236, 80]], { layer: 'map' }));
     state.addDrawing(pen([[20, 180], [236, 180]]));
     // A see-through stroke under way on the map, across both rooms.
@@ -620,12 +621,12 @@ describe('what the drawings cost', () => {
     state.setSceneLighting({ enabled: true, ambient: 0.2 });
     for (let i = 1; i < 8; i++) {
       for (let j = 0; j < 8; j++) {
-        state.addWall({ type: 'solid', p1: { x: i * 512, y: j * 512 + 80 }, p2: { x: i * 512, y: j * 512 + 432 } });
-        state.addWall({ type: 'solid', p1: { x: j * 512 + 80, y: i * 512 }, p2: { x: j * 512 + 432, y: i * 512 } });
+        state.addObject('walls', { type: 'solid', p1: { x: i * 512, y: j * 512 + 80 }, p2: { x: i * 512, y: j * 512 + 432 } });
+        state.addObject('walls', { type: 'solid', p1: { x: j * 512 + 80, y: i * 512 }, p2: { x: j * 512 + 432, y: i * 512 } });
       }
     }
     for (let i = 0; i < 8; i++) {
-      for (let j = i % 2; j < 8; j += 2) state.addLight({ x: i * 512 + 256, y: j * 512 + 256, emission: { bright: 20, dim: 40, color: '#ffd9a0', intensity: 1, animation: 'none' } });
+      for (let j = i % 2; j < 8; j += 2) state.addObject('lights', { x: i * 512 + 256, y: j * 512 + 256, emission: { bright: 20, dim: 40, color: '#ffd9a0', intensity: 1, animation: 'none' } });
     }
     const gl = (app.renderer as unknown as { gl: WebGL2RenderingContext }).gl;
     /** One display frame with the camera at `step` of a pan across the map, until the GPU is done with it. */
@@ -656,7 +657,7 @@ describe('what the drawings cost', () => {
     }
     // The drawings follow the camera in the view's own tick, as in a map view: the helper's viewport has another ticker.
     viewport.options.ticker = app.ticker;
-    annotations = new AnnotationsRenderer({ viewport, store, grid: () => null });
+    annotations = new AnnotationsRenderer({ viewport, store, audience: viewAudience(store).audience, grid: () => null });
     store.setState({ objects: { ...store.getState().objects, drawings } });
     displayFrames(60);
     // The first pass draws what comes into view; the second finds everything drawn.

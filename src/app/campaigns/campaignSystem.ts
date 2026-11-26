@@ -5,7 +5,7 @@ import { rulesOfPreset } from '../gameSystems/systemRules';
 import { parseVisionDefaults } from '../gameSystems/visionDefaults';
 import { parseResourceDefinitions } from '../resources/resourceDefinitions';
 import type { SystemPreset } from '../types/systemPresetTypes';
-import { isRecord } from './campaignValues';
+import { isRecord } from '../utils/guards';
 
 /**
  * The game system a campaign plays by, stored as a collection's rules are: the preset it was taken

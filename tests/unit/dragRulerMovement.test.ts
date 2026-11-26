@@ -58,7 +58,7 @@ function table(rules: MovementRules, options: { shown?: boolean; fight?: boolean
     return entry ? { position: { x: entry.x, y: entry.y, set: vi.fn() }, getChildByLabel: () => null } as never : null;
   });
   const draw = vi.fn();
-  const view = { draw, clear: vi.fn(), destroy: vi.fn(), layers: [] };
+  const view = { draw, clear: vi.fn(), dissolve: vi.fn(), destroy: vi.fn(), layers: [] };
   controller.setDragRuler(new DragRuler(
     view as unknown as DragRulerView, gridSystem as never, store, () => FEET, () => true, () => options.shown ?? true,
     { rules: () => rules, speedOf: (dragged) => (typeof dragged.speed === 'number' ? dragged.speed : null) },

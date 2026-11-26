@@ -28,6 +28,10 @@ interface TokenPreviewCardProps {
 const WHEEL_ZOOM_SENSITIVITY = 0.0025;
 const ENTER_STAGGER_CAP = 12;
 
+// Built here and not inside the `framed &&` that shows it: the bundler writes an imported constant out
+// again wherever it stands in a logical expression, which put the ring image into the bundle twice.
+const ringImage = <img className="atlas-token-card__ring" src={tokenRingImageUrl} alt="" />;
+
 /** Natural size of the image behind a URL, for aspect-aware drag limits. */
 function useImageAspect(url: string): ImageAspect | null {
   const [aspect, setAspect] = useState<ImageAspect | null>(null);
@@ -186,7 +190,7 @@ export const TokenPreviewCard = React.memo(function TokenPreviewCard({ preview, 
       {/* The card never shows the upload itself: its place is held until the converted image is there. */}
       {preview.isOptimizing && <Skeleton className="atlas-token-card__pending" live />}
       {preview.refused !== undefined && <p className="atlas-token-card__refused" role="alert">{preview.refused}</p>}
-      {framed && <><div className="atlas-token-card__mask" /><img className="atlas-token-card__ring" src={tokenRingImageUrl} alt="" /></>}
+      {framed && <><div className="atlas-token-card__mask" />{ringImage}</>}
 
       <LabelTooltip label={t('creator.select', { name: preview.name })}>
         <button

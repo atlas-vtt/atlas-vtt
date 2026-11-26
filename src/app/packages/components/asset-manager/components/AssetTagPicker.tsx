@@ -6,6 +6,7 @@ import { tagPickerOptions, toggleAssetTag } from '../utils/assetTags';
 import { useAssetTagMenuActions } from './assetTagMenuContext';
 import { STANDING_LIST } from '../../../../keyboard/tooltipEscape';
 import { t } from '../../../../i18n';
+import { revealInList } from '../../../../utils/scrollWithin';
 
 interface AssetTagPickerProps {
   asset: AnyAsset;
@@ -38,7 +39,8 @@ export function AssetTagPicker({ asset }: AssetTagPickerProps): React.ReactEleme
   }, []);
 
   useEffect(() => {
-    listRef.current?.querySelector('[data-active]')?.scrollIntoView({ block: 'nearest' });
+    const row = listRef.current?.querySelector('[data-active]');
+    if (row) revealInList(row);
   }, [activeIndex]);
 
   const toggle = (tag: Tag): void => {

@@ -1,8 +1,5 @@
 import type { AnyAsset } from '../types';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '../../../../utils/guards';
 
 /** Whether two values of an asset are the same data: primitives, arrays and plain objects, compared in depth. */
 function sameValue(a: unknown, b: unknown): boolean {

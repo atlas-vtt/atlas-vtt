@@ -1,6 +1,8 @@
 import type { StoreApi } from 'zustand';
 import type { GridSystem } from '../../src/app/grid/GridSystem';
 import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
+import type { CanvasAudience } from '../../src/app/pixi/audience/CanvasAudience';
+import type { MapPointer } from '../../src/app/pixi/pointer/MapPointer';
 import type { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import type { MeasureRenderer } from '../../src/app/pixi/measure/MeasureRenderer';
 import type { TokenPerception } from '../../src/app/vision/tokenPerception';
@@ -15,17 +17,21 @@ interface Parts {
   fog: FogOfWarRenderer;
 }
 
-/** Wires measurements to the tokens as the renderer orchestrator does. Returns the function that ends it. */
+/** Wires measurements to the tokens and the view's audience as the renderer orchestrator does. Returns the function that ends it. */
 export function wirePlayerMeasurements(deps: {
   measure: MeasureRenderer;
   tokens: TokenRenderer;
+  audience: CanvasAudience;
+  pointer: MapPointer;
   store: Pick<StoreApi<ViewAtlasState>, 'getState'>;
   grid: Pick<GridSystem, 'getOptions'>;
   lighting: () => TokenPerception | undefined;
 }): () => void {
-  deps.measure.playersView = measurePlayersView({ store: deps.store, grid: deps.grid, tokens: () => deps.tokens, lighting: deps.lighting });
-  deps.tokens.setMeasureHandlers(deps.measure.pointer);
-  return deps.tokens.onPlayersViewChange(() => deps.measure.refreshVisibility());
+  deps.measure.playersView = measurePlayersView({ store: deps.store, grid: deps.grid, tokens: () => deps.tokens, lighting: deps.lighting, audience: deps.audience });
+  deps.pointer.attach('measureHandles', deps.measure.pointer);
+  return () => {
+    deps.measure.playersView = null;
+  };
 }
 
 /** A players' frame as `withPlayerSafeFrame` composes it: one sight for tokens and measurements. */

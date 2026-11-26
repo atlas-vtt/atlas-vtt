@@ -93,9 +93,9 @@ export function memoryScenes(): { scene: (options?: MemorySceneOptions) => Promi
     const store = createViewAtlasStore(createInMemoryApp().app, `memory-edits-${Math.random()}`);
     store.setState({ persistenceEnabled: false, mapPath: 'maps/rooms.atlasmap', exploredMask: options.exploredMask ?? null });
     store.getState().setSceneLighting({ enabled: true, ambient: 0, ...options.lighting });
-    store.getState().addWall(WALL);
+    store.getState().addObject('walls', WALL);
     store.setState((state) => ({ objects: { ...state.objects, tokens: { party: PARTY, goblin: GOBLIN } } }));
-    if (options.lamp !== false) store.getState().addLight(LAMP);
+    if (options.lamp !== false) store.getState().addObject('lights', LAMP);
     const history = getHistoryStore(store)!;
     history.getState().clear();
 

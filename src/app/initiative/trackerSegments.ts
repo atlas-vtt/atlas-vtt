@@ -10,6 +10,8 @@ export interface TrackerListOptions {
   /** The sides in the order they act this round (`listedSides`). */
   sides: readonly ListedSide[];
   fightRuns: boolean;
+  /** The entry of the combatant whose turn it is (`currentTurn`); none by sides and outside a fight. */
+  holder?: string | undefined;
   round: number;
   /** The GM's choice: the list starts at the turn during a fight. */
   fromTurn: boolean;
@@ -32,7 +34,7 @@ export function trackerSegments(
     delayed: (entry) => entry.delayed === true,
     fightRuns: options.fightRuns,
     round: options.round,
-    turnAt: entries.filter((entry) => !entry.delayed).findIndex((entry) => entry.isActive),
+    turnAt: options.holder === undefined ? -1 : entries.filter((entry) => !entry.delayed).findIndex((entry) => entry.id === options.holder),
     fromTurn: options.fromTurn,
     emptySides: true,
   });

@@ -1,4 +1,4 @@
-import { DEFAULT_TOKEN_SETTINGS } from '../../storeFactory';
+import { DEFAULT_TOKEN_SETTINGS } from '../../types/viewState';
 import type { CollectionSettings } from '../../types/collectionSettingsTypes';
 import { dropUnknownConditionsFromJson } from '../collectionConditionCleanup';
 import { showNewSceneBarsInJson } from '../../resources/sceneVisibility';

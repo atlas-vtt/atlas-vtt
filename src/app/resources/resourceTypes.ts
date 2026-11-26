@@ -20,7 +20,13 @@ export interface ResourceDefinition {
   color: string;
   /** Spent (0 when draining, max when filling) marks the token defeated. */
   defeatedWhenSpent?: boolean;
+  /** Players see it on every token. Read whose tokens they see it on with `playerAudience`. */
   visibleToPlayers: boolean;
+  /**
+   * Players see it only on the tokens of this side (`sideOf`), stored only beside `visibleToPlayers: false`
+   * so that an Atlas without it hides the resource. Set it with `withPlayerAudience`.
+   */
+  visibleOnSide?: 'players' | 'opponents';
   /**
    * The socket it takes on a token, 0 to `MAX_RESOURCES - 1`: two bars, two wheels on the right, two on the left.
    * Without one it takes the first free socket in list order. Read sockets through `slottedResources`.
@@ -35,7 +41,7 @@ export interface ResourceValue {
 }
 
 /**
- * Who looks at a token's resources: the GM, players at large (`visibleToPlayers` decides), or the
+ * Who looks at a token's resources: the GM, players at large (`playerAudience` decides), or the
  * player who plays the token as their character, who sees all of its own values.
  */
 export type ResourceViewer = 'dm' | 'player' | 'owner';

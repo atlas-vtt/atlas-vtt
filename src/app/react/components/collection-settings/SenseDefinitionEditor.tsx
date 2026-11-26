@@ -6,6 +6,7 @@ import { Select, type SelectOption } from '../../../packages/components/primitiv
 import { ToggleSwitch } from '../../../packages/components/primitives/Toggle';
 import type { SenseDefinition, SenseLook, SenseRange, SenseSight } from '../../../types/senseTypes';
 import { numberText, parseNumberText, positiveNumber } from '../../../utils/numberInput';
+import { revealInList } from '../../../utils/scrollWithin';
 
 const KINDS: SelectOption<SenseKind>[] = [
   { value: 'sense', label: t('senses.kind.sense') },
@@ -83,10 +84,9 @@ export function SenseDefinitionEditor({ sense, all, unit, onChange }: SenseDefin
   const problem = senseProblem(sense, all);
   const isSense = senseKind(sense) === 'sense';
 
-  // The fields open at the end of a list that scrolls. Newer browsers return a promise from
-  // scrollIntoView, which an effect must not hand back.
+  // The fields open at the end of a list that scrolls.
   useEffect(() => {
-    void fields.current?.scrollIntoView?.({ block: 'nearest' });
+    if (fields.current) revealInList(fields.current);
   }, []);
   const set = (changes: Partial<SenseDefinition>): void => onChange({ ...sense, ...changes });
 

@@ -6,7 +6,7 @@ import { MARSH_CREATURE } from '../../../fixtures/statblockTemplateFixtures';
 import { addNote, creatureVault, type CreatureVault } from '../../../mocks/creatureVault';
 import { MARSH_ID, MARSH_PATH, libraryEntry, marshText } from '../library/templateTexts';
 import {
-  NATIVE, WARDEN, barOf, captionOf, fantasyCardOf, hintOf, loadFantasyStatblocks, noteText, renderLinked, sheetOf, unloadFantasyStatblocks,
+  NATIVE, WARDEN, barOf, fantasyCardOf, hintOf, loadFantasyStatblocks, noteText, renderLinked, sheetOf, unloadFantasyStatblocks,
 } from './linkedStatblockKit';
 
 let current: CreatureVault;
@@ -41,7 +41,6 @@ describe('LinkedStatblock: native statblocks (§6.1)', () => {
     await waitFor(() => expect(card.textContent).toContain('Marsh Warden'));
     expect(card.textContent).toContain('Large plant');
     expect(barOf(container)).toBeNull();
-    expect(captionOf(container)).toBeNull();
   });
 
   it('draws a native note with its template while Fantasy Statblocks is loaded too', async () => {
@@ -97,7 +96,6 @@ describe('LinkedStatblock: Fantasy Statblocks statblocks (§6.1)', () => {
     const card = await sheet(container);
     expect(card.dataset.template).toBe('auto');
     expect(card.textContent).toContain('Goblin');
-    expect(captionOf(container)).toBe('Shown with Atlas\' field layout');
     expect(barOf(container)).toBeNull();
   });
 
@@ -107,7 +105,7 @@ describe('LinkedStatblock: Fantasy Statblocks statblocks (§6.1)', () => {
     const card = await sheet(container);
     expect(card.textContent).toContain('Orc');
     expect(card.textContent).toContain('1/2');
-    expect(captionOf(container)).toBe('Shown with Atlas\' field layout');
+    expect(sheetOf(container)?.dataset.template).toBe('auto');
   });
 
   it('asks for Fantasy Statblocks only for a fence that names a bestiary creature', async () => {
@@ -157,6 +155,6 @@ describe('LinkedStatblock: notes of a bundle under review (§6.1)', () => {
     const text = noteText({ statblock: true, name: 'Bundle Bat' });
     const { container } = renderLinked(current, { path: 'Bundle/Bestiary/Bat.md', noteText: text });
     expect((await sheet(container)).textContent).toContain('Bundle Bat');
-    expect(captionOf(container)).toBe('Shown with Atlas\' field layout');
+    expect(sheetOf(container)?.dataset.template).toBe('auto');
   });
 });

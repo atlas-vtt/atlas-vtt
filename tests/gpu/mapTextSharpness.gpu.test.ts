@@ -11,6 +11,7 @@ import { TEXT_TEXTURE_LIMITS } from '../../src/app/pixi/textSharpness';
 import { destroyTree } from '../../src/app/pixi/utils/destroyTree';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { viewAudience } from '../helpers/viewAudience';
 
 /** The view's side in points: the text fits it at the closest zoom. */
 const VIEW = 800;
@@ -59,7 +60,7 @@ async function scene(resolution = 1): Promise<Scene> {
   const store = createViewAtlasStore(createInMemoryApp().app, 'map-text-test');
   store.getState().setPersistenceEnabled(false);
   const texts = new AnnotationsRenderer({
-    viewport, store, grid: () => null,
+    viewport, store, grid: () => null, audience: viewAudience(store).audience,
     sharpness: { resolution: () => renderer.resolution, maxTextureSide: () => maxTextureSide(renderer) },
   });
   const target = RenderTexture.create({ width: VIEW, height: VIEW, resolution });

@@ -3,6 +3,7 @@ import { clampTrim } from '../sound/codec/soundInfo';
 import type { SoundKind, SoundRecord } from '../sound/soundTypes';
 import { MAX_CROSSFADE_SECONDS } from '../services/soundSettings';
 import { isFiniteNumber, isRecord } from '../utils/guards';
+import { isAudioPath } from './soundFiles';
 import { isWithin, movedRelative, nameOfRelative, stemOf } from './soundPaths';
 
 /** Under this length a file named like a loop is ambience. */
@@ -84,9 +85,14 @@ export function withChanges(stored: StoredSound, changes: SoundChanges, now: num
   return next;
 }
 
-/** A record once its file or folder moved: its path, its name where that was the file's, and its kind where it changed root. Null where the move has nothing to do with it. */
+/**
+ * A record once its file or folder moved: its path, its name where that was the file's, and its kind where it changed
+ * root. Null where the move has nothing to do with it, and where its file went to a name that is no sound: a file set
+ * aside while an update is written (`.atlas-old`), or renamed to another kind of file, leaves its record waiting.
+ */
 export function soundAfterMove(stored: StoredSound, from: string, to: string, now: number, kind: SoundKind = stored.kind): StoredSound | null {
   const moved = movedRelative(stored.audioPath, from, to);
+  if (moved !== null && !isAudioPath(moved)) return null;
   // A record the vault's rename event has reached already takes the kind alone.
   if (moved === null && !isWithin(to, stored.audioPath)) return null;
   if (moved === null && stored.kind === kind) return null;

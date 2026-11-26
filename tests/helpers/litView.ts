@@ -11,6 +11,7 @@ import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFa
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { MEASURE_MOTION } from '../../src/app/pixi/measure/measurePresence';
 import { DEFAULT_LIGHTING_QUALITY, type LightingQuality } from '../../src/app/lighting/lightingQuality';
+import { viewAudience } from './viewAudience';
 
 export interface LitViewOptions {
   /** The DM's pane. */
@@ -64,15 +65,13 @@ export async function openLitView({ pane, map, floor = 0x8899aa, grid, quality, 
   store.getState().setMapPath('maps/lit.atlasmap');
   const gridSystem = grid ? new GridSystem(app, viewport, mapImageViewOf(background), { size: grid, enabled: true, color: 0x000000 }) : null;
   const controller = new LightingController({
-    viewport, app, store, eventBus: new EventEmitter(), obsApp, viewId: 'lit-view',
+    viewport, app, store, eventBus: new EventEmitter(), obsApp, viewId: 'lit-view', audience: viewAudience(store).audience,
     bounds: () => ({ width: map, height: map }), albedo: () => null, grid: () => gridSystem,
     quality: { current: () => current, onChange: (listener) => { qualityListeners.add(listener); return () => qualityListeners.delete(listener); } },
   });
   const ignore = (): void => undefined;
   controller.wire({
-    setLightHandlers: ignore, setWallPointerDownHandler: ignore, setWallContextMenuHandler: ignore, setWallPointerMoveHandler: ignore,
-    setWallPointerUpHandler: ignore, setWallDoubleClickHandler: ignore, setWallCursorProvider: ignore, setDoorMenuHandlers: ignore,
-    setDoorClickHandler: ignore, setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
+    setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, getSensedOutlineLayer: () => ({ visible: false }),
   } as unknown as TokenRenderer);
   let time = 1000;
   return {

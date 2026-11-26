@@ -64,6 +64,8 @@ export interface SharedMoveStep {
  * `diceRow` is the row of the GM's dice tray for this map where the GM made it their own (added
  * later): the dice and the saved rolls pinned there, in the GM's order. Without it a page's tray
  * shows the standard dice.
+ * `doors` says players may ask the GM to open a closed door their token stands at (`door-ask`, added
+ * later). Without it a page offers no such ask.
  */
 export interface SharedRules {
   readonly grid: SnapGrid;
@@ -75,6 +77,7 @@ export interface SharedRules {
   readonly draw?: { readonly cell: number };
   readonly moveSteps?: readonly SharedMoveStep[];
   readonly diceRow?: readonly SharedRowPlace[];
+  readonly doors?: true;
 }
 
 export type RulesMessage = { readonly t: 'rules'; readonly scene: string } & SharedRules;
@@ -135,7 +138,7 @@ function parseMoveSteps(value: unknown): SharedMoveStep[] | undefined {
 
 /** A `rules` message as the client reads it, or null for anything malformed; malformed dice are left out. */
 export function parseRules(value: Record<string, unknown>): RulesMessage | null {
-  const { scene, snap, accent, cursors } = value;
+  const { scene, snap, accent, cursors, doors } = value;
   const grid = parseSnapGrid(value.grid);
   const measurement = parseMeasurement(value.measurement);
   if (typeof scene !== 'string' || scene.length > MAX_SCENE_ID || typeof snap !== 'boolean' || grid === null || grid === undefined || measurement === null) return null;
@@ -148,6 +151,6 @@ export function parseRules(value: Record<string, unknown>): RulesMessage | null 
   const diceRow = parseDiceRow(value.diceRow);
   return {
     t: 'rules', scene, grid, snap, measurement, accent, ...(cursors === true && { cursors }), ...(dice !== undefined && { dice }), ...(draw !== undefined && { draw }),
-    ...(moveSteps !== undefined && { moveSteps }), ...(diceRow !== undefined && { diceRow }),
+    ...(moveSteps !== undefined && { moveSteps }), ...(diceRow !== undefined && { diceRow }), ...(doors === true && { doors }),
   };
 }

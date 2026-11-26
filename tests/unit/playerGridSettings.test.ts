@@ -28,6 +28,7 @@ function mapWithGrid(enabled: boolean): { grid: GridSystem; renderer: PixiRender
     gridSystem: grid,
     tokenRenderer: { getPlayerViewLayers: () => [] },
     dmScreenOverlays: new Set(),
+    playerFrameOnly: new Set(),
   });
   return { grid, renderer };
 }

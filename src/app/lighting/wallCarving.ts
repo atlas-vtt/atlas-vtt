@@ -89,8 +89,11 @@ function edit(area: RoomArea, walls: readonly WallSegment[], floors: readonly Ro
   const spaces = floors.map((space) => shapeContainment(space));
   const floor = (point: Point): boolean => spaces.some((inside) => inside(point));
   const middle = (piece: Segment): Point => along(piece, 0.5);
+  // A long drag's shape has hundreds of edges and reaches thousands of walls: each asks only the edges near it.
+  const filedOutline = segmentGrid(outline, ON_LINE);
+  const onOutline = (point: Point): boolean => filedOutline.near(point).some((line) => distanceTo(line, point) <= ON_LINE);
   /** The piece of the shape's edge a piece of wall runs along, if it does: not one it only crosses. */
-  const edgeAlong = (piece: Segment): Segment | undefined => outline.find((edge) => [piece.p1, middle(piece), piece.p2].every((point) => distanceTo(edge, point) <= ON_LINE));
+  const edgeAlong = (piece: Segment): Segment | undefined => filedOutline.touching(boxOf(piece)).find((edge) => [piece.p1, middle(piece), piece.p2].every((point) => distanceTo(edge, point) <= ON_LINE));
   const floorEdges = segmentGrid(floors.flatMap((space) => edgesWithShapeOnLeft(space)), ON_LINE);
   /** Where along `segment` the ground a step to either side of it turns from floor to rock. */
   const groundTurns = (segment: Segment, sides: readonly ('left' | 'right')[]): number[] => sides.flatMap((side) => {
@@ -103,11 +106,11 @@ function edit(area: RoomArea, walls: readonly WallSegment[], floors: readonly Ro
   for (const wall of walls) {
     const length = lengthOf(wall);
     if (!(length > 0) || !boxesMeet(boxOf(wall), reached)) continue;
-    const left = pieces(wall, [...cuts(wall, outline), ...(carving && plain(wall) ? groundTurns(wall, ['left', 'right']) : [])], (piece) => {
+    const left = pieces(wall, [...cuts(wall, filedOutline.touching(boxOf(wall))), ...(carving && plain(wall) ? groundTurns(wall, ['left', 'right']) : [])], (piece) => {
       const point = middle(piece);
       const edge = edgeAlong(piece);
       // Inside the shape, the wall goes whatever it is.
-      if (!edge) return !(shapeContains(area, point) && outline.every((line) => distanceTo(line, point) > ON_LINE));
+      if (!edge) return !(shapeContains(area, point) && !onOutline(point));
       // Along its edge, a plain wall goes where carving joins the shape to floor beyond it.
       return !(carving && plain(wall) && floor(beside(edge, edgeShare(edge, point), 'right', BEYOND)));
     });
@@ -121,11 +124,12 @@ function edit(area: RoomArea, walls: readonly WallSegment[], floors: readonly Ro
       standing.push(piece);
     }
   }
+  const filedStanding = segmentGrid(standing, ON_LINE);
   for (const edge of outline) {
     if (!(lengthOf(edge) > 0)) continue;
-    const fresh = pieces(edge, [...cuts(edge, standing), ...cuts(edge, floorEdges.touching(boxOf(edge))), ...groundTurns(edge, ['right'])], (piece) => {
+    const fresh = pieces(edge, [...cuts(edge, filedStanding.touching(boxOf(edge))), ...cuts(edge, floorEdges.touching(boxOf(edge))), ...groundTurns(edge, ['right'])], (piece) => {
       const beyond = floor(beside(piece, 0.5, 'right', BEYOND));
-      return beyond !== carving && standing.every((wall) => distanceTo(wall, middle(piece)) > ON_LINE);
+      return beyond !== carving && !filedStanding.near(middle(piece)).some((wall) => distanceTo(wall, middle(piece)) <= ON_LINE);
     });
     // Carved, the room's floor is the shape, to the left; filled, the floor is what lies beyond.
     for (const { p1, p2 } of fresh) add.push({ type: 'solid', closed: true, chainId, floor: 'left', ...(carving ? { p1, p2 } : { p1: p2, p2: p1 }) });

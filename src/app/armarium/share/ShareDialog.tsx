@@ -8,6 +8,7 @@ import { t } from '../../i18n';
 import { useAtlasUI } from '../../react/root/AtlasUIContext';
 import type { AnyShareSession } from '../upload/anyShareSession';
 import type { CollectionShareSnapshot, ShareSnapshot } from '../upload/shareState';
+import type { MusicShareSnapshot } from '../upload/musicShareState';
 import { ShareRail } from './ShareRail';
 import { shareStepParts } from './shareStepParts';
 import { itemKindLabel } from './shareWording';
@@ -47,15 +48,15 @@ export function ShareDialog({ session, snapshot, account, onClose }: ShareDialog
   const { app } = useAtlasUI();
   const accountState = useAccountState(account);
   const collection = useCollectionShown(snapshot);
-  const itemCoverUrl = useObjectUrl(snapshot.subject === 'item' ? snapshot.cover ?? undefined : undefined);
-  const shown: Shown = collection ?? itemShown(snapshot, itemCoverUrl);
+  const itemCoverUrl = useObjectUrl(snapshot.subject !== 'collection' ? snapshot.cover ?? undefined : undefined);
+  const shown: Shown = collection ?? (snapshot.subject === 'music' ? musicShown(snapshot, itemCoverUrl) : itemShown(snapshot, itemCoverUrl));
   const parts = shareStepParts({ app, session, snapshot, account, accountState, onClose });
   return (
     <TransferDialog
       label={t('armariumShare.dialogLabel', { name: shown.name })}
       onClose={onClose}
       ambientUrl={shown.imageUrl}
-      hero={<CollectionHero eyebrow={t('exportDialog.shareInArmarium')} imageUrl={shown.imageUrl} name={shown.name} version={shown.version} details={shown.details} />}
+      hero={<CollectionHero eyebrow={t('exportDialog.shareInArmarium')} imageUrl={shown.imageUrl} name={shown.name} version={shown.version} details={shown.details} keepsRoom={snapshot.subject !== 'collection'} />}
       aside={<ShareRail snapshot={snapshot} accountState={accountState} />}
       summary={parts.summary}
       actions={parts.actions}
@@ -76,6 +77,14 @@ function itemShown(snapshot: ShareSnapshot, imageUrl: string | undefined): Shown
   return version === null
     ? { name: snapshot.item.name, version: kind, imageUrl, details: [] }
     : { name: snapshot.item.name, version: `v${version}`, imageUrl, details: [kind] };
+}
+
+/** Music: its cover, its name and artist, an album or a track, and the version once the account's listings are read. */
+function musicShown(snapshot: MusicShareSnapshot, imageUrl: string | undefined): Shown {
+  const kind = t(`armariumMusic.kind.${snapshot.kind}`);
+  const version = snapshot.bundle?.version ?? snapshot.version;
+  const details = [snapshot.artist.trim(), ...(version === null ? [] : [kind])];
+  return { name: snapshot.name.trim() || kind, version: version === null ? kind : `v${version}`, imageUrl, details };
 }
 
 /** The version the share will publish before the bundle is packed: the release's, a fork's first, else the suggested one. */

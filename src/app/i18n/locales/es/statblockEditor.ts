@@ -7,7 +7,6 @@ export const statblockEditor: Translation = {
   'statblockEditor.aliases': 'Alias',
   'statblockEditor.allTemplates': 'Todas las plantillas',
   'statblockEditor.apply': 'Aplicar',
-  'statblockEditor.autoLayout': 'Se muestra con el diseño de campos de Atlas',
   'statblockEditor.beingSaved': 'La plantilla se está guardando.',
   'statblockEditor.blank': 'En blanco',
   'statblockEditor.builtInDetail': 'Integrada',

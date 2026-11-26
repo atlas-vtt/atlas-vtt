@@ -123,7 +123,7 @@ export function useCanvasClick(active: boolean, onClick: (event: PointerEvent) =
     };
 
     const onUp = (e: PointerEvent): void => {
-      if (!leftDown || e.button !== 0) return;
+      if (!leftDown) return;
       leftDown = false;
 
       if ((e.target as HTMLElement)?.tagName !== 'CANVAS') return;

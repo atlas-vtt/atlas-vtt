@@ -1,6 +1,7 @@
 import React, { useId, useRef } from 'react';
 import { Button } from './button';
 import { LabelTooltip, TooltipProvider } from './tooltip';
+import './segmented-pill.scss';
 
 export interface SegmentedOption<T extends string> {
   value: T;
@@ -38,6 +39,8 @@ interface SegmentedControlProps<T extends string> {
   tooltipOutside?: string;
   /** Where an option's tooltip stands when the option is at neither side edge of that surface. */
   tooltipSide?: 'top' | 'bottom';
+  /** Options of one width under a pill that glides to the chosen one (`segmented-pill.scss`), for a few short choices. */
+  pill?: boolean;
   className?: string;
 }
 
@@ -67,7 +70,7 @@ function nextChoosable<T extends string>(options: readonly SegmentedOption<T>[],
 }
 
 /** A row of mutually exclusive choices, one of them active. */
-export function SegmentedControl<T extends string>({ value, options, onChange, ariaLabel, disabled = false, roving = false, followFocus = false, tooltipOutside, tooltipSide, className }: SegmentedControlProps<T>): React.JSX.Element {
+export function SegmentedControl<T extends string>({ value, options, onChange, ariaLabel, disabled = false, roving = false, followFocus = false, tooltipOutside, tooltipSide, pill = false, className }: SegmentedControlProps<T>): React.JSX.Element {
   const labelId = useId();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -88,7 +91,8 @@ export function SegmentedControl<T extends string>({ value, options, onChange, a
   const control = (
     <div
       ref={ref}
-      className={`atlas-segmented${className ? ` ${className}` : ''}`}
+      className={`atlas-segmented${pill ? ' atlas-segmented--pill' : ''}${className ? ` ${className}` : ''}`}
+      style={pill ? ({ '--atlas-pill-at': options.findIndex((option) => option.value === value), '--atlas-pill-count': options.length } as React.CSSProperties) : undefined}
       role="radiogroup"
       aria-labelledby={labelId}
       aria-disabled={disabled || undefined}

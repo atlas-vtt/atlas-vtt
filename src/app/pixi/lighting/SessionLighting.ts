@@ -18,7 +18,7 @@ export interface SessionLightingDeps {
  * A capture made meanwhile finds those layers as it wants them and leaves them alone.
  */
 export class SessionLighting {
-  private peeking = false;
+  private held = false;
   private readonly unsubscribe: () => void;
 
   constructor(private readonly deps: SessionLightingDeps) {
@@ -29,11 +29,16 @@ export class SessionLighting {
 
   /** The canvas shows the players' view. */
   get active(): boolean {
-    return this.peeking || !this.deps.store.getState().isGMView;
+    return this.held || !this.deps.store.getState().isGMView;
+  }
+
+  /** Whether the peek key holds the players' lighting on the canvas. */
+  get peeking(): boolean {
+    return this.held;
   }
 
   setPeeking(held: boolean): void {
-    this.peeking = held;
+    this.held = held;
     this.sync();
   }
 

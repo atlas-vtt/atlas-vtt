@@ -1,17 +1,21 @@
-import { Container, Text } from 'pixi.js';
+import { Container, Text, TextStyle } from 'pixi.js';
 import type { ResourceValue } from './tokenValueEditor';
 
 /** Horizontal distance from the bar centre to the near edge of each number, in bar pixels. */
 export const RESOURCE_NUMBER_GAP = 1.5;
 
-/** How every resource writes its numbers, on a bar or in a wheel. */
-export const RESOURCE_NUMBER_STYLE = {
+/**
+ * How every resource writes its numbers, on a bar or in a wheel. One style object for all of them:
+ * PIXI shares a text's texture only among texts of the same string, resolution and `TextStyle`
+ * instance, so the same number on 300 tokens is rasterised and uploaded once. Never change it in place.
+ */
+export const RESOURCE_NUMBER_STYLE = new TextStyle({
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial',
   fontSize: 18,
   fill: 0xffffff,
   fontWeight: '600',
   stroke: { color: 0x000000, width: 2 },
-} as const;
+});
 /** The numbers are drawn large and scaled down, so they stay crisp when zoomed in. */
 export const RESOURCE_NUMBER_SCALE = 0.333;
 

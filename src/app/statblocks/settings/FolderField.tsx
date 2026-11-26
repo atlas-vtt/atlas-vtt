@@ -3,6 +3,7 @@ import { Folder } from 'lucide-react';
 import { normalizePath, type App, type TFolder } from 'obsidian';
 import { cn } from '../../../utils/cn';
 import { t } from '../../i18n';
+import { revealInList } from '../../utils/scrollWithin';
 
 /** At most this many folders are suggested; typing narrows the list. */
 const MAX_SUGGESTIONS = 50;
@@ -67,7 +68,8 @@ export function FolderField({ app, value, onChange, label, placeholder = t('stat
   const optionId = (index: number): string => `${listId}-${index}`;
 
   useEffect(() => {
-    if (showing) listRef.current?.ownerDocument.getElementById(`${listId}-${active}`)?.scrollIntoView?.({ block: 'nearest' });
+    const row = showing ? listRef.current?.ownerDocument.getElementById(`${listId}-${active}`) : null;
+    if (row) revealInList(row);
   }, [showing, active, listId]);
 
   const type = (text: string): void => {

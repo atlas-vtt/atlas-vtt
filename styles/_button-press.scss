@@ -13,7 +13,7 @@
 // Atlas buttons are buttons with an `atlas-` class, and buttons inside an element with one, except in
 // Obsidian's own content Atlas shows (a note rendered in a preview, an embedded editor), which keeps
 // Obsidian's look. Colour swatches keep their fill, since it is the colour being chosen (they press
-// by scale), and a text link has no surface to tint. A saved roll's card is pressed whole where its roll is pressed
+// by scale; a dice colour's d20 too), and a text link has no surface to tint. A saved roll's card is pressed whole where its roll is pressed
 // (the roll is the card's body, its ⋯ a control of its own that takes the tint alone).
 @layer atlas-press {
   :is(
@@ -28,6 +28,8 @@
       .atlas-csm-color-swatch,
       .atlas-ring-swatch,
       .atlas-swatch,
+      .atlas-accent-swatch,
+      .atlas-dice-colour-strip__option,
       .atlas-dice-presets__roll
     ),
   .atlas-dice-presets__item:has(> .atlas-dice-presets__roll:active) {

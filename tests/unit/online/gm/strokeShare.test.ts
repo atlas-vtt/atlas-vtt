@@ -14,7 +14,7 @@ const last = (table: MarkHarness): SharedStroke | undefined => table.sent.at(-1)
 /** A table with a scene shared, a send interval after its first look at the GM's marks: what moves next is told at once. */
 function started(): MarkHarness {
   const table = markHarness();
-  table.share.setScene('s');
+  table.share.feed.setScene({ id: 's', lit: false });
   table.advance(MARKS_INTERVAL_MS);
   return table;
 }
@@ -93,9 +93,10 @@ describe('the drawing the GM is making, as players are told it', () => {
     table.advance(MARKS_INTERVAL_MS);
     table.stroke.begin();
     table.stroke.show([pen([P(0, 0), P(9, 9)])], true);
-    expect(last(table)?.n).toBe(2);
     table.advance(MARKS_INTERVAL_MS);
+    expect(last(table)?.n).toBe(2);
     table.stroke.drop();
+    table.advance(MARKS_INTERVAL_MS);
     expect(table.sent.at(-1)?.body.strokes).toBeUndefined();
   });
 
@@ -154,10 +155,10 @@ describe('the drawing the GM is making, as players are told it', () => {
     const table = started();
     table.stroke.begin();
     table.stroke.show([pen([P(0, 0), P(5, 5)])], true);
-    table.share.setScene('other');
+    table.share.feed.setScene({ id: 'other', lit: false });
     table.advance(MARKS_INTERVAL_MS);
     expect(last(table)).toMatchObject({ from: 0 });
-    table.share.setScene(null);
+    table.share.feed.setScene(null);
     const count = table.sent.length;
     table.stroke.show([pen([P(0, 0), P(5, 5), P(9, 9)])], true);
     table.advance(MARKS_INTERVAL_MS);

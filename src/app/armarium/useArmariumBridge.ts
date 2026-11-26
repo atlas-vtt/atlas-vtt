@@ -1,15 +1,16 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import type { ArmariumInstaller } from './ArmariumInstaller';
 import type { ArmariumRequest } from './armariumRequest';
-import { accountMessage, acceptFrameMessage, apiResultMessage, installedMessage, postToFrame, statusMessage, type ArmariumFeature, type ShareWhat } from './armariumMessages';
+import { accountMessage, acceptFrameMessage, apiResultMessage, installedMessage, postToFrame, statusMessage, type ArmariumFeature, type ShareRequest } from './armariumMessages';
 import type { ArmariumAccountPort } from './armariumAccountPort';
 import type { StoreTagFilter } from './storeTagFilter';
 
 /**
  * Connects the Armarium page in `frameRef` with the installer: its install requests start an install, its hello is
- * answered with what the vault holds, and it hears where every install stands. With `onShare`, Atlas names `share`
- * and `share-items` among its features and the page's Share opens Atlas' own share instead of the site's, of what the
- * page names (`what`; a collection where it names nothing). With `tagFilter`,
+ * answered with what the vault holds, and it hears where every install stands; Atlas names `music`, as it installs
+ * albums and tracks. With `onShare`, Atlas names `share`, `share-items` and `share-music` among its features and the
+ * page's Share opens Atlas' own share instead of the site's, of what the page names (`what`; a collection where it
+ * names nothing) and the listing it continues (`listing`). With `tagFilter`,
  * Atlas names `tags`: the page says its tags to the filter, which the sidebar shows and whose presses reach the page.
  * With `account`, Atlas names `account`: the site's My uploads in the frame has Atlas send its requests with Atlas'
  * account (only those, `myUploadsRequests.ts`), asks Atlas to sign in, and hears when it signed in or out.
@@ -21,7 +22,7 @@ export function useArmariumBridge(
   installer: ArmariumInstaller | null,
   frameRef: RefObject<HTMLIFrameElement | null>,
   hostRef: RefObject<HTMLElement | null>,
-  onShare?: (what: ShareWhat) => void,
+  onShare?: (request: ShareRequest) => void,
   tagFilter?: StoreTagFilter,
   account?: ArmariumAccountPort | null,
 ): void {
@@ -32,18 +33,25 @@ export function useArmariumBridge(
     const win = hostRef.current?.win;
     if (!installer || !win) return undefined;
     const frameWindow = (): Window | null => frameRef.current?.contentWindow ?? null;
-    const features: ArmariumFeature[] = [...(shares ? ['share' as const, 'share-items' as const] : []), ...(tagFilter ? ['tags' as const] : []), ...(account ? ['account' as const] : [])];
+    const features: ArmariumFeature[] = ['music', ...(shares ? ['share' as const, 'share-items' as const, 'share-music' as const] : []), ...(tagFilter ? ['tags' as const] : []), ...(account ? ['account' as const] : [])];
     // Read while the page loads, so its hello is answered at once: the read waits on the installable list.
+    let earlyWalk: Promise<boolean> | null = installer.musicWalkEnds();
     let early: Promise<ArmariumRequest[]> | null = installer.installedItems();
+    const post = (held: ArmariumRequest[]): void => postToFrame(frameWindow(), installedMessage(held, features));
+    // What is known is told at once; where the music root was not read whole yet, what it holds follows once it is.
     const sendInstalled = (): void => {
+      const walk = earlyWalk ?? installer.musicWalkEnds();
       const items = early ?? installer.installedItems();
       early = null;
-      void items.then((held) => postToFrame(frameWindow(), installedMessage(held, features)));
+      earlyWalk = null;
+      void items.then(post).then(() => walk).then(async (walked) => {
+        if (walked) post(await installer.installedItems());
+      });
     };
     const onMessage = (event: MessageEvent): void => {
       const message = acceptFrameMessage(event, frameWindow());
       if (message?.type === 'atlas-armarium:hello') sendInstalled();
-      else if (message?.type === 'atlas-armarium:share') shareRef.current?.(message.what ?? 'collection');
+      else if (message?.type === 'atlas-armarium:share') shareRef.current?.({ what: message.what ?? 'collection', ...(message.listing && { listing: message.listing }) });
       else if (message?.type === 'atlas-armarium:tags') tagFilter?.receive({ groups: message.groups, picked: message.picked });
       else if (message?.type === 'atlas-armarium:api') {
         if (account) void account.forward(message.request).then((answer) => postToFrame(frameWindow(), apiResultMessage(message.id, answer)));
@@ -57,6 +65,7 @@ export function useArmariumBridge(
       if (state !== 'installed') return;
       // What was read early no longer holds the release just installed.
       early = null;
+      earlyWalk = null;
       sendInstalled();
     });
     win.addEventListener('message', onMessage);

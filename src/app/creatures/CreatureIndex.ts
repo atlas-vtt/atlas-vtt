@@ -72,6 +72,8 @@ export class CreatureIndex {
   /** Every note asked for, re-resolved when the bestiary changes. */
   private readonly wanted = new Set<string>();
   private readonly queue = new Set<string>();
+  /** Queued notes never resolved, which a running batch takes ahead of its own (`resolveAll`). */
+  private readonly unread = new Set<string>();
   private readonly listeners = new Set<() => void>();
   private readonly detachers: Array<() => void> = [];
   /** The template each native note was read with, by note path. */
@@ -119,6 +121,7 @@ export class CreatureIndex {
       if (this.wanted.has(path)) continue;
       this.wanted.add(path);
       this.queue.add(path);
+      this.unread.add(path);
       added = true;
     }
     if (added) this.startDraining();
@@ -131,6 +134,7 @@ export class CreatureIndex {
     if (this.settleTimer !== null) window.clearTimeout(this.settleTimer);
     this.listeners.clear();
     this.queue.clear();
+    this.unread.clear();
   }
 
   /** The app's template library, followed from the first time a note asks for a template. */
@@ -189,6 +193,7 @@ export class CreatureIndex {
       while (this.queue.size > 0 && !this.destroyed) {
         const paths = [...this.queue];
         this.queue.clear();
+        this.unread.clear();
         const bestiary = this.bestiary ??= bestiaryLookup(this.app);
         const resolved = await this.resolveAll(paths, bestiary);
         if (this.destroyed) return;
@@ -200,20 +205,50 @@ export class CreatureIndex {
     }
   }
 
+  /**
+   * Resolves `paths`, and ahead of them every note asked for meanwhile that has no entry yet (an
+   * opening map's tokens behind a collection the asset manager asked for): those are stored at once
+   * and announced once per work slice, so a map does not wait for the whole collection. A note read
+   * again keeps its old entry until the batch is done, as ever.
+   */
   private async resolveAll(paths: readonly string[], bestiary: BestiaryLookup): Promise<Map<string, IndexedCreature | null>> {
     const resolved = new Map<string, IndexedCreature | null>();
     let next = 0;
+    let unannounced = false;
     // Most notes resolve from the bestiary without a read, so a library of thousands is paced.
     const pause = workSlices();
     const worker = async (): Promise<void> => {
-      for (let path = paths[next++]; path !== undefined; path = paths[next++]) {
-        resolved.set(path, await this.resolve(path, bestiary));
-        await pause();
+      for (;;) {
+        const late = this.takeUnread();
+        const path = late ?? paths[next++];
+        if (path === undefined) return;
+        const creature = await this.resolve(path, bestiary);
+        if (this.destroyed) return;
+        if (late === undefined) resolved.set(path, creature);
+        else {
+          this.entries.set(path, creature);
+          unannounced = true;
+        }
+        const turn = pause();
+        if (turn && unannounced) {
+          unannounced = false;
+          this.changed();
+        }
+        await turn;
         if (this.destroyed) return;
       }
     };
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, paths.length) }, worker));
     return resolved;
+  }
+
+  /** Takes from the queue a note asked for that was never resolved. */
+  private takeUnread(): string | undefined {
+    for (const path of this.unread) {
+      this.unread.delete(path);
+      if (this.queue.delete(path)) return path;
+    }
+    return undefined;
   }
 
   private async resolve(path: string, bestiary: BestiaryLookup): Promise<IndexedCreature | null> {

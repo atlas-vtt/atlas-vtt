@@ -22,7 +22,7 @@ interface ResponsiveWidgetBarProps {
   widgetSyncService?: WidgetSyncService;
 }
 
-export function ResponsiveWidgetBar({ isPlayerView = false, store, viewId, widgetSyncService }: ResponsiveWidgetBarProps) {
+export function ResponsiveWidgetBar({ isPlayerView = false, store, viewId, widgetSyncService }: ResponsiveWidgetBarProps): React.JSX.Element | null {
   const settings = useAtlasSettings();
   const hotkeyLabel = useHotkeyLabels();
   // Initialize all refs first
@@ -225,7 +225,7 @@ export function ResponsiveWidgetBar({ isPlayerView = false, store, viewId, widge
   // Keyboard shortcut tracking. Listens in the capture phase so a held widget's
   // keys (e.g. Space) win over the map shortcuts that share them.
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
       if (!canRunMapHotkeys(e, viewId)) return;
       if (heldKeys.current.size > 0) {
         const actions = heldWidgetActions.current;
@@ -250,7 +250,7 @@ export function ResponsiveWidgetBar({ isPlayerView = false, store, viewId, widge
       broadcastAnimation('key-held', 'number-key', { keyNumber: num, held: true });
     };
 
-    const handleKeyUp = (e: KeyboardEvent) => {
+    const handleKeyUp = (e: KeyboardEvent): void => {
       const num = heldCodes.current.get(e.code || e.key);
       if (!num) return;
       heldCodes.current.delete(e.code || e.key);
@@ -259,7 +259,7 @@ export function ResponsiveWidgetBar({ isPlayerView = false, store, viewId, widge
       broadcastAnimation('key-held', 'number-key', { keyNumber: num, held: false });
     };
 
-    const handleBlur = () => {
+    const handleBlur = (): void => {
       heldKeys.current.clear();
       heldCodes.current.clear();
       // Clear all possible held keys (1-5)

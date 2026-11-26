@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ExternalLocation } from '../../../src/app/soundLibrary/externalLocation';
 import type { NodeFsModule } from '../../../src/app/soundLibrary/nodeFiles';
-import { SoundPathError, SoundPathTakenError, TrashUnavailableError } from '../../../src/app/soundLibrary/soundLocation';
+import { SoundPathError, SoundPathNotRemovableError, SoundPathTakenError, TrashNotTakenError, TrashUnavailableError } from '../../../src/app/soundLibrary/soundLocation';
 
 let base: string;
 let root: string;
@@ -147,10 +147,38 @@ describe('deleting', () => {
     expect(trashed).toEqual([path.join(root, 'a.mp3')]);
   });
 
+  it('says so where the trash answered and left the file where it was', async () => {
+    write('a.mp3');
+    const silent = new ExternalLocation(root, { files: { fs: fs as unknown as NodeFsModule, sep: path.sep, home: os.homedir() }, trashItem: async () => undefined, resourceUrl: null, vaultFolder: null });
+    await expect(silent.trash('a.mp3')).rejects.toBeInstanceOf(TrashNotTakenError);
+    expect(fs.existsSync(path.join(root, 'a.mp3'))).toBe(true);
+  });
+
   it('is refused plainly without one, and the file stays', async () => {
     write('a.mp3');
     await expect(location(false).trash('a.mp3')).rejects.toBeInstanceOf(TrashUnavailableError);
     expect(fs.existsSync(path.join(root, 'a.mp3'))).toBe(true);
+  });
+
+  it('removes a part Atlas was writing for good without a trash, and nothing else', async () => {
+    write('Album/01 Dawn.opus.atlas-part');
+    write('Album/01 Dawn.opus');
+    const place = location(false);
+    await place.removePart('Album/01 Dawn.opus.atlas-part');
+    expect(fs.existsSync(path.join(root, 'Album/01 Dawn.opus.atlas-part'))).toBe(false);
+    await expect(place.removePart('Album/01 Dawn.opus')).rejects.toBeInstanceOf(SoundPathNotRemovableError);
+    await expect(place.removePart('.atlas-part')).rejects.toBeInstanceOf(SoundPathNotRemovableError);
+    expect(fs.existsSync(path.join(root, 'Album/01 Dawn.opus'))).toBe(true);
+  });
+
+  it('removes a folder only while it holds nothing', async () => {
+    write('Album/01 Dawn.opus');
+    fs.mkdirSync(path.join(root, 'Empty'));
+    const place = location(false);
+    await expect(place.removeEmptyFolder('Album')).rejects.toThrow();
+    await place.removeEmptyFolder('Empty');
+    expect(fs.existsSync(path.join(root, 'Album/01 Dawn.opus'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'Empty'))).toBe(false);
   });
 });
 

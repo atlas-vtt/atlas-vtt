@@ -143,14 +143,13 @@ export function LibraryView({ query, onQuery: setQuery, railSlot }: LibraryViewP
   const loading = library.locationOf(place.kind) !== null && !library.isWalked(place.kind) && listed.length === 0 && searching === '';
   const showSkeleton = useLoadingReveal(loading);
 
-  const showRoot = useCallback((kind: SoundKind): void => {
-    setQuery('');
-    library.place.show(kind);
-  }, [library, setQuery]);
+  // A place shown, here or from elsewhere (what an install brought in), is shown whole: a search would hide it.
+  useEffect(() => library.place.onChange(() => setQuery('')), [library, setQuery]);
+
+  const showRoot = useCallback((kind: SoundKind): void => library.place.show(kind), [library]);
 
   // One function for the life of the view: every tag of the rail is memoised on it, and a press changes what is selected.
   const pressTag = useStableCallback((kind: SoundKind, tag: string): void => {
-    setQuery('');
     library.place.show(kind, kind === place.kind ? toggledTag(selected.map(({ name }) => name), tag) : [tag]);
   });
 

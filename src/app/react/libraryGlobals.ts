@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { MotionConfig, motion } from 'framer-motion';
 import { createElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
@@ -32,11 +32,11 @@ function noteListeners(win: Window, removals: Array<() => void>, run: () => void
   const match = typeof win.matchMedia === 'function' ? win.matchMedia.bind(win) : null;
   if (match) restores.push(shadow(win, 'matchMedia', (query: string): MediaQueryList => {
     const list = match(query);
-    // framer-motion calls the old `addListener`, which is `addEventListener('change', …)` by the standard.
-    restores.push(shadow(list, 'addListener', (listener: ((event: MediaQueryListEvent) => void) | null): void => {
+    const listen = list.addEventListener.bind(list);
+    restores.push(shadow(list, 'addEventListener', (type: string, listener: EventListenerOrEventListenerObject | null, options?: boolean | AddEventListenerOptions): void => {
       if (!listener) return;
-      list.addEventListener('change', listener);
-      removals.push(() => list.removeEventListener('change', listener));
+      listen(type, listener, options);
+      removals.push(() => list.removeEventListener(type, listener, options));
     }));
     return list;
   }));
@@ -50,8 +50,9 @@ function noteListeners(win: Window, removals: Array<() => void>, run: () => void
 /**
  * React and framer-motion each put listeners on the page once per loaded copy and never remove them:
  * React a `selectionchange` on the document of its first root or portal, framer-motion a `resize` on the
- * window and a `prefers-reduced-motion` media query listener when its first element mounts. Any of them
- * keeps that copy of Atlas in memory after Atlas unloads. This mounts one motion element in a document of
+ * window when its first element mounts, and a `prefers-reduced-motion` media query listener the first time
+ * an element or hook follows the device's setting (`reducedMotion="user"`, `useReducedMotion`). Any of them
+ * keeps that copy of Atlas in memory after Atlas unloads. This mounts one such motion element in a document of
  * its own, before anything else of Atlas renders: it reads the property React marks the nodes it listens
  * on with (`_reactListening` and a key of this copy), and notes what framer-motion adds to the window
  * meanwhile, so `releaseLibraryGlobals` can remove it. The document is scratch, so React's own
@@ -64,7 +65,7 @@ export function takeLibraryGlobals(win: Window = window): LibraryGlobals {
   const reactMarker = Object.keys(container).find((key) => key.startsWith('_reactListening')) ?? null;
   const removals: Array<() => void> = [];
   try {
-    noteListeners(win, removals, () => flushSync(() => root.render(createElement(motion.div))));
+    noteListeners(win, removals, () => flushSync(() => root.render(createElement(MotionConfig, { reducedMotion: 'user' }, createElement(motion.div)))));
   } finally {
     root.unmount();
   }

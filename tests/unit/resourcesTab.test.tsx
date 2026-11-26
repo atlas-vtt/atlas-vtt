@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ResourcesTab } from '../../src/app/react/components/collection-settings/ResourcesTab';
 import { HP_RESOURCE, isDraftResourceKey, savedResources } from '../../src/app/resources/resourceDefinitions';
 import { RESOURCE_COLORS } from '../../src/app/resources/resourceColors';
+import { playerAudience } from '../../src/app/resources/playerAudience';
 import { slottedResources } from '../../src/app/resources/resourceSlots';
 import { STARTER_TOKENS } from '../../src/app/services/starterTokens';
 import type { ResourceDefinition } from '../../src/app/resources/resourceTypes';
@@ -68,8 +69,15 @@ describe('ResourcesTab', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^Drains/ }));
     expect(last(onChange).find((r) => r.key === 'str')!.direction).toBe('fills');
+    // Whose tokens players see it on: hidden, the party's, everyone else's, every token, and round again
+    const str = (): ResourceDefinition => last(onChange).find((r) => r.key === 'str')!;
     fireEvent.click(screen.getByRole('button', { name: 'Hidden from players' }));
-    expect(last(onChange).find((r) => r.key === 'str')!.visibleToPlayers).toBe(true);
+    expect(playerAudience(str())).toBe('party');
+    fireEvent.click(screen.getByRole('button', { name: 'Players see it on the party\'s tokens' }));
+    expect(playerAudience(str())).toBe('opponents');
+    fireEvent.click(screen.getByRole('button', { name: 'Players see it on every token outside the party' }));
+    expect(str()).toMatchObject({ visibleToPlayers: true });
+    expect(str()).not.toHaveProperty('visibleOnSide');
     fireEvent.click(screen.getByRole('button', { name: 'Does not defeat the token' }));
     expect(last(onChange).find((r) => r.key === 'str')!.defeatedWhenSpent).toBe(true);
     // The colour is one of the curated ones, picked in the card; no free colour picker

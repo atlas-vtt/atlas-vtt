@@ -1,5 +1,5 @@
 import { inThreadPort, type PortFactory, type TesseraPort } from './tesseraPorts';
-import type { TesseraBudgets, TesseraEvent, TesseraMessage, TesseraReply } from './tesseraProtocol';
+import type { TesseraBudgets, TesseraMessage, TesseraReady } from './tesseraProtocol';
 
 /**
  * Keeps `TesseraDecoderClient`'s port to the tessera core: starts the worker on
@@ -25,7 +25,7 @@ export interface TesseraPortKeeperOptions {
   worker: PortFactory;
   /** Used when no worker starts. */
   inThread?: PortFactory;
-  receive: (message: TesseraReply | TesseraEvent) => void;
+  receive: (message: Exclude<TesseraMessage, TesseraReady>) => void;
   /** The port ended: everything sent to it is lost; the next `current()` starts another. */
   lost: (crash: TesseraWorkerCrash) => void;
 }

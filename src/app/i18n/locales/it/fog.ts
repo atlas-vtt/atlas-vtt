@@ -5,7 +5,7 @@ export const fog: Translation = {
   'fog.modes': 'Nebbia',
   'fog.tools': 'Forme e azioni della nebbia',
   'fog.fog': 'Nebbia',
-  'fog.fogTip': 'Tieni premuto Alt per cancellare. Fai clic destro sulla nebbia per rivelarla o eliminarla',
+  'fog.fogTip': 'Tieni premuto Alt per cancellare. Clic destro sulla nebbia per rivelarla o eliminarla',
   'fog.eraser': 'Gomma',
   'fog.eraserTip': 'Tieni premuto Alt per aggiungere nebbia',
   'fog.reveal': 'Rivela',

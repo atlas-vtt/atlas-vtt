@@ -1,16 +1,20 @@
 import '../setup/obsidianDom';
 import { describe, expect, it } from 'vitest';
 import css from '../../styles/main.scss?inline';
-import { entryTokenOf, playerInitiativeList, renderPlayerInitiative, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import type { PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 import { glideHeight } from '../../src/app/services/playerInitiativeMotion';
+import type { TokenEntity } from '../../src/app/types';
 import type { ConditionDefinition } from '../../src/app/types/collectionSettingsTypes';
+import { playersListOf } from '../helpers/playersInitiative';
 
 const CONDITIONS: ConditionDefinition[] = [{ id: 'prone', name: 'Prone', color: '#e8e0c8' }];
 
 function draw(host: HTMLElement, withCondition: boolean, faces: boolean): HTMLElement {
   host.empty();
   const entries: PlayerInitiativeEntry[] = [0, 1, 2].map((index) => ({ tokenId: `t${index}`, name: `N${index}`, initiative: 20 - index, imagePath: '', isActive: index === 0, order: index }));
-  const list = playerInitiativeList({ entries, isActive: true, round: 1 }, (_, index) => entryTokenOf({ id: `t${index}`, kind: 'character', name: `N${index}`, imagePath: '', x: 0, y: 0, ...(withCondition && index === 1 ? { conditions: ['prone'] } : {}) } as never, [], CONDITIONS), { mode: 'turn-order', roll: '1d20', firstSide: 'players' }, false);
+  const tokens = Object.fromEntries([0, 1, 2].map((index) => [`t${index}`, { id: `t${index}`, kind: 'character', name: `N${index}`, imagePath: '', x: 0, y: 0, ...(withCondition && index === 1 ? { conditions: ['prone'] } : {}) } as TokenEntity]));
+  const list = playersListOf({ entries, isActive: true, round: 1 }, tokens, { conditions: CONDITIONS, initiative: { mode: 'turn-order', roll: '1d20', firstSide: 'players' } });
   return renderPlayerInitiative(host, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null, fromTurn: true, dock: faces ? 'top' : 'bottom', faces })!;
 }
 

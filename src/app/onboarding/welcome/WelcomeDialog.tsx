@@ -1,0 +1,129 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { AnimatePresence, motion, useIsPresent } from 'framer-motion';
+import type { App } from 'obsidian';
+import { Button } from '../../packages/components/primitives/button';
+import { useDialogWindowVariants, usePrefersReducedMotion } from '../../packages/components/primitives/dialogMotion';
+import type { SettingsService } from '../../services/SettingsService';
+import type { LookService } from '../../appearance/lookService';
+import { useAtlasSettings, useHotkeyLabels } from '../../keyboard/useMapHotkeys';
+import { portalHost } from '../../host/portalHost';
+import { useDialogFocus } from '../useDialogFocus';
+import { useDicePreviewWarmUp } from '../../react/hooks/useDicePreviews';
+import { HelpPage, JoinPage, LookPage } from './welcomePages';
+import { WelcomeFootStart } from './welcomeFoot';
+import { useWelcomeIntro, WelcomeIntro } from './welcomeIntro';
+import { welcomeOverlayMotion, welcomeWindowVariants } from './welcomeMotion';
+import { t } from '../../i18n';
+import './welcome.scss';
+import './intro.scss';
+
+interface WelcomeDialogProps {
+  app: App;
+  settings: SettingsService;
+  looks: LookService;
+  /** The first page: what Atlas is, in slides. */
+  carousel: React.ReactNode;
+  /** Whether this GM is to be welcomed at all (`shouldWelcome`); completing the wizard closes it either way. */
+  open?: boolean;
+  /** Opens Atlas' start page, once the GM ends the wizard with Open Atlas. */
+  onOpenAtlas: () => void;
+  /** The document it opens in; the main window's by default. */
+  doc?: Document;
+}
+
+type WelcomePage = 'carousel' | 'help' | 'look' | 'join';
+const PAGES: readonly WelcomePage[] = ['carousel', 'help', 'look', 'join'];
+
+/**
+ * The welcome wizard: a large dialog of four pages, what Atlas is, where help is, the look, and the community around
+ * Atlas. Every GM is to see the last page: Skip and Escape lead there, and only its Open Atlas ends the wizard and opens
+ * the start page, whose tour follows.
+ */
+export function WelcomeDialog({ open = true, ...props }: WelcomeDialogProps): React.JSX.Element {
+  // Subscribed, so it closes as soon as it is completed, with the dialogs' closing motion: keep it mounted after.
+  useAtlasSettings(props.settings);
+  const shown = open && !props.settings.hasBeenWelcomed();
+  return <AnimatePresence>{shown && <WelcomeWindow key="welcome" {...props} />}</AnimatePresence>;
+}
+
+function WelcomeWindow({ app, settings, looks, carousel, onOpenAtlas, doc }: Omit<WelcomeDialogProps, 'open'>): React.JSX.Element {
+  const [at, setAt] = useState(0);
+  // From the second page on, the dice colours of the look page render ahead: it then shows them whole, at once.
+  useDicePreviewWarmUp(app, at >= 1, 'soon');
+  // Where the carousel puts its chips: the foot's start, in place of the pages' bars.
+  const [footStart, setFootStart] = useState<HTMLElement | null>(null);
+  const windowRef = useRef<HTMLDivElement>(null);
+  const reducedMotion = usePrefersReducedMotion();
+  const fadingVariants = useDialogWindowVariants();
+  const windowVariants = reducedMotion ? fadingVariants : welcomeWindowVariants;
+  const intro = useWelcomeIntro(reducedMotion);
+  const key = useHotkeyLabels();
+  const finish = useCallback(() => settings.completeTutorial('welcome'), [settings]);
+  const openAtlas = (): void => {
+    finish();
+    onOpenAtlas();
+  };
+  const toEnd = useCallback(() => setAt(PAGES.length - 1), []);
+  const last = at === PAGES.length - 1;
+  const forward = (): void => { if (last) openAtlas(); else setAt(at + 1); };
+  const back = (): void => setAt(Math.max(0, at - 1));
+
+  // Fading out, it leaves the keys and the focus to the tour that follows.
+  const present = useIsPresent();
+  useDialogFocus(windowRef, toEnd, present);
+  // The page's main button keeps the focus, so Enter always goes on.
+  useEffect(() => { windowRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus(); }, [at]);
+
+  const onKeyDown = (event: React.KeyboardEvent): void => {
+    if (event.key === 'ArrowRight' && !last) { event.preventDefault(); setAt(at + 1); }
+    else if (event.key === 'ArrowLeft' && at > 0) { event.preventDefault(); back(); }
+  };
+
+  const page = PAGES[at]!;
+  return createPortal(
+    <motion.div {...welcomeOverlayMotion} className="atlas-vtt-plugin atlas-vtt-root atlas-welcome-overlay">
+      {/* The window moves as one piece and does not clip, so a look's ornament hangs from it and moves and fades with
+          it; the dialog inside clips its pages to the corners. */}
+      <motion.div variants={windowVariants} className="atlas-welcome-window">
+        <div
+          ref={windowRef}
+          className="atlas-welcome"
+          data-page={page}
+          data-opening={intro.opening || undefined}
+          style={intro.style}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('tour.welcome.label')}
+          onKeyDown={onKeyDown}
+        >
+          <div className="atlas-welcome__page" key={page}>
+            {page === 'carousel' && (
+              <WelcomeIntro.Provider value={intro.state}>
+                <WelcomeFootStart.Provider value={footStart}>{carousel}</WelcomeFootStart.Provider>
+              </WelcomeIntro.Provider>
+            )}
+            {page === 'help' && <HelpPage paletteKey={key('palette')} />}
+            {page === 'look' && <LookPage app={app} looks={looks} />}
+            {page === 'join' && <JoinPage />}
+          </div>
+          <div className="atlas-welcome__foot">
+            <div className="atlas-welcome__progress">
+              <span className="atlas-welcome__progress-label">{t('tour.progress', { step: at + 1, total: PAGES.length })}</span>
+              {page === 'carousel'
+                ? <div ref={setFootStart} className="atlas-welcome__foot-start" />
+                : PAGES.map((name, index) => <span key={name} aria-hidden="true" className="atlas-welcome__bar" data-done={index <= at} />)}
+            </div>
+            {at === 0
+              ? <Button variant="ghost" onClick={toEnd}>{t('tour.skip')}</Button>
+              : <Button variant="ghost" onClick={back}>{t('common.back')}</Button>}
+            <Button key={last ? 'start' : 'next'} data-autofocus onClick={forward}>
+              {last ? t('tour.welcome.start') : t('tour.next')}
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>,
+    portalHost(doc),
+  );
+}

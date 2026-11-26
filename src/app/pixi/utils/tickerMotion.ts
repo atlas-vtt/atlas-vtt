@@ -1,5 +1,8 @@
-import { animate, type AnimationPlaybackControls, type Driver, type ValueAnimationTransition } from 'framer-motion';
+import { animate, type AnimationPlaybackControls, type ValueAnimationTransition } from 'framer-motion';
 import { UPDATE_PRIORITY, type Ticker } from 'pixi.js';
+
+/** Motion stopped exporting its driver type in v14; the transition option still takes one. */
+type Driver = NonNullable<ValueAnimationTransition<number>['driver']>;
 
 /**
  * A Motion driver that steps animations from a PIXI ticker, ahead of the render.

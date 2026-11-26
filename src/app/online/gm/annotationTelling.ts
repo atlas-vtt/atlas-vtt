@@ -19,6 +19,8 @@ export interface AnnotationTellingPorts {
   map(): MapSize | null;
   /** Reads a saved explored memory; without it nothing on the map is known by memory, only by sight. */
   readonly decodeMask?: MaskDecoder | undefined;
+  /** The explored memory the players remember (a data URL), or null for none; without it, the memory the GM saved of the floor. */
+  readonly memory?: (() => string | null) | undefined;
   /** What players know may be more now (a memory was read): the lists are to be worked out again. */
   changed(): void;
 }
@@ -36,7 +38,7 @@ interface AnnotationKey {
  * What the players of one floor are told of its drawings and texts (`toldAnnotationLists`), with
  * what that takes beside the scene: the numbers their places in the order are told by
  * (`SentOrders`), and which of those on the map players know of (`KnownOnMap`), by their sight
- * now and by the explored memory the GM last saved.
+ * now and by the explored memory they remember.
  */
 export class AnnotationTelling {
   private told: { readonly key: AnnotationKey; readonly value: ToldAnnotationLists } | null = null;
@@ -115,7 +117,7 @@ export class AnnotationTelling {
 
   /** Reads the saved explored memory where it is another than the one last read: one at a time, one every `MEMORY_READ_MS` at most, and only while something on the map waits to be known. */
   private readMemory(state: SceneState): void {
-    const mask = levelExploredMask(state);
+    const mask = this.ports.memory === undefined ? levelExploredMask(state) : this.ports.memory();
     const decode = this.ports.decodeMask;
     const now = this.ports.now();
     if (mask === null || decode === undefined || !exploredMemoryOn(state.lighting) || mask === this.memory?.source || this.reading !== null) return;

@@ -207,7 +207,7 @@ describe('Back and Forward after a folder got another id', () => {
   const visible = { current: { assets: [], folders: [] } as VisibleIds };
 
   it('lead to the folder and to the folders in it where they are now', () => {
-    const { result } = renderHook(() => useSelectionHandlers(visible, [], 'tokens', true));
+    const { result } = renderHook(() => useSelectionHandlers(visible, [], 'tokens', true, { current: null }));
     act(() => result.current.resetForTab());
     act(() => result.current.handleNavigateToFolder(VILLAINS));
     act(() => result.current.handleNavigateToFolder(BOSSES));
@@ -227,7 +227,7 @@ describe('Back and Forward after a folder got another id', () => {
   });
 
   it('keeps a folder open that moved while it was open', () => {
-    const { result } = renderHook(() => useSelectionHandlers(visible, [], 'tokens', true));
+    const { result } = renderHook(() => useSelectionHandlers(visible, [], 'tokens', true, { current: null }));
     act(() => result.current.handleNavigateToFolder(BOSSES));
 
     act(() => result.current.followFolderMoves([{ from: VILLAINS, to: folderIdOf(`${TOKENS}/Heroes/Villains`) }]));

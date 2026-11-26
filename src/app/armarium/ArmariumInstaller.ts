@@ -7,7 +7,7 @@ import type { ArmariumRequest } from './armariumRequest';
 import type { InstallState } from './armariumMessages';
 import { ArmariumDownloadError, downloadRelease } from './armariumDownload';
 import { ArmariumListError, fetchInstallableList, type InstallableListing } from './installableList';
-import { installedListings } from './installedListings';
+import { installedListings, musicWalkEnds } from './installedListings';
 
 /** How long a list read for the installed items is used again before it is read anew. */
 const LIST_REUSE_MS = 60_000;
@@ -20,6 +20,8 @@ export interface InstallerDeps {
   fetchList?: () => Promise<InstallableListing[]>;
   download?: (listing: InstallableListing) => Promise<ArrayBuffer>;
   installed?: (listed: ReadonlySet<string>) => Promise<ArmariumRequest[]>;
+  /** Settles true once what the vault holds may have grown since it was read: the music root's first walk ended. */
+  musicWalked?: () => Promise<boolean>;
   now?: () => number;
 }
 
@@ -116,6 +118,11 @@ export class ArmariumInstaller {
       console.warn('[Atlas] The Armarium\'s installed collections could not be read:', error);
       return [];
     }
+  }
+
+  /** Settles true where `installedItems` may answer more once the music root has been read whole, which it asks for. */
+  musicWalkEnds(): Promise<boolean> {
+    return (this.deps.musicWalked ?? (() => musicWalkEnds(this.app)))();
   }
 
   private async run(request: ArmariumRequest): Promise<InstallState> {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { currentTurn, turnKey, turnTokenIds } from '../../src/app/initiative/turnHolders';
+import { currentTurn, turnHolders, turnKey } from '../../src/app/initiative/turnHolders';
+import { HP } from '../mocks/resourceFixtures';
 import { TurnWatch, turnBannerOf } from '../../src/app/initiative/banner/turnBanner';
 import { followedToken } from '../../src/app/initiative/followTurn';
 import type { TokenEntity } from '../../src/app/types';
@@ -18,25 +19,29 @@ const tokens = {
   ghost: token('ghost', { name: 'Ghost', isHidden: true } as Partial<TokenEntity>),
 };
 
+/** The ogre has no hit points left. */
+const fallen = { ...tokens, ogre: token('ogre', { name: 'Grum', resources: { hp: { current: 0, max: 12 } } } as Partial<TokenEntity>) };
+
 describe('who holds the turn', () => {
   it('in turn order is the combatant with the turn, never a delayed one, and nobody outside a fight', () => {
     const order = fight([entry('hero', 0), entry('ogre', 1, { isActive: true })]);
-    expect(turnTokenIds(order, tokens)).toEqual(['ogre']);
-    expect(turnTokenIds({ ...order, isActive: false }, tokens)).toEqual([]);
-    expect(turnTokenIds(fight([entry('ogre', 0, { isActive: true, delayed: true })]), tokens)).toEqual([]);
+    expect(turnHolders(order, tokens, [])).toEqual(['ogre']);
+    expect(turnHolders({ ...order, isActive: false }, tokens, [])).toEqual([]);
+    expect(turnHolders(fight([entry('ogre', 0, { isActive: true, delayed: true })]), tokens, [])).toEqual([]);
     expect(currentTurn(undefined)).toBeNull();
   });
 
   it('by sides is every acting combatant of the side with the turn, and of every side tied with it', () => {
     const sides: SidesFight = { first: 'players', active: 'players' };
     const entries = [entry('hero', 0), entry('ally', 1, { sitsOut: true }), entry('ogre', 2), entry('ghost', 3)];
-    expect(turnTokenIds(fight(entries, { sides }), tokens)).toEqual(['hero']);
-    expect(turnTokenIds(fight(entries, { sides: { ...sides, active: 'opponents' } }), tokens)).toEqual(['ogre', 'ghost']);
+    expect(turnHolders(fight(entries, { sides }), tokens, [HP])).toEqual(['hero']);
+    expect(turnHolders(fight(entries, { sides: { ...sides, active: 'opponents' } }), tokens, [HP])).toEqual(['ogre', 'ghost']);
     const tied: SidesFight = { ...sides, roll: '1d6', rolls: { 1: { players: 4, opponents: 4 } } };
-    expect(turnTokenIds(fight(entries, { sides: tied }), tokens)).toEqual(['hero', 'ogre', 'ghost']);
-    // A defeated combatant holds no turn of its side; in turn order the holder keeps it
-    expect(turnTokenIds(fight(entries, { sides: { ...sides, active: 'opponents' } }), tokens, new Set(['e-ogre']))).toEqual(['ghost']);
-    expect(turnTokenIds(fight([entry('ogre', 0, { isActive: true })]), tokens, new Set(['e-ogre']))).toEqual(['ogre']);
+    expect(turnHolders(fight(entries, { sides: tied }), tokens, [HP])).toEqual(['hero', 'ogre', 'ghost']);
+    // A combatant the map's resources call defeated holds no turn of its side; in turn order the holder keeps it
+    expect(turnHolders(fight(entries, { sides: { ...sides, active: 'opponents' } }), fallen, [HP])).toEqual(['ghost']);
+    expect(turnHolders(fight(entries, { sides: { ...sides, active: 'opponents' } }), fallen, [])).toEqual(['ogre', 'ghost']);
+    expect(turnHolders(fight([entry('ogre', 0, { isActive: true })]), fallen, [HP])).toEqual(['ogre']);
   });
 
   it('tells turns apart by round and holder', () => {
@@ -100,12 +105,12 @@ describe('following the turn', () => {
   it('goes to the first turn holder the canvas shows, and nowhere when it shows none', () => {
     const state = { initiative: fight([entry('hero', 0), entry('ogre', 1)], { sides: { first: 'opponents', active: 'opponents' } }), objects: { tokens: { ...tokens, ghost: token('ghost') } } };
     state.initiative.entries.push(entry('ghost', 2));
-    expect(followedToken(state, () => true)?.id).toBe('ogre');
-    expect(followedToken(state, (id) => id !== 'ogre')?.id).toBe('ghost');
-    expect(followedToken(state, () => true, new Set(['e-ogre']))?.id).toBe('ghost');
-    expect(followedToken(state, () => false)).toBeNull();
+    expect(followedToken(state, () => true, [HP])?.id).toBe('ogre');
+    expect(followedToken(state, (id) => id !== 'ogre', [HP])?.id).toBe('ghost');
+    expect(followedToken({ ...state, objects: { tokens: { ...state.objects.tokens, ogre: fallen.ogre } } }, () => true, [HP])?.id).toBe('ghost');
+    expect(followedToken(state, () => false, [HP])).toBeNull();
     // A combatant beside the map has nothing to go to
     state.objects.tokens.ogre = token('ogre', { offMap: true } as Partial<TokenEntity>);
-    expect(followedToken(state, () => true)?.id).toBe('ghost');
+    expect(followedToken(state, () => true, [HP])?.id).toBe('ghost');
   });
 });

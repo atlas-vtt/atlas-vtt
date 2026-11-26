@@ -9,6 +9,7 @@ import type { TokenGestureEventDetail } from '../types/atlasWindowEvents';
 import type { TokenHandleContainer } from './token-renderer/types';
 import { findTokenGroup } from './token-renderer/findTokenGroup';
 import type { TokenResizeUI } from './TokenResizeUI';
+import { isDarkTheme } from './utils/canvasBadgeColors';
 import { destroyTree } from './utils/destroyTree';
 import { HandleHitArea } from './utils/handleHitArea';
 import { levelObjects } from '../levels/levelObjects';
@@ -77,9 +78,6 @@ export class TokenRotationUI {
     this.tokenResizeUI = resizeUI;
   }
   
-  /**
-   * Check if currently rotating
-   */
   public get isCurrentlyRotating(): boolean {
     return this.isRotating;
   }
@@ -196,7 +194,7 @@ export class TokenRotationUI {
    */
   private createRotationHandle(): TokenHandleContainer {
     // Get theme colors - matching status badges
-    const isDarkMode = document.body.classList.contains('theme-dark');
+    const isDarkMode = isDarkTheme();
     const bg = new Graphics();
     const handle: TokenHandleContainer = Object.assign(new Container({ label: TOKEN_HANDLE_LABEL }), { bg, isDarkMode });
     handle.eventMode = 'static';
@@ -385,9 +383,6 @@ export class TokenRotationUI {
     }
   };
   
-  /**
-   * End rotation
-   */
   private onRotationEnd = (e: FederatedPointerEvent): void => {
     if (!this.isRotating) return;
     

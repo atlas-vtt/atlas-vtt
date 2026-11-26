@@ -96,7 +96,6 @@ if (!exists('dist/main.js')) {
   const hosts = [...new Set((bundle.match(/https?:\/\/[a-z0-9.-]+\.[a-z]{2,}/gi) || []))]
     .filter((host) => !/w3\.org|reactjs\.org|react\.dev|github\.com|mozilla\.org|pixijs\.(com|download|io)|radix-ui\.com|lucide\.dev|fb\.me|feross\.org|howlerjs\.com|goldfirestudios\.com|motion\.dev|example\.com|bit\.ly|stuartk\.com|stuk\.github\.io/.test(host));
   if (hosts.length) warnings.push(`dist/main.js references hosts that must be disclosed in README: ${hosts.join(', ')}`);
-  if (Buffer.byteLength(bundle) > 5 * 1024 * 1024) warnings.push('dist/main.js is larger than 5 MB');
 }
 if (exists('dist/styles.css')) {
   const css = read('dist/styles.css');
@@ -113,6 +112,13 @@ if (exists('dist/styles.css')) {
   for (const problem of rootHasProblems(css)) errors.push(`styles.css ${problem}`);
 } else {
   errors.push('dist/styles.css is missing');
+}
+
+// --- Bundle size ---------------------------------------------------------------
+const budgetFile = 'scripts/bundle-budget.json';
+for (const [file, budget] of Object.entries(JSON.parse(read(budgetFile)))) {
+  const size = exists(file) ? fs.statSync(path.join(root, file)).size : 0;
+  if (size > budget) errors.push(`${file} is ${size} bytes, budget ${budget} (${budgetFile}). Find what grew before raising the budget.`);
 }
 
 // --- Dungeon drawings ---------------------------------------------------------

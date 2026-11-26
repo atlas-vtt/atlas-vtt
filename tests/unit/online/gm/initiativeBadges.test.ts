@@ -25,7 +25,7 @@ type State = ReturnType<typeof sceneState> & Partial<Pick<ViewState, 'initiative
 
 const fight = (tokens: Record<string, TokenEntity>): State => ({
   ...sceneState({ objects: { ...sceneState().objects, tokens } }),
-  initiative: { entries: Object.keys(tokens).map(entry), currentIndex: 0, round: 1, isActive: true, config: { autoSort: true } },
+  initiative: { entries: Object.keys(tokens).map(entry), round: 1, isActive: true, config: { autoSort: true } },
   initiativeTrackerOpen: true,
 });
 
@@ -93,13 +93,13 @@ describe('reading the new fields', () => {
   });
 
   it('sends no number the badge does not give, and only whole numbers within bounds', () => {
-    const inputs = { state: fight({ g1: goblin('g1', 1) }), shown: true, showNames: false, rules: null, art: () => null };
+    const inputs = { state: fight({ g1: goblin('g1', 1) }), shown: true, showNames: false, rules: null, presets: [], art: () => null };
     expect(sharedInitiative({ ...inputs, badge: () => 4 })?.combatants[0]?.instance).toBe(4);
     for (const badge of [null, 0, 2.5, 20_000]) expect(sharedInitiative({ ...inputs, badge: () => badge })?.combatants[0]).not.toHaveProperty('instance');
   });
 
   it('names the token a card brings into view only where the players know it, by the id they know', () => {
-    const inputs = { state: fight({ g1: goblin('g1', 1) }), shown: true, showNames: false, rules: null, art: () => null };
+    const inputs = { state: fight({ g1: goblin('g1', 1) }), shown: true, showNames: false, rules: null, presets: [], art: () => null };
     expect(sharedInitiative({ ...inputs, tokenAlias: (id) => (id === 'g1' ? 'a1b2c3d4e5f6a7b8c9d0e1f2' : undefined) })?.combatants[0]?.token).toBe('a1b2c3d4e5f6a7b8c9d0e1f2');
     expect(sharedInitiative({ ...inputs, tokenAlias: () => undefined })?.combatants[0]).not.toHaveProperty('token');
     const read = (token: unknown): unknown => parseInitiative({ ...base, combatants: [{ ...combatant, token }] })?.combatants[0];

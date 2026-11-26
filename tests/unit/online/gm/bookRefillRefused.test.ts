@@ -4,10 +4,11 @@ import { REFUSAL_BOOK_MS } from '../../../../src/app/online/gm/book/BookShare.ts
 import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
 import { setStatblockGate } from '../../../../src/app/online/gm/book/statblockGate.ts';
 import type { StatblockTemplate } from '../../../../src/app/statblocks/model/templateTypes';
-import { FakeSocket, workspace } from './fakeTable.ts';
-import { ANA, BEN, CAL, cave, delivered, keptBooks, ofType, openTable, type Delivered } from './bookTableHarness.ts';
+import { workspace } from './fakeTable.ts';
+import { ANA, BEN, CAL, cave, keptBooks, openTable } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 import { StatblockNotes, templateOf } from './statblockNotes.ts';
+import type { PlayerPage } from './playerPages.ts';
 
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {}, Platform: { isDesktopApp: true, isMobile: false, isPhone: false } }));
 // The GM's marks draw with PIXI over Atlas's canvas, which a table of books has no use for.
@@ -51,10 +52,10 @@ slots:
 Brannoch's own words.
 `;
 
-/** The statblocks a player was sent, as the page reads them. */
-function statblocks(messages: readonly Delivered[], player: string): (BookStatblock | null)[] {
-  return ofType(messages, 'book-statblock').filter(({ to }) => to === player).map(({ body }) => {
-    const read = parseGmMessage(JSON.parse(JSON.stringify(body)));
+/** The statblocks a player's page was sent, as the page reads them. */
+function statblocks(page: PlayerPage): (BookStatblock | null)[] {
+  return page.all('book-statblock').map((body) => {
+    const read = parseGmMessage(body);
     if (read?.t !== 'book-statblock') throw new Error('a statblock the page would not read');
     return read.statblock;
   });
@@ -66,8 +67,6 @@ describe('a page of an earlier Atlas asking for a refill at a running table', ()
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
     vi.stubGlobal('window', globalThis);
-    vi.stubGlobal('WebSocket', FakeSocket);
-    FakeSocket.all = [];
     workspace.leaves = [];
     workspace.presented = null;
     notes = new StatblockNotes().install();
@@ -89,10 +88,10 @@ describe('a page of an earlier Atlas asking for a refill at a running table', ()
   }
 
   it('is sent a sheet that offers no refills, whatever the template file still holds', async () => {
-    const { online, socket } = await table();
-    const sent = statblocks(delivered(socket), ANA).at(-1);
+    const { online, pages } = await table();
+    const sent = statblocks(pages.of(ANA)).at(-1);
     expect(sent?.blocks.length).toBeGreaterThan(0);
-    expect(JSON.parse(JSON.stringify(ofType(delivered(socket), 'book-statblock').at(-1)?.body))).not.toHaveProperty('statblock.refills');
+    expect(pages.of(ANA).last('book-statblock')).not.toHaveProperty('statblock.refills');
     online.stop();
   });
 

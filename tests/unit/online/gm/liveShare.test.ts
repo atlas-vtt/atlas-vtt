@@ -18,8 +18,10 @@ const scene = (tokens: Tokens, held: readonly string[] = []): ReturnType<typeof 
   objects: { ...sceneState().objects, tokens: Object.fromEntries(tokens.map((entry) => [entry.id, entry])) },
 });
 
+/** The share of a scene with `tokens`, watched by Ana's page from the start. */
 async function started(tokens: Tokens): Promise<ShareHarness> {
   const table = shareHarness(scene(tokens), ART);
+  table.pages.join('ana');
   table.share.start();
   await table.set(scene(tokens));
   await table.advance(TOKEN_INTERVAL_MS);
@@ -27,8 +29,8 @@ async function started(tokens: Tokens): Promise<ShareHarness> {
 }
 
 const lives = (table: ShareHarness): LiveMessage[] => table.sent.flatMap(({ body }) => (body.t === 'live' ? [body] : []));
-/** The id players know a token by, from the last list they got that holds it at `x`. */
-const aliasAt = (table: ShareHarness, x: number): string | undefined => tokenLists(table.sent).flatMap((list) => list.tokens).find((entry) => entry.x === x)?.id;
+/** The id players know a token by, from the lists Ana's page got, by a place it held. */
+const aliasAt = (table: ShareHarness, x: number): string | undefined => table.pages.of('ana').all('tokens').flatMap((list) => list.tokens).find((entry) => entry.x === x)?.id;
 
 describe('the live lane of a drag', () => {
   it('sends where a held token is about 30 times a second, read when it goes, and ends it on release', async () => {
@@ -78,18 +80,17 @@ describe('the live lane of a drag', () => {
       await table.set(scene([token('a', { x: 100 + step * 5 }), token('b', { x: 500 })], ['a']));
       await table.advance(LIVE_INTERVAL_MS);
     }
-    const listedX = (): number | undefined => tokenLists(table.sent).at(-1)?.tokens.find((entry) => entry.id === alias)?.x;
+    const listedX = (player = 'ana'): number | undefined => table.pages.of(player).tokens.find((entry) => entry.id === alias)?.x;
     expect(listedX()).toBeLessThan(150);
     const lastLive = lives(table).length;
     // Still held, resting: the lane tells the same place now and then, and the list lands it before a page would give it up (1.5 s).
     await table.advance(CARRY_MS + TOKEN_INTERVAL_MS + 10);
     expect(lives(table).slice(lastLive).flatMap((message) => message.tokens)).toEqual(Array.from({ length: lives(table).length - lastLive }, () => ({ id: alias, x: 150, y: 100 })));
     expect(listedX()).toBe(150);
-    const before = table.sent.length;
+    table.pages.join('joiner');
     table.share.resend('joiner');
     await table.advance(1);
-    const joined = tokenLists(table.sent.slice(before).filter(({ to }) => to === 'joiner')).at(-1);
-    expect(joined?.tokens.find((entry) => entry.id === alias)?.x).toBe(150);
+    expect(listedX('joiner')).toBe(150);
     // Moving again: once the lane tells the drag again, the list keeps the place it has.
     await table.set(scene([token('a', { x: 180 }), token('b', { x: 500 })], ['a']));
     await table.advance(LIVE_INTERVAL_MS);
@@ -152,13 +153,14 @@ describe('the live lane of a drag', () => {
       await table.set(scene([token('a', { x: 100 + step * 10 })], ['a']));
       await table.advance(LIVE_INTERVAL_MS);
     }
-    const before = table.sent.length;
+    table.pages.join('joiner');
+    const before = table.pages.mark();
     table.share.resend('joiner');
     await table.advance(1);
-    const toJoiner = table.sent.slice(before);
-    expect(toJoiner.length).toBeGreaterThan(0);
+    const heard = table.pages.since(before);
     // Everything a join brings goes to the joiner alone and is a list or a scene, never a live message: none is kept to send again.
-    expect(toJoiner.every(({ body, to }) => to === 'joiner' && body.t !== 'live')).toBe(true);
+    expect(Object.keys(heard)).toEqual(['joiner']);
+    expect(heard.joiner?.some(({ t }) => t === 'live')).toBe(false);
     await table.set(scene([token('a', { x: 160 })], ['a']));
     await table.advance(LIVE_INTERVAL_MS);
     expect(lives(table).at(-1)?.tokens).toEqual([{ id: aliasAt(table, 100), x: 160, y: 100 }]);
@@ -214,13 +216,14 @@ describe('live messages that wait', () => {
     let now = 0;
     const sent: { key: string; message: LiveMessage }[] = [];
     const live = new LiveShare({ getState: () => state, setState: () => undefined, subscribe: () => () => undefined }, {
+      send: () => undefined,
       sendLive: (body, key) => void (body.t === 'live' && sent.push({ key, message: body })),
       tokenSource: () => fakeTokenSource(() => state, () => undefined, () => 70),
       now: () => now,
       setTimer: () => 0,
       clearTimer: () => undefined,
     }, () => ({ scene: 's', alias: (id) => id.repeat(24) }));
-    live.setScene({ id: 's', lit: false });
+    live.feed.setScene({ id: 's', lit: false });
     for (const step of steps) {
       state = step;
       now += 40;
@@ -266,6 +269,7 @@ describe('the live lane of the GM\'s own drag', () => {
     const state = { ...scene([token('a', { x: 100, ...changes })], ['a']), isDragging: true, lighting };
     const sent: LiveMessage[] = [];
     const live = new LiveShare({ getState: () => state, setState: () => undefined, subscribe: () => () => undefined }, {
+      send: () => undefined,
       sendLive: (body) => void (body.t === 'live' && sent.push(body)),
       tokenSource: () => fakeTokenSource(() => state, () => undefined, () => 70),
       drawnPlaces: (ids) => new Map(ids.map((id) => [id, { x: 130, y: 100 }])),
@@ -273,7 +277,7 @@ describe('the live lane of the GM\'s own drag', () => {
       setTimer: () => 0,
       clearTimer: () => undefined,
     }, () => ({ scene: 's', alias: () => 'a'.repeat(24) }));
-    live.setScene({ id: 's', lit });
+    live.feed.setScene({ id: 's', lit });
     live.update();
     return sent;
   }

@@ -56,7 +56,7 @@ describe('a look-alike the players do not see', () => {
     expect(samePixels(s.frame(), reference.frame())).toBe(true);
     s.store.getState().setGMView(false);
     reference.store.getState().setGMView(false);
-    s.tokens.refreshPlayerSight();
+    s.audience.refresh();
     expect(samePixels(s.canvas(), reference.canvas())).toBe(true);
   });
 
@@ -136,7 +136,7 @@ describe('a scene loaded in session view', () => {
   it('is numbered by its own sight in the window and on the canvas, not by the sight kept from the scene before', async () => {
     const s = await build([A, B, C]);
     s.store.getState().setGMView(false);
-    s.tokens.refreshPlayerSight();
+    s.audience.refresh();
     // Until the load ends the lighting answers with the sight of the scene before, which saw all three places.
     s.store.getState().setMapLoading(true);
     const loaded = (spot: Spot, instanceNumber: number): TokenEntity => ({ kind: 'token', imagePath: '', size: 1, ...spot, instanceNumber }) as TokenEntity;
@@ -208,7 +208,7 @@ describe('rendering on change', () => {
       expect(renders).not.toHaveBeenCalled();
       s.tokens.getPlayerViewLayers(DEFAULT_SETTINGS.localPlayerView, s.lighting.perception);
       s.tokens.getPlayerViewLayers(DEFAULT_SETTINGS.localPlayerView, s.lighting.perception);
-      s.tokens.refreshPlayerSight();
+      s.audience.refresh();
       expect(hasPendingChanges(s.app.stage.renderGroup)).toBe(false);
       // A change still renders.
       hide(s, 'C', true);

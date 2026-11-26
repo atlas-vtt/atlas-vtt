@@ -26,7 +26,7 @@ import { resourceMaxRoute } from './resourceMax.ts';
 import { OwedBooks } from './owedBooks.ts';
 import { isWriting, ownBookOf, writeWriting, writingsIn } from './playerWritings.ts';
 import { bookUpdate, NO_QUESTS, RESEND, sentOf, type SentBook } from './sentBook.ts';
-import { StatblockShare } from './statblockShare.ts';
+import { readOnlySheetText, StatblockShare } from './statblockShare.ts';
 import { WORLD_MAP_PROBLEM_TEXT, WorldMaps, type WorldMapProblem } from './worldMap.ts';
 import { WorldMapForms } from './worldMapForms.ts';
 import type { WorldMapSign } from './worldMapGate.ts';
@@ -119,6 +119,7 @@ export class BookShare implements LootRecipientSource {
       changed: (path) => this.whileRunning(() => this.passes.of(this.characters.playersOfNote(path))),
       answered: (player, asSent) => this.whileRunning(() => this.resendStatblock(player, asSent)),
       owe: (player) => this.whileRunning(() => this.owed.owe(player)),
+      readOnly: (path, why) => this.whileRunning(() => ports.notice(readOnlySheetText(path, why))),
     });
     this.rests = new BookRests({
       rests: ports.rests, cards: ports.cards, randomId: () => ports.randomId(),

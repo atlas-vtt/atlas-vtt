@@ -1,4 +1,4 @@
-import type { SceneState, SceneStore } from './atlasView.ts';
+import type { ObservedStore, SceneState } from './atlasView.ts';
 import { showsPresented, type PresentedTab } from './presentedScene.ts';
 
 /**
@@ -10,8 +10,8 @@ import { showsPresented, type PresentedTab } from './presentedScene.ts';
  * scene is shown again. Atlas switches the active tab before it loads the next scene, so the hold begins
  * while the store still holds the presented one.
  */
-export class PresentedStore implements SceneStore {
-  private readonly real: SceneStore;
+export class PresentedStore implements ObservedStore {
+  private readonly real: ObservedStore;
   private presented: PresentedTab | null;
   private last: SceneState;
   private frozen: SceneState | null = null;
@@ -21,7 +21,7 @@ export class PresentedStore implements SceneStore {
   private readonly stops: (() => void)[];
 
   /** `real` shows the presented tab now; `onHold` runs as the hold begins, while writes still reach `real`. */
-  constructor(real: SceneStore, presented: PresentedTab, onHold: () => void) {
+  constructor(real: ObservedStore, presented: PresentedTab, onHold: () => void) {
     this.real = real;
     this.presented = presented;
     this.onHold = onHold;
@@ -37,6 +37,11 @@ export class PresentedStore implements SceneStore {
   /** Whether players are held on the last state they saw. */
   get held(): boolean {
     return this.frozen !== null;
+  }
+
+  /** The scene tab of the view Atlas presents, or null for none of its tabs. */
+  get presentedTabId(): string | null {
+    return this.presented?.tabId ?? null;
   }
 
   /** The level of a scene with several that Atlas presents (the eye); unset is the first. */

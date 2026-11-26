@@ -1,9 +1,10 @@
+import { getDomHost } from '../../host/dom';
 import type { Point } from '../../types/visionTypes';
 import { prefersReducedMotion } from '../../utils/motion';
+import { lerp } from '../../utils/math';
 import { ValueTransition } from '../utils/ValueTransition';
 import { MEASURE_MOTION } from './measurePresence';
 
-const lerp = (from: number, to: number, share: number): number => from + (to - from) * share;
 
 /** Whether `from` can become `to` point by point: the same number of points, and somewhere one of them differs. */
 export function morphs(from: readonly Point[], to: readonly Point[]): boolean {
@@ -31,7 +32,7 @@ export class MeasureMorph {
   /** Moves from `from` to `to`; false, with nothing drawn, where the two cannot morph (`morphs`) or motion is reduced. */
   start(from: readonly Point[], to: readonly Point[], ms: number = MEASURE_MOTION.enter.ms): boolean {
     this.stop();
-    if (!morphs(from, to) || prefersReducedMotion(document.body)) return false;
+    if (!morphs(from, to) || prefersReducedMotion(getDomHost().activeDocument().body)) return false;
     const start = from.map(({ x, y }) => ({ x, y }));
     const end = to.map(({ x, y }) => ({ x, y }));
     this.shown = start;

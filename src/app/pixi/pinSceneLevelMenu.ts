@@ -22,7 +22,7 @@ export function pinSceneLevelEntry(store: ViewAtlasStore, pin: NotePin, levels: 
   if (!levels || !hasLevels(levels)) return null;
   const chosen = pinSceneLevel(pin, levels);
   const set = (sceneLevel: string | undefined): void => {
-    if (sceneLevel !== pin.sceneLevel) store.getState().updateNotePin(pin.id, { sceneLevel });
+    if (sceneLevel !== pin.sceneLevel) store.getState().patchObject('pins', pin.id, { sceneLevel });
   };
   return {
     type: 'submenu',

@@ -1,16 +1,11 @@
 import type { App } from 'obsidian';
-import { runDungeonJob, type DungeonJob, type DungeonRendered, type DungeonWorkerMessage, type DungeonWorkerReply } from './dungeonJob';
+import type { DungeonJob, DungeonRendered, DungeonWorkerMessage, DungeonWorkerReply } from './dungeonJob';
 import DungeonWorker from './dungeonWorker?worker&inline';
-
-/** Runs a job in the window, for when no worker can start. */
-export type InThreadRunner = (job: DungeonJob) => Promise<DungeonRendered>;
 
 export interface DungeonWorkerClientOptions {
   createWorker: () => Worker;
-  /** Used when the worker cannot start. */
-  inThread?: InThreadRunner;
   jobTimeoutMs?: number;
-  /** Workers beside this one that draw thumbnails only, so a gallery is drawn in parallel. */
+  /** Workers beside this one that draw thumbnails and renders asked for aside, so a gallery or a map's floors are drawn in parallel. */
   helpers?: number;
   /** Stops the worker once it has been idle this long; the next job starts a new one. */
   idleMs?: number;
@@ -56,8 +51,9 @@ function closeImage(result: DungeonRendered): void {
  * still queued gives way to a newer one, and one already running is answered with null.
  * Thumbnails (the style gallery's and theme cards) run only while nothing else waits, and are
  * answered with null once their group is dropped; they go to whichever of this worker and its
- * helpers has the least to do. A worker that crashes or stops answering fails its job and is
- * started anew for the next.
+ * helpers has the least to do. A worker that cannot start, crashes or stops answering fails its
+ * job, and the next job starts a new one. The generator itself is bundled into the worker alone:
+ * importing it here would put a second copy of it into main.js.
  */
 export class DungeonWorkerClient {
   private static readonly instances = new WeakMap<App, DungeonWorkerClient>();
@@ -67,7 +63,6 @@ export class DungeonWorkerClient {
     if (!client) {
       client = new DungeonWorkerClient({
         createWorker: () => new DungeonWorker({ name: 'Atlas dungeons' }),
-        inThread: (job) => runDungeonJob(job),
         helpers: helperCount(),
       });
       DungeonWorkerClient.instances.set(app, client);
@@ -86,7 +81,7 @@ export class DungeonWorkerClient {
   private readonly queue: Pending[] = [];
   private timeout: number | null = null;
   private idle: number | null = null;
-  /** Made with the first thumbnail once this worker runs; none where dungeons are drawn in the window. */
+  /** Made with the first thumbnail once this worker runs. */
   private helpers: DungeonWorkerClient[] | null = null;
   private nextId = 1;
   private disposed = false;
@@ -100,6 +95,16 @@ export class DungeonWorkerClient {
     return result;
   }
 
+  /**
+   * Draws a dungeon on whichever of this worker and its helpers has the least to do, so renders
+   * asked for together are drawn at once (a map's floors); never dropped.
+   */
+  async renderAside(job: DungeonJob): Promise<DungeonRendered> {
+    const result = await this.leastLoaded().enqueue(job, 'render');
+    if (!result) throw new Error(STOPPED);
+    return result;
+  }
+
   /** Draws a preview, or answers null once a newer preview has replaced it. */
   preview(job: DungeonJob): Promise<DungeonRendered | null> {
     this.drop('preview');
@@ -108,10 +113,13 @@ export class DungeonWorkerClient {
 
   /** Draws a thumbnail of `group` once no render or preview waits, or answers null once dropped. */
   thumbnail(job: DungeonJob, group?: string): Promise<DungeonRendered | null> {
+    return this.leastLoaded().enqueue(job, 'thumbnail', group);
+  }
+
+  private leastLoaded(): DungeonWorkerClient {
     // Helpers first, so a tie leaves this worker free for the next preview
     const drawers = [...this.thumbnailHelpers(), this];
-    const least = drawers.reduce((best, drawer) => (drawer.load() < best.load() ? drawer : best));
-    return least.enqueue(job, 'thumbnail', group);
+    return drawers.reduce((best, drawer) => (drawer.load() < best.load() ? drawer : best));
   }
 
   /** Drops the thumbnails of `group` (every one without it) asked for and not yet answered: they answer null. */
@@ -170,13 +178,8 @@ export class DungeonWorkerClient {
     if (!next) return;
     this.running = next;
     try {
-      const worker = this.startedWorker();
-      if (!worker) {
-        this.runInThread(next);
-        return;
-      }
       const message: DungeonWorkerMessage = { id: next.id, job: next.job };
-      worker.postMessage(message);
+      this.startedWorker().postMessage(message);
     } catch (error) {
       this.settle(next, null, error instanceof Error ? error : new Error(String(error)));
       return;
@@ -184,16 +187,14 @@ export class DungeonWorkerClient {
     this.timeout = window.setTimeout(() => this.crash('Drawing the dungeon took too long.'), this.options.jobTimeoutMs ?? JOB_TIMEOUT_MS);
   }
 
-  /** The running worker, started where there is none; null when none can start. */
-  private startedWorker(): Worker | null {
+  /** The running worker, started where there is none. */
+  private startedWorker(): Worker {
     if (this.worker) return this.worker;
     let worker: Worker;
     try {
       worker = this.options.createWorker();
     } catch (error) {
-      if (!this.options.inThread) throw error;
-      console.warn('[Atlas] The dungeon worker could not start; dungeons are drawn in the window', error);
-      return null;
+      throw new Error('The dungeon worker could not start.', { cause: error });
     }
     worker.addEventListener('message', (event: MessageEvent<DungeonWorkerReply>) => this.answer(event.data));
     worker.addEventListener('error', (event: ErrorEvent) => {
@@ -203,13 +204,6 @@ export class DungeonWorkerClient {
     worker.addEventListener('messageerror', () => this.crash('Could not read the dungeon worker’s reply.'));
     this.worker = worker;
     return worker;
-  }
-
-  private runInThread(pending: Pending): void {
-    this.options.inThread!(pending.job).then(
-      (result) => this.settle(pending, result, null),
-      (error: unknown) => this.settle(pending, null, error instanceof Error ? error : new Error(String(error))),
-    );
   }
 
   private answer(reply: DungeonWorkerReply): void {

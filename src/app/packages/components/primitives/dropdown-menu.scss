@@ -202,6 +202,57 @@
   color: var(--text-faint);
 }
 
+/* Choice row: its label, and a segmented control of a few short choices at its end, on the text edge
+   where a switch would stand, its options as tall as a small button. A menu too narrow for both (a narrow
+   pane) gives its rows `--stack`: the control moves below its label rather than squeezing the label into a
+   column. Only there, since a wrapping row is sized by its widest part and would not widen its menu. */
+.atlas-dropdown-choice-row {
+  display: flex;
+  // On the options' baseline, so the name reads on one line with the choices
+  align-items: baseline;
+  justify-content: space-between;
+  gap: $spacing-xs $spacing-m;
+  padding-inline: var(--atlas-menu-text-inset, 0px);
+
+  .atlas-segmented {
+    flex-shrink: 0;
+    margin-inline: auto 0;
+  }
+
+  // Through the track, or `.btn`'s height, written later, wins
+  .atlas-segmented .atlas-segmented__option {
+    height: $button-height-s;
+  }
+}
+
+.atlas-dropdown-choice-row--stack {
+  flex-wrap: wrap;
+
+  .atlas-dropdown-choice-row__label {
+    min-width: min(6em, 100%);
+  }
+
+  // Wrapped below its name, the control spans the row from the name's edge
+  .atlas-segmented {
+    flex: 1 1 100%;
+    margin-inline: 0;
+  }
+
+  // A name stands closer to its own control than to the row above. Spelled out: the primitives are
+  // imported inside the plugin's scope, where `& + &` would repeat it and match nothing.
+  row-gap: 0;
+
+  + .atlas-dropdown-choice-row--stack {
+    margin-top: $spacing-s;
+  }
+}
+
+.atlas-dropdown-choice-row__label {
+  @include atlas-row-label;
+  font-size: $font-ui-small;
+  color: var(--text-normal);
+}
+
 /* A label of a section or control, on the menu's text edge */
 .atlas-dropdown-label {
   padding-inline: var(--atlas-menu-text-inset, 0px);

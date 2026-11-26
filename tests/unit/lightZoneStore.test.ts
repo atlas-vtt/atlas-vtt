@@ -23,13 +23,13 @@ describe('light zones in the store', () => {
   it('are map geometry: added, changed and deleted with one undo step each', () => {
     const { store, steps, undo } = setup();
     expect(store.getState().objects.lightZones).toBeUndefined();
-    const id = store.getState().addLightZone({ polygon: SQUARE, ambient: 0 });
+    const id = store.getState().addObject('lightZones', { polygon: SQUARE, ambient: 0 });
     expect(store.getState().objects.lightZones![id]).toEqual({ id, kind: 'light-zone', polygon: SQUARE, ambient: 0 });
     expect(steps()).toBe(1);
-    store.getState().updateLightZone(id, { ambient: 0.5, name: 'Cave' });
+    store.getState().patchObject('lightZones', id, { ambient: 0.5, name: 'Cave' });
     expect(store.getState().objects.lightZones![id]).toMatchObject({ ambient: 0.5, name: 'Cave' });
     expect(steps()).toBe(2);
-    store.getState().deleteLightZone(id);
+    store.getState().removeObjects([id]);
     expect(lightZoneList(store.getState().objects.lightZones)).toEqual([]);
     expect(steps()).toBe(3);
     undo();
@@ -38,21 +38,21 @@ describe('light zones in the store', () => {
 
   it('keep the order they were drawn in, later zones over earlier ones', () => {
     const { store } = setup();
-    const first = store.getState().addLightZone({ polygon: SQUARE, ambient: 0 });
-    const second = store.getState().addLightZone({ polygon: SQUARE, ambient: 1 });
+    const first = store.getState().addObject('lightZones', { polygon: SQUARE, ambient: 0 });
+    const second = store.getState().addObject('lightZones', { polygon: SQUARE, ambient: 1 });
     expect(lightZoneList(store.getState().objects.lightZones).map((zone) => zone.id)).toEqual([first, second]);
   });
 
   it('close the zone popover when its zone goes, and with the light popover open only one of the two shows', () => {
     const { store } = setup();
-    const id = store.getState().addLightZone({ polygon: SQUARE, ambient: 0 });
+    const id = store.getState().addObject('lightZones', { polygon: SQUARE, ambient: 0 });
     store.getState().openLightZonePopover(id);
     expect(store.getState().lightZonePopover).toBe(id);
-    store.getState().deleteLightZone(id);
+    store.getState().removeObjects([id]);
     expect(store.getState().lightZonePopover).toBeNull();
-    const light = store.getState().addLight({ x: 0, y: 0, emission: { bright: 1, dim: 2, color: '#ffffff', intensity: 1, animation: 'none' } });
+    const light = store.getState().addObject('lights', { x: 0, y: 0, emission: { bright: 1, dim: 2, color: '#ffffff', intensity: 1, animation: 'none' } });
     store.getState().openLightPopover(light);
-    store.getState().openLightZonePopover(store.getState().addLightZone({ polygon: SQUARE, ambient: 0 }));
+    store.getState().openLightZonePopover(store.getState().addObject('lightZones', { polygon: SQUARE, ambient: 0 }));
     expect(store.getState().lightPopover).toBeNull();
   });
 });

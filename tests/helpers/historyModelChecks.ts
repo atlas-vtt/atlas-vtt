@@ -3,6 +3,7 @@ import { create, type StoreApi } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { Draft } from 'immer';
 import { getHistoryStore, withHistory, type HistorySnapshot, type HistoryState } from '../../src/app/stores/history';
+import { UNDO_DEPTHS } from '../../src/app/stores/stateBranches';
 import { changedRec, changeList, hasIndexKeys, recOf, slotOf, type CollectionName, type Entry, type HistoryModel, type ModelState, type Value } from './historyModel';
 
 /** The store the model is held against: the history on immer, as the view store composes it. */
@@ -23,7 +24,7 @@ export interface OwnWrite { readonly where: CollectionName | WholeBranch; readon
 export interface Real { store: StoreApi<RealState>; history: () => HistoryState; own: OwnWrite[] }
 
 export function createReal(): Real {
-  const store = create<RealState>()(withHistory(immer<RealState>((set) => ({
+  const store = create<RealState>()(withHistory(UNDO_DEPTHS)(immer<RealState>((set) => ({
     objects: { tokens: {} }, grid: null, background: null, widgetValues: {}, exploredEdits: 0, notTracked: 0, apply: (recipe) => set(recipe),
   }))));
   const history = getHistoryStore(store)!;

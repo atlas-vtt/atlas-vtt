@@ -8,6 +8,7 @@ import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { NotePreviewUIManager } from '../../src/app/services/NotePreviewUIManager';
 import { StatblockPreviewWindow } from '../../src/app/services/StatblockPreviewWindow';
 import type { ViewAtlasStore } from '../../src/app/storeFactory';
+import { createUILayers } from '../../src/app/services/uiLayers';
 
 vi.mock('../../src/app/services/FantasyStatblocksService', () => ({
   hasCreatureForNotePath: (): boolean => true,
@@ -124,6 +125,15 @@ describe('NotePreviewUIManager statblock previews', () => {
     act(() => { vi.runOnlyPendingTimers(); });
     expect(statblockProps).not.toHaveLength(0);
     expect(lastContext()).toBeUndefined();
+  });
+
+  it("opens a token's statblock in its map's note preview layer, below the map's overlays", () => {
+    const viewEl = document.body.createDiv();
+    const layers = createUILayers(viewEl);
+    manager.setViewElement(viewEl);
+    act(() => { hoverToken(eventBus); });
+    act(() => { vi.runOnlyPendingTimers(); });
+    expect(layers.notePreviews.querySelector('.atlas-statblock-preview-window')).not.toBeNull();
   });
 
   it('opens a statblock from a list without a scene', () => {

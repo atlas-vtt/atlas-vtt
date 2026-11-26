@@ -3,7 +3,7 @@ import { parseGmMessage } from '../../../../src/app/online/protocol/index.ts';
 import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import type { SceneLevel } from '../../../../src/app/types/sceneLevelTypes';
 import { describe, expect, it } from 'vitest';
-import { EXPLORED_INTERVAL_MS } from '../../../../src/app/online/gm/InputShare.ts';
+import { EXPLORED_INTERVAL_MS } from '../../../../src/app/online/gm/ExploredShare.ts';
 import { sceneState, shareHarness, type ShareHarness } from './shareHarness.ts';
 
 type Explored = Extract<GmMessage, { t: 'explored' }>;

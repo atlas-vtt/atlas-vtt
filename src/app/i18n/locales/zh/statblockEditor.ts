@@ -7,7 +7,6 @@ export const statblockEditor: Translation = {
   'statblockEditor.aliases': '别名',
   'statblockEditor.allTemplates': '所有模板',
   'statblockEditor.apply': '应用',
-  'statblockEditor.autoLayout': '以 Atlas 的字段布局显示',
   'statblockEditor.beingSaved': '模板正在保存。',
   'statblockEditor.blank': '空白',
   'statblockEditor.builtInDetail': '内置',

@@ -15,7 +15,7 @@ function createStore(): { store: ViewAtlasStore; history: () => HistoryState } {
   return { store, history: () => history.getState() };
 }
 
-const addWall = (store: ViewAtlasStore, x: number): string => store.getState().addWall({ type: 'solid', p1: { x, y: 0 }, p2: { x, y: 100 }, closed: true });
+const addWall = (store: ViewAtlasStore, x: number): string => store.getState().addObject('walls', { type: 'solid', p1: { x, y: 0 }, p2: { x, y: 100 }, closed: true });
 const walls = (store: ViewAtlasStore): number => Object.keys(store.getState().objects.walls).length;
 /** The store as undo and redo see it: how many walls, and how many memory edits. */
 const at = (store: ViewAtlasStore): string => `${walls(store)} walls, ${store.getState().exploredEdits} edits`;

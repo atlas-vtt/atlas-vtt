@@ -77,8 +77,8 @@ function MeasurePopover({ measureId }: { measureId: string }): React.ReactElemen
   useFocusWhileOpen(ref, present);
 
   if (!measure) return null;
-  const update = (changes: MeasureChanges): void => store.getState().updateMeasure(measure.id, changes);
-  const remove = (): void => store.getState().deleteMeasure(measure.id);
+  const update = (changes: MeasureChanges): void => store.getState().patchObject('measures', measure.id, changes);
+  const remove = (): void => store.getState().removeObjects([measure.id]);
   const area = measure.shape !== 'ruler';
 
   return (
@@ -144,7 +144,7 @@ function LineWidth({ measure }: { measure: KeptMeasure }): React.ReactElement {
     return settings.mode === 'abstract' ? rangeBandName(cells, []) : formatDistance(cells, settings);
   });
   const change = (next: number): void => {
-    store.getState().updateMeasure(measure.id, { width: next * size });
+    store.getState().patchObject('measures', measure.id, { width: next * size });
     store.getState().setMeasureTool({ lineWidth: next });
   };
   return (

@@ -109,4 +109,6 @@ export const armariumListing: Translation = {
   'armariumListing.problem.tooManyTags': '最多 {count} 个标签。',
   'armariumListing.problem.tagTwice': '每个标签只能用一次。',
   'armariumListing.problem.tagsExclusive': '{tags} 中只能选一个。',
+  'armariumListing.kind.music': '音乐',
+  'armariumListing.kindLine.music': '用于声音页面的专辑和曲目。',
 };

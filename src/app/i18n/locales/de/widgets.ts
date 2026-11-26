@@ -17,6 +17,7 @@ export const widgets: Translation = {
   'widgets.name': 'Name des Widgets',
   'widgets.new': 'Neues Widget',
   'widgets.onlyWhereOn': 'Nur zeigen, wo eingeschaltet',
+  'widgets.reorder': 'Ziehen zum Sortieren',
   'widgets.segments': 'Segmente',
   'widgets.showAll': 'Alle Widgets zeigen',
   'widgets.showCount': 'Anzahl zeigen',

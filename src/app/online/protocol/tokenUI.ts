@@ -14,6 +14,8 @@ export const MAX_INSTANCE_NUMBER = 10_000;
 export const CONDITION_ICON_PATTERN = /^[a-z0-9-]{1,40}$/;
 /** The longest text a condition badge shows instead of an icon (the initial of its name). */
 export const MAX_CONDITION_TEXT = 8;
+/** The longest condition name sent, which the card beside a hovered token shows. */
+export const MAX_CONDITION_NAME = 80;
 
 const HEX_COLOUR = /^#[0-9a-f]{6}$/;
 const DIRECTIONS: readonly unknown[] = ['drains', 'fills', 'static'];
@@ -38,6 +40,8 @@ export interface SharedCondition {
   readonly colour: string;
   readonly glyph: { readonly kind: 'icon'; readonly icon: string } | { readonly kind: 'text'; readonly text: string };
   readonly value: number | null;
+  /** Its name, without the number, for the card beside a hovered token. An older GM sends none; an unnamed condition has none. */
+  readonly name?: string;
 }
 
 /** What Atlas's player window draws on and around a creature token besides its artwork. */
@@ -77,7 +81,10 @@ export function parseCondition(value: unknown): SharedCondition | null {
   if (!isRecord(value) || typeof value.colour !== 'string' || !HEX_COLOUR.test(value.colour)) return null;
   const glyph = parseGlyph(value.glyph);
   if (glyph === null || (value.value !== null && !isValue(value.value))) return null;
-  return { colour: value.colour, glyph, value: value.value };
+  // A name that cannot be read is left out; the badge stays
+  const { name } = value;
+  const named = typeof name === 'string' && name.length > 0 && name.length <= MAX_CONDITION_NAME;
+  return { colour: value.colour, glyph, value: value.value, ...(named && { name }) };
 }
 
 function parseList<T>(value: unknown, max: number, parse: (entry: unknown) => T | null): T[] | null {

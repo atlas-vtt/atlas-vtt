@@ -158,6 +158,16 @@ if (typeof Node !== 'undefined' && !('win' in Node.prototype)) {
     win: { configurable: true, get(this: Node) { return this.ownerDocument?.defaultView ?? window; } },
   });
 }
+// Obsidian's cross-window `instanceof` is on every node, a text node too, and an event names its target as a node.
+if (typeof Node !== 'undefined' && !('instanceOf' in Node.prototype)) {
+  Object.defineProperty(Node.prototype, 'instanceOf', { configurable: true, writable: true, value: helpers.instanceOf });
+}
+if (typeof UIEvent !== 'undefined' && !('targetNode' in UIEvent.prototype)) {
+  Object.defineProperty(UIEvent.prototype, 'targetNode', {
+    configurable: true,
+    get(this: UIEvent) { return this.target instanceof Node ? this.target : null; },
+  });
+}
 
 // jsdom implements neither the Web Animations API nor media queries; Electron has both.
 if (typeof Element !== 'undefined' && typeof Element.prototype.animate !== 'function') {

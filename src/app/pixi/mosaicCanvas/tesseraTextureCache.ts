@@ -25,6 +25,8 @@ export interface TesseraTextureCacheOptions {
   requestRender: () => void;
   budgetBytes?: number;
   uploadsPerFrame?: number;
+  /** While true, every tessera that arrived uploads in the next frame: nothing is drawn meanwhile whose frames the uploads would slow. */
+  uploadAtOnce?: () => boolean;
 }
 
 interface Entry {
@@ -177,8 +179,9 @@ export class TesseraTextureCache {
   private readonly upload = (): void => {
     if (this.uploads.size === 0) return;
     const done: string[] = [];
+    const cap = this.options.uploadAtOnce?.() ? Infinity : this.uploadsPerFrame;
     for (const key of this.uploads) {
-      if (done.length >= this.uploadsPerFrame) break;
+      if (done.length >= cap) break;
       done.push(key);
     }
     for (const key of done) {

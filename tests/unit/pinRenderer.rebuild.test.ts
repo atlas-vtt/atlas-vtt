@@ -46,7 +46,7 @@ describe('PinRenderer rebuilds', () => {
     const pinId = store.getState().addNotePin(10, 20, 'a.md');
     const before = pinGraphics(renderer, 0);
 
-    store.getState().updateNotePin(pinId, { x: 50, y: 60 });
+    store.getState().patchObject('pins', pinId, { x: 50, y: 60 });
 
     const group = renderer.getPinContainer().children[0];
     expect(group?.position.x).toBe(50);
@@ -62,7 +62,7 @@ describe('PinRenderer rebuilds', () => {
     const firstBefore = pinGraphics(renderer, 0);
     const secondBefore = pinGraphics(renderer, 1);
 
-    store.getState().updateNotePin(first, { notePath: 'b.md' });
+    store.getState().patchObject('pins', first, { notePath: 'b.md' });
 
     expect(pinGraphics(renderer, 0)).not.toBe(firstBefore);
     expect(firstBefore?.destroyed).toBe(true);
@@ -74,7 +74,7 @@ describe('PinRenderer rebuilds', () => {
     const pinId = store.getState().addNotePin(10, 20, 'a.md');
     const group = renderer.getPinContainer().children[0];
 
-    store.getState().deleteMapObject('pin', pinId);
+    store.getState().removeObjects([pinId]);
 
     expect(renderer.getPinContainer().children).toHaveLength(0);
     expect(group?.destroyed).toBe(true);

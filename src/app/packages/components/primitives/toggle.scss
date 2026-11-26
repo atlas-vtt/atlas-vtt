@@ -91,6 +91,11 @@ $toggle-gap: $surface-inset;
   border: $border-width-s solid var(--background-modifier-border);
   border-radius: $control-inset-radius;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
+
+  // The glyph and the track's colour say where it stands; the slide is decoration
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 }
 
 .atlas-toggle__thumb--off {

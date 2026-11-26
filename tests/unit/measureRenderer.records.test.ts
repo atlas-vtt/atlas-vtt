@@ -114,7 +114,7 @@ describe('MeasureRenderer records', () => {
     const [id] = Object.keys(s.store.getState().objects.measures ?? {});
     expect(s.store.getState().objects.measures?.[id!]?.hidden).toBe(true);
     expect(s.measure.measurements.get().kept).toEqual([]);
-    s.store.getState().updateMeasure(id!, { hidden: undefined });
+    s.store.getState().patchObject('measures', id!, { hidden: undefined });
     expect(s.measure.measurements.get().kept.map((measure) => measure.id)).toEqual([id]);
   });
 
@@ -177,6 +177,7 @@ describe('MeasureRenderer records', () => {
       footprints: () => [{ id: 'goblin', x: 100, y: 100, radius: 30 }],
       seenAtStart: () => () => false,
       seenOnCanvas: () => null,
+      onChange: () => () => undefined,
     };
     s.pointer('pointerdown', 100, 100);
     s.pointer('pointermove', 300, 100);

@@ -1,3 +1,4 @@
+import { playerAudience, withPlayerAudience } from './playerAudienceFields';
 import { isSocket, slottedResources } from './resourceSlots';
 import { MAX_RESOURCES, type ResourceDefinition } from './resourceTypes';
 
@@ -100,6 +101,7 @@ export function parseResourceDefinition(raw: unknown): ResourceDefinition | null
     // A static value is never spent, so it defeats nothing
     ...(r.defeatedWhenSpent === true && r.direction !== 'static' && { defeatedWhenSpent: true }),
     visibleToPlayers: r.visibleToPlayers === true,
+    ...((r.visibleOnSide === 'players' || r.visibleOnSide === 'opponents') && { visibleOnSide: r.visibleOnSide }),
     ...(isSocket(r.slot) && { slot: r.slot }),
   };
 }
@@ -137,6 +139,6 @@ export function sameResourceDefinitions(
 export function keepingPlayerVisibility(next: readonly ResourceDefinition[], current: readonly ResourceDefinition[]): ResourceDefinition[] {
   return next.map((resource) => {
     const kept = current.find(({ key }) => key === resource.key);
-    return kept ? { ...resource, visibleToPlayers: kept.visibleToPlayers } : resource;
+    return kept ? withPlayerAudience(resource, playerAudience(kept)) : resource;
   });
 }

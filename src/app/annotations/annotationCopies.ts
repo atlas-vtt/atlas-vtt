@@ -4,10 +4,11 @@
  */
 
 import type { DrawingStroke, TextElement } from '../types';
+import { newId } from '../utils/ids';
 import { annotationOrder } from './annotationList';
 import { unlockedCopy } from './annotationLock';
 
-export const newGroupId = (): string => `group_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+export const newGroupId = (): string => newId('group');
 
 /**
  * `drawings` and `texts` as copies put down together: in the order their originals lay in among

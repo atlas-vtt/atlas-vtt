@@ -5,7 +5,7 @@ export const fog = {
   'fog.modes': 'Fog',
   'fog.tools': 'Fog shapes and actions',
   'fog.fog': 'Fog',
-  'fog.fogTip': 'Hold Alt to erase instead. Right-click fog to reveal or delete it',
+  'fog.fogTip': 'Hold Alt to erase. Right-click fog to reveal or delete it',
   'fog.eraser': 'Eraser',
   'fog.eraserTip': 'Hold Alt to add fog instead',
   'fog.reveal': 'Reveal',

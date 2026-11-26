@@ -1,5 +1,6 @@
 import React from 'react';
-import { Globe, MapPin, Pencil, Trash2, Users } from 'lucide-react';
+import { Reorder, useDragControls } from 'framer-motion';
+import { Globe, GripVertical, MapPin, Pencil, Trash2, Users } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
 import { Button } from '../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
@@ -19,6 +20,10 @@ interface WidgetListItemProps {
   onToggleHere: () => void;
   onToggleEveryScene: () => void;
   onDelete: () => void;
+  /** The row was let go after a drag. */
+  onDragEnd: () => void;
+  /** Moves the widget `step` places (Alt with an arrow key on its grip). */
+  onMove: (step: number) => void;
 }
 
 function whereShown(everyScene: boolean, active: boolean): string {
@@ -50,13 +55,49 @@ function ToggleButton({ label, pressed, onClick, children }: ToggleButtonProps):
   );
 }
 
-/** One widget of the widget settings list, with where it is switched on and its controls. */
+function moveStep(event: React.KeyboardEvent): number {
+  if (!event.altKey) return 0;
+  if (event.key === 'ArrowUp') return -1;
+  return event.key === 'ArrowDown' ? 1 : 0;
+}
+
+/**
+ * One widget of the widget settings list, with where it is switched on and its controls.
+ * Its grip drags it to another place, which is the order of the widget bar.
+ */
 export function WidgetListItem({
-  widget, active, inCollection, onEdit, onUpdate, onToggleHere, onToggleEveryScene, onDelete,
+  widget, active, inCollection, onEdit, onUpdate, onToggleHere, onToggleEveryScene, onDelete, onDragEnd, onMove,
 }: WidgetListItemProps): React.ReactElement {
   const everyScene = isCollectionWidget(widget);
+  const dragControls = useDragControls();
   return (
-    <div className={cn('atlas-command-palette-widget-item', !active && 'atlas-command-palette-widget-item--off')}>
+    <Reorder.Item
+      as="div"
+      value={widget.id}
+      layout="position"
+      dragListener={false}
+      dragControls={dragControls}
+      onDragEnd={onDragEnd}
+      className={cn('atlas-command-palette-widget-item', !active && 'atlas-command-palette-widget-item--off')}
+    >
+      <LabelTooltip label={t('widgets.reorder')}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="atlas-command-palette-icon-btn atlas-command-palette-widget-grip"
+          aria-label={t('widgets.reorder')}
+          onPointerDown={(event) => dragControls.start(event)}
+          onKeyDown={(event) => {
+            const step = moveStep(event);
+            if (step === 0) return;
+            event.preventDefault();
+            event.stopPropagation();
+            onMove(step);
+          }}
+        >
+          <GripVertical />
+        </Button>
+      </LabelTooltip>
       <WidgetIconGlyph icon={widget.icon} size={20} {...(widget.color !== undefined ? { color: widget.color } : {})} />
       <div className="atlas-command-palette-widget-info">
         <div className="atlas-command-palette-widget-name">{widget.label}</div>
@@ -105,6 +146,6 @@ export function WidgetListItem({
           </Button>
         </LabelTooltip>
       </div>
-    </div>
+    </Reorder.Item>
   );
 }

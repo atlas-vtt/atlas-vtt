@@ -11,7 +11,7 @@ import type { RecordLayout, StoredRecord } from '../../services/recordFiles/reco
 import { JOIN_CODE_PATTERN, MAX_CAMPAIGN_PLAYERS, PLAYER_ID_PATTERN, playerName, TABLE_CODE_PATTERN } from '../../online/protocol/index';
 import { newJoinCode } from '../../utils/joinCode';
 import { campaignFileLayout } from '../campaignFileLayout';
-import { isRecord } from '../campaignValues';
+import { isRecord } from '../../utils/guards';
 
 export const PLAYERS_FILE = 'players.json';
 /** The format this Atlas writes; a file of a later one is read and never written. */

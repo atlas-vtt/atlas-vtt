@@ -63,6 +63,10 @@ export interface UISlice extends ViewUIState {
   closeDungeonGenerator: (id: number) => void;
   setRoofsHidden: (hidden: boolean) => void;
   setSelectMore: (on: boolean) => void;
+  /** The tracker names `entryId`'s conditions (`conditionsShownEntry`). */
+  showCombatantConditions: (entryId: string) => void;
+  /** It stops naming `entryId`'s; one opened since stays. */
+  hideCombatantConditions: (entryId: string) => void;
 }
 
 /** Default state — all panels closed. `drawTool` is what the Draw tool starts with: its defaults, or what the device remembered. */
@@ -99,6 +103,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
   | 'dungeonGenerator'
   | 'roofsHidden'
   | 'selectMore'
+  | 'conditionsShownEntry'
 > {
   return {
     isGridSettingsOpen: false,
@@ -132,6 +137,7 @@ export function createInitialUIState(drawTool: DrawToolChoices = DEFAULT_DRAW_TO
     dungeonGenerator: null,
     roofsHidden: false,
     selectMore: false,
+    conditionsShownEntry: null,
   };
 }
 
@@ -179,6 +185,8 @@ export function createUIActions(
   | 'closeDungeonGenerator'
   | 'setRoofsHidden'
   | 'setSelectMore'
+  | 'showCombatantConditions'
+  | 'hideCombatantConditions'
 > {
   return {
     setGridSettingsOpen: (open) => set((draft) => { draft.isGridSettingsOpen = open; }),
@@ -268,5 +276,9 @@ export function createUIActions(
     }),
     setRoofsHidden: (hidden) => set((draft) => { draft.roofsHidden = hidden; }),
     setSelectMore: (on) => set((draft) => { draft.selectMore = on; }),
+    showCombatantConditions: (entryId) => set((draft) => { draft.conditionsShownEntry = entryId; }),
+    hideCombatantConditions: (entryId) => set((draft) => {
+      if (draft.conditionsShownEntry === entryId) draft.conditionsShownEntry = null;
+    }),
   };
 }

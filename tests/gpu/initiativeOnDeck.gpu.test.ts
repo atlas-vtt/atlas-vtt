@@ -1,7 +1,10 @@
 import '../setup/obsidianDom';
 import '../../styles/main.scss';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { playerInitiativeList, renderPlayerInitiative, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import type { PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import type { TokenEntity } from '../../src/app/types';
+import { playersListOf } from '../helpers/playersInitiative';
+import { renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 
 const PORTRAIT = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><circle cx="32" cy="32" r="30" fill="teal"/></svg>');
 const SLACK = 0.5;
@@ -25,12 +28,8 @@ function draw(active: number, hidden: number[] = []): { list: HTMLElement; cards
     tokenId: `token-${index}`, name: `Combatant ${index}`, initiative: 20 - index,
     imagePath: PORTRAIT, order: index, isActive: index === active,
   }));
-  const list = playerInitiativeList(
-    { entries, isActive: true, round: 1 },
-    (_, index) => hidden.includes(index) ? null : { hp: null, showRing: false, side: 'opponents' },
-    { mode: 'turn-order', roll: '1d20', firstSide: 'players' },
-    false,
-  );
+  const tokens = Object.fromEntries(entries.map(({ tokenId }, index): [string, TokenEntity] => [tokenId!, { id: tokenId!, kind: 'token', x: 0, y: 0, imagePath: PORTRAIT, showRing: false, ...(hidden.includes(index) ? { isHidden: true } : {}) }]));
+  const list = playersListOf({ entries, isActive: true, round: 1 }, tokens, { initiative: { mode: 'turn-order', roll: '1d20', firstSide: 'players' } });
   renderPlayerInitiative(host, list, { showNames: true, mapShowsNameplates: true, portraitSrc: (src) => src });
   return {
     list: host.querySelector<HTMLElement>('.atlas-initiative-panel__list')!,

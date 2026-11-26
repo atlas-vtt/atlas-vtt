@@ -58,11 +58,14 @@ export async function verifiedFileHashes(zip: JSZip, files: readonly BundleFile[
     if (file.sha256 && file.sha256 !== hash) damaged.push(file);
     sourceHashes.set(file.vaultPath, hash);
   }
-  if (damaged.length > 0) {
-    const names = damaged.slice(0, 3).map((file) => baseName(file.vaultPath)).join(', ');
-    throw new Error(t('bundle.checksum', { count: damaged.length, names: `${names}${damaged.length > 3 ? ', …' : ''}` }));
-  }
+  if (damaged.length > 0) throw checksumError(damaged);
   return sourceHashes;
+}
+
+/** Why a bundle whose files do not match their checksums is refused, naming the first few. */
+export function checksumError(damaged: readonly BundleFile[]): Error {
+  const names = damaged.slice(0, 3).map((file) => baseName(file.vaultPath)).join(', ');
+  return new Error(t('bundle.checksum', { count: damaged.length, names: `${names}${damaged.length > 3 ? ', …' : ''}` }));
 }
 
 /** A read collection bundle whose manifest is sound and whose files match their checksums. */

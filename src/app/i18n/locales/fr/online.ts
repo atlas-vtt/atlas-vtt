@@ -171,6 +171,8 @@ export const online: Translation = {
   'online.unmark': 'Retirer la marque',
   'online.update': 'Mettre à jour',
   'online.updateAfter': 'Mettre à jour Atlas après cette session',
+  'online.sheet.templateMissing': 'Les joueurs ne peuvent pas modifier la fiche {note} : son modèle est introuvable. Choisissez un modèle pour la note.',
+  'online.sheet.templateNewer': 'Les joueurs ne peuvent pas modifier la fiche {note} : son modèle indique qu\'il a été créé avec un Atlas plus récent, Atlas se contente donc de le lire.',
   'online.worldMap.missing': 'Atlas Online ne peut pas envoyer la carte du monde : son fichier image est introuvable.',
   'online.worldMap.tooLarge': 'Atlas Online ne peut pas envoyer la carte du monde : son image dépasse 95 Mo.',
   'online.worldMap.unreadable': 'Atlas Online ne peut pas envoyer la carte du monde : son image n\'est pas un PNG, JPEG, WebP, GIF ou AVIF que les joueurs peuvent ouvrir.',
@@ -181,4 +183,9 @@ export const online: Translation = {
   'online.mapUnreadable': 'L\'image de carte de cette scène ne peut pas être envoyée aux joueurs.',
   'online.fogTooMuch': 'Cette carte a trop de brouillard pour les joueurs en ligne. Ils la voient couverte tant que vous n\'en effacez pas une partie.',
   'online.assetsFailed': 'Un fichier n\'a pas pu être partagé avec les joueurs.',
+  'online.doorAsk': '{player} demande à ouvrir une porte.',
+  'online.doorAskShow': 'Voir',
+  'online.doorAskHeading': '{player} demande à ouvrir cette porte',
+  'online.doorAskAllow': 'L\'ouvrir',
+  'online.doorAskDeny': 'La laisser fermée',
 };

@@ -6,6 +6,8 @@ export interface DomHost {
   createVideo(doc: Document): HTMLVideoElement;
   ownerWindow(node: Node): Window;
   activeDocument(): Document;
+  /** The main window's document, where Atlas' map views and the UI around them live. */
+  mainDocument(): Document;
 }
 
 let current: DomHost | undefined;

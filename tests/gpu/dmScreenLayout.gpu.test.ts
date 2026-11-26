@@ -112,6 +112,15 @@ describe('the DM screen beside open sidebars', () => {
     expect(scale('.atlas-dm-screen')).toBe(scale('.atlas-ui'));
   });
 
+  it('clips a turning page along the axis the pages slide on only, so no shadow above the panes is cut for the turn', async () => {
+    await openIn({ width: 1600, height: 1000 }, { left: 0, width: 1600 });
+    const stage = document.querySelector<HTMLElement>('.atlas-dm-screen-stage')!;
+    expect(getComputedStyle(stage).overflowY).toBe('visible');
+    stage.setAttribute('data-turning', 'true');
+    expect(getComputedStyle(stage).overflowX).toBe('clip');
+    expect(getComputedStyle(stage).overflowY).toBe('visible');
+  });
+
   it('rests without a transform, so its text is not composited on half pixels', async () => {
     // A view whose centre lies on a half pixel: a `translate(-50%, -50%)` left the DM screen's layer
     // there after opening, which blurs its text on screens of device pixel ratio 1 (#573).

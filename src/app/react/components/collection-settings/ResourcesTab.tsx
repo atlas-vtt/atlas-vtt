@@ -69,8 +69,10 @@ export function ResourcesTab({ resources, onChange, fieldSuggestions }: Resource
     setSelected(slot);
   };
 
-  const change = (partial: Partial<ResourceDefinition>): void => {
-    onChange(withSockets(resources).map((resource) => (resource.slot === selected ? { ...resource, ...partial } : resource)));
+  /** Changes the selected resource: the fields given, or what `edit` makes of it (which may also remove fields). */
+  const change = (edit: Partial<ResourceDefinition> | ((resource: ResourceDefinition) => ResourceDefinition)): void => {
+    const edited = (resource: ResourceDefinition): ResourceDefinition => (typeof edit === 'function' ? edit(resource) : { ...resource, ...edit });
+    onChange(withSockets(resources).map((resource) => (resource.slot === selected ? edited(resource) : resource)));
   };
 
   const remove = (): void => {

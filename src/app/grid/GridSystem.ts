@@ -389,7 +389,6 @@ export class GridSystem implements UnlitGrid {
     this.cellNumberLabels?.setOpacity(opacity);
   }
 
-  /** Return current options */
   public getOptions(): Readonly<GridOptions> {
     return this.options;
   }
@@ -456,12 +455,10 @@ export class GridSystem implements UnlitGrid {
     return snapTokenCenter({ x, y }, tokenSize, type, size, (point) => this.snapToCellCenter(point.x, point.y));
   }
 
-  /** Get current grid size */
   public get gridSize(): number {
     return this.options.size;
   }
 
-  /** Set grid type */
   public setGridType(type: GridType): void {
     const oldType = this.options.type;
     this.updateOptions({ type });
@@ -505,7 +502,6 @@ export class GridSystem implements UnlitGrid {
     }
   }
 
-  /** Set grid scale */
   public setGridScale(scale: number): void {
     this.updateOptions({ scale });
   }
@@ -518,7 +514,6 @@ export class GridSystem implements UnlitGrid {
     }
   }
 
-  /** Set grid opacity */
   public setGridOpacity(opacity: number): void {
     this.updateOptions({ alpha: opacity });
   }

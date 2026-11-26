@@ -2,7 +2,7 @@ import { brightThresholdOf, litThresholdOf } from '../lighting/sceneLightingOpti
 import type { LightLevel } from '../types/senseTypes';
 import type { Point } from '../types/visionTypes';
 import type { AmbientLight, LightReach } from './sight';
-import { pointInPolygon } from './visibility';
+import { insidePolygon } from './polygonIndex';
 import { areaDistance } from './areaReach';
 import { inBox, reachBox } from './polygonBounds';
 import { reflectedAt } from './reflectedLight';
@@ -21,7 +21,7 @@ export function ambientAt(point: Point, light: AmbientLight): number {
   const { zones } = light;
   if (zones) {
     for (let i = zones.length - 1; i >= 0; i--) {
-      if (pointInPolygon(point, zones[i]!.polygon)) return zones[i]!.ambient;
+      if (insidePolygon(point, zones[i]!.polygon)) return zones[i]!.ambient;
     }
   }
   return light.ambient;
@@ -69,7 +69,7 @@ function reachesRadius(distance: number, radius: number): boolean {
 function directLevel(point: Point, light: LightReach): LightLevel {
   const distance = light.parts ? areaDistance(point, light, light.dim) : Math.hypot(point.x - light.origin.x, point.y - light.origin.y);
   const beyond = distance > 0 ? reachesRadius(distance, light.dim) : distance > light.dim;
-  if (beyond || (!light.parts && !pointInPolygon(point, light.polygon))) return 'dark';
+  if (beyond || (!light.parts && !insidePolygon(point, light.polygon))) return 'dark';
   return distance <= light.bright ? 'bright' : 'dim';
 }
 
@@ -81,7 +81,7 @@ export function darknessAt(point: Point, lights: readonly Pick<LightReach, 'orig
   let priority = -Infinity;
   for (const light of lights) {
     if (!light.darkness || (light.priority ?? 0) <= priority) continue;
-    if (!reachesRadius(Math.hypot(point.x - light.origin.x, point.y - light.origin.y), light.dim) && pointInPolygon(point, light.polygon)) priority = light.priority ?? 0;
+    if (!reachesRadius(Math.hypot(point.x - light.origin.x, point.y - light.origin.y), light.dim) && insidePolygon(point, light.polygon)) priority = light.priority ?? 0;
   }
   return priority;
 }

@@ -9,10 +9,11 @@ import { setStatblockGate } from '../../../../src/app/online/gm/book/statblockGa
 import type { RestSummary } from '../../../../src/app/recovery/restEvents';
 import { checkRest, type RestOffer, type RestRequest } from '../../../../src/app/recovery/restOffer';
 import type { TemplateBlock, TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
-import { FakeSocket, workspace } from './fakeTable.ts';
-import { ANA, BEN, cave, delivered, ofType, openTable, type Delivered } from './bookTableHarness.ts';
+import { workspace } from './fakeTable.ts';
+import { ANA, BEN, cave, openTable } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 import { StatblockNotes, templateOf } from './statblockNotes.ts';
+import type { Heard } from './playerPages.ts';
 
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {}, Platform: { isDesktopApp: true, isMobile: false, isPhone: false } }));
 vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
@@ -91,17 +92,17 @@ class FakeRests implements RestGate {
 }
 
 /** The statblocks a player's page was sent, as it reads them, in order. */
-function statblocks(messages: readonly Delivered[], player: string): (BookStatblock | null)[] {
-  return ofType(messages, 'book-statblock').filter(({ to }) => to === player).map(({ body }) => {
-    const read = parseGmMessage(JSON.parse(JSON.stringify(body)));
+function statblocks(heard: Heard, player: string): (BookStatblock | null)[] {
+  return (heard[player] ?? []).filter(({ t }) => t === 'book-statblock').map((body) => {
+    const read = parseGmMessage(body);
     if (read?.t !== 'book-statblock') throw new Error('a statblock the page would not read');
     return read.statblock;
   });
 }
 
 /** The answers to rest requests a player was sent, as `request: outcome`. */
-const answers = (messages: readonly Delivered[], player: string): string[] =>
-  ofType(messages, 'book-rest-answer').filter(({ to }) => to === player).map(({ body }) => `${String(body.request)}: ${String(body.outcome)}`);
+const answers = (heard: Heard, player: string): string[] =>
+  (heard[player] ?? []).flatMap((body) => (body.t === 'book-rest-answer' ? [`${body.request}: ${body.outcome}`] : []));
 
 const REQUEST = 'a'.repeat(24);
 const SECOND = 'b'.repeat(24);
@@ -112,8 +113,6 @@ describe('rests a player asks the GM for at a running table', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
     vi.stubGlobal('window', globalThis);
-    vi.stubGlobal('WebSocket', FakeSocket);
-    FakeSocket.all = [];
     workspace.leaves = [];
     workspace.presented = null;
     const notes = new StatblockNotes().install();
@@ -136,29 +135,29 @@ describe('rests a player asks the GM for at a running table', () => {
     const table = await openTable(new BookShelf(), PLAYERS);
     table.tab.store.set(cave({ brannoch: { statblockPath: BRANNOCH_NOTE, assetId: BRANNOCH_PC }, mira: { statblockPath: MIRA_NOTE, assetId: MIRA_NPC } }));
     await advance(BOOK_POLL_MS);
-    const characterId = statblocks(delivered(table.socket), ANA).at(-1)?.characterId;
+    const characterId = statblocks(table.pages.heard(), ANA).at(-1)?.characterId;
     if (characterId === undefined) throw new Error('Brannoch\'s statblock names no character');
     return { ...table, characterId };
   }
 
   it('puts the recovery buttons on the statblock of a player\'s own player character only', async () => {
-    const { online, socket, characterId } = await restingTable();
-    const ana = statblocks(delivered(socket), ANA).at(-1);
+    const { online, pages, characterId } = await restingTable();
+    const ana = statblocks(pages.heard(), ANA).at(-1);
     expect(characterId).toMatch(/^[0-9a-f]{24}$/);
     expect(ana?.recovery).toEqual([{ id: 'short', name: 'Short rest', spends: [{ label: 'Hit Dice', most: 3 }] }, { id: 'long', name: 'Long rest', spends: [] }]);
     // Mira is no player character: her statblock comes without buttons or a character id.
-    const ben = statblocks(delivered(socket), BEN).at(-1);
+    const ben = statblocks(pages.heard(), BEN).at(-1);
     expect(ben).toMatchObject({ displayName: 'Mira' });
     expect(ben?.recovery).toBeUndefined();
     expect(ben?.characterId).toBeUndefined();
     // The id is the table's own, never the library token's.
-    expect(JSON.stringify(delivered(socket))).not.toContain(BRANNOCH_PC);
+    expect(JSON.stringify(pages.heard())).not.toContain(BRANNOCH_PC);
     online.stop();
   });
 
   it('refuses a request that names no character of the player\'s or does not fit what the character offers', async () => {
-    const { online, socket, from, characterId } = await restingTable();
-    const since = delivered(socket).length;
+    const { online, pages, from, characterId } = await restingTable();
+    const since = pages.mark();
     const ask = (player: string, request: Record<string, unknown>): void => from(player, { t: 'book-rest', request: REQUEST, character: characterId, button: 'short', spends: [1], ...request });
     ask(ANA, { character: 'c'.repeat(24) });
     ask(BEN, {});
@@ -166,15 +165,15 @@ describe('rests a player asks the GM for at a running table', () => {
     ask(ANA, { spends: [] });
     ask(ANA, { spends: [4] });
     await advance(100);
-    expect(answers(delivered(socket).slice(since), ANA)).toEqual([`${REQUEST}: refused`, `${REQUEST}: refused`, `${REQUEST}: refused`, `${REQUEST}: refused`]);
-    expect(answers(delivered(socket).slice(since), BEN)).toEqual([`${REQUEST}: refused`]);
+    expect(answers(pages.since(since), ANA)).toEqual([`${REQUEST}: refused`, `${REQUEST}: refused`, `${REQUEST}: refused`, `${REQUEST}: refused`]);
+    expect(answers(pages.since(since), BEN)).toEqual([`${REQUEST}: refused`]);
     expect(online.table?.rests.cards()).toEqual([]);
     online.stop();
   });
 
   it('waits for the GM with one request per character, and the GM\'s approval takes it, answers and logs it', async () => {
-    const { online, socket, from, characterId } = await restingTable();
-    let since = delivered(socket).length;
+    const { online, pages, from, characterId } = await restingTable();
+    let since = pages.mark();
     from(ANA, { t: 'book-rest', request: REQUEST, character: characterId, button: 'long', spends: [] });
     await advance(ARM_MS);
     const key = restKey(characterId);
@@ -182,7 +181,7 @@ describe('rests a player asks the GM for at a running table', () => {
     // The page asks again only once it let its request go: the new one takes the card, checked again, and the old one is not answered.
     from(ANA, { t: 'book-rest', request: SECOND, character: characterId, button: 'short', spends: [2] });
     await advance(100);
-    expect(answers(delivered(socket).slice(since), ANA)).toEqual([]);
+    expect(answers(pages.since(since), ANA)).toEqual([]);
     expect(online.table?.rests.cards()).toEqual([{ key, character: 'Brannoch', button: 'Short rest', picks: [], rules: ['Hit Points to full', '2 Hit Dice'], armed: false, answered: false }]);
 
     // A press before the card has stood long enough is not meant.
@@ -190,15 +189,15 @@ describe('rests a player asks the GM for at a running table', () => {
     await advance(ARM_MS - 200);
     expect(rests.taken).toEqual([]);
     await advance(200);
-    since = delivered(socket).length;
+    since = pages.mark();
     online.table?.rests.approve(key);
     await advance(BOOK_POLL_MS);
     expect(rests.taken).toEqual([{ path: BRANNOCH_NOTE, character: BRANNOCH_PC, request: { button: 'short', spends: [2] } }]);
-    const after = delivered(socket).slice(since);
+    const after = pages.since(since);
     expect(answers(after, ANA)).toEqual([`${SECOND}: done`]);
     // Ana is sent her statblock again, with what she may spend now, before the answer that ends her wait.
     expect(statblocks(after, ANA)).toHaveLength(1);
-    const order = after.filter(({ to, body }) => to === ANA && (body.t === 'book-statblock' || body.t === 'book-rest-answer')).map(({ body }) => body.t);
+    const order = (after[ANA] ?? []).filter(({ t }) => t === 'book-statblock' || t === 'book-rest-answer').map(({ t }) => t);
     expect(order).toEqual(['book-statblock', 'book-rest-answer']);
     expect(online.table?.rests.cards()).toEqual([]);
     const logged = online.table?.log.entries().filter((entry) => entry.kind === 'rest');
@@ -207,27 +206,27 @@ describe('rests a player asks the GM for at a running table', () => {
       changes: [{ label: 'Hit Points', from: 4, to: 13, roll: '2d8+2 = 9' }, { label: 'Hit Dice', from: 3, to: 1 }], skipped: ['Exhaustion'],
     })]);
     // Every player is sent it.
-    expect(ofType(after, 'log-entry').map(({ body }) => (body.entry as { kind?: string }).kind)).toContain('rest');
+    for (const player of [ANA, BEN]) expect((after[player] ?? []).flatMap((body) => (body.t === 'log-entry' ? [body.entry.kind] : []))).toContain('rest');
     online.stop();
   });
 
   it('answers nothing past a player\'s rate of writes, a request it cannot read included', async () => {
-    const { online, socket, from } = await restingTable();
-    const since = delivered(socket).length;
+    const { online, pages, from } = await restingTable();
+    const since = pages.mark();
     for (let sent = 0; sent < BOOK_BURST + 5; sent += 1) from(ANA, { t: 'book-rest', request: REQUEST, character: 'not an id', button: 'short', spends: [] });
     await advance(100);
-    expect(answers(delivered(socket).slice(since), ANA)).toHaveLength(BOOK_BURST);
+    expect(answers(pages.since(since), ANA)).toHaveLength(BOOK_BURST);
     online.stop();
   });
 
   it('tells the player when the GM declines, and changes nothing', async () => {
-    const { online, socket, from, characterId } = await restingTable();
+    const { online, pages, from, characterId } = await restingTable();
     from(ANA, { t: 'book-rest', request: REQUEST, character: characterId, button: 'long', spends: [] });
     await advance(ARM_MS);
-    const since = delivered(socket).length;
+    const since = pages.mark();
     online.table?.rests.decline(restKey(characterId));
     await advance(100);
-    expect(answers(delivered(socket).slice(since), ANA)).toEqual([`${REQUEST}: declined`]);
+    expect(answers(pages.since(since), ANA)).toEqual([`${REQUEST}: declined`]);
     expect(rests.taken).toEqual([]);
     expect(online.table?.log.entries().filter((entry) => entry.kind === 'rest')).toEqual([]);
     // Another request of the character's may come now.
@@ -238,18 +237,18 @@ describe('rests a player asks the GM for at a running table', () => {
   });
 
   it('drops a request unanswered when its player leaves', async () => {
-    const { online, socket, from, characterId } = await restingTable();
+    const { online, pages, from, characterId, relay } = await restingTable();
     from(ANA, { t: 'book-rest', request: REQUEST, character: characterId, button: 'long', spends: [] });
     await advance(ARM_MS);
     expect(online.table?.rests.cards()).toHaveLength(1);
-    const since = delivered(socket).length;
-    socket.relay({ t: 'player-left', id: ANA });
+    const since = pages.mark();
+    relay.outbox.leave(ANA);
     await advance(100);
     expect(online.table?.rests.cards()).toEqual([]);
     online.table?.rests.approve(restKey(characterId));
     await advance(100);
     expect(rests.taken).toEqual([]);
-    expect(answers(delivered(socket).slice(since), ANA)).toEqual([]);
+    expect(answers(pages.since(since), ANA)).toEqual([]);
     online.stop();
   });
 
@@ -269,37 +268,36 @@ describe('rests a player asks the GM for at a running table', () => {
   });
 
   it('shows what a rest changed to the character\'s player and the GM alone, live and in the log a player is sent again', async () => {
-    const { online, socket, from } = await restingTable();
-    const since = delivered(socket).length;
+    const { online, pages, from, relay } = await restingTable();
+    const since = pages.mark();
     rests.announce(SUMMARY);
     await advance(100);
     const rested = (player: string): Record<string, unknown> | undefined =>
-      ofType(delivered(socket).slice(since), 'log-entry').map(({ body, to }) => ({ entry: body.entry as Record<string, unknown>, to }))
-        .find(({ entry, to }) => entry.kind === 'rest' && (to === undefined || to === player))?.entry;
+      (pages.since(since, 'log-entry')[player] ?? []).map(({ entry }) => entry as unknown as Record<string, unknown>).find((entry) => entry.kind === 'rest');
     expect(rested(ANA)).toMatchObject({ character: 'Brannoch', button: 'Short rest', changes: [{ label: 'Hit Points' }, { label: 'Hit Dice' }], skipped: ['Exhaustion'] });
     expect(rested(BEN)).toMatchObject({ character: 'Brannoch', button: 'Short rest' });
     expect(rested(BEN)).not.toHaveProperty('changes');
     expect(rested(BEN)).not.toHaveProperty('skipped');
     // Nothing the GM's log keeps beside an entry goes out.
-    expect(JSON.stringify(delivered(socket))).not.toContain('restPlayers');
+    expect(JSON.stringify(relay.sent())).not.toContain('restPlayers');
     // The GM's own log has it whole.
     expect(online.table?.log.entries().find((entry) => entry.kind === 'rest')).toMatchObject({ changes: [{ label: 'Hit Points' }, { label: 'Hit Dice' }] });
 
     // A reaction sends the entry again, to each as they may see it.
     const id = online.table?.log.entries().find((entry) => entry.kind === 'rest')?.id;
-    const reacted = delivered(socket).length;
+    const reacted = pages.mark();
     from(BEN, { t: 'react', id, emoji: '👍', on: true });
     await advance(100);
-    const again = ofType(delivered(socket).slice(reacted), 'log-entry').map(({ body, to }) => ({ entry: body.entry as Record<string, unknown>, to }));
-    expect(again.find(({ to }) => to === BEN)?.entry).not.toHaveProperty('changes');
-    expect(again.find(({ to }) => to === ANA)?.entry).toHaveProperty('changes');
+    const again = pages.since(reacted, 'log-entry');
+    expect(again[BEN]?.[0]?.entry).not.toHaveProperty('changes');
+    expect(again[ANA]?.[0]?.entry).toHaveProperty('changes');
 
     // Coming back, each is sent the log as they may see it.
-    const back = delivered(socket).length;
-    socket.relay({ t: 'player-left', id: BEN });
-    socket.relay({ t: 'player-joined', id: BEN, name: 'Ben' });
+    const back = pages.mark();
+    relay.outbox.leave(BEN);
+    relay.outbox.join({ id: BEN, name: 'Ben' });
     await advance(100);
-    const log = ofType(delivered(socket).slice(back), 'log').filter(({ to }) => to === BEN).at(-1)?.body.entries as Record<string, unknown>[] | undefined;
+    const log = pages.since(back, 'log')[BEN]?.at(-1)?.entries as unknown as Record<string, unknown>[] | undefined;
     const benRest = log?.find((entry) => entry.kind === 'rest');
     expect(benRest).toMatchObject({ character: 'Brannoch' });
     expect(benRest).not.toHaveProperty('changes');

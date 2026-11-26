@@ -1,7 +1,6 @@
 import type { ResourceDefinition } from '../../../../src/app/resources/resourceTypes';
 import type { TokenEntity } from '../../../../src/app/types';
 import { describe, expect, it } from 'vitest';
-import { TOKEN_POLL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { CONDITIONS, creature, gm, type ControlStoreFactory, RESOURCES } from './controlHarness.ts';
 import { STORE_FACTORY } from './realStore.ts';
 
@@ -65,7 +64,7 @@ describe("the GM's controls never open more to players than Atlas's player windo
         case 'rename': state.updateTokens([{ id, changes: { name: `Name-${serial}-of-${id}` } }]); break;
       }
       const from = table.sent.length;
-      await settle(TOKEN_POLL_MS);
+      await settle(1000);
       const sent = table.sent.slice(from).map(({ body }) => JSON.stringify(body)).join('\n');
       const now = store.getState();
       for (const tokenId of IDS) {

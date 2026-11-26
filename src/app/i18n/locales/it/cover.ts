@@ -8,5 +8,6 @@ export const cover = {
   "cover.title": "Copertina",
   "cover.upload": "Carica immagine",
   "cover.uploadHint": "Usa una tua immagine come copertina",
-  "cover.uploaded": "Immagine caricata"
+  "cover.uploaded": "Immagine caricata",
+  "cover.unreadable": "{name} non è un’immagine che Atlas sa leggere. Scegli un altro file."
 } satisfies Translation;

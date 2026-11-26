@@ -1,4 +1,4 @@
-import type { SceneStore } from '../atlasView.ts';
+import type { ObservedStore } from '../atlasView.ts';
 
 /** What the takeover reads of an Atlas map tab's store. */
 interface DiceLogState {
@@ -13,7 +13,7 @@ interface DiceLogState {
  * close the table's log, and Atlas goes on recording the scene's rolls as before. An Atlas log that
  * is open when the takeover begins is taken the same way. Returns what ends it.
  */
-export function takeOverDiceLog(store: SceneStore, toggle: () => void): () => void {
+export function takeOverDiceLog(store: ObservedStore, toggle: () => void): () => void {
   const take = (state: DiceLogState): void => {
     if (state.isDiceLogOpen !== true || state.setDiceLogOpen === undefined) return;
     state.setDiceLogOpen(false);
@@ -24,7 +24,7 @@ export function takeOverDiceLog(store: SceneStore, toggle: () => void): () => vo
 }
 
 /** Asks Atlas to open its dice log on the tab, which the takeover turns into the table's log; false when the store has no such switch. */
-export function openThroughAtlas(store: SceneStore): boolean {
+export function openThroughAtlas(store: ObservedStore): boolean {
   const state = store.getState() as DiceLogState;
   if (state.setDiceLogOpen === undefined) return false;
   state.setDiceLogOpen(true);

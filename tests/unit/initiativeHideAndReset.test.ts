@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { playersEntryToken } from '../../src/app/services/playerInitiativeList';
+import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/app/types/initiativeTypes';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { playersListOf } from '../helpers/playersInitiative';
+
+const listed = (changes: Partial<InitiativeEntry>): boolean => playersListOf({
+  ...createDefaultInitiativeState(),
+  entries: [{ id: 'e', name: 'Mira', initiative: 0, initiativeModifier: 0, imagePath: '', isActive: false, isNPC: false, order: 0, ...changes }],
+}).combatants.length > 0;
 
 describe('hiding a combatant from the players and resetting the numbers', () => {
   it('leaves a combatant the GM hid out of the players\' list, whatever it is', () => {
-    expect(playersEntryToken({ partyMemberId: 'mira' }, {}, [])).not.toBeNull();
-    expect(playersEntryToken({ partyMemberId: 'mira', hiddenFromPlayers: true }, {}, [])).toBeNull();
-    expect(playersEntryToken({ hiddenFromPlayers: true }, {}, [])).toBeNull();
+    expect(listed({ partyMemberId: 'mira' })).toBe(true);
+    expect(listed({ partyMemberId: 'mira', hiddenFromPlayers: true })).toBe(false);
+    expect(listed({ hiddenFromPlayers: true })).toBe(false);
   });
 
   it('ends the fight and empties every number and condition, keeping the combatants', () => {

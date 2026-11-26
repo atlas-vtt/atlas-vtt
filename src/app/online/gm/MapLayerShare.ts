@@ -1,15 +1,15 @@
-import { Pacer, type PacerClock } from '../marks/index.ts';
-import type { DrawMine, GmMessage, SharedLiquid } from '../protocol/index.ts';
+import type { DrawMine, SharedLiquid } from '../protocol/index.ts';
 import { FogCoverageCache } from '../../fog/FogCoverageCache';
 import type { FogCoverage } from '../../fog/fogCoverage';
 import type { ViewState } from '../../types/viewState';
 import { ArtRefs } from './artRefs.ts';
 import type { AssetStoring } from './assets/assetUses.ts';
-import type { AtlasPlayerSettings } from './atlasLighting.ts';
 import type { MapLayerSource } from './atlasMapLayers.ts';
 import type { SceneState, SceneStore } from './atlasView.ts';
 import { AnnotationTelling } from './annotationTelling.ts';
 import type { MaskDecoder } from './exploredMaskAlpha.ts';
+import { Feed, type FeedPorts, type FeedScene } from './feed/Feed.ts';
+import type { FeedOut } from './feed/feedOutbox.ts';
 import { sharedInitiative } from './initiativeInputs.ts';
 import { sharedDoors, sharedGrid, type ToldAbove, type ToldAnnotationLists } from './mapLayerInputs.ts';
 import type { MapSize } from './moveCheck.ts';
@@ -20,13 +20,14 @@ import { WidgetShare } from './WidgetShare.ts';
 import { levelObjects } from '../../levels/levelObjects';
 import { levelMapKey } from '../../levels/sceneLevels';
 import { mapTokens } from '../../tokens/offMap';
+import type { AtlasInputs } from './sceneSignal.ts';
 import type { NotePin } from '../../types';
 
-export interface MapLayerSharePorts extends PacerClock {
-  send(body: GmMessage, to?: string): void;
+export interface MapLayerSharePorts extends FeedPorts {
   /** What the shared tab's renderer tells of grid, doors, sensed tokens and collection, or null while it has none. */
   mapLayers(): MapLayerSource | null;
-  atlasSettings(): AtlasPlayerSettings;
+  /** Atlas as of its last change: its settings say what players are shown of the initiative list and the widgets. */
+  atlas(): Pick<AtlasInputs, 'settings'>;
   readImage(path: string): Promise<VaultImage | null>;
   /** How players are handed assets the store keeps for them. */
   stored?: AssetStoring | undefined;
@@ -49,6 +50,8 @@ export interface MapLayerSharePorts extends PacerClock {
   map?(): MapSize | null;
   /** Reads a saved explored memory; without it nothing on the map is known by memory, only by sight. */
   decodeMask?: MaskDecoder | undefined;
+  /** The explored memory these players remember (a data URL), or null for none; without it, the memory the GM saved of the floor. */
+  memoryMask?: (() => string | null) | undefined;
 }
 
 const NO_PINS: Readonly<Record<string, NotePin>> = Object.freeze({});
@@ -65,14 +68,7 @@ export const ANNOTATION_BYTES_PER_SECOND = 256_000;
 /** The longest a list waits for the one before it, however long that was: a player's request is answered by the list that follows it. */
 export const ANNOTATION_WAIT_MAX_MS = 2_000;
 
-type LayerMessage = Extract<GmMessage, { t: 'grid' | 'liquids' | 'doors' | 'sensed' | 'annotations' | 'initiative' | 'pins' }>;
 type LayerState = SceneState & Partial<Pick<ViewState, 'initiative' | 'initiativeTrackerOpen'>>;
-
-interface Sent {
-  readonly scene: string;
-  readonly text: string;
-  readonly body: LayerMessage;
-}
 
 /**
  * What players see of the map beside its tokens, fog and lighting, sent to all whenever it changes, at
@@ -84,15 +80,11 @@ interface Sent {
  * (`ReadablePins`); every other pin is the GM's alone and never sent.
  */
 export class MapLayerShare {
-  private readonly store: SceneStore;
-  private readonly ports: MapLayerSharePorts;
-  private readonly pacer: Pacer;
+  readonly feed: Feed;
   private readonly fog = new FogCoverageCache();
   private readonly art: ArtRefs;
   private readonly widgets: WidgetShare;
   private readonly pins: ReadablePins;
-  private scene: { readonly id: string; readonly lit: boolean } | null = null;
-  private readonly last = new Map<LayerMessage['t'], Sent>();
   /** What players are told of the drawings and texts. */
   private readonly annotations: AnnotationTelling;
   /** Before when the drawings and texts do not go out again, and the timer that looks again then. */
@@ -100,57 +92,29 @@ export class MapLayerShare {
   private annotationsTimer: number | undefined;
   /** The drawings and texts players were last sent, as text, and the number that message had among the scene's. */
   private annotationsSent: { readonly value: ToldAnnotationLists; readonly text: string; readonly rev: number } | null = null;
-  /** What each player was last told is theirs. */
-  private readonly mineSent = new Map<string, { readonly text: string; readonly body: DrawMine }>();
   private readonly liquids: SharedLiquids;
   private liquidsSent: readonly SharedLiquid[] | null = null;
   private pinsSeen: Readonly<Record<string, NotePin>> | null = null;
 
-  constructor(store: SceneStore, ports: MapLayerSharePorts) {
-    this.store = store;
-    this.ports = ports;
-    this.pacer = new Pacer(ports, MAP_LAYER_INTERVAL_MS, () => this.flush());
-    this.annotations = new AnnotationTelling({ now: () => ports.now(), map: () => ports.map?.() ?? null, decodeMask: ports.decodeMask, changed: () => this.update() });
+  constructor(private readonly store: SceneStore, private readonly ports: MapLayerSharePorts) {
+    this.annotations = new AnnotationTelling({ now: () => ports.now(), map: () => ports.map?.() ?? null, decodeMask: ports.decodeMask, memory: ports.memoryMask, changed: () => this.update() });
     this.art = new ArtRefs((path) => ports.readImage(path), () => this.update(), ports.stored);
     this.pins = new ReadablePins(() => ports.randomId());
     this.liquids = new SharedLiquids(() => ports.randomId());
-    this.widgets = new WidgetShare(store, { ...ports, showWidgets: () => ports.atlasSettings().showWidgets });
-  }
-
-  /** The shared scene the layers belong to; null sends none. */
-  setScene(scene: { readonly id: string; readonly lit: boolean } | null): void {
-    if (scene?.id === this.scene?.id) return;
-    this.scene = scene;
-    this.last.clear();
-    this.annotations.setScene(scene?.id ?? null);
-    this.annotationsSent = null;
-    this.mineSent.clear();
-    this.annotationsAfter = Number.NEGATIVE_INFINITY;
-    if (this.annotationsTimer !== undefined) this.ports.clearTimer(this.annotationsTimer);
-    this.annotationsTimer = undefined;
-    this.liquids.clear();
-    this.liquidsSent = null;
-    this.art.clear();
-    this.pins.clear();
-    this.pinsSeen = null;
-    this.fog.reset();
-    this.pacer.cancel();
-    this.widgets.setScene(scene?.id ?? null);
-    this.update();
+    this.widgets = new WidgetShare(store, { ...ports, showWidgets: () => ports.atlas().settings.showWidgets });
+    this.feed = new Feed(ports, {
+      interval: MAP_LAYER_INTERVAL_MS,
+      parts: [this.widgets.feed],
+      build: (scene, out) => this.build(scene, out),
+      reset: (scene) => this.reset(scene),
+      opened: () => this.update(),
+    });
   }
 
   /** Works the layers out again; they go out now, or once the interval has passed. */
   update(): void {
-    if (this.scene !== null) this.pacer.request();
+    this.feed.update();
     this.widgets.update();
-  }
-
-  /** The last layers again, to one player or to all. */
-  resend(to?: string): void {
-    for (const sent of this.last.values()) if (sent.scene === this.scene?.id) this.ports.send(sent.body, to);
-    // After the drawings and texts it speaks of.
-    for (const [player, mine] of this.mineSent) if (to === undefined || to === player) this.ports.send(mine.body, player);
-    this.widgets.resend(to);
   }
 
   /** The committed fog of the floor as it is now, which drawings are judged by; null while it cannot be read. */
@@ -165,36 +129,45 @@ export class MapLayerShare {
     this.update();
   }
 
-  stop(): void {
-    this.setScene(null);
+  private reset(scene: FeedScene | null): void {
+    this.annotations.setScene(scene?.id ?? null);
+    this.annotationsSent = null;
+    this.annotationsAfter = Number.NEGATIVE_INFINITY;
+    if (this.annotationsTimer !== undefined) this.ports.clearTimer(this.annotationsTimer);
+    this.annotationsTimer = undefined;
+    this.liquids.clear();
+    this.liquidsSent = null;
+    this.art.clear();
+    this.pins.clear();
+    this.pinsSeen = null;
+    this.fog.reset();
   }
 
-  private flush(): void {
-    const scene = this.scene;
+  private build(scene: FeedScene, out: FeedOut): void {
     const state: LayerState = this.store.getState();
     const source = this.ports.mapLayers();
-    if (scene === null || source === null || !state.mapLoaded || state.isMapLoading) return;
-    const settings = this.ports.atlasSettings();
-    this.publish({ t: 'grid', scene: scene.id, grid: sharedGrid(source.grid()) });
-    this.publishLiquids(scene.id, levelObjects(state).liquids);
+    if (source === null || !state.mapLoaded || state.isMapLoading) return;
+    const { settings } = this.ports.atlas();
+    out.send({ t: 'grid', scene: scene.id, grid: sharedGrid(source.grid()) });
+    this.publishLiquids(scene.id, levelObjects(state).liquids, out);
     const fog = this.fog.get(levelObjects(state).fog, levelMapKey(state.mapPath, state));
-    this.publishAnnotations(scene.id, state, fog, source);
+    this.publishAnnotations(scene, state, fog, source, out);
     const list = sharedInitiative({
-      state, shown: settings.showInitiative, showNames: settings.showNames, fromTurn: settings.initiativeFromTurn === true, rules: source.rules(),
+      state, shown: settings.showInitiative, showNames: settings.showNames, fromTurn: settings.initiativeFromTurn === true, rules: source.rules(), presets: source.presets(),
       bannerOff: settings.turnBanner === false, movesOnTurn: settings.movesOnTurn === true, dock: settings.initiativeDock ?? 'right',
       badge: (tokenId) => this.ports.badgeOf?.(tokenId) ?? null,
       tokenAlias: (tokenId) => this.ports.tokenAlias?.(tokenId),
       art: (path) => this.art.get(path),
     });
-    this.publish({ t: 'initiative', scene: scene.id, list });
+    out.send({ t: 'initiative', scene: scene.id, list });
     this.tellPins(state);
     const pins = this.readablePins(state, source, fog);
-    if (pins !== null) this.publish({ t: 'pins', scene: scene.id, pins: this.pins.shared(pins, (pinId) => this.ports.foundPin?.(state.mapPath ?? '', pinId) ?? null) });
+    if (pins !== null) out.send({ t: 'pins', scene: scene.id, pins: this.pins.shared(pins, (pinId) => this.ports.foundPin?.(state.mapPath ?? '', pinId) ?? null) });
     if (!scene.lit) return;
     const seen = source.doorsSeen(levelObjects(state).walls, fog);
-    if (seen !== null) this.publish({ t: 'doors', scene: scene.id, doors: sharedDoors(levelObjects(state).walls, seen) });
+    if (seen !== null) out.send({ t: 'doors', scene: scene.id, doors: sharedDoors(levelObjects(state).walls, seen) });
     const sensed = source.sensed(mapTokens(levelObjects(state)));
-    if (sensed !== null) this.publish({ t: 'sensed', scene: scene.id, tokens: sensed });
+    if (sensed !== null) out.send({ t: 'sensed', scene: scene.id, tokens: sensed });
   }
 
   /**
@@ -205,13 +178,13 @@ export class MapLayerShare {
     const state: LayerState = this.store.getState();
     const source = this.ports.mapLayers();
     const map = state.mapPath;
-    if (this.scene?.id !== sceneId || source === null || map === null || !state.mapLoaded || state.isMapLoading) return null;
+    if (this.feed.scene?.id !== sceneId || source === null || map === null || !state.mapLoaded || state.isMapLoading) return null;
     const listed = this.readablePins(state, source, this.fog.get(levelObjects(state).fog, levelMapKey(map, state)))?.find((pin) => pin.alias === alias);
     return listed === undefined ? null : { ...listed, map };
   }
 
   private readablePins(state: SceneState, source: MapLayerSource, fog: FogCoverage | null): ListedPin[] | null {
-    return this.pins.listed(state, { lit: this.scene?.lit === true, fog, seen: (points) => source.pointsSeen(points, fog) });
+    return this.pins.listed(state, { lit: this.feed.scene?.lit === true, fog, seen: (points) => source.pointsSeen(points, fog) });
   }
 
   /** Tells of the shown level's pins when they are not the ones last told of. */
@@ -230,10 +203,10 @@ export class MapLayerShare {
    * next sooner than its size allows (`ANNOTATION_BYTES_PER_SECOND`): what changed meanwhile goes
    * out as one.
    */
-  private publishAnnotations(scene: string, state: SceneState, fog: FogCoverage | null, source: MapLayerSource): void {
-    const told = this.annotations.lists(state, fog, this.scene?.lit === true, source);
+  private publishAnnotations({ id: scene, lit }: FeedScene, state: SceneState, fog: FogCoverage | null, source: MapLayerSource, out: FeedOut): void {
+    const told = this.annotations.lists(state, fog, lit, source);
     // Not everything on the map could be asked about in one look: the next goes on.
-    if (this.annotations.pending) this.pacer.request();
+    if (this.annotations.pending) this.feed.update();
     let sent = this.annotationsSent;
     // Drawings may run to megabytes: they are compared as text only when worked out anew.
     if (sent === null || told !== sent.value) {
@@ -242,20 +215,14 @@ export class MapLayerShare {
       const text = JSON.stringify(told.shared);
       const rev = sent === null ? 1 : text === sent.text ? sent.rev : sent.rev + 1;
       if (rev !== sent?.rev) {
-        this.publish({ t: 'annotations', scene, rev, ...told.shared });
+        out.send({ t: 'annotations', scene, rev, ...told.shared });
         this.annotationsAfter = now + Math.min(ANNOTATION_WAIT_MAX_MS, (text.length / ANNOTATION_BYTES_PER_SECOND) * 1000);
       }
       sent = this.annotationsSent = { value: told, text, rev };
     }
     const mine = this.ports.drawnBy?.(told.above) ?? new Map<string, Pick<DrawMine, 'drawings' | 'texts' | 'seen'>>();
-    for (const player of this.mineSent.keys()) if (!mine.has(player)) this.mineSent.delete(player);
-    for (const [player, own] of mine) {
-      const body: DrawMine = { t: 'draw-mine', scene, rev: sent.rev, ...own };
-      const text = JSON.stringify(body);
-      if (this.mineSent.get(player)?.text === text) continue;
-      this.mineSent.set(player, { text, body });
-      this.ports.send(body, player);
-    }
+    out.keepOnly(mine);
+    for (const [player, own] of mine) out.to(player, { t: 'draw-mine', scene, rev: sent.rev, ...own });
   }
 
   /** Works the layers out again in `wait` ms, when the drawings and texts may go out again. */
@@ -271,21 +238,10 @@ export class MapLayerShare {
    * The floor's surfaces, compared as text only when worked out anew (they may run to megabytes); none
    * are said of a floor that has had none, so older pages and maps without liquids cost no message.
    */
-  private publishLiquids(scene: string, record: Parameters<SharedLiquids['of']>[0]): void {
+  private publishLiquids(scene: string, record: Parameters<SharedLiquids['of']>[0], out: FeedOut): void {
     const liquids = this.liquids.of(record);
-    if (liquids === this.liquidsSent || (liquids.length === 0 && !this.last.has('liquids'))) return;
+    if (liquids === this.liquidsSent || (liquids.length === 0 && !out.has('liquids'))) return;
     this.liquidsSent = liquids;
-    this.publish({ t: 'liquids', scene, liquids });
-  }
-
-  /** Sends a message unless it says what the last of its kind said. */
-  private publish(body: LayerMessage): void {
-    const scene = this.scene;
-    if (scene === null) return;
-    const text = JSON.stringify(body);
-    const last = this.last.get(body.t);
-    if (last?.scene === scene.id && last.text === text) return;
-    this.last.set(body.t, { scene: scene.id, text, body });
-    this.ports.send(body);
+    out.send({ t: 'liquids', scene, liquids });
   }
 }

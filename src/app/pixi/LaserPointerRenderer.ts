@@ -195,30 +195,26 @@ export class LaserPointerRenderer {
   }
 
   private handlePointerUp(e: FederatedPointerEvent): void {
-    const button: number = e.button;
-
-    if (button === 1 && this.isQuickMode) {
-      this.endQuickMode();
-      e.stopPropagation();
-      return;
-    }
-
-    if (button === 0 && this.isToolActive && this.isPointing) {
-      this.isPointing = false;
-      this.redraw();
-      e.stopPropagation();
-    }
+    if (this.endPress()) e.stopPropagation();
   }
 
   private handlePointerUpOutside(): void {
+    this.endPress();
+  }
+
+  /**
+   * Ends the beam a press began, whichever button the release names: a release comes only once the
+   * last button is up, with that button. Returns whether a press was under way.
+   */
+  private endPress(): boolean {
     if (this.isQuickMode) {
       this.endQuickMode();
-      return;
+      return true;
     }
-    if (this.isPointing) {
-      this.isPointing = false;
-      this.redraw();
-    }
+    if (!this.isPointing) return false;
+    this.isPointing = false;
+    this.redraw();
+    return true;
   }
 
   private endQuickMode(): void {

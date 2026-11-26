@@ -184,6 +184,7 @@ describe('a players\' frame of a map view', () => {
       playerFrames: fakePlayerFrames(() => events.push('render:player')),
       mapImage: { drawFor },
       dmScreenOverlays: new Set(),
+      playerFrameOnly: new Set(),
     });
     return { renderer, drawFor };
   }

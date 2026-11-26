@@ -16,6 +16,8 @@ export interface MapProgress {
   done: number;
   /** Every tessera of the pyramid. */
   total: number;
+  /** Cut from an image read in bands: a tessera can be read only once it is written. */
+  inBands?: true;
 }
 
 /** What the tracker hears from: `TesseraDecoderClient`'s events. */
@@ -97,6 +99,18 @@ export class MapProcessing {
     });
   }
 
+  /**
+   * Resolves once any part of the map image at `path` can be read without waiting for its build:
+   * at once where its build holds the image decoded (its tesserae are cut from it on request), and
+   * once the build ends where it reads the image in bands (a part it has not reached waits for its rows).
+   */
+  whenReadable(path: string, signal?: AbortSignal): Promise<void> {
+    if (!this.stateOf(path)?.inBands) {
+      return signal?.aborted ? Promise.reject(new Error("The wait for the map's tesserae was ended")) : Promise.resolve();
+    }
+    return this.whenDone(path, signal);
+  }
+
   /** Whether any map image is being processed. */
   busy(): boolean {
     return this.progress.size > 0;
@@ -123,7 +137,7 @@ export class MapProcessing {
     if (path === undefined) return;
     if (event.type === 'progress') {
       this.pathOfHash.set(event.hash, path);
-      this.progress.set(path, { done: event.done, total: event.total });
+      this.progress.set(path, { done: event.done, total: event.total, ...(event.inBands && { inBands: true }) });
       this.arm(path);
     } else {
       this.pathOfHash.delete(event.hash);

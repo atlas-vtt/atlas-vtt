@@ -23,8 +23,6 @@ export interface TableMap {
   state(): Pick<ViewAtlasState, 'mapPath' | 'mapLoaded' | 'isMapLoading' | 'initiative' | 'objects' | 'startCombat' | 'endCombat'>;
   /** The initiative rules the map plays by (`mapInitiativeRules`). */
   rules(): InitiativeRules;
-  /** Its defeated combatants (`defeatedOnMap`). */
-  defeated(): ReadonlySet<string>;
   /** The tracker's Roll button (`rollInitiative`). */
   roll(): void;
   /** Its scene tab is the presented scene. */
@@ -106,7 +104,7 @@ function runCombat(map: TableMap): TableRefusal | null {
     return null;
   }
   if (state.initiative.entries.length === 0) return 'no-combatants';
-  return startCombatByRules(state, map.rules(), () => map.defeated()) ? null : 'cards-short';
+  return startCombatByRules(state, map.rules()) ? null : 'cards-short';
 }
 
 function runInitiativeRoll(map: TableMap): TableRefusal | null {

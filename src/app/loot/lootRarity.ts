@@ -1,4 +1,3 @@
-import { t } from '../i18n';
 import type { RarityOption } from '../types/randomTableTypes';
 /**
  * The classic item-rarity ladder games colour loot by. An item's own rarity
@@ -7,14 +6,6 @@ import type { RarityOption } from '../types/randomTableTypes';
 export const RARITY_TONES = ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const;
 
 export type RarityTone = typeof RARITY_TONES[number];
-
-export const RARITY_LABELS: Record<RarityTone, string> = {
-  common: t('loot.rarity.common'),
-  uncommon: t('loot.rarity.uncommon'),
-  rare: t('loot.rarity.rare'),
-  epic: t('loot.rarity.epic'),
-  legendary: t('loot.rarity.legendary'),
-};
 
 const TONES: ReadonlyArray<readonly [RegExp, RarityTone]> = [
   [/^(common|poor|mundane|junk)$/i, 'common'],

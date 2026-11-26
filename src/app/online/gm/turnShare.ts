@@ -1,5 +1,5 @@
-import { defeatedCombatants } from '../../initiative/defeated';
-import { currentTurn, inFight, turnEntries } from '../../initiative/turnHolders';
+import { inFight, turnHolders } from '../../initiative/turnHolders';
+import { initiativeShown } from '../../services/playerInitiativeList';
 import type { ResourceDefinition } from '../../resources/resourceTypes';
 import type { TokenEntity } from '../../types';
 import type { InitiativeState } from '../../types/initiativeTypes';
@@ -11,24 +11,16 @@ export interface TurnShareState {
   readonly objects: { readonly tokens: Readonly<Record<string, TokenEntity>> };
 }
 
-/** The tokens holding the turn of the store's fight, by sides without the combatants `definitions` call defeated. */
-function holders(state: TurnShareState, definitions: readonly ResourceDefinition[]): string[] {
-  const initiative = state.initiative;
-  if (!initiative) return [];
-  const defeated = defeatedCombatants(initiative.entries, state.objects.tokens, definitions);
-  return turnEntries(currentTurn(initiative), initiative, state.objects.tokens, defeated).flatMap((entry) => (entry.tokenId === undefined ? [] : [entry.tokenId]));
-}
-
 /**
  * The GM ids of the tokens players are told hold the turn (the page's turn marker): those of the
- * running fight's turn (`turnEntries`), and none while players are not shown the initiative list
- * (the player view's switch off, or the GM's tracker closed). By sides a defeated combatant (by the
+ * running fight's turn (`turnHolders`), and none while online players are given no initiative list
+ * (`initiativeShown`: the player view's switch off, or the GM's tracker closed). By sides a defeated combatant (by the
  * map's resource `definitions`) holds none. Which of them a player is sent at all is the token
  * list's business: only tokens they see.
  */
 export function sharedTurnTokens(state: TurnShareState, showInitiative: boolean, definitions: readonly ResourceDefinition[] = []): ReadonlySet<string> {
-  if (!showInitiative || state.initiativeTrackerOpen !== true) return new Set();
-  return new Set(holders(state, definitions));
+  if (!initiativeShown(state, { showInitiative, beforeFight: true })) return new Set();
+  return new Set(turnHolders(state.initiative, state.objects.tokens, definitions));
 }
 
 /** What decides whether players move only on their turn now. */
@@ -49,5 +41,5 @@ export interface TurnMoveRules {
  */
 export function movesOutOfTurn(state: TurnShareState, rules: TurnMoveRules, tokenId: string): boolean {
   if (!rules.movesOnTurn || !state.initiative?.isActive || !inFight(state.initiative, tokenId)) return false;
-  return !holders(state, rules.definitions ?? []).includes(tokenId);
+  return !turnHolders(state.initiative, state.objects.tokens, rules.definitions ?? []).includes(tokenId);
 }

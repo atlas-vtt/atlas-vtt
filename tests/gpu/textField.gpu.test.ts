@@ -14,6 +14,7 @@ import { textLayout } from '../../src/app/pixi/textLayout';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import type { TextElement } from '../../src/app/types';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { viewAudience } from '../helpers/viewAudience';
 
 vi.mock('events', async () => import('eventemitter3'));
 
@@ -95,7 +96,7 @@ async function open(background = 0x000000): Promise<Scene> {
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/text.atlasmap');
   let clock = 0;
-  const annotations = new AnnotationsRenderer({ viewport, store, grid: () => null, now: () => clock, sharpness: { resolution: () => 1, maxTextureSide: () => 8192 } });
+  const annotations = new AnnotationsRenderer({ viewport, store, audience: viewAudience(store).audience, grid: () => null, now: () => clock, sharpness: { resolution: () => 1, maxTextureSide: () => 8192 } });
   cleanup.push(() => {
     annotations.destroy();
     viewport.destroy();
@@ -242,7 +243,7 @@ describe('the field a map text is typed in', () => {
             expect(s.field()).toBeNull();
             s.store.getState().clearSelection();
           }
-          s.store.getState().deleteAnnotations([id]);
+          s.store.getState().removeObjects([id]);
         }
       });
     }
@@ -266,7 +267,7 @@ describe('the field a map text is typed in', () => {
       const drawn = await s.shot();
       expect([strayInk(drawn, typed).stray, strayInk(typed, drawn).stray], made).toEqual([0, 0]);
       expect(strayInk(drawn, typed).clear).toBeGreaterThan(200);
-      s.store.getState().deleteAnnotations(Object.keys(s.store.getState().objects.texts));
+      s.store.getState().removeObjects(Object.keys(s.store.getState().objects.texts));
     }
   });
 

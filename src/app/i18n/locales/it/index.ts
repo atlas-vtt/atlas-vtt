@@ -100,6 +100,7 @@ import { tokens } from './tokens';
 import { toolbar } from './toolbar';
 import { toolbarEdit } from './toolbarEdit';
 import { tour } from './tour';
+import { appearance } from './appearance';
 import { transfer } from './transfer';
 import { validation } from './validation';
 import { vaultImages } from './vaultImages';
@@ -112,6 +113,7 @@ import { armarium } from './armarium';
 import { armariumFindings } from './armariumFindings';
 import { armariumListing } from './armariumListing';
 import { armariumShare } from './armariumShare';
+import { armariumMusic } from './armariumMusic';
 import { armariumUpload } from './armariumUpload';
 import { assetGrid } from './assetGrid';
 import { deviceFiles } from './deviceFiles';
@@ -235,6 +237,7 @@ export const it = {
   ...toolbar,
   ...toolbarEdit,
   ...tour,
+  ...appearance,
   ...transfer,
   ...validation,
   ...vaultImages,
@@ -248,6 +251,7 @@ export const it = {
   ...armariumFindings,
   ...armariumListing,
   ...armariumShare,
+  ...armariumMusic,
   ...armariumUpload,
   ...assetGrid,
   ...deviceFiles,

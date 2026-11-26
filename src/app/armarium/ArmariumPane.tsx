@@ -5,7 +5,7 @@ import { Skeleton, SkeletonGroup } from '../packages/components/primitives/Skele
 import { SiteFrame } from '../react/components/siteFrame/SiteFrame';
 import { t } from '../i18n';
 import { ARMARIUM_PAGE_URL } from './armariumUrls';
-import { acceptFrameMessage, type ShareWhat } from './armariumMessages';
+import { acceptFrameMessage, type ShareRequest } from './armariumMessages';
 import { ArmariumInstaller } from './ArmariumInstaller';
 import { armariumAccountPort } from './armariumAccountPort';
 import { useArmariumBridge } from './useArmariumBridge';
@@ -51,7 +51,7 @@ export function ArmariumPane({ app, url = ARMARIUM_PAGE_URL, shown = true, onSha
   app: App;
   url?: string;
   shown?: boolean;
-  onShare?: (what: ShareWhat) => void;
+  onShare?: (request: ShareRequest) => void;
   tagFilter?: StoreTagFilter;
 }): React.ReactElement {
   const paneRef = useRef<HTMLDivElement>(null);

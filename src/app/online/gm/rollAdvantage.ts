@@ -19,6 +19,9 @@ export function mapRollDice(dice: DiceSource | null): SharedRollDice | null {
   return dice === null ? null : sharedRollDice(dice.rules());
 }
 
+/** What a token's own set is read by (`DiceSource.setFor`): the token, its character's statblock, and the library token its asset and art name. */
+export const diceKey = (token: TokenEntity): string => JSON.stringify([token.id, token.kind, token.kind === 'character' ? token.statblockPath ?? null : null, token.assetId ?? null, token.imagePath]);
+
 /** The dice of a token's own set (its character's template's), as `PlayerRolls` rolls for it; undefined where it rolls with the map's. */
 export function tokenRollDice(dice: DiceSource | null, token: TokenEntity | undefined): SharedRollDice | undefined {
   const set = token === undefined ? undefined : dice?.setFor?.(token);

@@ -20,6 +20,7 @@ import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { roofPieces } from '../../src/app/levels/roofs';
 import type { RoofImageRead } from '../../src/app/pixi/lighting/levels/Roof';
 import { ViewRoofs } from '../../src/app/pixi/roofs/ViewRoofs';
+import { viewAudience } from './viewAudience';
 
 /** The scene's two floors: the view looks at the upper one and down into the ground floor. */
 export const LEVELS: SceneLevel[] = [
@@ -227,7 +228,7 @@ export async function openLevelsView({ map, pane, paneHeight = pane, resolution 
   // The first level's map is the scene's own.
   store.setState({ background: levels[0]?.background ?? null });
   const art = tokenArt ?? Texture.WHITE;
-  const tokens: TokenArt = { acquire: () => Promise.resolve(art), release: () => undefined, destroyAll: () => undefined };
+  const tokens: TokenArt = { acquire: () => Promise.resolve(art), release: () => undefined };
   let releaseBelowImage = (): void => undefined;
   const belowLoaded = holdBelowImage ? new Promise<void>((resolve) => { releaseBelowImage = resolve; }) : Promise.resolve();
   const readRoof = (path: string): Promise<RoofImageRead> => {
@@ -243,7 +244,7 @@ export async function openLevelsView({ map, pane, paneHeight = pane, resolution 
       const shown = roofs;
       return shown ? (point) => shown.covers(point) : null;
     },
-    createArt: () => tokens,
+    art: tokens,
     levelArt: (background) => {
       const found = background === null ? undefined : maps[background];
       return found ? Promise.resolve(fakeLevelArt(found)) : Promise.reject(new Error(`No map ${String(background)} in the fake vault`));
@@ -263,7 +264,7 @@ export async function openLevelsView({ map, pane, paneHeight = pane, resolution 
     ...(withRoofs !== 'vault' && { host: { createMapImage: () => fakeMapImage(maps, Promise.resolve(), 'roof-image'), readRoof } }), fadeMs: 0,
   }) : null;
   const controller = new LightingController({
-    viewport, app, store, eventBus: new EventEmitter(), obsApp, viewId: 'levels-view',
+    viewport, app, store, eventBus: new EventEmitter(), obsApp, viewId: 'levels-view', audience: viewAudience(store).audience,
     bounds, albedo: () => null, below: host, roofFadeMs: 0, ...(roofs && { roofs }),
     ...(quality && { quality: { current: () => quality, onChange: () => () => undefined } }),
     ...(qualitySource && { quality: qualitySource }),
@@ -271,9 +272,7 @@ export async function openLevelsView({ map, pane, paneHeight = pane, resolution 
   made.controller = controller;
   const ignore = (): void => undefined;
   controller.wire({
-    setLightHandlers: ignore, setWallPointerDownHandler: ignore, setWallContextMenuHandler: ignore, setWallPointerMoveHandler: ignore,
-    setWallPointerUpHandler: ignore, setWallDoubleClickHandler: ignore, setWallCursorProvider: ignore, setDoorMenuHandlers: ignore,
-    setDoorClickHandler: ignore, setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
+    setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, getSensedOutlineLayer: () => ({ visible: false }),
   } as unknown as TokenRenderer);
   let time = 1000;
   const renderer = app.renderer as WebGLRenderer;

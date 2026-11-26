@@ -11,7 +11,6 @@ import { DEFAULT_DICE_LOOK, isDiceColour, isDiceFont, type DiceLook } from '../d
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
 import {
   DEFAULT_SETTINGS,
-  isRecord,
   defaultInputMode,
   readStoredSettings,
   storedSettings,
@@ -21,6 +20,7 @@ import {
   type TutorialId,
   TUTORIAL_IDS,
 } from './atlasSettings';
+import { isRecord } from '../utils/guards';
 import {
   loadAnimateMaps, loadGmFogOpacity, loadGraphicsChoice, loadInputMode, loadLightingQuality, loadPickedLightingQuality, loadPlayerView4k,
   loadSelectionBarShown,
@@ -195,6 +195,11 @@ export class SettingsService {
     return this.settings.onboarding.enabled && !this.settings.onboarding.completed[id];
   }
 
+  /** Whether this GM has been through the welcome wizard, which every GM sees once, with tutorials switched on or off. */
+  hasBeenWelcomed(): boolean {
+    return this.settings.onboarding.completed.welcome === true;
+  }
+
   completeTutorial(id: TutorialId): void {
     this.settings.onboarding = { ...this.settings.onboarding, completed: { ...this.settings.onboarding.completed, [id]: true } };
     this.commit();
@@ -224,7 +229,6 @@ export class SettingsService {
     this.commit();
   }
 
-  // Navigation settings
   getNavigationSettings(): NavigationSettings {
     return { ...this.settings.navigation };
   }
@@ -662,7 +666,6 @@ export class SettingsService {
     this.commit();
   }
 
-  // Get all settings
   getAllSettings(): AtlasSettings {
     return { ...this.settings };
   }

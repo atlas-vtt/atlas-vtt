@@ -22,6 +22,7 @@ export const toolbar = {
   "toolbar.laser": "Puntatore laser",
   "toolbar.lassoSelection": "Selezione a lazo",
 
+  "toolbar.lighting": "Illuminazione",
   "toolbar.lootRoller": "Tabelle casuali",
   "toolbar.measureOptions": "Opzioni di misurazione",
   "toolbar.moveOptions": "Opzioni di spostamento",

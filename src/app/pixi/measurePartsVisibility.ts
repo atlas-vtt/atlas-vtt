@@ -10,6 +10,8 @@ export interface MeasurePlayersView {
   seenAtStart(): TokenSeen;
   /** The same while the canvas shows the players' view; null in the GM view. */
   seenOnCanvas(): TokenSeen | null;
+  /** Calls `listener` whenever the canvas shows another view, or the players see other tokens on it. Returns the function that stops it. */
+  onChange(listener: () => void): () => void;
 }
 
 /** The ring on one token in an area. */

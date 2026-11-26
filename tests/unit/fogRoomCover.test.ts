@@ -67,7 +67,7 @@ const outlines = (fog: readonly FogOperation[]): string[][] => fog.map((operatio
 describe('hiding every room in the store', () => {
   it('paints plain fog over every room, in one undo step that undo takes back whole', () => {
     const { store, fog, covers, steps, undo, redo } = scene();
-    for (const wall of [...roomWalls(140, 140, 280, 280), ...roomWalls(700, 140, 210, 280), ...roomWalls(700, 490, 280, 140)]) store.getState().addWall(wall);
+    for (const wall of [...roomWalls(140, 140, 280, 280), ...roomWalls(700, 140, 210, 280), ...roomWalls(700, 490, 280, 140)]) store.getState().addObject('walls', wall);
     const before = steps();
     expect(store.getState().hideRooms(MAP)).toEqual({ rooms: 3, hidden: 3 });
     expect(steps()).toBe(before + 1);
@@ -92,7 +92,7 @@ describe('hiding every room in the store', () => {
 
   it('paints the rooms that are not fog yet: one erased since, one half painted by hand, and none under a cover', () => {
     const { store, fog, covers, steps } = scene();
-    for (const wall of [...roomWalls(140, 140, 280, 280), ...roomWalls(700, 140, 210, 280), ...roomWalls(700, 490, 280, 140)]) store.getState().addWall(wall);
+    for (const wall of [...roomWalls(140, 140, 280, 280), ...roomWalls(700, 140, 210, 280), ...roomWalls(700, 490, 280, 140)]) store.getState().addObject('walls', wall);
     store.getState().hideRooms(MAP);
     store.getState().addFogOperation({ type: 'rectangle', isErasing: true, x: 100, y: 100, width: 400, height: 400 });
     store.getState().addFogOperation({ type: 'rectangle', isErasing: true, x: 800, y: 100, width: 200, height: 380 });
@@ -110,7 +110,7 @@ describe('hiding every room in the store', () => {
   it('paints nothing without a map, without walls, or where the walls enclose nothing', () => {
     const { store, fog, steps } = scene();
     expect(store.getState().hideRooms(MAP)).toEqual({ rooms: 0, hidden: 0 });
-    for (const wall of roomWalls(140, 140, 280, 280).slice(0, 3)) store.getState().addWall(wall);
+    for (const wall of roomWalls(140, 140, 280, 280).slice(0, 3)) store.getState().addObject('walls', wall);
     const before = steps();
     expect(store.getState().hideRooms(MAP)).toEqual({ rooms: 0, hidden: 0 });
     expect(store.getState().hideRooms(null)).toEqual({ rooms: 0, hidden: 0 });
@@ -121,10 +121,10 @@ describe('hiding every room in the store', () => {
   it('reads the walls and the fog of the level shown, and puts the fog on it', () => {
     const { store, fog } = scene();
     store.setState({ levels: LEVELS, viewedLevel: 'ground' });
-    for (const wall of roomWalls(140, 140, 280, 280)) store.getState().addWall(wall);
+    for (const wall of roomWalls(140, 140, 280, 280)) store.getState().addObject('walls', wall);
     store.getState().setViewedLevel('upper');
     expect(store.getState().hideRooms(MAP)).toEqual({ rooms: 0, hidden: 0 });
-    for (const wall of roomWalls(140, 140, 280, 280)) store.getState().addWall(wall);
+    for (const wall of roomWalls(140, 140, 280, 280)) store.getState().addObject('walls', wall);
     expect(store.getState().hideRooms(MAP)).toEqual({ rooms: 1, hidden: 1 });
     expect(fog()).toEqual([expect.objectContaining({ level: 'upper' })]);
     // The room below is the same ground, and has no fog of its own.
@@ -135,7 +135,7 @@ describe('hiding every room in the store', () => {
 
   it('paints nothing over fog that cannot be worked out: such a map draws covered', () => {
     const { store, fog } = scene();
-    for (const wall of roomWalls(140, 140, 280, 280)) store.getState().addWall(wall);
+    for (const wall of roomWalls(140, 140, 280, 280)) store.getState().addObject('walls', wall);
     const broken = { id: 'broken', kind: 'fog', type: 'lasso', timestamp: 1, isErasing: false, points: [{ x: 0, y: 0 }, { x: Number.NaN, y: 5 }, { x: 9, y: 9 }] } as FogOperation;
     store.setState((state) => ({ objects: { ...state.objects, fog: { broken } } }));
     expect(store.getState().hideRooms(MAP)).toEqual({ rooms: 1, hidden: 0 });

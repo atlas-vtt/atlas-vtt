@@ -13,6 +13,7 @@ import { PANEL_ENTER_MS, prefersReducedMotion } from '../../utils/motion';
 import { canvasBadgeColors } from '../utils/canvasBadgeColors';
 import { destroyTree } from '../utils/destroyTree';
 import { ValueTransition } from '../utils/ValueTransition';
+import { viewportDocument } from '../utils/viewportDocument';
 import { lightColorNumber } from './lightMarker';
 import { ringHandleAt, ringHandlePoint, rotationHandlePoint, type RingGeometry, type RingHandle } from './lightRingGeometry';
 import { grownOutline } from '../../lighting/polygonClip';
@@ -144,7 +145,7 @@ export class LightRangeRings {
 
   /** The popover opened, moved to another light or closed. */
   private follow(lightId: string | null): void {
-    const reduce = prefersReducedMotion(document.body);
+    const reduce = prefersReducedMotion(viewportDocument(this.viewport).body);
     if (lightId) {
       // Rings of another light bloom anew from its marker.
       if (lightId !== this.lightId) this.reveal.jumpTo(0);

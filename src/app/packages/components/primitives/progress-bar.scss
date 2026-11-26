@@ -24,9 +24,33 @@
   }
 }
 
+// Under way with nothing counted yet: a third of the track glides across it, again and again.
+.atlas-progress-bar[data-indeterminate] .atlas-progress-bar__fill {
+  right: auto;
+  width: 33%;
+  transform: none;
+  transition: none;
+  animation: atlas-progress-glide 1.4s $transition-ease-in-out infinite;
+}
+
+@keyframes atlas-progress-glide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+
 // Progress is essential feedback: keep it, just without the glide
 @media (prefers-reduced-motion: reduce) {
   .atlas-progress-bar__fill {
     transition-duration: $transition-fast;
   }
+
+  .atlas-progress-bar[data-indeterminate] .atlas-progress-bar__fill {
+    width: 100%;
+    animation: atlas-progress-breathe 2s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes atlas-progress-breathe {
+  from { opacity: 0.35; }
+  to { opacity: 0.8; }
 }

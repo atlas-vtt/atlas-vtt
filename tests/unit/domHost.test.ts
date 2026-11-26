@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getDomHost, installDomHost } from '../../src/app/host/dom';
 import { pluginDomHost } from '../../src/app/plugin/host/dom';
+import { portalHost, releasePortalHosts } from '../../src/app/host/portalHost';
 import { observeResize } from '../../src/app/utils/observeResize';
 
 let restore: (() => void) | undefined;
@@ -35,6 +36,20 @@ describe('DOM host', () => {
     current = frame.contentDocument!;
     expect(pluginDomHost.activeDocument()).toBe(current);
     Object.defineProperty(globalThis, 'activeDocument', descriptor);
+  });
+
+  it('opens portals in the main window while a popout has focus', () => {
+    const frame = document.body.createEl('iframe');
+    const popout = frame.contentDocument!;
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'activeDocument')!;
+    Object.defineProperty(globalThis, 'activeDocument', { configurable: true, get: () => popout });
+    restore = installDomHost(pluginDomHost);
+    try {
+      expect(portalHost().ownerDocument).toBe(document);
+    } finally {
+      releasePortalHosts();
+      Object.defineProperty(globalThis, 'activeDocument', descriptor);
+    }
   });
 
   it('uses the owning window for resize observation', () => {

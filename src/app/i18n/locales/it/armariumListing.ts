@@ -109,4 +109,6 @@ export const armariumListing: Translation = {
   'armariumListing.problem.tooManyTags': 'Usa al massimo {count} etichette.',
   'armariumListing.problem.tagTwice': 'Usa ogni etichetta una sola volta.',
   'armariumListing.problem.tagsExclusive': 'Usa solo una tra {tags}.',
+  'armariumListing.kind.music': 'Musica',
+  'armariumListing.kindLine.music': 'Album e brani per la pagina Suono.',
 };

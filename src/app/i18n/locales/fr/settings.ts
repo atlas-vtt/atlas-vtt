@@ -71,6 +71,7 @@ export const settings: Translation = {
   'settings.updates.heading': 'Mises à jour',
   'settings.updates.notice': 'Atlas {version} est prêt à être installé.',
   'settings.updates.noticeTitle': 'Mise à jour disponible',
+  'settings.updates.partUpdate': 'Atlas n\'est mis à jour qu\'en partie sur cet appareil : il tourne en version {running}, le reste est en {installed}. Un outil de synchronisation a laissé de côté son gros fichier main.js ; copiez ce fichier depuis votre autre appareil, ou depuis la version {installed} d\'Atlas sur GitHub, dans le dossier du plugin de ce coffre.',
   'settings.updates.showAfterUpdates': 'Afficher le journal des modifications après les mises à jour',
   'settings.updates.showAfterUpdatesDesc': 'Ouvrir les notes de version une fois après la mise à jour d\'Atlas. Vous pouvez toujours consulter le journal des modifications ici.',
   'settings.updates.upToDate': 'Atlas est à jour',
