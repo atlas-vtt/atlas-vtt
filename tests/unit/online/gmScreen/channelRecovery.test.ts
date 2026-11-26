@@ -89,6 +89,26 @@ describe('a GM screen channel whose opening exchange loses a frame', () => {
     expect([pair.gmHeard.at(-1), pair.deviceHeard.at(-1)]).toEqual([press(4), code('444444')]);
   });
 
+  it('opens anew when the device is heard after every send of an opening was lost, so what it pressed is answered', async () => {
+    const pair = await openPair();
+    // Atlas opens again (a welcome after its own reconnect); the room drops all five sends of that opening.
+    await pair.gm.open();
+    for (let at = 0; at < 2 * 60_000; at += 20_000) {
+      pair.toDevice.splice(0);
+      await pass(pair, 20_000);
+    }
+    pair.toDevice.splice(0);
+    expect(openings(pair)).toHaveLength(6);
+    // The device saw none of it, and presses a key under the keys it holds.
+    expect(await pair.device.send(press(1))).toBe(true);
+    await pair.deliver();
+    expect(pair.gmHeard).toEqual([press(1)]);
+    expect([pair.gm.isOpen, pair.device.isOpen]).toEqual([true, true]);
+    expect(await pair.gm.send(code('111111'))).toBe(true);
+    await pair.deliver();
+    expect(pair.deviceHeard).toEqual([code('111111')]);
+  });
+
   it('brings no earlier keys back for handshake frames the room replays during the recovery', async () => {
     const pair = await channelPair(KEY);
     await pair.gm.open();
@@ -135,6 +155,22 @@ describe('what a channel sends to an end that never answers', () => {
       await pair.gm.receive(at % 10_000 === 0 ? ASK : garbage);
       await pass(pair, 5000);
     }
+    expect(openings(pair).length).toBeLessThanOrEqual(70);
+    expect(openings(pair).length - firstHalf).toBeLessThanOrEqual(31);
+  });
+
+  it('sends a device heard under earlier keys no more than an opening a minute while every opening is lost', async () => {
+    const pair = await openPair();
+    await pair.gm.open();
+    let firstHalf = 0;
+    for (let at = 0; at < HOUR; at += 5000) {
+      if (at === HOUR / 2) firstHalf = openings(pair).length;
+      pair.toDevice.splice(0);
+      await pair.device.send(press(at));
+      await pair.gm.receive(pair.toGm.shift());
+      await pass(pair, 5000);
+    }
+    expect(pair.gmHeard).toHaveLength(HOUR / 5000);
     expect(openings(pair).length).toBeLessThanOrEqual(70);
     expect(openings(pair).length - firstHalf).toBeLessThanOrEqual(31);
   });

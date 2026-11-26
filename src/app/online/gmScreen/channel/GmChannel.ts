@@ -19,8 +19,8 @@ interface Pending {
  * Atlas's end of the channel to one device. Atlas opens it (`open`) on every welcome from the relay and
  * every time the device joins, and again when the device asks or sends what does not open here. Until
  * the device answers, nothing is sealed; what it sealed under the exchange before still opens, and the
- * opening goes again while no answer comes (`OPENING_SENDS`). Everything happens in turn, so frames
- * leave in the order of their counters.
+ * opening goes again while no answer comes (`OPENING_SENDS`), then anew whenever the device is heard.
+ * Everything happens in turn, so frames leave in the order of their counters.
  */
 export class GmChannel {
   private readonly turns = new SerialLock();
@@ -102,9 +102,9 @@ export class GmChannel {
   }
 
   /**
-   * The device asked for an exchange, or sent a frame that does not open here: its keys are not
-   * Atlas's. An opening on its way answers that while it may still go again; otherwise a new exchange
-   * begins, at the pace's time.
+   * The device asked for an exchange, sent a frame that does not open here, or was heard while an
+   * exchange waits: its keys are not Atlas's. An opening on its way answers that while it may still go
+   * again; otherwise a new exchange begins, at the pace's time.
    */
   private trouble(): void {
     if (this.pending !== null && this.pending.sends < OPENING_SENDS) return;
@@ -159,5 +159,7 @@ export class GmChannel {
     // A gap needs nothing here: what the device sends stands on its own.
     const message = opened === 'late' ? null : decodeMessage(opened.bytes, parseDeviceMessage);
     if (message !== null) this.events.message(message);
+    // The device is there and holds the earlier keys: an opening that went unanswered all its times goes anew.
+    if (this.pending !== null) this.trouble();
   }
 }
