@@ -10,6 +10,7 @@ import { relayRooms, type RoomAccount } from './gmScreenRoom.ts';
 import { GmScreenSession } from './GmScreenSession.ts';
 import { gmScreenControlShown, setGmScreenSession } from './gmScreenSlot.ts';
 import { plugKeysScreen } from './keys/atlasKeys.ts';
+import { plugLayoutScreen } from './keys/atlasLayout.ts';
 import { noticeKnocks } from './knockNotice.ts';
 import { plugAtlasStatblocks } from './statblocks/atlasStatblocks.ts';
 
@@ -43,6 +44,7 @@ export class AtlasGmScreen {
     }, saved);
     this.stops = [
       plugKeysScreen(app, this.session, companionTimers()),
+      plugLayoutScreen(app, this.session),
       plugAtlasStatblocks(app, this.session),
       noticeKnocks(this.session, gmScreenControlShown, showNotice),
     ];
