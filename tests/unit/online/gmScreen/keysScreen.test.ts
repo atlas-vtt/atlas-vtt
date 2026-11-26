@@ -37,6 +37,7 @@ const COMMANDS = {
   takeBackHandout: { type: 'takeBackHandout' },
   showHoveredImage: { type: 'showHoveredImage' },
   roll: { type: 'roll', id: 'attack' },
+  dice: { type: 'dice', formula: '2d6+3' },
   shareRolls: { type: 'shareRolls' },
   level: { type: 'level', channel: 'ambience', deltaDb: -3 },
 } as const satisfies { [K in RemoteCommand['type']]: Extract<RemoteCommand, { type: K }> };
@@ -89,19 +90,22 @@ describe('the Keys screen on Atlas\'s side', () => {
     expect(heardOf(phone, 'keys')[0]?.state.combat).toMatchObject({ active: true, round: 1 });
   });
 
-  it('refuses the image under this computer\'s pointer, and commands it does not know, and says why', async () => {
+  it('refuses the image under this computer\'s pointer, commands it does not know and a formula over the dice tool\'s limits, and says why', async () => {
     const rig = await keysRig();
     rig.world.table.window.hoveringImage = true;
     const phone = await allowedDevice(rig, PHONE);
     await rig.press(phone, 1, COMMANDS.showHoveredImage);
     await rig.press(phone, 2, { type: 'teleport' });
     await rig.press(phone, 3, { type: 'level', channel: 'master', db: 'loud' });
+    await rig.press(phone, 4, { type: 'dice', formula: '101d6' });
     expect(heardOf(phone, 'press-answer')).toEqual([
       { t: 'press-answer', id: 1, refused: 'not-here' },
       { t: 'press-answer', id: 2, refused: 'unknown-command' },
       { t: 'press-answer', id: 3, refused: 'unknown-command' },
+      { t: 'press-answer', id: 4, refused: 'bad-formula' },
     ]);
     expect(rig.world.table.player.showHoveredImage).not.toHaveBeenCalled();
+    expect(rig.world.table.map.rollFormula).not.toHaveBeenCalled();
     // Each refusal is a name the page's parser reads.
     for (const answer of heardOf(phone, 'press-answer')) expect(parseKeysMessage({ ...answer })).toEqual(answer);
   });

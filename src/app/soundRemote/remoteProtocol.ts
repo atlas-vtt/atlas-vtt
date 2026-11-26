@@ -39,6 +39,8 @@ export type RemoteCommand =
   | { type: 'showHoveredImage' }
   /** Rolls a saved roll of the map in front's collection, as the dice tray does. */
   | { type: 'roll'; id: string }
+  /** Rolls a formula with dice (`1d20`, `2d6+3`) on the map in front, as the dice tray's line does. */
+  | { type: 'dice'; formula: string }
   /** Switches "Show my rolls to players". */
   | { type: 'shareRolls' }
   /** `db` sets the level, `deltaDb` moves it; `reset` puts it back to 0 dB. Exactly one of them. */
@@ -147,6 +149,8 @@ export function needsThisPointer(command: RemoteCommand): boolean {
 
 const SIMPLE = new Set(['nextMood', 'stopAll', 'pause', 'nextTrack', 'previousTrack', 'shuffle', 'repeat', 'muteMusic', 'combat', 'rollInitiative', 'present', 'freeze', 'curtain', 'takeBackHandout', 'showHoveredImage', 'shareRolls']);
 const MAX_ID = 200;
+/** Longer than the dice tool rolls, so a formula over its limits is refused by the dice tool and says why. */
+const MAX_FORMULA = 200;
 /** No dial turns further in one event. */
 const MAX_STEP_DB = 60;
 
@@ -167,6 +171,7 @@ export function parseRemoteCommand(value: unknown): RemoteCommand | null {
   if (!isRecord(value) || typeof value.type !== 'string') return null;
   const { type } = value;
   if (type === 'mood' || type === 'roll') return typeof value.id === 'string' && value.id.length > 0 && value.id.length <= MAX_ID ? { type, id: value.id } : null;
+  if (type === 'dice') return typeof value.formula === 'string' && value.formula.length > 0 && value.formula.length <= MAX_FORMULA ? { type, formula: value.formula } : null;
   if (type === 'level') return parseLevel(value);
   return SIMPLE.has(type) ? ({ type } as RemoteCommand) : null;
 }

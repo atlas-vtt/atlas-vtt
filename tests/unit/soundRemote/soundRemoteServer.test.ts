@@ -173,4 +173,13 @@ describe('the sound remote over HTTP', () => {
     expect(await call('POST', '/v1/command', { body: { type: 'curtain' }, token })).toEqual({ status: 409, body: JSON.stringify({ error: 'no-player-window' }) });
     expect((await call('POST', '/v1/command', { body: { type: 'pause' }, token })).status).toBe(409);
   });
+
+  it('rolls a dice formula on the map in front, and refuses one the dice tool would not roll with its reason', async () => {
+    const { token, table } = await paired();
+    expect((await call('POST', '/v1/command', { body: { type: 'dice', formula: '1d20+2' }, token })).status).toBe(204);
+    expect(table.map.rollFormula).toHaveBeenCalledWith('1d20+2');
+    expect(await call('POST', '/v1/command', { body: { type: 'dice', formula: '101d6' }, token })).toEqual({ status: 409, body: JSON.stringify({ error: 'bad-formula' }) });
+    expect((await call('POST', '/v1/command', { body: { type: 'dice' }, token })).status).toBe(400);
+    expect(table.map.rollFormula).toHaveBeenCalledOnce();
+  });
 });

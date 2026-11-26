@@ -1,11 +1,12 @@
 import { startCombatByRules } from '../initiative/combatStart';
 import { listedByCards, listedBySides } from '../initiative/sides';
+import { rollableFormula } from '../tools/rollableFormula';
 import type { ViewAtlasState } from '../storeFactory';
 import type { DicePreset } from '../types/dicePresetTypes';
 import type { InitiativeRules } from '../types/initiativeRulesTypes';
 import type { RemoteCombat, RemoteCommand, RemotePlayer } from './remoteProtocol';
 
-const TABLE_COMMAND_TYPES = ['combat', 'rollInitiative', 'present', 'freeze', 'curtain', 'takeBackHandout', 'showHoveredImage', 'roll', 'shareRolls'] as const;
+const TABLE_COMMAND_TYPES = ['combat', 'rollInitiative', 'present', 'freeze', 'curtain', 'takeBackHandout', 'showHoveredImage', 'roll', 'dice', 'shareRolls'] as const;
 const TABLE_COMMANDS: ReadonlySet<string> = new Set(TABLE_COMMAND_TYPES);
 
 /** The commands that act on the table (the fight and the player window), not on sound. */
@@ -15,8 +16,8 @@ export function isTableCommand(command: RemoteCommand): command is TableCommand 
   return TABLE_COMMANDS.has(command.type);
 }
 
-/** Why a table command did nothing. */
-export type TableRefusal = 'no-scene' | 'no-combatants' | 'no-rolls' | 'cards-short' | 'no-player-window' | 'true-scale' | 'no-handout' | 'no-image' | 'no-roll';
+/** Why a table command did nothing. `bad-formula`: the dice tool would not roll it (`rollableFormula`). */
+export type TableRefusal = 'no-scene' | 'no-combatants' | 'no-rolls' | 'cards-short' | 'no-player-window' | 'true-scale' | 'no-handout' | 'no-image' | 'no-roll' | 'bad-formula';
 
 /** The map the GM has in front (`remoteMapView`), and the tracker's and the scene tab's own actions on it. */
 export interface TableMap {
@@ -33,6 +34,8 @@ export interface TableMap {
   savedRolls(): readonly DicePreset[];
   /** Rolls one through the view's dice tool, as the tray does (`rollSavedRoll`). */
   rollSaved(preset: DicePreset): void;
+  /** Rolls a formula through the view's dice tool, as the tray's line does. */
+  rollFormula(formula: string): void;
 }
 
 /** The player window and the online table, as the player window's bar reads and presses them. */
@@ -173,6 +176,13 @@ export function runTableCommand(source: TableSource, command: TableCommand): Tab
       return player.showHoveredImage() ? null : 'no-image';
     case 'roll':
       return onMap(source, (map) => runRoll(map, command.id));
+    case 'dice':
+      // Checked before the map: a formula the dice tool refuses is the controller's to fix, wherever the GM is.
+      if (!rollableFormula(command.formula)) return 'bad-formula';
+      return onMap(source, (map) => {
+        map.rollFormula(command.formula);
+        return null;
+      });
     case 'shareRolls':
       source.shareRolls.setShown(!source.shareRolls.shown());
       return null;

@@ -40,6 +40,9 @@ function tableMap(app: App, view: AtlasView): TableMap {
     },
     // The view's own dice tool: the 3D dice, the player window, online players and the table log follow as from the tray
     rollSaved: (preset) => rollSavedRoll(view.serviceManager.getToolController().getDiceTool(), preset),
+    rollFormula: (formula) => {
+      view.serviceManager.getToolController().getDiceTool().rollDice(formula);
+    },
   };
 }
 

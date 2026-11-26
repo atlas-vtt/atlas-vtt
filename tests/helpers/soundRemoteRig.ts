@@ -92,6 +92,7 @@ export function fakeTable(options: { combatants?: number; rules?: InitiativeRule
       { id: 'fire', name: 'Fire bolt', formula: '+2', look: { dice: [{ count: 2, sides: 10, colour: '#ff6600' }], crit: 'natural' } },
     ],
     rollSaved: vi.fn(),
+    rollFormula: vi.fn(),
   };
   const window = { open: true, online: false, frozen: false, trueScale: false, curtained: false, handout: false, hoveringImage: false };
   const player = {
