@@ -2,29 +2,30 @@ import { describe, expect, it } from 'vitest';
 import type { Container, Ticker } from 'pixi.js';
 import { ShownPlaces } from '../../src/app/lighting/shownPlaces';
 import { PointerTrack } from '../../src/app/online/marks/PointerTrack';
-import { TokenGlide, glideStep, placedAtOnce } from '../../src/app/pixi/token-renderer/TokenGlide';
+import { TokenPlaces, glideStep, placedAtOnce } from '../../src/app/pixi/token-renderer/TokenPlaces';
 
 type Step = (ticker: Pick<Ticker, 'deltaMS'>) => void;
 
-function harness(reduced = false, clearWay = true): { glide: TokenGlide; shown: ShownPlaces; sprite: { position: { x: number; y: number; set(x: number, y: number): void } }; moves: number[]; steps: Set<Step>; frame(ms: number): void } {
+function harness(reduced = false, clearWay = true): { places: TokenPlaces; shown: ShownPlaces; sprite: { position: { x: number; y: number; set(x: number, y: number): void } }; moves: number[]; steps: Set<Step>; frame(ms: number): void } {
   const steps = new Set<Step>();
   const ticker = { add: (step: Step) => steps.add(step), remove: (step: Step) => steps.delete(step) } as unknown as Ticker;
   const position = { x: 0, y: 0, set(x: number, y: number): void { this.x = x; this.y = y; } };
   const sprite = { position };
   const moves: number[] = [];
   const shown = new ShownPlaces();
-  const glide = new TokenGlide({
+  const places = new TokenPlaces({
     shown,
     clearWay: () => clearWay,
     getTicker: () => ticker,
     getSprite: () => sprite as unknown as Container,
+    ui: { moveWithToken: () => undefined },
     onMove: (_id, x) => moves.push(x),
     reducedMotion: () => reduced,
   });
-  return { glide, shown, sprite, moves, steps, frame: (ms) => [...steps].forEach((step) => step({ deltaMS: ms })) };
+  return { places, shown, sprite, moves, steps, frame: (ms) => [...steps].forEach((step) => step({ deltaMS: ms })) };
 }
 
-describe('TokenGlide', () => {
+describe('TokenPlaces', () => {
   it('covers the same share of the way left whatever the frame length', () => {
     const twoFrames = glideStep(glideStep({ x: 0, y: 0 }, { x: 100, y: 0 }, 8), { x: 100, y: 0 }, 8);
     expect(twoFrames.x).toBeCloseTo(glideStep({ x: 0, y: 0 }, { x: 100, y: 0 }, 16).x, 9);
@@ -32,7 +33,7 @@ describe('TokenGlide', () => {
 
   it('moves a token towards its place frame by frame, never past it, and lets the ticker go on arrival', () => {
     const h = harness();
-    h.glide.to('hero', 70, 0);
+    h.places.glide('hero', 70, 0);
     expect(h.sprite.position.x).toBe(0);
     h.frame(16);
     expect(h.sprite.position.x).toBeGreaterThan(0);
@@ -46,19 +47,19 @@ describe('TokenGlide', () => {
 
   it('bends towards a place given mid-way and stops where a drag takes over', () => {
     const h = harness();
-    h.glide.to('hero', 70, 0);
+    h.places.glide('hero', 70, 0);
     h.frame(16);
-    h.glide.to('hero', 0, 0);
+    h.places.glide('hero', 0, 0);
     const turned = h.sprite.position.x;
     h.frame(16);
     expect(h.sprite.position.x).toBeLessThan(turned);
-    h.glide.cancel('hero');
+    h.places.cancel('hero');
     expect(h.steps.size).toBe(0);
   });
 
   it('tells sight and light where a gliding token is drawn, and nothing once it has arrived', () => {
     const h = harness();
-    h.glide.to('hero', 70, 0);
+    h.places.glide('hero', 70, 0);
     expect(new Map(h.shown.entries()).get('hero')).toEqual({ x: 0, y: 0 });
     h.frame(16);
     expect(new Map(h.shown.entries()).get('hero')?.x).toBe(h.sprite.position.x);
@@ -68,15 +69,15 @@ describe('TokenGlide', () => {
 
   it('forgets where a token is drawn once something else moves it', () => {
     const h = harness();
-    h.glide.to('hero', 70, 0);
+    h.places.glide('hero', 70, 0);
     h.frame(16);
-    h.glide.cancel('hero');
+    h.places.cancel('hero');
     expect(h.shown.size).toBe(0);
   });
 
   it('puts a token whose way it may not be drawn on in its place at once', () => {
     const h = harness(false, false);
-    h.glide.to('hero', 70, 0);
+    h.places.glide('hero', 70, 0);
     expect(h.sprite.position.x).toBe(70);
     expect(h.steps.size).toBe(0);
     expect(h.shown.size).toBe(0);
@@ -84,7 +85,7 @@ describe('TokenGlide', () => {
 
   it('puts the token in its place at once under reduced motion', () => {
     const h = harness(true);
-    h.glide.to('hero', 70, 0);
+    h.places.glide('hero', 70, 0);
     expect(h.sprite.position.x).toBe(70);
     expect(h.steps.size).toBe(0);
     expect(h.moves).toEqual([70]);
@@ -125,10 +126,11 @@ describe('a token someone else holds', () => {
     const moves: number[] = [];
     const shown = new ShownPlaces();
     const clock = { now: 0 };
-    const glide = new TokenGlide({
+    const places = new TokenPlaces({
       shown,
       getTicker: () => ticker,
       getSprite: () => sprite as unknown as Container,
+      ui: { moveWithToken: () => undefined },
       onMove: (_id, x) => moves.push(x),
       reducedMotion: () => false,
       heldPlayout: () => ({ interval: 33, lag: () => lag() }),
@@ -136,7 +138,7 @@ describe('a token someone else holds', () => {
       now: () => clock.now,
     });
     const frame = (ms: number): void => [...steps].forEach((step) => step({ deltaMS: ms }));
-    return { glide, shown, sprite, moves, steps, frame, clock, tick: () => frame(FRAME) };
+    return { places, shown, sprite, moves, steps, frame, clock, tick: () => frame(FRAME) };
   }
 
   it('moves as one with the cursor of the player dragging it: both are drawn as far behind their messages', () => {
@@ -159,7 +161,7 @@ describe('a token someone else holds', () => {
           waiting = [];
         }
         if (hand - dragSent >= 33) {
-          h.glide.follow('hero', hand, 0);
+          h.places.follow('hero', hand, 0);
           dragSent = hand;
         }
       }
@@ -195,13 +197,13 @@ describe('a token someone else holds', () => {
           waiting = [];
         }
         if (hand < stop && hand - dragSent >= 33) {
-          h.glide.follow('hero', hand * speed, 0);
+          h.places.follow('hero', hand * speed, 0);
           dragSent = hand;
         }
         if (hand === stop && !dropped) {
           dropped = true;
           holder.by = null;
-          h.glide.to('hero', stop * speed, 0);
+          h.places.glide('hero', stop * speed, 0);
         }
       }
       h.tick();
@@ -218,13 +220,13 @@ describe('a token someone else holds', () => {
     const h = held(() => 120, holder);
     for (let now = 0; now <= 600; now += 33) {
       h.clock.now = now;
-      h.glide.follow('hero', now, 0);
+      h.places.follow('hero', now, 0);
       h.tick();
     }
     expect(h.sprite.position.x).toBeLessThan(600 - 100);
     holder.by = null;
-    h.glide.to('hero', 640, 0);
-    expect(h.glide.headsTo('hero', 640, 0)).toBe(true);
+    h.places.glide('hero', 640, 0);
+    expect(h.places.headsTo('hero', 640, 0)).toBe(true);
     for (let now = 600; now <= 1200; now += FRAME) {
       h.clock.now = now;
       h.tick();
@@ -237,7 +239,7 @@ describe('a token someone else holds', () => {
   it('ends where its last place was once nobody holds it, and leaves it to this view\'s pointer once that takes it', () => {
     const holder: { by: 'pointer' | 'elsewhere' | null } = { by: 'elsewhere' };
     const h = held(() => 100, holder);
-    h.glide.follow('hero', 50, 0);
+    h.places.follow('hero', 50, 0);
     holder.by = null;
     for (let now = 0; now <= 400; now += FRAME) {
       h.clock.now = now;
@@ -248,7 +250,7 @@ describe('a token someone else holds', () => {
 
     holder.by = 'elsewhere';
     h.clock.now = 500;
-    h.glide.follow('hero', 90, 0);
+    h.places.follow('hero', 90, 0);
     holder.by = 'pointer';
     h.tick();
     expect(h.steps.size).toBe(0);
@@ -257,7 +259,7 @@ describe('a token someone else holds', () => {
 
   it('glides as any token without a held playout', () => {
     const h = harness();
-    h.glide.follow('hero', 70, 0);
+    h.places.follow('hero', 70, 0);
     h.frame(16);
     expect(h.sprite.position.x).toBeGreaterThan(0);
     expect(h.sprite.position.x).toBeLessThan(70);

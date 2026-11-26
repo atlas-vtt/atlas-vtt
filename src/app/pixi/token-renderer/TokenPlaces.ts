@@ -65,11 +65,13 @@ interface Follow {
   lag: number | null;
 }
 
-export interface TokenGlideDeps {
+export interface TokenPlacesDeps {
   /** The ticker the glides step on; without one a token is put in its place at once. */
   getTicker(): Ticker | null;
   getSprite(tokenId: string): Container | null;
-  /** Called for every place a token is drawn at, so its UI follows. */
+  /** The tokens' UI (`UIManager`): a token's nameplate, bars and controls stand where its sprite is drawn. */
+  ui: { moveWithToken(tokenId: string, x: number, y: number): void };
+  /** Called for every place a token is drawn at, once its sprite and UI stand there, so the rest of the canvas follows. */
   onMove(tokenId: string, x: number, y: number): void;
   reducedMotion(): boolean;
   /** Where gliding tokens are drawn, for sight and light to follow; unread without one. */
@@ -85,33 +87,47 @@ export interface TokenGlideDeps {
 }
 
 /**
- * Moves token sprites to the places they are given without a jump, as the online player client
- * does: every frame a token covers the same share of the way that is left, so a new place given
- * mid-way bends the path instead of restarting it. A token someone else holds is played out instead
- * (`follow`), as far behind as the cursor that holds it, so the two move as one. The ticker is used
- * only while a token moves.
+ * Where each token is drawn: its sprite, its UI and the place sight and light read it at
+ * (`ShownPlaces`) always move together. A token is put in its place at once (`put`), or glides
+ * there without a jump, as the online player client does: every frame it covers the same share of
+ * the way that is left, so a new place given mid-way bends the path instead of restarting it. A
+ * token someone else holds is played out instead (`follow`), as far behind as the cursor that
+ * holds it, so the two move as one. The ticker is used only while a token moves.
  */
-export class TokenGlide {
+export class TokenPlaces {
   private readonly targets = new Map<string, Point>();
   private readonly follows = new Map<string, Follow>();
   private ticker: Ticker | null = null;
   private readonly shown: ShownPlaces;
 
-  constructor(private readonly deps: TokenGlideDeps) {
+  constructor(private readonly deps: TokenPlacesDeps) {
     this.shown = deps.shown ?? new ShownPlaces();
+  }
+
+  /**
+   * Draws a move the store made to `(x, y)`: at once where `placedAtOnce` says so, played out while
+   * someone else holds the token, else glided. `mayGlide` is asked only for a token not already
+   * gliding there (a dropped token glides from the pointer, where it showed, to this place).
+   */
+  storeMoved(tokenId: string, x: number, y: number, move: { loading: boolean; mayGlide: () => boolean }): void {
+    const holder = this.deps.heldBy?.(tokenId) ?? null;
+    const mayGlide = this.headsTo(tokenId, x, y) || move.mayGlide();
+    if (placedAtOnce({ held: holder !== null, pointerDrags: holder === 'pointer', loading: move.loading, mayGlide })) this.put(tokenId, x, y);
+    else if (holder === 'elsewhere') this.follow(tokenId, x, y);
+    else this.glide(tokenId, x, y);
   }
 
   /**
    * Glides `tokenId` from where it is drawn to `(x, y)`; where it may not be drawn on that way
    * (`clearWay`), puts it there at once. Sight and light read it where it is drawn from now on.
    */
-  to(tokenId: string, x: number, y: number): void {
+  glide(tokenId: string, x: number, y: number): void {
     const ticker = this.deps.getTicker();
     const sprite = this.deps.getSprite(tokenId);
     const follow = this.follows.get(tokenId);
     const clear = !sprite || (this.deps.clearWay?.(follow?.last ?? sprite.position, { x, y }) ?? true);
     if (!ticker || !clear || this.deps.reducedMotion()) {
-      this.jump(tokenId, x, y);
+      this.put(tokenId, x, y);
       return;
     }
     // A held token let go of plays out its way to where it was put down, as the cursor that held it does.
@@ -131,16 +147,16 @@ export class TokenGlide {
   /**
    * Draws a token someone else holds on its way to `(x, y)`: its places are played out at least as far
    * behind as the cursor of the pointer holding it, so token and cursor move as one. Without a held
-   * playout it glides (`to`).
+   * playout it glides (`glide`).
    */
   follow(tokenId: string, x: number, y: number): void {
     const playout = this.deps.heldPlayout?.() ?? null;
-    if (playout === null) return this.to(tokenId, x, y);
+    if (playout === null) return this.glide(tokenId, x, y);
     const ticker = this.deps.getTicker();
     const sprite = this.deps.getSprite(tokenId);
     const known = this.follows.get(tokenId);
     if (!ticker || !sprite || this.deps.reducedMotion() || !(this.deps.clearWay?.(known?.last ?? sprite.position, { x, y }) ?? true)) {
-      this.jump(tokenId, x, y);
+      this.put(tokenId, x, y);
       return;
     }
     this.targets.delete(tokenId);
@@ -165,13 +181,13 @@ export class TokenGlide {
     return target?.x === x && target.y === y;
   }
 
-  /** Puts `tokenId` at `(x, y)` at once, ending its glide. */
-  jump(tokenId: string, x: number, y: number): void {
+  /** Puts `tokenId` at `(x, y)` at once, ending its glide; sight and light read it where the store has it. */
+  put(tokenId: string, x: number, y: number): void {
     this.cancel(tokenId);
     this.place(tokenId, x, y);
   }
 
-  /** Leaves `tokenId` where it is drawn: something else moves it now (a drag, another animation), and sight reads the store again. */
+  /** Leaves `tokenId` where it is drawn and sight reads the store again: the token left the canvas, or this view's pointer took it over. */
   cancel(tokenId: string): void {
     this.targets.delete(tokenId);
     this.follows.delete(tokenId);
@@ -247,6 +263,7 @@ export class TokenGlide {
   private place(tokenId: string, x: number, y: number): void {
     this.deps.getSprite(tokenId)?.position.set(x, y);
     this.note(tokenId, x, y);
+    this.deps.ui.moveWithToken(tokenId, x, y);
     this.deps.onMove(tokenId, x, y);
   }
 

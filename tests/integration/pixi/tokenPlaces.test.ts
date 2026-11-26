@@ -4,6 +4,10 @@ import { Container, Point, Texture, type Application, type EventSystem, type Fed
 import { Viewport } from 'pixi-viewport';
 import { EventEmitter } from '../../../src/app/utils/typedEmitter';
 import { TokenRenderer } from '../../../src/app/pixi/token-renderer';
+import { TokenPlaces, type TokenHolder } from '../../../src/app/pixi/token-renderer/TokenPlaces';
+import { UIManager } from '../../../src/app/pixi/token-renderer/UIManager';
+import { InteractionController } from '../../../src/app/pixi/token-renderer/InteractionController';
+import type { TokenGroupContainer } from '../../../src/app/pixi/token-renderer/types';
 import { TOKEN_UI_Z_INDEX } from '../../../src/app/pixi/TokenControlsUI';
 import { ShownPlaces } from '../../../src/app/lighting/shownPlaces';
 import { holdTokens } from '../../../src/app/lighting/sightOnDrop';
@@ -74,7 +78,7 @@ interface Rig {
 
 const hero = (): Character => ({ id: 'hero', kind: 'character', name: 'Hero', showNameplate: true, ...START, size: 1, layer: 0, imagePath: ART, rotation: 0, isHidden: false });
 
-const pointer = (at: At): FederatedPointerEvent =>
+const pointerAt = (at: At): FederatedPointerEvent =>
   ({ button: 0, pointerId: 1, pointerType: 'mouse', global: new Point(at.x, at.y), clientX: at.x, clientY: at.y, stopPropagation: vi.fn(), preventDefault: vi.fn() }) as unknown as FederatedPointerEvent;
 
 const cleanups: Array<() => void> = [];
@@ -134,9 +138,9 @@ async function rendererRig(): Promise<Rig> {
       store.getState().moveToken('hero', x, y);
     },
     letGo: () => holdTokens(store, []),
-    press: (at) => viewport.emit('pointerdown', pointer(at)),
-    move: (at) => viewport.emit('pointermove', pointer(at)),
-    release: (at) => viewport.emit('pointerup', pointer(at)),
+    press: (at) => viewport.emit('pointerdown', pointerAt(at)),
+    move: (at) => viewport.emit('pointermove', pointerAt(at)),
+    release: (at) => viewport.emit('pointerup', pointerAt(at)),
     cancelTouch: () => canvas.dispatchEvent(Object.assign(new Event('pointercancel'), { pointerType: 'touch' })),
     frame: (ms) => {
       clock.now += ms;
@@ -146,7 +150,66 @@ async function rendererRig(): Promise<Rig> {
   };
 }
 
-const rigs: Array<[string, () => Promise<Rig>]> = [['through the token renderer', rendererRig]];
+/** Hero drawn by its places alone (`TokenPlaces`), with its UI (`UIManager`) and the pointer's drags (`InteractionController`): no token renderer. */
+async function placesRig(): Promise<Rig> {
+  const { app, store, viewport, grid, ticker, clock } = scene();
+  clock.start();
+  store.getState().addToken(hero());
+  const group: TokenGroupContainer = Object.assign(new Container(), { tokenId: 'hero', tokenData: hero(), tokenSize: GRID, artPath: ART, strokeWidth: 0 });
+  group.position.set(START.x, START.y);
+  const sprite = (id: string): TokenGroupContainer | null => (id === 'hero' ? group : null);
+  const ui = new UIManager(viewport, store, 'token-places');
+  ui.setTokenSpriteProvider(sprite);
+  ui.createTokenUI('hero', group, hero());
+  const pointer = new InteractionController(viewport, store, grid, new EventEmitter(), app);
+  const shown = new ShownPlaces();
+  const heldBy = (id: string): TokenHolder => (!store.getState().heldTokens[id] ? null : pointer.isDraggingTokens() ? 'pointer' : 'elsewhere');
+  const places = new TokenPlaces({
+    getTicker: () => ticker as unknown as Ticker,
+    getSprite: sprite,
+    ui,
+    onMove: () => {},
+    reducedMotion: () => false,
+    shown,
+    heldPlayout: () => ({ interval: 33, lag: () => null }),
+    heldBy,
+  });
+  pointer.setTokenSpriteProvider(sprite);
+  pointer.setTokenPlaces(places);
+  cleanups.push(() => {
+    places.destroy();
+    pointer.destroyAll();
+    ui.destroyAll();
+  });
+  const stored = (x: number, y: number, mayGlide: boolean): void => {
+    store.getState().moveToken('hero', x, y);
+    places.storeMoved('hero', x, y, { loading: false, mayGlide: () => mayGlide });
+  };
+  const canvas = viewport.options.events.domElement;
+  return {
+    sprite: () => ({ x: group.x, y: group.y }),
+    ui: () => ({ x: ui.getTokenUIs().hero!.getContainer().x, y: ui.getTokenUIs().hero!.getContainer().y }),
+    shown: () => shown.get('hero'),
+    place: (x, y) => stored(x, y, false),
+    glide: (x, y) => stored(x, y, true),
+    follow: (x, y) => {
+      holdTokens(store, ['hero']);
+      stored(x, y, true);
+    },
+    letGo: () => holdTokens(store, []),
+    press: (at) => pointer.handleViewportTokenPointerDown('hero', pointerAt(at)),
+    move: (at) => viewport.emit('pointermove', pointerAt(at)),
+    release: (at) => viewport.emit('pointerup', pointerAt(at)),
+    cancelTouch: () => canvas.dispatchEvent(Object.assign(new Event('pointercancel'), { pointerType: 'touch' })),
+    frame: (ms) => {
+      clock.now += ms;
+      ticker.advance(ms);
+    },
+    idle: () => ticker.steps.size === 0,
+  };
+}
+
+const rigs: Array<[string, () => Promise<Rig>]> = [['through the token renderer', rendererRig], ['by its places alone', placesRig]];
 
 /** Runs frames until nothing moves, at most two seconds of them. */
 function settle(rig: Rig): void {

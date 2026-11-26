@@ -39,7 +39,7 @@ import { DragRulerView } from './token-renderer/DragRulerView';
 import { DEFAULT_DRAG_DISTANCE, showsDragDistance } from '../measure/dragDistance';
 import { SyncService } from './token-renderer/SyncService';
 import { tokenSyncState } from './token-renderer/tokenSyncState';
-import { TokenGlide, placedAtOnce, type HeldPlayout, type TokenHolder } from './token-renderer/TokenGlide';
+import { TokenPlaces, type HeldPlayout, type TokenHolder } from './token-renderer/TokenPlaces';
 import { TokenBump } from './token-renderer/TokenBump';
 import type { ShownPlaces } from '../lighting/shownPlaces';
 import type { Point } from '../types/visionTypes';
@@ -131,7 +131,8 @@ export class TokenRenderer {
     },
     () => this.pixiApp?.ticker ?? null,
   );
-  private readonly glide: TokenGlide;
+  /** Where each token is drawn: its sprite, its UI and where sight reads it move together. */
+  private readonly places: TokenPlaces;
   /** Tokens players walked into a wall with: their drawings lean and spring back. */
   private readonly bumps: TokenBump;
   private readonly exit = new TokenExit({
@@ -243,16 +244,6 @@ export class TokenRenderer {
     shownPlaces?: ShownPlaces,
     textureCache?: TextureCache,
   ) {
-    this.glide = new TokenGlide({
-      getTicker: () => this.pixiApp?.ticker ?? null,
-      getSprite: (tokenId) => this.tokenSprites[tokenId] ?? null,
-      onMove: (tokenId, x, y) => this.followToken(tokenId, x, y),
-      reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? activeDocument.body),
-      ...(shownPlaces && { shown: shownPlaces }),
-      clearWay: (from, to) => this.glideWay?.(from, to) ?? true,
-      heldPlayout: () => this.heldPlayout,
-      heldBy: (tokenId) => this.heldBy(tokenId),
-    });
     this.bumps = new TokenBump({
       getTicker: () => this.pixiApp?.ticker ?? null,
       getSprite: (tokenId) => this.tokenSprites[tokenId] ?? null,
@@ -292,6 +283,18 @@ export class TokenRenderer {
     // Provide token sprite access to UI manager
     this.uiManager.setTokenSpriteProvider((tokenId: string) => this.tokenSprites[tokenId] || null);
     this.uiManager.onSelectionUIChange = () => this.selectionOverlayUpdater();
+
+    this.places = new TokenPlaces({
+      getTicker: () => this.pixiApp?.ticker ?? null,
+      getSprite: (tokenId) => this.tokenSprites[tokenId] ?? null,
+      ui: this.uiManager,
+      onMove: (tokenId) => this.followToken(tokenId),
+      reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? activeDocument.body),
+      ...(shownPlaces && { shown: shownPlaces }),
+      clearWay: (from, to) => this.glideWay?.(from, to) ?? true,
+      heldPlayout: () => this.heldPlayout,
+      heldBy: (tokenId) => this.heldBy(tokenId),
+    });
     
     // Initialize interaction controller
     this.interactionController = new InteractionController(
@@ -305,14 +308,7 @@ export class TokenRenderer {
     
     // Set up interaction controller callbacks
     this.interactionController.setTokenSpriteProvider((tokenId: string) => this.tokenSprites[tokenId] || null);
-    this.interactionController.setUIPositionUpdater((tokenId: string, x: number, y: number) => {
-      this.uiManager.syncUIPosition(tokenId, x, y);
-      this.refreshDisplayedToken(tokenId);
-    });
-    this.interactionController.setTokenSettler((tokenId, x, y) => this.glide.to(tokenId, x, y));
-    this.interactionController.setControlsPositionUpdater((x: number, y: number, tokenSize: number) =>
-      this.uiManager.updateControlsPosition(x, y, tokenSize)
-    );
+    this.interactionController.setTokenPlaces(this.places);
     this.interactionController.setHandlePositionUpdater(() => 
       this.uiManager.updateHandlePositions()
     );
@@ -842,17 +838,10 @@ export class TokenRenderer {
     this.selectionOverlayUpdater();
   }
 
-  /** Takes along what stands with a token's sprite as it glides: its UI, its controls and the selection frame. */
-  private followToken(tokenId: string, x: number, y: number): void {
-    this.uiManager.syncUIPosition(tokenId, x, y);
+  /** Takes along what stands with a token beside its sprite and UI as it is drawn at a new place: what the players see of it, and the selection frame. */
+  private followToken(tokenId: string): void {
     this.refreshDisplayedToken(tokenId);
-    const selectedIds = this.store.getState().selectedIds;
-    if (!selectedIds.includes(tokenId)) return;
-    if (selectedIds.length === 1) {
-      const tokenSize = this.tokenSprites[tokenId]?.tokenSize || 70;
-      this.uiManager.updateControlsPosition(x, y, tokenSize);
-    }
-    this.selectionOverlayUpdater();
+    if (this.store.getState().selectedIds.includes(tokenId)) this.selectionOverlayUpdater();
   }
 
   /** Movement can lead the store; apply fog before the displayed position is rendered. */
@@ -1016,18 +1005,8 @@ export class TokenRenderer {
 
         // Only update position if it changed
         if (!prevToken || prevToken.x !== token.x || prevToken.y !== token.y) {
-          const { heldTokens, isMapLoading } = this.store.getState();
-          // A dropped token is already gliding from the pointer, where it showed, to this place
-          const mayGlide = this.glide.headsTo(token.id, token.x, token.y) || this.mayGlide(token, prevToken);
-          const pointerDrags = this.interactionController.isDraggingTokens();
-          const held = !!heldTokens[token.id];
-          if (placedAtOnce({ held, pointerDrags, loading: isMapLoading, mayGlide })) {
-            this.glide.jump(token.id, token.x, token.y);
-          } else if (held) {
-            this.glide.follow(token.id, token.x, token.y);
-          } else {
-            this.glide.to(token.id, token.x, token.y);
-          }
+          const loading = this.store.getState().isMapLoading;
+          this.places.storeMoved(token.id, token.x, token.y, { loading, mayGlide: () => this.mayGlide(token, prevToken) });
           
           // Update rotation handle positions when token moves
           this.uiManager.updateHandlePositions();
@@ -1308,7 +1287,7 @@ export class TokenRenderer {
     const leaving: TokenGroupContainer[] = [];
     for (const id of ids) {
       const tokenGroup = this.tokenSprites[id];
-      this.glide.cancel(id);
+      this.places.cancel(id);
       this.bumps.cancel(id);
       this.deselect(id);
       if (tokenGroup) {
@@ -1388,7 +1367,7 @@ export class TokenRenderer {
     // Destroy interaction controller
     this.interactionController.destroyAll();
     this.dragRuler.destroy();
-    this.glide.destroy();
+    this.places.destroy();
     this.bumps.destroy();
     this.playerSight.destroy();
     this.turnMarkers.destroy();
@@ -1499,9 +1478,8 @@ export class TokenRenderer {
       
       // Only update if position actually changed
       if (Math.abs(snappedPos.x - currentPos.x) > 0.1 || Math.abs(snappedPos.y - currentPos.y) > 0.1) {
-        // Update sprite position immediately for visual feedback
-        tokenSprite.position.set(snappedPos.x, snappedPos.y);
-        this.uiManager.syncUIPosition(tokenId, snappedPos.x, snappedPos.y);
+        // Drawn there at once, for visual feedback
+        this.places.put(tokenId, snappedPos.x, snappedPos.y);
         tokenUpdates.push({id: tokenId, x: snappedPos.x, y: snappedPos.y});
       }
     }

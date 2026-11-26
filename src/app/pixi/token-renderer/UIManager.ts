@@ -161,9 +161,9 @@ export class UIManager {
     const uiElement = ui.getContainer();
     this.uiContainer.addChild(uiElement);
     
-    // Initial update and position sync
+    // Initial update, where the token is drawn
     ui.update(token, container.tokenSize || 70);
-    this.syncUIPosition(tokenId, container.position.x, container.position.y);
+    uiElement.position.copyFrom(container.position);
     
     // Set up hover handlers for the UI
     this.setupUIHoverHandlers(tokenId, container);
@@ -331,11 +331,11 @@ export class UIManager {
 
   // Helper methods
 
-  syncUIPosition(tokenId: string, x: number, y: number): void {
-    const ui = this.tokenUIs[tokenId];
-    if (ui) {
-      ui.getContainer().position.set(x, y);
-    }
+  /** Puts a token's UI where its sprite is drawn, and the +/- controls with it while it is the one token selected (`TokenPlaces`). */
+  moveWithToken(tokenId: string, x: number, y: number): void {
+    this.tokenUIs[tokenId]?.getContainer().position.set(x, y);
+    const { selectedIds } = this.store.getState();
+    if (selectedIds.length === 1 && selectedIds[0] === tokenId) this.tokenControlsUI?.updatePosition(x, y, this.getTokenSprite(tokenId)?.tokenSize || 70);
   }
 
   syncUIScale(tokenId: string, tokenSize: number): void {
@@ -350,10 +350,6 @@ export class UIManager {
     if (tokenGroup) {
       this.tokenControlsUI?.followTokenSize(tokenId, tokenGroup.position.x, tokenGroup.position.y, tokenSize);
     }
-  }
-
-  updateControlsPosition(x: number, y: number, tokenSize: number): void {
-    this.tokenControlsUI?.updatePosition(x, y, tokenSize);
   }
 
   /** Keeps the UI of `tokenIds` at rest while the pointer holds or drags them; the rest are released. */
