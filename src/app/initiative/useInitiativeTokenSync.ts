@@ -10,7 +10,7 @@ import { offMapWithoutEntry } from './offMapCombatants';
  * Keeps the tracker's entries in step with their tokens while the tracker is mounted. A token on
  * the map is never given an entry here: the GM chooses the combatants.
  */
-export function useInitiativeTokenSync(tokens: Record<string, TokenEntity>, entries: InitiativeEntry[]): void {
+export function useInitiativeTokenSync(tokens: Record<string, TokenEntity>, entries: InitiativeEntry[], defeated: () => ReadonlySet<string>): void {
   const removeFromInitiative = useAtlasStore((s) => s.removeFromInitiative);
   const updateInitiativeEntry = useAtlasStore((s) => s.updateInitiativeEntry);
   const addToInitiative = useAtlasStore((s) => s.addToInitiative);
@@ -21,7 +21,7 @@ export function useInitiativeTokenSync(tokens: Record<string, TokenEntity>, entr
   useEffect(() => {
     entries.forEach((entry) => {
       if (entry.tokenId !== undefined && !tokens[entry.tokenId]) {
-        removeFromInitiative(entry.id);
+        removeFromInitiative(entry.id, defeated());
       }
     });
   // Deliberately not keyed on the entries: checked only when map tokens change, not on entry edits.
@@ -67,9 +67,9 @@ export function useInitiativeTokenSync(tokens: Record<string, TokenEntity>, entr
 const NO_TOKENS: Record<string, TokenEntity> = {};
 
 /** Keeps the entries in step with their tokens, drawn or not: the tracker itself reads tokens only while it is drawn. */
-export function InitiativeTokenSync(): null {
+export function InitiativeTokenSync({ defeated }: { defeated: () => ReadonlySet<string> }): null {
   const tokens = useAtlasStore((s) => s.objects?.tokens) ?? NO_TOKENS;
   const entries = useAtlasStore((s) => s.initiative.entries);
-  useInitiativeTokenSync(tokens, entries);
+  useInitiativeTokenSync(tokens, entries, defeated);
   return null;
 }
