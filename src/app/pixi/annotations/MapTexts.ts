@@ -85,10 +85,6 @@ export class MapTexts {
     this.placing.setEnabled(mode === 'text');
   }
 
-  hearPressesLast(): void {
-    this.placing.hearPressesLast();
-  }
-
   /** The view's state changed; `left` where what was being placed belongs to it no longer. */
   follow(state: ViewAtlasState, previous: ViewAtlasState, left: boolean): void {
     if (left) this.placing.cancel();

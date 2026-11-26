@@ -14,6 +14,8 @@ import { watchInput } from '../../src/app/packages/components/primitives/lastInp
 import { PixiAppManager } from '../../src/app/pixi/PixiAppManager';
 import { SelectionManager } from '../../src/app/pixi/SelectionManager';
 import { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
+import { MapPointer } from '../../src/app/pixi/pointer/MapPointer';
+import { listenToViewport } from '../../src/app/pixi/pointer/viewportPointer';
 import { mapGestureHost } from '../../src/app/pixi/input/mapGestureHost';
 import { pressActsOnCanvas } from '../../src/app/pixi/input/pressTargets';
 import { applyNavigationMode } from '../../src/app/pixi/viewportNavigation';
@@ -38,6 +40,8 @@ export interface TouchMap {
   store: ViewAtlasStore;
   viewport: Viewport;
   tokens: TokenRenderer;
+  /** The map's pointer, where a test attaches the layers it presses. */
+  pointer: MapPointer;
   selection: SelectionManager;
   /** The PIXI application, whose ticker is the map's frame clock. */
   app: Application;
@@ -116,12 +120,16 @@ export function touchMaps(): { map: (view?: { width: number; height: number }) =
     const events = new EventEmitter();
     const grid = new GridSystem(app, viewport, mapImageViewOf(floor), { size: GRID, enabled: false, color: 0xffffff });
     const selection: { manager?: SelectionManager } = {};
+    // As the view builds it: the map's pointer listens before every other listener of the viewport
+    const pointer = new MapPointer({ store, gmView: () => tokens.showsGmView(), placing: () => false });
+    const stopPointer = listenToViewport(pointer, viewport, manager.getCanvasElement());
     const tokens = new TokenRenderer(obsidian, viewport, grid, () => selection.manager?.updateSelectionOverlay(), store, events, 'touch-test');
     tokens.setPixiApp(app);
+    pointer.attach('tokens', tokens.pointer);
     selection.manager = new SelectionManager(viewport, () => tokens.getTokenSprites(), store, events);
     selection.manager.setHitTestTokensProvider((x, y) => tokens.hitTestTokens(x, y));
-    tokens.setGroupFrameHitTest((x, y) => selection.manager?.groupFrameContains(x, y) ?? false);
-    selection.manager.reorderViewportListeners();
+    const marquee = selection.manager;
+    pointer.attach('groupFrame', { contains: (x, y) => marquee.groupFrameContains(x, y) });
 
     const fingers = { use: 'tool' as FingerUse, penSeen: false, notePen: (): void => { fingers.penSeen = true; } };
     const taps: TouchMap['taps'] = { lighting: null };
@@ -130,9 +138,9 @@ export function touchMaps(): { map: (view?: { width: number; height: number }) =
       lightingTapPlacing: () => taps.lighting?.() ?? null,
       placing: () => false,
       marqueePending: () => selection.manager?.marqueePending ?? false,
-      menuAt: (x, y) => tokens.menuAt(x, y),
-      tapActsAt: (x, y) => tokens.tapActsAt(x, y),
-      pressActs: { onCanvas: (x, y) => pressActsOnCanvas(app.renderer.events, x, y), onMap: (x, y) => tokens.pressActsAt(x, y) },
+      menuAt: (x, y) => pointer.menuAt(x, y),
+      tapActsAt: (x, y) => pointer.tapActsAt(x, y),
+      pressActs: { onCanvas: (x, y) => pressActsOnCanvas(app.renderer.events, x, y), onMap: (x, y) => pointer.pressActsAt(x, y) },
       emptyMapMenu: (world, at) => openEmptyMapMenu(store, tokens, world, at),
     }));
     // What the plugin does for every window: hit areas and drags go by the pointer in use
@@ -146,6 +154,7 @@ export function touchMaps(): { map: (view?: { width: number; height: number }) =
 
     cleanups.push(() => {
       stopWatchingInput();
+      stopPointer();
       selection.manager?.destroy();
       tokens.destroy();
       grid.destroy();
@@ -154,7 +163,7 @@ export function touchMaps(): { map: (view?: { width: number; height: number }) =
     });
 
     return {
-      store, viewport, tokens, fingers, taps, app, obsidian,
+      store, viewport, tokens, pointer, fingers, taps, app, obsidian,
       selection: selection.manager,
       canvas: manager.getCanvasElement(),
       tokenAt: () => {

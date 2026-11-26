@@ -70,9 +70,7 @@ describe('the player window behind the line-of-sight fallback, in GM view', () =
     const controller = new LightingController({ viewport, app, store, eventBus: new EventEmitter(), obsApp, viewId: 'frames', bounds: () => MAP, albedo: () => null });
     const ignore = (): void => undefined;
     controller.wire({
-      setLightHandlers: ignore, setWallPointerDownHandler: ignore, setWallContextMenuHandler: ignore, setWallPointerMoveHandler: ignore,
-      setWallPointerUpHandler: ignore, setWallDoubleClickHandler: ignore, setWallCursorProvider: ignore, setDoorMenuHandlers: ignore,
-      setDoorClickHandler: ignore, setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
+      setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
     } as unknown as TokenRenderer);
     // As the player window is shown a view that renders on change: a frame of the window's own size, right before the view's renders.
     const { source, frames: frameTexture } = playerFrameSource({

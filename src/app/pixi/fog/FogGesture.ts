@@ -7,7 +7,7 @@ import type * as PIXI from 'pixi.js';
 import type { Point } from '../../types/visionTypes';
 import { isFogTool, type FogShape, type FogToolChoices } from '../../fog/fogToolChoices';
 import type { LayerVisibility } from '../playerSafeFrame';
-import { hearPressesLast, isHandled } from '../utils/handledEvents';
+import { isHandled } from '../utils/handledEvents';
 import { isPrimaryPress } from '../utils/pointerButtons';
 import { placeKeysOf, placeKeysWith } from './FogSnapping';
 import { FogStroke, type FogStrokeDeps } from './FogStroke';
@@ -87,11 +87,6 @@ export class FogGesture {
     this.shape = choices.shape;
     if (isFogTool(this.deps.store.getState().activeTool) && this.shape === 'brush') this.ringAtPointer();
     else this.stroke.hideRing();
-  }
-
-  /** The gesture hears presses after the dispatch that claims them; called once that dispatch listens. */
-  hearPressesLast(): void {
-    hearPressesLast(this.deps.viewport, this.onPointerDown);
   }
 
   /**

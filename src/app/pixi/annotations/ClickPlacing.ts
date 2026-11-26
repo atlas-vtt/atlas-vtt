@@ -1,7 +1,7 @@
 import type { FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { Point } from '../../types/visionTypes';
-import { hearPressesLast, isHandled } from '../utils/handledEvents';
+import { isHandled } from '../utils/handledEvents';
 import { isPrimaryPress } from '../utils/pointerButtons';
 
 /** What a press of the Draw tool places, in the mode that places by a press. */
@@ -26,11 +26,6 @@ export class ClickPlacing {
     if (enabled === this.enabled) return;
     this.enabled = enabled;
     this.viewport[enabled ? 'on' : 'off']('pointerdown', this.onPointerDown);
-  }
-
-  /** The dispatch that claims presses listens now: these presses are heard after it. */
-  hearPressesLast(): void {
-    if (this.enabled) hearPressesLast(this.viewport, this.onPointerDown);
   }
 
   destroy(): void {

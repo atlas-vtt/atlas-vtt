@@ -8,6 +8,8 @@ vi.mock('events', async () => import('eventemitter3'));
 import { GridSystem, type GridOptions } from '../../src/app/grid/GridSystem';
 import { mapImageViewOf } from './fakeMapImageView';
 import { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
+import { MapPointer } from '../../src/app/pixi/pointer/MapPointer';
+import { listenToViewport } from '../../src/app/pixi/pointer/viewportPointer';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import { MeasureRenderer } from '../../src/app/pixi/measure/MeasureRenderer';
 import { captureWithLayerVisibility, type LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
@@ -43,6 +45,8 @@ export interface PlayerViewScene {
   viewport: Viewport;
   grid: GridSystem;
   tokens: TokenRenderer;
+  /** The map's pointer, which hands the tools their presses and moves. */
+  mapPointer: MapPointer;
   fog: FogOfWarRenderer;
   measure: MeasureRenderer;
   store: ReturnType<typeof createViewAtlasStore>;
@@ -96,8 +100,12 @@ export function playerViewScenes(): { scene: (options?: PlayerViewSceneOptions) 
     store.setState({ mapPath: 'maps/a.atlasmap', isMapLoading: false, isGMView: true });
     const events = new EventEmitter();
     const grid = new GridSystem(app, viewport, mapImageViewOf(floor), { size: CELL, enabled: false, color: 0xffffff, ...gridOptions });
+    // As the view builds it: the map's pointer listens before every other listener of the viewport
+    const mapPointer = new MapPointer({ store, gmView: () => tokens.showsGmView(), placing: () => false });
+    const stopPointer = listenToViewport(mapPointer, viewport, app.canvas);
     const tokens = new TokenRenderer(obsidian, viewport, grid, () => {}, store, events, 'player-view-test');
     tokens.setPixiApp(app);
+    mapPointer.attach('tokens', tokens.pointer);
     const fog = new FogOfWarRenderer(viewport, app, events, store, () => null);
     viewport.addChild(fog.getContainer());
     tokens.setFogCoverageProvider(() => fog.getCommittedCoverage());
@@ -106,10 +114,11 @@ export function playerViewScenes(): { scene: (options?: PlayerViewSceneOptions) 
     const showsPlayers = (): boolean => lighting.peeking || !store.getState().isGMView;
     tokens.setPlayerSightProvider(() => (showsPlayers() ? lighting.perception : undefined), showsPlayers);
     const measure = new MeasureRenderer(viewport, store, grid);
-    const unwire = wirePlayerMeasurements({ measure, tokens, store, grid, lighting: () => lighting.perception });
+    const unwire = wirePlayerMeasurements({ measure, tokens, pointer: mapPointer, store, grid, lighting: () => lighting.perception });
     const target = RenderTexture.create({ width: pane.width, height: pane.height });
     cleanups.push(() => {
       unwire();
+      stopPointer();
       measure.destroy();
       tokens.destroy();
       fog.destroy();
@@ -137,7 +146,7 @@ export function playerViewScenes(): { scene: (options?: PlayerViewSceneOptions) 
       viewport.emit(type, event);
     };
     const scene: PlayerViewScene = {
-      app, renderer, viewport, grid, tokens, fog, measure, store, settings, events, lighting, pointer,
+      app, renderer, viewport, grid, tokens, mapPointer, fog, measure, store, settings, events, lighting, pointer,
       setFog(operations): void { store.setState((state) => ({ objects: { ...state.objects, fog: operations } })); },
       async add(...added): Promise<void> {
         for (const token of added) store.getState().addToken({ kind: 'token', imagePath: '', size: 1, ...token } as TokenEntity);

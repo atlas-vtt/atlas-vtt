@@ -404,7 +404,7 @@ export class UIManager {
     uiContainer.interactiveChildren = false;
 
     // No pointer event listeners needed — hover state is driven by
-    // TokenRenderer.onViewportPointerMove → UIManager.setHoverState().
+    // the map's pointer (`MapPointer`) → UIManager.setHoverState().
   }
 
   /** Viewport-driven hover state update. Pass null to clear all hover. */

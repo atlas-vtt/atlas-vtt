@@ -83,7 +83,7 @@ export class MeasureRenderer {
   /** The handles of the kept measurements: the viewport's dispatch hands them the pointer (`pointer`), the map's keys Escape and Delete. */
   public readonly handles: MeasureHandleInteraction;
   /**
-   * What the token renderer's dispatch hands the pointer: the pin beside a released measurement's
+   * What the map's pointer (`MapPointer`) hands the pointer: the pin beside a released measurement's
    * label first (it lifts under the pointer), then the kept measurements' handles.
    */
   public readonly pointer: MeasurePointerHandlers = {

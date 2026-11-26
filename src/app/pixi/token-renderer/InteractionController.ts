@@ -23,7 +23,7 @@ import type { ConditionDefinition } from '../../types/collectionSettingsTypes';
 import { copyDragSelection } from './dragCopy';
 import type { DragRuler } from './DragRuler';
 import type { TokenMovement } from './tokenMovement';
-import { isPrimaryPress, isSecondaryPress } from '../utils/pointerButtons';
+import { isSecondaryPress } from '../utils/pointerButtons';
 import { applySelectionResourceChange } from '../../react/components/context-menu/selectionResourceMenu';
 import { selectionResources, type SelectionResource } from '../../resources/selectionResourceChange';
 import { SelectionResourceEditing } from '../selectionResourceEditor';
@@ -96,8 +96,6 @@ export class InteractionController {
     hasMoved: false
   };
   
-  // Hover handlers
-  private hoverHandlers: Record<string, { over: (e?: FederatedPointerEvent) => void; out: () => void }> = {};
   private _currentHoverId: string | null = null;
   /** The statblock preview the hover armed, hidden by itself: the token may have left the level shown since. */
   private hoverPreview: TokenPreviewAnchor | null = null;
@@ -141,11 +139,6 @@ export class InteractionController {
 
   /** Called by TokenRenderer when viewport pointerdown hits a token. */
   public handleViewportTokenPointerDown(tokenId: string, e: FederatedPointerEvent): void {
-    const activeTool = this.store.getState().activeTool;
-    if (activeTool === 'measure') {
-      return;
-    }
-
     e.stopPropagation();
 
     if (isSecondaryPress(e)) {
@@ -167,11 +160,6 @@ export class InteractionController {
 
   /** Starts a group drag for the given token IDs (click within selection bounding box). */
   public handleViewportGroupDragStart(tokenIds: string[], e: FederatedPointerEvent): void {
-    if (!isPrimaryPress(e)) return;
-
-    const activeTool = this.store.getState().activeTool;
-    if (activeTool !== 'select' && activeTool !== 'move') return;
-
     e.stopPropagation();
 
     if (this.isPlayerView || tokenIds.length === 0) {
@@ -192,7 +180,6 @@ export class InteractionController {
     if (prevId === tokenId) return;
 
     if (prevId) {
-      this.handleHoverEnd(prevId);
       if (this.hoverPreview) this.eventBus.emit('pin-hide-preview', { pin: this.hoverPreview });
       this.hoverPreview = null;
     }
@@ -200,7 +187,6 @@ export class InteractionController {
     this._currentHoverId = tokenId;
 
     if (tokenId) {
-      this.handleHoverStart(tokenId);
       // Emit hover preview for new token
       const token = mapTokens(levelObjects(this.store.getState()))[tokenId];
       // A token under the pointer may be dragged next: its speed is asked for ahead of the drag.
@@ -741,25 +727,12 @@ export class InteractionController {
     this.selectionEditing.open({ at, resourceName, count, onCommit, ...(onClose && { onClose }) });
   }
 
-  private handleHoverStart(tokenId: string): void {
-    // Hover start logic - could emit events or update UI
-  }
-
-  private handleHoverEnd(tokenId: string): void {
-    // Hover end logic - could emit events or update UI
-  }
-
   private showEditTokenModal(token: TokenEntity): void {
     const canvas = this.viewport.options?.events?.domElement;
     openEditTokenModal(token, this.store, this.obsApp, this.resourceDefsProvider(), canvas?.ownerDocument);
   }
 
   destroyAll(): void {
-    // Clean up all hover handlers
-    for (const tokenId in this.hoverHandlers) {
-      delete this.hoverHandlers[tokenId];
-    }
-
     // A drag interrupted by teardown must not leave its transaction open (a turn closes its own)
     const turning = this.turnDrag?.turning ?? false;
     this.turnDrag?.destroy();

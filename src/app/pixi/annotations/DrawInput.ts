@@ -2,7 +2,7 @@ import { Point as PixiPoint, type FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { MadeShape } from '../../annotations/madeDrawing';
 import type { Point } from '../../types/visionTypes';
-import { hearPressesLast, isHandled } from '../utils/handledEvents';
+import { isHandled } from '../utils/handledEvents';
 import { isPrimaryPress } from '../utils/pointerButtons';
 import { DRAW_DRAG_THRESHOLD, DrawGesture, sweeps, type DrawGestureResult, type DrawPointer, type GestureMode } from './drawGesture';
 import { doubleClickSlack, dragThreshold } from '../utils/pointerReach';
@@ -116,11 +116,6 @@ export class DrawInput {
     this.viewport[change]('pointerupoutside', this.onPointerUp);
     this.viewport[change]('pointercancel', this.onPointerCancel);
     if (!enabled) this.stop();
-  }
-
-  /** The dispatch that claims presses listens now: this input hears them after it. */
-  hearPressesLast(): void {
-    if (this.enabled) hearPressesLast(this.viewport, this.onPointerDown);
   }
 
   /** Ends the gesture under way: a shape is dropped, an eraser's sweep ends where it is. */
