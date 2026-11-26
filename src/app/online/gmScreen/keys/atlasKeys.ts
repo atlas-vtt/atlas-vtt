@@ -11,15 +11,23 @@ import { tableOnline } from './tableOnline.ts';
 
 /**
  * Plugs the Keys and Sound screens into the session, on a sound remote control of their own: the Stream
- * Deck's switch and its life do not touch it. A device never presses the image under this computer's
- * pointer, so the pointer is never followed for it. Returns what unplugs them.
+ * Deck's switch and its life do not touch it. The handout key shows the image under this computer's
+ * pointer, which is followed while a device is connected, by a follower of their own: the Stream Deck
+ * stopping its follower leaves this one listening, and the other way round. Returns what unplugs them.
  */
 export function plugKeysScreen(app: App, session: GmScreenSession, timers: Timers): () => void {
   return session.plug(new KeysScreen({
     open: () => {
       const moods = MoodStore.forApp(app);
-      const control = new RemoteControl({ director: SoundDirector.forApp(app), moods, table: remoteTableOf(app, new HoveredElement(app.workspace)) });
-      return { control, moods: () => moods.moods(), online: tableOnline };
+      // Only while a device can press the handout key: nothing watches the pointer otherwise
+      const hovered = new HoveredElement(app.workspace);
+      hovered.start();
+      const control = new RemoteControl({ director: SoundDirector.forApp(app), moods, table: remoteTableOf(app, hovered) });
+      const close = (): void => {
+        control.dispose();
+        hovered.dispose();
+      };
+      return { control, moods: () => moods.moods(), online: tableOnline, close };
     },
     outlet: session,
     timers,
