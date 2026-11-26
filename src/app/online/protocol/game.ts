@@ -5,6 +5,7 @@ import { parseBookRestMessage, type BookRestMessage } from './bookRest.ts';
 import { parseBump, parseDoorAnswer, parseDoorAsk, type DoorAnswer, type PlayerBump, type PlayerDoorAsk } from './doors.ts';
 import { isDeltaOf, parseDelta, parseSeq, type DeltaMessage, type DeltaOf } from './delta.ts';
 import { parseFloor, type SharedFloor } from './floor.ts';
+import { parseGmScreenWire, type SealedFrame, type SealOpen } from './gmScreenWire.ts';
 import type { SharedFog, SharedFogEdge } from './fog.ts';
 import { parseImageMessage, type ImageMessage } from './image.ts';
 import type { SharedInitiative } from './initiative.ts';
@@ -140,7 +141,10 @@ export type GmMessage =
   | SoundMessage
   | SoundPrepare
   /** A player's own pages besides the table: character, items, notes, pins. It belongs to the table, not to a scene. */
-  | BookMessage;
+  | BookMessage
+  /** The opening of a GM screen's channel to one of the GM's devices, and its sealed frames: never sent to a table's players. */
+  | SealOpen
+  | SealedFrame;
 
 /** A player whose `tokens`, `sight` or `fog` messages no longer follow on (a delta it cannot apply) asks for the whole message. */
 export interface PlayerResync {
@@ -246,6 +250,9 @@ export function parseGmMessage(value: unknown): GmMessage | null {
       return parseSoundMessage(value);
     case 'sound-prepare':
       return parseSoundPrepare(value);
+    case 'seal-open':
+    case 'sealed':
+      return parseGmScreenWire(value);
     default:
       if (isBookType(value.t)) return parseBookMessage(value);
       return isSceneId(value.scene) ? parseSceneInput(value, value.scene) : null;

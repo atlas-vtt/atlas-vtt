@@ -44,6 +44,7 @@ export const BOUNDARIES = {
       "src/app/online/movement/**/*.tsx",
       "src/app/online/tableLog/**/*.ts",
       "src/app/online/tableLog/**/*.tsx",
+      "src/app/online/gmScreen/channel/**/*.ts",
       "src/app/types.ts",
       "src/app/featureFlags.ts",
       "src/app/audio/dataUrl.ts",

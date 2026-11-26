@@ -137,9 +137,11 @@ export type RelayFrame =
   | { readonly v: 1; readonly t: 'gate-paused'; readonly until: number }
   /**
    * To a newcomer: the knock is taken, the GM decides. `wait`: the wait's token, once, for a page
-   * that keeps it (in memory only): a later hello with it takes the same wait up again.
+   * that keeps it (in memory only): a later hello with it takes the same wait up again. `id`: the
+   * knock's id, which the GM's knock names too (a GM screen's device shows its check number from it);
+   * an older relay names none.
    */
-  | { readonly v: 1; readonly t: 'waiting'; readonly wait?: string }
+  | { readonly v: 1; readonly t: 'waiting'; readonly wait?: string; readonly id?: string }
   /** `gmLevel`: what the table's GM serves (`GM_LEVEL`) while one is there; an older relay names none. `clock`: as the GM's. */
   | { readonly v: 1; readonly t: 'welcome'; readonly role: 'player'; readonly id: string; readonly key: string; readonly gmOnline: boolean; readonly gmLevel?: number; readonly clock?: true }
   | { readonly v: 1; readonly t: 'player-joined'; readonly id: string; readonly name: string }
@@ -267,7 +269,10 @@ export function parseRelayFrame(text: string): RelayFrame | null {
     case 'gate-paused':
       return typeof value.until === 'number' && Number.isFinite(value.until) ? { v: 1, t: 'gate-paused', until: value.until } : null;
     case 'waiting':
-      return typeof value.wait === 'string' && SECRET_PATTERN.test(value.wait) ? { v: 1, t: 'waiting', wait: value.wait } : { v: 1, t: 'waiting' };
+      return {
+        v: 1, t: 'waiting', ...(typeof value.wait === 'string' && SECRET_PATTERN.test(value.wait) && { wait: value.wait }),
+        ...(typeof value.id === 'string' && PLAYER_ID_PATTERN.test(value.id) && { id: value.id }),
+      };
     case 'gm':
       if (typeof value.online !== 'boolean') return null;
       return value.level === undefined ? { v: 1, t: 'gm', online: value.online } : { v: 1, t: 'gm', online: value.online, level: levelIn(value, 'level') };
