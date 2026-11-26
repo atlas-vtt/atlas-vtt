@@ -65,7 +65,7 @@ export class FloorPicture {
       if (!this.dice.has(key)) this.dice.set(key, tokenRollDice(ports.dice?.() ?? null, token));
       return this.dice.get(key);
     };
-    const mine = seats === undefined ? null : new MineShare({ onlinePlayers: () => ports.members(), ownerOf, diceOf }, (body, to) => ports.send(body, to));
+    const mine = seats === undefined ? null : new MineShare({ onlinePlayers: () => ports.members(), ownerOf, diceOf }, ports);
     this.mine = mine;
     // The initiative list shows the players' look-alike numbers too: it follows them as they change
     this.tokens = new TokenShare(store, { ...ports, numbersChanged: () => this.layers.update(), liveCarriedUntil: (alias) => this.live?.carriedUntil(alias) }, (listed) => mine?.setList(listed));
@@ -122,7 +122,7 @@ export class FloorPicture {
     this.inputs.feed.update();
     this.explored.update();
     if (change === 'atlas') this.mine?.update();
-    else this.mine?.diceChanged();
+    else this.mine?.feed.update();
   }
 
   /** The tokens, inputs, layers and owned tokens again, whole, to one player or to all of the picture's. */
@@ -131,7 +131,7 @@ export class FloorPicture {
     this.inputs.feed.resend(to);
     this.explored.feed.resend(to);
     this.layers.feed.resend(to);
-    this.mine?.resend(to);
+    this.mine?.feed.resend(to);
   }
 
   resync(from: string, message: PlayerResync): void {
