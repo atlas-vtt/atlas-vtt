@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../../src/app/storeFactory';
 import type { TokenEntity } from '../../../src/app/types';
 import type { InitiativeRules } from '../../../src/app/types/initiativeRulesTypes';
-import { ATLAS_VERSION } from '../../../src/app/services/MapPersistence';
 import { getDataFilePath } from '../../../src/app/utils/dataFileMigration';
 import { createInMemoryApp, type InMemoryApp } from '../../mocks/inMemoryVault';
 
@@ -123,23 +122,17 @@ describe('a saved fight', () => {
     expect(savedInitiative(await saved(ended), ended.store)).toBe('{"entries":[{"tokenId":"b","name":"b","initiative":9,"initiativeModifier":0,"imagePath":"b.png","isNPC":true,"id":"b","order":0,"isActive":false,"isDefeated":false},{"tokenId":"a","name":"a","initiative":5,"initiativeModifier":0,"imagePath":"a.png","isNPC":true,"id":"a","order":1,"isActive":false,"isDefeated":false}],"currentIndex":-1,"round":0,"isActive":false}');
   });
 
-  it('that an earlier Atlas left waiting at a delayed combatant goes on from there once opened', async () => {
-    const entry = (name: string, order: number, delayed = false): Record<string, unknown> => ({
-      id: `e-${name}`, tokenId: name, name, initiative: 20 - order, initiativeModifier: 0, imagePath: `${name}.png`, isActive: false, isNPC: true, order, ...(delayed && { delayed: true }),
-    });
-    const tokens = Object.fromEntries(['a', 'b', 'c'].map((name) => [name, { id: name, kind: 'token', x: 0, y: 0, imagePath: `${name}.png` }]));
-    const file = { version: ATLAS_VERSION, state: {
-      version: ATLAS_VERSION, mapPath: MAP, objects: { tokens },
-      initiative: { entries: [entry('a', 0), entry('b', 1, true), entry('c', 2)], currentIndex: 1, round: 1, isActive: true },
-    } };
-    const world = createInMemoryApp({ files: { [getDataFilePath(MAP)]: JSON.stringify(file) } });
-    world.app.vault.getFileByPath = world.app.vault.getAbstractFileByPath as typeof world.app.vault.getFileByPath;
-    const store = createViewAtlasStore(world.app, 'saved-fight-waiting');
-    store.getState().setPersistenceEnabled(false);
-    store.getState().setMapPath(MAP);
-    await store.persist.rehydrate();
+  it('waiting at a combatant that delayed while nobody else could act is written as every version reads it', async () => {
+    const fight = scene(['a', 'b', 'c']);
+    const { store } = fight;
+    ['a', 'b', 'c'].forEach((name, at) => number(store, name, 20 - at));
+    store.getState().updateInitiativeEntry(idOf(store, 'a'), { hiddenFromPlayers: true });
+    store.getState().updateInitiativeEntry(idOf(store, 'b'), { hiddenFromPlayers: true });
+    store.getState().startCombat();
+    store.getState().delayInitiativeTurn(idOf(store, 'c'));
+    const file = await saved(fight);
 
-    store.getState().nextTurn();
-    expect([store.getState().initiative.round, store.getState().initiative.entries.find((candidate) => candidate.isActive)?.name]).toEqual([1, 'c']);
+    expect(savedInitiative(file, store)).toBe('{"entries":[{"tokenId":"a","name":"a","initiative":20,"initiativeModifier":0,"imagePath":"a.png","isNPC":true,"id":"a","order":0,"isActive":false,"hiddenFromPlayers":true,"isDefeated":false},{"tokenId":"b","name":"b","initiative":19,"initiativeModifier":0,"imagePath":"b.png","isNPC":true,"id":"b","order":1,"isActive":false,"hiddenFromPlayers":true,"isDefeated":false},{"tokenId":"c","name":"c","initiative":18,"initiativeModifier":0,"imagePath":"c.png","isNPC":true,"id":"c","order":2,"isActive":false,"delayed":true,"isDefeated":false}],"currentIndex":2,"round":1,"isActive":true}');
+    expect(await openedAndSaved(fight.world)).toBe(file);
   });
 });
