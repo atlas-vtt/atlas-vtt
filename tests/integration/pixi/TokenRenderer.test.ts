@@ -539,7 +539,7 @@ describe('TokenRenderer Integration Tests', () => {
       expect(tokenGroup('moving').visible).toBe(true);
     });
 
-    it('updates only the moving token outline during animation', async () => {
+    it('updates only the moving token outline while it glides', async () => {
       wireFog();
       setFog();
       const perceive = vi.fn((_id: string) => 'sensed' as const);
@@ -548,36 +548,33 @@ describe('TokenRenderer Integration Tests', () => {
       store.getState().addToken(token({ id: 'stationary', x: 350 }));
       await waitForTokens('moving', 'stationary');
       tokenRenderer.refreshPlayerSight();
+      store.getState().moveToken('moving', 120, 100);
       perceive.mockClear();
-      eventBus.emit('animate-token-to-position', { tokenId: 'moving', targetX: 120, targetY: 100 });
       ticker.advance(10);
       expect(perceive).toHaveBeenCalled();
       expect(perceive.mock.calls.every(([id]) => id === 'moving')).toBe(true);
     });
 
-    it('uses the displayed centre during path animation and keeps the animation running', async () => {
+    it('uses the displayed centre while a token glides through fog and keeps the glide running', async () => {
       wireFog();
       setFog();
       store.getState().setGMView(false);
       store.getState().addToken(token({ id: 'moving' }));
       await waitForTokens('moving');
-      eventBus.emit('animate-token-path', {
-        tokenId: 'moving', finalX: 300, finalY: 100,
-        path: [{ x: 150, y: 100, timestamp: 0 }, { x: 250, y: 100, timestamp: 500 }], duration: 1000,
-      });
-      ticker.advance(200);
+      store.getState().moveToken('moving', 300, 100);
+      ticker.advance(30);
       expect(tokenGroup('moving').x).toBeGreaterThan(150);
       expect(tokenGroup('moving').x).toBeLessThan(250);
-      expect(store.getState().objects.tokens['moving']?.x).toBe(100);
+      expect(store.getState().objects.tokens['moving']?.x).toBe(300);
       expect(tokenGroup('moving').visible).toBe(false);
-      ticker.advance(600);
+      ticker.advance(1000);
       expect(tokenGroup('moving').x).toBe(300);
       expect(tokenGroup('moving').visible).toBe(true);
       expect(ticker.size).toBe(0);
     });
   });
 
-  describe('Movement & Path Animation', () => {
+  describe('Movement', () => {
     it('should move the sprite when the token position changes in the store', async () => {
       store.getState().addToken(token({ id: 'token-1' }));
       await waitForTokens('token-1');
@@ -591,34 +588,6 @@ describe('TokenRenderer Integration Tests', () => {
       expect(tokenGroup('token-1').x).toBeLessThan(200);
       ticker.advance(1000);
       expect(tokenGroup('token-1').position).toMatchObject({ x: 200, y: 240 });
-      expect(ticker.size).toBe(0);
-    });
-
-    it('should play back a recorded path and commit the final position to the store', async () => {
-      store.getState().addToken(token({ id: 'token-1' }));
-      await waitForTokens('token-1');
-
-      eventBus.emit('animate-token-path', {
-        tokenId: 'token-1',
-        finalX: 300,
-        finalY: 300,
-        path: [
-          { x: 150, y: 150, timestamp: 0 },
-          { x: 250, y: 250, timestamp: 500 },
-        ],
-        duration: 1000,
-      });
-      expect(ticker.size).toBe(1);
-
-      ticker.advance(400);
-      const midway = tokenGroup('token-1').position;
-      expect(midway.x).toBeGreaterThan(100);
-      expect(midway.x).toBeLessThan(300);
-      expect(store.getState().objects.tokens['token-1']).toMatchObject({ x: 100, y: 100 });
-
-      ticker.advance(400);
-      expect(tokenGroup('token-1').position).toMatchObject({ x: 300, y: 300 });
-      expect(store.getState().objects.tokens['token-1']).toMatchObject({ x: 300, y: 300 });
       expect(ticker.size).toBe(0);
     });
   });

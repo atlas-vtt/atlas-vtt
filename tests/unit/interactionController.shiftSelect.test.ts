@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { InteractionController } from '../../src/app/pixi/token-renderer/InteractionController';
+import { TokenPlaces } from '../../src/app/pixi/token-renderer/TokenPlaces';
 
 function makeController(selectedIds: string[], selectMore = false): { controller: InteractionController; setSelection: ReturnType<typeof vi.fn>; setTokenPositions: ReturnType<typeof vi.fn>; viewport: any } {
   const setSelection = vi.fn();
@@ -153,6 +154,7 @@ describe('InteractionController drag positions', () => {
     const { controller, setTokenPositions, viewport } = makeController(['a']);
     const sprite = { position: { x: 35, y: 35, set: vi.fn() } };
     controller.setTokenSpriteProvider(() => sprite as any);
+    controller.setTokenPlaces(new TokenPlaces({ getTicker: () => null, getSprite: () => sprite as any, ui: { moveWithToken: vi.fn() }, onMove: vi.fn(), reducedMotion: () => false }));
     (viewport.toWorld as ReturnType<typeof vi.fn>).mockImplementation((point: { x: number; y: number }) => point);
 
     controller.handleViewportTokenPointerDown('a', { ...plainClick, global: { x: 35, y: 35 } });

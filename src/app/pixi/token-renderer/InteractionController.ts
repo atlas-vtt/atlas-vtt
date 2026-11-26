@@ -2,7 +2,7 @@
  * Token Interaction Controller
  * 
  * Handles all pointer interactions with tokens including drag & drop,
- * hover effects, context menus, and path recording for smooth animations.
+ * hover effects and context menus.
  */
 
 import type { ResourceDefsProvider } from '../../resources/resourceTypes';
@@ -11,7 +11,8 @@ import { Viewport } from 'pixi-viewport';
 import { App } from 'obsidian';
 import { openEditTokenModal } from './EditTokenModal';
 import { openContextMenuGlobal, closeContextMenuGlobal } from '../../react/root/ContextMenuContext';
-import type { ITokenInteractionController, TokenGroupContainer } from './types';
+import type { TokenGroupContainer } from './types';
+import type { TokenPlaces } from './TokenPlaces';
 import type { TokenEntity } from '../../types';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { StoreApi } from 'zustand';
@@ -73,7 +74,7 @@ interface DragState {
   current?: Record<string, { x: number; y: number }>;
 }
 
-export class InteractionController implements ITokenInteractionController {
+export class InteractionController {
   private viewport: Viewport;
   private store: StoreApi<ViewAtlasState>;
   private gridSystem: GridSystem;
@@ -103,15 +104,13 @@ export class InteractionController implements ITokenInteractionController {
   
   // Callbacks for external systems
   private onSelectionUpdate?: () => void;
-  private onTokenMove?: (tokenId: string, x: number, y: number) => void;
   private getTokenSprite?: (tokenId: string) => TokenGroupContainer | null;
-  private updateUIPosition?: (tokenId: string, x: number, y: number) => void;
-  private settleToken?: (tokenId: string, x: number, y: number) => void;
+  /** Where the dragged tokens are drawn: under the pointer, then on their way to where they are dropped. */
+  private places?: Pick<TokenPlaces, 'put' | 'glide'>;
   /** What the view draws of the levels' maps, through which a dropped token falls; none without lighting. */
   private artFloors: (() => ArtFloors | undefined) | undefined;
   /** The map's size in world pixels, which sets how wide walls stop a dragged token. */
   private mapSize: () => MapSize | null = () => null;
-  private updateControlsPosition?: (x: number, y: number, tokenSize: number) => void;
   private onTokensHeldChange?: (tokenIds: string[]) => void;
   private updateHandlePositions?: () => void;
   private dragRuler?: DragRuler;
@@ -139,24 +138,6 @@ export class InteractionController implements ITokenInteractionController {
     this.obsApp = obsApp;
     this.isPlayerView = isPlayerView;
   }
-
-  attachInteractionHandlers(_tokenId: string, _container: Container, _token: TokenEntity): void {
-    // No-op: sprites are non-interactive. Viewport-level dispatch handles all pointer events.
-  }
-
-  removeInteractionHandlers(_tokenId: string, _container: Container): void {
-    // No-op: sprites are non-interactive. Viewport-level dispatch handles all pointer events.
-  }
-
-  setupHoverHandlers(
-    _tokenId: string, 
-    _container: Container,
-    _onHover: (tokenId: string) => void,
-    _onHoverEnd: (tokenId: string) => void
-  ): void {
-    // No-op: sprites are non-interactive. Viewport-level dispatch drives hover state.
-  }
-
 
   /** Called by TokenRenderer when viewport pointerdown hits a token. */
   public handleViewportTokenPointerDown(tokenId: string, e: FederatedPointerEvent): void {
@@ -361,10 +342,7 @@ export class InteractionController implements ITokenInteractionController {
         const from = this.dragState.initialPositions[id];
         return from ? [{ id, x: from.x, y: from.y }] : [];
       });
-      for (const { id, x, y } of back) {
-        this.getTokenSprite?.(id)?.position.set(x, y);
-        this.updateUIPosition?.(id, x, y);
-      }
+      for (const { id, x, y } of back) this.places?.put(id, x, y);
       this.store.getState().setIsDragging(false);
       if (back.length > 0) this.store.getState().setTokenPositions(back);
       abandonHistoryTransaction(this.store);
@@ -420,10 +398,7 @@ export class InteractionController implements ITokenInteractionController {
     });
 
     for (const { id, x, y } of updates) {
-      const sprite = this.getTokenSprite?.(id);
-      if (!sprite) continue;
-      sprite.position.set(x, y);
-      this.updateUIPosition?.(id, x, y);
+      if (this.getTokenSprite?.(id)) this.places?.put(id, x, y);
     }
 
     const rulerAt = this.dragState.rulerTokenId ? current[this.dragState.rulerTokenId] : undefined;
@@ -507,19 +482,6 @@ export class InteractionController implements ITokenInteractionController {
     if (!this.dragState.pendingUpdate) return;
     this.dragState.pendingUpdate = false;
     delete this.dragState.animationFrameId;
-    
-    // Update controls position if single token selected
-    const selectedIds = this.store.getState().selectedIds;
-    if (selectedIds.length === 1) {
-      const selectedId = selectedIds[0];
-      if (selectedId) {
-        const sprite = this.getTokenSprite?.(selectedId);
-        if (sprite) {
-          const tokenSize = sprite.tokenSize || 70;
-          this.updateControlsPosition?.(sprite.position.x, sprite.position.y, tokenSize);
-        }
-      }
-    }
     
     // Emit drag update event
     window.dispatchEvent(new CustomEvent('atlas-tokens-drag-update', { 
@@ -613,7 +575,7 @@ export class InteractionController implements ITokenInteractionController {
             : { x: newX, y: newY };
         
         // The token, with its resource bars and nameplate, glides from the pointer to where it snaps
-        this.settleToken?.(id, finalPos.x, finalPos.y);
+        this.places?.glide(id, finalPos.x, finalPos.y);
         
         tokenUpdates.push({id, x: finalPos.x, y: finalPos.y});
       }
@@ -698,21 +660,6 @@ export class InteractionController implements ITokenInteractionController {
     openContextMenuGlobal(selectionMenu(tokenActions(this.actionHost(), token, at), closeContextMenuGlobal), at);
   }
 
-  handleDrag(
-    tokenId: string,
-    startX: number,
-    startY: number,
-    onMove: (x: number, y: number) => void,
-    onEnd: (finalX: number, finalY: number, path: Array<{x: number, y: number, timestamp: number}>) => void
-  ): void {
-    // This method is part of the interface but drag is handled internally
-    // Could be used for programmatic drag operations
-  }
-
-  emitContextMenu(tokenId: string, x: number, y: number): void {
-    this.eventBus.emit('token-context-menu', { tokenId, x, y });
-  }
-
   // Callbacks setup
   
   setSelectionUpdateCallback(callback: () => void): void {
@@ -723,8 +670,9 @@ export class InteractionController implements ITokenInteractionController {
     this.getTokenSprite = provider;
   }
 
-  setUIPositionUpdater(updater: (tokenId: string, x: number, y: number) => void): void {
-    this.updateUIPosition = updater;
+  /** Where the view draws its tokens (`TokenPlaces`): a drag puts its tokens under the pointer and glides them to where they are dropped. */
+  setTokenPlaces(places: Pick<TokenPlaces, 'put' | 'glide'>): void {
+    this.places = places;
   }
 
   /** What the view draws of the levels' maps (`ArtFloors`): a token dropped where a level below shows falls to it. */
@@ -735,15 +683,6 @@ export class InteractionController implements ITokenInteractionController {
   /** The map's size in world pixels (`sessionDragWalls`). */
   setMapSize(read: () => MapSize | null): void {
     this.mapSize = read;
-  }
-
-  /** How a dropped token gets from where the pointer left it to its place. */
-  setTokenSettler(settler: (tokenId: string, x: number, y: number) => void): void {
-    this.settleToken = settler;
-  }
-
-  setControlsPositionUpdater(updater: (x: number, y: number, tokenSize: number) => void): void {
-    this.updateControlsPosition = updater;
   }
 
   setHandlePositionUpdater(updater: () => void): void {

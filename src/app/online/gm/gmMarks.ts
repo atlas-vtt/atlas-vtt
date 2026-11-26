@@ -2,7 +2,7 @@ import { CursorOverlay, CursorTap, MarkOverlay, PointerTap, type CursorViewport,
 import { LIVE_INTERVAL_MS, type SharedCursor, type SharedStroke } from '../protocol/index.ts';
 import { Container } from 'pixi.js';
 import { placeUnderTokens } from '../../pixi/measure/MeasureLayer';
-import type { HeldPlayout } from '../../pixi/token-renderer/TokenGlide';
+import type { HeldPlayout } from '../../pixi/token-renderer/TokenPlaces';
 import type { App } from 'obsidian';
 import type { UnderWaySource } from '../../annotations/underWay';
 import { FogCoverageCache } from '../../fog/FogCoverageCache';
