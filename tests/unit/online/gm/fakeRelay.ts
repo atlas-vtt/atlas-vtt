@@ -1,14 +1,18 @@
-import { ALL_PLAYERS, FINAL_CLOSE_CODES, type CampaignSeat, type ConnectionStats, type GmMessage, type PlayerInfo, type YourCodeMessage } from '../../../../src/app/online/protocol/index.ts';
+import {
+  ALL_PLAYERS, FINAL_CLOSE_CODES, PROTOCOL_VERSION, type CampaignSeat, type ConnectionStats, type GmMessage, type PlayerInfo, type YourCodeMessage,
+} from '../../../../src/app/online/protocol/index.ts';
+import { messageParts } from '../../../../src/app/online/gm/assetServe.ts';
 import type { CreatedTable } from '../../../../src/app/online/gm/createdTable.ts';
 import type { GateFrame } from '../../../../src/app/online/gm/joinGate.ts';
+import { SendQueue, type QueueSocket } from '../../../../src/app/online/gm/sendQueue.ts';
 import type { GateEvents, TableEvents, TableStatus } from '../../../../src/app/online/gm/TableConnection.ts';
 import type { OpenOutbox, TableOutbox } from '../../../../src/app/online/gm/tableOutbox.ts';
-import { PlayerPages, type PageMessage } from './playerPages.ts';
+import { WorkerTimers } from '../../../../src/app/utils/workerTimers';
+import { PartJoiner, PlayerPages, type PageMessage } from './playerPages.ts';
 
-/** What a table told the relay, in order: the game's messages, and what only the relay reads. */
+/** What a table told the relay, in order, as the frames went out: the game's messages (one sent in parts as the message they make), and what only the relay reads. */
 export type Told =
-  /** `live`: sent through the live lane, which goes ahead of every other waiting message (`TableConnection.sendLive`). */
-  | { readonly t: 'send'; readonly to: string | undefined; readonly body: PageMessage; readonly live?: true }
+  | { readonly t: 'send'; readonly to: string | undefined; readonly body: PageMessage }
   | { readonly t: 'players'; readonly players: readonly CampaignSeat[] }
   | ({ readonly t: 'gate' } & GateFrame)
   | { readonly t: 'kick' | 'admit' | 'decline'; readonly id: string }
@@ -22,22 +26,57 @@ export interface Welcome {
   readonly waiting?: readonly PlayerInfo[];
 }
 
+interface Entry {
+  readonly to: string;
+  readonly body: PageMessage;
+}
+
+/** A frame on the table's socket, as `TableConnection` writes it. */
+type Frame =
+  | ({ readonly t: 'send' } & Entry)
+  | { readonly t: 'sends'; readonly sends: readonly Entry[] }
+  | ({ readonly t: 'gate' } & GateFrame)
+  | { readonly t: 'players'; readonly players: readonly CampaignSeat[] }
+  | { readonly t: 'kick' | 'admit' | 'decline'; readonly id: string }
+  | { readonly t: 'end' };
+
+const frame = (body: object): string => JSON.stringify({ v: PROTOCOL_VERSION, ...body });
+
+/** A socket that hands every frame written to it to the relay at once. */
+export class RelaySocket implements QueueSocket {
+  /** Bytes the socket holds unsent: a test fills it to hold ordinary messages back, which live ones pass up to a limit (`SendQueue`). */
+  bufferedAmount = 0;
+
+  constructor(private readonly relay: (text: string) => void) {}
+
+  send(text: string): void {
+    this.relay(text);
+  }
+}
+
 /**
- * A running table's outbox (`TableOutbox`) at the fake relay: what the table sends reaches the pages
- * of the players it knows to be connected, as `TableConnection` hands it on; the test plays the relay.
+ * A running table's outbox (`TableOutbox`) at the fake relay. It queues what the table sends as
+ * `TableConnection` does, on the real `SendQueue` with its lanes, pacing and batches, to the players it
+ * knows to be connected; the frames the queue writes reach the relay, and each game message the pages
+ * of whom it is for that are there then. The test plays the relay.
  */
 export class RelayOutbox implements TableOutbox {
   /** What the table told the relay, in order. */
   readonly told: Told[] = [];
   started = false;
   onSent: ((text: string, to: string) => void) | null = null;
+  /** The table's socket to the relay, which the queue writes its frames to. */
+  readonly socket = new RelaySocket((text) => this.hear(text));
   private status: TableStatus = 'connecting';
   private readonly players = new Set<string>();
   private batching = false;
   private needed: number | null = null;
   private lastClose: number | null = null;
   private reconnects = 0;
-  private roster: readonly CampaignSeat[] | null = null;
+  private roster: string | null = null;
+  private readonly queue = new SendQueue(new WorkerTimers());
+  private readonly parts = new PartJoiner();
+  private partIds = 0;
 
   constructor(readonly table: CreatedTable, private readonly events: TableEvents, private readonly gate: GateEvents | null, private readonly pages: PlayerPages) {}
 
@@ -67,60 +106,73 @@ export class RelayOutbox implements TableOutbox {
   }
 
   stop(): void {
-    this.players.clear();
+    this.queue.detach();
+    this.forget();
     this.setStatus('stopped');
   }
 
   end(): void {
-    if (this.online) this.told.push({ t: 'end' });
+    if (this.online) this.hear(frame({ t: 'end' }));
     this.stop();
   }
 
   send(body: GmMessage, to: string = ALL_PLAYERS): void {
-    if (this.deliver(body, to)) this.onSent?.(JSON.stringify({ to, body }), to);
+    if (this.isGone(to)) return;
+    const parts = messageParts(body, () => (this.partIds += 1).toString(16).padStart(12, '0'));
+    for (const part of parts) {
+      const entry = JSON.stringify({ to, body: part });
+      this.queue.push(frame({ t: 'send', to, body: part }), to, entry);
+      if (parts.length === 1) this.onSent?.(entry, to);
+    }
+    if (parts.length > 1) this.onSent?.(JSON.stringify(body), to);
   }
 
-  sendLive(body: GmMessage, _key: string, to: string = ALL_PLAYERS): void {
-    this.deliver(body, to, true);
+  sendLive(body: GmMessage, key: string, to: string = ALL_PLAYERS): void {
+    if (this.isGone(to)) return;
+    this.queue.pushLive(`${to}\n${key}`, frame({ t: 'send', to, body }), to, JSON.stringify({ to, body }));
   }
 
   sendCode(message: YourCodeMessage, to: string): void {
-    this.deliver(message, to);
+    if (this.isGone(to)) return;
+    this.queue.push(frame({ t: 'send', to, body: message }), to, JSON.stringify({ to, body: message }));
   }
 
   sendTime(): boolean {
     return false;
   }
 
-  sendGate(frame: GateFrame): void {
-    if (this.online) this.told.push({ t: 'gate', ...frame });
+  sendGate(gate: GateFrame): void {
+    if (this.online) this.queue.push(frame({ t: 'gate', ...gate }));
   }
 
   setPlayers(players: readonly CampaignSeat[]): void {
-    this.roster = players;
-    if (this.online) this.told.push({ t: 'players', players });
+    const roster = JSON.stringify(players);
+    if (roster === this.roster) return;
+    this.roster = roster;
+    if (this.online) this.queue.push(frame({ t: 'players', players }));
   }
 
   answer(id: string, admit: boolean): void {
-    this.told.push({ t: admit ? 'admit' : 'decline', id });
+    this.queue.push(frame({ t: admit ? 'admit' : 'decline', id }));
   }
 
   kick(player: string): void {
-    this.told.push({ t: 'kick', id: player });
+    this.queue.push(frame({ t: 'kick', id: player }));
   }
 
   stats(): ConnectionStats {
     return { status: this.status, reconnects: this.reconnects, lastClose: this.lastClose, latencyMs: null, players: this.players.size };
   }
 
-  /** The relay welcomes the table with these players connected: their pages join, and the relay is told the gates and players first. */
+  /** The relay welcomes the table with these players connected: their pages join, and the relay is told the gates and players ahead of whatever waits. */
   welcome(players: readonly PlayerInfo[], welcome: Welcome = {}): void {
     this.needed = welcome.minLevel ?? null;
-    this.batching = welcome.batch === true;
     for (const { id } of players) this.players.add(id);
     this.pages.join(...players.map(({ id }) => id));
-    if (this.gate !== null) this.told.push({ t: 'gate', ...this.gate.frame() });
-    if (this.roster !== null) this.told.push({ t: 'players', players: this.roster });
+    if (this.gate !== null) this.hear(frame({ t: 'gate', ...this.gate.frame() }));
+    if (this.roster !== null) this.hear(frame({ t: 'players', players: JSON.parse(this.roster) as CampaignSeat[] }));
+    this.batching = welcome.batch === true;
+    this.queue.attach(this.socket, this.batching);
     this.setStatus('online');
     this.events.access(null);
     this.gate?.welcomed(welcome.waiting ?? []);
@@ -134,9 +186,10 @@ export class RelayOutbox implements TableOutbox {
     this.events.joined(player);
   }
 
-  /** A player's page goes. */
+  /** A player's page goes, and what waits for them is dropped. */
   leave(player: string): void {
     this.players.delete(player);
+    this.queue.drop((to) => this.isGone(to));
     this.pages.leave(player);
     this.events.left(player);
   }
@@ -148,8 +201,9 @@ export class RelayOutbox implements TableOutbox {
 
   /** The relay closes the table's link: given up for good on a final code, otherwise tried again until the next welcome. */
   close(code: number): void {
+    this.queue.detach();
     this.lastClose = code;
-    this.players.clear();
+    this.forget();
     if (FINAL_CLOSE_CODES.includes(code)) return this.setStatus('refused');
     this.reconnects += 1;
     this.setStatus('connecting');
@@ -175,12 +229,33 @@ export class RelayOutbox implements TableOutbox {
     this.gate?.paused(until);
   }
 
-  /** Whether the message went out: to someone the table knows to be connected, while it is online. */
-  private deliver(body: PageMessage, to: string, live?: true): boolean {
-    if (!this.online || (to === ALL_PLAYERS ? this.players.size === 0 : !this.players.has(to))) return false;
-    this.told.push({ t: 'send', to: to === ALL_PLAYERS ? undefined : to, body, ...(live && { live }) });
+  private isGone(to: string): boolean {
+    return to === ALL_PLAYERS ? this.players.size === 0 : !this.players.has(to);
+  }
+
+  /** Nobody is known to be there until the next welcome: no page hears the table, and what waits for them is dropped. */
+  private forget(): void {
+    for (const player of this.players) this.pages.leave(player);
+    this.players.clear();
+    this.queue.drop((to) => this.isGone(to));
+  }
+
+  /** A frame reaches the relay. */
+  private hear(text: string): void {
+    const heard = JSON.parse(text) as Frame;
+    if (heard.t === 'sends') for (const entry of heard.sends) this.hand(entry);
+    else if (heard.t === 'send') this.hand(heard);
+    else if (heard.t === 'gate') this.told.push({ t: 'gate', code: heard.code, ask: heard.ask });
+    else if (heard.t === 'players') this.told.push({ t: 'players', players: heard.players });
+    else if (heard.t === 'end') this.told.push({ t: 'end' });
+    else this.told.push({ t: heard.t, id: heard.id });
+  }
+
+  /** The relay hands a game message on to the pages of whom it is for that are there now. */
+  private hand({ to, body }: Entry): void {
     this.pages.deliver(body, to);
-    return true;
+    const whole = body.t === 'part' ? this.parts.join(`${to}\n${body.id}`, body) : body;
+    if (whole !== null) this.told.push({ t: 'send', to: to === ALL_PLAYERS ? undefined : to, body: whole });
   }
 
   private setStatus(status: TableStatus): void {

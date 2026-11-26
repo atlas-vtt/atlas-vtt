@@ -10,10 +10,26 @@ export type Heard = Readonly<Record<string, readonly PageMessage[]>>;
 /** Where each page's reading stood at a moment, to read what came after it (`PlayerPages.since`). */
 export type Mark = ReadonlyMap<string, number>;
 
+/** Puts messages sent in parts (`messageParts`) back together. */
+export class PartJoiner {
+  private readonly held = new Map<string, string[]>();
+
+  /** The message `part` completes among the parts kept under `key`, or null while some are missing. */
+  join(key: string, part: Of<'part'>): PageMessage | null {
+    const held = this.held.get(key) ?? [];
+    held[part.index] = part.data;
+    this.held.set(key, held);
+    if (held.filter((data) => data !== undefined).length < part.count) return null;
+    this.held.delete(key);
+    return JSON.parse(Buffer.concat(held.map((data) => Buffer.from(data, 'base64'))).toString('utf8')) as PageMessage;
+  }
+}
+
 /**
- * One player's page as their browser follows the table: every message that reached it, and each as
- * the page reads it, a delta as the whole message it makes. A delta that does not follow on from
- * what this page holds is a gap, and reading that kind afterwards throws.
+ * One player's page as their browser follows the table: every message that reached it (one sent in
+ * parts once its last part came), and each as the page reads it, a delta as the whole message it
+ * makes. A delta that does not follow on from what this page holds is a gap, and reading that kind
+ * afterwards throws.
  */
 export class PlayerPage {
   /** Every message that reached this page, in order, as it was sent. */
@@ -24,12 +40,14 @@ export class PlayerPage {
   readonly gaps: PageMessage[] = [];
   connected = false;
   private readonly reader = new DeltaReader();
+  private readonly parts = new PartJoiner();
 
   constructor(readonly player: string) {}
 
   receive(sent: PageMessage): void {
     // As it came over the wire: what the GM changes in the object it sent afterwards never reaches the page.
-    const body = JSON.parse(JSON.stringify(sent)) as PageMessage;
+    const body = sent.t === 'part' ? this.parts.join(sent.id, sent) : (JSON.parse(JSON.stringify(sent)) as PageMessage);
+    if (body === null) return;
     this.inbox.push(body);
     if (body.t !== 'delta' && !isDeltaOf(body.t)) return void this.read.push(body);
     // As the player's browser reads it: parsed, then a delta applied to what the page holds.
