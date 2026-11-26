@@ -20,9 +20,10 @@ jobs:
       - name: Package plugin
         run: |
           test -f dist/main.js
-          test -f dist/style.css
+          test -f dist/styles.css
           mkdir -p obsidian-test
-          cp dist/main.js dist/style.css manifest.json obsidian-test/
+          cp dist/main.js manifest.json obsidian-test/
+          cp dist/styles.css obsidian-test/style.css
       - uses: actions/upload-artifact@v4
         with:
           name: atlas-vtt-obsidian-test
