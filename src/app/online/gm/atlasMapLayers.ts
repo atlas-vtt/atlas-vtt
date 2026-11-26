@@ -1,9 +1,13 @@
+import type { App } from 'obsidian';
 import type { SensedMark } from '../protocol/index.ts';
 import type { FogCoverage } from '../../fog/fogCoverage';
 import type { GridOptions } from '../../grid/GridSystem';
 import { playerDoorSight, playerPointSight } from '../../pixi/lighting/playerLightingLayers';
 import type { SceneLightingView } from '../../pixi/lighting/sceneLightingView';
 import { PlayedRules } from '../../campaigns/playedRules';
+import { BUILT_IN_SYSTEM_PRESETS } from '../../gameSystems/builtInPresets';
+import { systemPresetsOf } from '../../services/mapCollectionRules';
+import type { SystemPreset } from '../../types/systemPresetTypes';
 import type { CollectionLookup, RulesLookup } from '../../gameSystems/mapRules';
 import type { TokenEntity } from '../../types';
 import type { Point } from '../../types/visionTypes';
@@ -39,6 +43,8 @@ export interface MapLayerSource {
   sensed(tokens: Readonly<Record<string, TokenEntity>>): SensedMark[] | null;
   /** Where the map's rules are looked up (Atlas's asset service and the played campaign), or null. */
   rules(): RulesLookup | null;
+  /** The game system presets the map's rules may name (`systemPresetsOf`): the built-in ones, and the user's. */
+  presets(): readonly SystemPreset[];
 }
 
 const isFunction = (value: unknown): value is (...args: never[]) => unknown => typeof value === 'function';
@@ -99,6 +105,7 @@ export function mapLayerSourceOf(renderer: unknown, view: unknown): MapLayerSour
       });
     },
     rules: () => rulesLookupOf(view),
+    presets: () => presetsOf(view),
   };
 }
 
@@ -144,6 +151,12 @@ export function rulesLookupOf(view: unknown): RulesLookup | null {
     getCollectionSettings: (collectionId) => collections.getCollectionSettings(collectionId),
     playedSystem: () => (typeof app === 'object' && app !== null ? PlayedRules.forApp(app)?.played() ?? null : null),
   };
+}
+
+/** The game system presets of an Atlas view's app (`systemPresetsOf`); the built-in ones when it has no app. */
+function presetsOf(view: unknown): readonly SystemPreset[] {
+  const app = field(view, 'app');
+  return typeof app === 'object' && app !== null ? systemPresetsOf(app as App) : BUILT_IN_SYSTEM_PRESETS;
 }
 
 /**

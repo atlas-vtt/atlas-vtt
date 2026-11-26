@@ -25,7 +25,7 @@ const WALLS: Record<string, WallSegment> = {
   door: { id: 'door', kind: 'wall', type: 'door', closed: true, p1: { x: 1000, y: 100 }, p2: { x: 1000, y: 300 } } as WallSegment,
 };
 const DEN: NotePin = { id: 'den', kind: 'pin', x: 950, y: 250, notePath: 'Notes/Den.md', readable: true } as NotePin;
-const partyLayers: MapLayerSource = { grid: () => null, rules: () => null, doorsSeen: () => new Set(['door']), pointsSeen: (points) => points.map(() => true), sensed: () => [] };
+const partyLayers: MapLayerSource = { grid: () => null, rules: () => null, presets: () => [], doorsSeen: () => new Set(['door']), pointsSeen: (points) => points.map(() => true), sensed: () => [] };
 
 const character = (id: string, name: string, changes: Partial<TokenEntity>): TokenEntity => ({ ...token(id, changes), kind: 'character', name } as TokenEntity);
 

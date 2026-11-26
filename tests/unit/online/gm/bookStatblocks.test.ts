@@ -10,7 +10,7 @@ import { ANA, BEN, BRANNOCH, CAL, cave, delivered, MIRA, MIRA_ART, ofType, openT
 import { advanceSettled as advance } from './settled.ts';
 import { StatblockNotes, templateOf } from './statblockNotes.ts';
 
-vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {} }));
+vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {}, Platform: { isMacOS: false } }));
 // The GM's marks draw with PIXI over Atlas's canvas, which a table of books has no use for.
 // Node has no tile worker: a map's pyramid is still being cut for as long as the test runs, as on a slow device.
 vi.mock('../../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas', async (original) => ({ ...(await original<typeof import('../../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas')>()), buildMapPyramid: () => new Promise(() => undefined) }));
