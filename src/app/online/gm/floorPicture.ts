@@ -88,7 +88,7 @@ export class FloorPicture {
   /** The floor's scene from now on, or none; null also forgets what was sent of the scene before. */
   setScene(scene: SharedScene | null): void {
     this.tokens.feed.setScene(scene);
-    this.live?.setScene(scene);
+    this.live?.feed.setScene(scene);
     this.inputs.feed.setScene(scene);
     this.explored.feed.setScene(scene);
     this.layers.feed.setScene(scene);
@@ -159,7 +159,7 @@ export class FloorPicture {
 
   stop(): void {
     this.tokens.feed.stop();
-    this.live?.stop();
+    this.live?.feed.stop();
     this.inputs.feed.stop();
     this.explored.feed.stop();
     this.layers.feed.stop();
