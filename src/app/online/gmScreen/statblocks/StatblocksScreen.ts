@@ -65,9 +65,9 @@ export class StatblocksScreen implements GmScreen {
   private timer: number | null = null;
   private runs = 0;
 
+  /** Nothing is read before a device opens: the map in front is looked for when the list is. */
   constructor(private readonly ports: StatblocksPorts) {
-    this.stops = [ports.scenes.watch(() => this.follow()), subscribePlayerTokens(() => this.schedule())];
-    this.follow();
+    this.stops = [ports.scenes.watch(() => this.schedule()), subscribePlayerTokens(() => this.schedule())];
   }
 
   opened(device: string): void {
@@ -103,15 +103,15 @@ export class StatblocksScreen implements GmScreen {
     this.views.clear();
   }
 
-  /** Follows the map in front, and reads its list again. */
-  private follow(): void {
+  /** The map in front, whose changes are followed from now on. */
+  private follow(): FrontScene | null {
     const scene = this.ports.scenes.current();
     if (scene?.viewId !== this.scene?.viewId) {
       this.stopScene?.();
       this.scene = scene;
       this.stopScene = scene ? scene.subscribe(() => this.schedule()) : null;
     }
-    this.schedule();
+    return this.scene;
   }
 
   private schedule(): void {
@@ -125,7 +125,7 @@ export class StatblocksScreen implements GmScreen {
 
   private async refresh(): Promise<void> {
     const run = (this.runs += 1);
-    const scene = this.scene;
+    const scene = this.follow();
     const state = scene?.state();
     if (state?.isMapLoading) return;
     if (!scene || !state?.mapPath || !state.mapLoaded) return this.publish(null, []);
