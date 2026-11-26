@@ -8,7 +8,6 @@ import { runInBackground } from '../utils/backgroundTask';
 import { resolvePinIcon } from '../types/pinIcons';
 import { createPinIconPalette, type PinIconPalette } from './pinIconPalette';
 import { createPinNoteSearch } from './pinNoteSearch';
-import { createPinNameSwitch } from './pinNameSwitch';
 import { dungeonCreateEntry, noteCreateEntry, type PinCreateEntry } from './pinCreateEntries';
 import type { PinActionEventDetail } from '../types/atlasWindowEvents';
 import { animatePanelIn, animatePanelOutAndRemove } from '../ui/panelMotion';
@@ -17,8 +16,6 @@ import { nearestHexCenter, type HexLayout } from '../grid/hexGeometry';
 import { hexLinkAt } from '../grid/hexLinks';
 import { linkedSceneFile, mayLinkFromScene } from '../services/sceneLinks';
 import { openPinNote } from '../services/noteHeadings';
-import { pinNoteLink } from './pinNoteLink';
-import { pinName } from './pinNames';
 import { pinSceneLevel } from '../levels/pinSceneLevel';
 import { showPinnedLevel } from '../links/openAtlasLink';
 import { t } from '../i18n';
@@ -40,8 +37,6 @@ interface NotePinDropdownResult {
   icon?: string;
   /** The floor a scene made for the pin opens on. */
   sceneLevel?: string;
-  /** The new pin shows its name. */
-  showName?: boolean;
 }
 
 /**
@@ -58,9 +53,7 @@ export class NotePinTool {
   private store: StoreApi<ViewAtlasState>;
   private currentPreviewIcon: string = 'pin';
   /** Whether new pins show their name: the last choice, so a map of place names needs it once. */
-  private nextShowName = false;
   private storeUnsubscribe: (() => void) | null = null;
-  private pinNamesUnsubscribe: (() => void) | null = null;
   private pinActionHandler: ((e: CustomEvent<PinActionEventDetail>) => void) | null = null;
   private outsideClickHandler: ((e: MouseEvent) => void) | null = null;
   private outsideClickTimer: number | null = null;
@@ -166,42 +159,6 @@ export class NotePinTool {
     };
 
     this.storeUnsubscribe = this.store.subscribe(syncActiveState);
-    let previousMapState = this.store.getState();
-    this.pinNamesUnsubscribe = this.store.subscribe((state) => {
-      const previousState = previousMapState;
-      previousMapState = state;
-
-      // A scene switch clears the old objects while the new scene is loading.
-      // That is not a user deleting every pin: only reconcile backlinks between
-      // two fully loaded states of the same map.
-      if (
-        !state.mapLoaded ||
-        state.isMapLoading ||
-        !previousState.mapLoaded ||
-        previousState.isMapLoading ||
-        state.mapPath !== previousState.mapPath
-      ) return;
-
-      const pins = levelObjects(state).pins;
-      const previousPins = levelObjects(previousState).pins;
-      for (const [id, previousPin] of Object.entries(previousPins)) {
-        const pin = pins[id];
-        if (!pin) {
-          runInBackground(
-            this.removePinBacklink(previousPin.notePath, id, pinName(previousPin)),
-            `Removing the backlink for pin ${pinName(previousPin)}`,
-            'Could not remove the pin backlink',
-          );
-          continue;
-        }
-        if (pin.name === previousPin.name || pin.notePath !== previousPin.notePath) continue;
-        runInBackground(
-          this.addPinBacklink(pin.notePath, id, pinName(previousPin)),
-          `Updating the backlink for pin ${pinName(pin)}`,
-          'Could not update the pin backlink',
-        );
-      }
-    });
     syncActiveState(this.store.getState());
   }
 
@@ -249,14 +206,6 @@ export class NotePinTool {
         },
       });
 
-      // ── Show name: applies at once to a pin being edited, else to the pins placed next ──
-      let showName = editedPin ? editedPin.showName === true : this.nextShowName;
-      createPinNameSwitch(dropdown, () => showName, () => {
-        showName = !showName;
-        if (editedPin) this.store.getState().updateNotePin(editedPin.id, { showName: showName ? true : undefined });
-        else this.nextShowName = showName;
-      });
-
       // ── Search, results and key hints ──
       const mapPath = this.store.getState().mapPath;
       const noteSearch = createPinNoteSearch(dropdown, {
@@ -264,7 +213,7 @@ export class NotePinTool {
         mapPath,
         createEntries: this.createEntries(mapPath),
         onPick: (notePath, sceneLevel) => {
-          this.closeDropdown({ accepted: true, notePath, icon: selectedIcon, showName, ...(sceneLevel && { sceneLevel }) });
+          this.closeDropdown({ accepted: true, notePath, icon: selectedIcon, ...(sceneLevel && { sceneLevel }) });
         },
         onCancel: () => this.closeDropdown(),
       });
@@ -333,7 +282,7 @@ export class NotePinTool {
       // The click that opened the dropdown must not close it. Closing cancels the wait, or the
       // listener would be added after the dropdown is gone and never removed.
       this.outsideClickTimer = window.setTimeout(() => {
-        document.addEventListener('pointerdown', handleOutsideClick, true);
+        dropdown.doc.addEventListener('pointerdown', handleOutsideClick, true);
         this.outsideClickTimer = null;
       }, 100);
 
@@ -365,7 +314,7 @@ export class NotePinTool {
         this.outsideClickTimer = null;
       }
       if (this.outsideClickHandler) {
-        document.removeEventListener('pointerdown', this.outsideClickHandler, true);
+        this.pinDropdown.doc.removeEventListener('pointerdown', this.outsideClickHandler, true);
         this.outsideClickHandler = null;
       }
 
@@ -403,75 +352,10 @@ export class NotePinTool {
     } else if (!mayLinkFromScene(mapPath, pin.notePath)) {
       showNotice(t('pin.crossCollection'));
     } else {
-      runInBackground(
-        (async () => {
-          await openPinNote(this.obsidianApp, pin.notePath, true, mapPath ?? '');
-          // Obsidian may create a missing note when its pin is opened. Add the
-          // backlink after opening so that newly recreated notes receive it too.
-          await this.addPinBacklink(pin.notePath, pin.id);
-        })(),
-        `Opening ${pin.notePath}`,
-        'Could not open the linked note',
-      );
+      runInBackground(openPinNote(this.obsidianApp, pin.notePath, true), `Opening ${pin.notePath}`, 'Could not open the linked note');
     }
   }
   
-  /**
-   * Adds a return link to the Markdown note a pin points to. The stable pin id
-   * makes the link unambiguous even when several pins point to the same note.
-   */
-  private async addPinBacklink(notePath: string, pinId: string, previousName?: string): Promise<void> {
-    const mapPath = this.store.getState().mapPath;
-    const { linkpath } = pinNoteLink(notePath);
-    const noteFile = this.obsidianApp.vault.getFileByPath(linkpath)
-      ?? this.obsidianApp.metadataCache.getFirstLinkpathDest(linkpath, mapPath ?? '');
-    const mapFile = mapPath ? this.obsidianApp.vault.getFileByPath(mapPath) : null;
-    // Pins may point to scenes or encounter folders as well as Markdown notes.
-    if (!noteFile || noteFile.extension !== 'md' || !mapFile) return;
-
-    const subpath = `#pin=${encodeURIComponent(pinId)}`;
-    const pin = levelObjects(this.store.getState()).pins[pinId];
-    const fallbackName = linkpath.split('/').pop()?.replace(/\.md$/i, '') ?? '';
-    const label = `View on map - ${pin ? pinName(pin) : fallbackName}`;
-    const link = this.obsidianApp.fileManager.generateMarkdownLink(mapFile, linkpath, subpath, label);
-    const previousLink = previousName === undefined
-      ? null
-      : this.obsidianApp.fileManager.generateMarkdownLink(mapFile, linkpath, subpath, `View on map - ${previousName}`);
-    const legacyLink = this.obsidianApp.fileManager.generateMarkdownLink(mapFile, linkpath, subpath, 'View on map');
-    await this.obsidianApp.vault.process(noteFile, (content) => {
-      if (previousLink && content.includes(previousLink)) return content.replace(previousLink, link);
-      if (content.includes(link)) return content;
-      if (content.includes(legacyLink)) return content.replace(legacyLink, link);
-      const separator = content.trim() ? '\n\n' : '';
-      return `${content.trimEnd()}${separator}${link}\n`;
-    });
-  }
-
-  /** Removes only the return link belonging to a pin that has been deleted. */
-  private async removePinBacklink(notePath: string, pinId: string, name: string): Promise<void> {
-    const mapPath = this.store.getState().mapPath;
-    const { linkpath } = pinNoteLink(notePath);
-    const noteFile = this.obsidianApp.vault.getFileByPath(linkpath)
-      ?? this.obsidianApp.metadataCache.getFirstLinkpathDest(linkpath, mapPath ?? '');
-    const mapFile = mapPath ? this.obsidianApp.vault.getFileByPath(mapPath) : null;
-    if (!noteFile || noteFile.extension !== 'md' || !mapFile) return;
-
-    const subpath = `#pin=${encodeURIComponent(pinId)}`;
-    const links = [
-      this.obsidianApp.fileManager.generateMarkdownLink(mapFile, linkpath, subpath, `View on map - ${name}`),
-      this.obsidianApp.fileManager.generateMarkdownLink(mapFile, linkpath, subpath, 'View on map'),
-    ];
-    await this.obsidianApp.vault.process(noteFile, (content) => {
-      const lines = content.split('\n');
-      const index = lines.findIndex((line) => links.includes(line.trim()));
-      if (index === -1) return content;
-      lines.splice(index, 1);
-      if (lines[lines.length - 1] === '') lines.pop();
-      const updated = lines.join('\n');
-      return updated ? `${updated}\n` : '';
-    });
-  }
-
   /** Rolls an encounter of the pin's folder into the GM's hand on this map. */
   private rollEncounters(link: string): void {
     const folder = linkedEncounterFolder(this.store.getState().mapPath, link);
@@ -492,8 +376,7 @@ export class NotePinTool {
     const result = await this.showNotePinDropdown(worldX, worldY);
 
     if (result.accepted && result.notePath) {
-      const pinId = this.store.getState().addNotePin(worldX, worldY, result.notePath, result.icon, { showName: result.showName === true, ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
-      await this.addPinBacklink(result.notePath, pinId);
+      this.store.getState().addNotePin(worldX, worldY, result.notePath, result.icon, { ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
     }
     this.releasePreviewAfterDropdown();
   }
@@ -513,8 +396,7 @@ export class NotePinTool {
     } else {
       const result = await this.showNotePinDropdown(center.x, center.y);
       if (result.accepted && result.notePath) {
-        const pinId = this.store.getState().addNotePin(center.x, center.y, result.notePath, result.icon, { hex: true, showName: result.showName === true, ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
-        await this.addPinBacklink(result.notePath, pinId);
+        this.store.getState().addNotePin(center.x, center.y, result.notePath, result.icon, { hex: true, ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
       }
     }
     this.releasePreviewAfterDropdown();
@@ -554,11 +436,10 @@ export class NotePinTool {
     // Re-picking what the pin already shows is not an edit, and must not add an undo step
     if (result.notePath === pin.notePath && result.icon === pin.icon) return;
 
-    this.store.getState().updateNotePin(pin.id, {
+    this.store.getState().patchObject('pins', pin.id, {
       notePath: result.notePath,
       ...(result.icon !== undefined && { icon: result.icon }),
     });
-    if (result.notePath !== pin.notePath) await this.addPinBacklink(result.notePath, pin.id);
   }
 
   public destroy(): void {
@@ -568,10 +449,6 @@ export class NotePinTool {
     if (this.storeUnsubscribe) {
       this.storeUnsubscribe();
       this.storeUnsubscribe = null;
-    }
-    if (this.pinNamesUnsubscribe) {
-      this.pinNamesUnsubscribe();
-      this.pinNamesUnsubscribe = null;
     }
 
     if (this.pinActionHandler) {
