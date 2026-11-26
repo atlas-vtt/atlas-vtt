@@ -77,7 +77,7 @@ export class SceneShare {
     this.layers = {
       readablePin: (player, sceneId, alias) => this.tokens.shareOfScene(sceneId)?.readablePin(player, sceneId, alias) ?? null,
       update: () => {
-        for (const share of this.floors.values()) share.layersChanged();
+        for (const share of this.floors.values()) share.follow('layers');
       },
     };
   }
@@ -119,7 +119,7 @@ export class SceneShare {
   ownersChanged(): void {
     // Owners are no part of what the floors are compared by: they are worked out again whatever else stayed
     this.assign([], true);
-    for (const share of this.floors.values()) share.ownersChanged();
+    for (const share of this.floors.values()) share.follow('owners');
   }
 
   /** A player left the table: their drags end where their tokens are. */
