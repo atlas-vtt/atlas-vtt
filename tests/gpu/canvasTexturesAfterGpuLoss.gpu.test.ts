@@ -59,7 +59,7 @@ function filling(texture: Texture): Container {
 
 async function inkBeforeAndAfterDeath(view: Container): Promise<{ before: number; after: number }> {
   const before = inkedPixels(view);
-  await gpu.die(renderer);
+  await gpu.die(renderer.gl);
   return { before, after: inkedPixels(view) };
 }
 
