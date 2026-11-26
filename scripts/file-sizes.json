@@ -20,7 +20,6 @@
     "src/app/online/gm/OnlineFeature.ts": 400,
     "src/app/online/gm/OnlineTable.ts": 450,
     "src/app/online/gm/TableConnection.ts": 400,
-    "src/app/online/gm/TokenShare.ts": 350,
     "src/app/online/gm/assets/AssetPublisher.ts": 350,
     "src/app/online/gm/book/BookShare.ts": 450,
     "src/app/online/gm/dock/Dock.ts": 350,
