@@ -42,7 +42,6 @@ const COMMANDS = {
   level: { type: 'level', channel: 'ambience', deltaDb: -3 },
 } as const satisfies { [K in RemoteCommand['type']]: Extract<RemoteCommand, { type: K }> };
 
-const FROM_A_DEVICE = Object.values(COMMANDS).filter((command) => command.type !== 'showHoveredImage');
 
 /** Every intent Atlas was asked for, by name, with its arguments; reading what the keys show is none. */
 function intents(world: SoundWorld): Record<string, unknown[][]> {
@@ -52,16 +51,17 @@ function intents(world: SoundWorld): Record<string, unknown[][]> {
   return Object.fromEntries(Object.entries(spies).flatMap(([name, spy]) => (vi.isMockFunction(spy) && spy.mock.calls.length > 0 ? [[name, spy.mock.calls]] : [])));
 }
 
-/** A world where every command has something to act on: a handout shown, a fight's combatants, a player window. */
+/** A world where every command has something to act on: a handout shown, an image under the pointer, a fight's combatants, a player window. */
 function busyWorld(): SoundWorld {
   const world = soundWorld();
   world.table.window.handout = true;
+  world.table.window.hoveringImage = true;
   return world;
 }
 
 describe('the Keys screen on Atlas\'s side', () => {
   it('does for every command pressed on a device what the Stream Deck\'s does, and answers it', async () => {
-    for (const command of FROM_A_DEVICE) {
+    for (const command of Object.values(COMMANDS)) {
       RelaySocket.all = [];
       const streamDeck = busyWorld();
       const control = streamDeck.control();
@@ -90,21 +90,17 @@ describe('the Keys screen on Atlas\'s side', () => {
     expect(heardOf(phone, 'keys')[0]?.state.combat).toMatchObject({ active: true, round: 1 });
   });
 
-  it('refuses the image under this computer\'s pointer, commands it does not know and a formula over the dice tool\'s limits, and says why', async () => {
+  it('refuses commands it does not know and a formula over the dice tool\'s limits, and says why', async () => {
     const rig = await keysRig();
-    rig.world.table.window.hoveringImage = true;
     const phone = await allowedDevice(rig, PHONE);
-    await rig.press(phone, 1, COMMANDS.showHoveredImage);
-    await rig.press(phone, 2, { type: 'teleport' });
-    await rig.press(phone, 3, { type: 'level', channel: 'master', db: 'loud' });
-    await rig.press(phone, 4, { type: 'dice', formula: '101d6' });
+    await rig.press(phone, 1, { type: 'teleport' });
+    await rig.press(phone, 2, { type: 'level', channel: 'master', db: 'loud' });
+    await rig.press(phone, 3, { type: 'dice', formula: '101d6' });
     expect(heardOf(phone, 'press-answer')).toEqual([
-      { t: 'press-answer', id: 1, refused: 'not-here' },
+      { t: 'press-answer', id: 1, refused: 'unknown-command' },
       { t: 'press-answer', id: 2, refused: 'unknown-command' },
-      { t: 'press-answer', id: 3, refused: 'unknown-command' },
-      { t: 'press-answer', id: 4, refused: 'bad-formula' },
+      { t: 'press-answer', id: 3, refused: 'bad-formula' },
     ]);
-    expect(rig.world.table.player.showHoveredImage).not.toHaveBeenCalled();
     expect(rig.world.table.map.rollFormula).not.toHaveBeenCalled();
     // Each refusal is a name the page's parser reads.
     for (const answer of heardOf(phone, 'press-answer')) expect(parseKeysMessage({ ...answer })).toEqual(answer);

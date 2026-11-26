@@ -10,8 +10,9 @@ import type { GateEvents, TableEvents } from '../../src/app/online/gm/TableConne
 import type { TableOutbox } from '../../src/app/online/gm/tableOutbox.ts';
 import { channelCryptoOf } from '../../src/app/online/gmScreen/channel/index.ts';
 import { GmScreenSession } from '../../src/app/online/gmScreen/index.ts';
-import { setGmScreenSession } from '../../src/app/online/gmScreen/gmScreenSlot.ts';
+import { setGmScreenHost } from '../../src/app/online/gmScreen/gmScreenSlot.ts';
 import { GmScreenControl } from '../../src/app/online/gmScreen/ui/GmScreenControl';
+import { accountRig, APPROVED, type AccountRig } from '../unit/online/gm/accountRig.ts';
 
 /** Obsidian's theme as far as the panel reads it. */
 const THEME = `
@@ -98,20 +99,26 @@ describe('the GM screen\'s control on the DM screen', () => {
   });
 
   afterEach(() => {
-    setGmScreenSession(null);
+    setGmScreenHost(null);
     leaf.remove();
     style.remove();
   });
 
-  it('stands at the header\'s start beside the centred page control, and its panel opens below it inside the view', async () => {
-    const timers = handTimers();
-    const { session, relay } = scriptedSession(timers);
-    setGmScreenSession(session);
+  /** The control in the DM screen's header, as DMScreen renders it: the header's own child, out of its flow. */
+  function control(session: GmScreenSession, account: AccountRig): void {
+    setGmScreenHost({ session, account: account.control });
     const header = leaf.querySelector<HTMLElement>('.atlas-dm-screen-header')!;
-    // As DMScreen renders it: the header's own child, out of its flow.
     const host = header.appendChild(document.createElement('div'));
     host.style.display = 'contents';
     render(createElement(GmScreenControl), { container: host });
+  }
+
+  it('stands at the header\'s start beside the centred page control, and its panel opens below it inside the view', async () => {
+    const timers = handTimers();
+    const { session, relay } = scriptedSession(timers);
+    const account = accountRig('bearer-token');
+    await account.control.refresh();
+    control(session, account);
     const button = screen.getByRole('button', { name: 'Start Sidekick' });
     const pages = leaf.querySelector('.atlas-segmented')!.getBoundingClientRect();
     expect(button.getBoundingClientRect().right).toBeLessThan(pages.left);
@@ -146,5 +153,33 @@ describe('the GM screen\'s control on the DM screen', () => {
     await expect.poll(() => document.querySelector('.atlas-gm-screen-device[data-connected="true"]')).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Sidekick runs: 1 device connected' })).toBeTruthy();
     await shot('4-device-list', leaf.querySelector<HTMLElement>('.atlas-dm-screen')!);
+  });
+
+  it('signed out, opens on the sign-in, shows the code while the browser approval waits, and Start once signed in', async () => {
+    const { session } = scriptedSession(handTimers());
+    const account = accountRig();
+    control(session, account);
+    act(() => screen.getByRole('button', { name: 'Start Sidekick' }).click());
+    await act(() => account.settle());
+    const panel = document.querySelector<HTMLElement>('.atlas-gm-screen-panel')!;
+    expect(panel.querySelector('.atlas-gm-screen-start')).toBeNull();
+    expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth);
+    await shot('5-signed-out', panel);
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Sign in to host' }).click();
+      await account.settle();
+    });
+    const code = screen.getByLabelText('Code A B C D E F G H');
+    expect(code.getBoundingClientRect().width).toBeLessThan(panel.clientWidth);
+    await shot('6-waiting-for-approval', panel);
+
+    account.poll = APPROVED;
+    await act(async () => {
+      account.timers.advance(5000);
+      await account.settle();
+    });
+    expect(panel.querySelector('.atlas-gm-screen-start')?.textContent).toBe('Start Sidekick');
+    await shot('7-signed-in', panel);
   });
 });

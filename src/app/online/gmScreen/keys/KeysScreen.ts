@@ -1,6 +1,6 @@
 import type { Mood } from '../../../sound/soundTypes';
 import type { RemoteControl, RemoteRefusal, RemoteWatch } from '../../../soundRemote/remoteControl';
-import { needsThisPointer, parseRemoteCommand } from '../../../soundRemote/remoteProtocol';
+import { parseRemoteCommand } from '../../../soundRemote/remoteProtocol';
 import type { Timers } from '../../gm/companionTimers.ts';
 import type { DeviceMessage, GmScreenMood } from '../../protocol/index.ts';
 import type { GmScreen, GmScreenOutlet } from '../screens.ts';
@@ -15,8 +15,6 @@ export const KEYS_GAP_MS = 200;
 /** Why a device's press was not run, beyond the sound remote's own refusals. */
 export type KeysRefusal =
   | RemoteRefusal
-  /** The command acts on what the pointer rests on at this computer, which a device elsewhere cannot mean. */
-  | 'not-here'
   /** A command this version of Atlas does not know, or one malformed. */
   | 'unknown-command';
 
@@ -93,7 +91,6 @@ export class KeysScreen implements GmScreen {
   private run(source: KeysSource, raw: Readonly<Record<string, unknown>>): KeysRefusal | null {
     const command = parseRemoteCommand(raw);
     if (command === null) return 'unknown-command';
-    if (needsThisPointer(command)) return 'not-here';
     return source.control.run(command);
   }
 

@@ -170,7 +170,7 @@ export class OnlineFeature extends Component {
     this.settings = readSettings(data);
     this.ready = true;
     const record = typeof data === 'object' && data !== null ? (data as Record<string, unknown>) : {};
-    this.gmScreen = new AtlasGmScreen(this.app, readGmScreenRecord(record.gmScreen), this.host(), () => void this.saveSettings());
+    this.gmScreen = new AtlasGmScreen(this.app, readGmScreenRecord(record.gmScreen), this.host(), this.account, () => void this.saveSettings());
     const campaigns = this.campaigns();
     const ownership = new Ownership(playedSeats(campaigns));
     this.legacyAssignments = readLegacyAssignments(record.ownership);

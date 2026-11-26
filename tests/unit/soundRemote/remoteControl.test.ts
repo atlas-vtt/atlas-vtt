@@ -2,7 +2,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Mood } from '@/app/sound/soundTypes';
 import { RemoteControl, type RemoteChange } from '@/app/soundRemote/remoteControl';
-import { needsThisPointer, parseRemoteCommand, type RemoteCommand } from '@/app/soundRemote/remoteProtocol';
 import { fakeRemoteDirector, fakeTable, remoteMood, withMusic } from '../../helpers/soundRemoteRig';
 
 function rig() {
@@ -64,12 +63,6 @@ describe('the remote\'s commands without a transport', () => {
     control = rig().control;
     expect(control.moods()).toMatchObject([{ id: 'tavern', name: 'Tavern' }]);
     expect(control.state()).toMatchObject({ soundOn: true, playing: true, combat: { active: false, combatants: 2 }, player: { open: true } });
-  });
-
-  it('names the commands that need this computer\'s pointer', () => {
-    const types = ['showHoveredImage', 'curtain', 'freeze', 'present', 'pause', 'shareRolls'];
-    const pointer = types.map((type) => parseRemoteCommand({ type }) as RemoteCommand).filter(needsThisPointer).map((command) => command.type);
-    expect(pointer).toEqual(['showHoveredImage']);
   });
 });
 

@@ -27,7 +27,7 @@ export function GmScreenControl(): React.JSX.Element | null {
     if (knock !== null) setOpen(true);
   }
   if (handle === null) return null;
-  const { view, session } = handle;
+  const { view, session, account } = handle;
   const running = view.status === 'connecting' || view.status === 'online';
   const connected = view.devices.filter((device) => device.connected).length;
   const label = running ? t('gmScreen.controlRunning', { name: NAME, devices: t('gmScreen.deviceCount', { count: connected }) }) : t('gmScreen.start', { name: NAME });
@@ -41,7 +41,7 @@ export function GmScreenControl(): React.JSX.Element | null {
           {view.waiting > 0 && <span className="atlas-gm-screen-control__waiting" aria-hidden="true" />}
         </Button>
       </LabelTooltip>
-      {open && <GmScreenPanel session={session} view={view} onClose={() => setOpen(false)} />}
+      {open && <GmScreenPanel session={session} view={view} account={account} onClose={() => setOpen(false)} />}
     </div>
   );
 }
