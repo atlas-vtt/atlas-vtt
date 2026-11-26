@@ -7,7 +7,9 @@ import { isRecord } from './shape.ts';
  *
  * The reader below makes a legal grid from anything: a slot it cannot read is empty, a folder too deep or a
  * key past the most a grid holds is left out. A key of a kind this version does not know is kept as it
- * came, so a newer Atlas's key survives this one saving the grid.
+ * came, so a newer Atlas's key survives this one saving the grid: every such key up to `MAX_FOREIGN_KEY`
+ * characters of JSON, which a newer Atlas keeps each key it adds within. A device is sent such a key whole
+ * up to `MAX_SHOWN_FOREIGN_KEY` and as its kind alone beyond (`shownLayout`), so a grid fits one message.
  */
 
 export const GM_SCREEN_DEVICES = ['phone', 'tablet'] as const;
@@ -26,8 +28,13 @@ export const MAX_LAYOUT_KEYS = 300;
 export const MAX_FOLDER_NAME = 40;
 /** Longest id, last known name or dice formula. */
 export const MAX_KEY_TEXT = 200;
-/** Most characters of a key of a kind this version does not know, as JSON. */
-const MAX_FOREIGN_KEY = 1000;
+/**
+ * Most characters of a key of a kind this version does not know, as JSON, that a grid keeps; a larger one, or
+ * one nested too deep to be written, is left out, so a hand-edited settings file never stops Atlas loading.
+ */
+export const MAX_FOREIGN_KEY = 16_384;
+/** Most characters of such a key, as JSON, that a device is sent whole; it gets a larger one as its kind alone. */
+export const MAX_SHOWN_FOREIGN_KEY = 1000;
 
 /**
  * The keys a slot may hold by name: the Keys screen's keys that need nothing more. Each presses the sound
@@ -163,20 +170,34 @@ class LayoutReader {
   }
 }
 
-function foreignKey(value: Record<string, unknown>): ForeignKey | null {
-  let json: string | undefined;
+/** Characters of `value` as JSON; null for a value that cannot be written (nested too deep, or a cycle). */
+function jsonLength(value: unknown): number | null {
   try {
-    json = JSON.stringify(value);
+    return JSON.stringify(value)?.length ?? null;
   } catch {
     return null;
   }
-  return json !== undefined && json.length <= MAX_FOREIGN_KEY ? (value as ForeignKey) : null;
+}
+
+function foreignKey(value: Record<string, unknown>): ForeignKey | null {
+  const length = jsonLength(value);
+  return length !== null && length <= MAX_FOREIGN_KEY ? (value as ForeignKey) : null;
 }
 
 /** A grid for `device` from anything that holds a `slots` list; null for anything else. */
 export function parseLayout(value: unknown, device: GmScreenDevice): GmScreenLayout | null {
   if (!isRecord(value) || !Array.isArray(value.slots)) return null;
   return { slots: new LayoutReader(device).slots(value.slots, 0) };
+}
+
+/** `layout` as a device is sent it: a key of a kind this version does not know larger than `MAX_SHOWN_FOREIGN_KEY` as its kind alone. */
+export function shownLayout(layout: GmScreenLayout): GmScreenLayout {
+  const shown = (slots: readonly LayoutSlot[]): LayoutSlot[] => slots.map((slot): LayoutSlot => {
+    if (slot === null) return null;
+    if (isForeignKey(slot)) return (jsonLength(slot) ?? Infinity) <= MAX_SHOWN_FOREIGN_KEY ? slot : ({ k: slot.k } as ForeignKey);
+    return slot.k === 'folder' ? { ...slot, slots: shown(slot.slots) } : slot;
+  });
+  return { slots: shown(layout.slots) };
 }
 
 /** The keys a grid holds, every folder and the keys in folders counted. */

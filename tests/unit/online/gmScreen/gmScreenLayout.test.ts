@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  GM_SCREEN_DEVICES, GRID_SLOTS, layoutKeyCount, MAX_DEVICE_MESSAGE, MAX_FOLDER_DEPTH, MAX_FOLDER_NAME, MAX_GM_SCREEN_MESSAGE, MAX_KEY_TEXT, MAX_LAYOUT_KEYS,
-  parseDeviceMessage, parseGmScreenMessage, parseLayout, parseLayoutEdit, type DeviceMessage, type GmScreenDevice, type GmScreenLayout, type LayoutSlot,
+  GM_SCREEN_DEVICES, GRID_SLOTS, layoutKeyCount, MAX_DEVICE_MESSAGE, MAX_FOLDER_DEPTH, MAX_FOLDER_NAME, MAX_FOREIGN_KEY, MAX_GM_SCREEN_MESSAGE, MAX_KEY_TEXT,
+  MAX_LAYOUT_KEYS, MAX_SHOWN_FOREIGN_KEY, parseDeviceMessage, parseGmScreenMessage, parseLayout, parseLayoutEdit, shownLayout,
+  type DeviceMessage, type GmScreenDevice, type GmScreenLayout, type LayoutSlot,
 } from '../../../../src/app/online/protocol/index.ts';
 
 /** Text whose JSON is as long as text of that length can be: every character is written as a six-character escape. */
@@ -48,6 +49,30 @@ describe("the Keys screen's grid", () => {
     const newer = { k: 'timer', seconds: 60, look: { ring: true }, label: 'Turn' };
     const read = parseLayout({ slots: [newer, folder('tablet', [newer])] }, 'tablet');
     expect(JSON.parse(JSON.stringify(read))).toEqual({ slots: [newer, folder('tablet', [newer]), ...empty(GRID_SLOTS.tablet - 2)] });
+  });
+
+  it('keeps a key of a kind it does not know up to the most a newer Atlas may write, and leaves out a larger one or one nested too deep to write', () => {
+    const sized = (length: number): Record<string, unknown> => ({ k: 'macro', steps: 'x'.repeat(length - JSON.stringify({ k: 'macro', steps: '' }).length) });
+    let deep: unknown = 1;
+    for (let depth = 0; depth < 200_000; depth += 1) deep = [deep];
+    const read = parseLayout({ slots: [sized(MAX_FOREIGN_KEY), sized(MAX_FOREIGN_KEY + 1), { k: 'macro', deep }] }, 'phone');
+    expect(read?.slots.slice(0, 3)).toEqual([sized(MAX_FOREIGN_KEY), null, null]);
+  });
+
+  it('shows a device a key of a kind it does not know whole up to its limit and as its kind alone beyond, so the largest grid kept fits one message', () => {
+    const newer = (length: number): Record<string, unknown> => ({ k: 'macro', steps: worst((length - JSON.stringify({ k: 'macro', steps: '' }).length) / 6) });
+    const small = newer(MAX_SHOWN_FOREIGN_KEY - 4);
+    const read = parseLayout({ slots: [small, newer(MAX_FOREIGN_KEY - 4), folder('phone', [newer(MAX_SHOWN_FOREIGN_KEY + 8)])] }, 'phone')!;
+    const shown = shownLayout(read);
+    expect(JSON.parse(JSON.stringify(shown.slots.slice(0, 3)))).toEqual([small, { k: 'macro' }, folder('phone', [{ k: 'macro' }])]);
+    expect(shownLayout(shown)).toEqual(shown);
+    for (const device of GM_SCREEN_DEVICES) {
+      const largest = largestLayout(device);
+      const heavy = (slots: readonly LayoutSlot[]): unknown[] => slots.map((slot) => (slot?.k === 'folder' ? { ...slot, slots: heavy(slot.slots) } : slot && newer(MAX_FOREIGN_KEY - 4)));
+      const kept = parseLayout(JSON.parse(JSON.stringify({ slots: heavy(largest.slots) })), device)!;
+      expect(layoutKeyCount(kept.slots)).toBe(MAX_LAYOUT_KEYS);
+      expect(bytes({ t: 'layout', device, layout: shownLayout(kept) })).toBeLessThanOrEqual(MAX_GM_SCREEN_MESSAGE);
+    }
   });
 
   it('makes a legal grid of anything: a slot it cannot read is empty, a folder four deep and keys past the most are left out', () => {
