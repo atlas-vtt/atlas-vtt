@@ -4,7 +4,8 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ARM_MS } from '../../../../src/app/online/gm/armedCards.ts';
 import type { GmScreenSession } from '../../../../src/app/online/gmScreen/index.ts';
-import { setGmScreenHost } from '../../../../src/app/online/gmScreen/gmScreenSlot.ts';
+import { gmScreenControlShown, setGmScreenHost } from '../../../../src/app/online/gmScreen/gmScreenSlot.ts';
+import { noticeKnocks } from '../../../../src/app/online/gmScreen/knockNotice.ts';
 import { GmScreenControl } from '../../../../src/app/online/gmScreen/ui/GmScreenControl';
 import { accountRig } from '../gm/accountRig.ts';
 import { deviceId, RelaySocket, sessionRig, type Rig } from './sessionRig.ts';
@@ -82,6 +83,25 @@ describe('the DM screen\'s control for the GM screen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Allow' }));
     expect(rig.socket().framesOf('admit')).toEqual([{ v: 1, t: 'admit', id: PHONE }]);
     expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('stands in for the knock notice while it shows, and no longer once it is gone', async () => {
+    const rig = await shown();
+    const told: string[] = [];
+    const stop = noticeKnocks(rig.session, gmScreenControlShown, (text) => void told.push(text));
+    await startedFromPanel(rig);
+    await act(async () => {
+      rig.socket().receive({ t: 'knock', id: PHONE, name: 'Phone' });
+      await rig.settle();
+    });
+    expect(screen.getByRole('alertdialog', { name: 'Allow this device?' })).toBeTruthy();
+    expect(told).toEqual([]);
+    cleanup();
+    rig.session.refuse(PHONE);
+    rig.socket().receive({ t: 'knock', id: deviceId('t'), name: 'Tablet' });
+    await rig.settle();
+    expect(told).toEqual(['Tablet asks to join Sidekick. Open the DM screen to allow it.']);
+    stop();
   });
 
   it('lists an allowed device as connected, and removes it', async () => {
