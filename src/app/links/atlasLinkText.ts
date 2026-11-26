@@ -11,6 +11,7 @@ export interface AtlasLinkOptions {
   name?: string;
   /** A scene snapshot the link names after its `#`. */
   snapshot?: string;
+  pinId?: string;
 }
 
 /**
@@ -19,7 +20,7 @@ export interface AtlasLinkOptions {
  * Encounter files are named by id, so their link shows the encounter's name.
  */
 export function atlasLink(app: App, file: TFile, sourcePath: string, options: AtlasLinkOptions = {}): string {
-  const subpath = options.snapshot ? `#${linkSafeName(options.snapshot)}` : undefined;
+  const subpath = options.pinId ? `#pin=${encodeURIComponent(options.pinId)}` : options.snapshot ? `#${linkSafeName(options.snapshot)}` : undefined;
   const alias = options.name && options.name !== file.basename ? linkSafeName(options.name) : undefined;
   return app.fileManager.generateMarkdownLink(file, sourcePath, subpath, alias);
 }
