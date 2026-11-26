@@ -89,7 +89,7 @@ export class FloorPicture {
   setScene(scene: SharedScene | null): void {
     this.tokens.setScene(scene?.id ?? null);
     this.live?.setScene(scene);
-    this.inputs.setScene(scene);
+    this.inputs.feed.setScene(scene);
     this.explored.feed.setScene(scene);
     this.layers.feed.setScene(scene);
   }
@@ -97,7 +97,7 @@ export class FloorPicture {
   /** The scene is being read again: nothing goes out until it is set. */
   clear(): void {
     this.tokens.setScene(null);
-    this.inputs.setScene(null);
+    this.inputs.feed.setScene(null);
     this.explored.feed.setScene(null);
     this.layers.feed.setScene(null);
   }
@@ -112,14 +112,14 @@ export class FloorPicture {
       this.tokens.sightChanged();
       this.live?.update();
       this.layers.update();
-      this.inputs.update();
+      this.inputs.feed.update();
       return;
     }
     if (change === 'atlas') this.dice.clear();
     this.tokens.update();
     this.live?.update();
     this.layers.update();
-    this.inputs.update();
+    this.inputs.feed.update();
     this.explored.update();
     if (change === 'atlas') this.mine?.update();
     else this.mine?.diceChanged();
@@ -128,7 +128,7 @@ export class FloorPicture {
   /** The tokens, inputs, layers and owned tokens again, whole, to one player or to all of the picture's. */
   resend(to?: string): void {
     this.tokens.resend(to);
-    this.inputs.resend(to);
+    this.inputs.feed.resend(to);
     this.explored.feed.resend(to);
     this.layers.feed.resend(to);
     this.mine?.resend(to);
@@ -136,7 +136,7 @@ export class FloorPicture {
 
   resync(from: string, message: PlayerResync): void {
     if (message.of === 'tokens') this.tokens.resync(from, message.scene);
-    else this.inputs.resync(from, message.scene, message.of);
+    else this.inputs.feed.resync(from, message);
   }
 
   refreshAssets(): void {
@@ -160,7 +160,7 @@ export class FloorPicture {
   stop(): void {
     this.tokens.stop();
     this.live?.stop();
-    this.inputs.stop();
+    this.inputs.feed.stop();
     this.explored.feed.stop();
     this.layers.feed.stop();
   }
