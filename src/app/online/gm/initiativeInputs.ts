@@ -1,6 +1,5 @@
 import { MAX_COMBATANTS, MAX_INSTANCE_NUMBER, MAX_NAME, type AssetRef, type SharedCombatant, type SharedInitiative, type SharedSide, type SharedSideTurn } from '../protocol/index.ts';
 import { isBuiltInSide } from '../../gameSystems/initiativeSideRules';
-import { BUILT_IN_SYSTEM_PRESETS } from '../../gameSystems/builtInPresets';
 import { collectionInitiativeRules, DEFAULT_INITIATIVE_RULES } from '../../gameSystems/initiativeRules';
 import { mapConditions, rulesForMap, type RulesLookup } from '../../gameSystems/mapRules';
 import { mapResources } from '../../resources/collectionResources';
@@ -8,6 +7,7 @@ import { playerInitiativeList, playerSegments, playersEntryToken, sideIdsOf, typ
 import { sharedConditions } from './tokenUI.ts';
 import type { TokenEntity } from '../../types';
 import type { InitiativeRules } from '../../types/initiativeRulesTypes';
+import type { SystemPreset } from '../../types/systemPresetTypes';
 import type { ViewState } from '../../types/viewState';
 import { ringColour } from './scenePicture.ts';
 import { hasInitiative } from '../../initiative/awaitingInitiative';
@@ -34,6 +34,8 @@ export interface InitiativeInputs {
   tokenAlias?(tokenId: string): string | undefined;
   /** Where the map's rules are looked up; without it the default rules and no hit points. */
   readonly rules: RulesLookup | null;
+  /** The game system presets the map's rules may name (`systemPresetsOf`), the user's among them, as the player window reads them. */
+  readonly presets: readonly SystemPreset[];
   /** A portrait's artwork as players are sent it, by vault path; null while unknown. */
   art(path: string): AssetRef | null;
 }
@@ -71,13 +73,10 @@ function legacyActiveSide(list: PlayerInitiativeList): SharedSide | null {
   return active ? legacySide(active.id) : null;
 }
 
-/**
- * The initiative rules the map plays by (`rulesForMap`): their own, else their built-in preset's,
- * else the default. A user preset's rules are not readable from here; such rules read as the default.
- */
-function initiativeRulesOf(rules: RulesLookup | null, mapPath: string | null): InitiativeRules {
+/** The initiative rules the map plays by (`rulesForMap`): their own, else their preset's, else the default. */
+function initiativeRulesOf(rules: RulesLookup | null, presets: readonly SystemPreset[], mapPath: string | null): InitiativeRules {
   const settings = rules !== null && mapPath !== null ? rulesForMap(rules, mapPath).settings : null;
-  return settings === null ? { ...DEFAULT_INITIATIVE_RULES } : collectionInitiativeRules(settings, BUILT_IN_SYSTEM_PRESETS);
+  return settings === null ? { ...DEFAULT_INITIATIVE_RULES } : collectionInitiativeRules(settings, presets);
 }
 
 /**
@@ -94,7 +93,7 @@ export function sharedInitiative(inputs: InitiativeInputs): SharedInitiative | n
   const tokens = state.objects.tokens;
   const definitions = rules !== null ? mapResources(rules, state.mapPath) : [];
   const conditions = rules !== null ? mapConditions(rules, state.mapPath) : [];
-  const initiativeRules = initiativeRulesOf(rules, state.mapPath);
+  const initiativeRules = initiativeRulesOf(rules, inputs.presets, state.mapPath);
   const sides = sideIdsOf(initiative, initiativeRules);
   const list = playerInitiativeList(
     initiative,

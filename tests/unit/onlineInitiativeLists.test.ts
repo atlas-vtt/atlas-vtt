@@ -35,6 +35,7 @@ function listOf(fromTurn: boolean | undefined): ReturnType<typeof sharedInitiati
     showNames: true,
     ...(fromTurn === undefined ? {} : { fromTurn }),
     rules: {} as RulesLookup,
+    presets: [],
     art: () => null,
   });
 }
@@ -53,7 +54,7 @@ describe('the online players\' list as the GM lays it out', () => {
         initiative: { ...createDefaultInitiativeState(), isActive: true, round: 1, entries: [entry('ogre', 0, { isActive: true }), entry('hero', 1)] },
         objects: { tokens: { ogre: token('ogre'), hero: token('hero', { showNameplate: true }) } },
       },
-      shown: true, showNames: true, rules: {} as RulesLookup, art: () => null,
+      shown: true, showNames: true, rules: {} as RulesLookup, presets: [], art: () => null,
     });
     expect(list?.combatants.map((combatant) => combatant.name)).toEqual([null, 'hero']);
   });

@@ -28,6 +28,7 @@ describe('online players and a combatant without a number yet', () => {
     shown: true,
     showNames: false,
     rules: {} as RulesLookup,
+    presets: [],
     art: () => null,
   });
 

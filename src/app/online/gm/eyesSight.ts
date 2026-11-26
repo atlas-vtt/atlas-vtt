@@ -74,11 +74,12 @@ export class EyesSight {
     };
   }
 
-  /** The map layers' source of these eyes: their doors, points and sensed tokens, the grid and rules of `base`. */
+  /** The map layers' source of these eyes: their doors, points and sensed tokens, the grid, rules and presets of `base`. */
   layers(basis: PictureBasis, base: MapLayerSource): MapLayerSource {
     return {
       grid: () => base.grid(),
       rules: () => base.rules(),
+      presets: () => base.presets(),
       doorsSeen: (walls, fog) => {
         const lighting = this.lighting(basis);
         if (lighting === null) return null;

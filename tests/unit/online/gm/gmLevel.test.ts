@@ -20,7 +20,7 @@ vi.mock('obsidian', () => ({
   normalizePath: (path: string) => path,
   requestUrl: () => Promise.resolve(seen.created),
   PluginSettingTab: class {},
-  Setting: class {},
+  Setting: class {}, Platform: { isMacOS: false },
 }));
 
 const SAVED: SavedTable = { code: 'a'.repeat(26), secret: 's'.repeat(43), maxPlayers: 12, campaignId: 'c1', mapPath: null, gate: { code: '483912', requireCode: true, askToJoin: true } };
