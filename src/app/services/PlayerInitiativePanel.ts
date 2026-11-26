@@ -1,15 +1,13 @@
-import { mapResources } from '../resources/collectionResources';
 import { onMapRulesChange, rulesLookup } from './mapRules';
 import { setIcon, type App } from 'obsidian';
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
 import type { PlayerBadgeNumbers } from '../pixi/token-renderer/PlayerBadgeNumbers';
 import { lendThemeIvy } from './themeIvy';
-import { playerInitiativeList, playersEntryToken, sideIdsOf, type EntryToken } from './playerInitiativeList';
+import { initiativeShown, playerInitiativeList, type PlayerInitiativeList } from './playerInitiativeList';
 import { initiativeMaxCardsOf, renderPlayerInitiative } from './playerInitiativeView';
 import { currentTurn, turnKey } from '../initiative/turnHolders';
-import { mapInitiativeRules } from './mapInitiativeRules';
-import { mapConditions } from '../gameSystems/mapRules';
+import { systemPresetsOf } from './mapCollectionRules';
 import { PlayerSceneOverlay, type PlayerSettings } from './PlayerSceneOverlay';
 import type { SettingsService } from './SettingsService';
 import type { InitiativeLayout } from '../initiative/initiativeLayout';
@@ -24,12 +22,11 @@ const layoutKey = ({ fromTurn, edges, facesPlayers }: InitiativeLayout): string 
 interface InitiativeScene {
   initiative: ViewAtlasState['initiative'];
   initiativeTrackerOpen: boolean;
-  mapPath: string | null;
   /**
-   * What the list shows of every entry (`playersEntryToken`; null for one players do not see), in
-   * entry order, as a key that changes when one of them does and compares equal after edits to other tokens.
+   * The list players see (`playerInitiativeList`) as a key that changes when it does and compares equal after edits
+   * to other tokens; null without combatants.
    */
-  tokens: string;
+  list: string | null;
   /** The scene's Show nameplates, which says with each token's own whom the list names. */
   mapShowsNameplates: boolean;
   /** The card (`playerCardKey`) of the combatant whose conditions the GM's tracker names while it is hovered, or null. */
@@ -130,36 +127,26 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     this.badgeNumbers = undefined;
   }
 
-  protected select({ initiative, initiativeTrackerOpen, objects, mapPath, tokenSettings, conditionsShownEntry }: ViewAtlasState): InitiativeScene {
+  protected select(state: ViewAtlasState): InitiativeScene {
+    const { initiative, initiativeTrackerOpen, tokenSettings, conditionsShownEntry } = state;
     const entries = initiative?.entries ?? [];
-    // Who is defeated follows the map's resources, as on the GM's cards
-    const lookup = entries.length > 0 ? rulesLookup(this.app) : null;
-    const definitions = lookup ? mapResources(lookup, mapPath) : [];
-    // The conditions the map draws on the tokens, as players see them there
-    const conditions = lookup ? mapConditions(lookup, mapPath) : [];
-    // A token's side counts where the fight or the rules know it
-    const sides = entries.length > 0 && initiative ? sideIdsOf(initiative, mapInitiativeRules(this.app, mapPath ?? null)) : undefined;
-    const entryTokens = JSON.stringify(entries.map((entry) => playersEntryToken(entry, objects?.tokens, definitions, conditions, sides)));
+    // Without combatants there is nothing to list, and no rules to look up for it
+    const list = entries.length > 0 ? JSON.stringify(playerInitiativeList(state, { lookup: rulesLookup(this.app), presets: systemPresetsOf(this.app) })) : null;
     // The GM hovers a combatant in the tracker: the list shows it and names its conditions (`showConditionsTip`)
     const shownEntry = entries.find((entry) => entry.id === conditionsShownEntry);
     const conditionsShown = shownEntry ? playerCardKey(shownEntry) : null;
-    return { initiative, initiativeTrackerOpen, mapPath: mapPath ?? null, tokens: entryTokens, mapShowsNameplates: tokenSettings?.showNameplates ?? false, conditionsShown };
+    return { initiative, initiativeTrackerOpen, list, mapShowsNameplates: tokenSettings?.showNameplates ?? false, conditionsShown };
   }
 
   protected render(container: HTMLElement, scene: InitiativeScene, settings: PlayerSettings): void {
-    const { initiative, initiativeTrackerOpen } = scene;
+    const { initiative } = scene;
     const turn = currentTurn(initiative);
     const turnFlash = this.stage.turnFlash(turn ? turnKey(turn) : null);
     // Outside a fight there is no list to show players, however the GM prepares one
-    const drawn = settings.showInitiative && initiativeTrackerOpen && initiative?.isActive === true;
+    const drawn = initiativeShown(scene, { showInitiative: settings.showInitiative, beforeFight: false });
     this.stage.begin(container, drawn, initiative?.isActive === true, () => this.settings.initiativeTurnOptions().banner);
-    if (!drawn) return;
-    const tokenOf = JSON.parse(scene.tokens) as (EntryToken | null)[];
-    const list = playerInitiativeList(
-      initiative,
-      (_entry, index) => tokenOf[index] ?? null,
-      mapInitiativeRules(this.app, scene.mapPath),
-    );
+    if (!drawn || scene.list === null) return;
+    const list = JSON.parse(scene.list) as PlayerInitiativeList;
     const live = this.badgeNumbers;
     const held = this.shownNumbers;
     const shown = new Map<string, number>();

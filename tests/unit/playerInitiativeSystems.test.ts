@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { entryTokenOf, playerInitiativeList, sideIdsOf } from '../../src/app/services/playerInitiativeList';
 import { renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 import type { TokenEntity } from '../../src/app/types';
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';
 import { createDefaultInitiativeState, type InitiativeEntry, type InitiativeState } from '../../src/app/types/initiativeTypes';
+import { playersListOf } from '../helpers/playersInitiative';
 
 const ALLIES = { id: 'side-allies', name: 'Allies' };
 const THREE: InitiativeRules = { mode: 'sides', roll: '1d20', firstSide: 'players', sides: [{ id: 'players' }, ALLIES, { id: 'opponents' }] };
@@ -16,8 +16,7 @@ const entry = (tokenId: string, order: number, extra: Partial<InitiativeEntry> =
 });
 
 function draw(initiative: InitiativeState, rules: InitiativeRules, tokens: Record<string, TokenEntity>): HTMLElement {
-  const sides = sideIdsOf(initiative, rules);
-  const list = playerInitiativeList(initiative, (e) => entryTokenOf(tokens[e.tokenId], [], [], sides), rules);
+  const list = playersListOf(initiative, tokens, { initiative: rules });
   const container = document.body.createDiv();
   renderPlayerInitiative(container, list, LOOK);
   return container;

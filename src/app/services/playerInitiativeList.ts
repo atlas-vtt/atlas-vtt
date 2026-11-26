@@ -3,7 +3,11 @@ import { visibleResources } from '../resources/visibleResources';
 import type { TokenEntity } from '../types';
 import type { ConditionDefinition } from '../types/collectionSettingsTypes';
 import type { InitiativeEntry, InitiativeState } from '../types/initiativeTypes';
-import type { InitiativeRules, InitiativeSide, SideId } from '../types/initiativeRulesTypes';
+import type { InitiativeSide, SideId } from '../types/initiativeRulesTypes';
+import type { SystemPreset } from '../types/systemPresetTypes';
+import { initiativeRulesForMap } from '../gameSystems/initiativeRules';
+import { mapConditions, type RulesLookup } from '../gameSystems/mapRules';
+import { mapResources } from '../resources/collectionResources';
 import { firstBuiltInSide } from '../gameSystems/initiativeSideRules';
 import { listedByCards, listedBySides, listedSides, sideOf, type ListedSide } from '../initiative/sides';
 import { combatantDefeated } from '../initiative/defeated';
@@ -19,7 +23,7 @@ export interface EntryToken {
   /** The map frames a token unless its ring is switched off. */
   showRing: boolean;
   ringColor?: string | undefined;
-  /** The side the token fights on, of the sides the list knows (`sideIdsOf`). */
+  /** The side the token fights on, of the sides the list knows (`listedSides`). */
   side: SideId;
   /** Defeated, as the GM's card shows it with its skull: shown dimmed and marked, never left out. */
   defeated: boolean;
@@ -64,25 +68,106 @@ export interface PlayerInitiativeList {
   turnOrder: number | null;
 }
 
-/**
- * Whether players see a combatant: its token is on the map and not hidden. Sight and light never
- * decide: the list would change as tokens move, and the GM could not tell what it shows.
- */
-export function listedForPlayers(token: Pick<TokenEntity, 'isHidden'> | undefined): boolean {
-  return !!token && !token.isHidden;
+/** An entry as the list reads it: what it shows, and what says whether players see it, on which side and under which conditions. */
+type ListedEntry = PlayerInitiativeEntry & Pick<InitiativeEntry, 'partyMemberId' | 'conditions' | 'conditionValues'>;
+
+/** The fight the list is made of. */
+type ListedFight = Pick<InitiativeState, 'isActive' | 'round' | 'sides' | 'sideOrder' | 'cards'> & { readonly entries: readonly ListedEntry[] };
+
+/** What the players' list is made of: the scene's fight, the GM's tracker, its tokens and the map whose rules apply. */
+export interface PlayersInitiativeScene {
+  readonly initiative?: ListedFight | undefined;
+  readonly initiativeTrackerOpen?: boolean | undefined;
+  readonly mapPath: string | null;
+  readonly objects: { readonly tokens: Readonly<Record<string, TokenEntity>> };
+}
+
+/** Where the list looks up the rules of the scene's map. */
+export interface ListRules {
+  /** The map's collection and the campaign played (`RulesLookup`); null where neither can be read: the default initiative rules, no resources and no conditions. */
+  readonly lookup: RulesLookup | null;
+  /** The game system presets those rules may name, the user's among them (`systemPresetsOf`). */
+  readonly presets: readonly SystemPreset[];
+}
+
+/** When players are given the list. */
+export interface ListedWhen {
+  /** The player view's initiative switch (`showInitiative`): off, they are given none. */
+  readonly showInitiative: boolean;
+  /**
+   * Given as soon as the GM's tracker is open, while a fight is prepared too, not only while one runs. Atlas's player
+   * window shows the list during a fight alone; online players are sent it before one starts, and their page decides.
+   */
+  readonly beforeFight: boolean;
 }
 
 /**
- * What the players' list shows of `entry`, or null where they do not see it: none the GM hid from
- * them (`hiddenFromPlayers`); else a player at the table always, on the players' side; an enemy added by name
- * always, on the opponents'; a token's entry while its token is listed (`listedForPlayers`). The other arguments are `entryTokenOf`'s.
+ * Whether players are given the list now: the player view shows initiative, the GM's tracker is open, and a fight
+ * runs, or is prepared where `when` gives the list before it.
  */
-export function playersEntryToken(
-  entry: Pick<InitiativeEntry, 'tokenId' | 'partyMemberId' | 'conditions' | 'conditionValues' | 'hiddenFromPlayers'>,
-  tokens: Readonly<Record<string, TokenEntity>> | undefined,
+export function initiativeShown(
+  scene: { readonly initiative?: Pick<InitiativeState, 'isActive'> | undefined; readonly initiativeTrackerOpen?: boolean | undefined },
+  when: ListedWhen,
+): boolean {
+  if (!when.showInitiative || scene.initiativeTrackerOpen !== true || scene.initiative === undefined) return false;
+  return scene.initiative.isActive || when.beforeFight;
+}
+
+/** The list players are given of the scene's fight (`playerInitiativeList`), or null while they are given none (`initiativeShown`). */
+export function initiativeForPlayers(scene: PlayersInitiativeScene, rules: ListRules, when: ListedWhen): PlayerInitiativeList | null {
+  const { initiative } = scene;
+  if (initiative === undefined || !initiativeShown(scene, when)) return null;
+  return playerInitiativeList({ initiative, mapPath: scene.mapPath, objects: scene.objects }, rules);
+}
+
+/**
+ * The list players see of the scene's fight: every combatant they see (`playersEntryToken`), in turn order, grouped by
+ * side as the fight runs or the map's rules say, defeated, hurt and under conditions as those rules have it. A view
+ * that keeps the list between drawings reads it here and asks `initiativeShown` when to draw it.
+ */
+export function playerInitiativeList(scene: PlayersInitiativeScene & { readonly initiative: ListedFight }, rules: ListRules): PlayerInitiativeList {
+  const { initiative, mapPath } = scene;
+  const { lookup } = rules;
+  // Who is defeated, and whose hit points players see, follow the map's resources, as on the map
+  const definitions = lookup === null ? [] : mapResources(lookup, mapPath);
+  const conditions = lookup === null ? [] : mapConditions(lookup, mapPath);
+  const initiativeRules = initiativeRulesForMap(lookup, rules.presets, mapPath);
+  const sides = listedSides(initiative, initiativeRules);
+  // A token's side counts where the fight or the rules know it
+  const known = sides.map(({ id }) => id);
+  const combatants = initiative.entries
+    .flatMap((entry): Combatant[] => {
+      const token = playersEntryToken(entry, scene.objects.tokens, definitions, conditions, known);
+      return token ? [{ entry, token }] : [];
+    })
+    .sort((a, b) => a.entry.order - b.entry.order);
+  const bySides = listedBySides(initiative, initiativeRules);
+  const turn = initiative.isActive && !bySides ? initiative.entries.find((entry) => entry.isActive && !entry.delayed) : undefined;
+  return {
+    combatants,
+    isActive: initiative.isActive,
+    round: initiative.round,
+    bySides,
+    byCards: listedByCards(initiative, initiativeRules),
+    sides,
+    firstSide: initiative.sides?.first ?? firstBuiltInSide(sides),
+    activeSide: initiative.sides?.active ?? null,
+    turnOrder: turn ? turn.order : null,
+  };
+}
+
+/**
+ * What the list shows of `entry`, or null where players do not see it: none the GM hid from them (`hiddenFromPlayers`);
+ * else a player at the table always, on the players' side; an enemy added by name always, on the opponents'; a
+ * token's entry while its token is on the map and not hidden. Sight and light never decide: the list would change as
+ * tokens move, and the GM could not tell what it shows. The other arguments are `entryTokenOf`'s.
+ */
+function playersEntryToken(
+  entry: ListedEntry,
+  tokens: Readonly<Record<string, TokenEntity>>,
   definitions: readonly ResourceDefinition[],
-  conditionDefinitions: readonly ConditionDefinition[] = [],
-  sides?: readonly SideId[],
+  conditionDefinitions: readonly ConditionDefinition[],
+  sides: readonly SideId[],
 ): EntryToken | null {
   // Conditions the tracker gave: a token's own, else the entry's
   const conditions = (token: TokenEntity | undefined): ActiveCondition[] => entryConditions(entry, token, conditionDefinitions);
@@ -91,24 +176,19 @@ export function playersEntryToken(
   if (entry.partyMemberId !== undefined) return { ...entryTokenOf(undefined, definitions, conditionDefinitions, sides), side: 'players', conditions: conditions(undefined) };
   if (entry.tokenId === undefined) return { ...entryTokenOf(undefined, definitions, conditionDefinitions, sides), conditions: conditions(undefined) };
   const token = entryToken(tokens, entry);
-  return listedForPlayers(token) ? { ...entryTokenOf(token, definitions, conditionDefinitions, sides), conditions: conditions(token) } : null;
-}
-
-/** The ids of the sides the players' list groups by: the running fight's, else the rules'. */
-export function sideIdsOf(initiative: Pick<InitiativeState, 'isActive' | 'round' | 'sides' | 'sideOrder'>, rules: InitiativeRules): SideId[] {
-  return listedSides(initiative, rules).map((side) => side.id);
+  return token && !token.isHidden ? { ...entryTokenOf(token, definitions, conditionDefinitions, sides), conditions: conditions(token) } : null;
 }
 
 /**
- * What the players' list reads of a combatant's token; `definitions` are the map's resources, which
- * say who is defeated and whether players see its hit points, as on the map, `conditionDefinitions` its conditions, drawn as the map draws them, and
- * `sides` the ids of the sides the list knows (`sideIdsOf`).
+ * What the list reads of a combatant's token; `definitions` are the map's resources, which say who is defeated and
+ * whether players see its hit points, as on the map, `conditionDefinitions` its conditions, drawn as the map draws
+ * them, and `sides` the ids of the sides the list knows.
  */
-export function entryTokenOf(
+function entryTokenOf(
   token: TokenEntity | undefined,
   definitions: readonly ResourceDefinition[],
-  conditionDefinitions: readonly ConditionDefinition[] = [],
-  sides?: readonly SideId[],
+  conditionDefinitions: readonly ConditionDefinition[],
+  sides: readonly SideId[],
 ): EntryToken {
   return {
     hp: (token && visibleResources(token, definitions, 'player').find(({ definition }) => definition.key === 'hp')?.value) ?? null,
@@ -119,37 +199,6 @@ export function entryTokenOf(
     conditions: combatantConditions(token, conditionDefinitions),
     ...(token?.showNameplate === true ? { showNameplate: true } : {}),
     ...(isOffMap(token) ? { offMap: true as const } : {}),
-  };
-}
-
-/**
- * The list players see of a fight: every entry `tokenOf` answers for (those whose token they may
- * see), in turn order, grouped by side as the fight runs or the collection's rules say.
- */
-export function playerInitiativeList(
-  initiative: Pick<InitiativeState, 'isActive' | 'round' | 'sides' | 'sideOrder' | 'cards'> & { entries: readonly PlayerInitiativeEntry[] },
-  tokenOf: (entry: PlayerInitiativeEntry, index: number) => EntryToken | null,
-  rules: InitiativeRules,
-): PlayerInitiativeList {
-  const combatants = initiative.entries
-    .flatMap((entry, index): Combatant[] => {
-      const token = tokenOf(entry, index);
-      return token ? [{ entry, token }] : [];
-    })
-    .sort((a, b) => a.entry.order - b.entry.order);
-  const bySides = listedBySides(initiative, rules);
-  const sides = listedSides(initiative, rules);
-  const turn = initiative.isActive && !bySides ? initiative.entries.find((entry) => entry.isActive && !entry.delayed) : undefined;
-  return {
-    combatants,
-    isActive: initiative.isActive,
-    round: initiative.round,
-    bySides,
-    byCards: listedByCards(initiative, rules),
-    sides,
-    firstSide: initiative.sides?.first ?? firstBuiltInSide(sides),
-    activeSide: initiative.sides?.active ?? null,
-    turnOrder: turn ? turn.order : null,
   };
 }
 

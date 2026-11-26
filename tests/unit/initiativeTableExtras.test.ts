@@ -7,11 +7,13 @@ import type { App } from 'obsidian';
 import { turnColor } from '../../src/app/initiative/turnColor';
 import { renderTurnBanner } from '../../src/app/initiative/banner/turnBannerElement';
 import { turnEntries } from '../../src/app/initiative/turnHolders';
-import { playerInitiativeList, playersEntryToken, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import type { PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
 import { initiativeScaleOf, MAX_INITIATIVE_SCALE, renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 import { initiativeCardMenu } from '../../src/app/react/components/initiativeCardMenu';
+import type { TokenEntity } from '../../src/app/types';
 import type { InitiativeEntry } from '../../src/app/types/initiativeTypes';
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';
+import { playersListOf } from '../helpers/playersInitiative';
 
 vi.mock('../../src/app/utils/scrollWithin', () => ({ scrollWithin: () => undefined }));
 
@@ -58,9 +60,9 @@ describe('enemies without tokens', () => {
 
   it('are shown to the players on the opponents\' side, and take that side\'s turns', () => {
     const enemy = entry({ name: 'Enemy 1' });
-    expect(playersEntryToken(enemy, {}, [])).toMatchObject({ side: 'opponents' });
     // An entry whose token is gone is still left out
-    expect(playersEntryToken(entry({ tokenId: 'gone' }), {}, [])).toBeNull();
+    const listed = playersListOf({ isActive: false, round: 0, entries: [enemy, entry({ name: 'Gone', tokenId: 'gone', order: 1 })] }).combatants;
+    expect(listed.map(({ entry: shown, token }) => [shown.name, token.side])).toEqual([['Enemy 1', 'opponents']]);
     const held = turnEntries({ kind: 'sides', sides: ['opponents'], round: 1 } as never, { entries: [enemy] }, {});
     expect(held).toEqual([enemy]);
   });
@@ -92,7 +94,8 @@ describe('turn colours', () => {
 describe('the players\' list', () => {
   const draw = (look: { pulse?: boolean; showNames?: boolean; turnFlash?: number; artViewBox?: (imagePath: string, apply: (viewBox: string) => void) => void }, entries: PlayerInitiativeEntry[]): HTMLElement => {
     document.body.empty();
-    const list = playerInitiativeList({ entries, isActive: true, round: 1 }, () => ({ hp: null, showRing: false, side: 'opponents', defeated: false }), TURN_ORDER);
+    const tokens = Object.fromEntries(['a', 'b', 'g'].map((id): [string, TokenEntity] => [id, { id, kind: 'token', x: 0, y: 0, imagePath: '', showRing: false }]));
+    const list = playersListOf({ entries, isActive: true, round: 1 }, tokens, { initiative: TURN_ORDER });
     renderPlayerInitiative(document.body, list, { showNames: false, portraitSrc: () => 'art.webp', ...look });
     return document.querySelector<HTMLElement>('.atlas-player-initiative')!;
   };

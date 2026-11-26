@@ -22,7 +22,8 @@ import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/app/types/initiativeTypes';
 import type { Character } from '../../src/app/types';
 import { renderTurnBanner } from '../../src/app/initiative/banner/turnBannerElement';
-import { entryTokenOf, playerInitiativeList, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import type { PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { playersListOf } from '../helpers/playersInitiative';
 import { renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 import type { InitiativeLayout, PlayersListEdge } from '../../src/app/initiative/initiativeLayout';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
@@ -92,10 +93,10 @@ function showPlayers({ names = false, fromTurn = true, dock = 'right', sides = f
   const host = document.body.createDiv({ cls: 'atlas-vtt-plugin' });
   Object.assign(host.style, { position: 'relative', width: `${width}px`, height: `${height}px` });
   const entries: PlayerInitiativeEntry[] = [0, 1, 2, 3, 4].map((index) => entryOf(index, sides ? -1 : 3));
-  const list = playerInitiativeList(
+  const list = playersListOf(
     { entries, isActive: true, round: 2, ...(sides ? { sides: { first: 'players' as const, active: 'opponents' as const } } : {}) },
-    (_, index) => entryTokenOf(creature(index), [], CONDITIONS),
-    { mode: sides ? 'sides' : 'turn-order', roll: '1d20', firstSide: 'players' },
+    Object.fromEntries([0, 1, 2, 3, 4].map((index) => [`t${index}`, creature(index)])),
+    { conditions: CONDITIONS, initiative: { mode: sides ? 'sides' : 'turn-order', roll: '1d20', firstSide: 'players' } },
   );
   renderPlayerInitiative(host, list, { showNames: names, mapShowsNameplates: true, portraitSrc: (src) => src, fromTurn, dock, pulse });
   return host.querySelector<HTMLElement>('.atlas-player-initiative')!;

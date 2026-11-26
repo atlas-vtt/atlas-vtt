@@ -30,12 +30,12 @@ vi.mock('../../src/app/react/hooks/useMapConditions', () => ({ useMapConditions:
 vi.mock('../../src/app/react/hooks/useTrueScale', () => ({ useTrueScale: () => view.trueScale }));
 
 import { InitiativeCard } from '../../src/app/react/components/InitiativeCard';
-import { entryTokenOf, playerInitiativeList, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
 import { renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 import { sharedConditions } from '../../src/app/online/gm/tokenUI';
 import { parseCondition } from '../../src/app/online/protocol/tokenUI';
 import { resolveActiveConditions } from '../../src/app/utils/activeConditions';
 import type { TokenEntity } from '../../src/app/types';
+import { playersListOf } from '../helpers/playersInitiative';
 
 const entry: InitiativeEntry = { id: 'e', tokenId: 't', name: 'Troll', initiative: 12, initiativeModifier: 0, imagePath: '', isActive: false, isNPC: true, order: 0 };
 const troll = (extra: Partial<TokenEntity> = {}): TokenEntity => ({ id: 't', kind: 'character', name: 'Troll', imagePath: '', x: 0, y: 0, conditions: ALL.slice(0, 2), ...extra } as TokenEntity);
@@ -93,9 +93,8 @@ describe('conditions on the players\' initiative cards', () => {
   /** The names the players' card of `token` (none: an enemy added by name) shows its conditions by. */
   function playersCard(token: TokenEntity | undefined, trueScale = false, conditionsShown?: string): string[] {
     document.body.empty();
-    const listed: PlayerInitiativeEntry = { name: 'Troll', initiative: 12, imagePath: '', order: 0, isActive: true, ...(token && { tokenId: 't' }) };
-    const shown = { ...entryTokenOf(token, [], CONDITIONS), conditions: resolveActiveConditions(token ?? { conditions: ['prone'] }, CONDITIONS) };
-    const list = playerInitiativeList({ entries: [listed], isActive: true, round: 1 }, () => shown, { mode: 'turn-order', roll: '1d20', firstSide: 'players' });
+    const listed: Omit<InitiativeEntry, 'id' | 'initiativeModifier' | 'isNPC'> = { name: 'Troll', initiative: 12, imagePath: '', order: 0, isActive: true, ...(token ? { tokenId: 't' } : { conditions: ['prone'] }) };
+    const list = playersListOf({ entries: [listed], isActive: true, round: 1 }, token ? { t: token } : {}, { conditions: CONDITIONS });
     renderPlayerInitiative(document.body, list, { showNames: true, mapShowsNameplates: true, portraitSrc: () => null, trueScale, conditionsShown });
     return [...document.querySelectorAll('.atlas-initiative-card__conditions [role="listitem"]')].map((item) => item.getAttribute('aria-label') ?? '');
   }
