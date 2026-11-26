@@ -4,6 +4,7 @@ import { rulesForMap } from '../../../../src/app/gameSystems/mapRules';
 import { rulesOfPreset } from '../../../../src/app/gameSystems/systemRules';
 import { formatDistance } from '../../../../src/app/grid/measurementFormat';
 import { RulesShare } from '../../../../src/app/online/gm/RulesShare.ts';
+import { feedClock } from './feedClock.ts';
 import type { SceneState, SceneStore } from '../../../../src/app/online/gm/atlasView.ts';
 import { parseGmMessage, type GmMessage, type SharedRules } from '../../../../src/app/online/protocol/index.ts';
 import { AssetService } from '../../../../src/app/services/AssetService';
@@ -35,8 +36,8 @@ function table(world: PlayedCampaignWorld, grid: GridState = GRID): { scene: { m
     if (read?.t === 'rules') sent.push(read.measurement);
   };
   // The port as `sceneBinding` wires it: the measure renderer's provider, which is this read.
-  const share = new RulesShare(store, { send, measurement: () => mapMeasurementSettings(rulesLookup(world.app), scene) });
-  share.setScene('s1');
+  const share = new RulesShare(store, { ...feedClock(), send, measurement: () => mapMeasurementSettings(rulesLookup(world.app), scene) });
+  share.feed.setScene({ id: 's1', lit: false });
   return { scene, share, sent };
 }
 
@@ -52,7 +53,7 @@ describe('the unit a shared scene measures in', () => {
     const { scene, share, sent } = table(world);
 
     world.play.play('saga');
-    share.update();
+    share.feed.update();
 
     expect(rulesForMap(rulesLookup(world.app), MAP).source).toEqual({ kind: 'collection', id: 'dungeon' });
     expect(formatDistance(4, mapMeasurementSettings(rulesLookup(world.app), scene))).toBe('6m');
@@ -67,16 +68,16 @@ describe('the unit a shared scene measures in', () => {
     const { scene, share, sent } = table(world);
 
     world.play.play('saga');
-    share.update();
+    share.feed.update();
     expect(rulesForMap(rulesLookup(world.app), MAP).source).toEqual({ kind: 'campaign', id: 'saga' });
     expect(formatDistance(4, mapMeasurementSettings(rulesLookup(world.app), scene))).toBe('20ft');
 
     await setMapUnitType(world.app, { getState: () => scene }, 'meters');
-    share.update();
+    share.feed.update();
     expect(world.collectionWrites).toEqual([]);
 
     world.play.stop();
-    share.update();
+    share.feed.update();
     expect(sent.map(({ unitType, unitDistance }) => [unitType, unitDistance])).toEqual([['meters', 1.5], ['feet', 5], ['meters', 5], ['meters', 1.5]]);
   });
 

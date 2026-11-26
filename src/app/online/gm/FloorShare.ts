@@ -190,14 +190,14 @@ export class FloorShare {
       this.moves.storeChanged(state);
       this.doors.storeChanged(state);
       this.rules.storeChanged(state);
-    } else if (change === 'atlas') this.rules.update();
+    } else if (change === 'atlas') this.rules.feed.update();
   }
 
   /** The scene, its tokens and its inputs again, to one player or to all. */
   resend(to?: string): void {
     this.ports.send({ t: 'scene', scene: this.scene }, to);
     this.pictures.resend(to);
-    this.rules.resend(to);
+    this.rules.feed.resend(to);
     this.marks.resend(to);
   }
 
@@ -349,7 +349,7 @@ export class FloorShare {
     this.doors.stop();
     this.dragRulers.clear();
     this.pictures.clear();
-    this.rules.setScene(null);
+    this.rules.feed.setScene(null);
     this.drawings.setScene(scene?.id ?? null);
     this.cleared.reset();
     // Marks of the scene before must not follow the new one: the live lane would let them overtake it.
@@ -357,7 +357,7 @@ export class FloorShare {
     this.pictures.assign();
     this.resend();
     this.pictures.setScene(scene);
-    this.rules.setScene(scene?.id ?? null);
+    this.rules.feed.setScene(scene);
     this.marks.setScene(scene?.id ?? null);
   }
 }
