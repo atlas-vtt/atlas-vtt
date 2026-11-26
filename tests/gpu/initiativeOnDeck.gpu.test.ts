@@ -1,7 +1,8 @@
 import '../setup/obsidianDom';
 import '../../styles/main.scss';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { playerInitiativeList, renderPlayerInitiative, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { playerInitiativeList, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 
 const PORTRAIT = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><circle cx="32" cy="32" r="30" fill="teal"/></svg>');
 const SLACK = 0.5;

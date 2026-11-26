@@ -1,7 +1,8 @@
 import '../setup/obsidianDom';
 import { describe, expect, it } from 'vitest';
 import css from '../../styles/main.scss?inline';
-import { entryTokenOf, playerInitiativeList, renderPlayerInitiative, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { entryTokenOf, playerInitiativeList, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 import { glideHeight } from '../../src/app/services/playerInitiativeMotion';
 import type { ConditionDefinition } from '../../src/app/types/collectionSettingsTypes';
 

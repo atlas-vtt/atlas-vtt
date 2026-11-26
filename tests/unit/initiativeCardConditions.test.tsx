@@ -30,7 +30,8 @@ vi.mock('../../src/app/react/hooks/useMapConditions', () => ({ useMapConditions:
 vi.mock('../../src/app/react/hooks/useTrueScale', () => ({ useTrueScale: () => view.trueScale }));
 
 import { InitiativeCard } from '../../src/app/react/components/InitiativeCard';
-import { entryTokenOf, playerInitiativeList, renderPlayerInitiative, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { entryTokenOf, playerInitiativeList, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 import { sharedConditions } from '../../src/app/online/gm/tokenUI';
 import { parseCondition } from '../../src/app/online/protocol/tokenUI';
 import { resolveActiveConditions } from '../../src/app/utils/activeConditions';

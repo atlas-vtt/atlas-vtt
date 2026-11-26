@@ -22,7 +22,8 @@ import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/app/types/initiativeTypes';
 import type { Character } from '../../src/app/types';
 import { renderTurnBanner } from '../../src/app/initiative/banner/turnBannerElement';
-import { entryTokenOf, playerInitiativeList, renderPlayerInitiative, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { entryTokenOf, playerInitiativeList, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 import type { InitiativeLayout, PlayersListEdge } from '../../src/app/initiative/initiativeLayout';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 

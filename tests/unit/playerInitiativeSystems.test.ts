@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { entryTokenOf, playerInitiativeList, renderPlayerInitiative, sideIdsOf } from '../../src/app/services/playerInitiativeList';
+import { entryTokenOf, playerInitiativeList, sideIdsOf } from '../../src/app/services/playerInitiativeList';
+import { renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 import type { TokenEntity } from '../../src/app/types';
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';
 import { createDefaultInitiativeState, type InitiativeEntry, type InitiativeState } from '../../src/app/types/initiativeTypes';

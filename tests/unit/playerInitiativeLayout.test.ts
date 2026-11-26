@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { entryTokenOf, playerInitiativeList, renderPlayerInitiative, type EntryToken, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { entryTokenOf, playerInitiativeList, type EntryToken, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';
 import type { ConditionDefinition } from '../../src/app/types/collectionSettingsTypes';
 import type { TokenEntity } from '../../src/app/types';

@@ -7,9 +7,8 @@ import type { App } from 'obsidian';
 import { turnColor } from '../../src/app/initiative/turnColor';
 import { renderTurnBanner } from '../../src/app/initiative/banner/turnBannerElement';
 import { turnEntries } from '../../src/app/initiative/turnHolders';
-import {
-  initiativeScaleOf, MAX_INITIATIVE_SCALE, playerInitiativeList, playersEntryToken, renderPlayerInitiative, type PlayerInitiativeEntry,
-} from '../../src/app/services/playerInitiativeList';
+import { playerInitiativeList, playersEntryToken, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { initiativeScaleOf, MAX_INITIATIVE_SCALE, renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 import { initiativeCardMenu } from '../../src/app/react/components/initiativeCardMenu';
 import type { InitiativeEntry } from '../../src/app/types/initiativeTypes';
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';

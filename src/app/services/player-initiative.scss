@@ -6,7 +6,7 @@
 
 // The player view's initiative size: widths and text grow with it, spacing stays
 $scale: var(--atlas-player-initiative-scale, 1);
-// How long one pulse of the turn's border lasts; `PULSE_MS` in `playerInitiativeList.ts`
+// How long one pulse of the turn's border lasts; `PULSE_MS` in `playerInitiativeView.ts`
 $pulse-ms: 1600ms;
 // The turn banner's size, which the pulse's ring matches
 $banner-scale: var(--atlas-player-turn-banner-scale, 1);

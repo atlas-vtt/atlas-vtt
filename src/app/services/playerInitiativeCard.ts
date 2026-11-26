@@ -6,7 +6,8 @@ import { formatList, t } from '../i18n';
 import { cardShowsConditions, SHOWN_CARD_CONDITIONS } from '../initiative/combatantConditions';
 import { createConditionBadge } from '../packages/components/shared/conditionBadgeElement';
 import type { ActiveCondition } from '../utils/activeConditions';
-import type { Combatant, PlayerCardIcon, PlayerInitiativeEntry, PlayerInitiativeLook } from './playerInitiativeList';
+import type { Combatant, PlayerInitiativeEntry } from './playerInitiativeList';
+import type { PlayerCardIcon, PlayerInitiativeLook } from './playerInitiativeView';
 
 /** What tells a combatant's card apart in the players' list (`TURN_KEY_ATTRIBUTE`): its token, else its name. */
 export function playerCardKey(entry: Pick<PlayerInitiativeEntry, 'tokenId' | 'name'>): string {

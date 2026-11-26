@@ -7,7 +7,8 @@ import type { DrawingAnnotation } from '../../src/app/annotations/annotationType
 import { createStampSprite, paintDrawing, placeStamp, StampTextures } from '../../src/app/pixi/drawingLayer';
 import { DoorIcons, type DoorIconsState } from '../../src/app/pixi/lighting/DoorIcons';
 import { createTextElementView, TEXT_CONTENT_LABEL, updateTextElementView } from '../../src/app/pixi/textElementView';
-import { entryTokenOf, listedForPlayers, playerInitiativeList, renderPlayerInitiative, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { entryTokenOf, listedForPlayers, playerInitiativeList, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
+import { renderPlayerInitiative } from '../../src/app/services/playerInitiativeView';
 import type { DrawingStroke, TextElement, TokenEntity } from '../../src/app/types';
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';
 import { HP_RESOURCE } from '../../src/app/resources/resourceDefinitions';

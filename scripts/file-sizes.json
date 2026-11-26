@@ -107,7 +107,6 @@
     "src/app/services/TokenStatblockLinkService.ts": 500,
     "src/app/services/WidgetSyncService.ts": 350,
     "src/app/services/collectionBundle/importInputs.ts": 350,
-    "src/app/services/playerInitiativeList.ts": 350,
     "src/app/services/recordFiles/RecordFiles.ts": 350,
     "src/app/sound/engine/soundRun.ts": 350,
     "src/app/soundDirector/SoundDirector.ts": 350,
