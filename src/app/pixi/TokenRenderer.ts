@@ -168,8 +168,6 @@ export class TokenRenderer {
   /** Whom the canvas is drawn for: the tokens show what it sees and tell it what the players see. */
   private readonly audience: CanvasAudience;
   private readonly stopDrawingForAudience: () => void;
-  /** Who hears of each token drawn once its art loaded (`onTokenDrawn`). */
-  private readonly drawnListeners = new Set<() => void>();
   private readonly playerBadges = new ShownBadgeNumbers(() => this.store.getState());
   /** The marker on the tokens whose turn it is. */
   private turnMarkers!: TurnMarkers;
@@ -627,7 +625,6 @@ export class TokenRenderer {
     const token = mapTokens(levelObjects(this.store.getState()))[tokenId];
     const tokenGroup = this.tokenSprites[tokenId];
     if (token && tokenGroup) this.drawInstanceBadge(token, tokenGroup, this.countTokensWithImage(token.imagePath));
-    this.audience.tokensChanged();
   }
 
   private countTokensWithImage(imagePath: string): number {
@@ -1076,7 +1073,7 @@ export class TokenRenderer {
           
           // Also ensure viewport sorts its children to maintain UI above tokens
           this.viewport.sortChildren();
-          for (const listener of this.drawnListeners) listener();
+          this.audience.sightChanged({ kind: 'token' });
 
           // Changes made while loading (an Alt-drag copy moving, a pasted token rotated) go
           // through the regular update path, diffed against the state the sprite was built from.
@@ -1424,12 +1421,6 @@ export class TokenRenderer {
   /** Whether the players see each token in their frame, by `lighting` with committed fog; never a hidden or missing one. */
   public playersSeeInFrame(lighting?: TokenPerception): TokenSeen {
     return seenByPlayers(mapTokens(levelObjects(this.store.getState())), this.playerFramePerception(lighting));
-  }
-
-  /** Calls `listener` whenever a token's sprite is drawn, its art loaded after the write that placed it. Returns the function that stops it. */
-  public onTokenDrawn(listener: () => void): () => void {
-    this.drawnListeners.add(listener);
-    return () => { this.drawnListeners.delete(listener); };
   }
 
   /**

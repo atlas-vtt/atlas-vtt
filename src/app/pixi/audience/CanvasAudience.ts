@@ -16,6 +16,15 @@ export interface CanvasAudienceDeps {
   peeking(): boolean;
 }
 
+/**
+ * What the players see changed without a store change (`CanvasAudience.sightChanged`):
+ * - `lighting`: the lighting worked their sight out anew; `shown` while the canvas shows it to the tokens (session view or the peek).
+ * - `roof`: what the roof over their picture covers.
+ * - `token`: a token's sprite was drawn once its art loaded.
+ * - `map-image`: the map image of a level.
+ */
+export type SightChange = { readonly kind: 'lighting'; readonly shown: boolean } | { readonly kind: 'roof' | 'token' | 'map-image' };
+
 /** What the audience asks of the tokens the canvas draws. */
 export interface AudienceTokens {
   /** Shows each token, its UI and what stands with it as the canvas is drawn for now. */
@@ -30,12 +39,15 @@ export interface AudienceTokens {
  * palette's player mode and while the peek key is held. All but the peek take the players'
  * perspective: hidden tokens are left out. Everything on the canvas that the players' picture
  * changes listens to one notice (`onChange`): whom the canvas is drawn for changed, the players'
- * sight changed, or a token came into it or left it.
+ * sight changed, or a token came into it or left it. Whoever follows what the players see away
+ * from this canvas (`onSightChange`: Atlas Online) hears every change of it that comes without a
+ * store change, whomever the canvas is drawn for.
  */
 export class CanvasAudience {
   private playerMode = false;
   private tokens: AudienceTokens | null = null;
   private readonly listeners = new Set<() => void>();
+  private readonly sightListeners = new Set<() => void>();
   /** The tokens the players saw when they were last told of while the canvas showed their picture; null in the GM's view. */
   private seen: Set<string> | null = null;
   private readonly stops: Array<() => void>;
@@ -110,6 +122,25 @@ export class CanvasAudience {
     this.notify();
   }
 
+  /**
+   * What the players see changed without a store change (`SightChange`). The canvas follows the roof,
+   * the lighting while it shows it, and a token drawn (`tokensChanged`); nothing on it follows a level's
+   * map image. Every `onSightChange` listener hears it, whomever the canvas is drawn for.
+   */
+  sightChanged(change: SightChange): void {
+    if (change.kind === 'roof' || (change.kind === 'lighting' && change.shown)) this.refresh();
+    else if (change.kind === 'token') this.tokensChanged();
+    for (const listener of [...this.sightListeners]) listener();
+  }
+
+  /** Calls `listener` at every change of what the players see that comes without a store change (`sightChanged`). Returns the function that stops it. */
+  onSightChange(listener: () => void): () => void {
+    this.sightListeners.add(listener);
+    return () => {
+      this.sightListeners.delete(listener);
+    };
+  }
+
   /** Calls `listener` whenever whom the canvas is drawn for, or what the players see of its tokens, may have changed. Returns the function that stops it. */
   onChange(listener: () => void): () => void {
     this.listeners.add(listener);
@@ -121,6 +152,7 @@ export class CanvasAudience {
   destroy(): void {
     for (const stop of this.stops) stop();
     this.listeners.clear();
+    this.sightListeners.clear();
     this.tokens = null;
   }
 

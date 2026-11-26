@@ -30,7 +30,7 @@ function onWorkspace(app: App, name: 'atlas-vtt:collection-settings-changed' | '
 
 /**
  * Every input of what players see of a shared view beside its store, and what tells of each change: the
- * view's renderer (the players' sight, the roof, a token drawn once its art loaded, a level's map image),
+ * view's canvas audience (the players' sight, the roof, a token drawn once its art loaded, a level's map image),
  * Atlas's settings for the players' view (the table's controls the signal reads itself), the map's rules
  * (measurement, senses, conditions, resources, dice, movement), the characters' statblocks (their dice
  * sets), the creature index (speeds read from statblocks), the asset index (which statblock a library
