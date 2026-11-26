@@ -15,7 +15,11 @@ const context = vi.hoisted(() => ({
   openPlayerWindow: vi.fn(async () => undefined),
 }));
 vi.mock('../../src/app/services/PlayerWindowService', () => ({ PlayerWindowService: { getInstance: () => context.service } }));
-vi.mock('../../src/app/services/ImageDisplayService', () => ({ ImageDisplayService: { getInstance: () => ({ closeImageDisplay: context.closeImageDisplay }) } }));
+// The service shows an image in the player window exactly while the window's store says so.
+vi.mock('../../src/app/services/ImageDisplayService', async () => {
+  const { playerWindowStore: store } = await import('../../src/app/stores/playerWindowStore');
+  return { ImageDisplayService: { getInstance: () => ({ closeImageDisplay: context.closeImageDisplay, isImageDisplayed: () => store.getState().imageShown }) } };
+});
 vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentTab: vi.fn(), openPlayerWindow: context.openPlayerWindow }));
 vi.mock('../../src/app/platform/desktopOnly', () => ({ isDesktopApp: () => true, desktopOnly: <T,>(...items: T[]): T[] => items }));
 vi.mock('../../src/app/services/playerWindowDisplay', () => ({
