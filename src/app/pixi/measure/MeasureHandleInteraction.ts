@@ -105,7 +105,7 @@ export class MeasureHandleInteraction {
     this.handles.moved();
   }
 
-  /** What the token renderer's dispatch calls. */
+  /** What the map's pointer (`MapPointer`) calls. */
   readonly pointer: MeasurePointerHandlers = {
     pointerDown: (x, y, event) => this.pointerDown({ x, y }, event),
     cursorAt: (x, y) => this.cursorAt({ x, y }),

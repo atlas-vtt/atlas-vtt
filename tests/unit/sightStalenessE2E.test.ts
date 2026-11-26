@@ -84,8 +84,6 @@ function world(): World {
     albedo: () => null,
   });
   controller.wire({
-    setWallPointerDownHandler: vi.fn(), setWallPointerMoveHandler: vi.fn(), setWallPointerUpHandler: vi.fn(), setWallDoubleClickHandler: vi.fn(),
-    setWallContextMenuHandler: vi.fn(), setWallCursorProvider: vi.fn(), setDoorMenuHandlers: () => undefined, setDoorClickHandler: vi.fn(), setLightHandlers: vi.fn(),
     setPlayerSightProvider: vi.fn(), setGlideWay: vi.fn(), setArtFloors: vi.fn(), refreshPlayerSight: vi.fn(), getSensedOutlineLayer: () => ({ visible: false }),
   } as unknown as TokenRenderer);
   cleanup = () => {

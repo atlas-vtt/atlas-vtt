@@ -4,6 +4,8 @@ import { Container, Point, Texture, type Application, type EventSystem, type Fed
 import { Viewport } from 'pixi-viewport';
 import { EventEmitter } from '../../../src/app/utils/typedEmitter';
 import { TokenRenderer } from '../../../src/app/pixi/token-renderer';
+import { MapPointer } from '../../../src/app/pixi/pointer/MapPointer';
+import { listenToViewport } from '../../../src/app/pixi/pointer/viewportPointer';
 import { TokenPlaces, type TokenHolder } from '../../../src/app/pixi/token-renderer/TokenPlaces';
 import { UIManager } from '../../../src/app/pixi/token-renderer/UIManager';
 import { InteractionController } from '../../../src/app/pixi/token-renderer/InteractionController';
@@ -111,7 +113,11 @@ function scene(): { app: ReturnType<typeof createInMemoryApp>['app']; store: Ret
 async function rendererRig(): Promise<Rig> {
   const { app, store, viewport, grid, ticker, clock } = scene();
   const shown = new ShownPlaces();
+  // Presses reach the tokens through the map's pointer, which listens before the renderer is built
+  const pointer = new MapPointer({ store, gmView: () => true, placing: () => false });
+  cleanups.push(listenToViewport(pointer, viewport, document.createElement('canvas')));
   const renderer = new TokenRenderer(app, viewport, grid, () => {}, store, new EventEmitter(), 'token-places', shown);
+  pointer.attach('tokens', renderer.pointer);
   renderer.setPixiApp({ ticker, canvas: document.createElement('canvas'), renderer: { generateTexture: () => new Texture() } } as unknown as Application);
   // A lighting is attached, so on a lit scene a token the players may not have seen moves at once.
   renderer.setPlayerSightProvider(() => undefined, () => false);

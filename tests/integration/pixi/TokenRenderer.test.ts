@@ -20,6 +20,9 @@ import { auraBadgePoint } from '../../../src/app/measure/auraArea';
 import { MeasureRenderer } from '../../../src/app/pixi/measure/MeasureRenderer';
 import { PinRenderer } from '../../../src/app/pixi/PinRenderer';
 import { isHandled } from '../../../src/app/pixi/utils/handledEvents';
+import { MapPointer } from '../../../src/app/pixi/pointer/MapPointer';
+import { listenToViewport } from '../../../src/app/pixi/pointer/viewportPointer';
+import type { DoorPointer, WallToolPointer } from '../../../src/app/pixi/pointer/mapLayers';
 import { FogOfWarRenderer } from '../../../src/app/pixi/fog/FogOfWarRenderer';
 import { TokenStatblockLinkService } from '../../../src/app/services/TokenStatblockLinkService';
 import { AssetService } from '../../../src/app/services/AssetService';
@@ -86,6 +89,14 @@ const pointerEvent = (x: number, y: number): FederatedPointerEvent =>
     preventDefault: vi.fn(),
   }) as unknown as FederatedPointerEvent;
 
+/** The lighting tool, taking nothing unless told otherwise. */
+const wallTool = (parts: Partial<WallToolPointer> = {}): WallToolPointer => ({
+  pointerDown: () => false, pointerMove: () => undefined, pointerUp: () => undefined, pointerCancel: () => undefined, doubleClick: () => undefined,
+  menuAt: () => true, openMenu: () => undefined, cursorAt: () => 'crosshair', ...parts,
+});
+/** Door badges that open where `click` says. */
+const doorBadges = (click: (x: number, y: number) => boolean): DoorPointer => ({ click, pressActsAt: () => false, menuHitTest: () => null, openMenu: () => undefined });
+
 const token = (overrides: Partial<TokenInput> & { id: string }): TokenInput => ({
   x: 100,
   y: 100,
@@ -109,6 +120,8 @@ describe('TokenRenderer Integration Tests', () => {
   let restoreGraphics: () => void;
   let emitVault: ReturnType<typeof createInMemoryApp>['emit'];
   let viewportPointerDownListeners: number;
+  let pointer: MapPointer;
+  let stopPointer: () => void;
   let isRendererDestroyed: boolean;
   let canvas: HTMLCanvasElement;
 
@@ -132,7 +145,7 @@ describe('TokenRenderer Integration Tests', () => {
       eventBus,
       'test-view-id',
     );
-    canvas = document.createElement('canvas');
+    pointer.attach('tokens', renderer.pointer);
     renderer.setPixiApp({
       ticker,
       canvas,
@@ -158,8 +171,12 @@ describe('TokenRenderer Integration Tests', () => {
     // The viewport only needs the event system's DOM element to bind wheel/pointer listeners.
     const events = { domElement: document.createElement('canvas') } as unknown as EventSystem;
     viewport = new Viewport({ screenWidth: 800, screenHeight: 600, worldWidth: 2000, worldHeight: 2000, events });
-    viewportPointerDownListeners = viewport.listenerCount('pointerdown');
     store = createViewAtlasStore(obsidianApp, 'test-view-id');
+    // The map's pointer listens before every renderer, as the orchestrator builds it
+    canvas = document.createElement('canvas');
+    pointer = new MapPointer({ store, gmView: () => tokenRenderer.showsGmView(), placing: () => false });
+    stopPointer = listenToViewport(pointer, viewport, canvas);
+    viewportPointerDownListeners = viewport.listenerCount('pointerdown');
     store.getState().setPersistenceEnabled(false);
     store.getState().setMapPath('maps/test.atlasmap');
     eventBus = new EventEmitter();
@@ -179,6 +196,7 @@ describe('TokenRenderer Integration Tests', () => {
 
   afterEach(() => {
     destroyRenderer();
+    stopPointer();
     viewport.destroy();
     restoreGraphics();
   });
@@ -666,7 +684,7 @@ describe('TokenRenderer Integration Tests', () => {
       store.getState().addToken(token({ id: 'token-2', x: 315, y: 105 }));
       await waitForTokens('token-1', 'token-2');
       const drawingDrag = vi.fn();
-      tokenRenderer.setAnnotationHandlers({ gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: drawingDrag, cursorAt: () => null, leave: () => undefined });
+      pointer.attach('annotations', { gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: drawingDrag, cursorAt: () => null, leave: () => undefined });
 
       viewport.emit('pointerdown', pointerEvent(315, 105));
       expect(store.getState().selectedIds).toEqual([]);
@@ -700,7 +718,7 @@ describe('TokenRenderer Integration Tests', () => {
 
     beforeEach(async () => {
       Object.assign(answers, { grip: false, press: true, menu: true });
-      tokenRenderer.setAnnotationHandlers({
+      pointer.attach('annotations', {
         gripDown: () => { asked.push('grip'); return answers.grip; },
         pointerDown: () => { asked.push('press'); return answers.press; },
         menuAt: () => { asked.push('menu?'); return answers.menu; },
@@ -747,7 +765,7 @@ describe('TokenRenderer Integration Tests', () => {
     it('asks them for the cursor of every move with the Draw tool, with Alt as it is held, and shows what they answer', () => {
       const asked: boolean[] = [];
       let answer: string | null = 'none';
-      tokenRenderer.setAnnotationHandlers({
+      pointer.attach('annotations', {
         gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: () => undefined, leave: () => undefined,
         cursorAt: (_x, _y, _covered, free) => { asked.push(free === true); return answer; },
       });
@@ -789,7 +807,7 @@ describe('TokenRenderer Integration Tests', () => {
       store.getState().addToken(token({ id: 'token-1', x: 105, y: 105 }));
       await waitForTokens('token-1');
       const lights = lightHandlers(true);
-      tokenRenderer.setLightHandlers(lights);
+      pointer.attach('lights', lights);
 
       viewport.emit('pointerdown', pointerEvent(105, 105));
       viewport.emit('pointerup', pointerEvent(105, 105));
@@ -801,7 +819,7 @@ describe('TokenRenderer Integration Tests', () => {
     it('lets the press through to the token where no marker takes it', async () => {
       store.getState().addToken(token({ id: 'token-1', x: 105, y: 105 }));
       await waitForTokens('token-1');
-      tokenRenderer.setLightHandlers(lightHandlers(false));
+      pointer.attach('lights', lightHandlers(false));
 
       viewport.emit('pointerdown', pointerEvent(105, 105));
       viewport.emit('pointerup', pointerEvent(105, 105));
@@ -811,11 +829,10 @@ describe('TokenRenderer Integration Tests', () => {
 
     it('asks pins and door badges first', () => {
       const lights = lightHandlers(true);
-      tokenRenderer.setLightHandlers(lights);
+      pointer.attach('lights', lights);
       const pinClick = vi.fn();
-      tokenRenderer.setPinHitTestProvider((x) => (x < 50 ? 'pin-1' : null));
-      tokenRenderer.setPinClickHandler(pinClick);
-      tokenRenderer.setDoorClickHandler((x) => x > 500);
+      pointer.attach('pins', { hitTest: (x) => (x < 50 ? 'pin-1' : null), press: pinClick, hover: () => undefined });
+      pointer.attach('doors', doorBadges((x) => x > 500));
 
       viewport.emit('pointerdown', pointerEvent(20, 20));
       viewport.emit('pointerdown', pointerEvent(600, 20));
@@ -828,14 +845,14 @@ describe('TokenRenderer Integration Tests', () => {
 
     it('leaves a right press to the menus', () => {
       const lights = lightHandlers(true);
-      tokenRenderer.setLightHandlers(lights);
+      pointer.attach('lights', lights);
       viewport.emit('pointerdown', { ...pointerEvent(300, 20), button: 2 } as unknown as FederatedPointerEvent);
       expect(lights.pointerDown).not.toHaveBeenCalled();
     });
 
     it('shows the marker\'s cursor on hover and clears the hover when the pointer leaves the canvas', () => {
       const lights = lightHandlers(true);
-      tokenRenderer.setLightHandlers(lights);
+      pointer.attach('lights', lights);
       viewport.emit('pointermove', { ...pointerEvent(300, 20), clientX: 300, clientY: 20 });
       expect(lights.cursorAt).toHaveBeenCalledWith(300, 20);
       expect(viewport.cursor).toBe('pointer');
@@ -850,10 +867,9 @@ describe('TokenRenderer Integration Tests', () => {
     const OFF_MARKERS = 700;
 
     beforeEach(() => {
-      tokenRenderer.setPinHitTestProvider((x) => (x < 50 ? 'pin-1' : null));
-      tokenRenderer.setPinClickHandler(vi.fn());
-      tokenRenderer.setDoorClickHandler((x) => x > 500 && x < 560);
-      tokenRenderer.setLightHandlers({ pointerDown: (x) => x > 290 && x < 310, cursorAt: () => null, leave: () => undefined });
+      pointer.attach('pins', { hitTest: (x) => (x < 50 ? 'pin-1' : null), press: vi.fn(), hover: () => undefined });
+      pointer.attach('doors', doorBadges((x) => x > 500 && x < 560));
+      pointer.attach('lights', { pointerDown: (x) => x > 290 && x < 310, cursorAt: () => null, leave: () => undefined });
     });
 
     const click = (x: number): void => {
@@ -950,7 +966,6 @@ describe('TokenRenderer Integration Tests', () => {
       vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(new Proxy({}, { get: () => (): void => undefined }) as never);
       fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null);
       viewport.addChild(fog.getContainer());
-      fog.reorderViewportListeners();
       store.setState((state) => ({ objects: { ...state.objects, fog: { paint: fogRectangle({ x: 0, y: 0, width: 2000, height: 2000 }) } } }));
       openContextMenuGlobal.mockClear();
     });
@@ -1018,7 +1033,7 @@ describe('TokenRenderer Integration Tests', () => {
 
     it('leaves a right press with the wall tool to the pan and opens the wall menu only when it is released in place', () => {
       const wallMenu = vi.fn();
-      tokenRenderer.setWallContextMenuHandler(wallMenu);
+      pointer.attach('walls', wallTool({ openMenu: wallMenu }));
       store.setState({ activeTool: 'wall' }); // the tool is behind a feature flag
 
       viewport.emit('pointerdown', rightClick(900, 900));
@@ -1054,11 +1069,10 @@ describe('TokenRenderer Integration Tests', () => {
       await waitForTokens('token-1');
       store.setState({ activeTool: tool });
       // Each tool takes the move with a cursor of its own, as it does on the map
-      tokenRenderer.setWallPointerMoveHandler(() => undefined);
-      tokenRenderer.setWallCursorProvider(() => 'crosshair');
-      tokenRenderer.setAudioPointerDownHandler(() => false);
-      tokenRenderer.setStairsTool({ pointerDown: () => true, pointerMove: () => undefined, pointerUp: () => undefined, doubleClick: () => undefined, cursorAt: () => 'crosshair' });
-      tokenRenderer.setAnnotationHandlers({ gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: () => undefined, cursorAt: () => (tool === 'draw' ? 'crosshair' : null), leave: () => undefined });
+      pointer.attach('walls', wallTool());
+      pointer.attach('sounds', { pointerDown: () => false });
+      pointer.attach('stairs', { pointerDown: () => true, pointerMove: () => undefined, pointerUp: () => undefined, doubleClick: () => undefined, cursorAt: () => 'crosshair' });
+      pointer.attach('annotations', { gripDown: () => false, pointerDown: () => false, menuAt: () => false, openMenu: () => false, dragAlong: () => undefined, cursorAt: () => (tool === 'draw' ? 'crosshair' : null), leave: () => undefined });
       // The fog tool's own brush, ring and guide listen to the same moves
       vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(new Proxy({}, { get: () => (): void => undefined }) as never);
       const fog = new FogOfWarRenderer(viewport, { canvas: createEl('canvas') } as unknown as Application, eventBus as never, store, () => null);
@@ -1102,7 +1116,7 @@ describe('TokenRenderer Integration Tests', () => {
   describe('Canvas Listeners', () => {
     it('should forward a double-click to the wall tool', () => {
       const doubleClicked = vi.fn();
-      tokenRenderer.setWallDoubleClickHandler(doubleClicked);
+      pointer.attach('walls', wallTool({ doubleClick: doubleClicked }));
       store.setState({ activeTool: 'wall' }); // the tool is behind a feature flag
 
       canvas.dispatchEvent(new MouseEvent('dblclick'));
@@ -1541,7 +1555,7 @@ describe('TokenRenderer Integration Tests', () => {
       tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined), active);
       tokenRenderer.setFogCoverageProvider(() => fogCoverage(store.getState().objects.fog));
       measure = new MeasureRenderer(viewport, store, gridSystem);
-      unwire = wirePlayerMeasurements({ measure, tokens: tokenRenderer, store, grid: gridSystem, lighting: () => perception });
+      unwire = wirePlayerMeasurements({ measure, tokens: tokenRenderer, pointer, store, grid: gridSystem, lighting: () => perception });
     });
 
     afterEach(() => {
@@ -1793,7 +1807,8 @@ describe('TokenRenderer Integration Tests', () => {
       const group = tokenGroup('token-1');
       const container = tokenRenderer.getTokenContainer();
 
-      expect(viewport.listenerCount('pointerdown')).toBeGreaterThan(viewportPointerDownListeners);
+      // Presses reach the tokens through the map's pointer: the renderer listens to none itself
+      expect(viewport.listenerCount('pointerdown')).toBe(viewportPointerDownListeners);
 
       destroyRenderer();
 

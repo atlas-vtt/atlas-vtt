@@ -76,6 +76,10 @@ describe('a wall chain under fingers', () => {
       bounds: () => ({ x: 0, y: 0, width: VIEW.width, height: VIEW.height }), albedo: () => null,
     });
     controller.wire(m.tokens);
+    const { lights, walls, doors } = controller.pointerLayers();
+    m.pointer.attach('lights', lights);
+    m.pointer.attach('walls', walls);
+    m.pointer.attach('doors', doors);
     m.taps.lighting = () => controller.tapPlacing();
     m.store.getState().setActiveTool('wall');
     m.store.getState().setLightingTool({ mode: 'draw', drawMode: 'point-to-point' });

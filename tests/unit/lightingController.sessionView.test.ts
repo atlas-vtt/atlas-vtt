@@ -12,7 +12,7 @@ import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 import type { LightPointerHandlers } from '../../src/app/pixi/lighting/LightInteraction';
 import type { SceneLightingDeps } from '../../src/app/pixi/lighting/createSceneLighting';
 import type { SceneLightingView } from '../../src/app/pixi/lighting/sceneLightingView';
-import type { DoorMenuHandlers, TokenRenderer } from '../../src/app/pixi/TokenRenderer';
+import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';
 import { SEES_ALL, computeSight, type Sight } from '../../src/app/vision/sight';
@@ -59,7 +59,7 @@ vi.mock('../../src/app/utils/activeLeafGuard', () => ({ isActiveAtlasLeaf: () =>
 const openContextMenuGlobal = vi.hoisted(() => vi.fn());
 vi.mock('../../src/app/react/root/ContextMenuContext', () => ({ openContextMenuGlobal, closeContextMenuGlobal: vi.fn() }));
 
-/** What `LightingController.wire` hands the token renderer's viewport dispatch. */
+/** What the controller hands the token renderer (`wire`) and the map's pointer (`pointerLayers`). */
 interface Wired {
   pointerDown: (x: number, y: number, e: FederatedPointerEvent) => boolean;
   pointerMove: (x: number, y: number, e: FederatedPointerEvent) => void;
@@ -89,7 +89,8 @@ interface Setup {
   click: (x: number, y: number, keys?: { shift?: boolean }) => boolean;
 }
 
-const doorMenu: { current: DoorMenuHandlers | null } = { current: null };
+/** The menu of a door's badge, as the map's pointer opens it. */
+const doorMenu: { current: { hitTest: (x: number, y: number) => string | null; open: (doorId: string, screenX: number, screenY: number) => void } | null } = { current: null };
 let cleanup: (() => void) | null = null;
 
 afterEach(() => {
@@ -122,16 +123,13 @@ function setup(extra: Partial<ConstructorParameters<typeof LightingController>[0
     ...extra,
   });
   const wired = { refreshPlayerSight: vi.fn(), sensedOutlines: { visible: false } } as Wired;
+  const { lights, walls, doors } = controller.pointerLayers();
+  Object.assign(wired, {
+    pointerDown: walls.pointerDown, pointerMove: walls.pointerMove, pointerUp: walls.pointerUp, doubleClick: walls.doubleClick,
+    contextMenu: walls.openMenu, cursor: walls.cursorAt, doorClick: doors.click, light: lights,
+  });
+  doorMenu.current = { hitTest: doors.menuHitTest, open: doors.openMenu };
   controller.wire({
-    setWallPointerDownHandler: (fn: Wired['pointerDown']) => { wired.pointerDown = fn; },
-    setWallPointerMoveHandler: (fn: Wired['pointerMove']) => { wired.pointerMove = fn; },
-    setWallPointerUpHandler: (fn: Wired['pointerUp']) => { wired.pointerUp = fn; },
-    setWallDoubleClickHandler: (fn: Wired['doubleClick']) => { wired.doubleClick = fn; },
-    setWallContextMenuHandler: (fn: Wired['contextMenu']) => { wired.contextMenu = fn; },
-    setWallCursorProvider: (fn: Wired['cursor']) => { wired.cursor = fn; },
-    setDoorMenuHandlers: (handlers: DoorMenuHandlers) => { doorMenu.current = handlers; },
-    setDoorClickHandler: (fn: Wired['doorClick']) => { wired.doorClick = fn; },
-    setLightHandlers: (handlers: LightPointerHandlers) => { wired.light = handlers; },
     setPlayerSightProvider: (fn: Wired['playerSight'], active?: () => boolean, current?: () => boolean) => {
       wired.playerSight = fn;
       wired.playerViewActive = active;

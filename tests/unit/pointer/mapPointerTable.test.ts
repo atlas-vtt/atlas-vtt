@@ -1,18 +1,14 @@
 // @vitest-environment jsdom
-import { afterAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { POINTER_TABLE } from './mapPointerCases';
-import { isSecondaryPress } from '../../../src/app/pixi/utils/pointerButtons';
+import { isSecondaryPress, setCtrlClickIsSecondary } from '../../../src/app/pixi/utils/pointerButtons';
+import type { MapPointerHost } from '../../../src/app/pixi/pointer/MapPointer';
 import { named, openedMenu, outcomeOf } from './pointerOutcome';
-import { AT, PointerWorld } from './pointerWorld';
-import { tokenRendererPointer } from './tokenRendererPointer';
-
-vi.mock('../../../src/app/react/root/ContextMenuContext', () => ({
-  openContextMenuGlobal: vi.fn(),
-  closeContextMenuGlobal: vi.fn(),
-}));
+import { AT, CLIENT, PointerWorld } from './pointerWorld';
+import { boundPointer, mapPointerDriver } from './mapPointerDriver';
 
 const world = new PointerWorld();
-const driver = tokenRendererPointer(world);
+const driver = mapPointerDriver(world);
 afterAll(() => driver.destroy());
 
 describe('which layer of the map takes the pointer', () => {
@@ -78,5 +74,46 @@ describe('the gestures the active tool hears besides presses', () => {
     const hovered = [...world.hovered];
     driver.leave();
     expect({ hovered, left: [...world.hovered] }).toEqual({ hovered: ['token', 'tokenUi'], left: [] });
+  });
+});
+
+describe('where a menu opens', () => {
+  const host = (tool: string): MapPointerHost => ({
+    store: { getState: () => ({ activeTool: tool as never, selectedIds: [], clearSelection: () => undefined }) },
+    gmView: () => true,
+    placing: () => false,
+  });
+  /** Each menu that opens at a point of the window, the tool it is offered with, and how it is attached. */
+  const MENUS: Array<[string, string, (bound: ReturnType<typeof boundPointer>, open: (sx: number, sy: number) => void) => void]> = [
+    ['a door badge\'s', 'select', ({ pointer }, open) => pointer.attach('doors', { click: () => false, pressActsAt: () => false, menuHitTest: () => 'door-1', openMenu: (_id, sx, sy) => open(sx, sy) })],
+    ['the lighting tool\'s', 'wall', ({ pointer }, open) => pointer.attach('walls', {
+      pointerDown: () => false, pointerMove: () => undefined, pointerUp: () => undefined, pointerCancel: () => undefined, doubleClick: () => undefined,
+      menuAt: () => true, openMenu: (_x, _y, sx, sy) => open(sx, sy), cursorAt: () => 'crosshair',
+    })],
+    ['a map feature\'s', 'select', ({ pointer }, open) => pointer.attach('mapFeatures', { hover: () => undefined, leave: () => undefined, hitTest: () => 'feature-1', openContextMenu: (_id, sx, sy) => open(sx, sy) })],
+    ['the fog\'s', 'move', ({ pointer }, open) => pointer.attach('fog', { menuAt: () => true, openMenu: (_x, _y, sx, sy) => open(sx, sy) })],
+  ];
+
+  it.each(MENUS)('opens %s menu where the right press was released in the window, and a Ctrl+click\'s at once where it was pressed', (_menu, tool, attach) => {
+    const bound = boundPointer(host(tool));
+    const opened: Array<[number, number]> = [];
+    attach(bound, (sx, sy) => opened.push([sx, sy]));
+    world.reset({ tool, button: 2 });
+    bound.viewport.emit('pointerdown', world.event('down'));
+    bound.viewport.emit('pointerup', world.event('up', { x: AT.x + 2, y: AT.y + 1 }));
+    const restore = setCtrlClickIsSecondary(true);
+    world.reset({ tool, mac: true, ctrl: true });
+    bound.viewport.emit('pointerdown', world.event('down'));
+    restore();
+    bound.stop();
+    expect(opened).toEqual([[CLIENT.x + 2, CLIENT.y + 1], [CLIENT.x, CLIENT.y]]);
+  });
+
+  it('stops listening to the viewport and the canvas when it is stopped', () => {
+    const bound = boundPointer(host('select'));
+    const before = ['pointerdown', 'pointermove', 'pointerup', 'pointerupoutside', 'pointercancel'].map((type) => bound.viewport.listenerCount(type));
+    bound.stop();
+    expect({ before, after: ['pointerdown', 'pointermove', 'pointerup', 'pointerupoutside', 'pointercancel'].map((type) => bound.viewport.listenerCount(type)) })
+      .toEqual({ before: [1, 1, 1, 1, 1], after: [0, 0, 0, 0, 0] });
   });
 });
