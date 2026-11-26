@@ -76,7 +76,7 @@ async function showTracker({ names = false, layout = {}, sides = false, turn = 3
     isDiceLogOpen: diceLog,
     objects: { ...store.getState().objects, tokens: Object.fromEntries([0, 1, 2, 3, 4].map((index) => [`t${index}`, creature(index)])) },
     initiative: {
-      ...createDefaultInitiativeState(), isActive: true, round: 2, currentIndex: turn,
+      ...createDefaultInitiativeState(), isActive: true, round: 2,
       entries: [0, 1, 2, 3, 4].map((index) => entryOf(index, sides ? -1 : turn)),
       ...(sides ? { sides: { first: 'players' as const, active: 'opponents' as const } } : {}),
     },

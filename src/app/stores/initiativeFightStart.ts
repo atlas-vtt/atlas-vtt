@@ -106,8 +106,6 @@ function startSides(draft: FightDraft, rules: InitiativeRules, reading: FightRea
   // The turn goes to the first side that acts: a named side without combatants takes none
   const live = draft.initiative.sides;
   live.active = firstActingSide(draft.initiative, live, sideInputs(draft, reading));
-  // By sides the turn belongs to a side, never to one combatant
-  draft.initiative.currentIndex = -1;
 }
 
 function startCards(draft: FightDraft, rules: InitiativeRules, reading: FightReading): void {

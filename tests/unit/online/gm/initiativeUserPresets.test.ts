@@ -40,7 +40,7 @@ describe("the online players' list on a map whose collection plays by a user pre
 
     // The GM's tracker is open before the fight: the lists read their sides from the map's rules
     const tokens = { hero: token('hero', { side: 'players' }), hireling: token('hireling', { side: 'side-allies' }), ogre: token('ogre', { side: 'opponents' }) };
-    const initiative: InitiativeState = { entries: [entry('hero', 0), entry('hireling', 1), entry('ogre', 2)], currentIndex: 0, round: 0, isActive: false, config: { autoSort: true } };
+    const initiative: InitiativeState = { entries: [entry('hero', 0), entry('hireling', 1), entry('ogre', 2)], round: 0, isActive: false, config: { autoSort: true } };
     const state = { ...sceneState({ objects: { ...sceneState().objects, tokens } }), initiative, initiativeTrackerOpen: true };
 
     const harness = shareHarness(state, new Map([['maps/cave.webp', new Uint8Array([1, 2, 3])]]));

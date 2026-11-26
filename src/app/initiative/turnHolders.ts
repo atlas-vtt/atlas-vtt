@@ -13,30 +13,40 @@ import { fightSides } from './sides';
 import { entrySide, entryToken } from './party';
 import { defeatedCombatants } from './defeated';
 
-type TurnState = Pick<InitiativeState, 'isActive' | 'round' | 'entries' | 'sides'>;
+/** What an entry tells of the turn: whether the turn is at it, and whether it delayed. */
+type TurnMark = Pick<InitiativeEntry, 'isActive' | 'delayed'>;
+/** A turn mark that tells one combatant from another. */
+type KeyedMark = TurnMark & Pick<InitiativeEntry, 'id'>;
+
+type TurnState<E extends TurnMark = InitiativeEntry> = Pick<InitiativeState, 'isActive' | 'round' | 'sides'> & { readonly entries: readonly E[] };
 
 /** The turn of a running fight: the combatant with it, or by sides the sides with it. */
-export type CurrentTurn =
-  | { readonly kind: 'combatant'; readonly round: number; readonly entry: InitiativeEntry }
+export type CurrentTurn<E extends TurnMark = InitiativeEntry> =
+  | { readonly kind: 'combatant'; readonly round: number; readonly entry: E }
   | { readonly kind: 'sides'; readonly round: number; readonly sides: readonly SideId[] };
 
+/** Whether the turn the entry carries is its own: a combatant that delayed only keeps the turn's place. */
+export function holdsTurn(entry: TurnMark): boolean {
+  return entry.isActive && entry.delayed !== true;
+}
+
 /** The turn now, or null outside a fight and where nobody holds it. A delayed combatant never does. */
-export function currentTurn(initiative: TurnState | undefined): CurrentTurn | null {
+export function currentTurn<E extends TurnMark>(initiative: TurnState<E> | undefined): CurrentTurn<E> | null {
   if (!initiative?.isActive) return null;
   const fight = initiative.sides;
   if (fight) return { kind: 'sides', round: initiative.round, sides: activeSides(fight, initiative.round) };
-  const entry = initiative.entries.find((candidate) => candidate.isActive && !candidate.delayed);
+  const entry = initiative.entries.find(holdsTurn);
   return entry ? { kind: 'combatant', round: initiative.round, entry } : null;
 }
 
 /** What tells one turn from the next: the round and who holds it. */
-export function turnKey(turn: CurrentTurn): string {
+export function turnKey(turn: CurrentTurn<KeyedMark>): string {
   const holder = turn.kind === 'combatant' ? `e:${turn.entry.id}` : `s:${[...turn.sides].sort().join(',')}`;
   return `${turn.round}|${holder}`;
 }
 
 /** The key of the turn now (`turnKey`), or null where nobody holds it. */
-export function currentTurnKey(initiative: TurnState | undefined): string | null {
+export function currentTurnKey(initiative: TurnState<KeyedMark> | undefined): string | null {
   const turn = currentTurn(initiative);
   return turn ? turnKey(turn) : null;
 }
@@ -53,7 +63,7 @@ export function knownSideIds(initiative: Pick<InitiativeState, 'sides'>): SideId
  */
 function turnEntries(
   turn: CurrentTurn | null,
-  initiative: Pick<InitiativeState, 'entries' | 'sides'>,
+  initiative: Pick<InitiativeState, 'sides'> & { readonly entries: readonly InitiativeEntry[] },
   tokens: Readonly<Record<string, TokenEntity>>,
   defeated: ReadonlySet<string>,
 ): InitiativeEntry[] {

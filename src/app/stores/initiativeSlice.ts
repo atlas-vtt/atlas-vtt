@@ -114,7 +114,8 @@ export function createInitiativeActions(
           ...entry,
           id,
           order,
-          isActive: draft.initiative.entries.length === 0,
+          // The first combatant carries the turn; by sides the turn is a side's
+          isActive: draft.initiative.entries.length === 0 && !draft.initiative.sides,
         };
         draft.initiative.entries.push(newEntry);
       });
@@ -175,11 +176,6 @@ export function createInitiativeActions(
 
       entries.splice(toIndex, 0, movedEntry);
       renumber(entries);
-
-      // Update currentIndex if the moved entry was active
-      if (movedEntry.isActive) {
-        draft.initiative.currentIndex = toIndex;
-      }
     }),
 
     moveToFront: (id) => set((draft) => {
@@ -191,10 +187,6 @@ export function createInitiativeActions(
 
       draft.initiative.entries.unshift(entry);
       renumber(draft.initiative.entries);
-
-      if (entry.isActive) {
-        draft.initiative.currentIndex = 0;
-      }
     }),
 
     moveToBack: (id) => set((draft) => {
@@ -207,10 +199,6 @@ export function createInitiativeActions(
 
       entries.push(entry);
       renumber(entries);
-
-      if (entry.isActive) {
-        draft.initiative.currentIndex = entries.length - 1;
-      }
     }),
 
     setSideOrder: (order) => set((draft) => {
@@ -221,7 +209,6 @@ export function createInitiativeActions(
       draft.initiative.entries = [];
       draft.initiative.isActive = false;
       draft.initiative.round = 0;
-      draft.initiative.currentIndex = -1;
       delete draft.initiative.sides;
       delete draft.initiative.cards;
       clearSittingOut(draft.initiative);

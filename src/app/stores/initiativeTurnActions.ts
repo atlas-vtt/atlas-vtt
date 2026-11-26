@@ -18,7 +18,6 @@ import { clearCombatantConditions, setCombatantCondition } from '../initiative/c
 function endFight(initiative: InitiativeState): void {
   initiative.isActive = false;
   initiative.round = 0;
-  initiative.currentIndex = -1;
   initiative.entries.forEach((entry) => { entry.isActive = false; });
   delete initiative.sides;
   delete initiative.cards;

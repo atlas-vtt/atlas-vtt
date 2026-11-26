@@ -262,7 +262,7 @@ function collectionOf(app: App, row: Row): CollectionLookup & { initialize(): Pr
 
 const sceneOf = (row: Row): Pick<ViewAtlasState, 'initiative' | 'initiativeTrackerOpen' | 'mapPath' | 'objects' | 'tokenSettings'> => ({
   mapPath: MAP,
-  initiative: { entries: [], currentIndex: 0, round: 0, isActive: false, ...row.initiative },
+  initiative: { entries: [], round: 0, isActive: false, ...row.initiative },
   initiativeTrackerOpen: row.trackerOpen ?? true,
   objects: { ...sceneState().objects, tokens: TOKENS },
   tokenSettings: { showNameplates: true, hiddenResources: [], showInstanceBadges: false, tokenRingSize: 1 },

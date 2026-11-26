@@ -1,6 +1,7 @@
 import { produce } from 'immer';
 import { describe, expect, it } from 'vitest';
 import { createInitiativeActions } from '../../src/app/stores/initiativeSlice';
+import { initiativeToFile } from '../../src/app/initiative/initiativeFile';
 import { NO_RULES } from '../mocks/rulesLookup';
 import { byInitiative } from '../../src/app/initiative/tieBreak';
 import { createDefaultInitiativeState, type InitiativeEntry } from '../../src/app/types/initiativeTypes';
@@ -51,10 +52,11 @@ describe('one combatant rolled while the fight runs', () => {
     const { actions, get } = setup([entry('a', { initiative: 15 }), entry('b', { initiative: 10 }), entry('c', { initiative: 5 })], 18);
     actions.startCombat();
     actions.nextTurn();
-    expect(get().initiative.currentIndex).toBe(1);
+    expect(initiativeToFile(get().initiative).currentIndex).toBe(1);
     actions.rollEntryInitiative('c');
     expect(order(get().initiative.entries)).toEqual(['c', 'a', 'b']);
-    expect(get().initiative.currentIndex).toBe(2);
+    // The file keeps the turn's place for older versions
+    expect(initiativeToFile(get().initiative).currentIndex).toBe(2);
     actions.nextTurn();
     expect(get().initiative.entries.find((e) => e.isActive)?.id).toBe('c');
     expect(get().initiative.round).toBe(2);

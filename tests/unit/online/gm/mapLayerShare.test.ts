@@ -40,7 +40,7 @@ async function table(state: State, options: { grid?: Record<string, unknown> | n
   });
 }
 
-const FIGHT: ViewState['initiative'] = { entries: [entry('ogre', 1, 12), entry('spy', 2, 15), entry('hero', 0, 18)], currentIndex: 0, round: 3, isActive: true, config: { autoSort: true } };
+const FIGHT: ViewState['initiative'] = { entries: [entry('ogre', 1, 12), entry('spy', 2, 15), entry('hero', 0, 18)], round: 3, isActive: true, config: { autoSort: true } };
 
 const fight = (tokens: Record<string, TokenEntity>, extra: Partial<State> = {}): State => ({
   ...sceneState({ objects: { ...sceneState().objects, tokens } }),

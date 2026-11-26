@@ -323,12 +323,12 @@ describe('the initiative tracker keeps the turn in view', () => {
 
   it('scrolls its list to the combatant whose turn it is and the next two when the turn moves on', () => {
     collection.rules = { mode: 'turn-order', roll: '1d20', firstSide: 'players' };
-    scene({ isActive: true, round: 1, currentIndex: 0 });
+    scene({ isActive: true, round: 1 });
     state.initiative.entries[0] = entryOf('goblin', 0, { isActive: true });
     const { container, rerender } = render(<InitiativeTracker />);
     scrolls.calls.length = 0;
 
-    state.initiative = { ...state.initiative, currentIndex: 2, entries: state.initiative.entries.map((entry, index) => ({ ...entry, isActive: index === 2 })) };
+    state.initiative = { ...state.initiative, entries: state.initiative.entries.map((entry, index) => ({ ...entry, isActive: index === 2 })) };
     rerender(<InitiativeTracker />);
 
     expect(scrolls.calls).toEqual([[list(container), container.querySelectorAll('.atlas-initiative-card')[2], 'nearest', 2]]);

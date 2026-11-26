@@ -9,6 +9,7 @@ import { playerTokensRevision, subscribePlayerTokens } from '../../characters/pl
 import { useStartCombat } from './useStartCombat';
 import { shownItems } from '../../initiative/listSegments';
 import { trackerSegments } from '../../initiative/trackerSegments';
+import { currentTurn, turnKey } from '../../initiative/turnHolders';
 import { useInitiativeLayout } from '../../initiative/useInitiativeLayout';
 import { InitiativeTokenSync } from '../../initiative/useInitiativeTokenSync';
 import { missingPartyEntries } from '../../initiative/party';
@@ -119,13 +120,15 @@ export const InitiativeTracker: React.FC = () => {
     return [...initiative.entries].sort((a, b) => a.order - b.order);
   }, [initiative.entries]);
 
+  const turn = currentTurn(initiative);
+  const holder = turn?.kind === 'combatant' ? turn.entry.id : undefined;
   // The list as it is drawn: from the turn on where the GM chose so
   const segments = useMemo(
     () => trackerSegments(sortedEntries, tokens, {
-      bySides, sides, fightRuns: initiative.isActive, round: initiative.round,
+      bySides, sides, fightRuns: initiative.isActive, holder, round: initiative.round,
       fromTurn: layout.fromTurn,
     }),
-    [sortedEntries, tokens, bySides, sides, initiative.isActive, initiative.round, layout.fromTurn, playerTokens],
+    [sortedEntries, tokens, bySides, sides, initiative.isActive, holder, initiative.round, layout.fromTurn, playerTokens],
   );
   const shownOrder = useMemo(() => shownItems(segments), [segments]);
   const shownPlaceOf = useMemo(() => new Map(shownOrder.map((entry, index) => [entry.id, index])), [shownOrder]);
@@ -134,8 +137,7 @@ export const InitiativeTracker: React.FC = () => {
 
   // The turn stays in view as it moves
   const contentRef = useRef<HTMLDivElement>(null);
-  const turnOf = initiative.sides?.active ?? initiative.entries.find((entry) => entry.isActive)?.id;
-  useTurnInView(contentRef, { fightRuns: initiative.isActive, turnOf, round: initiative.round, fromTurn: layout.fromTurn });
+  useTurnInView(contentRef, { fightRuns: initiative.isActive, turnOf: turn ? turnKey(turn) : undefined, round: initiative.round, fromTurn: layout.fromTurn });
   // The cards glide as the turn passes on or back, and who holds it lights up, as on the players' list
   useTurnMotion(store, contentRef);
   const turnFlash = useTurnFlash(initiative);
@@ -257,7 +259,7 @@ export const InitiativeTracker: React.FC = () => {
       isHoveredForPreview={previewState.hoveredEntry?.entry.id === entry.id}
       onContextMenu={handleContextMenu}
       onHover={handleEntryHover}
-      turnFlash={turnFlash && (bySides ? inTurn && !entry.sitsOut : entry.isActive && !entry.delayed)}
+      turnFlash={turnFlash && (bySides ? inTurn && !entry.sitsOut : entry.id === holder)}
     />
   );
 

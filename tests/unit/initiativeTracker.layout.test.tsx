@@ -61,7 +61,7 @@ function fight(turn = 2): void {
   state.objects.tokens = Object.fromEntries(names.map((name) => [name, token(name)]));
   state.initiative = {
     entries: names.map((name, index) => entryOf(name, index, { isActive: index === turn })),
-    isActive: true, round: 2, currentIndex: turn,
+    isActive: true, round: 2,
   } as InitiativeState;
 }
 

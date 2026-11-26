@@ -157,7 +157,7 @@ describe('the turn passing on and back', () => {
       persistenceEnabled: false,
       initiativeTrackerOpen: true,
       objects: { ...store.getState().objects, tokens: Object.fromEntries([0, 1, 2, 3, 4].map((index) => [`t${index}`, creature(index)])) },
-      initiative: { ...createDefaultInitiativeState(), isActive: true, round: 2, currentIndex: 1, entries: [0, 1, 2, 3, 4].map((index) => entryOf(index, 1)) },
+      initiative: { ...createDefaultInitiativeState(), isActive: true, round: 2, entries: [0, 1, 2, 3, 4].map((index) => entryOf(index, 1)) },
     });
     const ui = { app, view: null, pixiApp: null, renderer: null } as never;
     render(React.createElement(AtlasUIContext.Provider, { value: ui }, React.createElement(ViewStoreProvider, { store }, React.createElement(InitiativeTracker))));
@@ -219,7 +219,7 @@ describe('the turn passing on and back', () => {
       persistenceEnabled: false,
       initiativeTrackerOpen: true,
       objects: { ...store.getState().objects, tokens: Object.fromEntries([0, 1, 2, 3, 4].map((index) => [`t${index}`, creature(index)])) },
-      initiative: { ...createDefaultInitiativeState(), isActive: true, round: 2, currentIndex: 1, entries: [0, 1, 2, 3, 4].map((index) => entryOf(index, 1)) },
+      initiative: { ...createDefaultInitiativeState(), isActive: true, round: 2, entries: [0, 1, 2, 3, 4].map((index) => entryOf(index, 1)) },
     });
     const ui = { app, view: null, pixiApp: null, renderer: null } as never;
     render(React.createElement(AtlasUIContext.Provider, { value: ui }, React.createElement(ViewStoreProvider, { store }, React.createElement(InitiativeTracker))));
