@@ -2,14 +2,13 @@ import { MAX_PLAYERS, type DeviceMessage, type GmScreenMessage, type PlayerInfo 
 import type { CreatedTable } from '../gm/createdTable.ts';
 import type { TableEvents, TableStatus } from '../gm/TableConnection.ts';
 import type { TableOutbox } from '../gm/tableOutbox.ts';
-import { endStrayTable } from '../gm/strayTable.ts';
 import { t } from '../../i18n';
 import { checkNumber, linkKey } from './channel/index.ts';
 import { DeviceChannels } from './deviceChannels.ts';
 import { gmScreenEndText } from './gmScreenEnd.ts';
 import { RoomEnds } from './gmScreenEnds.ts';
 import { GmScreenKnocks } from './gmScreenKnocks.ts';
-import { newGmScreenRecord, seatsOf, seenAt, withDevice, withoutDevice, withoutEnding, withRoomEnding, type GmScreenRecord } from './gmScreenRecord.ts';
+import { newGmScreenRecord, seatsOf, seenAt, withDevice, withEnding, withoutDevice, withoutEnding, withRoomEnding, type GmScreenRecord } from './gmScreenRecord.ts';
 import type { GmScreenPorts } from './gmScreenPorts.ts';
 import { ScreenRouter, type GmScreen, type GmScreenOutlet } from './screens.ts';
 import { gmScreenView, type GmScreenView } from './gmScreenView.ts';
@@ -50,7 +49,9 @@ export class GmScreenSession implements GmScreenOutlet {
   constructor(private readonly ports: GmScreenPorts, saved: GmScreenRecord | null) {
     this.record = saved;
     this.knocks = new GmScreenKnocks(ports.timers, (id) => (this.key === null ? Promise.resolve('') : checkNumber(ports.crypto, this.key, id)), () => this.changed());
-    this.ends = new RoomEnds(ports.open, (ended) => this.record !== null && this.keep(withoutEnding(this.record, (room) => room.secret === ended.secret)));
+    this.ends = new RoomEnds(ports.open, ports.timers, (room) => this.record !== null && this.keep(withEnding(this.record, room)), (ended) => {
+      if (this.record !== null) this.keep(withoutEnding(this.record, (room) => room.secret === ended.secret));
+    });
     this.shown = this.makeView();
   }
 
@@ -61,11 +62,6 @@ export class GmScreenSession implements GmScreenOutlet {
   onChange(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
-  }
-
-  /** Whether a room ran when the record was kept, so `resume` comes back to it. */
-  get wasRunning(): boolean {
-    return this.record !== null && this.record.secret !== null;
   }
 
   get devices(): readonly string[] {
@@ -94,7 +90,7 @@ export class GmScreenSession implements GmScreenOutlet {
     this.changed();
     const answer = await this.ports.create(record.link.code);
     if (run !== this.run) {
-      if ('room' in answer) endStrayTable(this.ports.open, answer.room, this.ports.timers);
+      if ('room' in answer) this.ends.overtaken(answer.room);
       return;
     }
     if ('refused' in answer) return this.halt(answer.refused);
@@ -106,7 +102,8 @@ export class GmScreenSession implements GmScreenOutlet {
   /** Comes back to the room that ran before Obsidian or Atlas was reloaded, with the same link and devices, and ends the rooms stopped offline. */
   resume(): Promise<void> {
     this.ends.end(this.record?.ending ?? []);
-    if (this.phase !== 'stopped' || !this.wasRunning) return Promise.resolve();
+    // Only a room that ran when the record was kept comes back.
+    if (this.phase !== 'stopped' || this.record?.secret == null) return Promise.resolve();
     this.phase = 'starting';
     this.comingBack = true;
     this.changed();

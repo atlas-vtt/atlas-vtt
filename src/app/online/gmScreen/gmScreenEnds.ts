@@ -1,4 +1,7 @@
 import { MAX_PLAYERS } from '../protocol/index.ts';
+import type { Timers } from '../gm/companionTimers.ts';
+import type { CreatedTable } from '../gm/createdTable.ts';
+import { endStrayTable } from '../gm/strayTable.ts';
 import type { OpenOutbox, TableOutbox } from '../gm/tableOutbox.ts';
 import type { GmScreenRoom } from './gmScreenRecord.ts';
 
@@ -12,13 +15,30 @@ import type { GmScreenRoom } from './gmScreenRecord.ts';
 export class RoomEnds {
   /** The rooms tried now and their connections, by the secret of the room. */
   private readonly trying = new Map<string, { readonly room: GmScreenRoom; readonly outbox: TableOutbox }>();
+  private closed = false;
 
-  /** `done` hears of a room that needs ending no more. */
-  constructor(private readonly open: OpenOutbox, private readonly done: (room: GmScreenRoom) => void) {}
+  /** `kept` hears of a room to be kept until it is ended, `done` of a room that needs ending no more. */
+  constructor(
+    private readonly open: OpenOutbox,
+    private readonly timers: Timers,
+    private readonly kept: (room: GmScreenRoom) => void,
+    private readonly done: (room: GmScreenRoom) => void,
+  ) {}
 
   /** Tries to end each room not being tried already. */
   end(rooms: readonly GmScreenRoom[]): void {
-    for (const room of rooms) if (!this.trying.has(room.secret)) this.try(room);
+    for (const room of rooms) if (!this.closed && !this.trying.has(room.secret)) this.try(room);
+  }
+
+  /**
+   * A room a Start made that nothing will run (Stop, New link or an unload came first): kept and ended as
+   * a stopped room is. After `close` nothing may be kept, so it is only tried for a while (`endStrayTable`).
+   */
+  overtaken(made: CreatedTable): void {
+    if (this.closed) return endStrayTable(this.open, made, this.timers);
+    const room = { code: made.code, secret: made.secret };
+    this.kept(room);
+    this.end([room]);
   }
 
   /** Stops trying for the rooms at `code`: the relay ended them as it made a new room there. */
@@ -30,8 +50,9 @@ export class RoomEnds {
     }
   }
 
-  /** Stops trying, leaving the rooms to the next load (Atlas unloads). */
+  /** Stops trying for good, leaving the rooms to the next load (Atlas unloads). */
   close(): void {
+    this.closed = true;
     for (const { outbox } of this.trying.values()) outbox.stop();
     this.trying.clear();
   }

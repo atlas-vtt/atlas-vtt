@@ -1,11 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ARM_MS } from '../../../../src/app/online/gm/armedCards.ts';
+import type { CreateRoom, RoomAnswer } from '../../../../src/app/online/gmScreen/index.ts';
 import { CLOSE } from '../../../../src/app/online/protocol/index.ts';
 import { deviceId, RelaySocket, sessionRig, type Rig } from './sessionRig.ts';
 
 const PHONE = deviceId('p');
 const LATER = 10 * 60_000;
 const macrotask = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+const LATE_SECRET = 'room-secret-late-0123456789abcdef';
+
+/** A relay that makes the room when the test says, answering Start late. */
+function pendingCreate(): { create: CreateRoom; answer(code: string, secret: string): void } {
+  let answer: (answer: RoomAnswer) => void = () => undefined;
+  return {
+    create: () => new Promise((resolve) => (answer = resolve)),
+    answer: (code, secret) => answer({ room: { code, secret, maxPlayers: 4, kind: 'gm-screen' } }),
+  };
+}
 
 beforeEach(() => {
   RelaySocket.all = [];
@@ -103,6 +114,47 @@ describe('Stop and New link while the relay cannot be reached', () => {
     rig.timers.advance(LATER);
     await rig.settle();
     expect(socketsTo(link?.code)).toBe(tries);
+  });
+
+  it('ends the room a Start made that Stop overtook, as a stopped room, however long the relay cannot be reached', async () => {
+    const asked = pendingCreate();
+    const first = sessionRig(null, asked.create);
+    void first.session.start();
+    await macrotask();
+    const code = first.saved.at(-1)?.link.code ?? '';
+    first.session.stop();
+    asked.answer(code, LATE_SECRET);
+    await macrotask();
+    expect(first.saved.at(-1)?.ending).toEqual([{ code, secret: LATE_SECRET }]);
+    // The relay stays out of reach, and Atlas unloads meanwhile; the next load ends the room.
+    first.timers.advance(LATER);
+    first.session.close();
+    const kept = first.saved.at(-1) ?? null;
+    expect(kept?.ending).toEqual([{ code, secret: LATE_SECRET }]);
+    RelaySocket.all = [];
+    const rig = sessionRig(kept);
+    await rig.session.resume();
+    rig.socket(code).welcome();
+    await rig.settle();
+    expect(ends(LATE_SECRET)).toBe(1);
+    expect(rig.saved.at(-1)?.ending).toEqual([]);
+    expect(rig.created).toEqual([]);
+  });
+
+  it('keeps nothing for a room a Start made that an unload overtook, which the next load may own: it is ended while it can be', async () => {
+    const asked = pendingCreate();
+    const rig = sessionRig(null, asked.create);
+    void rig.session.start();
+    await macrotask();
+    const code = rig.saved.at(-1)?.link.code ?? '';
+    rig.session.close();
+    const saves = rig.saved.length;
+    asked.answer(code, LATE_SECRET);
+    await macrotask();
+    rig.socket(code).welcome();
+    await rig.settle();
+    expect(ends(LATE_SECRET)).toBe(1);
+    expect(rig.saved).toHaveLength(saves);
   });
 
   it('ends the room on the next load of Atlas when it could not be reached before Atlas unloaded', async () => {

@@ -69,10 +69,13 @@ export function readGmScreenRecord(data: unknown): GmScreenRecord | null {
   return { link: { code, key }, secret: typeof secret === 'string' && SECRET_PATTERN.test(secret) ? secret : null, devices: kept, ending: rooms.slice(-MAX_ENDING) };
 }
 
+/** The record with `room` among the rooms to be ended. */
+export const withEnding = (record: GmScreenRecord, room: GmScreenRoom): GmScreenRecord => ({ ...record, ending: [...record.ending, room].slice(-MAX_ENDING) });
+
 /** The record with the room it runs now stopped: its secret goes to the rooms to be ended. */
 export function withRoomEnding(record: GmScreenRecord): GmScreenRecord {
   if (record.secret === null) return record;
-  return { ...record, secret: null, ending: [...record.ending, { code: record.link.code, secret: record.secret }].slice(-MAX_ENDING) };
+  return { ...withEnding(record, { code: record.link.code, secret: record.secret }), secret: null };
 }
 
 /** The record without the rooms to be ended that `ended` names. */
