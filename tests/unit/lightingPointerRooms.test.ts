@@ -30,7 +30,7 @@ function setup(mode: 'rooms' | 'zones') {
   const store: ViewAtlasStore = createViewAtlasStore(createInMemoryApp({ files: {} }).app, `rooms-pointer-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
   store.getState().setActiveTool('wall');
-  const wall = store.getState().addWall({ type: 'solid', p1: { x: 100, y: 100 }, p2: { x: 300, y: 100 }, closed: true });
+  const wall = store.getState().addObject('walls', { type: 'solid', p1: { x: 100, y: 100 }, p2: { x: 300, y: 100 }, closed: true });
   const editor = new WallEditor(viewport, store, new EventEmitter(), () => undefined, () => []);
   editor.layer.visible = true;
   const rooms = { active: mode === 'rooms', busy: false };

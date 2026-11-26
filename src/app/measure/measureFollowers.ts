@@ -88,7 +88,7 @@ export function followerMoves(measures: Readonly<Record<string, unknown>> | unde
 }
 
 type FollowerStoreState = Pick<ViewState, 'objects' | 'isMapLoading'> & {
-  updateMeasure: (id: string, changes: MeasureChanges) => void;
+  patchObject: (kind: 'measures', id: string, changes: MeasureChanges) => void;
 };
 
 /**
@@ -106,7 +106,7 @@ export function followTokensWithMeasures(store: StoreApi<FollowerStoreState>): (
     writing = true;
     try {
       runUntracked(store, () => {
-        for (const { id, points, anchor } of moves) store.getState().updateMeasure(id, { points, anchor });
+        for (const { id, points, anchor } of moves) store.getState().patchObject('measures', id, { points, anchor });
       });
     } finally {
       writing = false;

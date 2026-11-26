@@ -63,7 +63,7 @@ const roomWalls = (x: number, y: number, width: number, height: number): WallInp
   { type: 'solid', p1: { x: x + width, y: y + height }, p2: { x, y: y + height } },
   { type: 'solid', p1: { x, y: y + height }, p2: { x, y } },
 ];
-const addWalls = (store: ViewAtlasStore, walls: readonly WallInput[]): string[] => walls.map((wall) => store.getState().addWall(wall));
+const addWalls = (store: ViewAtlasStore, walls: readonly WallInput[]): string[] => walls.map((wall) => store.getState().addObject('walls', wall));
 const TOOLS = ['Brush', 'Rectangle', 'Polygon', 'Lasso', 'Cells', 'Room', 'Brush size', 'Cover all', 'Delete all fog', 'More'];
 
 describe('FogToolBar', () => {
@@ -153,7 +153,7 @@ describe('FogToolBar', () => {
     fireEvent.click(button('Room'));
     expect(store.getState().fogTool.shape).toBe('brush');
     // A wall that stops only light ends no room.
-    act(() => { store.getState().addWall({ type: 'solid', blocks: 'light', p1: { x: 0, y: 0 }, p2: { x: 100, y: 0 } }); });
+    act(() => { store.getState().addObject('walls', { type: 'solid', blocks: 'light', p1: { x: 0, y: 0 }, p2: { x: 100, y: 0 } }); });
     expect(inert('Room')).toBe(true);
     let walls: string[] = [];
     act(() => { walls = addWalls(store, roomWalls(140, 140, 280, 280)); });
@@ -164,7 +164,7 @@ describe('FogToolBar', () => {
     // The size button is the brush's.
     expect(inert('Brush size')).toBe(true);
     // The walls go: the brush takes Room's place, and the bar keeps its buttons.
-    act(() => { store.getState().deleteWalls(walls); });
+    act(() => { store.getState().removeObjects(walls); });
     expect(inert('Room')).toBe(true);
     expect(store.getState().fogTool.shape).toBe('brush');
     expect(names(toolsBar())).toEqual(TOOLS);

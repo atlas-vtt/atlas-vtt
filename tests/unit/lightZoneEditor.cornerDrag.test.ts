@@ -43,7 +43,7 @@ describe('a corner of a light zone', () => {
       expect(made.steps()).toBe(made.steps0);
       made.editor.pointerMove({ x: 450, y: 450 }, { altKey: false });
       expect(made.zones()[0]!.polygon[2]).toEqual({ x: 300, y: 300 });
-      made.store.getState().addWall({ type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 50, y: 0 }, closed: true });
+      made.store.getState().addObject('walls', { type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 50, y: 0 }, closed: true });
       expect(made.steps()).toBe(made.steps0 + 1);
     }
 
@@ -67,7 +67,7 @@ describe('a corner of a light zone', () => {
       made.editor.pointerUp();
       expect(made.zones()[0]!.polygon).toMatchObject([{ x: 60, y: 70 }, { x: 300, y: 100 }, { x: 300, y: 300 }, { x: 100, y: 300 }]);
       expect(made.steps()).toBe(made.steps0 + 1);
-      made.store.getState().addWall({ type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 50, y: 0 }, closed: true });
+      made.store.getState().addObject('walls', { type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 50, y: 0 }, closed: true });
       expect(made.steps()).toBe(made.steps0 + 2);
     });
 
@@ -76,7 +76,7 @@ describe('a corner of a light zone', () => {
       tearDown();
       expect(made.zones()[0]!.polygon[2]).toEqual({ x: 300, y: 300 });
       expect(made.steps()).toBe(made.steps0);
-      made.store.getState().addWall({ type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 50, y: 0 }, closed: true });
+      made.store.getState().addObject('walls', { type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 50, y: 0 }, closed: true });
       expect(made.steps()).toBe(made.steps0 + 1);
     });
 

@@ -73,7 +73,7 @@ describe('a scene with several levels on disk', () => {
     expect(state.exploredMasks).toEqual({ upper: MASK_UPPER });
     expect(harness.images.at(-1)).toMatchObject({ kind: 'file', file: { path: 'maps/upper.png' } });
 
-    state.addToken({ x: 5, y: 5, imagePath: 'tokens/rogue.png' });
+    state.addTokens([{ x: 5, y: 5, imagePath: 'tokens/rogue.png' }]);
     await save(harness.store);
 
     const saved = savedFile(harness);
@@ -95,7 +95,7 @@ describe('a scene with several levels on disk', () => {
     const harness = setup(JSON.stringify({ version: 5, state: sceneState({ version: 5, levels: LEVELS, objects: { ...(sceneState().objects as object), levelLinks } }) }));
     expect(await harness.service.loadMap(harness.rendererService, SCENE, { centerX: 0, centerY: 0, scale: 1, level: 'ground' })).not.toBeNull();
 
-    harness.store.getState().addToken({ x: 5, y: 5, imagePath: 'tokens/rogue.png' });
+    harness.store.getState().addTokens([{ x: 5, y: 5, imagePath: 'tokens/rogue.png' }]);
     await save(harness.store);
 
     expect((savedFile(harness).state.objects as { levelLinks: unknown }).levelLinks).toEqual(levelLinks);
@@ -114,7 +114,7 @@ describe('a scene with several levels on disk', () => {
     const harness = setup(JSON.stringify({ version: 4, state: sceneState() }));
 
     await harness.service.loadMap(harness.rendererService, SCENE);
-    harness.store.getState().addToken({ x: 5, y: 5, imagePath: 'tokens/rogue.png' });
+    harness.store.getState().addTokens([{ x: 5, y: 5, imagePath: 'tokens/rogue.png' }]);
     await save(harness.store);
 
     const saved = savedFile(harness);
@@ -202,7 +202,7 @@ describe('moving tokens to another level', () => {
     const harness = setup(JSON.stringify({ version: 5, state: sceneState({ version: 5, levels: LEVELS }) }));
     await harness.service.loadMap(harness.rendererService, SCENE);
     const state = harness.store.getState();
-    const rogue = state.addToken({ x: 5, y: 5, imagePath: 'tokens/rogue.png' });
+    const rogue = state.addTokens([{ x: 5, y: 5, imagePath: 'tokens/rogue.png' }])[0]!;
     state.setSelection([rogue]);
     const temporal = (harness.store as unknown as { temporal: { getState(): { pastStates: unknown[]; undo(): void } } }).temporal;
     const steps = temporal.getState().pastStates.length;

@@ -12,7 +12,7 @@ describe('undoing and redoing edits of the explored memory', () => {
     const state = (): string => `${redAt(200, 128)} ${redAt(240, 40)} ${walls()} walls`;
 
     lighting.editExplored(reveal(RIGHT_ROOM));
-    store.getState().addWall({ type: 'solid', p1: { x: 10, y: 10 }, p2: { x: 40, y: 10 }, closed: true });
+    store.getState().addObject('walls', { type: 'solid', p1: { x: 10, y: 10 }, p2: { x: 40, y: 10 }, closed: true });
     lighting.editExplored(forget({ type: 'brush', brushRadius: 20, points: [{ x: 200, y: 128 }] }));
     expect(state()).toBe('0 255 2 walls');
     expect(history().pastStates).toHaveLength(3);

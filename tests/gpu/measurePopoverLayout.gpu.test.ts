@@ -172,7 +172,7 @@ describe('the popover of a kept measurement', () => {
     for (const chip of chips) expect(Math.abs(chip.width - chip.height)).toBeLessThanOrEqual(0.5);
     expect(chips.at(-1)!.right).toBeLessThanOrEqual(row.right + 0.5);
     const before = box();
-    await act(async () => { store.getState().updateMeasure(circle, { effect: 'frost', color: '#8ad1f8' }); });
+    await act(async () => { store.getState().patchObject('measures', circle, { effect: 'frost', color: '#8ad1f8' }); });
     expect(box()).toEqual(before);
     const pressed = [...popover().querySelectorAll('.atlas-light-kind[aria-pressed="true"]')];
     expect(pressed).toHaveLength(1);
@@ -208,7 +208,7 @@ describe('the popover of a kept measurement', () => {
     expect(box()).toEqual(closed);
     // Reopened on a measurement that gives light, it stands level with its handle again.
     const lit = keep(700, 300, 'circle');
-    await act(async () => { store.getState().updateMeasure(lit, { light: { bright: 10, dim: 20, color: '#e93147', intensity: 1, animation: 'none' } }); });
+    await act(async () => { store.getState().patchObject('measures', lit, { light: { bright: 10, dim: 20, color: '#e93147', intensity: 1, animation: 'none' } }); });
     await open(lit);
     expect(Math.abs(box().top + box().height / 2 - 300)).toBeLessThan(1);
     expect(box().height).toBe(opened.height);
@@ -235,13 +235,13 @@ describe('the popover of a kept measurement', () => {
     await open(ruler);
     const { width, height } = box();
     expect(width).toBe(WIDTH);
-    await act(async () => { store.getState().updateMeasure(ruler, { color: '#08b94e', hidden: true }); });
+    await act(async () => { store.getState().patchObject('measures', ruler, { color: '#08b94e', hidden: true }); });
     expect(box()).toMatchObject({ width, height });
     await open(circle);
     const area = box();
     expect(area.width).toBe(width);
     expect(area.height).toBeGreaterThan(height + 20);
-    await act(async () => { store.getState().updateMeasure(circle, { walls: false, hidden: undefined }); });
+    await act(async () => { store.getState().patchObject('measures', circle, { walls: false, hidden: undefined }); });
     expect(box()).toMatchObject({ width, height: area.height });
     await open(other);
     expect(box()).toMatchObject({ width, height: area.height });

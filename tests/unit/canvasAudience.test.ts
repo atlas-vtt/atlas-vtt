@@ -114,7 +114,7 @@ describe('whom the canvas is drawn for, without a token renderer', () => {
     const view = scene();
     view.notices();
     view.s.store.getState().setActiveTool('measure');
-    view.s.store.getState().addToken({ id: 'goblin', kind: 'token', imagePath: '', size: 1, x: 105, y: 105 } as TokenEntity);
+    view.s.store.getState().addTokens([{ id: 'goblin', kind: 'token', imagePath: '', size: 1, x: 105, y: 105 } as TokenEntity]);
     view.view.audience.refresh();
     expect(view.notices()).toBe(0);
   });
@@ -141,7 +141,7 @@ describe('whom the canvas is drawn for, without a token renderer', () => {
 
   it('says the players see no token while none is drawn, and nothing at all in the GM\'s view', () => {
     const { s, view } = scene();
-    s.store.getState().addToken({ id: 'goblin', kind: 'token', imagePath: '', size: 1, x: 105, y: 105 } as TokenEntity);
+    s.store.getState().addTokens([{ id: 'goblin', kind: 'token', imagePath: '', size: 1, x: 105, y: 105 } as TokenEntity]);
     expect(view.audience.seenOnCanvas()).toBeNull();
     view.peek(true);
     expect(view.audience.seenOnCanvas()?.('goblin')).toBe(false);

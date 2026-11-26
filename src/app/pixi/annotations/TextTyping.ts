@@ -142,7 +142,7 @@ export class TextTyping {
     const record = levelObjects(state).texts[session.id];
     if (!record || isLocked(record)) return;
     if (words === '') {
-      state.deleteAnnotations([session.id]);
+      state.removeObjects([session.id]);
       return;
     }
     const moved = Math.hypot(at.x - record.x, at.y - record.y) > 1e-6;

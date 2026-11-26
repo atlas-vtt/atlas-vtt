@@ -15,7 +15,7 @@ describe('token resource persistence', () => {
     const store = createViewAtlasStore(app, 'resources-test');
     store.setState({ mapPath: path, mapLoaded: true });
     const resources = { hp: { current: 27, max: 27 }, hope: { current: 6, max: 6 }, mana: { current: 8, max: 8 } };
-    const [first, second] = [10, 30].map((x) => store.getState().addToken({ kind: 'character', x, y: 20, imagePath: 'mage.png', name: 'Mage', resources } as never));
+    const [first, second] = [10, 30].map((x) => store.getState().addTokens([{ kind: 'character', x, y: 20, imagePath: 'mage.png', name: 'Mage', resources } as never])[0]!);
     for (const [key, current] of [['hp', 15], ['hope', 2], ['mana', 3]] as const) {
       const token = store.getState().objects.tokens[first!]!;
       store.getState().updateToken(first!, resourceUpdate(token, key, { current, max: resources[key].max }, false));

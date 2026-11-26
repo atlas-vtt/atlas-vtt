@@ -1431,7 +1431,7 @@ export class PixiRendererOrchestrator { // Renamed class
     const innerPx = (10 / unitDist) * gridSize;  // Default 10 game units
     const outerPx = (30 / unitDist) * gridSize;  // Default 30 game units
 
-    const newId = this.store.getState().addAudio({
+    const newId = this.store.getState().addObject('audios', {
       x: worldX,
       y: worldY,
       innerRadius: innerPx,

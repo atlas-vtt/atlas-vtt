@@ -51,10 +51,10 @@ export class LevelSurfaceEditor extends PolygonAreaEditor<LevelSurface> {
         select: (id) => (id ? store.getState().openLevelSurfacePopover(id) : store.getState().closeLevelSurfacePopover()),
         create: (polygon) => {
           const state = store.getState();
-          state.openLevelSurfacePopover(state.addLevelSurface({ polygon, open: true }));
+          state.openLevelSurfacePopover(state.addObject('levelSurfaces', { polygon, open: true }));
         },
-        reshape: (id, polygon) => store.getState().updateLevelSurface(id, { polygon }),
-        remove: (id) => store.getState().deleteLevelSurface(id),
+        reshape: (id, polygon) => store.getState().patchObject('levelSurfaces', id, { polygon }),
+        remove: (id) => store.getState().removeObjects([id]),
         mayBegin: () => {
           if (surfaces().length < MAX_LEVEL_SURFACES) return true;
           surfaceDeps.onFull();

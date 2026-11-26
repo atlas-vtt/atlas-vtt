@@ -20,10 +20,10 @@ function setup(isPlayerView = false) {
 describe('StatblockTokenSync', () => {
   it('refreshes linked characters while preserving current values and hand-set maxima', async () => {
     const f = setup();
-    f.store.getState().addToken(character({ resources: { hp: { current: 3, max: 10 } } }));
-    f.store.getState().addToken(character({ id: 'manual', resources: { hp: { current: 2, max: 7 } }, overriddenMax: ['hp'] }));
-    f.store.getState().addToken(character({ id: 'other', statblockPath: 'Other.md' }));
-    f.store.getState().addToken({ ...character({ id: 'plain' }), kind: 'token' });
+    f.store.getState().addTokens([character({ resources: { hp: { current: 3, max: 10 } } })]);
+    f.store.getState().addTokens([character({ id: 'manual', resources: { hp: { current: 2, max: 7 } }, overriddenMax: ['hp'] })]);
+    f.store.getState().addTokens([character({ id: 'other', statblockPath: 'Other.md' })]);
+    f.store.getState().addTokens([{ ...character({ id: 'plain' }), kind: 'token' }]);
     await f.change();
     expect(f.store.getState().objects.tokens.hero).toMatchObject({ name: 'Hero', difficulty: '15', resources: { hp: { current: 3, max: 20 } } });
     expect(f.store.getState().objects.tokens.manual?.resources?.hp).toEqual({ current: 2, max: 7 });
@@ -34,7 +34,7 @@ describe('StatblockTokenSync', () => {
 
   it('ignores files without character markers or cached frontmatter', async () => {
     const f = setup();
-    f.store.getState().addToken(character());
+    f.store.getState().addTokens([character()]);
     vi.mocked(f.app.metadataCache.getFileCache).mockReturnValueOnce({ frontmatter: { name: 'Not a character' } }).mockReturnValueOnce(null);
     await f.change();
     await f.change();
@@ -45,7 +45,7 @@ describe('StatblockTokenSync', () => {
 
   it('links a token the picture names that links no statblock, and leaves placed art alone', async () => {
     const f = setup();
-    f.store.getState().addToken(character());
+    f.store.getState().addTokens([character()]);
     f.links.readStatblockImage.mockReturnValue('new.png');
     f.links.findAssetByAnyPath.mockResolvedValue(tokenAsset());
     await f.change();
@@ -56,7 +56,7 @@ describe('StatblockTokenSync', () => {
 
   it('never links, unlinks or takes a token because of the picture alone', async () => {
     const f = setup();
-    f.store.getState().addToken(character());
+    f.store.getState().addTokens([character()]);
     f.links.readStatblockImage.mockReturnValue('new.png');
     f.links.findAssetByAnyPath.mockResolvedValue(tokenAsset({ statblockPath: 'Other.md' }));
     await f.change();
@@ -73,9 +73,9 @@ describe('StatblockTokenSync', () => {
 
   it('links every matching image and clears only derived fields when unlinked', async () => {
     const f = setup();
-    f.store.getState().addToken(character({ overriddenMax: ['hp'], resources: { hp: { current: 2, max: 7 } } }));
-    f.store.getState().addToken({ ...character({ id: 'plain' }), kind: 'token' });
-    f.store.getState().addToken(character({ id: 'other', imagePath: 'other.png' }));
+    f.store.getState().addTokens([character({ overriddenMax: ['hp'], resources: { hp: { current: 2, max: 7 } } })]);
+    f.store.getState().addTokens([{ ...character({ id: 'plain' }), kind: 'token' }]);
+    f.store.getState().addTokens([character({ id: 'other', imagePath: 'other.png' })]);
     f.link({ type: 'linked', tokenImagePath: 'hero.png', statblockPath: 'Hero.md' });
     await vi.waitFor(() => expect(f.store.getState().objects.tokens.hero?.statblockPath).toBe('Hero.md'));
     await vi.waitFor(() => expect(f.store.getState().objects.tokens.hero?.name).toBe('Hero'));
@@ -96,7 +96,7 @@ describe('StatblockTokenSync', () => {
 
   it('reads current resource definitions and fills missing values without an undo step', async () => {
     const f = setup();
-    f.store.getState().addToken(character({ resources: { hp: { current: 2, max: 7 } } }));
+    f.store.getState().addTokens([character({ resources: { hp: { current: 2, max: 7 } } })]);
     const history = getHistoryStore(f.store)!;
     const before = history.getState().pastStates.length;
     f.setDefinitions([HP, STRESS]);
@@ -109,8 +109,8 @@ describe('StatblockTokenSync', () => {
 
   it('takes the maximum of a resource\'s new statblock field when the rules change, without an undo step (#615)', async () => {
     const f = setup();
-    f.store.getState().addToken(character({ resources: { hp: { current: 20, max: 20 } } }));
-    f.store.getState().addToken(character({ id: 'manual', resources: { hp: { current: 2, max: 7 } }, overriddenMax: ['hp'] }));
+    f.store.getState().addTokens([character({ resources: { hp: { current: 20, max: 20 } } })]);
+    f.store.getState().addTokens([character({ id: 'manual', resources: { hp: { current: 2, max: 7 } }, overriddenMax: ['hp'] })]);
     const history = getHistoryStore(f.store)!;
     const before = history.getState().pastStates.length;
     f.sync.followRules();
@@ -124,7 +124,7 @@ describe('StatblockTokenSync', () => {
 
   it('reads no statblock again when rules change that read the same fields', async () => {
     const f = setup();
-    f.store.getState().addToken(character({ resources: { hp: { current: 20, max: 20 } } }));
+    f.store.getState().addTokens([character({ resources: { hp: { current: 20, max: 20 } } })]);
     f.sync.followRules();
     f.sync.followRules();
     await Promise.resolve();
@@ -134,7 +134,7 @@ describe('StatblockTokenSync', () => {
 
   it('does not initialize resources in a player view', () => {
     const f = setup(true);
-    f.store.getState().addToken(character());
+    f.store.getState().addTokens([character()]);
     f.sync.fillMissingResources();
     expect(f.links.readStatblockRecord).not.toHaveBeenCalled();
     f.sync.destroy();
@@ -142,7 +142,7 @@ describe('StatblockTokenSync', () => {
 
   it('removes its metadata and link listeners on destruction', () => {
     const f = setup();
-    f.store.getState().addToken(character());
+    f.store.getState().addTokens([character()]);
     expect(f.links.listenerCount('link-changed')).toBe(1);
     f.sync.destroy();
     expect(f.app.metadataCache.offref).toHaveBeenCalledWith(f.ref);

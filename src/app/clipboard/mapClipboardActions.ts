@@ -62,7 +62,7 @@ export async function cutSelection(store: ClipboardStore): Promise<boolean> {
   const ids = editableSelection(state);
   const content = copyableContent(state, ids);
   if (!content) return false;
-  state.removeMapObjects(ids);
+  state.removeObjects(ids);
   await writeMapClipboard(content);
   return true;
 }

@@ -102,7 +102,7 @@ describe('the GM\'s hover label', () => {
     store.setState({ isGMView: true });
     hover.hover({ x: 50, y: 50 }, null, still);
     vi.advanceTimersByTime(300);
-    store.getState().deleteMapFeature('rubble');
+    store.getState().removeObjects(['rubble']);
     expect(shownText()).toBeNull();
   });
 });

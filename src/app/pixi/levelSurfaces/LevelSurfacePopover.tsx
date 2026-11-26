@@ -87,12 +87,12 @@ function LevelSurfacePopover({ surfaceId }: { surfaceId: string }): React.ReactE
         value={kind}
         options={KINDS}
         ariaLabel={t('openings.kind')}
-        onChange={(value) => store.getState().updateLevelSurface(surface.id, { open: value === 'open' })}
+        onChange={(value) => store.getState().patchObject('levelSurfaces', surface.id, { open: value === 'open' })}
       />
       {kind === 'open' && lowest && <p className="atlas-light-popover__hint">{t('openings.chasm')}</p>}
       <div className="atlas-light-popover__section atlas-light-popover__actions">
         <span />
-        <Button variant="ghost" size="sm" className="atlas-light-popover__delete" onClick={() => store.getState().deleteLevelSurface(surface.id)}>
+        <Button variant="ghost" size="sm" className="atlas-light-popover__delete" onClick={() => store.getState().removeObjects([surface.id])}>
           <Trash2 />
           <span>{t('common.delete')}</span>
         </Button>

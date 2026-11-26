@@ -44,7 +44,7 @@ export function MeasureLook({ measure }: { measure: KeptMeasure }): React.ReactE
   const dark = emission ? emission.darkness === true : shadow && round;
   const unavailable = !lit ? t('measure.sceneUnlit') : shadow && !round && !emission ? t('measure.shadowNeedsCircle') : null;
   const accent = (): string => hexColorOf(cssColorToHexNumber(getObsidianAccentColor()));
-  const update = (changes: MeasureChanges): void => store.getState().updateMeasure(measure.id, changes);
+  const update = (changes: MeasureChanges): void => store.getState().patchObject('measures', measure.id, changes);
   const choose = (effect: MeasureEffect | null): void => update(effectChoice(measure, effect, { scale, lit, accent: accent() }));
   const relight = (light: LightEmission): void => {
     if (light !== emission) update({ light });

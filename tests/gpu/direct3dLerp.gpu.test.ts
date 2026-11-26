@@ -90,8 +90,8 @@ describe('the lighting as Direct3D works out mix', () => {
     const state = view.store.getState();
     state.setSceneLighting({ enabled: true, ambient: 0 });
     state.setGMView(false);
-    state.addWall({ type: 'solid', p1: { x: 50, y: 50 }, p2: { x: 460, y: 50 } });
-    state.addWall({ type: 'solid', p1: { x: 256, y: 50 }, p2: { x: 256, y: 300 } });
+    state.addObject('walls', { type: 'solid', p1: { x: 50, y: 50 }, p2: { x: 460, y: 50 } });
+    state.addObject('walls', { type: 'solid', p1: { x: 256, y: 50 }, p2: { x: 256, y: 300 } });
     walk(view, 120, 60);
     return view;
   }

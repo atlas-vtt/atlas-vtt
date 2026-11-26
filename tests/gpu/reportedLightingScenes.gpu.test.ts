@@ -213,10 +213,10 @@ describe('the scenes of the lighting crash reports, drawn under strict GL', () =
     const frames = (): void => canvas.frames(lighting);
     frames();
     for (let i = 0; i + 1 < SQUARE.length; i++) {
-      store.getState().addWall({ type: 'solid', p1: SQUARE[i]!, p2: SQUARE[i + 1]! });
+      store.getState().addObject('walls', { type: 'solid', p1: SQUARE[i]!, p2: SQUARE[i + 1]! });
       frames();
     }
-    store.getState().addLight({ x: 700, y: 700, emission: LAMP });
+    store.getState().addObject('lights', { x: 700, y: 700, emission: LAMP });
     frames();
     expect(watch.findings).toEqual([]);
 
@@ -254,10 +254,10 @@ describe('the scenes of the lighting crash reports, drawn under strict GL', () =
     store.getState().setActiveTool('wall');
     frames();
     for (let i = 0; i + 1 < SQUARE.length; i++) {
-      store.getState().addWall({ type: i === 2 ? 'door' : 'solid', p1: SQUARE[i]!, p2: SQUARE[i + 1]!, closed: true });
+      store.getState().addObject('walls', { type: i === 2 ? 'door' : 'solid', p1: SQUARE[i]!, p2: SQUARE[i + 1]!, closed: true });
       frames();
     }
-    store.getState().openLightPopover(store.getState().addLight({ x: 700, y: 700, emission: LAMP }));
+    store.getState().openLightPopover(store.getState().addObject('lights', { x: 700, y: 700, emission: LAMP }));
     canvas.set({ tokens: party() });
     store.getState().setSelection(['zorgash', 'koss']);
     frames();
