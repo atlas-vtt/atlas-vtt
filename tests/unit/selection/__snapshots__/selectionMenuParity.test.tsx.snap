@@ -235,50 +235,6 @@ exports[`the desktop menus of what is selected > a pin 1`] = `
 ]
 `;
 
-exports[`the desktop menus of what is selected > a pin 2`] = `
-[
-  {
-    "icon": "link",
-    "item": "Copy link",
-  },
-  {
-    "icon": "file-text",
-    "item": "Open Note",
-  },
-  {
-    "icon": "edit",
-    "item": "Edit Pin",
-  },
-  {
-    "icon": "eye",
-    "item": "Preview",
-  },
-  {
-    "checked": true,
-    "icon": "book-open",
-    "item": "Show to players",
-  },
-  {
-    "checked": true,
-    "icon": "tag",
-    "item": "Show name",
-  },
-  {
-    "icon": "pencil",
-    "item": "Rename…",
-  },
-  {
-    "icon": "files",
-    "item": "Duplicate",
-  },
-  {
-    "destructive": true,
-    "icon": "trash",
-    "item": "Delete",
-  },
-]
-`;
-
 exports[`the desktop menus of what is selected > a text 1`] = `
 [
   {
