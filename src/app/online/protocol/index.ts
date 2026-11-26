@@ -13,6 +13,7 @@ export * from './doors.ts';
 export * from './diceRow.ts';
 export * from './draw.ts';
 export * from './drawParse.ts';
+export * from './drawnClasses.ts';
 export * from './errorReporter.ts';
 export * from './floor.ts';
 export * from './fog.ts';

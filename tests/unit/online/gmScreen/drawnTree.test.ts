@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { STATBLOCK_STYLE_CLASSES } from '../../../../src/app/online/gmScreen/statblocks/drawnClasses.ts';
 import { drawnTree, MAX_DRAWN_BYTES, type PortraitOf } from '../../../../src/app/online/gmScreen/statblocks/drawnTree.ts';
 import {
-  MAX_DRAWN_DEPTH, MAX_DRAWN_NODES, MAX_DRAWN_TEXT, parseDrawnNodes, parseGmScreenMessage, type DrawnNode,
+  MAX_DRAWN_DEPTH, MAX_DRAWN_NODES, STATBLOCK_STYLE_CLASSES, MAX_DRAWN_TEXT, parseDrawnNodes, parseGmScreenMessage, type DrawnNode,
 } from '../../../../src/app/online/protocol/index.ts';
 
 const PORTRAIT = 'a'.repeat(64);

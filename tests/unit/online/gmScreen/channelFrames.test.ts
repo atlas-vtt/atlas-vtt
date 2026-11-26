@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { messageParts } from '../../../../src/app/online/gm/assetServe.ts';
 import {
-  MAX_DEVICE_MESSAGE, MAX_GM_FRAME, MAX_GM_SCREEN_MESSAGE, MAX_PARTS, MAX_PLAYER_FRAME, MAX_SEAL_COUNTER, PROTOCOL_VERSION, parseDeviceMessage, parseDeviceWire, parseGmMessage, parseGmScreenMessage,
+  DRAWN_CLASSES, MAX_DEVICE_MESSAGE, MAX_DRAWN_CLASSES, MAX_GM_FRAME, MAX_GM_SCREEN_MESSAGE, MAX_PARTS, MAX_PLAYER_FRAME, MAX_SEAL_COUNTER, PROTOCOL_VERSION, parseDeviceMessage, parseDeviceWire, parseGmMessage, parseGmScreenMessage,
   parseGmScreenWire, readGmScreenLink, type DeviceMessage, type GmMessage, type GmScreenMessage,
 } from '../../../../src/app/online/protocol/index.ts';
 import { readGmScreenRecord } from '../../../../src/app/online/gmScreen/index.ts';
@@ -18,9 +18,9 @@ function pressOf(size: number): DeviceMessage {
   return { ...empty, command: { type: 'mood', id: 'm'.repeat(size - bytesOf(empty)) } };
 }
 
-/** A drawn statblock whose JSON is exactly `size` bytes: elements with many classes, and a text to fill up. */
+/** A drawn statblock whose JSON is exactly `size` bytes: elements with the most and longest classes a statblock keeps, and a text to fill up. */
 function statblockOf(size: number): GmScreenMessage {
-  const element = { e: 'div', c: Array.from({ length: 16 }, (_, index) => `c${index}`.padEnd(64, 'x')) } as const;
+  const element = { e: 'div', c: [...DRAWN_CLASSES].sort((a, b) => b.length - a.length).slice(0, MAX_DRAWN_CLASSES) } as const;
   const count = Math.floor((size - 200) / (bytesOf(element) + 1));
   const empty = { t: 'statblock', id: 'big', nodes: [...Array.from({ length: count }, () => element), ''], cut: false } as const;
   return { ...empty, nodes: [...empty.nodes.slice(0, -1), 'x'.repeat(size - bytesOf(empty))] };

@@ -88,10 +88,10 @@ describe('a drawn statblock', () => {
   it('leaves out every element, attribute and class off its lists, with what they hold', () => {
     const nodes = parseDrawnNodes([
       { e: 'script', k: ['alert(1)'] }, { e: 'iframe', src: 'https://evil.example' }, { e: 'a', href: 'javascript:alert(1)', k: ['link'] }, { e: 'style', k: ['* { display: none }'] },
-      { e: 'p', c: ['ok', 'not ok', 'x"><script>', ''], onclick: 'alert(1)', style: 'color: red', href: '#', k: ['text', { e: 'object', k: ['inside'] }] },
+      { e: 'p', c: ['atlas-sb-item', 'atlas-sidekick-tab', 'not ok', 'x"><script>', ''], onclick: 'alert(1)', style: 'color: red', href: '#', k: ['text', { e: 'object', k: ['inside'] }] },
       { e: 'img', src: 'javascript:alert(1)' }, { e: 'img' }, { e: 'br', k: ['never read'] }, { e: 'td', colspan: 999, rowspan: 2, dice: 'x'.repeat(65) },
     ]);
-    expect(nodes).toEqual([{ e: 'p', c: ['ok'], k: ['text'] }, { e: 'br' }, { e: 'td', rowspan: 2 }]);
+    expect(nodes).toEqual([{ e: 'p', c: ['atlas-sb-item'], k: ['text'] }, { e: 'br' }, { e: 'td', rowspan: 2 }]);
   });
 
   it('is refused whole where it holds more elements, nesting or text than a statblock may', () => {

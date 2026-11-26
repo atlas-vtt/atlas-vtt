@@ -1,8 +1,7 @@
 import {
-  DRAWN_CLASS_PATTERN, DRAWN_DATA, DRAWN_ELEMENTS, DRAWN_STYLES, MAX_DRAWN_CLASSES, MAX_DRAWN_DEPTH, MAX_DRAWN_DICE, MAX_DRAWN_NODES,
+  DRAWN_CLASSES, DRAWN_DATA, DRAWN_ELEMENTS, DRAWN_STYLES, MAX_DRAWN_CLASSES, MAX_DRAWN_DEPTH, MAX_DRAWN_DICE, MAX_DRAWN_NODES,
   MAX_DRAWN_TEXT, MAX_GM_SCREEN_MESSAGE, type DrawnElement, type DrawnElementName, type DrawnNode,
 } from '../../protocol/index.ts';
-import { DRAWN_CLASSES } from './drawnClasses.ts';
 
 /**
  * A drawn statblock as a device is sent it: the elements, classes and texts Atlas drew, from allow-lists alone.
@@ -67,7 +66,7 @@ function isHidden(element: Element): boolean {
 }
 
 function classesOf(element: Element): string[] {
-  const kept = [...element.classList].filter((name) => DRAWN_CLASSES.has(name) && DRAWN_CLASS_PATTERN.test(name));
+  const kept = [...element.classList].filter((name) => DRAWN_CLASSES.has(name));
   if (element.localName === 'input') {
     kept.push(PIP);
     if ((element as HTMLInputElement).checked) kept.push(CHECKED);

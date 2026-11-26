@@ -1,8 +1,9 @@
 /**
- * The classes a statblock drawn for a GM screen device keeps: those Atlas's statblock stylesheets select on (the
- * device styles the statblock with them), and the few of Atlas's controls inside a statblock. Any other class, a
- * note's or a layout's own among them, is left out, so nothing a statblock holds can borrow a look of Atlas's
- * interface outside the card. A test holds this list to the stylesheets.
+ * The classes a drawn statblock may carry, at both ends: Atlas keeps no other when it draws one, and the device's
+ * parser drops every other (`parseDrawnNodes`). They are those Atlas's statblock stylesheets select on (the device
+ * styles the statblock with them) and the few of Atlas's controls inside a statblock. Any other class, a note's or
+ * a layout's own, or one of the device page's own interface, is left out, so nothing a statblock holds can borrow a
+ * look from outside the card. A test holds this list to the stylesheets.
  */
 export const STATBLOCK_STYLE_CLASSES: readonly string[] = [
   'adversary-name', 'atlas-dice-link', 'atlas-image-placeholder', 'atlas-linked-statblock',

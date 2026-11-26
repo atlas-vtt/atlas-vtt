@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DRAWN_CLASSES } from '../../../../src/app/online/gmScreen/statblocks/drawnClasses.ts';
-import { parseGmScreenMessage } from '../../../../src/app/online/protocol/index.ts';
+import { DRAWN_CLASSES, parseGmScreenMessage } from '../../../../src/app/online/protocol/index.ts';
 import trees from '../../../fixtures/gmScreenStatblockTrees.json';
 
 /** The five statblocks as the DM screen draws them, as Atlas sends them (written by `tests/gpu/gmScreenStatblocks.gpu.test.ts`). */

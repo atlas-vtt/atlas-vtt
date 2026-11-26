@@ -1,4 +1,5 @@
 import { IMAGE_MIME_TYPES, isHash } from './asset.ts';
+import { DRAWN_CLASSES } from './drawnClasses.ts';
 import { isRecord } from './shape.ts';
 
 /**
@@ -24,8 +25,8 @@ const isElementName = (value: string): value is DrawnElementName => ELEMENTS.has
 export const MAX_DRAWN_NODES = 5000;
 export const MAX_DRAWN_DEPTH = 40;
 export const MAX_DRAWN_TEXT = 100_000;
+/** Classes an element keeps at most, of those listed (`DRAWN_CLASSES`). */
 export const MAX_DRAWN_CLASSES = 16;
-export const DRAWN_CLASS_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/;
 /** As long as a formula the dice tool reads. */
 export const MAX_DRAWN_DICE = 64;
 const MAX_SPAN = 64;
@@ -176,7 +177,7 @@ function readNodes(value: unknown, depth: number, budget: Budget, out: DrawnNode
 function readElement(value: Record<string, unknown>, name: DrawnElementName, depth: number, budget: Budget): DrawnElement | null | undefined {
   const kept = attributes(name, value);
   if (kept === null) return null;
-  const classes = Array.isArray(value.c) ? value.c.filter((entry): entry is string => typeof entry === 'string' && DRAWN_CLASS_PATTERN.test(entry)).slice(0, MAX_DRAWN_CLASSES) : [];
+  const classes = Array.isArray(value.c) ? value.c.filter((entry): entry is string => typeof entry === 'string' && DRAWN_CLASSES.has(entry)).slice(0, MAX_DRAWN_CLASSES) : [];
   const children: DrawnNode[] = [];
   if (!EMPTY_ELEMENTS.has(name) && value.k !== undefined && !readNodes(value.k, depth + 1, budget, children)) return undefined;
   return { e: name, ...(classes.length > 0 && { c: classes }), ...(children.length > 0 && { k: children }), ...kept };
