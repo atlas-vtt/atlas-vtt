@@ -3,6 +3,7 @@ import { Application, Container } from 'pixi.js';
 import { getDomHost } from '../../host/dom';
 import { addRendererSystemsByEntry } from '../../pixi/utils/rendererSystems';
 import { forgetUniformUploadsWithContext } from '../../pixi/utils/uniformUploads';
+import { forgetTextureBindingsWithContext } from '../../pixi/utils/textureBindings';
 import { RemoteDrags, type RemoteDrag } from './RemoteDrags.ts';
 import { RemoteLasers, type RemoteLaser } from './RemoteLasers.ts';
 import { RemoteMeasures, type LayBodies, type MeasureRules, type RemoteMeasure } from './RemoteMeasures.ts';
@@ -141,6 +142,7 @@ export class MarkOverlay {
     this.starting ??= (async () => {
       addRendererSystemsByEntry();
       forgetUniformUploadsWithContext();
+      forgetTextureBindingsWithContext();
       const app = new Application();
       const canvas = getDomHost().createCanvas(host.canvas.ownerDocument);
       canvas.classList.add('atlas-online-marks');

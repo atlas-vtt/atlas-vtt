@@ -8,14 +8,24 @@ function inMainMemory(options: unknown): boolean {
   return typeof options === 'object' && options !== null && Reflect.get(options, 'willReadFrequently') === true;
 }
 
-/** Calls `seen` with what each call of `name` on `prototype` returned and with which arguments, from now on; returns the function that stops it. */
-function watchCalls(prototype: object, name: string, seen: (result: unknown, args: unknown[]) => void): () => void {
+/** Calls `seen` with what each call of `name` on `prototype` returned, with which arguments and on what, from now on; returns the function that stops it. */
+function watchCalls(prototype: object, name: string, seen: (result: unknown, args: unknown[], self: unknown) => void): () => void {
   const original: unknown = Reflect.get(prototype, name);
   if (typeof original !== 'function') return () => undefined;
   Reflect.set(prototype, name, function watched(this: unknown, ...args: unknown[]): unknown {
     const result: unknown = Reflect.apply(original, this, args);
-    seen(result, args);
+    seen(result, args, this);
     return result;
+  });
+  return () => Reflect.set(prototype, name, original);
+}
+
+/** Makes each call of `name` on `prototype` take `replace(args)` instead of its arguments, from now on; returns the function that stops it. */
+function replaceArguments(prototype: object, name: string, replace: (args: unknown[]) => unknown[]): () => void {
+  const original: unknown = Reflect.get(prototype, name);
+  if (typeof original !== 'function') return () => undefined;
+  Reflect.set(prototype, name, function replaced(this: unknown, ...args: unknown[]): unknown {
+    return Reflect.apply(original, this, replace(args));
   });
   return () => Reflect.set(prototype, name, original);
 }
@@ -45,7 +55,9 @@ export interface GpuProcess {
  * half a second later each is handed back blank with its state reset (`contextrestored`), one after
  * the other on timers of their own, a canvas still lost meanwhile drawing nothing; about half a
  * second after that the WebGL context is restored. Canvases made with `willReadFrequently` live in
- * main memory and keep their pixels and state. Watches the canvases made from the call on.
+ * main memory and keep their pixels and state. A bitmap taken whole from a canvas the GPU process
+ * held (`transferToImageBitmap`) keeps its pixels there too and reads blank afterwards: WebGL
+ * uploads nothing of it. Watches the canvases made from the call on.
  */
 export function watchGpuProcess(): GpuProcess {
   /** Each 2D context seen, with whether the GPU process holds its pixels: the first call on a canvas sets its attributes. */
@@ -54,13 +66,30 @@ export function watchGpuProcess(): GpuProcess {
     if (type !== '2d' || !(result instanceof CanvasRenderingContext2D || result instanceof OffscreenCanvasRenderingContext2D)) return;
     if (!contexts.has(result)) contexts.set(result, !inMainMemory(options));
   };
+  /** Bitmaps taken from a canvas the GPU process held, and those of them whose pixels went with it. */
+  const heldBitmaps = new Set<ImageBitmap>();
+  const lostBitmaps = new WeakSet<ImageBitmap>();
+  const recordBitmap = (result: unknown, _args: unknown[], canvas: unknown): void => {
+    if (!(result instanceof ImageBitmap)) return;
+    for (const [context, inGpu] of contexts) if (inGpu && context.canvas === canvas) heldBitmaps.add(result);
+  };
+  const blankWhenLost = (args: unknown[]): unknown[] => {
+    const source = args[args.length - 1];
+    if (!(source instanceof ImageBitmap) || !lostBitmaps.has(source)) return args;
+    return [...args.slice(0, -1), new ImageData(source.width, source.height)];
+  };
   const stops = [
     watchCalls(HTMLCanvasElement.prototype, 'getContext', record),
     watchCalls(OffscreenCanvas.prototype, 'getContext', record),
+    watchCalls(OffscreenCanvas.prototype, 'transferToImageBitmap', recordBitmap),
+    replaceArguments(WebGL2RenderingContext.prototype, 'texImage2D', blankWhenLost),
+    replaceArguments(WebGL2RenderingContext.prototype, 'texSubImage2D', blankWhenLost),
   ];
   return {
     async die(renderer) {
       const lost = [...contexts].filter(([, inGpu]) => inGpu).map(([context]) => context);
+      for (const bitmap of heldBitmaps) lostBitmaps.add(bitmap);
+      heldBitmaps.clear();
       await resetContext(renderer, () => {
         const restores = lost.map((context) => {
           context.canvas.dispatchEvent(new Event('contextlost'));
