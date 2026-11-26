@@ -2,6 +2,11 @@
   "version": "0.20.1-beta.0",
   "releases": [
     {
+      "version": "0.20.1-beta.0",
+      "title": "Coming in 0.20.1",
+      "markdown": "## Improved\n\n- Atlas Online: players see your changes at once instead of up to a second later, such as Shared vision, remote mode, letting players draw, a character's dice and what your lighting shows them"
+    },
+    {
       "version": "0.20.0",
       "date": "2026-11-25",
       "title": "Remote Control and Appearance Settings",
