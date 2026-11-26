@@ -26,7 +26,7 @@ import { createSceneLighting } from './createSceneLighting';
 import { GmSightAids } from './GmSightAids';
 import { DoorIcons } from './DoorIcons';
 import { showDoorMenu, showWallMenu, wallMenuAt, type LightingMenuContext } from './lightingMenus';
-import { wireLightingPointer } from './lightingPointer';
+import { lightingPointerLayers, type LightingLayers } from './lightingPointer';
 import { listenToLightingSceneEvents } from './lightingSceneEvents';
 import { LightInteraction } from './LightInteraction';
 import { LightMarkers } from './LightMarkers';
@@ -180,20 +180,23 @@ export class LightingController {
     this.onSightChange();
   }
 
-  /** Routes the pointer from the token renderer's dispatch: lights and door badges with any tool, walls with the lighting tool. */
+  /** The tokens follow the players' sight, glide along the ways it leaves clear and fall to the levels it lays out. */
   wire(tokens: TokenRenderer): void {
     this.tokens = tokens;
     tokens.setPlayerSightProvider(() => (this.session.active ? this.playerSight() : undefined), () => this.session.active, () => this.renderer.sightIsCurrent());
     tokens.setGlideWay((from, to) => glideWayIsClear(this.deps.store.getState(), this.deps.bounds(), from, to));
     tokens.setArtFloors(() => this.renderer.artFloors?.());
-    wireLightingPointer(tokens, {
-      lights: this.lights, editor: this.editor, modes: this.modes, doors: this.doors,
-      wallMenu: (x, y, screenX, screenY) => showWallMenu(this.menuContext(), x, y, screenX, screenY),
-      wallMenuAt: (x, y) => wallMenuAt(this.menuContext(), x, y),
-      doorMenu: (doorId, screenX, screenY) => showDoorMenu(this.deps.store, doorId, screenX, screenY),
-    });
     // The token renderer brings the outlines of sensed tokens, which the view now shows or hides.
     this.session.sync();
+  }
+
+  /** Lights and door badges take the map's pointer with any tool, walls with the lighting tool. */
+  pointerLayers(): LightingLayers {
+    return lightingPointerLayers({
+      lights: this.lights, editor: this.editor, modes: this.modes, doors: this.doors,
+      wallMenu: (x, y, screenX, screenY) => showWallMenu(this.menuContext(), x, y, screenX, screenY), wallMenuAt: (x, y) => wallMenuAt(this.menuContext(), x, y),
+      doorMenu: (doorId, screenX, screenY) => showDoorMenu(this.deps.store, doorId, screenX, screenY),
+    });
   }
 
   /** What a finger's tap places with the lighting tool now; null where a press is a stroke's start, or the editor does not show. */

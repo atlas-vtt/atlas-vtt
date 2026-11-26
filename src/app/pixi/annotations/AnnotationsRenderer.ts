@@ -340,13 +340,6 @@ export class AnnotationsRenderer {
     return this.views.showFor(picture);
   }
 
-  /** The dispatch that claims presses listens now: the Draw tool hears them after it. */
-  hearPressesLast(): void {
-    this.input.hearPressesLast();
-    this.clicks.hearPressesLast();
-    this.texts.hearPressesLast();
-  }
-
   /** The map is no longer what the GM looks at (another tab, another scene): a shape under way is dropped, a sweep ends where it is, a text that is typed is written. */
   leave(): void {
     this.input.stop();

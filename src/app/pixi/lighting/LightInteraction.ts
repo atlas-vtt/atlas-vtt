@@ -21,7 +21,7 @@ export const LIGHT_DRAG_THRESHOLD = 5;
 /** What a press needs of the pointer event; PIXI reuses its event objects, so it is read at once. */
 type Press = Pick<FederatedPointerEvent, 'global' | 'ctrlKey' | 'metaKey'>;
 
-/** What the token renderer's viewport dispatch asks about placed lights, with any tool. */
+/** What the map's pointer (`MapPointer`) asks about placed lights, with any tool. */
 export interface LightPointerHandlers {
   /** A left press at a world point; true when a marker or a ring handle took it. */
   pointerDown(worldX: number, worldY: number, event: FederatedPointerEvent): boolean;

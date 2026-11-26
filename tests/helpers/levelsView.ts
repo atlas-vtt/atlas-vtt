@@ -271,9 +271,7 @@ export async function openLevelsView({ map, pane, paneHeight = pane, resolution 
   made.controller = controller;
   const ignore = (): void => undefined;
   controller.wire({
-    setLightHandlers: ignore, setWallPointerDownHandler: ignore, setWallContextMenuHandler: ignore, setWallPointerMoveHandler: ignore,
-    setWallPointerUpHandler: ignore, setWallDoubleClickHandler: ignore, setWallCursorProvider: ignore, setDoorMenuHandlers: ignore,
-    setDoorClickHandler: ignore, setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
+    setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
   } as unknown as TokenRenderer);
   let time = 1000;
   const renderer = app.renderer as WebGLRenderer;

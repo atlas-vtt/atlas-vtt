@@ -68,6 +68,8 @@ export interface DrawScene {
   drag(path: readonly (readonly [number, number])[], keys?: PointerKeys): void;
   /** A click in place: a press and its release. */
   click(x: number, y: number, keys?: PointerKeys): void;
+  /** The next press is claimed before the drawings and texts hear it, as the map's pointer claims one on a pin or a door badge. */
+  claimNextPress(): void;
   /** A key pressed while the map has the keyboard. */
   key(key: string): KeyboardEvent;
   drawings(): DrawingStroke[];
@@ -97,6 +99,13 @@ export function drawScene(options: DrawSceneOptions = {}): DrawScene {
   store.getState().setMapPath('maps/draw.atlasmap');
   if (options.playerView) store.setState({ isPlayerView: true });
   options.hearsFirst?.(store);
+  // The map's pointer hears presses before the drawings and texts: what it claims, they leave alone
+  let claimNext = false;
+  viewport.on('pointerdown', (event: FederatedPointerEvent) => {
+    if (!claimNext) return;
+    claimNext = false;
+    markHandled(event);
+  });
   const full = vi.fn<(of: FullOf) => void>();
   const dragTokens = vi.fn<() => void>();
   const players: DrawScene['players'] = { shown: null };
@@ -133,6 +142,9 @@ export function drawScene(options: DrawSceneOptions = {}): DrawScene {
       const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
       field.dispatchEvent(event);
       return event;
+    },
+    claimNextPress(): void {
+      claimNext = true;
     },
     tool(choices): void {
       store.getState().setDrawTool(choices);

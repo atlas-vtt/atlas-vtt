@@ -10,7 +10,6 @@ import { isTextEntryTarget } from '../../../src/app/keyboard/textEntry';
 import { pickDrawStyle } from '../../../src/app/packages/components/toolbar/drawStyleStore';
 import { TEXT_CONTENT_LABEL } from '../../../src/app/pixi/textElementView';
 import { watchTextFonts } from '../../../src/app/pixi/textFonts';
-import { markHandled } from '../../../src/app/pixi/utils/handledEvents';
 import { levelObjects } from '../../../src/app/levels/levelObjects';
 import type { ContextMenuEntry } from '../../../src/app/react/root/ContextMenuContext';
 import { getHistoryStore } from '../../../src/app/stores/history';
@@ -132,9 +131,8 @@ describe('typing a text on the map', () => {
     s.tool({ mode: 'text' });
     s.click(100, 100, { button: 2 });
     expect(s.field()).toBeNull();
-    // What claims a press is heard before the tool, once the view's dispatch listens.
-    s.viewport.once('pointerdown', markHandled);
-    s.renderer.hearPressesLast();
+    // What claims a press is heard before the tool: the map's pointer listens first.
+    s.claimNextPress();
     s.click(100, 100);
     expect(s.field()).toBeNull();
     // A pointer that is lost during the drag starts nothing either.

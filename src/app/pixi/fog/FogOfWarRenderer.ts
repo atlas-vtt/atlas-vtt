@@ -24,7 +24,7 @@ import { FogMenuTarget } from './FogMenuTarget';
 import { FogPicture, viewedFog } from './FogPicture';
 import { showsGmView } from './fogVisibilityPolicy';
 
-/** What the viewport's dispatch (`TokenRenderer`) asks about the fog's menu, in the GM's view. */
+/** What the map's pointer (`MapPointer`) asks about the fog's menu, in the GM's view. */
 export interface FogMenuPointerHandlers {
   /** Whether a right-click at the world point has the fog's menu: none while the canvas shows the players' view, or a shape is under way. */
   menuAt(worldX: number, worldY: number): boolean;
@@ -161,11 +161,6 @@ export class FogOfWarRenderer {
   /** How opaque the fog is in the GM's view, as the GM set it for this device. */
   setGmOpacity(opacity: number): void {
     this.picture.setGmOpacity(opacity);
-  }
-
-  /** The fog tool hears presses after the dispatch that claims them; called once that dispatch listens. */
-  reorderViewportListeners(): void {
-    this.gesture.hearPressesLast();
   }
 
   /** The fog tool was taken up, or changed between hiding and revealing. */
