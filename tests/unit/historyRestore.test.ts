@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { restore, towards } from '../../src/app/stores/history/towards';
 import type { HistorySnapshot } from '../../src/app/stores/history';
+import { UNDO_DEPTHS } from '../../src/app/stores/stateBranches';
 
 const RUNS = Number(process.env.VITE_HISTORY_RUNS ?? 300);
 
@@ -27,7 +28,7 @@ describe('putting back what a step changed', () => {
     const before = slice({ tokens });
     const after = slice({ tokens, lightZones: { z: { v: 1 } } });
     const current = slice({ tokens: { ...tokens, u: { v: 2 } }, lightZones: { z: { v: 1 } } });
-    const result = restore(current, after, before);
+    const result = restore(current, after, before, UNDO_DEPTHS);
     expect(keys(result.objects as object)).toEqual(['tokens']);
     expect(objectsOf(result).tokens).toBe(current.objects && objectsOf(current).tokens);
   });
@@ -36,7 +37,7 @@ describe('putting back what a step changed', () => {
     const z = { v: 1 }; const y = { v: 2 };
     const before = slice({ tokens: {} });
     const after = slice({ tokens: {}, lightZones: { z } });
-    const result = restore(slice({ tokens: {}, lightZones: { z, y } }), after, before);
+    const result = restore(slice({ tokens: {}, lightZones: { z, y } }), after, before, UNDO_DEPTHS);
     expect(objectsOf(result).lightZones).toEqual({ y });
   });
 
@@ -82,7 +83,7 @@ describe('putting back what a step changed', () => {
   it('gives back the old objects themselves where nothing else changed since', () => {
     const before = slice({ tokens: { a: { v: 1 } } }, { grid: { size: 70 } });
     const after = slice({ tokens: { a: { v: 2 } } }, { grid: { size: 50 } });
-    const result = restore(after, after, before);
+    const result = restore(after, after, before, UNDO_DEPTHS);
     expect(result.objects).toBe(before.objects);
     expect(result.grid).toBe(before.grid);
   });
@@ -91,7 +92,7 @@ describe('putting back what a step changed', () => {
     const before = slice({ tokens: {} });
     const after = { ...before, background: 'map.webp' };
     const current = { ...after, grid: { size: 50 } };
-    const result = restore(current, after, before);
+    const result = restore(current, after, before, UNDO_DEPTHS);
     expect(result.grid).toBe(current.grid);
     expect(result.background).toBeNull();
   });
@@ -122,14 +123,14 @@ const order = (value: unknown): unknown => (value && typeof value === 'object' ?
 describe('putting back towards a side, for any two sides', () => {
   it('gives that side, key order included, from a copy of the other side', () => {
     fc.assert(fc.property(tracked, tracked, (from, to) => {
-      const result = restore(clone(from), from, to);
+      const result = restore(clone(from), from, to, UNDO_DEPTHS);
       expect(order(result)).toEqual(order(to));
     }), { numRuns: RUNS });
   });
 
   it('gives that side itself from the other side itself', () => {
     fc.assert(fc.property(tracked, tracked, (from, to) => {
-      const result = restore(from, from, to);
+      const result = restore(from, from, to, UNDO_DEPTHS);
       for (const branch of ['objects', 'grid', 'background', 'widgetValues', 'exploredEdits'] as const) {
         expect(result[branch]).toBe(to[branch]);
       }

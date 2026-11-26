@@ -1,6 +1,6 @@
 import type { StateCreator, StoreApi, StoreMutatorIdentifier } from 'zustand';
 import { createHistory, type HistoryState } from './historyStore';
-import { trackedSliceOf, type HistorySnapshot } from './trackedSlice';
+import { trackedSliceOf, type HistorySnapshot, type UndoDepths } from './trackedSlice';
 
 type Write<T, U> = Omit<T, keyof U> & U;
 
@@ -11,7 +11,7 @@ declare module 'zustand/vanilla' {
 }
 
 type WithHistory = <
-  T extends HistorySnapshot,
+  T extends object,
   Mps extends [StoreMutatorIdentifier, unknown][] = [],
   Mcs extends [StoreMutatorIdentifier, unknown][] = [],
 >(
@@ -26,10 +26,10 @@ interface HistoryApi {
 }
 type Creator = (set: SetState, get: () => HistorySnapshot, api: HistoryApi) => unknown;
 
-const historyMiddleware = (config: Creator): Creator => (set, get, api) => {
+const historyMiddleware = (depths: UndoDepths) => (config: Creator): Creator => (set, get, api) => {
   // Undo and redo write with zustand's own `set`, below every other middleware: such a write
   // is never recorded and never saved by itself (the next recorded write saves its result).
-  const history = createHistory({ read: () => trackedSliceOf(get()), write: (slice) => set(slice) });
+  const history = createHistory({ depths, read: () => trackedSliceOf(get(), depths), write: (slice) => set(slice) });
   api.temporal = history.store;
   const setState = api.setState;
   api.setState = (partial, replace) => history.record(() => setState(partial, replace));
@@ -37,9 +37,9 @@ const historyMiddleware = (config: Creator): Creator => (set, get, api) => {
 };
 
 /**
- * Atlas's undo history, outermost on a store whose state holds the tracked branches
- * (`objects`, `grid`, `background`, `widgetValues`, `exploredEdits`, `partyValues`, `levelAlignments`, `turnMoves`). Adds `store.temporal`.
+ * Atlas's undo history, outermost on a store, tracking the branches of `depths` as deep as it
+ * says. Adds `store.temporal`.
  * The cast is zustand's pattern for a middleware that adds a mutator: the implementation
  * is typed for any state, the export for the state of the store it is given.
  */
-export const withHistory = historyMiddleware as unknown as WithHistory;
+export const withHistory = historyMiddleware as unknown as (depths: UndoDepths) => WithHistory;

@@ -12,6 +12,7 @@ import {
   withHistory,
   type HistoryState,
 } from '../../src/app/stores/history';
+import { UNDO_DEPTHS } from '../../src/app/stores/stateBranches';
 
 interface TestState {
   objects: { tokens: Record<string, { x: number; y: number }> };
@@ -25,7 +26,7 @@ interface TestState {
 
 function createTestStore() {
   const store = create<TestState>()(
-    withHistory(
+    withHistory(UNDO_DEPTHS)(
       immer<TestState>((set) => ({
         objects: { tokens: { a: { x: 0, y: 0 } } },
         grid: null,

@@ -9,12 +9,11 @@ import { immer } from "zustand/middleware/immer";
 import type { App, Plugin } from 'obsidian';
 import type AtlasVTTPlugin from '../../main';
 import type { TokenEntity, NotePin } from './types';
-import { DEFAULT_SCENE_LIGHTING, type SceneLightingChanges, type SceneLightingOption } from './types/lightingTypes';
+import type { SceneLightingChanges, SceneLightingOption } from './types/lightingTypes';
 import type { AnyWidget, WidgetSettings } from './types/widgetTypes';
 import type { InitiativeEntry } from './types/initiativeTypes';
-import { createDefaultInitiativeState } from './types/initiativeTypes';
 import type { SideId } from './types/initiativeRulesTypes';
-import { createAtlasStorage, ATLAS_SCHEMA, ATLAS_VERSION } from './services/MapPersistence';
+import { createAtlasStorage, ATLAS_VERSION } from './services/MapPersistence';
 import type { CameraState, GridState } from './types/gridTypes';
 import type { AtlasPersistStorage } from './services/MapPersistence';
 import { normalizeImagePath } from './utils/pathUtils';
@@ -27,11 +26,9 @@ import { createInitialUIState, createUIActions, type UISlice } from './stores/ui
 import { loadDrawTool, saveDrawTool } from './services/deviceSettings';
 import { loadStabilizer, saveStabilizer } from './services/roomToolMemory';
 import { createPinnedNotePreviewActions, type PinnedNotePreviewSlice } from './stores/pinnedNotePreviewSlice';
-import { createInitialLootRollerState, createLootRollerActions, readLootRollerState, type LootRollerSlice } from './stores/lootRollerSlice';
-import { isRecord } from './utils/guards';
+import { createLootRollerActions, type LootRollerSlice } from './stores/lootRollerSlice';
 import { newId } from './utils/ids';
 import { withHistory } from './stores/history';
-import { withoutCollectionWidgets } from './utils/collectionWidgets';
 import { withWidgetOff } from './utils/widgetActivation';
 import type { TimerState } from './utils/timerWidget';
 import { createMapObjectsActions, type MapObjectsSlice } from './stores/mapObjectsSlice';
@@ -45,28 +42,27 @@ import { placeTokens, raiseTokens, type TokenPlace } from './stores/tokenStackin
 import type { ArtFloors } from './levels/levelSurfaces';
 import type { DiceRollResult } from './types/diceTypes';
 import { isAtlasToolAvailable } from './tools/toolAvailability';
-import { readExploredMask } from './lighting/exploredMaskCodec';
-import { clampLitThreshold, readSceneLighting } from './lighting/sceneLightingOptions';
+import { clampLitThreshold } from './lighting/sceneLightingOptions';
 import { isPinLabelKind, nextPinLabel } from './tools/pinLabels';
 import { movedFolderPathOf, movedPathOf, rewriteMapReferences } from './services/renamedPaths';
 import { clearConditions, conditionValue, removeCondition, setConditionValue } from './utils/conditionValues';
 import { HydrationTracker } from './stores/hydrationTracker';
 import { isolateListeners } from './stores/isolatedListeners';
-import { firstLevelId, placedOnViewedLevel, viewedLevelId } from './levels/sceneLevels';
+import { placedOnViewedLevel } from './levels/sceneLevels';
 import { createSceneLevelsActions, writeExploredMask, type SceneLevelsSlice } from './stores/sceneLevelsSlice';
 import { createMapFeaturesActions, type MapFeaturesSlice } from './stores/mapFeaturesSlice';
-import { createRoomsSlice, DEFAULT_ROOM_TOOL, readRoomSizes, type RoomsSlice } from './stores/roomsSlice';
+import { createRoomsSlice, DEFAULT_ROOM_TOOL, type RoomsSlice } from './stores/roomsSlice';
 import { createTableModeActions, type TableModeSlice } from './stores/tableModeSlice';
 import { createLiquidsActions, type LiquidsSlice } from './stores/liquidsSlice';
 import { createMeasuresActions, type MeasuresSlice } from './stores/measuresSlice';
 import { createAnnotationsActions, type AnnotationsSlice } from './stores/annotationsSlice';
 import { createFogActions, type FogSlice } from './stores/fogSlice';
 import { createTurnMovesActions, type TurnMovesSlice } from './stores/turnMovesSlice';
-import { createPlayerFramesActions, readPlayerFrames, type PlayerFramesSlice } from './stores/playerFramesSlice';
+import { createPlayerFramesActions, type PlayerFramesSlice } from './stores/playerFramesSlice';
 import { readSceneSound } from './soundLibrary/sceneSound';
 import type { SceneSound } from './sound/soundTypes';
-import { levelsForFile, readExploredMasks, readSceneLevels } from './levels/levelFile';
-import { levelAlignmentsOf, movesWithFrame, withoutAlignments } from './levels/levelAlignment';
+import { movesWithFrame } from './levels/levelAlignment';
+import { clearedScene, initialBranches, loadedBranches, savedBranches, UNDO_DEPTHS } from './stores/stateBranches';
 import { levelsCarriedWithGrid, type CarriedLevels, type GridCarryScene } from './levels/levelGridCarry';
 
 // Individual store state interface (same as AtlasState but isolated)
@@ -324,75 +320,6 @@ export interface ViewAtlasState extends ViewState {
 /** The subset of view state that is written to the map file. */
 export type PersistedViewState = Partial<ViewAtlasState>;
 
-// Simple default widget settings
-const createDefaultWidgets = (): WidgetSettings => ({
-  widgets: {},
-  globalVisible: true,
-  position: 'top',
-  scale: 1.0
-});
-
-// Initial state for each store instance
-/** Token display settings of a map that never set its own. */
-export const DEFAULT_TOKEN_SETTINGS: Readonly<ViewAtlasState['tokenSettings']> = {
-  showNameplates: false,
-  hiddenResources: [],
-  showInstanceBadges: true,
-  tokenRingSize: 1,
-};
-
-const createInitialState = (): Pick<ViewAtlasState, 'schema' | 'version' | 'mapPath' | 'background' | 'grid' | 'objects' | 'camera' | 'persistenceEnabled' | 'widgetSettings' | 'widgetValues' | 'dmNotePath' | 'tokenSettings' | 'initiative' | 'diceLog' | 'pinnedNotePreviews' | 'lootRoller' | 'lighting' | 'exploredMask' | 'exploredEdits' | 'partyValues' | 'turnMoves' | 'fightsStarted' | 'playerFrames' | 'sound'> => ({
-  lighting: { ...DEFAULT_SCENE_LIGHTING },
-  playerFrames: [],
-  sound: null,
-  exploredMask: null,
-  exploredEdits: 0,
-  partyValues: {},
-  turnMoves: {},
-  fightsStarted: 0,
-  schema: ATLAS_SCHEMA,
-  version: ATLAS_VERSION,
-  mapPath: null,
-  background: null,
-  grid: {
-    enabled: true,
-    visible: true,
-    snapToGrid: true,
-    type: 'square',
-    size: 70,
-    offsetX: 0,
-    offsetY: 0,
-    opacity: 0.5,
-    lineType: 'solid',
-    lineWidth: 1
-  },
-  objects: {
-    tokens: {},
-    fog: {},
-    pins: {},
-    texts: {},
-    drawings: {},
-    walls: {},
-    lights: {},
-    audios: {},
-  },
-  camera: { x: 0, y: 0, scale: 1 },
-  persistenceEnabled: true,
-  widgetSettings: createDefaultWidgets(),
-  widgetValues: {}, // Widget values stored separately
-  dmNotePath: null, // DM note linking
-  tokenSettings: {
-    showNameplates: false,
-    hiddenResources: [],
-    showInstanceBadges: true,
-    tokenRingSize: 1
-  },
-  initiative: createDefaultInitiativeState(),
-  diceLog: [],
-  pinnedNotePreviews: {},
-  lootRoller: createInitialLootRollerState(),
-});
-
 /**
  * A view store as seen after its middleware stack: selector-aware `subscribe`,
  * the `persist` API, and the storage flush used for tab-switch save coordination.
@@ -514,47 +441,23 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
   
   const fight: FightBinding = { rules: rulesLookup(app), random: diceRandom };
 
-  // Undo/redo tracks objects, grid, background, widgetValues and the count of explored-memory
-  // edits only; selection, camera, tool and loading state never enter the history.
   const store = create<ViewAtlasState>()(
-    withHistory(
+    withHistory(UNDO_DEPTHS)(
       subscribeWithSelector(
         persist(
           immer<ViewAtlasState>((set, get) => ({
-          // Initialize with default state
-          ...createInitialState(),
-          
-          // Player view state (set during creation)
-          isPlayerView: isPlayerView,
-          isGMView: true,
-
-          // Selection and tool state (not persisted)
-          selectedIds: [],
-          activeTool: 'move',
-          selectionMode: 'box' as const,
-          isDragging: false,
-          
-          // Collection management (not persisted)
+          ...initialBranches(),
+          isPlayerView,
           ...(plugin && { plugin }),
-          
-          // DM screen state
-          dmNotePath: null,
-          
-          tokenSettings: { ...DEFAULT_TOKEN_SETTINGS },
-          
-          // Per-store persistence control (not persisted)
-          persistenceEnabled: true,
+
           setPersistenceEnabled: (enabled) => set((draft) => {
             draft.persistenceEnabled = enabled;
           }),
           
-          mapLoaded: false,
           setMapLoaded: (loaded) => set((draft) => {
             draft.mapLoaded = loaded;
           }),
 
-          // Loading state (not persisted)
-          isMapLoading: false,
           setMapLoading: (loading, progress, message) => set((draft) => {
             draft.isMapLoading = loading;
             if (progress !== undefined) draft.mapLoadingProgress = progress;
@@ -923,8 +826,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.exploredEdits = count;
           }),
 
-          // Audio dirty flag
-          _audioDirty: false,
           markAudioDirty: () => set((draft) => { draft._audioDirty = true; }),
           consumeAudioDirty: () => {
             const dirty = get()._audioDirty;
@@ -960,56 +861,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
 
           // Clear all map state when switching maps
           clearMapState: () => set((draft) => {
-            // Preserve the mapPath as it's needed for storage operations
-            
-            // Create completely fresh empty objects to ensure no state bleeds through
-            draft.objects = {
-              tokens: {},
-              fog: {},
-              pins: {},
-              texts: {},
-              drawings: {},
-              walls: {},
-              lights: {},
-              audios: {},
-            };
-            // Reset grid to defaults
-            draft.grid = {
-              enabled: true,
-              visible: true,
-              snapToGrid: true,
-              type: 'square',
-              size: 70,
-              offsetX: 0,
-              offsetY: 0,
-              opacity: 0.5,
-              lineType: 'solid',
-              lineWidth: 1
-            };
-            // Reset camera to origin
-            draft.camera = { x: 0, y: 0, scale: 1 };
-            draft.selectedIds = [];
-            draft.dmNotePath = null;
-            // Maps without saved widgets must not inherit the previous map's
-            draft.widgetSettings = createDefaultWidgets();
-            draft.widgetValues = {};
-            draft.pinnedNotePreviews = {};
-            draft.lootRoller = createInitialLootRollerState();
-            draft.lighting = { ...DEFAULT_SCENE_LIGHTING };
-            draft.playerFrames = [];
-            draft.sound = null;
-            draft.roomSizes = undefined;
-            draft.exploredMask = null;
-            draft.exploredMasks = undefined;
-            draft.exploredEdits = 0;
-            draft.turnMoves = {};
-            draft.levels = undefined;
-            draft.levelAlignments = undefined;
-            draft.viewedLevel = null;
-
-            // Note: We don't clear background here - it will be set by the new map
-            // Note: We don't clear mapPath - it must be preserved for storage adapter
-            
+            Object.assign(draft, clearedScene());
           }),
 
           // Token ring actions
@@ -1092,13 +944,10 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             }
           }),
 
-          // --- Initiative Tracker State & Actions (from initiativeSlice.ts) ---
-          initiative: createDefaultInitiativeState(),
-          initiativeTrackerOpen: false,
+          // --- Initiative Tracker Actions (from initiativeSlice.ts) ---
           ...createInitiativeActions(set, get, fight),
 
-          // --- Dice Roll Log (persisted per map) ---
-          diceLog: [],
+          // --- Dice Roll Log ---
           addDiceLogEntry: (entry: DiceRollResult) => set((draft) => {
             draft.diceLog.unshift(entry);
             if (draft.diceLog.length > 20) {
@@ -1109,12 +958,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.diceLog = [];
           }),
 
-          // --- Pinned note previews (persisted per map) ---
-          pinnedNotePreviews: {},
           ...createPinnedNotePreviewActions(set),
-
-          // --- Loot roller window (persisted per map) ---
-          lootRoller: createInitialLootRollerState(),
           ...createLootRollerActions(set),
 
           // --- Levels of the scene (from sceneLevelsSlice.ts) ---
@@ -1122,7 +966,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           ...createMapFeaturesActions(set),
           roomTool: { ...DEFAULT_ROOM_TOOL, stabilize: loadStabilizer(app) },
           ...createRoomsSlice(set, (stabilize) => saveStabilizer(app, stabilize)),
-          tableMode: null,
           ...createTableModeActions(set),
           ...createLiquidsActions(set),
           ...createMeasuresActions(set),
@@ -1147,78 +990,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           // Skip automatic hydration on store creation
           skipHydration: true,
           
-          // Only persist relevant parts of state (check per-store persistence control)
-          partialize: (state): PersistedViewState => {
-            // Use per-store persistence control instead of global
-            if (!state.persistenceEnabled) {
-              return {};
-            }
-
-            // Collection-wide widgets are saved in the collection settings, not in the scene
-            const sceneWidgets = withoutCollectionWidgets({
-              widgets: state.widgetSettings.widgets,
-              widgetValues: state.widgetValues,
-            });
-            
-            return {
-              schema: state.schema,
-              version: state.version,
-              mapPath: state.mapPath, // Include mapPath to verify data belongs to correct map
-              background: state.background,
-              levels: levelsForFile(state.levels, state.background, state.levelAlignments),
-              // Left out on the first level, so files of scenes that stay there stay as they were
-              ...(viewedLevelId(state) !== firstLevelId(state.levels) && { viewedLevel: state.viewedLevel }),
-              grid: state.grid,
-              objects: state.objects,
-              camera: state.camera,
-              widgetValues: sceneWidgets.widgetValues,
-              widgetSettings: { ...state.widgetSettings, widgets: sceneWidgets.widgets },
-              dmNotePath: state.dmNotePath, // DM note linking
-              tokenSettings: state.tokenSettings, // Token display settings
-              initiative: state.initiative, // Initiative tracker state
-              initiativeTrackerOpen: state.initiativeTrackerOpen, // Initiative tracker open/closed state
-              diceLog: state.diceLog, // Dice roll history (last 20 per map)
-              pinnedNotePreviews: state.pinnedNotePreviews, // Pinned note preview windows
-              lootRoller: state.lootRoller, // Loot roller window, filters and history
-              lighting: state.lighting,
-              exploredMask: state.exploredMask,
-              exploredMasks: state.exploredMasks,
-              // Left out until the GM saves one, so files of scenes without stay as they were
-              ...(state.playerFrames.length > 0 && { playerFrames: state.playerFrames }),
-              ...(state.sound && { sound: state.sound }),
-              ...(state.roomSizes && { roomSizes: state.roomSizes }),
-            };
-          },
-          
-          // The map file arrives unchecked; fields that need it are checked here, once per load.
-          merge: (persisted, current): ViewAtlasState => {
-            const saved: Partial<ViewAtlasState> = isRecord(persisted) ? persisted : {};
-            const read = readSceneLevels(saved.levels, saved.background ?? current.background);
-            const levels = withoutAlignments(read);
-            return {
-              ...current,
-              ...saved,
-              levels,
-              // The loader chose it from the file; a later read (another device's save) moves no view
-              viewedLevel: current.viewedLevel,
-              levelAlignments: levelAlignmentsOf(read),
-              exploredMasks: readExploredMasks(saved.exploredMasks, levels),
-              lootRoller: readLootRollerState(saved.lootRoller),
-              lighting: readSceneLighting(saved.lighting),
-              playerFrames: readPlayerFrames(saved.playerFrames),
-              sound: readSceneSound(saved.sound),
-              roomSizes: readRoomSizes(saved.roomSizes),
-              exploredMask: readExploredMask(saved.exploredMask),
-              // Counted per session: a file never brings one.
-              exploredEdits: current.exploredEdits,
-              // The campaign's, never the scene's.
-              partyValues: current.partyValues,
-              // Counted while the scene is open: a file never brings them.
-              turnMoves: current.turnMoves,
-              fightsStarted: current.fightsStarted,
-              exploredForgotten: current.exploredForgotten,
-            };
-          },
+          partialize: savedBranches,
+          merge: loadedBranches,
 
           onRehydrateStorage: () => hydrations.reporter((error) => {
             console.error(`[ViewStore-${viewId}] Hydration failed:`, error);
