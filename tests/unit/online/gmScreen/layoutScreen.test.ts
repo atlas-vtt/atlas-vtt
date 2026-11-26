@@ -203,6 +203,47 @@ describe("the Keys screen's grid on Atlas's side", () => {
   });
 });
 
+describe("a device's kind", () => {
+  it('stays the first one it asked for while its channel is open: asking for the other kind in a loop sends no grid', async () => {
+    const rig = await layoutRig();
+    const phone = await joinedDevice(rig, PHONE);
+    await rig.ask(phone, 'phone');
+    const heard = layoutHeard(phone).length;
+    for (let turn = 0; turn < 40; turn += 1) expect(await phone.say({ t: 'layout-ask', device: turn % 2 === 0 ? 'tablet' : 'phone' })).toBe(true);
+    await rig.settle();
+    expect(layoutHeard(phone)).toHaveLength(heard);
+    expect(lastLayout(phone)).toEqual(defaultLayout('phone'));
+  });
+
+  it("keeps a phone that asks as a tablet from changing the tablet's grid: its changes go to the phones' grid", async () => {
+    const rig = await layoutRig();
+    const phone = await joinedDevice(rig, PHONE);
+    const tablet = await joinedDevice(rig, TABLET);
+    await rig.ask(phone, 'phone');
+    await rig.ask(tablet, 'tablet');
+    const tabletHeard = layoutHeard(tablet).length;
+    expect(await phone.say({ t: 'layout-ask', device: 'tablet' })).toBe(true);
+    expect(await rig.edit(phone, 1, { op: 'remove', at: [0] })).toBeNull();
+    await rig.settle();
+    expect(rig.settings.getGmScreenKeys().tablet).toBeUndefined();
+    expect(layoutHeard(tablet)).toHaveLength(tabletHeard);
+    expect(at(lastLayout(phone), 0)).toBeNull();
+    expect(lastLayout(phone)?.slots).toHaveLength(GRID_SLOTS.phone);
+  });
+
+  it('is asked for anew once the device left and came back', async () => {
+    const rig = await layoutRig();
+    const device = await joinedDevice(rig, PHONE);
+    await rig.ask(device, 'phone');
+    rig.socket().receive({ t: 'player-left', id: PHONE });
+    await rig.settle();
+    const back = await rig.device(PHONE);
+    rig.socket().receive({ t: 'player-joined', id: PHONE, name: 'Device' });
+    await settleUntil(rig, () => back.heard.some((message) => message.t === 'your-code'));
+    expect(await rig.ask(back, 'tablet')).toEqual(defaultLayout('tablet'));
+  });
+});
+
 describe('a page that knows no grid', () => {
   it('gets the Keys screen as before and no layout message, beside a device that asks', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });

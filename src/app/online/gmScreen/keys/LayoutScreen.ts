@@ -26,10 +26,10 @@ export interface LayoutScreenDeps {
 }
 
 /**
- * The Keys screen's grid on Atlas's side: a device says which kind it is and gets that kind's grid; its
- * changes are read, applied to the stored grid one after the other and answered, and every connected device
- * of that kind gets the grid again, after the answer. A device that never says its kind (a page that shows
- * the long list) is sent nothing.
+ * The Keys screen's grid on Atlas's side: a device says which kind it is, once while its channel is open, and
+ * gets that kind's grid; its changes are read, applied to the stored grid one after the other and answered at
+ * once, and every connected device of that kind gets the grid again after the answer, a burst of changes as
+ * one grid (`LAYOUT_GAP_MS`). A device that never says its kind (a page that shows the long list) is sent nothing.
  */
 export class LayoutScreen implements GmScreen {
   readonly takes = ['layout-ask', 'layout-edit'] as const;
@@ -49,6 +49,10 @@ export class LayoutScreen implements GmScreen {
 
   message(device: string, message: DeviceMessage): void {
     if (message.t === 'layout-ask') {
+      // A device is one kind while its channel is open, so a phone never changes the tablet's grid and
+      // switching kinds never buys a grid: an ask for another kind than the first is not answered.
+      const declared = this.kinds.get(device);
+      if (declared !== undefined && declared !== message.device) return;
       this.kinds.set(device, message.device);
       this.stopWatching ??= this.deps.store.onChange(() => this.schedule());
       this.send(device);
