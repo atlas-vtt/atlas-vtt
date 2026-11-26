@@ -34,8 +34,8 @@ export interface TableOutbox extends RosterLink {
   onSent: ((text: string, to: string) => void) | null;
 }
 
-/** Opens the outbox of a table, which tells `events` what the relay says and the relay the table's gates. */
-export type OpenOutbox = (table: CreatedTable, events: TableEvents, gate: GateEvents) => TableOutbox;
+/** Opens the outbox of a table, which tells `events` what the relay says and the relay the table's gates (none: it tells no gates). */
+export type OpenOutbox = (table: CreatedTable, events: TableEvents, gate: GateEvents | null) => TableOutbox;
 
 /** The table's socket to Atlas's relay. */
 export const relayOutbox: OpenOutbox = (table, events, gate) => new TableConnection(RELAY_ORIGIN, table.code, table.secret, events, gate);

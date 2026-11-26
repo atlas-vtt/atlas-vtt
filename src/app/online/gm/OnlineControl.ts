@@ -294,7 +294,7 @@ export class OnlineControl {
     const closings = this.closings;
     // The salt is asked for beside the table, so the first references already carry their ids.
     void this.account.assets?.salt.ensure();
-    const made = await createCampaignTable(this.campaigns, campaignId, token, this.account, (level) => rememberMinLevel(this.app, level)).finally(() => (this.starting = false));
+    const made = await createCampaignTable(this.campaigns, campaignId, token, this.account, this.outbox, (level) => rememberMinLevel(this.app, level)).finally(() => (this.starting = false));
     this.changed();
     if (made === null || closings !== this.closings) return null;
     // A new table's log is empty: the last table's goes.

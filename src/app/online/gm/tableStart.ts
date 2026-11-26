@@ -8,6 +8,7 @@ import { createTable } from './createTable.ts';
 import { RELAY_ORIGIN } from './servers.ts';
 import { endStrayTable } from './strayTable.ts';
 import type { TableCampaigns } from './tableCampaigns.ts';
+import type { OpenOutbox } from './tableOutbox.ts';
 import { t } from '../../i18n';
 import type { TableAssets } from './assets/tableAssets.ts';
 
@@ -54,14 +55,14 @@ export const OTHER_LINK_TEXT = t('online.start.otherLink');
  * names its least GM level to `outdated`). A table the relay opened on
  * another link is ended, never run: its players would not find it at the campaign's link.
  */
-export async function createCampaignTable(campaigns: TableCampaigns, campaignId: string, token: string, account: HostAccount, outdated: (minLevel: number) => void = () => undefined): Promise<CampaignTable | null> {
+export async function createCampaignTable(campaigns: TableCampaigns, campaignId: string, token: string, account: HostAccount, open: OpenOutbox, outdated: (minLevel: number) => void = () => undefined): Promise<CampaignTable | null> {
   const seats = await campaigns.open(campaignId).catch(() => null);
   const link = seats === null ? null : campaignLink(seats);
   if (seats === null || link === null) return refused(seats === null ? CAMPAIGNS_LOADING_TEXT : linkRefusal(seats));
   // Whether this account may host is the relay's answer alone: nothing here looks at what the account was last said to hold.
   const created = await createTable(obsidianHttp, RELAY_ORIGIN, token, link);
   if (!('message' in created) && created.code !== link) {
-    endStrayTable(RELAY_ORIGIN, created);
+    endStrayTable(open, created);
     return refused(OTHER_LINK_TEXT);
   }
   if (!('message' in created)) return { created, seats };
