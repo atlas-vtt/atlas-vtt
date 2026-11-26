@@ -1,0 +1,16 @@
+@use '../../../../../styles/tokens' as *;
+
+// A statblock drawn for a GM screen device (`StatblockDrawing`): laid out at the width of the DM screen's
+// narrowest feed, so blocks that measure themselves choose as there, and never seen.
+.atlas-gm-screen-drawing {
+  position: fixed;
+  top: 0;
+  left: -100000px;
+  visibility: hidden;
+  pointer-events: none;
+
+  .atlas-dm-statblock-feed-item {
+    position: static;
+    width: $statblock-feed-min-width;
+  }
+}

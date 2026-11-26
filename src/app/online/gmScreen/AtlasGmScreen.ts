@@ -1,3 +1,4 @@
+import type { App } from 'obsidian';
 import { obsidianHttp } from '../../account/obsidianHttp.ts';
 import { showNotice } from '../../ui/notice';
 import { companionTimers } from '../gm/companionTimers.ts';
@@ -8,6 +9,7 @@ import type { GmScreenRecord } from './gmScreenRecord.ts';
 import { relayRooms, type RoomAccount } from './gmScreenRoom.ts';
 import { GmScreenSession } from './GmScreenSession.ts';
 import { setGmScreenSession } from './gmScreenSlot.ts';
+import { plugAtlasStatblocks } from './statblocks/atlasStatblocks.ts';
 
 /**
  * The GM screen inside Atlas: the session on Atlas's relay, with the account's token and Obsidian's
@@ -18,9 +20,10 @@ export class AtlasGmScreen {
   readonly session: GmScreenSession;
   /** The record as last kept, for online play's data file. */
   saved: GmScreenRecord | null;
+  private readonly unplugStatblocks: () => void;
 
   /** `save` writes online play's data file, which holds `saved`. */
-  constructor(saved: GmScreenRecord | null, account: RoomAccount, save: () => void) {
+  constructor(app: App, saved: GmScreenRecord | null, account: RoomAccount, save: () => void) {
     this.saved = saved;
     this.session = new GmScreenSession({
       crypto: channelCryptoOf(crypto),
@@ -35,6 +38,7 @@ export class AtlasGmScreen {
       notice: (text) => showNotice(text),
       now: () => Date.now(),
     }, saved);
+    this.unplugStatblocks = plugAtlasStatblocks(app, this.session);
     setGmScreenSession(this.session);
     void this.session.resume();
   }
@@ -42,6 +46,7 @@ export class AtlasGmScreen {
   /** Lets go of the room's connection; the room stays on the relay for the next load. */
   dispose(): void {
     setGmScreenSession(null);
+    this.unplugStatblocks();
     this.session.close();
   }
 }

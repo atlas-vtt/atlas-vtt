@@ -141,7 +141,8 @@ $pip-row-height: 24px;
   flex-wrap: wrap;
   gap: $spacing-xs;
 
-  input[type='checkbox'] {
+  // A GM screen device draws a pip as an element that is no control (`atlas-sb-pip`), marked with `is-checked`.
+  :is(input[type='checkbox'], .atlas-sb-pip) {
     appearance: none;
     flex: 0 0 $pip-size;
     width: $pip-size;
@@ -156,7 +157,7 @@ $pip-row-height: 24px;
     &::before, &::after { content: none; }
     // of-type: each pip is followed by its hidden tooltip label span.
     &:nth-of-type(3n):not(:last-of-type) { margin-right: $spacing-xs; }
-    &:checked { background: var(--interactive-accent); border-color: var(--interactive-accent); }
+    &:is(:checked, .is-checked) { background: var(--interactive-accent); border-color: var(--interactive-accent); }
     &:hover { border-color: var(--text-accent); }
     &:focus-visible { outline: $border-width-m solid var(--interactive-accent); outline-offset: $spacing-xs; }
   }
